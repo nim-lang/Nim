@@ -4,6 +4,8 @@ discard """
 
 import asynchttpserver, httpclient, asyncdispatch, strutils, net
 
+import std/assertions
+
 block: # bug #16436
   proc startServer(): AsyncHttpServer =
     result = newAsyncHttpServer()

@@ -3,6 +3,9 @@
 import genericstrformat
 import std/[strformat, strutils, times, tables, json]
 
+import std/[assertions, formatfloat]
+import std/objectdollar
+
 proc main() =
   block: # issue #7632
     doAssert works(5) == "formatted  5"

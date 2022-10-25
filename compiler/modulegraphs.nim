@@ -11,7 +11,7 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import intsets, tables, hashes, md5_old, sequtils
+import intsets, tables, hashes, md5_old
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
 import ic / [packed_ast, ic]
 
@@ -53,6 +53,10 @@ type
     concreteTypes*: seq[FullId]
     inst*: PInstantiation
 
+  SymInfoPair* = object
+    sym*: PSym
+    info*: TLineInfo
+
   ModuleGraph* {.acyclic.} = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packed*: PackedModuleGraph
@@ -60,7 +64,7 @@ type
 
     typeInstCache*: Table[ItemId, seq[LazyType]] # A symbol's ItemId.
     procInstCache*: Table[ItemId, seq[LazyInstantiation]] # A symbol's ItemId.
-    attachedOps*: array[TTypeAttachedOp, Table[ItemId, PSym]] # Type ID, destructors, etc.
+    attachedOps*: array[TTypeAttachedOp, Table[ItemId, LazySym]] # Type ID, destructors, etc.
     methodsPerType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
     enumToStringProcs*: Table[ItemId, LazySym]
     emittedTypeInfo*: Table[string, FileIndex]
@@ -83,7 +87,7 @@ type
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
-    suggestSymbols*: Table[FileIndex, seq[tuple[sym: PSym, info: TLineInfo]]]
+    suggestSymbols*: Table[FileIndex, seq[SymInfoPair]]
     suggestErrors*: Table[FileIndex, seq[Suggest]]
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     systemModule*: PSym
@@ -281,6 +285,13 @@ proc resolveInst(g: ModuleGraph; t: var LazyInstantiation): PInstantiation =
     t.inst = result
   assert result != nil
 
+proc resolveAttachedOp(g: ModuleGraph; t: var LazySym): PSym =
+  result = t.sym
+  if result == nil:
+    result = loadSymFromId(g.config, g.cache, g.packed, t.id.module, t.id.packed)
+    t.sym = result
+  assert result != nil
+
 iterator typeInstCacheItems*(g: ModuleGraph; s: PSym): PType =
   if g.typeInstCache.contains(s.itemId):
     let x = addr(g.typeInstCache[s.itemId])
@@ -296,22 +307,25 @@ iterator procInstCacheItems*(g: ModuleGraph; s: PSym): PInstantiation =
 proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   ## returns the requested attached operation for type `t`. Can return nil
   ## if no such operation exists.
-  result = g.attachedOps[op].getOrDefault(t.itemId)
+  if g.attachedOps[op].contains(t.itemId):
+    result = resolveAttachedOp(g, g.attachedOps[op][t.itemId])
+  else:
+    result = nil
 
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
-  g.attachedOps[op][t.itemId] = value
+  g.attachedOps[op][t.itemId] = LazySym(sym: value)
 
 proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
-  g.attachedOps[op][t.itemId] = value
-  # XXX Also add to the packed module!
+  g.attachedOps[op][t.itemId] = LazySym(sym: value)
 
 proc completePartialOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   if g.config.symbolFiles != disabledSf:
     assert module < g.encoders.len
     assert isActive(g.encoders[module])
     toPackedGeneratedProcDef(value, g.encoders[module], g.packed[module].fromDisk)
+    #storeAttachedProcDef(t, op, value, g.encoders[module], g.packed[module].fromDisk)
 
 proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
   result = resolveSym(g, g.enumToStringProcs[t.itemId])
@@ -372,34 +386,13 @@ template getPContext(): untyped =
   when c is PContext: c
   else: c.c
 
-when defined(nimfind):
-  template onUse*(info: TLineInfo; s: PSym) =
-    let c = getPContext()
-    if c.graph.onUsage != nil: c.graph.onUsage(c.graph, s, info)
-
-  template onDef*(info: TLineInfo; s: PSym) =
-    let c = getPContext()
-    if c.graph.onDefinition != nil: c.graph.onDefinition(c.graph, s, info)
-
-  template onDefResolveForward*(info: TLineInfo; s: PSym) =
-    let c = getPContext()
-    if c.graph.onDefinitionResolveForward != nil:
-      c.graph.onDefinitionResolveForward(c.graph, s, info)
-
+when defined(nimsuggest):
+  template onUse*(info: TLineInfo; s: PSym) = discard
+  template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
 else:
-  when defined(nimsuggest):
-    template onUse*(info: TLineInfo; s: PSym) = discard
-
-    template onDef*(info: TLineInfo; s: PSym) =
-      let c = getPContext()
-      if c.graph.config.suggestVersion == 3:
-        suggestSym(c.graph, info, s, c.graph.usageSym)
-
-    template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
-  else:
-    template onUse*(info: TLineInfo; s: PSym) = discard
-    template onDef*(info: TLineInfo; s: PSym) = discard
-    template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
+  template onUse*(info: TLineInfo; s: PSym) = discard
+  template onDef*(info: TLineInfo; s: PSym) = discard
+  template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
 
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
@@ -457,7 +450,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.importStack = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
   result.owners = @[]
-  result.suggestSymbols = initTable[FileIndex, seq[tuple[sym: PSym, info: TLineInfo]]]()
+  result.suggestSymbols = initTable[FileIndex, seq[SymInfoPair]]()
   result.suggestErrors = initTable[FileIndex, seq[Suggest]]()
   result.methods = @[]
   initStrTable(result.compilerprocs)
@@ -656,9 +649,15 @@ func belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
   ## Check if symbol belongs to the 'stdlib' package.
   sym.getPackageSymbol.getPackageId == graph.systemModule.getPackageId
 
-iterator suggestSymbolsIter*(g: ModuleGraph): tuple[sym: PSym, info: TLineInfo] =
+proc `==`*(a, b: SymInfoPair): bool =
+  result = a.sym == b.sym and a.info.exactEquals(b.info)
+
+proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): seq[SymInfoPair] =
+  result = graph.suggestSymbols.getOrDefault(fileIdx, @[])
+
+iterator suggestSymbolsIter*(g: ModuleGraph): SymInfoPair =
   for xs in g.suggestSymbols.values:
-    for x in xs.deduplicate:
+    for x in xs:
       yield x
 
 iterator suggestErrorsIter*(g: ModuleGraph): Suggest =

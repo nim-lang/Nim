@@ -10,7 +10,7 @@ type B
 
 
 # bug #1659
-type Animal = ref object {.inheritable.}
+type Animal {.inheritable.} = ref object
 type Dog = ref object of Animal
 
 method say(a: Animal): auto {.base.} = "wat!"
@@ -160,3 +160,11 @@ proc main() =
 
 main()
 
+block: # bug #20391
+  type Container[T] = ref object of RootRef
+    item: T
+
+  let a = Container[int]()
+
+  doAssert a of Container[int]
+  doAssert not (a of Container[string])

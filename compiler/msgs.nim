@@ -10,7 +10,9 @@
 import
   std/[strutils, os, tables, terminal, macros, times],
   std/private/miscdollars,
-  options, ropes, lineinfos, pathutils, strutils2
+  options, lineinfos, pathutils, strutils2
+
+import ropes except `%`
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
@@ -43,18 +45,16 @@ proc toCChar*(c: char; result: var string) {.inline.} =
     result.add c
 
 proc makeCString*(s: string): Rope =
-  result = nil
-  var res = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
-  res.add("\"")
+  result = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
+  result.add("\"")
   for i in 0..<s.len:
     # line wrapping of string litterals in cgen'd code was a bad idea, e.g. causes: bug #16265
     # It also makes reading c sources or grepping harder, for zero benefit.
     # const MaxLineLength = 64
     # if (i + 1) mod MaxLineLength == 0:
     #   res.add("\"\L\"")
-    toCChar(s[i], res)
-  res.add('\"')
-  result.add(rope(res))
+    toCChar(s[i], result)
+  result.add('\"')
 
 proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
   result.fullPath = fullPath
@@ -101,7 +101,8 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
 
   try:
     canon = canonicalizePath(conf, filename)
-    shallow(canon.string)
+    when not defined(nimSeqsV2):
+      shallow(canon.string)
   except OSError:
     canon = filename
     # The compiler uses "filenames" such as `command line` or `stdin`
@@ -218,11 +219,18 @@ proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: AbsoluteFile) 
 
 proc setHash*(conf: ConfigRef; fileIdx: FileIndex; hash: string) =
   assert fileIdx.int32 >= 0
-  shallowCopy(conf.m.fileInfos[fileIdx.int32].hash, hash)
+  when defined(gcArc) or defined(gcOrc):
+    conf.m.fileInfos[fileIdx.int32].hash = hash
+  else:
+    shallowCopy(conf.m.fileInfos[fileIdx.int32].hash, hash)
+
 
 proc getHash*(conf: ConfigRef; fileIdx: FileIndex): string =
   assert fileIdx.int32 >= 0
-  shallowCopy(result, conf.m.fileInfos[fileIdx.int32].hash)
+  when defined(gcArc) or defined(gcOrc):
+    result = conf.m.fileInfos[fileIdx.int32].hash
+  else:
+    shallowCopy(result, conf.m.fileInfos[fileIdx.int32].hash)
 
 proc toFullPathConsiderDirty*(conf: ConfigRef; fileIdx: FileIndex): AbsoluteFile =
   if fileIdx.int32 < 0:
@@ -411,12 +419,12 @@ To create a stacktrace, rerun compilation with './koch temp $1 <file>', see $2 f
           [conf.command, "intern.html#debugging-the-compiler".createDocLink], conf.unitSep)
   quit 1
 
-proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) =
+proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string, ignoreMsg: bool) =
   if msg in fatalMsgs:
     if conf.cmd == cmdIdeTools: log(s)
     quit(conf, msg)
   if msg >= errMin and msg <= errMax or
-      (msg in warnMin..hintMax and msg in conf.warningAsErrors):
+      (msg in warnMin..hintMax and msg in conf.warningAsErrors and not ignoreMsg):
     inc(conf.errorCounter)
     conf.exitcode = 1'i8
     if conf.errorCounter >= conf.errorMax:
@@ -496,7 +504,7 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
   conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
 
 proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
-               eh: TErrorHandling, info2: InstantiationInfo, isRaw = false) {.noinline.} =
+               eh: TErrorHandling, info2: InstantiationInfo, isRaw = false) {.gcsafe, noinline.} =
   var
     title: string
     color: ForegroundColor
@@ -524,8 +532,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
   of warnMin..warnMax:
     sev = Severity.Warning
     ignoreMsg = not conf.hasWarn(msg)
-    if msg in conf.warningAsErrors:
-      ignoreMsg = false
+    if not ignoreMsg and msg in conf.warningAsErrors:
       title = ErrorTitle
     else:
       title = WarningTitle
@@ -535,8 +542,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
   of hintMin..hintMax:
     sev = Severity.Hint
     ignoreMsg = not conf.hasHint(msg)
-    if msg in conf.warningAsErrors:
-      ignoreMsg = false
+    if not ignoreMsg and msg in conf.warningAsErrors:
       title = ErrorTitle
     else:
       title = HintTitle
@@ -562,7 +568,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
             " compiler msg initiated here", KindColor,
             KindFormat % $hintMsgOrigin,
             resetStyle, conf.unitSep)
-  handleError(conf, msg, eh, s)
+  handleError(conf, msg, eh, s, ignoreMsg)
   if msg in fatalMsgs:
     # most likely would have died here but just in case, we restore state
     conf.m.errorOutputs = errorOutputsOld

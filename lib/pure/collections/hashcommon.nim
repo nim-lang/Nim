@@ -13,6 +13,7 @@
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
+import std / outparams
 
 const
   growthFactor = 2
@@ -78,5 +79,5 @@ template rawGetImpl() {.dirty.} =
   genHashImpl(key, hc)
   rawGetKnownHCImpl()
 
-proc rawGet[X, A](t: X, key: A, hc: var Hash): int {.inline.} =
+proc rawGet[X, A](t: X, key: A, hc: var Hash): int {.inline, outParamsAt: [3].} =
   rawGetImpl()

@@ -250,8 +250,14 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of OverloadableSyms-{skEnumField}:
+  of OverloadableSyms-{skTemplate,skMacro}:
     result = symChoice(c, n, s, scOpen, isField)
+  of skTemplate, skMacro:
+    result = symChoice(c, n, s, scOpen, isField)
+    if result.kind == nkSym:
+      # template/macro symbols might need to be semchecked again
+      # prepareOperand etc don't do this without setting the type to nil
+      result.typ = nil
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
@@ -261,12 +267,8 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   else:
-    if s.kind == skEnumField and overloadableEnums in c.features:
-      result = symChoice(c, n, s, scOpen, isField)
-    elif isField and sfGenSym in s.flags:
-      result = n
-    else:
-      result = newSymNode(s, n.info)
+    if isField and sfGenSym in s.flags: result = n
+    else: result = newSymNode(s, n.info)
     # Issue #12832
     when defined(nimsuggest):
       suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
@@ -374,6 +376,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         result = newSymNode(s, n.info)
         onUse(n.info, s)
       else:
+        if s.kind in {skType, skVar, skLet, skConst}:
+          discard qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
         result = semTemplSymbol(c.c, n, s, c.noGenSym > 0)
   of nkBind:
     result = semTemplBody(c, n[0])
@@ -509,7 +513,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result.add newIdentNode(getIdent(c.c.cache, "{}"), n.info)
     for i in 0..<n.len: result.add(n[i])
     result = semTemplBodySons(c, result)
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     checkSonsLen(n, 2, c.c.config)
     let a = n[0]
     let b = n[1]
@@ -618,12 +622,6 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     s = semIdentVis(c, skTemplate, n[namePos], {})
   assert s.kind == skTemplate
 
-  if s.owner != nil:
-    const names = ["!=", ">=", ">", "incl", "excl", "in", "notin", "isnot"]
-    if sfSystemModule in s.owner.flags and s.name.s in names or
-       s.owner.name.s == "vm" and s.name.s == "stackTrace":
-      incl(s.flags, sfCallsite)
-
   styleCheckDef(c, s)
   onDef(n[namePos].info, s)
   # check parameter list:
@@ -691,6 +689,9 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   if proto == nil:
     addInterfaceOverloadableSymAt(c, c.currentScope, s)
   elif not comesFromShadowscope:
+    if {sfTemplateRedefinition, sfGenSym} * s.flags == {}:
+      #wrongRedefinition(c, n.info, proto.name.s, proto.info)
+      message(c.config, n.info, warnTemplateRedefinition, s.name.s)
     symTabReplace(c.currentScope.symbols, proto, s)
   if n[patternPos].kind != nkEmpty:
     c.patterns.add(s)

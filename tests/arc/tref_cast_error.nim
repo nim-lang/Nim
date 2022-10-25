@@ -1,6 +1,6 @@
 discard """
   cmd: "nim c --gc:arc $file"
-  errormsg: "expression cannot be cast to ref RootObj"
+  errormsg: "expression cannot be cast to 'ref RootObj'"
   joinable: false
 """
 

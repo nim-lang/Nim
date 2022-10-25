@@ -8,10 +8,7 @@
 .. include:: rstcommon.rst
 .. contents::
 
-.. raw:: html
-  <blockquote><p>
-  "A great chef is an artist that I truly respect" -- Robert Stack.
-  </p></blockquote>
+> "A great chef is an artist that I truly respect" -- Robert Stack.
 
 
 Introduction
@@ -51,16 +48,16 @@ csource command
 ---------------
 
 The `csource`:idx: command builds the C sources for installation. It accepts
-the same options as you would pass to the `boot command
-<#commands-boot-command>`_.
+the same options as you would pass to the [boot command](
+#commands-boot-command).
 
 temp command
 ------------
 
 The temp command builds the Nim compiler but with a different final name
 (`nim_temp`:cmd:), so it doesn't overwrite your normal compiler. You can use
-this command to test different options, the same you would issue for the `boot
-command <#commands-boot-command>`_.
+this command to test different options, the same you would issue for the [boot
+command](#commands-boot-command).
 
 test command
 ------------
@@ -91,4 +88,4 @@ pdf command
 
 The `pdf`:idx: command builds PDF versions of Nim documentation: Manual,
 Tutorial and a few other documents. To run it one needs to
-`install Latex/xelatex <https://www.latex-project.org/get>`_ first.
+[install Latex/xelatex](https://www.latex-project.org/get) first.

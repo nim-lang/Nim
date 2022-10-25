@@ -20,8 +20,9 @@
 ## That is, using the `?` (question mark) to signify the place where a
 ## value should be placed. For example:
 ##
-## .. code-block:: Nim
-##     sql"INSERT INTO myTable (colA, colB, colC) VALUES (?, ?, ?)"
+##   ```Nim
+##   sql"INSERT INTO myTable (colA, colB, colC) VALUES (?, ?, ?)"
+##   ```
 ##
 ## **Note**: There are two approaches to parameter substitution support by
 ## this module.
@@ -30,12 +31,13 @@
 ##
 ## 2. `SqlPrepared` using `$1, $2, $3, ...`
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   prepare(db, "myExampleInsert",
 ##           sql"""INSERT INTO myTable
 ##                 (colA, colB, colC)
 ##                 VALUES ($1, $2, $3)""",
 ##           3)
+##   ```
 ##
 ##
 ## Unix Socket
@@ -46,11 +48,12 @@
 ##
 ## To use Unix sockets with `db_postgres`, change the server address to the socket file path:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/db_postgres ## Change "localhost" or "127.0.0.1" to the socket file path
 ##   let db = db_postgres.open("/run/postgresql", "user", "password", "database")
 ##   echo db.getAllRows(sql"SELECT version();")
 ##   db.close()
+##   ```
 ##
 ## The socket file path is operating system specific and distribution specific,
 ## additional configuration may or may not be needed on your `postgresql.conf`.
@@ -63,32 +66,35 @@
 ## Opening a connection to a database
 ## ----------------------------------
 ##
-## .. code-block:: Nim
-##     import std/db_postgres
-##     let db = open("localhost", "user", "password", "dbname")
-##     db.close()
+##   ```Nim
+##   import std/db_postgres
+##   let db = open("localhost", "user", "password", "dbname")
+##   db.close()
+##   ```
 ##
 ## Creating a table
 ## ----------------
 ##
-## .. code-block:: Nim
-##      db.exec(sql"DROP TABLE IF EXISTS myTable")
-##      db.exec(sql("""CREATE TABLE myTable (
-##                       id integer,
-##                       name varchar(50) not null)"""))
+##   ```Nim
+##   db.exec(sql"DROP TABLE IF EXISTS myTable")
+##   db.exec(sql("""CREATE TABLE myTable (
+##                    id integer,
+##                    name varchar(50) not null)"""))
+##   ```
 ##
 ## Inserting data
 ## --------------
 ##
-## .. code-block:: Nim
-##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
-##             "Dominik")
+##   ```Nim
+##   db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
+##           "Dominik")
+##   ```
 import strutils, postgres
 
 import db_common
 export db_common
 
-import std/private/since
+import std/private/[since, dbutils]
 
 type
   DbConn* = PPGconn    ## encapsulates a database connection
@@ -116,24 +122,12 @@ proc dbQuote*(s: string): string =
   add(result, '\'')
 
 proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
-  result = ""
-  var a = 0
-  if args.len > 0 and not string(formatstr).contains("?"):
-    dbError("""parameter substitution expects "?" """)
-  if args.len == 0:
-    return string(formatstr)
-  else:
-    for c in items(string(formatstr)):
-      if c == '?':
-        add(result, dbQuote(args[a]))
-        inc(a)
-      else:
-        add(result, c)
+  dbFormatImpl(formatstr, dbQuote, args)
 
 proc tryExec*(db: DbConn, query: SqlQuery,
               args: varargs[string, `$`]): bool {.tags: [ReadDbEffect, WriteDbEffect].} =
   ## tries to execute the query and returns true if successful, false otherwise.
-  var res = pqexecParams(db, dbFormat(query, args), 0, nil, nil,
+  var res = pqexecParams(db, dbFormat(query, args).cstring, 0, nil, nil,
                         nil, nil, 0)
   result = pqresultStatus(res) == PGRES_COMMAND_OK
   pqclear(res)
@@ -143,7 +137,7 @@ proc tryExec*(db: DbConn, stmtName: SqlPrepared,
               ReadDbEffect, WriteDbEffect].} =
   ## tries to execute the query and returns true if successful, false otherwise.
   var arr = allocCStringArray(args)
-  var res = pqexecPrepared(db, stmtName.string, int32(args.len), arr,
+  var res = pqexecPrepared(db, stmtName.cstring, int32(args.len), arr,
                            nil, nil, 0)
   deallocCStringArray(arr)
   result = pqresultStatus(res) == PGRES_COMMAND_OK
@@ -152,7 +146,7 @@ proc tryExec*(db: DbConn, stmtName: SqlPrepared,
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
   tags: [ReadDbEffect, WriteDbEffect].} =
   ## executes the query and raises EDB if not successful.
-  var res = pqexecParams(db, dbFormat(query, args), 0, nil, nil,
+  var res = pqexecParams(db, dbFormat(query, args).cstring, 0, nil, nil,
                         nil, nil, 0)
   if pqresultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   pqclear(res)
@@ -160,7 +154,7 @@ proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
 proc exec*(db: DbConn, stmtName: SqlPrepared,
           args: varargs[string]) {.tags: [ReadDbEffect, WriteDbEffect].} =
   var arr = allocCStringArray(args)
-  var res = pqexecPrepared(db, stmtName.string, int32(args.len), arr,
+  var res = pqexecPrepared(db, stmtName.cstring, int32(args.len), arr,
                            nil, nil, 0)
   deallocCStringArray(arr)
   if pqResultStatus(res) != PGRES_COMMAND_OK: dbError(db)
@@ -172,20 +166,20 @@ proc newRow(L: int): Row =
 
 proc setupQuery(db: DbConn, query: SqlQuery,
                 args: varargs[string]): PPGresult =
-  result = pqexec(db, dbFormat(query, args))
+  result = pqexec(db, dbFormat(query, args).cstring)
   if pqResultStatus(result) != PGRES_TUPLES_OK: dbError(db)
 
 proc setupQuery(db: DbConn, stmtName: SqlPrepared,
                  args: varargs[string]): PPGresult =
   var arr = allocCStringArray(args)
-  result = pqexecPrepared(db, stmtName.string, int32(args.len), arr,
+  result = pqexecPrepared(db, stmtName.cstring, int32(args.len), arr,
                           nil, nil, 0)
   deallocCStringArray(arr)
   if pqResultStatus(result) != PGRES_TUPLES_OK: dbError(db)
 
 proc setupSingeRowQuery(db: DbConn, query: SqlQuery,
                         args: varargs[string]) =
-  if pqsendquery(db, dbFormat(query, args)) != 1:
+  if pqsendquery(db, dbFormat(query, args).cstring) != 1:
     dbError(db)
   if pqSetSingleRowMode(db) != 1:
     dbError(db)
@@ -193,7 +187,7 @@ proc setupSingeRowQuery(db: DbConn, query: SqlQuery,
 proc setupSingeRowQuery(db: DbConn, stmtName: SqlPrepared,
                        args: varargs[string]) =
   var arr = allocCStringArray(args)
-  if pqsendqueryprepared(db, stmtName.string, int32(args.len), arr, nil, nil, 0) != 1:
+  if pqsendqueryprepared(db, stmtName.cstring, int32(args.len), arr, nil, nil, 0) != 1:
     dbError(db)
   if pqSetSingleRowMode(db) != 1:
     dbError(db)
@@ -205,7 +199,7 @@ proc prepare*(db: DbConn; stmtName: string, query: SqlQuery;
   ## via `$1`, `$2`, `$3`, etc.
   if nParams > 0 and not string(query).contains("$1"):
     dbError("parameter substitution expects \"$1\"")
-  var res = pqprepare(db, stmtName, query.string, int32(nParams), nil)
+  var res = pqprepare(db, stmtName, query.cstring, int32(nParams), nil)
   if pqResultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   return SqlPrepared(stmtName)
 
@@ -271,7 +265,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
   ## same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within iterator body.
+  ## on demand using `[]`. Returned handle is valid only within iterator body.
   setupSingeRowQuery(db, query, args)
   fetchinstantRows(db)
 
@@ -279,7 +273,7 @@ iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
   ## same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within iterator body.
+  ## on demand using `[]`. Returned handle is valid only within iterator body.
   setupSingeRowQuery(db, stmtName, args)
   fetchinstantRows(db)
 
@@ -590,7 +584,7 @@ proc execAffectedRows*(db: DbConn, query: SqlQuery,
   ## executes the query (typically "UPDATE") and returns the
   ## number of affected rows.
   var q = dbFormat(query, args)
-  var res = pqExec(db, q)
+  var res = pqExec(db, q.cstring)
   if pqresultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   result = parseBiggestInt($pqcmdTuples(res))
   pqclear(res)
@@ -601,7 +595,7 @@ proc execAffectedRows*(db: DbConn, stmtName: SqlPrepared,
   ## executes the query (typically "UPDATE") and returns the
   ## number of affected rows.
   var arr = allocCStringArray(args)
-  var res = pqexecPrepared(db, stmtName.string, int32(args.len), arr,
+  var res = pqexecPrepared(db, stmtName.cstring, int32(args.len), arr,
                            nil, nil, 0)
   deallocCStringArray(arr)
   if pqresultStatus(res) != PGRES_COMMAND_OK: dbError(db)
@@ -621,10 +615,9 @@ proc open*(connection, user, password, database: string): DbConn {.
   ## connect.
   ##
   ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##      con = open("", "", "", "host=localhost port=5432 dbname=mydb")
+  ##   ```nim
+  ##   con = open("", "", "", "host=localhost port=5432 dbname=mydb")
+  ##   ```
   ##
   ## See http://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
   ## for more information.
@@ -634,7 +627,7 @@ proc open*(connection, user, password, database: string): DbConn {.
            else: substr(connection, 0, colonPos-1)
     port = if colonPos < 0: ""
            else: substr(connection, colonPos+1)
-  result = pqsetdbLogin(host, port, nil, nil, database, user, password)
+  result = pqsetdbLogin(host.cstring, port.cstring, nil, nil, database, user, password)
   if pqStatus(result) != CONNECTION_OK: dbError(result) # result = nil
 
 proc setEncoding*(connection: DbConn, encoding: string): bool {.

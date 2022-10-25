@@ -37,10 +37,15 @@
 ##
 ## * The same goes for footnotes/citations links: they point to themselves.
 ##   No backreferences are generated since finding all references of a footnote
-##   can be done by simply searching for [footnoteName].
+##   can be done by simply searching for ``[footnoteName]``.
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils, std/strbasics
+
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio, formatfloat]
+
 
 import ../../std/private/since
 
@@ -52,10 +57,6 @@ type
   OutputTarget* = enum ## which document type to generate
     outHtml,            # output is HTML
     outLatex            # output is Latex
-
-  TocEntry = object
-    n*: PRstNode
-    refname*, header*: string
 
   MetaEnum* = enum
     metaNone, metaTitle, metaSubtitle, metaAuthor, metaVersion
@@ -69,7 +70,7 @@ type
     config*: StringTableRef
     splitAfter*: int          # split too long entries in the TOC
     listingCounter*: int
-    tocPart*: seq[TocEntry]
+    tocPart*: seq[PRstNode]   # headings for Table of Contents
     hasToc*: bool
     theIndex: string # Contents of the index file to be dumped at the end.
     findFile*: FindFileHandler
@@ -87,7 +88,7 @@ type
     ## for hyperlinks. See renderIndexTerm proc for details.
     id*: int               ## A counter useful for generating IDs.
     onTestSnippet*: proc (d: var RstGenerator; filename, cmd: string; status: int;
-                          content: string)
+                          content: string) {.gcsafe.}
     escMode*: EscapeMode
     curQuotationDepth: int
 
@@ -115,7 +116,8 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
                        config: StringTableRef, filename: string,
                        findFile: FindFileHandler = nil,
                        msgHandler: MsgHandler = nil,
-                       filenames = default(RstFileTable)) =
+                       filenames = default(RstFileTable),
+                       hasToc = false) =
   ## Initializes a ``RstGenerator``.
   ##
   ## You need to call this before using a ``RstGenerator`` with any other
@@ -151,15 +153,16 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   ##
   ## Example:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   import packages/docutils/rstgen
   ##
   ##   var gen: RstGenerator
   ##   gen.initRstGenerator(outHtml, defaultConfig(), "filename", {})
+  ##   ```
   g.config = config
   g.target = target
   g.tocPart = @[]
+  g.hasToc = hasToc
   g.filename = filename
   g.filenames = filenames
   g.splitAfter = 20
@@ -280,19 +283,18 @@ proc dispA(target: OutputTarget, dest: var string,
 proc `or`(x, y: string): string {.inline.} =
   result = if x.len == 0: y else: x
 
-proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string)
+proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string) {.gcsafe.}
   ## Writes into ``result`` the rst ast ``n`` using the ``d`` configuration.
   ##
   ## Before using this proc you need to initialise a ``RstGenerator`` with
   ## ``initRstGenerator`` and parse a rst file with ``rstParse`` from the
   ## `packages/docutils/rst module <rst.html>`_. Example:
-  ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   # ...configure gen and rst vars...
   ##   var generatedHtml = ""
   ##   renderRstToOut(gen, rst, generatedHtml)
   ##   echo generatedHtml
+  ##   ```
 
 proc renderAux(d: PDoc, n: PRstNode, result: var string) =
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result)
@@ -414,13 +416,13 @@ proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
         [id, term])
 
 type
-  IndexEntry = object
-    keyword: string
-    link: string
-    linkTitle: string ## contains a prettier text for the href
-    linkDesc: string ## the title attribute of the final href
+  IndexEntry* = object
+    keyword*: string
+    link*: string
+    linkTitle*: string ## contains a prettier text for the href
+    linkDesc*: string ## the title attribute of the final href
 
-  IndexedDocs = Table[IndexEntry, seq[IndexEntry]] ## \
+  IndexedDocs* = Table[IndexEntry, seq[IndexEntry]] ## \
     ## Contains the index sequences for doc types.
     ##
     ## The key is a *fake* IndexEntry which will contain the title of the
@@ -622,7 +624,7 @@ proc generateModuleJumps(modules: seq[string]): string =
 
   result.add(chunks.join(", ") & ".<br/>")
 
-proc readIndexDir(dir: string):
+proc readIndexDir*(dir: string):
     tuple[modules: seq[string], symbols: seq[IndexEntry], docs: IndexedDocs] =
   ## Walks `dir` reading ``.idx`` files converting them in IndexEntry items.
   ##
@@ -688,8 +690,6 @@ proc readIndexDir(dir: string):
         title.linkTitle = "doc_toc_" & $result.docs.len
         result.docs[title] = fileEntries
 
-  sort(result.modules, system.cmp)
-
 proc mergeIndexes*(dir: string): string =
   ## Merges all index files in `dir` and returns the generated index as HTML.
   ##
@@ -719,6 +719,7 @@ proc mergeIndexes*(dir: string): string =
   ## Returns the merged and sorted indices into a single HTML block which can
   ## be further embedded into nimdoc templates.
   var (modules, symbols, docs) = readIndexDir(dir)
+  sort(modules, system.cmp)
 
   result = ""
   # Generate a quick jump list of documents.
@@ -761,38 +762,25 @@ proc stripTocHtml(s: string): string =
     if last < 0:
       # Abort, since we didn't found a closing angled bracket.
       return
-    result.delete(first, last)
+    result.delete(first..last)
     first = result.find('<', first)
 
 proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
   var tmp = ""
   for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
   d.currentSection = tmp
-  # Find the last higher level section for unique reference name
-  var sectionPrefix = ""
-  for i in countdown(d.tocPart.high, 0):
-    let n2 = d.tocPart[i].n
-    if n2.level < n.level:
-      sectionPrefix = rstnodeToRefname(n2) & "-"
-      break
-  var refname = sectionPrefix & rstnodeToRefname(n)
   var tocName = esc(d.target, renderRstToText(n), escMode = emOption)
     # for Latex: simple text without commands that may break TOC/hyperref
   if d.hasToc:
-    var length = len(d.tocPart)
-    setLen(d.tocPart, length + 1)
-    d.tocPart[length].refname = refname
-    d.tocPart[length].n = n
-    d.tocPart[length].header = tmp
-
+    d.tocPart.add n
     dispA(d.target, result, "\n<h$1><a class=\"toc-backref\"" &
       "$2 href=\"#$5\">$3</a></h$1>", "\\rsth$4[$6]{$3}$2\n",
-      [$n.level, refname.idS, tmp,
-       $chr(n.level - 1 + ord('A')), refname, tocName])
+      [$n.level, n.anchor.idS, tmp,
+       $chr(n.level - 1 + ord('A')), n.anchor, tocName])
   else:
     dispA(d.target, result, "\n<h$1$2>$3</h$1>",
                             "\\rsth$4[$5]{$3}$2\n", [
-        $n.level, refname.idS, tmp,
+        $n.level, n.anchor.idS, tmp,
         $chr(n.level - 1 + ord('A')), tocName])
 
   # Generate index entry using spaces to indicate TOC level for the output HTML.
@@ -805,7 +793,7 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
                         # outDir   = /foo              -\
                         # destFile = /foo/bar/zoo.html -|-> bar/zoo.html
                         d.destFile.relativePath(d.outDir, '/')
-  setIndexTerm(d, htmlFileRelPath, refname, tmp.stripTocHtml,
+  setIndexTerm(d, htmlFileRelPath, n.anchor, tmp.stripTocHtml,
     spaces(max(0, n.level)) & tmp)
 
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
@@ -824,18 +812,20 @@ proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
     var tocName = esc(d.target, renderRstToText(n), escMode=emOption)
     dispA(d.target, result, "<h$1$2><center>$3</center></h$1>",
                    "\\rstov$4[$5]{$3}$2\n", [$n.level,
-        rstnodeToRefname(n).idS, tmp, $chr(n.level - 1 + ord('A')), tocName])
+                   n.anchor.idS, tmp, $chr(n.level - 1 + ord('A')), tocName])
 
-proc renderTocEntry(d: PDoc, e: TocEntry, result: var string) =
+proc renderTocEntry(d: PDoc, n: PRstNode, result: var string) =
+  var header = ""
+  for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], header)
   dispA(d.target, result,
     "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>\n",
-    "\\item\\label{$1_toc} $2\\ref{$1}\n", [e.refname, e.header])
+    "\\item\\label{$1_toc} $2\\ref{$1}\n", [n.anchor, header])
 
 proc renderTocEntries*(d: var RstGenerator, j: var int, lvl: int,
                        result: var string) =
   var tmp = ""
   while j <= high(d.tocPart):
-    var a = abs(d.tocPart[j].n.level)
+    var a = abs(d.tocPart[j].level)
     if a == lvl:
       renderTocEntry(d, d.tocPart[j], tmp)
       inc(j)
@@ -1037,7 +1027,7 @@ proc renderCodeLang*(result: var string, lang: SourceLanguage, code: string,
 proc renderNimCode*(result: var string, code: string, target: OutputTarget) =
   renderCodeLang(result, langNim, code, target)
 
-proc renderCode(d: PDoc, n: PRstNode, result: var string) =
+proc renderCode(d: PDoc, n: PRstNode, result: var string) {.gcsafe.} =
   ## Renders a code (code block or inline code), appending it to `result`.
   ##
   ## If the code block uses the ``number-lines`` option, a table will be
@@ -1074,7 +1064,7 @@ proc renderCode(d: PDoc, n: PRstNode, result: var string) =
       blockEnd = "}"
   dispA(d.target, result, blockStart, blockStart, [])
   if params.lang == langNone:
-    if len(params.langStr) > 0:
+    if len(params.langStr) > 0 and params.langStr.toLowerAscii != "none":
       rstMessage(d.filenames, d.msgHandler, n.info, mwUnsupportedLanguage,
                  params.langStr)
     for letter in m.text: escChar(d.target, result, letter, emText)
@@ -1221,7 +1211,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnBulletItem, rnEnumItem:
     renderAux(d, n, "<li$2>$1</li>\n", "\\item $2$1\n", result)
   of rnEnumList: renderEnumList(d, n, result)
-  of rnDefList:
+  of rnDefList, rnMdDefList:
     renderAux(d, n, "<dl$2 class=\"docutils\">$1</dl>\n",
                     "\\begin{description}\n$2\n$1\\end{description}\n", result)
   of rnDefItem: renderAux(d, n, result)
@@ -1380,7 +1370,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
           "</div> &ensp; $1\n</div>\n",
       "\\item[\\textsuperscript{[$3]}]$2 $1\n",
       [body, n.anchor.idS, mark, n.anchor])
-  of rnRef:
+  of rnPandocRef:
+    renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=false)
+  of rnRstRef:
     renderHyperlink(d, text=n.sons[0], link=n.sons[0], result, external=false)
   of rnStandaloneHyperlink:
     renderHyperlink(d, text=n.sons[0], link=n.sons[0], result, external=true)
@@ -1599,7 +1591,7 @@ $content
 
 proc rstToHtml*(s: string, options: RstParseOptions,
                 config: StringTableRef,
-                msgHandler: MsgHandler = rst.defaultMsgHandler): string =
+                msgHandler: MsgHandler = rst.defaultMsgHandler): string {.gcsafe.} =
   ## Converts an input rst string into embeddable HTML.
   ##
   ## This convenience proc parses any input string using rst markup (it doesn't
@@ -1609,12 +1601,13 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   ## work. For an explanation of the ``config`` parameter see the
   ## ``initRstGenerator`` proc. Example:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   import packages/docutils/rstgen, strtabs
   ##
   ##   echo rstToHtml("*Hello* **world**!", {},
   ##     newStringTable(modeStyleInsensitive))
   ##   # --> <em>Hello</em> <strong>world</strong>!
+  ##   ```
   ##
   ## If you need to allow the rst ``include`` directive or tweak the generated
   ## output you have to create your own ``RstGenerator`` with
@@ -1625,11 +1618,12 @@ proc rstToHtml*(s: string, options: RstParseOptions,
     result = ""
 
   const filen = "input"
-  let (rst, filenames, _) = rstParse(s, filen,
+  let (rst, filenames, t) = rstParse(s, filen,
                                      line=LineRstInit, column=ColRstInit,
                                      options, myFindFile, msgHandler)
   var d: RstGenerator
-  initRstGenerator(d, outHtml, config, filen, myFindFile, msgHandler, filenames)
+  initRstGenerator(d, outHtml, config, filen, myFindFile, msgHandler,
+                   filenames, hasToc = t)
   result = ""
   renderRstToOut(d, rst, result)
   strbasics.strip(result)
@@ -1639,10 +1633,11 @@ proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, 
   ## Convenience proc for `renderRstToOut` and `initRstGenerator`.
   runnableExamples: doAssert rstToLatex("*Hello* **world**", {}) == """\emph{Hello} \textbf{world}"""
   if rstSource.len == 0: return
-  let (rst, filenames, _) = rstParse(rstSource, "",
+  let (rst, filenames, t) = rstParse(rstSource, "",
                                      line=LineRstInit, column=ColRstInit,
                                      options)
   var rstGenera: RstGenerator
-  rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", filenames=filenames)
+  rstGenera.initRstGenerator(outLatex, defaultConfig(), "input",
+                             filenames=filenames, hasToc = t)
   rstGenera.renderRstToOut(rst, result)
   strbasics.strip(result)

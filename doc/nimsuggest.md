@@ -20,7 +20,7 @@ definition of symbols or suggestions for completion.
 This document will guide you through the available options. If you
 want to look at practical examples of nimsuggest support you can look
 at the
-`various editor integrations <https://github.com/Araq/Nim/wiki/Editor-Support>`_
+[various editor integrations](https://github.com/Araq/Nim/wiki/Editor-Support)
 already available.
 
 
@@ -29,8 +29,9 @@ Installation
 
 Nimsuggest is part of Nim's core. Build it via:
 
-.. code:: cmd
+  ```cmd
   koch nimsuggest
+  ```
 
 
 Nimsuggest invocation
@@ -48,7 +49,7 @@ via sockets is more reasonable so that is the default. It listens to port 6000
 by default.
 
 Nimsuggest is basically a frontend for the nim compiler so `--path`:option: flags and
-`config files <https://nim-lang.org/docs/nimc.html#compiler-usage-configuration-files>`_
+[config files](https://nim-lang.org/docs/nimc.html#compiler-usage-configuration-files)
 can be used to specify additional dependencies like 
 `nimsuggest --stdin --debug --path:"dependencies" myproject.nim`:cmd:.
 
@@ -62,10 +63,10 @@ a location. A query location consists of:
 
 
 ``file.nim``
-    This is the name of the module or include file the query refers to.
+:   This is the name of the module or include file the query refers to.
 
 ``dirtyfile.nim``
-    This is optional.
+:   This is optional.
 
     The `file` parameter is enough for static analysis, but IDEs
     tend to have *unsaved buffers* where the user may still be in
@@ -76,11 +77,11 @@ a location. A query location consists of:
 
 
 ``line``
-    An integer with the line you are going to query. For the compiler
+:   An integer with the line you are going to query. For the compiler
     lines start at **1**.
 
 ``col``
-    An integer with the column you are going to query. For the
+:   An integer with the column you are going to query. For the
     compiler columns start at **0**.
 
 
@@ -112,8 +113,8 @@ The `sug` Nimsuggest command performs a query about possible
 completion symbols at some point in the file.
 
 The typical usage scenario for this option is to call it after the
-user has typed the dot character for `the object oriented call
-syntax <tut2.html#object-oriented-programming-method-call-syntax>`_.
+user has typed the dot character for [the object oriented call
+syntax](tut2.html#object-oriented-programming-method-call-syntax).
 Nimsuggest will try to return the suggestions sorted first by scope
 (from innermost to outermost) and then by item name.
 

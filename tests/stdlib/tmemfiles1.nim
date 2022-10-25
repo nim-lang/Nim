@@ -1,4 +1,6 @@
 import memfiles, os
+import std/syncio
+
 var
   mm: MemFile
   fn = "test.mmap"

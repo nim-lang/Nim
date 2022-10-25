@@ -28,8 +28,8 @@ ObjectA's ``name`` is "|ObjectA|RootObj|".
 ObjectB's ``name`` is "|ObjectB|ObjectA|RootObj|".
 
 Now to check for ``x of ObjectB`` we need to check
-for ``x.typ.name.hasSubstring("|ObjectB|")``. In the actual implementation,
-however, we could also use a
+for ``x.typ.name.endsWith("|ObjectB|ObjectA|RootObj|")``.
+In the actual implementation, however, we could also use a
 hash of ``package & "." & module & "." & name`` to save space.
 
 ]#

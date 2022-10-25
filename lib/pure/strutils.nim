@@ -80,7 +80,8 @@ export toLower, toUpper
 
 include "system/inclrtl"
 import std/private/since
-from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl, startsWithImpl, endsWithImpl
+from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl,
+    startsWithImpl, endsWithImpl
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -93,6 +94,15 @@ const
 
   Letters* = {'A'..'Z', 'a'..'z'}
     ## The set of letters.
+
+  UppercaseLetters* = {'A'..'Z'}
+    ## The set of uppercase ASCII letters.
+
+  LowercaseLetters* = {'a'..'z'}
+    ## The set of lowercase ASCII letters.
+
+  PunctuationChars* = {'!'..'/', ':'..'@', '['..'`', '{'..'~'}
+    ## The set of all ASCII punctuation characters.
 
   Digits* = {'0'..'9'}
     ## The set of digits.
@@ -109,6 +119,9 @@ const
   Newlines* = {'\13', '\10'}
     ## The set of characters a newline terminator can start with (carriage
     ## return, line feed).
+
+  PrintableChars* = Letters + Digits + PunctuationChars + Whitespace
+    ## The set of all printable ASCII characters (letters, digits, whitespace, and punctuation characters).
 
   AllChars* = {'\x00'..'\xFF'}
     ## A set with all the possible characters.
@@ -172,7 +185,7 @@ func isLowerAscii*(c: char): bool {.rtl, extern: "nsuIsLowerAsciiChar".} =
     doAssert isLowerAscii('e') == true
     doAssert isLowerAscii('E') == false
     doAssert isLowerAscii('7') == false
-  return c in {'a'..'z'}
+  return c in LowercaseLetters
 
 func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
   ## Checks whether or not `c` is an upper case character.
@@ -186,8 +199,7 @@ func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
     doAssert isUpperAscii('e') == false
     doAssert isUpperAscii('E') == true
     doAssert isUpperAscii('7') == false
-  return c in {'A'..'Z'}
-
+  return c in UppercaseLetters
 
 func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   ## Returns the lower case version of character `c`.
@@ -202,7 +214,7 @@ func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   runnableExamples:
     doAssert toLowerAscii('A') == 'a'
     doAssert toLowerAscii('e') == 'e'
-  if c in {'A'..'Z'}:
+  if c in UppercaseLetters:
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
@@ -239,7 +251,7 @@ func toUpperAscii*(c: char): char {.rtl, extern: "nsuToUpperAsciiChar".} =
   runnableExamples:
     doAssert toUpperAscii('a') == 'A'
     doAssert toUpperAscii('E') == 'E'
-  if c in {'a'..'z'}:
+  if c in LowercaseLetters:
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
@@ -289,7 +301,7 @@ func nimIdentNormalize*(s: string): string =
   result[0] = s[0]
   var j = 1
   for i in 1..len(s) - 1:
-    if s[i] in {'A'..'Z'}:
+    if s[i] in UppercaseLetters:
       result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
       inc j
     elif s[i] != '_':
@@ -311,7 +323,7 @@ func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
   result = newString(s.len)
   var j = 0
   for i in 0..len(s) - 1:
-    if s[i] in {'A'..'Z'}:
+    if s[i] in UppercaseLetters:
       result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
       inc j
     elif s[i] != '_':
@@ -1515,7 +1527,8 @@ func delete*(s: var string, slice: Slice[int]) =
       inc(j)
     setLen(s, newLen)
 
-func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete", deprecated: "use `delete(s, first..last)`".} =
+func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete",
+    deprecated: "use `delete(s, first..last)`".} =
   ## Deletes in `s` the characters at positions `first .. last` (both ends included).
   runnableExamples("--warning:deprecated:off"):
     var a = "abracadabra"
@@ -1635,7 +1648,7 @@ func removePrefix*(s: var string, chars: set[char] = Newlines) {.rtl,
 
   var start = 0
   while start < s.len and s[start] in chars: start += 1
-  if start > 0: s.delete(0, start - 1)
+  if start > 0: s.delete(0..start - 1)
 
 func removePrefix*(s: var string, c: char) {.rtl,
     extern: "nsuRemovePrefixChar".} =
@@ -1662,8 +1675,8 @@ func removePrefix*(s: var string, prefix: string) {.rtl,
     var answers = "yesyes"
     answers.removePrefix("yes")
     doAssert answers == "yes"
-  if s.startsWith(prefix):
-    s.delete(0, prefix.len - 1)
+  if s.startsWith(prefix) and prefix.len > 0:
+    s.delete(0..prefix.len - 1)
 
 func removeSuffix*(s: var string, chars: set[char] = Newlines) {.rtl,
     extern: "nsuRemoveSuffixCharSet".} =
@@ -1869,9 +1882,6 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = -1): int {.
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
   func c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
                 importc: "memchr", header: "<string.h>".}
-  func c_strstr(haystack, needle: cstring): cstring {.
-    importc: "strstr", header: "<string.h>".}
-
   const hasCStringBuiltin = true
 else:
   const hasCStringBuiltin = false
@@ -1926,6 +1936,14 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
     if s[i] in chars:
       return i
 
+when defined(linux):
+  proc memmem(haystack: pointer, haystacklen: csize_t,
+              needle: pointer, needlelen: csize_t): pointer {.importc, header: """#define _GNU_SOURCE
+#include <string.h>""".}
+elif defined(bsd) or (defined(macosx) and not defined(ios)):
+  proc memmem(haystack: pointer, haystacklen: csize_t,
+              needle: pointer, needlelen: csize_t): pointer {.importc, header: "#include <string.h>".}
+
 func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuFindStr".} =
   ## Searches for `sub` in `s` inside range `start..last` (both ends included).
@@ -1947,9 +1965,10 @@ func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   when nimvm:
     useSkipTable()
   else:
-    when hasCStringBuiltin:
-      if last < 0 and start < s.len:
-        let found = c_strstr(s[start].unsafeAddr, sub)
+    when declared(memmem):
+      let subLen = sub.len
+      if last < 0 and start < s.len and subLen != 0:
+        let found = memmem(s[start].unsafeAddr, csize_t(s.len - start), sub.cstring, csize_t(subLen))
         result = if not found.isNil:
             cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
           else:
@@ -2009,7 +2028,8 @@ func rfind*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
   if sub.len == 0:
-    return -1
+    let rightIndex: Natural = if last < 0: s.len else: last
+    return max(start, rightIndex)
   if sub.len > s.len - start:
     return -1
   let last = if last == -1: s.high else: last
@@ -2239,7 +2259,7 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
     doAssert insertSep("1000000") == "1_000_000"
   result = newStringOfCap(s.len)
   let hasPrefix = isDigit(s[s.low]) == false
-  var idx:int
+  var idx: int
   if hasPrefix:
     result.add s[s.low]
     for i in (s.low + 1)..s.high:
@@ -2253,7 +2273,7 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
   result.setLen(L + idx)
   var j = 0
   dec(L)
-  for i in countdown(partsLen-1,0):
+  for i in countdown(partsLen-1, 0):
     if j == digits:
       result[L + idx] = sep
       dec(L)
@@ -2354,7 +2374,7 @@ func validIdentifier*(s: string): bool {.rtl, extern: "nsuValidIdentifier".} =
 # floating point formatting:
 when not defined(js):
   func c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
-                                     importc: "sprintf", varargs}
+                                     importc: "sprintf", varargs.}
 
 type
   FloatFormatMode* = enum
@@ -2474,7 +2494,8 @@ func trimZeros*(x: var string; decimalSep = '.') =
     var pos = last
     while pos >= 0 and x[pos] == '0': dec(pos)
     if pos > sPos: inc(pos)
-    x.delete(pos, last)
+    if last >= pos:
+      x.delete(pos..last)
 
 type
   BinaryPrefixMode* = enum ## The different names for binary prefixes.
@@ -2685,8 +2706,8 @@ func findNormalized(x: string, inArray: openArray[string]): int =
               # security hole...
   return -1
 
-func invalidFormatString() {.noinline.} =
-  raise newException(ValueError, "invalid format string")
+func invalidFormatString(formatstr: string) {.noinline.} =
+  raise newException(ValueError, "invalid format string: " & formatstr)
 
 func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
     extern: "nsuAddf".} =
@@ -2698,7 +2719,7 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
     if formatstr[i] == '$' and i+1 < len(formatstr):
       case formatstr[i+1]
       of '#':
-        if num > a.high: invalidFormatString()
+        if num > a.high: invalidFormatString(formatstr)
         add s, a[num]
         inc i, 2
         inc num
@@ -2714,7 +2735,7 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
           j = j * 10 + ord(formatstr[i]) - ord('0')
           inc(i)
         let idx = if not negative: j-1 else: a.len-j
-        if idx < 0 or idx > a.high: invalidFormatString()
+        if idx < 0 or idx > a.high: invalidFormatString(formatstr)
         add s, a[idx]
       of '{':
         var j = i+2
@@ -2731,22 +2752,22 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
           inc(j)
         if isNumber == 1:
           let idx = if not negative: k-1 else: a.len-k
-          if idx < 0 or idx > a.high: invalidFormatString()
+          if idx < 0 or idx > a.high: invalidFormatString(formatstr)
           add s, a[idx]
         else:
           var x = findNormalized(substr(formatstr, i+2, j-1), a)
           if x >= 0 and x < high(a): add s, a[x+1]
-          else: invalidFormatString()
+          else: invalidFormatString(formatstr)
         i = j+1
       of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
         var j = i+1
         while j < formatstr.len and formatstr[j] in PatternChars: inc(j)
         var x = findNormalized(substr(formatstr, i+1, j-1), a)
         if x >= 0 and x < high(a): add s, a[x+1]
-        else: invalidFormatString()
+        else: invalidFormatString(formatstr)
         i = j
       else:
-        invalidFormatString()
+        invalidFormatString(formatstr)
     else:
       add s, formatstr[i]
       inc(i)

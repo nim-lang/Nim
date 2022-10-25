@@ -68,7 +68,8 @@ type
     warnUnreachableElse = "UnreachableElse", warnUnreachableCode = "UnreachableCode",
     warnStaticIndexCheck = "IndexCheck", warnGcUnsafe = "GcUnsafe", warnGcUnsafe2 = "GcUnsafe2",
     warnUninit = "Uninit", warnGcMem = "GcMem", warnDestructor = "Destructor",
-    warnLockLevel = "LockLevel", warnResultShadowed = "ResultShadowed",
+    warnLockLevel = "LockLevel", # deadcode
+    warnResultShadowed = "ResultShadowed",
     warnInconsistentSpacing = "Spacing",  warnCaseTransition = "CaseTransition",
     warnCycleCreated = "CycleCreated", warnObservableStores = "ObservableStores",
     warnStrictNotNil = "StrictNotNil",
@@ -80,6 +81,8 @@ type
     warnHoleEnumConv = "HoleEnumConv",
     warnCstringConv = "CStringConv",
     warnEffect = "Effect",
+    warnCastSizes = "CastSizes"
+    warnTemplateRedefinition = "TemplateRedefinition",
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -94,6 +97,7 @@ type
     hintPattern = "Pattern", hintExecuting = "Exec", hintLinking = "Link", hintDependency = "Dependency",
     hintSource = "Source", hintPerformance = "Performance", hintStackTrace = "StackTrace",
     hintGCStats = "GCStats", hintGlobalVar = "GlobalVar", hintExpandMacro = "ExpandMacro",
+    hintAmbiguousEnum = "AmbiguousEnum",
     hintUser = "User", hintUserRaw = "UserRaw", hintExtendedContext = "ExtendedContext",
     hintMsgOrigin = "MsgOrigin", # since 1.3.5
     hintDeclaredLoc = "DeclaredLoc", # since 1.5.1
@@ -158,7 +162,7 @@ const
     warnUninit: "use explicit initialization of '$1' for clarity",
     warnGcMem: "'$1' uses GC'ed memory",
     warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future.",
-    warnLockLevel: "$1",
+    warnLockLevel: "$1", # deadcode
     warnResultShadowed: "Special variable 'result' is shadowed.",
     warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
     warnCaseTransition: "Potential object case transition, instantiate new object instead",
@@ -173,6 +177,8 @@ const
     warnHoleEnumConv: "$1",
     warnCstringConv: "$1",
     warnEffect: "$1",
+    warnCastSizes: "$1",
+    warnTemplateRedefinition: "template '$1' is implicitly redefined, consider adding an explicit .redefine pragma",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
@@ -205,6 +211,7 @@ const
     hintGCStats: "$1",
     hintGlobalVar: "global variable declared here",
     hintExpandMacro: "expanded macro: $1",
+    hintAmbiguousEnum: "$1",
     hintUser: "$1",
     hintUserRaw: "$1",
     hintExtendedContext: "$1",
@@ -228,7 +235,7 @@ type
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv}
-  result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
+  result[2] = result[3] - {hintStackTrace, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
     hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin, hintPerformance}

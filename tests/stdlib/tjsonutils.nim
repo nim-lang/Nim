@@ -7,6 +7,7 @@ import std/json
 from std/math import isNaN, signbit
 from std/fenv import epsilon
 from stdtest/testutils import whenRuntimeJs
+import std/[assertions, objectdollar]
 
 proc testRoundtrip[T](t: T, expected: string) =
   # checks that `T => json => T2 => json2` is such that json2 = json
@@ -408,6 +409,34 @@ template fn() =
       doAssert foo.f == 3.14159
       doAssert foo.c == 0
       doAssert foo.c0 == 42
+
+
+    block testInvalidTupleLength:
+      let json = parseJson("[0]")
+      # Should raise ValueError instead of index error
+      doAssertRaises(ValueError):
+        discard json.jsonTo((int, int))
+
+    type
+      InnerEnum = enum
+        A
+        B
+        C
+      InnerObject = object
+        x: string
+        y: InnerEnum
+
+    block testOptionsArePassedWhenDeserialising:
+      let json = parseJson("""{"x": "hello"}""")
+      let inner = json.jsonTo(Option[InnerObject], Joptions(allowMissingKeys: true))
+      doAssert inner.isSome()
+      doAssert inner.get().x == "hello"
+      doAssert inner.get().y == A
+
+    block testOptionsArePassedWhenSerialising:
+      let inner = some InnerObject(x: "hello", y: A)
+      let json = inner.toJson(ToJsonOptions(enumMode: joptEnumSymbol))
+      doAssert $json == """{"x":"hello","y":"A"}"""
 
     when false:
       ## TODO: Implement support for nested variant objects allowing the tests

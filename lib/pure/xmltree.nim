@@ -33,6 +33,10 @@ runnableExamples:
 import std/private/since
 import macros, strtabs, strutils
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   XmlNode* = ref XmlNodeObj ## An XML tree consisting of XML nodes.
     ##
@@ -774,8 +778,8 @@ macro `<>`*(x: untyped): untyped =
   ## .. code-block:: nim
   ##   <>a(href="http://nim-lang.org", newText("Nim rules."))
   ##
-  ## Produces an XML tree for::
+  ## Produces an XML tree for:
   ##
-  ##  <a href="http://nim-lang.org">Nim rules.</a>
+  ##     <a href="http://nim-lang.org">Nim rules.</a>
   ##
   result = xmlConstructor(x)
