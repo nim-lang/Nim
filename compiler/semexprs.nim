@@ -1805,6 +1805,8 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     let lhs = n[0]
     let rhs = semExprWithType(c, n[1], {}, le)
     if lhs.kind == nkSym and lhs.sym.kind == skResult:
+      if rhs.typ == nil or rhs.typ.skipTypes({tyTypeDesc}).kind == tyVoid:
+        localError(c.config, a.info, errXVoidCannotBeAssignedToResult)
       n.typ = c.enforceVoidContext
       if c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
         var rhsTyp = rhs.typ
@@ -1871,6 +1873,9 @@ proc semProcBody(c: PContext, n: PNode; expectedType: PType = nil): PNode =
       a[0] = newSymNode(c.p.resultSym)
       a[1] = result
       result = semAsgn(c, a)
+      if result.typ != nil and result.typ.kind == tyVoid:
+        localError(c.config, c.p.resultSym.info, errCannotInferReturnType %
+          c.p.owner.name.s)
   else:
     discardCheck(c, result, {})
 
