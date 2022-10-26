@@ -31,6 +31,7 @@ type
 
   TTypeRelation* = enum      # order is important!
     isNone, isConvertible,
+    isCrossLitConv,
     isIntConv,
     isSubtype,
     isSubrange,              # subrange of the wanted type; no type conversion

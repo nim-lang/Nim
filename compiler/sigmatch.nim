@@ -434,7 +434,10 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
     var k = ab.kind
     if k == f.kind: result = isSubrange
     elif isFloatLit(ab): result = isFromIntLit
-    elif isIntLit(ab): result = isConvertible
+    elif isIntLit(ab):
+      # conversion to "float32" is not as good:
+      if f.kind == tyFloat32: result = isConvertible
+      else: result = isCrossLitConv
     elif k >= tyFloat and k <= tyFloat128:
       # conversion to "float32" is not as good:
       if f.kind == tyFloat32: result = isConvertible
@@ -2004,7 +2007,7 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
 
 proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
   case r
-  of isConvertible, isIntConv: inc(m.convMatches, convMatch)
+  of isConvertible, isCrossLitConv, isIntConv: inc(m.convMatches, convMatch)
   of isSubtype, isSubrange: inc(m.subtypeMatches)
   of isGeneric, isInferred, isBothMetaConvertible: inc(m.genericMatches)
   of isFromIntLit: inc(m.intConvMatches, 256)
@@ -2109,10 +2112,15 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isConvertible:
     inc(m.convMatches)
     result = implicitConv(nkHiddenStdConv, f, arg, m, c)
-  of isIntConv:
-    # I'm too lazy to introduce another ``*matches`` field, so we conflate
-    # ``isIntConv`` and ``isIntLit`` here:
+  of isCrossLitConv:
+    # for practicality, we use the same field for
+    # `isIntConv`, `isCrossLitConv` and `isFromIntLit`
     inc(m.intConvMatches)
+    result = implicitConv(nkHiddenStdConv, f, arg, m, c)
+  of isIntConv:
+    # for practicality, we use the same field for
+    # `isIntConv`, `isCrossLitConv` and `isFromIntLit`
+    inc(m.intConvMatches, 4)
     result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isSubtype:
     inc(m.subtypeMatches)
@@ -2157,8 +2165,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     # This is the result for the 101th time.
     result = nil
   of isFromIntLit:
-    # too lazy to introduce another ``*matches`` field, so we conflate
-    # ``isIntConv`` and ``isIntLit`` here:
+    # for practicality, we use the same field for
+    # `isIntConv`, `isCrossLitConv` and `isFromIntLit`
     inc(m.intConvMatches, 256)
     result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isEqual:

@@ -2621,8 +2621,10 @@ of the argument.
 4. Subrange or subtype match: `a` is a `range[T]` and `T`
    matches `f` exactly. Or: `a` is a subtype of `f`.
 5. Integral conversion match: `a` is convertible to `f` and `f` and `a`
-   is some integer or floating-point type.
-6. Conversion match: `a` is convertible to `f`, possibly via a user
+   are both integer types or both floating-point types, excluding `float32`.
+6. Literal conversion match: `a` is an integer literal and `f` is
+   a floating-point type, excluding `float32`.
+7. Conversion match: `a` is convertible to `f`, possibly via a user
    defined `converter`.
 
 These matching categories have a priority: An exact match is better than a
@@ -2636,7 +2638,8 @@ algorithm returns true:
   ```nim
   for each matching category m in ["exact match", "literal match",
                                   "generic match", "subtype match",
-                                  "integral match", "conversion match"]:
+                                  "integral match", "literal conversion match",
+                                  "conversion match"]:
     if count(p, m) > count(q, m): return true
     elif count(p, m) == count(q, m):
       discard "continue with next category m"
