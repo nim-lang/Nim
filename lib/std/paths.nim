@@ -67,7 +67,7 @@ func splitPath*(path: Path): tuple[head, tail: Path] {.inline.} =
 func splitFile*(path: Path): tuple[dir, name: Path, ext: string] {.inline.} =
   ## Splits a filename into `(dir, name, extension)` tuple.
   ##
-  ## `dir` does not end in DirSep_ unless it's `/`.
+  ## `dir` does not end in DirSep unless it's `/`.
   ## `extension` includes the leading dot.
   ##
   ## If `path` has no extension, `ext` is the empty string.
@@ -91,7 +91,7 @@ func isAbsolute*(path: Path): bool {.inline, raises: [].} =
 proc relativePath*(path, base: Path, sep = DirSep): Path {.inline.} =
   ## Converts `path` to a path relative to `base`.
   ##
-  ## The `sep` (default: DirSep_) is used for the path normalizations,
+  ## The `sep` (default: DirSep) is used for the path normalizations,
   ## this can be useful to ensure the relative path only contains `'/'`
   ## so that it can be used for URL constructions.
   ##
@@ -237,10 +237,10 @@ proc getCurrentDir*(): Path {.inline, tags: [].} =
   ## So the path returned by this proc is determined at run time.
   ##
   ## See also:
-  ## * `getHomeDir proc`_
-  ## * `getConfigDir proc`_
-  ## * `getTempDir proc`_
-  ## * `setCurrentDir proc`_
+  ## * `getHomeDir proc <appdirs.html#getHomeDir>`_
+  ## * `getConfigDir proc <appdirs.html#getConfigDir>`_
+  ## * `getTempDir proc <appdirs.html#getTempDir>`_
+  ## * `setCurrentDir proc <dirs.html#setCurrentDir>`_
   ## * `currentSourcePath template <system.html#currentSourcePath.t>`_
   ## * `getProjectPath proc <macros.html#getProjectPath>`_
   result = Path(ospaths2.getCurrentDir())
@@ -275,7 +275,7 @@ proc expandTildeImpl(path: string): string {.
 proc expandTilde*(path: Path): Path {.inline,
   tags: [ReadEnvEffect, ReadIOEffect].} =
   ## Expands ``~`` or a path starting with ``~/`` to a full path, replacing
-  ## ``~`` with `getHomeDir()`_ (otherwise returns ``path`` unmodified).
+  ## ``~`` with `getHomeDir() <appdirs.html#getHomeDir>`_ (otherwise returns ``path`` unmodified).
   ##
   ## Windows: this is still supported despite the Windows platform not having this
   ## convention; also, both ``~/`` and ``~\`` are handled.
