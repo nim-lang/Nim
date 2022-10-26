@@ -594,6 +594,44 @@ proc arrayConstrType(c: PContext, n: PNode): PType =
   typ[0] = makeRangeType(c, 0, n.len - 1, n.info)
   result = typ
 
+proc semSeqConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
+  result = newNodeI(nkBracket, n.info)
+  result.typ = newTypeS(tySequence, c)
+  var expectedElementType: PType = nil
+  if expectedType != nil:
+    let expected = expectedType.skipTypes(abstractRange-{tyDistinct})
+    case expected.kind
+    of tyOpenArray:
+      expectedElementType = expected[0]
+    else: discard
+
+  if n.len == 0:
+    rawAddSon(result.typ,
+      if expectedElementType != nil and
+          typeAllowed(expectedElementType, skLet, c) == nil:
+        expectedElementType
+      else:
+        newTypeS(tyEmpty, c)) # needs an empty basetype!
+  else:
+    var x = n[0]
+    let yy = semExprWithType(c, x, expectedType = expectedElementType)
+    var typ = yy.typ
+    if expectedElementType == nil:
+      expectedElementType = typ
+    result.add yy
+
+    for i in 1..<n.len:
+      x = n[i]
+      let xx = semExprWithType(c, x, {}, expectedElementType)
+      result.add xx
+      typ = commonType(c, typ, xx.typ)
+      #n[i] = semExprWithType(c, x, {})
+      #result.add fitNode(c, typ, n[i])
+
+    addSonSkipIntLit(result.typ, typ, c.idgen)
+    for i in 0..<result.len:
+      result[i] = fitNode(c, typ, result[i], result[i].info)
+
 proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = newNodeI(nkBracket, n.info)
   result.typ = newTypeS(tyArray, c)
@@ -3075,7 +3113,11 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     of paTupleFields: result = semTupleFieldsConstr(c, n, flags, expectedType)
     of paSingle: result = semExpr(c, n[0], flags, expectedType)
   of nkCurly: result = semSetConstr(c, n, expectedType)
-  of nkBracket: result = semArrayConstr(c, n, flags, expectedType)
+  of nkBracket:
+    if n.typ != nil and n.typ.skipTypes(abstractRange).kind == tySequence:
+      result = semSeqConstr(c, n, flags, expectedType) # keeps tySequence type for []
+    else:
+      result = semArrayConstr(c, n, flags, expectedType)
   of nkObjConstr: result = semObjConstr(c, n, flags, expectedType)
   of nkLambdaKinds: result = semProcAux(c, n, skProc, lambdaPragmas, flags)
   of nkDerefExpr: result = semDeref(c, n)

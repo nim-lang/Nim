@@ -79,3 +79,15 @@ block:
   ## one
   ## two
   ## three"""
+
+block:
+  macro foo(x: static seq[int]) =
+    discard x
+
+  macro foo2: untyped =
+    var x: seq[int] = @[]
+
+    result = quote do:
+      foo(`x`)
+
+  foo2()
