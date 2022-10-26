@@ -845,7 +845,7 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
       let methodSym = sslSymNullable("SSL_get_peer_certificate", "SSL_get1_peer_certificate")
       if methodSym.isNil:
         raise newException(LibraryError, "Could not load SSL_get_peer_certificate or SSL_get1_peer_certificate")
-      let method2Proc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe, raises: [].}](methodSym)
+      let method2Proc = cast[proc(): PX509 {.cdecl, gcsafe, raises: [].}](methodSym)
       return method2Proc()
 
   proc X509_get_subject_name*(a: PX509): PX509_NAME{.cdecl, dynlib: DLLSSLName, importc.}
