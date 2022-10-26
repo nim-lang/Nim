@@ -345,7 +345,7 @@ proc low64(a: Int128): uint64 =
   bitconcat(a.udata[1], a.udata[0])
 
 proc `*`*(lhs, rhs: Int128): Int128 =
-  {.push warning[CastSizes]: off.}
+  {.push warnings: off.}  # Warning: target type is larger than source type.
   let a32 = cast[uint64](lhs.udata[1])
   let a00 = cast[uint64](lhs.udata[0])
   let b32 = cast[uint64](rhs.udata[1])
