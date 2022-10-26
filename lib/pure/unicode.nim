@@ -24,6 +24,14 @@ include "system/inclrtl"
 import std/strbasics
 template toOa(s: string): auto = s.toOpenArray(0, s.high)
 
+proc substr(s: openArray[char] , first, last: int): string =
+  # Copied substr from system
+  let first = max(first, 0)
+  let L = max(min(last, high(s)) - first + 1, 0)
+  result = newString(L)
+  for i in 0 .. L-1:
+    result[i] = s[i+first]
+
 type
   RuneImpl = int32 # underlying type of Rune
   Rune* = distinct RuneImpl ## \
