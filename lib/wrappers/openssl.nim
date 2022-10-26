@@ -41,7 +41,7 @@ const useWinVersion = defined(windows) or defined(nimdoc)
 # Having two different openSSL loaded version causes a crash.
 # Use this compile time define to force the openSSL version that your other dynamic libraries want.
 const sslVersion {.strdefine.}: string = ""
-const useOpenssl3* {.booldefine, used.} = sslVersion.startsWith('3')
+const useOpenssl3* {.booldefine.} = sslVersion.startsWith('3')
 when sslVersion != "":
   when defined(macosx):
     const
@@ -291,8 +291,8 @@ when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
   else:
     proc OPENSSL_init_ssl*(opts: uint64, settings: uint8): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
     proc SSL_library_init*(): cint {.discardable.} =
-      ## Removed from OpenSSL 1.1.0
-      result = 1
+      ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0
+      return OPENSSL_init_ssl(0.uint64, 0.uint8)
 
     proc TLS_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSLv23_method*(): PSSL_METHOD =
@@ -566,8 +566,7 @@ proc i2d_X509*(cert: PX509): string =
 const
   useNimsAlloc = not defined(nimNoAllocForSSL) and not defined(gcDestructors)
 
-when not useWinVersion and not defined(macosx) and not defined(android) and
-    useNimsAlloc:
+when not useWinVersion and not defined(macosx) and not defined(android) and useNimsAlloc:
   proc CRYPTO_set_mem_functions(a,b,c: pointer) =
     let theProc = cast[proc(a,b,c: pointer) {.cdecl.}](utilModule().symNullable("CRYPTO_set_mem_functions"))
     if not theProc.isNil: theProc(a, b, c)
