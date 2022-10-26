@@ -78,9 +78,6 @@
 
 - Removed the `nimIncrSeqV3` define.
 
-- Static linking against OpenSSL versions below 1.1, previously done by
-  setting `-d:openssl10`, is no longer supported.
-
 - `macros.getImpl` for `const` symbols now returns the full definition node
   (as `nnkConstDef`) rather than the AST of the constant value.
 
@@ -98,6 +95,7 @@
 ## Standard library additions and changes
 
 [//]: # "Changes:"
+- OpenSSL 3 is now supported.
 - `macros.parseExpr` and `macros.parseStmt` now accept an optional
   filename argument for more informative errors.
 - Module `colors` expanded with missing colors from the CSS color standard.
