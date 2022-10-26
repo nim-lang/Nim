@@ -98,7 +98,6 @@
 ## Standard library additions and changes
 
 [//]: # "Changes:"
-- OpenSSL version 3 is now supported by setting either `-d:sslVersion=3` or `-d:useOpenssl3`.
 - `macros.parseExpr` and `macros.parseStmt` now accept an optional
   filename argument for more informative errors.
 - Module `colors` expanded with missing colors from the CSS color standard.
