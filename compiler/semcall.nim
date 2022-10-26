@@ -804,7 +804,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
       x.addSonSkipIntLit(getType(isDistinct, t), c.idgen)
     else:
       x = getType(isDistinct, t)
-    call.add(newSymNode(param.sym, fn.info, x))
+    call.add(newSymNode(param.sym, nextSymId(c.idgen), x, param.info))
   if hasDistinct:
     let filter = if fn.kind in {skProc, skFunc}: {skProc, skFunc} else: {fn.kind}
     var resolved = semOverloadedCall(c, call, call, filter, {})

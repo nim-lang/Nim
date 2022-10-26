@@ -1023,6 +1023,8 @@ type
   TImplication* = enum
     impUnknown, impNo, impYes
 
+proc copySym*(s: PSym; id: ItemId): PSym
+
 template nodeId(n: PNode): int = cast[int](n)
 
 type Gconfig = object
@@ -1462,9 +1464,10 @@ proc newSymNode*(sym: PSym, info: TLineInfo): PNode =
   result.typ = sym.typ
   result.info = info
 
-proc newSymNode*(sym: PSym, info: TLineInfo, typ: PType): PNode =
+proc newSymNode*(sym: PSym, id: ItemId, typ: PType, info: TLineInfo): PNode =
   result = newNode(nkSym)
-  result.sym = sym
+  result.sym = copySym(sym, id)
+  result.sym.typ = typ
   result.typ = typ
   result.info = info
 
