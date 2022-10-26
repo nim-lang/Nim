@@ -41,11 +41,7 @@ const useWinVersion = defined(windows) or defined(nimdoc)
 # Having two different openSSL loaded version causes a crash.
 # Use this compile time define to force the openSSL version that your other dynamic libraries want.
 const sslVersion {.strdefine.}: string = ""
-const useOpenssl3 {.booldefine, used.} = sslVersion.startsWith('3')
-const opensslNoInit* {.booldefine.} = useOpenssl3
-  ## Do not attempt to call openssl init functions.
-  ## 
-  ## True if openssl 3 is set. Otherwise set with `-d:opensslNoInit`.
+const useOpenssl3* {.booldefine, used.} = sslVersion.startsWith('3')
 when sslVersion != "":
   when defined(macosx):
     const
@@ -290,6 +286,8 @@ when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
 
     proc getOpenSSLVersion*(): culong =
       SSLeay()
+
+    proc ERR_load_BIO_strings*() {.cdecl, dynlib: DLLUtilName, importc.}
   else:
     proc OPENSSL_init_ssl*(opts: uint64, settings: uint8): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
     proc SSL_library_init*(): cint {.discardable.} =
@@ -312,10 +310,13 @@ when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
       # Static linking against OpenSSL < 1.1.0 is not supported
       discard
 
+    proc ERR_load_BIO_strings*() =
+      discard
+
   when defined(libressl) or defined(openssl10):
     proc SSL_state(ssl: SslPtr): cint {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSL_in_init*(ssl: SslPtr): cint {.inline.} =
-      SSl_state(ssl) and SSL_ST_INIT
+      SSL_state(ssl) and SSL_ST_INIT
   else:
     proc SSL_in_init*(ssl: SslPtr): cint {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSL_CTX_set_ciphersuites*(ctx: SslCtx, str: cstring): cint {.cdecl, dynlib: DLLSSLName, importc.}
@@ -385,28 +386,25 @@ else:
     let method2Proc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe, raises: [].}](methodSym)
     return method2Proc()
 
-  when opensslNoInit:
-    proc SSL_library_init*(): cint {.discardable.} =
-      result = 1
+  proc SSL_library_init*(): cint {.discardable.} =
+    ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0 otherwise
+    ## SSL_library_init
+    let newInitSym = sslSymNullable("OPENSSL_init_ssl")
+    if not newInitSym.isNil:
+      let newInitProc =
+        cast[proc(opts: uint64, settings: uint8): cint {.cdecl.}](newInitSym)
+      return newInitProc(0, 0)
+    let olderProc = cast[proc(): cint {.cdecl.}](sslSymThrows("SSL_library_init"))
+    if not olderProc.isNil: result = olderProc()
 
-    proc SSL_load_error_strings*() =
-      discard
-  else:
-    proc SSL_library_init*(): cint {.discardable.} =
-      ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0 otherwise
-      ## SSL_library_init
-      let newInitSym = sslSymNullable("OPENSSL_init_ssl")
-      if not newInitSym.isNil:
-        let newInitProc =
-          cast[proc(opts: uint64, settings: uint8): cint {.cdecl.}](newInitSym)
-        return newInitProc(0, 0)
-      let olderProc = cast[proc(): cint {.cdecl.}](sslSymThrows("SSL_library_init"))
-      if not olderProc.isNil: result = olderProc()
+  proc SSL_load_error_strings*() =
+    # TODO: Are we ignoring this on purpose? SSL GitHub CI fails otherwise.
+    let theProc = cast[proc() {.cdecl.}](sslSymNullable("SSL_load_error_strings"))
+    if not theProc.isNil: theProc()
 
-    proc SSL_load_error_strings*() =
-      # TODO: Are we ignoring this on purpose? SSL GitHub CI fails otherwise.
-      let theProc = cast[proc() {.cdecl.}](sslSymNullable("SSL_load_error_strings"))
-      if not theProc.isNil: theProc()
+  proc ERR_load_BIO_strings*() =
+    let theProc = cast[proc() {.cdecl.}](utilModule().symNullable("ERR_load_BIO_strings"))
+    if not theProc.isNil: theProc()
 
   proc SSLv23_client_method*(): PSSL_METHOD =
     loadPSSLMethod("SSLv23_client_method", "TLS_client_method")
@@ -461,10 +459,6 @@ else:
     if theProc.isNil:
       theProc = cast[typeof(theProc)](sslSymThrows("SSL_CTX_set_ciphersuites"))
     theProc(ctx, str)
-
-proc ERR_load_BIO_strings*() =
-  let theProc = cast[proc() {.cdecl.}](utilModule().symNullable("ERR_load_BIO_strings"))
-  if not theProc.isNil: theProc()
 
 proc SSL_new*(context: SslCtx): SslPtr{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_free*(ssl: SslPtr){.cdecl, dynlib: DLLSSLName, importc.}
@@ -572,8 +566,8 @@ proc i2d_X509*(cert: PX509): string =
 const
   useNimsAlloc = not defined(nimNoAllocForSSL) and not defined(gcDestructors)
 
-when not opensslNoInit and not useWinVersion and not defined(macosx) and
-    not defined(android) and useNimsAlloc:
+when not useWinVersion and not defined(macosx) and not defined(android) and
+    useNimsAlloc:
   proc CRYPTO_set_mem_functions(a,b,c: pointer) =
     let theProc = cast[proc(a,b,c: pointer) {.cdecl.}](utilModule().symNullable("CRYPTO_set_mem_functions"))
     if not theProc.isNil: theProc(a, b, c)
