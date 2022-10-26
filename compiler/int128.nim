@@ -345,11 +345,12 @@ proc low64(a: Int128): uint64 =
   bitconcat(a.udata[1], a.udata[0])
 
 proc `*`*(lhs, rhs: Int128): Int128 =
+  {.push warning[CastSizes]: off.}
   let a32 = cast[uint64](lhs.udata[1])
   let a00 = cast[uint64](lhs.udata[0])
   let b32 = cast[uint64](rhs.udata[1])
   let b00 = cast[uint64](rhs.udata[0])
-
+  {.pop.}
   result = makeInt128(high64(lhs) * low64(rhs) + low64(lhs) * high64(rhs) + a32 * b32, a00 * b00)
   result += toInt128(a32 * b00) shl 32
   result += toInt128(a00 * b32) shl 32
