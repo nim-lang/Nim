@@ -1031,7 +1031,10 @@ type
     blockSize*: int                   ## Preferred I/O block size for this object.
                                       ## In some filesystems, this may vary from file to file.
     isRegular*: bool                  ## Is file regular? (on Unix some "files"
-                                      ## can be non-regular like FIFOs, devices)
+                                      ## can be non-regular like FIFOs,
+                                      ## devices); for directories `isRegular`
+                                      ## is always `true`, for symlinks it is
+                                      ## the same as for the link's target.
 
 template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## Transforms the native file info structure into the one nim uses.
@@ -1059,6 +1062,7 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     else:
       formalInfo.permissions = {fpUserExec..fpOthersRead}
 
+    formalInfo.isRegular = true
     # Retrieve basic file kind
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
       formalInfo.kind = pcDir
