@@ -231,9 +231,15 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
   let locals = if locals.len == 1 and locals[0].kind == nnkBracket: locals[0]
                else: locals
   for arg in locals:
-    if arg.strVal == "result":
+    var argStr = ""
+    case arg.kind
+    of nnkIdent, nnkSym: argStr = arg.strVal
+    of nnkHiddenDeref: argStr = arg[0].strVal
+    else:
+      error("The argument to be captured `" & arg.repr & "` is not a pure identifier.", arg)
+    if argStr == "result":
       error("The variable name cannot be `result`!", arg)
-    params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeInst arg))
+    params.add(newIdentDefs(ident(argStr), freshIdentNodes getTypeInst arg))
   result = newNimNode(nnkCall)
   result.add(newProc(newEmptyNode(), params, body, nnkLambda))
   for arg in locals: result.add(arg)

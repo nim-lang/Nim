@@ -96,6 +96,14 @@ template main() =
         let foo = i + 1
         doAssert p() == foo
 
+    block: # issue #20679
+      # this should compile. Previously was broken as `var int` is an `nnkHiddenDeref`
+      # which was not handled correctly
+      from sugar import capture
+      proc function(data: var int) =
+        capture data:
+          discard
+
   block: # dup
     block dup_with_field:
       type
