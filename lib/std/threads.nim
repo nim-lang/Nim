@@ -64,6 +64,22 @@ when hasThreadSupport:
 else:
   {.pragma: rtlThreadVar.}
 
+when defined(boehmgc):
+  when defined(windows):
+    when sizeof(int) == 8:
+      const boehmLib = "boehmgc64.dll"
+    else:
+      const boehmLib = "boehmgc.dll"
+  elif defined(macosx):
+    const boehmLib = "libgc.dylib"
+  elif defined(openbsd):
+    const boehmLib = "libgc.so.(4|5).0"
+  elif defined(freebsd):
+    const boehmLib = "libgc-threaded.so.1"
+  else:
+    const boehmLib = "libgc.so.1"
+  {.pragma: boehmGC, noconv, dynlib: boehmLib.}
+
 when defined(gcDestructors):
   proc allocThreadStorage(size: int): pointer =
     result = c_malloc(csize_t size)
