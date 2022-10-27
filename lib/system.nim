@@ -1419,6 +1419,14 @@ when not defined(js) and not defined(booting) and defined(nimTrMacros):
     # unnecessary slow down in this case.
     swap(cast[ptr pointer](addr arr[a])[], cast[ptr pointer](addr arr[b])[])
 
+when not defined(nimscript):
+  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
+                                                     discardable, raises: [], tags: [], benign.}
+  ## Atomic increment of `memLoc`. Returns the value after the operation.
+
+  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline,
+                                                     discardable, raises: [], tags: [], benign.}
+  ## Atomic decrement of `memLoc`. Returns the value after the operation.
 
 include "system/memalloc"
 
@@ -1650,14 +1658,6 @@ when not declared(sysFatal):
 when not defined(nimscript):
   {.push stackTrace: off, profiler: off.}
 
-  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
-    discardable, benign.}
-    ## Atomic increment of `memLoc`. Returns the value after the operation.
-
-  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline,
-    discardable, benign.}
-    ## Atomic decrement of `memLoc`. Returns the value after the operation.
-
   include "system/atomics"
 
   {.pop.}
@@ -1715,7 +1715,7 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
     result = s[L]
     setLen(s, L)
 
-proc `==`*[T: tuple|object](x, y: T): bool =
+func `==`*[T: tuple|object](x, y: T): bool =
   ## Generic `==` operator for tuples that is lifted from the components.
   ## of `x` and `y`.
   for a, b in fields(x, y):
@@ -2598,7 +2598,19 @@ template once*(body: untyped): untyped =
 
 {.pop.} # warning[GcMem]: off, warning[Uninit]: off
 
-proc substr*(s: string, first, last: int): string =
+proc substr*(s: openArray[char]): string =
+  ## Copies a slice of `s` into a new string and returns this new
+  ## string.
+  runnableExamples:
+    let a = "abcdefgh"
+    assert a.substr(2, 5) == "cdef"
+    assert a.substr(2) == "cdefgh"
+    assert a.substr(5, 99) == "fgh"
+  result = newString(s.len)
+  for i, ch in s:
+    result[i] = ch
+
+proc substr*(s: string, first, last: int): string = # A bug with `magic: Slice` requires this to exist this way
   ## Copies a slice of `s` into a new string and returns this new
   ## string.
   ##

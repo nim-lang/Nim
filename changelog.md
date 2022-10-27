@@ -1,8 +1,8 @@
-# v1.8.x - yyyy-mm-dd
+# v2.0.0 - yyyy-mm-dd
 
 
 ## Changes affecting backward compatibility
-- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response, it followed Apache HttpClient(Java), http(go) and .Net HttpWebResponse(C#) behavior. Previously raise `ValueError`.
+- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response, it followed Apache HttpClient(Java), http(go) and .Net HttpWebResponse(C#) behavior. Previously it raised `ValueError`.
 
 - `addr` is now available for all addressable locations,
   `unsafeAddr` is now deprecated and an alias for `addr`.
@@ -89,6 +89,9 @@
 - ORC is now the default memory management strategy. Use
   `--mm:refc` for a transition period.
 
+- `strictEffects` are no longer experimental.
+  Use `legacy:laxEffects` to keep backward compatibility.
+
 - The `gorge`/`staticExec` calls will now return a descriptive message in the output
   if the execution fails for whatever reason. To get back legacy behaviour use `-d:nimLegacyGorgeErrors`.
 
@@ -108,8 +111,7 @@
   making limiting it to just the first char (`last = 0`) valid.
 - `random.rand` now works with `Ordinal`s.
 - Undeprecated `os.isvalidfilename`.
-- `std/oids` now uses `int64` to store time internally (before it was int32), the length of
-  the string form of `Oid` changes from 24 to 32.
+- `std/oids` now uses `int64` to store time internally (before it was int32).
 
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
@@ -132,6 +134,8 @@
   `toggleAttribute`, and `matches` to `std/dom`.
 - Added [`jsre.hasIndices`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/hasIndices)
 - Added `capacity` for `string` and `seq` to return the current capacity, see https://github.com/nim-lang/RFCs/issues/460
+- Added `openArray[char]` overloads for `std/parseutils` allowing more code reuse.
+- Added `safe` parameter to `base64.encodeMime`
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
@@ -213,6 +217,10 @@
 - `cstring` is now accepted as a selector in `case` statements, removing the
   need to convert to `string`. On the JS backend, this is translated directly
   to a `switch` statement.
+
+- Nim now supports `out` parameters and ["strict definitions"](https://nim-lang.github.io/Nim/manual_experimental.html#strict-definitions-and-nimout-parameters).
+- Nim now offers a [strict mode](https://nim-lang.github.io/Nim/manual_experimental.html#strict-case-objects) for `case objects`.
+
 
 ## Compiler changes
 

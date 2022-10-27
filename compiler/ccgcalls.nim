@@ -335,7 +335,7 @@ proc getPotentialWrites(n: PNode; mutate: bool; result: var seq[PNode]) =
   of nkLiterals, nkIdent, nkFormalParams: discard
   of nkSym:
     if mutate: result.add n
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     getPotentialWrites(n[0], true, result)
     getPotentialWrites(n[1], mutate, result)
   of nkAddr, nkHiddenAddr:

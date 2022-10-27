@@ -551,11 +551,15 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
     if not preventComment:
       emitComment(em, tok, dontIndent = false)
   of tkIntLit..tkStrLit, tkRStrLit, tkTripleStrLit, tkGStrLit, tkGTripleStrLit, tkCharLit:
-    let lit = fileSection(em.config, em.fid, tok.offsetA, tok.offsetB)
-    if endsInAlpha(em) and tok.tokType notin {tkGStrLit, tkGTripleStrLit}: wrSpace(em)
-    em.lineSpan = countNewlines(lit)
-    if em.lineSpan > 0: calcCol(em, lit)
-    wr em, lit, ltLit
+    if not em.inquote:
+      let lit = fileSection(em.config, em.fid, tok.offsetA, tok.offsetB)
+      if endsInAlpha(em) and tok.tokType notin {tkGStrLit, tkGTripleStrLit}: wrSpace(em)
+      em.lineSpan = countNewlines(lit)
+      if em.lineSpan > 0: calcCol(em, lit)
+      wr em, lit, ltLit
+    else:
+      if endsInAlpha(em): wrSpace(em)
+      wr em, tok.literal, ltLit
   of tkEof: discard
   else:
     let lit = if tok.ident != nil: tok.ident.s else: tok.literal

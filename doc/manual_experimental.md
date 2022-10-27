@@ -1941,3 +1941,39 @@ constructors that take inheritance into account.
 
 **Note**: The implementation of "strict definitions" and "out parameters" is experimental but the concept
 is solid and it is expected that eventually this mode becomes the default in later versions.
+
+
+Strict case objects
+===================
+
+With `experimental: "strictCaseObjects"` *every* field access is checked to be valid at compile-time.
+The field is within a `case` section of an `object`.
+
+  ```nim
+  {.experimental: "strictCaseObjects".}
+
+  type
+    Foo = object
+      case b: bool
+      of false:
+        s: string
+      of true:
+        x: int
+
+  var x = Foo(b: true, x: 4)
+  case x.b
+  of true:
+    echo x.x # valid
+  of false:
+    echo "no"
+
+  case x.b
+  of false:
+    echo x.x # error: field access outside of valid case branch: x.x
+  of true:
+    echo "no"
+
+  ```
+
+**Note**: The implementation of "strict case objects" is experimental but the concept
+is solid and it is expected that eventually this mode becomes the default in later versions.

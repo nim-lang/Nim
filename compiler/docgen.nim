@@ -20,7 +20,6 @@ import
 import packages/docutils/rstast except FileIndex, TLineInfo
 
 from uri import encodeUrl
-from std/private/globs import nativeToUnixPath
 from nodejs import findNodeJs
 
 when defined(nimPreviewSlimSystem):
@@ -401,7 +400,7 @@ proc genRecCommentAux(d: PDoc, n: PNode): PRstNode =
   result = genComment(d, n)
   if result == nil:
     if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef,
-                  nkObjectTy, nkRefTy, nkPtrTy, nkAsgn, nkFastAsgn, nkHiddenStdConv}:
+                  nkObjectTy, nkRefTy, nkPtrTy, nkAsgn, nkFastAsgn, nkSinkAsgn, nkHiddenStdConv}:
       # notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
       for i in 0..<n.len:
         result = genRecCommentAux(d, n[i])
@@ -1552,7 +1551,7 @@ proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
   else:
     # Just have the link
     d.toc[kind] =  getConfigVar(d.conf, "doc.section.toc_item") % sectionValues
-    
+
 proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile): string =
   $relativeTo(outDir / linkto, destFile.splitFile().dir, '/')
 

@@ -80,7 +80,7 @@ when hasAlloc and not defined(js):
 
   when defined(nimAllocStats):
     var stats: AllocStats
-    template incStat(what: untyped) = inc stats.what
+    template incStat(what: untyped) = atomicInc stats.what
     proc getAllocStats*(): AllocStats = stats
 
   else:
