@@ -1874,9 +1874,6 @@ proc semProcBody(c: PContext, n: PNode; expectedType: PType = nil): PNode =
       a[0] = newSymNode(c.p.resultSym)
       a[1] = result
       result = semAsgn(c, a)
-      if result.typ != nil and result.typ.kind == tyVoid:
-        localError(c.config, c.p.resultSym.info, errCannotInferReturnType %
-          c.p.owner.name.s)
   else:
     discardCheck(c, result, {})
 
