@@ -494,7 +494,7 @@ func `$`*(u: Uri): string =
   ## Returns the string representation of the specified URI object.
   runnableExamples:
     assert $parseUri("https://nim-lang.org") == "https://nim-lang.org"
-  # Get the len of all parts.
+  # Get the len of all the parts.
   let
     schemeLen:   int = u.scheme.len
     usernameLen: int = u.username.len
@@ -504,49 +504,81 @@ func `$`*(u: Uri): string =
     pathLen:     int = u.path.len
     queryLen:    int = u.query.len
     anchorLen:   int = u.anchor.len
-  # Make a string that at least fits all the parts.
-  result = newStringOfCap(
-    schemeLen + usernameLen + passwordLen + hostnameLen + portLen + pathLen + queryLen + anchorLen
-  )
+  # Calc the len for the seps.
+  var
+    index   = 0
+    sepsLen = 0
   if schemeLen > 0:
-    result.add(u.scheme)
-    result.add(':')
+    inc sepsLen
     if not u.opaque:
-      result.add('/')
-      result.add('/')
+      inc sepsLen, 2
   if usernameLen > 0:
-    result.add(u.username)
+    inc sepsLen
     if passwordLen > 0:
-      result.add(':')
-      result.add(u.password)
-    result.add('@')
+      inc sepsLen
+  if u.isIpv6:
+    inc sepsLen, 2
+  if portLen > 0:
+    inc sepsLen
+  if pathLen > 0 and hostnameLen > 0 and u.path[0] != '/':
+    inc sepsLen
+  if queryLen > 0:
+    inc sepsLen
+  if anchorLen > 0:
+    inc sepsLen
+  # Prepare a string that fits all the parts and all seps.
+  result.setLen(
+    schemeLen + usernameLen + passwordLen + hostnameLen + portLen + pathLen + queryLen + anchorLen + sepsLen
+  )
+  # Save some typing with a template.
+  template inserts(item: char or string) =
+    when item is string:
+      for chara in item:
+        result[index] = chara
+        inc index
+    else:
+      result[index] = item
+      inc index
+  # Insert to result.
+  if schemeLen > 0:
+    inserts u.scheme
+    inserts ':'
+    if not u.opaque:
+      inserts '/'
+      inserts '/'
+  if usernameLen > 0:
+    inserts u.username
+    if passwordLen > 0:
+      inserts ':'
+      inserts u.password
+    inserts '@'
   if u.hostname.endsWith('/'):
     if u.isIpv6:
-      result.add('[')
-      result.add(u.hostname[0 .. ^2])
-      result.add(']')
+      inserts '['
+      inserts u.hostname[0 .. ^2]
+      inserts ']'
     else:
-      result.add(u.hostname[0 .. ^2])
+      inserts u.hostname[0 .. ^2]
   else:
     if u.isIpv6:
-      result.add('[')
-      result.add(u.hostname)
-      result.add(']')
+      inserts '['
+      inserts u.hostname
+      inserts ']'
     else:
-      result.add(u.hostname)
+      inserts u.hostname
   if portLen > 0:
-    result.add(':')
-    result.add(u.port)
+    inserts ':'
+    inserts u.port
   if pathLen > 0:
     if hostnameLen > 0 and u.path[0] != '/':
-      result.add('/')
-    result.add(u.path)
+      inserts '/'
+    inserts u.path
   if queryLen > 0:
-    result.add('?')
-    result.add(u.query)
+    inserts '?'
+    inserts u.query
   if anchorLen > 0:
-    result.add('#')
-    result.add(u.anchor)
+    inserts '#'
+    inserts u.anchor
 
 proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3).} =
   ## Convenience proc for `base64.encode` returns a standard Base64 Data URI (RFC-2397)
