@@ -1805,7 +1805,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     let lhs = n[0]
     let rhs = semExprWithType(c, n[1], {}, le)
     if lhs.kind == nkSym and lhs.sym.kind == skResult:
-      if rhs.typ == nil or rhs.typ.kind == tyTypeDesc:
+      if rhs.typ != nil and rhs.typ.kind == tyTypeDesc:
         localError(c.config, a.info, errXTypedescCannotBeAssignedToResult %
                   renderTree(rhs, {renderNoComments}))
       n.typ = c.enforceVoidContext
