@@ -504,31 +504,11 @@ func `$`*(u: Uri): string =
     pathLen:     int = u.path.len
     queryLen:    int = u.query.len
     anchorLen:   int = u.anchor.len
-  # Calc the len for the seps.
-  var
-    index   = 0
-    sepsLen = 0
-  if schemeLen > 0:
-    inc sepsLen
-    if not u.opaque:
-      inc sepsLen, 2
-  if usernameLen > 0:
-    inc sepsLen
-    if passwordLen > 0:
-      inc sepsLen
-  if u.isIpv6:
-    inc sepsLen, 2
-  if portLen > 0:
-    inc sepsLen
-  if pathLen > 0 and hostnameLen > 0 and u.path[0] != '/':
-    inc sepsLen
-  if queryLen > 0:
-    inc sepsLen
-  if anchorLen > 0:
-    inc sepsLen
-  # Prepare a string that fits all the parts and all seps.
+  var index = 0
+  # Prepare a string that fits all the parts and all punctuation chars.
+  # 12 is the max len required by all possible punctuation chars.
   result.setLen(
-    schemeLen + usernameLen + passwordLen + hostnameLen + portLen + pathLen + queryLen + anchorLen + sepsLen
+    schemeLen + usernameLen + passwordLen + hostnameLen + portLen + pathLen + queryLen + anchorLen + 12
   )
   # Save some typing with a template.
   template inserts(item: char or string) =
