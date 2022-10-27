@@ -1982,7 +1982,7 @@ when not defined(js):
 
   when hasAlloc:
     when not defined(gcRegions) and not usesDestructors:
-      proc initGC() {.gcsafe, raises: [].}
+      proc initGC*() {.gcsafe, raises: [].}
 
     proc initStackBottom() {.inline, compilerproc.} =
       # WARNING: This is very fragile! An array size of 8 does not work on my
@@ -2092,6 +2092,8 @@ when not defined(js):
     initAllocator()
   when hasThreadSupport:
     when hostOS != "standalone":
+      var
+        threadDestructionHandlers* {.rtlThreadVar.}: seq[proc () {.closure, gcsafe, raises: [].}]
       import std/threads
       export threads
   elif not defined(nogc) and not defined(nimscript):
