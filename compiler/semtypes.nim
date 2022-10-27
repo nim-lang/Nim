@@ -24,7 +24,7 @@ const
   errArrayExpectsTwoTypeParams = "array expects two type parameters"
   errInvalidVisibilityX = "invalid visibility: '$1'"
   errXCannotBeAssignedTo = "'$1' cannot be assigned to"
-  errXVoidCannotBeAssignedToResult = "'void' cannot be assigned to 'result'"
+  errXTypedescCannotBeAssignedToResult = "'$1' cannot be assigned to 'result'"
   errIteratorNotAllowed = "iterators can only be defined at the module's top level"
   errXNeedsReturnType = "$1 needs a return type"
   errNoReturnTypeDeclared = "no return type declared"

@@ -1806,7 +1806,8 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     let rhs = semExprWithType(c, n[1], {}, le)
     if lhs.kind == nkSym and lhs.sym.kind == skResult:
       if rhs.typ == nil or rhs.typ.kind == tyTypeDesc:
-        localError(c.config, a.info, errXVoidCannotBeAssignedToResult)
+        localError(c.config, a.info, errXTypedescCannotBeAssignedToResult %
+                  renderTree(rhs, {renderNoComments}))
       n.typ = c.enforceVoidContext
       if c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
         var rhsTyp = rhs.typ
