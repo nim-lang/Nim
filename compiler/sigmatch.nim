@@ -1153,7 +1153,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           if fint:
             if a.n.intVal >= f.n[0].intVal and a.n.intVal <= f.n[1].intVal:
               return isConvertible
-            else:
+            elif c.c.inIndexTypesMatchContext == 0:
               return isNone
         elif a.isFloatLit:
           let ffloat = f.n[0].kind in nkFloatLit..nkFloat128Lit and

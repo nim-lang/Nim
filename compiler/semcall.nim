@@ -463,10 +463,12 @@ proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
       instGenericConvertersArg(c, n[i], x)
 
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode =
+  inc c.inIndexTypesMatchContext
   var m = newCandidate(c, f)
   result = paramTypesMatch(m, f, a, arg, nil)
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
+  dec c.inIndexTypesMatchContext
 
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode =
