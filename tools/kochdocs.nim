@@ -138,7 +138,6 @@ mm.md
 """.splitWhitespace().mapIt("doc" / it)
 
   doc0 = """
-lib/system/threads.nim
 lib/system/channels_builtin.nim
 """.splitWhitespace() # ran by `nim doc0` instead of `nim doc`
 
