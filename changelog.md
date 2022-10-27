@@ -120,7 +120,9 @@
   - Added a `initDateTime` overload to create a datetime from an ISO week date.
   - Added `getIsoWeekAndYear` to get an ISO week number and week-based year from a datetime.
   - Added `getIsoWeeksInYear` to return the number of weeks in a week-based year.
-- Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
+- Added new modules which were part of `std/os`:
+  - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
+  - Added `std/paths`, `std/dirs`, `std/files`, `std/symlinks` and `std/appdirs`. 
 - Added `sep` parameter in `std/uri` to specify the query separator.
 - Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
   and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)
@@ -135,7 +137,7 @@
 - Added [`jsre.hasIndices`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/hasIndices)
 - Added `capacity` for `string` and `seq` to return the current capacity, see https://github.com/nim-lang/RFCs/issues/460
 - Added `openArray[char]` overloads for `std/parseutils` allowing more code reuse.
-- Added `safe` parameter to `base64.encodeMime`
+- Added `safe` parameter to `base64.encodeMime`.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
