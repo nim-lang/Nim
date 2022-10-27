@@ -240,9 +240,9 @@ iterator walkDir*(dir: string; relative = false, checkDir = false,
             var k = pcFile
 
             template resolveSymlink() =
-              var isRegular: bool
-              (k, isRegular) = getSymlinkFileKind(path)
-              if skipSpecial and not isRegular: continue
+              var isSpecial: bool
+              (k, isSpecial) = getSymlinkFileKind(path)
+              if skipSpecial and isSpecial: continue
 
             template kSetGeneric() =  # pure Posix component `k` resolution
               if lstat(path.cstring, s) < 0'i32: continue  # don't yield
