@@ -330,7 +330,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
     elif e.kind == nkSym and e.typ.kind == tyStatic:
       if e.sym.ast != nil:
         return semArrayIndex(c, e.sym.ast)
-      if not isOrdinalType(e.typ.lastSon):
+      if e.typ.lastSon.kind != tyGenericParam and not isOrdinalType(e.typ.lastSon):
         let info = if n.safeLen > 1: n[1].info else: n.info
         localError(c.config, info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
       result = makeRangeWithStaticExpr(c, e)
