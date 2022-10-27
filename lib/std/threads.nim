@@ -51,6 +51,9 @@ include system/inclrtl
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
+when defined(genode):
+  include genode/env
+
 const
   hasAllocStack = defined(zephyr) # maybe freertos too?
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
