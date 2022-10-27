@@ -494,41 +494,58 @@ func `$`*(u: Uri): string =
   ## Returns the string representation of the specified URI object.
   runnableExamples:
     assert $parseUri("https://nim-lang.org") == "https://nim-lang.org"
-  result = ""
-  if u.scheme.len > 0:
+  # Get the len of all parts.
+  let
+    schemeLen:   int = u.scheme.len
+    usernameLen: int = u.username.len
+    passwordLen: int = u.password.len
+    hostnameLen: int = u.hostname.len
+    portLen:     int = u.port.len
+    pathLen:     int = u.path.len
+    queryLen:    int = u.query.len
+    anchorLen:   int = u.anchor.len
+  # Make a string that at least fits all the parts.
+  result = newStringOfCap(
+    schemeLen + usernameLen + passwordLen + hostnameLen + portLen + pathLen + queryLen + anchorLen
+  )
+  if schemeLen > 0:
     result.add(u.scheme)
-    if u.opaque:
-      result.add(":")
-    else:
-      result.add("://")
-  if u.username.len > 0:
+    result.add(':')
+    if not u.opaque:
+      result.add('/')
+      result.add('/')
+  if usernameLen > 0:
     result.add(u.username)
-    if u.password.len > 0:
-      result.add(":")
+    if passwordLen > 0:
+      result.add(':')
       result.add(u.password)
-    result.add("@")
+    result.add('@')
   if u.hostname.endsWith('/'):
     if u.isIpv6:
-      result.add("[" & u.hostname[0 .. ^2] & "]")
+      result.add('[')
+      result.add(u.hostname[0 .. ^2])
+      result.add(']')
     else:
       result.add(u.hostname[0 .. ^2])
   else:
     if u.isIpv6:
-      result.add("[" & u.hostname & "]")
+      result.add('[')
+      result.add(u.hostname)
+      result.add(']')
     else:
       result.add(u.hostname)
-  if u.port.len > 0:
-    result.add(":")
+  if portLen > 0:
+    result.add(':')
     result.add(u.port)
-  if u.path.len > 0:
-    if u.hostname.len > 0 and u.path[0] != '/':
+  if pathLen > 0:
+    if hostnameLen > 0 and u.path[0] != '/':
       result.add('/')
     result.add(u.path)
-  if u.query.len > 0:
-    result.add("?")
+  if queryLen > 0:
+    result.add('?')
     result.add(u.query)
-  if u.anchor.len > 0:
-    result.add("#")
+  if anchorLen > 0:
+    result.add('#')
     result.add(u.anchor)
 
 proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3).} =
