@@ -77,15 +77,15 @@ else:
       ThreadVarSlot {.importc: "pthread_key_t",
                      header: "<sys/types.h>".} = object
 
-  proc pthread_getspecific*(a1: ThreadVarSlot): pointer {.
+  proc pthread_getspecific(a1: ThreadVarSlot): pointer {.
     importc: "pthread_getspecific", header: pthreadh.}
-  proc pthread_key_create*(a1: ptr ThreadVarSlot,
+  proc pthread_key_create(a1: ptr ThreadVarSlot,
                           destruct: proc (x: pointer) {.noconv.}): int32 {.
     importc: "pthread_key_create", header: pthreadh.}
-  proc pthread_key_delete*(a1: ThreadVarSlot): int32 {.
+  proc pthread_key_delete(a1: ThreadVarSlot): int32 {.
     importc: "pthread_key_delete", header: pthreadh.}
 
-  proc pthread_setspecific*(a1: ThreadVarSlot, a2: pointer): int32 {.
+  proc pthread_setspecific(a1: ThreadVarSlot, a2: pointer): int32 {.
     importc: "pthread_setspecific", header: pthreadh.}
 
   proc threadVarAlloc(): ThreadVarSlot {.inline.} =

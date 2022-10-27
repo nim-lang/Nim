@@ -2097,6 +2097,21 @@ when not defined(js):
       when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
         proc deallocOsPages*() {.rtl, raises: [].}
       proc threadTrouble*() {.raises: [], gcsafe.}
+      # create for the main thread. Note: do not insert this data into the list
+      # of all threads; it's not to be stopped etc.
+      when not defined(useNimRtl):
+        #when not defined(createNimRtl): initStackBottom()
+        when declared(initGC):
+          initGC()
+          when not emulatedThreadVars:
+            type ThreadType* {.pure.} = enum
+              None = 0,
+              NimThread = 1,
+              ForeignThread = 2
+            var
+              threadType* {.rtlThreadVar.}: ThreadType
+
+            threadType = ThreadType.NimThread
       import std/threads
       export threads
   elif not defined(nogc) and not defined(nimscript):

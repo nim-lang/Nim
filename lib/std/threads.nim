@@ -56,7 +56,6 @@ when defined(genode):
 
 const
   hasAllocStack = defined(zephyr) # maybe freertos too?
-  hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   usesDestructors = defined(gcDestructors) or defined(gcHooks)
 
@@ -102,21 +101,6 @@ when defined(zephyr):
   #include <pthread.h>
   """.}
 
-# create for the main thread. Note: do not insert this data into the list
-# of all threads; it's not to be stopped etc.
-when not defined(useNimRtl):
-  #when not defined(createNimRtl): initStackBottom()
-  when declared(initGC):
-    initGC()
-    when not emulatedThreadVars:
-      type ThreadType {.pure.} = enum
-        None = 0,
-        NimThread = 1,
-        ForeignThread = 2
-      var
-        threadType {.rtlThreadVar.}: ThreadType
-
-      threadType = ThreadType.NimThread
 
 # We jump through some hops here to ensure that Nim thread procs can have
 # the Nim calling convention. This is needed because thread procs are
@@ -199,7 +183,8 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
     var p {.volatile.}: pointer
     # init the GC for refc/markandsweep
     nimGC_setStackBottom(addr(p))
-    initGC()
+    when declared(initGC):
+      initGC()
     when declared(threadType):
       threadType = ThreadType.NimThread
     threadProcWrapDispatch[TArg](thrd)
