@@ -137,6 +137,7 @@
 - Added [`jsre.hasIndices`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/hasIndices)
 - Added `capacity` for `string` and `seq` to return the current capacity, see https://github.com/nim-lang/RFCs/issues/460
 - Added `openArray[char]` overloads for `std/parseutils` allowing more code reuse.
+- Added `openArray[char]` overloads for `std/unicode` allowing more code reuse.
 - Added `safe` parameter to `base64.encodeMime`.
 
 [//]: # "Deprecations:"
