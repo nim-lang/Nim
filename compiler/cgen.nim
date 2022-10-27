@@ -497,7 +497,7 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
     # we know it is a local variable and thus on the stack!
     # If ``not immediateAsgn`` it is not initialized in a binding like
     # ``var v = X`` and thus we need to init it.
-    # If ``v`` contains a GC-ref we may pass it to ``unsureAsgnRef`` somehow
+    # If ``v`` contains a GC-ref we may pass it to ``nimUnsureAsgnRef`` somehow
     # which requires initialization. However this can really only happen if
     # ``var v = X()`` gets transformed into ``X(&v)``.
     # Nowadays the logic in ccgcalls deals with this case however.
@@ -898,7 +898,7 @@ proc closureSetup(p: BProc, prc: PSym) =
   assignLocalVar(p, ls)
   # generate cast assignment:
   if p.config.selectedGC == gcGo:
-    linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, ($2) ClE_0);$n",
+    linefmt(p, cpsStmts, "#nimUnsureAsgnRef($1, ($2) ClE_0);$n",
             [addrLoc(p.config, env.loc), getTypeDesc(p.module, env.typ)])
   else:
     linefmt(p, cpsStmts, "$1 = ($2) ClE_0;$n",

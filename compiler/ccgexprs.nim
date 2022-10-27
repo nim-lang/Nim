@@ -204,7 +204,7 @@ proc genRefAssign(p: BProc, dest, src: TLoc) =
     linefmt(p, cpsStmts, "#asgnRef((void**) $1, $2);$n",
             [addrLoc(p.config, dest), rdLoc(src)])
   else:
-    linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, $2);$n",
+    linefmt(p, cpsStmts, "#nimUnsureAsgnRef($1, $2);$n",
             [addrLoc(p.config, dest), rdLoc(src)])
 
 proc asgnComplexity(n: PNode): int =
@@ -349,7 +349,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
                 [dest.rdLoc, src.rdLoc, tmp.rdLoc])
         linefmt(p, cpsStmts, "if ($1) #nimGCunrefNoCycle($1);$n", [tmp.rdLoc])
       else:
-        linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, #copyString($2));$n",
+        linefmt(p, cpsStmts, "#nimUnsureAsgnRef($1, #copyString($2));$n",
                [addrLoc(p.config, dest), rdLoc(src)])
   of tyProc:
     if containsGarbageCollectedRef(dest.t):
@@ -1432,10 +1432,10 @@ proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope; needsInit: bool) =
       else:
         linefmt(p, cpsStmts, "if ($1) { #nimGCunrefNoCycle($1); $1 = NIM_NIL; }$n", [a.rdLoc])
       if p.config.selectedGC == gcGo:
-        # newObjRC1() would clash with unsureAsgnRef() - which is used by gcGo to
+        # newObjRC1() would clash with nimUnsureAsgnRef() - which is used by gcGo to
         # implement the write barrier
         b.r = ropecg(p.module, "($1) #newObj($2, $3)", [getTypeDesc(p.module, typ), ti, sizeExpr])
-        linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, $2);$n",
+        linefmt(p, cpsStmts, "#nimUnsureAsgnRef($1, $2);$n",
                 [addrLoc(p.config, a), b.rdLoc])
       else:
         # use newObjRC1 as an optimization
@@ -1473,7 +1473,7 @@ proc genNewSeqAux(p: BProc, dest: TLoc, length: Rope; lenIsZero: bool) =
         # we need the write barrier
         call.r = ropecg(p.module, "($1) #newSeq($2, $3)", [getTypeDesc(p.module, seqtype),
               genTypeInfoV1(p.module, seqtype, dest.lode.info), length])
-        linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, $2);$n", [addrLoc(p.config, dest), call.rdLoc])
+        linefmt(p, cpsStmts, "#nimUnsureAsgnRef($1, $2);$n", [addrLoc(p.config, dest), call.rdLoc])
       else:
         call.r = ropecg(p.module, "($1) #newSeqRC1($2, $3)", [getTypeDesc(p.module, seqtype),
               genTypeInfoV1(p.module, seqtype, dest.lode.info), length])
@@ -2198,7 +2198,7 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
 
 proc genCast(p: BProc, e: PNode, d: var TLoc) =
-  const ValueTypes = {tyFloat..tyFloat128, tyTuple, tyObject, tyArray}
+  const ValueTypes = {tyFloat..tyFloat128, tyTuple, tyObject, tyArray, tyPtr, tyPointer, tyRef}
   let
     destt = skipTypes(e.typ, abstractRange)
     srct = skipTypes(e[1].typ, abstractRange)
@@ -2211,7 +2211,7 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
     linefmt(p, cpsLocals, "union { $1 source; $2 dest; } LOC$3;$n",
       [getTypeDesc(p.module, e[1].typ), getTypeDesc(p.module, e.typ), lbl])
     tmp.k = locExpr
-    tmp.lode = lodeTyp srct
+    tmp.lode = lodeTyp destt
     tmp.storage = OnStack
     tmp.flags = {}
     expr(p, e[1], tmp)

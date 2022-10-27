@@ -306,6 +306,23 @@ proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc.} =
              "stack loc AND interior pointer")
   dest[] = src
 
+proc nimUnsureAsgnRef(dest: pointer, src: pointer) {.compilerproc.} =
+  # unsureAsgnRef updates the reference counters only if dest is not on the
+  # stack. It is used by the code generator if it cannot decide whether a
+  # reference is in the stack or not (this can happen for var parameters).
+  let d = cast[ptr pointer](dest)
+  if not isOnStack(d):
+    if src != nil: incRef(usrToCell(src))
+    # XXX finally use assembler for the stack checking instead!
+    # the test for '!= nil' is correct, but I got tired of the segfaults
+    # resulting from the crappy stack checking:
+    if cast[int](d[]) >=% PageSize: decRef(usrToCell(d[]))
+  else:
+    # can't be an interior pointer if it's a stack location!
+    gcAssert(interiorAllocatedPtr(gch.region, dest) == nil,
+             "stack loc AND interior pointer")
+  d[] = src
+
 proc initGC() =
   when not defined(useNimRtl):
     when traceGC:
