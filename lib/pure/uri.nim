@@ -579,6 +579,8 @@ func `$`*(u: Uri): string =
   if anchorLen > 0:
     inserts '#'
     inserts u.anchor
+  result.setLen index
+
 
 proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3).} =
   ## Convenience proc for `base64.encode` returns a standard Base64 Data URI (RFC-2397)
