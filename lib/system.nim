@@ -2095,7 +2095,7 @@ when not defined(js):
       var
         threadDestructionHandlers* {.rtlThreadVar.}: seq[proc () {.closure, gcsafe, raises: [].}]
       when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
-        proc deallocOsPages() {.rtl, raises: [].}
+        proc deallocOsPages*() {.rtl, raises: [].}
       proc threadTrouble*() {.raises: [], gcsafe.}
       import std/threads
       export threads
