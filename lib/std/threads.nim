@@ -147,11 +147,6 @@ template afterThreadRuns() =
   for i in countdown(threadDestructionHandlers.len-1, 0):
     threadDestructionHandlers[i]()
 
-when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
-  proc deallocOsPages() {.rtl, raises: [].} = discard
-
-proc threadTrouble() {.raises: [], gcsafe.} = discard
-  ## defined in system/excpt.nim
 
 when defined(boehmgc):
   type GCStackBaseProc = proc(sb: pointer, t: pointer) {.noconv.}

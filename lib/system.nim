@@ -2094,6 +2094,9 @@ when not defined(js):
     when hostOS != "standalone":
       var
         threadDestructionHandlers* {.rtlThreadVar.}: seq[proc () {.closure, gcsafe, raises: [].}]
+      when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
+        proc deallocOsPages() {.rtl, raises: [].}
+      proc threadTrouble*() {.raises: [], gcsafe.}
       import std/threads
       export threads
   elif not defined(nogc) and not defined(nimscript):

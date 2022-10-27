@@ -63,7 +63,7 @@ else:
 
   const
     schedh = "#define _GNU_SOURCE\n#include <sched.h>"
-    pthreadh = "#define _GNU_SOURCE\n#include <pthread.h>"
+    pthreadh* = "#define _GNU_SOURCE\n#include <pthread.h>"
 
   when not declared(Time):
     when defined(linux):

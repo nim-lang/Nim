@@ -1103,7 +1103,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
       let p = cast[pointer](cast[ByteAddress](p)-%ByteAddress(sizeof(Cell)))
       result = isAllocatedPtr(allocator, p)
 
-  proc deallocOsPages* = deallocOsPages(allocator)
+  proc deallocOsPages = deallocOsPages(allocator)
 
   proc allocImpl(size: Natural): pointer =
     result = alloc(allocator, size)
