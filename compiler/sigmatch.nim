@@ -1145,18 +1145,28 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             f.n[i] = tryResolvingStaticExpr(c, f.n[i])
         result = typeRangeRel(f, a)
     else:
-      if a.isIntLit:
-        if a.n.intVal >= f.n[0].intVal and a.n.intVal <= f.n[1].intVal:
-          return isConvertible
-      elif a.isFloatLit:
-        if a.n.floatVal >= f.n[0].floatVal and a.n.floatVal <= f.n[1].floatVal:
-          return isConvertible
-      else:
-        let f = skipTypes(f, {tyRange})
-        if f.kind == a.kind and (f.kind != tyEnum or sameEnumTypes(f, a)):
+      let fbase = skipTypes(f, {tyRange})
+      if fbase.kind == a.kind:
+        if a.isIntLit:
+          let fint = f.n[0].kind in nkIntLit..nkUInt64Lit and
+                      f.n[1].kind in nkIntLit..nkUInt64Lit
+          if fint:
+            if a.n.intVal >= f.n[0].intVal and a.n.intVal <= f.n[1].intVal:
+              return isConvertible
+            else:
+              return isNone
+        elif a.isFloatLit:
+          let ffloat = f.n[0].kind in nkFloatLit..nkFloat128Lit and
+                        f.n[1].kind in nkFloatLit..nkFloat128Lit
+          if ffloat:
+            if a.n.floatVal >= f.n[0].floatVal and a.n.floatVal <= f.n[1].floatVal:
+              return isConvertible
+            else:
+              return isNone
+        if fbase.kind != tyEnum or sameEnumTypes(fbase, a):
           result = isIntConv
-        elif isConvertibleToRange(f, a):
-          result = isConvertible  # a convertible to f
+      elif isConvertibleToRange(fbase, a):
+        result = isConvertible  # a convertible to f
   of tyInt:      result = handleRange(f, a, tyInt8, tyInt32)
   of tyInt8:     result = handleRange(f, a, tyInt8, tyInt8)
   of tyInt16:    result = handleRange(f, a, tyInt8, tyInt16)
