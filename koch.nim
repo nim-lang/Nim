@@ -81,7 +81,7 @@ Boot options:
                            for bootstrapping
 
 Commands for core developers:
-  runCI                    runs continuous integration (CI), e.g. from travis
+  runCI                    runs continuous integration (CI), e.g. from Github Actions
   docs [options]           generates the full documentation
   csource -d:danger        builds the C sources for installation
   pdf                      builds the PDF documentation
