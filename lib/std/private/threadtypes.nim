@@ -44,7 +44,6 @@ elif defined(genode):
     SysThread* {.importcpp: "Nim::SysThread",
                  header: GenodeHeader, final, pure.} = object
     GenodeThreadProc* = proc (x: pointer) {.noconv.}
-    ThreadVarSlot* = int
 
   proc initThread*(s: var SysThread,
                   env: GenodeEnv,
@@ -79,22 +78,16 @@ else:
       Pthread_attr* {.importc: "pthread_attr_t",
                     header: "<sys/types.h>".} = object
         abi: array[56 div sizeof(clong), clong]
-      ThreadVarSlot* {.importc: "pthread_key_t",
-                    header: "<sys/types.h>".} = distinct cuint
   elif defined(openbsd) and defined(amd64):
     type
       SysThread* {.importc: "pthread_t", header: "<pthread.h>".} = object
       Pthread_attr* {.importc: "pthread_attr_t",
                        header: "<pthread.h>".} = object
-      ThreadVarSlot* {.importc: "pthread_key_t",
-                     header: "<pthread.h>".} = cint
   else:
     type
       SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = int
       Pthread_attr* {.importc: "pthread_attr_t",
                        header: "<sys/types.h>".} = object
-      ThreadVarSlot* {.importc: "pthread_key_t",
-                     header: "<sys/types.h>".} = object
   type
     Timespec* {.importc: "struct timespec", header: "<time.h>".} = object
       tv_sec*: Time
@@ -118,17 +111,6 @@ else:
 
   proc pthread_cancel*(a1: SysThread): cint {.
     importc: "pthread_cancel", header: pthreadh.}
-
-  proc pthread_getspecific*(a1: ThreadVarSlot): pointer {.
-    importc: "pthread_getspecific", header: pthreadh.}
-  proc pthread_key_create*(a1: ptr ThreadVarSlot,
-                          destruct: proc (x: pointer) {.noconv.}): int32 {.
-    importc: "pthread_key_create", header: pthreadh.}
-  proc pthread_key_delete*(a1: ThreadVarSlot): int32 {.
-    importc: "pthread_key_delete", header: pthreadh.}
-
-  proc pthread_setspecific*(a1: ThreadVarSlot, a2: pointer): int32 {.
-    importc: "pthread_setspecific", header: pthreadh.}
 
   type CpuSet* {.importc: "cpu_set_t", header: schedh.} = object
      when defined(linux) and defined(amd64):
