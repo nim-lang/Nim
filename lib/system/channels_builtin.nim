@@ -139,6 +139,8 @@
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
 
+import std/private/syslocks
+
 type
   pbytes = ptr UncheckedArray[byte]
   RawChannel {.pure, final.} = object ## msg queue for a thread
