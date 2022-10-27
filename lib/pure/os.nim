@@ -1030,10 +1030,10 @@ type
     creationTime*: times.Time         ## Time file was created. Not supported on all systems!
     blockSize*: int                   ## Preferred I/O block size for this object.
                                       ## In some filesystems, this may vary from file to file.
-    isRegular*: bool                  ## Is file regular? (on Unix some "files"
-                                      ## can be non-regular like FIFOs,
-                                      ## devices); for directories `isRegular`
-                                      ## is always `true`, for symlinks it is
+    isSpecial*: bool                  ## Is file special? (on Unix some "files"
+                                      ## can be special=non-regular like FIFOs,
+                                      ## devices); for directories `isSpecial`
+                                      ## is always `false`, for symlinks it is
                                       ## the same as for the link's target.
 
 template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
@@ -1062,7 +1062,6 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     else:
       formalInfo.permissions = {fpUserExec..fpOthersRead}
 
-    formalInfo.isRegular = true
     # Retrieve basic file kind
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
       formalInfo.kind = pcDir
@@ -1096,14 +1095,14 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     checkAndIncludeMode(S_IWOTH, fpOthersWrite)
     checkAndIncludeMode(S_IXOTH, fpOthersExec)
 
-    (formalInfo.kind, formalInfo.isRegular) =
+    (formalInfo.kind, formalInfo.isSpecial) =
       if S_ISDIR(rawInfo.st_mode):
-        (pcDir, true)
+        (pcDir, false)
       elif S_ISLNK(rawInfo.st_mode):
         assert(path != "") # symlinks can't occur for file handles
         getSymlinkFileKind(path)
       else:
-        (pcFile, S_ISREG(rawInfo.st_mode))
+        (pcFile, not S_ISREG(rawInfo.st_mode))
 
 when defined(js):
   when not declared(FileHandle):
@@ -1157,7 +1156,7 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo {.noWeirdTarget.
   ## When `followSymlink` is true (default), symlinks are followed and the
   ## information retrieved is information related to the symlink's target.
   ## Otherwise, information on the symlink itself is retrieved (however,
-  ## field `isRegular` is still determined from the target on Unix).
+  ## field `isSpecial` is still determined from the target on Unix).
   ##
   ## If the information cannot be retrieved, such as when the path doesn't
   ## exist, or when permission restrictions prevent the program from retrieving
