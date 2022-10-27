@@ -1609,8 +1609,8 @@ when notJSnotNims:
 {.push stackTrace: off.}
 
 when not defined(js) and hasThreadSupport and hostOS != "standalone":
-  const insideRLocksModule = false
-  include "system/syslocks"
+  import std/private/syslocks
+  type Handle = int
   include "system/threadlocalstorage"
 
 when not defined(js) and defined(nimV2):
