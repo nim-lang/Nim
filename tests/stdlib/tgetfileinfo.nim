@@ -4,7 +4,7 @@ discard """
 """
 
 import os, strutils
-import std/syncio
+import std/[syncio, assertions]
 # Cases
 #  1 - String : Existing File : Symlink true
 #  2 - String : Existing File : Symlink false
@@ -127,10 +127,37 @@ proc testGetFileInfo =
       echo pcLinkToDir
       echo pcLinkToFile
 
+    doAssert dirInfo.isRegular == true
+    doAssert fileInfo.isRegular == true
+    when defined(posix):
+      doAssert linkDirInfo.isRegular == true
+      doAssert linkFileInfo.isRegular == true
+
     removeDir(dirPath)
     removeFile(filePath)
     when defined(posix):
       removeFile(linkDirPath)
       removeFile(linkFilePath)
+
+  # Test that `isRegular` is set correctly
+  block:
+    when defined(posix):
+      let
+        tmp = getTempDir()
+        fifoPath     = tmp / "test-fifo"
+        linkFifoPath = tmp / "test-link-fifo"
+
+      doAssert execShellCmd("mkfifo " & fifoPath) == 0
+      createSymlink(fifoPath, linkFifoPath)
+
+      let
+        fifoInfo = getFileInfo(fifoPath)
+        linkFifoInfo = getFileInfo(linkFifoPath)
+
+      doAssert fifoInfo.isRegular == false
+      doAssert linkFifoInfo.isRegular == false
+
+      removeFile(fifoPath)
+      removeFile(linkFifoPath)
 
 testGetFileInfo()

@@ -19,9 +19,7 @@ proc removeFile*(file: Path) {.inline, tags: [WriteDirEffect].} =
   ## On Windows, ignores the read-only attribute.
   ##
   ## See also:
-  ## * `removeDir proc`_
-  ## * `copyFile proc`_
-  ## * `copyFileWithPermissions proc`_
+  ## * `removeDir proc <dirs.html#removeDir>`_
   ## * `moveFile proc`_
   removeFile(file.string)
 
@@ -38,8 +36,6 @@ proc moveFile*(source, dest: Path) {.inline,
   ## Can be used to `rename files`:idx:.
   ##
   ## See also:
-  ## * `moveDir proc`_
-  ## * `copyFile proc`_
-  ## * `copyFileWithPermissions proc`_
+  ## * `moveDir proc <dirs.html#moveDir>`_
   ## * `removeFile proc`_
   moveFile(source.string, dest.string)

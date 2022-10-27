@@ -1,7 +1,7 @@
 from paths import Path, ReadDirEffect, WriteDirEffect
 
 from std/private/osdirs import dirExists, createDir, existsOrCreateDir, removeDir,
-                               moveDir, walkPattern, walkFiles, walkDirs, walkDir,
+                               moveDir, walkDir, setCurrentDir,
                                walkDirRec, PathComponent
 
 export PathComponent
@@ -23,8 +23,6 @@ proc createDir*(dir: Path) {.inline, tags: [WriteDirEffect, ReadDirEffect].} =
   ## See also:
   ## * `removeDir proc`_
   ## * `existsOrCreateDir proc`_
-  ## * `copyDir proc`_
-  ## * `copyDirWithPermissions proc`_
   ## * `moveDir proc`_
   createDir(dir.string)
 
@@ -37,8 +35,6 @@ proc existsOrCreateDir*(dir: Path): bool {.inline, tags: [WriteDirEffect, ReadDi
   ## See also:
   ## * `removeDir proc`_
   ## * `createDir proc`_
-  ## * `copyDir proc`_
-  ## * `copyDirWithPermissions proc`_
   ## * `moveDir proc`_
   result = existsOrCreateDir(dir.string)
 
@@ -51,11 +47,9 @@ proc removeDir*(dir: Path, checkDir = false
   ## existed in the first place, unless `checkDir` = true.
   ##
   ## See also:
-  ## * `removeFile proc`_
+  ## * `removeFile proc <files.html#removeFile>`_
   ## * `existsOrCreateDir proc`_
   ## * `createDir proc`_
-  ## * `copyDir proc`_
-  ## * `copyDirWithPermissions proc`_
   ## * `moveDir proc`_
   removeDir(dir.string, checkDir)
 
@@ -68,83 +62,39 @@ proc moveDir*(source, dest: Path) {.inline, tags: [ReadIOEffect, WriteIOEffect].
   ## If this fails, `OSError` is raised.
   ##
   ## See also:
-  ## * `moveFile proc`_
-  ## * `copyDir proc`_
-  ## * `copyDirWithPermissions proc`_
+  ## * `moveFile proc <files.html#moveFile>`_
   ## * `removeDir proc`_
   ## * `existsOrCreateDir proc`_
   ## * `createDir proc`_
   moveDir(source.string, dest.string)
 
-iterator walkPattern*(pattern: Path): Path {.tags: [ReadDirEffect].} =
-  ## Iterate over all the files and directories that match the `pattern`.
-  ##
-  ## On POSIX this uses the `glob`:idx: call.
-  ## `pattern` is OS dependent, but at least the `"*.ext"`
-  ## notation is supported.
-  ##
-  ## See also:
-  ## * `walkFiles iterator`_
-  ## * `walkDirs iterator`_
-  ## * `walkDir iterator`_
-  ## * `walkDirRec iterator`_
-  for p in walkPattern(pattern.string):
-    yield Path(p)
-
-iterator walkFiles*(pattern: Path): Path {.tags: [ReadDirEffect].} =
-  ## Iterate over all the files that match the `pattern`.
-  ##
-  ## On POSIX this uses the `glob`:idx: call.
-  ## `pattern` is OS dependent, but at least the `"*.ext"`
-  ## notation is supported.
-  ##
-  ## See also:
-  ## * `walkPattern iterator`_
-  ## * `walkDirs iterator`_
-  ## * `walkDir iterator`_
-  ## * `walkDirRec iterator`_
-  for p in walkFiles(pattern.string):
-    yield Path(p)
-
-iterator walkDirs*(pattern: Path): Path {.tags: [ReadDirEffect].} =
-  ## Iterate over all the directories that match the `pattern`.
-  ##
-  ## On POSIX this uses the `glob`:idx: call.
-  ## `pattern` is OS dependent, but at least the `"*.ext"`
-  ## notation is supported.
-  ##
-  ## See also:
-  ## * `walkPattern iterator`_
-  ## * `walkFiles iterator`_
-  ## * `walkDir iterator`_
-  ## * `walkDirRec iterator`_
-  for p in walkDirs(pattern.string):
-    yield Path(p)
-
-iterator walkDir*(dir: Path; relative = false, checkDir = false):
+iterator walkDir*(dir: Path; relative = false, checkDir = false,
+                 onlyRegular = false):
     tuple[kind: PathComponent, path: Path] {.tags: [ReadDirEffect].} =
   ## Walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item are returned.
   ##
-  ## Walking is not recursive. If ``relative`` is true (default: false)
-  ## the resulting path is shortened to be relative to ``dir``.
-  ##
-  ## If `checkDir` is true, `OSError` is raised when `dir`
-  ## doesn't exist.
-  for (k, p) in walkDir(dir.string, relative, checkDir):
+  ## Walking is not recursive.
+  ## * If `relative` is true (default: false)
+  ##   the resulting path is shortened to be relative to ``dir``,
+  ##   otherwise the full path is returned.
+  ## * If `checkDir` is true, `OSError` is raised when `dir`
+  ##   doesn't exist.
+  ## * If `onlyRegular` is true, then (besides all directories) only *regular*
+  ##   files (**without** special "file" objects like FIFOs, device files,
+  ##   etc) will be yielded on Unix.
+  for (k, p) in walkDir(dir.string, relative, checkDir, onlyRegular):
     yield (k, Path(p))
 
 iterator walkDirRec*(dir: Path,
                      yieldFilter = {pcFile}, followFilter = {pcDir},
-                     relative = false, checkDir = false): Path {.tags: [ReadDirEffect].} =
+                     relative = false, checkDir = false, onlyRegular = false):
+                    Path {.tags: [ReadDirEffect].} =
   ## Recursively walks over the directory `dir` and yields for each file
   ## or directory in `dir`.
   ##
-  ## If ``relative`` is true (default: false) the resulting path is
-  ## shortened to be relative to ``dir``, otherwise the full path is returned.
-  ##
-  ## If `checkDir` is true, `OSError` is raised when `dir`
-  ## doesn't exist.
+  ## Options `relative`, `checkdir`, `onlyRegular` are explained in
+  ## [walkDir iterator] description.
   ##
   ## .. warning:: Modifying the directory structure while the iterator
   ##   is traversing may result in undefined behavior!
@@ -169,9 +119,15 @@ iterator walkDirRec*(dir: Path,
   ##
   ##
   ## See also:
-  ## * `walkPattern iterator`_
-  ## * `walkFiles iterator`_
-  ## * `walkDirs iterator`_
   ## * `walkDir iterator`_
-  for p in walkDirRec(dir.string, yieldFilter, followFilter, relative, checkDir):
+  for p in walkDirRec(dir.string, yieldFilter, followFilter, relative,
+                      checkDir, onlyRegular):
     yield Path(p)
+
+proc setCurrentDir*(newDir: Path) {.inline, tags: [].} =
+  ## Sets the `current working directory`:idx:; `OSError`
+  ## is raised if `newDir` cannot been set.
+  ##
+  ## See also:
+  ## * `getCurrentDir proc <paths.html#getCurrentDir>`_
+  osdirs.setCurrentDir(newDir.string)

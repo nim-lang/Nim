@@ -1,12 +1,20 @@
 include system/inclrtl
 
-import ospaths2
 import std/[oserrors]
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
 
 const weirdTarget* = defined(nimscript) or defined(js)
+
+
+type
+  ReadDirEffect* = object of ReadIOEffect   ## Effect that denotes a read
+                                            ## operation from the directory
+                                            ## structure.
+  WriteDirEffect* = object of WriteIOEffect ## Effect that denotes a write
+                                            ## operation to
+                                            ## the directory structure.
 
 
 when weirdTarget:
@@ -77,14 +85,17 @@ type
 
 
 when defined(posix) and not weirdTarget:
-  proc getSymlinkFileKind*(path: string): PathComponent =
+  proc getSymlinkFileKind*(path: string):
+      tuple[pc: PathComponent, isRegular: bool] =
     # Helper function.
     var s: Stat
     assert(path != "")
-    if stat(path, s) == 0'i32 and S_ISDIR(s.st_mode):
-      result = pcLinkToDir
-    else:
-      result = pcLinkToFile
+    result = (pcLinkToFile, true)
+    if stat(path, s) == 0'i32:
+      if S_ISDIR(s.st_mode):
+        result = (pcLinkToDir, true)
+      elif not S_ISREG(s.st_mode):
+        result = (pcLinkToFile, false)
 
 proc tryMoveFSObject*(source, dest: string, isDir: bool): bool {.noWeirdTarget.} =
   ## Moves a file (or directory if `isDir` is true) from `source` to `dest`.
@@ -178,3 +189,23 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
   else:
     var res: Stat
     result = lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
+
+when defined(windows) and not weirdTarget:
+  proc openHandle*(path: string, followSymlink=true, writeAccess=false): Handle =
+    var flags = FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL
+    if not followSymlink:
+      flags = flags or FILE_FLAG_OPEN_REPARSE_POINT
+    let access = if writeAccess: GENERIC_WRITE else: 0'i32
+
+    when useWinUnicode:
+      result = createFileW(
+        newWideCString(path), access,
+        FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
+        nil, OPEN_EXISTING, flags, 0
+        )
+    else:
+      result = createFileA(
+        path, access,
+        FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
+        nil, OPEN_EXISTING, flags, 0
+        )
