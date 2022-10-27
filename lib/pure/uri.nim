@@ -32,11 +32,11 @@ runnableExamples:
 
 ## ## Data URI Base64
 runnableExamples:
-  doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
-  doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+  assert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
+  assert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
 
 
-import strutils, parseutils, base64
+import std/[strutils, parseutils, base64]
 import std/private/[since, decode_helpers]
 
 when defined(nimPreviewSlimSystem):
@@ -540,4 +540,11 @@ proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3)
   ## * https://en.wikipedia.org/wiki/Data_URI_scheme
   runnableExamples: static: assert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
   assert encoding.len > 0 and mime.len > 0 # Must *not* be URL-Safe, see RFC-2397
-  result = "data:" & mime & ";charset=" & encoding & ";base64," & base64.encode(data)
+  let base64encoded: string = base64.encode(data)
+  # ("data:".len + ";charset=".len + ";base64,".len) == 22
+  result.setLen(22 + mime.len + encoding.len + base64encoded.len)
+  var index = 0
+  for str in ["data:", mime, ";charset=", encoding, ";base64,", base64encoded]:
+    for chara in str:
+      result[index] = chara
+      inc index
