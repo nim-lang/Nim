@@ -1,7 +1,6 @@
 include system/inclrtl
-import system/ansi_c
 
-const hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
+const hasSharedHeap* = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
 
 when defined(windows):
   type
@@ -34,33 +33,13 @@ when defined(windows):
   proc terminateThread*(hThread: SysThread, dwExitCode: int32): int32 {.
     stdcall, dynlib: "kernel32", importc: "TerminateThread".}
 
-  type
-    ThreadVarSlot* = distinct int32
-
-  proc threadVarAlloc*(): ThreadVarSlot {.
-    importc: "TlsAlloc", stdcall, header: "<windows.h>".}
-  proc threadVarSetValue*(dwTlsIndex: ThreadVarSlot, lpTlsValue: pointer) {.
-    importc: "TlsSetValue", stdcall, header: "<windows.h>".}
-  proc tlsGetValue(dwTlsIndex: ThreadVarSlot): pointer {.
-    importc: "TlsGetValue", stdcall, header: "<windows.h>".}
-
-  proc getLastError(): uint32 {.
-    importc: "GetLastError", stdcall, header: "<windows.h>".}
-  proc setLastError(x: uint32) {.
-    importc: "SetLastError", stdcall, header: "<windows.h>".}
-
-  proc threadVarGetValue*(dwTlsIndex: ThreadVarSlot): pointer =
-    let realLastError = getLastError()
-    result = tlsGetValue(dwTlsIndex)
-    setLastError(realLastError)
-
   proc setThreadAffinityMask*(hThread: SysThread, dwThreadAffinityMask: uint) {.
     importc: "SetThreadAffinityMask", stdcall, header: "<windows.h>".}
 
 elif defined(genode):
   import genode/env
   const
-    GenodeHeader = "genode_cpp/threads.h"
+    GenodeHeader* = "genode_cpp/threads.h"
   type
     SysThread* {.importcpp: "Nim::SysThread",
                  header: GenodeHeader, final, pure.} = object
@@ -75,33 +54,6 @@ elif defined(genode):
                   affinity: cuint) {.
     importcpp: "#.initThread(@)".}
 
-  proc threadVarAlloc*(): ThreadVarSlot = 0
-
-  proc offMainThread(): bool {.
-    importcpp: "Nim::SysThread::offMainThread",
-    header: GenodeHeader.}
-
-  proc threadVarSetValue*(value: pointer) {.
-    importcpp: "Nim::SysThread::threadVarSetValue(@)",
-    header: GenodeHeader.}
-
-  proc threadVarGetValue*(): pointer {.
-    importcpp: "Nim::SysThread::threadVarGetValue()",
-    header: GenodeHeader.}
-
-  var mainTls: pointer
-
-  proc threadVarSetValue*(s: ThreadVarSlot, value: pointer) {.inline.} =
-    if offMainThread():
-      threadVarSetValue(value);
-    else:
-      mainTls = value
-
-  proc threadVarGetValue*(s: ThreadVarSlot): pointer {.inline.} =
-    if offMainThread():
-      threadVarGetValue();
-    else:
-      mainTls
 
 else:
   when not (defined(macosx) or defined(haiku)):
@@ -178,13 +130,6 @@ else:
   proc pthread_setspecific(a1: ThreadVarSlot, a2: pointer): int32 {.
     importc: "pthread_setspecific", header: pthreadh.}
 
-  proc threadVarAlloc*(): ThreadVarSlot {.inline.} =
-    discard pthread_key_create(addr(result), nil)
-  proc threadVarSetValue*(s: ThreadVarSlot, value: pointer) {.inline.} =
-    discard pthread_setspecific(s, value)
-  proc threadVarGetValue*(s: ThreadVarSlot): pointer {.inline.} =
-    result = pthread_getspecific(s)
-
   type CpuSet* {.importc: "cpu_set_t", header: schedh.} = object
      when defined(linux) and defined(amd64):
        abi: array[1024 div (8 * sizeof(culong)), culong]
@@ -214,18 +159,12 @@ else:
 
 const
   emulatedThreadVars* = compileOption("tlsEmulation")
-
-when emulatedThreadVars:
-  # the compiler generates this proc for us, so that we can get the size of
-  # the thread local var block; we use this only for sanity checking though
-  proc nimThreadVarsSize(): int {.noconv, importc: "NimThreadVarsSize".}
-
 # we preallocate a fixed size for thread local storage, so that no heap
 # allocations are needed. Currently less than 16K are used on a 64bit machine.
 # We use `float` for proper alignment:
 const nimTlsSize {.intdefine.} = 16000
 type
-  ThreadLocalStorage = array[0..(nimTlsSize div sizeof(float)), float]
+  ThreadLocalStorage* = array[0..(nimTlsSize div sizeof(float)), float]
   PGcThread* = ptr GcThread
   GcThread* {.pure, inheritable.} = object
     when emulatedThreadVars:
@@ -233,15 +172,8 @@ type
     else:
       nil
     when hasSharedHeap:
-      next, prev: PGcThread
-      stackBottom, stackTop: pointer
-      stackSize: int
+      next*, prev*: PGcThread
+      stackBottom*, stackTop*: pointer
+      stackSize*: int
     else:
       nil
-
-when not defined(useNimRtl):
-  when emulatedThreadVars:
-    if nimThreadVarsSize() > sizeof(ThreadLocalStorage):
-      c_fprintf(cstderr, """too large thread local storage size requested,
-use -d:\"nimTlsSize=X\" to setup even more or stop using unittest.nim""")
-      quit 1
