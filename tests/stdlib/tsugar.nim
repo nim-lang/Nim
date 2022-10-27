@@ -99,7 +99,6 @@ template main() =
     block: # issue #20679
       # this should compile. Previously was broken as `var int` is an `nnkHiddenDeref`
       # which was not handled correctly
-      from sugar import capture
       proc function(data: var int) =
         capture data:
           discard
