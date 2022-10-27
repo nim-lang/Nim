@@ -23,8 +23,6 @@ proc createDir*(dir: Path) {.inline, tags: [WriteDirEffect, ReadDirEffect].} =
   ## See also:
   ## * `removeDir proc`_
   ## * `existsOrCreateDir proc`_
-  ## * `copyDir proc`_
-  ## * `copyDirWithPermissions proc`_
   ## * `moveDir proc`_
   createDir(dir.string)
 
@@ -37,8 +35,6 @@ proc existsOrCreateDir*(dir: Path): bool {.inline, tags: [WriteDirEffect, ReadDi
   ## See also:
   ## * `removeDir proc`_
   ## * `createDir proc`_
-  ## * `copyDir proc`_
-  ## * `copyDirWithPermissions proc`_
   ## * `moveDir proc`_
   result = existsOrCreateDir(dir.string)
 
@@ -51,11 +47,9 @@ proc removeDir*(dir: Path, checkDir = false
   ## existed in the first place, unless `checkDir` = true.
   ##
   ## See also:
-  ## * `removeFile proc`_
+  ## * `removeFile proc <files.html#removeFile>`_
   ## * `existsOrCreateDir proc`_
   ## * `createDir proc`_
-  ## * `copyDir proc`_
-  ## * `copyDirWithPermissions proc`_
   ## * `moveDir proc`_
   removeDir(dir.string, checkDir)
 
@@ -68,9 +62,7 @@ proc moveDir*(source, dest: Path) {.inline, tags: [ReadIOEffect, WriteIOEffect].
   ## If this fails, `OSError` is raised.
   ##
   ## See also:
-  ## * `moveFile proc`_
-  ## * `copyDir proc`_
-  ## * `copyDirWithPermissions proc`_
+  ## * `moveFile proc <files.html#moveFile>`_
   ## * `removeDir proc`_
   ## * `existsOrCreateDir proc`_
   ## * `createDir proc`_
@@ -127,9 +119,6 @@ iterator walkDirRec*(dir: Path,
   ##
   ##
   ## See also:
-  ## * `walkPattern iterator`_
-  ## * `walkFiles iterator`_
-  ## * `walkDirs iterator`_
   ## * `walkDir iterator`_
   for p in walkDirRec(dir.string, yieldFilter, followFilter, relative,
                       checkDir, onlyRegular):
@@ -140,5 +129,5 @@ proc setCurrentDir*(newDir: Path) {.inline, tags: [].} =
   ## is raised if `newDir` cannot been set.
   ##
   ## See also:
-  ## * `getCurrentDir proc`_
+  ## * `getCurrentDir proc <paths.html#getCurrentDir>`_
   osdirs.setCurrentDir(newDir.string)
