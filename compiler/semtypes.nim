@@ -487,7 +487,8 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       a[^1] = semConstExpr(c, a[^1])
       if a[^2].kind != nkEmpty:
         typ = semTypeNode(c, a[^2], nil)
-        typ = fitNodeConsiderViewType(c, typ, a[^1], a[^1].info).typ
+        let def = semExprWithType(c, a[^1], {}, typ)
+        typ = fitNodeConsiderViewType(c, typ, def, def.info).typ
       else:
         typ = a[^1].typ
     elif a[^2].kind != nkEmpty:
@@ -826,7 +827,8 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       n[^1] = semConstExpr(c, n[^1])
       if n[^2].kind != nkEmpty:
         typ = semTypeNode(c, n[^2], nil)
-        typ = fitNodeConsiderViewType(c, typ, n[^1], n[^1].info).typ
+        let def = semExprWithType(c, n[^1], {}, typ)
+        typ = fitNodeConsiderViewType(c, typ, def, def.info).typ
       else:
         typ = n[^1].typ
       propagateToOwner(rectype, typ)
