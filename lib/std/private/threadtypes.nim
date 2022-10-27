@@ -43,7 +43,7 @@ elif defined(genode):
   type
     SysThread* {.importcpp: "Nim::SysThread",
                  header: GenodeHeader, final, pure.} = object
-    GenodeThreadProc = proc (x: pointer) {.noconv.}
+    GenodeThreadProc* = proc (x: pointer) {.noconv.}
     ThreadVarSlot* = int
 
   proc initThread*(s: var SysThread,
@@ -96,9 +96,9 @@ else:
       ThreadVarSlot* {.importc: "pthread_key_t",
                      header: "<sys/types.h>".} = object
   type
-    Timespec {.importc: "struct timespec", header: "<time.h>".} = object
-      tv_sec: Time
-      tv_nsec: clong
+    Timespec* {.importc: "struct timespec", header: "<time.h>".} = object
+      tv_sec*: Time
+      tv_nsec*: clong
 
   proc pthread_attr_init*(a1: var Pthread_attr): cint {.
     importc, header: pthreadh.}
@@ -116,18 +116,18 @@ else:
   proc pthread_join*(a1: SysThread, a2: ptr pointer): cint {.
     importc, header: pthreadh.}
 
-  proc pthread_cancel(a1: SysThread): cint {.
+  proc pthread_cancel*(a1: SysThread): cint {.
     importc: "pthread_cancel", header: pthreadh.}
 
-  proc pthread_getspecific(a1: ThreadVarSlot): pointer {.
+  proc pthread_getspecific*(a1: ThreadVarSlot): pointer {.
     importc: "pthread_getspecific", header: pthreadh.}
-  proc pthread_key_create(a1: ptr ThreadVarSlot,
+  proc pthread_key_create*(a1: ptr ThreadVarSlot,
                           destruct: proc (x: pointer) {.noconv.}): int32 {.
     importc: "pthread_key_create", header: pthreadh.}
-  proc pthread_key_delete(a1: ThreadVarSlot): int32 {.
+  proc pthread_key_delete*(a1: ThreadVarSlot): int32 {.
     importc: "pthread_key_delete", header: pthreadh.}
 
-  proc pthread_setspecific(a1: ThreadVarSlot, a2: pointer): int32 {.
+  proc pthread_setspecific*(a1: ThreadVarSlot, a2: pointer): int32 {.
     importc: "pthread_setspecific", header: pthreadh.}
 
   type CpuSet* {.importc: "cpu_set_t", header: schedh.} = object
@@ -142,12 +142,12 @@ else:
     # libc of android doesn't implement pthread_setaffinity_np,
     # it exposes pthread_gettid_np though, so we can use that in combination
     # with sched_setaffinity to set the thread affinity.
-    type Pid {.importc: "pid_t", header: "<sys/types.h>".} = int32 # From posix_other.nim
+    type Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int32 # From posix_other.nim
 
-    proc setAffinityTID(tid: Pid; setsize: csize_t; s: var CpuSet) {.
+    proc setAffinityTID*(tid: Pid; setsize: csize_t; s: var CpuSet) {.
       importc: "sched_setaffinity", header: schedh.}
 
-    proc pthread_gettid_np(thread: SysThread): Pid {.
+    proc pthread_gettid_np*(thread: SysThread): Pid {.
       importc: "pthread_gettid_np", header: pthreadh.}
 
     proc setAffinity*(thread: SysThread; setsize: csize_t; s: var CpuSet) =

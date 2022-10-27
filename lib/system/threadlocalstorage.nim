@@ -61,10 +61,6 @@ else:
   when not defined(haiku):
     {.passc: "-pthread".}
 
-  const
-    schedh = "#define _GNU_SOURCE\n#include <sched.h>"
-    pthreadh = "#define _GNU_SOURCE\n#include <pthread.h>"
-
   when (defined(linux) or defined(nintendoswitch)) and defined(amd64):
     type
       ThreadVarSlot {.importc: "pthread_key_t",
@@ -84,8 +80,6 @@ else:
     discard pthread_setspecific(s, value)
   proc threadVarGetValue(s: ThreadVarSlot): pointer {.inline.} =
     result = pthread_getspecific(s)
-
-
 
 
 when emulatedThreadVars:
