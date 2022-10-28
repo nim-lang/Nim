@@ -1115,7 +1115,7 @@ elif defined(nimdoc):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
 
 elif defined(genode):
-  include genode/env
+  import genode/env
 
   var systemEnv {.exportc: runtimeEnvSym.}: GenodeEnvPtr
 
@@ -1982,7 +1982,7 @@ when not defined(js):
 
   when hasAlloc:
     when not defined(gcRegions) and not usesDestructors:
-      proc initGC*() {.gcsafe, raises: [].}
+      proc initGC() {.gcsafe, raises: [].}
 
     proc initStackBottom() {.inline, compilerproc.} =
       # WARNING: This is very fragile! An array size of 8 does not work on my
@@ -2095,8 +2095,8 @@ when not defined(js):
       var
         threadDestructionHandlers* {.rtlThreadVar.}: seq[proc () {.closure, gcsafe, raises: [].}]
       when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
-        proc deallocOsPages*() {.rtl, raises: [].}
-      proc threadTrouble*() {.raises: [], gcsafe.}
+        proc deallocOsPages() {.rtl, raises: [].}
+      proc threadTrouble() {.raises: [], gcsafe.}
       # create for the main thread. Note: do not insert this data into the list
       # of all threads; it's not to be stopped etc.
       when not defined(useNimRtl):
@@ -2126,7 +2126,7 @@ when not defined(js):
       template afterThreadRuns() =
         for i in countdown(threadDestructionHandlers.len-1, 0):
           threadDestructionHandlers[i]()
-      
+
       when defined(boehmgc):
         type GCStackBaseProc = proc(sb: pointer, t: pointer) {.noconv.}
         proc boehmGC_call_with_stack_base(sbp: GCStackBaseProc, p: pointer)
@@ -2169,7 +2169,7 @@ when not defined(js):
               deallocThreadStorage(thrd.rawStack)
 
 
-      proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
+      proc threadProcWrapStackFrame*[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
         when defined(boehmgc):
           boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
         elif not defined(nogc) and not defined(gogc) and not defined(gcRegions) and not usesDestructors:
@@ -2185,38 +2185,8 @@ when not defined(js):
         else:
           threadProcWrapDispatch(thrd)
 
-      template threadProcWrapperBody(closure: untyped): untyped =
-        var thrd = cast[ptr Thread[TArg]](closure)
-        var core = thrd.core
-        when declared(globalsSlot): threadVarSetValue(globalsSlot, thrd.core)
-        threadProcWrapStackFrame(thrd)
-        # Since an unhandled exception terminates the whole process (!), there is
-        # no need for a ``try finally`` here, nor would it be correct: The current
-        # exception is tried to be re-raised by the code-gen after the ``finally``!
-        # However this is doomed to fail, because we already unmapped every heap
-        # page!
-
-        # mark as not running anymore:
-        thrd.core = nil
-        thrd.dataFn = nil
-        deallocThreadStorage(cast[pointer](core))
-
-      {.push stack_trace:off.}
-      when defined(windows):
-        proc threadProcWrapper*[TArg](closure: pointer): int32 {.stdcall.} =
-          threadProcWrapperBody(closure)
-          # implicitly return 0
-      elif defined(genode):
-        proc threadProcWrapper*[TArg](closure: pointer) {.noconv.} =
-          threadProcWrapperBody(closure)
-      else:
-        proc threadProcWrapper*[TArg](closure: pointer): pointer {.noconv.} =
-          threadProcWrapperBody(closure)
-      {.pop.}
-
-
-    import std/threads
-    export threads
+      import std/threads
+      export threads
 
   elif not defined(nogc) and not defined(nimscript):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()

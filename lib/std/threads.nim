@@ -54,7 +54,7 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 when defined(genode):
-  include genode/env
+  import genode/env
 
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
@@ -64,22 +64,6 @@ when hasThreadSupport:
   {.pragma: rtlThreadVar, threadvar.}
 else:
   {.pragma: rtlThreadVar.}
-
-when defined(boehmgc):
-  when defined(windows):
-    when sizeof(int) == 8:
-      const boehmLib = "boehmgc64.dll"
-    else:
-      const boehmLib = "boehmgc.dll"
-  elif defined(macosx):
-    const boehmLib = "libgc.dylib"
-  elif defined(openbsd):
-    const boehmLib = "libgc.so.(4|5).0"
-  elif defined(freebsd):
-    const boehmLib = "libgc-threaded.so.1"
-  else:
-    const boehmLib = "libgc.so.1"
-  {.pragma: boehmGC, noconv, dynlib: boehmLib.}
 
 
 when hasAllocStack or defined(zephyr) or defined(freertos):
@@ -126,7 +110,34 @@ proc onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].}) =
   ## in a thread nevertheless cause the whole process to die.
   threadDestructionHandlers.add handler
 
+template threadProcWrapperBody(closure: untyped): untyped =
+  var thrd = cast[ptr Thread[TArg]](closure)
+  var core = thrd.core
+  when declared(globalsSlot): threadVarSetValue(globalsSlot, thrd.core)
+  threadProcWrapStackFrame(thrd)
+  # Since an unhandled exception terminates the whole process (!), there is
+  # no need for a ``try finally`` here, nor would it be correct: The current
+  # exception is tried to be re-raised by the code-gen after the ``finally``!
+  # However this is doomed to fail, because we already unmapped every heap
+  # page!
 
+  # mark as not running anymore:
+  thrd.core = nil
+  thrd.dataFn = nil
+  deallocThreadStorage(cast[pointer](core))
+
+{.push stack_trace:off.}
+when defined(windows):
+  proc threadProcWrapper[TArg](closure: pointer): int32 {.stdcall.} =
+    threadProcWrapperBody(closure)
+    # implicitly return 0
+elif defined(genode):
+  proc threadProcWrapper[TArg](closure: pointer) {.noconv.} =
+    threadProcWrapperBody(closure)
+else:
+  proc threadProcWrapper[TArg](closure: pointer): pointer {.noconv.} =
+    threadProcWrapperBody(closure)
+{.pop.}
 
 proc running*[TArg](t: Thread[TArg]): bool {.inline.} =
   ## Returns true if `t` is running.

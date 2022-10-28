@@ -37,7 +37,6 @@ when defined(windows):
     importc: "SetThreadAffinityMask", stdcall, header: "<windows.h>".}
 
 elif defined(genode):
-  import genode/env
   const
     GenodeHeader* = "genode_cpp/threads.h"
   type

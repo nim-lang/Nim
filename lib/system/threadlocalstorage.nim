@@ -22,7 +22,6 @@ when defined(windows):
     setLastError(realLastError)
 
 elif defined(genode):
-  import genode/env
   const
     GenodeHeader = "genode_cpp/threads.h"
 

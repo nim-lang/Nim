@@ -15,7 +15,7 @@ when not defined(genode):
   {.error: "Genode only module".}
 
 when not declared(GenodeEnv):
-  include genode/env
+  import genode/env
 
 type RamDataspaceCapability {.
   importcpp: "Genode::Ram_dataspace_capability", pure.} = object
