@@ -119,7 +119,7 @@
   - Added `getIsoWeeksInYear` to return the number of weeks in a week-based year.
 - Added new modules which were part of `std/os`:
   - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
-  - Added `std/paths`, `std/dirs`, `std/files`, `std/symlinks` and `std/appdirs`. 
+  - Added `std/paths`, `std/dirs`, `std/files`, `std/symlinks` and `std/appdirs`.
 - Added `sep` parameter in `std/uri` to specify the query separator.
 - Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
   and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)
@@ -238,7 +238,8 @@
   related functions produced on the backend. This prevents conflicts with other Nim
   static libraries.
 
-- When compiling for Release the flag `-fno-math-errno` is used for GCC.
+- When compiling with `-d:release` the flag `-fno-math-errno` is used for GCC.
+- When compiling with `-d:danger`  the flag `-fno-signed-zeros` is used for GCC and Clang.
 
 
 ## Tool changes
