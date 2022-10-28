@@ -2129,6 +2129,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isInferred, isInferredConvertible:
     if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
       result = c.semInferredLambda(c, m.bindings, arg)
+      if result == nil: return nil
     elif arg.kind != nkSym:
       return nil
     elif arg.sym.kind in {skMacro, skTemplate}:

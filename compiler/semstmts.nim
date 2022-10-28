@@ -1705,6 +1705,9 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
   #s.owner = original
 
   n = replaceTypesInBody(c, pt, n, original)
+  if n.typ[0].kind == tyUntyped:
+    return nil
+  assert n.typ.n[0].typ != nil
   result = n
   s.ast = result
   n[namePos].sym = s
