@@ -1,5 +1,5 @@
 discard """
-  errormsg: "conversion from int literal(0) to range 1..5(int) is invalid"
+  errormsg: "cannot convert 0 to range 1..5(int)"
   line: 9
 """
 

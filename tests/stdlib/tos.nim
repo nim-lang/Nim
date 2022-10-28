@@ -361,7 +361,7 @@ block: # walkDir
       removeDir("walkdir_test")
 
   when defined(posix):
-    block walkDirRegular:
+    block walkDirSpecial:
       createDir("walkdir_test")
       doAssert execShellCmd("mkfifo walkdir_test/fifo") == 0
       createSymlink("fifo", "walkdir_test/fifo_link")
@@ -370,9 +370,9 @@ block: # walkDir
                 (pcFile, "fifo") in withSpecialFiles and
                 (pcLinkToFile, "fifo_link") in withSpecialFiles)
       # now Unix special files are excluded from walkdir output:
-      let onlyRegularFiles = toSeq(walkDir("walkdir_test", relative = true,
-                                           onlyRegular = true))
-      doAssert onlyRegularFiles.len == 0
+      let skipSpecialFiles = toSeq(walkDir("walkdir_test", relative = true,
+                                           skipSpecial = true))
+      doAssert skipSpecialFiles.len == 0
       removeDir("walkdir_test")
 
 block normalizedPath:

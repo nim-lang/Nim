@@ -127,11 +127,11 @@ proc testGetFileInfo =
       echo pcLinkToDir
       echo pcLinkToFile
 
-    doAssert dirInfo.isRegular == true
-    doAssert fileInfo.isRegular == true
+    doAssert dirInfo.isSpecial == false
+    doAssert fileInfo.isSpecial == false
     when defined(posix):
-      doAssert linkDirInfo.isRegular == true
-      doAssert linkFileInfo.isRegular == true
+      doAssert linkDirInfo.isSpecial == false
+      doAssert linkFileInfo.isSpecial == false
 
     removeDir(dirPath)
     removeFile(filePath)
@@ -139,7 +139,7 @@ proc testGetFileInfo =
       removeFile(linkDirPath)
       removeFile(linkFilePath)
 
-  # Test that `isRegular` is set correctly
+  # Test that `isSpecial` is set correctly
   block:
     when defined(posix):
       let
@@ -154,8 +154,8 @@ proc testGetFileInfo =
         fifoInfo = getFileInfo(fifoPath)
         linkFifoInfo = getFileInfo(linkFifoPath)
 
-      doAssert fifoInfo.isRegular == false
-      doAssert linkFifoInfo.isRegular == false
+      doAssert fifoInfo.isSpecial == true
+      doAssert linkFifoInfo.isSpecial == true
 
       removeFile(fifoPath)
       removeFile(linkFifoPath)
