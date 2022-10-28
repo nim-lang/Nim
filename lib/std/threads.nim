@@ -45,9 +45,6 @@
 ##  deinitLock(L)
 
 import std/private/[threadtypes]
-import system/ansi_c
-include system/inclrtl
-
 export Thread
 
 when defined(nimPreviewSlimSystem):
@@ -55,15 +52,6 @@ when defined(nimPreviewSlimSystem):
 
 when defined(genode):
   import genode/env
-
-const
-  hasThreadSupport = compileOption("threads") and not defined(nimscript)
-  usesDestructors = defined(gcDestructors) or defined(gcHooks)
-
-when hasThreadSupport:
-  {.pragma: rtlThreadVar, threadvar.}
-else:
-  {.pragma: rtlThreadVar.}
 
 
 when hasAllocStack or defined(zephyr) or defined(freertos):
