@@ -48,6 +48,8 @@ import std/private/[threadtypes]
 import system/ansi_c
 include system/inclrtl
 
+export Thread
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -55,7 +57,6 @@ when defined(genode):
   include genode/env
 
 const
-  hasAllocStack = defined(zephyr) # maybe freertos too?
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   usesDestructors = defined(gcDestructors) or defined(gcHooks)
 
@@ -80,15 +81,6 @@ when defined(boehmgc):
     const boehmLib = "libgc.so.1"
   {.pragma: boehmGC, noconv, dynlib: boehmLib.}
 
-when defined(gcDestructors):
-  proc allocThreadStorage(size: int): pointer =
-    result = c_malloc(csize_t size)
-    zeroMem(result, size)
-
-  proc deallocThreadStorage(p: pointer) = c_free(p)
-else:
-  template allocThreadStorage(size: untyped): untyped = allocShared0(size)
-  template deallocThreadStorage(p: pointer) = deallocShared(p)
 
 when hasAllocStack or defined(zephyr) or defined(freertos):
   const
@@ -123,19 +115,7 @@ when defined(zephyr):
 # ``stdcall`` on Windows and ``noconv`` on UNIX. Alternative would be to just
 # use ``stdcall`` since it is mapped to ``noconv`` on UNIX anyway.
 
-type
-  Thread*[TArg] = object
-    core: PGcThread
-    sys: SysThread
-    when TArg is void:
-      dataFn: proc () {.nimcall, gcsafe.}
-    else:
-      dataFn: proc (m: TArg) {.nimcall, gcsafe.}
-      data: TArg
-    when hasAllocStack:
-      rawStack: pointer
 
-proc `=copy`*[TArg](x: var Thread[TArg], y: Thread[TArg]) {.error.}
 
 proc onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].}) =
   ## Registers a *thread local* handler that is called at the thread's
@@ -146,96 +126,7 @@ proc onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].}) =
   ## in a thread nevertheless cause the whole process to die.
   threadDestructionHandlers.add handler
 
-template afterThreadRuns() =
-  for i in countdown(threadDestructionHandlers.len-1, 0):
-    threadDestructionHandlers[i]()
 
-
-when defined(boehmgc):
-  type GCStackBaseProc = proc(sb: pointer, t: pointer) {.noconv.}
-  proc boehmGC_call_with_stack_base(sbp: GCStackBaseProc, p: pointer)
-    {.importc: "GC_call_with_stack_base", boehmGC.}
-  proc boehmGC_register_my_thread(sb: pointer)
-    {.importc: "GC_register_my_thread", boehmGC.}
-  proc boehmGC_unregister_my_thread()
-    {.importc: "GC_unregister_my_thread", boehmGC.}
-
-  proc threadProcWrapDispatch[TArg](sb: pointer, thrd: pointer) {.noconv, raises: [].} =
-    boehmGC_register_my_thread(sb)
-    try:
-      let thrd = cast[ptr Thread[TArg]](thrd)
-      when TArg is void:
-        thrd.dataFn()
-      else:
-        thrd.dataFn(thrd.data)
-    except:
-      threadTrouble()
-    finally:
-      afterThreadRuns()
-    boehmGC_unregister_my_thread()
-else:
-  proc threadProcWrapDispatch[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
-    try:
-      when TArg is void:
-        thrd.dataFn()
-      else:
-        when defined(nimV2):
-          thrd.dataFn(thrd.data)
-        else:
-          var x: TArg
-          deepCopy(x, thrd.data)
-          thrd.dataFn(x)
-    except:
-      threadTrouble()
-    finally:
-      afterThreadRuns()
-      when hasAllocStack:
-        deallocThreadStorage(thrd.rawStack)
-
-proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
-  when defined(boehmgc):
-    boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
-  elif not defined(nogc) and not defined(gogc) and not defined(gcRegions) and not usesDestructors:
-    var p {.volatile.}: pointer
-    # init the GC for refc/markandsweep
-    nimGC_setStackBottom(addr(p))
-    when declared(initGC):
-      initGC()
-    when declared(threadType):
-      threadType = ThreadType.NimThread
-    threadProcWrapDispatch[TArg](thrd)
-    when declared(deallocOsPages): deallocOsPages()
-  else:
-    threadProcWrapDispatch(thrd)
-
-template threadProcWrapperBody(closure: untyped): untyped =
-  var thrd = cast[ptr Thread[TArg]](closure)
-  var core = thrd.core
-  when declared(globalsSlot): threadVarSetValue(globalsSlot, thrd.core)
-  threadProcWrapStackFrame(thrd)
-  # Since an unhandled exception terminates the whole process (!), there is
-  # no need for a ``try finally`` here, nor would it be correct: The current
-  # exception is tried to be re-raised by the code-gen after the ``finally``!
-  # However this is doomed to fail, because we already unmapped every heap
-  # page!
-
-  # mark as not running anymore:
-  thrd.core = nil
-  thrd.dataFn = nil
-  deallocThreadStorage(cast[pointer](core))
-
-{.push stack_trace:off.}
-when defined(windows):
-  proc threadProcWrapper[TArg](closure: pointer): int32 {.stdcall.} =
-    threadProcWrapperBody(closure)
-    # implicitly return 0
-elif defined(genode):
-  proc threadProcWrapper[TArg](closure: pointer) {.noconv.} =
-    threadProcWrapperBody(closure)
-else:
-  proc threadProcWrapper[TArg](closure: pointer): pointer {.noconv.} =
-    threadProcWrapperBody(closure)
-{.pop.}
 
 proc running*[TArg](t: Thread[TArg]): bool {.inline.} =
   ## Returns true if `t` is running.

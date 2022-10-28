@@ -159,3 +159,19 @@ type
       stackSize*: int
     else:
       nil
+
+const hasAllocStack* = defined(zephyr) # maybe freertos too?
+
+type
+  Thread*[TArg] = object
+    core*: PGcThread
+    sys*: SysThread
+    when TArg is void:
+      dataFn*: proc () {.nimcall, gcsafe.}
+    else:
+      dataFn*: proc (m: TArg) {.nimcall, gcsafe.}
+      data*: TArg
+    when hasAllocStack:
+      rawStack*: pointer
+
+proc `=copy`*[TArg](x: var Thread[TArg], y: Thread[TArg]) {.error.}
