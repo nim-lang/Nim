@@ -2103,6 +2103,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       result = newSymNode(inferred, arg.info)
     inc(m.convMatches)
     arg = result
+    if arg.typ == nil: return nil
     r = typeRel(m, f, arg.typ)
 
   case r
@@ -2129,7 +2130,6 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isInferred, isInferredConvertible:
     if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
       result = c.semInferredLambda(c, m.bindings, arg)
-      if result == nil: return nil
     elif arg.kind != nkSym:
       return nil
     elif arg.sym.kind in {skMacro, skTemplate}:
@@ -2138,6 +2138,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
       result = newSymNode(inferred, arg.info)
     if r == isInferredConvertible:
+      assert result.typ.n[0].typ != nil
       inc(m.convMatches)
       result = implicitConv(nkHiddenStdConv, f, result, m, c)
     else:
