@@ -9,7 +9,7 @@ block:
   static:
     foo(int)
 
-# #4412
+# bug #4412
 block:
   proc default[T](t: typedesc[T]): T {.inline.} = discard
 
@@ -595,3 +595,9 @@ proc main() = # bug #12994
 
 static: main()
 main()
+
+# bug #19201
+proc foo(s: sink string) = doAssert s.len == 3
+
+static:
+  foo("abc")

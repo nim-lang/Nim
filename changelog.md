@@ -78,9 +78,6 @@
 
 - Removed the `nimIncrSeqV3` define.
 
-- Static linking against OpenSSL versions below 1.1, previously done by
-  setting `-d:openssl10`, is no longer supported.
-
 - `macros.getImpl` for `const` symbols now returns the full definition node
   (as `nnkConstDef`) rather than the AST of the constant value.
 
@@ -98,7 +95,7 @@
 ## Standard library additions and changes
 
 [//]: # "Changes:"
-- OpenSSL version 3 is now supported by setting either `-d:sslVersion=3` or `-d:useOpenssl3`.
+- OpenSSL 3 is now supported.
 - `macros.parseExpr` and `macros.parseStmt` now accept an optional
   filename argument for more informative errors.
 - Module `colors` expanded with missing colors from the CSS color standard.
@@ -120,7 +117,9 @@
   - Added a `initDateTime` overload to create a datetime from an ISO week date.
   - Added `getIsoWeekAndYear` to get an ISO week number and week-based year from a datetime.
   - Added `getIsoWeeksInYear` to return the number of weeks in a week-based year.
-- Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
+- Added new modules which were part of `std/os`:
+  - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
+  - Added `std/paths`, `std/dirs`, `std/files`, `std/symlinks` and `std/appdirs`. 
 - Added `sep` parameter in `std/uri` to specify the query separator.
 - Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
   and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)
@@ -135,7 +134,8 @@
 - Added [`jsre.hasIndices`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/hasIndices)
 - Added `capacity` for `string` and `seq` to return the current capacity, see https://github.com/nim-lang/RFCs/issues/460
 - Added `openArray[char]` overloads for `std/parseutils` allowing more code reuse.
-- Added `safe` parameter to `base64.encodeMime`
+- Added `openArray[char]` overloads for `std/unicode` allowing more code reuse.
+- Added `safe` parameter to `base64.encodeMime`.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.

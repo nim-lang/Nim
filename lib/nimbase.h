@@ -478,7 +478,9 @@ typedef char* NCSTRING;
   } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
 
 /* declared size of a sequence/variable length array: */
-#if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
+#if defined(__cplusplus) && defined(__clang__)
+#  define SEQ_DECL_SIZE 1
+#elif defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
 #  define SEQ_DECL_SIZE /* empty is correct! */
 #else
 #  define SEQ_DECL_SIZE 1000000

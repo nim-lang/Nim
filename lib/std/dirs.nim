@@ -23,8 +23,6 @@ proc createDir*(dir: Path) {.inline, tags: [WriteDirEffect, ReadDirEffect].} =
   ## See also:
   ## * `removeDir proc`_
   ## * `existsOrCreateDir proc`_
-  ## * `copyDir proc`_
-  ## * `copyDirWithPermissions proc`_
   ## * `moveDir proc`_
   createDir(dir.string)
 
@@ -37,8 +35,6 @@ proc existsOrCreateDir*(dir: Path): bool {.inline, tags: [WriteDirEffect, ReadDi
   ## See also:
   ## * `removeDir proc`_
   ## * `createDir proc`_
-  ## * `copyDir proc`_
-  ## * `copyDirWithPermissions proc`_
   ## * `moveDir proc`_
   result = existsOrCreateDir(dir.string)
 
@@ -51,11 +47,9 @@ proc removeDir*(dir: Path, checkDir = false
   ## existed in the first place, unless `checkDir` = true.
   ##
   ## See also:
-  ## * `removeFile proc`_
+  ## * `removeFile proc <files.html#removeFile>`_
   ## * `existsOrCreateDir proc`_
   ## * `createDir proc`_
-  ## * `copyDir proc`_
-  ## * `copyDirWithPermissions proc`_
   ## * `moveDir proc`_
   removeDir(dir.string, checkDir)
 
@@ -68,16 +62,14 @@ proc moveDir*(source, dest: Path) {.inline, tags: [ReadIOEffect, WriteIOEffect].
   ## If this fails, `OSError` is raised.
   ##
   ## See also:
-  ## * `moveFile proc`_
-  ## * `copyDir proc`_
-  ## * `copyDirWithPermissions proc`_
+  ## * `moveFile proc <files.html#moveFile>`_
   ## * `removeDir proc`_
   ## * `existsOrCreateDir proc`_
   ## * `createDir proc`_
   moveDir(source.string, dest.string)
 
 iterator walkDir*(dir: Path; relative = false, checkDir = false,
-                 onlyRegular = false):
+                 skipSpecial = false):
     tuple[kind: PathComponent, path: Path] {.tags: [ReadDirEffect].} =
   ## Walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item are returned.
@@ -88,20 +80,20 @@ iterator walkDir*(dir: Path; relative = false, checkDir = false,
   ##   otherwise the full path is returned.
   ## * If `checkDir` is true, `OSError` is raised when `dir`
   ##   doesn't exist.
-  ## * If `onlyRegular` is true, then (besides all directories) only *regular*
+  ## * If `skipSpecial` is true, then (besides all directories) only *regular*
   ##   files (**without** special "file" objects like FIFOs, device files,
   ##   etc) will be yielded on Unix.
-  for (k, p) in walkDir(dir.string, relative, checkDir, onlyRegular):
+  for (k, p) in walkDir(dir.string, relative, checkDir, skipSpecial):
     yield (k, Path(p))
 
 iterator walkDirRec*(dir: Path,
                      yieldFilter = {pcFile}, followFilter = {pcDir},
-                     relative = false, checkDir = false, onlyRegular = false):
+                     relative = false, checkDir = false, skipSpecial = false):
                     Path {.tags: [ReadDirEffect].} =
   ## Recursively walks over the directory `dir` and yields for each file
   ## or directory in `dir`.
   ##
-  ## Options `relative`, `checkdir`, `onlyRegular` are explained in
+  ## Options `relative`, `checkdir`, `skipSpecial` are explained in
   ## [walkDir iterator] description.
   ##
   ## .. warning:: Modifying the directory structure while the iterator
@@ -127,12 +119,9 @@ iterator walkDirRec*(dir: Path,
   ##
   ##
   ## See also:
-  ## * `walkPattern iterator`_
-  ## * `walkFiles iterator`_
-  ## * `walkDirs iterator`_
   ## * `walkDir iterator`_
   for p in walkDirRec(dir.string, yieldFilter, followFilter, relative,
-                      checkDir, onlyRegular):
+                      checkDir, skipSpecial):
     yield Path(p)
 
 proc setCurrentDir*(newDir: Path) {.inline, tags: [].} =
@@ -140,5 +129,5 @@ proc setCurrentDir*(newDir: Path) {.inline, tags: [].} =
   ## is raised if `newDir` cannot been set.
   ##
   ## See also:
-  ## * `getCurrentDir proc`_
+  ## * `getCurrentDir proc <paths.html#getCurrentDir>`_
   osdirs.setCurrentDir(newDir.string)
