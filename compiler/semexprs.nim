@@ -3077,8 +3077,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkCurly: result = semSetConstr(c, n, expectedType)
   of nkBracket:
     result = semArrayConstr(c, n, flags, expectedType)
-    if n.typ != nil and n.typ.skipTypes(abstractRange).kind == tySequence:
-      result.typ = n.typ # keeps tySequence type for []
   of nkObjConstr: result = semObjConstr(c, n, flags, expectedType)
   of nkLambdaKinds: result = semProcAux(c, n, skProc, lambdaPragmas, flags)
   of nkDerefExpr: result = semDeref(c, n)

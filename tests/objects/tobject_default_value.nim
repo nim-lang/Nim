@@ -418,21 +418,12 @@ template main {.dirty.} =
     var z {.noinit.}: Pure = Pure(id: 77)
     doAssert z.id == 77
 
+  block: # bug #20681
+    type A = object
+      d: DateTime = DateTime()
 
-  block:
-    type TokenData = object
-      campaignMemberships = Table[string, string]()
-
-    let x = default(TokenData)
-    doAssert x.campaignMemberships.len == 0
-
-  when false: # todo fixme
-    block:
-      type TokenData = object
-        campaignMemberships = newTable[string, string]()
-
-      let x = default(TokenData)
-      doAssert x.campaignMemberships.len == 0
+    let x = default(A)
+    doAssert $x == "(d: Uninitialized DateTime)"
 
 
 static: main()
