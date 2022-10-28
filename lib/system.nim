@@ -2104,12 +2104,12 @@ when not defined(js):
         when declared(initGC):
           initGC()
           when not emulatedThreadVars:
-            type ThreadType* {.pure.} = enum
+            type ThreadType {.pure.} = enum
               None = 0,
               NimThread = 1,
               ForeignThread = 2
             var
-              threadType* {.rtlThreadVar.}: ThreadType
+              threadType {.rtlThreadVar.}: ThreadType
 
             threadType = ThreadType.NimThread
 
@@ -2168,8 +2168,7 @@ when not defined(js):
             when hasAllocStack:
               deallocThreadStorage(thrd.rawStack)
 
-
-      proc threadProcWrapStackFrame*[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
+      proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
         when defined(boehmgc):
           boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
         elif not defined(nogc) and not defined(gogc) and not defined(gcRegions) and not usesDestructors:
@@ -2184,6 +2183,22 @@ when not defined(js):
           when declared(deallocOsPages): deallocOsPages()
         else:
           threadProcWrapDispatch(thrd)
+
+      template threadProcWrapperBody*(closure: untyped): untyped =
+        var thrd = cast[ptr Thread[TArg]](closure)
+        var core = thrd.core
+        when declared(globalsSlot): threadVarSetValue(globalsSlot, thrd.core)
+        threadProcWrapStackFrame(thrd)
+        # Since an unhandled exception terminates the whole process (!), there is
+        # no need for a ``try finally`` here, nor would it be correct: The current
+        # exception is tried to be re-raised by the code-gen after the ``finally``!
+        # However this is doomed to fail, because we already unmapped every heap
+        # page!
+
+        # mark as not running anymore:
+        thrd.core = nil
+        thrd.dataFn = nil
+        deallocThreadStorage(cast[pointer](core))
 
       import std/threads
       export threads
