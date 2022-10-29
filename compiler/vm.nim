@@ -460,8 +460,11 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
           else: int(src.intVal != 0)
     of tyFloat..tyFloat64:
       dest.ensureKind(rkFloat)
-      case skipTypes(srctyp, abstractRange).kind
+      let srcKind = skipTypes(srctyp, abstractRange).kind
+      case srcKind
       of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyBool, tyChar:
+        dest.floatVal = toBiggestFloat(src.intVal)
+      elif src.kind == rkInt:
         dest.floatVal = toBiggestFloat(src.intVal)
       else:
         dest.floatVal = src.floatVal
