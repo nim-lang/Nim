@@ -785,7 +785,7 @@ proc semConst(c: PContext, n: PNode): PNode =
       typ = def.typ
 
     # evaluate the node
-    def = semConstExpr(c, def)
+    def = semConstExpr(c, def, typ)
     if def == nil:
       localError(c.config, a[^1].info, errConstExprExpected)
       continue

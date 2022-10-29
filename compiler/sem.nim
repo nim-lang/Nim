@@ -368,6 +368,21 @@ proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
 const
   errConstExprExpected = "constant expression expected"
 
+proc transformConstBuiltins(n: PNode; expectedType: PType): PNode =
+  result = n
+  let srcKind = n.typ.kind
+  let destKind = expectedType.kind
+  if srcKind == tyString and destKind == tyCstring:
+    result = newNodeIT(nkStringToCString, n.info, n.typ)
+    newSeq(result.sons, 1)
+    result[0] = n
+    result.typ = expectedType
+  elif srcKind == tyCstring and destKind == tyString:
+    result = newNodeIT(nkCStringToString, n.info, n.typ)
+    newSeq(result.sons, 1)
+    result[0] = n
+    result.typ = expectedType
+
 proc semConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   var e = semExprWithType(c, n, expectedType = expectedType)
   if e == nil:
@@ -390,6 +405,8 @@ proc semConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
       result = e
     else:
       result = fixupTypeAfterEval(c, result, e)
+  elif expectedType != nil:
+    result = transformConstBuiltins(result, expectedType)
 
 proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   if efNeedStatic in flags:
