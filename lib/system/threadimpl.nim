@@ -1,5 +1,5 @@
 var
-  threadDestructionHandlers* {.rtlThreadVar.}: seq[proc () {.closure, gcsafe, raises: [].}]
+  nimThreadDestructionHandlers* {.rtlThreadVar.}: seq[proc () {.closure, gcsafe, raises: [].}]
 when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
   proc deallocOsPages() {.rtl, raises: [].}
 proc threadTrouble() {.raises: [], gcsafe.}
@@ -30,8 +30,8 @@ else:
   template deallocThreadStorage(p: pointer) = deallocShared(p)
 
 template afterThreadRuns() =
-  for i in countdown(threadDestructionHandlers.len-1, 0):
-    threadDestructionHandlers[i]()
+  for i in countdown(nimThreadDestructionHandlers.len-1, 0):
+    nimThreadDestructionHandlers[i]()
 
 when defined(boehmgc):
   type GCStackBaseProc = proc(sb: pointer, t: pointer) {.noconv.}
