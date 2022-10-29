@@ -9,10 +9,6 @@
 
 ## Thread support for Nim.
 ##
-## **Note**: This is part of the system module. Do not import it directly.
-## To activate thread support you need to compile
-## with the `--threads:on`:option: command line switch.
-##
 ## Nim's memory model for threads is quite different from other common
 ## programming languages (C, Pascal): Each thread has its own
 ## (garbage collected) heap and sharing of memory is restricted. This helps
@@ -47,6 +43,8 @@
 import std/private/[threadtypes]
 export Thread
 
+import system/ansi_c
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -71,6 +69,14 @@ else:
         1024*256*sizeof(int)-1
 
     ThreadStackSize = ThreadStackMask+1 - StackGuardSize
+
+
+when defined(gcDestructors):
+  proc allocThreadStorage(size: int): pointer =
+    result = c_malloc(csize_t size)
+    zeroMem(result, size)
+else:
+  template allocThreadStorage(size: untyped): untyped = allocShared0(size)
 
 #const globalsSlot = ThreadVarSlot(0)
 #sysAssert checkSlot.int == globalsSlot.int
@@ -102,14 +108,14 @@ proc onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].}) =
 {.push stack_trace:off.}
 when defined(windows):
   proc threadProcWrapper[TArg](closure: pointer): int32 {.stdcall.} =
-    threadProcWrapperBody(closure)
+    nimThreadProcWrapperBody(closure)
     # implicitly return 0
 elif defined(genode):
   proc threadProcWrapper[TArg](closure: pointer) {.noconv.} =
-    threadProcWrapperBody(closure)
+    nimThreadProcWrapperBody(closure)
 else:
   proc threadProcWrapper[TArg](closure: pointer): pointer {.noconv.} =
-    threadProcWrapperBody(closure)
+    nimThreadProcWrapperBody(closure)
 {.pop.}
 
 proc running*[TArg](t: Thread[TArg]): bool {.inline.} =

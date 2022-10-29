@@ -6,7 +6,7 @@ when defined(windows):
 
   proc threadVarAlloc(): ThreadVarSlot {.
     importc: "TlsAlloc", stdcall, header: "<windows.h>".}
-  proc threadVarSetValue*(dwTlsIndex: ThreadVarSlot, lpTlsValue: pointer) {.
+  proc threadVarSetValue(dwTlsIndex: ThreadVarSlot, lpTlsValue: pointer) {.
     importc: "TlsSetValue", stdcall, header: "<windows.h>".}
   proc tlsGetValue(dwTlsIndex: ThreadVarSlot): pointer {.
     importc: "TlsGetValue", stdcall, header: "<windows.h>".}
@@ -26,7 +26,7 @@ elif defined(genode):
     GenodeHeader = "genode_cpp/threads.h"
 
   type
-    ThreadVarSlot* = int
+    ThreadVarSlot = int
 
   proc threadVarAlloc(): ThreadVarSlot = 0
 
@@ -34,7 +34,7 @@ elif defined(genode):
     importcpp: "Nim::SysThread::offMainThread",
     header: GenodeHeader.}
 
-  proc threadVarSetValue*(value: pointer) {.
+  proc threadVarSetValue(value: pointer) {.
     importcpp: "Nim::SysThread::threadVarSetValue(@)",
     header: GenodeHeader.}
 
@@ -44,7 +44,7 @@ elif defined(genode):
 
   var mainTls: pointer
 
-  proc threadVarSetValue*(s: ThreadVarSlot, value: pointer) {.inline.} =
+  proc threadVarSetValue(s: ThreadVarSlot, value: pointer) {.inline.} =
     if offMainThread():
       threadVarSetValue(value);
     else:
@@ -89,7 +89,7 @@ else:
 
   proc threadVarAlloc(): ThreadVarSlot {.inline.} =
     discard pthread_key_create(addr(result), nil)
-  proc threadVarSetValue*(s: ThreadVarSlot, value: pointer) {.inline.} =
+  proc threadVarSetValue(s: ThreadVarSlot, value: pointer) {.inline.} =
     discard pthread_setspecific(s, value)
   proc threadVarGetValue(s: ThreadVarSlot): pointer {.inline.} =
     result = pthread_getspecific(s)
@@ -103,7 +103,7 @@ when emulatedThreadVars:
 
 
 when emulatedThreadVars:
-  var globalsSlot*: ThreadVarSlot
+  var globalsSlot: ThreadVarSlot
 
   when not defined(useNimRtl):
     var mainThread: GcThread
