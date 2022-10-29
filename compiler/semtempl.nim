@@ -227,7 +227,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
           closeScope(c)
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
-      if n.kind != nkSym:
+      if n.kind != nkSym and not (n.kind == nkIdent and n.ident.s == "_"):
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
         styleCheckDef(c.c, n.info, local)
@@ -376,6 +376,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         result = newSymNode(s, n.info)
         onUse(n.info, s)
       else:
+        if s.kind in {skType, skVar, skLet, skConst}:
+          discard qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
         result = semTemplSymbol(c.c, n, s, c.noGenSym > 0)
   of nkBind:
     result = semTemplBody(c, n[0])
@@ -511,7 +513,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result.add newIdentNode(getIdent(c.c.cache, "{}"), n.info)
     for i in 0..<n.len: result.add(n[i])
     result = semTemplBodySons(c, result)
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     checkSonsLen(n, 2, c.c.config)
     let a = n[0]
     let b = n[1]

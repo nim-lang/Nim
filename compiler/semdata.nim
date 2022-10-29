@@ -69,7 +69,8 @@ type
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efWantValue, efOperand, efNoSemCheck,
     efNoEvaluateGeneric, efInCall, efFromHlo, efNoSem2Check,
-    efNoUndeclared
+    efNoUndeclared, efIsDotCall, efCannotBeDotCall,
+    efSkipFieldVisibilityCheck
       # Use this if undeclared identifiers should not raise an error during
       # overload resolution.
 

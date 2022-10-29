@@ -153,12 +153,12 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   ##
   ## Example:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   import packages/docutils/rstgen
   ##
   ##   var gen: RstGenerator
   ##   gen.initRstGenerator(outHtml, defaultConfig(), "filename", {})
+  ##   ```
   g.config = config
   g.target = target
   g.tocPart = @[]
@@ -289,13 +289,12 @@ proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string) {.gcs
   ## Before using this proc you need to initialise a ``RstGenerator`` with
   ## ``initRstGenerator`` and parse a rst file with ``rstParse`` from the
   ## `packages/docutils/rst module <rst.html>`_. Example:
-  ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   # ...configure gen and rst vars...
   ##   var generatedHtml = ""
   ##   renderRstToOut(gen, rst, generatedHtml)
   ##   echo generatedHtml
+  ##   ```
 
 proc renderAux(d: PDoc, n: PRstNode, result: var string) =
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result)
@@ -1602,12 +1601,13 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   ## work. For an explanation of the ``config`` parameter see the
   ## ``initRstGenerator`` proc. Example:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   import packages/docutils/rstgen, strtabs
   ##
   ##   echo rstToHtml("*Hello* **world**!", {},
   ##     newStringTable(modeStyleInsensitive))
   ##   # --> <em>Hello</em> <strong>world</strong>!
+  ##   ```
   ##
   ## If you need to allow the rst ``include`` directive or tweak the generated
   ## output you have to create your own ``RstGenerator`` with

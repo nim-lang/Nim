@@ -624,7 +624,8 @@ when defineSsl:
                    caDir = "", caFile = ""): SslContext =
     ## Creates an SSL context.
     ##
-    ## protVersion is currently unsed.
+    ## Protocol version is currently ignored by default and TLS is used.
+    ## With `-d:openssl10`, only SSLv23 and TLSv1 may be used.
     ##
     ## There are three options for verify mode:
     ## `CVerifyNone`: certificates are not verified;
@@ -651,7 +652,19 @@ when defineSsl:
     ## or using ECDSA:
     ## - `openssl ecparam -out mykey.pem -name secp256k1 -genkey`
     ## - `openssl req -new -key mykey.pem -x509 -nodes -days 365 -out mycert.pem`
-    let mtd = TLS_method()
+    var mtd: PSSL_METHOD
+    when defined(openssl10):
+      case protVersion
+      of protSSLv23:
+        mtd = SSLv23_method()
+      of protSSLv2:
+        raiseSSLError("SSLv2 is no longer secure and has been deprecated, use protSSLv23")
+      of protSSLv3:
+        raiseSSLError("SSLv3 is no longer secure and has been deprecated, use protSSLv23")
+      of protTLSv1:
+        mtd = TLSv1_method()
+    else:
+      mtd = TLS_method()
     if mtd == nil:
       raiseSSLError("Failed to create TLS context")
     var newCTX = SSL_CTX_new(mtd)

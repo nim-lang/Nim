@@ -257,6 +257,18 @@ Multiline documentation comments also exist and support nesting too:
     ]##
   ```
 
+You can also use the [discard statement](#statements-and-expressions-discard-statement) together with
+[triple quoted string literals](#lexical-analysis-triple-quoted-string-literals) to create multiline comments:
+
+  ```nim
+  discard """ You can have any Nim code text commented
+  out inside this with no indentation restrictions.
+        yes("May I ask a pointless question?") """
+  ```
+
+This was how multiline comments were done before version 0.13.0,
+and it is used to provide specifications to [testament](testament.html#writing-unitests) test framework.
+
 
 Identifiers & Keywords
 ----------------------
@@ -4952,8 +4964,7 @@ Effect system
 =============
 
 **Note**: The rules for effect tracking changed with the release of version
-1.6 of the Nim compiler. This section describes the new rules that are activated
-via `--experimental:strictEffects`.
+1.6 of the Nim compiler.
 
 
 Exception tracking
@@ -5073,7 +5084,6 @@ conservative in its effect analysis:
 
   ```nim  test = "nim c $1"  status = 1
   {.push warningAsError[Effect]: on.}
-  {.experimental: "strictEffects".}
 
   import algorithm
 

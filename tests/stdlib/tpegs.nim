@@ -106,9 +106,9 @@ block:
 
 block:
   var
-    pStack: seq[string] = @[]
-    valStack: seq[float] = @[]
-    opStack = ""
+    pStack {.threadvar.}: seq[string]
+    valStack {.threadvar.}: seq[float]
+    opStack {.threadvar.}: string
   let
     parseArithExpr = pegAst.eventParser:
       pkNonTerminal:
