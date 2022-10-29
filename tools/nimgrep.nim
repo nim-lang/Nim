@@ -989,7 +989,7 @@ iterator walkDirBasic(dir: string, walkOptC: WalkOptComp[Pattern]): string
     let rightDirForFiles = d.isRightDirectory(walkOptC)
     var files = newSeq[string]()
     var dirs = newSeq[string]()
-    for kind, path in walkDir(d, onlyRegular = true):
+    for kind, path in walkDir(d, skipSpecial = true):
       case kind
       of pcFile:
         if path.hasRightPath(walkOptC) and rightDirForFiles:
