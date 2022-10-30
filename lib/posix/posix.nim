@@ -256,8 +256,55 @@ when not defined(nintendoswitch):
   proc mq_notify*(a1: Mqd, a2: ptr SigEvent): cint {.
     importc, header: "<mqueue.h>".}
   proc mq_open*(a1: cstring, a2: cint): Mqd {.
-    varargs, importc, header: "<mqueue.h>".}
-  proc mq_receive*(a1: Mqd, a2: cstring, a3: int, a4: var int): int {.
+    varargs, importc, header: "<mqueue.h>".} =
+    runnableExamples:
+      type Message = object
+        value: int
+
+      const MQ_PATH = "/top_level_file"
+      const MQ_PRIORITY = 170
+      const MQ_MESSAGE_SIZE = sizeof(Message)
+
+      var mqd_a: posix.MqAttr = MqAttr(mq_maxmsg: 10, mq_msgsize: clong(MQ_MESSAGE_SIZE))
+      let writable: posix.Mqd = posix.mq_open(
+        MQ_PATH,
+        posix.O_CREAT or posix.O_WRONLY or posix.O_NONBLOCK,
+        posix.S_IRWXU,
+        addr(mqd_a)
+      )
+      let readable: posix.Mqd = posix.mq_open(
+          MQ_PATH,
+          posix.O_RDONLY or posix.O_NONBLOCK,
+          posix.S_IRWXU,
+          addr(mqd_a)
+        )
+
+      let sent: Message = Message(value: 88)
+      block:
+        let success: int = writable.mq_send(
+          cast[cstring](sent.addr),
+          MQ_MESSAGE_SIZE,
+          MQ_PRIORITY
+        )
+        let error: cint = errno
+        if success != 0:
+          echo "Failed to write " &
+            $sizeof(Message) &
+            " bytes to mqd_t file descriptor " &
+            $writable &
+            " because failed with reason: " &
+            $strerror(error)
+        assert success == 0, $success
+
+      block:
+        var buffer: Message
+        var priority: cuint
+        let bytesRead: int = readable.mq_receive(cast[cstring](buffer.addr), MQ_MESSAGE_SIZE, priority)
+        echo $buffer
+        assert buffer == sent
+        assert bytesRead == MQ_MESSAGE_SIZE
+
+  proc mq_receive*(a1: Mqd, buffer: cstring, length: int, priority: var cuint): int {.
     importc, header: "<mqueue.h>".}
   proc mq_send*(a1: Mqd, a2: cstring, a3: int, a4: int): cint {.
     importc, header: "<mqueue.h>".}
