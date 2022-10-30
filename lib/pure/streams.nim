@@ -180,8 +180,10 @@ proc close*(s: Stream) =
       
     block:
       let strm = newFileStream("amissingfile.txt")
+      # deferring works even if newFileStream fails
       defer: strm.close()
-      ## do something...
+      if not isNil(strm):
+        ## do something...
 
   if not isNil(s) and not isNil(s.closeImpl):
     s.closeImpl(s)
