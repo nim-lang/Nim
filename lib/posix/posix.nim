@@ -257,7 +257,7 @@ when not defined(nintendoswitch):
     importc, header: "<mqueue.h>".}
   proc mq_open*(a1: cstring, a2: cint): Mqd {.
     varargs, importc, header: "<mqueue.h>".} =
-    when defined(posix):
+    when defined(linux):
       runnableExamples:
         type Message = object
           value: int
