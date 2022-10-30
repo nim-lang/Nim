@@ -872,3 +872,13 @@ block: # Ensure no segfault from constraint
     a = Regex[int]()
     b = Regex[bool]()
     c = MyOtherType[seq[int]]()
+
+block: # Ensure `=>` sugar can unify with `void` return type #20704
+  proc test() =
+    var xs, ys: seq[int]
+    for i in 0..5:
+      xs.add(i)
+
+    xs.apply(d => ys.add(d))
+    assert ys == @[0, 1, 2, 3, 4, 5]
+  test()
