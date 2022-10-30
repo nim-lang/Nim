@@ -173,10 +173,18 @@ proc close*(s: Stream) =
   ## See also:
   ## * `flush proc <#flush,Stream>`_
   runnableExamples:
-    var strm = newStringStream("The first line\nthe second line\nthe third line")
-    ## do something...
-    strm.close()
-  if not isNil(s.closeImpl): s.closeImpl(s)
+    block:
+      let strm = newStringStream("The first line\nthe second line\nthe third line")
+      ## do something...
+      strm.close()
+      
+    block:
+      let strm = newFileStream("amissingfile.txt")
+      defer: strm.close()
+      ## do something...
+
+  if not isNil(s) and not isNil(s.closeImpl):
+    s.closeImpl(s)
 
 proc atEnd*(s: Stream): bool =
   ## Checks if more data can be read from `s`. Returns ``true`` if all data has
