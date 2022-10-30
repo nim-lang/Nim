@@ -504,62 +504,51 @@ func `$`*(u: Uri): string =
     pathLen:     int = u.path.len
     queryLen:    int = u.query.len
     anchorLen:   int = u.anchor.len
-  var index = 0
   # Prepare a string that fits all the parts and all punctuation chars.
   # 12 is the max len required by all possible punctuation chars.
-  result.setLen(
+  result = newStringOfCap(
     schemeLen + usernameLen + passwordLen + hostnameLen + portLen + pathLen + queryLen + anchorLen + 12
   )
-  # Save some typing with a template.
-  template inserts(item: char or string) =
-    when item is string:
-      for chara in item:
-        result[index] = chara
-        inc index
-    else:
-      result[index] = item
-      inc index
   # Insert to result.
   if schemeLen > 0:
-    inserts u.scheme
-    inserts ':'
+    result.add u.scheme
+    result.add ':'
     if not u.opaque:
-      inserts '/'
-      inserts '/'
+      result.add '/'
+      result.add '/'
   if usernameLen > 0:
-    inserts u.username
+    result.add u.username
     if passwordLen > 0:
-      inserts ':'
-      inserts u.password
-    inserts '@'
+      result.add ':'
+      result.add u.password
+    result.add '@'
   if u.hostname.endsWith('/'):
     if u.isIpv6:
-      inserts '['
-      inserts u.hostname[0 .. ^2]
-      inserts ']'
+      result.add '['
+      result.add u.hostname[0 .. ^2]
+      result.add ']'
     else:
-      inserts u.hostname[0 .. ^2]
+      result.add u.hostname[0 .. ^2]
   else:
     if u.isIpv6:
-      inserts '['
-      inserts u.hostname
-      inserts ']'
+      result.add '['
+      result.add u.hostname
+      result.add ']'
     else:
-      inserts u.hostname
+      result.add u.hostname
   if portLen > 0:
-    inserts ':'
-    inserts u.port
+    result.add ':'
+    result.add u.port
   if pathLen > 0:
     if hostnameLen > 0 and u.path[0] != '/':
-      inserts '/'
-    inserts u.path
+      result.add '/'
+    result.add u.path
   if queryLen > 0:
-    inserts '?'
-    inserts u.query
+    result.add '?'
+    result.add u.query
   if anchorLen > 0:
-    inserts '#'
-    inserts u.anchor
-  result.setLen index
+    result.add '#'
+    result.add u.anchor
 
 
 proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3).} =
