@@ -1115,7 +1115,7 @@ elif defined(nimdoc):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
 
 elif defined(genode):
-  include genode/env
+  import genode/env
 
   var systemEnv {.exportc: runtimeEnvSym.}: GenodeEnvPtr
 
@@ -1609,8 +1609,7 @@ when notJSnotNims:
 {.push stackTrace: off.}
 
 when not defined(js) and hasThreadSupport and hostOS != "standalone":
-  const insideRLocksModule = false
-  include "system/syslocks"
+  import std/private/syslocks
   include "system/threadlocalstorage"
 
 when not defined(js) and defined(nimV2):
@@ -2092,7 +2091,12 @@ when not defined(js):
   when declared(initAllocator):
     initAllocator()
   when hasThreadSupport:
-    when hostOS != "standalone": include "system/threads"
+    when hostOS != "standalone":
+      include system/threadimpl
+
+      import std/threads
+      export threads
+
   elif not defined(nogc) and not defined(nimscript):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
     when declared(initGC): initGC()
