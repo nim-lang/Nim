@@ -3242,9 +3242,11 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
           break
 
     let selectedBranch = caseObjDefaultBranch(obj, branch)
-    result.add "{"
     var countB = 0
     let b = lastSon(obj[selectedBranch])
+    if isEmptyType(b.typ): # the type of field is void
+      return
+    result.add "{"
     # designated initilization is the only way to init non first element of unions
     # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
     if b.kind == nkRecList and b.len > 0:

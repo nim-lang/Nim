@@ -105,3 +105,20 @@ block t7244:
 
   proc test(foo: var Foo) = discard
   proc test(bar: var Bar) = test(Foo(bar))
+
+block: # bug #20699
+  type
+    Either[A,B] = object
+      case kind:bool
+      of false:
+        b: B
+      of true:
+        a: A
+
+    O = object of RootRef
+
+  proc oToEither(o:O):Either[O,void] =
+    Either[O,void](kind:true,a: o)
+
+  let x = oToEither(O())
+  doAssert typeof(x.a) is O
