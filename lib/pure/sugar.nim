@@ -74,7 +74,7 @@ macro `=>`*(p, b: untyped): untyped =
     f()
 
   var
-    params = @[ident"auto"]
+    params = @[infix(ident"void","|",ident"auto")]
     name = newEmptyNode()
     kind = nnkLambda
     pragma = newEmptyNode()
