@@ -1018,7 +1018,7 @@ proc high*(typ: typedesc[Time]): Time =
   initTime(high(int64), high(NanosecondRange))
 
 proc low*(typ: typedesc[Time]): Time =
-  initTime(low(int64), 0)
+  initTime(0, 0)
 
 #
 # DateTime & Timezone
