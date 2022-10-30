@@ -22,8 +22,9 @@ Usage (to convert Markdown into HTML):
   nim md2html markdown_rst.md
   ```
 
-Output::
-  You're reading it!
+Output:
+
+    You're reading it!
 
 The `md2tex`:option: command is invoked identically to `md2html`:option:,
 but outputs a ``.tex`` file instead of ``.html``.
@@ -132,10 +133,10 @@ Additional Nim-specific features
 * ``:idx:`` role for \`interpreted text\` to include the link to this
   text into an index (example: [Nim index]).
 * double slash `//` in option lists serves as a prefix for any option that
-  starts from a word (without any leading symbols like `-`, `--`, `/`)::
+  starts from a word (without any leading symbols like `-`, `--`, `/`):
 
-    //compile   compile the project
-    //doc       generate documentation
+      //compile   compile the project
+      //doc       generate documentation
 
   Here the dummy `//` will disappear, while options `compile`:option:
   and `doc`:option: will be left in the final document.
@@ -152,11 +153,11 @@ Optional additional features, by default turned on:
 * Markdown tables
 * Markdown code blocks. For them the same additional arguments as for RST
   code blocks can be provided (e.g. `test` or `number-lines`) but with
-  a one-line syntax like this::
+  a one-line syntax like this:
 
-    ```nim test number-lines=10
-    echo "ok"
-    ```
+      ```nim test number-lines=10
+      echo "ok"
+      ```
 * Markdown links
 * Markdown headlines
 * Markdown block quotes
@@ -189,11 +190,11 @@ This parser has 2 modes for inline markup:
      does escape so that we can always input a single backtick ` in
      inline code. However that makes impossible to input code with
      ``\`` at the end in *single* backticks, one must use *double*
-     backticks::
+     backticks:
 
-       `\`   -- WRONG
-       ``\`` -- GOOD
-       So single backticks can always be input: `\`` will turn to ` code
+         `\`   -- WRONG
+         ``\`` -- GOOD
+         So single backticks can always be input: `\`` will turn to ` code
 
 .. Attention::
    We don't support some obviously poor design choices of Markdown (or RST).
@@ -204,11 +205,9 @@ This parser has 2 modes for inline markup:
    - interpretation of Markdown block quotes is also slightly different,
      e.g. case
 
-     ::
-
-       >>> foo
-       > bar
-       >>baz
+         >>> foo
+         > bar
+         >>baz
 
      is a single 3rd-level quote `foo bar baz` in original Markdown, while
      in Nim we naturally see it as 3rd-level quote `foo` + 1st level `bar` +

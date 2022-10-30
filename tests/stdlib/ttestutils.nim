@@ -1,4 +1,5 @@
 import stdtest/testutils
+import std/assertions
 
 block: # assertAll
   assertAll:

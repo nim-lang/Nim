@@ -2,6 +2,8 @@ discard """
   targets: "c cpp js"
 """
 
+import std/assertions
+
 # bug #20227
 type
   Data = object

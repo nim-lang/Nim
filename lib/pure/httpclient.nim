@@ -33,7 +33,7 @@
 ##   proc asyncProc(): Future[string] {.async.} =
 ##     var client = newAsyncHttpClient()
 ##     try:
-##       return await client.getContent("http://example.com")
+##       return await client.getContent("http://google.com")
 ##     finally:
 ##       client.close()
 ##
@@ -197,6 +197,14 @@
 ##    let myProxy = newProxy("http://myproxy.network")
 ##    let client = newHttpClient(proxy = myProxy)
 ##
+## Use proxies with basic authentication:
+##
+## .. code-block:: Nim
+##    import std/httpclient
+##    
+##    let myProxy = newProxy("http://myproxy.network", auth="user:password")
+##    let client = newHttpClient(proxy = myProxy)
+##
 ## Get Proxy URL from environment variables:
 ##
 ## .. code-block:: Nim
@@ -236,6 +244,9 @@ import std/[
   math, random, httpcore, times, tables, streams, monotimes,
   asyncnet, asyncdispatch, asyncfile, nativesockets,
 ]
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
 
 export httpcore except parseHeader # TODO: The `except` doesn't work
 

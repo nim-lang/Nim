@@ -7,6 +7,7 @@ discard """
 import std/envvars
 from std/sequtils import toSeq
 import stdtest/testutils
+import std/assertions
 
 # "LATIN CAPITAL LETTER AE" in UTF-8 (0xc386)
 const unicodeUtf8 = "\xc3\x86"
@@ -45,9 +46,11 @@ template main =
       doAssert not existsEnv("NIM_TESTS_TOSENV_PUT=DUMMY_VALUE")
       doAssert not existsEnv("NIM_TESTS_TOSENV_PUT")
 
+static: main()
 main()
 
 when defined(windows):
+  import std/widestrs
   proc c_wgetenv(env: WideCString): WideCString {.importc: "_wgetenv", header: "<stdlib.h>".}
 proc c_getenv(env: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
 
@@ -67,7 +70,7 @@ when not defined(js) and not defined(nimscript):
 
     doAssertRaises(OSError): delEnv("foo=bar")
 
-when defined(windows):
+when defined(windows) and not defined(nimscript):
   import std/encodings
 
   proc c_putenv(env: cstring): int32 {.importc: "putenv", header: "<stdlib.h>".}

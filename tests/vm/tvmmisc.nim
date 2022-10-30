@@ -9,7 +9,7 @@ block:
   static:
     foo(int)
 
-# #4412
+# bug #4412
 block:
   proc default[T](t: typedesc[T]): T {.inline.} = discard
 
@@ -361,7 +361,7 @@ block: # bug #14340
     envelopeSin[a]()
 
   block:
-    type Mutator = proc() {.noSideEffect, gcsafe, locks: 0.}
+    type Mutator = proc() {.noSideEffect, gcsafe.}
     proc mutator0() = discard
     const mTable = [Mutator(mutator0)]
     var i=0
@@ -572,3 +572,32 @@ block:
     let y = x + 1
     # Error: unhandled exception: value out of range: -8 notin 0 .. 65535 [RangeDefect]
     echo y
+
+
+type Atom* = object
+  bar: int
+
+proc main() = # bug #12994
+  var s: seq[Atom]
+  var atom: Atom
+  var checked = 0
+  for i in 0..<2:
+    atom.bar = 5
+    s.add atom
+    atom.reset
+    if i == 0:
+      checked += 1
+      doAssert $s == "@[(bar: 5)]"
+    else:
+      checked += 1
+      doAssert $s == "@[(bar: 5), (bar: 5)]"
+  doAssert checked == 2
+
+static: main()
+main()
+
+# bug #19201
+proc foo(s: sink string) = doAssert s.len == 3
+
+static:
+  foo("abc")

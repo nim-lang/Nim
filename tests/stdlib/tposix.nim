@@ -7,6 +7,7 @@ outputsub: ""
 when not defined(windows):
 
   import posix
+  import std/syncio
 
   var
     u: Utsname

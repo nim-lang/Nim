@@ -46,8 +46,7 @@ jobs:
               valgrind libc6-dbg libblas-dev xorg-dev
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
-        run: |
-          brew install boehmgc make sfml gtk+3
+        run: brew install boehmgc make sfml gtk+3
       - name: 'Install dependencies (Windows)'
         if: runner.os == 'Windows'
         shell: bash
@@ -71,5 +70,4 @@ jobs:
 
       - name: 'koch, Run CI'
         shell: bash
-        run: |
-          . ci/funs.sh && nimInternalBuildKochAndRunCI
+        run: . ci/funs.sh && nimInternalBuildKochAndRunCI

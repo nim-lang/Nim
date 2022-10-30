@@ -5,6 +5,7 @@ discard """
 # xxx merge with tests/metatype/ttypetraits.nim
 
 import std/typetraits
+import std/assertions
 
 macro testClosure(fn: typed, flag: static bool) =
   if flag:

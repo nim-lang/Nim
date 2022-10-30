@@ -57,14 +57,8 @@ proc toInt128*[T: SomeInteger | bool](arg: T): Int128 =
 template isNegative(arg: Int128): bool =
   arg.sdata(3) < 0
 
-template isNegative(arg: int32): bool =
-  arg < 0
-
 proc bitconcat(a, b: uint32): uint64 =
   (uint64(a) shl 32) or uint64(b)
-
-proc bitsplit(a: uint64): (uint32, uint32) =
-  (cast[uint32](a shr 32), cast[uint32](a))
 
 proc toInt64*(arg: Int128): int64 =
   if isNegative(arg):
@@ -211,12 +205,6 @@ proc `==`*(a, b: Int128): bool =
   if a.udata[3] != b.udata[3]: return false
   return true
 
-proc inplaceBitnot(a: var Int128) =
-  a.udata[0] = not a.udata[0]
-  a.udata[1] = not a.udata[1]
-  a.udata[2] = not a.udata[2]
-  a.udata[3] = not a.udata[3]
-
 proc bitnot*(a: Int128): Int128 =
   result.udata[0] = not a.udata[0]
   result.udata[1] = not a.udata[1]
@@ -357,23 +345,10 @@ proc low64(a: Int128): uint64 =
   bitconcat(a.udata[1], a.udata[0])
 
 proc `*`*(lhs, rhs: Int128): Int128 =
-  let
-    a = cast[uint64](lhs.udata[0])
-    b = cast[uint64](lhs.udata[1])
-    c = cast[uint64](lhs.udata[2])
-    d = cast[uint64](lhs.udata[3])
-
-    e = cast[uint64](rhs.udata[0])
-    f = cast[uint64](rhs.udata[1])
-    g = cast[uint64](rhs.udata[2])
-    h = cast[uint64](rhs.udata[3])
-
-
-  let a32 = cast[uint64](lhs.udata[1])
-  let a00 = cast[uint64](lhs.udata[0])
-  let b32 = cast[uint64](rhs.udata[1])
-  let b00 = cast[uint64](rhs.udata[0])
-
+  let a32 = uint64(lhs.udata[1])
+  let a00 = uint64(lhs.udata[0])
+  let b32 = uint64(rhs.udata[1])
+  let b00 = uint64(rhs.udata[0])
   result = makeInt128(high64(lhs) * low64(rhs) + low64(lhs) * high64(rhs) + a32 * b32, a00 * b00)
   result += toInt128(a32 * b00) shl 32
   result += toInt128(a00 * b32) shl 32
@@ -444,11 +419,11 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
     result.remainder = dividend
 
 proc `div`*(a, b: Int128): Int128 =
-  let (a, b) = divMod(a, b)
+  let (a, _) = divMod(a, b)
   return a
 
 proc `mod`*(a, b: Int128): Int128 =
-  let (a, b) = divMod(a, b)
+  let (_, b) = divMod(a, b)
   return b
 
 proc addInt128*(result: var string; value: Int128) =

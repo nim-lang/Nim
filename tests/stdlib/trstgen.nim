@@ -8,6 +8,7 @@ import ../../lib/packages/docutils/rstgen
 import ../../lib/packages/docutils/rst
 import unittest, strutils, strtabs
 import std/private/miscdollars
+import std/assertions
 
 const
   NoSandboxOpts = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled}
@@ -631,7 +632,7 @@ Test literal block
 ::
 
   check """
-    let output1 = input1.toHtml
+    let output1 = input1.toHtml(preferRst)
     doAssert "<pre>" in output1
 
   test "Markdown code block":
@@ -1683,3 +1684,8 @@ suite "local file inclusion":
     discard "```nim file = ./readme.md\n```".toHtml(error=error)
     check(error[] == "input(1, 23) Error: disabled directive: 'file'")
 
+proc documentToHtml*(doc: string, isMarkdown: bool = false): string {.gcsafe.} =
+  var options = {roSupportMarkdown}
+  if isMarkdown:
+    options.incl roPreferMarkdown
+  result = rstToHtml(doc, options, defaultConfig())

@@ -1,4 +1,5 @@
 import std/private/bitops_utils
+import std/assertions
 
 template chk(a, b) =
   let a2 = castToUnsigned(a)

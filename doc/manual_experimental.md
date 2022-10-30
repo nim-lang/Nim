@@ -65,27 +65,6 @@ However, a `void` type cannot be inferred in generic code:
 The `void` type is only valid for parameters and return types; other symbols
 cannot have the type `void`.
 
-
-Unicode Operators
-=================
-
-Under the `--experimental:unicodeOperators`:option: switch,
-these Unicode operators are also parsed as operators::
-
-  ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
-  ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
-
-
-If enabled, Unicode operators can be combined with non-Unicode operator
-symbols. The usual precedence extensions then apply, for example, `⊠=` is an
-assignment like operator just like `*=` is.
-
-No Unicode normalization step is performed.
-
-.. note:: Due to parser limitations one **cannot** enable this feature via a
-  pragma `{.experimental: "unicodeOperators".}` reliably.
-
-
 Top-down type inference
 =======================
 
@@ -133,7 +112,7 @@ let x: seq[seq[float]] = @[@[1, 2, 3], @[4, 5, 6]]
 
 This behavior is tied to the `@` overloads in the `system` module,
 so overloading `@` can disable this behavior. This can be circumvented by
-specifying the `` system.`@` `` overload. 
+specifying the `` system.`@` `` overload.
 
 ```nim
 proc `@`(x: string): string = "@" & x
@@ -307,29 +286,6 @@ scope. Therefore, the following will *fail to compile:*
 This feature will likely be replaced with a better solution to remove
 the need for forward declarations.
 
-
-Automatic dereferencing
-=======================
-
-Automatic dereferencing is performed for the first argument of a routine call.
-This feature has to be enabled via `{.experimental: "implicitDeref".}`:
-
-  ```nim
-  {.experimental: "implicitDeref".}
-
-  type
-    NodeObj = object
-      # ...
-    Node = ref NodeObj
-
-  proc depth(x: NodeObj): int = ...
-
-  let n = Node()
-  echo n.depth
-  # no need to write n[].depth
-  ```
-
-
 Special Operators
 =================
 
@@ -484,7 +440,7 @@ expressions that cannot conveniently be represented as runtime values.
   ```nim
   type Foo = object
     bar: int
-  
+
   var foo = Foo(bar: 10)
   template bar: untyped = foo.bar
   assert bar == 10
@@ -811,9 +767,9 @@ be part of a single graph.
 Assignments like `a = b` "connect" two variables, both variables end up in the
 same graph `{a, b} = G(a) = G(b)`. Unfortunately, the pattern to look for is
 much more complex than that and can involve multiple assignment targets
-and sources::
+and sources:
 
-  f(x, y) = g(a, b)
+    f(x, y) = g(a, b)
 
 connects `x` and `y` to `a` and `b`: `G(x) = G(y) = G(a) = G(b) = {x, y, a, b}`.
 A type based alias analysis rules out some of these combinations, for example
@@ -1607,16 +1563,16 @@ all the arguments, but also the matched operators in reverse polish notation:
   ```
 
 This passes the expression `x + y * z - x` to the `optM` macro as
-an `nnkArgList` node containing::
+an `nnkArgList` node containing:
 
-  Arglist
-    Sym "x"
-    Sym "y"
-    Sym "z"
-    Sym "*"
-    Sym "+"
-    Sym "x"
-    Sym "-"
+    Arglist
+      Sym "x"
+      Sym "y"
+      Sym "z"
+      Sym "*"
+      Sym "+"
+      Sym "x"
+      Sym "-"
 
 (This is the reverse polish notation of `x + y * z - x`.)
 
@@ -1750,7 +1706,7 @@ the overhead of an indirection via `FlowVar[T]` to ensure correctness.
 .. note:: Currently exceptions are not propagated between `spawn`'ed tasks!
 
 This feature is likely to be removed in the future as external packages
-can have better solutions. 
+can have better solutions.
 
 
 Spawn statement
@@ -1861,100 +1817,163 @@ restrictions / changes:
   yet performed for ordinary slices outside of a `parallel` section.
 
 
+Strict definitions and `out` parameters
+=======================================
 
-Lock levels
-===========
-
-Lock levels are used to enforce a global locking order in order to detect
-potential deadlocks during semantic analysis. A lock level is an constant
-integer in the range 0..1_000. Lock level 0 means that no lock is acquired at
-all.
-
-If a section of code holds a lock of level `M`, it can also acquire any
-lock of level `N < M`. Another lock of level `M` cannot be acquired. Locks
-of the same level can only be acquired *at the same time* within a
-single `locks` section:
+With `experimental: "strictDefs"` *every* local variable must be initialized explicitly before it can be used:
 
   ```nim
-  var a, b: TLock[2]
-  var x: TLock[1]
-  # invalid locking order: TLock[1] cannot be acquired before TLock[2]:
-  {.locks: [x].}:
-    {.locks: [a].}:
-      ...
-  # valid locking order: TLock[2] acquired before TLock[1]:
-  {.locks: [a].}:
-    {.locks: [x].}:
-      ...
+  {.experimental: "strictDefs".}
 
-  # invalid locking order: TLock[2] acquired before TLock[2]:
-  {.locks: [a].}:
-    {.locks: [b].}:
-      ...
+  proc test =
+    var s: seq[string]
+    s.add "abc" # invalid!
 
-  # valid locking order, locks of the same level acquired at the same time:
-  {.locks: [a, b].}:
-    ...
   ```
 
-
-Here is how a typical multilock statement can be implemented in Nim. Note how
-the runtime check is required to ensure a global ordering for two locks `a`
-and `b` of the same lock level:
+Needs to be written as:
 
   ```nim
-  template multilock(a, b: ptr TLock; body: untyped) =
-    if cast[ByteAddress](a) < cast[ByteAddress](b):
-      pthread_mutex_lock(a)
-      pthread_mutex_lock(b)
+  {.experimental: "strictDefs".}
+
+  proc test =
+    var s: seq[string] = @[]
+    s.add "abc" # valid!
+
+  ```
+
+A control flow analysis is performed in order to prove that a variable has been written to
+before it is used. Thus the following is valid:
+
+  ```nim
+  {.experimental: "strictDefs".}
+
+  proc test(cond: bool) =
+    var s: seq[string]
+    if cond:
+      s = @["y"]
     else:
-      pthread_mutex_lock(b)
-      pthread_mutex_lock(a)
-    {.locks: [a, b].}:
-      try:
-        body
-      finally:
-        pthread_mutex_unlock(a)
-        pthread_mutex_unlock(b)
+      s = @[]
+    s.add "abc" # valid!
   ```
 
+In this example every path does set `s` to a value before it is used.
 
-Whole routines can also be annotated with a `locks` pragma that takes a lock
-level. This then means that the routine may acquire locks of up to this level.
-This is essential so that procs can be called within a `locks` section:
+`out` parameters
+----------------
+
+An `out` parameter is like a `var` parameter but it must be written to before it can be used:
 
   ```nim
-  proc p() {.locks: 3.} = discard
 
-  var a: TLock[4]
-  {.locks: [a].}:
-    # p's locklevel (3) is strictly less than a's (4) so the call is allowed:
-    p()
+  proc myopen(f: out File; name: string): bool =
+    f = default(File)
+    result = open(f, name)
+
   ```
 
-
-As usual, `locks` is an inferred effect and there is a subtype
-relation: `proc () {.locks: N.}` is a subtype of `proc () {.locks: M.}`
-iff (M <= N).
-
-The `locks` pragma can also take the special value `"unknown"`. This
-is useful in the context of dynamic method dispatching. In the following
-example, the compiler can infer a lock level of 0 for the `base` case.
-However, one of the overloaded methods calls a procvar which is
-potentially locking. Thus, the lock level of calling `g.testMethod`
-cannot be inferred statically, leading to compiler warnings. By using
-`{.locks: "unknown".}`, the base method can be marked explicitly as
-having unknown lock level as well:
+While it is usually the better style to use the return type in order to return results API and ABI
+considerations might make this infeasible. Like for `var T` Nim maps `out T` to a hidden pointer.
+For example POSIX's `stat` routine can be wrapped as:
 
   ```nim
-  type SomeBase* = ref object of RootObj
-  type SomeDerived* = ref object of SomeBase
-    memberProc*: proc ()
 
-  method testMethod(g: SomeBase) {.base, locks: "unknown".} = discard
-  method testMethod(g: SomeDerived) =
-    if g.memberProc != nil:
-      g.memberProc()
+  proc stat*(a1: cstring, a2: out Stat): cint {.importc, header: "<sys/stat.h>".}
+
   ```
 
-This feature may be removed in the future due to its practical difficulties.
+When the implementation of a routine with output parameters is analysed, the compiler
+checks that every path before the (implicit or explicit) return does set every output
+parameter:
+
+  ```nim
+
+  proc p(x: out int; y: out string; cond: bool) =
+    x = 4
+    if cond:
+      y = "abc"
+    # error: not every path initializes 'y'
+
+  ```
+
+
+Out parameters and exception handling
+-------------------------------------
+
+The analysis should take exceptions into account (but currently does not):
+
+  ```nim
+
+  proc p(x: out int; y: out string; cond: bool) =
+    x = canRaise(45)
+    y = "abc" # <-- error: not every path initializes 'y'
+
+  ```
+
+Once the implementation takes exceptions into account it is easy enough to
+use `outParam = default(typeof(outParam))` in the beginning of the proc body.
+
+Out parameters and inheritance
+------------------------------
+
+It is not valid to pass an lvalue of a supertype to an `out T` parameter:
+
+  ```nim
+
+  type
+    Superclass = object of RootObj
+      a: int
+    Subclass = object of Superclass
+      s: string
+
+  proc init(x: out Superclass) =
+    x = Superclass(a: 8)
+
+  var v: Subclass
+  init v
+  use v.s # the 's' field was never initialized!
+
+  ```
+
+However, in the future this could be allowed and provide a better way to write object
+constructors that take inheritance into account.
+
+
+**Note**: The implementation of "strict definitions" and "out parameters" is experimental but the concept
+is solid and it is expected that eventually this mode becomes the default in later versions.
+
+
+Strict case objects
+===================
+
+With `experimental: "strictCaseObjects"` *every* field access is checked to be valid at compile-time.
+The field is within a `case` section of an `object`.
+
+  ```nim
+  {.experimental: "strictCaseObjects".}
+
+  type
+    Foo = object
+      case b: bool
+      of false:
+        s: string
+      of true:
+        x: int
+
+  var x = Foo(b: true, x: 4)
+  case x.b
+  of true:
+    echo x.x # valid
+  of false:
+    echo "no"
+
+  case x.b
+  of false:
+    echo x.x # error: field access outside of valid case branch: x.x
+  of true:
+    echo "no"
+
+  ```
+
+**Note**: The implementation of "strict case objects" is experimental but the concept
+is solid and it is expected that eventually this mode becomes the default in later versions.

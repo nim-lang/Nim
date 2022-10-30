@@ -2,8 +2,8 @@ discard """
   output: '''
 In doStuff()
 In initProcess()
-initProcess() done
 TEST
+initProcess() done
 Crashes before getting here!
 '''
   joinable: false
@@ -18,8 +18,8 @@ proc initProcess(): void =
   echo("In initProcess()")
   var thread: Thread[void]
   createThread(thread, whatever)
-  echo("initProcess() done")
   joinThread(thread)
+  echo("initProcess() done")
 
 proc doStuff(): void =
   echo("In doStuff()")
