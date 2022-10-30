@@ -542,9 +542,10 @@ proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3)
   assert encoding.len > 0 and mime.len > 0 # Must *not* be URL-Safe, see RFC-2397
   let base64encoded: string = base64.encode(data)
   # ("data:".len + ";charset=".len + ";base64,".len) == 22
-  result.setLen(22 + mime.len + encoding.len + base64encoded.len)
-  var index = 0
-  for str in ["data:", mime, ";charset=", encoding, ";base64,", base64encoded]:
-    for chara in str:
-      result[index] = chara
-      inc index
+  result = newStringOfCap(22 + mime.len + encoding.len + base64encoded.len)
+  result.add "data:"
+  result.add mime
+  result.add ";charset="
+  result.add encoding
+  result.add ";base64,"
+  result.add base64encoded
