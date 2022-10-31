@@ -607,9 +607,8 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
       defaultValue = newIntNode(nkIntLit#[c.graph]#, 0)
       defaultValue.typ = discriminator.typ
     selectedBranch = recNode.pickCaseBranchIndex defaultValue
-    let asgnExpr = newTree(nkExprColonExpr, discriminator, defaultValue)
-    asgnExpr.flags.incl nfUseDefaultField
-    result.add asgnExpr
+    defaultValue.flags.incl nfUseDefaultField
+    result.add newTree(nkExprColonExpr, discriminator, defaultValue)
     result.add defaultFieldsForTheUninitialized(c, recNode[selectedBranch][^1])
   of nkSym:
     let field = recNode.sym
