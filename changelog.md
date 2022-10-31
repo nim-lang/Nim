@@ -38,6 +38,9 @@
   - `PInt32`, `PInt64`, `PFloat32`, `PFloat64`, aliases to
     `ptr int32`, `ptr int64`, `ptr float32`, `ptr float64`
 
+- Enabling `-d:nimPreviewSlimSystem` removes the import of `channels_builtin` in
+  in the `system` module.
+
 - The `gc:v2` option is removed.
 
 - The `mainmodule` and `m` options are removed.
