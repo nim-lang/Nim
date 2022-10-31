@@ -605,11 +605,13 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
       # was given to the discrimator. We can assume that it will be initialized
       # to zero and this will select a particular branch as a result:
       selectedBranch = recNode.pickCaseBranchIndex newIntNode(nkIntLit#[c.graph]#, 0)
-      result.add newTree(nkExprColonExpr, discriminator, recNode[selectedBranch][0])
+      if recNode[selectedBranch][0].kind in nkCharLit..nkUInt64Lit:
+        result.add newTree(nkExprColonExpr, discriminator, recNode[selectedBranch][0])
+        result.add defaultFieldsForTheUninitialized(c, recNode[selectedBranch][^1])
     else: # Try to use default value
       selectedBranch = recNode.pickCaseBranchIndex defaultValue
       result.add newTree(nkExprColonExpr, discriminator, defaultValue)
-    result.add defaultFieldsForTheUninitialized(c, recNode[selectedBranch][^1])
+      result.add defaultFieldsForTheUninitialized(c, recNode[selectedBranch][^1])
   of nkSym:
     let field = recNode.sym
     let recType = recNode.typ.skipTypes(defaultFieldsSkipTypes)
