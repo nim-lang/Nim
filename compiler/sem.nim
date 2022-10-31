@@ -605,6 +605,7 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
       # was given to the discrimator. We can assume that it will be initialized
       # to zero and this will select a particular branch as a result:
       selectedBranch = recNode.pickCaseBranchIndex newIntNode(nkIntLit#[c.graph]#, 0)
+      result.add newTree(nkExprColonExpr, discriminator, recNode[selectedBranch][0])
     else: # Try to use default value
       selectedBranch = recNode.pickCaseBranchIndex defaultValue
       result.add newTree(nkExprColonExpr, discriminator, defaultValue)
