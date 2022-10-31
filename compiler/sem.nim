@@ -599,15 +599,16 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
   of nkRecCase:
     let discriminator = recNode[0]
     var selectedBranch: int
-    let defaultValue = discriminator.sym.ast
+    var defaultValue = discriminator.sym.ast
     if defaultValue == nil:
       # None of the branches were explicitly selected by the user and no value
       # was given to the discrimator. We can assume that it will be initialized
       # to zero and this will select a particular branch as a result:
-      selectedBranch = recNode.pickCaseBranchIndex newIntNode(nkIntLit#[c.graph]#, 0)
-    else: # Try to use default value
-      selectedBranch = recNode.pickCaseBranchIndex defaultValue
-      result.add newTree(nkExprColonExpr, discriminator, defaultValue)
+      defaultValue = newIntNode(nkIntLit#[c.graph]#, 0)
+      defaultValue.typ = discriminator.typ
+    selectedBranch = recNode.pickCaseBranchIndex defaultValue
+    defaultValue.flags.incl nfUseDefaultField
+    result.add newTree(nkExprColonExpr, discriminator, defaultValue)
     result.add defaultFieldsForTheUninitialized(c, recNode[selectedBranch][^1])
   of nkSym:
     let field = recNode.sym

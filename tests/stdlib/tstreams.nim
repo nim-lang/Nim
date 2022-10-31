@@ -50,6 +50,12 @@ block tstreams3:
       echo line
     s.close
 
+
+block:
+  let fs = newFileStream("amissingfile.txt")
+  defer: fs.close()
+  doAssert isNil(fs)
+
 # bug #12410
 
 var a = newStringStream "hehohihahuhyh"
