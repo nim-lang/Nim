@@ -114,7 +114,7 @@ template orcAssert(cond, msg) =
   when logOrc:
     if not cond:
       cfprintf(cstderr, "[Bug!] %s\n", msg)
-      quit 1
+      rawQuit 1
 
 when logOrc:
   proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
@@ -143,7 +143,7 @@ proc unregisterCycle(s: Cell) =
   when false:
     if idx >= roots.len or idx < 0:
       cprintf("[Bug!] %ld\n", idx)
-      quit 1
+      rawQuit 1
   roots.d[idx] = roots.d[roots.len-1]
   roots.d[idx][0].rootIdx = idx+1
   dec roots.len
