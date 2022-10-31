@@ -1152,7 +1152,7 @@ proc newArrayType(g: ModuleGraph; n: int, t: PType; idgen: IdGenerator; owner: P
   result = newType(tyArray, nextTypeId(idgen), owner)
 
   let rng = newType(tyRange, nextTypeId(idgen), owner)
-  rng.n = newTree(nkRange, g.newIntLit(owner.info, 0), g.newIntLit(owner.info, n))
+  rng.n = newTree(nkRange, g.newIntLit(owner.info, 0), g.newIntLit(owner.info, n - 1))
   rng.rawAddSon(t)
 
   result.rawAddSon(rng)
