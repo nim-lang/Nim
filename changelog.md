@@ -15,6 +15,7 @@
   - `std/formatfloat`
   - `std/objectdollar`
   - `std/widestrs`
+  - `std/threads`
 
   In the future, these definitions will be removed from the `system` module,
   and their respective modules will have to be imported to use them.
