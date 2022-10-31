@@ -326,6 +326,7 @@ when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
   proc SSLv23_client_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
   proc SSLv2_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
   proc SSLv3_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+  proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl, dynlib: DLLUtilName, importc.}
 
 else:
   # Here we're trying to stay compatible between openssl versions. Some
@@ -385,6 +386,10 @@ else:
 
     let method2Proc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe, raises: [].}](methodSym)
     return method2Proc()
+
+  proc CRYPTO_set_mem_functions(a,b,c: pointer) =
+    let theProc = cast[proc(a,b,c: pointer) {.cdecl.}](utilModule().symNullable("CRYPTO_set_mem_functions"))
+    if not theProc.isNil: theProc(a, b, c)
 
   proc SSL_library_init*(): cint {.discardable.} =
     ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0 otherwise
@@ -567,10 +572,6 @@ const
   useNimsAlloc = not defined(nimNoAllocForSSL) and not defined(gcDestructors)
 
 when not useWinVersion and not defined(macosx) and not defined(android) and useNimsAlloc:
-  proc CRYPTO_set_mem_functions(a,b,c: pointer) =
-    let theProc = cast[proc(a,b,c: pointer) {.cdecl.}](utilModule().symNullable("CRYPTO_set_mem_functions"))
-    if not theProc.isNil: theProc(a, b, c)
-
   proc allocWrapper(size: int): pointer {.cdecl.} = allocShared(size)
   proc reallocWrapper(p: pointer; newSize: int): pointer {.cdecl.} =
     if p == nil:
