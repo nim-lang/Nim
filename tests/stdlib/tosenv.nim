@@ -9,7 +9,7 @@ from std/sequtils import toSeq
 import stdtest/testutils
 
 when defined(nimPreviewSlimSystem):
-  import std/[assertions, threads]
+  import std/[assertions]
 
 # "LATIN CAPITAL LETTER AE" in UTF-8 (0xc386)
 const unicodeUtf8 = "\xc3\x86"
@@ -57,6 +57,8 @@ when defined(windows):
 proc c_getenv(env: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
 
 when not defined(js) and not defined(nimscript):
+  when defined(nimPreviewSlimSystem):
+    import std/threads
   block: # bug #18533
     var thr: Thread[void]
     proc threadFunc {.thread.} = putEnv("foo", "fooVal2")
