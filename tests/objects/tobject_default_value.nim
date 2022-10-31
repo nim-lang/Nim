@@ -426,6 +426,36 @@ template main {.dirty.} =
     let x = default(A)
     doAssert $x == "(d: Uninitialized DateTime)"
 
+  block: # bug #20715
+    block:
+      type
+        Foo = enum
+          A
+          B
+
+        Bar = object
+          case foo: Foo
+          of A:
+            t: range[-1..2]
+          else: discard
+
+      var d = default(Bar)
+      doAssert d.t == -1
+
+    block:
+      type
+        Foo = enum
+          A
+          B
+
+        Bar = object
+          case foo: Foo
+          of A:
+            t: range[0..2]
+          else: discard
+
+      var d = default(Bar)
+      doAssert d.t == 0
 
 static: main()
 main()
