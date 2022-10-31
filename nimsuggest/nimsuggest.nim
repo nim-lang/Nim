@@ -29,6 +29,8 @@ import compiler / [options, commands, modules, sem,
   idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
   pathutils]
 
+when defined(nimPreviewSlimSystem):
+  import std/threads
 
 when defined(windows):
   import winlean

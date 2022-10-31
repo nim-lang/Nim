@@ -2093,9 +2093,10 @@ when not defined(js):
   when hasThreadSupport:
     when hostOS != "standalone":
       include system/threadimpl
-
-      import std/threads
-      export threads
+      when not defined(nimPreviewSlimSystem):
+        {.deprecated: "threads is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/threads`".}
+        import std/threads
+        export threads
 
   elif not defined(nogc) and not defined(nimscript):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()

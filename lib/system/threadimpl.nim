@@ -33,6 +33,15 @@ template afterThreadRuns() =
   for i in countdown(nimThreadDestructionHandlers.len-1, 0):
     nimThreadDestructionHandlers[i]()
 
+proc onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].}) =
+  ## Registers a *thread local* handler that is called at the thread's
+  ## destruction.
+  ##
+  ## A thread is destructed when the `.thread` proc returns
+  ## normally or when it raises an exception. Note that unhandled exceptions
+  ## in a thread nevertheless cause the whole process to die.
+  nimThreadDestructionHandlers.add handler
+
 when defined(boehmgc):
   type GCStackBaseProc = proc(sb: pointer, t: pointer) {.noconv.}
   proc boehmGC_call_with_stack_base(sbp: GCStackBaseProc, p: pointer)
