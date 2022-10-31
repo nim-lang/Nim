@@ -494,42 +494,61 @@ func `$`*(u: Uri): string =
   ## Returns the string representation of the specified URI object.
   runnableExamples:
     assert $parseUri("https://nim-lang.org") == "https://nim-lang.org"
-  result = ""
-  if u.scheme.len > 0:
-    result.add(u.scheme)
-    if u.opaque:
-      result.add(":")
-    else:
-      result.add("://")
-  if u.username.len > 0:
-    result.add(u.username)
-    if u.password.len > 0:
-      result.add(":")
-      result.add(u.password)
-    result.add("@")
+  # Get the len of all the parts.
+  let schemeLen = u.scheme.len
+  let usernameLen = u.username.len
+  let passwordLen = u.password.len
+  let hostnameLen = u.hostname.len
+  let portLen = u.port.len
+  let pathLen = u.path.len
+  let queryLen = u.query.len
+  let anchorLen = u.anchor.len
+  # Prepare a string that fits all the parts and all punctuation chars.
+  # 12 is the max len required by all possible punctuation chars.
+  result = newStringOfCap(
+    schemeLen + usernameLen + passwordLen + hostnameLen + portLen + pathLen + queryLen + anchorLen + 12
+  )
+  # Insert to result.
+  if schemeLen > 0:
+    result.add u.scheme
+    result.add ':'
+    if not u.opaque:
+      result.add '/'
+      result.add '/'
+  if usernameLen > 0:
+    result.add u.username
+    if passwordLen > 0:
+      result.add ':'
+      result.add u.password
+    result.add '@'
   if u.hostname.endsWith('/'):
     if u.isIpv6:
-      result.add("[" & u.hostname[0 .. ^2] & "]")
+      result.add '['
+      result.add u.hostname[0 .. ^2]
+      result.add ']'
     else:
-      result.add(u.hostname[0 .. ^2])
+      result.add u.hostname[0 .. ^2]
   else:
     if u.isIpv6:
-      result.add("[" & u.hostname & "]")
+      result.add '['
+      result.add u.hostname
+      result.add ']'
     else:
-      result.add(u.hostname)
-  if u.port.len > 0:
-    result.add(":")
-    result.add(u.port)
-  if u.path.len > 0:
-    if u.hostname.len > 0 and u.path[0] != '/':
-      result.add('/')
-    result.add(u.path)
-  if u.query.len > 0:
-    result.add("?")
-    result.add(u.query)
-  if u.anchor.len > 0:
-    result.add("#")
-    result.add(u.anchor)
+      result.add u.hostname
+  if portLen > 0:
+    result.add ':'
+    result.add u.port
+  if pathLen > 0:
+    if hostnameLen > 0 and u.path[0] != '/':
+      result.add '/'
+    result.add u.path
+  if queryLen > 0:
+    result.add '?'
+    result.add u.query
+  if anchorLen > 0:
+    result.add '#'
+    result.add u.anchor
+
 
 proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3).} =
   ## Convenience proc for `base64.encode` returns a standard Base64 Data URI (RFC-2397)

@@ -113,6 +113,8 @@
 - `random.rand` now works with `Ordinal`s.
 - Undeprecated `os.isvalidfilename`.
 - `std/oids` now uses `int64` to store time internally (before it was int32).
+- `std/uri.Uri` dollar `$` improved, precalculates the `string` result length from the `Uri`.
+
 
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
@@ -123,7 +125,7 @@
   - Added `getIsoWeeksInYear` to return the number of weeks in a week-based year.
 - Added new modules which were part of `std/os`:
   - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
-  - Added `std/paths`, `std/dirs`, `std/files`, `std/symlinks` and `std/appdirs`. 
+  - Added `std/paths`, `std/dirs`, `std/files`, `std/symlinks` and `std/appdirs`.
 - Added `sep` parameter in `std/uri` to specify the query separator.
 - Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
   and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)
