@@ -1109,6 +1109,14 @@ else:
     magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
 
 
+template sysAssert(cond: bool, msg: string) =
+  when defined(useSysAssert):
+    if not cond:
+      cstderr.rawWrite "[SYSASSERT] "
+      cstderr.rawWrite msg
+      cstderr.rawWrite "\n"
+      quit 1
+
 const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
 
 when notJSnotNims and hostOS != "standalone" and hostOS != "any":
@@ -2282,7 +2290,7 @@ elif defined(nimdoc):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
 
 elif defined(genode):
-  proc quit*(errorcode: int = QuitSuccess) {.inline.} =
+  proc quit*(errorcode: int = QuitSuccess) {.inline, noreturn.} =
     systemEnv.rawQuit(errorcode)
 
 elif defined(js) and defined(nodejs) and not defined(nimscript):
@@ -2299,14 +2307,6 @@ else:
     if errorcode < low(exitCodeRange) or errorcode > high(exitCodeRange):
       printErrorMessage errorMsg
     rawQuit(errorcode)
-
-template sysAssert(cond: bool, msg: string) =
-  when defined(useSysAssert):
-    if not cond:
-      cstderr.rawWrite "[SYSASSERT] "
-      cstderr.rawWrite msg
-      cstderr.rawWrite "\n"
-      quit 1
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for `echo(errormsg); quit(errorcode)`.
