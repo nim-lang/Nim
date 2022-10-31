@@ -95,16 +95,6 @@ when defined(zephyr):
 
 
 
-proc onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].}) =
-  ## Registers a *thread local* handler that is called at the thread's
-  ## destruction.
-  ##
-  ## A thread is destructed when the `.thread` proc returns
-  ## normally or when it raises an exception. Note that unhandled exceptions
-  ## in a thread nevertheless cause the whole process to die.
-  nimThreadDestructionHandlers.add handler
-
-
 {.push stack_trace:off.}
 when defined(windows):
   proc threadProcWrapper[TArg](closure: pointer): int32 {.stdcall.} =
