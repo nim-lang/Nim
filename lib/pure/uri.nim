@@ -495,15 +495,14 @@ func `$`*(u: Uri): string =
   runnableExamples:
     assert $parseUri("https://nim-lang.org") == "https://nim-lang.org"
   # Get the len of all the parts.
-  let
-    schemeLen:   int = u.scheme.len
-    usernameLen: int = u.username.len
-    passwordLen: int = u.password.len
-    hostnameLen: int = u.hostname.len
-    portLen:     int = u.port.len
-    pathLen:     int = u.path.len
-    queryLen:    int = u.query.len
-    anchorLen:   int = u.anchor.len
+  let schemeLen = u.scheme.len
+  let usernameLen = u.username.len
+  let passwordLen = u.password.len
+  let hostnameLen = u.hostname.len
+  let portLen = u.port.len
+  let pathLen = u.path.len
+  let queryLen = u.query.len
+  let anchorLen = u.anchor.len
   # Prepare a string that fits all the parts and all punctuation chars.
   # 12 is the max len required by all possible punctuation chars.
   result = newStringOfCap(
