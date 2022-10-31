@@ -76,7 +76,7 @@ import algorithm, math
 import std/private/since
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, threads]
 
 include system/inclrtl
 {.push debugger: off.}

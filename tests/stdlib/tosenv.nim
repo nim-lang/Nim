@@ -7,7 +7,7 @@ discard """
 import std/os
 from std/sequtils import toSeq
 import stdtest/testutils
-import std/assertions
+import std/[assertions, threads]
 
 # "LATIN CAPITAL LETTER AE" in UTF-8 (0xc386)
 const unicodeUtf8 = "\xc3\x86"
