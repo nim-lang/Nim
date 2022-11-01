@@ -61,7 +61,7 @@ when defined(js) or defined(nimscript) or defined(Standalone):
   {.pragma: rtlFunc.}
 else:
   {.pragma: rtlFunc, rtl.}
-  import os
+  import std/envvars
 
 include "system/inclrtl"
 
