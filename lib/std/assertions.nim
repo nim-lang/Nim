@@ -9,8 +9,7 @@
 
 ## This module implements assertion handling.
 
-when not declared(sysFatal):
-  include "system/fatal"
+import system/fatal
 
 import std/private/miscdollars
 # ---------------------------------------------------------------------------

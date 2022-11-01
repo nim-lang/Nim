@@ -1637,8 +1637,13 @@ when not defined(nimscript):
     ## for debug builds. Since it's usually used for debugging, this
     ## is proclaimed to have no IO effect!
 
-when not declared(sysFatal):
-  include "system/fatal"
+
+when defined(nimHasExceptionsQuery):
+  const gotoBasedExceptions = compileOption("exceptions", "goto")
+else:
+  const gotoBasedExceptions = false
+
+import system/fatal
 
 when not defined(nimscript):
   {.push stackTrace: off, profiler: off.}
