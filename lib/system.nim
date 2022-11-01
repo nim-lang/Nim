@@ -1551,29 +1551,6 @@ when notJSnotNims:
 
 {.push stackTrace: off.}
 
-when not defined(js) and hasThreadSupport and hostOS != "standalone":
-  import std/private/syslocks
-  include "system/threadlocalstorage"
-
-when not defined(js) and defined(nimV2):
-  type
-    DestructorProc = proc (p: pointer) {.nimcall, benign, raises: [].}
-    TNimTypeV2 {.compilerproc.} = object
-      destructor: pointer
-      size: int
-      align: int
-      name: cstring
-      traceImpl: pointer
-      typeInfoV1: pointer # for backwards compat, usually nil
-      flags: int
-    PNimTypeV2 = ptr TNimTypeV2
-
-when notJSnotNims and defined(nimSeqsV2):
-  include "system/strs_v2"
-  include "system/seqs_v2"
-
-{.pop.}
-
 when not defined(nimscript):
   proc writeStackTrace*() {.tags: [], gcsafe, raises: [].}
     ## Writes the current stack trace to `stderr`. This is only works
@@ -1599,6 +1576,30 @@ template sysAssert(cond: bool, msg: string) =
       cstderr.rawWrite msg
       cstderr.rawWrite "\n"
       rawQuit 1
+
+when not defined(js) and hasThreadSupport and hostOS != "standalone":
+  import std/private/syslocks
+  include "system/threadlocalstorage"
+
+when not defined(js) and defined(nimV2):
+  type
+    DestructorProc = proc (p: pointer) {.nimcall, benign, raises: [].}
+    TNimTypeV2 {.compilerproc.} = object
+      destructor: pointer
+      size: int
+      align: int
+      name: cstring
+      traceImpl: pointer
+      typeInfoV1: pointer # for backwards compat, usually nil
+      flags: int
+    PNimTypeV2 = ptr TNimTypeV2
+
+when notJSnotNims and defined(nimSeqsV2):
+  include "system/strs_v2"
+  include "system/seqs_v2"
+
+{.pop.}
+
 
 when not defined(nimscript):
   {.push stackTrace: off, profiler: off.}
