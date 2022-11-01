@@ -884,6 +884,8 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
   {.pop.}
 
   when isMainModule:
+    when defined(nimPreviewSlimSystem):
+      import std/assertions
     # A simple certificate test
     let certbytes = readFile("certificate.der")
     let cert = d2i_X509(certbytes)
