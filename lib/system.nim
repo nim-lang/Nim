@@ -2303,8 +2303,8 @@ else:
       type ExitCodeRange = int8
     else: # win32 uses low 32 bits
       type ExitCodeRange = int32
-    let errorMsg = "forced to truncate exit code " & $errorcode & " to " & $(errorcode and high(exitCodeRange))
-    if errorcode < low(exitCodeRange) or errorcode > high(exitCodeRange):
+    let errorMsg = "forced to truncate exit code " & $errorcode & " to " & $(errorcode and high(ExitCodeRange))
+    if errorcode < low(ExitCodeRange) or errorcode > high(ExitCodeRange):
       printErrorMessage errorMsg
     rawQuit(errorcode)
 
