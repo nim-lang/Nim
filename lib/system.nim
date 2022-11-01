@@ -1115,7 +1115,7 @@ template sysAssert(cond: bool, msg: string) =
       cstderr.rawWrite "[SYSASSERT] "
       cstderr.rawWrite msg
       cstderr.rawWrite "\n"
-      quit 1
+      rawQuit 1
 
 const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
 
@@ -2300,9 +2300,9 @@ elif defined(js) and defined(nodejs) and not defined(nimscript):
 else:
   proc quit*(errorcode: int = QuitSuccess) {.inline, noreturn.} =
     when defined(posix): # posix uses low 8 bits
-      type exitCodeRange = int8
+      type ExitCodeRange = int8
     else: # win32 uses low 32 bits
-      type exitCodeRange = int32
+      type ExitCodeRange = int32
     let errorMsg = "forced to truncate exit code " & $errorcode & " to " & $(errorcode and high(exitCodeRange))
     if errorcode < low(exitCodeRange) or errorcode > high(exitCodeRange):
       printErrorMessage errorMsg
