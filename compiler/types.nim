@@ -450,7 +450,10 @@ proc mutateType(t: PType, iter: TTypeMutator, closure: RootRef): PType =
 
 proc valueToString(a: PNode): string =
   case a.kind
-  of nkCharLit..nkUInt64Lit: result = $a.intVal
+  of nkCharLit, nkUIntLit..nkUInt64Lit:
+    result = $cast[uint64](a.intVal)
+  of nkIntLit..nkInt64Lit:
+    result = $a.intVal
   of nkFloatLit..nkFloat128Lit: result = $a.floatVal
   of nkStrLit..nkTripleStrLit: result = a.strVal
   else: result = "<invalid value>"

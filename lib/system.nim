@@ -1609,8 +1609,13 @@ when not defined(nimscript):
     ## for debug builds. Since it's usually used for debugging, this
     ## is proclaimed to have no IO effect!
 
-when not declared(sysFatal):
-  include "system/fatal"
+
+when defined(nimHasExceptionsQuery):
+  const gotoBasedExceptions = compileOption("exceptions", "goto")
+else:
+  const gotoBasedExceptions = false
+
+import system/fatal
 
 when not defined(nimscript):
   {.push stackTrace: off, profiler: off.}
@@ -2178,7 +2183,8 @@ when notJSnotNims and hasAlloc:
     include "system/repr"
 
 when notJSnotNims and hasThreadSupport and hostOS != "standalone":
-  include "system/channels_builtin"
+  when not defined(nimPreviewSlimSystem):
+    include "system/channels_builtin"
 
 
 when notJSnotNims and hostOS != "standalone":
