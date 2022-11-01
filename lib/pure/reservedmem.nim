@@ -18,7 +18,7 @@
 ##
 ## Unstable API.
 
-from os import raiseOSError, osLastError
+from std/oserrors import raiseOSError, osLastError
 
 template distance*(lhs, rhs: pointer): int =
   cast[int](rhs) - cast[int](lhs)

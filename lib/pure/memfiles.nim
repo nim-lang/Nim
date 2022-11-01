@@ -24,7 +24,8 @@ elif defined(posix):
 else:
   {.error: "the memfiles module is not supported on your operating system!".}
 
-import os, streams
+import streams
+import std/oserrors
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
