@@ -2245,14 +2245,14 @@ when defined(js):
   include "system/jssys"
   include "system/reprjs"
 
-template printErrorMessage(errormsg: cstring) =
+template printErrorMessage(errormsg: string) =
   when defined(nimscript) or defined(js) or (hostOS == "standalone"):
     echo errormsg
   else:
     when nimvm:
       echo errormsg
     else:
-      cstderr.rawWrite(errormsg)
+      cstderr.rawWrite(errormsg.cstring)
       cstderr.rawWrite("\n")
 
 when defined(nimNoQuit):
