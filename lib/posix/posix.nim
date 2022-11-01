@@ -250,38 +250,35 @@ proc strfmon*(a1: cstring, a2: int, a3: cstring): int {.varargs,
    importc, header: "<monetary.h>".}
 
 when not defined(nintendoswitch):
-  proc mq_close*(a1: Mqd): cint {.importc, header: "<mqueue.h>".}
-  proc mq_getattr*(a1: Mqd, a2: ptr MqAttr): cint {.
+  proc mq_notify*(mqdes: Mqd, event: ptr SigEvent): cint {.
     importc, header: "<mqueue.h>".}
-  proc mq_notify*(a1: Mqd, a2: ptr SigEvent): cint {.
-    importc, header: "<mqueue.h>".}
-  proc mq_open*(a1: cstring, a2: cint): Mqd {.
+
+  proc mq_open*(name: cstring, flags: cint): Mqd {.
     varargs, importc, header: "<mqueue.h>".} =
     when defined(linux):
       runnableExamples:
         type Message = object
           value: int
 
-        const MQ_PATH = "/top_level_file"
-        const MQ_PRIORITY = 170
-        const MQ_MESSAGE_SIZE = sizeof(Message)
+        const MQ_PATH: cstring = "/top_level_file"
+        const MQ_PRIORITY: cuint = 170
+        const MQ_MESSAGE_SIZE: csize_t = csize_t(sizeof(Message))
 
-        var mqd_a: posix.MqAttr = MqAttr(mq_maxmsg: 10, mq_msgsize: clong(MQ_MESSAGE_SIZE))
-        let writable: posix.Mqd = posix.mq_open(
-          MQ_PATH,
-          posix.O_CREAT or posix.O_WRONLY or posix.O_NONBLOCK,
-          posix.S_IRWXU,
-          addr(mqd_a)
+        let mqd_a: posix.MqAttr = MqAttr(
+          mq_maxmsg: 10,
+          mq_msgsize: clong(MQ_MESSAGE_SIZE)
         )
-        let readable: posix.Mqd = posix.mq_open(
+
+        block:
+          # send the message
+          let sent: Message = Message(value: 88)
+          let writable: posix.Mqd = posix.mq_open(
             MQ_PATH,
-            posix.O_RDONLY or posix.O_NONBLOCK,
+            posix.O_CREAT or posix.O_WRONLY or posix.O_NONBLOCK,
             posix.S_IRWXU,
             addr(mqd_a)
           )
 
-        let sent: Message = Message(value: 88)
-        block:
           let success: int = writable.mq_send(
             cast[cstring](sent.addr),
             MQ_MESSAGE_SIZE,
@@ -289,34 +286,65 @@ when not defined(nintendoswitch):
           )
           let error: cint = errno
           if success != 0:
-            echo "Failed to write " &
-              $sizeof(Message) &
-              " bytes to mqd_t file descriptor " &
-              $writable &
-              " because failed with reason: " &
-              $strerror(error)
-          assert success == 0, $success
+            echo $strerror(error)
 
         block:
+          # receive the message
+          let readable: posix.Mqd = posix.mq_open(
+            MQ_PATH,
+            posix.O_RDONLY or posix.O_NONBLOCK,
+            posix.S_IRWXU,
+            addr(mqd_a)
+          )
+
           var buffer: Message
           var priority: cuint
-          let bytesRead: int = readable.mq_receive(cast[cstring](buffer.addr), MQ_MESSAGE_SIZE, priority)
+          discard readable.mq_receive(
+            cast[cstring](buffer.addr),
+            MQ_MESSAGE_SIZE,
+            priority
+          )
           echo $buffer
-          assert buffer == sent
-          assert bytesRead == MQ_MESSAGE_SIZE
 
-  proc mq_receive*(a1: Mqd, buffer: cstring, length: int, priority: var cuint): int {.
-    importc, header: "<mqueue.h>".}
-  proc mq_send*(a1: Mqd, a2: cstring, a3: int, a4: int): cint {.
-    importc, header: "<mqueue.h>".}
-  proc mq_setattr*(a1: Mqd, a2, a3: ptr MqAttr): cint {.
+  proc mq_close*(mqdes: Mqd): cint {.importc, header: "<mqueue.h>".}
+
+  proc mq_receive*(
+    mqdes: Mqd,
+    buffer: cstring,
+    length: csize_t,
+    priority: var cuint
+  ): int {.importc, header: "<mqueue.h>".}
+
+  proc mq_timedreceive*(
+    mqdes: Mqd,
+    buffer: cstring,
+    length: csize_t,
+    priority: cuint,
+    timeout: ptr Timespec
+  ): int {.importc, header: "<mqueue.h>".}
+
+  proc mq_send*(
+    mqdes: Mqd,
+    buffer: cstring,
+    length: csize_t,
+    priority: cuint
+  ): cint {.importc, header: "<mqueue.h>".}
+
+  proc mq_timedsend*(
+    mqdes: Mqd,
+    buffer: cstring,
+    length: csize_t,
+    priority: cuint,
+    timeout: ptr Timespec
+  ): cint {.importc, header: "<mqueue.h>".}
+
+  proc mq_getattr*(mqdes: Mqd, attribute: ptr MqAttr): cint {.
     importc, header: "<mqueue.h>".}
 
-  proc mq_timedreceive*(a1: Mqd, a2: cstring, a3: int, a4: int,
-                        a5: ptr Timespec): int {.importc, header: "<mqueue.h>".}
-  proc mq_timedsend*(a1: Mqd, a2: cstring, a3: int, a4: int,
-                     a5: ptr Timespec): cint {.importc, header: "<mqueue.h>".}
-  proc mq_unlink*(a1: cstring): cint {.importc, header: "<mqueue.h>".}
+  proc mq_setattr*(mqdes: Mqd, newAttribute, oldAttribute: ptr MqAttr): cint {.
+    importc, header: "<mqueue.h>".}
+
+  proc mq_unlink*(mqdes: cstring): cint {.importc, header: "<mqueue.h>".}
 
 
 proc getpwnam*(a1: cstring): ptr Passwd {.importc, header: "<pwd.h>".}
