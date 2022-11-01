@@ -1569,7 +1569,7 @@ when defined(genode):
   type GenodeEnv* = GenodeEnvPtr
       ## Opaque type representing Genode environment.
 
-import system/fatal
+include system/fatal
 
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
@@ -1615,6 +1615,12 @@ when not defined(nimscript):
 
 when defined(nimV2):
   include system/arc
+
+template newException*(exceptn: typedesc, message: string;
+                       parentException: ref Exception = nil): untyped =
+  ## Creates an exception object of type `exceptn` and sets its `msg` field
+  ## to `message`. Returns the new exception object.
+  (ref exceptn)(msg: message, parent: parentException)
 
 when not defined(nimPreviewSlimSystem):
   {.deprecated: "assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/assertions`".}
@@ -1823,11 +1829,6 @@ proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
   ## for debugging routines marked as `noSideEffect
   ## <manual.html#pragmas-nosideeffect-pragma>`_.
 
-template newException*(exceptn: typedesc, message: string;
-                       parentException: ref Exception = nil): untyped =
-  ## Creates an exception object of type `exceptn` and sets its `msg` field
-  ## to `message`. Returns the new exception object.
-  (ref exceptn)(msg: message, parent: parentException)
 
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =

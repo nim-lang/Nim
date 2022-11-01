@@ -9,8 +9,6 @@
 
 ## This module implements assertion handling.
 
-import system/fatal
-
 import std/private/miscdollars
 # ---------------------------------------------------------------------------
 # helpers
@@ -27,6 +25,9 @@ proc `$`(info: InstantiationInfo): string =
 
 when not defined(nimHasSinkInference):
   {.pragma: nosinks.}
+
+template sysFatal(exc, msg) =
+  raise newException(exc, msg)
 
 proc raiseAssert*(msg: string) {.noinline, noreturn, nosinks.} =
   ## Raises an `AssertionDefect` with `msg`.
