@@ -18,7 +18,7 @@ elif defined(genode):
 
   var systemEnv {.exportc: runtimeEnvSym.}: GenodeEnvPtr
 
-  proc rawQuit(env: GenodeEnv; errorcode: int) {.magic: "Exit", noreturn,
+  proc rawQuit*(env: GenodeEnv; errorcode: int) {.magic: "Exit", noreturn,
     importcpp: "#->parent().exit(@); Genode::sleep_forever()", header: "<base/sleep.h>".}
 
   proc rawQuit*(errorcode: int = QuitSuccess) {.inline, noreturn.} =

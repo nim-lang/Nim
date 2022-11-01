@@ -2677,7 +2677,7 @@ when defined(genode):
   proc nim_component_construct(env: GenodeEnv) {.exportc.} =
     ## Procedure called during `Component::construct` by the loader.
     if componentConstructHook.isNil:
-      env.quit(programResult)
+      env.rawQuit(programResult)
         # No native Genode application initialization,
         # exit as would POSIX.
     else:
