@@ -24,7 +24,7 @@ when hostOS == "standalone":
     rawoutput(message)
     panic(arg)
 
-elif (defined(nimQuirky) or defined(nimPanics)) and not defined(nimscript):
+elif (defined(nimQuirky) or defined(nimPanics)) and not defined(nimscript) and not defined(js):
   import ansi_c
 
   func name(t: typedesc): string {.magic: "TypeTrait".}
