@@ -73,6 +73,7 @@ type
     efSkipFieldVisibilityCheck
       # Use this if undeclared identifiers should not raise an error during
       # overload resolution.
+    efNoDiagnostics
 
   TExprFlags* = set[TExprFlag]
 

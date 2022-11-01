@@ -1004,7 +1004,7 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
   toResolve.add n[0]
 
   var errors: CandidateErrors
-  var r = resolveOverloads(c, toResolve, toResolve, {skTemplate, skMacro}, {},
+  var r = resolveOverloads(c, toResolve, toResolve, {skTemplate, skMacro}, {efNoDiagnostics},
                            errors, false)
   if r.state == csMatch:
     var match = r.calleeSym
@@ -1017,7 +1017,11 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
     case match.kind
     of skMacro: result = semMacroExpr(c, toExpand, toExpand, match, flags)
     of skTemplate: result = semTemplateExpr(c, toExpand, match, flags)
-    else: result = nil
+    else: result = errorNode(c, n[0])
+  elif r.state == csNoMatch:
+    result = errorNode(c, n[0])
+  if result.kind == nkEmpty:
+    localError(c.config, n[0].info, errSelectorMustBeOfCertainTypes)
   # this would be the perfectly consistent solution with 'for loop macros',
   # but it kinda sucks for pattern matching as the matcher is not attached to
   # a type then:
@@ -1088,12 +1092,8 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
   else:
     popCaseContext(c)
     closeScope(c)
-    #if caseStmtMacros in c.features:
-    result = handleCaseStmtMacro(c, n, flags)
-    if result != nil:
-      return result
-    localError(c.config, n[0].info, errSelectorMustBeOfCertainTypes)
-    return
+    return handleCaseStmtMacro(c, n, flags)
+
   for i in 1..<n.len:
     setCaseContextIdx(c, i)
     var x = n[i]
