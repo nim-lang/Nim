@@ -1086,36 +1086,7 @@ proc align(address, alignment: int): int =
   else:
     result = (address + (alignment - 1)) and not (alignment - 1)
 
-when defined(nimNoQuit):
-  proc rawQuit(errorcode: int = QuitSuccess) = discard "ignoring quit"
 
-elif defined(genode):
-  import genode/env
-
-  var systemEnv {.exportc: runtimeEnvSym.}: GenodeEnvPtr
-
-  type GenodeEnv* = GenodeEnvPtr
-    ## Opaque type representing Genode environment.
-
-  proc rawQuit(env: GenodeEnv; errorcode: int) {.magic: "Exit", noreturn,
-    importcpp: "#->parent().exit(@); Genode::sleep_forever()", header: "<base/sleep.h>".}
-
-elif defined(js) and defined(nodejs) and not defined(nimscript):
-  proc rawQuit(errorcode: int = QuitSuccess) {.magic: "Exit",
-    importc: "process.exit", noreturn.}
-
-else:
-  proc rawQuit(errorcode: int = QuitSuccess) {.
-    magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
-
-
-template sysAssert(cond: bool, msg: string) =
-  when defined(useSysAssert):
-    if not cond:
-      cstderr.rawWrite "[SYSASSERT] "
-      cstderr.rawWrite msg
-      cstderr.rawWrite "\n"
-      rawQuit 1
 
 const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
 
@@ -1616,6 +1587,14 @@ else:
   const gotoBasedExceptions = false
 
 import system/fatal
+
+template sysAssert(cond: bool, msg: string) =
+  when defined(useSysAssert):
+    if not cond:
+      cstderr.rawWrite "[SYSASSERT] "
+      cstderr.rawWrite msg
+      cstderr.rawWrite "\n"
+      rawQuit 1
 
 when not defined(nimscript):
   {.push stackTrace: off, profiler: off.}
