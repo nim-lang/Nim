@@ -20,6 +20,9 @@
 
 from os import raiseOSError, osLastError
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 template distance*(lhs, rhs: pointer): int =
   cast[int](rhs) - cast[int](lhs)
 

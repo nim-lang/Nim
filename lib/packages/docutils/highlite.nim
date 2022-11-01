@@ -61,7 +61,7 @@ import
 from algorithm import binarySearch
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, syncio]
 
 
 type
