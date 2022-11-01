@@ -1586,6 +1586,10 @@ when defined(nimHasExceptionsQuery):
 else:
   const gotoBasedExceptions = false
 
+when defined(genode):
+  type GenodeEnv* = GenodeEnvPtr
+      ## Opaque type representing Genode environment.
+
 import system/fatal
 
 template sysAssert(cond: bool, msg: string) =
@@ -2276,7 +2280,7 @@ elif defined(nimdoc):
 
 elif defined(genode):
   proc quit*(errorcode: int = QuitSuccess) {.inline, noreturn.} =
-    systemEnv.rawQuit(errorcode)
+    rawQuit(errorcode)
 
 elif defined(js) and defined(nodejs) and not defined(nimscript):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
