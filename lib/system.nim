@@ -1557,6 +1557,7 @@ when not defined(nimscript):
     ## for debug builds. Since it's usually used for debugging, this
     ## is proclaimed to have no IO effect!
 
+{.pop.}
 
 when defined(nimHasExceptionsQuery):
   const gotoBasedExceptions = compileOption("exceptions", "goto")
@@ -1564,6 +1565,7 @@ else:
   const gotoBasedExceptions = false
 
 when defined(genode):
+  import genode/env
   type GenodeEnv* = GenodeEnvPtr
       ## Opaque type representing Genode environment.
 
@@ -1576,6 +1578,8 @@ template sysAssert(cond: bool, msg: string) =
       cstderr.rawWrite msg
       cstderr.rawWrite "\n"
       rawQuit 1
+
+{.push stackTrace: off.}
 
 when not defined(js) and hasThreadSupport and hostOS != "standalone":
   import std/private/syslocks
