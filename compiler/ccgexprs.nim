@@ -1398,7 +1398,7 @@ proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope; needsInit: bool) =
   var b: TLoc
   initLoc(b, locExpr, a.lode, OnHeap)
   let refType = typ.skipTypes(abstractInstOwned)
-  assert refType.kind == tyRef
+  # assert refType.kind == tyRef
   let bt = refType.lastSon
   if sizeExpr == "":
     sizeExpr = "sizeof($1)" % [getTypeDesc(p.module, bt)]
@@ -1538,6 +1538,7 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
     result = false
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
+  assert e != nil
   #echo renderTree e, " ", e.isDeepConstExpr
   # inheritance in C++ does not allow struct initialization so
   # we skip this step here:
@@ -1551,11 +1552,11 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     ]#
     if handleConstExpr(p, e, d): return
   var t = e.typ.skipTypes(abstractInstOwned)
-  let isRef = t.kind == tyRef
+  let isRefLike = t.kind == tyRef or t.kind == tyVar
 
   # check if we need to construct the object in a temporary
   var useTemp =
-        isRef or
+        isRefLike  or
         (d.k notin {locTemp,locLocalVar,locGlobalVar,locParam,locField}) or
         (isPartOf(d.lode, e) != arNo)
 
@@ -1564,7 +1565,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   if useTemp:
     getTemp(p, t, tmp)
     r = rdLoc(tmp)
-    if isRef:
+    if isRefLike:
       rawGenNew(p, tmp, "", needsInit = nfAllFieldsSet notin e.flags)
       t = t.lastSon.skipTypes(abstractInstOwned)
       r = "(*$1)" % [r]
@@ -1574,6 +1575,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   else:
     resetLoc(p, d)
     r = rdLoc(d)
+  
   discard getTypeDesc(p.module, t)
   let ty = getUniqueType(t)
   for i in 1..<e.len:
@@ -1589,10 +1591,10 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     tmp2.r.add(field.loc.r)
     if useTemp:
       tmp2.k = locTemp
-      tmp2.storage = if isRef: OnHeap else: OnStack
+      tmp2.storage = if isRefLike: OnHeap else: OnStack
     else:
       tmp2.k = d.k
-      tmp2.storage = if isRef: OnHeap else: d.storage
+      tmp2.storage = if isRefLike: OnHeap else: d.storage
     tmp2.lode = it[1]
     expr(p, it[1], tmp2)
   if useTemp:

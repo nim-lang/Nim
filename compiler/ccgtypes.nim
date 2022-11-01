@@ -496,6 +496,8 @@ proc mangleRecFieldName(m: BModule; field: PSym): Rope =
 proc genRecordFieldsAux(m: BModule, n: PNode,
                         rectype: PType,
                         check: var IntSet; result: var Rope; unionPrefix = "") =
+  assert n != nil
+  assert rectype != nil
   case n.kind
   of nkRecList:
     for i in 0..<n.len:
@@ -562,6 +564,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
 
 proc getRecordFields(m: BModule, typ: PType, check: var IntSet): Rope =
   result = newRopeAppender()
+  assert typ.n != nil
   genRecordFieldsAux(m, typ.n, typ, check, result)
 
 proc fillObjectFields*(m: BModule; typ: PType) =
