@@ -6,6 +6,10 @@ x + y = 30
 import std/[sugar, algorithm, random, sets, tables, strutils]
 import std/[syncio, assertions]
 
+type # for capture test, ref #20679
+  FooCapture = ref object
+    x: int
+
 template main() =
   block: # `=>`
     block:
@@ -99,32 +103,58 @@ template main() =
     block: # issue #20679
       # this should compile. Previously was broken as `var int` is an `nnkHiddenDeref`
       # which was not handled correctly
-      proc function(data: var int) =
-        capture data:
-          discard
 
-      proc functionS(data: var seq[int]) =
-        capture data:
-          discard
+      block:
+        var x = 5
+        var s1 = newSeq[proc (): int](2)
+        proc function(data: var int) =
+          for i in 0 ..< 2:
+            data = (i+1) * data
+            capture data:
+              s1[i] = proc(): int = data
+        function(x)
+        doAssert s1[0]() == 5
+        doAssert s1[1]() == 10
 
-      proc functionT[T](data: var T) =
-        capture data:
-          discard
+
+      block:
+        var y = @[5, 10]
+        var s2 = newSeq[proc (): seq[int]](2)
+        proc functionS(data: var seq[int]) =
+          for i in 0 ..< 2:
+            data.add (i+1) * 5
+            capture data:
+              s2[i] = proc(): seq[int] = data
+        functionS(y)
+        doAssert s2[0]() == @[5, 10, 5]
+        doAssert s2[1]() == @[5, 10, 5, 10]
+
+
+      template typeT(typ, val: untyped): untyped =
+        var x = val
+        var s = newSeq[proc (): typ](2)
+
+        proc functionT[T](data: var T) =
+          for i in 0 ..< 2:
+            if i == 1:
+              data = default(T)
+            capture data:
+              s[i] = proc (): T = data
+
+        functionT(x)
+        doAssert s[0]() == val
+        doAssert s[1]() == x # == default
+        doAssert s[1]() == default(typ)
 
       block:
         var x = 1.1
-        functionT(x)
+        typeT(float, x)
       block:
         var x = "hello"
-        functionT(x)
-
-      type
-        Foo = ref object
-          x: int
-
+        typeT(string, x)
       block:
-        var f = Foo(x: 5)
-        functionT(f)
+        var f = FooCapture(x: 5)
+        typeT(FooCapture, f)
 
   block: # dup
     block dup_with_field:
