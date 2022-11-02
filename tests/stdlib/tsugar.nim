@@ -103,6 +103,29 @@ template main() =
         capture data:
           discard
 
+      proc functionS(data: var seq[int]) =
+        capture data:
+          discard
+
+      proc functionT[T](data: var T) =
+        capture data:
+          discard
+
+      block:
+        var x = 1.1
+        functionT(x)
+      block:
+        var x = "hello"
+        functionT(x)
+
+      type
+        Foo = ref object
+          x: int
+
+      block:
+        var f = Foo(x: 5)
+        functionT(f)
+
   block: # dup
     block dup_with_field:
       type
