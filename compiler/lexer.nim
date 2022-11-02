@@ -958,11 +958,7 @@ proc getOperator(L: var Lexer, tok: var Token) =
   tok.strongSpaceB = 0
   while L.buf[pos] == ' ':
     inc pos
-    if tok.strongSpaceB >= 126:
-      if tok.strongSpaceB == 126:
-        lexMessagePos(L, errGenerated, pos, "too many trailing spaces (maximun is 126)")
-        inc tok.strongSpaceB
-    else:
+    if tok.strongSpaceB < 1:
       inc(tok.strongSpaceB)
   if L.buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
     tok.strongSpaceB = -1
@@ -1163,11 +1159,7 @@ proc skip(L: var Lexer, tok: var Token) =
     case L.buf[pos]
     of ' ':
       inc(pos)
-      if tok.strongSpaceA >= 126:
-        if tok.strongSpaceA == 126:
-          lexMessagePos(L, errGenerated, pos, "too many leading spaces (maximun is 126)")
-          inc tok.strongSpaceA
-      else:
+      if tok.strongSpaceA < 1:
         inc(tok.strongSpaceA)
     of '\t':
       if not L.allowTabs: lexMessagePos(L, errGenerated, pos, "tabs are not allowed, use spaces instead")
