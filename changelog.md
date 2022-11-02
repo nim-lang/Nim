@@ -115,6 +115,8 @@
 - `std/oids` now uses `int64` to store time internally (before it was int32).
 - `std/uri.Uri` dollar `$` improved, precalculates the `string` result length from the `Uri`.
 
+- `std/colors.Color` dollar `$` improved, uses a fixed length for the `string` result.
+
 
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
