@@ -81,7 +81,7 @@ func abs2*[T](z: Complex[T]): T =
   ## that is the squared distance from (0, 0) to `z`.
   ## This is more efficient than `abs(z) ^ 2`.
   result = z.re * z.re + z.im * z.im
-  
+
 func sgn*[T](z: Complex[T]): Complex[T] =
   ## Returns the phase of `z` as a unit complex number,
   ## or 0 if `z` is 0.
@@ -396,7 +396,14 @@ func `$`*(z: Complex): string =
   ## Returns `z`'s string representation as `"(re, im)"`.
   runnableExamples:
     doAssert $complex(1.0, 2.0) == "(1.0, 2.0)"
+  # "(0.0, 0.0)".len == 10
+  result = newStringOfCap(10)
+  result.add '('
+  result.addFloat z.re
+  result.add ','
+  result.add ' '
+  result.addFloat z.im
+  result.add ')'
 
-  result = "(" & $z.re & ", " & $z.im & ")"
 
 {.pop.}
