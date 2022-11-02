@@ -102,7 +102,7 @@ type
     fNumber*: BiggestFloat    # the parsed floating point literal
     base*: NumericalBase      # the numerical base; only valid for int
                               # or float literals
-    strongSpaceA*: int8       # leading spaces of an operator
+    strongSpaceA*: bool       # leading spaces of an operator
     strongSpaceB*: int8       # trailing spaces of an operator
     literal*: string          # the parsed (string) literal; and
                               # documentation comments are here too
@@ -173,7 +173,7 @@ proc initToken*(L: var Token) =
   L.tokType = tkInvalid
   L.iNumber = 0
   L.indent = 0
-  L.strongSpaceA = 0
+  L.strongSpaceA = false
   L.literal = ""
   L.fNumber = 0.0
   L.base = base10
@@ -186,7 +186,7 @@ proc fillToken(L: var Token) =
   L.tokType = tkInvalid
   L.iNumber = 0
   L.indent = 0
-  L.strongSpaceA = 0
+  L.strongSpaceA = false
   setLen(L.literal, 0)
   L.fNumber = 0.0
   L.base = base10
@@ -1148,7 +1148,7 @@ proc scanComment(L: var Lexer, tok: var Token) =
 proc skip(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
   tokenBegin(tok, pos)
-  tok.strongSpaceA = 0
+  tok.strongSpaceA = false
   when defined(nimpretty):
     var hasComment = false
     var commentIndent = L.currLineIndent
@@ -1159,8 +1159,8 @@ proc skip(L: var Lexer, tok: var Token) =
     case L.buf[pos]
     of ' ':
       inc(pos)
-      if tok.strongSpaceA < 1:
-        inc(tok.strongSpaceA)
+      if not tok.strongSpaceA:
+        tok.strongSpaceA = true
     of '\t':
       if not L.allowTabs: lexMessagePos(L, errGenerated, pos, "tabs are not allowed, use spaces instead")
       inc(pos)
@@ -1182,7 +1182,7 @@ proc skip(L: var Lexer, tok: var Token) =
           pos = L.bufpos
         else:
           break
-      tok.strongSpaceA = 0
+      tok.strongSpaceA = false
       when defined(nimpretty):
         if L.buf[pos] == '#' and tok.line < 0: commentIndent = indent
       if L.buf[pos] > ' ' and (L.buf[pos] != '#' or L.buf[pos+1] == '#'):
