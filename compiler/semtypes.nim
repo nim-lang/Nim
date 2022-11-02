@@ -1342,6 +1342,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         elif typ.kind == tyStatic:
           def = semConstExpr(c, def)
           def = fitNode(c, typ, def, def.info)
+      a[^1] = def
 
     if not hasType and not hasDefault:
       if isType: localError(c.config, a.info, "':' expected")

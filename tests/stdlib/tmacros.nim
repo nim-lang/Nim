@@ -157,3 +157,28 @@ block: # bug #19020
   static:
     doAssert $bar.getCustomPragmaVal(typ) == "foo"
   doAssert $bar.getCustomPragmaVal(typ) == "foo"
+
+block: # bug #12942
+  var thing = 2
+  proc example(a = thing) =
+    discard (a, thing)
+
+  macro echoImpl(x: typed): string =
+    result = newLit(x.getImpl.treeRepr)
+
+  doAssert echoImpl(example) == """ProcDef
+  Sym "example"
+  Empty
+  Empty
+  FormalParams
+    Empty
+    IdentDefs
+      Sym "a"
+      Empty
+      Sym "thing"
+  Empty
+  Empty
+  DiscardStmt
+    TupleConstr
+      Sym "a"
+      Sym "thing""""
