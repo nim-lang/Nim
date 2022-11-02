@@ -114,6 +114,7 @@
 - Undeprecated `os.isvalidfilename`.
 - `std/oids` now uses `int64` to store time internally (before it was int32).
 - `std/uri.Uri` dollar `$` improved, precalculates the `string` result length from the `Uri`.
+- `std/uri.Uri.isIpv6` is now exported.
 
 
 [//]: # "Additions:"
