@@ -449,7 +449,9 @@ proc `$`*(c: Color): string =
   ##
   runnableExamples:
     assert $colFuchsia == "#FF00FF"
-  result = '#' & toHex(int(c), 6)
+  result = newStringOfCap(7)
+  result.add '#'
+  result.add toHex(int(c), 6)
 
 proc colorNameCmp(x: tuple[name: string, col: Color], y: string): int =
   result = cmpIgnoreCase(x.name, y)
