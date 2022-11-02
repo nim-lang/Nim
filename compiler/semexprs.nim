@@ -1556,13 +1556,17 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   of tyArray, tyOpenArray, tyVarargs, tySequence, tyString, tyCstring,
     tyUncheckedArray:
     if n.len != 2: return nil
+    n[0] = makeDeref(n[0])
     let isDotDot = n[1].kind == nkInfix and
       n[1][0].kind == nkIdent and
       n[1][0].ident.id == ord(wDotDot)
-    n[0] = makeDeref(n[0])
     for i in 1..<n.len:
       n[i] = semExprWithType(c, n[i],
                                   flags*{efInTypeof, efDetermineType})
+    if efInTypeof in flags and isDotDot:
+      result = n
+      result.typ = arr
+      return result
     # Arrays index type is dictated by the range's type
     if arr.kind == tyArray:
       var indexType = arr[0]
@@ -1571,9 +1575,6 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
         n[1] = arg
         result = n
         result.typ = elemType(arr)
-    elif isDotDot:
-      result = n
-      result.typ = arr
     # Other types have a bit more of leeway
     elif n[1].typ.skipTypes(abstractRange-{tyDistinct}).kind in
         {tyInt..tyInt64, tyUInt..tyUInt64}:
