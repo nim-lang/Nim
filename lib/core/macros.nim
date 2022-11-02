@@ -520,7 +520,16 @@ type
 proc `$`*(arg: LineInfo): string =
   ## Return a string representation in the form `filepath(line, column)`.
   # BUG: without `result = `, gives compile error
-  result = arg.filename & "(" & $arg.line & ", " & $arg.column & ")"
+  # ( "(".len + ", ".len + ")".len + "0".len + "0".len) == 6
+  result = newStringOfCap(6 + arg.filename.len)
+  result.add arg.filename
+  result.add '('
+  result.addInt arg.line   # 1 char at least.
+  result.add ','
+  result.add ' '
+  result.addInt arg.column # 1 char at least.
+  result.add ')'
+
 
 #proc lineinfo*(n: NimNode): LineInfo {.magic: "NLineInfo", noSideEffect.}
 #  ## returns the position the node appears in the original source file
