@@ -429,7 +429,7 @@ proc `mod`*(a, b: Int128): Int128 =
 proc addInt128*(result: var string; value: Int128) =
   let initialSize = result.len
   if value == Zero:
-    result.add "0"
+    result.add '0'
   elif value == low(Int128):
     result.add "-170141183460469231731687303715884105728"
   else:
@@ -450,6 +450,8 @@ proc addInt128*(result: var string; value: Int128) =
       j -= 1
 
 proc `$`*(a: Int128): string =
+  # "-170141183460469231731687303715884105728".len == 41
+  result = newStringOfCap(41)
   result.addInt128(a)
 
 proc parseDecimalInt128*(arg: string, pos: int = 0): Int128 =
