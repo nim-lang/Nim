@@ -90,7 +90,7 @@ proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add newAsgnStmt(x, call)
 
 proc genAddr(c: var TLiftCtx; x: PNode): PNode =
-  if x.kind == nkHiddenDeref:
+  if x.kind in {nkHiddenDeref, nkDerefExpr}:
     checkSonsLen(x, 1, c.g.config)
     result = x[0]
   else:
