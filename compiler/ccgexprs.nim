@@ -775,7 +775,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
     expr(p, e[0], d)
     if e[0].typ.skipTypes(abstractInstOwned).kind == tyRef:
       d.storage = OnHeap
-  else:
+  else: 
     var a: TLoc
     var typ = e[0].typ
     if typ.kind in {tyUserTypeClass, tyUserTypeClassInst} and typ.isResolvedUserTypeClass:
@@ -3046,7 +3046,16 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkObjConstr: genObjConstr(p, n, d)
   of nkCast: genCast(p, n, d)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: genConv(p, n, d)
-  of nkHiddenAddr, nkAddr: genAddr(p, n, d)
+  of nkHiddenAddr:
+    if n[0].kind == nkDerefExpr:
+      # addr ( deref ( x )) --> x
+      var x = n[0][0]
+      if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
+        x.typ = n.typ
+      expr(p, x, d)
+      return
+    genAddr(p, n, d)
+  of nkAddr: genAddr(p, n, d)
   of nkBracketExpr: genBracketExpr(p, n, d)
   of nkDerefExpr, nkHiddenDeref: genDeref(p, n, d)
   of nkDotExpr: genRecordField(p, n, d)
