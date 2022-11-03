@@ -146,6 +146,7 @@
 - Added `openArray[char]` overloads for `std/parseutils` allowing more code reuse.
 - Added `openArray[char]` overloads for `std/unicode` allowing more code reuse.
 - Added `safe` parameter to `base64.encodeMime`.
+- Added basic fuzzing for unittests in `std/unittest`.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
