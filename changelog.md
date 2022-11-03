@@ -116,6 +116,9 @@
 - `std/uri.Uri` dollar `$` improved, precalculates the `string` result length from the `Uri`.
 
 
+- `std/net.IpAddress` dollar `$` improved, uses a fixed capacity for the `string` result based from the `IpAddressFamily`.
+
+
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
   - Added `IsoWeekRange`, a range type for weeks in a week-based year.
