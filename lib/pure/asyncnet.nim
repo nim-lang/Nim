@@ -825,7 +825,7 @@ proc isClosed*(socket: AsyncSocket): bool =
   ## Determines whether the socket has been closed.
   return socket.closed
 
-proc sendTo*(socket: AsyncSocket, address: string, port: Port, data: string,
+proc sendTo*(socket: AsyncSocket, address: string, port: Port, data: pointer, dataLen: int,
              flags = {SocketFlag.SafeDisconn}): owned(Future[void])
             {.async, since: (1, 3).} =
   ## This proc sends `data` to the specified `address`, which may be an IP
@@ -849,8 +849,8 @@ proc sendTo*(socket: AsyncSocket, address: string, port: Port, data: string,
     lastException: ref Exception
 
   while it != nil:
-    let fut = sendTo(socket.fd.AsyncFD, cstring(data), len(data), it.ai_addr,
-                     it.ai_addrlen.SockLen, flags)
+    let fut = sendTo(socket.fd.AsyncFD, data, dataLen, it.ai_addr,
+                     it.ai_addrlen, flags)
 
     yield fut
 
@@ -870,6 +870,11 @@ proc sendTo*(socket: AsyncSocket, address: string, port: Port, data: string,
       raise lastException
     else:
       raise newException(IOError, "Couldn't resolve address: " & address)
+
+proc sendTo*[T](socket: AsyncSocket, address: string, port: Port, data: openArray[T],
+             flags = {SocketFlag.SafeDisconn}): owned(Future[void])
+            {.since: (1, 3).} =
+  sendTo(socket, address, port, addr data[0], len(data) * sizeof(T), flags)
 
 proc recvFrom*(socket: AsyncSocket, data: FutureVar[string], size: int,
                address: FutureVar[string], port: FutureVar[Port],
