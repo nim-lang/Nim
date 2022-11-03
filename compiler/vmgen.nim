@@ -1810,7 +1810,9 @@ proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currP
   of nkSym:
     let field = newNodeI(nkExprColonExpr, result.info)
     field.add(obj)
-    field.add(getNullValue(obj.sym.typ, result.info, conf))
+    let value = getNullValue(obj.sym.typ, result.info, conf)
+    value.flags.incl nfUseDefaultField
+    field.add(value)
     result.add field
     doAssert obj.sym.position == currPosition
     inc currPosition
