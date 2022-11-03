@@ -1900,7 +1900,6 @@ proc `$`*(address: IpAddress): string =
   ## Converts an IpAddress into the textual representation
   case address.family
   of IpAddressFamily.IPv4:
-    # Why 16?, see https://github.com/torvalds/linux/blob/8f71a2b3f435f29b787537d1abedaa7d8ebe6647/include/linux/inet.h#L49
     result = newStringOfCap(16)
     result.addInt address.address_v4[0]
     result.add '.'
