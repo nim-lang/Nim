@@ -775,7 +775,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
     expr(p, e[0], d)
     if e[0].typ.skipTypes(abstractInstOwned).kind == tyRef:
       d.storage = OnHeap
-  else: 
+  else:
     var a: TLoc
     var typ = e[0].typ
     if typ.kind in {tyUserTypeClass, tyUserTypeClassInst} and typ.isResolvedUserTypeClass:
