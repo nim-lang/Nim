@@ -1909,7 +1909,6 @@ proc `$`*(address: IpAddress): string =
     result.add '.'
     result.addInt address.address_v4[3]
   of IpAddressFamily.IPv6:
-    # Why 48?, see https://github.com/torvalds/linux/blob/8f71a2b3f435f29b787537d1abedaa7d8ebe6647/include/linux/inet.h#L50
     result = newStringOfCap(48)
     var
       currentZeroStart = -1
