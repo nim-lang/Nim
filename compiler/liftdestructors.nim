@@ -90,7 +90,11 @@ proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add newAsgnStmt(x, call)
 
 proc genAddr(c: var TLiftCtx; x: PNode): PNode =
-  if x.kind in {nkHiddenDeref, nkDerefExpr}:
+  let kinds = if c.g.config.backend == backendCpp: 
+      {nkHiddenDeref} 
+    else: 
+      {nkDerefExpr, nkHiddenDeref}
+  if x.kind in kinds:
     checkSonsLen(x, 1, c.g.config)
     result = x[0]
   else:
