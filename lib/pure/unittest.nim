@@ -106,20 +106,18 @@
 ##
 
 import std/private/since
-import std/exitprocs
+import std/[exitprocs, macros, strutils, streams, times, sets, sequtils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-import macros, strutils, streams, times, sets, sequtils
-
 when declared(stdout):
-  import os
+  import std/os
 
 const useTerminal = not defined(js)
 
 when useTerminal:
-  import terminal
+  import std/terminal
 
 type
   TestStatus* = enum ## The status of a test when it is done.
@@ -778,3 +776,70 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
 proc disableParamFiltering* =
   ## disables filtering tests with the command line params
   disabledParamFiltering = true
+
+
+since (1, 7):
+  import std/random
+
+  func fuzz*(r: var Rand; result: out string; things: auto; length: Slice[Positive]; sep, starts, ends: openArray[string] = []) =
+    ## Basic fuzzing for unittests.
+    runnableExamples:
+      import std/[unicode, sequtils, strutils, random]
+      var r = initRand(0xCA11AB1E)
+      var s = newStringOfCap(99)
+      const l = 1.Positive .. 9.Positive  # Between 1 and 9 in length.
+      # Generate random string of chars, NULL terminated.
+      r.fuzz(s, AllChars, l, ends = ["\0"])
+      echo s
+      # Generate random string of integers.
+      r.fuzz(s, {1, 2, 3, 4}, l)
+      echo s
+      # Generate random string of floats.
+      r.fuzz(s, @[-0.0, 0.0, -Inf, NaN], l)
+      echo s
+      # Generate random string from a string.
+      r.fuzz(s, "Basic Fuzzing", l)
+      echo s
+      # Generate random string of bytes.
+      r.fuzz(s, @[255.byte, 0], l)
+      echo s
+      # Generate random string of CJK.
+      r.fuzz(s, [0x4e00.Rune, 0x9fcc.Rune], l)
+      echo s
+      # Generate random string of Cyrillic.
+      r.fuzz(s, [0x0400.Rune, 0x04ff.Rune], l)
+      echo s
+      # Generate random string with an IP Address.
+      r.fuzz(s, toSeq(0..255), l, ["."])
+      echo s
+      # Generate random string with only 1 item.
+      r.fuzz(s, ["foo", "bar", "baz"], 1.Positive .. 1.Positive)
+      echo s
+      # Generate random string with an HTTP URL.
+      r.fuzz(s, LowercaseLetters, l, [""], ["http://"], [".com"])
+      echo s
+      # Generate random string of chars, inside an HTML textarea.
+      r.fuzz(s, UppercaseLetters, l, [" "], ["<textarea>"], ["</textarea>"])
+      echo s
+      # Generate random string of "Lorem ipsum".
+      r.fuzz(s, ["dolor", "sit", "amet", "elit", "do"], l, [" "], ["Lorem ipsum"])
+      echo s
+
+    if result.len > 0:
+      result.setLen 0
+    if things.len > 0:
+      if starts.len > 0:
+        result.add r.sample(starts)
+      for i in 0 ..< r.rand(length.a.int .. length.b.int):
+        if i != 0 and sep.len > 0:
+          result.add r.sample(sep)
+        result.add $(r.sample(things))
+      if ends.len > 0:
+        result.add r.sample(ends)
+
+  proc fuzz*(things: auto; length: Positive; sep, starts, ends = ""): string =
+    ## Basic fuzzing for unittests.
+    runnableExamples: echo fuzz("Fuzz your unittests", 42, "\t", "head", "tail")
+    var r = initRand()  # side effect.
+    result = newStringOfCap(starts.len + length + ends.len + (sep.len * things.len))
+    r.fuzz(result, things, length .. length, [sep], [starts], [ends])
