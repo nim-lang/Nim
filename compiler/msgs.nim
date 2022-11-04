@@ -111,15 +111,18 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
     # This flag indicates that we are working with such a path here
     pseudoPath = true
 
-  if conf.m.filenameToIndexTbl.hasKey(canon.string):
+  var canon2 = canon.string
+  canon2.canonicalCase
+
+  if conf.m.filenameToIndexTbl.hasKey(canon2):
     isKnownFile = true
-    result = conf.m.filenameToIndexTbl[canon.string]
+    result = conf.m.filenameToIndexTbl[canon2]
   else:
     isKnownFile = false
     result = conf.m.fileInfos.len.FileIndex
     conf.m.fileInfos.add(newFileInfo(canon, if pseudoPath: RelativeFile filename
                                             else: relativeTo(canon, conf.projectPath)))
-    conf.m.filenameToIndexTbl[canon.string] = result
+    conf.m.filenameToIndexTbl[canon2] = result
 
 proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
   var dummy: bool
