@@ -495,10 +495,7 @@ proc needsExeExt(conf: ConfigRef): bool {.inline.} =
            (conf.target.hostOS == osWindows)
 
 proc useCpp(conf: ConfigRef; cfile: AbsoluteFile): bool =
-  # List of possible file extensions taken from gcc
-  for ext in [".C", ".cc", ".cpp", ".CPP", ".c++", ".cp", ".cxx"]:
-    if cfile.string.endsWith(ext): return true
-  false
+  conf.backend == backendCpp and not cfile.string.endsWith(".c")
 
 proc envFlags(conf: ConfigRef): string =
   result = if conf.backend == backendCpp:
@@ -506,14 +503,14 @@ proc envFlags(conf: ConfigRef): string =
           else:
             getEnv("CFLAGS")
 
-proc getCompilerExe(conf: ConfigRef; compiler: TSystemCC; isCpp: bool): string =
+proc getCompilerExe(conf: ConfigRef; compiler: TSystemCC; cfile: AbsoluteFile): string =
   if compiler == ccEnv:
-    result = if isCpp:
+    result = if useCpp(conf, cfile):
               getEnv("CXX")
             else:
               getEnv("CC")
   else:
-    result = if isCpp:
+    result = if useCpp(conf, cfile):
               CC[compiler].cppCompiler
             else:
               CC[compiler].compilerExe
@@ -538,25 +535,22 @@ proc ccHasSaneOverflow*(conf: ConfigRef): bool =
 
 proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
   result = if CC[compiler].linkerExe.len > 0: CC[compiler].linkerExe
-           else: getCompilerExe(conf, compiler, optMixedMode in conf.globalOptions or conf.backend == backendCpp)
+           elif optMixedMode in conf.globalOptions and conf.backend != backendCpp: CC[compiler].cppCompiler
+           else: getCompilerExe(conf, compiler, AbsoluteFile"")
 
 proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
                          isMainFile = false; produceOutput = false): string =
-  let
-    c = conf.cCompiler
-    isCpp = useCpp(conf, cfile.cname)
+  let c = conf.cCompiler
   # We produce files like module.nim.cpp, so the absolute Nim filename is not
   # cfile.name but `cfile.cname.changeFileExt("")`:
   var options = cFileSpecificOptions(conf, cfile.nimname, cfile.cname.changeFileExt("").string)
-  if isCpp:
+  if useCpp(conf, cfile.cname):
     # needs to be prepended so that --passc:-std=c++17 can override default.
     # we could avoid allocation by making cFileSpecificOptions inplace
     options = CC[c].cppXsupport & ' ' & options
-    # If any C++ file was compiled, we need to use C++ driver for linking as well
-    incl conf.globalOptions, optMixedMode
 
   var exe = getConfigVar(conf, c, ".exe")
-  if exe.len == 0: exe = getCompilerExe(conf, c, isCpp)
+  if exe.len == 0: exe = getCompilerExe(conf, c, cfile.cname)
 
   if needsExeExt(conf): exe = addFileExt(exe, "exe")
   if (optGenDynLib in conf.globalOptions or (conf.hcrOn and not isMainFile)) and
@@ -576,7 +570,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
 
     compilePattern = joinPath(conf.cCompilerPath, exe)
   else:
-    compilePattern = getCompilerExe(conf, c, isCpp)
+    compilePattern = getCompilerExe(conf, c, cfile.cname)
 
   includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
 
