@@ -1094,6 +1094,9 @@ elif defined(genode):
 
   var systemEnv {.exportc: runtimeEnvSym.}: GenodeEnvPtr
 
+  type GenodeEnv* = GenodeEnvPtr
+    ## Opaque type representing Genode environment.
+
   proc rawQuit(env: GenodeEnv; errorcode: int) {.magic: "Exit", noreturn,
     importcpp: "#->parent().exit(@); Genode::sleep_forever()", header: "<base/sleep.h>".}
 
