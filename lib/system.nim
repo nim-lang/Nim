@@ -1118,7 +1118,7 @@ template sysAssert(cond: bool, msg: string) =
       cstderr.rawWrite "[SYSASSERT] "
       cstderr.rawWrite msg
       cstderr.rawWrite "\n"
-      quit 1
+      rawQuit 1
 
 const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
 
@@ -2693,7 +2693,7 @@ when defined(genode):
   proc nim_component_construct(env: GenodeEnv) {.exportc.} =
     ## Procedure called during `Component::construct` by the loader.
     if componentConstructHook.isNil:
-      env.quit(programResult)
+      env.rawQuit(programResult)
         # No native Genode application initialization,
         # exit as would POSIX.
     else:
