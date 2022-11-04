@@ -1637,13 +1637,8 @@ when not defined(nimscript):
     ## for debug builds. Since it's usually used for debugging, this
     ## is proclaimed to have no IO effect!
 
-
-when defined(nimHasExceptionsQuery):
-  const gotoBasedExceptions = compileOption("exceptions", "goto")
-else:
-  const gotoBasedExceptions = false
-
-import system/fatal
+when not declared(sysFatal):
+  include "system/fatal"
 
 when not defined(nimscript):
   {.push stackTrace: off, profiler: off.}
@@ -1655,6 +1650,12 @@ when not defined(nimscript):
 
 when defined(nimV2):
   include system/arc
+
+template newException*(exceptn: typedesc, message: string;
+                       parentException: ref Exception = nil): untyped =
+  ## Creates an exception object of type `exceptn` and sets its `msg` field
+  ## to `message`. Returns the new exception object.
+  (ref exceptn)(msg: message, parent: parentException)
 
 when not defined(nimPreviewSlimSystem):
   {.deprecated: "assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/assertions`".}
@@ -1862,12 +1863,6 @@ proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
   ## `debugEcho` pretends to be free of side effects, so that it can be used
   ## for debugging routines marked as `noSideEffect
   ## <manual.html#pragmas-nosideeffect-pragma>`_.
-
-template newException*(exceptn: typedesc, message: string;
-                       parentException: ref Exception = nil): untyped =
-  ## Creates an exception object of type `exceptn` and sets its `msg` field
-  ## to `message`. Returns the new exception object.
-  (ref exceptn)(msg: message, parent: parentException)
 
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
