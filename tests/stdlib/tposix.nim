@@ -19,7 +19,7 @@ when not defined(windows):
   writeLine(stdout, u.release)
   writeLine(stdout, u.machine)
 
-  block:
+  when not (defined(nintendoswitch) or defined(macos) or defined(macosx)):
     type Message = object
       value: int
 

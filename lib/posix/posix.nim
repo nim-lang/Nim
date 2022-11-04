@@ -249,14 +249,14 @@ proc setlocale*(a1: cint, a2: cstring): cstring {.
 proc strfmon*(a1: cstring, a2: int, a3: cstring): int {.varargs,
    importc, header: "<monetary.h>".}
 
-when not defined(nintendoswitch):
+when not (defined(nintendoswitch) or defined(macos) or defined(macosx)):
   proc mq_notify*(mqdes: Mqd, event: ptr SigEvent): cint {.
     importc, header: "<mqueue.h>".}
 
   proc mq_open*(name: cstring, flags: cint): Mqd {.
     varargs, importc, header: "<mqueue.h>".} =
-    when defined(linux):
-      runnableExamples:
+    runnableExamples:
+      when defined(posix) and not (defined(nintendoswitch) or defined(macos) or defined(macosx)):
         type Message = object
           value: int
 
