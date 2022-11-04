@@ -1087,72 +1087,27 @@ proc align(address, alignment: int): int =
     result = (address + (alignment - 1)) and not (alignment - 1)
 
 when defined(nimNoQuit):
-  proc quit*(errorcode: int = QuitSuccess) = discard "ignoring quit"
-    ## Stops the program immediately with an exit code.
-    ##
-    ## Before stopping the program the "exit procedures" are called in the
-    ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc)>`_.
-    ##
-    ## The proc `quit(QuitSuccess)` is called implicitly when your nim
-    ## program finishes without incident for platforms where this is the
-    ## expected behavior. A raised unhandled exception is
-    ## equivalent to calling `quit(QuitFailure)`.
-    ##
-    ## Note that this is a *runtime* call and using `quit` inside a macro won't
-    ## have any compile time effect. If you need to stop the compiler inside a
-    ## macro, use the `error <manual.html#pragmas-error-pragma>`_ or `fatal
-    ## <manual.html#pragmas-fatal-pragma>`_ pragmas.
-    ##
-    ## .. warning:: `errorcode` gets saturated when it exceeds the valid range
-    ##    on the specfic platform. On Posix, the valid range is `low(int8)..high(int8)`.
-    ##    On Windows, the valid range is `low(int32)..high(int32)`. For instance,
-    ##    `quit(int(0x100000000))` is equal to `quit(127)` on Linux.
-    ##
-    ## .. danger:: In almost all cases, in particular in library code, prefer
-    ##   alternatives, e.g. `doAssert false` or raise a `Defect`.
-    ##   `quit` bypasses regular control flow in particular `defer`,
-    ##   `try`, `catch`, `finally` and `destructors`, and exceptions that may have been
-    ##   raised by an `addExitProc` proc, as well as cleanup code in other threads.
-    ##   It does *not* call the garbage collector to free all the memory,
-    ##   unless an `addExitProc` proc calls `GC_fullCollect <#GC_fullCollect>`_.
-
-elif defined(nimdoc):
-  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
+  proc rawQuit(errorcode: int = QuitSuccess) = discard "ignoring quit"
 
 elif defined(genode):
   import genode/env
 
   var systemEnv {.exportc: runtimeEnvSym.}: GenodeEnvPtr
 
-  type GenodeEnv* = GenodeEnvPtr
-    ## Opaque type representing Genode environment.
-
-  proc quit*(env: GenodeEnv; errorcode: int) {.magic: "Exit", noreturn,
+  proc rawQuit(env: GenodeEnv; errorcode: int) {.magic: "Exit", noreturn,
     importcpp: "#->parent().exit(@); Genode::sleep_forever()", header: "<base/sleep.h>".}
 
-  proc quit*(errorcode: int = QuitSuccess) =
-    systemEnv.quit(errorcode)
+  proc rawQuit(errorcode: int = QuitSuccess) {.inline, noreturn.} =
+    systemEnv.rawQuit(errorcode)
+
 
 elif defined(js) and defined(nodejs) and not defined(nimscript):
-  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
+  proc rawQuit(errorcode: int = QuitSuccess) {.magic: "Exit",
     importc: "process.exit", noreturn.}
 
 else:
-  proc exit(errorcode: int) {.
+  proc rawQuit(errorcode: int = QuitSuccess) {.
     magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
-
-  proc quit*(errorcode: int = QuitSuccess) {.inline, noreturn.} =
-    when defined(posix): # posix uses low 8 bits
-      type ExitCodeRange = int8
-    else: # win32 uses low 32 bits
-      type ExitCodeRange = int32
-
-    if errorcode < low(ExitCodeRange):
-      exit(low(ExitCodeRange).int)
-    elif errorcode > high(ExitCodeRange):
-      exit(high(ExitCodeRange).int)
-    else:
-      exit(errorcode)
 
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
@@ -2296,6 +2251,57 @@ export addInt
 when defined(js):
   include "system/jssys"
   include "system/reprjs"
+
+
+when defined(nimNoQuit):
+  proc quit*(errorcode: int = QuitSuccess) = discard "ignoring quit"
+    ## Stops the program immediately with an exit code.
+    ##
+    ## Before stopping the program the "exit procedures" are called in the
+    ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc)>`_.
+    ##
+    ## The proc `quit(QuitSuccess)` is called implicitly when your nim
+    ## program finishes without incident for platforms where this is the
+    ## expected behavior. A raised unhandled exception is
+    ## equivalent to calling `quit(QuitFailure)`.
+    ##
+    ## Note that this is a *runtime* call and using `quit` inside a macro won't
+    ## have any compile time effect. If you need to stop the compiler inside a
+    ## macro, use the `error <manual.html#pragmas-error-pragma>`_ or `fatal
+    ## <manual.html#pragmas-fatal-pragma>`_ pragmas.
+    ##
+    ## .. danger:: In almost all cases, in particular in library code, prefer
+    ##   alternatives, e.g. `doAssert false` or raise a `Defect`.
+    ##   `quit` bypasses regular control flow in particular `defer`,
+    ##   `try`, `catch`, `finally` and `destructors`, and exceptions that may have been
+    ##   raised by an `addExitProc` proc, as well as cleanup code in other threads.
+    ##   It does *not* call the garbage collector to free all the memory,
+    ##   unless an `addExitProc` proc calls `GC_fullCollect <#GC_fullCollect>`_.
+
+elif defined(nimdoc):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
+
+elif defined(genode):
+  proc quit*(errorcode: int = QuitSuccess) {.inline, noreturn.} =
+    rawQuit(errorcode)
+
+elif defined(js) and defined(nodejs) and not defined(nimscript):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
+    importc: "process.exit", noreturn.}
+
+else:
+  proc quit*(errorcode: int = QuitSuccess) {.inline, noreturn.} =
+    when defined(posix): # posix uses low 8 bits
+      type ExitCodeRange = int8
+    else: # win32 uses low 32 bits
+      type ExitCodeRange = int32
+
+    if errorcode < low(ExitCodeRange):
+      rawQuit(low(ExitCodeRange).int)
+    elif errorcode > high(ExitCodeRange):
+      rawQuit(high(ExitCodeRange).int)
+    else:
+      rawQuit(errorcode)
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for `echo(errormsg); quit(errorcode)`.
