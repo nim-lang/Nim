@@ -8,8 +8,6 @@ Un-necessary allocations are avoided and appropriate algorithms are used at the
 expense of code clarity when justified.
 ]##
 
-from std/strutils import toLowerAscii
-
 proc dataPointer*[T](a: T): pointer =
   ## same as C++ `data` that works with std::string, std::vector etc.
   ## Note: safe to use when a.len == 0 but whether the result is nil or not
@@ -50,4 +48,4 @@ proc isUpperAscii(c: char): bool {.inline.} =
 
 proc toLowerAscii*(a: var string) =
   for c in mitems(a):
-    c = toLowerAscii(c)
+    if isUpperAscii(c): c = char(uint8(c) xor 0b0010_0000'u8)
