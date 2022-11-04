@@ -2273,6 +2273,11 @@ when defined(nimNoQuit):
     ## macro, use the `error <manual.html#pragmas-error-pragma>`_ or `fatal
     ## <manual.html#pragmas-fatal-pragma>`_ pragmas.
     ##
+    ## .. warning:: `errorcode` gets saturated when it exceeds the valid range
+    ##    on the specfic platform. On Posix, the valid range is `low(int8)..high(int8)`.
+    ##    On Windows, the valid range is `low(int32)..high(int32)`. For instance,
+    ##    `quit(int(0x100000000))` is equal to `quit(127)` on Linux.
+    ##
     ## .. danger:: In almost all cases, in particular in library code, prefer
     ##   alternatives, e.g. `doAssert false` or raise a `Defect`.
     ##   `quit` bypasses regular control flow in particular `defer`,
