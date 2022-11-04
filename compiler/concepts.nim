@@ -61,6 +61,8 @@ proc semConceptDecl(c: PContext; n: PNode): PNode =
     for i in 0..<n.len-1:
       result[i] = n[i]
     result[^1] = semConceptDecl(c, n[^1])
+  of nkCommentStmt:
+    discard
   else:
     localError(c.config, n.info, "unexpected construct in the new-styled concept: " & renderTree(n))
     result = n
