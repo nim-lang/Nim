@@ -10,7 +10,7 @@
 import
   std/[strutils, os, tables, terminal, macros, times],
   std/private/miscdollars,
-  options, lineinfos, pathutils, strutils2
+  options, lineinfos, pathutils
 
 import ropes except `%`
 
@@ -23,6 +23,10 @@ template instLoc*(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
 template toStdOrrKind(stdOrr): untyped =
   if stdOrr == stdout: stdOrrStdout else: stdOrrStderr
+
+proc toLowerAscii(a: var string) {.inline.} =
+  for c in mitems(a):
+    if isUpperAscii(c): c = char(uint8(c) xor 0b0010_0000'u8)
 
 proc flushDot*(conf: ConfigRef) =
   ## safe to call multiple times
@@ -78,7 +82,7 @@ when defined(nimpretty):
   proc fileSection*(conf: ConfigRef; fid: FileIndex; a, b: int): string =
     substr(conf.m.fileInfos[fid.int].fullContent, a, b)
 
-proc canonicalCase(path: var string) =
+proc canonicalCase(path: var string) {.inline.} =
   ## the idea is to only use this for checking whether a path is already in
   ## the table but otherwise keep the original case
   when FileSystemCaseSensitive: discard
@@ -101,28 +105,21 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
 
   try:
     canon = canonicalizePath(conf, filename)
-    when not defined(nimSeqsV2):
-      shallow(canon.string)
   except OSError:
     canon = filename
     # The compiler uses "filenames" such as `command line` or `stdin`
     # This flag indicates that we are working with such a path here
     pseudoPath = true
 
-  var canon2: string
-  forceCopy(canon2, canon.string) # because `canon` may be shallow
-  canon2.canonicalCase
-
-  if conf.m.filenameToIndexTbl.hasKey(canon2):
+  if conf.m.filenameToIndexTbl.hasKey(canon.string):
     isKnownFile = true
-    result = conf.m.filenameToIndexTbl[canon2]
+    result = conf.m.filenameToIndexTbl[canon.string]
   else:
     isKnownFile = false
     result = conf.m.fileInfos.len.FileIndex
-    #echo "ID ", result.int, " ", canon2
     conf.m.fileInfos.add(newFileInfo(canon, if pseudoPath: RelativeFile filename
                                             else: relativeTo(canon, conf.projectPath)))
-    conf.m.filenameToIndexTbl[canon2] = result
+    conf.m.filenameToIndexTbl[canon.string] = result
 
 proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
   var dummy: bool
