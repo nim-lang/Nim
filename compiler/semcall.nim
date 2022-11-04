@@ -785,6 +785,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   var hasDistinct = false
   var isDistinct: bool
   var x: PType
+  var t: PType
   call.add(newIdentNode(fn.name, fn.info))
   for i in 1..<fn.typ.n.len:
     let param = fn.typ.n[i]
@@ -796,8 +797,11 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
       proc `$`(f: Foo): string {.borrow.}
       # We want to skip the `Foo` to get `int`
     ]#
-    let t = skipTypes(param.typ, desiredTypes)
+    t = skipTypes(param.typ, desiredTypes)
     isDistinct = t.kind == tyDistinct or param.typ.kind == tyDistinct
+    if t.kind == tyGenericInvocation and t[0].lastSon.kind == tyDistinct:
+      t = t[0].lastSon
+      isDistinct = true
     if isDistinct: hasDistinct = true
     if param.typ.kind == tyVar:
       x = newTypeS(param.typ.kind, c)
