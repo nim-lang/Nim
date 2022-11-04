@@ -1138,7 +1138,7 @@ elif defined(js) and defined(nodejs) and not defined(nimscript):
     importc: "process.exit", noreturn.}
 
 else:
-  proc exit(errorcode: cint) {.
+  proc exit(errorcode: int) {.
     magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
 
   proc quit*(errorcode: int = QuitSuccess) {.inline, noreturn.} =
@@ -1148,11 +1148,11 @@ else:
       type ExitCodeRange = int32
 
     if errorcode < low(ExitCodeRange):
-      exit(low(ExitCodeRange).cint)
+      exit(low(ExitCodeRange).int)
     elif errorcode > high(ExitCodeRange):
-      exit(high(ExitCodeRange).cint)
+      exit(high(ExitCodeRange).int)
     else:
-      exit(errorcode.cint)
+      exit(errorcode)
 
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
