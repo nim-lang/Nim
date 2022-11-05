@@ -111,7 +111,7 @@ proc osDeallocPages(p: pointer; size: int) =
       if m.attachment == p:
         if m.size != size:
           echo "cannot partially detach dataspace"
-          quit -1
+          rawQuit -1
         runtimeEnv.detachAddress m.attachment
         runtimeEnv.freeDataspace m.ds
         m[] = Map()

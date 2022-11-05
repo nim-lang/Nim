@@ -129,7 +129,7 @@ template gcAssert(cond: bool, msg: string) =
       echo "[GCASSERT] ", msg
       GC_disable()
       writeStackTrace()
-      quit 1
+      rawQuit 1
 
 proc cellToUsr(cell: PCell): pointer {.inline.} =
   # convert object (=pointer to refcount) to pointer to userdata
