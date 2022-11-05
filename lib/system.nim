@@ -2274,7 +2274,7 @@ when defined(nimNoQuit):
     ## <manual.html#pragmas-fatal-pragma>`_ pragmas.
     ##
     ## .. warning:: `errorcode` gets saturated when it exceeds the valid range
-    ##    on the specfic platform. On Posix, the valid range is `low(int8)..high(int8)`.
+    ##    on the specific platform. On Posix, the valid range is `low(int8)..high(int8)`.
     ##    On Windows, the valid range is `low(int32)..high(int32)`. For instance,
     ##    `quit(int(0x100000000))` is equal to `quit(127)` on Linux.
     ##
