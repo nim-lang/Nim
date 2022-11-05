@@ -254,57 +254,7 @@ when not (defined(nintendoswitch) or defined(macos) or defined(macosx)):
     importc, header: "<mqueue.h>".}
 
   proc mq_open*(name: cstring, flags: cint): Mqd {.
-    varargs, importc, header: "<mqueue.h>".} =
-    runnableExamples:
-      when defined(posix) and not (defined(nintendoswitch) or defined(macos) or defined(macosx)):
-        type Message = object
-          value: int
-
-        const MQ_PATH: cstring = "/top_level_file"
-        const MQ_PRIORITY: cuint = 170
-        const MQ_MESSAGE_SIZE: csize_t = csize_t(sizeof(Message))
-
-        let mqd_a: posix.MqAttr = MqAttr(
-          mq_maxmsg: 10,
-          mq_msgsize: clong(MQ_MESSAGE_SIZE)
-        )
-
-        block:
-          # send the message
-          let sent: Message = Message(value: 88)
-          let writable: posix.Mqd = posix.mq_open(
-            MQ_PATH,
-            posix.O_CREAT or posix.O_WRONLY or posix.O_NONBLOCK,
-            posix.S_IRWXU,
-            addr(mqd_a)
-          )
-
-          let success: int = writable.mq_send(
-            cast[cstring](sent.addr),
-            MQ_MESSAGE_SIZE,
-            MQ_PRIORITY
-          )
-          let error: cint = errno
-          if success != 0:
-            echo $strerror(error)
-
-        block:
-          # receive the message
-          let readable: posix.Mqd = posix.mq_open(
-            MQ_PATH,
-            posix.O_RDONLY or posix.O_NONBLOCK,
-            posix.S_IRWXU,
-            addr(mqd_a)
-          )
-
-          var buffer: Message
-          var priority: cuint
-          discard readable.mq_receive(
-            cast[cstring](buffer.addr),
-            MQ_MESSAGE_SIZE,
-            priority
-          )
-          echo $buffer
+    varargs, importc, header: "<mqueue.h>".}
 
   proc mq_close*(mqdes: Mqd): cint {.importc, header: "<mqueue.h>".}
 
