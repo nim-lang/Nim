@@ -1596,11 +1596,23 @@ proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
   n.typ = t
   genLit(c, n, dest)
 
+proc isEmptyBody(n: PNode): bool =
+  case n.kind
+  of nkStmtList:
+    for i in 0..<n.len:
+      if not isEmptyBody(n[i]): return false
+    result = true
+  else:
+    if n.kind in {nkCommentStmt, nkEmpty}:
+      result = true
+    else:
+      result = false
+
 proc importcCond*(c: PCtx; s: PSym): bool {.inline.} =
   ## return true to importc `s`, false to execute its body instead (refs #8405)
   if sfImportc in s.flags:
     if s.kind in routineKinds:
-      return getBody(c.graph, s).kind == nkEmpty
+      return isEmptyBody(getBody(c.graph, s))
 
 proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   when hasFFI:
