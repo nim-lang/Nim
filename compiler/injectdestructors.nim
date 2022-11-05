@@ -491,7 +491,10 @@ proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; res: PNode) =
   elif sfThread notin v.sym.flags and sfCursor notin v.sym.flags:
     # do not destroy thread vars for now at all for consistency.
     if sfGlobal in v.sym.flags: #XXX: Rethink this logic (see tarcmisc.test2)
-      c.graph.globalDestructors.add c.genDestroy(v)
+      if c.inLoop > 0:
+        s.final.add c.genDestroy(v)
+      else:
+        c.graph.globalDestructors.add c.genDestroy(v)
     else:
       s.final.add c.genDestroy(v)
 
