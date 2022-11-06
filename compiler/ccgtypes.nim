@@ -425,7 +425,7 @@ proc paramStorageLoc(param: PSym): TStorageLoc =
 proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false) =
-  params = ""
+  params = "("
   if t[0] == nil or isInvalidReturnType(m.config, t):
     rettype = "void"
   else:
@@ -434,7 +434,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
     var param = t.n[i].sym
     if isCompileTimeOnly(param.typ): continue
-    if params != "": params.add(", ")
+    if params != "(": params.add(", ")
     fillParamName(m, param)
     fillLoc(param.loc, locParam, t.n[i],
             param.paramStorageLoc)
@@ -464,7 +464,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       arr = arr[0].skipTypes({tySink})
   if t[0] != nil and isInvalidReturnType(m.config, t):
     var arr = t[0]
-    if params != "": params.add(", ")
+    if params != "(": params.add(", ")
     if mapReturnType(m.config, t[0]) != ctArray:
       if isHeaderFile in m.flags:
         # still generates types for `--header`
@@ -477,14 +477,13 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       params.add(getTypeDescAux(m, arr, check, skResult))
     params.addf(" Result", [])
   if t.callConv == ccClosure and declareEnvironment:
-    if params != "": params.add(", ")
+    if params != "(": params.add(", ")
     params.add("void* ClE_0")
   if tfVarargs in t.flags:
-    if params != "": params.add(", ")
+    if params != "(": params.add(", ")
     params.add("...")
-  if params == "": params.add("void)")
+  if params == "(": params.add("void)")
   else: params.add(")")
-  params = "(" & params
 
 proc mangleRecFieldName(m: BModule; field: PSym): Rope =
   if {sfImportc, sfExportc} * field.flags != {}:
