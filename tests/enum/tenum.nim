@@ -165,12 +165,13 @@ block size_one_byte: # bug #15752
     assert 1 == sizeof(Flag)
 
 block: # bug #12589
-  type
-    OGRwkbGeometryType {.size: sizeof(cuint).} = enum
-      wkbPoint25D = 0x80000001.cuint, wkbLineString25D = 0x80000002,
-      wkbPolygon25D = 0x80000003
+  when sizeof(cuint) == 4:
+    type
+      OGRwkbGeometryType {.size: sizeof(cuint).} = enum
+        wkbPoint25D = 0x80000001.cuint, wkbLineString25D = 0x80000002,
+        wkbPolygon25D = 0x80000003
 
-  proc typ(): OGRwkbGeometryType =
-    return wkbPoint25D
+    proc typ(): OGRwkbGeometryType =
+      return wkbPoint25D
 
-  doAssert $typ() == "wkbPoint25D"
+    doAssert $typ() == "wkbPoint25D"
