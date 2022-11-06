@@ -1,7 +1,3 @@
-discard """
-  errormsg: "cannot use symbol of kind 'var' as a 'param'"
-  line: 20
-"""
 
 # bug #3158
 

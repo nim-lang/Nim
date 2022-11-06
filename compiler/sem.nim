@@ -226,11 +226,7 @@ proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   # like newSymS, but considers gensym'ed symbols
   if n.kind == nkSym:
-    # and sfGenSym in n.sym.flags:
     result = n.sym
-    if result.kind notin {kind, skTemp}:
-      localError(c.config, n.info, "cannot use symbol of kind '$1' as a '$2'" %
-        [result.kind.toHumanStr, kind.toHumanStr])
     when false:
       if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
         # declarative context, so produce a fresh gensym:
