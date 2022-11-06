@@ -376,6 +376,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
       # leave the op head symbol empty,
       # we are going to try multiple variants
+      let isNilLitkind = n[1].kind == nkNilLit
+      let willTryDotCall = nfExplicitCall in n.flags
       n.sons[0..1] = [nil, n[1], f]
       orig.sons[0..1] = [nil, orig[1], f]
 
@@ -385,11 +387,16 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         orig[0] = op
         pickBest(op)
 
-      if nfExplicitCall in n.flags:
+      if willTryDotCall:
         tryOp ".()"
 
-      if result.state in {csEmpty, csNoMatch}:
+      if result.state in {csEmpty, csNoMatch} and not isNilLitkind:
         tryOp "."
+      elif isNilLitkind:
+        result.state = csNoMatch
+        n[0] = f
+        let field = n[0].ident.s
+        localError(c.config, n.info, "access field '$1' of nil literal" % field)
 
     elif nfDotSetter in n.flags and f.kind == nkIdent and n.len == 3:
       # we need to strip away the trailing '=' here:

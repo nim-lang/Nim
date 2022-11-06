@@ -905,6 +905,8 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     result = semOverloadedCall(c, n, nOrig,
       {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate, skIterator}, flags)
   else:
+    if n == nil: return
+    if nOrig == nil: return
     result = semOverloadedCall(c, n, nOrig,
       {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}, flags)
 
@@ -1066,6 +1068,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
 
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   # this seems to be a hotspot in the compiler!
+  if n == nil: return
   let nOrig = n.copyTree
   #semLazyOpAux(c, n)
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
@@ -1387,8 +1390,6 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
     return
 
   n[0] = semExprWithType(c, n[0], flags+{efDetermineType, efWantIterable})
-  if n[0].kind == nkNilLit:
-    localError(c.config, n.info, "nil literal access")
   #restoreOldStyleType(n[0])
   var i = considerQuotedIdent(c, n[1], n)
   var ty = n[0].typ
