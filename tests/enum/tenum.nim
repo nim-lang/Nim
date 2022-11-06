@@ -155,7 +155,7 @@ block nonzero: # bug #6959
     C
   let slice = SomeEnum.low..SomeEnum.high
 
-block size_one_byte: #issue 15752
+block size_one_byte: # bug #15752
   type
     Flag = enum
       Disabled = 0x00
@@ -163,3 +163,14 @@ block size_one_byte: #issue 15752
 
   static:
     assert 1 == sizeof(Flag)
+
+block: # bug #12589
+  type
+    OGRwkbGeometryType {.size: sizeof(cuint).} = enum
+      wkbPoint25D = 0x80000001.cuint, wkbLineString25D = 0x80000002,
+      wkbPolygon25D = 0x80000003
+
+  proc typ(): OGRwkbGeometryType =
+    return wkbPoint25D
+
+  doAssert $typ() == "wkbPoint25D"
