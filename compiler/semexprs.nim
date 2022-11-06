@@ -1387,6 +1387,8 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
     return
 
   n[0] = semExprWithType(c, n[0], flags+{efDetermineType, efWantIterable})
+  if n[0].kind == nkNilLit:
+    localError(c.config, n.info, "nil literal access")
   #restoreOldStyleType(n[0])
   var i = considerQuotedIdent(c, n[1], n)
   var ty = n[0].typ
