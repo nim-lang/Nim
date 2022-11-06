@@ -165,7 +165,7 @@ block size_one_byte: # bug #15752
     assert 1 == sizeof(Flag)
 
 block: # bug #12589
-  when sizeof(cuint) == 4:
+  when not defined(i386):
     type
       OGRwkbGeometryType {.size: sizeof(cuint).} = enum
         wkbPoint25D = 0x80000001.cuint, wkbLineString25D = 0x80000002,
