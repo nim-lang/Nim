@@ -607,8 +607,9 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 
 proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   case a.kind
-  of tyProc:
-    if f.len != a.len: return
+  of tyProc:    
+    # void skipping can't work with this
+    #if f.len != a.len: return
     result = isEqual      # start with maximum; also correct for no
                           # params at all
 
@@ -616,10 +617,33 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       result = minRel(result, procParamTypeRel(c, f, a))
       if result == isNone: return
 
+    # compare params with voids skipped over
+    var
+      fi = 1
+      ai = 1
+    while true:
+      while fi < f.len and f[fi].kind == tyVoid:
+        inc fi
+        continue
+      while ai < a.len and a[ai].kind == tyVoid:
+        inc ai
+        continue
+      
+      if (fi == f.len and ai != a.len) or (fi != f.len and ai == a.len):
+        return isNone
+      
+      if fi == f.len and ai == a.len:
+        result = isEqual
+        break
+      
+      checkParam(f[fi], a[ai])
+      inc fi
+      inc ai
+
     # Note: We have to do unification for the parameters before the
     # return type!
-    for i in 1..<f.len:
-      checkParam(f[i], a[i])
+    #for i in 1..<f.len:
+    #  checkParam(f[i], a[i])
 
     if f[0] != nil:
       if a[0] != nil:

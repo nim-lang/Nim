@@ -426,7 +426,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false) =
   params = ""
-  if t[0] == nil or isInvalidReturnType(m.config, t):
+  if t[0] == nil or t[0].kind == tyVoid or isInvalidReturnType(m.config, t):
     rettype = "void"
   else:
     rettype = getTypeDescAux(m, t[0], check, skResult)
@@ -462,7 +462,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       params.addf(", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)
       arr = arr[0].skipTypes({tySink})
-  if t[0] != nil and isInvalidReturnType(m.config, t):
+  if t[0] != nil and t[0].kind != tyVoid and isInvalidReturnType(m.config, t):
     var arr = t[0]
     if params != "": params.add(", ")
     if mapReturnType(m.config, t[0]) != ctArray:

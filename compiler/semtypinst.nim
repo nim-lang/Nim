@@ -629,7 +629,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
           result.flags.incl tfRequiresInit
 
       of tyProc:
-        eraseVoidParams(result)
+        #eraseVoidParams(result)
         skipIntLiteralParams(result, cl.c.idgen)
 
       of tyRange:

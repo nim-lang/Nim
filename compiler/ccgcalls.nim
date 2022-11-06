@@ -452,7 +452,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
   let rawProc = getClosureType(p.module, typ, clHalf)
   let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri[0])
-  if typ[0] != nil:
+  if typ[0] != nil and typ[0].kind != tyVoid:
     if isInvalidReturnType(p.config, typ):
       if ri.len > 1: pl.add(", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
