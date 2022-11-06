@@ -345,11 +345,10 @@ proc low64(a: Int128): uint64 =
   bitconcat(a.udata[1], a.udata[0])
 
 proc `*`*(lhs, rhs: Int128): Int128 =
-  let a32 = cast[uint64](lhs.udata[1])
-  let a00 = cast[uint64](lhs.udata[0])
-  let b32 = cast[uint64](rhs.udata[1])
-  let b00 = cast[uint64](rhs.udata[0])
-
+  let a32 = uint64(lhs.udata[1])
+  let a00 = uint64(lhs.udata[0])
+  let b32 = uint64(rhs.udata[1])
+  let b00 = uint64(rhs.udata[0])
   result = makeInt128(high64(lhs) * low64(rhs) + low64(lhs) * high64(rhs) + a32 * b32, a00 * b00)
   result += toInt128(a32 * b00) shl 32
   result += toInt128(a00 * b32) shl 32
@@ -430,7 +429,7 @@ proc `mod`*(a, b: Int128): Int128 =
 proc addInt128*(result: var string; value: Int128) =
   let initialSize = result.len
   if value == Zero:
-    result.add "0"
+    result.add '0'
   elif value == low(Int128):
     result.add "-170141183460469231731687303715884105728"
   else:
@@ -451,6 +450,8 @@ proc addInt128*(result: var string; value: Int128) =
       j -= 1
 
 proc `$`*(a: Int128): string =
+  # "-170141183460469231731687303715884105728".len == 41
+  result = newStringOfCap(41)
   result.addInt128(a)
 
 proc parseDecimalInt128*(arg: string, pos: int = 0): Int128 =

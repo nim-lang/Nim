@@ -27,7 +27,7 @@ import asyncdispatch, os
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]
-  when defined(windows):
+  when defined(windows) or defined(nimdoc):
     import std/widestrs
 
 # TODO: Fix duplication introduced by PR #4683.

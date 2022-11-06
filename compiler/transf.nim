@@ -459,14 +459,14 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     for i, child in changeNode:
       child.info = changeNode.info
 
-proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PNode =
+proc transformAddrDeref(c: PTransf, n: PNode, kinds: TNodeKinds): PNode =
   result = transformSons(c, n)
   if c.graph.config.backend == backendCpp or sfCompileToCpp in c.module.flags: return
   var n = result
   case n[0].kind
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     var m = n[0][0]
-    if m.kind == a or m.kind == b:
+    if m.kind in kinds:
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
       n[0][0] = m[0]
       result = n[0]
@@ -476,7 +476,7 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PNode =
         result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, c.idgen)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n[0][1]
-    if m.kind == a or m.kind == b:
+    if m.kind in kinds:
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
       n[0][1] = m[0]
       result = n[0]
@@ -485,7 +485,7 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PNode =
       elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
         result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, c.idgen)
   else:
-    if n[0].kind == a or n[0].kind == b:
+    if n[0].kind in kinds:
       # addr ( deref ( x )) --> x
       result = n[0][0]
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
@@ -853,7 +853,7 @@ proc transformCall(c: PTransf, n: PNode): PNode =
   elif magic == mAddr:
     result = newTransNode(nkAddr, n, 1)
     result[0] = n[1]
-    result = transformAddrDeref(c, result, nkDerefExpr, nkHiddenDeref)
+    result = transformAddrDeref(c, result, {nkDerefExpr, nkHiddenDeref})
   elif magic in {mNBindSym, mTypeOf, mRunnableExamples}:
     # for bindSym(myconst) we MUST NOT perform constant folding:
     result = n
@@ -1005,10 +1005,12 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkBreakStmt: result = transformBreak(c, n)
   of nkCallKinds:
     result = transformCall(c, n)
-  of nkAddr, nkHiddenAddr:
-    result = transformAddrDeref(c, n, nkDerefExpr, nkHiddenDeref)
+  of nkHiddenAddr:
+    result = transformAddrDeref(c, n, {nkHiddenDeref})
+  of nkAddr:
+    result = transformAddrDeref(c, n, {nkDerefExpr, nkHiddenDeref})
   of nkDerefExpr, nkHiddenDeref:
-    result = transformAddrDeref(c, n, nkAddr, nkHiddenAddr)
+    result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = transformConv(c, n)
   of nkDiscardStmt:

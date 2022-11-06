@@ -14,7 +14,6 @@
 ## See also
 ## ========
 ## * `threads module <threads.html>`_ for basic thread support
-## * `channels module <channels_builtin.html>`_ for message passing support
 ## * `locks module <locks.html>`_ for locks and condition variables
 ## * `asyncdispatch module <asyncdispatch.html>`_ for asynchronous IO
 
@@ -24,7 +23,7 @@ when not compileOption("threads"):
 import cpuinfo, cpuload, locks, os
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, threads]
 
 {.push stackTrace:off.}
 

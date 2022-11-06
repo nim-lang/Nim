@@ -40,6 +40,9 @@ export osdirs
 import std/private/ossymlinks
 export ossymlinks
 
+import std/private/osappdirs
+export osappdirs
+
 import std/private/oscommon
 
 include system/inclrtl
@@ -100,148 +103,7 @@ export envvars
 import std/private/osseps
 export osseps
 
-proc getHomeDir*(): string {.rtl, extern: "nos$1",
-  tags: [ReadEnvEffect, ReadIOEffect].} =
-  ## Returns the home directory of the current user.
-  ##
-  ## This proc is wrapped by the `expandTilde proc`_
-  ## for the convenience of processing paths coming from user configuration files.
-  ##
-  ## See also:
-  ## * `getConfigDir proc`_
-  ## * `getTempDir proc`_
-  ## * `expandTilde proc`_
-  ## * `getCurrentDir proc`_
-  ## * `setCurrentDir proc`_
-  runnableExamples:
-    assert getHomeDir() == expandTilde("~")
 
-  when defined(windows): return getEnv("USERPROFILE") & "\\"
-  else: return getEnv("HOME") & "/"
-
-proc getConfigDir*(): string {.rtl, extern: "nos$1",
-  tags: [ReadEnvEffect, ReadIOEffect].} =
-  ## Returns the config directory of the current user for applications.
-  ##
-  ## On non-Windows OSs, this proc conforms to the XDG Base Directory
-  ## spec. Thus, this proc returns the value of the `XDG_CONFIG_HOME` environment
-  ## variable if it is set, otherwise it returns the default configuration
-  ## directory ("~/.config/").
-  ##
-  ## An OS-dependent trailing slash is always present at the end of the
-  ## returned string: `\\` on Windows and `/` on all other OSs.
-  ##
-  ## See also:
-  ## * `getHomeDir proc`_
-  ## * `getTempDir proc`_
-  ## * `expandTilde proc`_
-  ## * `getCurrentDir proc`_
-  ## * `setCurrentDir proc`_
-  when defined(windows):
-    result = getEnv("APPDATA")
-  else:
-    result = getEnv("XDG_CONFIG_HOME", getEnv("HOME") / ".config")
-  result.normalizePathEnd(trailingSep = true)
-
-proc getCacheDir*(): string =
-  ## Returns the cache directory of the current user for applications.
-  ##
-  ## This makes use of the following environment variables:
-  ##
-  ## * On Windows: `getEnv("LOCALAPPDATA")`
-  ##
-  ## * On macOS: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / "Library/Caches")`
-  ##
-  ## * On other platforms: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / ".cache")`
-  ##
-  ## **See also:**
-  ## * `getHomeDir proc`_
-  ## * `getTempDir proc`_
-  ## * `getConfigDir proc`_
-  # follows https://crates.io/crates/platform-dirs
-  when defined(windows):
-    result = getEnv("LOCALAPPDATA")
-  elif defined(osx):
-    result = getEnv("XDG_CACHE_HOME", getEnv("HOME") / "Library/Caches")
-  else:
-    result = getEnv("XDG_CACHE_HOME", getEnv("HOME") / ".cache")
-  result.normalizePathEnd(false)
-
-proc getCacheDir*(app: string): string =
-  ## Returns the cache directory for an application `app`.
-  ##
-  ## * On Windows, this uses: `getCacheDir() / app / "cache"`
-  ## * On other platforms, this uses: `getCacheDir() / app`
-  when defined(windows):
-    getCacheDir() / app / "cache"
-  else:
-    getCacheDir() / app
-
-
-when defined(windows):
-  type DWORD = uint32
-
-  when defined(nimPreviewSlimSystem):
-    import std/widestrs
-
-  proc getTempPath(
-    nBufferLength: DWORD, lpBuffer: WideCString
-  ): DWORD {.stdcall, dynlib: "kernel32.dll", importc: "GetTempPathW".} =
-    ## Retrieves the path of the directory designated for temporary files.
-
-template getEnvImpl(result: var string, tempDirList: openArray[string]) =
-  for dir in tempDirList:
-    if existsEnv(dir):
-      result = getEnv(dir)
-      break
-
-template getTempDirImpl(result: var string) =
-  when defined(windows):
-    getEnvImpl(result, ["TMP", "TEMP", "USERPROFILE"])
-  else:
-    getEnvImpl(result, ["TMPDIR", "TEMP", "TMP", "TEMPDIR"])
-
-proc getTempDir*(): string {.rtl, extern: "nos$1",
-  tags: [ReadEnvEffect, ReadIOEffect].} =
-  ## Returns the temporary directory of the current user for applications to
-  ## save temporary files in.
-  ##
-  ## On Windows, it calls [GetTempPath](https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppathw).
-  ## On Posix based platforms, it will check `TMPDIR`, `TEMP`, `TMP` and `TEMPDIR` environment variables in order.
-  ## On all platforms, `/tmp` will be returned if the procs fails.
-  ##
-  ## You can override this implementation
-  ## by adding `-d:tempDir=mytempname` to your compiler invocation.
-  ##
-  ## **Note:** This proc does not check whether the returned path exists.
-  ##
-  ## See also:
-  ## * `getHomeDir proc`_
-  ## * `getConfigDir proc`_
-  ## * `expandTilde proc`_
-  ## * `getCurrentDir proc`_
-  ## * `setCurrentDir proc`_
-  const tempDirDefault = "/tmp"
-  when defined(tempDir):
-    const tempDir {.strdefine.}: string = tempDirDefault
-    result = tempDir
-  else:
-    when nimvm:
-      getTempDirImpl(result)
-    else:
-      when defined(windows):
-        let size = getTempPath(0, nil)
-        # If the function fails, the return value is zero.
-        if size > 0:
-          let buffer = newWideCString(size.int)
-          if getTempPath(size, buffer) > 0:
-            result = $buffer
-      elif defined(android): result = "/data/local/tmp"
-      else:
-        getTempDirImpl(result)
-    if result.len == 0:
-      result = tempDirDefault
-  normalizePathEnd(result, trailingSep=true)
 
 proc expandTilde*(path: string): string {.
   tags: [ReadEnvEffect, ReadIOEffect].} =
@@ -488,70 +350,6 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1", noWeirdTarget.} =
   else:
     result = getLastModificationTime(a) > getLastModificationTime(b)
 
-when defined(windows) and not weirdTarget:
-  proc openHandle(path: string, followSymlink=true, writeAccess=false): Handle =
-    var flags = FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL
-    if not followSymlink:
-      flags = flags or FILE_FLAG_OPEN_REPARSE_POINT
-    let access = if writeAccess: GENERIC_WRITE else: 0'i32
-
-    when useWinUnicode:
-      result = createFileW(
-        newWideCString(path), access,
-        FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
-        nil, OPEN_EXISTING, flags, 0
-        )
-    else:
-      result = createFileA(
-        path, access,
-        FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
-        nil, OPEN_EXISTING, flags, 0
-        )
-
-proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
-  tags: [ReadDirEffect], noWeirdTarget.} =
-  ## Returns true if both pathname arguments refer to the same physical
-  ## file or directory.
-  ##
-  ## Raises `OSError` if any of the files does not
-  ## exist or information about it can not be obtained.
-  ##
-  ## This proc will return true if given two alternative hard-linked or
-  ## sym-linked paths to the same file or directory.
-  ##
-  ## See also:
-  ## * `sameFileContent proc`_
-  when defined(windows):
-    var success = true
-    var f1 = openHandle(path1)
-    var f2 = openHandle(path2)
-
-    var lastErr: OSErrorCode
-    if f1 != INVALID_HANDLE_VALUE and f2 != INVALID_HANDLE_VALUE:
-      var fi1, fi2: BY_HANDLE_FILE_INFORMATION
-
-      if getFileInformationByHandle(f1, addr(fi1)) != 0 and
-         getFileInformationByHandle(f2, addr(fi2)) != 0:
-        result = fi1.dwVolumeSerialNumber == fi2.dwVolumeSerialNumber and
-                 fi1.nFileIndexHigh == fi2.nFileIndexHigh and
-                 fi1.nFileIndexLow == fi2.nFileIndexLow
-      else:
-        lastErr = osLastError()
-        success = false
-    else:
-      lastErr = osLastError()
-      success = false
-
-    discard closeHandle(f1)
-    discard closeHandle(f2)
-
-    if not success: raiseOSError(lastErr, $(path1, path2))
-  else:
-    var a, b: Stat
-    if stat(path1, a) < 0'i32 or stat(path2, b) < 0'i32:
-      raiseOSError(osLastError(), $(path1, path2))
-    else:
-      result = a.st_dev == b.st_dev and a.st_ino == b.st_ino
 
 proc isAdmin*: bool {.noWeirdTarget.} =
   ## Returns whether the caller's process is a member of the Administrators local
@@ -583,7 +381,6 @@ proc isAdmin*: bool {.noWeirdTarget.} =
 
   else:
     result = geteuid() == 0
-
 
 
 proc exitStatusLikeShell*(status: cint): cint =
@@ -1233,6 +1030,11 @@ type
     creationTime*: times.Time         ## Time file was created. Not supported on all systems!
     blockSize*: int                   ## Preferred I/O block size for this object.
                                       ## In some filesystems, this may vary from file to file.
+    isSpecial*: bool                  ## Is file special? (on Unix some "files"
+                                      ## can be special=non-regular like FIFOs,
+                                      ## devices); for directories `isSpecial`
+                                      ## is always `false`, for symlinks it is
+                                      ## the same as for the link's target.
 
 template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## Transforms the native file info structure into the one nim uses.
@@ -1293,14 +1095,14 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     checkAndIncludeMode(S_IWOTH, fpOthersWrite)
     checkAndIncludeMode(S_IXOTH, fpOthersExec)
 
-    formalInfo.kind =
+    (formalInfo.kind, formalInfo.isSpecial) =
       if S_ISDIR(rawInfo.st_mode):
-        pcDir
+        (pcDir, false)
       elif S_ISLNK(rawInfo.st_mode):
         assert(path != "") # symlinks can't occur for file handles
         getSymlinkFileKind(path)
       else:
-        pcFile
+        (pcFile, not S_ISREG(rawInfo.st_mode))
 
 when defined(js):
   when not declared(FileHandle):
@@ -1353,7 +1155,8 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo {.noWeirdTarget.
   ##
   ## When `followSymlink` is true (default), symlinks are followed and the
   ## information retrieved is information related to the symlink's target.
-  ## Otherwise, information on the symlink itself is retrieved.
+  ## Otherwise, information on the symlink itself is retrieved (however,
+  ## field `isSpecial` is still determined from the target on Unix).
   ##
   ## If the information cannot be retrieved, such as when the path doesn't
   ## exist, or when permission restrictions prevent the program from retrieving

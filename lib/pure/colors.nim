@@ -15,7 +15,7 @@ from algorithm import binarySearch
 type
   Color* = distinct int ## A color stored as RGB, e.g. `0xff00cc`.
 
-proc `==` *(a, b: Color): bool {.borrow.}
+proc `==`*(a, b: Color): bool {.borrow.}
   ## Compares two colors.
   ##
   ## .. code-block::
@@ -24,7 +24,7 @@ proc `==` *(a, b: Color): bool {.borrow.}
   ##     b = colFuchsia
   ##     c = Color(0x00_ff_cc)
   ##   assert a == b
-  ##   assert not a == c
+  ##   assert not (a == c)
 
 template extract(a: Color, r, g, b: untyped) =
   var r = a.int shr 16 and 0xff

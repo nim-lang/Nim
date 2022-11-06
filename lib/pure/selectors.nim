@@ -27,7 +27,8 @@
 ##
 ## TODO: `/dev/poll`, `event ports` and filesystem events.
 
-import os, nativesockets
+import nativesockets
+import std/oserrors
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

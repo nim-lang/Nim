@@ -220,6 +220,16 @@ proc isRecursiveType(t: PType, cycleDetector: var IntSet): bool =
   else:
     return false
 
+proc fitDefaultNode(c: PContext, n: PNode): PType =
+  let expectedType = if n[^2].kind != nkEmpty: semTypeNode(c, n[^2], nil) else: nil
+  n[^1] = semConstExpr(c, n[^1], expectedType = expectedType)
+  if n[^2].kind != nkEmpty:
+    if expectedType != nil:
+      n[^1] = fitNodeConsiderViewType(c, expectedType, n[^1], n[^1].info)
+    result = n[^1].typ
+  else:
+    result = n[^1].typ
+
 proc isRecursiveType*(t: PType): bool =
   # handle simple recusive types before typeFinalPass
   var cycleDetector = initIntSet()
@@ -330,7 +340,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
     elif e.kind == nkSym and e.typ.kind == tyStatic:
       if e.sym.ast != nil:
         return semArrayIndex(c, e.sym.ast)
-      if not isOrdinalType(e.typ.lastSon):
+      if e.typ.lastSon.kind != tyGenericParam and not isOrdinalType(e.typ.lastSon):
         let info = if n.safeLen > 1: n[1].info else: n.info
         localError(c.config, info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
       result = makeRangeWithStaticExpr(c, e)
@@ -484,8 +494,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
     checkMinSonsLen(a, 3, c.config)
     var hasDefaultField = a[^1].kind != nkEmpty
     if hasDefaultField:
-      a[^1] = semConstExpr(c, a[^1])
-      typ = a[^1].typ
+      typ = fitDefaultNode(c, a)
     elif a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
       if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind == tyRange:
@@ -819,8 +828,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     var typ: PType
     var hasDefaultField = n[^1].kind != nkEmpty
     if hasDefaultField:
-      n[^1] = semConstExpr(c, n[^1])
-      typ = n[^1].typ
+      typ = fitDefaultNode(c, n)
       propagateToOwner(rectype, typ)
     elif n[^2].kind == nkEmpty:
       localError(c.config, n.info, errTypeExpected)
