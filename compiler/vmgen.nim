@@ -1603,10 +1603,7 @@ proc isEmptyBody(n: PNode): bool =
       if not isEmptyBody(n[i]): return false
     result = true
   else:
-    if n.kind in {nkCommentStmt, nkEmpty}:
-      result = true
-    else:
-      result = false
+    result = n.kind in {nkCommentStmt, nkEmpty}
 
 proc importcCond*(c: PCtx; s: PSym): bool {.inline.} =
   ## return true to importc `s`, false to execute its body instead (refs #8405)
