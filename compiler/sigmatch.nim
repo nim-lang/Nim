@@ -2496,13 +2496,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         if flexibleOptionalParams in c.features and a >= firstArgBlock:
           f = max(f, m.callee.n.len - (n.len - a))
         formal = m.callee.n[f].sym
-
-        #echo n[a].typ.kind, " ::: ", formal.typ
-        #echo formal.typ.kind
-        #if formal.typ.kind == tyVoid and n[a].typ.kind != tyVoid:
-        #  inc f
-        #  continue
-
         m.firstMismatch.kind = kTypeMismatch
         if containsOrIncl(marker, formal.position) and container.isNil:
           m.firstMismatch.kind = kPositionalAlreadyGiven
@@ -2521,6 +2514,13 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
           m.baseTypeMatch = false
           m.typedescMatched = false
           n[a] = prepareOperand(c, formal.typ, n[a])
+
+          # void params get skipped implicitly (maybe a bad idea)
+          if formal.typ.kind == tyVoid and n[a].typ.kind != tyVoid:
+            setSon(m.call, f, m.callee.n[f])
+            inc f
+            continue
+
           arg = paramTypesMatch(m, formal.typ, n[a].typ,
                                     n[a], nOrig[a])
           if arg == nil:
@@ -2602,8 +2602,8 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           setSon(m.call, formal.position + 1,
                  implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
         elif formal.typ.kind == tyVoid:
-          # Void parameters count as fully optional as they are the absence of data
-          discard
+          # Void params get skipped so we can just pass this along
+          setSon(m.call, formal.position+1, m.callee.n[f])
         else:
           #echo m.callee
           # no default value
