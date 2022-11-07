@@ -90,7 +90,7 @@ template gcAssert(cond: bool, msg: string) =
     if not cond:
       cstderr.rawWrite "[GCASSERT] "
       cstderr.rawWrite msg
-      quit 1
+      rawQuit 1
 
 proc cellToUsr(cell: PCell): pointer {.inline.} =
   # convert object (=pointer to refcount) to pointer to userdata

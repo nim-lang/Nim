@@ -107,6 +107,18 @@ template main() =
         return (x,y)
     doAssert bar() == (10, (11,))
 
+  block: # bug #16331
+    type T1 = tuple[a, b: int]
+
+    proc p(b: bool): T1 =
+      var x: T1 = (10, 20)
+      x = if b: (x.b, x.a) else: (-x.b, -x.a)
+      x
+
+    doAssert p(false) == (-20, -10)
+    doAssert p(true) == (20, 10)
+
+
 proc mainProc() =
   # other tests should be in `main`
   block:

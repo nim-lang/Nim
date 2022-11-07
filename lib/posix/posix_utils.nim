@@ -14,6 +14,9 @@
 import posix, parsecfg, os
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type Uname* = object
   sysname*, nodename*, release*, version*, machine*: string
 

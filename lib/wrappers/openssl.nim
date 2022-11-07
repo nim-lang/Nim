@@ -280,7 +280,9 @@ proc TLSv1_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 # and support SSLv3, TLSv1, TLSv1.1 and TLSv1.2
 # SSLv23_method(), SSLv23_server_method(), SSLv23_client_method() are removed in 1.1.0
 
-when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
+const useStaticLink = compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks)
+
+when useStaticLink:
   # Static linking
 
   when defined(openssl10):
@@ -839,6 +841,8 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
     proc SSL_get1_peer_certificate*(ssl: SslCtx): PX509 {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSL_get_peer_certificate*(ssl: SslCtx): PX509 =
       SSL_get1_peer_certificate(ssl)
+  elif useStaticLink:
+    proc SSL_get_peer_certificate*(ssl: SslCtx): PX509 {.cdecl, dynlib: DLLSSLName, importc.}
   else:
     proc SSL_get_peer_certificate*(ssl: SslCtx): PX509 =
       let methodSym = sslSymNullable("SSL_get_peer_certificate", "SSL_get1_peer_certificate")
@@ -884,6 +888,8 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
   {.pop.}
 
   when isMainModule:
+    when defined(nimPreviewSlimSystem):
+      import std/assertions
     # A simple certificate test
     let certbytes = readFile("certificate.der")
     let cert = d2i_X509(certbytes)

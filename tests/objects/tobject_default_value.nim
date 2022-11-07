@@ -3,7 +3,7 @@ discard """
   targets: "c cpp js"
 """
 
-import std/[times, tables]
+import std/[times, tables, macros]
 
 type
   Guess = object
@@ -456,6 +456,26 @@ template main {.dirty.} =
 
       var d = default(Bar)
       doAssert d.t == 0
+
+    block: # bug #20740
+      block:
+        proc foo(x: static DateTime = Datetime()) =
+          discard
+
+        foo()
+
+      block:
+        macro foo(x: static DateTime) =
+          discard x
+
+        macro foo2: untyped =
+          var x = DateTime()
+
+          result = quote do:
+            foo(`x`)
+
+        foo2()
+
 
 static: main()
 main()

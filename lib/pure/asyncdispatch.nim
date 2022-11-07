@@ -1172,7 +1172,7 @@ else:
   when declared(posix.accept4):
     from posix import accept4, SOCK_CLOEXEC
   when defined(genode):
-    include genode/env # get the implicit Genode env
+    import genode/env # get the implicit Genode env
     import genode/signals
 
   const

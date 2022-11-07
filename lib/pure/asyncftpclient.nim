@@ -84,6 +84,11 @@
 import asyncdispatch, asyncnet, nativesockets, strutils, parseutils, os, times
 from net import BufferSize, SslContext
 
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
+
 when defined(ssl):
   from net import SslHandshakeType, newContext, SslCVerifyMode
   var defaultSslContext {.threadvar.}: SslContext

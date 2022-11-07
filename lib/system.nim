@@ -493,9 +493,9 @@ type
                                         ## providing an exception message
                                         ## is bad style.
     when defined(js):
-      trace: string
+      trace*: string
     else:
-      trace: seq[StackTraceEntry]
+      trace*: seq[StackTraceEntry]
     up: ref Exception # used for stacking exceptions. Not exported!
 
   Defect* = object of Exception ## \
@@ -1078,6 +1078,8 @@ when not defined(js) and hostOS != "standalone":
     ## deprecated, prefer `quit` or `exitprocs.getProgramResult`, `exitprocs.setProgramResult`.
 
 import std/private/since
+import system/ctypes
+export ctypes
 
 proc align(address, alignment: int): int =
   if alignment == 0: # Actually, this is illegal. This branch exists to actively
@@ -1087,32 +1089,7 @@ proc align(address, alignment: int): int =
     result = (address + (alignment - 1)) and not (alignment - 1)
 
 when defined(nimNoQuit):
-  proc quit*(errorcode: int = QuitSuccess) = discard "ignoring quit"
-    ## Stops the program immediately with an exit code.
-    ##
-    ## Before stopping the program the "exit procedures" are called in the
-    ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc)>`_.
-    ##
-    ## The proc `quit(QuitSuccess)` is called implicitly when your nim
-    ## program finishes without incident for platforms where this is the
-    ## expected behavior. A raised unhandled exception is
-    ## equivalent to calling `quit(QuitFailure)`.
-    ##
-    ## Note that this is a *runtime* call and using `quit` inside a macro won't
-    ## have any compile time effect. If you need to stop the compiler inside a
-    ## macro, use the `error <manual.html#pragmas-error-pragma>`_ or `fatal
-    ## <manual.html#pragmas-fatal-pragma>`_ pragmas.
-    ##
-    ## .. danger:: In almost all cases, in particular in library code, prefer
-    ##   alternatives, e.g. `doAssert false` or raise a `Defect`.
-    ##   `quit` bypasses regular control flow in particular `defer`,
-    ##   `try`, `catch`, `finally` and `destructors`, and exceptions that may have been
-    ##   raised by an `addExitProc` proc, as well as cleanup code in other threads.
-    ##   It does *not* call the garbage collector to free all the memory,
-    ##   unless an `addExitProc` proc calls `GC_fullCollect <#GC_fullCollect>`_.
-
-elif defined(nimdoc):
-  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
+  proc rawQuit(errorcode: int = QuitSuccess) = discard "ignoring quit"
 
 elif defined(genode):
   import genode/env
@@ -1122,20 +1099,20 @@ elif defined(genode):
   type GenodeEnv* = GenodeEnvPtr
     ## Opaque type representing Genode environment.
 
-  proc quit*(env: GenodeEnv; errorcode: int) {.magic: "Exit", noreturn,
+  proc rawQuit(env: GenodeEnv; errorcode: int) {.magic: "Exit", noreturn,
     importcpp: "#->parent().exit(@); Genode::sleep_forever()", header: "<base/sleep.h>".}
 
-  proc quit*(errorcode: int = QuitSuccess) =
-    systemEnv.quit(errorcode)
+  proc rawQuit(errorcode: int = QuitSuccess) {.inline, noreturn.} =
+    systemEnv.rawQuit(errorcode)
+
 
 elif defined(js) and defined(nodejs) and not defined(nimscript):
-  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
+  proc rawQuit(errorcode: int = QuitSuccess) {.magic: "Exit",
     importc: "process.exit", noreturn.}
 
 else:
-  proc quit*(errorcode: int = QuitSuccess) {.
+  proc rawQuit(errorcode: cint) {.
     magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
-
 
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
@@ -1143,7 +1120,7 @@ template sysAssert(cond: bool, msg: string) =
       cstderr.rawWrite "[SYSASSERT] "
       cstderr.rawWrite msg
       cstderr.rawWrite "\n"
-      quit 1
+      rawQuit 1
 
 const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
 
@@ -1268,9 +1245,6 @@ when not defined(nimV2):
     ##   echo repr(s) # => 0x1055eb050[0x1055ec050"test2", 0x1055ec078"test2"]
     ##   echo repr(i) # => 0x1055ed050[1, 2, 3, 4, 5]
     ##   ```
-
-import system/ctypes
-export ctypes
 
 when not defined(nimPreviewSlimSystem):
   type
@@ -1651,6 +1625,12 @@ when not defined(nimscript):
 when defined(nimV2):
   include system/arc
 
+template newException*(exceptn: typedesc, message: string;
+                       parentException: ref Exception = nil): untyped =
+  ## Creates an exception object of type `exceptn` and sets its `msg` field
+  ## to `message`. Returns the new exception object.
+  (ref exceptn)(msg: message, parent: parentException)
+
 when not defined(nimPreviewSlimSystem):
   {.deprecated: "assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/assertions`".}
   import std/assertions
@@ -1857,12 +1837,6 @@ proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
   ## `debugEcho` pretends to be free of side effects, so that it can be used
   ## for debugging routines marked as `noSideEffect
   ## <manual.html#pragmas-nosideeffect-pragma>`_.
-
-template newException*(exceptn: typedesc, message: string;
-                       parentException: ref Exception = nil): untyped =
-  ## Creates an exception object of type `exceptn` and sets its `msg` field
-  ## to `message`. Returns the new exception object.
-  (ref exceptn)(msg: message, parent: parentException)
 
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
@@ -2280,6 +2254,62 @@ when defined(js):
   include "system/jssys"
   include "system/reprjs"
 
+
+when defined(nimNoQuit):
+  proc quit*(errorcode: int = QuitSuccess) = discard "ignoring quit"
+
+elif defined(nimdoc):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
+    ## Stops the program immediately with an exit code.
+    ##
+    ## Before stopping the program the "exit procedures" are called in the
+    ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc)>`_.
+    ##
+    ## The proc `quit(QuitSuccess)` is called implicitly when your nim
+    ## program finishes without incident for platforms where this is the
+    ## expected behavior. A raised unhandled exception is
+    ## equivalent to calling `quit(QuitFailure)`.
+    ##
+    ## Note that this is a *runtime* call and using `quit` inside a macro won't
+    ## have any compile time effect. If you need to stop the compiler inside a
+    ## macro, use the `error <manual.html#pragmas-error-pragma>`_ or `fatal
+    ## <manual.html#pragmas-fatal-pragma>`_ pragmas.
+    ##
+    ## .. warning:: `errorcode` gets saturated when it exceeds the valid range
+    ##    on the specific platform. On Posix, the valid range is `low(int8)..high(int8)`.
+    ##    On Windows, the valid range is `low(int32)..high(int32)`. For instance,
+    ##    `quit(int(0x100000000))` is equal to `quit(127)` on Linux.
+    ##
+    ## .. danger:: In almost all cases, in particular in library code, prefer
+    ##   alternatives, e.g. `doAssert false` or raise a `Defect`.
+    ##   `quit` bypasses regular control flow in particular `defer`,
+    ##   `try`, `catch`, `finally` and `destructors`, and exceptions that may have been
+    ##   raised by an `addExitProc` proc, as well as cleanup code in other threads.
+    ##   It does *not* call the garbage collector to free all the memory,
+    ##   unless an `addExitProc` proc calls `GC_fullCollect <#GC_fullCollect>`_.
+
+elif defined(genode):
+  proc quit*(errorcode: int = QuitSuccess) {.inline, noreturn.} =
+    rawQuit(errorcode)
+
+elif defined(js) and defined(nodejs) and not defined(nimscript):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
+    importc: "process.exit", noreturn.}
+
+else:
+  proc quit*(errorcode: int = QuitSuccess) {.inline, noreturn.} =
+    when defined(posix): # posix uses low 8 bits
+      type ExitCodeRange = int8
+    else: # win32 uses low 32 bits
+      type ExitCodeRange = cint
+
+    if errorcode < low(ExitCodeRange):
+      rawQuit(low(ExitCodeRange).cint)
+    elif errorcode > high(ExitCodeRange):
+      rawQuit(high(ExitCodeRange).cint)
+    else:
+      rawQuit(errorcode.cint)
+
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for `echo(errormsg); quit(errorcode)`.
   when defined(nimscript) or defined(js) or (hostOS == "standalone"):
@@ -2662,7 +2692,7 @@ when defined(genode):
   proc nim_component_construct(env: GenodeEnv) {.exportc.} =
     ## Procedure called during `Component::construct` by the loader.
     if componentConstructHook.isNil:
-      env.quit(programResult)
+      env.rawQuit(programResult)
         # No native Genode application initialization,
         # exit as would POSIX.
     else:
