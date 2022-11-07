@@ -787,10 +787,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLdStrIdx:
       decodeBC(rkInt)
       let idx = regs[rc].intVal.int
-      if idx <% regs[rb].node.strVal.len:
-        regs[ra].intVal = regs[rb].node.strVal[idx].ord
+      let s {.cursor.} = regs[rb].node.strVal
+      if idx <% s.len:
+        regs[ra].intVal = s[idx].ord
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, regs[rb].node.strVal.len-1))
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, s.len-1))
     of opcLdStrIdxAddr:
       # a = addr(b[c]); similar to opcLdArrAddr
       decodeBC(rkNode)
