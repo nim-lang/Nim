@@ -7,7 +7,7 @@ discard """
 import std/strutils
 import std/os
 
-const source = staticRead(splitFile(currentSourcePath).dir / "m20746.nim")
+const source = staticRead(splitFile(currentSourcePath).dir / "m20746.txt")
 
 static:
   discard source.multiReplace(
