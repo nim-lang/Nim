@@ -493,9 +493,9 @@ type
                                         ## providing an exception message
                                         ## is bad style.
     when defined(js):
-      trace: string
+      trace*: string
     else:
-      trace: seq[StackTraceEntry]
+      trace*: seq[StackTraceEntry]
     up: ref Exception # used for stacking exceptions. Not exported!
 
   Defect* = object of Exception ## \
