@@ -32,6 +32,8 @@ const
 when hasFFI:
   import evalffi
 
+when not defined(nimHasCursor):
+  {.pragma: cursor.}
 
 proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
   if x != nil:
