@@ -1321,7 +1321,15 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result:
         internalError(m.config, info, "no attached trace proc found")
     result.add rope("NIM_NIL")
 
-proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) =
+proc getObjDepth(t: PType): int =
+  var x = t
+  result = 0
+  while x != nil:
+    x = skipTypes(x, skipPtrs)
+    x = x[0]
+    inc(result)
+
+proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   var typeName: Rope
   if t.kind in {tyObject, tyDistinct}:
     if incompleteType(t):
@@ -1344,8 +1352,10 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
   addf(typeEntry, "; $1.traceImpl = (void*)", [name])
   genHook(m, t, info, attachedTrace, typeEntry)
 
-  addf(typeEntry, "; $1.name = $2;$n; $1.size = sizeof($3); $1.align = NIM_ALIGNOF($3); $1.flags = $4;",
-    [name, typeName, getTypeDesc(m, t), rope(flags)])
+  let objDepth = if t.kind == tyObject: getObjDepth(t) else: 0
+
+  addf(typeEntry, "; $1.name = $2;$n; $1.size = sizeof($3); $1.align = (NI16) NIM_ALIGNOF($3); $1.depth = $4; $1.flags = $5;",
+    [name, typeName, getTypeDesc(m, t), rope(objDepth), rope(flags)])
 
   m.s[cfsTypeInit3].add typeEntry
 
