@@ -713,6 +713,16 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
     elif n.kind in {nkObjDownConv, nkObjUpConv}:
       result = copyTree(n)
       result[0] = p(n[0], c, s, sinkArg)
+    elif n.kind == nkDotExpr:
+      result = shallowCopy(n)
+      result[0] = p(n[0], c, s, normal)
+      for i in 1 ..< n.len:
+        result[i] = n[i]
+      if mode == sinkArg and hasDestructor(c, n.typ):
+        if isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c, s):
+          s.wasMoved.add c.genWasMoved(n)
+        else:
+          result = passCopyToSink(result, c, s)
     elif n.typ == nil:
       # 'raise X' can be part of a 'case' expression. Deal with it here:
       result = p(n, c, s, normal)
