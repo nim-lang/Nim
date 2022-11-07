@@ -416,3 +416,38 @@ macro collect*(body: untyped): untyped {.since: (1, 5).} =
     assert m == {0: "bird", 1: "word"}.toTable
 
   result = collectImpl(nil, body)
+
+proc neverhappens {.noreturn, inline.} =
+  discard
+
+template scope*(body): untyped =
+  ## Can be used instead of `block` to introduce a new scoped block of code,
+  ## without influencing any `break` statements in the code.
+  ##
+  ## .. warning:: An invocation of `scope` is parsed slightly different than a
+  ##    `block`. For instance if you add parentheses `(scope: ...)` the compiler
+  ##    will try to parse a named tuple instead of a scoped block.
+  runnableExamples:
+
+    # introduce a new scope for variables:
+    let x = 42
+    scope:
+      let x = "some string"
+      assert x == "some string" # x is a string in the inner scope
+    assert x == 42 # x is an integer in the outer scope
+
+    # a scope can have a resulting value:
+    let xy = scope:
+      let x = "x"
+      let y = "y"
+      x & y
+    assert xy == "xy"
+
+  if true:
+    body
+  else:
+    # add a discard statement to work around a compiler bug in the unit test:
+    discard
+    # call {.noreturn.} proc here to ensure that the compiler uses `body` for
+    # the result value of the if-statement:
+    neverhappens()

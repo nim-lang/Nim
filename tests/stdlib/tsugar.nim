@@ -209,6 +209,19 @@ template main() =
         discard collect(newSeq, for i in 1..3: i)
       foo()
 
+  block: # scope
+    let x = 42
+    scope:
+      let x = "some string"
+      doAssert x == "some string"
+    doAssert x == 42
+
+    let xy = scope:
+      let x = "x"
+      let y = "y"
+      x & y
+    doAssert xy == "xy"
+
 proc mainProc() =
   block: # dump
     # symbols in templates are gensym'd
