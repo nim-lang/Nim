@@ -1339,7 +1339,7 @@ proc genDisplayElem(d: MD5Digest): uint32 =
 proc genDisplay(t: PType, depth: int): Rope =
   result = Rope"{"
   var x = t
-  var depth2 = 0
+  var depth2 = -1
   while x != nil:
     result.add $genDisplayElem(MD5Digest(hashType(x)))
     inc depth2
