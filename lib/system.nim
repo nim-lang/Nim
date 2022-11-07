@@ -1078,6 +1078,8 @@ when not defined(js) and hostOS != "standalone":
     ## deprecated, prefer `quit` or `exitprocs.getProgramResult`, `exitprocs.setProgramResult`.
 
 import std/private/since
+import system/ctypes
+export ctypes
 
 proc align(address, alignment: int): int =
   if alignment == 0: # Actually, this is illegal. This branch exists to actively
@@ -1109,7 +1111,7 @@ elif defined(js) and defined(nodejs) and not defined(nimscript):
     importc: "process.exit", noreturn.}
 
 else:
-  proc rawQuit(errorcode: int = QuitSuccess) {.
+  proc rawQuit(errorcode: cint) {.
     magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
 
 template sysAssert(cond: bool, msg: string) =
@@ -1243,9 +1245,6 @@ when not defined(nimV2):
     ##   echo repr(s) # => 0x1055eb050[0x1055ec050"test2", 0x1055ec078"test2"]
     ##   echo repr(i) # => 0x1055ed050[1, 2, 3, 4, 5]
     ##   ```
-
-import system/ctypes
-export ctypes
 
 when not defined(nimPreviewSlimSystem):
   type
@@ -2302,14 +2301,14 @@ else:
     when defined(posix): # posix uses low 8 bits
       type ExitCodeRange = int8
     else: # win32 uses low 32 bits
-      type ExitCodeRange = int32
+      type ExitCodeRange = cint
 
     if errorcode < low(ExitCodeRange):
-      rawQuit(low(ExitCodeRange).int)
+      rawQuit(low(ExitCodeRange).cint)
     elif errorcode > high(ExitCodeRange):
-      rawQuit(high(ExitCodeRange).int)
+      rawQuit(high(ExitCodeRange).cint)
     else:
-      rawQuit(errorcode)
+      rawQuit(errorcode.cint)
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for `echo(errormsg); quit(errorcode)`.
