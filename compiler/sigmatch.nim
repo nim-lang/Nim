@@ -1905,7 +1905,7 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
     else:
       result.typ = errorType(c)
   else:
-    result.typ = f.skipTypes({tySink, tyVar})
+    result.typ = f.skipTypes({tySink, tyVar, tyStatic})
   if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
   result.add c.graph.emptyNode
   result.add arg
@@ -2117,9 +2117,6 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isSubtype:
     inc(m.subtypeMatches)
     if f.kind == tyTypeDesc:
-      result = arg
-    elif f.skipTypes({tyStatic}).kind in {tyRef,tyPtr} and 
-        arg.typ.skipTypes({tyStatic}).kind == tyNil:
       result = arg
     else:
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
