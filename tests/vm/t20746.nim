@@ -4,20 +4,10 @@ discard """
   output: "fine"
 """
 
-import std/strutils
-import std/os
+func addString(): string =
+  let x = newString(1000000)
+  for i in 0..<1000000:
+    discard x[i]
 
-const source = staticRead(splitFile(currentSourcePath).dir / "m20746.txt")
-
-static:
-  discard source.multiReplace(
-              ("{.inject.}", ""),
-              ("{.inject, ", "{."),
-              ("<", "["),
-              (">", "]"), #Changes Gen. Some types has two levels of inherantce in cpp, that we dont really need to support
-              ("::Type", ""), #Enum namespaces EEnumName::Type
-              ("::Mode", ""), #Enum namespaces EEnumName::TypeB
-              ("::", "."), #Enum namespace
-              ("__DelegateSignature", ""))
-
+const translationTable = addString()
 echo "fine"
