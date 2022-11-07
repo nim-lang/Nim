@@ -1324,7 +1324,7 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result:
 
 proc getObjDepth(t: PType): int =
   var x = t
-  result = 0
+  result = -1
   while x != nil:
     x = skipTypes(x, skipPtrs)
     x = x[0]
