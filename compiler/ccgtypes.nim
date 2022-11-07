@@ -12,6 +12,7 @@
 # ------------------------- Name Mangling --------------------------------
 
 import sighashes, modulegraphs
+import std/md5
 
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
@@ -1329,6 +1330,25 @@ proc getObjDepth(t: PType): int =
     x = x[0]
     inc(result)
 
+proc genDisplayElem(d: MD5Digest): uint32 =
+  result = 0
+  for i in 0..3:
+    result += uint32(d[i])
+    result = result shl 8
+
+proc genDisplay(t: PType, depth: int): Rope =
+  result = Rope"{"
+  var x = t
+  var depth2 = 0
+  while x != nil:
+    result.add $genDisplayElem(MD5Digest(hashType(x)))
+    inc depth2
+    if depth2 != depth:
+      result.add ", "
+    x = skipTypes(x, skipPtrs)
+    x = x[0]
+  result.add "}"
+
 proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   var typeName: Rope
   if t.kind in {tyObject, tyDistinct}:
@@ -1356,6 +1376,12 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
 
   addf(typeEntry, "; $1.name = $2;$n; $1.size = sizeof($3); $1.align = (NI16) NIM_ALIGNOF($3); $1.depth = $4; $1.flags = $5;",
     [name, typeName, getTypeDesc(m, t), rope(objDepth), rope(flags)])
+
+  if objDepth > 0:
+    let objDisplay = genDisplay(t, objDepth)
+    let objDisplayStore = getTempName(m)
+    m.s[cfsVars].addf("static $1* $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyUInt32), skVar), objDisplayStore, rope(objDepth), objDisplay])
+    addf(typeEntry, "; $1.display = &$2;$n", [name, rope(objDisplayStore)])
 
   m.s[cfsTypeInit3].add typeEntry
 
