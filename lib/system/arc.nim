@@ -256,11 +256,11 @@ proc isObjWithCache(obj: PNimTypeV2, subclass: cstring, cache: var ObjCheckCache
   else:
     result = isObjSlowPath(obj, subclass, cache)
 
-proc isObjDisplayCheck(obj: PNimTypeV2, subclass: PNimTypeV2): bool {.compilerRtl.} =
-  if obj.depth > subclass.depth:
+proc isObjDisplayCheck(source: PNimTypeV2, target: PNimTypeV2, token: uint32): bool {.compilerRtl.} =
+  if target.depth > source.depth:
     result = false
   else:
-    result = subclass.display[obj.depth] == obj.display[obj.depth]
+    result = source.display[target.depth] == token
 
 proc chckObj(obj: PNimTypeV2, subclass: cstring) {.compilerRtl.} =
   # checks if obj is of type subclass:

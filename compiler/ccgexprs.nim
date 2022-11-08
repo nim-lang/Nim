@@ -1704,7 +1704,9 @@ proc genNewFinalize(p: BProc, e: PNode) =
 
 proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo; result: var Rope) =
   if optTinyRtti in p.config.globalOptions:
-    appcg(p.module, result, "#isObjDisplayCheck($#.m_type, $#)", [a, genTypeInfoV2(p.module, dest, info)])
+    let typ = genTypeInfoV2(p.module, dest, info)
+    let token = $genDisplayElem(MD5Digest(hashType(dest)))
+    appcg(p.module, result, "#isObjDisplayCheck($#.m_type, $#, $#)", [a, typ, token])
   else:
     # unfortunately 'genTypeInfoV1' sets tfObjHasKids as a side effect, so we
     # have to call it here first:
