@@ -1702,10 +1702,10 @@ proc genNewFinalize(p: BProc, e: PNode) =
   genObjectInit(p, cpsStmts, bt, a, constructRefObj)
   gcUsage(p.config, e)
 
-proc genOfHelper(p: BProc; dest: PType; a: Rope; token: Rope; info: TLineInfo; result: var Rope) =
+proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo; result: var Rope) =
   if optTinyRtti in p.config.globalOptions:
     if isDefined(p.config, "nimDisplaycheck"):
-      appcg(p.module, result, "#isObjDisplayCheck($#.m_type, $#, $#)", [a, genTypeInfoV2(p.module, dest, info), token])
+      appcg(p.module, result, "#isObjDisplayCheck($#.m_type, $#)", [a, genTypeInfoV2(p.module, dest, info)])
     else:
       let ti = genTypeInfo2Name(p.module, dest)
       inc p.module.labels
@@ -1751,9 +1751,8 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
     globalError(p.config, x.info,
       "no 'of' operator available for pure objects")
 
-  let token = $genDisplayElem(MD5Digest(hashType(x.typ)))
   var ro = newRopeAppender()
-  genOfHelper(p, dest, r, token, x.info, ro)
+  genOfHelper(p, dest, r, x.info, ro)
   var ofExpr = newRopeAppender()
   ofExpr.add "("
   if nilCheck != "":
