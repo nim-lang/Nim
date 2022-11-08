@@ -227,8 +227,6 @@ template tearDownForeignThreadGc* =
   ## With `--gc:arc` a nop.
   discard
 
-type ObjCheckCache = array[0..1, PNimTypeV2]
-
 proc memcmp(str1, str2: cstring, n: csize_t): cint {.importc, header: "<string.h>".}
 
 func endsWith(s, suffix: cstring): bool {.inline.} =
@@ -241,20 +239,6 @@ func endsWith(s, suffix: cstring): bool {.inline.} =
 
 proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
   result = endsWith(obj.name, subclass)
-
-proc isObjSlowPath(obj: PNimTypeV2, subclass: cstring, cache: var ObjCheckCache): bool {.compilerRtl, inline.} =
-  if endsWith(obj.name, subclass):
-    cache[1] = obj
-    result = true
-  else:
-    cache[0] = obj
-    result = false
-
-proc isObjWithCache(obj: PNimTypeV2, subclass: cstring, cache: var ObjCheckCache): bool {.compilerRtl.} =
-  if cache[0] == obj: result = false
-  elif cache[1] == obj: result = true
-  else:
-    result = isObjSlowPath(obj, subclass, cache)
 
 proc isObjDisplayCheck(source: PNimTypeV2, target: PNimTypeV2, token: uint32): bool {.compilerRtl.} =
   if target.depth > source.depth:

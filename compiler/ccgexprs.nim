@@ -1720,10 +1720,6 @@ proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo; result: var Ro
       let cache = "Nim_OfCheck_CACHE" & p.module.labels.rope
       p.module.s[cfsVars].addf("static TNimType* $#[2];$n", [cache])
       appcg(p.module, result, "#isObjWithCache($#.m_type, $#, $#)", [a, ti, cache])
-    when false:
-      # former version:
-      appcg(p.module, result, "#isObj($1.m_type, $2)",
-            [a, genTypeInfoV1(p.module, dest, info)])
 
 proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var a: TLoc
@@ -2773,16 +2769,22 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
     var nilCheck = ""
     var r = newRopeAppender()
     rdMType(p, a, nilCheck, r)
-    let checkFor = if optTinyRtti in p.config.globalOptions:
-                     genTypeInfo2Name(p.module, dest)
-                   else:
-                     genTypeInfoV1(p.module, dest, n.info)
-    if nilCheck != "":
-      linefmt(p, cpsStmts, "if ($1 && !#isObj($2, $3)){ #raiseObjectConversionError(); ",
-              [nilCheck, r, checkFor])
+    if optTinyRtti in p.config.globalOptions:
+      let checkFor = genTypeInfoV2(p.module, dest, n.info)
+      if nilCheck != "":
+        linefmt(p, cpsStmts, "if ($1 && !#isObjDisplayCheck($2, $3, $4)){ #raiseObjectConversionError(); ",
+                [nilCheck, r, checkFor, $genDisplayElem(MD5Digest(hashType(dest)))])
+      else:
+        linefmt(p, cpsStmts, "if (!#isObjDisplayCheck($1, $2, $3)){ #raiseObjectConversionError(); ",
+                [r, checkFor, $genDisplayElem(MD5Digest(hashType(dest)))])
     else:
-      linefmt(p, cpsStmts, "if (!#isObj($1, $2)){ #raiseObjectConversionError(); ",
-              [r, checkFor])
+      let checkFor = genTypeInfoV1(p.module, dest, n.info)
+      if nilCheck != "":
+        linefmt(p, cpsStmts, "if ($1 && !#isObj($2, $3)){ #raiseObjectConversionError(); ",
+                [nilCheck, r, checkFor])
+      else:
+        linefmt(p, cpsStmts, "if (!#isObj($1, $2)){ #raiseObjectConversionError(); ",
+                [r, checkFor])
     raiseInstr(p, p.s(cpsStmts))
     linefmt p, cpsStmts, "}$n", []
 

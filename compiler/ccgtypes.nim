@@ -1342,8 +1342,8 @@ proc genDisplay(t: PType, depth: int): Rope =
   var seqs = newSeq[string](depth+1)
   var i = 0
   while x != nil:
-    seqs[i] = $genDisplayElem(MD5Digest(hashType(x)))
     x = skipTypes(x, skipPtrs)
+    seqs[i] = $genDisplayElem(MD5Digest(hashType(x)))
     x = x[0]
     inc i
 
