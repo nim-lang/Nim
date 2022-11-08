@@ -1380,8 +1380,8 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   if objDepth > 0:
     let objDisplay = genDisplay(t, objDepth)
     let objDisplayStore = getTempName(m)
-    m.s[cfsVars].addf("static $1* $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyUInt32), skVar), objDisplayStore, rope(objDepth), objDisplay])
-    addf(typeEntry, "; $1.display = &$2;$n", [name, rope(objDisplayStore)])
+    m.s[cfsVars].addf("static $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyUInt32), skVar), objDisplayStore, rope(objDepth+1), objDisplay])
+    addf(typeEntry, "; $1.display = $2;$n", [name, rope(objDisplayStore)])
 
   m.s[cfsTypeInit3].add typeEntry
 
