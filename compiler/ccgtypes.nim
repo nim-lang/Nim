@@ -513,6 +513,10 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
           let structName = "_" & mangleRecFieldName(m, n[0].sym) & "_" & $i
           var a = newRopeAppender()
           genRecordFieldsAux(m, k, rectype, check, a, unionPrefix & $structName & ".")
+          # When 'k' is 'void', 'a' is the empty string and we just generate
+          # empty struct. This prevents field access errors when generating
+          # static initializers for the type.
+          # See issue #20699
           if tfPacked notin rectype.flags:
             unionBody.add("struct {")
           else:
