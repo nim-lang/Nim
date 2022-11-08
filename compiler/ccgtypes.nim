@@ -1339,14 +1339,17 @@ proc genDisplayElem(d: MD5Digest): uint32 =
 proc genDisplay(t: PType, depth: int): Rope =
   result = Rope"{"
   var x = t
-  var depth2 = -1
+  var seqs = newSeq[string](depth+1)
+  var i = 0
   while x != nil:
-    result.add $genDisplayElem(MD5Digest(hashType(x)))
-    inc depth2
-    if depth2 != depth:
-      result.add ", "
+    seqs[i] = $genDisplayElem(MD5Digest(hashType(x)))
     x = skipTypes(x, skipPtrs)
     x = x[0]
+    inc i
+
+  for i in countdown(depth, 1):
+    result.add seqs[i] & ", "
+  result.add seqs[0]
   result.add "}"
 
 proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
