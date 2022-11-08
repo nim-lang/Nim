@@ -32,6 +32,8 @@ const
 when hasFFI:
   import evalffi
 
+when not defined(nimHasCursor):
+  {.pragma: cursor.}
 
 proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
   if x != nil:
@@ -787,7 +789,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLdStrIdx:
       decodeBC(rkInt)
       let idx = regs[rc].intVal.int
-      let s = regs[rb].node.strVal
+      let s {.cursor.} = regs[rb].node.strVal
       if idx <% s.len:
         regs[ra].intVal = s[idx].ord
       else:
