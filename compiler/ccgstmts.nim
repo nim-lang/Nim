@@ -1080,7 +1080,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
         else:
           if orExpr.len != 0: orExpr.add("||")
           if optTinyRtti in p.config.globalOptions:
-            let checkFor = genTypeInfoV2(p.module, typeNode.typ, typeNode.info)
+            let checkFor = $getObjDepth(typeNode.typ)
             let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
             appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor, $genDisplayElem(MD5Digest(hashType(typeNode.typ)))])
           else:
@@ -1300,7 +1300,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
         assert(t[i][j].kind == nkType)
         if orExpr.len != 0: orExpr.add("||")
         if optTinyRtti in p.config.globalOptions:
-          let checkFor = genTypeInfoV2(p.module, t[i][j].typ, t[i][j].info)
+          let checkFor = $getObjDepth(t[i][j].typ)
           let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
           appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor,  $genDisplayElem(MD5Digest(hashType(t[i][j].typ)))])
         else:
@@ -1446,7 +1446,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
         assert(t[i][j].kind == nkType)
         if orExpr.len != 0: orExpr.add("||")
         if optTinyRtti in p.config.globalOptions:
-          let checkFor = genTypeInfoV2(p.module, t[i][j].typ, t[i][j].info)
+          let checkFor = $getObjDepth(t[i][j].typ)
           let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
           appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor,  $genDisplayElem(MD5Digest(hashType(t[i][j].typ)))])
         else:

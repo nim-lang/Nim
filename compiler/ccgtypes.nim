@@ -1322,7 +1322,7 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result:
         internalError(m.config, info, "no attached trace proc found")
     result.add rope("NIM_NIL")
 
-proc getObjDepth(t: PType): int =
+proc getObjDepth(t: PType): int16 =
   var x = t
   result = -1
   while x != nil:

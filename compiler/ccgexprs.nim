@@ -1704,9 +1704,8 @@ proc genNewFinalize(p: BProc, e: PNode) =
 
 proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo; result: var Rope) =
   if optTinyRtti in p.config.globalOptions:
-    let typ = genTypeInfoV2(p.module, dest, info)
     let token = $genDisplayElem(MD5Digest(hashType(dest)))
-    appcg(p.module, result, "#isObjDisplayCheck($#.m_type, $#, $#)", [a, typ, token])
+    appcg(p.module, result, "#isObjDisplayCheck($#.m_type, $#, $#)", [a, getObjDepth(dest), token])
   else:
     # unfortunately 'genTypeInfoV1' sets tfObjHasKids as a side effect, so we
     # have to call it here first:
@@ -2770,7 +2769,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
     var r = newRopeAppender()
     rdMType(p, a, nilCheck, r)
     if optTinyRtti in p.config.globalOptions:
-      let checkFor = genTypeInfoV2(p.module, dest, n.info)
+      let checkFor = $getObjDepth(dest)
       if nilCheck != "":
         linefmt(p, cpsStmts, "if ($1 && !#isObjDisplayCheck($2, $3, $4)){ #raiseObjectConversionError(); ",
                 [nilCheck, r, checkFor, $genDisplayElem(MD5Digest(hashType(dest)))])
