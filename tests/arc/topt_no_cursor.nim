@@ -132,16 +132,19 @@ if dirExists(this.value):
     :tmpD_1
     :tmpD_2
     :tmpD_3
+    :tmpD_4
   par = (dir_1: parentDir(this.value), front_1:
-    wasMoved(:tmpD_1)
-    `=copy`(:tmpD_1,
-      :tmpD_3 = splitDrive do:
-        wasMoved(:tmpD_2)
-        `=copy`(:tmpD_2, this.value)
-        :tmpD_2
-      :tmpD_3.path)
-    :tmpD_1)
-  `=destroy`(:tmpD_3)
+    wasMoved(:tmpD_3)
+    `=copy`(:tmpD_3,
+      :tmpD_2 = splitDrive do:
+        wasMoved(:tmpD_1)
+        `=copy`(:tmpD_1, this.value)
+        wasMoved(:tmpD_4)
+        `=copy`(:tmpD_4, :tmpD_1)
+        :tmpD_4
+      :tmpD_2.path)
+    :tmpD_3)
+  `=destroy`(:tmpD_2)
 if dirExists(par.dir):
   `=sink`(this.matchDirs, getSubDirs(par.dir, par.front))
 else:
