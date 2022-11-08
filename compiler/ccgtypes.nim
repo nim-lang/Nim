@@ -1273,27 +1273,23 @@ proc declareNimType(m: BModule, name: string; str: Rope, module: int) =
     m.s[cfsStrData].addf("extern $2 $1;$n", [str, nr])
 
 proc genTypeInfo2Name(m: BModule; t: PType): Rope =
-  var res = "|"
   var it = t
-  while it != nil:
-    it = it.skipTypes(skipPtrs)
-    if it.sym != nil and tfFromGeneric notin it.flags:
-      var m = it.sym.owner
-      while m != nil and m.kind != skModule: m = m.owner
-      if m == nil or sfSystemModule in m.flags:
-        # produce short names for system types:
-        res.add it.sym.name.s
-      else:
-        var p = m.owner
-        if p != nil and p.kind == skPackage:
-          res.add p.name.s & "."
-        res.add m.name.s & "."
-        res.add it.sym.name.s
+  it = it.skipTypes(skipPtrs)
+  if it.sym != nil and tfFromGeneric notin it.flags:
+    var m = it.sym.owner
+    while m != nil and m.kind != skModule: m = m.owner
+    if m == nil or sfSystemModule in m.flags:
+      # produce short names for system types:
+      result = it.sym.name.s
     else:
-      res.add $hashType(it)
-    res.add "|"
-    it = it[0]
-  result = makeCString(res)
+      var p = m.owner
+      if p != nil and p.kind == skPackage:
+        result.add p.name.s & "."
+      result.add m.name.s & "."
+      result.add it.sym.name.s
+  else:
+    result = $hashType(it)
+  result = makeCString(result)
 
 proc isTrivialProc(g: ModuleGraph; s: PSym): bool {.inline.} = getBody(g, s).len == 0
 
@@ -1354,7 +1350,7 @@ proc genDisplay(t: PType, depth: int): Rope =
 
 proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   var typeName: Rope
-  if t.kind in {tyObject, tyDistinct}:
+  if isDefined(m.config, "nimTypeNames") and t.kind in {tyObject, tyDistinct}:
     if incompleteType(t):
       localError(m.config, info, "request for RTTI generation for incomplete object: " &
                  typeToString(t))
