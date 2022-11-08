@@ -1375,12 +1375,12 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   addf(typeEntry, "; $1.traceImpl = (void*)", [name])
   genHook(m, t, info, attachedTrace, typeEntry)
 
-  let objDepth = if t.kind == tyObject: getObjDepth(t) else: 0
+  let objDepth = if t.kind == tyObject: getObjDepth(t) else: -1
 
   addf(typeEntry, "; $1.name = $2;$n; $1.size = sizeof($3); $1.align = (NI16) NIM_ALIGNOF($3); $1.depth = $4; $1.flags = $5;",
     [name, typeName, getTypeDesc(m, t), rope(objDepth), rope(flags)])
 
-  if objDepth > 0:
+  if objDepth >= 0:
     let objDisplay = genDisplay(t, objDepth)
     let objDisplayStore = getTempName(m)
     m.s[cfsVars].addf("static $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyUInt32), skVar), objDisplayStore, rope(objDepth+1), objDisplay])
