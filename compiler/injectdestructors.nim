@@ -61,6 +61,8 @@ template dbg(body) =
     if shouldDebug:
       body
 
+template isGlobal(sym: PSym; s: Scope): bool = {sfGlobal, sfPure} <= sym.flags or sfGlobal in sym.flags and s.parent == nil
+
 proc hasDestructor(c: Con; t: PType): bool {.inline.} =
   result = ast.hasDestructor(t)
   when toDebug.len > 0:
@@ -162,6 +164,8 @@ proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
   if not hasDestructor(c, n.typ): return true
 
   let m = skipConvDfa(n)
+  if m.kind == nkSym and isGlobal(m.sym, s):
+    return false
   result = (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or
       isLastReadImpl(n, c, s)
 
@@ -490,7 +494,7 @@ proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; res: PNode) =
       res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
   elif sfThread notin v.sym.flags and sfCursor notin v.sym.flags:
     # do not destroy thread vars for now at all for consistency.
-    if {sfGlobal, sfPure} <= v.sym.flags or sfGlobal in v.sym.flags and s.parent == nil:
+    if isGlobal(v.sym, s):
       c.graph.globalDestructors.add c.genDestroy(v)
     else:
       s.final.add c.genDestroy(v)
