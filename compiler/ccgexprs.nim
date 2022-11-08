@@ -2770,12 +2770,13 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
     rdMType(p, a, nilCheck, r)
     if optTinyRtti in p.config.globalOptions:
       let checkFor = $getObjDepth(dest)
+      let token = $genDisplayElem(MD5Digest(hashType(dest)))
       if nilCheck != "":
         linefmt(p, cpsStmts, "if ($1 && !#isObjDisplayCheck($2, $3, $4)){ #raiseObjectConversionError(); ",
-                [nilCheck, r, checkFor, $genDisplayElem(MD5Digest(hashType(dest)))])
+                [nilCheck, r, checkFor, token])
       else:
         linefmt(p, cpsStmts, "if (!#isObjDisplayCheck($1, $2, $3)){ #raiseObjectConversionError(); ",
-                [r, checkFor, $genDisplayElem(MD5Digest(hashType(dest)))])
+                [r, checkFor, token])
     else:
       let checkFor = genTypeInfoV1(p.module, dest, n.info)
       if nilCheck != "":

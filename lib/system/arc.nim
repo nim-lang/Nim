@@ -240,11 +240,8 @@ func endsWith(s, suffix: cstring): bool {.inline.} =
 proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
   result = endsWith(obj.name, subclass)
 
-proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): bool {.compilerRtl.} =
-  if targetDepth > source.depth:
-    result = false
-  else:
-    result = source.display[targetDepth] == token
+proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): bool {.compilerRtl, inline.} =
+  result = targetDepth <= source.depth and source.display[targetDepth] == token
 
 proc chckObj(obj: PNimTypeV2, subclass: cstring) {.compilerRtl.} =
   # checks if obj is of type subclass:
