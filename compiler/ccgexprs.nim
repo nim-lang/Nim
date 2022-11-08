@@ -1704,14 +1704,7 @@ proc genNewFinalize(p: BProc, e: PNode) =
 
 proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo; result: var Rope) =
   if optTinyRtti in p.config.globalOptions:
-    if isDefined(p.config, "nimDisplaycheck"):
-      appcg(p.module, result, "#isObjDisplayCheck($#.m_type, $#)", [a, genTypeInfoV2(p.module, dest, info)])
-    else:
-      let ti = genTypeInfo2Name(p.module, dest)
-      inc p.module.labels
-      let cache = "Nim_OfCheck_CACHE" & p.module.labels.rope
-      p.module.s[cfsVars].addf("static TNimTypeV2* $#[2];$n", [cache])
-      appcg(p.module, result, "#isObjWithCache($#.m_type, $#, $#)", [a, ti, cache])
+    appcg(p.module, result, "#isObjDisplayCheck($#.m_type, $#)", [a, genTypeInfoV2(p.module, dest, info)])
   else:
     # unfortunately 'genTypeInfoV1' sets tfObjHasKids as a side effect, so we
     # have to call it here first:
