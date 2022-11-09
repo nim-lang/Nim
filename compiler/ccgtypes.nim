@@ -1373,7 +1373,7 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
       typeName = genTypeInfo2Name(m, t)
     else:
       typeName = rope("NIM_NIL")
-    addf(typeEntry, "; $1.name = $2;$n", [name, typeName])
+    addf(typeEntry, "; $1.name = $2", [name, typeName])
   addf(typeEntry, "; $1.size = sizeof($2); $1.align = (NI16) NIM_ALIGNOF($2); $1.depth = $3; $1.flags = $4;",
     [name, getTypeDesc(m, t), rope(objDepth), rope(flags)])
 
