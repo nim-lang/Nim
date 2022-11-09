@@ -108,6 +108,9 @@
 import std/private/since
 import std/exitprocs
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import macros, strutils, streams, times, sets, sequtils
 
 when declared(stdout):

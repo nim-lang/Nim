@@ -102,7 +102,7 @@ type
     fNumber*: BiggestFloat    # the parsed floating point literal
     base*: NumericalBase      # the numerical base; only valid for int
                               # or float literals
-    strongSpaceA*: int8       # leading spaces of an operator
+    strongSpaceA*: bool       # leading spaces of an operator
     strongSpaceB*: int8       # trailing spaces of an operator
     literal*: string          # the parsed (string) literal; and
                               # documentation comments are here too
@@ -173,7 +173,7 @@ proc initToken*(L: var Token) =
   L.tokType = tkInvalid
   L.iNumber = 0
   L.indent = 0
-  L.strongSpaceA = 0
+  L.strongSpaceA = false
   L.literal = ""
   L.fNumber = 0.0
   L.base = base10
@@ -186,7 +186,7 @@ proc fillToken(L: var Token) =
   L.tokType = tkInvalid
   L.iNumber = 0
   L.indent = 0
-  L.strongSpaceA = 0
+  L.strongSpaceA = false
   setLen(L.literal, 0)
   L.fNumber = 0.0
   L.base = base10
@@ -505,11 +505,11 @@ proc getNumber(L: var Lexer, result: var Token) =
         of tkUInt16Lit: setNumber result.iNumber, xi and 0xffff
         of tkUInt32Lit: setNumber result.iNumber, xi and 0xffffffff
         of tkFloat32Lit:
-          setNumber result.fNumber, (cast[PFloat32](addr(xi)))[]
+          setNumber result.fNumber, (cast[ptr float32](addr(xi)))[]
           # note: this code is endian neutral!
           # XXX: Test this on big endian machine!
         of tkFloat64Lit, tkFloatLit:
-          setNumber result.fNumber, (cast[PFloat64](addr(xi)))[]
+          setNumber result.fNumber, (cast[ptr float64](addr(xi)))[]
         else: internalError(L.config, getLineInfo(L), "getNumber")
 
         # Bounds checks. Non decimal literals are allowed to overflow the range of
@@ -907,7 +907,7 @@ proc getSymbol(L: var Lexer, tok: var Token) =
       inc(pos)
       suspicious = true
     of '\x80'..'\xFF':
-      if c in UnicodeOperatorStartChars and unicodeOperators in L.config.features and unicodeOprLen(L.buf, pos)[0] != 0:
+      if c in UnicodeOperatorStartChars and unicodeOprLen(L.buf, pos)[0] != 0:
         break
       else:
         h = h !& ord(c)
@@ -943,7 +943,7 @@ proc getOperator(L: var Lexer, tok: var Token) =
     if c in OpChars:
       h = h !& ord(c)
       inc(pos)
-    elif c in UnicodeOperatorStartChars and unicodeOperators in L.config.features:
+    elif c in UnicodeOperatorStartChars:
       let oprLen = unicodeOprLen(L.buf, pos)[0]
       if oprLen == 0: break
       for i in 0..<oprLen:
@@ -958,7 +958,8 @@ proc getOperator(L: var Lexer, tok: var Token) =
   tok.strongSpaceB = 0
   while L.buf[pos] == ' ':
     inc pos
-    inc tok.strongSpaceB
+    if tok.strongSpaceB < 1:
+      inc(tok.strongSpaceB)
   if L.buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
     tok.strongSpaceB = -1
 
@@ -1147,7 +1148,7 @@ proc scanComment(L: var Lexer, tok: var Token) =
 proc skip(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
   tokenBegin(tok, pos)
-  tok.strongSpaceA = 0
+  tok.strongSpaceA = false
   when defined(nimpretty):
     var hasComment = false
     var commentIndent = L.currLineIndent
@@ -1158,7 +1159,8 @@ proc skip(L: var Lexer, tok: var Token) =
     case L.buf[pos]
     of ' ':
       inc(pos)
-      inc(tok.strongSpaceA)
+      if not tok.strongSpaceA:
+        tok.strongSpaceA = true
     of '\t':
       if not L.allowTabs: lexMessagePos(L, errGenerated, pos, "tabs are not allowed, use spaces instead")
       inc(pos)
@@ -1180,7 +1182,7 @@ proc skip(L: var Lexer, tok: var Token) =
           pos = L.bufpos
         else:
           break
-      tok.strongSpaceA = 0
+      tok.strongSpaceA = false
       when defined(nimpretty):
         if L.buf[pos] == '#' and tok.line < 0: commentIndent = indent
       if L.buf[pos] > ' ' and (L.buf[pos] != '#' or L.buf[pos+1] == '#'):
@@ -1244,7 +1246,7 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
   else:
     case c
     of UnicodeOperatorStartChars:
-      if unicodeOperators in L.config.features and unicodeOprLen(L.buf, L.bufpos)[0] != 0:
+      if unicodeOprLen(L.buf, L.bufpos)[0] != 0:
         getOperator(L, tok)
       else:
         getSymbol(L, tok)
@@ -1355,7 +1357,7 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
       getNumber(L, tok)
       let c = L.buf[L.bufpos]
       if c in SymChars+{'_'}:
-        if c in UnicodeOperatorStartChars and unicodeOperators in L.config.features and
+        if c in UnicodeOperatorStartChars and
             unicodeOprLen(L.buf, L.bufpos)[0] != 0:
           discard
         else:
@@ -1370,7 +1372,7 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
         getNumber(L, tok)
         let c = L.buf[L.bufpos]
         if c in SymChars+{'_'}:
-          if c in UnicodeOperatorStartChars and unicodeOperators in L.config.features and
+          if c in UnicodeOperatorStartChars and
               unicodeOprLen(L.buf, L.bufpos)[0] != 0:
             discard
           else:

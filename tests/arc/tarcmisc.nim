@@ -1,5 +1,6 @@
 discard """
   output: '''
+=destroy called
 123xyzabc
 destroyed: false
 destroyed: false
@@ -38,6 +39,54 @@ destroying variable: 10
   cmd: "nim c --gc:arc --deepcopy:on -d:nimAllocPagesViaMalloc $file"
 """
 
+# bug #9401
+
+type
+  MyObj = object
+    len: int
+    data: ptr UncheckedArray[float]
+
+proc `=destroy`*(m: var MyObj) =
+
+  echo "=destroy called"
+
+  if m.data != nil:
+    deallocShared(m.data)
+    m.data = nil
+
+type
+  MyObjDistinct = distinct MyObj
+
+proc `=copy`*(m: var MyObj, m2: MyObj) =
+  if m.data == m2.data: return
+  if m.data != nil:
+    `=destroy`(m)
+  m.len = m2.len
+  if m.len > 0:
+    m.data = cast[ptr UncheckedArray[float]](allocShared(sizeof(float) * m.len))
+    copyMem(m.data, m2.data, sizeof(float) * m.len)
+
+
+proc `=sink`*(m: var MyObj, m2: MyObj) =
+  if m.data != m2.data:
+    if m.data != nil:
+      `=destroy`(m)
+    m.len = m2.len
+    m.data = m2.data
+
+proc newMyObj(len: int): MyObj =
+  result.len = len
+  result.data = cast[ptr UncheckedArray[float]](allocShared(sizeof(float) * len))
+
+proc newMyObjDistinct(len: int): MyObjDistinct =
+  MyObjDistinct(newMyObj(len))
+
+proc fooDistinct =
+  doAssert newMyObjDistinct(2).MyObj.len == 2
+
+fooDistinct()
+
+
 proc takeSink(x: sink string): bool = true
 
 proc b(x: sink string): string =
@@ -75,7 +124,7 @@ proc test(count: int) =
 test(3)
 
 proc test2(count: int) =
-  #block: #XXX: Fails with block currently
+  block: #XXX: Fails with block currently
     var v {.global.} = newVariable(20)
 
     var count = count - 1

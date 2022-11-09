@@ -41,13 +41,13 @@
 ## requested amount of data is read **or** an exception occurs.
 ##
 ## Code to read some data from a socket may look something like this:
-##
-## .. code-block:: Nim
-##    var future = socket.recv(100)
-##    future.addCallback(
-##      proc () =
-##        echo(future.read)
-##    )
+##   ```Nim
+##   var future = socket.recv(100)
+##   future.addCallback(
+##     proc () =
+##       echo(future.read)
+##   )
+##   ```
 ##
 ## All asynchronous functions returning a `Future` will not block. They
 ## will not however return immediately. An asynchronous function will have
@@ -108,24 +108,24 @@
 ## You can handle exceptions in the same way as in ordinary Nim code;
 ## by using the try statement:
 ##
-##
-## .. code-block:: Nim
+##   ```Nim
 ##   try:
 ##     let data = await sock.recv(100)
 ##     echo("Received ", data)
 ##   except:
 ##     # Handle exception
-##
-##
+##   ```
 ##
 ## An alternative approach to handling exceptions is to use `yield` on a future
 ## then check the future's `failed` property. For example:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   var future = sock.recv(100)
 ##   yield future
 ##   if future.failed:
 ##     # Handle exception
+##   ```
+##
 ##
 ## Discarding futures
 ## ==================
@@ -232,6 +232,9 @@ import asyncfutures except callSoon
 
 import nativesockets, net, deques
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
 export Port, SocketFlag
 export asyncfutures except callSoon
 export asyncstreams
@@ -277,6 +280,8 @@ proc adjustTimeout(
 
   result = max(nextTimer.get(), 0)
   result = min(pollTimeout, result)
+
+proc runOnce(timeout: int): bool {.gcsafe.}
 
 proc callSoon*(cbproc: proc () {.gcsafe.}) {.gcsafe.}
   ## Schedule `cbproc` to be called as soon as possible.
@@ -387,7 +392,7 @@ when defined(windows) or defined(nimdoc):
     let p = getGlobalDispatcher()
     p.handles.len != 0 or p.timers.len != 0 or p.callbacks.len != 0
 
-  proc runOnce(timeout = 500): bool =
+  proc runOnce(timeout: int): bool =
     let p = getGlobalDispatcher()
     if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
       raise newException(ValueError,
@@ -1166,6 +1171,9 @@ else:
                     MSG_NOSIGNAL
   when declared(posix.accept4):
     from posix import accept4, SOCK_CLOEXEC
+  when defined(genode):
+    import genode/env # get the implicit Genode env
+    import genode/signals
 
   const
     InitCallbackListSize = 4         # initial size of callbacks sequence,
@@ -1184,6 +1192,8 @@ else:
 
     PDispatcher* = ref object of PDispatcherBase
       selector: Selector[AsyncData]
+      when defined(genode):
+        signalHandler: SignalHandler
 
   proc `==`*(x, y: AsyncFD): bool {.borrow.}
   proc `==`*(x, y: AsyncEvent): bool {.borrow.}
@@ -1199,6 +1209,10 @@ else:
     result.selector = newSelector[AsyncData]()
     result.timers.clear()
     result.callbacks = initDeque[proc () {.closure, gcsafe.}](InitDelayedCallbackListSize)
+    when defined(genode):
+      let entrypoint = ep(cast[GenodeEnv](runtimeEnv))
+      result.signalHandler = newSignalHandler(entrypoint):
+        discard runOnce(0)
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
@@ -1368,10 +1382,11 @@ else:
           ValueError, "Expecting async operations to stop when fd has closed."
         )
 
-
-  proc runOnce(timeout = 500): bool =
+  proc runOnce(timeout: int): bool =
     let p = getGlobalDispatcher()
     if p.selector.isEmpty() and p.timers.len == 0 and p.callbacks.len == 0:
+      when defined(genode):
+        if timeout == 0: return
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
 
@@ -2022,3 +2037,17 @@ when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
       if getrlimit(RLIMIT_NOFILE, fdLim) < 0:
         raiseOSError(osLastError())
       result = int(fdLim.rlim_cur) - 1
+
+when defined(genode):
+  proc scheduleCallbacks*(): bool {.discardable.} =
+    ## *Genode only.*
+    ## Schedule callback processing and return immediately.
+    ## Returns `false` if there is nothing to schedule.
+    ## RPC servers should call this to dispatch `callSoon`
+    ## bodies after retiring an RPC to its client.
+    ## This is effectively a non-blocking `poll(…)` and is
+    ## equivalent to scheduling a momentary no-op timeout
+    ## but faster and with less overhead.
+    let dis = getGlobalDispatcher()
+    result = dis.callbacks.len > 0
+    if result: submit(dis.signalHandler.cap)

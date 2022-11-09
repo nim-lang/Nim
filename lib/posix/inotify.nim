@@ -7,6 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 # Get the platform-dependent flags.
 # Structure describing an inotify event.
 type
@@ -75,11 +78,11 @@ proc inotify_rm_watch*(fd: cint; wd: cint): cint {.cdecl,
 
 iterator inotify_events*(evs: pointer, n: int): ptr InotifyEvent =
   ## Abstract the packed buffer interface to yield event object pointers.
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   var evs = newSeq[byte](8192)        # Already did inotify_init+add_watch
   ##   while (let n = read(fd, evs[0].addr, 8192); n) > 0:     # read forever
   ##     for e in inotify_events(evs[0].addr, n): echo e[].len # echo name lens
+  ##   ```
   var ev: ptr InotifyEvent = cast[ptr InotifyEvent](evs)
   var n = n
   while n > 0:

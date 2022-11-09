@@ -21,10 +21,10 @@ Introduction
 
 This document describes the usage of the *Nim compiler*
 on the different supported platforms. It is not a definition of the Nim
-programming language (which is covered in the `manual <manual.html>`_).
+programming language (which is covered in the [manual](manual.html)).
 
 Nim is free software; it is licensed under the
-`MIT License <http://www.opensource.org/licenses/mit-license.php>`_.
+[MIT License](http://www.opensource.org/licenses/mit-license.php).
 
 
 Compiler Usage
@@ -130,13 +130,13 @@ Level  Description
 =====  ============================================
 0      Minimal output level for the compiler.
 1      Displays compilation of all the compiled files, including those imported
-       by other modules or through the `compile pragma
-       <manual.html#implementation-specific-pragmas-compile-pragma>`_.
+       by other modules or through the [compile pragma](
+       manual.html#implementation-specific-pragmas-compile-pragma).
        This is the default level.
 2      Displays compilation statistics, enumerates the dynamic
        libraries that will be loaded by the final binary, and dumps to
-       standard output the result of applying `a filter to the source code
-       <filters.html>`_ if any filter was used during compilation.
+       standard output the result of applying [a filter to the source code](
+       filters.html) if any filter was used during compilation.
 3      In addition to the previous levels dumps a debug stack trace
        for compiler developers.
 =====  ============================================
@@ -147,16 +147,16 @@ Compile-time symbols
 
 Through the `-d:x`:option: or `--define:x`:option: switch you can define compile-time
 symbols for conditional compilation. The defined switches can be checked in
-source code with the `when statement
-<manual.html#statements-and-expressions-when-statement>`_ and
-`defined proc <system.html#defined,untyped>`_. The typical use of this switch is
+source code with the [when statement](
+manual.html#statements-and-expressions-when-statement) and
+[defined proc](system.html#defined,untyped). The typical use of this switch is
 to enable builds in release mode (`-d:release`:option:) where optimizations are
 enabled for better performance. Another common use is the `-d:ssl`:option: switch to
 activate SSL sockets.
 
 Additionally, you may pass a value along with the symbol: `-d:x=y`:option:
-which may be used in conjunction with the `compile-time define
-pragmas<manual.html#implementation-specific-pragmas-compileminustime-define-pragmas>`_
+which may be used in conjunction with the [compile-time define
+pragmas](manual.html#implementation-specific-pragmas-compileminustime-define-pragmas)
 to override symbols during build time.
 
 Compile-time symbols are completely **case insensitive** and underscores are
@@ -241,13 +241,13 @@ found an ambiguity error is produced.
 
 However before the PATH is used the current directory is checked for the
 file's existence. So if PATH contains ``$lib`` and ``$lib/bar`` and the
-directory structure looks like this::
+directory structure looks like this:
 
-  $lib/x.nim
-  $lib/bar/x.nim
-  foo/x.nim
-  foo/main.nim
-  other.nim
+    $lib/x.nim
+    $lib/bar/x.nim
+    foo/x.nim
+    foo/main.nim
+    other.nim
 
 And `main` imports `x`, `foo/x` is imported. If `other` imports `x`
 then both ``$lib/x.nim`` and ``$lib/bar/x.nim`` match but ``$lib/x.nim`` is used
@@ -268,7 +268,7 @@ The `_r` suffix is used for release builds, `_d` is for debug builds.
 This makes it easy to delete all generated files.
 
 The `--nimcache`:option:
-`compiler switch <#compiler-usage-commandminusline-switches>`_ can be used to
+[compiler switch][command-line switches] can be used to
 to change the ``nimcache`` directory.
 
 However, the generated C code is not platform-independent. C code generated for
@@ -319,11 +319,11 @@ Another way is to make Nim invoke a cross compiler toolchain:
 For cross compilation, the compiler invokes a C compiler named
 like `$cpu.$os.$cc` (for example arm.linux.gcc) and the configuration
 system is used to provide meaningful defaults. For example for `ARM` your
-configuration file should contain something like::
+configuration file should contain something like:
 
-  arm.linux.gcc.path = "/usr/bin"
-  arm.linux.gcc.exe = "arm-linux-gcc"
-  arm.linux.gcc.linkerexe = "arm-linux-gcc"
+    arm.linux.gcc.path = "/usr/bin"
+    arm.linux.gcc.exe = "arm-linux-gcc"
+    arm.linux.gcc.linkerexe = "arm-linux-gcc"
 
 Cross-compilation for Windows
 =============================
@@ -355,7 +355,7 @@ There are two ways to compile for Android: terminal programs (Termux) and with
 the NDK (Android Native Development Kit).
 
 The first one is to treat Android as a simple Linux and use
-`Termux <https://wiki.termux.com>`_ to connect and run the Nim compiler
+[Termux](https://wiki.termux.com) to connect and run the Nim compiler
 directly on android as if it was Linux. These programs are console-only
 programs that can't be distributed in the Play Store.
 
@@ -363,8 +363,8 @@ Use regular `nim c`:cmd: inside termux to make Android terminal programs.
 
 Normal Android apps are written in Java, to use Nim inside an Android app
 you need a small Java stub that calls out to a native library written in
-Nim using the `NDK <https://developer.android.com/ndk>`_. You can also use
-`native-activity <https://developer.android.com/ndk/samples/sample_na>`_
+Nim using the [NDK](https://developer.android.com/ndk). You can also use
+[native-activity](https://developer.android.com/ndk/samples/sample_na)
 to have the Java stub be auto-generated for you.
 
 Use `nim c -c --cpu:arm --os:android -d:androidNDK --noMain:on`:cmd: to
@@ -435,17 +435,17 @@ and `passL`:option: command line switches to something like:
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
   ```
 
-or setup a ``nim.cfg`` file like so::
+or setup a ``nim.cfg`` file like so:
 
-  #nim.cfg
-  --mm:orc
-  --d:nimAllocPagesViaMalloc
-  --passC="-I$DEVKITPRO/libnx/include"
-  --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
+    #nim.cfg
+    --mm:orc
+    --d:nimAllocPagesViaMalloc
+    --passC="-I$DEVKITPRO/libnx/include"
+    --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 
 The devkitPro setup must be the same as the default with their new installer
-`here for Mac/Linux <https://github.com/devkitPro/pacman/releases>`_ or
-`here for Windows <https://github.com/devkitPro/installer/releases>`_.
+[here for Mac/Linux](https://github.com/devkitPro/pacman/releases) or
+[here for Windows](https://github.com/devkitPro/installer/releases).
 
 For example, with the above-mentioned config:
 
@@ -455,7 +455,7 @@ For example, with the above-mentioned config:
 
 This will generate a file called ``switchhomebrew.elf`` which can then be turned into
 an nro file with the `elf2nro`:cmd: tool in the devkitPro release. Examples can be found at
-`the nim-libnx github repo <https://github.com/jyapayne/nim-libnx.git>`_.
+[the nim-libnx github repo](https://github.com/jyapayne/nim-libnx.git).
 
 There are a few things that don't work because the devkitPro libraries don't support them.
 They are:
@@ -512,7 +512,7 @@ Define                   Effect
                          This only works with `--mm:none`:option:,
                          `--mm:arc`:option: and `--mm:orc`:option:.
 `useRealtimeGC`          Enables support of Nim's GC for *soft* realtime
-                         systems. See the documentation of the `mm <mm.html>`_
+                         systems. See the documentation of the [mm](mm.html)
                          for further information.
 `logGC`                  Enable GC logging to stdout.
 `nodejs`                 The JS target is actually ``node.js``.
@@ -591,7 +591,7 @@ The typical compiler usage involves using the `compile`:option: or `c`:option:
 command to transform a ``.nim`` file into one or more ``.c`` files which are then
 compiled with the platform's C compiler into a static binary. However, there
 are other commands to compile to C++, Objective-C, or JavaScript. More details
-can be read in the `Nim Backend Integration document <backends.html>`_.
+can be read in the [Nim Backend Integration document](backends.html).
 
 
 Nim documentation tools
@@ -599,13 +599,13 @@ Nim documentation tools
 
 Nim provides the `doc`:idx: command to generate HTML
 documentation from ``.nim`` source files. Only exported symbols will appear in
-the output. For more details `see the docgen documentation <docgen.html>`_.
+the output. For more details see [the docgen documentation](docgen.html).
 
 Nim idetools integration
 ========================
 
 Nim provides language integration with external IDEs through the
-idetools command. See the documentation of `idetools <idetools.html>`_
+idetools command. See the documentation of [idetools](idetools.html)
 for further information.
 
 ..
@@ -666,7 +666,7 @@ The `--opt:size`:option: flag instructs Nim to optimize code generation for smal
 size (with the help of the C compiler), the `-flto`:option: flags enable link-time
 optimization in the compiler and linker.
 
-Check the `Cross-compilation`_ section for instructions on how to compile the
+Check the [Cross-compilation] section for instructions on how to compile the
 program for your target.
 
 
@@ -717,8 +717,8 @@ Currently only Zephyr and FreeRTOS support these configurations.
 Nim for realtime systems
 ========================
 
-See the `--mm:arc` or `--mm:orc` memory management settings in `MM <mm.html>`_ for further
-information.
+See the `--mm:arc` or `--mm:orc` memory management settings in
+[MM](mm.html) for further information.
 
 
 Signal handling in Nim
@@ -777,20 +777,6 @@ For `let` symbols a copy is not always necessary:
   ```Nim
   let s = varA    # may only copy a pointer if it safe to do so
   ```
-
-
-If you know what you're doing, you can also mark single-string (or sequence)
-objects as `shallow`:idx:\:
-
-  ```Nim
-  var s = "abc"
-  shallow(s) # mark 's' as a shallow string
-  var x = s  # now might not copy the string!
-  ```
-
-Usage of `shallow` is always safe once you know the string won't be modified
-anymore, similar to Ruby's `freeze`:idx:.
-
 
 The compiler optimizes string case statements: A hashing scheme is used for them
 if several different string constants are used. So code like this is reasonably

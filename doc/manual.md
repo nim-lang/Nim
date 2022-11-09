@@ -47,16 +47,16 @@ is not ambiguous.
 
 Non-terminals start with a lowercase letter, abstract terminal symbols are in
 UPPERCASE. Verbatim terminal symbols (including keywords) are quoted
-with `'`. An example::
+with `'`. An example:
 
-  ifStmt = 'if' expr ':' stmts ('elif' expr ':' stmts)* ('else' stmts)?
+    ifStmt = 'if' expr ':' stmts ('elif' expr ':' stmts)* ('else' stmts)?
 
 The binary `^*` operator is used as a shorthand for 0 or more occurrences
 separated by its second argument; likewise `^+` means 1 or more
 occurrences: `a ^+ b` is short for `a (b a)*`
-and `a ^* b` is short for `(a (b a)*)?`. Example::
+and `a ^* b` is short for `(a (b a)*)?`. Example:
 
-  arrayConstructor = '[' expr ^* ',' ']'
+    arrayConstructor = '[' expr ^* ',' ']'
 
 Other parts of Nim, like scoping rules or runtime semantics, are
 described informally.
@@ -190,16 +190,16 @@ is another pseudo terminal that describes the *action* of popping a value
 from the stack, `IND{>}` then implies to push onto the stack.
 
 With this notation we can now easily define the core of the grammar: A block of
-statements (simplified example)::
+statements (simplified example):
 
-  ifStmt = 'if' expr ':' stmt
-           (IND{=} 'elif' expr ':' stmt)*
-           (IND{=} 'else' ':' stmt)?
+    ifStmt = 'if' expr ':' stmt
+             (IND{=} 'elif' expr ':' stmt)*
+             (IND{=} 'else' ':' stmt)?
 
-  simpleStmt = ifStmt / ...
+    simpleStmt = ifStmt / ...
 
-  stmt = IND{>} stmt ^+ IND{=} DED  # list of statements
-       / simpleStmt                 # or a simple statement
+    stmt = IND{>} stmt ^+ IND{=} DED  # list of statements
+         / simpleStmt                 # or a simple statement
 
 
 
@@ -256,6 +256,18 @@ Multiline documentation comments also exist and support nesting too:
        here.
     ]##
   ```
+
+You can also use the [discard statement](#statements-and-expressions-discard-statement) together with
+[triple quoted string literals](#lexical-analysis-triple-quoted-string-literals) to create multiline comments:
+
+  ```nim
+  discard """ You can have any Nim code text commented
+  out inside this with no indentation restrictions.
+        yes("May I ask a pointless question?") """
+  ```
+
+This was how multiline comments were done before version 0.13.0,
+and it is used to provide specifications to [testament](testament.html#writing-unitests) test framework.
 
 
 Identifiers & Keywords
@@ -409,9 +421,9 @@ ending of the string literal is defined by the pattern `"""[^"]`, so this:
   """"long string within quotes""""
   ```
 
-Produces::
+Produces:
 
-  "long string within quotes"
+    "long string within quotes"
 
 
 Raw string literals
@@ -434,9 +446,9 @@ To produce a single `"` within a raw string literal, it has to be doubled:
   r"a""b"
   ```
 
-Produces::
+Produces:
 
-  a"b
+    a"b
 
 `r""""` is not possible with this notation, because the three leading
 quotes introduce a triple quoted string literal. `r"""` is the same
@@ -513,46 +525,46 @@ See also [custom numeric literals].
 Numeric literals
 ----------------
 
-Numeric literals have the form::
+Numeric literals have the form:
 
-  hexdigit = digit | 'A'..'F' | 'a'..'f'
-  octdigit = '0'..'7'
-  bindigit = '0'..'1'
-  unary_minus = '-' # See the section about unary minus
-  HEX_LIT = unary_minus? '0' ('x' | 'X' ) hexdigit ( ['_'] hexdigit )*
-  DEC_LIT = unary_minus? digit ( ['_'] digit )*
-  OCT_LIT = unary_minus? '0' 'o' octdigit ( ['_'] octdigit )*
-  BIN_LIT = unary_minus? '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
+    hexdigit = digit | 'A'..'F' | 'a'..'f'
+    octdigit = '0'..'7'
+    bindigit = '0'..'1'
+    unary_minus = '-' # See the section about unary minus
+    HEX_LIT = unary_minus? '0' ('x' | 'X' ) hexdigit ( ['_'] hexdigit )*
+    DEC_LIT = unary_minus? digit ( ['_'] digit )*
+    OCT_LIT = unary_minus? '0' 'o' octdigit ( ['_'] octdigit )*
+    BIN_LIT = unary_minus? '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
 
-  INT_LIT = HEX_LIT
-          | DEC_LIT
-          | OCT_LIT
-          | BIN_LIT
+    INT_LIT = HEX_LIT
+            | DEC_LIT
+            | OCT_LIT
+            | BIN_LIT
 
-  INT8_LIT = INT_LIT ['\''] ('i' | 'I') '8'
-  INT16_LIT = INT_LIT ['\''] ('i' | 'I') '16'
-  INT32_LIT = INT_LIT ['\''] ('i' | 'I') '32'
-  INT64_LIT = INT_LIT ['\''] ('i' | 'I') '64'
+    INT8_LIT = INT_LIT ['\''] ('i' | 'I') '8'
+    INT16_LIT = INT_LIT ['\''] ('i' | 'I') '16'
+    INT32_LIT = INT_LIT ['\''] ('i' | 'I') '32'
+    INT64_LIT = INT_LIT ['\''] ('i' | 'I') '64'
 
-  UINT_LIT = INT_LIT ['\''] ('u' | 'U')
-  UINT8_LIT = INT_LIT ['\''] ('u' | 'U') '8'
-  UINT16_LIT = INT_LIT ['\''] ('u' | 'U') '16'
-  UINT32_LIT = INT_LIT ['\''] ('u' | 'U') '32'
-  UINT64_LIT = INT_LIT ['\''] ('u' | 'U') '64'
+    UINT_LIT = INT_LIT ['\''] ('u' | 'U')
+    UINT8_LIT = INT_LIT ['\''] ('u' | 'U') '8'
+    UINT16_LIT = INT_LIT ['\''] ('u' | 'U') '16'
+    UINT32_LIT = INT_LIT ['\''] ('u' | 'U') '32'
+    UINT64_LIT = INT_LIT ['\''] ('u' | 'U') '64'
 
-  exponent = ('e' | 'E' ) ['+' | '-'] digit ( ['_'] digit )*
-  FLOAT_LIT = unary_minus? digit (['_'] digit)* (('.' digit (['_'] digit)* [exponent]) |exponent)
-  FLOAT32_SUFFIX = ('f' | 'F') ['32']
-  FLOAT32_LIT = HEX_LIT '\'' FLOAT32_SUFFIX
-              | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT32_SUFFIX
-  FLOAT64_SUFFIX = ( ('f' | 'F') '64' ) | 'd' | 'D'
-  FLOAT64_LIT = HEX_LIT '\'' FLOAT64_SUFFIX
-              | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT64_SUFFIX
+    exponent = ('e' | 'E' ) ['+' | '-'] digit ( ['_'] digit )*
+    FLOAT_LIT = unary_minus? digit (['_'] digit)* (('.' digit (['_'] digit)* [exponent]) |exponent)
+    FLOAT32_SUFFIX = ('f' | 'F') ['32']
+    FLOAT32_LIT = HEX_LIT '\'' FLOAT32_SUFFIX
+                | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT32_SUFFIX
+    FLOAT64_SUFFIX = ( ('f' | 'F') '64' ) | 'd' | 'D'
+    FLOAT64_LIT = HEX_LIT '\'' FLOAT64_SUFFIX
+                | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT64_SUFFIX
 
-  CUSTOM_NUMERIC_LIT = (FLOAT_LIT | INT_LIT) '\'' CUSTOM_NUMERIC_SUFFIX
+    CUSTOM_NUMERIC_LIT = (FLOAT_LIT | INT_LIT) '\'' CUSTOM_NUMERIC_SUFFIX
 
-  # CUSTOM_NUMERIC_SUFFIX is any Nim identifier that is not
-  # a pre-defined type suffix.
+    # CUSTOM_NUMERIC_SUFFIX is any Nim identifier that is not
+    # a pre-defined type suffix.
 
 
 As can be seen in the productions, numeric literals can contain underscores
@@ -674,7 +686,7 @@ Operators
 ---------
 
 Nim allows user defined operators. An operator is any combination of the
-following characters::
+following characters:
 
        =     +     -     *     /     <     >
        @     $     ~     &     %     |
@@ -695,11 +707,26 @@ are used for other notational purposes.
 The `not` keyword is always a unary operator, `a not b` is parsed
 as `a(not b)`, not as `(a) not (b)`.
 
+Unicode Operators
+-----------------
+
+These Unicode operators are also parsed as operators:
+
+    ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
+    ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
+
+
+Unicode operators can be combined with non-Unicode operator
+symbols. The usual precedence extensions then apply, for example, `⊠=` is an
+assignment like operator just like `*=` is.
+
+No Unicode normalization step is performed.
+
 
 Other tokens
 ------------
 
-The following strings denote other tokens::
+The following strings denote other tokens:
 
     `   (    )     {    }     [    ]    ,  ;   [.    .]  {.   .}  (.  .)  [:
 
@@ -1066,17 +1093,6 @@ operation                meaning
 `a %% b`                 unsigned integer modulo operation
 `a <% b`                 treat `a` and `b` as unsigned and compare
 `a <=% b`                treat `a` and `b` as unsigned and compare
-`ze(a)`                  extends the bits of `a` with zeros until it has the
-                         width of the `int` type
-`toU8(a)`                treats `a` as unsigned and converts it to an
-                         unsigned integer of 8 bits (but still the
-                         `int8` type)
-`toU16(a)`               treats `a` as unsigned and converts it to an
-                         unsigned integer of 16 bits (but still the
-                         `int16` type)
-`toU32(a)`               treats `a` as unsigned and converts it to an
-                         unsigned integer of 32 bits (but still the
-                         `int32` type)
 ======================   ======================================================
 
 `Automatic type conversion`:idx: is performed in expressions where different
@@ -1203,9 +1219,11 @@ The boolean type is named `bool`:idx: in Nim and can be one of the two
 pre-defined values `true` and `false`. Conditions in `while`,
 `if`, `elif`, `when`-statements need to be of type `bool`.
 
-This condition holds::
+This condition holds:
 
+  ```nim
   ord(false) == 0 and ord(true) == 1
+  ```
 
 The operators `not, and, or, xor, <, <=, >, >=, !=, ==` are defined
 for the bool type. The `and` and `or` operators perform short-cut
@@ -1244,8 +1262,9 @@ specified. The values are ordered. Example:
   ```
 
 
-Now the following holds::
+Now the following holds:
 
+  ```nim
   ord(north) == 0
   ord(east) == 1
   ord(south) == 2
@@ -1253,6 +1272,7 @@ Now the following holds::
 
   # Also allowed:
   ord(Direction.west) == 3
+  ```
 
 The implied order is: north < east < south < west. The comparison operators can be used
 with enumeration types. Instead of `north` etc., the enum value can also
@@ -1976,10 +1996,6 @@ dereferencing operations for reference types:
   # no need to write n[].data; in fact n[].data is highly discouraged!
   ```
 
-Automatic dereferencing can be performed for the first argument of a routine
-call, but this is an experimental feature and is described [here](
-manual_experimental.html#automatic-dereferencing).
-
 In order to simplify structural type checking, recursive tuples are not valid:
 
   ```nim
@@ -2564,8 +2580,9 @@ literal match and that is better than a generic match etc. In the following,
 for the routine `p`.
 
 A routine `p` matches better than a routine `q` if the following
-algorithm returns true::
+algorithm returns true:
 
+  ```nim
   for each matching category m in ["exact match", "literal match",
                                   "generic match", "subtype match",
                                   "integral match", "conversion match"]:
@@ -2575,6 +2592,7 @@ algorithm returns true::
     else:
       return false
   return "ambiguous"
+  ```
 
 
 Some examples:
@@ -4057,19 +4075,19 @@ Nonoverloadable builtins
 ------------------------
 
 The following built-in procs cannot be overloaded for reasons of implementation
-simplicity (they require specialized semantic checking)::
+simplicity (they require specialized semantic checking):
 
-  declared, defined, definedInScope, compiles, sizeof,
-  is, shallowCopy, getAst, astToStr, spawn, procCall
+    declared, defined, definedInScope, compiles, sizeof,
+    is, shallowCopy, getAst, astToStr, spawn, procCall
 
 Thus, they act more like keywords than like ordinary identifiers; unlike a
 keyword however, a redefinition may `shadow`:idx: the definition in
 the [system](system.html) module.
 From this list the following should not be written in dot
 notation `x.f` since `x` cannot be type-checked before it gets passed
-to `f`::
+to `f`:
 
-  declared, defined, definedInScope, compiles, getAst, astToStr
+    declared, defined, definedInScope, compiles, getAst, astToStr
 
 
 Var parameters
@@ -4248,16 +4266,16 @@ observable differences in behavior:
   ```
 
 
-However, the current implementation produces a warning in these cases.
-There are different ways to deal with this warning:
+The compiler can produce a warning in these cases, however this behavior is
+turned off by default. It can be enabled for a section of code via the
+`warning[ObservableStores]` and `push`/`pop` pragmas. Take the above code
+as an example:
 
-1. Disable the warning via `{.push warning[ObservableStores]: off.}` ... `{.pop.}`.
-   Then one may need to ensure that `p` only raises *before* any stores to `result`
-   happen.
-
-2. One can use a temporary helper variable, for example instead of `x = p(8)`
-   use `let tmp = p(8); x = tmp`.
-
+  ```nim
+  {.push warning[ObservableStores]: on.}
+  main()
+  {.pop.}
+  ```
 
 Overloading of the subscript operator
 -------------------------------------
@@ -4331,7 +4349,7 @@ dispatching:
     Unit = ref object of Thing
       x: int
 
-  method collide(a, b: Thing) {.inline.} =
+  method collide(a, b: Thing) {.base, inline.} =
     quit "to override!"
 
   method collide(a: Thing, b: Unit) {.inline.} =
@@ -4636,7 +4654,7 @@ the "implicitly convertible" type relation (see [Convertible relation]):
 
 A converter can also be explicitly invoked for improved readability. Note that
 implicit converter chaining is not supported: If there is a converter from
-type A to type B and from type B to type C the implicit conversion from A to C
+type A to type B and from type B to type C, the implicit conversion from A to C
 is not provided.
 
 
@@ -4810,8 +4828,8 @@ Instead of a `try finally` statement a `defer` statement can be used, which
 avoids lexical nesting and offers more flexibility in terms of scoping as shown
 below.
 
-Any statements following the `defer` in the current block will be considered
-to be in an implicit try block:
+Any statements following the `defer` will be considered
+to be in an implicit try block in the current block:
 
   ```nim  test = "nim c $1"
   proc main =
@@ -4834,7 +4852,7 @@ Is rewritten to:
   ```
 
 When `defer` is at the outermost scope of a template/macro, its scope extends
-to the block where the template is called from:
+to the block where the template/macro is called from:
 
   ```nim  test = "nim c $1"
   template safeOpenDefer(f, path) =
@@ -4946,8 +4964,7 @@ Effect system
 =============
 
 **Note**: The rules for effect tracking changed with the release of version
-1.6 of the Nim compiler. This section describes the new rules that are activated
-via `--experimental:strictEffects`.
+1.6 of the Nim compiler.
 
 
 Exception tracking
@@ -5002,7 +5019,7 @@ possibly raised exceptions; the algorithm operates on `p`'s call graph:
    The call is optimistically assumed to have no effect.
    Rule 2 compensates for this case.
 2. Every expression `e` of some proc type within a call that is passed to parameter
-   marked as `.effectsOf` is assumed to be called indirectly and thus
+   marked as `.effectsOf` of proc `p` is assumed to be called indirectly and thus
    its raises list is added to `p`'s raises list.
 3. Every call to a proc `q` which has an unknown body (due to a forward
    declaration) is assumed to
@@ -5067,7 +5084,6 @@ conservative in its effect analysis:
 
   ```nim  test = "nim c $1"  status = 1
   {.push warningAsError[Effect]: on.}
-  {.experimental: "strictEffects".}
 
   import algorithm
 
@@ -5149,14 +5165,15 @@ procedure types without such lists:
 
   ## this will fail because toBeCalled1 uses MyEffect which was forbidden by ProcType1:
   caller1(toBeCalled1)
-  ## this is OK because both toBeCalled1 and ProcType1 have the same requirements:
+  ## this is OK because both toBeCalled2 and ProcType1 have the same requirements:
   caller1(toBeCalled2)
   ## these are OK because ProcType2 doesn't have any effect requirement:
   caller2(toBeCalled1)
   caller2(toBeCalled2)
   ```
 
-`ProcType2` is a subtype of `ProcType1`. Unlike with tags, the parent context - the function which calls other functions with forbidden effects - doesn't inherit the forbidden list of effects.
+`ProcType2` is a subtype of `ProcType1`. Unlike with the `tags` pragma, the parent context - the
+function which calls other functions with forbidden effects - doesn't inherit the forbidden list of effects.
 
 
 Side effects
@@ -8286,16 +8303,16 @@ The `dynlib` import mechanism supports a versioning scheme:
     importc, dynlib: "libtcl(|8.5|8.4|8.3).so.(1|0)".}
   ```
 
-At runtime, the dynamic library is searched for (in this order)::
+At runtime, the dynamic library is searched for (in this order):
 
-  libtcl.so.1
-  libtcl.so.0
-  libtcl8.5.so.1
-  libtcl8.5.so.0
-  libtcl8.4.so.1
-  libtcl8.4.so.0
-  libtcl8.3.so.1
-  libtcl8.3.so.0
+    libtcl.so.1
+    libtcl.so.0
+    libtcl8.5.so.1
+    libtcl8.5.so.0
+    libtcl8.4.so.1
+    libtcl8.4.so.0
+    libtcl8.3.so.1
+    libtcl8.3.so.0
 
 The `dynlib` pragma supports not only constant strings as an argument but also
 string expressions in general:

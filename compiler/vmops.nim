@@ -22,8 +22,11 @@ when declared(math.signbit):
   # ditto
   from std/math as math3 import signbit
 
-from std/os import getEnv, existsEnv, delEnv, putEnv, envPairs,
-  dirExists, fileExists, walkDir, getAppFilename, raiseOSError, osLastError
+
+from std/envvars import getEnv, existsEnv, delEnv, putEnv, envPairs
+from std/os import getAppFilename
+from std/private/oscommon import dirExists, fileExists
+from std/private/osdirs import walkDir
 
 from std/times import cpuTime
 from std/hashes import hash
@@ -43,6 +46,11 @@ template mathop(op) {.dirty.} =
 
 template osop(op) {.dirty.} =
   registerCallback(c, "stdlib.os." & astToStr(op), `op Wrapper`)
+
+template oscommonop(op) {.dirty.} =
+  registerCallback(c, "stdlib.oscommon." & astToStr(op), `op Wrapper`)
+template envvarsop(op) {.dirty.} =
+  registerCallback(c, "stdlib.envvars." & astToStr(op), `op Wrapper`)
 
 template timesop(op) {.dirty.} =
   registerCallback(c, "stdlib.times." & astToStr(op), `op Wrapper`)
@@ -219,12 +227,12 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback(c, "stdlib.math.mod", `mod Wrapper`)
 
   when defined(nimcore):
-    wrap2s(getEnv, osop)
-    wrap1s(existsEnv, osop)
-    wrap2svoid(putEnv, osop)
-    wrap1svoid(delEnv, osop)
-    wrap1s(dirExists, osop)
-    wrap1s(fileExists, osop)
+    wrap2s(getEnv, envvarsop)
+    wrap1s(existsEnv, envvarsop)
+    wrap2svoid(putEnv, envvarsop)
+    wrap1svoid(delEnv, envvarsop)
+    wrap1s(dirExists, oscommonop)
+    wrap1s(fileExists, oscommonop)
     wrapDangerous(writeFile, ioop)
     wrap1s(readFile, ioop)
     wrap2si(readLines, ioop)
@@ -350,7 +358,7 @@ proc registerAdditionalOps*(c: PCtx) =
     let x = a.getFloat(1)
     addFloatSprintf(p.strVal, x)
 
-  wrapIterator("stdlib.os.envPairsImplSeq"): envPairs()
+  wrapIterator("stdlib.envvars.envPairsImplSeq"): envPairs()
 
   registerCallback c, "stdlib.marshal.toVM", proc(a: VmArgs) =
     let typ = a.getNode(0).typ

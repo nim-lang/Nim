@@ -9,7 +9,7 @@
 Testament is an advanced automatic unittests runner for Nim tests, is used for the development of Nim itself,
 offers process isolation for your tests, it can generate statistics about test cases,
 supports multiple targets (C, C++, ObjectiveC, JavaScript, etc.),
-simulated `Dry-Runs <https://en.wikipedia.org/wiki/Dry_run_(testing)>`_,
+simulated [Dry-Runs](https://en.wikipedia.org/wiki/Dry_run_(testing)),
 has logging, can generate HTML reports, skip tests from a file, and more,
 so can be useful to run your tests, even the most complex ones.
 
@@ -17,7 +17,7 @@ so can be useful to run your tests, even the most complex ones.
 Test files location
 ===================
 
-By default, Testament looks for test files on ``"./tests/*.nim"``.
+By default, Testament looks for test files on ``"./tests/category/*.nim"``.
 You can overwrite this pattern glob using `pattern <glob>`:option:.
 The default working directory path can be changed using
 `--directory:"folder/subfolder/"`:option:.
@@ -27,24 +27,30 @@ You can change that using `--nim:"folder/subfolder/nim"`:option:.
 Running JavaScript tests with `--targets:"js"`:option: requires
 a working NodeJS on `PATH`.
 
+Commands
+========
+
+p|pat|pattern <glob>        run all the tests matching the given pattern
+all                         run all tests inside of category folders
+c|cat|category <category>   run all the tests of a certain category
+r|run <test>                run single test file
+html                        generate testresults.html from the database
+
 
 Options
 =======
 
---print                   Also print results to the console
---simulate                See what tests would be run but don't run them
-                          (for debugging)
---failing                 Only show failing/ignored tests
---targets:"c cpp js objc"
-                          Run tests for specified targets (default: c)
---nim:path                Use a particular nim executable (default: $PATH/nim)
---directory:dir           Change to directory dir before reading the tests
-                          or doing anything else.
+--print                   print results to the console
+--verbose                 print commands (compiling and running tests)
+--simulate                see what tests would be run but don't run them (for debugging)
+--failing                 only show failing/ignored tests
+--targets:"c cpp js objc" run tests for specified targets (default: c)
+--nim:path                use a particular nim executable (default: $PATH/nim)
+--directory:dir           Change to directory dir before reading the tests or doing anything else.
 --colors:on|off           Turn messages coloring on|off.
---backendLogging:on|off   Disable or enable backend logging.
-                          By default, turned on.
---skipFrom:file           Read tests to skip from ``file`` - one test per
-                          line, # comments ignored
+--backendLogging:on|off   Disable or enable backend logging. By default turned on.
+--megatest:on|off         Enable or disable megatest. Default is on.
+--skipFrom:file           Read tests to skip from `file` - one test per line, # comments ignored
 
 
 Running a single test
@@ -54,18 +60,21 @@ This is a minimal example to understand the basics,
 not very useful for production, but easy to understand:
 
   ```console
-  $ mkdir tests
-  $ echo "assert 42 == 42" > tests/test0.nim
-  $ testament run test0.nim
-  PASS: tests/test0.nim C                                    ( 0.2 sec)
-  $ testament r test0
-  PASS: tests/test0.nim C                                    ( 0.2 sec)
+  $ mkdir -p tests/category
+  $ echo "assert 42 == 42" > tests/category/test0.nim
+  $ testament run tests/category/test0.nim
+  PASS: tests/category/test0.nim c                           ( 0.2 sec)
+  $ testament r tests/category/test0
+  PASS: tests/category/test0.nim C                           ( 0.2 sec)
   ```
 
 
 Running all tests from a directory
 ==================================
 
+ This will run all tests in the top level tests/ directory. NOTE: these
+ tests are skipped by `testament all`.
+ 
   ```console
   $ testament pattern "tests/*.nim"
   ```
@@ -185,8 +194,10 @@ Example "template" **to edit** and write a Testament unittest:
 
 * As you can see the "Spec" is just a `discard """ """`.
 * Spec has sane defaults, so you don't need to provide them all, any simple assert will work just fine.
-* `This is not the full spec of Testament, check the Testament Spec on GitHub, see parseSpec(). <https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L238>`_
-* `Nim itself uses Testament, so there are plenty of test examples. <https://github.com/nim-lang/Nim/tree/devel/tests>`_
+* This is not the full spec of Testament, check [the Testament Spec on GitHub,
+  see parseSpec()](https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L315).
+* Nim itself uses Testament, so [there are plenty of test examples](
+  https://github.com/nim-lang/Nim/tree/devel/tests).
 * Has some built-in CI compatibility, like Azure Pipelines, etc.
 
 
@@ -195,11 +206,10 @@ Inline hints, warnings and errors (notes)
 
 Testing the line, column, kind and message of hints, warnings and errors can
 be written inline like so:
-
-.. code-block:: nim
-
+  ```nim
   {.warning: "warning!!"} #[tt.Warning
            ^ warning!! [User] ]#
+  ```
 
 The opening `#[tt.` marks the message line.
 The `^` marks the message column.
@@ -207,18 +217,17 @@ The `^` marks the message column.
 Inline messages can be combined with `nimout` when `nimoutFull` is false (default).
 This allows testing for expected messages from other modules:
 
-.. code-block:: nim
-
+  ```nim
   discard """
     nimout: "config.nims(1, 1) Hint: some hint message [User]"
   """
   {.warning: "warning!!"} #[tt.Warning
            ^ warning!! [User] ]#
+  ```
 
 Multiple messages for a line can be checked by delimiting messages with ';':
 
-.. code-block:: nim
-
+  ```nim
   discard """
     matrix: "--errorMax:0 --styleCheck:error"
   """
@@ -227,6 +236,7 @@ Multiple messages for a line can be checked by delimiting messages with ';':
        ^ 'generic_proc' should be: 'genericProc'; tt.Error
                         ^ 'a_a' should be: 'aA' ]#
     discard
+  ```
 
 Use `--errorMax:0` in `matrix`, or `cmd: "nim check $file"` when testing
 for multiple 'Error' messages.
@@ -327,4 +337,4 @@ Tests without Spec:
 
 
 See also:
-* `Unittest <unittest.html>`_
+* [Unittest](unittest.html)

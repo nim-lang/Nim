@@ -4,9 +4,9 @@ Packaging Nim
 
 This page provide hints on distributing Nim using OS packages.
 
-See `distros <distros.html>`_ for tools to detect Linux distribution at runtime.
+See [distros](distros.html) for tools to detect Linux distribution at runtime.
 
-See `here <intern.html#bootstrapping-the-compiler-reproducible-builds>`_ for how to
+See [here](intern.html#bootstrapping-the-compiler-reproducible-builds) for how to
 compile reproducible builds.
 
 Supported architectures

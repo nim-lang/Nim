@@ -718,7 +718,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       n[^1] = ex
       result.add(n)
 
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     var ns = false
     for i in 0..<n.len:
       n[i] = ctx.lowerStmtListExprs(n[i], ns)
@@ -868,7 +868,7 @@ proc transformReturnsInTry(ctx: var Ctx, n: PNode): PNode =
     if n[0].kind != nkEmpty:
       let asgnTmpResult = newNodeI(nkAsgn, n.info)
       asgnTmpResult.add(ctx.newTmpResultAccess())
-      let x = if n[0].kind in {nkAsgn, nkFastAsgn}: n[0][1] else: n[0]
+      let x = if n[0].kind in {nkAsgn, nkFastAsgn, nkSinkAsgn}: n[0][1] else: n[0]
       asgnTmpResult.add(x)
       result.add(asgnTmpResult)
 
@@ -1155,7 +1155,7 @@ proc newArrayType(g: ModuleGraph; n: int, t: PType; idgen: IdGenerator; owner: P
   result = newType(tyArray, nextTypeId(idgen), owner)
 
   let rng = newType(tyRange, nextTypeId(idgen), owner)
-  rng.n = newTree(nkRange, g.newIntLit(owner.info, 0), g.newIntLit(owner.info, n))
+  rng.n = newTree(nkRange, g.newIntLit(owner.info, 0), g.newIntLit(owner.info, n - 1))
   rng.rawAddSon(t)
 
   result.rawAddSon(rng)
@@ -1372,6 +1372,7 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
   # detect: 'finally: raises X' which is currently not supported. We produce
   # an error for this case for now. All this will be done properly with Yuriy's
   # patch.
+
   result = n
   case n.kind
   of nkTryStmt:
@@ -1388,6 +1389,7 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
       discard c.finallys.pop()
 
   of nkWhileStmt, nkBlockStmt:
+    if n.hasYields == false: return n
     c.blocks.add((n, c.finallys.len))
     for i in 0 ..< n.len:
       result[i] = preprocess(c, n[i])

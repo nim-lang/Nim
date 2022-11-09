@@ -11,7 +11,7 @@ import
   os, strutils, parseopt, pegs, re, terminal, osproc, tables, algorithm, times
 
 const
-  Version = "1.6.0"
+  Version = "2.0.0"
   Usage = "nimgrep - Nim Grep Searching and Replacement Utility Version " &
   Version & """
 
@@ -989,7 +989,7 @@ iterator walkDirBasic(dir: string, walkOptC: WalkOptComp[Pattern]): string
     let rightDirForFiles = d.isRightDirectory(walkOptC)
     var files = newSeq[string]()
     var dirs = newSeq[string]()
-    for kind, path in walkDir(d):
+    for kind, path in walkDir(d, skipSpecial = true):
       case kind
       of pcFile:
         if path.hasRightPath(walkOptC) and rightDirForFiles:
@@ -1258,6 +1258,11 @@ for kind, key, val in getopt():
     else:
       paths.add(key)
   of cmdLongOption, cmdShortOption:
+    proc addNotEmpty(s: var seq[string], name: string) =
+      if name == "":
+        reportError("empty string given for option --" & key &
+                    " (did you forget `:`?)")
+      s.add name
     case normalize(key)
     of "find", "f": incl(options, optFind)
     of "replace", "!": incl(options, optReplace)
@@ -1288,30 +1293,31 @@ for kind, key, val in getopt():
        "noext", "no-ext":  # 2 deprecated options
       walkOpt.notExtensions.add val.split('|')
     of "dirname",  "di":
-      walkOpt.dirname.add val
+      walkOpt.dirname.addNotEmpty val
     of "ndirname", "notdirname", "ndi", "notdi",
-       "excludedir", "ed":  # 2 deprecated options
-      walkOpt.notDirname.add val
+       "excludedir", "exclude-dir", "ed":  # 3 deprecated options
+      walkOpt.notDirname.addNotEmpty val
     of "dirpath", "dirp",
-       "includedir", "id":  # 2 deprecated options
-      walkOpt.dirPath.add val
+       "includedir", "include-dir", "id":  # 3 deprecated options
+      walkOpt.dirPath.addNotEmpty val
     of "ndirpath", "notdirpath", "ndirp", "notdirp":
-      walkOpt.notDirPath.add val
+      walkOpt.notDirPath.addNotEmpty val
     of "filename", "fi",
        "includefile", "include-file", "if":  # 3 deprecated options
-      walkOpt.filename.add val
+      walkOpt.filename.addNotEmpty val
     of "nfilename", "nfi", "notfilename", "notfi",
        "excludefile", "exclude-file", "ef":  # 3 deprecated options
-      walkOpt.notFilename.add val
+      walkOpt.notFilename.addNotEmpty val
     of "infile", "inf",
        "matchfile", "match", "mf":  # 3 deprecated options
-      searchOpt.inFile.add val
+      searchOpt.inFile.addNotEmpty val
     of "ninfile", "notinfile", "ninf", "notinf",
        "nomatchfile", "nomatch", "nf":  # 3 options are deprecated
-      searchOpt.notInFile.add val
-    of "incontext", "inc": searchOpt.inContext.add val
+      searchOpt.notInFile.addNotEmpty val
+    of "incontext", "inc":
+      searchOpt.inContext.addNotEmpty val
     of "nincontext", "notincontext", "ninc", "notinc":
-      searchOpt.notInContext.add val
+      searchOpt.notInContext.addNotEmpty val
     of "bin":
       case val
       of "on": searchOpt.checkBin = biOn

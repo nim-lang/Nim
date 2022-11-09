@@ -561,7 +561,7 @@ template matchOrParse(mopProc: untyped) =
   # procs. For the former, *enter* and *leave* event handler code generators
   # are provided which just return *discard*.
 
-  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int =
+  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int {.gcsafe.} =
     proc matchBackRef(s: string, p: Peg, start: int, c: var Captures): int =
       # Parse handler code must run in an *of* clause of its own for each
       # *PegKind*, so we encapsulate the identical clause body for
@@ -2058,9 +2058,9 @@ func parsePeg*(pattern: string, filename = "pattern", line = 1, col = 0): Peg =
 
 func peg*(pattern: string): Peg =
   ## constructs a Peg object from the `pattern`. The short name has been
-  ## chosen to encourage its use as a raw string modifier::
+  ## chosen to encourage its use as a raw string modifier:
   ##
-  ##   peg"{\ident} \s* '=' \s* {.*}"
+  ##     peg"{\ident} \s* '=' \s* {.*}"
   result = parsePeg(pattern, "pattern")
 
 func escapePeg*(s: string): string =

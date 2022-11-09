@@ -28,14 +28,14 @@ To choose the memory management strategy use the `--mm:` switch.
 ARC/ORC
 -------
 
-`--mm:orc` is a memory management mode primarily based on reference counting. Cycles
-in the object graph are handled by a "cycle collector" which is based on "trial deletion".
-Since algorithms based on "tracing" are not used, the runtime behavior is oblivious to
-the involved heap sizes.
+ORC is the default memory management strategy. It is a memory
+management mode primarily based on reference counting. Reference cycles are
+handled by a cycle collection mechanism based on "trial deletion".
+Since algorithms based on "tracing" are not used, the runtime behavior is oblivious to the involved heap and stack sizes.
 
 The reference counting operations (= "RC ops") do not use atomic instructions and do not have to --
 instead entire subgraphs are *moved* between threads. The Nim compiler also aggressively
-optimizes away RC ops and exploits `move semantics <destructors.html#move-semantics>`_.
+optimizes away RC ops and exploits [move semantics](destructors.html#move-semantics).
 
 Nim performs a fair share of optimizations for ARC/ORC; you can inspect what it did
 to your time critical function via `--expandArc:functionName`.
@@ -57,12 +57,11 @@ and leaks memory with `--mm:arc`, in other words, for `async` you need to use `-
 Other MM modes
 --------------
 
-.. note:: The default `refc` GC is incremental, thread-local and not "stop-the-world".
+.. note:: The `refc` GC is incremental, thread-local and not "stop-the-world".
 
---mm:refc    This is the default memory management strategy. It's a
-  deferred reference counting based garbage collector
-  with a simple Mark&Sweep backup GC in order to collect cycles. Heaps are thread-local.
-  `This document <refc.html>`_ contains further information.
+--mm:refc    It's a deferred reference counting based garbage collector
+  with a simple Mark&Sweep backup GC in order to collect cycles.
+  Heaps are thread-local. [This document](refc.html) contains further information.
 --mm:markAndSweep  Simple Mark-And-Sweep based garbage collector.
   Heaps are thread-local.
 --mm:boehm    Boehm based garbage collector, it offers a shared heap.
@@ -89,7 +88,7 @@ None               Manual   Manual            Manual         `--mm:none`
 .. default-role:: code
 .. include:: rstcommon.rst
 
-JavaScript's garbage collector is used for the `JavaScript and NodeJS
-<backends.html#backends-the-javascript-target>`_ compilation targets.
-The `NimScript <nims.html>`_ target uses the memory management strategy built into
+JavaScript's garbage collector is used for the [JavaScript and NodeJS](
+backends.html#backends-the-javascript-target) compilation targets.
+The [NimScript](nims.html) target uses the memory management strategy built into
 the Nim compiler.

@@ -20,7 +20,7 @@
 ## | :---                 | ----:                 |
 ## | Windows              | `BCryptGenRandom`_    |
 ## | Linux                | `getrandom`_          |
-## | MacOSX               | `getentropy`_         |
+## | MacOSX               | `SecRandomCopyBytes`_ |
 ## | iOS                  | `SecRandomCopyBytes`_ |
 ## | OpenBSD              | `getentropy openbsd`_ |
 ## | FreeBSD              | `getrandom freebsd`_  |
@@ -57,13 +57,16 @@ runnableExamples:
 
 
 when not defined(js):
-  import os
+  import std/oserrors
 
 when defined(posix):
   import posix
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const
-  batchImplOS = defined(freebsd) or defined(openbsd) or defined(zephyr) or (defined(macosx) and not defined(ios))
+  batchImplOS = defined(freebsd) or defined(openbsd) or defined(zephyr)
   batchSize {.used.} = 256
 
 when batchImplOS:
@@ -228,8 +231,8 @@ elif defined(freebsd):
   proc getRandomImpl(p: pointer, size: int): int {.inline.} =
     result = getrandom(p, csize_t(size), 0)
 
-elif defined(ios):
-  {.passL: "-framework Security".}
+elif defined(ios) or defined(macosx):
+  {.passl: "-framework Security".}
 
   const errSecSuccess = 0 ## No error.
 
@@ -250,19 +253,6 @@ elif defined(ios):
       return
 
     result = secRandomCopyBytes(nil, csize_t(size), addr dest[0])
-
-elif defined(macosx):
-  const sysrandomHeader = """#include <Availability.h>
-#include <sys/random.h>
-"""
-
-  proc getentropy(p: pointer, size: csize_t): cint {.importc: "getentropy", header: sysrandomHeader.}
-    # getentropy() fills a buffer with random data, which can be used as input
-    # for process-context pseudorandom generators like arc4random(3).
-    # The maximum buffer size permitted is 256 bytes.
-
-  proc getRandomImpl(p: pointer, size: int): int {.inline.} =
-    result = getentropy(p, csize_t(size)).int
 
 else:
   template urandomImpl(result: var int, dest: var openArray[byte]) =

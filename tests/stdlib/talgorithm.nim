@@ -6,6 +6,7 @@ discard """
 #12928,10456
 
 import std/[sequtils, algorithm, json, sugar]
+import std/assertions
 
 proc test() = 
   try: 

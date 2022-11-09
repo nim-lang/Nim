@@ -17,7 +17,7 @@ type
   AtomType* = SomeNumber|pointer|ptr|char|bool
     ## Type Class representing valid types for use with atomic procs
 
-when someGcc and hasThreadSupport:
+when someGcc:
   type AtomMemModel* = distinct cint
 
   var ATOMIC_RELAXED* {.importc: "__ATOMIC_RELAXED", nodecl.}: AtomMemModel
@@ -164,7 +164,7 @@ when someGcc and hasThreadSupport:
     ## ignore this parameter.
 
   template fence*() = atomicThreadFence(ATOMIC_SEQ_CST)
-elif someVcc and hasThreadSupport:
+elif someVcc:
   type AtomMemModel* = distinct cint
 
   const

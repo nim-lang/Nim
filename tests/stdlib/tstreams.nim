@@ -16,7 +16,7 @@ GROOT
 """
 
 
-import streams
+import std/[syncio, streams, assertions]
 
 
 block tstreams:
@@ -49,6 +49,12 @@ block tstreams3:
     for line in s.lines:
       echo line
     s.close
+
+
+block:
+  let fs = newFileStream("amissingfile.txt")
+  defer: fs.close()
+  doAssert isNil(fs)
 
 # bug #12410
 

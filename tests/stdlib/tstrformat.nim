@@ -3,8 +3,8 @@
 import genericstrformat
 import std/[strformat, strutils, times, tables, json]
 
-when defined(nimPreviewSlimSystem):
-  import std/objectdollar
+import std/[assertions, formatfloat]
+import std/objectdollar
 
 proc main() =
   block: # issue #7632

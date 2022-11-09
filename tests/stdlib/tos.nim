@@ -28,6 +28,7 @@ Raises
 
 import os, strutils, pathnorm
 from stdtest/specialpaths import buildDir
+import std/[syncio, assertions]
 
 block fileOperations:
   let files = @["these.txt", "are.x", "testing.r", "files.q"]
@@ -343,6 +344,8 @@ block walkDirRec:
 
   removeDir("walkdir_test")
 
+import std/sequtils
+
 block: # walkDir
   doAssertRaises(OSError):
     for a in walkDir("nonexistent", checkDir = true): discard
@@ -355,6 +358,21 @@ block: # walkDir
       createSymlink(".", "walkdir_test/c")
       for k, p in walkDir("walkdir_test", true):
         doAssert k == pcLinkToDir
+      removeDir("walkdir_test")
+
+  when defined(posix):
+    block walkDirSpecial:
+      createDir("walkdir_test")
+      doAssert execShellCmd("mkfifo walkdir_test/fifo") == 0
+      createSymlink("fifo", "walkdir_test/fifo_link")
+      let withSpecialFiles = toSeq(walkDir("walkdir_test", relative = true))
+      doAssert (withSpecialFiles.len == 2 and
+                (pcFile, "fifo") in withSpecialFiles and
+                (pcLinkToFile, "fifo_link") in withSpecialFiles)
+      # now Unix special files are excluded from walkdir output:
+      let skipSpecialFiles = toSeq(walkDir("walkdir_test", relative = true,
+                                           skipSpecial = true))
+      doAssert skipSpecialFiles.len == 0
       removeDir("walkdir_test")
 
 block normalizedPath:
@@ -671,32 +689,6 @@ block: # normalizePathEnd
     doAssert r"E:/".normalizePathEnd(trailingSep = true) == r"E:\"
     doAssert "/".normalizePathEnd == r"\"
 
-block: # isValidFilename
-  # Negative Tests.
-  doAssert not isValidFilename("abcd", maxLen = 2)
-  doAssert not isValidFilename("0123456789", maxLen = 8)
-  doAssert not isValidFilename("con")
-  doAssert not isValidFilename("aux")
-  doAssert not isValidFilename("prn")
-  doAssert not isValidFilename("OwO|UwU")
-  doAssert not isValidFilename(" foo")
-  doAssert not isValidFilename("foo ")
-  doAssert not isValidFilename("foo.")
-  doAssert not isValidFilename("con.txt")
-  doAssert not isValidFilename("aux.bat")
-  doAssert not isValidFilename("prn.exe")
-  doAssert not isValidFilename("nim>.nim")
-  doAssert not isValidFilename(" foo.log")
-  # Positive Tests.
-  doAssert isValidFilename("abcd", maxLen = 42.Positive)
-  doAssert isValidFilename("c0n")
-  doAssert isValidFilename("foo.aux")
-  doAssert isValidFilename("bar.prn")
-  doAssert isValidFilename("OwO_UwU")
-  doAssert isValidFilename("cron")
-  doAssert isValidFilename("ux.bat")
-  doAssert isValidFilename("nim.nim")
-  doAssert isValidFilename("foo.log")
 
 import sugar
 
@@ -715,7 +707,23 @@ block: # isAdmin
   # In Azure on POSIX tests run as a normal user
   if isAzure and defined(posix): doAssert not isAdmin()
 
-import std/sequtils
+
+import sugar
+
+block: # normalizeExe
+  doAssert "".dup(normalizeExe) == ""
+  when defined(posix):
+    doAssert "foo".dup(normalizeExe) == "./foo"
+    doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
+  when defined(windows):
+    doAssert "foo".dup(normalizeExe) == "foo"
+
+block: # isAdmin
+  let isAzure = existsEnv("TF_BUILD") # xxx factor with testament.specs.isAzure
+  # In Azure on Windows tests run as an admin user
+  if isAzure and defined(windows): doAssert isAdmin()
+  # In Azure on POSIX tests run as a normal user
+  if isAzure and defined(posix): doAssert not isAdmin()
 
 when doslikeFileSystem:
   import std/private/ntpath
@@ -792,3 +800,32 @@ else:
     doAssert parentDirs("/home/user", fromRoot=false).toSeq == @["/home/user", "/home", "/"]
     doAssert parentDirs("home/user", fromRoot=true).toSeq == @["home/", "home/user"]
     doAssert parentDirs("home/user", fromRoot=false).toSeq == @["home/user", "home"]
+
+
+# https://github.com/nim-lang/Nim/pull/19643#issuecomment-1235102314
+block:  # isValidFilename
+  # Negative Tests.
+  doAssert not isValidFilename("abcd", maxLen = 2)
+  doAssert not isValidFilename("0123456789", maxLen = 8)
+  doAssert not isValidFilename("con")
+  doAssert not isValidFilename("aux")
+  doAssert not isValidFilename("prn")
+  doAssert not isValidFilename("OwO|UwU")
+  doAssert not isValidFilename(" foo")
+  doAssert not isValidFilename("foo ")
+  doAssert not isValidFilename("foo.")
+  doAssert not isValidFilename("con.txt")
+  doAssert not isValidFilename("aux.bat")
+  doAssert not isValidFilename("prn.exe")
+  doAssert not isValidFilename("nim>.nim")
+  doAssert not isValidFilename(" foo.log")
+  # Positive Tests.
+  doAssert isValidFilename("abcd", maxLen = 42.Positive)
+  doAssert isValidFilename("c0n")
+  doAssert isValidFilename("foo.aux")
+  doAssert isValidFilename("bar.prn")
+  doAssert isValidFilename("OwO_UwU")
+  doAssert isValidFilename("cron")
+  doAssert isValidFilename("ux.bat")
+  doAssert isValidFilename("nim.nim")
+  doAssert isValidFilename("foo.log")

@@ -2,7 +2,7 @@ discard """
   joinable: false # to avoid messing with global rand state
   targets: "c js"
 """
-
+import std/[assertions, formatfloat]
 import std/[random, math, stats, sets, tables]
 when not defined(js):
   import std/os

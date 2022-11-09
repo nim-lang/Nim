@@ -5,6 +5,7 @@ discard """
 """
 
 import os, net, nativesockets, asyncdispatch
+import std/[assertions, threads]
 
 ## Test for net.dial
 

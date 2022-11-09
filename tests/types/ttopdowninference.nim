@@ -193,3 +193,54 @@ block: # templates
   doAssert a == float(1)
   doAssert b == byte(2)
   doAssert c == cstring("abc")
+
+
+proc foo(): set[char] = # bug #11259
+  discard "a"
+  {}
+
+discard foo()
+
+block: # bug #11085
+  const ok1: set[char] = {}
+  var ok1b: set[char] = {}
+
+  const ok2: set[char] = block:
+    {}
+
+  const ok3: set[char] = block:
+    var x: set[char] = {}
+    x
+  var ok3b: set[char] = block:
+    var x: set[char] = {}
+    x
+
+  var bad: set[char] = block:
+    {}
+
+# bug #6213
+block:
+  block:
+    type MyEnum = enum a, b
+    type MyTuple = tuple[x: set[MyEnum]]
+
+    var myVar: seq[MyTuple] = @[ (x: {}) ]
+    doAssert myVar.len == 1
+
+  block:
+    type
+      Foo = tuple
+        f: seq[string]
+        s: string
+
+    proc e(): seq[Foo] =
+      return @[
+        (@[], "asd")
+      ]
+
+    doAssert e()[0].f == @[]
+
+block: # bug #11777
+  type S = set[0..5]
+  var s: S = {1, 2}
+  doAssert 1 in s

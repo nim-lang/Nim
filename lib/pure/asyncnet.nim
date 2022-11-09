@@ -65,8 +65,7 @@
 ##
 ## The following example demonstrates a simple chat server.
 ##
-## .. code-block:: Nim
-##
+##   ```Nim
 ##   import std/[asyncnet, asyncdispatch]
 ##
 ##   var clients {.threadvar.}: seq[AsyncSocket]
@@ -93,9 +92,13 @@
 ##
 ##   asyncCheck serve()
 ##   runForever()
-##
+##   ```
 
 import std/private/since
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
 import asyncdispatch, nativesockets, net, os
 
 export SOBool

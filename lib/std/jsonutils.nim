@@ -16,7 +16,7 @@ runnableExamples:
   assert 0.0.toJson.kind == JFloat
   assert Inf.toJson.kind == JString
 
-import json, strutils, tables, sets, strtabs, options
+import json, strutils, tables, sets, strtabs, options, strformat
 
 #[
 Future directions:
@@ -32,7 +32,7 @@ add a way to customize serialization, for e.g.:
 
 import macros
 from enumutils import symbolName
-from typetraits import OrdinalEnum
+from typetraits import OrdinalEnum, tupleLen
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -168,7 +168,7 @@ template fromJsonFields(newObj, oldObj, json, discKeys, opt) =
           if discKeys.len == 0 or hasField(oldObj, key):
             val = accessField(oldObj, key)
       else:
-        checkJson false, $($T, key, json)
+        checkJson false, "key '$1' for $2 not in $3" % [key, $T, json.pretty()]
     else:
       if json.hasKey key:
         numMatched.inc
@@ -187,7 +187,7 @@ template fromJsonFields(newObj, oldObj, json, discKeys, opt) =
     else:
       json.len == num and num == numMatched
 
-  checkJson ok, $(json.len, num, numMatched, $T, json)
+  checkJson ok, "There were $1 keys (expecting $2) for $3 with $4" % [$json.len, $num, $T, json.pretty()]
 
 proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions())
 
@@ -220,13 +220,14 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
   adding "json path" leading to `b` can be added in future work.
   ]#
   checkJson b != nil, $($T, b)
-  when compiles(fromJsonHook(a, b)): fromJsonHook(a, b)
+  when compiles(fromJsonHook(a, b, opt)): fromJsonHook(a, b, opt)
+  elif compiles(fromJsonHook(a, b)): fromJsonHook(a, b)
   elif T is bool: a = to(b,T)
   elif T is enum:
     case b.kind
     of JInt: a = T(b.getBiggestInt())
     of JString: a = parseEnum[T](b.getStr())
-    else: checkJson false, $($T, " ", b)
+    else: checkJson false, fmt"Expecting int/string for {$T} got {b.pretty()}"
   elif T is uint|uint64: a = T(to(b, uint64))
   elif T is Ordinal: a = cast[T](to(b, int))
   elif T is pointer: a = cast[pointer](to(b, int))
@@ -241,7 +242,7 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
     case b.kind
     of JNull: a = nil
     of JString: a = b.str
-    else: checkJson false, $($T, " ", b)
+    else: checkJson false, fmt"Expecting null/string for {$T} got {b.pretty()}"
   elif T is JsonNode: a = b
   elif T is ref | ptr:
     if b.kind == JNull: a = nil
@@ -249,7 +250,7 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
       a = T()
       fromJson(a[], b, opt)
   elif T is array:
-    checkJson a.len == b.len, $(a.len, b.len, $T)
+    checkJson a.len == b.len, fmt"Json array size doesn't match for {$T}"
     var i = 0
     for ai in mitems(a):
       fromJson(ai, b[i], opt)
@@ -285,11 +286,21 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
       fromJsonFields(a, nil, b, seq[string].default, opt)
     else:
       checkJson b.kind == JArray, $(b.kind) # we could customize whether to allow JNull
+
+      when compiles(tupleLen(T)):
+        let tupleSize = tupleLen(T)
+      else:
+        # Tuple len isn't in csources_v1 so using tupleLen would fail.
+        # Else branch basically never runs (tupleLen added in 1.1 and jsonutils in 1.4), but here for consistency
+        var tupleSize = 0
+        for val in fields(a):
+          tupleSize.inc
+
+      checkJson b.len == tupleSize, fmt"Json doesn't match expected length of {tupleSize}, got {b.pretty()}"
       var i = 0
       for val in fields(a):
         fromJson(val, b[i], opt)
         i.inc
-      checkJson b.len == i, $(b.len, i, $T, b) # could customize
   else:
     # checkJson not appropriate here
     static: doAssert false, "not yet implemented: " & $T
@@ -305,7 +316,8 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   ## .. note:: With `-d:nimPreviewJsonutilsHoleyEnum`, `toJson` now can 
   ##    serialize/deserialize holey enums as regular enums (via `ord`) instead of as strings.
   ##    It is expected that this behavior becomes the new default in upcoming versions.
-  when compiles(toJsonHook(a)): result = toJsonHook(a)
+  when compiles(toJsonHook(a, opt)): result = toJsonHook(a, opt)
+  elif compiles(toJsonHook(a)): result = toJsonHook(a)
   elif T is object | tuple:
     when T is object or isNamedTuple(T):
       result = newJObject()
@@ -348,7 +360,7 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   else: result = %a
 
 proc fromJsonHook*[K: string|cstring, V](t: var (Table[K, V] | OrderedTable[K, V]),
-                         jsonNode: JsonNode) =
+                         jsonNode: JsonNode, opt = Joptions()) =
   ## Enables `fromJson` for `Table` and `OrderedTable` types.
   ##
   ## See also:
@@ -366,9 +378,9 @@ proc fromJsonHook*[K: string|cstring, V](t: var (Table[K, V] | OrderedTable[K, V
           "type is `" & $jsonNode.kind & "`."
   clear(t)
   for k, v in jsonNode:
-    t[k] = jsonTo(v, V)
+    t[k] = jsonTo(v, V, opt)
 
-proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V])): JsonNode =
+proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V]), opt = initToJsonOptions()): JsonNode =
   ## Enables `toJson` for `Table` and `OrderedTable` types.
   ##
   ## See also:
@@ -388,9 +400,9 @@ proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V])): J
   result = newJObject()
   for k, v in pairs(t):
     # not sure if $k has overhead for string
-    result[(when K is string: k else: $k)] = toJson(v)
+    result[(when K is string: k else: $k)] = toJson(v, opt)
 
-proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode) =
+proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode, opt = Joptions()) =
   ## Enables `fromJson` for `HashSet` and `OrderedSet` types.
   ##
   ## See also:
@@ -408,9 +420,9 @@ proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode) =
           "type is `" & $jsonNode.kind & "`."
   clear(s)
   for v in jsonNode:
-    incl(s, jsonTo(v, A))
+    incl(s, jsonTo(v, A, opt))
 
-proc toJsonHook*[A](s: SomeSet[A]): JsonNode =
+proc toJsonHook*[A](s: SomeSet[A], opt = initToJsonOptions()): JsonNode =
   ## Enables `toJson` for `HashSet` and `OrderedSet` types.
   ##
   ## See also:
@@ -422,9 +434,9 @@ proc toJsonHook*[A](s: SomeSet[A]): JsonNode =
 
   result = newJArray()
   for k in s:
-    add(result, toJson(k))
+    add(result, toJson(k, opt))
 
-proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode) =
+proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode, opt = Joptions()) =
   ## Enables `fromJson` for `Option` types.
   ##
   ## See also:
@@ -438,11 +450,11 @@ proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode) =
     assert isNone(opt)
 
   if jsonNode.kind != JNull:
-    self = some(jsonTo(jsonNode, T))
+    self = some(jsonTo(jsonNode, T, opt))
   else:
     self = none[T]()
 
-proc toJsonHook*[T](self: Option[T]): JsonNode =
+proc toJsonHook*[T](self: Option[T], opt = initToJsonOptions()): JsonNode =
   ## Enables `toJson` for `Option` types.
   ##
   ## See also:
@@ -455,7 +467,7 @@ proc toJsonHook*[T](self: Option[T]): JsonNode =
     assert $toJson(optNone) == "null"
 
   if isSome(self):
-    toJson(get(self))
+    toJson(get(self), opt)
   else:
     newJNull()
 

@@ -7,6 +7,7 @@
 #
 
 # "Stack GC" for embedded devices or ultra performance requirements.
+import std/private/syslocks
 
 when defined(memProfiler):
   proc nimProfile(requestedSize: int) {.benign.}
