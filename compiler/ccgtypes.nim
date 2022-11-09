@@ -514,18 +514,21 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
           let structName = "_" & mangleRecFieldName(m, n[0].sym) & "_" & $i
           var a = newRopeAppender()
           genRecordFieldsAux(m, k, rectype, check, a, unionPrefix & $structName & ".")
-          if a != "":
-            if tfPacked notin rectype.flags:
-              unionBody.add("struct {")
+          # When 'k' is 'void', 'a' is the empty string and we just generate
+          # empty struct. This prevents field access errors when generating
+          # static initializers for the type.
+          # See issue #20699
+          if tfPacked notin rectype.flags:
+            unionBody.add("struct {")
+          else:
+            if hasAttribute in CC[m.config.cCompiler].props:
+              unionBody.add("struct __attribute__((__packed__)){")
             else:
-              if hasAttribute in CC[m.config.cCompiler].props:
-                unionBody.add("struct __attribute__((__packed__)){")
-              else:
-                unionBody.addf("#pragma pack(push, 1)$nstruct{", [])
-            unionBody.add(a)
-            unionBody.addf("} $1;$n", [structName])
-            if tfPacked in rectype.flags and hasAttribute notin CC[m.config.cCompiler].props:
-              unionBody.addf("#pragma pack(pop)$n", [])
+              unionBody.addf("#pragma pack(push, 1)$nstruct{", [])
+          unionBody.add(a)
+          unionBody.addf("} $1;$n", [structName])
+          if tfPacked in rectype.flags and hasAttribute notin CC[m.config.cCompiler].props:
+            unionBody.addf("#pragma pack(pop)$n", [])
         else:
           genRecordFieldsAux(m, k, rectype, check, unionBody, unionPrefix)
       else: internalError(m.config, "genRecordFieldsAux(record case branch)")
