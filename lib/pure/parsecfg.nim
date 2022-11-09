@@ -163,7 +163,7 @@ runnableExamples:
   assert dict.getSectionValue(section2, "can use the API to get converted values directly") == "true"
 
   let section3 = "Seletion A"
-  assert dict.getSectionValue(section3, 
+  assert dict.getSectionValue(section3,
     "space around section name will be ignored", "not an empty value") == ""
 
   let section4 = "Sections Can Be Indented"
@@ -543,8 +543,8 @@ proc loadConfig*(filename: string): Config =
   ## Loads the specified configuration file into a new Config instance.
   let file = open(filename, fmRead)
   let fileStream = newFileStream(file)
-  defer: fileStream.close()
   result = fileStream.loadConfig(filename)
+  fileStream.close()
 
 proc replace(s: string): string =
   var d = ""
@@ -606,21 +606,21 @@ proc writeConfig*(dict: Config, stream: Stream) =
 
 proc `$`*(dict: Config): string =
   ## Writes the contents of the table to string.
-  ## 
+  ##
   ## .. note:: Comment statement will be ignored.
   let stream = newStringStream()
-  defer: stream.close()
   dict.writeConfig(stream)
   result = stream.data
+  stream.close()
 
 proc writeConfig*(dict: Config, filename: string) =
   ## Writes the contents of the table to the specified configuration file.
-  ## 
+  ##
   ## .. note:: Comment statement will be ignored.
   let file = open(filename, fmWrite)
-  defer: file.close()
   let fileStream = newFileStream(file)
   dict.writeConfig(fileStream)
+  file.close()
 
 proc getSectionValue*(dict: Config, section, key: string, defaultVal = ""): string =
   ## Gets the key value of the specified Section.
