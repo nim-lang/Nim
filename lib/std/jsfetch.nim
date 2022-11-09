@@ -84,9 +84,9 @@ proc unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolic
     "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #, headers: #}".}
   ## .. warning:: Unsafe `newfetchOptions`.
 
-func newfetchOptions*(metod: HttpMethod; body: cstring;
-    mode: FetchModes; credentials: FetchCredentials; cache: FetchCaches; referrerPolicy: FetchReferrerPolicies;
-    keepalive: bool; redirect = frFollow; referrer = "client".cstring; integrity = "".cstring,
+func newfetchOptions*(metod = HttpGet; body: cstring = nil;
+    mode = fmCors; credentials = fcSameOrigin; cache = fchDefault; referrerPolicy = frpNoReferrerWhenDowngrade;
+    keepalive = false; redirect = frFollow; referrer = "client".cstring; integrity = "".cstring,
     headers: Headers = newHeaders()): FetchOptions =
   ## Constructor for `FetchOptions`.
   result = FetchOptions(
