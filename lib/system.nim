@@ -1595,7 +1595,8 @@ when not defined(js) and defined(nimV2):
       align: int16
       depth: int16
       display: ptr UncheckedArray[uint32] # classToken
-      name: cstring
+      when defined(nimTypeNames):
+        name: cstring
       traceImpl: pointer
       typeInfoV1: pointer # for backwards compat, usually nil
       flags: int

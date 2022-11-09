@@ -1349,15 +1349,6 @@ proc genDisplay(t: PType, depth: int): Rope =
   result.add "}"
 
 proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
-  var typeName: Rope
-  if isDefined(m.config, "nimTypeNames") and t.kind in {tyObject, tyDistinct}:
-    if incompleteType(t):
-      localError(m.config, info, "request for RTTI generation for incomplete object: " &
-                 typeToString(t))
-    typeName = genTypeInfo2Name(m, t)
-  else:
-    typeName = rope("NIM_NIL")
-
   cgsym(m, "TNimTypeV2")
   m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
 
@@ -1373,14 +1364,26 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
 
   let objDepth = if t.kind == tyObject: getObjDepth(t) else: -1
 
-  addf(typeEntry, "; $1.name = $2;$n; $1.size = sizeof($3); $1.align = (NI16) NIM_ALIGNOF($3); $1.depth = $4; $1.flags = $5;",
-    [name, typeName, getTypeDesc(m, t), rope(objDepth), rope(flags)])
+
+  if t.kind in {tyObject, tyDistinct} and incompleteType(t):
+    localError(m.config, info, "request for RTTI generation for incomplete object: " &
+              typeToString(t))
+
+  if isDefined(m.config, "nimTypeNames"):
+    var typeName: Rope
+    if t.kind in {tyObject, tyDistinct}:
+      typeName = genTypeInfo2Name(m, t)
+    else:
+      typeName = rope("NIM_NIL")
+    addf(typeEntry, "; $1.name = $2", [name, typeName])
+  addf(typeEntry, "; $1.size = sizeof($2); $1.align = (NI16) NIM_ALIGNOF($2); $1.depth = $3; $1.flags = $4;",
+    [name, getTypeDesc(m, t), rope(objDepth), rope(flags)])
 
   if objDepth >= 0:
     let objDisplay = genDisplay(t, objDepth)
     let objDisplayStore = getTempName(m)
     m.s[cfsVars].addf("static $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyUInt32), skVar), objDisplayStore, rope(objDepth+1), objDisplay])
-    addf(typeEntry, "; $1.display = $2;$n", [name, rope(objDisplayStore)])
+    addf(typeEntry, "$1.display = $2;$n", [name, rope(objDisplayStore)])
 
   m.s[cfsTypeInit3].add typeEntry
 
