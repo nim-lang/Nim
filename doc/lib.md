@@ -288,11 +288,11 @@ Internet Protocols and Support
   `asyncdispatch`.
 
 * [asyncftpclient](asyncftpclient.html)
-  his module implements an asynchronous FTP client using the `asyncnet`
+  This module implements an asynchronous FTP client using the `asyncnet`
   module.
 
 * [asynchttpserver](asynchttpserver.html)
-  his module implements an asynchronous HTTP server using the `asyncnet`
+  This module implements an asynchronous HTTP server using the `asyncnet`
   module.
 
 * [asyncnet](asyncnet.html)
