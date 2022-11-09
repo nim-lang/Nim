@@ -37,11 +37,6 @@ Automatic imports
   implicitly by the compiler. Do not import it directly. It relies on compiler
   magic to work.
 
-* [threads](threads.html)
-  Basic Nim thread support. **Note:** This is part of the system module. Do not
-  import it explicitly. Enabled with `--threads:on`:option:.
-
-
 Core
 ----
 
@@ -292,11 +287,11 @@ Internet Protocols and Support
   This module implements asynchronous file reading and writing using
   `asyncdispatch`.
 
-* `asyncftpclient](asyncftpclient.html)
+* [asyncftpclient](asyncftpclient.html)
   [his module implements an asynchronous FTP client using the `asyncnet`
   module.
 
-* `asynchttpserver](asynchttpserver.html)
+* [asynchttpserver](asynchttpserver.html)
   [his module implements an asynchronous HTTP server using the `asyncnet`
   module.
 
@@ -340,6 +335,9 @@ Internet Protocols and Support
 
 Threading
 ---------
+
+* [threads](threads.html)
+  Basic Nim thread support.
 
 * [threadpool](threadpool.html)
   Implements Nim's [spawn](manual_experimental.html#parallel-amp-spawn).
