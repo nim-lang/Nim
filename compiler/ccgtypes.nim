@@ -12,6 +12,7 @@
 # ------------------------- Name Mangling --------------------------------
 
 import sighashes, modulegraphs
+import std/md5
 
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
@@ -1272,27 +1273,23 @@ proc declareNimType(m: BModule, name: string; str: Rope, module: int) =
     m.s[cfsStrData].addf("extern $2 $1;$n", [str, nr])
 
 proc genTypeInfo2Name(m: BModule; t: PType): Rope =
-  var res = "|"
   var it = t
-  while it != nil:
-    it = it.skipTypes(skipPtrs)
-    if it.sym != nil and tfFromGeneric notin it.flags:
-      var m = it.sym.owner
-      while m != nil and m.kind != skModule: m = m.owner
-      if m == nil or sfSystemModule in m.flags:
-        # produce short names for system types:
-        res.add it.sym.name.s
-      else:
-        var p = m.owner
-        if p != nil and p.kind == skPackage:
-          res.add p.name.s & "."
-        res.add m.name.s & "."
-        res.add it.sym.name.s
+  it = it.skipTypes(skipPtrs)
+  if it.sym != nil and tfFromGeneric notin it.flags:
+    var m = it.sym.owner
+    while m != nil and m.kind != skModule: m = m.owner
+    if m == nil or sfSystemModule in m.flags:
+      # produce short names for system types:
+      result = it.sym.name.s
     else:
-      res.add $hashType(it)
-    res.add "|"
-    it = it[0]
-  result = makeCString(res)
+      var p = m.owner
+      if p != nil and p.kind == skPackage:
+        result.add p.name.s & "."
+      result.add m.name.s & "."
+      result.add it.sym.name.s
+  else:
+    result = $hashType(it)
+  result = makeCString(result)
 
 proc isTrivialProc(g: ModuleGraph; s: PSym): bool {.inline.} = getBody(g, s).len == 0
 
@@ -1321,9 +1318,39 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result:
         internalError(m.config, info, "no attached trace proc found")
     result.add rope("NIM_NIL")
 
-proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) =
+proc getObjDepth(t: PType): int16 =
+  var x = t
+  result = -1
+  while x != nil:
+    x = skipTypes(x, skipPtrs)
+    x = x[0]
+    inc(result)
+
+proc genDisplayElem(d: MD5Digest): uint32 =
+  result = 0
+  for i in 0..3:
+    result += uint32(d[i])
+    result = result shl 8
+
+proc genDisplay(t: PType, depth: int): Rope =
+  result = Rope"{"
+  var x = t
+  var seqs = newSeq[string](depth+1)
+  var i = 0
+  while x != nil:
+    x = skipTypes(x, skipPtrs)
+    seqs[i] = $genDisplayElem(MD5Digest(hashType(x)))
+    x = x[0]
+    inc i
+
+  for i in countdown(depth, 1):
+    result.add seqs[i] & ", "
+  result.add seqs[0]
+  result.add "}"
+
+proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   var typeName: Rope
-  if t.kind in {tyObject, tyDistinct}:
+  if isDefined(m.config, "nimTypeNames") and t.kind in {tyObject, tyDistinct}:
     if incompleteType(t):
       localError(m.config, info, "request for RTTI generation for incomplete object: " &
                  typeToString(t))
@@ -1344,8 +1371,16 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
   addf(typeEntry, "; $1.traceImpl = (void*)", [name])
   genHook(m, t, info, attachedTrace, typeEntry)
 
-  addf(typeEntry, "; $1.name = $2;$n; $1.size = sizeof($3); $1.align = NIM_ALIGNOF($3); $1.flags = $4;",
-    [name, typeName, getTypeDesc(m, t), rope(flags)])
+  let objDepth = if t.kind == tyObject: getObjDepth(t) else: -1
+
+  addf(typeEntry, "; $1.name = $2;$n; $1.size = sizeof($3); $1.align = (NI16) NIM_ALIGNOF($3); $1.depth = $4; $1.flags = $5;",
+    [name, typeName, getTypeDesc(m, t), rope(objDepth), rope(flags)])
+
+  if objDepth >= 0:
+    let objDisplay = genDisplay(t, objDepth)
+    let objDisplayStore = getTempName(m)
+    m.s[cfsVars].addf("static $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyUInt32), skVar), objDisplayStore, rope(objDepth+1), objDisplay])
+    addf(typeEntry, "; $1.display = $2;$n", [name, rope(objDisplayStore)])
 
   m.s[cfsTypeInit3].add typeEntry
 
