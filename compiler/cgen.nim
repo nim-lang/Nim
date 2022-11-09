@@ -307,6 +307,12 @@ proc lenExpr(p: BProc; a: TLoc): Rope =
   else:
     result = "($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p)]
 
+proc dataFieldAccessor(p: BProc, sym: Rope): Rope =
+  if optSeqDestructors in p.config.globalOptions:
+    result = "(" & sym & ").p"
+  else:
+    result = sym
+
 proc dataField(p: BProc): Rope =
   if optSeqDestructors in p.config.globalOptions:
     result = rope".p->data"

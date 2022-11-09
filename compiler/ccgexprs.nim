@@ -292,8 +292,8 @@ proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc) =
       linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $2Len_0;$n",
         [rdLoc(d), a.rdLoc])
   of tySequence:
-    linefmt(p, cpsStmts, "$1.Field0 = $2$3; $1.Field1 = $4;$n",
-      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
+    linefmt(p, cpsStmts, "$1.Field0 = ($5) ? ($2$3) : NIM_NIL; $1.Field1 = $4;$n",
+      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a), dataFieldAccessor(p, a.rdLoc)])
   of tyArray:
     linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $3;$n",
       [rdLoc(d), rdLoc(a), rope(lengthOrd(p.config, a.t))])
@@ -302,8 +302,8 @@ proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc) =
     if etyp.kind in {tyVar} and optSeqDestructors in p.config.globalOptions:
       linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
 
-    linefmt(p, cpsStmts, "$1.Field0 = $2$3; $1.Field1 = $4;$n",
-      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
+    linefmt(p, cpsStmts, "$1.Field0 = ($5) ? ($2$3) : NIM_NIL; $1.Field1 = $4;$n",
+      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a), dataFieldAccessor(p, a.rdLoc)])
   else:
     internalError(p.config, a.lode.info, "cannot handle " & $a.t.kind)
 
@@ -1714,7 +1714,9 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
       putIntoDest(p, b, e, "$1, $1Len_0" % [rdLoc(a)], a.storage)
     of tyString, tySequence:
       putIntoDest(p, b, e,
-                  "$1$3, $2" % [rdLoc(a), lenExpr(p, a), dataField(p)], a.storage)
+                  "($4) ? ($1$3) : NIM_NIL, $2" %
+                    [rdLoc(a), lenExpr(p, a), dataField(p), dataFieldAccessor(p, a.rdLoc)],
+                  a.storage)
     of tyArray:
       putIntoDest(p, b, e,
                   "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, a.t))], a.storage)
