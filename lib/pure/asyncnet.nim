@@ -114,11 +114,10 @@ when defineSsl:
 type
   # TODO: I would prefer to just do:
   # AsyncSocket* {.borrow: `.`.} = distinct Socket. But that doesn't work.
-  AsyncSocketDesc = object
+  AsyncSocketDesc {.pure, inheritable.} = object
     fd: SocketHandle
     closed: bool     ## determines whether this socket has been closed
     isBuffered: bool ## determines whether this socket is buffered.
-    buffer: array[0..BufferSize, char]
     currPos: int     # current index in buffer
     bufLen: int      # current length of buffer
     isSsl: bool
@@ -131,6 +130,8 @@ type
     domain: Domain
     sockType: SockType
     protocol: Protocol
+  BufferedAsyncSocketDesc = object of AsyncSocketDesc
+    buffer: array[0..BufferSize, char]
   AsyncSocket* = ref AsyncSocketDesc
 
 proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
@@ -149,7 +150,7 @@ proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
   ## async dispatcher. You need to do this manually. If you have used
   ## `newAsyncNativeSocket` to create `fd` then it's already registered.
   assert fd != osInvalidSocket.AsyncFD
-  new(result)
+  result = if buffered: new BufferedAsyncSocketDesc else: new AsyncSocketDesc
   result.fd = fd.SocketHandle
   fd.SocketHandle.setBlocking(false)
   if not fd.SocketHandle.setInheritable(inheritable):
@@ -328,9 +329,13 @@ template readInto(buf: pointer, size: int, socket: AsyncSocket,
     res = await asyncdispatch.recvInto(socket.fd.AsyncFD, buf, size, flags)
   res
 
+proc buffer(socket: AsyncSocket): ptr array[0..BufferSize, char] {.inline.} =
+  assert socket.isBuffered, "socket has no buffer"
+  addr cast[ref BufferedAsyncSocketDesc](socket).buffer
+
 template readIntoBuf(socket: AsyncSocket,
     flags: set[SocketFlag]): int =
-  var size = readInto(addr socket.buffer[0], BufferSize, socket, flags)
+  var size = readInto(socket.buffer, BufferSize, socket, flags)
   socket.currPos = 0
   socket.bufLen = size
   size
