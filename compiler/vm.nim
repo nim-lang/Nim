@@ -2127,12 +2127,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node.flags.incl nfIsRef
     of opcNccValue:
       decodeB(rkInt)
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       regs[ra].intVal = getOrDefault(c.graph.cacheCounters, destKey)
     of opcNccInc:
       let g = c.graph
       declBC()
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       let by = regs[rc].intVal
       let v = getOrDefault(g.cacheCounters, destKey)
       g.cacheCounters[destKey] = v+by
@@ -2140,7 +2140,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNcsAdd:
       let g = c.graph
       declBC()
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       let val = regs[rc].node
       if not contains(g.cacheSeqs, destKey):
         g.cacheSeqs[destKey] = newTree(nkStmtList, val)
@@ -2150,7 +2150,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNcsIncl:
       let g = c.graph
       declBC()
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       let val = regs[rc].node
       if not contains(g.cacheSeqs, destKey):
         g.cacheSeqs[destKey] = newTree(nkStmtList, val)
@@ -2164,22 +2164,22 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNcsLen:
       let g = c.graph
       decodeB(rkInt)
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       regs[ra].intVal =
         if contains(g.cacheSeqs, destKey): g.cacheSeqs[destKey].len else: 0
     of opcNcsAt:
       let g = c.graph
       decodeBC(rkNode)
       let idx = regs[rc].intVal
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       if contains(g.cacheSeqs, destKey) and idx <% g.cacheSeqs[destKey].len:
         regs[ra].node = g.cacheSeqs[destKey][idx.int]
       else:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, g.cacheSeqs[destKey].len-1))
     of opcNctPut:
       let g = c.graph
-      let destKey = regs[ra].node.strVal
-      let key = regs[instr.regB].node.strVal
+      let destKey {.cursor.} = regs[ra].node.strVal
+      let key {.cursor.} = regs[instr.regB].node.strVal
       let val = regs[instr.regC].node
       if not contains(g.cacheTables, destKey):
         g.cacheTables[destKey] = initBTree[string, PNode]()
@@ -2191,14 +2191,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNctLen:
       let g = c.graph
       decodeB(rkInt)
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       regs[ra].intVal =
         if contains(g.cacheTables, destKey): g.cacheTables[destKey].len else: 0
     of opcNctGet:
       let g = c.graph
       decodeBC(rkNode)
-      let destKey = regs[rb].node.strVal
-      let key = regs[rc].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
+      let key {.cursor.} = regs[rc].node.strVal
       if contains(g.cacheTables, destKey):
         if contains(g.cacheTables[destKey], key):
           regs[ra].node = getOrDefault(g.cacheTables[destKey], key)
@@ -2209,7 +2209,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNctHasNext:
       let g = c.graph
       decodeBC(rkInt)
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       regs[ra].intVal =
         if g.cacheTables.contains(destKey):
           ord(btrees.hasNext(g.cacheTables[destKey], regs[rc].intVal.int))
@@ -2218,7 +2218,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNctNext:
       let g = c.graph
       decodeBC(rkNode)
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       let index = regs[rc].intVal
       if contains(g.cacheTables, destKey):
         let (k, v, nextIndex) = btrees.next(g.cacheTables[destKey], index.int)
