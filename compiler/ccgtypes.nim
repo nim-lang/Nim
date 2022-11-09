@@ -1365,10 +1365,9 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   let objDepth = if t.kind == tyObject: getObjDepth(t) else: -1
 
 
-  if t.kind in {tyObject, tyDistinct}:
-    if incompleteType(t):
-      localError(m.config, info, "request for RTTI generation for incomplete object: " &
-                typeToString(t))
+  if t.kind in {tyObject, tyDistinct} and incompleteType(t):
+    localError(m.config, info, "request for RTTI generation for incomplete object: " &
+              typeToString(t))
 
   if isDefined(m.config, "nimTypeNames"):
     var typeName: Rope
