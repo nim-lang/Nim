@@ -300,14 +300,14 @@ proc isRightAssociative(tok: Token): bool {.inline.} =
 proc isUnary(tok: Token): bool =
   ## Check if the given token is a unary operator
   tok.tokType in {tkOpr, tkDotDot} and
-  tok.strongSpaceB == 0 and
+  tok.strongSpaceB == tsNone and
   tok.strongSpaceA
 
 proc checkBinary(p: Parser) {.inline.} =
   ## Check if the current parser token is a binary operator.
   # we don't check '..' here as that's too annoying
   if p.tok.tokType == tkOpr:
-    if p.tok.strongSpaceB > 0 and not p.tok.strongSpaceA:
+    if p.tok.strongSpaceB == tsTrailing and not p.tok.strongSpaceA:
       parMessage(p, warnInconsistentSpacing, prettyTok(p.tok))
 
 #| module = stmt ^* (';' / IND{=})
