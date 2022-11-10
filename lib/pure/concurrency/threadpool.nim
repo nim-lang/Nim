@@ -102,7 +102,7 @@ type
     idx: int
 
   FlowVarBase* = ref FlowVarBaseObj ## Untyped base class for `FlowVar[T] <#FlowVar>`_.
-  FlowVarBaseObj = object of RootObj
+  FlowVarBaseObj {.acyclic.} = object of RootObj
     ready, usesSemaphore, awaited: bool
     cv: Semaphore  # for 'blockUntilAny' support
     ai: ptr AwaitInfo
@@ -111,7 +111,7 @@ type
                    # be RootRef here otherwise the wrong GC keeps track of it!
     owner: pointer # ptr Worker
 
-  FlowVarObj[T] = object of FlowVarBaseObj
+  FlowVarObj[T] {.acyclic.} = object of FlowVarBaseObj
     blob: T
 
   FlowVar*[T] {.compilerproc.} = ref FlowVarObj[T] ## A data flow variable.
