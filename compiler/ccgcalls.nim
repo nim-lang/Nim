@@ -80,7 +80,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
   var pl = callee & "(" & params
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInst)
-  if typ[0] != nil:
+  if typ[0] != nil and typ[0].kind != tyVoid:
     if isInvalidReturnType(p.config, typ):
       if params.len != 0: pl.add(", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
@@ -301,8 +301,11 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
     else:
       addRdLoc(a, result)
   else:
-    initLocExprSingleUse(p, n, a)
-    addRdLoc(withTmpIfNeeded(p, a, needsTmp), result)
+    if param.typ.kind == tyVoid:
+      expr(p, n, a)
+    else:
+      initLocExprSingleUse(p, n, a)
+      addRdLoc(withTmpIfNeeded(p, a, needsTmp), result)
   #assert result != nil
 
 proc genArgNoParam(p: BProc, n: PNode; result: var Rope; needsTmp = false) =
@@ -396,6 +399,8 @@ proc genParams(p: BProc, ri: PNode, typ: PType; result: var Rope) =
         if oldLen != result.len:
           result.add(", ")
           oldLen = result.len
+        genArg(p, ri[i], paramType.sym, ri, result, needTmp[i-1])
+      elif paramType.typ.kind == tyVoid:
         genArg(p, ri[i], paramType.sym, ri, result, needTmp[i-1])
     else:
       if oldLen != result.len:

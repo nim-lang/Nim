@@ -1073,7 +1073,7 @@ proc genProcAux(m: BModule, prc: PSym) =
   if sfInjectDestructors in prc.flags:
     procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
 
-  if sfPure notin prc.flags and prc.typ[0] != nil:
+  if sfPure notin prc.flags and prc.typ[0] != nil and prc.typ[0].kind != tyVoid:
     if resultPos >= prc.ast.len:
       internalError(m.config, prc.info, "proc has no result symbol")
     let resNode = prc.ast[resultPos]
