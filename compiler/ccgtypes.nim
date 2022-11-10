@@ -514,18 +514,21 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
           let structName = "_" & mangleRecFieldName(m, n[0].sym) & "_" & $i
           var a = newRopeAppender()
           genRecordFieldsAux(m, k, rectype, check, a, unionPrefix & $structName & ".")
-          if a != "":
-            if tfPacked notin rectype.flags:
-              unionBody.add("struct {")
+          # When 'k' is 'void', 'a' is the empty string and we just generate
+          # empty struct. This prevents field access errors when generating
+          # static initializers for the type.
+          # See issue #20699
+          if tfPacked notin rectype.flags:
+            unionBody.add("struct {")
+          else:
+            if hasAttribute in CC[m.config.cCompiler].props:
+              unionBody.add("struct __attribute__((__packed__)){")
             else:
-              if hasAttribute in CC[m.config.cCompiler].props:
-                unionBody.add("struct __attribute__((__packed__)){")
-              else:
-                unionBody.addf("#pragma pack(push, 1)$nstruct{", [])
-            unionBody.add(a)
-            unionBody.addf("} $1;$n", [structName])
-            if tfPacked in rectype.flags and hasAttribute notin CC[m.config.cCompiler].props:
-              unionBody.addf("#pragma pack(pop)$n", [])
+              unionBody.addf("#pragma pack(push, 1)$nstruct{", [])
+          unionBody.add(a)
+          unionBody.addf("} $1;$n", [structName])
+          if tfPacked in rectype.flags and hasAttribute notin CC[m.config.cCompiler].props:
+            unionBody.addf("#pragma pack(pop)$n", [])
         else:
           genRecordFieldsAux(m, k, rectype, check, unionBody, unionPrefix)
       else: internalError(m.config, "genRecordFieldsAux(record case branch)")
@@ -1349,15 +1352,6 @@ proc genDisplay(t: PType, depth: int): Rope =
   result.add "}"
 
 proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
-  var typeName: Rope
-  if isDefined(m.config, "nimTypeNames") and t.kind in {tyObject, tyDistinct}:
-    if incompleteType(t):
-      localError(m.config, info, "request for RTTI generation for incomplete object: " &
-                 typeToString(t))
-    typeName = genTypeInfo2Name(m, t)
-  else:
-    typeName = rope("NIM_NIL")
-
   cgsym(m, "TNimTypeV2")
   m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
 
@@ -1373,14 +1367,26 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
 
   let objDepth = if t.kind == tyObject: getObjDepth(t) else: -1
 
-  addf(typeEntry, "; $1.name = $2;$n; $1.size = sizeof($3); $1.align = (NI16) NIM_ALIGNOF($3); $1.depth = $4; $1.flags = $5;",
-    [name, typeName, getTypeDesc(m, t), rope(objDepth), rope(flags)])
+
+  if t.kind in {tyObject, tyDistinct} and incompleteType(t):
+    localError(m.config, info, "request for RTTI generation for incomplete object: " &
+              typeToString(t))
+
+  if isDefined(m.config, "nimTypeNames"):
+    var typeName: Rope
+    if t.kind in {tyObject, tyDistinct}:
+      typeName = genTypeInfo2Name(m, t)
+    else:
+      typeName = rope("NIM_NIL")
+    addf(typeEntry, "; $1.name = $2", [name, typeName])
+  addf(typeEntry, "; $1.size = sizeof($2); $1.align = (NI16) NIM_ALIGNOF($2); $1.depth = $3; $1.flags = $4;",
+    [name, getTypeDesc(m, t), rope(objDepth), rope(flags)])
 
   if objDepth >= 0:
     let objDisplay = genDisplay(t, objDepth)
     let objDisplayStore = getTempName(m)
     m.s[cfsVars].addf("static $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyUInt32), skVar), objDisplayStore, rope(objDepth+1), objDisplay])
-    addf(typeEntry, "; $1.display = $2;$n", [name, rope(objDisplayStore)])
+    addf(typeEntry, "$1.display = $2;$n", [name, rope(objDisplayStore)])
 
   m.s[cfsTypeInit3].add typeEntry
 
