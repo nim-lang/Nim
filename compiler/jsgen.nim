@@ -1434,8 +1434,19 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     of nkConv:
       genAddr(p, n[0], r)
     of nkStmtListExpr:
-      if n.len == 1: gen(p, n[0], r)
-      else: internalError(p.config, n[0].info, "genAddr for complex nkStmtListExpr")
+      let x = n[0]
+      if n.len == 1:
+        let isExpr = not isEmptyType(x.typ)
+        if x.kind == nkStmtListExpr and isExpr and n.kind in {nkHiddenAddr, nkAddr}:
+          for i in 0 ..< x.len - isExpr.ord:
+            genStmt(p, x[i])
+          let l = lastSon(x)
+          var y = newNodeIT(n.kind, l.info, n.typ)
+          y.add l
+          genAddr(p, y, r)
+        else:
+          gen(p, x, r)
+      else: internalError(p.config, x.info, "genAddr for complex nkStmtListExpr")
     of nkCallKinds:
       if n[0].typ.kind == tyOpenArray:
         # 'var openArray' for instance produces an 'addr' but this is harmless:
