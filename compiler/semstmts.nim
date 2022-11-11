@@ -740,7 +740,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x)
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
         message(c.config, v.info, hintGlobalVar)
-
+      if {sfGlobal, sfPure} <= v.flags and 
+          def.kind == nkSym and def.sym.kind in {skVar, skLet, skParam} and not 
+          ({sfGlobal, sfPure} <= def.sym.flags or
+            sfCompileTime in def.sym.flags):
+        localError(c.config, def.info, "cannot asign to global variable")
       suggestSym(c.graph, v.info, v, c.graph.usageSym)
 
 proc semConst(c: PContext, n: PNode): PNode =
