@@ -229,7 +229,7 @@ when defineSsl:
     let len = bioCtrlPending(socket.bioOut)
     if len > 0:
       var data = newString(len)
-      let read = bioRead(socket.bioOut, addr data[0], len)
+      let read = bioRead(socket.bioOut, cast[cstring](addr data[0]), len)
       assert read != 0
       if read < 0:
         raiseSSLError()
