@@ -190,3 +190,6 @@ proc repr*[T](x: openArray[T]): string =
   ## .. code-block:: Nim
   ##   $(@[23, 45].toOpenArray(0, 1)) == "[23, 45]"
   collectionToRepr(x, "[", ", ", "]")
+
+proc repr*[T](x: UncheckedArray[T]): string =
+  "[...]"
