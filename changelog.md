@@ -20,6 +20,10 @@
 
 ## Standard library additions and changes
 
+- Pointer to `cstring` conversion now triggers a `[PtrToCstringConv]` warning.
+  This warning will become an error in future versions! Use a `cast` operation
+  like `cast[cstring](x)` instead.
+
 ## Standard library additions and changes
 
 - `macros.parseExpr` and `macros.parseStmt` now accept an optional

@@ -76,6 +76,7 @@ type
     warnAnyEnumConv = "AnyEnumConv",
     warnHoleEnumConv = "HoleEnumConv",
     warnCstringConv = "CStringConv",
+    warnPtrToCstringConv = "PtrToCstringConv",
     warnEffect = "Effect",
     warnUser = "User",
     # hints
@@ -166,6 +167,7 @@ const
     warnAnyEnumConv: "$1",
     warnHoleEnumConv: "$1",
     warnCstringConv: "$1",
+    warnPtrToCstringConv: "unsafe conversion to 'cstring' from '$1'; this will become a compile time error in the future",
     warnEffect: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
