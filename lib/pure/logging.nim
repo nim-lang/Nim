@@ -265,8 +265,6 @@ when not defined(js):
       baseMode: FileMode # initial file mode
       logFiles: int # how many log files already created, e.g. basename.1, basename.2...
       bufSize: int # size of output buffer (-1: use system defaults, 0: unbuffered, >0: fixed buffer size)
-      flushThreshold*: Level ## Only messages that are at or above this
-                           ## threshold will be flushed immediately
 
 var
   level {.threadvar.}: Level          ## global log filter
