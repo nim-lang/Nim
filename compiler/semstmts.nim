@@ -36,6 +36,7 @@ const
   errRecursiveDependencyX = "recursive dependency: '$1'"
   errRecursiveDependencyIteratorX = "recursion is not supported in iterators: '$1'"
   errPragmaOnlyInHeaderOfProcX = "pragmas are only allowed in the header of a proc; redefinition of $1"
+  errCannotAsignToGlobal = "cannot asign to global variable"
 
 proc semDiscard(c: PContext, n: PNode): PNode =
   result = n
@@ -740,11 +741,17 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x)
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
         message(c.config, v.info, hintGlobalVar)
-      if {sfGlobal, sfPure} <= v.flags and 
-          def.kind == nkSym and def.sym.kind in {skVar, skLet, skParam} and not 
+      let isGlobal = {sfGlobal, sfPure} <= v.flags
+      if isGlobal and def.kind == nkCall:
+        for z in 1 ..< def.len:
+          if def[z].kind == nkSym and def[z].sym.kind in {skVar, skLet} and 
+            not ({sfGlobal, sfPure} <= def[z].sym.flags):
+            localError(c.config, def.info, errCannotAsignToGlobal)
+      if isGlobal and 
+          def.kind == nkSym and def.sym.kind in {skVar, skLet} and not 
           ({sfGlobal, sfPure} <= def.sym.flags or
             sfCompileTime in def.sym.flags):
-        localError(c.config, def.info, "cannot asign to global variable")
+        localError(c.config, def.info, errCannotAsignToGlobal)
       suggestSym(c.graph, v.info, v, c.graph.usageSym)
 
 proc semConst(c: PContext, n: PNode): PNode =
