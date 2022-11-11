@@ -94,9 +94,9 @@ else:
         var buf = newSeq[char](requiredSize + 1)
         let buf2 = buf[0].addr
         if wcstombs(buf2, wideName, csize_t(requiredSize + 1)) != high(csize_t):
-          var ptrToEnv = c_getenv(buf2)
+          var ptrToEnv = c_getenv(cast[cstring](buf2))
           ptrToEnv[0] = '\0'
-          ptrToEnv = c_getenv(buf2)
+          ptrToEnv = c_getenv(cast[cstring](buf2))
           ptrToEnv[1] = '='
 
     # And now, we have to update the outer environment to have a proper empty value.
