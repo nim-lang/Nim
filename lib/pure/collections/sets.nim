@@ -50,6 +50,9 @@
 import
   hashes, math
 
+when not defined(nimHasEffectsOf):
+  {.pragma: effectsOf.}
+
 {.pragma: myShallow.}
 # For "integer-like A" that are too big for intsets/bit-vectors to be practical,
 # it would be best to shrink hcode to the same size as the integer.  Larger
@@ -556,7 +559,7 @@ proc `==`*[A](s, t: HashSet[A]): bool =
 
   s.counter == t.counter and s <= t
 
-proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
+proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] {.effectsOf: op.} =
   ## Returns a new set after applying `op` proc on each of the elements of
   ##`data` set.
   ##

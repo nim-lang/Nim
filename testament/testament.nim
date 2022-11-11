@@ -43,7 +43,7 @@ const
 
 Command:
   p|pat|pattern <glob>        run all the tests matching the given pattern
-  all                         run all tests
+  all                         run all tests in category folders
   c|cat|category <category>   run all the tests of a certain category
   r|run <test>                run single test file
   html                        generate $1 from the database

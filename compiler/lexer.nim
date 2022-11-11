@@ -93,19 +93,22 @@ type
                               # so that it is the correct default value
     base2, base8, base16
 
-  Token* = object             # a Nim token
-    tokType*: TokType         # the type of the token
-    indent*: int              # the indentation; != -1 if the token has been
-                              # preceded with indentation
-    ident*: PIdent            # the parsed identifier
-    iNumber*: BiggestInt      # the parsed integer literal
-    fNumber*: BiggestFloat    # the parsed floating point literal
-    base*: NumericalBase      # the numerical base; only valid for int
-                              # or float literals
-    strongSpaceA*: bool       # leading spaces of an operator
-    strongSpaceB*: int8       # trailing spaces of an operator
-    literal*: string          # the parsed (string) literal; and
-                              # documentation comments are here too
+  TokenSpacing* = enum
+    tsNone, tsTrailing, tsEof
+
+  Token* = object                # a Nim token
+    tokType*: TokType            # the type of the token
+    indent*: int                 # the indentation; != -1 if the token has been
+                                 # preceded with indentation
+    ident*: PIdent               # the parsed identifier
+    iNumber*: BiggestInt         # the parsed integer literal
+    fNumber*: BiggestFloat       # the parsed floating point literal
+    base*: NumericalBase         # the numerical base; only valid for int
+                                 # or float literals
+    strongSpaceA*: bool          # leading spaces of an operator
+    strongSpaceB*: TokenSpacing  # trailing spaces of an operator
+    literal*: string             # the parsed (string) literal; and
+                                 # documentation comments are here too
     line*, col*: int
     when defined(nimpretty):
       offsetA*, offsetB*: int # used for pretty printing so that literals
@@ -955,13 +958,13 @@ proc getOperator(L: var Lexer, tok: var Token) =
   tokenEnd(tok, pos-1)
   # advance pos but don't store it in L.bufpos so the next token (which might
   # be an operator too) gets the preceding spaces:
-  tok.strongSpaceB = 0
+  tok.strongSpaceB = tsNone
   while L.buf[pos] == ' ':
     inc pos
-    if tok.strongSpaceB < 1:
-      inc(tok.strongSpaceB)
+    if tok.strongSpaceB != tsTrailing:
+      tok.strongSpaceB = tsTrailing
   if L.buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
-    tok.strongSpaceB = -1
+    tok.strongSpaceB = tsEof
 
 proc getPrecedence*(tok: Token): int =
   ## Calculates the precedence of the given token.

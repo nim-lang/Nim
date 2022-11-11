@@ -47,14 +47,14 @@ proc nimLoadLibraryError(path: string) =
         copyMem(msg[msgIdx].addr, badExe.cstring, badExe.len)
       discard MessageBoxA(nil, msg[0].addr, nil, 0)
   cstderr.rawWrite("\n")
-  quit(1)
+  rawQuit(1)
 
 proc procAddrError(name: cstring) {.compilerproc, nonReloadable, hcrInline.} =
   # carefully written to avoid memory allocation:
   cstderr.rawWrite("could not import: ")
   cstderr.rawWrite(name)
   cstderr.rawWrite("\n")
-  quit(1)
+  rawQuit(1)
 
 # this code was inspired from Lua's source code:
 # Lua - An Extensible Extension Language
@@ -180,19 +180,19 @@ elif defined(nintendoswitch) or defined(freertos) or defined(zephyr):
   proc nimUnloadLibrary(lib: LibHandle) =
     cstderr.rawWrite("nimUnLoadLibrary not implemented")
     cstderr.rawWrite("\n")
-    quit(1)
+    rawQuit(1)
 
   proc nimLoadLibrary(path: string): LibHandle =
     cstderr.rawWrite("nimLoadLibrary not implemented")
     cstderr.rawWrite("\n")
-    quit(1)
+    rawQuit(1)
 
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     cstderr.rawWrite("nimGetProAddr not implemented")
     cstderr.rawWrite(name)
     cstderr.rawWrite("\n")
-    quit(1)
+    rawQuit(1)
 
 else:
   {.error: "no implementation for dyncalls".}
