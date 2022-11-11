@@ -199,6 +199,12 @@ const
   ## If a different format string is preferred, refer to the
   ## `documentation about format strings<#basic-usage-format-strings>`_
   ## for more information, including a list of available variables.
+  defaultFlushThreshold = when defined(nimFlushAllLogs): lvlAll else: lvlError
+  ## The threshold above which log messages to file-like loggers
+  ## are automatically flushed.
+  ## 
+  ## By default, only error and fatal messages are logged,
+  ## but defining ``-d:nimFlushAllLogs`` will make all levels be flushed
 
 type
   Logger* = ref object of RootObj
@@ -388,7 +394,7 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
         discard
 
 proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr,
-    useStderr = false, flushThreshold = lvlError): ConsoleLogger =
+    useStderr = false, flushThreshold = defaultFlushThreshold): ConsoleLogger =
   ## Creates a new `ConsoleLogger<#ConsoleLogger>`_.
   ##
   ## By default, log messages are written to ``stdout``. If ``useStderr`` is
@@ -459,7 +465,7 @@ when not defined(js):
   proc newFileLogger*(file: File,
                       levelThreshold = lvlAll,
                       fmtStr = defaultFmtStr,
-                      flushThreshold = lvlError): FileLogger =
+                      flushThreshold = defaultFlushThreshold): FileLogger =
     ## Creates a new `FileLogger<#FileLogger>`_ that uses the given file handle.
     ##
     ## **Note:** This proc is not available for the JavaScript backend.
@@ -491,7 +497,7 @@ when not defined(js):
                       levelThreshold = lvlAll,
                       fmtStr = defaultFmtStr,
                       bufSize: int = -1,
-                      flushThreshold = lvlError): FileLogger =
+                      flushThreshold = defaultFlushThreshold): FileLogger =
     ## Creates a new `FileLogger<#FileLogger>`_ that logs to a file with the
     ## given filename.
     ##
@@ -548,7 +554,7 @@ when not defined(js):
                             fmtStr = defaultFmtStr,
                             maxLines: Positive = 1000,
                             bufSize: int = -1,
-                            flushThreshold = lvlError): RollingFileLogger =
+                            flushThreshold = defaultFlushThreshold): RollingFileLogger =
     ## Creates a new `RollingFileLogger<#RollingFileLogger>`_.
     ##
     ## Once the current log file being written to contains ``maxLines`` lines,
