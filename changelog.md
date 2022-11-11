@@ -96,6 +96,10 @@
 - The `gorge`/`staticExec` calls will now return a descriptive message in the output
   if the execution fails for whatever reason. To get back legacy behaviour use `-d:nimLegacyGorgeErrors`.
 
+- Pointer to `cstring` conversion now triggers a `[PtrToCstringConv]` warning.
+  This warning will become an error in future versions! Use a `cast` operation
+  like `cast[cstring](x)` instead.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
