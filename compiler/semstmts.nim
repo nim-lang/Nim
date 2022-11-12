@@ -36,7 +36,7 @@ const
   errRecursiveDependencyX = "recursive dependency: '$1'"
   errRecursiveDependencyIteratorX = "recursion is not supported in iterators: '$1'"
   errPragmaOnlyInHeaderOfProcX = "pragmas are only allowed in the header of a proc; redefinition of $1"
-  errCannotAssignToGlobal = "cannot assign to global variable"
+  errCannotAssignToGlobal = "cannot assign local to global variable"
 
 proc semDiscard(c: PContext, n: PNode): PNode =
   result = n
@@ -591,22 +591,22 @@ proc msgSymChoiceUseQualifier(c: PContext; n: PNode; note = errGenerated) =
     inc i
   message(c.config, n.info, note, err)
 
-proc isUseLocalVar(n: PNode): bool =
+template isLocalVarSym(n: PNode): bool =
+  n.kind == nkSym and 
+    n.sym.kind in {skVar, skLet} and not 
+    ({sfGlobal, sfPure} <= n.sym.flags or
+      sfCompileTime in n.sym.flags)
+  
+proc usesLocalVar(n: PNode): bool =
   for z in 1 ..< n.len:
-    if n[z].kind == nkSym and n[z].sym.kind in {skVar, skLet} and 
-      not ({sfGlobal, sfPure} <= n[z].sym.flags):
+    if n[z].isLocalVarSym:
       return true
     elif n[z].kind in nkCallKinds:
-      if isUseLocalVar(n[z]):
+      if usesLocalVar(n[z]):
         return true
 
-proc globalVarInitCheck(c: PContext, s: PSym, n: PNode) =
-  if n.kind in nkCallKinds and isUseLocalVar(n):
-    localError(c.config, n.info, errCannotAssignToGlobal)
-  elif n.kind == nkSym and 
-      n.sym.kind in {skVar, skLet} and not 
-      ({sfGlobal, sfPure} <= n.sym.flags or
-        sfCompileTime in n.sym.flags):
+proc globalVarInitCheck(c: PContext, n: PNode) =
+  if n.isLocalVarSym or n.kind in nkCallKinds and usesLocalVar(n):
     localError(c.config, n.info, errCannotAssignToGlobal)
 
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
@@ -761,7 +761,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         message(c.config, v.info, hintGlobalVar)
       let isGlobal = {sfGlobal, sfPure} <= v.flags
       if isGlobal:
-        globalVarInitCheck(c, v, def)
+        globalVarInitCheck(c, def)
       suggestSym(c.graph, v.info, v, c.graph.usageSym)
 
 proc semConst(c: PContext, n: PNode): PNode =
