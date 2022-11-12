@@ -607,7 +607,7 @@ proc globalVarInitCheck(c: PContext, s: PSym, n: PNode) =
       n.sym.kind in {skVar, skLet} and not 
       ({sfGlobal, sfPure} <= n.sym.flags or
         sfCompileTime in n.sym.flags):
-    localError(c.config, n.info, errCannotAsignToGlobal)
+    localError(c.config, n.info, errCannotAssignToGlobal)
 
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
