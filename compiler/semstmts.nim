@@ -759,8 +759,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x)
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
         message(c.config, v.info, hintGlobalVar)
-      let isGlobal = {sfGlobal, sfPure} <= v.flags
-      if isGlobal:
+      if {sfGlobal, sfPure} <= v.flags:
         globalVarInitCheck(c, def)
       suggestSym(c.graph, v.info, v, c.graph.usageSym)
 
