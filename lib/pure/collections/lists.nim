@@ -629,7 +629,7 @@ proc prepend*[T](L: var DoublyLinkedList[T], value: T) =
 
   prepend(L, newDoublyLinkedNode(value))
 
-func copy*[T](a: DoublyLinkedList[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
+proc copy*[T](a: DoublyLinkedList[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
   ## Creates a shallow copy of `a`.
   runnableExamples:
     from std/sequtils import toSeq
