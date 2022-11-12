@@ -3230,6 +3230,11 @@ proc caseObjDefaultBranch(obj: PNode; branch: Int128): int =
       return i
   assert(false, "unreachable")
 
+proc isEmptyCaseObjectBranch(n: PNode): bool =
+  for it in n:
+    if it.kind == nkSym and not isEmptyType(it.sym.typ): return false
+  return true
+
 proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
                      result: var Rope; count: var int;
                      isConst: bool, info: TLineInfo) =
@@ -3258,7 +3263,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
     let b = lastSon(obj[selectedBranch])
     # designated initilization is the only way to init non first element of unions
     # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
-    if b.kind == nkRecList and b.len > 0:
+    if b.kind == nkRecList and not isEmptyCaseObjectBranch(b):
       result.add "._" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = {"
       getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
       result.add "}"
