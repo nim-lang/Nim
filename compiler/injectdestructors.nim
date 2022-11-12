@@ -836,7 +836,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
           for j in 0..<it.len-1:
             itCopy.add it[j]
           var flags = {sfSingleUsedTemp}
-          if it.kind == nkIdentDefs and it.len == 3 and it[0].kind == nkSym and
+          if it.kind == nkIdentDefs and it[0].kind == nkSym and
                                         sfGlobal in it[0].sym.flags:
             flags.incl sfGlobal
           itCopy.add p(it[^1], c, s, normal, tmpFlags = flags)
