@@ -481,7 +481,7 @@ when not useNimNetLite:
       result = newString(addrLen)
       let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
       when not useWinVersion:
-        if posix.inet_ntop(posix.AF_INET6, addr6, addr result[0],
+        if posix.inet_ntop(posix.AF_INET6, addr6, cast[cstring](addr result[0]),
                           result.len.int32) == nil:
           raiseOSError(osLastError())
         if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
