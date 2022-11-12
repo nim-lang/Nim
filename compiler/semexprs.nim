@@ -2402,12 +2402,16 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags; expectedType: P
     markUsed(c, n.info, s)
     result = semSizeof(c, setMs(n, s))
   of mArrToSeq, mOpenArrayToSeq:
-    if n.len == 2 and expectedType != nil and (
+    if expectedType != nil and (
         let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
         expected.kind in {tySequence, tyOpenArray}):
       # seq type inference
       var arrayType = newType(tyOpenArray, nextTypeId(c.idgen), expected.owner)
       arrayType.rawAddSon(expected[0])
+      if n[0].kind == nkSym and sfFromGeneric in n[0].sym.flags:
+        # may have been resolved to `@`[empty] at some point,
+        # reset to `@` to deal with this
+        n[0] = newSymNode(n[0].sym.owner, n[0].info)
       n[1] = semExpr(c, n[1], flags, arrayType)
     result = semDirectOp(c, n, flags, expectedType)
   else:
