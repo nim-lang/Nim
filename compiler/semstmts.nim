@@ -602,7 +602,7 @@ proc isUseLocalVar(n: PNode): bool =
 
 proc globalVarInitCheck(c: PContext, s: PSym, n: PNode) =
   if n.kind in nkCallKinds and isUseLocalVar(n):
-    localError(c.config, n.info, errCannotAsignToGlobal)
+    localError(c.config, n.info, errCannotAssignToGlobal)
   elif n.kind == nkSym and 
       n.sym.kind in {skVar, skLet} and not 
       ({sfGlobal, sfPure} <= n.sym.flags or
