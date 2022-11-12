@@ -122,7 +122,7 @@ pkg "npeg", "nimble testarc"
 pkg "numericalnim", "nimble nimCI"
 pkg "optionsutils"
 pkg "ormin", "nim c -o:orminn ormin.nim"
-pkg "parsetoml", url = "https://github.com/nim-lang/parsetoml", useHead = true
+pkg "parsetoml"
 pkg "patty"
 pkg "pixie"
 pkg "plotly", "nim c examples/all.nim"
