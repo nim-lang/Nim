@@ -1238,6 +1238,11 @@ proc track(tracked: PEffects, n: PNode) =
       message(tracked.config, n.info, warnCstringConv,
         "implicit conversion to 'cstring' from a non-const location: $1; this will become a compile time error in the future" %
           $n[1])
+    if n.typ.skipTypes(abstractInst).kind == tyCstring and
+        isCharArrayPtr(n[1].typ, true):
+      message(tracked.config, n.info, warnPtrToCstringConv,
+          $n[1].typ)
+
 
     let t = n.typ.skipTypes(abstractInst)
     if t.kind == tyEnum:

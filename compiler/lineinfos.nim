@@ -80,6 +80,7 @@ type
     warnAnyEnumConv = "AnyEnumConv",
     warnHoleEnumConv = "HoleEnumConv",
     warnCstringConv = "CStringConv",
+    warnPtrToCstringConv = "PtrToCstringConv",
     warnEffect = "Effect",
     warnCastSizes = "CastSizes"
     warnTemplateRedefinition = "TemplateRedefinition",
@@ -176,6 +177,7 @@ const
     warnAnyEnumConv: "$1",
     warnHoleEnumConv: "$1",
     warnCstringConv: "$1",
+    warnPtrToCstringConv: "unsafe conversion to 'cstring' from '$1'; this will become a compile time error in the future",
     warnEffect: "$1",
     warnCastSizes: "$1",
     warnTemplateRedefinition: "template '$1' is implicitly redefined, consider adding an explicit .redefine pragma",

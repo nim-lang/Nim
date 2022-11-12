@@ -60,7 +60,7 @@ pkg "criterion", allowFailure = true # pending https://github.com/disruptek/crit
 pkg "datamancer"
 pkg "dashing", "nim c tests/functional.nim"
 pkg "delaunay", url = "https://github.com/nim-lang/DelaunayNim", useHead = true
-pkg "docopt", url = "https://github.com/nim-lang/docopt.nim", useHead = true
+pkg "docopt"
 pkg "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg "elvis"
 pkg "fidget"
@@ -122,7 +122,7 @@ pkg "npeg", "nimble testarc"
 pkg "numericalnim", "nimble nimCI"
 pkg "optionsutils"
 pkg "ormin", "nim c -o:orminn ormin.nim"
-pkg "parsetoml", url = "https://github.com/nim-lang/parsetoml", useHead = true
+pkg "parsetoml"
 pkg "patty"
 pkg "pixie"
 pkg "plotly", "nim c examples/all.nim"
@@ -166,6 +166,6 @@ pkg "websocket", "nim c websocket.nim"
 pkg "winim", "nim c winim.nim"
 pkg "with"
 pkg "ws", allowFailure = true
-pkg "yaml", "nim c -r test/tserialization.nim", url = "https://github.com/nim-lang/NimYAML", useHead = true
+pkg "yaml", "nim c -r test/tserialization.nim"
 pkg "zero_functional", "nim c -r -d:nimNoLentIterators test.nim"
 pkg "zippy"
