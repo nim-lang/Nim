@@ -36,7 +36,7 @@ const
   errRecursiveDependencyX = "recursive dependency: '$1'"
   errRecursiveDependencyIteratorX = "recursion is not supported in iterators: '$1'"
   errPragmaOnlyInHeaderOfProcX = "pragmas are only allowed in the header of a proc; redefinition of $1"
-  errCannotAsignToGlobal = "cannot asign to global variable"
+  errCannotAssignToGlobal = "cannot assign to global variable"
 
 proc semDiscard(c: PContext, n: PNode): PNode =
   result = n
