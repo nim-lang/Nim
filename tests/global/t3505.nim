@@ -3,7 +3,7 @@ cmd: "nim check $options --hints:off $file"
 action: "reject"
 nimout: '''
 t3505.nim(22, 22) Error: cannot asign to global variable
-t3505.nim(30, 27) Error: cannot asign to global variable
+t3505.nim(31, 28) Error: cannot asign to global variable
 
 
 
@@ -24,9 +24,10 @@ foo()
 
 # issue #5132
 proc initX(it: float): int = 8
+proc initX2(it: int): int = it
 
 proc main() =
   var f: float
-  var x {.global.} = initX(f)
+  var x {.global.} = initX2(initX(f))
   
 main()

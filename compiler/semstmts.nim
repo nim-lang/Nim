@@ -591,6 +591,25 @@ proc msgSymChoiceUseQualifier(c: PContext; n: PNode; note = errGenerated) =
     inc i
   message(c.config, n.info, note, err)
 
+proc isUseLocalVar(n: PNode): bool =
+  for z in 1 ..< n.len:
+    if n[z].kind == nkSym and n[z].sym.kind in {skVar, skLet} and 
+      not ({sfGlobal, sfPure} <= n[z].sym.flags):
+      return true
+    elif n[z].kind == nkCall:
+      if isUseLocalVar(n[z]):
+        return true
+
+proc globalVarInitCheck(c: PContext, s: PSym, n: PNode) =
+  let isGlobal = {sfGlobal, sfPure} <= s.flags
+  if isGlobal and n.kind == nkCall and isUseLocalVar(n):
+    localError(c.config, n.info, errCannotAsignToGlobal)
+  if isGlobal and n.kind == nkSym and 
+      n.sym.kind in {skVar, skLet} and not 
+      ({sfGlobal, sfPure} <= n.sym.flags or
+        sfCompileTime in n.sym.flags):
+    localError(c.config, n.info, errCannotAsignToGlobal)
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)
@@ -741,17 +760,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x)
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
         message(c.config, v.info, hintGlobalVar)
-      let isGlobal = {sfGlobal, sfPure} <= v.flags
-      if isGlobal and def.kind == nkCall:
-        for z in 1 ..< def.len:
-          if def[z].kind == nkSym and def[z].sym.kind in {skVar, skLet} and 
-            not ({sfGlobal, sfPure} <= def[z].sym.flags):
-            localError(c.config, def.info, errCannotAsignToGlobal)
-      if isGlobal and 
-          def.kind == nkSym and def.sym.kind in {skVar, skLet} and not 
-          ({sfGlobal, sfPure} <= def.sym.flags or
-            sfCompileTime in def.sym.flags):
-        localError(c.config, def.info, errCannotAsignToGlobal)
+      globalVarInitCheck(c, v, def)
       suggestSym(c.graph, v.info, v, c.graph.usageSym)
 
 proc semConst(c: PContext, n: PNode): PNode =
