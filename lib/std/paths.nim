@@ -50,6 +50,13 @@ func `/`*(head: Path, tail: Path | static[string]): Path {.inline.} =
   ## * `splitPath proc`_
   ## * `uri.combine proc <uri.html#combine,Uri,Uri>`_
   ## * `uri./ proc <uri.html#/,Uri,string>`_
+  runnableExamples:
+    assert Path"/foo" / Path"bar" == Path"/foo/bar"
+    assert Path"/foo" / "bar" == Path"/foo/bar"
+    assert Path"foo" / "bar" == Path"foo/bar"
+    assert Path"foo" / "bar/" == Path"foo/bar/"
+    assert Path"foo/" / "bar/" == Path"foo/bar/"
+
   Path(joinPath(head.string, tail.string))
 
 func splitPath*(path: Path): tuple[head, tail: Path] {.inline.} =
