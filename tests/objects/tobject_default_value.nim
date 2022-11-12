@@ -476,20 +476,21 @@ template main {.dirty.} =
 
         foo2()
 
-    block: # issue #20699
-      type
-        Either[A,B] = object
-          case kind:bool
-          of false:
-            b: B
-          of true:
-              a: A
-        O = object of RootRef
 
-      proc oToEither(o:O):Either[O,void] =
-        Either[O,void](kind:true,a: o)
+  block: # issue #20699
+    type
+      Either[A,B] = object
+        case kind:bool
+        of false:
+          b: B
+        of true:
+            a: A
+      O = object of RootRef
 
-      discard oToEither(O())
+    proc oToEither(o:O):Either[O,void] =
+      Either[O,void](kind:true,a: o)
+
+    discard oToEither(O())
 
 static: main()
 main()
