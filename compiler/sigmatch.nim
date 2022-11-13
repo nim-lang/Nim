@@ -1391,8 +1391,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyNil: result = f.allowsNil
     of tyString: result = isConvertible
     of tyPtr:
-      # ptr[Tag, char] is not convertible to 'cstring' for now:
-      if isDefined(c.c.config, "nimPreviewSlimSystem"):
+      if isDefined(c.c.config, "nimPreviewCstringConversion"):
         result = isNone
       else:
         if a.len == 1:
