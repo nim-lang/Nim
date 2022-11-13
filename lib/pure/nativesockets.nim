@@ -509,7 +509,7 @@ when not useNimNetLite:
     if sockAddr.sa_family.cint == nativeAfInet:
       let addr4 = addr cast[ptr Sockaddr_in](sockAddr).sin_addr
       when not useWinVersion:
-        if posix.inet_ntop(posix.AF_INET, addr4, addr strAddress[0],
+        if posix.inet_ntop(posix.AF_INET, addr4, cast[cstring](addr strAddress[0]),
                           strAddress.len.int32) == nil:
           raiseOSError(osLastError())
       else:
@@ -519,7 +519,7 @@ when not useNimNetLite:
     elif sockAddr.sa_family.cint == nativeAfInet6:
       let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
       when not useWinVersion:
-        if posix.inet_ntop(posix.AF_INET6, addr6, addr strAddress[0],
+        if posix.inet_ntop(posix.AF_INET6, addr6, cast[cstring](addr strAddress[0]),
                           strAddress.len.int32) == nil:
           raiseOSError(osLastError())
         if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
