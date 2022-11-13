@@ -120,7 +120,10 @@ else: # main driver
     runTest("exit_0", 0)
     runTest("exitnow_139", 139)
     runTest("c_exit2_139", 139)
-    runTest("quit_139", 127)
+    when defined(posix):
+      runTest("quit_139", 127) # The quit value gets saturated to 127
+    else:
+      runTest("quit_139", 139)
 
   block execCmdTest:
     let output = compileNimProg("-d:release -d:case_testfile", "D20220705T221100")
