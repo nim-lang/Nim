@@ -3,9 +3,9 @@
 !*.*
 
 # Cache
-nimcache/
-rnimcache/
-dnimcache/
+nimcache*/
+rnimcache*/
+dnimcache*/
 
 *.o
 !/icons/*.o
