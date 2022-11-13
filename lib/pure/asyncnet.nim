@@ -459,7 +459,7 @@ proc send*(socket: AsyncSocket, data: string,
     when defineSsl:
       var copy = data
       sslLoop(socket, flags,
-        sslWrite(socket.sslHandle, addr copy[0], copy.len.cint))
+        sslWrite(socket.sslHandle, cast[cstring](addr copy[0]), copy.len.cint))
       await sendPendingSslData(socket, flags)
   else:
     await send(socket.fd.AsyncFD, data, flags)
