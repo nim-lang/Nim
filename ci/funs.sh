@@ -44,7 +44,7 @@ nimInternalBuildKochAndRunCI(){
   if ! echo_run ./koch runCI; then
     echo_run echo "runCI failed"
     echo_run nim r tools/ci_testresults.nim
-    return 1
+    exit 1
   fi
 }
 

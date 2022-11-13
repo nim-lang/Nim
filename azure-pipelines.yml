@@ -166,4 +166,3 @@ jobs:
       displayName: 'koch, Run CI'
       env:
         SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-      failOnStderr: true
