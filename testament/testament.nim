@@ -507,6 +507,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
             else:
               buf
           if exitCode != expected.exitCode:
+            given.err = reExitcodesDiffer
             r.addResult(test, target, extraOptions, "exitcode: " & $expected.exitCode,
                               "exitcode: " & $exitCode & "\n\nOutput:\n" &
                               bufB, reExitcodesDiffer)
