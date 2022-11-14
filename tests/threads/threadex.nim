@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc"
   outputsub: "Just a simple text for test"
 """
 
