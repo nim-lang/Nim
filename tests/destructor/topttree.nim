@@ -1,5 +1,5 @@
 discard """
-  matrix: "-d:useGcAssert -d:useSysAssert"
+  disabled: i386
   output: '''10.0
 60.0
 90.0
