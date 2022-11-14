@@ -20,7 +20,7 @@ proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
     var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, result[1].info, typ))
     asgnExpr.typ = typ
     var t = typ.skipTypes({tyGenericInst, tyAlias, tySink})[0]
-    var id: IntSet
+    var id = initIntSet()
     while true:
       asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, id)
       let base = t[0]
