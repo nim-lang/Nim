@@ -199,7 +199,10 @@ const
   ## If a different format string is preferred, refer to the
   ## `documentation about format strings<#basic-usage-format-strings>`_
   ## for more information, including a list of available variables.
-  defaultFlushThreshold = when defined(nimFlushAllLogs): lvlAll else: lvlError
+  defaultFlushThreshold = when NimMajor >= 2:
+      when defined(nimV1LogFlushBehavior): lvlError else: lvlAll
+    else:
+      when defined(nimFlushAllLogs): lvlAll else: lvlError
   ## The threshold above which log messages to file-like loggers
   ## are automatically flushed.
   ## 

@@ -100,6 +100,8 @@
   This warning will become an error in future versions! Use a `cast` operation
   like `cast[cstring](x)` instead.
 
+- `logging` will default to flushing all log level messages. To get the legacy behaviour of only flushing Error and Fatal messages, use `-d:nimV1LogFlushBehavior`.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
@@ -119,7 +121,7 @@
 - `std/oids` now uses `int64` to store time internally (before it was int32).
 - `std/uri.Uri` dollar `$` improved, precalculates the `string` result length from the `Uri`.
 - `std/uri.Uri.isIpv6` is now exported.
-- `std/logging.ConsoleLogger` and `FileLogger` now have a `flushThreshold` attribute to set what log message levels are automatically flushed. Use `-d:nimFlushAllLogs` to automatically flush all message levels.
+- `std/logging.ConsoleLogger` and `FileLogger` now have a `flushThreshold` attribute to set what log message levels are automatically flushed. For Nim v1 use `-d:nimFlushAllLogs` to automatically flush all message levels. Flushing all logs is the default behavior for Nim v2.
 
 
 - `std/net.IpAddress` dollar `$` improved, uses a fixed capacity for the `string` result based from the `IpAddressFamily`.
