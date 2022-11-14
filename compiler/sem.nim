@@ -662,7 +662,7 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
   defaultNodeField(c, a, aTyp, s)
 
 proc defaultNodeField(c: PContext, a: PNode): PNode =
-  var s: IntSet
+  var s = initIntSet()
   result = defaultNodeField(c, a, a.typ, s)
 
 include semtempl, semgnrc, semstmts, semexprs
