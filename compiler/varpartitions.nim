@@ -128,6 +128,8 @@ proc `$`*(config: ConfigRef; g: MutationInfo): string =
 
 proc hasSideEffect*(c: var Partitions; info: var MutationInfo): bool =
   for g in mitems c.graphs:
+    #echo g.flags, " ", g.param
+    #echo c.g.config $ g
     if g.flags * {isMutated, connectsConstParam} == {isMutated, connectsConstParam} and
         (mutationAfterConnection(g) or isMutatedDirectly in g.flags):
       info = g
@@ -223,6 +225,7 @@ proc connect(v: var Partitions; a, b: PSym; info: TLineInfo) =
   if bid < 0:
     return
 
+  #echo "connect called for ", a, " = ", b
   let ra = root(v, aid)
   let rb = root(v, bid)
   if ra != rb:
@@ -768,7 +771,16 @@ proc traverse(c: var Partitions; n: PNode) =
     inc c.inNoSideEffectSection, enforceNoSideEffects
     traverse(c, n.lastSon)
     dec c.inNoSideEffectSection, enforceNoSideEffects
-  of nkWhileStmt, nkForStmt, nkParForStmt:
+
+  of nkForStmt, nkParForStmt:
+    let iter = n[n.len-2]
+    for i in 0..<n.len-2:
+      deps(c, n[i], iter)
+
+    for child in n: traverse(c, child)
+    for child in n: traverse(c, child)
+
+  of nkWhileStmt:
     for child in n: traverse(c, child)
     # analyse loops twice so that 'abstractTime' suffices to detect cases
     # like:
@@ -777,10 +789,9 @@ proc traverse(c: var Partitions; n: PNode) =
     #     connect(graph, cursorVar)
     for child in n: traverse(c, child)
 
-    if n.kind == nkWhileStmt:
-      traverse(c, n[0])
-      # variables in while condition has longer alive time than local variables
-      # in the while loop body
+    traverse(c, n[0])
+    # variables in while condition has longer alive time than local variables
+    # in the while loop body
   else:
     for child in n: traverse(c, child)
 
@@ -858,7 +869,20 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
 
   of nkPragmaBlock:
     computeLiveRanges(c, n.lastSon)
-  of nkWhileStmt, nkForStmt, nkParForStmt:
+  of nkForStmt, nkParForStmt:
+    for i in 0 ..< n.len - 2:
+      registerVariable(c, n[i])
+
+    for child in n: computeLiveRanges(c, child)
+    # analyse loops twice so that 'abstractTime' suffices to detect cases
+    # like:
+    #   while cond:
+    #     mutate(graph)
+    #     connect(graph, cursorVar)
+    inc c.inLoop
+    for child in n: computeLiveRanges(c, child)
+    dec c.inLoop
+  of nkWhileStmt:
     for child in n: computeLiveRanges(c, child)
     # analyse loops twice so that 'abstractTime' suffices to detect cases
     # like:
@@ -869,10 +893,9 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     for child in n: computeLiveRanges(c, child)
     dec c.inLoop
 
-    if n.kind == nkWhileStmt:
-      computeLiveRanges(c, n[0])
-      # variables in while condition has longer alive time than local variables
-      # in the while loop body
+    computeLiveRanges(c, n[0])
+    # variables in while condition has longer alive time than local variables
+    # in the while loop body
   of nkElifBranch, nkElifExpr, nkElse, nkOfBranch:
     inc c.inConditional
     for child in n: computeLiveRanges(c, child)
