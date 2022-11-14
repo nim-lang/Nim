@@ -326,7 +326,12 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
       result.status = initUnknown
       result.defaults.add newTree(nkExprColonExpr, n, field.ast)
     else:
-      result.status = initNone
+      let defaultExpr = defaultNodeField(c, n)
+      if defaultExpr != nil:
+        result.status = initUnknown
+        result.defaults.add newTree(nkExprColonExpr, n, defaultExpr)
+      else:
+        result.status = initNone
   else:
     internalAssert c.config, false
 
