@@ -1,4 +1,5 @@
 discard """
+  matrix: "-d:useGcAssert -d:useSysAssert"
   output: '''10.0
 60.0
 90.0
