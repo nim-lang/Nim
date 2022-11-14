@@ -101,6 +101,8 @@ when defined(nimPreviewSlimSystem):
 
 import asyncdispatch, nativesockets, net, os
 
+from net {.all.} import SocketBuffer, buffer
+
 export SOBool
 
 # TODO: Remove duplication introduced by PR #4683.
@@ -116,11 +118,7 @@ type
   # AsyncSocket* {.borrow: `.`.} = distinct Socket. But that doesn't work.
   AsyncSocketDesc = object
     fd: SocketHandle
-    closed: bool     ## determines whether this socket has been closed
-    isBuffered: bool ## determines whether this socket is buffered.
-    buffer: array[0..BufferSize, char]
-    currPos: int     # current index in buffer
-    bufLen: int      # current length of buffer
+    closed: bool            ## determines whether this socket has been closed
     isSsl: bool
     when defineSsl:
       sslHandle: SslPtr
@@ -131,7 +129,15 @@ type
     domain: Domain
     sockType: SockType
     protocol: Protocol
+    case isBuffered: bool   ## determines whether this socket is buffered.
+    of false: discard
+    of true:
+      currPos: int          # current index in buffer
+      bufLen: int           # current length of buffer
+      bufferEntry: UncheckedArray[SocketBuffer]
   AsyncSocket* = ref AsyncSocketDesc
+
+template buffer(socket: AsyncSocket): SocketBuffer = socket.bufferEntry[0]
 
 proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
                      sockType: SockType = SOCK_STREAM,
@@ -149,15 +155,17 @@ proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
   ## async dispatcher. You need to do this manually. If you have used
   ## `newAsyncNativeSocket` to create `fd` then it's already registered.
   assert fd != osInvalidSocket.AsyncFD
-  new(result)
-  result.fd = fd.SocketHandle
+  let bufSize = if buffered: sizeof(SocketBuffer) else: 0
+  unsafeNew(result, sizeof(result[]) + bufSize)
+  result[] = AsyncSocketDesc(
+    fd: fd.SocketHandle,
+    isBuffered: buffered,
+    domain: domain,
+    sockType: sockType,
+    protocol: protocol)
   fd.SocketHandle.setBlocking(false)
   if not fd.SocketHandle.setInheritable(inheritable):
     raiseOSError(osLastError())
-  result.isBuffered = buffered
-  result.domain = domain
-  result.sockType = sockType
-  result.protocol = protocol
   if buffered:
     result.currPos = 0
 

@@ -153,24 +153,27 @@ const
   MaxLineLength* = 1_000_000
 
 type
-  SocketImpl* = object     ## socket type
+  SocketBuffer = array[0..BufferSize, char]
+  SocketImpl* = object        ## socket type
     fd: SocketHandle
-    isBuffered: bool       # determines whether this socket is buffered.
-    buffer: array[0..BufferSize, char]
-    currPos: int           # current index in buffer
-    bufLen: int            # current length of buffer
     when defineSsl:
       isSsl: bool
       sslHandle: SslPtr
       sslContext: SslContext
-      sslNoHandshake: bool # True if needs handshake.
+      sslNoHandshake: bool    # True if needs handshake.
       sslHasPeekChar: bool
       sslPeekChar: char
-      sslNoShutdown: bool # True if shutdown shouldn't be done.
-    lastError: OSErrorCode ## stores the last error on this socket
+      sslNoShutdown: bool     # True if shutdown shouldn't be done.
+    lastError: OSErrorCode    ## stores the last error on this socket
     domain: Domain
     sockType: SockType
     protocol: Protocol
+    case isBuffered: bool     # determines whether this socket is buffered.
+    of false: discard
+    of true:
+      currPos: int            # current index in buffer
+      bufLen: int             # current length of buffer
+      bufferEntry: UncheckedArray[SocketBuffer]
 
   Socket* = ref SocketImpl
 
@@ -265,7 +268,9 @@ proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
     protocol: Protocol = IPPROTO_TCP, buffered = true): owned(Socket) =
   ## Creates a new socket as specified by the params.
   assert fd != osInvalidSocket
-  result = Socket(
+  let bufSize = if buffered: sizeof(SocketBuffer) else: 0
+  unsafeNew(result, sizeof(result[]) + bufSize)
+  result[] = SocketImpl(
     fd: fd,
     isBuffered: buffered,
     domain: domain,
@@ -1355,6 +1360,8 @@ proc hasDataBuffered*(s: Socket): bool =
 
 proc isClosed(socket: Socket): bool =
   socket.fd == osInvalidSocket
+
+template buffer[T](socket: T): SocketBuffer = socket.bufferEntry[0]
 
 proc uniRecv(socket: Socket, buffer: pointer, size, flags: cint): int =
   ## Handles SSL and non-ssl recv in a nice package.
