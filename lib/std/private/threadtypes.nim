@@ -162,15 +162,12 @@ type
 const hasAllocStack* = defined(zephyr) # maybe freertos too?
 
 type
-  Thread*[TArg] = object
+  Thread* = object
     core*: PGcThread
     sys*: SysThread
-    when TArg is void:
-      dataFn*: proc () {.nimcall, gcsafe.}
-    else:
-      dataFn*: proc (m: TArg) {.nimcall, gcsafe.}
-      data*: TArg
+    dataFn*: proc (m: pointer) {.nimcall, gcsafe.}
+    data*: pointer
     when hasAllocStack:
       rawStack*: pointer
 
-proc `=copy`*[TArg](x: var Thread[TArg], y: Thread[TArg]) {.error.}
+proc `=copy`*(x: var Thread, y: Thread) {.error.}

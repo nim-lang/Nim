@@ -97,33 +97,33 @@ when defined(zephyr):
 
 {.push stack_trace:off.}
 when defined(windows):
-  proc threadProcWrapper[TArg](closure: pointer): int32 {.stdcall.} =
+  proc threadProcWrapper(closure: pointer): int32 {.stdcall.} =
     nimThreadProcWrapperBody(closure)
     # implicitly return 0
 elif defined(genode):
-  proc threadProcWrapper[TArg](closure: pointer) {.noconv.} =
+  proc threadProcWrapper(closure: pointer) {.noconv.} =
     nimThreadProcWrapperBody(closure)
 else:
-  proc threadProcWrapper[TArg](closure: pointer): pointer {.noconv.} =
+  proc threadProcWrapper(closure: pointer): pointer {.noconv.} =
     nimThreadProcWrapperBody(closure)
 {.pop.}
 
-proc running*[TArg](t: Thread[TArg]): bool {.inline.} =
+proc running*(t: Thread): bool {.inline.} =
   ## Returns true if `t` is running.
   result = t.dataFn != nil
 
-proc handle*[TArg](t: Thread[TArg]): SysThread {.inline.} =
+proc handle*(t: Thread): SysThread {.inline.} =
   ## Returns the thread handle of `t`.
   result = t.sys
 
 when hostOS == "windows":
   const MAXIMUM_WAIT_OBJECTS = 64
 
-  proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =
+  proc joinThread*(t: Thread) {.inline.} =
     ## Waits for the thread `t` to finish.
     discard waitForSingleObject(t.sys, -1'i32)
 
-  proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
+  proc joinThreads*(t: varargs[Thread]) =
     ## Waits for every thread in `t` to finish.
     var a: array[MAXIMUM_WAIT_OBJECTS, SysThread]
     var k = 0
@@ -135,25 +135,25 @@ when hostOS == "windows":
       inc(k, MAXIMUM_WAIT_OBJECTS)
 
 elif defined(genode):
-  proc joinThread*[TArg](t: Thread[TArg]) {.importcpp.}
+  proc joinThread*(t: Thread) {.importcpp.}
     ## Waits for the thread `t` to finish.
 
-  proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
+  proc joinThreads*(t: varargs[Thread]) =
     ## Waits for every thread in `t` to finish.
     for i in 0..t.high: joinThread(t[i])
 
 else:
-  proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =
+  proc joinThread*(t: Thread) {.inline.} =
     ## Waits for the thread `t` to finish.
     discard pthread_join(t.sys, nil)
 
-  proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
+  proc joinThreads*(t: varargs[Thread]) =
     ## Waits for every thread in `t` to finish.
     for i in 0..t.high: joinThread(t[i])
 
 when false:
   # XXX a thread should really release its heap here somehow:
-  proc destroyThread*[TArg](t: var Thread[TArg]) =
+  proc destroyThread*(t: var Thread) =
     ## Forces the thread `t` to terminate. This is potentially dangerous if
     ## you don't have full control over `t` and its acquired resources.
     when hostOS == "windows":
@@ -168,9 +168,9 @@ when false:
       t.core = nil
 
 when hostOS == "windows":
-  proc createThread*[TArg](t: var Thread[TArg],
-                           tp: proc (arg: TArg) {.thread, nimcall.},
-                           param: TArg) =
+  proc createThread*(t: var Thread,
+                           tp: proc (arg: pointer) {.thread, nimcall.},
+                           param: pointer) =
     ## Creates a new thread `t` and starts its execution.
     ##
     ## Entry point is the proc `tp`.
@@ -178,16 +178,16 @@ when hostOS == "windows":
     ## don't need to pass any data to the thread.
     t.core = cast[PGcThread](allocThreadStorage(sizeof(GcThread)))
 
-    when TArg isnot void: t.data = param
+    t.data = param
     t.dataFn = tp
     when hasSharedHeap: t.core.stackSize = ThreadStackSize
     var dummyThreadId: int32
-    t.sys = createThread(nil, ThreadStackSize, threadProcWrapper[TArg],
+    t.sys = createThread(nil, ThreadStackSize, threadProcWrapper[pointer],
                          addr(t), 0'i32, dummyThreadId)
     if t.sys <= 0:
       raise newException(ResourceExhaustedError, "cannot create thread")
 
-  proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
+  proc pinToCpu*(t: var Thread; cpu: Natural) =
     ## Pins a thread to a `CPU`:idx:.
     ##
     ## In other words sets a thread's `affinity`:idx:.
@@ -198,36 +198,34 @@ elif defined(genode):
   var affinityOffset: cuint = 1
     ## CPU affinity offset for next thread, safe to roll-over.
 
-  proc createThread*[TArg](t: var Thread[TArg],
-                           tp: proc (arg: TArg) {.thread, nimcall.},
-                           param: TArg) =
+  proc createThread*(t: var Thread,
+                           tp: proc (arg: pointer) {.thread, nimcall.},
+                           param: pointer) =
     t.core = cast[PGcThread](allocThreadStorage(sizeof(GcThread)))
 
-    when TArg isnot void: t.data = param
+    t.data = param
     t.dataFn = tp
     when hasSharedHeap: t.stackSize = ThreadStackSize
     t.sys.initThread(
       runtimeEnv,
       ThreadStackSize.culonglong,
-      threadProcWrapper[TArg], addr(t), affinityOffset)
+      threadProcWrapper, addr(t), affinityOffset)
     inc affinityOffset
 
-  proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
+  proc pinToCpu*(t: var Thread; cpu: Natural) =
     {.hint: "cannot change Genode thread CPU affinity after initialization".}
     discard
 
 else:
-  proc createThread*[TArg](t: var Thread[TArg],
-                           tp: proc (arg: TArg) {.thread, nimcall.},
-                           param: TArg) =
+  proc createThread*(t: var Thread,
+                           tp: proc (arg: pointer) {.thread, nimcall.},
+                           param: pointer) =
     ## Creates a new thread `t` and starts its execution.
     ##
     ## Entry point is the proc `tp`. `param` is passed to `tp`.
-    ## `TArg` can be `void` if you
-    ## don't need to pass any data to the thread.
     t.core = cast[PGcThread](allocThreadStorage(sizeof(GcThread)))
 
-    when TArg isnot void: t.data = param
+    t.data = param
     t.dataFn = tp
     when hasSharedHeap: t.core.stackSize = ThreadStackSize
     var a {.noinit.}: Pthread_attr
@@ -244,11 +242,11 @@ else:
     when not defined(ios):
       # This fails on iOS
       doAssert(setstacksizeResult == 0)
-    if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
+    if pthread_create(t.sys, a, threadProcWrapper[pointer], addr(t)) != 0:
       raise newException(ResourceExhaustedError, "cannot create thread")
     doAssert pthread_attr_destroy(a) == 0
 
-  proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
+  proc pinToCpu*(t: var Thread; cpu: Natural) =
     ## Pins a thread to a `CPU`:idx:.
     ##
     ## In other words sets a thread's `affinity`:idx:.
@@ -259,8 +257,8 @@ else:
       cpusetIncl(cpu.cint, s)
       setAffinity(t.sys, csize_t(sizeof(s)), s)
 
-proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
-  createThread[void](t, tp)
+proc createThread*(t: var Thread, tp: proc () {.thread, nimcall.}) =
+  createThread(t, proc (args: pointer) {.thread, nimcall.} = tp(), nil)
 
 when not defined(gcOrc):
   include system/threadids

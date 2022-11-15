@@ -51,31 +51,25 @@ when defined(boehmgc):
   proc boehmGC_unregister_my_thread()
     {.importc: "GC_unregister_my_thread", boehmGC.}
 
-  proc threadProcWrapDispatch[TArg](sb: pointer, thrd: pointer) {.noconv, raises: [].} =
+  proc threadProcWrapDispatch(sb: pointer, thrd: pointer) {.noconv, raises: [].} =
     boehmGC_register_my_thread(sb)
     try:
-      let thrd = cast[ptr Thread[TArg]](thrd)
-      when TArg is void:
-        thrd.dataFn()
-      else:
-        thrd.dataFn(thrd.data)
+      let thrd = cast[ptr Thread](thrd)
+      thrd.dataFn(thrd.data)
     except:
       threadTrouble()
     finally:
       afterThreadRuns()
     boehmGC_unregister_my_thread()
 else:
-  proc threadProcWrapDispatch[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
+  proc threadProcWrapDispatch(thrd: ptr Thread) {.raises: [].} =
     try:
-      when TArg is void:
-        thrd.dataFn()
+      when defined(nimV2):
+        thrd.dataFn(thrd.data)
       else:
-        when defined(nimV2):
-          thrd.dataFn(thrd.data)
-        else:
-          var x: TArg
-          deepCopy(x, thrd.data)
-          thrd.dataFn(x)
+        var x: pointer
+        deepCopy(x, thrd.data) # ? todo
+        thrd.dataFn(x)
     except:
       threadTrouble()
     finally:
@@ -83,9 +77,9 @@ else:
       when hasAllocStack:
         deallocThreadStorage(thrd.rawStack)
 
-proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
+proc threadProcWrapStackFrame(thrd: ptr Thread) {.raises: [].} =
   when defined(boehmgc):
-    boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
+    boehmGC_call_with_stack_base(threadProcWrapDispatch, thrd)
   elif not defined(nogc) and not defined(gogc) and not defined(gcRegions) and not usesDestructors:
     var p {.volatile.}: pointer
     # init the GC for refc/markandsweep
@@ -94,13 +88,13 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
       initGC()
     when declared(threadType):
       threadType = ThreadType.NimThread
-    threadProcWrapDispatch[TArg](thrd)
+    threadProcWrapDispatch(thrd)
     when declared(deallocOsPages): deallocOsPages()
   else:
     threadProcWrapDispatch(thrd)
 
 template nimThreadProcWrapperBody*(closure: untyped): untyped =
-  var thrd = cast[ptr Thread[TArg]](closure)
+  var thrd = cast[ptr Thread](closure)
   var core = thrd.core
   when declared(globalsSlot): threadVarSetValue(globalsSlot, thrd.core)
   threadProcWrapStackFrame(thrd)
