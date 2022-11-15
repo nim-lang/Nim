@@ -103,7 +103,7 @@
 - `logging` will default to flushing all log level messages. To get the legacy behaviour of only flushing Error and Fatal messages, use `-d:nimV1LogFlushBehavior`.
 
 - Object fields now support default values, see https://nim-lang.github.io/Nim/manual.html#types-default-values-for-object-fields for details.
-- 
+- Integer literals now match `float` better than `float32`.
 
 ## Standard library additions and changes
 
