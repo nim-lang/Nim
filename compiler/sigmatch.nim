@@ -1391,18 +1391,16 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyNil: result = f.allowsNil
     of tyString: result = isConvertible
     of tyPtr:
-      if isDefined(c.c.config, "nimPreviewCstringConversion"):
-        result = isNone
-      else:
-        if a.len == 1:
-          let pointsTo = a[0].skipTypes(abstractInst)
-          if pointsTo.kind == tyChar: result = isConvertible
-          elif pointsTo.kind == tyUncheckedArray and pointsTo[0].kind == tyChar:
-            result = isConvertible
-          elif pointsTo.kind == tyArray and firstOrd(nil, pointsTo[0]) == 0 and
-              skipTypes(pointsTo[0], {tyRange}).kind in {tyInt..tyInt64} and
-              pointsTo[1].kind == tyChar:
-            result = isConvertible
+      # ptr[Tag, char] is not convertible to 'cstring' for now:
+      if a.len == 1:
+        let pointsTo = a[0].skipTypes(abstractInst)
+        if pointsTo.kind == tyChar: result = isConvertible
+        elif pointsTo.kind == tyUncheckedArray and pointsTo[0].kind == tyChar:
+          result = isConvertible
+        elif pointsTo.kind == tyArray and firstOrd(nil, pointsTo[0]) == 0 and
+            skipTypes(pointsTo[0], {tyRange}).kind in {tyInt..tyInt64} and
+            pointsTo[1].kind == tyChar:
+          result = isConvertible
     else: discard
 
   of tyEmpty, tyVoid:
