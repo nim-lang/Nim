@@ -592,8 +592,33 @@ proc transformConv(c: PTransf, n: PNode): PNode =
     # happens sometimes for generated assignments, etc.
   of tyProc:
     result = transformSons(c, n)
-    if dest.callConv == ccClosure and source.callConv == ccNimCall:
-      result = generateThunk(c, result[1], dest)
+    if dest.callConv in {ccClosure, ccNimCall} and source.callConv != ccClosure:
+      if source.callConv != ccNimCall:
+        # This handles all conventions to Nimcall and Closures, this allows vastly easier procedure usage.
+        # It does this by emitting a `proc(args): T = procName(args)`
+        let
+          nimCallProc = copyTree(result[1].sym.ast)
+          nimCallSym = copySym(nimCallProc[namePos].sym, nextSymId(c.idgen))
+          callToNimCall = newNode(nkCall)
+
+        nimCallSym.flags.incl sfAnon
+        nimCallSym.typ = exactReplica(nimCallSym.typ)
+        nimCallSym.typ.callConv = ccNimCall
+        nimCallSym.ast = nimCallProc
+        callToNimCall.add result[1]
+
+
+        for i in 1..<nimCallProc[3].len: # Add parameters to the call statement
+          for j in 0 .. nimCallProc[3][i].len - 3:
+            callToNimCall.add newSymNode(copySym(nimCallProc[3][i][j].sym, nextSymId(c.idgen)))
+            callToNimCall[^1].sym.owner = nimCallSym
+
+        nimCallProc[namePos] = newSymNode(nimCallSym)
+        nimCallProc[bodyPos] = callToNimCall
+        result[1].sym = nimCallSym
+
+      result = generateThunk(c, result[1], dest) # emit our `(nil, proc)`
+
   else:
     result = transformSons(c, n)
 

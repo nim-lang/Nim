@@ -1562,15 +1562,12 @@ proc getProcConvMismatch*(c: ConfigRef, f, a: PType, rel = isNone): (set[ProcCon
 
   if f.callConv != a.callConv:
     # valid to pass a 'nimcall' thingie to 'closure':
-    if f.callConv == ccClosure and a.callConv == ccNimCall:
+    if f.callConv == ccClosure:
       case result[1]
       of isInferred: result[1] = isInferredConvertible
       of isBothMetaConvertible: result[1] = isBothMetaConvertible
       elif result[1] != isNone: result[1] = isConvertible
       else: result[0].incl pcmDifferentCallConv
-    else:
-      result[1] = isNone
-      result[0].incl pcmDifferentCallConv
 
 proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, conf: ConfigRef) =
   assert formal.kind == tyProc and actual.kind == tyProc

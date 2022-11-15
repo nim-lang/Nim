@@ -631,6 +631,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 
     result = getProcConvMismatch(c.c.config, f, a, result)[1]
 
+
     when useEffectSystem:
       if compatibleEffects(f, a) != efCompat: return isNone
     when defined(drnim):
