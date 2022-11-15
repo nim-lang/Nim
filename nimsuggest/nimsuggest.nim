@@ -30,7 +30,7 @@ import compiler / [options, commands, modules, sem,
   pathutils]
 
 when defined(nimPreviewSlimSystem):
-  import std/threads
+  import std/oldthreads
 
 when defined(windows):
   import winlean
