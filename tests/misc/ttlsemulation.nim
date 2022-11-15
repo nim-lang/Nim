@@ -1,5 +1,6 @@
 discard """
-  matrix: "-d:nimTtlsemulationCase1 --threads --tlsEmulation:on --mm:refc; -d:nimTtlsemulationCase2 --threads --tlsEmulation:off; -d:nimTtlsemulationCase3 --threads"
+  disabled: i386
+  matrix: "-d:nimTtlsemulationCase1 --threads --tlsEmulation:on; -d:nimTtlsemulationCase2 --threads --tlsEmulation:off; -d:nimTtlsemulationCase3 --threads"
   targets: "c cpp"
 """
 

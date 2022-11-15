@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:refc"
+  disabled: i386
   output: '''true'''
 """
 
