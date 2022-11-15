@@ -411,6 +411,7 @@ template main() =
 
   block: # edge cases
     doAssert sqrt(-4.0).isNaN
+    doAssert sqrt(2) == 1.4142135623730951
 
     doAssert ln(0.0) == -Inf
     doAssert ln(-0.0) == -Inf

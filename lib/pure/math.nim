@@ -400,6 +400,7 @@ when not defined(js): # C
     runnableExamples:
       doAssert almostEqual(sqrt(4.0), 2.0)
       doAssert almostEqual(sqrt(1.44), 1.2)
+  func sqrt*(x: SomeInteger): float = sqrt(float(x))
   func cbrt*(x: float32): float32 {.importc: "cbrtf", header: "<math.h>".}
   func cbrt*(x: float64): float64 {.importc: "cbrt", header: "<math.h>".} =
     ## Computes the cube root of `x`.
@@ -426,6 +427,7 @@ when not defined(js): # C
       doAssert almostEqual(ln(0.0), -Inf)
       doAssert ln(-7.0).isNaN
 else: # JS
+  func sqrt*(x: SomeInteger): float {.importc: "Math.sqrt", nodecl.}
   func sqrt*(x: float32): float32 {.importc: "Math.sqrt", nodecl.}
   func sqrt*(x: float64): float64 {.importc: "Math.sqrt", nodecl.}
 
