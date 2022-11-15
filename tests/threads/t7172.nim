@@ -10,7 +10,7 @@ Crashes before getting here!
 """
 
 import std/os
-import std/oldthreads
+import std/typedthreads
 
 proc whatever() {.thread, nimcall.} =
   echo("TEST")
