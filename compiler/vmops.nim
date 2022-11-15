@@ -71,7 +71,9 @@ template macrosop(op) {.dirty.} =
 template wrap1fMath(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     doAssert a.numArgs == 1
-    setResult(a, op(getFloat(a, 0)))
+    let p = getReg(a, 0)
+    let n = op(if p.kind == rkInt: p.intVal.float else: p.floatVal)
+    setResult(a, n)
   mathop op
 
 template wrap2fMath(op) {.dirty.} =
