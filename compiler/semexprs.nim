@@ -672,6 +672,7 @@ proc fixAbstractType(c: PContext, n: PNode) =
     let it = n[i]
     if it == nil:
       localError(c.config, n.info, "'$1' has nil child at index $2" % [renderTree(n, {renderNoComments}), $i])
+      return
     # do not get rid of nkHiddenSubConv for OpenArrays, the codegen needs it:
     if it.kind == nkHiddenSubConv and
         skipTypes(it.typ, abstractVar).kind notin {tyOpenArray, tyVarargs}:
