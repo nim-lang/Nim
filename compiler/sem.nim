@@ -626,9 +626,9 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
 proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
   let aTypSkip = aTyp.skipTypes(defaultFieldsSkipTypes)
   if aTypSkip.kind == tyObject:
-    let child = defaultFieldsForTheUninitialized(c, aTyp.skipTypes(defaultFieldsSkipTypes).n)
+    let child = defaultFieldsForTheUninitialized(c, aTypSkip.n)
     if child.len > 0:
-      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTyp))
+      var asgnExpr = newTree(nkObjConstr, newSymNode(aTypSkip.sym))
       asgnExpr.typ = aTyp
       asgnExpr.sons.add child
       result = semExpr(c, asgnExpr)

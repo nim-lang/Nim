@@ -17,7 +17,7 @@ proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
   result = n
   let typ = result[1].typ # new(x)
   if typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyRef and typ.skipTypes({tyGenericInst, tyAlias, tySink})[0].kind == tyObject:
-    var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, result[1].info, typ))
+    var asgnExpr = newTree(nkObjConstr, newSymNode(typ[0].sym))
     asgnExpr.typ = typ
     var t = typ.skipTypes({tyGenericInst, tyAlias, tySink})[0]
     while true:
