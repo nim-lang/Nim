@@ -548,7 +548,7 @@ For example:
 
 
 The algorithm behind this analysis is described in
-the [view types algorithm].
+the [view types algorithm][Algorithm].
 
 
 View types
