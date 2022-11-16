@@ -382,7 +382,6 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   var t = semTypeNode(c, n[0], nil)
   result = newNodeIT(nkObjConstr, n.info, t)
-  # result.add newNodeIT(nkType, n.info, t) #This will contain the default values to be added in transf
   for i in 0..<n.len:
     result.add n[i]
 
