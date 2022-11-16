@@ -247,7 +247,7 @@ proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; idgen
 
 proc genCreateEnv(env: PNode): PNode =
   var c = newNodeIT(nkObjConstr, env.info, env.typ)
-  c.add newSymNode(env.typ.sym)
+  c.add newNodeIT(nkType, env.info, env.typ)
   let e = copyTree(env)
   e.flags.incl nfFirstWrite
   result = newAsgnStmt(e, c)
