@@ -20,8 +20,9 @@ proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
     var asgnExpr = newTree(nkObjConstr, newSymNode(typ[0].sym))
     asgnExpr.typ = typ
     var t = typ.skipTypes({tyGenericInst, tyAlias, tySink})[0]
+    var id = initIntSet()
     while true:
-      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n)
+      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, id)
       let base = t[0]
       if base == nil:
         break
@@ -586,7 +587,10 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     else:
       result = plugin(c, n)
   of mNew:
-    result = addDefaultFieldForNew(c, n)
+    if n[0].sym.name.s == "unsafeNew": # special case for unsafeNew
+      result = n
+    else:
+      result = addDefaultFieldForNew(c, n)
   of mNewFinalize:
     result = semNewFinalize(c, n)
   of mDestroy:

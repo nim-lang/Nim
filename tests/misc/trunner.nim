@@ -64,7 +64,7 @@ when defined(nimTrunnerFfi):
 hello world stderr
 hi stderr
 """
-    let output = runNimCmdChk("vm/mevalffi.nim", fmt"{opt} --experimental:compiletimeFFI")
+    let output = runNimCmdChk("vm/mevalffi.nim", fmt"{opt} --warnings:off --experimental:compiletimeFFI")
     doAssert output == fmt"""
 {prefix}foo
 foo:100
