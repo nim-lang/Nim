@@ -1446,7 +1446,7 @@ Varargs
 -------
 
 A `varargs` parameter is like an openarray parameter. However, it is
-also a means to implement passing a variable number of
+also a mean to implement passing a variable number of
 arguments to a procedure. The compiler converts the list of arguments
 to an array automatically:
 
