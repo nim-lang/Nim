@@ -479,13 +479,13 @@ when not useNimNetLite:
       result = newString(addrLen)
       let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
       when not useWinVersion:
-        if posix.inet_ntop(posix.AF_INET6, addr6, addr result[0],
+        if posix.inet_ntop(posix.AF_INET6, addr6, cast[cstring](addr result[0]),
                           result.len.int32) == nil:
           raiseOSError(osLastError())
         if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
           result.setSlice("::ffff:".len..<addrLen)
       else:
-        if winlean.inet_ntop(winlean.AF_INET6, addr6, addr result[0],
+        if winlean.inet_ntop(winlean.AF_INET6, addr6, cast[cstring](addr result[0]),
                             result.len.int32) == nil:
           raiseOSError(osLastError())
       setLen(result, len(cstring(result)))
@@ -507,23 +507,23 @@ when not useNimNetLite:
     if sockAddr.sa_family.cint == nativeAfInet:
       let addr4 = addr cast[ptr Sockaddr_in](sockAddr).sin_addr
       when not useWinVersion:
-        if posix.inet_ntop(posix.AF_INET, addr4, addr strAddress[0],
+        if posix.inet_ntop(posix.AF_INET, addr4, cast[cstring](addr strAddress[0]),
                           strAddress.len.int32) == nil:
           raiseOSError(osLastError())
       else:
-        if winlean.inet_ntop(winlean.AF_INET, addr4, addr strAddress[0],
+        if winlean.inet_ntop(winlean.AF_INET, addr4, cast[cstring](addr strAddress[0]),
                             strAddress.len.int32) == nil:
           raiseOSError(osLastError())
     elif sockAddr.sa_family.cint == nativeAfInet6:
       let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
       when not useWinVersion:
-        if posix.inet_ntop(posix.AF_INET6, addr6, addr strAddress[0],
+        if posix.inet_ntop(posix.AF_INET6, addr6, cast[cstring](addr strAddress[0]),
                           strAddress.len.int32) == nil:
           raiseOSError(osLastError())
         if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
           strAddress.setSlice("::ffff:".len..<length)
       else:
-        if winlean.inet_ntop(winlean.AF_INET6, addr6, addr strAddress[0],
+        if winlean.inet_ntop(winlean.AF_INET6, addr6, cast[cstring](addr strAddress[0]),
                             strAddress.len.int32) == nil:
           raiseOSError(osLastError())
     else:
@@ -582,7 +582,7 @@ when not useNimNetLite:
       # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
       result[0] = newString(64)
       if inet_ntop(name.sin6_family.cint,
-          addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
+          addr name.sin6_addr, cast[cstring](addr result[0][0]), (result[0].len+1).int32).isNil:
         raiseOSError(osLastError())
       setLen(result[0], result[0].cstring.len)
       result[1] = Port(nativesockets.ntohs(name.sin6_port))
@@ -619,7 +619,7 @@ when not useNimNetLite:
       # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
       result[0] = newString(64)
       if inet_ntop(name.sin6_family.cint,
-          addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
+          addr name.sin6_addr, cast[cstring](addr result[0][0]), (result[0].len+1).int32).isNil:
         raiseOSError(osLastError())
       setLen(result[0], result[0].cstring.len)
       result[1] = Port(nativesockets.ntohs(name.sin6_port))
