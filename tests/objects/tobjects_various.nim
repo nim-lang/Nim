@@ -109,12 +109,12 @@ block t7244:
 
 import std/macros
 
-block: #bug #20856
-  macro ensureImplWorksOnConstr(t: typed): untyped =
-    expectKind(t, nnkObjConstr)
-    doAssert t[0].getTypeInst.getImpl.repr == "A = object"
-    doAssert t[0].getImpl.repr == "A = object"
+#bug #20856
+macro ensureImplWorksOnConstr(t: typed): untyped =
+  expectKind(t, nnkObjConstr)
+  doAssert t[0].getTypeInst.getImpl.repr == "A = object"
+  doAssert t[0].getImpl.repr == "A = object"
 
-  type A = object
+type A = object
 
-  ensureImplWorksOnConstr(A())
+ensureImplWorksOnConstr(A())
