@@ -55,7 +55,10 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags + {efOperand})
   if result.typ != nil:
     # XXX tyGenericInst here?
-    if result.typ.kind == tyProc and hasUnresolvedParams(result, {efOperand}):
+    if result.typ.kind in tyUnknownTypes:
+      localError(c.config, n.info, errExprXHasNoType %
+               renderTree(result, {renderNoComments}))
+    elif result.typ.kind == tyProc and hasUnresolvedParams(result, {efOperand}):
       #and tfUnresolved in result.typ.flags:
       localError(c.config, n.info, errProcHasNoConcreteType % n.renderTree)
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
