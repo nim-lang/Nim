@@ -1146,7 +1146,7 @@ when defined(windows) and not weirdTarget:
     template findNextFile(a, b: untyped): untyped = findNextFileA(a, b)
     template getCommandLine(): untyped = getCommandLineA()
 
-    template getFilename(f: untyped): untyped = $cstring(addr f.cFileName)
+    template getFilename(f: untyped): untyped = $cast[cstring](addr f.cFileName)
 
   proc skipFindData(f: WIN32_FIND_DATA): bool {.inline.} =
     # Note - takes advantage of null delimiter in the cstring
@@ -2337,7 +2337,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
         while true:
           var x = readdir(d)
           if x == nil: break
-          var y = $cstring(addr x.d_name)
+          var y = $cast[cstring](addr x.d_name)
           if y != "." and y != "..":
             var s: Stat
             let path = dir / y
