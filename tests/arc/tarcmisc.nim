@@ -546,3 +546,15 @@ proc fooz(sec: var InputSectionBase) =
 var sec = create(InputSection)
 sec[] = InputSection(relocations: newSeq[int]())
 fooz sec[]
+
+block:
+  type
+    Data = ref object
+      id: int
+  proc main =
+    var x = Data(id: 99)
+    var y = x
+    x[] = Data(id: 778)[]
+    doAssert y.id == 778
+    doAssert x[].id == 778
+  main()
