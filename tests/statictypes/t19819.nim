@@ -1,5 +1,5 @@
 discard """
-  errormsg: "expression 'E.N' has no type (or is ambiguous)"
+  errormsg: "expression 'E.N' type cannot be inferred"
 """
 
 type

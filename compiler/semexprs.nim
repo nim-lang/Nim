@@ -24,6 +24,7 @@ const
   errNamedExprNotAllowed = "named expression not allowed here"
   errFieldInitTwice = "field initialized twice: '$1'"
   errUndeclaredFieldX = "undeclared field: '$1'"
+  errCannotInferTypeX = "expression '$1' type cannot be inferred"
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}; expectedType: PType = nil): PNode =
@@ -56,7 +57,7 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   if result.typ != nil:
     # XXX tyGenericInst here?
     if c.inGenericContext > 0 and c.inGenericInst <= 0 and result.typ.kind in tyUnknownTypes:
-      localError(c.config, n.info, errExprXHasNoType %
+      localError(c.config, n.info, errCannotInferTypeX %
                renderTree(result, {renderNoComments}))
     elif result.typ.kind == tyProc and hasUnresolvedParams(result, {efOperand}):
       #and tfUnresolved in result.typ.flags:
