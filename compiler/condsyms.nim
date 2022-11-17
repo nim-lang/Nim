@@ -147,3 +147,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasAmbiguousEnumHint")
 
   defineSymbol("nimHasOutParams")
+  defineSymbol("nimHasSystemRaisesDefect")

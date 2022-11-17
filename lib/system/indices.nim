@@ -1,3 +1,6 @@
+when not defined(nimHasSystemRaisesDefect):
+  {.pragma: systemRaisesDefect.}
+
 type
   BackwardsIndex* = distinct int ## Type that is constructed by `^` for
                                  ## reversed array accesses.
@@ -70,7 +73,7 @@ template spliceImpl(s, a, L, b: typed): untyped =
   # fill the hole:
   for i in 0 ..< b.len: s[a+i] = b[i]
 
-proc `[]`*[T, U: Ordinal](s: string, x: HSlice[T, U]): string {.inline.} =
+proc `[]`*[T, U: Ordinal](s: string, x: HSlice[T, U]): string {.inline, systemRaisesDefect.} =
   ## Slice operation for strings.
   ## Returns the inclusive range `[s[x.a], s[x.b]]`:
   ##   ```
