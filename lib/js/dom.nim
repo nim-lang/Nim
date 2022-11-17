@@ -9,6 +9,37 @@
 
 ## Declaration of the Document Object Model for the `JavaScript backend
 ## <backends.html#backends-the-javascript-target>`_.
+##
+##
+## Document Ready
+## --------------
+##
+## * Basic example of a document ready:
+runnableExamples"-b:js -r:off":
+  proc example(e: Event) = echo "Document is ready"
+  document.addEventListener("DOMContentLoaded", example)  # You can also use "load" event.
+## * This example runs 5 seconds after the document ready:
+runnableExamples"-b:js -r:off":
+  proc example() = echo "5 seconds after document ready"
+  proc domReady(e: Event) = discard setTimeout(example, 5_000) # Document is ready.
+  document.addEventListener("DOMContentLoaded", domReady)
+## Document onUnload
+## -----------------
+##
+## * Simple example of how to implement code that runs when the page unloads:
+runnableExamples"-b:js -r:off":
+  proc example(e: Event) = echo "Document is unloaded"
+  document.addEventListener("unload", example)  # You can also use "beforeunload".
+## Document Autorefresh
+## --------------------
+##
+## * Minimal example of a document autorefresh:
+runnableExamples"-b:js -r:off":
+  proc example() = window.location.reload()
+  discard setTimeout(example, 5_000)
+## - For more examples, see https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
+
+
 import std/private/since
 when not defined(js):
   {.error: "This module only works on the JavaScript platform".}
@@ -1335,9 +1366,10 @@ since (1, 3):
       ## DOM Parser object (defined on browser only, may not be on NodeJS).
       ## * https://developer.mozilla.org/en-US/docs/Web/API/DOMParser
       ##
-      ## .. code-block:: nim
+      ##   ```nim
       ##   let prsr = newDomParser()
       ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring, "text/html".cstring)
+      ##   ```
 
     DomException* = ref DOMExceptionObj
       ## The DOMException interface represents an abnormal event (called an exception)

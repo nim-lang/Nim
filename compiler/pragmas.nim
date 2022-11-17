@@ -38,7 +38,7 @@ const
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
-    wDelegator, wExportNims, wUsed, wPragma, wRedefine}
+    wDelegator, wExportNims, wUsed, wPragma, wRedefine, wCallsite}
   macroPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wCompilerProc, wNonReloadable, wCore,
     wDiscardable, wGensym, wInject, wDelegator}
@@ -313,7 +313,7 @@ proc expectDynlibNode(c: PContext, n: PNode): PNode =
     # {.dynlib: myGetProcAddr(...).}
     result = c.semExpr(c, n[1])
     if result.kind == nkSym and result.sym.kind == skConst:
-      result = result.sym.ast # look it up
+      result = result.sym.astdef # look it up
     if result.typ == nil or result.typ.kind notin {tyPointer, tyString, tyProc}:
       localError(c.config, n.info, errStringLiteralExpected)
       result = newEmptyStrNode(c, n)
@@ -684,23 +684,6 @@ proc pragmaLockStmt(c: PContext; it: PNode) =
       for i in 0..<n.len:
         n[i] = c.semExpr(c, n[i])
 
-proc pragmaLocks(c: PContext, it: PNode): TLockLevel =
-  if it.kind notin nkPragmaCallKinds or it.len != 2:
-    invalidPragma(c, it)
-  else:
-    case it[1].kind
-    of nkStrLit, nkRStrLit, nkTripleStrLit:
-      if it[1].strVal == "unknown":
-        result = UnknownLockLevel
-      else:
-        localError(c.config, it[1].info, "invalid string literal for locks pragma (only allowed string is \"unknown\")")
-    else:
-      let x = expectIntLit(c, it)
-      if x < 0 or x > MaxLockLevel:
-        localError(c.config, it[1].info, "integer must be within 0.." & $MaxLockLevel)
-      else:
-        result = TLockLevel(x)
-
 proc typeBorrow(c: PContext; sym: PSym, n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len == 2:
     let it = n[1]
@@ -873,6 +856,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wRedefine:
         if sym.kind == skTemplate: incl(sym.flags, sfTemplateRedefinition)
         else: invalidPragma(c, it)
+      of wCallsite:
+        if sym.kind == skTemplate: incl(sym.flags, sfCallsite)
+        else: invalidPragma(c, it)
       of wImportCpp:
         processImportCpp(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wCppNonPod:
@@ -960,7 +946,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.loc.flags, lfHeader)
         incl(sym.loc.flags, lfNoDecl)
         # implies nodecl, because otherwise header would not make sense
-        if sym.loc.r == nil: sym.loc.r = rope(sym.name.s)
+        if sym.loc.r == "": sym.loc.r = rope(sym.name.s)
       of wNoSideEffect:
         noVal(c, it)
         if sym != nil:
@@ -998,7 +984,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wExplain:
         sym.flags.incl sfExplain
       of wDeprecated:
-        if sym != nil and sym.kind in routineKinds + {skType, skVar, skLet}:
+        if sym != nil and sym.kind in routineKinds + {skType, skVar, skLet, skConst}:
           if it.kind in nkPragmaCallKinds: discard getStrLitNode(c, it)
           incl(sym.flags, sfDeprecated)
         elif sym != nil and sym.kind != skModule:
@@ -1193,7 +1179,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wLocks:
         if sym == nil: pragmaLockStmt(c, it)
         elif sym.typ == nil: invalidPragma(c, it)
-        else: sym.typ.lockLevel = pragmaLocks(c, it)
+        else: warningDeprecated(c.config, n.info, "'Lock levels' are deprecated, now a noop")
       of wBitsize:
         if sym == nil or sym.kind != skField:
           invalidPragma(c, it)
@@ -1247,7 +1233,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
     else:
-      if sym == nil or (sym.kind in {skVar, skLet, skParam, skIterator,
+      if sym == nil or (sym.kind in {skVar, skLet, skConst, skParam, skIterator,
                         skField, skProc, skFunc, skConverter, skMethod, skType}):
         n[i] = semCustomPragma(c, it)
       elif sym != nil:
@@ -1290,7 +1276,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
         sfImportc in sym.flags and lib != nil:
       incl(sym.loc.flags, lfDynamicLib)
       addToLib(lib, sym)
-      if sym.loc.r == nil: sym.loc.r = rope(sym.name.s)
+      if sym.loc.r == "": sym.loc.r = rope(sym.name.s)
 
 proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
   if n == nil: return false

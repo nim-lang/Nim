@@ -1,5 +1,5 @@
 import std/heapqueue
-
+import std/assertions
 
 proc toSortedSeq[T](h: HeapQueue[T]): seq[T] =
   var tmp = h

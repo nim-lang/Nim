@@ -7,6 +7,7 @@ discard """
 
 from strutils import startsWith, endsWith, contains, strip
 from std/macros import newLit
+import std/assertions
 
 macro deb(a): string = newLit a.repr.strip
 macro debTyped(a: typed): string = newLit a.repr.strip

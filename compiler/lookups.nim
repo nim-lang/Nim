@@ -48,6 +48,11 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
         case x.kind
         of nkIdent: id.add(x.ident.s)
         of nkSym: id.add(x.sym.name.s)
+        of nkSymChoices:
+          if x[0].kind == nkSym:
+            id.add(x[0].sym.name.s)
+          else:
+            handleError(n, origin)
         of nkLiterals - nkFloatLiterals: id.add(x.renderTree)
         else: handleError(n, origin)
       result = getIdent(c.cache, id)
@@ -488,16 +493,23 @@ proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
   var amb: bool
   discard errorUseQualifier(c, info, s, amb)
 
-proc errorUseQualifier(c: PContext; info: TLineInfo; candidates: seq[PSym]) =
+proc errorUseQualifier(c: PContext; info: TLineInfo; candidates: seq[PSym]; prefix = "use one of") =
   var err = "ambiguous identifier: '" & candidates[0].name.s & "'"
   var i = 0
   for candidate in candidates:
-    if i == 0: err.add " -- use one of the following:\n"
+    if i == 0: err.add " -- $1 the following:\n" % prefix
     else: err.add "\n"
     err.add "  " & candidate.owner.name.s & "." & candidate.name.s
     err.add ": " & typeToString(candidate.typ)
     inc i
   localError(c.config, info, errGenerated, err)
+
+proc errorUseQualifier*(c: PContext; info:TLineInfo; choices: PNode) =
+  var candidates = newSeq[PSym](choices.len)
+  let prefix = if choices[0].typ.kind != tyProc: "use one of" else: "you need a helper proc to disambiguate"
+  for i, n in choices:
+    candidates[i] = n.sym
+  errorUseQualifier(c, info, candidates, prefix)
 
 proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extra = "") =
   var err = "undeclared identifier: '" & name & "'" & extra

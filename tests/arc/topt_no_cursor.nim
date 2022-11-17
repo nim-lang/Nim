@@ -1,16 +1,12 @@
 discard """
-  output: '''(package: "", ext: "meo")
-doing shady stuff...
-3
-6
-(@[1], @[2])
-192.168.0.1
-192.168.0.1
-192.168.0.1
-192.168.0.1'''
-  cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
+  nimoutFull: true
+  cmd: '''nim c -r --warnings:off --hints:off --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
   nimout: '''--expandArc: newTarget
 
+var
+  splat
+  :tmp
+  :tmp_1
 splat = splitDrive((let blitTmp = path; blitTmp))
 :tmp = splat.drive
 wasMoved(splat.drive)
@@ -41,7 +37,7 @@ lresult = @[123]
 _ = ((let blitTmp = lresult; blitTmp), ";")
 lvalue = _[0]
 lnext = _[1]
-result.value = move lvalue
+`=sink`(result.value, move lvalue)
 `=destroy`(lnext)
 `=destroy_1`(lvalue)
 -- end of expandArc ------------------------
@@ -86,6 +82,7 @@ try:
           `=destroy`(splitted)
 finally:
   `=destroy_1`(lan_ip)
+-- end of expandArc ------------------------
 --expandArc: mergeShadowScope
 
 var shadowScope
@@ -124,7 +121,21 @@ if dirExists(par.dir):
 else:
   `=sink`(this.matchDirs, [])
 `=destroy`(par)
--- end of expandArc ------------------------'''
+-- end of expandArc ------------------------
+--expandArc: check
+
+check(this)
+-- end of expandArc ------------------------
+(package: "", ext: "meo")
+doing shady stuff...
+3
+6
+(@[1], @[2])
+192.168.0.1
+192.168.0.1
+192.168.0.1
+192.168.0.1
+'''
 """
 
 import os, std/private/ntpath

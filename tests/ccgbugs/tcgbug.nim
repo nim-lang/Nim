@@ -24,6 +24,7 @@ q(a)
 
 # bug #914
 when defined(windows):
+  import std/widestrs
   var x = newWideCString("Hello")
 
 echo "success"

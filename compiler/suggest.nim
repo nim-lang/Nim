@@ -53,7 +53,7 @@ proc findDocComment(n: PNode): PNode =
     if result != nil: return
     if n.len > 1:
       result = findDocComment(n[1])
-  elif n.kind in {nkAsgn, nkFastAsgn} and n.len == 2:
+  elif n.kind in {nkAsgn, nkFastAsgn, nkSinkAsgn} and n.len == 2:
     result = findDocComment(n[1])
 
 proc extractDocComment(g: ModuleGraph; s: PSym): string =
@@ -164,7 +164,7 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
     result.tokenLen = 0
   else:
     let infox =
-      if useSuppliedInfo or section in {ideUse, ideHighlight, ideOutline}:
+      if useSuppliedInfo or section in {ideUse, ideHighlight, ideOutline, ideDeclaration}:
         info
       else:
         s.info
@@ -265,8 +265,8 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
       if fmoduleId == module.id: return true
     if f.kind == skField:
       var symObj = f.owner
-      if symObj.typ.kind in {tyRef, tyPtr}:
-        symObj = symObj.typ[0].sym
+      if symObj.typ.skipTypes({tyGenericBody, tyGenericInst, tyGenericInvocation, tyAlias}).kind in {tyRef, tyPtr}:
+        symObj = symObj.typ.toObjectFromRefPtrGeneric.sym
       for scope in allScopes(c.currentScope):
         for sym in scope.allowPrivateAccess:
           if symObj.id == sym.id: return true
@@ -534,16 +534,6 @@ proc suggestSym*(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym; i
 
       if parentFileIndex == conf.m.trackPos.fileIndex:
         suggestResult(conf, symToSuggest(g, s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
-
-proc extractPragma(s: PSym): PNode =
-  if s.kind in routineKinds:
-    result = s.ast[pragmasPos]
-  elif s.kind in {skType, skVar, skLet}:
-    if s.ast != nil and s.ast.len > 0:
-      if s.ast[0].kind == nkPragmaExpr and s.ast[0].len > 1:
-        # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
-        result = s.ast[0][1]
-  doAssert result == nil or result.kind == nkPragma
 
 proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
   var pragmaNode: PNode

@@ -26,8 +26,9 @@
 ## That is, using the `?` (question mark) to signify the place where a
 ## value should be placed. For example:
 ##
-## .. code-block:: Nim
-##     sql"INSERT INTO myTable (colA, colB, colC) VALUES (?, ?, ?)"
+##   ```Nim
+##   sql"INSERT INTO myTable (colA, colB, colC) VALUES (?, ?, ?)"
+##   ```
 ##
 ##
 ## Examples
@@ -36,63 +37,66 @@
 ## Opening a connection to a database
 ## ----------------------------------
 ##
-## .. code-block:: Nim
-##     import std/db_odbc
-##     var db = open("localhost", "user", "password", "dbname")
-##     db.close()
+##   ```Nim
+##   import std/db_odbc
+##   var db = open("localhost", "user", "password", "dbname")
+##   db.close()
+##   ```
 ##
 ## Creating a table
 ## ----------------
 ##
-## .. code-block:: Nim
-##      db.exec(sql"DROP TABLE IF EXISTS myTable")
-##      db.exec(sql("""CREATE TABLE myTable (
-##                       id integer,
-##                       name varchar(50) not null)"""))
+##   ```Nim
+##   db.exec(sql"DROP TABLE IF EXISTS myTable")
+##   db.exec(sql("""CREATE TABLE myTable (
+##                    id integer,
+##                    name varchar(50) not null)"""))
+##   ```
 ##
 ## Inserting data
 ## --------------
 ##
-## .. code-block:: Nim
-##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
-##             "Andreas")
+##   ```Nim
+##   db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
+##           "Andreas")
+##   ```
 ##
 ## Large example
 ## -------------
 ##
-## .. code-block:: Nim
+##   ```Nim
+##   import std/[db_odbc, math]
 ##
-##  import std/[db_odbc, math]
+##   var theDb = open("localhost", "nim", "nim", "test")
 ##
-##  var theDb = open("localhost", "nim", "nim", "test")
+##   theDb.exec(sql"Drop table if exists myTestTbl")
+##   theDb.exec(sql("create table myTestTbl (" &
+##       " Id    INT(11)     NOT NULL AUTO_INCREMENT PRIMARY KEY, " &
+##       " Name  VARCHAR(50) NOT NULL, " &
+##       " i     INT(11), " &
+##       " f     DECIMAL(18,10))"))
 ##
-##  theDb.exec(sql"Drop table if exists myTestTbl")
-##  theDb.exec(sql("create table myTestTbl (" &
-##      " Id    INT(11)     NOT NULL AUTO_INCREMENT PRIMARY KEY, " &
-##      " Name  VARCHAR(50) NOT NULL, " &
-##      " i     INT(11), " &
-##      " f     DECIMAL(18,10))"))
+##   theDb.exec(sql"START TRANSACTION")
+##   for i in 1..1000:
+##     theDb.exec(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
+##           "Item#" & $i, i, sqrt(i.float))
+##   theDb.exec(sql"COMMIT")
 ##
-##  theDb.exec(sql"START TRANSACTION")
-##  for i in 1..1000:
-##    theDb.exec(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
-##          "Item#" & $i, i, sqrt(i.float))
-##  theDb.exec(sql"COMMIT")
+##   for x in theDb.fastRows(sql"select * from myTestTbl"):
+##     echo x
 ##
-##  for x in theDb.fastRows(sql"select * from myTestTbl"):
-##    echo x
+##   let id = theDb.tryInsertId(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
+##           "Item#1001", 1001, sqrt(1001.0))
+##   echo "Inserted item: ", theDb.getValue(sql"SELECT name FROM myTestTbl WHERE id=?", id)
 ##
-##  let id = theDb.tryInsertId(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
-##          "Item#1001", 1001, sqrt(1001.0))
-##  echo "Inserted item: ", theDb.getValue(sql"SELECT name FROM myTestTbl WHERE id=?", id)
-##
-##  theDb.close()
+##   theDb.close()
+##   ```
 
 import strutils, odbcsql
 import db_common
 export db_common
 
-import std/private/since
+import std/private/[since, dbutils]
 
 type
   OdbcConnTyp = tuple[hDb: SqlHDBC, env: SqlHEnv, stmt: SqlHStmt]
@@ -133,7 +137,7 @@ proc getErrInfo(db: var DbConn): tuple[res: int, ss, ne, msg: string] {.
               511.TSqlSmallInt, retSz.addr)
   except:
     discard
-  return (res.int, $(addr sqlState), $(addr nativeErr), $(addr errMsg))
+  return (res.int, $(cast[cstring](addr sqlState)), $cast[cstring](addr nativeErr), $cast[cstring](addr errMsg))
 
 proc dbError*(db: var DbConn) {.
           tags: [ReadDbEffect, WriteDbEffect], raises: [DbError] .} =
@@ -183,7 +187,7 @@ proc sqlGetDBMS(db: var DbConn): string {.
     db.sqlCheck(SQLGetInfo(db.hDb, SQL_DBMS_NAME, cast[SqlPointer](buf.addr),
                         4095.TSqlSmallInt, sz.addr))
   except: discard
-  return $(addr buf)
+  return $(cast[cstring](addr buf))
 
 proc dbQuote*(s: string): string {.noSideEffect.} =
   ## DB quotes the string.
@@ -197,14 +201,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string {.
                   noSideEffect.} =
   ## Replace any `?` placeholders with `args`,
   ## and quotes the arguments
-  result = ""
-  var a = 0
-  for c in items(string(formatstr)):
-    if c == '?':
-      add(result, dbQuote(args[a]))
-      inc(a)
-    else:
-      add(result, c)
+  dbFormatImpl(formatstr, dbQuote, args)
 
 proc prepareFetch(db: var DbConn, query: SqlQuery,
                 args: varargs[string, `$`]): TSqlSmallInt {.
@@ -294,7 +291,7 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                  cast[cstring](buf.addr), 4095, sz.addr))
-        rowRes[colId-1] = $(addr buf)
+        rowRes[colId-1] = $cast[cstring]((addr buf))
       yield rowRes
       res = SQLFetch(db.stmt)
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
@@ -322,7 +319,7 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                  cast[cstring](buf.addr), 4095, sz.addr))
-        rowRes[colId-1] = $(addr buf)
+        rowRes[colId-1] = $cast[cstring](addr buf)
       yield (row: rowRes, len: cCnt.int)
       res = SQLFetch(db.stmt)
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
@@ -361,7 +358,7 @@ proc getRow*(db: var DbConn, query: SqlQuery,
       buf[0] = '\0'
       db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                cast[cstring](buf.addr), 4095, sz.addr))
-      rowRes[colId-1] = $(addr buf)
+      rowRes[colId-1] = $cast[cstring](addr buf)
     res = SQLFetch(db.stmt)
     result = rowRes
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
@@ -389,7 +386,7 @@ proc getAllRows*(db: var DbConn, query: SqlQuery,
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                  cast[cstring](buf.addr), 4095, sz.addr))
-        rowRes[colId-1] = $(addr buf)
+        rowRes[colId-1] = $cast[cstring](addr buf)
       rows.add(rowRes)
       res = SQLFetch(db.stmt)
     result = rows

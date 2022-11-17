@@ -3,6 +3,7 @@ discard """
 """
 
 import stdtest/testutils
+import std/assertions
 
 # TODO: in future work move existing `system` tests here, where they belong
 
@@ -161,3 +162,10 @@ block:
   reset(y)
   doAssert y.b == {}
 
+block: # bug #20516
+  type Foo = object
+    x {.bitsize:4.}: uint
+    y {.bitsize:4.}: uint
+
+  when not defined(js):
+    let a = create(Foo)

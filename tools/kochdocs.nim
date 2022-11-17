@@ -1,6 +1,10 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets, pathnorm, sequtils
+import std/[os, strutils, osproc, sets, pathnorm, sequtils]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 # XXX: Remove this feature check once the csources supports it.
 when defined(nimHasCastPragmaBlocks):
   import std/pegs
@@ -9,6 +13,7 @@ import "../compiler/nimpaths"
 
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
+  paCode* = " --doc.plausibleAnalytics:nim-lang.org"
   # errormax: subsequent errors are probably consequences of 1st one; a simple
   # bug could cause unlimited number of errors otherwise, hard to debug in CI.
   docDefines = "-d:nimExperimentalLinenoiseExtra"
@@ -132,11 +137,6 @@ niminst.md
 mm.md
 """.splitWhitespace().mapIt("doc" / it)
 
-  doc0 = """
-lib/system/threads.nim
-lib/system/channels_builtin.nim
-""".splitWhitespace() # ran by `nim doc0` instead of `nim doc`
-
   withoutIndex = """
 lib/wrappers/mysql.nim
 lib/wrappers/sqlite3.nim
@@ -181,7 +181,6 @@ when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
 
 proc getDocList(): seq[string] =
   var docIgnore: HashSet[string]
-  for a in doc0: docIgnore.incl a
   for a in withoutIndex: docIgnore.incl a
   for a in ignoredModules: docIgnore.incl a
 
@@ -190,8 +189,9 @@ proc getDocList(): seq[string] =
 lib/system/nimscript.nim
 lib/system/assertions.nim
 lib/system/iterators.nim
+lib/system/exceptions.nim
 lib/system/dollars.nim
-lib/system/widestrs.nim
+lib/system/ctypes.nim
 """.splitWhitespace()
 
   proc follow(a: PathEntry): bool =
@@ -255,16 +255,11 @@ proc buildDoc(nimArgs, destPath: string) =
   # call nim for the documentation:
   let rst2html = getMd2html()
   var
-    commands = newSeq[string](rst2html.len + len(doc0) + len(doc) + withoutIndex.len)
+    commands = newSeq[string](rst2html.len + len(doc) + withoutIndex.len)
     i = 0
   let nim = findNim().quoteShell()
   for d in items(rst2html):
     commands[i] = nim & " md2html $# --git.url:$# -o:$# --index:on $#" %
-      [nimArgs, gitUrl,
-      destPath / changeFileExt(splitFile(d).name, "html"), d]
-    i.inc
-  for d in items(doc0):
-    commands[i] = nim & " doc0 $# --git.url:$# -o:$# --index:on $#" %
       [nimArgs, gitUrl,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc

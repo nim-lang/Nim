@@ -14,6 +14,9 @@ import
 
 import std/private/decode_helpers
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, formatfloat]
+
 type
   SexpEventKind* = enum  ## enumeration of all events that may occur when parsing
     sexpError,           ## an error occurred during parsing
@@ -401,7 +404,7 @@ macro convertSexp*(x: untyped): untyped =
   ## `%` for every element.
   result = toSexp(x)
 
-proc `==`* (a, b: SexpNode): bool {.noSideEffect.} =
+func `==`* (a, b: SexpNode): bool =
   ## Check two nodes for equality
   if a.isNil:
     if b.isNil: return true

@@ -14,7 +14,10 @@ import
   options, ast, llstream, msgs,
   idents,
   syntaxes, modulegraphs, reorder,
-  lineinfos, pathutils, std/sha1, packages
+  lineinfos, pathutils, packages
+
+when defined(nimsuggest):
+  import std/sha1
 
 when defined(nimPreviewSlimSystem):
   import std/syncio

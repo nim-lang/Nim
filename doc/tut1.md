@@ -45,24 +45,28 @@ We start the tour with a modified "hello world" program:
   ```
 
 
-Save this code to the file "greetings.nim". Now compile and run it::
-
+Save this code to the file "greetings.nim". Now compile and run it:
+  ```cmd
   nim compile --run greetings.nim
+  ```
 
 With the ``--run`` [switch](nimc.html#compiler-usage-commandminusline-switches) Nim
 executes the file automatically after compilation. You can give your program
-command-line arguments by appending them after the filename::
-
+command-line arguments by appending them after the filename:
+  ```cmd
   nim compile --run greetings.nim arg1 arg2
+  ```
 
-Commonly used commands and switches have abbreviations, so you can also use::
-
+Commonly used commands and switches have abbreviations, so you can also use:
+  ```cmd
   nim c -r greetings.nim
+  ```
 
 This is a **debug version**.
-To compile a release version use::
-
+To compile a release version use:
+  ```cmd
   nim c -d:release greetings.nim
+  ```
 
 By default, the Nim compiler generates a large number of runtime checks
 aiming for your debugging pleasure. With ``-d:release`` some checks are

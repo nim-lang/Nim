@@ -14,11 +14,14 @@
 import posix, parsecfg, os
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type Uname* = object
   sysname*, nodename*, release*, version*, machine*: string
 
 template charArrayToString(input: typed): string =
-  $cstring(addr input)
+  $cast[cstring](addr input)
 
 proc uname*(): Uname =
   ## Provides system information in a `Uname` struct with sysname, nodename,
@@ -57,9 +60,10 @@ proc memoryLock*(a1: pointer, a2: int) =
 proc memoryLockAll*(flags: int) =
   ## Locks all memory for the running process to prevent swapping.
   ##
-  ## example::
-  ##
+  ## example:
+  ##   ```nim
   ##   memoryLockAll(MCL_CURRENT or MCL_FUTURE)
+  ##   ```
   if mlockall(flags.cint) != 0:
     raise newException(OSError, $strerror(errno))
 

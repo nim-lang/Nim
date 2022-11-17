@@ -4,6 +4,7 @@ discard """
 
 import experimental/diff
 import std/strutils
+import std/assertions
 
 proc testHelper(f: seq[Item]): string =
   for it in f:

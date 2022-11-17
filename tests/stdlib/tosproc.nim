@@ -9,6 +9,7 @@ because it'd need cleanup up stdout
 see also: tests/osproc/*.nim; consider merging those into a single test here
 (easier to factor and test more things as a single self contained test)
 ]#
+import std/[assertions, syncio]
 
 when defined(case_testfile): # compiled test file for child process
   from posix import exitnow
@@ -119,7 +120,10 @@ else: # main driver
     runTest("exit_0", 0)
     runTest("exitnow_139", 139)
     runTest("c_exit2_139", 139)
-    runTest("quit_139", 139)
+    when defined(posix):
+      runTest("quit_139", 127) # The quit value gets saturated to 127
+    else:
+      runTest("quit_139", 139)
 
   block execCmdTest:
     let output = compileNimProg("-d:release -d:case_testfile", "D20220705T221100")

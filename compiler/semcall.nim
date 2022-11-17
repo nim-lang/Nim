@@ -149,9 +149,6 @@ proc effectProblem(f, a: PType; result: var string; c: PContext) =
       of efTagsUnknown:
         result.add "\n  The `.tags` requirements differ. Annotate the " &
             "proc with {.tags: [].} to get extended error information."
-      of efLockLevelsDiffer:
-        result.add "\n  The `.locks` requirements differ. Annotate the " &
-            "proc with {.locks: 0.} to get extended error information."
       of efEffectsDelayed:
         result.add "\n  The `.effectsOf` annotations differ."
       of efTagsIllegal:
@@ -405,6 +402,9 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
         template impl() =
+          result.state = csNoMatch
+          if efNoDiagnostics in flags:
+            return
           # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
           localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
         if n[0].kind == nkIdent and n[0].ident.s == ".=" and n[2].kind == nkIdent:
@@ -544,8 +544,8 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       for s in instantiateGenericParamList(c, gp, x.bindings):
         case s.kind
         of skConst:
-          if not s.ast.isNil:
-            x.call.add s.ast
+          if not s.astdef.isNil:
+            x.call.add s.astdef
           else:
             x.call.add c.graph.emptyNode
         of skType:
@@ -580,27 +580,6 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
               "Non-matching candidates for " & renderTree(n) & "\n" &
               candidates)
     result = semResolvedCall(c, r, n, flags)
-  elif implicitDeref in c.features and canDeref(n):
-    # try to deref the first argument and then try overloading resolution again:
-    #
-    # XXX: why is this here?
-    # it could be added to the long list of alternatives tried
-    # inside `resolveOverloads` or it could be moved all the way
-    # into sigmatch with hidden conversion produced there
-    #
-    n[1] = n[1].tryDeref
-    var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
-    if r.state == csMatch: result = semResolvedCall(c, r, n, flags)
-    else:
-      # get rid of the deref again for a better error message:
-      n[1] = n[1][0]
-      #notFoundError(c, n, errors)
-      if efExplain notin flags:
-        # repeat the overload resolution,
-        # this time enabling all the diagnostic output (this should fail again)
-        discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
-      elif efNoUndeclared notin flags:
-        notFoundError(c, n, errors)
   else:
     if efExplain notin flags:
       # repeat the overload resolution,

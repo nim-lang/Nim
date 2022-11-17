@@ -1648,7 +1648,7 @@ func removePrefix*(s: var string, chars: set[char] = Newlines) {.rtl,
 
   var start = 0
   while start < s.len and s[start] in chars: start += 1
-  if start > 0: s.delete(0, start - 1)
+  if start > 0: s.delete(0..start - 1)
 
 func removePrefix*(s: var string, c: char) {.rtl,
     extern: "nsuRemovePrefixChar".} =
@@ -1675,8 +1675,8 @@ func removePrefix*(s: var string, prefix: string) {.rtl,
     var answers = "yesyes"
     answers.removePrefix("yes")
     doAssert answers == "yes"
-  if s.startsWith(prefix):
-    s.delete(0, prefix.len - 1)
+  if s.startsWith(prefix) and prefix.len > 0:
+    s.delete(0..prefix.len - 1)
 
 func removeSuffix*(s: var string, chars: set[char] = Newlines) {.rtl,
     extern: "nsuRemoveSuffixCharSet".} =
@@ -1882,9 +1882,6 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = -1): int {.
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
   func c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
                 importc: "memchr", header: "<string.h>".}
-  func c_strstr(haystack, needle: cstring): cstring {.
-    importc: "strstr", header: "<string.h>".}
-
   const hasCStringBuiltin = true
 else:
   const hasCStringBuiltin = false
@@ -1939,6 +1936,14 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
     if s[i] in chars:
       return i
 
+when defined(linux):
+  proc memmem(haystack: pointer, haystacklen: csize_t,
+              needle: pointer, needlelen: csize_t): pointer {.importc, header: """#define _GNU_SOURCE
+#include <string.h>""".}
+elif defined(bsd) or (defined(macosx) and not defined(ios)):
+  proc memmem(haystack: pointer, haystacklen: csize_t,
+              needle: pointer, needlelen: csize_t): pointer {.importc, header: "#include <string.h>".}
+
 func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuFindStr".} =
   ## Searches for `sub` in `s` inside range `start..last` (both ends included).
@@ -1960,9 +1965,10 @@ func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   when nimvm:
     useSkipTable()
   else:
-    when hasCStringBuiltin:
-      if last < 0 and start < s.len:
-        let found = c_strstr(s[start].unsafeAddr, sub)
+    when declared(memmem):
+      let subLen = sub.len
+      if last < 0 and start < s.len and subLen != 0:
+        let found = memmem(s[start].unsafeAddr, csize_t(s.len - start), sub.cstring, csize_t(subLen))
         result = if not found.isNil:
             cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
           else:
@@ -2022,7 +2028,8 @@ func rfind*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
   if sub.len == 0:
-    return -1
+    let rightIndex: Natural = if last < 0: s.len else: last
+    return max(start, rightIndex)
   if sub.len > s.len - start:
     return -1
   let last = if last == -1: s.high else: last
@@ -2428,11 +2435,11 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       frmtstr[3] = '*'
       frmtstr[4] = floatFormatToChar[format]
       frmtstr[5] = '\0'
-      L = c_sprintf(addr buf, addr frmtstr, precision, f)
+      L = c_sprintf(cast[cstring](addr buf), cast[cstring](addr frmtstr), precision, f)
     else:
       frmtstr[1] = floatFormatToChar[format]
       frmtstr[2] = '\0'
-      L = c_sprintf(addr buf, addr frmtstr, f)
+      L = c_sprintf(cast[cstring](addr buf), cast[cstring](addr frmtstr), f)
     result = newString(L)
     for i in 0 ..< L:
       # Depending on the locale either dot or comma is produced,
@@ -2487,7 +2494,8 @@ func trimZeros*(x: var string; decimalSep = '.') =
     var pos = last
     while pos >= 0 and x[pos] == '0': dec(pos)
     if pos > sPos: inc(pos)
-    x.delete(pos, last)
+    if last >= pos:
+      x.delete(pos..last)
 
 type
   BinaryPrefixMode* = enum ## The different names for binary prefixes.

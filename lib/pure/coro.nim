@@ -33,6 +33,9 @@ import os
 import lists
 include system/timers
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const defaultStackSize = 512 * 1024
 const useOrcArc = defined(gcArc) or defined(gcOrc)
 

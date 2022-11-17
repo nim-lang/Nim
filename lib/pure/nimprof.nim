@@ -23,6 +23,9 @@ when defined(nimHasUsed):
 
 import hashes, algorithm, strutils, tables, sets
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 when not defined(memProfiler):
   include "system/timers"
 
@@ -122,13 +125,13 @@ when defined(memProfiler):
   var
     gTicker {.threadvar.}: int
 
-  proc requestedHook(): bool {.nimcall, locks: 0.} =
+  proc requestedHook(): bool {.nimcall.} =
     if gTicker == 0:
       gTicker = SamplingInterval
       result = true
     dec gTicker
 
-  proc hook(st: StackTrace, size: int) {.nimcall, locks: 0.} =
+  proc hook(st: StackTrace, size: int) {.nimcall.} =
     when defined(ignoreAllocationSize):
       hookAux(st, 1)
     else:
@@ -140,7 +143,7 @@ else:
     gTicker: int # we use an additional counter to
                  # avoid calling 'getTicks' too frequently
 
-  proc requestedHook(): bool {.nimcall, locks: 0.} =
+  proc requestedHook(): bool {.nimcall.} =
     if interval == 0: result = true
     elif gTicker == 0:
       gTicker = 500
@@ -149,7 +152,7 @@ else:
     else:
       dec gTicker
 
-  proc hook(st: StackTrace) {.nimcall, locks: 0.} =
+  proc hook(st: StackTrace) {.nimcall.} =
     #echo "profiling! ", interval
     if interval == 0:
       hookAux(st, 1)

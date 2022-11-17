@@ -3,11 +3,11 @@ discard """
 """
 
 import std/oids
-
+import std/assertions
 
 block: # genOid
   let x = genOid()
-  doAssert ($x).len == 32
+  doAssert ($x).len == 24
 
 block:
   let x = genOid()

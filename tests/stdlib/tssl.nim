@@ -4,7 +4,7 @@ discard """
   disabled: "openbsd"
 """
 # disabled: pending bug #15713
-import net, nativesockets
+import std/[net, nativesockets, assertions, typedthreads]
 
 when defined(posix): import os, posix
 else:
