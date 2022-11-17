@@ -5,7 +5,7 @@ discard """
 
 # if excessive, could remove 'cpp' from targets
 
-from strutils import startsWith, endsWith, contains, strip
+from strutils import endsWith, contains, strip
 from std/macros import newLit
 import std/assertions
 
