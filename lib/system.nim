@@ -1844,7 +1844,7 @@ proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
     if s == nil or s.len == 0: result = cstring""
-    else: result = cstring(addr s.data)
+    else: result = cast[cstring](addr s.data)
 
 proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## Get type information for `x`.
@@ -2071,9 +2071,9 @@ when not defined(js):
     when hostOS != "standalone":
       include system/threadimpl
       when not defined(nimPreviewSlimSystem):
-        {.deprecated: "threads is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/threads`".}
-        import std/threads
-        export threads
+        {.deprecated: "threads is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/typedthreads`".}
+        import std/typedthreads
+        export typedthreads
 
   elif not defined(nogc) and not defined(nimscript):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
