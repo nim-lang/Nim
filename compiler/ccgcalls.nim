@@ -157,7 +157,9 @@ proc reifiedOpenArray(n: PNode): bool {.inline.} =
 
 proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, Rope) =
   var a, b, c: TLoc
-  initLocExpr(p, q[1], a)
+  initLoc(a, locNone, q[1], OnUnknown)
+  a.flags.incl(lfEnforceDeref)
+  expr(p, q[1], a)
   initLocExpr(p, q[2], b)
   initLocExpr(p, q[3], c)
   # but first produce the required index checks:
