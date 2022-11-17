@@ -900,6 +900,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
   #sysAssert(isAllocatedPtr(a, p), "rawDealloc: no allocated pointer")
   sysAssert(allocInv(a), "rawDealloc: begin")
   var c = pageAddr(p)
+  sysAssert(c != nil, "rawDealloc: begin")
   if isSmallChunk(c):
     # `p` is within a small chunk:
     var c = cast[PSmallChunk](c)
