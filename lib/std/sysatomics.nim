@@ -220,7 +220,8 @@ else:
     inc(p[], val)
     result = p[]
 
-proc atomicInc*(memLoc: var int, x: int = 1): int =
+
+proc atomicInc*(memLoc: var int, x: int = 1): int {.inline, discardable, raises: [], tags: [].} =
   when someGcc and hasThreadSupport:
     result = atomicAddFetch(memLoc.addr, x, ATOMIC_SEQ_CST)
   elif someVcc and hasThreadSupport:
@@ -230,7 +231,7 @@ proc atomicInc*(memLoc: var int, x: int = 1): int =
     inc(memLoc, x)
     result = memLoc
 
-proc atomicDec*(memLoc: var int, x: int = 1): int =
+proc atomicDec*(memLoc: var int, x: int = 1): int {.inline, discardable, raises: [], tags: [].} =
   when someGcc and hasThreadSupport:
     when declared(atomicSubFetch):
       result = atomicSubFetch(memLoc.addr, x, ATOMIC_SEQ_CST)
