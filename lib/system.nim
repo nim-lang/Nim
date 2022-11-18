@@ -1394,13 +1394,15 @@ when not defined(js) and not defined(booting) and defined(nimTrMacros):
     swap(cast[ptr pointer](addr arr[a])[], cast[ptr pointer](addr arr[b])[])
 
 when not defined(nimscript):
-  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
-                                                     discardable, raises: [], tags: [], benign.}
-  ## Atomic increment of `memLoc`. Returns the value after the operation.
+  {.push stackTrace: off, profiler: off.}
 
-  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline,
-                                                     discardable, raises: [], tags: [], benign.}
-  ## Atomic decrement of `memLoc`. Returns the value after the operation.
+  when not defined(nimPreviewSlimSystem):
+    import std/private/sysatomics
+    export sysatomics
+  else:
+    import std/private/sysatomics
+
+  {.pop.}
 
 include "system/memalloc"
 
@@ -1616,13 +1618,6 @@ when not defined(nimscript):
 
 when not declared(sysFatal):
   include "system/fatal"
-
-when not defined(nimscript):
-  {.push stackTrace: off, profiler: off.}
-
-  include "system/atomics"
-
-  {.pop.}
 
 
 when defined(nimV2):

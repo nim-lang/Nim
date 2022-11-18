@@ -10,6 +10,8 @@
 # Atomic operations for Nim.
 {.push stackTrace:off, profiler:off.}
 
+const
+  hasThreadSupport = compileOption("threads") and not defined(nimscript)
 const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang)
 const someVcc = defined(vcc) or defined(clang_cl)
 

@@ -12,6 +12,7 @@
 
 include osalloc
 import std/private/syslocks
+import std/private/sysatomics
 
 template track(op, address, size) =
   when defined(memTracker):
