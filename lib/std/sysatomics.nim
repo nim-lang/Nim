@@ -7,6 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
+when defined(nimPreviewSlimSystem):
+  {.deprecated: "use `std/atomics` instead".}
+
 # Atomic operations for Nim.
 {.push stackTrace:off, profiler:off.}
 
