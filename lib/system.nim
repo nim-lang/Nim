@@ -1397,10 +1397,10 @@ when not defined(nimscript):
   {.push stackTrace: off, profiler: off.}
 
   when not defined(nimPreviewSlimSystem):
-    import std/private/sysatomics
+    import std/sysatomics
     export sysatomics
   else:
-    import std/private/sysatomics
+    import std/sysatomics
 
   {.pop.}
 
