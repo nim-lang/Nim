@@ -1008,7 +1008,7 @@ const postExprBlocks = {nkStmtList, nkStmtListExpr,
 
 proc postStatements(g: var TSrcGen, n: PNode, i: int, fromStmtList: bool) =
   var i = i
-  if n[i].kind == nkStmtList:
+  if n[i].kind in {nkStmtList, nkStmtListExpr}:
     if fromStmtList:
       put(g, tkColon, ":")
     else:
@@ -1020,7 +1020,7 @@ proc postStatements(g: var TSrcGen, n: PNode, i: int, fromStmtList: bool) =
   for j in i ..< n.len:
     if n[j].kind == nkDo:
       optNL(g)
-    elif n[j].kind == nkStmtList:
+    elif n[j].kind in {nkStmtList, nkStmtListExpr}:
       optNL(g)
       put(g, tkDo, "do")
       put(g, tkColon, ":")
