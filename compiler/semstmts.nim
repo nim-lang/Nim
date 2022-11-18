@@ -593,9 +593,12 @@ proc msgSymChoiceUseQualifier(c: PContext; n: PNode; note = errGenerated) =
 
 template isLocalVarSym(n: PNode): bool =
   n.kind == nkSym and 
-    n.sym.kind in {skVar, skLet} and not 
+    (n.sym.kind in {skVar, skLet} and not 
     ({sfGlobal, sfPure} <= n.sym.flags or
-      sfCompileTime in n.sym.flags)
+      sfCompileTime in n.sym.flags) or
+      n.sym.kind in {skProc, skFunc, skIterator} and 
+      sfGlobal notin n.sym.flags
+      )
   
 proc usesLocalVar(n: PNode): bool =
   for z in 1 ..< n.len:
