@@ -387,8 +387,7 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   var t = semTypeNode(c, n[0], nil)
   result = newNodeIT(nkObjConstr, n.info, t)
-  result.add newNodeIT(nkType, n.info, t) #This will contain the default values to be added in transf
-  for i in 1..<n.len:
+  for i in 0..<n.len:
     result.add n[i]
 
   if t == nil:
@@ -421,7 +420,6 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
   # branches will be reported as an error):
   var constrCtx = initConstrContext(t, result)
   let (initResult, defaults) = semConstructTypeAux(c, constrCtx, flags)
-  result[0].sons.add defaults
   var hasError = false # needed to split error detect/report for better msgs
 
   # It's possible that the object was not fully initialized while
@@ -456,6 +454,8 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
       localError(c.config, field.info, msg)
       hasError = true
       break
+
+  result.sons.add defaults
 
   if initResult == initFull:
     incl result.flags, nfAllFieldsSet

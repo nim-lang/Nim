@@ -1,4 +1,5 @@
 discard """
+  disabled: i386
   output: '''
 In doStuff()
 In initProcess()
