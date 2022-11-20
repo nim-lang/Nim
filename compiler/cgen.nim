@@ -211,6 +211,10 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
       let ident = args[j-1]
       flushStrLit()
       result.add newCall(formatValue, resVar, newCall(ident"cgsymValue", m, ident))
+    elif frmt[i] == '#' and frmt[i+1] == '#':
+      inc(i, 2)
+      strLit.add("#")
+
     var start = i
     while i < frmt.len:
       if frmt[i] != '$' and frmt[i] != '#': inc(i)
@@ -1413,24 +1417,21 @@ proc genMainProc(m: BModule) =
     # prevents inlining of the NimMainInner function and dependent
     # functions, which might otherwise merge their stack frames.
 
-    PreMainVolatileBody =
-      "\tvoid (*volatile inner)(void);$N" &
-      "\tinner = $3PreMainInner;$N" &
-      "$1" &
-      "\t(*inner)();$N"
-
-    PreMainNonVolatileBody =
-      "$1" &
-      "\t$3PreMainInner();$N"
-
-    PreMainBodyStart = "$N" &
+    PreMainBody = "$N" &
       "N_LIB_PRIVATE void $3PreMainInner(void) {$N" &
       "$2" &
       "}$N$N" &
       "$4" &
-      "N_LIB_PRIVATE void $3PreMain(void) {$N"
-
-    PreMainBodyEnd =
+      "N_LIB_PRIVATE void $3PreMain(void) {$N" &
+      "\t##if $5$N" & # 1 for volatile call, 0 for non-volatile
+      "\tvoid (*volatile inner)(void);$N" &
+      "\tinner = $3PreMainInner;$N" &
+      "$1" &
+      "\t(*inner)();$N" &
+      "\t##else$N" &
+      "$1" &
+      "\t$3PreMainInner();$N" &
+      "\t##endif$N" &
       "}$N$N"
 
     MainProcs =
@@ -1443,31 +1444,22 @@ proc genMainProc(m: BModule) =
         "$1" &
       "}$N$N"
 
-    NimMainVolatileBody =
+    NimMainProc =
+      "N_CDECL(void, $5NimMain)(void) {$N" &
+      "\t##if $6$N" & # 1 for volatile call, 0 for non-volatile
       "\tvoid (*volatile inner)(void);$N" &
       "$4" &
       "\tinner = $5NimMainInner;$N" &
       "$2" &
-      "\t(*inner)();$N"
-
-    NimMainNonVolatileBody =
+      "\t(*inner)();$N" &
+      "\t##else$N" &
       "$4" &
       "$2" &
-      "\t$5NimMainInner();$N"
-
-    NimMainProcStart =
-      "N_CDECL(void, $5NimMain)(void) {$N"
-
-    NimMainProcEnd =
+      "\t$5NimMainInner();$N" &
+      "\t##endif$N" &
       "}$N$N"
 
-    NimMainProc = NimMainProcStart & NimMainVolatileBody & NimMainProcEnd
-
-    NimSlimMainProc = NimMainProcStart & NimMainNonVolatileBody & NimMainProcEnd
-
     NimMainBody = NimMainInner & NimMainProc
-
-    NimSlimMainBody = NimMainInner & NimSlimMainProc
 
     PosixCMain =
       "int main(int argc, char** args, char** env) {$N" &
@@ -1532,42 +1524,32 @@ proc genMainProc(m: BModule) =
     if m.config.target.targetOS == osStandalone or m.config.selectedGC in {gcNone, gcArc, gcOrc}: "".rope
     else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N", [])
   inc(m.labels)
-  if m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
-    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit, m.config.nimMainPrefix, posixCmdLine])
-  else:
-    appcg(m, m.s[cfsProcs], PreMainBodyStart & PreMainNonVolatileBody & PreMainBodyEnd, [m.g.mainDatInit, m.g.otherModsInit, m.config.nimMainPrefix, posixCmdLine])
+
+  let isVolatile = if m.config.selectedGC notin {gcNone, gcArc, gcOrc}: "1" else: "0"
+  appcg(m, m.s[cfsProcs], PreMainBody, [m.g.mainDatInit, m.g.otherModsInit, m.config.nimMainPrefix, posixCmdLine, isVolatile])
 
   if m.config.target.targetOS == osWindows and
       m.config.globalOptions * {optGenGuiApp, optGenDynLib} != {}:
     if optGenGuiApp in m.config.globalOptions:
       const nimMain = WinNimMain
       appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix, isVolatile])
     else:
       const nimMain = WinNimDllMain
       appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix, isVolatile])
   elif m.config.target.targetOS == osGenode:
     const nimMain = GenodeNimMain
     appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix, isVolatile])
   elif optGenDynLib in m.config.globalOptions:
     const nimMain = PosixNimDllMain
     appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
-  elif m.config.target.targetOS == osStandalone:
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix, isVolatile])
+  else:
     const nimMain = NimMainBody
     appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
-  else:
-    if m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
-      const nimMain = NimMainBody
-      appcg(m, m.s[cfsProcs], nimMain,
-          [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
-    else:
-      const nimMain = NimSlimMainBody
-      appcg(m, m.s[cfsProcs], nimMain,
-          [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix])
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix, isVolatile])
 
   if optNoMain notin m.config.globalOptions:
     if m.config.cppCustomNamespace.len > 0:
