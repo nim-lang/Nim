@@ -216,10 +216,6 @@ proc pqclientEncoding*(conn: PPGconn): int32{.cdecl, dynlib: dllName,
     importc: "PQclientEncoding".}
 proc pqsetClientEncoding*(conn: PPGconn, encoding: cstring): int32{.cdecl,
     dynlib: dllName, importc: "PQsetClientEncoding".}
-when defined(USE_SSL):
-  # Get the SSL structure associated with a connection
-  proc pqgetssl*(conn: PPGconn): PSSL{.cdecl, dynlib: dllName,
-                                       importc: "PQgetssl".}
 proc pqsetErrorVerbosity*(conn: PPGconn, verbosity: PGVerbosity): PGVerbosity{.
     cdecl, dynlib: dllName, importc: "PQsetErrorVerbosity".}
 proc pqtrace*(conn: PPGconn, debug_port: File){.cdecl, dynlib: dllName,
