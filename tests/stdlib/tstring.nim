@@ -1,5 +1,4 @@
 discard """
-  matrix: "--mm:refc"
   targets: "c cpp js"
 """
 
@@ -69,7 +68,7 @@ proc main() =
       discard
     else:
       # bug #6223
-      doAssertRaises(IndexDefect):
+      doAssertRaises(IndexDefect): # bug #20026
         discard s[0..999]
 
   block: # ==, cmp

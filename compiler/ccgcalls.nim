@@ -14,7 +14,8 @@ proc canRaiseDisp(p: BProc; n: PNode): bool =
   if n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
     result = false
   elif optPanics in p.config.globalOptions or
-      (n.kind == nkSym and sfSystemModule in getModule(n.sym).flags):
+      (n.kind == nkSym and sfSystemModule in getModule(n.sym).flags and
+       (sfExported notin n.sym.flags or n.sym.magic != mNone)):
     # we know we can be strict:
     result = canRaise(n)
   else:
