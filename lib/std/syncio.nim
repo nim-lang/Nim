@@ -467,7 +467,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     while true:
       # fixes #9634; this pattern may need to be abstracted as a template if reused;
       # likely other io procs need this for correctness.
-      fgetsSuccess = c_fgets(addr line[pos], sp.cint, f) != nil
+      fgetsSuccess = c_fgets(cast[cstring](addr line[pos]), sp.cint, f) != nil
       if fgetsSuccess: break
       when not defined(nimscript):
         if errno == EINTR:
@@ -810,14 +810,33 @@ when defined(windows) and not defined(nimscript) and not defined(js):
 
 when defined(windows) and appType == "console" and
     not defined(nimDontSetUtf8CodePage) and not defined(nimscript):
+  import std/exitprocs
+
   proc setConsoleOutputCP(codepage: cuint): int32 {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleOutputCP".}
   proc setConsoleCP(wCodePageID: cuint): int32 {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleCP".}
+  proc getConsoleOutputCP(): cuint {.stdcall, dynlib: "kernel32",
+    importc: "GetConsoleOutputCP".}
+  proc getConsoleCP(): cuint {.stdcall, dynlib: "kernel32",
+    importc: "GetConsoleCP".}
 
   const Utf8codepage = 65001
-  discard setConsoleOutputCP(Utf8codepage)
-  discard setConsoleCP(Utf8codepage)
+
+  let
+    consoleOutputCP = getConsoleOutputCP()
+    consoleCP = getConsoleCP()
+
+  proc restoreConsoleOutputCP() = discard setConsoleOutputCP(consoleOutputCP)
+  proc restoreConsoleCP() = discard setConsoleCP(consoleCP)
+
+  if consoleOutputCP != Utf8codepage:
+    discard setConsoleOutputCP(Utf8codepage)
+    addExitProc(restoreConsoleOutputCP)
+
+  if consoleCP != Utf8codepage:
+    discard setConsoleCP(Utf8codepage)
+    addExitProc(restoreConsoleCP)
 
 proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.} =
   ## Opens a file named `filename` for reading, calls `readAll
