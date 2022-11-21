@@ -2716,7 +2716,8 @@ when notJSnotNims:
     initSysLock echoLock
     addSysExitProc(proc() {.noconv.} = deinitSys(echoLock))
 
-  const stdOutLock = not defined(windows) and
+  const stdOutLock = compileOption("threads") and
+                    not defined(windows) and
                     not defined(android) and
                     not defined(nintendoswitch) and
                     not defined(freertos) and
