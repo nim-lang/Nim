@@ -7,6 +7,9 @@ import
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
+when defined(debugReorder):
+  import std/tables
+
 type
   DepN = ref object
     pnode: PNode
