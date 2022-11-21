@@ -363,8 +363,8 @@ proc sendImpl(q: PRawChannel, typ: PNimType, msg: pointer, noBlock: bool): bool 
 
   rawSend(q, msg, typ)
   q.elemType = typ
-  releaseSys(q.lock)
   signalSysCond(q.cond)
+  releaseSys(q.lock)
   result = true
 
 proc send*[TMsg](c: var Channel[TMsg], msg: sink TMsg) {.inline.} =
