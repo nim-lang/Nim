@@ -1683,7 +1683,7 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
     result = s[L]
     setLen(s, L)
 
-func `==`*[T: tuple|object](x, y: T): bool =
+proc `==`*[T: tuple|object](x, y: T): bool =
   ## Generic `==` operator for tuples that is lifted from the components.
   ## of `x` and `y`.
   for a, b in fields(x, y):
