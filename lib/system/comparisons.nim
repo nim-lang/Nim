@@ -306,7 +306,7 @@ proc `==`*[T](x, y: openArray[T]): bool =
   result = true
 
 
-proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
+proc `==`*[T](x, y: seq[T]): bool =
   ## Generic equals operator for sequences: relies on a equals operator for
   ## the element type `T`.
   when nimvm:
