@@ -1116,7 +1116,10 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
     popCaseContext(c)
     closeScope(c)
     return handleCaseStmtMacro(c, n, flags)
-
+  template invalidOrderOfBranches(n: PNode) = 
+    localError(c.config, n.info, "invalid order of case branches")
+    break
+  
   for i in 1..<n.len:
     setCaseContextIdx(c, i)
     var x = n[i]
@@ -1125,6 +1128,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
         suggestEnum(c, x, caseTyp)
     case x.kind
     of nkOfBranch:
+      if hasElse: invalidOrderOfBranches(x)
       checkMinSonsLen(x, 2, c.config)
       semCaseBranch(c, n, x, i, covered)
       var last = x.len-1
@@ -1132,6 +1136,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
       typ = commonType(c, typ, x[last])
       expectedType = typ
     of nkElifBranch:
+      if hasElse: invalidOrderOfBranches(x)
       chckCovered = false
       checkSonsLen(x, 2, c.config)
       openScope(c)
