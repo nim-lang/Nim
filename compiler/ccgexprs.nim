@@ -413,6 +413,8 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyPtr, tyPointer, tyChar, tyBool, tyEnum, tyCstring,
      tyInt..tyUInt64, tyRange, tyVar, tyLent, tyNil:
     linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
+  of tyUncheckedArray:
+    discard
   else: internalError(p.config, "genAssignment: " & $ty.kind)
 
   if optMemTracker in p.options and dest.storage in {OnHeap, OnUnknown}:
@@ -3207,6 +3209,8 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Rope) =
       getDefaultValue(p, t.sons[1], info, result)
     result.add "}"
     #result = rope"{}"
+  of tyUncheckedArray:
+    result.add "{}"
   of tyOpenArray, tyVarargs:
     result.add "{NIM_NIL, 0}"
   of tySet:
