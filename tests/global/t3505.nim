@@ -4,7 +4,7 @@ action: "reject"
 nimout: '''
 t3505.nim(22, 22) Error: cannot assign local to global variable
 t3505.nim(31, 28) Error: cannot assign local to global variable
-
+t3505.nim(39, 29) Error: cannot assign local to global variable
 
 
 
@@ -31,3 +31,11 @@ proc main() =
   var x {.global.} = initX2(initX(f))
   
 main()
+
+# issue #20866
+proc foo2() =
+  iterator bar() {.closure.} =
+    discard
+  var g {.global.} = rawProc(bar)
+
+foo2()
