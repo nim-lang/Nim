@@ -274,12 +274,44 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PS
 
 proc generateMethodDispatchers*(g: ModuleGraph): PNode =
   result = newNode(nkStmtList)
-  for bucket in 0..<g.methods.len:
-    var relevantCols = initIntSet()
-    for col in 1..<g.methods[bucket].methods[0].typ.len:
-      if relevantCol(g.methods[bucket].methods, col): incl(relevantCols, col)
-      if optMultiMethods notin g.config.globalOptions:
-        # if multi-methods are not enabled, we are interested only in the first field
-        break
-    sortBucket(g.methods[bucket].methods, relevantCols)
-    result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))
+  when not defined(nimPreviewVTable):
+    for bucket in 0..<g.methods.len:
+      var relevantCols = initIntSet()
+      for col in 1..<g.methods[bucket].methods[0].typ.len:
+        if relevantCol(g.methods[bucket].methods, col): incl(relevantCols, col)
+        if optMultiMethods notin g.config.globalOptions:
+          # if multi-methods are not enabled, we are interested only in the first field
+          break
+      sortBucket(g.methods[bucket].methods, relevantCols)
+      result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))
+  else:
+    doAssert false
+    # Gen vtable init here: it should work
+    # because the object initialization happens after this proc is called.
+
+    # Sharting from here, we shall see all methods.
+
+    # The first version should only focus on the standard form:
+    # the base proc must exist and every child's corresponding proc
+    # shall be defined. Otherwise we need to store a method in the BModule,
+    # then we can generate the vtable initialization for all objects.
+
+    # the first case covers
+    # type FooBase = ref object of RootObj
+    #   dummy: int
+    # type Foo = ref object of FooBase
+    #   value : float32
+    # type Foo2 = ref object of Foo
+    #   change : float32
+    # method bar(x: FooBase, a: float32) {.base.} =
+    #   discard
+    # method bar(x: Foo, a: float32)  =
+    #   x.value += a
+    # method bar(x: Foo2, a: float32)  =
+    #   x.value += a
+
+    # .vtable = [cast[pointer](bar), bar1, bar2] # erase its type using cast
+    # first check whether its method, then its parents
+    # gen dispatch
+    # proc bar(x: FooBase, a: float32) =
+    #   cast[proc bar(x: FooBase, a: float32)](x.vtable[0])(x, a)
