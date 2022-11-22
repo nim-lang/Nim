@@ -1683,7 +1683,7 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
     result = s[L]
     setLen(s, L)
 
-func `==`*[T: tuple|object](x, y: T): bool =
+proc `==`*[T: tuple|object](x, y: T): bool =
   ## Generic `==` operator for tuples that is lifted from the components.
   ## of `x` and `y`.
   for a, b in fields(x, y):
@@ -2716,7 +2716,8 @@ when notJSnotNims:
     initSysLock echoLock
     addSysExitProc(proc() {.noconv.} = deinitSys(echoLock))
 
-  const stdOutLock = not defined(windows) and
+  const stdOutLock = compileOption("threads") and
+                    not defined(windows) and
                     not defined(android) and
                     not defined(nintendoswitch) and
                     not defined(freertos) and
