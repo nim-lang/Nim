@@ -7,9 +7,14 @@
 #    distribution, for details about the copyright.
 #
 
+when defined(nimPreviewSlimSystem):
+  {.deprecated: "use `std/atomics` instead".}
+
 # Atomic operations for Nim.
 {.push stackTrace:off, profiler:off.}
 
+const
+  hasThreadSupport = compileOption("threads") and not defined(nimscript)
 const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang)
 const someVcc = defined(vcc) or defined(clang_cl)
 
@@ -215,7 +220,8 @@ else:
     inc(p[], val)
     result = p[]
 
-proc atomicInc*(memLoc: var int, x: int = 1): int =
+
+proc atomicInc*(memLoc: var int, x: int = 1): int {.inline, discardable, raises: [], tags: [].} =
   when someGcc and hasThreadSupport:
     result = atomicAddFetch(memLoc.addr, x, ATOMIC_SEQ_CST)
   elif someVcc and hasThreadSupport:
@@ -225,7 +231,7 @@ proc atomicInc*(memLoc: var int, x: int = 1): int =
     inc(memLoc, x)
     result = memLoc
 
-proc atomicDec*(memLoc: var int, x: int = 1): int =
+proc atomicDec*(memLoc: var int, x: int = 1): int {.inline, discardable, raises: [], tags: [].} =
   when someGcc and hasThreadSupport:
     when declared(atomicSubFetch):
       result = atomicSubFetch(memLoc.addr, x, ATOMIC_SEQ_CST)
