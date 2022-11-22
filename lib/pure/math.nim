@@ -1166,6 +1166,9 @@ func `^`*[T: SomeNumber](x: T, y: Natural): T =
         break
       x *= x
 
+func `^`*[T: SomeNumber](x: T, y: float32): float32 = pow(x, y)
+func `^`*[T: SomeNumber](x: T, y: float64): float64 = pow(x, y)
+
 func gcd*[T](x, y: T): T =
   ## Computes the greatest common (positive) divisor of `x` and `y`.
   ##
