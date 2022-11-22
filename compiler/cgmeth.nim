@@ -274,18 +274,19 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PS
 
 proc generateMethodDispatchers*(g: ModuleGraph): PNode =
   result = newNode(nkStmtList)
-  when not defined(nimPreviewVTable):
-    for bucket in 0..<g.methods.len:
-      var relevantCols = initIntSet()
-      for col in 1..<g.methods[bucket].methods[0].typ.len:
-        if relevantCol(g.methods[bucket].methods, col): incl(relevantCols, col)
-        if optMultiMethods notin g.config.globalOptions:
-          # if multi-methods are not enabled, we are interested only in the first field
-          break
-      sortBucket(g.methods[bucket].methods, relevantCols)
+  for bucket in 0..<g.methods.len:
+    var relevantCols = initIntSet()
+    for col in 1..<g.methods[bucket].methods[0].typ.len:
+      if relevantCol(g.methods[bucket].methods, col): incl(relevantCols, col)
+      if optMultiMethods notin g.config.globalOptions:
+        # if multi-methods are not enabled, we are interested only in the first field
+        break
+    sortBucket(g.methods[bucket].methods, relevantCols)
+    if isDefined(g.config, "nimPreviewVTable"):
+      doAssert sfBase in g.methods[bucket].methods[^1].flags
       result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))
-  else:
-    doAssert false
+    else:
+      result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))
     # Gen vtable init here: it should work
     # because the object initialization happens after this proc is called.
 
