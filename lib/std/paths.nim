@@ -38,6 +38,8 @@ func add(x: var string, tail: string) =
   normalizePathEnd(x, trailingSep=trailingSep)
 
 func add*(x: var Path, y: Path) {.borrow.}
+func addInt*(x: var Path, y: int) {.borrow.}                # Path("/folder").addInt 42
+func addFloat*(x: var Path, y: float | float32) {.borrow.}  # Path("/version").addFloat 2.0
 
 func `/`*(head, tail: Path): Path {.inline.} =
   ## Joins two directory names to one.
