@@ -1457,8 +1457,8 @@ proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
 
 proc semBlockType(c: PContext, n: PNode, prev: PType): PType =
   inc(c.p.nestedBlockCounter)
-  let oldBreakInForLoop = c.p.breakInForLoop
-  c.p.breakInForLoop = false
+  let oldBreakInLoop = c.p.breakInLoop
+  c.p.breakInLoop = false
   checkSonsLen(n, 2, c.config)
   openScope(c)
   if n[0].kind notin {nkEmpty, nkSym}:
@@ -1467,7 +1467,7 @@ proc semBlockType(c: PContext, n: PNode, prev: PType): PType =
   n[1].typ = result
   n.typ = result
   closeScope(c)
-  c.p.breakInForLoop = oldBreakInForLoop
+  c.p.breakInLoop = oldBreakInLoop
   dec(c.p.nestedBlockCounter)
 
 proc semGenericParamInInvocation(c: PContext, n: PNode): PType =
