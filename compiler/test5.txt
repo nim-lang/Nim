@@ -1,0 +1,10 @@
+```nim
+for i in 1..2: # errors
+  block:
+    break
+
+block: # works?
+  for i in 1..2:
+    break
+```
+It seems that it is a bit tricky to differentiate in the semantics phase.

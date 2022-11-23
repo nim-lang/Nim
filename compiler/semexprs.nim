@@ -2640,6 +2640,8 @@ include semobjconstr
 proc semBlock(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil): PNode =
   result = n
   inc(c.p.nestedBlockCounter)
+  let oldBreakInForLoop = c.p.breakInForLoop
+  c.p.breakInForLoop = false
   checkSonsLen(n, 2, c.config)
   openScope(c) # BUGFIX: label is in the scope of block!
   if n[0].kind != nkEmpty:
@@ -2657,6 +2659,7 @@ proc semBlock(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = ni
   if isEmptyType(n.typ): n.transitionSonsKind(nkBlockStmt)
   else: n.transitionSonsKind(nkBlockExpr)
   closeScope(c)
+  c.p.breakInForLoop = oldBreakInForLoop
   dec(c.p.nestedBlockCounter)
 
 proc semExportExcept(c: PContext, n: PNode): PNode =

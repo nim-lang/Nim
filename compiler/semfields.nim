@@ -133,6 +133,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
       typeMismatch(c.config, calli.info, tupleTypeA, tupleTypeB, calli)
 
   inc(c.p.nestedLoopCounter)
+  c.p.breakInForLoop = true
   if tupleTypeA.kind == tyTuple:
     var loopBody = n[^1]
     for i in 0..<tupleTypeA.len:
@@ -156,6 +157,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
       semForObjectFields(fc, t.n, n, stmts)
       if t[0] == nil: break
       t = skipTypes(t[0], skipPtrs)
+  c.p.breakInForLoop = false
   dec(c.p.nestedLoopCounter)
   # for TR macros this 'while true: ...; break' loop is pretty bad, so
   # we avoid it now if we can:
