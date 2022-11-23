@@ -29,8 +29,8 @@ echo "2"
 try:
   raise newException(OSError, "Problem")
 except OSError:
-  block:
-    break
+  block label:
+    break label
 
 echo "3"
 
