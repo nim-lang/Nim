@@ -19,7 +19,7 @@ block tbreak:
     run = false
     block myblock:
       if true:
-        break
+        break myblock
       echo "leaving myblock"
     x = true
   doAssert(x)
