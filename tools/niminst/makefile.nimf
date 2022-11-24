@@ -47,10 +47,27 @@ ifeq ($(uos),netbsd)
 endif
 ifeq ($(uos),darwin)
   myos = macosx
-  CC = clang
   LDFLAGS += -ldl -lm
   ifeq ($(HOSTTYPE),x86_64)
     ucpu = amd64
+  endif
+  ifeq ($(ucpu),i386)
+    CC = clang
+  endif
+  ifeq ($(ucpu),amd64)
+    CC = clang
+  endif
+  ifeq ($(ucpu),arm64)
+    CC = clang
+  endif
+  ifeq ($(ucpu),aarch64)
+    CC = clang
+  endif
+  ifeq ($(ucpu),ppc)
+    CC = gcc
+  endif
+  ifeq ($(ucpu),ppc64)
+    CC = gcc
   endif
 endif
 ifeq ($(uos),aix)
@@ -118,6 +135,14 @@ ifeq ($(ucpu),ppc64)
     CFLAGS += -m64
     LDFLAGS += -m64
   endif
+  ifeq ($(myos),freebsd)
+    CFLAGS += -m64
+    LDFLAGS += -m64
+  endif
+  ifeq ($(myos),macosx)
+    CFLAGS += -arch ppc64
+    LDFLAGS += -arch ppc64
+  endif
 endif
 ifeq ($(ucpu),powerpc)
   mycpu = powerpc
@@ -131,7 +156,11 @@ ifeq ($(ucpu),powerpc)
   endif
 endif
 ifeq ($(ucpu),ppc)
-  mycpu = ppc
+  mycpu = powerpc
+  ifeq ($(myos),macosx)
+    CFLAGS += -arch ppc
+    LDFLAGS += -arch ppc
+  endif
 endif
 ifneq (,$(filter $(ucpu), mips mips64))
   mycpu = $(shell /bin/sh -c '"$(CC)" -dumpmachine | sed "s/-.*//"')
