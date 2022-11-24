@@ -42,6 +42,8 @@
 - Enabling `-d:nimPreviewSlimSystem` removes the import of `channels_builtin` in
   in the `system` module.
 
+- Enabling `-d:nimPreviewCstringConversion`, `ptr char`, `ptr array[N, char]` and `ptr UncheckedArray[N, char]` don't support conversion to cstring anymore.
+
 - The `gc:v2` option is removed.
 
 - The `mainmodule` and `m` options are removed.
