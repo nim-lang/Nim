@@ -105,6 +105,8 @@
 
 - Object fields now support default values, see https://nim-lang.github.io/Nim/manual.html#types-default-values-for-object-fields for details.
 
+- Using an unnamed break in a block is deprecated. This warning will become an error in future versions! Use a named block with a named break instead.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"

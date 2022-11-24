@@ -42,3 +42,5 @@ switch("define", "nimPreviewHashRef")
 switch("define", "nimPreviewRangeDefault")
 when defined(windows):
   switch("tlsEmulation", "off")
+
+switch("warningAserror", "UnnamedBreak")
