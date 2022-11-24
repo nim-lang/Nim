@@ -211,8 +211,8 @@ else:
 
     # MSVC intrinsics
     proc interlockedExchange(location: pointer; desired: int8): int8 {.importc: "_InterlockedExchange8".}
-    proc interlockedExchange(location: pointer; desired: int16): int16 {.importc: "_InterlockedExchange".}
-    proc interlockedExchange(location: pointer; desired: int32): int32 {.importc: "_InterlockedExchange16".}
+    proc interlockedExchange(location: pointer; desired: int16): int16 {.importc: "_InterlockedExchange16".}
+    proc interlockedExchange(location: pointer; desired: int32): int32 {.importc: "_InterlockedExchange".}
     proc interlockedExchange(location: pointer; desired: int64): int64 {.importc: "_InterlockedExchange64".}
 
     proc interlockedCompareExchange(location: pointer; desired, expected: int8): int8 {.importc: "_InterlockedCompareExchange8".}
