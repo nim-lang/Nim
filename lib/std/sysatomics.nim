@@ -195,7 +195,7 @@ elif someVcc:
       {.importcpp: "_InterlockedCompareExchange8(static_cast<char volatile *>(#), #, #)", header: "<intrin.h>".}
     proc interlockedExchange8(location: pointer; desired: int8): int8 {.importcpp: "_InterlockedExchange8(static_cast<NI8 volatile *>(#), #)", header: "<intrin.h>".}
     proc interlockedExchange16(location: pointer; desired: int16): int16 {.importcpp: "_InterlockedExchange16(static_cast<NI16 volatile *>(#), #)", header: "<intrin.h>".}
-    proc interlockedExchange32(location: pointer; desired: int32): int32 {.importcpp: "_InterlockedExchange(static_cast<NI32 volatile *>(#), #)", header: "<intrin.h>".}
+    proc interlockedExchange32(location: pointer; desired: int32): int32 {.importcpp: "_InterlockedExchange(static_cast<NI volatile *>(#), #)", header: "<intrin.h>".}
     proc interlockedExchange64(location: pointer; desired: int64): int64 {.importcpp: "_InterlockedExchange64(static_cast<NI64 volatile *>(#), #)", header: "<intrin.h>".}
   else:
     proc interlockedCompareExchange64(p: pointer; exchange, comparand: int64): int64
