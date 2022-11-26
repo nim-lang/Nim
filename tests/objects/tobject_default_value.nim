@@ -3,7 +3,7 @@ discard """
   targets: "c cpp js"
 """
 
-import std/[times, tables, macros]
+import std/[times, macros]
 
 type
   Guess = object
@@ -26,6 +26,10 @@ import mobject_default_value
 
 block:
   let x = Default()
+  doAssert x.se == 0'i32
+
+block:
+  let x = default(Default)
   doAssert x.se == 0'i32
 # echo Default(poi: 12)
 # echo Default(poi: 17)
@@ -120,6 +124,19 @@ template main {.dirty.} =
     doAssert rVal == 0 # it should be 1
     doAssert objVal.r == 1
 
+  block: # bug #16744
+    type
+      R = range[1..10]
+      Obj = object
+        r: R
+
+    var
+      rVal: R = default(R) # Works fine
+      objVal = Obj()
+
+    doAssert rVal == 0 # it should be 1
+    doAssert objVal.r == 1
+
   block: # bug #3608
     type
       abc = ref object
@@ -147,6 +164,9 @@ template main {.dirty.} =
     doAssert ObjectBase(x).value == 12
     let y = ObjectBaseDistinct(default(ObjectBase))
     doAssert ObjectBase(y).value == 12
+
+    let m = ObjectBaseDistinct(ObjectBase())
+    doAssert ObjectBase(m).value == 12
 
     proc hello(): ObjectBaseDistinct =
       result = ObjectBaseDistinct(default(ObjectBase))
@@ -193,12 +213,24 @@ template main {.dirty.} =
     doAssert x.name.scale == 1
 
   block:
+    let x = Object2()
+    doAssert x.name.value == 12
+    doAssert x.name.time == 1.2
+    doAssert x.name.scale == 1
+
+  block:
     var x: ref Object2
     new x
     doAssert x[] == default(Object2)
 
   block:
-    var x = default(Object3) # todo Object3() ?
+    var x = default(Object3)
+    doAssert x.obj.name.value == 12
+    doAssert x.obj.name.time == 1.2
+    doAssert x.obj.name.scale == 1
+
+  block:
+    var x = Object3()
     doAssert x.obj.name.value == 12
     doAssert x.obj.name.time == 1.2
     doAssert x.obj.name.scale == 1
@@ -274,7 +306,6 @@ template main {.dirty.} =
     doAssert y.value == 12
     doAssert y.time == 1.2
     doAssert y.scale == 1
-
 
   block:
     var x: PrellDeque[int]
@@ -476,6 +507,21 @@ template main {.dirty.} =
 
         foo2()
 
+
+  block: # issue #20699
+    type
+      Either[A,B] = object
+        case kind:bool
+        of false:
+          b: B
+        of true:
+            a: A
+      O = object of RootRef
+
+    proc oToEither(o:O):Either[O,void] =
+      Either[O,void](kind:true,a: o)
+
+    discard oToEither(O())
 
 static: main()
 main()

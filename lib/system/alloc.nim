@@ -12,6 +12,7 @@
 
 include osalloc
 import std/private/syslocks
+import std/sysatomics
 
 template track(op, address, size) =
   when defined(memTracker):
@@ -758,10 +759,14 @@ proc deallocBigChunk(a: var MemRegion, c: PBigChunk) =
 when defined(gcDestructors):
   template atomicPrepend(head, elem: untyped) =
     # see also https://en.cppreference.com/w/cpp/atomic/atomic_compare_exchange
-    while true:
+    when hasThreadSupport:
+      while true:
+        elem.next.storea head.loada
+        if atomicCompareExchangeN(addr head, addr elem.next, elem, weak = true, ATOMIC_RELEASE, ATOMIC_RELAXED):
+          break
+    else:
       elem.next.storea head.loada
-      if atomicCompareExchangeN(addr head, addr elem.next, elem, weak = true, ATOMIC_RELEASE, ATOMIC_RELAXED):
-        break
+      head.storea elem
 
   proc addToSharedFreeListBigChunks(a: var MemRegion; c: PBigChunk) {.inline.} =
     sysAssert c.next == nil, "c.next pointer must be nil"
@@ -841,7 +846,11 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       sysAssert c.size == size, "rawAlloc 6"
       when defined(gcDestructors):
         if c.freeList == nil:
-          c.freeList = atomicExchangeN(addr c.sharedFreeList, nil, ATOMIC_RELAXED)
+          when hasThreadSupport:
+            c.freeList = atomicExchangeN(addr c.sharedFreeList, nil, ATOMIC_RELAXED)
+          else:
+            c.freeList = c.sharedFreeList
+            c.sharedFreeList = nil
           compensateCounters(a, c, size)
       if c.freeList == nil:
         sysAssert(c.acc + smallChunkOverhead() + size <= SmallChunkSize,
@@ -868,7 +877,11 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
     trackSize(c.size)
   else:
     when defined(gcDestructors):
-      let deferredFrees = atomicExchangeN(addr a.sharedFreeListBigChunks, nil, ATOMIC_RELAXED)
+      when hasThreadSupport:
+        let deferredFrees = atomicExchangeN(addr a.sharedFreeListBigChunks, nil, ATOMIC_RELAXED)
+      else:
+        let deferredFrees = a.sharedFreeListBigChunks
+        a.sharedFreeListBigChunks = nil
       if deferredFrees != nil:
         freeDeferredObjects(a, deferredFrees)
 
@@ -900,6 +913,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
   #sysAssert(isAllocatedPtr(a, p), "rawDealloc: no allocated pointer")
   sysAssert(allocInv(a), "rawDealloc: begin")
   var c = pageAddr(p)
+  sysAssert(c != nil, "rawDealloc: begin")
   if isSmallChunk(c):
     # `p` is within a small chunk:
     var c = cast[PSmallChunk](c)

@@ -244,3 +244,14 @@ block: # bug #11777
   type S = set[0..5]
   var s: S = {1, 2}
   doAssert 1 in s
+
+block: # regression #20807
+  var s: seq[string]
+  template fail =
+    s = @[]
+  template test(body: untyped) =
+    body
+  proc test(a: string) = discard
+  test: fail()
+  doAssert not (compiles do:
+    let x: seq[int] = `@`[string]([]))

@@ -7,10 +7,10 @@ macro byaddr*(sect) =
   ## Allows a syntax for l-value references, being an exact analog to
   ## `auto& a = ex;` in C++.
   ## 
-  ## Warning: This makes use of 2 experimental features, namely nullary
-  ## templates instantiated as symbols and variable macro pragmas.
-  ## For this reason, its behavior is not stable. The current implementation
-  ## allows redefinition, but this is not an intended consequence.
+  ## .. warning:: This makes use of 2 experimental features, namely nullary
+  ##   templates instantiated as symbols and variable macro pragmas.
+  ##   For this reason, its behavior is not stable. The current implementation
+  ##   allows redefinition, but this is not an intended consequence.
   runnableExamples:
     var s = @[10, 11, 12]
     var a {.byaddr.} = s[0]

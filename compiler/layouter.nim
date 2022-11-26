@@ -528,7 +528,7 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
     wr(em, $tok.tokType, ltOther)
     if not em.inquote: wrSpace(em)
   of tkOpr, tkDotDot:
-    if em.inquote or (((not tok.strongSpaceA) and tok.strongSpaceB == 0) and
+    if em.inquote or (((not tok.strongSpaceA) and tok.strongSpaceB == tsNone) and
         tok.ident.s notin ["<", ">", "<=", ">=", "==", "!="]):
       # bug #9504: remember to not spacify a keyword:
       lastTokWasTerse = true
@@ -538,7 +538,7 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
       if not em.endsInWhite: wrSpace(em)
       wr(em, tok.ident.s, ltOpr)
       template isUnary(tok): bool =
-        tok.strongSpaceB == 0 and tok.strongSpaceA
+        tok.strongSpaceB == tsNone and tok.strongSpaceA
 
       if not isUnary(tok):
         rememberSplit(splitBinary)

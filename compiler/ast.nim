@@ -299,6 +299,7 @@ type
     sfInjectDestructors # whether the proc needs the 'injectdestructors' transformation
     sfNeverRaises     # proc can never raise an exception, not even OverflowDefect
                       # or out-of-memory
+    sfSystemRaisesDefect # proc in the system can raise defects
     sfUsedInFinallyOrExcept  # symbol is used inside an 'except' or 'finally'
     sfSingleUsedTemp  # For temporaries that we know will only be used once
     sfNoalias         # 'noalias' annotation, means C's 'restrict'

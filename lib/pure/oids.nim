@@ -17,6 +17,9 @@
 import hashes, times, endians, random
 from std/private/decode_helpers import handleHexChar
 
+when defined(nimPreviewSlimSystem):
+  import std/sysatomics
+
 type
   Oid* = object ## An OID.
     time: int64

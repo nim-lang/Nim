@@ -75,7 +75,7 @@ func cmpIgnoreStyle*(a, b: cstring): int {.rtl, extern: "csuCmpIgnoreStyle".} =
   ## for that. Returns:
   ## * 0 if `a == b`
   ## * < 0 if `a < b`
-  ## * > 0 if `a > b`
+  ## * \> 0 if `a > b`
   runnableExamples:
     assert cmpIgnoreStyle(cstring"hello", cstring"H_e_L_Lo") == 0
 
@@ -101,7 +101,7 @@ func cmpIgnoreCase*(a, b: cstring): int {.rtl, extern: "csuCmpIgnoreCase".} =
   ## Compares two strings in a case insensitive manner. Returns:
   ## * 0 if `a == b`
   ## * < 0 if `a < b`
-  ## * > 0 if `a > b`
+  ## * \> 0 if `a > b`
   runnableExamples:
     assert cmpIgnoreCase(cstring"hello", cstring"HeLLo") == 0
     assert cmpIgnoreCase(cstring"echo", cstring"hello") < 0

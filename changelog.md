@@ -15,7 +15,8 @@
   - `std/formatfloat`
   - `std/objectdollar`
   - `std/widestrs`
-  - `std/threads`
+  - `std/typedthreads`
+  - `std/sysatomics`
 
   In the future, these definitions will be removed from the `system` module,
   and their respective modules will have to be imported to use them.
@@ -40,6 +41,8 @@
 
 - Enabling `-d:nimPreviewSlimSystem` removes the import of `channels_builtin` in
   in the `system` module.
+
+- Enabling `-d:nimPreviewCstringConversion`, `ptr char`, `ptr array[N, char]` and `ptr UncheckedArray[N, char]` don't support conversion to cstring anymore.
 
 - The `gc:v2` option is removed.
 
@@ -96,6 +99,16 @@
 - The `gorge`/`staticExec` calls will now return a descriptive message in the output
   if the execution fails for whatever reason. To get back legacy behaviour use `-d:nimLegacyGorgeErrors`.
 
+- Pointer to `cstring` conversion now triggers a `[PtrToCstringConv]` warning.
+  This warning will become an error in future versions! Use a `cast` operation
+  like `cast[cstring](x)` instead.
+
+- `logging` will default to flushing all log level messages. To get the legacy behaviour of only flushing Error and Fatal messages, use `-d:nimV1LogFlushBehavior`.
+
+- Object fields now support default values, see https://nim-lang.github.io/Nim/manual.html#types-default-values-for-object-fields for details.
+
+- Using an unnamed break in a block is deprecated. This warning will become an error in future versions! Use a named block with a named break instead.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
@@ -115,6 +128,7 @@
 - `std/oids` now uses `int64` to store time internally (before it was int32).
 - `std/uri.Uri` dollar `$` improved, precalculates the `string` result length from the `Uri`.
 - `std/uri.Uri.isIpv6` is now exported.
+- `std/logging.ConsoleLogger` and `FileLogger` now have a `flushThreshold` attribute to set what log message levels are automatically flushed. For Nim v1 use `-d:nimFlushAllLogs` to automatically flush all message levels. Flushing all logs is the default behavior for Nim v2.
 
 
 - `std/net.IpAddress` dollar `$` improved, uses a fixed capacity for the `string` result based from the `IpAddressFamily`.

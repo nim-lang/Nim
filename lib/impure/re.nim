@@ -436,7 +436,7 @@ iterator findAll*(buf: cstring, pattern: Regex, start = 0, bufSize: int): string
 
 proc findAll*(s: string, pattern: Regex, start = 0): seq[string] {.inline.} =
   ## returns all matching `substrings` of `s` that match `pattern`.
-  ## If it does not match, @[] is returned.
+  ## If it does not match, `@[]` is returned.
   result = @[]
   for x in findAll(s, pattern, start): result.add x
 
