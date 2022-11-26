@@ -115,6 +115,9 @@ endif
 ifeq ($(ucpu),sparc)
   mycpu = sparc
 endif
+ifeq ($(ucpu),sparc64)
+  mycpu = sparc64
+endif
 ifeq ($(ucpu),sun)
   mycpu = sparc
 endif
