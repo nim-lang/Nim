@@ -435,9 +435,12 @@ proc exprList(p: var Parser, endTok: TokType, result: PNode) =
   #| exprList = expr ^+ comma
   when defined(nimpretty):
     inc p.em.doIndentMore
+  let startTok = p.tok.tokType
   getTok(p)
   optInd(p, result)
   # progress guaranteed
+  if startTok == tkOf and p.tok.tokType == endTok:
+    parMessage(p, "an 'of' branch must be succeeded by an expression, but got '$1'", p.tok)
   while (p.tok.tokType != endTok) and (p.tok.tokType != tkEof):
     var a = parseExpr(p)
     result.add(a)
