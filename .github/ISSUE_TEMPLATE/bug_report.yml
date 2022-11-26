@@ -25,7 +25,7 @@ body:
   id: nim-version
   attributes:
     label: Nim Version
-    description: Please copy and paste the output of `nim -v` on the command line. For development versions, make sure to include the commit hash.
+    description: Copy and paste the output of `nim -v` on the command line. For development versions, make sure to include the commit hash.
   validations:
     required: true
 
