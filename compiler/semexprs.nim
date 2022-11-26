@@ -1245,9 +1245,10 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   of skMacro, skTemplate:
     if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
        (n.kind notin nkCallKinds and s.requiredParams > 0) or
-       sfCustomPragma in s.flags:
-      markUsed(c, n.info, s)
-      onUse(n.info, s)
+       sfCustomPragma in sym.flags:
+      let info = getCallLineInfo(n)
+      markUsed(c, info, s)
+      onUse(info, s)
       result = symChoice(c, n, s, scClosed)
     else:
       case s.kind
