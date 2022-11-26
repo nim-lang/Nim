@@ -287,6 +287,16 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     # fail fast:
     globalError(c.config, n.info, "type mismatch")
     return
+  if {nfDotField, nfDotSetter} * n.flags != {}:
+    let ident = considerQuotedIdent(c, n[0], n).s
+    let sym = n[1].typ.typSym
+    var typeHint = ""
+    if sym == nil:
+      discard
+    else:
+      typeHint = " for type " & getProcHeader(c.config, sym)
+    localError(c.config, n.info, errUndeclaredField % ident & typeHint)
+    return
   if errors.len == 0:
     localError(c.config, n.info, "expression '$1' cannot be called" % n[0].renderTree)
     return
@@ -330,7 +340,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
       sym = nextOverloadIter(o, c, f)
 
   let ident = considerQuotedIdent(c, f, n).s
-  if {nfDotField, nfExplicitCall} * n.flags == {nfDotField}:
+  if {nfDotField, nfDotSetter, nfExplicitCall} * n.flags <= {nfDotField, nfDotSetter}:
     let sym = n[1].typ.typSym
     var typeHint = ""
     if sym == nil:
@@ -363,11 +373,14 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
   else:
     initialBinding = nil
 
-  template pickBest(headSymbol) =
+  pickBestCandidate(c, f, n, orig, initialBinding,
+                    filter, result, alt, errors, efExplain in flags,
+                    errorsEnabled, flags)
+
+  template pickBestSpecialOp(headSymbol) =
     pickBestCandidate(c, headSymbol, n, orig, initialBinding,
-                      filter, result, alt, errors, efExplain in flags,
-                      errorsEnabled, flags)
-  pickBest(f)
+                      filter, result, alt, (var dummyErrors: CandidateErrors; dummyErrors), efExplain in flags,
+                      false, flags)
 
   let overloadsState = result.state
   if overloadsState != csMatch:
@@ -383,7 +396,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         let op = newIdentNode(getIdent(c.cache, x), n.info)
         n[0] = op
         orig[0] = op
-        pickBest(op)
+        pickBestSpecialOp(op)
 
       if nfExplicitCall in n.flags:
         tryOp ".()"
@@ -397,26 +410,15 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       let callOp = newIdentNode(getIdent(c.cache, ".="), n.info)
       n.sons[0..1] = [callOp, n[1], calleeName]
       orig.sons[0..1] = [callOp, orig[1], calleeName]
-      pickBest(callOp)
+      pickBestSpecialOp(callOp)
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
-        template impl() =
-          result.state = csNoMatch
-          if efNoDiagnostics in flags:
-            return
-          # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
-          localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
-        if n[0].kind == nkIdent and n[0].ident.s == ".=" and n[2].kind == nkIdent:
-          let sym = n[1].typ.sym
-          if sym == nil:
-            impl()
-          else:
-            let field = n[2].ident.s
-            let msg = errUndeclaredField % field & " for type " & getProcHeader(c.config, sym)
-            localError(c.config, orig[2].info, msg)
-        else:
-          impl()
+        result.state = csNoMatch
+        if efNoDiagnostics in flags:
+          return
+        # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
+        localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
