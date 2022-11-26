@@ -464,7 +464,8 @@ not required.
   var foo2 = Foo(bar: -10)
   ```
 
-Templates marked `{.alias.}` cannot be `implicitly redefined <manual.html#pragmas-redefine-pragma>`_.
+Templates marked `{.alias.}` must have no required parameters, and cannot be
+`implicitly redefined <manual.html#pragmas-redefine-pragma>`_.
 
 In the future, this annotation or the lack of it may gain more meanings.
 
