@@ -54,3 +54,23 @@ block:
     # non-routine type shows `()` overloads:
     b(123) #[tt.Error
      ^ type mismatch: got <Bar, int literal(123)>]#
+
+# issue #7777
+
+import macros
+
+block:
+  type TestType = object
+    private_field: string
+
+  when false:
+    template getField(obj, field: untyped): untyped = obj.field
+
+  macro `.`(obj: TestType, field: untyped): untyped =
+    let private = newIdentNode("private_" & $field)
+    result = quote do:
+      `obj`.getField(`private`) #[tt.Error
+           ^ undeclared field: 'getField' for type terrmsgs.TestType [type declared in terrmsgs.nim(63, 8)]#
+
+  var tt: TestType
+  discard tt.field
