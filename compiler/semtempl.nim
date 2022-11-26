@@ -692,6 +692,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     if {sfTemplateRedefinition, sfGenSym} * s.flags == {}:
       if sfAliasStyle in (proto.flags + s.flags):
         # cannot implicitly redefine alias templates
+        # in the future, this should be the behavior for all templates
         wrongRedefinition(c, n.info, proto.name.s, proto.info)
       else:
         message(c.config, n.info, warnTemplateRedefinition, s.name.s)
