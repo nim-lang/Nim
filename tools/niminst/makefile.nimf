@@ -131,7 +131,7 @@ ifeq ($(ucpu),powerpc)
   endif
 endif
 ifeq ($(ucpu),ppc)
-  mycpu = ppc
+   mycpu = powerpc
 endif
 ifneq (,$(filter $(ucpu), mips mips64))
   mycpu = $(shell /bin/sh -c '"$(CC)" -dumpmachine | sed "s/-.*//"')
