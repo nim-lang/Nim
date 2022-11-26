@@ -106,6 +106,9 @@ endif
 ifeq ($(ucpu),x86_64)
   mycpu = amd64
 endif
+ifeq ($(ucpu),parisc64)
+  mycpu = hppa
+endif
 ifeq ($(ucpu),s390x)
   mycpu = s390x
 endif
