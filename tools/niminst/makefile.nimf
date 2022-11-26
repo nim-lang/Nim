@@ -130,6 +130,9 @@ ifeq ($(ucpu),powerpc)
     endif
   endif
 endif
+ifeq ($(ucpu),ppc)
+   mycpu = powerpc
+endif
 ifneq (,$(filter $(ucpu), mips mips64))
   mycpu = $(shell /bin/sh -c '"$(CC)" -dumpmachine | sed "s/-.*//"')
   ifeq (,$(filter $(mycpu), mips mipsel mips64 mips64el))
