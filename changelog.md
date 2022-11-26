@@ -246,10 +246,10 @@
   assert bar == 15
   var foo2 = Foo(bar: -10)
   ```
-  
+
 - A new form of type inference called [top-down inference](https://nim-lang.github.io/Nim/manual_experimental.html#topminusdown-type-inference)
   has been implemented for a variety of basic cases. For example, code like the following now compiles:
-  
+
   ```nim
   let foo: seq[(float, byte, cstring)] = @[(1, 2, "abc")]
   ```
