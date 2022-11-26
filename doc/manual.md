@@ -1365,6 +1365,23 @@ ambiguous, a static error will be produced.
   p value2
   ```
 
+In some cases, ambiguity of enums is resolved depending on the relation
+between the current scope and the scope the enums were defined in.
+
+  ```nim
+  # a.nim
+  type Foo* = enum abc
+
+  # b.nim
+  import a
+  type Bar = enum abc
+  echo abc is Bar # true
+
+  block:
+    type Baz = enum abc
+    echo abc is Baz # true
+  ```
+
 To implement bit fields with enums see [Bit fields].
 
 
