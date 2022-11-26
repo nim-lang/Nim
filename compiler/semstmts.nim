@@ -580,22 +580,6 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
                 pragma(c, defs[lhsPos][namePos].sym, defs[lhsPos][pragmaPos], validPragmas)
         return result
 
-proc msgSymChoiceUseQualifier(c: PContext; n: PNode; note = errGenerated) =
-  assert n.kind in nkSymChoices
-  var err =
-    if note == hintAmbiguousEnum:
-      "ambiguous enum field '$1' assumed to be of type $2, this will become an error in the future" % [$n[0], typeToString(n[0].typ)]
-    else:
-      "ambiguous identifier: '" & $n[0] & "'"
-  var i = 0
-  for child in n:
-    let candidate = child.sym
-    if i == 0: err.add " -- use one of the following:\n"
-    else: err.add "\n"
-    err.add "  " & candidate.owner.name.s & "." & candidate.name.s
-    inc i
-  message(c.config, n.info, note, err)
-
 template isLocalVarSym(n: PNode): bool =
   n.kind == nkSym and 
     (n.sym.kind in {skVar, skLet} and not 
@@ -642,9 +626,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {}, typ)
 
-      if def.kind in nkSymChoices and def[0].sym.kind == skEnumField:
-        msgSymChoiceUseQualifier(c, def, errGenerated)
-      elif def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
+      if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
         typFlags.incl taIsTemplateOrMacro
       elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
         typFlags.incl taProcContextIsNotMacro

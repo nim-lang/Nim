@@ -73,7 +73,7 @@ type
     efNoUndeclared, efIsDotCall, efCannotBeDotCall
       # Use this if undeclared identifiers should not raise an error during
       # overload resolution.
-    efNoDiagnostics
+    efNoDiagnostics, efAllowSymChoice
 
   TExprFlags* = set[TExprFlag]
 

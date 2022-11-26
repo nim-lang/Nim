@@ -83,18 +83,37 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType 
     # do not produce another redundant error message:
     result = errorNode(c, n)
 
+proc isSymChoice(n: PNode): bool {.inline.} =
+  result = n.kind in nkSymChoices
+
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
   result = semExprCheck(c, n, flags, expectedType)
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
   elif (result.typ == nil or result.typ.kind == tyNone) and
-      result.kind == nkClosedSymChoice and
-      result[0].sym.kind == skEnumField:
-    # if overloaded enum field could not choose a type from a closed list,
-    # choose the first resolved enum field, i.e. the latest in scope
-    # to mirror old behavior
-    msgSymChoiceUseQualifier(c, result, hintAmbiguousEnum)
-    result = result[0]
+    efAllowSymChoice notin flags and isSymChoice(result) and result.len > 0:
+    let first = result[0].sym
+    if first.kind == skEnumField:
+      # choose the first resolved enum field, i.e. the latest in scope
+      # to mirror behavior before overloadable enums
+      if hintAmbiguousEnum in c.config.notes:
+        var err = "ambiguous enum field '" & first.name.s &
+          "' assumed to be of type " & typeToString(first.typ) &
+          " -- use one of the following:\n"
+        for child in result:
+          let candidate = child.sym
+          err.add "  " & candidate.owner.name.s & "." & candidate.name.s & "\n"
+        message(c.config, n.info, hintAmbiguousEnum, err)
+      result = result[0]
+    else:
+      var err = "ambiguous identifier '" & first.name.s &
+        "' -- use one of the following:\n"
+      for child in result:
+        let candidate = child.sym
+        err.add "  " & candidate.owner.name.s & "." & candidate.name.s
+        err.add ": " & typeToString(candidate.typ) & "\n"
+      localError(c.config, n.info, err)
+      result.typ = errorType(c)
   elif result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
@@ -255,9 +274,6 @@ proc isCastable(c: PContext; dst, src: PType, info: TLineInfo): bool =
       message(conf, info, warnCastSizes, warnMsg)
   if result and src.kind == tyNil:
     return dst.size <= conf.target.ptrSize
-
-proc isSymChoice(n: PNode): bool {.inline.} =
-  result = n.kind in nkSymChoices
 
 proc maybeLiftType(t: var PType, c: PContext, info: TLineInfo) =
   # XXX: liftParamType started to perform addDecl
@@ -1539,7 +1555,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   checkMinSonsLen(n, 2, c.config)
   # make sure we don't evaluate generic macros/templates
   n[0] = semExprWithType(c, n[0],
-                              {efNoEvaluateGeneric})
+                              {efNoEvaluateGeneric, efAllowSymChoice})
   var arr = skipTypes(n[0].typ, {tyGenericInst, tyUserTypeClassInst, tyOwned,
                                       tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
   if arr.kind == tyStatic:
