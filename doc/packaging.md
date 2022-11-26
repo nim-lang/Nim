@@ -36,6 +36,8 @@ The following platforms are seldomly tested:
 - s390x
 - sparc64
 
+The supported architectures are defined in https://github.com/nim-lang/Nim/blob/devel/lib/system/platforms.nim
+
 Packaging for Linux
 -------------------
 
