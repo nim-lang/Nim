@@ -1232,10 +1232,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wSystemRaisesDefect:
         sym.flags.incl sfSystemRaisesDefect
       of wAlias:
-        if sym.requiredParams > 0:
-          localError(c.config, n.info, "alias-style template/macro '" & sym.name.s & "' must have no parameters")
-        else:
-          sym.flags.incl sfAliasStyle
+        sym.flags.incl sfAliasStyle
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
