@@ -624,7 +624,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     var def: PNode = c.graph.emptyNode
     if a[^1].kind != nkEmpty:
-      def = semExprWithType(c, a[^1], {}, typ)
+      def = semExprWithType(c, a[^1], {efTypeAllowed}, typ)
 
       if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
         typFlags.incl taIsTemplateOrMacro
@@ -776,7 +776,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     var typFlags: TTypeAllowedFlags
 
     # don't evaluate here since the type compatibility check below may add a converter
-    var def = semExprWithType(c, a[^1], {}, typ)
+    var def = semExprWithType(c, a[^1], {efTypeAllowed}, typ)
 
     if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
       typFlags.incl taIsTemplateOrMacro

@@ -83,15 +83,13 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType 
     # do not produce another redundant error message:
     result = errorNode(c, n)
 
-proc isSymChoice(n: PNode): bool {.inline.} =
-  result = n.kind in nkSymChoices
-
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
   result = semExprCheck(c, n, flags, expectedType)
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
   elif (result.typ == nil or result.typ.kind == tyNone) and
-    efAllowSymChoice notin flags and result.kind == nkClosedSymChoice and result.len > 0:
+    efTypeAllowed in flags and
+    result.kind == nkClosedSymChoice and result.len > 0:
     let first = result[0].sym
     if first.kind == skEnumField:
       # choose the first resolved enum field, i.e. the latest in scope
@@ -274,6 +272,9 @@ proc isCastable(c: PContext; dst, src: PType, info: TLineInfo): bool =
       message(conf, info, warnCastSizes, warnMsg)
   if result and src.kind == tyNil:
     return dst.size <= conf.target.ptrSize
+
+proc isSymChoice(n: PNode): bool {.inline.} =
+  result = n.kind in nkSymChoices
 
 proc maybeLiftType(t: var PType, c: PContext, info: TLineInfo) =
   # XXX: liftParamType started to perform addDecl
@@ -650,7 +651,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
         lastValidIndex = lastOrd(c.config, indexType)
         x = x[1]
 
-    let yy = semExprWithType(c, x, expectedType = expectedElementType)
+    let yy = semExprWithType(c, x, {efTypeAllowed}, expectedElementType)
     var typ = yy.typ
     if expectedElementType == nil:
       expectedElementType = typ
@@ -671,7 +672,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
           localError(c.config, x.info, "invalid order in array constructor")
         x = x[1]
 
-      let xx = semExprWithType(c, x, {}, expectedElementType)
+      let xx = semExprWithType(c, x, {efTypeAllowed}, expectedElementType)
       result.add xx
       typ = commonType(c, typ, xx.typ)
       #n[i] = semExprWithType(c, x, {})
@@ -1555,7 +1556,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   checkMinSonsLen(n, 2, c.config)
   # make sure we don't evaluate generic macros/templates
   n[0] = semExprWithType(c, n[0],
-                              {efNoEvaluateGeneric, efAllowSymChoice})
+                              {efNoEvaluateGeneric})
   var arr = skipTypes(n[0].typ, {tyGenericInst, tyUserTypeClassInst, tyOwned,
                                       tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
   if arr.kind == tyStatic:
@@ -1819,7 +1820,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
                renderTree(a, {renderNoComments}))
   else:
     let lhs = n[0]
-    let rhs = semExprWithType(c, n[1], {}, le)
+    let rhs = semExprWithType(c, n[1], {efTypeAllowed}, le)
     if lhs.kind == nkSym and lhs.sym.kind == skResult:
       n.typ = c.enforceVoidContext
       if c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
@@ -2515,8 +2516,8 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
     for i in 0..<n.len:
       if isRange(n[i]):
         checkSonsLen(n[i], 3, c.config)
-        n[i][1] = semExprWithType(c, n[i][1], {}, expectedElementType)
-        n[i][2] = semExprWithType(c, n[i][2], {}, expectedElementType)
+        n[i][1] = semExprWithType(c, n[i][1], {efTypeAllowed}, expectedElementType)
+        n[i][2] = semExprWithType(c, n[i][2], {efTypeAllowed}, expectedElementType)
         if typ == nil:
           typ = skipTypes(n[i][1].typ,
                           {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
@@ -2531,7 +2532,7 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
           if expectedElementType == nil:
             expectedElementType = typ
       else:
-        n[i] = semExprWithType(c, n[i], {}, expectedElementType)
+        n[i] = semExprWithType(c, n[i], {efTypeAllowed}, expectedElementType)
         if typ == nil:
           typ = skipTypes(n[i].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
           if expectedElementType == nil:

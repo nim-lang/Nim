@@ -70,10 +70,11 @@ type
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efWantValue, efOperand, efNoSemCheck,
     efNoEvaluateGeneric, efInCall, efFromHlo, efNoSem2Check,
-    efNoUndeclared, efIsDotCall, efCannotBeDotCall
+    efNoUndeclared, efIsDotCall, efCannotBeDotCall,
       # Use this if undeclared identifiers should not raise an error during
       # overload resolution.
-    efNoDiagnostics, efAllowSymChoice
+    efNoDiagnostics,
+    efTypeAllowed # typeAllowed will be called after
 
   TExprFlags* = set[TExprFlag]
 
