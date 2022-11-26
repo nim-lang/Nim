@@ -1,6 +1,6 @@
 import std/asyncdispatch
 discard """
-action: "compile"
+output: "Hello\n9"
 """
 
 proc foo(): Future[string] {.async.} =
