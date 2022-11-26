@@ -107,7 +107,16 @@
 
 - Object fields now support default values, see https://nim-lang.github.io/Nim/manual.html#types-default-values-for-object-fields for details.
 
+- Redefining templates with the same signature was previously
+  allowed to support certain macro code. To do this explicitly, the
+  `{.redefine.}` pragma has been added. Note that this is only for templates.
+  Implicit redefinition of templates is now deprecated and will give an error in the future.
+
 - Using an unnamed break in a block is deprecated. This warning will become an error in future versions! Use a named block with a named break instead.
+
+- Previously, calls like `foo(a, b): ...` or `foo(a, b) do: ...` where the final argument of
+  `foo` had type `proc ()` were assumed by the compiler to mean `foo(a, b, proc () = ...)`.
+  This behavior is now deprecated. Use `foo(a, b) do (): ...` or `foo(a, b, proc () = ...)` instead.
 
 ## Standard library additions and changes
 
@@ -224,12 +233,6 @@
         x, y, z: int
       Baz = object
     ```
-
-- Redefining templates with the same signature implicitly was previously
-  allowed to support certain macro code. A `{.redefine.}` pragma has been
-  added to make this work explicitly, and a warning is generated in the case
-  where it is implicit. This behavior only applies to templates, redefinition
-  is generally disallowed for other symbols.
 
 - A new form of type inference called [top-down inference](https://nim-lang.github.io/Nim/manual_experimental.html#topminusdown-type-inference)
   has been implemented for a variety of basic cases. For example, code like the following now compiles:
