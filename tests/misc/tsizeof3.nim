@@ -49,3 +49,10 @@ block: # bug #20914
     var s: GoodboySave
     doAssert sizeof(s) == 108
     doAssert csizeof(s) == static(sizeof(s))
+
+  block:
+    proc calignof[T](a: T): int {.importc:"alignof", header: "<stdalign.h>".}
+
+    var s: set[0..256]
+    doAssert alignof(s) == 1
+    doAssert calignof(s) == static(alignof(s))
