@@ -340,7 +340,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
       sym = nextOverloadIter(o, c, f)
 
   let ident = considerQuotedIdent(c, f, n).s
-  if {nfDotField, nfDotSetter, nfExplicitCall} * n.flags <= {nfDotField, nfDotSetter}:
+  if nfExplicitCall notin n.flags and {nfDotField, nfDotSetter} * n.flags != {}:
     let sym = n[1].typ.typSym
     var typeHint = ""
     if sym == nil:

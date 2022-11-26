@@ -53,7 +53,7 @@ block:
 
     # non-routine type shows `()` overloads:
     b(123) #[tt.Error
-     ^ type mismatch: got <Bar, int literal(123)>]#
+     ^ attempting to call routine: 'b']#
 
 # issue #7777
 
@@ -74,3 +74,10 @@ block:
 
   var tt: TestType
   discard tt.field
+
+block: # related to issue #6981
+  proc `()`(a:string, b:string):string = a & b
+  proc mewSeq[T](a,b:int)=discard
+  proc mewSeq[T](c:int)= discard
+  mewSeq[int]() #[tt.Error
+             ^ type mismatch: got <>]#

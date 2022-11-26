@@ -535,7 +535,7 @@ proc overloadedCallOpr(c: PContext, n: PNode): PNode =
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(par, n.info)
     for i in 0..<n.len: result.add n[i]
-    result = semExpr(c, result)
+    result = semExpr(c, result, flags = {efNoUndeclared})
 
 proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
   case n.kind
@@ -988,6 +988,8 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     let t = n[0].typ
     if t != nil and t.kind in {tyVar, tyLent}:
       n[0] = newDeref(n[0])
+    elif isSymChoice(n[0]):
+      return semDirectOp(c, n, flags, expectedType)
     elif n[0].kind == nkBracketExpr:
       let s = bracketedMacro(n[0])
       if s != nil:
@@ -1042,10 +1044,10 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       instGenericConvertersSons(c, result, m)
 
   else:
-    result = overloadedCallOpr(c, n)
+    result = overloadedCallOpr(c, n) # this uses efNoUndeclared
     # Now that nkSym does not imply an iteration over the proc/iterator space,
     # the old ``prc`` (which is likely an nkIdent) has to be restored:
-    if result == nil:
+    if result == nil or result.kind == nkEmpty:
       # XXX: hmm, what kind of symbols will end up here?
       # do we really need to try the overload resolution?
       n[0] = prc
