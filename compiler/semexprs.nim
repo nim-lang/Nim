@@ -1244,7 +1244,8 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       result = newSymNode(s, n.info)
   of skMacro, skTemplate:
     if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
-       (n.kind notin nkCallKinds and s.requiredParams > 0):
+       (n.kind notin nkCallKinds and s.requiredParams > 0) or
+       sfCustomPragma in s.flags:
       markUsed(c, n.info, s)
       onUse(n.info, s)
       result = symChoice(c, n, s, scClosed)
