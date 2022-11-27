@@ -13,6 +13,8 @@ import
   intsets, options, ast, msgs, idents, renderer, types, magicsys,
   sempass2, modulegraphs, lineinfos
 
+import std/tables
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -168,6 +170,8 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
     of Invalid:
       if witness.isNil: witness = g.methods[i].methods[0]
   # create a new dispatcher:
+  # stores the id and the position
+  g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId].add g.methods.len
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
   #echo "adding ", s.info
   if witness != nil:

@@ -90,6 +90,7 @@ type
     suggestSymbols*: Table[FileIndex, seq[SymInfoPair]]
     suggestErrors*: Table[FileIndex, seq[Suggest]]
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
+    bucketTable*: Table[ItemId, seq[int]]
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
