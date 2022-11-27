@@ -3005,7 +3005,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # the node is left intact for now
     discard
   of nkStaticExpr: result = semStaticExpr(c, n[0])
-  of nkAsgn: result = semAsgn(c, n)
+  of nkAsgn, nkFastAsgn: result = semAsgn(c, n)
   of nkBlockStmt, nkBlockExpr: result = semBlock(c, n, flags)
   of nkStmtList, nkStmtListExpr: result = semStmtList(c, n, flags)
   of nkRaiseStmt: result = semRaise(c, n)
