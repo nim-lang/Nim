@@ -73,6 +73,8 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
         localError(c.config, n.info, errInvalidControlFlowX % s.name.s)
     else:
       localError(c.config, n.info, errGenerated, "'continue' cannot have a label")
+  elif c.p.nestedBlockCounter > 0 and n.kind == nkBreakStmt and not c.p.breakInLoop:
+    localError(c.config, n.info, warnUnnamedBreak)
   elif (c.p.nestedLoopCounter <= 0) and ((c.p.nestedBlockCounter <= 0) or n.kind == nkContinueStmt):
     localError(c.config, n.info, errInvalidControlFlowX %
                renderTree(n, {renderNoComments}))
@@ -89,7 +91,10 @@ proc semWhile(c: PContext, n: PNode; flags: TExprFlags): PNode =
   openScope(c)
   n[0] = forceBool(c, semExprWithType(c, n[0], expectedType = getSysType(c.graph, n.info, tyBool)))
   inc(c.p.nestedLoopCounter)
+  let oldBreakInLoop = c.p.breakInLoop
+  c.p.breakInLoop = true
   n[1] = semStmt(c, n[1], flags)
+  c.p.breakInLoop = oldBreakInLoop
   dec(c.p.nestedLoopCounter)
   closeScope(c)
   if n[1].typ == c.enforceVoidContext:
@@ -959,11 +964,14 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           if not isDiscardUnderscore(v): addDecl(c, v)
         elif v.owner == nil: v.owner = getCurrOwner(c)
   inc(c.p.nestedLoopCounter)
+  let oldBreakInLoop = c.p.breakInLoop
+  c.p.breakInLoop = true
   openScope(c)
   n[^1] = semExprBranch(c, n[^1], flags)
   if efInTypeof notin flags:
     discardCheck(c, n[^1], flags)
   closeScope(c)
+  c.p.breakInLoop = oldBreakInLoop
   dec(c.p.nestedLoopCounter)
 
 proc implicitIterator(c: PContext, it: string, arg: PNode): PNode =

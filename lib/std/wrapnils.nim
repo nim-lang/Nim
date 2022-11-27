@@ -60,7 +60,7 @@ proc finalize(n: NimNode, lhs: NimNode, level: int): NimNode =
   else:
     result = quote: (let `lhs` = `n`)
 
-proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
+proc process(n: NimNode, lhs: NimNode, label: NimNode, level: int): NimNode =
   var n = n.copyNimTree
   var it = n
   let addr2 = bindSym"addr"
@@ -78,7 +78,7 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
       let okSet = check[1]
       let kind1 = check[2]
       let tmp = genSym(nskLet, "tmpCase")
-      let body = process(objRef, tmp, level + 1)
+      let body = process(objRef, tmp, label, level + 1)
       let tmp3 = nnkDerefExpr.newTree(tmp)
       it[0][0] = tmp3
       let dot2 = nnkDotExpr.newTree(@[tmp, dot[1]])
@@ -87,17 +87,17 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
       let assgn = finalize(n, lhs, level)
       result = quote do:
         `body`
-        if `tmp3`.`kind1` notin `okSet`: break
+        if `tmp3`.`kind1` notin `okSet`: break `label`
         `assgn`
       break
     elif it.kind in {nnkHiddenDeref, nnkDerefExpr}:
       let tmp = genSym(nskLet, "tmp")
-      let body = process(it[0], tmp, level + 1)
+      let body = process(it[0], tmp, label, level + 1)
       it[0] = tmp
       let assgn = finalize(n, lhs, level)
       result = quote do:
         `body`
-        if `tmp` == nil: break
+        if `tmp` == nil: break `label`
         `assgn`
       break
     elif it.kind == nnkCall: # consider extending to `nnkCallKinds`
@@ -113,10 +113,11 @@ macro `?.`*(a: typed): auto =
   ## presence of intermediate nil pointers/references, in which case a default
   ## value is produced.
   let lhs = genSym(nskVar, "lhs")
-  let body = process(a, lhs, 0)
+  let label = genSym(nskLabel, "label")
+  let body = process(a, lhs, label, 0)
   result = quote do:
     var `lhs`: type(`a`)
-    block:
+    block `label`:
       `body`
     `lhs`
 
@@ -144,10 +145,11 @@ macro `??.`*(a: typed): Option =
 
   let lhs = genSym(nskVar, "lhs")
   let lhs2 = genSym(nskVar, "lhs")
-  let body = process(a, lhs2, 0)
+  let label = genSym(nskLabel, "label")
+  let body = process(a, lhs2, label, 0)
   result = quote do:
     var `lhs`: Option[type(`a`)]
-    block:
+    block `label`:
       var `lhs2`: type(`a`)
       `body`
       `lhs` = option(`lhs2`)

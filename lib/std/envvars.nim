@@ -173,11 +173,11 @@ when not defined(nimscript):
 
     iterator envPairsImpl(): tuple[key, value: string] {.tags: [ReadEnvEffect].} =
       when defined(windows):
-        block:
+        block implBlock:
           template impl(get_fun, typ, size, zero, free_fun) =
             let env = get_fun()
             var e = env
-            if e == nil: break
+            if e == nil: break implBlock
             while true:
               let eend = strEnd(e)
               let kv = $e

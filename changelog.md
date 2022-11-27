@@ -42,6 +42,8 @@
 - Enabling `-d:nimPreviewSlimSystem` removes the import of `channels_builtin` in
   in the `system` module.
 
+- Enabling `-d:nimPreviewCstringConversion`, `ptr char`, `ptr array[N, char]` and `ptr UncheckedArray[N, char]` don't support conversion to cstring anymore.
+
 - The `gc:v2` option is removed.
 
 - The `mainmodule` and `m` options are removed.
@@ -104,6 +106,8 @@
 - `logging` will default to flushing all log level messages. To get the legacy behaviour of only flushing Error and Fatal messages, use `-d:nimV1LogFlushBehavior`.
 
 - Object fields now support default values, see https://nim-lang.github.io/Nim/manual.html#types-default-values-for-object-fields for details.
+
+- Using an unnamed break in a block is deprecated. This warning will become an error in future versions! Use a named block with a named break instead.
 
 ## Standard library additions and changes
 

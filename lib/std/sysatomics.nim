@@ -173,18 +173,43 @@ elif someVcc:
   type AtomMemModel* = distinct cint
 
   const
-    ATOMIC_RELAXED = 0.AtomMemModel
-    ATOMIC_CONSUME = 1.AtomMemModel
-    ATOMIC_ACQUIRE = 2.AtomMemModel
-    ATOMIC_RELEASE = 3.AtomMemModel
-    ATOMIC_ACQ_REL = 4.AtomMemModel
-    ATOMIC_SEQ_CST = 5.AtomMemModel
+    ATOMIC_RELAXED* = 0.AtomMemModel
+    ATOMIC_CONSUME* = 1.AtomMemModel
+    ATOMIC_ACQUIRE* = 2.AtomMemModel
+    ATOMIC_RELEASE* = 3.AtomMemModel
+    ATOMIC_ACQ_REL* = 4.AtomMemModel
+    ATOMIC_SEQ_CST* = 5.AtomMemModel
 
   proc `==`(x1, x2: AtomMemModel): bool {.borrow.}
 
   proc readBarrier() {.importc: "_ReadBarrier", header: "<intrin.h>".}
   proc writeBarrier() {.importc: "_WriteBarrier", header: "<intrin.h>".}
   proc fence*() {.importc: "_ReadWriteBarrier", header: "<intrin.h>".}
+
+  when defined(cpp):
+    proc interlockedCompareExchange64(p: pointer; exchange, comparand: int64): int64
+      {.importcpp: "_InterlockedCompareExchange64(static_cast<NI64 volatile *>(#), #, #)", header: "<intrin.h>".}
+    proc interlockedCompareExchange32(p: pointer; exchange, comparand: int32): int32
+      {.importcpp: "_InterlockedCompareExchange(static_cast<NI volatile *>(#), #, #)", header: "<intrin.h>".}
+    proc interlockedCompareExchange8(p: pointer; exchange, comparand: byte): byte
+      {.importcpp: "_InterlockedCompareExchange8(static_cast<char volatile *>(#), #, #)", header: "<intrin.h>".}
+    proc interlockedExchange8(location: pointer; desired: int8): int8 {.importcpp: "_InterlockedExchange8(static_cast<NI8 volatile *>(#), #)", header: "<intrin.h>".}
+    proc interlockedExchange16(location: pointer; desired: int16): int16 {.importcpp: "_InterlockedExchange16(static_cast<NI16 volatile *>(#), #)", header: "<intrin.h>".}
+    proc interlockedExchange32(location: pointer; desired: int32): int32 {.importcpp: "_InterlockedExchange(static_cast<NI volatile *>(#), #)", header: "<intrin.h>".}
+    proc interlockedExchange64(location: pointer; desired: int64): int64 {.importcpp: "_InterlockedExchange64(static_cast<NI64 volatile *>(#), #)", header: "<intrin.h>".}
+  else:
+    proc interlockedCompareExchange64(p: pointer; exchange, comparand: int64): int64
+      {.importc: "_InterlockedCompareExchange64", header: "<intrin.h>".}
+    proc interlockedCompareExchange32(p: pointer; exchange, comparand: int32): int32
+      {.importc: "_InterlockedCompareExchange", header: "<intrin.h>".}
+    proc interlockedCompareExchange8(p: pointer; exchange, comparand: byte): byte
+      {.importc: "_InterlockedCompareExchange8", header: "<intrin.h>".}
+
+    proc interlockedExchange8(location: pointer; desired: int8): int8 {.importc: "_InterlockedExchange8", header: "<intrin.h>".}
+    proc interlockedExchange16(location: pointer; desired: int16): int16 {.importc: "_InterlockedExchange16", header: "<intrin.h>".}
+    proc interlockedExchange32(location: pointer; desired: int32): int32 {.importc: "_InterlockedExchange", header: "<intrin.h>".}
+    proc interlockedExchange64(location: pointer; desired: int64): int64 {.importc: "_InterlockedExchange64", header: "<intrin.h>".}
+
 
   template barrier(mem: AtomMemModel) =
     when mem == ATOMIC_RELAXED: discard
@@ -194,10 +219,28 @@ elif someVcc:
     elif mem == ATOMIC_ACQ_REL: fence()
     elif mem == ATOMIC_SEQ_CST: fence()
 
+  proc atomicStoreN*[T: AtomType](p: ptr T, val: T, mem: static[AtomMemModel]) =
+    barrier(mem)
+    p[] = val
+
   proc atomicLoadN*[T: AtomType](p: ptr T, mem: static[AtomMemModel]): T =
     result = p[]
     barrier(mem)
 
+  proc atomicCompareExchangeN*[T: ptr](p, expected: ptr T, desired: T,
+    weak: bool, success_memmodel: AtomMemModel, failure_memmodel: AtomMemModel): bool =
+    when sizeof(T) == 8:
+      interlockedCompareExchange64(p, cast[int64](desired), cast[int64](expected)) ==
+        cast[int64](expected)
+    elif sizeof(T) == 4:
+      interlockedCompareExchange32(p, cast[int32](desired), cast[int32](expected)) ==
+        cast[int32](expected)
+
+  proc atomicExchangeN*[T: ptr](p: ptr T, val: T, mem: AtomMemModel): T =
+    when sizeof(T) == 8:
+      cast[T](interlockedExchange64(p, cast[int64](val)))
+    elif sizeof(T) == 4:
+      cast[T](interlockedExchange32(p, cast[int32](val)))
   when defined(cpp):
     when sizeof(int) == 8:
       proc addAndFetch*(p: ptr int, val: int): int {.
@@ -245,21 +288,6 @@ proc atomicDec*(memLoc: var int, x: int = 1): int {.inline, discardable, raises:
     result = memLoc
 
 when someVcc:
-  when defined(cpp):
-    proc interlockedCompareExchange64(p: pointer; exchange, comparand: int64): int64
-      {.importcpp: "_InterlockedCompareExchange64(static_cast<NI64 volatile *>(#), #, #)", header: "<intrin.h>".}
-    proc interlockedCompareExchange32(p: pointer; exchange, comparand: int32): int32
-      {.importcpp: "_InterlockedCompareExchange(static_cast<NI volatile *>(#), #, #)", header: "<intrin.h>".}
-    proc interlockedCompareExchange8(p: pointer; exchange, comparand: byte): byte
-      {.importcpp: "_InterlockedCompareExchange8(static_cast<char volatile *>(#), #, #)", header: "<intrin.h>".}
-  else:
-    proc interlockedCompareExchange64(p: pointer; exchange, comparand: int64): int64
-      {.importc: "_InterlockedCompareExchange64", header: "<intrin.h>".}
-    proc interlockedCompareExchange32(p: pointer; exchange, comparand: int32): int32
-      {.importc: "_InterlockedCompareExchange", header: "<intrin.h>".}
-    proc interlockedCompareExchange8(p: pointer; exchange, comparand: byte): byte
-      {.importc: "_InterlockedCompareExchange8", header: "<intrin.h>".}
-
   proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
     when sizeof(T) == 8:
       interlockedCompareExchange64(p, cast[int64](newValue), cast[int64](oldValue)) ==
