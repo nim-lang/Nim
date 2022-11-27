@@ -19,6 +19,9 @@ include system/inclrtl
 
 when defined(nimPreviewSlimSystem):
   import std/widestrs
+  
+when defined(nodejs):
+  from private/oscommon import ReadDirEffect
 
 
 const weirdTarget = defined(nimscript) or defined(js)
