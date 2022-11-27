@@ -88,8 +88,8 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
   elif (result.typ == nil or result.typ.kind == tyNone) and
-    efTypeAllowed in flags and
-    result.kind == nkClosedSymChoice and result.len > 0:
+      efTypeAllowed in flags and
+      result.kind == nkClosedSymChoice and result.len > 0:
     let first = result[0].sym
     if first.kind == skEnumField:
       # choose the first resolved enum field, i.e. the latest in scope
