@@ -25,7 +25,7 @@ func keys*(self: Headers): seq[cstring] {.importjs: "Array.from(#.$1())".}
 func values*(self: Headers): seq[cstring] {.importjs: "Array.from(#.$1())".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/values
 
-func entries*(self: Headers): seq[tuple[key: cstring, value: SomeNumber | bool | cstring]] {.importjs: "Array.from(#.$1())".}
+func entries*(self: Headers): seq[tuple[key, value: cstring]] {.importjs: "Array.from(#.$1())".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/entries
 
 func `[]`*(self: Headers; key: cstring): cstring {.importjs: "#.get(#)".}
@@ -52,7 +52,7 @@ runnableExamples("-r:off"):
 
   block:
     let header: Headers = newHeaders()
-    header.add("key", "value")
+    header.add("key".cstring, "value".cstring)
     assert header.hasKey("key")
     assert header.keys() == @["key".cstring]
     assert header.values() == @["value".cstring]
@@ -69,15 +69,15 @@ runnableExamples("-r:off"):
 
   block:
     let header: Headers = newHeaders()
-    header.add("key", "a")
-    header.add("key", "b")  ## Duplicated.
-    header.add("key", "c")  ## Duplicated.
+    header.add("key", "a".cstring)
+    header.add("key", "b".cstring)  ## Duplicated.
+    header.add("key", "c".cstring)  ## Duplicated.
     assert header["key"] == "a, b, c".cstring
     header["key"] = "value".cstring
     assert header["key"] == "value".cstring
 
   block:
     let header: Headers = newHeaders()
-    header["key"] = "a"
-    header["key"] = "b"  ## Overwrites.
+    header["key"] = "a".cstring
+    header["key"] = "b".cstring  ## Overwrites.
     assert header["key"] == "b".cstring
