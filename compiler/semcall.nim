@@ -287,7 +287,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     # fail fast:
     globalError(c.config, n.info, "type mismatch")
     return
-  if {nfDotField, nfDotSetter} * n.flags != {}:
+  if nfExplicitCall notin n.flags and {nfDotField, nfDotSetter} * n.flags != {}:
     let ident = considerQuotedIdent(c, n[0], n).s
     let sym = n[1].typ.typSym
     var typeHint = ""
