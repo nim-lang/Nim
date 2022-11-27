@@ -7,7 +7,7 @@ type Headers* = ref object of JsRoot ## HTTP Headers API.
 func newHeaders*(): Headers {.importjs: "new Headers()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers
 
-func add*(self: Headers; key: cstring; value: cstring) {.importjs: "#.append(#, #)".}
+func add*(self: Headers; key: cstring; value: SomeNumber | bool | cstring) {.importjs: "#.append(#, #)".}
   ## Allows duplicated keys.
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/append
 
@@ -25,14 +25,14 @@ func keys*(self: Headers): seq[cstring] {.importjs: "Array.from(#.$1())".}
 func values*(self: Headers): seq[cstring] {.importjs: "Array.from(#.$1())".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/values
 
-func entries*(self: Headers): seq[tuple[key, value: cstring]] {.importjs: "Array.from(#.$1())".}
+func entries*(self: Headers): seq[tuple[key: cstring, value: SomeNumber | bool | cstring]] {.importjs: "Array.from(#.$1())".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/entries
 
 func `[]`*(self: Headers; key: cstring): cstring {.importjs: "#.get(#)".}
   ## Get *all* items with `key` from the headers, including duplicated values.
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/get
 
-func `[]=`*(self: Headers; key: cstring; value: cstring) {.importjs: "#.set(#, #)".}
+func `[]=`*(self: Headers; key: cstring; value: SomeNumber | bool | cstring) {.importjs: "#.set(#, #)".}
   ## Do *not* allow duplicated keys, overwrites duplicated keys.
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/set
 
