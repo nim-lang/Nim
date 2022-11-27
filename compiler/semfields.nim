@@ -98,7 +98,10 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
       caseStmt.add(branch)
     father.add(caseStmt)
   of nkRecList:
-    for t in items(typ): semForObjectFields(c, t, forLoop, father)
+    for t in items(typ): 
+      if t.kind == nkSym and lfNoDecl in t.sym.loc.flags:
+        continue
+      semForObjectFields(c, t, forLoop, father)
   else:
     illFormedAstLocal(typ, c.c.config)
 

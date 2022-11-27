@@ -73,7 +73,7 @@ const
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wCppNonPod, wBorrow, wGcSafe, wPartial, wExplain, wPackage}
   fieldPragmas* = declPragmas + {wGuard, wBitsize, wCursor,
-    wRequiresInit, wNoalias, wAlign} - {wExportNims, wNodecl} # why exclude these?
+    wRequiresInit, wNoalias, wAlign} - {wExportNims} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
     wNoInit, wCompileTime, wGlobal,
