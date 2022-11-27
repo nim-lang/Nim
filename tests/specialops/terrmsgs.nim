@@ -34,7 +34,7 @@ block:
   block:
     template `.()`(a: Foo, b: untyped): untyped = 123
     echo b.x() #[tt.Error
-          ^ undeclared field: 'x' for type terrmsgs.Bar [type declared in terrmsgs.nim(27, 8)]]#
+          ^ expression 'x' cannot be called]#
   block:
     template `.=`(a: Foo, b: untyped, c: untyped) = b = c
     b.x = 123 #[tt.Error
@@ -70,7 +70,7 @@ block:
     let private = newIdentNode("private_" & $field)
     result = quote do:
       `obj`.getField(`private`) #[tt.Error
-           ^ undeclared field: 'getField' for type terrmsgs.TestType [type declared in terrmsgs.nim(63, 8)]#
+           ^ expression 'getField' cannot be called]#
 
   var tt: TestType
   discard tt.field

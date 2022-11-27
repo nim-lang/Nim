@@ -988,13 +988,13 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     let t = n[0].typ
     if t != nil and t.kind in {tyVar, tyLent}:
       n[0] = newDeref(n[0])
-    elif isSymChoice(n[0]):
-      return semDirectOp(c, n, flags, expectedType)
     elif n[0].kind == nkBracketExpr:
       let s = bracketedMacro(n[0])
       if s != nil:
         setGenericParams(c, n[0])
         return semDirectOp(c, n, flags, expectedType)
+    elif isSymChoice(n[0]):
+      return semDirectOp(c, n, flags, expectedType)
 
   var t: PType = nil
   if n[0].typ != nil:

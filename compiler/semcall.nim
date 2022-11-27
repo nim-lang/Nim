@@ -622,7 +622,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   assert n.kind == nkBracketExpr
   for i in 1..<n.len:
-    let e = semExpr(c, n[i])
+    let e = semExprWithType(c, n[i])
     if e.typ == nil:
       n[i].typ = errorType(c)
     else:
