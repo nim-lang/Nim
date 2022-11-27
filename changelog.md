@@ -134,6 +134,9 @@
 - `std/net.IpAddress` dollar `$` improved, uses a fixed capacity for the `string` result based from the `IpAddressFamily`.
 - `std/jsfetch.newFetchOptions` now has default values for all parameters
 
+- `std/jsheaders` now accepts `SomeNumber | bool | cstring` data types.
+
+
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
   - Added `IsoWeekRange`, a range type for weeks in a week-based year.
