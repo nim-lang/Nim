@@ -1,10 +1,12 @@
 discard """
 action: reject
-cmd: '''nim check --hints:off $file'''
+cmd: '''nim check $options $file'''
+matrix: "; -d:testWithout"
 """
 
-{.experimental: "dotOperators".}
-{.experimental: "callOperator".}
+when not defined(testWithout): # test for same errors before and after
+  {.experimental: "dotOperators".}
+  {.experimental: "callOperator".}
 
 # issue #13063
 
@@ -16,15 +18,15 @@ block:
   block:
     template `.`(a: Foo, b: untyped): untyped = 123
     echo b.x #[tt.Error
-          ^ undeclared field: 'x' for type terrmsgs.Bar [type declared in terrmsgs.nim(13, 8)]]#
+          ^ undeclared field: 'x' for type terrmsgs.Bar [type declared in terrmsgs.nim(15, 8)]]#
   block:
     template `.()`(a: Foo, b: untyped): untyped = 123
     echo b.x() #[tt.Error
-          ^ expression 'x' cannot be called]#
+          ^ attempting to call undeclared routine: 'x']#
   block:
     template `.=`(a: Foo, b: untyped, c: untyped) = b = c
     b.x = 123 #[tt.Error
-        ^ undeclared field: 'x=' for type terrmsgs.Bar [type declared in terrmsgs.nim(13, 8)]]#
+        ^ undeclared field: 'x=' for type terrmsgs.Bar [type declared in terrmsgs.nim(15, 8)]]#
     # yeah it says x= but does it matter in practice
   block:
     template `()`(a: Foo, b: untyped, c: untyped) = echo "something"
@@ -42,7 +44,7 @@ block:
      ^ attempting to call routine: 'b']#
 
     echo b.x #[tt.Error
-          ^ undeclared field: 'x' for type terrmsgs.Bar [type declared in terrmsgs.nim(13, 8)]]#
+          ^ undeclared field: 'x' for type terrmsgs.Bar [type declared in terrmsgs.nim(15, 8)]]#
     echo b.x() #[tt.Error
           ^ attempting to call undeclared routine: 'x']#
 
@@ -61,7 +63,7 @@ block:
     let private = newIdentNode("private_" & $field)
     result = quote do:
       `obj`.getField(`private`) #[tt.Error
-           ^ expression 'getField' cannot be called]#
+           ^ attempting to call undeclared routine: 'getField']#
 
   var tt: TestType
   discard tt.field

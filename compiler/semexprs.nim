@@ -994,6 +994,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
         setGenericParams(c, n[0])
         return semDirectOp(c, n, flags, expectedType)
     elif isSymChoice(n[0]):
+      # overloaded generic procs e.g. newSeq[int] can end up here
       return semDirectOp(c, n, flags, expectedType)
 
   var t: PType = nil

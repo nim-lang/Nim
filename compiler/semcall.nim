@@ -287,6 +287,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     # fail fast:
     globalError(c.config, n.info, "type mismatch")
     return
+  # see getMsgDiagnostic:
   if nfExplicitCall notin n.flags and {nfDotField, nfDotSetter} * n.flags != {}:
     let ident = considerQuotedIdent(c, n[0], n).s
     let sym = n[1].typ.typSym
@@ -298,7 +299,11 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     localError(c.config, n.info, errUndeclaredField % ident & typeHint)
     return
   if errors.len == 0:
-    localError(c.config, n.info, "expression '$1' cannot be called" % n[0].renderTree)
+    if n[0].kind in nkIdentKinds:
+      let ident = considerQuotedIdent(c, n[0], n).s
+      localError(c.config, n.info, errUndeclaredRoutine % ident)
+    else: 
+      localError(c.config, n.info, "expression '$1' cannot be called" % n[0].renderTree)
     return
 
   let (prefer, candidates) = presentFailedCandidates(c, n, errors)
@@ -378,7 +383,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
                     errorsEnabled, flags)
 
   var dummyErrors: CandidateErrors
-  template pickBestSpecialOp(headSymbol) =
+  template pickSpecialOp(headSymbol) =
     pickBestCandidate(c, headSymbol, n, orig, initialBinding,
                       filter, result, alt, dummyErrors, efExplain in flags,
                       false, flags)
@@ -397,7 +402,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         let op = newIdentNode(getIdent(c.cache, x), n.info)
         n[0] = op
         orig[0] = op
-        pickBestSpecialOp(op)
+        pickSpecialOp(op)
 
       if nfExplicitCall in n.flags:
         tryOp ".()"
@@ -411,7 +416,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       let callOp = newIdentNode(getIdent(c.cache, ".="), n.info)
       n.sons[0..1] = [callOp, n[1], calleeName]
       orig.sons[0..1] = [callOp, orig[1], calleeName]
-      pickBestSpecialOp(callOp)
+      pickSpecialOp(callOp)
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
