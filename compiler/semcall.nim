@@ -377,9 +377,10 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
                     filter, result, alt, errors, efExplain in flags,
                     errorsEnabled, flags)
 
+  var dummyErrors: CandidateErrors
   template pickBestSpecialOp(headSymbol) =
     pickBestCandidate(c, headSymbol, n, orig, initialBinding,
-                      filter, result, alt, (var dummyErrors: CandidateErrors; dummyErrors), efExplain in flags,
+                      filter, result, alt, dummyErrors, efExplain in flags,
                       false, flags)
 
   let overloadsState = result.state
