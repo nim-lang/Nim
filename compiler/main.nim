@@ -52,7 +52,7 @@ proc writeCMakeDepsFile(conf: ConfigRef) =
   ## only updated when the C file list changes.
   let fname = getNimcacheDir(conf) / conf.outFile.changeFileExt("cdeps")
   # generate output files list
-  var cfiles: seq[string]
+  var cfiles: seq[string] = @[]
   for it in conf.toCompile: cfiles.add(it.cname.string)
   let fileset = cfiles.toCountTable()
   # read old cfiles list
