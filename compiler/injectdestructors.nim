@@ -610,7 +610,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
     result = copyNode(n)
     result.add n[0]
     var bodyScope = nestedScope(s, n[1])
-    result.add if n[1].typ.isEmptyType or willProduceStmt:
+    result.add if n[1].typ.isEmptyType or willProduceStmt or n.kind == nkBlockStmt:
                  processScope(c, bodyScope, processCall(n[1], bodyScope))
                else:
                  processScopeExpr(c, bodyScope, n[1], processCall, tmpFlags)
@@ -625,7 +625,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
         #Condition needs to be destroyed outside of the condition/branch scope
         branch[0] = p(it[0], c, s, normal)
 
-      branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt:
+      branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt or n.kind == nkIfStmt:
                      processScope(c, branchScope, maybeVoid(it[^1], branchScope))
                    else:
                      processScopeExpr(c, branchScope, it[^1], processCall, tmpFlags)
