@@ -45,7 +45,7 @@ import std/[
   # Internet protocols:
   cookies, httpcore, mimetypes, uri,
   # fails due to FFI: asyncdispatch, asyncfile, asyncftpclient, asynchttpserver,
-  # asyncnet, cgi, httpclient, nativesockets, net, selectors, smtp
+  # asyncnet, httpclient, nativesockets, net, selectors, smtp
   # works but no need to test: asyncstreams, asyncfutures
   
   # Threading:

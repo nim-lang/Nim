@@ -30,7 +30,6 @@ import
   base64,
   bitops,
   browsers,
-  cgi,
   chains,
   colors,
   complex,

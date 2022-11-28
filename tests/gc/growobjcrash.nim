@@ -1,9 +1,15 @@
-import std/[cgi, strtabs]
+import std/[uri, strtabs]
+
+iterator decodeData*(data: string): tuple[key, value: string] =
+  ## Reads and decodes CGI data and yields the (name, value) pairs the
+  ## data consists of.
+  for (key, value) in uri.decodeQuery(data):
+    yield (key, value)
 
 proc handleRequest(query: string): StringTableRef =
   iterator foo(): StringTableRef {.closure.} =
     var params = {:}.newStringTable()
-    for key, val in cgi.decodeData(query):
+    for key, val in decodeData(query):
       params[key] = val
     yield params
 
