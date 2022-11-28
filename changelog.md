@@ -109,6 +109,9 @@
 
 - Using an unnamed break in a block is deprecated. This warning will become an error in future versions! Use a named block with a named break instead.
 
+- Several Standard libraries are moved to nimble packages, use `nimble` to install them:
+  - move `std/cgi` to https://github.com/nim-lang/cgi
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
