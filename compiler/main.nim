@@ -57,7 +57,7 @@ proc writeCMakeDepsFile(conf: ConfigRef) =
   let fileset = cfiles.toCountTable()
   # read old cfiles list
   var fl: File
-  var prevset: CountTable[string]
+  var prevset = initCountTable[string]()
   if open(fl, fname.string, fmRead):
     for line in fl.lines: prevset.inc(line)
   fl.close()
