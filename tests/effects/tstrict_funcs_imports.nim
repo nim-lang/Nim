@@ -111,7 +111,6 @@ import
   sets,
   sharedlist,
   sharedtables,
-  smtp,
   ssl_certs,
   ssl_config,
   stats,
