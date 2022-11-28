@@ -47,6 +47,26 @@ proc writeDepsFile(g: ModuleGraph) =
       f.writeLine(toFullPath(g.config, k))
   f.close()
 
+proc writeCMakeDepsFile(conf: ConfigRef) =
+  ## write a list of C files for build systems like CMake.
+  ## only updated when the C file list changes.
+  let fname = getNimcacheDir(conf) / conf.outFile.changeFileExt("cdeps")
+  # generate output files list
+  var cfiles: seq[string]
+  for it in conf.toCompile: cfiles.add(it.cname.string)
+  let fileset = cfiles.toCountTable()
+  # read old cfiles list
+  var fl: File
+  var prevset: CountTable[string]
+  if open(fl, fname.string, fmRead):
+    for line in fl.lines: prevset.inc(line)
+  fl.close()
+  # write cfiles out
+  if fileset != prevset:
+    fl = open(fname.string, fmWrite)
+    for line in cfiles: fl.writeLine(line)
+    fl.close()
+
 proc commandGenDepend(graph: ModuleGraph) =
   semanticPasses(graph)
   registerPass(graph, gendependPass)
@@ -126,6 +146,8 @@ proc commandCompileToC(graph: ModuleGraph) =
       extccomp.writeJsonBuildInstructions(conf)
     if optGenScript in graph.config.globalOptions:
       writeDepsFile(graph)
+    if optGenCDeps in graph.config.globalOptions:
+      writeCMakeDepsFile(conf)
 
 proc commandJsonScript(graph: ModuleGraph) =
   extccomp.runJsonBuildInstructions(graph.config, graph.config.jsonBuildInstructionsFile)
