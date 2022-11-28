@@ -1,1 +1,0 @@
-{.error: "Use `pkg/cgi` instead; nimble install cgi".}
