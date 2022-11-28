@@ -1,7 +1,7 @@
-import std/asyncdispatch
 discard """
 output: "Hello\n9"
 """
+import std/asyncdispatch
 
 proc foo(): Future[string] {.async.} =
   "Hello"
