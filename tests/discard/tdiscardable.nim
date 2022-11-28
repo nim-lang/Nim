@@ -81,6 +81,18 @@ block: # bug #13583
 
     iterator test(): int {.closure.} =
       while true:
+        block:
+          yield 12
+          hello()
+
+    let t = test
+    doAssert t() == 12
+
+  block:
+    proc hello(): int {.discardable.} = 12
+
+    iterator test(): int {.closure.} =
+      while true:
         yield 12
         hello()
 
