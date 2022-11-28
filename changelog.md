@@ -133,6 +133,8 @@
 
 - `std/net.IpAddress` dollar `$` improved, uses a fixed capacity for the `string` result based from the `IpAddressFamily`.
 - `std/jsfetch.newFetchOptions` now has default values for all parameters
+- `std/jsformdata` now accepts `Blob` data type.
+
 
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
