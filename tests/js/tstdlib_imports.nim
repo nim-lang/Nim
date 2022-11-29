@@ -73,6 +73,7 @@ import std/[
 
   # Modules for JS backend:
   asyncjs, dom, jsconsole, jscore, jsffi, jsbigints,
+  jshttpcore,
 
   # Unlisted in lib.html:
   decls, compilesettings, wrapnils, exitprocs, effecttraits,
