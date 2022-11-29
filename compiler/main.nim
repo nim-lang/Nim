@@ -60,7 +60,7 @@ proc writeCMakeDepsFile(conf: ConfigRef) =
   var prevset = initCountTable[string]()
   if open(fl, fname.string, fmRead):
     for line in fl.lines: prevset.inc(line)
-  fl.close()
+    fl.close()
   # write cfiles out
   if fileset != prevset:
     fl = open(fname.string, fmWrite)
