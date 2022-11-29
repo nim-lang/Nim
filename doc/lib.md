@@ -302,9 +302,6 @@ Internet Protocols and Support
 * [asyncstreams](asyncstreams.html)
   This module provides `FutureStream` - a future that acts as a queue.
 
-* [cgi](cgi.html)
-  This module implements helpers for CGI applications.
-
 * [cookies](cookies.html)
   This module contains helper procs for parsing and generating cookies.
 
