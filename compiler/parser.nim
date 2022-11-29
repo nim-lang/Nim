@@ -1123,7 +1123,6 @@ proc parseProcExpr(p: var Parser; isExpr: bool; kind: TNodeKind): PNode =
   #| routineExpr = ('proc' | 'func' | 'iterator') paramListColon pragma? ('=' COMMENT? stmt)?
   # either a proc type or a anonymous proc
   let info = parLineInfo(p)
-  getTok(p)
   let hasSignature = p.tok.tokType in {tkParLe, tkColon} and p.tok.indent < 0
   let params = parseParamList(p)
   let pragmas = optPragmas(p)
@@ -1134,7 +1133,7 @@ proc parseProcExpr(p: var Parser; isExpr: bool; kind: TNodeKind): PNode =
       params = params, name = p.emptyNode, pattern = p.emptyNode,
       genericParams = p.emptyNode, pragmas = pragmas, exceptions = p.emptyNode)
   else:
-    result = newNodeI(nkProcTy, info)
+    result = newNodeI(if kind == nkIteratorDef: nkIteratorTy else: nkProcTy, info)
     if hasSignature:
       result.add(params)
       if kind == nkFuncDef:
@@ -1275,12 +1274,15 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
 
   case p.tok.tokType
   of tkTuple: result = parseTuple(p, mode == pmTypeDef)
-  of tkProc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkLambda)
-  of tkFunc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkFuncDef)
-  of tkIterator:
+  of tkProc:
+    getTok(p)
     result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkLambda)
-    if result.kind == nkLambda: result.transitionSonsKind(nkIteratorDef)
-    else: result.transitionSonsKind(nkIteratorTy)
+  of tkFunc:
+    getTok(p)
+    result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkFuncDef)
+  of tkIterator:
+    getTok(p)
+    result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkIteratorDef)
   of tkEnum:
     if mode == pmTypeDef:
       prettySection:
@@ -1797,6 +1799,12 @@ proc parseRoutine(p: var Parser, kind: TNodeKind): PNode =
   result = newNodeP(kind, p)
   getTok(p)
   optInd(p, result)
+  if kind in {nkProcDef, nkLambda, nkIteratorDef, nkFuncDef} and
+      p.tok.tokType notin {tkSymbol, tokKeywordLow..tokKeywordHigh, tkAccent}:
+    # no name; lambda or proc type
+    # in every context that we can parse a routine, we can also parse these
+    result = parseProcExpr(p, true, if kind == nkProcDef: nkLambda else: kind)
+    return
   result.add(identVis(p))
   if p.tok.tokType == tkCurlyLe and p.validInd: result.add(p.parsePattern)
   else: result.add(p.emptyNode)
