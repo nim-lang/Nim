@@ -46,8 +46,15 @@ Core
 * [bitops](bitops.html)
   Provides a series of low-level methods for bit manipulation.
 
+* [compilesettings](compilesettings.html)
+  This module allows querying the compiler about diverse configuration settings.
+
 * [cpuinfo](cpuinfo.html)
   This module implements procs to determine the number of CPUs / cores.
+
+* [effecttraits](effecttraits.html)
+  This module provides access to the inferred .raises effects
+  for Nim's macro system.
 
 * [endians](endians.html)
   This module contains helpers that deal with different byte orders.
@@ -63,13 +70,6 @@ Core
 
 * [rlocks](rlocks.html)
   Reentrant locks for Nim.
-
-* [compilesettings](compilesettings.html)
-  This module allows querying the compiler about diverse configuration settings.
-
-* [effecttraits](effecttraits.html)
-  This module provides access to the inferred .raises effects
-  for Nim's macro system.
 
 * [typeinfo](typeinfo.html)
   Provides (unsafe) access to Nim's run-time type information.
@@ -387,11 +387,11 @@ Threading
 * [tasks](tasks.html)
   This module provides basic primitives for creating parallel programs.
 
-* [typedthreads](typedthreads.html)
-  Basic Nim thread support.
-
 * [threadpool](threadpool.html)
   Implements Nim's [spawn](manual_experimental.html#parallel-amp-spawn).
+
+* [typedthreads](typedthreads.html)
+  Basic Nim thread support.
 
 
 Parsers
@@ -506,13 +506,13 @@ Hashing
 Serialization
 -------------
 
-* [marshal](marshal.html)
-  Contains procs for serialization and deserialization of arbitrary Nim
-  data structures.
-
 * [jsonutils](jsonutils.html)
   This module implements a hookable (de)serialization for arbitrary types
   using JSON.
+
+* [marshal](marshal.html)
+  Contains procs for serialization and deserialization of arbitrary Nim
+  data structures.
 
 
 Miscellaneous
@@ -660,14 +660,14 @@ Regular expressions
 Database support
 ----------------
 
-* [postgres](postgres.html)
-  Contains a wrapper for the PostgreSQL API.
 * [mysql](mysql.html)
   Contains a wrapper for the mySQL API.
-* [sqlite3](sqlite3.html)
-  Contains a wrapper for the SQLite 3 API.
 * [odbcsql](odbcsql.html)
   interface to the ODBC driver.
+* [postgres](postgres.html)
+  Contains a wrapper for the PostgreSQL API.
+* [sqlite3](sqlite3.html)
+  Contains a wrapper for the SQLite 3 API.
 
 
 Network Programming and Internet Protocols
