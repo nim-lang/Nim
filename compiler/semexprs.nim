@@ -83,6 +83,31 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType 
     # do not produce another redundant error message:
     result = errorNode(c, n)
 
+proc ambiguousSymChoice(c: PContext, orig, n: PNode): PNode =
+  let first = n[0].sym
+  if first.kind == skEnumField:
+    # choose the first resolved enum field, i.e. the latest in scope
+    # to mirror behavior before overloadable enums
+    if hintAmbiguousEnum in c.config.notes:
+      var err = "ambiguous enum field '" & first.name.s &
+        "' assumed to be of type " & typeToString(first.typ) &
+        " -- use one of the following:\n"
+      for child in n:
+        let candidate = child.sym
+        err.add "  " & candidate.owner.name.s & "." & candidate.name.s & "\n"
+      message(c.config, orig.info, hintAmbiguousEnum, err)
+    result = n[0]
+  else:
+    var err = "ambiguous identifier '" & first.name.s &
+      "' -- use one of the following:\n"
+    for child in n:
+      let candidate = child.sym
+      err.add "  " & candidate.owner.name.s & "." & candidate.name.s
+      err.add ": " & typeToString(candidate.typ) & "\n"
+    localError(c.config, orig.info, err)
+    n.typ = errorType(c)
+    result = n
+
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
   result = semExprCheck(c, n, flags, expectedType)
   if result.typ == nil and efInTypeof in flags:
@@ -90,28 +115,7 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
   elif (result.typ == nil or result.typ.kind == tyNone) and
       efTypeAllowed in flags and
       result.kind == nkClosedSymChoice and result.len > 0:
-    let first = result[0].sym
-    if first.kind == skEnumField:
-      # choose the first resolved enum field, i.e. the latest in scope
-      # to mirror behavior before overloadable enums
-      if hintAmbiguousEnum in c.config.notes:
-        var err = "ambiguous enum field '" & first.name.s &
-          "' assumed to be of type " & typeToString(first.typ) &
-          " -- use one of the following:\n"
-        for child in result:
-          let candidate = child.sym
-          err.add "  " & candidate.owner.name.s & "." & candidate.name.s & "\n"
-        message(c.config, n.info, hintAmbiguousEnum, err)
-      result = result[0]
-    else:
-      var err = "ambiguous identifier '" & first.name.s &
-        "' -- use one of the following:\n"
-      for child in result:
-        let candidate = child.sym
-        err.add "  " & candidate.owner.name.s & "." & candidate.name.s
-        err.add ": " & typeToString(candidate.typ) & "\n"
-      localError(c.config, n.info, err)
-      result.typ = errorType(c)
+    result = ambiguousSymChoice(c, n, result)
   elif result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
