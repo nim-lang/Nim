@@ -367,10 +367,10 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
           let info = if n.safeLen > 1: n[1].info else: n.info
           localError(c.config, info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
         result = makeRangeWithStaticExpr(c, e)
+        if c.inGenericContext > 0: result.flags.incl tfUnresolved
       else:
         result = e.typ.skipTypes({tyTypeDesc})
         result.flags.incl tfImplicitStatic
-      if c.inGenericContext > 0: result.flags.incl tfUnresolved
     elif e.kind in (nkCallKinds + {nkBracketExpr}) and hasUnresolvedArgs(c, e):
       if not isOrdinalType(e.typ.skipTypes({tyStatic, tyAlias, tyGenericInst, tySink})):
         localError(c.config, n[1].info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
