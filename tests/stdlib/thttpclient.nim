@@ -15,6 +15,7 @@ from net import TimeoutError
 import nativesockets, os, httpclient, asyncdispatch
 
 import std/[assertions, syncio]
+from stdtest/testutils import enableRemoteNetworking
 
 const manualTests = false
 
@@ -178,5 +179,7 @@ proc ipv6Test() =
   client.close()
 
 ipv6Test()
-syncTest()
-waitFor(asyncTest())
+
+when enableRemoteNetworking:
+  syncTest()
+  waitFor(asyncTest())
