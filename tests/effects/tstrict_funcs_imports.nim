@@ -20,7 +20,6 @@ import
   algorithm,
   asyncdispatch,
   asyncfile,
-  asyncftpclient,
   asyncfutures,
   asynchttpserver,
   asyncmacro,

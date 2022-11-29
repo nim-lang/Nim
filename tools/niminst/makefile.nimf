@@ -103,6 +103,9 @@ endif
 ifeq ($(ucpu),x86_64)
   mycpu = amd64
 endif
+ifeq ($(ucpu),s390x)
+  mycpu = s390x
+endif
 ifeq ($(ucpu),sparc)
   mycpu = sparc
 endif
