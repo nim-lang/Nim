@@ -559,7 +559,7 @@ Miscellaneous
   This module implements the `with` macro for easy function chaining.
 
 * [wrapnils](wrapnils.html)
-  This module allows evaluating expressions safely against nil dereferences and more.,
+  This module allows evaluating expressions safely against nil dereferences.
 
 
 Modules for the JavaScript backend
