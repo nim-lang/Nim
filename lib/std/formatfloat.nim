@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+## This module implements formatting floats as strings.
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 else:

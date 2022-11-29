@@ -1,3 +1,5 @@
+## This module implements path handling.
+
 import std/private/osseps
 export osseps
 
