@@ -149,9 +149,6 @@ String handling
 * [pegs](pegs.html)
   This module contains procedures and operators for handling PEGs.
 
-* [punycode](punycode.html)
-  Implements a representation of Unicode with the limited ASCII character subset.
-
 * [ropes](ropes.html)
   This module contains support for a *rope* data type.
   Ropes can represent very long strings efficiently;

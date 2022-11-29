@@ -79,7 +79,6 @@ At least the following standard library modules are available:
 * [mersenne](mersenne.html)
 * [options](options.html)
 * [parseutils](parseutils.html)
-* [punycode](punycode.html)
 * [random](random.html)
 * [stats](stats.html)
 * [strformat](strformat.html)
