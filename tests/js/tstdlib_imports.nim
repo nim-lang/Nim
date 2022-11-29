@@ -25,7 +25,7 @@ import std/[
 
   # Strings:
   cstrutils, editdistance, wordwrap, parseutils, ropes,
-  pegs, punycode, strformat, strmisc, strscans, strtabs,
+  pegs, strformat, strmisc, strscans, strtabs,
   strutils, unicode, unidecode,
   # fails due to FFI: encodings
 
