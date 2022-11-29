@@ -133,7 +133,6 @@ import
   unidecode,
   unittest,
   uri,
-  volatile,
   winlean,
   xmlparser,
   xmltree

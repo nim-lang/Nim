@@ -12,7 +12,7 @@ when defined(nimPreviewSlimSystem):
 
 import std/[
   # Core:
-  bitops, typetraits, lenientops, macros, volatile,
+  bitops, typetraits, lenientops, macros,
   # fails due to FFI: typeinfo
   # fails due to cstring cast/copyMem: endians
   # works but uses FFI: cpuinfo, rlocks, locks

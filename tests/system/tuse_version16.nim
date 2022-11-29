@@ -6,7 +6,7 @@ discard """
 
 import std/[
   # Core:
-  bitops, typetraits, lenientops, macros, volatile,
+  bitops, typetraits, lenientops, macros,
 
   # Algorithms:
   algorithm, sequtils,

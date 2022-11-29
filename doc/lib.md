@@ -73,11 +73,6 @@ Core
 * [typetraits](typetraits.html)
   This module defines compile-time reflection procs for working with types.
 
-* [volatile](volatile.html)
-  This module contains code for generating volatile loads and stores,
-  which are useful in embedded and systems programming.
-
-
 Algorithms
 ----------
 
