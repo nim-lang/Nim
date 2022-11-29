@@ -29,6 +29,7 @@ the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](
 * [Stack Overflow][nim-stackoverflow] - a popular Q/A site for programming related
   topics that includes posts about Nim.
 * [GitHub Wiki][nim-wiki] - Misc user-contributed content.
+* [Awesome-Nim](https://github.com/ringabout/awesome-nim#--) - curated list of awesome Nim frameworks, libraries, software & resources
 
 ## Compiling
 
