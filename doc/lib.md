@@ -584,9 +584,6 @@ Modules for the JavaScript backend
 * [jsfetch](jshttp.html)
   Wrapper for `fetch`.
 
-* [jshttpcore](jshttpcore.html)
-  Wrapper for `FormData` and `Headers`.
-
 * [jsffi](jsffi.html)
   Types and macros for easier interaction with JavaScript.
 

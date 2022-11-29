@@ -2,7 +2,8 @@
 when not defined(js):
   {.fatal: "Module jsfetch is designed to be used with the JavaScript backend.".}
 
-import std/[asyncjs, jshttpcore]
+import std/[asyncjs, jsformdata, jsheaders]
+export jsformdata, jsheaders
 from std/httpcore import HttpMethod
 from std/jsffi import JsObject
 
@@ -116,7 +117,7 @@ func `$`*(self: Request | Response | FetchOptions): string = $toCstring(self)
 
 
 runnableExamples("-r:off"):
-  import std/[asyncjs, jsconsole, jshttpcore]
+  import std/[asyncjs, jsconsole, jsformdata, jsheaders]
   from std/httpcore import HttpMethod
   from std/jsffi import JsObject
   from std/sugar import `=>`

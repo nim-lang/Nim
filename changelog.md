@@ -162,7 +162,6 @@
 - Added `openArray[char]` overloads for `std/parseutils` allowing more code reuse.
 - Added `openArray[char]` overloads for `std/unicode` allowing more code reuse.
 - Added `safe` parameter to `base64.encodeMime`.
-- Added `std/jshttpcore` module that exports `jsformdata` and `jsheaders`.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
