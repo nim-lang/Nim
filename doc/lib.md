@@ -370,9 +370,6 @@ Internet Protocols and Support
   This module implements a selector API with backends specific to each OS.
   Currently, epoll on Linux and select on other operating systems.
 
-* [smtp](smtp.html)
-  This module implements a simple SMTP client.
-
 * [socketstreams](socketstreams.html)
   This module provides an implementation of the streams interface for sockets.
 
