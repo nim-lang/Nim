@@ -38,6 +38,8 @@ const
   errPragmaOnlyInHeaderOfProcX = "pragmas are only allowed in the header of a proc; redefinition of $1"
   errCannotAssignToGlobal = "cannot assign local to global variable"
 
+proc implicitlyDiscardable(n: PNode): bool
+
 proc semDiscard(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1, c.config)
@@ -101,6 +103,9 @@ proc semWhile(c: PContext, n: PNode; flags: TExprFlags): PNode =
     result.typ = c.enforceVoidContext
   elif efInTypeof in flags:
     result.typ = n[1].typ
+  elif implicitlyDiscardable(n[1]):
+    result[1].typ = c.enforceVoidContext
+    result.typ = c.enforceVoidContext
 
 proc semProc(c: PContext, n: PNode): PNode
 
