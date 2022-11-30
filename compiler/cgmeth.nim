@@ -172,6 +172,13 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   # create a new dispatcher:
   # stores the id and the position
   g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId].add g.methods.len
+  # id: [a, b, c]
+  # iterates the bucketTable
+  # base: [a, b, c]
+  # o1: assign the vtable of the base to the o1 by looking up the id of the base
+  # calculates the vtable of the o1;
+  # stores the vtable of the o1 to bucketTable
+  # the same goes for the o2, it procures the vtable of the o1
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
   #echo "adding ", s.info
   if witness != nil:
