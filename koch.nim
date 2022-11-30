@@ -544,7 +544,7 @@ proc runCI(cmd: string) =
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 
-  execFold("Install smtp", "nimble install smtp")
+  execFold("Install smtp", "nimble install smtp -y")
 
   let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
