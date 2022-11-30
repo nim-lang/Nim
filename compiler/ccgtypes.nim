@@ -1360,8 +1360,6 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   add(typeEntry, ".destructor = (void*)")
   genHook(m, t, info, attachedDestructor, typeEntry)
 
-  add(typeEntry, ", .traceImpl = (void*)")
-  genHook(m, t, info, attachedTrace, typeEntry)
 
   let objDepth = if t.kind == tyObject: getObjDepth(t) else: -1
 
@@ -1370,6 +1368,14 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
     localError(m.config, info, "request for RTTI generation for incomplete object: " &
               typeToString(t))
 
+  addf(typeEntry, ", .size = sizeof($1), .align = (NI16) NIM_ALIGNOF($1), .depth = $2",
+    [getTypeDesc(m, t), rope(objDepth)])
+
+  if objDepth >= 0:
+    let objDisplay = genDisplay(t, objDepth)
+    let objDisplayStore = getTempName(m)
+    m.s[cfsVars].addf("static NIM_CONST $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyUInt32), skVar), objDisplayStore, rope(objDepth+1), objDisplay])
+    addf(typeEntry, ", .display = $1", [rope(objDisplayStore)])
   if isDefined(m.config, "nimTypeNames"):
     var typeName: Rope
     if t.kind in {tyObject, tyDistinct}:
@@ -1377,16 +1383,10 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
     else:
       typeName = rope("NIM_NIL")
     addf(typeEntry, ", .name = $1", [typeName])
-  addf(typeEntry, ", .size = sizeof($1), .align = (NI16) NIM_ALIGNOF($1), .depth = $2, .flags = $3",
-    [getTypeDesc(m, t), rope(objDepth), rope(flags)])
+  add(typeEntry, ", .traceImpl = (void*)")
+  genHook(m, t, info, attachedTrace, typeEntry)
 
-  if objDepth >= 0:
-    let objDisplay = genDisplay(t, objDepth)
-    let objDisplayStore = getTempName(m)
-    m.s[cfsStrData].addf("static NIM_CONST $1 $2[$3];$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyUInt32), skVar), objDisplayStore, rope(objDepth+1)])
-    m.s[cfsVars].addf("static NIM_CONST $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyUInt32), skVar), objDisplayStore, rope(objDepth+1), objDisplay])
-    addf(typeEntry, ", .display = $1", [rope(objDisplayStore)])
-  add(typeEntry, "};")
+  addf(typeEntry, ", .flags = $1};$n", [rope(flags)])
   m.s[cfsVars].add typeEntry
 
   if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
