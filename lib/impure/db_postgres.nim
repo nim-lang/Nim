@@ -201,7 +201,8 @@ proc prepare*(db: DbConn; stmtName: string, query: SqlQuery;
     dbError("parameter substitution expects \"$1\"")
   var res = pqprepare(db, stmtName, query.cstring, int32(nParams), nil)
   if pqResultStatus(res) != PGRES_COMMAND_OK: dbError(db)
-  return SqlPrepared(stmtName)
+  result = SqlPrepared(stmtName)
+  pqclear(res)
 
 proc setRow(res: PPGresult, r: var Row, line, cols: int32) =
   for col in 0'i32..cols-1:
@@ -468,12 +469,12 @@ proc getRow*(db: DbConn, query: SqlQuery,
   ## retrieves a single row. If the query doesn't return any rows, this proc
   ## will return a Row with empty strings for each column.
   let res = setupQuery(db, query, args)
-  getRow(res)
+  result = getRow(res)
 
 proc getRow*(db: DbConn, stmtName: SqlPrepared,
              args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   let res = setupQuery(db, stmtName, args)
-  getRow(res)
+  result = getRow(res)
 
 proc getAllRows(res: PPGresult): seq[Row] =
   let N = pqntuples(res)
@@ -490,14 +491,14 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
                  tags: [ReadDbEffect].} =
   ## executes the query and returns the whole result dataset.
   let res = setupQuery(db, query, args)
-  getAllRows(res)
+  result = getAllRows(res)
 
 proc getAllRows*(db: DbConn, stmtName: SqlPrepared,
                  args: varargs[string, `$`]): seq[Row] {.tags:
                  [ReadDbEffect].} =
   ## executes the prepared query and returns the whole result dataset.
   let res = setupQuery(db, stmtName, args)
-  getAllRows(res)
+  result = getAllRows(res)
 
 iterator rows*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
@@ -523,7 +524,8 @@ proc getValue*(db: DbConn, query: SqlQuery,
   ## result dataset. Returns "" if the dataset contains no rows or the database
   ## value is NULL.
   let res = setupQuery(db, query, args)
-  getValue(res)
+  result = getValue(res)
+  pqclear(res)
 
 proc getValue*(db: DbConn, stmtName: SqlPrepared,
                args: varargs[string, `$`]): string {.
@@ -532,7 +534,8 @@ proc getValue*(db: DbConn, stmtName: SqlPrepared,
   ## result dataset. Returns "" if the dataset contains no rows or the database
   ## value is NULL.
   let res = setupQuery(db, stmtName, args)
-  getValue(res)
+  result = getValue(res)
+  pqclear(res)
 
 proc tryInsertID*(db: DbConn, query: SqlQuery,
                   args: varargs[string, `$`]): int64 {.
@@ -541,12 +544,14 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
   ## generated ID for the row or -1 in case of an error. For Postgre this adds
   ## `RETURNING id` to the query, so it only works if your primary key is
   ## named `id`.
-  var x = pqgetvalue(setupQuery(db, SqlQuery(string(query) & " RETURNING id"),
-    args), 0, 0)
+  let res = setupQuery(db, SqlQuery(string(query) & " RETURNING id"),
+                       args)
+  var x = pqgetvalue(res, 0, 0)
   if not isNil(x):
     result = parseBiggestInt($x)
   else:
     result = -1
+  pqclear(res)
 
 proc insertID*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): int64 {.
@@ -563,12 +568,14 @@ proc tryInsert*(db: DbConn, query: SqlQuery,pkName: string,
                {.tags: [WriteDbEffect], since: (1, 3).}=
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
-  var x = pqgetvalue(setupQuery(db, SqlQuery(string(query) & " RETURNING " & pkName),
-    args), 0, 0)
+  let res = setupQuery(db, SqlQuery(string(query) & " RETURNING " & pkName),
+                       args)
+  var x = pqgetvalue(res, 0, 0)
   if not isNil(x):
     result = parseBiggestInt($x)
   else:
     result = -1
+  pqclear(res)
 
 proc insert*(db: DbConn, query: SqlQuery, pkName: string,
              args: varargs[string, `$`]): int64

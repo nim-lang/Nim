@@ -103,6 +103,9 @@ endif
 ifeq ($(ucpu),x86_64)
   mycpu = amd64
 endif
+ifeq ($(ucpu),s390x)
+  mycpu = s390x
+endif
 ifeq ($(ucpu),sparc)
   mycpu = sparc
 endif
@@ -131,7 +134,7 @@ ifeq ($(ucpu),powerpc)
   endif
 endif
 ifeq ($(ucpu),ppc)
-  mycpu = ppc
+   mycpu = powerpc
 endif
 ifneq (,$(filter $(ucpu), mips mips64))
   mycpu = $(shell /bin/sh -c '"$(CC)" -dumpmachine | sed "s/-.*//"')

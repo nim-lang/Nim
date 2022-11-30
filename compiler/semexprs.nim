@@ -535,7 +535,7 @@ proc overloadedCallOpr(c: PContext, n: PNode): PNode =
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(par, n.info)
     for i in 0..<n.len: result.add n[i]
-    result = semExpr(c, result)
+    result = semExpr(c, result, flags = {efNoUndeclared})
 
 proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
   case n.kind
@@ -993,6 +993,9 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       if s != nil:
         setGenericParams(c, n[0])
         return semDirectOp(c, n, flags, expectedType)
+    elif isSymChoice(n[0]):
+      # overloaded generic procs e.g. newSeq[int] can end up here
+      return semDirectOp(c, n, flags, expectedType)
 
   var t: PType = nil
   if n[0].typ != nil:
@@ -1042,10 +1045,10 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       instGenericConvertersSons(c, result, m)
 
   else:
-    result = overloadedCallOpr(c, n)
+    result = overloadedCallOpr(c, n) # this uses efNoUndeclared
     # Now that nkSym does not imply an iteration over the proc/iterator space,
     # the old ``prc`` (which is likely an nkIdent) has to be restored:
-    if result == nil:
+    if result == nil or result.kind == nkEmpty:
       # XXX: hmm, what kind of symbols will end up here?
       # do we really need to try the overload resolution?
       n[0] = prc
@@ -3116,7 +3119,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     # the node is left intact for now
     discard
   of nkStaticExpr: result = semStaticExpr(c, n[0], expectedType)
-  of nkAsgn: result = semAsgn(c, n)
+  of nkAsgn, nkFastAsgn: result = semAsgn(c, n)
   of nkBlockStmt, nkBlockExpr: result = semBlock(c, n, flags, expectedType)
   of nkStmtList, nkStmtListExpr: result = semStmtList(c, n, flags, expectedType)
   of nkRaiseStmt: result = semRaise(c, n)
