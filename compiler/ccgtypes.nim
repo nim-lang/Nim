@@ -1350,7 +1350,10 @@ proc genDisplay(t: PType, depth: int): Rope =
 
 proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   cgsym(m, "TNimTypeV2")
-  m.s[cfsStrData].addf("extern N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
+  if m.compileToCpp: # todo how to handle C++?
+    m.s[cfsStrData].addf("extern N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
+  else:
+    m.s[cfsStrData].addf("extern N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
 
   var flags = 0
   if not canFormAcycle(t): flags = flags or 1
