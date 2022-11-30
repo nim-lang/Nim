@@ -972,7 +972,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
         return semDirectOp(c, n, flags)
     elif isSymChoice(n[0]):
       # overloaded generic procs e.g. newSeq[int] can end up here
-      return semDirectOp(c, n, flags, expectedType)
+      return semDirectOp(c, n, flags)
 
   let nOrig = n.copyTree
   semOpAux(c, n)
