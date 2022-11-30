@@ -399,7 +399,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       n.sons.insert(hiddenArg, 1)
       orig.sons.insert(hiddenArg, 1)
 
-      pickBest(f)
+      pickSpecialOp(f)
 
       if result.state != csMatch:
         n.sons.delete(1)
