@@ -215,6 +215,10 @@ Generic Operating System Services
 * [appdirs](appdirs.html)
   This module implements helpers for determining special directories used by apps.
 
+* [cmdline](cmdline.html)
+  This module contains system facilities for reading command
+  line parameters.
+
 * [dirs](dirs.html)
   This module implements directory handling.
 
@@ -605,12 +609,16 @@ Regular expressions
 Database support
 ----------------
 
-* [db_postgres](db_postgres.html)
-  A higher level PostgreSQL database wrapper. The same interface is implemented
-  for other databases too.
-
 * [db_mysql](db_mysql.html)
   A higher level MySQL database wrapper. The same interface is implemented
+  for other databases too.
+
+* [db_odbc](db_odbc.html)
+  A higher level ODBC database wrapper. The same interface is implemented
+  for other databases too.
+
+* [db_postgres](db_postgres.html)
+  A higher level PostgreSQL database wrapper. The same interface is implemented
   for other databases too.
 
 * [db_sqlite](db_sqlite.html)
