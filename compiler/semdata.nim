@@ -537,7 +537,7 @@ proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
 
 proc makeRangeType*(c: PContext; first, last: BiggestInt;
                     info: TLineInfo; intType: PType = nil): PType =
-  let intType = if intType != nil: intType else: getSysType(c.graph, info, tyInt)
+  let intType = if intType != nil: intType.skipTypes({tyStatic}) else: getSysType(c.graph, info, tyInt)
   var n = newNodeI(nkRange, info)
   n.add newIntTypeNode(first, intType)
   n.add newIntTypeNode(last, intType)
