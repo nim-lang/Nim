@@ -498,19 +498,14 @@ proc newSymNodeTypeDesc*(s: PSym; idgen: IdGenerator; info: TLineInfo): PNode =
 proc foldDefine(m, s: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   var name = s.name.s
   let prag = extractPragma(s)
-  echo name, " 1 ", renderTree(prag)
   if prag != nil:
-    echo prag.kind
     for it in prag:
-      echo name, " 2 ", it.kind
       if it.kind in nkPragmaCallKinds and it.len == 2 and it[0].kind == nkIdent:
         let word = whichKeyword(it[0].ident)
-        echo name, " 3 ", word
         if word in {wStrDefine, wIntDefine, wBoolDefine, wDefine}:
           # should be processed in pragmas.nim already
           if it[1].kind in {nkStrLit, nkRStrLit, nkTripleStrLit}:
             name = it[1].strVal
-  echo name
   if isDefined(g.config, name):
     let str = g.config.symbols[name]
     case s.magic
