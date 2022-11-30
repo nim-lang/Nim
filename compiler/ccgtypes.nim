@@ -1350,13 +1350,13 @@ proc genDisplay(t: PType, depth: int): Rope =
 
 proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   cgsym(m, "TNimTypeV2")
-  m.s[cfsStrData].addf("NIM_CONST TNimTypeV2 $1;$n", [name])
+  m.s[cfsStrData].addf("extern N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
 
   var flags = 0
   if not canFormAcycle(t): flags = flags or 1
 
   var typeEntry = newRopeAppender()
-  addf(typeEntry, "NIM_CONST TNimTypeV2 $1 = {", [name])
+  addf(typeEntry, "N_LIB_PRIVATE TNimTypeV2 $1 = {", [name])
   add(typeEntry, ".destructor = (void*)")
   genHook(m, t, info, attachedDestructor, typeEntry)
 
