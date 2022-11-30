@@ -201,36 +201,23 @@
     now support a string argument for qualified define names.
 
     ```nim
+    # -d:package.FooBar=42
     const FooBar {.intdefine: "package.FooBar".}: int = 5
-    echo FooBar
-    ```
-
-    ```cmd
-    nim c -d:package.FooBar=42 foobar.nim
+    echo FooBar # 42
     ```
 
     This was added to help disambiguate similar define names for different packages.
-    In older versions, to access these defines, one would have to do something like the following:
+    In older versions, this could only be achieved with something like the following:
 
     ```nim
     const FooBar = block:
       const `package.FooBar` {.intdefine.}: int = 5
       `package.FooBar`
     ```
-  - A [generic `define` pragma for constants](https://nim-lang.github.io/Nim/manual_experimental.html#generic-define-pragma)
-    has been added that interprets the value of the define based on the type of the constant value.
-
-    ```nim
-    const foo {.define: "package.foo".} = 123
-    const bar {.define: "package.bar".} = false
-    ```
-
-    ```cmd
-    nim c -d:package.foo=456 -d:package.bar foobar.nim
-    ```
-
+  - A generic `define` pragma for constants has been added that interprets
+    the value of the define based on the type of the constant value.
     See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#generic-define-pragma)
-    for a list of currently supported types.
+    for a list of supported types.
 
 - [Macro pragmas](https://nim-lang.github.io/Nim/manual.html#userminusdefined-pragmas-macro-pragmas) changes:
   - Templates now accept macro pragmas.

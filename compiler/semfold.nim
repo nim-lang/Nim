@@ -543,15 +543,6 @@ proc foldDefine(m, s: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode
           result = intNode(str.parseBiggestUInt)
         of tyBool:
           result = intNode(str.parseBool.int)
-        of tyFloat..tyFloat128:
-          let val = str.parseFloat
-          floatRangeCheck(n, val, g)
-          result = newFloatNodeT(val, n, g)
-        of tyChar:
-          if str.len == 1:
-            result = intNode(ord(str[0]))
-          else:
-            raise newException(ValueError, "string was not single character length: " & str)
         of tyEnum:
           # compile time parseEnum
           let ident = getIdent(g.cache, str)

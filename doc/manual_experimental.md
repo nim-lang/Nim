@@ -81,12 +81,10 @@ based on the type of the constant value.
   nim c -d:package.foo=456 -d:package.bar foobar.nim
   ```
 
-Currently, the following types are supported:
+The following types are supported:
 
 * `string` and `cstring`
 * Signed and unsigned integer types
-* Floating point types
-* `char`
 * `bool`
 * Enums
 
