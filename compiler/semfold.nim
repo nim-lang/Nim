@@ -535,7 +535,7 @@ proc foldDefine(m, s: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode
           rangeCheck(n, val, g)
           newIntNodeT(val, n, idgen, g)
         case typ.kind
-        of tyString:
+        of tyString, tyCstring:
           result = newStrNodeT(str, n, g)
         of tyInt..tyInt64:
           result = intNode(str.parseBiggestInt)

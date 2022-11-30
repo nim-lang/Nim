@@ -8032,6 +8032,24 @@ used. To see if a value was provided, `defined(FooBar)` can be used.
 The syntax `-d:flag`:option: is actually just a shortcut for
 `-d:flag=true`:option:.
 
+These pragmas also accept an optional string argument for qualified
+define names.
+
+  ```nim
+  const FooBar {.intdefine: "package.FooBar".}: int = 5
+  echo FooBar
+  ```
+
+  ```cmd
+  nim c -d:package.FooBar=42 foobar.nim
+  ```
+
+This helps disambiguate define names in different packages.
+
+See also the [generic `define` pragma](manual_experimental.html#generic-define-pragma)
+for a version of these pragmas that detects the type of the define based on
+the constant value.
+
 User-defined pragmas
 ====================
 

@@ -1,6 +1,6 @@
 discard """
 joinable: false
-cmd: "nim c $options -d:booldef -d:booldef2=false -d:intdef=2 -d:strdef=foobar -d:namespaced.define=false -d:double.namespaced.define -r $file"
+cmd: "nim c $options -d:booldef -d:booldef2=false -d:intdef=2 -d:strdef=foobar -d:namespaced.define=false -d:double.namespaced.define -d:chardef=z -r $file"
 matrix: "; -d:useGenericDefine"
 """
 
@@ -27,6 +27,19 @@ doAssert booldef
 doAssert not booldef2
 doAssert intdef == 2
 doAssert strdef == "foobar"
+
+when defined(useGenericDefine):
+  block:
+    const uintdef {.define: "intdef".}: uint = 17
+    doAssert intdef == int(uintdef)
+    const cstrdef {.define: "strdef".}: cstring = "not strdef"
+    doAssert $cstrdef == strdef
+    type FooBar = enum foo, bar, foobar
+    const enumdef {.define: "strdef".} = foo
+    doAssert $enumdef == strdef
+    doAssert enumdef == foobar
+    const chardef {.define.} = 'a'
+    doAssert chardef == 'z'
 
 # Intentionally not defined from command line
 const booldef3 {.booldefine2.} = true
