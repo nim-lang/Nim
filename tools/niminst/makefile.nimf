@@ -16,8 +16,6 @@ endif
 
 target := ?{"$(binDir)/" & toLowerAscii(c.name)}
 
-# Detect CPU architecture using uname, then select a mycpu "alias"
-# depending on the OS. mycpu matches the names in lib/system/platforms.nim
 
 ucpu := $(shell sh -c 'uname -m | tr "[:upper:]" "[:lower:]"')
 ifeq ($(OS),Windows_NT)
