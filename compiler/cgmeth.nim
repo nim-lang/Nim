@@ -16,7 +16,7 @@ import
 import std/tables
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, objectdollar]
 
 
 proc genConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
@@ -171,7 +171,10 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
       if witness.isNil: witness = g.methods[i].methods[0]
   # create a new dispatcher:
   # stores the id and the position
-  g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId].add g.methods.len
+  if s.typ[1].skipTypes(skipPtrs).itemId notin g.bucketTable:
+    g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId] = @[g.methods.len]
+  else:
+    g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId].add g.methods.len
   # id: [a, b, c]
   # iterates the bucketTable
   # base: [a, b, c]
@@ -179,6 +182,9 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   # calculates the vtable of the o1;
   # stores the vtable of the o1 to bucketTable
   # the same goes for the o2, it procures the vtable of the o1
+
+  # todo we need to build an inherientence tree somewhere
+  # because we need to initialize the vtables from the bottom to the top.
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
   #echo "adding ", s.info
   if witness != nil:
@@ -295,6 +301,14 @@ proc generateMethodDispatchers*(g: ModuleGraph): PNode =
     sortBucket(g.methods[bucket].methods, relevantCols)
     if isDefined(g.config, "nimPreviewVTable"):
       doAssert sfBase in g.methods[bucket].methods[^1].flags
+      doAssert optMultiMethods notin g.config.globalOptions # we are not interested in other fields
+      # {.cursor.} ?
+      let base = g.methods[bucket].methods[^1]
+      let baseType = base.typ[1].skipTypes(skipPtrs)
+      let methodIndex = g.bucketTable[baseType.itemId]
+      # echo g.bucketTable, " ", baseType.itemId " ", methodIndex
+      echo "here: ", methodIndex, " -> ", bucket
+      echo "find: ", find(methodIndex, bucket)
       result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))
     else:
       result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))
