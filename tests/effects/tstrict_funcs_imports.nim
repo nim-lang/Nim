@@ -90,7 +90,6 @@ import
   pegs,
   posix_utils,
   prelude,
-  punycode,
   random,
   rationals,
   rdstdin,
