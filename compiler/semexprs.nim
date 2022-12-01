@@ -83,18 +83,39 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType 
     # do not produce another redundant error message:
     result = errorNode(c, n)
 
+proc ambiguousSymChoice(c: PContext, orig, n: PNode): PNode =
+  let first = n[0].sym
+  if first.kind == skEnumField:
+    # choose the first resolved enum field, i.e. the latest in scope
+    # to mirror behavior before overloadable enums
+    if hintAmbiguousEnum in c.config.notes:
+      var err = "ambiguous enum field '" & first.name.s &
+        "' assumed to be of type " & typeToString(first.typ) &
+        " -- use one of the following:\n"
+      for child in n:
+        let candidate = child.sym
+        err.add "  " & candidate.owner.name.s & "." & candidate.name.s & "\n"
+      message(c.config, orig.info, hintAmbiguousEnum, err)
+    result = n[0]
+  else:
+    var err = "ambiguous identifier '" & first.name.s &
+      "' -- use one of the following:\n"
+    for child in n:
+      let candidate = child.sym
+      err.add "  " & candidate.owner.name.s & "." & candidate.name.s
+      err.add ": " & typeToString(candidate.typ) & "\n"
+    localError(c.config, orig.info, err)
+    n.typ = errorType(c)
+    result = n
+
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
   result = semExprCheck(c, n, flags, expectedType)
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
   elif (result.typ == nil or result.typ.kind == tyNone) and
-      result.kind == nkClosedSymChoice and
-      result[0].sym.kind == skEnumField:
-    # if overloaded enum field could not choose a type from a closed list,
-    # choose the first resolved enum field, i.e. the latest in scope
-    # to mirror old behavior
-    msgSymChoiceUseQualifier(c, result, hintAmbiguousEnum)
-    result = result[0]
+      efTypeAllowed in flags and
+      result.kind == nkClosedSymChoice and result.len > 0:
+    result = ambiguousSymChoice(c, n, result)
   elif result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
@@ -634,7 +655,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
         lastValidIndex = lastOrd(c.config, indexType)
         x = x[1]
 
-    let yy = semExprWithType(c, x, expectedType = expectedElementType)
+    let yy = semExprWithType(c, x, {efTypeAllowed}, expectedElementType)
     var typ = yy.typ
     if expectedElementType == nil:
       expectedElementType = typ
@@ -655,7 +676,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
           localError(c.config, x.info, "invalid order in array constructor")
         x = x[1]
 
-      let xx = semExprWithType(c, x, {}, expectedElementType)
+      let xx = semExprWithType(c, x, {efTypeAllowed}, expectedElementType)
       result.add xx
       typ = commonType(c, typ, xx.typ)
       #n[i] = semExprWithType(c, x, {})
@@ -1806,7 +1827,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
                renderTree(a, {renderNoComments}))
   else:
     let lhs = n[0]
-    let rhs = semExprWithType(c, n[1], {}, le)
+    let rhs = semExprWithType(c, n[1], {efTypeAllowed}, le)
     if lhs.kind == nkSym and lhs.sym.kind == skResult:
       n.typ = c.enforceVoidContext
       if c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
@@ -2502,8 +2523,8 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
     for i in 0..<n.len:
       if isRange(n[i]):
         checkSonsLen(n[i], 3, c.config)
-        n[i][1] = semExprWithType(c, n[i][1], {}, expectedElementType)
-        n[i][2] = semExprWithType(c, n[i][2], {}, expectedElementType)
+        n[i][1] = semExprWithType(c, n[i][1], {efTypeAllowed}, expectedElementType)
+        n[i][2] = semExprWithType(c, n[i][2], {efTypeAllowed}, expectedElementType)
         if typ == nil:
           typ = skipTypes(n[i][1].typ,
                           {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
@@ -2518,7 +2539,7 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
           if expectedElementType == nil:
             expectedElementType = typ
       else:
-        n[i] = semExprWithType(c, n[i], {}, expectedElementType)
+        n[i] = semExprWithType(c, n[i], {efTypeAllowed}, expectedElementType)
         if typ == nil:
           typ = skipTypes(n[i].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
           if expectedElementType == nil:
