@@ -383,8 +383,8 @@ proc reexportSym*(c: PContext; s: PSym) =
     discard
   else:
     strTableAdds(c.graph, c.module, s)
-  if c.config.symbolFiles != disabledSf:
-    addReexport(c.encoder, c.packedRepr, s)
+    if c.config.symbolFiles != disabledSf:
+      addReexport(c.encoder, c.packedRepr, s)
 
 proc newLib*(kind: TLibKind): PLib =
   new(result)

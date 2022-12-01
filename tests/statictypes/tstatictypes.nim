@@ -26,6 +26,7 @@ matrix: "--hints:off"
 """
 
 import macros
+import std/[assertions, objectdollar]
 
 template ok(x) = doAssert(x)
 template no(x) = doAssert(not x)

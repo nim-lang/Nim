@@ -53,6 +53,7 @@ proc fun*() =
   runnableExamples:
     # only works at top level
     import std/macros
+    import std/assertions
     macro myImport(a: static string): untyped =
       newTree(nnkImportStmt, [newLit a])
     myImport "str" & "utils"
@@ -80,9 +81,11 @@ when true: # issue #12746
 
 when true: # runnableExamples with rdoccmd
   runnableExamples "-d:testFoo -d:testBar":
+    import std/assertions
     doAssert defined(testFoo) and defined(testBar)
     doAssert defined(testFooExternal)
   runnableExamples "-d:testFoo2":
+    import std/assertions
     doAssert defined(testFoo2)
     doAssert not defined(testFoo) # doesn't get confused by other examples
 
@@ -91,12 +94,15 @@ when true: # runnableExamples with rdoccmd
   runnableExamples(): discard
   runnableExamples: discard
   runnableExamples "-r:off": # issue #10731
+    import std/assertions
     doAssert false ## we compile only (-r:off), so this won't be run
   runnableExamples "-b:js":
     import std/compilesettings
+    import std/assertions
     proc startsWith*(s, prefix: cstring): bool {.noSideEffect, importjs: "#.startsWith(#)".}
     doAssert querySetting(backend) == "js"
   runnableExamples "-b:cpp":
+    import std/assertions
     static: doAssert defined(cpp)
     type std_exception {.importcpp: "std::exception", header: "<exception>".} = object
 
@@ -163,6 +169,7 @@ when true: # bug #17835
       # this was giving: Error: runnableExamples must appear before the first non-comment statement
 
 runnableExamples:
+  import std/assertions
   block: # bug #17279
     when int.sizeof == 8:
       let x = 0xffffffffffffffff
@@ -205,6 +212,7 @@ snippet:
 .. code-block:: Nim
     :test:
 
+  import std/assertions
   doAssert defined(testFooExternal)
 
 ]##
