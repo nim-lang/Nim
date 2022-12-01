@@ -13,7 +13,7 @@
 ## `type LangSymbol`_ in ``rst.nim``, while `match(generated, docLink)`_
 ## matches it with `generated`, produced from `PNode` by ``docgen.rst``.
 
-import rstast
+import rstast, strutils
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]
@@ -34,6 +34,12 @@ type
     parameters*: seq[tuple[name: string, `type`: string]]
                                ## name-type seq, e.g. for proc
     outType*: string           ## result type, e.g. for proc
+
+proc `$`*(s: LangSymbol): string =  # for debug
+  ("(symkind=$1, symTypeKind=$2, name=$3, generics=$4, isGroup=$5, " &
+   "parametersProvided=$6, parameters=$7, outType=$8)") % [
+      s.symKind, s.symTypeKind , s.name, s.generics, $s.isGroup,
+      $s.parametersProvided, $s.parameters, s.outType]
 
 func nimIdentBackticksNormalize*(s: string): string =
   ## Normalizes the string `s` as a Nim identifier.
@@ -71,6 +77,12 @@ func nimIdentBackticksNormalize*(s: string): string =
     else: discard  # just omit '`' or ' '
   if j != s.len: setLen(result, j)
 
+proc langSymbolGroup*(kind: string, name: string): LangSymbol =
+  if kind notin ["proc", "func", "macro", "method", "iterator",
+                 "template", "converter"]:
+    raise newException(ValueError, "unknown symbol kind $1" % [kind])
+  result = LangSymbol(symKind: kind, name: name, isGroup: true)
+
 proc toLangSymbol*(linkText: PRstNode): LangSymbol =
   ## Parses `linkText` into a more structured form using a state machine.
   ##
@@ -82,11 +94,14 @@ proc toLangSymbol*(linkText: PRstNode): LangSymbol =
   ##
   ## This proc should be kept in sync with the `renderTypes` proc from
   ## ``compiler/typesrenderer.nim``.
-  assert linkText.kind in {rnRstRef, rnInner}
+  template fail(msg: string) =
+    raise newException(ValueError, msg)
+  if linkText.kind notin {rnRstRef, rnInner}:
+    fail("toLangSymbol: wrong input kind " & $linkText.kind)
 
   const NimDefs = ["proc", "func", "macro", "method", "iterator",
                    "template", "converter", "const", "type", "var",
-                   "enum", "object", "tuple"]
+                   "enum", "object", "tuple", "module"]
   template resolveSymKind(x: string) =
     if x in ["enum", "object", "tuple"]:
       result.symKind = "type"
@@ -109,11 +124,11 @@ proc toLangSymbol*(linkText: PRstNode): LangSymbol =
   template flushIdent() =
     if curIdent != "":
       case state
-      of inBeginning:  doAssert false, "incorrect state inBeginning"
+      of inBeginning:  fail("incorrect state inBeginning")
       of afterSymKind:  resolveSymKind curIdent
-      of beforeSymbolName:  doAssert false, "incorrect state beforeSymbolName"
+      of beforeSymbolName:  fail("incorrect state beforeSymbolName")
       of atSymbolName: result.name = curIdent.nimIdentBackticksNormalize
-      of afterSymbolName: doAssert false, "incorrect state afterSymbolName"
+      of afterSymbolName: fail("incorrect state afterSymbolName")
       of genericsPar: result.generics = curIdent
       of parameterName: result.parameters.add (curIdent, "")
       of parameterType:

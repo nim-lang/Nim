@@ -11,6 +11,8 @@
 ## retrieving environment variables, working with directories, 
 ## running shell commands, etc.
 
+## .. importdoc:: symlinks.nim, appdirs.nim, dirs.nim, ospaths2.nim
+
 runnableExamples:
   let myFile = "/path/to/my/file.nim"
   assert splitPath(myFile) == (head: "/path/to/my", tail: "file.nim")

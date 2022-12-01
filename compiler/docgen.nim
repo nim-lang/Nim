@@ -7,13 +7,17 @@
 #    distribution, for details about the copyright.
 #
 
-# This is the documentation generator. Cross-references are generated
-# by knowing how the anchors are going to be named.
+## This is the Nim documentation generator. Cross-references are generated
+## by knowing how the anchors are going to be named.
+##
+## .. importdoc:: ../docgen.md
+##
+## For corresponding users' documentation see [Nim DocGen Tools Guide].
 
 import
   ast, strutils, strtabs, algorithm, sequtils, options, msgs, os, idents,
   wordrecg, syntaxes, renderer, lexer,
-  packages/docutils/[rst, rstgen, dochelpers],
+  packages/docutils/[rst, rstidx, rstgen, dochelpers],
   json, xmltree, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
   pathutils, tables, nimpaths, renderverbatim, osproc, packages
@@ -91,7 +95,7 @@ type
     jEntriesFinal: JsonNode    # final JSON after RST pass 2 and rendering
     types: TStrTable
     sharedState: PRstSharedState
-    standaloneDoc: bool
+    standaloneDoc: bool        # is markup (.rst/.md) document?
     conf*: ConfigRef
     cache*: IdentCache
     exampleCounter: int
@@ -249,6 +253,7 @@ template declareClosures =
     of mwBrokenLink: k = warnRstBrokenLink
     of mwUnsupportedLanguage: k = warnRstLanguageXNotSupported
     of mwUnsupportedField: k = warnRstFieldXNotSupported
+    of mwUnusedImportdoc: k = warnRstUnusedImportdoc
     of mwRstStyle: k = warnRstStyle
     {.gcsafe.}:
       globalError(conf, newLineInfo(conf, AbsoluteFile filename, line, col), k, arg)
@@ -259,10 +264,23 @@ template declareClosures =
       result = getCurrentDir() / s
       if not fileExists(result): result = ""
 
+  proc docgenFindRefFile(targetRelPath: string, isMarkup: bool):
+         tuple[targetPath: string, linkRelPath: string] {.gcsafe.} =
+    let fromDir = splitFile(destFile).dir  # dir where we reference from
+    let basedir = os.splitFile(currentFilename.string).dir
+    if isMarkup:  # .rst/.md file
+      result.targetPath = fromDir / targetRelPath
+    else:  # .nim file
+      let outDirPath: RelativeFile =
+          presentationPath(conf, AbsoluteFile(basedir / targetRelPath))
+            # use presentationPath because `..` path can be be mangled to `_._`
+      result.targetPath = string(conf.outDir / outDirPath)
+    result.linkRelPath = relativePath(result.targetPath.splitFile.dir, fromDir)
+
+
 proc parseRst(text: string,
               line, column: int,
               conf: ConfigRef, sharedState: PRstSharedState): PRstNode =
-  declareClosures()
   result = rstParsePass1(text, line, column, sharedState)
 
 proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
@@ -283,6 +301,8 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
                     outExt: string = HtmlExt, module: PSym = nil,
                     standaloneDoc = false, preferMarkdown = true,
                     hasToc = true): PDoc =
+  let destFile = getOutFile2(conf, presentationPath(conf, filename), outExt, false).string
+  let currentFilename = filename  # for declareClosure (clash with `filename`)
   declareClosures()
   new(result)
   result.module = module
@@ -298,7 +318,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
   result.hasToc = hasToc
   result.sharedState = newRstSharedState(
       options, filename.string,
-      docgenFindFile, compilerMsgHandler, hasToc)
+      docgenFindFile, docgenFindRefFile, compilerMsgHandler, hasToc)
   initRstGenerator(result[], (if conf.isLatexCmd: outLatex else: outHtml),
                    conf.configVars, filename.string,
                    docgenFindFile, compilerMsgHandler)
@@ -373,7 +393,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
       if gotten != status:
         rawMessage(conf, errGenerated, "snippet failed: cmd: '$1' status: $2 expected: $3 output: $4" % [cmd, $gotten, $status, output])
   result.emitted = initIntSet()
-  result.destFile = getOutFile2(conf, presentationPath(conf, filename), outExt, false).string
+  result.destFile = destFile
   result.thisDir = result.destFile.AbsoluteFile.splitFile.dir
 
 template dispA(conf: ConfigRef; dest: var string, xml, tex: string,
@@ -765,20 +785,23 @@ proc isVisible(d: PDoc; n: PNode): bool =
   elif n.kind == nkPragmaExpr:
     result = isVisible(d, n[0])
 
-proc getName(d: PDoc, n: PNode, splitAfter = -1): string =
+proc getName(n: PNode): string =
   case n.kind
-  of nkPostfix: result = getName(d, n[1], splitAfter)
-  of nkPragmaExpr: result = getName(d, n[0], splitAfter)
-  of nkSym: result = esc(d.target, n.sym.renderDefinitionName, splitAfter)
-  of nkIdent: result = esc(d.target, n.ident.s, splitAfter)
+  of nkPostfix: result = getName(n[1])
+  of nkPragmaExpr: result = getName(n[0])
+  of nkSym: result = n.sym.renderDefinitionName
+  of nkIdent: result = n.ident.s
   of nkAccQuoted:
-    result = esc(d.target, "`")
-    for i in 0..<n.len: result.add(getName(d, n[i], splitAfter))
-    result.add esc(d.target, "`")
+    result = "`"
+    for i in 0..<n.len: result.add(getName(n[i]))
+    result = "`"
   of nkOpenSymChoice, nkClosedSymChoice:
-    result = getName(d, n[0], splitAfter)
+    result = getName(n[0])
   else:
     result = ""
+
+proc getNameEsc(d: PDoc, n: PNode): string =
+  esc(d.target, getName(n))
 
 proc getNameIdent(cache: IdentCache; n: PNode): PIdent =
   case n.kind
@@ -928,6 +951,13 @@ proc symbolPriority(k: TSymKind): int =
     else: 0  # including skProc which have higher priority
     # documentation itself has even higher priority 1
 
+proc getTypeKind(n: PNode): string =
+  case n[2].kind
+  of nkEnumTy: "enum"
+  of nkObjectTy: "object"
+  of nkTupleTy: "tuple"
+  else: ""
+
 proc toLangSymbol(k: TSymKind, n: PNode, baseName: string): LangSymbol =
   ## Converts symbol info (names/types/parameters) in `n` into format
   ## `LangSymbol` convenient for ``rst.nim``/``dochelpers.nim``.
@@ -971,17 +1001,13 @@ proc toLangSymbol(k: TSymKind, n: PNode, baseName: string): LangSymbol =
         if kind != tkSpaces:
           result.generics.add(literal.nimIdentNormalize)
 
-  if k == skType:
-    case n[2].kind
-    of nkEnumTy: result.symTypeKind = "enum"
-    of nkObjectTy: result.symTypeKind = "object"
-    of nkTupleTy: result.symTypeKind = "tuple"
-    else: discard
+  if k == skType: result.symTypeKind = getTypeKind(n)
 
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   if (docFlags != kForceExport) and not isVisible(d, nameNode): return
   let
-    name = getName(d, nameNode)
+    name = getName(nameNode)
+    nameEsc = esc(d.target, name)
   var plainDocstring = getPlainDocstring(n) # call here before genRecComment!
   var result = ""
   var literal, plainName = ""
@@ -1008,9 +1034,12 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   inc(d.id)
   let
     plainNameEsc = esc(d.target, plainName.strip)
-    detailedName = k.toHumanStr & " " & (
+    typeDescr =
+      if k == skType and getTypeKind(n) != "": getTypeKind(n)
+      else: k.toHumanStr
+    detailedName = typeDescr & " " & (
         if k in routineKinds: plainName else: name)
-    uniqueName = if k in routineKinds: plainNameEsc else: name
+    uniqueName = if k in routineKinds: plainNameEsc else: nameEsc
     sortName = if k in routineKinds: plainName.strip else: name
     cleanPlainSymbol = renderPlainSymbolName(nameNode)
     complexSymbol = complexName(k, n, cleanPlainSymbol)
@@ -1024,7 +1053,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   let lineinfo = rstast.TLineInfo(
       line: nameNode.info.line, col: nameNode.info.col,
       fileIndex: addRstFileIndex(d, nameNode.info))
-  addAnchorNim(d.sharedState, refn = symbolOrId, tooltip = detailedName,
+  addAnchorNim(d.sharedState, external=false, refn = symbolOrId, tooltip = detailedName,
                rstLangSymbol, priority = symbolPriority(k), info = lineinfo)
 
   nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
@@ -1060,8 +1089,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
       if e.sym.kind != skEnumField: continue
       let plain = renderPlainSymbolName(e)
       let symbolOrId = d.newUniquePlainSymbol(plain)
-      setIndexTerm(d[], external, symbolOrId, plain, nameNode.sym.name.s & '.' & plain,
-        xmltree.escape(getPlainDocstring(e).docstringSummary))
+      setIndexTerm(d[], ieNim, external, symbolOrId, plain, nameNode.sym.name.s & '.' & plain,
+        xmltree.escape(getPlainDocstring(e).docstringSummary), n.info.line.int)
 
   d.tocSimple[k].add TocItem(
     sortName: sortName,
@@ -1076,22 +1105,15 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
       "itemSymOrID", symbolOrId.replace(",", ",<wbr>"),
       "itemSymOrIDEnc", symbolOrIdEnc])
 
-  # Ironically for types the complexSymbol is *cleaner* than the plainName
-  # because it doesn't include object fields or documentation comments. So we
-  # use the plain one for callable elements, and the complex for the rest.
-  var linkTitle = changeFileExt(extractFilename(d.filename), "") & ": "
-  if n.kind in routineDefs: linkTitle.add(xmltree.escape(plainName.strip))
-  else: linkTitle.add(xmltree.escape(complexSymbol.strip))
-
-  setIndexTerm(d[], external, symbolOrId, name, linkTitle,
-    xmltree.escape(plainDocstring.docstringSummary))
+  setIndexTerm(d[], ieNim, external, symbolOrId, name, detailedName,
+    xmltree.escape(plainDocstring.docstringSummary), n.info.line.int)
   if k == skType and nameNode.kind == nkSym:
     d.types.strTableAdd nameNode.sym
 
 proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonItem =
   if not isVisible(d, nameNode): return
   var
-    name = getName(d, nameNode)
+    name = getNameEsc(d, nameNode)
     comm = genRecComment(d, n)
     r: TSrcGen
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments, renderExpandUsing})
@@ -1337,8 +1359,30 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
 
 proc overloadGroupName(s: string, k: TSymKind): string =
   ## Turns a name like `f` into anchor `f-procs-all`
-  #s & " " & k.toHumanStr & "s all"
   s & "-" & k.toHumanStr & "s-all"
+
+proc setIndexTitle(d: PDoc) =
+  let titleKind = if d.standaloneDoc: ieMarkupTitle else: ieNimTitle
+  let external = AbsoluteFile(d.destFile)
+    .relativeTo(d.conf.outDir, '/')
+    .changeFileExt(HtmlExt)
+    .string
+  var term, linkTitle: string
+  if d.meta[metaTitle].len != 0:
+    term = d.meta[metaTitleRaw]
+    linkTitle = d.meta[metaTitleRaw]
+  else:
+    let filename = extractFilename(d.filename)
+    term =
+      if d.standaloneDoc: filename  # keep .rst/.md extension
+      else: changeFileExt(filename, "")  # rm .nim extension
+    linkTitle =
+      if d.standaloneDoc: term  # keep .rst/.md extension
+      else: canonicalImport(d.conf, AbsoluteFile d.filename)
+  if not d.standaloneDoc:
+    linkTitle = "module " & linkTitle
+  setIndexTerm(d[], titleKind, htmlFile = external, id = "",
+               term = term, linkTitle = linkTitle)
 
 proc finishGenerateDoc*(d: var PDoc) =
   ## Perform 2nd RST pass for resolution of links/footnotes/headings...
@@ -1352,7 +1396,24 @@ proc finishGenerateDoc*(d: var PDoc) =
       firstRst = fragment.rst
       break
   d.hasToc = d.hasToc or d.sharedState.hasToc
-  preparePass2(d.sharedState, firstRst)
+  # in --index:only mode we do NOT want to load other .idx, only write ours:
+  let importdoc = optGenIndexOnly notin d.conf.globalOptions and
+                  optNoImportdoc notin d.conf.globalOptions
+  preparePass2(d.sharedState, firstRst, importdoc)
+
+  if optGenIndexOnly in d.conf.globalOptions:
+    # Top-level doc.comments may contain titles and :idx: statements:
+    for fragment in d.modDescPre:
+      if fragment.isRst:
+        traverseForIndex(d[], fragment.rst)
+    # Symbol-associated doc.comments may contain :idx: statements:
+    for k in TSymKind:
+      for _, overloadChoices in d.section[k].secItems:
+        for item in overloadChoices:
+          for fragment in item.descRst:
+            if fragment.isRst:
+              traverseForIndex(d[], fragment.rst)
+    setIndexTitle(d)
 
   # add anchors to overload groups before RST resolution
   for k in TSymKind:
@@ -1362,13 +1423,23 @@ proc finishGenerateDoc*(d: var PDoc) =
           let refn = overloadGroupName(plainName, k)
           let tooltip = "$1 ($2 overloads)" % [
                       k.toHumanStr & " " & plainName, $overloadChoices.len]
-          addAnchorNim(d.sharedState, refn, tooltip,
+          let name = nimIdentBackticksNormalize(plainName)
+          # save overload group to ``.idx``
+          let external = d.destFile.AbsoluteFile.relativeTo(d.conf.outDir, '/').
+                         changeFileExt(HtmlExt).string
+          setIndexTerm(d[], ieNimGroup, external, refn, name, k.toHumanStr,
+                       "", overloadChoices[0].info.line.int)
+          if optGenIndexOnly in d.conf.globalOptions: continue
+          addAnchorNim(d.sharedState, external=false, refn, tooltip,
                        LangSymbol(symKind: k.toHumanStr,
-                                  name: nimIdentBackticksNormalize(plainName),
+                                  name: name,
                                   isGroup: true),
                        priority = symbolPriority(k),
                        # select index `0` just to have any meaningful warning:
                        info = overloadChoices[0].info)
+
+  if optGenIndexOnly in d.conf.globalOptions:
+    return
 
   # Finalize fragments of ``.nim`` or ``.rst`` file
   proc renderItemPre(d: PDoc, fragments: ItemPre, result: var string) =
@@ -1421,6 +1492,9 @@ proc finishGenerateDoc*(d: var PDoc) =
 
     d.jEntriesFinal.add entry.json # generates docs
 
+  setIndexTitle(d)
+  completePass2(d.sharedState)
+
 proc add(d: PDoc; j: JsonItem) =
   if j.json != nil or j.rst != nil: d.jEntriesPre.add j
 
@@ -1467,7 +1541,7 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
   else: discard
 
 proc genTagsItem(d: PDoc, n, nameNode: PNode, k: TSymKind): string =
-  result = getName(d, nameNode) & "\n"
+  result = getNameEsc(d, nameNode) & "\n"
 
 proc generateTags*(d: PDoc, n: PNode, r: var string) =
   case n.kind
@@ -1574,13 +1648,7 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
     title = d.meta[metaTitle]
-    let external = AbsoluteFile(d.destFile)
-      .relativeTo(d.conf.outDir, '/')
-      .changeFileExt(HtmlExt)
-      .string
-    setIndexTerm(d[], external, "", title)
   else:
-    # Modules get an automatic title for the HTML, but no entry in the index.
     title = canonicalImport(d.conf, AbsoluteFile d.filename)
   title = esc(d.target, title)
   var subtitle = ""
@@ -1619,11 +1687,17 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
     code = content
   result = code
 
+proc indexFile(d: PDoc): AbsoluteFile =
+  let dir = d.conf.outDir
+  result = dir / changeFileExt(presentationPath(d.conf,
+                                                AbsoluteFile d.filename),
+                               IndexExt)
+  let (finalDir, _, _) = result.string.splitFile
+  createDir(finalDir)
+
 proc generateIndex*(d: PDoc) =
   if optGenIndex in d.conf.globalOptions:
-    let dir = d.conf.outDir
-    createDir(dir)
-    let dest = dir / changeFileExt(presentationPath(d.conf, AbsoluteFile d.filename), IndexExt)
+    let dest = indexFile(d)
     writeIndexFile(d[], dest.string)
 
 proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
@@ -1634,6 +1708,9 @@ proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
         d.conf.outFile = splitPath(d.conf.outFile.string)[1].RelativeFile
 
 proc writeOutput*(d: PDoc, useWarning = false, groupedToc = false) =
+  if optGenIndexOnly in d.conf.globalOptions:
+    d.conf.outFile = indexFile(d).relativeTo(d.conf.outDir)  # just for display
+    return
   runAllExamples(d)
   var content = genOutFile(d, groupedToc)
   if optStdout in d.conf.globalOptions:
@@ -1772,6 +1849,8 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
       rawMessage(conf, errCannotOpenFile, filename.string)
 
 proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") =
+  if optGenIndexOnly in conf.globalOptions:
+    return
   var content = mergeIndexes(dir)
 
   var outFile = outFile

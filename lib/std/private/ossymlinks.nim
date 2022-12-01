@@ -31,6 +31,7 @@ elif defined(js):
 else:
   {.pragma: noNimJs.}
 
+## .. importdoc:: os.nim
 
 proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ## Create a symbolic link at `dest` which points to the item specified

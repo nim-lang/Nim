@@ -10,6 +10,8 @@ export ReadDirEffect, WriteDirEffect
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
 
+## .. importdoc:: osappdirs.nim, osdirs.nim, osseps.nim, os.nim
+
 const weirdTarget = defined(nimscript) or defined(js)
 
 when weirdTarget:

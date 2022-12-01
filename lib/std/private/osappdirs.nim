@@ -1,3 +1,5 @@
+## .. importdoc:: paths.nim, dirs.nim
+
 include system/inclrtl
 import std/envvars
 import std/private/ospaths2

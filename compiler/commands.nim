@@ -820,7 +820,13 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if conf != nil: conf.headerFile = arg
     incl(conf.globalOptions, optGenIndex)
   of "index":
-    processOnOffSwitchG(conf, {optGenIndex}, arg, pass, info)
+    case arg.normalize
+    of "", "on": conf.globalOptions.incl {optGenIndex}
+    of "only": conf.globalOptions.incl {optGenIndexOnly, optGenIndex}
+    of "off": conf.globalOptions.excl {optGenIndex, optGenIndexOnly}
+    else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
+  of "noimportdoc":
+    processOnOffSwitchG(conf, {optNoImportdoc}, arg, pass, info)
   of "import":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:

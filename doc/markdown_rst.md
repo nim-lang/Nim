@@ -9,6 +9,8 @@ Nim-flavored Markdown and reStructuredText
 .. include:: rstcommon.rst
 .. contents::
 
+.. importdoc:: docgen.md
+
 Both `Markdown`:idx: (md) and `reStructuredText`:idx: (RST) are markup
 languages whose goal is to typeset texts with complex structure,
 formatting and references using simple plaintext representation.
@@ -110,6 +112,8 @@ Supported standard RST features:
 Additional Nim-specific features
 --------------------------------
 
+* referencing to definitions in external files, see
+  [Markup external referencing] section
 * directives: ``code-block`` \[cmp:Sphinx], ``title``,
   ``index`` \[cmp:Sphinx]
 * predefined roles
@@ -169,6 +173,67 @@ Optional additional features, by default turned on:
 
 .. warning:: Using Nim-specific features can cause other RST implementations
   to fail on your document.
+
+Referencing
+===========
+
+Nim implementation has syntax for using *original* labels in referencing:
+
+* headlines (including document title)
+* footnotes
+* explicitly set anchors: RST internal cross-references and
+  inline internal targets
+* Nim symbols (external referencing), see [Nim DocGen Tools Guide] for details.
+
+Markup local referencing
+------------------------
+
+There are 2 syntax option available for referencing to objects
+inside any given file, e.g. for headlines:
+
+    Markdown                  RST
+
+    Some headline             Some headline
+    =============             =============
+
+    Ref. [Some headline]      Ref. `Some headline`_
+
+
+Markup external referencing
+---------------------------
+
+The syntax is the same as for local referencing, but the anchors are
+saved in `.idx` files, so one needs to generate them beforehand,
+and they should be loaded by an `.. importdoc::` directive.
+E.g. if we want to reference section "Some headline" in ``file1.md``
+from ``file2.md``, then ``file2.md`` may look like:
+
+```
+.. importdoc:: file1.md
+
+Ref. [Some headline]
+```
+
+```cmd
+nim md2html --index:only file1.md  # creates ``htmldocs/file1.idx``
+nim md2html file2.md               # creates ``htmldocs/file2.html``
+```
+
+If cross-references are possible between the 2 files, then it's required
+to process them only for indexes first:
+
+```cmd
+nim md2html --index:only file1.md  # creates ``htmldocs/file1.idx``
+nim md2html --index:only file2.md  # creates ``htmldocs/file2.idx``
+nim md2html file1.md               # creates ``htmldocs/file1.html``
+nim md2html file2.md               # creates ``htmldocs/file2.html``
+```
+
+and then one can freely reference any objects as if these 2 documents
+are actually 1 file.
+
+Other
+=====
 
 Idiosyncrasies
 --------------

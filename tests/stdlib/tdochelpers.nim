@@ -202,3 +202,19 @@ suite "Integration with Nim":
                               name: "Copyflag")
     check inputRst.fromRst == expected
     check inputMd.fromMd == expected
+
+  test "prefixed module":
+    let inputRst = "`module std / paths`_"
+    let inputMd = "[module std / paths]"
+    let expected = LangSymbol(symKind: "module",
+                              name: "std/paths")
+    check inputRst.fromRst == expected
+    check inputMd.fromMd == expected
+
+  test "postfixed module":
+    let inputRst = "`std / paths module`_"
+    let inputMd = "[std / paths module]"
+    let expected = LangSymbol(symKind: "module",
+                              name: "std/paths")
+    check inputRst.fromRst == expected
+    check inputMd.fromMd == expected

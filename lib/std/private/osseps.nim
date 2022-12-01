@@ -3,6 +3,8 @@
 
 # Improved based on info in 'compiler/platform.nim'
 
+## .. importdoc:: ospaths2.nim
+
 const
   doslikeFileSystem* = defined(windows) or defined(OS2) or defined(DOS)
 

@@ -12,11 +12,16 @@ var
 
 const
   baseDir = "nimdoc"
+let
+  baseDirAbs = getCurrentDir() / baseDir
 
 type
   NimSwitches = object
     doc: seq[string]
+    docStage2: seq[string]
     buildIndex: seq[string]
+    md2html: seq[string]
+    md2htmlStage2: seq[string]
 
 proc exec(cmd: string) =
   if execShellCmd(cmd) != 0:
@@ -25,6 +30,9 @@ proc exec(cmd: string) =
 proc testNimDoc(prjDir, docsDir: string; switches: NimSwitches; fixup = false) =
   let
     nimDocSwitches = switches.doc.join(" ")
+    nimDocStage2Switches = switches.docStage2.join(" ")
+    nimMd2HtmlSwitches = switches.md2html.join(" ")
+    nimMd2HtmlStage2Switches = switches.md2htmlStage2.join(" ")
     nimBuildIndexSwitches = switches.buildIndex.join(" ")
 
   putEnv("SOURCE_DATE_EPOCH", "100000")
@@ -32,9 +40,23 @@ proc testNimDoc(prjDir, docsDir: string; switches: NimSwitches; fixup = false) =
 
   if nimDocSwitches != "":
     exec("$1 doc $2" % [nimExe, nimDocSwitches])
+    echo("$1 doc $2" % [nimExe, nimDocSwitches])
+
+  if nimMd2HtmlSwitches != "":
+    exec("$1 md2html $2" % [nimExe, nimMd2HtmlSwitches])
+    echo("$1 md2html $2" % [nimExe, nimMd2HtmlSwitches])
+
+  if nimDocStage2Switches != "":
+    exec("$1 doc $2" % [nimExe, nimDocStage2Switches])
+    echo("$1 doc $2" % [nimExe, nimDocStage2Switches])
+
+  if nimMd2HtmlStage2Switches != "":
+    exec("$1 md2html $2" % [nimExe, nimMd2HtmlStage2Switches])
+    echo("$1 md2html $2" % [nimExe, nimMd2HtmlStage2Switches])
 
   if nimBuildIndexSwitches != "":
     exec("$1 buildIndex $2" % [nimExe, nimBuildIndexSwitches])
+    echo("$1 buildIndex $2" % [nimExe, nimBuildIndexSwitches])
 
   for expected in walkDirRec(prjDir / "expected/", checkDir=true):
     let produced = expected.replace('\\', '/').replace("/expected/", "/$1/" % [docsDir])
@@ -87,6 +109,47 @@ let
   test3DocsDir = "htmldocs"
   test3Switches = NimSwitches(doc: @["$1/$2.nim" % [test3Dir, test3PrjName]])
 testNimDoc(test3Dir, test3DocsDir, test3Switches, fixup)
+
+
+# Test concise external links (RFC#125) that work with `.idx` files.
+# extlinks
+# ├── project
+# │   ├── main.nim
+# │   ├── manual.md
+# │   └── sub
+# │       └── submodule.nim
+# └── util.nim
+#
+# `main.nim` imports `submodule.nim` and `../utils.nim`.
+# `main.nim`, `submodule.nim`, `manual.md` do importdoc and reference each other.
+let
+  test4PrjName = "extlinks/project"
+  test4Dir = baseDir / test4PrjName
+  test4DirAbs = baseDirAbs / test4PrjName
+  test4MainModule = "main"
+  test4MarkupDoc = "doc" / "manual.md"
+  test4DocsDir = "htmldocs"
+  # 1st stage is with --index:only, 2nd is final
+  test4Switches = NimSwitches(
+      doc: @["--project",
+             "--outdir:$1/$2" % [test4Dir, test4DocsDir],
+             "--index:only",
+             "$1/$2.nim" % [test4Dir, test4MainModule]],
+      md2html:
+             @["--outdir:$1/$2" % [test4Dir, test4DocsDir],
+             "--docroot:$1" % [test4DirAbs],
+             "--index:only",
+             "$1/$2" % [test4Dir, test4MarkupDoc]],
+      docStage2:
+           @["--project",
+             "--outdir:$1/$2" % [test4Dir, test4DocsDir],
+             "$1/$2.nim" % [test4Dir, test4MainModule]],
+      md2htmlStage2:
+             @["--outdir:$1/$2" % [test4Dir, test4DocsDir],
+             "--docroot:$1" % [test4DirAbs],
+             "$1/$2" % [test4Dir, test4MarkupDoc]],
+  )
+testNimDoc(test4Dir, test4DocsDir, test4Switches, fixup)
 
 if failures > 0:
   quit "$# failures occurred; see note in nimdoc/tester.nim regarding -d:nimTestsNimdocFixup" %  $failures
