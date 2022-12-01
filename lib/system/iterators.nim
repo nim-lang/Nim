@@ -1,6 +1,6 @@
 ## Default iterators for some Nim types.
 
-when (NimMajor, NimMinor) >= (1, 7):
+when defined(nimPreviewSlimSystem) or defined(nimHasSlimSystemWarnings):
   import std/assertions
 
 when defined(nimHasLentIterators) and not defined(nimNoLentIterators):
