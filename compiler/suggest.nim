@@ -593,7 +593,7 @@ proc markUsed(c: PContext; info: TLineInfo; s: PSym) =
 
     if sfError in s.flags: userError(conf, info, s)
   if s.owner != nil and sfSlimSystemModule in s.owner.flags and
-      s.owner.fileIdx != info.fileIndex:
+      s.owner.kind == skModule and s.owner.fileIdx != info.fileIndex:
     block deprecatedSlimSystem:
       # check if the module was explicitly imported
       # (special case: modules annotated with `slimSystemModule` do not
