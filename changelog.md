@@ -22,6 +22,8 @@
   and their respective modules will have to be imported to use them.
   Currently, to make these imports required, the `-d:nimPreviewSlimSystem` option
   may be used.
+  To get warnings when these imports are used implicitly,
+  the `-d:nimSlimSystemWarnings` option may be used. 
 
 - Enabling `-d:nimPreviewSlimSystem` also removes the following deprecated
   symbols in the `system` module:

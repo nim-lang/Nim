@@ -1,6 +1,6 @@
 ## Default iterators for some Nim types.
 
-when defined(nimPreviewSlimSystem) or defined(nimHasSlimSystemWarnings):
+when defined(nimPreviewSlimSystem):
   import std/assertions
 
 when defined(nimHasLentIterators) and not defined(nimNoLentIterators):

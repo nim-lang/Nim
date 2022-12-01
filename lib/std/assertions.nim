@@ -9,7 +9,7 @@
 
 ## This module implements assertion handling.
 
-when defined(nimHasSlimSystemWarnings):
+when defined(nimSlimSystemWarnings):
   {.slimSystemModule.}
 
 import std/private/miscdollars

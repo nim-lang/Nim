@@ -9,7 +9,7 @@
 
 # Nim support for C/C++'s `wide strings`:idx:.
 
-when defined(nimHasSlimSystemWarnings):
+when defined(nimSlimSystemWarnings):
   {.slimSystemModule.}
 
 type

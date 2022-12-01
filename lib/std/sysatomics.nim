@@ -10,7 +10,7 @@
 when defined(nimPreviewSlimSystem):
   {.deprecated: "use `std/atomics` instead".}
 
-when defined(nimHasSlimSystemWarnings):
+when defined(nimSlimSystemWarnings):
   {.slimSystemModule.}
 
 # Atomic operations for Nim.

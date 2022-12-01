@@ -1,3 +1,7 @@
+discard """
+  matrix: "-u:nimPreviewSlimSystem -d:nimSlimSystemWarnings"
+"""
+
 {.warningAsError[Deprecated]: on.}
 
 let comp1 = compiles do: doAssert true

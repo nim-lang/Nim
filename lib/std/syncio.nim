@@ -9,7 +9,7 @@
 
 ## This module implements various synchronized I/O operations.
 
-when defined(nimHasSlimSystemWarnings):
+when defined(nimSlimSystemWarnings):
   {.slimSystemModule.}
 
 include system/inclrtl

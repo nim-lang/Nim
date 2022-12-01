@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-when defined(nimHasSlimSystemWarnings):
+when defined(nimSlimSystemWarnings):
   {.slimSystemModule.}
 
 when defined(nimPreviewSlimSystem):
