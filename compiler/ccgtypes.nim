@@ -1348,12 +1348,50 @@ proc genDisplay(t: PType, depth: int): Rope =
   result.add seqs[0]
   result.add "}"
 
+proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
+  cgsym(m, "TNimTypeV2")
+  m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
+
+  var flags = 0
+  if not canFormAcycle(t): flags = flags or 1
+
+  var typeEntry = newRopeAppender()
+  addf(typeEntry, "$1.destructor = (void*)", [name])
+  genHook(m, t, info, attachedDestructor, typeEntry)
+
+  addf(typeEntry, "; $1.traceImpl = (void*)", [name])
+  genHook(m, t, info, attachedTrace, typeEntry)
+
+  let objDepth = if t.kind == tyObject: getObjDepth(t) else: -1
+
+  if t.kind in {tyObject, tyDistinct} and incompleteType(t):
+    localError(m.config, info, "request for RTTI generation for incomplete object: " &
+              typeToString(t))
+
+  if isDefined(m.config, "nimTypeNames"):
+    var typeName: Rope
+    if t.kind in {tyObject, tyDistinct}:
+      typeName = genTypeInfo2Name(m, t)
+    else:
+      typeName = rope("NIM_NIL")
+    addf(typeEntry, "; $1.name = $2", [name, typeName])
+  addf(typeEntry, "; $1.size = sizeof($2); $1.align = (NI16) NIM_ALIGNOF($2); $1.depth = $3; $1.flags = $4;",
+    [name, getTypeDesc(m, t), rope(objDepth), rope(flags)])
+
+  if objDepth >= 0:
+    let objDisplay = genDisplay(t, objDepth)
+    let objDisplayStore = getTempName(m)
+    m.s[cfsVars].addf("static $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyUInt32), skVar), objDisplayStore, rope(objDepth+1), objDisplay])
+    addf(typeEntry, "$1.display = $2;$n", [name, rope(objDisplayStore)])
+
+  m.s[cfsTypeInit3].add typeEntry
+
+  if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
+    discard genTypeInfoV1(m, t, info)
+
 proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   cgsym(m, "TNimTypeV2")
-  if m.compileToCpp: # todo how to handle C++?
-    m.s[cfsStrData].addf("extern N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
-  else:
-    m.s[cfsStrData].addf("extern N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
+  m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
 
   var flags = 0
   if not canFormAcycle(t): flags = flags or 1
@@ -1363,9 +1401,7 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   add(typeEntry, ".destructor = (void*)")
   genHook(m, t, info, attachedDestructor, typeEntry)
 
-
   let objDepth = if t.kind == tyObject: getObjDepth(t) else: -1
-
 
   if t.kind in {tyObject, tyDistinct} and incompleteType(t):
     localError(m.config, info, "request for RTTI generation for incomplete object: " &
@@ -1428,7 +1464,10 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
     return prefixTI.rope & result & ")".rope
 
   m.g.typeInfoMarkerV2[sig] = (str: result, owner: owner)
-  genTypeInfoV2Impl(m, t, origType, result, info)
+  when m.compileToCpp:
+    genTypeInfoV2OldImpl(m, t, origType, result, info)
+  else:
+    genTypeInfoV2Impl(m, t, origType, result, info)
   result = prefixTI.rope & result & ")".rope
 
 proc openArrayToTuple(m: BModule; t: PType): PType =
