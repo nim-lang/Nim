@@ -1,7 +1,5 @@
 # issue #6981
 
-import std/assertions
-
 {.experimental: "callOperator".}
 
 block: # issue #6981
