@@ -1,3 +1,6 @@
+when defined(nimHasSlimSystemWarnings):
+  {.slimSystemModule.}
+
 import std/private/miscdollars
 
 proc `$`*[T: object](x: T): string =

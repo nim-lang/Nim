@@ -9,6 +9,9 @@
 
 ## This module implements various synchronized I/O operations.
 
+when defined(nimHasSlimSystemWarnings):
+  {.slimSystemModule.}
+
 include system/inclrtl
 import std/private/since
 import std/formatfloat

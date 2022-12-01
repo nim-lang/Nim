@@ -9,8 +9,8 @@
 
 # Nim support for C/C++'s `wide strings`:idx:.
 
-#when not declared(ThisIsSystem):
-#  {.error: "You must not import this module explicitly".}
+when defined(nimHasSlimSystemWarnings):
+  {.slimSystemModule.}
 
 type
   Utf16Char* = distinct int16

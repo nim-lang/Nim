@@ -342,6 +342,10 @@ const
   sfBase* = sfDiscriminant
   sfCustomPragma* = sfRegister        # symbol is custom pragma template
   sfTemplateRedefinition* = sfExportc # symbol is a redefinition of an earlier template
+  sfSlimSystemModule* = sfSystemRaisesDefect
+    ## temporary mechanism for warning about symbols about to move out of system
+    ## with `-d:nimPreviewSlimSystem`
+    ## can only be attached to module symbols
 
 const
   # getting ready for the future expr/stmt merge

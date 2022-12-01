@@ -61,7 +61,8 @@ const
     wStyleChecks, wAssertions,
     wWarnings, wHints,
     wLineDir, wStackTrace, wLineTrace, wOptimization,
-    wFloatChecks, wInfChecks, wNanChecks}
+    wFloatChecks, wInfChecks, wNanChecks,
+    wSlimSystemModule}
   lambdaPragmas* = {FirstCallConv..LastCallConv,
     wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
     wThread, wAsmNoStackFrame,
@@ -1231,6 +1232,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         sym.flags.incl sfNeverRaises
       of wSystemRaisesDefect:
         sym.flags.incl sfSystemRaisesDefect
+      of wSlimSystemModule:
+        # temporary pragma for slim system module warnings
+        assert sym.kind == skModule
+        sym.flags.incl sfSlimSystemModule
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"

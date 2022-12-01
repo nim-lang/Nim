@@ -1630,7 +1630,6 @@ template newException*(exceptn: typedesc, message: string;
   (ref exceptn)(msg: message, parent: parentException)
 
 when not defined(nimPreviewSlimSystem):
-  {.deprecated: "assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/assertions`".}
   import std/assertions
   export assertions
 
@@ -2066,7 +2065,6 @@ when not defined(js):
     when hostOS != "standalone":
       include system/threadimpl
       when not defined(nimPreviewSlimSystem):
-        {.deprecated: "threads is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/typedthreads`".}
         import std/typedthreads
         export typedthreads
 
@@ -2776,7 +2774,6 @@ when notJSnotNims:
         releaseSys echoLock
 
 when not defined(nimPreviewSlimSystem):
-  {.deprecated: "io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`".}
   import std/syncio
   export syncio
 

@@ -592,6 +592,19 @@ proc markUsed(c: PContext; info: TLineInfo; s: PSym) =
         c.lastTLineInfo = info
 
     if sfError in s.flags: userError(conf, info, s)
+  if s.owner != nil and sfSlimSystemModule in s.owner.flags and
+      s.owner.fileIdx != info.fileIndex:
+    block deprecatedSlimSystem:
+      # check if the module was explicitly imported
+      # (special case: modules annotated with `slimSystemModule` do not
+      # re-export their module symbol when import/exported in `system`)
+      let f = s.owner.fileIdx
+      for ss, _, _ in allSyms(c):
+        if ss.kind == skModule and ss.fileIdx == f:
+          break deprecatedSlimSystem
+      message(conf, info, warnDeprecated,
+        "'$1' is about to move out of system; import it from `std/$2` instead" %
+          [s.name.s, s.owner.name.s])
   when defined(nimsuggest):
     suggestSym(c.graph, info, s, c.graph.usageSym, false)
   styleCheckUse(c, info, s)

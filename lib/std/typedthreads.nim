@@ -40,6 +40,9 @@
 ##
 ##  deinitLock(L)
 
+when defined(nimHasSlimSystemWarnings):
+  {.slimSystemModule.}
+
 import std/private/[threadtypes]
 export Thread
 

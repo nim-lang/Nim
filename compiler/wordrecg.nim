@@ -88,6 +88,7 @@ type
     wGuard = "guard", wLocks = "locks", wPartial = "partial", wExplain = "explain",
     wLiftLocals = "liftlocals", wEnforceNoRaises = "enforceNoRaises", wSystemRaisesDefect = "systemRaisesDefect",
     wRedefine = "redefine", wCallsite = "callsite",
+    wSlimSystemModule = "slimSystemModule",
 
     wAuto = "auto", wBool = "bool", wCatch = "catch", wChar = "char",
     wClass = "class", wCompl = "compl", wConstCast = "const_cast", wDefault = "default",

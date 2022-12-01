@@ -375,7 +375,14 @@ proc exportSym*(c: PContext; s: PSym) =
     addExported(c.encoder, c.packedRepr, s)
 
 proc reexportSym*(c: PContext; s: PSym) =
-  strTableAdds(c.graph, c.module, s)
+  if sfSystemModule in c.module.flags and s.kind == skModule and sfSlimSystemModule in s.flags:
+    # for the -d:nimPreviewSlimSystem warning mechanism:
+    # the system module import/exports these modules,
+    # here we block the re-exporting of the module symbol itself by system
+    # to tell if it was explicitly imported later
+    discard
+  else:
+    strTableAdds(c.graph, c.module, s)
   if c.config.symbolFiles != disabledSf:
     addReexport(c.encoder, c.packedRepr, s)
 
