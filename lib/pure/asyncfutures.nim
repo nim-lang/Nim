@@ -25,6 +25,9 @@ type
 
   FutureBase* = ref object of RootObj  ## Untyped future.
     callbacks: CallbackList
+    thenCb: CallbackFunc # Callback for Future.then
+    catchCb: CallbackFunc # Callback for Future.catch
+    finalCb: CallbackFunc # Callback for Future.finally
 
     finished: bool
     error*: ref Exception              ## Stored exception
@@ -201,6 +204,10 @@ proc completeImpl[T, U](future: Future[T], val: U, isVoid: static bool) =
     future.value = val
   future.finished = true
   future.callbacks.call()
+  if future.thenCb != nil:
+    callSoon(future.thenCb)
+  if future.finalCb != nil:
+    callSoon(future.finalCb)
   when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc complete*[T](future: Future[T], val: T) =
@@ -217,6 +224,10 @@ proc complete*[T](future: FutureVar[T]) =
   assert(fut.error == nil)
   fut.finished = true
   fut.callbacks.call()
+  if future.thenCb != nil:
+    callSoon(future.thenCb)
+  if future.finalCb != nil:
+    callSoon(future.finalCb)
   when isFutureLoggingEnabled: logFutureFinish(Future[T](future))
 
 proc complete*[T](future: FutureVar[T], val: T) =
@@ -229,6 +240,10 @@ proc complete*[T](future: FutureVar[T], val: T) =
   fut.finished = true
   fut.value = val
   fut.callbacks.call()
+  if future.thenCb != nil:
+    callSoon(future.thenCb)
+  if future.finalCb != nil:
+    callSoon(future.finalCb)
   when isFutureLoggingEnabled: logFutureFinish(fut)
 
 proc fail*[T](future: Future[T], error: ref Exception) =
@@ -240,6 +255,10 @@ proc fail*[T](future: Future[T], error: ref Exception) =
   future.errorStackTrace =
     if getStackTrace(error) == "": getStackTrace() else: getStackTrace(error)
   future.callbacks.call()
+  if future.catchCb != nil:
+    callSoon(future.catchCb)
+  if future.finalCb != nil:
+    callSoon(future.finalCb)
   when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc clearCallbacks*(future: FutureBase) =
@@ -281,6 +300,39 @@ proc `callback=`*[T](future: Future[T],
   ##
   ## If future has already completed then `cb` will be called immediately.
   future.callback = proc () = cb(future)
+
+template then"(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
+  ## Sets a callback proc to be called when the future completes successfully
+
+  future.thenCb = cb
+
+template then[T]*(future: Future[T], 
+    cb: proc (future: Future[T]) {.closure, gcsafe.}) =
+  ## Sets a callback proc to be called when the future completes successfully
+
+  future.thenCb = proc () = cb(future)
+
+template catch*(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
+  ## Sets a callback proc to be called when the future fails
+
+  future.catchCb = cb
+
+template catch[T]*(future: Future[T], 
+    cb: proc (future: Future[T]) {.closure, gcsafe.}) =
+  ## Sets a callback proc to be called when the future fails
+
+  future.catchCb = proc () = cb(future)
+
+template finally*(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
+  ## Sets a callback proc to be called when the future finishes
+
+  future.finalCb = cb
+
+template finally[T]*(future: Future[T], 
+    cb: proc (future: Future[T]) {.closure, gcsafe.}) =
+  ## Sets a callback proc to be called when the future finishes
+
+  future.finalCb = proc () = cb(future)
 
 template getFilenameProcname(entry: StackTraceEntry): (string, string) =
   when compiles(entry.filenameStr) and compiles(entry.procnameStr):
