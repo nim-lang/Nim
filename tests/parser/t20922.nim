@@ -1,28 +1,28 @@
 discard """
-  cmd: "nim check $options $file"
+  cmd: "nim check $options --verbosity:0 $file"
   action: "reject"
   nimout: '''
-t20922.nim(18, 5) Error: expression expected, but found ':'
+t20922.nim(37, 5) Error: expression expected, but found ':'
 Error: in expression ' '+'': identifier expected, but found ''
-t20922.nim(18, 7) Error: attempting to call undeclared routine: '<Error>'
+t20922.nim(37, 7) Error: attempting to call undeclared routine: '<Error>'
 Error: in expression ' '+'': identifier expected, but found ''
-t20922.nim(18, 7) Error: attempting to call undeclared routine: '<Error>'
-t20922.nim(18, 7) Error: expression '' cannot be called
-t20922.nim(18, 7) Error: expression '' has no type (or is ambiguous)
-t20922.nim(18, 7) Error: VM problem: dest register is not set
-t20922.nim(26, 7) Error: expression expected, but found ':'
-t20922.nim(27, 5) Error: ':' or '=' expected, but got 'keyword of'
-t20922.nim(26, 9) Error: undeclared identifier: 'x'
-t20922.nim(26, 9) Error: expression 'x' has no type (or is ambiguous)
+t20922.nim(37, 7) Error: attempting to call undeclared routine: '<Error>'
+t20922.nim(37, 7) Error: expression '' cannot be called
+t20922.nim(37, 7) Error: expression '' has no type (or is ambiguous)
+t20922.nim(37, 7) Error: VM problem: dest register is not set
+t20922.nim(45, 7) Error: expression expected, but found ':'
+t20922.nim(46, 5) Error: ':' or '=' expected, but got 'keyword of'
+t20922.nim(45, 9) Error: undeclared identifier: 'x'
+t20922.nim(45, 9) Error: expression 'x' has no type (or is ambiguous)
 Error: in expression ' x': identifier expected, but found ''
-t20922.nim(26, 9) Error: attempting to call undeclared routine: '<Error>'
+t20922.nim(45, 9) Error: attempting to call undeclared routine: '<Error>'
 Error: in expression ' x': identifier expected, but found ''
-t20922.nim(26, 9) Error: attempting to call undeclared routine: '<Error>'
-t20922.nim(26, 9) Error: expression '' cannot be called
-t20922.nim(26, 9) Error: expression '' has no type (or is ambiguous)
-t20922.nim(26, 9) Error: VM problem: dest register is not set
-t20922.nim(14, 6) Hint: 'mapInstrToToken' is declared but not used [XDeclaredButNotUsed]
-t20922.nim(24, 3) Hint: 'Foo' is declared but not used [XDeclaredButNotUsed]
+t20922.nim(45, 9) Error: attempting to call undeclared routine: '<Error>'
+t20922.nim(45, 9) Error: expression '' cannot be called
+t20922.nim(45, 9) Error: expression '' has no type (or is ambiguous)
+t20922.nim(45, 9) Error: VM problem: dest register is not set
+t20922.nim(33, 6) Hint: 'mapInstrToToken' is declared but not used [XDeclaredButNotUsed]
+t20922.nim(43, 3) Hint: 'Foo' is declared but not used [XDeclaredButNotUsed]
 '''
 """
 # original test case issue #20922
