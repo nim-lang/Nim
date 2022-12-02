@@ -116,3 +116,12 @@ jobs:
           build_dir: doc/html
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 'Deploy preview'
+        if: |
+          github.event_name != 'push' && github.ref == 'refs/heads/devel'
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: doc/html
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
