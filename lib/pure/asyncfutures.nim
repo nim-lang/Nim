@@ -306,8 +306,7 @@ template then*(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
 
   future.thenCb = cb
 
-template then[T]*(future: Future[T],
-    cb: proc (future: Future[T]) {.closure, gcsafe.}) =
+template then[T]*(future: Future[T], cb: proc (future: Future[T]) {.closure, gcsafe.}) =
   ## Sets a callback proc to be called when the future completes successfully
 
   future.thenCb = proc () = cb(future)
@@ -317,8 +316,7 @@ template catch*(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
 
   future.catchCb = cb
 
-template catch[T]*(future: Future[T],
-    cb: proc (future: Future[T]) {.closure, gcsafe.}) =
+template catch[T]*(future: Future[T], cb: proc (future: Future[T]) {.closure, gcsafe.}) =
   ## Sets a callback proc to be called when the future fails
 
   future.catchCb = proc () = cb(future)
@@ -328,8 +326,7 @@ template finally*(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
 
   future.finalCb = cb
 
-template finally[T]*(future: Future[T],
-    cb: proc (future: Future[T]) {.closure, gcsafe.}) =
+template finally[T]*(future: Future[T], cb: proc (future: Future[T]) {.closure, gcsafe.}) =
   ## Sets a callback proc to be called when the future finishes
 
   future.finalCb = proc () = cb(future)
