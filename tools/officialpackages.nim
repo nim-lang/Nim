@@ -1,4 +1,4 @@
-import std/[strformat, paths, dirs, osproc, envvars]
+import std/[strformat, paths, dirs, envvars]
 from std/os import execShellCmd
 
 proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =

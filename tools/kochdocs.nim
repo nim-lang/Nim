@@ -122,11 +122,11 @@ mm.md
 """.splitWhitespace().mapIt("doc" / it)
 
   withoutIndex = """
-lib/wrappers/mysql.nim
-lib/wrappers/sqlite3.nim
-lib/wrappers/postgres.nim
+pkgs/db_connector/src/db_connector/mysql.nim
+pkgs/db_connector/src/db_connector/sqlite3.nim
+pkgs/db_connector/src/db_connector/postgres.nim
+pkgs/db_connector/src/db_connector/odbcsql.nim
 lib/wrappers/tinyc.nim
-lib/wrappers/odbcsql.nim
 lib/wrappers/pcre.nim
 lib/wrappers/openssl.nim
 lib/posix/posix.nim
@@ -154,6 +154,17 @@ lib/posix/posix_other_consts.nim
 lib/posix/posix_freertos_consts.nim
 lib/posix/posix_openbsd_amd64.nim
 lib/posix/posix_haiku.nim
+""".splitWhitespace()
+
+  officialPackagesList = """
+pkgs/asyncftpclient/src/asyncftpclient
+pkgs/smtp/src/smtp
+pkgs/punycode/punycode
+pkgs/db_connector/src/db_connector/db_common.nim
+pkgs/db_connector/src/db_connector/db_mysql.nim
+pkgs/db_connector/src/db_connector/db_odbc.nim
+pkgs/db_connector/src/db_connector/db_postgres.nim
+pkgs/db_connector/src/db_connector/db_sqlite.nim
 """.splitWhitespace()
 
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
@@ -190,6 +201,7 @@ lib/system/ctypes.nim
          continue
     result.add a
   result.add normalizePath("nimsuggest/sexp.nim")
+  result.add officialPackagesList
 
 let doc = getDocList()
 
@@ -309,6 +321,7 @@ proc buildJS(): string =
 proc buildDocsDir*(args: string, dir: string) =
   let args = nimArgs & " " & args
   let docHackJsSource = buildJS()
+  gitClonePackages(@["asyncftpclient", "pubycode", "smtp", "db_connector"])
   createDir(dir)
   buildDocSamples(args, dir)
   buildDoc(args, dir) # bottleneck
