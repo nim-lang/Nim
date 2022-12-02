@@ -301,7 +301,7 @@ proc `callback=`*[T](future: Future[T],
   ## If future has already completed then `cb` will be called immediately.
   future.callback = proc () = cb(future)
 
-template then"(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
+template then*(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
   ## Sets a callback proc to be called when the future completes successfully
 
   future.thenCb = cb
