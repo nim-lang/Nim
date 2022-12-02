@@ -321,7 +321,7 @@ proc buildJS(): string =
 proc buildDocsDir*(args: string, dir: string) =
   let args = nimArgs & " " & args
   let docHackJsSource = buildJS()
-  gitClonePackages(@["asyncftpclient", "pubycode", "smtp", "db_connector"])
+  gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector"])
   createDir(dir)
   buildDocSamples(args, dir)
   buildDoc(args, dir) # bottleneck
