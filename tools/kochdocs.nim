@@ -168,6 +168,7 @@ pkgs/db_connector/src/db_connector/mysql.nim
 pkgs/db_connector/src/db_connector/sqlite3.nim
 pkgs/db_connector/src/db_connector/postgres.nim
 pkgs/db_connector/src/db_connector/odbcsql.nim
+pkgs/db_connector/src/db_connector/private/dbutils.nim
 """.splitWhitespace()
 
 proc findName(name: string): string =
