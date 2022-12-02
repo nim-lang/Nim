@@ -37,7 +37,6 @@ else:
   {.error: "The cmdline module has not been implemented for the target platform.".}
 
 
-
 # Needed by windows in order to obtain the command line for targets
 # other than command line targets
 when defined(windows) and not weirdTarget:
