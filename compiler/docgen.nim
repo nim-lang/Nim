@@ -275,7 +275,9 @@ template declareClosures =
           presentationPath(conf, AbsoluteFile(basedir / targetRelPath))
             # use presentationPath because `..` path can be be mangled to `_._`
       result.targetPath = string(conf.outDir / outDirPath)
-    result.linkRelPath = relativePath(result.targetPath.splitFile.dir, fromDir)
+    result.linkRelPath = relativePath(result.targetPath.splitFile.dir,
+                                      fromDir).replace('\\', '/')
+    echo "linkRelPath: ", result.linkRelPath
 
 
 proc parseRst(text: string,

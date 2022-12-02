@@ -351,7 +351,6 @@ type
   AnchorSubst = object
     info: TLineInfo         # where the anchor was defined
     priority: int
-    external: bool
     case kind: range[arInternalRst .. arNim]
     of arInternalRst:
       anchorType: RstAnchorKind
@@ -364,6 +363,7 @@ type
       langSym: LangSymbol
       refname: string     # A reference name that will be inserted directly
                           # into HTML/Latex.
+      external: bool
   AnchorSubstTable = Table[string, seq[AnchorSubst]]
                          # use `seq` to account for duplicate anchors
   FootnoteType = enum
@@ -818,12 +818,12 @@ proc addAnchorRst(p: var RstParser, name: string, target: PRstNode,
                     info: prevLineInfo(p), anchorType: anchorType))
   p.curAnchors.setLen 0
 
-proc addAnchorExtRst(s: var PRstSharedState, key: string, link: string,
+proc addAnchorExtRst(s: var PRstSharedState, key: string, refn: string,
                   anchorType: RstAnchorKind, info: TLineInfo) =
   let name = key.toLowerAscii
   let prio = internalRefPriority(anchorType)
   s.anchors.mgetOrPut(name, newSeq[AnchorSubst]()).add(
-      AnchorSubst(kind: arExternalRst, external: true, refnameExt: link, priority: prio,
+      AnchorSubst(kind: arExternalRst, refnameExt: refn, priority: prio,
                   info: info,
                   anchorTypeExt: anchorType))
 
@@ -3486,7 +3486,7 @@ proc extractLinkEnd(x: string): string =
     else: x.len - 1
   let j = rfind(x, '/', start=0, last=last)
   if j >= 0:
-    result = x[j .. ^1]
+    result = x[j+1 .. ^1]
   else:
     result = x
 
@@ -3517,7 +3517,7 @@ proc loadIdxFile(s: var PRstSharedState, origFilename: string) =
   for entry in fileEntries:
     # Though target .idx already has inside it the path to HTML relative
     # project's root, we won't rely on it and use `linkRelPath` instead.
-    let link = extractLinkEnd(entry.link)
+    let refn = extractLinkEnd(entry.link)
     # select either markup (rst/md) or Nim cases:
     case entry.kind
     of ieIdxRole, ieHeading, ieMarkupTitle:
@@ -3527,7 +3527,7 @@ proc loadIdxFile(s: var PRstSharedState, origFilename: string) =
       if entry.kind == ieMarkupTitle:
         isMarkup = true
       info.line = entry.line.uint16
-      addAnchorExtRst(s, key = entry.keyword, link = link,
+      addAnchorExtRst(s, key = entry.keyword, refn = refn,
                       anchorType = headlineAnchor, info=info)
       if entry.kind in {ieMarkupTitle, ieNimTitle}:
         s.idxImports[origFilename].title = entry.keyword
@@ -3550,7 +3550,7 @@ proc loadIdxFile(s: var PRstSharedState, origFilename: string) =
         langSym = linkTitle.toLangSymbol
       else:  # entry.kind == ieNimGroup
         langSym = langSymbolGroup(kind=entry.linkTitle, name=entry.keyword)
-      addAnchorNim(s, external = true, refn = link, tooltip = entry.linkDesc,
+      addAnchorNim(s, external = true, refn = refn, tooltip = entry.linkDesc,
                    langSym = langSym, priority = -4, # lowest
                    info=info)
 
@@ -3579,7 +3579,8 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
       tooltip: string
       target: PRstNode
       info: TLineInfo
-      filename: string    # origin filename where anchor was defined
+      externFilename: string
+        # when external anchor: origin filename where anchor was defined
       isTitle: bool
     proc cmp(x, y: LinkDef): int =
       result = cmp(x.priority, y.priority)
@@ -3593,57 +3594,63 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
                              target: y.value, info: y.info,
                              tooltip: "(" & $y.kind & ")")
     let substRst = findMainAnchorRst(s, alias.addNodes, n.info)
-    template filename(subst: AnchorSubst): string =
-      if subst.external: getFilename(s, subst)
+    template getExternFilename(subst: AnchorSubst): string =
+      if subst.kind == arExternalRst or
+          (subst.kind == arNim and subst.external):
+        getFilename(s, subst)
       else: ""
     for subst in substRst:
-      let refname =
-        if subst.kind == arInternalRst: subst.target.anchor
-        else: subst.refnameExt  # arExternalRst
+      var refname, fullRefname: string
+      if subst.kind == arInternalRst:
+        refname = subst.target.anchor
+        fullRefname = refname
+      else:  # arExternalRst
+        refname = subst.refnameExt
+        fullRefname = s.idxImports[getFilename(s, subst)].linkRelPath &
+                        "/" & refname
       let anchorType =
         if subst.kind == arInternalRst: subst.anchorType
         else: subst.anchorTypeExt  # arExternalRst
-      let linkRelPath =
-        if subst.external: s.idxImports[filename(subst)].linkRelPath
-        else: ""
       foundLinks.add LinkDef(ar: subst.kind, priority: subst.priority,
-                             target: newLeaf(linkRelPath / refname),
+                             target: newLeaf(fullRefname),
                              info: subst.info,
-                             filename: filename(subst),
+                             externFilename: getExternFilename(subst),
                              isTitle: isDocumentationTitle(refname),
                              tooltip: "(" & $anchorType & ")")
     # find anchors automatically generated from Nim symbols
     if roNimFile in s.options or s.nimFileImported:
       let substNim = findMainAnchorNim(s, signature=alias, n.info)
       for subst in substNim:
-        let linkRelPath =
-          if subst.external: s.idxImports[filename(subst)].linkRelPath
-          else: ""
+        let fullRefname =
+          if subst.external:
+            s.idxImports[getFilename(s, subst)].linkRelPath &
+                "/" & subst.refname
+          else: subst.refname
         foundLinks.add LinkDef(ar: subst.kind, priority: subst.priority,
-                               target: newLeaf(linkRelPath / subst.refname),
-                               filename: filename(subst),
+                               target: newLeaf(fullRefname),
+                               externFilename: getExternFilename(subst),
                                isTitle: isDocumentationTitle(subst.refname),
                                info: subst.info, tooltip: subst.tooltip)
     foundLinks.sort(cmp = cmp, order = Descending)
     let aliasStr = addNodes(alias)
     if foundLinks.len >= 1:
-      if foundLinks[0].ar in {arExternalRst, arNim} and foundLinks[0].filename != "":
-        s.idxImports[foundLinks[0].filename].used = true
+      if foundLinks[0].externFilename != "":
+        s.idxImports[foundLinks[0].externFilename].used = true
       let kind = if foundLinks[0].ar in {arHyperlink, arExternalRst}: rnHyperlink
                  elif foundLinks[0].ar == arNim:
-                   if foundLinks[0].filename == "": rnNimdocRef
+                   if foundLinks[0].externFilename == "": rnNimdocRef
                    else: rnHyperlink
                  else: rnInternalRef
       result = newRstNode(kind)
       let documentName =  # filename without ext for `.nim`, title for `.md`
         if foundLinks[0].ar == arNim:
-          changeFileExt(foundLinks[0].filename.extractFilename, "")
-        elif foundLinks[0].filename != "" and
-            s.idxImports[foundLinks[0].filename].title != "":
-          s.idxImports[foundLinks[0].filename].title
-        else: foundLinks[0].filename
+          changeFileExt(foundLinks[0].externFilename.extractFilename, "")
+        elif foundLinks[0].externFilename != "" and
+            s.idxImports[foundLinks[0].externFilename].title != "":
+          s.idxImports[foundLinks[0].externFilename].title
+        else: foundLinks[0].externFilename.extractFilename
       let linkText =
-        if foundLinks[0].filename != "":
+        if foundLinks[0].externFilename != "":
           if foundLinks[0].isTitle: newLeaf(addNodes(desc))
           else: newLeaf(documentName & ": " & addNodes(desc))
         else:
