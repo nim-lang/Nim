@@ -177,6 +177,7 @@ proc findName(name: string): string =
   var i = 5
   while i < name.len:
     if name[i] != '/':
+      inc i
       result.add name[i]
     else:
       break
