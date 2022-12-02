@@ -157,9 +157,9 @@ lib/posix/posix_haiku.nim
 """.splitWhitespace()
 
   officialPackagesList = """
-pkgs/asyncftpclient/src/asyncftpclient
-pkgs/smtp/src/smtp
-pkgs/punycode/punycode
+pkgs/asyncftpclient/src/asyncftpclient.nim
+pkgs/smtp/src/smtp.nim
+pkgs/punycode/src/punycode.nim
 pkgs/db_connector/src/db_connector/db_common.nim
 pkgs/db_connector/src/db_connector/db_mysql.nim
 pkgs/db_connector/src/db_connector/db_odbc.nim
