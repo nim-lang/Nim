@@ -122,10 +122,6 @@ mm.md
 """.splitWhitespace().mapIt("doc" / it)
 
   withoutIndex = """
-pkgs/db_connector/src/db_connector/mysql.nim
-pkgs/db_connector/src/db_connector/sqlite3.nim
-pkgs/db_connector/src/db_connector/postgres.nim
-pkgs/db_connector/src/db_connector/odbcsql.nim
 lib/wrappers/tinyc.nim
 lib/wrappers/pcre.nim
 lib/wrappers/openssl.nim
@@ -167,6 +163,24 @@ pkgs/db_connector/src/db_connector/db_postgres.nim
 pkgs/db_connector/src/db_connector/db_sqlite.nim
 """.splitWhitespace()
 
+  officialPackagesListWithoutIndex = """
+pkgs/db_connector/src/db_connector/mysql.nim
+pkgs/db_connector/src/db_connector/sqlite3.nim
+pkgs/db_connector/src/db_connector/postgres.nim
+pkgs/db_connector/src/db_connector/odbcsql.nim
+""".splitWhitespace()
+
+  officialGitUrl = "https://github.com/nim-lang/$1"
+
+proc findName(name: string): string =
+  doAssert name[0..4] == "pkgs/"
+  var i = 5
+  while i < name.len:
+    if name[i] != '/':
+      result.add name[i]
+    else:
+      break
+
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
   proc isRelativeTo(path, base: string): bool =
     let path = path.normalizedPath
@@ -201,7 +215,6 @@ lib/system/ctypes.nim
          continue
     result.add a
   result.add normalizePath("nimsuggest/sexp.nim")
-  result.add officialPackagesList
 
 let doc = getDocList()
 
@@ -251,7 +264,8 @@ proc buildDoc(nimArgs, destPath: string) =
   # call nim for the documentation:
   let rst2html = getMd2html()
   var
-    commands = newSeq[string](rst2html.len + len(doc) + withoutIndex.len)
+    commands = newSeq[string](rst2html.len + len(doc) + withoutIndex.len +
+              officialPackagesList.len + officialPackagesListWithoutIndex.len)
     i = 0
   let nim = findNim().quoteShell()
   for d in items(rst2html):
@@ -269,6 +283,20 @@ proc buildDoc(nimArgs, destPath: string) =
   for d in items(withoutIndex):
     commands[i] = nim & " doc $# --git.url:$# -o:$# $#" %
       [nimArgs, gitUrl,
+      destPath / changeFileExt(splitFile(d).name, "html"), d]
+    i.inc
+
+
+  for d in items(officialPackagesList):
+    let extra = if isJsOnly(d): "--backend:js" else: ""
+    var nimArgs2 = nimArgs
+    if d.isRelativeTo("compiler"): doAssert false
+    commands[i] = nim & " doc $# $# --git.url:$# --outdir:$# --index:on $#" %
+      [extra, nimArgs2, officialGitUrl % findName(d), destPath, d]
+    i.inc
+  for d in items(officialPackagesListWithoutIndex):
+    commands[i] = nim & " doc $# --git.url:$# -o:$# $#" %
+      [nimArgs, officialGitUrl % findName(d),
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
 
