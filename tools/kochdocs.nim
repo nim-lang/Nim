@@ -2,6 +2,9 @@
 
 import std/[os, strutils, osproc, sets, pathnorm, sequtils]
 
+import officialpackages
+export exec
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -47,18 +50,6 @@ proc findNimImpl*(): tuple[path: string, ok: bool] =
   return (nim, false)
 
 proc findNim*(): string = findNimImpl().path
-
-proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
-  let prevPath = getEnv("PATH")
-  if additionalPath.len > 0:
-    var absolute = additionalPath
-    if not absolute.isAbsolute:
-      absolute = getCurrentDir() / absolute
-    echo("Adding to $PATH: ", absolute)
-    putEnv("PATH", (if prevPath.len > 0: prevPath & PathSep else: "") & absolute)
-  echo(cmd)
-  if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
-  putEnv("PATH", prevPath)
 
 template inFold*(desc, body) =
   if existsEnv("GITHUB_ACTIONS"):
