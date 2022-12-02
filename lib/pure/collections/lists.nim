@@ -996,3 +996,68 @@ proc appendMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
   ## * `addMoved proc <#addMoved,SinglyLinkedList[T],SinglyLinkedList[T]>`_
   ## * `addMoved proc <#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
   a.addMoved(b)
+
+
+proc insertAfter*[T](a: var SinglyLinkedList[T], b: SinglyLinkedNode[T], c: SinglyLinkedNode[T]) =
+  ### Insert `c` after `b` in list `a`
+  c.next = b.next
+  b.next = c
+
+proc insertAfter*[T](a: var DoublyLinkedList[T], b: DoublyLinkedNode[T], c: DoublyLinkedNode[T]) =
+  ### Insert `c` after `b` in list `a`
+  c.prev = b
+  let b_next = b.next
+  c.next = b_next
+  if not b_next.isNil:
+    b_next.prev = c
+  else:
+    a.tail = c
+  b.next = c
+
+proc insertBefore*[T](a: var DoublyLinkedList[T], b: DoublyLinkedNode[T], c: DoublyLinkedNode[T]) =
+  ### Insert `c` before `b` in list `a`
+  c.next = b
+  let b_prev = b.prev
+  c.prev = b_prev
+  if not b_prev.isNil:
+    b_prev.next = c
+  else:
+    a.head = c
+  b.prev = c
+
+
+runnableExamples:
+  var list = initDoublyLinkedList[int]()
+  let
+    a = newDoublyLinkedNode[int](3)
+    b = newDoublyLinkedNode[int](7)
+    c = newDoublyLinkedNode[int](9)
+
+  list.add(c)
+  list.add(b)
+  list.insertAfter(c, a)
+
+  assert a.next == b
+  assert a.prev == c
+  assert c.next == a
+  assert c.next.next == b
+  assert c.prev == nil
+  assert b.next == nil
+
+runnableExamples:
+  var list = initDoublyLinkedList[int]()
+  let
+    a = newDoublyLinkedNode[int](3)
+    b = newDoublyLinkedNode[int](7)
+    c = newDoublyLinkedNode[int](9)
+
+  list.add(c)
+  list.add(b)
+  list.insertBefore(b, a)
+
+  assert a.next == b
+  assert a.prev == c
+  assert c.next == a
+  assert c.next.next == b
+  assert c.prev == nil
+  assert b.next == nil
