@@ -319,11 +319,11 @@ template catch*(future: Future[typed], cb: proc (future: Future[typed]) {.closur
   ## Sets a callback proc to be called when the future fails
   future.catchCb = proc () = cb(future)
 
-template finally*(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
+template `finally`*(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
   ## Sets a callback proc to be called when the future finishes
   future.finalCb = cb
 
-template finally*(future: Future[typed], cb: proc (future: Future[typed]) {.closure, gcsafe.}) =
+template `finally`*(future: Future[typed], cb: proc (future: Future[typed]) {.closure, gcsafe.}) =
   ## Sets a callback proc to be called when the future finishes
   future.finalCb = proc () = cb(future)
 
