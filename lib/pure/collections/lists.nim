@@ -999,12 +999,16 @@ proc appendMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
 
 
 proc insertAfter*[T](a: var SinglyLinkedList[T], b: SinglyLinkedNode[T], c: SinglyLinkedNode[T]) =
-  ### Insert `c` after `b` in list `a`
+  ## Insert `c` after `b` in list `a`. Efficiency: O(1).
+  ## Assumes `b` exists in list `a`
   c.next = b.next
   b.next = c
+  if a.tail == b:
+    a.tail = c
 
 proc insertAfter*[T](a: var DoublyLinkedList[T], b: DoublyLinkedNode[T], c: DoublyLinkedNode[T]) =
-  ### Insert `c` after `b` in list `a`
+  ## Insert `c` after `b` in list `a`. Efficiency: O(1).
+  ## Assumes `b` exists in list `a`
   c.prev = b
   let b_next = b.next
   c.next = b_next
@@ -1015,7 +1019,8 @@ proc insertAfter*[T](a: var DoublyLinkedList[T], b: DoublyLinkedNode[T], c: Doub
   b.next = c
 
 proc insertBefore*[T](a: var DoublyLinkedList[T], b: DoublyLinkedNode[T], c: DoublyLinkedNode[T]) =
-  ### Insert `c` before `b` in list `a`
+  ## Insert `c` before `b` in list `a`. Efficiency: O(1).
+  ## Assumes `b` exists in list `a`
   c.next = b
   let b_prev = b.prev
   c.prev = b_prev
