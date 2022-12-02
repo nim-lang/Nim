@@ -41,6 +41,9 @@ type
     value: T                            ## Stored value
 
   FutureVar*[T] = distinct Future[T]
+    thenCb: CallbackFunc # Callback for Future.then
+    catchCb: CallbackFunc # Callback for Future.catch
+    finalCb: CallbackFunc # Callback for Future.finally
 
   FutureError* = object of Defect
     cause*: FutureBase
