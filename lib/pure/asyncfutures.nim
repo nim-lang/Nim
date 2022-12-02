@@ -301,12 +301,12 @@ proc `callback=`*[T](future: Future[T],
   ## If future has already completed then `cb` will be called immediately.
   future.callback = proc () = cb(future)
 
-template then*(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
+template then"(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
   ## Sets a callback proc to be called when the future completes successfully
 
   future.thenCb = cb
 
-template then[T]*(future: Future[T], 
+template then[T]*(future: Future[T],
     cb: proc (future: Future[T]) {.closure, gcsafe.}) =
   ## Sets a callback proc to be called when the future completes successfully
 
@@ -317,7 +317,7 @@ template catch*(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
 
   future.catchCb = cb
 
-template catch[T]*(future: Future[T], 
+template catch[T]*(future: Future[T],
     cb: proc (future: Future[T]) {.closure, gcsafe.}) =
   ## Sets a callback proc to be called when the future fails
 
@@ -328,7 +328,7 @@ template finally*(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
 
   future.finalCb = cb
 
-template finally[T]*(future: Future[T], 
+template finally[T]*(future: Future[T],
     cb: proc (future: Future[T]) {.closure, gcsafe.}) =
   ## Sets a callback proc to be called when the future finishes
 
