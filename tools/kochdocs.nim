@@ -170,8 +170,6 @@ pkgs/db_connector/src/db_connector/postgres.nim
 pkgs/db_connector/src/db_connector/odbcsql.nim
 """.splitWhitespace()
 
-  officialGitUrl = "https://github.com/nim-lang/$1"
-
 proc findName(name: string): string =
   doAssert name[0..4] == "pkgs/"
   var i = 5
@@ -289,15 +287,14 @@ proc buildDoc(nimArgs, destPath: string) =
 
 
   for d in items(officialPackagesList):
-    let extra = if isJsOnly(d): "--backend:js" else: ""
     var nimArgs2 = nimArgs
     if d.isRelativeTo("compiler"): doAssert false
-    commands[i] = nim & " doc $# $# --git.url:$# --outdir:$# --index:on $#" %
-      [extra, nimArgs2, officialGitUrl % findName(d), destPath, d]
+    commands[i] = nim & " doc $# --outdir:$# --index:on $#" %
+      [nimArgs2, destPath, d]
     i.inc
   for d in items(officialPackagesListWithoutIndex):
-    commands[i] = nim & " doc $# --git.url:$# -o:$# $#" %
-      [nimArgs, officialGitUrl % findName(d),
+    commands[i] = nim & " doc $# -o:$# $#" %
+      [nimArgs,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
 
