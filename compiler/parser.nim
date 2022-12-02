@@ -1323,13 +1323,13 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
   case p.tok.tokType
   of tkProc:
     getTok(p)
-    result = parseProcExpr(p, true, nkLambda)
+    result = parseProcExpr(p, mode != pmTypeDesc, nkLambda)
   of tkFunc:
     getTok(p)
-    result = parseProcExpr(p, true, nkFuncDef)
+    result = parseProcExpr(p, mode != pmTypeDesc, nkFuncDef)
   of tkIterator:
     getTok(p)
-    result = parseProcExpr(p, true, nkIteratorDef)
+    result = parseProcExpr(p, mode != pmTypeDesc, nkIteratorDef)
   of tkBind:
     # legacy syntax, no-op in current nim
     result = newNodeP(nkBind, p)
