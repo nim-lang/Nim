@@ -189,7 +189,7 @@ elif defined(windows) and not defined(StandaloneHeapSize):
     when reallyOsDealloc:
       if virtualFree(p, 0, MEM_RELEASE) == 0:
         cprintf "virtualFree failing!"
-        quit 1
+        rawQuit 1
     #VirtualFree(p, size, MEM_DECOMMIT)
 
 elif hostOS == "standalone" or defined(StandaloneHeapSize):

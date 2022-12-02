@@ -8,7 +8,7 @@
 #
 
 ## This module contains 'typeAllowed' and friends which check
-## for invalid types like 'openArray[var int]'.
+## for invalid types like `openArray[var int]`.
 
 import
   intsets, ast, renderer, options, semdata, types

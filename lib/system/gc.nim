@@ -161,7 +161,7 @@ template gcAssert(cond: bool, msg: string) =
       writeStackTrace()
       #var x: ptr int
       #echo x[]
-      quit 1
+      rawQuit 1
 
 proc addZCT(s: var CellSeq, c: PCell) {.noinline.} =
   if (c.refcount and ZctFlag) == 0:
@@ -626,7 +626,7 @@ when logGC:
       if cycleCheckA[i] == c: return true
     if cycleCheckALen == len(cycleCheckA):
       gcAssert(false, "cycle detection overflow")
-      quit 1
+      rawQuit 1
     cycleCheckA[cycleCheckALen] = c
     inc cycleCheckALen
 

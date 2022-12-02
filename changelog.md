@@ -15,6 +15,8 @@
   - `std/formatfloat`
   - `std/objectdollar`
   - `std/widestrs`
+  - `std/typedthreads`
+  - `std/sysatomics`
 
   In the future, these definitions will be removed from the `system` module,
   and their respective modules will have to be imported to use them.
@@ -36,6 +38,11 @@
   - `TaintedString`, formerly a distinct alias to `string`
   - `PInt32`, `PInt64`, `PFloat32`, `PFloat64`, aliases to
     `ptr int32`, `ptr int64`, `ptr float32`, `ptr float64`
+
+- Enabling `-d:nimPreviewSlimSystem` removes the import of `channels_builtin` in
+  in the `system` module.
+
+- Enabling `-d:nimPreviewCstringConversion`, `ptr char`, `ptr array[N, char]` and `ptr UncheckedArray[N, char]` don't support conversion to cstring anymore.
 
 - The `gc:v2` option is removed.
 
@@ -92,6 +99,16 @@
 - The `gorge`/`staticExec` calls will now return a descriptive message in the output
   if the execution fails for whatever reason. To get back legacy behaviour use `-d:nimLegacyGorgeErrors`.
 
+- Pointer to `cstring` conversion now triggers a `[PtrToCstringConv]` warning.
+  This warning will become an error in future versions! Use a `cast` operation
+  like `cast[cstring](x)` instead.
+
+- `logging` will default to flushing all log level messages. To get the legacy behaviour of only flushing Error and Fatal messages, use `-d:nimV1LogFlushBehavior`.
+
+- Object fields now support default values, see https://nim-lang.github.io/Nim/manual.html#types-default-values-for-object-fields for details.
+
+- Using an unnamed break in a block is deprecated. This warning will become an error in future versions! Use a named block with a named break instead.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
@@ -102,13 +119,21 @@
   `colPaleVioletRed` and `colMediumPurple` have also been changed to match the CSS color standard.
 - Fixed `lists.SinglyLinkedList` being broken after removing the last node ([#19353](https://github.com/nim-lang/Nim/pull/19353)).
 - The `md5` module now works at compile time and in JavaScript.
-- `std/smtp` sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
 - Changed `mimedb` to use an `OrderedTable` instead of `OrderedTableRef` to support `const` tables.
 - `strutils.find` now uses and defaults to `last = -1` for whole string searches,
   making limiting it to just the first char (`last = 0`) valid.
 - `random.rand` now works with `Ordinal`s.
 - Undeprecated `os.isvalidfilename`.
 - `std/oids` now uses `int64` to store time internally (before it was int32).
+- `std/uri.Uri` dollar `$` improved, precalculates the `string` result length from the `Uri`.
+- `std/uri.Uri.isIpv6` is now exported.
+- `std/logging.ConsoleLogger` and `FileLogger` now have a `flushThreshold` attribute to set what log message levels are automatically flushed. For Nim v1 use `-d:nimFlushAllLogs` to automatically flush all message levels. Flushing all logs is the default behavior for Nim v2.
+
+
+- `std/net.IpAddress` dollar `$` improved, uses a fixed capacity for the `string` result based from the `IpAddressFamily`.
+- `std/jsfetch.newFetchOptions` now has default values for all parameters
+- `std/jsformdata` now accepts `Blob` data type.
+
 
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
@@ -119,7 +144,7 @@
   - Added `getIsoWeeksInYear` to return the number of weeks in a week-based year.
 - Added new modules which were part of `std/os`:
   - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
-  - Added `std/paths`, `std/dirs`, `std/files`, `std/symlinks` and `std/appdirs`. 
+  - Added `std/paths`, `std/dirs`, `std/files`, `std/symlinks` and `std/appdirs`.
 - Added `sep` parameter in `std/uri` to specify the query separator.
 - Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
   and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)

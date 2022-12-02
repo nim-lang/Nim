@@ -43,10 +43,9 @@ body:
 - type: textarea
   id: Examples
   attributes:
-    label: Standard Output Examples
-    description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+    label: Examples
+    description: Provide examples for your feature request here.
     placeholder: Example code here.
-    render: shell
 
 - type: textarea
   id: incompatibility

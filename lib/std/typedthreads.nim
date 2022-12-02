@@ -52,7 +52,7 @@ when defined(genode):
   import genode/env
 
 
-when hasAllocStack or defined(zephyr) or defined(freertos):
+when hasAllocStack or defined(zephyr) or defined(freertos) or defined(cpu16) or defined(cpu8):
   const
     nimThreadStackSize {.intdefine.} = 8192
     nimThreadStackGuard {.intdefine.} = 128
@@ -93,16 +93,6 @@ when defined(zephyr):
 # ``stdcall`` on Windows and ``noconv`` on UNIX. Alternative would be to just
 # use ``stdcall`` since it is mapped to ``noconv`` on UNIX anyway.
 
-
-
-proc onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].}) =
-  ## Registers a *thread local* handler that is called at the thread's
-  ## destruction.
-  ##
-  ## A thread is destructed when the `.thread` proc returns
-  ## normally or when it raises an exception. Note that unhandled exceptions
-  ## in a thread nevertheless cause the whole process to die.
-  nimThreadDestructionHandlers.add handler
 
 
 {.push stack_trace:off.}

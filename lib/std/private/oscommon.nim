@@ -54,16 +54,14 @@ when defined(windows) and not weirdTarget:
     proc findFirstFile*(a: string, b: var WIN32_FIND_DATA): Handle =
       result = findFirstFileW(newWideCString(a), b)
     template findNextFile*(a, b: untyped): untyped = findNextFileW(a, b)
-    template getCommandLine*(): untyped = getCommandLineW()
 
     template getFilename*(f: untyped): untyped =
       $cast[WideCString](addr(f.cFileName[0]))
   else:
     template findFirstFile*(a, b: untyped): untyped = findFirstFileA(a, b)
     template findNextFile*(a, b: untyped): untyped = findNextFileA(a, b)
-    template getCommandLine*(): untyped = getCommandLineA()
 
-    template getFilename*(f: untyped): untyped = $cstring(addr f.cFileName)
+    template getFilename*(f: untyped): untyped = $cast[cstring](addr f.cFileName)
 
   proc skipFindData*(f: WIN32_FIND_DATA): bool {.inline.} =
     # Note - takes advantage of null delimiter in the cstring

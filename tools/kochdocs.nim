@@ -61,25 +61,18 @@ proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   putEnv("PATH", prevPath)
 
 template inFold*(desc, body) =
-  if existsEnv("TRAVIS"):
-    echo "travis_fold:start:" & desc.replace(" ", "_")
-  elif existsEnv("GITHUB_ACTIONS"):
+  if existsEnv("GITHUB_ACTIONS"):
     echo "::group::" & desc
   elif existsEnv("TF_BUILD"):
     echo "##[group]" & desc
-
   body
-
-  if existsEnv("TRAVIS"):
-    echo "travis_fold:end:" & desc.replace(" ", "_")
-  elif existsEnv("GITHUB_ACTIONS"):
+  if existsEnv("GITHUB_ACTIONS"):
     echo "::endgroup::"
   elif existsEnv("TF_BUILD"):
     echo "##[endgroup]"
 
 proc execFold*(desc, cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   ## Execute shell command. Add log folding for various CI services.
-  # https://github.com/travis-ci/travis-ci/issues/2285#issuecomment-42724719
   let desc = if desc.len == 0: cmd else: desc
   inFold(desc):
     exec(cmd, errorcode, additionalPath)
@@ -137,10 +130,6 @@ niminst.md
 mm.md
 """.splitWhitespace().mapIt("doc" / it)
 
-  doc0 = """
-lib/system/channels_builtin.nim
-""".splitWhitespace() # ran by `nim doc0` instead of `nim doc`
-
   withoutIndex = """
 lib/wrappers/mysql.nim
 lib/wrappers/sqlite3.nim
@@ -185,7 +174,6 @@ when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
 
 proc getDocList(): seq[string] =
   var docIgnore: HashSet[string]
-  for a in doc0: docIgnore.incl a
   for a in withoutIndex: docIgnore.incl a
   for a in ignoredModules: docIgnore.incl a
 
@@ -260,16 +248,11 @@ proc buildDoc(nimArgs, destPath: string) =
   # call nim for the documentation:
   let rst2html = getMd2html()
   var
-    commands = newSeq[string](rst2html.len + len(doc0) + len(doc) + withoutIndex.len)
+    commands = newSeq[string](rst2html.len + len(doc) + withoutIndex.len)
     i = 0
   let nim = findNim().quoteShell()
   for d in items(rst2html):
     commands[i] = nim & " md2html $# --git.url:$# -o:$# --index:on $#" %
-      [nimArgs, gitUrl,
-      destPath / changeFileExt(splitFile(d).name, "html"), d]
-    i.inc
-  for d in items(doc0):
-    commands[i] = nim & " doc0 $# --git.url:$# -o:$# --index:on $#" %
       [nimArgs, gitUrl,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc

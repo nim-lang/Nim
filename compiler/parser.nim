@@ -301,14 +301,14 @@ proc isRightAssociative(tok: Token): bool {.inline.} =
 proc isUnary(tok: Token): bool =
   ## Check if the given token is a unary operator
   tok.tokType in {tkOpr, tkDotDot} and
-  tok.strongSpaceB == 0 and
-  tok.strongSpaceA > 0
+  tok.strongSpaceB == tsNone and
+  tok.strongSpaceA
 
 proc checkBinary(p: Parser) {.inline.} =
   ## Check if the current parser token is a binary operator.
   # we don't check '..' here as that's too annoying
   if p.tok.tokType == tkOpr:
-    if p.tok.strongSpaceB > 0 and p.tok.strongSpaceA == 0:
+    if p.tok.strongSpaceB == tsTrailing and not p.tok.strongSpaceA:
       parMessage(p, warnInconsistentSpacing, prettyTok(p.tok))
 
 #| module = stmt ^* (';' / IND{=})
@@ -490,7 +490,7 @@ proc dotExpr(p: var Parser, a: PNode): PNode =
   optInd(p, result)
   result.add(a)
   result.add(parseSymbol(p, smAfterDot))
-  if p.tok.tokType == tkBracketLeColon and p.tok.strongSpaceA <= 0:
+  if p.tok.tokType == tkBracketLeColon and not p.tok.strongSpaceA:
     var x = newNodeI(nkBracketExpr, p.parLineInfo)
     # rewrite 'x.y[:z]()' to 'y[z](x)'
     x.add result[1]
@@ -499,7 +499,7 @@ proc dotExpr(p: var Parser, a: PNode): PNode =
     var y = newNodeI(nkCall, p.parLineInfo)
     y.add x
     y.add result[0]
-    if p.tok.tokType == tkParLe and p.tok.strongSpaceA <= 0:
+    if p.tok.tokType == tkParLe and not p.tok.strongSpaceA:
       exprColonEqExprListAux(p, tkParRi, y)
     result = y
 
@@ -854,7 +854,7 @@ proc primarySuffix(p: var Parser, r: PNode,
     case p.tok.tokType
     of tkParLe:
       # progress guaranteed
-      if p.tok.strongSpaceA > 0:
+      if p.tok.strongSpaceA:
         result = commandExpr(p, result, mode)
         break
       result = namedParams(p, result, nkCall, tkParRi)
@@ -866,13 +866,13 @@ proc primarySuffix(p: var Parser, r: PNode,
       result = parseGStrLit(p, result)
     of tkBracketLe:
       # progress guaranteed
-      if p.tok.strongSpaceA > 0:
+      if p.tok.strongSpaceA:
         result = commandExpr(p, result, mode)
         break
       result = namedParams(p, result, nkBracketExpr, tkBracketRi)
     of tkCurlyLe:
       # progress guaranteed
-      if p.tok.strongSpaceA > 0:
+      if p.tok.strongSpaceA:
         result = commandExpr(p, result, mode)
         break
       result = namedParams(p, result, nkCurlyExpr, tkCurlyRi)
@@ -1157,7 +1157,6 @@ proc parseProcExpr(p: var Parser; isExpr: bool; kind: TNodeKind): PNode =
   #| routineType = ('proc' | 'iterator') paramListColon pragma?
   # either a proc type or a anonymous proc
   let info = parLineInfo(p)
-  getTok(p)
   let hasSignature = p.tok.tokType in {tkParLe, tkColon} and p.tok.indent < 0
   let params = parseParamList(p)
   let pragmas = optPragmas(p)
@@ -1168,7 +1167,7 @@ proc parseProcExpr(p: var Parser; isExpr: bool; kind: TNodeKind): PNode =
       params = params, name = p.emptyNode, pattern = p.emptyNode,
       genericParams = p.emptyNode, pragmas = pragmas, exceptions = p.emptyNode)
   else:
-    result = newNodeI(nkProcTy, info)
+    result = newNodeI(if kind == nkIteratorDef: nkIteratorTy else: nkProcTy, info)
     if hasSignature:
       result.add(params)
       if kind == nkFuncDef:
@@ -1322,12 +1321,15 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
     return
 
   case p.tok.tokType
-  of tkProc: result = parseProcExpr(p, mode != pmTypeDesc, nkLambda)
-  of tkFunc: result = parseProcExpr(p, mode != pmTypeDesc, nkFuncDef)
+  of tkProc:
+    getTok(p)
+    result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkLambda)
+  of tkFunc:
+    getTok(p)
+    result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkFuncDef)
   of tkIterator:
-    result = parseProcExpr(p, mode != pmTypeDesc, nkLambda)
-    if result.kind == nkLambda: result.transitionSonsKind(nkIteratorDef)
-    else: result.transitionSonsKind(nkIteratorTy)
+    getTok(p)
+    result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkIteratorDef
   of tkBind:
     # legacy syntax, no-op in current nim
     result = newNodeP(nkBind, p)
@@ -1873,6 +1875,12 @@ proc parseRoutine(p: var Parser, kind: TNodeKind): PNode =
   result = newNodeP(kind, p)
   getTok(p)
   optInd(p, result)
+  if kind in {nkProcDef, nkLambda, nkIteratorDef, nkFuncDef} and
+      p.tok.tokType notin {tkSymbol, tokKeywordLow..tokKeywordHigh, tkAccent}:
+    # no name; lambda or proc type
+    # in every context that we can parse a routine, we can also parse these
+    result = parseProcExpr(p, true, if kind == nkProcDef: nkLambda else: kind)
+    return
   result.add(identVis(p))
   if p.tok.tokType == tkCurlyLe and p.validInd: result.add(p.parsePattern)
   else: result.add(p.emptyNode)
@@ -2427,7 +2435,7 @@ proc parseAll(p: var Parser): PNode =
       parMessage(p, errInvalidIndentation)
 
 proc checkFirstLineIndentation*(p: var Parser) =
-  if p.tok.indent != 0 and p.tok.strongSpaceA > 0:
+  if p.tok.indent != 0 and p.tok.strongSpaceA:
     parMessage(p, errInvalidIndentation)
 
 proc parseTopLevelStmt(p: var Parser): PNode =

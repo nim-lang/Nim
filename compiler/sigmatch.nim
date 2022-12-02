@@ -373,14 +373,16 @@ proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   else:
     result = t                # Note: empty is valid here
 
-proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
+proc handleRange(c: PContext, f, a: PType, min, max: TTypeKind): TTypeRelation =
   if a.kind == f.kind:
     result = isEqual
   else:
     let ab = skipTypes(a, {tyRange})
     let k = ab.kind
+    let nf = c.config.normalizeKind(f.kind)
+    let na = c.config.normalizeKind(k)
     if k == f.kind: result = isSubrange
-    elif k == tyInt and f.kind in {tyRange, tyInt8..tyInt64,
+    elif k == tyInt and f.kind in {tyRange, tyInt..tyInt64,
                                    tyUInt..tyUInt64} and
         isIntLit(ab) and getInt(ab.n) >= firstOrd(nil, f) and
                          getInt(ab.n) <= lastOrd(nil, f):
@@ -389,9 +391,13 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
       # integer literal in the proper range; we want ``i16 + 4`` to stay an
       # ``int16`` operation so we declare the ``4`` pseudo-equal to int16
       result = isFromIntLit
-    elif f.kind == tyInt and k in {tyInt8..tyInt32}:
+    elif a.kind == tyInt and nf == c.config.targetSizeSignedToKind:
       result = isIntConv
-    elif f.kind == tyUInt and k in {tyUInt8..tyUInt32}:
+    elif a.kind == tyUInt and nf == c.config.targetSizeUnsignedToKind:
+      result = isIntConv
+    elif f.kind == tyInt and na in {tyInt8 .. c.config.targetSizeSignedToKind}:
+      result = isIntConv
+    elif f.kind == tyUInt and na in {tyUInt8 .. c.config.targetSizeUnsignedToKind}:
       result = isIntConv
     elif k >= min and k <= max:
       result = isConvertible
@@ -405,7 +411,7 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
       result = isConvertible
     else: result = isNone
 
-proc isConvertibleToRange(f, a: PType): bool =
+proc isConvertibleToRange(c: PContext, f, a: PType): bool =
   if f.kind in {tyInt..tyInt64, tyUInt..tyUInt64} and
      a.kind in {tyInt..tyInt64, tyUInt..tyUInt64}:
     case f.kind
@@ -413,13 +419,14 @@ proc isConvertibleToRange(f, a: PType): bool =
     of tyInt16: result = isIntLit(a) or a.kind in {tyInt8, tyInt16}
     of tyInt32: result = isIntLit(a) or a.kind in {tyInt8, tyInt16, tyInt32}
     # This is wrong, but seems like there's a lot of code that relies on it :(
-    of tyInt, tyUInt, tyUInt64: result = true
+    of tyInt, tyUInt: result = true
+    # of tyInt: result = isIntLit(a) or a.kind in {tyInt8 .. c.config.targetSizeSignedToKind}
     of tyInt64: result = isIntLit(a) or a.kind in {tyInt8, tyInt16, tyInt32, tyInt, tyInt64}
     of tyUInt8: result = isIntLit(a) or a.kind in {tyUInt8}
     of tyUInt16: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16}
     of tyUInt32: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32}
-    #of tyUInt: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt}
-    #of tyUInt64: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt, tyUInt64}
+    # of tyUInt: result = isIntLit(a) or a.kind in {tyUInt8 .. c.config.targetSizeUnsignedToKind}
+    of tyUInt64: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt64}
     else: result = false
   elif f.kind in {tyFloat..tyFloat128}:
     # `isIntLit` is correct and should be used above as well, see PR:
@@ -800,7 +807,8 @@ proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
   # N is bound to a concrete value during the matching of the first param.
   # This proc is used to evaluate such static expressions.
   let instantiated = replaceTypesInBody(c.c, c.bindings, n, nil,
-                                        allowMetaTypes = allowUnresolved)
+                                        allowMetaTypes = allowUnresolved,
+                                        fromStaticExpr = true)
   result = c.c.semExpr(c.c, instantiated)
 
 proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
@@ -1148,18 +1156,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let f = skipTypes(f, {tyRange})
       if f.kind == a.kind and (f.kind != tyEnum or sameEnumTypes(f, a)):
         result = isIntConv
-      elif isConvertibleToRange(f, a):
+      elif isConvertibleToRange(c.c, f, a):
         result = isConvertible  # a convertible to f
-  of tyInt:      result = handleRange(f, a, tyInt8, tyInt32)
-  of tyInt8:     result = handleRange(f, a, tyInt8, tyInt8)
-  of tyInt16:    result = handleRange(f, a, tyInt8, tyInt16)
-  of tyInt32:    result = handleRange(f, a, tyInt8, tyInt32)
-  of tyInt64:    result = handleRange(f, a, tyInt, tyInt64)
-  of tyUInt:     result = handleRange(f, a, tyUInt8, tyUInt32)
-  of tyUInt8:    result = handleRange(f, a, tyUInt8, tyUInt8)
-  of tyUInt16:   result = handleRange(f, a, tyUInt8, tyUInt16)
-  of tyUInt32:   result = handleRange(f, a, tyUInt8, tyUInt32)
-  of tyUInt64:   result = handleRange(f, a, tyUInt, tyUInt64)
+  of tyInt:      result = handleRange(c.c, f, a, tyInt8, c.c.config.targetSizeSignedToKind)
+  of tyInt8:     result = handleRange(c.c, f, a, tyInt8, tyInt8)
+  of tyInt16:    result = handleRange(c.c, f, a, tyInt8, tyInt16)
+  of tyInt32:    result = handleRange(c.c, f, a, tyInt8, tyInt32)
+  of tyInt64:    result = handleRange(c.c, f, a, tyInt, tyInt64)
+  of tyUInt:     result = handleRange(c.c, f, a, tyUInt8, c.c.config.targetSizeUnsignedToKind)
+  of tyUInt8:    result = handleRange(c.c, f, a, tyUInt8, tyUInt8)
+  of tyUInt16:   result = handleRange(c.c, f, a, tyUInt8, tyUInt16)
+  of tyUInt32:   result = handleRange(c.c, f, a, tyUInt8, tyUInt32)
+  of tyUInt64:   result = handleRange(c.c, f, a, tyUInt, tyUInt64)
   of tyFloat:    result = handleFloatRange(f, a)
   of tyFloat32:  result = handleFloatRange(f, a)
   of tyFloat64:  result = handleFloatRange(f, a)
@@ -1391,16 +1399,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyNil: result = f.allowsNil
     of tyString: result = isConvertible
     of tyPtr:
-      # ptr[Tag, char] is not convertible to 'cstring' for now:
-      if a.len == 1:
-        let pointsTo = a[0].skipTypes(abstractInst)
-        if pointsTo.kind == tyChar: result = isConvertible
-        elif pointsTo.kind == tyUncheckedArray and pointsTo[0].kind == tyChar:
-          result = isConvertible
-        elif pointsTo.kind == tyArray and firstOrd(nil, pointsTo[0]) == 0 and
-            skipTypes(pointsTo[0], {tyRange}).kind in {tyInt..tyInt64} and
-            pointsTo[1].kind == tyChar:
-          result = isConvertible
+      if isDefined(c.c.config, "nimPreviewCstringConversion"):
+        result = isNone
+      else:
+        if a.len == 1:
+          let pointsTo = a[0].skipTypes(abstractInst)
+          if pointsTo.kind == tyChar: result = isConvertible
+          elif pointsTo.kind == tyUncheckedArray and pointsTo[0].kind == tyChar:
+            result = isConvertible
+          elif pointsTo.kind == tyArray and firstOrd(nil, pointsTo[0]) == 0 and
+              skipTypes(pointsTo[0], {tyRange}).kind in {tyInt..tyInt64} and
+              pointsTo[1].kind == tyChar:
+            result = isConvertible
     else: discard
 
   of tyEmpty, tyVoid:
@@ -1905,7 +1915,7 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
     else:
       result.typ = errorType(c)
   else:
-    result.typ = f.skipTypes({tySink})
+    result.typ = f.skipTypes({tySink, tyVar})
   if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
   result.add c.graph.emptyNode
   result.add arg
@@ -2112,6 +2122,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isIntConv:
     # I'm too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:
+    if f.skipTypes({tyRange}).kind notin {tyInt, tyUInt}:
+      inc(m.intConvMatches)
     inc(m.intConvMatches)
     result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isSubtype:
@@ -2164,7 +2176,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isEqual:
     inc(m.exactMatches)
     result = arg
-    if skipTypes(f, abstractVar-{tyTypeDesc}).kind == tyTuple or
+    let ff = skipTypes(f, abstractVar-{tyTypeDesc})
+    if ff.kind == tyTuple or
       (arg.typ != nil and skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple):
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isNone:

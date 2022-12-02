@@ -17,7 +17,7 @@ proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let blen = b.len
   let minlen = min(alen, blen)
   if minlen > 0:
-    result = c_memcmp(unsafeAddr a[0], unsafeAddr b[0], cast[csize_t](minlen))
+    result = c_memcmp(unsafeAddr a[0], unsafeAddr b[0], cast[csize_t](minlen)).int
     if result == 0:
       result = alen - blen
   else:
@@ -232,7 +232,7 @@ proc nimParseBiggestFloat(s: openArray[char], number: var BiggestFloat,
   t[ti-2] = ('0'.ord + absExponent mod 10).char
   absExponent = absExponent div 10
   t[ti-3] = ('0'.ord + absExponent mod 10).char
-  number = c_strtod(addr t, nil)
+  number = c_strtod(cast[cstring](addr t), nil)
 
 when defined(nimHasInvariant):
   {.pop.} # staticBoundChecks

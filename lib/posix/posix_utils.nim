@@ -14,11 +14,14 @@
 import posix, parsecfg, os
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type Uname* = object
   sysname*, nodename*, release*, version*, machine*: string
 
 template charArrayToString(input: typed): string =
-  $cstring(addr input)
+  $cast[cstring](addr input)
 
 proc uname*(): Uname =
   ## Provides system information in a `Uname` struct with sysname, nodename,

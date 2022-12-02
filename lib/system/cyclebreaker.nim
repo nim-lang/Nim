@@ -138,7 +138,8 @@ proc breakCycles(s: Cell; desc: PNimTypeV2) =
       else:
         # anyhow as a link that the produced destructor does not have to follow:
         u[] = nil
-        cprintf("[Bug] %p %s RC %ld\n", t, desc.name, t.rc shr rcShift)
+        when traceCollector:
+          cprintf("[Bug] %p %s RC %ld\n", t, desc.name, t.rc shr rcShift)
   deinit j.traceStack
 
 proc thinout*[T](x: ref T) {.inline.} =

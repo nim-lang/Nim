@@ -319,10 +319,10 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         typ.align = int16(conf.floatInt64Align)
       elif align(length, 8) mod 8 == 0:
         typ.size = align(length, 8) div 8
-        typ.align = int16(conf.floatInt64Align)
+        typ.align = 1
       else:
         typ.size = align(length, 8) div 8 + 1
-        typ.align = int16(conf.floatInt64Align)
+        typ.align = 1
   of tyRange:
     computeSizeAlign(conf, typ[0])
     typ.size = typ[0].size

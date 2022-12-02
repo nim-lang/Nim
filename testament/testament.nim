@@ -43,7 +43,7 @@ const
 
 Command:
   p|pat|pattern <glob>        run all the tests matching the given pattern
-  all                         run all tests
+  all                         run all tests in category folders
   c|cat|category <category>   run all the tests of a certain category
   r|run <test>                run single test file
   html                        generate $1 from the database
@@ -507,6 +507,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
             else:
               buf
           if exitCode != expected.exitCode:
+            given.err = reExitcodesDiffer
             r.addResult(test, target, extraOptions, "exitcode: " & $expected.exitCode,
                               "exitcode: " & $exitCode & "\n\nOutput:\n" &
                               bufB, reExitcodesDiffer)

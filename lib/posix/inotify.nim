@@ -7,6 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 # Get the platform-dependent flags.
 # Structure describing an inotify event.
 type

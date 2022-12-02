@@ -298,8 +298,8 @@ proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc) =
       linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $2Len_0;$n",
         [rdLoc(d), a.rdLoc])
   of tySequence:
-    linefmt(p, cpsStmts, "$1.Field0 = $2$3; $1.Field1 = $4;$n",
-      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
+    linefmt(p, cpsStmts, "$1.Field0 = ($5) ? ($2$3) : NIM_NIL; $1.Field1 = $4;$n",
+      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a), dataFieldAccessor(p, a.rdLoc)])
   of tyArray:
     linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $3;$n",
       [rdLoc(d), rdLoc(a), rope(lengthOrd(p.config, a.t))])
@@ -308,8 +308,8 @@ proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc) =
     if etyp.kind in {tyVar} and optSeqDestructors in p.config.globalOptions:
       linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
 
-    linefmt(p, cpsStmts, "$1.Field0 = $2$3; $1.Field1 = $4;$n",
-      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
+    linefmt(p, cpsStmts, "$1.Field0 = ($5) ? ($2$3) : NIM_NIL; $1.Field1 = $4;$n",
+      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a), dataFieldAccessor(p, a.rdLoc)])
   else:
     internalError(p.config, a.lode.info, "cannot handle " & $a.t.kind)
 
@@ -1704,11 +1704,8 @@ proc genNewFinalize(p: BProc, e: PNode) =
 
 proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo; result: var Rope) =
   if optTinyRtti in p.config.globalOptions:
-    let ti = genTypeInfo2Name(p.module, dest)
-    inc p.module.labels
-    let cache = "Nim_OfCheck_CACHE" & p.module.labels.rope
-    p.module.s[cfsVars].addf("static TNimTypeV2* $#[2];$n", [cache])
-    appcg(p.module, result, "#isObjWithCache($#.m_type, $#, $#)", [a, ti, cache])
+    let token = $genDisplayElem(MD5Digest(hashType(dest)))
+    appcg(p.module, result, "#isObjDisplayCheck($#.m_type, $#, $#)", [a, getObjDepth(dest), token])
   else:
     # unfortunately 'genTypeInfoV1' sets tfObjHasKids as a side effect, so we
     # have to call it here first:
@@ -1722,10 +1719,6 @@ proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo; result: var Ro
       let cache = "Nim_OfCheck_CACHE" & p.module.labels.rope
       p.module.s[cfsVars].addf("static TNimType* $#[2];$n", [cache])
       appcg(p.module, result, "#isObjWithCache($#.m_type, $#, $#)", [a, ti, cache])
-    when false:
-      # former version:
-      appcg(p.module, result, "#isObj($1.m_type, $2)",
-            [a, genTypeInfoV1(p.module, dest, info)])
 
 proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var a: TLoc
@@ -1799,7 +1792,9 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
       putIntoDest(p, b, e, "$1, $1Len_0" % [rdLoc(a)], a.storage)
     of tyString, tySequence:
       putIntoDest(p, b, e,
-                  "$1$3, $2" % [rdLoc(a), lenExpr(p, a), dataField(p)], a.storage)
+                  "($4) ? ($1$3) : NIM_NIL, $2" %
+                    [rdLoc(a), lenExpr(p, a), dataField(p), dataFieldAccessor(p, a.rdLoc)],
+                  a.storage)
     of tyArray:
       putIntoDest(p, b, e,
                   "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, a.t))], a.storage)
@@ -2775,16 +2770,23 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
     var nilCheck = ""
     var r = newRopeAppender()
     rdMType(p, a, nilCheck, r)
-    let checkFor = if optTinyRtti in p.config.globalOptions:
-                     genTypeInfo2Name(p.module, dest)
-                   else:
-                     genTypeInfoV1(p.module, dest, n.info)
-    if nilCheck != "":
-      linefmt(p, cpsStmts, "if ($1 && !#isObj($2, $3)){ #raiseObjectConversionError(); ",
-              [nilCheck, r, checkFor])
+    if optTinyRtti in p.config.globalOptions:
+      let checkFor = $getObjDepth(dest)
+      let token = $genDisplayElem(MD5Digest(hashType(dest)))
+      if nilCheck != "":
+        linefmt(p, cpsStmts, "if ($1 && !#isObjDisplayCheck($2, $3, $4)){ #raiseObjectConversionError(); ",
+                [nilCheck, r, checkFor, token])
+      else:
+        linefmt(p, cpsStmts, "if (!#isObjDisplayCheck($1, $2, $3)){ #raiseObjectConversionError(); ",
+                [r, checkFor, token])
     else:
-      linefmt(p, cpsStmts, "if (!#isObj($1, $2)){ #raiseObjectConversionError(); ",
-              [r, checkFor])
+      let checkFor = genTypeInfoV1(p.module, dest, n.info)
+      if nilCheck != "":
+        linefmt(p, cpsStmts, "if ($1 && !#isObj($2, $3)){ #raiseObjectConversionError(); ",
+                [nilCheck, r, checkFor])
+      else:
+        linefmt(p, cpsStmts, "if (!#isObj($1, $2)){ #raiseObjectConversionError(); ",
+                [r, checkFor])
     raiseInstr(p, p.s(cpsStmts))
     linefmt p, cpsStmts, "}$n", []
 
@@ -3046,7 +3048,16 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkObjConstr: genObjConstr(p, n, d)
   of nkCast: genCast(p, n, d)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: genConv(p, n, d)
-  of nkHiddenAddr, nkAddr: genAddr(p, n, d)
+  of nkHiddenAddr:
+    if n[0].kind == nkDerefExpr:
+      # addr ( deref ( x )) --> x
+      var x = n[0][0]
+      if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
+        x.typ = n.typ
+      expr(p, x, d)
+      return
+    genAddr(p, n, d)
+  of nkAddr: genAddr(p, n, d)
   of nkBracketExpr: genBracketExpr(p, n, d)
   of nkDerefExpr, nkHiddenDeref: genDeref(p, n, d)
   of nkDotExpr: genRecordField(p, n, d)
@@ -3219,6 +3230,11 @@ proc caseObjDefaultBranch(obj: PNode; branch: Int128): int =
       return i
   assert(false, "unreachable")
 
+proc isEmptyCaseObjectBranch(n: PNode): bool =
+  for it in n:
+    if it.kind == nkSym and not isEmptyType(it.sym.typ): return false
+  return true
+
 proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
                      result: var Rope; count: var int;
                      isConst: bool, info: TLineInfo) =
@@ -3247,7 +3263,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
     let b = lastSon(obj[selectedBranch])
     # designated initilization is the only way to init non first element of unions
     # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
-    if b.kind == nkRecList and b.len > 0:
+    if b.kind == nkRecList and not isEmptyCaseObjectBranch(b):
       result.add "._" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = {"
       getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
       result.add "}"
