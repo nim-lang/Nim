@@ -41,9 +41,6 @@ type
     value: T                            ## Stored value
 
   FutureVar*[T] = distinct Future[T]
-    thenCb: CallbackFunc # Callback for Future.then
-    catchCb: CallbackFunc # Callback for Future.catch
-    finalCb: CallbackFunc # Callback for Future.finally
 
   FutureError* = object of Defect
     cause*: FutureBase
@@ -227,10 +224,10 @@ proc complete*[T](future: FutureVar[T]) =
   assert(fut.error == nil)
   fut.finished = true
   fut.callbacks.call()
-  if future.thenCb != nil:
-    callSoon(future.thenCb)
-  if future.finalCb != nil:
-    callSoon(future.finalCb)
+  if fut.thenCb != nil:
+    callSoon(fut.thenCb)
+  if fut.finalCb != nil:
+    callSoon(fut.finalCb)
   when isFutureLoggingEnabled: logFutureFinish(Future[T](future))
 
 proc complete*[T](future: FutureVar[T], val: T) =
@@ -243,10 +240,10 @@ proc complete*[T](future: FutureVar[T], val: T) =
   fut.finished = true
   fut.value = val
   fut.callbacks.call()
-  if future.thenCb != nil:
-    callSoon(future.thenCb)
-  if future.finalCb != nil:
-    callSoon(future.finalCb)
+  if fut.thenCb != nil:
+    callSoon(fut.thenCb)
+  if fut.finalCb != nil:
+    callSoon(fut.finalCb)
   when isFutureLoggingEnabled: logFutureFinish(fut)
 
 proc fail*[T](future: Future[T], error: ref Exception) =
