@@ -1323,13 +1323,13 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
   case p.tok.tokType
   of tkProc:
     getTok(p)
-    result = parseProcExpr(p, mode != pmTypeDesc, nkLambda)
+    result = parseProcExpr(p, true, nkLambda)
   of tkFunc:
     getTok(p)
-    result = parseProcExpr(p, mode != pmTypeDesc, nkFuncDef)
+    result = parseProcExpr(p, true, nkFuncDef)
   of tkIterator:
     getTok(p)
-    result = parseProcExpr(p, mode != pmTypeDesc, nkIteratorDef)
+    result = parseProcExpr(p, true, nkIteratorDef)
   of tkBind:
     # legacy syntax, no-op in current nim
     result = newNodeP(nkBind, p)
@@ -1371,11 +1371,11 @@ proc parseTypeDesc(p: var Parser, fullExpr = false): PNode =
     of tkTuple:
       result = parseTuple(p, false)
     of tkProc:
+      getTok(p)
       result = parseProcExpr(p, false, nkLambda)
     of tkIterator:
-      result = parseProcExpr(p, false, nkLambda)
-      if result.kind == nkLambda: result.transitionSonsKind(nkIteratorDef)
-      else: result.transitionSonsKind(nkIteratorTy)
+      getTok(p)
+      result = parseProcExpr(p, false, nkIteratorDef)
     of tkEnum:
       result = newNodeP(nkEnumTy, p)
       getTok(p)
