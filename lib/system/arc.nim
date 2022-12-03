@@ -209,3 +209,8 @@ template tearDownForeignThreadGc* =
 
 proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): bool {.compilerRtl, inline.} =
   result = targetDepth <= source.depth and source.display[targetDepth] == token
+
+proc nimGetVtable(p: pointer, index: int): proc (this: pointer) {.nimcall.}
+       {.compilerRtl, raises: [].}=
+  let rti = cast[ptr PNimTypeV2](p)
+  result = rti.vtable[index]

@@ -11,7 +11,7 @@
 
 import
   intsets, options, ast, msgs, idents, renderer, types, magicsys,
-  sempass2, modulegraphs, lineinfos
+  sempass2, modulegraphs, lineinfos, astalgo
 
 import std/tables
 
@@ -230,6 +230,57 @@ proc sortBucket(a: var seq[PSym], relevantCols: IntSet) =
       a[j] = v
     if h == 1: break
 
+proc genDispatcherVtable(g: ModuleGraph; methods: seq[PSym]; index: int): PSym =
+#[
+proc dispatchWithoutReturn(x: Base, params: ...) =
+  cast[proc bar(x: Base, params: ...)](x.vtable[index])(x, params)
+]#
+  var base = methods[0].ast[dispatcherPos].sym
+  result = base
+  var paramLen = base.typ.len
+  var body = newNodeI(nkStmtList, base.info)
+  body.flags.incl nfTransf # should not be further transformed
+  var vtableAccess = newNodeIT(nkBracketExpr, base.info, base.typ)
+  let nimGetVtableSym = getCompilerProc(g, "nimGetVtable")
+  var getVtableCall = newTree(nkCall,
+    newSymNode(nimGetVtableSym),
+    newSymNode(base.typ.n[1].sym),
+    newIntNode(nkIntLit, index)
+  )
+  getVtableCall.typ = base.typ
+
+
+  # var vtableDotAccess = newTree(nkDotExpr, ,
+  #                         newSymNode(newSym(skField, getIdent(g.cache, "vtable"), nextSymId(g.idgen), base.owner, base.info))
+  #                         )
+  # var vtableType = newType(tyUncheckedArray, nextTypeId(g.idgen),  base.typ.owner)
+  # vtableType.add base.typ
+  # vtableDotAccess.typ = vtableType
+
+  var vtableCall = newNodeIT(nkCall, base.info, base.typ[0])
+  var castNode = newTree(nkCast,
+        newNodeIT(nkType, base.info, base.typ),
+        getVtableCall)
+
+  castNode.typ = base.typ
+  vtableCall.add castNode
+  for col in 1..<paramLen:
+    let param = base.typ.n[col].sym
+    vtableCall.add newSymNode(param)
+  body.add vtableCall
+  echo body.renderTree
+
+#[
+StmtList
+  BracketExpr
+    DotExpr
+      Ident "x"
+      Ident "vtable"
+    Ident "index"
+]#
+
+  result.ast[bodyPos] = body
+
 proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PSym =
   var base = methods[0].ast[dispatcherPos].sym
   result = base
@@ -302,14 +353,13 @@ proc generateMethodDispatchers*(g: ModuleGraph): PNode =
     if isDefined(g.config, "nimPreviewVTable"):
       doAssert sfBase in g.methods[bucket].methods[^1].flags
       doAssert optMultiMethods notin g.config.globalOptions # we are not interested in other fields
-      # {.cursor.} ?
+      # todo {.cursor.} ?
       let base = g.methods[bucket].methods[^1]
       let baseType = base.typ[1].skipTypes(skipPtrs)
       let methodIndex = g.bucketTable[baseType.itemId]
       # echo g.bucketTable, " ", baseType.itemId " ", methodIndex
-      echo "here: ", methodIndex, " -> ", bucket
-      echo "find: ", find(methodIndex, bucket)
-      result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))
+      let index = find(methodIndex, bucket) # here is the correpsonding index
+      result.add newSymNode(genDispatcherVtable(g, g.methods[bucket].methods, index))
     else:
       result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))
     # Gen vtable init here: it should work
