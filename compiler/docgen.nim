@@ -264,17 +264,22 @@ template declareClosures =
       result = getCurrentDir() / s
       if not fileExists(result): result = ""
 
-  proc docgenFindRefFile(targetRelPath: string, isMarkup: bool):
+  proc docgenFindRefFile(targetRelPath: string):
          tuple[targetPath: string, linkRelPath: string] {.gcsafe.} =
     let fromDir = splitFile(destFile).dir  # dir where we reference from
     let basedir = os.splitFile(currentFilename.string).dir
-    if isMarkup:  # .rst/.md file
-      result.targetPath = fromDir / targetRelPath
-    else:  # .nim file
-      let outDirPath: RelativeFile =
-          presentationPath(conf, AbsoluteFile(basedir / targetRelPath))
-            # use presentationPath because `..` path can be be mangled to `_._`
-      result.targetPath = string(conf.outDir / outDirPath)
+    let outDirPath: RelativeFile =
+        presentationPath(conf, AbsoluteFile(basedir / targetRelPath))
+          # use presentationPath because `..` path can be be mangled to `_._`
+    result.targetPath = string(conf.outDir / outDirPath)
+    if not fileExists(result.targetPath):
+      # this can happen if targetRelPath goes to parent directory `OUTDIR/..`.
+      # Trying it, this may cause ambiguities, but allows us to insert
+      # "packages" into each other, which is actually used in Nim repo itself.
+      let destPath = fromDir / targetRelPath
+      if destPath != result.targetPath and fileExists(destPath):
+        result.targetPath = destPath
+
     result.linkRelPath = relativePath(result.targetPath.splitFile.dir,
                                       fromDir).replace('\\', '/')
 

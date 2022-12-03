@@ -1528,7 +1528,7 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   proc myFindFile(filename: string): string =
     # we don't find any files in online mode:
     result = ""
-  proc myFindRefFile(filename: string, isMarkup: bool): (string, string) =
+  proc myFindRefFile(filename: string): (string, string) =
     result = ("", "")
 
   const filen = "input"

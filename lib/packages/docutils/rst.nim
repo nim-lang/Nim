@@ -80,7 +80,7 @@ type
                        arg: string) {.closure, gcsafe.} ## what to do in case of an error
   FindFileHandler* = proc (filename: string): string {.closure, gcsafe.}
   FindRefFileHandler* =
-    proc (targetRelPath: string, isMarkup: bool):
+    proc (targetRelPath: string):
          tuple[targetPath: string, linkRelPath: string] {.closure, gcsafe.}
     ## returns where .html or .idx file should be found by its relative path.
 
@@ -473,7 +473,7 @@ proc defaultFindFile*(filename: string): string =
   if fileExists(filename): result = filename
   else: result = ""
 
-proc defaultFindRefFile*(filename: string, isMarkup: bool): (string, string) =
+proc defaultFindRefFile*(filename: string): (string, string) =
   (filename, "")
 
 proc defaultRole(options: RstParseOptions): string =
@@ -3499,8 +3499,7 @@ proc loadIdxFile(s: var PRstSharedState, origFilename: string) =
     rstMessage(s.filenames, s.msgHandler, s.idxImports[origFilename].fromInfo,
                meCannotOpenFile, origFilename & ": unknown extension")
   let idxFilename = dir / basename & ".idx"
-  let (idxPath, linkRelPath) = s.findRefFile(
-      idxFilename, isMarkup = ext in [".md", ".rst"])
+  let (idxPath, linkRelPath) = s.findRefFile(idxFilename)
   s.idxImports[origFilename].linkRelPath = linkRelPath
   var
     fileEntries: seq[IndexEntry]
@@ -3772,7 +3771,8 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
 proc completePass2*(s: PRstSharedState) =
   for (filename, importdocInfo) in s.idxImports.pairs:
     if not importdocInfo.used:
-      rstMessage(s, mwUnusedImportdoc, filename)
+      rstMessage(s.filenames, s.msgHandler, importdocInfo.fromInfo,
+                 mwUnusedImportdoc, filename)
 
 proc rstParse*(text, filename: string,
                line, column: int,
