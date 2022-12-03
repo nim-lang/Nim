@@ -267,7 +267,7 @@ template main {.dirty.} =
         doAssert $(@my) == """@['\x00', '\x00', '\x00', '\x00', '\x00']"""
 
   block: # array
-    var x: array[10, Object] = arrayWith(default(Object), 10)
+    var x: array[10, Object] = default(array[10, Object])
     let y = x[0]
     doAssert y.value == 12
     doAssert y.time == 1.2
