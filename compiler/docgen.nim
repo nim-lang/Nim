@@ -277,7 +277,6 @@ template declareClosures =
       result.targetPath = string(conf.outDir / outDirPath)
     result.linkRelPath = relativePath(result.targetPath.splitFile.dir,
                                       fromDir).replace('\\', '/')
-    echo "linkRelPath: ", result.linkRelPath
 
 
 proc parseRst(text: string,
