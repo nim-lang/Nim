@@ -110,9 +110,9 @@
 - Using an unnamed break in a block is deprecated. This warning will become an error in future versions! Use a named block with a named break instead.
 
 - Several Standard libraries are moved to nimble packages, use `nimble` to install them:
-  - `std/punycode` => `pkg/punycode`
-  - `std/asyncftpclient` => `pkg/asyncftpclient`
-  - `std/smtp` => `pkg/smtp`
+  - `std/punycode` => `punycode`
+  - `std/asyncftpclient` => `asyncftpclient`
+  - `std/smtp` => `smtp`
   - `std/db_common` => `db_connector/db_common`
   - `std/db_sqlite` => `db_connector/db_sqlite`
   - `std/db_mysql` => `db_connector/db_mysql`
