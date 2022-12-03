@@ -113,5 +113,5 @@ proc addInt*(result: var string; x: int64) {.enforceNoRaises.} =
       addChars(result, numToString(x))
     else: impl()
 
-proc addInt*(result: var string; x: int) {.inline, enforceNoRaises.} =
+proc addInt*(result: var string; x: int8 | int16 | int32) {.inline, enforceNoRaises.} =
   addInt(result, int64(x))

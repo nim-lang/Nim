@@ -139,7 +139,7 @@ template fn() =
       let a = (int.high, uint.high)
       when int.sizeof == 4:
         testRoundtrip(a): "[2147483647,4294967295]"
-      else:
+      elif int.sizeof == 8:
         testRoundtrip(a): "[9223372036854775807,18446744073709551615]"
 
   block: # bug #18007

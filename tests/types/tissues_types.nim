@@ -1,9 +1,5 @@
 discard """
-  output: '''true
-true
-true
-true
-ptr Foo
+  output: '''ptr Foo
 (member: "hello world")
 (member: 123.456)
 (member: "hello world", x: ...)
@@ -17,11 +13,9 @@ joinable: false
 import typetraits
 
 block t1252:
-  echo float32 isnot float64
-  echo float32 isnot float
-  echo int32 isnot int64
-  echo int32 isnot int
-
+  doAssert float32 isnot float64
+  doAssert float32 isnot float
+  
 block t5640:
   type
     vecBase[I: static[int]] = distinct array[I, float32]
