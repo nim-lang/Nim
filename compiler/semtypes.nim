@@ -38,7 +38,7 @@ const
   errInOutFlagNotExtern = "the '$1' modifier can be used only with imported types"
 
 proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType =
-  if prev == nil:
+  if prev == nil or prev.kind == tyGenericBody:
     result = newTypeS(kind, c)
   else:
     result = prev
@@ -977,7 +977,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1, c.config)
     let body = n.lastSon
-    var t = if prev != nil and body.kind == nkObjectTy:
+    var t = if prev != nil and prev.kind != tyGenericBody and body.kind == nkObjectTy:
               semObjectNode(c, body, nil, prev.flags)
             else:
               semTypeNode(c, body, nil)
@@ -1575,21 +1575,23 @@ proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
     result = newTypeS(tyAlias, c)
     result.rawAddSon typeExpr
     result.sym = prev.sym
-    assignType(prev, result)
+    if prev.kind != tyGenericBody:
+      assignType(prev, result)
 
 proc fixupTypeOf(c: PContext, prev: PType, typExpr: PNode) =
   if prev != nil:
     let result = newTypeS(tyAlias, c)
     result.rawAddSon typExpr.typ
     result.sym = prev.sym
-    assignType(prev, result)
+    if prev.kind != tyGenericBody:
+      assignType(prev, result)
 
 proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
   var n = semExprWithType(c, n, {efDetermineType})
   if n.typ.kind == tyTypeDesc:
     result = n.typ.base
     # fix types constructed by macros/template:
-    if prev != nil and prev.sym != nil:
+    if prev != nil and prev.kind != tyGenericBody and prev.sym != nil:
       if result.sym.isNil:
         # Behold! you're witnessing enormous power yielded
         # by macros. Only macros can summon unnamed types
@@ -1610,7 +1612,7 @@ proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
     result = errorType(c)
 
 proc freshType(c: PContext; res, prev: PType): PType {.inline.} =
-  if prev.isNil:
+  if prev.isNil or prev.kind == tyGenericBody:
     result = copyType(res, nextTypeId c.idgen, res.owner)
     copyTypeProps(c.graph, c.idgen.module, result, res)
   else:
@@ -1988,6 +1990,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       let alias = maybeAliasType(c, s.typ, prev)
       if alias != nil:
         result = alias
+      elif prev.kind == tyGenericBody:
+        result = s.typ
       else:
         assignType(prev, s.typ)
         # bugfix: keep the fresh id for aliases to integral types:
@@ -2007,7 +2011,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       let alias = maybeAliasType(c, t, prev)
       if alias != nil:
         result = alias
-      elif prev == nil:
+      elif prev == nil or prev.kind == tyGenericBody:
         result = t
       else:
         assignType(prev, t)
