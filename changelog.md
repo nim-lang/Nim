@@ -181,6 +181,8 @@
 - Removed deprecated `` httpcore.`==` ``.
 - Removed deprecated `std/posix.CMSG_SPACE` and `std/posix.CMSG_LEN` that takes wrong argument types.
 - Removed deprecated `osproc.poDemon`, symbol with typo.
+- Removed deprecated `std/tables.allValues`.
+
 
 ## Language changes
 
