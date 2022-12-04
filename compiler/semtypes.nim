@@ -2012,7 +2012,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       if alias != nil:
         result = alias
       elif prev == nil or prev.kind == tyGenericBody:
-        result = s.typ
+        result = t
       else:
         assignType(prev, t)
         result = prev
