@@ -147,9 +147,6 @@ proc reversed*[T](a: openArray[T]): seq[T] {.inline.} =
   result.setLen(n)
   for i in 0..<n: result[i] = a[n - (i + 1)]
 
-proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T]
-  {.inline, deprecated: "use: `reversed(toOpenArray(a, first, last))`".} =
-  reversed(toOpenArray(a, first, last))
 
 when defined(nimHasEffectsOf):
   {.experimental: "strictEffects".}
