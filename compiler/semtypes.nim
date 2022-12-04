@@ -777,9 +777,10 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
   if n == nil: return
   case n.kind
   of nkRecWhen:
+    var a = copyTree(n)
     var branch: PNode = nil   # the branch to take
-    for i in 0..<n.len:
-      var it = n[i]
+    for i in 0..<a.len:
+      var it = a[i]
       if it == nil: illFormedAst(n, c.config)
       var idx = 1
       case it.kind
@@ -805,7 +806,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         semRecordNodeAux(c, it[idx], newCheck, newPos, newf, rectype, hasCaseFields)
         it[idx] = if newf.len == 1: newf[0] else: newf
     if c.inGenericContext > 0:
-      father.add n
+      father.add a
     elif branch != nil:
       semRecordNodeAux(c, branch, check, pos, father, rectype, hasCaseFields)
     elif father.kind in {nkElse, nkOfBranch}:
