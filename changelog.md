@@ -182,6 +182,10 @@
 - Removed deprecated `std/posix.CMSG_SPACE` and `std/posix.CMSG_LEN` that takes wrong argument types.
 - Removed deprecated `osproc.poDemon`, symbol with typo.
 
+
+- Removed deprecated `algorithm.reversed` overload.
+
+
 ## Language changes
 
 - [Tag tracking](https://nim-lang.github.io/Nim/manual.html#effect-system-tag-tracking) supports the definition of forbidden tags by the `.forbids` pragma
