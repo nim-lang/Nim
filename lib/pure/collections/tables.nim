@@ -786,29 +786,6 @@ iterator mvalues*[A, B](t: var Table[A, B]): var B =
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator allValues*[A, B](t: Table[A, B]; key: A): B {.deprecated:
-    "Deprecated since v1.4; tables with duplicated keys are deprecated".} =
-  ## Iterates over any value in the table `t` that belongs to the given `key`.
-  ##
-  ## Used if you have a table with duplicate keys (as a result of using
-  ## `add proc<#add,Table[A,B],A,sinkB>`_).
-  ##
-  runnableExamples:
-    import std/[sequtils, algorithm]
-
-    var a = {'a': 3, 'b': 5}.toTable
-    for i in 1..3: a.add('z', 10*i)
-    doAssert toSeq(a.pairs).sorted == @[('a', 3), ('b', 5), ('z', 10), ('z', 20), ('z', 30)]
-    doAssert sorted(toSeq(a.allValues('z'))) == @[10, 20, 30]
-  var h: Hash = genHash(key) and high(t.data)
-  let L = len(t)
-  while isFilled(t.data[h].hcode):
-    if t.data[h].key == key:
-      yield t.data[h].val
-      assert(len(t) == L, "the length of the table changed while iterating over it")
-    h = nextTry(h, high(t.data))
-
-
 
 # -------------------------------------------------------------------
 # ---------------------------- TableRef -----------------------------
