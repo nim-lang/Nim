@@ -81,6 +81,7 @@ type
     info*: TLineInfo
     allowMetaTypes*: bool     # allow types such as seq[Number]
                               # i.e. the result contains unresolved generics
+    fromStaticExpr*: bool
     skipTypedesc*: bool       # whether we should skip typeDescs
     isReturnType*: bool
     owner*: PSym              # where this instantiation comes from
@@ -238,6 +239,8 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       assert result.kind notin nkCallKinds
   else:
     if n.len > 0:
+      if n.kind in nkCallKinds and n[0].kind == nkIdent and cl.fromStaticExpr:
+        localError(cl.c.config, n.info, "An unresolved call in staticExpr: '" & renderTree(n) & "'")
       newSons(result, n.len)
       if start > 0:
         result[0] = n[0]
@@ -660,10 +663,11 @@ proc initTypeVars*(p: PContext, typeMap: LayeredIdTable, info: TLineInfo;
   result.owner = owner
 
 proc replaceTypesInBody*(p: PContext, pt: TIdTable, n: PNode;
-                         owner: PSym, allowMetaTypes = false): PNode =
+                         owner: PSym, allowMetaTypes = false, fromStaticExpr = false): PNode =
   var typeMap = initLayeredTypeMap(pt)
   var cl = initTypeVars(p, typeMap, n.info, owner)
   cl.allowMetaTypes = allowMetaTypes
+  cl.fromStaticExpr = fromStaticExpr
   pushInfoContext(p.config, n.info)
   result = replaceTypeVarsN(cl, n)
   popInfoContext(p.config)

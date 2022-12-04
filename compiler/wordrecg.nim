@@ -86,7 +86,7 @@ type
     wAsmNoStackFrame = "asmNoStackFrame", wImplicitStatic = "implicitStatic",
     wGlobal = "global", wCodegenDecl = "codegenDecl", wUnchecked = "unchecked",
     wGuard = "guard", wLocks = "locks", wPartial = "partial", wExplain = "explain",
-    wLiftLocals = "liftlocals", wEnforceNoRaises = "enforceNoRaises",
+    wLiftLocals = "liftlocals", wEnforceNoRaises = "enforceNoRaises", wSystemRaisesDefect = "systemRaisesDefect",
     wRedefine = "redefine", wCallsite = "callsite",
 
     wAuto = "auto", wBool = "bool", wCatch = "catch", wChar = "char",

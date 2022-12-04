@@ -433,8 +433,6 @@ proc matchFilter(suiteName, testName, filter: string): bool =
   return glob(suiteName, suiteAndTestFilters[0]) and
          glob(testName, suiteAndTestFilters[1])
 
-when defined(testing): export matchFilter
-
 proc shouldRun(currentSuiteName, testName: string): bool =
   ## Check if a test should be run by matching suiteName and testName against
   ## test filters.

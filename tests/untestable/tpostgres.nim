@@ -2,6 +2,7 @@ import db_postgres, strutils
 
 
 let db = open("localhost", "dom", "", "test")
+
 db.exec(sql"DROP TABLE IF EXISTS myTable")
 db.exec(sql("""CREATE TABLE myTable (
                   id integer PRIMARY KEY,
@@ -49,9 +50,12 @@ try:
   doAssert false, "Exception expected"
 except DbError:
   let msg = getCurrentExceptionMsg().normalize
-  doAssert "expects" in msg
-  doAssert "?" in msg
-  doAssert "parameter substitution" in msg
+
+  info "DbError",
+    msg = $msg
+
+  doAssert "no parameter" in msg
+  doAssert "$1" in msg
 
 doAssert db.getValue(sql("select filename from files where id = ?"), 1) == "hello.tmp"
 
@@ -315,11 +319,11 @@ db.exec(sql("""CREATE TABLE DICTIONARY(
 var entry = "あっそ"
 var definition = "(int) (See ああそうそう) oh, really (uninterested)/oh yeah?/hmmmmm"
 discard db.getRow(
-  SqlQuery("INSERT INTO DICTIONARY(entry, definition) VALUES(\'$1\', \'$2\') RETURNING id" % [entry, definition]))
+  sql("INSERT INTO DICTIONARY(entry, definition) VALUES(?, ?) RETURNING id"), entry, definition)
 doAssert db.getValue(sql"SELECT definition FROM DICTIONARY WHERE entry = ?", entry) == definition
 entry = "Format string entry"
 definition = "Format string definition"
-db.exec(sql"INSERT INTO DICTIONARY(entry, definition) VALUES (?, ?)", entry, definition)
+db.exec(SqlQuery("INSERT INTO DICTIONARY(entry, definition) VALUES (?, ?)"), entry, definition)
 doAssert db.getValue(sql"SELECT definition FROM DICTIONARY WHERE entry = ?", entry) == definition
 
 echo("All tests succeeded!")

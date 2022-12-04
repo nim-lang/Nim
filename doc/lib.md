@@ -326,9 +326,6 @@ Internet Protocols and Support
   This module implements a selector API with backends specific to each OS.
   Currently, epoll on Linux and select on other operating systems.
 
-* [smtp](smtp.html)
-  This module implements a simple SMTP client.
-
 * [uri](uri.html)
   This module provides functions for working with URIs.
 
@@ -440,8 +437,7 @@ Hashing
 * [oids](oids.html)
   An OID is a global ID that consists of a timestamp,
   a unique counter, and a random value. This combination should suffice to
-  produce a globally distributed unique ID. This implementation was extracted
-  from the MongoDB interface and it thus binary compatible with a MongoDB OID.
+  produce a globally distributed unique ID.
 
 * [sha1](sha1.html)
   This module implements the SHA-1 checksum algorithm.

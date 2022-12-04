@@ -84,6 +84,7 @@ type
     warnEffect = "Effect",
     warnCastSizes = "CastSizes"
     warnTemplateRedefinition = "TemplateRedefinition",
+    warnUnnamedBreak = "UnnamedBreak",
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -181,6 +182,7 @@ const
     warnEffect: "$1",
     warnCastSizes: "$1",
     warnTemplateRedefinition: "template '$1' is implicitly redefined, consider adding an explicit .redefine pragma",
+    warnUnnamedBreak: "Using an unnamed break in a block is deprecated; Use a named block with a named break instead",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`

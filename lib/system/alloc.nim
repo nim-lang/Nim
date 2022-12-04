@@ -12,6 +12,7 @@
 
 include osalloc
 import std/private/syslocks
+import std/sysatomics
 
 template track(op, address, size) =
   when defined(memTracker):
@@ -23,7 +24,7 @@ template track(op, address, size) =
 const
   nimMinHeapPages {.intdefine.} = 128 # 0.5 MB
   SmallChunkSize = PageSize
-  MaxFli = 30
+  MaxFli = when sizeof(int) > 2: 30 else: 14
   MaxLog2Sli = 5 # 32, this cannot be increased without changing 'uint32'
                  # everywhere!
   MaxSli = 1 shl MaxLog2Sli
@@ -31,7 +32,7 @@ const
   RealFli = MaxFli - FliOffset
 
   # size of chunks in last matrix bin
-  MaxBigChunkSize = 1 shl MaxFli - 1 shl (MaxFli-MaxLog2Sli-1)
+  MaxBigChunkSize = int(1'i32 shl MaxFli - 1'i32 shl (MaxFli-MaxLog2Sli-1))
   HugeChunkSize = MaxBigChunkSize + 1
 
 type
@@ -114,7 +115,7 @@ type
   MemRegion = object
     when not defined(gcDestructors):
       minLargeObj, maxLargeObj: int
-    freeSmallChunks: array[0..SmallChunkSize div MemAlign-1, PSmallChunk]
+    freeSmallChunks: array[0..max(1,SmallChunkSize div MemAlign-1), PSmallChunk]
     flBitmap: uint32
     slBitmap: array[RealFli, uint32]
     matrix: array[RealFli, array[MaxSli, PBigChunk]]
@@ -195,7 +196,7 @@ proc mappingSearch(r, fl, sl: var int) {.inline.} =
   let t = roundup((1 shl (msbit(uint32 r) - MaxLog2Sli)), PageSize) - 1
   r = r + t
   r = r and not t
-  r = min(r, MaxBigChunkSize)
+  r = min(r, MaxBigChunkSize).int
   fl = msbit(uint32 r)
   sl = (r shr (fl - MaxLog2Sli)) - MaxSli
   dec fl, FliOffset
@@ -471,7 +472,7 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
         a.nextChunkSize = PageSize*4
       else:
         a.nextChunkSize = min(roundup(usedMem shr 2, PageSize), a.nextChunkSize * 2)
-        a.nextChunkSize = min(a.nextChunkSize, MaxBigChunkSize)
+        a.nextChunkSize = min(a.nextChunkSize, MaxBigChunkSize).int
 
   var size = size
   if size > a.nextChunkSize:
@@ -758,10 +759,14 @@ proc deallocBigChunk(a: var MemRegion, c: PBigChunk) =
 when defined(gcDestructors):
   template atomicPrepend(head, elem: untyped) =
     # see also https://en.cppreference.com/w/cpp/atomic/atomic_compare_exchange
-    while true:
+    when hasThreadSupport:
+      while true:
+        elem.next.storea head.loada
+        if atomicCompareExchangeN(addr head, addr elem.next, elem, weak = true, ATOMIC_RELEASE, ATOMIC_RELAXED):
+          break
+    else:
       elem.next.storea head.loada
-      if atomicCompareExchangeN(addr head, addr elem.next, elem, weak = true, ATOMIC_RELEASE, ATOMIC_RELAXED):
-        break
+      head.storea elem
 
   proc addToSharedFreeListBigChunks(a: var MemRegion; c: PBigChunk) {.inline.} =
     sysAssert c.next == nil, "c.next pointer must be nil"
@@ -841,7 +846,11 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       sysAssert c.size == size, "rawAlloc 6"
       when defined(gcDestructors):
         if c.freeList == nil:
-          c.freeList = atomicExchangeN(addr c.sharedFreeList, nil, ATOMIC_RELAXED)
+          when hasThreadSupport:
+            c.freeList = atomicExchangeN(addr c.sharedFreeList, nil, ATOMIC_RELAXED)
+          else:
+            c.freeList = c.sharedFreeList
+            c.sharedFreeList = nil
           compensateCounters(a, c, size)
       if c.freeList == nil:
         sysAssert(c.acc + smallChunkOverhead() + size <= SmallChunkSize,
@@ -868,7 +877,11 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
     trackSize(c.size)
   else:
     when defined(gcDestructors):
-      let deferredFrees = atomicExchangeN(addr a.sharedFreeListBigChunks, nil, ATOMIC_RELAXED)
+      when hasThreadSupport:
+        let deferredFrees = atomicExchangeN(addr a.sharedFreeListBigChunks, nil, ATOMIC_RELAXED)
+      else:
+        let deferredFrees = a.sharedFreeListBigChunks
+        a.sharedFreeListBigChunks = nil
       if deferredFrees != nil:
         freeDeferredObjects(a, deferredFrees)
 

@@ -34,7 +34,7 @@ const
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wEffectsOf, wTags, wForbids, wLocks, wDelegator, wGcSafe,
     wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy,
-    wRequires, wEnsures, wEnforceNoRaises}
+    wRequires, wEnsures, wEnforceNoRaises, wSystemRaisesDefect}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
@@ -1229,6 +1229,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         pragmaEnsures(c, it)
       of wEnforceNoRaises:
         sym.flags.incl sfNeverRaises
+      of wSystemRaisesDefect:
+        sym.flags.incl sfSystemRaisesDefect
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"

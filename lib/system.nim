@@ -1394,13 +1394,15 @@ when not defined(js) and not defined(booting) and defined(nimTrMacros):
     swap(cast[ptr pointer](addr arr[a])[], cast[ptr pointer](addr arr[b])[])
 
 when not defined(nimscript):
-  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
-                                                     discardable, raises: [], tags: [], benign.}
-  ## Atomic increment of `memLoc`. Returns the value after the operation.
+  {.push stackTrace: off, profiler: off.}
 
-  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline,
-                                                     discardable, raises: [], tags: [], benign.}
-  ## Atomic decrement of `memLoc`. Returns the value after the operation.
+  when not defined(nimPreviewSlimSystem):
+    import std/sysatomics
+    export sysatomics
+  else:
+    import std/sysatomics
+
+  {.pop.}
 
 include "system/memalloc"
 
@@ -1618,13 +1620,6 @@ when not defined(nimscript):
 when not declared(sysFatal):
   include "system/fatal"
 
-when not defined(nimscript):
-  {.push stackTrace: off, profiler: off.}
-
-  include "system/atomics"
-
-  {.pop.}
-
 
 when defined(nimV2):
   include system/arc
@@ -1684,7 +1679,7 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
     result = s[L]
     setLen(s, L)
 
-func `==`*[T: tuple|object](x, y: T): bool =
+proc `==`*[T: tuple|object](x, y: T): bool =
   ## Generic `==` operator for tuples that is lifted from the components.
   ## of `x` and `y`.
   for a, b in fields(x, y):
@@ -2007,7 +2002,7 @@ when notJSnotNims:
   proc equalMem(a, b: pointer, size: Natural): bool =
     nimCmpMem(a, b, size) == 0
   proc cmpMem(a, b: pointer, size: Natural): int =
-    nimCmpMem(a, b, size)
+    nimCmpMem(a, b, size).int
 
 when not defined(js):
   proc cmp(x, y: string): int =
@@ -2306,11 +2301,13 @@ else:
       type ExitCodeRange = int8
     else: # win32 uses low 32 bits
       type ExitCodeRange = cint
-
-    if errorcode < low(ExitCodeRange):
-      rawQuit(low(ExitCodeRange).cint)
-    elif errorcode > high(ExitCodeRange):
-      rawQuit(high(ExitCodeRange).cint)
+    when sizeof(errorcode) > sizeof(ExitCodeRange):
+      if errorcode < low(ExitCodeRange):
+        rawQuit(low(ExitCodeRange).cint)
+      elif errorcode > high(ExitCodeRange):
+        rawQuit(high(ExitCodeRange).cint)
+      else:
+        rawQuit(errorcode.cint)
     else:
       rawQuit(errorcode.cint)
 
@@ -2717,7 +2714,8 @@ when notJSnotNims:
     initSysLock echoLock
     addSysExitProc(proc() {.noconv.} = deinitSys(echoLock))
 
-  const stdOutLock = not defined(windows) and
+  const stdOutLock = compileOption("threads") and
+                    not defined(windows) and
                     not defined(android) and
                     not defined(nintendoswitch) and
                     not defined(freertos) and

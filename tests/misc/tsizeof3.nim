@@ -27,3 +27,32 @@ type
 
 static:
   doAssert(compiles(offsetOf(Payload, vals)))
+
+
+type
+  GoodboySave* {.bycopy.} = object
+    saveCount: uint8
+    savePoint: uint16
+    shards: uint32
+    friendCount: uint8
+    friendCards: set[0..255]
+    locationsKnown: set[0..127]
+    locationsUnlocked: set[0..127]
+    pickupsObtained: set[0..127]
+    pickupsUsed: set[0..127]
+    pickupCount: uint8
+
+block: # bug #20914
+  block:
+    proc csizeof[T](a: T): int {.importc:"sizeof", nodecl.}
+
+    var s: GoodboySave
+    doAssert sizeof(s) == 108
+    doAssert csizeof(s) == static(sizeof(s))
+
+  block:
+    proc calignof[T](a: T): int {.importc:"alignof", header: "<stdalign.h>".}
+
+    var s: set[0..256]
+    doAssert alignof(s) == 1
+    doAssert calignof(s) == static(alignof(s))

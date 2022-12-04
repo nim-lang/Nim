@@ -16,7 +16,6 @@ import
 type
   TLabel* = Rope              # for the C generator a label is just a rope
   TCFileSection* = enum       # the sections a generated C file consists of
-    cfsMergeInfo,             # section containing merge information
     cfsHeaders,               # section for C include file headers
     cfsFrameDefines           # section for nim frame macros
     cfsForwardTypes,          # section for C forward typedefs
@@ -24,7 +23,6 @@ type
     cfsSeqTypes,              # section for sequence types only
                               # this is needed for strange type generation
                               # reasons
-    cfsFieldInfo,             # section for field information
     cfsTypeInfo,              # section for type information (ag ABI checks)
     cfsProcHeaders,           # section for C procs prototypes
     cfsStrData,               # section for constant string literals
@@ -34,12 +32,8 @@ type
     cfsInitProc,              # section for the C init proc
     cfsDatInitProc,           # section for the C datInit proc
     cfsTypeInit1,             # section 1 for declarations of type information
-    cfsTypeInit2,             # section 2 for init of type information
     cfsTypeInit3,             # section 3 for init of type information
-    cfsDebugInit,             # section for init of debug information
     cfsDynLibInit,            # section for init of dynamic library binding
-    cfsDynLibDeinit           # section for deinitialization of dynamic
-                              # libraries
   TCTypeKind* = enum          # describes the type kind of a C type
     ctVoid, ctChar, ctBool,
     ctInt, ctInt8, ctInt16, ctInt32, ctInt64,

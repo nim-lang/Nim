@@ -16,6 +16,7 @@
   - `std/objectdollar`
   - `std/widestrs`
   - `std/typedthreads`
+  - `std/sysatomics`
 
   In the future, these definitions will be removed from the `system` module,
   and their respective modules will have to be imported to use them.
@@ -40,6 +41,8 @@
 
 - Enabling `-d:nimPreviewSlimSystem` removes the import of `channels_builtin` in
   in the `system` module.
+
+- Enabling `-d:nimPreviewCstringConversion`, `ptr char`, `ptr array[N, char]` and `ptr UncheckedArray[N, char]` don't support conversion to cstring anymore.
 
 - The `gc:v2` option is removed.
 
@@ -104,6 +107,8 @@
 
 - Object fields now support default values, see https://nim-lang.github.io/Nim/manual.html#types-default-values-for-object-fields for details.
 
+- Using an unnamed break in a block is deprecated. This warning will become an error in future versions! Use a named block with a named break instead.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
@@ -114,7 +119,6 @@
   `colPaleVioletRed` and `colMediumPurple` have also been changed to match the CSS color standard.
 - Fixed `lists.SinglyLinkedList` being broken after removing the last node ([#19353](https://github.com/nim-lang/Nim/pull/19353)).
 - The `md5` module now works at compile time and in JavaScript.
-- `std/smtp` sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
 - Changed `mimedb` to use an `OrderedTable` instead of `OrderedTableRef` to support `const` tables.
 - `strutils.find` now uses and defaults to `last = -1` for whole string searches,
   making limiting it to just the first char (`last = 0`) valid.
@@ -128,6 +132,8 @@
 
 - `std/net.IpAddress` dollar `$` improved, uses a fixed capacity for the `string` result based from the `IpAddressFamily`.
 - `std/jsfetch.newFetchOptions` now has default values for all parameters
+- `std/jsformdata` now accepts `Blob` data type.
+
 
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
