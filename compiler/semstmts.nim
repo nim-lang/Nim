@@ -533,11 +533,11 @@ proc errorSymChoiceUseQualifier(c: PContext; n: PNode) =
   localError(c.config, n.info, errGenerated, err)
 
 template isLocalVarSym(n: PNode): bool =
-  n.kind == nkSym and 
-    n.sym.kind in {skVar, skLet} and not 
-    ({sfGlobal, sfPure} <= n.sym.flags or
+  n.kind == nkSym and
+    n.sym.kind in {skVar, skLet} and not
+    ({sfGlobal, sfPure} * n.sym.flags != {} or
       sfCompileTime in n.sym.flags)
-  
+
 proc usesLocalVar(n: PNode): bool =
   for z in 1 ..< n.len:
     if n[z].isLocalVarSym:
@@ -2117,7 +2117,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         if s.kind notin {skMacro, skTemplate} and s.magic == mNone: paramsTypeCheck(c, s.typ)
 
         maybeAddResult(c, s, n)
-        let resultType = 
+        let resultType =
           if s.kind == skMacro:
             sysTypeFromName(c.graph, n.info, "NimNode")
           elif not isInlineIterator(s.typ):
