@@ -179,7 +179,7 @@ proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
     if volatileCheck: makeVolatile(a, s)
     for x in a.init:
       if x == s.id:
-        if s.kind notin {skVar, skResult}:
+        if s.kind == skLet:
           localError(a.config, n.info, errXCannotBeAssignedTo %
                     renderTree(n, {renderNoComments}
                 ))
