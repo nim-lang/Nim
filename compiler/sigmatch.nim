@@ -395,9 +395,9 @@ proc handleRange(c: PContext, f, a: PType, min, max: TTypeKind): TTypeRelation =
       result = isIntConv
     elif a.kind == tyUInt and nf == c.config.targetSizeUnsignedToKind:
       result = isIntConv
-    elif f.kind == tyInt and na in {tyInt8 .. c.config.targetSizeSignedToKind}:
+    elif f.kind == tyInt and na in {tyInt8 .. pred(c.config.targetSizeSignedToKind)}:
       result = isIntConv
-    elif f.kind == tyUInt and na in {tyUInt8 .. c.config.targetSizeUnsignedToKind}:
+    elif f.kind == tyUInt and na in {tyUInt8 .. pred(c.config.targetSizeUnsignedToKind)}:
       result = isIntConv
     elif k >= min and k <= max:
       result = isConvertible
@@ -2117,6 +2117,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
 
   case r
   of isConvertible:
+    if f.skipTypes({tyRange}).kind in {tyInt, tyUInt}:
+      inc(m.convMatches)
     inc(m.convMatches)
     result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isIntConv:
