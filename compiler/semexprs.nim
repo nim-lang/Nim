@@ -1817,11 +1817,16 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   # a = b # both are vars, means: a[] = b[]
   # a = b # b no 'var T' means: a = addr(b)
   var le = a.typ
+  let assignable = isAssignable(c, a)
+  let root = getRoot(a)
+  let isStrictDefLet = root != nil and root.kind == skLet and
+                       assignable == arAddressableConst and
+                       strictDefs in c.features
   if le == nil:
     localError(c.config, a.info, "expression has no type")
   elif (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind notin {tyVar} and
-        isAssignable(c, a) in {arNone, arLentValue}) or ( # todo patch isAssignable instead
-      skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs} and views notin c.features):
+        assignable in {arNone, arLentValue, arAddressableConst} and not isStrictDefLet
+        ) or (skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs} and views notin c.features):
     # Direct assignment to a discriminant is allowed!
     localError(c.config, a.info, errXCannotBeAssignedTo %
                renderTree(a, {renderNoComments}))
