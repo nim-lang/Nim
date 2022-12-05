@@ -1597,7 +1597,7 @@ when not defined(js) and defined(nimV2):
       align: int16
       depth: int16
       display: ptr UncheckedArray[uint32] # classToken
-      vtable: ptr UncheckedArray[proc (this: pointer) {.nimcall.}]
+      vtable: ptr UncheckedArray[pointer]
       when defined(nimTypeNames):
         name: cstring
       traceImpl: pointer

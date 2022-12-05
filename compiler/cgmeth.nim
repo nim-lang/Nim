@@ -11,9 +11,10 @@
 
 import
   intsets, options, ast, msgs, idents, renderer, types, magicsys,
-  sempass2, modulegraphs, lineinfos, astalgo
+  sempass2, modulegraphs, lineinfos, astalgo, sighashes, ropes,
+  cgendata
 
-import std/tables
+import std/[tables]
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, objectdollar]
@@ -232,7 +233,7 @@ proc sortBucket(a: var seq[PSym], relevantCols: IntSet) =
 
 proc genDispatcherVtable(g: ModuleGraph; methods: seq[PSym]; index: int): PSym =
 #[
-proc dispatchWithoutReturn(x: Base, params: ...) =
+proc dispatch(x: Base, params: ...) =
   cast[proc bar(x: Base, params: ...)](x.vtable[index])(x, params)
 ]#
   var base = methods[0].ast[dispatcherPos].sym
@@ -340,7 +341,19 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PS
   nilchecks.flags.incl nfTransf # should not be further transformed
   result.ast[bodyPos] = nilchecks
 
-proc generateMethodDispatchers*(g: ModuleGraph): PNode =
+proc genVtable(seqs: seq[PSym]): Rope =
+  result = Rope"{"
+  for i in 0..<seqs.len-1:
+    doAssert seqs[i].loc.r.len > 0
+    result.add seqs[i].loc.r & ", "
+  result.add seqs[0].loc.r
+  result.add "}"
+
+proc getTempName(m: BModule): Rope =
+  result = m.tmpBase & rope(m.labels)
+  inc m.labels
+
+proc generateMethodDispatchers*(g: ModuleGraph, m: BModule): PNode =
   result = newNode(nkStmtList)
   for bucket in 0..<g.methods.len:
     var relevantCols = initIntSet()
@@ -359,6 +372,26 @@ proc generateMethodDispatchers*(g: ModuleGraph): PNode =
       let methodIndex = g.bucketTable[baseType.itemId]
       # echo g.bucketTable, " ", baseType.itemId " ", methodIndex
       let index = find(methodIndex, bucket) # here is the correpsonding index
+      for index in 0..<g.methods[bucket].methods.len:
+        let sig = hashType(g.methods[bucket].methods[index].typ[1].skipTypes(skipPtrs))
+        let name = m.typeInfoMarkerV2.getOrDefault(sig)
+        if name.len == 0:
+          continue
+        # let name = "NTIv2$1_" % [rope($sig)] # todo register all types
+        # 
+        # doAssert name.len > 0
+        var typeEntry = ""
+        let objVtable = getTempName(m)
+        var dispatchMethods = newSeq[PSym]()
+        for i in methodIndex:
+          dispatchMethods.add g.methods[i].methods[index]
+        let vtablePointerName = getTempName(m)
+        m.s[cfsVars].addf("static void* $1[$2] = $3;$n", [vtablePointerName, rope(dispatchMethods.len), genVtable(dispatchMethods)])
+        # m.s[cfsVars].addf("static $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyString), skVar), objDisplayStore, rope(objDepth+1), objDisplay])
+        addf(typeEntry, "$1.vtable = $2;$n", [name, vtablePointerName])
+
+        m.s[cfsTypeInit3].add typeEntry
+
       result.add newSymNode(genDispatcherVtable(g, g.methods[bucket].methods, index))
     else:
       result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))
