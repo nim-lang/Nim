@@ -84,6 +84,8 @@ type
     escapingParams: IntSet
   PEffects = var TEffects
 
+const errXCannotBeAssignedTo = "'$1' cannot be assigned to"
+
 proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
   if typ == nil: return
   when false:
@@ -98,7 +100,7 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
     tracked.owner.flags.incl sfInjectDestructors
 
 proc isLocalVar(a: PEffects, s: PSym): bool =
-  s.typ != nil and (s.kind in {skVar, skResult} or (s.kind == skParam and isOutParam(s.typ))) and
+  s.typ != nil and (s.kind in {skLet, skVar, skResult} or (s.kind == skParam and isOutParam(s.typ))) and
     sfGlobal notin s.flags and s.owner == a.owner
 
 proc lockLocations(a: PEffects; pragma: PNode) =
@@ -176,7 +178,12 @@ proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
   if isLocalVar(a, s):
     if volatileCheck: makeVolatile(a, s)
     for x in a.init:
-      if x == s.id: return
+      if x == s.id:
+        if s.kind notin {skVar, skResult}:
+          localError(a.config, n.info, errXCannotBeAssignedTo %
+                    renderTree(n, {renderNoComments}
+                ))
+        return
     a.init.add s.id
     if a.scopes.getOrDefault(s.id) == a.currentBlock:
       #[ Consider this case:
@@ -331,7 +338,10 @@ proc useVar(a: PEffects, n: PNode) =
         message(a.config, n.info, warnProveInit, s.name.s)
       elif a.leftPartOfAsgn <= 0:
         if strictDefs in a.c.features:
-          message(a.config, n.info, warnUninit, s.name.s)
+          if s.kind == skLet:
+            localError(a.config, n.info, "let must be initialized")
+          else:
+            message(a.config, n.info, warnUninit, s.name.s)
       # prevent superfluous warnings about the same variable:
       a.init.add s.id
   useVarNoInitCheck(a, n, s)
