@@ -879,7 +879,10 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
             if ri.kind != nkEmpty:
               result.add moveOrCopy(v, ri, c, s, isDecl = v.kind == nkSym)
             elif ri.kind == nkEmpty and c.inLoop > 0:
-              result.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, isDecl = v.kind == nkSym)
+              let skipInit = v.kind == nkDotExpr and # Closure var
+                             sfNoInit in v[1].sym.flags
+              if not skipInit:
+                result.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, isDecl = v.kind == nkSym)
         else: # keep the var but transform 'ri':
           var v = copyNode(n)
           var itCopy = copyNode(it)
