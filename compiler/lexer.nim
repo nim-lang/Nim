@@ -1405,8 +1405,9 @@ proc getIndentWidth*(fileIdx: FileIndex, inputstream: PLLStream;
   while tok.tokType != tkEof:
     rawGetTok(lex, tok)
     if tok.indent > 0 and prevToken in {tkColon, tkEquals, tkType, tkConst, tkLet, tkVar, tkUsing}:
-      result = tok.indent
-      if result > 0: break
+      if result == 0:
+        result = tok.indent
+      result = min(tok.indent, result)
     prevToken = tok.tokType
   closeLexer(lex)
 
