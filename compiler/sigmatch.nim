@@ -807,8 +807,7 @@ proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
   # N is bound to a concrete value during the matching of the first param.
   # This proc is used to evaluate such static expressions.
   let instantiated = replaceTypesInBody(c.c, c.bindings, n, nil,
-                                        allowMetaTypes = allowUnresolved,
-                                        fromStaticExpr = true)
+                                        allowMetaTypes = allowUnresolved)
   result = c.c.semExpr(c.c, instantiated)
 
 proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
