@@ -394,6 +394,9 @@ proc semCast(c: PContext, n: PNode): PNode =
   let castedExpr = semExprWithType(c, n[1])
   if castedExpr.kind == nkClosedSymChoice:
     errorUseQualifier(c, n[1].info, castedExpr)
+  if targetType == nil:
+    localError(c.config, n.info, errExprXHasNoType %
+                renderTree(n, {renderNoComments}))
   if tfHasMeta in targetType.flags:
     localError(c.config, n[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
   if not isCastable(c, targetType, castedExpr.typ, n.info):
