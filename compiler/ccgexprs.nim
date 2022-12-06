@@ -1077,9 +1077,7 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc, orig: PType) =
       [rdLoc(a), rdLoc(b), lenExpr(p, arr)])
     raiseInstr(p, p.s(cpsStmts))
     linefmt p, cpsStmts, "}$n", []
-
-  else:
-    echo rdLoc(arr), " -> ", ty.kind
+  else: discard
 
 proc genOpenArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
