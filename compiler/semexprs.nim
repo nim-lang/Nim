@@ -1266,15 +1266,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
         result = newSymNode(s, n.info)
     else:
       result = newSymNode(s, n.info)
-  of skMacro:
-    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
-       (n.kind notin nkCallKinds and s.requiredParams > 0):
-      markUsed(c, n.info, s)
-      onUse(n.info, s)
-      result = symChoice(c, n, s, scClosed)
-    else:
-      result = semMacroExpr(c, n, n, s, flags)
-  of skTemplate:
+  of skMacro, skTemplate:
     if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
        (n.kind notin nkCallKinds and s.requiredParams > 0) or
        sfCustomPragma in sym.flags:
@@ -1283,7 +1275,10 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       onUse(info, s)
       result = symChoice(c, n, s, scClosed)
     else:
-      result = semTemplateExpr(c, n, s, flags)
+      case s.kind
+      of skMacro: result = semMacroExpr(c, n, n, s, flags)
+      of skTemplate: result = semTemplateExpr(c, n, s, flags)
+      else: discard # unreachable
   of skParam:
     markUsed(c, n.info, s)
     onUse(n.info, s)
