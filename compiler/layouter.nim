@@ -449,7 +449,7 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
       em.indentLevel = tok.indent
     elif (em.lastTok in (splitters + oprSet) and
         tok.tokType notin (closedPars - {tkBracketDotRi})):
-      if tok.tokType in openPars and tok.indent > em.indentStack[^1]:
+      if (em.lastTok in openPars or tok.tokType in openPars) and tok.indent >= em.indentStack[^1]:
         while em.indentStack[^1] < tok.indent:
           em.indentStack.add(em.indentStack[^1] + em.indWidth)
       while em.indentStack[^1] > tok.indent:
