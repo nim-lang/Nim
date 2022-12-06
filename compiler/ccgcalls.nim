@@ -145,7 +145,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
     line(p, cpsStmts, pl)
     if canRaise: raiseExit(p)
 
-proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
+proc genBoundsCheck(p: BProc; arr, a, b: TLoc, orig: PType)
 
 proc reifiedOpenArray(n: PNode): bool {.inline.} =
   var x = n
@@ -163,7 +163,7 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, 
   initLocExpr(p, q[3], c)
   # but first produce the required index checks:
   if optBoundsCheck in p.options:
-    genBoundsCheck(p, a, b, c)
+    genBoundsCheck(p, a, b, c, q[1].typ)
   let ty = skipTypes(a.t, abstractVar+{tyPtr})
   let dest = getTypeDesc(p.module, destType)
   let lengthExpr = "($1)-($2)+1" % [rdLoc(c), rdLoc(b)]

@@ -1040,8 +1040,8 @@ proc genCStringElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   putIntoDest(p, d, n,
               ropecg(p.module, "$1[$2]", [rdLoc(a), rdCharLoc(b)]), a.storage)
 
-proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
-  let ty = skipTypes(arr.t, abstractVarRange)
+proc genBoundsCheck(p: BProc; arr, a, b: TLoc, orig: PType) =
+  let ty = skipTypes(orig, abstractVarRange)
   case ty.kind
   of tyOpenArray, tyVarargs:
     if reifiedOpenArray(arr.lode):
@@ -1078,7 +1078,8 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
     raiseInstr(p, p.s(cpsStmts))
     linefmt p, cpsStmts, "}$n", []
 
-  else: discard
+  else:
+    echo rdLoc(arr), " -> ", ty.kind
 
 proc genOpenArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
@@ -1882,6 +1883,8 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       var b, c: TLoc
       initLocExpr(p, a[2], b)
       initLocExpr(p, a[3], c)
+      if optBoundsCheck in p.options:
+        genBoundsCheck(p, m, b, c, a[1].typ)
       if op == mHigh:
         putIntoDest(p, d, e, ropecg(p.module, "($2)-($1)", [rdLoc(b), rdLoc(c)]))
       else:
