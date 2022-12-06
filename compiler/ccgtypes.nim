@@ -1348,7 +1348,7 @@ proc genDisplay(t: PType, depth: int): Rope =
   result.add seqs[0]
   result.add "}"
 
-proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
+proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   cgsym(m, "TNimTypeV2")
   m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
 
@@ -1363,7 +1363,6 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   genHook(m, t, info, attachedTrace, typeEntry)
 
   let objDepth = if t.kind == tyObject: getObjDepth(t) else: -1
-
 
   if t.kind in {tyObject, tyDistinct} and incompleteType(t):
     localError(m.config, info, "request for RTTI generation for incomplete object: " &
@@ -1386,6 +1385,48 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
     addf(typeEntry, "$1.display = $2;$n", [name, rope(objDisplayStore)])
 
   m.s[cfsTypeInit3].add typeEntry
+
+  if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
+    discard genTypeInfoV1(m, t, info)
+
+proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
+  cgsym(m, "TNimTypeV2")
+  m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
+
+  var flags = 0
+  if not canFormAcycle(t): flags = flags or 1
+
+  var typeEntry = newRopeAppender()
+  addf(typeEntry, "N_LIB_PRIVATE TNimTypeV2 $1 = {", [name])
+  add(typeEntry, ".destructor = (void*)")
+  genHook(m, t, info, attachedDestructor, typeEntry)
+
+  let objDepth = if t.kind == tyObject: getObjDepth(t) else: -1
+
+  if t.kind in {tyObject, tyDistinct} and incompleteType(t):
+    localError(m.config, info, "request for RTTI generation for incomplete object: " &
+              typeToString(t))
+
+  addf(typeEntry, ", .size = sizeof($1), .align = (NI16) NIM_ALIGNOF($1), .depth = $2",
+    [getTypeDesc(m, t), rope(objDepth)])
+
+  if objDepth >= 0:
+    let objDisplay = genDisplay(t, objDepth)
+    let objDisplayStore = getTempName(m)
+    m.s[cfsVars].addf("static NIM_CONST $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyUInt32), skVar), objDisplayStore, rope(objDepth+1), objDisplay])
+    addf(typeEntry, ", .display = $1", [rope(objDisplayStore)])
+  if isDefined(m.config, "nimTypeNames"):
+    var typeName: Rope
+    if t.kind in {tyObject, tyDistinct}:
+      typeName = genTypeInfo2Name(m, t)
+    else:
+      typeName = rope("NIM_NIL")
+    addf(typeEntry, ", .name = $1", [typeName])
+  add(typeEntry, ", .traceImpl = (void*)")
+  genHook(m, t, info, attachedTrace, typeEntry)
+
+  addf(typeEntry, ", .flags = $1};$n", [rope(flags)])
+  m.s[cfsVars].add typeEntry
 
   if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
@@ -1423,7 +1464,10 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
     return prefixTI.rope & result & ")".rope
 
   m.g.typeInfoMarkerV2[sig] = (str: result, owner: owner)
-  genTypeInfoV2Impl(m, t, origType, result, info)
+  if m.compileToCpp:
+    genTypeInfoV2OldImpl(m, t, origType, result, info)
+  else:
+    genTypeInfoV2Impl(m, t, origType, result, info)
   result = prefixTI.rope & result & ")".rope
 
 proc openArrayToTuple(m: BModule; t: PType): PType =

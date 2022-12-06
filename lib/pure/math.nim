@@ -47,7 +47,6 @@ runnableExamples:
 ## * `fenv module <fenv.html>`_ for handling of floating-point rounding
 ##   and exceptions (overflow, zero-divide, etc.)
 ## * `random module <random.html>`_ for a fast and tiny random number generator
-## * `mersenne module <mersenne.html>`_ for the Mersenne Twister random number generator
 ## * `stats module <stats.html>`_ for statistical analysis
 ## * `strformat module <strformat.html>`_ for formatting floats for printing
 ## * `system module <system.html>`_ for some very basic and trivial math operators
