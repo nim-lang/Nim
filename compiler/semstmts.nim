@@ -557,15 +557,16 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
 
         return result
 
+template isLocalSym(sym: PSym): bool =
+  sym.kind in {skVar, skLet} and not
+    ({sfGlobal, sfPure} * sym.flags != {} or
+      sfCompileTime in sym.flags) or
+      sym.kind in {skProc, skFunc, skIterator} and
+      sfGlobal notin sym.flags
+
 template isLocalVarSym(n: PNode): bool =
-  n.kind == nkSym and 
-    (n.sym.kind in {skVar, skLet} and not
-    ({sfGlobal, sfPure} * n.sym.flags != {} or
-      sfCompileTime in n.sym.flags) or
-      n.sym.kind in {skProc, skFunc, skIterator} and 
-      sfGlobal notin n.sym.flags
-      )
-  
+  n.kind == nkSym and isLocalSym(n.sym)
+
 proc usesLocalVar(n: PNode): bool =
   for z in 1 ..< n.len:
     if n[z].isLocalVarSym:
@@ -718,7 +719,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         else:
           checkNilable(c, v)
         # allow let to not be initialised if imported from C:
-        if v.kind == skLet and sfImportc notin v.flags:
+        if v.kind == skLet and sfImportc notin v.flags and (strictDefs notin c.features or not isLocalSym(v)):
           localError(c.config, a.info, errLetNeedsInit)
       if sfCompileTime in v.flags:
         var x = newNodeI(result.kind, v.info)
