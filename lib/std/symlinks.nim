@@ -1,3 +1,5 @@
+## This module implements symlink (symbolic link) handling.
+
 from paths import Path, ReadDirEffect
 
 from std/private/ossymlinks import symlinkExists, createSymlink, expandSymlink

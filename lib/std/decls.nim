@@ -1,5 +1,4 @@
-# see `semLowerLetVarCustomPragma` for compiler support that enables these
-# lowerings
+## This module implements syntax sugar for some declarations.
 
 import macros
 

@@ -8,7 +8,7 @@
 #
 
 
-## The `std/envvars` module implements environment variables handling.
+## The `std/envvars` module implements environment variable handling.
 import std/oserrors
 
 type
