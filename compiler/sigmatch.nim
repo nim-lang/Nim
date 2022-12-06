@@ -810,7 +810,8 @@ proc maybeSkipDistinct(m: TCandidate; t: PType, callee: PSym): PType =
     result = t
 
 proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
-                            allowUnresolved = false): PNode =
+                            allowUnresolved = false,
+                            expectedType: PType = nil): PNode =
   # Consider this example:
   #   type Value[N: static[int]] = object
   #   proc foo[N](a: Value[N], r: range[0..(N-1)])
@@ -1167,9 +1168,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if result notin {isNone, isGeneric}:
         # resolve any late-bound static expressions
         # that may appear in the range:
+        let expectedType = skipTypes(f, {tyRange})
         for i in 0..1:
           if f.n[i].kind == nkStaticExpr:
-            f.n[i] = tryResolvingStaticExpr(c, f.n[i])
+            f.n[i] = tryResolvingStaticExpr(c, f.n[i], expectedType = expectedType)
         result = typeRangeRel(f, a)
     else:
       let f = skipTypes(f, {tyRange})
