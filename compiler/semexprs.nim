@@ -751,7 +751,7 @@ proc newHiddenAddrTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
         discard "allow access within a cast(unsafeAssign) section"
       elif strictDefs in c.features and aa == arAddressableConst and
               sym != nil and sym.kind == skLet and isOutParam:
-        discard "allow let passed to out parameters"
+        discard "allow let varaibles to be passed to out parameters"
       else:
         localError(c.config, n.info, errVarForOutParamNeededX % renderNotLValue(n))
 
