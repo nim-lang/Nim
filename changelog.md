@@ -80,6 +80,11 @@
 - Removed two type pragma syntaxes deprecated since 0.20, namely
   `type Foo = object {.final.}`, and `type Foo {.final.} [T] = object`.
 
+- `foo a = b` now means `foo(a = b)` rather than `foo(a) = b`. This is consistent
+  with the existing behavior of `foo a, b = c` meaning `foo(a, b = c)`.
+  This decision was made with the assumption that the old syntax was used rarely;
+  if your code used the old syntax, please be aware of this change.
+
 - [Overloadable enums](https://nim-lang.github.io/Nim/manual.html#overloadable-enum-value-names) and Unicode Operators
   are no longer experimental.
 
