@@ -17,7 +17,7 @@ import std/[
 
   # Strings:
   editdistance, wordwrap, parseutils, ropes,
-  pegs, punycode, strformat, strmisc, strscans, strtabs,
+  pegs, strformat, strmisc, strscans, strtabs,
   strutils, unicode, unidecode,
 
   # Generic operator system services:

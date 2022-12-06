@@ -115,10 +115,10 @@ pkg "nimquery", url = "https://github.com/nim-lang/nimquery", useHead = true
 pkg "nimsl"
 pkg "nimsvg"
 pkg "nimterop", "nimble minitest"
-pkg "nimwc", "nim c nimwc.nim"
+pkg "nimwc", "nim c nimwc.nim", allowFailure = true
 pkg "nimx", "nim c --threads:on test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
-pkg "norm", "testament r tests/sqlite/trows.nim"
+pkg "norm", "testament r tests/sqlite/trows.nim", allowFailure = true
 pkg "npeg", "nimble testarc"
 pkg "numericalnim", "nimble nimCI"
 pkg "optionsutils"
