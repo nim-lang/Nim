@@ -38,6 +38,14 @@ can also be used to include elements (and ranges of elements):
                            # from '0' to '9'
   ```
 
+The module [`std/setutils`](https://nim-lang.org/docs/setutils.html) provides a way to initialize a set from an iterable:
+
+```nim
+import std/setutils
+
+let uniqueChars = myString.toSet
+```
+
 These operations are supported by sets:
 
 ==================    ========================================================
