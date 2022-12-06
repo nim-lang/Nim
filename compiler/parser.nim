@@ -1042,9 +1042,10 @@ proc parseIdentColonEquals(p: var Parser, flags: DeclaredIdentFlags): PNode =
     result.add(newNodeP(nkEmpty, p))
 
 proc parseTuple(p: var Parser, indentAllowed = false): PNode =
-  #| tupleType = 'tuple' '[' optInd (identColonEquals (comma/semicolon)?)* optPar ']'
-  #| tupleDecl = tupleType |
-  #|     'tuple' COMMENT? (IND{>} identColonEquals (IND{=} identColonEquals)*)?
+  #| tupleTypeBracket = '[' optInd (identColonEquals (comma/semicolon)?)* optPar ']'
+  #| tupleType = 'tuple' tupleTypeBracket
+  #| tupleDecl = 'tuple' (tupleTypeBracket /
+  #|     COMMENT? (IND{>} identColonEquals (IND{=} identColonEquals)*)?)
   result = newNodeP(nkTupleTy, p)
   getTok(p)
   if p.tok.tokType == tkBracketLe:
