@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+## This module allows adding hooks to program exit.
+
 import locks
 
 type
