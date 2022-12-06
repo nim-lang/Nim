@@ -84,6 +84,10 @@ type
     escapingParams: IntSet
   PEffects = var TEffects
 
+const
+  errXCannotBeAssignedTo = "'$1' cannot be assigned to"
+  errLetNeedsInit = "'let' symbol requires an initialization"
+
 proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
   if typ == nil: return
   when false:
@@ -97,8 +101,8 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
       optSeqDestructors in tracked.config.globalOptions:
     tracked.owner.flags.incl sfInjectDestructors
 
-proc isLocalVar(a: PEffects, s: PSym): bool =
-  s.typ != nil and (s.kind in {skVar, skResult} or (s.kind == skParam and isOutParam(s.typ))) and
+proc isLocalSym(a: PEffects, s: PSym): bool =
+  s.typ != nil and (s.kind in {skLet, skVar, skResult} or (s.kind == skParam and isOutParam(s.typ))) and
     sfGlobal notin s.flags and s.owner == a.owner
 
 proc lockLocations(a: PEffects; pragma: PNode) =
@@ -173,10 +177,15 @@ proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
   let n = skipHiddenDeref(n)
   if n.kind != nkSym: return
   let s = n.sym
-  if isLocalVar(a, s):
+  if isLocalSym(a, s):
     if volatileCheck: makeVolatile(a, s)
     for x in a.init:
-      if x == s.id: return
+      if x == s.id:
+        if strictDefs in a.c.features and s.kind == skLet:
+          localError(a.config, n.info, errXCannotBeAssignedTo %
+                    renderTree(n, {renderNoComments}
+                ))
+        return
     a.init.add s.id
     if a.scopes.getOrDefault(s.id) == a.currentBlock:
       #[ Consider this case:
@@ -204,7 +213,7 @@ proc initVarViaNew(a: PEffects, n: PNode) =
     # 'x' is not nil, but that doesn't mean its "not nil" children
     # are initialized:
     initVar(a, n, volatileCheck=true)
-  elif isLocalVar(a, s):
+  elif isLocalSym(a, s):
     makeVolatile(a, s)
 
 proc warnAboutGcUnsafe(n: PNode; conf: ConfigRef) =
@@ -322,7 +331,7 @@ proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
   if a.inExceptOrFinallyStmt > 0:
     incl s.flags, sfUsedInFinallyOrExcept
-  if isLocalVar(a, s):
+  if isLocalSym(a, s):
     if sfNoInit in s.flags:
       # If the variable is explicitly marked as .noinit. do not emit any error
       a.init.add s.id
@@ -331,7 +340,10 @@ proc useVar(a: PEffects, n: PNode) =
         message(a.config, n.info, warnProveInit, s.name.s)
       elif a.leftPartOfAsgn <= 0:
         if strictDefs in a.c.features:
-          message(a.config, n.info, warnUninit, s.name.s)
+          if s.kind == skLet:
+            localError(a.config, n.info, errLetNeedsInit)
+          else:
+            message(a.config, n.info, warnUninit, s.name.s)
       # prevent superfluous warnings about the same variable:
       a.init.add s.id
   useVarNoInitCheck(a, n, s)
@@ -637,7 +649,7 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; ar
   let paramType = if formals != nil and argIndex < formals.len: formals[argIndex] else: nil
   if paramType != nil and paramType.kind in {tyVar}:
     invalidateFacts(tracked.guards, n)
-    if n.kind == nkSym and isLocalVar(tracked, n.sym):
+    if n.kind == nkSym and isLocalSym(tracked, n.sym):
       makeVolatile(tracked, n.sym)
   if paramType != nil and paramType.kind == tyProc and tfGcSafe in paramType.flags:
     let argtype = skipTypes(a.typ, abstractInst)
@@ -1025,7 +1037,7 @@ proc track(tracked: PEffects, n: PNode) =
       # bug #15038: ensure consistency
       if not hasDestructor(n.typ) and sameType(n.typ, n.sym.typ): n.typ = n.sym.typ
   of nkHiddenAddr, nkAddr:
-    if n[0].kind == nkSym and isLocalVar(tracked, n[0].sym):
+    if n[0].kind == nkSym and isLocalSym(tracked, n[0].sym):
       useVarNoInitCheck(tracked, n[0], n[0].sym)
     else:
       track(tracked, n[0])
@@ -1065,7 +1077,7 @@ proc track(tracked: PEffects, n: PNode) =
     when false: cstringCheck(tracked, n)
     if tracked.owner.kind != skMacro and n[0].typ.kind notin {tyOpenArray, tyVarargs}:
       createTypeBoundOps(tracked, n[0].typ, n.info)
-    if n[0].kind != nkSym or not isLocalVar(tracked, n[0].sym):
+    if n[0].kind != nkSym or not isLocalSym(tracked, n[0].sym):
       checkForSink(tracked, n[1])
       if not tracked.hasDangerousAssign and n[0].kind != nkSym:
         tracked.hasDangerousAssign = true

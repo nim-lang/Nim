@@ -1919,13 +1919,16 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
   result.add c.graph.emptyNode
   result.add arg
 
-proc isLValue(c: PContext; n: PNode): bool {.inline.} =
+proc isLValue(c: PContext; n: PNode, isOutParam = false): bool {.inline.} =
   let aa = isAssignable(nil, n)
   case aa
   of arLValue, arLocalLValue, arStrange:
     result = true
   of arDiscriminant:
     result = c.inUncheckedAssignSection > 0
+  of arAddressableConst:
+    let sym = getRoot(n)
+    result = strictDefs in c.features and sym != nil and sym.kind == skLet and isOutParam
   else:
     result = false
 
@@ -2189,6 +2192,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       return arg
     elif a.kind == tyVoid and f.matchesVoidProc and argOrig.kind == nkStmtList:
       # lift do blocks without params to lambdas
+      # now deprecated
+      message(c.config, argOrig.info, warnStmtListLambda)
       let p = c.graph
       let lifted = c.semExpr(c, newProcNode(nkDo, argOrig.info, body = argOrig,
           params = nkFormalParams.newTree(p.emptyNode), name = p.emptyNode, pattern = p.emptyNode,
@@ -2394,7 +2399,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         if argConverter.typ.kind notin {tyVar}:
           m.firstMismatch.kind = kVarNeeded
           noMatch()
-      elif not isLValue(c, n):
+      elif not (isLValue(c, n, isOutParam(formal.typ))):
         m.firstMismatch.kind = kVarNeeded
         noMatch()
 

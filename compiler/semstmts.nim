@@ -509,13 +509,6 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
       let it = pragmas[i]
       let key = if it.kind in nkPragmaCallKinds and it.len >= 1: it[0] else: it
 
-      when false:
-        let lhs = b[0]
-        let clash = strTableGet(c.currentScope.symbols, lhs.ident)
-        if clash != nil:
-          # refs https://github.com/nim-lang/Nim/issues/8275
-          wrongRedefinition(c, lhs.info, lhs.ident.s, clash.info)
-
       if isPossibleMacroPragma(c, it, key):
         # we transform ``var p {.m, rest.}`` into ``m(do: var p {.rest.})`` and
         # let the semantic checker deal with it:
@@ -562,38 +555,18 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
 
         doAssert result != nil
 
-        # since a macro pragma can set pragmas, we process these here again.
-        # This is required for SqueakNim-like export pragmas.
-        if false and result.kind in {nkVarSection, nkLetSection, nkConstSection}:
-          var validPragmas: TSpecialWords
-          case result.kind
-          of nkVarSection:
-            validPragmas = varPragmas
-          of nkLetSection:
-            validPragmas = letPragmas
-          of nkConstSection:
-            validPragmas = constPragmas
-          else:
-            # unreachable
-            discard
-          for defs in result:
-            for i in 0 ..< defs.len - 2:
-              let ex = defs[i]
-              if ex.kind == nkPragmaExpr and
-                  ex[namePos].kind == nkSym and
-                  ex[pragmaPos].kind != nkEmpty:
-                pragma(c, defs[lhsPos][namePos].sym, defs[lhsPos][pragmaPos], validPragmas)
         return result
 
+template isLocalSym(sym: PSym): bool =
+  sym.kind in {skVar, skLet} and not
+    ({sfGlobal, sfPure} * sym.flags != {} or
+      sfCompileTime in sym.flags) or
+      sym.kind in {skProc, skFunc, skIterator} and
+      sfGlobal notin sym.flags
+
 template isLocalVarSym(n: PNode): bool =
-  n.kind == nkSym and 
-    (n.sym.kind in {skVar, skLet} and not
-    ({sfGlobal, sfPure} * n.sym.flags != {} or
-      sfCompileTime in n.sym.flags) or
-      n.sym.kind in {skProc, skFunc, skIterator} and 
-      sfGlobal notin n.sym.flags
-      )
-  
+  n.kind == nkSym and isLocalSym(n.sym)
+
 proc usesLocalVar(n: PNode): bool =
   for z in 1 ..< n.len:
     if n[z].isLocalVarSym:
@@ -746,7 +719,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         else:
           checkNilable(c, v)
         # allow let to not be initialised if imported from C:
-        if v.kind == skLet and sfImportc notin v.flags:
+        if v.kind == skLet and sfImportc notin v.flags and (strictDefs notin c.features or not isLocalSym(v)):
           localError(c.config, a.info, errLetNeedsInit)
       if sfCompileTime in v.flags:
         var x = newNodeI(result.kind, v.info)
@@ -1709,12 +1682,6 @@ proc semProcAnnotation(c: PContext, prc: PNode;
         continue
 
       doAssert result != nil
-
-      # since a proc annotation can set pragmas, we process these here again.
-      # This is required for SqueakNim-like export pragmas.
-      if false and result.kind in procDefs and result[namePos].kind == nkSym and
-          result[pragmasPos].kind != nkEmpty:
-        pragma(c, result[namePos].sym, result[pragmasPos], validPragmas)
 
       return result
 

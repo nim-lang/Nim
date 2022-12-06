@@ -736,7 +736,7 @@ proc hasUnresolvedArgs(c: PContext, n: PNode): bool =
       if hasUnresolvedArgs(c, n[i]): return true
     return false
 
-proc newHiddenAddrTaken(c: PContext, n: PNode): PNode =
+proc newHiddenAddrTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
   if n.kind == nkHiddenDeref and not (c.config.backend == backendCpp or
                                       sfCompileToCpp in c.module.flags):
     checkSonsLen(n, 1, c.config)
@@ -745,13 +745,17 @@ proc newHiddenAddrTaken(c: PContext, n: PNode): PNode =
     result = newNodeIT(nkHiddenAddr, n.info, makeVarType(c, n.typ))
     result.add n
     let aa = isAssignable(c, n)
+    let sym = getRoot(n)
     if aa notin {arLValue, arLocalLValue}:
       if aa == arDiscriminant and c.inUncheckedAssignSection > 0:
         discard "allow access within a cast(unsafeAssign) section"
+      elif strictDefs in c.features and aa == arAddressableConst and
+              sym != nil and sym.kind == skLet and isOutParam:
+        discard "allow let varaibles to be passed to out parameters"
       else:
         localError(c.config, n.info, errVarForOutParamNeededX % renderNotLValue(n))
 
-proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
+proc analyseIfAddressTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
   result = n
   case n.kind
   of nkSym:
@@ -759,7 +763,7 @@ proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
     if n.sym.typ != nil and
         skipTypes(n.sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
       incl(n.sym.flags, sfAddrTaken)
-      result = newHiddenAddrTaken(c, n)
+      result = newHiddenAddrTaken(c, n, isOutParam)
   of nkDotExpr:
     checkSonsLen(n, 2, c.config)
     if n[1].kind != nkSym:
@@ -767,14 +771,14 @@ proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
       return
     if skipTypes(n[1].sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
       incl(n[1].sym.flags, sfAddrTaken)
-      result = newHiddenAddrTaken(c, n)
+      result = newHiddenAddrTaken(c, n, isOutParam)
   of nkBracketExpr:
     checkMinSonsLen(n, 1, c.config)
     if skipTypes(n[0].typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
       if n[0].kind == nkSym: incl(n[0].sym.flags, sfAddrTaken)
-      result = newHiddenAddrTaken(c, n)
+      result = newHiddenAddrTaken(c, n, isOutParam)
   else:
-    result = newHiddenAddrTaken(c, n)
+    result = newHiddenAddrTaken(c, n, isOutParam)
 
 proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
   checkMinSonsLen(n, 1, c.config)
@@ -820,7 +824,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
     if i < t.len and
         skipTypes(t[i], abstractInst-{tyTypeDesc}).kind in {tyVar}:
       if n[i].kind != nkHiddenAddr:
-        n[i] = analyseIfAddressTaken(c, n[i])
+        n[i] = analyseIfAddressTaken(c, n[i], isOutParam(skipTypes(t[i], abstractInst-{tyTypeDesc})))
 
 include semmagic
 
@@ -1266,15 +1270,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
         result = newSymNode(s, n.info)
     else:
       result = newSymNode(s, n.info)
-  of skMacro:
-    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
-       (n.kind notin nkCallKinds and s.requiredParams > 0):
-      markUsed(c, n.info, s)
-      onUse(n.info, s)
-      result = symChoice(c, n, s, scClosed)
-    else:
-      result = semMacroExpr(c, n, n, s, flags)
-  of skTemplate:
+  of skMacro, skTemplate:
     if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
        (n.kind notin nkCallKinds and s.requiredParams > 0) or
        sfCustomPragma in sym.flags:
@@ -1283,7 +1279,10 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       onUse(info, s)
       result = symChoice(c, n, s, scClosed)
     else:
-      result = semTemplateExpr(c, n, s, flags)
+      case s.kind
+      of skMacro: result = semMacroExpr(c, n, n, s, flags)
+      of skTemplate: result = semTemplateExpr(c, n, s, flags)
+      else: discard # unreachable
   of skParam:
     markUsed(c, n.info, s)
     onUse(n.info, s)
@@ -1817,11 +1816,16 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   # a = b # both are vars, means: a[] = b[]
   # a = b # b no 'var T' means: a = addr(b)
   var le = a.typ
+  let assignable = isAssignable(c, a)
+  let root = getRoot(a)
+  let useStrictDefLet = root != nil and root.kind == skLet and
+                       assignable == arAddressableConst and
+                       strictDefs in c.features and isLocalSym(root)
   if le == nil:
     localError(c.config, a.info, "expression has no type")
   elif (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind notin {tyVar} and
-        isAssignable(c, a) in {arNone, arLentValue, arAddressableConst}) or (
-      skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs} and views notin c.features):
+        assignable in {arNone, arLentValue, arAddressableConst} and not useStrictDefLet
+        ) or (skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs} and views notin c.features):
     # Direct assignment to a discriminant is allowed!
     localError(c.config, a.info, errXCannotBeAssignedTo %
                renderTree(a, {renderNoComments}))

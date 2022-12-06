@@ -1859,6 +1859,20 @@ before it is used. Thus the following is valid:
 
 In this example every path does set `s` to a value before it is used.
 
+  ```nim
+  {.experimental: "strictDefs".}
+
+  proc test(cond: bool) =
+    let s: seq[string]
+    if cond:
+      s = @["y"]
+    else:
+      s = @[]
+  ```
+
+With `experimental: "strictDefs"`, `let` statements are allowed to not have an initial value, but every path should set `s` to a value before it is used.
+
+
 `out` parameters
 ----------------
 
