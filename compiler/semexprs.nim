@@ -395,8 +395,7 @@ proc semCast(c: PContext, n: PNode): PNode =
   if castedExpr.kind == nkClosedSymChoice:
     errorUseQualifier(c, n[1].info, castedExpr)
   if targetType == nil:
-    localError(c.config, n.info, errExprXHasNoType %
-                renderTree(n, {renderNoComments}))
+    localError(c.config, n.info, "Invalid usage of cast, cast requires a type to convert to, e.g., cast[int](0d).")
   if tfHasMeta in targetType.flags:
     localError(c.config, n[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
   if not isCastable(c, targetType, castedExpr.typ, n.info):
