@@ -890,8 +890,19 @@ proc transformExceptBranch(c: PTransf, n: PNode): PNode =
     # -> let exc = ...
     let identDefs = newTransNode(nkIdentDefs, n[1].info, 3)
     identDefs[0] = n[0][2]
-    assert identDefs[0].kind == nkSym and sfNoInit in identDefs[0].sym.flags
-    identDefs[0].sym.flags.excl sfNoInit
+
+    # for a nimcall, it should be a nkSym
+    # for a closure, it is a nkDotExpr
+    case identDefs[0].kind
+    of nkSym:
+      assert sfNoInit in identDefs[0].sym.flags
+      identDefs[0].sym.flags.excl sfNoInit
+    of nkDotExpr:
+      assert sfNoInit in identDefs[0][1].sym.flags
+      identDefs[0][1].sym.flags.excl sfNoInit
+    else:
+      assert false, "Unknown kind: " & $identDefs[0].kind
+
     identDefs[1] = newNodeI(nkEmpty, n.info)
     identDefs[2] = convNode
 
