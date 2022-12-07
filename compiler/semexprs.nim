@@ -2521,6 +2521,7 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
   result.typ = newTypeS(tySet, c)
   result.typ.flags.incl tfIsConstructor
   var expectedElementType: PType = nil
+  var intLitPass = true
   if expectedType != nil and (
       let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
       expected.kind == tySet):
@@ -2557,13 +2558,21 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
         n[i] = semExprWithType(c, n[i], {efTypeAllowed}, expectedElementType)
         if typ == nil:
           typ = skipTypes(n[i].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
+          if typ.isIntLit and typ.n.intVal > MaxSetElements:
+            intLitPass = false
           if expectedElementType == nil:
             expectedElementType = typ
+
     if not isOrdinalType(typ, allowEnumWithHoles=true):
       localError(c.config, n.info, errOrdinalTypeExpected % typeToString(typ, preferDesc))
-      typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
-    elif lengthOrd(c.config, typ) > MaxSetElements:
-      typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
+    if not intLitPass and not isOrdinalTypeOfSet(typ, allowEnumWithHoles=true):
+      localError(c.config, n.info, errSetTooBig)
+
+    if typ.kind in {tyInt, tyInt32..tyInt64}:
+      typ = newTypeS(tyInt16, c)
+    elif typ.kind in {tyUInt, tyUInt32..tyUInt64}:
+      typ = newTypeS(tyUInt16, c)
+
     addSonSkipIntLit(result.typ, typ, c.idgen)
     for i in 0..<n.len:
       var m: PNode

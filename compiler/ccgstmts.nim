@@ -654,7 +654,7 @@ proc genParForStmt(p: BProc, t: PNode) =
     #initLoc(forLoopVar.loc, locLocalVar, forLoopVar.typ, onStack)
     #discard mangleName(forLoopVar)
     let call = t[1]
-    assert(call.len in {4, 5})
+    assert(call.len in 4..5)
     initLocExpr(p, call[1], rangeA)
     initLocExpr(p, call[2], rangeB)
 

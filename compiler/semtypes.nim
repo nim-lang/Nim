@@ -1826,7 +1826,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semTypeExpr(c, n, prev)
     else:
       let op = considerQuotedIdent(c, n[0])
-      if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
+      if op.id in [ord(wAnd), ord(wOr)] or op.s == "|":
         checkSonsLen(n, 3, c.config)
         var
           t1 = semTypeNode(c, n[1], nil)

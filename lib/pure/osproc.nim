@@ -743,9 +743,9 @@ when defined(windows) and not defined(useNimRtl):
     if e.str != nil: dealloc(e.str)
     if success == 0:
       if poInteractive in result.options: close(result)
-      const errInvalidParameter = 87.int
-      const errFileNotFound = 2.int
-      if lastError.int in {errInvalidParameter, errFileNotFound}:
+      const errInvalidParameter = 87
+      const errFileNotFound = 2
+      if lastError.int in [errInvalidParameter, errFileNotFound]:
         raiseOSError(lastError,
             "Requested command not found: '$1'. OS error:" % command)
       else:

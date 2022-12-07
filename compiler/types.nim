@@ -199,6 +199,14 @@ proc isOrdinalType*(t: PType, allowEnumWithHoles: bool = false): bool =
   result = (t.kind in baseKinds and (not t.enumHasHoles or allowEnumWithHoles)) or
     (t.kind in parentKinds and isOrdinalType(t.lastSon, allowEnumWithHoles))
 
+proc isOrdinalTypeOfSet*(t: PType, allowEnumWithHoles: bool = false): bool =
+  assert(t != nil)
+  const
+    baseKinds = {tyChar, tyInt8, tyInt16, tyUInt8, tyUInt16, tyBool, tyEnum}
+    parentKinds = {tyRange, tyOrdinal, tyGenericInst, tyAlias, tySink, tyDistinct}
+  result = (t.kind in baseKinds and (not t.enumHasHoles or allowEnumWithHoles)) or
+    (t.kind in parentKinds and isOrdinalTypeOfSet(t.lastSon, allowEnumWithHoles))
+
 proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
                      closure: RootRef): bool
 proc iterOverNode(marker: var IntSet, n: PNode, iter: TTypeIter,
