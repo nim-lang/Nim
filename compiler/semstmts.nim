@@ -244,6 +244,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
         let symbol = newSymG(skLet, a[0][2], c)
         symbol.typ = if isImported: a[0][1].typ
                      else: a[0][1].typ.toRef(c.idgen)
+        symbol.flags.incl sfNoInit
         addDecl(c, symbol)
         # Overwrite symbol in AST with the symbol in the symbol table.
         a[0][2] = newSymNode(symbol, a[0][2].info)
