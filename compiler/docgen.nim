@@ -558,7 +558,7 @@ proc runAllExamples(d: PDoc) =
 
 proc quoted(a: string): string = result.addQuoted(a)
 
-proc toInstantiationInfo(conf: ConfigRef, info: TLineInfo): auto =
+proc toInstantiationInfo(conf: ConfigRef, info: TLineInfo): (string, int, int) =
   # xxx expose in compiler/lineinfos.nim
   (conf.toMsgFilename(info), info.line.int, info.col.int + ColOffset)
 

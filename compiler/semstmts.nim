@@ -2210,8 +2210,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if hasProto: localError(c.config, n.info, errImplOfXexpected % proto.name.s)
     if {sfImportc, sfBorrow, sfError} * s.flags == {} and s.magic == mNone:
       # this is a forward declaration and we're building the prototype
-      if s.kind in {skProc, skFunc} and s.typ[0] != nil and s.typ[0].kind == tyUntyped:
-        # `auto` is represented as `tyUntyped` at this point in compilation.
+      if s.kind in {skProc, skFunc} and s.typ[0] != nil and s.typ[0].kind == tyAnything:
         localError(c.config, n[paramsPos][0].info, "return type 'auto' cannot be used in forward declarations")
 
       incl(s.flags, sfForward)

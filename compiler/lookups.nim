@@ -422,7 +422,7 @@ type SpellCandidate = object
   msg: string
   sym: PSym
 
-template toOrderTup(a: SpellCandidate): auto =
+template toOrderTup(a: SpellCandidate): (int, int, string) =
   # `dist` is first, to favor nearby matches
   # `depth` is next, to favor nearby enclosing scopes among ties
   # `sym.name.s` is last, to make the list ordered and deterministic among ties
