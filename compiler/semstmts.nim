@@ -241,7 +241,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
       if a.len == 2 and a[0].isInfixAs():
         # support ``except Exception as ex: body``
         let isImported = semExceptBranchType(a[0][1])
-        let symbol = newSymG(skLet, a[0][2], c)
+        let symbol = newSymG(skVar, a[0][2], c)
         symbol.typ = if isImported: a[0][1].typ
                      else: a[0][1].typ.toRef(c.idgen)
         addDecl(c, symbol)
