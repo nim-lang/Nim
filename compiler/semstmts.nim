@@ -268,6 +268,10 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
 
           a[0] = a[0][1]
           a[1] = actions
+        else:
+          addDecl(c, symbol)
+          # Overwrite symbol in AST with the symbol in the symbol table.
+          a[0][2] = newSymNode(symbol, a[0][2].info)
 
       elif a.len == 1:
         # count number of ``except: body`` blocks
