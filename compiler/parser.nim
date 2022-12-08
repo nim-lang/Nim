@@ -451,6 +451,24 @@ proc exprList(p: var Parser, endTok: TokType, result: PNode) =
   getTok(p)
   optInd(p, result)
   # progress guaranteed
+  var a = parseExpr(p)
+  result.add(a)
+  while (p.tok.tokType != endTok) and (p.tok.tokType != tkEof):
+    if p.tok.tokType != tkComma: break
+    getTok(p)
+    optInd(p, a)
+    var a = parseExpr(p)
+    result.add(a)
+  when defined(nimpretty):
+    dec p.em.doIndentMore
+
+proc optionalExprList(p: var Parser, endTok: TokType, result: PNode) =
+  #| optionalExprList = expr ^* comma
+  when defined(nimpretty):
+    inc p.em.doIndentMore
+  getTok(p)
+  optInd(p, result)
+  # progress guaranteed
   while (p.tok.tokType != endTok) and (p.tok.tokType != tkEof):
     var a = parseExpr(p)
     result.add(a)
@@ -1436,7 +1454,7 @@ proc postExprBlocks(p: var Parser, x: PNode): PNode =
   #| postExprBlocks = ':' stmt? ( IND{=} doBlock
   #|                            | IND{=} 'of' exprList ':' stmt
   #|                            | IND{=} 'elif' expr ':' stmt
-  #|                            | IND{=} 'except' exprList ':' stmt
+  #|                            | IND{=} 'except' optionalExprList ':' stmt
   #|                            | IND{=} 'finally' ':' stmt
   #|                            | IND{=} 'else' ':' stmt )*
   result = x
@@ -1494,7 +1512,7 @@ proc postExprBlocks(p: var Parser, x: PNode): PNode =
           nextBlock.add parseExpr(p)
         of tkExcept:
           nextBlock = newNodeP(nkExceptBranch, p)
-          exprList(p, tkColon, nextBlock)
+          optionalExprList(p, tkColon, nextBlock)
         of tkFinally:
           nextBlock = newNodeP(nkFinally, p)
           getTok(p)
@@ -1746,10 +1764,10 @@ proc parseCase(p: var Parser): PNode =
 
 proc parseTry(p: var Parser; isExpr: bool): PNode =
   #| tryStmt = 'try' colcom stmt &(IND{=}? 'except'|'finally')
-  #|            (IND{=}? 'except' exprList colcom stmt)*
+  #|            (IND{=}? 'except' optionalExprList colcom stmt)*
   #|            (IND{=}? 'finally' colcom stmt)?
   #| tryExpr = 'try' colcom stmt &(optInd 'except'|'finally')
-  #|            (optInd 'except' exprList colcom stmt)*
+  #|            (optInd 'except' optionalExprList colcom stmt)*
   #|            (optInd 'finally' colcom stmt)?
   result = newNodeP(nkTryStmt, p)
   getTok(p)
@@ -1760,7 +1778,7 @@ proc parseTry(p: var Parser; isExpr: bool): PNode =
     case p.tok.tokType
     of tkExcept:
       b = newNodeP(nkExceptBranch, p)
-      exprList(p, tkColon, b)
+      optionalExprList(p, tkColon, b)
     of tkFinally:
       b = newNodeP(nkFinally, p)
       getTok(p)
