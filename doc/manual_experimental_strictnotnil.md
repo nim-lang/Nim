@@ -74,7 +74,9 @@ local turn on/off
 ---------------------
 
 You can still turn off nil checking on function/module level by using a `{.strictNotNil: off.}` pragma.
-Note: test that/TODO for code/manual.
+
+..
+  Note: test that/TODO for code/manual.
 
 nilability state
 -----------------
@@ -101,7 +103,8 @@ Types are either nilable or non-nilable.
 When you pass a param or a default value, we use the type : for nilable types we return `MaybeNil`
 and for non-nilable `Safe`.
 
-TODO: fix the manual here. (This is not great, as default values for non-nilables and nilables are usually actually `nil` , so we should think a bit more about this section.)
+..
+  TODO: fix the manual here. (This is not great, as default values for non-nilables and nilables are usually actually `nil` , so we should think a bit more about this section.)
 
 params rules
 ------------
@@ -236,11 +239,11 @@ e.g.
   left = nil # moving out
   ```
 
+..
+  initialization of non nilable and nilable values
+  -------------------------------------------------
 
-initialization of non nilable and nilable values
--------------------------------------------------
-
-TODO
+  TODO
 
 warnings and errors
 ---------------------
