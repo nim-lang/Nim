@@ -244,9 +244,30 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
         let symbol = newSymG(skLet, a[0][2], c)
         symbol.typ = if isImported: a[0][1].typ
                      else: a[0][1].typ.toRef(c.idgen)
-        addDecl(c, symbol)
-        # Overwrite symbol in AST with the symbol in the symbol table.
-        a[0][2] = newSymNode(symbol, a[0][2].info)
+
+        if not isImportedException(a[0][1].typ, c.graph.config):
+          let actions = newNodeIT(nkStmtListExpr, a[1].info, a[1].typ)
+          actions.sons.setLen(2)
+          let excCall = callCodegenProc(c.graph, "getCurrentException")
+
+          let convNode = newNodeI(nkHiddenSubConv, a[1].info, 2)
+          convNode[0] = newNodeI(nkEmpty, a.info)
+          convNode[1] = excCall
+          convNode.typ = symbol.typ
+
+          let identDefs = newNodeI(nkIdentDefs, a[1].info, 3)
+          identDefs[0] = a[0][2]
+          identDefs[1] = newNodeI(nkEmpty, a.info)
+          identDefs[2] = convNode
+
+          let letSection = newNodeI(nkLetSection, a[1].info, 1)
+          letSection[0] = identDefs
+
+          actions[0] = letSection
+          actions[1] = a[1]
+
+          a[0] = a[0][1]
+          a[1] = actions
 
       elif a.len == 1:
         # count number of ``except: body`` blocks

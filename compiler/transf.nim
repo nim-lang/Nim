@@ -875,37 +875,6 @@ proc transformCall(c: PTransf, n: PNode): PNode =
     else:
       result = s
 
-proc transformExceptBranch(c: PTransf, n: PNode): PNode =
-  if n[0].isInfixAs() and not isImportedException(n[0][1].typ, c.graph.config):
-    let excTypeNode = n[0][1]
-    let actions = newTransNode(nkStmtListExpr, n[1], 2)
-    # Generating `let exc = (excType)(getCurrentException())`
-    # -> getCurrentException()
-    let excCall = callCodegenProc(c.graph, "getCurrentException")
-    # -> (excType)
-    let convNode = newTransNode(nkHiddenSubConv, n[1].info, 2)
-    convNode[0] = newNodeI(nkEmpty, n.info)
-    convNode[1] = excCall
-    convNode.typ = excTypeNode.typ.toRef(c.idgen)
-    # -> let exc = ...
-    let identDefs = newTransNode(nkIdentDefs, n[1].info, 3)
-    identDefs[0] = n[0][2]
-    identDefs[1] = newNodeI(nkEmpty, n.info)
-    identDefs[2] = convNode
-
-    let letSection = newTransNode(nkLetSection, n[1].info, 1)
-    letSection[0] = identDefs
-    # Place the let statement and body of the 'except' branch into new stmtList.
-    actions[0] = letSection
-    actions[1] = transform(c, n[1])
-    # Overwrite 'except' branch body with our stmtList.
-    result = newTransNode(nkExceptBranch, n[1].info, 2)
-    # Replace the `Exception as foobar` with just `Exception`.
-    result[0] = transform(c, n[0][1])
-    result[1] = actions
-  else:
-    result = transformSons(c, n)
-
 proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode): PNode =
   ## Merges adjacent constant expressions of the children of the `&` call into
   ## a single constant expression. It also inlines constant expressions which are not
@@ -1064,8 +1033,6 @@ proc transform(c: PTransf, n: PNode): PNode =
       result[1] = transformSymAux(c, a)
     else:
       result = n
-  of nkExceptBranch:
-    result = transformExceptBranch(c, n)
   of nkCheckedFieldExpr:
     result = transformSons(c, n)
     if result[0].kind != nkDotExpr:
