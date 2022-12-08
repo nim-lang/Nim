@@ -1,4 +1,7 @@
-import os, strformat, strutils, tables, sets, ropes, json, algorithm
+import std/[
+  os, strformat, strutils, tables, sets, ropes, json, algorithm,
+  enumerate, strscans, syncio
+]
 
 type
   SourceNode* = ref object
@@ -157,7 +160,6 @@ iterator tokenize*(line: string): (bool, string) =
     yield (isMangled, token)
 
 proc parse*(source: string, path: string): SourceNode =
-  let lines = source.splitLines()
   var lastLocation: SourceNode = nil
   result = newSourceNode(0, 0, path, @[])
     
@@ -167,7 +169,7 @@ proc parse*(source: string, path: string): SourceNode =
   # we also don't have column info, but I doubt more one nim lines can compile to one js
   # maybe in macros?
 
-  for i, originalLine in lines:
+  for i, originalLine in enumerate(source.lines):
     let line = originalLine.strip
     if line.len == 0:
       continue
@@ -175,13 +177,12 @@ proc parse*(source: string, path: string): SourceNode =
     # this shouldn't be a problem:
     # jsgen doesn't generate comments
     # and if you emit // line you probably know what you're doing
-    if line.startsWith("// line"):
+    var
+      lineNumber: int
+      linePath: string
+    if line.scanf("/* line $i \"$+\"*/", lineNumber, linePath):
       if result.children.len > 0:
         result.children[^1].node.children.add(child(line & "\n"))
-      let pos = line.find(" ", 8)
-      let lineNumber = line[8 .. pos - 1].parseInt
-      let linePath = line[pos + 2 .. ^2] # quotes
-      
       lastLocation = newSourceNode(
         lineNumber,
         0,
