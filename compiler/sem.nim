@@ -81,7 +81,7 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
   let x = arg.skipConv
   if (x.kind == nkCurly and formal.kind == tySet and formal.base.kind != tyGenericParam) or
-    (x.kind in {nkPar, nkTupleConstr}) and formal.kind notin {tyUntyped, tyBuiltInTypeClass, tyAnything}:
+    (x.kind in {nkPar, nkTupleConstr}) and formal.kind notin {tyUntyped, tyBuiltInTypeClass}:
     changeType(c, x, formal, check=true)
   result = arg
   result = skipHiddenSubConv(result, c.graph, c.idgen)
@@ -439,7 +439,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
       # does not mean we expect a tyTypeDesc.
       retType = retType[0]
     case retType.kind
-    of tyUntyped, tyAnything:
+    of tyUntyped:
       # Not expecting a type here allows templates like in ``tmodulealias.in``.
       result = semExpr(c, result, flags, expectedType)
     of tyTyped:
