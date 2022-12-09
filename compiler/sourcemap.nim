@@ -131,11 +131,6 @@ proc parse*(source, path: string): SourceInfo =
   # Add each line as a node into the output
   for i, originalLine in lines:
     let line = originalLine.strip
-    # We only care about lines with something in them
-    if line.len == 0: continue
-    # this shouldn't be a problem:
-    # jsgen doesn't generate comments
-    # and if you emit // line you probably know what you're doing
     var
       lineNumber: int
       linePath: string
@@ -146,6 +141,8 @@ proc parse*(source, path: string): SourceInfo =
     elif lastLocation.line != -1:
       # TODO: Tokenisation
       result.addNode(i, lastLocation.line, lastLocation.file)
+    else:
+      result.addNode(i)
 
 proc toSourceMap*(info: SourceInfo, file: string): SourceMap =
   ## Convert from high level SourceInfo into the required SourceMap object
