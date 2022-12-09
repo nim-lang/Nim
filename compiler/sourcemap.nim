@@ -1,110 +1,79 @@
-import os, strformat, strutils, tables, sets, ropes, json, algorithm, strscans
+import os, strformat, strutils, tables, sets, ropes, json, strscans, std/options
 
 type
-  SourceNode* = ref object
-    line*:      int
-    column*:    int
-    source*:    string
-    name*:      string
-    children*:  seq[Child]
+  SourceInfo = object
+    nodes: seq[Node]
+    names, files: seq[string]
 
-  C = enum cSourceNode, cSourceString
+  Node* = object
+    generated: int # Line in generated JS
+    case inSource: bool # Whether the line in generated has nim equivilant
+    of true:
+      original: int # Line in original, we don't have column info
+      file: int # Index into files list
+      name: int # Index into names list (-1 for no name)
+    else: discard
 
-  Child* = ref object
-    case kind*: C:
-    of cSourceNode:
-      node*:  SourceNode
-    of cSourceString:
-      s*:     string
-
-  SourceMap* = ref object
+  SourceMap* = object
     version*:   int
     sources*:   seq[string]
     names*:     seq[string]
     mappings*:  string
     file*:      string
-    # sourceRoot*: string
-    # sourcesContent*: string
 
-  SourceMapGenerator = ref object
-    file:           string
-    sourceRoot:     string
-    skipValidation: bool
-    sources:        seq[string]
-    names:          seq[string]
-    mappings:       seq[Mapping]
+func addNode(info: var SourceInfo, generated: int) =
+  ## Create node which doesn't appear in Nim code
+  info.nodes &= Node(generated: generated, inSource: false)
 
-  Mapping* = ref object
-    source*:        string
-    original*:      tuple[line: int, column: int]
-    generated*:     tuple[line: int, column: int]
-    name*:          string
-    noSource*:      bool
-    noName*:        bool
-
-
-proc child*(s: string): Child =
-  Child(kind: cSourceString, s: s)
-
-
-proc child*(node: SourceNode): Child =
-  Child(kind: cSourceNode, node: node)
-
-
-proc newSourceNode(line: int, column: int, path: string, node: SourceNode, name: string = ""): SourceNode =
-  SourceNode(line: line, column: column, source: path, name: name, children: @[child(node)])
-
-
-proc newSourceNode(line: int, column: int, path: string, s: string, name: string = ""): SourceNode =
-  SourceNode(line: line, column: column, source: path, name: name, children: @[child(s)])
-
-
-proc newSourceNode(line: int, column: int, path: string, children: seq[Child], name: string = ""): SourceNode =
-  SourceNode(line: line, column: column, source: path, name: name, children: children)
-
-
-
-
-# debugging
-
-
-proc text*(sourceNode: SourceNode, depth: int): string =
-  let empty = "  "
-  result = &"{repeat(empty, depth)}SourceNode({sourceNode.source}:{sourceNode.line}:{sourceNode.column}):\n"
-  for child in sourceNode.children:
-    if child.kind == cSourceString:
-      result.add(&"{repeat(empty, depth + 1)}{child.s}\n")
-    else:
-      result.add(child.node.text(depth + 1))
-
-
-proc `$`*(sourceNode: SourceNode): string = text(sourceNode, 0)
-
+func addNode*(info: var SourceInfo, generated, original: int, file: string, name = "") =
+  ## Create a node which does appear in Nim code
+  var node = Node(generated: generated, original: original, inSource: true)
+  # Set file to file position. Add in if needed
+  node.file = info.files.find(file)
+  if node.file == -1:
+    node.file = info.files.len
+    info.files &= file
+  # Do same for name if one is actually passed
+  if name != "":
+    node.name = info.names.find(name)
+    if node.name == -1:
+      node.name = info.names.len
+      info.names &= name
+  info.nodes &= node
 
 # base64_VLQ
-
-
-let integers = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
-
-
-proc encode*(i: int): string =
-  result = ""
-  var n = i
-  if n < 0:
-    n = (-n shl 1) or 1
-  else:
-    n = n shl 1
-
-  var z = 0
-  while z == 0 or n > 0:
-    var e = n and 31
-    n = n shr 5
-    if n > 0:
-      e = e or 32
-
-    result.add(integers[e])
-    z += 1
-
+import std/assertions
+func encode*(values: seq[int]): string {.raises: [].} =
+  ## Encodes a series of integers into a VLQ base64 encoded string
+  # References:
+  #   - https://www.lucidchart.com/techblog/2019/08/22/decode-encoding-base64-vlqs-source-maps/
+  #   - https://github.com/rails/sprockets/blob/main/guides/source_maps.md#source-map-file
+  # Few constants needed
+  const
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    shift = 5
+    continueBit = 1 shl 5
+    mask = continueBit - 1
+  for val in values:
+    # Sign is stored in first bit
+    var newVal = abs(val) shl 1
+    if val < 0:
+      newVal = newVal or 1
+    # Now comes the variable length part
+    # This is how we are able to store large numbers
+    while true:
+      # We only encode 5 bits.
+      var masked = newVal and mask
+      newVal = newVal shr shift
+      # If there is still something left
+      # then signify with the continue bit that the
+      # decoder should keep decoding
+      if newVal > 0:
+        masked = masked or continueBit
+      result &= alphabet[masked]
+      # If the value is zero then we have nothing left to encode
+      if newVal == 0:
+        break
 
 type TokenState = enum Normal, String, Ident, Mangled
 
@@ -156,11 +125,11 @@ iterator tokenize*(line: string): (bool, string) =
   if token.len > 0:
     yield (isMangled, token)
 
-proc parse*(source: string, path: string): SourceNode =
+proc parse*(source, path: string): SourceInfo =
   let lines = source.splitLines()
-  var lastLocation: SourceNode = nil
-  result = newSourceNode(0, 0, path, @[])
-    
+  # The JS file has header information that we can't map
+  var lastLocation: tuple[file: string, line: int] = ("", -1)
+
   # we just use one single parent and add all nim lines
   # as its children, I guess in typical codegen
   # that happens recursively on ast level
@@ -169,9 +138,8 @@ proc parse*(source: string, path: string): SourceNode =
 
   for i, originalLine in lines:
     let line = originalLine.strip
-    if line.len == 0:
-      continue
-      
+    # We only care about lines with something in them
+    if line.len == 0: continue
     # this shouldn't be a problem:
     # jsgen doesn't generate comments
     # and if you emit // line you probably know what you're doing
@@ -179,196 +147,46 @@ proc parse*(source: string, path: string): SourceNode =
       lineNumber: int
       linePath: string
     if line.scanf("/* line $i \"$+\" */", lineNumber, linePath):
-      if result.children.len > 0:
-        result.children[^1].node.children.add(child(line & "\n"))
-      lastLocation = newSourceNode(
-        lineNumber,
-        0,
-        linePath,
-        @[])
-      result.children.add(child(lastLocation))
+      lastLocation = (linePath, lineNumber)
+      result.addNode(i)
+    elif lastLocation.line != -1:
+      # TODO: Tokenisation
+      result.addNode(i, lastLocation.line, lastLocation.file)
+
+proc toSourceMap*(info: SourceInfo, file: string): SourceMap =
+  ## Convert from high level SourceInfo into the required SourceMap object
+  # Add basic info
+  result.version = 3
+  result.file = file
+  result.sources = info.files
+  result.names = info.names
+  # Convert nodes into mappings.
+  # Mappings are split into blocks where each block referes to a line in the outputted JS.
+  # Blocks can be seperated into statements which refere to tokens on the line.
+  # Since the mappings depend on previous values we need to
+  # keep track of previous file, name, etc
+  var
+    prevFile = 0
+    prevLine = 0
+    prevName = 0
+
+  for node in info.nodes:
+    # We know need to encode the node info into a segment with following fields
+    # All these fields are relative to their previous values
+    # - 0: Column in generated code
+    # - 1: Index of Nim file in source list
+    # - 2: Line in Nim source
+    # - 3: Column in Nim source
+    # - 4: Index in names list
+    if node.inSource:
+      prevFile = node.file - prevFile
+      prevLine = node.original - prevLine
+      result.mappings &= encode(@[0, prevFile, prevLine, 0]) & ";"
     else:
-      for token in line.tokenize():
-        var name = ""
-        if token[0]:
-          name = token[1].split('_', 1)[0]
-        
-        if result.children.len > 0:
-          result.children[^1].node.children.add(
-            child(
-              newSourceNode(
-                result.children[^1].node.line,
-                0,
-                result.children[^1].node.source,
-                token[1],
-                name)))
-        else:
-          result.children.add(
-            child(
-              newSourceNode(i + 1, 0, path, token[1], name)))
-
-proc cmp(a: Mapping, b: Mapping): int =
-  var c = cmp(a.generated, b.generated)
-  if c != 0:
-    return c
-
-  c = cmp(a.source, b.source)
-  if c != 0:
-    return c
-
-  c = cmp(a.original, b.original)
-  if c != 0:
-    return c
-
-  return cmp(a.name, b.name)
-
-
-proc index*[T](elements: seq[T], element: T): int =
-  for z in 0 ..< elements.len:
-    if elements[z] == element:
-      return z
-  return -1
-
-
-proc serializeMappings(map: SourceMapGenerator, mappings: seq[Mapping]): string =
-  var previous = Mapping(generated: (line: 1, column: 0), original: (line: 0, column: 0), name: "", source: "")
-  var previousSourceId = 0
-  var previousNameId = 0
-  var next = ""
-  var nameId = 0
-  var sourceId = 0
-  result = ""
-
-  for z, mapping in mappings:
-    next = ""
-
-    if mapping.generated.line != previous.generated.line:
-      previous.generated.column = 0
-
-      while mapping.generated.line != previous.generated.line:
-        next.add(";")
-        previous.generated.line += 1
-
-    else:
-      if z > 0:
-        if cmp(mapping, mappings[z - 1]) == 0:
-          continue
-        next.add(",")
-
-    next.add(encode(mapping.generated.column - previous.generated.column))
-    previous.generated.column = mapping.generated.column
-
-    if not mapping.noSource and mapping.source.len > 0:
-      sourceId = map.sources.index(mapping.source)
-      next.add(encode(sourceId - previousSourceId))
-      previousSourceId = sourceId
-      next.add(encode(mapping.original.line - 1 - previous.original.line))
-      previous.original.line = mapping.original.line - 1
-      next.add(encode(mapping.original.column - previous.original.column))
-      previous.original.column = mapping.original.column
-
-      if not mapping.noName and mapping.name.len > 0:
-        nameId = map.names.index(mapping.name)
-        next.add(encode(nameId - previousNameId))
-        previousNameId = nameId
-
-    result.add(next)
-
-
-proc gen*(map: SourceMapGenerator): SourceMap =
-  var mappings = map.mappings.sorted do (a: Mapping, b: Mapping) -> int:
-    cmp(a, b)
-  result = SourceMap(
-    file: map.file,
-    version: 3,
-    sources: map.sources[0..^1],
-    names: map.names[0..^1],
-    mappings: map.serializeMappings(mappings))
-
-
-proc addMapping*(map: SourceMapGenerator, mapping: Mapping) =
-  if not mapping.noSource and mapping.source notin map.sources:
-    map.sources.add(mapping.source)
-
-  if not mapping.noName and mapping.name.len > 0 and mapping.name notin map.names:
-    map.names.add(mapping.name)
-
-  # echo "map ", mapping.source, " ", mapping.original, " ", mapping.generated, " ", mapping.name
-  map.mappings.add(mapping)
-
-
-proc walk*(node: SourceNode, fn: proc(line: string, original: SourceNode)) =
-  for child in node.children:
-    if child.kind == cSourceString and child.s.len > 0:
-      fn(child.s, node)
-    else:
-      child.node.walk(fn)
-
-
-proc toSourceMap*(node: SourceNode, file: string): SourceMapGenerator =
-  var map = SourceMapGenerator(file: file, sources: @[], names: @[], mappings: @[])
-
-  var generated = (line: 1, column: 0)
-  var sourceMappingActive = false
-  var lastOriginal = SourceNode(source: "", line: -1, column: 0, name: "", children: @[])
-
-  node.walk do (line: string, original: SourceNode):
-    if original.source.endsWith(".js"):
-      # ignore it
-      discard
-    else:
-      if original.line != -1:
-        if lastOriginal.source != original.source or
-           lastOriginal.line != original.line or
-           lastOriginal.column != original.column or
-           lastOriginal.name != original.name:
-          map.addMapping(
-            Mapping(
-              source: original.source,
-              original: (line: original.line, column: original.column),
-              generated: (line: generated.line, column: generated.column),
-              name: original.name))
-
-        lastOriginal = SourceNode(
-          source: original.source,
-          line: original.line,
-          column: original.column,
-          name: original.name,
-          children: lastOriginal.children)
-        sourceMappingActive = true
-      elif sourceMappingActive:
-        map.addMapping(
-          Mapping(
-            noSource: true,
-            noName: true,
-            generated: (line: generated.line, column: generated.column),
-            original: (line: -1, column: -1)))
-        lastOriginal.line = -1
-        sourceMappingActive = false
-
-    for z in 0 ..< line.len:
-      if line[z] in Newlines:
-        generated.line += 1
-        generated.column = 0
-
-        if z == line.len - 1:
-          lastOriginal.line = -1
-          sourceMappingActive = false
-        elif sourceMappingActive:
-          map.addMapping(
-            Mapping(
-              source: original.source,
-              original: (line: original.line, column: original.column),
-              generated: (line: generated.line, column: generated.column),
-              name: original.name))
-      else:
-        generated.column += 1
-    
-  map
-
+      result.mappings &= ";"
 
 proc genSourceMap*(source: string, outFile: string): (Rope, SourceMap) =
   let node = parse(source, outFile)
-  let map = node.toSourceMap(file = outFile)
-  ((&"{source}\n//# sourceMappingURL={outFile}.map").rope, map.gen)
+  let map = node.toSourceMap(outFile)
+  ((&"{source}\n//# sourceMappingURL={outFile}.map").rope, map)
 
