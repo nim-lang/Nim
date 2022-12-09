@@ -2047,9 +2047,6 @@ template detailedInfo*(sym: PSym): string =
 proc isInlineIterator*(typ: PType): bool {.inline.} =
   typ.kind == tyProc and tfIterator in typ.flags and typ.callConv != ccClosure
 
-proc isIterator*(typ: PType): bool {.inline.} =
-  typ.kind == tyProc and tfIterator in typ.flags
-
 proc isClosureIterator*(typ: PType): bool {.inline.} =
   typ.kind == tyProc and tfIterator in typ.flags and typ.callConv == ccClosure
 
