@@ -42,13 +42,11 @@ func addNode*(info: var SourceInfo, generated, original: int, file: string, name
   info.nodes &= node
 
 # base64_VLQ
-import std/assertions
 func encode*(values: seq[int]): string {.raises: [].} =
   ## Encodes a series of integers into a VLQ base64 encoded string
   # References:
   #   - https://www.lucidchart.com/techblog/2019/08/22/decode-encoding-base64-vlqs-source-maps/
   #   - https://github.com/rails/sprockets/blob/main/guides/source_maps.md#source-map-file
-  # Few constants needed
   const
     alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     shift = 5
@@ -129,13 +127,8 @@ proc parse*(source, path: string): SourceInfo =
   let lines = source.splitLines()
   # The JS file has header information that we can't map
   var lastLocation: tuple[file: string, line: int] = ("", -1)
-
-  # we just use one single parent and add all nim lines
-  # as its children, I guess in typical codegen
-  # that happens recursively on ast level
-  # we also don't have column info, but I doubt more one nim lines can compile to one js
-  # maybe in macros?
-
+  # TODO: Tokenise so we get
+  # Add each line as a node into the output
   for i, originalLine in lines:
     let line = originalLine.strip
     # We only care about lines with something in them
@@ -147,7 +140,8 @@ proc parse*(source, path: string): SourceInfo =
       lineNumber: int
       linePath: string
     if line.scanf("/* line $i \"$+\" */", lineNumber, linePath):
-      lastLocation = (linePath, lineNumber)
+      # Lines are zero indexed
+      lastLocation = (linePath, lineNumber - 1)
       result.addNode(i)
     elif lastLocation.line != -1:
       # TODO: Tokenisation
@@ -179,9 +173,9 @@ proc toSourceMap*(info: SourceInfo, file: string): SourceMap =
     # - 3: Column in Nim source
     # - 4: Index in names list
     if node.inSource:
-      prevFile = node.file - prevFile
-      prevLine = node.original - prevLine
-      result.mappings &= encode(@[0, prevFile, prevLine, 0]) & ";"
+      result.mappings &= encode(@[0, node.file - prevFile, node.original - prevLine, 0]) & ";"
+      prevFile = node.file
+      prevLine = node.original
     else:
       result.mappings &= ";"
 
