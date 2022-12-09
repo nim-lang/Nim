@@ -260,10 +260,20 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
           identDefs[1] = newNodeI(nkEmpty, a.info)
           identDefs[2] = convNode
 
+          let pragmaBlockNode = newNodeI(nkPragmaBlock, a[1].info, 2)
+          let pragmaNode = newNodeI(nkPragma, a[1].info)
+          let castNode = newNodeI(nkCast, a[1].info)
+          castNode.add c.graph.emptyNode
+          castNode.add newIdentNode(getIdent(c.cache, "noSideEffect"), a[1].info)
+          pragmaNode.add castNode
+
           let letSection = newNodeI(nkLetSection, a[1].info, 1)
           letSection[0] = identDefs
 
-          actions[0] = letSection
+          pragmaBlockNode[0] = pragmaNode
+          pragmaBlockNode[1] = letSection
+
+          actions[0] = pragmaBlockNode
           actions[1] = a[1]
 
           a[0] = a[0][1]
