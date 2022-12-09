@@ -188,12 +188,10 @@ proc parse*(source: string, path: string): SourceNode =
         @[])
       result.children.add(child(lastLocation))
     else:
-      var last: SourceNode
       for token in line.tokenize():
         var name = ""
         if token[0]:
           name = token[1].split('_', 1)[0]
-        
         
         if result.children.len > 0:
           result.children[^1].node.children.add(
@@ -204,12 +202,10 @@ proc parse*(source: string, path: string): SourceNode =
                 result.children[^1].node.source,
                 token[1],
                 name)))
-          last = result.children[^1].node.children[^1].node
         else:
           result.children.add(
             child(
               newSourceNode(i + 1, 0, path, token[1], name)))
-          last = result.children[^1].node
 
 proc cmp(a: Mapping, b: Mapping): int =
   var c = cmp(a.generated, b.generated)
