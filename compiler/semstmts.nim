@@ -270,6 +270,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
           a[1] = actions
         else:
           addDecl(c, symbol)
+          symbol.flags.incl sfImportc
           # Overwrite symbol in AST with the symbol in the symbol table.
           a[0][2] = newSymNode(symbol, a[0][2].info)
 

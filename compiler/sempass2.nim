@@ -332,7 +332,7 @@ proc useVar(a: PEffects, n: PNode) =
   if a.inExceptOrFinallyStmt > 0:
     incl s.flags, sfUsedInFinallyOrExcept
   if isLocalSym(a, s):
-    if sfNoInit in s.flags:
+    if {sfNoInit, sfImportc} * s.flags != {}:
       # If the variable is explicitly marked as .noinit. do not emit any error
       a.init.add s.id
     elif s.id notin a.init:
