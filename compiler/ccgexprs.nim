@@ -3283,7 +3283,10 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
     if constOrNil != nil:
       for i in 1..<constOrNil.len:
         if constOrNil[i].kind == nkExprColonExpr:
-          if constOrNil[i][0].sym.name.id == field.name.id:
+          if constOrNil[i][0].kind == nkSym and constOrNil[i][0].sym.name.id == field.name.id:
+            genBracedInit(p, constOrNil[i][1], isConst, field.typ, result)
+            return
+          elif constOrNil[i][0].kind == nkStrLit and constOrNil[i][0].strVal == field.name.s:
             genBracedInit(p, constOrNil[i][1], isConst, field.typ, result)
             return
         elif i == field.position:
