@@ -328,8 +328,9 @@ proc registerAdditionalOps*(c: PCtx) =
     registerCallback c, "stdlib.osproc.execCmdEx", proc (a: VmArgs) {.nimcall.} =
       let options = getNode(a, 1).fromLit(set[osproc.ProcessOption])
       a.setResult osproc.execCmdEx(getString(a, 0), options).toLit
-    registerCallback c, "stdlib.times.getTime", proc (a: VmArgs) {.nimcall.} =
-      setResult(a, times.getTime().toLit)
+    registerCallback c, "stdlib.times.getTimeImpl", proc (a: VmArgs) =
+      let objTyp = a.getNode(0).typ
+      setResult(a, times.getTime().toTimeLit(c, obj, a.currentLineInfo))
 
   proc getEffectList(c: PCtx; a: VmArgs; effectIndex: int) =
     let fn = getNode(a, 0)
