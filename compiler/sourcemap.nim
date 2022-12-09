@@ -210,9 +210,6 @@ proc parse*(source: string, path: string): SourceNode =
             child(
               newSourceNode(i + 1, 0, path, token[1], name)))
           last = result.children[^1].node
-      let nl = "\n"
-      if not last.isNil:
-        last.source.add(nl)
 
 proc cmp(a: Mapping, b: Mapping): int =
   var c = cmp(a.generated, b.generated)
@@ -291,7 +288,6 @@ proc gen*(map: SourceMapGenerator): SourceMap =
     sources: map.sources[0..^1],
     names: map.names[0..^1],
     mappings: map.serializeMappings(mappings))
-
 
 
 proc addMapping*(map: SourceMapGenerator, mapping: Mapping) =
