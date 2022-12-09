@@ -245,6 +245,10 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
         symbol.typ = if isImported: a[0][1].typ
                      else: a[0][1].typ.toRef(c.idgen)
 
+        addDecl(c, symbol)
+        # Overwrite symbol in AST with the symbol in the symbol table.
+        a[0][2] = newSymNode(symbol, a[0][2].info)
+
         if not isImportedException(a[0][1].typ, c.graph.config):
           let actions = newNodeIT(nkStmtListExpr, a[1].info, a[1].typ)
           actions.sons.setLen(2)
@@ -276,13 +280,9 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
           actions[0] = pragmaBlockNode
           actions[1] = a[1]
 
-          a[0] = a[0][1]
           a[1] = actions
         else:
-          addDecl(c, symbol)
           symbol.flags.incl sfImportc
-          # Overwrite symbol in AST with the symbol in the symbol table.
-          a[0][2] = newSymNode(symbol, a[0][2].info)
 
       elif a.len == 1:
         # count number of ``except: body`` blocks

@@ -875,6 +875,14 @@ proc transformCall(c: PTransf, n: PNode): PNode =
     else:
       result = s
 
+proc transformExceptBranch(c: PTransf, n: PNode): PNode =
+  if n[0].isInfixAs() and not isImportedException(n[0][1].typ, c.graph.config):
+    result = newTransNode(nkExceptBranch, n[1].info, 2)
+    result[0] = transform(c, n[0][1])
+    result[1] = transform(c, n[1])
+  else:
+    result = transformSons(c, n)
+
 proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode): PNode =
   ## Merges adjacent constant expressions of the children of the `&` call into
   ## a single constant expression. It also inlines constant expressions which are not
@@ -1033,6 +1041,8 @@ proc transform(c: PTransf, n: PNode): PNode =
       result[1] = transformSymAux(c, a)
     else:
       result = n
+  of nkExceptBranch:
+    result = transformExceptBranch(c, n)
   of nkCheckedFieldExpr:
     result = transformSons(c, n)
     if result[0].kind != nkDotExpr:
