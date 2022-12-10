@@ -1260,8 +1260,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     gsub(g, n, 0)
   of nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref, nkStringToCString, nkCStringToString:
     if renderIds in g.flags:
-      putWithSpace(g, tkAddr, $n.kind)
+      put(g, tkAddr, $n.kind)
+      put(g, tkParLe, "(")
     gsub(g, n, 0)
+    if renderIds in g.flags:
+      put(g, tkParRi, ")")
+
   of nkLambda:
     putWithSpace(g, tkProc, "proc")
     gsub(g, n, paramsPos)
