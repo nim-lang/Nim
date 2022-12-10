@@ -218,13 +218,13 @@ proc asyncSingleProc(prc: NimNode): NimNode =
     procBody = newStmtList()
     let resultIdent = ident"result"
     procBody.add quote do:
-      template setResult(x: `subRetType`) {.used.} =
+      template nimAsyncDispatchSetResult(x: `subRetType`) {.used.} =
         # If the proc has implicit return then this will get called
         `resultIdent` = x
-      template setResult(x: untyped) {.used.} =
+      template nimAsyncDispatchSetResult(x: untyped) {.used.} =
         # If the proc doesn't have implicit return then this will get called
         x
-    procBody.add newCall(ident"setResult", blockStmt)
+    procBody.add newCall(ident"nimAsyncDispatchSetResult", blockStmt)
     procBody.add(createFutureVarCompletions(futureVarIdents, nil))
     procBody.insert(0): quote do:
       {.push warning[resultshadowed]: off.}
