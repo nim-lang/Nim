@@ -814,7 +814,7 @@ proc passedToEffectsDelayedParam(tracked: PEffects; n: PNode) =
 ]#
 
 proc checkForSink(tracked: PEffects; n: PNode) =
-  if tracked.inIfStmt == 0:
+  if tracked.inIfStmt == 0 and optSinkInference in tracked.config.options:
     checkForSink(tracked.config, tracked.c.idgen, tracked.owner, n)
 
 proc trackCall(tracked: PEffects; n: PNode) =
