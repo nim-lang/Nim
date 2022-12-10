@@ -2358,7 +2358,8 @@ when not defined(gcArc) and not defined(gcOrc):
     if s.len == 0: return
     when not defined(js) and not defined(nimscript) and not defined(nimSeqsV2):
       var s = cast[PGenericSeq](s)
-      s.reserved = s.reserved or seqShallowFlag
+      {.noSideEffect.}:
+        s.reserved = s.reserved or seqShallowFlag
 
   proc shallow*(s: var string) {.noSideEffect, inline.} =
     ## Marks a string `s` as `shallow`:idx:. Subsequent assignments will not
@@ -2371,7 +2372,8 @@ when not defined(gcArc) and not defined(gcOrc):
         s = cast[PGenericSeq](newString(0))
       # string literals cannot become 'shallow':
       if (s.reserved and strlitFlag) == 0:
-        s.reserved = s.reserved or seqShallowFlag
+        {.noSideEffect.}:
+          s.reserved = s.reserved or seqShallowFlag
 
 type
   NimNodeObj = object
