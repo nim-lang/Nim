@@ -1,4 +1,4 @@
-import std/[strformat, strutils, ropes, strscans, parseutils, assertions]
+import std/[strutils, strscans, parseutils, assertions]
 
 type
   Segment = object
@@ -99,7 +99,6 @@ iterator tokenize*(line: string): (int, string) =
   var
     col = 0
     token = ""
-  var times = 0
   while col < line.len:
     var
       token: string
@@ -109,9 +108,6 @@ iterator tokenize*(line: string): (int, string) =
     col += line.skipUntil(IdentStartChars, col)
     let identStart = col
     col += line.parseIdent(token, col)
-    if times > 20:
-      echo line
-      quit 1
     # Idents will either be originalName_randomInt or HEXhexCode_randomInt
     if token.startsWith("HEX"):
       var hex: int
@@ -125,9 +121,8 @@ iterator tokenize*(line: string): (int, string) =
         name = token[0..<lastUnderscore]
     if name != "":
       yield (identStart, name)
-    times += 1
 
-proc parse*(source: string): SourceInfo =
+func parse*(source: string): SourceInfo =
   ## Parses the JS output for embedded line info
   ## So it can convert those into a series of mappings
   var
@@ -177,7 +172,7 @@ func toSourceMap*(info: SourceInfo, file: string): SourceMap {.raises: [].} =
     prevLine = 0
     prevName = 0
     prevNimCol = 0
-  debugEcho info.mappings.len
+
   for mapping in info.mappings:
     # We know need to encode segments with the following fields
     # All these fields are relative to their previous values
