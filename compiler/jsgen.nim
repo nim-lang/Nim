@@ -724,8 +724,9 @@ proc hasFrameInfo(p: PProc): bool =
       ((p.prc == nil) or not (sfPure in p.prc.flags))
 
 proc lineDir(config: ConfigRef, info: TLineInfo, line: int): Rope =
-  ropes.`%`("/* line $2 \"$1\" */$n",
-         [rope(toFullPath(config, info)), rope(line)])
+  "/* line $2:$3 \"$1\" */$n" % [
+    rope(toFullPath(config, info)), rope(line), rope(info.toColumn)
+  ]
 
 proc genLineDir(p: PProc, n: PNode) =
   let line = toLinenumber(n.info)
@@ -2885,7 +2886,8 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     # Generate an optional source map.
     if optSourcemap in m.config.globalOptions:
       var map: SourceMap
-      (code, map) = genSourceMap($(code), outFile.string)
+      map = genSourceMap($code, outFile.string)
+      code &= "\n//# sourceMappingURL=$#.map" % [outFile.string]
       writeFile(outFile.string & ".map", $(%map))
     # Check if the generated JS code matches the output file, or else
     # write it to the file.
