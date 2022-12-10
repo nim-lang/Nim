@@ -1,4 +1,5 @@
 discard """
+disabled: true
 output: "Database created successfully!"
 """
 

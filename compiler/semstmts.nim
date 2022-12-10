@@ -509,13 +509,6 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
       let it = pragmas[i]
       let key = if it.kind in nkPragmaCallKinds and it.len >= 1: it[0] else: it
 
-      when false:
-        let lhs = b[0]
-        let clash = strTableGet(c.currentScope.symbols, lhs.ident)
-        if clash != nil:
-          # refs https://github.com/nim-lang/Nim/issues/8275
-          wrongRedefinition(c, lhs.info, lhs.ident.s, clash.info)
-
       if isPossibleMacroPragma(c, it, key):
         # we transform ``var p {.m, rest.}`` into ``m(do: var p {.rest.})`` and
         # let the semantic checker deal with it:
@@ -562,54 +555,18 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
 
         doAssert result != nil
 
-        # since a macro pragma can set pragmas, we process these here again.
-        # This is required for SqueakNim-like export pragmas.
-        if false and result.kind in {nkVarSection, nkLetSection, nkConstSection}:
-          var validPragmas: TSpecialWords
-          case result.kind
-          of nkVarSection:
-            validPragmas = varPragmas
-          of nkLetSection:
-            validPragmas = letPragmas
-          of nkConstSection:
-            validPragmas = constPragmas
-          else:
-            # unreachable
-            discard
-          for defs in result:
-            for i in 0 ..< defs.len - 2:
-              let ex = defs[i]
-              if ex.kind == nkPragmaExpr and
-                  ex[namePos].kind == nkSym and
-                  ex[pragmaPos].kind != nkEmpty:
-                pragma(c, defs[lhsPos][namePos].sym, defs[lhsPos][pragmaPos], validPragmas)
         return result
 
-proc msgSymChoiceUseQualifier(c: PContext; n: PNode; note = errGenerated) =
-  assert n.kind in nkSymChoices
-  var err =
-    if note == hintAmbiguousEnum:
-      "ambiguous enum field '$1' assumed to be of type $2, this will become an error in the future" % [$n[0], typeToString(n[0].typ)]
-    else:
-      "ambiguous identifier: '" & $n[0] & "'"
-  var i = 0
-  for child in n:
-    let candidate = child.sym
-    if i == 0: err.add " -- use one of the following:\n"
-    else: err.add "\n"
-    err.add "  " & candidate.owner.name.s & "." & candidate.name.s
-    inc i
-  message(c.config, n.info, note, err)
+template isLocalSym(sym: PSym): bool =
+  sym.kind in {skVar, skLet} and not
+    ({sfGlobal, sfPure} * sym.flags != {} or
+      sfCompileTime in sym.flags) or
+      sym.kind in {skProc, skFunc, skIterator} and
+      sfGlobal notin sym.flags
 
 template isLocalVarSym(n: PNode): bool =
-  n.kind == nkSym and 
-    (n.sym.kind in {skVar, skLet} and not 
-    ({sfGlobal, sfPure} <= n.sym.flags or
-      sfCompileTime in n.sym.flags) or
-      n.sym.kind in {skProc, skFunc, skIterator} and 
-      sfGlobal notin n.sym.flags
-      )
-  
+  n.kind == nkSym and isLocalSym(n.sym)
+
 proc usesLocalVar(n: PNode): bool =
   for z in 1 ..< n.len:
     if n[z].isLocalVarSym:
@@ -645,11 +602,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     var def: PNode = c.graph.emptyNode
     if a[^1].kind != nkEmpty:
-      def = semExprWithType(c, a[^1], {}, typ)
+      def = semExprWithType(c, a[^1], {efTypeAllowed}, typ)
 
-      if def.kind in nkSymChoices and def[0].sym.kind == skEnumField:
-        msgSymChoiceUseQualifier(c, def, errGenerated)
-      elif def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
+      if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
         typFlags.incl taIsTemplateOrMacro
       elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
         typFlags.incl taProcContextIsNotMacro
@@ -764,7 +719,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         else:
           checkNilable(c, v)
         # allow let to not be initialised if imported from C:
-        if v.kind == skLet and sfImportc notin v.flags:
+        if v.kind == skLet and sfImportc notin v.flags and (strictDefs notin c.features or not isLocalSym(v)):
           localError(c.config, a.info, errLetNeedsInit)
       if sfCompileTime in v.flags:
         var x = newNodeI(result.kind, v.info)
@@ -799,7 +754,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     var typFlags: TTypeAllowedFlags
 
     # don't evaluate here since the type compatibility check below may add a converter
-    var def = semExprWithType(c, a[^1], {}, typ)
+    var def = semExprWithType(c, a[^1], {efTypeAllowed}, typ)
 
     if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
       typFlags.incl taIsTemplateOrMacro
@@ -1407,7 +1362,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       rawAddSon(s.typ, newTypeS(tyNone, c))
       s.ast = a
       inc c.inGenericContext
-      var body = semTypeNode(c, a[2], nil)
+      var body = semTypeNode(c, a[2], s.typ)
       dec c.inGenericContext
       if body != nil:
         body.sym = s
@@ -1728,12 +1683,6 @@ proc semProcAnnotation(c: PContext, prc: PNode;
 
       doAssert result != nil
 
-      # since a proc annotation can set pragmas, we process these here again.
-      # This is required for SqueakNim-like export pragmas.
-      if false and result.kind in procDefs and result[namePos].kind == nkSym and
-          result[pragmasPos].kind != nkEmpty:
-        pragma(c, result[namePos].sym, result[pragmasPos], validPragmas)
-
       return result
 
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
@@ -1899,6 +1848,8 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
     if s.magic == mAsgn: return
     incl(s.flags, sfUsed)
     incl(s.flags, sfOverriden)
+    if name == "=":
+      message(c.config, n.info, warnDeprecated, "Overriding `=` hook is deprecated; Override `=copy` hook instead")
     let t = s.typ
     if t.len == 3 and t[0] == nil and t[1].kind == tyVar:
       var obj = t[1][0]
@@ -2496,9 +2447,12 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType =
     else:
       n.typ = n[i].typ
       if not isEmptyType(n.typ): n.transitionSonsKind(nkStmtListExpr)
-    if n[i].kind in nkLastBlockStmts or
-        n[i].kind in nkCallKinds and n[i][0].kind == nkSym and
-        sfNoReturn in n[i][0].sym.flags:
+    var m = n[i]
+    while m.kind in {nkStmtListExpr, nkStmtList} and m.len > 0: # from templates
+      m = m.lastSon
+    if m.kind in nkLastBlockStmts or
+        m.kind in nkCallKinds and m[0].kind == nkSym and
+        sfNoReturn in m[0].sym.flags:
       for j in i + 1..<n.len:
         case n[j].kind
         of nkPragma, nkCommentStmt, nkNilLit, nkEmpty, nkState: discard

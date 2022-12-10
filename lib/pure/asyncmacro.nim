@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## `asyncdispatch` module depends on the `asyncmacro` module to work properly.
+## Implements the `async` and `multisync` macros for `asyncdispatch`.
 
 import macros, strutils, asyncfutures
 
@@ -214,9 +214,18 @@ proc asyncSingleProc(prc: NimNode): NimNode =
   # don't do anything with forward bodies (empty)
   if procBody.kind != nnkEmpty:
     # fix #13899, defer should not escape its original scope
-    procBody = newStmtList(newTree(nnkBlockStmt, newEmptyNode(), procBody))
-    procBody.add(createFutureVarCompletions(futureVarIdents, nil))
+    let blockStmt = newStmtList(newTree(nnkBlockStmt, newEmptyNode(), procBody))
+    procBody = newStmtList()
     let resultIdent = ident"result"
+    procBody.add quote do:
+      template nimAsyncDispatchSetResult(x: `subRetType`) {.used.} =
+        # If the proc has implicit return then this will get called
+        `resultIdent` = x
+      template nimAsyncDispatchSetResult(x: untyped) {.used.} =
+        # If the proc doesn't have implicit return then this will get called
+        x
+    procBody.add newCall(ident"nimAsyncDispatchSetResult", blockStmt)
+    procBody.add(createFutureVarCompletions(futureVarIdents, nil))
     procBody.insert(0): quote do:
       {.push warning[resultshadowed]: off.}
       when `subRetType` isnot void:

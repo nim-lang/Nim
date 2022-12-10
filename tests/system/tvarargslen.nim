@@ -1,8 +1,8 @@
 discard """
   output: '''
-tvarargslen.nim:35:9 (1, 2)
-tvarargslen.nim:36:9 12
-tvarargslen.nim:37:9 1
+tvarargslen.nim:35:2 (1, 2)
+tvarargslen.nim:36:2 12
+tvarargslen.nim:37:2 1
 tvarargslen.nim:38:8 
 done
 '''

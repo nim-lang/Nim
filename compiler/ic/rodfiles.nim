@@ -24,7 +24,7 @@ when defined(nimPreviewSlimSystem):
 ## `RodFile` represents a Rod File (versioned binary format), and the
 ## associated data for common interactions such as IO and error tracking
 ## (`RodFileError`). The file format broken up into sections (`RodSection`)
-## and preceeded by a header (see: `cookie`). The precise layout, section
+## and preceded by a header (see: `cookie`). The precise layout, section
 ## ordering and data following the section are determined by the user. See
 ## `ic.loadRodFile`.
 ##

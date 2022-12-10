@@ -1,3 +1,5 @@
+## This module implements a generic `$` operator to convert objects to strings.
+
 import std/private/miscdollars
 
 proc `$`*[T: object](x: T): string =

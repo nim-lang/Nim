@@ -34,7 +34,7 @@ elif defined(windows):
 elif defined(posix):
   import posix
 else:
-  {.error: "cmdparam module not ported to your operating system!".}
+  {.error: "The cmdline module has not been implemented for the target platform.".}
 
 
 # Needed by windows in order to obtain the command line for targets

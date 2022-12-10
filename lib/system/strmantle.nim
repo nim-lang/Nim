@@ -17,7 +17,7 @@ proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let blen = b.len
   let minlen = min(alen, blen)
   if minlen > 0:
-    result = c_memcmp(unsafeAddr a[0], unsafeAddr b[0], cast[csize_t](minlen))
+    result = c_memcmp(unsafeAddr a[0], unsafeAddr b[0], cast[csize_t](minlen)).int
     if result == 0:
       result = alen - blen
   else:

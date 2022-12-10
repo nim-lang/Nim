@@ -111,14 +111,14 @@ pkg "nimongo", "nimble test_ci", allowFailure = true
 pkg "nimph", "nimble test", "https://github.com/disruptek/nimph", allowFailure = true
 pkg "nimPNG", useHead = true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
-pkg "nimquery", url = "https://github.com/nim-lang/nimquery", useHead = true
+pkg "nimquery"
 pkg "nimsl"
 pkg "nimsvg"
 pkg "nimterop", "nimble minitest"
-pkg "nimwc", "nim c nimwc.nim"
+pkg "nimwc", "nim c nimwc.nim", allowFailure = true
 pkg "nimx", "nim c --threads:on test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
-pkg "norm", "testament r tests/sqlite/trows.nim"
+pkg "norm", "testament r tests/sqlite/trows.nim", allowFailure = true
 pkg "npeg", "nimble testarc"
 pkg "numericalnim", "nimble nimCI"
 pkg "optionsutils"
@@ -142,6 +142,7 @@ pkg "sdl1", "nim c -r src/sdl.nim"
 pkg "sdl2_nim", "nim c -r sdl2/sdl.nim"
 pkg "sigv4", "nim c --gc:arc -r sigv4.nim", "https://github.com/disruptek/sigv4"
 pkg "sim"
+pkg "smtp", "nimble compileExample"
 pkg "snip", "nimble test", "https://github.com/genotrance/snip"
 pkg "stew"
 pkg "stint", "nim r stint.nim"

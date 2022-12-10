@@ -2001,7 +2001,7 @@ when notJSnotNims:
   proc equalMem(a, b: pointer, size: Natural): bool =
     nimCmpMem(a, b, size) == 0
   proc cmpMem(a, b: pointer, size: Natural): int =
-    nimCmpMem(a, b, size)
+    nimCmpMem(a, b, size).int
 
 when not defined(js):
   proc cmp(x, y: string): int =
@@ -2300,11 +2300,13 @@ else:
       type ExitCodeRange = int8
     else: # win32 uses low 32 bits
       type ExitCodeRange = cint
-
-    if errorcode < low(ExitCodeRange):
-      rawQuit(low(ExitCodeRange).cint)
-    elif errorcode > high(ExitCodeRange):
-      rawQuit(high(ExitCodeRange).cint)
+    when sizeof(errorcode) > sizeof(ExitCodeRange):
+      if errorcode < low(ExitCodeRange):
+        rawQuit(low(ExitCodeRange).cint)
+      elif errorcode > high(ExitCodeRange):
+        rawQuit(high(ExitCodeRange).cint)
+      else:
+        rawQuit(errorcode.cint)
     else:
       rawQuit(errorcode.cint)
 
@@ -2796,7 +2798,7 @@ when notJSnotNims and not defined(nimSeqsV2):
       assert y == "abcgh"
     discard
 
-proc arrayWith*[T](y: T, size: static int): array[size, T] {.noinit.} = # ? exempt from default value for result
+proc nimArrayWith[T](y: T, size: static int): array[size, T] {.compilerRtl, raises: [].} =
   ## Creates a new array filled with `y`.
   for i in 0..size-1:
     result[i] = y

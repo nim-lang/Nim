@@ -36,7 +36,7 @@ template frees(s) =
 
 proc resize(old: int): int {.inline.} =
   if old <= 0: result = 4
-  elif old < 65536: result = old * 2
+  elif old <= high(int16): result = old * 2
   else: result = old * 3 div 2 # for large arrays * 3/2 is better
 
 proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =

@@ -10,6 +10,8 @@
 ## Platform detection for NimScript. This module is included by the system module!
 ## Do not import it directly!
 
+# CPU architectures have alias names mapped in tools/niminst/makefile.nimf
+
 type
   CpuPlatform* {.pure.} = enum ## the CPU this program will run on.
     none,                      ## unknown CPU

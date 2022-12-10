@@ -440,6 +440,7 @@ or setup a ``nim.cfg`` file like so:
     #nim.cfg
     --mm:orc
     --d:nimAllocPagesViaMalloc
+    --define:nimInheritHandles
     --passC="-I$DEVKITPRO/libnx/include"
     --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 

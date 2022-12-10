@@ -865,7 +865,8 @@ const stdlibDirs* = [
   "pure/concurrency",
   "pure/unidecode", "impure",
   "wrappers", "wrappers/linenoise",
-  "windows", "posix", "js"]
+  "windows", "posix", "js",
+  "deprecated/pure"]
 
 const
   pkgPrefix = "pkg/"
