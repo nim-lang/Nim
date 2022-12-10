@@ -169,6 +169,7 @@
 - Added new modules which were part of `std/os`:
   - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
   - Added `std/paths`, `std/dirs`, `std/files`, `std/symlinks` and `std/appdirs`.
+  - Added `std/cmdline` for reading command line parameters.
 - Added `sep` parameter in `std/uri` to specify the query separator.
 - Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
   and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)
@@ -205,6 +206,8 @@
 - Removed deprecated `` httpcore.`==` ``.
 - Removed deprecated `std/posix.CMSG_SPACE` and `std/posix.CMSG_LEN` that takes wrong argument types.
 - Removed deprecated `osproc.poDemon`, symbol with typo.
+- Removed deprecated `tables.rightSize`.
+
 
 - Removed deprecated `posix.CLONE_STOPPED`.
 

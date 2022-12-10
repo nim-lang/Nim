@@ -2483,9 +2483,12 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType =
     else:
       n.typ = n[i].typ
       if not isEmptyType(n.typ): n.transitionSonsKind(nkStmtListExpr)
-    if n[i].kind in nkLastBlockStmts or
-        n[i].kind in nkCallKinds and n[i][0].kind == nkSym and
-        sfNoReturn in n[i][0].sym.flags:
+    var m = n[i]
+    while m.kind in {nkStmtListExpr, nkStmtList} and m.len > 0: # from templates
+      m = m.lastSon
+    if m.kind in nkLastBlockStmts or
+        m.kind in nkCallKinds and m[0].kind == nkSym and
+        sfNoReturn in m[0].sym.flags:
       for j in i + 1..<n.len:
         case n[j].kind
         of nkPragma, nkCommentStmt, nkNilLit, nkEmpty, nkState: discard

@@ -30,6 +30,7 @@ symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
 exprColonEqExpr = expr (':'|'=' expr)?
 exprEqExpr = expr ('=' expr)?
 exprList = expr ^+ comma
+optionalExprList = expr ^* comma
 exprColonEqExprList = exprColonEqExpr (comma exprColonEqExpr)* (comma)?
 qualifiedIdent = symbol ('.' optInd symbol)?
 setOrTableConstr = '{' ((exprColonEqExpr comma)* | ':' ) '}'
@@ -109,7 +110,7 @@ typeDefValue = ((tupleDecl | enumDecl | objectDecl | conceptDecl |
 postExprBlocks = ':' stmt? ( IND{=} doBlock
                            | IND{=} 'of' exprList ':' stmt
                            | IND{=} 'elif' expr ':' stmt
-                           | IND{=} 'except' exprList ':' stmt
+                           | IND{=} 'except' optionalExprList ':' stmt
                            | IND{=} 'finally' ':' stmt
                            | IND{=} 'else' ':' stmt )*
 exprStmt = simpleExpr postExprBlocks?
@@ -148,10 +149,10 @@ caseStmt = 'case' expr ':'? COMMENT?
             (IND{>} ofBranches DED
             | IND{=} ofBranches)
 tryStmt = 'try' colcom stmt &(IND{=}? 'except'|'finally')
-           (IND{=}? 'except' exprList colcom stmt)*
+           (IND{=}? 'except' optionalExprList colcom stmt)*
            (IND{=}? 'finally' colcom stmt)?
 tryExpr = 'try' colcom stmt &(optInd 'except'|'finally')
-           (optInd 'except' exprList colcom stmt)*
+           (optInd 'except' optionalExprList colcom stmt)*
            (optInd 'finally' colcom stmt)?
 blockStmt = 'block' symbol? colcom stmt
 blockExpr = 'block' symbol? colcom stmt

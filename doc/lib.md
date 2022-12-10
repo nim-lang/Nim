@@ -606,6 +606,10 @@ Regular expressions
   This module contains procedures and operators for handling regular
   expressions. The current implementation uses PCRE.
 
+* [nre](nre.html)
+
+  This module contains many help functions for handling regular expressions.
+  The current implementation uses PCRE.
 
 Database support
 ----------------
