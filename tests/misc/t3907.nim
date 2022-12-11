@@ -1,3 +1,7 @@
+discard """
+  disabled: "32bit"
+"""
+
 import std/assertions
 
 let a = 0'i64
