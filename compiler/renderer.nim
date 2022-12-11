@@ -473,9 +473,15 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkLambda: result = lsons(g, n) + len("proc__=_")
   of nkDo: result = lsons(g, n) + len("do__:_")
   of nkConstDef, nkIdentDefs:
+    echo "Rendering ident def, ", n[0].kind, " ", n[^2].kind, " ", n[^1].kind
     result = lcomma(g, n, 0, - 3)
-    if n[^2].kind != nkEmpty: result += lsub(g, n[^2]) + 2
-    if n[^1].kind != nkEmpty: result += lsub(g, n[^1]) + 3
+    if n[^1].kind == nkEmpty and n[^2].kind == nkEmpty:
+      # If the ident def is only a single ident then it is in reference to a using statement.
+      # We then need to lookup the symbol to find the original type
+      result += lsub(g, n[0].sym.ast) + 2
+    else:
+      if n[^2].kind != nkEmpty: result += lsub(g, n[^2]) + 2
+      if n[^1].kind != nkEmpty: result += lsub(g, n[^1]) + 3
   of nkVarTuple:
     if n[^1].kind == nkEmpty:
       result = lcomma(g, n, 0, - 2) + len("()")
@@ -1278,9 +1284,17 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     gsub(g, n, bodyPos)
   of nkConstDef, nkIdentDefs:
     gcomma(g, n, 0, -3)
+    var typeNode: PNode = nil
     if n.len >= 2 and n[^2].kind != nkEmpty:
+      typeNode = n[^2]
+    elif n.len >= 2 and n[^1].kind == nkEmpty and n[^2].kind == nkEmpty:
+      echo "Resolving type thigny"
+      typeNode = n[0].sym.ast
+
+    if typeNode != nil:
       putWithSpace(g, tkColon, ":")
-      gsub(g, n, n.len - 2)
+      gsub(g, typeNode, c)
+
     if n.len >= 1 and n[^1].kind != nkEmpty:
       put(g, tkSpaces, Space)
       putWithSpace(g, tkEquals, "=")
