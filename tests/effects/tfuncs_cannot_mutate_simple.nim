@@ -1,5 +1,5 @@
 discard """
-  errormsg: '''cannot mutuate location x.data within a strict func'''
+  errormsg: '''cannot mutate location x.data within a strict func'''
   line: 15
 """
 

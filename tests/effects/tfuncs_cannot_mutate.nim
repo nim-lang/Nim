@@ -1,5 +1,5 @@
 discard """
-  errormsg: "cannot mutuate location select(x, z).data within a strict func"
+  errormsg: "cannot mutate location select(x, z).data within a strict func"
   line: 35
 """
 

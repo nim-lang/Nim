@@ -1089,7 +1089,7 @@ proc track(tracked: PEffects, n: PNode) =
       if tracked.strictFuncsActive and isDangerousLocation(n[0], tracked.owner):
         tracked.hasSideEffect = true
         localError(tracked.config, n[0].info,
-            "cannot mutuate location $1 within a strict func" % renderTree(n[0]))
+            "cannot mutate location $1 within a strict func" % renderTree(n[0]))
   of nkVarSection, nkLetSection:
     for child in n:
       let last = lastSon(child)
