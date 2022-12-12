@@ -342,7 +342,7 @@ proc add*(father: XmlNode, sons: openArray[XmlNode]) {.inline.} =
 proc insert*(father, son: XmlNode, index: int) {.inline.} =
   ## Inserts the child `son` to a given position in `father`.
   ##
-  ## `father` and `son` must be of `xnElement` kind.
+  ## `father` must be of `xnElement` kind.
   ##
   ## See also:
   ## * `insert proc <#insert,XmlNode,openArray[XmlNode],int>`_
@@ -361,7 +361,7 @@ proc insert*(father, son: XmlNode, index: int) {.inline.} =
   <first />
 </myTag>"""
 
-  assert father.k == xnElement and son.k == xnElement
+  assert father.k == xnElement
   if len(father.s) > index:
     insert(father.s, son, index)
   else:
@@ -370,7 +370,7 @@ proc insert*(father, son: XmlNode, index: int) {.inline.} =
 proc insert*(father: XmlNode, sons: openArray[XmlNode], index: int) {.inline.} =
   ## Inserts the children openArray[`sons`] to a given position in `father`.
   ##
-  ## `father` and all `sons` must be of `xnElement` kind.
+  ## `father` must be of `xnElement` kind.
   ##
   ## See also:
   ## * `insert proc <#insert,XmlNode,XmlNode,int>`_
@@ -390,7 +390,7 @@ proc insert*(father: XmlNode, sons: openArray[XmlNode], index: int) {.inline.} =
   <first />
 </myTag>"""
 
-  assert father.k == xnElement and all(sons, proc (x: XmlNode): bool = x.k == xnElement) == true
+  assert father.k == xnElement
   if len(father.s) > index:
     insert(father.s, sons, index)
   else:
