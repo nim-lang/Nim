@@ -42,6 +42,11 @@ proc buzz*[T](a, b: T): T {.deprecated: "since v0.20".} =
 type
   FooBuzz* {.deprecated: "FooBuzz msg".} = int
 
+using f: FooBuzz
+
+proc bar*(f) = # `f` should be expanded to `f: FooBuzz`
+  discard
+
 import std/macros
 
 var aVariable*: array[1, int]
