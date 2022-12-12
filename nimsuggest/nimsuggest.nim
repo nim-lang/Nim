@@ -28,6 +28,7 @@ import compiler / [options, commands, modules, sem,
   sigmatch, ast,
   idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
   pathutils]
+  pathutils, condsyms]
 
 when defined(nimPreviewSlimSystem):
   import std/typedthreads
@@ -553,6 +554,9 @@ proc mainCommand(graph: ModuleGraph) =
   registerPass graph, verbosePass
   registerPass graph, semPass
   conf.setCmd cmdIdeTools
+
+  defineSymbol(conf.symbols, $conf.backend)
+
   wantMainModule(conf)
 
   if not fileExists(conf.projectFull):
@@ -952,6 +956,7 @@ else:
     proc mockCommand(graph: ModuleGraph) =
       retval = graph
       let conf = graph.config
+      defineSymbol(conf.symbols, $conf.backend)
       clearPasses(graph)
       registerPass graph, verbosePass
       registerPass graph, semPass
