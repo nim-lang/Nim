@@ -438,7 +438,8 @@ proc referencesUsing(n: PNode): bool =
   ## Returns true if n references a using statement.
   ## e.g. proc foo(x) # x doesn't have type or def value so it references a using
   result = n.kind == nkIdentDefs and
-           n[0].kind == nkSym and # If using doc0 (without sempass) then we can't find what its referencing
+           # Sometimes the node might not have been semmed (e.g. doc0) and will be nkIdent instead
+           n[0].kind == nkSym and
            n[1].kind == nkEmpty and n[2].kind == nkEmpty
 
 proc lsub(g: TSrcGen; n: PNode): int =
