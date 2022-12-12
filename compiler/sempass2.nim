@@ -1527,7 +1527,12 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     checkBorrowedLocations(partitions, body, g.config)
 
   if sfThread in s.flags and t.gcUnsafe:
-    if optThreads in g.config.globalOptions and optThreadAnalysis in g.config.globalOptions:
+    let 
+      conf = g.config
+      doThreadAnalysis = optThreadAnalysis in conf.globalOptions and conf.backend != backendJs
+      supportThreads = optThreads in conf.globalOptions and 
+                       conf.backend != backendJs and conf.cmd != cmdNimscript
+    if doThreadAnalysis and supportThreads:
       #localError(s.info, "'$1' is not GC-safe" % s.name.s)
       listGcUnsafety(s, onlyWarning=false, g.config)
     else:

@@ -1,4 +1,4 @@
 discard """
-  cmd: "nim check $file"
+  cmd: "nim check --warning[UnusedImport]:off $file"
 """
 import std/jsfetch

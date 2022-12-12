@@ -299,7 +299,8 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "forcebuild", "f": result = contains(conf.globalOptions, optForceFullMake)
   of "warnings", "w": result = contains(conf.options, optWarns)
   of "hints": result = contains(conf.options, optHints)
-  of "threadanalysis": result = contains(conf.globalOptions, optThreadAnalysis)
+  of "threadanalysis":
+    result = contains(conf.globalOptions, optThreadAnalysis) and conf.backend != backendJs
   of "stacktrace": result = contains(conf.options, optStackTrace)
   of "stacktracemsgs": result = contains(conf.options, optStackTraceMsgs)
   of "linetrace": result = contains(conf.options, optLineTrace)
@@ -327,7 +328,9 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "symbolfiles": result = conf.symbolFiles != disabledSf
   of "genscript": result = contains(conf.globalOptions, optGenScript)
   of "gencdeps": result = contains(conf.globalOptions, optGenCDeps)
-  of "threads": result = contains(conf.globalOptions, optThreads)
+  of "threads":
+    result = contains(conf.globalOptions, optThreads) and
+             conf.backend != backendJs and conf.cmd != cmdNimscript
   of "tlsemulation": result = contains(conf.globalOptions, optTlsEmulation)
   of "implicitstatic": result = contains(conf.options, optImplicitStatic)
   of "patterns", "trmacros":
@@ -698,8 +701,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "hints":
     if processOnOffSwitchOrList(conf, {optHints}, arg, pass, info): listHints(conf)
   of "threadanalysis":
-    if conf.backend == backendJs: discard
-    else: processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)
+    processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)
   of "stacktrace": processOnOffSwitch(conf, {optStackTrace}, arg, pass, info)
   of "stacktracemsgs": processOnOffSwitch(conf, {optStackTraceMsgs}, arg, pass, info)
   of "excessivestacktrace": processOnOffSwitchG(conf, {optExcessiveStackTrace}, arg, pass, info)
@@ -756,9 +758,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "linedir": processOnOffSwitch(conf, {optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch(conf, {optAssert}, arg, pass, info)
   of "threads":
-    if conf.backend == backendJs or conf.cmd == cmdNimscript: discard
-    else: processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
-    #if optThreads in conf.globalOptions: conf.setNote(warnGcUnsafe)
+    processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
   of "tlsemulation": processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
   of "implicitstatic":
     processOnOffSwitch(conf, {optImplicitStatic}, arg, pass, info)
