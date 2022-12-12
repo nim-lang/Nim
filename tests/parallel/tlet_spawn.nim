@@ -4,7 +4,7 @@ done999 999
 '''
 """
 
-import threadpool
+import std/[threadpool, os]
 
 proc foo(): int = 999
 
@@ -17,3 +17,12 @@ proc main =
   echo "done", f, " ", b
 
 main()
+
+# bug #13781
+proc thread(): string =
+  os.sleep(1000)
+  return "ok"
+
+var fv = spawn thread()
+sync()
+doAssert ^fv == "ok"

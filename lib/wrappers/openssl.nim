@@ -280,7 +280,9 @@ proc TLSv1_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 # and support SSLv3, TLSv1, TLSv1.1 and TLSv1.2
 # SSLv23_method(), SSLv23_server_method(), SSLv23_client_method() are removed in 1.1.0
 
-when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
+const useStaticLink = compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks)
+
+when useStaticLink:
   # Static linking
 
   when defined(openssl10):
@@ -802,10 +804,10 @@ proc md5_File*(file: string): string {.raises: [IOError,Exception].} =
   while (let bytes = f.readChars(buf); bytes > 0):
     discard md5_Update(ctx, buf[0].addr, cast[csize_t](bytes))
 
-  discard md5_Final(buf[0].addr, ctx)
+  discard md5_Final(cast[cstring](buf[0].addr), ctx)
   f.close
 
-  result = hexStr(addr buf)
+  result = hexStr(cast[cstring](addr buf))
 
 proc md5_Str*(str: string): string =
   ## Generate MD5 hash for a string. Result is a 32 character
@@ -822,8 +824,8 @@ proc md5_Str*(str: string): string =
     discard md5_Update(ctx, input[i].addr, cast[csize_t](L))
     i += L
 
-  discard md5_Final(addr res, ctx)
-  result = hexStr(addr res)
+  discard md5_Final(cast[cstring](addr res), ctx)
+  result = hexStr(cast[cstring](addr res))
 
 when defined(nimHasStyleChecks):
   {.pop.}
@@ -839,6 +841,8 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
     proc SSL_get1_peer_certificate*(ssl: SslCtx): PX509 {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSL_get_peer_certificate*(ssl: SslCtx): PX509 =
       SSL_get1_peer_certificate(ssl)
+  elif useStaticLink:
+    proc SSL_get_peer_certificate*(ssl: SslCtx): PX509 {.cdecl, dynlib: DLLSSLName, importc.}
   else:
     proc SSL_get_peer_certificate*(ssl: SslCtx): PX509 =
       let methodSym = sslSymNullable("SSL_get_peer_certificate", "SSL_get1_peer_certificate")
@@ -884,6 +888,8 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
   {.pop.}
 
   when isMainModule:
+    when defined(nimPreviewSlimSystem):
+      import std/assertions
     # A simple certificate test
     let certbytes = readFile("certificate.der")
     let cert = d2i_X509(certbytes)

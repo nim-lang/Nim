@@ -493,9 +493,9 @@ type
                                         ## providing an exception message
                                         ## is bad style.
     when defined(js):
-      trace: string
+      trace*: string
     else:
-      trace: seq[StackTraceEntry]
+      trace*: seq[StackTraceEntry]
     up: ref Exception # used for stacking exceptions. Not exported!
 
   Defect* = object of Exception ## \
@@ -1078,6 +1078,8 @@ when not defined(js) and hostOS != "standalone":
     ## deprecated, prefer `quit` or `exitprocs.getProgramResult`, `exitprocs.setProgramResult`.
 
 import std/private/since
+import system/ctypes
+export ctypes
 
 proc align(address, alignment: int): int =
   if alignment == 0: # Actually, this is illegal. This branch exists to actively
@@ -1087,32 +1089,7 @@ proc align(address, alignment: int): int =
     result = (address + (alignment - 1)) and not (alignment - 1)
 
 when defined(nimNoQuit):
-  proc quit*(errorcode: int = QuitSuccess) = discard "ignoring quit"
-    ## Stops the program immediately with an exit code.
-    ##
-    ## Before stopping the program the "exit procedures" are called in the
-    ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc)>`_.
-    ##
-    ## The proc `quit(QuitSuccess)` is called implicitly when your nim
-    ## program finishes without incident for platforms where this is the
-    ## expected behavior. A raised unhandled exception is
-    ## equivalent to calling `quit(QuitFailure)`.
-    ##
-    ## Note that this is a *runtime* call and using `quit` inside a macro won't
-    ## have any compile time effect. If you need to stop the compiler inside a
-    ## macro, use the `error <manual.html#pragmas-error-pragma>`_ or `fatal
-    ## <manual.html#pragmas-fatal-pragma>`_ pragmas.
-    ##
-    ## .. danger:: In almost all cases, in particular in library code, prefer
-    ##   alternatives, e.g. `doAssert false` or raise a `Defect`.
-    ##   `quit` bypasses regular control flow in particular `defer`,
-    ##   `try`, `catch`, `finally` and `destructors`, and exceptions that may have been
-    ##   raised by an `addExitProc` proc, as well as cleanup code in other threads.
-    ##   It does *not* call the garbage collector to free all the memory,
-    ##   unless an `addExitProc` proc calls `GC_fullCollect <#GC_fullCollect>`_.
-
-elif defined(nimdoc):
-  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
+  proc rawQuit(errorcode: int = QuitSuccess) = discard "ignoring quit"
 
 elif defined(genode):
   import genode/env
@@ -1122,20 +1099,20 @@ elif defined(genode):
   type GenodeEnv* = GenodeEnvPtr
     ## Opaque type representing Genode environment.
 
-  proc quit*(env: GenodeEnv; errorcode: int) {.magic: "Exit", noreturn,
+  proc rawQuit(env: GenodeEnv; errorcode: int) {.magic: "Exit", noreturn,
     importcpp: "#->parent().exit(@); Genode::sleep_forever()", header: "<base/sleep.h>".}
 
-  proc quit*(errorcode: int = QuitSuccess) =
-    systemEnv.quit(errorcode)
+  proc rawQuit(errorcode: int = QuitSuccess) {.inline, noreturn.} =
+    systemEnv.rawQuit(errorcode)
+
 
 elif defined(js) and defined(nodejs) and not defined(nimscript):
-  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
+  proc rawQuit(errorcode: int = QuitSuccess) {.magic: "Exit",
     importc: "process.exit", noreturn.}
 
 else:
-  proc quit*(errorcode: int = QuitSuccess) {.
+  proc rawQuit(errorcode: cint) {.
     magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
-
 
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
@@ -1143,7 +1120,7 @@ template sysAssert(cond: bool, msg: string) =
       cstderr.rawWrite "[SYSASSERT] "
       cstderr.rawWrite msg
       cstderr.rawWrite "\n"
-      quit 1
+      rawQuit 1
 
 const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
 
@@ -1268,9 +1245,6 @@ when not defined(nimV2):
     ##   echo repr(s) # => 0x1055eb050[0x1055ec050"test2", 0x1055ec078"test2"]
     ##   echo repr(i) # => 0x1055ed050[1, 2, 3, 4, 5]
     ##   ```
-
-import system/ctypes
-export ctypes
 
 when not defined(nimPreviewSlimSystem):
   type
@@ -1420,13 +1394,15 @@ when not defined(js) and not defined(booting) and defined(nimTrMacros):
     swap(cast[ptr pointer](addr arr[a])[], cast[ptr pointer](addr arr[b])[])
 
 when not defined(nimscript):
-  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
-                                                     discardable, raises: [], tags: [], benign.}
-  ## Atomic increment of `memLoc`. Returns the value after the operation.
+  {.push stackTrace: off, profiler: off.}
 
-  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline,
-                                                     discardable, raises: [], tags: [], benign.}
-  ## Atomic decrement of `memLoc`. Returns the value after the operation.
+  when not defined(nimPreviewSlimSystem):
+    import std/sysatomics
+    export sysatomics
+  else:
+    import std/sysatomics
+
+  {.pop.}
 
 include "system/memalloc"
 
@@ -1618,8 +1594,11 @@ when not defined(js) and defined(nimV2):
     TNimTypeV2 {.compilerproc.} = object
       destructor: pointer
       size: int
-      align: int
-      name: cstring
+      align: int16
+      depth: int16
+      display: ptr UncheckedArray[uint32] # classToken
+      when defined(nimTypeNames):
+        name: cstring
       traceImpl: pointer
       typeInfoV1: pointer # for backwards compat, usually nil
       flags: int
@@ -1637,24 +1616,18 @@ when not defined(nimscript):
     ## for debug builds. Since it's usually used for debugging, this
     ## is proclaimed to have no IO effect!
 
-
-when defined(nimHasExceptionsQuery):
-  const gotoBasedExceptions = compileOption("exceptions", "goto")
-else:
-  const gotoBasedExceptions = false
-
-import system/fatal
-
-when not defined(nimscript):
-  {.push stackTrace: off, profiler: off.}
-
-  include "system/atomics"
-
-  {.pop.}
+when not declared(sysFatal):
+  include "system/fatal"
 
 
 when defined(nimV2):
   include system/arc
+
+template newException*(exceptn: typedesc, message: string;
+                       parentException: ref Exception = nil): untyped =
+  ## Creates an exception object of type `exceptn` and sets its `msg` field
+  ## to `message`. Returns the new exception object.
+  (ref exceptn)(msg: message, parent: parentException)
 
 when not defined(nimPreviewSlimSystem):
   {.deprecated: "assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/assertions`".}
@@ -1705,7 +1678,7 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
     result = s[L]
     setLen(s, L)
 
-func `==`*[T: tuple|object](x, y: T): bool =
+proc `==`*[T: tuple|object](x, y: T): bool =
   ## Generic `==` operator for tuples that is lifted from the components.
   ## of `x` and `y`.
   for a, b in fields(x, y):
@@ -1863,16 +1836,10 @@ proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
   ## for debugging routines marked as `noSideEffect
   ## <manual.html#pragmas-nosideeffect-pragma>`_.
 
-template newException*(exceptn: typedesc, message: string;
-                       parentException: ref Exception = nil): untyped =
-  ## Creates an exception object of type `exceptn` and sets its `msg` field
-  ## to `message`. Returns the new exception object.
-  (ref exceptn)(msg: message, parent: parentException)
-
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
     if s == nil or s.len == 0: result = cstring""
-    else: result = cstring(addr s.data)
+    else: result = cast[cstring](addr s.data)
 
 proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## Get type information for `x`.
@@ -2034,7 +2001,7 @@ when notJSnotNims:
   proc equalMem(a, b: pointer, size: Natural): bool =
     nimCmpMem(a, b, size) == 0
   proc cmpMem(a, b: pointer, size: Natural): int =
-    nimCmpMem(a, b, size)
+    nimCmpMem(a, b, size).int
 
 when not defined(js):
   proc cmp(x, y: string): int =
@@ -2099,9 +2066,9 @@ when not defined(js):
     when hostOS != "standalone":
       include system/threadimpl
       when not defined(nimPreviewSlimSystem):
-        {.deprecated: "threads is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/threads`".}
-        import std/threads
-        export threads
+        {.deprecated: "threads is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/typedthreads`".}
+        import std/typedthreads
+        export typedthreads
 
   elif not defined(nogc) and not defined(nimscript):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
@@ -2284,6 +2251,64 @@ export addInt
 when defined(js):
   include "system/jssys"
   include "system/reprjs"
+
+
+when defined(nimNoQuit):
+  proc quit*(errorcode: int = QuitSuccess) = discard "ignoring quit"
+
+elif defined(nimdoc):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
+    ## Stops the program immediately with an exit code.
+    ##
+    ## Before stopping the program the "exit procedures" are called in the
+    ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc)>`_.
+    ##
+    ## The proc `quit(QuitSuccess)` is called implicitly when your nim
+    ## program finishes without incident for platforms where this is the
+    ## expected behavior. A raised unhandled exception is
+    ## equivalent to calling `quit(QuitFailure)`.
+    ##
+    ## Note that this is a *runtime* call and using `quit` inside a macro won't
+    ## have any compile time effect. If you need to stop the compiler inside a
+    ## macro, use the `error <manual.html#pragmas-error-pragma>`_ or `fatal
+    ## <manual.html#pragmas-fatal-pragma>`_ pragmas.
+    ##
+    ## .. warning:: `errorcode` gets saturated when it exceeds the valid range
+    ##    on the specific platform. On Posix, the valid range is `low(int8)..high(int8)`.
+    ##    On Windows, the valid range is `low(int32)..high(int32)`. For instance,
+    ##    `quit(int(0x100000000))` is equal to `quit(127)` on Linux.
+    ##
+    ## .. danger:: In almost all cases, in particular in library code, prefer
+    ##   alternatives, e.g. `doAssert false` or raise a `Defect`.
+    ##   `quit` bypasses regular control flow in particular `defer`,
+    ##   `try`, `catch`, `finally` and `destructors`, and exceptions that may have been
+    ##   raised by an `addExitProc` proc, as well as cleanup code in other threads.
+    ##   It does *not* call the garbage collector to free all the memory,
+    ##   unless an `addExitProc` proc calls `GC_fullCollect <#GC_fullCollect>`_.
+
+elif defined(genode):
+  proc quit*(errorcode: int = QuitSuccess) {.inline, noreturn.} =
+    rawQuit(errorcode)
+
+elif defined(js) and defined(nodejs) and not defined(nimscript):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
+    importc: "process.exit", noreturn.}
+
+else:
+  proc quit*(errorcode: int = QuitSuccess) {.inline, noreturn.} =
+    when defined(posix): # posix uses low 8 bits
+      type ExitCodeRange = int8
+    else: # win32 uses low 32 bits
+      type ExitCodeRange = cint
+    when sizeof(errorcode) > sizeof(ExitCodeRange):
+      if errorcode < low(ExitCodeRange):
+        rawQuit(low(ExitCodeRange).cint)
+      elif errorcode > high(ExitCodeRange):
+        rawQuit(high(ExitCodeRange).cint)
+      else:
+        rawQuit(errorcode.cint)
+    else:
+      rawQuit(errorcode.cint)
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for `echo(errormsg); quit(errorcode)`.
@@ -2667,7 +2692,7 @@ when defined(genode):
   proc nim_component_construct(env: GenodeEnv) {.exportc.} =
     ## Procedure called during `Component::construct` by the loader.
     if componentConstructHook.isNil:
-      env.quit(programResult)
+      env.rawQuit(programResult)
         # No native Genode application initialization,
         # exit as would POSIX.
     else:
@@ -2688,7 +2713,8 @@ when notJSnotNims:
     initSysLock echoLock
     addSysExitProc(proc() {.noconv.} = deinitSys(echoLock))
 
-  const stdOutLock = not defined(windows) and
+  const stdOutLock = compileOption("threads") and
+                    not defined(windows) and
                     not defined(android) and
                     not defined(nintendoswitch) and
                     not defined(freertos) and
@@ -2772,7 +2798,7 @@ when notJSnotNims and not defined(nimSeqsV2):
       assert y == "abcgh"
     discard
 
-proc arrayWith*[T](y: T, size: static int): array[size, T] {.noinit.} = # ? exempt from default value for result
+proc nimArrayWith[T](y: T, size: static int): array[size, T] {.compilerRtl, raises: [].} =
   ## Creates a new array filled with `y`.
   for i in 0..size-1:
     result[i] = y

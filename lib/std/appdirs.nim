@@ -1,3 +1,5 @@
+## This module implements helpers for determining special directories used by apps.
+
 from std/private/osappdirs import nil
 import std/paths
 import std/envvars

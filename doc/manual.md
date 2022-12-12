@@ -1365,6 +1365,23 @@ ambiguous, a static error will be produced.
   p value2
   ```
 
+In some cases, ambiguity of enums is resolved depending on the relation
+between the current scope and the scope the enums were defined in.
+
+  ```nim
+  # a.nim
+  type Foo* = enum abc
+
+  # b.nim
+  import a
+  type Bar = enum abc
+  echo abc is Bar # true
+
+  block:
+    type Baz = enum abc
+    echo abc is Baz # true
+  ```
+
 To implement bit fields with enums see [Bit fields].
 
 
@@ -1950,6 +1967,57 @@ Some restrictions for case objects can be disabled via a `{.cast(uncheckedAssign
     t.kind = intLit
   ```
 
+Default values for object fields
+--------------------------------
+
+Object fields are allowed to have a constant default value. The type of field can be omitted if a default value is given.
+
+```nim test
+type
+  Foo = object
+    a: int = 2
+    b: float = 3.14
+    c = "I can have a default value"
+
+  Bar = ref object
+    a: int = 2
+    b: float = 3.14
+    c = "I can have a default value"
+```
+
+The explicit initialization uses these defaults which includes an `object` created with an object construction expression or the procedure `default`; a `ref object` created with an object construction expression or the procedure `new`; an array or a tuple with a subtype which has a default created with the procedure `default`.
+
+
+```nim test
+type
+  Foo = object
+    a: int = 2
+    b = 3.0
+  Bar = ref object
+    a: int = 2
+    b = 3.0
+
+block: # created with an object construction expression
+  let x = Foo()
+  assert x.a == 2 and x.b == 3.0
+
+  let y = Bar()
+  assert y.a == 2 and y.b == 3.0
+
+block: # created with an object construction expression
+  let x = default(Foo)
+  assert x.a == 2 and x.b == 3.0
+
+  let y = default(array[1, Foo])
+  assert y[0].a == 2 and y[0].b == 3.0
+
+  let z = default(tuple[x: Foo])
+  assert z.x.a == 2 and z.x.b == 3.0
+
+block: # created with the procedure `new`
+  let y = new Bar
+  assert y.a == 2 and y.b == 3.0
+```
 
 Set type
 --------

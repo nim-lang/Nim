@@ -1172,7 +1172,7 @@ iterator findAll*(s: string, pattern: Peg, start = 0): string =
 func findAll*(s: string, pattern: Peg, start = 0): seq[string] {.
   rtl, extern: "npegs$1".} =
   ## returns all matching *substrings* of `s` that match `pattern`.
-  ## If it does not match, @[] is returned.
+  ## If it does not match, `@[]` is returned.
   result = @[]
   for it in findAll(s, pattern, start): result.add it
 

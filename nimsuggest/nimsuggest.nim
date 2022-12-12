@@ -30,7 +30,7 @@ import compiler / [options, commands, modules, sem,
   pathutils]
 
 when defined(nimPreviewSlimSystem):
-  import std/threads
+  import std/typedthreads
 
 when defined(windows):
   import winlean
@@ -718,7 +718,7 @@ proc recompilePartially(graph: ModuleGraph, projectFileIdx = InvalidFileIdx) =
 func deduplicateSymInfoPair[SymInfoPair](xs: seq[SymInfoPair]): seq[SymInfoPair] =
   # xs contains duplicate items and we want to filter them by range because the
   # sym may not match. This can happen when xs contains the same definition but
-  # with different signature becase suggestSym might be called multiple times
+  # with different signature because suggestSym might be called multiple times
   # for the same symbol (e. g. including/excluding the pragma)
   result = @[]
   for itm in xs.reversed:

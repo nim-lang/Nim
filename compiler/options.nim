@@ -60,6 +60,7 @@ type                          # please make sure we have under 32 options
     optGenStaticLib,          # generate a static library
     optGenGuiApp,             # generate a GUI application
     optGenScript,             # generate a script file to compile the *.c files
+    optGenCDeps,              # generate a list of *.c files to be read by CMake
     optGenMapping,            # generate a mapping file
     optRun,                   # run the compiled project
     optUseNimcache,           # save artifacts (including binary) in $nimcache
@@ -864,7 +865,8 @@ const stdlibDirs* = [
   "pure/concurrency",
   "pure/unidecode", "impure",
   "wrappers", "wrappers/linenoise",
-  "windows", "posix", "js"]
+  "windows", "posix", "js",
+  "deprecated/pure"]
 
 const
   pkgPrefix = "pkg/"

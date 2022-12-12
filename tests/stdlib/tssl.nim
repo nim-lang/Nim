@@ -2,9 +2,10 @@ discard """
   joinable: false
   disabled: "freebsd"
   disabled: "openbsd"
+  disabled: "netbsd"
 """
 # disabled: pending bug #15713
-import std/[net, nativesockets, assertions, threads]
+import std/[net, nativesockets, assertions, typedthreads]
 
 when defined(posix): import os, posix
 else:

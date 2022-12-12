@@ -76,8 +76,7 @@ proc semConstrField(c: PContext, flags: TExprFlags,
   let assignment = locateFieldInInitExpr(c, field, initExpr)
   if assignment != nil:
     if nfSem in assignment.flags: return assignment[1]
-    if nfUseDefaultField in assignment[1].flags or
-       efSkipFieldVisibilityCheck in flags:
+    if nfUseDefaultField in assignment[1].flags:
       discard
     elif not fieldVisible(c, field):
       localError(c.config, initExpr.info,
@@ -327,7 +326,12 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
       result.status = initUnknown
       result.defaults.add newTree(nkExprColonExpr, n, field.ast)
     else:
-      result.status = initNone
+      let defaultExpr = defaultNodeField(c, n)
+      if defaultExpr != nil:
+        result.status = initUnknown
+        result.defaults.add newTree(nkExprColonExpr, n, defaultExpr)
+      else:
+        result.status = initNone
   else:
     internalAssert c.config, false
 
@@ -383,8 +387,7 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   var t = semTypeNode(c, n[0], nil)
   result = newNodeIT(nkObjConstr, n.info, t)
-  result.add newNodeIT(nkType, n.info, t) #This will contain the default values to be added in transf
-  for i in 1..<n.len:
+  for i in 0..<n.len:
     result.add n[i]
 
   if t == nil:
@@ -416,11 +419,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
   # field (if this is a case object, initialized fields in two different
   # branches will be reported as an error):
   var constrCtx = initConstrContext(t, result)
-  let (initResult, defaults) = if nfUseDefaultField in n.flags:
-        semConstructTypeAux(c, constrCtx, flags + {efSkipFieldVisibilityCheck})
-      else:
-        semConstructTypeAux(c, constrCtx, flags)
-  result[0].sons.add defaults
+  let (initResult, defaults) = semConstructTypeAux(c, constrCtx, flags)
   var hasError = false # needed to split error detect/report for better msgs
 
   # It's possible that the object was not fully initialized while
@@ -455,6 +454,8 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
       localError(c.config, field.info, msg)
       hasError = true
       break
+
+  result.sons.add defaults
 
   if initResult == initFull:
     incl result.flags, nfAllFieldsSet

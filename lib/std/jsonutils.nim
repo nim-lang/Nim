@@ -1,5 +1,5 @@
 ##[
-This module implements a hookable (de)serialization for arbitrary types.
+This module implements a hookable (de)serialization for arbitrary types using JSON.
 Design goal: avoid importing modules where a custom serialization is needed;
 see strtabs.fromJsonHook,toJsonHook for an example.
 ]##

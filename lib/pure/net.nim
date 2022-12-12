@@ -480,8 +480,8 @@ proc parseIPv6Address(addressStr: string): IpAddress =
 proc parseIpAddress*(addressStr: string): IpAddress =
   ## Parses an IP address
   ##
-  ## Raises ValueError on error. 
-  ## 
+  ## Raises ValueError on error.
+  ##
   ## For IPv4 addresses, only the strict form as
   ## defined in RFC 6943 is considered valid, see
   ## https://datatracker.ietf.org/doc/html/rfc6943#section-3.1.1.
@@ -1794,7 +1794,7 @@ proc sendTo*(socket: Socket, address: string, port: Port,
   ## This proc sends `data` to the specified `address`,
   ## which may be an IP address or a hostname, if a hostname is specified
   ## this function will try each IP of that hostname.
-  ## 
+  ##
   ## Generally for use with connection-less (UDP) sockets.
   ##
   ## If an error occurs an OSError exception will be raised.
@@ -1806,9 +1806,9 @@ proc sendTo*(socket: Socket, address: IpAddress, port: Port,
              data: string, flags = 0'i32): int {.
               discardable, tags: [WriteIOEffect].} =
   ## This proc sends `data` to the specified `IpAddress` and returns
-  ## the number of bytes written. 
+  ## the number of bytes written.
   ##
-  ## Generally for use with connection-less (UDP) sockets. 
+  ## Generally for use with connection-less (UDP) sockets.
   ##
   ## If an error occurs an OSError exception will be raised.
   ##
@@ -1898,14 +1898,18 @@ proc `==`*(lhs, rhs: IpAddress): bool =
 
 proc `$`*(address: IpAddress): string =
   ## Converts an IpAddress into the textual representation
-  result = ""
   case address.family
   of IpAddressFamily.IPv4:
-    for i in 0 .. 3:
-      if i != 0:
-        result.add('.')
-      result.add($address.address_v4[i])
+    result = newStringOfCap(16)
+    result.addInt address.address_v4[0]
+    result.add '.'
+    result.addInt address.address_v4[1]
+    result.add '.'
+    result.addInt address.address_v4[2]
+    result.add '.'
+    result.addInt address.address_v4[3]
   of IpAddressFamily.IPv6:
+    result = newStringOfCap(48)
     var
       currentZeroStart = -1
       currentZeroCount = 0

@@ -23,6 +23,9 @@ when defined(nimHasUsed):
 
 import hashes, algorithm, strutils, tables, sets
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, sysatomics]
+
 when not defined(memProfiler):
   include "system/timers"
 
