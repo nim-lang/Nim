@@ -1,9 +1,9 @@
 discard """
   action: "run"
   target: "js"
-  cmd: "nim js -r --sourceMap:on $file"
+  cmd: "nim js -r -d:nodejs --sourceMap:on $file"
 """
-import std/[os, json, strutils, sequtils, algorithm, assertions, files, paths]
+import std/[os, json, strutils, sequtils, algorithm, assertions, paths]
 
 # Implements a very basic sourcemap parser and then runs it on itself.
 # Allows to check for basic problems such as bad counts and lines missing (e.g. issue #21052)
@@ -17,7 +17,7 @@ type
     file:      string
 
   Line = object
-    line, col: int
+    line, column: int
     file: string
 
 const
@@ -27,17 +27,22 @@ const
   fiveBits = 0b11111
   mask = (1 shl 5) - 1
   alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-  jsFile = "tsourcemap.js".Path
-  mapFile = "tsourcemap.js.map".Path
-
-doAssert jsFile.fileExists(), "JS file not produced"
-doAssert mapFile.fileExists(), "Source map not produced"
+  mapFile = "tsourcemap.js.map"
 
 var b64Table: seq[int] = 0.repeat(max(alphabet.mapIt(it.ord)) + 1)
 for i, b in alphabet.pairs:
   b64Table[b.ord] = i
 
-let data = mapFile.parseFile().to(SourceMap)
+# From https://github.com/juancarlospaco/nodejs/blob/main/src/nodejs/jsfs.nim
+proc importFs*() {.importjs: "var fs = require(\"fs\");".}
+proc readFileSync*(path: cstring): cstring {.importjs: "(fs.$1(#).toString())".}
+importFS()
+# Read in needed files
+let
+  jsFileName = string(currentSourcePath().Path.parentDir() / "tsourcemap.js".Path)
+  mapFileName = jsFileName & ".map"
+  data = parseJson($mapFileName.readFileSync()).to(SourceMap)
+  jsFile = $readFileSync(jsFileName)
 
 proc decodeVLQ(inp: string): seq[int] =
   var
@@ -59,7 +64,6 @@ var
   name = 0
   column = 0
   jsLine = 1
-  foundSelf = false
   lines: seq[Line]
 
 for gline in data.mappings.split(';'):
@@ -68,20 +72,25 @@ for gline in data.mappings.split(';'):
   for item in gline.strip().split(','):
     let value = item.decodeVLQ()
     doAssert value.len in [0, 1, 4, 5]
-    if item.len == 0: continue
+    if value.len == 0:
+      continue
     jsColumn += value[0]
     if value.len >= 4:
       source += value[1]
       line += value[2]
       column += value[3]
-      lines &= Line(line: line, column: column, file: string)
+      lines &= Line(line: line, column: column, file: data.sources[source])
 
-doAssert lines.len == jsFile.splitLines().len
+let jsLines = jsFile.splitLines().len
+# There needs to be a mapping for every line in the JS
+# If there isn't then the JS lines wont match up with Nim lines.
+# Except we don't care about the final line since that doesn't need to line up
+doAssert data.mappings.count(';') == jsLines - 1
 
 # Check we can find this file somewhere in the source map
 var foundSelf = false
 for line in lines:
-  if "tsourcemap.nim" in line:
+  if "tsourcemap.nim" in line.file:
     foundSelf = true
-    doAssert line.line in 0..<100
-doAssert foundSelf
+    doAssert line.line in 0..<jsLines, "Lines is out of bounds for file"
+doAssert foundSelf, "Couldn't find tsourcemap.nim in source map"
