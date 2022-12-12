@@ -52,7 +52,7 @@ pkg "cascade"
 pkg "cello", url = "https://github.com/nim-lang/cello", useHead = true
 pkg "chroma"
 pkg "chronicles", "nimble install -y stew@#head; nim c -o:chr -r chronicles.nim"
-pkg "chronos", "nimble install -y bearssl@#head stew@#head; nimble install -y httputils; nim c -r -d:release tests/testall"
+pkg "chronos", "nimble install -y bearssl@#head stew@#head httputils@#head; nim c -r -d:release tests/testall"
 pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --gc:orc"
 pkg "compactdict"
