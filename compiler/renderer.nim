@@ -24,7 +24,7 @@ type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,
     renderNoPragmas, renderIds, renderNoProcDefs, renderSyms, renderRunnableExamples,
-    renderIr
+    renderIr, renderExpandUsing
   TRenderFlags* = set[TRenderFlag]
   TRenderTok* = object
     kind*: TokType
@@ -434,6 +434,11 @@ proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   result = 0
   for i in start..n.len + theEnd: inc(result, lsub(g, n[i]))
 
+proc referencesUsing(n: PNode): bool =
+  ## Returns true if n references a using statement.
+  ## e.g. proc foo(x) # x doesn't have type or def value so it references a using
+  result = n.kind == nkIdentDefs and n[1].kind == nkEmpty and n[2].kind == nkEmpty
+
 proc lsub(g: TSrcGen; n: PNode): int =
   # computes the length of a tree
   if isNil(n): return 0
@@ -473,12 +478,9 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkLambda: result = lsons(g, n) + len("proc__=_")
   of nkDo: result = lsons(g, n) + len("do__:_")
   of nkConstDef, nkIdentDefs:
-    echo "Rendering ident def, ", n[0].kind, " ", n[^2].kind, " ", n[^1].kind
     result = lcomma(g, n, 0, - 3)
-    if n[^1].kind == nkEmpty and n[^2].kind == nkEmpty:
-      # If the ident def is only a single ident then it is in reference to a using statement.
-      # We then need to lookup the symbol to find the original type
-      result += lsub(g, n[0].sym.ast) + 2
+    if n.referencesUsing:
+      result += lsub(g, newSymNode(n[0].sym.typ.sym)) + 2
     else:
       if n[^2].kind != nkEmpty: result += lsub(g, n[^2]) + 2
       if n[^1].kind != nkEmpty: result += lsub(g, n[^1]) + 3
@@ -1284,16 +1286,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     gsub(g, n, bodyPos)
   of nkConstDef, nkIdentDefs:
     gcomma(g, n, 0, -3)
-    var typeNode: PNode = nil
     if n.len >= 2 and n[^2].kind != nkEmpty:
-      typeNode = n[^2]
-    elif n.len >= 2 and n[^1].kind == nkEmpty and n[^2].kind == nkEmpty:
-      echo "Resolving type thigny"
-      typeNode = n[0].sym.ast
-
-    if typeNode != nil:
       putWithSpace(g, tkColon, ":")
-      gsub(g, typeNode, c)
+      gsub(g, n[^2], c)
+    elif n.referencesUsing and renderExpandUsing in g.flags:
+      putWithSpace(g, tkColon, ":")
+      gsub(g, newSymNode(n[0].sym.typ.sym), c)
 
     if n.len >= 1 and n[^1].kind != nkEmpty:
       put(g, tkSpaces, Space)
