@@ -693,6 +693,9 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
 proc fixAbstractType(c: PContext, n: PNode) =
   for i in 1..<n.len:
     let it = n[i]
+    if it == nil:
+      localError(c.config, n.info, "'$1' has nil child at index $2" % [renderTree(n, {renderNoComments}), $i])
+      return
     # do not get rid of nkHiddenSubConv for OpenArrays, the codegen needs it:
     if it.kind == nkHiddenSubConv and
         skipTypes(it.typ, abstractVar).kind notin {tyOpenArray, tyVarargs}:
@@ -1840,6 +1843,8 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
         var rhsTyp = rhs.typ
         if rhsTyp.kind in tyUserTypeClasses and rhsTyp.isResolvedUserTypeClass:
           rhsTyp = rhsTyp.lastSon
+        if lhs.sym.typ.kind == tyAnything:
+          rhsTyp = rhsTyp.skipIntLit(c.idgen)
         if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
           internalAssert c.config, c.p.resultSym != nil
           # Make sure the type is valid for the result variable
@@ -1913,8 +1918,8 @@ proc semProcBody(c: PContext, n: PNode; expectedType: PType = nil): PNode =
     else:
       localError(c.config, c.p.resultSym.info, errCannotInferReturnType %
         c.p.owner.name.s)
-  if isInlineIterator(c.p.owner.typ) and c.p.owner.typ[0] != nil and
-      c.p.owner.typ[0].kind == tyUntyped:
+  if isIterator(c.p.owner.typ) and c.p.owner.typ[0] != nil and
+      c.p.owner.typ[0].kind == tyAnything:
     localError(c.config, c.p.owner.info, errCannotInferReturnType %
       c.p.owner.name.s)
   closeScope(c)

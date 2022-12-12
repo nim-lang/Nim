@@ -624,7 +624,7 @@ iterator splitLines*(s: string, keepEol = false): string =
   ##
   ## Every `character literal <manual.html#lexical-analysis-character-literals>`_
   ## newline combination (CR, LF, CR-LF) is supported. The result strings
-  ## contain no trailing end of line characters unless parameter `keepEol`
+  ## contain no trailing end of line characters unless the parameter `keepEol`
   ## is set to `true`.
   ##
   ## Example:

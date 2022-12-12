@@ -558,7 +558,7 @@ proc runAllExamples(d: PDoc) =
 
 proc quoted(a: string): string = result.addQuoted(a)
 
-proc toInstantiationInfo(conf: ConfigRef, info: TLineInfo): auto =
+proc toInstantiationInfo(conf: ConfigRef, info: TLineInfo): (string, int, int) =
   # xxx expose in compiler/lineinfos.nim
   (conf.toMsgFilename(info), info.line.int, info.col.int + ColOffset)
 
@@ -962,7 +962,7 @@ proc toLangSymbol(k: TSymKind, n: PNode, baseName: string): LangSymbol =
       var literal = ""
       var r: TSrcGen
       initTokRender(r, genNode, {renderNoBody, renderNoComments,
-        renderNoPragmas, renderNoProcDefs})
+        renderNoPragmas, renderNoProcDefs, renderExpandUsing})
       var kind = tkEof
       while true:
         getNextTok(r, kind, literal)
@@ -995,7 +995,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
-    renderNoPragmas, renderNoProcDefs})
+    renderNoPragmas, renderNoProcDefs, renderExpandUsing})
   while true:
     getNextTok(r, kind, literal)
     if kind == tkEof:
@@ -1028,7 +1028,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
                rstLangSymbol, priority = symbolPriority(k), info = lineinfo)
 
   nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
-    renderDocComments, renderSyms}, symbolOrIdEnc)
+    renderDocComments, renderSyms, renderExpandUsing}, symbolOrIdEnc)
 
   let seeSrc = genSeeSrc(d, toFullPath(d.conf, n.info), n.info.line.int)
 
@@ -1094,7 +1094,7 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonItem =
     name = getName(d, nameNode)
     comm = genRecComment(d, n)
     r: TSrcGen
-  initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments})
+  initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments, renderExpandUsing})
   result.json = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                    "col": %n.info.col}
   if comm != nil:
