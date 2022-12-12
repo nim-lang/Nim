@@ -434,12 +434,19 @@ proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   result = 0
   for i in start..n.len + theEnd: inc(result, lsub(g, n[i]))
 
+template origUsingType(n: PNode): PSym =
+  ## Returns the type that a parameter references. Check with referencesUsing first
+  ## to check `n` is actually referencing a using node
+  n[0].sym.typ.sym
+
 proc referencesUsing(n: PNode): bool =
   ## Returns true if n references a using statement.
   ## e.g. proc foo(x) # x doesn't have type or def value so it references a using
   result = n.kind == nkIdentDefs and
            # Sometimes the node might not have been semmed (e.g. doc0) and will be nkIdent instead
            n[0].kind == nkSym and
+           # Templates/macros can have parameters with no type (But their orig type will be nil)
+           n.origUsingType != nil and
            n[1].kind == nkEmpty and n[2].kind == nkEmpty
 
 proc lsub(g: TSrcGen; n: PNode): int =
@@ -483,7 +490,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkConstDef, nkIdentDefs:
     result = lcomma(g, n, 0, - 3)
     if n.referencesUsing:
-      result += lsub(g, newSymNode(n[0].sym.typ.sym)) + 2
+      result += lsub(g, newSymNode(n.origUsingType)) + 2
     else:
       if n[^2].kind != nkEmpty: result += lsub(g, n[^2]) + 2
       if n[^1].kind != nkEmpty: result += lsub(g, n[^1]) + 3
@@ -1294,7 +1301,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
       gsub(g, n[^2], c)
     elif n.referencesUsing and renderExpandUsing in g.flags:
       putWithSpace(g, tkColon, ":")
-      gsub(g, newSymNode(n[0].sym.typ.sym), c)
+      gsub(g, newSymNode(n.origUsingType), c)
 
     if n.len >= 1 and n[^1].kind != nkEmpty:
       put(g, tkSpaces, Space)
