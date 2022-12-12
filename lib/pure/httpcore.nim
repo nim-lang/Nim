@@ -132,17 +132,13 @@ func toCaseInsensitive(headers: HttpHeaders, s: string): string {.inline.} =
 func newHttpHeaders*(titleCase=false): HttpHeaders =
   ## Returns a new `HttpHeaders` object. if `titleCase` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
-  new result
-  result.table = newTable[string, seq[string]]()
-  result.isTitleCase = titleCase
+  result = HttpHeaders(table: newTable[string, seq[string]](), isTitleCase: titleCase)
 
 func newHttpHeaders*(keyValuePairs:
     openArray[tuple[key: string, val: string]], titleCase=false): HttpHeaders =
   ## Returns a new `HttpHeaders` object from an array. if `titleCase` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
-  new result
-  result.table = newTable[string, seq[string]]()
-  result.isTitleCase = titleCase
+  result = HttpHeaders(table: newTable[string, seq[string]](), isTitleCase: titleCase)
 
   for pair in keyValuePairs:
     let key = result.toCaseInsensitive(pair.key)

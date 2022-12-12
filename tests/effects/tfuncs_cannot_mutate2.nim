@@ -1,9 +1,6 @@
 discard """
-  errormsg: "'copy' can have side effects"
-  nimout: '''an object reachable from 'y' is potentially mutated
-tfuncs_cannot_mutate2.nim(15, 7) the mutation is here
-tfuncs_cannot_mutate2.nim(13, 10) is the statement that connected the mutation to the parameter
-'''
+  errormsg: "cannot mutate location x[0].a within a strict func"
+  line: 12
 """
 
 {.experimental: "strictFuncs".}

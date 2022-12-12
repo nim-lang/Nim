@@ -787,8 +787,9 @@ when defined(gcDestructors):
     while it != nil:
       if maxIters == 0:
         let rest = it.next.loada
-        it.next.storea nil
-        addToSharedFreeList(c, rest)
+        if rest != nil:
+          it.next.storea nil
+          addToSharedFreeList(c, rest)
         break
       inc x, size
       it = it.next.loada

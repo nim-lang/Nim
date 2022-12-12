@@ -9,12 +9,6 @@
 
 ## Thread support for Nim.
 ##
-## Nim's memory model for threads is quite different from other common
-## programming languages (C, Pascal): Each thread has its own
-## (garbage collected) heap and sharing of memory is restricted. This helps
-## to prevent race conditions and improves efficiency. See `the manual for
-## details of this memory model <manual.html#threads>`_.
-##
 ## Examples
 ## ========
 ##

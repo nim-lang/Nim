@@ -519,8 +519,7 @@ Since version 1.4, a stricter definition of "side effect" is available.
 In addition to the existing rule that a side effect is calling a function
 with side effects, the following rule is also enforced:
 
-Any mutation to an object does count as a side effect if that object is reachable
-via a parameter that is not declared as a `var` parameter.
+A store to the heap via a `ref` or `ptr` indirection is not allowed.
 
 For example:
 
@@ -540,15 +539,12 @@ For example:
       it = it.ri
 
   func mut(n: Node) =
-    let m = n # is the statement that connected the mutation to the parameter
-    m.data = "yeah" # the mutation is here
-    # Error: 'mut' can have side effects
-    # an object reachable from 'n' is potentially mutated
+    var it = n
+    while it != nil:
+      it.data = "yeah" # forbidden mutation
+      it = it.ri
+
   ```
-
-
-The algorithm behind this analysis is described in
-the [view types algorithm][Algorithm].
 
 
 View types
