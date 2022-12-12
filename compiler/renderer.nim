@@ -434,10 +434,13 @@ proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   result = 0
   for i in start..n.len + theEnd: inc(result, lsub(g, n[i]))
 
-template origUsingType(n: PNode): PSym =
+proc origUsingType(n: PNode): PSym {.inline.} =
   ## Returns the type that a parameter references. Check with referencesUsing first
   ## to check `n` is actually referencing a using node
-  n[0].sym.typ.sym
+  # If the node is untyped the typ field will be nil
+  if n[0].sym.typ != nil:
+    n[0].sym.typ.sym
+  else: nil
 
 proc referencesUsing(n: PNode): bool =
   ## Returns true if n references a using statement.
