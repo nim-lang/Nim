@@ -1,9 +1,9 @@
 discard """
   action: "run"
   target: "js"
-  cmd: "nim js -r -d:nodejs --sourceMap:on $file"
+  cmd: "nim js -r -d:nodejs $options --sourceMap:on $file"
 """
-import std/[os, json, strutils, sequtils, algorithm, assertions, paths]
+import std/[os, json, strutils, sequtils, algorithm, assertions, paths, compilesettings]
 
 # Implements a very basic sourcemap parser and then runs it on itself.
 # Allows to check for basic problems such as bad counts and lines missing (e.g. issue #21052)
@@ -27,7 +27,6 @@ const
   fiveBits = 0b11111
   mask = (1 shl 5) - 1
   alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-  mapFile = "tsourcemap.js.map"
 
 var b64Table: seq[int] = 0.repeat(max(alphabet.mapIt(it.ord)) + 1)
 for i, b in alphabet.pairs:
@@ -39,10 +38,11 @@ proc readFileSync*(path: cstring): cstring {.importjs: "(fs.$1(#).toString())".}
 importFS()
 # Read in needed files
 let
-  jsFileName = string(currentSourcePath().Path.parentDir() / "tsourcemap.js".Path)
+  jsFileName = string(querySetting(outDir).Path / "tsourcemap.js".Path)
   mapFileName = jsFileName & ".map"
-  data = parseJson($mapFileName.readFileSync()).to(SourceMap)
-  jsFile = $readFileSync(jsFileName)
+
+  data = parseJson($mapFileName.cstring.readFileSync()).to(SourceMap)
+  jsFile = $readFileSync(jsFileName.cstring)
 
 proc decodeVLQ(inp: string): seq[int] =
   var
