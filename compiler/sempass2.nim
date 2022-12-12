@@ -494,7 +494,6 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
         if b[j].isInfixAs(): # skips initialization checks
           assert(b[j][2].kind == nkSym)
           tracked.init.add b[j][2].sym.id
-          break
       track(tracked, b[^1])
       for i in oldState..<tracked.init.len:
         addToIntersection(inter, tracked.init[i])
