@@ -1002,7 +1002,7 @@ proc isDynlibOverride*(conf: ConfigRef; lib: string): bool =
      conf.dllOverrides.hasKey(lib.canonDynlibName)
 
 proc expandDone*(conf: ConfigRef): bool =
-  result = conf.expandLevels == 0 and conf.expandProgress
+  result = conf.ideCmd == ideExpand and conf.expandLevels == 0 and conf.expandProgress
 
 proc parseIdeCmd*(s: string): IdeCmd =
   case s:

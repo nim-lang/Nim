@@ -2915,9 +2915,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   result = n
   when defined(nimsuggest):
     var expandStarted = false
-    if c.config.expandDone():
-      return n
-    elif c.config.ideCmd == ideExpand and not c.config.expandProgress and
+    if c.config.ideCmd == ideExpand and not c.config.expandProgress and
         ((n.kind in {nkFuncDef, nkProcDef, nkIteratorDef, nkTemplateDef, nkMethodDef, nkConverterDef} and
           n.info.exactEquals(c.config.expandPosition)) or
          (n.kind in {nkCall, nkCommand} and
@@ -2927,8 +2925,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       if c.config.expandLevels == 0:
         c.config.expandNodeResult = $n
         suggestQuit()
-    elif c.config.expandLevels == 0 and c.config.expandProgress:
-      return n
 
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
