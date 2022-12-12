@@ -292,6 +292,4 @@
 
 ## Tool changes
 
-- Nim now supports Nimble version 0.14 which added support for lock-files. This is done by
-  a simple configuration change setting that you can do yourself too. In `$nim/config/nim.cfg`
-  replace `pkgs` by `pkgs2`.
+- Nim now ships Nimble version 0.14 which added support for lock-files. Libraries are stored in `$nimbleDir/pkgs2` (it was `$nimbleDir/pkgs`).
