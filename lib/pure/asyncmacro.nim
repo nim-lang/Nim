@@ -250,7 +250,6 @@ proc asyncSingleProc(prc: NimNode): NimNode =
     # NOTE: The NimAsyncContinueSuffix is checked for in asyncfutures.nim to produce
     # friendlier stack traces:
     var cbName = genSym(nskProc, prcName & NimAsyncContinueSuffix)
-    let info = prc.lineInfoObj
     var procCb = getAst createCb(retFutureSym, iteratorNameSym,
                           newStrLitNode(prcName),
                           cbName,

@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import os, tables, strutils, times, heapqueue, options, deques, cstrutils, sugar
+import os, tables, strutils, times, heapqueue, options, deques, cstrutils
 
 import system/stacktraces
 
