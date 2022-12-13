@@ -872,3 +872,23 @@ block: # Ensure no segfault from constraint
     a = Regex[int]()
     b = Regex[bool]()
     c = MyOtherType[seq[int]]()
+
+block: # https://github.com/nim-lang/Nim/issues/20416
+  type
+    Item[T] = object
+      link:ptr Item[T]
+      data:T
+
+    KVSeq[A,B] = seq[(A,B)]
+
+    MyTable[A,B] = object
+      data: KVSeq[A,B]
+
+    Container[T] = object
+      a: MyTable[int,ref Item[T]]
+
+  proc p1(sg:Container) = discard # Make sure that a non parameterized 'Container' argument still compiles
+
+  proc p2[T](sg:Container[T]) = discard
+  var v : Container[int]
+  p2(v)
