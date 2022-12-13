@@ -222,9 +222,9 @@ proc stackSize(stack: ptr GcStack): int {.noinline.} =
 
   if pos != nil:
     when stackIncreases:
-      result = cast[ByteAddress](pos) -% cast[ByteAddress](stack.bottom)
+      result = int(cast[ByteAddress](pos) - cast[ByteAddress](stack.bottom))
     else:
-      result = cast[ByteAddress](stack.bottom) -% cast[ByteAddress](pos)
+      result = int(cast[ByteAddress](stack.bottom) - cast[ByteAddress](pos))
   else:
     result = 0
 
@@ -317,7 +317,7 @@ proc isOnStack(p: pointer): bool =
   when not stackIncreases:
     swap(a, b)
   var x = cast[ByteAddress](p)
-  result = a <=% x and x <=% b
+  result = a <= x and x <= b
 
 when defined(sparc): # For SPARC architecture.
   when nimCoroutines:
@@ -392,11 +392,11 @@ else:
             while sp <% regEnd:
               gcMark(gch, cast[PPointer](sp)[])
               gcMark(gch, cast[PPointer](sp +% sizeof(pointer) div 2)[])
-              sp = sp +% sizeof(pointer)
+              sp = sp + sizeof(pointer).uint
         # Make sure sp is word-aligned
-        sp = sp and not (sizeof(pointer) - 1)
+        sp = sp and not (sizeof(pointer).uint - 1)
         # loop unrolled:
-        while sp <% max - 8*sizeof(pointer):
+        while sp < max - 8*sizeof(pointer):
           gcMark(gch, cast[PStackSlice](sp)[0])
           gcMark(gch, cast[PStackSlice](sp)[1])
           gcMark(gch, cast[PStackSlice](sp)[2])
@@ -405,11 +405,11 @@ else:
           gcMark(gch, cast[PStackSlice](sp)[5])
           gcMark(gch, cast[PStackSlice](sp)[6])
           gcMark(gch, cast[PStackSlice](sp)[7])
-          sp = sp +% sizeof(pointer)*8
+          sp = sp + sizeof(pointer)*8
         # last few entries:
-        while sp <=% max:
+        while sp <= max:
           gcMark(gch, cast[PPointer](sp)[])
-          sp = sp +% sizeof(pointer)
+          sp = sp + sizeof(pointer).uint
 
 # ----------------------------------------------------------------------------
 # end of non-portable code

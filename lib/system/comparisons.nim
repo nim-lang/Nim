@@ -185,6 +185,8 @@ proc `<=%`*(x, y: int16): bool {.inline.} = cast[uint16](x) <= cast[uint16](y)
 proc `<=%`*(x, y: int32): bool {.inline.} = cast[uint32](x) <= cast[uint32](y)
 proc `<=%`*(x, y: int64): bool {.inline.} = cast[uint64](x) <= cast[uint64](y)
 
+proc `<%`*(x:uint, y: int): bool {.inline.} = x < cast[uint](y)
+
 proc `<%`*(x, y: int): bool {.inline.} =
   ## Treats `x` and `y` as unsigned and compares them.
   ## Returns true if `unsigned(x) < unsigned(y)`.

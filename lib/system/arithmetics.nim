@@ -348,6 +348,7 @@ proc `/=`*[T: float|float32](x: var T, y: T) {.inline, noSideEffect.} =
   x = x / y
 
 # the following have to be included in system, not imported for some reason:
+proc `+%`*(x: uint, y: int): int {.inline.} = cast[int](x + cast[uint](y))
 
 proc `+%`*(x, y: int): int {.inline.} =
   ## Treats `x` and `y` as unsigned and adds them.
@@ -392,6 +393,9 @@ proc `/%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) div cast[u
 proc `/%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) div cast[uint16](y))
 proc `/%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) div cast[uint32](y))
 proc `/%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) div cast[uint64](y))
+
+proc `%%`*(x, y: uint): int {.inline.} =
+  cast[int](x mod y)
 
 proc `%%`*(x, y: int): int {.inline.} =
   ## Treats `x` and `y` as unsigned and compute the modulo of `x` and `y`.

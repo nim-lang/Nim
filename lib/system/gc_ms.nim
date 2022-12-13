@@ -94,11 +94,11 @@ template gcAssert(cond: bool, msg: string) =
 
 proc cellToUsr(cell: PCell): pointer {.inline.} =
   # convert object (=pointer to refcount) to pointer to userdata
-  result = cast[pointer](cast[ByteAddress](cell)+%ByteAddress(sizeof(Cell)))
+  result = cast[pointer](cast[ByteAddress](cell)+ByteAddress(sizeof(Cell)))
 
 proc usrToCell(usr: pointer): PCell {.inline.} =
   # convert pointer to userdata to object (=pointer to refcount)
-  result = cast[PCell](cast[ByteAddress](usr)-%ByteAddress(sizeof(Cell)))
+  result = cast[PCell](cast[ByteAddress](usr)-ByteAddress(sizeof(Cell)))
 
 proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
   # used for code generation concerning debugging
@@ -447,7 +447,7 @@ proc markGlobals(gch: var GcHeap) =
 proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
   # the addresses are not as cells on the stack, so turn them to cells:
   var c = cast[ByteAddress](p)
-  if c >% PageSize:
+  if c > PageSize.uint:
     # fast check: does it look like a cell?
     var objStart = cast[PCell](interiorAllocatedPtr(gch.region, p))
     if objStart != nil:

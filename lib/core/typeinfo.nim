@@ -132,7 +132,7 @@ else:
   proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
     importCompilerProc.}
 
-template `+!!`(a, b): untyped = cast[pointer](cast[ByteAddress](a) + b)
+template `+!!`(a, b): untyped = cast[pointer](cast[ByteAddress](a) + b.uint)
 
 proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
   assert(n.kind == nkCase)

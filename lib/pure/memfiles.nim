@@ -484,20 +484,20 @@ proc mmsClose(s: Stream) =
 
 proc mmsFlush(s: Stream) = flush(MemMapFileStream(s).mf)
 
-proc mmsAtEnd(s: Stream): bool = (MemMapFileStream(s).pos >= MemMapFileStream(s).mf.size) or
+proc mmsAtEnd(s: Stream): bool = (MemMapFileStream(s).pos >= MemMapFileStream(s).mf.size.uint) or
                                   (MemMapFileStream(s).pos < 0)
 
 proc mmsSetPosition(s: Stream, pos: int) =
   if pos > MemMapFileStream(s).mf.size or pos < 0:
     raise newEIO("cannot set pos in stream")
-  MemMapFileStream(s).pos = pos
+  MemMapFileStream(s).pos = pos.uint
 
-proc mmsGetPosition(s: Stream): int = MemMapFileStream(s).pos
+proc mmsGetPosition(s: Stream): int = MemMapFileStream(s).pos.int
 
 proc mmsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
   let startAddress = cast[ByteAddress](MemMapFileStream(s).mf.mem)
   let p = cast[ByteAddress](MemMapFileStream(s).pos)
-  let l = min(bufLen, MemMapFileStream(s).mf.size - p)
+  let l = min(bufLen, int(MemMapFileStream(s).mf.size.uint - p))
   moveMem(buffer, cast[pointer](startAddress + p), l)
   result = l
 
@@ -509,7 +509,7 @@ proc mmsWriteData(s: Stream, buffer: pointer, bufLen: int) =
   if MemMapFileStream(s).mode == fmRead:
     raise newEIO("cannot write to read-only stream")
   let size = MemMapFileStream(s).mf.size
-  if MemMapFileStream(s).pos + bufLen > size:
+  if MemMapFileStream(s).pos + bufLen.uint > size.uint:
     raise newEIO("cannot write to stream")
   let p = cast[ByteAddress](MemMapFileStream(s).mf.mem) +
           cast[ByteAddress](MemMapFileStream(s).pos)

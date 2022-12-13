@@ -488,7 +488,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
         # \0\l\0 => line ending in a null character.
         # \0\l\l => last line without newline, null was put there by fgets.
       elif last > 0 and line[last-1] == '\0':
-        if last < pos + sp - 1 and line[last+1] != '\0':
+        if last < uint(pos + sp - 1) and line[last+1] != '\0':
           dec last
       line.setLen(last)
       return last > 0 or fgetsSuccess
