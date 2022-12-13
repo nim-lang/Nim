@@ -302,7 +302,6 @@ type Boo = object
   a* : seq[int]
 
 
-   
 proc startSession*() : Future[Result2[Boo, Foo]] {.async.} =
   let fut = newFuture[string]("")
   fut.complete("")
@@ -310,4 +309,4 @@ proc startSession*() : Future[Result2[Boo, Foo]] {.async.} =
 
   return Result2[Boo, Foo].ok(Boo(a: @[2, 5]))
 
-discard waitFor startSession()
+doAssert $(waitFor startSession()) == "(o: true, v: (a: @[2, 5]))"
