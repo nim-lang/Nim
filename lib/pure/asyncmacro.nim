@@ -20,9 +20,8 @@ proc newCallWithLineInfo(fromNode: NimNode; theProc: NimNode, args: varargs[NimN
 template createCb(retFutureSym, iteratorNameSym,
                   strName, identName, futureVarCompletions: untyped) =
   bind finished
-
   var nameIterVar = iteratorNameSym
-  proc identName {.closure.} =
+  proc identName {.closure, stackTrace: off.} =
     try:
       if not nameIterVar.finished:
         var next = nameIterVar()
@@ -145,6 +144,7 @@ template await*[T](f: Future[T]): auto {.used.} =
 proc asyncSingleProc(prc: NimNode): NimNode =
   ## This macro transforms a single procedure into a closure iterator.
   ## The `async` macro supports a stmtList holding multiple async procedures.
+  prc.addPragma(nnkExprColonExpr.newTree(ident"stackTrace", ident"off"))
   if prc.kind == nnkProcTy:
     result = prc
     if prc[0][0].kind == nnkEmpty:
@@ -209,7 +209,7 @@ proc asyncSingleProc(prc: NimNode): NimNode =
   # ->   {.pop.}
   # ->   <proc_body>
   # ->   complete(retFuture, result)
-  var iteratorNameSym = genSym(nskIterator, $prcName & "Iter")
+  var iteratorNameSym = genSym(nskIterator, $prcName & " (Async)")
   var procBody = prc.body.processBody(retFutureSym, futureVarIdents)
   # don't do anything with forward bodies (empty)
   if procBody.kind != nnkEmpty:
@@ -250,10 +250,12 @@ proc asyncSingleProc(prc: NimNode): NimNode =
     # NOTE: The NimAsyncContinueSuffix is checked for in asyncfutures.nim to produce
     # friendlier stack traces:
     var cbName = genSym(nskProc, prcName & NimAsyncContinueSuffix)
+    let info = prc.lineInfoObj
     var procCb = getAst createCb(retFutureSym, iteratorNameSym,
-                         newStrLitNode(prcName),
-                         cbName,
-                         createFutureVarCompletions(futureVarIdents, nil))
+                          newStrLitNode(prcName),
+                          cbName,
+                          createFutureVarCompletions(futureVarIdents, nil)
+                        )
     outerProcBody.add procCb
 
     # -> return retFuture

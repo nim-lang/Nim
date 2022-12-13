@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import os, tables, strutils, times, heapqueue, options, deques, cstrutils
+import os, tables, strutils, times, heapqueue, options, deques, cstrutils, sugar
 
 import system/stacktraces
 
@@ -329,29 +329,21 @@ proc `$`*(stackTraceEntries: seq[StackTraceEntry]): string =
     if leftLen > longestLeft:
       longestLeft = leftLen
 
-  var indent = 2
   # Format the entries.
   for entry in entries:
     let (filename, procname) = getFilenameProcname(entry)
 
-    if procname == "":
-      if entry.line == reraisedFromBegin:
-        result.add(spaces(indent) & "#[\n")
-        indent.inc(2)
-      elif entry.line == reraisedFromEnd:
-        indent.dec(2)
-        result.add(spaces(indent) & "]#\n")
-      continue
+    if procname == "" and entry.line == reraisedFromBegin:
+      break
 
     let left = "$#($#)" % [filename, $entry.line]
-    result.add((spaces(indent) & "$#$# $#\n") % [
+    result.add((spaces(2) & "$# $#\n") % [
       left,
-      spaces(longestLeft - left.len + 2),
       procname
     ])
     let hint = getHint(entry)
     if hint.len > 0:
-      result.add(spaces(indent+2) & "## " & hint & "\n")
+      result.add(spaces(4) & "## " & hint & "\n")
 
 proc injectStacktrace[T](future: Future[T]) =
   when not defined(release):
