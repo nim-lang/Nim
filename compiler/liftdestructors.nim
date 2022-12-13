@@ -540,6 +540,9 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # XXX: replace these with assertions.
     if t.assignment == nil:
       return # protect from recursion
+    let call = genBuiltin(c, mDefault, "default", x)
+    call.typ = x.typ
+    body.add newAsgnStmt(x, call)
     body.add newHookCall(c, t.assignment, x, y)
   of attachedSink:
     # we always inline the move for better performance:

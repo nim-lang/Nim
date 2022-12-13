@@ -269,3 +269,45 @@ proc bug20305 =
   echo x.pChildren
 
 bug20305()
+
+
+
+import std/[asyncdispatch]
+
+type
+  Result2*[T, E] = object
+    case o: bool
+      of false:
+        e: E
+      of true:
+        v: T
+
+  UnpackDefect* = object of Defect
+template ok*[T, E](R: type Result2[T, E], x: untyped): R =
+  R(o: true, v: x)
+
+
+
+type
+  MGErrorKind* = enum
+    mgeUnexpected, mgeNotFound
+  
+type Foo = object
+  case kind* : MGErrorKind
+   of mgeUnexpected:
+    ex : Exception
+   else: discard 
+
+type Boo = object
+  a* : seq[int]
+
+
+   
+proc startSession*() : Future[Result2[Boo, Foo]] {.async.} =
+  let fut = newFuture[string]("")
+  fut.complete("")
+  discard await fut
+
+  return Result2[Boo, Foo].ok(Boo(a: @[2, 5]))
+
+discard waitFor startSession()
