@@ -1,12 +1,22 @@
 ## Some type definitions for compatibility between different
 ## backends and platforms.
 
+when sizeof(int) == 8:
+  type
+    BiggestInt* = int64
+      ## is an alias for the biggest signed integer type the Nim compiler
+      ## supports.
+elif sizeof(int) == 4:
+  type
+    BiggestInt* = int32
+      ## is an alias for the biggest signed integer type the Nim compiler
+      ## supports.
+elif sizeof(int) == 2:
+  type
+    BiggestInt* = int16
+      ## is an alias for the biggest signed integer type the Nim compiler
+      ## supports.
 type
-  BiggestInt* = int64
-    ## is an alias for the biggest signed integer type the Nim compiler
-    ## supports. Currently this is `int64`, but it is platform-dependent
-    ## in general.
-
   BiggestFloat* = float64
     ## is an alias for the biggest floating point type the Nim
     ## compiler supports. Currently this is `float64`, but it is
