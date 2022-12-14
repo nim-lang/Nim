@@ -4773,7 +4773,7 @@ Example:
       echo "overflow!"
     except ValueError, IOError:
       echo "catch multiple exceptions!"
-    except CatchableError:
+    except CatchableError, Defect:
       echo "Catchable exception!"
     finally:
       close(f)
