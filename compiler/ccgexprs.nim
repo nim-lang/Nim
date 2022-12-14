@@ -1879,9 +1879,13 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     # Bug #9279, len(toOpenArray()) has to work:
     if a.kind in nkCallKinds and a[0].kind == nkSym and a[0].sym.magic == mSlice:
       # magic: pass slice to openArray:
+      var m: TLoc
       var b, c: TLoc
+      initLocExpr(p, a[1], m)
       initLocExpr(p, a[2], b)
       initLocExpr(p, a[3], c)
+      if optBoundsCheck in p.options:
+        genBoundsCheck(p, m, b, c)
       if op == mHigh:
         putIntoDest(p, d, e, ropecg(p.module, "($2)-($1)", [rdLoc(b), rdLoc(c)]))
       else:
@@ -3279,6 +3283,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
     if constOrNil != nil:
       for i in 1..<constOrNil.len:
         if constOrNil[i].kind == nkExprColonExpr:
+          assert constOrNil[i][0].kind == nkSym, "illformed object constr; the field is not a sym"
           if constOrNil[i][0].sym.name.id == field.name.id:
             genBracedInit(p, constOrNil[i][1], isConst, field.typ, result)
             return

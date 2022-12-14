@@ -691,7 +691,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   elif not comesFromShadowscope:
     if {sfTemplateRedefinition, sfGenSym} * s.flags == {}:
       #wrongRedefinition(c, n.info, proto.name.s, proto.info)
-      message(c.config, n.info, warnTemplateRedefinition, s.name.s)
+      message(c.config, n.info, warnImplicitTemplateRedefinition, s.name.s)
     symTabReplace(c.currentScope.symbols, proto, s)
   if n[patternPos].kind != nkEmpty:
     c.patterns.add(s)

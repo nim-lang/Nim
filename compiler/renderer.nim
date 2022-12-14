@@ -24,7 +24,7 @@ type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,
     renderNoPragmas, renderIds, renderNoProcDefs, renderSyms, renderRunnableExamples,
-    renderIr
+    renderIr, renderExpandUsing
   TRenderFlags* = set[TRenderFlag]
   TRenderTok* = object
     kind*: TokType
@@ -434,6 +434,24 @@ proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   result = 0
   for i in start..n.len + theEnd: inc(result, lsub(g, n[i]))
 
+proc origUsingType(n: PNode): PSym {.inline.} =
+  ## Returns the type that a parameter references. Check with referencesUsing first
+  ## to check `n` is actually referencing a using node
+  # If the node is untyped the typ field will be nil
+  if n[0].sym.typ != nil:
+    n[0].sym.typ.sym
+  else: nil
+
+proc referencesUsing(n: PNode): bool =
+  ## Returns true if n references a using statement.
+  ## e.g. proc foo(x) # x doesn't have type or def value so it references a using
+  result = n.kind == nkIdentDefs and
+           # Sometimes the node might not have been semmed (e.g. doc0) and will be nkIdent instead
+           n[0].kind == nkSym and
+           # Templates/macros can have parameters with no type (But their orig type will be nil)
+           n.origUsingType != nil and
+           n[1].kind == nkEmpty and n[2].kind == nkEmpty
+
 proc lsub(g: TSrcGen; n: PNode): int =
   # computes the length of a tree
   if isNil(n): return 0
@@ -474,8 +492,11 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkDo: result = lsons(g, n) + len("do__:_")
   of nkConstDef, nkIdentDefs:
     result = lcomma(g, n, 0, - 3)
-    if n[^2].kind != nkEmpty: result += lsub(g, n[^2]) + 2
-    if n[^1].kind != nkEmpty: result += lsub(g, n[^1]) + 3
+    if n.referencesUsing:
+      result += lsub(g, newSymNode(n.origUsingType)) + 2
+    else:
+      if n[^2].kind != nkEmpty: result += lsub(g, n[^2]) + 2
+      if n[^1].kind != nkEmpty: result += lsub(g, n[^1]) + 3
   of nkVarTuple:
     if n[^1].kind == nkEmpty:
       result = lcomma(g, n, 0, - 2) + len("()")
@@ -931,6 +952,7 @@ proc doParamsAux(g: var TSrcGen, params: PNode) =
     put(g, tkParRi, ")")
 
   if params.len > 0 and params[0].kind != nkEmpty:
+    put(g, tkSpaces, Space)
     putWithSpace(g, tkOpr, "->")
     gsub(g, params[0])
 
@@ -1001,6 +1023,30 @@ proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
   if needsParenthesis:
     put(g, tkParRi, ")")
 
+const postExprBlocks = {nkStmtList, nkStmtListExpr,
+  nkOfBranch, nkElifBranch, nkElse,
+  nkExceptBranch, nkFinally, nkDo}
+
+proc postStatements(g: var TSrcGen, n: PNode, i: int, fromStmtList: bool) =
+  var i = i
+  if n[i].kind in {nkStmtList, nkStmtListExpr}:
+    if fromStmtList:
+      put(g, tkColon, ":")
+    else:
+      put(g, tkSpaces, Space)
+      put(g, tkDo, "do")
+      put(g, tkColon, ":")
+  gsub(g, n, i)
+  i.inc
+  for j in i ..< n.len:
+    if n[j].kind == nkDo:
+      optNL(g)
+    elif n[j].kind in {nkStmtList, nkStmtListExpr}:
+      optNL(g)
+      put(g, tkDo, "do")
+      put(g, tkColon, ":")
+    gsub(g, n, j)
+
 proc isCustomLit(n: PNode): bool =
   if n.len == 2 and n[0].kind == nkRStrLit:
     let ident = n[1].getPIdent
@@ -1035,27 +1081,15 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkCharLit: put(g, tkCharLit, atom(g, n))
   of nkNilLit: put(g, tkNil, atom(g, n))    # complex expressions
   of nkCall, nkConv, nkDotCall, nkPattern, nkObjConstr:
-    if n.len > 1 and n.lastSon.kind in {nkStmtList, nkStmtListExpr}:
+    if n.len > 1 and n.lastSon.kind in postExprBlocks:
       accentedName(g, n[0])
       var i = 1
-      while i < n.len and n[i].kind notin {nkStmtList, nkStmtListExpr}: i.inc
+      while i < n.len and n[i].kind notin postExprBlocks: i.inc
       if i > 1:
         put(g, tkParLe, "(")
         gcomma(g, n, 1, i - 1 - n.len)
         put(g, tkParRi, ")")
-      if fromStmtList:
-        put(g, tkColon, ":")
-      else:
-        put(g, tkSpaces, Space)
-        put(g, tkDo, "do")
-        put(g, tkColon, ":")
-      gsub(g, n, i)
-      i.inc
-      for j in i ..< n.len:
-        optNL(g)
-        put(g, tkDo, "do")
-        put(g, tkColon, ":")
-        gsub(g, n, j)
+      postStatements(g, n, i, fromStmtList)
     elif n.len >= 1:
       case bracketKind(g, n[0])
       of bkBracket:
@@ -1155,14 +1189,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkCommand:
     accentedName(g, n[0])
     put(g, tkSpaces, Space)
-    if n[^1].kind == nkStmtList:
-      for i, child in n:
-        if i > 1 and i < n.len - 1:
-          put(g, tkComma, ",")
-        elif i == n.len - 1:
-          put(g, tkColon, ":")
-        if i > 0:
-          gsub(g, child)
+    if n.len > 1 and n.lastSon.kind in postExprBlocks:
+      var i = 1
+      while i < n.len and n[i].kind notin postExprBlocks: i.inc
+      if i > 1:
+        gcomma(g, n, 1, i - 1 - n.len)
+      postStatements(g, n, i, fromStmtList)
     else:
       gcomma(g, n, 1)
   of nkExprEqExpr, nkAsgn, nkFastAsgn:
@@ -1249,8 +1281,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     gsub(g, n, 0)
   of nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref, nkStringToCString, nkCStringToString:
     if renderIds in g.flags:
-      putWithSpace(g, tkAddr, $n.kind)
+      put(g, tkAddr, $n.kind)
+      put(g, tkParLe, "(")
     gsub(g, n, 0)
+    if renderIds in g.flags:
+      put(g, tkParRi, ")")
+
   of nkLambda:
     putWithSpace(g, tkProc, "proc")
     gsub(g, n, paramsPos)
@@ -1269,7 +1305,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     gcomma(g, n, 0, -3)
     if n.len >= 2 and n[^2].kind != nkEmpty:
       putWithSpace(g, tkColon, ":")
-      gsub(g, n, n.len - 2)
+      gsub(g, n[^2], c)
+    elif n.referencesUsing and renderExpandUsing in g.flags:
+      putWithSpace(g, tkColon, ":")
+      gsub(g, newSymNode(n.origUsingType), c)
+
     if n.len >= 1 and n[^1].kind != nkEmpty:
       put(g, tkSpaces, Space)
       putWithSpace(g, tkEquals, "=")
@@ -1301,6 +1341,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     else:
       put(g, tkSpaces, Space)
     infixArgument(g, n, 2)
+    if n.len > 3 and n.lastSon.kind in postExprBlocks:
+      var i = 3
+      while i < n.len and n[i].kind notin postExprBlocks: i.inc
+      postStatements(g, n, i, fromStmtList)
   of nkPrefix:
     gsub(g, n, 0)
     if n.len > 1:
@@ -1317,6 +1361,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
         put(g, tkParRi, ")")
       else:
         gsub(g, n[1])
+    if n.len > 2 and n.lastSon.kind in postExprBlocks:
+      var i = 2
+      while i < n.len and n[i].kind notin postExprBlocks: i.inc
+      postStatements(g, n, i, fromStmtList)
   of nkPostfix:
     gsub(g, n, 1)
     gsub(g, n, 0)

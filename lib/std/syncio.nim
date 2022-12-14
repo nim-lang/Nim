@@ -573,7 +573,7 @@ proc readAllFile(file: File, len: int64): string =
   result = newString(len)
   let bytes = readBuffer(file, addr(result[0]), len)
   if endOfFile(file):
-    if bytes < len:
+    if bytes.int64 < len:
       result.setLen(bytes)
   else:
     # We read all the bytes but did not reach the EOF
@@ -717,7 +717,7 @@ proc open*(f: var File, filename: string,
 
     result = true
     f = cast[File](p)
-    if bufSize > 0 and bufSize <= high(cint).int:
+    if bufSize > 0 and bufSize.uint <= high(uint):
       discard c_setvbuf(f, nil, IOFBF, cast[csize_t](bufSize))
     elif bufSize == 0:
       discard c_setvbuf(f, nil, IONBF, 0)
@@ -810,14 +810,33 @@ when defined(windows) and not defined(nimscript) and not defined(js):
 
 when defined(windows) and appType == "console" and
     not defined(nimDontSetUtf8CodePage) and not defined(nimscript):
+  import std/exitprocs
+
   proc setConsoleOutputCP(codepage: cuint): int32 {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleOutputCP".}
   proc setConsoleCP(wCodePageID: cuint): int32 {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleCP".}
+  proc getConsoleOutputCP(): cuint {.stdcall, dynlib: "kernel32",
+    importc: "GetConsoleOutputCP".}
+  proc getConsoleCP(): cuint {.stdcall, dynlib: "kernel32",
+    importc: "GetConsoleCP".}
 
-  const Utf8codepage = 65001
-  discard setConsoleOutputCP(Utf8codepage)
-  discard setConsoleCP(Utf8codepage)
+  const Utf8codepage = 65001'u32
+
+  let
+    consoleOutputCP = getConsoleOutputCP()
+    consoleCP = getConsoleCP()
+
+  proc restoreConsoleOutputCP() = discard setConsoleOutputCP(consoleOutputCP)
+  proc restoreConsoleCP() = discard setConsoleCP(consoleCP)
+
+  if consoleOutputCP != Utf8codepage:
+    discard setConsoleOutputCP(Utf8codepage)
+    addExitProc(restoreConsoleOutputCP)
+
+  if consoleCP != Utf8codepage:
+    discard setConsoleCP(Utf8codepage)
+    addExitProc(restoreConsoleCP)
 
 proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.} =
   ## Opens a file named `filename` for reading, calls `readAll

@@ -10,6 +10,8 @@
 ## Platform detection for NimScript. This module is included by the system module!
 ## Do not import it directly!
 
+# CPU architectures have alias names mapped in tools/niminst/makefile.nimf
+
 type
   CpuPlatform* {.pure.} = enum ## the CPU this program will run on.
     none,                      ## unknown CPU
@@ -37,7 +39,8 @@ type
     riscv64,                   ## RISC-V 64-bit processor
     wasm32,                    ## WASM, 32-bit
     e2k,                       ## MCST Elbrus 2000
-    loongarch64                ## LoongArch 64-bit processor
+    loongarch64,               ## LoongArch 64-bit processor
+    s390x                      ## IBM Z
 
   OsPlatform* {.pure.} = enum ## the OS this program will run on.
     none, dos, windows, os2, linux, morphos, skyos, solaris,
@@ -97,5 +100,6 @@ const
                elif defined(wasm32): CpuPlatform.wasm32
                elif defined(e2k): CpuPlatform.e2k
                elif defined(loongarch64): CpuPlatform.loongarch64
+               elif defined(s390x): CpuPlatform.s390x
                else: CpuPlatform.none
     ## the CPU this program will run on.

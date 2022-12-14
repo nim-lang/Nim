@@ -1,4 +1,4 @@
-{.push warningAsError[TemplateRedefinition]: on.}
+{.push warningAsError[ImplicitTemplateRedefinition]: on.}
 
 doAssert not (compiles do:
   template foo(): int = 1

@@ -34,7 +34,7 @@ const
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wEffectsOf, wTags, wForbids, wLocks, wDelegator, wGcSafe,
     wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy,
-    wRequires, wEnsures, wEnforceNoRaises}
+    wRequires, wEnsures, wEnforceNoRaises, wSystemRaisesDefect}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
@@ -81,7 +81,8 @@ const
     wGuard, wGoto, wCursor, wNoalias, wAlign}
   constPragmas* = declPragmas + {wHeader, wMagic,
     wGensym, wInject,
-    wIntDefine, wStrDefine, wBoolDefine, wCompilerProc, wCore}
+    wIntDefine, wStrDefine, wBoolDefine, wDefine,
+    wCompilerProc, wCore}
   paramPragmas* = {wNoalias, wInject, wGensym}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
@@ -476,8 +477,16 @@ proc processPop(c: PContext, n: PNode) =
   when defined(debugOptions):
     echo c.config $ n.info, " POP config is now ", c.config.options
 
-proc processDefine(c: PContext, n: PNode) =
-  if (n.kind in nkPragmaCallKinds and n.len == 2) and (n[1].kind == nkIdent):
+proc processDefineConst(c: PContext, n: PNode, sym: PSym, kind: TMagic) =
+  sym.magic = kind
+  if n.kind in nkPragmaCallKinds and n.len == 2:
+    # could also use TLib
+    n[1] = getStrLitNode(c, n)
+
+proc processDefine(c: PContext, n: PNode, sym: PSym) =
+  if sym != nil and sym.kind == skConst:
+    processDefineConst(c, n, sym, mGenericDefine)
+  elif (n.kind in nkPragmaCallKinds and n.len == 2) and (n[1].kind == nkIdent):
     defineSymbol(c.config.symbols, n[1].ident.s)
   else:
     invalidPragma(c, n)
@@ -1066,7 +1075,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           recordPragma(c, it, "error", s)
           localError(c.config, it.info, errUser, s)
       of wFatal: fatal(c.config, it.info, expectStrLit(c, it))
-      of wDefine: processDefine(c, it)
+      of wDefine: processDefine(c, it, sym)
       of wUndef: processUndef(c, it)
       of wCompile: processCompile(c, it)
       of wLink: processLink(c, it)
@@ -1213,11 +1222,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         sym.flags.incl sfBase
       of wIntDefine:
-        sym.magic = mIntDefine
+        processDefineConst(c, n, sym, mIntDefine)
       of wStrDefine:
-        sym.magic = mStrDefine
+        processDefineConst(c, n, sym, mStrDefine)
       of wBoolDefine:
-        sym.magic = mBoolDefine
+        processDefineConst(c, n, sym, mBoolDefine)
       of wUsed:
         noVal(c, it)
         if sym == nil: invalidPragma(c, it)
@@ -1229,6 +1238,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         pragmaEnsures(c, it)
       of wEnforceNoRaises:
         sym.flags.incl sfNeverRaises
+      of wSystemRaisesDefect:
+        sym.flags.incl sfSystemRaisesDefect
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"

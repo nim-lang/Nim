@@ -16,6 +16,7 @@
   - `std/objectdollar`
   - `std/widestrs`
   - `std/typedthreads`
+  - `std/sysatomics`
 
   In the future, these definitions will be removed from the `system` module,
   and their respective modules will have to be imported to use them.
@@ -40,6 +41,8 @@
 
 - Enabling `-d:nimPreviewSlimSystem` removes the import of `channels_builtin` in
   in the `system` module.
+
+- Enabling `-d:nimPreviewCstringConversion`, `ptr char`, `ptr array[N, char]` and `ptr UncheckedArray[N, char]` don't support conversion to cstring anymore.
 
 - The `gc:v2` option is removed.
 
@@ -77,6 +80,11 @@
 - Removed two type pragma syntaxes deprecated since 0.20, namely
   `type Foo = object {.final.}`, and `type Foo {.final.} [T] = object`.
 
+- `foo a = b` now means `foo(a = b)` rather than `foo(a) = b`. This is consistent
+  with the existing behavior of `foo a, b = c` meaning `foo(a, b = c)`.
+  This decision was made with the assumption that the old syntax was used rarely;
+  if your code used the old syntax, please be aware of this change.
+
 - [Overloadable enums](https://nim-lang.github.io/Nim/manual.html#overloadable-enum-value-names) and Unicode Operators
   are no longer experimental.
 
@@ -104,6 +112,27 @@
 
 - Object fields now support default values, see https://nim-lang.github.io/Nim/manual.html#types-default-values-for-object-fields for details.
 
+- Redefining templates with the same signature was previously
+  allowed to support certain macro code. To do this explicitly, the
+  `{.redefine.}` pragma has been added. Note that this is only for templates.
+  Implicit redefinition of templates is now deprecated and will give an error in the future.
+
+- Using an unnamed break in a block is deprecated. This warning will become an error in future versions! Use a named block with a named break instead.
+
+- Several Standard libraries are moved to nimble packages, use `nimble` to install them:
+  - `std/punycode` => `punycode`
+  - `std/asyncftpclient` => `asyncftpclient`
+  - `std/smtp` => `smtp`
+  - `std/db_common` => `db_connector/db_common`
+  - `std/db_sqlite` => `db_connector/db_sqlite`
+  - `std/db_mysql` => `db_connector/db_mysql`
+  - `std/db_postgres` => `db_connector/db_postgres`
+  - `std/db_odbc` => `db_connector/db_odbc`
+
+- Previously, calls like `foo(a, b): ...` or `foo(a, b) do: ...` where the final argument of
+  `foo` had type `proc ()` were assumed by the compiler to mean `foo(a, b, proc () = ...)`.
+  This behavior is now deprecated. Use `foo(a, b) do (): ...` or `foo(a, b, proc () = ...)` instead.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
@@ -114,7 +143,6 @@
   `colPaleVioletRed` and `colMediumPurple` have also been changed to match the CSS color standard.
 - Fixed `lists.SinglyLinkedList` being broken after removing the last node ([#19353](https://github.com/nim-lang/Nim/pull/19353)).
 - The `md5` module now works at compile time and in JavaScript.
-- `std/smtp` sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
 - Changed `mimedb` to use an `OrderedTable` instead of `OrderedTableRef` to support `const` tables.
 - `strutils.find` now uses and defaults to `last = -1` for whole string searches,
   making limiting it to just the first char (`last = 0`) valid.
@@ -128,6 +156,8 @@
 
 - `std/net.IpAddress` dollar `$` improved, uses a fixed capacity for the `string` result based from the `IpAddressFamily`.
 - `std/jsfetch.newFetchOptions` now has default values for all parameters
+- `std/jsformdata` now accepts `Blob` data type.
+
 
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
@@ -139,6 +169,7 @@
 - Added new modules which were part of `std/os`:
   - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
   - Added `std/paths`, `std/dirs`, `std/files`, `std/symlinks` and `std/appdirs`.
+  - Added `std/cmdline` for reading command line parameters.
 - Added `sep` parameter in `std/uri` to specify the query separator.
 - Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
   and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)
@@ -175,6 +206,11 @@
 - Removed deprecated `` httpcore.`==` ``.
 - Removed deprecated `std/posix.CMSG_SPACE` and `std/posix.CMSG_LEN` that takes wrong argument types.
 - Removed deprecated `osproc.poDemon`, symbol with typo.
+- Removed deprecated `tables.rightSize`.
+
+
+- Removed deprecated `posix.CLONE_STOPPED`.
+
 
 ## Language changes
 
@@ -185,9 +221,33 @@
 - Full command syntax and block arguments i.e. `foo a, b: c` are now allowed
   for the right-hand side of type definitions in type sections. Previously
   they would error with "invalid indentation".
-- `defined` now accepts identifiers separated by dots, i.e. `defined(a.b.c)`.
-  In the command line, this is defined as `-d:a.b.c`. Older versions can
-  use accents as in ``defined(`a.b.c`)`` to access such defines.
+
+- Compile-time define changes:
+  - `defined` now accepts identifiers separated by dots, i.e. `defined(a.b.c)`.
+    In the command line, this is defined as `-d:a.b.c`. Older versions can
+    use accents as in ``defined(`a.b.c`)`` to access such defines.
+  - [Define pragmas for constants](https://nim-lang.github.io/Nim/manual.html#implementation-specific-pragmas-compileminustime-define-pragmas)
+    now support a string argument for qualified define names.
+
+    ```nim
+    # -d:package.FooBar=42
+    const FooBar {.intdefine: "package.FooBar".}: int = 5
+    echo FooBar # 42
+    ```
+
+    This was added to help disambiguate similar define names for different packages.
+    In older versions, this could only be achieved with something like the following:
+
+    ```nim
+    const FooBar = block:
+      const `package.FooBar` {.intdefine.}: int = 5
+      `package.FooBar`
+    ```
+  - A generic `define` pragma for constants has been added that interprets
+    the value of the define based on the type of the constant value.
+    See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#generic-define-pragma)
+    for a list of supported types.
+
 - [Macro pragmas](https://nim-lang.github.io/Nim/manual.html#userminusdefined-pragmas-macro-pragmas) changes:
   - Templates now accept macro pragmas.
   - Macro pragmas for var/let/const sections have been redesigned in a way that works
@@ -219,12 +279,6 @@
         x, y, z: int
       Baz = object
     ```
-
-- Redefining templates with the same signature implicitly was previously
-  allowed to support certain macro code. A `{.redefine.}` pragma has been
-  added to make this work explicitly, and a warning is generated in the case
-  where it is implicit. This behavior only applies to templates, redefinition
-  is generally disallowed for other symbols.
 
 - A new form of type inference called [top-down inference](https://nim-lang.github.io/Nim/manual_experimental.html#topminusdown-type-inference)
   has been implemented for a variety of basic cases. For example, code like the following now compiles:
@@ -262,6 +316,4 @@
 
 ## Tool changes
 
-- Nim now supports Nimble version 0.14 which added support for lock-files. This is done by
-  a simple configuration change setting that you can do yourself too. In `$nim/config/nim.cfg`
-  replace `pkgs` by `pkgs2`.
+- Nim now ships Nimble version 0.14 which added support for lock-files. Libraries are stored in `$nimbleDir/pkgs2` (it was `$nimbleDir/pkgs`).

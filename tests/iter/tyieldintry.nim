@@ -1,4 +1,5 @@
 discard """
+  matrix: "; --experimental:strictdefs"
   targets: "c cpp"
 """
 

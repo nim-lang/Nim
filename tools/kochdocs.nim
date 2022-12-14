@@ -2,6 +2,9 @@
 
 import std/[os, strutils, osproc, sets, pathnorm, sequtils]
 
+import officialpackages
+export exec
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -48,38 +51,19 @@ proc findNimImpl*(): tuple[path: string, ok: bool] =
 
 proc findNim*(): string = findNimImpl().path
 
-proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
-  let prevPath = getEnv("PATH")
-  if additionalPath.len > 0:
-    var absolute = additionalPath
-    if not absolute.isAbsolute:
-      absolute = getCurrentDir() / absolute
-    echo("Adding to $PATH: ", absolute)
-    putEnv("PATH", (if prevPath.len > 0: prevPath & PathSep else: "") & absolute)
-  echo(cmd)
-  if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
-  putEnv("PATH", prevPath)
-
 template inFold*(desc, body) =
-  if existsEnv("TRAVIS"):
-    echo "travis_fold:start:" & desc.replace(" ", "_")
-  elif existsEnv("GITHUB_ACTIONS"):
+  if existsEnv("GITHUB_ACTIONS"):
     echo "::group::" & desc
   elif existsEnv("TF_BUILD"):
     echo "##[group]" & desc
-
   body
-
-  if existsEnv("TRAVIS"):
-    echo "travis_fold:end:" & desc.replace(" ", "_")
-  elif existsEnv("GITHUB_ACTIONS"):
+  if existsEnv("GITHUB_ACTIONS"):
     echo "::endgroup::"
   elif existsEnv("TF_BUILD"):
     echo "##[endgroup]"
 
 proc execFold*(desc, cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   ## Execute shell command. Add log folding for various CI services.
-  # https://github.com/travis-ci/travis-ci/issues/2285#issuecomment-42724719
   let desc = if desc.len == 0: cmd else: desc
   inFold(desc):
     exec(cmd, errorcode, additionalPath)
@@ -138,11 +122,7 @@ mm.md
 """.splitWhitespace().mapIt("doc" / it)
 
   withoutIndex = """
-lib/wrappers/mysql.nim
-lib/wrappers/sqlite3.nim
-lib/wrappers/postgres.nim
 lib/wrappers/tinyc.nim
-lib/wrappers/odbcsql.nim
 lib/wrappers/pcre.nim
 lib/wrappers/openssl.nim
 lib/posix/posix.nim
@@ -171,6 +151,35 @@ lib/posix/posix_freertos_consts.nim
 lib/posix/posix_openbsd_amd64.nim
 lib/posix/posix_haiku.nim
 """.splitWhitespace()
+
+  officialPackagesList = """
+pkgs/asyncftpclient/src/asyncftpclient.nim
+pkgs/smtp/src/smtp.nim
+pkgs/punycode/src/punycode.nim
+pkgs/db_connector/src/db_connector/db_common.nim
+pkgs/db_connector/src/db_connector/db_mysql.nim
+pkgs/db_connector/src/db_connector/db_odbc.nim
+pkgs/db_connector/src/db_connector/db_postgres.nim
+pkgs/db_connector/src/db_connector/db_sqlite.nim
+""".splitWhitespace()
+
+  officialPackagesListWithoutIndex = """
+pkgs/db_connector/src/db_connector/mysql.nim
+pkgs/db_connector/src/db_connector/sqlite3.nim
+pkgs/db_connector/src/db_connector/postgres.nim
+pkgs/db_connector/src/db_connector/odbcsql.nim
+pkgs/db_connector/src/db_connector/private/dbutils.nim
+""".splitWhitespace()
+
+proc findName(name: string): string =
+  doAssert name[0..4] == "pkgs/"
+  var i = 5
+  while i < name.len:
+    if name[i] != '/':
+      inc i
+      result.add name[i]
+    else:
+      break
 
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
   proc isRelativeTo(path, base: string): bool =
@@ -255,7 +264,8 @@ proc buildDoc(nimArgs, destPath: string) =
   # call nim for the documentation:
   let rst2html = getMd2html()
   var
-    commands = newSeq[string](rst2html.len + len(doc) + withoutIndex.len)
+    commands = newSeq[string](rst2html.len + len(doc) + withoutIndex.len +
+              officialPackagesList.len + officialPackagesListWithoutIndex.len)
     i = 0
   let nim = findNim().quoteShell()
   for d in items(rst2html):
@@ -273,6 +283,19 @@ proc buildDoc(nimArgs, destPath: string) =
   for d in items(withoutIndex):
     commands[i] = nim & " doc $# --git.url:$# -o:$# $#" %
       [nimArgs, gitUrl,
+      destPath / changeFileExt(splitFile(d).name, "html"), d]
+    i.inc
+
+
+  for d in items(officialPackagesList):
+    var nimArgs2 = nimArgs
+    if d.isRelativeTo("compiler"): doAssert false
+    commands[i] = nim & " doc $# --outdir:$# --index:on $#" %
+      [nimArgs2, destPath, d]
+    i.inc
+  for d in items(officialPackagesListWithoutIndex):
+    commands[i] = nim & " doc $# -o:$# $#" %
+      [nimArgs,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
 
@@ -325,6 +348,7 @@ proc buildJS(): string =
 proc buildDocsDir*(args: string, dir: string) =
   let args = nimArgs & " " & args
   let docHackJsSource = buildJS()
+  gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector"])
   createDir(dir)
   buildDocSamples(args, dir)
   buildDoc(args, dir) # bottleneck

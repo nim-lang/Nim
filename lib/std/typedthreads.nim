@@ -9,12 +9,6 @@
 
 ## Thread support for Nim.
 ##
-## Nim's memory model for threads is quite different from other common
-## programming languages (C, Pascal): Each thread has its own
-## (garbage collected) heap and sharing of memory is restricted. This helps
-## to prevent race conditions and improves efficiency. See `the manual for
-## details of this memory model <manual.html#threads>`_.
-##
 ## Examples
 ## ========
 ##
@@ -52,7 +46,7 @@ when defined(genode):
   import genode/env
 
 
-when hasAllocStack or defined(zephyr) or defined(freertos):
+when hasAllocStack or defined(zephyr) or defined(freertos) or defined(cpu16) or defined(cpu8):
   const
     nimThreadStackSize {.intdefine.} = 8192
     nimThreadStackGuard {.intdefine.} = 128
