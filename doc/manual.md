@@ -4786,9 +4786,6 @@ listed in an `except` clause, the corresponding statements are executed.
 The statements following the `except` clauses are called
 `exception handlers`:idx:.
 
-The empty `except`:idx: clause is executed if there is an exception that is
-not listed otherwise. It is similar to an `else` clause in `if` statements.
-
 If there is a `finally`:idx: clause, it is always executed after the
 exception handlers.
 
@@ -4868,7 +4865,7 @@ error message from `e`, and for such situations, it is enough to use
   ```nim
   try:
     # ...
-  except CatchableError, Defect:
+  except CatchableError:
     echo getCurrentExceptionMsg()
   ```
 
@@ -5056,7 +5053,7 @@ An empty `raises` list (`raises: []`) means that no exception may be raised:
     try:
       unsafeCall()
       result = true
-    except CatchableError, Defect:
+    except CatchableError:
       result = false
   ```
 
