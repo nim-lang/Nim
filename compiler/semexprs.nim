@@ -3024,6 +3024,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
     # check if it is an expression macro:
     checkMinSonsLen(n, 1, c.config)
+    if n[0].kind == nkIdent and n[0].ident.id == ord(wAuto):
+      localError(c.config, n[0].info, "invalid call '$1'" % n[0].ident.s)
     #when defined(nimsuggest):
     #  if gIdeCmd == ideCon and c.config.m.trackPos == n.info: suggestExprNoCheck(c, n)
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
