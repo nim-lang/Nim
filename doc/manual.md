@@ -4773,8 +4773,10 @@ Example:
       echo "overflow!"
     except ValueError, IOError:
       echo "catch multiple exceptions!"
-    except:
-      echo "Unknown exception!"
+    except CatchableError:
+      echo "Catchable exception!"
+    except Defect:
+      echo "Defect!"
     finally:
       close(f)
   ```
@@ -4806,11 +4808,11 @@ Try can also be used as an expression; the type of the `try` branch then
 needs to fit the types of `except` branches, but the type of the `finally`
 branch always has to be `void`:
 
-  ```nim
+  ```nim test
   from std/strutils import parseInt
 
   let x = try: parseInt("133a")
-          except: -1
+          except ValueError: -1
           finally: echo "hi"
   ```
 
@@ -4818,8 +4820,9 @@ branch always has to be `void`:
 To prevent confusing code there is a parsing limitation; if the `try`
 follows a `(` it has to be written as a one liner:
 
-  ```nim
-  let x = (try: parseInt("133a") except: -1)
+  ```nim test
+  from std/strutils import parseInt
+  let x = (try: parseInt("133a") except ValueError: -1)
   ```
 
 
@@ -4867,7 +4870,7 @@ error message from `e`, and for such situations, it is enough to use
   ```nim
   try:
     # ...
-  except:
+  except CatchableError, Defect:
     echo getCurrentExceptionMsg()
   ```
 
@@ -5055,7 +5058,7 @@ An empty `raises` list (`raises: []`) means that no exception may be raised:
     try:
       unsafeCall()
       result = true
-    except:
+    except CatchableError, Defect:
       result = false
   ```
 

@@ -65,7 +65,7 @@ when true: # issue #12746
     runnableExamples:
       try:
         discard
-      except:
+      except CatchableError, Defect:
         # just the general except will work
         discard
 
