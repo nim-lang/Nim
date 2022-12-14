@@ -80,12 +80,12 @@ elif defined(emscripten) and not defined(StandaloneHeapSize):
     let pos = cast[int](result)
 
     # Convert pointer to PageSize correct one.
-    var new_pos = cast[ByteAddress](pos) +% (PageSize - (pos %% PageSize))
+    var new_pos = cast[int](pos) +% (PageSize - (pos %% PageSize))
     if (new_pos-pos) < sizeof(EmscriptenMMapBlock):
       new_pos = new_pos +% PageSize
     result = cast[pointer](new_pos)
 
-    var mmapDescrPos = cast[ByteAddress](result) -% sizeof(EmscriptenMMapBlock)
+    var mmapDescrPos = cast[int](result) -% sizeof(EmscriptenMMapBlock)
 
     var mmapDescr = cast[EmscriptenMMapBlock](mmapDescrPos)
     mmapDescr.realSize = realSize
@@ -96,7 +96,7 @@ elif defined(emscripten) and not defined(StandaloneHeapSize):
   proc osTryAllocPages(size: int): pointer = osAllocPages(size)
 
   proc osDeallocPages(p: pointer, size: int) {.inline.} =
-    var mmapDescrPos = cast[ByteAddress](p) -% sizeof(EmscriptenMMapBlock)
+    var mmapDescrPos = cast[int](p) -% sizeof(EmscriptenMMapBlock)
     var mmapDescr = cast[EmscriptenMMapBlock](mmapDescrPos)
     munmap(mmapDescr.realPointer, mmapDescr.realSize)
 

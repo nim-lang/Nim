@@ -94,11 +94,11 @@ template gcAssert(cond: bool, msg: string) =
 
 proc cellToUsr(cell: PCell): pointer {.inline.} =
   # convert object (=pointer to refcount) to pointer to userdata
-  result = cast[pointer](cast[ByteAddress](cell)+%ByteAddress(sizeof(Cell)))
+  result = cast[pointer](cast[int](cell)+%ByteAddress(sizeof(Cell)))
 
 proc usrToCell(usr: pointer): PCell {.inline.} =
   # convert pointer to userdata to object (=pointer to refcount)
-  result = cast[PCell](cast[ByteAddress](usr)-%ByteAddress(sizeof(Cell)))
+  result = cast[PCell](cast[int](usr)-%ByteAddress(sizeof(Cell)))
 
 proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
   # used for code generation concerning debugging
@@ -217,7 +217,7 @@ proc initGC() =
     gcAssert(gch.gcThreadId >= 0, "invalid computed thread ID")
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
-  var d = cast[ByteAddress](dest)
+  var d = cast[int](dest)
   case n.kind
   of nkSlot: forAllChildrenAux(cast[pointer](d +% n.offset), n.typ, op)
   of nkList:
@@ -229,7 +229,7 @@ proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
   of nkNone: sysAssert(false, "forAllSlotsAux")
 
 proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) =
-  var d = cast[ByteAddress](dest)
+  var d = cast[int](dest)
   if dest == nil: return # nothing to do
   if ntfNoRefs notin mt.flags:
     case mt.kind
@@ -255,7 +255,7 @@ proc forAllChildren(cell: PCell, op: WalkOp) =
       forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
     of tySequence:
       when not defined(nimSeqsV2):
-        var d = cast[ByteAddress](cellToUsr(cell))
+        var d = cast[int](cellToUsr(cell))
         var s = cast[PGenericSeq](d)
         if s != nil:
           for i in 0..s.len-1:
@@ -268,7 +268,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch, size + sizeof(Cell))
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
-  gcAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
+  gcAssert((cast[int](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
   when leakDetector and not hasThreadSupport:
@@ -336,9 +336,9 @@ when not defined(nimSeqsV2):
 
     var oldsize = align(GenericSeqSize, elemAlign) + cast[PGenericSeq](old).len*elemSize
     copyMem(res, ol, oldsize + sizeof(Cell))
-    zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(Cell)),
+    zeroMem(cast[pointer](cast[int](res)+% oldsize +% sizeof(Cell)),
             newsize-oldsize)
-    sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
+    sysAssert((cast[int](res) and (MemAlign-1)) == 0, "growObj: 3")
     when withBitvectors: incl(gch.allocated, res)
     when useCellIds:
       inc gch.idGenerator
@@ -446,7 +446,7 @@ proc markGlobals(gch: var GcHeap) =
 
 proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
   # the addresses are not as cells on the stack, so turn them to cells:
-  var c = cast[ByteAddress](p)
+  var c = cast[int](p)
   if c >% PageSize:
     # fast check: does it look like a cell?
     var objStart = cast[PCell](interiorAllocatedPtr(gch.region, p))
