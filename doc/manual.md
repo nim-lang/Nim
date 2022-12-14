@@ -4775,8 +4775,6 @@ Example:
       echo "catch multiple exceptions!"
     except CatchableError:
       echo "Catchable exception!"
-    except Defect:
-      echo "Defect!"
     finally:
       close(f)
   ```
