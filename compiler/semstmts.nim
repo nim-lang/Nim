@@ -254,7 +254,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
         # count number of ``except: body`` blocks
         inc catchAllExcepts
         message(c.config, a.info, warnBareExcept,
-                  "The bare except clause is deprecated; use `except CatchableError, Defect:` instead")
+                  "The bare except clause is deprecated; use `except CatchableError:` instead")
       else:
         # support ``except KeyError, ValueError, ... : body``
         if catchAllExcepts > 0:

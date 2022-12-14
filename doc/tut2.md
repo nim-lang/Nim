@@ -393,7 +393,7 @@ The `try` statement handles exceptions:
       echo "could not convert string to integer"
     except IOError:
       echo "IO error!"
-    except CatchableError, Defect:
+    except CatchableError:
       echo "Unknown exception!"
       # reraise the unknown exception:
       raise
