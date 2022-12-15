@@ -376,7 +376,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       flags = if inheritable: flags and not FD_CLOEXEC else: flags or FD_CLOEXEC
       result = c_fcntl(f, F_SETFD, flags) != -1
     else:
-      result = setHandleInformation(cast[IoHandle](f), HANDLE_FLAG_INHERIT,
+      result = setHandleInformation(cast[IoHandle](getOsfhandle(f)), HANDLE_FLAG_INHERIT,
                                     inheritable.WinDWORD) != 0
 
 proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
@@ -391,7 +391,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     importc: "memchr", header: "<string.h>".}
 
   when defined(windows) and not defined(useWinAnsi):
-    proc readConsole(hConsoleInput: FileHandle, lpBuffer: pointer,
+    proc readConsole(hConsoleInput: IoHandle, lpBuffer: pointer,
                      nNumberOfCharsToRead: int32,
                      lpNumberOfCharsRead: ptr int32,
                      pInputControl: pointer): int32 {.
@@ -423,7 +423,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
       const numberOfCharsToRead = 2048
       var numberOfCharsRead = 0'i32
       var buffer = newWideCString("", numberOfCharsToRead)
-      if readConsole(getOsFileHandle(f), addr(buffer[0]),
+      if readConsole(cast[IoHandle](getOsfhandle(cint getFileHandle(f))), addr(buffer[0]),
         numberOfCharsToRead, addr(numberOfCharsRead), nil) == 0:
         var error = getLastError()
         var errorMsg: string
@@ -711,7 +711,7 @@ proc open*(f: var File, filename: string,
         return false
     when not defined(nimInheritHandles) and declared(setInheritable) and
          NoInheritFlag.len == 0:
-      if not setInheritable(getOsFileHandle(f2), false):
+      if not setInheritable(getFileHandle(f2), false):
         close(f2)
         return false
 
@@ -734,7 +734,7 @@ proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
   if freopen(filename.cstring, FormatOpen[mode], f) != nil:
     when not defined(nimInheritHandles) and declared(setInheritable) and
          NoInheritFlag.len == 0:
-      if not setInheritable(getOsFileHandle(f), false):
+      if not setInheritable(getFileHandle(f), false):
         close(f)
         return false
     result = true
@@ -747,9 +747,7 @@ proc open*(f: var File, filehandle: FileHandle,
   ##
   ## The passed file handle will no longer be inheritable.
   when not defined(nimInheritHandles) and declared(setInheritable):
-    let oshandle = when defined(windows): FileHandle getOsfhandle(
-        filehandle) else: filehandle
-    if not setInheritable(oshandle, false):
+    if not setInheritable(filehandle, false):
       return false
   f = c_fdopen(filehandle, FormatOpen[mode])
   result = f != nil
