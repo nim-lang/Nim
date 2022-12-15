@@ -286,6 +286,8 @@ proc semConv(c: PContext, n: PNode): PNode =
       return evaluated
     else:
       targetType = targetType.base
+  of tyAnything, tyUntyped, tyTyped:
+    localError(c.config, n.info, "illegal type conversion to '$1'" % typeToString(targetType))
   else: discard
 
   maybeLiftType(targetType, c, n[0].info)
