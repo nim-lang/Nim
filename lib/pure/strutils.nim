@@ -947,7 +947,7 @@ func toHex*[T: SomeInteger](x: T, len: Positive): string =
   when defined(js):
     toHexImpl(cast[BiggestUInt](x), len, x < 0)
   else:
-    when T is SomeInteger:
+    when T is SomeSignedInt:
       toHexImpl(cast[BiggestUInt](BiggestInt(x)), len, x < 0)
     else:
       toHexImpl(BiggestUInt(x), len, x < 0)
@@ -960,7 +960,7 @@ func toHex*[T: SomeInteger](x: T): string =
   when defined(js):
     toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
   else:
-    when T is SomeInteger:
+    when T is SomeSignedInt:
       toHexImpl(cast[BiggestUInt](BiggestInt(x)), 2*sizeof(T), x < 0)
     else:
       toHexImpl(BiggestUInt(x), 2*sizeof(T), x < 0)
