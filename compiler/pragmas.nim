@@ -505,7 +505,7 @@ proc processCompile(c: PContext, n: PNode) =
                    cname: src, obj: dest, flags: {CfileFlag.External},
                    customArgs: customArgs)
     if not fileExists(src):
-      localError(c.config, n.info, "cannot find " & src.string)
+      localError(c.config, n.info, "cannot find: " & src.string)
     else:
       extccomp.addExternalFileToCompile(c.config, cf)
       recordPragma(c, it, "compile", src.string, dest.string, customArgs)
