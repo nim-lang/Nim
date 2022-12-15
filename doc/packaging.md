@@ -69,7 +69,7 @@ Hints on the build process:
 
 What to install:
 
-- The expected stdlib location is /usr/lib/nim
+- The expected stdlib location is /usr/lib/nim/lib
 - Global configuration files under /etc/nim
 - Optionally: manpages, documentation, shell completion
 - When installing documentation, .idx files are not required
