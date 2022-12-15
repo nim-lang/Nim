@@ -53,9 +53,7 @@ proc hashString*(conf: ConfigRef; s: string): BiggestInt =
     a = a + (a shl 3)
     a = a xor (a shr 11)
     a = a + (a shl 15)
-    {.push warnings: off.}
-    result = cast[Hash](a)
-    {.pop.}
+    result = cast[Hash](uint(a))
 
 template getUniqueType*(key: PType): PType = key
 
