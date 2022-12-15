@@ -425,7 +425,7 @@ module. Example:
   ```nim
   try:
     doSomethingHere()
-  except CatchableError, Defect:
+  except CatchableError:
     let
       e = getCurrentException()
       msg = getCurrentExceptionMsg()
