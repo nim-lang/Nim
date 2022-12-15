@@ -133,6 +133,8 @@
   `foo` had type `proc ()` were assumed by the compiler to mean `foo(a, b, proc () = ...)`.
   This behavior is now deprecated. Use `foo(a, b) do (): ...` or `foo(a, b, proc () = ...)` instead.
 
+- If no exception or any exception deriving from Exception but not Defect or CatchableError given in except, a `warnBareExcept` warning will be triggered.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"

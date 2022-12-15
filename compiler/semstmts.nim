@@ -210,6 +210,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
       isImported = true
     elif not isException(typ):
       localError(c.config, typeNode.info, errExprCannotBeRaised)
+    elif not isDefectOrCatchableError(typ):
+      message(c.config, a.info, warnBareExcept, "catch a more precise Exception deriving from CatchableError or Defect.")
 
     if containsOrIncl(check, typ.id):
       localError(c.config, typeNode.info, errExceptionAlreadyHandled)
@@ -251,7 +253,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
       elif a.len == 1:
         # count number of ``except: body`` blocks
         inc catchAllExcepts
-
+        message(c.config, a.info, warnBareExcept,
+                  "The bare except clause is deprecated; use `except CatchableError:` instead")
       else:
         # support ``except KeyError, ValueError, ... : body``
         if catchAllExcepts > 0:
