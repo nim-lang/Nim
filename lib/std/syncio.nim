@@ -423,7 +423,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
       const numberOfCharsToRead = 2048
       var numberOfCharsRead = 0'i32
       var buffer = newWideCString("", numberOfCharsToRead)
-      if readConsole(cast[IoHandle](getOsfhandle(cint getFileHandle(f))), addr(buffer[0]),
+      if readConsole(cast[IoHandle](getOsfhandle(getFileHandle(f))), addr(buffer[0]),
         numberOfCharsToRead, addr(numberOfCharsRead), nil) == 0:
         var error = getLastError()
         var errorMsg: string
