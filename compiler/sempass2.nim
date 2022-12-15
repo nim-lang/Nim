@@ -491,6 +491,10 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
     let b = n[i]
     if b.kind == nkExceptBranch:
       setLen(tracked.init, oldState)
+      for j in 0..<b.len - 1:
+        if b[j].isInfixAs(): # skips initialization checks
+          assert(b[j][2].kind == nkSym)
+          tracked.init.add b[j][2].sym.id
       track(tracked, b[^1])
       for i in oldState..<tracked.init.len:
         addToIntersection(inter, tracked.init[i])

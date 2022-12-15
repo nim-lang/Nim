@@ -1664,6 +1664,8 @@ proc contains*[T](a: openArray[T], item: T): bool {.inline.}=
 proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
   ## Returns the last item of `s` and decreases `s.len` by one. This treats
   ## `s` as a stack and implements the common *pop* operation.
+  ##
+  ## Raises `IndexDefect` if `s` is empty.
   runnableExamples:
     var a = @[1, 3, 5, 7]
     let b = pop(a)

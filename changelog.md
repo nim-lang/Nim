@@ -221,9 +221,33 @@
 - Full command syntax and block arguments i.e. `foo a, b: c` are now allowed
   for the right-hand side of type definitions in type sections. Previously
   they would error with "invalid indentation".
-- `defined` now accepts identifiers separated by dots, i.e. `defined(a.b.c)`.
-  In the command line, this is defined as `-d:a.b.c`. Older versions can
-  use accents as in ``defined(`a.b.c`)`` to access such defines.
+
+- Compile-time define changes:
+  - `defined` now accepts identifiers separated by dots, i.e. `defined(a.b.c)`.
+    In the command line, this is defined as `-d:a.b.c`. Older versions can
+    use accents as in ``defined(`a.b.c`)`` to access such defines.
+  - [Define pragmas for constants](https://nim-lang.github.io/Nim/manual.html#implementation-specific-pragmas-compileminustime-define-pragmas)
+    now support a string argument for qualified define names.
+
+    ```nim
+    # -d:package.FooBar=42
+    const FooBar {.intdefine: "package.FooBar".}: int = 5
+    echo FooBar # 42
+    ```
+
+    This was added to help disambiguate similar define names for different packages.
+    In older versions, this could only be achieved with something like the following:
+
+    ```nim
+    const FooBar = block:
+      const `package.FooBar` {.intdefine.}: int = 5
+      `package.FooBar`
+    ```
+  - A generic `define` pragma for constants has been added that interprets
+    the value of the define based on the type of the constant value.
+    See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#generic-define-pragma)
+    for a list of supported types.
+
 - [Macro pragmas](https://nim-lang.github.io/Nim/manual.html#userminusdefined-pragmas-macro-pragmas) changes:
   - Templates now accept macro pragmas.
   - Macro pragmas for var/let/const sections have been redesigned in a way that works
@@ -292,6 +316,4 @@
 
 ## Tool changes
 
-- Nim now supports Nimble version 0.14 which added support for lock-files. This is done by
-  a simple configuration change setting that you can do yourself too. In `$nim/config/nim.cfg`
-  replace `pkgs` by `pkgs2`.
+- Nim now ships Nimble version 0.14 which added support for lock-files. Libraries are stored in `$nimbleDir/pkgs2` (it was `$nimbleDir/pkgs`).
