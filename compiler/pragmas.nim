@@ -498,8 +498,11 @@ proc processCompile(c: PContext, n: PNode) =
     var cf = Cfile(nimname: splitFile(src).name,
                    cname: src, obj: dest, flags: {CfileFlag.External},
                    customArgs: customArgs)
-    extccomp.addExternalFileToCompile(c.config, cf)
-    recordPragma(c, it, "compile", src.string, dest.string, customArgs)
+    if not fileExists(src):
+      localError(c.config, n.info, "cannot find: " & src.string)
+    else:
+      extccomp.addExternalFileToCompile(c.config, cf)
+      recordPragma(c, it, "compile", src.string, dest.string, customArgs)
 
   proc getStrLit(c: PContext, n: PNode; i: int): string =
     n[i] = c.semConstExpr(c, n[i])
