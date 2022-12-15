@@ -48,7 +48,7 @@ proc showErrorMessage(data: cstring, length: int) {.gcsafe, raises: [].} =
     try:
       errorMessageWriter($data)
       toWrite = false
-    except:
+    except CatchableError:
       discard
   if toWrite:
     when defined(genode):
@@ -499,7 +499,7 @@ proc threadTrouble() =
   # also forward declared, it is 'raises: []' hence the try-except.
   try:
     if currException != nil: reportUnhandledError(currException)
-  except:
+  except CatchableError:
     discard
   quit 1
 
@@ -584,7 +584,7 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
         currException.msg & " [" & $currException.name & "]"
     except StdException as e:
       msg = "Error: unhandled cpp exception: " & $e.what()
-    except:
+    except CatchableError:
       msg = "Error: unhandled unknown cpp exception"
 
     {.emit: "#if defined(_MSC_VER) && (_MSC_VER < 1923)".}
