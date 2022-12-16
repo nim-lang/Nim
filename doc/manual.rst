@@ -4535,7 +4535,7 @@ Try can also be used as an expression; the type of the `try` branch then
 needs to fit the types of `except` branches, but the type of the `finally`
 branch always has to be `void`:
 
-  ```nim test
+.. code-block:: nim
   from std/strutils import parseInt
 
   let x = try: parseInt("133a")
@@ -4546,10 +4546,9 @@ branch always has to be `void`:
 To prevent confusing code there is a parsing limitation; if the `try`
 follows a `(` it has to be written as a one liner:
 
-  ```nim test
+.. code-block:: nim
   from std/strutils import parseInt
   let x = (try: parseInt("133a") except ValueError: -1)
-  ```
 
 
 Except clauses
