@@ -69,8 +69,8 @@ proc fillParamName(m: BModule; s: PSym) =
     # and a function called in main or proxy uses `socket` as a parameter name.
     # That would lead to either needing to reload `proxy` or to overwrite the
     # executable file for the main module, which is running (or both!) -> error.
-    if m.hcrOn or isKeyword(s.name) or m.g.config.cppDefines.contains(res):
-      res.add "_0"
+    # always mangles the param; bug #21116
+    res.add "_0"
     s.loc.r = res.rope
     writeMangledName(m.ndi, s, m.config)
 
