@@ -3,9 +3,8 @@ discard """
   disabled: windows
 """
 # bug #21116
-import posix
+import std/os
 
 proc p(glob: string) =
-  discard posix.glob(glob, 0, nil, nil)
-
-p "*"
+  for _ in walkFiles(glob): discard
+p("dir/*")
