@@ -333,7 +333,7 @@ proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
     sonsRope = rope("null")
   elif containsOrIncl(marker, n.id):
     sonsRope = "\"$1 @$2\"" % [rope($n.kind), rope(
-        strutils.toHex(cast[ByteAddress](n), sizeof(n) * 2))]
+        strutils.toHex(cast[int](n), sizeof(n) * 2))]
   else:
     if n.len > 0:
       sonsRope = rope("[")
