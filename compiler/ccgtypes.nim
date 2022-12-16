@@ -48,11 +48,9 @@ proc fillBackendName(m: BModule; s: PSym) =
     writeMangledName(m.ndi, s, m.config)
 
 proc fillParamName(m: BModule; s: PSym) =
-  ## we cannot use 'sigConflicts' here since we have a BModule, not a BProc.
-  ## Fortunately C's scoping rules are sane enough so that that doesn't
-  ## cause any trouble.
   if s.loc.r == "":
     var res = s.name.s.mangle
+    res.add idOrSig(s, res, m.sigConflicts)
     # Take into account if HCR is on because of the following scenario:
     #   if a module gets imported and it has some more importc symbols in it,
     # some param names might receive the "_0" suffix to distinguish from what
@@ -69,8 +67,6 @@ proc fillParamName(m: BModule; s: PSym) =
     # and a function called in main or proxy uses `socket` as a parameter name.
     # That would lead to either needing to reload `proxy` or to overwrite the
     # executable file for the main module, which is running (or both!) -> error.
-    # always mangles the param; bug #21116
-    res.add "_0"
     s.loc.r = res.rope
     writeMangledName(m.ndi, s, m.config)
 
