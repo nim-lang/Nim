@@ -281,8 +281,8 @@ proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discar
       (proc(p: pointer) {.stdcall.} = runCurrentTask()), nil)
   else:
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine) + stacksize))
-    coro.stack.top = cast[pointer](cast[ByteAddress](coro) + sizeof(Coroutine))
-    coro.stack.bottom = cast[pointer](cast[ByteAddress](coro.stack.top) + stacksize)
+    coro.stack.top = cast[pointer](cast[int](coro) + sizeof(Coroutine))
+    coro.stack.bottom = cast[pointer](cast[int](coro.stack.top) + stacksize)
     when coroBackend == CORO_BACKEND_UCONTEXT:
       discard getcontext(coro.execContext)
       coro.execContext.uc_stack.ss_sp = coro.stack.top
