@@ -260,7 +260,7 @@ proc runCurrentTask() =
     current.state = CORO_EXECUTING
     try:
       current.fn() # Start coroutine execution
-    except:
+    except CatchableError:
       echo "Unhandled exception in coroutine."
       writeStackTrace()
     current.state = CORO_FINISHED

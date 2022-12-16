@@ -319,7 +319,7 @@ proc copyFileWithPermissions*(source, dest: string,
     try:
       setFilePermissions(dest, getFilePermissions(source), followSymlinks =
                          (cfSymlinkFollow in options))
-    except:
+    except OSError:
       if not ignorePermissionErrors:
         raise
 
@@ -418,6 +418,6 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
       copyFile(source, dest, {cfSymlinkAsIs})
       try:
         removeFile(source)
-      except:
+      except OSError:
         discard tryRemoveFile(dest)
         raise

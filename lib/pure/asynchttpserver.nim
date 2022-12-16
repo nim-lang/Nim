@@ -381,7 +381,7 @@ const
 proc listen*(server: AsyncHttpServer; port: Port; address = ""; domain = AF_INET) =
   ## Listen to the given port and address.
   when declared(maxDescriptors):
-    server.maxFDs = try: maxDescriptors() except: nimMaxDescriptorsFallback
+    server.maxFDs = try: maxDescriptors() except OSError: nimMaxDescriptorsFallback
   else:
     server.maxFDs = nimMaxDescriptorsFallback
   server.socket = newAsyncSocket(domain)
