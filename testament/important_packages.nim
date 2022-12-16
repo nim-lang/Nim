@@ -51,7 +51,7 @@ pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "cello", url = "https://github.com/nim-lang/cello", useHead = true
 pkg "chroma"
-pkg "chronicles", "nimble install -y stew@#head; nim c -o:chr -r chronicles.nim"
+pkg "chronicles", "nimble install -y stew@#head; nim c -o:chr -r chronicles.nim", url = "https://github.com/nim-lang/nim-chronicles"
 pkg "chronos", "nim c -r -d:release tests/testall", url = "https://github.com/nim-lang/nim-chronos"
 pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --gc:orc"
