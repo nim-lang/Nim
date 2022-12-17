@@ -3200,12 +3200,16 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Rope) =
     result.add "}"
   of tyTuple:
     result.add "{"
+    if p.vccAndC and t.len == 0:
+      result.add "0"
     for i in 0..<t.len:
       if i > 0: result.add ", "
       getDefaultValue(p, t[i], info, result)
     result.add "}"
   of tyArray:
     result.add "{"
+    if p.vccAndC and t.len == 0:
+      result.add "0"
     for i in 0..<toInt(lengthOrd(p.config, t.sons[0])):
       if i > 0: result.add ", "
       getDefaultValue(p, t.sons[1], info, result)
@@ -3329,6 +3333,8 @@ proc genConstObjConstr(p: BProc; n: PNode; isConst: bool; result: var Rope) =
 
 proc genConstSimpleList(p: BProc, n: PNode; isConst: bool; result: var Rope) =
   result.add "{"
+  if p.vccAndC and n.len == 0:
+    result.add "0"
   for i in 0..<n.len:
     let it = n[i]
     if i > 0: result.add ",\n"
@@ -3338,6 +3344,8 @@ proc genConstSimpleList(p: BProc, n: PNode; isConst: bool; result: var Rope) =
 
 proc genConstTuple(p: BProc, n: PNode; isConst: bool; tup: PType; result: var Rope) =
   result.add "{"
+  if p.vccAndC and n.len == 0:
+    result.add "0"
   for i in 0..<n.len:
     let it = n[i]
     if i > 0: result.add ",\n"
