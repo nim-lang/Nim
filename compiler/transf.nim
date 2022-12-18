@@ -607,12 +607,13 @@ proc transformConv(c: PTransf, n: PNode): PNode =
         nimCallSym.ast = nimCallProc
         callToNimCall.add result[1]
 
-
         for i in 1..<nimCallProc[3].len: # Add parameters to the call statement
           for j in 0 .. nimCallProc[3][i].len - 3:
             let gendSym = copySym(nimCallProc[3][i][j].sym, nextSymId(c.idgen))
             gendSym.owner = nimCallSym
-            callToNimCall.add newSymNode(gendSym)
+            let symNode = newSymNode(gendSym)
+            callToNimCall.add symNode
+            nimCallSym.typ.n[i + j] = symNode
             nimCallProc[3][i][j] = callToNimCall[^1]
 
 
@@ -621,7 +622,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
         nimCallProc[pragmasPos] = newNode(nkEmpty)
         result[1] = nimCallProc[namePos]
 
-      result = generateThunk(c, result[1], dest) # emit our `(nil, proc)`
+      result = generateThunk(c, result[1], dest) # emit our `(proc, nkEmpty)`
 
   else:
     result = transformSons(c, n)
