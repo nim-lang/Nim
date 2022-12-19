@@ -32,8 +32,6 @@ const
 when hasFFI:
   import evalffi
 
-when not defined(nimHasCursor):
-  {.pragma: cursor.}
 
 proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
   if x != nil:
@@ -532,9 +530,6 @@ template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
     true
   else:
     false
-
-when not defined(nimHasSinkInference):
-  {.pragma: nosinks.}
 
 template takeAddress(reg, source) =
   reg.nodeAddr = addr source

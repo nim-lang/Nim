@@ -2659,8 +2659,6 @@ proc argtypeMatches*(c: PContext, f, a: PType, fromHlo = false): bool =
     # pattern templates do not allow for conversions except from int literal
     res != nil and m.convMatches == 0 and m.intConvMatches in [0, 256]
 
-when not defined(nimHasSinkInference):
-  {.pragma: nosinks.}
 
 proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
                       op: TTypeAttachedOp; col: int): PSym {.nosinks.} =

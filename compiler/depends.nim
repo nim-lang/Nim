@@ -100,9 +100,6 @@ proc generateDot*(graph: ModuleGraph; project: AbsoluteFile) =
       rope(project.splitFile.name), b.dotGraph],
             changeFileExt(project, "dot"))
 
-when not defined(nimHasSinkInference):
-  {.pragma: nosinks.}
-
 proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
   var g: PGen
   new(g)

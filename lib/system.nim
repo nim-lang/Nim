@@ -85,17 +85,12 @@ when defined(nimHasIterable):
   type
     iterable*[T] {.magic: IterableType.}  ## Represents an expression that yields `T`
 
-when defined(nimHashOrdinalFixed):
-  type
-    Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
-                                   ## bool, character, and enumeration types
-                                   ## as well as their subtypes. See also
-                                   ## `SomeOrdinal`.
-else:
-  # bootstrap < 1.2.0
-  type
-    OrdinalImpl[T] {.magic: Ordinal.}
-    Ordinal* = OrdinalImpl | uint | uint64
+type
+  Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
+                                  ## bool, character, and enumeration types
+                                  ## as well as their subtypes. See also
+                                  ## `SomeOrdinal`.
+
 
 proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory location.
@@ -451,9 +446,7 @@ type
            ## However, objects that have no ancestor are also allowed.
   RootRef* = ref RootObj ## Reference to `RootObj`.
 
-const NimStackTraceMsgs =
-  when defined(nimHasStacktraceMsgs): compileOption("stacktraceMsgs")
-  else: false
+const NimStackTraceMsgs = compileOption("stacktraceMsgs")
 
 type
   RootEffect* {.compilerproc.} = object of RootObj ## \
@@ -2115,10 +2108,7 @@ when notJSnotNims:
 
   # we cannot compile this with stack tracing on
   # as it would recurse endlessly!
-  when defined(nimNewIntegerOps):
-    include "system/integerops"
-  else:
-    include "system/arithm"
+  include "system/integerops"
   {.pop.}
 
 
@@ -2662,11 +2652,10 @@ when defined(nimconfig):
 when not defined(js):
   proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
-  when defined(nimToOpenArrayCString):
-    proc toOpenArray*(x: cstring; first, last: int): openArray[char] {.
-      magic: "Slice".}
-    proc toOpenArrayByte*(x: cstring; first, last: int): openArray[byte] {.
-      magic: "Slice".}
+  proc toOpenArray*(x: cstring; first, last: int): openArray[char] {.
+    magic: "Slice".}
+  proc toOpenArrayByte*(x: cstring; first, last: int): openArray[byte] {.
+    magic: "Slice".}
 
 proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
   magic: "Slice".}
