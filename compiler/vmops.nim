@@ -145,7 +145,7 @@ when defined(nimHasInvariant):
   from std / compilesettings import SingleValueSetting, MultipleValueSetting
 
   proc querySettingImpl(conf: ConfigRef, switch: BiggestInt): string =
-    {.push warnings: off.}
+    {.push warning[Deprecated]:off.}
     case SingleValueSetting(switch)
     of arguments: result = conf.arguments
     of outFile: result = conf.outFile.string
