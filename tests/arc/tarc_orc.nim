@@ -45,3 +45,25 @@ proc main() = # todo bug with templates
     doAssert b() == @[]
 static: main()
 main()
+
+block: # bug #7784
+  block:
+    type
+        Color = enum clrBlack, clrRed, clrGreen, clrBlue
+
+    var color = clrRed
+    doAssert(ord(color) == 1)
+    doAssert($color == "clrRed")
+
+  block:
+    type
+        Color = enum
+          clrBlack = "Black",
+          clrRed = "Red",
+          clrGreen = "Green",
+          clrBlue = "Blue"
+
+    var color = clrRed
+    doAssert(ord(color) == 1)
+    doAssert($color == "Red")
+
