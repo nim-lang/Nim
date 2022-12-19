@@ -112,3 +112,18 @@ let res = collect:
       fn2(v2)
 
 doAssert res == @[42, 43, 43, 44]
+
+block: # bug #21110
+  iterator p(): int =
+    when nimvm:
+      yield 0
+    else:
+      yield 0
+
+  template foo =
+    for k in p():
+      let m = ""
+      proc e() = discard m & ""
+      e()
+  static: foo()
+  foo()
