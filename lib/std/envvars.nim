@@ -63,9 +63,13 @@ when not defined(nimscript):
       import winlean
       when defined(nimPreviewSlimSystem):
         import std/widestrs
-      proc c_wgetenv(varname: WideCString): WideCString {.importc: "_wgetenv",
+
+      type wchar_t {.importc: "wchar_t", header: "<stdlib.h>".} = int16
+      proc c_wgetenv(varname: ptr wchar_t): ptr wchar_t {.importc: "_wgetenv",
           header: "<stdlib.h>".}
-      proc getEnvImpl(env: cstring): WideCString = c_wgetenv(env.newWideCString)
+      proc getEnvImpl(env: cstring): WideCString =
+        let r: WideCString = env.newWideCString
+        cast[WideCString](c_wgetenv(cast[ptr wchar_t](r)))
     else:
       proc c_getenv(env: cstring): cstring {.
         importc: "getenv", header: "<stdlib.h>".}
