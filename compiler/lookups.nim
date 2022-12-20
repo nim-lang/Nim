@@ -15,7 +15,7 @@ when defined(nimPreviewSlimSystem):
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs
+  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs, sets, sighashes
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -179,10 +179,15 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
 
   dec scopeN
   isLocal = false
+  # Track seen modules
+  var seen = initHashSet[SigHash]()
   for im in c.imports.mitems:
-    for s in modulegraphs.allSyms(c.graph, im.m):
-      assert s != nil
-      yield (s, scopeN, isLocal)
+    let symHash = im.m.sigHash
+    if symHash notin seen:
+      seen.incl symHash
+      for s in modulegraphs.allSyms(c.graph, im.m):
+        assert s != nil
+        yield (s, scopeN, isLocal)
 
 proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =
   var marked = initIntSet()
