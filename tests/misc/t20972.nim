@@ -1,9 +1,10 @@
 
 discard """
-  matrix: "--gc:refc; --gc:arc"
+  cmd: "nim $target -d:release $options $file"
+  matrix: "--mm:refc; --mm:arc;"
 """
-{.passC: "-fsanitize=undefined -Wall -Wextra -pedantic -flto".}
-{.passL: "-fsanitize=undefined -flto".}
+{.passC: "-fsanitize=undefined -fsanitize-undefined-trap-on-error -Wall -Wextra -pedantic -flto".}
+{.passL: "-fsanitize=undefined -fsanitize-undefined-trap-on-error -flto".}
 
 type ForkedEpochInfo = object
   case kind: bool
