@@ -145,6 +145,7 @@ when defined(nimHasInvariant):
   from std / compilesettings import SingleValueSetting, MultipleValueSetting
 
   proc querySettingImpl(conf: ConfigRef, switch: BiggestInt): string =
+    {.push warning[Deprecated]:off.}
     case SingleValueSetting(switch)
     of arguments: result = conf.arguments
     of outFile: result = conf.outFile.string
@@ -162,6 +163,7 @@ when defined(nimHasInvariant):
     of libPath: result = conf.libpath.string
     of gc: result = $conf.selectedGC
     of mm: result = $conf.selectedGC
+    {.pop.}
 
   proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
     template copySeq(field: untyped): untyped =
