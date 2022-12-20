@@ -328,6 +328,8 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
 proc semArrayIndex(c: PContext, n: PNode): PType =
   if isRange(n):
     result = semRangeAux(c, n, nil)
+  elif n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "..<":
+    result = errorType(c)
   else:
     let e = semExprWithType(c, n, {efDetermineType})
     if e.typ.kind == tyFromExpr:
