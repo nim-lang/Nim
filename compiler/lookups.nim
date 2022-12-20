@@ -15,7 +15,7 @@ when defined(nimPreviewSlimSystem):
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs, sets, sighashes
+  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs, sets
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -170,23 +170,29 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
   # really iterate over all symbols in all the scopes. This is expensive
   # and only used by suggest.nim.
   var isLocal = true
+  # Track seen symbols so we don't duplicate them.
+  # The int is for the symbols name, and line info is
+  # to be able to tell apart symbols with same name but on different lines
+  var seen = initHashSet[(TLineInfo, int)]()
+  template ifNotSeen(sym: PSym, body: untyped) =
+    ## Runs body if s hasn't been seen yet
+    if not seen.containsOrIncl((sym.info, sym.name.id)):
+      body
+
   var scopeN = 0
   for scope in allScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
     dec scopeN
     for item in scope.symbols:
-      yield (item, scopeN, isLocal)
+      ifNotSeen item:
+        yield (item, scopeN, isLocal)
 
   dec scopeN
   isLocal = false
-  # Track seen modules
-  var seen = initHashSet[SigHash]()
   for im in c.imports.mitems:
-    let symHash = im.m.sigHash
-    if symHash notin seen:
-      seen.incl symHash
-      for s in modulegraphs.allSyms(c.graph, im.m):
-        assert s != nil
+    for s in modulegraphs.allSyms(c.graph, im.m):
+      assert s != nil
+      ifNotSeen s:
         yield (s, scopeN, isLocal)
 
 proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =
