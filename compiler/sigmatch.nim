@@ -2150,6 +2150,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     elif arg.sym.kind in {skMacro, skTemplate}:
       return nil
     else:
+      if arg.sym.ast == nil:
+        return nil
       let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
       result = newSymNode(inferred, arg.info)
     if r == isInferredConvertible:
