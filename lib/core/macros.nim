@@ -533,6 +533,22 @@ proc getFile(arg: NimNode): string {.magic: "NLineInfo", noSideEffect.}
 proc copyLineInfo*(arg: NimNode, info: NimNode) {.magic: "NLineInfo", noSideEffect.}
   ## Copy lineinfo from `info`.
 
+proc setLine(arg: NimNode, line: uint16) {.magic: "NLineInfo", noSideEffect.}
+proc setColumn(arg: NimNode, column: int16) {.magic: "NLineInfo", noSideEffect.}
+proc setFile(arg: NimNode, file: string) {.magic: "NLineInfo", noSideEffect.}
+
+proc setLineInfo*(arg: NimNode, file: string, line: int, column: int) =
+  ## Sets the line info on the NimNode. The file needs to exists, but can be a
+  ## relative path. If you want to attach line info to a block using `quote`
+  ## you'll need to add the line information after the quote block.
+  arg.setFile(file)
+  arg.setLine(line.uint16)
+  arg.setColumn(column.int16)
+
+proc setLineInfo*(arg: NimNode, lineInfo: LineInfo) =
+  ## See `setLineInfo proc<#setLineInfo,NimNode,string,int,int>`_
+  setLineInfo(arg, lineInfo.filename, lineInfo.line, lineInfo.column)
+
 proc lineInfoObj*(n: NimNode): LineInfo =
   ## Returns `LineInfo` of `n`, using absolute path for `filename`.
   result = LineInfo(filename: n.getFile, line: n.getLine, column: n.getColumn)

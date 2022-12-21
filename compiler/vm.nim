@@ -1934,14 +1934,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of 1: # getLine
         regs[ra].node = newIntNode(nkIntLit, n.info.line.int)
       of 2: # getColumn
-        regs[ra].node = newIntNode(nkIntLit, n.info.col)
+        regs[ra].node = newIntNode(nkIntLit, n.info.col.int)
       else:
         internalAssert c.config, false
       regs[ra].node.info = n.info
       regs[ra].node.typ = n.typ
-    of opcNSetLineInfo:
+    of opcNCopyLineInfo:
       decodeB(rkNode)
       regs[ra].node.info = regs[rb].node.info
+    of opcNSetLineInfoLine:
+      decodeB(rkNode)
+      regs[ra].node.info.line = regs[rb].intVal.uint16
+    of opcNSetLineInfoColumn:
+      decodeB(rkNode)
+      regs[ra].node.info.col = regs[rb].intVal.int16
+    of opcNSetLineInfoFile:
+      decodeB(rkNode)
+      regs[ra].node.info.fileIndex =
+        fileInfoIdx(c.config, RelativeFile regs[rb].node.strVal)
     of opcEqIdent:
       decodeBC(rkInt)
       # aliases for shorter and easier to understand code below
