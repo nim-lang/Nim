@@ -1574,7 +1574,7 @@ proc customPragmaNode(n: NimNode): NimNode =
     elif impl.kind in {nnkIdentDefs, nnkConstDef} and impl[0].kind == nnkPragmaExpr:
       return impl[0][1]
     else:
-      let timpl = typ.getImpl()
+      let timpl = getImpl(if typ.kind == nnkBracketExpr: typ[0] else: typ)
       if timpl.len>0 and timpl[0].len>1:
         return timpl[0][1]
       else:

@@ -157,3 +157,21 @@ block: # bug #19020
   static:
     doAssert $bar.getCustomPragmaVal(typ) == "foo"
   doAssert $bar.getCustomPragmaVal(typ) == "foo"
+
+block hasCustomPragmaGeneric:
+  template examplePragma() {.pragma.}
+  type
+    Foo[T] {.examplePragma.} = object
+      x {.examplePragma.}: T
+  var f: Foo[string]
+  doAssert f.hasCustomPragma(examplePragma)
+  doAssert f.x.hasCustomPragma(examplePragma)
+
+block hasCustomPragmaGeneric:
+  template examplePragma(x: int) {.pragma.}
+  type
+    Foo[T] {.examplePragma(42).} = object
+      x {.examplePragma(25).}: T
+  var f: Foo[string]
+  doAssert f.getCustomPragmaVal(examplePragma) == 42
+  doAssert f.x.hasCustomPragma(examplePragma) == 25
