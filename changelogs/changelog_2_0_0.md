@@ -135,6 +135,8 @@
 
 - If no exception or any exception deriving from Exception but not Defect or CatchableError given in except, a `warnBareExcept` warning will be triggered.
 
+- The experimental strictFuncs feature now disallows a store to the heap via a `ref` or `ptr` indirection.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
