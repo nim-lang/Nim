@@ -1596,22 +1596,21 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       bindingRet result
 
   of tyOr:
-    considerPreviousT:
+    result = isNone
+    let oldInheritancePenalty = c.inheritancePenalty
+    var maxInheritance = 0
+    for branch in f.sons:
+      c.inheritancePenalty = 0
+      let x = typeRel(c, branch, aOrig, flags)
+      maxInheritance = max(maxInheritance, c.inheritancePenalty)
+      # 'or' implies maximum matching result:
+      if x > result: result = x
+    if result >= isIntConv:
+      if result > isGeneric: result = isGeneric
+      bindingRet result
+    else:
       result = isNone
-      let oldInheritancePenalty = c.inheritancePenalty
-      var maxInheritance = 0
-      for branch in f.sons:
-        c.inheritancePenalty = 0
-        let x = typeRel(c, branch, aOrig, flags)
-        maxInheritance = max(maxInheritance, c.inheritancePenalty)
-        # 'or' implies maximum matching result:
-        if x > result: result = x
-      if result >= isIntConv:
-        if result > isGeneric: result = isGeneric
-        bindingRet result
-      else:
-        result = isNone
-      c.inheritancePenalty = oldInheritancePenalty + maxInheritance
+    c.inheritancePenalty = oldInheritancePenalty + maxInheritance
 
   of tyNot:
     considerPreviousT:
