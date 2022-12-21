@@ -112,7 +112,7 @@ Example "template" **to edit** and write a Testament unittest:
     exitcode: 0
 
     # Provide an `output` string to assert that the test prints to standard out
-    # exatly the expected string. Provide an `outputsub` string to assert that
+    # exactly the expected string. Provide an `outputsub` string to assert that
     # the string given here is a substring of the standard out output of the
     # test.
     output: ""
