@@ -91,7 +91,7 @@ block tlexerex:
 
 
 
-block tlineinfo:
+block tcopylineinfo:
   # issue #5617, feature request
   type Test = object
 
@@ -102,6 +102,27 @@ block tlineinfo:
 
   var z = mixer(Test)
   doAssert z
+
+block tsetgetlineinfo:
+  # issue #21098, feature request
+  type Test = object
+
+  macro mixer1(n: typed): untyped =
+    let x = newIdentNode("echo")
+    var lineInfo = n.lineInfoObj
+    x.setLineInfo lineInfo
+    result = newLit(x.lineInfo == n.lineInfo)
+
+  macro mixer2(n: typed): untyped =
+    let x = newIdentNode("echo")
+    var lineInfo = n.lineInfoObj
+    lineInfo.line += 1
+    x.setLineInfo lineInfo
+    result = newLit(x.lineInfo != n.lineInfo)
+
+  doAssert mixer1(Test)
+
+  doAssert mixer2(Test)
 
 
 
