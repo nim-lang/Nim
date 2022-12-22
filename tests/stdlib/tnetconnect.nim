@@ -1,9 +1,11 @@
 discard """
+  disabled: "i386"
   matrix: "-d:ssl"
 """
 
 import std/net
 from std/strutils import `%`
+from stdtest/testutils import enableRemoteNetworking
 
 # bug #15215
 proc test() =
@@ -24,4 +26,5 @@ proc test() =
   except TimeoutError, OSError:
     fn("www.google.com")
 
-test()
+when enableRemoteNetworking:
+  test()

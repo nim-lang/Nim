@@ -8,7 +8,7 @@
 #
 
 
-## The `std/envvars` module implements environment variables handling.
+## The `std/envvars` module implements environment variable handling.
 import std/oserrors
 
 type
@@ -57,15 +57,25 @@ when not defined(nimscript):
 
   else:
 
-    proc c_getenv(env: cstring): cstring {.
-      importc: "getenv", header: "<stdlib.h>".}
     when defined(windows):
       proc c_putenv(envstring: cstring): cint {.importc: "_putenv", header: "<stdlib.h>".}
       from std/private/win_setenv import setEnvImpl
       import winlean
+      when defined(nimPreviewSlimSystem):
+        import std/widestrs
+
+      type wchar_t {.importc: "wchar_t", header: "<stdlib.h>".} = int16
+      proc c_wgetenv(varname: ptr wchar_t): ptr wchar_t {.importc: "_wgetenv",
+          header: "<stdlib.h>".}
+      proc getEnvImpl(env: cstring): WideCString =
+        let r: WideCString = env.newWideCString
+        cast[WideCString](c_wgetenv(cast[ptr wchar_t](r)))
     else:
+      proc c_getenv(env: cstring): cstring {.
+        importc: "getenv", header: "<stdlib.h>".}
       proc c_setenv(envname: cstring, envval: cstring, overwrite: cint): cint {.importc: "setenv", header: "<stdlib.h>".}
       proc c_unsetenv(env: cstring): cint {.importc: "unsetenv", header: "<stdlib.h>".}
+      proc getEnvImpl(env: cstring): cstring = c_getenv(env)
 
     proc getEnv*(key: string, default = ""): string {.tags: [ReadEnvEffect].} =
       ## Returns the value of the `environment variable`:idx: named `key`.
@@ -83,7 +93,7 @@ when not defined(nimscript):
         assert getEnv("unknownEnv") == ""
         assert getEnv("unknownEnv", "doesn't exist") == "doesn't exist"
 
-      let env = c_getenv(key)
+      let env = getEnvImpl(key)
       if env == nil: return default
       result = $env
 
@@ -99,7 +109,7 @@ when not defined(nimscript):
       runnableExamples:
         assert not existsEnv("unknownEnv")
 
-      return c_getenv(key) != nil
+      return getEnvImpl(key) != nil
 
     proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
       ## Sets the value of the `environment variable`:idx: named `key` to `val`.
@@ -167,17 +177,17 @@ when not defined(nimscript):
 
     iterator envPairsImpl(): tuple[key, value: string] {.tags: [ReadEnvEffect].} =
       when defined(windows):
-        block:
+        block implBlock:
           template impl(get_fun, typ, size, zero, free_fun) =
             let env = get_fun()
             var e = env
-            if e == nil: break
+            if e == nil: break implBlock
             while true:
               let eend = strEnd(e)
               let kv = $e
               let p = find(kv, '=')
               yield (substr(kv, 0, p-1), substr(kv, p+1))
-              e = cast[typ](cast[ByteAddress](eend)+size)
+              e = cast[typ](cast[int](eend)+size)
               if typeof(zero)(eend[1]) == zero: break
             discard free_fun(env)
           impl(getEnvironmentStringsW, WideCString, 2, 0, freeEnvironmentStringsW)

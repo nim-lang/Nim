@@ -8,7 +8,7 @@
 #
 
 # Cycle collector based on
-# https://researcher.watson.ibm.com/researcher/files/us-bacon/Bacon01Concurrent.pdf
+# https://www.cs.purdue.edu/homes/hosking/690M/Bacon01Concurrent.pdf
 # And ideas from Lins' in 2008 by the notion of "critical links", see
 # "Cyclic reference counting" by Rafael Dueire Lins
 # R.D. Lins / Information Processing Letters 109 (2008) 71–78
@@ -114,7 +114,7 @@ template orcAssert(cond, msg) =
   when logOrc:
     if not cond:
       cfprintf(cstderr, "[Bug!] %s\n", msg)
-      quit 1
+      rawQuit 1
 
 when logOrc:
   proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
@@ -143,7 +143,7 @@ proc unregisterCycle(s: Cell) =
   when false:
     if idx >= roots.len or idx < 0:
       cprintf("[Bug!] %ld\n", idx)
-      quit 1
+      rawQuit 1
   roots.d[idx] = roots.d[roots.len-1]
   roots.d[idx][0].rootIdx = idx+1
   dec roots.len

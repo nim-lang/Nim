@@ -1,0 +1,75 @@
+name:        "Bug Report"
+description: "Create a new bug report. Have you found an unexpected behavior? Use this form."
+title:       "Think about the title, twice."
+labels:      ["unconfirmed"]
+body:
+
+- type: markdown
+  attributes:
+    value: |
+      - **Please provide a minimal code example that reproduces the Bug!** :bug:
+        Reports with a reproducible example and descriptive detailed information will likely receive fixes faster.
+
+- type: textarea
+  id: description
+  attributes:
+    label: Description
+    description: |
+      Use DETAILED DESCRIPTIVE information about the problem.
+      Here, you go into more details about your Bug report. This section can be a few paragraphs long.
+    placeholder: Bug reports with reproducible code and detailed information will be fixed faster.
+  validations:
+    required: true
+    
+- type: textarea
+  id: nim-version
+  attributes:
+    label: Nim Version
+    description: Copy and paste the output of `nim -v` on the command line. For development versions, make sure to include the commit hash.
+  validations:
+    required: true
+
+- type: textarea
+  id: current-logs
+  attributes:
+    label: Current Output
+    description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+    placeholder: Bug reports with reproducible code and detailed information will be fixed faster.
+    render: text
+
+- type: textarea
+  id: expected-logs
+  attributes:
+    label: Expected Output
+    description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+    placeholder: Bug reports with reproducible code and detailed information will be fixed faster.
+    render: text
+
+- type: textarea
+  id: possible-solution
+  attributes:
+    label: Possible Solution
+    description: Propose a possible solution.
+  validations:
+    required: false
+
+- type: textarea
+  id: extra-info
+  attributes:
+    label: Additional Information
+    description: Any additional relevant information.
+  validations:
+    required: false
+
+- type: markdown
+  attributes:
+    value: |
+      - Thanks for your contributions!, your Bug report will receive feedback from the community soon...
+      - Please check whether the problem still exists in the devel branch, see [rebuilding the compiler](https://nim-lang.github.io/Nim/intern.html#rebuilding-the-compiler).
+      - Consider writing a PR targetting devel branch after filing this, see [contributing](https://nim-lang.github.io/Nim/contributing.html).
+      - If it's a pre-existing compiler bug, see [Debugging the compiler](https://nim-lang.github.io/Nim/intern.html#debugging-the-compiler)
+        which should give more context on a compiler crash.
+      - If it's a regression, you can help us by identifying which version introduced the bug,
+        see [Bisecting for regressions](https://nim-lang.github.io/Nim/intern.html#bisecting-for-regressions),
+        or at least try known past releases (eg `choosenim 1.2.0`).
+      - [Please, consider a Donation for the Nim project.](https://nim-lang.org/donate.html)

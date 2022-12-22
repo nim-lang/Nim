@@ -103,16 +103,17 @@ proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffec
   ## containers should also call their adding proc `add` for consistency.
   ## Generic code becomes much easier to write if the Nim naming scheme is
   ## respected.
-  let oldLen = x.len
-  var xu = cast[ptr NimSeqV2[T]](addr x)
-  if xu.p == nil or xu.p.cap < oldLen+1:
-    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T), alignof(T)))
-  xu.len = oldLen+1
-  # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
-  # copyMem(). This is fine as know by construction that
-  # in `xu.p.data[oldLen]` there is nothing to destroy.
-  # We also save the `wasMoved + destroy` pair for the sink parameter.
-  xu.p.data[oldLen] = value
+  {.cast(noSideEffect).}:
+    let oldLen = x.len
+    var xu = cast[ptr NimSeqV2[T]](addr x)
+    if xu.p == nil or xu.p.cap < oldLen+1:
+      xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T), alignof(T)))
+    xu.len = oldLen+1
+    # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
+    # copyMem(). This is fine as know by construction that
+    # in `xu.p.data[oldLen]` there is nothing to destroy.
+    # We also save the `wasMoved + destroy` pair for the sink parameter.
+    xu.p.data[oldLen] = value
 
 proc setLen[T](s: var seq[T], newlen: Natural) =
   {.noSideEffect.}:
@@ -125,7 +126,25 @@ proc setLen[T](s: var seq[T], newlen: Natural) =
       if xu.p == nil or xu.p.cap < newlen:
         xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
       xu.len = newlen
+      for i in oldLen..<newlen:
+        xu.p.data[i] = default(T)
 
 proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
   setLen(s, len)
+
+
+template capacityImpl(sek: NimSeqV2): int =
+  if sek.p != nil: sek.p.cap else: 0
+
+func capacity*[T](self: seq[T]): int {.inline.} =
+  ## Returns the current capacity of the seq.
+  # See https://github.com/nim-lang/RFCs/issues/460
+  runnableExamples:
+    var lst = newSeqOfCap[string](cap = 42)
+    lst.add "Nim"
+    assert lst.capacity == 42
+
+  {.cast(noSideEffect).}:
+    let sek = unsafeAddr self
+    result = capacityImpl(cast[ptr NimSeqV2](sek)[])

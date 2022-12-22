@@ -14,6 +14,9 @@ import
   idents, renderer, types, magicsys, lowerings, tables, modulegraphs, lineinfos,
   transf, liftdestructors, typeallowed
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 discard """
   The basic approach is that captured vars need to be put on the heap and
   that the calling chain needs to be explicitly modelled. Things to consider:
@@ -242,6 +245,13 @@ proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; idgen
     if tfHasAsgn in refType.flags or optSeqDestructors in g.config.globalOptions:
       owner.flags.incl sfInjectDestructors
 
+proc genCreateEnv(env: PNode): PNode =
+  var c = newNodeIT(nkObjConstr, env.info, env.typ)
+  c.add newNodeIT(nkType, env.info, env.typ)
+  let e = copyTree(env)
+  e.flags.incl nfFirstWrite
+  result = newAsgnStmt(e, c)
+
 proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
   if liftingHarmful(g.config, owner): return n
@@ -265,23 +275,19 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PN
     addVar(v, env)
     result.add(v)
   # add 'new' statement:
-  result.add newCall(getSysSym(g, n.info, "internalNew"), env)
+  #result.add newCall(getSysSym(g, n.info, "internalNew"), env)
+  result.add genCreateEnv(env)
   createTypeBoundOpsLL(g, env.typ, n.info, idgen, owner)
   result.add makeClosure(g, idgen, iter, env, n.info)
 
 proc freshVarForClosureIter*(g: ModuleGraph; s: PSym; idgen: IdGenerator; owner: PSym): PNode =
   let envParam = getHiddenParam(g, owner)
   let obj = envParam.typ.skipTypes({tyOwned, tyRef, tyPtr})
-  addField(obj, s, g.cache, idgen)
+  let field = addField(obj, s, g.cache, idgen)
 
   var access = newSymNode(envParam)
   assert obj.kind == tyObject
-  let field = getFieldFromObj(obj, s)
-  if field != nil:
-    result = rawIndirectAccess(access, field, s.info)
-  else:
-    localError(g.config, s.info, "internal error: cannot generate fresh variable")
-    result = access
+  result = rawIndirectAccess(access, field, s.info)
 
 # ------------------ new stuff -------------------------------------------
 
@@ -290,7 +296,8 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
   if illegalCapture(s):
     localError(g.config, n.info,
       ("'$1' is of type <$2> which cannot be captured as it would violate memory" &
-       " safety, declared here: $3; using '-d:nimNoLentIterators' helps in some cases") %
+       " safety, declared here: $3; using '-d:nimNoLentIterators' helps in some cases." &
+       " Consider using a <ref $2> which can be captured.") %
       [s.name.s, typeToString(s.typ), g.config$s.info])
   elif not (owner.typ.callConv == ccClosure or owner.typ.callConv == ccNimCall and tfExplicitCallConv notin owner.typ.flags):
     localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
@@ -434,7 +441,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
     if innerProc:
       if s.isIterator: c.somethingToDo = true
       if not c.processed.containsOrIncl(s.id):
-        let body = transformBody(c.graph, c.idgen, s, cache = true)
+        let body = transformBody(c.graph, c.idgen, s, useCache)
         detectCapturedVars(body, s, c)
     let ow = s.skipGenericOwner
     if ow == owner:
@@ -449,9 +456,9 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
             if s.name.id == getIdent(c.graph.cache, ":state").id:
               obj.n[0].sym.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
             else:
-              addField(obj, s, c.graph.cache, c.idgen)
+              discard addField(obj, s, c.graph.cache, c.idgen)
     # direct or indirect dependency:
-    elif (innerProc and s.typ.callConv == ccClosure) or interestingVar(s):
+    elif (innerProc and not s.isIterator and s.typ.callConv == ccClosure) or interestingVar(s):
       discard """
         proc outer() =
           var x: int
@@ -471,7 +478,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       if interestingVar(s) and not c.capturedVars.containsOrIncl(s.id):
         let obj = c.getEnvTypeForOwner(ow, n.info).skipTypes({tyOwned, tyRef, tyPtr})
         #getHiddenParam(owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
-        addField(obj, s, c.graph.cache, c.idgen)
+        discard addField(obj, s, c.graph.cache, c.idgen)
       # create required upFields:
       var w = owner.skipGenericOwner
       if isInnerProc(w) or owner.isIterator:
@@ -597,7 +604,7 @@ proc rawClosureCreation(owner: PSym;
         addVar(v, unowned)
 
     # add 'new' statement:
-    result.add(newCall(getSysSym(d.graph, env.info, "internalNew"), env))
+    result.add genCreateEnv(env)
     if optOwnedRefs in d.graph.config.globalOptions:
       let unowned = c.unownedEnvVars[owner.id]
       assert unowned != nil
@@ -659,7 +666,7 @@ proc closureCreationForIter(iter: PNode;
     var vs = newNodeI(nkVarSection, iter.info)
     addVar(vs, vnode)
     result.add(vs)
-  result.add(newCall(getSysSym(d.graph, iter.info, "internalNew"), vnode))
+  result.add genCreateEnv(vnode)
   createTypeBoundOpsLL(d.graph, vnode.typ, iter.info, d.idgen, owner)
 
   let upField = lookupInRecord(v.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
@@ -730,7 +737,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
         #  echo renderTree(s.getBody, {renderIds})
         let oldInContainer = c.inContainer
         c.inContainer = 0
-        var body = transformBody(d.graph, d.idgen, s, cache = false)
+        var body = transformBody(d.graph, d.idgen, s, dontUseCache)
         body = liftCapturedVars(body, s, d, c)
         if c.envVars.getOrDefault(s.id).isNil:
           s.transformedBody = body
@@ -775,7 +782,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
       n[1] = liftCapturedVars(n[1], owner, d, c)
       if n[1].kind == nkClosure: result = n[1]
   of nkReturnStmt:
-    if n[0].kind in {nkAsgn, nkFastAsgn}:
+    if n[0].kind in {nkAsgn, nkFastAsgn, nkSinkAsgn}:
       # we have a `result = result` expression produced by the closure
       # transform, let's not touch the LHS in order to make the lifting pass
       # correct when `result` is lifted
@@ -944,7 +951,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym):
     addVar(v, newSymNode(env))
     result.add(v)
     # add 'new' statement:
-    result.add(newCall(getSysSym(g, env.info, "internalNew"), env.newSymNode))
+    result.add genCreateEnv(env.newSymNode)
     createTypeBoundOpsLL(g, env.typ, body.info, idgen, owner)
 
   elif op.kind == nkStmtListExpr:

@@ -130,7 +130,8 @@ proc unhandledException(e: ref Exception) {.
   when NimStackTrace:
     add(buf, rawWriteStackTrace())
   let cbuf = cstring(buf)
-  framePtr = nil
+  when NimStackTrace:
+    framePtr = nil
   {.emit: """
   if (typeof(Error) !== "undefined") {
     throw new Error(`cbuf`);
@@ -724,19 +725,20 @@ const
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
 
-proc parseFloatNative(a: string): float =
-  let a2 = a.cstring
+proc parseFloatNative(a: openarray[char]): float =
+  var str = ""
+  for x in a:
+    str.add x
+
+  let cstr = cstring str
+
   asm """
-  `result` = Number(`a2`);
+  `result` = Number(`cstr`);
   """
 
-#[
-xxx how come code like this doesn't give IndexDefect ?
-let z = s[10000] == 'a'
-]#
-proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start: int): int {.compilerproc.} =
+proc nimParseBiggestFloat(s: openarray[char], number: var BiggestFloat): int {.compilerproc.} =
   var sign: bool
-  var i = start
+  var i = 0
   if s[i] == '+': inc(i)
   elif s[i] == '-':
     sign = true
@@ -746,14 +748,14 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start: int): int 
       if s[i+2] == 'N' or s[i+2] == 'n':
         if s[i+3] notin IdentChars:
           number = NaN
-          return i+3 - start
+          return i+3
     return 0
   if s[i] == 'I' or s[i] == 'i':
     if s[i+1] == 'N' or s[i+1] == 'n':
       if s[i+2] == 'F' or s[i+2] == 'f':
         if s[i+3] notin IdentChars:
           number = if sign: -Inf else: Inf
-          return i+3 - start
+          return i+3
     return 0
 
   var buf: string
@@ -785,7 +787,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start: int): int 
       addInc()
       eatUnderscores()
   number = parseFloatNative(buf)
-  result = i - start
+  result = i
 
 # Workaround for IE, IE up to version 11 lacks 'Math.trunc'. We produce
 # 'Math.trunc' for Nim's ``div`` and ``mod`` operators:

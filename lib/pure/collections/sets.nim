@@ -50,6 +50,9 @@
 import
   hashes, math
 
+when not defined(nimHasEffectsOf):
+  {.pragma: effectsOf.}
+
 {.pragma: myShallow.}
 # For "integer-like A" that are too big for intsets/bit-vectors to be practical,
 # it would be best to shrink hcode to the same size as the integer.  Larger
@@ -61,7 +64,7 @@ type
   HashSet*[A] {.myShallow.} = object ## \
     ## A generic hash set.
     ##
-    ## Use `init proc <#init,HashSet[A]>`_ or `initHashSet proc <#initHashSet,int>`_
+    ## Use `init proc <#init,HashSet[A]>`_ or `initHashSet proc <#initHashSet>`_
     ## before calling other procs on it.
     data: KeyValuePairSeq[A]
     counter: int
@@ -344,7 +347,7 @@ proc missingOrExcl*[A](s: var HashSet[A], key: A): bool =
 proc pop*[A](s: var HashSet[A]): A =
   ## Removes and returns an arbitrary element from the set `s`.
   ##
-  ## Raises KeyError if the set `s` is empty.
+  ## Raises `KeyError` if the set `s` is empty.
   ##
   ## See also:
   ## * `clear proc <#clear,HashSet[A]>`_
@@ -422,7 +425,7 @@ proc intersection*[A](s1, s2: HashSet[A]): HashSet[A] =
     assert c == toHashSet(["b"])
 
   result = initHashSet[A](max(min(s1.data.len, s2.data.len), 2))
-  
+
   # iterate over the elements of the smaller set
   if s1.data.len < s2.data.len:
     for item in s1:
@@ -430,7 +433,7 @@ proc intersection*[A](s1, s2: HashSet[A]): HashSet[A] =
   else:
     for item in s2:
       if item in s1: incl(result, item)
-  
+
 
 proc difference*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## Returns the difference of the sets `s1` and `s2`.
@@ -556,7 +559,7 @@ proc `==`*[A](s, t: HashSet[A]): bool =
 
   s.counter == t.counter and s <= t
 
-proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
+proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] {.effectsOf: op.} =
   ## Returns a new set after applying `op` proc on each of the elements of
   ##`data` set.
   ##

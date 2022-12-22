@@ -10,6 +10,9 @@
 ## Serialization utilities for the compiler.
 import strutils, math
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 # bcc on windows doesn't have C99 functions
 when defined(windows) and defined(bcc):
   {.emit: """#if defined(_MSC_VER) && _MSC_VER < 1900
@@ -39,7 +42,7 @@ when not declared(signbit):
   proc signbit*(x: SomeFloat): bool {.inline.} =
     result = c_signbit(x) != 0
 
-import system/formatfloat
+import std/formatfloat
 
 proc toStrMaxPrecision*(f: BiggestFloat | float32): string =
   const literalPostfix = when f is float32: "f" else: ""

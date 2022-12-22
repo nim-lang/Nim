@@ -8,11 +8,11 @@
 #
 
 ## Nim coroutines implementation, supports several context switching methods:
-## --------  ------------
+## ========  ============
 ## ucontext  available on unix and alike (default)
 ## setjmp    available on unix and alike (x86/64 only)
 ## fibers    available and required on windows.
-## --------  ------------
+## ========  ============
 ##
 ## -d:nimCoroutines               Required to build this module.
 ## -d:nimCoroutinesUcontext       Use ucontext backend.
@@ -32,6 +32,9 @@ when not nimCoroutines and not defined(nimdoc):
 import os
 import lists
 include system/timers
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 const defaultStackSize = 512 * 1024
 const useOrcArc = defined(gcArc) or defined(gcOrc)
@@ -278,8 +281,8 @@ proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discar
       (proc(p: pointer) {.stdcall.} = runCurrentTask()), nil)
   else:
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine) + stacksize))
-    coro.stack.top = cast[pointer](cast[ByteAddress](coro) + sizeof(Coroutine))
-    coro.stack.bottom = cast[pointer](cast[ByteAddress](coro.stack.top) + stacksize)
+    coro.stack.top = cast[pointer](cast[int](coro) + sizeof(Coroutine))
+    coro.stack.bottom = cast[pointer](cast[int](coro.stack.top) + stacksize)
     when coroBackend == CORO_BACKEND_UCONTEXT:
       discard getcontext(coro.execContext)
       coro.execContext.uc_stack.ss_sp = coro.stack.top

@@ -6,7 +6,9 @@
 from stdtest/specialpaths import buildDir
 
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[
+    syncio, assertions, formatfloat, objectdollar, widestrs
+  ]
 
 import std/[
   # Core:
@@ -24,7 +26,7 @@ import std/[
 
   # Strings:
   editdistance, wordwrap, parseutils, ropes,
-  pegs, punycode, strformat, strmisc, strscans, strtabs,
+  pegs, strformat, strmisc, strscans, strtabs,
   strutils, unicode, unidecode, cstrutils,
   # works but uses FFI: encodings
 

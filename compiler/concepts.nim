@@ -15,6 +15,9 @@ import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer, types,
 
 from magicsys import addSonSkipIntLit
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const
   logBindings = false
 
@@ -58,6 +61,8 @@ proc semConceptDecl(c: PContext; n: PNode): PNode =
     for i in 0..<n.len-1:
       result[i] = n[i]
     result[^1] = semConceptDecl(c, n[^1])
+  of nkCommentStmt:
+    discard
   else:
     localError(c.config, n.info, "unexpected construct in the new-styled concept: " & renderTree(n))
     result = n
@@ -311,7 +316,7 @@ proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var TIdTable; invo
   ## concept's requirements. If so, we return true and fill the 'bindings' with pairs of
   ## (typeVar, instance) pairs. ('typeVar' is usually simply written as a generic 'T'.)
   ## 'invocation' can be nil for atomic concepts. For non-atomic concepts, it contains the
-  ## 'C[S, T]' parent type that we look for. We need this because we need to store bindings
+  ## `C[S, T]` parent type that we look for. We need this because we need to store bindings
   ## for 'S' and 'T' inside 'bindings' on a successful match. It is very important that
   ## we do not add any bindings at all on an unsuccessful match!
   var m = MatchCon(inferred: @[], potentialImplementation: arg)

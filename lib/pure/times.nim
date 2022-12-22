@@ -201,6 +201,10 @@ import strutils, math, options
 import std/private/since
 include "system/inclrtl"
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 when defined(js):
   import jscore
 
@@ -543,8 +547,8 @@ proc getWeeksInIsoYear*(y: IsoYear): IsoWeekRange {.since: (1, 5).} =
   ## Returns the number of weeks in the specified ISO 8601 week-based year, which can be
   ## either 53 or 52.
   runnableExamples:
-    assert getWeeksInIsoYear(IsoYear(2000)) == 52
-    assert getWeeksInIsoYear(IsoYear(2001)) == 53
+    assert getWeeksInIsoYear(IsoYear(2019)) == 52
+    assert getWeeksInIsoYear(IsoYear(2020)) == 53
 
   var y = int(y)
 
@@ -949,27 +953,33 @@ proc toWinTime*(t: Time): int64 =
   ## since `1601-01-01T00:00:00Z`).
   result = t.seconds * rateDiff + epochDiff + t.nanosecond div 100
 
+proc getTimeImpl(typ: typedesc[Time]): Time =
+  discard "implemented in the vm"
+
 proc getTime*(): Time {.tags: [TimeEffect], benign.} =
   ## Gets the current time as a `Time` with up to nanosecond resolution.
-  when defined(js):
-    let millis = newDate().getTime()
-    let seconds = convert(Milliseconds, Seconds, millis)
-    let nanos = convert(Milliseconds, Nanoseconds,
-      millis mod convert(Seconds, Milliseconds, 1).int)
-    result = initTime(seconds, nanos)
-  elif defined(macosx):
-    var a {.noinit.}: Timeval
-    gettimeofday(a)
-    result = initTime(a.tv_sec.int64,
-                      convert(Microseconds, Nanoseconds, a.tv_usec.int))
-  elif defined(posix):
-    var ts {.noinit.}: Timespec
-    discard clock_gettime(CLOCK_REALTIME, ts)
-    result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
-  elif defined(windows):
-    var f {.noinit.}: FILETIME
-    getSystemTimeAsFileTime(f)
-    result = fromWinTime(rdFileTime(f))
+  when nimvm:
+    result = getTimeImpl(Time)
+  else:
+    when defined(js):
+      let millis = newDate().getTime()
+      let seconds = convert(Milliseconds, Seconds, millis)
+      let nanos = convert(Milliseconds, Nanoseconds,
+        millis mod convert(Seconds, Milliseconds, 1).int)
+      result = initTime(seconds, nanos)
+    elif defined(macosx):
+      var a {.noinit.}: Timeval
+      gettimeofday(a)
+      result = initTime(a.tv_sec.int64,
+                        convert(Microseconds, Nanoseconds, a.tv_usec.int))
+    elif defined(posix):
+      var ts {.noinit.}: Timespec
+      discard clock_gettime(CLOCK_REALTIME, ts)
+      result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
+    elif defined(windows):
+      var f {.noinit.}: FILETIME
+      getSystemTimeAsFileTime(f)
+      result = fromWinTime(rdFileTime(f))
 
 proc `-`*(a, b: Time): Duration {.operator, extern: "ntDiffTime".} =
   ## Computes the duration between two points in time.
@@ -1014,7 +1024,7 @@ proc high*(typ: typedesc[Time]): Time =
   initTime(high(int64), high(NanosecondRange))
 
 proc low*(typ: typedesc[Time]): Time =
-  initTime(low(int64), 0)
+  initTime(0, 0)
 
 #
 # DateTime & Timezone

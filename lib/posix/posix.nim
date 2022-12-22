@@ -249,26 +249,52 @@ proc setlocale*(a1: cint, a2: cstring): cstring {.
 proc strfmon*(a1: cstring, a2: int, a3: cstring): int {.varargs,
    importc, header: "<monetary.h>".}
 
-when not defined(nintendoswitch):
-  proc mq_close*(a1: Mqd): cint {.importc, header: "<mqueue.h>".}
-  proc mq_getattr*(a1: Mqd, a2: ptr MqAttr): cint {.
-    importc, header: "<mqueue.h>".}
-  proc mq_notify*(a1: Mqd, a2: ptr SigEvent): cint {.
-    importc, header: "<mqueue.h>".}
-  proc mq_open*(a1: cstring, a2: cint): Mqd {.
-    varargs, importc, header: "<mqueue.h>".}
-  proc mq_receive*(a1: Mqd, a2: cstring, a3: int, a4: var int): int {.
-    importc, header: "<mqueue.h>".}
-  proc mq_send*(a1: Mqd, a2: cstring, a3: int, a4: int): cint {.
-    importc, header: "<mqueue.h>".}
-  proc mq_setattr*(a1: Mqd, a2, a3: ptr MqAttr): cint {.
+when not (defined(nintendoswitch) or defined(macos) or defined(macosx)):
+  proc mq_notify*(mqdes: Mqd, event: ptr SigEvent): cint {.
     importc, header: "<mqueue.h>".}
 
-  proc mq_timedreceive*(a1: Mqd, a2: cstring, a3: int, a4: int,
-                        a5: ptr Timespec): int {.importc, header: "<mqueue.h>".}
-  proc mq_timedsend*(a1: Mqd, a2: cstring, a3: int, a4: int,
-                     a5: ptr Timespec): cint {.importc, header: "<mqueue.h>".}
-  proc mq_unlink*(a1: cstring): cint {.importc, header: "<mqueue.h>".}
+  proc mq_open*(name: cstring, flags: cint): Mqd {.
+    varargs, importc, header: "<mqueue.h>".}
+
+  proc mq_close*(mqdes: Mqd): cint {.importc, header: "<mqueue.h>".}
+
+  proc mq_receive*(
+    mqdes: Mqd,
+    buffer: cstring,
+    length: csize_t,
+    priority: var cuint
+  ): int {.importc, header: "<mqueue.h>".}
+
+  proc mq_timedreceive*(
+    mqdes: Mqd,
+    buffer: cstring,
+    length: csize_t,
+    priority: cuint,
+    timeout: ptr Timespec
+  ): int {.importc, header: "<mqueue.h>".}
+
+  proc mq_send*(
+    mqdes: Mqd,
+    buffer: cstring,
+    length: csize_t,
+    priority: cuint
+  ): cint {.importc, header: "<mqueue.h>".}
+
+  proc mq_timedsend*(
+    mqdes: Mqd,
+    buffer: cstring,
+    length: csize_t,
+    priority: cuint,
+    timeout: ptr Timespec
+  ): cint {.importc, header: "<mqueue.h>".}
+
+  proc mq_getattr*(mqdes: Mqd, attribute: ptr MqAttr): cint {.
+    importc, header: "<mqueue.h>".}
+
+  proc mq_setattr*(mqdes: Mqd, newAttribute, oldAttribute: ptr MqAttr): cint {.
+    importc, header: "<mqueue.h>".}
+
+  proc mq_unlink*(mqdes: cstring): cint {.importc, header: "<mqueue.h>".}
 
 
 proc getpwnam*(a1: cstring): ptr Passwd {.importc, header: "<pwd.h>".}
@@ -894,18 +920,8 @@ proc CMSG_NXTHDR*(mhdr: ptr Tmsghdr, cmsg: ptr Tcmsghdr): ptr Tcmsghdr {.
 proc CMSG_FIRSTHDR*(mhdr: ptr Tmsghdr): ptr Tcmsghdr {.
   importc, header: "<sys/socket.h>".}
 
-{.push warning[deprecated]: off.}
-proc CMSG_SPACE*(len: csize): csize {.
-  importc, header: "<sys/socket.h>", deprecated: "argument `len` should be of type `csize_t`".}
-{.pop.}
-
 proc CMSG_SPACE*(len: csize_t): csize_t {.
   importc, header: "<sys/socket.h>".}
-
-{.push warning[deprecated]: off.}
-proc CMSG_LEN*(len: csize): csize {.
-  importc, header: "<sys/socket.h>", deprecated: "argument `len` should be of type `csize_t`".}
-{.pop.}
 
 proc CMSG_LEN*(len: csize_t): csize_t {.
   importc, header: "<sys/socket.h>".}
@@ -1016,7 +1032,7 @@ proc endhostent*() {.importc, header: "<netdb.h>".}
 proc endnetent*() {.importc, header: "<netdb.h>".}
 proc endprotoent*() {.importc, header: "<netdb.h>".}
 proc endservent*() {.importc, header: "<netdb.h>".}
-proc freeaddrinfo*(a1: ptr AddrInfo) {.importc, header: "<netdb.h>".}
+proc freeAddrInfo*(a1: ptr AddrInfo) {.importc: "freeaddrinfo", header: "<netdb.h>".}
 
 proc gai_strerror*(a1: cint): cstring {.importc:"(char *)$1", header: "<netdb.h>".}
 
@@ -1103,11 +1119,11 @@ template onSignal*(signals: varargs[cint], body: untyped) =
   ## scope.
   ##
   ## Example:
-  ##
-  ## .. code-block::
+  ##   ```Nim
   ##   from std/posix import SIGINT, SIGTERM, onSignal
   ##   onSignal(SIGINT, SIGTERM):
   ##     echo "bye from signal ", sig
+  ##   ```
 
   for s in signals:
     handle_signal(s,

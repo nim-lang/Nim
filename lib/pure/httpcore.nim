@@ -132,17 +132,13 @@ func toCaseInsensitive(headers: HttpHeaders, s: string): string {.inline.} =
 func newHttpHeaders*(titleCase=false): HttpHeaders =
   ## Returns a new `HttpHeaders` object. if `titleCase` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
-  new result
-  result.table = newTable[string, seq[string]]()
-  result.isTitleCase = titleCase
+  result = HttpHeaders(table: newTable[string, seq[string]](), isTitleCase: titleCase)
 
 func newHttpHeaders*(keyValuePairs:
     openArray[tuple[key: string, val: string]], titleCase=false): HttpHeaders =
   ## Returns a new `HttpHeaders` object from an array. if `titleCase` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
-  new result
-  result.table = newTable[string, seq[string]]()
-  result.isTitleCase = titleCase
+  result = HttpHeaders(table: newTable[string, seq[string]](), isTitleCase: titleCase)
 
   for pair in keyValuePairs:
     let key = result.toCaseInsensitive(pair.key)
@@ -346,16 +342,6 @@ func `$`*(code: HttpCode): string =
   else: $(int(code))
 
 func `==`*(a, b: HttpCode): bool {.borrow.}
-
-proc `==`*(rawCode: string, code: HttpCode): bool
-          {.deprecated: "Deprecated since v1.2; use rawCode == $code instead".} =
-  ## Compare the string form of the status code with a HttpCode
-  ##
-  ## **Note**: According to HTTP/1.1 specification, the reason phrase is
-  ##           optional and should be ignored by the client, making this
-  ##           proc only suitable for comparing the `HttpCode` against the
-  ##           string form of itself.
-  return cmpIgnoreCase(rawCode, $code) == 0
 
 func is1xx*(code: HttpCode): bool {.inline, since: (1, 5).} =
   ## Determines whether `code` is a 1xx HTTP status code.

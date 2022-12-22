@@ -11,6 +11,13 @@ import
   os, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
   std / sha1
 
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
+when not defined(nimHasEffectsOf):
+  {.pragma: effectsOf.}
+
 const
   maxOS = 20 # max number of OSes
   maxCPU = 20 # max number of CPUs
@@ -198,7 +205,7 @@ proc parseCmdLine(c: var ConfigData) =
   if c.infile.len == 0: quit(Usage)
   if c.mainfile.len == 0: c.mainfile = changeFileExt(c.infile, "nim")
 
-proc eqT(a, b: string; t: proc (a: char): char{.nimcall.}): bool =
+proc eqT(a, b: string; t: proc (a: char): char {.nimcall.}): bool {.effectsOf: t.} =
   ## equality under a transformation ``t``. candidate for the stdlib?
   var i = 0
   var j = 0
@@ -508,6 +515,17 @@ template gatherFiles(fun, libpath, outDir) =
     # commenting out for now, see discussion in https://github.com/nim-lang/Nim/pull/13413
     # copySrc(libpath / "lib/wrappers/linenoise/linenoise.h")
 
+proc exe(f: string): string =
+  result = addFileExt(f, ExeExt)
+  when defined(windows):
+    result = result.replace('/','\\')
+
+proc findNim(): string =
+  let nim = "nim".exe
+  result = quoteShell("bin" / nim)
+  if not fileExists(result):
+    result = "nim"
+
 proc srcdist(c: var ConfigData) =
   let cCodeDir = getOutputDir(c) / "c_code"
   if not dirExists(cCodeDir): createDir(cCodeDir)
@@ -526,10 +544,10 @@ proc srcdist(c: var ConfigData) =
       var dir = getOutputDir(c) / buildDir(osA, cpuA)
       if dirExists(dir): removeDir(dir)
       createDir(dir)
-      var cmd = ("nim compile -f --symbolfiles:off --compileonly " &
+      var cmd = ("$# compile -f --symbolfiles:off --compileonly " &
                  "--gen_mapping --cc:gcc --skipUserCfg" &
                  " --os:$# --cpu:$# $# $#") %
-                 [osname, cpuname, c.nimArgs, c.mainfile]
+                 [findNim(), osname, cpuname, c.nimArgs, c.mainfile]
       echo(cmd)
       if execShellCmd(cmd) != 0:
         quit("Error: call to nim compiler failed")

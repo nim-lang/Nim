@@ -14,6 +14,9 @@ import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
 
 from concepts import makeTypeDesc
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
@@ -496,17 +499,30 @@ proc propagateFieldFlags(t: PType, n: PNode) =
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   template bailout =
-    if cl.recursionLimit > 100:
-      # bail out, see bug #2509. But note this caching is in general wrong,
-      # look at this example where TwoVectors should not share the generic
-      # instantiations (bug #3112):
-
-      # type
-      #   Vector[N: static[int]] = array[N, float64]
-      #   TwoVectors[Na, Nb: static[int]] = (Vector[Na], Vector[Nb])
-      result = PType(idTableGet(cl.localCache, t))
-      if result != nil: return result
-    inc cl.recursionLimit
+    if (t.sym == nil) or (t.sym != nil and sfGeneratedType in t.sym.flags):
+      # In the first case 't.sym' can be 'nil' if the type is a ref/ptr, see
+      # issue https://github.com/nim-lang/Nim/issues/20416 for more details.
+      # Fortunately for us this works for now because partial ref/ptr types are
+      # not allowed in object construction, eg.
+      #   type
+      #     Container[T] = ...
+      #     O = object
+      #      val: ref Container
+      #
+      # In the second case only consider the recursion limit if the symbol is a
+      # type with generic parameters that have not been explicitly supplied,
+      # typechecking should terminate when generic parameters are explicitly
+      # supplied.
+      if cl.recursionLimit > 100:
+        # bail out, see bug #2509. But note this caching is in general wrong,
+        # look at this example where TwoVectors should not share the generic
+        # instantiations (bug #3112):
+        # type
+        #   Vector[N: static[int]] = array[N, float64]
+        #   TwoVectors[Na, Nb: static[int]] = (Vector[Na], Vector[Nb])
+        result = PType(idTableGet(cl.localCache, t))
+        if result != nil: return result
+      inc cl.recursionLimit
 
   result = t
   if t == nil: return

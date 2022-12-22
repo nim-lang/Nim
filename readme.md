@@ -47,12 +47,12 @@ Compiling the Nim compiler is quite straightforward if you follow these steps:
 First, the C source of an older version of the Nim compiler is needed to
 bootstrap the latest version because the Nim compiler itself is written in the
 Nim programming language. Those C sources are available within the
-[``nim-lang/csources_v1``][csources-v1-repo] repository.
+[``nim-lang/csources_v2``][csources-v2-repo] repository.
 
 Next, to build from source you will need:
 
-  * A C compiler such as ``gcc`` 3.x/later or an alternative such as ``clang``,
-    ``Visual C++`` or ``Intel C++``. It is recommended to use ``gcc`` 3.x or
+  * A C compiler such as ``gcc`` 5.x/later or an alternative such as ``clang``,
+    ``Visual C++`` or ``Intel C++``. It is recommended to use ``gcc`` 5.x or
     later.
   * Either ``git`` or ``wget`` to download the needed source repositories.
   * The ``build-essential`` package when using ``gcc`` on Ubuntu (and likely
@@ -88,9 +88,9 @@ Next, run the appropriate build shell script for your platform:
 Finally, once you have finished the build steps (on Windows, Mac, or Linux) you
 should add the ``bin`` directory to your PATH.
 
-See also [rebuilding the compiler](doc/intern.rst#rebuilding-the-compiler).
+See also [bootstrapping the compiler](https://nim-lang.github.io/Nim/intern.html#bootstrapping-the-compiler).
 
-See also [reproducible builds](doc/intern.rst#reproducible-builds).
+See also [reproducible builds](https://nim-lang.github.io/Nim/intern.html#bootstrapping-the-compiler-reproducible-builds).
 
 ## Koch
 
@@ -104,7 +104,7 @@ can run a subset of tests by specifying a category (for example
 ``./koch tests cat async``).
 
 For more information on the ``koch`` build tool please see the documentation
-within the [doc/koch.rst](doc/koch.rst) file.
+within the [doc/koch.md](https://nim-lang.github.io/Nim/koch.html) file.
 
 ## Nimble
 
@@ -141,7 +141,7 @@ you should familiarize yourself with the following repository structure:
     dependencies written in other languages.
     * ``wrappers/`` - modules that wrap dependencies written in other languages.
 * ``tests/`` - contains categorized tests for the compiler and standard library.
-* ``tools/`` - the tools including ``niminst`` and ``nimweb`` (mostly invoked via
+* ``tools/`` - the tools including ``niminst`` (mostly invoked via
   ``koch``).
 * ``koch.nim`` - the tool used to bootstrap Nim, generate C sources, build the website,
   and generate the documentation.
@@ -223,7 +223,7 @@ Copyright © 2006-2022 Andreas Rumpf, all rights reserved.
 [nimble-repo]: https://github.com/nim-lang/nimble
 [nimsuggest-repo]: https://github.com/nim-lang/nimsuggest
 [csources-repo-deprecated]: https://github.com/nim-lang/csources
-[csources-v1-repo]: https://github.com/nim-lang/csources_v1
+[csources-v2-repo]: https://github.com/nim-lang/csources_v2
 [badge-nim-irc]: https://img.shields.io/badge/chat-on_irc-blue.svg?style=flat-square
 [badge-nim-discord]: https://img.shields.io/discord/371759389889003530?color=blue&label=discord&logo=discord&logoColor=gold&style=flat-square
 [badge-nim-gitter]: https://img.shields.io/badge/chat-on_gitter-blue.svg?style=flat-square

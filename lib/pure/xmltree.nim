@@ -31,7 +31,11 @@ runnableExamples:
 ## * `htmlgen module <htmlgen.html>`_ for html code generator
 
 import std/private/since
-import macros, strtabs, strutils
+import macros, strtabs, strutils, sequtils
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 type
   XmlNode* = ref XmlNodeObj ## An XML tree consisting of XML nodes.
@@ -294,26 +298,60 @@ proc innerText*(n: XmlNode): string =
 
 proc add*(father, son: XmlNode) {.inline.} =
   ## Adds the child `son` to `father`.
+  ## `father` must be of `xnElement` type
   ##
   ## See also:
+  ## * `add proc <#add,XmlNode,openArray[XmlNode]>`_
   ## * `insert proc <#insert,XmlNode,XmlNode,int>`_
+  ## * `insert proc <#insert,XmlNode,openArray[XmlNode],int>`_
   ## * `delete proc <#delete,XmlNode,Natural>`_
+  ## * `delete proc <#delete.XmlNode,Slice[int]>`_
+  ## * `replace proc <#replace.XmlNode,int,openArray[XmlNode]>`_
+  ## * `replace proc <#replace.XmlNode,Slice[int],openArray[XmlNode]>`_
   runnableExamples:
     var f = newElement("myTag")
     f.add newText("my text")
     f.add newElement("sonTag")
     f.add newEntity("my entity")
     assert $f == "<myTag>my text<sonTag />&my entity;</myTag>"
+
+  assert father.k == xnElement
   add(father.s, son)
+
+proc add*(father: XmlNode, sons: openArray[XmlNode]) {.inline.} =
+  ## Adds the children `sons` to `father`.
+  ## `father` must be of `xnElement` type
+  ##
+  ## See also:
+  ## * `add proc <#add,XmlNode,XmlNode>`_
+  ## * `insert proc <#insert,XmlNode,XmlNode,int>`_
+  ## * `insert proc <#insert,XmlNode,openArray[XmlNode],int>`_
+  ## * `delete proc <#delete,XmlNode,Natural>`_
+  ## * `delete proc <#delete.XmlNode,Slice[int]>`_
+  ## * `replace proc <#replace.XmlNode,int,openArray[XmlNode]>`_
+  ## * `replace proc <#replace.XmlNode,Slice[int],openArray[XmlNode]>`_
+  runnableExamples:
+    var f = newElement("myTag")
+    f.add(@[newText("my text"), newElement("sonTag"), newEntity("my entity")])
+    assert $f == "<myTag>my text<sonTag />&my entity;</myTag>"
+
+  assert father.k == xnElement
+  add(father.s, sons)
+
 
 proc insert*(father, son: XmlNode, index: int) {.inline.} =
   ## Inserts the child `son` to a given position in `father`.
   ##
-  ## `father` and `son` must be of `xnElement` kind.
+  ## `father` must be of `xnElement` kind.
   ##
   ## See also:
+  ## * `insert proc <#insert,XmlNode,openArray[XmlNode],int>`_
   ## * `add proc <#add,XmlNode,XmlNode>`_
+  ## * `add proc <#add,XmlNode,openArray[XmlNode]>`_
   ## * `delete proc <#delete,XmlNode,Natural>`_
+  ## * `delete proc <#delete.XmlNode,Slice[int]>`_
+  ## * `replace proc <#replace.XmlNode,int,openArray[XmlNode]>`_
+  ## * `replace proc <#replace.XmlNode,Slice[int],openArray[XmlNode]>`_
   runnableExamples:
     var f = newElement("myTag")
     f.add newElement("first")
@@ -323,18 +361,52 @@ proc insert*(father, son: XmlNode, index: int) {.inline.} =
   <first />
 </myTag>"""
 
-  assert father.k == xnElement and son.k == xnElement
+  assert father.k == xnElement
   if len(father.s) > index:
     insert(father.s, son, index)
   else:
     insert(father.s, son, len(father.s))
 
+proc insert*(father: XmlNode, sons: openArray[XmlNode], index: int) {.inline.} =
+  ## Inserts the children openArray[`sons`] to a given position in `father`.
+  ##
+  ## `father` must be of `xnElement` kind.
+  ##
+  ## See also:
+  ## * `insert proc <#insert,XmlNode,XmlNode,int>`_
+  ## * `add proc <#add,XmlNode,XmlNode>`_
+  ## * `add proc <#add,XmlNode,openArray[XmlNode]>`_
+  ## * `delete proc <#delete,XmlNode,Natural>`_
+  ## * `delete proc <#delete.XmlNode,Slice[int]>`_
+  ## * `replace proc <#replace.XmlNode,int,openArray[XmlNode]>`_
+  ## * `replace proc <#replace.XmlNode,Slice[int],openArray[XmlNode]>`_
+  runnableExamples:
+    var f = newElement("myTag")
+    f.add newElement("first")
+    f.insert([newElement("second"), newElement("third")], 0)
+    assert $f == """<myTag>
+  <second />
+  <third />
+  <first />
+</myTag>"""
+
+  assert father.k == xnElement
+  if len(father.s) > index:
+    insert(father.s, sons, index)
+  else:
+    insert(father.s, sons, len(father.s))
+
 proc delete*(n: XmlNode, i: Natural) =
   ## Deletes the `i`'th child of `n`.
   ##
   ## See also:
+  ## * `delete proc <#delete.XmlNode,Slice[int]>`_
   ## * `add proc <#add,XmlNode,XmlNode>`_
+  ## * `add proc <#add,XmlNode,openArray[XmlNode]>`_
   ## * `insert proc <#insert,XmlNode,XmlNode,int>`_
+  ## * `insert proc <#insert,XmlNode,openArray[XmlNode],int>`_
+  ## * `replace proc <#replace.XmlNode,int,openArray[XmlNode]>`_
+  ## * `replace proc <#replace.XmlNode,Slice[int],openArray[XmlNode]>`_
   runnableExamples:
     var f = newElement("myTag")
     f.add newElement("first")
@@ -346,6 +418,85 @@ proc delete*(n: XmlNode, i: Natural) =
 
   assert n.k == xnElement
   n.s.delete(i)
+
+proc delete*(n: XmlNode, slice: Slice[int]) =
+  ## Deletes the items `n[slice]` of `n`.
+  ##
+  ## See also:
+  ## * `delete proc <#delete.XmlNode,int>`_
+  ## * `add proc <#add,XmlNode,XmlNode>`_
+  ## * `add proc <#add,XmlNode,openArray[XmlNode]>`_
+  ## * `insert proc <#insert,XmlNode,XmlNode,int>`_
+  ## * `insert proc <#insert,XmlNode,openArray[XmlNode],int>`_
+  ## * `replace proc <#replace.XmlNode,int,openArray[XmlNode]>`_
+  ## * `replace proc <#replace.XmlNode,Slice[int],openArray[XmlNode]>`_
+  runnableExamples:
+    var f = newElement("myTag")
+    f.add newElement("first")
+    f.insert([newElement("second"), newElement("third")], 0)
+    f.delete(0..1)
+    assert $f == """<myTag>
+  <first />
+</myTag>"""
+
+  assert n.k == xnElement
+  n.s.delete(slice)
+
+proc replace*(n: XmlNode, i: Natural, replacement: openArray[XmlNode]) =
+  ## Replaces the `i`'th child of `n` with `replacement` openArray.
+  ##
+  ## `n` must be of `xnElement` kind.
+  ##
+  ## See also:
+  ## * `replace proc <#replace.XmlNode,Slice[int],openArray[XmlNode]>`_
+  ## * `add proc <#add,XmlNode,XmlNode>`_
+  ## * `add proc <#add,XmlNode,openArray[XmlNode]>`_
+  ## * `delete proc <#delete,XmlNode,Natural>`_
+  ## * `delete proc <#delete.XmlNode,Slice[int]>`_
+  ## * `insert proc <#insert,XmlNode,XmlNode,int>`_
+  ## * `insert proc <#insert,XmlNode,openArray[XmlNode],int>`_
+  runnableExamples:
+    var f = newElement("myTag")
+    f.add newElement("first")
+    f.insert(newElement("second"), 0)
+    f.replace(0, @[newElement("third"), newElement("fourth")])
+    assert $f == """<myTag>
+  <third />
+  <fourth />
+  <first />
+</myTag>"""
+
+  assert n.k == xnElement
+  n.s.delete(i)
+  n.s.insert(replacement, i)
+
+proc replace*(n: XmlNode, slice: Slice[int], replacement: openArray[XmlNode]) =
+  ## Deletes the items `n[slice]` of `n`.
+  ##
+  ## `n` must be of `xnElement` kind.
+  ##
+  ## See also:
+  ## * `replace proc <#replace.XmlNode,int,openArray[XmlNode]>`_
+  ## * `add proc <#add,XmlNode,XmlNode>`_
+  ## * `add proc <#add,XmlNode,openArray[XmlNode]>`_
+  ## * `delete proc <#delete,XmlNode,Natural>`_
+  ## * `delete proc <#delete.XmlNode,Slice[int]>`_
+  ## * `insert proc <#insert,XmlNode,XmlNode,int>`_
+  ## * `insert proc <#insert,XmlNode,openArray[XmlNode],int>`_
+  runnableExamples:
+    var f = newElement("myTag")
+    f.add newElement("first")
+    f.insert([newElement("second"), newElement("fifth")], 0)
+    f.replace(0..1, @[newElement("third"), newElement("fourth")])
+    assert $f == """<myTag>
+  <third />
+  <fourth />
+  <first />
+</myTag>"""
+
+  assert n.k == xnElement
+  n.s.delete(slice)
+  n.s.insert(replacement, slice.a)
 
 proc len*(n: XmlNode): int {.inline.} =
   ## Returns the number of `n`'s children.
@@ -552,15 +703,15 @@ proc escape*(s: string): string =
   ##
   ## Escapes these characters:
   ##
-  ## ------------    -------------------
+  ## ============    ===================
   ## char            is converted to
-  ## ------------    -------------------
+  ## ============    ===================
   ##  ``<``          ``&lt;``
   ##  ``>``          ``&gt;``
   ##  ``&``          ``&amp;``
   ##  ``"``          ``&quot;``
   ##  ``'``          ``&apos;``
-  ## ------------    -------------------
+  ## ============    ===================
   ##
   ## You can also use `addEscaped proc <#addEscaped,string,string>`_.
   result = newStringOfCap(s.len)
@@ -774,8 +925,8 @@ macro `<>`*(x: untyped): untyped =
   ## .. code-block:: nim
   ##   <>a(href="http://nim-lang.org", newText("Nim rules."))
   ##
-  ## Produces an XML tree for::
+  ## Produces an XML tree for:
   ##
-  ##  <a href="http://nim-lang.org">Nim rules.</a>
+  ##     <a href="http://nim-lang.org">Nim rules.</a>
   ##
   result = xmlConstructor(x)

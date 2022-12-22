@@ -32,8 +32,10 @@ type
     # non-fatal errors
     errIllFormedAstX, errCannotOpenFile,
     errXExpected,
+    errRstMissingClosing,
     errRstGridTableNotImplemented,
     errRstMarkdownIllformedTable,
+    errRstIllformedTable,
     errRstNewSectionExpected,
     errRstGeneralParseError,
     errRstInvalidDirectiveX,
@@ -66,7 +68,8 @@ type
     warnUnreachableElse = "UnreachableElse", warnUnreachableCode = "UnreachableCode",
     warnStaticIndexCheck = "IndexCheck", warnGcUnsafe = "GcUnsafe", warnGcUnsafe2 = "GcUnsafe2",
     warnUninit = "Uninit", warnGcMem = "GcMem", warnDestructor = "Destructor",
-    warnLockLevel = "LockLevel", warnResultShadowed = "ResultShadowed",
+    warnLockLevel = "LockLevel", # deadcode
+    warnResultShadowed = "ResultShadowed",
     warnInconsistentSpacing = "Spacing",  warnCaseTransition = "CaseTransition",
     warnCycleCreated = "CycleCreated", warnObservableStores = "ObservableStores",
     warnStrictNotNil = "StrictNotNil",
@@ -77,7 +80,13 @@ type
     warnAnyEnumConv = "AnyEnumConv",
     warnHoleEnumConv = "HoleEnumConv",
     warnCstringConv = "CStringConv",
+    warnPtrToCstringConv = "PtrToCstringConv",
     warnEffect = "Effect",
+    warnCastSizes = "CastSizes"
+    warnImplicitTemplateRedefinition = "ImplicitTemplateRedefinition",
+    warnUnnamedBreak = "UnnamedBreak",
+    warnStmtListLambda = "StmtListLambda",
+    warnBareExcept = "BareExcept",
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -92,6 +101,7 @@ type
     hintPattern = "Pattern", hintExecuting = "Exec", hintLinking = "Link", hintDependency = "Dependency",
     hintSource = "Source", hintPerformance = "Performance", hintStackTrace = "StackTrace",
     hintGCStats = "GCStats", hintGlobalVar = "GlobalVar", hintExpandMacro = "ExpandMacro",
+    hintAmbiguousEnum = "AmbiguousEnum",
     hintUser = "User", hintUserRaw = "UserRaw", hintExtendedContext = "ExtendedContext",
     hintMsgOrigin = "MsgOrigin", # since 1.3.5
     hintDeclaredLoc = "DeclaredLoc", # since 1.5.1
@@ -104,8 +114,10 @@ const
     errIllFormedAstX: "illformed AST: $1",
     errCannotOpenFile: "cannot open '$1'",
     errXExpected: "'$1' expected",
+    errRstMissingClosing: "$1",
     errRstGridTableNotImplemented: "grid table is not implemented",
     errRstMarkdownIllformedTable: "illformed delimiter row of a markdown table",
+    errRstIllformedTable: "Illformed table: $1",
     errRstNewSectionExpected: "new section expected $1",
     errRstGeneralParseError: "general parse error",
     errRstInvalidDirectiveX: "invalid directive: '$1'",
@@ -154,7 +166,7 @@ const
     warnUninit: "use explicit initialization of '$1' for clarity",
     warnGcMem: "'$1' uses GC'ed memory",
     warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future.",
-    warnLockLevel: "$1",
+    warnLockLevel: "$1", # deadcode
     warnResultShadowed: "Special variable 'result' is shadowed.",
     warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
     warnCaseTransition: "Potential object case transition, instantiate new object instead",
@@ -168,7 +180,13 @@ const
     warnAnyEnumConv: "$1",
     warnHoleEnumConv: "$1",
     warnCstringConv: "$1",
+    warnPtrToCstringConv: "unsafe conversion to 'cstring' from '$1'; this will become a compile time error in the future",
     warnEffect: "$1",
+    warnCastSizes: "$1",
+    warnImplicitTemplateRedefinition: "template '$1' is implicitly redefined; this is deprecated, add an explicit .redefine pragma",
+    warnUnnamedBreak: "Using an unnamed break in a block is deprecated; Use a named block with a named break instead",
+    warnStmtListLambda: "statement list expression assumed to be anonymous proc; this is deprecated, use `do (): ...` or `proc () = ...` instead",
+    warnBareExcept: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
@@ -201,6 +219,7 @@ const
     hintGCStats: "$1",
     hintGlobalVar: "global variable declared here",
     hintExpandMacro: "expanded macro: $1",
+    hintAmbiguousEnum: "$1",
     hintUser: "$1",
     hintUserRaw: "$1",
     hintExtendedContext: "$1",
@@ -224,7 +243,7 @@ type
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv}
-  result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
+  result[2] = result[3] - {hintStackTrace, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
     hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin, hintPerformance}

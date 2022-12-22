@@ -16,6 +16,9 @@ import
   os, times, osproc, wordrecg, strtabs, modulegraphs,
   pathutils
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains
 
@@ -178,15 +181,13 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     options.cppDefine(conf, a.getString(0))
   cbexc stdinReadLine, EOFError:
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
-      discard
-    else:
       setResult(a, "")
+    else:
       setResult(a, stdin.readLine())
   cbexc stdinReadAll, EOFError:
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
-      discard
-    else:
       setResult(a, "")
+    else:
       setResult(a, stdin.readAll())
 
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;

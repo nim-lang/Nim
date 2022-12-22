@@ -1,7 +1,10 @@
 ## A BiTable is a table that can be seen as an optimized pair
-## of (Table[LitId, Val], Table[Val, LitId]).
+## of `(Table[LitId, Val], Table[Val, LitId])`.
 
 import hashes, rodfiles
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type
   LitId* = distinct uint32
@@ -90,13 +93,13 @@ proc getOrIncl*[T](t: var BiTable[T]; v: T): LitId =
   t.vals.add v
 
 
-proc `[]`*[T](t: var BiTable[T]; LitId: LitId): var T {.inline.} =
-  let idx = idToIdx LitId
+proc `[]`*[T](t: var BiTable[T]; litId: LitId): var T {.inline.} =
+  let idx = idToIdx litId
   assert idx < t.vals.len
   result = t.vals[idx]
 
-proc `[]`*[T](t: BiTable[T]; LitId: LitId): lent T {.inline.} =
-  let idx = idToIdx LitId
+proc `[]`*[T](t: BiTable[T]; litId: LitId): lent T {.inline.} =
+  let idx = idToIdx litId
   assert idx < t.vals.len
   result = t.vals[idx]
 

@@ -15,6 +15,9 @@ import
   magicsys, idents, lexer, options, parampatterns, strutils, trees,
   linter, lineinfos, lowerings, modulegraphs, concepts
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   MismatchKind* = enum
     kUnknown, kAlreadyGiven, kUnknownNamedParam, kTypeMismatch, kVarNeeded,
@@ -83,6 +86,7 @@ type
     trDontBind
     trNoCovariance
     trBindGenericParam  # bind tyGenericParam even with trDontBind
+    trIsOutParam
 
   TTypeRelFlags* = set[TTypeRelFlag]
 
@@ -369,14 +373,16 @@ proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   else:
     result = t                # Note: empty is valid here
 
-proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
+proc handleRange(c: PContext, f, a: PType, min, max: TTypeKind): TTypeRelation =
   if a.kind == f.kind:
     result = isEqual
   else:
     let ab = skipTypes(a, {tyRange})
     let k = ab.kind
+    let nf = c.config.normalizeKind(f.kind)
+    let na = c.config.normalizeKind(k)
     if k == f.kind: result = isSubrange
-    elif k == tyInt and f.kind in {tyRange, tyInt8..tyInt64,
+    elif k == tyInt and f.kind in {tyRange, tyInt..tyInt64,
                                    tyUInt..tyUInt64} and
         isIntLit(ab) and getInt(ab.n) >= firstOrd(nil, f) and
                          getInt(ab.n) <= lastOrd(nil, f):
@@ -385,9 +391,13 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
       # integer literal in the proper range; we want ``i16 + 4`` to stay an
       # ``int16`` operation so we declare the ``4`` pseudo-equal to int16
       result = isFromIntLit
-    elif f.kind == tyInt and k in {tyInt8..tyInt32}:
+    elif a.kind == tyInt and nf == c.config.targetSizeSignedToKind:
       result = isIntConv
-    elif f.kind == tyUInt and k in {tyUInt8..tyUInt32}:
+    elif a.kind == tyUInt and nf == c.config.targetSizeUnsignedToKind:
+      result = isIntConv
+    elif f.kind == tyInt and na in {tyInt8 .. pred(c.config.targetSizeSignedToKind)}:
+      result = isIntConv
+    elif f.kind == tyUInt and na in {tyUInt8 .. pred(c.config.targetSizeUnsignedToKind)}:
       result = isIntConv
     elif k >= min and k <= max:
       result = isConvertible
@@ -401,7 +411,7 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
       result = isConvertible
     else: result = isNone
 
-proc isConvertibleToRange(f, a: PType): bool =
+proc isConvertibleToRange(c: PContext, f, a: PType): bool =
   if f.kind in {tyInt..tyInt64, tyUInt..tyUInt64} and
      a.kind in {tyInt..tyInt64, tyUInt..tyUInt64}:
     case f.kind
@@ -409,13 +419,14 @@ proc isConvertibleToRange(f, a: PType): bool =
     of tyInt16: result = isIntLit(a) or a.kind in {tyInt8, tyInt16}
     of tyInt32: result = isIntLit(a) or a.kind in {tyInt8, tyInt16, tyInt32}
     # This is wrong, but seems like there's a lot of code that relies on it :(
-    of tyInt, tyUInt, tyUInt64: result = true
+    of tyInt, tyUInt: result = true
+    # of tyInt: result = isIntLit(a) or a.kind in {tyInt8 .. c.config.targetSizeSignedToKind}
     of tyInt64: result = isIntLit(a) or a.kind in {tyInt8, tyInt16, tyInt32, tyInt, tyInt64}
     of tyUInt8: result = isIntLit(a) or a.kind in {tyUInt8}
     of tyUInt16: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16}
     of tyUInt32: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32}
-    #of tyUInt: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt}
-    #of tyUInt64: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt, tyUInt64}
+    # of tyUInt: result = isIntLit(a) or a.kind in {tyUInt8 .. c.config.targetSizeUnsignedToKind}
+    of tyUInt64: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt64}
     else: result = false
   elif f.kind in {tyFloat..tyFloat128}:
     # `isIntLit` is correct and should be used above as well, see PR:
@@ -542,16 +553,16 @@ proc allowsNil(f: PType): TTypeRelation {.inline.} =
   result = if tfNotNil notin f.flags: isSubtype else: isNone
 
 proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
-  result = f.kind != a.kind and
-    (f.kind in {tyVar, tyLent, tySink} or a.kind in {tyVar, tyLent, tySink})
+  result = (f.kind != a.kind and
+    (f.kind in {tyVar, tyLent, tySink} or a.kind in {tyVar, tyLent, tySink})) or
+    isOutParam(f) != isOutParam(a)
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
-  ##
-  ## .. code-block:: nim
+  ##   ```
   ##   proc myMap[T,S](sIn: seq[T], f: proc(x: T): S): seq[S] = ...
   ##   proc innerProc[Q,W](q: Q): W = ...
-  ##
+  ##   ```
   ## And we want to match: myMap(@[1,2,3], innerProc)
   ## This proc (procParamTypeRel) will do the following steps in
   ## three different calls:
@@ -1144,25 +1155,34 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let f = skipTypes(f, {tyRange})
       if f.kind == a.kind and (f.kind != tyEnum or sameEnumTypes(f, a)):
         result = isIntConv
-      elif isConvertibleToRange(f, a):
+      elif isConvertibleToRange(c.c, f, a):
         result = isConvertible  # a convertible to f
-  of tyInt:      result = handleRange(f, a, tyInt8, tyInt32)
-  of tyInt8:     result = handleRange(f, a, tyInt8, tyInt8)
-  of tyInt16:    result = handleRange(f, a, tyInt8, tyInt16)
-  of tyInt32:    result = handleRange(f, a, tyInt8, tyInt32)
-  of tyInt64:    result = handleRange(f, a, tyInt, tyInt64)
-  of tyUInt:     result = handleRange(f, a, tyUInt8, tyUInt32)
-  of tyUInt8:    result = handleRange(f, a, tyUInt8, tyUInt8)
-  of tyUInt16:   result = handleRange(f, a, tyUInt8, tyUInt16)
-  of tyUInt32:   result = handleRange(f, a, tyUInt8, tyUInt32)
-  of tyUInt64:   result = handleRange(f, a, tyUInt, tyUInt64)
+  of tyInt:      result = handleRange(c.c, f, a, tyInt8, c.c.config.targetSizeSignedToKind)
+  of tyInt8:     result = handleRange(c.c, f, a, tyInt8, tyInt8)
+  of tyInt16:    result = handleRange(c.c, f, a, tyInt8, tyInt16)
+  of tyInt32:    result = handleRange(c.c, f, a, tyInt8, tyInt32)
+  of tyInt64:    result = handleRange(c.c, f, a, tyInt, tyInt64)
+  of tyUInt:     result = handleRange(c.c, f, a, tyUInt8, c.c.config.targetSizeUnsignedToKind)
+  of tyUInt8:    result = handleRange(c.c, f, a, tyUInt8, tyUInt8)
+  of tyUInt16:   result = handleRange(c.c, f, a, tyUInt8, tyUInt16)
+  of tyUInt32:   result = handleRange(c.c, f, a, tyUInt8, tyUInt32)
+  of tyUInt64:   result = handleRange(c.c, f, a, tyUInt, tyUInt64)
   of tyFloat:    result = handleFloatRange(f, a)
   of tyFloat32:  result = handleFloatRange(f, a)
   of tyFloat64:  result = handleFloatRange(f, a)
   of tyFloat128: result = handleFloatRange(f, a)
-  of tyVar, tyLent:
-    if aOrig.kind == f.kind: result = typeRel(c, f.base, aOrig.base, flags)
-    else: result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
+  of tyVar:
+    let flags = if isOutParam(f): flags + {trIsOutParam} else: flags
+    if aOrig.kind == f.kind and (isOutParam(aOrig) == isOutParam(f)):
+      result = typeRel(c, f.base, aOrig.base, flags)
+    else:
+      result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
+    subtypeCheck()
+  of tyLent:
+    if aOrig.kind == f.kind:
+      result = typeRel(c, f.base, aOrig.base, flags)
+    else:
+      result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
     subtypeCheck()
   of tyArray:
     case a.kind
@@ -1291,7 +1311,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if sameObjectTypes(f, a):
         result = isEqual
         # elif tfHasMeta in f.flags: result = recordRel(c, f, a)
-      else:
+      elif trIsOutParam notin flags:
         var depth = isObjectSubtype(c, a, f, nil)
         if depth > 0:
           inc(c.inheritancePenalty, depth)
@@ -1302,8 +1322,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if sameDistinctTypes(f, a): result = isEqual
       #elif f.base.kind == tyAnything: result = isGeneric  # issue 4435
       elif c.coerceDistincts: result = typeRel(c, f.base, a, flags)
-    elif a.kind == tyNil and f.base.kind in NilableTypes:
-      result = f.allowsNil # XXX remove this typing rule, it is not in the spec
     elif c.coerceDistincts: result = typeRel(c, f.base, a, flags)
   of tySet:
     if a.kind == tySet:
@@ -1380,16 +1398,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyNil: result = f.allowsNil
     of tyString: result = isConvertible
     of tyPtr:
-      # ptr[Tag, char] is not convertible to 'cstring' for now:
-      if a.len == 1:
-        let pointsTo = a[0].skipTypes(abstractInst)
-        if pointsTo.kind == tyChar: result = isConvertible
-        elif pointsTo.kind == tyUncheckedArray and pointsTo[0].kind == tyChar:
-          result = isConvertible
-        elif pointsTo.kind == tyArray and firstOrd(nil, pointsTo[0]) == 0 and
-            skipTypes(pointsTo[0], {tyRange}).kind in {tyInt..tyInt64} and
-            pointsTo[1].kind == tyChar:
-          result = isConvertible
+      if isDefined(c.c.config, "nimPreviewCstringConversion"):
+        result = isNone
+      else:
+        if a.len == 1:
+          let pointsTo = a[0].skipTypes(abstractInst)
+          if pointsTo.kind == tyChar: result = isConvertible
+          elif pointsTo.kind == tyUncheckedArray and pointsTo[0].kind == tyChar:
+            result = isConvertible
+          elif pointsTo.kind == tyArray and firstOrd(nil, pointsTo[0]) == 0 and
+              skipTypes(pointsTo[0], {tyRange}).kind in {tyInt..tyInt64} and
+              pointsTo[1].kind == tyChar:
+            result = isConvertible
     else: discard
 
   of tyEmpty, tyVoid:
@@ -1461,7 +1481,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           elif aAsObject.kind == fKind:
             aAsObject = aAsObject.base
 
-        if aAsObject.kind == tyObject:
+        if aAsObject.kind == tyObject and trIsOutParam notin flags:
           let baseType = aAsObject.base
           if baseType != nil:
             c.inheritancePenalty += 1
@@ -1584,10 +1604,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         c.inheritancePenalty = 0
         let x = typeRel(c, branch, aOrig, flags)
         maxInheritance = max(maxInheritance, c.inheritancePenalty)
-
         # 'or' implies maximum matching result:
         if x > result: result = x
-      if result >= isSubtype:
+      if result >= isIntConv:
         if result > isGeneric: result = isGeneric
         bindingRet result
       else:
@@ -1637,7 +1656,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         elif a.len > 0 and a.lastSon == f:
           # Needed for checking `Y` == `Addable` in the following
           #[
-            type 
+            type
               Addable = concept a, type A
                 a + a is A
               MyType[T: Addable; Y: static T] = object
@@ -1895,18 +1914,21 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
     else:
       result.typ = errorType(c)
   else:
-    result.typ = f.skipTypes({tySink})
+    result.typ = f.skipTypes({tySink, tyVar})
   if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
   result.add c.graph.emptyNode
   result.add arg
 
-proc isLValue(c: PContext; n: PNode): bool {.inline.} =
+proc isLValue(c: PContext; n: PNode, isOutParam = false): bool {.inline.} =
   let aa = isAssignable(nil, n)
   case aa
   of arLValue, arLocalLValue, arStrange:
     result = true
   of arDiscriminant:
     result = c.inUncheckedAssignSection > 0
+  of arAddressableConst:
+    let sym = getRoot(n)
+    result = strictDefs in c.features and sym != nil and sym.kind == skLet and isOutParam
   else:
     result = false
 
@@ -2097,11 +2119,15 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
 
   case r
   of isConvertible:
+    if f.skipTypes({tyRange}).kind in {tyInt, tyUInt}:
+      inc(m.convMatches)
     inc(m.convMatches)
     result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isIntConv:
     # I'm too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:
+    if f.skipTypes({tyRange}).kind notin {tyInt, tyUInt}:
+      inc(m.intConvMatches)
     inc(m.intConvMatches)
     result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isSubtype:
@@ -2121,7 +2147,11 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       result = c.semInferredLambda(c, m.bindings, arg)
     elif arg.kind != nkSym:
       return nil
+    elif arg.sym.kind in {skMacro, skTemplate}:
+      return nil
     else:
+      if arg.sym.ast == nil:
+        return nil
       let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
       result = newSymNode(inferred, arg.info)
     if r == isInferredConvertible:
@@ -2152,7 +2182,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isEqual:
     inc(m.exactMatches)
     result = arg
-    if skipTypes(f, abstractVar-{tyTypeDesc}).kind == tyTuple or
+    let ff = skipTypes(f, abstractVar-{tyTypeDesc})
+    if ff.kind == tyTuple or
       (arg.typ != nil and skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple):
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isNone:
@@ -2163,6 +2194,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       return arg
     elif a.kind == tyVoid and f.matchesVoidProc and argOrig.kind == nkStmtList:
       # lift do blocks without params to lambdas
+      # now deprecated
+      message(c.config, argOrig.info, warnStmtListLambda)
       let p = c.graph
       let lifted = c.semExpr(c, newProcNode(nkDo, argOrig.info, body = argOrig,
           params = nkFormalParams.newTree(p.emptyNode), name = p.emptyNode, pattern = p.emptyNode,
@@ -2368,7 +2401,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         if argConverter.typ.kind notin {tyVar}:
           m.firstMismatch.kind = kVarNeeded
           noMatch()
-      elif not isLValue(c, n):
+      elif not (isLValue(c, n, isOutParam(formal.typ))):
         m.firstMismatch.kind = kVarNeeded
         noMatch()
 

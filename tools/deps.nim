@@ -1,5 +1,8 @@
-import os, uri, strformat, strutils
+import std/[os, uri, strformat, strutils]
 import std/private/gitutils
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 proc exec(cmd: string) =
   echo "deps.cmd: " & cmd

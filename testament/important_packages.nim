@@ -33,13 +33,14 @@ var packages*: seq[NimblePackage]
 proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true, allowFailure = false) =
   packages.add NimblePackage(name: name, cmd: cmd, url: url, useHead: useHead, allowFailure: allowFailure)
 
-pkg "alea", allowFailure = true
+pkg "alea"
 pkg "argparse"
 pkg "arraymancer", "nim c tests/tests_cpu.nim"
-pkg "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim", allowFailure = true
-pkg "asyncthreadpool"
+pkg "ast_pattern_matching", "nim c -r tests/test1.nim"
+pkg "asyncftpclient", "nimble compileExample"
+pkg "asyncthreadpool", "nimble test --mm:refc"
 pkg "awk"
-pkg "bigints", url = "https://github.com/Araq/nim-bigints"
+pkg "bigints"
 pkg "binaryheap", "nim c -r binaryheap.nim"
 pkg "BipBuffer"
 pkg "blscurve", allowFailure = true # pending https://github.com/status-im/nim-blscurve/issues/39
@@ -48,10 +49,10 @@ pkg "brainfuck", "nim c -d:release -r tests/compile.nim"
 pkg "bump", "nim c --gc:arc --path:. -r tests/tbump.nim", "https://github.com/disruptek/bump"
 pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
-pkg "cello"
+pkg "cello", url = "https://github.com/nim-lang/cello", useHead = true
 pkg "chroma"
-pkg "chronicles", "nim c -o:chr -r chronicles.nim"
-pkg "chronos", "nim c -r -d:release tests/testall"
+pkg "chronicles", "nim c -o:chr -r chronicles.nim", url = "https://github.com/nim-lang/nim-chronicles"
+pkg "chronos", "nim c -r -d:release tests/testall", url = "https://github.com/nim-lang/nim-chronos"
 pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --gc:orc"
 pkg "compactdict"
@@ -59,7 +60,7 @@ pkg "comprehension", "nimble test", "https://github.com/alehander92/comprehensio
 pkg "criterion", allowFailure = true # pending https://github.com/disruptek/criterion/issues/3 (wrongly closed)
 pkg "datamancer"
 pkg "dashing", "nim c tests/functional.nim"
-pkg "delaunay"
+pkg "delaunay", url = "https://github.com/nim-lang/DelaunayNim", useHead = true
 pkg "docopt"
 pkg "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg "elvis"
@@ -87,11 +88,12 @@ pkg "lockfreequeues"
 pkg "macroutils"
 pkg "manu"
 pkg "markdown"
+pkg "measuremancer", "nimble testDeps; nimble -y test"
 pkg "memo"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
 pkg "nake", "nim c nakefile.nim"
-pkg "neo", "nim c -d:blas=openblas tests/all.nim"
-pkg "nesm", "nimble tests" # notice plural 'tests'
+pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim"
+pkg "nesm", "nimble tests", "https://github.com/nim-lang/NESM", useHead = true
 pkg "netty"
 pkg "nico", allowFailure = true
 pkg "nicy", "nim c -r src/nicy.nim"
@@ -100,22 +102,23 @@ pkg "nimcrypto", "nim r --path:. tests/testall.nim" # `--path:.` workaround need
 pkg "NimData", "nim c -o:nimdataa src/nimdata.nim"
 pkg "nimes", "nim c src/nimes.nim"
 pkg "nimfp", "nim c -o:nfp -r src/fp.nim"
-pkg "nimgame2", "nim c -d:nimLegacyConvEnumEnum nimgame2/nimgame.nim"
+pkg "nimgame2", "nim c --mm:refc nimgame2/nimgame.nim"
   # XXX Doesn't work with deprecated 'randomize', will create a PR.
 pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
-pkg "nimlsp", allowFailure = true
+pkg "nimlsp"
 pkg "nimly", "nim c -r tests/test_readme_example.nim"
 pkg "nimongo", "nimble test_ci", allowFailure = true
 pkg "nimph", "nimble test", "https://github.com/disruptek/nimph", allowFailure = true
+pkg "nimPNG", useHead = true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
 pkg "nimquery"
 pkg "nimsl"
 pkg "nimsvg"
 pkg "nimterop", "nimble minitest"
-pkg "nimwc", "nim c nimwc.nim"
+pkg "nimwc", "nim c nimwc.nim", allowFailure = true
 pkg "nimx", "nim c --threads:on test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
-pkg "norm", "testament r tests/sqlite/trows.nim"
+pkg "norm", "testament r tests/sqlite/trows.nim", allowFailure = true
 pkg "npeg", "nimble testarc"
 pkg "numericalnim", "nimble nimCI"
 pkg "optionsutils"
@@ -139,16 +142,19 @@ pkg "sdl1", "nim c -r src/sdl.nim"
 pkg "sdl2_nim", "nim c -r sdl2/sdl.nim"
 pkg "sigv4", "nim c --gc:arc -r sigv4.nim", "https://github.com/disruptek/sigv4"
 pkg "sim"
+pkg "smtp", "nimble compileExample"
 pkg "snip", "nimble test", "https://github.com/genotrance/snip"
+pkg "stew"
 pkg "stint", "nim r stint.nim"
 pkg "strslice"
-pkg "strunicode", "nim c -r src/strunicode.nim"
+pkg "strunicode", "nim c -r --mm:refc src/strunicode.nim"
 pkg "supersnappy"
 pkg "synthesis"
+pkg "taskpools"
 pkg "telebot", "nim c -o:tbot -r src/telebot.nim"
 pkg "tempdir"
 pkg "templates"
-pkg "tensordsl", "nim c -r tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"
+pkg "tensordsl", "nim c -r --mm:refc tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"
 pkg "terminaltables", "nim c src/terminaltables.nim"
 pkg "termstyle", "nim c -r termstyle.nim"
 pkg "timeit"
@@ -157,7 +163,7 @@ pkg "tiny_sqlite"
 pkg "unicodedb", "nim c -d:release -r tests/tests.nim"
 pkg "unicodeplus", "nim c -d:release -r tests/tests.nim"
 pkg "unpack"
-pkg "weave", "nimble test_gc_arc"
+pkg "weave", "nimble test_gc_arc", useHead = true
 pkg "websocket", "nim c websocket.nim"
 pkg "winim", "nim c winim.nim"
 pkg "with"

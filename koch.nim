@@ -10,7 +10,7 @@
 #
 
 const
-  NimbleStableCommit = "d13f3b8ce288b4dc8c34c219a4e050aaeaf43fc9" # master
+  NimbleStableCommit = "afd03bc000f4013c48f52381728327dabfccfc4c" # master
   # examples of possible values: #head, #ea82b54, 1.2.3
   FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
   HeadHash = "#head"
@@ -33,6 +33,9 @@ import std/[os, strutils, parseopt, osproc]
   # Using `std/os` instead of `os` to fail early if config isn't set up properly.
   # If this fails with: `Error: cannot open file: std/os`, see
   # https://github.com/nim-lang/Nim/pull/14291 for explanation + how to fix.
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
 
 import tools / kochdocs
 import tools / deps
@@ -78,7 +81,7 @@ Boot options:
                            for bootstrapping
 
 Commands for core developers:
-  runCI                    runs continuous integration (CI), e.g. from travis
+  runCI                    runs continuous integration (CI), e.g. from Github Actions
   docs [options]           generates the full documentation
   csource -d:danger        builds the C sources for installation
   pdf                      builds the PDF documentation
@@ -89,9 +92,6 @@ Commands for core developers:
   tests [options]          run the testsuite (run a subset of tests by
                            specifying a category, e.g. `tests cat async`)
   temp options             creates a temporary compiler for testing
-Web options:
-  --googleAnalytics:UA-... add the given google analytics code to the docs. To
-                           build the official docs, use UA-48159761-1
 """
 
 let kochExe* = when isMainModule: os.getAppFilename() # always correct when koch is main program, even if `koch` exe renamed e.g.: `nim c -o:koch_debug koch.nim`
@@ -150,7 +150,7 @@ proc bundleNimbleExe(latest: bool, args: string) =
                   commit = commit, allowBundled = true)
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
-             options = "-d:release --noNimblePath " & args)
+             options = "-d:release --mm:refc --noNimblePath " & args)
 
 proc bundleNimsuggest(args: string) =
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
@@ -251,20 +251,6 @@ proc install(args: string) =
   geninstall()
   exec("sh ./install.sh $#" % args)
 
-when false:
-  proc web(args: string) =
-    nimexec("js tools/dochack/dochack.nim")
-    nimexec("cc -r tools/nimweb.nim $# web/website.ini --putenv:nimversion=$#" %
-        [args, VersionAsString])
-
-  proc website(args: string) =
-    nimexec("cc -r tools/nimweb.nim $# --website web/website.ini --putenv:nimversion=$#" %
-        [args, VersionAsString])
-
-  proc pdf(args="") =
-    exec("$# cc -r tools/nimweb.nim $# --pdf web/website.ini --putenv:nimversion=$#" %
-        [findNim().quoteShell(), args, VersionAsString], additionalPATH=findNim().splitFile.dir)
-
 # -------------- boot ---------------------------------------------------------
 
 proc findStartNim: string =
@@ -332,9 +318,9 @@ proc boot(args: string) =
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.
     # jsonbuild then uses the $project.json file to build the Nim binary.
-    exec "$# $# $# --nimcache:$# $# --compileOnly compiler" / "nim.nim" %
+    exec "$# $# $# --nimcache:$# $# --noNimblePath --compileOnly compiler" / "nim.nim" %
       [nimi, bootOptions, extraOption, smartNimcache, args]
-    exec "$# jsonscript --nimcache:$# $# compiler" / "nim.nim" %
+    exec "$# jsonscript --noNimblePath --nimcache:$# $# compiler" / "nim.nim" %
       [nimi, smartNimcache, args]
 
     if sameFileContent(output, i.thVersion):
@@ -548,7 +534,8 @@ proc runCI(cmd: string) =
   # boot without -d:nimHasLibFFI to make sure this still works
   # `--lib:lib` is needed for bootstrap on openbsd, for reasons described in
   # https://github.com/nim-lang/Nim/pull/14291 (`getAppFilename` bugsfor older nim on openbsd).
-  kochExecFold("Boot in release mode", "boot -d:release -d:nimStrictMode --lib:lib")
+  kochExecFold("Boot in release mode", "boot -d:release --gc:refc -d:nimStrictMode --lib:lib")
+  kochExecFold("Boot Nim ORC", "boot -d:release --lib:lib")
 
   when false: # debugging: when you need to run only 1 test in CI, use something like this:
     execFold("debugging test", "nim r tests/stdlib/tosproc.nim")
@@ -556,6 +543,8 @@ proc runCI(cmd: string) =
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
+
+  execFold("Install smtp", "nimble install smtp -y")
 
   let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
@@ -601,10 +590,6 @@ proc runCI(cmd: string) =
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
     execFold("Run atlas tests", "nim c -r -d:atlasTests tools/atlas/atlas.nim clone https://github.com/disruptek/balls")
-
-  when not defined(bsd):
-    # the BSDs are overwhelmed already, so only run this test on the other machines:
-    kochExecFold("Boot Nim ORC", "boot -d:release --mm:orc --lib:lib")
 
 proc testUnixInstall(cmdLineRest: string) =
   csource("-d:danger" & cmdLineRest)
@@ -693,7 +678,7 @@ when isMainModule:
       case normalize(op.key)
       of "boot": boot(op.cmdLineRest)
       of "clean": clean(op.cmdLineRest)
-      of "doc", "docs": buildDocs(op.cmdLineRest, localDocsOnly, localDocsOut)
+      of "doc", "docs": buildDocs(op.cmdLineRest & " --d:nimPreviewSlimSystem " & paCode, localDocsOnly, localDocsOut)
       of "doc0", "docs0":
         # undocumented command for Araq-the-merciful:
         buildDocs(op.cmdLineRest & gaCode)

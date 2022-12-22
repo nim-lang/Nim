@@ -9,10 +9,11 @@ because it'd need cleanup up stdout
 see also: tests/osproc/*.nim; consider merging those into a single test here
 (easier to factor and test more things as a single self contained test)
 ]#
+import std/[assertions, syncio]
 
 when defined(case_testfile): # compiled test file for child process
   from posix import exitnow
-  proc c_exit2(code: c_int): void {.importc: "_exit", header: "<unistd.h>".}
+  proc c_exit2(code: cint): void {.importc: "_exit", header: "<unistd.h>".}
   import os
   var a = 0
   proc fun(b = 0) =
@@ -29,6 +30,12 @@ when defined(case_testfile): # compiled test file for child process
     case arg
     of "exit_0":
       if true: quit(0)
+    of "exit_1":
+      if true: quit(1)
+    of "exit_2":
+      if true: quit(2)
+    of "exit_42":
+      if true: quit(42)
     of "exitnow_139":
       if true: exitnow(139)
     of "c_exit2_139":
@@ -113,7 +120,17 @@ else: # main driver
     runTest("exit_0", 0)
     runTest("exitnow_139", 139)
     runTest("c_exit2_139", 139)
-    runTest("quit_139", 139)
+    when defined(posix):
+      runTest("quit_139", 127) # The quit value gets saturated to 127
+    else:
+      runTest("quit_139", 139)
+
+  block execCmdTest:
+    let output = compileNimProg("-d:release -d:case_testfile", "D20220705T221100")
+    doAssert execCmd(output & " exit_0") == 0
+    doAssert execCmd(output & " exit_1") == 1
+    doAssert execCmd(output & " exit_2") == 2
+    doAssert execCmd(output & " exit_42") == 42
 
   import std/streams
 

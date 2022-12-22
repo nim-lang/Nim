@@ -22,23 +22,39 @@ when declared(math.signbit):
   # ditto
   from std/math as math3 import signbit
 
-from std/os import getEnv, existsEnv, delEnv, putEnv, envPairs,
-  dirExists, fileExists, walkDir, getAppFilename, raiseOSError, osLastError
+
+from std/envvars import getEnv, existsEnv, delEnv, putEnv, envPairs
+from std/os import getAppFilename
+from std/private/oscommon import dirExists, fileExists
+from std/private/osdirs import walkDir, createDir
 
 from std/times import cpuTime
 from std/hashes import hash
 from std/osproc import nil
-from system/formatfloat import addFloatRoundtrip, addFloatSprintf
 
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+else:
+  from std/formatfloat import addFloatRoundtrip, addFloatSprintf 
 
 # There are some useful procs in vmconv.
-import vmconv
+import vmconv, vmmarshal
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
 
 template osop(op) {.dirty.} =
   registerCallback(c, "stdlib.os." & astToStr(op), `op Wrapper`)
+
+template oscommonop(op) {.dirty.} =
+  registerCallback(c, "stdlib.oscommon." & astToStr(op), `op Wrapper`)
+
+template osdirsop(op) {.dirty.} =
+  registerCallback(c, "stdlib.osdirs." & astToStr(op), `op Wrapper`)
+
+template envvarsop(op) {.dirty.} =
+  registerCallback(c, "stdlib.envvars." & astToStr(op), `op Wrapper`)
 
 template timesop(op) {.dirty.} =
   registerCallback(c, "stdlib.times." & astToStr(op), `op Wrapper`)
@@ -52,13 +68,13 @@ template ioop(op) {.dirty.} =
 template macrosop(op) {.dirty.} =
   registerCallback(c, "stdlib.macros." & astToStr(op), `op Wrapper`)
 
-template wrap1f_math(op) {.dirty.} =
+template wrap1fMath(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     doAssert a.numArgs == 1
     setResult(a, op(getFloat(a, 0)))
   mathop op
 
-template wrap2f_math(op) {.dirty.} =
+template wrap2fMath(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getFloat(a, 0), getFloat(a, 1)))
   mathop op
@@ -93,7 +109,17 @@ template wrap2svoid(op, modop) {.dirty.} =
     op(getString(a, 0), getString(a, 1))
   modop op
 
-template wrapDangerous(op, modop) {.dirty.} =
+template wrapDangerous1svoid(op, modop) {.dirty.} =
+  if vmopsDanger notin c.config.features and (defined(nimsuggest) or c.config.cmd == cmdCheck):
+    proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+      discard
+    modop op
+  else:
+    proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+      op(getString(a, 0))
+    modop op
+
+template wrapDangerous2svoid(op, modop) {.dirty.} =
   if vmopsDanger notin c.config.features and (defined(nimsuggest) or c.config.cmd == cmdCheck):
     proc `op Wrapper`(a: VmArgs) {.nimcall.} =
       discard
@@ -119,6 +145,7 @@ when defined(nimHasInvariant):
   from std / compilesettings import SingleValueSetting, MultipleValueSetting
 
   proc querySettingImpl(conf: ConfigRef, switch: BiggestInt): string =
+    {.push warning[Deprecated]:off.}
     case SingleValueSetting(switch)
     of arguments: result = conf.arguments
     of outFile: result = conf.outFile.string
@@ -136,6 +163,7 @@ when defined(nimHasInvariant):
     of libPath: result = conf.libpath.string
     of gc: result = $conf.selectedGC
     of mm: result = $conf.selectedGC
+    {.pop.}
 
   proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
     template copySeq(field: untyped): untyped =
@@ -152,6 +180,7 @@ when defined(nimHasInvariant):
 proc stackTrace2(c: PCtx, msg: string, n: PNode) =
   stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr, msg, n.info)
 
+
 proc registerAdditionalOps*(c: PCtx) =
 
   template wrapIterator(fqname: string, iter: untyped) =
@@ -167,40 +196,40 @@ proc registerAdditionalOps*(c: PCtx) =
   proc getProjectPathWrapper(a: VmArgs) =
     setResult a, c.config.projectPath.string
 
-  wrap1f_math(sqrt)
-  wrap1f_math(cbrt)
-  wrap1f_math(ln)
-  wrap1f_math(log10)
-  wrap1f_math(log2)
-  wrap1f_math(exp)
-  wrap1f_math(arccos)
-  wrap1f_math(arcsin)
-  wrap1f_math(arctan)
-  wrap1f_math(arcsinh)
-  wrap1f_math(arccosh)
-  wrap1f_math(arctanh)
-  wrap2f_math(arctan2)
-  wrap1f_math(cos)
-  wrap1f_math(cosh)
-  wrap2f_math(hypot)
-  wrap1f_math(sinh)
-  wrap1f_math(sin)
-  wrap1f_math(tan)
-  wrap1f_math(tanh)
-  wrap2f_math(pow)
-  wrap1f_math(trunc)
-  wrap1f_math(floor)
-  wrap1f_math(ceil)
-  wrap1f_math(erf)
-  wrap1f_math(erfc)
-  wrap1f_math(gamma)
-  wrap1f_math(lgamma)
+  wrap1fMath(sqrt)
+  wrap1fMath(cbrt)
+  wrap1fMath(ln)
+  wrap1fMath(log10)
+  wrap1fMath(log2)
+  wrap1fMath(exp)
+  wrap1fMath(arccos)
+  wrap1fMath(arcsin)
+  wrap1fMath(arctan)
+  wrap1fMath(arcsinh)
+  wrap1fMath(arccosh)
+  wrap1fMath(arctanh)
+  wrap2fMath(arctan2)
+  wrap1fMath(cos)
+  wrap1fMath(cosh)
+  wrap2fMath(hypot)
+  wrap1fMath(sinh)
+  wrap1fMath(sin)
+  wrap1fMath(tan)
+  wrap1fMath(tanh)
+  wrap2fMath(pow)
+  wrap1fMath(trunc)
+  wrap1fMath(floor)
+  wrap1fMath(ceil)
+  wrap1fMath(erf)
+  wrap1fMath(erfc)
+  wrap1fMath(gamma)
+  wrap1fMath(lgamma)
 
   when declared(copySign):
-    wrap2f_math(copySign)
+    wrap2fMath(copySign)
 
   when declared(signbit):
-    wrap1f_math(signbit)
+    wrap1fMath(signbit)
 
   registerCallback c, "stdlib.math.round", proc (a: VmArgs) {.nimcall.} =
     let n = a.numArgs
@@ -214,13 +243,14 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback(c, "stdlib.math.mod", `mod Wrapper`)
 
   when defined(nimcore):
-    wrap2s(getEnv, osop)
-    wrap1s(existsEnv, osop)
-    wrap2svoid(putEnv, osop)
-    wrap1svoid(delEnv, osop)
-    wrap1s(dirExists, osop)
-    wrap1s(fileExists, osop)
-    wrapDangerous(writeFile, ioop)
+    wrap2s(getEnv, envvarsop)
+    wrap1s(existsEnv, envvarsop)
+    wrap2svoid(putEnv, envvarsop)
+    wrap1svoid(delEnv, envvarsop)
+    wrap1s(dirExists, oscommonop)
+    wrap1s(fileExists, oscommonop)
+    wrapDangerous2svoid(writeFile, ioop)
+    wrapDangerous1svoid(createDir, osdirsop)
     wrap1s(readFile, ioop)
     wrap2si(readLines, ioop)
     systemop getCurrentExceptionMsg
@@ -300,8 +330,9 @@ proc registerAdditionalOps*(c: PCtx) =
     registerCallback c, "stdlib.osproc.execCmdEx", proc (a: VmArgs) {.nimcall.} =
       let options = getNode(a, 1).fromLit(set[osproc.ProcessOption])
       a.setResult osproc.execCmdEx(getString(a, 0), options).toLit
-    registerCallback c, "stdlib.times.getTime", proc (a: VmArgs) {.nimcall.} =
-      setResult(a, times.getTime().toLit)
+    registerCallback c, "stdlib.times.getTimeImpl", proc (a: VmArgs) =
+      let obj = a.getNode(0).typ.n
+      setResult(a, times.getTime().toTimeLit(c, obj, a.currentLineInfo))
 
   proc getEffectList(c: PCtx; a: VmArgs; effectIndex: int) =
     let fn = getNode(a, 0)
@@ -319,6 +350,8 @@ proc registerAdditionalOps*(c: PCtx) =
     getEffectList(c, a, exceptionEffects)
   registerCallback c, "stdlib.effecttraits.getTagsListImpl", proc (a: VmArgs) =
     getEffectList(c, a, tagEffects)
+  registerCallback c, "stdlib.effecttraits.getForbidsListImpl", proc (a: VmArgs) =
+    getEffectList(c, a, forbiddenEffects)
 
   registerCallback c, "stdlib.effecttraits.isGcSafeImpl", proc (a: VmArgs) =
     let fn = getNode(a, 0)
@@ -343,4 +376,21 @@ proc registerAdditionalOps*(c: PCtx) =
     let x = a.getFloat(1)
     addFloatSprintf(p.strVal, x)
 
-  wrapIterator("stdlib.os.envPairsImplSeq"): envPairs()
+  wrapIterator("stdlib.envvars.envPairsImplSeq"): envPairs()
+
+  registerCallback c, "stdlib.marshal.toVM", proc(a: VmArgs) =
+    let typ = a.getNode(0).typ
+    case typ.kind
+    of tyInt..tyInt64, tyUInt..tyUInt64:
+      setResult(a, loadAny(a.getString(1), typ, c.cache, c.config, c.idgen).intVal)
+    of tyFloat..tyFloat128:
+      setResult(a, loadAny(a.getString(1), typ, c.cache, c.config, c.idgen).floatVal)
+    else:
+      setResult(a, loadAny(a.getString(1), typ, c.cache, c.config, c.idgen))
+
+  registerCallback c, "stdlib.marshal.loadVM", proc(a: VmArgs) =
+    let typ = a.getNode(0).typ
+    let p = a.getReg(1)
+    var res: string
+    storeAny(res, typ, regToNode(p[]), c.config)
+    setResult(a, res)

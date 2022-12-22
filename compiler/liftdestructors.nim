@@ -15,6 +15,9 @@ import modulegraphs, lineinfos, idents, ast, renderer, semdata,
 
 from trees import isCaseObj
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   TLiftCtx = object
     g: ModuleGraph
@@ -162,9 +165,12 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
       # the value needs to be destroyed before we assign the selector
       # or the value is lost
       let prevKind = c.kind
+      let prevAddMemReset = c.addMemReset
       c.kind = attachedDestructor
+      c.addMemReset = true
       fillBodyObj(c, n, body, x, y, enforceDefaultOp = false)
       c.kind = prevKind
+      c.addMemReset = prevAddMemReset
       localEnforceDefaultOp = true
 
     if c.kind != attachedDestructor:

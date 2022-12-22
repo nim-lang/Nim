@@ -16,7 +16,7 @@
 ##
 ## The following syntax is supported when arguments for the `shortNoVal` and
 ## `longNoVal` parameters, which are
-## `described later<#shortnoval-and-longnoval>`_, are not provided:
+## `described later<#nimshortnoval-and-nimlongnoval>`_, are not provided:
 ##
 ## 1. Short options: `-abcd`, `-e:5`, `-e=5`
 ## 2. Long options: `--foo:bar`, `--foo=bar`, `--foo`
@@ -164,7 +164,7 @@ type
     ##
     ## To initialize it, use the
     ## `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_.
-    pos*: int
+    pos: int
     inShortState: bool
     allowWhitespaceAfterColon: bool
     shortNoVal: set[char]
@@ -192,6 +192,10 @@ proc parseWord(s: string, i: int, w: var string,
       add(w, s[result])
       inc(result)
 
+proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
+                    longNoVal: seq[string] = @[];
+                    allowWhitespaceAfterColon = true): OptParser
+
 proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
                     longNoVal: seq[string] = @[];
                     allowWhitespaceAfterColon = true): OptParser =
@@ -203,7 +207,7 @@ proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
   ##
   ## `shortNoVal` and `longNoVal` are used to specify which options
   ## do not take values. See the `documentation about these
-  ## parameters<#shortnoval-and-longnoval>`_ for more information on
+  ## parameters<#nimshortnoval-and-nimlongnoval>`_ for more information on
   ## how this affects parsing.
   ##
   ## See also:
@@ -214,28 +218,7 @@ proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
     p = initOptParser("--left --debug:3 -l -r:2",
                       shortNoVal = {'l'}, longNoVal = @["left"])
 
-  result.pos = 0
-  result.idx = 0
-  result.inShortState = false
-  result.shortNoVal = shortNoVal
-  result.longNoVal = longNoVal
-  result.allowWhitespaceAfterColon = allowWhitespaceAfterColon
-  if cmdline != "":
-    result.cmds = parseCmdLine(cmdline)
-  else:
-    when declared(paramCount):
-      result.cmds = newSeq[string](paramCount())
-      for i in countup(1, paramCount()):
-        result.cmds[i-1] = paramStr(i)
-    else:
-      # we cannot provide this for NimRtl creation on Posix, because we can't
-      # access the command line arguments then!
-      doAssert false, "empty command line given but" &
-        " real command line is not accessible"
-
-  result.kind = cmdEnd
-  result.key = ""
-  result.val = ""
+  initOptParser(parseCmdLine(cmdline), shortNoVal, longNoVal, allowWhitespaceAfterColon)
 
 proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
                     longNoVal: seq[string] = @[];
@@ -465,7 +448,7 @@ iterator getopt*(cmdline: seq[string] = @[],
   ##
   ## `shortNoVal` and `longNoVal` are used to specify which options
   ## do not take values. See the `documentation about these
-  ## parameters<#shortnoval-and-longnoval>`_ for more information on
+  ## parameters<#nimshortnoval-and-nimlongnoval>`_ for more information on
   ## how this affects parsing.
   ##
   ## There is no need to check for `cmdEnd` while iterating.

@@ -9,9 +9,13 @@
 
 # This module implements lookup helpers.
 import std/[algorithm, strutils]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs
+  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs, sets
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -44,6 +48,11 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
         case x.kind
         of nkIdent: id.add(x.ident.s)
         of nkSym: id.add(x.sym.name.s)
+        of nkSymChoices:
+          if x[0].kind == nkSym:
+            id.add(x[0].sym.name.s)
+          else:
+            handleError(n, origin)
         of nkLiterals - nkFloatLiterals: id.add(x.renderTree)
         else: handleError(n, origin)
       result = getIdent(c.cache, id)
@@ -161,6 +170,7 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
   # really iterate over all symbols in all the scopes. This is expensive
   # and only used by suggest.nim.
   var isLocal = true
+
   var scopeN = 0
   for scope in allScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
@@ -175,11 +185,20 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
       assert s != nil
       yield (s, scopeN, isLocal)
 
+iterator uniqueSyms*(c: PContext): (PSym, int, bool) =
+  ## Like [allSyms] except only returns unique symbols (Uniqueness determined by line + name)
+  # Track seen symbols so we don't duplicate them.
+  # The int is for the symbols name, and line info is
+  # to be able to tell apart symbols with same name but on different lines
+  var seen = initHashSet[(TLineInfo, int)]()
+  for res in allSyms(c):
+    if not seen.containsOrIncl((res[0].info, res[0].name.id)):
+      yield res
+
+
 proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =
   var marked = initIntSet()
   var symSet = OverloadableSyms
-  if overloadableEnums notin c.features:
-    symSet.excl skEnumField
   result = nil
   block outer:
     for im in c.imports.mitems:
@@ -415,7 +434,7 @@ type SpellCandidate = object
   msg: string
   sym: PSym
 
-template toOrderTup(a: SpellCandidate): auto =
+template toOrderTup(a: SpellCandidate): (int, int, string) =
   # `dist` is first, to favor nearby matches
   # `depth` is next, to favor nearby enclosing scopes among ties
   # `sym.name.s` is last, to make the list ordered and deterministic among ties
@@ -438,12 +457,13 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
     let dist = editDistance(name0, sym.name.s.nimIdentNormalize)
     var msg: string
     msg.add "\n ($1, $2): '$3'" % [$dist, $depth, sym.name.s]
-    addDeclaredLoc(msg, c.config, sym) # `msg` needed for deterministic ordering.
     list.push SpellCandidate(dist: dist, depth: depth, msg: msg, sym: sym)
 
   if list.len == 0: return
   let e0 = list[0]
-  var count = 0
+  var
+    count = 0
+    last: PIdent = nil
   while true:
     # pending https://github.com/timotheecour/Nim/issues/373 use more efficient `itemsSorted`.
     if list.len == 0: break
@@ -459,8 +479,10 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
     elif count >= c.config.spellSuggestMax: break
     if count == 0:
       result.add "\ncandidates (edit distance, scope distance); see '--spellSuggest': "
-    result.add e.msg
-    count.inc
+    if e.sym.name != last:
+      result.add e.msg
+      count.inc
+      last = e.sym.name
 
 proc errorUseQualifier(c: PContext; info: TLineInfo; s: PSym; amb: var bool): PSym =
   var err = "ambiguous identifier: '" & s.name.s & "'"
@@ -486,16 +508,23 @@ proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
   var amb: bool
   discard errorUseQualifier(c, info, s, amb)
 
-proc errorUseQualifier(c: PContext; info: TLineInfo; candidates: seq[PSym]) =
+proc errorUseQualifier(c: PContext; info: TLineInfo; candidates: seq[PSym]; prefix = "use one of") =
   var err = "ambiguous identifier: '" & candidates[0].name.s & "'"
   var i = 0
   for candidate in candidates:
-    if i == 0: err.add " -- use one of the following:\n"
+    if i == 0: err.add " -- $1 the following:\n" % prefix
     else: err.add "\n"
     err.add "  " & candidate.owner.name.s & "." & candidate.name.s
     err.add ": " & typeToString(candidate.typ)
     inc i
   localError(c.config, info, errGenerated, err)
+
+proc errorUseQualifier*(c: PContext; info:TLineInfo; choices: PNode) =
+  var candidates = newSeq[PSym](choices.len)
+  let prefix = if choices[0].typ.kind != tyProc: "use one of" else: "you need a helper proc to disambiguate"
+  for i, n in choices:
+    candidates[i] = n.sym
+  errorUseQualifier(c, info, candidates, prefix)
 
 proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extra = "") =
   var err = "undeclared identifier: '" & name & "'" & extra

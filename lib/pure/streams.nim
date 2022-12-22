@@ -98,6 +98,7 @@ import std/private/since
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
+  export FileMode
 
 proc newEIO(msg: string): owned(ref IOError) =
   new(result)
@@ -173,10 +174,20 @@ proc close*(s: Stream) =
   ## See also:
   ## * `flush proc <#flush,Stream>`_
   runnableExamples:
-    var strm = newStringStream("The first line\nthe second line\nthe third line")
-    ## do something...
-    strm.close()
-  if not isNil(s.closeImpl): s.closeImpl(s)
+    block:
+      let strm = newStringStream("The first line\nthe second line\nthe third line")
+      ## do something...
+      strm.close()
+      
+    block:
+      let strm = newFileStream("amissingfile.txt")
+      # deferring works even if newFileStream fails
+      defer: strm.close()
+      if not isNil(strm):
+        ## do something...
+
+  if not isNil(s) and not isNil(s.closeImpl):
+    s.closeImpl(s)
 
 proc atEnd*(s: Stream): bool =
   ## Checks if more data can be read from `s`. Returns ``true`` if all data has
@@ -243,6 +254,9 @@ proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
     result = s.readDataStrImpl(s, buffer, slice)
   else:
     # fallback
+    when declared(prepareMutation):
+      # buffer might potentially be a CoW literal with ARC
+      prepareMutation(buffer)
     result = s.readData(addr buffer[slice.a], slice.b + 1 - slice.a)
 
 template jsOrVmBlock(caseJsOrVm, caseElse: untyped): untyped =
@@ -1194,6 +1208,11 @@ else: # after 1.3 or JS not defined
 
   proc ssReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
     var s = StringStream(s)
+    when nimvm:
+      discard
+    else:
+      when declared(prepareMutation):
+        prepareMutation(buffer) # buffer might potentially be a CoW literal with ARC
     result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
     if result > 0:
       jsOrVmBlock:
@@ -1274,6 +1293,11 @@ else: # after 1.3 or JS not defined
 
     new(result)
     result.data = s
+    when nimvm:
+      discard
+    else:
+      when declared(prepareMutation):
+        prepareMutation(result.data) # Allows us to mutate using `addr` logic like `copyMem`, otherwise it errors.
     result.pos = 0
     result.closeImpl = ssClose
     result.atEndImpl = ssAtEnd
