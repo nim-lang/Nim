@@ -289,7 +289,7 @@ proc suggestField(c: PContext, s: PSym; f: PNode; info: TLineInfo; outputs: var 
                               s.getQuality, pm, c.inTypeContext > 0, 0))
 
 template wholeSymTab(cond, section: untyped) {.dirty.} =
-  for (item, scopeN, isLocal) in allSyms(c):
+  for (item, scopeN, isLocal) in uniqueSyms(c):
     let it = item
     var pm: PrefixMatch
     if cond:
@@ -362,7 +362,7 @@ proc suggestOperations(c: PContext, n, f: PNode, typ: PType, outputs: var Sugges
 
 proc suggestEverything(c: PContext, n, f: PNode, outputs: var Suggestions) =
   # do not produce too many symbols:
-  for (it, scopeN, isLocal) in allSyms(c):
+  for (it, scopeN, isLocal) in uniqueSyms(c):
     var pm: PrefixMatch
     if filterSym(it, f, pm):
       outputs.add(symToSuggest(c.graph, it, isLocal = isLocal, ideSug, n.info,
@@ -680,7 +680,7 @@ proc suggestSentinel*(c: PContext) =
   inc(c.compilesContextId)
   var outputs: Suggestions = @[]
   # suggest everything:
-  for (it, scopeN, isLocal) in allSyms(c):
+  for (it, scopeN, isLocal) in uniqueSyms(c):
     var pm: PrefixMatch
     if filterSymNoOpr(it, nil, pm):
       outputs.add(symToSuggest(c.graph, it, isLocal = isLocal, ideSug,
