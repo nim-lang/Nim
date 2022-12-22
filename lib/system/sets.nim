@@ -36,7 +36,7 @@ proc cardSetImpl(s: NimSet, len: int): int {.inline.} =
     inc(i, 1)
 
 template cardSetDef(t) = 
-  proc cardSet(s: t, len: int): int {.compilerproc, inline.} =
+  proc `cardSet t`(s: t, len: int): int {.inject, inline.} =
     result = cardSetImpl(s, len)
 
 cardSetDef(NimSet16)
@@ -49,3 +49,28 @@ cardSetDef(NimSet1024)
 cardSetDef(NimSet2048)
 cardSetDef(NimSet4096)
 cardSetDef(NimSet8192)
+
+proc cardSet(s: NimSet8192, len: int): int {.compilerproc, inline.} =
+  case len
+  of 16:
+    result = cardSetNimSet16(cast[ptr NimSet16](s.addr)[], len)
+  of 32:
+    result = cardSetNimSet32(cast[ptr NimSet32](s.addr)[], len)
+  of 64:
+    result = cardSetNimSet64(cast[ptr NimSet64](s.addr)[], len)
+  of 128:
+    result = cardSetNimSet128(cast[ptr NimSet128](s.addr)[], len)
+  of 256:
+    result = cardSetNimSet256(cast[ptr NimSet256](s.addr)[], len)
+  of 512:
+    result = cardSetNimSet512(cast[ptr NimSet512](s.addr)[], len)
+  of 1024:
+    result = cardSetNimSet1024(cast[ptr NimSet1024](s.addr)[], len)
+  of 2048:
+    result = cardSetNimSet2048(cast[ptr NimSet2048](s.addr)[], len)
+  of 4096:
+    result = cardSetNimSet4096(cast[ptr NimSet4096](s.addr)[], len)
+  of 8192:
+    result = cardSetNimSet8192(cast[ptr NimSet8192](s.addr)[], len)
+  else:
+    discard
