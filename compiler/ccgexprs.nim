@@ -2122,7 +2122,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mCard:
       var a: TLoc
       initLocExpr(p, e[1], a)
-      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [rdCharLoc(a), size]))
+      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [addrLoc(p.config, a), size]))
     of mLtSet, mLeSet:
       getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i) # our counter
       initLocExpr(p, e[1], a)

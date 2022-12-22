@@ -1,3 +1,7 @@
+discard """
+  joinable: false
+"""
+
 {.passC: "-flto".}
 {.passL: "-flto".}
 
