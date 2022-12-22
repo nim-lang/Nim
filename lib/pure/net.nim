@@ -2031,6 +2031,7 @@ proc dial*(address: string, port: Port,
     if connect(lastFd, it.ai_addr, it.ai_addrlen.SockLen) == 0'i32:
       success = true
       break
+    lastFd.close()
     lastError = osLastError()
     it = it.ai_next
   freeAddrInfo(aiList)
