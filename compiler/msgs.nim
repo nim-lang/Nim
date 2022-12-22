@@ -128,6 +128,13 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
   var dummy: bool
   result = fileInfoIdx(conf, filename, dummy)
 
+proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile; isKnownFile: var bool): FileIndex =
+  fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), isKnownFile)
+
+proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile): FileIndex =
+  var dummy: bool
+  fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), dummy)
+
 proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
   result.fileIndex = fileInfoIdx
   if line < int high(uint16):
