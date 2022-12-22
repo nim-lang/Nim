@@ -1706,15 +1706,24 @@ proc send*(socket: Socket, data: string,
 
     if sent < 0:
       let lastError = osLastError()
-      if lastError.int32 != EINTR and
-          lastError.int32 != EWOULDBLOCK and
-          lastError.int32 != EAGAIN:
+      let isBlockingErr =
+        when defined(nimdoc):
+          false
+        elif useWinVersion:
+          lastError.int32 == WSAEINTR or
+          lastError.int32 == WSAEWOULDBLOCK
+        else:
+          lastError.int32 == EINTR or
+          lastError.int32 == EWOULDBLOCK or
+          lastError.int32 == EAGAIN
+
+      if not isBlockingErr:
         let lastError = osLastError()
         socketError(socket, lastError = lastError, flags = flags)
       else:
+        attempts.inc()
         if attempts > maxRetries:
           raiseOSError(osLastError(), "Could not send all data.")
-        attempts.inc()
     else:
       written.inc(sent)
 
