@@ -17,6 +17,10 @@ when defined(js):
 ## C library. This means that your application will depend on the PCRE
 ## library's licence when using this module, which should not be a problem
 ## though.
+##
+## .. note:: There are also alternative nimble packages such as [tinyre](https://github.com/khchen/tinyre)
+##   and [regex](https://github.com/nitely/nim-regex).
+##
 ## PCRE's licence follows:
 ##
 ## .. include:: ../../doc/regexprs.txt
