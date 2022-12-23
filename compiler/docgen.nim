@@ -1371,14 +1371,14 @@ proc overloadGroupName(s: string, k: TSymKind): string =
   ## Turns a name like `f` into anchor `f-procs-all`
   s & "-" & k.toHumanStr & "s-all"
 
-proc setIndexTitle(d: PDoc) =
+proc setIndexTitle(d: PDoc, useMetaTitle: bool) =
   let titleKind = if d.standaloneDoc: ieMarkupTitle else: ieNimTitle
   let external = AbsoluteFile(d.destFile)
     .relativeTo(d.conf.outDir, '/')
     .changeFileExt(HtmlExt)
     .string
   var term, linkTitle: string
-  if d.meta[metaTitle].len != 0:
+  if useMetaTitle and d.meta[metaTitle].len != 0:
     term = d.meta[metaTitleRaw]
     linkTitle = d.meta[metaTitleRaw]
   else:
@@ -1416,7 +1416,7 @@ proc finishGenerateDoc*(d: var PDoc) =
     for fragment in d.modDescPre:
       if fragment.isRst:
         traverseForIndex(d[], fragment.rst)
-    setIndexTitle(d)
+    setIndexTitle(d, useMetaTitle = d.standaloneDoc)
     # Symbol-associated doc.comments may contain :idx: statements:
     for k in TSymKind:
       for _, overloadChoices in d.section[k].secItems:
@@ -1424,8 +1424,6 @@ proc finishGenerateDoc*(d: var PDoc) =
           for fragment in item.descRst:
             if fragment.isRst:
               traverseForIndex(d[], fragment.rst)
-  else:
-    setIndexTitle(d)
 
   # add anchors to overload groups before RST resolution
   for k in TSymKind:
@@ -1505,6 +1503,7 @@ proc finishGenerateDoc*(d: var PDoc) =
 
     d.jEntriesFinal.add entry.json # generates docs
 
+  setIndexTitle(d, useMetaTitle = d.standaloneDoc)
   completePass2(d.sharedState)
 
 proc add(d: PDoc; j: JsonItem) =
