@@ -248,19 +248,27 @@ type
 
   PStatus = enum
     PENDING, CANCELED, RUNNING, FINISHED
-  PendingOps* = ptr PStatus
+  PendingOps* = ref object
+    status: PStatus = PENDING
 
   CStatus = enum
     RUNNING, STOPPED
-  CyclicOps* = ptr CStatus
+  CyclicOps* = ref object
+    status: CStatus = RUNNING
+
+proc `$`*(pend: PendingOps): string =
+  "[ Pending Ops Handle: " & $pend.status & " ]"
 
 proc cancel*(pend: PendingOps) =
-  if pend[] == PENDING:
-    pend[] = CANCELED
+  if pend.status == PENDING:
+    pend.status = CANCELED
+
+proc `$`*(cycle: CyclicOps): string =
+  "[ Cyclic Ops Handle: " & $cycle.status & " ]"
 
 proc stop*(cycle: CyclicOps) =
-  if cycle[] == RUNNING:
-    cycle[] = STOPPED
+  if cycle.status == RUNNING:
+    cycle.status = STOPPED
 
 proc processTimers(
   p: PDispatcherBase, didSomeWork: var bool
@@ -315,19 +323,20 @@ template doAfter*(ms: int or float, todo: untyped): PendingOps =
     # 1.5 seconds before its execution :
     discard doAfter 1_500: cancel pend
 
-  var pend: PendingOps = create(PStatus)
-  pend[] = PENDING
+  var pend = PendingOps()
 
   let  p = proc () {.async.} =
+    var pend = pend
     await sleepAsync(ms)
-    if pend[] == PENDING:
-      pend[] = RUNNING
+    if pend.status == PENDING:
+      pend.status = RUNNING
       todo
-      pend[] = FINISHED
+      pend.status = FINISHED
 
   discard p()
 
   pend
+
 
 template doEvery*(ms: int or float, todo: untyped): CyclicOps =
   ## Executes actions passed as `todo` every `ms` milliseconds
@@ -341,13 +350,14 @@ template doEvery*(ms: int or float, todo: untyped): CyclicOps =
     # To stop the background process after 6.5 seconds:
     discard doAfter 6_500: stop cycle
 
-  var cycle: CyclicOps = create(CStatus)
-  cycle[] = RUNNING
+  var cycle = CyclicOps()
+  cycle.status = RUNNING
 
   let  p = proc () {.async.} =
+    var cycle = cycle
     while true:
       await sleepAsync(ms)
-      if cycle[] == STOPPED: break
+      if cycle.status == STOPPED: break
       todo
 
   discard p()
