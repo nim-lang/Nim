@@ -229,7 +229,7 @@ proc attachToType(d: PDoc; p: PSym): PSym =
   if params.len > 0: check(0)
   for i in 2..<params.len: check(i)
 
-template declareClosures =
+template declareClosures(currentFilename: AbsoluteFile, destFile: string) =
   proc compilerMsgHandler(filename: string, line, col: int,
                           msgKind: rst.MsgKind, arg: string) {.gcsafe.} =
     # translate msg kind:
@@ -308,8 +308,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
                     standaloneDoc = false, preferMarkdown = true,
                     hasToc = true): PDoc =
   let destFile = getOutFile2(conf, presentationPath(conf, filename), outExt, false).string
-  let currentFilename = filename  # for declareClosure (clash with `filename`)
-  declareClosures()
+  declareClosures(currentFilename = filename, destFile = destFile)
   new(result)
   result.module = module
   result.conf = conf
@@ -1059,8 +1058,9 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   let lineinfo = rstast.TLineInfo(
       line: nameNode.info.line, col: nameNode.info.col,
       fileIndex: addRstFileIndex(d, nameNode.info))
-  addAnchorNim(d.sharedState, external=false, refn = symbolOrId, tooltip = detailedName,
-               rstLangSymbol, priority = symbolPriority(k), info = lineinfo)
+  addAnchorNim(d.sharedState, external = false, refn = symbolOrId,
+               tooltip = detailedName, langSym = rstLangSymbol,
+               priority = symbolPriority(k), info = lineinfo)
 
   nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
     renderDocComments, renderSyms, renderExpandUsing}, symbolOrIdEnc)
@@ -1095,8 +1095,10 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
       if e.sym.kind != skEnumField: continue
       let plain = renderPlainSymbolName(e)
       let symbolOrId = d.newUniquePlainSymbol(plain)
-      setIndexTerm(d[], ieNim, external, symbolOrId, plain, nameNode.sym.name.s & '.' & plain,
-        xmltree.escape(getPlainDocstring(e).docstringSummary), n.info.line.int)
+      setIndexTerm(d[], ieNim, htmlFile = external, id = symbolOrId,
+                   term = plain, linkTitle = nameNode.sym.name.s & '.' & plain,
+                   linkDesc = xmltree.escape(getPlainDocstring(e).docstringSummary),
+                   line = n.info.line.int)
 
   d.tocSimple[k].add TocItem(
     sortName: sortName,
@@ -1111,8 +1113,10 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
       "itemSymOrID", symbolOrId.replace(",", ",<wbr>"),
       "itemSymOrIDEnc", symbolOrIdEnc])
 
-  setIndexTerm(d[], ieNim, external, symbolOrId, name, detailedName,
-    xmltree.escape(plainDocstring.docstringSummary), n.info.line.int)
+  setIndexTerm(d[], ieNim, htmlFile = external, id = symbolOrId, term = name,
+               linkTitle = detailedName,
+               linkDesc = xmltree.escape(plainDocstring.docstringSummary),
+               line = n.info.line.int)
   if k == skType and nameNode.kind == nkSym:
     d.types.strTableAdd nameNode.sym
 
@@ -1412,6 +1416,7 @@ proc finishGenerateDoc*(d: var PDoc) =
     for fragment in d.modDescPre:
       if fragment.isRst:
         traverseForIndex(d[], fragment.rst)
+    setIndexTitle(d)
     # Symbol-associated doc.comments may contain :idx: statements:
     for k in TSymKind:
       for _, overloadChoices in d.section[k].secItems:
@@ -1419,6 +1424,7 @@ proc finishGenerateDoc*(d: var PDoc) =
           for fragment in item.descRst:
             if fragment.isRst:
               traverseForIndex(d[], fragment.rst)
+  else:
     setIndexTitle(d)
 
   # add anchors to overload groups before RST resolution
@@ -1433,8 +1439,9 @@ proc finishGenerateDoc*(d: var PDoc) =
           # save overload group to ``.idx``
           let external = d.destFile.AbsoluteFile.relativeTo(d.conf.outDir, '/').
                          changeFileExt(HtmlExt).string
-          setIndexTerm(d[], ieNimGroup, external, refn, name, k.toHumanStr,
-                       "", overloadChoices[0].info.line.int)
+          setIndexTerm(d[], ieNimGroup, htmlFile = external, id = refn,
+                       term = name, linkTitle = k.toHumanStr,
+                       linkDesc = "", line = overloadChoices[0].info.line.int)
           if optGenIndexOnly in d.conf.globalOptions: continue
           addAnchorNim(d.sharedState, external=false, refn, tooltip,
                        LangSymbol(symKind: k.toHumanStr,
@@ -1498,7 +1505,6 @@ proc finishGenerateDoc*(d: var PDoc) =
 
     d.jEntriesFinal.add entry.json # generates docs
 
-  setIndexTitle(d)
   completePass2(d.sharedState)
 
 proc add(d: PDoc; j: JsonItem) =

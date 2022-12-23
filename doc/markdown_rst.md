@@ -177,13 +177,31 @@ Optional additional features, by default turned on:
 Referencing
 ===========
 
-Nim implementation has syntax for using *original* labels in referencing:
+To be able to copy and share links Nim generates anchors for all
+main document elements:
 
 * headlines (including document title)
 * footnotes
 * explicitly set anchors: RST internal cross-references and
   inline internal targets
 * Nim symbols (external referencing), see [Nim DocGen Tools Guide] for details.
+
+But direct use of those anchors have 2 problems:
+
+1. the anchors are usually mangled (e.g. spaces substituted to minus
+   signs, etc).
+2. manual usage of anchors is not checked, so it's easy to get broken
+   links inside your project if e.g. spelling has changed for a heading
+   or you use a wrong relative path to your document.
+
+That's why Nim implementation has syntax for using
+*original* labels for referencing.
+Such referencing can be either local/internal or external:
+
+* Local referencing (inside any given file) is defined by
+  RST standard or Pandoc Markdown User guide.
+* External (cross-document) referencing is a Nim-specific feature,
+  though it's not really different from local referencing by its syntax.
 
 Markup local referencing
 ------------------------
@@ -203,7 +221,7 @@ Markup external referencing
 ---------------------------
 
 The syntax is the same as for local referencing, but the anchors are
-saved in `.idx` files, so one needs to generate them beforehand,
+saved in ``.idx`` files, so one needs to generate them beforehand,
 and they should be loaded by an `.. importdoc::` directive.
 E.g. if we want to reference section "Some headline" in ``file1.md``
 from ``file2.md``, then ``file2.md`` may look like:
@@ -219,8 +237,9 @@ nim md2html --index:only file1.md  # creates ``htmldocs/file1.idx``
 nim md2html file2.md               # creates ``htmldocs/file2.html``
 ```
 
-If cross-references are possible between the 2 files, then it's required
-to process them only for indexes first:
+To allow cross-references between any files in any order (especially, if
+circular references are present), it's strongly reccommended
+to make a run for creating all the indexes first:
 
 ```cmd
 nim md2html --index:only file1.md  # creates ``htmldocs/file1.idx``

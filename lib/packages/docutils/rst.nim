@@ -82,7 +82,8 @@ type
   FindRefFileHandler* =
     proc (targetRelPath: string):
          tuple[targetPath: string, linkRelPath: string] {.closure, gcsafe.}
-    ## returns where .html or .idx file should be found by its relative path.
+    ## returns where .html or .idx file should be found by its relative path;
+    ## `linkRelPath` is a prefix to be added before a link anchor from such file
 
 proc rstnodeToRefname*(n: PRstNode): string
 proc addNodes*(n: PRstNode): string
@@ -383,11 +384,11 @@ type
     filenameToIdx*: Table[string, FileIndex]
     idxToFilename*: seq[string]
   ImportdocInfo = object
-    used: bool
-    fromInfo: TLineInfo
-    idxPath: string
-    linkRelPath: string
-    title: string
+    used: bool             # was this import used?
+    fromInfo: TLineInfo    # place of `.. importdoc::` directive
+    idxPath: string        # full path to ``.idx`` file
+    linkRelPath: string    # prefix before target anchor
+    title: string          # document title obtained from ``.idx``
   RstSharedState = object
     options*: RstParseOptions   # parsing options
     hLevels: LevelMap           # hierarchy of heading styles
@@ -411,7 +412,7 @@ type
     msgHandler: MsgHandler      # How to handle errors.
     findFile: FindFileHandler   # How to find files for include.
     findRefFile: FindRefFileHandler
-                                # How to find files referenced from importdoc.
+                                # How to find files imported by importdoc.
     filenames*: RstFileTable    # map file name <-> FileIndex (for storing
                                 # file names for warnings after 1st stage)
     currFileIdx*: FileIndex     # current index in `filenames`
@@ -3518,6 +3519,8 @@ proc loadIdxFile(s: var PRstSharedState, origFilename: string) =
     # project's root, we won't rely on it and use `linkRelPath` instead.
     let refn = extractLinkEnd(entry.link)
     # select either markup (rst/md) or Nim cases:
+    if entry.kind in {ieMarkupTitle, ieNimTitle}:
+      s.idxImports[origFilename].title = entry.keyword
     case entry.kind
     of ieIdxRole, ieHeading, ieMarkupTitle:
       if ext == ".nim" and entry.kind == ieMarkupTitle:
@@ -3528,8 +3531,6 @@ proc loadIdxFile(s: var PRstSharedState, origFilename: string) =
       info.line = entry.line.uint16
       addAnchorExtRst(s, key = entry.keyword, refn = refn,
                       anchorType = headlineAnchor, info=info)
-      if entry.kind in {ieMarkupTitle, ieNimTitle}:
-        s.idxImports[origFilename].title = entry.keyword
     of ieNim, ieNimGroup, ieNimTitle:
       if ext in [".md", ".rst"] or isMarkup:
         rstMessage(s, idxPath, meInvalidField,
@@ -3552,6 +3553,7 @@ proc loadIdxFile(s: var PRstSharedState, origFilename: string) =
       addAnchorNim(s, external = true, refn = refn, tooltip = entry.linkDesc,
                    langSym = langSym, priority = -4, # lowest
                    info=info)
+  doAssert s.idxImports[origFilename].title != ""
 
 proc preparePass2*(s: var PRstSharedState, mainNode: PRstNode, importdoc = true) =
   ## Records titles in node `mainNode` and orders footnotes.
@@ -3644,8 +3646,7 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
       let documentName =  # filename without ext for `.nim`, title for `.md`
         if foundLinks[0].ar == arNim:
           changeFileExt(foundLinks[0].externFilename.extractFilename, "")
-        elif foundLinks[0].externFilename != "" and
-            s.idxImports[foundLinks[0].externFilename].title != "":
+        elif foundLinks[0].externFilename != "":
           s.idxImports[foundLinks[0].externFilename].title
         else: foundLinks[0].externFilename.extractFilename
       let linkText =
