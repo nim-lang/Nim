@@ -167,11 +167,11 @@ block hasCustomPragmaGeneric:
   doAssert f.hasCustomPragma(examplePragma)
   doAssert f.x.hasCustomPragma(examplePragma)
 
-block hasCustomPragmaGeneric:
+block getCustomPragmaValGeneric:
   template examplePragma(x: int) {.pragma.}
   type
     Foo[T] {.examplePragma(42).} = object
       x {.examplePragma(25).}: T
   var f: Foo[string]
   doAssert f.getCustomPragmaVal(examplePragma) == 42
-  doAssert f.x.hasCustomPragma(examplePragma) == 25
+  doAssert f.x.getCustomPragmaVal(examplePragma) == 25
