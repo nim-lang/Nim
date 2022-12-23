@@ -617,6 +617,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
 
   of nkIfStmt, nkIfExpr:
     result = copyNode(n)
+    let withoutElse = n[^1].kind != nkElse
     for i in 0..<n.len:
       let it = n[i]
       var branch = shallowCopy(it)
@@ -625,7 +626,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
         #Condition needs to be destroyed outside of the condition/branch scope
         branch[0] = p(it[0], c, s, normal)
 
-      branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt:
+      branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt or withoutElse:
                      processScope(c, branchScope, maybeVoid(it[^1], branchScope))
                    else:
                      processScopeExpr(c, branchScope, it[^1], processCall, tmpFlags)
