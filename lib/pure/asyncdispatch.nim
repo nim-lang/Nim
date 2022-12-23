@@ -307,21 +307,21 @@ proc adjustTimeout(
 
 proc runOnce(timeout: int): bool {.gcsafe.}
 
-template doAfter*(ms: int or float, todo: untyped): PendingOps =
+proc doAfter*(ms: int or float, todo: proc ()): PendingOps =
   ## Executes actions passed as `todo` after `ms` milliseconds
   ## Without blocking the main execution flow while waiting
   ## An equivalent of javascript's setTimeout
 
   runnableExamples:
-    discard doAfter 2_500:
+    discard doAfter(2_500) do():
       echo "2.5 seconds passed !"
 
-    var pend = doAfter 3_000:
+    var pend = doAfter(3_000) do():
       echo "This line will never be executed !"
 
     # Let's cancel the second pennding process
     # 1.5 seconds before its execution :
-    discard doAfter 1_500: cancel pend
+    discard doAfter(1_500) do(): cancel pend
 
   var pend = PendingOps()
 
@@ -330,25 +330,24 @@ template doAfter*(ms: int or float, todo: untyped): PendingOps =
     await sleepAsync(ms)
     if pend.status == PENDING:
       pend.status = RUNNING
-      todo
+      todo()
       pend.status = FINISHED
 
   discard p()
 
   pend
 
-
-template doEvery*(ms: int or float, todo: untyped): CyclicOps =
+proc doEvery*(ms: int or float, todo: proc ()): CyclicOps =
   ## Executes actions passed as `todo` every `ms` milliseconds
   ## Without blocking the main execution flow while waiting
   ## An equivalent of javascript's setInterval
 
   runnableExamples:
-    var cycle = doEvery 2_000:
+    var cycle = doEvery(2_000) do():
       echo "This line will be executed three times !"
 
     # To stop the background process after 6.5 seconds:
-    discard doAfter 6_500: stop cycle
+    discard doAfter(6_500) do(): stop cycle
 
   var cycle = CyclicOps()
   cycle.status = RUNNING
@@ -358,7 +357,7 @@ template doEvery*(ms: int or float, todo: untyped): CyclicOps =
     while true:
       await sleepAsync(ms)
       if cycle.status == STOPPED: break
-      todo
+      todo()
 
   discard p()
 
