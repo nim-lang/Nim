@@ -826,7 +826,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
       m.s[cfsTypes].addf("typedef $1 $2[$3];$n",
            [foo, result, rope(n)])
   of tyObject, tyTuple:
-    if isImportedCppType(t) and origTyp.kind == tyGenericInst:
+    let tt = origTyp.skipTypes({tyDistinct})
+    if isImportedCppType(t) and tt.kind == tyGenericInst:
       let cppNameAsRope = getTypeName(m, t, sig)
       let cppName = $cppNameAsRope
       var i = 0
@@ -849,7 +850,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
             result.add cppName.substr(chunkStart, chunkEnd)
             chunkStart = i
 
-            let typeInSlot = resolveStarsInCppType(origTyp, idx + 1, stars)
+            let typeInSlot = resolveStarsInCppType(tt, idx + 1, stars)
             addResultType(typeInSlot)
         else:
           inc i
@@ -858,9 +859,9 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
         result.add cppName.substr(chunkStart)
       else:
         result = cppNameAsRope & "<"
-        for i in 1..<origTyp.len-1:
+        for i in 1..<tt.len-1:
           if i > 1: result.add(" COMMA ")
-          addResultType(origTyp[i])
+          addResultType(tt[i])
         result.add("> ")
       # always call for sideeffects:
       assert t.kind != tyTuple
