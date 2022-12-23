@@ -10,7 +10,10 @@
 # set handling
 
 type
-  NimSet = array[0..8192-1, uint8]
+  NimSet = distinct openArray[uint8]
+
+proc toOpenArray(x: NimSet; first, last: int): openArray[uint8] {.
+  magic: "Slice".}
 
 proc cardSetImpl(s: openArray[uint8], len: int): int {.inline.} =
   var i = 0
@@ -25,4 +28,4 @@ proc cardSetImpl(s: openArray[uint8], len: int): int {.inline.} =
     inc(i, 1)
 
 proc cardSet(s: NimSet, len: int): int {.compilerproc, inline.} =
-  result = cardSetImpl(s, len)
+  result = cardSetImpl(s.toOpenArray(0, len), len)
