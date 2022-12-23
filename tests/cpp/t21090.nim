@@ -1,3 +1,7 @@
+discard """
+  targets: "c cpp"
+"""
+
 type
   Packed {.packed.} = object
     foo: float
