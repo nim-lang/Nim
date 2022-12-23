@@ -306,6 +306,8 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
         {sfImportc, sfInfixCall, sfCompilerProc} * callee.sym.flags == {sfImportc} and
         {lfHeader, lfNoDecl} * callee.sym.loc.flags != {}:
       addAddrLoc(p.config, a, result)
+    elif n[0].kind == nkDotExpr and tfPacked in n[0][0].typ.flags:
+      addRdLoc(withTmpIfNeeded(p, a, true), result)
     else:
       addRdLoc(a, result)
   else:
