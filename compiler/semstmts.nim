@@ -105,7 +105,6 @@ proc semWhile(c: PContext, n: PNode; flags: TExprFlags): PNode =
     result.typ = n[1].typ
   elif implicitlyDiscardable(n[1]):
     result[1].typ = c.enforceVoidContext
-    result.typ = c.enforceVoidContext
 
 proc semProc(c: PContext, n: PNode): PNode
 
