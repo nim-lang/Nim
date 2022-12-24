@@ -89,7 +89,7 @@ when defined(cpp) or defined(nimdoc):
         ## with other moSequentiallyConsistent operations.
 
   type
-    Atomic*[T] {.importcpp: "std::atomic", completeStruct.} = object
+    Atomic*[T] {.importcpp: "std::atomic", completeStruct, requiresInit.} = object
       ## An atomic object with underlying type `T`.
       raw: T
 
