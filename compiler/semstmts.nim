@@ -192,6 +192,8 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil):
     result.transitionSonsKind(nkIfStmt)
     # propagate any enforced VoidContext:
     if typ == c.enforceVoidContext: result.typ = c.enforceVoidContext
+    if not hasElse and implicitlyDiscardable(result[^1]):
+      result[^1][^1].typ = c.enforceVoidContext
   else:
     for it in n:
       let j = it.len-1

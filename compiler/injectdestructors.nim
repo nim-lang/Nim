@@ -551,11 +551,31 @@ template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: unt
 
   result
 
+
+const
+  skipForDiscardable = {nkIfStmt, nkIfExpr, nkCaseStmt, nkOfBranch,
+    nkElse, nkStmtListExpr, nkTryStmt, nkFinally, nkExceptBranch,
+    nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr,
+    nkHiddenStdConv, nkHiddenDeref}
+
+proc considerImplicitlyDiscardable(n: PNode): PType =
+  var n = n
+  while n.kind in skipForDiscardable: n = n.lastSon
+  if (isCallExpr(n) and n[0].kind == nkSym and
+           sfDiscardable in n[0].sym.flags):
+    result = n[0].sym.typ[0]
+  else:
+    result = n.typ
+
 template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
                            tmpFlags = {sfSingleUsedTemp}) =
   template maybeVoid(child, s): untyped =
-    if isEmptyType(child.typ): p(child, c, s, normal)
-    else: processCall(child, s)
+    let child2 = copyNode(child)
+    for c in child:
+      child2.add c
+    child2.typ = considerImplicitlyDiscardable(child)
+    if isEmptyType(child2.typ): p(child2, c, s, normal)
+    else: processCall(child2, s)
 
   case n.kind
   of nkStmtList, nkStmtListExpr:
@@ -617,7 +637,6 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
 
   of nkIfStmt, nkIfExpr:
     result = copyNode(n)
-    let withoutElse = n[^1].kind != nkElse
     for i in 0..<n.len:
       let it = n[i]
       var branch = shallowCopy(it)
@@ -626,7 +645,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
         #Condition needs to be destroyed outside of the condition/branch scope
         branch[0] = p(it[0], c, s, normal)
 
-      branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt or withoutElse:
+      branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt:
                      processScope(c, branchScope, maybeVoid(it[^1], branchScope))
                    else:
                      processScopeExpr(c, branchScope, it[^1], processCall, tmpFlags)
