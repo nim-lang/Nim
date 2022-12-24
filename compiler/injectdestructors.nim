@@ -570,12 +570,13 @@ proc considerImplicitlyDiscardable(n: PNode): PType =
 template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
                            tmpFlags = {sfSingleUsedTemp}) =
   template maybeVoid(child, s): untyped =
-    let child2 = copyNode(child)
-    for c in child:
-      child2.add c
-    child2.typ = considerImplicitlyDiscardable(child)
-    if isEmptyType(child2.typ): p(child2, c, s, normal)
-    else: processCall(child2, s)
+    let oldType = child.typ
+    child.typ = considerImplicitlyDiscardable(child)
+    var res: PNode
+    if isEmptyType(child.typ): res = p(child, c, s, normal)
+    else: res = processCall(child, s)
+    child.typ = oldType
+    res
 
   case n.kind
   of nkStmtList, nkStmtListExpr:
