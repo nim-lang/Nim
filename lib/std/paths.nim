@@ -41,7 +41,7 @@ func add(x: var string, tail: string) =
 
 func add*(x: var Path, y: Path) {.borrow.}
 
-func `/`*(head, tail: Path): Path {.inline.} =
+func `/`*(head: Path, tail: Path | static[string]): Path {.inline.} =
   ## Joins two directory names to one.
   ##
   ## returns normalized path concatenation of `head` and `tail`, preserving
@@ -52,6 +52,13 @@ func `/`*(head, tail: Path): Path {.inline.} =
   ## * `splitPath proc`_
   ## * `uri.combine proc <uri.html#combine,Uri,Uri>`_
   ## * `uri./ proc <uri.html#/,Uri,string>`_
+  runnableExamples:
+    assert Path"/foo" / Path"bar" == Path"/foo/bar"
+    assert Path"/foo" / "bar" == Path"/foo/bar"
+    assert Path"foo" / "bar" == Path"foo/bar"
+    assert Path"foo" / "bar/" == Path"foo/bar/"
+    assert Path"foo/" / "bar/" == Path"foo/bar/"
+
   Path(joinPath(head.string, tail.string))
 
 func splitPath*(path: Path): tuple[head, tail: Path] {.inline.} =

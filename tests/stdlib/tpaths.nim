@@ -24,6 +24,15 @@ func joinPath*(parts: varargs[Path]): Path =
 func joinPath(head, tail: Path): Path {.inline.} =
   head / tail
 
+block literalJoinPath:
+  doAssert Path"foo" / "bar" / "baz" == Path"foo/bar/baz"
+  doAssert Path"/foo" / "bar" / "baz" == Path"/foo/bar/baz"
+  doAssert Path"foo" / "bar/" == Path"foo/bar/"
+  doAssert Path"/foo" / "//" == Path"/foo/"
+
+  const bar = "bar"
+  doAssert Path"/foo" / bar == Path"/foo/bar"
+
 block absolutePath:
   doAssertRaises(ValueError): discard absolutePath(Path"a", Path"b")
   doAssert absolutePath(Path"a") == getCurrentDir() / Path"a"
