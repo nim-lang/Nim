@@ -307,62 +307,6 @@ proc adjustTimeout(
 
 proc runOnce(timeout: int): bool {.gcsafe.}
 
-proc doAfter*(ms: int or float, todo: proc ()): PendingOps =
-  ## Executes actions passed as `todo` after `ms` milliseconds
-  ## Without blocking the main execution flow while waiting
-  ## An equivalent of javascript's setTimeout
-
-  runnableExamples:
-    discard doAfter(2_500) do():
-      echo "2.5 seconds passed !"
-
-    var pend = doAfter(3_000) do():
-      echo "This line will never be executed !"
-
-    # Let's cancel the second pennding process
-    # 1.5 seconds before its execution :
-    discard doAfter(1_500) do(): cancel pend
-
-  var pend = PendingOps()
-
-  let  p = proc () {.async.} =
-    var pend = pend
-    await sleepAsync(ms)
-    if pend.status == PENDING:
-      pend.status = RUNNING
-      todo()
-      pend.status = FINISHED
-
-  discard p()
-
-  pend
-
-proc doEvery*(ms: int or float, todo: proc ()): CyclicOps =
-  ## Executes actions passed as `todo` every `ms` milliseconds
-  ## Without blocking the main execution flow while waiting
-  ## An equivalent of javascript's setInterval
-
-  runnableExamples:
-    var cycle = doEvery(2_000) do():
-      echo "This line will be executed three times !"
-
-    # To stop the background process after 6.5 seconds:
-    discard doAfter(6_500) do(): stop cycle
-
-  var cycle = CyclicOps()
-  cycle.status = RUNNING
-
-  let  p = proc () {.async.} =
-    var cycle = cycle
-    while true:
-      await sleepAsync(ms)
-      if cycle.status == STOPPED: break
-      todo()
-
-  discard p()
-
-  cycle
-
 proc callSoon*(cbproc: proc () {.gcsafe.}) {.gcsafe.}
   ## Schedule `cbproc` to be called as soon as possible.
   ## The callback is called when control returns to the event loop.
@@ -2065,6 +2009,62 @@ proc send*(socket: AsyncFD, data: string,
 # -- Await Macro
 import asyncmacro
 export asyncmacro
+
+proc doAfter*(ms: int or float, todo: proc ()): PendingOps =
+  ## Executes actions passed as `todo` after `ms` milliseconds
+  ## Without blocking the main execution flow while waiting
+  ## An equivalent of javascript's setTimeout
+
+  runnableExamples:
+    discard doAfter(2_500) do():
+      echo "2.5 seconds passed !"
+
+    var pend = doAfter(3_000) do():
+      echo "This line will never be executed !"
+
+    # Let's cancel the second pennding process
+    # 1.5 seconds before its execution :
+    discard doAfter(1_500) do(): cancel pend
+
+  var pend = PendingOps()
+
+  let  p = proc () {.async.} =
+    var pend = pend
+    await sleepAsync(ms)
+    if pend.status == PENDING:
+      pend.status = RUNNING
+      todo()
+      pend.status = FINISHED
+
+  discard p()
+
+  pend
+
+proc doEvery*(ms: int or float, todo: proc ()): CyclicOps =
+  ## Executes actions passed as `todo` every `ms` milliseconds
+  ## Without blocking the main execution flow while waiting
+  ## An equivalent of javascript's setInterval
+
+  runnableExamples:
+    var cycle = doEvery(2_000) do():
+      echo "This line will be executed three times !"
+
+    # To stop the background process after 6.5 seconds:
+    discard doAfter(6_500) do(): stop cycle
+
+  var cycle = CyclicOps()
+  cycle.status = RUNNING
+
+  proc p() {.async.} =
+    var cycle = cycle
+    while true:
+      await sleepAsync(ms)
+      if cycle.status == STOPPED: break
+      todo()
+
+  discard p()
+
+  cycle
 
 proc readAll*(future: FutureStream[string]): owned(Future[string]) {.async.} =
   ## Returns a future that will complete when all the string data from the
