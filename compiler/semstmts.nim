@@ -716,9 +716,12 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         let actualType = v.typ.skipTypes({tyGenericInst, tyAlias,
                                           tyUserTypeClassInst})
         if actualType.kind in {tyObject, tyDistinct} and
-           actualType.requiresInit and not (sfImportc in actualType.sym.flags):
+           actualType.requiresInit:
            # imported type use requiresInit pragma prevent implicit initialization
-          defaultConstructionError(c, v.typ, v.info)
+          if (tfRequiresInit in actualType.flags and sfImportc in actualType.sym.flags):
+            discard
+          else:
+            defaultConstructionError(c, v.typ, v.info)
         else:
           checkNilable(c, v)
         # allow let to not be initialised if imported from C:

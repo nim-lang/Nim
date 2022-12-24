@@ -9,7 +9,7 @@ type
 proc initString*(): String
     {.importcpp: "std::string()", header: "string".}
 
-proc append*(this: var String, str: String): var String
+proc append*(this: var String, str: String): String
     # bug seems to trigger when `#`, `@`, or `$1` is used inside `importcpp`
     {.importcpp: "#.append(@)", header: "string", discardable.} # <- changed from `importcpp: "append"`
 

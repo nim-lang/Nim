@@ -491,8 +491,10 @@ proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
       nilLoc.r = rope("NIM_NIL")
       genRefAssign(p, loc, nilLoc)
     else:
-      if p.module.compileToCpp and typ.kind == tyVar and isImportedCppType(typ.skipTypes({tyVar})):
-        return
+      if typ.kind == tyVar:
+        let tt = typ.skipTypes({tyVar})
+        if isImportedType(tt) and tfRequiresInit in tt.flags:
+          return
       linefmt(p, cpsStmts, "$1 = ($2)0;$n", [rdLoc(loc),
         getTypeDesc(p.module, typ, mapTypeChooser(loc))])
   else:

@@ -700,15 +700,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
     return
   case t.kind
   of tyRef, tyPtr, tyVar, tyLent:
-    var star: string
-    if t.kind in {tyVar} and tfVarIsPtr notin origTyp.flags and
-                    compileToCpp(m): 
-      if isImportedCppType(t.skipTypes({tyVar})):
-        star = ""
-      else:
-        star = "&"
-    else: 
-      star = "*"
+    var star = if t.kind in {tyVar} and tfVarIsPtr notin origTyp.flags and
+                    compileToCpp(m): "&" else: "*"
     var et = origTyp.skipTypes(abstractInst).lastSon
     var etB = et.skipTypes(abstractInst)
     if mapType(m.config, t, kind) == ctPtrToArray and (etB.kind != tyOpenArray or kind == skParam):
