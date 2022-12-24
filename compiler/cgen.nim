@@ -491,6 +491,8 @@ proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
       nilLoc.r = rope("NIM_NIL")
       genRefAssign(p, loc, nilLoc)
     else:
+      if p.module.compileToCpp and typ.kind == tyVar and isImportedCppType(typ.skipTypes({tyVar})):
+        return
       linefmt(p, cpsStmts, "$1 = ($2)0;$n", [rdLoc(loc),
         getTypeDesc(p.module, typ, mapTypeChooser(loc))])
   else:
