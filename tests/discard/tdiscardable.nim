@@ -99,3 +99,14 @@ block: # bug #13583
     let t = test
     doAssert t() == 12
 
+block:
+  proc bar(): string {.discardable.} =
+    "15"
+
+  proc foo(): int =
+    while true:
+      raise newException(ValueError, "check")
+    12
+
+  doAssertRaises(ValueError):
+    doAssert foo() == 12
