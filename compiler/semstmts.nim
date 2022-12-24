@@ -716,7 +716,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         let actualType = v.typ.skipTypes({tyGenericInst, tyAlias,
                                           tyUserTypeClassInst})
         if actualType.kind in {tyObject, tyDistinct} and
-           actualType.requiresInit:
+           actualType.requiresInit and not (sfImportc in actualType.sym.flags):
+           # imported type use requiresInit pragma prevent implicit initialization
           defaultConstructionError(c, v.typ, v.info)
         else:
           checkNilable(c, v)
