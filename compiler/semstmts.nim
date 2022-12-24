@@ -133,6 +133,12 @@ proc implicitlyDiscardable(n: PNode): bool =
            (isCallExpr(n) and n[0].kind == nkSym and
            sfDiscardable in n[0].sym.flags)
 
+proc implicitlyDiscardableExpr(n: PNode): bool =
+  var n = n
+  while n.kind in skipForDiscardable: n = n.lastSon
+  result = isCallExpr(n) and n[0].kind == nkSym and
+           sfDiscardable in n[0].sym.flags
+
 proc fixNilType(c: PContext; n: PNode) =
   if isAtom(n):
     if n.kind != nkNilLit and n.typ != nil:
@@ -192,7 +198,7 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil):
     result.transitionSonsKind(nkIfStmt)
     # propagate any enforced VoidContext:
     if typ == c.enforceVoidContext: result.typ = c.enforceVoidContext
-    if not hasElse and not isEmptyType(result[^1][^1].typ) and implicitlyDiscardable(result[^1]):
+    if not hasElse and implicitlyDiscardableExpr(result[^1]):
       result[^1][^1].typ = c.enforceVoidContext
   else:
     for it in n:
