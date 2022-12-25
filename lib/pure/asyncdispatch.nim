@@ -2010,21 +2010,21 @@ proc send*(socket: AsyncFD, data: string,
 import asyncmacro
 export asyncmacro
 
-proc doAfter*(ms: int or float, todo: proc ()): PendingOps =
+proc after*(ms: int or float, todo: proc ()): PendingOps =
   ## Executes actions passed as `todo` after `ms` milliseconds
   ## Without blocking the main execution flow while waiting
   ## An equivalent of javascript's setTimeout
 
   runnableExamples:
-    discard doAfter(2_500) do():
+    discard after(2_500) do():
       echo "2.5 seconds passed !"
 
-    var pend = doAfter(3_000) do():
+    var pend = after(3_000) do():
       echo "This line will never be executed !"
 
     # Let's cancel the second pennding process
     # 1.5 seconds before its execution :
-    discard doAfter(1_500) do(): cancel pend
+    discard after(1_500) do(): cancel pend
 
   var pend = PendingOps()
 
@@ -2040,17 +2040,63 @@ proc doAfter*(ms: int or float, todo: proc ()): PendingOps =
 
   return pend
 
-proc doEvery*(ms: int or float, todo: proc ()): CyclicOps =
+proc doAfter*(todo: proc (), ms: int or float): PendingOps =
+  ## Executes actions passed as `todo` after `ms` milliseconds
+  ## Without blocking the main execution flow while waiting
+
+  runnableExamples:
+    proc todo() = echo "2.5 seconds passed !"
+    discard todo.doAfter(2_500)
+
+  var pend = PendingOps()
+
+  proc p() {.async.} =
+    var pend = pend
+    await sleepAsync(ms)
+    if pend.status == pending:
+      pend.status = running
+      todo()
+      pend.status = finished
+
+  discard p()
+
+  return pend
+
+proc every*(ms: int or float, todo: proc ()): CyclicOps =
   ## Executes actions passed as `todo` every `ms` milliseconds
   ## Without blocking the main execution flow while waiting
   ## An equivalent of javascript's setInterval
 
   runnableExamples:
-    var cycle = doEvery(2_000) do():
+    var cycle = every(2_000) do():
       echo "This line will be executed three times !"
 
     # To stop the background process after 6.5 seconds:
-    discard doAfter(6_500) do(): stop cycle
+    discard after(6_500) do(): stop cycle
+
+  var cycle = CyclicOps()
+
+  proc p() {.async.} =
+    var cycle = cycle
+    while true:
+      await sleepAsync(ms)
+      if cycle.status == stopped: break
+      todo()
+
+  discard p()
+
+  return cycle
+
+proc doEvery*(todo: proc (), ms: int or float): CyclicOps =
+  ## Executes actions passed as `todo` every `ms` milliseconds
+  ## Without blocking the main execution flow while waiting
+
+  runnableExamples:
+    proc todo() = echo "This line will be executed three times !"
+    var cycle = todo.doEvery(2_000)
+
+    # To stop the background process after 6.5 seconds:
+    discard after(6_500) do(): stop cycle
 
   var cycle = CyclicOps()
 
