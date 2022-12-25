@@ -2028,7 +2028,7 @@ proc doAfter*(ms: int or float, todo: proc ()): PendingOps =
 
   var pend = PendingOps()
 
-  let  p = proc () {.async.} =
+  proc p() {.async.} =
     var pend = pend
     await sleepAsync(ms)
     if pend.status == pending:
@@ -2038,7 +2038,7 @@ proc doAfter*(ms: int or float, todo: proc ()): PendingOps =
 
   discard p()
 
-  pend
+  return pend
 
 proc doEvery*(ms: int or float, todo: proc ()): CyclicOps =
   ## Executes actions passed as `todo` every `ms` milliseconds
@@ -2053,7 +2053,6 @@ proc doEvery*(ms: int or float, todo: proc ()): CyclicOps =
     discard doAfter(6_500) do(): stop cycle
 
   var cycle = CyclicOps()
-  cycle.status = running
 
   proc p() {.async.} =
     var cycle = cycle
@@ -2064,7 +2063,7 @@ proc doEvery*(ms: int or float, todo: proc ()): CyclicOps =
 
   discard p()
 
-  cycle
+  return cycle
 
 proc readAll*(future: FutureStream[string]): owned(Future[string]) {.async.} =
   ## Returns a future that will complete when all the string data from the
