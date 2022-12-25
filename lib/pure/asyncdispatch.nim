@@ -247,28 +247,28 @@ type
     callbacks*: Deque[proc () {.gcsafe.}]
 
   PStatus = enum
-    PENDING, CANCELED, RUNNING, FINISHED
+    pending, canceled, running, finished
   PendingOps* = ref object
-    status: PStatus = PENDING
+    status: PStatus = pending
 
   CStatus = enum
-    RUNNING, STOPPED
+    running, stopped
   CyclicOps* = ref object
-    status: CStatus = RUNNING
+    status: CStatus = running
 
 proc `$`*(pend: PendingOps): string =
   "[ Pending Ops Handle: " & $pend.status & " ]"
 
 proc cancel*(pend: PendingOps) =
-  if pend.status == PENDING:
-    pend.status = CANCELED
+  if pend.status == pending:
+    pend.status = canceled
 
 proc `$`*(cycle: CyclicOps): string =
   "[ Cyclic Ops Handle: " & $cycle.status & " ]"
 
 proc stop*(cycle: CyclicOps) =
-  if cycle.status == RUNNING:
-    cycle.status = STOPPED
+  if cycle.status == running:
+    cycle.status = stopped
 
 proc processTimers(
   p: PDispatcherBase, didSomeWork: var bool
@@ -2031,10 +2031,10 @@ proc doAfter*(ms: int or float, todo: proc ()): PendingOps =
   let  p = proc () {.async.} =
     var pend = pend
     await sleepAsync(ms)
-    if pend.status == PENDING:
-      pend.status = RUNNING
+    if pend.status == pending:
+      pend.status = running
       todo()
-      pend.status = FINISHED
+      pend.status = finished
 
   discard p()
 
@@ -2053,13 +2053,13 @@ proc doEvery*(ms: int or float, todo: proc ()): CyclicOps =
     discard doAfter(6_500) do(): stop cycle
 
   var cycle = CyclicOps()
-  cycle.status = RUNNING
+  cycle.status = running
 
   proc p() {.async.} =
     var cycle = cycle
     while true:
       await sleepAsync(ms)
-      if cycle.status == STOPPED: break
+      if cycle.status == stopped: break
       todo()
 
   discard p()
