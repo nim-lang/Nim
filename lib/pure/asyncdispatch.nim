@@ -249,12 +249,12 @@ type
   PStatus = enum
     pending, canceled, running, finished
   PendingOps* = ref object
-    status: PStatus = pending
+    status*: PStatus = pending
 
   CStatus = enum
-    running, stopped
+    running, paused, stopped
   CyclicOps* = ref object
-    status: CStatus = running
+    status*: CStatus = running
 
 proc `$`*(pend: PendingOps): string =
   "[ Pending Ops Handle: " & $pend.status & " ]"
@@ -266,8 +266,16 @@ proc cancel*(pend: PendingOps) =
 proc `$`*(cycle: CyclicOps): string =
   "[ Cyclic Ops Handle: " & $cycle.status & " ]"
 
-proc stop*(cycle: CyclicOps) =
+proc pause*(cycle: CyclicOps) =
   if cycle.status == running:
+    cycle.status = paused
+
+proc resume*(cycle: CyclicOps) =
+  if cycle.status == paused:
+    cycle.status = running
+
+proc stop*(cycle: CyclicOps) =
+  if cycle.status != stopped:
     cycle.status = stopped
 
 proc processTimers(
@@ -2081,7 +2089,8 @@ proc every*(ms: int or float, todo: proc ()): CyclicOps =
     while true:
       await sleepAsync(ms)
       if cycle.status == stopped: break
-      todo()
+      if cycle.status == running:
+        todo()
 
   discard p()
 
@@ -2105,7 +2114,8 @@ proc doEvery*(todo: proc (), ms: int or float): CyclicOps =
     while true:
       await sleepAsync(ms)
       if cycle.status == stopped: break
-      todo()
+      if cycle.status == running:
+        todo()
 
   discard p()
 
