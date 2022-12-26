@@ -23,8 +23,6 @@ proc `$`(info: InstantiationInfo): string =
 
 # ---------------------------------------------------------------------------
 
-when not defined(nimHasSinkInference):
-  {.pragma: nosinks.}
 
 proc raiseAssert*(msg: string) {.noinline, noreturn, nosinks.} =
   ## Raises an `AssertionDefect` with `msg`.
