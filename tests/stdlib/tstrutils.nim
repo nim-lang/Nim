@@ -474,6 +474,22 @@ template main() =
     rejectParse "0x".parseHexInt
     rejectParse "0xFFG".parseHexInt
     rejectParse "reject".parseHexInt
+    doAssert '0'.parseHexInt == 0
+    doAssert '1'.parseHexInt == 1
+    doAssert '2'.parseHexInt == 2
+    doAssert 'A'.parseHexInt == 10
+    doAssert 'B'.parseHexInt == 11
+    doAssert 'C'.parseHexInt == 12
+    doAssert 'D'.parseHexInt == 13
+    doAssert 'F'.parseHexInt == 15
+    doAssert 'b'.parseHexInt == 11
+    doAssert 'c'.parseHexInt == 12
+    doAssert 'd'.parseHexInt == 13
+    doAssert 'f'.parseHexInt == 15
+    rejectParse ''.parseHexInt
+    rejectParse 'x'.parseHexInt
+    rejectParse 'y'.parseHexInt
+    rejectParse 'z'.parseHexInt
     # octal
     doAssert "0o17".parseOctInt == 15
     doAssert "0O17".parseOctInt == 15

@@ -1175,6 +1175,47 @@ func parseOctInt*(s: string): int {.rtl, extern: "nsuParseOctInt".} =
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid oct integer: " & s)
 
+func parseHexInt*(c: char): uint8 {.rtl, extern: "nsuParseHexInt".} =
+  ## Parses a hexadecimal integer value contained in `c`.
+  ##
+  ## If `c` is not a valid hex integer, `ValueError` is raised.
+  ##
+  case c
+    of '0':
+        return 0
+    of '1':
+        return 1
+    of '2':
+        return 2
+    of '3':
+        return 3
+    of '4':
+        return 4
+    of '5':
+        return 5
+    of '6':
+        return 6
+    of '7':
+        return 7
+    of '8':
+        return 8
+    of '9':
+        return 9
+    of 'a', 'A':
+        return 10
+    of 'b', 'B':
+        return 11
+    of 'c':
+        return 12
+    of 'd', 'D':
+        return 13
+    of 'e', 'E':
+        return 14
+    of 'f', 'F':
+        return 15
+    else:
+        raise newException(ValueError, "invalid hex char: " & c)
+
 func parseHexInt*(s: string): int {.rtl, extern: "nsuParseHexInt".} =
   ## Parses a hexadecimal integer value contained in `s`.
   ##
