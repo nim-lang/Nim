@@ -2,7 +2,7 @@
 
 
 ## Changes affecting backward compatibility
-- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response, it followed Apache HttpClient(Java), http(go) and .Net HttpWebResponse(C#) behavior. Previously it raised `ValueError`.
+- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response. It follows Apache HttpClient(Java), http(go) and .Net HttpWebResponse(C#) behavior. Previously it raised `ValueError`.
 
 - `addr` is now available for all addressable locations,
   `unsafeAddr` is now deprecated and an alias for `addr`.
@@ -65,7 +65,7 @@
 - `shallowCopy` and `shallow` are removed for ARC/ORC. Use `move` when possible or combine assignment and
 `sink` for optimization purposes.
 
-- The `nimPreviewDotLikeOps` define is going to be removed or deprecated.
+- The experimental `nimPreviewDotLikeOps` switch is going to be removed or deprecated because it didn't fullfill its promises.
 
 - The `{.this.}` pragma, deprecated since 0.19, has been removed.
 - `nil` literals can no longer be directly assigned to variables or fields of `distinct` pointer types. They must be converted instead.
@@ -109,8 +109,6 @@
   like `cast[cstring](x)` instead.
 
 - `logging` will default to flushing all log level messages. To get the legacy behaviour of only flushing Error and Fatal messages, use `-d:nimV1LogFlushBehavior`.
-
-- Object fields now support default values, see https://nim-lang.github.io/Nim/manual.html#types-default-values-for-object-fields for details.
 
 - Redefining templates with the same signature was previously
   allowed to support certain macro code. To do this explicitly, the
