@@ -1986,6 +1986,38 @@ proc send*(socket: AsyncFD, data: string,
 import asyncmacro
 export asyncmacro
 
+proc then*[T](fut: Future[T], todo: proc(value: T)) =
+  try:
+    todo(await fut)
+  except:
+    discard
+
+proc then*[T](fut: Future[T], todo: proc()) =
+  try:
+    discard await fut
+    todo()
+  except:
+    discard
+
+proc catch*[T](fut: Future[T], todo: proc(error: ref Exception)) =
+  try:
+    discard await fut
+  except Exception as error:
+    todo(error)
+
+proc catch*[T](fut: Future[T], todo: proc()) =
+  try:
+    discard await fut
+  except Exception as error:
+    todo()
+
+proc `finally`*[T](fut: Future[T], todo: proc()) =
+  try:
+    discard await fut
+  except:
+    discard
+  todo()
+
 proc readAll*(future: FutureStream[string]): owned(Future[string]) {.async.} =
   ## Returns a future that will complete when all the string data from the
   ## specified future stream is retrieved.
