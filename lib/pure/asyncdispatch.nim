@@ -1987,36 +1987,46 @@ import asyncmacro
 export asyncmacro
 
 proc then*[T](fut: Future[T], todo: proc(value: T)) =
-  try:
-    todo(await fut)
-  except:
-    discard
+  proc p() {.async.} =
+    try:
+      todo(await fut)
+    except CatchableError:
+      discard
+  discard p()
 
 proc then*[T](fut: Future[T], todo: proc()) =
-  try:
-    discard await fut
-    todo()
-  except:
-    discard
+  proc p() {.async.} =
+    try:
+      discard await fut
+      todo()
+    except CatchableError:
+      discard
+  discard p()
 
 proc catch*[T](fut: Future[T], todo: proc(error: ref Exception)) =
-  try:
-    discard await fut
-  except Exception as error:
-    todo(error)
+  proc p() {.async.} =
+    try:
+      discard await fut
+    except Exception as error:
+      todo(error)
+  discard p()
 
 proc catch*[T](fut: Future[T], todo: proc()) =
-  try:
-    discard await fut
-  except Exception as error:
-    todo()
+  proc p() {.async.} =
+    try:
+      discard await fut
+    except Exception as error:
+      todo()
+  discard p()
 
 proc `finally`*[T](fut: Future[T], todo: proc()) =
-  try:
-    discard await fut
-  except:
-    discard
-  todo()
+  proc p() {.async.} =
+    try:
+      discard await fut
+    except:
+      discard
+    todo()
+  discard p()
 
 proc readAll*(future: FutureStream[string]): owned(Future[string]) {.async.} =
   ## Returns a future that will complete when all the string data from the
