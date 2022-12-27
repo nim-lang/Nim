@@ -609,9 +609,10 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   createTypeBoundOps(c.g, c.c, elemType, c.info, c.idgen)
   let isCyclic = c.g.config.selectedGC == gcOrc and types.canFormAcycle(elemType)
 
-  let potentialCycle = c.g.config.selectedGC == gcOrc and
+  let isInheritableAcyclicRef = c.g.config.selectedGC == gcOrc and
                       (not isPureObject(elemType)) and
                       tfAcyclic in skipTypes(elemType, abstractInst+{tyOwned}-{tyTypeDesc}).flags
+  # dynamic Acyclic refs need to use dyn decRef
 
   let tmp =
     if isCyclic and c.kind in {attachedAsgn, attachedSink}:
@@ -636,8 +637,8 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       cond = callCodegenProc(c.g, "nimDecRefIsLastCyclicStatic", c.info, tmp, typInfo)
     else:
       cond = callCodegenProc(c.g, "nimDecRefIsLastCyclicDyn", c.info, tmp)
-  elif potentialCycle:
-    cond = callCodegenProc(c.g, "nimDecRefIsLastDyn", c.info, x)
+  elif isInheritableAcyclicRef:
+    cond = callCodegenProc(c.g, "nimDecRefdIsLastDyn", c.info, x)
   else:
     cond = callCodegenProc(c.g, "nimDecRefIsLast", c.info, x)
   cond.typ = getSysType(c.g, x.info, tyBool)
