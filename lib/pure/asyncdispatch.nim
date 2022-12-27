@@ -2121,6 +2121,56 @@ proc doEvery*(todo: proc (), ms: int or float): CyclicOps =
 
   return cycle
 
+template once*(cond: bool, todo: proc ()) =
+  ## Checks `cond` in background every 5 milliseconds
+  ## And executes actions passed as `todo` once it's true
+
+  runnableExamples:
+    import threadpool, os
+  
+    var hasFinished = false
+
+    proc longOps() =
+      # let's fake long operations with sleep
+      sleep 5_000
+      hasFinished = true
+
+    spawn longOps()
+    once(hasFinished) do(): echo "Finished !"
+
+  let p = proc () {.async.} =
+    while not cond:
+      await sleepAsync(5)
+    todo()
+
+  discard p()
+
+template doOnce*(todo: proc (), cond: bool) =
+  ## Checks `cond` in background every 5 milliseconds
+  ## And executes actions passed as `todo` once it's true
+
+  runnableExamples:
+    import threadpool, os
+  
+    var hasFinished = false
+
+    proc longOps() =
+      # let's fake long operations with sleep
+      sleep 5_000
+      hasFinished = true
+    
+    proc notify() = echo "Finished !"
+
+    spawn longOps()
+    notify.doOnce(hasFinished)
+
+  let p = proc () {.async.} =
+    while not cond:
+      await sleepAsync(5)
+    todo()
+
+  discard p()
+
 proc readAll*(future: FutureStream[string]): owned(Future[string]) {.async.} =
   ## Returns a future that will complete when all the string data from the
   ## specified future stream is retrieved.
