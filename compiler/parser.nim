@@ -42,7 +42,7 @@ when isMainModule or defined(nimTestGrammar):
 
     proc checkSameGrammar*() =
       doAssert sameFileContent(newGrammarText, "doc/grammar.txt"),
-              "execute 'nim r compiler.nim' to keep grammar.txt up-to-date"
+              "execute 'nim r compiler/parser.nim' to keep grammar.txt up-to-date"
   else:
     writeGrammarFile("doc/grammar.txt")
     import ".." / tools / grammar_nanny
