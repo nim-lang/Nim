@@ -42,7 +42,7 @@ when isMainModule or defined(nimTestGrammar):
 
     proc checkSameGrammar*() =
       doAssert sameFileContent(newGrammarText, "doc/grammar.txt"),
-              "execute 'nim r compiler.nim' to keep grammar.txt up-to-date"
+              "execute 'nim r compiler/parser.nim' to keep grammar.txt up-to-date"
   else:
     writeGrammarFile("doc/grammar.txt")
     import ".." / tools / grammar_nanny
@@ -1770,11 +1770,13 @@ proc parseTry(p: var Parser; isExpr: bool): PNode =
   #|            (optInd 'except' optionalExprList colcom stmt)*
   #|            (optInd 'finally' colcom stmt)?
   result = newNodeP(nkTryStmt, p)
+  let parentIndent = p.currInd # isExpr
   getTok(p)
   colcom(p, result)
   result.add(parseStmt(p))
   var b: PNode = nil
-  while sameOrNoInd(p) or isExpr:
+
+  while sameOrNoInd(p) or (isExpr and parentIndent <= p.tok.indent):
     case p.tok.tokType
     of tkExcept:
       b = newNodeP(nkExceptBranch, p)

@@ -48,11 +48,9 @@ proc fillBackendName(m: BModule; s: PSym) =
     writeMangledName(m.ndi, s, m.config)
 
 proc fillParamName(m: BModule; s: PSym) =
-  ## we cannot use 'sigConflicts' here since we have a BModule, not a BProc.
-  ## Fortunately C's scoping rules are sane enough so that that doesn't
-  ## cause any trouble.
   if s.loc.r == "":
     var res = s.name.s.mangle
+    res.add idOrSig(s, res, m.sigConflicts)
     # Take into account if HCR is on because of the following scenario:
     #   if a module gets imported and it has some more importc symbols in it,
     # some param names might receive the "_0" suffix to distinguish from what
@@ -69,8 +67,6 @@ proc fillParamName(m: BModule; s: PSym) =
     # and a function called in main or proxy uses `socket` as a parameter name.
     # That would lead to either needing to reload `proxy` or to overwrite the
     # executable file for the main module, which is running (or both!) -> error.
-    if m.hcrOn or isKeyword(s.name) or m.g.config.cppDefines.contains(res):
-      res.add "_0"
     s.loc.r = res.rope
     writeMangledName(m.ndi, s, m.config)
 
@@ -830,7 +826,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
       m.s[cfsTypes].addf("typedef $1 $2[$3];$n",
            [foo, result, rope(n)])
   of tyObject, tyTuple:
-    if isImportedCppType(t) and origTyp.kind == tyGenericInst:
+    let tt = origTyp.skipTypes({tyDistinct})
+    if isImportedCppType(t) and tt.kind == tyGenericInst:
       let cppNameAsRope = getTypeName(m, t, sig)
       let cppName = $cppNameAsRope
       var i = 0
@@ -853,7 +850,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
             result.add cppName.substr(chunkStart, chunkEnd)
             chunkStart = i
 
-            let typeInSlot = resolveStarsInCppType(origTyp, idx + 1, stars)
+            let typeInSlot = resolveStarsInCppType(tt, idx + 1, stars)
             addResultType(typeInSlot)
         else:
           inc i
@@ -862,9 +859,9 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
         result.add cppName.substr(chunkStart)
       else:
         result = cppNameAsRope & "<"
-        for i in 1..<origTyp.len-1:
+        for i in 1..<tt.len-1:
           if i > 1: result.add(" COMMA ")
-          addResultType(origTyp[i])
+          addResultType(tt[i])
         result.add("> ")
       # always call for sideeffects:
       assert t.kind != tyTuple

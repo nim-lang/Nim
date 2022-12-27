@@ -105,7 +105,6 @@ proc semWhile(c: PContext, n: PNode; flags: TExprFlags): PNode =
     result.typ = n[1].typ
   elif implicitlyDiscardable(n[1]):
     result[1].typ = c.enforceVoidContext
-    result.typ = c.enforceVoidContext
 
 proc semProc(c: PContext, n: PNode): PNode
 
@@ -725,9 +724,12 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if v.kind == skLet and sfImportc notin v.flags and (strictDefs notin c.features or not isLocalSym(v)):
           localError(c.config, a.info, errLetNeedsInit)
       if sfCompileTime in v.flags:
-        var x = newNodeI(result.kind, v.info)
-        x.add result[i]
-        vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x)
+        if a.kind != nkVarTuple:
+          var x = newNodeI(result.kind, v.info)
+          x.add result[i]
+          vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x)
+        else:
+          localError(c.config, a.info, "cannot destructure to compile time variable")
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
         message(c.config, v.info, hintGlobalVar)
       if {sfGlobal, sfPure} <= v.flags:
