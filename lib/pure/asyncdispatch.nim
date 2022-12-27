@@ -1990,7 +1990,7 @@ proc then*[T](fut: Future[T], todo: proc(value: T)) =
   proc p() {.async.} =
     try:
       todo(await fut)
-    except CatchableError:
+    except:
       discard
   discard p()
 
@@ -1999,7 +1999,7 @@ proc then*[T](fut: Future[T], todo: proc()) =
     try:
       discard await fut
       todo()
-    except CatchableError:
+    except:
       discard
   discard p()
 
