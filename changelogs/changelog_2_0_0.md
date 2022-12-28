@@ -135,6 +135,8 @@
 
 - The experimental strictFuncs feature now disallows a store to the heap via a `ref` or `ptr` indirection.
 
+- - Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
