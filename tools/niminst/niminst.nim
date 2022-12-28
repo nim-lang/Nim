@@ -544,7 +544,7 @@ proc srcdist(c: var ConfigData) =
       var dir = getOutputDir(c) / buildDir(osA, cpuA)
       if dirExists(dir): removeDir(dir)
       createDir(dir)
-      var cmd = ("$# compile -f --symbolfiles:off --compileonly " &
+      var cmd = ("$# compile -f --incremental:off --compileonly " &
                  "--gen_mapping --cc:gcc --skipUserCfg" &
                  " --os:$# --cpu:$# $# $#") %
                  [findNim(), osname, cpuname, c.nimArgs, c.mainfile]
