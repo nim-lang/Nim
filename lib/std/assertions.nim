@@ -8,6 +8,7 @@
 #
 
 when not defined(nimPreviewSlimSystem) and not declared(sysFatal):
+  include "system/rawquits"
   include "system/fatal"
 
 ## This module implements assertion handling.
