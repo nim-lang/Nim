@@ -335,9 +335,9 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
     if e.typ.kind == tyFromExpr:
       result = makeRangeWithStaticExpr(c, e.typ.n)
     elif e.kind in {nkIntLit..nkUInt64Lit}:
-      if e.intVal < 0:
+      if e.intVal < 1:
         localError(c.config, n.info,
-          "Array length can't be negative, but was " & $e.intVal)
+          "Array length must greater than zero, but was " & $e.intVal)
       result = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
     elif e.kind == nkSym and e.typ.kind == tyStatic:
       if e.sym.ast != nil:
