@@ -1930,7 +1930,7 @@ proc `$`*(address: IpAddress): string =
     result.add '.'
     result.addInt address.address_v4[3]
   of IpAddressFamily.IPv6:
-    result = newStringOfCap(48)
+    result = newStringOfCap(39)
     var
       currentZeroStart = -1
       currentZeroCount = 0
