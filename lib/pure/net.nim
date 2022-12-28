@@ -1921,7 +1921,7 @@ proc `$`*(address: IpAddress): string =
   ## Converts an IpAddress into the textual representation
   case address.family
   of IpAddressFamily.IPv4:
-    result = newStringOfCap(16)
+    result = newStringOfCap(15)
     result.addInt address.address_v4[0]
     result.add '.'
     result.addInt address.address_v4[1]
