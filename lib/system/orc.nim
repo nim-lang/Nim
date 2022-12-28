@@ -485,6 +485,19 @@ proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
     #if cell.color == colPurple:
     rememberCycle(result, cell, cast[ptr PNimTypeV2](p)[])
 
+proc nimDecRefIsLastDyn(p: pointer): bool {.compilerRtl, inl.} =
+  if p != nil:
+    var cell = head(p)
+    if (cell.rc and not rcMask) == 0:
+      result = true
+      #cprintf("[DESTROY] %p\n", p)
+    else:
+      dec cell.rc, rcIncrement
+    #if cell.color == colPurple:
+    if result:
+      if cell.rootIdx > 0:
+        unregisterCycle(cell)
+
 proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerRtl, inl.} =
   if p != nil:
     var cell = head(p)
