@@ -1630,8 +1630,7 @@ template newException*(exceptn: typedesc, message: string;
   (ref exceptn)(msg: message, parent: parentException)
 
 when not defined(nimPreviewSlimSystem):
-  import std/assertions
-  export assertions
+  include std/assertions
 
 import system/iterators
 export iterators
