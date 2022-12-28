@@ -68,7 +68,17 @@ proc main() =
 
     foo(1, 2, "5")
     doAssert x == 15
+  
+  block:
+    template main2() =
+      iterator fn(_, _: int, c: int): int = yield c
+    main2()
 
+  block:
+    template main =
+      proc foo(_: int) =
+        let a = _
+    doAssert not compiles(main())
 
 when not defined(js):
   static: main()

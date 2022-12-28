@@ -135,6 +135,21 @@
 
 - The experimental strictFuncs feature now disallows a store to the heap via a `ref` or `ptr` indirection.
 
+- Underscores (`_`) as routine parameters are now ignored and cannot be used in the routine body.
+  The following code now does not compile:
+
+  ```nim
+  proc foo(_: int): int = _ + 1
+  echo foo(1)
+  ```
+
+  Instead, the following code now compiles:
+
+  ```nim
+  proc foo(_, _: int): int = 123
+  echo foo(1, 2)
+  ```
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
