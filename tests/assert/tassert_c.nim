@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim $target $options --excessiveStackTrace:off $file"
+  cmd: "nim $target $options -d:nimPreviewSlimSystem --excessiveStackTrace:off $file"
   output: '''true'''
 """
 
