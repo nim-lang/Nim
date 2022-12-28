@@ -1654,7 +1654,7 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
     let verbose = actualStr == formalStr or optDeclaredLocs in conf.globalOptions
     var msg = "type mismatch:"
     if verbose: msg.add "\n"
-    if conf.isDefined("nimLegacyTypeMismatch"):
+    if verboseTypeMismatch in conf.legacyFeatures:
       msg.add  " got <$1>" % actualStr
     else:
       msg.add  " got '$1' for '$2'" % [actualStr, n.renderTree]

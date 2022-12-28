@@ -231,6 +231,7 @@ type
       ## are not anymore.
     laxEffects
       ## Lax effects system prior to Nim 2.0.
+    verboseTypeMismatch
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
