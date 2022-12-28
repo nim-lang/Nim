@@ -24,6 +24,27 @@ proc test() =
     doAssert ok(1, 2.6, "5", 5) == 5
     
   block:
+    proc ok[T](_, _, a: T): T =
+      doAssert not compiles(_)
+      a
+    doAssert ok(4, 2, 5) == 5
+    doAssert ok("a", "b", "c") == "c"
+    doAssert not compiles(ok(1, 2, "a"))
+  
+  block:
+    let ok = proc (_, _, a: int): int =
+      doAssert not compiles(_)
+      a
+    doAssert ok(4, 2, 5) == 5
+  
+  block:
+    proc foo(lam: proc (_, _, a: int): int): int =
+      lam(4, 2, 5)
+    doAssert foo(proc (_, _, a: auto): auto =
+      doAssert not compiles(_)
+      a) == 5
+    
+  block:
     iterator fn(_, _: int, c: int): int = yield c
     doAssert toSeq(fn(1,2,3)) == @[3]
 
@@ -47,8 +68,19 @@ proc test() =
   block:
     template ok(_: int, _: float, _: string, a: int): int = a
     doAssert ok(1, 2.6, "5", 5) == 5
+  
+  block:
+    template main2() =
+      iterator fn(_, _: int, c: int): int = yield c
+    main2()
 
-proc main() =
+  block:
+    template main =
+      proc foo(_: int) =
+        let a = _
+    doAssert not compiles(main())
+
+proc closureTest() =
   var x = 0
 
   block:
@@ -68,21 +100,10 @@ proc main() =
 
     foo(1, 2, "5")
     doAssert x == 15
-  
-  block:
-    template main2() =
-      iterator fn(_, _: int, c: int): int = yield c
-    main2()
-
-  block:
-    template main =
-      proc foo(_: int) =
-        let a = _
-    doAssert not compiles(main())
-
-when not defined(js):
-  static: main()
-main()
 
 static: test()
 test()
+
+when not defined(js):
+  static: closureTest()
+closureTest()

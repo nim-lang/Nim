@@ -323,6 +323,7 @@ proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
 # xxx pending bootstrap >= 1.4, replace all those overloads with a single one:
 # proc addDecl*(c: PContext, sym: PSym, info = sym.info, scope = c.currentScope) {.inline.} =
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
+  if sym.name.s == "_": return
   let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
     if sym.kind == skModule and conflict.kind == skModule and sym.owner == conflict.owner:
