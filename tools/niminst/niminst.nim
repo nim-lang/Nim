@@ -168,11 +168,11 @@ proc parseCmdLine(c: var ConfigData) =
     next(p)
     var kind = p.kind
     var key = p.key
-    var val = p.val.string
+    var val = p.val
     case kind
     of cmdArgument:
       if c.actions == {}:
-        for a in split(normalize(key.string), {';', ','}):
+        for a in split(normalize(key), {';', ','}):
           case a
           of "csource": incl(c.actions, actionCSource)
           of "scripts": incl(c.actions, actionScripts)
@@ -183,11 +183,11 @@ proc parseCmdLine(c: var ConfigData) =
           of "deb": incl(c.actions, actionDeb)
           else: quit(Usage)
       else:
-        c.infile = addFileExt(key.string, "ini")
-        c.nimArgs = cmdLineRest(p).string
+        c.infile = addFileExt(key, "ini")
+        c.nimArgs = cmdLineRest(p)
         break
     of cmdLongOption, cmdShortOption:
-      case normalize(key.string)
+      case normalize(key)
       of "help", "h":
         stdout.write(Usage)
         quit(0)
