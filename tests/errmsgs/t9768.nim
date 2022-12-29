@@ -8,7 +8,7 @@ t9768.nim(29, 33)        main
 t9768.nim(24, 11)        foo1
 '''
 """
-
+import std/assertions
 
 
 
