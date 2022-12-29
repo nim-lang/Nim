@@ -187,7 +187,7 @@ when not defined(nimscript):
               let kv = $e
               let p = find(kv, '=')
               yield (substr(kv, 0, p-1), substr(kv, p+1))
-              e = cast[typ](cast[int](eend)+size)
+              e = cast[typ](cast[ByteAddress](eend)+size)
               if typeof(zero)(eend[1]) == zero: break
             discard free_fun(env)
           impl(getEnvironmentStringsW, WideCString, 2, 0, freeEnvironmentStringsW)

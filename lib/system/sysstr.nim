@@ -17,10 +17,10 @@
 
 
 proc dataPointer(a: PGenericSeq, elemAlign: int): pointer =
-  cast[pointer](cast[int](a) +% align(GenericSeqSize, elemAlign))
+  cast[pointer](cast[ByteAddress](a) +% align(GenericSeqSize, elemAlign))
 
 proc dataPointer(a: PGenericSeq, elemAlign, elemSize, index: int): pointer =
-  cast[pointer](cast[int](a) +% align(GenericSeqSize, elemAlign) +% (index*%elemSize))
+  cast[pointer](cast[ByteAddress](a) +% align(GenericSeqSize, elemAlign) +% (index*%elemSize))
 
 proc resize(old: int): int {.inline.} =
   if old <= 0: result = 4

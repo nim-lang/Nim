@@ -495,8 +495,8 @@ proc mmsSetPosition(s: Stream, pos: int) =
 proc mmsGetPosition(s: Stream): int = MemMapFileStream(s).pos
 
 proc mmsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
-  let startAddress = cast[int](MemMapFileStream(s).mf.mem)
-  let p = cast[int](MemMapFileStream(s).pos)
+  let startAddress = cast[ByteAddress](MemMapFileStream(s).mf.mem)
+  let p = cast[ByteAddress](MemMapFileStream(s).pos)
   let l = min(bufLen, MemMapFileStream(s).mf.size - p)
   moveMem(buffer, cast[pointer](startAddress + p), l)
   result = l
@@ -511,8 +511,8 @@ proc mmsWriteData(s: Stream, buffer: pointer, bufLen: int) =
   let size = MemMapFileStream(s).mf.size
   if MemMapFileStream(s).pos + bufLen > size:
     raise newEIO("cannot write to stream")
-  let p = cast[int](MemMapFileStream(s).mf.mem) +
-          cast[int](MemMapFileStream(s).pos)
+  let p = cast[ByteAddress](MemMapFileStream(s).mf.mem) +
+          cast[ByteAddress](MemMapFileStream(s).pos)
   moveMem(cast[pointer](p), buffer, bufLen)
   inc(MemMapFileStream(s).pos, bufLen)
 

@@ -67,7 +67,7 @@ type # these work for most platforms:
     ## This is the same as the type `unsigned long long` in *C*.
 
 type
-  ByteAddress* {.deprecated: "use `uint`".} = int
+  ByteAddress* = int
     ## is the signed integer type that should be used for converting
     ## pointers to integer addresses for readability.
 
