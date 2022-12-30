@@ -772,6 +772,8 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
                  formatMissingEnums(c, a))
     else:
       localError(c.config, a.info, "not all cases are covered")
+  if n.len == 2 and chckCovered:
+    incl(a[0].sym.flags, sfDiscriminantAllInOne)
   father.add a
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,

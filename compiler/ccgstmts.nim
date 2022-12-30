@@ -1599,7 +1599,8 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   initLocExpr(p, e[0], a)
   getTemp(p, a.t, tmp)
   expr(p, e[1], tmp)
-  if optTinyRtti notin p.config.globalOptions and p.inUncheckedAssignSection == 0:
+  if optTinyRtti notin p.config.globalOptions and p.inUncheckedAssignSection == 0 and
+    sfDiscriminantAllInOne notin dotExpr[1].sym.flags:
     let field = dotExpr[1].sym
     genDiscriminantCheck(p, a, tmp, dotExpr[0].typ, field)
     message(p.config, e.info, warnCaseTransition)
