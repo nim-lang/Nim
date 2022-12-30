@@ -550,7 +550,7 @@ template test*(name, body) {.dirty.} =
         defer: testTeardownIMPL()
       body
 
-    except:
+    except CatchableError:
       let e = getCurrentException()
       let eTypeDesc = "[" & exceptionTypeName(e) & "]"
       checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
