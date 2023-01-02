@@ -9,10 +9,9 @@
 
 # This module implements the renderer of the standard Nim representation.
 
-when defined(nimHasUsed):
-  # 'import renderer' is so useful for debugging
-  # that Nim shouldn't produce a warning for that:
-  {.used.}
+# 'import renderer' is so useful for debugging
+# that Nim shouldn't produce a warning for that:
+{.used.}
 
 import
   lexer, options, idents, strutils, ast, msgs, lineinfos
@@ -24,7 +23,7 @@ type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,
     renderNoPragmas, renderIds, renderNoProcDefs, renderSyms, renderRunnableExamples,
-    renderIr
+    renderIr, renderExpandUsing
   TRenderFlags* = set[TRenderFlag]
   TRenderTok* = object
     kind*: TokType
@@ -434,6 +433,24 @@ proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   result = 0
   for i in start..n.len + theEnd: inc(result, lsub(g, n[i]))
 
+proc origUsingType(n: PNode): PSym {.inline.} =
+  ## Returns the type that a parameter references. Check with referencesUsing first
+  ## to check `n` is actually referencing a using node
+  # If the node is untyped the typ field will be nil
+  if n[0].sym.typ != nil:
+    n[0].sym.typ.sym
+  else: nil
+
+proc referencesUsing(n: PNode): bool =
+  ## Returns true if n references a using statement.
+  ## e.g. proc foo(x) # x doesn't have type or def value so it references a using
+  result = n.kind == nkIdentDefs and
+           # Sometimes the node might not have been semmed (e.g. doc0) and will be nkIdent instead
+           n[0].kind == nkSym and
+           # Templates/macros can have parameters with no type (But their orig type will be nil)
+           n.origUsingType != nil and
+           n[1].kind == nkEmpty and n[2].kind == nkEmpty
+
 proc lsub(g: TSrcGen; n: PNode): int =
   # computes the length of a tree
   if isNil(n): return 0
@@ -474,8 +491,11 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkDo: result = lsons(g, n) + len("do__:_")
   of nkConstDef, nkIdentDefs:
     result = lcomma(g, n, 0, - 3)
-    if n[^2].kind != nkEmpty: result += lsub(g, n[^2]) + 2
-    if n[^1].kind != nkEmpty: result += lsub(g, n[^1]) + 3
+    if n.referencesUsing:
+      result += lsub(g, newSymNode(n.origUsingType)) + 2
+    else:
+      if n[^2].kind != nkEmpty: result += lsub(g, n[^2]) + 2
+      if n[^1].kind != nkEmpty: result += lsub(g, n[^1]) + 3
   of nkVarTuple:
     if n[^1].kind == nkEmpty:
       result = lcomma(g, n, 0, - 2) + len("()")
@@ -598,7 +618,9 @@ proc isHideable(config: ConfigRef, n: PNode): bool =
   # xxx compare `ident` directly with `getIdent(cache, wRaises)`, but
   # this requires a `cache`.
   case n.kind
-  of nkExprColonExpr: result = n[0].kind == nkIdent and n[0].ident.s in ["raises", "tags", "extern", "deprecated", "forbids"]
+  of nkExprColonExpr:
+    result = n[0].kind == nkIdent and
+             n[0].ident.s.nimIdentNormalize in ["raises", "tags", "extern", "deprecated", "forbids", "stacktrace"]
   of nkIdent: result = n.ident.s in ["gcsafe", "deprecated"]
   else: result = false
 
@@ -1284,7 +1306,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     gcomma(g, n, 0, -3)
     if n.len >= 2 and n[^2].kind != nkEmpty:
       putWithSpace(g, tkColon, ":")
-      gsub(g, n, n.len - 2)
+      gsub(g, n[^2], c)
+    elif n.referencesUsing and renderExpandUsing in g.flags:
+      putWithSpace(g, tkColon, ":")
+      gsub(g, newSymNode(n.origUsingType), c)
+
     if n.len >= 1 and n[^1].kind != nkEmpty:
       put(g, tkSpaces, Space)
       putWithSpace(g, tkEquals, "=")

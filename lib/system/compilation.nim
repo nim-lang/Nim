@@ -6,11 +6,11 @@ const
     ##   ```
     # see also std/private/since
 
-  NimMinor* {.intdefine.}: int = 7
+  NimMinor* {.intdefine.}: int = 9
     ## is the minor number of Nim's version.
     ## Odd for devel, even for releases.
 
-  NimPatch* {.intdefine.}: int = 3
+  NimPatch* {.intdefine.}: int = 1
     ## is the patch number of Nim's version.
     ## Odd for devel, even for releases.
 
@@ -51,30 +51,24 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## * `compileOption <#compileOption,string,string>`_ for enum options
   ## * `define pragmas <manual.html#implementation-specific-pragmas-compileminustime-define-pragmas>`_
 
-when defined(nimHasDeclaredMagic):
-  proc declared*(x: untyped): bool {.magic: "Declared", noSideEffect, compileTime.}
-    ## Special compile-time procedure that checks whether `x` is
-    ## declared. `x` has to be an identifier or a qualified identifier.
-    ##
-    ## This can be used to check whether a library provides a certain
-    ## feature or not:
-    ##   ```
-    ##   when not declared(strutils.toUpper):
-    ##     # provide our own toUpper proc here, because strutils is
-    ##     # missing it.
-    ##   ```
-    ##
-    ## See also:
-    ## * `declaredInScope <#declaredInScope,untyped>`_
-else:
-  proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
+proc declared*(x: untyped): bool {.magic: "Declared", noSideEffect, compileTime.}
+  ## Special compile-time procedure that checks whether `x` is
+  ## declared. `x` has to be an identifier or a qualified identifier.
+  ##
+  ## This can be used to check whether a library provides a certain
+  ## feature or not:
+  ##   ```
+  ##   when not declared(strutils.toUpper):
+  ##     # provide our own toUpper proc here, because strutils is
+  ##     # missing it.
+  ##   ```
+  ##
+  ## See also:
+  ## * `declaredInScope <#declaredInScope,untyped>`_
 
-when defined(nimHasDeclaredMagic):
-  proc declaredInScope*(x: untyped): bool {.magic: "DeclaredInScope", noSideEffect, compileTime.}
-    ## Special compile-time procedure that checks whether `x` is
-    ## declared in the current scope. `x` has to be an identifier.
-else:
-  proc declaredInScope*(x: untyped): bool {.magic: "DefinedInScope", noSideEffect, compileTime.}
+proc declaredInScope*(x: untyped): bool {.magic: "DeclaredInScope", noSideEffect, compileTime.}
+  ## Special compile-time procedure that checks whether `x` is
+  ## declared in the current scope. `x` has to be an identifier.
 
 proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.} =
   ## Special compile-time procedure that checks whether `x` can be compiled

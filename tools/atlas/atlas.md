@@ -28,7 +28,7 @@ a `nim.cfg` file for the compiler. For example:
 ```
 
 The version selection is deterministic, it picks up the *minimum* required
-version. Thanks to this design, lock files are not required.
+version. Thanks to this design, lock files are much less important.
 
 
 ## Dependencies
@@ -75,3 +75,7 @@ then `clone <url>` is performed.
 Search the package index `packages.json` for a package that the given terms
 in its description (or name or list of tags).
 
+
+### Install <proj.nimble>
+
+Use the .nimble file to setup the project's dependencies.

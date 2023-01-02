@@ -77,7 +77,7 @@ proc importcSymbol*(conf: ConfigRef, sym: PSym): PNode =
       theAddr = dllhandle.symAddr(name.cstring)
     if theAddr.isNil: globalError(conf, sym.info,
       "cannot import symbol: " & name & " from " & libPathMsg)
-    result.intVal = cast[ByteAddress](theAddr)
+    result.intVal = cast[int](theAddr)
 
 proc mapType(conf: ConfigRef, t: ast.PType): ptr libffi.Type =
   if t == nil: return addr libffi.type_void
@@ -113,7 +113,7 @@ proc mapCallConv(conf: ConfigRef, cc: TCallingConvention, info: TLineInfo): TABI
 template rd(typ, p: untyped): untyped = (cast[ptr typ](p))[]
 template wr(typ, p, v: untyped): untyped = (cast[ptr typ](p))[] = v
 template `+!`(x, y: untyped): untyped =
-  cast[pointer](cast[ByteAddress](x) + y)
+  cast[pointer](cast[int](x) + y)
 
 proc packSize(conf: ConfigRef, v: PNode, typ: PType): int =
   ## computes the size of the blob
@@ -369,13 +369,13 @@ proc unpack(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
       # in their unboxed representation so nothing it to be unpacked:
       result = n
     else:
-      awi(nkPtrLit, cast[ByteAddress](p))
+      awi(nkPtrLit, cast[int](p))
   of tyPtr, tyRef, tyVar, tyLent:
     let p = rd(pointer, x)
     if p.isNil:
       setNil()
     elif n == nil or n.kind == nkPtrLit:
-      awi(nkPtrLit, cast[ByteAddress](p))
+      awi(nkPtrLit, cast[int](p))
     elif n != nil and n.len == 1:
       internalAssert(conf, n.kind == nkRefTy)
       n[0] = unpack(conf, p, typ.lastSon, n[0])

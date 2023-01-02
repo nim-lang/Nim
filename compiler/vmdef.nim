@@ -141,7 +141,8 @@ type
     opcNError,
     opcNWarning,
     opcNHint,
-    opcNGetLineInfo, opcNSetLineInfo,
+    opcNGetLineInfo, opcNCopyLineInfo, opcNSetLineInfoLine,
+    opcNSetLineInfoColumn, opcNSetLineInfoFile
     opcEqIdent,
     opcStrToIdent,
     opcGetImpl,

@@ -85,17 +85,12 @@ when defined(nimHasIterable):
   type
     iterable*[T] {.magic: IterableType.}  ## Represents an expression that yields `T`
 
-when defined(nimHashOrdinalFixed):
-  type
-    Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
-                                   ## bool, character, and enumeration types
-                                   ## as well as their subtypes. See also
-                                   ## `SomeOrdinal`.
-else:
-  # bootstrap < 1.2.0
-  type
-    OrdinalImpl[T] {.magic: Ordinal.}
-    Ordinal* = OrdinalImpl | uint | uint64
+type
+  Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
+                                  ## bool, character, and enumeration types
+                                  ## as well as their subtypes. See also
+                                  ## `SomeOrdinal`.
+
 
 proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory location.
@@ -451,9 +446,7 @@ type
            ## However, objects that have no ancestor are also allowed.
   RootRef* = ref RootObj ## Reference to `RootObj`.
 
-const NimStackTraceMsgs =
-  when defined(nimHasStacktraceMsgs): compileOption("stacktraceMsgs")
-  else: false
+const NimStackTraceMsgs = compileOption("stacktraceMsgs")
 
 type
   RootEffect* {.compilerproc.} = object of RootObj ## \
@@ -1088,31 +1081,9 @@ proc align(address, alignment: int): int =
   else:
     result = (address + (alignment - 1)) and not (alignment - 1)
 
-when defined(nimNoQuit):
-  proc rawQuit(errorcode: int = QuitSuccess) = discard "ignoring quit"
-
-elif defined(genode):
-  import genode/env
-
-  var systemEnv {.exportc: runtimeEnvSym.}: GenodeEnvPtr
-
-  type GenodeEnv* = GenodeEnvPtr
-    ## Opaque type representing Genode environment.
-
-  proc rawQuit(env: GenodeEnv; errorcode: int) {.magic: "Exit", noreturn,
-    importcpp: "#->parent().exit(@); Genode::sleep_forever()", header: "<base/sleep.h>".}
-
-  proc rawQuit(errorcode: int = QuitSuccess) {.inline, noreturn.} =
-    systemEnv.rawQuit(errorcode)
-
-
-elif defined(js) and defined(nodejs) and not defined(nimscript):
-  proc rawQuit(errorcode: int = QuitSuccess) {.magic: "Exit",
-    importc: "process.exit", noreturn.}
-
-else:
-  proc rawQuit(errorcode: cint) {.
-    magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
+include system/rawquits
+when defined(genode):
+  export GenodeEnv
 
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
@@ -1630,7 +1601,6 @@ template newException*(exceptn: typedesc, message: string;
   (ref exceptn)(msg: message, parent: parentException)
 
 when not defined(nimPreviewSlimSystem):
-  {.deprecated: "assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/assertions`".}
   import std/assertions
   export assertions
 
@@ -1664,6 +1634,8 @@ proc contains*[T](a: openArray[T], item: T): bool {.inline.}=
 proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
   ## Returns the last item of `s` and decreases `s.len` by one. This treats
   ## `s` as a stack and implements the common *pop* operation.
+  ##
+  ## Raises `IndexDefect` if `s` is empty.
   runnableExamples:
     var a = @[1, 3, 5, 7]
     let b = pop(a)
@@ -2066,7 +2038,6 @@ when not defined(js):
     when hostOS != "standalone":
       include system/threadimpl
       when not defined(nimPreviewSlimSystem):
-        {.deprecated: "threads is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/typedthreads`".}
         import std/typedthreads
         export typedthreads
 
@@ -2113,10 +2084,7 @@ when notJSnotNims:
 
   # we cannot compile this with stack tracing on
   # as it would recurse endlessly!
-  when defined(nimNewIntegerOps):
-    include "system/integerops"
-  else:
-    include "system/arithm"
+  include "system/integerops"
   {.pop.}
 
 
@@ -2660,11 +2628,10 @@ when defined(nimconfig):
 when not defined(js):
   proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
-  when defined(nimToOpenArrayCString):
-    proc toOpenArray*(x: cstring; first, last: int): openArray[char] {.
-      magic: "Slice".}
-    proc toOpenArrayByte*(x: cstring; first, last: int): openArray[byte] {.
-      magic: "Slice".}
+  proc toOpenArray*(x: cstring; first, last: int): openArray[char] {.
+    magic: "Slice".}
+  proc toOpenArrayByte*(x: cstring; first, last: int): openArray[byte] {.
+    magic: "Slice".}
 
 proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
   magic: "Slice".}
@@ -2780,7 +2747,6 @@ when notJSnotNims:
         releaseSys echoLock
 
 when not defined(nimPreviewSlimSystem):
-  {.deprecated: "io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`".}
   import std/syncio
   export syncio
 

@@ -13,21 +13,7 @@ template toLocation*(result: var string, file: string | cstring, line: int, col:
       addInt(result, col)
     result.add ")"
 
-when defined(nimHasIsNamedTuple):
-  proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
-else:
-  # for bootstrap; remove after release 1.2
-  proc isNamedTuple(T: typedesc): bool =
-    # Taken from typetraits.
-    when T isnot tuple: result = false
-    else:
-      var t: T
-      for name, _ in t.fieldPairs:
-        when name == "Field0":
-          return compiles(t.Field0)
-        else:
-          return true
-      return false
+proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 
 template tupleObjectDollar*[T: tuple | object](result: var string, x: T) =
   result = "("

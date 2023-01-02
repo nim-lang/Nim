@@ -15,8 +15,8 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) {.benign.
 proc genericAssignAux(dest, src: pointer, n: ptr TNimNode,
                       shallow: bool) {.benign.} =
   var
-    d = cast[ByteAddress](dest)
-    s = cast[ByteAddress](src)
+    d = cast[int](dest)
+    s = cast[int](src)
   case n.kind
   of nkSlot:
     genericAssignAux(cast[pointer](d +% n.offset),
@@ -56,8 +56,8 @@ template deepSeqAssignImpl(operation, additionalArg) {.dirty.} =
 
 proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
   var
-    d = cast[ByteAddress](dest)
-    s = cast[ByteAddress](src)
+    d = cast[int](dest)
+    s = cast[int](src)
   sysAssert(mt != nil, "genericAssignAux 2")
   case mt.kind
   of tyString:
@@ -89,17 +89,17 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
         var ss = nimNewSeqOfCap(mt, seq.len)
         cast[PGenericSeq](ss).len = seq.len
         unsureAsgnRef(x, ss)
-        var dst = cast[ByteAddress](cast[PPointer](dest)[])
+        var dst = cast[int](cast[PPointer](dest)[])
         copyMem(cast[pointer](dst +% align(GenericSeqSize, mt.base.align)),
-                cast[pointer](cast[ByteAddress](s2) +% align(GenericSeqSize, mt.base.align)),
+                cast[pointer](cast[int](s2) +% align(GenericSeqSize, mt.base.align)),
                 seq.len *% mt.base.size)
       else:
         unsureAsgnRef(x, newSeq(mt, seq.len))
-        var dst = cast[ByteAddress](cast[PPointer](dest)[])
+        var dst = cast[int](cast[PPointer](dest)[])
         for i in 0..seq.len-1:
           genericAssignAux(
             cast[pointer](dst +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size ),
-            cast[pointer](cast[ByteAddress](s2) +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size ),
+            cast[pointer](cast[int](s2) +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size ),
             mt.base, shallow)
   of tyObject:
     var it = mt.base
@@ -181,15 +181,15 @@ proc genericSeqAssign(dest, src: pointer, mt: PNimType) {.compilerproc.} =
 proc genericAssignOpenArray(dest, src: pointer, len: int,
                             mt: PNimType) {.compilerproc.} =
   var
-    d = cast[ByteAddress](dest)
-    s = cast[ByteAddress](src)
+    d = cast[int](dest)
+    s = cast[int](src)
   for i in 0..len-1:
     genericAssign(cast[pointer](d +% i *% mt.base.size),
                   cast[pointer](s +% i *% mt.base.size), mt.base)
 
 proc objectInit(dest: pointer, typ: PNimType) {.compilerproc, benign.}
 proc objectInitAux(dest: pointer, n: ptr TNimNode) {.benign.} =
-  var d = cast[ByteAddress](dest)
+  var d = cast[int](dest)
   case n.kind
   of nkNone: sysAssert(false, "objectInitAux")
   of nkSlot: objectInit(cast[pointer](d +% n.offset), n.typ)
@@ -203,7 +203,7 @@ proc objectInitAux(dest: pointer, n: ptr TNimNode) {.benign.} =
 proc objectInit(dest: pointer, typ: PNimType) =
   # the generic init proc that takes care of initialization of complex
   # objects on the stack or heap
-  var d = cast[ByteAddress](dest)
+  var d = cast[int](dest)
   case typ.kind
   of tyObject:
     # iterate over any structural type
@@ -226,7 +226,7 @@ proc objectInit(dest: pointer, typ: PNimType) =
 
 proc genericReset(dest: pointer, mt: PNimType) {.compilerproc, benign.}
 proc genericResetAux(dest: pointer, n: ptr TNimNode) =
-  var d = cast[ByteAddress](dest)
+  var d = cast[int](dest)
   case n.kind
   of nkNone: sysAssert(false, "genericResetAux")
   of nkSlot: genericReset(cast[pointer](d +% n.offset), n.typ)
@@ -238,7 +238,7 @@ proc genericResetAux(dest: pointer, n: ptr TNimNode) =
     zeroMem(cast[pointer](d +% n.offset), n.typ.size)
 
 proc genericReset(dest: pointer, mt: PNimType) =
-  var d = cast[ByteAddress](dest)
+  var d = cast[int](dest)
   sysAssert(mt != nil, "genericReset 2")
   case mt.kind
   of tyRef:

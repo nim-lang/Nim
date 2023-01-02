@@ -172,6 +172,7 @@ type
 
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
+template vccAndC*(p: BProc): bool = p.module.config.cCompiler == ccVcc and p.module.config.backend == backendC
 
 proc includeHeader*(this: BModule; header: string) =
   if not this.headerFiles.contains header:

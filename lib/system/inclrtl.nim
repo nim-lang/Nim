@@ -47,5 +47,4 @@ else:
 
 {.pragma: benign, gcsafe.}
 
-when defined(nimHasSinkInference):
-  {.push sinkInference: on.}
+{.push sinkInference: on.}

@@ -11,8 +11,6 @@
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
-else:
-  {.deprecated: "formatfloat is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/formatfloat`".}
 
 proc c_memcpy(a, b: pointer, size: csize_t): pointer {.importc: "memcpy", header: "<string.h>", discardable.}
 

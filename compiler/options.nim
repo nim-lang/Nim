@@ -24,7 +24,7 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2022"
+  copyrightYear* = "2023"
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
@@ -196,7 +196,6 @@ type
     ideRecompile, ideChanged, ideType, ideDeclaration
 
   Feature* = enum  ## experimental features; DO NOT RENAME THESE!
-    implicitDeref, # deadcode; remains here for backwards compatibility
     dotOperators,
     callOperator,
     parallel,
@@ -232,6 +231,7 @@ type
       ## are not anymore.
     laxEffects
       ## Lax effects system prior to Nim 2.0.
+    verboseTypeMismatch
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
@@ -457,7 +457,7 @@ when false:
     fn(globalOptions)
     fn(selectedGC)
 
-const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
+const oldExperimentalFeatures* = {dotOperators, callOperator, parallel}
 
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
