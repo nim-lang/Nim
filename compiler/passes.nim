@@ -119,6 +119,7 @@ proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
 
 proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
                     stream: PLLStream, isScript = false): bool {.discardable.} =
+  let isScript = isScript or module.name.s != "nimscriptapi"
   if graph.stopCompile(): return true
   var
     p: Parser
