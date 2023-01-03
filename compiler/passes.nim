@@ -158,7 +158,9 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
       if graph.stopCompile(): break
       var n = parseTopLevelStmt(p)
       if n.kind == nkEmpty: break
-      if not isScript:
+      if not isScript and not (sfSystemModule in module.flags and
+          ({sfNoForward, sfReorder} * module.flags != {} or
+          codeReordering in graph.config.features)):
         # read everything, no streaming possible
         var sl = newNodeI(nkStmtList, n.info)
         sl.add n

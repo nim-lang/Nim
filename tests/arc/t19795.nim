@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:arc"
+"""
+
 # bug #19795
 # bug #21085
 
