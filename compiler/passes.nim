@@ -118,7 +118,7 @@ proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
   #module.id >= 0 or isDefined(graph.config, "nimBackendAssumesChange")
 
 proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
-                    stream: PLLStream): bool {.discardable.} =
+                    stream: PLLStream, isScript = false): bool {.discardable.} =
   if graph.stopCompile(): return true
   var
     p: Parser
@@ -157,7 +157,7 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
       if graph.stopCompile(): break
       var n = parseTopLevelStmt(p)
       if n.kind == nkEmpty: break
-      if true:
+      if not isScript:
         # read everything, no streaming possible
         var sl = newNodeI(nkStmtList, n.info)
         sl.add n

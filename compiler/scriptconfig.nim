@@ -219,7 +219,7 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   graph.vm = vm
 
   graph.compileSystemModule()
-  discard graph.processModule(m, vm.idgen, stream)
+  discard graph.processModule(m, vm.idgen, stream, isScript = true)
 
   # watch out, "newruntime" can be set within NimScript itself and then we need
   # to remember this:

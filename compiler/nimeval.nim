@@ -76,7 +76,7 @@ proc evalScript*(i: Interpreter; scriptStream: PLLStream = nil) =
 
   let s = if scriptStream != nil: scriptStream
           else: llStreamOpen(findFile(i.graph.config, i.scriptName), fmRead)
-  processModule(i.graph, i.mainModule, i.idgen, s)
+  processModule(i.graph, i.mainModule, i.idgen, s, isScript = true)
 
 proc findNimStdLib*(): string =
   ## Tries to find a path to a valid "system.nim" file.
@@ -168,4 +168,4 @@ proc runRepl*(r: TLLRepl;
 
   if supportNimscript: graph.vm = setupVM(m, cache, "stdin", graph, idgen)
   graph.compileSystemModule()
-  processModule(graph, m, idgen, llStreamOpenStdIn(r))
+  processModule(graph, m, idgen, llStreamOpenStdIn(r), isScript = true)
