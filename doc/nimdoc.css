@@ -147,6 +147,15 @@ body {
   box-sizing: border-box;
   margin-left: 1%; }
 
+@media print {
+  #global-links, .link-seesrc, .theme-switch-wrapper, #searchInputDiv, .search-groupby {
+    display:none;
+  }
+  .columns {
+    width:100% !important;
+  }
+}
+
 .column:first-child, .columns:first-child {
   margin-left: 0; }
 
