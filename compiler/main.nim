@@ -186,7 +186,7 @@ proc commandInteractive(graph: ModuleGraph) =
     incl(m.flags, sfMainModule)
     var idgen = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0)
     let s = llStreamOpenStdIn(onPrompt = proc() = flushDot(graph.config))
-    processModule(graph, m, idgen, s, isScript = true)
+    processModule(graph, m, idgen, s)
 
 proc commandScan(cache: IdentCache, config: ConfigRef) =
   var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
