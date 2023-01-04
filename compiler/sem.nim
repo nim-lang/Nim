@@ -709,6 +709,8 @@ proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext 
 
 proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
   if g.systemModule == nil: return false
+  doAssert n.kind == nkStmtList and n.len > 0
+  let n = n[0]
   case n.kind
   of nkImportStmt:
     for x in n:
