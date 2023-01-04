@@ -119,7 +119,7 @@ proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
 
 proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
                     stream: PLLStream, isScript = false): bool {.discardable.} =
-  let isScript = isScript or module.name.s != "nimscriptapi"
+  let isScript = isScript or module.name.s == "nimscriptapi"
   if graph.stopCompile(): return true
   var
     p: Parser
@@ -158,9 +158,8 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
       if graph.stopCompile(): break
       var n = parseTopLevelStmt(p)
       if n.kind == nkEmpty: break
-      if not isScript and not (sfSystemModule in module.flags and
-          ({sfNoForward, sfReorder} * module.flags != {} or
-          codeReordering in graph.config.features)):
+
+      if not isScript:
         # read everything, no streaming possible
         var sl = newNodeI(nkStmtList, n.info)
         sl.add n
