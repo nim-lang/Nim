@@ -7,6 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
+when not defined(nimPreviewSlimSystem) and not declared(sysFatal):
+  include "system/rawquits"
+  include "system/fatal"
+
 ## This module implements assertion handling.
 
 import std/private/miscdollars
@@ -26,7 +30,10 @@ proc `$`(info: InstantiationInfo): string =
 
 proc raiseAssert*(msg: string) {.noinline, noreturn, nosinks.} =
   ## Raises an `AssertionDefect` with `msg`.
-  raise newException(AssertionDefect, msg)
+  when defined(nimPreviewSlimSystem):
+    raise newException(AssertionDefect, msg)
+  else:
+    sysFatal(AssertionDefect, msg)
 
 proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   ## Raises an `AssertionDefect` with `msg`, but this is hidden

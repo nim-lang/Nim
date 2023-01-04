@@ -1620,6 +1620,7 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     initLoc(a, locNone, le, OnUnknown)
     a.flags.incl(lfEnforceDeref)
     a.flags.incl(lfPrepareForMutation)
+    genLineDir(p, le) # it can be a nkBracketExpr, which may raise
     expr(p, le, a)
     a.flags.excl(lfPrepareForMutation)
     if fastAsgn: incl(a.flags, lfNoDeepCopy)

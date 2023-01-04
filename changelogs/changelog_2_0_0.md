@@ -150,6 +150,8 @@
   echo foo(1, 2)
   ```
 
+- - Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
