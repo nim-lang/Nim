@@ -43,7 +43,7 @@ proc fun*() =
     proc fun*()=echo "foo5"
     fun()
 
-  runnableExamples:
+  runnableExamples("--experimental:codeReordering"):
     # `codeReordering` only allowed at top level
     {.experimental: "codeReordering".}
     proc fun1() = fun2()

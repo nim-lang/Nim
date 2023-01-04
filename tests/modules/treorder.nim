@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim -d:testdef $target $file"
+  matrix: "--experimental:codeReordering"
   output: '''works 34
 34
 defined
