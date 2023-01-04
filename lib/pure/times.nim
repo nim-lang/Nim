@@ -1125,7 +1125,7 @@ proc isLeapDay*(dt: DateTime): bool {.since: (1, 1).} =
     let dt2 = dateTime(2020, mFeb, 28, 00, 00, 00, 00, utc())
     doAssert not dt2.isLeapDay
     doAssert dt2+1.years-1.years == dt2
-    doAssertRaises(Exception): discard dateTime(2021, mFeb, 29, 00, 00, 00, 00, utc())
+    doAssertRaises(CatchableError): discard dateTime(2021, mFeb, 29, 00, 00, 00, 00, utc())
   assertDateTimeInitialized dt
   dt.year.isLeapYear and dt.month == mFeb and dt.monthday == 29
 
