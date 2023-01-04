@@ -23,6 +23,8 @@ when defined(nimPreviewSlimSystem):
 
 ## .. include:: ../../doc/astspec.txt
 
+## .. importdoc:: system.nim
+
 # If you look for the implementation of the magic symbol
 # ``{.magic: "Foo".}``, search for `mFoo` and `opcFoo`.
 
