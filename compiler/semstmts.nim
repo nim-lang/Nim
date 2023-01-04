@@ -105,7 +105,6 @@ proc semWhile(c: PContext, n: PNode; flags: TExprFlags): PNode =
     result.typ = n[1].typ
   elif implicitlyDiscardable(n[1]):
     result[1].typ = c.enforceVoidContext
-    result.typ = c.enforceVoidContext
 
 proc semProc(c: PContext, n: PNode): PNode
 
@@ -210,6 +209,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
       isImported = true
     elif not isException(typ):
       localError(c.config, typeNode.info, errExprCannotBeRaised)
+    elif not isDefectOrCatchableError(typ):
+      message(c.config, a.info, warnBareExcept, "catch a more precise Exception deriving from CatchableError or Defect.")
 
     if containsOrIncl(check, typ.id):
       localError(c.config, typeNode.info, errExceptionAlreadyHandled)
@@ -251,7 +252,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
       elif a.len == 1:
         # count number of ``except: body`` blocks
         inc catchAllExcepts
-
+        message(c.config, a.info, warnBareExcept,
+                  "The bare except clause is deprecated; use `except CatchableError:` instead")
       else:
         # support ``except KeyError, ValueError, ... : body``
         if catchAllExcepts > 0:
@@ -722,9 +724,12 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if v.kind == skLet and sfImportc notin v.flags and (strictDefs notin c.features or not isLocalSym(v)):
           localError(c.config, a.info, errLetNeedsInit)
       if sfCompileTime in v.flags:
-        var x = newNodeI(result.kind, v.info)
-        x.add result[i]
-        vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x)
+        if a.kind != nkVarTuple:
+          var x = newNodeI(result.kind, v.info)
+          x.add result[i]
+          vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x)
+        else:
+          localError(c.config, a.info, "cannot destructure to compile time variable")
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
         message(c.config, v.info, hintGlobalVar)
       if {sfGlobal, sfPure} <= v.flags:

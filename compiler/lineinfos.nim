@@ -86,6 +86,7 @@ type
     warnImplicitTemplateRedefinition = "ImplicitTemplateRedefinition",
     warnUnnamedBreak = "UnnamedBreak",
     warnStmtListLambda = "StmtListLambda",
+    warnBareExcept = "BareExcept",
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -185,6 +186,7 @@ const
     warnImplicitTemplateRedefinition: "template '$1' is implicitly redefined; this is deprecated, add an explicit .redefine pragma",
     warnUnnamedBreak: "Using an unnamed break in a block is deprecated; Use a named block with a named break instead",
     warnStmtListLambda: "statement list expression assumed to be anonymous proc; this is deprecated, use `do (): ...` or `proc () = ...` instead",
+    warnBareExcept: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`

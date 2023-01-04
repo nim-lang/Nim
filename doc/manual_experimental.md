@@ -65,6 +65,29 @@ However, a `void` type cannot be inferred in generic code:
 The `void` type is only valid for parameters and return types; other symbols
 cannot have the type `void`.
 
+Generic `define` pragma
+=======================
+
+Aside the [typed define pragmas for constants](manual.html#implementation-specific-pragmas-compileminustime-define-pragmas),
+there is a generic `{.define.}` pragma that interprets the value of the define
+based on the type of the constant value.
+
+  ```nim
+  const foo {.define: "package.foo".} = 123
+  const bar {.define: "package.bar".} = false
+  ```
+
+  ```cmd
+  nim c -d:package.foo=456 -d:package.bar foobar.nim
+  ```
+
+The following types are supported:
+
+* `string` and `cstring`
+* Signed and unsigned integer types
+* `bool`
+* Enums
+
 Top-down type inference
 =======================
 

@@ -944,14 +944,26 @@ func toHex*[T: SomeInteger](x: T, len: Positive): string =
     doAssert b.toHex(4) == "1001"
     doAssert toHex(62, 3) == "03E"
     doAssert toHex(-8, 6) == "FFFFF8"
-  toHexImpl(cast[BiggestUInt](x), len, x < 0)
+  when defined(js):
+    toHexImpl(cast[BiggestUInt](x), len, x < 0)
+  else:
+    when T is SomeSignedInt:
+      toHexImpl(cast[BiggestUInt](BiggestInt(x)), len, x < 0)
+    else:
+      toHexImpl(BiggestUInt(x), len, x < 0)
 
 func toHex*[T: SomeInteger](x: T): string =
   ## Shortcut for `toHex(x, T.sizeof * 2)`
   runnableExamples:
     doAssert toHex(1984'i64) == "00000000000007C0"
     doAssert toHex(1984'i16) == "07C0"
-  toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
+  when defined(js):
+    toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
+  else:
+    when T is SomeSignedInt:
+      toHexImpl(cast[BiggestUInt](BiggestInt(x)), 2*sizeof(T), x < 0)
+    else:
+      toHexImpl(BiggestUInt(x), 2*sizeof(T), x < 0)
 
 func toHex*(s: string): string {.rtl.} =
   ## Converts a bytes string to its hexadecimal representation.
@@ -1914,7 +1926,7 @@ func find*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
       if length > 0:
         let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](length))
         if not found.isNil:
-          return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+          return cast[int](found) -% cast[int](s.cstring)
     else:
       findImpl()
 
@@ -1970,7 +1982,7 @@ func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
       if last < 0 and start < s.len and subLen != 0:
         let found = memmem(s[start].unsafeAddr, csize_t(s.len - start), sub.cstring, csize_t(subLen))
         result = if not found.isNil:
-            cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+            cast[int](found) -% cast[int](s.cstring)
           else:
             -1
       else:

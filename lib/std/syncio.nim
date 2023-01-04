@@ -480,7 +480,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     let m = c_memchr(addr line[pos], '\L'.ord, cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
-      var last = cast[ByteAddress](m) - cast[ByteAddress](addr line[0])
+      var last = cast[int](m) - cast[int](addr line[0])
       if last > 0 and line[last-1] == '\c':
         line.setLen(last-1)
         return last > 1 or fgetsSuccess
