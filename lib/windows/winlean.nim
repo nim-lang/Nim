@@ -940,10 +940,6 @@ type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
 
 var inet_ntop_real: inet_ntop_proc = nil
 
-let ws2 = loadLib(ws2dll)
-if ws2 != nil:
-  inet_ntop_real = cast[inet_ntop_proc](symAddr(ws2, "inet_ntop"))
-
 proc WSAAddressToStringA(pAddr: ptr SockAddr, addrSize: DWORD, unused: pointer, pBuff: cstring, pBuffSize: ptr DWORD): cint {.stdcall, importc, dynlib: ws2dll.}
 proc inet_ntop_emulated(family: cint, paddr: pointer, pStringBuffer: cstring,
                   stringBufSize: int32): cstring {.stdcall.} =
@@ -980,8 +976,12 @@ proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
   if res == 0:
     result = nil
   elif ver.dwMajorVersion >= 6:
-    if inet_ntop_real == nil:
-      quit("Can't load inet_ntop proc from " & ws2dll)
+    once:
+      let ws2 = loadLib(ws2dll)
+      if ws2 != nil:
+        inet_ntop_real = cast[inet_ntop_proc](symAddr(ws2, "inet_ntop"))
+      else:
+        quit("Can't load inet_ntop proc from " & ws2dll)
     result = inet_ntop_real(family, paddr, pStringBuffer, stringBufSize)
   else:
     result = inet_ntop_emulated(family, paddr, pStringBuffer, stringBufSize)
