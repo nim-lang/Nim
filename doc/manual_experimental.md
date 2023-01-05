@@ -659,6 +659,22 @@ Let `source` be one of:
 - A constant array/seq/object/tuple constructor.
 
 
+When modifying a location of a `string` type via `toOpenArray`,
+`prepareMutation` is needed before modification.
+
+```nim test
+{.experimental: "views".}
+
+proc f(a: var string) =
+  prepareMutation(a)
+  var v = a.toOpenArray(1, 3)
+  v[0] = 'a'
+
+var a = "Hello"
+f(a)
+```
+
+
 Path expressions
 ----------------
 
