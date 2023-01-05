@@ -1,5 +1,5 @@
 discard """
-  matrix: "--experimental:codeReordering"
+  matrix: "--experimental:codeReordering -d:testdef"
   output: '''works 34
 34
 defined
