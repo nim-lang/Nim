@@ -400,6 +400,21 @@ when hasAlloc and not defined(js):
 
   {.pop.}
 
+when hasAlloc and hasThreadSupport and not defined(useMalloc):
+  proc getOccupiedSharedMem*(): int {.rtl.}
+    ## Returns the number of bytes that are owned by the process
+    ## on the shared heap and hold data. This is only available when
+    ## threads are enabled.
+
+  proc getFreeSharedMem*(): int {.rtl.}
+    ## Returns the number of bytes that are owned by the
+    ## process on the shared heap, but do not hold any meaningful data.
+    ## This is only available when threads are enabled.
+
+  proc getTotalSharedMem*(): int {.rtl.}
+    ## Returns the number of bytes on the shared heap that are owned by the
+    ## process. This is only available when threads are enabled.
+
 # GC interface:
 
 when hasAlloc:
@@ -419,6 +434,10 @@ when defined(js):
   proc getOccupiedMem(): int = return -1
   proc getFreeMem(): int = return -1
   proc getTotalMem(): int = return -1
+  when hasThreadSupport:
+    proc getOccupiedSharedMem(): int = return -1
+    proc getFreeSharedMem(): int = return -1
+    proc getTotalSharedMem(): int = return -1
 
   proc dealloc(p: pointer) = discard
   proc alloc(size: Natural): pointer = discard
@@ -431,19 +450,3 @@ when defined(js):
   proc deallocShared(p: pointer) = discard
   proc reallocShared(p: pointer, newsize: Natural): pointer = discard
   proc reallocShared0(p: pointer, oldsize, newsize: Natural): pointer = discard
-
-
-when hasAlloc and hasThreadSupport and not defined(useMalloc):
-  proc getOccupiedSharedMem*(): int {.rtl.}
-    ## Returns the number of bytes that are owned by the process
-    ## on the shared heap and hold data. This is only available when
-    ## threads are enabled.
-
-  proc getFreeSharedMem*(): int {.rtl.}
-    ## Returns the number of bytes that are owned by the
-    ## process on the shared heap, but do not hold any meaningful data.
-    ## This is only available when threads are enabled.
-
-  proc getTotalSharedMem*(): int {.rtl.}
-    ## Returns the number of bytes on the shared heap that are owned by the
-    ## process. This is only available when threads are enabled.
