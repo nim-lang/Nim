@@ -1045,13 +1045,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           incl(sym.typ.flags, tfThread)
           if sym.typ.callConv == ccClosure: sym.typ.callConv = ccNimCall
       of wGcSafe:
-        noVal(c, it)
-        if sym != nil:
-          if sym.kind != skType: incl(sym.flags, sfThread)
-          if sym.typ != nil: incl(sym.typ.flags, tfGcSafe)
-          else: invalidPragma(c, it)
-        else:
-          discard "no checking if used as a code block"
+        if c.config.backend != backendJs:
+          noVal(c, it)
+          if sym != nil:
+            if sym.kind != skType: incl(sym.flags, sfThread)
+            if sym.typ != nil: incl(sym.typ.flags, tfGcSafe)
+            else: invalidPragma(c, it)
+          else:
+            discard "no checking if used as a code block"
       of wPacked:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
