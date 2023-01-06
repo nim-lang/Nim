@@ -319,6 +319,8 @@ proc semConv(c: PContext, n: PNode; expectedType: PType = nil): PNode =
       return evaluated
     else:
       targetType = targetType.base
+  of tyAnything, tyUntyped, tyTyped:
+    localError(c.config, n.info, "illegal type conversion to '$1'" % typeToString(targetType))
   else: discard
 
   maybeLiftType(targetType, c, n[0].info)
@@ -1945,6 +1947,8 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
             tupleConstr[i] = takeImplicitAddr(c, tupleConstr[i], e.kind == tyLent)
         else:
           localError(c.config, n[0].info, errXExpected, "tuple constructor")
+      elif e.kind == tyEmpty:
+        localError(c.config, n[0].info, errTypeExpected)
   else:
     when false:
       # XXX investigate what we really need here.

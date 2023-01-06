@@ -1,0 +1,3 @@
+nimTitle	submodule	sub/submodule.html	module nimdoc/extlinks/project/sub/submodule		0
+nim	`</a>`	sub/submodule.html#</a>,int,int	proc `</a>`(x, y: int): bool		9
+nim	submoduleInt	sub/submodule.html#submoduleInt	type submoduleInt		13

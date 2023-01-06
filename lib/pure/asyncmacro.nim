@@ -20,9 +20,8 @@ proc newCallWithLineInfo(fromNode: NimNode; theProc: NimNode, args: varargs[NimN
 template createCb(retFutureSym, iteratorNameSym,
                   strName, identName, futureVarCompletions: untyped) =
   bind finished
-
   var nameIterVar = iteratorNameSym
-  proc identName {.closure.} =
+  proc identName {.closure, stackTrace: off.} =
     try:
       if not nameIterVar.finished:
         var next = nameIterVar()
@@ -151,6 +150,10 @@ proc asyncSingleProc(prc: NimNode): NimNode =
       result[0][0] = quote do: Future[void]
     return result
 
+  if prc.kind in RoutineNodes and prc.name.kind != nnkEmpty:
+    # Only non anonymous functions need/can have stack trace disabled
+    prc.addPragma(nnkExprColonExpr.newTree(ident"stackTrace", ident"off"))
+
   if prc.kind notin {nnkProcDef, nnkLambda, nnkMethodDef, nnkDo}:
     error("Cannot transform this node kind into an async proc." &
           " proc/method definition or lambda node expected.", prc)
@@ -209,7 +212,7 @@ proc asyncSingleProc(prc: NimNode): NimNode =
   # ->   {.pop.}
   # ->   <proc_body>
   # ->   complete(retFuture, result)
-  var iteratorNameSym = genSym(nskIterator, $prcName & "Iter")
+  var iteratorNameSym = genSym(nskIterator, $prcName & " (Async)")
   var procBody = prc.body.processBody(retFutureSym, futureVarIdents)
   # don't do anything with forward bodies (empty)
   if procBody.kind != nnkEmpty:
@@ -251,9 +254,10 @@ proc asyncSingleProc(prc: NimNode): NimNode =
     # friendlier stack traces:
     var cbName = genSym(nskProc, prcName & NimAsyncContinueSuffix)
     var procCb = getAst createCb(retFutureSym, iteratorNameSym,
-                         newStrLitNode(prcName),
-                         cbName,
-                         createFutureVarCompletions(futureVarIdents, nil))
+                          newStrLitNode(prcName),
+                          cbName,
+                          createFutureVarCompletions(futureVarIdents, nil)
+                        )
     outerProcBody.add procCb
 
     # -> return retFuture

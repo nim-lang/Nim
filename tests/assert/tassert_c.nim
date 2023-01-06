@@ -1,8 +1,8 @@
 discard """
-  cmd: "nim $target $options --excessiveStackTrace:off $file"
+  cmd: "nim $target $options -d:nimPreviewSlimSystem --excessiveStackTrace:off $file"
   output: '''true'''
 """
-
+import std/assertions
 const expected = """
 tassert_c.nim(35)        tassert_c
 tassert_c.nim(34)        foo
