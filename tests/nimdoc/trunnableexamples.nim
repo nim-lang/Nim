@@ -1,5 +1,5 @@
 discard """
-cmd: "nim doc --doccmd:--hints:off --hints:off $file"
+cmd: '''nim doc --doccmd:"--hints:off --warnings:off" --hints:off $file'''
 action: "compile"
 nimoutFull: true
 nimout: '''
@@ -7,7 +7,6 @@ foo1
 foo2
 foo3
 foo5
-foo6
 foo7
 in examplesInTemplate1
 doc in outer
@@ -15,6 +14,7 @@ doc in inner1
 doc in inner2
 foo8
 foo9
+foo6
 '''
 joinable: false
 """
