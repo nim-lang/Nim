@@ -50,6 +50,7 @@ Options
 --colors:on|off           Turn messages coloring on|off.
 --backendLogging:on|off   Disable or enable backend logging. By default turned on.
 --megatest:on|off         Enable or disable megatest. Default is on.
+--valgrind:on|off         Enable or disable valgrind support. Default is on.
 --skipFrom:file           Read tests to skip from `file` - one test per line, # comments ignored
 
 
