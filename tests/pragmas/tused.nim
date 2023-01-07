@@ -1,7 +1,8 @@
 discard """
+  matrix: "--hint:all:off --hint:XDeclaredButNotUsed:on"
   nimout: '''
 compile start
-tused.nim(17, 8) Hint: 'echoSub' is declared but not used [XDeclaredButNotUsed]
+tused.nim(18, 8) Hint: 'echoSub' is declared but not used [XDeclaredButNotUsed]
 compile end'''
   output: "8\n8"
   joinable: false

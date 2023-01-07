@@ -1,4 +1,5 @@
 discard """
+  matrix: "--hint:XDeclaredButNotUsed:on"
   nimout: '''
 compile start
 warn_module.nim(6, 6) Hint: 'test' is declared but not used [XDeclaredButNotUsed]

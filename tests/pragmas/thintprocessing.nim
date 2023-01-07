@@ -1,6 +1,6 @@
 discard """
   disabled: windows
-  matrix: "--hint:processing"
+  matrix: "--hint:XDeclaredButNotUsed:on --hint:processing"
   nimout: '''
 compile start
 ..
