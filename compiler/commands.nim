@@ -649,6 +649,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "backend", "b":
     let backend = parseEnum(arg.normalize, TBackend.default)
     if backend == TBackend.default: localError(conf, info, "invalid backend: '$1'" % arg)
+    if backend == backendJs: # bug #21209
+      conf.globalOptions.excl {optThreadAnalysis, optThreads}
     conf.backend = backend
   of "doccmd": conf.docCmd = arg
   of "define", "d":
