@@ -642,8 +642,9 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     # body by the absence of the sfGenSym flag:
     for i in 1..<s.typ.n.len:
       let param = s.typ.n[i].sym
-      param.flags.incl sfTemplateParam
-      param.flags.excl sfGenSym
+      if param.name.s != "_":
+        param.flags.incl sfTemplateParam
+        param.flags.excl sfGenSym
       if param.typ.kind != tyUntyped: allUntyped = false
   else:
     s.typ = newTypeS(tyProc, c)
