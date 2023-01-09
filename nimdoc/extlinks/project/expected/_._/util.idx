@@ -1,0 +1,2 @@
+nimTitle	util	_._/util.html	module nimdoc/extlinks/util		0
+nim	utilfunction	_._/util.html#utilfunction,int	proc utilfunction(x: int): int		1

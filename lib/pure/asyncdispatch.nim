@@ -1983,7 +1983,8 @@ proc send*(socket: AsyncFD, data: string,
   return retFuture
 
 # -- Await Macro
-include asyncmacro
+import asyncmacro
+export asyncmacro
 
 proc readAll*(future: FutureStream[string]): owned(Future[string]) {.async.} =
   ## Returns a future that will complete when all the string data from the

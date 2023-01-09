@@ -1,7 +1,10 @@
+## This module implements symlink (symbolic link) handling.
+
+## .. importdoc:: os.nim
+
 from paths import Path, ReadDirEffect
 
 from std/private/ossymlinks import symlinkExists, createSymlink, expandSymlink
-
 
 proc symlinkExists*(link: Path): bool {.inline, tags: [ReadDirEffect].} =
   ## Returns true if the symlink `link` exists. Will return true

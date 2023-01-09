@@ -46,14 +46,18 @@ Core
 * [bitops](bitops.html)
   Provides a series of low-level methods for bit manipulation.
 
+* [compilesettings](compilesettings.html)
+  This module allows querying the compiler about diverse configuration settings.
+
 * [cpuinfo](cpuinfo.html)
   This module implements procs to determine the number of CPUs / cores.
 
+* [effecttraits](effecttraits.html)
+  This module provides access to the inferred .raises effects
+  for Nim's macro system.
+
 * [endians](endians.html)
   This module contains helpers that deal with different byte orders.
-
-* [lenientops](lenientops.html)
-  Provides binary operators for mixed integer/float expressions for convenience.
 
 * [locks](locks.html)
   Locks and condition variables for Nim.
@@ -122,8 +126,18 @@ Collections
 * [packedsets](packedsets.html)
   Efficient implementation of a set of ordinals as a sparse bit set.
 
+* [ropes](ropes.html)
+  This module contains support for a *rope* data type.
+  Ropes can represent very long strings efficiently;
+  in particular, concatenation is done in O(1) instead of O(n).
+
 * [sets](sets.html)
   Nim hash set support.
+
+* [strtabs](strtabs.html)
+  The `strtabs` module implements an efficient hash table that is a mapping
+  from strings to strings. Supports a case-sensitive, case-insensitive and
+  style-insensitive modes.
 
 * [tables](tables.html)
   Nim hash table support. Contains tables, ordered tables, and count tables.
@@ -143,19 +157,14 @@ String handling
   Converts between different character encodings. On UNIX, this uses
   the `iconv` library, on Windows the Windows API.
 
-* [parseutils](parseutils.html)
-  This module contains helpers for parsing tokens, numbers, identifiers, etc.
+* [formatfloat](formatfloat.html)
+  This module implements formatting floats as strings.
 
-* [pegs](pegs.html)
-  This module contains procedures and operators for handling PEGs.
+* [objectdollar](objectdollar.html)
+  This module implements a generic `$` operator to convert objects to strings.
 
 * [punycode](punycode.html)
   Implements a representation of Unicode with the limited ASCII character subset.
-
-* [ropes](ropes.html)
-  This module contains support for a *rope* data type.
-  Ropes can represent very long strings efficiently;
-  in particular, concatenation is done in O(1) instead of O(n).
 
 * [strbasics](strbasics.html)
   This module provides some high performance string operations.
@@ -171,11 +180,6 @@ String handling
 * [strscans](strscans.html)
   This module contains a `scanf` macro for convenient parsing of mini languages.
 
-* [strtabs](strtabs.html)
-  The `strtabs` module implements an efficient hash table that is a mapping
-  from strings to strings. Supports a case-sensitive, case-insensitive and
-  style-insensitive modes.
-
 * [strutils](strutils.html)
   This module contains common string handling operations like changing
   case of a string, splitting a string into substrings, searching for
@@ -187,6 +191,9 @@ String handling
 * [unidecode](unidecode.html)
   It provides a single proc that does Unicode to ASCII transliterations.
   Based on Python's Unidecode module.
+
+* [widestrs](widestrs.html)
+  Nim support for C/C++'s wide strings.
 
 * [wordwrap](wordwrap.html)
   This module contains an algorithm to wordwrap a Unicode string.
@@ -205,6 +212,16 @@ Time handling
 Generic Operating System Services
 ---------------------------------
 
+* [appdirs](appdirs.html)
+  This module implements helpers for determining special directories used by apps.
+
+* [cmdline](cmdline.html)
+  This module contains system facilities for reading command
+  line parameters.
+
+* [dirs](dirs.html)
+  This module implements directory handling.
+
 * [distros](distros.html)
   This module implements the basics for OS distribution ("distro") detection
   and the OS's native package manager.
@@ -216,9 +233,14 @@ Generic Operating System Services
 * [dynlib](dynlib.html)
   This module implements the ability to access symbols from shared libraries.
 
-* [marshal](marshal.html)
-  Contains procs for serialization and deserialization of arbitrary Nim
-  data structures.
+* [envvars](envvars.html)
+  This module implements environment variable handling.
+
+* [exitprocs](exitprocs.html)
+  This module allows adding hooks to program exit.
+
+* [files](files.html)
+  This module implements file handling.
 
 * [memfiles](memfiles.html)
   This module provides support for memory-mapped files (Posix's `mmap`)
@@ -229,14 +251,30 @@ Generic Operating System Services
   reading command line arguments, working with directories, running shell
   commands, etc.
 
+* [oserrors](oserrors.html)
+  This module implements OS error reporting.
+
 * [osproc](osproc.html)
   Module for process communication beyond `os.execShellCmd`.
+
+* [paths](paths.html)
+  This module implements path handling.
+
+* [reservedmem](reservedmem.html)
+  This module provides utilities for reserving portions of the
+  address space of a program without consuming physical memory.
 
 * [streams](streams.html)
   This module provides a stream interface and two implementations thereof:
   the `FileStream` and the `StringStream` which implement the stream
   interface for Nim file objects (`File`) and strings. Other modules
   may provide other implementations for this standard stream interface.
+
+* [symlinks](symlinks.html)
+  This module implements symlink handling.
+
+* [syncio](syncio.html)
+  This module implements various synchronized I/O operations.
 
 * [terminal](terminal.html)
   This module contains a few procedures to control the *terminal*
@@ -258,6 +296,9 @@ Math libraries
   Floating-point environment. Handling of floating-point rounding and
   exceptions (overflow, zero-divide, etc.).
 
+* [lenientops](lenientops.html)
+  Provides binary operators for mixed integer/float expressions for convenience.
+
 * [math](math.html)
   Mathematical operations like cosine, square root.
 
@@ -270,15 +311,15 @@ Math libraries
 * [stats](stats.html)
   Statistical analysis.
 
-* [sums](sums.html)
-  Accurate summation functions.
-
 * [sysrand](sysrand.html)
   Cryptographically secure pseudorandom number generator.
 
 
 Internet Protocols and Support
 ------------------------------
+
+* [async](async.html)
+  Exports `asyncmacro` and `asyncfutures` for native backends, and `asyncjs` on the JS backend. 
 
 * [asyncdispatch](asyncdispatch.html)
   This module implements an asynchronous dispatcher for IO operations.
@@ -294,6 +335,9 @@ Internet Protocols and Support
 * [asynchttpserver](asynchttpserver.html)
   This module implements an asynchronous HTTP server using the `asyncnet`
   module.
+
+* [asyncmacro](asyncmacro.html)
+  Implements the `async` and `multisync` macros for `asyncdispatch`.
 
 * [asyncnet](asyncnet.html)
   This module implements asynchronous sockets based on the `asyncdispatch`
@@ -329,6 +373,10 @@ Internet Protocols and Support
 * [smtp](smtp.html)
   This module implements a simple SMTP client.
 
+* [socketstreams](socketstreams.html)
+  This module provides an implementation of the streams interface for sockets.
+
+
 * [uri](uri.html)
   This module provides functions for working with URIs.
 
@@ -336,11 +384,19 @@ Internet Protocols and Support
 Threading
 ---------
 
-* [threads](threads.html)
-  Basic Nim thread support.
+* [isolation](isolation.html)
+  This module implements the `Isolated[T]` type for
+  safe construction of isolated subgraphs that can be
+  passed efficiently to different channels and threads.
+
+* [tasks](tasks.html)
+  This module provides basic primitives for creating parallel programs.
 
 * [threadpool](threadpool.html)
   Implements Nim's [spawn](manual_experimental.html#parallel-amp-spawn).
+
+* [typedthreads](typedthreads.html)
+  Basic Nim thread support.
 
 
 Parsers
@@ -351,9 +407,6 @@ Parsers
 
 * [json](json.html)
   High-performance JSON parser.
-
-* [jsonutils](jsonutils.html)
-  This module implements a hookable (de)serialization for arbitrary types.
 
 * [lexbase](lexbase.html)
   This is a low-level module that implements an extremely efficient buffering
@@ -378,11 +431,17 @@ Parsers
 * [parsesql](parsesql.html)
   The `parsesql` module implements a simple high-performance SQL parser.
 
+* [parseutils](parseutils.html)
+  This module contains helpers for parsing tokens, numbers, identifiers, etc.
+
 * [parsexml](parsexml.html)
   The `parsexml` module implements a simple high performance XML/HTML parser.
   The only encoding that is supported is UTF-8. The parser has been designed
   to be somewhat error-correcting, so that even some "wild HTML" found on the
   web can be parsed with it.
+
+* [pegs](pegs.html)
+  This module contains procedures and operators for handling PEGs.
 
 
 Docutils
@@ -418,6 +477,9 @@ XML Processing
 Generators
 ----------
 
+* [genasts](genasts.html)
+  This module implements AST generation using captured variables for macros.
+
 * [htmlgen](htmlgen.html)
   This module implements a simple XML and HTML code
   generator. Each commonly used HTML tag has a corresponding macro
@@ -440,15 +502,29 @@ Hashing
 * [oids](oids.html)
   An OID is a global ID that consists of a timestamp,
   a unique counter, and a random value. This combination should suffice to
-  produce a globally distributed unique ID. This implementation was extracted
-  from the MongoDB interface and it thus binary compatible with a MongoDB OID.
+  produce a globally distributed unique ID.
 
 * [sha1](sha1.html)
   This module implements the SHA-1 checksum algorithm.
 
 
+Serialization
+-------------
+
+* [jsonutils](jsonutils.html)
+  This module implements a hookable (de)serialization for arbitrary types
+  using JSON.
+
+* [marshal](marshal.html)
+  Contains procs for serialization and deserialization of arbitrary Nim
+  data structures.
+
+
 Miscellaneous
 -------------
+
+* [assertions](assertions.html)
+  This module implements assertion handling.
 
 * [browsers](browsers.html)
   This module implements procs for opening URLs with the user's default
@@ -460,8 +536,14 @@ Miscellaneous
 * [coro](coro.html)
   This module implements experimental coroutines in Nim.
 
+* [decls](decls.html)
+  This module implements syntax sugar for some declarations.
+
 * [enumerate](enumerate.html)
   This module implements `enumerate` syntactic sugar based on Nim's macro system.
+
+* [importutils](importutils.html)
+  Utilities related to import and symbol resolution.
 
 * [logging](logging.html)
   This module implements a simple logger.
@@ -481,9 +563,12 @@ Miscellaneous
 * [with](with.html)
   This module implements the `with` macro for easy function chaining.
 
+* [wrapnils](wrapnils.html)
+  This module allows evaluating expressions safely against nil dereferences.
 
-Modules for the JS backend
---------------------------
+
+Modules for the JavaScript backend
+----------------------------------
 
 * [asyncjs](asyncjs.html)
   Types and macros for writing asynchronous procedures in JavaScript.
@@ -501,8 +586,14 @@ Modules for the JS backend
   The wrapper of core JavaScript functions. For most purposes, you should be using
   the `math`, `json`, and `times` stdlib modules instead of this module.
 
+* [jsfetch](jshttp.html)
+  Wrapper for `fetch`.
+
 * [jsffi](jsffi.html)
   Types and macros for easier interaction with JavaScript.
+
+* [jsre](jsre.html)
+  Regular Expressions for the JavaScript target.
 
 
 Impure libraries
@@ -515,16 +606,24 @@ Regular expressions
   This module contains procedures and operators for handling regular
   expressions. The current implementation uses PCRE.
 
+* [nre](nre.html)
+
+  This module contains many help functions for handling regular expressions.
+  The current implementation uses PCRE.
 
 Database support
 ----------------
 
-* [db_postgres](db_postgres.html)
-  A higher level PostgreSQL database wrapper. The same interface is implemented
-  for other databases too.
-
 * [db_mysql](db_mysql.html)
   A higher level MySQL database wrapper. The same interface is implemented
+  for other databases too.
+
+* [db_odbc](db_odbc.html)
+  A higher level ODBC database wrapper. The same interface is implemented
+  for other databases too.
+
+* [db_postgres](db_postgres.html)
+  A higher level PostgreSQL database wrapper. The same interface is implemented
   for other databases too.
 
 * [db_sqlite](db_sqlite.html)
@@ -574,14 +673,14 @@ Regular expressions
 Database support
 ----------------
 
-* [postgres](postgres.html)
-  Contains a wrapper for the PostgreSQL API.
 * [mysql](mysql.html)
   Contains a wrapper for the mySQL API.
-* [sqlite3](sqlite3.html)
-  Contains a wrapper for the SQLite 3 API.
 * [odbcsql](odbcsql.html)
   interface to the ODBC driver.
+* [postgres](postgres.html)
+  Contains a wrapper for the PostgreSQL API.
+* [sqlite3](sqlite3.html)
+  Contains a wrapper for the SQLite 3 API.
 
 
 Network Programming and Internet Protocols

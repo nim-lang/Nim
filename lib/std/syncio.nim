@@ -480,7 +480,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     let m = c_memchr(addr line[pos], '\L'.ord, cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
-      var last = cast[ByteAddress](m) - cast[ByteAddress](addr line[0])
+      var last = cast[int](m) - cast[int](addr line[0])
       if last > 0 and line[last-1] == '\c':
         line.setLen(last-1)
         return last > 1 or fgetsSuccess
@@ -573,7 +573,7 @@ proc readAllFile(file: File, len: int64): string =
   result = newString(len)
   let bytes = readBuffer(file, addr(result[0]), len)
   if endOfFile(file):
-    if bytes < len:
+    if bytes.int64 < len:
       result.setLen(bytes)
   else:
     # We read all the bytes but did not reach the EOF
@@ -717,7 +717,7 @@ proc open*(f: var File, filename: string,
 
     result = true
     f = cast[File](p)
-    if bufSize > 0 and bufSize <= high(cint).int:
+    if bufSize > 0 and bufSize.uint <= high(uint):
       discard c_setvbuf(f, nil, IOFBF, cast[csize_t](bufSize))
     elif bufSize == 0:
       discard c_setvbuf(f, nil, IONBF, 0)
@@ -821,7 +821,7 @@ when defined(windows) and appType == "console" and
   proc getConsoleCP(): cuint {.stdcall, dynlib: "kernel32",
     importc: "GetConsoleCP".}
 
-  const Utf8codepage = 65001
+  const Utf8codepage = 65001'u32
 
   let
     consoleOutputCP = getConsoleOutputCP()

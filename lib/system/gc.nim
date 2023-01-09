@@ -170,11 +170,11 @@ proc addZCT(s: var CellSeq, c: PCell) {.noinline.} =
 
 proc cellToUsr(cell: PCell): pointer {.inline.} =
   # convert object (=pointer to refcount) to pointer to userdata
-  result = cast[pointer](cast[ByteAddress](cell)+%ByteAddress(sizeof(Cell)))
+  result = cast[pointer](cast[int](cell)+%ByteAddress(sizeof(Cell)))
 
 proc usrToCell(usr: pointer): PCell {.inline.} =
   # convert pointer to userdata to object (=pointer to refcount)
-  result = cast[PCell](cast[ByteAddress](usr)-%ByteAddress(sizeof(Cell)))
+  result = cast[PCell](cast[int](usr)-%ByteAddress(sizeof(Cell)))
 
 proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
   # used for code generation concerning debugging
@@ -336,7 +336,7 @@ proc cellsetReset(s: var CellSet) =
 {.push stacktrace:off.}
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
-  var d = cast[ByteAddress](dest)
+  var d = cast[int](dest)
   case n.kind
   of nkSlot: forAllChildrenAux(cast[pointer](d +% n.offset), n.typ, op)
   of nkList:
@@ -356,7 +356,7 @@ proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
   of nkNone: sysAssert(false, "forAllSlotsAux")
 
 proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) =
-  var d = cast[ByteAddress](dest)
+  var d = cast[int](dest)
   if dest == nil: return # nothing to do
   if ntfNoRefs notin mt.flags:
     case mt.kind
@@ -382,7 +382,7 @@ proc forAllChildren(cell: PCell, op: WalkOp) =
     of tyRef: # common case
       forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
     of tySequence:
-      var d = cast[ByteAddress](cellToUsr(cell))
+      var d = cast[int](cellToUsr(cell))
       var s = cast[PGenericSeq](d)
       if s != nil:
         for i in 0..s.len-1:
@@ -457,7 +457,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   collectCT(gch)
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
   #gcAssert typ.kind in {tyString, tySequence} or size >= typ.base.size, "size too small"
-  gcAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
+  gcAssert((cast[int](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
   setFrameInfo(res)
@@ -507,7 +507,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, noinline.} =
 
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
   sysAssert(allocInv(gch.region), "newObjRC1 after rawAlloc")
-  sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
+  sysAssert((cast[int](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
   setFrameInfo(res)
@@ -549,9 +549,9 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
 
   var oldsize = align(GenericSeqSize, elemAlign) + cast[PGenericSeq](old).len * elemSize
   copyMem(res, ol, oldsize + sizeof(Cell))
-  zeroMem(cast[pointer](cast[ByteAddress](res) +% oldsize +% sizeof(Cell)),
+  zeroMem(cast[pointer](cast[int](res) +% oldsize +% sizeof(Cell)),
           newsize-oldsize)
-  sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
+  sysAssert((cast[int](res) and (MemAlign-1)) == 0, "growObj: 3")
   # This can be wrong for intermediate temps that are nevertheless on the
   # heap because of lambda lifting:
   #gcAssert(res.refcount shr rcShift <=% 1, "growObj: 4")
@@ -683,7 +683,7 @@ proc collectCycles(gch: var GcHeap) {.raises: [].} =
 proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
   # the addresses are not as cells on the stack, so turn them to cells:
   sysAssert(allocInv(gch.region), "gcMark begin")
-  var c = cast[ByteAddress](p)
+  var c = cast[int](p)
   if c >% PageSize:
     # fast check: does it look like a cell?
     var objStart = cast[PCell](interiorAllocatedPtr(gch.region, p))
@@ -848,10 +848,10 @@ when withRealTime:
         stack.bottomSaved = stack.bottom
         when stackIncreases:
           stack.bottom = cast[pointer](
-            cast[ByteAddress](stack.pos) - sizeof(pointer) * 6 - stackSize)
+            cast[int](stack.pos) - sizeof(pointer) * 6 - stackSize)
         else:
           stack.bottom = cast[pointer](
-            cast[ByteAddress](stack.pos) + sizeof(pointer) * 6 + stackSize)
+            cast[int](stack.pos) + sizeof(pointer) * 6 + stackSize)
 
     GC_step(gch, us, strongAdvice)
 

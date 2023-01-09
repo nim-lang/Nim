@@ -29,7 +29,7 @@ const
   CLONE_NEWPID* = 0x20000000'i32
   CLONE_NEWNET* = 0x40000000'i32
   CLONE_IO* = 0x80000000'i32
-  CLONE_STOPPED* {.deprecated.} = 0x02000000'i32
+
 
 # fn should be of type proc (a2: pointer) {.cdecl.}
 proc clone*(fn: pointer; child_stack: pointer; flags: cint;

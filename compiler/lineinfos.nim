@@ -57,6 +57,7 @@ type
     warnRstBrokenLink = "BrokenLink",
     warnRstLanguageXNotSupported = "LanguageXNotSupported",
     warnRstFieldXNotSupported = "FieldXNotSupported",
+    warnRstUnusedImportdoc = "UnusedImportdoc",
     warnRstStyle = "warnRstStyle",
     warnCommentXIgnored = "CommentXIgnored",
     warnTypelessParam = "TypelessParam",
@@ -83,7 +84,10 @@ type
     warnPtrToCstringConv = "PtrToCstringConv",
     warnEffect = "Effect",
     warnCastSizes = "CastSizes"
-    warnTemplateRedefinition = "TemplateRedefinition",
+    warnImplicitTemplateRedefinition = "ImplicitTemplateRedefinition",
+    warnUnnamedBreak = "UnnamedBreak",
+    warnStmtListLambda = "StmtListLambda",
+    warnBareExcept = "BareExcept",
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -139,6 +143,7 @@ const
     warnRstBrokenLink: "broken link '$1'",
     warnRstLanguageXNotSupported: "language '$1' not supported",
     warnRstFieldXNotSupported: "field '$1' not supported",
+    warnRstUnusedImportdoc: "importdoc for '$1' is not used",
     warnRstStyle: "RST style: $1",
     warnCommentXIgnored: "comment '$1' ignored",
     warnTypelessParam: "", # deadcode
@@ -180,7 +185,10 @@ const
     warnPtrToCstringConv: "unsafe conversion to 'cstring' from '$1'; this will become a compile time error in the future",
     warnEffect: "$1",
     warnCastSizes: "$1",
-    warnTemplateRedefinition: "template '$1' is implicitly redefined, consider adding an explicit .redefine pragma",
+    warnImplicitTemplateRedefinition: "template '$1' is implicitly redefined; this is deprecated, add an explicit .redefine pragma",
+    warnUnnamedBreak: "Using an unnamed break in a block is deprecated; Use a named block with a named break instead",
+    warnStmtListLambda: "statement list expression assumed to be anonymous proc; this is deprecated, use `do (): ...` or `proc () = ...` instead",
+    warnBareExcept: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`

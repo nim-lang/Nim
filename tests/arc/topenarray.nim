@@ -22,3 +22,19 @@ block: # bug 18627
     for i in params.toOpenArray(0, params.len - 1):
       echo i
   uciLoop2()
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+block: # bug #20954
+  block:
+    doAssertRaises(IndexDefect):
+      var v: array[10, int]
+
+      echo len(toOpenArray(v, 20, 30))
+
+  block:
+    doAssertRaises(IndexDefect):
+      var v: seq[int]
+
+      echo len(toOpenArray(v, 20, 30))

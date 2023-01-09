@@ -19,13 +19,11 @@ import
 
 const
   CFileSectionNames: array[TCFileSection, string] = [
-    cfsMergeInfo: "",
     cfsHeaders: "NIM_merge_HEADERS",
     cfsFrameDefines: "NIM_merge_FRAME_DEFINES",
     cfsForwardTypes: "NIM_merge_FORWARD_TYPES",
     cfsTypes: "NIM_merge_TYPES",
     cfsSeqTypes: "NIM_merge_SEQ_TYPES",
-    cfsFieldInfo: "NIM_merge_FIELD_INFO",
     cfsTypeInfo: "NIM_merge_TYPE_INFO",
     cfsProcHeaders: "NIM_merge_PROC_HEADERS",
     cfsData: "NIM_merge_DATA",
@@ -34,11 +32,8 @@ const
     cfsInitProc: "NIM_merge_INIT_PROC",
     cfsDatInitProc: "NIM_merge_DATINIT_PROC",
     cfsTypeInit1: "NIM_merge_TYPE_INIT1",
-    cfsTypeInit2: "NIM_merge_TYPE_INIT2",
     cfsTypeInit3: "NIM_merge_TYPE_INIT3",
-    cfsDebugInit: "NIM_merge_DEBUG_INIT",
-    cfsDynLibInit: "NIM_merge_DYNLIB_INIT",
-    cfsDynLibDeinit: "NIM_merge_DYNLIB_DEINIT",
+    cfsDynLibInit: "NIM_merge_DYNLIB_INIT"
   ]
   CProcSectionNames: array[TCProcSection, string] = [
     cpsLocals: "NIM_merge_PROC_LOCALS",
