@@ -1165,8 +1165,50 @@ func `^`*[T: SomeNumber](x: T, y: Natural): T =
         break
       x *= x
 
-func `^`*[T: SomeNumber](x: T, y: float32): float32 = pow(x, y)
-func `^`*[T: SomeNumber](x: T, y: float64): float64 = pow(x, y)
+func isInteger(y: SomeFloat): bool =
+  ## Determines if a float represents an integer
+  return float(int(y)) == y
+
+func `^`*[T: SomeNumber, U: SomeFloat](x: T, y: U): float =
+  ## Computes `x` to the power of `y`.
+  ##
+  ## Error handling follows C++ specification
+  ## https://en.cppreference.com/w/cpp/numeric/math/pow
+  let
+    isZero_x: bool = (x == 0.0 or x == -0.0)
+    isNegZero: bool = classify(x) == fcNegZero
+    isPosZero: bool = classify(x) == fcZero
+    y_isOddInteger: bool = (isInteger(y) and (int(y) mod 2 == 1))
+    y_isFinite: bool = (y != Inf and y != -Inf)
+
+  if isPosZero and y < 0 and y_isOddInteger:
+    raise newException(CatchableError, "Division by zero")
+    # return Inf
+  elif isNegZero and y < 0 and y_isOddInteger:
+    raise newException(CatchableError, "Division by zero")
+    # return -Inf
+  elif isZero_x and y < 0 and y != -Inf:
+    raise newException(CatchableError, "Division by zero")
+    # return Inf
+  elif isZero_x and y == -Inf:
+    raise newException(CatchableError, "Division by zero")
+    # return Inf
+  elif x < 0 and not isInteger(x) and y_isFinite and not y_isOddInteger:
+    raise newException(ValueError, "Invalid operation")
+  # elif isPosZero and y_isOddInteger:
+  #   return 0.0
+  # elif isNegZero and y_isOddInteger:
+  #   return -0.0
+  # elif isZero_x and not y_isOddInteger and y != Inf:
+  #   return 0.0
+  # elif x == -1.0 and (y == Inf or y == -Inf):
+  #   return 1.0
+  elif x == 1.0:
+    return 1.0
+  elif y == 0.0 or y == -0.0:
+    return 1.0
+  else:
+    pow(x, y)
 
 func gcd*[T](x, y: T): T =
   ## Computes the greatest common (positive) divisor of `x` and `y`.

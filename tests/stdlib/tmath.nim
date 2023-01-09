@@ -236,7 +236,59 @@ template main() =
     doAssert: compiles(5.5 ^ 2.int8)
     doAssert: compiles(5.5 ^ 2.uint)
     doAssert: compiles(5.5 ^ 2.uint8)
-    doAssert: not compiles(5.5 ^ 2.2)
+    # doAssert: not compiles(5.5 ^ 2.2)
+
+  block:
+    doAssert: compiles(5.5 ^ 2.2)
+    doAssertRaises(CatchableError): discard (0.0 ^ -5.0)
+    doAssertRaises(CatchableError): discard (-0.0 ^ -5.0)
+    doAssertRaises(CatchableError): discard (-0.0 ^ -5.3)
+    doAssertRaises(CatchableError): discard (-0.0 ^ -4.0)
+    doAssertRaises(CatchableError): discard (-0.0 ^ -5.3)
+    doAssertRaises(CatchableError): discard (-0.0 ^ -4.0)
+    doAssertRaises(CatchableError): discard (-0.0 ^ -4.0)
+    doAssert: -1.0 ^ Inf == 1.0
+    doAssert: -1.0 ^ -Inf == 1.0
+    doAssert: 1.0 ^ Inf == 1.0
+    doAssert: 1.0 ^ -Inf == 1.0
+    doAssert: 1.0 ^ -5.4 == 1.0
+    doAssert: 1.0 ^ 1.0 == 1.0
+    doAssert: 1.0 ^ NaN == 1.0
+    doAssert: NaN ^ 0.0 == 1.0
+    # Base finite, negative and exponent finite, non-integer returns NaN and raises Error
+    doAssertRaises(ValueError): discard (-5.5 ^ 2.2)
+    # doAssert: -5.5 ^ 2.2 == NaN
+    # echo( $(-5.5 ^ 2.2))
+
+    # ^-Inf or ^Inf returns 0 or Inf depending on base absolute value relative to 1
+    doAssert: 0.5 ^ -Inf == Inf
+    doAssert: -0.5 ^ -Inf == Inf
+    doAssert: 1.01 ^ -Inf == 0.0
+    doAssert: -1.01 ^ -Inf == 0.0
+    doAssert: 0.5 ^ Inf == 0.0
+    doAssert: -0.5 ^ Inf == 0.0
+    doAssert: 1.01 ^ Inf == Inf
+    doAssert: -1.01 ^ Inf == Inf
+
+    # -Inf base (the sign depends on the exponent parity)
+    doAssert: -Inf ^ -5.0 == -0.0
+    doAssert: -Inf ^ -4.0 == 0.0
+    doAssert: -Inf ^ -5.1 == 0.0
+    
+    doAssert: -Inf ^ 3.0 == -Inf
+    doAssert: -Inf ^ 3.1 == Inf
+    doAssert: -Inf ^ 2.0 == Inf
+
+    doAssert: Inf ^ -5.0 == 0.0
+    doAssert: Inf ^ -5.1 == 0.0
+
+    doAssert: Inf ^ 4.3 == Inf
+    doAssert: Inf ^ 5.0 == Inf
+
+    doAssert: -Inf ^ -Inf == 0.0
+    doAssert: -Inf ^ Inf == Inf
+    doAssert: Inf ^ -Inf == 0.0
+    doAssert: Inf ^ Inf == Inf
 
   block: # isNaN
     doAssert NaN.isNaN
