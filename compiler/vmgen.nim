@@ -1335,7 +1335,19 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     of "copyLineInfo":
       internalAssert c.config, n.len == 3
       unused(c, n, dest)
-      genBinaryStmt(c, n, opcNSetLineInfo)
+      genBinaryStmt(c, n, opcNCopyLineInfo)
+    of "setLine":
+      internalAssert c.config, n.len == 3
+      unused(c, n, dest)
+      genBinaryStmt(c, n, opcNSetLineInfoLine)
+    of "setColumn":
+      internalAssert c.config, n.len == 3
+      unused(c, n, dest)
+      genBinaryStmt(c, n, opcNSetLineInfoColumn)
+    of "setFile":
+      internalAssert c.config, n.len == 3
+      unused(c, n, dest)
+      genBinaryStmt(c, n, opcNSetLineInfoFile)
     else: internalAssert c.config, false
   of mNHint:
     unused(c, n, dest)

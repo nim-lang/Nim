@@ -73,7 +73,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
   rawAddSon(result, base)
   let isPure = result.sym != nil and sfPure in result.sym.flags
   var symbols: TStrTable
-  if isPure: initStrTable(symbols)
+  initStrTable(symbols)
   var hasNull = false
   for i in 1..<n.len:
     if n[i].kind == nkEmpty: continue
@@ -145,7 +145,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
         addInterfaceOverloadableSymAt(c, c.currentScope, e)
       else:
         declarePureEnumField(c, e)
-    if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
+    if (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
   if isPure and sfExported in result.sym.flags:
@@ -1372,7 +1372,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       inc(counter)
       if def != nil and def.kind != nkEmpty:
         arg.ast = copyTree(def)
-      if containsOrIncl(check, arg.name.id):
+      if arg.name.s == "_":
+        arg.flags.incl(sfGenSym)
+      elif containsOrIncl(check, arg.name.id):
         localError(c.config, a[j].info, "attempt to redefine: '" & arg.name.s & "'")
       result.n.add newSymNode(arg)
       rawAddSon(result, finalType)

@@ -24,7 +24,7 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2022"
+  copyrightYear* = "2023"
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
@@ -78,6 +78,8 @@ type                          # please make sure we have under 32 options
     optThreadAnalysis,        # thread analysis pass
     optTlsEmulation,          # thread var emulation turned on
     optGenIndex               # generate index file for documentation;
+    optGenIndexOnly           # generate only index file for documentation
+    optNoImportdoc            # disable loading external documentation files
     optEmbedOrigSrc           # embed the original source in the generated code
                               # also: generate header file
     optIdeDebug               # idetools: debug mode
@@ -231,6 +233,7 @@ type
       ## are not anymore.
     laxEffects
       ## Lax effects system prior to Nim 2.0.
+    verboseTypeMismatch
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest

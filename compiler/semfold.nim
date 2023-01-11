@@ -569,6 +569,8 @@ proc foldDefine(m, s: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode
     else: result = copyTree(s.astdef) # unreachable
   else:
     result = copyTree(s.astdef)
+    if result != nil:
+      result.info = n.info
 
 proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   result = nil
@@ -593,6 +595,8 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
         result = foldDefine(m, s, n, idgen, g)
       else:
         result = copyTree(s.astdef)
+        if result != nil:
+          result.info = n.info
     of skProc, skFunc, skMethod:
       result = n
     of skParam:

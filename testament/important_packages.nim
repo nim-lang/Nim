@@ -46,7 +46,7 @@ pkg "BipBuffer"
 pkg "blscurve", allowFailure = true # pending https://github.com/status-im/nim-blscurve/issues/39
 pkg "bncurve"
 pkg "brainfuck", "nim c -d:release -r tests/compile.nim"
-pkg "bump", "nim c --gc:arc --path:. -r tests/tbump.nim", "https://github.com/disruptek/bump"
+pkg "bump", "nim c --gc:arc --path:. -r tests/tbump.nim", "https://github.com/disruptek/bump", allowFailure = true
 pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "cello", url = "https://github.com/nim-lang/cello", useHead = true

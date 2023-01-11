@@ -20,9 +20,6 @@ import strutils except addf
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-when not defined(nimHasCursor):
-  {.pragma: cursor.}
-
 proc hashNode*(p: RootRef): Hash
 proc treeToYaml*(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
   # Convert a tree into its YAML representation; this is used by the

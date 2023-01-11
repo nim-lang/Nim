@@ -74,7 +74,28 @@
 ##
 ## The `getopt iterator<#getopt.i,OptParser>`_, which is provided for
 ## convenience, can be used to iterate through all command line options as well.
+## 
+## To set a default value for a variable assigned through `getopt` and accept arguments from the cmd line.
+## Assign the default value to a variable before parsing. 
+## Then set the variable to the new value while parsing.
 ##
+## Here is an example:
+## .. code-block::
+##   import std/parseopt
+##
+##   var varName: string = "defaultValue"
+##   
+##   for kind, key, val in getopt():
+##     case kind
+##     of cmdArgument:
+##       discard
+##     of cmdLongOption, cmdShortOption:
+##       case key:
+##       of "varName": # --varName:<value> in the console when executing
+##         varName = val # do input sanitization in production systems
+##     of cmdEnd:
+##       discard
+## 
 ## `shortNoVal` and `longNoVal`
 ## ============================
 ##
@@ -209,6 +230,8 @@ proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
   ## do not take values. See the `documentation about these
   ## parameters<#nimshortnoval-and-nimlongnoval>`_ for more information on
   ## how this affects parsing.
+  ##
+  ## This does not provide a way of passing default values to arguments. 
   ##
   ## See also:
   ## * `getopt iterator<#getopt.i,OptParser>`_
@@ -403,7 +426,8 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key,
   ## Convenience iterator for iterating over the given
   ## `OptParser<#OptParser>`_.
   ##
-  ## There is no need to check for `cmdEnd` while iterating.
+  ## There is no need to check for `cmdEnd` while iterating. If using `getopt` 
+  ## with case switching, checking for `cmdEnd` is required.
   ##
   ## See also:
   ## * `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_
@@ -451,7 +475,8 @@ iterator getopt*(cmdline: seq[string] = @[],
   ## parameters<#nimshortnoval-and-nimlongnoval>`_ for more information on
   ## how this affects parsing.
   ##
-  ## There is no need to check for `cmdEnd` while iterating.
+  ## There is no need to check for `cmdEnd` while iterating. If using `getopt` 
+  ## with case switching, checking for `cmdEnd` is required.
   ##
   ## See also:
   ## * `initOptParser proc<#initOptParser,seq[string],set[char],seq[string]>`_

@@ -405,9 +405,6 @@ proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags; expectedTyp
       evaluated = evalAtCompileTime(c, result)
       if evaluated != nil: return evaluated
 
-when not defined(nimHasSinkInference):
-  {.pragma: nosinks.}
-
 include hlo, seminst, semcall
 
 proc resetSemFlag(n: PNode) =

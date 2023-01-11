@@ -95,17 +95,11 @@ type
     acc: int             # accumulator for small object allocation
     when defined(gcDestructors):
       sharedFreeList: ptr FreeCell # make no attempt at avoiding false sharing for now for this object field
-    when defined(nimAlignPragma):
-      data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
-    else:
-      data: UncheckedArray[byte]
+    data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
     next, prev: PBigChunk    # chunks of the same (or bigger) size
-    when defined(nimAlignPragma):
-      data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
-    else:
-      data: UncheckedArray[byte]
+    data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
 
   HeapLinks = object
     len: int
