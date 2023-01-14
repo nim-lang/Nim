@@ -1360,6 +1360,7 @@ proc to*[T](node: JsonNode, t: typedesc[T]): T =
     doAssert data.list == @[1, 2, 3, 4]
 
   var jsonPath = ""
+  result = default(T)
   initFromJson(result, node, jsonPath)
 
 when false:
