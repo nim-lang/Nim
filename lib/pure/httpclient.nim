@@ -47,7 +47,7 @@
 ## otherwise you will get an `Undeclared identifier: 'await'` error.
 ##
 ## **Note:** An asynchronous client instance can only deal with one
-## request at a time. To send multiple requests in paralle, use
+## request at a time. To send multiple requests in parallel, use
 ## multiple client instances.
 ##
 ## Using HTTP POST
