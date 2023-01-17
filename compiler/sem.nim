@@ -624,10 +624,6 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
 proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
   let aTypSkip = aTyp.skipTypes(defaultFieldsSkipTypes)
   if aTypSkip.kind == tyObject:
-    if computeSize(c.config, aTypSkip) == szIllegalRecursion:
-      # probably default nodes construction should be done after typeFinalPass;
-      # now it is constructed at typeRightPass
-      return
     let child = defaultFieldsForTheUninitialized(c, aTypSkip.n)
     if child.len > 0:
       var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTypSkip))
