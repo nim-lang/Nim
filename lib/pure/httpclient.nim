@@ -46,6 +46,10 @@
 ## **Note:** You need to run asynchronous examples in an async proc
 ## otherwise you will get an `Undeclared identifier: 'await'` error.
 ##
+## **Note:** An asynchronous client instance can only deal with one
+## request at a time. To send multiple requests in parallel, use
+## multiple client instances.
+##
 ## Using HTTP POST
 ## ===============
 ##
