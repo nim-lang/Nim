@@ -1624,7 +1624,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
     hcrModuleMeta.addf("\t\"\"};$n", [])
     hcrModuleMeta.addf("$nN_LIB_EXPORT N_NIMCALL(void**, HcrGetImportedModules)() { return (void**)hcr_module_list; }$n", [])
     hcrModuleMeta.addf("$nN_LIB_EXPORT N_NIMCALL(char*, HcrGetSigHash)() { return \"$1\"; }$n$n",
-                          [($sigHash(m.module)).rope])
+                          [($sigHash(m.module, m.config)).rope])
     if sfMainModule in m.module.flags:
       g.mainModProcs.add(hcrModuleMeta)
       g.mainModProcs.addf("static void* hcr_handle;$N", [])
