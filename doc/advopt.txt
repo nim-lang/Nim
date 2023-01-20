@@ -130,7 +130,9 @@ Advanced options:
                             select which memory management to use; default is 'orc'
   --exceptions:setjmp|cpp|goto|quirky
                             select the exception handling implementation
-  --index:on|off            turn index file generation on|off
+  --index:on|off|only       docgen: turn index file generation? (`only` means
+                            not generate output files like HTML)
+  --noImportdoc:on|off      disable loading documentation ``.idx`` files?
   --putenv:key=value        set an environment variable
   --NimblePath:PATH         add a path for Nimble support
   --noNimblePath            deactivate the Nimble path

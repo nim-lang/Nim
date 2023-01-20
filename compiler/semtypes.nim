@@ -1310,13 +1310,15 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if hasDefault:
       def = a[^1]
       block determineType:
+        var defTyp = typ
         if genericParams != nil and genericParams.len > 0:
+          defTyp = nil
           def = semGenericStmt(c, def)
           if hasUnresolvedArgs(c, def):
             def.typ = makeTypeFromExpr(c, def.copyTree)
             break determineType
 
-        def = semExprWithType(c, def, {efDetermineType})
+        def = semExprWithType(c, def, {efDetermineType}, defTyp)
         if def.referencesAnotherParam(getCurrOwner(c)):
           def.flags.incl nfDefaultRefsParam
 
@@ -1372,7 +1374,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       inc(counter)
       if def != nil and def.kind != nkEmpty:
         arg.ast = copyTree(def)
-      if containsOrIncl(check, arg.name.id):
+      if arg.name.s == "_":
+        arg.flags.incl(sfGenSym)
+      elif containsOrIncl(check, arg.name.id):
         localError(c.config, a[j].info, "attempt to redefine: '" & arg.name.s & "'")
       result.n.add newSymNode(arg)
       rawAddSon(result, finalType)

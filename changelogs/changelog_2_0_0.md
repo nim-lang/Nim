@@ -26,7 +26,7 @@
 - Enabling `-d:nimPreviewSlimSystem` also removes the following deprecated
   symbols in the `system` module:
   - Aliases with `Error` suffix to exception types that have a `Defect` suffix
-    (see [exceptions](https://nim-lang.org/docs/exceptions.html)):
+    (see [exceptions](https://nim-lang.github.io/Nim/exceptions.html)):
     `ArithmeticError`, `DivByZeroError`, `OverflowError`,
     `AccessViolationError`, `AssertionError`, `OutOfMemError`, `IndexError`,
     `FieldError`, `RangeError`, `StackOverflowError`, `ReraiseError`,
@@ -134,6 +134,21 @@
 - If no exception or any exception deriving from Exception but not Defect or CatchableError given in except, a `warnBareExcept` warning will be triggered.
 
 - The experimental strictFuncs feature now disallows a store to the heap via a `ref` or `ptr` indirection.
+
+- Underscores (`_`) as routine parameters are now ignored and cannot be used in the routine body.
+  The following code now does not compile:
+
+  ```nim
+  proc foo(_: int): int = _ + 1
+  echo foo(1)
+  ```
+
+  Instead, the following code now compiles:
+
+  ```nim
+  proc foo(_, _: int): int = 123
+  echo foo(1, 2)
+  ```
 
 - - Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
 
@@ -317,6 +332,7 @@
 - Nim now supports `out` parameters and ["strict definitions"](https://nim-lang.github.io/Nim/manual_experimental.html#strict-definitions-and-nimout-parameters).
 - Nim now offers a [strict mode](https://nim-lang.github.io/Nim/manual_experimental.html#strict-case-objects) for `case objects`.
 
+- IBM Z architecture and macOS m1 arm64 architecture are supported.
 
 ## Compiler changes
 

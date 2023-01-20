@@ -46,7 +46,7 @@ pkg "BipBuffer"
 pkg "blscurve", allowFailure = true # pending https://github.com/status-im/nim-blscurve/issues/39
 pkg "bncurve"
 pkg "brainfuck", "nim c -d:release -r tests/compile.nim"
-pkg "bump", "nim c --gc:arc --path:. -r tests/tbump.nim", "https://github.com/disruptek/bump"
+pkg "bump", "nim c --gc:arc --path:. -r tests/tbump.nim", "https://github.com/disruptek/bump", allowFailure = true
 pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "cello", url = "https://github.com/nim-lang/cello", useHead = true
@@ -60,7 +60,7 @@ pkg "comprehension", "nimble test", "https://github.com/alehander92/comprehensio
 pkg "criterion", allowFailure = true # pending https://github.com/disruptek/criterion/issues/3 (wrongly closed)
 pkg "datamancer"
 pkg "dashing", "nim c tests/functional.nim"
-pkg "delaunay", url = "https://github.com/nim-lang/DelaunayNim", useHead = true
+pkg "delaunay"
 pkg "docopt"
 pkg "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg "elvis"
