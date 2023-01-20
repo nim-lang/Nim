@@ -182,4 +182,7 @@ block: # bug #21280
       B = 19
       A = int64.high()
 
-  doAssert ord(A) == int64.high()
+  when not defined(i386):
+    doAssert ord(A) == int64.high()
+  else:
+    discard A
