@@ -176,13 +176,11 @@ block: # bug #12589
 
     doAssert $typ() == "wkbPoint25D"
 
-block: # bug #21280
-  type
-    Test = enum
-      B = 19
-      A = int64.high()
-
-  when not defined(i386):
+when not defined(i386):
+  block: # bug #21280
+    type
+      Test = enum
+        B = 19
+        A = int64.high()
+  
     doAssert ord(A) == int64.high()
-  else:
-    discard A
