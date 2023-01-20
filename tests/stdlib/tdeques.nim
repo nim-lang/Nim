@@ -183,6 +183,12 @@ proc main() =
     clear(a)
     doAssert len(a) == 0
 
+  block: # bug #21278
+    var a = [10, 20, 30, 40].toDeque
+
+    a.shrink(fromFirst = 0, fromLast = 1)
+    doAssert $a == "[10, 20, 30]"
+
 
 static: main()
 main()
