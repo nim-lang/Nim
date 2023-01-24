@@ -4,8 +4,11 @@ Advanced commands:
   //compileToOC, objc       compile project to Objective C code
   //js                      compile project to Javascript
   //e                       run a Nimscript file
+  //md2html                 convert a Markdown file to HTML
+                            use `--docCmd:skip` to skip compiling snippets
   //rst2html                convert a reStructuredText file to HTML
                             use `--docCmd:skip` to skip compiling snippets
+  //md2tex                  convert a Markdown file to LaTeX
   //rst2tex                 convert a reStructuredText file to LaTeX
   //doc2tex                 extract the documentation to a LaTeX file
   //jsondoc                 extract the documentation to a json file
