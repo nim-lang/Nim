@@ -96,3 +96,6 @@ block: # bug #21290
 
   let s = $x
   doAssert $parseXml(s) == s
+  doAssert s == """<foo>
+  <bar>Hola<qux>    <plugh />  </qux></bar>
+</foo>"""
