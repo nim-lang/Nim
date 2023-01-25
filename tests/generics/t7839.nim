@@ -1,3 +1,6 @@
+discard """
+action: compile
+"""
 # the following code will break compilation without any error or hint
 # `exited with code=3221225725`
 type A[I: SomeOrdinal, E] = tuple # same for object
