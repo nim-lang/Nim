@@ -2016,24 +2016,16 @@ proc genProc*(c: PCtx; s: PSym): int
 
 proc toKey(s: PSym): string =
   var s = s
-  var res = newSeq[string]()
-  var size = 0
   while s != nil:
-    res.add s.name.s
-    inc(size, s.name.s.len)
+    result.add s.name.s
     if s.owner != nil:
       if sfFromGeneric in s.flags:
         s = s.owner.owner
       else:
         s = s.owner
+      result.add "."
     else:
       break
-
-  result = newStringOfCap(size + res.len - 1)
-  for i in 1..res.len:
-    result.add res[^i]
-    if i != res.len:
-      result.add "."
 
 proc procIsCallback(c: PCtx; s: PSym): bool =
   if s.offset < -1: return true

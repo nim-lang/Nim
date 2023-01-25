@@ -10,7 +10,7 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import tables
+import std/[tables, strutils]
 
 import ast, idents, options, modulegraphs, lineinfos
 
@@ -302,10 +302,18 @@ proc refresh*(c: PCtx, module: PSym; idgen: IdGenerator) =
   c.loopIterations = c.config.maxLoopIterationsVM
   c.idgen = idgen
 
+proc reverseName(s: string): string =
+  result = newStringOfCap(s.len)
+  let y = s.split('.')
+  for i in 1..y.len:
+    result.add y[^i]
+    if i != y.len:
+      result.add '.'
+
 proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.discardable.} =
   result = c.callbacks.len
   c.callbacks.add(callback)
-  c.callbackIndex[name] = result
+  c.callbackIndex[reverseName(name)] = result
 
 const
   firstABxInstr* = opcTJmp
