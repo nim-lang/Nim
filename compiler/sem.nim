@@ -550,18 +550,17 @@ proc pickCaseBranchIndex(caseExpr, matched: PNode): int =
   if endsWithElse:
     return caseExpr.len - 1
 
-proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, id: var IntSet): seq[PNode]
-proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, id: var IntSet): PNode
-proc defaultNodeField(c: PContext, a: PNode): PNode
+proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode]
 proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode
+proc defaultNodeField(c: PContext, a: PNode): PNode
 
 const defaultFieldsSkipTypes = {tyGenericInst, tyAlias, tySink}
 
-proc defaultFieldsForTuple(c: PContext, recNode: PNode, id: var IntSet, hasDefault: var bool): seq[PNode] =
+proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool): seq[PNode] =
   case recNode.kind
   of nkRecList:
     for field in recNode:
-      result.add defaultFieldsForTuple(c, field, id, hasDefault)
+      result.add defaultFieldsForTuple(c, field, hasDefault)
   of nkSym:
     let field = recNode.sym
     let recType = recNode.typ.skipTypes(defaultFieldsSkipTypes)
@@ -570,7 +569,7 @@ proc defaultFieldsForTuple(c: PContext, recNode: PNode, id: var IntSet, hasDefau
       result.add newTree(nkExprColonExpr, recNode, field.ast)
     else:
       if recType.kind in {tyObject, tyArray, tyTuple}:
-        let asgnExpr = defaultNodeField(c, recNode, recNode.typ, id)
+        let asgnExpr = defaultNodeField(c, recNode, recNode.typ)
         if asgnExpr != nil:
           hasDefault = true
           asgnExpr.flags.incl nfUseDefaultField
@@ -589,11 +588,11 @@ proc defaultFieldsForTuple(c: PContext, recNode: PNode, id: var IntSet, hasDefau
   else:
     doAssert false
 
-proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, id: var IntSet): seq[PNode] =
+proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
   case recNode.kind
   of nkRecList:
     for field in recNode:
-      result.add defaultFieldsForTheUninitialized(c, field, id)
+      result.add defaultFieldsForTheUninitialized(c, field)
   of nkRecCase:
     let discriminator = recNode[0]
     var selectedBranch: int
@@ -607,14 +606,14 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, id: var IntSe
     selectedBranch = recNode.pickCaseBranchIndex defaultValue
     defaultValue.flags.incl nfUseDefaultField
     result.add newTree(nkExprColonExpr, discriminator, defaultValue)
-    result.add defaultFieldsForTheUninitialized(c, recNode[selectedBranch][^1], id)
+    result.add defaultFieldsForTheUninitialized(c, recNode[selectedBranch][^1])
   of nkSym:
     let field = recNode.sym
     let recType = recNode.typ.skipTypes(defaultFieldsSkipTypes)
     if field.ast != nil: #Try to use default value
       result.add newTree(nkExprColonExpr, recNode, field.ast)
     elif recType.kind in {tyObject, tyArray, tyTuple}:
-      let asgnExpr = defaultNodeField(c, recNode, recType, id)
+      let asgnExpr = defaultNodeField(c, recNode, recType)
       if asgnExpr != nil:
         asgnExpr.typ = recType
         asgnExpr.flags.incl nfUseDefaultField
@@ -622,19 +621,17 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, id: var IntSe
   else:
     doAssert false
 
-proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, id: var IntSet): PNode =
+proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
   let aTypSkip = aTyp.skipTypes(defaultFieldsSkipTypes)
   if aTypSkip.kind == tyObject:
-    if id.containsOrIncl(aTypSkip.id):
-      return
-    let child = defaultFieldsForTheUninitialized(c, aTypSkip.n, id)
+    let child = defaultFieldsForTheUninitialized(c, aTypSkip.n)
     if child.len > 0:
       var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTypSkip))
       asgnExpr.typ = aTypSkip
       asgnExpr.sons.add child
       result = semExpr(c, asgnExpr)
   elif aTypSkip.kind == tyArray:
-    let child = defaultNodeField(c, a, aTypSkip[1], id)
+    let child = defaultNodeField(c, a, aTypSkip[1])
 
     if child != nil:
       let node = newNode(nkIntLit)
@@ -647,20 +644,15 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, id: var IntSet): PNode
   elif aTypSkip.kind == tyTuple:
     var hasDefault = false
     if aTypSkip.n != nil:
-      let children = defaultFieldsForTuple(c, aTypSkip.n, id, hasDefault)
+      let children = defaultFieldsForTuple(c, aTypSkip.n, hasDefault)
       if hasDefault and children.len > 0:
         result = newNodeI(nkTupleConstr, a.info)
         result.typ = aTyp
         result.sons.add children
         result = semExpr(c, result)
 
-proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
-  var s = initIntSet()
-  defaultNodeField(c, a, aTyp, s)
-
 proc defaultNodeField(c: PContext, a: PNode): PNode =
-  var s = initIntSet()
-  result = defaultNodeField(c, a, a.typ, s)
+  result = defaultNodeField(c, a, a.typ)
 
 include semtempl, semgnrc, semstmts, semexprs
 

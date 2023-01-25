@@ -1488,7 +1488,10 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
      s.kind in {skProc, skFunc, skConverter, skMethod} and s.magic == mNone:
     var res = s.ast[resultPos].sym # get result symbol
     if res.id notin t.init:
-      message(g.config, body.info, warnProveInit, "result")
+      if tfRequiresInit in s.typ[0].flags:
+        localError(g.config, body.info, "'$1' requires explicit initialization" % "result")
+      else:
+        message(g.config, body.info, warnProveInit, "result")
   let p = s.ast[pragmasPos]
   let raisesSpec = effectSpec(p, wRaises)
   if not isNil(raisesSpec):

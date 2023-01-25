@@ -1801,6 +1801,9 @@ proc genInitCode(m: BModule) =
 
     if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
       prc.add(deinitFrame(m.initProc))
+  elif sfMainModule in m.module.flags and m.config.exc == excGoto:
+    if getCompilerProc(m.g.graph, "nimTestErrorFlag") != nil:
+      m.appcg(prc, "\t#nimTestErrorFlag();$n", [])
 
   prc.addf("}$N", [])
 
