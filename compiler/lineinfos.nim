@@ -57,6 +57,7 @@ type
     warnRstBrokenLink = "BrokenLink",
     warnRstLanguageXNotSupported = "LanguageXNotSupported",
     warnRstFieldXNotSupported = "FieldXNotSupported",
+    warnRstUnusedImportdoc = "UnusedImportdoc",
     warnRstStyle = "warnRstStyle",
     warnCommentXIgnored = "CommentXIgnored",
     warnTypelessParam = "TypelessParam",
@@ -142,6 +143,7 @@ const
     warnRstBrokenLink: "broken link '$1'",
     warnRstLanguageXNotSupported: "language '$1' not supported",
     warnRstFieldXNotSupported: "field '$1' not supported",
+    warnRstUnusedImportdoc: "importdoc for '$1' is not used",
     warnRstStyle: "RST style: $1",
     warnCommentXIgnored: "comment '$1' ignored",
     warnTypelessParam: "", # deadcode

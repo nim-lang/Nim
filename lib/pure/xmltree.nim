@@ -723,20 +723,8 @@ proc addIndent(result: var string, indent: int, addNewLines: bool) =
   for i in 1 .. indent:
     result.add(' ')
 
-proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
-          addNewLines = true) =
-  ## Adds the textual representation of `n` to string `result`.
-  runnableExamples:
-    var
-      a = newElement("firstTag")
-      b = newText("my text")
-      c = newComment("my comment")
-      s = ""
-    s.add(c)
-    s.add(a)
-    s.add(b)
-    assert s == "<!-- my comment --><firstTag />my text"
-
+proc addImpl(result: var string, n: XmlNode, indent = 0, indWidth = 2,
+          addNewLines = true, lastNodeIsText = false) =
   proc noWhitespace(n: XmlNode): bool =
     for i in 0 ..< n.len:
       if n[i].kind in {xnText, xnEntity}: return true
@@ -756,7 +744,7 @@ proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
 
   case n.k
   of xnElement:
-    if indent > 0:
+    if indent > 0 and not lastNodeIsText:
       result.addIndent(indent, addNewLines)
 
     let
@@ -785,8 +773,10 @@ proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
                    else:
                      indent+indWidth
     result.add('>')
+    var lastNodeIsText = false
     for i in 0 ..< n.len:
-      result.add(n[i], indentNext, indWidth, addNewLines)
+      result.addImpl(n[i], indentNext, indWidth, addNewLines, lastNodeIsText)
+      lastNodeIsText = n[i].kind == xnText
 
     if not n.noWhitespace():
       result.addIndent(indent, addNewLines)
@@ -810,6 +800,21 @@ proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
     result.add('&')
     result.add(n.fText)
     result.add(';')
+
+proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
+          addNewLines = true) {.inline.} =
+  ## Adds the textual representation of `n` to string `result`.
+  runnableExamples:
+    var
+      a = newElement("firstTag")
+      b = newText("my text")
+      c = newComment("my comment")
+      s = ""
+    s.add(c)
+    s.add(a)
+    s.add(b)
+    assert s == "<!-- my comment --><firstTag />my text"
+  result.addImpl(n, indent, indWidth, addNewLines)
 
 proc `$`*(n: XmlNode): string =
   ## Converts `n` into its string representation.
