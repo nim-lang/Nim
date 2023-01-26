@@ -36,7 +36,9 @@ from std/osproc import nil
 when defined(nimPreviewSlimSystem):
   import std/syncio
 else:
-  from std/formatfloat import addFloatRoundtrip, addFloatSprintf 
+  from std/formatfloat import addFloatRoundtrip, addFloatSprintf
+
+from std/strutils import formatBiggestFloat, FloatFormatMode
 
 # There are some useful procs in vmconv.
 import vmconv, vmmarshal
@@ -373,6 +375,10 @@ proc registerAdditionalOps*(c: PCtx) =
     let p = a.getVar(0)
     let x = a.getFloat(1)
     addFloatSprintf(p.strVal, x)
+
+  registerCallback c, "stdlib.strutils.formatBiggestFloat", proc(a: VmArgs) =
+    setResult(a, formatBiggestFloat(a.getFloat(0), FloatFormatMode(a.getInt(1)),
+                                    a.getInt(2), chr(a.getInt(3))))
 
   wrapIterator("stdlib.envvars.envPairsImplSeq"): envPairs()
 
