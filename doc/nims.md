@@ -211,7 +211,7 @@ ends with ``.nims``:
   echo "hello world"
   ```
 
-Use `#!/usr/bin/env -S nim --hints:off` to disable hints.
+Use `#!/usr/bin/env -S nim e --hints:off` to disable hints and relax the file extension constraint.
 
 
 Benefits
