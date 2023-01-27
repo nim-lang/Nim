@@ -185,7 +185,7 @@ type
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideChkFile, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg, ideProject, ideGlobalSymbols,
-    ideRecompile, ideChanged, ideType, ideDeclaration
+    ideRecompile, ideChanged, ideType, ideDeclaration, ideExpand
 
   Feature* = enum  ## experimental features; DO NOT RENAME THESE!
     implicitDeref,
@@ -264,6 +264,9 @@ type
     scope*, localUsages*, globalUsages*: int # more usages is better
     tokenLen*: int
     version*: int
+    endLine*: uint16
+    endCol*: int
+
   Suggestions* = seq[Suggest]
 
   ProfileInfo* = object
@@ -393,6 +396,11 @@ type
     cppCustomNamespace*: string
     nimMainPrefix*: string
     vmProfileData*: ProfileData
+
+    expandProgress*: bool
+    expandLevels*: int
+    expandNodeResult*: string
+    expandPosition*: TLineInfo
 
 proc parseNimVersion*(a: string): NimVer =
   # could be moved somewhere reusable
@@ -981,6 +989,9 @@ proc isDynlibOverride*(conf: ConfigRef; lib: string): bool =
   result = optDynlibOverrideAll in conf.globalOptions or
      conf.dllOverrides.hasKey(lib.canonDynlibName)
 
+proc expandDone*(conf: ConfigRef): bool =
+  result = conf.ideCmd == ideExpand and conf.expandLevels == 0 and conf.expandProgress
+
 proc parseIdeCmd*(s: string): IdeCmd =
   case s:
   of "sug": ideSug
@@ -1020,6 +1031,7 @@ proc `$`*(c: IdeCmd): string =
   of ideProject: "project"
   of ideGlobalSymbols: "globalSymbols"
   of ideDeclaration: "declaration"
+  of ideExpand: "expand"
   of ideRecompile: "recompile"
   of ideChanged: "changed"
   of ideType: "type"
