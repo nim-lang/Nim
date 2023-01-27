@@ -6,8 +6,8 @@ block: # Misc tests
     check("перевірка".replace(re"(*U)\w", "") == "")
 
   block: # empty or non-empty match
-    check("abc".findall(re"|.").join(":") == ":a::b::c:")
-    check("abc".findall(re".|").join(":") == "a:b:c:")
+    check("abc".findAll(re"|.").join(":") == ":a::b::c:")
+    check("abc".findAll(re".|").join(":") == "a:b:c:")
 
     check("abc".replace(re"|.", "x") == "xxxxxxx")
     check("abc".replace(re".|", "x") == "xxxx")

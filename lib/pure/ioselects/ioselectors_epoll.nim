@@ -526,4 +526,4 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
     body2
 
 proc getFd*[T](s: Selector[T]): int =
-  return s.epollFd.int
+  return s.epollFD.int

@@ -47,7 +47,6 @@ runnableExamples:
 ## * `fenv module <fenv.html>`_ for handling of floating-point rounding
 ##   and exceptions (overflow, zero-divide, etc.)
 ## * `random module <random.html>`_ for a fast and tiny random number generator
-## * `mersenne module <mersenne.html>`_ for the Mersenne Twister random number generator
 ## * `stats module <stats.html>`_ for statistical analysis
 ## * `strformat module <strformat.html>`_ for formatting floats for printing
 ## * `system module <system.html>`_ for some very basic and trivial math operators
@@ -60,6 +59,10 @@ import std/private/since
 
 import bitops, fenv
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 when defined(c) or defined(cpp):
   proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
     # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.
@@ -68,11 +71,6 @@ when defined(c) or defined(cpp):
   proc c_copysign(x, y: cdouble): cdouble {.importc: "copysign", header: "<math.h>".}
 
   proc c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
-
-  func c_frexp*(x: cfloat, exponent: var cint): cfloat {.
-      importc: "frexpf", header: "<math.h>", deprecated: "Use `frexp` instead".}
-  func c_frexp*(x: cdouble, exponent: var cint): cdouble {.
-      importc: "frexp", header: "<math.h>", deprecated: "Use `frexp` instead".}
 
   # don't export `c_frexp` in the future and remove `c_frexp2`.
   func c_frexp2(x: cfloat, exponent: var cint): cfloat {.

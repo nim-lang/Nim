@@ -1,5 +1,5 @@
 discard """
-errormsg: "invalid type: 'macro (body: untyped): untyped{.noSideEffect, gcsafe, locks: 0.}' for let. Did you mean to call the macro with '()'?"
+errormsg: "invalid type: 'macro (body: untyped): untyped{.noSideEffect, gcsafe.}' for let. Did you mean to call the macro with '()'?"
 line: 9
 """
 

@@ -3,7 +3,7 @@ discard """
   disabled: "freebsd"
   output: "42"
 """
-
+import std/assertions
 from std/threadpool import spawn, `^`, sync
 block: # bug #12005
   proc doworkok(i: int) {.thread.} = echo i

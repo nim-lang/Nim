@@ -18,7 +18,7 @@ type
 proc set1(x: float): m256d {.importc: "_mm256_set1_pd", header: "immintrin.h".}
 func `+`(a,b: m256d): m256d {.importc: "_mm256_add_pd", header: "immintrin.h".}
 proc `$`(a: m256d): string =  
-  result = $(cast[ptr float](a.unsafeAddr)[])
+  result = $(cast[ptr float](a.addr)[])
 
 
 var res: seq[seq[m256d]]

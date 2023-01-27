@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:arc; --mm:refc"
   output: '''wow2
 X 1
 X 3'''

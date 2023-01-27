@@ -2,7 +2,7 @@ discard """
   matrix: "--styleCheck:error --styleCheck:usages"
 """
 
-import asyncdispatch
+import std/[asyncdispatch, nre]
 
 type
   Name = object
@@ -15,3 +15,8 @@ template hello =
   doAssert iD == "string"
 
 hello()
+
+# bug #12955
+import os
+import fileinfo
+var xs: seq[fileinfo.FileInfo]

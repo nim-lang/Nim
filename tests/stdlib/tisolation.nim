@@ -4,7 +4,7 @@ discard """
 """
 
 import std/[isolation, json]
-
+import std/[assertions, objectdollar]
 
 
 proc main(moveZeroesOut: static bool) =

@@ -108,11 +108,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       result = n
     onUse(n.info, s)
   of skEnumField:
-    if overloadableEnums in c.features:
-      result = symChoice(c, n, s, scOpen)
-    else:
-      result = newSymNode(s, n.info)
-      onUse(n.info, s)
+    result = symChoice(c, n, s, scOpen)
   else:
     result = newSymNode(s, n.info)
     onUse(n.info, s)
@@ -179,7 +175,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
 proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
   let s = newSymS(skUnknown, getIdentNode(c, n), c)
   addPrelimDecl(c, s)
-  styleCheckDef(c.config, n.info, s, kind)
+  styleCheckDef(c, n.info, s, kind)
   onDef(n.info, s)
 
 proc semGenericStmt(c: PContext, n: PNode,
@@ -310,7 +306,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     result.add newIdentNode(getIdent(c.cache, "[]"), n.info)
     for i in 0..<n.len: result.add(n[i])
     result = semGenericStmt(c, result, flags, ctx)
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     checkSonsLen(n, 2, c.config)
     let a = n[0]
     let b = n[1]

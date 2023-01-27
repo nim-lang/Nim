@@ -1,4 +1,5 @@
-import strmisc
+import std/strmisc
+import std/assertions
 
 
 doAssert expandTabs("\t", 4) == "    "

@@ -1,4 +1,5 @@
 import std/[rationals, math]
+import std/assertions
 
 template main() =
   var

@@ -88,7 +88,7 @@ value1 = value2
 '''
 """
 
-import strtabs
+import std/[strtabs, assertions, syncio]
 
 var tab = newStringTable({"key1": "val1", "key2": "val2"},
                          modeStyleInsensitive)

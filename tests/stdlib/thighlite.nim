@@ -1,6 +1,7 @@
 
 import unittest, strutils
 import ../../lib/packages/docutils/highlite
+import std/objectdollar
 
 block: # Nim tokenizing
   test "string literals and escape seq":
@@ -11,6 +12,12 @@ block: # Nim tokenizing
     check("\"\"\"ok1\\nok2\\nok3\"\"\"".tokenize(langNim) ==
        @[("\"\"\"ok1\\nok2\\nok3\"\"\"", gtLongStringLit)
       ])
+
+  test "whitespace at beginning of line is preserved":
+    check("  discard 1".tokenize(langNim) ==
+       @[("  ", gtWhitespace), ("discard", gtKeyword), (" ", gtWhitespace),
+         ("1", gtDecNumber)
+       ])
 
 block: # Cmd (shell) tokenizing
   test "cmd with dollar and output":
@@ -24,3 +31,12 @@ block: # Cmd (shell) tokenizing
         ("file.nim", gtIdentifier), ("\n", gtWhitespace),
         ("out: file [SuccessX]", gtProgramOutput)
       ])
+
+block: # bug #21232
+  let code = "/"
+  var toknizr: GeneralTokenizer
+
+  initGeneralTokenizer(toknizr, code)
+
+  getNextToken(toknizr, langC)
+  check $toknizr == """(kind: gtOperator, start: 0, length: 1, buf: "/", pos: 1, state: gtEof, lang: langC)"""

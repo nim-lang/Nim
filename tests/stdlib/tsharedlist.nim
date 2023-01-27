@@ -3,6 +3,7 @@ discard """
 """
 
 import std/sharedlist
+import std/assertions
 
 block:
   var

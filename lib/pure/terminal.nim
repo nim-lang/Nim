@@ -66,6 +66,9 @@ import colors
 when defined(windows):
   import winlean
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
 type
   PTerminal = ref object
     trueColorIsSupported: bool
@@ -641,9 +644,9 @@ proc setForegroundColor*(f: File, fg: ForegroundColor, bright = false) =
       0, # fg8Bit not supported, see `enableTrueColors` instead.
       0] # unused
     if fg == fgDefault:
-      discard setConsoleTextAttribute(h, toU16(old or defaultForegroundColor))
+      discard setConsoleTextAttribute(h, cast[int16](cast[uint16](old) or cast[uint16](defaultForegroundColor)))
     else:
-      discard setConsoleTextAttribute(h, toU16(old or lookup[fg]))
+      discard setConsoleTextAttribute(h, cast[int16](cast[uint16](old) or cast[uint16](lookup[fg])))
   else:
     gFG = ord(fg)
     if bright: inc(gFG, 60)
@@ -670,9 +673,9 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright = false) =
       0, # bg8Bit not supported, see `enableTrueColors` instead.
       0] # unused
     if bg == bgDefault:
-      discard setConsoleTextAttribute(h, toU16(old or defaultBackgroundColor))
+      discard setConsoleTextAttribute(h, cast[int16](cast[uint16](old) or cast[uint16](defaultBackgroundColor)))
     else:
-      discard setConsoleTextAttribute(h, toU16(old or lookup[bg]))
+      discard setConsoleTextAttribute(h, cast[int16](cast[uint16](old) or cast[uint16](lookup[bg])))
   else:
     gBG = ord(bg)
     if bright: inc(gBG, 60)

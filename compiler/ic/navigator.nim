@@ -16,6 +16,9 @@ import sets
 from os import nil
 from std/private/miscdollars import toLocation
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import ".." / [ast, modulegraphs, msgs, options]
 import packed_ast, bitabs, ic
 

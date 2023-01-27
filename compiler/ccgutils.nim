@@ -13,6 +13,9 @@ import
   ast, types, hashes, strutils, msgs, wordrecg,
   platform, trees, options, cgendata
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
   case n.kind
   of nkStmtList:
@@ -50,7 +53,7 @@ proc hashString*(conf: ConfigRef; s: string): BiggestInt =
     a = a + (a shl 3)
     a = a xor (a shr 11)
     a = a + (a shl 15)
-    result = cast[Hash](a)
+    result = cast[Hash](uint(a))
 
 template getUniqueType*(key: PType): PType = key
 

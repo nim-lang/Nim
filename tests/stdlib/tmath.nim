@@ -7,6 +7,8 @@ discard """
 # but it requires disabling certain lines with `when not defined(nimTmathCase2)`
 
 import std/math
+import std/assertions
+
 
 # Function for approximate comparison of floats
 proc `==~`(x, y: float): bool = abs(x - y) < 1e-9
@@ -437,12 +439,6 @@ template main() =
       doAssert lgamma(-0.0) == Inf
       doAssert lgamma(-1.0) == Inf
 
-      when nimvm: discard
-      else:
-        var exponent: cint
-        doAssert c_frexp(0.0, exponent) == 0.0
-        doAssert c_frexp(-0.0, exponent) == -0.0
-        doAssert classify(c_frexp(-0.0, exponent)) == fcNegZero
 
 static: main()
 main()

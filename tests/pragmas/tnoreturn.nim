@@ -1,4 +1,5 @@
 discard """
+matrix: "--mm:refc"
 ccodeCheck: "\\i @'__attribute__((noreturn))' .*"
 action: compile
 """

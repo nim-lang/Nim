@@ -59,8 +59,8 @@ runnableExamples:
 
 import std/private/since
 
-when not defined(nimHasCursor):
-  {.pragma: cursor.}
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type
   DoublyLinkedNodeObj*[T] = object

@@ -8,6 +8,10 @@
 #
 
 import std/[os, strutils, parseopt]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 when defined(windows) and not defined(nimKochBootstrap):
   # remove workaround pending bootstrap >= 1.5.1
   # refs https://github.com/nim-lang/Nim/issues/18334#issuecomment-867114536
@@ -36,6 +40,15 @@ when hasTinyCBackend:
 when defined(profiler) or defined(memProfiler):
   {.hint: "Profiling support is turned on!".}
   import nimprof
+
+proc nimbleLockExists(config: ConfigRef): bool =
+  const nimbleLock = "nimble.lock"
+  let pd = if not config.projectPath.isEmpty: config.projectPath else: AbsoluteDir(getCurrentDir())
+  if optSkipParentConfigFiles notin config.globalOptions:
+    for dir in parentDirs(pd.string, fromRoot=true, inclusive=false):
+      if fileExists(dir / nimbleLock):
+        return true
+  return fileExists(pd.string / nimbleLock)
 
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
@@ -70,6 +83,11 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
         config.arguments.len > 0 and config.cmd notin {cmdTcc, cmdNimscript, cmdCrun}:
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
+  if config.nimbleLockExists:
+    # disable nimble path if nimble.lock is present.
+    # see https://github.com/nim-lang/nimble/issues/1004
+    disableNimblePath(config)
+
 proc getNimRunExe(conf: ConfigRef): string =
   # xxx consider defining `conf.getConfigVar("nimrun.exe")` to allow users to
   # customize the binary to run the command with, e.g. for custom `nodejs` or `wine`.
@@ -88,9 +106,19 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     return
 
   self.processCmdLineAndProjectPath(conf)
+
   var graph = newModuleGraph(cache, conf)
   if not self.loadConfigsAndProcessCmdLine(cache, conf, graph):
     return
+
+  if conf.cmd == cmdCheck and optWasNimscript notin conf.globalOptions and
+       conf.backend == backendInvalid:
+    conf.backend = backendC
+
+  if conf.selectedGC == gcUnselected:
+    if conf.backend in {backendC, backendCpp, backendObjc}:
+      initOrcDefines(conf)
+
   mainCommand(graph)
   if conf.hasHint(hintGCStats): echo(GC_getStatistics())
   #echo(GC_getStatistics())
@@ -103,7 +131,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     case conf.cmd
     of cmdBackends, cmdTcc:
       let nimRunExe = getNimRunExe(conf)
-      var cmdPrefix: string
+      var cmdPrefix = ""
       if nimRunExe.len > 0: cmdPrefix.add nimRunExe.quoteShell
       case conf.backend
       of backendC, backendCpp, backendObjc: discard
@@ -116,8 +144,9 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
       if cmdPrefix.len > 0: cmdPrefix.add " "
         # without the `cmdPrefix.len > 0` check, on windows you'd get a cryptic:
         # `The parameter is incorrect`
-      execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
-    of cmdDocLike, cmdRst2html, cmdRst2tex: # bugfix(cmdRst2tex was missing)
+      let cmd = cmdPrefix & output.quoteShell & ' ' & conf.arguments
+      execExternalProgram(conf, cmd.strip(leading=false,trailing=true))
+    of cmdDocLike, cmdRst2html, cmdRst2tex, cmdMd2html, cmdMd2tex: # bugfix(cmdRst2tex was missing)
       if conf.arguments.len > 0:
         # reserved for future use
         rawMessage(conf, errGenerated, "'$1 cannot handle arguments" % [$conf.cmd])

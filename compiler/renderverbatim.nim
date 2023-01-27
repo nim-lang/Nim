@@ -2,6 +2,10 @@ import strutils
 
 import ast, options, msgs
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 const isDebug = false
 when isDebug:
   import renderer

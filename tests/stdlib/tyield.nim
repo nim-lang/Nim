@@ -3,6 +3,7 @@ discard """
 """
 
 import std/[sugar, algorithm]
+import std/assertions
 
 block:
   var x = @[(6.0, 6, '6'),

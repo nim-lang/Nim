@@ -12,6 +12,9 @@
 import parseutils, strutils, os, options, msgs, sequtils, lineinfos, pathutils,
   std/sha1, tables
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
 proc addPath*(conf: ConfigRef; path: AbsoluteDir, info: TLineInfo) =
   if not conf.searchPaths.contains(path):
     conf.searchPaths.insert(path, 0)

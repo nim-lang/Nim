@@ -1,5 +1,6 @@
 import std/unittest
 import std/[cgi, strtabs, sugar]
+import std/assertions
 
 block: # Test cgi module
   const queryString = "foo=bar&фу=бар&checked=✓&list=1,2,3&with_space=text%20with%20space"

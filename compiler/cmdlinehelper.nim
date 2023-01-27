@@ -64,7 +64,8 @@ proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: Confi
       if conf.cmd == cmdNimscript: return false
   # now process command line arguments again, because some options in the
   # command line can overwrite the config file's settings
-  extccomp.initVars(conf)
+  if conf.backend != backendJs: # bug #19059
+    extccomp.initVars(conf)
   self.processCmdLine(passCmd2, "", conf)
   if conf.cmd == cmdNone:
     rawMessage(conf, errGenerated, "command missing")

@@ -1,5 +1,5 @@
 type
-  TAnimal=object {.inheritable.}
+  TAnimal{.inheritable.}=object
   PAnimal=ref TAnimal
 
   TDog=object of TAnimal

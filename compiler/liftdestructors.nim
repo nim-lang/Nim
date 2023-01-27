@@ -15,6 +15,9 @@ import modulegraphs, lineinfos, idents, ast, renderer, semdata,
 
 from trees import isCaseObj
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   TLiftCtx = object
     g: ModuleGraph
@@ -162,9 +165,12 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
       # the value needs to be destroyed before we assign the selector
       # or the value is lost
       let prevKind = c.kind
+      let prevAddMemReset = c.addMemReset
       c.kind = attachedDestructor
+      c.addMemReset = true
       fillBodyObj(c, n, body, x, y, enforceDefaultOp = false)
       c.kind = prevKind
+      c.addMemReset = prevAddMemReset
       localEnforceDefaultOp = true
 
     if c.kind != attachedDestructor:
@@ -603,6 +609,11 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   createTypeBoundOps(c.g, c.c, elemType, c.info, c.idgen)
   let isCyclic = c.g.config.selectedGC == gcOrc and types.canFormAcycle(elemType)
 
+  let isInheritableAcyclicRef = c.g.config.selectedGC == gcOrc and
+                      (not isPureObject(elemType)) and
+                      tfAcyclic in skipTypes(elemType, abstractInst+{tyOwned}-{tyTypeDesc}).flags
+  # dynamic Acyclic refs need to use dyn decRef
+
   let tmp =
     if isCyclic and c.kind in {attachedAsgn, attachedSink}:
       declareTempOf(c, body, x)
@@ -626,6 +637,8 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       cond = callCodegenProc(c.g, "nimDecRefIsLastCyclicStatic", c.info, tmp, typInfo)
     else:
       cond = callCodegenProc(c.g, "nimDecRefIsLastCyclicDyn", c.info, tmp)
+  elif isInheritableAcyclicRef:
+    cond = callCodegenProc(c.g, "nimDecRefIsLastDyn", c.info, x)
   else:
     cond = callCodegenProc(c.g, "nimDecRefIsLast", c.info, x)
   cond.typ = getSysType(c.g, x.info, tyBool)
