@@ -935,6 +935,7 @@ type
     attachedAsgn,
     attachedSink,
     attachedTrace,
+    attachedWasMoved,
     attachedDeepCopy
 
   TType* {.acyclic.} = object of TIdObj # \
@@ -1498,7 +1499,7 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
 
 const
   AttachedOpToStr*: array[TTypeAttachedOp, string] = [
-    "=destroy", "=copy", "=sink", "=trace", "=deepcopy"]
+    "=destroy", "=copy", "=sink", "=trace", "=deepcopy", "=wasMoved"]
 
 proc `$`*(s: PSym): string =
   if s != nil:
