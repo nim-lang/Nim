@@ -49,9 +49,8 @@ proc closeJson(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
 proc processNode(c: PPassContext, n: PNode): PNode =
   result = n
   var g = PGen(c)
-  let config = g.config
   if shouldProcess(g):
-    generateDoc(g.doc, n, n,config)
+    generateDoc(g.doc, n, n, g.config)
 
 proc processNodeJson(c: PPassContext, n: PNode): PNode =
   result = n
