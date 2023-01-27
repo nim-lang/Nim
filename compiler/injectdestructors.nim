@@ -355,7 +355,12 @@ It is best to factor out piece of object that needs custom destructor into separ
 
 proc genWasMoved(c: var Con, n: PNode): PNode =
   result = newNodeI(nkCall, n.info)
-  result.add(newSymNode(createMagic(c.graph, c.idgen, "wasMoved", mWasMoved)))
+  let op = getAttachedOp(c.graph, n.typ, attachedWasMoved)
+  if op != nil and sfError in op.flags:
+    globalError(c.graph.config, n.info, "Error: '=wasMoved' is not available")
+  result.add(newSymNode(if op != nil: op
+    else:
+      createMagic(c.graph, c.idgen, "wasMoved", mWasMoved)))
   result.add copyTree(n) #mWasMoved does not take the address
   #if n.kind != nkSym:
   #  message(c.graph.config, n.info, warnUser, "wasMoved(" & $n & ")")
