@@ -703,7 +703,7 @@ type
     mNKind, mNSymKind,
 
     mNccValue, mNccInc, mNcsAdd, mNcsIncl, mNcsLen, mNcsAt,
-    mNctPut, mNctLen, mNctGet, mNctHasNext, mNctNext,
+    mNctPut, mNctLen, mNctGet, mNctContains, mNctHasNext, mNctNext,
 
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetStrVal, mNLineInfo,

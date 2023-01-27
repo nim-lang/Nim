@@ -194,8 +194,26 @@ proc `[]`*(t: CacheTable; key: string): NimNode {.magic: "NctGet".} =
       # get the NimNode back
       assert mcTable["toAdd"].kind == nnkStmtList
 
-proc contains*(t: CacheTable, key: string): {.magic: "NctContains".}
-  ## Returns
+proc hasKey*(t: CacheTable, key: string): {.magic: "NctContains".} =
+  ## Returns true if `key` is in the table `t`
+  ##
+  ## See also:
+  ## * [contains(t, key)] for use with the `in operator
+  runnableExamples:
+    const mcTable = CacheTable"hasKeyEx"
+    static:
+      assert not t.hasKey("foo")
+      t["foo"] = newEmptyNode()
+      # Will now be true since we inserted a value
+      assert t.hasKey("foo")
+
+proc contains*(t: CacheTable, key: string): bool =
+  ## Alias for [hasKey(t, key)] foruse with the `in` operator
+  runnableExamples:
+    const mcTable = CacheTable"containsEx"
+    t["foo"] = newEmptyNode()
+    # Will be true since we gave it a value before
+    assert "foo" in t
 
 proc hasNext(t: CacheTable; iter: int): bool {.magic: "NctHasNext".}
 proc next(t: CacheTable; iter: int): (string, NimNode, int) {.magic: "NctNext".}

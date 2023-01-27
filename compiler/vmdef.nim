@@ -131,7 +131,7 @@ type
     opcNNewNimNode, opcNCopyNimNode, opcNCopyNimTree, opcNDel, opcGenSym,
 
     opcNccValue, opcNccInc, opcNcsAdd, opcNcsIncl, opcNcsLen, opcNcsAt,
-    opcNctPut, opcNctLen, opcNctGet, opcNctHasNext, opcNctNext, opcNodeId,
+    opcNctPut, opcNctLen, opcNctGet, opcNctContains, opcNctHasNext, opcNctNext, opcNodeId,
 
     opcSlurp,
     opcGorge,
