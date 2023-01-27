@@ -653,7 +653,7 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
     inHideable = false
 
 proc gcomma(g: var TSrcGen, n: PNode, c: TContext, start: int = 0,
-            theEnd: int = - 1) =
+            theEnd: int = -1) =
   var ind: int
   if rfInConstExpr in c.flags:
     ind = g.indent + IndentWidth
@@ -1482,7 +1482,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkRecList:
     indentNL(g)
     for i in 0..<n.len:
-      if (n[i].kind == nkIdentDefs and n[i][0].kind == nkPostfix) or renderNonExportedFields in g.flags:
+      if n[i].kind == nkIdentDefs and n[i][0].kind == nkPostfix or
+                        renderNonExportedFields in g.flags:
         optNL(g)
         gsub(g, n[i], c)
         gcoms(g)
