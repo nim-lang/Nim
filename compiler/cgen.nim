@@ -491,6 +491,10 @@ proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
       nilLoc.r = rope("NIM_NIL")
       genRefAssign(p, loc, nilLoc)
     else:
+      if typ.kind == tyVar:
+        let tt = typ.skipTypes({tyVar})
+        if isImportedType(tt) and tfRequiresInit in tt.flags:
+          return
       linefmt(p, cpsStmts, "$1 = ($2)0;$n", [rdLoc(loc),
         getTypeDesc(p.module, typ, mapTypeChooser(loc))])
   else:
@@ -1801,6 +1805,9 @@ proc genInitCode(m: BModule) =
 
     if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
       prc.add(deinitFrame(m.initProc))
+  elif sfMainModule in m.module.flags and m.config.exc == excGoto:
+    if getCompilerProc(m.g.graph, "nimTestErrorFlag") != nil:
+      m.appcg(prc, "\t#nimTestErrorFlag();$n", [])
 
   prc.addf("}$N", [])
 
