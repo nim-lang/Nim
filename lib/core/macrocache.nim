@@ -143,6 +143,19 @@ iterator items*(s: CacheSeq): NimNode =
 
   for i in 0 ..< len(s): yield s[i]
 
+proc contains*(s: CacheSeq, target: NimNode): bool {.inline.} =
+  ## Returns true if `target` is in `s`
+  runnableExamples:
+    import std/macros
+    const myseq = CacheSeq"containsSeq"
+
+    static:
+      assert newLit(5) notin myseq
+      myseq &= newLit(5)
+      assert newLit(5) in myseq
+
+  result = s.find(target) >= 0
+
 proc `[]=`*(t: CacheTable; key: string, value: NimNode) {.magic: "NctPut".} =
   ## Inserts a `(key, value)` pair into `t`.
   ##
@@ -180,6 +193,9 @@ proc `[]`*(t: CacheTable; key: string): NimNode {.magic: "NctGet".} =
 
       # get the NimNode back
       assert mcTable["toAdd"].kind == nnkStmtList
+
+proc contains*(t: CacheTable, key: string): {.magic: "NctContains".}
+  ## Returns
 
 proc hasNext(t: CacheTable; iter: int): bool {.magic: "NctHasNext".}
 proc next(t: CacheTable; iter: int): (string, NimNode, int) {.magic: "NctNext".}
