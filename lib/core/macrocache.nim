@@ -143,19 +143,6 @@ iterator items*(s: CacheSeq): NimNode =
 
   for i in 0 ..< len(s): yield s[i]
 
-proc contains*(s: CacheSeq, target: NimNode): bool {.inline.} =
-  ## Returns true if `target` is in `s`
-  runnableExamples:
-    import std/macros
-    const myseq = CacheSeq"containsSeq"
-
-    static:
-      assert newLit(5) notin myseq
-      myseq &= newLit(5)
-      assert newLit(5) in myseq
-
-  result = s.find(target) >= 0
-
 proc `[]=`*(t: CacheTable; key: string, value: NimNode) {.magic: "NctPut".} =
   ## Inserts a `(key, value)` pair into `t`.
   ##
@@ -200,20 +187,23 @@ proc hasKey*(t: CacheTable; key: string): bool {.magic: "NctContains".} =
   ## See also:
   ## * [contains proc][contains(CacheTable, string)] for use with the `in` operator
   runnableExamples:
+    import std/macros
     const mcTable = CacheTable"hasKeyEx"
     static:
-      assert not t.hasKey("foo")
-      t["foo"] = newEmptyNode()
+      assert not mcTable.hasKey("foo")
+      mcTable["foo"] = newEmptyNode()
       # Will now be true since we inserted a value
-      assert t.hasKey("foo")
+      assert mcTable.hasKey("foo")
 
 proc contains*(t: CacheTable; key: string): bool =
   ## Alias of [hasKey][hasKey(CacheTable, string)] for use with the `in` operator
   runnableExamples:
+    import std/macros
     const mcTable = CacheTable"containsEx"
-    t["foo"] = newEmptyNode()
-    # Will be true since we gave it a value before
-    assert "foo" in t
+    static:
+      mcTable["foo"] = newEmptyNode()
+      # Will be true since we gave it a value before
+      assert "foo" in mcTable
   t.hasKey(key)
 
 proc hasNext(t: CacheTable; iter: int): bool {.magic: "NctHasNext".}
