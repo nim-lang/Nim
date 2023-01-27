@@ -352,16 +352,16 @@ block: # bug #15118
   block:
     flop("b")
 
+static:
+  block:
+    const containsTable = CacheTable"containsTable"
+    doAssert "foo" notin containsTable
+    containsTable["foo"] = newLit 42
+    doAssert "foo" in containsTable
 
-block:
-  const containsTable = CacheTable"containsTable"
-  doAssert "foo" notin containsTable
-  containsTable["foo"] = newLit 42
-  doAssert "foo" in containsTable
-
-block:
-  const containsSeq = CacheTable"containsSeq"
-  let val = newLit "foo"
-  doAssert val notin containsSeq
-  containsSeq &= val
-  doAssert val in containsSeq
+  block:
+    const containsSeq = CacheSeq"containsSeq"
+    let val = newLit "foo"
+    doAssert val notin containsSeq
+    containsSeq &= val
+    doAssert val in containsSeq
