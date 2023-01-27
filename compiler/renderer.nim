@@ -641,8 +641,7 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
       elif inHideable and not isHideable(g.config, n[i]):
         inHideable = false
         put(g, tkHideableEnd, "")
-    if n[i].kind == nkPostfix: gsub(g, n[i][1])
-    else: gsub(g, n[i])
+    gsub(g, n[i])
     if c:
       if g.tokens.len > oldLen:
         putWithSpace(g, separator, $separator)
@@ -1483,7 +1482,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkRecList:
     indentNL(g)
     for i in 0..<n.len:
-      if n[i].kind == nkPostfix or renderNonExportedFields in g.flags:
+      if (n[i].kind == nkIdentDefs and n[i][0].kind == nkPostfix) or renderNonExportedFields in g.flags:
         optNL(g)
         gsub(g, n[i], c)
         gcoms(g)
