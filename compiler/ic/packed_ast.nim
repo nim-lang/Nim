@@ -16,6 +16,9 @@ import hashes, tables, strtabs
 import bitabs
 import ".." / [ast, options]
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   SymId* = distinct int32
   ModuleId* = distinct int32
@@ -81,7 +84,6 @@ type
     size*: BiggestInt
     align*: int16
     paddingAtEnd*: int16
-    lockLevel*: TLockLevel # lock level as required for deadlock checking
     # not serialized: loc*: TLoc because it is backend-specific
     typeInst*: PackedItemId
     nonUniqueId*: int32

@@ -4,6 +4,7 @@ discard """
 """
 
 import json, strutils, options, tables
+import std/assertions
 
 # The definition of the `%` proc needs to be here, since the `% c` calls below
 # can only find our custom `%` proc for `Pix` if defined in global scope.
@@ -259,7 +260,7 @@ proc testJson() =
         colors: array[2, BirdColor]
 
     var red = BirdColor(name: "red", rgb: [1.0, 0.0, 0.0])
-    var blue = Birdcolor(name: "blue", rgb: [0.0, 0.0, 1.0])
+    var blue = BirdColor(name: "blue", rgb: [0.0, 0.0, 1.0])
     var b = Bird(age: 3, height: 1.734, name: "bardo", colors: [red, blue])
     let jnode = %b
     let data = jnode.to(Bird)
@@ -497,7 +498,7 @@ proc testJson() =
     doAssert array[3, float](t.arr) == [1.0,2.0,7.0]
 
     doAssert MyRef(t.person).name == "boney"
-    doAssert MyObj(t.distFruit).color == 11
+    doAssert MyObj(t.distfruit).color == 11
     doAssert t.dog.name == "honey"
     doAssert t.fruit.color == 10
     doAssert seq[string](t.emails) == @["abc", "123"]

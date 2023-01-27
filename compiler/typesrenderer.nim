@@ -9,6 +9,10 @@
 
 import renderer, strutils, ast, types
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 const defaultParamSeparator* = ","
 
 template mayNormalize(s: string): string =

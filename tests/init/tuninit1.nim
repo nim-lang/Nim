@@ -4,7 +4,7 @@ discard """
 """
 
 import strutils
-
+{.experimental: "strictDefs".}
 {.warning[Uninit]:on.}
 
 proc p =

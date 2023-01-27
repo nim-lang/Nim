@@ -1,4 +1,5 @@
 discard """
+matrix: "--mm:refc"
 output: '''
 abc
 def
@@ -32,9 +33,9 @@ true
 """
 
 import
-  critbits, sets, strutils, tables, random, algorithm, re, ropes,
-  segfaults, lists, parsesql, streams, os, htmlgen, xmltree, strtabs
-
+  std/[critbits, sets, strutils, tables, random, algorithm, re, ropes,
+  segfaults, lists, parsesql, streams, os, htmlgen, xmltree, strtabs]
+import std/[syncio, assertions]
 
 block tcritbits:
   var r: CritBitTree[void]

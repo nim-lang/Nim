@@ -4,7 +4,7 @@ discard """
 """
 
 import std/sysrand
-
+import std/assertions
 
 template main() =
   block:

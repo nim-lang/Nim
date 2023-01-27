@@ -3,6 +3,9 @@
 when not defined(js):
   {.fatal: "Module jsbigints is designed to be used with the JavaScript backend.".}
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type JsBigIntImpl {.importjs: "bigint".} = int # https://github.com/nim-lang/Nim/pull/16606
 type JsBigInt* = distinct JsBigIntImpl         ## Arbitrary precision integer for JavaScript target.
 

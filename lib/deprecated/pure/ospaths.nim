@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module is deprecated, `import std/os` instead.
+## This module is deprecated since 0.20.0, `import std/os` instead.
 
 {.deprecated: "use `std/os` instead".}
 

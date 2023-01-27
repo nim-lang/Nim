@@ -5,6 +5,9 @@ discard """
 
 import sequtils, strutils
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 
 let rules = toSeq(lines("input"))
   .mapIt(it.split(" => ").mapIt(it.replace("/", "")))

@@ -11,6 +11,9 @@
 
 import asyncfutures
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import deques
 
 type

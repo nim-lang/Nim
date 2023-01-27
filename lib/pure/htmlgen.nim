@@ -34,9 +34,9 @@
 ##   var nim = "Nim"
 ##   echo h1(a(href="https://nim-lang.org", nim))
 ##
-## Writes the string::
+## Writes the string:
 ##
-##   <h1><a href="https://nim-lang.org">Nim</a></h1>
+##     <h1><a href="https://nim-lang.org">Nim</a></h1>
 ##
 
 import

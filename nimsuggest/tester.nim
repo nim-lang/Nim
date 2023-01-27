@@ -252,7 +252,10 @@ proc runEpcTest(filename: string): int =
   for cmd in s.startup:
     if not runCmd(cmd, s.dest):
       quit "invalid command: " & cmd
-  let epccmd = s.cmd.replace("--tester", "--epc --v2 --log")
+  let epccmd = if s.cmd.contains("--v3"):
+    s.cmd.replace("--tester", "--epc --log")
+  else:
+    s.cmd.replace("--tester", "--epc --v2 --log")
   let cl = parseCmdLine(epccmd)
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,
@@ -279,7 +282,7 @@ proc runEpcTest(filename: string): int =
         socket.sendEpcStr(req)
         let sx = parseSexp(socket.recvEpc())
         if not req.startsWith("mod "):
-          let answer = sexpToAnswer(sx)
+          let answer = if sx[2].kind == SNil: "" else: sexpToAnswer(sx)
           doReport(filename, answer, resp, report)
 
     socket.sendEpcStr "return arg"

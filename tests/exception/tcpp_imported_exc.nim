@@ -1,4 +1,5 @@
 discard """
+matrix: "--mm:refc"
 targets: "cpp"
 output: '''
 caught as std::exception
@@ -76,7 +77,7 @@ doAssert(getCurrentException() == nil)
 # raise by pointer and also generic type
 
 type
-  std_vector {.importcpp"std::vector", header"<vector>".} [T] = object
+  std_vector[T] {.importcpp"std::vector", header"<vector>".} = object
 
 proc newVector[T](len: int): ptr std_vector[T] {.importcpp: "new std::vector<'1>(@)".}
 proc deleteVector[T](v: ptr std_vector[T]) {.importcpp: "delete @; @ = NIM_NIL;".}

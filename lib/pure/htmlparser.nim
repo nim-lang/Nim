@@ -51,6 +51,9 @@
 
 import strutils, streams, parsexml, xmltree, unicode, strtabs
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type
   HtmlTag* = enum  ## list of all supported HTML tags; order will always be
                    ## alphabetically
@@ -391,10 +394,10 @@ proc entityToRune*(entity: string): Rune =
     case entity[1]
     of '0'..'9':
       try: runeValue = parseInt(entity[1..^1])
-      except: discard
+      except ValueError: discard
     of 'x', 'X': # not case sensitive here
       try: runeValue = parseHexInt(entity[2..^1])
-      except: discard
+      except ValueError: discard
     else: discard # other entities are not defined with prefix `#`
     if runeValue notin 0..0x10FFFF: runeValue = 0 # only return legal values
     return Rune(runeValue)

@@ -64,7 +64,7 @@ when defined(nimTrunnerFfi):
 hello world stderr
 hi stderr
 """
-    let output = runNimCmdChk("vm/mevalffi.nim", fmt"{opt} --experimental:compiletimeFFI")
+    let output = runNimCmdChk("vm/mevalffi.nim", fmt"{opt} --warnings:off --experimental:compiletimeFFI")
     doAssert output == fmt"""
 {prefix}foo
 foo:100
@@ -216,6 +216,39 @@ sub/mmain.idx""", context
       let cmd = fmt"{nim} r --backend:{mode} --hints:off --nimcache:{nimcache} {file}"
       check execCmdEx(cmd) == ("ok3\n", 0)
 
+  block: # nim jsondoc # bug #20132
+    let file = testsDir / "misc/mjsondoc.nim"
+    let output = "nimcache_tjsondoc.json"
+    defer: removeFile(output)
+    let (msg, exitCode) = execCmdEx(fmt"{nim} jsondoc -o:{output} {file}")
+    doAssert exitCode == 0, msg
+
+    let data = parseJson(readFile(output))["entries"]
+    doAssert data.len == 4
+    let doSomething = data[0]
+    doAssert doSomething["name"].getStr == "doSomething"
+    doAssert doSomething["type"].getStr == "skProc"
+    doAssert doSomething["line"].getInt == 1
+    doAssert doSomething["col"].getInt == 0
+    doAssert doSomething["code"].getStr == "proc doSomething(x, y: int): int {.raises: [], tags: [], forbids: [].}"
+
+  block: # nim jsondoc # bug #11953
+    let file = testsDir / "misc/mjsondoc.nim"
+    let destDir = testsDir / "misc/htmldocs"
+    removeDir(destDir)
+    defer: removeDir(destDir)
+    let (msg, exitCode) = execCmdEx(fmt"{nim} jsondoc {file}")
+    doAssert exitCode == 0, msg
+
+    let data = parseJson(readFile(destDir / "mjsondoc.json"))["entries"]
+    doAssert data.len == 4
+    let doSomething = data[0]
+    doAssert doSomething["name"].getStr == "doSomething"
+    doAssert doSomething["type"].getStr == "skProc"
+    doAssert doSomething["line"].getInt == 1
+    doAssert doSomething["col"].getInt == 0
+    doAssert doSomething["code"].getStr == "proc doSomething(x, y: int): int {.raises: [], tags: [], forbids: [].}"
+
   block: # further issues with `--backend`
     let file = testsDir / "misc/mbackend.nim"
     var cmd = fmt"{nim} doc -b:cpp --hints:off --nimcache:{nimcache} {file}"
@@ -231,6 +264,18 @@ sub/mmain.idx""", context
     let file = testsDir / "misc/mimportc.nim"
     let cmd = fmt"{nim} r -b:cpp --hints:off --nimcache:{nimcache} --warningAsError:ProveInit {file}"
     check execCmdEx(cmd) == ("witness\n", 0)
+
+  block: # bug #20149
+    let file = testsDir / "misc/m20149.nim"
+    let cmd = fmt"{nim} r --hints:off --nimcache:{nimcache} --hintAsError:XDeclaredButNotUsed {file}"
+    check execCmdEx(cmd) == ("12\n", 0)
+
+  block: # bug #15316
+    let file = testsDir / "misc/m15316.nim"
+    let cmd = fmt"{nim} check --hints:off --nimcache:{nimcache} {file}"
+    check execCmdEx(cmd) == ("m15316.nim(1, 15) Error: expression expected, but found \')\'\nm15316.nim(2, 1) Error: expected: \':\', but got: \'[EOF]\'\nm15316.nim(2, 1) Error: expression expected, but found \'[EOF]\'\nm15316.nim(2, 1) " &
+          "Error: expected: \')\', but got: \'[EOF]\'\nError: illformed AST: \n", 1)
+
 
   block: # config.nims, nim.cfg, hintConf, bug #16557
     let cmd = fmt"{nim} r --hint:all:off --hint:conf tests/newconfig/bar/mfoo.nim"
@@ -248,6 +293,11 @@ tests/newconfig/bar/mfoo.nims""".splitLines
       let b = dir / a
       expected.add &"Hint: used config file '{b}' [Conf]\n"
     doAssert outp.endsWith expected, outp & "\n" & expected
+
+  block: # bug #8219
+    let file = "tests/newconfig/mconfigcheck.nims"
+    let cmd = fmt"{nim} check --hints:off {file}"
+    check execCmdEx(cmd) == ("", 0)
 
   block: # mfoo2.customext
     let filename = testsDir / "newconfig/foo2/mfoo2.customext"

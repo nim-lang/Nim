@@ -12,6 +12,9 @@
 import
   hashes, ast, astalgo, types
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 proc hashTree*(n: PNode): Hash =
   if n.isNil:
     return

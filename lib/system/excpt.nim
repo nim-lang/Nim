@@ -397,9 +397,9 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy, gcsafe.} =
     xadd(buf, e.name, e.name.len)
     add(buf, "]\n")
     if onUnhandledException != nil:
-      onUnhandledException($buf.addr)
+      onUnhandledException($cast[cstring](buf.addr))
     else:
-      showErrorMessage(buf.addr, L)
+      showErrorMessage(cast[cstring](buf.addr), L)
 
 proc reportUnhandledError(e: ref Exception) {.nodestroy, gcsafe.} =
   if unhandledExceptionHook != nil:
@@ -415,7 +415,7 @@ proc nimLeaveFinally() {.compilerRtl.} =
       c_longjmp(excHandler.context, 1)
     else:
       reportUnhandledError(currException)
-      quit(1)
+      rawQuit(1)
 
 when gotoBasedExceptions:
   var nimInErrorMode {.threadvar.}: bool
@@ -430,13 +430,13 @@ when gotoBasedExceptions:
     if nimInErrorMode and currException != nil:
       reportUnhandledError(currException)
       currException = nil
-      quit(1)
+      rawQuit(1)
 
 proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
   when defined(nimPanics):
     if e of Defect:
       reportUnhandledError(e)
-      quit(1)
+      rawQuit(1)
 
   if localRaiseHook != nil:
     if not localRaiseHook(e): return
@@ -458,7 +458,7 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
       c_longjmp(excHandler.context, 1)
     else:
       reportUnhandledError(e)
-      quit(1)
+      rawQuit(1)
 
 proc raiseExceptionEx(e: sink(ref Exception), ename, procname, filename: cstring,
                       line: int) {.compilerRtl, nodestroy.} =
@@ -501,7 +501,7 @@ proc threadTrouble() =
     if currException != nil: reportUnhandledError(currException)
   except:
     discard
-  quit 1
+  rawQuit 1
 
 proc writeStackTrace() =
   when hasSomeStackTrace:
@@ -544,7 +544,7 @@ proc callDepthLimitReached() {.noinline.} =
       "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
       "recursions instead.\n"
   showErrorMessage2(msg)
-  quit(1)
+  rawQuit(1)
 
 proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
   if framePtr == nil:
@@ -597,7 +597,7 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     else:
       writeToStdErr msg & "\n"
 
-    quit 1
+    rawQuit 1
 
 when not defined(noSignalHandler) and not defined(useNimRtl):
   type Sighandler = proc (a: cint) {.noconv, benign.}
@@ -651,7 +651,7 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
       # also return the correct exit code to the shell.
       discard c_raise(sign)
     else:
-      quit(1)
+      rawQuit(1)
 
   var SIG_IGN {.importc: "SIG_IGN", header: "<signal.h>".}: Sighandler
 

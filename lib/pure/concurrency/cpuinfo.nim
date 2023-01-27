@@ -40,7 +40,7 @@ when defined(macosx) or defined(bsd):
               importc: "sysctl", nodecl.}
 
 when defined(genode):
-  include genode/env
+  import genode/env
 
   proc affinitySpaceTotal(env: GenodeEnvPtr): cuint {.
     importcpp: "@->cpu().affinity_space().total()".}

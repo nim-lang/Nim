@@ -17,10 +17,10 @@
 
 
 proc dataPointer(a: PGenericSeq, elemAlign: int): pointer =
-  cast[pointer](cast[ByteAddress](a) +% align(GenericSeqSize, elemAlign))
+  cast[pointer](cast[int](a) +% align(GenericSeqSize, elemAlign))
 
 proc dataPointer(a: PGenericSeq, elemAlign, elemSize, index: int): pointer =
-  cast[pointer](cast[ByteAddress](a) +% align(GenericSeqSize, elemAlign) +% (index*%elemSize))
+  cast[pointer](cast[int](a) +% align(GenericSeqSize, elemAlign) +% (index*%elemSize))
 
 proc resize(old: int): int {.inline.} =
   if old <= 0: result = 4
@@ -91,7 +91,7 @@ proc copyStr(s: NimString, start: int): NimString {.compilerproc.} =
 
 proc nimToCStringConv(s: NimString): cstring {.compilerproc, nonReloadable, inline.} =
   if s == nil or s.len == 0: result = cstring""
-  else: result = cstring(addr s.data)
+  else: result = cast[cstring](addr s.data)
 
 proc toNimStr(str: cstring, len: int): NimString {.compilerproc.} =
   result = rawNewStringNoInit(len)
@@ -160,13 +160,9 @@ proc addChar(s: NimString, c: char): NimString =
     result = s
     if result.len >= result.space:
       let r = resize(result.space)
-      when defined(nimIncrSeqV3):
-        result = rawNewStringNoInit(r)
-        result.len = s.len
-        copyMem(addr result.data[0], unsafeAddr(s.data[0]), s.len+1)
-      else:
-        result = cast[NimString](growObj(result,
-          sizeof(TGenericSeq) + r + 1))
+      result = rawNewStringNoInit(r)
+      result.len = s.len
+      copyMem(addr result.data[0], unsafeAddr(s.data[0]), s.len+1)
       result.reserved = r
   result.data[result.len] = c
   result.data[result.len+1] = '\0'
@@ -210,12 +206,9 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
     result = dest
   else: # slow path:
     let sp = max(resize(dest.space), dest.len + addlen)
-    when defined(nimIncrSeqV3):
-      result = rawNewStringNoInit(sp)
-      result.len = dest.len
-      copyMem(addr result.data[0], unsafeAddr(dest.data[0]), dest.len+1)
-    else:
-      result = cast[NimString](growObj(dest, sizeof(TGenericSeq) + sp + 1))
+    result = rawNewStringNoInit(sp)
+    result.len = dest.len
+    copyMem(addr result.data[0], unsafeAddr(dest.data[0]), dest.len+1)
     result.reserved = sp
     #result = rawNewString(sp)
     #copyMem(result, dest, dest.len + sizeof(TGenericSeq))
@@ -239,14 +232,11 @@ proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
     result = s
   else:
     let sp = max(resize(s.space), newLen)
-    when defined(nimIncrSeqV3):
-      result = rawNewStringNoInit(sp)
-      result.len = s.len
-      copyMem(addr result.data[0], unsafeAddr(s.data[0]), s.len+1)
-      zeroMem(addr result.data[s.len], newLen - s.len)
-      result.reserved = sp
-    else:
-      result = resizeString(s, n)
+    result = rawNewStringNoInit(sp)
+    result.len = s.len
+    copyMem(addr result.data[0], unsafeAddr(s.data[0]), s.len+1)
+    zeroMem(addr result.data[s.len], newLen - s.len)
+    result.reserved = sp
   result.len = n
   result.data[n] = '\0'
 
@@ -282,15 +272,11 @@ proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerproc.} =
     result = s
     if result.len >= result.space:
       let r = resize(result.space)
-      when defined(nimIncrSeqV3):
-        result = cast[PGenericSeq](newSeq(typ, r))
-        result.len = s.len
-        copyMem(dataPointer(result, typ.base.align), dataPointer(s, typ.base.align), s.len * typ.base.size)
-        # since we steal the content from 's', it's crucial to set s's len to 0.
-        s.len = 0
-      else:
-        result = cast[PGenericSeq](growObj(result, align(GenericSeqSize, typ.base.align) + typ.base.size * r))
-        result.reserved = r
+      result = cast[PGenericSeq](newSeq(typ, r))
+      result.len = s.len
+      copyMem(dataPointer(result, typ.base.align), dataPointer(s, typ.base.align), s.len * typ.base.size)
+      # since we steal the content from 's', it's crucial to set s's len to 0.
+      s.len = 0
 
 proc setLengthSeq(seq: PGenericSeq, elemSize, elemAlign, newLen: int): PGenericSeq {.
     compilerRtl, inl.} =
@@ -304,20 +290,10 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, elemAlign, newLen: int): PGenericS
     when not defined(boehmGC) and not defined(nogc) and
          not defined(gcMarkAndSweep) and not defined(gogc) and
          not defined(gcRegions):
-      when false: # deadcode: was used by `compileOption("gc", "v2")`
+      if ntfNoRefs notin extGetCellType(result).base.flags:
         for i in newLen..result.len-1:
-          let len0 = gch.tempStack.len
           forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
-                            extGetCellType(result).base, waPush)
-          let len1 = gch.tempStack.len
-          for i in len0 ..< len1:
-            doDecRef(gch.tempStack.d[i], LocalHeap, MaybeCyclic)
-          gch.tempStack.len = len0
-      else:
-        if ntfNoRefs notin extGetCellType(result).base.flags:
-          for i in newLen..result.len-1:
-            forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
-                              extGetCellType(result).base, waZctDecRef)
+                            extGetCellType(result).base, waZctDecRef)
 
     # XXX: zeroing out the memory can still result in crashes if a wiped-out
     # cell is aliased by another pointer (ie proc parameter or a let variable).
@@ -334,36 +310,33 @@ proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
   if s == nil:
     result = cast[PGenericSeq](newSeq(typ, newLen))
   else:
-    when defined(nimIncrSeqV3):
-      let elemSize = typ.base.size
-      let elemAlign = typ.base.align
-      if s.space < newLen:
-        let r = max(resize(s.space), newLen)
-        result = cast[PGenericSeq](newSeq(typ, r))
-        copyMem(dataPointer(result, elemAlign), dataPointer(s, elemAlign), s.len * elemSize)
-        # since we steal the content from 's', it's crucial to set s's len to 0.
-        s.len = 0
-      elif newLen < s.len:
-        result = s
-        # we need to decref here, otherwise the GC leaks!
-        when not defined(boehmGC) and not defined(nogc) and
-            not defined(gcMarkAndSweep) and not defined(gogc) and
-            not defined(gcRegions):
-          if ntfNoRefs notin typ.base.flags:
-            for i in newLen..result.len-1:
-              forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
-                                extGetCellType(result).base, waZctDecRef)
+    let elemSize = typ.base.size
+    let elemAlign = typ.base.align
+    if s.space < newLen:
+      let r = max(resize(s.space), newLen)
+      result = cast[PGenericSeq](newSeq(typ, r))
+      copyMem(dataPointer(result, elemAlign), dataPointer(s, elemAlign), s.len * elemSize)
+      # since we steal the content from 's', it's crucial to set s's len to 0.
+      s.len = 0
+    elif newLen < s.len:
+      result = s
+      # we need to decref here, otherwise the GC leaks!
+      when not defined(boehmGC) and not defined(nogc) and
+          not defined(gcMarkAndSweep) and not defined(gogc) and
+          not defined(gcRegions):
+        if ntfNoRefs notin typ.base.flags:
+          for i in newLen..result.len-1:
+            forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
+                              extGetCellType(result).base, waZctDecRef)
 
-        # XXX: zeroing out the memory can still result in crashes if a wiped-out
-        # cell is aliased by another pointer (ie proc parameter or a let variable).
-        # This is a tough problem, because even if we don't zeroMem here, in the
-        # presence of user defined destructors, the user will expect the cell to be
-        # "destroyed" thus creating the same problem. We can destroy the cell in the
-        # finalizer of the sequence, but this makes destruction non-deterministic.
-        zeroMem(dataPointer(result, elemAlign, elemSize, newLen), (result.len-%newLen) *% elemSize)
-      else:
-        result = s
-        zeroMem(dataPointer(result, elemAlign, elemSize, result.len), (newLen-%result.len) *% elemSize)
-      result.len = newLen
+      # XXX: zeroing out the memory can still result in crashes if a wiped-out
+      # cell is aliased by another pointer (ie proc parameter or a let variable).
+      # This is a tough problem, because even if we don't zeroMem here, in the
+      # presence of user defined destructors, the user will expect the cell to be
+      # "destroyed" thus creating the same problem. We can destroy the cell in the
+      # finalizer of the sequence, but this makes destruction non-deterministic.
+      zeroMem(dataPointer(result, elemAlign, elemSize, newLen), (result.len-%newLen) *% elemSize)
     else:
-      result = setLengthSeq(s, typ.base.size, newLen)
+      result = s
+      zeroMem(dataPointer(result, elemAlign, elemSize, result.len), (newLen-%result.len) *% elemSize)
+    result.len = newLen

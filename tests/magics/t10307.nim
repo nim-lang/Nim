@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim c -d:useGcAssert $file"
+  cmd: "nim c --mm:refc -d:useGcAssert $file"
   output: '''running someProc(true)
 res: yes
 yes

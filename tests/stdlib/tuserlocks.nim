@@ -3,6 +3,7 @@ discard """
 """
 
 import std/rlocks
+import std/assertions
 
 var r: RLock
 r.initRLock()

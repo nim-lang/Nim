@@ -5,6 +5,7 @@ discard """
 
 when defined(windows):
   import std/registry
+  import std/assertions
 
   block: # bug #14010
     let path = "Environment"

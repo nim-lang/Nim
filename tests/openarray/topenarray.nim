@@ -50,4 +50,4 @@ proc main =
 
 
 main()
-# static: main() # xxx bug #15952: Error: cannot generate code for: mSlice
+static: main()

@@ -10,11 +10,15 @@
 import macros
 from typetraits import OrdinalEnum, HoleyEnum
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 # xxx `genEnumCaseStmt` needs tests and runnableExamples
 
 macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
             userMin, userMax: static[int], normalizer: static[proc(s :string): string]): untyped =
-  # generates a case stmt, which assigns the correct enum field given
+  # Generates a case stmt, which assigns the correct enum field given
   # a normalized string comparison to the `argSym` input.
   # string normalization is done using passed normalizer.
   # NOTE: for an enum with fields Foo, Bar, ... we cannot generate
@@ -49,7 +53,12 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
       of nnkIntLit:
         fStr = f[0].strVal
         fNum = f[1].intVal
-      else: error("Invalid tuple syntax!", f[1])
+      else:
+        let fAst = f[0].getImpl
+        if fAst.kind == nnkStrLit:
+          fStr = fAst.strVal
+        else:
+          error("Invalid tuple syntax!", f[1])
     else: error("Invalid node for enum type `" & $f.kind & "`!", f)
     # add field if string not already added
     if fNum >= userMin and fNum <= userMax:
@@ -103,9 +112,9 @@ const invalidSlot = uint8.high
 
 proc genLookup[T: typedesc[HoleyEnum]](_: T): auto =
   const n = span(T)
-  var ret: array[n, uint8]
   var i = 0
   assert n <= invalidSlot.int
+  var ret {.noinit.}: array[n, uint8]
   for ai in mitems(ret): ai = invalidSlot
   for ai in items(T):
     ret[ai.ord - T.low.ord] = uint8(i)

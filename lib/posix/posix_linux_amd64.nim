@@ -168,7 +168,7 @@ type
   Pthread_key* {.importc: "pthread_key_t", header: "<sys/types.h>".} = cuint
   Pthread_mutex* {.importc: "pthread_mutex_t", header: "<sys/types.h>",
                    pure, final.} = object
-    abi: array[48 div sizeof(clong), clong]
+    abi: array[40 div sizeof(clong), clong]
   Pthread_mutexattr* {.importc: "pthread_mutexattr_t",
                         header: "<sys/types.h>", pure, final.} = object
     abi: array[4 div sizeof(cint), cint]
@@ -428,8 +428,8 @@ type
                        header: "<sys/socket.h>",
                        pure, final.} = object ## struct sockaddr_storage
     ss_family*: TSa_Family ## Address family.
-    ss_padding: array[128 - sizeof(cshort) - sizeof(culong), char]
-    ss_align: clong
+    ss_padding {.importc: "__ss_padding".}: array[128 - sizeof(cshort) - sizeof(culong), char]
+    ss_align {.importc: "__ss_align".}: clong
 
   Tif_nameindex* {.importc: "struct if_nameindex", final,
                    pure, header: "<net/if.h>".} = object ## struct if_nameindex

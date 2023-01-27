@@ -3,6 +3,7 @@ discard """
 """
 
 import md5
+import std/assertions
 
 proc main() {.raises: [].} =
   doAssert(getMD5("Franz jagt im komplett verwahrlosten Taxi quer durch Bayern") ==

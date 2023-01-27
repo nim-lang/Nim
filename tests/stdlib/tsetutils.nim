@@ -3,6 +3,7 @@ discard """
 """
 
 import std/setutils
+import std/assertions
 
 type 
   Colors = enum

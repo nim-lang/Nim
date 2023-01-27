@@ -40,15 +40,15 @@ proc inc(arg: var OffsetAccum; value: int) =
   else:
     arg.offset += value
 
-proc alignmentMax(a,b: int): int =
+proc alignmentMax(a, b: int): int =
   if unlikely(a == szIllegalRecursion or b == szIllegalRecursion): raiseIllegalTypeRecursion()
   if a == szUnknownSize or b == szUnknownSize:
     szUnknownSize
   else:
-    max(a,b)
+    max(a, b)
 
 proc align(arg: var OffsetAccum; value: int) =
-  if unlikely(value == szIllegalRecursion):  raiseIllegalTypeRecursion()
+  if unlikely(value == szIllegalRecursion): raiseIllegalTypeRecursion()
   if value == szUnknownSize or arg.maxAlign == szUnknownSize or arg.offset == szUnknownSize:
     arg.maxAlign = szUnknownSize
     arg.offset = szUnknownSize
@@ -112,7 +112,7 @@ proc setOffsetsToUnknown(n: PNode) =
     for i in 0..<n.safeLen:
       setOffsetsToUnknown(n[i])
 
-proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, accum: var OffsetAccum) =
+proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; packed: bool; accum: var OffsetAccum) =
   ## ``offset`` is the offset within the object, after the node has been written, no padding bytes added
   ## ``align`` maximum alignment from all sub nodes
   assert n != nil
@@ -319,10 +319,10 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         typ.align = int16(conf.floatInt64Align)
       elif align(length, 8) mod 8 == 0:
         typ.size = align(length, 8) div 8
-        typ.align = int16(conf.floatInt64Align)
+        typ.align = 1
       else:
         typ.size = align(length, 8) div 8 + 1
-        typ.align = int16(conf.floatInt64Align)
+        typ.align = 1
   of tyRange:
     computeSizeAlign(conf, typ[0])
     typ.size = typ[0].size
@@ -380,10 +380,8 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
           let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo
           localError(conf, info, "union type may not have an object header")
           accum = OffsetAccum(offset: szUnknownSize, maxAlign: szUnknownSize)
-        elif tfPacked in typ.flags:
-          computeUnionObjectOffsetsFoldFunction(conf, typ.n, true, accum)
         else:
-          computeUnionObjectOffsetsFoldFunction(conf, typ.n, false, accum)
+          computeUnionObjectOffsetsFoldFunction(conf, typ.n, tfPacked in typ.flags, accum)
       elif tfPacked in typ.flags:
         accum.maxAlign = 1
         computeObjectOffsetsFoldFunction(conf, typ.n, true, accum)
@@ -456,9 +454,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     setSize typ, 1
   of tyInt16, tyUInt16:
     setSize typ, 2
-  of tyInt32, tyUInt32:
+  of tyInt32, tyUInt32, tyFloat32:
     setSize typ, 4
-  of tyInt64, tyUInt64:
+  of tyInt64, tyUInt64, tyFloat64, tyFloat:
     setSize typ, 8
   else:
     typ.size = szUnknownSize
@@ -497,7 +495,7 @@ template foldOffsetOf*(conf: ConfigRef; n: PNode; fallback: PNode): PNode =
   ## Returns an int literal node of the given offsetof expression in `n`.
   ## Falls back to `fallback`, if the `offsetof` expression can't be processed.
   let config = conf
-  let node : PNode = n
+  let node = n
   var dotExpr: PNode
   block findDotExpr:
     if node[1].kind == nkDotExpr:

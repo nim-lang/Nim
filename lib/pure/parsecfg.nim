@@ -175,7 +175,11 @@ import strutils, lexbase, streams, tables
 import std/private/decode_helpers
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 include "system/inclrtl"
+
 
 type
   CfgEventKind* = enum ## enumeration of all events that may occur when parsing

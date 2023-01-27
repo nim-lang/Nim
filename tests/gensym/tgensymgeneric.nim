@@ -21,7 +21,7 @@ template genImpl() =
     gensymed.x = "abc"
   else:
     gensymed.x = 123
-  shallowCopy(result, gensymed)
+  result = move gensymed
 
 proc gen[T](x: T): T =
   genImpl()

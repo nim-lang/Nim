@@ -1,14 +1,14 @@
 discard """
-  cmd: "nim $target $options --excessiveStackTrace:off $file"
+  cmd: "nim $target $options -d:nimPreviewSlimSystem --excessiveStackTrace:off $file"
   output: '''true'''
 """
-
+import std/assertions
 const expected = """
 tassert_c.nim(35)        tassert_c
 tassert_c.nim(34)        foo
 assertions.nim(*)       failedAssertImpl
 assertions.nim(*)       raiseAssert
-fatal.nim(*)            sysFatal"""
+"""
 
 proc tmatch(x, p: string): bool =
   var i = 0

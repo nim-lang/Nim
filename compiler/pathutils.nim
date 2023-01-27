@@ -12,6 +12,9 @@
 
 import os, pathnorm
 
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
 type
   AbsoluteFile* = distinct string
   AbsoluteDir* = distinct string
