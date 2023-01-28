@@ -2205,13 +2205,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           stackTrace(c, tos, pc, "key does not exist: " & key)
       else:
         stackTrace(c, tos, pc, "key does not exist: " & destKey)
-    of opcNctContains:
-      let g = c.graph
-      decodeBC(rkInt)
-      let destKey {.cursor.} = regs[rb].node.strVal
-      let key {.cursor.} = regs[rc].node.strVal
-      let contains = contains(g.cacheTables, destKey) and contains(g.cacheTables[destKey], key)
-      regs[ra].intVal = if contains: 1 else: 0
     of opcNctHasNext:
       let g = c.graph
       decodeBC(rkInt)

@@ -181,7 +181,7 @@ proc `[]`*(t: CacheTable; key: string): NimNode {.magic: "NctGet".} =
       # get the NimNode back
       assert mcTable["toAdd"].kind == nnkStmtList
 
-proc hasKey*(t: CacheTable; key: string): bool {.magic: "NctContains".} =
+proc hasKey*(t: CacheTable; key: string): bool =
   ## Returns true if `key` is in the table `t`
   ##
   ## See also:
