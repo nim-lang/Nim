@@ -182,7 +182,7 @@ proc `[]`*(t: CacheTable; key: string): NimNode {.magic: "NctGet".} =
       assert mcTable["toAdd"].kind == nnkStmtList
 
 proc hasKey*(t: CacheTable; key: string): bool =
-  ## Returns true if `key` is in the table `t`
+  ## Returns true if `key` is in the table `t`.
   ##
   ## See also:
   ## * [contains proc][contains(CacheTable, string)] for use with the `in` operator
@@ -194,9 +194,10 @@ proc hasKey*(t: CacheTable; key: string): bool =
       mcTable["foo"] = newEmptyNode()
       # Will now be true since we inserted a value
       assert mcTable.hasKey("foo")
+  discard # Implemented in vmops
 
-proc contains*(t: CacheTable; key: string): bool =
-  ## Alias of [hasKey][hasKey(CacheTable, string)] for use with the `in` operator
+proc contains*(t: CacheTable; key: string): bool {.inline.} =
+  ## Alias of [hasKey][hasKey(CacheTable, string)] for use with the `in` operator.
   runnableExamples:
     import std/macros
     const mcTable = CacheTable"containsEx"
