@@ -849,30 +849,17 @@ when not defined(nimscript):
       doAssert false, "use -d:nodejs to have `getCurrentDir` defined"
     elif defined(windows):
       var bufsize = MAX_PATH.int32
-      when useWinUnicode:
-        var res = newWideCString("", bufsize)
-        while true:
-          var L = getCurrentDirectoryW(bufsize, res)
-          if L == 0'i32:
-            raiseOSError(osLastError())
-          elif L > bufsize:
-            res = newWideCString("", L)
-            bufsize = L
-          else:
-            result = res$L
-            break
-      else:
-        result = newString(bufsize)
-        while true:
-          var L = getCurrentDirectoryA(bufsize, result)
-          if L == 0'i32:
-            raiseOSError(osLastError())
-          elif L > bufsize:
-            result = newString(L)
-            bufsize = L
-          else:
-            setLen(result, L)
-            break
+      var res = newWideCString("", bufsize)
+      while true:
+        var L = getCurrentDirectoryW(bufsize, res)
+        if L == 0'i32:
+          raiseOSError(osLastError())
+        elif L > bufsize:
+          res = newWideCString("", L)
+          bufsize = L
+        else:
+          result = res$L
+          break
     else:
       var bufsize = 1024 # should be enough
       result = newString(bufsize)
