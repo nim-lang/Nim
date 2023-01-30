@@ -602,7 +602,7 @@ proc genLit(c: PCtx; n: PNode; dest: var TDest) =
               (n.kind == nkIntLit and not (n.typ != nil and
               n.typ.kind in PtrLikeKinds)): # `nkPtrLit` should simplify logics
     let lit = genIntLiteral(c, n.intVal)
-    c.gABx(n, opcLdConstInt, dest, lit)
+    c.gABx(n, opcLdConstInt, cast[int](dest), lit)
   elif n.kind in nkFloatLit..nkFloat64Lit:
     let lit = genFloatLiteral(c, n.floatVal)
     c.gABx(n, opcLdConstFloat, dest, lit)
@@ -2088,7 +2088,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       if s.position >= low(int16) and s.position <= high(int16):
         c.gABx(n, opcLdImmInt, dest, s.position)
       else:
-        var lit = genIntLiteral(c, s.position)
+        var lit = cast[int](genIntLiteral(c, s.position))
         c.gABx(n, opcLdConstInt, dest, lit)
     of skType:
       genTypeLit(c, s.typ, dest)
