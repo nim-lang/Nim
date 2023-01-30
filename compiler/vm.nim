@@ -1569,7 +1569,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra] = TFullReg(kind: rkInt, intVal: cnst)
     of opcLdConstFloat:
       let rb = instr.regBx - wordExcess
-      let cnst = cast[float](c.numbers[LitId rb])
+      let cnst = cast[BiggestFloat](c.numbers[LitId rb])
       regs[ra] = TFullReg(kind: rkFloat, floatVal: cnst)
     of opcLdGlobal:
       let rb = instr.regBx - wordExcess - 1

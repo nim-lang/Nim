@@ -484,12 +484,12 @@ proc genLiteral(c: PCtx; n: PNode): int =
     if sameConstant(c.constants[i], n): return i
   result = rawGenLiteral(c, n)
 
-proc genIntLiteral(c: PCtx; intVal: int): int =
-  result = int(c.numbers.getOrIncl(intVal))
+proc genIntLiteral(c: PCtx; intVal: BiggestInt): BiggestInt =
+  result = BiggestInt c.numbers.getOrIncl(intVal)
   internalAssert c.config, c.numbers.len < regBxMax
 
-proc genFloatLiteral(c: PCtx; floatVal: float): int =
-  result = int(c.numbers.getOrIncl(cast[BiggestInt](floatVal)))
+proc genFloatLiteral(c: PCtx; floatVal: BiggestFloat): BiggestInt =
+  result = BiggestInt c.numbers.getOrIncl(cast[BiggestInt](floatVal))
   internalAssert c.config, c.numbers.len < regBxMax
 
 proc unused(c: PCtx; n: PNode; x: TDest) {.inline.} =
