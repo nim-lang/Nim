@@ -18,6 +18,8 @@ import
   gorgeimpl, lineinfos, btrees, macrocacheimpl,
   modulegraphs, sighashes, int128, vmprofiler
 
+import ic/bitabs
+
 when defined(nimPreviewSlimSystem):
   import std/formatfloat
 
@@ -1561,14 +1563,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         ensureKind(rkNode)
         regs[ra].node = cnst
-    of opcAsgnConst:
+    of opcLdConstInt:
       let rb = instr.regBx - wordExcess
-      let cnst = c.constants[rb]
-      if fitsRegister(cnst.typ):
-        putIntoReg(regs[ra], cnst)
-      else:
-        ensureKind(rkNode)
-        regs[ra].node = cnst.copyTree
+      let cnst = c.numbers[LitId rb]
+      regs[ra] = TFullReg(kind: rkInt, intVal: cnst)
+    of opcLdConstFloat:
+      let rb = instr.regBx - wordExcess
+      let cnst = cast[float](c.numbers[LitId rb])
+      regs[ra] = TFullReg(kind: rkFloat, floatVal: cnst)
     of opcLdGlobal:
       let rb = instr.regBx - wordExcess - 1
       ensureKind(rkNode)

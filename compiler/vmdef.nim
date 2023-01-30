@@ -13,6 +13,7 @@
 import tables
 
 import ast, idents, options, modulegraphs, lineinfos
+import ic/bitabs
 
 type TInstrType* = uint64
 
@@ -172,7 +173,8 @@ type
     opcLdNull,    # dest = nullvalue(types[Bx])
     opcLdNullReg,
     opcLdConst,   # dest = constants[Bx]
-    opcAsgnConst, # dest = copy(constants[Bx])
+    opcLdConstInt,   # dest = constants[Bx] for integers
+    opcLdConstFloat,   # dest = constants[Bx] for integers
     opcLdGlobal,  # dest = globals[Bx]
     opcLdGlobalAddr, # dest = addr(globals[Bx])
     opcLdGlobalDerefFFI, # dest = globals[Bx][]
@@ -248,6 +250,7 @@ type
                             # to not slow down interpretation
     globals*: PNode         #
     constants*: PNode       # constant data
+    numbers*: BiTable[BiggestInt] # constant data (integers)
     types*: seq[PType]      # some instructions reference types (e.g. 'except')
     currentExceptionA*, currentExceptionB*: PNode
     exceptionInstr*: int # index of instruction that raised the exception
