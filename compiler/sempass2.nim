@@ -1450,6 +1450,9 @@ proc hasRealBody(s: PSym): bool =
 
 proc trackProc*(c: PContext; s: PSym, body: PNode) =
   let g = c.graph
+  when defined(nimsuggest):
+    if g.config.expandDone():
+      return
   var effects = s.typ.n[0]
   if effects.kind != nkEffectList: return
   # effects already computed?
