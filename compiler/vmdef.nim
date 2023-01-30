@@ -174,7 +174,7 @@ type
     opcLdNullReg,
     opcLdConst,   # dest = constants[Bx]
     opcLdConstInt,   # dest = constants[Bx] for integers
-    opcLdConstFloat,   # dest = constants[Bx] for integers
+    opcLdConstFloat,   # dest = constants[Bx] for floats
     opcLdGlobal,  # dest = globals[Bx]
     opcLdGlobalAddr, # dest = addr(globals[Bx])
     opcLdGlobalDerefFFI, # dest = globals[Bx][]
