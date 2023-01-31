@@ -2795,18 +2795,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     defer:
       if isCompilerDebug():
         echo ("<", c.config$n.info, n, ?.result.typ)
-<<<<<<< HEAD
-=======
-  template directLiteral(typeKind: TTypeKind) =
-    if result.typ == nil:
-      if expectedType != nil and (
-          let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
-          expected.kind == typeKind):
-        result.typ = expected
-        changeType(c, result, expectedType, check=true)
-      else:
-        result.typ = getSysType(c.graph, n.info, typeKind)
->>>>>>> 7031ea65c (Implemented basic macro expand functionality (#20579))
 
   result = n
   when defined(nimsuggest):
