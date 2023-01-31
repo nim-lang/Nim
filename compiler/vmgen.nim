@@ -598,12 +598,18 @@ proc genLit(c: PCtx; n: PNode; dest: var TDest) =
   #var opc = opcLdConst
   if dest < 0: dest = c.getTemp(n.typ)
   #elif c.prc.regInfo[dest].kind == slotFixedVar: opc = opcAsgnConst
-  if (n.kind in {nkCharLit..nkUInt64Lit} - {nkIntLit}) or
-              (n.kind == nkIntLit and not (n.typ != nil and
-              n.typ.kind in PtrLikeKinds)): # `nkPtrLit` should simplify logics
+  case n.kind
+  of {nkCharLit..nkUInt64Lit} - {nkIntLit}:
     let lit = genIntLiteral(c, n.intVal)
     c.gABx(n, opcLdConstInt, dest, cast[int](lit))
-  elif n.kind in nkFloatLit..nkFloat64Lit:
+  of nkIntLit:
+    if not (n.typ != nil and n.typ.kind in PtrLikeKinds): # `nkPtrLit` should simplify logics
+      let lit = genIntLiteral(c, n.intVal)
+      c.gABx(n, opcLdConstInt, dest, cast[int](lit))
+    else:
+      let lit = genLiteral(c, n)
+      c.gABx(n, opcLdConst, dest, lit)
+  of nkFloatLit..nkFloat64Lit:
     let lit = genFloatLiteral(c, n.floatVal)
     c.gABx(n, opcLdConstFloat, dest, lit)
   else:
