@@ -388,3 +388,7 @@ when true: # issue #15184
     ##
     ##  There is no block quote after blank lines at the beginning.
   discard
+
+type T19396* = object # bug #19396
+   a*: int
+   b: float
