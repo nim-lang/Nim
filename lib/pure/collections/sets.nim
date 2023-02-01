@@ -347,7 +347,7 @@ proc missingOrExcl*[A](s: var HashSet[A], key: A): bool =
 proc pop*[A](s: var HashSet[A]): A =
   ## Removes and returns an arbitrary element from the set `s`.
   ##
-  ## Raises KeyError if the set `s` is empty.
+  ## Raises `KeyError` if the set `s` is empty.
   ##
   ## See also:
   ## * `clear proc <#clear,HashSet[A]>`_
@@ -425,7 +425,7 @@ proc intersection*[A](s1, s2: HashSet[A]): HashSet[A] =
     assert c == toHashSet(["b"])
 
   result = initHashSet[A](max(min(s1.data.len, s2.data.len), 2))
-  
+
   # iterate over the elements of the smaller set
   if s1.data.len < s2.data.len:
     for item in s1:
@@ -433,7 +433,7 @@ proc intersection*[A](s1, s2: HashSet[A]): HashSet[A] =
   else:
     for item in s2:
       if item in s1: incl(result, item)
-  
+
 
 proc difference*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## Returns the difference of the sets `s1` and `s2`.

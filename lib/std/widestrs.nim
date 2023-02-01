@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# Nim support for C/C++'s `wide strings`:idx:.
+## Nim support for C/C++'s `wide strings`:idx:.
 
 #when not declared(ThisIsSystem):
 #  {.error: "You must not import this module explicitly".}

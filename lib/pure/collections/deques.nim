@@ -440,7 +440,7 @@ proc shrink*[T](deq: var Deque[T], fromFirst = 0, fromLast = 0) =
     deq.head = (deq.head + 1) and deq.mask
 
   for i in 0 ..< fromLast:
-    destroy(deq.data[deq.tail])
+    destroy(deq.data[(deq.tail - 1) and deq.mask])
     deq.tail = (deq.tail - 1) and deq.mask
 
   dec deq.count, fromFirst + fromLast

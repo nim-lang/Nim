@@ -24,7 +24,7 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2022"
+  copyrightYear* = "2023"
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
@@ -78,6 +78,8 @@ type                          # please make sure we have under 32 options
     optThreadAnalysis,        # thread analysis pass
     optTlsEmulation,          # thread var emulation turned on
     optGenIndex               # generate index file for documentation;
+    optGenIndexOnly           # generate only index file for documentation
+    optNoImportdoc            # disable loading external documentation files
     optEmbedOrigSrc           # embed the original source in the generated code
                               # also: generate header file
     optIdeDebug               # idetools: debug mode
@@ -193,10 +195,9 @@ type
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideChkFile, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg, ideProject, ideGlobalSymbols,
-    ideRecompile, ideChanged, ideType, ideDeclaration
+    ideRecompile, ideChanged, ideType, ideDeclaration, ideExpand
 
   Feature* = enum  ## experimental features; DO NOT RENAME THESE!
-    implicitDeref, # deadcode; remains here for backwards compatibility
     dotOperators,
     callOperator,
     parallel,
@@ -232,6 +233,7 @@ type
       ## are not anymore.
     laxEffects
       ## Lax effects system prior to Nim 2.0.
+    verboseTypeMismatch
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
@@ -276,6 +278,9 @@ type
     scope*, localUsages*, globalUsages*: int # more usages is better
     tokenLen*: int
     version*: int
+    endLine*: uint16
+    endCol*: int
+
   Suggestions* = seq[Suggest]
 
   ProfileInfo* = object
@@ -406,6 +411,11 @@ type
     nimMainPrefix*: string
     vmProfileData*: ProfileData
 
+    expandProgress*: bool
+    expandLevels*: int
+    expandNodeResult*: string
+    expandPosition*: TLineInfo
+
 proc parseNimVersion*(a: string): NimVer =
   # could be moved somewhere reusable
   if a.len > 0:
@@ -457,7 +467,7 @@ when false:
     fn(globalOptions)
     fn(selectedGC)
 
-const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
+const oldExperimentalFeatures* = {dotOperators, callOperator, parallel}
 
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
@@ -865,7 +875,8 @@ const stdlibDirs* = [
   "pure/concurrency",
   "pure/unidecode", "impure",
   "wrappers", "wrappers/linenoise",
-  "windows", "posix", "js"]
+  "windows", "posix", "js",
+  "deprecated/pure"]
 
 const
   pkgPrefix = "pkg/"
@@ -993,6 +1004,9 @@ proc isDynlibOverride*(conf: ConfigRef; lib: string): bool =
   result = optDynlibOverrideAll in conf.globalOptions or
      conf.dllOverrides.hasKey(lib.canonDynlibName)
 
+proc expandDone*(conf: ConfigRef): bool =
+  result = conf.ideCmd == ideExpand and conf.expandLevels == 0 and conf.expandProgress
+
 proc parseIdeCmd*(s: string): IdeCmd =
   case s:
   of "sug": ideSug
@@ -1032,6 +1046,7 @@ proc `$`*(c: IdeCmd): string =
   of ideProject: "project"
   of ideGlobalSymbols: "globalSymbols"
   of ideDeclaration: "declaration"
+  of ideExpand: "expand"
   of ideRecompile: "recompile"
   of ideChanged: "changed"
   of ideType: "type"

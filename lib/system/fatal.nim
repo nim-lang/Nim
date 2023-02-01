@@ -9,10 +9,7 @@
 
 {.push profiler: off.}
 
-when defined(nimHasExceptionsQuery):
-  const gotoBasedExceptions = compileOption("exceptions", "goto")
-else:
-  const gotoBasedExceptions = false
+const gotoBasedExceptions = compileOption("exceptions", "goto")
 
 when hostOS == "standalone":
   include "$projectpath/panicoverride"

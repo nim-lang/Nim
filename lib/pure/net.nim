@@ -1735,15 +1735,36 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
     result = send(socket.fd, data, size, int32(MSG_NOSIGNAL))
 
 proc send*(socket: Socket, data: string,
-           flags = {SocketFlag.SafeDisconn}) {.tags: [WriteIOEffect].} =
-  ## sends data to a socket.
-  let sent = send(socket, cstring(data), data.len)
-  if sent < 0:
-    let lastError = osLastError()
-    socketError(socket, lastError = lastError, flags = flags)
+           flags = {SocketFlag.SafeDisconn}, maxRetries = 100) {.tags: [WriteIOEffect].} =
+  ## Sends data to a socket. Will try to send all the data by handling interrupts
+  ## and incomplete writes up to `maxRetries`.
+  var written = 0
+  var attempts = 0
+  while data.len - written > 0:
+    let sent = send(socket, cstring(data), data.len)
 
-  if sent != data.len:
-    raiseOSError(osLastError(), "Could not send all data.")
+    if sent < 0:
+      let lastError = osLastError()
+      let isBlockingErr =
+        when defined(nimdoc):
+          false
+        elif useWinVersion:
+          lastError.int32 == WSAEINTR or
+          lastError.int32 == WSAEWOULDBLOCK
+        else:
+          lastError.int32 == EINTR or
+          lastError.int32 == EWOULDBLOCK or
+          lastError.int32 == EAGAIN
+
+      if not isBlockingErr:
+        let lastError = osLastError()
+        socketError(socket, lastError = lastError, flags = flags)
+      else:
+        attempts.inc()
+        if attempts > maxRetries:
+          raiseOSError(osLastError(), "Could not send all data.")
+    else:
+      written.inc(sent)
 
 template `&=`*(socket: Socket; data: typed) =
   ## an alias for 'send'.
@@ -1900,7 +1921,7 @@ proc `$`*(address: IpAddress): string =
   ## Converts an IpAddress into the textual representation
   case address.family
   of IpAddressFamily.IPv4:
-    result = newStringOfCap(16)
+    result = newStringOfCap(15)
     result.addInt address.address_v4[0]
     result.add '.'
     result.addInt address.address_v4[1]
@@ -1909,7 +1930,7 @@ proc `$`*(address: IpAddress): string =
     result.add '.'
     result.addInt address.address_v4[3]
   of IpAddressFamily.IPv6:
-    result = newStringOfCap(48)
+    result = newStringOfCap(39)
     var
       currentZeroStart = -1
       currentZeroCount = 0

@@ -1,3 +1,5 @@
+## .. importdoc:: osfiles.nim, appdirs.nim, paths.nim
+
 include system/inclrtl
 import std/oserrors
 

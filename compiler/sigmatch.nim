@@ -322,26 +322,32 @@ proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
   else:
     result = arg.typ.typeToString(prefer)
 
+template describeArgImpl(c: PContext, n: PNode, i: int, startIdx = 1; prefer = preferName) =
+  var arg = n[i]
+  if n[i].kind == nkExprEqExpr:
+    result.add renderTree(n[i][0])
+    result.add ": "
+    if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
+      # XXX we really need to 'tryExpr' here!
+      arg = c.semOperand(c, n[i][1])
+      n[i].typ = arg.typ
+      n[i][1] = arg
+  else:
+    if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo, nkElse,
+                                          nkOfBranch, nkElifBranch,
+                                          nkExceptBranch}:
+      arg = c.semOperand(c, n[i])
+      n[i] = arg
+  if arg.typ != nil and arg.typ.kind == tyError: return
+  result.add argTypeToString(arg, prefer)
+
+proc describeArg*(c: PContext, n: PNode, i: int, startIdx = 1; prefer = preferName): string =
+  describeArgImpl(c, n, i, startIdx, prefer)
+
 proc describeArgs*(c: PContext, n: PNode, startIdx = 1; prefer = preferName): string =
   result = ""
   for i in startIdx..<n.len:
-    var arg = n[i]
-    if n[i].kind == nkExprEqExpr:
-      result.add renderTree(n[i][0])
-      result.add ": "
-      if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
-        # XXX we really need to 'tryExpr' here!
-        arg = c.semOperand(c, n[i][1])
-        n[i].typ = arg.typ
-        n[i][1] = arg
-    else:
-      if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo, nkElse,
-                                           nkOfBranch, nkElifBranch,
-                                           nkExceptBranch}:
-        arg = c.semOperand(c, n[i])
-        n[i] = arg
-    if arg.typ != nil and arg.typ.kind == tyError: return
-    result.add argTypeToString(arg, prefer)
+    describeArgImpl(c, n, i, startIdx, prefer)
     if i != n.len - 1: result.add ", "
 
 proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
@@ -395,9 +401,9 @@ proc handleRange(c: PContext, f, a: PType, min, max: TTypeKind): TTypeRelation =
       result = isIntConv
     elif a.kind == tyUInt and nf == c.config.targetSizeUnsignedToKind:
       result = isIntConv
-    elif f.kind == tyInt and na in {tyInt8 .. c.config.targetSizeSignedToKind}:
+    elif f.kind == tyInt and na in {tyInt8 .. pred(c.config.targetSizeSignedToKind)}:
       result = isIntConv
-    elif f.kind == tyUInt and na in {tyUInt8 .. c.config.targetSizeUnsignedToKind}:
+    elif f.kind == tyUInt and na in {tyUInt8 .. pred(c.config.targetSizeUnsignedToKind)}:
       result = isIntConv
     elif k >= min and k <= max:
       result = isConvertible
@@ -807,8 +813,7 @@ proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
   # N is bound to a concrete value during the matching of the first param.
   # This proc is used to evaluate such static expressions.
   let instantiated = replaceTypesInBody(c.c, c.bindings, n, nil,
-                                        allowMetaTypes = allowUnresolved,
-                                        fromStaticExpr = true)
+                                        allowMetaTypes = allowUnresolved)
   result = c.c.semExpr(c.c, instantiated)
 
 proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
@@ -1835,7 +1840,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       elif f.base.kind == tyNone:
         result = isGeneric
       else:
-        result = typeRel(c, f.base, a.base, flags)
+        let r = typeRel(c, f.base, a.base, flags)
+        if r >= isIntConv:
+          result = r
 
       if result != isNone:
         put(c, f, a)
@@ -1843,7 +1850,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if tfUnresolved in f.flags:
         result = typeRel(c, prev.base, a, flags)
       elif a.kind == tyTypeDesc:
-        result = typeRel(c, prev.base, a.base, flags)
+        let r = typeRel(c, prev.base, a.base, flags)
+        if r >= isIntConv:
+          result = r
       else:
         result = isNone
 
@@ -1920,13 +1929,16 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
   result.add c.graph.emptyNode
   result.add arg
 
-proc isLValue(c: PContext; n: PNode): bool {.inline.} =
+proc isLValue(c: PContext; n: PNode, isOutParam = false): bool {.inline.} =
   let aa = isAssignable(nil, n)
   case aa
   of arLValue, arLocalLValue, arStrange:
     result = true
   of arDiscriminant:
     result = c.inUncheckedAssignSection > 0
+  of arAddressableConst:
+    let sym = getRoot(n)
+    result = strictDefs in c.features and sym != nil and sym.kind == skLet and isOutParam
   else:
     result = false
 
@@ -2053,7 +2065,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
          a.n == nil and
          tfGenericTypeParam notin a.flags:
         return newNodeIT(nkType, argOrig.info, makeTypeFromExpr(c, arg))
-    else:
+    elif arg.kind != nkEmpty:
       var evaluated = c.semTryConstExpr(c, arg)
       if evaluated != nil:
         # Don't build the type in-place because `evaluated` and `arg` may point
@@ -2117,6 +2129,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
 
   case r
   of isConvertible:
+    if f.skipTypes({tyRange}).kind in {tyInt, tyUInt}:
+      inc(m.convMatches)
     inc(m.convMatches)
     result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isIntConv:
@@ -2146,6 +2160,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     elif arg.sym.kind in {skMacro, skTemplate}:
       return nil
     else:
+      if arg.sym.ast == nil:
+        return nil
       let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
       result = newSymNode(inferred, arg.info)
     if r == isInferredConvertible:
@@ -2188,6 +2204,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       return arg
     elif a.kind == tyVoid and f.matchesVoidProc and argOrig.kind == nkStmtList:
       # lift do blocks without params to lambdas
+      # now deprecated
+      message(c.config, argOrig.info, warnStmtListLambda)
       let p = c.graph
       let lifted = c.semExpr(c, newProcNode(nkDo, argOrig.info, body = argOrig,
           params = nkFormalParams.newTree(p.emptyNode), name = p.emptyNode, pattern = p.emptyNode,
@@ -2393,7 +2411,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         if argConverter.typ.kind notin {tyVar}:
           m.firstMismatch.kind = kVarNeeded
           noMatch()
-      elif not isLValue(c, n):
+      elif not (isLValue(c, n, isOutParam(formal.typ))):
         m.firstMismatch.kind = kVarNeeded
         noMatch()
 
@@ -2653,8 +2671,6 @@ proc argtypeMatches*(c: PContext, f, a: PType, fromHlo = false): bool =
     # pattern templates do not allow for conversions except from int literal
     res != nil and m.convMatches == 0 and m.intConvMatches in [0, 256]
 
-when not defined(nimHasSinkInference):
-  {.pragma: nosinks.}
 
 proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
                       op: TTypeAttachedOp; col: int): PSym {.nosinks.} =

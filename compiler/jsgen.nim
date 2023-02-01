@@ -724,8 +724,9 @@ proc hasFrameInfo(p: PProc): bool =
       ((p.prc == nil) or not (sfPure in p.prc.flags))
 
 proc lineDir(config: ConfigRef, info: TLineInfo, line: int): Rope =
-  ropes.`%`("/* line $2 \"$1\" */$n",
-         [rope(toFullPath(config, info)), rope(line)])
+  "/* line $2:$3 \"$1\" */$n" % [
+    rope(toFullPath(config, info)), rope(line), rope(info.toColumn)
+  ]
 
 proc genLineDir(p: PProc, n: PNode) =
   let line = toLinenumber(n.info)
@@ -2208,7 +2209,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
       else: binaryExpr(p, n, r, "subInt", "$1 = subInt($3, $2)", true)
   of mSetLengthStr:
-    binaryExpr(p, n, r, "mnewString", "($1.length = $2)")
+    binaryExpr(p, n, r, "mnewString",
+      """if ($1.length < $2) { for (var i = $3.length; i < $4; ++i) $3.push(0); }
+         else {$3.length = $4; }""")
   of mSetLengthSeq:
     var x, y: TCompRes
     gen(p, n[1], x)
@@ -2885,7 +2888,8 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     # Generate an optional source map.
     if optSourcemap in m.config.globalOptions:
       var map: SourceMap
-      (code, map) = genSourceMap($(code), outFile.string)
+      map = genSourceMap($code, outFile.string)
+      code &= "\n//# sourceMappingURL=$#.map" % [outFile.string]
       writeFile(outFile.string & ".map", $(%map))
     # Check if the generated JS code matches the output file, or else
     # write it to the file.
