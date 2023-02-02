@@ -353,6 +353,18 @@ proc getTempName(m: BModule): Rope =
   result = m.tmpBase & rope(m.labels)
   inc m.labels
 
+proc generateMethodIfDispatchers*(g: ModuleGraph): PNode =
+  result = newNode(nkStmtList)
+  for bucket in 0..<g.methods.len:
+    var relevantCols = initIntSet()
+    for col in 1..<g.methods[bucket].methods[0].typ.len:
+      if relevantCol(g.methods[bucket].methods, col): incl(relevantCols, col)
+      if optMultiMethods notin g.config.globalOptions:
+        # if multi-methods are not enabled, we are interested only in the first field
+        break
+    sortBucket(g.methods[bucket].methods, relevantCols)
+    result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))
+
 proc generateMethodDispatchers*(g: ModuleGraph, m: BModule): PNode =
   result = newNode(nkStmtList)
   for bucket in 0..<g.methods.len:
