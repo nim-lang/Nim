@@ -166,6 +166,10 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
            g.methods[i].methods[0] != s:
         # already exists due to forwarding definition?
         localError(g.config, s.info, "method is not a base")
+      if s.typ[1].skipTypes(skipPtrs).itemId notin g.bucketTable:
+        g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId] = @[g.methods.len]
+      else:
+        g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId].add g.methods.len
       return
     of No: discard
     of Invalid:
@@ -344,9 +348,9 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PS
 proc genVtable(seqs: seq[PSym]): Rope =
   result = Rope"{"
   for i in 0..<seqs.len-1:
-    doAssert seqs[i].loc.r.len > 0
+    doAssert seqs[i].loc.r.len > 0 # ????
     result.add seqs[i].loc.r & ", "
-  result.add seqs[0].loc.r
+  result.add seqs[^1].loc.r
   result.add "}"
 
 proc getTempName(m: BModule): Rope =
@@ -384,8 +388,8 @@ proc generateMethodDispatchers*(g: ModuleGraph, m: BModule): PNode =
       let methodIndex = g.bucketTable[baseType.itemId]
       # echo g.bucketTable, " ", baseType.itemId " ", methodIndex
       let index = find(methodIndex, bucket) # here is the correpsonding index
-      for index in 0..<g.methods[bucket].methods.len:
-        let sig = hashType(g.methods[bucket].methods[index].typ[1].skipTypes(skipPtrs))
+      for idx in 0..<g.methods[bucket].methods.len:
+        let sig = hashType(g.methods[bucket].methods[idx].typ[1].skipTypes(skipPtrs))
         let name = m.typeInfoMarkerV2.getOrDefault(sig)
         if name.len == 0:
           continue
@@ -396,14 +400,13 @@ proc generateMethodDispatchers*(g: ModuleGraph, m: BModule): PNode =
         let objVtable = getTempName(m)
         var dispatchMethods = newSeq[PSym]()
         for i in methodIndex:
-          dispatchMethods.add g.methods[i].methods[index]
+          dispatchMethods.add g.methods[i].methods[idx]
         let vtablePointerName = getTempName(m)
         m.s[cfsVars].addf("static void* $1[$2] = $3;$n", [vtablePointerName, rope(dispatchMethods.len), genVtable(dispatchMethods)])
         # m.s[cfsVars].addf("static $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyString), skVar), objDisplayStore, rope(objDepth+1), objDisplay])
         addf(typeEntry, "$1.vtable = $2;$n", [name, vtablePointerName])
 
         m.s[cfsTypeInit3].add typeEntry
-
       result.add newSymNode(genDispatcherVtable(g, g.methods[bucket].methods, index))
     else:
       result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))
