@@ -127,6 +127,8 @@ type
     cache*: IdentCache
     when defined(nimsuggest):
       previousToken: TLineInfo
+      tokenEnd*: TLineInfo
+      previousTokenEnd*: TLineInfo
     config*: ConfigRef
 
 proc getLineInfo*(L: Lexer, tok: Token): TLineInfo {.inline.} =
@@ -1224,6 +1226,10 @@ proc skip(L: var Lexer, tok: var Token) =
 proc rawGetTok*(L: var Lexer, tok: var Token) =
   template atTokenEnd() {.dirty.} =
     when defined(nimsuggest):
+      L.previousTokenEnd.line = L.tokenEnd.line
+      L.previousTokenEnd.col = L.tokenEnd.col
+      L.tokenEnd.line = tok.line.uint16
+      L.tokenEnd.col = getColNumber(L, L.bufpos).int16
       # we attach the cursor to the last *strong* token
       if tok.tokType notin weakTokens:
         L.previousToken.line = tok.line.uint16
