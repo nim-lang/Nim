@@ -592,6 +592,9 @@ proc parseFloat*(s: openArray[char], number: var float): int {.
   if result != 0:
     number = bf
 
+func toLowerAscii(c: char): char =
+  if c in {'A'..'Z'}: char(uint8(c) xor 0b0010_0000'u8) else: c
+
 func parseSize*(s: openArray[char], size: var int, alwaysBin=false): int =
   ## Parse a size qualified by binary or metric units into `size`.  This format
   ## is often called "human readable".  Result is the number of processed chars
@@ -628,13 +631,13 @@ func parseSize*(s: openArray[char], size: var int, alwaysBin=false): int =
     while result < s.len and s[result] in Whitespace:
       inc result
     if result < s.len:                  # Illegal starting char => unity
-      if (let si = prefix.find(s[result].toLowerASCII); si >= 0):
+      if (let si = prefix.find(s[result].toLowerAscii); si >= 0):
         inc result                      # Now parse the scale
         scale = if alwaysBin: scaleB[si] else: scaleM[si]
         if result < s.len and s[result] == 'i':
           scale = scaleB[si]            # Switch from default to binary-metric
           inc result
-        if result < s.len and s[result].toLowerASCII == 'b':
+        if result < s.len and s[result].toLowerAscii == 'b':
           inc result                    # Skip optional '[bB]'
     else:                               # Unwind result advancement when there..
       result = start                    #..is no unit to the end of `s`.
