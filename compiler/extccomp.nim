@@ -528,7 +528,7 @@ proc ccHasSaneOverflow*(conf: ConfigRef): bool =
     var exe = getConfigVar(conf, conf.cCompiler, ".exe")
     if exe.len == 0: exe = CC[conf.cCompiler].compilerExe
     # NOTE: should we need the full version, use -dumpfullversion
-    let (s, exitCode) = try: execCmdEx(exe & " -dumpversion") except: ("", 1)
+    let (s, exitCode) = try: execCmdEx(exe & " -dumpversion") except IOError, OSError, ValueError: ("", 1)
     if exitCode == 0:
       var major: int
       discard parseInt(s, major)
@@ -851,6 +851,17 @@ proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
     else:
       result = MsgKindToStr[hintCC] % demangleModuleName(path.splitFile.name)
 
+proc preventLinkCmdMaxCmdLen(conf: ConfigRef, linkCmd: string) =
+  # Prevent linkcmd from exceeding the maximum command line length.
+  # Windows's command line limit is about 8K (8191 characters) so C compilers on
+  # Windows support a feature where the command line can be passed via ``@linkcmd``
+  # to them.
+  const MaxCmdLen = when defined(windows): 8_000 else: 32_000
+  if linkCmd.len > MaxCmdLen:
+    linkViaResponseFile(conf, linkCmd)
+  else:
+    execLinkCmd(conf, linkCmd)
+
 proc callCCompiler*(conf: ConfigRef) =
   var
     linkCmd: string
@@ -927,14 +938,7 @@ proc callCCompiler*(conf: ConfigRef) =
       linkCmd = getLinkCmd(conf, mainOutput, objfiles, removeStaticFile = true)
       extraCmds = getExtraCmds(conf, mainOutput)
       if optCompileOnly notin conf.globalOptions:
-        const MaxCmdLen = when defined(windows): 8_000 else: 32_000
-        if linkCmd.len > MaxCmdLen:
-          # Windows's command line limit is about 8K (don't laugh...) so C compilers on
-          # Windows support a feature where the command line can be passed via ``@linkcmd``
-          # to them.
-          linkViaResponseFile(conf, linkCmd)
-        else:
-          execLinkCmd(conf, linkCmd)
+        preventLinkCmdMaxCmdLen(conf, linkCmd)
         for cmd in extraCmds:
           execExternalProgram(conf, cmd, hintExecuting)
   else:
@@ -1018,7 +1022,7 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: Absolute
 proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
   var bcache: BuildCache
   try: bcache.fromJson(jsonFile.string.parseFile)
-  except:
+  except ValueError, KeyError, JsonKindError:
     let e = getCurrentException()
     conf.quitOrRaise "\ncaught exception:\n$#\nstacktrace:\n$#error evaluating JSON file: $#" %
       [e.msg, e.getStackTrace(), jsonFile.string]
@@ -1035,7 +1039,7 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
     cmds.add cmd
     prettyCmds.add displayProgressCC(conf, name, cmd)
   execCmdsInParallel(conf, cmds, prettyCb)
-  execLinkCmd(conf, bcache.linkcmd)
+  preventLinkCmdMaxCmdLen(conf, bcache.linkcmd)
   for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
 
 proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =

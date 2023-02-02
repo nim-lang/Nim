@@ -75,6 +75,27 @@
 ## The `getopt iterator<#getopt.i,OptParser>`_, which is provided for
 ## convenience, can be used to iterate through all command line options as well.
 ##
+## To set a default value for a variable assigned through `getopt` and accept arguments from the cmd line.
+## Assign the default value to a variable before parsing.
+## Then set the variable to the new value while parsing.
+##
+## Here is an example:
+## .. code-block::
+##   import std/parseopt
+##
+##   var varName: string = "defaultValue"
+##
+##   for kind, key, val in getopt():
+##     case kind
+##     of cmdArgument:
+##       discard
+##     of cmdLongOption, cmdShortOption:
+##       case key:
+##       of "varName": # --varName:<value> in the console when executing
+##         varName = val # do input sanitization in production systems
+##     of cmdEnd:
+##       discard
+##
 ## `shortNoVal` and `longNoVal`
 ## ============================
 ##
@@ -194,34 +215,6 @@ proc parseWord(s: string, i: int, w: var string,
 
 proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
                     longNoVal: seq[string] = @[];
-                    allowWhitespaceAfterColon = true): OptParser
-
-proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
-                    longNoVal: seq[string] = @[];
-                    allowWhitespaceAfterColon = true): OptParser =
-  ## Initializes the command line parser.
-  ##
-  ## If `cmdline == ""`, the real command line as provided by the
-  ## `os` module is retrieved instead if it is available. If the
-  ## command line is not available, a `ValueError` will be raised.
-  ##
-  ## `shortNoVal` and `longNoVal` are used to specify which options
-  ## do not take values. See the `documentation about these
-  ## parameters<#nimshortnoval-and-nimlongnoval>`_ for more information on
-  ## how this affects parsing.
-  ##
-  ## See also:
-  ## * `getopt iterator<#getopt.i,OptParser>`_
-  runnableExamples:
-    var p = initOptParser()
-    p = initOptParser("--left --debug:3 -l -r:2")
-    p = initOptParser("--left --debug:3 -l -r:2",
-                      shortNoVal = {'l'}, longNoVal = @["left"])
-
-  initOptParser(parseCmdLine(cmdline), shortNoVal, longNoVal, allowWhitespaceAfterColon)
-
-proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
-                    longNoVal: seq[string] = @[];
                     allowWhitespaceAfterColon = true): OptParser =
   ## Initializes the command line parser.
   ##
@@ -263,6 +256,32 @@ proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
   result.kind = cmdEnd
   result.key = ""
   result.val = ""
+
+proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
+                    longNoVal: seq[string] = @[];
+                    allowWhitespaceAfterColon = true): OptParser =
+  ## Initializes the command line parser.
+  ##
+  ## If `cmdline == ""`, the real command line as provided by the
+  ## `os` module is retrieved instead if it is available. If the
+  ## command line is not available, a `ValueError` will be raised.
+  ##
+  ## `shortNoVal` and `longNoVal` are used to specify which options
+  ## do not take values. See the `documentation about these
+  ## parameters<#nimshortnoval-and-nimlongnoval>`_ for more information on
+  ## how this affects parsing.
+  ##
+  ## This does not provide a way of passing default values to arguments.
+  ##
+  ## See also:
+  ## * `getopt iterator<#getopt.i,OptParser>`_
+  runnableExamples:
+    var p = initOptParser()
+    p = initOptParser("--left --debug:3 -l -r:2")
+    p = initOptParser("--left --debug:3 -l -r:2",
+                      shortNoVal = {'l'}, longNoVal = @["left"])
+
+  initOptParser(parseCmdLine(cmdline), shortNoVal, longNoVal, allowWhitespaceAfterColon)
 
 proc handleShortOption(p: var OptParser; cmd: string) =
   var i = p.pos
@@ -356,7 +375,7 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
       handleShortOption(p, p.cmds[p.idx])
   else:
     p.kind = cmdArgument
-    p.key =  p.cmds[p.idx]
+    p.key = p.cmds[p.idx]
     inc p.idx
     p.pos = 0
 
@@ -375,7 +394,6 @@ when declared(quoteShellCommand):
     ##     p.next()
     ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
     ##       break
-    ##     else: continue
     ##   doAssert p.cmdLineRest == "foo.txt bar.txt"
     result = p.cmds[p.idx .. ^1].quoteShellCommand
 
@@ -393,7 +411,6 @@ proc remainingArgs*(p: OptParser): seq[string] {.rtl, extern: "npo$1".} =
   ##     p.next()
   ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
   ##       break
-  ##     else: continue
   ##   doAssert p.remainingArgs == @["foo.txt", "bar.txt"]
   result = @[]
   for i in p.idx..<p.cmds.len: result.add p.cmds[i]
@@ -403,7 +420,8 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key,
   ## Convenience iterator for iterating over the given
   ## `OptParser<#OptParser>`_.
   ##
-  ## There is no need to check for `cmdEnd` while iterating.
+  ## There is no need to check for `cmdEnd` while iterating. If using `getopt`
+  ## with case switching, checking for `cmdEnd` is required.
   ##
   ## See also:
   ## * `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_
@@ -451,7 +469,8 @@ iterator getopt*(cmdline: seq[string] = @[],
   ## parameters<#nimshortnoval-and-nimlongnoval>`_ for more information on
   ## how this affects parsing.
   ##
-  ## There is no need to check for `cmdEnd` while iterating.
+  ## There is no need to check for `cmdEnd` while iterating. If using `getopt`
+  ## with case switching, checking for `cmdEnd` is required.
   ##
   ## See also:
   ## * `initOptParser proc<#initOptParser,seq[string],set[char],seq[string]>`_

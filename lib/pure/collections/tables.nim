@@ -199,6 +199,10 @@ runnableExamples:
 import std/private/since
 import hashes, math, algorithm
 
+
+when not defined(nimHasEffectsOf):
+  {.pragma: effectsOf.}
+
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
   KeyValuePairSeq[A, B] = seq[KeyValuePair[A, B]]
@@ -1597,7 +1601,7 @@ proc clear*[A, B](t: var OrderedTable[A, B]) =
   t.last = -1
 
 proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x, y: (A, B)): int,
-    order = SortOrder.Ascending) =
+    order = SortOrder.Ascending) {.effectsOf: cmp.} =
   ## Sorts `t` according to the function `cmp`.
   ##
   ## This modifies the internal list
@@ -2054,7 +2058,7 @@ proc clear*[A, B](t: OrderedTableRef[A, B]) =
   clear(t[])
 
 proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x, y: (A, B)): int,
-    order = SortOrder.Ascending) =
+    order = SortOrder.Ascending) {.effectsOf: cmp.} =
   ## Sorts `t` according to the function `cmp`.
   ##
   ## This modifies the internal list

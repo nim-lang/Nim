@@ -1242,7 +1242,7 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
     result = check(n.sons[0], ctx, map)
   of nkIfStmt, nkIfExpr:
     result = checkIf(n, ctx, map)
-  of nkAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     result = checkAsgn(n[0], n[1], ctx, map)
   of nkVarSection:
     result.map = map

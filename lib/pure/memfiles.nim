@@ -17,12 +17,15 @@
 
 when defined(windows):
   import winlean
+  when useWinUnicode and defined(nimPreviewSlimSystem):
+    import std/widestrs
 elif defined(posix):
   import posix
 else:
   {.error: "the memfiles module is not supported on your operating system!".}
 
-import os, streams
+import streams
+import std/oserrors
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
@@ -492,8 +495,8 @@ proc mmsSetPosition(s: Stream, pos: int) =
 proc mmsGetPosition(s: Stream): int = MemMapFileStream(s).pos
 
 proc mmsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
-  let startAddress = cast[ByteAddress](MemMapFileStream(s).mf.mem)
-  let p = cast[ByteAddress](MemMapFileStream(s).pos)
+  let startAddress = cast[int](MemMapFileStream(s).mf.mem)
+  let p = cast[int](MemMapFileStream(s).pos)
   let l = min(bufLen, MemMapFileStream(s).mf.size - p)
   moveMem(buffer, cast[pointer](startAddress + p), l)
   result = l
@@ -508,8 +511,8 @@ proc mmsWriteData(s: Stream, buffer: pointer, bufLen: int) =
   let size = MemMapFileStream(s).mf.size
   if MemMapFileStream(s).pos + bufLen > size:
     raise newEIO("cannot write to stream")
-  let p = cast[ByteAddress](MemMapFileStream(s).mf.mem) +
-          cast[ByteAddress](MemMapFileStream(s).pos)
+  let p = cast[int](MemMapFileStream(s).mf.mem) +
+          cast[int](MemMapFileStream(s).pos)
   moveMem(cast[pointer](p), buffer, bufLen)
   inc(MemMapFileStream(s).pos, bufLen)
 

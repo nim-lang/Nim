@@ -154,7 +154,7 @@ proc analyse(c: var Con; b: var BasicBlock; n: PNode) =
       nkTypeOfExpr, nkMixinStmt, nkBindStmt:
     discard "do not follow the construct"
 
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     # reverse order, see remark for `=sink`:
     analyse(c, b, n[1])
     analyse(c, b, n[0])

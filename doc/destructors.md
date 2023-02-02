@@ -358,58 +358,57 @@ Rewrite rules
 The current implementation follows strategy (2). This means that resources are
 destroyed at the scope exit.
 
-::
 
-  var x: T; stmts
-  ---------------             (destroy-var)
-  var x: T; try stmts
-  finally: `=destroy`(x)
-
-
-  g(f(...))
-  ------------------------    (nested-function-call)
-  g(let tmp;
-  bitwiseCopy tmp, f(...);
-  tmp)
-  finally: `=destroy`(tmp)
+    var x: T; stmts
+    ---------------             (destroy-var)
+    var x: T; try stmts
+    finally: `=destroy`(x)
 
 
-  x = f(...)
-  ------------------------    (function-sink)
-  `=sink`(x, f(...))
+    g(f(...))
+    ------------------------    (nested-function-call)
+    g(let tmp;
+    bitwiseCopy tmp, f(...);
+    tmp)
+    finally: `=destroy`(tmp)
 
 
-  x = lastReadOf z
-  ------------------          (move-optimization)
-  `=sink`(x, z)
-  wasMoved(z)
+    x = f(...)
+    ------------------------    (function-sink)
+    `=sink`(x, f(...))
 
 
-  v = v
-  ------------------   (self-assignment-removal)
-  discard "nop"
+    x = lastReadOf z
+    ------------------          (move-optimization)
+    `=sink`(x, z)
+    wasMoved(z)
 
 
-  x = y
-  ------------------          (copy)
-  `=copy`(x, y)
+    v = v
+    ------------------   (self-assignment-removal)
+    discard "nop"
 
 
-  f_sink(g())
-  -----------------------     (call-to-sink)
-  f_sink(g())
+    x = y
+    ------------------          (copy)
+    `=copy`(x, y)
 
 
-  f_sink(notLastReadOf y)
-  --------------------------     (copy-to-sink)
-  (let tmp; `=copy`(tmp, y);
-  f_sink(tmp))
+    f_sink(g())
+    -----------------------     (call-to-sink)
+    f_sink(g())
 
 
-  f_sink(lastReadOf y)
-  -----------------------     (move-to-sink)
-  f_sink(y)
-  wasMoved(y)
+    f_sink(notLastReadOf y)
+    --------------------------     (copy-to-sink)
+    (let tmp; `=copy`(tmp, y);
+    f_sink(tmp))
+
+
+    f_sink(lastReadOf y)
+    -----------------------     (move-to-sink)
+    f_sink(y)
+    wasMoved(y)
 
 
 Object and array construction

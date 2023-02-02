@@ -47,16 +47,16 @@ is not ambiguous.
 
 Non-terminals start with a lowercase letter, abstract terminal symbols are in
 UPPERCASE. Verbatim terminal symbols (including keywords) are quoted
-with `'`. An example::
+with `'`. An example:
 
-  ifStmt = 'if' expr ':' stmts ('elif' expr ':' stmts)* ('else' stmts)?
+    ifStmt = 'if' expr ':' stmts ('elif' expr ':' stmts)* ('else' stmts)?
 
 The binary `^*` operator is used as a shorthand for 0 or more occurrences
 separated by its second argument; likewise `^+` means 1 or more
 occurrences: `a ^+ b` is short for `a (b a)*`
-and `a ^* b` is short for `(a (b a)*)?`. Example::
+and `a ^* b` is short for `(a (b a)*)?`. Example:
 
-  arrayConstructor = '[' expr ^* ',' ']'
+    arrayConstructor = '[' expr ^* ',' ']'
 
 Other parts of Nim, like scoping rules or runtime semantics, are
 described informally.
@@ -190,16 +190,16 @@ is another pseudo terminal that describes the *action* of popping a value
 from the stack, `IND{>}` then implies to push onto the stack.
 
 With this notation we can now easily define the core of the grammar: A block of
-statements (simplified example)::
+statements (simplified example):
 
-  ifStmt = 'if' expr ':' stmt
-           (IND{=} 'elif' expr ':' stmt)*
-           (IND{=} 'else' ':' stmt)?
+    ifStmt = 'if' expr ':' stmt
+             (IND{=} 'elif' expr ':' stmt)*
+             (IND{=} 'else' ':' stmt)?
 
-  simpleStmt = ifStmt / ...
+    simpleStmt = ifStmt / ...
 
-  stmt = IND{>} stmt ^+ IND{=} DED  # list of statements
-       / simpleStmt                 # or a simple statement
+    stmt = IND{>} stmt ^+ IND{=} DED  # list of statements
+         / simpleStmt                 # or a simple statement
 
 
 
@@ -256,6 +256,18 @@ Multiline documentation comments also exist and support nesting too:
        here.
     ]##
   ```
+
+You can also use the [discard statement](#statements-and-expressions-discard-statement) together with
+[triple quoted string literals](#lexical-analysis-triple-quoted-string-literals) to create multiline comments:
+
+  ```nim
+  discard """ You can have any Nim code text commented
+  out inside this with no indentation restrictions.
+        yes("May I ask a pointless question?") """
+  ```
+
+This was how multiline comments were done before version 0.13.0,
+and it is used to provide specifications to [testament](testament.html#writing-unitests) test framework.
 
 
 Identifiers & Keywords
@@ -409,9 +421,9 @@ ending of the string literal is defined by the pattern `"""[^"]`, so this:
   """"long string within quotes""""
   ```
 
-Produces::
+Produces:
 
-  "long string within quotes"
+    "long string within quotes"
 
 
 Raw string literals
@@ -434,9 +446,9 @@ To produce a single `"` within a raw string literal, it has to be doubled:
   r"a""b"
   ```
 
-Produces::
+Produces:
 
-  a"b
+    a"b
 
 `r""""` is not possible with this notation, because the three leading
 quotes introduce a triple quoted string literal. `r"""` is the same
@@ -513,46 +525,46 @@ See also [custom numeric literals].
 Numeric literals
 ----------------
 
-Numeric literals have the form::
+Numeric literals have the form:
 
-  hexdigit = digit | 'A'..'F' | 'a'..'f'
-  octdigit = '0'..'7'
-  bindigit = '0'..'1'
-  unary_minus = '-' # See the section about unary minus
-  HEX_LIT = unary_minus? '0' ('x' | 'X' ) hexdigit ( ['_'] hexdigit )*
-  DEC_LIT = unary_minus? digit ( ['_'] digit )*
-  OCT_LIT = unary_minus? '0' 'o' octdigit ( ['_'] octdigit )*
-  BIN_LIT = unary_minus? '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
+    hexdigit = digit | 'A'..'F' | 'a'..'f'
+    octdigit = '0'..'7'
+    bindigit = '0'..'1'
+    unary_minus = '-' # See the section about unary minus
+    HEX_LIT = unary_minus? '0' ('x' | 'X' ) hexdigit ( ['_'] hexdigit )*
+    DEC_LIT = unary_minus? digit ( ['_'] digit )*
+    OCT_LIT = unary_minus? '0' 'o' octdigit ( ['_'] octdigit )*
+    BIN_LIT = unary_minus? '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
 
-  INT_LIT = HEX_LIT
-          | DEC_LIT
-          | OCT_LIT
-          | BIN_LIT
+    INT_LIT = HEX_LIT
+            | DEC_LIT
+            | OCT_LIT
+            | BIN_LIT
 
-  INT8_LIT = INT_LIT ['\''] ('i' | 'I') '8'
-  INT16_LIT = INT_LIT ['\''] ('i' | 'I') '16'
-  INT32_LIT = INT_LIT ['\''] ('i' | 'I') '32'
-  INT64_LIT = INT_LIT ['\''] ('i' | 'I') '64'
+    INT8_LIT = INT_LIT ['\''] ('i' | 'I') '8'
+    INT16_LIT = INT_LIT ['\''] ('i' | 'I') '16'
+    INT32_LIT = INT_LIT ['\''] ('i' | 'I') '32'
+    INT64_LIT = INT_LIT ['\''] ('i' | 'I') '64'
 
-  UINT_LIT = INT_LIT ['\''] ('u' | 'U')
-  UINT8_LIT = INT_LIT ['\''] ('u' | 'U') '8'
-  UINT16_LIT = INT_LIT ['\''] ('u' | 'U') '16'
-  UINT32_LIT = INT_LIT ['\''] ('u' | 'U') '32'
-  UINT64_LIT = INT_LIT ['\''] ('u' | 'U') '64'
+    UINT_LIT = INT_LIT ['\''] ('u' | 'U')
+    UINT8_LIT = INT_LIT ['\''] ('u' | 'U') '8'
+    UINT16_LIT = INT_LIT ['\''] ('u' | 'U') '16'
+    UINT32_LIT = INT_LIT ['\''] ('u' | 'U') '32'
+    UINT64_LIT = INT_LIT ['\''] ('u' | 'U') '64'
 
-  exponent = ('e' | 'E' ) ['+' | '-'] digit ( ['_'] digit )*
-  FLOAT_LIT = unary_minus? digit (['_'] digit)* (('.' digit (['_'] digit)* [exponent]) |exponent)
-  FLOAT32_SUFFIX = ('f' | 'F') ['32']
-  FLOAT32_LIT = HEX_LIT '\'' FLOAT32_SUFFIX
-              | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT32_SUFFIX
-  FLOAT64_SUFFIX = ( ('f' | 'F') '64' ) | 'd' | 'D'
-  FLOAT64_LIT = HEX_LIT '\'' FLOAT64_SUFFIX
-              | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT64_SUFFIX
+    exponent = ('e' | 'E' ) ['+' | '-'] digit ( ['_'] digit )*
+    FLOAT_LIT = unary_minus? digit (['_'] digit)* (('.' digit (['_'] digit)* [exponent]) |exponent)
+    FLOAT32_SUFFIX = ('f' | 'F') ['32']
+    FLOAT32_LIT = HEX_LIT '\'' FLOAT32_SUFFIX
+                | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT32_SUFFIX
+    FLOAT64_SUFFIX = ( ('f' | 'F') '64' ) | 'd' | 'D'
+    FLOAT64_LIT = HEX_LIT '\'' FLOAT64_SUFFIX
+                | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT64_SUFFIX
 
-  CUSTOM_NUMERIC_LIT = (FLOAT_LIT | INT_LIT) '\'' CUSTOM_NUMERIC_SUFFIX
+    CUSTOM_NUMERIC_LIT = (FLOAT_LIT | INT_LIT) '\'' CUSTOM_NUMERIC_SUFFIX
 
-  # CUSTOM_NUMERIC_SUFFIX is any Nim identifier that is not
-  # a pre-defined type suffix.
+    # CUSTOM_NUMERIC_SUFFIX is any Nim identifier that is not
+    # a pre-defined type suffix.
 
 
 As can be seen in the productions, numeric literals can contain underscores
@@ -674,7 +686,7 @@ Operators
 ---------
 
 Nim allows user defined operators. An operator is any combination of the
-following characters::
+following characters:
 
        =     +     -     *     /     <     >
        @     $     ~     &     %     |
@@ -698,10 +710,10 @@ as `a(not b)`, not as `(a) not (b)`.
 Unicode Operators
 -----------------
 
-These Unicode operators are also parsed as operators::
+These Unicode operators are also parsed as operators:
 
-  ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
-  ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
+    ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
+    ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
 
 
 Unicode operators can be combined with non-Unicode operator
@@ -714,7 +726,7 @@ No Unicode normalization step is performed.
 Other tokens
 ------------
 
-The following strings denote other tokens::
+The following strings denote other tokens:
 
     `   (    )     {    }     [    ]    ,  ;   [.    .]  {.   .}  (.  .)  [:
 
@@ -1207,9 +1219,11 @@ The boolean type is named `bool`:idx: in Nim and can be one of the two
 pre-defined values `true` and `false`. Conditions in `while`,
 `if`, `elif`, `when`-statements need to be of type `bool`.
 
-This condition holds::
+This condition holds:
 
+  ```nim
   ord(false) == 0 and ord(true) == 1
+  ```
 
 The operators `not, and, or, xor, <, <=, >, >=, !=, ==` are defined
 for the bool type. The `and` and `or` operators perform short-cut
@@ -1248,8 +1262,9 @@ specified. The values are ordered. Example:
   ```
 
 
-Now the following holds::
+Now the following holds:
 
+  ```nim
   ord(north) == 0
   ord(east) == 1
   ord(south) == 2
@@ -1257,6 +1272,7 @@ Now the following holds::
 
   # Also allowed:
   ord(Direction.west) == 3
+  ```
 
 The implied order is: north < east < south < west. The comparison operators can be used
 with enumeration types. Instead of `north` etc., the enum value can also
@@ -1347,6 +1363,23 @@ ambiguous, a static error will be produced.
     of value2: echo "B"
 
   p value2
+  ```
+
+In some cases, ambiguity of enums is resolved depending on the relation
+between the current scope and the scope the enums were defined in.
+
+  ```nim
+  # a.nim
+  type Foo* = enum abc
+
+  # b.nim
+  import a
+  type Bar = enum abc
+  echo abc is Bar # true
+
+  block:
+    type Baz = enum abc
+    echo abc is Baz # true
   ```
 
 To implement bit fields with enums see [Bit fields].
@@ -1934,6 +1967,57 @@ Some restrictions for case objects can be disabled via a `{.cast(uncheckedAssign
     t.kind = intLit
   ```
 
+Default values for object fields
+--------------------------------
+
+Object fields are allowed to have a constant default value. The type of field can be omitted if a default value is given.
+
+```nim test
+type
+  Foo = object
+    a: int = 2
+    b: float = 3.14
+    c = "I can have a default value"
+
+  Bar = ref object
+    a: int = 2
+    b: float = 3.14
+    c = "I can have a default value"
+```
+
+The explicit initialization uses these defaults which includes an `object` created with an object construction expression or the procedure `default`; a `ref object` created with an object construction expression or the procedure `new`; an array or a tuple with a subtype which has a default created with the procedure `default`.
+
+
+```nim test
+type
+  Foo = object
+    a: int = 2
+    b = 3.0
+  Bar = ref object
+    a: int = 2
+    b = 3.0
+
+block: # created with an object construction expression
+  let x = Foo()
+  assert x.a == 2 and x.b == 3.0
+
+  let y = Bar()
+  assert y.a == 2 and y.b == 3.0
+
+block: # created with an object construction expression
+  let x = default(Foo)
+  assert x.a == 2 and x.b == 3.0
+
+  let y = default(array[1, Foo])
+  assert y[0].a == 2 and y[0].b == 3.0
+
+  let z = default(tuple[x: Foo])
+  assert z.x.a == 2 and z.x.b == 3.0
+
+block: # created with the procedure `new`
+  let y = new Bar
+  assert y.a == 2 and y.b == 3.0
+```
 
 Set type
 --------
@@ -1979,10 +2063,6 @@ dereferencing operations for reference types:
   n.data = 9
   # no need to write n[].data; in fact n[].data is highly discouraged!
   ```
-
-Automatic dereferencing can be performed for the first argument of a routine
-call, but this is an experimental feature and is described [here](
-manual_experimental.html#automatic-dereferencing).
 
 In order to simplify structural type checking, recursive tuples are not valid:
 
@@ -2568,8 +2648,9 @@ literal match and that is better than a generic match etc. In the following,
 for the routine `p`.
 
 A routine `p` matches better than a routine `q` if the following
-algorithm returns true::
+algorithm returns true:
 
+  ```nim
   for each matching category m in ["exact match", "literal match",
                                   "generic match", "subtype match",
                                   "integral match", "conversion match"]:
@@ -2579,6 +2660,7 @@ algorithm returns true::
     else:
       return false
   return "ambiguous"
+  ```
 
 
 Some examples:
@@ -4061,19 +4143,19 @@ Nonoverloadable builtins
 ------------------------
 
 The following built-in procs cannot be overloaded for reasons of implementation
-simplicity (they require specialized semantic checking)::
+simplicity (they require specialized semantic checking):
 
-  declared, defined, definedInScope, compiles, sizeof,
-  is, shallowCopy, getAst, astToStr, spawn, procCall
+    declared, defined, definedInScope, compiles, sizeof,
+    is, shallowCopy, getAst, astToStr, spawn, procCall
 
 Thus, they act more like keywords than like ordinary identifiers; unlike a
 keyword however, a redefinition may `shadow`:idx: the definition in
 the [system](system.html) module.
 From this list the following should not be written in dot
 notation `x.f` since `x` cannot be type-checked before it gets passed
-to `f`::
+to `f`:
 
-  declared, defined, definedInScope, compiles, getAst, astToStr
+    declared, defined, definedInScope, compiles, getAst, astToStr
 
 
 Var parameters
@@ -4691,8 +4773,8 @@ Example:
       echo "overflow!"
     except ValueError, IOError:
       echo "catch multiple exceptions!"
-    except:
-      echo "Unknown exception!"
+    except CatchableError:
+      echo "Catchable exception!"
     finally:
       close(f)
   ```
@@ -4703,9 +4785,6 @@ an exception `e` is raised. If the exception type of `e` matches any
 listed in an `except` clause, the corresponding statements are executed.
 The statements following the `except` clauses are called
 `exception handlers`:idx:.
-
-The empty `except`:idx: clause is executed if there is an exception that is
-not listed otherwise. It is similar to an `else` clause in `if` statements.
 
 If there is a `finally`:idx: clause, it is always executed after the
 exception handlers.
@@ -4724,11 +4803,11 @@ Try can also be used as an expression; the type of the `try` branch then
 needs to fit the types of `except` branches, but the type of the `finally`
 branch always has to be `void`:
 
-  ```nim
+  ```nim test
   from std/strutils import parseInt
 
   let x = try: parseInt("133a")
-          except: -1
+          except ValueError: -1
           finally: echo "hi"
   ```
 
@@ -4736,8 +4815,9 @@ branch always has to be `void`:
 To prevent confusing code there is a parsing limitation; if the `try`
 follows a `(` it has to be written as a one liner:
 
-  ```nim
-  let x = (try: parseInt("133a") except: -1)
+  ```nim test
+  from std/strutils import parseInt
+  let x = (try: parseInt("133a") except ValueError: -1)
   ```
 
 
@@ -4785,7 +4865,7 @@ error message from `e`, and for such situations, it is enough to use
   ```nim
   try:
     # ...
-  except:
+  except CatchableError:
     echo getCurrentExceptionMsg()
   ```
 
@@ -4950,8 +5030,7 @@ Effect system
 =============
 
 **Note**: The rules for effect tracking changed with the release of version
-1.6 of the Nim compiler. This section describes the new rules that are activated
-via `--experimental:strictEffects`.
+1.6 of the Nim compiler.
 
 
 Exception tracking
@@ -4974,7 +5053,7 @@ An empty `raises` list (`raises: []`) means that no exception may be raised:
     try:
       unsafeCall()
       result = true
-    except:
+    except CatchableError:
       result = false
   ```
 
@@ -5071,7 +5150,6 @@ conservative in its effect analysis:
 
   ```nim  test = "nim c $1"  status = 1
   {.push warningAsError[Effect]: on.}
-  {.experimental: "strictEffects".}
 
   import algorithm
 
@@ -7969,6 +8047,24 @@ used. To see if a value was provided, `defined(FooBar)` can be used.
 The syntax `-d:flag`:option: is actually just a shortcut for
 `-d:flag=true`:option:.
 
+These pragmas also accept an optional string argument for qualified
+define names.
+
+  ```nim
+  const FooBar {.intdefine: "package.FooBar".}: int = 5
+  echo FooBar
+  ```
+
+  ```cmd
+  nim c -d:package.FooBar=42 foobar.nim
+  ```
+
+This helps disambiguate define names in different packages.
+
+See also the [generic `define` pragma](manual_experimental.html#generic-define-pragma)
+for a version of these pragmas that detects the type of the define based on
+the constant value.
+
 User-defined pragmas
 ====================
 
@@ -8291,16 +8387,16 @@ The `dynlib` import mechanism supports a versioning scheme:
     importc, dynlib: "libtcl(|8.5|8.4|8.3).so.(1|0)".}
   ```
 
-At runtime, the dynamic library is searched for (in this order)::
+At runtime, the dynamic library is searched for (in this order):
 
-  libtcl.so.1
-  libtcl.so.0
-  libtcl8.5.so.1
-  libtcl8.5.so.0
-  libtcl8.4.so.1
-  libtcl8.4.so.0
-  libtcl8.3.so.1
-  libtcl8.3.so.0
+    libtcl.so.1
+    libtcl.so.0
+    libtcl8.5.so.1
+    libtcl8.5.so.0
+    libtcl8.4.so.1
+    libtcl8.4.so.0
+    libtcl8.3.so.1
+    libtcl8.3.so.0
 
 The `dynlib` pragma supports not only constant strings as an argument but also
 string expressions in general:
@@ -8344,22 +8440,11 @@ This is only useful if the program is compiled as a dynamic library via the
 `--app:lib`:option: command-line option.
 
 
-
 Threads
 =======
 
-To enable thread support the `--threads:on`:option: command-line switch needs to
-be used. The [system module](system.html) module then contains several threading primitives.
-See the [channels](channels_builtin.html) modules
-for the low-level thread API. There are also high-level parallelism constructs
-available. See [spawn](manual_experimental.html#parallel-amp-spawn) for
+The `--threads:on`:option: command-line switch is enabled by default. The [typedthreads module](typedthreads.html) module then contains several threading primitives. See [spawn](manual_experimental.html#parallel-amp-spawn) for
 further details.
-
-Nim's memory model for threads is quite different than that of other common
-programming languages (C, Pascal, Java): Each thread has its own (garbage
-collected) heap, and sharing of memory is restricted to global variables. This
-helps to prevent race conditions. GC efficiency is improved quite a lot,
-because the GC never has to stop other threads and see what they reference.
 
 The only way to create a thread is via `spawn` or
 `createThread`. The invoked proc must not use `var` parameters nor must

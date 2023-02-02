@@ -1,4 +1,5 @@
 discard """
+  disabled: i386
   outputsub: "Just a simple text for test"
 """
 

@@ -624,7 +624,7 @@ iterator splitLines*(s: string, keepEol = false): string =
   ##
   ## Every `character literal <manual.html#lexical-analysis-character-literals>`_
   ## newline combination (CR, LF, CR-LF) is supported. The result strings
-  ## contain no trailing end of line characters unless parameter `keepEol`
+  ## contain no trailing end of line characters unless the parameter `keepEol`
   ## is set to `true`.
   ##
   ## Example:
@@ -944,14 +944,26 @@ func toHex*[T: SomeInteger](x: T, len: Positive): string =
     doAssert b.toHex(4) == "1001"
     doAssert toHex(62, 3) == "03E"
     doAssert toHex(-8, 6) == "FFFFF8"
-  toHexImpl(cast[BiggestUInt](x), len, x < 0)
+  when defined(js):
+    toHexImpl(cast[BiggestUInt](x), len, x < 0)
+  else:
+    when T is SomeSignedInt:
+      toHexImpl(cast[BiggestUInt](BiggestInt(x)), len, x < 0)
+    else:
+      toHexImpl(BiggestUInt(x), len, x < 0)
 
 func toHex*[T: SomeInteger](x: T): string =
   ## Shortcut for `toHex(x, T.sizeof * 2)`
   runnableExamples:
     doAssert toHex(1984'i64) == "00000000000007C0"
     doAssert toHex(1984'i16) == "07C0"
-  toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
+  when defined(js):
+    toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
+  else:
+    when T is SomeSignedInt:
+      toHexImpl(cast[BiggestUInt](BiggestInt(x)), 2*sizeof(T), x < 0)
+    else:
+      toHexImpl(BiggestUInt(x), 2*sizeof(T), x < 0)
 
 func toHex*(s: string): string {.rtl.} =
   ## Converts a bytes string to its hexadecimal representation.
@@ -1648,7 +1660,7 @@ func removePrefix*(s: var string, chars: set[char] = Newlines) {.rtl,
 
   var start = 0
   while start < s.len and s[start] in chars: start += 1
-  if start > 0: s.delete(0, start - 1)
+  if start > 0: s.delete(0..start - 1)
 
 func removePrefix*(s: var string, c: char) {.rtl,
     extern: "nsuRemovePrefixChar".} =
@@ -1675,8 +1687,8 @@ func removePrefix*(s: var string, prefix: string) {.rtl,
     var answers = "yesyes"
     answers.removePrefix("yes")
     doAssert answers == "yes"
-  if s.startsWith(prefix):
-    s.delete(0, prefix.len - 1)
+  if s.startsWith(prefix) and prefix.len > 0:
+    s.delete(0..prefix.len - 1)
 
 func removeSuffix*(s: var string, chars: set[char] = Newlines) {.rtl,
     extern: "nsuRemoveSuffixCharSet".} =
@@ -1914,7 +1926,7 @@ func find*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
       if length > 0:
         let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](length))
         if not found.isNil:
-          return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+          return cast[int](found) -% cast[int](s.cstring)
     else:
       findImpl()
 
@@ -1936,6 +1948,14 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
     if s[i] in chars:
       return i
 
+when defined(linux):
+  proc memmem(haystack: pointer, haystacklen: csize_t,
+              needle: pointer, needlelen: csize_t): pointer {.importc, header: """#define _GNU_SOURCE
+#include <string.h>""".}
+elif defined(bsd) or (defined(macosx) and not defined(ios)):
+  proc memmem(haystack: pointer, haystacklen: csize_t,
+              needle: pointer, needlelen: csize_t): pointer {.importc, header: "#include <string.h>".}
+
 func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuFindStr".} =
   ## Searches for `sub` in `s` inside range `start..last` (both ends included).
@@ -1951,7 +1971,24 @@ func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   if sub.len > s.len - start: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
 
-  result = find(initSkipTable(sub), s, sub, start, last)
+  template useSkipTable =
+    result = find(initSkipTable(sub), s, sub, start, last)
+
+  when nimvm:
+    useSkipTable()
+  else:
+    when declared(memmem):
+      let subLen = sub.len
+      if last < 0 and start < s.len and subLen != 0:
+        let found = memmem(s[start].unsafeAddr, csize_t(s.len - start), sub.cstring, csize_t(subLen))
+        result = if not found.isNil:
+            cast[int](found) -% cast[int](s.cstring)
+          else:
+            -1
+      else:
+        useSkipTable()
+    else:
+      useSkipTable()
 
 func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuRFindChar".} =
@@ -2376,60 +2413,63 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
     doAssert x.formatBiggestFloat() == "123.4560000000000"
     doAssert x.formatBiggestFloat(ffDecimal, 4) == "123.4560"
     doAssert x.formatBiggestFloat(ffScientific, 2) == "1.23e+02"
-  when defined(js):
-    var precision = precision
-    if precision == -1:
-      # use the same default precision as c_sprintf
-      precision = 6
-    var res: cstring
-    case format
-    of ffDefault:
-      {.emit: "`res` = `f`.toString();".}
-    of ffDecimal:
-      {.emit: "`res` = `f`.toFixed(`precision`);".}
-    of ffScientific:
-      {.emit: "`res` = `f`.toExponential(`precision`);".}
-    result = $res
-    if 1.0 / f == -Inf:
-      # JavaScript removes the "-" from negative Zero, add it back here
-      result = "-" & $res
-    for i in 0 ..< result.len:
-      # Depending on the locale either dot or comma is produced,
-      # but nothing else is possible:
-      if result[i] in {'.', ','}: result[i] = decimalSep
+  when nimvm:
+    discard "implemented in the vmops"
   else:
-    const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
-    var
-      frmtstr {.noinit.}: array[0..5, char]
-      buf {.noinit.}: array[0..2500, char]
-      L: cint
-    frmtstr[0] = '%'
-    if precision >= 0:
-      frmtstr[1] = '#'
-      frmtstr[2] = '.'
-      frmtstr[3] = '*'
-      frmtstr[4] = floatFormatToChar[format]
-      frmtstr[5] = '\0'
-      L = c_sprintf(addr buf, addr frmtstr, precision, f)
+    when defined(js):
+      var precision = precision
+      if precision == -1:
+        # use the same default precision as c_sprintf
+        precision = 6
+      var res: cstring
+      case format
+      of ffDefault:
+        {.emit: "`res` = `f`.toString();".}
+      of ffDecimal:
+        {.emit: "`res` = `f`.toFixed(`precision`);".}
+      of ffScientific:
+        {.emit: "`res` = `f`.toExponential(`precision`);".}
+      result = $res
+      if 1.0 / f == -Inf:
+        # JavaScript removes the "-" from negative Zero, add it back here
+        result = "-" & $res
+      for i in 0 ..< result.len:
+        # Depending on the locale either dot or comma is produced,
+        # but nothing else is possible:
+        if result[i] in {'.', ','}: result[i] = decimalSep
     else:
-      frmtstr[1] = floatFormatToChar[format]
-      frmtstr[2] = '\0'
-      L = c_sprintf(addr buf, addr frmtstr, f)
-    result = newString(L)
-    for i in 0 ..< L:
-      # Depending on the locale either dot or comma is produced,
-      # but nothing else is possible:
-      if buf[i] in {'.', ','}: result[i] = decimalSep
-      else: result[i] = buf[i]
-    when defined(windows):
-      # VS pre 2015 violates the C standard: "The exponent always contains at
-      # least two digits, and only as many more digits as necessary to
-      # represent the exponent." [C11 §7.21.6.1]
-      # The following post-processing fixes this behavior.
-      if result.len > 4 and result[^4] == '+' and result[^3] == '0':
-        result[^3] = result[^2]
-        result[^2] = result[^1]
-        result.setLen(result.len - 1)
+      const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
+      var
+        frmtstr {.noinit.}: array[0..5, char]
+        buf {.noinit.}: array[0..2500, char]
+        L: cint
+      frmtstr[0] = '%'
+      if precision >= 0:
+        frmtstr[1] = '#'
+        frmtstr[2] = '.'
+        frmtstr[3] = '*'
+        frmtstr[4] = floatFormatToChar[format]
+        frmtstr[5] = '\0'
+        L = c_sprintf(cast[cstring](addr buf), cast[cstring](addr frmtstr), precision, f)
+      else:
+        frmtstr[1] = floatFormatToChar[format]
+        frmtstr[2] = '\0'
+        L = c_sprintf(cast[cstring](addr buf), cast[cstring](addr frmtstr), f)
+      result = newString(L)
+      for i in 0 ..< L:
+        # Depending on the locale either dot or comma is produced,
+        # but nothing else is possible:
+        if buf[i] in {'.', ','}: result[i] = decimalSep
+        else: result[i] = buf[i]
+      when defined(windows):
+        # VS pre 2015 violates the C standard: "The exponent always contains at
+        # least two digits, and only as many more digits as necessary to
+        # represent the exponent." [C11 §7.21.6.1]
+        # The following post-processing fixes this behavior.
+        if result.len > 4 and result[^4] == '+' and result[^3] == '0':
+          result[^3] = result[^2]
+          result[^2] = result[^1]
+          result.setLen(result.len - 1)
 
 func formatFloat*(f: float, format: FloatFormatMode = ffDefault,
                   precision: range[-1..32] = 16; decimalSep = '.'): string {.
@@ -2469,7 +2509,8 @@ func trimZeros*(x: var string; decimalSep = '.') =
     var pos = last
     while pos >= 0 and x[pos] == '0': dec(pos)
     if pos > sPos: inc(pos)
-    x.delete(pos, last)
+    if last >= pos:
+      x.delete(pos..last)
 
 type
   BinaryPrefixMode* = enum ## The different names for binary prefixes.

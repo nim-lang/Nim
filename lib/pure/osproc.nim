@@ -33,6 +33,8 @@ when defined(linux) and defined(useClone):
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
+  when defined(windows):
+    import std/widestrs
 
 
 type

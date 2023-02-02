@@ -44,7 +44,7 @@ proc canonKind(n: PNode): TNodeKind =
   case result
   of nkCallKinds: result = nkCall
   of nkStrLit..nkTripleStrLit: result = nkStrLit
-  of nkFastAsgn: result = nkAsgn
+  of nkFastAsgn, nkSinkAsgn: result = nkAsgn
   else: discard
 
 proc sameKinds(a, b: PNode): bool {.inline.} =

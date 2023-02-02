@@ -1,4 +1,3 @@
-::
 
     nim command [options] [projectfile] [arguments]
 

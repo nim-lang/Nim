@@ -9,6 +9,8 @@ Nim-flavored Markdown and reStructuredText
 .. include:: rstcommon.rst
 .. contents::
 
+.. importdoc:: docgen.md
+
 Both `Markdown`:idx: (md) and `reStructuredText`:idx: (RST) are markup
 languages whose goal is to typeset texts with complex structure,
 formatting and references using simple plaintext representation.
@@ -22,8 +24,9 @@ Usage (to convert Markdown into HTML):
   nim md2html markdown_rst.md
   ```
 
-Output::
-  You're reading it!
+Output:
+
+    You're reading it!
 
 The `md2tex`:option: command is invoked identically to `md2html`:option:,
 but outputs a ``.tex`` file instead of ``.html``.
@@ -109,6 +112,8 @@ Supported standard RST features:
 Additional Nim-specific features
 --------------------------------
 
+* referencing to definitions in external files, see
+  [Markup external referencing] section
 * directives: ``code-block`` \[cmp:Sphinx], ``title``,
   ``index`` \[cmp:Sphinx]
 * predefined roles
@@ -132,10 +137,10 @@ Additional Nim-specific features
 * ``:idx:`` role for \`interpreted text\` to include the link to this
   text into an index (example: [Nim index]).
 * double slash `//` in option lists serves as a prefix for any option that
-  starts from a word (without any leading symbols like `-`, `--`, `/`)::
+  starts from a word (without any leading symbols like `-`, `--`, `/`):
 
-    //compile   compile the project
-    //doc       generate documentation
+      //compile   compile the project
+      //doc       generate documentation
 
   Here the dummy `//` will disappear, while options `compile`:option:
   and `doc`:option: will be left in the final document.
@@ -152,11 +157,11 @@ Optional additional features, by default turned on:
 * Markdown tables
 * Markdown code blocks. For them the same additional arguments as for RST
   code blocks can be provided (e.g. `test` or `number-lines`) but with
-  a one-line syntax like this::
+  a one-line syntax like this:
 
-    ```nim test number-lines=10
-    echo "ok"
-    ```
+      ```nim test number-lines=10
+      echo "ok"
+      ```
 * Markdown links
 * Markdown headlines
 * Markdown block quotes
@@ -168,6 +173,86 @@ Optional additional features, by default turned on:
 
 .. warning:: Using Nim-specific features can cause other RST implementations
   to fail on your document.
+
+Referencing
+===========
+
+To be able to copy and share links Nim generates anchors for all
+main document elements:
+
+* headlines (including document title)
+* footnotes
+* explicitly set anchors: RST internal cross-references and
+  inline internal targets
+* Nim symbols (external referencing), see [Nim DocGen Tools Guide] for details.
+
+But direct use of those anchors have 2 problems:
+
+1. the anchors are usually mangled (e.g. spaces substituted to minus
+   signs, etc).
+2. manual usage of anchors is not checked, so it's easy to get broken
+   links inside your project if e.g. spelling has changed for a heading
+   or you use a wrong relative path to your document.
+
+That's why Nim implementation has syntax for using
+*original* labels for referencing.
+Such referencing can be either local/internal or external:
+
+* Local referencing (inside any given file) is defined by
+  RST standard or Pandoc Markdown User guide.
+* External (cross-document) referencing is a Nim-specific feature,
+  though it's not really different from local referencing by its syntax.
+
+Markup local referencing
+------------------------
+
+There are 2 syntax option available for referencing to objects
+inside any given file, e.g. for headlines:
+
+    Markdown                  RST
+
+    Some headline             Some headline
+    =============             =============
+
+    Ref. [Some headline]      Ref. `Some headline`_
+
+
+Markup external referencing
+---------------------------
+
+The syntax is the same as for local referencing, but the anchors are
+saved in ``.idx`` files, so one needs to generate them beforehand,
+and they should be loaded by an `.. importdoc::` directive.
+E.g. if we want to reference section "Some headline" in ``file1.md``
+from ``file2.md``, then ``file2.md`` may look like:
+
+```
+.. importdoc:: file1.md
+
+Ref. [Some headline]
+```
+
+```cmd
+nim md2html --index:only file1.md  # creates ``htmldocs/file1.idx``
+nim md2html file2.md               # creates ``htmldocs/file2.html``
+```
+
+To allow cross-references between any files in any order (especially, if
+circular references are present), it's strongly reccommended
+to make a run for creating all the indexes first:
+
+```cmd
+nim md2html --index:only file1.md  # creates ``htmldocs/file1.idx``
+nim md2html --index:only file2.md  # creates ``htmldocs/file2.idx``
+nim md2html file1.md               # creates ``htmldocs/file1.html``
+nim md2html file2.md               # creates ``htmldocs/file2.html``
+```
+
+and then one can freely reference any objects as if these 2 documents
+are actually 1 file.
+
+Other
+=====
 
 Idiosyncrasies
 --------------
@@ -189,11 +274,11 @@ This parser has 2 modes for inline markup:
      does escape so that we can always input a single backtick ` in
      inline code. However that makes impossible to input code with
      ``\`` at the end in *single* backticks, one must use *double*
-     backticks::
+     backticks:
 
-       `\`   -- WRONG
-       ``\`` -- GOOD
-       So single backticks can always be input: `\`` will turn to ` code
+         `\`   -- WRONG
+         ``\`` -- GOOD
+         So single backticks can always be input: `\`` will turn to ` code
 
 .. Attention::
    We don't support some obviously poor design choices of Markdown (or RST).
@@ -204,11 +289,9 @@ This parser has 2 modes for inline markup:
    - interpretation of Markdown block quotes is also slightly different,
      e.g. case
 
-     ::
-
-       >>> foo
-       > bar
-       >>baz
+         >>> foo
+         > bar
+         >>baz
 
      is a single 3rd-level quote `foo bar baz` in original Markdown, while
      in Nim we naturally see it as 3rd-level quote `foo` + 1st level `bar` +

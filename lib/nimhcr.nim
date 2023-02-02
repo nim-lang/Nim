@@ -200,6 +200,9 @@ batchable: false
 #     block. Perhaps something can be done about this - some way of re-allocating
 #     the state and transferring the old...
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 when not defined(js) and (defined(hotcodereloading) or
                           defined(createNimHcr) or
                           defined(testNimHcr)):

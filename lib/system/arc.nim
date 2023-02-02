@@ -12,26 +12,6 @@ In this new runtime we simplify the object layouts a bit: The runtime type
 information is only accessed for the objects that have it and it's always
 at offset 0 then. The ``ref`` object header is independent from the
 runtime type and only contains a reference count.
-
-Object subtyping is checked via the generated 'name'. This should have
-comparable overhead to the old pointer chasing approach but has the benefit
-that it works across DLL boundaries.
-
-The generated name is a concatenation of the object names in the hierarchy
-so that a subtype check becomes a substring check. For example::
-
-  type
-    ObjectA = object of RootObj
-    ObjectB = object of ObjectA
-
-ObjectA's ``name`` is "|ObjectA|RootObj|".
-ObjectB's ``name`` is "|ObjectB|ObjectA|RootObj|".
-
-Now to check for ``x of ObjectB`` we need to check
-for ``x.typ.name.endsWith("|ObjectB|ObjectA|RootObj|")``.
-In the actual implementation, however, we could also use a
-hash of ``package & "." & module & "." & name`` to save space.
-
 ]#
 
 when defined(gcOrc):
@@ -154,7 +134,7 @@ proc nimRawDispose(p: pointer, alignment: int) {.compilerRtl.} =
     when defined(nimOwnedEnabled):
       if head(p).rc >= rcIncrement:
         cstderr.rawWrite "[FATAL] dangling references exist\n"
-        quit 1
+        rawQuit 1
     when defined(nimArcDebug):
       # we do NOT really free the memory here in order to reliably detect use-after-frees
       if freedCells.data == nil: init(freedCells)
@@ -227,35 +207,5 @@ template tearDownForeignThreadGc* =
   ## With `--gc:arc` a nop.
   discard
 
-type ObjCheckCache = array[0..1, PNimTypeV2]
-
-proc memcmp(str1, str2: cstring, n: csize_t): cint {.importc, header: "<string.h>".}
-
-func endsWith(s, suffix: cstring): bool {.inline.} =
-  let
-    sLen = s.len
-    suffixLen = suffix.len
-
-  if suffixLen <= sLen:
-    result = memcmp(cstring(addr s[sLen - suffixLen]), suffix, csize_t(suffixLen)) == 0
-
-proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
-  result = endsWith(obj.name, subclass)
-
-proc isObjSlowPath(obj: PNimTypeV2, subclass: cstring, cache: var ObjCheckCache): bool {.compilerRtl, inline.} =
-  if endsWith(obj.name, subclass):
-    cache[1] = obj
-    result = true
-  else:
-    cache[0] = obj
-    result = false
-
-proc isObjWithCache(obj: PNimTypeV2, subclass: cstring, cache: var ObjCheckCache): bool {.compilerRtl.} =
-  if cache[0] == obj: result = false
-  elif cache[1] == obj: result = true
-  else:
-    result = isObjSlowPath(obj, subclass, cache)
-
-proc chckObj(obj: PNimTypeV2, subclass: cstring) {.compilerRtl.} =
-  # checks if obj is of type subclass:
-  if not isObj(obj, subclass): sysFatal(ObjectConversionDefect, "invalid object conversion")
+proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): bool {.compilerRtl, inline.} =
+  result = targetDepth <= source.depth and source.display[targetDepth] == token

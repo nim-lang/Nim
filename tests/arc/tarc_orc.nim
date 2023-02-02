@@ -33,3 +33,15 @@ proc bug20303() =
   doAssert res == "are"
 
 bug20303()
+
+proc main() = # todo bug with templates
+  block: # bug #11267
+    var a: seq[char] = block: @[]
+    doAssert a == @[]
+    # 2
+    proc b: seq[string] =
+      discard
+      @[]
+    doAssert b() == @[]
+static: main()
+main()

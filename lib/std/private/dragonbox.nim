@@ -1146,7 +1146,7 @@ proc printDecimalDigitsBackwards*(buf: var openArray[char]; pos: int; output64: 
     buf[pos] = chr(ord('0') + q)
   return tz
 
-proc decimalLength*(v: uint64): int32 {.inline.} =
+proc decimalLength*(v: uint64): int {.inline.} =
   dragonbox_Assert(v >= 1)
   dragonbox_Assert(v <= 99999999999999999'u64)
   if cast[uint32](v shr 32) != 0:
@@ -1166,48 +1166,48 @@ proc decimalLength*(v: uint64): int32 {.inline.} =
       return 11
     return 10
   let v32: uint32 = cast[uint32](v)
-  if v32 >= 1000000000'u:
+  if v32 >= 1000000000'u32:
     return 10
-  if v32 >= 100000000'u:
+  if v32 >= 100000000'u32:
     return 9
-  if v32 >= 10000000'u:
+  if v32 >= 10000000'u32:
     return 8
-  if v32 >= 1000000'u:
+  if v32 >= 1000000'u32:
     return 7
-  if v32 >= 100000'u:
+  if v32 >= 100000'u32:
     return 6
-  if v32 >= 10000'u:
+  if v32 >= 10000'u32:
     return 5
-  if v32 >= 1000'u:
+  if v32 >= 1000'u32:
     return 4
-  if v32 >= 100'u:
+  if v32 >= 100'u32:
     return 3
-  if v32 >= 10'u:
+  if v32 >= 10'u32:
     return 2
   return 1
 
-proc formatDigits*(buffer: var openArray[char]; pos: int; digits: uint64; decimalExponent: int32;
+proc formatDigits*[T: Ordinal](buffer: var openArray[char]; pos: T; digits: uint64; decimalExponent: int;
                   forceTrailingDotZero = false): int {.inline.} =
   const
-    minFixedDecimalPoint: int32 = -6
+    minFixedDecimalPoint = -6
   const
-    maxFixedDecimalPoint: int32 = 17
-  var pos = pos
+    maxFixedDecimalPoint = 17
+  var pos:int = pos.int
   assert(minFixedDecimalPoint <= -1, "internal error")
   assert(maxFixedDecimalPoint >= 17, "internal error")
   dragonbox_Assert(digits >= 1)
   dragonbox_Assert(digits <= 99999999999999999'u64)
   dragonbox_Assert(decimalExponent >= -999)
   dragonbox_Assert(decimalExponent <= 999)
-  var numDigits: int32 = decimalLength(digits)
-  let decimalPoint: int32 = numDigits + decimalExponent
+  var numDigits = decimalLength(digits)
+  let decimalPoint = numDigits + decimalExponent
   let useFixed: bool = minFixedDecimalPoint <= decimalPoint and
       decimalPoint <= maxFixedDecimalPoint
   ## Prepare the buffer.
   for i in 0..<32: buffer[pos+i] = '0'
   assert(minFixedDecimalPoint >= -30, "internal error")
   assert(maxFixedDecimalPoint <= 32, "internal error")
-  var decimalDigitsPosition: int32
+  var decimalDigitsPosition: int
   if useFixed:
     if decimalPoint <= 0:
       ##  0.[000]digits
@@ -1258,7 +1258,7 @@ proc formatDigits*(buffer: var openArray[char]; pos: int; digits: uint64; decima
       ##  d.igitsE+123
       buffer[pos+1] = '.'
       pos = digitsEnd
-    let scientificExponent: int32 = decimalPoint - 1
+    let scientificExponent: int = decimalPoint - 1
     ##       SF_ASSERT(scientific_exponent != 0);
     buffer[pos] = 'e'
     buffer[pos+1] = if scientificExponent < 0: '-' else: '+'
@@ -1291,7 +1291,7 @@ proc toChars*(buffer: var openArray[char]; v: float; forceTrailingDotZero = fals
     if exponent != 0 or significand != 0:
       ##  != 0
       let dec = toDecimal64(significand, exponent)
-      return formatDigits(buffer, pos, dec.significand, dec.exponent,
+      return formatDigits(buffer, pos, dec.significand, dec.exponent.int,
                          forceTrailingDotZero)
     else:
       buffer[pos] = '0'

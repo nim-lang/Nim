@@ -306,7 +306,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     result.add newIdentNode(getIdent(c.cache, "[]"), n.info)
     for i in 0..<n.len: result.add(n[i])
     result = semGenericStmt(c, result, flags, ctx)
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     checkSonsLen(n, 2, c.config)
     let a = n[0]
     let b = n[1]

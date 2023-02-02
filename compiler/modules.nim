@@ -10,7 +10,7 @@
 ## Implements the module handling, including the caching of modules.
 
 import
-  ast, astalgo, magicsys, msgs, options,
+  ast, magicsys, msgs, options,
   idents, lexer, passes, syntaxes, llstream, modulegraphs,
   lineinfos, pathutils, tables, packages
 

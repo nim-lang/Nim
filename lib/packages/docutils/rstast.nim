@@ -377,13 +377,13 @@ proc renderRstToJsonNode(node: PRstNode): JsonNode =
 
 proc renderRstToJson*(node: PRstNode): string =
   ## Writes the given RST node as JSON that is in the form
-  ## ::
-  ##   {
-  ##     "kind":string node.kind,
-  ##     "text":optional string node.text,
-  ##     "level":optional int node.level,
-  ##     "sons":optional node array
-  ##   }
+  ##
+  ##     {
+  ##       "kind":string node.kind,
+  ##       "text":optional string node.text,
+  ##       "level":optional int node.level,
+  ##       "sons":optional node array
+  ##     }
   renderRstToJsonNode(node).pretty
 
 proc renderRstToText*(node: PRstNode): string =

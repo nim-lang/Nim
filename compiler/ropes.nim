@@ -9,8 +9,6 @@
 
 # Ropes for the C code generator. Ropes are mapped to `string` directly nowadays.
 
-import hashes
-
 from pathutils import AbsoluteFile
 
 when defined(nimPreviewSlimSystem):
