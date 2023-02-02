@@ -120,7 +120,7 @@ proc execCmd*(command: string): int {.rtl, extern: "nosp$1",
 proc startProcess*(command: string, workingDir: string = "",
     args: openArray[string] = [], env: StringTableRef = nil,
     options: set[ProcessOption] = {poStdErrToStdOut}):
-  owned(Process) {.rtl, extern: "nosp$1", raises: [ValueError, OSError],
+  owned(Process) {.rtl, extern: "nosp$1", raises: [ValueError, OSError, IOError],
                    tags: [ExecIOEffect, ReadEnvEffect, RootEffect].}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
   ## process's working directory. If ``workingDir == ""`` the current directory
@@ -212,7 +212,7 @@ proc processID*(p: Process): int {.rtl, extern: "nosp$1".} =
   return p.id
 
 proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
-    extern: "nosp$1", raises: [ValueError, OSError], tags: [].}
+    extern: "nosp$1", raises: [OSError], tags: [].}
   ## Waits for the process to finish and returns `p`'s error code.
   ##
   ## .. warning:: Be careful when using `waitForExit` for processes created without
@@ -221,7 +221,7 @@ proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
   ## On posix, if the process has exited because of a signal, 128 + signal
   ## number will be returned.
 
-proc peekExitCode*(p: Process): int {.rtl, extern: "nosp$1", raises: [], tags: [].}
+proc peekExitCode*(p: Process): int {.rtl, extern: "nosp$1", raises: [OSError], tags: [].}
   ## Return `-1` if the process is still running. Otherwise the process' exit code.
   ##
   ## On posix, if the process has exited because of a signal, 128 + signal
@@ -453,7 +453,7 @@ proc execProcesses*(cmds: openArray[string],
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 
-iterator lines*(p: Process, keepNewLines = false): string {.since: (1, 3), raises: [OSError, IOError], tags: [ReadIOEffect].} =
+iterator lines*(p: Process, keepNewLines = false): string {.since: (1, 3), raises: [OSError, IOError, ValueError], tags: [ReadIOEffect].} =
   ## Convenience iterator for working with `startProcess` to read data from a
   ## background process.
   ##
@@ -483,7 +483,7 @@ iterator lines*(p: Process, keepNewLines = false): string {.since: (1, 3), raise
   discard waitForExit(p)
 
 proc readLines*(p: Process): (seq[string], int) {.since: (1, 3),
-    raises: [OSError, IOError], tags: [ReadIOEffect].} =
+    raises: [OSError, IOError, ValueError], tags: [ReadIOEffect].} =
   ## Convenience function for working with `startProcess` to read data from a
   ## background process.
   ##
