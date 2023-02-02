@@ -641,10 +641,10 @@ func parseSize*(s: openArray[char], size: var int, alwaysBin=false): int =
           inc result                    # Skip optional '[bB]'
     else:                               # Unwind result advancement when there..
       result = start                    #..is no unit to the end of `s`.
-    var sizeF = number * scale + 0.5
-    if sizeF > int.high.float:
-      sizeF = int.high.float
-    size = sizeF.int
+    var sizeF = number * scale + 0.5    # Saturate to int.high when appropriate
+    size = if sizeF > 9223372036854774784.0: int.high else: sizeF.int
+# Above constant=2^63-1024 avoids C UB; github.com/nim-lang/Nim/issues/20102 or
+# stackoverflow.com/questions/20923556/math-pow2-63-1-math-pow2-63-512-is-true
 
 type
   InterpolatedKind* = enum ## Describes for `interpolatedFragments`

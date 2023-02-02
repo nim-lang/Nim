@@ -88,7 +88,7 @@ proc test() =
     ass parseSize("abc", sz)     == 0; ass sz == 1  # Non-numeric
     ass parseSize(" 12", sz)     == 0; ass sz == 1  # Leading white
     # Value Edge cases
-    ass parseSize("9223372036854775807", sz) == 19; ass sz == int.high.float.int
+    ass parseSize("9223372036854775807", sz) == 19; ass sz == int.high
 
 test()
 static: test()
