@@ -212,7 +212,7 @@ proc processID*(p: Process): int {.rtl, extern: "nosp$1".} =
   return p.id
 
 proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
-    extern: "nosp$1", raises: [OSError], tags: [].}
+    extern: "nosp$1", raises: [OSError, ValueError], tags: [].}
   ## Waits for the process to finish and returns `p`'s error code.
   ##
   ## .. warning:: Be careful when using `waitForExit` for processes created without
