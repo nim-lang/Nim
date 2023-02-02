@@ -621,6 +621,7 @@ when defineSsl:
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
                    certFile = "", keyFile = "", cipherList = CiphersIntermediate,
+                   ciphersuites = CiphersModern,
                    caDir = "", caFile = ""): SslContext =
     ## Creates an SSL context.
     ##
@@ -678,7 +679,7 @@ when defineSsl:
       if sslVersion >= 0x010101000 and sslVersion != 0x020000000:
         # In OpenSSL >= 1.1.1, TLSv1.3 cipher suites can only be configured via
         # this API.
-        if newCTX.SSL_CTX_set_ciphersuites(cipherList) != 1:
+        if newCTX.SSL_CTX_set_ciphersuites(ciphersuites) != 1:
           raiseSSLError()
     # Automatically the best ECDH curve for client exchange. Without this, ECDH
     # ciphers will be ignored by the server.
