@@ -3,7 +3,7 @@ discard """
   targets: "c cpp js"
 """
 
-import times
+import std/[times, macros]
 
 type
   Guess = object
@@ -26,6 +26,10 @@ import mobject_default_value
 
 block:
   let x = Default()
+  doAssert x.se == 0'i32
+
+block:
+  let x = default(Default)
   doAssert x.se == 0'i32
 # echo Default(poi: 12)
 # echo Default(poi: 17)
@@ -120,6 +124,19 @@ template main {.dirty.} =
     doAssert rVal == 0 # it should be 1
     doAssert objVal.r == 1
 
+  block: # bug #16744
+    type
+      R = range[1..10]
+      Obj = object
+        r: R
+
+    var
+      rVal: R = default(R) # Works fine
+      objVal = Obj()
+
+    doAssert rVal == 0 # it should be 1
+    doAssert objVal.r == 1
+
   block: # bug #3608
     type
       abc = ref object
@@ -147,6 +164,9 @@ template main {.dirty.} =
     doAssert ObjectBase(x).value == 12
     let y = ObjectBaseDistinct(default(ObjectBase))
     doAssert ObjectBase(y).value == 12
+
+    let m = ObjectBaseDistinct(ObjectBase())
+    doAssert ObjectBase(m).value == 12
 
     proc hello(): ObjectBaseDistinct =
       result = ObjectBaseDistinct(default(ObjectBase))
@@ -193,12 +213,24 @@ template main {.dirty.} =
     doAssert x.name.scale == 1
 
   block:
+    let x = Object2()
+    doAssert x.name.value == 12
+    doAssert x.name.time == 1.2
+    doAssert x.name.scale == 1
+
+  block:
     var x: ref Object2
     new x
     doAssert x[] == default(Object2)
 
   block:
-    var x = default(Object3) # todo Object3() ?
+    var x = default(Object3)
+    doAssert x.obj.name.value == 12
+    doAssert x.obj.name.time == 1.2
+    doAssert x.obj.name.scale == 1
+
+  block:
+    var x = Object3()
     doAssert x.obj.name.value == 12
     doAssert x.obj.name.time == 1.2
     doAssert x.obj.name.scale == 1
@@ -222,8 +254,20 @@ template main {.dirty.} =
         doAssert y.time == 1.2
         doAssert y.scale == 1
 
+      block:
+        var my = @[1, 2, 3, 4, 5]
+        my.setLen(0)
+        my.setLen(5)
+        doAssert my == @[0, 0, 0, 0, 0]
+
+      block:
+        var my = "hello"
+        my.setLen(0)
+        my.setLen(5)
+        doAssert $(@my) == """@['\x00', '\x00', '\x00', '\x00', '\x00']"""
+
   block: # array
-    var x: array[10, Object] = arrayWith(default(Object), 10)
+    var x: array[10, Object] = default(array[10, Object])
     let y = x[0]
     doAssert y.value == 12
     doAssert y.time == 1.2
@@ -262,7 +306,6 @@ template main {.dirty.} =
     doAssert y.value == 12
     doAssert y.time == 1.2
     doAssert y.scale == 1
-
 
   block:
     var x: PrellDeque[int]
@@ -379,7 +422,7 @@ template main {.dirty.} =
       doAssert x.id == 1
       doAssert x.obj == default(ObjectBase)
       doAssert x.name == ""
-    
+
     block:
       var x = default(Class)
       doAssert x.def == default(Default)
@@ -387,12 +430,11 @@ template main {.dirty.} =
       doAssert x.def.obj == default(ObjectBase)
       doAssert x.def.name == ""
 
-    when not defined(cpp):
-      block:
-        var x = default(Member)
-        doAssert x.def.id == 777
-        doAssert x.def.obj == default(ObjectBase)
-        doAssert x.def.name == "fine"
+    block:
+      var x = default(Member)
+      doAssert x.def.id == 777
+      doAssert x.def.obj == default(ObjectBase)
+      doAssert x.def.name == "fine"
 
   block:
     var x {.noinit.} = 12
@@ -408,22 +450,78 @@ template main {.dirty.} =
     var z {.noinit.}: Pure = Pure(id: 77)
     doAssert z.id == 77
 
+  block: # bug #20681
+    type A = object
+      d: DateTime = DateTime()
 
-proc main1 =
-  var my = @[1, 2, 3, 4, 5]
-  my.setLen(0)
-  my.setLen(5)
-  doAssert my == @[0, 0, 0, 0, 0]
+    let x = default(A)
+    doAssert $x == "(d: Uninitialized DateTime)"
 
-proc main2 =
-  var my = "hello"
-  my.setLen(0)
-  my.setLen(5)
-  doAssert $(@my) == """@['\x00', '\x00', '\x00', '\x00', '\x00']"""
+  block: # bug #20715
+    block:
+      type
+        Foo = enum
+          A
+          B
 
-when defined(gcArc) or defined(gcOrc):
-  main1()
-  main2()
+        Bar = object
+          case foo: Foo
+          of A:
+            t: range[-1..2]
+          else: discard
+
+      var d = default(Bar)
+      doAssert d.t == -1
+
+    block:
+      type
+        Foo = enum
+          A
+          B
+
+        Bar = object
+          case foo: Foo
+          of A:
+            t: range[0..2]
+          else: discard
+
+      var d = default(Bar)
+      doAssert d.t == 0
+
+    block: # bug #20740
+      block:
+        proc foo(x: static DateTime = Datetime()) =
+          discard
+
+        foo()
+
+      block:
+        macro foo(x: static DateTime) =
+          discard x
+
+        macro foo2: untyped =
+          var x = DateTime()
+
+          result = quote do:
+            foo(`x`)
+
+        foo2()
+
+
+  block: # issue #20699
+    type
+      Either[A,B] = object
+        case kind:bool
+        of false:
+          b: B
+        of true:
+            a: A
+      O = object of RootRef
+
+    proc oToEither(o:O):Either[O,void] =
+      Either[O,void](kind:true,a: o)
+
+    discard oToEither(O())
 
 static: main()
 main()

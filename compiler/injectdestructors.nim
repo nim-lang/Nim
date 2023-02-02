@@ -490,7 +490,7 @@ proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; res: PNode) =
       res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
   elif sfThread notin v.sym.flags and sfCursor notin v.sym.flags:
     # do not destroy thread vars for now at all for consistency.
-    if sfGlobal in v.sym.flags and s.parent == nil: #XXX: Rethink this logic (see tarcmisc.test2)
+    if {sfGlobal, sfPure} <= v.sym.flags or sfGlobal in v.sym.flags and s.parent == nil:
       c.graph.globalDestructors.add c.genDestroy(v)
     else:
       s.final.add c.genDestroy(v)
@@ -829,7 +829,10 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
             if ri.kind != nkEmpty:
               result.add moveOrCopy(v, ri, c, s, if v.kind == nkSym: {IsDecl} else: {})
             elif ri.kind == nkEmpty and c.inLoop > 0:
-              result.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, if v.kind == nkSym: {IsDecl} else: {})
+              let skipInit = v.kind == nkDotExpr and # Closure var
+                             sfNoInit in v[1].sym.flags
+              if not skipInit:
+                result.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, if v.kind == nkSym: {IsDecl} else: {})
         else: # keep the var but transform 'ri':
           var v = copyNode(n)
           var itCopy = copyNode(it)

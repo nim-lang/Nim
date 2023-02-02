@@ -23,6 +23,8 @@ when defined(nimPreviewSlimSystem):
 
 ## .. include:: ../../doc/astspec.txt
 
+## .. importdoc:: system.nim
+
 # If you look for the implementation of the magic symbol
 # ``{.magic: "Foo".}``, search for `mFoo` and `opcFoo`.
 
@@ -532,6 +534,22 @@ proc getFile(arg: NimNode): string {.magic: "NLineInfo", noSideEffect.}
 
 proc copyLineInfo*(arg: NimNode, info: NimNode) {.magic: "NLineInfo", noSideEffect.}
   ## Copy lineinfo from `info`.
+
+proc setLine(arg: NimNode, line: uint16) {.magic: "NLineInfo", noSideEffect.}
+proc setColumn(arg: NimNode, column: int16) {.magic: "NLineInfo", noSideEffect.}
+proc setFile(arg: NimNode, file: string) {.magic: "NLineInfo", noSideEffect.}
+
+proc setLineInfo*(arg: NimNode, file: string, line: int, column: int) =
+  ## Sets the line info on the NimNode. The file needs to exists, but can be a
+  ## relative path. If you want to attach line info to a block using `quote`
+  ## you'll need to add the line information after the quote block.
+  arg.setFile(file)
+  arg.setLine(line.uint16)
+  arg.setColumn(column.int16)
+
+proc setLineInfo*(arg: NimNode, lineInfo: LineInfo) =
+  ## See `setLineInfo proc<#setLineInfo,NimNode,string,int,int>`_
+  setLineInfo(arg, lineInfo.filename, lineInfo.line, lineInfo.column)
 
 proc lineInfoObj*(n: NimNode): LineInfo =
   ## Returns `LineInfo` of `n`, using absolute path for `filename`.
@@ -1503,11 +1521,10 @@ proc boolVal*(n: NimNode): bool {.noSideEffect.} =
   if n.kind == nnkIntLit: n.intVal != 0
   else: n == bindSym"true" # hacky solution for now
 
-when defined(nimMacrosGetNodeId):
-  proc nodeID*(n: NimNode): int {.magic: "NodeId".}
-    ## Returns the id of `n`, when the compiler has been compiled
-    ## with the flag `-d:useNodeids`, otherwise returns `-1`. This
-    ## proc is for the purpose to debug the compiler only.
+proc nodeID*(n: NimNode): int {.magic: "NodeId".}
+  ## Returns the id of `n`, when the compiler has been compiled
+  ## with the flag `-d:useNodeids`, otherwise returns `-1`. This
+  ## proc is for the purpose to debug the compiler only.
 
 macro expandMacros*(body: typed): untyped =
   ## Expands one level of macro - useful for debugging.
@@ -1574,7 +1591,7 @@ proc customPragmaNode(n: NimNode): NimNode =
     elif impl.kind in {nnkIdentDefs, nnkConstDef} and impl[0].kind == nnkPragmaExpr:
       return impl[0][1]
     else:
-      let timpl = typ.getImpl()
+      let timpl = getImpl(if typ.kind == nnkBracketExpr: typ[0] else: typ)
       if timpl.len>0 and timpl[0].len>1:
         return timpl[0][1]
       else:
@@ -1582,11 +1599,9 @@ proc customPragmaNode(n: NimNode): NimNode =
 
   if n.kind in {nnkDotExpr, nnkCheckedFieldExpr}:
     let name = $(if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
-    let typInst = getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])
-    var typDef = getImpl(
-      if typInst.kind in {nnkVarTy, nnkBracketExpr}: typInst[0]
-      else: typInst
-    )
+    var typInst = getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])
+    while typInst.kind in {nnkVarTy, nnkBracketExpr}: typInst = typInst[0]
+    var typDef = getImpl(typInst)
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
       let typ = typDef[2].extractTypeImpl()

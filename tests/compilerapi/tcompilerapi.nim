@@ -23,7 +23,7 @@ proc initInterpreter(script: string): Interpreter =
 
 proc main() =
   let i = initInterpreter("myscript.nim")
-  i.implementRoutine("*", "exposed", "addFloats", proc (a: VmArgs) =
+  i.implementRoutine("nim", "exposed", "addFloats", proc (a: VmArgs) =
     setResult(a, getFloat(a, 0) + getFloat(a, 1) + getFloat(a, 2))
   )
   i.evalScript()

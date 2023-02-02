@@ -114,7 +114,7 @@ template orcAssert(cond, msg) =
   when logOrc:
     if not cond:
       cfprintf(cstderr, "[Bug!] %s\n", msg)
-      quit 1
+      rawQuit 1
 
 when logOrc:
   proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
@@ -143,7 +143,7 @@ proc unregisterCycle(s: Cell) =
   when false:
     if idx >= roots.len or idx < 0:
       cprintf("[Bug!] %ld\n", idx)
-      quit 1
+      rawQuit 1
   roots.d[idx] = roots.d[roots.len-1]
   roots.d[idx][0].rootIdx = idx+1
   dec roots.len
@@ -484,6 +484,19 @@ proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
       dec cell.rc, rcIncrement
     #if cell.color == colPurple:
     rememberCycle(result, cell, cast[ptr PNimTypeV2](p)[])
+
+proc nimDecRefIsLastDyn(p: pointer): bool {.compilerRtl, inl.} =
+  if p != nil:
+    var cell = head(p)
+    if (cell.rc and not rcMask) == 0:
+      result = true
+      #cprintf("[DESTROY] %p\n", p)
+    else:
+      dec cell.rc, rcIncrement
+    #if cell.color == colPurple:
+    if result:
+      if cell.rootIdx > 0:
+        unregisterCycle(cell)
 
 proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerRtl, inl.} =
   if p != nil:

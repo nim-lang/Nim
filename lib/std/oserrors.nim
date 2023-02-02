@@ -75,17 +75,14 @@ proc newOSError*(
   ## See also:
   ## * `osErrorMsg proc`_
   ## * `osLastError proc`_
-  var e: owned(ref OSError); new(e)
-  e.errorCode = errorCode.int32
-  e.msg = osErrorMsg(errorCode)
+  result = (ref OSError)(errorCode: errorCode.int32, msg: osErrorMsg(errorCode))
   if additionalInfo.len > 0:
-    if e.msg.len > 0 and e.msg[^1] != '\n': e.msg.add '\n'
-    e.msg.add "Additional info: "
-    e.msg.add additionalInfo
+    if result.msg.len > 0 and result.msg[^1] != '\n': result.msg.add '\n'
+    result.msg.add "Additional info: "
+    result.msg.add additionalInfo
       # don't add trailing `.` etc, which negatively impacts "jump to file" in IDEs.
-  if e.msg == "":
-    e.msg = "unknown OS error"
-  return e
+  if result.msg == "":
+    result.msg = "unknown OS error"
 
 proc raiseOSError*(errorCode: OSErrorCode, additionalInfo = "") {.noinline.} =
   ## Raises an `OSError exception <system.html#OSError>`_.

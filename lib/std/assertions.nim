@@ -7,10 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements assertion handling.
-
-when not declared(sysFatal):
+when not defined(nimPreviewSlimSystem) and not declared(sysFatal):
+  include "system/rawquits"
   include "system/fatal"
+
+## This module implements assertion handling.
 
 import std/private/miscdollars
 # ---------------------------------------------------------------------------
@@ -26,12 +27,13 @@ proc `$`(info: InstantiationInfo): string =
 
 # ---------------------------------------------------------------------------
 
-when not defined(nimHasSinkInference):
-  {.pragma: nosinks.}
 
 proc raiseAssert*(msg: string) {.noinline, noreturn, nosinks.} =
   ## Raises an `AssertionDefect` with `msg`.
-  sysFatal(AssertionDefect, msg)
+  when defined(nimPreviewSlimSystem):
+    raise newException(AssertionDefect, msg)
+  else:
+    sysFatal(AssertionDefect, msg)
 
 proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   ## Raises an `AssertionDefect` with `msg`, but this is hidden
@@ -101,6 +103,7 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
   const begin = "expected raising '" & astToStr(exception) & "', instead"
   const msgEnd = " by: " & astToStr(code)
   template raisedForeign {.gensym.} = raiseAssert(begin & " raised foreign exception" & msgEnd)
+  {.warning[BareExcept]:off.}
   when Exception is exception:
     try:
       if true:
@@ -119,5 +122,6 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
       mixin `$` # alternatively, we could define $cstring in this module
       raiseAssert(begin & " raised '" & $e.name & "'" & msgEnd)
     except: raisedForeign()
+  {.warning[BareExcept]:on.}
   if wrong:
     raiseAssert(begin & " nothing was raised" & msgEnd)

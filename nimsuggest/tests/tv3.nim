@@ -16,10 +16,6 @@ def	skField	tv3.Foo.bar	string	$file	5	4	""	100
 use	skField	tv3.Foo.bar	string	$file	8	9	""	100
 >def $1
 def	skField	tv3.Foo.bar	string	$file	5	4	""	100
->outline $1
-outline	skType	tv3.Foo	Foo	$file	4	2	""	100
-outline	skField	tv3.Foo.bar	string	$file	5	4	""	100
-outline	skProc	tv3.test	proc (f: Foo){.gcsafe.}	$file	7	5	""	100
 >sug $1
 sug	skField	bar	string	$file	5	4	""	100	Prefix
 >globalSymbols test

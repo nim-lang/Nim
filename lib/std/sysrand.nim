@@ -57,7 +57,7 @@ runnableExamples:
 
 
 when not defined(js):
-  import os
+  import std/oserrors
 
 when defined(posix):
   import posix

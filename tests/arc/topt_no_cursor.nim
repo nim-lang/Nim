@@ -1,16 +1,12 @@
 discard """
-  output: '''(package: "", ext: "meo")
-doing shady stuff...
-3
-6
-(@[1], @[2])
-192.168.0.1
-192.168.0.1
-192.168.0.1
-192.168.0.1'''
-  cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
+  nimoutFull: true
+  cmd: '''nim c -r --warnings:off --hints:off --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
   nimout: '''--expandArc: newTarget
 
+var
+  splat
+  :tmp
+  :tmp_1
 splat = splitDrive do:
   let blitTmp = path
   blitTmp
@@ -101,6 +97,7 @@ try:
           `=destroy`(splitted)
 finally:
   `=destroy_1`(lan_ip)
+-- end of expandArc ------------------------
 --expandArc: mergeShadowScope
 
 var shadowScope
@@ -150,7 +147,21 @@ if dirExists(par.dir):
 else:
   `=sink`(this.matchDirs, [])
 `=destroy`(par)
--- end of expandArc ------------------------'''
+-- end of expandArc ------------------------
+--expandArc: check
+
+check(this)
+-- end of expandArc ------------------------
+(package: "", ext: "meo")
+doing shady stuff...
+3
+6
+(@[1], @[2])
+192.168.0.1
+192.168.0.1
+192.168.0.1
+192.168.0.1
+'''
 """
 
 import os, std/private/ntpath

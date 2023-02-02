@@ -326,7 +326,15 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
       result.status = initUnknown
       result.defaults.add newTree(nkExprColonExpr, n, field.ast)
     else:
-      result.status = initNone
+      if efWantNoDefaults notin flags: # cannot compute defaults at the typeRightPass
+        let defaultExpr = defaultNodeField(c, n)
+        if defaultExpr != nil:
+          result.status = initUnknown
+          result.defaults.add newTree(nkExprColonExpr, n, defaultExpr)
+        else:
+          result.status = initNone
+      else:
+        result.status = initNone
   else:
     internalAssert c.config, false
 
@@ -359,7 +367,7 @@ proc initConstrContext(t: PType, initExpr: PNode): ObjConstrContext =
 proc computeRequiresInit(c: PContext, t: PType): bool =
   assert t.kind == tyObject
   var constrCtx = initConstrContext(t, newNode(nkObjConstr))
-  let initResult = semConstructTypeAux(c, constrCtx, {})
+  let initResult = semConstructTypeAux(c, constrCtx, {efWantNoDefaults})
   constrCtx.missingFields.len > 0
 
 proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
@@ -369,7 +377,7 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
     assert objType != nil
   if objType.kind == tyObject:
     var constrCtx = initConstrContext(objType, newNodeI(nkObjConstr, info))
-    let initResult = semConstructTypeAux(c, constrCtx, {})
+    let initResult = semConstructTypeAux(c, constrCtx, {efWantNoDefaults})
     if constrCtx.missingFields.len > 0:
       localError(c.config, info,
         "The $1 type doesn't have a default value. The following fields must be initialized: $2." % [typeToString(t), listSymbolNames(constrCtx.missingFields)])
@@ -382,8 +390,7 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   var t = semTypeNode(c, n[0], nil)
   result = newNodeIT(nkObjConstr, n.info, t)
-  result.add newNodeIT(nkType, n.info, t) #This will contain the default values to be added in transf
-  for i in 1..<n.len:
+  for i in 0..<n.len:
     result.add n[i]
 
   if t == nil:
@@ -416,7 +423,6 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
   # branches will be reported as an error):
   var constrCtx = initConstrContext(t, result)
   let (initResult, defaults) = semConstructTypeAux(c, constrCtx, flags)
-  result[0].sons.add defaults
   var hasError = false # needed to split error detect/report for better msgs
 
   # It's possible that the object was not fully initialized while
@@ -451,6 +457,8 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
       localError(c.config, field.info, msg)
       hasError = true
       break
+
+  result.sons.add defaults
 
   if initResult == initFull:
     incl result.flags, nfAllFieldsSet

@@ -9,7 +9,7 @@ when defined(windows):
   from strutils import replace
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, objectdollar]
 
 
 when defined(nimHasEffectsOf):

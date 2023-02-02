@@ -32,7 +32,6 @@ hint("Processing", off)
 
 # experimental APIs are enabled in testament, refs https://github.com/timotheecour/Nim/issues/575
 # sync with `kochdocs.docDefines` or refactor.
-switch("define", "nimExperimentalAsyncjsThen")
 switch("define", "nimExperimentalLinenoiseExtra")
 
 # preview APIs are expected to be the new default in upcoming versions
@@ -43,3 +42,6 @@ switch("define", "nimPreviewHashRef")
 switch("define", "nimPreviewRangeDefault")
 when defined(windows):
   switch("tlsEmulation", "off")
+
+switch("warningAserror", "UnnamedBreak")
+switch("legacy", "verboseTypeMismatch")

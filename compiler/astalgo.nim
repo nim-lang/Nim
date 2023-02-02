@@ -20,9 +20,6 @@ import strutils except addf
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-when not defined(nimHasCursor):
-  {.pragma: cursor.}
-
 proc hashNode*(p: RootRef): Hash
 proc treeToYaml*(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
   # Convert a tree into its YAML representation; this is used by the
@@ -333,7 +330,7 @@ proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
     sonsRope = rope("null")
   elif containsOrIncl(marker, n.id):
     sonsRope = "\"$1 @$2\"" % [rope($n.kind), rope(
-        strutils.toHex(cast[ByteAddress](n), sizeof(n) * 2))]
+        strutils.toHex(cast[int](n), sizeof(n) * 2))]
   else:
     if n.len > 0:
       sonsRope = rope("[")

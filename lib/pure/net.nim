@@ -624,7 +624,8 @@ when defineSsl:
                    caDir = "", caFile = ""): SslContext =
     ## Creates an SSL context.
     ##
-    ## protVersion is currently unsed.
+    ## Protocol version is currently ignored by default and TLS is used.
+    ## With `-d:openssl10`, only SSLv23 and TLSv1 may be used.
     ##
     ## There are three options for verify mode:
     ## `CVerifyNone`: certificates are not verified;
@@ -651,7 +652,19 @@ when defineSsl:
     ## or using ECDSA:
     ## - `openssl ecparam -out mykey.pem -name secp256k1 -genkey`
     ## - `openssl req -new -key mykey.pem -x509 -nodes -days 365 -out mycert.pem`
-    let mtd = TLS_method()
+    var mtd: PSSL_METHOD
+    when defined(openssl10):
+      case protVersion
+      of protSSLv23:
+        mtd = SSLv23_method()
+      of protSSLv2:
+        raiseSSLError("SSLv2 is no longer secure and has been deprecated, use protSSLv23")
+      of protSSLv3:
+        raiseSSLError("SSLv3 is no longer secure and has been deprecated, use protSSLv23")
+      of protTLSv1:
+        mtd = TLSv1_method()
+    else:
+      mtd = TLS_method()
     if mtd == nil:
       raiseSSLError("Failed to create TLS context")
     var newCTX = SSL_CTX_new(mtd)
@@ -1722,15 +1735,36 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
     result = send(socket.fd, data, size, int32(MSG_NOSIGNAL))
 
 proc send*(socket: Socket, data: string,
-           flags = {SocketFlag.SafeDisconn}) {.tags: [WriteIOEffect].} =
-  ## sends data to a socket.
-  let sent = send(socket, cstring(data), data.len)
-  if sent < 0:
-    let lastError = osLastError()
-    socketError(socket, lastError = lastError, flags = flags)
+           flags = {SocketFlag.SafeDisconn}, maxRetries = 100) {.tags: [WriteIOEffect].} =
+  ## Sends data to a socket. Will try to send all the data by handling interrupts
+  ## and incomplete writes up to `maxRetries`.
+  var written = 0
+  var attempts = 0
+  while data.len - written > 0:
+    let sent = send(socket, cstring(data), data.len)
 
-  if sent != data.len:
-    raiseOSError(osLastError(), "Could not send all data.")
+    if sent < 0:
+      let lastError = osLastError()
+      let isBlockingErr =
+        when defined(nimdoc):
+          false
+        elif useWinVersion:
+          lastError.int32 == WSAEINTR or
+          lastError.int32 == WSAEWOULDBLOCK
+        else:
+          lastError.int32 == EINTR or
+          lastError.int32 == EWOULDBLOCK or
+          lastError.int32 == EAGAIN
+
+      if not isBlockingErr:
+        let lastError = osLastError()
+        socketError(socket, lastError = lastError, flags = flags)
+      else:
+        attempts.inc()
+        if attempts > maxRetries:
+          raiseOSError(osLastError(), "Could not send all data.")
+    else:
+      written.inc(sent)
 
 template `&=`*(socket: Socket; data: typed) =
   ## an alias for 'send'.
@@ -1885,14 +1919,18 @@ proc `==`*(lhs, rhs: IpAddress): bool =
 
 proc `$`*(address: IpAddress): string =
   ## Converts an IpAddress into the textual representation
-  result = ""
   case address.family
   of IpAddressFamily.IPv4:
-    for i in 0 .. 3:
-      if i != 0:
-        result.add('.')
-      result.add($address.address_v4[i])
+    result = newStringOfCap(15)
+    result.addInt address.address_v4[0]
+    result.add '.'
+    result.addInt address.address_v4[1]
+    result.add '.'
+    result.addInt address.address_v4[2]
+    result.add '.'
+    result.addInt address.address_v4[3]
   of IpAddressFamily.IPv6:
+    result = newStringOfCap(39)
     var
       currentZeroStart = -1
       currentZeroCount = 0

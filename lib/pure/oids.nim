@@ -17,6 +17,9 @@
 import hashes, times, endians, random
 from std/private/decode_helpers import handleHexChar
 
+when defined(nimPreviewSlimSystem):
+  import std/sysatomics
+
 type
   Oid* = object ## An OID.
     time: int64
@@ -41,7 +44,7 @@ proc hexbyte*(hex: char): int {.inline.} =
 
 proc parseOid*(str: cstring): Oid =
   ## Parses an OID.
-  var bytes = cast[cstring](cast[pointer](cast[ByteAddress](addr(result.time)) + 4))
+  var bytes = cast[cstring](cast[pointer](cast[int](addr(result.time)) + 4))
   var i = 0
   while i < 12:
     bytes[i] = chr((hexbyte(str[2 * i]) shl 4) or hexbyte(str[2 * i + 1]))
@@ -54,7 +57,7 @@ proc `$`*(oid: Oid): string =
   result.setLen 24
 
   var o = oid
-  var bytes = cast[cstring](cast[pointer](cast[ByteAddress](addr(o)) + 4))
+  var bytes = cast[cstring](cast[pointer](cast[int](addr(o)) + 4))
   var i = 0
   while i < 12:
     let b = bytes[i].ord

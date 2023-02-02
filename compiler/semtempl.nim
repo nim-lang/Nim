@@ -227,7 +227,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
           closeScope(c)
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
-      if n.kind != nkSym:
+      if n.kind != nkSym and not (n.kind == nkIdent and n.ident.s == "_"):
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
         styleCheckDef(c.c, n.info, local)
@@ -376,6 +376,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         result = newSymNode(s, n.info)
         onUse(n.info, s)
       else:
+        if s.kind in {skType, skVar, skLet, skConst}:
+          discard qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
         result = semTemplSymbol(c.c, n, s, c.noGenSym > 0)
   of nkBind:
     result = semTemplBody(c, n[0])
@@ -640,8 +642,9 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     # body by the absence of the sfGenSym flag:
     for i in 1..<s.typ.n.len:
       let param = s.typ.n[i].sym
-      param.flags.incl sfTemplateParam
-      param.flags.excl sfGenSym
+      if param.name.s != "_":
+        param.flags.incl sfTemplateParam
+        param.flags.excl sfGenSym
       if param.typ.kind != tyUntyped: allUntyped = false
   else:
     s.typ = newTypeS(tyProc, c)
@@ -689,7 +692,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   elif not comesFromShadowscope:
     if {sfTemplateRedefinition, sfGenSym} * s.flags == {}:
       #wrongRedefinition(c, n.info, proto.name.s, proto.info)
-      message(c.config, n.info, warnTemplateRedefinition, s.name.s)
+      message(c.config, n.info, warnImplicitTemplateRedefinition, s.name.s)
     symTabReplace(c.currentScope.symbols, proto, s)
   if n[patternPos].kind != nkEmpty:
     c.patterns.add(s)

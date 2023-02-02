@@ -66,7 +66,6 @@ runnableExamples:
 ## See also
 ## ========
 ## * `std/sysrand module <sysrand.html>`_ for a cryptographically secure pseudorandom number generator
-## * `mersenne module <mersenne.html>`_ for the Mersenne Twister random number generator
 ## * `math module <math.html>`_ for basic math routines
 ## * `stats module <stats.html>`_ for statistical analysis
 ## * `list of cryptographic and hashing modules <lib.html#pure-libraries-hashing>`_
@@ -76,7 +75,7 @@ import algorithm, math
 import std/private/since
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions]
 
 include system/inclrtl
 {.push debugger: off.}

@@ -14,7 +14,8 @@ proc canRaiseDisp(p: BProc; n: PNode): bool =
   if n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
     result = false
   elif optPanics in p.config.globalOptions or
-      (n.kind == nkSym and sfSystemModule in getModule(n.sym).flags):
+      (n.kind == nkSym and sfSystemModule in getModule(n.sym).flags and
+       sfSystemRaisesDefect notin n.sym.flags):
     # we know we can be strict:
     result = canRaise(n)
   else:
@@ -194,10 +195,12 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, 
         optSeqDestructors in p.config.globalOptions:
       linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
     if atyp.kind in {tyVar} and not compileToCpp(p.module):
-      result = ("($4*)(*$1)$3+($2)" % [rdLoc(a), rdLoc(b), dataField(p), dest],
+      result = ("(($5) ? (($4*)(*$1)$3+($2)) : NIM_NIL)" %
+                  [rdLoc(a), rdLoc(b), dataField(p), dest, dataFieldAccessor(p, "*" & rdLoc(a))],
                 lengthExpr)
     else:
-      result = ("($4*)$1$3+($2)" % [rdLoc(a), rdLoc(b), dataField(p), dest],
+      result = ("(($5) ? (($4*)$1$3+($2)) : NIM_NIL)" %
+                  [rdLoc(a), rdLoc(b), dataField(p), dest, dataFieldAccessor(p, rdLoc(a))],
                 lengthExpr)
   else:
     internalError(p.config, "openArrayLoc: " & typeToString(a.t))
@@ -238,9 +241,12 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
       if ntyp.kind in {tyVar} and not compileToCpp(p.module):
         var t: TLoc
         t.r = "(*$1)" % [a.rdLoc]
-        result.add "(*$1)$3, $2" % [a.rdLoc, lenExpr(p, t), dataField(p)]
+        result.add "($4) ? ((*$1)$3) : NIM_NIL, $2" %
+                     [a.rdLoc, lenExpr(p, t), dataField(p),
+                      dataFieldAccessor(p, "*" & a.rdLoc)]
       else:
-        result.add "$1$3, $2" % [a.rdLoc, lenExpr(p, a), dataField(p)]
+        result.add "($4) ? ($1$3) : NIM_NIL, $2" %
+                     [a.rdLoc, lenExpr(p, a), dataField(p), dataFieldAccessor(p, a.rdLoc)]
     of tyArray:
       result.add "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, a.t))]
     of tyPtr, tyRef:
@@ -248,7 +254,9 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
       of tyString, tySequence:
         var t: TLoc
         t.r = "(*$1)" % [a.rdLoc]
-        result.add "(*$1)$3, $2" % [a.rdLoc, lenExpr(p, t), dataField(p)]
+        result.add "($4) ? ((*$1)$3) : NIM_NIL, $2" %
+                     [a.rdLoc, lenExpr(p, t), dataField(p),
+                      dataFieldAccessor(p, "*" & a.rdLoc)]
       of tyArray:
         result.add "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, lastSon(a.t)))]
       else:

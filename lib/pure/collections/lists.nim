@@ -62,9 +62,6 @@ import std/private/since
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-when not defined(nimHasCursor):
-  {.pragma: cursor.}
-
 type
   DoublyLinkedNodeObj*[T] = object
     ## A node of a doubly linked list.
