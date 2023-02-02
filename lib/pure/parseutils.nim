@@ -643,7 +643,7 @@ func parseSize*(s: openArray[char], size: var int, alwaysBin=false): int =
       result = start                    #..is no unit to the end of `s`.
     var sizeF = number * scale + 0.5
     if sizeF > int.high.float:
-      sizeF = int.high.float            #NOTE: int.high.float.int = -2^63 bug :(
+      sizeF = int.high.float
     size = sizeF.int
 
 type
