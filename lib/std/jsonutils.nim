@@ -1,5 +1,5 @@
 ##[
-This module implements a hookable (de)serialization for arbitrary types.
+This module implements a hookable (de)serialization for arbitrary types using JSON.
 Design goal: avoid importing modules where a custom serialization is needed;
 see strtabs.fromJsonHook,toJsonHook for an example.
 ]##
@@ -37,22 +37,8 @@ from typetraits import OrdinalEnum, tupleLen
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-when not defined(nimFixedForwardGeneric):
-  # xxx remove pending csources_v1 update >= 1.2.0
-  proc to[T](node: JsonNode, t: typedesc[T]): T =
-    when T is string: node.getStr
-    elif T is bool: node.getBool
-    else: static: doAssert false, $T # support as needed (only needed during bootstrap)
-  proc isNamedTuple(T: typedesc): bool = # old implementation
-    when T isnot tuple: result = false
-    else:
-      var t: T
-      for name, _ in t.fieldPairs:
-        when name == "Field0": return compiles(t.Field0)
-        else: return true
-      return false
-else:
-  proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
+
+proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 
 type
   Joptions* = object # xxx rename FromJsonOptions

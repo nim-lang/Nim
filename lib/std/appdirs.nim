@@ -1,3 +1,7 @@
+## This module implements helpers for determining special directories used by apps.
+
+## .. importdoc:: paths.nim
+
 from std/private/osappdirs import nil
 import std/paths
 import std/envvars

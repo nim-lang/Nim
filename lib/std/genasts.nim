@@ -1,3 +1,5 @@
+## This module implements AST generation using captured variables for macros.
+
 import macros
 
 type GenAstOpt* = enum

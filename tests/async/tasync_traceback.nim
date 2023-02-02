@@ -67,51 +67,22 @@ import re
 const expected = """
 b failure
 Async traceback:
-  tasync_traceback\.nim\(\d+?\)\s+?tasync_traceback
-  asyncmacro\.nim\(\d+?\)\s+?a
-  asyncmacro\.nim\(\d+?\)\s+?aNimAsyncContinue
-    ## Resumes an async procedure
-  tasync_traceback\.nim\(\d+?\)\s+?aIter
-  asyncmacro\.nim\(\d+?\)\s+?b
-  asyncmacro\.nim\(\d+?\)\s+?bNimAsyncContinue
-    ## Resumes an async procedure
-  tasync_traceback\.nim\(\d+?\)\s+?bIter
-  #\[
-    tasync_traceback\.nim\(\d+?\)\s+?tasync_traceback
-    asyncmacro\.nim\(\d+?\)\s+?a
-    asyncmacro\.nim\(\d+?\)\s+?aNimAsyncContinue
-      ## Resumes an async procedure
-    asyncmacro\.nim\(\d+?\)\s+?aIter
-    asyncfutures\.nim\(\d+?\)\s+?read
-  \]#
+  tasync_traceback\.nim\(\d+?\) tasync_traceback
+  tasync_traceback\.nim\(\d+?\) a \(Async\)
+  tasync_traceback\.nim\(\d+?\) b \(Async\)
 Exception message: b failure
 
 
 bar failure
 Async traceback:
-  tasync_traceback\.nim\(\d+?\)\s+?tasync_traceback
-  asyncdispatch\.nim\(\d+?\)\s+?waitFor
-  asyncdispatch\.nim\(\d+?\)\s+?poll
+  tasync_traceback\.nim\(\d+?\) tasync_traceback
+  asyncdispatch\.nim\(\d+?\) waitFor
+  asyncdispatch\.nim\(\d+?\) poll
     ## Processes asynchronous completion events
-  asyncdispatch\.nim\(\d+?\)\s+?runOnce
-  asyncdispatch\.nim\(\d+?\)\s+?processPendingCallbacks
+  asyncdispatch\.nim\(\d+?\) runOnce
+  asyncdispatch\.nim\(\d+?\) processPendingCallbacks
     ## Executes pending callbacks
-  asyncmacro\.nim\(\d+?\)\s+?barNimAsyncContinue
-    ## Resumes an async procedure
-  tasync_traceback\.nim\(\d+?\)\s+?barIter
-  #\[
-    tasync_traceback\.nim\(\d+?\)\s+?tasync_traceback
-    asyncdispatch\.nim\(\d+?\)\s+?waitFor
-    asyncdispatch\.nim\(\d+?\)\s+?poll
-      ## Processes asynchronous completion events
-    asyncdispatch\.nim\(\d+?\)\s+?runOnce
-    asyncdispatch\.nim\(\d+?\)\s+?processPendingCallbacks
-      ## Executes pending callbacks
-    asyncmacro\.nim\(\d+?\)\s+?fooNimAsyncContinue
-      ## Resumes an async procedure
-    asyncmacro\.nim\(\d+?\)\s+?fooIter
-    asyncfutures\.nim\(\d+?\)\s+?read
-  \]#
+  tasync_traceback\.nim\(\d+?\) bar \(Async\)
 Exception message: bar failure
 
 """

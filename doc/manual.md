@@ -4773,8 +4773,8 @@ Example:
       echo "overflow!"
     except ValueError, IOError:
       echo "catch multiple exceptions!"
-    except:
-      echo "Unknown exception!"
+    except CatchableError:
+      echo "Catchable exception!"
     finally:
       close(f)
   ```
@@ -4785,9 +4785,6 @@ an exception `e` is raised. If the exception type of `e` matches any
 listed in an `except` clause, the corresponding statements are executed.
 The statements following the `except` clauses are called
 `exception handlers`:idx:.
-
-The empty `except`:idx: clause is executed if there is an exception that is
-not listed otherwise. It is similar to an `else` clause in `if` statements.
 
 If there is a `finally`:idx: clause, it is always executed after the
 exception handlers.
@@ -4806,11 +4803,11 @@ Try can also be used as an expression; the type of the `try` branch then
 needs to fit the types of `except` branches, but the type of the `finally`
 branch always has to be `void`:
 
-  ```nim
+  ```nim test
   from std/strutils import parseInt
 
   let x = try: parseInt("133a")
-          except: -1
+          except ValueError: -1
           finally: echo "hi"
   ```
 
@@ -4818,8 +4815,9 @@ branch always has to be `void`:
 To prevent confusing code there is a parsing limitation; if the `try`
 follows a `(` it has to be written as a one liner:
 
-  ```nim
-  let x = (try: parseInt("133a") except: -1)
+  ```nim test
+  from std/strutils import parseInt
+  let x = (try: parseInt("133a") except ValueError: -1)
   ```
 
 
@@ -4867,7 +4865,7 @@ error message from `e`, and for such situations, it is enough to use
   ```nim
   try:
     # ...
-  except:
+  except CatchableError:
     echo getCurrentExceptionMsg()
   ```
 
@@ -5055,7 +5053,7 @@ An empty `raises` list (`raises: []`) means that no exception may be raised:
     try:
       unsafeCall()
       result = true
-    except:
+    except CatchableError:
       result = false
   ```
 
@@ -8049,6 +8047,24 @@ used. To see if a value was provided, `defined(FooBar)` can be used.
 The syntax `-d:flag`:option: is actually just a shortcut for
 `-d:flag=true`:option:.
 
+These pragmas also accept an optional string argument for qualified
+define names.
+
+  ```nim
+  const FooBar {.intdefine: "package.FooBar".}: int = 5
+  echo FooBar
+  ```
+
+  ```cmd
+  nim c -d:package.FooBar=42 foobar.nim
+  ```
+
+This helps disambiguate define names in different packages.
+
+See also the [generic `define` pragma](manual_experimental.html#generic-define-pragma)
+for a version of these pragmas that detects the type of the define based on
+the constant value.
+
 User-defined pragmas
 ====================
 
@@ -8424,22 +8440,11 @@ This is only useful if the program is compiled as a dynamic library via the
 `--app:lib`:option: command-line option.
 
 
-
 Threads
 =======
 
-To enable thread support the `--threads:on`:option: command-line switch needs to
-be used. The [system module](system.html) module then contains several threading primitives.
-See the [channels](channels_builtin.html) modules
-for the low-level thread API. There are also high-level parallelism constructs
-available. See [spawn](manual_experimental.html#parallel-amp-spawn) for
+The `--threads:on`:option: command-line switch is enabled by default. The [typedthreads module](typedthreads.html) module then contains several threading primitives. See [spawn](manual_experimental.html#parallel-amp-spawn) for
 further details.
-
-Nim's memory model for threads is quite different than that of other common
-programming languages (C, Pascal, Java): Each thread has its own (garbage
-collected) heap, and sharing of memory is restricted to global variables. This
-helps to prevent race conditions. GC efficiency is improved quite a lot,
-because the GC never has to stop other threads and see what they reference.
 
 The only way to create a thread is via `spawn` or
 `createThread`. The invoked proc must not use `var` parameters nor must

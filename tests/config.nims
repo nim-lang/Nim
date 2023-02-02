@@ -44,3 +44,4 @@ when defined(windows):
   switch("tlsEmulation", "off")
 
 switch("warningAserror", "UnnamedBreak")
+switch("legacy", "verboseTypeMismatch")

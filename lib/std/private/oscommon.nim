@@ -5,6 +5,8 @@ import std/[oserrors]
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
 
+## .. importdoc:: osdirs.nim, os.nim
+
 const weirdTarget* = defined(nimscript) or defined(js)
 
 
