@@ -24,6 +24,8 @@ import
   lowerings, liftlocals,
   modulegraphs, lineinfos
 
+import std/tables
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -938,6 +940,21 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
     else:
       result = n
 
+proc getObjDepth(t: PType): tuple[isObj: bool, depth: int, root: ItemId] =
+  var x = t
+  result.depth = -1
+  result.isObj = true
+  var stack = newSeq[ItemId]()
+  while x != nil:
+    x = skipTypes(x, skipPtrs)
+    if x.kind != tyObject:
+      result.isObj = false
+      return
+    stack.add x.itemId
+    x = x[0]
+    inc(result.depth)
+  result.root = stack[^2]
+
 proc transform(c: PTransf, n: PNode): PNode =
   when false:
     var oldDeferAnchor: PNode
@@ -1026,7 +1043,23 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkConstSection:
     # do not replace ``const c = 3`` with ``const 3 = 3``
     return transformConstSection(c, n)
-  of nkTypeSection, nkTypeOfExpr, nkMixinStmt, nkBindStmt:
+  of nkTypeSection: # collect object trees
+    for section in n:
+      if section.kind == nkTypeDef and section[^1].kind in {nkObjectTy, nkRefTy, nkPtrTy}:
+        let typ = section[^1].typ.skipTypes(skipPtrs)
+        if typ.len > 0 and typ[0] != nil:
+          let (isObj, depthLevel, root) = getObjDepth(typ)
+          if isObj:
+            if depthLevel == 1:
+              c.graph.objectTree[root] = @[]
+            else:
+              if root notin c.graph.objectTree: # todo module boundry?
+                c.graph.objectTree[root] = @[TypeTreeItem(depth: depthLevel, value: typ)]
+              else:
+                c.graph.objectTree[root].add TypeTreeItem(depth: depthLevel, value: typ)
+          # c.graph.objectTree.push (, result)
+    return n
+  of nkTypeOfExpr, nkMixinStmt, nkBindStmt:
     # no need to transform type sections:
     return n
   of nkVarSection, nkLetSection:

@@ -14,7 +14,7 @@ import
   sempass2, modulegraphs, lineinfos, astalgo, sighashes, ropes,
   cgendata
 
-import std/[tables]
+import std/[tables, algorithm]
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, objectdollar]
@@ -166,10 +166,6 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
            g.methods[i].methods[0] != s:
         # already exists due to forwarding definition?
         localError(g.config, s.info, "method is not a base")
-      if s.typ[1].skipTypes(skipPtrs).itemId notin g.bucketTable:
-        g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId] = @[g.methods.len]
-      else:
-        g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId].add g.methods.len
       return
     of No: discard
     of Invalid:
@@ -198,7 +194,7 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   elif sfBase notin s.flags:
     message(g.config, s.info, warnUseBase)
 
-proc relevantCol(methods: seq[PSym], col: int): bool =
+proc relevantCol*(methods: seq[PSym], col: int): bool =
   # returns true iff the position is relevant
   var t = methods[0].typ[col].skipTypes(skipPtrs)
   if t.kind == tyObject:
@@ -207,7 +203,7 @@ proc relevantCol(methods: seq[PSym], col: int): bool =
       if not sameType(t2, t):
         return true
 
-proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
+proc cmpSignatures*(a, b: PSym, relevantCols: IntSet): int =
   for col in 1..<a.typ.len:
     if contains(relevantCols, col):
       var aa = skipTypes(a.typ[col], skipPtrs)
@@ -216,7 +212,7 @@ proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
       if (d != high(int)) and d != 0:
         return d
 
-proc sortBucket(a: var seq[PSym], relevantCols: IntSet) =
+proc sortBucket*(a: var seq[PSym], relevantCols: IntSet) =
   # we use shellsort here; fast and simple
   var n = a.len
   var h = 1
@@ -235,24 +231,24 @@ proc sortBucket(a: var seq[PSym], relevantCols: IntSet) =
       a[j] = v
     if h == 1: break
 
-proc genDispatcherVtable(g: ModuleGraph; methods: seq[PSym]; index: int): PSym =
+proc genVTableDispatcher*(g: ModuleGraph; methods: seq[PSym]; index: int): PSym =
 #[
 proc dispatch(x: Base, params: ...) =
-  cast[proc bar(x: Base, params: ...)](x.vtable[index])(x, params)
+  cast[proc bar(x: Base, params: ...)](x.vTable[index])(x, params)
 ]#
   var base = methods[0].ast[dispatcherPos].sym
   result = base
   var paramLen = base.typ.len
   var body = newNodeI(nkStmtList, base.info)
   body.flags.incl nfTransf # should not be further transformed
-  var vtableAccess = newNodeIT(nkBracketExpr, base.info, base.typ)
-  let nimGetVtableSym = getCompilerProc(g, "nimGetVtable")
-  var getVtableCall = newTree(nkCall,
-    newSymNode(nimGetVtableSym),
+  var vTableAccess = newNodeIT(nkBracketExpr, base.info, base.typ)
+  let nimGetVTableSym = getCompilerProc(g, "nimGetVtable")
+  var getVTableCall = newTree(nkCall,
+    newSymNode(nimGetVTableSym),
     newSymNode(base.typ.n[1].sym),
     newIntNode(nkIntLit, index)
   )
-  getVtableCall.typ = base.typ
+  getVTableCall.typ = base.typ
 
 
   # var vtableDotAccess = newTree(nkDotExpr, ,
@@ -262,18 +258,18 @@ proc dispatch(x: Base, params: ...) =
   # vtableType.add base.typ
   # vtableDotAccess.typ = vtableType
 
-  var vtableCall = newNodeIT(nkCall, base.info, base.typ[0])
+  var vTableCall = newNodeIT(nkCall, base.info, base.typ[0])
   var castNode = newTree(nkCast,
         newNodeIT(nkType, base.info, base.typ),
-        getVtableCall)
+        getVTableCall)
 
   castNode.typ = base.typ
-  vtableCall.add castNode
+  vTableCall.add castNode
   for col in 1..<paramLen:
     let param = base.typ.n[col].sym
-    vtableCall.add newSymNode(param)
-  body.add vtableCall
-  echo body.renderTree
+    vTableCall.add newSymNode(param)
+  body.add vTableCall
+  # echo body.renderTree
 
 #[
 StmtList
@@ -286,7 +282,7 @@ StmtList
 
   result.ast[bodyPos] = body
 
-proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PSym =
+proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PSym =
   var base = methods[0].ast[dispatcherPos].sym
   result = base
   var paramLen = base.typ.len
@@ -345,15 +341,15 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PS
   nilchecks.flags.incl nfTransf # should not be further transformed
   result.ast[bodyPos] = nilchecks
 
-proc genVtable(seqs: seq[PSym]): Rope =
+proc genVTable*(seqs: seq[PSym]): Rope =
   result = Rope"{"
   for i in 0..<seqs.len-1:
-    doAssert seqs[i].loc.r.len > 0 # ????
+    doAssert seqs[i].loc.r.len > 0 # todo ????
     result.add seqs[i].loc.r & ", "
   result.add seqs[^1].loc.r
   result.add "}"
 
-proc getTempName(m: BModule): Rope =
+proc getTempName*(m: BModule): Rope =
   result = m.tmpBase & rope(m.labels)
   inc m.labels
 
@@ -367,49 +363,15 @@ proc generateMethodIfDispatchers*(g: ModuleGraph): PNode =
         # if multi-methods are not enabled, we are interested only in the first field
         break
     sortBucket(g.methods[bucket].methods, relevantCols)
-    result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))
+    result.add newSymNode(genIfDispatcher(g, g.methods[bucket].methods, relevantCols))
 
-proc generateMethodDispatchers*(g: ModuleGraph, m: BModule): PNode =
-  result = newNode(nkStmtList)
-  for bucket in 0..<g.methods.len:
-    var relevantCols = initIntSet()
-    for col in 1..<g.methods[bucket].methods[0].typ.len:
-      if relevantCol(g.methods[bucket].methods, col): incl(relevantCols, col)
-      if optMultiMethods notin g.config.globalOptions:
-        # if multi-methods are not enabled, we are interested only in the first field
-        break
-    sortBucket(g.methods[bucket].methods, relevantCols)
-    if isDefined(g.config, "nimPreviewVTable"):
-      doAssert sfBase in g.methods[bucket].methods[^1].flags
-      doAssert optMultiMethods notin g.config.globalOptions # we are not interested in other fields
-      # todo {.cursor.} ?
-      let base = g.methods[bucket].methods[^1]
-      let baseType = base.typ[1].skipTypes(skipPtrs)
-      let methodIndex = g.bucketTable[baseType.itemId]
-      # echo g.bucketTable, " ", baseType.itemId " ", methodIndex
-      let index = find(methodIndex, bucket) # here is the correpsonding index
-      for idx in 0..<g.methods[bucket].methods.len:
-        let sig = hashType(g.methods[bucket].methods[idx].typ[1].skipTypes(skipPtrs))
-        let name = m.typeInfoMarkerV2.getOrDefault(sig)
-        if name.len == 0:
-          continue
-        # let name = "NTIv2$1_" % [rope($sig)] # todo register all types
-        # 
-        # doAssert name.len > 0
-        var typeEntry = ""
-        let objVtable = getTempName(m)
-        var dispatchMethods = newSeq[PSym]()
-        for i in methodIndex:
-          dispatchMethods.add g.methods[i].methods[idx]
-        let vtablePointerName = getTempName(m)
-        m.s[cfsVars].addf("static void* $1[$2] = $3;$n", [vtablePointerName, rope(dispatchMethods.len), genVtable(dispatchMethods)])
-        # m.s[cfsVars].addf("static $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyString), skVar), objDisplayStore, rope(objDepth+1), objDisplay])
-        addf(typeEntry, "$1.vtable = $2;$n", [name, vtablePointerName])
+    # for idx in 0..<g.methods[bucket].methods.len-1:
+    #   # echo g.bucketTable, " ", baseType.itemId " ", methodIndex
 
-        m.s[cfsTypeInit3].add typeEntry
-      result.add newSymNode(genDispatcherVtable(g, g.methods[bucket].methods, index))
-    else:
-      result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))
+    # 
+    # else:
+    #   result.add newSymNode(genIfDispatcher(g, g.methods[bucket].methods, relevantCols))
+
     # Gen vtable init here: it should work
     # because the object initialization happens after this proc is called.
 

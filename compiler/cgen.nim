@@ -28,6 +28,8 @@ import strutils except `%`, addf # collides with ropes.`%`
 from ic / ic import ModuleBackendFlag
 import dynlib
 
+import std/[algorithm]
+
 when not declared(dynlib.libCandidates):
   proc libCandidates(s: string, dest: var seq[string]) =
     ## given a library name pattern `s` write possible library names to `dest`.
@@ -2084,6 +2086,79 @@ proc updateCachedModule(m: BModule) =
     genMainProc(m)
   cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)
+
+proc initializeVTable(m: BModule, typ: PType, dispatchMethods: seq[PSym]) =
+  let sig = hashType(typ)
+  let name = genTypeInfo(m.config, m, typ, unknownLineInfo)
+  # echo "typ: ", typ, "  name: ", name
+  doAssert name.len > 0
+  # let name = "NTIv2$1_" % [rope($sig)] # todo register all types
+  # 
+  # doAssert name.len > 0
+  var typeEntry = ""
+  let objVTable = getTempName(m)
+  let vTablePointerName = getTempName(m)
+  m.s[cfsVars].addf("static void* $1[$2] = $3;$n", [vTablePointerName, rope(dispatchMethods.len), genVTable(dispatchMethods)])
+  # m.s[cfsVars].addf("static $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyString), skVar), objDisplayStore, rope(objDepth+1), objDisplay])
+  addf(typeEntry, "$1->vTable = $2;$n", [name, vTablePointerName])
+  m.s[cfsTypeInit3].add typeEntry
+
+proc generateVTableDispatchers(g: ModuleGraph, m: BModule): PNode =
+  result = newNode(nkStmtList)
+  var itemTable = initTable[ItemId, seq[PSym]]()
+  var rootIdSeq = newSeq[ItemId]()
+  for bucket in 0..<g.methods.len:
+    var relevantCols = initIntSet()
+    if relevantCol(g.methods[bucket].methods, 1): incl(relevantCols, 1)
+    sortBucket(g.methods[bucket].methods, relevantCols)
+    # doAssert sfBase in g.methods[bucket].methods[^1].flags
+    # todo {.cursor.} ?
+    let base = g.methods[bucket].methods[^1]
+    let baseType = base.typ[1].skipTypes(skipPtrs)
+    if baseType.itemId in g.objectTree:
+      let methodIndex = g.bucketTable[baseType.itemId]
+      if baseType.itemId notin itemTable: # once is enough
+        rootIdSeq.add baseType.itemId
+        itemTable[baseType.itemId] = @[]
+        for i in methodIndex:
+          itemTable[baseType.itemId].add g.methods[i].methods[^1]
+
+        initializeVTable(m, baseType, itemTable[baseType.itemId])
+
+        sort(g.objectTree[baseType.itemId], cmp = proc (x, y: TypeTreeItem): int =
+          if x.depth >= y.depth: 1
+          else: -1
+          )
+
+        let length = itemTable[baseType.itemId].len
+        for item in g.objectTree[baseType.itemId]:
+          # object
+          if item.value.itemId notin itemTable:
+            itemTable[item.value.itemId] = newSeq[PSym](length)
+
+      let mIndex = find(methodIndex, bucket) # here is the correpsonding index
+      for idx in 0..<g.methods[bucket].methods.len-1:
+        let obj = g.methods[bucket].methods[idx].typ[1].skipTypes(skipPtrs)
+        itemTable[obj.itemId][mIndex] = g.methods[bucket].methods[idx]
+      result.add newSymNode(genVTableDispatcher(g, g.methods[bucket].methods, mIndex))
+    else: # the base object doesn't register methods
+      result.add newSymNode(genIfDispatcher(g, g.methods[bucket].methods, relevantCols))
+
+  for root in rootIdSeq:
+    for item in g.objectTree[root]:
+      let typ = item.value
+      let idx = typ.itemId
+      for mIndex in 0..<itemTable[idx].len:
+        if itemTable[idx][mIndex] == nil:
+          let parentIndex = item.value[0].skipTypes(skipPtrs).itemId
+          itemTable[idx][mIndex] = itemTable[parentIndex][mIndex]
+      initializeVTable(m, typ.skipTypes(skipPtrs), itemTable[idx])
+
+proc generateMethodDispatchers*(g: ModuleGraph, m: BModule): PNode {.inline.} =
+  if optMultiMethods in g.config.globalOptions:
+    result = generateMethodIfDispatchers(g)
+  else:
+    result = generateVTableDispatchers(g, m)
 
 proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   ## Also called from IC.

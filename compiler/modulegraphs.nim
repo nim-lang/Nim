@@ -14,9 +14,17 @@
 import intsets, tables, hashes, md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
 import ic / [packed_ast, ic]
+import std/heapqueue
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
+
+
+type
+  TypeTreeItem* = object
+    depth*: int
+    value*: PType
+
 
 type
   SigHash* = distinct MD5Digest
@@ -68,6 +76,8 @@ type
     methodsPerType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
     enumToStringProcs*: Table[ItemId, LazySym]
     emittedTypeInfo*: Table[string, FileIndex]
+
+    objectTree*: Table[ItemId, seq[TypeTreeItem]]
 
     startupPackedConfig*: PackedConfig
     packageSyms*: TStrTable
