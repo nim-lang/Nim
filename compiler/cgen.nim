@@ -2087,6 +2087,15 @@ proc updateCachedModule(m: BModule) =
   cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)
 
+proc genVTable(m: BModule, seqs: seq[PSym]): Rope =
+  result = Rope"{"
+  for i in 0..<seqs.len-1:
+    doAssert seqs[i].loc.r.len > 0 # todo ????
+    # addForwardedProc(m, seqs[i])
+    result.add seqs[i].loc.r & ", "
+  result.add seqs[^1].loc.r
+  result.add "}"
+
 proc initializeVTable(m: BModule, typ: PType, dispatchMethods: seq[PSym]) =
   let sig = hashType(typ)
   let name = genTypeInfo(m.config, m, typ, unknownLineInfo)
@@ -2098,8 +2107,28 @@ proc initializeVTable(m: BModule, typ: PType, dispatchMethods: seq[PSym]) =
   var typeEntry = ""
   let objVTable = getTempName(m)
   let vTablePointerName = getTempName(m)
-  m.s[cfsVars].addf("static void* $1[$2] = $3;$n", [vTablePointerName, rope(dispatchMethods.len), genVTable(dispatchMethods)])
-  # m.s[cfsVars].addf("static $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyString), skVar), objDisplayStore, rope(objDepth+1), objDisplay])
+
+  # LetSection
+  #   IdentDefs
+  #     Ident "vTablePointerName"
+  #     Empty
+  #     Bracket
+  #       Cast
+  #         Ident "pointer"
+  #         Ident "bar"
+  #       Cast
+  #         Ident "pointer"
+  #         Ident "foo"
+
+  # let vTablePointerName = [cast[pointer](bar), cast[pointer](foo)]
+  # var letNode = newNode(nkLetSection)
+  # let identDefs = newNode()
+  # letNode.add
+  let node = newNode(nkDiscardStmt)
+  for i in dispatchMethods:
+    node.add newSymNode(i)
+  genStmts(m.initProc, node) # todo hack to do
+  m.s[cfsVars].addf("static void* $1[$2] = $3;$n", [vTablePointerName, rope(dispatchMethods.len), genVTable(m, dispatchMethods)])
   addf(typeEntry, "$1->vTable = $2;$n", [name, vTablePointerName])
   m.s[cfsTypeInit3].add typeEntry
 

@@ -341,13 +341,6 @@ proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet):
   nilchecks.flags.incl nfTransf # should not be further transformed
   result.ast[bodyPos] = nilchecks
 
-proc genVTable*(seqs: seq[PSym]): Rope =
-  result = Rope"{"
-  for i in 0..<seqs.len-1:
-    doAssert seqs[i].loc.r.len > 0 # todo ????
-    result.add seqs[i].loc.r & ", "
-  result.add seqs[^1].loc.r
-  result.add "}"
 
 proc getTempName*(m: BModule): Rope =
   result = m.tmpBase & rope(m.labels)
