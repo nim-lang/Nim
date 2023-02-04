@@ -242,7 +242,7 @@ proc dispatch(x: Base, params: ...) =
   var body = newNodeI(nkStmtList, base.info)
   body.flags.incl nfTransf # should not be further transformed
   var vTableAccess = newNodeIT(nkBracketExpr, base.info, base.typ)
-  let nimGetVTableSym = getCompilerProc(g, "nimGetVtable")
+  let nimGetVTableSym = getCompilerProc(g, "nimGetVTable")
   var getVTableCall = newTree(nkCall,
     newSymNode(nimGetVTableSym),
     newSymNode(base.typ.n[1].sym),

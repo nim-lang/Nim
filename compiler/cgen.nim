@@ -2145,7 +2145,7 @@ proc generateVTableDispatchers(g: ModuleGraph, m: BModule): PNode =
     # doAssert sfBase in g.methods[bucket].methods[^1].flags
     # todo {.cursor.} ?
     let base = g.methods[bucket].methods[^1]
-    let baseType = base.typ[1].skipTypes(skipPtrs)
+    let baseType = base.typ[1].skipTypes(skipPtrs-{tyTypeDesc})
     if baseType.itemId in g.objectTree:
       let methodIndex = g.bucketTable[baseType.itemId]
       if baseType.itemId notin itemTable: # once is enough
