@@ -2186,7 +2186,7 @@ proc generateVTableDispatchers(g: ModuleGraph, m: BModule): PNode =
       initializeVTable(m, typ.skipTypes(skipPtrs), itemTable[idx])
 
 proc generateMethodDispatchers*(g: ModuleGraph, m: BModule): PNode {.inline.} =
-  if optMultiMethods in g.config.globalOptions:
+  if optMultiMethods in g.config.globalOptions or g.config.selectedGC notin {gcArc, gcOrc}:
     result = generateMethodIfDispatchers(g)
   else:
     result = generateVTableDispatchers(g, m)
