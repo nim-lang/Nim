@@ -268,7 +268,18 @@ proc dispatch(x: Base, params: ...) =
   for col in 1..<paramLen:
     let param = base.typ.n[col].sym
     vTableCall.add newSymNode(param)
-  body.add vTableCall
+
+  var ret: PNode
+  if base.typ[0] != nil:
+    var a = newNodeI(nkFastAsgn, base.info)
+    a.add newSymNode(base.ast[resultPos].sym)
+    a.add vTableCall
+    ret = newNodeI(nkReturnStmt, base.info)
+    ret.add a
+  else:
+    ret = vTableCall
+
+  body.add ret
   # echo body.renderTree
 
 #[
