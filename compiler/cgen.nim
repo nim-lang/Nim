@@ -2124,10 +2124,12 @@ proc initializeVTable(m: BModule, typ: PType, dispatchMethods: seq[PSym]) =
   # var letNode = newNode(nkLetSection)
   # let identDefs = newNode()
   # letNode.add
-  let node = newNode(nkDiscardStmt)
+  let patches = newNode(nkStmtList)
   for i in dispatchMethods:
+    let node = newNode(nkDiscardStmt)
     node.add newSymNode(i)
-  genStmts(m.initProc, node) # todo hack to do
+    patches.add node
+  genStmts(m.initProc, patches) # todo hack to do
   m.s[cfsVars].addf("static void* $1[$2] = $3;$n", [vTablePointerName, rope(dispatchMethods.len), genVTable(m, dispatchMethods)])
   addf(typeEntry, "$1->vTable = $2;$n", [name, vTablePointerName])
   m.s[cfsTypeInit3].add typeEntry
