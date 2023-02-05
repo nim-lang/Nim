@@ -176,18 +176,8 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
     g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId] = @[g.methods.len]
   else:
     g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId].add g.methods.len
-  # id: [a, b, c]
-  # iterates the bucketTable
-  # base: [a, b, c]
-  # o1: assign the vtable of the base to the o1 by looking up the id of the base
-  # calculates the vtable of the o1;
-  # stores the vtable of the o1 to bucketTable
-  # the same goes for the o2, it procures the vtable of the o1
-
-  # todo we need to build an inherientence tree somewhere
-  # because we need to initialize the vtables from the bottom to the top.
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
-  #echo "adding ", s.info
+
   if witness != nil:
     localError(g.config, s.info, "invalid declaration order; cannot attach '" & s.name.s &
                        "' to method defined here: " & g.config$witness.info)
@@ -243,34 +233,28 @@ proc dispatch(x: Base, params: ...) =
   var vTableAccess = newNodeIT(nkBracketExpr, base.info, base.typ)
   let nimGetVTableSym = getCompilerProc(g, "nimGetVTable")
   var nTyp = base.typ.n[1].sym.typ
-  var nCount = -1
-  while nTyp != nil:
-    if nTyp.kind in skipPtrs:
-      inc nCount
-      nTyp = nTyp[0]
-    else:
-      break
-
-  var i = 0
   var dispatchObject = newSymNode(base.typ.n[1].sym)
-  while i < nCount:
-    dispatchObject = newTree(nkDerefExpr, dispatchObject)
-    inc i
+  if nTyp.kind == tyObject:
+    dispatchObject = newTree(nkAddr, dispatchObject)
+  else:
+    var nCount = -1
+    while nTyp != nil:
+      if nTyp.kind in {tyVar, tyPtr, tyRef}:
+        inc nCount
+        nTyp = nTyp[0]
+      else:
+        break
+
+    var i = 0
+    while i < nCount:
+      dispatchObject = newTree(nkDerefExpr, dispatchObject)
+      inc i
   var getVTableCall = newTree(nkCall,
     newSymNode(nimGetVTableSym),
     dispatchObject,
     newIntNode(nkIntLit, index)
   )
   getVTableCall.typ = base.typ
-
-
-  # var vtableDotAccess = newTree(nkDotExpr, ,
-  #                         newSymNode(newSym(skField, getIdent(g.cache, "vtable"), nextSymId(g.idgen), base.owner, base.info))
-  #                         )
-  # var vtableType = newType(tyUncheckedArray, nextTypeId(g.idgen),  base.typ.owner)
-  # vtableType.add base.typ
-  # vtableDotAccess.typ = vtableType
-
   var vTableCall = newNodeIT(nkCall, base.info, base.typ[0])
   var castNode = newTree(nkCast,
         newNodeIT(nkType, base.info, base.typ),
@@ -294,17 +278,6 @@ proc dispatch(x: Base, params: ...) =
 
   body.add ret
   body.flags.incl nfTransf # should not be further transformed
-  # echo body.renderTree
-
-#[
-StmtList
-  BracketExpr
-    DotExpr
-      Ident "x"
-      Ident "vtable"
-    Ident "index"
-]#
-
   result.ast[bodyPos] = body
 
 proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PSym =
@@ -366,11 +339,6 @@ proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet):
   nilchecks.flags.incl nfTransf # should not be further transformed
   result.ast[bodyPos] = nilchecks
 
-
-proc getTempName*(m: BModule): Rope =
-  result = m.tmpBase & rope(m.labels)
-  inc m.labels
-
 proc generateMethodIfDispatchers*(g: ModuleGraph): PNode =
   result = newNode(nkStmtList)
   for bucket in 0..<g.methods.len:
@@ -382,40 +350,3 @@ proc generateMethodIfDispatchers*(g: ModuleGraph): PNode =
         break
     sortBucket(g.methods[bucket].methods, relevantCols)
     result.add newSymNode(genIfDispatcher(g, g.methods[bucket].methods, relevantCols))
-
-    # for idx in 0..<g.methods[bucket].methods.len-1:
-    #   # echo g.bucketTable, " ", baseType.itemId " ", methodIndex
-
-    # 
-    # else:
-    #   result.add newSymNode(genIfDispatcher(g, g.methods[bucket].methods, relevantCols))
-
-    # Gen vtable init here: it should work
-    # because the object initialization happens after this proc is called.
-
-    # Sharting from here, we shall see all methods.
-
-    # The first version should only focus on the standard form:
-    # the base proc must exist and every child's corresponding proc
-    # shall be defined. Otherwise we need to store a method in the BModule,
-    # then we can generate the vtable initialization for all objects.
-
-    # the first case covers
-    # type FooBase = ref object of RootObj
-    #   dummy: int
-    # type Foo = ref object of FooBase
-    #   value : float32
-    # type Foo2 = ref object of Foo
-    #   change : float32
-    # method bar(x: FooBase, a: float32) {.base.} =
-    #   discard
-    # method bar(x: Foo, a: float32)  =
-    #   x.value += a
-    # method bar(x: Foo2, a: float32)  =
-    #   x.value += a
-
-    # .vtable = [cast[pointer](bar), bar1, bar2] # erase its type using cast
-    # first check whether its method, then its parents
-    # gen dispatch
-    # proc bar(x: FooBase, a: float32) =
-    #   cast[proc bar(x: FooBase, a: float32)](x.vtable[0])(x, a)

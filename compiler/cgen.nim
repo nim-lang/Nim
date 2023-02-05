@@ -2090,40 +2090,16 @@ proc updateCachedModule(m: BModule) =
 proc genVTable(m: BModule, seqs: seq[PSym]): Rope =
   result = Rope"{"
   for i in 0..<seqs.len-1:
-    doAssert seqs[i].loc.r.len > 0 # todo ????
-    # addForwardedProc(m, seqs[i])
-    result.add seqs[i].loc.r & ", "
-  result.add seqs[^1].loc.r
+    result.add "(void *) " & seqs[i].loc.r & ", "
+  result.add "(void *) " & seqs[^1].loc.r
   result.add "}"
 
 proc initializeVTable(m: BModule, typ: PType, dispatchMethods: seq[PSym]) =
   let sig = hashType(typ)
-  let name = genTypeInfo(m.config, m, typ, unknownLineInfo)
-  # echo "typ: ", typ, "  name: ", name
-  doAssert name.len > 0
-  # let name = "NTIv2$1_" % [rope($sig)] # todo register all types
-  # 
-  # doAssert name.len > 0
+  let name = genTypeInfoV2(m, typ, unknownLineInfo)
   var typeEntry = ""
   let objVTable = getTempName(m)
   let vTablePointerName = getTempName(m)
-
-  # LetSection
-  #   IdentDefs
-  #     Ident "vTablePointerName"
-  #     Empty
-  #     Bracket
-  #       Cast
-  #         Ident "pointer"
-  #         Ident "bar"
-  #       Cast
-  #         Ident "pointer"
-  #         Ident "foo"
-
-  # let vTablePointerName = [cast[pointer](bar), cast[pointer](foo)]
-  # var letNode = newNode(nkLetSection)
-  # let identDefs = newNode()
-  # letNode.add
   let patches = newNode(nkStmtList)
   for i in dispatchMethods:
     let node = newNode(nkDiscardStmt)
@@ -2143,7 +2119,6 @@ proc generateVTableDispatchers(g: ModuleGraph, m: BModule): PNode =
     var relevantCols = initIntSet()
     if relevantCol(g.methods[bucket].methods, 1): incl(relevantCols, 1)
     sortBucket(g.methods[bucket].methods, relevantCols)
-    # doAssert sfBase in g.methods[bucket].methods[^1].flags
     # todo {.cursor.} ?
     let base = g.methods[bucket].methods[^1]
     let baseType = base.typ[1].skipTypes(skipPtrs-{tyTypeDesc})
@@ -2186,7 +2161,7 @@ proc generateVTableDispatchers(g: ModuleGraph, m: BModule): PNode =
       initializeVTable(m, typ, itemTable[idx])
 
 proc generateMethodDispatchers*(g: ModuleGraph, m: BModule): PNode {.inline.} =
-  if optMultiMethods in g.config.globalOptions or g.config.selectedGC notin {gcArc, gcOrc}:
+  if {optMultiMethods, optGenStaticLib, optGenDynLib, optNoMain} * g.config.globalOptions != {} or g.config.selectedGC notin {gcArc, gcOrc}:
     result = generateMethodIfDispatchers(g)
   else:
     result = generateVTableDispatchers(g, m)
