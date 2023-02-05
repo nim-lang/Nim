@@ -241,7 +241,7 @@ proc dispatch(x: Base, params: ...) =
     dispatchObject = newTree(nkAddr, dispatchObject)
   else:
     if g.config.backend != backendCpp: # todo maybe handle ptr?
-      if nTyp.kind == tyVar:
+      if nTyp.kind == tyVar and nTyp.skipTypes({tyVar}).kind != tyObject:
         dispatchObject = newTree(nkDerefExpr, dispatchObject)
 
   var getVTableCall = newTree(nkCall,
