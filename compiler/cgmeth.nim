@@ -240,25 +240,10 @@ proc dispatch(x: Base, params: ...) =
   if nTyp.kind == tyObject:
     dispatchObject = newTree(nkAddr, dispatchObject)
   else:
-    if g.config.exc != excCpp: # todo handle var or ptr correctly
-      var nCount = -1
-      while nTyp != nil:
-        if nTyp.kind in {tyVar, tyPtr, tySink, tyRef}:
-          inc nCount
-          nTyp = nTyp[0]
-        else:
-          break
-
-      var i = 0
-      while i < nCount:
+    if g.config.backend != backendCpp: # todo maybe handle ptr?
+      if nTyp.kind == tyVar:
         dispatchObject = newTree(nkDerefExpr, dispatchObject)
-        inc i
 
-  # let pointerType = nimGetVTableSym.typ.n[1].sym.typ
-  # dispatchObject.typ = pointerType
-  # let castPointerNode = newNodeIT(nkCast, base.info, pointerType)
-  # castPointerNode.add newNodeIT(nkType, base.info, pointerType)
-  # castPointerNode.add dispatchObject
   var getVTableCall = newTree(nkCall,
     newSymNode(nimGetVTableSym),
     dispatchObject,
