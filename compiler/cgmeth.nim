@@ -240,12 +240,25 @@ proc dispatch(x: Base, params: ...) =
   result = base
   var paramLen = base.typ.len
   var body = newNodeI(nkStmtList, base.info)
-  body.flags.incl nfTransf # should not be further transformed
   var vTableAccess = newNodeIT(nkBracketExpr, base.info, base.typ)
   let nimGetVTableSym = getCompilerProc(g, "nimGetVTable")
+  var nTyp = base.typ.n[1].sym.typ
+  var nCount = -1
+  while nTyp != nil:
+    if nTyp.kind in skipPtrs:
+      inc nCount
+      nTyp = nTyp[0]
+    else:
+      break
+
+  var i = 0
+  var dispatchObject = newSymNode(base.typ.n[1].sym)
+  while i < nCount:
+    dispatchObject = newTree(nkDerefExpr, dispatchObject)
+    inc i
   var getVTableCall = newTree(nkCall,
     newSymNode(nimGetVTableSym),
-    newSymNode(base.typ.n[1].sym),
+    dispatchObject,
     newIntNode(nkIntLit, index)
   )
   getVTableCall.typ = base.typ
@@ -280,6 +293,7 @@ proc dispatch(x: Base, params: ...) =
     ret = vTableCall
 
   body.add ret
+  body.flags.incl nfTransf # should not be further transformed
   # echo body.renderTree
 
 #[
