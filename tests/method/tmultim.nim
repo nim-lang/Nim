@@ -9,6 +9,7 @@ collide: unit, thing |
 collide: thing, unit |
 do nothing
 '''
+  matrix: "--multimethods:on"
   joinable: false
   disabled: true
 """

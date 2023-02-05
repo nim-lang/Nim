@@ -230,6 +230,9 @@ proc dispatch(x: Base, params: ...) =
   result = base
   var paramLen = base.typ.len
   var body = newNodeI(nkStmtList, base.info)
+
+  var disp = newNodeI(nkIfStmt, base.info)
+
   var vTableAccess = newNodeIT(nkBracketExpr, base.info, base.typ)
   let nimGetVTableSym = getCompilerProc(g, "nimGetVTable")
   var nTyp = base.typ.n[1].sym.typ
@@ -237,18 +240,25 @@ proc dispatch(x: Base, params: ...) =
   if nTyp.kind == tyObject:
     dispatchObject = newTree(nkAddr, dispatchObject)
   else:
-    var nCount = -1
-    while nTyp != nil:
-      if nTyp.kind in {tyVar, tyPtr, tyRef}:
-        inc nCount
-        nTyp = nTyp[0]
-      else:
-        break
+    if g.config.exc != excCpp: # todo handle var or ptr correctly
+      var nCount = -1
+      while nTyp != nil:
+        if nTyp.kind in {tyVar, tyPtr, tySink, tyRef}:
+          inc nCount
+          nTyp = nTyp[0]
+        else:
+          break
 
-    var i = 0
-    while i < nCount:
-      dispatchObject = newTree(nkDerefExpr, dispatchObject)
-      inc i
+      var i = 0
+      while i < nCount:
+        dispatchObject = newTree(nkDerefExpr, dispatchObject)
+        inc i
+
+  # let pointerType = nimGetVTableSym.typ.n[1].sym.typ
+  # dispatchObject.typ = pointerType
+  # let castPointerNode = newNodeIT(nkCast, base.info, pointerType)
+  # castPointerNode.add newNodeIT(nkType, base.info, pointerType)
+  # castPointerNode.add dispatchObject
   var getVTableCall = newTree(nkCall,
     newSymNode(nimGetVTableSym),
     dispatchObject,
@@ -276,7 +286,23 @@ proc dispatch(x: Base, params: ...) =
   else:
     ret = vTableCall
 
-  body.add ret
+  if base.typ.n[1].sym.typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
+    let ifBranch = newNodeI(nkElifBranch, base.info)
+    let boolType = getSysType(g, unknownLineInfo, tyBool)
+    var isNil = getSysMagic(g, unknownLineInfo, "isNil", mIsNil)
+    let checkSelf = newNodeIT(nkCall, base.info, boolType)
+    checkSelf.add newSymNode(isNil)
+    checkSelf.add newSymNode(base.typ.n[1].sym)
+    ifBranch.add checkSelf
+    ifBranch.add newTree(nkCall,
+        newSymNode(getCompilerProc(g, "chckNilDisp")), newSymNode(base.typ.n[1].sym))
+    let elseBranch = newTree(nkElifBranch, ret)
+    disp.add ifBranch
+    disp.add elseBranch
+  else:
+    disp = ret
+
+  body.add disp
   body.flags.incl nfTransf # should not be further transformed
   result.ast[bodyPos] = body
 

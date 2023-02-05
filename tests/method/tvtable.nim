@@ -1,7 +1,3 @@
-discard """
-  matrix: "-d:nimPreviewVTable"
-"""
-
 type FooBase = ref object of RootObj
   dummy: int
 type Foo = ref object of FooBase
