@@ -25,6 +25,7 @@ import
   modulegraphs, lineinfos
 
 import std/tables
+import std/options as opt
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -940,20 +941,20 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
     else:
       result = n
 
-proc getObjDepth(t: PType): tuple[isObj: bool, depth: int, root: ItemId] =
+proc getObjDepth(t: PType): Option[tuple[depth: int, root: ItemId]] =
   var x = t
-  result.depth = -1
-  result.isObj = true
+  var res: tuple[depth: int, root: ItemId]
+  res.depth = -1
   var stack = newSeq[ItemId]()
   while x != nil:
     x = skipTypes(x, skipPtrs)
     if x.kind != tyObject:
-      result.isObj = false
-      return
+      return none(tuple[depth: int, root: ItemId])
     stack.add x.itemId
     x = x[0]
-    inc(result.depth)
-  result.root = stack[^2]
+    inc(res.depth)
+  res.root = stack[^2]
+  result = some(res)
 
 proc transform(c: PTransf, n: PNode): PNode =
   when false:
@@ -1048,8 +1049,9 @@ proc transform(c: PTransf, n: PNode): PNode =
       if section.kind == nkTypeDef and section[^1].kind in {nkObjectTy, nkRefTy, nkPtrTy}:
         let typ = section[^1].typ.skipTypes(skipPtrs)
         if typ.len > 0 and typ[0] != nil:
-          let (isObj, depthLevel, root) = getObjDepth(typ)
-          if isObj:
+          let depthItem = getObjDepth(typ)
+          if isSome(depthItem):
+            let (depthLevel, root) = depthItem.unsafeGet
             if depthLevel == 1:
               c.graph.objectTree[root] = @[]
             else:
@@ -1057,7 +1059,6 @@ proc transform(c: PTransf, n: PNode): PNode =
                 c.graph.objectTree[root] = @[TypeTreeItem(depth: depthLevel, value: typ)]
               else:
                 c.graph.objectTree[root].add TypeTreeItem(depth: depthLevel, value: typ)
-          # c.graph.objectTree.push (, result)
     return n
   of nkTypeOfExpr, nkMixinStmt, nkBindStmt:
     # no need to transform type sections:

@@ -14,7 +14,6 @@
 import intsets, tables, hashes, md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
 import ic / [packed_ast, ic]
-import std/heapqueue
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

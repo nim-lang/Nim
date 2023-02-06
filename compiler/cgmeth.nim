@@ -11,13 +11,12 @@
 
 import
   intsets, options, ast, msgs, idents, renderer, types, magicsys,
-  sempass2, modulegraphs, lineinfos, astalgo, sighashes, ropes,
-  cgendata
+  sempass2, modulegraphs, lineinfos
 
-import std/[tables, algorithm]
+import std/[tables]
 
 when defined(nimPreviewSlimSystem):
-  import std/[assertions, objectdollar]
+  import std/[assertions]
 
 
 proc genConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
