@@ -1258,7 +1258,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
     for ext in extensions:
       var x = addFileExt(x, ext)
       if fileExists(x):
-        when not defined(windows):
+        when not defined(windows) and defined(readlink):
           while followSymlinks: # doubles as if here
             if x.symlinkExists:
               var r = newString(maxSymlinkLen)
@@ -1773,7 +1773,7 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   ##
   ## See also:
   ## * `createSymlink proc <#createSymlink,string,string>`_
-  when defined(windows):
+  when defined(windows) or not defined(readlink):
     result = symlinkPath
   else:
     result = newString(maxSymlinkLen)
@@ -1851,7 +1851,7 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   doAssert card(copyFlagSymlink * options) == 1, "There should be exactly " &
                                                  "one cfSymlink* in options"
   let isSymlink = source.symlinkExists
-  if isSymlink and (cfSymlinkIgnore in options or defined(windows)):
+  if isSymlink and (cfSymlinkIgnore in options or defined(windows) or defined(nintendoswitch)):
     return
   when defined(windows):
     when useWinUnicode:
@@ -3043,7 +3043,7 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netb
     let realLen = len(cstring(result))
     setLen(result, realLen)
 
-when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):
+when not (weirdTarget or defined(nintendoswitch)) and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):
   proc getApplAux(procPath: string): string =
     result = newString(maxSymlinkLen)
     var len = readlink(procPath, result, maxSymlinkLen)
