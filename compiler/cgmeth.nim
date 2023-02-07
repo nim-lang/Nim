@@ -172,9 +172,9 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   # create a new dispatcher:
   # stores the id and the position
   if s.typ[1].skipTypes(skipPtrs).itemId notin g.bucketTable:
-    g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId] = @[g.methods.len]
+    g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId] = 1
   else:
-    g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId].add g.methods.len
+    g.bucketTable.inc(s.typ[1].skipTypes(skipPtrs).itemId)
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
 
   if witness != nil:

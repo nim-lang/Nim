@@ -2113,44 +2113,45 @@ proc initializeVTable(m: BModule, typ: PType, dispatchMethods: seq[PSym]) =
 proc generateVTableDispatchers(g: ModuleGraph, m: BModule): PNode =
   result = newNode(nkStmtList)
   var itemTable = initTable[ItemId, seq[PSym]]()
-  var rootIdSeq = newSeq[ItemId]()
   var rootTypeSeq = newSeq[PType]()
+  var rootItemIdCount = initCountTable[ItemId]()
   for bucket in 0..<g.methods.len:
     var relevantCols = initIntSet()
     if relevantCol(g.methods[bucket].methods, 1): incl(relevantCols, 1)
     sortBucket(g.methods[bucket].methods, relevantCols)
-    # todo {.cursor.} ?
     let base = g.methods[bucket].methods[^1]
     let baseType = base.typ[1].skipTypes(skipPtrs-{tyTypeDesc})
     if baseType.itemId in g.objectTree:
-      let methodIndex = g.bucketTable[baseType.itemId]
+      let methodIndexLen = g.bucketTable[baseType.itemId]
       if baseType.itemId notin itemTable: # once is enough
-        rootIdSeq.add baseType.itemId
         rootTypeSeq.add baseType
-        itemTable[baseType.itemId] = newSeq[PSym](methodIndex.len)
+        itemTable[baseType.itemId] = newSeq[PSym](methodIndexLen)
 
-        sort(g.objectTree[baseType.itemId], cmp = proc (x, y: TypeTreeItem): int =
+        sort(g.objectTree[baseType.itemId], cmp = proc (x, y: tuple[depth: int, value: PType]): int =
           if x.depth >= y.depth: 1
           else: -1
           )
 
         for item in g.objectTree[baseType.itemId]:
-          # object
           if item.value.itemId notin itemTable:
-            itemTable[item.value.itemId] = newSeq[PSym](methodIndex.len)
+            itemTable[item.value.itemId] = newSeq[PSym](methodIndexLen)
 
-      let mIndex = find(methodIndex, bucket) # here is the correpsonding index
+      var mIndex = 0 # here is the correpsonding index
+      if baseType.itemId notin rootItemIdCount:
+        rootItemIdCount[baseType.itemId] = 1
+      else:
+        mIndex = rootItemIdCount[baseType.itemId]
+        rootItemIdCount.inc(baseType.itemId)
       for idx in 0..<g.methods[bucket].methods.len:
         let obj = g.methods[bucket].methods[idx].typ[1].skipTypes(skipPtrs)
         itemTable[obj.itemId][mIndex] = g.methods[bucket].methods[idx]
       result.add newSymNode(genVTableDispatcher(g, g.methods[bucket].methods, mIndex))
-    else: # the base object doesn't register methods
+    else: # if the base object doesn't have this method
       result.add newSymNode(genIfDispatcher(g, g.methods[bucket].methods, relevantCols))
-
 
   for baseType in rootTypeSeq:
     initializeVTable(m, baseType, itemTable[baseType.itemId])
-  for root in rootIdSeq:
+    let root = baseType.itemId
     for item in g.objectTree[root]:
       let typ = item.value.skipTypes(skipPtrs)
       let idx = typ.itemId

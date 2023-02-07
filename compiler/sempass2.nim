@@ -119,9 +119,9 @@ proc collectObjectTree(graph: ModuleGraph, n: PNode) =
             graph.objectTree[root] = @[]
           else:
             if root notin graph.objectTree: # todo module boundry? probably test again after readAll parser
-              graph.objectTree[root] = @[TypeTreeItem(depth: depthLevel, value: typ)]
+              graph.objectTree[root] = @[(depthLevel, typ)]
             else:
-              graph.objectTree[root].add TypeTreeItem(depth: depthLevel, value: typ)
+              graph.objectTree[root].add (depthLevel, typ)
 
 proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
   if typ == nil: return
