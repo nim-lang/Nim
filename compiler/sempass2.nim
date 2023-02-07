@@ -118,7 +118,7 @@ proc collectObjectTree(graph: ModuleGraph, n: PNode) =
           if depthLevel == 1:
             graph.objectTree[root] = @[]
           else:
-            if root notin graph.objectTree: # todo module boundry? probably test again after readAll parser
+            if root notin graph.objectTree:
               graph.objectTree[root] = @[(depthLevel, typ)]
             else:
               graph.objectTree[root].add (depthLevel, typ)
