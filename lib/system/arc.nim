@@ -211,6 +211,6 @@ proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): b
   result = targetDepth <= source.depth and source.display[targetDepth] == token
 
 proc nimGetVTable(p: pointer, index: int): pointer
-       {.compilerRtl, raises: [].} =
+       {.compilerRtl, inline, raises: [].} =
   let rti = cast[ptr PNimTypeV2](p)
   result = rti.vTable[index]
