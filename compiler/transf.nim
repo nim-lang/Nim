@@ -24,9 +24,6 @@ import
   lowerings, liftlocals,
   modulegraphs, lineinfos
 
-import std/tables
-
-
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -1029,7 +1026,7 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkConstSection:
     # do not replace ``const c = 3`` with ``const 3 = 3``
     return transformConstSection(c, n)
-  of nkTypeOfExpr, nkTypeSection, nkMixinStmt, nkBindStmt:
+  of nkTypeSection, nkTypeOfExpr, nkMixinStmt, nkBindStmt:
     # no need to transform type sections:
     return n
   of nkVarSection, nkLetSection:

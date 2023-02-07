@@ -76,8 +76,6 @@ type
     enumToStringProcs*: Table[ItemId, LazySym]
     emittedTypeInfo*: Table[string, FileIndex]
 
-    objectTree*: Table[ItemId, seq[TypeTreeItem]]
-
     startupPackedConfig*: PackedConfig
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
@@ -100,6 +98,8 @@ type
     suggestErrors*: Table[FileIndex, seq[Suggest]]
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     bucketTable*: Table[ItemId, seq[int]]
+    objectTree*: Table[ItemId, seq[TypeTreeItem]]
+
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
