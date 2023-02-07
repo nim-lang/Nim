@@ -212,5 +212,4 @@ proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): b
 
 proc nimGetVTable(p: pointer, index: int): pointer
        {.compilerRtl, inline, raises: [].} =
-  let rti = cast[ptr PNimTypeV2](p)
-  result = rti.vTable[index]
+  result = cast[ptr PNimTypeV2](p).vTable[index]
