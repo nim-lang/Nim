@@ -2393,7 +2393,7 @@ proc contains*[A](t: CountTable[A], key: A): bool =
   return hasKey[A](t, key)
 
 proc getOrDefault*[A](t: CountTable[A], key: A; default: int = 0): int =
-  ## Retrieves the value at `t[key]` if`key` is in `t`. Otherwise, the
+  ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, the
   ## integer value of `default` is returned.
   ##
   ## See also:
@@ -2713,7 +2713,7 @@ proc contains*[A](t: CountTableRef[A], key: A): bool =
   return hasKey[A](t, key)
 
 proc getOrDefault*[A](t: CountTableRef[A], key: A, default: int): int =
-  ## Retrieves the value at `t[key]` if`key` is in `t`. Otherwise, the
+  ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, the
   ## integer value of `default` is returned.
   ##
   ## See also:
