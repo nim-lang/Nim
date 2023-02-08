@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:orc"
+"""
+
 type
   Foo = object
     y: int
