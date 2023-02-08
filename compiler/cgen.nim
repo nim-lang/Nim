@@ -28,6 +28,8 @@ import strutils except `%`, addf # collides with ropes.`%`
 from ic / ic import ModuleBackendFlag
 import dynlib
 
+import std/[algorithm]
+
 when not declared(dynlib.libCandidates):
   proc libCandidates(s: string, dest: var seq[string]) =
     ## given a library name pattern `s` write possible library names to `dest`.
@@ -2085,6 +2087,158 @@ proc updateCachedModule(m: BModule) =
   cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)
 
+proc genVTable(m: BModule, seqs: seq[PSym]): Rope =
+  result = Rope"{"
+  for i in 0..<seqs.len-1:
+    result.add "(void *) " & seqs[i].loc.r & ", "
+  result.add "(void *) " & seqs[^1].loc.r
+  result.add "}"
+
+proc initializeVTable(m: BModule, typ: PType, dispatchMethods: seq[PSym]) =
+  let sig = hashType(typ)
+  let name = genTypeInfoV2(m, typ, unknownLineInfo)
+  var typeEntry = ""
+  let objVTable = getTempName(m)
+  let vTablePointerName = getTempName(m)
+  let patches = newNode(nkStmtList)
+  for i in dispatchMethods:
+    let node = newNode(nkDiscardStmt)
+    node.add newSymNode(i)
+    patches.add node
+  genStmts(m.initProc, patches)
+  m.s[cfsVars].addf("static void* $1[$2] = $3;$n", [vTablePointerName, rope(dispatchMethods.len), genVTable(m, dispatchMethods)])
+  addf(typeEntry, "$1->vTable = $2;$n", [name, vTablePointerName])
+  m.s[cfsTypeInit3].add typeEntry
+
+proc genVTableDispatcher(g: ModuleGraph; methods: seq[PSym]; index: int): PSym =
+#[
+proc dispatch(x: Base, params: ...) =
+  cast[proc bar(x: Base, params: ...)](x.vTable[index])(x, params)
+]#
+  var base = methods[0].ast[dispatcherPos].sym
+  result = base
+  var paramLen = base.typ.len
+  var body = newNodeI(nkStmtList, base.info)
+
+  var disp = newNodeI(nkIfStmt, base.info)
+
+  var vTableAccess = newNodeIT(nkBracketExpr, base.info, base.typ)
+  let nimGetVTableSym = getCompilerProc(g, "nimGetVTable")
+  let ptrPNimType = nimGetVTableSym.typ.n[1].sym.typ
+
+  var nTyp = base.typ.n[1].sym.typ
+  var dispatchObject = newSymNode(base.typ.n[1].sym)
+  if nTyp.kind == tyObject:
+    dispatchObject = newTree(nkAddr, dispatchObject)
+  else:
+    if g.config.backend != backendCpp: # todo maybe handle ptr?
+      if nTyp.kind == tyVar and nTyp.skipTypes({tyVar}).kind != tyObject:
+        dispatchObject = newTree(nkDerefExpr, dispatchObject)
+
+  var getVTableCall = newTree(nkCall,
+    newSymNode(nimGetVTableSym),
+    dispatchObject,
+    newIntNode(nkIntLit, index)
+  )
+  getVTableCall.typ = base.typ
+  var vTableCall = newNodeIT(nkCall, base.info, base.typ[0])
+  var castNode = newTree(nkCast,
+        newNodeIT(nkType, base.info, base.typ),
+        getVTableCall)
+
+  castNode.typ = base.typ
+  vTableCall.add castNode
+  for col in 1..<paramLen:
+    let param = base.typ.n[col].sym
+    vTableCall.add newSymNode(param)
+
+  var ret: PNode
+  if base.typ[0] != nil:
+    var a = newNodeI(nkFastAsgn, base.info)
+    a.add newSymNode(base.ast[resultPos].sym)
+    a.add vTableCall
+    ret = newNodeI(nkReturnStmt, base.info)
+    ret.add a
+  else:
+    ret = vTableCall
+
+  if base.typ.n[1].sym.typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
+    let ifBranch = newNodeI(nkElifBranch, base.info)
+    let boolType = getSysType(g, unknownLineInfo, tyBool)
+    var isNil = getSysMagic(g, unknownLineInfo, "isNil", mIsNil)
+    let checkSelf = newNodeIT(nkCall, base.info, boolType)
+    checkSelf.add newSymNode(isNil)
+    checkSelf.add newSymNode(base.typ.n[1].sym)
+    ifBranch.add checkSelf
+    ifBranch.add newTree(nkCall,
+        newSymNode(getCompilerProc(g, "chckNilDisp")), newSymNode(base.typ.n[1].sym))
+    let elseBranch = newTree(nkElifBranch, ret)
+    disp.add ifBranch
+    disp.add elseBranch
+  else:
+    disp = ret
+
+  body.add disp
+  body.flags.incl nfTransf # should not be further transformed
+  result.ast[bodyPos] = body
+
+proc generateVTableDispatchers(g: ModuleGraph, m: BModule): PNode =
+  result = newNode(nkStmtList)
+  var itemTable = initTable[ItemId, seq[PSym]]()
+  var rootTypeSeq = newSeq[PType]()
+  var rootItemIdCount = initCountTable[ItemId]()
+  for bucket in 0..<g.methods.len:
+    var relevantCols = initIntSet()
+    if relevantCol(g.methods[bucket].methods, 1): incl(relevantCols, 1)
+    sortBucket(g.methods[bucket].methods, relevantCols)
+    let base = g.methods[bucket].methods[^1]
+    let baseType = base.typ[1].skipTypes(skipPtrs-{tyTypeDesc})
+    if baseType.itemId in g.objectTree:
+      let methodIndexLen = g.bucketTable[baseType.itemId]
+      if baseType.itemId notin itemTable: # once is enough
+        rootTypeSeq.add baseType
+        itemTable[baseType.itemId] = newSeq[PSym](methodIndexLen)
+
+        sort(g.objectTree[baseType.itemId], cmp = proc (x, y: tuple[depth: int, value: PType]): int =
+          if x.depth >= y.depth: 1
+          else: -1
+          )
+
+        for item in g.objectTree[baseType.itemId]:
+          if item.value.itemId notin itemTable:
+            itemTable[item.value.itemId] = newSeq[PSym](methodIndexLen)
+
+      var mIndex = 0 # here is the correpsonding index
+      if baseType.itemId notin rootItemIdCount:
+        rootItemIdCount[baseType.itemId] = 1
+      else:
+        mIndex = rootItemIdCount[baseType.itemId]
+        rootItemIdCount.inc(baseType.itemId)
+      for idx in 0..<g.methods[bucket].methods.len:
+        let obj = g.methods[bucket].methods[idx].typ[1].skipTypes(skipPtrs)
+        itemTable[obj.itemId][mIndex] = g.methods[bucket].methods[idx]
+      result.add newSymNode(genVTableDispatcher(g, g.methods[bucket].methods, mIndex))
+    else: # if the base object doesn't have this method
+      result.add newSymNode(genIfDispatcher(g, g.methods[bucket].methods, relevantCols))
+
+  for baseType in rootTypeSeq:
+    initializeVTable(m, baseType, itemTable[baseType.itemId])
+    let root = baseType.itemId
+    for item in g.objectTree[root]:
+      let typ = item.value.skipTypes(skipPtrs)
+      let idx = typ.itemId
+      for mIndex in 0..<itemTable[idx].len:
+        if itemTable[idx][mIndex] == nil:
+          let parentIndex = typ[0].skipTypes(skipPtrs).itemId
+          itemTable[idx][mIndex] = itemTable[parentIndex][mIndex]
+      initializeVTable(m, typ, itemTable[idx])
+
+proc generateMethodDispatchers(g: ModuleGraph, m: BModule): PNode {.inline.} =
+  if {optMultiMethods, optNoMain} * g.config.globalOptions != {} or g.config.selectedGC notin {gcArc, gcOrc}:
+    result = generateMethodIfDispatchers(g)
+  else:
+    result = generateVTableDispatchers(g, m)
+
 proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   ## Also called from IC.
   if sfMainModule in m.module.flags:
@@ -2131,7 +2285,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
 
       if m.g.forwardedProcs.len == 0:
         incl m.flags, objHasKidsValid
-      let disp = generateMethodDispatchers(graph)
+      let disp = generateMethodDispatchers(graph, m)
       for x in disp: genProcAux(m, x.sym)
 
   let mm = m

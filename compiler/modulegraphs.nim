@@ -18,6 +18,7 @@ import ic / [packed_ast, ic]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
+
 type
   SigHash* = distinct MD5Digest
 
@@ -89,7 +90,11 @@ type
     owners*: seq[PSym]
     suggestSymbols*: Table[FileIndex, seq[SymInfoPair]]
     suggestErrors*: Table[FileIndex, seq[Suggest]]
+
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
+    bucketTable*: CountTable[ItemId]
+    objectTree*: Table[ItemId, seq[tuple[depth: int, value: PType]]]
+
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
