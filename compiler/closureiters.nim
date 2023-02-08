@@ -1325,13 +1325,13 @@ type
     config: ConfigRef
     blocks: seq[(PNode, int)]
     idgen: IdGenerator
-  FreshVarsContext = object
-    tab: Table[int, PSym]
-    config: ConfigRef
-    info: TLineInfo
-    idgen: IdGenerator
+  FreshVarsContext* = object
+    tab*: Table[int, PSym]
+    config*: ConfigRef
+    info*: TLineInfo
+    idgen*: IdGenerator
 
-proc freshVars(n: PNode; c: var FreshVarsContext): PNode =
+proc freshVars*(n: PNode; c: var FreshVarsContext): PNode =
   case n.kind
   of nkSym:
     let x = c.tab.getOrDefault(n.sym.id)

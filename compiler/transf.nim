@@ -18,6 +18,8 @@
 # * performs lambda lifting for closure support
 # * transforms 'defer' into a 'try finally' statement
 
+import std / tables
+
 import
   options, ast, astalgo, trees, msgs,
   idents, renderer, types, semfold, magicsys, cgmeth,
@@ -445,12 +447,13 @@ proc transformYield(c: PTransf, n: PNode): PNode =
       result.add(asgnTo(lhs, rhs))
 
   inc(c.transCon.yieldStmts)
-  if c.transCon.yieldStmts <= 1:
+  if c.transCon.yieldStmts <= 1 or true:
     # common case
     result.add(c.transCon.forLoopBody)
   else:
     # we need to introduce new local variables:
-    result.add(introduceNewLocalVars(c, c.transCon.forLoopBody))
+    var vars = FreshVarsContext(tab: initTable[int, PSym](), config: c.graph.config, info: n.info, idgen: c.idgen)
+    result.add freshVars(c.transCon.forLoopBody, vars)
 
   for idx in 0 ..< result.len:
     var changeNode = result[idx]
