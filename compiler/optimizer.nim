@@ -110,7 +110,7 @@ proc analyse(c: var Con; b: var BasicBlock; n: PNode) =
     var reverse = false
     if n[0].kind == nkSym:
       let s = n[0].sym
-      if s.magic == mWasMoved or s.name.s == "=wasMoved":
+      if s.name.s == "=wasMoved": # todo normalize?
         b.wasMovedLocs.add n
         special = true
       elif s.name.s == "=destroy":

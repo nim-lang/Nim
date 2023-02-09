@@ -137,15 +137,21 @@ proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
   ## **Note**: The `finalizer` refers to the type `T`, not to the object!
   ## This means that for each object of type `T` the finalizer will be called!
 
-proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
+proc `=wasMoved`*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   ## Resets an object `obj` to its initial (binary zero) value to signify
   ## it was "moved" and to signify its destructor should do nothing and
   ## ideally be optimized away.
   discard
 
+proc wasMoved*[T](obj: var T) {.inline, noSideEffect, deprecated.} =
+  ## Resets an object `obj` to its initial (binary zero) value to signify
+  ## it was "moved" and to signify its destructor should do nothing and
+  ## ideally be optimized away.
+  `=wasMoved`(obj)
+
 proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
   result = x
-  wasMoved(x)
+  `=wasMoved`(x)
 
 type
   range*[T]{.magic: "Range".}         ## Generic type to construct range types.
