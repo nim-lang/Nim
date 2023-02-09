@@ -284,6 +284,12 @@ proc registerAdditionalOps*(c: PCtx) =
       stackTrace2(c, "isExported() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n)
     setResult(a, sfExported in n.sym.flags)
 
+  registerCallback c, "stdlib.macrocache.hasKey", proc (a: VmArgs) =
+    let
+      table = getString(a, 0)
+      key = getString(a, 1)
+    setResult(a, table in c.graph.cacheTables and key in c.graph.cacheTables[table])
+
   registerCallback c, "stdlib.vmutils.vmTrace", proc (a: VmArgs) =
     c.config.isVmTrace = getBool(a, 0)
 
