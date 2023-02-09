@@ -81,7 +81,7 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
   let x = arg.skipConv
   if (x.kind == nkCurly and formal.kind == tySet and formal.base.kind != tyGenericParam) or
-    (x.kind in {nkPar, nkTupleConstr}) and formal.kind notin {tyUntyped, tyBuiltInTypeClass}:
+    (x.kind in {nkPar, nkTupleConstr}) and formal.kind notin {tyUntyped, tyBuiltInTypeClass, tyAnything}:
     changeType(c, x, formal, check=true)
   result = arg
   result = skipHiddenSubConv(result, c.graph, c.idgen)
@@ -405,9 +405,6 @@ proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags; expectedTyp
       evaluated = evalAtCompileTime(c, result)
       if evaluated != nil: return evaluated
 
-when not defined(nimHasSinkInference):
-  {.pragma: nosinks.}
-
 include hlo, seminst, semcall
 
 proc resetSemFlag(n: PNode) =
@@ -439,7 +436,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
       # does not mean we expect a tyTypeDesc.
       retType = retType[0]
     case retType.kind
-    of tyUntyped:
+    of tyUntyped, tyAnything:
       # Not expecting a type here allows templates like in ``tmodulealias.in``.
       result = semExpr(c, result, flags, expectedType)
     of tyTyped:
@@ -554,8 +551,8 @@ proc pickCaseBranchIndex(caseExpr, matched: PNode): int =
     return caseExpr.len - 1
 
 proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode]
-proc defaultNodeField(c: PContext, a: PNode): PNode
 proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode
+proc defaultNodeField(c: PContext, a: PNode): PNode
 
 const defaultFieldsSkipTypes = {tyGenericInst, tyAlias, tySink}
 
@@ -616,8 +613,9 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
     if field.ast != nil: #Try to use default value
       result.add newTree(nkExprColonExpr, recNode, field.ast)
     elif recType.kind in {tyObject, tyArray, tyTuple}:
-      let asgnExpr = defaultNodeField(c, recNode, recNode.typ)
+      let asgnExpr = defaultNodeField(c, recNode, recType)
       if asgnExpr != nil:
+        asgnExpr.typ = recType
         asgnExpr.flags.incl nfUseDefaultField
         result.add newTree(nkExprColonExpr, recNode, asgnExpr)
   else:
@@ -626,10 +624,10 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
 proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
   let aTypSkip = aTyp.skipTypes(defaultFieldsSkipTypes)
   if aTypSkip.kind == tyObject:
-    let child = defaultFieldsForTheUninitialized(c, aTyp.skipTypes(defaultFieldsSkipTypes).n)
+    let child = defaultFieldsForTheUninitialized(c, aTypSkip.n)
     if child.len > 0:
-      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTyp))
-      asgnExpr.typ = aTyp
+      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTypSkip))
+      asgnExpr.typ = aTypSkip
       asgnExpr.sons.add child
       result = semExpr(c, asgnExpr)
   elif aTypSkip.kind == tyArray:
@@ -638,10 +636,10 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
     if child != nil:
       let node = newNode(nkIntLit)
       node.intVal = toInt64(lengthOrd(c.graph.config, aTypSkip))
-      result = semExpr(c, newTree(nkCall, newSymNode(getSysSym(c.graph, a.info, "arrayWith"), a.info),
-              semExprWithType(c, child),
-              node
-                ))
+      result = semExpr(c, newTree(nkCall, newSymNode(getCompilerProc(c.graph, "nimArrayWith"), a.info),
+        semExprWithType(c, child),
+        node
+          ))
       result.typ = aTyp
   elif aTypSkip.kind == tyTuple:
     var hasDefault = false

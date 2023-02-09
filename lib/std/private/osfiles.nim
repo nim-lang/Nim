@@ -7,6 +7,7 @@ export fileExists
 
 import ospaths2, ossymlinks
 
+## .. importdoc:: osdirs.nim, os.nim
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]

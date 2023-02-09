@@ -25,7 +25,7 @@ import std/[
 
   # Strings:
   cstrutils, editdistance, wordwrap, parseutils, ropes,
-  pegs, punycode, strformat, strmisc, strscans, strtabs,
+  pegs, strformat, strmisc, strscans, strtabs,
   strutils, unicode, unidecode,
   # fails due to FFI: encodings
 
@@ -45,7 +45,7 @@ import std/[
   # Internet protocols:
   cookies, httpcore, mimetypes, uri,
   # fails due to FFI: asyncdispatch, asyncfile, asyncftpclient, asynchttpserver,
-  # asyncnet, cgi, httpclient, nativesockets, net, selectors, smtp
+  # asyncnet, cgi, httpclient, nativesockets, net, selectors
   # works but no need to test: asyncstreams, asyncfutures
   
   # Threading:

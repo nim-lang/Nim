@@ -9,7 +9,7 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, tables, ropes, md5_old, modulegraphs
+import ast, tables, ropes, md5, modulegraphs
 from hashes import Hash
 import types
 
@@ -20,7 +20,7 @@ when defined(nimPreviewSlimSystem):
 proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
 proc `&=`(c: var MD5Context, ch: char) =
   # XXX suspicious code here; relies on ch being zero terminated?
-  md5Update(c, unsafeAddr ch, 1)
+  md5Update(c, cast[cstring](unsafeAddr ch), 1)
 
 proc `&=`(c: var MD5Context, i: BiggestInt) =
   md5Update(c, cast[cstring](unsafeAddr i), sizeof(i))

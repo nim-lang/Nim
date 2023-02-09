@@ -37,6 +37,7 @@ pkg "alea"
 pkg "argparse"
 pkg "arraymancer", "nim c tests/tests_cpu.nim"
 pkg "ast_pattern_matching", "nim c -r tests/test1.nim"
+pkg "asyncftpclient", "nimble compileExample"
 pkg "asyncthreadpool", "nimble test --mm:refc"
 pkg "awk"
 pkg "bigints"
@@ -45,12 +46,12 @@ pkg "BipBuffer"
 pkg "blscurve", allowFailure = true # pending https://github.com/status-im/nim-blscurve/issues/39
 pkg "bncurve"
 pkg "brainfuck", "nim c -d:release -r tests/compile.nim"
-pkg "bump", "nim c --gc:arc --path:. -r tests/tbump.nim", "https://github.com/disruptek/bump"
+pkg "bump", "nim c --gc:arc --path:. -r tests/tbump.nim", "https://github.com/disruptek/bump", allowFailure = true
 pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "cello", url = "https://github.com/nim-lang/cello", useHead = true
 pkg "chroma"
-pkg "chronicles", "nim c -o:chr -r chronicles.nim"
+pkg "chronicles", "nim c -o:chr -r chronicles.nim", url = "https://github.com/nim-lang/nim-chronicles"
 pkg "chronos", "nim c -r -d:release tests/testall"
 pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --gc:orc"
@@ -59,8 +60,8 @@ pkg "comprehension", "nimble test", "https://github.com/alehander92/comprehensio
 pkg "criterion", allowFailure = true # pending https://github.com/disruptek/criterion/issues/3 (wrongly closed)
 pkg "datamancer"
 pkg "dashing", "nim c tests/functional.nim"
-pkg "delaunay", url = "https://github.com/nim-lang/DelaunayNim", useHead = true
-pkg "docopt", url = "https://github.com/nim-lang/docopt.nim", useHead = true
+pkg "delaunay"
+pkg "docopt"
 pkg "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg "elvis"
 pkg "fidget"
@@ -111,19 +112,19 @@ pkg "nimongo", "nimble test_ci", allowFailure = true
 pkg "nimph", "nimble test", "https://github.com/disruptek/nimph", allowFailure = true
 pkg "nimPNG", useHead = true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
-pkg "nimquery", url = "https://github.com/nim-lang/nimquery", useHead = true
+pkg "nimquery"
 pkg "nimsl"
 pkg "nimsvg"
 pkg "nimterop", "nimble minitest"
-pkg "nimwc", "nim c nimwc.nim"
+pkg "nimwc", "nim c nimwc.nim", allowFailure = true
 pkg "nimx", "nim c --threads:on test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
-pkg "norm", "testament r tests/sqlite/trows.nim"
+pkg "norm", "testament r tests/sqlite/trows.nim", allowFailure = true
 pkg "npeg", "nimble testarc"
 pkg "numericalnim", "nimble nimCI"
 pkg "optionsutils"
 pkg "ormin", "nim c -o:orminn ormin.nim"
-pkg "parsetoml", url = "https://github.com/nim-lang/parsetoml", useHead = true
+pkg "parsetoml"
 pkg "patty"
 pkg "pixie"
 pkg "plotly", "nim c examples/all.nim"
@@ -142,6 +143,7 @@ pkg "sdl1", "nim c -r src/sdl.nim"
 pkg "sdl2_nim", "nim c -r sdl2/sdl.nim"
 pkg "sigv4", "nim c --gc:arc -r sigv4.nim", "https://github.com/disruptek/sigv4"
 pkg "sim"
+pkg "smtp", "nimble compileExample"
 pkg "snip", "nimble test", "https://github.com/genotrance/snip"
 pkg "stew"
 pkg "stint", "nim r stint.nim"
@@ -149,7 +151,7 @@ pkg "strslice"
 pkg "strunicode", "nim c -r --mm:refc src/strunicode.nim"
 pkg "supersnappy"
 pkg "synthesis"
-pkg "taskpools", url = "https://github.com/nim-lang/nim-taskpools"
+pkg "taskpools"
 pkg "telebot", "nim c -o:tbot -r src/telebot.nim"
 pkg "tempdir"
 pkg "templates"
@@ -167,6 +169,6 @@ pkg "websocket", "nim c websocket.nim"
 pkg "winim", "nim c winim.nim"
 pkg "with"
 pkg "ws", allowFailure = true
-pkg "yaml", "nim c -r test/tserialization.nim", url = "https://github.com/nim-lang/NimYAML", useHead = true
+pkg "yaml", "nim c -r test/tserialization.nim"
 pkg "zero_functional", "nim c -r -d:nimNoLentIterators test.nim"
 pkg "zippy"

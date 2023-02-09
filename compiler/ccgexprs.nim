@@ -1647,6 +1647,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
     return
   if d.k == locNone:
     getTemp(p, n.typ, d)
+  initLocExpr(p, n[1], a)
   # generate call to newSeq before adding the elements per hand:
   let L = toInt(lengthOrd(p.config, n[1].typ))
   if optSeqDestructors in p.config.globalOptions:
@@ -1658,7 +1659,6 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
     var lit = newRopeAppender()
     intLiteral(L, lit)
     genNewSeqAux(p, d, lit, L == 0)
-  initLocExpr(p, n[1], a)
   # bug #5007; do not produce excessive C source code:
   if L < 10:
     for i in 0..<L:
@@ -1879,9 +1879,13 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     # Bug #9279, len(toOpenArray()) has to work:
     if a.kind in nkCallKinds and a[0].kind == nkSym and a[0].sym.magic == mSlice:
       # magic: pass slice to openArray:
+      var m: TLoc
       var b, c: TLoc
+      initLocExpr(p, a[1], m)
       initLocExpr(p, a[2], b)
       initLocExpr(p, a[3], c)
+      if optBoundsCheck in p.options:
+        genBoundsCheck(p, m, b, c)
       if op == mHigh:
         putIntoDest(p, d, e, ropecg(p.module, "($2)-($1)", [rdLoc(b), rdLoc(c)]))
       else:
@@ -2122,7 +2126,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mCard:
       var a: TLoc
       initLocExpr(p, e[1], a)
-      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [rdCharLoc(a), size]))
+      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [addrLoc(p.config, a), size]))
     of mLtSet, mLeSet:
       getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i) # our counter
       initLocExpr(p, e[1], a)
@@ -3196,6 +3200,8 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Rope) =
     result.add "}"
   of tyTuple:
     result.add "{"
+    if p.vccAndC and t.len == 0:
+      result.add "0"
     for i in 0..<t.len:
       if i > 0: result.add ", "
       getDefaultValue(p, t[i], info, result)
@@ -3230,6 +3236,11 @@ proc caseObjDefaultBranch(obj: PNode; branch: Int128): int =
       return i
   assert(false, "unreachable")
 
+proc isEmptyCaseObjectBranch(n: PNode): bool =
+  for it in n:
+    if it.kind == nkSym and not isEmptyType(it.sym.typ): return false
+  return true
+
 proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
                      result: var Rope; count: var int;
                      isConst: bool, info: TLineInfo) =
@@ -3258,7 +3269,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
     let b = lastSon(obj[selectedBranch])
     # designated initilization is the only way to init non first element of unions
     # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
-    if b.kind == nkRecList and b.len > 0:
+    if b.kind == nkRecList and not isEmptyCaseObjectBranch(b):
       result.add "._" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = {"
       getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
       result.add "}"
@@ -3274,6 +3285,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
     if constOrNil != nil:
       for i in 1..<constOrNil.len:
         if constOrNil[i].kind == nkExprColonExpr:
+          assert constOrNil[i][0].kind == nkSym, "illformed object constr; the field is not a sym"
           if constOrNil[i][0].sym.name.id == field.name.id:
             genBracedInit(p, constOrNil[i][1], isConst, field.typ, result)
             return
@@ -3319,6 +3331,8 @@ proc genConstObjConstr(p: BProc; n: PNode; isConst: bool; result: var Rope) =
 
 proc genConstSimpleList(p: BProc, n: PNode; isConst: bool; result: var Rope) =
   result.add "{"
+  if p.vccAndC and n.len == 0 and n.typ.kind == tyArray:
+    getDefaultValue(p, n.typ[1], n.info, result)
   for i in 0..<n.len:
     let it = n[i]
     if i > 0: result.add ",\n"
@@ -3328,6 +3342,8 @@ proc genConstSimpleList(p: BProc, n: PNode; isConst: bool; result: var Rope) =
 
 proc genConstTuple(p: BProc, n: PNode; isConst: bool; tup: PType; result: var Rope) =
   result.add "{"
+  if p.vccAndC and n.len == 0:
+    result.add "0"
   for i in 0..<n.len:
     let it = n[i]
     if i > 0: result.add ",\n"

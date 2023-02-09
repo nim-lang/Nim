@@ -132,12 +132,12 @@ else:
   proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
     importCompilerProc.}
 
-template `+!!`(a, b): untyped = cast[pointer](cast[ByteAddress](a) + b)
+template `+!!`(a, b): untyped = cast[pointer](cast[int](a) + b)
 
 proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
   assert(n.kind == nkCase)
   var d: int
-  let a = cast[ByteAddress](aa)
+  let a = cast[int](aa)
   case n.typ.size
   of 1: d = int(cast[ptr uint8](a +% n.offset)[])
   of 2: d = int(cast[ptr uint16](a +% n.offset)[])

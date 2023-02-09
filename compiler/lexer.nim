@@ -127,6 +127,8 @@ type
     cache*: IdentCache
     when defined(nimsuggest):
       previousToken: TLineInfo
+      tokenEnd*: TLineInfo
+      previousTokenEnd*: TLineInfo
     config*: ConfigRef
 
 proc getLineInfo*(L: Lexer, tok: Token): TLineInfo {.inline.} =
@@ -918,7 +920,7 @@ proc getSymbol(L: var Lexer, tok: var Token) =
     else: break
   tokenEnd(tok, pos-1)
   h = !$h
-  tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
+  tok.ident = L.cache.getIdent(cast[cstring](addr(L.buf[L.bufpos])), pos - L.bufpos, h)
   if (tok.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
       (tok.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
     tok.tokType = tkSymbol
@@ -932,7 +934,7 @@ proc getSymbol(L: var Lexer, tok: var Token) =
 proc endOperator(L: var Lexer, tok: var Token, pos: int,
                  hash: Hash) {.inline.} =
   var h = !$hash
-  tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
+  tok.ident = L.cache.getIdent(cast[cstring](addr(L.buf[L.bufpos])), pos - L.bufpos, h)
   if (tok.ident.id < oprLow) or (tok.ident.id > oprHigh): tok.tokType = tkOpr
   else: tok.tokType = TokType(tok.ident.id - oprLow + ord(tkColon))
   L.bufpos = pos
@@ -1224,6 +1226,10 @@ proc skip(L: var Lexer, tok: var Token) =
 proc rawGetTok*(L: var Lexer, tok: var Token) =
   template atTokenEnd() {.dirty.} =
     when defined(nimsuggest):
+      L.previousTokenEnd.line = L.tokenEnd.line
+      L.previousTokenEnd.col = L.tokenEnd.col
+      L.tokenEnd.line = tok.line.uint16
+      L.tokenEnd.col = getColNumber(L, L.bufpos).int16
       # we attach the cursor to the last *strong* token
       if tok.tokType notin weakTokens:
         L.previousToken.line = tok.line.uint16

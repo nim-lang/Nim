@@ -397,9 +397,9 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy, gcsafe.} =
     xadd(buf, e.name, e.name.len)
     add(buf, "]\n")
     if onUnhandledException != nil:
-      onUnhandledException($buf.addr)
+      onUnhandledException($cast[cstring](buf.addr))
     else:
-      showErrorMessage(buf.addr, L)
+      showErrorMessage(cast[cstring](buf.addr), L)
 
 proc reportUnhandledError(e: ref Exception) {.nodestroy, gcsafe.} =
   if unhandledExceptionHook != nil:

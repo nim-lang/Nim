@@ -26,7 +26,7 @@ when declared(math.signbit):
 from std/envvars import getEnv, existsEnv, delEnv, putEnv, envPairs
 from std/os import getAppFilename
 from std/private/oscommon import dirExists, fileExists
-from std/private/osdirs import walkDir
+from std/private/osdirs import walkDir, createDir
 
 from std/times import cpuTime
 from std/hashes import hash
@@ -36,7 +36,9 @@ from std/osproc import nil
 when defined(nimPreviewSlimSystem):
   import std/syncio
 else:
-  from std/formatfloat import addFloatRoundtrip, addFloatSprintf 
+  from std/formatfloat import addFloatRoundtrip, addFloatSprintf
+
+from std/strutils import formatBiggestFloat, FloatFormatMode
 
 # There are some useful procs in vmconv.
 import vmconv, vmmarshal
@@ -49,6 +51,10 @@ template osop(op) {.dirty.} =
 
 template oscommonop(op) {.dirty.} =
   registerCallback(c, "stdlib.oscommon." & astToStr(op), `op Wrapper`)
+
+template osdirsop(op) {.dirty.} =
+  registerCallback(c, "stdlib.osdirs." & astToStr(op), `op Wrapper`)
+
 template envvarsop(op) {.dirty.} =
   registerCallback(c, "stdlib.envvars." & astToStr(op), `op Wrapper`)
 
@@ -105,7 +111,17 @@ template wrap2svoid(op, modop) {.dirty.} =
     op(getString(a, 0), getString(a, 1))
   modop op
 
-template wrapDangerous(op, modop) {.dirty.} =
+template wrapDangerous1svoid(op, modop) {.dirty.} =
+  if vmopsDanger notin c.config.features and (defined(nimsuggest) or c.config.cmd == cmdCheck):
+    proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+      discard
+    modop op
+  else:
+    proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+      op(getString(a, 0))
+    modop op
+
+template wrapDangerous2svoid(op, modop) {.dirty.} =
   if vmopsDanger notin c.config.features and (defined(nimsuggest) or c.config.cmd == cmdCheck):
     proc `op Wrapper`(a: VmArgs) {.nimcall.} =
       discard
@@ -127,39 +143,40 @@ proc staticWalkDirImpl(path: string, relative: bool): PNode =
   for k, f in walkDir(path, relative):
     result.add toLit((k, f))
 
-when defined(nimHasInvariant):
-  from std / compilesettings import SingleValueSetting, MultipleValueSetting
+from std / compilesettings import SingleValueSetting, MultipleValueSetting
 
-  proc querySettingImpl(conf: ConfigRef, switch: BiggestInt): string =
-    case SingleValueSetting(switch)
-    of arguments: result = conf.arguments
-    of outFile: result = conf.outFile.string
-    of outDir: result = conf.outDir.string
-    of nimcacheDir: result = conf.getNimcacheDir().string
-    of projectName: result = conf.projectName
-    of projectPath: result = conf.projectPath.string
-    of projectFull: result = conf.projectFull.string
-    of command: result = conf.command
-    of commandLine: result = conf.commandLine
-    of linkOptions: result = conf.linkOptions
-    of compileOptions: result = conf.compileOptions
-    of ccompilerPath: result = conf.cCompilerPath
-    of backend: result = $conf.backend
-    of libPath: result = conf.libpath.string
-    of gc: result = $conf.selectedGC
-    of mm: result = $conf.selectedGC
+proc querySettingImpl(conf: ConfigRef, switch: BiggestInt): string =
+  {.push warning[Deprecated]:off.}
+  case SingleValueSetting(switch)
+  of arguments: result = conf.arguments
+  of outFile: result = conf.outFile.string
+  of outDir: result = conf.outDir.string
+  of nimcacheDir: result = conf.getNimcacheDir().string
+  of projectName: result = conf.projectName
+  of projectPath: result = conf.projectPath.string
+  of projectFull: result = conf.projectFull.string
+  of command: result = conf.command
+  of commandLine: result = conf.commandLine
+  of linkOptions: result = conf.linkOptions
+  of compileOptions: result = conf.compileOptions
+  of ccompilerPath: result = conf.cCompilerPath
+  of backend: result = $conf.backend
+  of libPath: result = conf.libpath.string
+  of gc: result = $conf.selectedGC
+  of mm: result = $conf.selectedGC
+  {.pop.}
 
-  proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
-    template copySeq(field: untyped): untyped =
-      for i in field: result.add i.string
+proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
+  template copySeq(field: untyped): untyped =
+    for i in field: result.add i.string
 
-    case MultipleValueSetting(switch)
-    of nimblePaths: copySeq(conf.nimblePaths)
-    of searchPaths: copySeq(conf.searchPaths)
-    of lazyPaths: copySeq(conf.lazyPaths)
-    of commandArgs: result = conf.commandArgs
-    of cincludes: copySeq(conf.cIncludes)
-    of clibs: copySeq(conf.cLibs)
+  case MultipleValueSetting(switch)
+  of nimblePaths: copySeq(conf.nimblePaths)
+  of searchPaths: copySeq(conf.searchPaths)
+  of lazyPaths: copySeq(conf.lazyPaths)
+  of commandArgs: result = conf.commandArgs
+  of cincludes: copySeq(conf.cIncludes)
+  of clibs: copySeq(conf.cLibs)
 
 proc stackTrace2(c: PCtx, msg: string, n: PNode) =
   stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr, msg, n.info)
@@ -233,18 +250,18 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap1svoid(delEnv, envvarsop)
     wrap1s(dirExists, oscommonop)
     wrap1s(fileExists, oscommonop)
-    wrapDangerous(writeFile, ioop)
+    wrapDangerous2svoid(writeFile, ioop)
+    wrapDangerous1svoid(createDir, osdirsop)
     wrap1s(readFile, ioop)
     wrap2si(readLines, ioop)
     systemop getCurrentExceptionMsg
     systemop getCurrentException
-    registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
+    registerCallback c, "stdlib.osdirs.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
-    when defined(nimHasInvariant):
-      registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) =
-        setResult(a, querySettingImpl(c.config, getInt(a, 0)))
-      registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) =
-        setResult(a, querySettingSeqImpl(c.config, getInt(a, 0)))
+    registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) =
+      setResult(a, querySettingImpl(c.config, getInt(a, 0)))
+    registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) =
+      setResult(a, querySettingSeqImpl(c.config, getInt(a, 0)))
 
     if defined(nimsuggest) or c.config.cmd == cmdCheck:
       discard "don't run staticExec for 'nim suggest'"
@@ -266,6 +283,12 @@ proc registerAdditionalOps*(c: PCtx) =
     if n.kind != nkSym:
       stackTrace2(c, "isExported() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n)
     setResult(a, sfExported in n.sym.flags)
+
+  registerCallback c, "stdlib.macrocache.hasKey", proc (a: VmArgs) =
+    let
+      table = getString(a, 0)
+      key = getString(a, 1)
+    setResult(a, table in c.graph.cacheTables and key in c.graph.cacheTables[table])
 
   registerCallback c, "stdlib.vmutils.vmTrace", proc (a: VmArgs) =
     c.config.isVmTrace = getBool(a, 0)
@@ -313,8 +336,9 @@ proc registerAdditionalOps*(c: PCtx) =
     registerCallback c, "stdlib.osproc.execCmdEx", proc (a: VmArgs) {.nimcall.} =
       let options = getNode(a, 1).fromLit(set[osproc.ProcessOption])
       a.setResult osproc.execCmdEx(getString(a, 0), options).toLit
-    registerCallback c, "stdlib.times.getTime", proc (a: VmArgs) {.nimcall.} =
-      setResult(a, times.getTime().toLit)
+    registerCallback c, "stdlib.times.getTimeImpl", proc (a: VmArgs) =
+      let obj = a.getNode(0).typ.n
+      setResult(a, times.getTime().toTimeLit(c, obj, a.currentLineInfo))
 
   proc getEffectList(c: PCtx; a: VmArgs; effectIndex: int) =
     let fn = getNode(a, 0)
@@ -357,6 +381,10 @@ proc registerAdditionalOps*(c: PCtx) =
     let p = a.getVar(0)
     let x = a.getFloat(1)
     addFloatSprintf(p.strVal, x)
+
+  registerCallback c, "stdlib.strutils.formatBiggestFloat", proc(a: VmArgs) =
+    setResult(a, formatBiggestFloat(a.getFloat(0), FloatFormatMode(a.getInt(1)),
+                                    a.getInt(2), chr(a.getInt(3))))
 
   wrapIterator("stdlib.envvars.envPairsImplSeq"): envPairs()
 

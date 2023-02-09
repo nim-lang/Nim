@@ -23,7 +23,7 @@ when not compileOption("threads"):
 import cpuinfo, cpuload, locks, os
 
 when defined(nimPreviewSlimSystem):
-  import std/[assertions, threads]
+  import std/[assertions, typedthreads, sysatomics]
 
 {.push stackTrace:off.}
 

@@ -29,6 +29,7 @@ var backendLogging = true
 var simulate = false
 var optVerbose = false
 var useMegatest = true
+var valgrindEnabled = true
 
 proc verboseCmd(cmd: string) =
   if optVerbose:
@@ -60,6 +61,7 @@ Options:
   --colors:on|off           Turn messages coloring on|off.
   --backendLogging:on|off   Disable or enable backend logging. By default turned on.
   --megatest:on|off         Enable or disable megatest. Default is on.
+  --valgrind:on|off         Enable or disable valgrind support. Default is on.
   --skipFrom:file           Read tests to skip from `file` - one test per line, # comments ignored
 
 On Azure Pipelines, testament will also publish test results via Azure Pipelines' Test Management API
@@ -487,7 +489,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
             args = @["--unhandled-rejections=strict", exeFile] & args
           else:
             exeCmd = exeFile.dup(normalizeExe)
-            if expected.useValgrind != disabled:
+            if valgrindEnabled and expected.useValgrind != disabled:
               var valgrindOptions = @["--error-exitcode=1"]
               if expected.useValgrind != leaking:
                 valgrindOptions.add "--leak-check=yes"
@@ -507,6 +509,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
             else:
               buf
           if exitCode != expected.exitCode:
+            given.err = reExitcodesDiffer
             r.addResult(test, target, extraOptions, "exitcode: " & $expected.exitCode,
                               "exitcode: " & $exitCode & "\n\nOutput:\n" &
                               bufB, reExitcodesDiffer)
@@ -661,6 +664,14 @@ proc main() =
         useMegatest = true
       of "off":
         useMegatest = false
+      else:
+        quit Usage
+    of "valgrind":
+      case p.val:
+      of "on":
+        valgrindEnabled = true
+      of "off":
+        valgrindEnabled = false
       else:
         quit Usage
     of "backendlogging":

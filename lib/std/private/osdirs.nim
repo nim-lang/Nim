@@ -1,3 +1,5 @@
+## .. importdoc:: osfiles.nim, appdirs.nim, paths.nim
+
 include system/inclrtl
 import std/oserrors
 
@@ -231,7 +233,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false,
         while true:
           var x = readdir(d)
           if x == nil: break
-          var y = $cstring(addr x.d_name)
+          var y = $cast[cstring](addr x.d_name)
           if y != "." and y != "..":
             var s: Stat
             let path = dir / y

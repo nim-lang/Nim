@@ -299,6 +299,7 @@ type
     sfInjectDestructors # whether the proc needs the 'injectdestructors' transformation
     sfNeverRaises     # proc can never raise an exception, not even OverflowDefect
                       # or out-of-memory
+    sfSystemRaisesDefect # proc in the system can raise defects
     sfUsedInFinallyOrExcept  # symbol is used inside an 'except' or 'finally'
     sfSingleUsedTemp  # For temporaries that we know will only be used once
     sfNoalias         # 'noalias' annotation, means C's 'restrict'
@@ -705,13 +706,13 @@ type
     mNctPut, mNctLen, mNctGet, mNctHasNext, mNctNext,
 
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
-    mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
+    mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetStrVal, mNLineInfo,
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mNSigHash, mNSizeOf,
     mNBindSym, mNCallSite,
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl, mNGenSym,
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo, mGetTypeInfoV2,
-    mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
+    mNimvm, mIntDefine, mStrDefine, mBoolDefine, mGenericDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
     mSymIsInstantiationOf, mNodeId, mPrivateAccess, mZeroDefault
 
@@ -795,6 +796,8 @@ type
       ident*: PIdent
     else:
       sons*: TNodeSeq
+    when defined(nimsuggest):
+      endInfo*: TLineInfo
 
   TStrTable* = object         # a table[PIdent] of PSym
     counter*: int
@@ -891,6 +894,8 @@ type
     typ*: PType
     name*: PIdent
     info*: TLineInfo
+    when defined(nimsuggest):
+      endInfo*: TLineInfo
     owner*: PSym
     flags*: TSymFlags
     ast*: PNode               # syntax tree of proc, iterator, etc.:
@@ -1689,6 +1694,8 @@ proc copyNode*(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else: discard
+  when defined(nimsuggest):
+    result.endInfo = src.endInfo
 
 template transitionNodeKindCommon(k: TNodeKind) =
   let obj {.inject.} = n[]
@@ -1741,6 +1748,8 @@ template copyNodeImpl(dst, src, processSonsStmt) =
   if src == nil: return
   dst = newNode(src.kind)
   dst.info = src.info
+  when defined(nimsuggest):
+    result.endInfo = src.endInfo
   dst.typ = src.typ
   dst.flags = src.flags * PersistentNodeFlags
   dst.comment = src.comment
@@ -2045,6 +2054,9 @@ template detailedInfo*(sym: PSym): string =
 
 proc isInlineIterator*(typ: PType): bool {.inline.} =
   typ.kind == tyProc and tfIterator in typ.flags and typ.callConv != ccClosure
+
+proc isIterator*(typ: PType): bool {.inline.} =
+  typ.kind == tyProc and tfIterator in typ.flags
 
 proc isClosureIterator*(typ: PType): bool {.inline.} =
   typ.kind == tyProc and tfIterator in typ.flags and typ.callConv == ccClosure

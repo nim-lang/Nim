@@ -586,7 +586,10 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     else:
       result = plugin(c, n)
   of mNew:
-    result = addDefaultFieldForNew(c, n)
+    if n[0].sym.name.s == "unsafeNew": # special case for unsafeNew
+      result = n
+    else:
+      result = addDefaultFieldForNew(c, n)
   of mNewFinalize:
     result = semNewFinalize(c, n)
   of mDestroy:

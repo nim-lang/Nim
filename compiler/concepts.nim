@@ -274,7 +274,7 @@ proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
 proc matchSyms(c: PContext, n: PNode; kinds: set[TSymKind]; m: var MatchCon): bool =
   ## Walk the current scope, extract candidates which the same name as 'n[namePos]',
   ## 'n' is the nkProcDef or similar from the concept that we try to match.
-  let candidates = searchInScopesFilterBy(c, n[namePos].sym.name, kinds)
+  let candidates = searchInScopesAllCandidatesFilterBy(c, n[namePos].sym.name, kinds)
   for candidate in candidates:
     #echo "considering ", typeToString(candidate.typ), " ", candidate.magic
     m.magic = candidate.magic
@@ -316,7 +316,7 @@ proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var TIdTable; invo
   ## concept's requirements. If so, we return true and fill the 'bindings' with pairs of
   ## (typeVar, instance) pairs. ('typeVar' is usually simply written as a generic 'T'.)
   ## 'invocation' can be nil for atomic concepts. For non-atomic concepts, it contains the
-  ## 'C[S, T]' parent type that we look for. We need this because we need to store bindings
+  ## `C[S, T]` parent type that we look for. We need this because we need to store bindings
   ## for 'S' and 'T' inside 'bindings' on a successful match. It is very important that
   ## we do not add any bindings at all on an unsuccessful match!
   var m = MatchCon(inferred: @[], potentialImplementation: arg)

@@ -467,10 +467,10 @@ else:
       raiseInvalidLibrary MainProc
 
   proc SSL_CTX_set_ciphersuites*(ctx: SslCtx, str: cstring): cint =
-    var theProc {.global.}: proc(ctx: SslCtx, str: cstring) {.cdecl, gcsafe.}
+    var theProc {.global.}: proc(ctx: SslCtx, str: cstring): cint {.cdecl, gcsafe.}
     if theProc.isNil:
       theProc = cast[typeof(theProc)](sslSymThrows("SSL_CTX_set_ciphersuites"))
-    theProc(ctx, str)
+    result = theProc(ctx, str)
 
 proc SSL_new*(context: SslCtx): SslPtr{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_free*(ssl: SslPtr){.cdecl, dynlib: DLLSSLName, importc.}
@@ -804,10 +804,10 @@ proc md5_File*(file: string): string {.raises: [IOError,Exception].} =
   while (let bytes = f.readChars(buf); bytes > 0):
     discard md5_Update(ctx, buf[0].addr, cast[csize_t](bytes))
 
-  discard md5_Final(buf[0].addr, ctx)
+  discard md5_Final(cast[cstring](buf[0].addr), ctx)
   f.close
 
-  result = hexStr(addr buf)
+  result = hexStr(cast[cstring](addr buf))
 
 proc md5_Str*(str: string): string =
   ## Generate MD5 hash for a string. Result is a 32 character
@@ -824,8 +824,8 @@ proc md5_Str*(str: string): string =
     discard md5_Update(ctx, input[i].addr, cast[csize_t](L))
     i += L
 
-  discard md5_Final(addr res, ctx)
-  result = hexStr(addr res)
+  discard md5_Final(cast[cstring](addr res), ctx)
+  result = hexStr(cast[cstring](addr res))
 
 when defined(nimHasStyleChecks):
   {.pop.}

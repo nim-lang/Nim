@@ -498,6 +498,9 @@ proc clikeNextToken(g: var GeneralTokenizer, keywords: openArray[string],
           of '\0':
             break
           else: inc(pos)
+      else:
+        g.kind = gtOperator
+        while g.buf[pos] in OpChars: inc(pos)
     of '#':
       inc(pos)
       if hasPreprocessor in flags:

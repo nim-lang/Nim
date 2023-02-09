@@ -40,7 +40,7 @@ const
 
 iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym =
   internalAssert c.config, n.kind == nkGenericParams
-  for i, a in n.pairs:
+  for a in n.items:
     internalAssert c.config, a.kind == nkSym
     var q = a.sym
     if q.typ.kind in {tyTypeDesc, tyGenericParam, tyStatic, tyConcept}+tyTypeClasses:

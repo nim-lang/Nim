@@ -38,6 +38,7 @@ type
     resultSym*: PSym          # the result symbol (if we are in a proc)
     nestedLoopCounter*: int   # whether we are in a loop or not
     nestedBlockCounter*: int  # whether we are in a block or not
+    breakInLoop*: bool        # whether we are in a loop without block
     next*: PProcCon           # used for stacking procedure contexts
     mappingExists*: bool
     mapping*: TIdTable
@@ -69,10 +70,12 @@ type
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efWantValue, efOperand, efNoSemCheck,
     efNoEvaluateGeneric, efInCall, efFromHlo, efNoSem2Check,
-    efNoUndeclared, efIsDotCall, efCannotBeDotCall
+    efNoUndeclared, efIsDotCall, efCannotBeDotCall,
       # Use this if undeclared identifiers should not raise an error during
       # overload resolution.
-    efNoDiagnostics
+    efNoDiagnostics,
+    efTypeAllowed # typeAllowed will be called after
+    efWantNoDefaults
 
   TExprFlags* = set[TExprFlag]
 

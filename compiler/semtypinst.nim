@@ -499,10 +499,20 @@ proc propagateFieldFlags(t: PType, n: PNode) =
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   template bailout =
-    if t.sym != nil and sfGeneratedType in t.sym.flags:
-      # Only consider the recursion limit if the symbol is a type with generic
-      # parameters that have not been explicitly supplied, typechecking should
-      # terminate when generic parameters are explicitly supplied.
+    if (t.sym == nil) or (t.sym != nil and sfGeneratedType in t.sym.flags):
+      # In the first case 't.sym' can be 'nil' if the type is a ref/ptr, see
+      # issue https://github.com/nim-lang/Nim/issues/20416 for more details.
+      # Fortunately for us this works for now because partial ref/ptr types are
+      # not allowed in object construction, eg.
+      #   type
+      #     Container[T] = ...
+      #     O = object
+      #      val: ref Container
+      #
+      # In the second case only consider the recursion limit if the symbol is a
+      # type with generic parameters that have not been explicitly supplied,
+      # typechecking should terminate when generic parameters are explicitly
+      # supplied.
       if cl.recursionLimit > 100:
         # bail out, see bug #2509. But note this caching is in general wrong,
         # look at this example where TwoVectors should not share the generic

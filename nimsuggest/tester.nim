@@ -66,7 +66,7 @@ proc parseTest(filename: string; epcMode=false): Test =
       elif x.startsWith(">"):
         # since 'markers' here are not complete yet, we do the $substitutions
         # afterwards
-        result.script.add((x.substr(1).replaceWord("$path", tpath), ""))
+        result.script.add((x.substr(1).replaceWord("$path", tpath).replaceWord("$file", filename), ""))
       elif x.len > 0:
         # expected output line:
         let x = x % ["file", filename, "lib", libpath]
@@ -218,7 +218,12 @@ proc sexpToAnswer(s: SexpNode): string =
       result.add doc
       result.add '\t'
       result.addInt a[8].getNum
-      if a.len >= 10:
+      if a.len >= 11:
+        result.add '\t'
+        result.addInt a[9].getNum
+        result.add '\t'
+        result.addInt a[10].getNum
+      elif a.len >= 10:
         result.add '\t'
         result.add a[9].getStr
     result.add '\L'
@@ -229,8 +234,8 @@ proc doReport(filename, answer, resp: string; report: var string) =
     var hasDiff = false
     for i in 0..min(resp.len-1, answer.len-1):
       if resp[i] != answer[i]:
-        report.add "\n  Expected:  " & resp.substr(i, i+200)
-        report.add "\n  But got:   " & answer.substr(i, i+200)
+        report.add "\n  Expected:\n" & resp
+        report.add "\n  But got:\n" & answer
         hasDiff = true
         break
     if not hasDiff:
@@ -342,8 +347,8 @@ proc main() =
   if os.paramCount() > 0:
     let x = os.paramStr(1)
     let xx = expandFilename x
+    # run only stdio when running single test
     failures += runTest(xx)
-    failures += runEpcTest(xx)
   else:
     let files = toSeq(walkFiles(tpath / "t*.nim"))
     for i, x in files:

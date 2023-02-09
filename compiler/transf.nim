@@ -31,7 +31,7 @@ type
   TransformBodyFlag* = enum
     dontUseCache, useCache
 
-proc transformBody*(g: ModuleGraph; idgen: IdGenerator, prc: PSym, flag: TransformBodyFlag): PNode
+proc transformBody*(g: ModuleGraph; idgen: IdGenerator, prc: PSym, flag: TransformBodyFlag, force = false): PNode
 
 import closureiters, lambdalifting
 
@@ -68,7 +68,6 @@ proc newTransNode(kind: TNodeKind, n: PNode,
                   sons: int): PNode {.inline.} =
   var x = newNodeIT(kind, n.info, n.typ)
   newSeq(x.sons, sons)
-  x.typ = n.typ
 #  x.flags = n.flags
   result = x
 
@@ -1066,13 +1065,6 @@ proc transform(c: PTransf, n: PNode): PNode =
       result = n
   of nkExceptBranch:
     result = transformExceptBranch(c, n)
-  of nkObjConstr:
-    result = n
-    if result.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject or
-       result.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyRef and result.typ.skipTypes({tyGenericInst, tyAlias, tySink})[0].kind == tyObject:
-      result.sons.add result[0].sons
-      result[0] = newNodeIT(nkType, result.info, result.typ)
-    result = transformSons(c, result)
   of nkCheckedFieldExpr:
     result = transformSons(c, n)
     if result[0].kind != nkDotExpr:
@@ -1153,7 +1145,7 @@ template liftDefer(c, root) =
   if c.deferDetected:
     liftDeferAux(root)
 
-proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: TransformBodyFlag): PNode =
+proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: TransformBodyFlag, force = false): PNode =
   assert prc.kind in routineKinds
 
   if prc.transformedBody != nil:
@@ -1163,7 +1155,7 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: Transfo
   else:
     prc.transformedBody = newNode(nkEmpty) # protects from recursion
     var c = openTransf(g, prc.getModule, "", idgen)
-    result = liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen)
+    result = liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen, force)
     result = processTransf(c, result, prc)
     liftDefer(c, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config, c.idgen)
