@@ -255,13 +255,7 @@ proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
     #body.add newAsgnStmt(blob, x)
 
     var wasMovedCall = newNodeI(nkCall, c.info)
-    let op = getAttachedOp(c.g, t, attachedWasMoved)
-    if op != nil and sfError in op.flags:
-      globalError(c.g.config, c.info, "Error: '=wasMoved' is not available")
-    wasMovedCall.add(newSymNode(if op != nil:
-        op
-      else:
-        createMagic(c.g, c.idgen, "wasMoved", mWasMoved)))
+    wasMovedCall.add(newSymNode(createMagic(c.g, c.idgen, "wasMoved", mWasMoved)))
     wasMovedCall.add x # mWasMoved does not take the address
     body.add wasMovedCall
 
@@ -447,8 +441,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       onUse(c.info, op)
       body.add newDeepCopyCall(c, op, x, y)
       result = true
-  of attachedWasMoved:
-    doAssert false
+  of attachedWasMoved: assert(false, "cannot happen")
 
 proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
   var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), nextSymId(c.idgen), c.fn, c.info)
@@ -532,8 +525,7 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     if canFormAcycle(t.elemType):
       # follow all elements:
       forallElements(c, t, body, x, y)
-  of attachedWasMoved:
-    doAssert false
+  of attachedWasMoved: assert(false, "cannot happen")
 
 proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   createTypeBoundOps(c.g, c.c, t, body.info, c.idgen)
@@ -571,8 +563,7 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       if op == nil:
         return # protect from recursion
       body.add newHookCall(c, op, x, y)
-  of attachedWasMoved:
-    doAssert false
+  of attachedWasMoved: assert(false, "cannot happen")
 
 proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
@@ -588,8 +579,7 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genBuiltin(c, mDestroy, "destroy", x)
   of attachedTrace:
     discard "strings are atomic and have no inner elements that are to trace"
-  of attachedWasMoved:
-    doAssert false
+  of attachedWasMoved: assert(false, "cannot happen")
 
 proc cyclicType*(t: PType): bool =
   case t.kind
@@ -688,8 +678,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
         # If the ref is polymorphic we have to account for this
         body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(x, c.idgen), y)
       #echo "can follow ", elemType, " static ", isFinal(elemType)
-  of attachedWasMoved:
-    doAssert false
+  of attachedWasMoved: assert(false, "cannot happen")
 
 proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   ## Closures are really like refs except they always use a virtual destructor
@@ -738,8 +727,7 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
     body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(xenv, c.idgen), y)
-  of attachedWasMoved:
-    doAssert false
+  of attachedWasMoved: assert(false, "cannot happen")
 
 proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
@@ -764,8 +752,7 @@ proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.sons.insert(des, 0)
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace: discard
-  of attachedWasMoved:
-    doAssert false
+  of attachedWasMoved: assert(false, "cannot happen")
 
 proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   var actions = newNodeI(nkStmtList, c.info)
@@ -791,8 +778,7 @@ proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, x, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace: discard
-  of attachedWasMoved:
-    doAssert false
+  of attachedWasMoved: assert(false, "cannot happen")
 
 proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   if c.kind == attachedDeepCopy:
@@ -827,8 +813,7 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
         body.sons.insert(des, 0)
     of attachedDeepCopy: assert(false, "cannot happen")
     of attachedTrace: discard
-    of attachedWasMoved:
-      doAssert false
+    of attachedWasMoved: assert(false, "cannot happen")
 
 proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xx = genBuiltin(c, mAccessEnv, "accessEnv", x)
@@ -844,8 +829,7 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, xx, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace: discard
-  of attachedWasMoved:
-    doAssert false
+  of attachedWasMoved: assert(false, "cannot happen")
 
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
