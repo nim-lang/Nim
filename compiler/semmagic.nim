@@ -598,6 +598,12 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     let op = getAttachedOp(c.graph, t, attachedDestructor)
     if op != nil:
       result[0] = newSymNode(op)
+  of mWasMoved:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    let op = getAttachedOp(c.graph, t, attachedWasMoved)
+    if op != nil:
+      result[0] = newSymNode(op)
   of mTrace:
     result = n
     let t = n[1].typ.skipTypes(abstractVar)
