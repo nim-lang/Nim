@@ -1008,7 +1008,7 @@ proc toLangSymbol(k: TSymKind, n: PNode, baseName: string): LangSymbol =
 
   if k == skType: result.symTypeKind = getTypeKind(n)
 
-proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
+proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonExports: bool = false) =
   if (docFlags != kForceExport) and not isVisible(d, nameNode): return
   let
     name = getName(nameNode)
@@ -1062,8 +1062,11 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
                tooltip = detailedName, langSym = rstLangSymbol,
                priority = symbolPriority(k), info = lineinfo)
 
-  nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
-    renderDocComments, renderSyms, renderExpandUsing}, symbolOrIdEnc)
+  let renderFlags =
+    if nonExports: {renderNoBody, renderNoComments, renderDocComments, renderSyms,
+      renderExpandUsing, renderNonExportedFields}
+    else: {renderNoBody, renderNoComments, renderDocComments, renderSyms, renderExpandUsing}
+  nodeToHighlightedHtml(d, n, result, renderFlags, symbolOrIdEnc)
 
   let seeSrc = genSeeSrc(d, toFullPath(d.conf, n.info), n.info.line.int)
 
@@ -1311,12 +1314,13 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
     if p5 != nil: n[pragmasPos].add p5
     if p6 != nil: n[pragmasPos].add p6
 
-proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
+proc generateDoc*(d: PDoc, n, orig: PNode, config: ConfigRef, docFlags: DocFlags = kDefault) =
   ## Goes through nim nodes recursively and collects doc comments.
   ## Main function for `doc`:option: command,
   ## which is implemented in ``docgen2.nim``.
   template genItemAux(skind) =
     genItem(d, n, n[namePos], skind, docFlags)
+  let showNonExports = optShowNonExportedFields in config.globalOptions
   case n.kind
   of nkPragma:
     let pragmaNode = findPragma(n, wDeprecated)
@@ -1343,20 +1347,20 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
       if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         genItem(d, n[i], n[i][0],
-                succ(skType, ord(n.kind)-ord(nkTypeSection)), docFlags)
+                succ(skType, ord(n.kind)-ord(nkTypeSection)), docFlags, showNonExports)
   of nkStmtList:
-    for i in 0..<n.len: generateDoc(d, n[i], orig)
+    for i in 0..<n.len: generateDoc(d, n[i], orig, config)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n[0][0]):
-      generateDoc(d, lastSon(n[0]), orig)
+      generateDoc(d, lastSon(n[0]), orig, config)
   of nkImportStmt:
     for it in n: traceDeps(d, it)
   of nkExportStmt:
     for it in n:
       if it.kind == nkSym:
         if d.module != nil and d.module == it.sym.owner:
-          generateDoc(d, it.sym.ast, orig, kForceExport)
+          generateDoc(d, it.sym.ast, orig, config, kForceExport)
         elif it.sym.ast != nil:
           exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
@@ -1786,7 +1790,7 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf, hasToc = true)
-  generateDoc(d, ast, ast)
+  generateDoc(d, ast, ast, conf)
   finishGenerateDoc(d)
   writeOutput(d)
   generateIndex(d)

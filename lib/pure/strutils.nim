@@ -2413,60 +2413,63 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
     doAssert x.formatBiggestFloat() == "123.4560000000000"
     doAssert x.formatBiggestFloat(ffDecimal, 4) == "123.4560"
     doAssert x.formatBiggestFloat(ffScientific, 2) == "1.23e+02"
-  when defined(js):
-    var precision = precision
-    if precision == -1:
-      # use the same default precision as c_sprintf
-      precision = 6
-    var res: cstring
-    case format
-    of ffDefault:
-      {.emit: "`res` = `f`.toString();".}
-    of ffDecimal:
-      {.emit: "`res` = `f`.toFixed(`precision`);".}
-    of ffScientific:
-      {.emit: "`res` = `f`.toExponential(`precision`);".}
-    result = $res
-    if 1.0 / f == -Inf:
-      # JavaScript removes the "-" from negative Zero, add it back here
-      result = "-" & $res
-    for i in 0 ..< result.len:
-      # Depending on the locale either dot or comma is produced,
-      # but nothing else is possible:
-      if result[i] in {'.', ','}: result[i] = decimalSep
+  when nimvm:
+    discard "implemented in the vmops"
   else:
-    const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
-    var
-      frmtstr {.noinit.}: array[0..5, char]
-      buf {.noinit.}: array[0..2500, char]
-      L: cint
-    frmtstr[0] = '%'
-    if precision >= 0:
-      frmtstr[1] = '#'
-      frmtstr[2] = '.'
-      frmtstr[3] = '*'
-      frmtstr[4] = floatFormatToChar[format]
-      frmtstr[5] = '\0'
-      L = c_sprintf(cast[cstring](addr buf), cast[cstring](addr frmtstr), precision, f)
+    when defined(js):
+      var precision = precision
+      if precision == -1:
+        # use the same default precision as c_sprintf
+        precision = 6
+      var res: cstring
+      case format
+      of ffDefault:
+        {.emit: "`res` = `f`.toString();".}
+      of ffDecimal:
+        {.emit: "`res` = `f`.toFixed(`precision`);".}
+      of ffScientific:
+        {.emit: "`res` = `f`.toExponential(`precision`);".}
+      result = $res
+      if 1.0 / f == -Inf:
+        # JavaScript removes the "-" from negative Zero, add it back here
+        result = "-" & $res
+      for i in 0 ..< result.len:
+        # Depending on the locale either dot or comma is produced,
+        # but nothing else is possible:
+        if result[i] in {'.', ','}: result[i] = decimalSep
     else:
-      frmtstr[1] = floatFormatToChar[format]
-      frmtstr[2] = '\0'
-      L = c_sprintf(cast[cstring](addr buf), cast[cstring](addr frmtstr), f)
-    result = newString(L)
-    for i in 0 ..< L:
-      # Depending on the locale either dot or comma is produced,
-      # but nothing else is possible:
-      if buf[i] in {'.', ','}: result[i] = decimalSep
-      else: result[i] = buf[i]
-    when defined(windows):
-      # VS pre 2015 violates the C standard: "The exponent always contains at
-      # least two digits, and only as many more digits as necessary to
-      # represent the exponent." [C11 §7.21.6.1]
-      # The following post-processing fixes this behavior.
-      if result.len > 4 and result[^4] == '+' and result[^3] == '0':
-        result[^3] = result[^2]
-        result[^2] = result[^1]
-        result.setLen(result.len - 1)
+      const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
+      var
+        frmtstr {.noinit.}: array[0..5, char]
+        buf {.noinit.}: array[0..2500, char]
+        L: cint
+      frmtstr[0] = '%'
+      if precision >= 0:
+        frmtstr[1] = '#'
+        frmtstr[2] = '.'
+        frmtstr[3] = '*'
+        frmtstr[4] = floatFormatToChar[format]
+        frmtstr[5] = '\0'
+        L = c_sprintf(cast[cstring](addr buf), cast[cstring](addr frmtstr), precision, f)
+      else:
+        frmtstr[1] = floatFormatToChar[format]
+        frmtstr[2] = '\0'
+        L = c_sprintf(cast[cstring](addr buf), cast[cstring](addr frmtstr), f)
+      result = newString(L)
+      for i in 0 ..< L:
+        # Depending on the locale either dot or comma is produced,
+        # but nothing else is possible:
+        if buf[i] in {'.', ','}: result[i] = decimalSep
+        else: result[i] = buf[i]
+      when defined(windows):
+        # VS pre 2015 violates the C standard: "The exponent always contains at
+        # least two digits, and only as many more digits as necessary to
+        # represent the exponent." [C11 §7.21.6.1]
+        # The following post-processing fixes this behavior.
+        if result.len > 4 and result[^4] == '+' and result[^3] == '0':
+          result[^3] = result[^2]
+          result[^2] = result[^1]
+          result.setLen(result.len - 1)
 
 func formatFloat*(f: float, format: FloatFormatMode = ffDefault,
                   precision: range[-1..32] = 16; decimalSep = '.'): string {.

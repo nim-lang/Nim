@@ -63,5 +63,6 @@ nim	Triangle	testproject.html#Triangle	Shapes.Triangle		380
 nim	Rectangle	testproject.html#Rectangle	Shapes.Rectangle		380
 nim	Shapes	testproject.html#Shapes	enum Shapes		380
 nim	anything	testproject.html#anything	proc anything()		387
+nim	T19396	testproject.html#T19396	object T19396		392
 nimgrp	bar	testproject.html#bar-procs-all	proc		31
 nimgrp	baz	testproject.html#baz-procs-all	proc		34
