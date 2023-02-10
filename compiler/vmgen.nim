@@ -611,7 +611,7 @@ proc genLit(c: PCtx; n: PNode; dest: var TDest) =
       c.gABx(n, opcLdConst, dest, lit)
   of nkFloatLit..nkFloat64Lit:
     let lit = genFloatLiteral(c, n.floatVal)
-    c.gABx(n, opcLdConstFloat, dest, lit)
+    c.gABx(n, opcLdConstFloat, dest, cast[int](lit))
   else:
     let lit = genLiteral(c, n)
     c.gABx(n, opcLdConst, dest, lit)
@@ -2098,8 +2098,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       if s.position >= low(int16) and s.position <= high(int16):
         c.gABx(n, opcLdImmInt, dest, s.position)
       else:
-        var lit = cast[int](genIntLiteral(c, s.position))
-        c.gABx(n, opcLdConstInt, dest, lit)
+        var lit = genIntLiteral(c, s.position)
+        c.gABx(n, opcLdConstInt, dest, cast[int](lit))
     of skType:
       genTypeLit(c, s.typ, dest)
     of skGenericParam:
