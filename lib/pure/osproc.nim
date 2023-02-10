@@ -76,7 +76,7 @@ type
 proc execProcess*(command: string, workingDir: string = "",
     args: openArray[string] = [], env: StringTableRef = nil,
     options: set[ProcessOption] = {poStdErrToStdOut, poUsePath, poEvalCommand}):
-  string {.rtl, extern: "nosp$1", raises: [ValueError, OSError, IOError],
+  string {.rtl, extern: "nosp$1", raises: [OSError, IOError],
                   tags: [ExecIOEffect, ReadIOEffect, RootEffect].}
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
@@ -120,7 +120,7 @@ proc execCmd*(command: string): int {.rtl, extern: "nosp$1",
 proc startProcess*(command: string, workingDir: string = "",
     args: openArray[string] = [], env: StringTableRef = nil,
     options: set[ProcessOption] = {poStdErrToStdOut}):
-  owned(Process) {.rtl, extern: "nosp$1", raises: [ValueError, OSError, IOError],
+  owned(Process) {.rtl, extern: "nosp$1", raises: [OSError, IOError],
                    tags: [ExecIOEffect, ReadEnvEffect, RootEffect].}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
   ## process's working directory. If ``workingDir == ""`` the current directory
@@ -748,8 +748,11 @@ when defined(windows) and not defined(useNimRtl):
       const errInvalidParameter = 87.int
       const errFileNotFound = 2.int
       if lastError.int in {errInvalidParameter, errFileNotFound}:
-        raiseOSError(lastError,
-            "Requested command not found: '$1'. OS error:" % command)
+        try:
+          raiseOSError(lastError,
+              "Requested command not found: '$1'. OS error:" % command)
+        except ValueError:
+          discard
       else:
         raiseOSError(lastError, command)
     result.fProcessHandle = procInfo.hProcess
@@ -960,10 +963,10 @@ elif not defined(useNimRtl):
       raises: [OSError], tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], gcsafe.}
   else:
     proc startProcessAuxFork(data: StartProcessData): Pid {.
-      raises: [OSError, ValueError], tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], gcsafe.}
+      raises: [OSError], tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], gcsafe.}
     {.push stacktrace: off, profiler: off.}
     proc startProcessAfterFork(data: ptr StartProcessData) {.
-      raises: [OSError, ValueError], tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], cdecl, gcsafe.}
+      raises: [OSError], tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], cdecl, gcsafe.}
     {.pop.}
 
   proc startProcess(command: string, workingDir: string = "",
@@ -1132,9 +1135,12 @@ elif not defined(useNimRtl):
       var error: cint
       let sizeRead = read(data.pErrorPipe[readIdx], addr error, sizeof(error))
       if sizeRead == sizeof(error):
-        raiseOSError(osLastError(),
-                     "Could not find command: '$1'. OS error: $2" %
-                      [$data.sysCommand, $strerror(error)])
+        try:
+          raiseOSError(osLastError(),
+                      "Could not find command: '$1'. OS error: $2" %
+                        [$data.sysCommand, $strerror(error)])
+        except ValueError:
+          discard
 
       return pid
 
@@ -1580,7 +1586,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
                 poStdErrToStdOut, poUsePath}, env: StringTableRef = nil,
                 workingDir = "", input = ""): tuple[
                 output: string,
-                exitCode: int] {.raises: [ValueError, OSError, IOError], tags:
+                exitCode: int] {.raises: [OSError, IOError], tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
   ## A convenience proc that runs the `command`, and returns its `output` and
   ## `exitCode`. `env` and `workingDir` params behave as for `startProcess`.
