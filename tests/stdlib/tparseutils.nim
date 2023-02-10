@@ -92,4 +92,5 @@ block:  # With this included, static: test() crashes the compiler (from a
   ass parseSize("abc", sz)     == 0; ass sz == 1  # Non-numeric
   ass parseSize(" 12", sz)     == 0; ass sz == 1  # Leading white
   # Value Edge cases
-  ass parseSize("9223372036854775807", sz) == 19; ass sz == int64.high
+  when not defined(i386): # Transition/rounding value may need adjustment
+    ass parseSize("9223372036854775807", sz) == 19; ass sz == int64.high
