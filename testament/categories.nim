@@ -718,6 +718,8 @@ proc processCategory(r: var TResults, cat: Category,
     case cat2
     of "megatest":
       runJoinedTest(r, cat, testsDir, options)
+      if isNimRepoTests():
+        runJoinedTest(r, cat, testsDir, options & " --mm:refc")
     else:
       var testsRun = 0
       var files: seq[string]

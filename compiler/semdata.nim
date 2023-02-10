@@ -75,6 +75,7 @@ type
       # overload resolution.
     efNoDiagnostics,
     efTypeAllowed, # typeAllowed will be called after
+    efWantNoDefaults,
     efNoError,
     efFromUnpack
 
