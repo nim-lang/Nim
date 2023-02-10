@@ -166,6 +166,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
         result.info = n.info
       return
     tc = tc.next
+  # echo " -> ", s.name.s
   result = b
 
 proc transformSym(c: PTransf, n: PNode): PNode =
@@ -931,12 +932,21 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
       result.add(a)
     if result.len == 2: result = result[1]
   else:
-    var cnst = getConstExpr(c, n, idgen, g)
-    # we inline constants if they are not complex constants:
-    if cnst != nil and not dontInlineConstant(n, cnst):
-      result = cnst
+    if not (result.kind == nkSym and sfDontInline in result.sym.flags):
+      var cnst = getConstExpr(c, n, idgen, g)
+      # we inline constants if they are not complex constants:
+      if cnst != nil:
+        if not dontInlineConstant(n, cnst):
+          result = cnst
+        else:
+          result = n
+          if result.kind == nkSym:
+            result.sym.flags.incl sfDontInline
+          result.flags.incl nfAllConst
     else:
       result = n
+import astalgo
+import times
 
 proc transform(c: PTransf, n: PNode): PNode =
   when false:
@@ -1015,7 +1025,16 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkDiscardStmt:
     result = n
     if n[0].kind != nkEmpty:
+      # echo "---------------------------------------"
+      # debug n
+      # let now = now()
+      # if n.sym.kind == skConst:
+      #   return n
       result = transformSons(c, n)
+      # debug result
+      # echo "+++++++++++++++++++++++++++++++++++++++"
+
+      # echo "sL ", now() - now
       if isConstExpr(result[0]):
         # ensure that e.g. discard "some comment" gets optimized away
         # completely:
@@ -1081,10 +1100,19 @@ proc transform(c: PTransf, n: PNode): PNode =
                           n.typ != nil and
                           n.typ.kind == tyPointer
   if not exprIsPointerCast:
-    var cnst = getConstExpr(c.module, result, c.idgen, c.graph)
-    # we inline constants if they are not complex constants:
-    if cnst != nil and not dontInlineConstant(n, cnst):
-      result = cnst # do not miss an optimization
+    #  and not (n.kind == nkSym and n.sym.kind == skConst)
+    if not (result.kind == nkSym and sfDontInline in result.sym.flags):
+      var cnst = getConstExpr(c.module, result, c.idgen, c.graph)
+      # we inline constants if they are not complex constants:
+      if cnst != nil:
+        if not dontInlineConstant(n, cnst):
+          result = cnst # do not miss an optimization
+        else:
+          if result.kind == nkSym:
+            result.sym.flags.incl sfDontInline
+          result.flags.incl nfAllConst
+    else:
+      result.flags.incl nfAllConst
 
 proc processTransf(c: PTransf, n: PNode, owner: PSym): PNode =
   # Note: For interactive mode we cannot call 'passes.skipCodegen' and skip

@@ -310,6 +310,7 @@ type
                       #
                       # This is disallowed but can cause the typechecking to go into
                       # an infinite loop, this flag is used as a sentinel to stop it.
+    sfDontInline
 
   TSymFlags* = set[TSymFlag]
 
@@ -1075,7 +1076,7 @@ const
   NilableTypes*: TTypeKinds = {tyPointer, tyCstring, tyRef, tyPtr,
     tyProc, tyError} # TODO
   PtrLikeKinds*: TTypeKinds = {tyPointer, tyPtr} # for VM
-  PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
+  PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16, nfAllConst,
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
