@@ -608,13 +608,13 @@ func parseSize*(s: openArray[char], size: var int64, alwaysBin=false): int =
   ## An optional trailing 'B|b' is ignored but processed.  I.e., you must still
   ## know if units are bytes | bits or infer this fact via the case of s[^1] (if
   ## users can even be relied upon to use 'B' for byte and 'b' for bit or have
-  ## that be s[^1]).  Trailing text stops the parse, as usual.
+  ## that be s[^1]).
   ##
   ## If `alwaysBin==true` then scales are always binary-metric, but e.g. "KiB"
   ## is still accepted for clarity.  If the value would exceed the range of
-  ## `int64`, `size` is set to `int64.high`.  Supported metric prefix chars
-  ## include k, m, g, t, p, e, z, y (but z & y saturate to int64.high unless
-  ## number is a small fraction).  It is unlikely you will need beyond 'peta'.
+  ## `int64`, `size` saturates to `int64.high`.  Supported metric prefix chars
+  ## include k, m, g, t, p, e, z, y (but z & y saturate unless the number is a
+  ## small fraction).
   ##
   ## **See also:**
   ## * https://en.wikipedia.org/wiki/Binary_prefix
