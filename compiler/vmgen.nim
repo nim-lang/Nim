@@ -1909,7 +1909,7 @@ proc genVarSection(c: PCtx; n: PNode) =
           c.genAdditionalCopy(a[2], opcWrDeref, tmp, 0, val)
           c.freeTemp(val)
           c.freeTemp(tmp)
-        else: # fixes #10938
+        elif not importcCondVar(s): # fixes #10938
           # todo I made it correct first, it's your turn to make it faster
           let tmp = c.genx(a[0], {gfNodeAddr})
           let sa = getNullValue(s.typ, a.info, c.config)
