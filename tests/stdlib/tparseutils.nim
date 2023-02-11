@@ -97,5 +97,4 @@ block:  # With this included, static: test() crashes the compiler (from a
   checkParseSize "abc"    , 0, 1          # Non-numeric
   checkParseSize " 12"    , 0, 1          # Leading white
   # Value Edge cases
-  when not defined(i386): # Transition/rounding value may need adjustment
-    checkParseSize "9223372036854775807", 19, int64.high
+  checkParseSize "9223372036854775807", 19, int64.high
