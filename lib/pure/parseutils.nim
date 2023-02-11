@@ -611,7 +611,8 @@ func parseSize*(s: openArray[char], size: var int64, alwaysBin=false): int =
   ## that be s[^1]).
   ##
   ## If `alwaysBin==true` then scales are always binary-metric, but e.g. "KiB"
-  ## is still accepted for clarity.
+  ## is still accepted for clarity.  If the value would exceed the range of
+  ## `int64`, `size` is set to `int64.high`.
   ##
   ## **See also:**
   ## * https://en.wikipedia.org/wiki/Binary_prefix
