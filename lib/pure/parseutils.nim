@@ -608,15 +608,25 @@ func parseSize*(s: openArray[char], size: var int64, alwaysBin=false): int =
   ## An optional trailing 'B|b' is ignored but processed.  I.e., you must still
   ## know if units are bytes | bits or infer this fact via the case of s[^1] (if
   ## users can even be relied upon to use 'B' for byte and 'b' for bit or have
-  ## that be s[^1]).
+  ## that be s[^1]).  Trailing text stops the parse, as usual.
   ##
   ## If `alwaysBin==true` then scales are always binary-metric, but e.g. "KiB"
   ## is still accepted for clarity.  If the value would exceed the range of
-  ## `int64`, `size` is set to `int64.high`.
+  ## `int64`, `size` is set to `int64.high`.  Supported metric prefix chars
+  ## include k, m, g, t, p, e, z, y (but z & y saturate to int64.high unless
+  ## number is a small fraction).  It is unlikely you will need beyond 'peta'.
   ##
   ## **See also:**
   ## * https://en.wikipedia.org/wiki/Binary_prefix
   ## * `formatSize module<strutils.html>`_ for formatting
+  runnableExamples:
+    var res: int64  # caller must still know if 'b' refers to bytes|bits
+    doAssert parseSize("10.5 MB", res) == 7
+    doAssert res == 10_500_000  # decimal metric Mega prefix
+    doAssert parseSize("64 mib", res) == 6
+    doAssert res == 67108864    # 64 shl 20
+    doAssert parseSize("1G/h", res, true) == 2 # '/' stops parse
+    doAssert res == 1073741824  # 1 shl 30, forced binary metric
   const prefix = "b" & "kmgtpezy"       # byte|bit & lowCase metric-ish prefixes
   const scaleM = [1.0, 1e3, 1e6, 1e9, 1e12, 1e15, 1e18, 1e21, 1e24] # 10^(3*idx)
   const scaleB = [1.0, 1024, 1048576, 1073741824, 1099511627776.0,  # 2^(10*idx)
