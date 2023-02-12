@@ -717,22 +717,24 @@ proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ##  clone or using installed nim, so that these exist: `result/doc/advopt.txt`
   ## and `result/lib/system.nim`
   if not conf.prefixDir.isEmpty: result = conf.prefixDir
-  else: result = AbsoluteDir splitPath(getAppDir()).head
+  else:
+    let binParent = AbsoluteDir splitPath(getAppDir()).head
+    when defined(posix):
+      if binParent == AbsoluteDir"/usr":
+        result = AbsoluteDir"/usr/lib/nim"
+      elif binParent == AbsoluteDir"/usr/local":
+        result = AbsoluteDir"/usr/local/lib/nim"
+      else:
+        result = binParent
+    else:
+      result = binParent
 
 proc setDefaultLibpath*(conf: ConfigRef) =
   # set default value (can be overwritten):
   if conf.libpath.isEmpty:
     # choose default libpath:
     var prefix = getPrefixDir(conf)
-    when defined(posix):
-      if prefix == AbsoluteDir"/usr":
-        conf.libpath = AbsoluteDir"/usr/lib/nim"
-      elif prefix == AbsoluteDir"/usr/local":
-        conf.libpath = AbsoluteDir"/usr/local/lib/nim"
-      else:
-        conf.libpath = prefix / RelativeDir"lib"
-    else:
-      conf.libpath = prefix / RelativeDir"lib"
+    conf.libpath = prefix / RelativeDir"lib"
 
     # Special rule to support other tools (nimble) which import the compiler
     # modules and make use of them.
