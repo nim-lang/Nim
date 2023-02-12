@@ -602,8 +602,8 @@ func parseSize*(s: openArray[char], size: var int64, alwaysBin=false): int =
   ## garbage like "/s" in "1k/s" is allowed and detected by `result < s.len`.
   ##
   ## To simplify use, following non-rare wild conventions, and since fractional
-  ## information is so rare, unit matching is case-insensitive but for the 'i'
-  ## distinguishing binary-metric from metric which cannot be 'I'.
+  ## data like milli-bytes is so rare, unit matching is case-insensitive but for
+  ## the 'i' distinguishing binary-metric from metric which cannot be 'I'.
   ##
   ## An optional trailing 'B|b' is ignored but processed.  I.e., you must still
   ## know if units are bytes | bits or infer this fact via the case of s[^1] (if
