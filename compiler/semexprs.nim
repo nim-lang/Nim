@@ -522,7 +522,7 @@ proc overloadedCallOpr(c: PContext, n: PNode): PNode =
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(par, n.info)
     for i in 0..<n.len: result.add n[i]
-    result = semExpr(c, result)
+    result = semExpr(c, result, flags = {efNoUndeclared})
 
 proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
   case n.kind
@@ -925,6 +925,14 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
     return errorNode(c, n)
 
   result = n
+
+  when defined(nimsuggest):
+    if c.config.expandProgress:
+      if c.config.expandLevels == 0:
+        return n
+      else:
+        c.config.expandLevels -= 1
+
   let callee = result[0].sym
   case callee.kind
   of skMacro: result = semMacroExpr(c, result, orig, callee, flags)
@@ -970,6 +978,9 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if s != nil:
         setGenericParams(c, n[0])
         return semDirectOp(c, n, flags)
+    elif isSymChoice(n[0]):
+      # overloaded generic procs e.g. newSeq[int] can end up here
+      return semDirectOp(c, n, flags)
 
   let nOrig = n.copyTree
   semOpAux(c, n)
@@ -1018,10 +1029,10 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if n.len == 1: return semObjConstr(c, n, flags)
     return semConv(c, n)
   else:
-    result = overloadedCallOpr(c, n)
+    result = overloadedCallOpr(c, n) # this uses efNoUndeclared
     # Now that nkSym does not imply an iteration over the proc/iterator space,
     # the old ``prc`` (which is likely an nkIdent) has to be restored:
-    if result == nil:
+    if result == nil or result.kind == nkEmpty:
       # XXX: hmm, what kind of symbols will end up here?
       # do we really need to try the overload resolution?
       n[0] = prc
@@ -1846,6 +1857,9 @@ proc semReturn(c: PContext, n: PNode): PNode =
     localError(c.config, n.info, "'return' not allowed here")
 
 proc semProcBody(c: PContext, n: PNode): PNode =
+  when defined(nimsuggest):
+    if c.graph.config.expandDone():
+      return n
   openScope(c)
   result = semExpr(c, n)
   if c.p.resultSym != nil and not isEmptyType(result.typ):
@@ -2783,6 +2797,19 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         echo ("<", c.config$n.info, n, ?.result.typ)
 
   result = n
+  when defined(nimsuggest):
+    var expandStarted = false
+    if c.config.ideCmd == ideExpand and not c.config.expandProgress and
+        ((n.kind in {nkFuncDef, nkProcDef, nkIteratorDef, nkTemplateDef, nkMethodDef, nkConverterDef} and
+          n.info.exactEquals(c.config.expandPosition)) or
+         (n.kind in {nkCall, nkCommand} and
+          n[0].info.exactEquals(c.config.expandPosition))):
+      expandStarted = true
+      c.config.expandProgress = true
+      if c.config.expandLevels == 0:
+        c.config.expandNodeResult = $n
+        suggestQuit()
+
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
   case n.kind
@@ -3002,7 +3029,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # the node is left intact for now
     discard
   of nkStaticExpr: result = semStaticExpr(c, n[0])
-  of nkAsgn: result = semAsgn(c, n)
+  of nkAsgn, nkFastAsgn: result = semAsgn(c, n)
   of nkBlockStmt, nkBlockExpr: result = semBlock(c, n, flags)
   of nkStmtList, nkStmtListExpr: result = semStmtList(c, n, flags)
   of nkRaiseStmt: result = semRaise(c, n)
@@ -3081,3 +3108,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     localError(c.config, n.info, "invalid expression: " &
                renderTree(n, {renderNoComments}))
   if result != nil: incl(result.flags, nfSem)
+
+  when defined(nimsuggest):
+    if expandStarted:
+      c.config.expandNodeResult = $result
+      suggestQuit()

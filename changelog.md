@@ -24,6 +24,33 @@
   This warning will become an error in future versions! Use a `cast` operation
   like `cast[cstring](x)` instead.
 
+- `logging` will default to flushing all log level messages. To get the legacy behaviour of only flushing Error and Fatal messages, use `-d:nimV1LogFlushBehavior`.
+
+- Object fields now support default values, see https://nim-lang.github.io/Nim/manual.html#types-default-values-for-object-fields for details.
+
+- Redefining templates with the same signature was previously
+  allowed to support certain macro code. To do this explicitly, the
+  `{.redefine.}` pragma has been added. Note that this is only for templates.
+  Implicit redefinition of templates is now deprecated and will give an error in the future.
+
+- Using an unnamed break in a block is deprecated. This warning will become an error in future versions! Use a named block with a named break instead.
+
+- Several Standard libraries are moved to nimble packages, use `nimble` to install them:
+  - `std/punycode` => `punycode`
+  - `std/asyncftpclient` => `asyncftpclient`
+  - `std/smtp` => `smtp`
+  - `std/db_common` => `db_connector/db_common`
+  - `std/db_sqlite` => `db_connector/db_sqlite`
+  - `std/db_mysql` => `db_connector/db_mysql`
+  - `std/db_postgres` => `db_connector/db_postgres`
+  - `std/db_odbc` => `db_connector/db_odbc`
+
+- Previously, calls like `foo(a, b): ...` or `foo(a, b) do: ...` where the final argument of
+  `foo` had type `proc ()` were assumed by the compiler to mean `foo(a, b, proc () = ...)`.
+  This behavior is now deprecated. Use `foo(a, b) do (): ...` or `foo(a, b, proc () = ...)` instead.
+
+- If no exception or any exception deriving from Exception but not Defect or CatchableError given in except, a `warnBareExcept` warning will be triggered.
+
 ## Standard library additions and changes
 
 - `macros.parseExpr` and `macros.parseStmt` now accept an optional

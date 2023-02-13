@@ -1513,7 +1513,7 @@ proc getFootnoteType(label: PRstNode): (FootnoteType, int) =
   elif label.len == 1 and label.sons[0].kind == rnLeaf:
     try:
       result = (fnManualNumber, parseInt(label.sons[0].text))
-    except:
+    except ValueError:
       result = (fnCitation, -1)
   else:
     result = (fnCitation, -1)
@@ -2420,13 +2420,13 @@ proc parseEnumList(p: var RstParser): PRstNode =
       let enumerator = p.tok[p.idx + 1 + wildIndex[w]].symbol
       # check that it's in sequence: enumerator == next(prevEnum)
       if "n" in wildcards[w]:  # arabic numeral
-        let prevEnumI = try: parseInt(prevEnum) except: 1
+        let prevEnumI = try: parseInt(prevEnum) except ValueError: 1
         if enumerator in autoEnums:
           if prevAE != "" and enumerator != prevAE:
             break
           prevAE = enumerator
           curEnum = prevEnumI + 1
-        else: curEnum = (try: parseInt(enumerator) except: 1)
+        else: curEnum = (try: parseInt(enumerator) except ValueError: 1)
         if curEnum - prevEnumI != 1:
           break
         prevEnum = enumerator

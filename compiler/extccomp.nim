@@ -517,7 +517,7 @@ proc ccHasSaneOverflow*(conf: ConfigRef): bool =
     var exe = getConfigVar(conf, conf.cCompiler, ".exe")
     if exe.len == 0: exe = CC[conf.cCompiler].compilerExe
     # NOTE: should we need the full version, use -dumpfullversion
-    let (s, exitCode) = try: execCmdEx(exe & " -dumpversion") except: ("", 1)
+    let (s, exitCode) = try: execCmdEx(exe & " -dumpversion") except IOError, OSError, ValueError: ("", 1)
     if exitCode == 0:
       var major: int
       discard parseInt(s, major)
@@ -1006,7 +1006,7 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: Absolute
 proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
   var bcache: BuildCache
   try: bcache.fromJson(jsonFile.string.parseFile)
-  except:
+  except ValueError, KeyError, JsonKindError:
     let e = getCurrentException()
     conf.quitOrRaise "\ncaught exception:\n$#\nstacktrace:\n$#error evaluating JSON file: $#" %
       [e.msg, e.getStackTrace(), jsonFile.string]

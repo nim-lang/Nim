@@ -4506,8 +4506,8 @@ Example:
       echo "overflow!"
     except ValueError, IOError:
       echo "catch multiple exceptions!"
-    except:
-      echo "Unknown exception!"
+    except CatchableError:
+      echo "Catchable exception!"
     finally:
       close(f)
 
@@ -4517,9 +4517,6 @@ an exception `e` is raised. If the exception type of `e` matches any
 listed in an `except` clause, the corresponding statements are executed.
 The statements following the `except` clauses are called
 `exception handlers`:idx:.
-
-The empty `except`:idx: clause is executed if there is an exception that is
-not listed otherwise. It is similar to an `else` clause in `if` statements.
 
 If there is a `finally`:idx: clause, it is always executed after the
 exception handlers.
@@ -4542,7 +4539,7 @@ branch always has to be `void`:
   from std/strutils import parseInt
 
   let x = try: parseInt("133a")
-          except: -1
+          except ValueError: -1
           finally: echo "hi"
 
 
@@ -4550,7 +4547,8 @@ To prevent confusing code there is a parsing limitation; if the `try`
 follows a `(` it has to be written as a one liner:
 
 .. code-block:: nim
-  let x = (try: parseInt("133a") except: -1)
+  from std/strutils import parseInt
+  let x = (try: parseInt("133a") except ValueError: -1)
 
 
 Except clauses
@@ -4594,7 +4592,7 @@ error message from `e`, and for such situations, it is enough to use
 .. code-block:: nim
   try:
     # ...
-  except:
+  except CatchableError:
     echo getCurrentExceptionMsg()
 
 Custom exceptions
@@ -4784,7 +4782,7 @@ An empty `raises` list (`raises: []`) means that no exception may be raised:
     try:
       unsafeCall()
       result = true
-    except:
+    except CatchableError:
       result = false
 
 

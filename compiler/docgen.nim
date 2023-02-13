@@ -1536,7 +1536,7 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
     let filename = getOutFile(conf, RelativeFile conf.projectName, JsonExt)
     try:
       writeFile(filename, content)
-    except:
+    except IOError:
       rawMessage(conf, errCannotOpenFile, filename.string)
 
 proc commandTags*(cache: IdentCache, conf: ConfigRef) =
@@ -1559,7 +1559,7 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
     let filename = getOutFile(conf, RelativeFile conf.projectName, TagsExt)
     try:
       writeFile(filename, content)
-    except:
+    except IOError:
       rawMessage(conf, errCannotOpenFile, filename.string)
 
 proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") =
@@ -1580,5 +1580,5 @@ proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") 
 
   try:
     writeFile(filename, code)
-  except:
+  except IOError:
     rawMessage(conf, errCannotOpenFile, filename.string)
