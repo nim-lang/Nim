@@ -110,6 +110,9 @@ proc incl*(s: CacheSeq; value: NimNode) =
       assert mySeq.len == 1
   vmopsHints()
 
+proc ncsLen(s: CacheSeq): int =
+  vmopsHints()
+
 proc len*(s: CacheSeq): int =
   ## Returns the length of `s`.
   runnableExamples:
@@ -123,6 +126,9 @@ proc len*(s: CacheSeq): int =
 
       mySeq.add(val)
       assert mySeq.len == 2
+  result = ncsLen(s)
+
+proc ncsGet(s: CacheSeq; i: int): NimNode =
   vmopsHints()
 
 proc `[]`*(s: CacheSeq; i: int): NimNode =
@@ -134,7 +140,7 @@ proc `[]`*(s: CacheSeq; i: int): NimNode =
     static:
       mySeq.add(newLit(42))
       assert mySeq[0].intVal == 42
-  vmopsHints()
+  result = ncsGet(s, i)
 
 iterator items*(s: CacheSeq): NimNode =
   ## Iterates over each item in `s`.
@@ -169,7 +175,10 @@ proc `[]=`*(t: CacheTable; key: string, value: NimNode) =
       assert mcTable["value"].kind == nnkIntLit
   vmopsHints()
 
-proc len*(t: CacheTable): int {.magic: "NctLen".} =
+proc nctLen(t: CacheTable): int =
+  vmopsHints()
+
+proc len*(t: CacheTable): int =
   ## Returns the number of elements in `t`.
   runnableExamples:
     import std/macros
@@ -178,8 +187,12 @@ proc len*(t: CacheTable): int {.magic: "NctLen".} =
     static:
       dataTable["key"] = newLit(5)
       assert dataTable.len == 1
+  result = nctLen(t)
 
-proc `[]`*(t: CacheTable; key: string): NimNode {.magic: "NctGet".} =
+proc nctGet(t: CacheTable; key: string): NimNode =
+  vmopsHints()
+
+proc `[]`*(t: CacheTable; key: string): NimNode =
   ## Retrieves the `NimNode` value at `t[key]`.
   runnableExamples:
     import std/macros
@@ -190,6 +203,7 @@ proc `[]`*(t: CacheTable; key: string): NimNode {.magic: "NctGet".} =
 
       # get the NimNode back
       assert mcTable["toAdd"].kind == nnkStmtList
+  result = nctGet(t, key)
 
 proc hasKey*(t: CacheTable; key: string): bool =
   ## Returns true if `key` is in the table `t`.
@@ -217,8 +231,10 @@ proc contains*(t: CacheTable; key: string): bool {.inline.} =
       assert "foo" in mcTable
   t.hasKey(key)
 
-proc hasNext(t: CacheTable; iter: int): bool {.magic: "NctHasNext".}
-proc next(t: CacheTable; iter: int): (string, NimNode, int) {.magic: "NctNext".}
+proc nctHasNext(t: CacheTable; iter: int): bool =
+  vmopsHints()
+proc nctNext(t: CacheTable; iter: int): (string, NimNode, int) =
+  vmopsHints()
 
 iterator pairs*(t: CacheTable): (string, NimNode) =
   ## Iterates over all `(key, value)` pairs in `t`.
@@ -237,7 +253,7 @@ iterator pairs*(t: CacheTable): (string, NimNode) =
         assert val.kind == nnkIntLit
 
   var h = 0
-  while hasNext(t, h):
-    let (a, b, h2) = next(t, h)
+  while nctHasNext(t, h):
+    let (a, b, h2) = nctNext(t, h)
     yield (a, b)
     h = h2

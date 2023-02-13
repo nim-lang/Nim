@@ -319,14 +319,14 @@ proc registerAdditionalOps*(c: PCtx) =
         g.cacheSeqs[destKey].add val
     recordIncl(c, a.currentLineInfo, destKey, val)
 
-  registerCallback c, "stdlib.macrocache.len", proc (a: VmArgs) =
+  registerCallback c, "stdlib.macrocache.ncsLen", proc (a: VmArgs) =
     let g = c.graph
     let destKey = getString(a, 0)
     setResult(a,
       if contains(g.cacheSeqs, destKey): g.cacheSeqs[destKey].len else: 0
     )
 
-  registerCallback c, "stdlib.macrocache.[]", proc (a: VmArgs) =
+  registerCallback c, "stdlib.macrocache.ncsGet", proc (a: VmArgs) =
     let g = c.graph
     let destKey = getString(a, 0)
     let idx = getInt(a, 1)
@@ -335,11 +335,65 @@ proc registerAdditionalOps*(c: PCtx) =
     else:
       stackTrace2(c, formatErrorIndexBound(idx, g.cacheSeqs[destKey].len-1), a.currentLineInfo)
 
+  registerCallback c, "stdlib.macrocache.[]=", proc (a: VmArgs) =
+    let g = c.graph
+    let destKey = getString(a, 0)
+    let key = getString(a, 1)
+    let val = getNode(a, 2)
+    if not contains(g.cacheTables, destKey):
+      g.cacheTables[destKey] = initBTree[string, PNode]()
+    if not contains(g.cacheTables[destKey], key):
+      g.cacheTables[destKey].add(key, val)
+      recordPut(c, a.currentLineInfo, destKey, key, val)
+    else:
+      stackTrace2(c, "key already exists: " & key, a.currentLineInfo)
+
+  registerCallback c, "stdlib.macrocache.nctLen", proc (a: VmArgs) =
+    let g = c.graph
+    let destKey = getString(a, 0)
+    setResult(a,
+      if contains(g.cacheTables, destKey): g.cacheTables[destKey].len else: 0
+    )
+
+  registerCallback c, "stdlib.macrocache.nctGet", proc (a: VmArgs) =
+    let g = c.graph
+    let destKey = getString(a, 0)
+    let key = getString(a, 1)
+    if contains(g.cacheTables, destKey):
+      if contains(g.cacheTables[destKey], key):
+        setResult(a, getOrDefault(g.cacheTables[destKey], key))
+      else:
+        stackTrace2(c, "key does not exist: " & key, a.currentLineInfo)
+    else:
+      stackTrace2(c, "key does not exist: " & destKey, a.currentLineInfo)
+
   registerCallback c, "stdlib.macrocache.hasKey", proc (a: VmArgs) =
     let
       table = getString(a, 0)
       key = getString(a, 1)
     setResult(a, table in c.graph.cacheTables and key in c.graph.cacheTables[table])
+
+  registerCallback c, "stdlib.macrocache.nctHasNext", proc (a: VmArgs) =
+    let g = c.graph
+    let destKey = getString(a, 0)
+    setResult(a,
+      if g.cacheTables.contains(destKey):
+        ord(btrees.hasNext(g.cacheTables[destKey], getInt(a, 1).int))
+      else:
+        0
+    )
+
+  registerCallback c, "stdlib.macrocache.nctNext", proc (a: VmArgs) =
+    let g = c.graph
+    let destKey = getString(a, 0)
+    let index = getInt(a, 1)
+    if contains(g.cacheTables, destKey):
+      let (k, v, nextIndex) = btrees.next(g.cacheTables[destKey], index.int)
+      setResult(a, newTree(nkTupleConstr, newStrNode(k, a.currentLineInfo), v,
+                              newIntNode(nkIntLit, nextIndex))
+      )
+    else:
+      stackTrace2(c, "key does not exist: " & destKey, a.currentLineInfo)
 
   registerCallback c, "stdlib.vmutils.vmTrace", proc (a: VmArgs) =
     c.config.isVmTrace = getBool(a, 0)

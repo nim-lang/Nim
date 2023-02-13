@@ -2124,57 +2124,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       incl(sym.flags, sfGenSym)
       regs[ra].node = newSymNode(sym)
       regs[ra].node.flags.incl nfIsRef
-    of opcNctPut:
-      let g = c.graph
-      let destKey {.cursor.} = regs[ra].node.strVal
-      let key {.cursor.} = regs[instr.regB].node.strVal
-      let val = regs[instr.regC].node
-      if not contains(g.cacheTables, destKey):
-        g.cacheTables[destKey] = initBTree[string, PNode]()
-      if not contains(g.cacheTables[destKey], key):
-        g.cacheTables[destKey].add(key, val)
-        recordPut(c, c.debug[pc], destKey, key, val)
-      else:
-        stackTrace(c, tos, pc, "key already exists: " & key)
-    of opcNctLen:
-      let g = c.graph
-      decodeB(rkInt)
-      let destKey {.cursor.} = regs[rb].node.strVal
-      regs[ra].intVal =
-        if contains(g.cacheTables, destKey): g.cacheTables[destKey].len else: 0
-    of opcNctGet:
-      let g = c.graph
-      decodeBC(rkNode)
-      let destKey {.cursor.} = regs[rb].node.strVal
-      let key {.cursor.} = regs[rc].node.strVal
-      if contains(g.cacheTables, destKey):
-        if contains(g.cacheTables[destKey], key):
-          regs[ra].node = getOrDefault(g.cacheTables[destKey], key)
-        else:
-          stackTrace(c, tos, pc, "key does not exist: " & key)
-      else:
-        stackTrace(c, tos, pc, "key does not exist: " & destKey)
-    of opcNctHasNext:
-      let g = c.graph
-      decodeBC(rkInt)
-      let destKey {.cursor.} = regs[rb].node.strVal
-      regs[ra].intVal =
-        if g.cacheTables.contains(destKey):
-          ord(btrees.hasNext(g.cacheTables[destKey], regs[rc].intVal.int))
-        else:
-          0
-    of opcNctNext:
-      let g = c.graph
-      decodeBC(rkNode)
-      let destKey {.cursor.} = regs[rb].node.strVal
-      let index = regs[rc].intVal
-      if contains(g.cacheTables, destKey):
-        let (k, v, nextIndex) = btrees.next(g.cacheTables[destKey], index.int)
-        regs[ra].node = newTree(nkTupleConstr, newStrNode(k, c.debug[pc]), v,
-                                newIntNode(nkIntLit, nextIndex))
-      else:
-        stackTrace(c, tos, pc, "key does not exist: " & destKey)
-
     of opcTypeTrait:
       # XXX only supports 'name' for now; we can use regC to encode the
       # type trait operation

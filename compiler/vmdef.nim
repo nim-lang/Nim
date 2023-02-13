@@ -130,7 +130,7 @@ type
     opcNSetFloatVal, opcNSetSymbol, opcNSetIdent, opcNSetStrVal,
     opcNNewNimNode, opcNCopyNimNode, opcNCopyNimTree, opcNDel, opcGenSym,
 
-    opcNctPut, opcNctLen, opcNctGet, opcNctHasNext, opcNctNext, opcNodeId,
+    opcNodeId,
 
     opcSlurp,
     opcGorge,
