@@ -1058,8 +1058,11 @@ when not defined(lwip):
   proc poll*(a1: ptr TPollfd, a2: Tnfds, a3: int): cint {.
     importc, header: "<poll.h>", sideEffect.}
 
-proc realpath*(name, resolved: cstring): cstring {.
-  importc: "realpath", header: "<stdlib.h>".}
+when not defined(nintendoswitch):
+  proc realpath*(name, resolved: cstring): cstring {.
+    importc: "realpath", header: "<stdlib.h>".}
+else:
+  proc realpath*(name, resolved: cstring): cstring = name
 
 proc mkstemp*(tmpl: cstring): cint {.importc, header: "<stdlib.h>", sideEffect.}
   ## Creates a unique temporary file.

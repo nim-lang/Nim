@@ -1258,7 +1258,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
     for ext in extensions:
       var x = addFileExt(x, ext)
       if fileExists(x):
-        when not defined(windows) and defined(readlink):
+        when not defined(windows) and not defined(nintendoswitch):
           while followSymlinks: # doubles as if here
             if x.symlinkExists:
               var r = newString(maxSymlinkLen)
@@ -1773,7 +1773,7 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   ##
   ## See also:
   ## * `createSymlink proc <#createSymlink,string,string>`_
-  when defined(windows) or not defined(readlink):
+  when defined(windows) or defined(nintendoswitch):
     result = symlinkPath
   else:
     result = newString(maxSymlinkLen)
@@ -3191,6 +3191,8 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
       result = getApplHaiku()
     elif defined(openbsd):
       result = getApplOpenBsd()
+    elif defined(nintendoswitch):
+      result = "nxNimApp"
 
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
