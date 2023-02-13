@@ -178,8 +178,8 @@ proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
   of cincludes: copySeq(conf.cIncludes)
   of clibs: copySeq(conf.cLibs)
 
-proc stackTrace2(c: PCtx, msg: string, n: PNode) =
-  stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr, msg, n.info)
+proc stackTrace2(c: PCtx, msg: string, info: TLineInfo) =
+  stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr, msg, info)
 
 
 proc registerAdditionalOps*(c: PCtx) =
@@ -275,14 +275,65 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
-      stackTrace2(c, "symBodyHash() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n)
+      stackTrace2(c, "symBodyHash() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n.info)
     setResult(a, $symBodyDigest(c.graph, n.sym))
 
   registerCallback c, "stdlib.macros.isExported", proc(a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
-      stackTrace2(c, "isExported() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n)
+      stackTrace2(c, "isExported() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n.info)
     setResult(a, sfExported in n.sym.flags)
+
+  registerCallback c, "stdlib.macrocache.value", proc (a: VmArgs) =
+    setResult(a, getOrDefault(c.graph.cacheCounters, getString(a, 0)))
+
+  registerCallback c, "stdlib.macrocache.inc", proc (a: VmArgs) =
+    let g = c.graph
+    let destKey = getString(a, 0)
+    let by = getInt(a, 1)
+    let v = getOrDefault(g.cacheCounters, destKey)
+    g.cacheCounters[destKey] = v+by
+    recordInc(c, a.currentLineInfo, destKey, by)
+
+  registerCallback c, "stdlib.macrocache.add", proc (a: VmArgs) =
+    let g = c.graph
+    let destKey = getString(a, 0)
+    let val = getNode(a, 1)
+    if not contains(g.cacheSeqs, destKey):
+      g.cacheSeqs[destKey] = newTree(nkStmtList, val)
+    else:
+      g.cacheSeqs[destKey].add val
+    recordAdd(c, a.currentLineInfo, destKey, val)
+
+  registerCallback c, "stdlib.macrocache.incl", proc (a: VmArgs) =
+    let g = c.graph
+    let destKey = getString(a, 0)
+    let val = getNode(a, 1)
+    if not contains(g.cacheSeqs, destKey):
+      g.cacheSeqs[destKey] = newTree(nkStmtList, val)
+    else:
+      block search:
+        for existing in g.cacheSeqs[destKey]:
+          if exprStructuralEquivalent(existing, val, strictSymEquality=true):
+            break search
+        g.cacheSeqs[destKey].add val
+    recordIncl(c, a.currentLineInfo, destKey, val)
+
+  registerCallback c, "stdlib.macrocache.len", proc (a: VmArgs) =
+    let g = c.graph
+    let destKey = getString(a, 0)
+    setResult(a,
+      if contains(g.cacheSeqs, destKey): g.cacheSeqs[destKey].len else: 0
+    )
+
+  registerCallback c, "stdlib.macrocache.[]", proc (a: VmArgs) =
+    let g = c.graph
+    let destKey = getString(a, 0)
+    let idx = getInt(a, 1)
+    if contains(g.cacheSeqs, destKey) and idx <% g.cacheSeqs[destKey].len:
+      setResult(a, g.cacheSeqs[destKey][idx.int])
+    else:
+      stackTrace2(c, formatErrorIndexBound(idx, g.cacheSeqs[destKey].len-1), a.currentLineInfo)
 
   registerCallback c, "stdlib.macrocache.hasKey", proc (a: VmArgs) =
     let

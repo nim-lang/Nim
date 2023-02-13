@@ -2124,57 +2124,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       incl(sym.flags, sfGenSym)
       regs[ra].node = newSymNode(sym)
       regs[ra].node.flags.incl nfIsRef
-    of opcNccValue:
-      decodeB(rkInt)
-      let destKey {.cursor.} = regs[rb].node.strVal
-      regs[ra].intVal = getOrDefault(c.graph.cacheCounters, destKey)
-    of opcNccInc:
-      let g = c.graph
-      declBC()
-      let destKey {.cursor.} = regs[rb].node.strVal
-      let by = regs[rc].intVal
-      let v = getOrDefault(g.cacheCounters, destKey)
-      g.cacheCounters[destKey] = v+by
-      recordInc(c, c.debug[pc], destKey, by)
-    of opcNcsAdd:
-      let g = c.graph
-      declBC()
-      let destKey {.cursor.} = regs[rb].node.strVal
-      let val = regs[rc].node
-      if not contains(g.cacheSeqs, destKey):
-        g.cacheSeqs[destKey] = newTree(nkStmtList, val)
-      else:
-        g.cacheSeqs[destKey].add val
-      recordAdd(c, c.debug[pc], destKey, val)
-    of opcNcsIncl:
-      let g = c.graph
-      declBC()
-      let destKey {.cursor.} = regs[rb].node.strVal
-      let val = regs[rc].node
-      if not contains(g.cacheSeqs, destKey):
-        g.cacheSeqs[destKey] = newTree(nkStmtList, val)
-      else:
-        block search:
-          for existing in g.cacheSeqs[destKey]:
-            if exprStructuralEquivalent(existing, val, strictSymEquality=true):
-              break search
-          g.cacheSeqs[destKey].add val
-      recordIncl(c, c.debug[pc], destKey, val)
-    of opcNcsLen:
-      let g = c.graph
-      decodeB(rkInt)
-      let destKey {.cursor.} = regs[rb].node.strVal
-      regs[ra].intVal =
-        if contains(g.cacheSeqs, destKey): g.cacheSeqs[destKey].len else: 0
-    of opcNcsAt:
-      let g = c.graph
-      decodeBC(rkNode)
-      let idx = regs[rc].intVal
-      let destKey {.cursor.} = regs[rb].node.strVal
-      if contains(g.cacheSeqs, destKey) and idx <% g.cacheSeqs[destKey].len:
-        regs[ra].node = g.cacheSeqs[destKey][idx.int]
-      else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, g.cacheSeqs[destKey].len-1))
     of opcNctPut:
       let g = c.graph
       let destKey {.cursor.} = regs[ra].node.strVal

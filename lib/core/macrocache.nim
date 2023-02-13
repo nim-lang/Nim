@@ -54,7 +54,10 @@ type
   CacheCounter* = distinct string
     ## Compile-time counter, uses `int` for storing the count.
 
-proc value*(c: CacheCounter): int {.magic: "NccValue".} =
+template vmopsHints() =
+  discard "can only called at compile time, implemented as a vmops"
+
+proc value*(c: CacheCounter): int =
   ## Returns the value of a counter `c`.
   runnableExamples:
     static:
@@ -64,8 +67,9 @@ proc value*(c: CacheCounter): int {.magic: "NccValue".} =
 
       inc counter
       assert counter.value == 1
+  vmopsHints()
 
-proc inc*(c: CacheCounter; by = 1) {.magic: "NccInc".} =
+proc inc*(c: CacheCounter; by = 1) =
   ## Increments the counter `c` with the value `by`.
   runnableExamples:
     static:
@@ -74,8 +78,9 @@ proc inc*(c: CacheCounter; by = 1) {.magic: "NccInc".} =
       inc counter, 5
 
       assert counter.value == 6
+  vmopsHints()
 
-proc add*(s: CacheSeq; value: NimNode) {.magic: "NcsAdd".} =
+proc add*(s: CacheSeq; value: NimNode) =
   ## Adds `value` to `s`.
   runnableExamples:
     import std/macros
@@ -87,8 +92,9 @@ proc add*(s: CacheSeq; value: NimNode) {.magic: "NcsAdd".} =
 
       assert mySeq.len == 2
       assert mySeq[1].strVal == "hello ic"
+  vmopsHints()
 
-proc incl*(s: CacheSeq; value: NimNode) {.magic: "NcsIncl".} =
+proc incl*(s: CacheSeq; value: NimNode) =
   ## Adds `value` to `s`.
   ##
   ## .. hint:: This doesn't do anything if `value` is already in `s`.
@@ -102,8 +108,9 @@ proc incl*(s: CacheSeq; value: NimNode) {.magic: "NcsIncl".} =
 
       # still one element
       assert mySeq.len == 1
+  vmopsHints()
 
-proc len*(s: CacheSeq): int {.magic: "NcsLen".} =
+proc len*(s: CacheSeq): int =
   ## Returns the length of `s`.
   runnableExamples:
     import std/macros
@@ -116,8 +123,9 @@ proc len*(s: CacheSeq): int {.magic: "NcsLen".} =
 
       mySeq.add(val)
       assert mySeq.len == 2
+  vmopsHints()
 
-proc `[]`*(s: CacheSeq; i: int): NimNode {.magic: "NcsAt".} =
+proc `[]`*(s: CacheSeq; i: int): NimNode =
   ## Returns the `i`th value from `s`.
   runnableExamples:
     import std/macros
@@ -126,6 +134,7 @@ proc `[]`*(s: CacheSeq; i: int): NimNode {.magic: "NcsAt".} =
     static:
       mySeq.add(newLit(42))
       assert mySeq[0].intVal == 42
+  vmopsHints()
 
 iterator items*(s: CacheSeq): NimNode =
   ## Iterates over each item in `s`.
@@ -143,7 +152,7 @@ iterator items*(s: CacheSeq): NimNode =
 
   for i in 0 ..< len(s): yield s[i]
 
-proc `[]=`*(t: CacheTable; key: string, value: NimNode) {.magic: "NctPut".} =
+proc `[]=`*(t: CacheTable; key: string, value: NimNode) =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## .. warning:: `key` has to be unique! Assigning `value` to a `key` that is already
@@ -158,6 +167,7 @@ proc `[]=`*(t: CacheTable; key: string, value: NimNode) {.magic: "NctPut".} =
 
       # check that we can get the value back
       assert mcTable["value"].kind == nnkIntLit
+  vmopsHints()
 
 proc len*(t: CacheTable): int {.magic: "NctLen".} =
   ## Returns the number of elements in `t`.
@@ -194,7 +204,7 @@ proc hasKey*(t: CacheTable; key: string): bool =
       mcTable["foo"] = newEmptyNode()
       # Will now be true since we inserted a value
       assert mcTable.hasKey("foo")
-  discard "Implemented in vmops"
+  vmopsHints()
 
 proc contains*(t: CacheTable; key: string): bool {.inline.} =
   ## Alias of [hasKey][hasKey(CacheTable, string)] for use with the `in` operator.
