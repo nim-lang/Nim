@@ -54,8 +54,8 @@ type
   CacheCounter* = distinct string
     ## Compile-time counter, uses `int` for storing the count.
 
-template vmopsHints() =
-  discard "can only called at compile time, implemented as a vmops"
+template vmopsHints() = # todo make it error at compile time?
+  doAssert false, "can only called at compile time, implemented as a vmops"
 
 proc value*(c: CacheCounter): int =
   ## Returns the value of a counter `c`.
