@@ -84,7 +84,7 @@ proc genBuiltin(c: var TLiftCtx; magic: TMagic; name: string; i: PNode): PNode =
 proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink}:
     body.add newAsgnStmt(x, y)
-  elif c.kind == attachedDestructor and c.addMemReset:
+  elif c.kind == attachedDestructor and c.addMemReset or c.kind == attachedWasMoved:
     let call = genBuiltin(c, mDefault, "default", x)
     call.typ = t
     body.add newAsgnStmt(x, call)
