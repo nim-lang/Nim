@@ -1892,7 +1892,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
   of "=trace":
     if s.magic != mTrace:
       bindTypeHook(c, s, n, attachedTrace)
-  of "=wasmoved":
+  of "=wasmoved", "wasmoved":
     bindTypeHook(c, s, n, attachedWasMoved)
   else:
     if sfOverriden in s.flags:
