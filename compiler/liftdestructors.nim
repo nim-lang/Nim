@@ -145,7 +145,7 @@ proc destructorCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
   else:
     result = destroy
 
-proc wasMovedCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
+proc genWasMovedCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ[0])
   result.add(newSymNode(op))
   result.add genAddr(c, x)
@@ -457,7 +457,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
 
       #markUsed(c.g.config, c.info, op, c.g.usageSym)
       onUse(c.info, op)
-      body.add wasMovedCall(c, op, x)
+      body.add genWasMovedCall(c, op, x)
       result = true
 
 proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
@@ -1131,15 +1131,15 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   # bug #15122: We need to produce all prototypes before entering the
   # mind boggling recursion. Hacks like these imply we should rewrite
   # this module.
-  var generics: array[attachedDestructor..attachedTrace, bool]
-  for k in attachedDestructor..lastAttached:
+  var generics: array[attachedWasMoved..attachedTrace, bool]
+  for k in attachedWasMoved..lastAttached:
     generics[k] = getAttachedOp(g, canon, k) != nil
     if not generics[k]:
       setAttachedOp(g, idgen.module, canon, k,
           symPrototype(g, canon, canon.owner, k, info, idgen))
 
   # we generate the destructor first so that other operators can depend on it:
-  for k in attachedDestructor..lastAttached:
+  for k in attachedWasMoved..lastAttached:
     if not generics[k]:
       discard produceSym(g, c, canon, k, info, idgen)
     else:
