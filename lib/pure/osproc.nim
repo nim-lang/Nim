@@ -748,11 +748,8 @@ when defined(windows) and not defined(useNimRtl):
       const errInvalidParameter = 87.int
       const errFileNotFound = 2.int
       if lastError.int in {errInvalidParameter, errFileNotFound}:
-        try:
-          raiseOSError(lastError,
-              "Requested command not found: '$1'. OS error:" % command)
-        except ValueError:
-          discard
+        raiseOSError(lastError,
+              "Requested command not found: '" & command & "'. OS error:")
       else:
         raiseOSError(lastError, command)
     result.fProcessHandle = procInfo.hProcess
