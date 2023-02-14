@@ -43,7 +43,8 @@ when not defined(windows):
     ## Exit after serving one request
 
     var socket = newSocket()
-    socket.setSockOpt(OptReusePort, true)
+    when not defined(nuttx):
+      socket.setSockOpt(OptReusePort, true)
     socket.bindAddr(port)
 
     var ctx = newContext(certFile=certFile, keyFile=keyFile)

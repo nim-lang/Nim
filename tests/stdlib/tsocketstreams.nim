@@ -34,7 +34,8 @@ block UDP:
 
 block TCP:
   var server = newSocket()
-  server.setSockOpt(OptReusePort, true)
+  when not defined(nuttx):
+    server.setSockOpt(OptReusePort, true)
   server.bindAddr(Port(12345))
   server.listen()
 
