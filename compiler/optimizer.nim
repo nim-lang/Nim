@@ -16,6 +16,8 @@ import
 
 from trees import exprStructuralEquivalent
 
+import std/strutils
+
 const
   nfMarkForDeletion = nfNone # faster than a lookup table
 
@@ -110,16 +112,17 @@ proc analyse(c: var Con; b: var BasicBlock; n: PNode) =
     var reverse = false
     if n[0].kind == nkSym:
       let s = n[0].sym
-      if s.name.s == "=wasMoved" or s.name.s == "wasMoved": # todo normalize?
+      let name = s.name.s.normalize
+      if s.magic == mWasMoved or name == "=wasmoved": # todo normalize?
         b.wasMovedLocs.add n
         special = true
-      elif s.name.s == "=destroy":
+      elif name == "=destroy":
         if c.inFinally > 0 and (b.hasReturn or b.hasBreak):
           discard "cannot optimize away the destructor"
         else:
           c.wasMovedDestroyPair b, n
         special = true
-      elif s.name.s == "=sink":
+      elif name == "=sink":
         reverse = true
 
     if not special:

@@ -145,6 +145,11 @@ proc destructorCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
   else:
     result = destroy
 
+proc wasMovedCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
+  result = newNodeIT(nkCall, x.info, op.typ[0])
+  result.add(newSymNode(op))
+  result.add genAddr(c, x)
+
 proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) =
   case n.kind
   of nkSym:
@@ -442,7 +447,18 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       body.add newDeepCopyCall(c, op, x, y)
       result = true
   of attachedWasMoved:
-    body.add genBuiltin(c, mWasMoved, "wasMoved", x)
+    var op = getAttachedOp(c.g, t, attachedWasMoved)
+    if op != nil and sfOverriden in op.flags:
+
+      if op.ast.isGenericRoutine:
+        # patch generic destructor:
+        op = instantiateGeneric(c, op, t, t.typeInst)
+        setAttachedOp(c.g, c.idgen.module, t, attachedWasMoved, op)
+
+      #markUsed(c.g.config, c.info, op, c.g.usageSym)
+      onUse(c.info, op)
+      body.add wasMovedCall(c, op, x)
+      result = true
 
 proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
   var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), nextSymId(c.idgen), c.fn, c.info)
