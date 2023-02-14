@@ -640,7 +640,7 @@ when defined(linux) or defined(nimdoc):
       ## or UDP packets. (Requires Linux kernel > 3.9)
   else:
     const SO_REUSEPORT* = cint(15)
-when defined(nuttx):
+elif defined(nuttx):
   # Not supported, use SO_REUSEADDR to avoid compilation errors.
   var SO_REUSEPORT* {.importc: "SO_REUSEADDR", header: "<sys/socket.h>".}: cint
 else:
