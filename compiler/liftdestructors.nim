@@ -84,10 +84,12 @@ proc genBuiltin(c: var TLiftCtx; magic: TMagic; name: string; i: PNode): PNode =
 proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink}:
     body.add newAsgnStmt(x, y)
-  elif c.kind == attachedDestructor and c.addMemReset or c.kind == attachedWasMoved:
+  elif c.kind == attachedDestructor and c.addMemReset:
     let call = genBuiltin(c, mDefault, "default", x)
     call.typ = t
     body.add newAsgnStmt(x, call)
+  elif c.kind == attachedWasMoved:
+    body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
 proc genAddr(c: var TLiftCtx; x: PNode): PNode =
   if x.kind == nkHiddenDeref:
@@ -446,6 +448,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       onUse(c.info, op)
       body.add newDeepCopyCall(c, op, x, y)
       result = true
+
   of attachedWasMoved:
     var op = getAttachedOp(c.g, t, attachedWasMoved)
     if op != nil and sfOverriden in op.flags:
