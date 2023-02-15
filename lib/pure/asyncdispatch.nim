@@ -2035,7 +2035,7 @@ when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
       result = FD_MAX
     elif defined(nuttx):
       # The maximum number of concurrently active UDP and TCP ports.
-      NACTIVESOCKETS
+      result = NACTIVESOCKETS
     else:
       var fdLim: RLimit
       if getrlimit(RLIMIT_NOFILE, fdLim) < 0:
