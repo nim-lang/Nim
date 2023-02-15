@@ -1,7 +1,8 @@
 discard """
   output: ''''''
   cmd: '''nim c --gc:arc --expandArc:traverse --hint:Performance:off $file'''
-  nimout: '''--expandArc: traverse
+  nimout: '''
+--expandArc: traverse
 
 var
   it_cursor
@@ -22,12 +23,12 @@ try:
         `=copy`(ri_1, jt.ri)
         echo [jt.s]
         `=sink`(jt, ri_1)
-        wasMoved(ri_1)
+        `=wasMoved`(ri_1)
       finally:
         `=destroy`(ri_1)
 finally:
   `=destroy`(jt)
--- end of expandArc ------------------------'''
+'''
 """
 
 type
