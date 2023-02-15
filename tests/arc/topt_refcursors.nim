@@ -28,6 +28,7 @@ try:
         `=destroy`(ri_1)
 finally:
   `=destroy`(jt)
+-- end of expandArc ------------------------
 '''
 """
 
