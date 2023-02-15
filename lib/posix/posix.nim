@@ -195,8 +195,14 @@ proc open*(a1: cstring, a2: cint, mode: Mode | cint = 0.Mode): cint {.inline.} =
 
 proc posix_fadvise*(a1: cint, a2, a3: Off, a4: cint): cint {.
   importc, header: "<fcntl.h>".}
-proc posix_fallocate*(a1: cint, a2, a3: Off): cint {.
-  importc, header: "<fcntl.h>".}
+
+proc ftruncate*(a1: cint, a2: Off): cint {.importc, header: "<unistd.h>".}
+when defined(osx):              # 2001 POSIX evidently does not concern Apple
+  proc posix_fallocate*(a1: cint, a2, a3: Off): cint =
+    ftruncate(a1, a2 + a3)      # Set size to off + len, max offset
+else:                           # TODO: Use fcntl(fd, F_PREALLOCATE, ..) above
+  proc posix_fallocate*(a1: cint, a2, a3: Off): cint {.
+    importc, header: "<fcntl.h>".}
 
 when not defined(haiku) and not defined(openbsd):
   proc fmtmsg*(a1: int, a2: cstring, a3: cint,
@@ -511,7 +517,6 @@ proc fpathconf*(a1, a2: cint): int {.importc, header: "<unistd.h>".}
 proc fsync*(a1: cint): cint {.importc, header: "<unistd.h>".}
  ## synchronize a file's buffer cache to the storage device
 
-proc ftruncate*(a1: cint, a2: Off): cint {.importc, header: "<unistd.h>".}
 proc getcwd*(a1: cstring, a2: int): cstring {.importc, header: "<unistd.h>", sideEffect.}
 proc getuid*(): Uid {.importc, header: "<unistd.h>", sideEffect.}
  ## returns the real user ID of the calling process
