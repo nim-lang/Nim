@@ -2024,7 +2024,7 @@ when defined(posix):
   import posix
 
 when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
-       defined(solaris) or defined(zephyr) or defined(freertos):
+       defined(solaris) or defined(zephyr) or defined(freertos) or defined(nuttx):
   proc maxDescriptors*(): int {.raises: OSError.} =
     ## Returns the maximum number of active file descriptors for the current
     ## process. This involves a system call. For now `maxDescriptors` is
@@ -2033,6 +2033,9 @@ when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
       result = 16_700_000
     elif defined(zephyr) or defined(freertos):
       result = FD_MAX
+    elif defined(nuttx):
+      # The maximum number of concurrently active UDP and TCP ports.
+      result = NACTIVESOCKETS
     else:
       var fdLim: RLimit
       if getrlimit(RLIMIT_NOFILE, fdLim) < 0:

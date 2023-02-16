@@ -621,7 +621,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
                             osQnx, osAtari, osAix,
                             osHaiku, osVxWorks, osSolaris, osNetbsd,
                             osFreebsd, osOpenbsd, osDragonfly, osMacosx, osIos,
-                            osAndroid, osNintendoSwitch, osFreeRTOS, osCrossos, osZephyr}
+                            osAndroid, osNintendoSwitch, osFreeRTOS, osCrossos, osZephyr, osNuttX}
     of "linux":
       result = conf.target.targetOS in {osLinux, osAndroid}
     of "bsd":
@@ -643,6 +643,8 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = conf.target.targetOS == osFreeRTOS
     of "zephyr":
       result = conf.target.targetOS == osZephyr
+    of "nuttx":
+      result = conf.target.targetOS == osNuttX
     of "littleendian": result = CPU[conf.target.targetCPU].endian == littleEndian
     of "bigendian": result = CPU[conf.target.targetCPU].endian == bigEndian
     of "cpu8": result = CPU[conf.target.targetCPU].bit == 8
