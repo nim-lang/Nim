@@ -600,7 +600,7 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
 func toLowerAscii(c: char): char =
   if c in {'A'..'Z'}: char(uint8(c) xor 0b0010_0000'u8) else: c
 
-func parseSize*(s: openArray[char], size: var int64, alwaysBin=false): int =
+func parseSize*(s: string, size: var int64, alwaysBin=false): int =
   ## Parse a size qualified by binary or metric units into `size`.  This format
   ## is often called "human readable".  Result is the number of processed chars
   ## or 0 on parse errors and size is rounded to the nearest integer.  Trailing
