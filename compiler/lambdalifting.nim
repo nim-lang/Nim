@@ -859,7 +859,7 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType;
   fn.typ.callConv = oldCC
 
 proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
-                  idgen: IdGenerator): PNode =
+                  idgen: IdGenerator, force: bool): PNode =
   # XXX backend == backendJs does not suffice! The compiletime stuff needs
   # the transformation even when compiling to JS ...
 
@@ -868,7 +868,7 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
 
   if body.kind == nkEmpty or (
       g.config.backend == backendJs and not isCompileTime) or
-      fn.skipGenericOwner.kind != skModule:
+      (fn.skipGenericOwner.kind != skModule and not force):
 
     # ignore forward declaration:
     result = body

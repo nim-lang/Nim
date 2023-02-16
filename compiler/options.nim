@@ -78,6 +78,8 @@ type                          # please make sure we have under 32 options
     optThreadAnalysis,        # thread analysis pass
     optTlsEmulation,          # thread var emulation turned on
     optGenIndex               # generate index file for documentation;
+    optGenIndexOnly           # generate only index file for documentation
+    optNoImportdoc            # disable loading external documentation files
     optEmbedOrigSrc           # embed the original source in the generated code
                               # also: generate header file
     optIdeDebug               # idetools: debug mode
@@ -106,6 +108,7 @@ type                          # please make sure we have under 32 options
     optSourcemap
     optProfileVM              # enable VM profiler
     optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.
+    optShowNonExportedFields  # for documentation: show fields that are not exported
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -193,7 +196,7 @@ type
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideChkFile, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg, ideProject, ideGlobalSymbols,
-    ideRecompile, ideChanged, ideType, ideDeclaration
+    ideRecompile, ideChanged, ideType, ideDeclaration, ideExpand
 
   Feature* = enum  ## experimental features; DO NOT RENAME THESE!
     dotOperators,
@@ -276,6 +279,9 @@ type
     scope*, localUsages*, globalUsages*: int # more usages is better
     tokenLen*: int
     version*: int
+    endLine*: uint16
+    endCol*: int
+
   Suggestions* = seq[Suggest]
 
   ProfileInfo* = object
@@ -405,6 +411,11 @@ type
     cppCustomNamespace*: string
     nimMainPrefix*: string
     vmProfileData*: ProfileData
+
+    expandProgress*: bool
+    expandLevels*: int
+    expandNodeResult*: string
+    expandPosition*: TLineInfo
 
 proc parseNimVersion*(a: string): NimVer =
   # could be moved somewhere reusable
@@ -706,22 +717,24 @@ proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ##  clone or using installed nim, so that these exist: `result/doc/advopt.txt`
   ## and `result/lib/system.nim`
   if not conf.prefixDir.isEmpty: result = conf.prefixDir
-  else: result = AbsoluteDir splitPath(getAppDir()).head
+  else:
+    let binParent = AbsoluteDir splitPath(getAppDir()).head
+    when defined(posix):
+      if binParent == AbsoluteDir"/usr":
+        result = AbsoluteDir"/usr/lib/nim"
+      elif binParent == AbsoluteDir"/usr/local":
+        result = AbsoluteDir"/usr/local/lib/nim"
+      else:
+        result = binParent
+    else:
+      result = binParent
 
 proc setDefaultLibpath*(conf: ConfigRef) =
   # set default value (can be overwritten):
   if conf.libpath.isEmpty:
     # choose default libpath:
     var prefix = getPrefixDir(conf)
-    when defined(posix):
-      if prefix == AbsoluteDir"/usr":
-        conf.libpath = AbsoluteDir"/usr/lib/nim"
-      elif prefix == AbsoluteDir"/usr/local":
-        conf.libpath = AbsoluteDir"/usr/local/lib/nim"
-      else:
-        conf.libpath = prefix / RelativeDir"lib"
-    else:
-      conf.libpath = prefix / RelativeDir"lib"
+    conf.libpath = prefix / RelativeDir"lib"
 
     # Special rule to support other tools (nimble) which import the compiler
     # modules and make use of them.
@@ -994,6 +1007,12 @@ proc isDynlibOverride*(conf: ConfigRef; lib: string): bool =
   result = optDynlibOverrideAll in conf.globalOptions or
      conf.dllOverrides.hasKey(lib.canonDynlibName)
 
+proc showNonExportedFields*(conf: ConfigRef) =
+  incl(conf.globalOptions, optShowNonExportedFields)
+
+proc expandDone*(conf: ConfigRef): bool =
+  result = conf.ideCmd == ideExpand and conf.expandLevels == 0 and conf.expandProgress
+
 proc parseIdeCmd*(s: string): IdeCmd =
   case s:
   of "sug": ideSug
@@ -1033,6 +1052,7 @@ proc `$`*(c: IdeCmd): string =
   of ideProject: "project"
   of ideGlobalSymbols: "globalSymbols"
   of ideDeclaration: "declaration"
+  of ideExpand: "expand"
   of ideRecompile: "recompile"
   of ideChanged: "changed"
   of ideType: "type"

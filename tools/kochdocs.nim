@@ -240,27 +240,28 @@ proc buildDocSamples(nimArgs, destPath: string) =
   exec(findNim().quoteShell() & " doc $# -o:$# $#" %
     [nimArgs, destPath / "docgen_sample.html", "doc" / "docgen_sample.nim"])
 
-proc buildDocPackages(nimArgs, destPath: string) =
+proc buildDocPackages(nimArgs, destPath: string, indexOnly: bool) =
   # compiler docs; later, other packages (perhaps tools, testament etc)
   let nim = findNim().quoteShell()
     # to avoid broken links to manual from compiler dir, but a multi-package
     # structure could be supported later
 
   proc docProject(outdir, options, mainproj: string) =
-    exec("$nim doc --project --outdir:$outdir $nimArgs --git.url:$gitUrl $options $mainproj" % [
+    exec("$nim doc --project --outdir:$outdir $nimArgs --git.url:$gitUrl $index $options $mainproj" % [
       "nim", nim,
       "outdir", outdir,
       "nimArgs", nimArgs,
       "gitUrl", gitUrl,
       "options", options,
       "mainproj", mainproj,
+      "index", if indexOnly: "--index:only" else: ""
       ])
   let extra = "-u:boot"
   # xxx keep in sync with what's in $nim_prs_D/config/nimdoc.cfg, or, rather,
   # start using nims instead of nimdoc.cfg
   docProject(destPath/"compiler", extra, "compiler/index.nim")
 
-proc buildDoc(nimArgs, destPath: string) =
+proc buildDoc(nimArgs, destPath: string, indexOnly: bool) =
   # call nim for the documentation:
   let rst2html = getMd2html()
   var
@@ -268,17 +269,19 @@ proc buildDoc(nimArgs, destPath: string) =
               officialPackagesList.len + officialPackagesListWithoutIndex.len)
     i = 0
   let nim = findNim().quoteShell()
+
+  let index = if indexOnly: "--index:only" else: ""
   for d in items(rst2html):
-    commands[i] = nim & " md2html $# --git.url:$# -o:$# --index:on $#" %
+    commands[i] = nim & " md2html $# --git.url:$# -o:$# $# $#" %
       [nimArgs, gitUrl,
-      destPath / changeFileExt(splitFile(d).name, "html"), d]
+      destPath / changeFileExt(splitFile(d).name, "html"), index, d]
     i.inc
   for d in items(doc):
     let extra = if isJsOnly(d): "--backend:js" else: ""
     var nimArgs2 = nimArgs
     if d.isRelativeTo("compiler"): doAssert false
-    commands[i] = nim & " doc $# $# --git.url:$# --outdir:$# --index:on $#" %
-      [extra, nimArgs2, gitUrl, destPath, d]
+    commands[i] = nim & " doc $# $# --git.url:$# --outdir:$# $# $#" %
+      [extra, nimArgs2, gitUrl, destPath, index, d]
     i.inc
   for d in items(withoutIndex):
     commands[i] = nim & " doc $# --git.url:$# -o:$# $#" %
@@ -300,12 +303,6 @@ proc buildDoc(nimArgs, destPath: string) =
     i.inc
 
   mexec(commands)
-  exec(nim & " buildIndex -o:$1/theindex.html $1" % [destPath])
-    # caveat: this works so long it's called before `buildDocPackages` which
-    # populates `compiler/` with unrelated idx files that shouldn't be in index,
-    # so should work in CI but you may need to remove your generated html files
-    # locally after calling `./koch docs`. The clean fix would be for `idx` files
-    # to be transient with `--project` (eg all in memory).
 
 proc nim2pdf(src: string, dst: string, nimArgs: string) =
   # xxx expose as a `nim` command or in some other reusable way.
@@ -351,9 +348,23 @@ proc buildDocsDir*(args: string, dir: string) =
   gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector"])
   createDir(dir)
   buildDocSamples(args, dir)
-  buildDoc(args, dir) # bottleneck
+
+  # generate `.idx` files and top-level `theindex.html`:
+  buildDoc(args, dir, indexOnly=true) # bottleneck
+  let nim = findNim().quoteShell()
+  exec(nim & " buildIndex -o:$1/theindex.html $1" % [dir])
+    # caveat: this works so long it's called before `buildDocPackages` which
+    # populates `compiler/` with unrelated idx files that shouldn't be in index,
+    # so should work in CI but you may need to remove your generated html files
+    # locally after calling `./koch docs`. The clean fix would be for `idx` files
+    # to be transient with `--project` (eg all in memory).
+  buildDocPackages(args, dir, indexOnly=true)
+
+  # generate HTML and package-level `theindex.html`:
+  buildDoc(args, dir, indexOnly=false) # bottleneck
+  buildDocPackages(args, dir, indexOnly=false)
+
   copyFile(dir / "overview.html", dir / "index.html")
-  buildDocPackages(args, dir)
   copyFile(docHackJsSource, dir / docHackJsSource.lastPathPart)
 
 proc buildDocs*(args: string, localOnly = false, localOutDir = "") =

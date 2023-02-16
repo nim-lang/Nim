@@ -32,7 +32,7 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 import
-  strutils, ast, types, msgs, renderer, vmdef,
+  strutils, ast, types, msgs, renderer, vmdef, trees,
   intsets, magicsys, options, lowerings, lineinfos, transf, astmsgs
 
 from modulegraphs import getBody
@@ -1313,9 +1313,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNSetIdent:
     unused(c, n, dest)
     genBinaryStmt(c, n, opcNSetIdent)
-  of mNSetType:
-    unused(c, n, dest)
-    genBinaryStmt(c, n, opcNSetType)
   of mNSetStrVal:
     unused(c, n, dest)
     genBinaryStmt(c, n, opcNSetStrVal)
@@ -2014,25 +2011,29 @@ proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
 
 proc genProc*(c: PCtx; s: PSym): int
 
-proc matches(s: PSym; x: string): bool =
-  let y = x.split('.')
+proc toKey(s: PSym): string =
   var s = s
-  for i in 1..y.len:
-    if s == nil or (y[^i].cmpIgnoreStyle(s.name.s) != 0 and y[^i] != "*"):
-      return false
-    s = if sfFromGeneric in s.flags: s.owner.owner else: s.owner
-    while s != nil and s.kind == skPackage and s.owner != nil: s = s.owner
-  result = true
+  while s != nil:
+    result.add s.name.s
+    if s.owner != nil:
+      if sfFromGeneric in s.flags:
+        s = s.owner.owner
+      else:
+        s = s.owner
+      result.add "."
+    else:
+      break
 
 proc procIsCallback(c: PCtx; s: PSym): bool =
   if s.offset < -1: return true
-  var i = -2
-  for key, value in items(c.callbacks):
-    if s.matches(key):
-      doAssert s.offset == -1
-      s.offset = i
-      return true
-    dec i
+  let key = toKey(s)
+  if c.callbackIndex.contains(key):
+    let index = c.callbackIndex[key]
+    doAssert s.offset == -1
+    s.offset = -2 - index
+    result = true
+  else:
+    result = false
 
 proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   when defined(nimCompilerStacktraceHints):
@@ -2053,7 +2054,10 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       genLit(c, n, dest)
     of skConst:
       let constVal = if s.astdef != nil: s.astdef else: s.typ.n
-      gen(c, constVal, dest)
+      if dontInlineConstant(n, constVal):
+        genLit(c, constVal, dest)
+      else:
+        gen(c, constVal, dest)
     of skEnumField:
       # we never reach this case - as of the time of this comment,
       # skEnumField is folded to an int in semfold.nim, but this code

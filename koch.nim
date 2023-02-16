@@ -10,7 +10,7 @@
 #
 
 const
-  NimbleStableCommit = "afd03bc000f4013c48f52381728327dabfccfc4c" # master
+  NimbleStableCommit = "7efb226ef908297e8791cade20d991784b4e8bfc" # master
   # examples of possible values: #head, #ea82b54, 1.2.3
   FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
   HeadHash = "#head"
@@ -295,11 +295,7 @@ proc boot(args: string) =
 
   let nimStart = findStartNim().quoteShell()
   for i in 0..2:
-    # Nim versions < (1, 1) expect Nim's exception type to have a 'raiseId' field for
-    # C++ interop. Later Nim versions do this differently and removed the 'raiseId' field.
-    # Thus we always bootstrap the first iteration with "c" and not with "cpp" as
-    # a workaround.
-    let defaultCommand = if useCpp and i > 0: "cpp" else: "c"
+    let defaultCommand = if useCpp: "cpp" else: "c"
     let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
     echo "iteration: ", i+1
     var extraOption = ""
