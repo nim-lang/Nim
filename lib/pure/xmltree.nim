@@ -70,6 +70,14 @@ const
   xmlHeader* = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
     ## Header to use for complete XML output.
 
+template expect(node: XmlNode, kind: set[XmlNodeKind]) =
+  ## Check the node's kind is within a set of values
+  assert node.k in kind, "Got " & $node.k
+
+template expect(node: XmlNode, kind: XmlNodeKind) =
+  ## Check the node's kind equals a value
+  assert node.k == kind, "Got " & $node.k
+
 proc newXmlNode(kind: XmlNodeKind): XmlNode =
   ## Creates a new ``XmlNode``.
   result = XmlNode(k: kind)
@@ -182,7 +190,7 @@ proc text*(n: XmlNode): lent string {.inline.} =
     assert $c == "<!-- my comment -->"
     assert c.text == "my comment"
 
-  assert n.k in {xnText, xnComment, xnCData, xnEntity}
+  n.expect {xnText, xnComment, xnCData, xnEntity}
   result = n.fText
 
 proc `text=`*(n: XmlNode, text: sink string) {.inline.} =
@@ -200,7 +208,7 @@ proc `text=`*(n: XmlNode, text: sink string) {.inline.} =
     e.text = "a new entity text"
     assert $e == "&a new entity text;"
 
-  assert n.k in {xnText, xnComment, xnCData, xnEntity}
+  n.expect {xnText, xnComment, xnCData, xnEntity}
   n.fText = text
 
 proc tag*(n: XmlNode): lent string {.inline.} =
@@ -221,7 +229,7 @@ proc tag*(n: XmlNode): lent string {.inline.} =
 </firstTag>"""
     assert a.tag == "firstTag"
 
-  assert n.k == xnElement
+  n.expect xnElement
   result = n.fTag
 
 proc `tag=`*(n: XmlNode, tag: sink string) {.inline.} =
@@ -244,7 +252,7 @@ proc `tag=`*(n: XmlNode, tag: sink string) {.inline.} =
   <childTag />
 </newTag>"""
 
-  assert n.k == xnElement
+  n.expect xnElement
   n.fTag = tag
 
 proc rawText*(n: XmlNode): string {.inline.} =
@@ -315,7 +323,7 @@ proc add*(father, son: XmlNode) {.inline.} =
     f.add newEntity("my entity")
     assert $f == "<myTag>my text<sonTag />&my entity;</myTag>"
 
-  assert father.k == xnElement
+  father.expect xnElement
   add(father.s, son)
 
 proc add*(father: XmlNode, sons: openArray[XmlNode]) {.inline.} =
@@ -335,7 +343,7 @@ proc add*(father: XmlNode, sons: openArray[XmlNode]) {.inline.} =
     f.add(@[newText("my text"), newElement("sonTag"), newEntity("my entity")])
     assert $f == "<myTag>my text<sonTag />&my entity;</myTag>"
 
-  assert father.k == xnElement
+  father.expect xnElement
   add(father.s, sons)
 
 
@@ -361,7 +369,7 @@ proc insert*(father, son: XmlNode, index: int) {.inline.} =
   <first />
 </myTag>"""
 
-  assert father.k == xnElement
+  father.expect xnElement
   if len(father.s) > index:
     insert(father.s, son, index)
   else:
@@ -390,7 +398,7 @@ proc insert*(father: XmlNode, sons: openArray[XmlNode], index: int) {.inline.} =
   <first />
 </myTag>"""
 
-  assert father.k == xnElement
+  father.expect xnElement
   if len(father.s) > index:
     insert(father.s, sons, index)
   else:
@@ -416,7 +424,7 @@ proc delete*(n: XmlNode, i: Natural) =
   <first />
 </myTag>"""
 
-  assert n.k == xnElement
+  n.expect xnElement
   n.s.delete(i)
 
 proc delete*(n: XmlNode, slice: Slice[int]) =
@@ -439,7 +447,7 @@ proc delete*(n: XmlNode, slice: Slice[int]) =
   <first />
 </myTag>"""
 
-  assert n.k == xnElement
+  n.expect xnElement
   n.s.delete(slice)
 
 proc replace*(n: XmlNode, i: Natural, replacement: openArray[XmlNode]) =
@@ -466,7 +474,7 @@ proc replace*(n: XmlNode, i: Natural, replacement: openArray[XmlNode]) =
   <first />
 </myTag>"""
 
-  assert n.k == xnElement
+  n.expect xnElement
   n.s.delete(i)
   n.s.insert(replacement, i)
 
@@ -494,7 +502,7 @@ proc replace*(n: XmlNode, slice: Slice[int], replacement: openArray[XmlNode]) =
   <first />
 </myTag>"""
 
-  assert n.k == xnElement
+  n.expect xnElement
   n.s.delete(slice)
   n.s.insert(replacement, slice.a)
 
@@ -525,12 +533,12 @@ proc `[]`*(n: XmlNode, i: int): XmlNode {.inline.} =
     assert $f[1] == "<first />"
     assert $f[0] == "<second />"
 
-  assert n.k == xnElement
+  n.expect xnElement
   result = n.s[i]
 
 proc `[]`*(n: var XmlNode, i: int): var XmlNode {.inline.} =
   ## Returns the `i`'th child of `n` so that it can be modified.
-  assert n.k == xnElement
+  n.expect xnElement
   result = n.s[i]
 
 proc clear*(n: var XmlNode) =
@@ -582,12 +590,12 @@ iterator items*(n: XmlNode): XmlNode {.inline.} =
     # <!-- this is comment -->
     # <secondTag>&some entity;<![CDATA[some cdata]]></secondTag>
 
-  assert n.k == xnElement
+  n.expect xnElement
   for i in 0 .. n.len-1: yield n[i]
 
 iterator mitems*(n: var XmlNode): var XmlNode {.inline.} =
   ## Iterates over all direct children of `n` so that they can be modified.
-  assert n.k == xnElement
+  n.expect xnElement
   for i in 0 .. n.len-1: yield n[i]
 
 proc toXmlAttributes*(keyValuePairs: varargs[tuple[key,
@@ -619,7 +627,7 @@ proc attrs*(n: XmlNode): XmlAttributes {.inline.} =
     j.attrs = att
     assert j.attrs == att
 
-  assert n.k == xnElement
+  n.expect xnElement
   result = n.fAttr
 
 proc `attrs=`*(n: XmlNode, attr: XmlAttributes) {.inline.} =
@@ -636,7 +644,7 @@ proc `attrs=`*(n: XmlNode, attr: XmlAttributes) {.inline.} =
     j.attrs = att
     assert j.attrs == att
 
-  assert n.k == xnElement
+  n.expect xnElement
   n.fAttr = attr
 
 proc attrsLen*(n: XmlNode): int {.inline.} =
@@ -653,7 +661,7 @@ proc attrsLen*(n: XmlNode): int {.inline.} =
     j.attrs = att
     assert j.attrsLen == 2
 
-  assert n.k == xnElement
+  n.expect xnElement
   if not isNil(n.fAttr): result = len(n.fAttr)
 
 proc attr*(n: XmlNode, name: string): string =
@@ -671,7 +679,7 @@ proc attr*(n: XmlNode, name: string): string =
     assert j.attr("key1") == "first value"
     assert j.attr("key2") == "second value"
 
-  assert n.kind == xnElement
+  n.expect xnElement
   if n.attrs == nil: return ""
   return n.attrs.getOrDefault(name)
 
@@ -834,7 +842,7 @@ proc child*(n: XmlNode, name: string): XmlNode =
     f.add newElement("thirdSon")
     assert $(f.child("secondSon")) == "<secondSon />"
 
-  assert n.kind == xnElement
+  n.expect xnElement
   for i in items(n):
     if i.kind == xnElement:
       if i.tag == name:
@@ -870,7 +878,7 @@ proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode],
     a.findAll("BAD", s, caseInsensitive = true)
     assert $s == "@[<bad>c text</bad>, <BAD>d text</BAD>]"
 
-  assert n.k == xnElement
+  n.expect xnElement
   for child in n.items():
     if child.k != xnElement:
       continue
