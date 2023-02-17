@@ -37,7 +37,7 @@ const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
 const ioselSupportedPlatform* = defined(macosx) or defined(freebsd) or
                                 defined(netbsd) or defined(openbsd) or
-                                defined(dragonfly) or defined(nuttx) or
+                                defined(dragonfly) or
                                 (defined(linux) and not defined(android) and not defined(emscripten))
   ## This constant is used to determine whether the destination platform is
   ## fully supported by `ioselectors` module.
@@ -356,11 +356,9 @@ else:
     include ioselects/ioselectors_select # TODO: use the native VFS layer
   elif defined(nintendoswitch):
     include ioselects/ioselectors_select
-  elif defined(freertos) or defined(lwip):
+  elif defined(freertos) or defined(lwip) or defined(nuttx):
     include ioselects/ioselectors_select
   elif defined(zephyr):
     include ioselects/ioselectors_poll
-  elif defined(nuttx):
-    include ioselects/ioselectors_epoll
   else:
     include ioselects/ioselectors_poll
