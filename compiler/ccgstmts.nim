@@ -1538,7 +1538,7 @@ proc determineSection(n: PNode): TCFileSection =
   result = cfsProcHeaders
   if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
     let sec = n[0].strVal
-    if sec.startsWith("/*TYPESECTION*/"): result = cfsTypes
+    if sec.startsWith("/*TYPESECTION*/"): result = cfsForwardTypes # TODO WORKAROUND
     elif sec.startsWith("/*VARSECTION*/"): result = cfsVars
     elif sec.startsWith("/*INCLUDESECTION*/"): result = cfsHeaders
 
