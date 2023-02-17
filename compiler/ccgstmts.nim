@@ -1558,14 +1558,14 @@ proc processBackendOption*(p: BProc, n: PNode, start: int) =
   p.optionsStack.add p.options
   for i in start..<n.len:
     let it = n[i]
-    let sw = whichPragma(it[0])
-    let opts = pragmaToOptions(sw)
-    if opts != {}:
-      doAssert it.kind in nkPragmaCallKinds and it.len == 2 and it[1].kind == nkIntLit
-      if it[1].intVal != 0:
-        p.options.incl opts
-      else:
-        p.options.excl opts
+    if it.kind in nkPragmaCallKinds and it.len == 2 and it[1].kind == nkIntLit:
+      let sw = whichPragma(it[0])
+      let opts = pragmaToOptions(sw)
+      if opts != {}:
+        if it[1].intVal != 0:
+          p.options.incl opts
+        else:
+          p.options.excl opts
 
 proc genPragma(p: BProc, n: PNode) =
   for i in 0..<n.len:
