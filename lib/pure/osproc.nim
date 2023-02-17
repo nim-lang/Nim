@@ -76,7 +76,7 @@ type
 proc execProcess*(command: string, workingDir: string = "",
     args: openArray[string] = [], env: StringTableRef = nil,
     options: set[ProcessOption] = {poStdErrToStdOut, poUsePath, poEvalCommand}):
-  string {.rtl, extern: "nosp$1",
+  string {.rtl, extern: "nosp$1", raises: [OSError, IOError],
                   tags: [ExecIOEffect, ReadIOEffect, RootEffect].}
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
@@ -120,7 +120,7 @@ proc execCmd*(command: string): int {.rtl, extern: "nosp$1",
 proc startProcess*(command: string, workingDir: string = "",
     args: openArray[string] = [], env: StringTableRef = nil,
     options: set[ProcessOption] = {poStdErrToStdOut}):
-  owned(Process) {.rtl, extern: "nosp$1",
+  owned(Process) {.rtl, extern: "nosp$1", raises: [OSError, IOError],
                    tags: [ExecIOEffect, ReadEnvEffect, RootEffect].}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
   ## process's working directory. If ``workingDir == ""`` the current directory
@@ -152,7 +152,7 @@ proc startProcess*(command: string, workingDir: string = "",
   ##   <#execProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
   ## * `execCmd proc <#execCmd,string>`_
 
-proc close*(p: Process) {.rtl, extern: "nosp$1", tags: [WriteIOEffect].}
+proc close*(p: Process) {.rtl, extern: "nosp$1", raises: [IOError, OSError], tags: [WriteIOEffect].}
   ## When the process has finished executing, cleanup related handles.
   ##
   ## .. warning:: If the process has not finished executing, this will forcibly
@@ -201,7 +201,7 @@ proc kill*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## * `terminate proc <#terminate,Process>`_
   ## * `posix_utils.sendSignal(pid: Pid, signal: int) <posix_utils.html#sendSignal,Pid,int>`_
 
-proc running*(p: Process): bool {.rtl, extern: "nosp$1", tags: [].}
+proc running*(p: Process): bool {.rtl, extern: "nosp$1", raises: [OSError], tags: [].}
   ## Returns true if the process `p` is still running. Returns immediately.
 
 proc processID*(p: Process): int {.rtl, extern: "nosp$1".} =
@@ -212,7 +212,7 @@ proc processID*(p: Process): int {.rtl, extern: "nosp$1".} =
   return p.id
 
 proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
-    extern: "nosp$1", tags: [].}
+    extern: "nosp$1", raises: [OSError, ValueError], tags: [].}
   ## Waits for the process to finish and returns `p`'s error code.
   ##
   ## .. warning:: Be careful when using `waitForExit` for processes created without
@@ -221,7 +221,7 @@ proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
   ## On posix, if the process has exited because of a signal, 128 + signal
   ## number will be returned.
 
-proc peekExitCode*(p: Process): int {.rtl, extern: "nosp$1", tags: [].}
+proc peekExitCode*(p: Process): int {.rtl, extern: "nosp$1", raises: [OSError], tags: [].}
   ## Return `-1` if the process is still running. Otherwise the process' exit code.
   ##
   ## On posix, if the process has exited because of a signal, 128 + signal
@@ -237,7 +237,7 @@ proc inputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## * `outputStream proc <#outputStream,Process>`_
   ## * `errorStream proc <#errorStream,Process>`_
 
-proc outputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
+proc outputStream*(p: Process): Stream {.rtl, extern: "nosp$1", raises: [IOError, OSError], tags: [].}
   ## Returns ``p``'s output stream for reading from.
   ##
   ## You cannot perform peek/write/setOption operations to this stream.
@@ -289,7 +289,7 @@ proc peekableErrorStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [],
   ## * `errorStream proc <#errorStream,Process>`_
   ## * `peekableOutputStream proc <#peekableOutputStream,Process>`_
 
-proc inputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
+proc inputHandle*(p: Process): FileHandle {.rtl, raises: [], extern: "nosp$1",
   tags: [].} =
   ## Returns ``p``'s input file handle for writing to.
   ##
@@ -302,7 +302,7 @@ proc inputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
   result = p.inHandle
 
 proc outputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
-    tags: [].} =
+    raises: [], tags: [].} =
   ## Returns ``p``'s output file handle for reading from.
   ##
   ## .. warning:: The returned `FileHandle` should not be closed manually as
@@ -314,7 +314,7 @@ proc outputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
   result = p.outHandle
 
 proc errorHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
-    tags: [].} =
+    raises: [], tags: [].} =
   ## Returns ``p``'s error file handle for reading from.
   ##
   ## .. warning:: The returned `FileHandle` should not be closed manually as
@@ -325,7 +325,7 @@ proc errorHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
   ## * `outputHandle proc <#outputHandle,Process>`_
   result = p.errHandle
 
-proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
+proc countProcessors*(): int {.rtl, extern: "nosp$1", raises: [].} =
   ## Returns the number of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
   ## It is implemented just calling `cpuinfo.countProcessors`.
@@ -339,6 +339,7 @@ proc execProcesses*(cmds: openArray[string],
     beforeRunEvent: proc(idx: int) = nil,
     afterRunEvent: proc(idx: int, p: Process) = nil):
   int {.rtl, extern: "nosp$1",
+        raises: [ValueError, OSError, IOError],
         tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect],
         effectsOf: [beforeRunEvent, afterRunEvent].} =
   ## Executes the commands `cmds` in parallel.
@@ -452,7 +453,7 @@ proc execProcesses*(cmds: openArray[string],
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 
-iterator lines*(p: Process, keepNewLines = false): string {.since: (1, 3), tags: [ReadIOEffect].} =
+iterator lines*(p: Process, keepNewLines = false): string {.since: (1, 3), raises: [OSError, IOError, ValueError], tags: [ReadIOEffect].} =
   ## Convenience iterator for working with `startProcess` to read data from a
   ## background process.
   ##
@@ -481,7 +482,8 @@ iterator lines*(p: Process, keepNewLines = false): string {.since: (1, 3), tags:
     yield line
   discard waitForExit(p)
 
-proc readLines*(p: Process): (seq[string], int) {.since: (1, 3).} =
+proc readLines*(p: Process): (seq[string], int) {.since: (1, 3),
+    raises: [OSError, IOError, ValueError], tags: [ReadIOEffect].} =
   ## Convenience function for working with `startProcess` to read data from a
   ## background process.
   ##
@@ -747,7 +749,7 @@ when defined(windows) and not defined(useNimRtl):
       const errFileNotFound = 2.int
       if lastError.int in {errInvalidParameter, errFileNotFound}:
         raiseOSError(lastError,
-            "Requested command not found: '$1'. OS error:" % command)
+              "Requested command not found: '" & command & "'. OS error:")
       else:
         raiseOSError(lastError, command)
     result.fProcessHandle = procInfo.hProcess
@@ -955,13 +957,13 @@ elif not defined(useNimRtl):
                              not defined(useClone) and not defined(linux)
   when useProcessAuxSpawn:
     proc startProcessAuxSpawn(data: StartProcessData): Pid {.
-      tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], gcsafe.}
+      raises: [OSError], tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], gcsafe.}
   else:
     proc startProcessAuxFork(data: StartProcessData): Pid {.
-      tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], gcsafe.}
+      raises: [OSError], tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], gcsafe.}
     {.push stacktrace: off, profiler: off.}
     proc startProcessAfterFork(data: ptr StartProcessData) {.
-      tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], cdecl, gcsafe.}
+      raises: [OSError], tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], cdecl, gcsafe.}
     {.pop.}
 
   proc startProcess(command: string, workingDir: string = "",
@@ -1131,8 +1133,7 @@ elif not defined(useNimRtl):
       let sizeRead = read(data.pErrorPipe[readIdx], addr error, sizeof(error))
       if sizeRead == sizeof(error):
         raiseOSError(osLastError(),
-                     "Could not find command: '$1'. OS error: $2" %
-                      [$data.sysCommand, $strerror(error)])
+                      "Could not find command: '" & $data.sysCommand & "'. OS error: " & $strerror(error))
 
       return pid
 
@@ -1578,7 +1579,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
                 poStdErrToStdOut, poUsePath}, env: StringTableRef = nil,
                 workingDir = "", input = ""): tuple[
                 output: string,
-                exitCode: int] {.tags:
+                exitCode: int] {.raises: [OSError, IOError], tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
   ## A convenience proc that runs the `command`, and returns its `output` and
   ## `exitCode`. `env` and `workingDir` params behave as for `startProcess`.

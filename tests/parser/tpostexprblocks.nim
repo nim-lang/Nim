@@ -498,6 +498,13 @@ StmtList
         StmtList
           DiscardStmt
             Empty
+
+  Call
+    Ident "foo"
+    Finally
+      StmtList
+        DiscardStmt
+          Empty
 '''
 """
 
@@ -653,5 +660,9 @@ dumpTree:
     discard
   except (a, b):
     discard
+  finally:
+    discard
+
+  foo:
   finally:
     discard

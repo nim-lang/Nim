@@ -2688,6 +2688,7 @@ when notJSnotNims:
                     not defined(nintendoswitch) and
                     not defined(freertos) and
                     not defined(zephyr) and
+                    not defined(nuttx) and
                     hostOS != "any"
 
   proc raiseEIO(msg: string) {.noinline, noreturn.} =
