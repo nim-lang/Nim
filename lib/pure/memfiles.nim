@@ -314,33 +314,32 @@ proc flush*(f: var MemFile; attempts: Natural = 3) =
       if lastErr != EBUSY.OSErrorCode:
         raiseOSError(lastErr, "error flushing mapping")
 
-when defined(posix) or defined(nimdoc):
-  proc resize*(f: var MemFile, newFileSize: int) {.raises: [IOError, OSError].} =
-    ## resize and re-map the file underlying an `allowRemap MemFile`.
-    ## **Note**: this assumes the entire file is mapped read-write at offset zero.
-    ## Also, the value of `.mem` will probably change.
-    ## **Note**: This is not (yet) available on Windows.
-    when defined(posix):
-      if f.handle == -1:
-        raise newException(IOError,
-                            "Cannot resize MemFile opened with allowRemap=false")
-      if ftruncate(f.handle, newFileSize) == -1:
-        raiseOSError(osLastError())
-      when defined(linux): #Maybe NetBSD, too?
-        #On Linux this can be over 100 times faster than a munmap,mmap cycle.
-        proc mremap(old: pointer; oldSize, newSize: csize; flags: cint):
-            pointer {.importc: "mremap", header: "<sys/mman.h>".}
-        let newAddr = mremap(f.mem, csize(f.size), csize(newFileSize), cint(1))
-        if newAddr == cast[pointer](MAP_FAILED):
-          raiseOSError(osLastError())
-      else:
-        if munmap(f.mem, f.size) != 0:
-          raiseOSError(osLastError())
-        let newAddr = mmap(nil, newFileSize, PROT_READ or PROT_WRITE,
-                           f.flags, f.handle, 0)
-        if newAddr == cast[pointer](MAP_FAILED):
-          raiseOSError(osLastError())
-      f.mem = newAddr
+proc resize*(f: var MemFile, newFileSize: int) {.raises: [IOError, OSError].} =
+  ## Resize & re-map the file underlying an `allowRemap MemFile`.  If the OS/FS
+  ## supports it, file space is reserved to ensure room for new virtual pages.
+  ## Caller should wait often enough for `flush` to finish to limit use of
+  ## system RAM for write buffering, perhaps just prior to this call.
+  ## **Note**: this assumes the entire file is mapped read-write at offset 0.
+  ## Also, the value of `.mem` will probably change.
+  if newFileSize < 1: # Q: include system/bitmasks & use PageSize ?
+    raise newException(IOError, "Cannot resize MemFile to < 1 byte")
+  when defined(windows):
+    if not f.wasOpened:
+      raise newException(IOError, "Cannot resize unopened MemFile")
+    if f.fHandle == INVALID_HANDLE_VALUE:
+      raise newException(IOError,
+                         "Cannot resize MemFile opened with allowRemap=false")
+    if unmapViewOfFile(f.mem) == 0 or closeHandle(f.mapHandle) == 0: # Un-do map
+      raiseOSError(osLastError())
+    if newFileSize != f.size: # Seek to size & `setEndOfFile` => allocated.
+      if (let e = setFileSize(f.fHandle.FileHandle, newFileSize);
+          e != 0.OSErrorCode): raiseOSError(e)
+    f.mapHandle = createFileMappingW(f.fHandle, nil, PAGE_READWRITE, 0,0,nil)
+    if f.mapHandle == 0:                                             # Re-do map
+      raiseOSError(osLastError())
+    if (let m = mapViewOfFileEx(f.mapHandle, FILE_MAP_READ or FILE_MAP_WRITE,
+                                0, 0, WinSizeT(newFileSize), nil); m != nil):
+      f.mem  = m
       f.size = newFileSize
     else:
       raiseOSError(osLastError())
