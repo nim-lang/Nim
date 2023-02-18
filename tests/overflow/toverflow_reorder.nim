@@ -14,7 +14,7 @@ var
   overflowDetected = false
 
 try:
-  writeLine(stdout, b - a)
+  echo b - a
 except OverflowDefect:
   overflowDetected = true
 

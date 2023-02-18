@@ -8,7 +8,6 @@
 #
 
 # included from cgen.nim
-import pragmas
 const
   RangeExpandLimit = 256      # do not generate ranges
                               # over 'RangeExpandLimit' elements
@@ -1554,29 +1553,16 @@ proc genEmit(p: BProc, t: PNode) =
     genLineDir(p, t)
     line(p, cpsStmts, s)
 
-proc processBackendOption*(p: BProc, n: PNode, start: int) =
-  p.optionsStack.add p.options
-  for i in start..<n.len:
-    let it = n[i]
-    if it.kind in nkPragmaCallKinds and it.len == 2 and it[1].kind == nkIntLit:
-      let sw = whichPragma(it[0])
-      let opts = pragmaToOptions(sw)
-      if opts != {}:
-        if it[1].intVal != 0:
-          p.options.incl opts
-        else:
-          p.options.excl opts
-
 proc genPragma(p: BProc, n: PNode) =
+  let enabled = sfReorder in p.module.module.flags or codeReordering in p.config.features
   for i in 0..<n.len:
     let it = n[i]
     case whichPragma(it)
     of wEmit: genEmit(p, it)
     of wPush:
-      processBackendOption(p, n, i+1)
+      processPushBackendOption(p.optionsStack, p.options, n, i+1, enabled)
     of wPop:
-      p.options = p.optionsStack[^1]
-      p.optionsStack.setLen(p.optionsStack.len-1)
+      processPopBackendOption(p.optionsStack, p.options, enabled)
     else: discard
 
 

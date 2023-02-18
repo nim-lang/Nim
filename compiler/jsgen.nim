@@ -33,7 +33,7 @@ import
   nversion, msgs, idents, types,
   ropes, passes, ccgutils, wordrecg, renderer,
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  transf, injectdestructors, sourcemap, astmsgs
+  transf, injectdestructors, sourcemap, astmsgs, backendpragmas
 
 import json, sets, math, tables, intsets
 import strutils except addf
@@ -98,6 +98,7 @@ type
     prc: PSym
     globals, locals, body: Rope
     options: TOptions
+    optionsStack: seq[TOptions]
     module: BModule
     g: PGlobals
     generatedParamCopies: IntSet
@@ -2557,9 +2558,15 @@ proc genStmt(p: PProc, n: PNode) =
   if r.res != "": lineF(p, "$#;$n", [r.res])
 
 proc genPragma(p: PProc, n: PNode) =
-  for it in n.sons:
+  let enabled = sfReorder in p.module.module.flags or codeReordering in p.config.features
+  for i in 0..<n.len:
+    let it = n[i]
     case whichPragma(it)
     of wEmit: genAsmOrEmitStmt(p, it[1])
+    of wPush:
+      processPushBackendOption(p.optionsStack, p.options, n, i+1, enabled)
+    of wPop:
+      processPopBackendOption(p.optionsStack, p.options, enabled)
     else: discard
 
 proc genCast(p: PProc, n: PNode, r: var TCompRes) =

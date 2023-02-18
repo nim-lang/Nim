@@ -62,7 +62,6 @@ const
     wWarnings, wHints,
     wLineDir, wStackTrace, wLineTrace, wOptimization,
     wFloatChecks, wInfChecks, wNanChecks}
-  backendPragmas* = {wPush, wPop} # Todo
   lambdaPragmas* = {FirstCallConv..LastCallConv,
     wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
     wThread, wAsmNoStackFrame,
