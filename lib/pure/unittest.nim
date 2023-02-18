@@ -544,14 +544,14 @@ template test*(name, body) {.dirty.} =
     for formatter in formatters:
       formatter.testStarted(name)
 
-    {.warning[BareExcept]:off.}
+    {.push warning[BareExcept]:off.}
     try:
       when declared(testSetupIMPLFlag): testSetupIMPL()
       when declared(testTeardownIMPLFlag):
         defer: testTeardownIMPL()
-      {.warning[BareExcept]:on.}
+      {.push warning[BareExcept]:on.}
       body
-      {.warning[BareExcept]:off.}
+      {.pop.}
 
     except:
       let e = getCurrentException()
@@ -573,7 +573,7 @@ template test*(name, body) {.dirty.} =
       )
       testEnded(testResult)
       checkpoints = @[]
-    {.warning[BareExcept]:on.}
+    {.pop.}
 
 proc checkpoint*(msg: string) =
   ## Set a checkpoint identified by `msg`. Upon test failure all
