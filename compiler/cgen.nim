@@ -15,7 +15,7 @@ import
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
-  injectdestructors, astmsgs, modulepaths
+  injectdestructors, astmsgs, modulepaths, backendpragmas
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
