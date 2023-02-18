@@ -1,6 +1,3 @@
-discard """
-  targets: js
-"""
 import std/typetraits
 
 type
