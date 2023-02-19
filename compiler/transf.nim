@@ -33,7 +33,9 @@ type
 
 proc transformBody*(g: ModuleGraph; idgen: IdGenerator, prc: PSym, flag: TransformBodyFlag, force = false): PNode
 
-import closureiters, lambdalifting
+import closureiters
+from lambdalifting import nil
+
 
 type
   PTransCon = ref object # part of TContext; stackable
@@ -94,8 +96,8 @@ proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
   r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flags, sfFromGeneric)
   let owner = getCurrOwner(c)
-  if owner.isIterator and not c.tooEarly:
-    result = freshVarForClosureIter(c.graph, r, c.idgen, owner)
+  if lambdalifting.isIterator(owner) and not c.tooEarly:
+    result = lambdalifting.freshVarForClosureIter(c.graph, r, c.idgen, owner)
   else:
     result = newSymNode(r)
 
@@ -120,10 +122,10 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
       discard transformBody(c.graph, c.idgen, s, useCache)
     if s.kind == skIterator:
       if c.tooEarly: return n
-      else: return liftIterSym(c.graph, n, c.idgen, getCurrOwner(c))
+      else: return lambdalifting.liftIterSym(c.graph, n, c.idgen, getCurrOwner(c))
     elif s.kind in {skProc, skFunc, skConverter, skMethod} and not c.tooEarly:
       # top level .closure procs are still somewhat supported for 'Nake':
-      return makeClosure(c.graph, c.idgen, s, nil, n.info)
+      return lambdalifting.makeClosure(c.graph, c.idgen, s, nil, n.info)
   #elif n.sym.kind in {skVar, skLet} and n.sym.typ.callConv == ccClosure:
   #  echo n.info, " come heer for ", c.tooEarly
   #  if not c.tooEarly:
@@ -173,8 +175,8 @@ proc transformSym(c: PTransf, n: PNode): PNode =
 
 proc freshVar(c: PTransf; v: PSym): PNode =
   let owner = getCurrOwner(c)
-  if owner.isIterator and not c.tooEarly:
-    result = freshVarForClosureIter(c.graph, v, c.idgen, owner)
+  if lambdalifting.isIterator(owner) and not c.tooEarly:
+    result = lambdalifting.freshVarForClosureIter(c.graph, v, c.idgen, owner)
   else:
     var newVar = copySym(v, nextSymId(c.idgen))
     incl(newVar.flags, sfFromGeneric)
@@ -1155,12 +1157,12 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: Transfo
   else:
     prc.transformedBody = newNode(nkEmpty) # protects from recursion
     var c = openTransf(g, prc.getModule, "", idgen)
-    result = liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen, force)
+    result = lambdalifting.liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen, force)
     result = processTransf(c, result, prc)
     liftDefer(c, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config, c.idgen)
 
-    if prc.isIterator:
+    if lambdalifting.isIterator(prc):
       result = g.transformClosureIterator(c.idgen, prc, result)
 
     incl(result.flags, nfTransf)
