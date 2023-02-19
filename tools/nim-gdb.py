@@ -38,17 +38,17 @@ def getNimRti(type_name):
   # Get static const TNimType variable. This should be available for
   # every non trivial Nim type.
   m = type_hash_regex.match(type_name)
-  lookups = [
-    "NTI" + m.group(2).lower() + "__" + m.group(3) + "_",
-    "NTI" + "__" + m.group(3) + "_",
-    "NTI" + m.group(2).replace("colon", "58").lower() + "__" + m.group(3) + "_"
-    ]
   if m:
-      for l in lookups:
-        try:
-          return gdb.parse_and_eval(l)
-        except:
-          pass
+    lookups = [
+      "NTI" + m.group(2).lower() + "__" + m.group(3) + "_",
+      "NTI" + "__" + m.group(3) + "_",
+      "NTI" + m.group(2).replace("colon", "58").lower() + "__" + m.group(3) + "_"
+      ]
+    for l in lookups:
+      try:
+        return gdb.parse_and_eval(l)
+      except:
+        pass
   None
 
 def getNameFromNimRti(rti):
@@ -171,7 +171,7 @@ class DollarPrintFunction (gdb.Function):
         return func_value(arg.address)
 
 
-    printErrorOnce(argTypeName, f"No suitable Nim $ operator found for type: {getNimName(argTypeName)}\n")
+    debugPrint(f"No suitable Nim $ operator found for type: {getNimName(argTypeName)}\n")
     return None
 
   def invoke(self, arg):
@@ -335,9 +335,11 @@ class NimStringPrinter:
     if self.val:
       if self.val.type.name == "NimStringV2":
         l = int(self.val["len"])
+        data = self.val["p"]["data"]
       else:
         l = int(self.val['Sup']['len'])
-      return self.val["p"]["data"].lazy_string(encoding="utf-8", length=l)
+        data = self.val["data"]
+      return data.lazy_string(encoding="utf-8", length=l)
     else:
       return ""
 
@@ -459,40 +461,68 @@ class NimHashSetPrinter:
 ################################################################################
 
 class NimSeqPrinter:
-  # the pointer is explicity part of the type. So it is part of
-  # ``pattern``.
-  pattern = re.compile(r'^tySequence_\w* \*$')
+  pattern = re.compile(r'^tySequence_\w*\s?\*?$')
 
   def __init__(self, val):
     self.val = val
+    # V2 is on the stack, V1 is on the heap
+    self.v2 = val.type.code != gdb.TYPE_CODE_PTR
+    # Some seqs are just the content and to save repeating ourselves we do
+    # handle them here. Only thing that needs to check this is the len/data getters
+    self.isContent = self.val.type.name.endswith("Content")
 
   def display_hint(self):
     return 'array'
 
-  def to_string(self):
-    len = 0
-    cap = 0
-    if self.val:
-      len = int(self.val['Sup']['len'])
-      cap = int(self.val['Sup']['reserved'])
+  def getLen(self):
+    if self.v2:
+      if self.isContent:
+        return int(self.val["cap"])
+      else:
+        return int(self.val["len"])
+    else:
+      return self.val["Sup"]["len"]
 
-    return 'seq({0}, {1})'.format(len, cap)
+  def getData(self):
+    if self.v2:
+      if self.isContent:
+        return self.val["data"]
+      elif self.val["p"]:
+        return self.val["p"]["data"]
+    else:
+      return self.val["data"]
+
+  def to_string(self):
+    cap = 0
+    len = 0
+    if self.val:
+      len = int(self.getLen())
+      if self.v2:
+        if self.isContent:
+          cap = int(self.val["cap"])
+        elif self.val["p"]:
+          cap = int(self.val["p"]["cap"])
+      else:
+        cap = int(self.val['Sup']['reserved'])
+
+    return f'seq({len}, {cap})'
 
   def children(self):
     if self.val:
       val = self.val
       valType = val.type
-      length = int(val['Sup']['len'])
+      length = int(self.getLen())
 
       if length <= 0:
         return
 
-      dataType = valType['data'].type
-      data = val['data']
+      data = self.getData()
+      dataType = data.type
 
       if self.val.type.name is None:
+        # TODO: Figure out what this is for
         dataType = valType['data'].type.target().pointer()
-        data = val['data'].cast(dataType)
+        data = self.getData().cast(dataType)
 
       inaccessible = False
       for i in range(length):

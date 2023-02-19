@@ -18,7 +18,7 @@ outputs = [
   '"meTwo"',
   '{meOne, meThree}',
   'MyOtherEnum(1)',
-  '5',
+  '{MyOtherEnum(0), MyOtherEnum(2)}',
   'array = {1, 2, 3, 4, 5}',
   'seq(0, 0)',
   'seq(0, 10)',
@@ -30,7 +30,9 @@ outputs = [
   '{a = 1, b = "some string"}'
 ]
 
-argRegex = re.compile("^.* = (.*)$")
+argRegex = re.compile("^.* = (?:No suitable Nim \$ operator found for type: \w+\s*)*(.*)$")
+# Remove this error message which can pop up
+noSuitableRegex = re.compile("(No suitable Nim \$ operator found for type: \w+\s*)")
 
 for i, expected in enumerate(outputs):
   gdb.write(f"{i+1}) expecting: {expected}: ", gdb.STDLOG)
@@ -48,9 +50,8 @@ for i, expected in enumerate(outputs):
     gdb.execute("up")
     raw = gdb.parse_and_eval("myOtherArray")
   else:
-    rawArg = gdb.execute("info args", to_string = True)
-    if match := argRegex.match(rawArg):
-      raw = match.group(1)
+    rawArg = re.sub(noSuitableRegex, "", gdb.execute("info args", to_string = True))
+    raw = rawArg.split("=", 1)[-1].strip()
   output = str(raw)
 
   if output != expected:
