@@ -16,6 +16,8 @@ def printErrorOnce(id, message):
     errorSet.add(id)
     gdb.write("printErrorOnce: " + message, gdb.STDERR)
 
+def debugPrint(x):
+  gdb.write(str(x) + "\n", gdb.STDERR)
 
 ################################################################################
 #####  Type pretty printers
@@ -136,7 +138,7 @@ class DollarPrintFunction (gdb.Function):
   "Nim's equivalent of $ operator as a gdb function, available in expressions `print $dollar(myvalue)"
 
   dollar_functions = re.findall(
-    'NimStringDesc \*(dollar__[A-z0-9_]+?)\(([^,)]*)\);',
+    '(?:NimStringDesc \*|NimStringV2)\s?(dollar__[A-z0-9_]+?)\(([^,)]*)\);',
     gdb.execute("info functions dollar__", True, True)
   )
 
@@ -146,7 +148,6 @@ class DollarPrintFunction (gdb.Function):
 
   @staticmethod
   def invoke_static(arg):
-
     if arg.type.code == gdb.TYPE_CODE_PTR and arg.type.target().name == "NimStringDesc":
       return arg
 
@@ -216,7 +217,7 @@ class DollarPrintCmd (gdb.Command):
     strValue = DollarPrintFunction.invoke_static(param)
     if strValue:
       gdb.write(
-        NimStringPrinter(strValue).to_string() + "\n",
+        str(NimStringPrinter(strValue)) + "\n",
         gdb.STDOUT
       )
 
@@ -308,8 +309,8 @@ class NimBoolPrinter:
 
 ################################################################################
 
-class NimStringV2Printer:
-  pattern = re.compile(r'^NimStringV2$')
+class NimStringPrinter:
+  pattern = re.compile(r'^(NimStringDesc \*|NimStringV2)$')
 
   def __init__(self, val):
     self.val = val
@@ -319,26 +320,20 @@ class NimStringV2Printer:
 
   def to_string(self):
     if self.val:
-      l = int(self.val["len"])
+      if self.val.type.name == "NimStringV2":
+        l = int(self.val["len"])
+      else:
+        l = int(self.val['Sup']['len'])
       return self.val["p"]["data"].lazy_string(encoding="utf-8", length=l)
     else:
       return ""
 
-class NimStringPrinter:
-  pattern = re.compile(r'^NimStringDesc \*$')
-
-  def __init__(self, val):
-    self.val = val
-
-  def display_hint(self):
-    return 'string'
-
-  def to_string(self):
-    if self.val:
-      l = int(self.val['Sup']['len'])
-      return self.val['data'].lazy_string(encoding="utf-8", length=l)
+  def __str__(self):
+    strVal = self.to_string()
+    if isinstance(strVal, str):
+      return strVal
     else:
-      return ""
+      return strVal.value().string("utf-8")
 
 class NimRopePrinter:
   pattern = re.compile(r'^tyObject_RopeObj__([A-Za-z0-9]*) \*$')
@@ -397,6 +392,7 @@ def reprEnum(e, typ):
 
 def enumNti(typeNimName, idString):
   typeInfoName = "NTI" + typeNimName.lower() + "__" + idString + "_"
+  debugPrint(typeInfoName)
   nti = gdb.lookup_global_symbol(typeInfoName)
   if nti is None:
     typeInfoName = "NTI" + "__" + idString + "_"
@@ -411,16 +407,13 @@ class NimEnumPrinter:
     typeName = self.val.type.name
     match = self.pattern.match(typeName)
     self.typeNimName  = match.group(1)
-    typeInfoName, self.nti = enumNti(self.typeNimName, match.group(2))
-
-    if self.nti is None:
-      printErrorOnce(typeInfoName, f"NimEnumPrinter: lookup global symbol: '{typeInfoName}' failed for {typeName}.\n")
 
   def to_string(self):
-    if self.nti:
-      arg0     = self.val
-      arg1     = self.nti.value(gdb.newest_frame())
-      return reprEnum(arg0, arg1)
+    # Try and use string function
+    dollarResult = DollarPrintFunction.invoke_static(self.val)
+    if dollarResult:
+      # Strip the " so it is printed like an enum
+      return str(NimStringPrinter(dollarResult)).strip('"')
     else:
       return self.typeNimName + "(" + str(int(self.val)) + ")"
 
@@ -488,7 +481,7 @@ class NimHashSetPrinter:
 
 ################################################################################
 
-class NimSeqPrinter:
+class aNimSeqPrinter:
   # the pointer is explicity part of the type. So it is part of
   # ``pattern``.
   pattern = re.compile(r'^tySequence_\w* \*$')
