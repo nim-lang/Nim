@@ -308,6 +308,22 @@ class NimBoolPrinter:
 
 ################################################################################
 
+class NimStringV2Printer:
+  pattern = re.compile(r'^NimStringV2$')
+
+  def __init__(self, val):
+    self.val = val
+
+  def display_hint(self):
+    return 'string'
+
+  def to_string(self):
+    if self.val:
+      l = int(self.val["len"])
+      return self.val["p"]["data"].lazy_string(encoding="utf-8", length=l)
+    else:
+      return ""
+
 class NimStringPrinter:
   pattern = re.compile(r'^NimStringDesc \*$')
 
