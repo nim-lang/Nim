@@ -19,11 +19,18 @@ def printErrorOnce(id, message):
 def debugPrint(x):
   gdb.write(str(x) + "\n", gdb.STDERR)
 
+NIM_STRING_TYPES = ["NimStringDesc", "NimStringV2"]
+
 ################################################################################
 #####  Type pretty printers
 ################################################################################
 
 type_hash_regex = re.compile("^([A-Za-z0-9]*)_([A-Za-z0-9]*)_+([A-Za-z0-9]*)$")
+
+def getNimName(typ):
+  if m := type_hash_regex.match(typ):
+    return m.group(2)
+  return f"unknown <{typ}>"
 
 def getNimRti(type_name):
   """ Return a ``gdb.Value`` object for the Nim Runtime Information of ``type_name``. """
@@ -70,7 +77,7 @@ class NimTypeRecognizer:
     
     'NIM_BOOL': 'bool',
 
-    'NIM_CHAR': 'char', 'NCSTRING': 'cstring', 'NimStringDesc': 'string'
+    'NIM_CHAR': 'char', 'NCSTRING': 'cstring', 'NimStringDesc': 'string', 'NimStringV2': 'string'
   }
 
   # object_type_pattern = re.compile("^(\w*):ObjectType$")
@@ -148,11 +155,10 @@ class DollarPrintFunction (gdb.Function):
 
   @staticmethod
   def invoke_static(arg):
-    if arg.type.code == gdb.TYPE_CODE_PTR and arg.type.target().name == "NimStringDesc":
+    if arg.type.code == gdb.TYPE_CODE_PTR and arg.type.target().name in NIM_STRING_TYPES:
       return arg
-
     argTypeName = str(arg.type)
-
+    # TODO: Maybe cache the found function?
     for func, arg_typ in DollarPrintFunction.dollar_functions:
       # this way of overload resolution cannot deal with type aliases,
       # therefore it won't find all overloads.
@@ -164,7 +170,8 @@ class DollarPrintFunction (gdb.Function):
         func_value = gdb.lookup_global_symbol(func, gdb.SYMBOL_FUNCTIONS_DOMAIN).value()
         return func_value(arg.address)
 
-    printErrorOnce(argTypeName, "No suitable Nim $ operator found for type: " + argTypeName + "\n")
+
+    printErrorOnce(argTypeName, f"No suitable Nim $ operator found for type: {getNimName(argTypeName)}\n")
     return None
 
   def invoke(self, arg):
@@ -185,11 +192,11 @@ class NimStringEqFunction (gdb.Function):
 
   @staticmethod
   def invoke_static(arg1,arg2):
-    if arg1.type.code == gdb.TYPE_CODE_PTR and arg1.type.target().name == "NimStringDesc":
+    if arg1.type.code == gdb.TYPE_CODE_PTR and arg1.type.target().name in NIM_STRING_TYPES:
       str1 = NimStringPrinter(arg1).to_string()
     else:
       str1 = arg1.string()
-    if arg2.type.code == gdb.TYPE_CODE_PTR and arg2.type.target().name == "NimStringDesc":
+    if arg2.type.code == gdb.TYPE_CODE_PTR and arg2.type.target().name in NIM_STRING_TYPES:
       str2 = NimStringPrinter(arg1).to_string()
     else:
       str2 = arg2.string()
@@ -309,6 +316,12 @@ class NimBoolPrinter:
 
 ################################################################################
 
+def strFromLazy(strVal):
+  if isinstance(strVal, str):
+    return strVal
+  else:
+    return strVal.value().string("utf-8")
+
 class NimStringPrinter:
   pattern = re.compile(r'^(NimStringDesc \*|NimStringV2)$')
 
@@ -329,11 +342,7 @@ class NimStringPrinter:
       return ""
 
   def __str__(self):
-    strVal = self.to_string()
-    if isinstance(strVal, str):
-      return strVal
-    else:
-      return strVal.value().string("utf-8")
+    return strFromLazy(self.to_string())
 
 class NimRopePrinter:
   pattern = re.compile(r'^tyObject_RopeObj__([A-Za-z0-9]*) \*$')
@@ -356,43 +365,14 @@ class NimRopePrinter:
 
 ################################################################################
 
-# proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
-#   ## Return string representation for enumeration values
-#   var n = typ.node
-#   if ntfEnumHole notin typ.flags:
-#     let o = e - n.sons[0].offset
-#     if o >= 0 and o <% typ.node.len:
-#       return $n.sons[o].name
-#   else:
-#     # ugh we need a slow linear search:
-#     var s = n.sons
-#     for i in 0 .. n.len-1:
-#       if s[i].offset == e:
-#         return $s[i].name
-#   result = $e & " (invalid data!)"
-
 def reprEnum(e, typ):
   """ this is a port of the nim runtime function `reprEnum` to python """
   e = int(e)
-  n = typ["node"]
-  flags = int(typ["flags"])
-  # 1 << 6 is {ntfEnumHole}
-  if ((1 << 6) & flags) == 0:
-    o = e - int(n["sons"][0]["offset"])
-    if o >= 0 and 0 < int(n["len"]):
-      return n["sons"][o]["name"].string("utf-8", "ignore")
-  else:
-    # ugh we need a slow linear search:
-    s = n["sons"]
-    for i in range(0, int(n["len"])):
-      if int(s[i]["offset"]) == e:
-        return s[i]["name"].string("utf-8", "ignore")
-
-  return str(e) + " (invalid data!)"
+  val = gdb.Value(e).cast(typ)
+  return strFromLazy(NimEnumPrinter(val).to_string())
 
 def enumNti(typeNimName, idString):
   typeInfoName = "NTI" + typeNimName.lower() + "__" + idString + "_"
-  debugPrint(typeInfoName)
   nti = gdb.lookup_global_symbol(typeInfoName)
   if nti is None:
     typeInfoName = "NTI" + "__" + idString + "_"
@@ -413,7 +393,7 @@ class NimEnumPrinter:
     dollarResult = DollarPrintFunction.invoke_static(self.val)
     if dollarResult:
       # Strip the " so it is printed like an enum
-      return str(NimStringPrinter(dollarResult)).strip('"')
+      return str(NimStringPrinter(dollarResult))
     else:
       return self.typeNimName + "(" + str(int(self.val)) + ")"
 
@@ -430,20 +410,17 @@ class NimSetPrinter:
     typeName = self.val.type.name
     match = self.pattern.match(typeName)
     self.typeNimName = match.group(1)
-    typeInfoName, self.nti = enumNti(self.typeNimName, match.group(2))
-
-    if self.nti is None:
-      printErrorOnce(typeInfoName, f"NimSetPrinter: lookup global symbol: '{typeInfoName}' failed for {typeName}.\n")
 
   def to_string(self):
-    if self.nti:
-      nti = self.nti.value(gdb.newest_frame())
+    # Remove the tySet from the type name
+    typ = gdb.lookup_type(self.val.type.name[6:])
+    if True:
       enumStrings = []
       val = int(self.val)
       i   = 0
       while val > 0:
         if (val & 1) == 1:
-          enumStrings.append(reprEnum(i, nti))
+          enumStrings.append(reprEnum(i, typ))
         val = val >> 1
         i += 1
 
@@ -481,7 +458,7 @@ class NimHashSetPrinter:
 
 ################################################################################
 
-class aNimSeqPrinter:
+class NimSeqPrinter:
   # the pointer is explicity part of the type. So it is part of
   # ``pattern``.
   pattern = re.compile(r'^tySequence_\w* \*$')

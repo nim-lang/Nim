@@ -51,7 +51,6 @@ for i, expected in enumerate(outputs):
     rawArg = gdb.execute("info args", to_string = True)
     if match := argRegex.match(rawArg):
       raw = match.group(1)
-
   output = str(raw)
 
   if output != expected:
