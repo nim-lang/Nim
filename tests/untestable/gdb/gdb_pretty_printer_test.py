@@ -35,7 +35,7 @@ argRegex = re.compile("^.* = (?:No suitable Nim \$ operator found for type: \w+\
 noSuitableRegex = re.compile("(No suitable Nim \$ operator found for type: \w+\s*)")
 
 for i, expected in enumerate(outputs):
-  gdb.write(f"{i+1}) expecting: {expected}: ", gdb.STDLOG)
+  gdb.write(f"\x1b[38;5;105m{i+1}) expecting: {expected}: \x1b[0m", gdb.STDLOG)
   gdb.flush()
   currFrame = gdb.selected_frame()
   functionSymbol = currFrame.block().function
@@ -55,8 +55,8 @@ for i, expected in enumerate(outputs):
   output = str(raw)
 
   if output != expected:
-    gdb.write(f" ({output}) != expected: ({expected})\n", gdb.STDERR)
+    gdb.write(f"\x1b[38;5;196m ({output}) != expected: ({expected})\x1b[0m\n", gdb.STDERR)
     gdb.execute("quit")
   else:
-    gdb.write(f"passed\n", gdb.STDLOG)
+    gdb.write("\x1b[38;5;34mpassed\x1b[0m\n", gdb.STDLOG)
   gdb.execute("continue")
