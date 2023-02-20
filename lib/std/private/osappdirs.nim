@@ -43,7 +43,7 @@ proc getDataDir*(): string {.rtl, extern: "nos$1"
   ## * `setCurrentDir proc`_
   when defined(windows):
     result = getEnv("APPDATA")
-  elif defined(macos):
+  elif defined(macosx):
     result = getEnv("XDG_DATA_HOME", getEnv("HOME") / "Library" / "Application Support")
   else:
     result = getEnv("XDG_DATA_HOME", getEnv("HOME") / ".local" / "share")
