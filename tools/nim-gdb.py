@@ -160,7 +160,7 @@ class DollarPrintFunction (gdb.Function):
 
 
   @staticmethod
-  def invoke_static(arg):
+  def invoke_static(arg, ignore_errors = False):
     if arg.type.code == gdb.TYPE_CODE_PTR and arg.type.target().name in NIM_STRING_TYPES:
       return arg
     argTypeName = str(arg.type)
@@ -175,8 +175,8 @@ class DollarPrintFunction (gdb.Function):
         func_value = gdb.lookup_global_symbol(func, gdb.SYMBOL_FUNCTIONS_DOMAIN).value()
         return func_value(arg.address)
 
-
-    debugPrint(f"No suitable Nim $ operator found for type: {getNimName(argTypeName)}\n")
+    if not ignore_errors:
+      debugPrint(f"No suitable Nim $ operator found for type: {getNimName(argTypeName)}\n")
     return None
 
   def invoke(self, arg):
@@ -643,7 +643,9 @@ class NimTuplePrinter:
     self.val = val
 
   def to_string(self):
-    return ""
+    # We don't have field names so just print out the tuple as if it was anonymous
+    tupleValues = [str(self.val[field.name]) for field in self.val.type.fields()]
+    return f"({', '.join(tupleValues)})"
 
 ################################################################################
 
