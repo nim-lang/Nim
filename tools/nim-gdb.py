@@ -460,22 +460,25 @@ class NimHashSetPrinter:
 
 ################################################################################
 
-class NimSeqPrinter:
-  pattern = re.compile(r'^tySequence_\w*\s?\*?$')
+class NimSeq:
+  # Wrapper around sequences.
+  # This handles the differences between old and new runtime
 
   def __init__(self, val):
     self.val = val
-    # V2 is on the stack, V1 is on the heap
-    self.v2 = val.type.code != gdb.TYPE_CODE_PTR
+    # new runtime has sequences on stack, old has them on heap
+    self.new = val.type.code != gdb.TYPE_CODE_PTR
     # Some seqs are just the content and to save repeating ourselves we do
     # handle them here. Only thing that needs to check this is the len/data getters
-    self.isContent = self.val.type.name.endswith("Content")
+    self.isContent = val.type.name.endswith("Content")
 
-  def display_hint(self):
-    return 'array'
+  def __bool__(self):
+    return self.val is not None
 
-  def getLen(self):
-    if self.v2:
+  def __len__(self):
+    if not self:
+      return 0
+    if self.new:
       if self.isContent:
         return int(self.val["cap"])
       else:
@@ -483,8 +486,9 @@ class NimSeqPrinter:
     else:
       return self.val["Sup"]["len"]
 
-  def getData(self):
-    if self.v2:
+  @property
+  def data(self):
+    if self.new:
       if self.isContent:
         return self.val["data"]
       elif self.val["p"]:
@@ -492,37 +496,41 @@ class NimSeqPrinter:
     else:
       return self.val["data"]
 
-  def to_string(self):
-    cap = 0
-    len = 0
-    if self.val:
-      len = int(self.getLen())
-      if self.v2:
-        if self.isContent:
-          cap = int(self.val["cap"])
-        elif self.val["p"]:
-          cap = int(self.val["p"]["cap"])
+  @property
+  def cap(self):
+    if not self:
+      return 0
+    if self.new:
+      if self.isContent:
+        return int(self.val["cap"])
+      elif self.val["p"]:
+        return int(self.val["p"]["cap"])
       else:
-        cap = int(self.val['Sup']['reserved'])
+        return 0
+    return int(self.val['Sup']['reserved'])
 
-    return f'seq({len}, {cap})'
+class NimSeqPrinter:
+  pattern = re.compile(r'^tySequence_\w*\s?\*?$')
+
+  def __init__(self, val):
+    self.val = NimSeq(val)
+
+
+  def display_hint(self):
+    return 'array'
+
+  def to_string(self):
+    return f'seq({len(self.val)}, {self.val.cap})'
 
   def children(self):
     if self.val:
       val = self.val
-      valType = val.type
-      length = int(self.getLen())
+      length = len(val)
 
       if length <= 0:
         return
 
-      data = self.getData()
-      dataType = data.type
-
-      if self.val.type.name is None:
-        # TODO: Figure out what this is for
-        dataType = valType['data'].type.target().pointer()
-        data = self.getData().cast(dataType)
+      data = val.data
 
       inaccessible = False
       for i in range(length):
@@ -601,7 +609,7 @@ class NimTablePrinter:
     if self.val:
       counter  = int(self.val['counter'])
       if self.val['data']:
-        capacity = int(self.val['data']['Sup']['len'])
+        capacity = NimSeq(self.val["data"]).cap
 
     return 'Table({0}, {1})'.format(counter, capacity)
 

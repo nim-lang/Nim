@@ -106,7 +106,7 @@ proc testProc(): void =
   # var varObjInt = MyIntVariant(stuff: 5, myKind: 2, mString: "this is my sweet string")
   # myDebug(varObjInt) #17
 
-  echo(counter)
+  assert counter == 15
 
 
 testProc()
