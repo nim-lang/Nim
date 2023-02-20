@@ -1,5 +1,6 @@
 import gdb
 import re
+import sys
 # this test should test the gdb pretty printers of the nim
 # library. But be aware this test is not complete. It only tests the
 # command line version of gdb. It does not test anything for the
@@ -56,7 +57,7 @@ for i, expected in enumerate(outputs):
 
   if output != expected:
     gdb.write(f"\x1b[38;5;196m ({output}) != expected: ({expected})\x1b[0m\n", gdb.STDERR)
-    gdb.execute("quit")
+    gdb.execute("quit 1")
   else:
     gdb.write("\x1b[38;5;34mpassed\x1b[0m\n", gdb.STDLOG)
   gdb.execute("continue")

@@ -383,18 +383,26 @@ def enumNti(typeNimName, idString):
 
 class NimEnumPrinter:
   pattern = re.compile(r'^tyEnum_([A-Za-z0-9]+)__([A-Za-z0-9]*)$')
+  enumReprProc = gdb.lookup_global_symbol("reprEnum", gdb.SYMBOL_FUNCTIONS_DOMAIN)
 
   def __init__(self, val):
     self.val = val
     typeName = self.val.type.name
     match = self.pattern.match(typeName)
     self.typeNimName  = match.group(1)
+    typeInfoName, self.nti = enumNti(self.typeNimName, match.group(2))
 
   def to_string(self):
-    # Try and use string function
-    dollarResult = DollarPrintFunction.invoke_static(self.val)
-    if dollarResult:
-      # Strip the " so it is printed like an enum
+    if NimEnumPrinter.enumReprProc and self.nti:
+      # Use the old runtimes enumRepr function.
+      # We call the Nim proc itself so that the implementation is correct
+      f = gdb.newest_frame()
+      # We need to strip the quotes so it looks like an enum instead of a string
+      reprProc = NimEnumPrinter.enumReprProc.value()
+      return str(reprProc(self.val, self.nti.value(f).address)).strip('"')
+    elif dollarResult := DollarPrintFunction.invoke_static(self.val):
+      # New runtime doesn't use enumRepr so we instead try and call the
+      # dollar function for it
       return str(NimStringPrinter(dollarResult))
     else:
       return self.typeNimName + "(" + str(int(self.val)) + ")"
@@ -468,12 +476,16 @@ class NimSeq:
     self.val = val
     # new runtime has sequences on stack, old has them on heap
     self.new = val.type.code != gdb.TYPE_CODE_PTR
-    # Some seqs are just the content and to save repeating ourselves we do
-    # handle them here. Only thing that needs to check this is the len/data getters
-    self.isContent = val.type.name.endswith("Content")
+    if self.new:
+      # Some seqs are just the content and to save repeating ourselves we do
+      # handle them here. Only thing that needs to check this is the len/data getters
+      self.isContent = val.type.name.endswith("Content")
 
   def __bool__(self):
-    return self.val is not None
+    if self.new:
+      return self.val is not None
+    else:
+      return bool(self.val)
 
   def __len__(self):
     if not self:
