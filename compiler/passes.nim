@@ -199,3 +199,63 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
     # They are responsible for closing the rod files. See `cbackend.nim`.
     closeRodFile(graph, module)
   result = true
+
+proc processSingleModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
+                    stream: PLLStream): bool =
+  if graph.stopCompile(): return true
+  var
+    p: Parser
+    a: TPassContextArray
+    s: PLLStream
+    fileIdx = module.fileIdx
+  prepareConfigNotes(graph, module)
+  openPasses(graph, a, module, idgen)
+  if stream == nil:
+    let filename = toFullPathConsiderDirty(graph.config, fileIdx)
+    s = llStreamOpen(filename, fmRead)
+    if s == nil:
+      rawMessage(graph.config, errCannotOpenFile, filename.string)
+      return false
+  else:
+    s = stream
+
+  when defined(nimsuggest):
+    let filename = toFullPathConsiderDirty(graph.config, fileIdx).string
+    msgs.setHash(graph.config, fileIdx, $sha1.secureHashFile(filename))
+
+  while true:
+    openParser(p, fileIdx, s, graph.cache, graph.config)
+
+    if not belongsToStdlib(graph, module) or (belongsToStdlib(graph, module) and module.name.s == "distros"):
+      # XXX what about caching? no processing then? what if I change the
+      # modules to include between compilation runs? we'd need to track that
+      # in ROD files. I think we should enable this feature only
+      # for the interactive mode.
+      if module.name.s != "nimscriptapi":
+        processImplicits graph, graph.config.implicitImports, nkImportStmt, a, module
+        processImplicits graph, graph.config.implicitIncludes, nkIncludeStmt, a, module
+
+    checkFirstLineIndentation(p)
+    while true:
+      if graph.stopCompile(): break
+      var n = parseTopLevelStmt(p)
+      if n.kind == nkEmpty: break
+      # read everything, no streaming possible
+      var sl = newNodeI(nkStmtList, n.info)
+      sl.add n
+      while true:
+        var n = parseTopLevelStmt(p)
+        if n.kind == nkEmpty: break
+        sl.add n
+      if sfReorder in module.flags or codeReordering in graph.config.features:
+        sl = reorder(graph, sl, module)
+      discard processTopLevelStmt(graph, sl, a)
+    closeParser(p)
+    if s.kind != llsStdIn: break
+  closePasses(graph, a)
+  if graph.config.backend notin {backendC, backendCpp, backendObjc}:
+    # We only write rod files here if no C-like backend is active.
+    # The C-like backends have been patched to support the IC mechanism.
+    # They are responsible for closing the rod files. See `cbackend.nim`.
+    closeRodFile(graph, module)
+  result = true
