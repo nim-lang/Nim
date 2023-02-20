@@ -40,7 +40,7 @@ for i, expected in enumerate(outputs):
   gdb.flush()
   currFrame = gdb.selected_frame()
   functionSymbol = currFrame.block().function
-  assert functionSymbol.line == 41, str(functionSymbol.line)
+  assert functionSymbol.line == 24, str(functionSymbol.line)
   raw = ""
   if i == 6:
     # myArray is passed as pointer to int to myDebug. I look up myArray up in the stack

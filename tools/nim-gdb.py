@@ -158,7 +158,6 @@ class DollarPrintFunction (gdb.Function):
     if arg.type.code == gdb.TYPE_CODE_PTR and arg.type.target().name in NIM_STRING_TYPES:
       return arg
     argTypeName = str(arg.type)
-    # TODO: Maybe cache the found function?
     for func, arg_typ in DollarPrintFunction.dollar_functions:
       # this way of overload resolution cannot deal with type aliases,
       # therefore it won't find all overloads.
@@ -262,7 +261,6 @@ class KochCmd (gdb.Command):
       os.path.dirname(os.path.dirname(__file__)), "koch")
 
   def invoke(self, argument, from_tty):
-    import os
     subprocess.run([self.binary] + gdb.string_to_argv(argument))
 
 KochCmd()
@@ -368,7 +366,7 @@ class NimRopePrinter:
 ################################################################################
 
 def reprEnum(e, typ):
-  """ this is a port of the nim runtime function `reprEnum` to python """
+  # Casts the value to the enum type and then calls the enum printer
   e = int(e)
   val = gdb.Value(e).cast(typ)
   return strFromLazy(NimEnumPrinter(val).to_string())
@@ -632,163 +630,6 @@ class NimTablePrinter:
         if int(entry['Field0']) != 0:
           yield (idxStr + '.Field1', entry['Field1'])
           yield (idxStr + '.Field2', entry['Field2'])
-
-################################################################
-
-# this is untested, therefore disabled
-
-# class NimObjectPrinter:
-#   pattern = re.compile(r'^tyObject_([A-Za-z0-9]+)__(_?[A-Za-z0-9]*)(:? \*)?$')
-
-#   def __init__(self, val):
-#     self.val = val
-#     self.valType = None
-#     self.valTypeNimName = None
-
-#   def display_hint(self):
-#     return 'object'
-
-#   def _determineValType(self):
-#     if self.valType is None:
-#       vt = self.val.type
-#       if vt.name is None:
-#         target = vt.target()
-#         self.valType = target.pointer()
-#         self.fields = target.fields()
-#         self.valTypeName = target.name
-#         self.isPointer = True
-#       else:
-#         self.valType = vt
-#         self.fields = vt.fields()
-#         self.valTypeName = vt.name
-#         self.isPointer = False
-
-#   def to_string(self):
-#     if self.valTypeNimName is None:
-#       self._determineValType()
-#       match = self.pattern.match(self.valTypeName)
-#       self.valTypeNimName = match.group(1)
-
-#     return self.valTypeNimName
-
-#   def children(self):
-#     self._determineValType()
-#     if self.isPointer and int(self.val) == 0:
-#       return
-#     self.baseVal = self.val.referenced_value() if self.isPointer else self.val
-
-#     for c in self.handleFields(self.baseVal, getNimRti(self.valTypeName)):
-#       yield c
-  
-#   def handleFields(self, currVal, rti, fields = None):
-#     rtiSons = None
-#     discField = (0, None)
-#     seenSup = False
-#     if fields is None:
-#       fields = self.fields
-#     try: # XXX: remove try after finished debugging this method
-#       for (i, field) in enumerate(fields):
-#         if field.name == "Sup": # inherited data
-#           seenSup = True
-#           baseRef = rti['base']
-#           if baseRef:
-#             baseRti = baseRef.referenced_value()
-#             baseVal = currVal['Sup']
-#             baseValType = baseVal.type
-#             if baseValType.name is None:
-#               baseValType = baseValType.target().pointer()
-#               baseValFields = baseValType.target().fields()
-#             else:
-#               baseValFields = baseValType.fields()
-            
-#             for c in self.handleFields(baseVal, baseRti, baseValFields):
-#               yield c
-#         else:
-#           if field.type.code == gdb.TYPE_CODE_UNION:
-#             # if not rtiSons:
-#             rtiNode = rti['node'].referenced_value()
-#             rtiSons = rtiNode['sons']
-
-#             if not rtiSons and int(rtiNode['len']) == 0 and str(rtiNode['name']) != "0x0":
-#               rtiSons = [rti['node']] # sons are dereferenced by the consumer
-            
-#             if not rtiSons:
-#               printErrorOnce(self.valTypeName, f"NimObjectPrinter: UNION field can't be displayed without RTI {self.valTypeName}, using fallback.\n")
-#               # yield (field.name, self.baseVal[field]) # XXX: this fallback seems wrong
-#               return # XXX: this should probably continue instead?
-
-#             if int(rtiNode['len']) != 0 and str(rtiNode['name']) != "0x0":
-#               gdb.write(f"wtf IT HAPPENED {self.valTypeName}\n", gdb.STDERR)
-
-#             discNode = rtiSons[discField[0]].referenced_value()
-#             if not discNode:
-#               raise ValueError("Can't find union discriminant field in object RTI")
-            
-#             discNodeLen = int(discNode['len'])
-#             discFieldVal = int(currVal[discField[1].name])
-
-#             unionNodeRef = None
-#             if discFieldVal < discNodeLen:
-#               unionNodeRef = discNode['sons'][discFieldVal]
-#             if not unionNodeRef:
-#               unionNodeRef = discNode['sons'][discNodeLen]
-
-#             if not unionNodeRef:
-#               printErrorOnce(self.valTypeName + "no union node", f"wtf is up with sons {self.valTypeName} {unionNodeRef} {rtiNode['offset']} {discNode} {discFieldVal} {discNodeLen} {discField[1].name} {field.name} {field.type}\n")
-#               continue
-
-#             unionNode = unionNodeRef.referenced_value()
-            
-#             fieldName = "" if field.name == None else field.name.lower()
-#             unionNodeName = "" if not unionNode['name'] else unionNode['name'].string("utf-8", "ignore")
-#             if not unionNodeName or unionNodeName.lower() != fieldName:
-#               unionFieldName = f"_{discField[1].name.lower()}_{int(rti['node'].referenced_value()['len'])}"
-#               gdb.write(f"wtf i: {i} union: {unionFieldName} field: {fieldName} type: {field.type.name} tag: {field.type.tag}\n", gdb.STDERR)
-#             else:
-#               unionFieldName = unionNodeName
-
-#             if discNodeLen == 0:
-#               yield (unionFieldName, currVal[unionFieldName])
-#             else:
-#               unionNodeLen = int(unionNode['len'])
-#               if unionNodeLen > 0:
-#                 for u in range(unionNodeLen):
-#                   un = unionNode['sons'][u].referenced_value()['name'].string("utf-8", "ignore")
-#                   yield (un, currVal[unionFieldName][un])
-#               else:
-#                 yield(unionNodeName, currVal[unionFieldName])
-#           else:
-#             discIndex = i - 1 if seenSup else i
-#             discField = (discIndex, field) # discriminant field is the last normal field
-#             yield (field.name, currVal[field.name])
-#     except GeneratorExit:
-#       raise
-#     except:
-#       gdb.write(f"wtf {self.valTypeName} {i} fn: {field.name} df: {discField} rti: {rti} rtiNode: {rti['node'].referenced_value()} rtiSons: {rtiSons} {sys.exc_info()} {traceback.format_tb(sys.exc_info()[2], limit = 10)}\n", gdb.STDERR)
-#       gdb.write(f"wtf {self.valTypeName} {i} {field.name}\n", gdb.STDERR)
-      
-#       # seenSup = False
-#       # for (i, field) in enumerate(fields):
-#       #   # if field.name:
-#       #   #   val = currVal[field.name]
-#       #   # else:
-#       #   #   val = None
-#       #   rtiNode = rti['node'].referenced_value()
-#       #   rtiLen = int(rtiNode['len'])
-#       #   if int(rtiNode['len']) > 0:
-#       #     sons = rtiNode['sons']
-#       #   elif int(rti['len']) == 0 and str(rti['name']) != "0x0":
-#       #     sons = [rti['node']] # sons are dereferenced by the consumer
-#       #   sonsIdx = i - 1 if seenSup else i
-#       #   s = sons[sonsIdx].referenced_value()
-#       #   addr = int(currVal.address)
-#       #   off = addr + int(rtiNode['offset'])
-#       #   seenSup = seenSup or field.name == "Sup"
-
-#       #   gdb.write(f"wtf: i: {i} sonsIdx: {sonsIdx} field: {field.name} rtiLen: {rtiLen} rti: {rti} rtiNode: {rtiNode} isUnion: {field.type.code == gdb.TYPE_CODE_UNION} s: {s}\n", gdb.STDERR)
-
-#       raise
-
 
 ################################################################################
 
