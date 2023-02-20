@@ -422,19 +422,16 @@ class NimSetPrinter:
   def to_string(self):
     # Remove the tySet from the type name
     typ = gdb.lookup_type(self.val.type.name[6:])
-    if True:
-      enumStrings = []
-      val = int(self.val)
-      i   = 0
-      while val > 0:
-        if (val & 1) == 1:
-          enumStrings.append(reprEnum(i, typ))
-        val = val >> 1
-        i += 1
+    enumStrings = []
+    val = int(self.val)
+    i   = 0
+    while val > 0:
+      if (val & 1) == 1:
+        enumStrings.append(reprEnum(i, typ))
+      val = val >> 1
+      i += 1
 
-      return '{' + ', '.join(enumStrings) + '}'
-    else:
-      return str(int(self.val))
+    return '{' + ', '.join(enumStrings) + '}'
 
 ################################################################################
 
