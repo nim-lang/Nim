@@ -112,6 +112,12 @@ class NimTypeRecognizer:
       result = self.type_map_static.get(tname, None)
       if result:
         return result
+      elif tname.startswith("tyEnum_"):
+        return getNimName(tname)
+      elif tname.startswith("tyTuple__"):
+        # We make the name be the field types (Just like in Nim)
+        fields = ", ".join([self.recognize(field.type) for field in type_obj.fields()])
+        return f"({fields})"
 
       rti = getNimRti(tname)
       if rti:
@@ -627,6 +633,17 @@ class NimTablePrinter:
         if int(entry['Field0']) != 0:
           yield (idxStr + '.Field1', entry['Field1'])
           yield (idxStr + '.Field2', entry['Field2'])
+
+################################################################################
+
+class NimTuplePrinter:
+  pattern = re.compile(r"^tyTuple__([A-Za-z0-9]*)")
+
+  def __init__(self, val):
+    self.val = val
+
+  def to_string(self):
+    return ""
 
 ################################################################################
 
