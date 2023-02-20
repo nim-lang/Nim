@@ -28,7 +28,8 @@ outputs = [
   'seq(3, 3) = {"one", "two", "three"}',
   'Table(3, 64) = {[4] = "four", [5] = "five", [6] = "six"}',
   'Table(3, 8) = {["two"] = 2, ["three"] = 3, ["one"] = 1}',
-  '{a = 1, b = "some string"}'
+  '{a = 1, b = "some string"}',
+  '("hello", 42)'
 ]
 
 argRegex = re.compile("^.* = (?:No suitable Nim \$ operator found for type: \w+\s*)*(.*)$")

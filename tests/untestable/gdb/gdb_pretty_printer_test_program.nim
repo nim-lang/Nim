@@ -80,7 +80,10 @@ proc testProc(): void =
   var obj = MyObj(a: 1, b: "some string")
   myDebug(obj) #15
 
-  assert counter == 15
+  var tup = ("hello", 42)
+  myDebug(tup) # 16
+
+  assert counter == 16
 
 
 testProc()
