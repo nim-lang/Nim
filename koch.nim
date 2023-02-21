@@ -586,6 +586,9 @@ proc runCI(cmd: string) =
 
     execFold("Run atlas tests", "nim c -r -d:atlasTests tools/atlas/atlas.nim clone https://github.com/disruptek/balls")
 
+    kochExecFold("Testing booting in refc", "boot -d:release --mm:refc -d:nimStrictMode --lib:lib")
+
+
 proc testUnixInstall(cmdLineRest: string) =
   csource("-d:danger" & cmdLineRest)
   xz(false, cmdLineRest)
