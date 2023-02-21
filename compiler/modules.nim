@@ -42,7 +42,9 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   partialInitModule(result, graph, fileIdx, filename)
   graph.registerModule(result)
 
-proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, fromModule: PSym = nil): PSym =
+import processpass
+
+proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, fromModule: PSym = nil, fromBackend = false): PSym =
   var flags = flags
   if fileIdx == graph.config.projectMainIdx2: flags.incl sfMainModule
   result = graph.getModule(fileIdx)
@@ -53,7 +55,10 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, fr
     if sfMainModule in flags:
       if graph.config.projectIsStdin: s = stdin.llStreamOpen
       elif graph.config.projectIsCmd: s = llStreamOpen(graph.config.cmdInput)
-    discard processModule(graph, result, idGeneratorFromModule(result), s)
+    if fromBackend:
+      discard processSingleModule(graph, result, idGeneratorFromModule(result), s)
+    else:
+      discard processModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
     var cachedModules: seq[FileIndex]
     result = moduleFromRodFile(graph, fileIdx, cachedModules)
@@ -82,7 +87,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, fr
 proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym =
   # this is called by the semantic checking phase
   assert graph.config != nil
-  result = compileModule(graph, fileIdx, {}, s)
+  result = compileModule(graph, fileIdx, {}, s, fromBackend = true)
   graph.addDep(s, fileIdx)
   # keep track of import relationships
   if graph.config.hcrOn:
@@ -115,7 +120,7 @@ proc wantMainModule*(conf: ConfigRef) =
     fatal(conf, gCmdLineInfo, "command expects a filename")
   conf.projectMainIdx = fileInfoIdx(conf, addFileExt(conf.projectFull, NimExt))
 
-proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
+proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx, fromBackend = true) =
   connectCallbacks(graph)
   let conf = graph.config
   wantMainModule(conf)
@@ -130,10 +135,10 @@ proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   graph.importStack.add projectFile
 
   if projectFile == systemFileIdx:
-    discard graph.compileModule(projectFile, {sfMainModule, sfSystemModule})
+    discard graph.compileModule(projectFile, {sfMainModule, sfSystemModule}, fromBackend = fromBackend)
   else:
     graph.compileSystemModule()
-    discard graph.compileModule(projectFile, {sfMainModule})
+    discard graph.compileModule(projectFile, {sfMainModule}, fromBackend = fromBackend)
 
 proc makeModule*(graph: ModuleGraph; filename: AbsoluteFile): PSym =
   result = graph.newModule(fileInfoIdx(graph.config, filename))

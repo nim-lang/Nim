@@ -127,7 +127,7 @@ proc commandCompileToC(graph: ModuleGraph) =
   if not extccomp.ccHasSaneOverflow(conf):
     conf.symbols.defineSymbol("nimEmulateOverflowChecks")
 
-  compileProject(graph)
+  compileProject(graph, fromBackend = true)
   if graph.config.errorCounter > 0:
     return # issue #9933
   if conf.symbolFiles == disabledSf:

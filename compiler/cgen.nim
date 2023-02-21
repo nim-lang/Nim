@@ -1932,8 +1932,7 @@ template injectG() {.dirty.} =
     graph.backend = newModuleList(graph)
   let g = BModuleList(graph.backend)
 
-
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
+proc setupBackendGen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): BModule {.nosinks.} =
   injectG()
   result = newModule(g, module, graph.config)
   result.idgen = idgen
@@ -1943,6 +1942,9 @@ proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext 
     g.generatedHeader = rawNewModule(g, module,
       changeFileExt(completeCfilePath(graph.config, f), hExt))
     incl g.generatedHeader.flags, isHeaderFile
+
+proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
+  setupBackendGen(graph, module, idgen)
 
 proc writeHeader(m: BModule) =
   var result = headerTop()
@@ -2014,11 +2016,13 @@ proc genTopLevelStmt*(m: BModule; n: PNode) =
   else:
     genProcBody(m.initProc, transformedN)
 
-proc myProcess(b: PPassContext, n: PNode): PNode =
+proc processCodeGen*(b: BModule, n: PNode): PNode =
   result = n
   if b != nil:
-    var m = BModule(b)
-    genTopLevelStmt(m, n)
+    genTopLevelStmt(b, n)
+
+proc myProcess(b: PPassContext, n: PNode): PNode =
+  processCodeGen(BModule(b), n)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:
@@ -2137,11 +2141,13 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   let mm = m
   m.g.modulesClosed.add mm
 
-
-proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
+proc finalCodeGen*(graph: ModuleGraph; b: BModule, n: PNode): PNode =
   result = n
   if b == nil: return
-  finalCodegenActions(graph, BModule(b), n)
+  finalCodegenActions(graph, b, n)
+
+proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
+  finalCodeGen(graph, BModule(b), n)
 
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're given
