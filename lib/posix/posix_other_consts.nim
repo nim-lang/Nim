@@ -473,9 +473,6 @@ var FD_SETSIZE* {.importc: "FD_SETSIZE", header: "<sys/select.h>".}: cint
 when defined(zephyr):
   # Zephyr specific hardcoded value
   var FD_MAX* {.importc: "CONFIG_POSIX_MAX_FDS ", header: "<sys/select.h>".}: cint
-elif defined(nuttx):
-  # NuttX specific user configuration value
-  var NACTIVESOCKETS* {.importc: "CONFIG_NET_NACTIVESOCKETS", header: "<nuttx/config.h>".}: cint
 
 # <sys/socket.h>
 var MSG_CTRUNC* {.importc: "MSG_CTRUNC", header: "<sys/socket.h>".}: cint

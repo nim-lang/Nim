@@ -337,9 +337,6 @@ else:
         16_700_000
       elif defined(zephyr) or defined(freertos):
         FD_MAX
-      elif defined(nuttx):
-        # The maximum number of concurrently active UDP and TCP ports.
-        NACTIVESOCKETS
       else:
         var fdLim: RLimit
         var res = int(getrlimit(RLIMIT_NOFILE, fdLim))
