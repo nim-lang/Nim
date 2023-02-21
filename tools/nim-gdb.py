@@ -112,6 +112,12 @@ class NimTypeRecognizer:
       result = self.type_map_static.get(tname, None)
       if result:
         return result
+      elif tname.startswith("tyEnum_"):
+        return getNimName(tname)
+      elif tname.startswith("tyTuple__"):
+        # We make the name be the field types (Just like in Nim)
+        fields = ", ".join([self.recognize(field.type) for field in type_obj.fields()])
+        return f"({fields})"
 
       rti = getNimRti(tname)
       if rti:
@@ -154,7 +160,7 @@ class DollarPrintFunction (gdb.Function):
 
 
   @staticmethod
-  def invoke_static(arg):
+  def invoke_static(arg, ignore_errors = False):
     if arg.type.code == gdb.TYPE_CODE_PTR and arg.type.target().name in NIM_STRING_TYPES:
       return arg
     argTypeName = str(arg.type)
@@ -169,8 +175,8 @@ class DollarPrintFunction (gdb.Function):
         func_value = gdb.lookup_global_symbol(func, gdb.SYMBOL_FUNCTIONS_DOMAIN).value()
         return func_value(arg.address)
 
-
-    debugPrint(f"No suitable Nim $ operator found for type: {getNimName(argTypeName)}\n")
+    if not ignore_errors:
+      debugPrint(f"No suitable Nim $ operator found for type: {getNimName(argTypeName)}\n")
     return None
 
   def invoke(self, arg):
@@ -627,6 +633,19 @@ class NimTablePrinter:
         if int(entry['Field0']) != 0:
           yield (idxStr + '.Field1', entry['Field1'])
           yield (idxStr + '.Field2', entry['Field2'])
+
+################################################################################
+
+class NimTuplePrinter:
+  pattern = re.compile(r"^tyTuple__([A-Za-z0-9]*)")
+
+  def __init__(self, val):
+    self.val = val
+
+  def to_string(self):
+    # We don't have field names so just print out the tuple as if it was anonymous
+    tupleValues = [str(self.val[field.name]) for field in self.val.type.fields()]
+    return f"({', '.join(tupleValues)})"
 
 ################################################################################
 
