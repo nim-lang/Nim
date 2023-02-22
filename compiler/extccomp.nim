@@ -328,7 +328,9 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
                      platform.OS[conf.target.targetOS].name & '.' &
                      CC[c].name & fullSuffix
     result = getConfigVar(conf, fullCCname)
-    if result.len == 0:
+    if existsConfigVar(conf, fullCCname):
+      result = getConfigVar(conf, fullCCname)
+    else:
       # not overridden for this cross compilation setting?
       result = getConfigVar(conf, CC[c].name & fullSuffix)
   else:
