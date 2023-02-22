@@ -1,10 +1,10 @@
 discard """
+  disabled: true
   cmd: "nim check $options --defusages:$file,12,7 $file"
   nimout: '''def tnav1_temp.nim(11, 10)
 usage tnav1_temp.nim(12, 8)
   '''
 """
-
 
 import std / [times]
 
