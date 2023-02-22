@@ -703,7 +703,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
     elif defined(openbsd):
       result = getApplOpenBsd()
     elif defined(nintendoswitch):
-      result = "nxNimApp"
+      result = ""
 
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
