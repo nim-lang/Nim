@@ -1101,9 +1101,8 @@ proc track(tracked: PEffects, n: PNode) =
           tracked.hasSideEffect = true
           localError(tracked.config, n[0].info,
               "cannot mutate location $1 within a strict func" % renderTree(n[0]))
-        else:
-          if tracked.owner.kind == skProc:
-            markDangerousAssign(tracked, tracked.owner, n[0].info)
+        elif (not tracked.inEnforcedNoSideEffects) and tracked.owner.kind == skProc:
+          markDangerousAssign(tracked, tracked.owner, n[0].info)
 
   of nkVarSection, nkLetSection:
     for child in n:
