@@ -33,7 +33,7 @@ proc eqStrings(a, b: string): bool {.inline, compilerproc.} =
 proc hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
   # this used to be used for efficient generation of string case statements
-  var h : uint = 0
+  var h = 0'u
   for i in 0..len(s)-1:
     h = h + uint(s[i])
     h = h + h shl 10
