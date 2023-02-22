@@ -34,7 +34,7 @@ proc utoa2Digits*(buf: var openArray[char]; pos: int; digits: uint32) {.inline.}
   #copyMem(buf, unsafeAddr(digits100[2 * digits]), 2 * sizeof((char)))
 
 proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
-  return trailingZeros100[digits]
+  return trailingZeros100[digits.int8]
 
 when defined(js):
   proc numToString(a: SomeInteger): cstring {.importjs: "((#) + \"\")".}
@@ -63,14 +63,14 @@ func addIntImpl(result: var string, x: uint64) {.inline.} =
   while num >= nbatch:
     let originNum = num
     num = num div nbatch
-    let index = (originNum - num * nbatch) shl 1
+    let index = int16((originNum - num * nbatch) shl 1)
     tmp[next] = digits100[index + 1]
     tmp[next - 1] = digits100[index]
     dec(next, 2)
 
   # process last 1-2 digits
   if num < 10:
-    tmp[next] = chr(ord('0') + num)
+    tmp[next] = chr(ord('0') + num.uint8)
   else:
     let index = num * 2
     tmp[next] = digits100[index + 1]

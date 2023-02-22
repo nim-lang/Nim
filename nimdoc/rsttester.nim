@@ -1,8 +1,13 @@
+# To run this, cd to the git repo root, and run "nim r nimdoc/rsttester.nim".
+# to change expected results (after carefully verifying everything), use -d:nimTestsNimdocFixup
+
 import os, strutils
 from std/private/gitutils import diffFiles
 
 const
   baseDir = "nimdoc/rst2html"
+
+const fixup = defined(nimTestsNimdocFixup)
 
 var failures = 0
 
@@ -29,7 +34,7 @@ proc testRst2Html(fixup = false) =
     if failures == 0:
       removeDir(baseDir / "source/htmldocs")
 
-testRst2Html(defined(fixup))
+testRst2Html(fixup)
 
 # Check for failures
 if failures > 0: quit($failures & " failures occurred.")

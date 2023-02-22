@@ -1,4 +1,5 @@
 import std/private/since
+import std/assertions
 
 proc fun1(): int {.since: (1, 3).} = 12
 proc fun1Bad(): int {.since: (99, 3).} = 12

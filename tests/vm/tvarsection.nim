@@ -1,7 +1,3 @@
-discard """
-  output: '''-1abc'''
-"""
-
 var
   a {.compileTime.} = 2
   b = -1
@@ -12,4 +8,4 @@ static:
   doAssert a == 2
   doAssert c == 3
 
-echo b, d
+doAssert ($b & $d) == "-1abc"

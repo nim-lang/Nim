@@ -1,3 +1,4 @@
+import std/assertions
 
 block: # cmpMem
   type

@@ -54,3 +54,19 @@ proc isCompilerDebug*(): bool =
       {.undef(nimCompilerDebug).}
       echo 'x'
   conf0.isDefined("nimCompilerDebug")
+
+proc enteringDebugSection*() {.exportc, dynlib.} =
+  ## Provides a way for native debuggers to enable breakpoints, watchpoints, etc
+  ## when code of interest is being compiled.
+  ## 
+  ## Set your debugger to break on entering `nimCompilerIsEnteringDebugSection`
+  ## and then execute a desired command.
+  discard
+
+proc exitingDebugSection*() {.exportc, dynlib.} =
+  ## Provides a way for native debuggers to disable breakpoints, watchpoints, etc
+  ## when code of interest is no longer being compiled.
+  ## 
+  ## Set your debugger to break on entering `exitingDebugSection`
+  ## and then execute a desired command.
+  discard

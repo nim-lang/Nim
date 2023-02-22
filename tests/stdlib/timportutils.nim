@@ -1,4 +1,4 @@
-import std/importutils
+import std/[importutils, assertions]
 import stdtest/testutils
 import mimportutils
 
@@ -133,6 +133,15 @@ template main =
           defer: dealloc(a)
           privateAccess PtA
           a.ha1 == 0
+
+    block:
+      privateAccess PityRef
+      let x = PityRef[int](a: 1)  # works
+      doAssert x.a == 1
+
+      privateAccess Hope
+      let y = Hope[int](a: 1)
+      doAssert y.a == 1
 
 static: main()
 main()

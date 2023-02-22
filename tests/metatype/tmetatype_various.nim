@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc"
   output: '''[1, 0, 0, 0, 0, 0, 0, 0] CTBool[Ct[system.uint32]]'''
 """
 

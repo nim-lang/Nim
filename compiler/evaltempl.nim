@@ -26,7 +26,7 @@ type
 
 proc copyNode(ctx: TemplCtx, a, b: PNode): PNode =
   result = copyNode(a)
-  if ctx.instLines: result.info = b.info
+  if ctx.instLines: setInfoRecursive(result, b.info)
 
 proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
   template handleParam(param) =
@@ -204,7 +204,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
     result = copyNode(body)
     ctx.instLines = sfCallsite in tmpl.flags
     if ctx.instLines:
-      result.info = n.info
+      setInfoRecursive(result, n.info)
     for i in 0..<body.safeLen:
       evalTemplateAux(body[i], args, ctx, result)
   result.flags.incl nfFromTemplate

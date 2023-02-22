@@ -50,7 +50,7 @@ proc `=destroy`(o: var Pony) =
   echo "Pony is dying!"
 
 proc getPony: Pony =
-  result.name = "Sparkles"
+  result = Pony(name: "Sparkles")
 
 iterator items(p: Pony): int =
   for i in 1..4:

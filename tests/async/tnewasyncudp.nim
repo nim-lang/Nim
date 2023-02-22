@@ -58,7 +58,7 @@ proc launchSwarm(name: ptr SockAddr) {.async.} =
                                     16384, cast[ptr SockAddr](addr saddr),
                                     addr slen)
       size = 0
-      var grammString = $cstring(addr buffer)
+      var grammString = $cast[cstring](addr buffer)
       if grammString == message:
         saveSendingPort(sockport)
         inc(recvCount)
@@ -80,7 +80,7 @@ proc readMessages(server: AsyncFD) {.async.} =
                                   16384, cast[ptr SockAddr](addr(saddr)),
                                   addr(slen))
     size = 0
-    var grammString = $cstring(addr buffer)
+    var grammString = $cast[cstring](addr buffer)
     if grammString.startsWith("Message ") and
        saddr.sin_addr.s_addr == nativesockets.ntohl(INADDR_LOOPBACK.uint32):
       await sendTo(server, addr grammString[0], len(grammString),

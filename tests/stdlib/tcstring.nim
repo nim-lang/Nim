@@ -5,6 +5,7 @@ discard """
 
 from std/sugar import collect
 from stdtest/testutils import whenRuntimeJs, whenVMorJs
+import std/assertions
 
 template testMitems() =
   block:

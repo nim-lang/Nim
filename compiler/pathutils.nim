@@ -13,7 +13,7 @@
 import os, pathnorm
 
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[syncio, assertions]
 
 type
   AbsoluteFile* = distinct string

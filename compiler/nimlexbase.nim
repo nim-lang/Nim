@@ -15,6 +15,9 @@
 import
   llstream, strutils
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const
   Lrz* = ' '
   Apo* = '\''

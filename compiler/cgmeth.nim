@@ -11,7 +11,11 @@
 
 import
   intsets, options, ast, msgs, idents, renderer, types, magicsys,
-  sempass2, strutils, modulegraphs, lineinfos
+  sempass2, modulegraphs, lineinfos
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 proc genConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
   var dest = skipTypes(d, abstractPtrs)
@@ -46,6 +50,7 @@ proc methodCall*(n: PNode; conf: ConfigRef): PNode =
   # replace ordinary method by dispatcher method:
   let disp = getDispatcher(result[0].sym)
   if disp != nil:
+    result[0].typ = disp.typ
     result[0].sym = disp
     # change the arguments to up/downcasts to fit the dispatcher's parameters:
     for i in 1..<result.len:
@@ -119,7 +124,7 @@ proc createDispatcher(s: PSym; g: ModuleGraph; idgen: IdGenerator): PSym =
   if disp.typ.callConv == ccInline: disp.typ.callConv = ccNimCall
   disp.ast = copyTree(s.ast)
   disp.ast[bodyPos] = newNodeI(nkEmpty, s.info)
-  disp.loc.r = nil
+  disp.loc.r = ""
   if s.typ[0] != nil:
     if disp.ast.len > resultPos:
       disp.ast[resultPos].sym = copySym(s.ast[resultPos].sym, nextSymId(idgen))
@@ -142,23 +147,6 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
   if disp.ast.len > resultPos and meth.ast.len > resultPos and
      disp.ast[resultPos].kind == nkEmpty:
     disp.ast[resultPos] = copyTree(meth.ast[resultPos])
-
-  # The following code works only with lock levels, so we disable
-  # it when they're not available.
-  when declared(TLockLevel):
-    proc `<`(a, b: TLockLevel): bool {.borrow.}
-    proc `==`(a, b: TLockLevel): bool {.borrow.}
-    if disp.typ.lockLevel == UnspecifiedLockLevel:
-      disp.typ.lockLevel = meth.typ.lockLevel
-    elif meth.typ.lockLevel != UnspecifiedLockLevel and
-         meth.typ.lockLevel != disp.typ.lockLevel:
-      message(conf, meth.info, warnLockLevel,
-        "method has lock level $1, but another method has $2" %
-        [$meth.typ.lockLevel, $disp.typ.lockLevel])
-      # XXX The following code silences a duplicate warning in
-      # checkMethodeffects() in sempass2.nim for now.
-      if disp.typ.lockLevel < meth.typ.lockLevel:
-        disp.typ.lockLevel = meth.typ.lockLevel
 
 proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   var witness: PSym

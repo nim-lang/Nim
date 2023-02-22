@@ -24,6 +24,9 @@
 import std/private/since
 import hashes
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   BitScalar = uint
 

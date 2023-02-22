@@ -53,11 +53,15 @@ import std/private/since
 import
   hashes, strutils
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 when defined(js) or defined(nimscript) or defined(Standalone):
   {.pragma: rtlFunc.}
 else:
   {.pragma: rtlFunc, rtl.}
-  import os
+  import std/envvars
 
 include "system/inclrtl"
 
@@ -257,10 +261,7 @@ proc newStringTable*(mode: StringTableMode): owned(StringTableRef) {.
   ## See also:
   ## * `newStringTable(keyValuePairs) proc
   ##   <#newStringTable,varargs[tuple[string,string]],StringTableMode>`_
-  new(result)
-  result.mode = mode
-  result.counter = 0
-  newSeq(result.data, startSize)
+  result = StringTableRef(mode: mode, counter: 0, data: newSeq[KeyValuePair](startSize))
 
 proc newStringTable*(keyValuePairs: varargs[string],
                      mode: StringTableMode): owned(StringTableRef) {.

@@ -41,6 +41,7 @@ const
   platformPrefix = "--platform"
   sdktypePrefix = "--sdktype"
   sdkversionPrefix = "--sdkversion"
+  vctoolsetPrefix = "--vctoolset"
   verbosePrefix = "--verbose"
 
   vccversionSepIdx = vccversionPrefix.len
@@ -49,6 +50,7 @@ const
   platformSepIdx = platformPrefix.len
   sdktypeSepIdx = sdktypePrefix.len
   sdkversionSepIdx = sdkversionPrefix.len
+  vctoolsetSepIdx = vctoolsetPrefix.len
 
   vcvarsallDefaultPath = "vcvarsall.bat"
 
@@ -97,6 +99,8 @@ Options:
                       "8.1" to use the windows 8.1 SDK
   --verbose           Echoes the command line for loading the Developer Command Prompt
                       and the command line passed on to the secondary command.
+  --vctoolset         Optionally specifies the Visual Studio compiler toolset to use. 
+                      By default, the environment is set to use the current Visual Studio compiler toolset.
 
 Other command line arguments are passed on to the
 secondary command specified by --command or to the
@@ -108,7 +112,7 @@ proc parseVccexeCmdLine(argseq: seq[string],
     vccversionArg: var seq[string], printPathArg: var bool,
     vcvarsallArg: var string, commandArg: var string, noCommandArg: var bool,
     platformArg: var VccArch, sdkTypeArg: var VccPlatformType,
-    sdkVersionArg: var string, verboseArg: var bool,
+    sdkVersionArg: var string,  vctoolsetArg: var string, verboseArg: var bool,
     clArgs: var seq[string]) =
   ## Cannot use usual command-line argument parser here
   ## Since vccexe command-line arguments are intermingled
@@ -125,7 +129,7 @@ proc parseVccexeCmdLine(argseq: seq[string],
         responseargs = parseCmdLine(responsecontent)
       parseVccexeCmdLine(responseargs, vccversionArg, printPathArg,
         vcvarsallArg, commandArg, noCommandArg, platformArg, sdkTypeArg,
-        sdkVersionArg, verboseArg, clArgs)
+        sdkVersionArg, vctoolsetArg, verboseArg, clArgs)
     elif wargv.startsWith(vccversionPrefix): # Check for vccversion
       vccversionArg.add(wargv.substr(vccversionSepIdx + 1))
     elif wargv.cmpIgnoreCase(printPathPrefix) == 0: # Check for printPath
@@ -142,6 +146,8 @@ proc parseVccexeCmdLine(argseq: seq[string],
       sdkTypeArg = parseEnum[VccPlatformType](wargv.substr(sdktypeSepIdx + 1))
     elif wargv.startsWith(sdkversionPrefix): # Check for sdkversion
       sdkVersionArg = wargv.substr(sdkversionSepIdx + 1)
+    elif wargv.startsWith(vctoolsetPrefix): # Check for vctoolset
+      vctoolsetArg = wargv.substr(vctoolsetSepIdx + 1)
     elif wargv.startsWith(verbosePrefix):
       verboseArg = true
     else: # Regular cl.exe argument -> store for final cl.exe invocation
@@ -158,13 +164,14 @@ when isMainModule:
   var platformArg: VccArch
   var sdkTypeArg: VccPlatformType
   var sdkVersionArg: string
+  var vctoolsetArg: string
   var verboseArg: bool = false
 
   var clArgs: seq[string] = @[]
 
   let wrapperArgs = commandLineParams()
   parseVccexeCmdLine(wrapperArgs, vccversionArg, printPathArg, vcvarsallArg,
-    commandArg, noCommandArg, platformArg, sdkTypeArg, sdkVersionArg,
+    commandArg, noCommandArg, platformArg, sdkTypeArg, sdkVersionArg, vctoolsetArg,
     verboseArg,
     clArgs)
 
@@ -195,7 +202,7 @@ when isMainModule:
     echo "$1: $2" % [head, vcvarsallArg]
 
   # Call vcvarsall to get the appropriate VCC process environment
-  var vcvars = vccVarsAll(vcvarsallArg, platformArg, sdkTypeArg, sdkVersionArg, verboseArg)
+  var vcvars = vccVarsAll(vcvarsallArg, platformArg, sdkTypeArg, sdkVersionArg, vctoolsetArg, verboseArg)
   if vcvars != nil:
     for vccEnvKey, vccEnvVal in vcvars:
       putEnv(vccEnvKey, vccEnvVal)

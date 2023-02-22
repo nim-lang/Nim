@@ -14,6 +14,9 @@
 import
   hashes, wordrecg
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   PIdent* = ref TIdent
   TIdent*{.acyclic.} = object

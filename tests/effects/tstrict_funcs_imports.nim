@@ -7,11 +7,19 @@ discard """
 when defined(linux):
   import linenoise
 
+when defined(nimPreviewSlimSystem):
+  import std/[
+    assertions,
+    formatfloat,
+    objectdollar,
+    syncio,
+    widestrs,
+  ]
+
 import
   algorithm,
   asyncdispatch,
   asyncfile,
-  asyncftpclient,
   asyncfutures,
   asynchttpserver,
   asyncmacro,
@@ -31,11 +39,6 @@ import
   cpuload,
   critbits,
   cstrutils,
-  db_common,
-  db_mysql,
-  db_odbc,
-  db_postgres,
-  db_sqlite,
   deques,
   distros,
   dynlib,
@@ -87,7 +90,6 @@ import
   pegs,
   posix_utils,
   prelude,
-  punycode,
   random,
   rationals,
   rdstdin,
@@ -102,7 +104,6 @@ import
   sets,
   sharedlist,
   sharedtables,
-  smtp,
   ssl_certs,
   ssl_config,
   stats,

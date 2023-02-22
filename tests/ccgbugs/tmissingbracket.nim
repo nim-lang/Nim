@@ -11,7 +11,7 @@ type
     className* : string
   TClassOfTobj = object of TClassOfTCustomObject
     nil
-  TCustomObject = ref object {.inheritable.}
+  TCustomObject {.inheritable.} = ref object
     class* : ptr TClassOfTCustomObject
   TObj = ref object of TCustomObject
     data: int

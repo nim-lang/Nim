@@ -7,7 +7,7 @@ ob2 @[]
 ob @[]
 ob3 @[]
 '''
-  cmd: "nim c -r --threads:on $file"
+  matrix: "--mm:refc"
 """
 
 # bug #4776

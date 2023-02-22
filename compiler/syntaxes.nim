@@ -13,7 +13,10 @@ import
   strutils, llstream, ast, idents, lexer, options, msgs, parser,
   filters, filter_tmpl, renderer, lineinfos, pathutils
 
-export Parser, parseAll, parseTopLevelStmt, closeParser
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
+export Parser, parseAll, parseTopLevelStmt, checkFirstLineIndentation, closeParser
 
 type
   FilterKind = enum

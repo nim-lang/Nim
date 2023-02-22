@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## `asyncdispatch` module depends on the `asyncmacro` module to work properly.
+## Implements the `async` and `multisync` macros for `asyncdispatch`.
 
 import macros, strutils, asyncfutures
 
@@ -20,9 +20,8 @@ proc newCallWithLineInfo(fromNode: NimNode; theProc: NimNode, args: varargs[NimN
 template createCb(retFutureSym, iteratorNameSym,
                   strName, identName, futureVarCompletions: untyped) =
   bind finished
-
   var nameIterVar = iteratorNameSym
-  proc identName {.closure.} =
+  proc identName {.closure, stackTrace: off.} =
     try:
       if not nameIterVar.finished:
         var next = nameIterVar()
@@ -126,9 +125,21 @@ template await*(f: typed): untyped {.used.} =
     error "await expects Future[T], got " & $typeof(f)
 
 template await*[T](f: Future[T]): auto {.used.} =
-  var internalTmpFuture: FutureBase = f
-  yield internalTmpFuture
-  (cast[typeof(f)](internalTmpFuture)).read()
+  when not defined(nimHasTemplateRedefinitionPragma):
+    {.pragma: redefine.}
+  template yieldFuture {.redefine.} = yield FutureBase()
+
+  when compiles(yieldFuture):
+    var internalTmpFuture: FutureBase = f
+    yield internalTmpFuture
+    (cast[typeof(f)](internalTmpFuture)).read()
+  else:
+    macro errorAsync(futureError: Future[T]) =
+      error(
+        "Can only 'await' inside a proc marked as 'async'. Use " &
+        "'waitFor' when calling an 'async' proc in a non-async scope instead",
+        futureError)
+    errorAsync(f)
 
 proc asyncSingleProc(prc: NimNode): NimNode =
   ## This macro transforms a single procedure into a closure iterator.
@@ -138,6 +149,10 @@ proc asyncSingleProc(prc: NimNode): NimNode =
     if prc[0][0].kind == nnkEmpty:
       result[0][0] = quote do: Future[void]
     return result
+
+  if prc.kind in RoutineNodes and prc.name.kind != nnkEmpty:
+    # Only non anonymous functions need/can have stack trace disabled
+    prc.addPragma(nnkExprColonExpr.newTree(ident"stackTrace", ident"off"))
 
   if prc.kind notin {nnkProcDef, nnkLambda, nnkMethodDef, nnkDo}:
     error("Cannot transform this node kind into an async proc." &
@@ -197,14 +212,23 @@ proc asyncSingleProc(prc: NimNode): NimNode =
   # ->   {.pop.}
   # ->   <proc_body>
   # ->   complete(retFuture, result)
-  var iteratorNameSym = genSym(nskIterator, $prcName & "Iter")
+  var iteratorNameSym = genSym(nskIterator, $prcName & " (Async)")
   var procBody = prc.body.processBody(retFutureSym, futureVarIdents)
   # don't do anything with forward bodies (empty)
   if procBody.kind != nnkEmpty:
     # fix #13899, defer should not escape its original scope
-    procBody = newStmtList(newTree(nnkBlockStmt, newEmptyNode(), procBody))
-    procBody.add(createFutureVarCompletions(futureVarIdents, nil))
+    let blockStmt = newStmtList(newTree(nnkBlockStmt, newEmptyNode(), procBody))
+    procBody = newStmtList()
     let resultIdent = ident"result"
+    procBody.add quote do:
+      template nimAsyncDispatchSetResult(x: `subRetType`) {.used.} =
+        # If the proc has implicit return then this will get called
+        `resultIdent` = x
+      template nimAsyncDispatchSetResult(x: untyped) {.used.} =
+        # If the proc doesn't have implicit return then this will get called
+        x
+    procBody.add newCall(ident"nimAsyncDispatchSetResult", blockStmt)
+    procBody.add(createFutureVarCompletions(futureVarIdents, nil))
     procBody.insert(0): quote do:
       {.push warning[resultshadowed]: off.}
       when `subRetType` isnot void:
@@ -230,9 +254,10 @@ proc asyncSingleProc(prc: NimNode): NimNode =
     # friendlier stack traces:
     var cbName = genSym(nskProc, prcName & NimAsyncContinueSuffix)
     var procCb = getAst createCb(retFutureSym, iteratorNameSym,
-                         newStrLitNode(prcName),
-                         cbName,
-                         createFutureVarCompletions(futureVarIdents, nil))
+                          newStrLitNode(prcName),
+                          cbName,
+                          createFutureVarCompletions(futureVarIdents, nil)
+                        )
     outerProcBody.add procCb
 
     # -> return retFuture
@@ -265,8 +290,8 @@ macro async*(prc: untyped): untyped =
 proc splitParamType(paramType: NimNode, async: bool): NimNode =
   result = paramType
   if paramType.kind == nnkInfix and paramType[0].strVal in ["|", "or"]:
-    let firstAsync = "async" in paramType[1].strVal.normalize
-    let secondAsync = "async" in paramType[2].strVal.normalize
+    let firstAsync = "async" in paramType[1].toStrLit().strVal.normalize
+    let secondAsync = "async" in paramType[2].toStrLit().strVal.normalize
 
     if firstAsync:
       result = paramType[if async: 1 else: 2]

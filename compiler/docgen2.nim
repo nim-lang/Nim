@@ -11,7 +11,7 @@
 # semantic checking.
 
 import
-  options, ast, msgs, passes, docgen, lineinfos, pathutils
+  options, ast, msgs, passes, docgen, lineinfos, pathutils, packages
 
 from modulegraphs import ModuleGraph, PPassContext
 
@@ -23,7 +23,7 @@ type
   PGen = ref TGen
 
 proc shouldProcess(g: PGen): bool =
-  (optWholeProject in g.doc.conf.globalOptions and g.module.getnimblePkgId == g.doc.conf.mainPackageId) or
+  (optWholeProject in g.doc.conf.globalOptions and g.doc.conf.belongsToProjectPackage(g.module)) or
       sfMainModule in g.module.flags or g.config.projectMainIdx == g.module.info.fileIndex
 
 template closeImpl(body: untyped) {.dirty.} =
@@ -50,7 +50,7 @@ proc processNode(c: PPassContext, n: PNode): PNode =
   result = n
   var g = PGen(c)
   if shouldProcess(g):
-    generateDoc(g.doc, n, n)
+    generateDoc(g.doc, n, n, g.config)
 
 proc processNodeJson(c: PPassContext, n: PNode): PNode =
   result = n
@@ -64,8 +64,7 @@ template myOpenImpl(ext: untyped) {.dirty.} =
   g.module = module
   g.config = graph.config
   var d = newDocumentor(AbsoluteFile toFullPath(graph.config, FileIndex module.position),
-      graph.cache, graph.config, ext, module)
-  d.hasToc = true
+      graph.cache, graph.config, ext, module, hasToc = true)
   g.doc = d
   result = g
 

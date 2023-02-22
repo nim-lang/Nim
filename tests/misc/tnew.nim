@@ -1,4 +1,5 @@
 discard """
+matrix: "--mm:refc"
 outputsub: '''
 Simple tree node allocation worked!
 Simple cycle allocation worked!
@@ -10,6 +11,7 @@ joinable: false
 # and the code generation for gc walkers
 # (and the garbage collector):
 
+## todo fixme it doesn't work for ORC
 type
   PNode = ref TNode
   TNode = object

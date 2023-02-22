@@ -19,6 +19,7 @@ when defined(nimHasStyleChecks):
 
 when defined(nimPreviewSlimSystem):
   from std/syncio import FileHandle
+  import std/widestrs
 
 const
   useWinUnicode* = not defined(useWinAnsi)
@@ -422,10 +423,10 @@ else:
     importc: "GetCommandLineA", stdcall, dynlib: "kernel32", sideEffect.}
 
 proc rdFileTime*(f: FILETIME): int64 =
-  result = ze64(f.dwLowDateTime) or (ze64(f.dwHighDateTime) shl 32)
+  result = int64(cast[uint32](f.dwLowDateTime)) or (int64(cast[uint32](f.dwHighDateTime)) shl 32)
 
 proc rdFileSize*(f: WIN32_FIND_DATA): int64 =
-  result = ze64(f.nFileSizeLow) or (ze64(f.nFileSizeHigh) shl 32)
+  result = int64(cast[uint32](f.nFileSizeLow)) or (int64(cast[uint32](f.nFileSizeHigh)) shl 32)
 
 proc getSystemTimeAsFileTime*(lpSystemTimeAsFileTime: var FILETIME) {.
   importc: "GetSystemTimeAsFileTime", dynlib: "kernel32", stdcall, sideEffect.}
@@ -505,9 +506,9 @@ type
   Sockaddr_storage* {.importc: "SOCKADDR_STORAGE",
                       header: "winsock2.h".} = object
     ss_family*: uint16
-    ss_pad1: array[6, byte]
-    ss_align: int64
-    ss_pad2: array[112, byte]
+    ss_pad1 {.importc: "__ss_pad1".}: array[6, byte]
+    ss_align {.importc: "__ss_align".}: int64
+    ss_pad2 {.importc: "__ss_pad2".}: array[112, byte]
 
   Servent* = object
     s_name*: cstring
@@ -670,7 +671,7 @@ proc getaddrinfo*(nodename, servname: cstring, hints: ptr AddrInfo,
                   res: var ptr AddrInfo): cint {.
   stdcall, importc: "getaddrinfo", dynlib: ws2dll.}
 
-proc freeaddrinfo*(ai: ptr AddrInfo) {.
+proc freeAddrInfo*(ai: ptr AddrInfo) {.
   stdcall, importc: "freeaddrinfo", dynlib: ws2dll.}
 
 proc inet_ntoa*(i: InAddr): cstring {.

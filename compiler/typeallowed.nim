@@ -8,10 +8,13 @@
 #
 
 ## This module contains 'typeAllowed' and friends which check
-## for invalid types like 'openArray[var int]'.
+## for invalid types like `openArray[var int]`.
 
 import
   intsets, ast, renderer, options, semdata, types
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type
   TTypeAllowedFlag* = enum
@@ -61,6 +64,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = t
     elif t.kind == tyLent and ((kind != skResult and views notin c.features) or
                               kind == skParam): # lent can't be used as parameters.
+      result = t
+    elif isOutParam(t) and kind != skParam:
       result = t
     else:
       var t2 = skipTypes(t[0], abstractInst-{tyTypeDesc, tySink})

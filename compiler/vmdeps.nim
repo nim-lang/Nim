@@ -10,6 +10,9 @@
 import ast, types, msgs, os, options, idents, lineinfos
 from pathutils import AbsoluteFile
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): string =
   try:
     var filename = parentDir(toFullPath(conf, info)) / file

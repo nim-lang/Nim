@@ -7,6 +7,7 @@ discard """
 import std/sequtils
 import strutils
 from algorithm import sorted
+import std/assertions
 
 {.experimental: "strictEffects".}
 {.push warningAsError[Effect]: on.}
@@ -453,8 +454,8 @@ block:
       for i in 0..<len:
         yield i
 
+  # xxx: obscure CT error: basic_types.nim(16, 16) Error: internal error: symbol has no generated name: true
   when not defined(js):
-    # xxx: obscure CT error: basic_types.nim(16, 16) Error: internal error: symbol has no generated name: true
     doAssert: iter(3).mapIt(2*it).foldl(a + b) == 6
 
 block: # strictFuncs tests with ref object

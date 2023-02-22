@@ -16,6 +16,10 @@ def printErrorOnce(id, message):
     errorSet.add(id)
     gdb.write("printErrorOnce: " + message, gdb.STDERR)
 
+def debugPrint(x):
+  gdb.write(str(x) + "\n", gdb.STDERR)
+
+NIM_STRING_TYPES = ["NimStringDesc", "NimStringV2"]
 
 ################################################################################
 #####  Type pretty printers
@@ -23,23 +27,28 @@ def printErrorOnce(id, message):
 
 type_hash_regex = re.compile("^([A-Za-z0-9]*)_([A-Za-z0-9]*)_+([A-Za-z0-9]*)$")
 
+def getNimName(typ):
+  if m := type_hash_regex.match(typ):
+    return m.group(2)
+  return f"unknown <{typ}>"
+
 def getNimRti(type_name):
   """ Return a ``gdb.Value`` object for the Nim Runtime Information of ``type_name``. """
 
   # Get static const TNimType variable. This should be available for
   # every non trivial Nim type.
   m = type_hash_regex.match(type_name)
-  lookups = [
-    "NTI" + m.group(2).lower() + "__" + m.group(3) + "_",
-    "NTI" + "__" + m.group(3) + "_",
-    "NTI" + m.group(2).replace("colon", "58").lower() + "__" + m.group(3) + "_"
-    ]
   if m:
-      for l in lookups:
-        try:
-          return gdb.parse_and_eval(l)
-        except:
-          pass
+    lookups = [
+      "NTI" + m.group(2).lower() + "__" + m.group(3) + "_",
+      "NTI" + "__" + m.group(3) + "_",
+      "NTI" + m.group(2).replace("colon", "58").lower() + "__" + m.group(3) + "_"
+      ]
+    for l in lookups:
+      try:
+        return gdb.parse_and_eval(l)
+      except:
+        pass
   None
 
 def getNameFromNimRti(rti):
@@ -68,7 +77,7 @@ class NimTypeRecognizer:
     
     'NIM_BOOL': 'bool',
 
-    'NIM_CHAR': 'char', 'NCSTRING': 'cstring', 'NimStringDesc': 'string'
+    'NIM_CHAR': 'char', 'NCSTRING': 'cstring', 'NimStringDesc': 'string', 'NimStringV2': 'string'
   }
 
   # object_type_pattern = re.compile("^(\w*):ObjectType$")
@@ -103,6 +112,12 @@ class NimTypeRecognizer:
       result = self.type_map_static.get(tname, None)
       if result:
         return result
+      elif tname.startswith("tyEnum_"):
+        return getNimName(tname)
+      elif tname.startswith("tyTuple__"):
+        # We make the name be the field types (Just like in Nim)
+        fields = ", ".join([self.recognize(field.type) for field in type_obj.fields()])
+        return f"({fields})"
 
       rti = getNimRti(tname)
       if rti:
@@ -136,7 +151,7 @@ class DollarPrintFunction (gdb.Function):
   "Nim's equivalent of $ operator as a gdb function, available in expressions `print $dollar(myvalue)"
 
   dollar_functions = re.findall(
-    'NimStringDesc \*(dollar__[A-z0-9_]+?)\(([^,)]*)\);',
+    '(?:NimStringDesc \*|NimStringV2)\s?(dollar__[A-z0-9_]+?)\(([^,)]*)\);',
     gdb.execute("info functions dollar__", True, True)
   )
 
@@ -145,13 +160,10 @@ class DollarPrintFunction (gdb.Function):
 
 
   @staticmethod
-  def invoke_static(arg):
-
-    if arg.type.code == gdb.TYPE_CODE_PTR and arg.type.target().name == "NimStringDesc":
+  def invoke_static(arg, ignore_errors = False):
+    if arg.type.code == gdb.TYPE_CODE_PTR and arg.type.target().name in NIM_STRING_TYPES:
       return arg
-
     argTypeName = str(arg.type)
-
     for func, arg_typ in DollarPrintFunction.dollar_functions:
       # this way of overload resolution cannot deal with type aliases,
       # therefore it won't find all overloads.
@@ -163,7 +175,8 @@ class DollarPrintFunction (gdb.Function):
         func_value = gdb.lookup_global_symbol(func, gdb.SYMBOL_FUNCTIONS_DOMAIN).value()
         return func_value(arg.address)
 
-    printErrorOnce(argTypeName, "No suitable Nim $ operator found for type: " + argTypeName + "\n")
+    if not ignore_errors:
+      debugPrint(f"No suitable Nim $ operator found for type: {getNimName(argTypeName)}\n")
     return None
 
   def invoke(self, arg):
@@ -184,11 +197,11 @@ class NimStringEqFunction (gdb.Function):
 
   @staticmethod
   def invoke_static(arg1,arg2):
-    if arg1.type.code == gdb.TYPE_CODE_PTR and arg1.type.target().name == "NimStringDesc":
+    if arg1.type.code == gdb.TYPE_CODE_PTR and arg1.type.target().name in NIM_STRING_TYPES:
       str1 = NimStringPrinter(arg1).to_string()
     else:
       str1 = arg1.string()
-    if arg2.type.code == gdb.TYPE_CODE_PTR and arg2.type.target().name == "NimStringDesc":
+    if arg2.type.code == gdb.TYPE_CODE_PTR and arg2.type.target().name in NIM_STRING_TYPES:
       str2 = NimStringPrinter(arg1).to_string()
     else:
       str2 = arg2.string()
@@ -216,7 +229,7 @@ class DollarPrintCmd (gdb.Command):
     strValue = DollarPrintFunction.invoke_static(param)
     if strValue:
       gdb.write(
-        NimStringPrinter(strValue).to_string() + "\n",
+        str(NimStringPrinter(strValue)) + "\n",
         gdb.STDOUT
       )
 
@@ -254,7 +267,6 @@ class KochCmd (gdb.Command):
       os.path.dirname(os.path.dirname(__file__)), "koch")
 
   def invoke(self, argument, from_tty):
-    import os
     subprocess.run([self.binary] + gdb.string_to_argv(argument))
 
 KochCmd()
@@ -308,8 +320,14 @@ class NimBoolPrinter:
 
 ################################################################################
 
+def strFromLazy(strVal):
+  if isinstance(strVal, str):
+    return strVal
+  else:
+    return strVal.value().string("utf-8")
+
 class NimStringPrinter:
-  pattern = re.compile(r'^NimStringDesc \*$')
+  pattern = re.compile(r'^(NimStringDesc \*|NimStringV2)$')
 
   def __init__(self, val):
     self.val = val
@@ -319,10 +337,18 @@ class NimStringPrinter:
 
   def to_string(self):
     if self.val:
-      l = int(self.val['Sup']['len'])
-      return self.val['data'].lazy_string(encoding="utf-8", length=l)
+      if self.val.type.name == "NimStringV2":
+        l = int(self.val["len"])
+        data = self.val["p"]["data"]
+      else:
+        l = int(self.val['Sup']['len'])
+        data = self.val["data"]
+      return data.lazy_string(encoding="utf-8", length=l)
     else:
       return ""
+
+  def __str__(self):
+    return strFromLazy(self.to_string())
 
 class NimRopePrinter:
   pattern = re.compile(r'^tyObject_RopeObj__([A-Za-z0-9]*) \*$')
@@ -345,39 +371,11 @@ class NimRopePrinter:
 
 ################################################################################
 
-# proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
-#   ## Return string representation for enumeration values
-#   var n = typ.node
-#   if ntfEnumHole notin typ.flags:
-#     let o = e - n.sons[0].offset
-#     if o >= 0 and o <% typ.node.len:
-#       return $n.sons[o].name
-#   else:
-#     # ugh we need a slow linear search:
-#     var s = n.sons
-#     for i in 0 .. n.len-1:
-#       if s[i].offset == e:
-#         return $s[i].name
-#   result = $e & " (invalid data!)"
-
 def reprEnum(e, typ):
-  """ this is a port of the nim runtime function `reprEnum` to python """
+  # Casts the value to the enum type and then calls the enum printer
   e = int(e)
-  n = typ["node"]
-  flags = int(typ["flags"])
-  # 1 << 6 is {ntfEnumHole}
-  if ((1 << 6) & flags) == 0:
-    o = e - int(n["sons"][0]["offset"])
-    if o >= 0 and 0 < int(n["len"]):
-      return n["sons"][o]["name"].string("utf-8", "ignore")
-  else:
-    # ugh we need a slow linear search:
-    s = n["sons"]
-    for i in range(0, int(n["len"])):
-      if int(s[i]["offset"]) == e:
-        return s[i]["name"].string("utf-8", "ignore")
-
-  return str(e) + " (invalid data!)"
+  val = gdb.Value(e).cast(typ)
+  return strFromLazy(NimEnumPrinter(val).to_string())
 
 def enumNti(typeNimName, idString):
   typeInfoName = "NTI" + typeNimName.lower() + "__" + idString + "_"
@@ -389,6 +387,7 @@ def enumNti(typeNimName, idString):
 
 class NimEnumPrinter:
   pattern = re.compile(r'^tyEnum_([A-Za-z0-9]+)__([A-Za-z0-9]*)$')
+  enumReprProc = gdb.lookup_global_symbol("reprEnum", gdb.SYMBOL_FUNCTIONS_DOMAIN)
 
   def __init__(self, val):
     self.val = val
@@ -397,14 +396,18 @@ class NimEnumPrinter:
     self.typeNimName  = match.group(1)
     typeInfoName, self.nti = enumNti(self.typeNimName, match.group(2))
 
-    if self.nti is None:
-      printErrorOnce(typeInfoName, f"NimEnumPrinter: lookup global symbol: '{typeInfoName}' failed for {typeName}.\n")
-
   def to_string(self):
-    if self.nti:
-      arg0     = self.val
-      arg1     = self.nti.value(gdb.newest_frame())
-      return reprEnum(arg0, arg1)
+    if NimEnumPrinter.enumReprProc and self.nti:
+      # Use the old runtimes enumRepr function.
+      # We call the Nim proc itself so that the implementation is correct
+      f = gdb.newest_frame()
+      # We need to strip the quotes so it looks like an enum instead of a string
+      reprProc = NimEnumPrinter.enumReprProc.value()
+      return str(reprProc(self.val, self.nti.value(f).address)).strip('"')
+    elif dollarResult := DollarPrintFunction.invoke_static(self.val):
+      # New runtime doesn't use enumRepr so we instead try and call the
+      # dollar function for it
+      return str(NimStringPrinter(dollarResult))
     else:
       return self.typeNimName + "(" + str(int(self.val)) + ")"
 
@@ -421,26 +424,20 @@ class NimSetPrinter:
     typeName = self.val.type.name
     match = self.pattern.match(typeName)
     self.typeNimName = match.group(1)
-    typeInfoName, self.nti = enumNti(self.typeNimName, match.group(2))
-
-    if self.nti is None:
-      printErrorOnce(typeInfoName, f"NimSetPrinter: lookup global symbol: '{typeInfoName}' failed for {typeName}.\n")
 
   def to_string(self):
-    if self.nti:
-      nti = self.nti.value(gdb.newest_frame())
-      enumStrings = []
-      val = int(self.val)
-      i   = 0
-      while val > 0:
-        if (val & 1) == 1:
-          enumStrings.append(reprEnum(i, nti))
-        val = val >> 1
-        i += 1
+    # Remove the tySet from the type name
+    typ = gdb.lookup_type(self.val.type.name[6:])
+    enumStrings = []
+    val = int(self.val)
+    i   = 0
+    while val > 0:
+      if (val & 1) == 1:
+        enumStrings.append(reprEnum(i, typ))
+      val = val >> 1
+      i += 1
 
-      return '{' + ', '.join(enumStrings) + '}'
-    else:
-      return str(int(self.val))
+    return '{' + ', '.join(enumStrings) + '}'
 
 ################################################################################
 
@@ -472,41 +469,81 @@ class NimHashSetPrinter:
 
 ################################################################################
 
-class NimSeqPrinter:
-  # the pointer is explicity part of the type. So it is part of
-  # ``pattern``.
-  pattern = re.compile(r'^tySequence_\w* \*$')
+class NimSeq:
+  # Wrapper around sequences.
+  # This handles the differences between old and new runtime
 
   def __init__(self, val):
     self.val = val
+    # new runtime has sequences on stack, old has them on heap
+    self.new = val.type.code != gdb.TYPE_CODE_PTR
+    if self.new:
+      # Some seqs are just the content and to save repeating ourselves we do
+      # handle them here. Only thing that needs to check this is the len/data getters
+      self.isContent = val.type.name.endswith("Content")
+
+  def __bool__(self):
+    if self.new:
+      return self.val is not None
+    else:
+      return bool(self.val)
+
+  def __len__(self):
+    if not self:
+      return 0
+    if self.new:
+      if self.isContent:
+        return int(self.val["cap"])
+      else:
+        return int(self.val["len"])
+    else:
+      return self.val["Sup"]["len"]
+
+  @property
+  def data(self):
+    if self.new:
+      if self.isContent:
+        return self.val["data"]
+      elif self.val["p"]:
+        return self.val["p"]["data"]
+    else:
+      return self.val["data"]
+
+  @property
+  def cap(self):
+    if not self:
+      return 0
+    if self.new:
+      if self.isContent:
+        return int(self.val["cap"])
+      elif self.val["p"]:
+        return int(self.val["p"]["cap"])
+      else:
+        return 0
+    return int(self.val['Sup']['reserved'])
+
+class NimSeqPrinter:
+  pattern = re.compile(r'^tySequence_\w*\s?\*?$')
+
+  def __init__(self, val):
+    self.val = NimSeq(val)
+
 
   def display_hint(self):
     return 'array'
 
   def to_string(self):
-    len = 0
-    cap = 0
-    if self.val:
-      len = int(self.val['Sup']['len'])
-      cap = int(self.val['Sup']['reserved'])
-
-    return 'seq({0}, {1})'.format(len, cap)
+    return f'seq({len(self.val)}, {self.val.cap})'
 
   def children(self):
     if self.val:
       val = self.val
-      valType = val.type
-      length = int(val['Sup']['len'])
+      length = len(val)
 
       if length <= 0:
         return
 
-      dataType = valType['data'].type
-      data = val['data']
-
-      if self.val.type.name is None:
-        dataType = valType['data'].type.target().pointer()
-        data = val['data'].cast(dataType)
+      data = val.data
 
       inaccessible = False
       for i in range(length):
@@ -585,7 +622,7 @@ class NimTablePrinter:
     if self.val:
       counter  = int(self.val['counter'])
       if self.val['data']:
-        capacity = int(self.val['data']['Sup']['len'])
+        capacity = NimSeq(self.val["data"]).cap
 
     return 'Table({0}, {1})'.format(counter, capacity)
 
@@ -597,162 +634,18 @@ class NimTablePrinter:
           yield (idxStr + '.Field1', entry['Field1'])
           yield (idxStr + '.Field2', entry['Field2'])
 
-################################################################
+################################################################################
 
-# this is untested, therefore disabled
+class NimTuplePrinter:
+  pattern = re.compile(r"^tyTuple__([A-Za-z0-9]*)")
 
-# class NimObjectPrinter:
-#   pattern = re.compile(r'^tyObject_([A-Za-z0-9]+)__(_?[A-Za-z0-9]*)(:? \*)?$')
+  def __init__(self, val):
+    self.val = val
 
-#   def __init__(self, val):
-#     self.val = val
-#     self.valType = None
-#     self.valTypeNimName = None
-
-#   def display_hint(self):
-#     return 'object'
-
-#   def _determineValType(self):
-#     if self.valType is None:
-#       vt = self.val.type
-#       if vt.name is None:
-#         target = vt.target()
-#         self.valType = target.pointer()
-#         self.fields = target.fields()
-#         self.valTypeName = target.name
-#         self.isPointer = True
-#       else:
-#         self.valType = vt
-#         self.fields = vt.fields()
-#         self.valTypeName = vt.name
-#         self.isPointer = False
-
-#   def to_string(self):
-#     if self.valTypeNimName is None:
-#       self._determineValType()
-#       match = self.pattern.match(self.valTypeName)
-#       self.valTypeNimName = match.group(1)
-
-#     return self.valTypeNimName
-
-#   def children(self):
-#     self._determineValType()
-#     if self.isPointer and int(self.val) == 0:
-#       return
-#     self.baseVal = self.val.referenced_value() if self.isPointer else self.val
-
-#     for c in self.handleFields(self.baseVal, getNimRti(self.valTypeName)):
-#       yield c
-  
-#   def handleFields(self, currVal, rti, fields = None):
-#     rtiSons = None
-#     discField = (0, None)
-#     seenSup = False
-#     if fields is None:
-#       fields = self.fields
-#     try: # XXX: remove try after finished debugging this method
-#       for (i, field) in enumerate(fields):
-#         if field.name == "Sup": # inherited data
-#           seenSup = True
-#           baseRef = rti['base']
-#           if baseRef:
-#             baseRti = baseRef.referenced_value()
-#             baseVal = currVal['Sup']
-#             baseValType = baseVal.type
-#             if baseValType.name is None:
-#               baseValType = baseValType.target().pointer()
-#               baseValFields = baseValType.target().fields()
-#             else:
-#               baseValFields = baseValType.fields()
-            
-#             for c in self.handleFields(baseVal, baseRti, baseValFields):
-#               yield c
-#         else:
-#           if field.type.code == gdb.TYPE_CODE_UNION:
-#             # if not rtiSons:
-#             rtiNode = rti['node'].referenced_value()
-#             rtiSons = rtiNode['sons']
-
-#             if not rtiSons and int(rtiNode['len']) == 0 and str(rtiNode['name']) != "0x0":
-#               rtiSons = [rti['node']] # sons are dereferenced by the consumer
-            
-#             if not rtiSons:
-#               printErrorOnce(self.valTypeName, f"NimObjectPrinter: UNION field can't be displayed without RTI {self.valTypeName}, using fallback.\n")
-#               # yield (field.name, self.baseVal[field]) # XXX: this fallback seems wrong
-#               return # XXX: this should probably continue instead?
-
-#             if int(rtiNode['len']) != 0 and str(rtiNode['name']) != "0x0":
-#               gdb.write(f"wtf IT HAPPENED {self.valTypeName}\n", gdb.STDERR)
-
-#             discNode = rtiSons[discField[0]].referenced_value()
-#             if not discNode:
-#               raise ValueError("Can't find union discriminant field in object RTI")
-            
-#             discNodeLen = int(discNode['len'])
-#             discFieldVal = int(currVal[discField[1].name])
-
-#             unionNodeRef = None
-#             if discFieldVal < discNodeLen:
-#               unionNodeRef = discNode['sons'][discFieldVal]
-#             if not unionNodeRef:
-#               unionNodeRef = discNode['sons'][discNodeLen]
-
-#             if not unionNodeRef:
-#               printErrorOnce(self.valTypeName + "no union node", f"wtf is up with sons {self.valTypeName} {unionNodeRef} {rtiNode['offset']} {discNode} {discFieldVal} {discNodeLen} {discField[1].name} {field.name} {field.type}\n")
-#               continue
-
-#             unionNode = unionNodeRef.referenced_value()
-            
-#             fieldName = "" if field.name == None else field.name.lower()
-#             unionNodeName = "" if not unionNode['name'] else unionNode['name'].string("utf-8", "ignore")
-#             if not unionNodeName or unionNodeName.lower() != fieldName:
-#               unionFieldName = f"_{discField[1].name.lower()}_{int(rti['node'].referenced_value()['len'])}"
-#               gdb.write(f"wtf i: {i} union: {unionFieldName} field: {fieldName} type: {field.type.name} tag: {field.type.tag}\n", gdb.STDERR)
-#             else:
-#               unionFieldName = unionNodeName
-
-#             if discNodeLen == 0:
-#               yield (unionFieldName, currVal[unionFieldName])
-#             else:
-#               unionNodeLen = int(unionNode['len'])
-#               if unionNodeLen > 0:
-#                 for u in range(unionNodeLen):
-#                   un = unionNode['sons'][u].referenced_value()['name'].string("utf-8", "ignore")
-#                   yield (un, currVal[unionFieldName][un])
-#               else:
-#                 yield(unionNodeName, currVal[unionFieldName])
-#           else:
-#             discIndex = i - 1 if seenSup else i
-#             discField = (discIndex, field) # discriminant field is the last normal field
-#             yield (field.name, currVal[field.name])
-#     except GeneratorExit:
-#       raise
-#     except:
-#       gdb.write(f"wtf {self.valTypeName} {i} fn: {field.name} df: {discField} rti: {rti} rtiNode: {rti['node'].referenced_value()} rtiSons: {rtiSons} {sys.exc_info()} {traceback.format_tb(sys.exc_info()[2], limit = 10)}\n", gdb.STDERR)
-#       gdb.write(f"wtf {self.valTypeName} {i} {field.name}\n", gdb.STDERR)
-      
-#       # seenSup = False
-#       # for (i, field) in enumerate(fields):
-#       #   # if field.name:
-#       #   #   val = currVal[field.name]
-#       #   # else:
-#       #   #   val = None
-#       #   rtiNode = rti['node'].referenced_value()
-#       #   rtiLen = int(rtiNode['len'])
-#       #   if int(rtiNode['len']) > 0:
-#       #     sons = rtiNode['sons']
-#       #   elif int(rti['len']) == 0 and str(rti['name']) != "0x0":
-#       #     sons = [rti['node']] # sons are dereferenced by the consumer
-#       #   sonsIdx = i - 1 if seenSup else i
-#       #   s = sons[sonsIdx].referenced_value()
-#       #   addr = int(currVal.address)
-#       #   off = addr + int(rtiNode['offset'])
-#       #   seenSup = seenSup or field.name == "Sup"
-
-#       #   gdb.write(f"wtf: i: {i} sonsIdx: {sonsIdx} field: {field.name} rtiLen: {rtiLen} rti: {rti} rtiNode: {rtiNode} isUnion: {field.type.code == gdb.TYPE_CODE_UNION} s: {s}\n", gdb.STDERR)
-
-#       raise
-
+  def to_string(self):
+    # We don't have field names so just print out the tuple as if it was anonymous
+    tupleValues = [str(self.val[field.name]) for field in self.val.type.fields()]
+    return f"({', '.join(tupleValues)})"
 
 ################################################################################
 

@@ -68,8 +68,16 @@ supports pattern matching on `Option`s, with the `Some(<pattern>)` and
 ]##
 # xxx pending https://github.com/timotheecour/Nim/issues/376 use `runnableExamples` and `whichModule`
 
+when defined(nimHasEffectsOf):
+  {.experimental: "strictEffects".}
+else:
+  {.pragma: effectsOf.}
 
 import typetraits
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 when (NimMajor, NimMinor) >= (1, 1):
   type
@@ -222,7 +230,7 @@ proc get*[T](self: var Option[T]): var T {.inline.} =
     raise newException(UnpackDefect, "Can't obtain a value from a `none`")
   return self.val
 
-proc map*[T](self: Option[T], callback: proc (input: T)) {.inline.} =
+proc map*[T](self: Option[T], callback: proc (input: T)) {.inline, effectsOf: callback.} =
   ## Applies a `callback` function to the value of the `Option`, if it has one.
   ##
   ## **See also:**
@@ -241,7 +249,7 @@ proc map*[T](self: Option[T], callback: proc (input: T)) {.inline.} =
   if self.isSome:
     callback(self.val)
 
-proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] {.inline.} =
+proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] {.inline, effectsOf: callback.} =
   ## Applies a `callback` function to the value of the `Option` and returns an
   ## `Option` containing the new value.
   ##
@@ -278,7 +286,7 @@ proc flatten*[T](self: Option[Option[T]]): Option[T] {.inline.} =
     none(T)
 
 proc flatMap*[T, R](self: Option[T],
-                    callback: proc (input: T): Option[R]): Option[R] {.inline.} =
+                    callback: proc (input: T): Option[R]): Option[R] {.inline, effectsOf: callback.} =
   ## Applies a `callback` function to the value of the `Option` and returns the new value.
   ##
   ## If the `Option` has no value, `none(R)` will be returned.
@@ -303,7 +311,7 @@ proc flatMap*[T, R](self: Option[T],
 
   map(self, callback).flatten()
 
-proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] {.inline.} =
+proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] {.inline, effectsOf: callback.} =
   ## Applies a `callback` to the value of the `Option`.
   ##
   ## If the `callback` returns `true`, the option is returned as `some`.

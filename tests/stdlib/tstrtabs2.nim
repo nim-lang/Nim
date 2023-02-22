@@ -3,6 +3,7 @@ discard """
 """
 
 import std/strtabs
+import std/assertions
 
 macro m =
   var t = {"name": "John"}.newStringTable
