@@ -46,7 +46,8 @@ when defined(genode):
   import genode/env
 
 
-when hasAllocStack or defined(zephyr) or defined(freertos) or defined(cpu16) or defined(cpu8):
+when hasAllocStack or defined(zephyr) or defined(freertos) or defined(nuttx) or
+    defined(cpu16) or defined(cpu8):
   const
     nimThreadStackSize {.intdefine.} = 8192
     nimThreadStackGuard {.intdefine.} = 128
