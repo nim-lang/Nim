@@ -252,6 +252,9 @@ proc markSideEffect(a: PEffects; reason: PNode | PSym; useLoc: TLineInfo) =
       a.c.sideEffects.mgetOrPut(a.owner.id, @[]).add (useLoc, sym)
     when false: markGcUnsafe(a, reason)
 
+proc markDangerousAssign(a: PEffects; sym: PSym; useLoc: TLineInfo) =
+  a.c.dangerousAssign[a.owner.id] = (useLoc, sym)
+
 proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet; conf: ConfigRef) =
   let u = s.gcUnsafetyReason
   if u != nil and not cycleCheck.containsOrIncl(u.id):
@@ -1066,6 +1069,9 @@ proc track(tracked: PEffects, n: PNode) =
       # Here we add a `Exception` tag in order to cover both the cases.
       addRaiseEffect(tracked, createRaise(tracked.graph, n), nil)
   of nkCallKinds:
+    # skMethod?
+    if tracked.owner.kind in {skProc, skFunc} and n[0].kind == nkSym and n[0].sym.id in tracked.c.dangerousAssign:
+      markDangerousAssign(tracked, tracked.owner, n[0].info)
     trackCall(tracked, n)
   of nkDotExpr:
     guardDotAccess(tracked, n)
@@ -1090,10 +1096,15 @@ proc track(tracked: PEffects, n: PNode) =
       createTypeBoundOps(tracked, n[0].typ, n.info)
     if n[0].kind != nkSym or not isLocalSym(tracked, n[0].sym):
       checkForSink(tracked, n[1])
-      if tracked.strictFuncsActive and isDangerousLocation(n[0], tracked.owner):
-        tracked.hasSideEffect = true
-        localError(tracked.config, n[0].info,
-            "cannot mutate location $1 within a strict func" % renderTree(n[0]))
+      if isDangerousLocation(n[0], tracked.owner):
+        if tracked.strictFuncsActive:
+          tracked.hasSideEffect = true
+          localError(tracked.config, n[0].info,
+              "cannot mutate location $1 within a strict func" % renderTree(n[0]))
+        else:
+          if tracked.owner.kind == skProc:
+            markDangerousAssign(tracked, tracked.owner, n[0].info)
+
   of nkVarSection, nkLetSection:
     for child in n:
       let last = lastSon(child)
@@ -1553,6 +1564,13 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
         message(g.config, s.info, errGenerated, msg)
       else:
         localError(g.config, s.info, "") # simple error for `system.compiles` context
+
+  if t.strictFuncsActive and t.owner.id in t.c.dangerousAssign:
+    t.hasSideEffect = true
+    let (info, sym) = t.c.dangerousAssign[t.owner.id]
+    localError(t.config, info,
+        "cannot mutate location within a strict func")
+
   if not t.gcUnsafe:
     s.typ.flags.incl tfGcSafe
   if not t.hasSideEffect and sfSideEffect notin s.flags:

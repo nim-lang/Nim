@@ -165,6 +165,7 @@ type
     importModuleMap*: Table[int, int] # (module.id, module.id)
     lastTLineInfo*: TLineInfo
     sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
+    dangerousAssign*: Table[int, (TLineInfo, PSym)]
     inUncheckedAssignSection*: int
 
 template config*(c: PContext): ConfigRef = c.graph.config
