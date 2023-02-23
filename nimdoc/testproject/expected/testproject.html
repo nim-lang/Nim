@@ -65,6 +65,8 @@
   Circle,                   ## A circle
   Triangle,                 ## A three-sided shape
   Rectangle                  ## A four-sided shape">Shapes</a></li>
+<li><a class="reference" href="#T19396" title="T19396 = object
+  a*: int">T19396</a></li>
 
     </ul>
   </details>
@@ -401,6 +403,16 @@
     
   </dd>
 </div>
+<div id="T19396">
+  <dt><pre><a href="testproject.html#T19396"><span class="Identifier">T19396</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">a</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+</pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
 
   </dl>
 </div>
@@ -503,7 +515,8 @@
 </div>
 <div id="asyncFun1-procs-all">
   <div id="asyncFun1">
-  <dt><pre><span class="Keyword">proc</span> <a href="#asyncFun1"><span class="Identifier">asyncFun1</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Future</span><span class="Other">[</span><span class="Identifier">int</span><span class="Other">]</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span>
+  <dt><pre><span class="Keyword">proc</span> <a href="#asyncFun1"><span class="Identifier">asyncFun1</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Future</span><span class="Other">[</span><span class="Identifier">int</span><span class="Other">]</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">stackTrace</span><span class="Other">:</span> <span class="DecNumber">false</span><span class="Other">,</span>
+                                <span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span>
                                 <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
@@ -515,8 +528,8 @@
 </div>
 <div id="asyncFun2-procs-all">
   <div id="asyncFun2">
-  <dt><pre><span class="Keyword">proc</span> <a href="#asyncFun2"><span class="Identifier">asyncFun2</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">owned</span><span class="Other">(</span><span class="Identifier">Future</span><span class="Other">[</span><span class="Identifier">void</span><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
-                                        <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#asyncFun2"><span class="Identifier">asyncFun2</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">owned</span><span class="Other">(</span><span class="Identifier">Future</span><span class="Other">[</span><span class="Identifier">void</span><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">stackTrace</span><span class="Other">:</span> <span class="DecNumber">false</span><span class="Other">,</span> <span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span>
+                                        <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -527,8 +540,8 @@
 </div>
 <div id="asyncFun3-procs-all">
   <div id="asyncFun3">
-  <dt><pre><span class="Keyword">proc</span> <a href="#asyncFun3"><span class="Identifier">asyncFun3</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">owned</span><span class="Other">(</span><span class="Identifier">Future</span><span class="Other">[</span><span class="Identifier">void</span><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span>
-                                        <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#asyncFun3"><span class="Identifier">asyncFun3</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">owned</span><span class="Other">(</span><span class="Identifier">Future</span><span class="Other">[</span><span class="Identifier">void</span><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">stackTrace</span><span class="Other">:</span> <span class="DecNumber">false</span><span class="Other">,</span> <span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span>
+                                        <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     

@@ -40,6 +40,13 @@ const
 
 proc implicitlyDiscardable(n: PNode): bool
 
+proc hasEmpty(typ: PType): bool =
+  if typ.kind in {tySequence, tyArray, tySet}:
+    result = typ.lastSon.kind == tyEmpty
+  elif typ.kind == tyTuple:
+    for s in typ.sons:
+      result = result or hasEmpty(s)
+
 proc semDiscard(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1, c.config)
@@ -47,7 +54,9 @@ proc semDiscard(c: PContext, n: PNode): PNode =
     n[0] = semExprWithType(c, n[0])
     let sonType = n[0].typ
     let sonKind = n[0].kind
-    if isEmptyType(sonType) or sonType.kind in {tyNone, tyTypeDesc} or sonKind == nkTypeOfExpr:
+    if isEmptyType(sonType) or hasEmpty(sonType) or
+          sonType.kind in {tyNone, tyTypeDesc} or
+          sonKind == nkTypeOfExpr:
       localError(c.config, n.info, errInvalidDiscard)
     if sonType.kind == tyProc and sonKind notin nkCallKinds:
       # tyProc is disallowed to prevent ``discard foo`` to be valid, when ``discard foo()`` is meant.
@@ -105,7 +114,6 @@ proc semWhile(c: PContext, n: PNode; flags: TExprFlags): PNode =
     result.typ = n[1].typ
   elif implicitlyDiscardable(n[1]):
     result[1].typ = c.enforceVoidContext
-    result.typ = c.enforceVoidContext
 
 proc semProc(c: PContext, n: PNode): PNode
 
@@ -210,6 +218,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
       isImported = true
     elif not isException(typ):
       localError(c.config, typeNode.info, errExprCannotBeRaised)
+    elif not isDefectOrCatchableError(typ):
+      message(c.config, a.info, warnBareExcept, "catch a more precise Exception deriving from CatchableError or Defect.")
 
     if containsOrIncl(check, typ.id):
       localError(c.config, typeNode.info, errExceptionAlreadyHandled)
@@ -251,7 +261,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
       elif a.len == 1:
         # count number of ``except: body`` blocks
         inc catchAllExcepts
-
+        message(c.config, a.info, warnBareExcept,
+                  "The bare except clause is deprecated; use `except CatchableError:` instead")
       else:
         # support ``except KeyError, ValueError, ... : body``
         if catchAllExcepts > 0:
@@ -407,13 +418,6 @@ proc semUsing(c: PContext; n: PNode): PNode =
     var def: PNode
     if a[^1].kind != nkEmpty:
       localError(c.config, a.info, "'using' sections cannot contain assignments")
-
-proc hasEmpty(typ: PType): bool =
-  if typ.kind in {tySequence, tyArray, tySet}:
-    result = typ.lastSon.kind == tyEmpty
-  elif typ.kind == tyTuple:
-    for s in typ.sons:
-      result = result or hasEmpty(s)
 
 proc hasUnresolvedParams(n: PNode; flags: TExprFlags): bool =
   result = tfUnresolved in n.typ.flags
@@ -722,9 +726,12 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if v.kind == skLet and sfImportc notin v.flags and (strictDefs notin c.features or not isLocalSym(v)):
           localError(c.config, a.info, errLetNeedsInit)
       if sfCompileTime in v.flags:
-        var x = newNodeI(result.kind, v.info)
-        x.add result[i]
-        vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x)
+        if a.kind != nkVarTuple:
+          var x = newNodeI(result.kind, v.info)
+          x.add result[i]
+          vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x)
+        else:
+          localError(c.config, a.info, "cannot destructure to compile time variable")
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
         message(c.config, v.info, hintGlobalVar)
       if {sfGlobal, sfPure} <= v.flags:
@@ -2151,7 +2158,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         if s.kind notin {skMacro, skTemplate} and s.magic == mNone: paramsTypeCheck(c, s.typ)
 
         maybeAddResult(c, s, n)
-        let resultType = 
+        let resultType =
           if s.kind == skMacro:
             sysTypeFromName(c.graph, n.info, "NimNode")
           elif not isInlineIterator(s.typ):

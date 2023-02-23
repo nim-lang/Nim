@@ -86,6 +86,7 @@ type
     options*: TOptions        # options that should be used for code
                               # generation; this is the same as prc.options
                               # unless prc == nil
+    optionsStack*: seq[TOptions]
     module*: BModule          # used to prevent excessive parameter passing
     withinLoop*: int          # > 0 if we are within a loop
     splitDecls*: int          # > 0 if we are in some context for C++ that
@@ -172,6 +173,7 @@ type
 
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
+template vccAndC*(p: BProc): bool = p.module.config.cCompiler == ccVcc and p.module.config.backend == backendC
 
 proc includeHeader*(this: BModule; header: string) =
   if not this.headerFiles.contains header:

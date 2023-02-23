@@ -1,41 +1,46 @@
-funWithGenerics	subdir/subdir_b/utils.html#funWithGenerics,T,U	utils: funWithGenerics[T, U: SomeFloat](a: T; b: U)	
-enumValueA	subdir/subdir_b/utils.html#enumValueA	SomeType.enumValueA	
-enumValueB	subdir/subdir_b/utils.html#enumValueB	SomeType.enumValueB	
-enumValueC	subdir/subdir_b/utils.html#enumValueC	SomeType.enumValueC	
-SomeType	subdir/subdir_b/utils.html#SomeType	utils: SomeType	
-G	subdir/subdir_b/utils.html#G	utils: G	
-someType	subdir/subdir_b/utils.html#someType_2	utils: someType(): SomeType	
-fn2	subdir/subdir_b/utils.html#fn2	utils: fn2()	
-fn2	subdir/subdir_b/utils.html#fn2,int	utils: fn2(x: int)	
-fn2	subdir/subdir_b/utils.html#fn2,int,float	utils: fn2(x: int; y: float)	
-binarySearch	subdir/subdir_b/utils.html#binarySearch,openArray[T],K,proc(T,K)	utils: binarySearch[T, K](a: openArray[T]; key: K;\n                   cmp: proc (x: T; y: K): int {.closure.}): int	
-fn3	subdir/subdir_b/utils.html#fn3	utils: fn3(): auto	
-fn4	subdir/subdir_b/utils.html#fn4	utils: fn4(): auto	
-fn5	subdir/subdir_b/utils.html#fn5	utils: fn5()	
-fn6	subdir/subdir_b/utils.html#fn6	utils: fn6()	
-fn7	subdir/subdir_b/utils.html#fn7	utils: fn7()	
-fn8	subdir/subdir_b/utils.html#fn8	utils: fn8(): auto	
-fn9	subdir/subdir_b/utils.html#fn9,int	utils: fn9(a: int): int	
-fn10	subdir/subdir_b/utils.html#fn10,int	utils: fn10(a: int): int	
-fN11	subdir/subdir_b/utils.html#fN11	utils: fN11()	
-fN11	subdir/subdir_b/utils.html#fN11,int	utils: fN11(x: int)	
-aEnum	subdir/subdir_b/utils.html#aEnum.t	utils: aEnum(): untyped	
-bEnum	subdir/subdir_b/utils.html#bEnum.t	utils: bEnum(): untyped	
-fromUtilsGen	subdir/subdir_b/utils.html#fromUtilsGen.t	utils: fromUtilsGen(): untyped	
-f	subdir/subdir_b/utils.html#f,G[int]	utils: f(x: G[int])	
-f	subdir/subdir_b/utils.html#f,G[string]	utils: f(x: G[string])	
-`[]`	subdir/subdir_b/utils.html#[],G[T]	utils: `[]`[T](x: G[T]): T	
-`[]=`	subdir/subdir_b/utils.html#[]=,G[T],int,T	utils: `[]=`[T](a: var G[T]; index: int; value: T)	
-`$`	subdir/subdir_b/utils.html#$,G[T]	utils: `$`[T](a: G[T]): string	
-`$`	subdir/subdir_b/utils.html#$,ref.SomeType	utils: `$`[T](a: ref SomeType): string	
-fooBar	subdir/subdir_b/utils.html#fooBar.i,seq[SomeType]	utils: fooBar(a: seq[SomeType]): int	
-fn	subdir/subdir_b/utils.html#fn	utils: fn[T; U, V: SomeFloat]()	
-`'big`	subdir/subdir_b/utils.html#'big,string	utils: `&apos;big`(a: string): SomeType	
-This is now a header	subdir/subdir_b/utils.html#this-is-now-a-header	 This is now a header	
-Next header	subdir/subdir_b/utils.html#this-is-now-a-header-next-header	  Next header	
-And so on	subdir/subdir_b/utils.html#next-header-and-so-on	   And so on	
-More headers	subdir/subdir_b/utils.html#more-headers	 More headers	
-Up to level 6	subdir/subdir_b/utils.html#more-headers-up-to-level-6	      Up to level 6	
-Pandoc Markdown	subdir/subdir_b/utils.html#pandoc-markdown	 Pandoc Markdown	
-Link name syntax	subdir/subdir_b/utils.html#pandoc-markdown-link-name-syntax	  Link name syntax	
-Symbols documentation	subdir/subdir_b/utils.html#pandoc-markdown-symbols-documentation	  Symbols documentation	
+nimTitle	utils	subdir/subdir_b/utils.html	module subdir/subdir_b/utils		0
+nim	funWithGenerics	subdir/subdir_b/utils.html#funWithGenerics,T,U	proc funWithGenerics[T, U: SomeFloat](a: T; b: U)		1
+nim	enumValueA	subdir/subdir_b/utils.html#enumValueA	SomeType.enumValueA		45
+nim	enumValueB	subdir/subdir_b/utils.html#enumValueB	SomeType.enumValueB		45
+nim	enumValueC	subdir/subdir_b/utils.html#enumValueC	SomeType.enumValueC		45
+nim	SomeType	subdir/subdir_b/utils.html#SomeType	enum SomeType		45
+nim	G	subdir/subdir_b/utils.html#G	object G		49
+nim	someType	subdir/subdir_b/utils.html#someType_2	proc someType(): SomeType		52
+nim	fn2	subdir/subdir_b/utils.html#fn2	proc fn2()		57
+nim	fn2	subdir/subdir_b/utils.html#fn2,int	proc fn2(x: int)		58
+nim	fn2	subdir/subdir_b/utils.html#fn2,int,float	proc fn2(x: int; y: float)		61
+nim	binarySearch	subdir/subdir_b/utils.html#binarySearch,openArray[T],K,proc(T,K)	proc binarySearch[T, K](a: openArray[T]; key: K;\n                   cmp: proc (x: T; y: K): int {.closure.}): int		63
+nim	fn3	subdir/subdir_b/utils.html#fn3	proc fn3(): auto		66
+nim	fn4	subdir/subdir_b/utils.html#fn4	proc fn4(): auto		67
+nim	fn5	subdir/subdir_b/utils.html#fn5	proc fn5()		68
+nim	fn6	subdir/subdir_b/utils.html#fn6	proc fn6()		70
+nim	fn7	subdir/subdir_b/utils.html#fn7	proc fn7()		72
+nim	fn8	subdir/subdir_b/utils.html#fn8	proc fn8(): auto		75
+nim	fn9	subdir/subdir_b/utils.html#fn9,int	proc fn9(a: int): int		78
+nim	fn10	subdir/subdir_b/utils.html#fn10,int	proc fn10(a: int): int		79
+nim	fN11	subdir/subdir_b/utils.html#fN11	proc fN11()		85
+nim	fN11	subdir/subdir_b/utils.html#fN11,int	proc fN11(x: int)		86
+nim	aEnum	subdir/subdir_b/utils.html#aEnum.t	template aEnum(): untyped		90
+nim	bEnum	subdir/subdir_b/utils.html#bEnum.t	template bEnum(): untyped		95
+nim	fromUtilsGen	subdir/subdir_b/utils.html#fromUtilsGen.t	template fromUtilsGen(): untyped		106
+nim	f	subdir/subdir_b/utils.html#f,G[int]	proc f(x: G[int])		130
+nim	f	subdir/subdir_b/utils.html#f,G[string]	proc f(x: G[string])		133
+nim	`[]`	subdir/subdir_b/utils.html#[],G[T]	proc `[]`[T](x: G[T]): T		140
+nim	`[]=`	subdir/subdir_b/utils.html#[]=,G[T],int,T	proc `[]=`[T](a: var G[T]; index: int; value: T)		144
+nim	`$`	subdir/subdir_b/utils.html#$,G[T]	proc `$`[T](a: G[T]): string		148
+nim	`$`	subdir/subdir_b/utils.html#$,ref.SomeType	proc `$`[T](a: ref SomeType): string		152
+nim	fooBar	subdir/subdir_b/utils.html#fooBar.i,seq[SomeType]	iterator fooBar(a: seq[SomeType]): int		156
+nim	fn	subdir/subdir_b/utils.html#fn	proc fn[T; U, V: SomeFloat]()		160
+nim	`'big`	subdir/subdir_b/utils.html#'big,string	proc `'big`(a: string): SomeType		164
+nimgrp	$	subdir/subdir_b/utils.html#$-procs-all	proc		148
+nimgrp	fn11	subdir/subdir_b/utils.html#fN11-procs-all	proc		85
+nimgrp	fn2	subdir/subdir_b/utils.html#fn2-procs-all	proc		57
+nimgrp	f	subdir/subdir_b/utils.html#f-procs-all	proc		130
+heading	This is now a header	subdir/subdir_b/utils.html#this-is-now-a-header	 This is now a header		0
+heading	Next header	subdir/subdir_b/utils.html#this-is-now-a-header-next-header	  Next header		0
+heading	And so on	subdir/subdir_b/utils.html#next-header-and-so-on	   And so on		0
+heading	More headers	subdir/subdir_b/utils.html#more-headers	 More headers		0
+heading	Up to level 6	subdir/subdir_b/utils.html#more-headers-up-to-level-6	      Up to level 6		0
+heading	Pandoc Markdown	subdir/subdir_b/utils.html#pandoc-markdown	 Pandoc Markdown		0
+heading	Link name syntax	subdir/subdir_b/utils.html#pandoc-markdown-link-name-syntax	  Link name syntax		0
+heading	Symbols documentation	subdir/subdir_b/utils.html#pandoc-markdown-symbols-documentation	  Symbols documentation		0

@@ -10,7 +10,7 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import tables
+import std/[tables, strutils]
 
 import ast, idents, options, modulegraphs, lineinfos
 
@@ -127,7 +127,7 @@ type
     opcNGetSize,
 
     opcNSetIntVal,
-    opcNSetFloatVal, opcNSetSymbol, opcNSetIdent, opcNSetType, opcNSetStrVal,
+    opcNSetFloatVal, opcNSetSymbol, opcNSetIdent, opcNSetStrVal,
     opcNNewNimNode, opcNCopyNimNode, opcNCopyNimTree, opcNDel, opcGenSym,
 
     opcNccValue, opcNccInc, opcNcsAdd, opcNcsIncl, opcNcsLen, opcNcsAt,
@@ -141,7 +141,8 @@ type
     opcNError,
     opcNWarning,
     opcNHint,
-    opcNGetLineInfo, opcNSetLineInfo,
+    opcNGetLineInfo, opcNCopyLineInfo, opcNSetLineInfoLine,
+    opcNSetLineInfoColumn, opcNSetLineInfoFile
     opcEqIdent,
     opcStrToIdent,
     opcGetImpl,
@@ -258,7 +259,8 @@ type
     traceActive*: bool
     loopIterations*: int
     comesFromHeuristic*: TLineInfo # Heuristic for better macro stack traces
-    callbacks*: seq[tuple[key: string, value: VmCallback]]
+    callbacks*: seq[VmCallback]
+    callbackIndex*: Table[string, int]
     errorFlag*: string
     cache*: IdentCache
     config*: ConfigRef
@@ -291,7 +293,7 @@ proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph; idgen: IdGenerator
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: g.config.maxLoopIterationsVM,
-    comesFromHeuristic: unknownLineInfo, callbacks: @[], errorFlag: "",
+    comesFromHeuristic: unknownLineInfo, callbacks: @[], callbackIndex: initTable[string, int](), errorFlag: "",
     cache: cache, config: g.config, graph: g, idgen: idgen)
 
 proc refresh*(c: PCtx, module: PSym; idgen: IdGenerator) =
@@ -300,9 +302,18 @@ proc refresh*(c: PCtx, module: PSym; idgen: IdGenerator) =
   c.loopIterations = c.config.maxLoopIterationsVM
   c.idgen = idgen
 
+proc reverseName(s: string): string =
+  result = newStringOfCap(s.len)
+  let y = s.split('.')
+  for i in 1..y.len:
+    result.add y[^i]
+    if i != y.len:
+      result.add '.'
+
 proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.discardable.} =
   result = c.callbacks.len
-  c.callbacks.add((name, callback))
+  c.callbacks.add(callback)
+  c.callbackIndex[reverseName(name)] = result
 
 const
   firstABxInstr* = opcTJmp

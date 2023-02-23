@@ -32,8 +32,6 @@ const
 when hasFFI:
   import evalffi
 
-when not defined(nimHasCursor):
-  {.pragma: cursor.}
 
 proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
   if x != nil:
@@ -532,9 +530,6 @@ template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
     true
   else:
     false
-
-when not defined(nimHasSinkInference):
-  {.pragma: nosinks.}
 
 template takeAddress(reg, source) =
   reg.nodeAddr = addr source
@@ -1276,7 +1271,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
             let ast = a.sym.ast.shallowCopy
             for i in 0..<a.sym.ast.len:
               ast[i] = a.sym.ast[i]
-            ast[bodyPos] = transformBody(c.graph, c.idgen, a.sym, useCache)
+            ast[bodyPos] = transformBody(c.graph, c.idgen, a.sym, useCache, force=true)
             ast.copyTree()
     of opcSymOwner:
       decodeB(rkNode)
@@ -1356,7 +1351,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let prc = if not isClosure: bb.sym else: bb[0].sym
       if prc.offset < -1:
         # it's a callback:
-        c.callbacks[-prc.offset-2].value(
+        c.callbacks[-prc.offset-2](
           VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                  currentException: c.currentExceptionA,
                  currentLineInfo: c.debug[pc])
@@ -1608,7 +1603,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcRepr:
       decodeB(rkNode)
       createStr regs[ra]
-      regs[ra].node.strVal = renderTree(regs[rb].regToNode, {renderNoComments, renderDocComments})
+      regs[ra].node.strVal = renderTree(regs[rb].regToNode, {renderNoComments, renderDocComments, renderNonExportedFields})
     of opcQuit:
       if c.mode in {emRepl, emStaticExpr, emStaticStmt}:
         message(c.config, c.debug[pc], hintQuitCalled)
@@ -1679,7 +1674,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         rb = instr.regB
         rc = instr.regC
         idx = int(regs[rb+rc-1].intVal)
-        callback = c.callbacks[idx].value
+        callback = c.callbacks[idx]
         args = VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                 currentException: c.currentExceptionA,
                 currentLineInfo: c.debug[pc])
@@ -1934,14 +1929,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of 1: # getLine
         regs[ra].node = newIntNode(nkIntLit, n.info.line.int)
       of 2: # getColumn
-        regs[ra].node = newIntNode(nkIntLit, n.info.col)
+        regs[ra].node = newIntNode(nkIntLit, n.info.col.int)
       else:
         internalAssert c.config, false
       regs[ra].node.info = n.info
       regs[ra].node.typ = n.typ
-    of opcNSetLineInfo:
+    of opcNCopyLineInfo:
       decodeB(rkNode)
       regs[ra].node.info = regs[rb].node.info
+    of opcNSetLineInfoLine:
+      decodeB(rkNode)
+      regs[ra].node.info.line = regs[rb].intVal.uint16
+    of opcNSetLineInfoColumn:
+      decodeB(rkNode)
+      regs[ra].node.info.col = regs[rb].intVal.int16
+    of opcNSetLineInfoFile:
+      decodeB(rkNode)
+      regs[ra].node.info.fileIndex =
+        fileInfoIdx(c.config, RelativeFile regs[rb].node.strVal)
     of opcEqIdent:
       decodeBC(rkInt)
       # aliases for shorter and easier to understand code below
@@ -2066,12 +2071,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         dest.ident = regs[rb].node.ident
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "ident")
-    of opcNSetType:
-      decodeB(rkNode)
-      let b = regs[rb].node
-      internalAssert c.config, b.kind == nkSym and b.sym.kind == skType
-      internalAssert c.config, regs[ra].node != nil
-      regs[ra].node.typ = b.sym.typ
     of opcNSetStrVal:
       decodeB(rkNode)
       var dest = regs[ra].node
@@ -2334,6 +2333,9 @@ const evalPass* = makePass(myOpen, myProcess, myClose)
 proc evalConstExprAux(module: PSym; idgen: IdGenerator;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
+  when defined(nimsuggest):
+    if g.config.expandDone():
+      return n
   #if g.config.errorCounter > 0: return n
   let n = transformExpr(g, idgen, module, n)
   setupGlobalCtx(module, g, idgen)

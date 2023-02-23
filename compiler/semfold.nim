@@ -569,6 +569,8 @@ proc foldDefine(m, s: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode
     else: result = copyTree(s.astdef) # unreachable
   else:
     result = copyTree(s.astdef)
+    if result != nil:
+      result.info = n.info
 
 proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   result = nil
@@ -593,6 +595,8 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
         result = foldDefine(m, s, n, idgen, g)
       else:
         result = copyTree(s.astdef)
+        if result != nil:
+          result.info = n.info
     of skProc, skFunc, skMethod:
       result = n
     of skParam:
@@ -681,7 +685,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
       n[0] = a
   of nkBracket, nkCurly:
     result = copyNode(n)
-    for i, son in n.pairs:
+    for son in n.items:
       var a = getConstExpr(m, son, idgen, g)
       if a == nil: return nil
       result.add a
@@ -705,7 +709,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
     # tuple constructor
     result = copyNode(n)
     if (n.len > 0) and (n[0].kind == nkExprColonExpr):
-      for i, expr in n.pairs:
+      for expr in n.items:
         let exprNew = copyNode(expr) # nkExprColonExpr
         exprNew.add expr[0]
         let a = getConstExpr(m, expr[1], idgen, g)
@@ -713,7 +717,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
         exprNew.add a
         result.add exprNew
     else:
-      for i, expr in n.pairs:
+      for expr in n.items:
         let a = getConstExpr(m, expr, idgen, g)
         if a == nil: return nil
         result.add a

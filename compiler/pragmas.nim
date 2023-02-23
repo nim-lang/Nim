@@ -364,7 +364,7 @@ proc processNote(c: PContext, n: PNode) =
     else: invalidPragma(c, n)
   else: invalidPragma(c, n)
 
-proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
+proc pragmaToOptions*(w: TSpecialWord): TOptions {.inline.} =
   case w
   of wChecks: ChecksOptions
   of wObjChecks: {optObjCheck}
@@ -513,8 +513,11 @@ proc processCompile(c: PContext, n: PNode) =
     var cf = Cfile(nimname: splitFile(src).name,
                    cname: src, obj: dest, flags: {CfileFlag.External},
                    customArgs: customArgs)
-    extccomp.addExternalFileToCompile(c.config, cf)
-    recordPragma(c, it, "compile", src.string, dest.string, customArgs)
+    if not fileExists(src):
+      localError(c.config, n.info, "cannot find: " & src.string)
+    else:
+      extccomp.addExternalFileToCompile(c.config, cf)
+      recordPragma(c, it, "compile", src.string, dest.string, customArgs)
 
   proc getStrLit(c: PContext, n: PNode; i: int): string =
     n[i] = c.semConstExpr(c, n[i])
@@ -926,7 +929,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wThreadVar:
         noVal(c, it)
         incl(sym.flags, {sfThread, sfGlobal})
-      of wDeadCodeElimUnused: discard  # deprecated, dead code elim always on
+      of wDeadCodeElimUnused:
+        warningDeprecated(c.config, n.info, "'{.deadcodeelim: on.}' is deprecated, now a noop")  # deprecated, dead code elim always on
       of wNoForward: pragmaNoForward(c, it)
       of wReorder: pragmaNoForward(c, it, flag = sfReorder)
       of wMagic: processMagic(c, it, sym)

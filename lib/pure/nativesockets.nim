@@ -23,7 +23,8 @@ when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
 
 const useWinVersion = defined(windows) or defined(nimdoc)
-const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr)
+const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr) or
+    defined(nuttx)
 
 when useWinVersion:
   import winlean
@@ -304,7 +305,7 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
   let socketPort = if sockType == SOCK_RAW: "" else: $port
   var gaiResult = getaddrinfo(address, socketPort.cstring, addr(hints), result)
   if gaiResult != 0'i32:
-    when useWinVersion or defined(freertos):
+    when useWinVersion or defined(freertos) or defined(nuttx):
       raiseOSError(osLastError())
     else:
       raiseOSError(osLastError(), $gai_strerror(gaiResult))
@@ -351,7 +352,7 @@ proc getSockDomain*(socket: SocketHandle): Domain =
   else:
     raise newException(IOError, "Unknown socket family in getSockDomain")
 
-when not useNimNetLite: 
+when not useNimNetLite:
   proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
     ## Searches the database from the beginning and finds the first entry for
     ## which the service name specified by `name` matches the s_name member

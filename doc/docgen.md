@@ -9,6 +9,7 @@
 .. include:: rstcommon.rst
 .. contents::
 
+.. importdoc:: markdown_rst.md, compiler/docgen.nim
 
 Introduction
 ============
@@ -43,6 +44,7 @@ Generate HTML documentation for a whole project:
   # or `$nimcache/htmldocs` with `--usenimcache` which avoids clobbering your sources;
   # and likewise without `--project`.
   # Adding `-r` will open in a browser directly.
+  # Use `--showNonExports` to show non-exported fields of an exported type.
   ```
 
 Documentation Comments
@@ -102,6 +104,64 @@ won't influence RST formatting.
      ##
      ## Paragraph.
      ```
+
+Structuring output directories
+------------------------------
+
+Basic directory for output is set by `--outdir:OUTDIR`:option: switch,
+by default `OUTDIR` is ``htmldocs`` sub-directory in the directory of
+the processed file.
+
+There are 2 basic options as to how generated HTML output files are stored:
+
+1) complex hierarchy when docgen-compiling with `--project`:option:,
+   which follows directory structure of the project itself.
+   So `nim doc`:cmd: replicates project's directory structure
+   inside `--outdir:OUTDIR`:option: directory.
+   `--project`:option: is well suited for projects that have 1 main module.
+   File name clashes are impossible in this case.
+
+2) flattened structure, where user-provided script goes through all
+   needed input files and calls commands like `nim doc`:cmd:
+   with `--outdir:OUTDIR`:option: switch, thus putting all HTML (and
+   ``.idx``) files into 1 directory.
+
+   .. Important:: Make sure that you don't have files with same base name
+     like ``x.nim`` and ``x.md`` in the same package, otherwise you'll
+     have name conflict for ``x.html``.
+
+   .. Tip:: To structure your output directories and avoid file name
+     clashes you can split your project into
+     different *packages* -- parts of your repository that are
+     docgen-compiled with different `--outdir:OUTDIR`:option: options.
+
+     An example of such strategy is Nim repository itself which has:
+
+     * its stdlib ``.nim`` files from different directories and ``.md``
+       documentation from ``doc/`` directory are all docgen-compiled
+       into `--outdir:web/upload/<version>/`:option: directory
+     * its ``.nim`` files from ``compiler/`` directory are docgen-compiled
+       into `--outdir:web/upload/<version>/compiler/`:option: directory.
+       Interestingly, it's compiled with complex hierarchy using
+       `--project`:option: switch.
+
+     Contents of ``web/upload/<version>`` are then deployed into Nim's
+     Web server.
+
+     This output directory structure allows to work correctly with files like
+     ``compiler/docgen.nim`` (implementation) and ``doc/docgen.md`` (user
+     documentation) in 1 repository.
+
+
+Index files
+-----------
+
+Index (``.idx``) files are used for 2 different purposes:
+
+1. easy cross-referencing between different ``.nim`` and/or ``.md`` / ``.rst``
+   files described in [Nim external referencing]
+2. creating a whole-project index for searching of symbols and keywords,
+   see [Buildindex command].
 
 
 Document Types
@@ -226,13 +286,46 @@ Note that the `jsondoc`:option: command outputs its JSON without pretty-printing
 while `jsondoc0`:option: outputs pretty-printed JSON.
 
 
-Referencing Nim symbols: simple documentation links
-===================================================
+Simple documentation links
+==========================
 
-You can reference Nim identifiers from Nim documentation comments, currently
-only inside their ``.nim`` file (or inside a ``.rst`` file included from
-a ``.nim``). The point is that such links will be resolved automatically
-by `nim doc`:cmd: (or `nim jsondoc`:cmd: or `nim doc2tex`:cmd:).
+It's possible to use normal Markdown/RST syntax to *manually*
+reference Nim symbols using HTML anchors, however Nim has an *automatic*
+facility that makes referencing inside ``.nim`` and ``.md/.rst`` files and
+between them easy and seamless.
+The point is that such links will be resolved automatically
+by `nim doc`:cmd: (or `md2html`:option:, or `jsondoc`:option:,
+or `doc2tex`:option:, ...). And, unlike manual links, such automatic
+links **check** that their target exists -- a warning is emitted for
+any broken link, so you avoid broken links in your project.
+
+Nim treats both ``.md/.rst`` files and ``.nim`` modules (their doc comment
+part) as *documents* uniformly.
+Hence all directions of referencing are equally possible having the same syntax:
+
+1. ``.md/rst`` -> itself (internal). See [Markup local referencing].
+2. ``.md/rst`` -> external ``.md/rst``. See [Markup external referencing].
+   To summarize, referencing in `.md`/`.rst` files was already described in
+   [Nim-flavored Markdown and reStructuredText]
+   (particularly it described usage of index files for referencing),
+   while in this document we focus on Nim-specific details.
+3. ``.md/rst`` -> external ``.nim``. See [Nim external referencing].
+4. ``.nim`` -> itself (internal). See [Nim local referencing].
+5. ``.nim`` -> external ``.md/rst``. See [Markup external referencing].
+6. ``.nim`` -> external ``.nim``. See [Nim external referencing].
+
+To put it shortly, local referencing always works out of the box,
+external referencing requires to use ``.. importdoc:: <file>``
+directive to import `file` and to ensure that the corresponding
+``.idx`` file was generated.
+
+
+Nim local referencing
+---------------------
+
+You can reference Nim identifiers from Nim documentation comments
+inside their ``.nim`` file (or inside a ``.rst`` file included from
+a ``.nim``).
 This pertains to any exported symbol like `proc`, `const`, `iterator`, etc.
 Syntax for referencing is basically a normal RST one: addition of
 underscore `_` to a *link text*.
@@ -405,6 +498,143 @@ recognized fine:
          ...
        ## Ref. `CopyFlag enum`_
 
+Nim external referencing
+------------------------
+
+Just like for [Markup external referencing], which saves markup anchors,
+the Nim symbols are also saved in ``.idx`` files, so one needs
+to generate them beforehand, and they should be loaded by
+an ``.. importdoc::`` directive. Arguments to ``.. importdoc::`` is a
+comma-separated list of Nim modules or Markdown/RST documents.
+
+`--index:only`:option: tells Nim to only generate ``.idx`` file and
+do **not** attempt to generate HTML/LaTeX output.
+For ``.nim`` modules there are 2 alternatives to work with ``.idx`` files:
+
+1. using [Project switch] implies generation of ``.idx`` files,
+   however, if ``importdoc`` is called on upper modules as its arguments,
+   their ``.idx`` are not yet created. Thus one should generate **all**
+   required ``.idx`` first:
+     ```cmd
+     nim doc --project --index:only <main>.nim
+     nim doc --project <main>.nim
+     ```
+2. or run `nim doc --index:only <module.nim>`:cmd: command for **all** (used)
+   Nim modules in your project. Then run `nim doc <module.nim>` on them for
+   output HTML generation.
+
+   .. Warning:: A mere `nim doc --index:on`:cmd: may fail on an attempt to do
+      ``importdoc`` from another module (for which ``.idx`` was not yet
+      generated), that's why `--index:only`:option: shall be used instead.
+
+   For ``.md``/``.rst`` markup documents point 2 is the only option.
+
+Then, you can freely use something like this in ``your_module.nim``:
+
+  ```nim
+  ## .. importdoc::  user_manual.md, another_module.nim
+
+  ...
+  ## Ref. [some section from User Manual].
+
+  ...
+  ## Ref. [proc f]
+  ## (assuming you have a proc `f` in ``another_module``).
+  ```
+
+and compile it by `nim doc`:cmd:. Note that link text will
+be automatically prefixed by the module name of symbol,
+so you will see something like "Ref. [another_module: proc f](#)"
+in the generated output.
+
+It's also possible to reference a whole module by prefixing or
+suffixing full canonical module name with "module":
+
+    Ref. [module subdir/name] or [subdir/name module].
+
+Markup documents as a whole can be referenced just by their title
+(or by their file name if the title was not set) without any prefix.
+
+.. Tip:: During development process the stage of ``.idx`` files generation
+  can be done only *once*, after that you use already generated ``.idx``
+  files while working with a document *being developed* (unless you do
+  incompatible changes to *referenced* documents).
+
+.. Hint:: After changing a *referenced* document file one may need
+  to regenerate its corresponding ``.idx`` file to get correct results.
+  Of course, when referencing *internally* inside any given ``.nim`` file,
+  it's not needed, one can even immediately use any freshly added anchor
+  (a document's own ``.idx`` file is not used for resolving its internal links).
+
+If an ``importdoc`` directive fails to find a ``.idx``, then an error
+is emitted.
+
+In case of such compilation failures please note that:
+
+* **all** relative paths, given to ``importdoc``, relate to insides of
+  ``OUTDIR``, and **not** project's directory structure.
+
+* ``importdoc`` searches for ``.idx`` in `--outdir:OUTDIR`:option: directory
+  (``htmldocs`` by default) and **not** around original modules, so:
+
+  .. Tip:: look into ``OUTDIR`` to understand what's going on.
+
+* also keep in mind that ``.html`` and ``.idx`` files should always be
+  output to the same directory, so check this and, if it's not true, check
+  that both runs *with* and *without* `--index:only`:option: have all
+  other options the same.
+
+To summarize, for 2 basic options of [Structuring output directories]
+compilation options are different:
+
+1) complex hierarchy with `--project`:option: switch.
+
+   As the **original** project's directory structure is replicated in
+   `OUTDIR`, all passed paths are related to this structure also.
+
+   E.g. if a module ``path1/module.nim`` does
+   ``.. importdoc:: path2/another.nim`` then docgen tries to load file
+   ``OUTDIR/path1/path2/another.idx``.
+
+   .. Note:: markup documents are just placed into the specified directory
+     `OUTDIR`:option: by default (i.e. they are **not** affected by
+     `--project`:option:), so if you have ``PROJECT/doc/manual.md``
+     document and want to use complex hirearchy (with ``doc/``),
+     compile it with `--docroot`:option:\:
+       ```cmd
+       # 1st stage
+       nim md2html --outdir:OUTDIR --docroot:/absolute/path/to/PROJECT \
+            --index:only PROJECT/doc/manual.md
+       ...
+       # 2nd stage
+       nim md2html --outdir:OUTDIR --docroot:/absolute/path/to/PROJECT \
+                         PROJECT/doc/manual.md
+       ```
+
+     Then the output file will be placed as ``OUTDIR/doc/manual.idx``.
+     So if you have ``PROJECT/path1/module.nim``, then ``manual.md`` can
+     be referenced as ``../doc/manual.md``.
+
+2) flattened structure.
+
+   E.g. if a module ``path1/module.nim`` does
+   ``.. importdoc:: path2/another.nim`` then docgen tries to load
+   ``OUTDIR/path2/another.idx``, so the path ``path1``
+   does not matter and providing ``path2`` can be useful only
+   in the case it contains another package that was placed there
+   using `--outdir:OUTDIR/path2`:option:.
+
+   The links' text will be prefixed as ``another: ...`` in both cases.
+
+   .. Warning:: Again, the same `--outdir:OUTDIR`:option: option should
+     be provided to both `doc --index:only`:option: /
+     `md2html --index:only`:option: and final generation by
+     `doc`:option:/`md2html`:option: inside 1 package.
+
+To temporarily disable ``importdoc``, e.g. if you don't need
+correct link resolution at the moment, use a `--noImportdoc`:option: switch
+(only warnings about unresolved links will be generated for external references).
+
 Related Options
 ===============
 
@@ -434,10 +664,21 @@ index file is line-oriented (newlines have to be escaped). Each line
 represents a tab-separated record of several columns, the first two mandatory,
 the rest optional. See the [Index (idx) file format] section for details.
 
+.. Note:: `--index`:option: switch only affects creation of ``.idx``
+  index files, while user-searchable Index HTML file is created by
+  `buildIndex`:option: commmand.
+
+Buildindex command
+------------------
+
 Once index files have been generated for one or more modules, the Nim
-compiler command `buildIndex directory` can be run to go over all the index
+compiler command `nim buildIndex directory`:cmd: can be run to go over all the index
 files in the specified directory to generate a [theindex.html](theindex.html)
-file.
+file:
+
+  ```cmd
+  nim buildIndex -o:path/to/htmldocs/theindex.html path/to/htmldocs
+  ```
 
 See source switch
 -----------------
@@ -568,10 +809,22 @@ references so they can be later concatenated into a big index file with
 the file format in detail.
 
 Index files are line-oriented and tab-separated (newline and tab characters
-have to be escaped). Each line represents a record with at least two fields
-but can have up to four (additional columns are ignored). The content of these
-columns is:
+have to be escaped). Each line represents a record with 6 fields.
+The content of these columns is:
 
+0. Discriminator tag denoting type of the index entry, allowed values are:
+   `markupTitle`
+   : a title for ``.md``/``.rst`` document
+   `nimTitle`
+   : a title of ``.nim`` module
+   `heading`
+   : heading of sections, can be both in Nim and markup files
+   `idx`
+   : terms marked with :idx: role
+   `nim`
+   : a Nim symbol
+   `nimgrp`
+   : a Nim group for overloadable symbols like `proc`s
 1. Mandatory term being indexed. Terms can include quoting according to
    Nim's rules (e.g. \`^\`).
 2. Base filename plus anchor hyperlink (e.g. ``algorithm.html#*,int,SortOrder``).
@@ -581,29 +834,20 @@ columns is:
    not for an API symbol but for a TOC entry.
 4. Optional title or description of the hyperlink. Browsers usually display
    this as a tooltip after hovering a moment over the hyperlink.
+5. A line number of file where the entry was defined.
 
-The index generation tools try to differentiate between documentation
-generated from ``.nim`` files and documentation generated from ``.txt`` or
-``.rst`` files. The former are always closely related to source code and
-consist mainly of API entries. The latter are generic documents meant for
-human reading.
+The index generation tools differentiate between documentation
+generated from ``.nim`` files and documentation generated from ``.md`` or
+``.rst`` files by tag `nimTitle` or `markupTitle` in the 1st line of
+the ``.idx`` file.
 
-To differentiate both types (documents and APIs), the index generator will add
-to the index of documents an entry with the title of the document. Since the
-title is the topmost element, it will be added with a second field containing
-just the filename without any HTML anchor.  By convention, this entry without
-anchor is the *title entry*, and since entries in the index file are added as
-they are scanned, the title entry will be the first line. The title for APIs
-is not present because it can be generated concatenating the name of the file
-to the word **Module**.
-
-Normal symbols are added to the index with surrounding whitespaces removed. An
-exception to this are the table of content (TOC) entries. TOC entries are added to
-the index file with their third column having as much prefix spaces as their
-level is in the TOC (at least 1 character). The prefix whitespace helps to
-filter TOC entries from API or text symbols. This is important because the
-amount of spaces is used to replicate the hierarchy for document TOCs in the
-final index, and TOC entries found in ``.nim`` files are discarded.
+.. TODO Normal symbols are added to the index with surrounding whitespaces removed. An
+  exception to this are the table of content (TOC) entries. TOC entries are added to
+  the index file with their third column having as much prefix spaces as their
+  level is in the TOC (at least 1 character). The prefix whitespace helps to
+  filter TOC entries from API or text symbols. This is important because the
+  amount of spaces is used to replicate the hierarchy for document TOCs in the
+  final index, and TOC entries found in ``.nim`` files are discarded.
 
 
 Additional resources
@@ -614,6 +858,8 @@ Additional resources
 * already mentioned documentation for
   [Markdown and RST markup languages](markdown_rst.html), which also
   contains the list of implemented features of these markup languages.
+
+* the implementation is in [module compiler/docgen].
 
 The output for HTML and LaTeX comes from the ``config/nimdoc.cfg`` and
 ``config/nimdoc.tex.cfg`` configuration files. You can add and modify these
