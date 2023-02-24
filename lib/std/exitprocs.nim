@@ -41,7 +41,11 @@ else:
 proc callClosures() {.noconv.} =
   withLock gFunsLock:
     for i in countdown(gFuns.len-1, 0):
-      let fun = gFuns[i]
+      let fun =
+        when defined(nuttx):
+          gFuns.pop()
+        else:
+          gFuns[i]
       case fun.kind
       of kClosure: fun.fun1()
       of kNoconv: fun.fun2()
