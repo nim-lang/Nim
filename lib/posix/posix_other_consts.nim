@@ -750,3 +750,6 @@ var SEEK_SET* {.importc: "SEEK_SET", header: "<unistd.h>".}: cint
 var SEEK_CUR* {.importc: "SEEK_CUR", header: "<unistd.h>".}: cint
 var SEEK_END* {.importc: "SEEK_END", header: "<unistd.h>".}: cint
 
+# <nuttx/config.h>
+when defined(nuttx):
+  var NEPOLL_MAX* {.importc: "CONFIG_FS_NEPOLL_DESCRIPTORS", header: "<nuttx/config.h>".}: cint

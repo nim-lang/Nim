@@ -155,11 +155,10 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
     checkFirstLineIndentation(p)
     while true:
       if graph.stopCompile(): break
-      var n = parseTopLevelStmt(p)
+      var n = parseTopLevelStmt(p) # todo merge it
       if n.kind == nkEmpty: break
-      if (sfSystemModule notin module.flags and
-          ({sfNoForward, sfReorder} * module.flags != {} or
-          codeReordering in graph.config.features)):
+
+      if true:
         # read everything, no streaming possible
         var sl = newNodeI(nkStmtList, n.info)
         sl.add n

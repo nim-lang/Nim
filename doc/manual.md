@@ -3574,8 +3574,8 @@ Example:
   var y = if x > 8: 9 else: 10
   ```
 
-An if expression always results in a value, so the `else` part is
-required. `Elif` parts are also allowed.
+An `if` expression always results in a value, so the `else` part is
+required. `elif` parts are also allowed.
 
 When expression
 ---------------

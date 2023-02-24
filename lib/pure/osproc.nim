@@ -570,12 +570,8 @@ when defined(windows) and not defined(useNimRtl):
     if a == 0: raiseOSError(osLastError())
 
   proc newFileHandleStream(handle: Handle): owned FileHandleStream =
-    new(result)
-    result.handle = handle
-    result.closeImpl = hsClose
-    result.atEndImpl = hsAtEnd
-    result.readDataImpl = hsReadData
-    result.writeDataImpl = hsWriteData
+    result = FileHandleStream(handle: handle, closeImpl: hsClose, atEndImpl: hsAtEnd,
+      readDataImpl: hsReadData, writeDataImpl: hsWriteData)
 
   proc buildCommandLine(a: string, args: openArray[string]): string =
     result = quoteShell(a)
