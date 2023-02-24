@@ -48,12 +48,12 @@ type
   HGLRC* = Handle
   BYTE* = uint8
 
-  SECURITY_ATTRIBUTES* {.final, pure.} = object
+  SECURITY_ATTRIBUTES* = object
     nLength*: int32
     lpSecurityDescriptor*: pointer
     bInheritHandle*: WINBOOL
 
-  STARTUPINFO* {.final, pure.} = object
+  STARTUPINFO* = object
     cb*: int32
     lpReserved*: cstring
     lpDesktop*: cstring
@@ -73,17 +73,17 @@ type
     hStdOutput*: Handle
     hStdError*: Handle
 
-  PROCESS_INFORMATION* {.final, pure.} = object
+  PROCESS_INFORMATION* = object
     hProcess*: Handle
     hThread*: Handle
     dwProcessId*: int32
     dwThreadId*: int32
 
-  FILETIME* {.final, pure.} = object ## CANNOT BE int64 BECAUSE OF ALIGNMENT
+  FILETIME* = object ## CANNOT BE int64 BECAUSE OF ALIGNMENT
     dwLowDateTime*: DWORD
     dwHighDateTime*: DWORD
 
-  BY_HANDLE_FILE_INFORMATION* {.final, pure.} = object
+  BY_HANDLE_FILE_INFORMATION* = object
     dwFileAttributes*: DWORD
     ftCreationTime*: FILETIME
     ftLastAccessTime*: FILETIME
@@ -95,7 +95,7 @@ type
     nFileIndexHigh*: DWORD
     nFileIndexLow*: DWORD
 
-  OSVERSIONINFO* {.final, pure.} = object
+  OSVERSIONINFO* = object
     dwOSVersionInfoSize*: DWORD
     dwMajorVersion*: DWORD
     dwMinorVersion*: DWORD
@@ -820,7 +820,7 @@ type
   POVERLAPPED_COMPLETION_ROUTINE* = proc (para1: DWORD, para2: DWORD,
       para3: POVERLAPPED){.stdcall.}
 
-  GUID* {.final, pure.} = object
+  GUID* = object
     D1*: int32
     D2*: int16
     D3*: int16
@@ -1101,7 +1101,7 @@ proc wsaResetEvent*(hEvent: Handle): bool
      {.stdcall, importc: "WSAResetEvent", dynlib: "ws2_32.dll".}
 
 type
-  KEY_EVENT_RECORD* {.final, pure.} = object
+  KEY_EVENT_RECORD* = object
     eventType*: int16
     bKeyDown*: WINBOOL
     wRepeatCount*: int16

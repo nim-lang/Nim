@@ -33,26 +33,27 @@ template high*(t: typedesc[Int128]): Int128 = Max
 proc `$`*(a: Int128): string
 
 proc toInt128*[T: SomeInteger | bool](arg: T): Int128 =
-  when T is bool: result.sdata(0) = int32(arg)
-  elif T is SomeUnsignedInt:
-    when sizeof(arg) <= 4:
-      result.udata[0] = uint32(arg)
+  {.noSideEffect.}:
+    when T is bool: result.sdata(0) = int32(arg)
+    elif T is SomeUnsignedInt:
+      when sizeof(arg) <= 4:
+        result.udata[0] = uint32(arg)
+      else:
+        result.udata[0] = uint32(arg and T(0xffffffff))
+        result.udata[1] = uint32(arg shr 32)
+    elif sizeof(arg) <= 4:
+      result.sdata(0) = int32(arg)
+      if arg < 0: # sign extend
+        result.sdata(1) = -1
+        result.sdata(2) = -1
+        result.sdata(3) = -1
     else:
-      result.udata[0] = uint32(arg and T(0xffffffff))
-      result.udata[1] = uint32(arg shr 32)
-  elif sizeof(arg) <= 4:
-    result.sdata(0) = int32(arg)
-    if arg < 0: # sign extend
-      result.sdata(1) = -1
-      result.sdata(2) = -1
-      result.sdata(3) = -1
-  else:
-    let tmp = int64(arg)
-    result.udata[0] = uint32(tmp and 0xffffffff)
-    result.sdata(1) = int32(tmp shr 32)
-    if arg < 0: # sign extend
-      result.sdata(2) = -1
-      result.sdata(3) = -1
+      let tmp = int64(arg)
+      result.udata[0] = uint32(tmp and 0xffffffff)
+      result.sdata(1) = int32(tmp shr 32)
+      if arg < 0: # sign extend
+        result.sdata(2) = -1
+        result.sdata(3) = -1
 
 template isNegative(arg: Int128): bool =
   arg.sdata(3) < 0
