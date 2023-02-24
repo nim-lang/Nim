@@ -83,7 +83,8 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [].} =
       for i in countdown(x.len - 1, newLen):
         reset x[i]
     # XXX This is wrong for const seqs that were moved into 'x'!
-    cast[ptr NimSeqV2[T]](addr x).len = newLen
+    {.noSideEffect.}:
+      cast[ptr NimSeqV2[T]](addr x).len = newLen
 
 proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   let oldLen = x.len

@@ -571,7 +571,7 @@ proc normExt(ext: string): string =
 
 proc searchExtPos*(path: string): int =
   ## Returns index of the `'.'` char in `path` if it signifies the beginning
-  ## of extension. Returns -1 otherwise.
+  ## of the file extension. Returns -1 otherwise.
   ##
   ## See also:
   ## * `splitFile proc`_
