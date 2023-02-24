@@ -2203,9 +2203,9 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   if ids.len > 0:
     dummyTemplate[paramsPos] = newNodeI(nkFormalParams, n.info)
     dummyTemplate[paramsPos].add getSysSym(c.graph, n.info, "untyped").newSymNode # return type
-    ids.add getSysSym(c.graph, n.info, "untyped").newSymNode # params type
-    ids.add c.graph.emptyNode # no default value
-    dummyTemplate[paramsPos].add newTreeI(nkIdentDefs, n.info, ids)
+    dummyTemplate[paramsPos].add newTreeI(nkIdentDefs, n.info, ids[0], getSysSym(c.graph, n.info, "typed").newSymNode, c.graph.emptyNode)
+    for i in 1..<ids.len:
+      dummyTemplate[paramsPos].add newTreeI(nkIdentDefs, n.info, ids[i], getSysSym(c.graph, n.info, "typed").newSymNode, c.graph.emptyNode)
 
   var tmpl = semTemplateDef(c, dummyTemplate)
   quotes[0] = tmpl[namePos]
@@ -2222,6 +2222,12 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
      createMagic(c.graph, c.idgen, "getAst", mExpandToAst).newSymNode,
      newTreeI(nkCall, n.info, quotes))
   result = semExpandToAst(c, result)
+
+  for i in 1..<ids.len:
+    let typ = result[1][i+1].typ
+    if tfTriggersCompileTime notin typ.flags:
+      tmpl[paramsPos][i+1][1] = newNodeIT(nkType, tmpl[paramsPos][i+1][1].info, typ)
+  discard semTemplateDef(c, tmpl)
 
 proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # watch out, hacks ahead:
