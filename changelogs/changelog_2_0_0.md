@@ -149,6 +149,13 @@
   proc foo(_, _: int): int = 123
   echo foo(1, 2)
   ```
+- Underscores (`_`) as generic parameters are not supported and cannot be used.
+  Generics that use `_` as parameters will no longer compile requires you to replace `_` with something else:
+  
+  ```nim
+  proc foo[_](t: typedesc[_]): string = "BAR" # Can not compile
+  proc foo[T](t: typedesc[T]): string = "BAR" # Can compile
+  ```
 
 - - Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
 
