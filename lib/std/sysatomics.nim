@@ -15,7 +15,7 @@ when defined(nimPreviewSlimSystem):
 
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
-const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang)
+const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang) or defined(nintendoswitch)
 const someVcc = defined(vcc) or defined(clang_cl)
 
 type
