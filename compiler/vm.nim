@@ -10,7 +10,7 @@
 ## This file implements the new evaluation engine for Nim code.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import astalgo, semmacrosanity
+import semmacrosanity
 import
   std/[strutils, tables, parseutils],
   msgs, vmdef, vmgen, nimsets, types, passes,
