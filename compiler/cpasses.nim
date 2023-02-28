@@ -20,8 +20,12 @@ proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind
       importStmt.add str
       message(graph.config, importStmt.info, hintProcessingStmt, $idgen[])
       let semNode = semWithPContext(ctx, importStmt)
-      if semNode == nil or processCodeGen(bModule, semNode) == nil:
-        break
+      if graph.config.symbolFiles == disabledSf:
+        if semNode == nil or processCodeGen(bModule, semNode) == nil:
+          break
+      else:
+        if semNode == nil:
+          break
 
 proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
                     stream: PLLStream): bool =
@@ -30,8 +34,7 @@ proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
     p: Parser
     s: PLLStream
     fileIdx = module.fileIdx
-    semNode: PNode
-    codeGenNode: PNode
+
   prepareConfigNotes(graph, module)
   let ctx = preparePContext(graph, module, idgen)
   let bModule = setupBackendGen(graph, module, idgen)
@@ -75,13 +78,15 @@ proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
       if sfReorder in module.flags or codeReordering in graph.config.features:
         sl = reorder(graph, sl, module)
       message(graph.config, sl.info, hintProcessingStmt, $idgen[])
-      semNode = semWithPContext(ctx, sl)
-      codeGenNode = processCodeGen(bModule, semNode)
+      var semNode = semWithPContext(ctx, sl)
+      if graph.config.symbolFiles == disabledSf:
+        discard processCodeGen(bModule, semNode)
 
     closeParser(p)
     if s.kind != llsStdIn: break
   let finalNode = closePContext(graph, ctx, nil)
-  discard finalCodeGen(graph, bModule, finalNode)
+  if graph.config.symbolFiles == disabledSf:
+    discard finalCodeGen(graph, bModule, finalNode)
   if graph.config.backend notin {backendC, backendCpp, backendObjc}:
     # We only write rod files here if no C-like backend is active.
     # The C-like backends have been patched to support the IC mechanism.
