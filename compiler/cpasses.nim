@@ -1,6 +1,6 @@
 import sem, cgen, passes, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
-       packages
+       packages, syntaxes
 
 import std/[syncio, objectdollar, assertions, tables]
 import renderer
@@ -49,7 +49,7 @@ proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
     msgs.setHash(graph.config, fileIdx, $sha1.secureHashFile(filename))
 
   while true:
-    openParser(p, fileIdx, s, graph.cache, graph.config)
+    syntaxes.openParser(p, fileIdx, s, graph.cache, graph.config)
 
     if not belongsToStdlib(graph, module) or (belongsToStdlib(graph, module) and module.name.s == "distros"):
       # XXX what about caching? no processing then? what if I change the
