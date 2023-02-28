@@ -4,5 +4,3 @@ discard """
 """
 
 import std/asyncdispatch
-
-
