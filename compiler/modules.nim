@@ -25,12 +25,12 @@ proc resetSystemArtifacts*(g: ModuleGraph) =
 template getModuleIdent(graph: ModuleGraph, filename: AbsoluteFile): PIdent =
   getIdent(graph.cache, splitFile(filename).name)
 
-proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; filename: AbsoluteFile) =
+proc partialInitModule*(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; filename: AbsoluteFile) =
   let packSym = getPackage(graph, fileIdx)
   result.owner = packSym
   result.position = int fileIdx
 
-proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
+proc newModule*(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
   # We cannot call ``newSym`` here, because we have to circumvent the ID
   # mechanism, which we do in order to assign each module a persistent ID.

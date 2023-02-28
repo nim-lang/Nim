@@ -80,7 +80,7 @@ proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray)
       if isNil(m): return false
   result = true
 
-proc resolveMod(conf: ConfigRef; module, relativeTo: string): FileIndex =
+proc resolveMod*(conf: ConfigRef; module, relativeTo: string): FileIndex =
   let fullPath = findModule(conf, module, relativeTo)
   if fullPath.isEmpty:
     result = InvalidFileIdx
@@ -105,7 +105,7 @@ const
     nkMacroDef, nkConverterDef, nkIteratorDef, nkFuncDef, nkPragma,
     nkExportStmt, nkExportExceptStmt, nkFromStmt, nkImportStmt, nkImportExceptStmt}
 
-proc prepareConfigNotes(graph: ModuleGraph; module: PSym) =
+proc prepareConfigNotes*(graph: ModuleGraph; module: PSym) =
   # don't be verbose unless the module belongs to the main package:
   if graph.config.belongsToProjectPackage(module):
     graph.config.notes = graph.config.mainPackageNotes

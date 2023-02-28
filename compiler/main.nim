@@ -29,6 +29,8 @@ when defined(nimPreviewSlimSystem):
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
 
+import cpasses
+
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
 
@@ -114,10 +116,7 @@ when not defined(leanCompiler):
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
   extccomp.initVars(conf)
-  semanticPasses(graph)
   if conf.symbolFiles == disabledSf:
-    registerPass(graph, cgenPass)
-
     if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
       if not changeDetectedViaJsonBuildInstructions(conf, conf.jsonBuildInstructionsFile):
         # nothing changed
@@ -127,7 +126,7 @@ proc commandCompileToC(graph: ModuleGraph) =
   if not extccomp.ccHasSaneOverflow(conf):
     conf.symbols.defineSymbol("nimEmulateOverflowChecks")
 
-  compileProject(graph)
+  compileCProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
   if conf.symbolFiles == disabledSf:

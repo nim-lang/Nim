@@ -9,10 +9,13 @@
 
 ## exposes the Nim VM to clients.
 import
-  ast, astalgo, modules, passes, condsyms,
+  ast, modules, passes, condsyms,
   options, sem, llstream, lineinfos, vm,
   vmdef, modulegraphs, idents, os, pathutils,
   passaux, scriptconfig, std/compilesettings
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
 
 type
   Interpreter* = ref object ## Use Nim as an interpreter with this object
