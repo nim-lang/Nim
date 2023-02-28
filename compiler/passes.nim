@@ -153,42 +153,22 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         processImplicits graph, graph.config.implicitIncludes, nkIncludeStmt, a, module
 
     checkFirstLineIndentation(p)
-    while true:
-      if graph.stopCompile(): break
-      var n = parseTopLevelStmt(p) # todo merge it
-      if n.kind == nkEmpty: break
+    block processCode:
+      if graph.stopCompile(): break processCode
+      var n = parseTopLevelStmt(p)
+      if n.kind == nkEmpty: break processCode
 
-      if true:
-        # read everything, no streaming possible
-        var sl = newNodeI(nkStmtList, n.info)
+      # read everything, no streaming possible
+      var sl = newNodeI(nkStmtList, n.info)
+      sl.add n
+      while true:
+        var n = parseTopLevelStmt(p)
+        if n.kind == nkEmpty: break
         sl.add n
-        while true:
-          var n = parseTopLevelStmt(p)
-          if n.kind == nkEmpty: break
-          sl.add n
-        if sfReorder in module.flags or codeReordering in graph.config.features:
-          sl = reorder(graph, sl, module)
-        discard processTopLevelStmt(graph, sl, a)
-        break
-      elif n.kind in imperativeCode:
-        # read everything until the next proc declaration etc.
-        var sl = newNodeI(nkStmtList, n.info)
-        sl.add n
-        var rest: PNode = nil
-        while true:
-          var n = parseTopLevelStmt(p)
-          if n.kind == nkEmpty or n.kind notin imperativeCode:
-            rest = n
-            break
-          sl.add n
-        #echo "-----\n", sl
-        if not processTopLevelStmt(graph, sl, a): break
-        if rest != nil:
-          #echo "-----\n", rest
-          if not processTopLevelStmt(graph, rest, a): break
-      else:
-        #echo "----- single\n", n
-        if not processTopLevelStmt(graph, n, a): break
+      if sfReorder in module.flags or codeReordering in graph.config.features:
+        sl = reorder(graph, sl, module)
+      discard processTopLevelStmt(graph, sl, a)
+
     closeParser(p)
     if s.kind != llsStdIn: break
   closePasses(graph, a)
