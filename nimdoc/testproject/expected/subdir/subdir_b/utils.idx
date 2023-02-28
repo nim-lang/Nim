@@ -12,7 +12,7 @@ nim	fn2	subdir/subdir_b/utils.html#fn2,int,float	proc fn2(x: int; y: float)		61
 nim	binarySearch	subdir/subdir_b/utils.html#binarySearch,openArray[T],K,proc(T,K)	proc binarySearch[T, K](a: openArray[T]; key: K;\n                   cmp: proc (x: T; y: K): int {.closure.}): int		63
 nim	fn3	subdir/subdir_b/utils.html#fn3	proc fn3(): auto		66
 nim	fn4	subdir/subdir_b/utils.html#fn4	proc fn4(): auto		67
-nim	fn5	subdir/subdir_b/utils.html#fn5	proc fn5()		69
+nim	fn5	subdir/subdir_b/utils.html#fn5	proc fn5()		68
 nim	fn6	subdir/subdir_b/utils.html#fn6	proc fn6()		70
 nim	fn7	subdir/subdir_b/utils.html#fn7	proc fn7()		72
 nim	fn8	subdir/subdir_b/utils.html#fn8	proc fn8(): auto		75

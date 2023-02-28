@@ -254,7 +254,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
     for ext in extensions:
       var x = addFileExt(x, ext)
       if fileExists(x):
-        when not defined(windows):
+        when not (defined(windows) or defined(nintendoswitch)):
           while followSymlinks: # doubles as if here
             if x.symlinkExists:
               var r = newString(maxSymlinkLen)
@@ -702,6 +702,8 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
       result = getApplHaiku()
     elif defined(openbsd):
       result = getApplOpenBsd()
+    elif defined(nintendoswitch):
+      result = ""
 
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:

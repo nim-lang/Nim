@@ -38,7 +38,8 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
                 name: getModuleIdent(graph, filename),
                 info: newLineInfo(fileIdx, 1, 1))
   if not isNimIdentifier(result.name.s):
-    rawMessage(graph.config, errGenerated, "invalid module name: " & result.name.s)
+    rawMessage(graph.config, errGenerated, "invalid module name: '" & result.name.s &
+              "'; a module name must be a valid Nim identifier.")
   partialInitModule(result, graph, fileIdx, filename)
   graph.registerModule(result)
 

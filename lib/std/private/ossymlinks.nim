@@ -67,7 +67,7 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   ##
   ## See also:
   ## * `createSymlink proc`_
-  when defined(windows):
+  when defined(windows) or defined(nintendoswitch):
     result = symlinkPath
   else:
     result = newString(maxSymlinkLen)
