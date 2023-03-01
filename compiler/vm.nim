@@ -13,7 +13,7 @@
 
 import
   std/[strutils, tables, parseutils],
-  msgs, vmdef, vmgen, nimsets, types, passes,
+  msgs, vmdef, vmgen, nimsets, types,
   parser, vmdeps, idents, trees, renderer, options, transf,
   gorgeimpl, lineinfos, btrees, macrocacheimpl,
   modulegraphs, sighashes, int128, vmprofiler
@@ -2306,7 +2306,7 @@ proc setupGlobalCtx*(module: PSym; graph: ModuleGraph; idgen: IdGenerator) =
   else:
     refresh(PCtx graph.vm, module, idgen)
 
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
+proc setupVMContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
   #var c = newEvalContext(module, emRepl)
   #c.features = {allowCast, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())
@@ -2315,7 +2315,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext 
   setupGlobalCtx(module, graph, idgen)
   result = PCtx graph.vm
 
-proc myProcess(c: PPassContext, n: PNode): PNode =
+proc interpreterCode*(c: PPassContext, n: PNode): PNode =
   let c = PCtx(c)
   # don't eval errornous code:
   if c.oldErrorCount == c.config.errorCounter:
@@ -2324,11 +2324,6 @@ proc myProcess(c: PPassContext, n: PNode): PNode =
   else:
     result = n
   c.oldErrorCount = c.config.errorCounter
-
-proc myClose(graph: ModuleGraph; c: PPassContext, n: PNode): PNode =
-  result = myProcess(c, n)
-
-const evalPass* = makePass(myOpen, myProcess, myClose)
 
 proc evalConstExprAux(module: PSym; idgen: IdGenerator;
                       g: ModuleGraph; prc: PSym, n: PNode,

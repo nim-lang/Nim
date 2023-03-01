@@ -31,9 +31,11 @@ implements the required case distinction.
 import
   ast, trees, magicsys, options,
   nversion, msgs, idents, types,
-  ropes, passes, ccgutils, wordrecg, renderer,
+  ropes, ccgutils, wordrecg, renderer,
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
   transf, injectdestructors, sourcemap, astmsgs, backendpragmas
+
+import pipelineutils
 
 import json, sets, math, tables, intsets
 import strutils except addf
@@ -2834,7 +2836,7 @@ proc processJSCodeGen*(b: PPassContext, n: PNode): PNode =
   ## Generate JS code for a node.
   result = n
   let m = BModule(b)
-  if passes.skipCodegen(m.config, n): return n
+  if pipelineutils.skipCodegen(m.config, n): return n
   if m.module == nil: internalError(m.config, n.info, "myProcess")
   let globals = PGlobals(m.graph.backend)
   var p = newInitProc(globals, m)
@@ -2886,7 +2888,7 @@ proc finalJSCodeGen*(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     PGlobals(graph.backend).inSystem = false
   # Check if codegen should continue before any files are generated.
   # It may bail early is if too many errors have been raised.
-  if passes.skipCodegen(m.config, n): return n
+  if pipelineutils.skipCodegen(m.config, n): return n
   # Nim modules are compiled into a single JS file.
   # If this is the main module, then this is the final call to `myClose`.
   if sfMainModule in m.module.flags:

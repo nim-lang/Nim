@@ -9,10 +9,13 @@
 
 ## exposes the Nim VM to clients.
 import
-  ast, modules, passes, condsyms,
-  options, sem, llstream, lineinfos, vm,
+  ast, modules, condsyms,
+  options, llstream, lineinfos, vm,
   vmdef, modulegraphs, idents, os, pathutils,
-  passaux, scriptconfig, std/compilesettings
+  scriptconfig, std/compilesettings
+
+import pipelines
+
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]
@@ -79,7 +82,7 @@ proc evalScript*(i: Interpreter; scriptStream: PLLStream = nil) =
 
   let s = if scriptStream != nil: scriptStream
           else: llStreamOpen(findFile(i.graph.config, i.scriptName), fmRead)
-  processModule(i.graph, i.mainModule, i.idgen, s)
+  discard processPipelineModule(i.graph, i.mainModule, i.idgen, s, EvalPass)
 
 proc findNimStdLib*(): string =
   ## Tries to find a path to a valid "system.nim" file.
@@ -112,12 +115,10 @@ proc createInterpreter*(scriptName: string;
   var conf = newConfigRef()
   var cache = newIdentCache()
   var graph = newModuleGraph(cache, conf)
-  connectCallbacks(graph)
+  connectPipelineCallbacks(graph)
   initDefines(conf.symbols)
   for define in defines:
     defineSymbol(conf.symbols, define[0], define[1])
-  registerPass(graph, semPass)
-  registerPass(graph, evalPass)
 
   for p in searchPaths:
     conf.searchPaths.add(AbsoluteDir p)
@@ -132,7 +133,7 @@ proc createInterpreter*(scriptName: string;
   if registerOps:
     vm.registerAdditionalOps() # Required to register parts of stdlib modules
   graph.vm = vm
-  graph.compileSystemModule()
+  graph.compilePipelineSystemModule(EvalPass)
   result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName, idgen: idgen)
 
 proc destroyInterpreter*(i: Interpreter) =
@@ -162,13 +163,10 @@ proc runRepl*(r: TLLRepl;
   defineSymbol(conf.symbols, "nimscript")
   if supportNimscript: defineSymbol(conf.symbols, "nimconfig")
   when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
-  registerPass(graph, verbosePass)
-  registerPass(graph, semPass)
-  registerPass(graph, evalPass)
   var m = graph.makeStdinModule()
   incl(m.flags, sfMainModule)
   var idgen = idGeneratorFromModule(m)
 
   if supportNimscript: graph.vm = setupVM(m, cache, "stdin", graph, idgen)
-  graph.compileSystemModule()
-  processModule(graph, m, idgen, llStreamOpenStdIn(r))
+  graph.compilePipelineSystemModule(InterpreterPass)
+  discard processPipelineModule(graph, m, idgen, llStreamOpenStdIn(r), InterpreterPass)

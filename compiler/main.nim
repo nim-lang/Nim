@@ -16,9 +16,9 @@ import
   std/[strutils, os, times, tables, sha1, with, json],
   llstream, ast, lexer, syntaxes, options, msgs,
   condsyms,
-  sem, idents, passes, extccomp,
+  idents, extccomp,
   cgen, nversion,
-  platform, nimconf, passaux, depends, vm,
+  platform, nimconf, depends,
   modules,
   modulegraphs, lineinfos, pathutils, vmprofiler
 
@@ -32,11 +32,7 @@ from ic / ic import rodViewer
 import pipelines
 
 when not defined(leanCompiler):
-  import docgen, docgen2
-
-proc semanticPasses(g: ModuleGraph) =
-  registerPass g, verbosePass
-  registerPass g, semPass
+  import docgen
 
 proc writeDepsFile(g: ModuleGraph) =
   let fname = g.config.nimcacheDir / RelativeFile(g.config.projectName & ".deps")
@@ -70,9 +66,7 @@ proc writeCMakeDepsFile(conf: ConfigRef) =
     fl.close()
 
 proc commandGenDepend(graph: ModuleGraph) =
-  semanticPasses(graph)
-  registerPass(graph, gendependPass)
-  compileProject(graph)
+  compilePipelineProject(graph)
   let project = graph.config.projectFull
   writeDepsFile(graph)
   generateDot(graph, project)
@@ -89,7 +83,7 @@ proc commandCheck(graph: ModuleGraph) =
     defineSymbol(conf.symbols, "nimconfig")
   elif conf.backend == backendJs:
     setTarget(conf.target, osJS, cpuJS)
-  compileFinalProject(graph)
+  compilePipelineProject(graph)
 
   if conf.symbolFiles != disabledSf:
     case conf.ideCmd
@@ -103,14 +97,10 @@ when not defined(leanCompiler):
   proc commandDoc2(graph: ModuleGraph; ext: string) =
     handleDocOutputOptions graph.config
     graph.config.setErrorMaxHighMaybe
-    semanticPasses(graph)
     case ext:
-    of TexExt:  registerPass(graph, docgen2TexPass)
-    of JsonExt: registerPass(graph, docgen2JsonPass)
-    of HtmlExt: registerPass(graph, docgen2Pass)
+    of TexExt, JsonExt, HtmlExt: discard
     else: doAssert false, $ext
-    compileProject(graph)
-    finishDoc2Pass(graph.config.projectName)
+    compilePipelineProject(graph)
 
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
@@ -125,7 +115,7 @@ proc commandCompileToC(graph: ModuleGraph) =
   if not extccomp.ccHasSaneOverflow(conf):
     conf.symbols.defineSymbol("nimEmulateOverflowChecks")
 
-  compileFinalProject(graph)
+  compilePipelineProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
   if conf.symbolFiles == disabledSf:
@@ -158,31 +148,25 @@ proc commandCompileToJS(graph: ModuleGraph) =
     conf.exc = excCpp
     setTarget(conf.target, osJS, cpuJS)
     defineSymbol(conf.symbols, "ecmascript") # For backward compatibility
-    compileFinalProject(graph)
+    compilePipelineProject(graph)
     if optGenScript in conf.globalOptions:
       writeDepsFile(graph)
 
-proc interactivePasses(graph: ModuleGraph) =
+proc commandInteractive(graph: ModuleGraph) =
+  graph.config.setErrorMaxHighMaybe
   initDefines(graph.config.symbols)
   defineSymbol(graph.config.symbols, "nimscript")
   # note: seems redundant with -d:nimHasLibFFI
   when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
-  registerPass(graph, verbosePass)
-  registerPass(graph, semPass)
-  registerPass(graph, evalPass)
-
-proc commandInteractive(graph: ModuleGraph) =
-  graph.config.setErrorMaxHighMaybe
-  interactivePasses(graph)
-  compileSystemModule(graph)
+  compilePipelineSystemModule(graph, InterpreterPass)
   if graph.config.commandArgs.len > 0:
-    discard graph.compileModule(fileInfoIdx(graph.config, graph.config.projectFull), {})
+    discard graph.compilePipelineModule(fileInfoIdx(graph.config, graph.config.projectFull), {}, InterpreterPass)
   else:
     var m = graph.makeStdinModule()
     incl(m.flags, sfMainModule)
     var idgen = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0)
     let s = llStreamOpenStdIn(onPrompt = proc() = flushDot(graph.config))
-    processModule(graph, m, idgen, s)
+    discard processPipelineModule(graph, m, idgen, s, InterpreterPass)
 
 proc commandScan(cache: IdentCache, config: ConfigRef) =
   var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
@@ -237,8 +221,6 @@ proc mainCommand*(graph: ModuleGraph) =
   let conf = graph.config
   let cache = graph.cache
 
-  # In "nim serve" scenario, each command must reset the registered passes
-  clearPasses(graph)
   conf.lastCmdTime = epochTime()
   conf.searchPaths.add(conf.libpath)
 

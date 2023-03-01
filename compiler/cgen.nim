@@ -12,10 +12,12 @@
 import
   ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
   nversion, nimsets, msgs, bitsets, idents, types,
-  ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
+  ccgutils, os, ropes, math, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
   injectdestructors, astmsgs, modulepaths, backendpragmas
+
+import pipelineutils
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -2000,7 +2002,7 @@ proc addHcrInitGuards(p: BProc, n: PNode, inInitGuard: var bool) =
 
 proc genTopLevelStmt*(m: BModule; n: PNode) =
   ## Also called from `ic/cbackend.nim`.
-  if passes.skipCodegen(m.config, n): return
+  if pipelineutils.skipCodegen(m.config, n): return
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
@@ -2095,7 +2097,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
     if {optGenStaticLib, optGenDynLib, optNoMain} * m.config.globalOptions == {}:
       for i in countdown(high(graph.globalDestructors), 0):
         n.add graph.globalDestructors[i]
-  if passes.skipCodegen(m.config, n): return
+  if pipelineutils.skipCodegen(m.config, n): return
   if moduleHasChanged(graph, m.module):
     # if the module is cached, we don't regenerate the main proc
     # nor the dispatchers? But if the dispatchers changed?

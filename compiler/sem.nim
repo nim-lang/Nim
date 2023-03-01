@@ -13,7 +13,7 @@ import
   ast, strutils, options, astalgo, trees,
   wordrecg, ropes, msgs, idents, renderer, types, platform, math,
   magicsys, nversion, nimsets, semfold, modulepaths, importer,
-  procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
+  procfind, lookups, pragmas, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, strtabs, int128,
@@ -672,7 +672,7 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   result.enforceVoidContext = newType(tyTyped, nextTypeId(idgen), nil)
   result.voidType = newType(tyVoid, nextTypeId(idgen), nil)
 
-  if result.p != nil: internalError(graph.config, module.info, "sem.myOpen")
+  if result.p != nil: internalError(graph.config, module.info, "sem.preparePContext")
   result.semConstExpr = semConstExpr
   result.semExpr = semExpr
   result.semTryExpr = tryExpr
@@ -697,9 +697,6 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   if sfSystemModule in module.flags:
     graph.systemModule = module
   result.topLevelScope = openScope(result)
-
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
-  result = preparePContext(graph, module, idgen)
 
 proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
   if g.systemModule == nil: return false
@@ -794,8 +791,6 @@ proc semWithPContext*(c: PContext, n: PNode): PNode {.nosinks.} =
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
   storeRodNode(c, result)
 
-proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
-  result = semWithPContext(PContext(context), n)
 
 proc reportUnusedModules(c: PContext) =
   for i in 0..high(c.unusedImports):
@@ -817,10 +812,3 @@ proc closePContext*(graph: ModuleGraph; c: PContext, n: PNode): PNode =
   popOwner(c)
   popProcCon(c)
   sealRodFile(c)
-
-proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
-  var c = PContext(context)
-  closePContext(graph, c, n)
-
-const semPass* = makePass(myOpen, myProcess, myClose,
-                          isFrontend = true)

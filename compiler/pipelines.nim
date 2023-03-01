@@ -1,6 +1,10 @@
-import sem, cgen, passes, modulegraphs, ast, llstream, parser, msgs,
+import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
-       packages, syntaxes, jsgen
+       packages, syntaxes, jsgen, depends, docgen2
+
+
+import pipelineutils
+import vm
 
 import std/[syncio, objectdollar, assertions, tables]
 import renderer
@@ -9,35 +13,59 @@ import ic/replayer
 const CLikeBackend = {backendC, backendCpp, backendObjc}
 
 type
-  PipelinePhase = enum
-    SemPhase
-    JSPhase
-    CPhase
+  PipelinePhase* = enum
+    SemPass
+    JSgenPass
+    CgenPass
+    EvalPass
+    InterpreterPass
+    GenDependPass
+    Docgen2TexPass
+    Docgen2JsonPass
+    Docgen2Pass
 
-proc classifyPipelinePhase(graph: ModuleGraph): PipelinePhase =
+proc classifyPipelinePass*(graph: ModuleGraph): PipelinePhase =
   case graph.config.cmd
   of cmdBackends:
     case graph.config.backend
     of CLikeBackend:
       if graph.config.symbolFiles == disabledSf:
-        result = CPhase
+        result = CgenPass
       else:
-        result = SemPhase
+        result = SemPass
     of backendJs:
-      result = JSPhase
+      result = JSgenPass
     else:
-      result = SemPhase
+      result = SemPass
+  of cmdGendepend:
+    result = GenDependPass
+  of cmdDoc:
+    result = Docgen2Pass
+  of cmdRst2tex, cmdMd2tex, cmdDoc2tex:
+    result = Docgen2TexPass
+  of cmdJsondoc:
+    result = Docgen2JsonPass
+  of cmdInteractive:
+    result = InterpreterPass
   else:
-    result = SemPhase
+    result = SemPass
 
-proc processCodeGenPhase(graph: ModuleGraph; semNode: PNode; bModule: PPassContext, phase: PipelinePhase): PNode =
+proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext, phase: PipelinePhase): PNode =
   case phase
-  of CPhase:
+  of CgenPass:
     result = processCodeGen(bModule, semNode)
-  of JSPhase:
+  of JSgenPass:
     result = processJSCodeGen(bModule, semNode)
-  of SemPhase:
+  of GenDependPass:
+    result = addDotDependency(bModule, semNode)
+  of SemPass:
     result = graph.emptyNode
+  of Docgen2Pass, Docgen2TexPass:
+    result = processNode(bModule, semNode)
+  of Docgen2JsonPass:
+    result = processNodeJson(bModule, semNode)
+  of EvalPass, InterpreterPass:
+    result = interpreterCode(bModule, semNode)
 
 proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
                       m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator,
@@ -53,10 +81,10 @@ proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind
       importStmt.add str
       message(graph.config, importStmt.info, hintProcessingStmt, $idgen[])
       let semNode = semWithPContext(ctx, importStmt)
-      if semNode == nil or processCodeGenPhase(graph, semNode, bModule, phase) == nil:
+      if semNode == nil or processPipeline(graph, semNode, bModule, phase) == nil:
         break
 
-proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
+proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
                     stream: PLLStream, phase: PipelinePhase): bool =
   if graph.stopCompile(): return true
   var
@@ -68,11 +96,21 @@ proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
   let ctx = preparePContext(graph, module, idgen)
   let bModule: PPassContext =
     case phase
-    of CPhase:
+    of CgenPass:
       setupBackendGen(graph, module, idgen)
-    of JSPhase:
+    of JSgenPass:
       setupJSgen(graph, module, idgen)
-    of SemPhase:
+    of EvalPass, InterpreterPass:
+      setupVMContext(graph, module, idgen)
+    of GenDependPass:
+      setupDependPass(graph, module, idgen)
+    of Docgen2Pass:
+      openHtml(graph, module, idgen)
+    of Docgen2TexPass:
+      openTex(graph, module, idgen)
+    of Docgen2JsonPass:
+      openJson(graph, module, idgen)
+    of SemPass:
       nil
   if stream == nil:
     let filename = toFullPathConsiderDirty(graph.config, fileIdx)
@@ -113,20 +151,28 @@ proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         sl.add n
       if sfReorder in module.flags or codeReordering in graph.config.features:
         sl = reorder(graph, sl, module)
-      message(graph.config, sl.info, hintProcessingStmt, $idgen[])
+      if phase != EvalPass:
+        message(graph.config, sl.info, hintProcessingStmt, $idgen[])
       var semNode = semWithPContext(ctx, sl)
-      discard processCodeGenPhase(graph, semNode, bModule, phase)
+      discard processPipeline(graph, semNode, bModule, phase)
 
     closeParser(p)
     if s.kind != llsStdIn: break
   let finalNode = closePContext(graph, ctx, nil)
   case phase
-  of CPhase:
+  of CgenPass:
     discard finalCodeGen(graph, bModule, finalNode)
-  of JSPhase:
+  of JSgenPass:
     discard finalJSCodeGen(graph, bModule, finalNode)
-  else:
+  of EvalPass, InterpreterPass:
+    discard interpreterCode(bModule, finalNode)
+  of SemPass, GenDependPass:
     discard
+  of Docgen2Pass, Docgen2TexPass:
+    discard closeDoc(graph, bModule, finalNode)
+  of Docgen2JsonPass:
+    discard closeJson(graph, bModule, finalNode)
+
   if graph.config.backend notin CLikeBackend:
     # We only write rod files here if no C-like backend is active.
     # The C-like backends have been patched to support the IC mechanism.
@@ -134,7 +180,7 @@ proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
     closeRodFile(graph, module)
   result = true
 
-proc compilePipelineModule(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, phase: PipelinePhase, fromModule: PSym = nil): PSym =
+proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, phase: PipelinePhase, fromModule: PSym = nil): PSym =
   var flags = flags
   if fileIdx == graph.config.projectMainIdx2: flags.incl sfMainModule
   result = graph.getModule(fileIdx)
@@ -145,7 +191,7 @@ proc compilePipelineModule(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFl
     if sfMainModule in flags:
       if graph.config.projectIsStdin: s = stdin.llStreamOpen
       elif graph.config.projectIsCmd: s = llStreamOpen(graph.config.cmdInput)
-    discard processSingleModule(graph, result, idGeneratorFromModule(result), s, phase)
+    discard processPipelineModule(graph, result, idGeneratorFromModule(result), s, phase)
   if result == nil:
     var cachedModules: seq[FileIndex]
     result = moduleFromRodFile(graph, fileIdx, cachedModules)
@@ -174,7 +220,7 @@ proc compilePipelineModule(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFl
 proc importPipelineModule(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym =
   # this is called by the semantic checking phase
   assert graph.config != nil
-  let phase = classifyPipelinePhase(graph)
+  let phase = classifyPipelinePass(graph)
   result = compilePipelineModule(graph, fileIdx, {}, phase, s)
   graph.addDep(s, fileIdx)
   # keep track of import relationships
@@ -187,19 +233,19 @@ proc importPipelineModule(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym
     if graph.config.belongsToProjectPackage(s) or isDefined(graph.config, "booting"): graph.config.mainPackageNotes
     else: graph.config.foreignPackageNotes
 
-proc connectBackendCallbacks(graph: ModuleGraph) =
+proc connectPipelineCallbacks*(graph: ModuleGraph) =
   graph.includeFileCallback = modules.includeModule
   graph.importModuleCallback = importPipelineModule
 
-proc compilePipelineSystemModule(graph: ModuleGraph, phase: PipelinePhase) =
+proc compilePipelineSystemModule*(graph: ModuleGraph, phase: PipelinePhase) =
   if graph.systemModule == nil:
-    connectBackendCallbacks(graph)
+    connectPipelineCallbacks(graph)
     graph.config.m.systemFileIdx = fileInfoIdx(graph.config,
         graph.config.libpath / RelativeFile"system.nim")
     discard graph.compilePipelineModule(graph.config.m.systemFileIdx, {sfSystemModule}, phase)
 
-proc compileFinalProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
-  connectBackendCallbacks(graph)
+proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
+  connectPipelineCallbacks(graph)
   let conf = graph.config
   wantMainModule(conf)
   configComplete(graph)
@@ -212,7 +258,7 @@ proc compileFinalProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   graph.config.mainPackageId = packSym.getPackageId
   graph.importStack.add projectFile
 
-  let phase = classifyPipelinePhase(graph)
+  let phase = classifyPipelinePass(graph)
 
   if projectFile == systemFileIdx:
     discard graph.compilePipelineModule(projectFile, {sfMainModule, sfSystemModule}, phase)
