@@ -8,20 +8,40 @@ import ic/replayer
 
 const CLikeBackend = {backendC, backendCpp, backendObjc}
 
-proc processCodeGenPhase(graph: ModuleGraph; semNode: PNode; bModule: PPassContext): PNode =
-  case graph.config.backend
-  of CLikeBackend:
-    if graph.config.symbolFiles == disabledSf:
-      result = processCodeGen(bModule, semNode)
+type
+  PipelinePhase = enum
+    SemPhase
+    JSPhase
+    CPhase
+
+proc classifyPipelinePhase(graph: ModuleGraph): PipelinePhase =
+  case graph.config.cmd
+  of cmdBackends:
+    case graph.config.backend
+    of CLikeBackend:
+      if graph.config.symbolFiles == disabledSf:
+        result = CPhase
+      else:
+        result = SemPhase
+    of backendJs:
+      result = JSPhase
     else:
-      result = graph.emptyNode
-  of backendJs:
-    result = processJSCodeGen(bModule, semNode)
+      result = SemPhase
   else:
+    result = SemPhase
+
+proc processCodeGenPhase(graph: ModuleGraph; semNode: PNode; bModule: PPassContext, phase: PipelinePhase): PNode =
+  case phase
+  of CPhase:
+    result = processCodeGen(bModule, semNode)
+  of JSPhase:
+    result = processJSCodeGen(bModule, semNode)
+  of SemPhase:
     result = graph.emptyNode
 
 proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
-                      m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator) =
+                      m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator,
+                      phase: PipelinePhase) =
   # XXX fixme this should actually be relative to the config file!
   let relativeTo = toFullPath(graph.config, m.info)
   for module in items(implicits):
@@ -33,11 +53,11 @@ proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind
       importStmt.add str
       message(graph.config, importStmt.info, hintProcessingStmt, $idgen[])
       let semNode = semWithPContext(ctx, importStmt)
-      if semNode == nil or processCodeGenPhase(graph, semNode, bModule) == nil:
+      if semNode == nil or processCodeGenPhase(graph, semNode, bModule, phase) == nil:
         break
 
 proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
-                    stream: PLLStream): bool =
+                    stream: PLLStream, phase: PipelinePhase): bool =
   if graph.stopCompile(): return true
   var
     p: Parser
@@ -47,12 +67,12 @@ proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
   prepareConfigNotes(graph, module)
   let ctx = preparePContext(graph, module, idgen)
   let bModule: PPassContext =
-    case graph.config.backend
-    of CLikeBackend:
+    case phase
+    of CPhase:
       setupBackendGen(graph, module, idgen)
-    of backendJs:
+    of JSPhase:
       setupJSgen(graph, module, idgen)
-    else:
+    of SemPhase:
       nil
   if stream == nil:
     let filename = toFullPathConsiderDirty(graph.config, fileIdx)
@@ -76,8 +96,8 @@ proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
       # in ROD files. I think we should enable this feature only
       # for the interactive mode.
       if module.name.s != "nimscriptapi":
-        processImplicitImports graph, graph.config.implicitImports, nkImportStmt, module, ctx, bModule, idgen
-        processImplicitImports graph, graph.config.implicitIncludes, nkIncludeStmt, module, ctx, bModule, idgen
+        processImplicitImports graph, graph.config.implicitImports, nkImportStmt, module, ctx, bModule, idgen, phase
+        processImplicitImports graph, graph.config.implicitIncludes, nkIncludeStmt, module, ctx, bModule, idgen, phase
 
     checkFirstLineIndentation(p)
     block processCode:
@@ -95,16 +115,15 @@ proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         sl = reorder(graph, sl, module)
       message(graph.config, sl.info, hintProcessingStmt, $idgen[])
       var semNode = semWithPContext(ctx, sl)
-      discard processCodeGenPhase(graph, semNode, bModule)
+      discard processCodeGenPhase(graph, semNode, bModule, phase)
 
     closeParser(p)
     if s.kind != llsStdIn: break
   let finalNode = closePContext(graph, ctx, nil)
-  case graph.config.backend
-  of CLikeBackend:
-    if graph.config.symbolFiles == disabledSf:
-      discard finalCodeGen(graph, bModule, finalNode)
-  of backendJs:
+  case phase
+  of CPhase:
+    discard finalCodeGen(graph, bModule, finalNode)
+  of JSPhase:
     discard finalJSCodeGen(graph, bModule, finalNode)
   else:
     discard
@@ -115,8 +134,7 @@ proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
     closeRodFile(graph, module)
   result = true
 
-
-proc compileCModule(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, fromModule: PSym = nil): PSym =
+proc compilePipelineModule(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, phase: PipelinePhase, fromModule: PSym = nil): PSym =
   var flags = flags
   if fileIdx == graph.config.projectMainIdx2: flags.incl sfMainModule
   result = graph.getModule(fileIdx)
@@ -127,7 +145,7 @@ proc compileCModule(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, fr
     if sfMainModule in flags:
       if graph.config.projectIsStdin: s = stdin.llStreamOpen
       elif graph.config.projectIsCmd: s = llStreamOpen(graph.config.cmdInput)
-    discard processSingleModule(graph, result, idGeneratorFromModule(result), s)
+    discard processSingleModule(graph, result, idGeneratorFromModule(result), s, phase)
   if result == nil:
     var cachedModules: seq[FileIndex]
     result = moduleFromRodFile(graph, fileIdx, cachedModules)
@@ -153,10 +171,11 @@ proc compileCModule(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, fr
     processModuleAux("import(dirty)")
     graph.markClientsDirty(fileIdx)
 
-proc importCModule(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym =
+proc importPipelineModule(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym =
   # this is called by the semantic checking phase
   assert graph.config != nil
-  result = compileCModule(graph, fileIdx, {}, s)
+  let phase = classifyPipelinePhase(graph)
+  result = compilePipelineModule(graph, fileIdx, {}, phase, s)
   graph.addDep(s, fileIdx)
   # keep track of import relationships
   if graph.config.hcrOn:
@@ -170,15 +189,14 @@ proc importCModule(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym =
 
 proc connectBackendCallbacks(graph: ModuleGraph) =
   graph.includeFileCallback = modules.includeModule
-  graph.importModuleCallback = importCModule
+  graph.importModuleCallback = importPipelineModule
 
-proc compileCSystemModule(graph: ModuleGraph) =
+proc compilePipelineSystemModule(graph: ModuleGraph, phase: PipelinePhase) =
   if graph.systemModule == nil:
     connectBackendCallbacks(graph)
     graph.config.m.systemFileIdx = fileInfoIdx(graph.config,
         graph.config.libpath / RelativeFile"system.nim")
-    discard graph.compileCModule(graph.config.m.systemFileIdx, {sfSystemModule})
-
+    discard graph.compilePipelineModule(graph.config.m.systemFileIdx, {sfSystemModule}, phase)
 
 proc compileFinalProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   connectBackendCallbacks(graph)
@@ -194,8 +212,10 @@ proc compileFinalProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   graph.config.mainPackageId = packSym.getPackageId
   graph.importStack.add projectFile
 
+  let phase = classifyPipelinePhase(graph)
+
   if projectFile == systemFileIdx:
-    discard graph.compileCModule(projectFile, {sfMainModule, sfSystemModule})
+    discard graph.compilePipelineModule(projectFile, {sfMainModule, sfSystemModule}, phase)
   else:
-    graph.compileCSystemModule()
-    discard graph.compileCModule(projectFile, {sfMainModule})
+    graph.compilePipelineSystemModule(phase)
+    discard graph.compilePipelineModule(projectFile, {sfMainModule}, phase)
