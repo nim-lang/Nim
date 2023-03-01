@@ -9,7 +9,7 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, tables, ropes, md5_old, modulegraphs, options, msgs, packages
+import ast, tables, ropes, md5, modulegraphs, options, msgs, packages
 from hashes import Hash
 import types
 

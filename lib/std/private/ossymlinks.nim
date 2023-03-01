@@ -31,6 +31,7 @@ elif defined(js):
 else:
   {.pragma: noNimJs.}
 
+## .. importdoc:: os.nim
 
 proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ## Create a symbolic link at `dest` which points to the item specified
@@ -66,7 +67,7 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   ##
   ## See also:
   ## * `createSymlink proc`_
-  when defined(windows):
+  when defined(windows) or defined(nintendoswitch):
     result = symlinkPath
   else:
     result = newString(maxSymlinkLen)

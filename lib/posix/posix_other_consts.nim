@@ -99,7 +99,10 @@ var EXDEV* {.importc: "EXDEV", header: "<errno.h>".}: cint
 
 # <fcntl.h>
 var F_DUPFD* {.importc: "F_DUPFD", header: "<fcntl.h>".}: cint
-var F_DUPFD_CLOEXEC* {.importc: "F_DUPFD", header: "<fcntl.h>".}: cint
+when defined(nuttx):
+  var F_DUPFD_CLOEXEC* {.importc: "F_DUPFD_CLOEXEC", header: "<fcntl.h>".}: cint
+else:
+  var F_DUPFD_CLOEXEC* {.importc: "F_DUPFD", header: "<fcntl.h>".}: cint
 var F_GETFD* {.importc: "F_GETFD", header: "<fcntl.h>".}: cint
 var F_SETFD* {.importc: "F_SETFD", header: "<fcntl.h>".}: cint
 var F_GETFL* {.importc: "F_GETFL", header: "<fcntl.h>".}: cint
@@ -127,6 +130,11 @@ var O_RDONLY* {.importc: "O_RDONLY", header: "<fcntl.h>".}: cint
 var O_RDWR* {.importc: "O_RDWR", header: "<fcntl.h>".}: cint
 var O_WRONLY* {.importc: "O_WRONLY", header: "<fcntl.h>".}: cint
 var O_CLOEXEC* {.importc: "O_CLOEXEC", header: "<fcntl.h>".}: cint
+when defined(nuttx):
+  var O_DIRECT* {.importc: "O_DIRECT", header: "<fcntl.h>".}: cint
+  var O_PATH* {.importc: "O_PATH", header: "<fcntl.h>".}: cint
+  var O_NOATIME* {.importc: "O_NOATIME", header: "<fcntl.h>".}: cint
+  var O_TMPFILE* {.importc: "O_TMPFILE", header: "<fcntl.h>".}: cint
 var POSIX_FADV_NORMAL* {.importc: "POSIX_FADV_NORMAL", header: "<fcntl.h>".}: cint
 var POSIX_FADV_SEQUENTIAL* {.importc: "POSIX_FADV_SEQUENTIAL", header: "<fcntl.h>".}: cint
 var POSIX_FADV_RANDOM* {.importc: "POSIX_FADV_RANDOM", header: "<fcntl.h>".}: cint
@@ -742,3 +750,6 @@ var SEEK_SET* {.importc: "SEEK_SET", header: "<unistd.h>".}: cint
 var SEEK_CUR* {.importc: "SEEK_CUR", header: "<unistd.h>".}: cint
 var SEEK_END* {.importc: "SEEK_END", header: "<unistd.h>".}: cint
 
+# <nuttx/config.h>
+when defined(nuttx):
+  var NEPOLL_MAX* {.importc: "CONFIG_FS_NEPOLL_DESCRIPTORS", header: "<nuttx/config.h>".}: cint

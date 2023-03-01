@@ -465,11 +465,12 @@ proc `==`*(a, b: JsonNode): bool {.noSideEffect.} =
       if a.fields.len != b.fields.len: return false
       for key, val in a.fields:
         if not b.fields.hasKey(key): return false
-        when defined(nimHasEffectsOf):
-          {.noSideEffect.}:
+        {.cast(raises: []).}:
+          when defined(nimHasEffectsOf):
+            {.noSideEffect.}:
+              if b.fields[key] != val: return false
+          else:
             if b.fields[key] != val: return false
-        else:
-          if b.fields[key] != val: return false
       result = true
 
 proc hash*(n: OrderedTable[string, JsonNode]): Hash {.noSideEffect.}
@@ -1360,6 +1361,7 @@ proc to*[T](node: JsonNode, t: typedesc[T]): T =
     doAssert data.list == @[1, 2, 3, 4]
 
   var jsonPath = ""
+  result = default(T)
   initFromJson(result, node, jsonPath)
 
 when false:

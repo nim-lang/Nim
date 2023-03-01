@@ -50,7 +50,7 @@ proc processNode(c: PPassContext, n: PNode): PNode =
   result = n
   var g = PGen(c)
   if shouldProcess(g):
-    generateDoc(g.doc, n, n)
+    generateDoc(g.doc, n, n, g.config)
 
 proc processNodeJson(c: PPassContext, n: PNode): PNode =
   result = n

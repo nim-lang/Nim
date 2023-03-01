@@ -53,7 +53,7 @@ type
   JsonNode3 = ref object
     fields: MyTable
 
-proc `[]`(t: var MyTable, key: string): var int =
+proc `[]`(t: MyTable, key: string): int =
   result = t.data[0]
 
 proc `[]`(x: JsonNode3, key: string): int =

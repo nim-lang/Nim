@@ -342,8 +342,8 @@ tests/newconfig/bar/mfoo.nims""".splitLines
         when not defined(windows):
           check3 lines.len == 5
           check3 lines[0].isDots
-          check3 lines[1].dup(removePrefix(">>> ")) == "3" # prompt depends on `nimUseLinenoise`
-          check3 lines[2].isDots
+          # check3 lines[1].isDots # todo nim secret might use parsing pipeline
+          check3 lines[2].dup(removePrefix(">>> ")) == "3" # prompt depends on `nimUseLinenoise`
           check3 lines[3] == "ab"
           check3 lines[4] == ""
         else:

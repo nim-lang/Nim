@@ -1840,7 +1840,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       elif f.base.kind == tyNone:
         result = isGeneric
       else:
-        result = typeRel(c, f.base, a.base, flags)
+        let r = typeRel(c, f.base, a.base, flags)
+        if r >= isIntConv:
+          result = r
 
       if result != isNone:
         put(c, f, a)
@@ -1848,7 +1850,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if tfUnresolved in f.flags:
         result = typeRel(c, prev.base, a, flags)
       elif a.kind == tyTypeDesc:
-        result = typeRel(c, prev.base, a.base, flags)
+        let r = typeRel(c, prev.base, a.base, flags)
+        if r >= isIntConv:
+          result = r
       else:
         result = isNone
 
@@ -1976,6 +1980,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
         param = implicitConv(nkHiddenSubConv, src, copyTree(arg), m, c)
       elif src.kind in {tyVar}:
         # Analyse the converter return type
+        arg.sym.flags.incl sfAddrTaken
         param = newNodeIT(nkHiddenAddr, arg.info, s.typ[1])
         param.add copyTree(arg)
       else:

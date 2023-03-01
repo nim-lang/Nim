@@ -326,10 +326,13 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
       result.status = initUnknown
       result.defaults.add newTree(nkExprColonExpr, n, field.ast)
     else:
-      let defaultExpr = defaultNodeField(c, n)
-      if defaultExpr != nil:
-        result.status = initUnknown
-        result.defaults.add newTree(nkExprColonExpr, n, defaultExpr)
+      if efWantNoDefaults notin flags: # cannot compute defaults at the typeRightPass
+        let defaultExpr = defaultNodeField(c, n)
+        if defaultExpr != nil:
+          result.status = initUnknown
+          result.defaults.add newTree(nkExprColonExpr, n, defaultExpr)
+        else:
+          result.status = initNone
       else:
         result.status = initNone
   else:
@@ -364,7 +367,7 @@ proc initConstrContext(t: PType, initExpr: PNode): ObjConstrContext =
 proc computeRequiresInit(c: PContext, t: PType): bool =
   assert t.kind == tyObject
   var constrCtx = initConstrContext(t, newNode(nkObjConstr))
-  let initResult = semConstructTypeAux(c, constrCtx, {})
+  let initResult = semConstructTypeAux(c, constrCtx, {efWantNoDefaults})
   constrCtx.missingFields.len > 0
 
 proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
@@ -374,7 +377,7 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
     assert objType != nil
   if objType.kind == tyObject:
     var constrCtx = initConstrContext(objType, newNodeI(nkObjConstr, info))
-    let initResult = semConstructTypeAux(c, constrCtx, {})
+    let initResult = semConstructTypeAux(c, constrCtx, {efWantNoDefaults})
     if constrCtx.missingFields.len > 0:
       localError(c.config, info,
         "The $1 type doesn't have a default value. The following fields must be initialized: $2." % [typeToString(t), listSymbolNames(constrCtx.missingFields)])
