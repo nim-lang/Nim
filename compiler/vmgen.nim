@@ -1909,6 +1909,18 @@ proc genVarSection(c: PCtx; n: PNode) =
           c.genAdditionalCopy(a[2], opcWrDeref, tmp, 0, val)
           c.freeTemp(val)
           c.freeTemp(tmp)
+        elif not importcCondVar(s) and not (s.typ.kind == tyProc and s.typ.callConv == ccClosure): # fixes #10938
+          # there is a pre-existing issue with closure types in VM
+          # if `(var s: proc () = default(proc ()); doAssert s == nil)` works for you;
+          # you might remove the second condition.
+          # the problem is that closure types are tuples in VM, but the types of its children
+          # shouldn't have the same type as closure types.
+          let tmp = c.genx(a[0], {gfNodeAddr})
+          let sa = getNullValue(s.typ, a.info, c.config)
+          let val = c.genx(sa)
+          c.genAdditionalCopy(sa, opcWrDeref, tmp, 0, val)
+          c.freeTemp(val)
+          c.freeTemp(tmp)
       else:
         setSlot(c, s)
         if a[2].kind == nkEmpty:
