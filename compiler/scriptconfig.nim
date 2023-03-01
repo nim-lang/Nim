@@ -216,8 +216,9 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   var vm = setupVM(m, cache, scriptName.string, graph, idgen)
   graph.vm = vm
 
-  graph.compilePipelineSystemModule(EvalPass)
-  discard graph.processPipelineModule(m, vm.idgen, stream, EvalPass)
+  graph.setPipeLinePhase(EvalPass)
+  graph.compilePipelineSystemModule()
+  discard graph.processPipelineModule(m, vm.idgen, stream)
 
   # watch out, "newruntime" can be set within NimScript itself and then we need
   # to remember this:

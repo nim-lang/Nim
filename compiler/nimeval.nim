@@ -82,7 +82,7 @@ proc evalScript*(i: Interpreter; scriptStream: PLLStream = nil) =
 
   let s = if scriptStream != nil: scriptStream
           else: llStreamOpen(findFile(i.graph.config, i.scriptName), fmRead)
-  discard processPipelineModule(i.graph, i.mainModule, i.idgen, s, EvalPass)
+  discard processPipelineModule(i.graph, i.mainModule, i.idgen, s)
 
 proc findNimStdLib*(): string =
   ## Tries to find a path to a valid "system.nim" file.
@@ -133,7 +133,8 @@ proc createInterpreter*(scriptName: string;
   if registerOps:
     vm.registerAdditionalOps() # Required to register parts of stdlib modules
   graph.vm = vm
-  graph.compilePipelineSystemModule(EvalPass)
+  setPipeLinePhase(graph, EvalPass)
+  graph.compilePipelineSystemModule()
   result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName, idgen: idgen)
 
 proc destroyInterpreter*(i: Interpreter) =
@@ -168,5 +169,6 @@ proc runRepl*(r: TLLRepl;
   var idgen = idGeneratorFromModule(m)
 
   if supportNimscript: graph.vm = setupVM(m, cache, "stdin", graph, idgen)
-  graph.compilePipelineSystemModule(InterpreterPass)
-  discard processPipelineModule(graph, m, idgen, llStreamOpenStdIn(r), InterpreterPass)
+  setPipeLinePhase(graph, InterpreterPass)
+  graph.compilePipelineSystemModule()
+  discard processPipelineModule(graph, m, idgen, llStreamOpenStdIn(r))

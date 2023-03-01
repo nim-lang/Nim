@@ -158,15 +158,16 @@ proc commandInteractive(graph: ModuleGraph) =
   defineSymbol(graph.config.symbols, "nimscript")
   # note: seems redundant with -d:nimHasLibFFI
   when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
-  compilePipelineSystemModule(graph, InterpreterPass)
+  setPipeLinePhase(graph, InterpreterPass)
+  compilePipelineSystemModule(graph)
   if graph.config.commandArgs.len > 0:
-    discard graph.compilePipelineModule(fileInfoIdx(graph.config, graph.config.projectFull), {}, InterpreterPass)
+    discard graph.compilePipelineModule(fileInfoIdx(graph.config, graph.config.projectFull), {})
   else:
     var m = graph.makeStdinModule()
     incl(m.flags, sfMainModule)
     var idgen = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0)
     let s = llStreamOpenStdIn(onPrompt = proc() = flushDot(graph.config))
-    discard processPipelineModule(graph, m, idgen, s, InterpreterPass)
+    discard processPipelineModule(graph, m, idgen, s)
 
 proc commandScan(cache: IdentCache, config: ConfigRef) =
   var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
