@@ -10,6 +10,9 @@ import std/[syncio, objectdollar, assertions, tables]
 import renderer
 import ic/replayer
 
+when defined(nimsuggest):
+  import std/sha1
+
 const CLikeBackend = {backendC, backendCpp, backendObjc}
 
 proc classifyPipelinePass*(graph: ModuleGraph): PipelinePhase =
