@@ -1,2 +1,4 @@
 type MyObj* = object
-  field2*: int
+  s*: string
+  field1*: int
+  ch*: char

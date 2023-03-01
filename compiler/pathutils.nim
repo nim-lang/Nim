@@ -10,7 +10,7 @@
 ## Path handling utilities for Nim. Strictly typed code in order
 ## to avoid the never ending time sink in getting path handling right.
 
-import os, pathnorm
+import os, pathnorm, strutils
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
@@ -102,3 +102,52 @@ when true:
   proc addFileExt*(x: RelativeFile; ext: string): RelativeFile {.borrow.}
 
   proc writeFile*(x: AbsoluteFile; content: string) {.borrow.}
+
+proc skipHomeDir(x: string): int =
+  when defined(windows):
+    if x.continuesWith("Users/", len("C:/")):
+      result = 3
+    else:
+      result = 0
+  else:
+    if x.startsWith("/home/") or x.startsWith("/Users/"):
+      result = 3
+    elif x.startsWith("/mnt/") and x.continuesWith("/Users/", len("/mnt/c")):
+      result = 5
+    else:
+      result = 0
+
+proc relevantPart(s: string; afterSlashX: int): string =
+  result = newStringOfCap(s.len - 8)
+  var slashes = afterSlashX
+  for i in 0..<s.len:
+    if slashes == 0:
+      result.add s[i]
+    elif s[i] == '/':
+      dec slashes
+
+template canonSlashes(x: string): string =
+  when defined(windows):
+    x.replace('\\', '/')
+  else:
+    x
+
+proc customPathImpl(x: string): string =
+  # Idea: Encode a "protocol" via "//protocol/path" which is not ambiguous
+  # as path canonicalization would have removed the double slashes.
+  # /mnt/X/Users/Y
+  # X:\\Users\Y
+  # /home/Y
+  # -->
+  # //user/
+  if not isAbsolute(x):
+    result = customPathImpl(canonSlashes(getCurrentDir() / x))
+  else:
+    let slashes = skipHomeDir(x)
+    if slashes > 0:
+      result = "//user/" & relevantPart(x, slashes)
+    else:
+      result = x
+
+proc customPath*(x: string): string =
+  customPathImpl canonSlashes x

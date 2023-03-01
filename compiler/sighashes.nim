@@ -9,7 +9,7 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, tables, ropes, md5, modulegraphs, options, msgs, packages
+import ast, tables, ropes, md5, modulegraphs, options, msgs, packages, pathutils
 from hashes import Hash
 import types
 
@@ -60,7 +60,7 @@ proc hashTypeSym(c: var MD5Context, s: PSym; conf: ConfigRef) =
     c &= ":anon"
   else:
     var it = s
-    c &= relativePath(conf.toFullPath(s.info), conf.toFullPath(getPackageSymbol(s).info), '/')
+    c &= customPath(conf.toFullPath(s.info))
     while it != nil:
       if sfFromGeneric in it.flags and it.kind in routineKinds and
           it.typ != nil:
