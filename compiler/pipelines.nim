@@ -6,6 +6,19 @@ import std/[syncio, objectdollar, assertions, tables]
 import renderer
 import ic/replayer
 
+const CLikeBackend = {backendC, backendCpp, backendObjc}
+
+proc processCodeGenPhase(graph: ModuleGraph; semNode: PNode; bModule: PPassContext): PNode =
+  case graph.config.backend
+  of CLikeBackend:
+    if graph.config.symbolFiles == disabledSf:
+      result = processCodeGen(bModule, semNode)
+    else:
+      result = graph.emptyNode
+  of backendJs:
+    result = processJSCodeGen(bModule, semNode)
+  else:
+    result = graph.emptyNode
 
 proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
                       m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator) =
@@ -20,14 +33,8 @@ proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind
       importStmt.add str
       message(graph.config, importStmt.info, hintProcessingStmt, $idgen[])
       let semNode = semWithPContext(ctx, importStmt)
-      if graph.config.symbolFiles == disabledSf:
-        if semNode == nil or processCodeGen(bModule, semNode) == nil:
-          break
-      else:
-        if semNode == nil:
-          break
-
-const CLikeBackend = {backendC, backendCpp, backendObjc}
+      if semNode == nil or processCodeGenPhase(graph, semNode, bModule) == nil:
+        break
 
 proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
                     stream: PLLStream): bool =
@@ -88,14 +95,7 @@ proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         sl = reorder(graph, sl, module)
       message(graph.config, sl.info, hintProcessingStmt, $idgen[])
       var semNode = semWithPContext(ctx, sl)
-      case graph.config.backend
-      of CLikeBackend:
-        if graph.config.symbolFiles == disabledSf:
-          discard processCodeGen(bModule, semNode)
-      of backendJs:
-        discard processJSCodeGen(bModule, semNode)
-      else:
-        discard
+      discard processCodeGenPhase(graph, semNode, bModule)
 
     closeParser(p)
     if s.kind != llsStdIn: break
