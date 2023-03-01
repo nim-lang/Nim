@@ -2830,7 +2830,7 @@ proc genModule(p: PProc, n: PNode) =
   if optStackTrace in p.options:
     p.body.add(frameDestroy(p))
 
-proc myProcess(b: PPassContext, n: PNode): PNode =
+proc processJSCodeGen*(b: PPassContext, n: PNode): PNode =
   ## Generate JS code for a node.
   result = n
   let m = BModule(b)
@@ -2869,7 +2869,7 @@ proc getClassName(t: PType): Rope =
   if s.loc.r != "": result = s.loc.r
   else: result = rope(s.name.s)
 
-proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
+proc finalJSCodeGen*(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   ## Finalize JS code generation of a Nim module.
   ## Param `n` may contain nodes returned from the last module close call.
   var m = BModule(b)
@@ -2879,7 +2879,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     for i in countdown(high(graph.globalDestructors), 0):
       n.add graph.globalDestructors[i]
   # Process any nodes left over from the last call to `myClose`.
-  result = myProcess(b, n)
+  result = processJSCodeGen(b, n)
   # Some codegen is different (such as no stacktraces; see `initProcOptions`)
   # when `std/system` is being processed.
   if sfSystemModule in m.module.flags:
@@ -2904,9 +2904,6 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       if not writeRope(code, outFile):
         rawMessage(m.config, errCannotOpenFile, outFile.string)
 
-proc myOpen(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
-  ## Create the JS backend pass context `BModule` for a Nim module.
+proc setupJSgen*(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
   result = newModule(graph, s)
   result.idgen = idgen
-
-const JSgenPass* = makePass(myOpen, myProcess, myClose)

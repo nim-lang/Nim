@@ -29,10 +29,10 @@ when defined(nimPreviewSlimSystem):
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
 
-import cpasses
+import pipelines
 
 when not defined(leanCompiler):
-  import jsgen, docgen, docgen2
+  import docgen, docgen2
 
 proc semanticPasses(g: ModuleGraph) =
   registerPass g, verbosePass
@@ -89,8 +89,7 @@ proc commandCheck(graph: ModuleGraph) =
     defineSymbol(conf.symbols, "nimconfig")
   elif conf.backend == backendJs:
     setTarget(conf.target, osJS, cpuJS)
-  semanticPasses(graph)  # use an empty backend for semantic checking only
-  compileProject(graph)
+  compileFinalProject(graph)
 
   if conf.symbolFiles != disabledSf:
     case conf.ideCmd
@@ -126,7 +125,7 @@ proc commandCompileToC(graph: ModuleGraph) =
   if not extccomp.ccHasSaneOverflow(conf):
     conf.symbols.defineSymbol("nimEmulateOverflowChecks")
 
-  compileCProject(graph)
+  compileFinalProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
   if conf.symbolFiles == disabledSf:
@@ -159,9 +158,7 @@ proc commandCompileToJS(graph: ModuleGraph) =
     conf.exc = excCpp
     setTarget(conf.target, osJS, cpuJS)
     defineSymbol(conf.symbols, "ecmascript") # For backward compatibility
-    semanticPasses(graph)
-    registerPass(graph, JSgenPass)
-    compileProject(graph)
+    compileFinalProject(graph)
     if optGenScript in conf.globalOptions:
       writeDepsFile(graph)
 

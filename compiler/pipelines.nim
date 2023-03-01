@@ -1,6 +1,6 @@
 import sem, cgen, passes, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
-       packages, syntaxes
+       packages, syntaxes, jsgen
 
 import std/[syncio, objectdollar, assertions, tables]
 import renderer
@@ -8,7 +8,7 @@ import ic/replayer
 
 
 proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
-                      m: PSym, ctx: PContext, bModule: BModule, idgen: IdGenerator) =
+                      m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator) =
   # XXX fixme this should actually be relative to the config file!
   let relativeTo = toFullPath(graph.config, m.info)
   for module in items(implicits):
@@ -27,6 +27,8 @@ proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind
         if semNode == nil:
           break
 
+const CLikeBackend = {backendC, backendCpp, backendObjc}
+
 proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
                     stream: PLLStream): bool =
   if graph.stopCompile(): return true
@@ -37,7 +39,14 @@ proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
 
   prepareConfigNotes(graph, module)
   let ctx = preparePContext(graph, module, idgen)
-  let bModule = setupBackendGen(graph, module, idgen)
+  let bModule: PPassContext =
+    case graph.config.backend
+    of CLikeBackend:
+      setupBackendGen(graph, module, idgen)
+    of backendJs:
+      setupJSgen(graph, module, idgen)
+    else:
+      nil
   if stream == nil:
     let filename = toFullPathConsiderDirty(graph.config, fileIdx)
     s = llStreamOpen(filename, fmRead)
@@ -79,15 +88,27 @@ proc processSingleModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         sl = reorder(graph, sl, module)
       message(graph.config, sl.info, hintProcessingStmt, $idgen[])
       var semNode = semWithPContext(ctx, sl)
-      if graph.config.symbolFiles == disabledSf:
-        discard processCodeGen(bModule, semNode)
+      case graph.config.backend
+      of CLikeBackend:
+        if graph.config.symbolFiles == disabledSf:
+          discard processCodeGen(bModule, semNode)
+      of backendJs:
+        discard processJSCodeGen(bModule, semNode)
+      else:
+        discard
 
     closeParser(p)
     if s.kind != llsStdIn: break
   let finalNode = closePContext(graph, ctx, nil)
-  if graph.config.symbolFiles == disabledSf:
-    discard finalCodeGen(graph, bModule, finalNode)
-  if graph.config.backend notin {backendC, backendCpp, backendObjc}:
+  case graph.config.backend
+  of CLikeBackend:
+    if graph.config.symbolFiles == disabledSf:
+      discard finalCodeGen(graph, bModule, finalNode)
+  of backendJs:
+    discard finalJSCodeGen(graph, bModule, finalNode)
+  else:
+    discard
+  if graph.config.backend notin CLikeBackend:
     # We only write rod files here if no C-like backend is active.
     # The C-like backends have been patched to support the IC mechanism.
     # They are responsible for closing the rod files. See `cbackend.nim`.
@@ -159,7 +180,7 @@ proc compileCSystemModule(graph: ModuleGraph) =
     discard graph.compileCModule(graph.config.m.systemFileIdx, {sfSystemModule})
 
 
-proc compileCProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
+proc compileFinalProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   connectBackendCallbacks(graph)
   let conf = graph.config
   wantMainModule(conf)
