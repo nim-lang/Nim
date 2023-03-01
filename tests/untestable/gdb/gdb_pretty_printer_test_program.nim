@@ -18,23 +18,6 @@ type
   MyObj = object
     a*: int
     b*: string
-  
-  # MyVariant = ref object
-  #   id*: int
-  #   case kind*: MyEnum
-  #   of meOne: mInt*: int
-  #   of meTwo, meThree: discard
-  #   of meFour:
-  #     moInt*: int
-  #     babies*: seq[MyVariant]
-  #   after: float
-
-  # MyIntVariant = ref object
-  #   stuff*: int
-  #   case myKind*: range[0..32766]
-  #   of 0: mFloat*: float
-  #   of 2: mString*: string
-  #   else: mBabies*: seq[MyIntVariant]
 
 var counter = 0
 
@@ -97,16 +80,10 @@ proc testProc(): void =
   var obj = MyObj(a: 1, b: "some string")
   myDebug(obj) #15
 
-  # var varObj = MyVariant(id: 13, kind: meFour, moInt: 94,
-  #                        babies: @[MyVariant(id: 18, kind: meOne, mInt: 7, after: 1.0),
-  #                                  MyVariant(id: 21, kind: meThree, after: 2.0)],
-  #                        after: 3.0)
-  # myDebug(varObj) #16
+  var tup = ("hello", 42)
+  myDebug(tup) # 16
 
-  # var varObjInt = MyIntVariant(stuff: 5, myKind: 2, mString: "this is my sweet string")
-  # myDebug(varObjInt) #17
-
-  echo(counter)
+  assert counter == 16
 
 
 testProc()

@@ -980,6 +980,14 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
     return errorNode(c, n)
 
   result = n
+
+  when defined(nimsuggest):
+    if c.config.expandProgress:
+      if c.config.expandLevels == 0:
+        return n
+      else:
+        c.config.expandLevels -= 1
+
   let callee = result[0].sym
   case callee.kind
   of skMacro: result = semMacroExpr(c, result, orig, callee, flags, expectedType)
@@ -1890,6 +1898,9 @@ proc semReturn(c: PContext, n: PNode): PNode =
     localError(c.config, n.info, "'return' not allowed here")
 
 proc semProcBody(c: PContext, n: PNode; expectedType: PType = nil): PNode =
+  when defined(nimsuggest):
+    if c.graph.config.expandDone():
+      return n
   openScope(c)
   result = semExpr(c, n, expectedType = expectedType)
   if c.p.resultSym != nil and not isEmptyType(result.typ):
@@ -2895,7 +2906,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     defer:
       if isCompilerDebug():
         echo ("<", c.config$n.info, n, ?.result.typ)
-
   template directLiteral(typeKind: TTypeKind) =
     if result.typ == nil:
       if expectedType != nil and (
@@ -2907,6 +2917,19 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         result.typ = getSysType(c.graph, n.info, typeKind)
 
   result = n
+  when defined(nimsuggest):
+    var expandStarted = false
+    if c.config.ideCmd == ideExpand and not c.config.expandProgress and
+        ((n.kind in {nkFuncDef, nkProcDef, nkIteratorDef, nkTemplateDef, nkMethodDef, nkConverterDef} and
+          n.info.exactEquals(c.config.expandPosition)) or
+         (n.kind in {nkCall, nkCommand} and
+          n[0].info.exactEquals(c.config.expandPosition))):
+      expandStarted = true
+      c.config.expandProgress = true
+      if c.config.expandLevels == 0:
+        c.config.expandNodeResult = $n
+        suggestQuit()
+
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
   case n.kind
@@ -3234,3 +3257,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     localError(c.config, n.info, "invalid expression: " &
                renderTree(n, {renderNoComments}))
   if result != nil: incl(result.flags, nfSem)
+
+  when defined(nimsuggest):
+    if expandStarted:
+      c.config.expandNodeResult = $result
+      suggestQuit()

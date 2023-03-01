@@ -164,7 +164,7 @@ func toSourceMap*(info: SourceInfo, file: string): SourceMap {.raises: [].} =
   result.names = info.names
   # Convert nodes into mappings.
   # Mappings are split into blocks where each block referes to a line in the outputted JS.
-  # Blocks can be seperated into statements which refere to tokens on the line.
+  # Blocks can be separated into statements which refere to tokens on the line.
   # Since the mappings depend on previous values we need to
   # keep track of previous file, name, etc
   var

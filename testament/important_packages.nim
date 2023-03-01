@@ -105,6 +105,7 @@ pkg "nimfp", "nim c -o:nfp -r src/fp.nim"
 pkg "nimgame2", "nim c --mm:refc nimgame2/nimgame.nim"
   # XXX Doesn't work with deprecated 'randomize', will create a PR.
 pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
+pkg "nimib"
 pkg "nimlsp"
 pkg "nimly", "nim c -r tests/test_readme_example.nim"
 pkg "nimongo", "nimble test_ci", allowFailure = true
@@ -118,7 +119,7 @@ pkg "nimterop", "nimble minitest"
 pkg "nimwc", "nim c nimwc.nim", allowFailure = true
 pkg "nimx", "nim c --threads:on test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
-pkg "norm", "testament r tests/sqlite/trows.nim", allowFailure = true
+pkg "norm", "testament r tests/common/tmodel.nim"
 pkg "npeg", "nimble testarc"
 pkg "numericalnim", "nimble nimCI"
 pkg "optionsutils"

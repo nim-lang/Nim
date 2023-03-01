@@ -34,6 +34,9 @@ func compile*(self: RegExp; pattern: cstring; flags: cstring) {.importjs: "#.com
 func replace*(pattern: cstring; self: RegExp; replacement: cstring): cstring {.importjs: "#.replace(#, #)".}
   ## Returns a new string with some or all matches of a pattern replaced by given replacement
 
+func replace*(pattern: cstring, self: RegExp, cb: proc (args: varargs[cstring]): cstring): cstring {.importcpp.}
+  ## Returns a new string with some or all matches of a pattern replaced by given callback function
+
 func split*(pattern: cstring; self: RegExp): seq[cstring] {.importjs: "(#.split(#) || [])".}
   ## Divides a string into an ordered list of substrings and returns the array
 
@@ -88,5 +91,7 @@ runnableExamples:
   assert "do1ne".split(jsregex) == @["do".cstring, "ne".cstring]
   jsregex.compile(r"[lw]", r"i")
   assert "hello world".replace(jsregex,"X") == "heXlo world"
+  jsregex.compile(r"([a-z])\1*", r"g")
+  assert "abbcccdddd".replace(jsregex, proc (m: varargs[cstring]): cstring = ($m[0] & $(m.len)).cstring) == "a1b2c3d4"
   let digitsRegex: RegExp = newRegExp(r"\d")
   assert "foo".match(digitsRegex) == @[]

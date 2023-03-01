@@ -184,3 +184,5 @@ when not defined(i386):
         A = int64.high()
   
     doAssert ord(A) == int64.high()
+    when not defined(gcRefc):
+      doAssert $typ() == "wkbPoint25D"

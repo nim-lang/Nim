@@ -328,7 +328,9 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
                      platform.OS[conf.target.targetOS].name & '.' &
                      CC[c].name & fullSuffix
     result = getConfigVar(conf, fullCCname)
-    if result.len == 0:
+    if existsConfigVar(conf, fullCCname):
+      result = getConfigVar(conf, fullCCname)
+    else:
       # not overridden for this cross compilation setting?
       result = getConfigVar(conf, CC[c].name & fullSuffix)
   else:
@@ -834,6 +836,15 @@ proc linkViaResponseFile(conf: ConfigRef; cmd: string) =
   finally:
     removeFile(linkerArgs)
 
+proc linkViaShellScript(conf: ConfigRef; cmd: string) =
+  let linkerScript = conf.projectName & "_" & "linkerScript.sh"
+  writeFile(linkerScript, cmd)
+  let shell = getEnv("SHELL")
+  try:
+    execLinkCmd(conf, shell & " " & linkerScript)
+  finally:
+    removeFile(linkerScript)
+
 proc getObjFilePath(conf: ConfigRef, f: Cfile): string =
   if noAbsolutePaths(conf): f.obj.extractFilename
   else: f.obj.string
@@ -856,9 +867,12 @@ proc preventLinkCmdMaxCmdLen(conf: ConfigRef, linkCmd: string) =
   # Windows's command line limit is about 8K (8191 characters) so C compilers on
   # Windows support a feature where the command line can be passed via ``@linkcmd``
   # to them.
-  const MaxCmdLen = when defined(windows): 8_000 else: 32_000
+  const MaxCmdLen = when defined(windows): 8_000 elif defined(macosx): 260_000 else: 32_000
   if linkCmd.len > MaxCmdLen:
-    linkViaResponseFile(conf, linkCmd)
+    when defined(macosx):
+      linkViaShellScript(conf, linkCmd)
+    else:
+      linkViaResponseFile(conf, linkCmd)
   else:
     execLinkCmd(conf, linkCmd)
 

@@ -143,7 +143,7 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
   while true:
     openParser(p, fileIdx, s, graph.cache, graph.config)
 
-    if not belongsToStdlib(graph, module) or (belongsToStdlib(graph, module) and module.name.s == "distros"):
+    if (not belongsToStdlib(graph, module)) or module.name.s == "distros":
       # XXX what about caching? no processing then? what if I change the
       # modules to include between compilation runs? we'd need to track that
       # in ROD files. I think we should enable this feature only
@@ -155,11 +155,10 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
     checkFirstLineIndentation(p)
     while true:
       if graph.stopCompile(): break
-      var n = parseTopLevelStmt(p)
+      var n = parseTopLevelStmt(p) # todo merge it
       if n.kind == nkEmpty: break
-      if (sfSystemModule notin module.flags and
-          ({sfNoForward, sfReorder} * module.flags != {} or
-          codeReordering in graph.config.features)):
+
+      if true:
         # read everything, no streaming possible
         var sl = newNodeI(nkStmtList, n.info)
         sl.add n

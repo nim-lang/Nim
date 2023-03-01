@@ -351,3 +351,10 @@ block: # bug #15118
 
   block:
     flop("b")
+
+static:
+  block:
+    const containsTable = CacheTable"containsTable"
+    doAssert "foo" notin containsTable
+    containsTable["foo"] = newLit 42
+    doAssert "foo" in containsTable

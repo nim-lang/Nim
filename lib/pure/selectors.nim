@@ -37,7 +37,7 @@ const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
 const ioselSupportedPlatform* = defined(macosx) or defined(freebsd) or
                                 defined(netbsd) or defined(openbsd) or
-                                defined(dragonfly) or
+                                defined(dragonfly) or defined(nuttx) or
                                 (defined(linux) and not defined(android) and not defined(emscripten))
   ## This constant is used to determine whether the destination platform is
   ## fully supported by `ioselectors` module.
@@ -328,7 +328,7 @@ else:
     doAssert(timeout >= -1, "Cannot select with a negative value, got: " & $timeout)
 
   when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
-       defined(solaris) or defined(zephyr) or defined(freertos):
+       defined(solaris) or defined(zephyr) or defined(freertos) or defined(nuttx):
     template maxDescriptors*(): int =
       ## Returns the maximum number of active file descriptors for the current
       ## process. This involves a system call. For now `maxDescriptors` is
@@ -360,5 +360,7 @@ else:
     include ioselects/ioselectors_select
   elif defined(zephyr):
     include ioselects/ioselectors_poll
+  elif defined(nuttx):
+    include ioselects/ioselectors_epoll
   else:
     include ioselects/ioselectors_poll
