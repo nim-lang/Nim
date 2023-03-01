@@ -13,34 +13,6 @@ import ic/replayer
 when defined(nimsuggest):
   import std/sha1
 
-const CLikeBackend = {backendC, backendCpp, backendObjc}
-
-proc classifyPipelinePass*(graph: ModuleGraph): PipelinePhase =
-  case graph.config.cmd
-  of cmdBackends:
-    case graph.config.backend
-    of CLikeBackend:
-      if graph.config.symbolFiles == disabledSf:
-        result = CgenPass
-      else:
-        result = SemPass
-    of backendJs:
-      result = JSgenPass
-    else:
-      result = SemPass
-  of cmdGendepend:
-    result = GenDependPass
-  of cmdDoc:
-    result = Docgen2Pass
-  of cmdRst2tex, cmdMd2tex, cmdDoc2tex:
-    result = Docgen2TexPass
-  of cmdJsondoc:
-    result = Docgen2JsonPass
-  of cmdInteractive:
-    result = InterpreterPass
-  else:
-    result = SemPass
-
 proc setPipeLinePhase*(graph: ModuleGraph; phase: PipelinePhase) =
   graph.pipelinePhase = phase
 
@@ -60,6 +32,8 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
     result = processNodeJson(bModule, semNode)
   of EvalPass, InterpreterPass:
     result = interpreterCode(bModule, semNode)
+  of NonePass:
+    doAssert false, "use setPipeLinePhase to set a proper PipelinePass"
 
 proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
                       m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator,
@@ -106,6 +80,10 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       openJson(graph, module, idgen)
     of SemPass:
       nil
+    of NonePass:
+      doAssert false, "use setPipeLinePhase to set a proper PipelinePass"
+      nil
+
   if stream == nil:
     let filename = toFullPathConsiderDirty(graph.config, fileIdx)
     s = llStreamOpen(filename, fmRead)
@@ -166,8 +144,10 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     discard closeDoc(graph, bModule, finalNode)
   of Docgen2JsonPass:
     discard closeJson(graph, bModule, finalNode)
+  of NonePass:
+    doAssert false, "use setPipeLinePhase to set a proper PipelinePass"
 
-  if graph.config.backend notin CLikeBackend:
+  if graph.config.backend notin {backendC, backendCpp, backendObjc}:
     # We only write rod files here if no C-like backend is active.
     # The C-like backends have been patched to support the IC mechanism.
     # They are responsible for closing the rod files. See `cbackend.nim`.
@@ -214,7 +194,6 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
 proc importPipelineModule(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym =
   # this is called by the semantic checking phase
   assert graph.config != nil
-  let phase = classifyPipelinePass(graph)
   result = compilePipelineModule(graph, fileIdx, {}, s)
   graph.addDep(s, fileIdx)
   # keep track of import relationships
@@ -251,9 +230,6 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
   let packSym = getPackage(graph, projectFile)
   graph.config.mainPackageId = packSym.getPackageId
   graph.importStack.add projectFile
-
-  let phase = classifyPipelinePass(graph)
-  setPipeLinePhase(graph, phase)
 
   if projectFile == systemFileIdx:
     discard graph.compilePipelineModule(projectFile, {sfMainModule, sfSystemModule})

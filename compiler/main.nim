@@ -66,6 +66,7 @@ proc writeCMakeDepsFile(conf: ConfigRef) =
     fl.close()
 
 proc commandGenDepend(graph: ModuleGraph) =
+  setPipeLinePhase(graph, GenDependPass)
   compilePipelineProject(graph)
   let project = graph.config.projectFull
   writeDepsFile(graph)
@@ -83,6 +84,7 @@ proc commandCheck(graph: ModuleGraph) =
     defineSymbol(conf.symbols, "nimconfig")
   elif conf.backend == backendJs:
     setTarget(conf.target, osJS, cpuJS)
+  setPipeLinePhase(graph, SemPass)
   compilePipelineProject(graph)
 
   if conf.symbolFiles != disabledSf:
@@ -98,7 +100,12 @@ when not defined(leanCompiler):
     handleDocOutputOptions graph.config
     graph.config.setErrorMaxHighMaybe
     case ext:
-    of TexExt, JsonExt, HtmlExt: discard
+    of TexExt:
+      setPipeLinePhase(graph, Docgen2TexPass)
+    of JsonExt:
+      setPipeLinePhase(graph, Docgen2JsonPass)
+    of HtmlExt:
+      setPipeLinePhase(graph, Docgen2Pass)
     else: doAssert false, $ext
     compilePipelineProject(graph)
 
@@ -115,6 +122,10 @@ proc commandCompileToC(graph: ModuleGraph) =
   if not extccomp.ccHasSaneOverflow(conf):
     conf.symbols.defineSymbol("nimEmulateOverflowChecks")
 
+  if conf.symbolFiles == disabledSf:
+    setPipeLinePhase(graph, CgenPass)
+  else:
+    setPipeLinePhase(graph, SemPass)
   compilePipelineProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
@@ -148,6 +159,7 @@ proc commandCompileToJS(graph: ModuleGraph) =
     conf.exc = excCpp
     setTarget(conf.target, osJS, cpuJS)
     defineSymbol(conf.symbols, "ecmascript") # For backward compatibility
+    setPipeLinePhase(graph, JSgenPass)
     compilePipelineProject(graph)
     if optGenScript in conf.globalOptions:
       writeDepsFile(graph)

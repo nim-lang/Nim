@@ -58,6 +58,7 @@ type
     info*: TLineInfo
 
   PipelinePhase* = enum
+    NonePass
     SemPass
     JSgenPass
     CgenPass
