@@ -341,6 +341,8 @@
 
 - IBM Z architecture and macOS m1 arm64 architecture are supported.
 
+- `=wasMoved` can be overridden by users.
+
 ## Compiler changes
 
 - The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the

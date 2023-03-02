@@ -1779,7 +1779,7 @@ proc whereToBindTypeHook(c: PContext; t: PType): PType =
 proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let t = s.typ
   var noError = false
-  let cond = if op == attachedDestructor:
+  let cond = if op in {attachedDestructor, attachedWasMoved}:
                t.len == 2 and t[0] == nil and t[1].kind == tyVar
              elif op == attachedTrace:
                t.len == 3 and t[0] == nil and t[1].kind == tyVar and t[2].kind == tyPointer
@@ -1894,6 +1894,9 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
   of "=trace":
     if s.magic != mTrace:
       bindTypeHook(c, s, n, attachedTrace)
+  of "=wasmoved":
+    if s.magic != mWasMoved:
+      bindTypeHook(c, s, n, attachedWasMoved)
   else:
     if sfOverriden in s.flags:
       localError(c.config, n.info, errGenerated,
