@@ -714,22 +714,15 @@ when defined(windows) and not defined(useNimRtl):
     if len(workingDir) > 0: wd = workingDir
     if env != nil: e = buildEnv(env)
     if poEchoCmd in options: echo($cmdl)
-    when useWinUnicode:
-      var tmp = newWideCString(cmdl)
-      var ee =
-        if e.str.isNil: newWideCString(cstring(nil))
-        else: newWideCString(e.str, e.len)
-      var wwd = newWideCString(wd)
-      var flags = NORMAL_PRIORITY_CLASS or CREATE_UNICODE_ENVIRONMENT
-      if poDaemon in options: flags = flags or CREATE_NO_WINDOW
-      success = winlean.createProcessW(nil, tmp, nil, nil, 1, flags,
-        ee, wwd, si, procInfo)
-    else:
-      var ee =
-        if e.str.isNil: cstring(nil)
-        else: cstring(e.str)
-      success = winlean.createProcessA(nil,
-        cmdl, nil, nil, 1, NORMAL_PRIORITY_CLASS, ee, wd, si, procInfo)
+    var tmp = newWideCString(cmdl)
+    var ee =
+      if e.str.isNil: newWideCString(cstring(nil))
+      else: newWideCString(e.str, e.len)
+    var wwd = newWideCString(wd)
+    var flags = NORMAL_PRIORITY_CLASS or CREATE_UNICODE_ENVIRONMENT
+    if poDaemon in options: flags = flags or CREATE_NO_WINDOW
+    success = winlean.createProcessW(nil, tmp, nil, nil, 1, flags,
+      ee, wwd, si, procInfo)
     let lastError = osLastError()
 
     if poParentStreams notin options:
@@ -870,13 +863,9 @@ when defined(windows) and not defined(useNimRtl):
     si.hStdError = getStdHandle(STD_ERROR_HANDLE)
     si.hStdInput = getStdHandle(STD_INPUT_HANDLE)
     si.hStdOutput = getStdHandle(STD_OUTPUT_HANDLE)
-    when useWinUnicode:
-      var c = newWideCString(command)
-      var res = winlean.createProcessW(nil, c, nil, nil, 0,
-        NORMAL_PRIORITY_CLASS, nil, nil, si, procInfo)
-    else:
-      var res = winlean.createProcessA(nil, command, nil, nil, 0,
-        NORMAL_PRIORITY_CLASS, nil, nil, si, procInfo)
+    var c = newWideCString(command)
+    var res = winlean.createProcessW(nil, c, nil, nil, 0,
+      NORMAL_PRIORITY_CLASS, nil, nil, si, procInfo)
     if res == 0:
       raiseOSError(osLastError())
     else:

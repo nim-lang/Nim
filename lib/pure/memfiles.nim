@@ -17,7 +17,7 @@
 
 when defined(windows):
   import winlean
-  when useWinUnicode and defined(nimPreviewSlimSystem):
+  when defined(nimPreviewSlimSystem):
     import std/widestrs
 elif defined(posix):
   import posix
@@ -199,10 +199,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
         else: FILE_ATTRIBUTE_NORMAL or flags,
         0)
 
-    when useWinUnicode:
-      result.fHandle = callCreateFile(createFileW, newWideCString(filename))
-    else:
-      result.fHandle = callCreateFile(createFileA, filename)
+    result.fHandle = callCreateFile(createFileW, newWideCString(filename))
 
     if result.fHandle == INVALID_HANDLE_VALUE:
       fail(osLastError(), "error opening file")

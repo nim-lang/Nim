@@ -422,32 +422,18 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   ## Raises `OSError` in case of an error. Follows symlinks.
   when defined(windows):
     var bufsize = MAX_PATH.int32
-    when useWinUnicode:
-      var unused: WideCString = nil
-      var res = newWideCString("", bufsize)
-      while true:
-        var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
-        if L == 0'i32:
-          raiseOSError(osLastError(), filename)
-        elif L > bufsize:
-          res = newWideCString("", L)
-          bufsize = L
-        else:
-          result = res$L
-          break
-    else:
-      var unused: cstring = nil
-      result = newString(bufsize)
-      while true:
-        var L = getFullPathNameA(filename, bufsize, result, unused)
-        if L == 0'i32:
-          raiseOSError(osLastError(), filename)
-        elif L > bufsize:
-          result = newString(L)
-          bufsize = L
-        else:
-          setLen(result, L)
-          break
+    var unused: WideCString = nil
+    var res = newWideCString("", bufsize)
+    while true:
+      var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
+      if L == 0'i32:
+        raiseOSError(osLastError(), filename)
+      elif L > bufsize:
+        res = newWideCString("", L)
+        bufsize = L
+      else:
+        result = res$L
+        break
     # getFullPathName doesn't do case corrections, so we have to use this convoluted
     # way of retrieving the true filename
     for x in walkFiles(result):
@@ -483,14 +469,10 @@ proc createHardlink*(src, dest: string) {.noWeirdTarget.} =
   ## See also:
   ## * `createSymlink proc`_
   when defined(windows):
-    when useWinUnicode:
-      var wSrc = newWideCString(src)
-      var wDst = newWideCString(dest)
-      if createHardLinkW(wDst, wSrc, nil) == 0:
-        raiseOSError(osLastError(), $(src, dest))
-    else:
-      if createHardLinkA(dest, src, nil) == 0:
-        raiseOSError(osLastError(), $(src, dest))
+    var wSrc = newWideCString(src)
+    var wDst = newWideCString(dest)
+    if createHardLinkW(wDst, wSrc, nil) == 0:
+      raiseOSError(osLastError(), $(src, dest))
   else:
     if link(src, dest) != 0:
       raiseOSError(osLastError(), $(src, dest))
@@ -655,32 +637,18 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
   # /proc/<pid>/path/a.out (complete pathname)
   when defined(windows):
     var bufsize = int32(MAX_PATH)
-    when useWinUnicode:
-      var buf = newWideCString("", bufsize)
-      while true:
-        var L = getModuleFileNameW(0, buf, bufsize)
-        if L == 0'i32:
-          result = "" # error!
-          break
-        elif L > bufsize:
-          buf = newWideCString("", L)
-          bufsize = L
-        else:
-          result = buf$L
-          break
-    else:
-      result = newString(bufsize)
-      while true:
-        var L = getModuleFileNameA(0, result, bufsize)
-        if L == 0'i32:
-          result = "" # error!
-          break
-        elif L > bufsize:
-          result = newString(L)
-          bufsize = L
-        else:
-          setLen(result, L)
-          break
+    var buf = newWideCString("", bufsize)
+    while true:
+      var L = getModuleFileNameW(0, buf, bufsize)
+      if L == 0'i32:
+        result = "" # error!
+        break
+      elif L > bufsize:
+        buf = newWideCString("", L)
+        bufsize = L
+      else:
+        result = buf$L
+        break
   elif defined(macosx):
     var size = cuint32(0)
     getExecPath1(nil, size)
@@ -977,10 +945,7 @@ proc isHidden*(path: string): bool {.noWeirdTarget.} =
       assert ".foo/".isHidden
 
   when defined(windows):
-    when useWinUnicode:
-      wrapUnary(attributes, getFileAttributesW, path)
-    else:
-      var attributes = getFileAttributesA(path)
+    wrapUnary(attributes, getFileAttributesW, path)
     if attributes != -1'i32:
       result = (attributes and FILE_ATTRIBUTE_HIDDEN) != 0'i32
   else:
