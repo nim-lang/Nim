@@ -1855,7 +1855,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if regs[rb].node.kind != nkSym:
         stackTrace(c, tos, pc, "node is not a symbol")
       else:
-        regs[ra].node.strVal = $sigHash(regs[rb].node.sym)
+        regs[ra].node.strVal = $sigHash(regs[rb].node.sym, c.config)
     of opcSlurp:
       decodeB(rkNode)
       createStr regs[ra]
