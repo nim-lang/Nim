@@ -10,7 +10,7 @@
 ## This file implements the new evaluation engine for Nim code.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-
+import semmacrosanity
 import
   std/[strutils, tables, parseutils],
   msgs, vmdef, vmgen, nimsets, types, passes,
@@ -1408,6 +1408,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         for i in 1..rc-1:
           let node = regs[rb+i].regToNode
           node.info = c.debug[pc]
+          if prc.typ[i].kind notin {tyTyped, tyUntyped}:
+            node.annotateType(prc.typ[i], c.config)
+
           macroCall.add(node)
         var a = evalTemplate(macroCall, prc, genSymOwner, c.config, c.cache, c.templInstCounter, c.idgen)
         if a.kind == nkStmtList and a.len == 1: a = a[0]
