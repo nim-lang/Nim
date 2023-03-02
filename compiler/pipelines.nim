@@ -10,14 +10,12 @@ import std/[syncio, objectdollar, assertions, tables]
 import renderer
 import ic/replayer
 
-when defined(nimsuggest):
-  import std/sha1
 
-proc setPipeLinePhase*(graph: ModuleGraph; phase: PipelinePhase) =
-  graph.pipelinePhase = phase
+proc setPipeLinePass*(graph: ModuleGraph; pass: PipelinePass) =
+  graph.pipelinePass = pass
 
 proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext): PNode =
-  case graph.pipelinePhase
+  case graph.pipelinePass
   of CgenPass:
     result = processCodeGen(bModule, semNode)
   of JSgenPass:
@@ -33,7 +31,7 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
   of EvalPass, InterpreterPass:
     result = interpreterCode(bModule, semNode)
   of NonePass:
-    doAssert false, "use setPipeLinePhase to set a proper PipelinePass"
+    doAssert false, "use setPipeLinePass to set a proper PipelinePass"
 
 proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
                       m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator,
@@ -63,13 +61,13 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
   prepareConfigNotes(graph, module)
   let ctx = preparePContext(graph, module, idgen)
   let bModule: PPassContext =
-    case graph.pipelinePhase
+    case graph.pipelinePass
     of CgenPass:
-      setupBackendGen(graph, module, idgen)
+      setupCgen(graph, module, idgen)
     of JSgenPass:
       setupJSgen(graph, module, idgen)
     of EvalPass, InterpreterPass:
-      setupVMContext(graph, module, idgen)
+      setupEvalGen(graph, module, idgen)
     of GenDependPass:
       setupDependPass(graph, module, idgen)
     of Docgen2Pass:
@@ -81,7 +79,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     of SemPass:
       nil
     of NonePass:
-      doAssert false, "use setPipeLinePhase to set a proper PipelinePass"
+      doAssert false, "use setPipeLinePass to set a proper PipelinePass"
       nil
 
   if stream == nil:
@@ -92,10 +90,6 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       return false
   else:
     s = stream
-
-  when defined(nimsuggest):
-    let filename = toFullPathConsiderDirty(graph.config, fileIdx).string
-    msgs.setHash(graph.config, fileIdx, $sha1.secureHashFile(filename))
 
   while true:
     syntaxes.openParser(p, fileIdx, s, graph.cache, graph.config)
@@ -123,7 +117,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         sl.add n
       if sfReorder in module.flags or codeReordering in graph.config.features:
         sl = reorder(graph, sl, module)
-      if graph.pipelinePhase != EvalPass:
+      if graph.pipelinePass != EvalPass:
         message(graph.config, sl.info, hintProcessingStmt, $idgen[])
       var semNode = semWithPContext(ctx, sl)
       discard processPipeline(graph, semNode, bModule)
@@ -131,9 +125,10 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     closeParser(p)
     if s.kind != llsStdIn: break
   let finalNode = closePContext(graph, ctx, nil)
-  case graph.pipelinePhase
+  case graph.pipelinePass
   of CgenPass:
-    discard finalCodeGen(graph, bModule, finalNode)
+    if bModule != nil:
+      finalCodegenActions(graph, BModule(bModule), finalNode)
   of JSgenPass:
     discard finalJSCodeGen(graph, bModule, finalNode)
   of EvalPass, InterpreterPass:
@@ -145,7 +140,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
   of Docgen2JsonPass:
     discard closeJson(graph, bModule, finalNode)
   of NonePass:
-    doAssert false, "use setPipeLinePhase to set a proper PipelinePass"
+    doAssert false, "use setPipeLinePass to set a proper PipelinePass"
 
   if graph.config.backend notin {backendC, backendCpp, backendObjc}:
     # We only write rod files here if no C-like backend is active.

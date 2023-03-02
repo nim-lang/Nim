@@ -57,7 +57,7 @@ type
     sym*: PSym
     info*: TLineInfo
 
-  PipelinePhase* = enum
+  PipelinePass* = enum
     NonePass
     SemPass
     JSgenPass
@@ -116,7 +116,7 @@ type
     cacheCounters*: Table[string, BiggestInt] # IC: implemented
     cacheTables*: Table[string, BTree[string, PNode]] # IC: implemented
     passes*: seq[TPass]
-    pipelinePhase*: PipelinePhase
+    pipelinePass*: PipelinePass
     onDefinition*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     onDefinitionResolveForward*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     onUsage*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}

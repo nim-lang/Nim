@@ -216,7 +216,7 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   var vm = setupVM(m, cache, scriptName.string, graph, idgen)
   graph.vm = vm
 
-  graph.setPipeLinePhase(EvalPass)
+  graph.setPipeLinePass(EvalPass)
   graph.compilePipelineSystemModule()
   discard graph.processPipelineModule(m, vm.idgen, stream)
 

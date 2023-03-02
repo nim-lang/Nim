@@ -66,7 +66,7 @@ proc writeCMakeDepsFile(conf: ConfigRef) =
     fl.close()
 
 proc commandGenDepend(graph: ModuleGraph) =
-  setPipeLinePhase(graph, GenDependPass)
+  setPipeLinePass(graph, GenDependPass)
   compilePipelineProject(graph)
   let project = graph.config.projectFull
   writeDepsFile(graph)
@@ -84,7 +84,7 @@ proc commandCheck(graph: ModuleGraph) =
     defineSymbol(conf.symbols, "nimconfig")
   elif conf.backend == backendJs:
     setTarget(conf.target, osJS, cpuJS)
-  setPipeLinePhase(graph, SemPass)
+  setPipeLinePass(graph, SemPass)
   compilePipelineProject(graph)
 
   if conf.symbolFiles != disabledSf:
@@ -101,11 +101,11 @@ when not defined(leanCompiler):
     graph.config.setErrorMaxHighMaybe
     case ext:
     of TexExt:
-      setPipeLinePhase(graph, Docgen2TexPass)
+      setPipeLinePass(graph, Docgen2TexPass)
     of JsonExt:
-      setPipeLinePhase(graph, Docgen2JsonPass)
+      setPipeLinePass(graph, Docgen2JsonPass)
     of HtmlExt:
-      setPipeLinePhase(graph, Docgen2Pass)
+      setPipeLinePass(graph, Docgen2Pass)
     else: doAssert false, $ext
     compilePipelineProject(graph)
 
@@ -123,9 +123,9 @@ proc commandCompileToC(graph: ModuleGraph) =
     conf.symbols.defineSymbol("nimEmulateOverflowChecks")
 
   if conf.symbolFiles == disabledSf:
-    setPipeLinePhase(graph, CgenPass)
+    setPipeLinePass(graph, CgenPass)
   else:
-    setPipeLinePhase(graph, SemPass)
+    setPipeLinePass(graph, SemPass)
   compilePipelineProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
@@ -159,7 +159,7 @@ proc commandCompileToJS(graph: ModuleGraph) =
     conf.exc = excCpp
     setTarget(conf.target, osJS, cpuJS)
     defineSymbol(conf.symbols, "ecmascript") # For backward compatibility
-    setPipeLinePhase(graph, JSgenPass)
+    setPipeLinePass(graph, JSgenPass)
     compilePipelineProject(graph)
     if optGenScript in conf.globalOptions:
       writeDepsFile(graph)
@@ -170,7 +170,7 @@ proc commandInteractive(graph: ModuleGraph) =
   defineSymbol(graph.config.symbols, "nimscript")
   # note: seems redundant with -d:nimHasLibFFI
   when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
-  setPipeLinePhase(graph, InterpreterPass)
+  setPipeLinePass(graph, InterpreterPass)
   compilePipelineSystemModule(graph)
   if graph.config.commandArgs.len > 0:
     discard graph.compilePipelineModule(fileInfoIdx(graph.config, graph.config.projectFull), {})

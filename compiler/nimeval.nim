@@ -133,7 +133,7 @@ proc createInterpreter*(scriptName: string;
   if registerOps:
     vm.registerAdditionalOps() # Required to register parts of stdlib modules
   graph.vm = vm
-  setPipeLinePhase(graph, EvalPass)
+  setPipeLinePass(graph, EvalPass)
   graph.compilePipelineSystemModule()
   result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName, idgen: idgen)
 
@@ -169,6 +169,6 @@ proc runRepl*(r: TLLRepl;
   var idgen = idGeneratorFromModule(m)
 
   if supportNimscript: graph.vm = setupVM(m, cache, "stdin", graph, idgen)
-  setPipeLinePhase(graph, InterpreterPass)
+  setPipeLinePass(graph, InterpreterPass)
   graph.compilePipelineSystemModule()
   discard processPipelineModule(graph, m, idgen, llStreamOpenStdIn(r))
