@@ -1,10 +1,11 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
-       packages, syntaxes, jsgen, depends, docgen2
-
+       packages, syntaxes, depends, vm
 
 import pipelineutils
-import vm
+
+when not defined(leanCompiler):
+  import jsgen, docgen2
 
 import std/[syncio, objectdollar, assertions, tables]
 import renderer
@@ -17,17 +18,22 @@ proc setPipeLinePass*(graph: ModuleGraph; pass: PipelinePass) =
 proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext): PNode =
   case graph.pipelinePass
   of CgenPass:
-    result = processCodeGen(bModule, semNode)
+    result = semNode
+    if bModule != nil:
+      genTopLevelStmt(BModule(bModule), result)
   of JSgenPass:
-    result = processJSCodeGen(bModule, semNode)
+    when not defined(leanCompiler):
+      result = processJSCodeGen(bModule, semNode)
   of GenDependPass:
     result = addDotDependency(bModule, semNode)
   of SemPass:
     result = graph.emptyNode
   of Docgen2Pass, Docgen2TexPass:
-    result = processNode(bModule, semNode)
+    when not defined(leanCompiler):
+      result = processNode(bModule, semNode)
   of Docgen2JsonPass:
-    result = processNodeJson(bModule, semNode)
+    when not defined(leanCompiler):
+      result = processNodeJson(bModule, semNode)
   of EvalPass, InterpreterPass:
     result = interpreterCode(bModule, semNode)
   of NonePass:
@@ -65,17 +71,29 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     of CgenPass:
       setupCgen(graph, module, idgen)
     of JSgenPass:
-      setupJSgen(graph, module, idgen)
+      when not defined(leanCompiler):
+        setupJSgen(graph, module, idgen)
+      else:
+        nil
     of EvalPass, InterpreterPass:
       setupEvalGen(graph, module, idgen)
     of GenDependPass:
       setupDependPass(graph, module, idgen)
     of Docgen2Pass:
-      openHtml(graph, module, idgen)
+      when not defined(leanCompiler):
+        openHtml(graph, module, idgen)
+      else:
+        nil
     of Docgen2TexPass:
-      openTex(graph, module, idgen)
+      when not defined(leanCompiler):
+        openTex(graph, module, idgen)
+      else:
+        nil
     of Docgen2JsonPass:
-      openJson(graph, module, idgen)
+      when not defined(leanCompiler):
+        openJson(graph, module, idgen)
+      else:
+        nil
     of SemPass:
       nil
     of NonePass:
@@ -130,15 +148,18 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     if bModule != nil:
       finalCodegenActions(graph, BModule(bModule), finalNode)
   of JSgenPass:
-    discard finalJSCodeGen(graph, bModule, finalNode)
+    when not defined(leanCompiler):
+      discard finalJSCodeGen(graph, bModule, finalNode)
   of EvalPass, InterpreterPass:
     discard interpreterCode(bModule, finalNode)
   of SemPass, GenDependPass:
     discard
   of Docgen2Pass, Docgen2TexPass:
-    discard closeDoc(graph, bModule, finalNode)
+    when not defined(leanCompiler):
+      discard closeDoc(graph, bModule, finalNode)
   of Docgen2JsonPass:
-    discard closeJson(graph, bModule, finalNode)
+    when not defined(leanCompiler):
+      discard closeJson(graph, bModule, finalNode)
   of NonePass:
     doAssert false, "use setPipeLinePass to set a proper PipelinePass"
 

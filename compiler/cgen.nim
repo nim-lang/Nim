@@ -2015,12 +2015,6 @@ proc genTopLevelStmt*(m: BModule; n: PNode) =
   else:
     genProcBody(m.initProc, transformedN)
 
-proc processCodeGen*(b: PPassContext, n: PNode): PNode =
-  result = n
-  if b != nil:
-    var m = BModule(b)
-    genTopLevelStmt(m, n)
-
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:
     if not moduleHasChanged(m.g.graph, m.module):
