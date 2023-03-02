@@ -29,7 +29,7 @@ type
     finished: bool
     error*: ref Exception              ## Stored exception
     errorStackTrace*: string
-    when not defined(release):
+    when not defined(release) or defined(futureLogging):
       stackTrace: seq[StackTraceEntry] ## For debugging purposes only.
       id: int
       fromProc: string
