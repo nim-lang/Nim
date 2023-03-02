@@ -53,7 +53,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc =
     else:
       ""
 
-  let options = if isOrc: options else: options & " --mm:orc"
+  let options = if isOrc: options else: options & " --mm:refc"
   when not defined(windows): # todo fix me on windows
     var test1 = makeTest("lib/nimrtl.nim", options & " --outdir:tests/dll", cat)
     test1.spec.action = actionCompile
