@@ -53,7 +53,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc =
     else:
       ""
 
-  when not defined(windows): # todo fix me on windows
+  if not defined(windows) or not isOrc: # todo fix me on windows
     var test1 = makeTest("lib/nimrtl.nim", options & " --outdir:tests/dll", cat)
     test1.spec.action = actionCompile
     testSpec c, test1
