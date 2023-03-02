@@ -45,7 +45,7 @@ proc mangleName(m: BModule; s: PSym): Rope =
     result.add rope s.itemId.item
     if m.hcrOn:
       result.add "_"
-      result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts))
+      result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
     s.loc.r = result
     writeMangledName(m.ndi, s, m.config)
 
@@ -311,7 +311,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   else: result = nil
 
   if result != nil and typ.isImportedType():
-    let sig = hashType typ
+    let sig = hashType(typ, m.config)
     if cacheGetType(m.typeCache, sig) == nil:
       m.typeCache[sig] = result
 
@@ -371,10 +371,10 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet; kind: TSymKind): R
     if isImportedCppType(etB) and t.kind == tyGenericInst:
       result = getTypeDescAux(m, t, check, kind)
     else:
-      result = getTypeForward(m, t, hashType(t))
+      result = getTypeForward(m, t, hashType(t, m.config))
       pushType(m, t)
   of tySequence:
-    let sig = hashType(t)
+    let sig = hashType(t, m.config)
     if optSeqDestructors in m.config.globalOptions:
       if skipTypes(etB[0], typedescInst).kind == tyEmpty:
         internalError(m.config, "cannot map the empty seq type to a C type")
@@ -407,7 +407,7 @@ proc getSeqPayloadType(m: BModule; t: PType): Rope =
   #result = getTypeForward(m, t, hashType(t)) & "_Content"
 
 proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
-  let sig = hashType(t)
+  let sig = hashType(t, m.config)
   let result = cacheGetType(m.typeCache, sig)
   if result == nil:
     discard getTypeDescAux(m, t, check, skVar)
@@ -672,7 +672,7 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
                else: result.elemType
 
 proc getOpenArrayDesc(m: BModule, t: PType, check: var IntSet; kind: TSymKind): Rope =
-  let sig = hashType(t)
+  let sig = hashType(t, m.config)
   if kind == skParam:
     result = getTypeDescWeak(m, t[0], check, kind) & "*"
   else:
@@ -696,7 +696,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
     # C type generation into an analysis and a code generation phase somehow.
   if t.sym != nil: useHeader(m, t.sym)
   if t != origTyp and origTyp.sym != nil: useHeader(m, origTyp.sym)
-  let sig = hashType(origTyp)
+  let sig = hashType(origTyp, m.config)
 
   defer: # defer is the simplest in this case
     if isImportedType(t) and not m.typeABICache.containsOrIncl(sig):
@@ -725,7 +725,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
         result = getTypeDescAux(m, et, check, kind) & star
       else:
         # no restriction! We have a forward declaration for structs
-        let name = getTypeForward(m, et, hashType et)
+        let name = getTypeForward(m, et, hashType(et, m.config))
         result = name & star
         m.typeCache[sig] = result
     of tySequence:
@@ -734,7 +734,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
         m.typeCache[sig] = result
       else:
         # no restriction! We have a forward declaration for structs
-        let name = getTypeForward(m, et, hashType et)
+        let name = getTypeForward(m, et, hashType(et, m.config))
         result = name & seqStar(m) & star
         m.typeCache[sig] = result
         pushType(m, et)
@@ -897,7 +897,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
           discard # addAbiCheck(m, t, result) # already handled elsewhere
   of tySet:
     # Don't use the imported name as it may be scoped: 'Foo::SomeKind'
-    result = $t.kind & '_' & t.lastSon.typeName & $t.lastSon.hashType
+    result = $t.kind & '_' & t.lastSon.typeName & $t.lastSon.hashType(m.config)
     m.typeCache[sig] = result
     if not isImportedType(t):
       let s = int(getSize(m.config, t))
@@ -1070,7 +1070,7 @@ proc discriminatorTableName(m: BModule, objtype: PType, d: PSym): Rope =
     objtype = objtype[0].skipTypes(abstractPtrs)
   if objtype.sym == nil:
     internalError(m.config, d.info, "anonymous obj with discriminator")
-  result = "NimDT_$1_$2" % [rope($hashType(objtype)), rope(d.name.s.mangle)]
+  result = "NimDT_$1_$2" % [rope($hashType(objtype, m.config)), rope(d.name.s.mangle)]
 
 proc rope(arg: Int128): Rope = rope($arg)
 
@@ -1291,7 +1291,7 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
         res.add m.name.s & "."
         res.add it.sym.name.s
     else:
-      res.add $hashType(it)
+      res.add $hashType(it, m.config)
     res.add "|"
     it = it[0]
   result = makeCString(res)
@@ -1355,7 +1355,7 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
 
   let prefixTI = if m.hcrOn: "(" else: "(&"
 
-  let sig = hashType(origType)
+  let sig = hashType(origType, m.config)
   result = m.typeInfoMarkerV2.getOrDefault(sig)
   if result != nil:
     return prefixTI.rope & result & ")".rope
@@ -1426,7 +1426,7 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
 
   let prefixTI = if m.hcrOn: "(" else: "(&"
 
-  let sig = hashType(origType)
+  let sig = hashType(origType, m.config)
   result = m.typeInfoMarker.getOrDefault(sig)
   if result != nil:
     return prefixTI.rope & result & ")".rope
