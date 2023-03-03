@@ -71,7 +71,7 @@ What to install:
 
 - The expected stdlib location is `/usr/lib/nim/lib`, previously it was just `/usr/lib/nim`
 - `nimdoc.css` and `nimdoc.cls` from the `doc` folder should go into `/usr/lib/nim/doc/`
-- `tools/nim-gdb.py` should go into `/usr/lib/nim/tools/`
+- `tools/debug/nim-gdb.py` should go into `/usr/lib/nim/tools/`
 - `tools/dochack/dochack.js` should be installed to `/usr/lib/nim/tools/dochack/`
 - Global configuration files under `/etc/nim`
 - Optionally: manpages, documentation, shell completion
