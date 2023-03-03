@@ -156,7 +156,7 @@ proc reifiedOpenArray(n: PNode): bool {.inline.} =
   else:
     result = true
 
-proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, Rope) =
+proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareForMutation = false): (Rope, Rope) =
   var a, b, c: TLoc
   initLocExpr(p, q[1], a)
   initLocExpr(p, q[2], b)
@@ -164,6 +164,8 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, 
   # but first produce the required index checks:
   if optBoundsCheck in p.options:
     genBoundsCheck(p, a, b, c)
+  if prepareForMutation:
+    linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
   let ty = skipTypes(a.t, abstractVar+{tyPtr})
   let dest = getTypeDesc(p.module, destType)
   let lengthExpr = "($1)-($2)+1" % [rdLoc(c), rdLoc(b)]

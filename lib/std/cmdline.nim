@@ -40,10 +40,7 @@ else:
 # Needed by windows in order to obtain the command line for targets
 # other than command line targets
 when defined(windows) and not weirdTarget:
-  when useWinUnicode:
-    template getCommandLine*(): untyped = getCommandLineW()
-  else:
-    template getCommandLine*(): untyped = getCommandLineA()
+  template getCommandLine*(): untyped = getCommandLineW()
 
 
 proc parseCmdLine*(c: string): seq[string] {.

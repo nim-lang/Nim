@@ -935,6 +935,7 @@ type
   TTypeSeq* = seq[PType]
 
   TTypeAttachedOp* = enum ## as usual, order is important here
+    attachedWasMoved,
     attachedDestructor,
     attachedAsgn,
     attachedSink,
@@ -1502,7 +1503,7 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
 
 const
   AttachedOpToStr*: array[TTypeAttachedOp, string] = [
-    "=destroy", "=copy", "=sink", "=trace", "=deepcopy"]
+    "=wasMoved", "=destroy", "=copy", "=sink", "=trace", "=deepcopy"]
 
 proc `$`*(s: PSym): string =
   if s != nil:

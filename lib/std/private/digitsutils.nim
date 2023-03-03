@@ -101,9 +101,7 @@ proc addInt*(result: var string; x: int64) {.enforceNoRaises.} =
         num = cast[uint64](x)
       else:
         num = uint64(-x)
-      let base = result.len
-      setLen(result, base + 1)
-      result[base] = '-'
+      result.add '-'
     else:
       num = uint64(x)
     addInt(result, num)

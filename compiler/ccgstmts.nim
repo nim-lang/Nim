@@ -1081,7 +1081,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
           let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
           if optTinyRtti in p.config.globalOptions:
             let checkFor = $getObjDepth(typeNode.typ)
-            appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor, $genDisplayElem(MD5Digest(hashType(typeNode.typ)))])
+            appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor, $genDisplayElem(MD5Digest(hashType(typeNode.typ, p.config)))])
           else:
             let checkFor = genTypeInfoV1(p.module, typeNode.typ, typeNode.info)
             appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
@@ -1300,7 +1300,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
         let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
         if optTinyRtti in p.config.globalOptions:
           let checkFor = $getObjDepth(t[i][j].typ)
-          appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor,  $genDisplayElem(MD5Digest(hashType(t[i][j].typ)))])
+          appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor,  $genDisplayElem(MD5Digest(hashType(t[i][j].typ, p.config)))])
         else:
           let checkFor = genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
           appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
@@ -1445,7 +1445,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
         let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
         if optTinyRtti in p.config.globalOptions:
           let checkFor = $getObjDepth(t[i][j].typ)
-          appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor,  $genDisplayElem(MD5Digest(hashType(t[i][j].typ)))])
+          appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor,  $genDisplayElem(MD5Digest(hashType(t[i][j].typ, p.config)))])
         else:
           let checkFor = genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
           appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])

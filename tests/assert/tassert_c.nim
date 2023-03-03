@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim $target $options -d:nimPreviewSlimSystem --excessiveStackTrace:off $file"
+  matrix: "-d:nimPreviewSlimSystem --stackTrace:on --excessiveStackTrace:off"
   output: '''true'''
 """
 import std/assertions

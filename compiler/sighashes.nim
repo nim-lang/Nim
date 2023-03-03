@@ -9,9 +9,11 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, tables, ropes, md5, modulegraphs
+import ast, tables, ropes, md5, modulegraphs, options, msgs, packages, pathutils
 from hashes import Hash
 import types
+
+import std/os
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -42,8 +44,7 @@ type
     CoDistinct
     CoHashTypeInsideNode
 
-proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag])
-
+proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: ConfigRef)
 proc hashSym(c: var MD5Context, s: PSym) =
   if sfAnon in s.flags or s.kind == skGenericParam:
     c &= ":anon"
@@ -54,20 +55,21 @@ proc hashSym(c: var MD5Context, s: PSym) =
       c &= "."
       it = it.owner
 
-proc hashTypeSym(c: var MD5Context, s: PSym) =
+proc hashTypeSym(c: var MD5Context, s: PSym; conf: ConfigRef) =
   if sfAnon in s.flags or s.kind == skGenericParam:
     c &= ":anon"
   else:
     var it = s
+    c &= customPath(conf.toFullPath(s.info))
     while it != nil:
       if sfFromGeneric in it.flags and it.kind in routineKinds and
           it.typ != nil:
-        hashType c, it.typ, {CoProc}
+        hashType c, it.typ, {CoProc}, conf
       c &= it.name.s
       c &= "."
       it = it.owner
 
-proc hashTree(c: var MD5Context, n: PNode; flags: set[ConsiderFlag]) =
+proc hashTree(c: var MD5Context, n: PNode; flags: set[ConsiderFlag]; conf: ConfigRef) =
   if n == nil:
     c &= "\255"
     return
@@ -82,7 +84,7 @@ proc hashTree(c: var MD5Context, n: PNode; flags: set[ConsiderFlag]) =
   of nkSym:
     hashSym(c, n.sym)
     if CoHashTypeInsideNode in flags and n.sym.typ != nil:
-      hashType(c, n.sym.typ, flags)
+      hashType(c, n.sym.typ, flags, conf)
   of nkCharLit..nkUInt64Lit:
     let v = n.intVal
     lowlevel v
@@ -92,9 +94,9 @@ proc hashTree(c: var MD5Context, n: PNode; flags: set[ConsiderFlag]) =
   of nkStrLit..nkTripleStrLit:
     c &= n.strVal
   else:
-    for i in 0..<n.len: hashTree(c, n[i], flags)
+    for i in 0..<n.len: hashTree(c, n[i], flags, conf)
 
-proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
+proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: ConfigRef) =
   if t == nil:
     c &= "\254"
     return
@@ -102,14 +104,14 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   case t.kind
   of tyGenericInvocation:
     for i in 0..<t.len:
-      c.hashType t[i], flags
+      c.hashType t[i], flags, conf
   of tyDistinct:
     if CoDistinct in flags:
       if t.sym != nil: c.hashSym(t.sym)
       if t.sym == nil or tfFromGeneric in t.flags:
-        c.hashType t.lastSon, flags
+        c.hashType t.lastSon, flags, conf
     elif CoType in flags or t.sym == nil:
-      c.hashType t.lastSon, flags
+      c.hashType t.lastSon, flags, conf
     else:
       c.hashSym(t.sym)
   of tyGenericInst:
@@ -119,15 +121,15 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       # value for each instantiation, so we hash the generic parameters here:
       let normalizedType = t.skipGenericAlias
       for i in 0..<normalizedType.len - 1:
-        c.hashType t[i], flags
+        c.hashType t[i], flags, conf
     else:
-      c.hashType t.lastSon, flags
+      c.hashType t.lastSon, flags, conf
   of tyAlias, tySink, tyUserTypeClasses, tyInferred:
-    c.hashType t.lastSon, flags
+    c.hashType t.lastSon, flags, conf
   of tyOwned:
     if CoConsiderOwned in flags:
       c &= char(t.kind)
-    c.hashType t.lastSon, flags
+    c.hashType t.lastSon, flags, conf
   of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
     # produced instead of ``NI``:
@@ -141,7 +143,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       t.typeInst = nil
       assert inst.kind == tyGenericInst
       for i in 0..<inst.len - 1:
-        c.hashType inst[i], flags
+        c.hashType inst[i], flags, conf
       t.typeInst = inst
       return
     c &= char(t.kind)
@@ -153,7 +155,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         # The user has set a specific name for this type
         c &= t.sym.loc.r
       elif CoOwnerSig in flags:
-        c.hashTypeSym(t.sym)
+        c.hashTypeSym(t.sym, conf)
       else:
         c.hashSym(t.sym)
 
@@ -172,7 +174,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
           # xxx instead, use a hash table to indicate we've already visited a type, which
           # would also be more efficient.
           symWithFlags.flags.excl {sfAnon, sfGenSym}
-          hashTree(c, t.n, flags + {CoHashTypeInsideNode})
+          hashTree(c, t.n, flags + {CoHashTypeInsideNode}, conf)
           symWithFlags.flags = oldFlags
         else:
           # The object has no fields: we _must_ add something here in order to
@@ -182,15 +184,15 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     else:
       c &= t.id
     if t.len > 0 and t[0] != nil:
-      hashType c, t[0], flags
+      hashType c, t[0], flags, conf
   of tyRef, tyPtr, tyGenericBody, tyVar:
     c &= char(t.kind)
     if t.sons.len > 0:
-      c.hashType t.lastSon, flags
+      c.hashType t.lastSon, flags, conf
     if tfVarIsPtr in t.flags: c &= ".varisptr"
   of tyFromExpr:
     c &= char(t.kind)
-    c.hashTree(t.n, {})
+    c.hashTree(t.n, {}, conf)
   of tyTuple:
     c &= char(t.kind)
     if t.n != nil and CoType notin flags:
@@ -199,19 +201,19 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         assert(t.n[i].kind == nkSym)
         c &= t.n[i].sym.name.s
         c &= ':'
-        c.hashType(t[i], flags+{CoIgnoreRange})
+        c.hashType(t[i], flags+{CoIgnoreRange}, conf)
         c &= ','
     else:
-      for i in 0..<t.len: c.hashType t[i], flags+{CoIgnoreRange}
+      for i in 0..<t.len: c.hashType t[i], flags+{CoIgnoreRange}, conf
   of tyRange:
     if CoIgnoreRange notin flags:
       c &= char(t.kind)
-      c.hashTree(t.n, {})
-    c.hashType(t[0], flags)
+      c.hashTree(t.n, {}, conf)
+    c.hashType(t[0], flags, conf)
   of tyStatic:
     c &= char(t.kind)
-    c.hashTree(t.n, {})
-    c.hashType(t[0], flags)
+    c.hashTree(t.n, {}, conf)
+    c.hashType(t[0], flags, conf)
   of tyProc:
     c &= char(t.kind)
     c &= (if tfIterator in t.flags: "iterator " else: "proc ")
@@ -221,11 +223,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         let param = params[i].sym
         c &= param.name.s
         c &= ':'
-        c.hashType(param.typ, flags)
+        c.hashType(param.typ, flags, conf)
         c &= ','
-      c.hashType(t[0], flags)
+      c.hashType(t[0], flags, conf)
     else:
-      for i in 0..<t.len: c.hashType(t[i], flags)
+      for i in 0..<t.len: c.hashType(t[i], flags, conf)
     c &= char(t.callConv)
     # purity of functions doesn't have to affect the mangling (which is in fact
     # problematic for HCR - someone could have cached a pointer to another
@@ -237,10 +239,10 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     if tfVarargs in t.flags: c &= ".varargs"
   of tyArray:
     c &= char(t.kind)
-    for i in 0..<t.len: c.hashType(t[i], flags-{CoIgnoreRange})
+    for i in 0..<t.len: c.hashType(t[i], flags-{CoIgnoreRange}, conf)
   else:
     c &= char(t.kind)
-    for i in 0..<t.len: c.hashType(t[i], flags)
+    for i in 0..<t.len: c.hashType(t[i], flags, conf)
   if tfNotNil in t.flags and CoType notin flags: c &= "not nil"
 
 when defined(debugSigHashes):
@@ -257,19 +259,19 @@ when defined(debugSigHashes):
   #  select hash, type from sighashes where hash in
   # (select hash from sighashes group by hash having count(*) > 1) order by hash;
 
-proc hashType*(t: PType; flags: set[ConsiderFlag] = {CoType}): SigHash =
+proc hashType*(t: PType; conf: ConfigRef; flags: set[ConsiderFlag] = {CoType}): SigHash =
   var c: MD5Context
   md5Init c
-  hashType c, t, flags+{CoOwnerSig}
+  hashType c, t, flags+{CoOwnerSig}, conf
   md5Final c, result.MD5Digest
   when defined(debugSigHashes):
     db.exec(sql"INSERT OR IGNORE INTO sighashes(type, hash) VALUES (?, ?)",
             typeToString(t), $result)
 
-proc hashProc*(s: PSym): SigHash =
+proc hashProc*(s: PSym; conf: ConfigRef): SigHash =
   var c: MD5Context
   md5Init c
-  hashType c, s.typ, {CoProc}
+  hashType c, s.typ, {CoProc}, conf
 
   var m = s
   while m.kind != skModule: m = m.owner
@@ -315,9 +317,9 @@ proc hashOwner*(s: PSym): SigHash =
 
   md5Final c, result.MD5Digest
 
-proc sigHash*(s: PSym): SigHash =
+proc sigHash*(s: PSym; conf: ConfigRef): SigHash =
   if s.kind in routineKinds and s.typ != nil:
-    result = hashProc(s)
+    result = hashProc(s, conf)
   else:
     result = hashNonProc(s)
 
@@ -378,7 +380,7 @@ proc symBodyDigest*(graph: ModuleGraph, sym: PSym): SigHash =
 
   var c: MD5Context
   md5Init(c)
-  c.hashType(sym.typ, {CoProc})
+  c.hashType(sym.typ, {CoProc}, graph.config)
   c &= char(sym.kind)
   c.md5Final(result.MD5Digest)
   graph.symBodyHashes[sym.id] = result # protect from recursion in the body
@@ -391,12 +393,12 @@ proc symBodyDigest*(graph: ModuleGraph, sym: PSym): SigHash =
     graph.symBodyHashes[sym.id] = result
 
 proc idOrSig*(s: PSym, currentModule: string,
-              sigCollisions: var CountTable[SigHash]): Rope =
+              sigCollisions: var CountTable[SigHash]; conf: ConfigRef): Rope =
   if s.kind in routineKinds and s.typ != nil:
     # signatures for exported routines are reliable enough to
     # produce a unique name and this means produced C++ is more stable regarding
     # Nim changes:
-    let sig = hashProc(s)
+    let sig = hashProc(s, conf)
     result = rope($sig)
     #let m = if s.typ.callConv != ccInline: findPendingModule(m, s) else: m
     let counter = sigCollisions.getOrDefault(sig)

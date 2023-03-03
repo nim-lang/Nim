@@ -10,10 +10,10 @@
 ## This file implements the new evaluation engine for Nim code.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-
+import semmacrosanity
 import
   std/[strutils, tables, parseutils],
-  msgs, vmdef, vmgen, nimsets, types, passes,
+  msgs, vmdef, vmgen, nimsets, types,
   parser, vmdeps, idents, trees, renderer, options, transf,
   gorgeimpl, lineinfos, btrees, macrocacheimpl,
   modulegraphs, sighashes, int128, vmprofiler
@@ -1408,6 +1408,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         for i in 1..rc-1:
           let node = regs[rb+i].regToNode
           node.info = c.debug[pc]
+          if prc.typ[i].kind notin {tyTyped, tyUntyped}:
+            node.annotateType(prc.typ[i], c.config)
+
           macroCall.add(node)
         var a = evalTemplate(macroCall, prc, genSymOwner, c.config, c.cache, c.templInstCounter, c.idgen)
         if a.kind == nkStmtList and a.len == 1: a = a[0]
@@ -1852,7 +1855,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if regs[rb].node.kind != nkSym:
         stackTrace(c, tos, pc, "node is not a symbol")
       else:
-        regs[ra].node.strVal = $sigHash(regs[rb].node.sym)
+        regs[ra].node.strVal = $sigHash(regs[rb].node.sym, c.config)
     of opcSlurp:
       decodeB(rkNode)
       createStr regs[ra]
@@ -2306,7 +2309,7 @@ proc setupGlobalCtx*(module: PSym; graph: ModuleGraph; idgen: IdGenerator) =
   else:
     refresh(PCtx graph.vm, module, idgen)
 
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
+proc setupEvalGen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
   #var c = newEvalContext(module, emRepl)
   #c.features = {allowCast, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())
@@ -2315,7 +2318,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext 
   setupGlobalCtx(module, graph, idgen)
   result = PCtx graph.vm
 
-proc myProcess(c: PPassContext, n: PNode): PNode =
+proc interpreterCode*(c: PPassContext, n: PNode): PNode =
   let c = PCtx(c)
   # don't eval errornous code:
   if c.oldErrorCount == c.config.errorCounter:
@@ -2324,11 +2327,6 @@ proc myProcess(c: PPassContext, n: PNode): PNode =
   else:
     result = n
   c.oldErrorCount = c.config.errorCounter
-
-proc myClose(graph: ModuleGraph; c: PPassContext, n: PNode): PNode =
-  result = myProcess(c, n)
-
-const evalPass* = makePass(myOpen, myProcess, myClose)
 
 proc evalConstExprAux(module: PSym; idgen: IdGenerator;
                       g: ModuleGraph; prc: PSym, n: PNode,
