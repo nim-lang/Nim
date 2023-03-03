@@ -76,7 +76,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                                   best, alt, o, diagnosticsFlag)
   if len(syms) == 0:
     return
-  var sym {.cursor.} = syms[0].s
+  var sym = syms[0].s
   var scope = syms[0].scope
 
   var nextSymIndex = 1
