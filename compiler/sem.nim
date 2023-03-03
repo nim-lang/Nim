@@ -13,7 +13,7 @@ import
   ast, strutils, options, astalgo, trees,
   wordrecg, ropes, msgs, idents, renderer, types, platform, math,
   magicsys, nversion, nimsets, semfold, modulepaths, importer,
-  procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
+  procfind, lookups, pragmas, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, strtabs, int128,
@@ -666,38 +666,37 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
         n.add prc.ast
   c.lastGenericIdx = c.generics.len
 
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
-  var c = newContext(graph, module)
-  c.idgen = idgen
-  c.enforceVoidContext = newType(tyTyped, nextTypeId(idgen), nil)
-  c.voidType = newType(tyVoid, nextTypeId(idgen), nil)
+proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PContext {.nosinks.} =
+  result = newContext(graph, module)
+  result.idgen = idgen
+  result.enforceVoidContext = newType(tyTyped, nextTypeId(idgen), nil)
+  result.voidType = newType(tyVoid, nextTypeId(idgen), nil)
 
-  if c.p != nil: internalError(graph.config, module.info, "sem.myOpen")
-  c.semConstExpr = semConstExpr
-  c.semExpr = semExpr
-  c.semTryExpr = tryExpr
-  c.semTryConstExpr = tryConstExpr
-  c.computeRequiresInit = computeRequiresInit
-  c.semOperand = semOperand
-  c.semConstBoolExpr = semConstBoolExpr
-  c.semOverloadedCall = semOverloadedCall
-  c.semInferredLambda = semInferredLambda
-  c.semGenerateInstance = generateInstance
-  c.semTypeNode = semTypeNode
-  c.instTypeBoundOp = sigmatch.instTypeBoundOp
-  c.hasUnresolvedArgs = hasUnresolvedArgs
-  c.templInstCounter = new int
+  if result.p != nil: internalError(graph.config, module.info, "sem.preparePContext")
+  result.semConstExpr = semConstExpr
+  result.semExpr = semExpr
+  result.semTryExpr = tryExpr
+  result.semTryConstExpr = tryConstExpr
+  result.computeRequiresInit = computeRequiresInit
+  result.semOperand = semOperand
+  result.semConstBoolExpr = semConstBoolExpr
+  result.semOverloadedCall = semOverloadedCall
+  result.semInferredLambda = semInferredLambda
+  result.semGenerateInstance = generateInstance
+  result.semTypeNode = semTypeNode
+  result.instTypeBoundOp = sigmatch.instTypeBoundOp
+  result.hasUnresolvedArgs = hasUnresolvedArgs
+  result.templInstCounter = new int
 
-  pushProcCon(c, module)
-  pushOwner(c, c.module)
+  pushProcCon(result, module)
+  pushOwner(result, result.module)
 
-  c.moduleScope = openScope(c)
-  c.moduleScope.addSym(module) # a module knows itself
+  result.moduleScope = openScope(result)
+  result.moduleScope.addSym(module) # a module knows itself
 
   if sfSystemModule in module.flags:
     graph.systemModule = module
-  c.topLevelScope = openScope(c)
-  result = c
+  result.topLevelScope = openScope(result)
 
 proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
   if g.systemModule == nil: return false
@@ -771,8 +770,7 @@ proc recoverContext(c: PContext) =
   while getCurrOwner(c).kind != skModule: popOwner(c)
   while c.p != nil and c.p.owner.kind != skModule: c.p = c.p.next
 
-proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
-  var c = PContext(context)
+proc semWithPContext*(c: PContext, n: PNode): PNode {.nosinks.} =
   # no need for an expensive 'try' if we stop after the first error anyway:
   if c.config.errorMax <= 1:
     result = semStmtAndGenerateGenerics(c, n)
@@ -793,13 +791,13 @@ proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
   storeRodNode(c, result)
 
+
 proc reportUnusedModules(c: PContext) =
   for i in 0..high(c.unusedImports):
     if sfUsed notin c.unusedImports[i][0].flags:
       message(c.config, c.unusedImports[i][1], warnUnusedImportX, c.unusedImports[i][0].name.s)
 
-proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
-  var c = PContext(context)
+proc closePContext*(graph: ModuleGraph; c: PContext, n: PNode): PNode =
   if c.config.cmd == cmdIdeTools and not c.suggestionsMade:
     suggestSentinel(c)
   closeScope(c)         # close module's scope
@@ -814,6 +812,3 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   popOwner(c)
   popProcCon(c)
   sealRodFile(c)
-
-const semPass* = makePass(myOpen, myProcess, myClose,
-                          isFrontend = true)

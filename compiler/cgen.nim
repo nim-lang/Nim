@@ -12,10 +12,12 @@
 import
   ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
   nversion, nimsets, msgs, bitsets, idents, types,
-  ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
+  ccgutils, os, ropes, math, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
   injectdestructors, astmsgs, modulepaths, backendpragmas
+
+import pipelineutils
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -1938,8 +1940,7 @@ template injectG() {.dirty.} =
     graph.backend = newModuleList(graph)
   let g = BModuleList(graph.backend)
 
-
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
+proc setupCgen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
   injectG()
   result = newModule(g, module, graph.config)
   result.idgen = idgen
@@ -2007,7 +2008,7 @@ proc addHcrInitGuards(p: BProc, n: PNode, inInitGuard: var bool) =
 
 proc genTopLevelStmt*(m: BModule; n: PNode) =
   ## Also called from `ic/cbackend.nim`.
-  if passes.skipCodegen(m.config, n): return
+  if pipelineutils.skipCodegen(m.config, n): return
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
@@ -2019,12 +2020,6 @@ proc genTopLevelStmt*(m: BModule; n: PNode) =
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
     genProcBody(m.initProc, transformedN)
-
-proc myProcess(b: PPassContext, n: PNode): PNode =
-  result = n
-  if b != nil:
-    var m = BModule(b)
-    genTopLevelStmt(m, n)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:
@@ -2102,7 +2097,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
     if {optGenStaticLib, optGenDynLib, optNoMain} * m.config.globalOptions == {}:
       for i in countdown(high(graph.globalDestructors), 0):
         n.add graph.globalDestructors[i]
-  if passes.skipCodegen(m.config, n): return
+  if pipelineutils.skipCodegen(m.config, n): return
   if moduleHasChanged(graph, m.module):
     # if the module is cached, we don't regenerate the main proc
     # nor the dispatchers? But if the dispatchers changed?
@@ -2143,12 +2138,6 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   let mm = m
   m.g.modulesClosed.add mm
 
-
-proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
-  result = n
-  if b == nil: return
-  finalCodegenActions(graph, BModule(b), n)
-
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're given
   # a second pass here
@@ -2175,5 +2164,3 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
     m.writeModule(pending=true)
   writeMapping(config, g.mapping)
   if g.generatedHeader != nil: writeHeader(g.generatedHeader)
-
-const cgenPass* = makePass(myOpen, myProcess, myClose)
