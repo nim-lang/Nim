@@ -64,35 +64,27 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        errors: var CandidateErrors,
                        diagnosticsFlag: bool,
                        errorsEnabled: bool, flags: TExprFlags) =
-  var o: TOverloadIter
-  var sym = initOverloadIter(o, c, headSymbol)
-  var scope = o.lastOverloadScope
   # Thanks to the lazy semchecking for operands, we need to check whether
   # 'initCandidate' modifies the symbol table (via semExpr).
   # This can occur in cases like 'init(a, 1, (var b = new(Type2); b))'
-  let counterInitial = c.currentScope.symbols.counter
-  var syms: seq[tuple[s: PSym, scope: int]]
-  var noSyms = true
-  var nextSymIndex = 0
-  while sym != nil:
-    if sym.kind in filter:
-      # Initialise 'best' and 'alt' with the first available symbol
-      initCandidate(c, best, sym, initialBinding, scope, diagnosticsFlag)
-      initCandidate(c, alt, sym, initialBinding, scope, diagnosticsFlag)
-      best.state = csNoMatch
-      break
-    else:
-      sym = nextOverloadIter(o, c, headSymbol)
-      scope = o.lastOverloadScope
+  var counterInitial = c.currentScope.symbols.counter
+
+  var o: TOverloadIter
+  # https://github.com/nim-lang/Nim/issues/21272
+  # prevent mutation during iteration
+  var syms = initCandidateSymbols(c, headSymbol, initialBinding, filter,
+                                  best, alt, o, diagnosticsFlag)
+  if len(syms) == 0:
+    return
+  var sym {.cursor.} = syms[0].s
+  var scope = syms[0].scope
+
+  var nextSymIndex = 1
   var z: TCandidate
-  while sym != nil:
-    if sym.kind notin filter:
-      sym = nextOverloadIter(o, c, headSymbol)
-      scope = o.lastOverloadScope
-      continue
+  while true:
     determineType(c, sym)
     initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
-    if c.currentScope.symbols.counter == counterInitial or syms.len != 0:
+    if c.currentScope.symbols.counter == counterInitial:
       matches(c, n, orig, z)
       if z.state == csMatch:
         # little hack so that iterators are preferred over everything else:
@@ -117,17 +109,19 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       # before any further candidate init and compare. SLOW, but rare case.
       syms = initCandidateSymbols(c, headSymbol, initialBinding, filter,
                                   best, alt, o, diagnosticsFlag)
-      noSyms = false
-    if noSyms:
-      sym = nextOverloadIter(o, c, headSymbol)
-      scope = o.lastOverloadScope
-    elif nextSymIndex < syms.len:
-      # rare case: retrieve the next pre-calculated symbol
-      sym = syms[nextSymIndex].s
-      scope = syms[nextSymIndex].scope
-      nextSymIndex += 1
-    else:
+      # reset counter because syms may be in a new order
+      counterInitial = c.currentScope.symbols.counter
+      nextSymIndex = 0
+      # just in case, should be impossible though
+      if syms.len == 0:
+        break
+    
+    if nextSymIndex > high(syms):
       break
+    sym = syms[nextSymIndex].s
+    scope = syms[nextSymIndex].scope
+    nextSymIndex += 1
+
 
 proc effectProblem(f, a: PType; result: var string; c: PContext) =
   if f.kind == tyProc and a.kind == tyProc:
