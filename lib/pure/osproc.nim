@@ -220,6 +220,10 @@ proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
   ##
   ## On posix, if the process has exited because of a signal, 128 + signal
   ## number will be returned.
+  ##
+  ## .. warning:: When working with `timeout` parameters, remember that the value is 
+  ##   typically expressed in milliseconds, and ensure that the correct unit of time
+  ##   is used to avoid unexpected behavior.
 
 proc peekExitCode*(p: Process): int {.rtl, extern: "nosp$1", raises: [OSError], tags: [].}
   ## Return `-1` if the process is still running. Otherwise the process' exit code.
