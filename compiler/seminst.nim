@@ -314,7 +314,7 @@ proc fillMixinScope(c: PContext) =
     p = p.next
 
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
-                      info: TLineInfo): PSym {.nosinks.} =
+                      info: TLineInfo): PSym =
   ## Generates a new instance of a generic procedure.
   ## The `pt` parameter is a type-unsafe mapping table used to link generic
   ## parameters to their concrete types within the generic instance.

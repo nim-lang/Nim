@@ -666,7 +666,7 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
         n.add prc.ast
   c.lastGenericIdx = c.generics.len
 
-proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PContext {.nosinks.} =
+proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PContext =
   result = newContext(graph, module)
   result.idgen = idgen
   result.enforceVoidContext = newType(tyTyped, nextTypeId(idgen), nil)
@@ -770,7 +770,7 @@ proc recoverContext(c: PContext) =
   while getCurrOwner(c).kind != skModule: popOwner(c)
   while c.p != nil and c.p.owner.kind != skModule: c.p = c.p.next
 
-proc semWithPContext*(c: PContext, n: PNode): PNode {.nosinks.} =
+proc semWithPContext*(c: PContext, n: PNode): PNode =
   # no need for an expensive 'try' if we stop after the first error anyway:
   if c.config.errorMax <= 1:
     result = semStmtAndGenerateGenerics(c, n)
