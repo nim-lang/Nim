@@ -37,25 +37,6 @@ proc sameMethodDispatcher(a, b: PSym): bool =
 
 proc determineType(c: PContext, s: PSym)
 
-proc initCandidateSymbols(c: PContext, headSymbol: PNode,
-                          initialBinding: PNode,
-                          filter: TSymKinds,
-                          best, alt: var TCandidate,
-                          o: var TOverloadIter,
-                          diagnostics: bool): seq[tuple[s: PSym, scope: int]] =
-  result = @[]
-  var symx = initOverloadIter(o, c, headSymbol)
-  while symx != nil:
-    if symx.kind in filter:
-      result.add((symx, o.lastOverloadScope))
-    symx = nextOverloadIter(o, c, headSymbol)
-  if result.len > 0:
-    initCandidate(c, best, result[0].s, initialBinding,
-                  result[0].scope, diagnostics)
-    initCandidate(c, alt, result[0].s, initialBinding,
-                  result[0].scope, diagnostics)
-    best.state = csNoMatch
-
 proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        n, orig: PNode,
                        initialBinding: PNode,
@@ -64,28 +45,53 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        errors: var CandidateErrors,
                        diagnosticsFlag: bool,
                        errorsEnabled: bool, flags: TExprFlags) =
-  # Thanks to the lazy semchecking for operands, we need to check whether
-  # 'initCandidate' modifies the symbol table (via semExpr).
-  # This can occur in cases like 'init(a, 1, (var b = new(Type2); b))'
-  var counterInitial = c.currentScope.symbols.counter
+  # determineType and matches both cause semchecking, matches is dangerous
+  # keep track of syms so we can restart the iterator if matches adds more
+  var symbolCounter: int
 
   var o: TOverloadIter
-  # https://github.com/nim-lang/Nim/issues/21272
-  # prevent mutation during iteration
-  var syms = initCandidateSymbols(c, headSymbol, initialBinding, filter,
-                                  best, alt, o, diagnosticsFlag)
-  if len(syms) == 0:
-    return
-  var sym = syms[0].s
-  var scope = syms[0].scope
+  var sym: PSym
+  var scope: int
 
-  var nextSymIndex = 1
+  # advance until the next overload that matches our filter
+  template advanceSym =
+    sym = nextOverloadIter(o, c, headSymbol)
+    scope = o.lastOverloadScope
+    # skip all symbols that aren't relevant
+    while sym != nil and sym.kind notin filter:
+      sym = nextOverloadIter(o, c, headSymbol)
+      scope = o.lastOverloadScope
+
+  # prepares the iterator, gets first symbol and sets up best/alt
+  template restartSearch =
+    symbolCounter = c.currentScope.symbols.counter
+    sym = initOverloadIter(o, c, headSymbol)
+    scope = o.lastOverloadScope
+    
+    # advance until the first relevant overload
+    if sym != nil and sym.kind notin filter:
+      advanceSym
+
+    if sym == nil:
+      # we didn't find any symbols that fit our criteria
+      return
+
+    # sym at this point is the first available overload
+    # set both best and alt matches using it
+    initCandidate(c, best, sym, initialBinding, scope, diagnosticsFlag)
+    initCandidate(c, alt, sym, initialBinding, scope, diagnosticsFlag)
+  restartSearch
+  
   var z: TCandidate
-  while true:
+  while sym != nil:
     determineType(c, sym)
     initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
-    if c.currentScope.symbols.counter == counterInitial:
-      matches(c, n, orig, z)
+
+    # danger
+    matches(c, n, orig, z)
+
+    # did we find new symbols?
+    if c.currentScope.symbols.counter == symbolCounter:
       if z.state == csMatch:
         # little hack so that iterators are preferred over everything else:
         if sym.kind == skIterator:
@@ -105,22 +111,11 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           firstMismatch: z.firstMismatch,
           diagnostics: z.diagnostics))
     else:
-      # Symbol table has been modified. Restart and pre-calculate all syms
-      # before any further candidate init and compare. SLOW, but rare case.
-      syms = initCandidateSymbols(c, headSymbol, initialBinding, filter,
-                                  best, alt, o, diagnosticsFlag)
-      # reset counter because syms may be in a new order
-      counterInitial = c.currentScope.symbols.counter
-      nextSymIndex = 0
-      # just in case, should be impossible though
-      if syms.len == 0:
-        break
-    
-    if nextSymIndex > high(syms):
-      break
-    sym = syms[nextSymIndex].s
-    scope = syms[nextSymIndex].scope
-    nextSymIndex += 1
+      # symbol table grew which might have triggered a rehash.
+      # restart our search so we don't miss anything
+      restartSearch
+    # we are done with this overload, onto nexto ne
+    advanceSym
 
 
 proc effectProblem(f, a: PType; result: var string; c: PContext) =
