@@ -80,6 +80,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     # set both best and alt matches using it
     initCandidate(c, best, sym, initialBinding, scope, diagnosticsFlag)
     initCandidate(c, alt, sym, initialBinding, scope, diagnosticsFlag)
+    best.state = csNoMatch
   restartSearch
   
   var z: TCandidate
@@ -87,7 +88,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     determineType(c, sym)
     initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
 
-    # danger
+    # danger, this one might modify symbol table
     matches(c, n, orig, z)
 
     # did we find new symbols?
@@ -110,12 +111,13 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           sym: sym,
           firstMismatch: z.firstMismatch,
           diagnostics: z.diagnostics))
+      # we are done with this overload, onto next one
+      advanceSym
     else:
       # symbol table grew which might have triggered a rehash.
       # restart our search so we don't miss anything
+      # doesn't advance because we wanna have it checked above first
       restartSearch
-    # we are done with this overload, onto nexto ne
-    advanceSym
 
 
 proc effectProblem(f, a: PType; result: var string; c: PContext) =
