@@ -55,6 +55,8 @@ type
     gfIsParam # do not deepcopy parameters, they are immutable
   TGenFlags = set[TGenFlag]
 
+const sfStaticBlock = sfMangleCpp
+
 proc debugInfo(c: PCtx; info: TLineInfo): string =
   result = toFileLineCol(c.config, info)
 
@@ -1500,6 +1502,7 @@ proc checkCanEval(c: PCtx; n: PNode) =
   # proc foo() = var x ...
   let s = n.sym
   if {sfCompileTime, sfGlobal} <= s.flags: return
+  if sfStaticBlock in s.flags: return
   if compiletimeFFI in c.config.features and s.importcCondVar: return
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and
       not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
@@ -1892,7 +1895,8 @@ proc genVarSection(c: PCtx; n: PNode) =
       c.gen(lowerTupleUnpacking(c.graph, a, c.idgen, c.getOwner))
     elif a[0].kind == nkSym:
       let s = a[0].sym
-      checkCanEval(c, a[0])
+      # checkCanEval(c, a[0])
+      a[0].sym.flags.incl sfStaticBlock
       if s.isGlobal:
         if s.position == 0:
           if importcCond(c, s): c.importcSym(a.info, s)
