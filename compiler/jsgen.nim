@@ -31,9 +31,11 @@ implements the required case distinction.
 import
   ast, trees, magicsys, options,
   nversion, msgs, idents, types,
-  ropes, passes, ccgutils, wordrecg, renderer,
+  ropes, ccgutils, wordrecg, renderer,
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
   transf, injectdestructors, sourcemap, astmsgs, backendpragmas
+
+import pipelineutils
 
 import json, sets, math, tables, intsets
 import strutils except addf
@@ -2830,11 +2832,11 @@ proc genModule(p: PProc, n: PNode) =
   if optStackTrace in p.options:
     p.body.add(frameDestroy(p))
 
-proc myProcess(b: PPassContext, n: PNode): PNode =
+proc processJSCodeGen*(b: PPassContext, n: PNode): PNode =
   ## Generate JS code for a node.
   result = n
   let m = BModule(b)
-  if passes.skipCodegen(m.config, n): return n
+  if pipelineutils.skipCodegen(m.config, n): return n
   if m.module == nil: internalError(m.config, n.info, "myProcess")
   let globals = PGlobals(m.graph.backend)
   var p = newInitProc(globals, m)
@@ -2869,7 +2871,7 @@ proc getClassName(t: PType): Rope =
   if s.loc.r != "": result = s.loc.r
   else: result = rope(s.name.s)
 
-proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
+proc finalJSCodeGen*(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   ## Finalize JS code generation of a Nim module.
   ## Param `n` may contain nodes returned from the last module close call.
   var m = BModule(b)
@@ -2879,14 +2881,14 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     for i in countdown(high(graph.globalDestructors), 0):
       n.add graph.globalDestructors[i]
   # Process any nodes left over from the last call to `myClose`.
-  result = myProcess(b, n)
+  result = processJSCodeGen(b, n)
   # Some codegen is different (such as no stacktraces; see `initProcOptions`)
   # when `std/system` is being processed.
   if sfSystemModule in m.module.flags:
     PGlobals(graph.backend).inSystem = false
   # Check if codegen should continue before any files are generated.
   # It may bail early is if too many errors have been raised.
-  if passes.skipCodegen(m.config, n): return n
+  if pipelineutils.skipCodegen(m.config, n): return n
   # Nim modules are compiled into a single JS file.
   # If this is the main module, then this is the final call to `myClose`.
   if sfMainModule in m.module.flags:
@@ -2904,9 +2906,6 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       if not writeRope(code, outFile):
         rawMessage(m.config, errCannotOpenFile, outFile.string)
 
-proc myOpen(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
-  ## Create the JS backend pass context `BModule` for a Nim module.
+proc setupJSgen*(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
   result = newModule(graph, s)
   result.idgen = idgen
-
-const JSgenPass* = makePass(myOpen, myProcess, myClose)

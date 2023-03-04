@@ -14,7 +14,7 @@ else
 fi
 
 # Find out where the pretty printer Python module is
-GDB_PYTHON_MODULE_PATH="$NIM_SYSROOT/tools/nim-gdb.py"
+GDB_PYTHON_MODULE_PATH="$NIM_SYSROOT/tools/debug/nim-gdb.py"
 
 # Run GDB with the additional arguments that load the pretty printers
 # Set the environment variable `NIM_GDB` to overwrite the call to a
