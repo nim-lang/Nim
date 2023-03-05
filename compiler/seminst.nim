@@ -131,7 +131,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     if sfBorrow notin orig.flags: 
       # We do not want to generate a body for generic borrowed procs.
       # As body is a sym to the borrowed proc.
-      b = semProcBody(c, b)
+      b = semProcBody(c, b, result.typ[0])
     result.ast[bodyPos] = hloBody(c, b)
     excl(result.flags, sfForward)
     trackProc(c, result, result.ast[bodyPos])

@@ -255,3 +255,10 @@ block: # regression #20807
   test: fail()
   doAssert not (compiles do:
     let x: seq[int] = `@`[string]([]))
+
+block: # bug #21377
+  proc b[T](v: T): seq[int] =
+    let x = 0
+    @[]
+
+  doAssert b(0) == @[]
