@@ -260,7 +260,8 @@ proc genCLineDir(r: var Rope, filename: string, line: int; conf: ConfigRef) =
         [rope(makeSingleLineCString(filename)), rope(line)])
 
 proc genCLineDir(r: var Rope, info: TLineInfo; conf: ConfigRef) =
-  genCLineDir(r, toFullPath(conf, info), info.safeLineNm, conf)
+  if optLineDir in conf.options:
+    genCLineDir(r, toFullPath(conf, info), info.safeLineNm, conf)
 
 proc freshLineInfo(p: BProc; info: TLineInfo): bool =
   if p.lastLineInfo.line != info.line or
@@ -274,7 +275,7 @@ proc genLineDir(p: BProc, t: PNode) =
 
   if optEmbedOrigSrc in p.config.globalOptions:
     p.s(cpsStmts).add(~"//" & sourceLine(p.config, t.info) & "\L")
-  genCLineDir(p.s(cpsStmts), toFullPath(p.config, t.info), line, p.config)
+  genCLineDir(p.s(cpsStmts), t.info, p.config)
   if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
     if freshLineInfo(p, t.info):
@@ -531,6 +532,9 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
     result.addf("NIM_ALIGN($1) ", [rope(s.alignment)])
+
+  genCLineDir(result, n.info, p.config)
+
   result.add getTypeDesc(p.module, s.typ, skVar)
   if s.constraint.isNil:
     if sfRegister in s.flags: result.add(" register")
