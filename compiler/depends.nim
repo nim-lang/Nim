@@ -100,7 +100,7 @@ proc generateDot*(graph: ModuleGraph; project: AbsoluteFile) =
       rope(project.splitFile.name), b.dotGraph],
             changeFileExt(project, "dot"))
 
-proc setupDependPass*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
+proc setupDependPass*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   var g: PGen
   new(g)
   g.module = module

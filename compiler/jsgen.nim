@@ -735,6 +735,8 @@ proc genLineDir(p: PProc, n: PNode) =
   let line = toLinenumber(n.info)
   if line < 0:
     return
+  if optEmbedOrigSrc in p.config.globalOptions:
+    lineF(p, "//$1$n", [sourceLine(p.config, n.info)])
   if optLineDir in p.options or optLineDir in p.config.options:
     lineF(p, "$1", [lineDir(p.config, n.info, line)])
   if hasFrameInfo(p):

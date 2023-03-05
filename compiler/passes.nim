@@ -241,14 +241,14 @@ proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
     graph.compileSystemModule()
     discard graph.compileModule(projectFile, {sfMainModule})
 
-proc mySemOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
+proc mySemOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   result = preparePContext(graph, module, idgen)
 
 proc mySemClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   var c = PContext(context)
   closePContext(graph, c, n)
 
-proc mySemProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
+proc mySemProcess(context: PPassContext, n: PNode): PNode =
   result = semWithPContext(PContext(context), n)
 
 const semPass* = makePass(mySemOpen, mySemProcess, mySemClose,
