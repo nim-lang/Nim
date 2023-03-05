@@ -8,7 +8,7 @@ import sys
 # frontends might still be broken.
 
 gdb.execute("set python print-stack full")
-gdb.execute("source ../../../tools/nim-gdb.py")
+gdb.execute("source ../../../tools/debug/nim-gdb.py")
 # debug all instances of the generic function `myDebug`, should be 14
 gdb.execute("rbreak myDebug")
 gdb.execute("run")

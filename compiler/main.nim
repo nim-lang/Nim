@@ -16,9 +16,9 @@ import
   std/[strutils, os, times, tables, sha1, with, json],
   llstream, ast, lexer, syntaxes, options, msgs,
   condsyms,
-  sem, idents, passes, extccomp,
+  idents, extccomp,
   cgen, nversion,
-  platform, nimconf, passaux, depends, vm,
+  platform, nimconf, depends,
   modules,
   modulegraphs, lineinfos, pathutils, vmprofiler
 
@@ -29,12 +29,10 @@ when defined(nimPreviewSlimSystem):
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
 
-when not defined(leanCompiler):
-  import jsgen, docgen, docgen2
+import pipelines
 
-proc semanticPasses(g: ModuleGraph) =
-  registerPass g, verbosePass
-  registerPass g, semPass
+when not defined(leanCompiler):
+  import docgen
 
 proc writeDepsFile(g: ModuleGraph) =
   let fname = g.config.nimcacheDir / RelativeFile(g.config.projectName & ".deps")
@@ -68,9 +66,8 @@ proc writeCMakeDepsFile(conf: ConfigRef) =
     fl.close()
 
 proc commandGenDepend(graph: ModuleGraph) =
-  semanticPasses(graph)
-  registerPass(graph, gendependPass)
-  compileProject(graph)
+  setPipeLinePass(graph, GenDependPass)
+  compilePipelineProject(graph)
   let project = graph.config.projectFull
   writeDepsFile(graph)
   generateDot(graph, project)
@@ -87,8 +84,8 @@ proc commandCheck(graph: ModuleGraph) =
     defineSymbol(conf.symbols, "nimconfig")
   elif conf.backend == backendJs:
     setTarget(conf.target, osJS, cpuJS)
-  semanticPasses(graph)  # use an empty backend for semantic checking only
-  compileProject(graph)
+  setPipeLinePass(graph, SemPass)
+  compilePipelineProject(graph)
 
   if conf.symbolFiles != disabledSf:
     case conf.ideCmd
@@ -102,22 +99,20 @@ when not defined(leanCompiler):
   proc commandDoc2(graph: ModuleGraph; ext: string) =
     handleDocOutputOptions graph.config
     graph.config.setErrorMaxHighMaybe
-    semanticPasses(graph)
     case ext:
-    of TexExt:  registerPass(graph, docgen2TexPass)
-    of JsonExt: registerPass(graph, docgen2JsonPass)
-    of HtmlExt: registerPass(graph, docgen2Pass)
+    of TexExt:
+      setPipeLinePass(graph, Docgen2TexPass)
+    of JsonExt:
+      setPipeLinePass(graph, Docgen2JsonPass)
+    of HtmlExt:
+      setPipeLinePass(graph, Docgen2Pass)
     else: doAssert false, $ext
-    compileProject(graph)
-    finishDoc2Pass(graph.config.projectName)
+    compilePipelineProject(graph)
 
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
   extccomp.initVars(conf)
-  semanticPasses(graph)
   if conf.symbolFiles == disabledSf:
-    registerPass(graph, cgenPass)
-
     if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
       if not changeDetectedViaJsonBuildInstructions(conf, conf.jsonBuildInstructionsFile):
         # nothing changed
@@ -127,7 +122,11 @@ proc commandCompileToC(graph: ModuleGraph) =
   if not extccomp.ccHasSaneOverflow(conf):
     conf.symbols.defineSymbol("nimEmulateOverflowChecks")
 
-  compileProject(graph)
+  if conf.symbolFiles == disabledSf:
+    setPipeLinePass(graph, CgenPass)
+  else:
+    setPipeLinePass(graph, SemPass)
+  compilePipelineProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
   if conf.symbolFiles == disabledSf:
@@ -160,33 +159,27 @@ proc commandCompileToJS(graph: ModuleGraph) =
     conf.exc = excCpp
     setTarget(conf.target, osJS, cpuJS)
     defineSymbol(conf.symbols, "ecmascript") # For backward compatibility
-    semanticPasses(graph)
-    registerPass(graph, JSgenPass)
-    compileProject(graph)
+    setPipeLinePass(graph, JSgenPass)
+    compilePipelineProject(graph)
     if optGenScript in conf.globalOptions:
       writeDepsFile(graph)
 
-proc interactivePasses(graph: ModuleGraph) =
+proc commandInteractive(graph: ModuleGraph) =
+  graph.config.setErrorMaxHighMaybe
   initDefines(graph.config.symbols)
   defineSymbol(graph.config.symbols, "nimscript")
   # note: seems redundant with -d:nimHasLibFFI
   when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
-  registerPass(graph, verbosePass)
-  registerPass(graph, semPass)
-  registerPass(graph, evalPass)
-
-proc commandInteractive(graph: ModuleGraph) =
-  graph.config.setErrorMaxHighMaybe
-  interactivePasses(graph)
-  compileSystemModule(graph)
+  setPipeLinePass(graph, InterpreterPass)
+  compilePipelineSystemModule(graph)
   if graph.config.commandArgs.len > 0:
-    discard graph.compileModule(fileInfoIdx(graph.config, graph.config.projectFull), {})
+    discard graph.compilePipelineModule(fileInfoIdx(graph.config, graph.config.projectFull), {})
   else:
     var m = graph.makeStdinModule()
     incl(m.flags, sfMainModule)
     var idgen = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0)
     let s = llStreamOpenStdIn(onPrompt = proc() = flushDot(graph.config))
-    processModule(graph, m, idgen, s)
+    discard processPipelineModule(graph, m, idgen, s)
 
 proc commandScan(cache: IdentCache, config: ConfigRef) =
   var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
@@ -241,8 +234,6 @@ proc mainCommand*(graph: ModuleGraph) =
   let conf = graph.config
   let cache = graph.cache
 
-  # In "nim serve" scenario, each command must reset the registered passes
-  clearPasses(graph)
   conf.lastCmdTime = epochTime()
   conf.searchPaths.add(conf.libpath)
 

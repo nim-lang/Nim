@@ -217,7 +217,7 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
   var op = getAttachedOp(c.graph, t, kind)
   if op == nil or op.ast.isGenericRoutine:
     # give up and find the canonical type instead:
-    let h = sighashes.hashType(t, {CoType, CoConsiderOwned, CoDistinct})
+    let h = sighashes.hashType(t, c.graph.config, {CoType, CoConsiderOwned, CoDistinct})
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
       op = getAttachedOp(c.graph, canon, kind)
@@ -354,11 +354,18 @@ It is best to factor out piece of object that needs custom destructor into separ
   result.add newTree(nkFastAsgn, le, tmp)
 
 proc genWasMoved(c: var Con, n: PNode): PNode =
-  result = newNodeI(nkCall, n.info)
-  result.add(newSymNode(createMagic(c.graph, c.idgen, "wasMoved", mWasMoved)))
-  result.add copyTree(n) #mWasMoved does not take the address
-  #if n.kind != nkSym:
-  #  message(c.graph.config, n.info, warnUser, "wasMoved(" & $n & ")")
+  let typ = n.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+  let op = getAttachedOp(c.graph, n.typ, attachedWasMoved)
+  if op != nil:
+    if sfError in op.flags:
+      c.checkForErrorPragma(n.typ, n, "=wasMoved")
+    result = genOp(c, op, n)
+  else:
+    result = newNodeI(nkCall, n.info)
+    result.add(newSymNode(createMagic(c.graph, c.idgen, "wasMoved", mWasMoved)))
+    result.add copyTree(n) #mWasMoved does not take the address
+    #if n.kind != nkSym:
+    #  message(c.graph.config, n.info, warnUser, "wasMoved(" & $n & ")")
 
 proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
   result = newNodeI(nkCall, info)

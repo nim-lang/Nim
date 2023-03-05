@@ -23,7 +23,7 @@ import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp
 # Do NOT import suggest. It will lead to weird bugs with
 # suggestionResultHook, because suggest.nim is included by sigmatch.
 # So we import that one instead.
-import compiler / [options, commands, modules, sem,
+import compiler / [options, commands, modules,
   passes, passaux, msgs,
   sigmatch, ast,
   idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
