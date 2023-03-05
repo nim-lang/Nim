@@ -127,11 +127,18 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
         if sfGenSym in param.flags:
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
     freshGenSyms(c, b, result, orig, symMap)
-    
+
     if sfBorrow notin orig.flags: 
       # We do not want to generate a body for generic borrowed procs.
       # As body is a sym to the borrowed proc.
-      b = semProcBody(c, b, result.typ[0])
+      let resultType = # todo probably refactor it into a function
+        if result.kind == skMacro:
+          sysTypeFromName(c.graph, n.info, "NimNode")
+        elif not isInlineIterator(result.typ):
+          result.typ[0]
+        else:
+          nil
+      b = semProcBody(c, b, resultType)
     result.ast[bodyPos] = hloBody(c, b)
     excl(result.flags, sfForward)
     trackProc(c, result, result.ast[bodyPos])
