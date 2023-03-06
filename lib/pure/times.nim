@@ -408,6 +408,16 @@ const unitWeights: array[FixedTimeUnit, int64] = [
   7 * secondsInDay * 1e9.int64,
 ]
 
+when (NimMajor, NimMinor) >= (1, 4):
+  # Newer versions of Nim don't track defects
+  {.pragma: parseFormatRaises, raises: [TimeParseError, TimeFormatParseError].}
+  {.pragma: parseRaises, raises: [TimeParseError].}
+else:
+  # Still track when using older versions
+  {.pragma: parseFormatRaises, raises: [TimeParseError, TimeFormatParseError, Defect].}
+  {.pragma: parseRaises, raises: [TimeParseError, Defect].}
+  
+
 #
 # Helper procs
 #
@@ -2134,8 +2144,7 @@ proc format*(time: Time, f: static[string], zone: Timezone = local()): string
   result = time.inZone(zone).format(f2)
 
 proc parse*(input: string, f: TimeFormat, zone: Timezone = local(),
-    loc: DateTimeLocale = DefaultLocale): DateTime
-    {.raises: [TimeParseError, Defect].} =
+    loc: DateTimeLocale = DefaultLocale): DateTime {.parseRaises.} =
   ## Parses `input` as a `DateTime` using the format specified by `f`.
   ## If no UTC offset was parsed, then `input` is assumed to be specified in
   ## the `zone` timezone. If a UTC offset was parsed, the result will be
@@ -2178,8 +2187,7 @@ proc parse*(input: string, f: TimeFormat, zone: Timezone = local(),
   result = toDateTime(parsed, zone, f, input)
 
 proc parse*(input, f: string, tz: Timezone = local(),
-    loc: DateTimeLocale = DefaultLocale): DateTime
-    {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
+    loc: DateTimeLocale = DefaultLocale): DateTime {.parseFormatRaises.} =
   ## Shorthand for constructing a `TimeFormat` and using it to parse
   ## `input` as a `DateTime`.
   ##
@@ -2192,14 +2200,12 @@ proc parse*(input, f: string, tz: Timezone = local(),
   result = input.parse(dtFormat, tz, loc = loc)
 
 proc parse*(input: string, f: static[string], zone: Timezone = local(),
-    loc: DateTimeLocale = DefaultLocale):
-  DateTime {.raises: [TimeParseError, Defect].} =
+    loc: DateTimeLocale = DefaultLocale): DateTime {.parseRaises.} =
   ## Overload that validates `f` at compile time.
   const f2 = initTimeFormat(f)
   result = input.parse(f2, zone, loc = loc)
 
-proc parseTime*(input, f: string, zone: Timezone): Time
-    {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
+proc parseTime*(input, f: string, zone: Timezone): Time {.parseFormatRaises.} =
   ## Shorthand for constructing a `TimeFormat` and using it to parse
   ## `input` as a `DateTime`, then converting it a `Time`.
   ##
@@ -2211,7 +2217,7 @@ proc parseTime*(input, f: string, zone: Timezone): Time
   parse(input, f, zone).toTime()
 
 proc parseTime*(input: string, f: static[string], zone: Timezone): Time
-    {.raises: [TimeParseError, Defect].} =
+    {.parseRaises.} =
   ## Overload that validates `format` at compile time.
   const f2 = initTimeFormat(f)
   result = input.parse(f2, zone).toTime()
