@@ -460,7 +460,7 @@ proc semPrivateAccess(c: PContext, n: PNode): PNode =
   result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
-                                   flags: TExprFlags): PNode =
+                                   flags: TExprFlags; expectedType: PType = nil): PNode =
   ## This is the preferred code point to implement magics.
   ## ``c`` the current module, a symbol table to a very good approximation
   ## ``n`` the ast like it would be passed to a real macro
@@ -583,5 +583,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = n
   of mPrivateAccess:
     result = semPrivateAccess(c, n)
+  of mArrToSeq:
+    result = n
+    if result.typ != nil and expectedType != nil and result.typ.kind == tySequence and expectedType.kind == tySequence and result.typ[0].kind == tyEmpty:
+      result.typ = expectedType # type inference for empty sequence # bug #21377
   else:
     result = n

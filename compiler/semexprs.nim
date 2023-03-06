@@ -973,7 +973,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
     if callee.magic != mNone:
-      result = magicsAfterOverloadResolution(c, result, flags)
+      result = magicsAfterOverloadResolution(c, result, flags, expectedType)
     when false:
       if result.typ != nil and
           not (result.typ.kind == tySequence and result.typ[0].kind == tyEmpty):
