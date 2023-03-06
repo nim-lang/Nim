@@ -3,7 +3,7 @@ discard """
 x + y = 30
 '''
 """
-import std/[sugar, algorithm, random, sets, tables, strutils]
+import std/[sugar, algorithm, random, sets, tables, strutils, sequtils]
 import std/[syncio, assertions]
 
 type # for capture test, ref #20679
@@ -286,6 +286,17 @@ proc mainProc() =
     let s2 = dumpToString:
       doAssertRaises(AssertionDefect): doAssert false
     doAssert "except AssertionDefect" in s2
+
+  block: # bug #20704
+    proc test() =
+      var xs, ys: seq[int]
+      for i in 0..5:
+        xs.add(i)
+
+      xs.apply(d => ys.add(d))
+      doAssert ys == @[0, 1, 2, 3, 4, 5]
+
+    test()
 
 static:
   main()
