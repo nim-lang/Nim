@@ -129,17 +129,22 @@ proc semExprBranchScope(c: PContext, n: PNode; expectedType: PType = nil): PNode
   closeScope(c)
 
 const
-  skipForDiscardable = {nkIfStmt, nkIfExpr, nkCaseStmt, nkOfBranch,
+  skipForImplicit = {nkIfStmt, nkIfExpr, nkCaseStmt, nkOfBranch,
     nkElse, nkStmtListExpr, nkTryStmt, nkFinally, nkExceptBranch,
     nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr,
     nkHiddenStdConv, nkHiddenDeref}
 
 proc implicitlyDiscardable(n: PNode): bool =
   var n = n
-  while n.kind in skipForDiscardable: n = n.lastSon
+  while n.kind in skipForImplicit: n = n.lastSon
   result = n.kind in nkLastBlockStmts or
            (isCallExpr(n) and n[0].kind == nkSym and
            sfDiscardable in n[0].sym.flags)
+
+proc implicitlyModuleSymbol(n: PNode): bool =
+  var n = n
+  while n.kind in skipForImplicit: n = n.lastSon
+  result = n.kind == nkSym and n.sym.kind == skModule
 
 proc fixNilType(c: PContext; n: PNode) =
   if isAtom(n):
@@ -153,26 +158,29 @@ proc fixNilType(c: PContext; n: PNode) =
 proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
   if c.matchedConcept != nil or efInTypeof in flags: return
 
-  if result.typ != nil and result.typ.kind notin {tyTyped, tyVoid}:
-    if implicitlyDiscardable(result):
-      var n = newNodeI(nkDiscardStmt, result.info, 1)
-      n[0] = result
-    elif result.typ.kind != tyError and c.config.cmd != cmdInteractive:
-      if result.typ.kind == tyNone:
-        localError(c.config, result.info, "expression has no type: " &
-               renderTree(result, {renderNoComments}))
-      var n = result
-      while n.kind in skipForDiscardable:
-        if n.kind == nkTryStmt: n = n[0]
-        else: n = n.lastSon
-      var s = "expression '" & $n & "' is of type '" &
-          result.typ.typeToString & "' and has to be used (or discarded)"
-      if result.info.line != n.info.line or
-          result.info.fileIndex != n.info.fileIndex:
-        s.add "; start of expression here: " & c.config$result.info
-      if result.typ.kind == tyProc:
-        s.add "; for a function call use ()"
-      localError(c.config, n.info, s)
+  if result.typ != nil:
+    if result.typ.kind notin {tyTyped, tyVoid}:
+      if implicitlyDiscardable(result):
+        var n = newNodeI(nkDiscardStmt, result.info, 1)
+        n[0] = result
+      elif result.typ.kind != tyError and c.config.cmd != cmdInteractive:
+        if result.typ.kind == tyNone:
+          localError(c.config, result.info, "expression has no type: " &
+                renderTree(result, {renderNoComments}))
+        var n = result
+        while n.kind in skipForImplicit:
+          if n.kind == nkTryStmt: n = n[0]
+          else: n = n.lastSon
+        var s = "expression '" & $n & "' is of type '" &
+            result.typ.typeToString & "' and has to be used (or discarded)"
+        if result.info.line != n.info.line or
+            result.info.fileIndex != n.info.fileIndex:
+          s.add "; start of expression here: " & c.config$result.info
+        if result.typ.kind == tyProc:
+          s.add "; for a function call use ()"
+        localError(c.config, n.info, s)
+  elif implicitlyModuleSymbol(result):
+      localError(c.config, result.info, "The module symbol cannot be used as a statement")
 
 proc semIf(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil): PNode =
   result = n
