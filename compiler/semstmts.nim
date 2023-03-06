@@ -180,7 +180,7 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
           s.add "; for a function call use ()"
         localError(c.config, n.info, s)
   elif implicitlyModuleSymbol(result):
-      localError(c.config, result.info, "The module symbol cannot be used as a statement")
+    localError(c.config, result.info, "The module symbol cannot be used as a statement")
 
 proc semIf(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil): PNode =
   result = n
