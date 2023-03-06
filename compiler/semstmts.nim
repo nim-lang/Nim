@@ -2168,7 +2168,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
             s.typ[0]
           else:
             nil
-        # semantic checking also needed with importc in case used in VM
+        if resultType != nil and resultType.kind == tyAnything: # prepass for infering auto types
+          let nOrig = copyTree(n[bodyPos])
+          discard semProcBody(c, nOrig, resultType)
         s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], resultType))
         # unfortunately we cannot skip this step when in 'system.compiles'
         # context as it may even be evaluated in 'system.compiles':
