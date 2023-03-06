@@ -264,6 +264,13 @@ block: # bug #21377
   doAssert b(0) == @[]
 
 block: # bug #21377
+  proc b[T](v: T): seq[T] =
+    let x = 0
+    @[]
+
+  doAssert b(0) == @[]
+
+block: # bug #21377
   proc b[T](v: T): set[bool] =
     let x = 0
     {}
