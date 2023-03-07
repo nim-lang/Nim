@@ -153,3 +153,16 @@ proc unzip*[T,U](xs: List[tuple[t: T, u: U]]): (List[T], List[U]) = discard
 
 proc unzip2*[T,U](xs: List[(T,U)]): (List[T], List[U]) = discard
 
+type
+  AtomicType = pointer|ptr|int
+
+  Atomic[T: AtomicType] = distinct T
+
+  Block[T: AtomicType] = object
+
+  AtomicContainer[T: AtomicType] = object
+    b: Atomic[ptr Block[T]]
+
+# bug #8295
+var x = AtomicContainer[int]()
+doAssert (ptr Block[int])(x.b) == nil
