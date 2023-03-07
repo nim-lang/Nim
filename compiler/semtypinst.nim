@@ -450,25 +450,6 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
           attachedAsgn, col)
       excl mm.flags, tfFromGeneric
 
-proc eraseVoidParams*(t: PType) =
-  # transform '(): void' into '()' because old parts of the compiler really
-  # don't deal with '(): void':
-  if t[0] != nil and t[0].kind == tyVoid:
-    t[0] = nil
-
-  for i in 1..<t.len:
-    # don't touch any memory unless necessary
-    if t[i].kind == tyVoid:
-      var pos = i
-      for j in i+1..<t.len:
-        if t[j].kind != tyVoid:
-          t[pos] = t[j]
-          t.n[pos] = t.n[j]
-          inc pos
-      setLen t.sons, pos
-      setLen t.n.sons, pos
-      break
-
 proc skipIntLiteralParams*(t: PType; idgen: IdGenerator) =
   for i in 0..<t.len:
     let p = t[i]
@@ -639,7 +620,6 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
           result.flags.incl tfRequiresInit
 
       of tyProc:
-        eraseVoidParams(result)
         skipIntLiteralParams(result, cl.c.idgen)
 
       of tyRange:

@@ -621,7 +621,6 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   case a.kind
   of tyProc:
-    if f.len != a.len: return
     result = isEqual      # start with maximum; also correct for no
                           # params at all
 
@@ -629,18 +628,39 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       result = minRel(result, procParamTypeRel(c, f, a))
       if result == isNone: return
 
-    # Note: We have to do unification for the parameters before the
-    # return type!
-    for i in 1..<f.len:
-      checkParam(f[i], a[i])
+    # compare params with voids skipped over
+    var
+      fi = 1
+      ai = 1
+    while true:
+      while fi < f.len and f[fi].kind == tyVoid:
+        inc fi
+        continue
+      while ai < a.len and a[ai].kind == tyVoid:
+        inc ai
+        continue
+
+      if (fi == f.len and ai != a.len) or (fi != f.len and ai == a.len):
+        return isNone
+
+      if fi == f.len and ai == a.len:
+        result = isEqual
+        break
+
+      checkParam(f[fi], a[ai])
+      inc fi
+      inc ai
 
     if f[0] != nil:
       if a[0] != nil:
         checkParam(f[0], a[0])
+      elif f[0].kind == tyVoid:
+        discard
       else:
         return isNone
     elif a[0] != nil:
-      return isNone
+      if a[0].kind != tyVoid:
+        return isNone
 
     result = getProcConvMismatch(c.c.config, f, a, result)[1]
 
@@ -2088,6 +2108,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   let oldInheritancePenalty = m.inheritancePenalty
   var r = typeRel(m, f, a)
 
+  if r == isEqual and f.kind == tyVoid:
+    r = isNone
+
   # This special typing rule for macros and templates is not documented
   # anywhere and breaks symmetry. It's hard to get rid of though, my
   # custom seqs example fails to compile without this:
@@ -2546,6 +2569,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
           m.baseTypeMatch = false
           m.typedescMatched = false
           n[a] = prepareOperand(c, formal.typ, n[a])
+          if formal.typ.kind == tyVoid and n[a].typ.kind != tyVoid:
+            setSon(m.call, f, m.callee.n[f])
+            inc f
+            continue
           arg = paramTypesMatch(m, formal.typ, n[a].typ,
                                     n[a], nOrig[a])
           if arg == nil:
@@ -2626,6 +2653,9 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           var container = newNodeIT(cnKind, n.info, arrayConstr(c, n.info))
           setSon(m.call, formal.position + 1,
                  implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
+        elif formal.typ.kind == tyVoid:
+          # Void params get skipped so we can just pass this along
+          setSon(m.call, formal.position+1, m.callee.n[f])
         else:
           # no default value
           m.state = csNoMatch

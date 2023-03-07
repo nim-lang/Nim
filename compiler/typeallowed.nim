@@ -110,7 +110,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyStatic:
     if kind notin {skParam}: result = t
   of tyVoid:
-    if taField notin flags: result = t
+    if taField notin flags and kind notin {skParam}: result = t
   of tyTypeClasses:
     if tfGenericTypeParam in t.flags or taConcept in flags: #or taField notin flags:
       discard
