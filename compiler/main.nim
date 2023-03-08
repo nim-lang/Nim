@@ -75,8 +75,8 @@ proc commandGenDepend(graph: ModuleGraph) =
   # dot in graphivz tool kit is required
   let graphvizDotPath = findExe("dot")
   if graphvizDotPath.len == 0:
-    echo "Please install Graphviz first, see https://graphviz.org/download"
-    raise newException(IOError, "Graphviz's dot not found in PATH")
+    quit("gendepend: Graphviz's tool dot is required," &
+    "see https://graphviz.org/download for downloading")
 
   execExternalProgram(graph.config, "dot -Tpng -o" &
       changeFileExt(project, "png").string &
