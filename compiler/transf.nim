@@ -315,7 +315,10 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     # nothing to be done for leaves:
     result = n
   of nkVarSection, nkLetSection:
+    let oldInlining = c.inlining
+    c.inlining = 0 # don't transform yields when introducing new local vars
     result = transformVarSection(c, n)
+    c.inlining = oldInlining
   of nkClosure:
     # it can happen that for-loop-inlining produced a fresh
     # set of variables, including some computed environment
