@@ -50,6 +50,7 @@ type
     module: PSym
     transCon: PTransCon      # top of a TransCon stack
     inlining: int            # > 0 if we are in inlining context (copy vars)
+    inVarSection: int        # > 0 if we are in varSection context (don't transform yields)
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
     deferDetected, tooEarly: bool
     graph: ModuleGraph
@@ -315,10 +316,9 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     # nothing to be done for leaves:
     result = n
   of nkVarSection, nkLetSection:
-    let oldInlining = c.inlining
-    c.inlining = 0 # don't transform yields when introducing new local vars
+    inc c.inVarSection # don't transform yields when introducing new local vars
     result = transformVarSection(c, n)
-    c.inlining = oldInlining
+    dec c.inVarSection
   of nkClosure:
     # it can happen that for-loop-inlining produced a fresh
     # set of variables, including some computed environment
@@ -1039,7 +1039,7 @@ proc transform(c: PTransf, n: PNode): PNode =
     else:
       result = transformSons(c, n)
   of nkYieldStmt:
-    if c.inlining > 0:
+    if c.inlining > 0 and c.inVarSection == 0:
       result = transformYield(c, n)
     else:
       result = transformSons(c, n)
