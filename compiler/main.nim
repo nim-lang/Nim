@@ -71,6 +71,13 @@ proc commandGenDepend(graph: ModuleGraph) =
   let project = graph.config.projectFull
   writeDepsFile(graph)
   generateDot(graph, project)
+
+  # dot in graphivz tool kit is required
+  let graphivzDotPath = findExe("dot")
+  if graphivzDotPath.len == 0:
+    echo "Please install Graphviz first, see https://graphviz.org/download"
+    raise newException(IOError, "Graphivz's dot not found in PATH: " & graphivzDotPath)
+
   execExternalProgram(graph.config, "dot -Tpng -o" &
       changeFileExt(project, "png").string &
       ' ' & changeFileExt(project, "dot").string)
