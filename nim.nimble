@@ -1,4 +1,4 @@
-include "lib/system/compilation.nim"
+include "lib/compilation.nim"
 version = $NimMajor & "." & $NimMinor & "." & $NimPatch
 author = "Andreas Rumpf"
 description = "Compiler package providing the compiler sources as a library."
