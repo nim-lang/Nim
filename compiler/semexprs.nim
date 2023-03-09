@@ -2206,7 +2206,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
     dummyTemplate[paramsPos].add newTreeI(nkIdentDefs, n.info, ids[0], getSysSym(c.graph, n.info, "typed").newSymNode, c.graph.emptyNode)
     for i in 1..<ids.len:
       let typ = semExprWithType(c, quotes[i+1], {}).typ
-      if tfTriggersCompileTime notin typ.flags:
+      if tfTriggersCompileTime notin typ.flags and typ.kind != tyTypeDesc:
         dummyTemplate[paramsPos].add newTreeI(nkIdentDefs, n.info, ids[i], newNodeIT(nkType, n.info, typ), c.graph.emptyNode)
       else:
         dummyTemplate[paramsPos].add newTreeI(nkIdentDefs, n.info, ids[i], getSysSym(c.graph, n.info, "typed").newSymNode, c.graph.emptyNode)
