@@ -326,7 +326,7 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
         # a result:
         let defaultValue = newIntLit(c.graph, constrCtx.initExpr.info, 0)
         let matchedBranch = n.pickCaseBranch defaultValue
-        collectOrAddMissingCaseFields(c, matchedBranch, constrCtx, result.defaults)
+        discard collectMissingCaseFields(c, matchedBranch, constrCtx, @[])
       else:
         result.status = initPartial
         if discriminatorVal.kind == nkIntLit:
