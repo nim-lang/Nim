@@ -577,5 +577,20 @@ template main {.dirty.} =
 
     mainSync()
 
+  block:
+    type
+      Result2 = object
+        v {.requiresInit.} : int = 1
+
+    proc startSessionSync(): Result2 =
+      return Result2()
+
+    proc mainSync =
+      let ff = startSessionSync()
+      doAssert ff.v == 1
+
+    mainSync()
+
+
 static: main()
 main()
