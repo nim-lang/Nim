@@ -2427,9 +2427,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     # first one is added already
     inc a
     while a < n.len:
-      if n[a].kind == nkExprEqExpr:
-        # stop eating varargs, this terminates them
-        break
       m.baseTypeMatch = false
       m.typedescMatched = false
       n[a] = prepareOperand(c, formal.typ, n[a])
@@ -2441,6 +2438,9 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
       incrIndexType(container.typ)
       container.add arg
       inc a
+      if a < n.len and n[a].kind == nkExprEqExpr:
+        # stop eating varargs, this terminates them
+        break
     # clean up after ourselves
     container = nil
     # last one we tried was not a vararg, so gotta decrement
@@ -2586,9 +2586,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             assert formal.typ.kind == tyVarargs
             handleVarargsGreedy
             #if f != formalLen - 1: container = nil
-          elif formal.typ.kind != tyVarargs:
+          elif formal.typ.kind != tyVarargs or container == nil:
             setSon(m.call, formal.position + 1, arg)
             inc f
+            container = nil
           else:
             # we end up here if the argument can be converted into the varargs
             # formal (e.g. seq[T] -> varargs[T]) but we have already instantiated
