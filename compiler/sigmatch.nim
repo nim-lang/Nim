@@ -2416,6 +2416,38 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         m.firstMismatch.kind = kVarNeeded
         noMatch()
 
+  # makes multiple varargs work together correctly
+  template handleVarargsGreedy() =
+    container = newNodeIT(nkBracket, n[a].info, arrayConstr(c, arg))
+    container.typ.flags.incl tfVarargs
+    container.add arg
+    setSon(m.call, formal.position + 1,
+            implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
+
+    # first one is added already
+    inc a
+    while a < n.len:
+      if n[a].kind == nkExprEqExpr:
+        # stop eating varargs, this terminates them
+        break
+      m.baseTypeMatch = false
+      m.typedescMatched = false
+      n[a] = prepareOperand(c, formal.typ, n[a])
+      arg = paramTypesMatch(m, formal.typ, n[a].typ,
+                                n[a], nOrig[a])
+      if not m.baseTypeMatch:
+        # end of this unit
+        break
+      incrIndexType(container.typ)
+      container.add arg
+      inc a
+    # clean up after ourselves
+    container = nil
+    # last one we tried was not a vararg, so gotta decrement
+    dec a
+    # we are done with this formal, so it has to be incremented
+    inc f
+
   m.state = csMatch # until proven otherwise
   m.firstMismatch = MismatchInfo()
   m.call = newNodeIT(n.kind, n.info, m.callee.base)
@@ -2552,23 +2584,11 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             noMatch()
           if m.baseTypeMatch:
             assert formal.typ.kind == tyVarargs
-            #assert(container == nil)
-            if container.isNil:
-              container = newNodeIT(nkBracket, n[a].info, arrayConstr(c, arg))
-              container.typ.flags.incl tfVarargs
-            else:
-              incrIndexType(container.typ)
-            container.add arg
-            setSon(m.call, formal.position + 1,
-                   implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
+            handleVarargsGreedy
             #if f != formalLen - 1: container = nil
-
-            # pick the formal from the end, so that 'x, y, varargs, z' works:
-            f = max(f, formalLen - n.len + a + 1)
-          elif formal.typ.kind != tyVarargs or container == nil:
+          elif formal.typ.kind != tyVarargs:
             setSon(m.call, formal.position + 1, arg)
             inc f
-            container = nil
           else:
             # we end up here if the argument can be converted into the varargs
             # formal (e.g. seq[T] -> varargs[T]) but we have already instantiated
