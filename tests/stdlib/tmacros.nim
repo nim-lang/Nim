@@ -311,3 +311,11 @@ block: # bug #9607
 
   doAssert echoL() == "bar"
   doAssert echoM() == "bar"
+
+block:
+  macro hello[T](x: T): untyped =
+    result = quote do:
+      let m: `T` = `x`
+      discard m
+
+  hello(12)
