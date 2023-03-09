@@ -271,30 +271,62 @@ proc bug20305 =
 bug20305()
 
 # bug #21023
-type
-  MGErrorKind = enum
-    mgeUnexpected, mgeNotFound
+block:
+  block:
+    type
+      MGErrorKind = enum
+        mgeUnexpected, mgeNotFound
 
-type Foo = object
-  kind: MGErrorKind
-  ex: Exception
+    type Foo = object
+      kind: MGErrorKind
+      ex: Exception
 
-type Boo = object
-  a: seq[int]
+    type Boo = object
+      a: seq[int]
 
-type
-  Result2 = object
-    case o: bool
-    of false:
-      e: Foo
-    of true:
-      v: Boo
+    type
+      Result2 = object
+        case o: bool
+        of false:
+          e: Foo
+        of true:
+          v: Boo
 
-proc startSessionSync(): Result2 =
-  return Result2(o: true)
+    proc startSessionSync(): Result2 =
+      return Result2(o: true)
 
-proc mainSync =
-  let ff = startSessionSync()
-  doAssert ff.o == true
+    proc mainSync =
+      let ff = startSessionSync()
+      doAssert ff.o == true
 
-mainSync()
+    mainSync()
+
+  block:
+    type
+      MGErrorKind = enum
+        mgeUnexpected, mgeNotFound
+
+    type Foo = object
+      kind: MGErrorKind
+      ex: Exception
+
+    type Boo = object
+      a: seq[int]
+
+    type
+      Result2 = object
+        case o: bool
+        of false:
+          e: Foo
+        of true:
+          v: Boo
+          s: int
+
+    proc startSessionSync(): Result2 =
+      return Result2(o: true, s: 12)
+
+    proc mainSync =
+      let ff = startSessionSync()
+      doAssert ff.s == 12
+
+    mainSync()
