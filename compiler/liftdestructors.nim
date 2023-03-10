@@ -1085,13 +1085,7 @@ proc inst(g: ModuleGraph; c: PContext; t: PType; kind: TTypeAttachedOp; idgen: I
   let op = getAttachedOp(g, t, kind)
   if op != nil and op.ast != nil and op.ast.isGenericRoutine:
     if t.typeInst != nil:
-      var a: TLiftCtx
-      a.info = info
-      a.g = g
-      a.kind = kind
-      a.c = c
-      a.idgen = idgen
-
+      var a = TLiftCtx(info: info, g: g, kind: kind, c: c, idgen: idgen)
       let opInst = instantiateGeneric(a, op, t, t.typeInst)
       if opInst.ast != nil:
         patchBody(g, c, opInst.ast, info, a.idgen)
