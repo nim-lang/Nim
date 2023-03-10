@@ -559,6 +559,38 @@ template main {.dirty.} =
     let x = default(Default)
     doAssert x.data is DjangoDateTime
 
+  block:
+    type
+      Result2 = object
+        case o: bool
+        of false:
+          e: float
+        of true:
+          v {.requiresInit.} : int = 1
+
+    proc startSessionSync(): Result2 =
+      return Result2(o: true)
+
+    proc mainSync =
+      let ff = startSessionSync()
+      doAssert ff.v == 1
+
+    mainSync()
+
+  block:
+    type
+      Result2 = object
+        v {.requiresInit.} : int = 1
+
+    proc startSessionSync(): Result2 =
+      return Result2()
+
+    proc mainSync =
+      let ff = startSessionSync()
+      doAssert ff.v == 1
+
+    mainSync()
+
 
 static: main()
 main()
