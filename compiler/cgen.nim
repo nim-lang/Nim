@@ -228,8 +228,7 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
   result.add newCall(ident"rope", resVar)
 
 proc addIndent(p: BProc; result: var Rope) =
-  for i in 0..<p.blocks.len:
-    result.add "\t".rope
+  result.add repeat('\t', p.blocks.len).rope
 
 template appcg(m: BModule, c: var Rope, frmt: FormatStr,
            args: untyped) =
