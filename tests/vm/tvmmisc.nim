@@ -643,3 +643,16 @@ const b = block:
 
 doAssert a == @[@[0, 1, 2], @[0, 1, 2], @[0, 1, 2]]
 doAssert b == @[@[0, 1, 2], @[0, 1, 2], @[0, 1, 2]]
+
+macro m1(s: string): int =
+  var ProcID {.global, compileTime.}: int
+  inc(ProcID)
+  result = newLit(ProcID)
+
+proc macroGlobal =
+  doAssert m1("Macro argument") == 1
+  doAssert m1("Macro argument") == 2
+  doAssert m1("Macro argument") == 3
+
+static: macroGlobal()
+macroGlobal()
