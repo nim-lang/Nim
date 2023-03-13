@@ -228,7 +228,12 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
   result.add newCall(ident"rope", resVar)
 
 proc addIndent(p: BProc; result: var Rope) =
-  result.add repeat('\t', p.blocks.len).rope
+  var i = result.len
+  let newLen = i + p.blocks.len
+  result.setLen newLen
+  while i < newLen:
+    result[i] = '\t'
+    inc i
 
 template appcg(m: BModule, c: var Rope, frmt: FormatStr,
            args: untyped) =
