@@ -1012,14 +1012,45 @@ class StringTableChildrenProvider:
         return bool(self.num_children())
 
 
-class CustomObjectChildrenProvider:
-    """
-    This children provider handles values returned from lldbDebugSynthetic*
-    Nim procedures
-    """
-
+class LLDBDynamicObjectProvider:
     def __init__(self, value: lldb.SBValue, internalDict):
-        self.value: lldb.SBValue = get_custom_synthetic(value) or value
+        value = value.GetNonSyntheticValue()
+        self.value: lldb.SBValue = value[0]
+        self.children: OrderedDict[str, int] = OrderedDict()
+        self.child_list: list[lldb.SBValue] = []
+
+        while self.value.type.is_pointer:
+            self.value = self.value.Dereference()
+
+        self.update()
+
+    def num_children(self):
+        return len(self.child_list)
+
+    def get_child_index(self, name: str):
+        return self.children[name]
+
+    def get_child_at_index(self, index):
+        return self.child_list[index]
+
+    def update(self):
+        self.children.clear()
+        self.child_list = []
+
+        for i, child in enumerate(self.value.children):
+            name = child.name.strip('"')
+            new_child = child.CreateValueFromAddress(name, child.GetLoadAddress(), child.GetType())
+
+            self.children[name] = i
+            self.child_list.append(new_child)
+
+    def has_children(self):
+        return bool(self.num_children())
+
+
+class LLDBBasicObjectProvider:
+    def __init__(self, value: lldb.SBValue, internalDict):
+        self.value: lldb.SBValue = value
 
     def num_children(self):
         if self.value is not None:
@@ -1037,6 +1068,35 @@ class CustomObjectChildrenProvider:
 
     def has_children(self):
         return self.num_children() > 0
+
+
+class CustomObjectChildrenProvider:
+    """
+    This children provider handles values returned from lldbDebugSynthetic*
+    Nim procedures
+    """
+
+    def __init__(self, value: lldb.SBValue, internalDict):
+        self.value: lldb.SBValue = get_custom_synthetic(value) or value
+        if "lldbdynamicobject" in self.value.type.name.lower():
+            self.provider = LLDBDynamicObjectProvider(self.value, internalDict)
+        else:
+            self.provider = LLDBBasicObjectProvider(self.value, internalDict)
+
+    def num_children(self):
+        return self.provider.num_children()
+
+    def get_child_index(self, name: str):
+        return self.provider.get_child_index(name)
+
+    def get_child_at_index(self, index):
+        return self.provider.get_child_at_index(index)
+
+    def update(self):
+        self.provider.update()
+
+    def has_children(self):
+        return self.provider.has_children()
 
 
 def echo(debugger: lldb.SBDebugger, command: str, result, internal_dict):
@@ -1117,13 +1177,27 @@ def get_custom_synthetic(value: lldb.SBValue) -> Union[lldb.SBValue, None]:
         value = value.Dereference()
 
     if first_type.is_pointer:
-        command = f"{fn.name}(({first_type.name})" + str(value.GetLoadAddress()) + ");"
+        first_arg = f"({first_type.name}){value.GetLoadAddress()}"
     else:
-        command = f"{fn.name}(*({first_type.GetPointerType().name})" + str(value.GetLoadAddress()) + ");"
+        first_arg = f"*({first_type.GetPointerType().name}){value.GetLoadAddress()}"
+
+    if arg_types.GetSize() > 1 and fn.GetArgumentName(1) == "Result":
+        ret_type = arg_types.GetTypeAtIndex(1)
+        ret_type = get_base_type(ret_type)
+
+        command = f"""
+            {ret_type.name} lldbT;
+            nimZeroMem((void*)(&lldbT), sizeof({ret_type.name}));
+            {fn.name}(({first_arg}), (&lldbT));
+            lldbT;
+        """
+    else:
+        command = f"{fn.name}({first_arg});"
 
     res = executeCommand(command)
 
     if res.error.fail:
+        print(res.error)
         return None
 
     return res
@@ -1202,8 +1276,9 @@ def breakpoint_function_wrapper(frame: lldb.SBFrame, bp_loc, internal_dict):
         fn_type: lldb.SBType = fn.type
         arg_types: lldb.SBTypeList = fn_type.GetFunctionArgumentTypes()
 
-        # There should only be one argument to send to the function call
-        if arg_types.GetSize() != 1:
+        if arg_types.GetSize() > 1 and fn.GetArgumentName(1) == "Result":
+            pass # don't continue
+        elif arg_types.GetSize() != 1:
             continue
 
         arg_type: lldb.SBType = arg_types.GetTypeAtIndex(0)
