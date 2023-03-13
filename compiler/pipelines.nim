@@ -7,7 +7,7 @@ import pipelineutils
 when not defined(leanCompiler):
   import jsgen, docgen2
 
-import std/[syncio, objectdollar, assertions, tables]
+import std/[syncio, objectdollar, assertions, tables, strutils]
 import renderer
 import ic/replayer
 
@@ -68,9 +68,19 @@ proc prePass(c: PContext; n: PNode) =
         of wReorder:
           pragmaNoForward(c, s, flag = sfReorder)
         of wExperimental:
-          if not isTopLevel(c):
-            localError(c.config, n.info, "'experimental' pragma only valid as toplevel statement or in a 'push' environment")
-          processExperimental(c, s)
+          if isTopLevel(c) and s.kind in nkPragmaCallKinds and s.len == 2:
+            let name = c.semConstExpr(c, s[1])
+            case name.kind
+            of nkStrLit, nkRStrLit, nkTripleStrLit:
+              try:
+                let feature = parseEnum[Feature](name.strVal)
+                if feature == codeReordering:
+                  c.features.incl feature
+                  c.module.flags.incl sfReorder
+              except ValueError:
+                discard
+            else:
+              discard
         else:
           discard
 
