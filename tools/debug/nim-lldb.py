@@ -13,70 +13,87 @@ def sbvaluegetitem(self: lldb.SBValue, name: Union[int, str]) -> lldb.SBValue:
 # Make this easier to work with
 lldb.SBValue.__getitem__ = sbvaluegetitem
 
-
-def colored(in_str, *args, **kwargs):
-    # TODO: Output in color if user is in terminal
-    return in_str
+NIM_IS_V2 = True
 
 
-def reprEnum(val, typ):
-    """
-    this is a port of the nim runtime function `reprEnum` to python
-    NOTE: DOES NOT WORK WITH ORC
-    """
-    val = int(val)
-    n = typ["node"]
-    sons_type = n["sons"].type.GetPointeeType().GetPointeeType()
-    sons = n["sons"].deref.Cast(sons_type.GetPointerType().GetArrayType(3))
-    flags = int(typ["flags"].unsigned)
-    # 1 << 6 is {ntfEnumHole}
-    if ((1 << 6) & flags) == 0:
-        offset = val - sons[0]["offset"].unsigned
-        if offset >= 0 and 0 < n["len"].unsigned:
-            return NCSTRING(sons[offset]["name"])[1:-1]
-    else:
-        # ugh we need a slow linear search:
-        for i in range(n["len"].unsigned):
-            if sons[i]["offset"].unsigned == val:
-                return NCSTRING(sons[i]["name"])[1:-1]
-
-    return str(val) + " (invalid data!)"
-
-
-def get_nti(value, nim_name=None):
-    """DOES NOT WORK WITH ORC"""
+def get_nti(value: lldb.SBValue, nim_name=None):
     name_split = value.type.name.split("_")
     type_nim_name = nim_name or name_split[1]
     id_string = name_split[-1].split(" ")[0]
 
     type_info_name = "NTI" + type_nim_name.lower() + "__" + id_string + "_"
-    print("TYPEINFONAME: ", type_info_name)
     nti = value.target.FindFirstGlobalVariable(type_info_name)
-    if nti is None:
+    if not nti.IsValid():
         type_info_name = "NTI" + "__" + id_string + "_"
         nti = value.target.FindFirstGlobalVariable(type_info_name)
-    if nti is None:
-        print(
-            f"NimEnumPrinter: lookup global symbol: '{type_info_name}' failed for {value.type.name}.\n"
-        )
+    if not nti.IsValid():
+        print(f"NimEnumPrinter: lookup global symbol: '{type_info_name}' failed for {value.type.name}.\n")
     return type_nim_name, nti
 
 
-def enum_to_string(value):
-    type_nim_name, nti = get_nti(value)
-    if nti is None:
-        return type_nim_name + "(" + str(value.unsigned) + ")"
-    return reprEnum(value.signed, nti), nti
+def enum_to_string(value: lldb.SBValue, int_val=None, nim_name=None):
+    tname = nim_name or value.type.name.split("_")[1]
+
+    enum_val = value.signed
+    if int_val is not None:
+        enum_val = int_val
+
+    default_val = f"{tname}.{str(enum_val)}"
+
+    fn_syms = value.target.FindFunctions("reprEnum")
+    if not fn_syms.GetSize() > 0:
+        return default_val
+
+    fn_sym: lldb.SBSymbolContext = fn_syms.GetContextAtIndex(0)
+
+    fn: lldb.SBFunction = fn_sym.function
+
+    fn_type: lldb.SBType = fn.type
+    arg_types: lldb.SBTypeList = fn_type.GetFunctionArgumentTypes()
+    if arg_types.GetSize() < 2:
+        return default_val
+
+    arg1_type: lldb.SBType = arg_types.GetTypeAtIndex(0)
+    arg2_type: lldb.SBType = arg_types.GetTypeAtIndex(1)
+
+    ty_info_name, nti = get_nti(value, nim_name=tname)
+
+    if not nti.IsValid():
+        return default_val
+
+    call = f"{fn.name}(({arg1_type.name}){enum_val}, ({arg2_type.name})" + str(nti.GetLoadAddress()) + ");"
+
+    res = executeCommand(call)
+
+    if res.error.fail:
+        return default_val
+
+    return f"{tname}.{res.summary[1:-1]}"
 
 
-def to_string(value):
+def to_string(value: lldb.SBValue):
     # For getting NimStringDesc * value
+    value = value.GetNonSyntheticValue()
+
+    # Check if data pointer is Null
+    if value.type.is_pointer and value.unsigned == 0:
+        return None
+
+    size = int(value["Sup"]["len"].unsigned)
+
+    if size == 0:
+        return ""
+
+    if size > 2**14:
+        return "... (too long) ..."
+
     data = value["data"]
-    try:
-        size = int(value["Sup"]["len"].unsigned)
-        if size > 2**14:
-            return None
-    except TypeError:
+
+    # Check if first element is NULL
+    base_data_type = value.target.FindFirstType("char")
+    cast = data.Cast(base_data_type)
+
+    if cast.unsigned == 0:
         return None
 
     cast = data.Cast(value.target.FindFirstType("char").GetArrayType(size))
@@ -84,37 +101,97 @@ def to_string(value):
 
 
 def to_stringV2(value: lldb.SBValue):
-    # For getting NimStringDesc * value
+    # For getting NimStringV2 value
+    value = value.GetNonSyntheticValue()
+
     data = value["p"]["data"]
-    try:
-        size = int(value["len"].signed)
-        if size > 2**14:
-            return "... (too long)"
-    except TypeError:
+
+    # Check if data pointer is Null
+    if value["p"].unsigned == 0:
+        return None
+
+    size = int(value["len"].signed)
+
+    if size == 0:
         return ""
 
+    if size > 2**14:
+        return "... (too long) ..."
+
+    # Check if first element is NULL
     base_data_type = data.type.GetArrayElementType().GetTypedefedType()
+    cast = data.Cast(base_data_type)
+
+    if cast.unsigned == 0:
+        return None
+
     cast = data.Cast(base_data_type.GetArrayType(size))
     return bytearray(cast.data.uint8s).decode("utf-8")
 
 
-def NimStringDesc(value, internal_dict):
-    res = to_string(value)
-    if res:
-        return colored('"' + res + '"', "red")
+def NimString(value: lldb.SBValue, internal_dict):
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
+
+    custom_summary = get_custom_summary(value)
+    if not custom_summary is None:
+        return custom_summary
+
+    if NIM_IS_V2:
+        res = to_stringV2(value)
     else:
-        return str(value)
+        res = to_string(value)
 
-
-def NimStringV2(value: lldb.SBValue, internal_dict):
-    res = to_stringV2(value.GetNonSyntheticValue())
     if res is not None:
-        return colored('"' + res + '"', "red")
+        return f'"{res}"'
     else:
-        return str(value)
+        return "nil"
+
+
+def rope_helper(value: lldb.SBValue) -> str:
+    value = value.GetNonSyntheticValue()
+    if value.type.is_pointer and value.unsigned == 0:
+        return ""
+
+    if value["length"].unsigned == 0:
+        return ""
+
+    if NIM_IS_V2:
+        str_val = to_stringV2(value["data"])
+    else:
+        str_val = to_string(value["data"])
+
+    if str_val is None:
+        str_val = ""
+
+    return rope_helper(value["left"]) + str_val + rope_helper(value["right"])
+
+
+def Rope(value: lldb.SBValue, internal_dict):
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
+
+    custom_summary = get_custom_summary(value)
+    if not custom_summary is None:
+        return custom_summary
+
+    rope_str = rope_helper(value)
+
+    if len(rope_str) == 0:
+        rope_str = "nil"
+    else:
+        rope_str = f'"{rope_str}"'
+
+    return f"Rope({rope_str})"
 
 
 def NCSTRING(value: lldb.SBValue, internal_dict=None):
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
+
     ty = value.Dereference().type
     val = value.target.CreateValueFromAddress(
         value.name or "temp", lldb.SBAddress(value.unsigned, value.target), ty
@@ -122,51 +199,19 @@ def NCSTRING(value: lldb.SBValue, internal_dict=None):
     return val.summary
 
 
-def ObjectV1(value, internal_dict):
-    if not value.num_children and not value.value:
-        return ""
-
-    ignore_fields = set()
-    if "colonObjectType" in value.type.name:
-        value = value.Dereference()
-        ignore_fields.add("Sup")
-
-    if not value.type.name:
-        return ""
-
-    summary = value.summary
-    if summary is not None:
-        return summary
-
-    if "_" in value.type.name:
-        obj_name = value.type.name.split("_")[1].replace("colonObjectType", "")
-    else:
-        obj_name = value.type.name
-
-    obj_name = colored(obj_name, "green")
-
-    num_children = value.num_children
-
-    fields = ", ".join(
-        [
-            value[i].name
-            + ": "
-            + (value[i].summary or value[i].value or value[i].type.name or "not found")
-            for i in range(num_children)
-            if value[i].name not in ignore_fields
-        ]
-    )
-
-    res = f"{obj_name}({fields})"
-    return res
-
-
 def ObjectV2(value: lldb.SBValue, internal_dict):
-    custom_summary = get_summary(value)
-    if not custom_summary is None:
-        return custom_summary
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
 
     orig_value = value.GetNonSyntheticValue()
+    if orig_value.type.is_pointer and orig_value.unsigned == 0:
+        return "nil"
+
+    custom_summary = get_custom_summary(value)
+    if custom_summary is not None:
+        return custom_summary
+
     while orig_value.type.is_pointer:
         orig_value = orig_value.Dereference()
 
@@ -186,39 +231,91 @@ def ObjectV2(value: lldb.SBValue, internal_dict):
 
 
 def Number(value: lldb.SBValue, internal_dict):
-    while value.type.is_pointer:
-        value = value.Dereference()
-    return colored(str(value.signed), "yellow")
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
+
+    if value.type.is_pointer and value.signed == 0:
+        return "nil"
+
+    custom_summary = get_custom_summary(value)
+    if not custom_summary is None:
+        return custom_summary
+
+    return str(value.signed)
 
 
 def Float(value: lldb.SBValue, internal_dict):
-    while value.type.is_pointer:
-        value = value.Dereference()
-    return colored(str(value.value), "yellow")
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
+
+    custom_summary = get_custom_summary(value)
+    if not custom_summary is None:
+        return custom_summary
+
+    return str(value.value)
 
 
 def UnsignedNumber(value: lldb.SBValue, internal_dict):
-    while value.type.is_pointer:
-        value = value.Dereference()
-    return colored(str(value.unsigned), "yellow")
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
+
+    custom_summary = get_custom_summary(value)
+    if not custom_summary is None:
+        return custom_summary
+
+    return str(value.unsigned)
 
 
 def Bool(value: lldb.SBValue, internal_dict):
-    while value.type.is_pointer:
-        value = value.Dereference()
-    return colored(str(value.GetValue()), "red")
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
+
+    custom_summary = get_custom_summary(value)
+    if not custom_summary is None:
+        return custom_summary
+
+    return str(value.value)
 
 
 def CharArray(value: lldb.SBValue, internal_dict):
-    return str([colored(f"'{char}'", "red") for char in value.uint8s])
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
+
+    custom_summary = get_custom_summary(value)
+    if not custom_summary is None:
+        return custom_summary
+
+    return str([f"'{char}'" for char in value.uint8s])
 
 
 def Array(value: lldb.SBValue, internal_dict):
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
+
+    value = value.GetNonSyntheticValue()
+    custom_summary = get_custom_summary(value)
+    if not custom_summary is None:
+        return custom_summary
+
     value = value.GetNonSyntheticValue()
     return "[" + ", ".join([value[i].summary for i in range(value.num_children)]) + "]"
 
 
 def Tuple(value: lldb.SBValue, internal_dict):
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
+
+    custom_summary = get_custom_summary(value)
+    if not custom_summary is None:
+        return custom_summary
+
     while value.type.is_pointer:
         value = value.Dereference()
 
@@ -237,30 +334,67 @@ def Tuple(value: lldb.SBValue, internal_dict):
     return "(" + ", ".join(fields) + f")"
 
 
-def Enum(value, internal_dict):
-    tname = value.type.name.split("_")[1]
-    return colored(f"{tname}." + str(value.signed), "blue")
+def is_local(value: lldb.SBValue) -> bool:
+    line: lldb.SBLineEntry = value.frame.GetLineEntry()
+    decl: lldb.SBDeclaration = value.GetDeclaration()
+
+    if line.file == decl.file and decl.line != 0:
+        return True
+
+    return False
 
 
-def EnumSet(value, internal_dict):
-    type_nim_name = value.type.name.split("_")[2]
-    # type_nim_name, nti = get_nti(value, type_nim_name)
+def is_in_scope(value: lldb.SBValue) -> bool:
+    line: lldb.SBLineEntry = value.frame.GetLineEntry()
+    decl: lldb.SBDeclaration = value.GetDeclaration()
 
-    val = int(value.signed)
-    # if nti:
-    #     enum_strings = []
-    #     i = 0
-    #     while val > 0:
-    #         if (val & 1) == 1:
-    #             enum_strings.append(reprEnum(i, nti))
-    #         val = val >> 1
-    #         i += 1
+    if is_local(value) and decl.line < line.line:
+        return True
 
-    #     return '{' + ', '.join(enum_strings) + '}'
-    return colored(f"{type_nim_name}." + str(val), "blue")
+    return False
 
 
-def Set(value, internal_dict):
+def Enum(value: lldb.SBValue, internal_dict):
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
+
+    custom_summary = get_custom_value_summary(value)
+    if custom_summary is not None:
+        return custom_summary
+
+    return enum_to_string(value)
+
+
+def EnumSet(value: lldb.SBValue, internal_dict):
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
+
+    custom_summary = get_custom_summary(value)
+    if not custom_summary is None:
+        return custom_summary
+
+    vals = []
+    max_vals = 7
+    for child in value.children:
+        vals.append(child.summary)
+        if len(vals) > max_vals:
+            vals.append("...")
+            break
+
+    return "{" + ", ".join(vals) + "}"
+
+
+def Set(value: lldb.SBValue, internal_dict):
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
+
+    custom_summary = get_custom_summary(value)
+    if custom_summary is not None:
+        return custom_summary
+
     vals = []
     max_vals = 7
     for child in value.children:
@@ -273,6 +407,14 @@ def Set(value, internal_dict):
 
 
 def Table(value: lldb.SBValue, internal_dict):
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
+
+    custom_summary = get_custom_summary(value)
+    if custom_summary is not None:
+        return custom_summary
+
     fields = []
 
     for i in range(value.num_children):
@@ -280,65 +422,66 @@ def Table(value: lldb.SBValue, internal_dict):
         val = value[i].summary
         fields.append(f"{key}: {val}")
 
-    table_suffix = "Table"
-    return "{" + ", ".join(fields) + f"}}.{table_suffix}"
+    return "Table({" + ", ".join(fields) + "})"
 
 
 def HashSet(value: lldb.SBValue, internal_dict):
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
+
+    custom_summary = get_custom_summary(value)
+    if custom_summary is not None:
+        return custom_summary
+
     fields = []
 
     for i in range(value.num_children):
         fields.append(f"{value[i].summary}")
 
-    table_suffix = "HashSet"
-
-    return "{" + ", ".join(fields) + f"}}.{table_suffix}"
+    return "HashSet({" + ", ".join(fields) + "})"
 
 
 def StringTable(value: lldb.SBValue, internal_dict):
-    table = value.GetNonSyntheticValue()
-    mode = table["mode"].unsigned
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
 
-    table_suffix = "StringTable"
-
-    table_mode = ""
-    if mode == 0:
-        table_mode = "Case Sensitive"
-    elif mode == 1:
-        table_mode = "Case Insensitive"
-    elif mode == 2:
-        table_mode = "Style Insensitive"
+    custom_summary = get_custom_summary(value)
+    if not custom_summary is None:
+        return custom_summary
 
     fields = []
 
-    for i in range(value.num_children):
+    for i in range(value.num_children - 1):
         key = value[i].name
         val = value[i].summary
         fields.append(f"{key}: {val}")
 
-    return "{" + ", ".join(fields) + f"}}.{table_suffix}({table_mode})"
+    mode = value[value.num_children - 1].summary
+
+    return "StringTable({" + ", ".join(fields) + f"}}, mode={mode})"
 
 
 def Sequence(value: lldb.SBValue, internal_dict):
-    value = value.GetNonSyntheticValue()
+    if is_local(value):
+        if not is_in_scope(value):
+            return "undefined"
 
-    data_len = int(value["len"].unsigned)
-    data = value["p"]["data"]
-    base_data_type = data.type.GetArrayElementType()
+    custom_summary = get_custom_summary(value)
+    if not custom_summary is None:
+        return custom_summary
 
-    cast = data.Cast(base_data_type.GetArrayType(data_len))
-
-    return (
-        "@["
-        + ", ".join([cast[i].summary or cast[i].type.name for i in range(data_len)])
-        + "]"
-    )
+    return "@[" + ", ".join([value[i].summary for i in range(value.num_children)]) + "]"
 
 
 class StringChildrenProvider:
     def __init__(self, value: lldb.SBValue, internalDict):
         self.value = value
         self.data_type: lldb.SBType
+        if not NIM_IS_V2:
+            self.data_type = self.value.target.FindFirstType("char")
+
         self.first_element: lldb.SBValue
         self.update()
         self.count = 0
@@ -351,18 +494,63 @@ class StringChildrenProvider:
 
     def get_child_at_index(self, index):
         offset = index * self.data_size
-        return self.first_element.CreateChildAtOffset(
-            "[" + str(index) + "]", offset, self.data_type
-        )
+        return self.first_element.CreateChildAtOffset("[" + str(index) + "]", offset, self.data_type)
+
+    def get_data(self) -> lldb.SBValue:
+        return self.value["p"]["data"] if NIM_IS_V2 else self.value["data"]
+
+    def get_len(self) -> int:
+        if NIM_IS_V2:
+            if self.value["p"].unsigned == 0:
+                return 0
+
+            size = int(self.value["len"].signed)
+
+            if size == 0:
+                return 0
+
+            data = self.value["p"]["data"]
+
+            # Check if first element is NULL
+            base_data_type = data.type.GetArrayElementType().GetTypedefedType()
+            cast = data.Cast(base_data_type)
+
+            if cast.unsigned == 0:
+                return 0
+        else:
+            if self.value.type.is_pointer and self.value.unsigned == 0:
+                return 0
+
+            size = int(self.value["Sup"]["len"].unsigned)
+
+            if size == 0:
+                return 0
+
+            data = self.value["data"]
+
+            # Check if first element is NULL
+            base_data_type = self.value.target.FindFirstType("char")
+            cast = data.Cast(base_data_type)
+
+            if cast.unsigned == 0:
+                return 0
+
+        return size
 
     def update(self):
-        data = self.value["p"]["data"]
-        size = int(self.value["len"].unsigned)
+        if is_local(self.value):
+            if not is_in_scope(self.value):
+                return
+
+        data = self.get_data()
+        size = self.get_len()
 
         self.count = size
         self.first_element = data
 
-        self.data_type = data.type.GetArrayElementType().GetTypedefedType()
+        if NIM_IS_V2:
+            self.data_type = data.type.GetArrayElementType().GetTypedefedType()
+
         self.data_size = self.data_type.GetByteSize()
 
     def has_children(self):
@@ -377,16 +565,14 @@ class ArrayChildrenProvider:
         self.update()
 
     def num_children(self):
-        return self.value.num_children
+        return self.has_children() and self.value.num_children
 
     def get_child_index(self, name: str):
         return int(name.lstrip("[").rstrip("]"))
 
     def get_child_at_index(self, index):
         offset = index * self.value[index].GetByteSize()
-        return self.first_element.CreateChildAtOffset(
-            "[" + str(index) + "]", offset, self.data_type
-        )
+        return self.first_element.CreateChildAtOffset("[" + str(index) + "]", offset, self.data_type)
 
     def update(self):
         if not self.has_children():
@@ -396,7 +582,10 @@ class ArrayChildrenProvider:
         self.data_type = self.value.type.GetArrayElementType()
 
     def has_children(self):
-        return bool(self.num_children())
+        if is_local(self.value):
+            if not is_in_scope(self.value):
+                return False
+        return bool(self.value.num_children)
 
 
 class SeqChildrenProvider:
@@ -405,25 +594,38 @@ class SeqChildrenProvider:
         self.data_type: lldb.SBType
         self.first_element: lldb.SBValue
         self.data: lldb.SBValue
+        self.count = 0
         self.update()
 
     def num_children(self):
-        return int(self.value["len"].unsigned)
+        return self.count
 
     def get_child_index(self, name: str):
         return int(name.lstrip("[").rstrip("]"))
 
     def get_child_at_index(self, index):
         offset = index * self.data[index].GetByteSize()
-        return self.first_element.CreateChildAtOffset(
-            "[" + str(index) + "]", offset, self.data_type
-        )
+        return self.first_element.CreateChildAtOffset("[" + str(index) + "]", offset, self.data_type)
+
+    def get_data(self) -> lldb.SBValue:
+        return self.value["p"]["data"] if NIM_IS_V2 else self.value["data"]
+
+    def get_len(self) -> lldb.SBValue:
+        return self.value["len"] if NIM_IS_V2 else self.value["Sup"]["len"]
 
     def update(self):
+        self.count = 0
+
+        if is_local(self.value):
+            if not is_in_scope(self.value):
+                return
+
+        self.count = self.get_len().unsigned
+
         if not self.has_children():
             return
 
-        data = self.value["p"]["data"]
+        data = self.get_data()
         self.data_type = data.type.GetArrayElementType()
 
         self.data = data.Cast(self.data_type.GetArrayType(self.num_children()))
@@ -455,35 +657,29 @@ class ObjectChildrenProvider:
     def populate_children(self):
         self.children.clear()
         self.child_list = []
-        stack = [self.value]
+
+        if is_local(self.value):
+            if not is_in_scope(self.value):
+                return
+
+        stack = [self.value.GetNonSyntheticValue()]
 
         index = 0
 
         while stack:
             cur_val = stack.pop()
+            if cur_val.type.is_pointer and cur_val.unsigned == 0:
+                continue
+
             while cur_val.type.is_pointer:
                 cur_val = cur_val.Dereference()
 
-            if cur_val.num_children > 0 and cur_val[0].name == "m_type":
-                if "_" in cur_val.type.name:
-                    tname = cur_val.type.name.split("_")[1].replace(
-                        "colonObjectType", ""
-                    )
-                else:
-                    tname = cur_val.type.name
-                if tname == "TNimTypeV2":
-                    # We've reached the end
-                    break
-
-            if (
-                cur_val.num_children > 0
-                and cur_val[0].name == "Sup"
-                and cur_val[0].type.name.startswith("tyObject")
-            ):
+            # Add super objects if they exist
+            if cur_val.num_children > 0 and cur_val[0].name == "Sup" and cur_val[0].type.name.startswith("tyObject"):
                 stack.append(cur_val[0])
 
-            for i in range(cur_val.num_children):
-                child = cur_val[i]
+            for child in cur_val.children:
+                child = child.GetNonSyntheticValue()
                 if child.name == "Sup":
                     continue
                 self.children[child.name] = index
@@ -512,12 +708,21 @@ class HashSetChildrenProvider:
     def get_child_at_index(self, index):
         return self.child_list[index]
 
+    def get_data(self) -> lldb.SBValue:
+        return self.value["data"]["p"]["data"] if NIM_IS_V2 else self.value["data"]["data"]
+
+    def get_len(self) -> lldb.SBValue:
+        return self.value["data"]["len"] if NIM_IS_V2 else self.value["data"]["Sup"]["len"]
+
     def update(self):
         self.child_list = []
-        data = self.value["data"]
 
-        tuple_len = int(data["len"].unsigned)
-        tuple = data["p"]["data"]
+        if is_local(self.value):
+            if not is_in_scope(self.value):
+                return
+
+        tuple_len = int(self.get_len().unsigned)
+        tuple = self.get_data()
 
         base_data_type = tuple.type.GetArrayElementType()
 
@@ -526,13 +731,11 @@ class HashSetChildrenProvider:
         index = 0
         for i in range(tuple_len):
             el = cast[i]
-            field0 = int(el["Field0"].unsigned)
+            field0 = int(el[0].unsigned)
             if field0 == 0:
                 continue
-            key = el["Field1"]
-            child = key.CreateValueFromAddress(
-                f"[{str(index)}]", key.GetLoadAddress(), key.GetType()
-            )
+            key = el[1]
+            child = key.CreateValueFromAddress(f"[{str(index)}]", key.GetLoadAddress(), key.GetType())
             index += 1
 
             self.child_list.append(child)
@@ -559,6 +762,10 @@ class SetCharChildrenProvider:
 
     def update(self):
         self.child_list = []
+        if is_local(self.value):
+            if not is_in_scope(self.value):
+                return
+
         cur_pos = 0
         for child in self.value.children:
             child_val = child.signed
@@ -569,9 +776,7 @@ class SetCharChildrenProvider:
                     is_set = temp & 1
                     if is_set == 1:
                         data = lldb.SBData.CreateDataFromInt(cur_pos)
-                        child = self.value.synthetic_child_from_data(
-                            f"[{len(self.child_list)}]", data, self.ty
-                        )
+                        child = self.value.synthetic_child_from_data(f"[{len(self.child_list)}]", data, self.ty)
                         self.child_list.append(child)
                     temp = temp >> 1
                     cur_pos += 1
@@ -582,6 +787,36 @@ class SetCharChildrenProvider:
 
     def has_children(self):
         return bool(self.num_children())
+
+
+def create_set_children(value: lldb.SBValue, child_type: lldb.SBType, starting_pos: int) -> list[lldb.SBValue]:
+    child_list: list[lldb.SBValue] = []
+    cur_pos = starting_pos
+
+    if value.num_children > 0:
+        children = value.children
+    else:
+        children = [value]
+
+    for child in children:
+        child_val = child.signed
+        if child_val != 0:
+            temp = child_val
+            num_bits = 8
+            while temp != 0:
+                is_set = temp & 1
+                if is_set == 1:
+                    data = lldb.SBData.CreateDataFromInt(cur_pos)
+                    child = value.synthetic_child_from_data(f"[{len(child_list)}]", data, child_type)
+                    child_list.append(child)
+                temp = temp >> 1
+                cur_pos += 1
+                num_bits -= 1
+            cur_pos += num_bits
+        else:
+            cur_pos += 8
+
+    return child_list
 
 
 class SetIntChildrenProvider:
@@ -602,34 +837,12 @@ class SetIntChildrenProvider:
 
     def update(self):
         self.child_list = []
+        if is_local(self.value):
+            if not is_in_scope(self.value):
+                return
         bits = self.value.GetByteSize() * 8
-
-        cur_pos = -(bits // 2)
-
-        if self.value.num_children > 0:
-            children = self.value.children
-        else:
-            children = [self.value]
-
-        for child in children:
-            child_val = child.signed
-            if child_val != 0:
-                temp = child_val
-                num_bits = 8
-                while temp != 0:
-                    is_set = temp & 1
-                    if is_set == 1:
-                        data = lldb.SBData.CreateDataFromInt(cur_pos)
-                        child = self.value.synthetic_child_from_data(
-                            f"[{len(self.child_list)}]", data, self.ty
-                        )
-                        self.child_list.append(child)
-                    temp = temp >> 1
-                    cur_pos += 1
-                    num_bits -= 1
-                cur_pos += num_bits
-            else:
-                cur_pos += 8
+        starting_pos = -(bits // 2)
+        self.child_list = create_set_children(self.value, self.ty, starting_pos)
 
     def has_children(self):
         return bool(self.num_children())
@@ -653,32 +866,10 @@ class SetUIntChildrenProvider:
 
     def update(self):
         self.child_list = []
-
-        cur_pos = 0
-        if self.value.num_children > 0:
-            children = self.value.children
-        else:
-            children = [self.value]
-
-        for child in children:
-            child_val = child.signed
-            if child_val != 0:
-                temp = child_val
-                num_bits = 8
-                while temp != 0:
-                    is_set = temp & 1
-                    if is_set == 1:
-                        data = lldb.SBData.CreateDataFromInt(cur_pos)
-                        child = self.value.synthetic_child_from_data(
-                            f"[{len(self.child_list)}]", data, self.ty
-                        )
-                        self.child_list.append(child)
-                    temp = temp >> 1
-                    cur_pos += 1
-                    num_bits -= 1
-                cur_pos += num_bits
-            else:
-                cur_pos += 8
+        if is_local(self.value):
+            if not is_in_scope(self.value):
+                return
+        self.child_list = create_set_children(self.value, self.ty, starting_pos=0)
 
     def has_children(self):
         return bool(self.num_children())
@@ -687,7 +878,7 @@ class SetUIntChildrenProvider:
 class SetEnumChildrenProvider:
     def __init__(self, value: lldb.SBValue, internalDict):
         self.value = value
-        self.ty = self.value.target.FindFirstType(f"NU64")
+        self.ty = self.value.target.FindFirstType(self.value.type.name.replace("tySet_", ""))
         self.child_list: list[lldb.SBValue] = []
         self.update()
 
@@ -701,33 +892,10 @@ class SetEnumChildrenProvider:
         return self.child_list[index]
 
     def update(self):
-        self.child_list = []
-
-        cur_pos = 0
-        if self.value.num_children > 0:
-            children = self.value.children
-        else:
-            children = [self.value]
-
-        for child in children:
-            child_val = child.unsigned
-            if child_val != 0:
-                temp = child_val
-                num_bits = 8
-                while temp != 0:
-                    is_set = temp & 1
-                    if is_set == 1:
-                        data = lldb.SBData.CreateDataFromInt(cur_pos)
-                        child = self.value.synthetic_child_from_data(
-                            f"[{len(self.child_list)}]", data, self.ty
-                        )
-                        self.child_list.append(child)
-                    temp = temp >> 1
-                    cur_pos += 1
-                    num_bits -= 1
-                cur_pos += num_bits
-            else:
-                cur_pos += 8
+        if is_local(self.value):
+            if not is_in_scope(self.value):
+                return
+        self.child_list = create_set_children(self.value, self.ty, starting_pos=0)
 
     def has_children(self):
         return bool(self.num_children())
@@ -738,6 +906,7 @@ class TableChildrenProvider:
         self.value = value
         self.children: OrderedDict[str, int] = OrderedDict()
         self.child_list: list[lldb.SBValue] = []
+
         self.update()
 
     def num_children(self):
@@ -749,12 +918,20 @@ class TableChildrenProvider:
     def get_child_at_index(self, index):
         return self.child_list[index]
 
+    def get_data(self) -> lldb.SBValue:
+        return self.value["data"]["p"]["data"] if NIM_IS_V2 else self.value["data"]["data"]
+
+    def get_len(self) -> lldb.SBValue:
+        return self.value["data"]["len"] if NIM_IS_V2 else self.value["data"]["Sup"]["len"]
+
     def update(self):
         self.child_list = []
-        data = self.value["data"]
+        if is_local(self.value):
+            if not is_in_scope(self.value):
+                return
 
-        tuple_len = int(data["len"].unsigned)
-        tuple = data["p"]["data"]
+        tuple_len = int(self.get_len().unsigned)
+        tuple = self.get_data()
 
         base_data_type = tuple.type.GetArrayElementType()
 
@@ -763,16 +940,15 @@ class TableChildrenProvider:
         index = 0
         for i in range(tuple_len):
             el = cast[i]
-            field0 = int(el["Field0"].unsigned)
+            field0 = int(el[0].unsigned)
             if field0 == 0:
                 continue
-            key = el["Field1"]
-            val = el["Field2"]
-            child = val.CreateValueFromAddress(
-                key.summary, val.GetLoadAddress(), val.GetType()
-            )
+            key = el[1]
+            val = el[2]
+            key_summary = key.summary
+            child = self.value.CreateValueFromAddress(key_summary, val.GetLoadAddress(), val.GetType())
             self.child_list.append(child)
-            self.children[key.summary] = index
+            self.children[key_summary] = index
             index += 1
 
     def has_children(self):
@@ -795,13 +971,22 @@ class StringTableChildrenProvider:
     def get_child_at_index(self, index):
         return self.child_list[index]
 
+    def get_data(self) -> lldb.SBValue:
+        return self.value["data"]["p"]["data"] if NIM_IS_V2 else self.value["data"]["data"]
+
+    def get_len(self) -> lldb.SBValue:
+        return self.value["data"]["len"] if NIM_IS_V2 else self.value["data"]["Sup"]["len"]
+
     def update(self):
         self.children.clear()
         self.child_list = []
-        data = self.value["data"]
 
-        tuple_len = int(data["len"].unsigned)
-        tuple = data["p"]["data"]
+        if is_local(self.value):
+            if not is_in_scope(self.value):
+                return
+
+        tuple_len = int(self.get_len().unsigned)
+        tuple = self.get_data()
 
         base_data_type = tuple.type.GetArrayElementType()
 
@@ -810,31 +995,36 @@ class StringTableChildrenProvider:
         index = 0
         for i in range(tuple_len):
             el = cast[i]
-            field0 = int(el["Field2"].unsigned)
+            field0 = int(el[2].unsigned)
             if field0 == 0:
                 continue
-            key = el["Field0"]
-            val = el["Field1"]
-            child = val.CreateValueFromAddress(
-                key.summary, val.GetLoadAddress(), val.GetType()
-            )
+            key = el[0]
+            val = el[1]
+            child = val.CreateValueFromAddress(key.summary, val.GetLoadAddress(), val.GetType())
             self.child_list.append(child)
             self.children[key.summary] = index
             index += 1
+
+        self.child_list.append(self.value["mode"])
+        self.children["mode"] = index
 
     def has_children(self):
         return bool(self.num_children())
 
 
 class CustomObjectChildrenProvider:
+    """
+    This children provider handles values returned from lldbDebugSynthetic*
+    Nim procedures
+    """
+
     def __init__(self, value: lldb.SBValue, internalDict):
-        print("CUSTOMOBJ: ", value.name)
-        self.value: lldb.SBValue = get_synthetic(value) or value
-        for child in self.value.children:
-            print(child)
+        self.value: lldb.SBValue = get_custom_synthetic(value) or value
 
     def num_children(self):
-        return self.value.num_children
+        if self.value is not None:
+            return self.value.num_children
+        return 0
 
     def get_child_index(self, name: str):
         return self.value.GetIndexOfChildWithName(name)
@@ -857,16 +1047,32 @@ SUMMARY_FUNCTIONS: dict[str, lldb.SBFunction] = {}
 SYNTHETIC_FUNCTIONS: dict[str, lldb.SBFunction] = {}
 
 
-def get_summary(value: lldb.SBValue) -> Union[str, None]:
+def get_custom_summary(value: lldb.SBValue) -> Union[str, None]:
+    """Get a custom summary if a function exists for it"""
+    value = value.GetNonSyntheticValue()
+    if value.GetAddress().GetOffset() == 0:
+        return None
+
     base_type = get_base_type(value.type)
 
     fn = SUMMARY_FUNCTIONS.get(base_type.name)
     if fn is None:
         return None
 
-    res = executeCommand(
-        f"{fn.name}(*({base_type.GetPointerType().name})" + str(value.GetLoadAddress()) + ");"
-    )
+    fn_type: lldb.SBType = fn.type
+
+    arg_types: lldb.SBTypeList = fn_type.GetFunctionArgumentTypes()
+    first_type = arg_types.GetTypeAtIndex(0)
+
+    while value.type.is_pointer:
+        value = value.Dereference()
+
+    if first_type.is_pointer:
+        command = f"{fn.name}(({first_type.name})" + str(value.GetLoadAddress()) + ");"
+    else:
+        command = f"{fn.name}(*({first_type.GetPointerType().name})" + str(value.GetLoadAddress()) + ");"
+
+    res = executeCommand(command)
 
     if res.error.fail:
         return None
@@ -874,16 +1080,48 @@ def get_summary(value: lldb.SBValue) -> Union[str, None]:
     return res.summary.strip('"')
 
 
-def get_synthetic(value: lldb.SBValue) -> Union[lldb.SBValue, None]:
+def get_custom_value_summary(value: lldb.SBValue) -> Union[str, None]:
+    """Get a custom summary if a function exists for it"""
+
+    fn: lldb.SBFunction = SUMMARY_FUNCTIONS.get(value.type.name)
+    if fn is None:
+        return None
+
+    command = f"{fn.name}(({value.type.name})" + str(value.signed) + ");"
+    res = executeCommand(command)
+
+    if res.error.fail:
+        return None
+
+    return res.summary.strip('"')
+
+
+def get_custom_synthetic(value: lldb.SBValue) -> Union[lldb.SBValue, None]:
+    """Get a custom synthetic object if a function exists for it"""
+    value = value.GetNonSyntheticValue()
+    if value.GetAddress().GetOffset() == 0:
+        return None
+
     base_type = get_base_type(value.type)
 
     fn = SYNTHETIC_FUNCTIONS.get(base_type.name)
     if fn is None:
         return None
 
-    res = executeCommand(
-        f"{fn.name}(*({base_type.GetPointerType().name})" + str(value.GetLoadAddress()) + ");"
-    )
+    fn_type: lldb.SBType = fn.type
+
+    arg_types: lldb.SBTypeList = fn_type.GetFunctionArgumentTypes()
+    first_type = arg_types.GetTypeAtIndex(0)
+
+    while value.type.is_pointer:
+        value = value.Dereference()
+
+    if first_type.is_pointer:
+        command = f"{fn.name}(({first_type.name})" + str(value.GetLoadAddress()) + ");"
+    else:
+        command = f"{fn.name}(*({first_type.GetPointerType().name})" + str(value.GetLoadAddress()) + ");"
+
+    res = executeCommand(command)
 
     if res.error.fail:
         return None
@@ -892,10 +1130,37 @@ def get_synthetic(value: lldb.SBValue) -> Union[lldb.SBValue, None]:
 
 
 def get_base_type(ty: lldb.SBType) -> lldb.SBType:
+    """Get the base type of the type"""
     temp = ty
     while temp.IsPointerType():
         temp = temp.GetPointeeType()
     return temp
+
+
+def use_base_type(ty: lldb.SBType) -> bool:
+    types_to_check = [
+        "NF",
+        "NF32",
+        "NF64",
+        "NI",
+        "NI8",
+        "NI16",
+        "NI32",
+        "NI64",
+        "bool",
+        "NIM_BOOL",
+        "NU",
+        "NU8",
+        "NU16",
+        "NU32",
+        "NU64",
+    ]
+
+    for type_to_check in types_to_check:
+        if ty.name.startswith(type_to_check):
+            return False
+
+    return True
 
 
 def breakpoint_function_wrapper(frame: lldb.SBFrame, bp_loc, internal_dict):
@@ -904,48 +1169,53 @@ def breakpoint_function_wrapper(frame: lldb.SBFrame, bp_loc, internal_dict):
 
     global SUMMARY_FUNCTIONS
     global SYNTHETIC_FUNCTIONS
+
+    global NIM_IS_V2
+
     for tname, fn in SYNTHETIC_FUNCTIONS.items():
-        print("DELETING SYNTH: ", tname)
         debugger.HandleCommand(f"type synthetic delete -w nim {tname}")
 
     SUMMARY_FUNCTIONS = {}
     SYNTHETIC_FUNCTIONS = {}
 
     target: lldb.SBTarget = debugger.GetSelectedTarget()
-    print("BREAKPOINT")
+
+    NIM_IS_V2 = target.FindFirstType("TNimTypeV2").IsValid()
+
     module = frame.GetSymbolContext(lldb.eSymbolContextModule).module
 
     for sym in module:
-        if not sym.name.startswith("lldbDebugSummary") and not sym.name.startswith(
-            "lldbDebugSynthetic"
+        if (
+            not sym.name.startswith("lldbDebugSummary")
+            and not sym.name.startswith("lldbDebugSynthetic")
+            and not sym.name.startswith("dollar___")
         ):
             continue
-
-        print("SYM: ", sym.name)
 
         fn_syms: lldb.SBSymbolContextList = target.FindFunctions(sym.name)
         if not fn_syms.GetSize() > 0:
             continue
-        fn_sym: lldb.SBSymbolContext = fn_syms.GetContextAtIndex(0)
 
-        print("fn found!")
+        fn_sym: lldb.SBSymbolContext = fn_syms.GetContextAtIndex(0)
 
         fn: lldb.SBFunction = fn_sym.function
         fn_type: lldb.SBType = fn.type
         arg_types: lldb.SBTypeList = fn_type.GetFunctionArgumentTypes()
 
-        if not arg_types.GetSize() > 0:
+        # There should only be one argument to send to the function call
+        if arg_types.GetSize() != 1:
             continue
-        arg_type: lldb.SBType = get_base_type(arg_types.GetTypeAtIndex(0))
 
-        print("FIRST ARG TYPE: ", arg_type.name)
+        arg_type: lldb.SBType = arg_types.GetTypeAtIndex(0)
+        if use_base_type(arg_type):
+            arg_type = get_base_type(arg_type)
 
-        if sym.name.startswith("lldbDebugSummary"):
+        if sym.name.startswith("lldbDebugSummary") or sym.name.startswith("dollar___"):
             SUMMARY_FUNCTIONS[arg_type.name] = fn
         elif sym.name.startswith("lldbDebugSynthetic"):
             SYNTHETIC_FUNCTIONS[arg_type.name] = fn
             debugger.HandleCommand(
-                f"type synthetic add -w nim -l {__name__}.CustomObjectChildrenProvider -x {arg_type.name}$"
+                f"type synthetic add -w nim -l {__name__}.CustomObjectChildrenProvider {arg_type.name}"
             )
 
 
@@ -953,10 +1223,6 @@ def executeCommand(command, *args):
     debugger = lldb.debugger
     process = debugger.GetSelectedTarget().GetProcess()
     frame: lldb.SBFrame = process.GetSelectedThread().GetSelectedFrame()
-    # module = frame.GetSymbolContext(lldb.eSymbolContextModule).module
-    # for sym in module:
-    #     print("SYM: ", sym.name)
-    # target = debugger.GetSelectedTarget()
 
     expr_options = lldb.SBExpressionOptions()
     expr_options.SetIgnoreBreakpoints(False)
@@ -968,24 +1234,24 @@ def executeCommand(command, *args):
     expr_options.SetLanguage(lldb.eLanguageTypeC)
     expr_options.SetCoerceResultToId(True)
     res = frame.EvaluateExpression(command, expr_options)
-    # if res.error.fail:
-    #     print("ERROR: ", res.error.GetError())
-    #     return str(res.error)
+
     return res
 
 
 def __lldb_init_module(debugger, internal_dict):
-    # debugger.HandleCommand(f"type summary add -w nim -n any -F  {__name__}.CatchAll -x .*")
+    # fmt: off
+    debugger.HandleCommand(f"breakpoint command add -F {__name__}.breakpoint_function_wrapper --script-type python 1")
     debugger.HandleCommand(f"type summary add -w nim -n sequence -F  {__name__}.Sequence -x tySequence_+[[:alnum:]]+$")
     debugger.HandleCommand(f"type synthetic add -w nim -l {__name__}.SeqChildrenProvider -x tySequence_+[[:alnum:]]+$")
 
     debugger.HandleCommand(f"type summary add -w nim -n chararray -F  {__name__}.CharArray -x char\s+[\d+]")
     debugger.HandleCommand(f"type summary add -w nim -n array -F  {__name__}.Array -x tyArray_+[[:alnum:]]+")
     debugger.HandleCommand(f"type synthetic add -w nim -l {__name__}.ArrayChildrenProvider -x tyArray_+[[:alnum:]]+")
-    debugger.HandleCommand(f"type summary add -w nim -n string -F  {__name__}.NimStringDesc NimStringDesc")
+    debugger.HandleCommand(f"type summary add -w nim -n string -F  {__name__}.NimString NimStringDesc")
 
-    debugger.HandleCommand(f"type summary add -w nim -n stringv2 -F {__name__}.NimStringV2 -x NimStringV2$")
+    debugger.HandleCommand(f"type summary add -w nim -n stringv2 -F {__name__}.NimString -x NimStringV2$")
     debugger.HandleCommand(f"type synthetic add -w nim -l {__name__}.StringChildrenProvider -x NimStringV2$")
+    debugger.HandleCommand(f"type synthetic add -w nim -l {__name__}.StringChildrenProvider -x NimStringDesc$")
 
     debugger.HandleCommand(f"type summary add -w nim -n cstring -F  {__name__}.NCSTRING NCSTRING")
 
@@ -999,6 +1265,9 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(f"type summary add -w nim -n enum -F  {__name__}.Enum -x tyEnum_+[[:alnum:]]+_+[[:alnum:]]+")
     debugger.HandleCommand(f"type summary add -w nim -n hashset -F  {__name__}.HashSet -x tyObject_+HashSet_+[[:alnum:]]+")
     debugger.HandleCommand(f"type synthetic add -w nim -l {__name__}.HashSetChildrenProvider -x tyObject_+HashSet_+[[:alnum:]]+")
+
+    debugger.HandleCommand(f"type summary add -w nim -n rope -F  {__name__}.Rope -x tyObject_+Rope[[:alnum:]]+_+[[:alnum:]]+")
+
     debugger.HandleCommand(f"type summary add -w nim -n setuint -F  {__name__}.Set -x tySet_+tyInt_+[[:alnum:]]+")
     debugger.HandleCommand(f"type synthetic add -w nim -l {__name__}.SetIntChildrenProvider -x tySet_+tyInt[0-9]+_+[[:alnum:]]+")
     debugger.HandleCommand(f"type summary add -w nim -n setint -F  {__name__}.Set -x tySet_+tyInt[0-9]+_+[[:alnum:]]+")
@@ -1006,7 +1275,7 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(f"type synthetic add -w nim -l {__name__}.SetUIntChildrenProvider -x tySet_+tyUInt[0-9]+_+[[:alnum:]]+")
     debugger.HandleCommand(f"type synthetic add -w nim -l {__name__}.SetUIntChildrenProvider -x tySet_+tyInt_+[[:alnum:]]+")
     debugger.HandleCommand(f"type summary add -w nim -n setenum -F  {__name__}.EnumSet -x tySet_+tyEnum_+[[:alnum:]]+_+[[:alnum:]]+")
-    debugger.HandleCommand(f"type synthetic add -w nim -l {__name__}.SetUIntChildrenProvider -x tySet_+tyEnum_+[[:alnum:]]+_+[[:alnum:]]+")
+    debugger.HandleCommand(f"type synthetic add -w nim -l {__name__}.SetEnumChildrenProvider -x tySet_+tyEnum_+[[:alnum:]]+_+[[:alnum:]]+")
     debugger.HandleCommand(f"type summary add -w nim -n setchar -F  {__name__}.Set -x tySet_+tyChar_+[[:alnum:]]+")
     debugger.HandleCommand(f"type synthetic add -w nim -l {__name__}.SetCharChildrenProvider -x tySet_+tyChar_+[[:alnum:]]+")
     debugger.HandleCommand(f"type summary add -w nim -n table -F  {__name__}.Table -x tyObject_+Table_+[[:alnum:]]+")
@@ -1015,9 +1284,7 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(f"type synthetic add -w nim -l {__name__}.StringTableChildrenProvider -x tyObject_+StringTableObj_+[[:alnum:]]+")
     debugger.HandleCommand(f"type summary add -w nim -n tuple2 -F  {__name__}.Tuple -x tyObject_+Tuple_+[[:alnum:]]+")
     debugger.HandleCommand(f"type summary add -w nim -n tuple -F  {__name__}.Tuple -x tyTuple_+[[:alnum:]]+")
-    # debugger.HandleCommand(f"type summary add -w nim -n TNimType -F  {__name__}.Object TNimType")
-    debugger.HandleCommand(f"type summary add -w nim -n TNimTypeV2 -F  {__name__}.ObjectV2 TNimTypeV2")
-    # debugger.HandleCommand(f"type summary add -w nim -n TNimNode -F  {__name__}.Object TNimNode")
+
     debugger.HandleCommand(f"type summary add -w nim -n float -F  {__name__}.Float NF")
     debugger.HandleCommand(f"type summary add -w nim -n float32 -F  {__name__}.Float NF32")
     debugger.HandleCommand(f"type summary add -w nim -n float64 -F  {__name__}.Float NF64")
@@ -1035,5 +1302,4 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(f"type summary add -w nim -n uinteger64 -F  {__name__}.UnsignedNumber -x NU64")
     debugger.HandleCommand("type category enable nim")
     debugger.HandleCommand(f"command script add -f  {__name__}.echo echo")
-    debugger.HandleCommand(f"command script add -f {__name__}.handle_command ddp")
-    debugger.HandleCommand(f"breakpoint command add -F {__name__}.breakpoint_function_wrapper --script-type python 1")
+    # fmt: on
