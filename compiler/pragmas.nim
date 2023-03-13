@@ -392,7 +392,7 @@ proc pragmaToOptions*(w: TSpecialWord): TOptions {.inline.} =
   of wSinkInference: {optSinkInference}
   else: {}
 
-proc processExperimental*(c: PContext; n: PNode) =
+proc processExperimental(c: PContext; n: PNode) =
   if n.kind notin nkPragmaCallKinds or n.len != 2:
     c.features.incl oldExperimentalFeatures
   else:
