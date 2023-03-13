@@ -2426,21 +2426,20 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
 
     # first one is added already
     inc a
-    while a < n.len:
+    while a < n.len and n[a].kind != nkExprEqExpr:
       m.baseTypeMatch = false
       m.typedescMatched = false
       n[a] = prepareOperand(c, formal.typ, n[a])
       arg = paramTypesMatch(m, formal.typ, n[a].typ,
                                 n[a], nOrig[a])
-      if not m.baseTypeMatch:
+      # Nasty expression. It is like this because templates can handle
+      # a weird combination of typed/untyped parameters
+      if not m.baseTypeMatch or arg == nil or n[a].typ.kind == tyVoid:
         # end of this unit
         break
       incrIndexType(container.typ)
       container.add arg
       inc a
-      if a < n.len and n[a].kind == nkExprEqExpr:
-        # stop eating varargs, this terminates them
-        break
     # clean up after ourselves
     container = nil
     # last one we tried was not a vararg, so gotta decrement
