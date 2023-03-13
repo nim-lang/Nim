@@ -1,6 +1,6 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
-       packages, syntaxes, depends, vm
+       packages, syntaxes, depends, vm, pragmas, idents, lookups
 
 import pipelineutils
 
@@ -55,6 +55,24 @@ proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind
       let semNode = semWithPContext(ctx, importStmt)
       if semNode == nil or processPipeline(graph, semNode, bModule) == nil:
         break
+
+proc prePass(c: PContext; n: PNode) =
+  for son in n:
+    if son.kind == nkPragma:
+      for s in son:
+        var key = if s.kind in nkPragmaCallKinds and s.len > 1: s[0] else: s
+        if key.kind in {nkBracketExpr, nkCast} or key.kind notin nkIdentKinds:
+          continue
+        let ident = whichKeyword(considerQuotedIdent(c, key))
+        case ident
+        of wReorder:
+          pragmaNoForward(c, s, flag = sfReorder)
+        of wExperimental:
+          if not isTopLevel(c):
+            localError(c.config, n.info, "'experimental' pragma only valid as toplevel statement or in a 'push' environment")
+          processExperimental(c, s)
+        else:
+          discard
 
 proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
                     stream: PLLStream): bool =
@@ -133,6 +151,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         var n = parseTopLevelStmt(p)
         if n.kind == nkEmpty: break
         sl.add n
+
+      prePass(ctx, sl)
       if sfReorder in module.flags or codeReordering in graph.config.features:
         sl = reorder(graph, sl, module)
       if graph.pipelinePass != EvalPass:
