@@ -10,6 +10,8 @@ skipDirs = @["build" , "changelogs" , "ci" , "csources_v2" , "drnim" , "nimdoc",
 
 before install:
   when defined(windows):
-    exec "build_all.bat"
+    if not "bin\nim.exe".fileExists:
+      exec "build_all.bat"
   else:
-    exec "./build_all.sh"
+    if not "bin/nim".fileExists:
+      exec "./build_all.sh"
