@@ -168,8 +168,9 @@ func charSet*(s: set[char]): Peg {.rtl, extern: "npegs$1".} =
   ## constructs a PEG from a character set `s`
   assert '\0' notin s
   result = Peg(kind: pkCharChoice)
-  new(result.charChoice)
-  result.charChoice[] = s
+  {.cast(noSideEffect).}:
+    new(result.charChoice)
+    result.charChoice[] = s
 
 func len(a: Peg): int {.inline.} = return a.sons.len
 func add(d: var Peg, s: Peg) {.inline.} = add(d.sons, s)
@@ -1172,7 +1173,7 @@ iterator findAll*(s: string, pattern: Peg, start = 0): string =
 func findAll*(s: string, pattern: Peg, start = 0): seq[string] {.
   rtl, extern: "npegs$1".} =
   ## returns all matching *substrings* of `s` that match `pattern`.
-  ## If it does not match, @[] is returned.
+  ## If it does not match, `@[]` is returned.
   result = @[]
   for it in findAll(s, pattern, start): result.add it
 
@@ -1823,9 +1824,7 @@ type
     skip: Peg
 
 func pegError(p: PegParser, msg: string, line = -1, col = -1) =
-  var e: ref EInvalidPeg
-  new(e)
-  e.msg = errorStr(p, msg, line, col)
+  var e = (ref EInvalidPeg)(msg: errorStr(p, msg, line, col))
   raise e
 
 func getTok(p: var PegParser) =
@@ -1909,7 +1908,8 @@ func primary(p: var PegParser): Peg =
       getTok(p)
     elif not arrowIsNextTok(p):
       var nt = getNonTerminal(p, p.tok.literal)
-      incl(nt.flags, ntUsed)
+      {.cast(noSideEffect).}:
+        incl(nt.flags, ntUsed)
       result = nonterminal(nt).token(p)
       getTok(p)
     else:
@@ -2002,12 +2002,14 @@ func parseRule(p: var PegParser): NonTerminal =
     result = getNonTerminal(p, p.tok.literal)
     if ntDeclared in result.flags:
       pegError(p, "attempt to redefine: " & result.name)
-    result.line = getLine(p)
-    result.col = getColumn(p)
+    {.cast(noSideEffect).}:
+      result.line = getLine(p)
+      result.col = getColumn(p)
     getTok(p)
     eat(p, tkArrow)
-    result.rule = parseExpr(p)
-    incl(result.flags, ntDeclared) # NOW inlining may be attempted
+    {.cast(noSideEffect).}:
+      result.rule = parseExpr(p)
+      incl(result.flags, ntDeclared) # NOW inlining may be attempted
   else:
     pegError(p, "rule expected, but found: " & p.tok.literal)
 

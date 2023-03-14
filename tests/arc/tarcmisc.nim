@@ -27,14 +27,14 @@ new line after - @['a']
 finalizer
 aaaaa
 hello
-ok
 true
 copying
 123
 42
-closed
+ok
 destroying variable: 20
 destroying variable: 10
+closed
 '''
   cmd: "nim c --gc:arc --deepcopy:on -d:nimAllocPagesViaMalloc $file"
 """
@@ -124,7 +124,7 @@ proc test(count: int) =
 test(3)
 
 proc test2(count: int) =
-  #block: #XXX: Fails with block currently
+  block: #XXX: Fails with block currently
     var v {.global.} = newVariable(20)
 
     var count = count - 1
@@ -546,3 +546,15 @@ proc fooz(sec: var InputSectionBase) =
 var sec = create(InputSection)
 sec[] = InputSection(relocations: newSeq[int]())
 fooz sec[]
+
+block:
+  type
+    Data = ref object
+      id: int
+  proc main =
+    var x = Data(id: 99)
+    var y = x
+    x[] = Data(id: 778)[]
+    doAssert y.id == 778
+    doAssert x[].id == 778
+  main()

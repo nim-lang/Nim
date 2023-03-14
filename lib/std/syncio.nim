@@ -390,7 +390,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
   proc c_memchr(s: pointer, c: cint, n: csize_t): pointer {.
     importc: "memchr", header: "<string.h>".}
 
-  when defined(windows) and not defined(useWinAnsi):
+  when defined(windows):
     proc readConsole(hConsoleInput: FileHandle, lpBuffer: pointer,
                      nNumberOfCharsToRead: int32,
                      lpNumberOfCharsRead: ptr int32,
@@ -467,7 +467,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     while true:
       # fixes #9634; this pattern may need to be abstracted as a template if reused;
       # likely other io procs need this for correctness.
-      fgetsSuccess = c_fgets(addr line[pos], sp.cint, f) != nil
+      fgetsSuccess = c_fgets(cast[cstring](addr line[pos]), sp.cint, f) != nil
       if fgetsSuccess: break
       when not defined(nimscript):
         if errno == EINTR:
@@ -480,15 +480,16 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     let m = c_memchr(addr line[pos], '\L'.ord, cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
-      var last = cast[ByteAddress](m) - cast[ByteAddress](addr line[0])
+      var last = cast[int](m) - cast[int](addr line[0])
       if last > 0 and line[last-1] == '\c':
         line.setLen(last-1)
         return last > 1 or fgetsSuccess
-        # We have to distinguish between two possible cases:
+      elif last > 0 and line[last-1] == '\0':
+        # We have to distinguish among three possible cases:
         # \0\l\0 => line ending in a null character.
         # \0\l\l => last line without newline, null was put there by fgets.
-      elif last > 0 and line[last-1] == '\0':
-        if last < pos + sp - 1 and line[last+1] != '\0':
+        #   \0\l => last line without newline, null was put there by fgets.
+        if last >= pos + sp - 1 or line[last+1] != '\0': # bug #21273
           dec last
       line.setLen(last)
       return last > 0 or fgetsSuccess
@@ -573,7 +574,7 @@ proc readAllFile(file: File, len: int64): string =
   result = newString(len)
   let bytes = readBuffer(file, addr(result[0]), len)
   if endOfFile(file):
-    if bytes < len:
+    if bytes.int64 < len:
       result.setLen(bytes)
   else:
     # We read all the bytes but did not reach the EOF
@@ -611,7 +612,7 @@ proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
 
 # interface to the C procs:
 
-when defined(windows) and not defined(useWinAnsi):
+when defined(windows):
   when defined(cpp):
     proc wfopen(filename, mode: WideCString): pointer {.
       importcpp: "_wfopen((const wchar_t*)#, (const wchar_t*)#)", nodecl.}
@@ -717,7 +718,7 @@ proc open*(f: var File, filename: string,
 
     result = true
     f = cast[File](p)
-    if bufSize > 0 and bufSize <= high(cint).int:
+    if bufSize > 0 and bufSize.uint <= high(uint):
       discard c_setvbuf(f, nil, IOFBF, cast[csize_t](bufSize))
     elif bufSize == 0:
       discard c_setvbuf(f, nil, IONBF, 0)
@@ -810,14 +811,33 @@ when defined(windows) and not defined(nimscript) and not defined(js):
 
 when defined(windows) and appType == "console" and
     not defined(nimDontSetUtf8CodePage) and not defined(nimscript):
+  import std/exitprocs
+
   proc setConsoleOutputCP(codepage: cuint): int32 {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleOutputCP".}
   proc setConsoleCP(wCodePageID: cuint): int32 {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleCP".}
+  proc getConsoleOutputCP(): cuint {.stdcall, dynlib: "kernel32",
+    importc: "GetConsoleOutputCP".}
+  proc getConsoleCP(): cuint {.stdcall, dynlib: "kernel32",
+    importc: "GetConsoleCP".}
 
-  const Utf8codepage = 65001
-  discard setConsoleOutputCP(Utf8codepage)
-  discard setConsoleCP(Utf8codepage)
+  const Utf8codepage = 65001'u32
+
+  let
+    consoleOutputCP = getConsoleOutputCP()
+    consoleCP = getConsoleCP()
+
+  proc restoreConsoleOutputCP() = discard setConsoleOutputCP(consoleOutputCP)
+  proc restoreConsoleCP() = discard setConsoleCP(consoleCP)
+
+  if consoleOutputCP != Utf8codepage:
+    discard setConsoleOutputCP(Utf8codepage)
+    addExitProc(restoreConsoleOutputCP)
+
+  if consoleCP != Utf8codepage:
+    discard setConsoleCP(Utf8codepage)
+    addExitProc(restoreConsoleCP)
 
 proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.} =
   ## Opens a file named `filename` for reading, calls `readAll

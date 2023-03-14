@@ -244,3 +244,49 @@ block: # bug #11777
   type S = set[0..5]
   var s: S = {1, 2}
   doAssert 1 in s
+
+block: # bug #20807
+  var s: seq[string]
+  template fail =
+    s = @[]
+  template test(body: untyped) =
+    body
+  proc test(a: string) = discard
+  test: fail()
+  doAssert not (compiles do:
+    let x: seq[int] = `@`[string]([]))
+
+block: # bug #21377
+  proc b[T](v: T): seq[int] =
+    let x = 0
+    @[]
+
+  doAssert b(0) == @[]
+
+block: # bug #21377
+  proc b[T](v: T): seq[T] =
+    let x = 0
+    @[]
+
+  doAssert b(0) == @[]
+
+block: # bug #21377
+  proc b[T](v: T): set[bool] =
+    let x = 0
+    {}
+
+  doAssert b(0) == {}
+
+block: # bug #21377
+  proc b[T](v: T): array[0, int] =
+    let x = 0
+    []
+
+  doAssert b(0) == []
+
+block: # bug #21377
+  proc b[T](v: T): array[0, (string, string)] =
+    let x = 0
+    {:}
+
+  doAssert b(0) == {:}

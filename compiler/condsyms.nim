@@ -25,7 +25,7 @@ proc undefSymbol*(symbols: StringTableRef; symbol: string) =
 #  result = if isDefined(symbol): gSymbols[symbol] else: nil
 
 iterator definedSymbolNames*(symbols: StringTableRef): string =
-  for key, val in pairs(symbols):
+  for key in keys(symbols):
     yield key
 
 proc countDefinedSymbols*(symbols: StringTableRef): int =
@@ -84,10 +84,24 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasSignatureHashInMacro") # deadcode
   defineSymbol("nimHasDefault") # deadcode
   defineSymbol("nimMacrosSizealignof") # deadcode
+  defineSymbol("nimNoZeroExtendMagic") # deadcode
+  defineSymbol("nimMacrosGetNodeId") # deadcode
+  defineSymbol("nimFixedForwardGeneric") # deadcode
+  defineSymbol("nimToOpenArrayCString") # deadcode
+  defineSymbol("nimHasUsed") # deadcode
+  defineSymbol("nimnomagic64") # deadcode
+  defineSymbol("nimNewShiftOps") # deadcode
+  defineSymbol("nimHasCursor") # deadcode
+  defineSymbol("nimAlignPragma") # deadcode
+  defineSymbol("nimHasExceptionsQuery") # deadcode
+  defineSymbol("nimHasIsNamedTuple") # deadcode
+  defineSymbol("nimHashOrdinalFixed") # deadcode
+  defineSymbol("nimHasSinkInference") # deadcode
+  defineSymbol("nimNewIntegerOps") # deadcode
+  defineSymbol("nimHasInvariant") # deadcode
 
-  # > 0.20.0
-  defineSymbol("nimNoZeroExtendMagic")
-  defineSymbol("nimMacrosGetNodeId")
+
+
   for f in Feature:
     defineSymbol("nimHas" & $f)
 
@@ -98,31 +112,18 @@ proc initDefines*(symbols: StringTableRef) =
 
   defineSymbol("nimFixedOwned")
   defineSymbol("nimHasStyleChecks")
-  defineSymbol("nimToOpenArrayCString")
-  defineSymbol("nimHasUsed")
-  defineSymbol("nimFixedForwardGeneric")
-  defineSymbol("nimnomagic64")
-  defineSymbol("nimNewShiftOps")
-  defineSymbol("nimHasCursor")
-  defineSymbol("nimAlignPragma")
-  defineSymbol("nimHasExceptionsQuery")
-  defineSymbol("nimHasIsNamedTuple")
-  defineSymbol("nimHashOrdinalFixed")
 
   when defined(nimHasLibFFI):
     # Renaming as we can't conflate input vs output define flags; e.g. this
     # will report the right thing regardless of whether user adds
     # `-d:nimHasLibFFI` in his user config.
-    defineSymbol("nimHasLibFFIEnabled")
+    defineSymbol("nimHasLibFFIEnabled") # deadcode
 
-  defineSymbol("nimHasSinkInference")
-  defineSymbol("nimNewIntegerOps")
-  defineSymbol("nimHasInvariant")
-  defineSymbol("nimHasStacktraceMsgs")
+  defineSymbol("nimHasStacktraceMsgs") # deadcode
   defineSymbol("nimDoesntTrackDefects")
-  defineSymbol("nimHasLentIterators")
-  defineSymbol("nimHasDeclaredMagic")
-  defineSymbol("nimHasStacktracesModule")
+  defineSymbol("nimHasLentIterators") # deadcode
+  defineSymbol("nimHasDeclaredMagic") # deadcode
+  defineSymbol("nimHasStacktracesModule") # deadcode
   defineSymbol("nimHasEffectTraitsModule")
   defineSymbol("nimHasCastPragmaBlocks")
   defineSymbol("nimHasDeclaredLocs")
@@ -133,8 +134,8 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasCustomLiterals")
   defineSymbol("nimHasUnifiedTuple")
   defineSymbol("nimHasIterable")
-  defineSymbol("nimHasTypeofVoid")
-  defineSymbol("nimHasDragonBox")
+  defineSymbol("nimHasTypeofVoid") # deadcode
+  defineSymbol("nimHasDragonBox") # deadcode
   defineSymbol("nimHasHintAll")
   defineSymbol("nimHasTrace")
   defineSymbol("nimHasEffectsOf")
@@ -146,4 +147,10 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasCallsitePragma")
   defineSymbol("nimHasAmbiguousEnumHint")
 
+  defineSymbol("nimHasWarnCastSizes")
   defineSymbol("nimHasOutParams")
+  defineSymbol("nimHasSystemRaisesDefect")
+  defineSymbol("nimHasWarnUnnamedBreak")
+  defineSymbol("nimHasGenericDefine")
+  defineSymbol("nimHasDefineAliases")
+  defineSymbol("nimHasWarnBareExcept")

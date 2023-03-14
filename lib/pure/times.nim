@@ -408,6 +408,16 @@ const unitWeights: array[FixedTimeUnit, int64] = [
   7 * secondsInDay * 1e9.int64,
 ]
 
+when (NimMajor, NimMinor) >= (1, 4):
+  # Newer versions of Nim don't track defects
+  {.pragma: parseFormatRaises, raises: [TimeParseError, TimeFormatParseError].}
+  {.pragma: parseRaises, raises: [TimeParseError].}
+else:
+  # Still track when using older versions
+  {.pragma: parseFormatRaises, raises: [TimeParseError, TimeFormatParseError, Defect].}
+  {.pragma: parseRaises, raises: [TimeParseError, Defect].}
+  
+
 #
 # Helper procs
 #
@@ -953,27 +963,33 @@ proc toWinTime*(t: Time): int64 =
   ## since `1601-01-01T00:00:00Z`).
   result = t.seconds * rateDiff + epochDiff + t.nanosecond div 100
 
+proc getTimeImpl(typ: typedesc[Time]): Time =
+  discard "implemented in the vm"
+
 proc getTime*(): Time {.tags: [TimeEffect], benign.} =
   ## Gets the current time as a `Time` with up to nanosecond resolution.
-  when defined(js):
-    let millis = newDate().getTime()
-    let seconds = convert(Milliseconds, Seconds, millis)
-    let nanos = convert(Milliseconds, Nanoseconds,
-      millis mod convert(Seconds, Milliseconds, 1).int)
-    result = initTime(seconds, nanos)
-  elif defined(macosx):
-    var a {.noinit.}: Timeval
-    gettimeofday(a)
-    result = initTime(a.tv_sec.int64,
-                      convert(Microseconds, Nanoseconds, a.tv_usec.int))
-  elif defined(posix):
-    var ts {.noinit.}: Timespec
-    discard clock_gettime(CLOCK_REALTIME, ts)
-    result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
-  elif defined(windows):
-    var f {.noinit.}: FILETIME
-    getSystemTimeAsFileTime(f)
-    result = fromWinTime(rdFileTime(f))
+  when nimvm:
+    result = getTimeImpl(Time)
+  else:
+    when defined(js):
+      let millis = newDate().getTime()
+      let seconds = convert(Milliseconds, Seconds, millis)
+      let nanos = convert(Milliseconds, Nanoseconds,
+        millis mod convert(Seconds, Milliseconds, 1).int)
+      result = initTime(seconds, nanos)
+    elif defined(macosx):
+      var a {.noinit.}: Timeval
+      gettimeofday(a)
+      result = initTime(a.tv_sec.int64,
+                        convert(Microseconds, Nanoseconds, a.tv_usec.int))
+    elif defined(posix):
+      var ts {.noinit.}: Timespec
+      discard clock_gettime(CLOCK_REALTIME, ts)
+      result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
+    elif defined(windows):
+      var f {.noinit.}: FILETIME
+      getSystemTimeAsFileTime(f)
+      result = fromWinTime(rdFileTime(f))
 
 proc `-`*(a, b: Time): Duration {.operator, extern: "ntDiffTime".} =
   ## Computes the duration between two points in time.
@@ -2103,7 +2119,7 @@ proc format*(dt: DateTime, f: static[string]): string {.raises: [].} =
   const f2 = initTimeFormat(f)
   result = dt.format(f2)
 
-proc formatValue*(result: var string; value: DateTime, specifier: string) =
+proc formatValue*(result: var string; value: DateTime | Time, specifier: string) =
   ## adapter for strformat. Not intended to be called directly.
   result.add format(value,
     if specifier.len == 0: "yyyy-MM-dd'T'HH:mm:sszzz" else: specifier)
@@ -2127,13 +2143,8 @@ proc format*(time: Time, f: static[string], zone: Timezone = local()): string
   const f2 = initTimeFormat(f)
   result = time.inZone(zone).format(f2)
 
-template formatValue*(result: var string; value: Time, specifier: string) =
-  ## adapter for `strformat`. Not intended to be called directly.
-  result.add format(value, specifier)
-
 proc parse*(input: string, f: TimeFormat, zone: Timezone = local(),
-    loc: DateTimeLocale = DefaultLocale): DateTime
-    {.raises: [TimeParseError, Defect].} =
+    loc: DateTimeLocale = DefaultLocale): DateTime {.parseRaises.} =
   ## Parses `input` as a `DateTime` using the format specified by `f`.
   ## If no UTC offset was parsed, then `input` is assumed to be specified in
   ## the `zone` timezone. If a UTC offset was parsed, the result will be
@@ -2176,8 +2187,7 @@ proc parse*(input: string, f: TimeFormat, zone: Timezone = local(),
   result = toDateTime(parsed, zone, f, input)
 
 proc parse*(input, f: string, tz: Timezone = local(),
-    loc: DateTimeLocale = DefaultLocale): DateTime
-    {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
+    loc: DateTimeLocale = DefaultLocale): DateTime {.parseFormatRaises.} =
   ## Shorthand for constructing a `TimeFormat` and using it to parse
   ## `input` as a `DateTime`.
   ##
@@ -2190,14 +2200,12 @@ proc parse*(input, f: string, tz: Timezone = local(),
   result = input.parse(dtFormat, tz, loc = loc)
 
 proc parse*(input: string, f: static[string], zone: Timezone = local(),
-    loc: DateTimeLocale = DefaultLocale):
-  DateTime {.raises: [TimeParseError, Defect].} =
+    loc: DateTimeLocale = DefaultLocale): DateTime {.parseRaises.} =
   ## Overload that validates `f` at compile time.
   const f2 = initTimeFormat(f)
   result = input.parse(f2, zone, loc = loc)
 
-proc parseTime*(input, f: string, zone: Timezone): Time
-    {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
+proc parseTime*(input, f: string, zone: Timezone): Time {.parseFormatRaises.} =
   ## Shorthand for constructing a `TimeFormat` and using it to parse
   ## `input` as a `DateTime`, then converting it a `Time`.
   ##
@@ -2209,7 +2217,7 @@ proc parseTime*(input, f: string, zone: Timezone): Time
   parse(input, f, zone).toTime()
 
 proc parseTime*(input: string, f: static[string], zone: Timezone): Time
-    {.raises: [TimeParseError, Defect].} =
+    {.parseRaises.} =
   ## Overload that validates `format` at compile time.
   const f2 = initTimeFormat(f)
   result = input.parse(f2, zone).toTime()

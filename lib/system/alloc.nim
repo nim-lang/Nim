@@ -12,6 +12,7 @@
 
 include osalloc
 import std/private/syslocks
+import std/sysatomics
 
 template track(op, address, size) =
   when defined(memTracker):
@@ -23,7 +24,7 @@ template track(op, address, size) =
 const
   nimMinHeapPages {.intdefine.} = 128 # 0.5 MB
   SmallChunkSize = PageSize
-  MaxFli = 30
+  MaxFli = when sizeof(int) > 2: 30 else: 14
   MaxLog2Sli = 5 # 32, this cannot be increased without changing 'uint32'
                  # everywhere!
   MaxSli = 1 shl MaxLog2Sli
@@ -31,7 +32,7 @@ const
   RealFli = MaxFli - FliOffset
 
   # size of chunks in last matrix bin
-  MaxBigChunkSize = 1 shl MaxFli - 1 shl (MaxFli-MaxLog2Sli-1)
+  MaxBigChunkSize = int(1'i32 shl MaxFli - 1'i32 shl (MaxFli-MaxLog2Sli-1))
   HugeChunkSize = MaxBigChunkSize + 1
 
 type
@@ -94,17 +95,11 @@ type
     acc: int             # accumulator for small object allocation
     when defined(gcDestructors):
       sharedFreeList: ptr FreeCell # make no attempt at avoiding false sharing for now for this object field
-    when defined(nimAlignPragma):
-      data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
-    else:
-      data: UncheckedArray[byte]
+    data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
     next, prev: PBigChunk    # chunks of the same (or bigger) size
-    when defined(nimAlignPragma):
-      data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
-    else:
-      data: UncheckedArray[byte]
+    data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
 
   HeapLinks = object
     len: int
@@ -114,7 +109,7 @@ type
   MemRegion = object
     when not defined(gcDestructors):
       minLargeObj, maxLargeObj: int
-    freeSmallChunks: array[0..SmallChunkSize div MemAlign-1, PSmallChunk]
+    freeSmallChunks: array[0..max(1,SmallChunkSize div MemAlign-1), PSmallChunk]
     flBitmap: uint32
     slBitmap: array[RealFli, uint32]
     matrix: array[RealFli, array[MaxSli, PBigChunk]]
@@ -195,7 +190,7 @@ proc mappingSearch(r, fl, sl: var int) {.inline.} =
   let t = roundup((1 shl (msbit(uint32 r) - MaxLog2Sli)), PageSize) - 1
   r = r + t
   r = r and not t
-  r = min(r, MaxBigChunkSize)
+  r = min(r, MaxBigChunkSize).int
   fl = msbit(uint32 r)
   sl = (r shr (fl - MaxLog2Sli)) - MaxSli
   dec fl, FliOffset
@@ -289,7 +284,7 @@ proc llAlloc(a: var MemRegion, size: int): pointer =
     a.llmem.size = PageSize - sizeof(LLChunk)
     a.llmem.acc = sizeof(LLChunk)
     a.llmem.next = old
-  result = cast[pointer](cast[ByteAddress](a.llmem) + a.llmem.acc)
+  result = cast[pointer](cast[int](a.llmem) + a.llmem.acc)
   dec(a.llmem.size, size)
   inc(a.llmem.acc, size)
   zeroMem(result, size)
@@ -421,7 +416,7 @@ iterator allObjects(m: var MemRegion): pointer {.inline.} =
           var c = cast[PSmallChunk](c)
 
           let size = c.size
-          var a = cast[ByteAddress](addr(c.data))
+          var a = cast[int](addr(c.data))
           let limit = a + c.acc
           while a <% limit:
             yield cast[pointer](a)
@@ -440,13 +435,13 @@ when not defined(gcDestructors):
 
 # ------------- chunk management ----------------------------------------------
 proc pageIndex(c: PChunk): int {.inline.} =
-  result = cast[ByteAddress](c) shr PageShift
+  result = cast[int](c) shr PageShift
 
 proc pageIndex(p: pointer): int {.inline.} =
-  result = cast[ByteAddress](p) shr PageShift
+  result = cast[int](p) shr PageShift
 
 proc pageAddr(p: pointer): PChunk {.inline.} =
-  result = cast[PChunk](cast[ByteAddress](p) and not PageMask)
+  result = cast[PChunk](cast[int](p) and not PageMask)
   #sysAssert(Contains(allocator.chunkStarts, pageIndex(result)))
 
 when false:
@@ -471,7 +466,7 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
         a.nextChunkSize = PageSize*4
       else:
         a.nextChunkSize = min(roundup(usedMem shr 2, PageSize), a.nextChunkSize * 2)
-        a.nextChunkSize = min(a.nextChunkSize, MaxBigChunkSize)
+        a.nextChunkSize = min(a.nextChunkSize, MaxBigChunkSize).int
 
   var size = size
   if size > a.nextChunkSize:
@@ -494,13 +489,13 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   when defined(memtracker):
     trackLocation(addr result.size, sizeof(int))
 
-  sysAssert((cast[ByteAddress](result) and PageMask) == 0, "requestOsChunks 1")
+  sysAssert((cast[int](result) and PageMask) == 0, "requestOsChunks 1")
   #zeroMem(result, size)
   result.next = nil
   result.prev = nil
   result.size = size
   # update next.prevSize:
-  var nxt = cast[ByteAddress](result) +% size
+  var nxt = cast[int](result) +% size
   sysAssert((nxt and PageMask) == 0, "requestOsChunks 2")
   var next = cast[PChunk](nxt)
   if pageIndex(next) in a.chunkStarts:
@@ -508,7 +503,7 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
     next.prevSize = size or (next.prevSize and 1)
   # set result.prevSize:
   var lastSize = if a.lastSize != 0: a.lastSize else: PageSize
-  var prv = cast[ByteAddress](result) -% lastSize
+  var prv = cast[int](result) -% lastSize
   sysAssert((nxt and PageMask) == 0, "requestOsChunks 3")
   var prev = cast[PChunk](prv)
   if pageIndex(prev) in a.chunkStarts and prev.size == lastSize:
@@ -554,13 +549,13 @@ proc listRemove[T](head: var T, c: T) {.inline.} =
 
 proc updatePrevSize(a: var MemRegion, c: PBigChunk,
                     prevSize: int) {.inline.} =
-  var ri = cast[PChunk](cast[ByteAddress](c) +% c.size)
-  sysAssert((cast[ByteAddress](ri) and PageMask) == 0, "updatePrevSize")
+  var ri = cast[PChunk](cast[int](c) +% c.size)
+  sysAssert((cast[int](ri) and PageMask) == 0, "updatePrevSize")
   if isAccessible(a, ri):
     ri.prevSize = prevSize or (ri.prevSize and 1)
 
 proc splitChunk2(a: var MemRegion, c: PBigChunk, size: int): PBigChunk =
-  result = cast[PBigChunk](cast[ByteAddress](c) +% size)
+  result = cast[PBigChunk](cast[int](c) +% size)
   result.size = c.size - size
   track("result.size", addr result.size, sizeof(int))
   when not defined(nimOptimizedSplitChunk):
@@ -589,8 +584,8 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
   when coalescLeft:
     let prevSize = c.prevSize
     if prevSize != 0:
-      var le = cast[PChunk](cast[ByteAddress](c) -% prevSize)
-      sysAssert((cast[ByteAddress](le) and PageMask) == 0, "freeBigChunk 4")
+      var le = cast[PChunk](cast[int](c) -% prevSize)
+      sysAssert((cast[int](le) and PageMask) == 0, "freeBigChunk 4")
       if isAccessible(a, le) and chunkUnused(le):
         sysAssert(not isSmallChunk(le), "freeBigChunk 5")
         if not isSmallChunk(le) and le.size < MaxBigChunkSize:
@@ -606,8 +601,8 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
             addChunkToMatrix(a, c)
             c = rest
   when coalescRight:
-    var ri = cast[PChunk](cast[ByteAddress](c) +% c.size)
-    sysAssert((cast[ByteAddress](ri) and PageMask) == 0, "freeBigChunk 2")
+    var ri = cast[PChunk](cast[int](c) +% c.size)
+    sysAssert((cast[int](ri) and PageMask) == 0, "freeBigChunk 2")
     if isAccessible(a, ri) and chunkUnused(ri):
       sysAssert(not isSmallChunk(ri), "freeBigChunk 3")
       if not isSmallChunk(ri) and c.size < MaxBigChunkSize:
@@ -668,7 +663,7 @@ proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
   incCurrMem(a, size)
   # XXX add this to the heap links. But also remove it from it later.
   when false: a.addHeapLink(result, size)
-  sysAssert((cast[ByteAddress](result) and PageMask) == 0, "getHugeChunk")
+  sysAssert((cast[int](result) and PageMask) == 0, "getHugeChunk")
   result.next = nil
   result.prev = nil
   result.size = size
@@ -758,10 +753,14 @@ proc deallocBigChunk(a: var MemRegion, c: PBigChunk) =
 when defined(gcDestructors):
   template atomicPrepend(head, elem: untyped) =
     # see also https://en.cppreference.com/w/cpp/atomic/atomic_compare_exchange
-    while true:
+    when hasThreadSupport:
+      while true:
+        elem.next.storea head.loada
+        if atomicCompareExchangeN(addr head, addr elem.next, elem, weak = true, ATOMIC_RELEASE, ATOMIC_RELAXED):
+          break
+    else:
       elem.next.storea head.loada
-      if atomicCompareExchangeN(addr head, addr elem.next, elem, weak = true, ATOMIC_RELEASE, ATOMIC_RELAXED):
-        break
+      head.storea elem
 
   proc addToSharedFreeListBigChunks(a: var MemRegion; c: PBigChunk) {.inline.} =
     sysAssert c.next == nil, "c.next pointer must be nil"
@@ -782,8 +781,9 @@ when defined(gcDestructors):
     while it != nil:
       if maxIters == 0:
         let rest = it.next.loada
-        it.next.storea nil
-        addToSharedFreeList(c, rest)
+        if rest != nil:
+          it.next.storea nil
+          addToSharedFreeList(c, rest)
         break
       inc x, size
       it = it.next.loada
@@ -832,7 +832,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       c.prev = nil
       listAdd(a.freeSmallChunks[s], c)
       result = addr(c.data)
-      sysAssert((cast[ByteAddress](result) and (MemAlign-1)) == 0, "rawAlloc 4")
+      sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 4")
     else:
       sysAssert(allocInv(a), "rawAlloc: begin c != nil")
       sysAssert c.next != c, "rawAlloc 5"
@@ -841,12 +841,16 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       sysAssert c.size == size, "rawAlloc 6"
       when defined(gcDestructors):
         if c.freeList == nil:
-          c.freeList = atomicExchangeN(addr c.sharedFreeList, nil, ATOMIC_RELAXED)
+          when hasThreadSupport:
+            c.freeList = atomicExchangeN(addr c.sharedFreeList, nil, ATOMIC_RELAXED)
+          else:
+            c.freeList = c.sharedFreeList
+            c.sharedFreeList = nil
           compensateCounters(a, c, size)
       if c.freeList == nil:
         sysAssert(c.acc + smallChunkOverhead() + size <= SmallChunkSize,
                   "rawAlloc 7")
-        result = cast[pointer](cast[ByteAddress](addr(c.data)) +% c.acc)
+        result = cast[pointer](cast[int](addr(c.data)) +% c.acc)
         inc(c.acc, size)
       else:
         result = c.freeList
@@ -854,21 +858,25 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
           sysAssert(c.freeList.zeroField == 0, "rawAlloc 8")
         c.freeList = c.freeList.next
       dec(c.free, size)
-      sysAssert((cast[ByteAddress](result) and (MemAlign-1)) == 0, "rawAlloc 9")
+      sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 9")
       sysAssert(allocInv(a), "rawAlloc: end c != nil")
     sysAssert(allocInv(a), "rawAlloc: before c.free < size")
     if c.free < size:
       sysAssert(allocInv(a), "rawAlloc: before listRemove test")
       listRemove(a.freeSmallChunks[s], c)
       sysAssert(allocInv(a), "rawAlloc: end listRemove test")
-    sysAssert(((cast[ByteAddress](result) and PageMask) - smallChunkOverhead()) %%
+    sysAssert(((cast[int](result) and PageMask) - smallChunkOverhead()) %%
                size == 0, "rawAlloc 21")
     sysAssert(allocInv(a), "rawAlloc: end small size")
     inc a.occ, size
     trackSize(c.size)
   else:
     when defined(gcDestructors):
-      let deferredFrees = atomicExchangeN(addr a.sharedFreeListBigChunks, nil, ATOMIC_RELAXED)
+      when hasThreadSupport:
+        let deferredFrees = atomicExchangeN(addr a.sharedFreeListBigChunks, nil, ATOMIC_RELAXED)
+      else:
+        let deferredFrees = a.sharedFreeListBigChunks
+        a.sharedFreeListBigChunks = nil
       if deferredFrees != nil:
         freeDeferredObjects(a, deferredFrees)
 
@@ -879,11 +887,11 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
     sysAssert c.prev == nil, "rawAlloc 10"
     sysAssert c.next == nil, "rawAlloc 11"
     result = addr(c.data)
-    sysAssert((cast[ByteAddress](c) and (MemAlign-1)) == 0, "rawAlloc 13")
-    sysAssert((cast[ByteAddress](c) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
+    sysAssert((cast[int](c) and (MemAlign-1)) == 0, "rawAlloc 13")
+    sysAssert((cast[int](c) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
     when not defined(gcDestructors):
       if a.root == nil: a.root = getBottom(a)
-      add(a, a.root, cast[ByteAddress](result), cast[ByteAddress](result)+%size)
+      add(a, a.root, cast[int](result), cast[int](result)+%size)
     inc a.occ, c.size
     trackSize(c.size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
@@ -900,6 +908,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
   #sysAssert(isAllocatedPtr(a, p), "rawDealloc: no allocated pointer")
   sysAssert(allocInv(a), "rawDealloc: begin")
   var c = pageAddr(p)
+  sysAssert(c != nil, "rawDealloc: begin")
   if isSmallChunk(c):
     # `p` is within a small chunk:
     var c = cast[PSmallChunk](c)
@@ -912,10 +921,10 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
       dec a.occ, s
       untrackSize(s)
       sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case A)"
-      sysAssert(((cast[ByteAddress](p) and PageMask) - smallChunkOverhead()) %%
+      sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead()) %%
                 s == 0, "rawDealloc 3")
       when not defined(gcDestructors):
-        #echo("setting to nil: ", $cast[ByteAddress](addr(f.zeroField)))
+        #echo("setting to nil: ", $cast[int](addr(f.zeroField)))
         sysAssert(f.zeroField != 0, "rawDealloc 1")
         f.zeroField = 0
       f.next = c.freeList
@@ -938,7 +947,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     else:
       when defined(gcDestructors):
         addToSharedFreeList(c, f)
-    sysAssert(((cast[ByteAddress](p) and PageMask) - smallChunkOverhead()) %%
+    sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead()) %%
                s == 0, "rawDealloc 2")
   else:
     # set to 0xff to check for usage after free bugs:
@@ -960,7 +969,7 @@ when not defined(gcDestructors):
       if not chunkUnused(c):
         if isSmallChunk(c):
           var c = cast[PSmallChunk](c)
-          var offset = (cast[ByteAddress](p) and (PageSize-1)) -%
+          var offset = (cast[int](p) and (PageSize-1)) -%
                       smallChunkOverhead()
           result = (c.acc >% offset) and (offset %% c.size == 0) and
             (cast[ptr FreeCell](p).zeroField >% 1)
@@ -978,12 +987,12 @@ when not defined(gcDestructors):
       if not chunkUnused(c):
         if isSmallChunk(c):
           var c = cast[PSmallChunk](c)
-          var offset = (cast[ByteAddress](p) and (PageSize-1)) -%
+          var offset = (cast[int](p) and (PageSize-1)) -%
                       smallChunkOverhead()
           if c.acc >% offset:
-            sysAssert(cast[ByteAddress](addr(c.data)) +% offset ==
-                      cast[ByteAddress](p), "offset is not what you think it is")
-            var d = cast[ptr FreeCell](cast[ByteAddress](addr(c.data)) +%
+            sysAssert(cast[int](addr(c.data)) +% offset ==
+                      cast[int](p), "offset is not what you think it is")
+            var d = cast[ptr FreeCell](cast[int](addr(c.data)) +%
                       offset -% (offset %% c.size))
             if d.zeroField >% 1:
               result = d
@@ -1010,7 +1019,7 @@ when not defined(gcDestructors):
 
 proc ptrSize(p: pointer): int =
   when not defined(gcDestructors):
-    var x = cast[pointer](cast[ByteAddress](p) -% sizeof(FreeCell))
+    var x = cast[pointer](cast[int](p) -% sizeof(FreeCell))
     var c = pageAddr(p)
     sysAssert(not chunkUnused(c), "ptrSize")
     result = c.size -% sizeof(FreeCell)
@@ -1028,7 +1037,7 @@ proc alloc(allocator: var MemRegion, size: Natural): pointer {.gcsafe.} =
     result = rawAlloc(allocator, size+sizeof(FreeCell))
     cast[ptr FreeCell](result).zeroField = 1 # mark it as used
     sysAssert(not isAllocatedPtr(allocator, result), "alloc")
-    result = cast[pointer](cast[ByteAddress](result) +% sizeof(FreeCell))
+    result = cast[pointer](cast[int](result) +% sizeof(FreeCell))
     track("alloc", result, size)
   else:
     result = rawAlloc(allocator, size)
@@ -1040,7 +1049,7 @@ proc alloc0(allocator: var MemRegion, size: Natural): pointer =
 proc dealloc(allocator: var MemRegion, p: pointer) =
   when not defined(gcDestructors):
     sysAssert(p != nil, "dealloc: p is nil")
-    var x = cast[pointer](cast[ByteAddress](p) -% sizeof(FreeCell))
+    var x = cast[pointer](cast[int](p) -% sizeof(FreeCell))
     sysAssert(x != nil, "dealloc: x is nil")
     sysAssert(isAccessible(allocator, x), "is not accessible")
     sysAssert(cast[ptr FreeCell](x).zeroField == 1, "dealloc: object header corrupted")
@@ -1101,7 +1110,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
       result = interiorAllocatedPtr(allocator, p)
 
     proc isAllocatedPtr*(p: pointer): bool =
-      let p = cast[pointer](cast[ByteAddress](p)-%ByteAddress(sizeof(Cell)))
+      let p = cast[pointer](cast[int](p)-%ByteAddress(sizeof(Cell)))
       result = isAllocatedPtr(allocator, p)
 
   proc deallocOsPages = deallocOsPages(allocator)

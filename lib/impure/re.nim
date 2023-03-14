@@ -17,6 +17,10 @@ when defined(js):
 ## C library. This means that your application will depend on the PCRE
 ## library's licence when using this module, which should not be a problem
 ## though.
+##
+## .. note:: There are also alternative nimble packages such as [tinyre](https://github.com/khchen/tinyre)
+##   and [regex](https://github.com/nitely/nim-regex).
+##
 ## PCRE's licence follows:
 ##
 ## .. include:: ../../doc/regexprs.txt
@@ -436,7 +440,7 @@ iterator findAll*(buf: cstring, pattern: Regex, start = 0, bufSize: int): string
 
 proc findAll*(s: string, pattern: Regex, start = 0): seq[string] {.inline.} =
   ## returns all matching `substrings` of `s` that match `pattern`.
-  ## If it does not match, @[] is returned.
+  ## If it does not match, `@[]` is returned.
   result = @[]
   for x in findAll(s, pattern, start): result.add x
 

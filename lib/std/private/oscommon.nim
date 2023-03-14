@@ -5,6 +5,8 @@ import std/[oserrors]
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
 
+## .. importdoc:: osdirs.nim, os.nim
+
 const weirdTarget* = defined(nimscript) or defined(js)
 
 
@@ -45,25 +47,17 @@ else:
 
 
 when defined(windows) and not weirdTarget:
-  when useWinUnicode:
-    template wrapUnary*(varname, winApiProc, arg: untyped) =
-      var varname = winApiProc(newWideCString(arg))
+  template wrapUnary*(varname, winApiProc, arg: untyped) =
+    var varname = winApiProc(newWideCString(arg))
 
-    template wrapBinary*(varname, winApiProc, arg, arg2: untyped) =
-      var varname = winApiProc(newWideCString(arg), arg2)
-    proc findFirstFile*(a: string, b: var WIN32_FIND_DATA): Handle =
-      result = findFirstFileW(newWideCString(a), b)
-    template findNextFile*(a, b: untyped): untyped = findNextFileW(a, b)
-    template getCommandLine*(): untyped = getCommandLineW()
+  template wrapBinary*(varname, winApiProc, arg, arg2: untyped) =
+    var varname = winApiProc(newWideCString(arg), arg2)
+  proc findFirstFile*(a: string, b: var WIN32_FIND_DATA): Handle =
+    result = findFirstFileW(newWideCString(a), b)
+  template findNextFile*(a, b: untyped): untyped = findNextFileW(a, b)
 
-    template getFilename*(f: untyped): untyped =
-      $cast[WideCString](addr(f.cFileName[0]))
-  else:
-    template findFirstFile*(a, b: untyped): untyped = findFirstFileA(a, b)
-    template findNextFile*(a, b: untyped): untyped = findNextFileA(a, b)
-    template getCommandLine*(): untyped = getCommandLineA()
-
-    template getFilename*(f: untyped): untyped = $cstring(addr f.cFileName)
+  template getFilename*(f: untyped): untyped =
+    $cast[WideCString](addr(f.cFileName[0]))
 
   proc skipFindData*(f: WIN32_FIND_DATA): bool {.inline.} =
     # Note - takes advantage of null delimiter in the cstring
@@ -104,12 +98,9 @@ proc tryMoveFSObject*(source, dest: string, isDir: bool): bool {.noWeirdTarget.}
   ## In case of other errors `OSError` is raised.
   ## Returns true in case of success.
   when defined(windows):
-    when useWinUnicode:
-      let s = newWideCString(source)
-      let d = newWideCString(dest)
-      result = moveFileExW(s, d, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) != 0'i32
-    else:
-      result = moveFileExA(source, dest, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) != 0'i32
+    let s = newWideCString(source)
+    let d = newWideCString(dest)
+    result = moveFileExW(s, d, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) != 0'i32
   else:
     result = c_rename(source, dest) == 0'i32
 
@@ -137,10 +128,7 @@ proc fileExists*(filename: string): bool {.rtl, extern: "nos$1",
   ## * `dirExists proc`_
   ## * `symlinkExists proc`_
   when defined(windows):
-    when useWinUnicode:
-      wrapUnary(a, getFileAttributesW, filename)
-    else:
-      var a = getFileAttributesA(filename)
+    wrapUnary(a, getFileAttributesW, filename)
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_DIRECTORY) == 0'i32
   else:
@@ -157,10 +145,7 @@ proc dirExists*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect]
   ## * `fileExists proc`_
   ## * `symlinkExists proc`_
   when defined(windows):
-    when useWinUnicode:
-      wrapUnary(a, getFileAttributesW, dir)
-    else:
-      var a = getFileAttributesA(dir)
+    wrapUnary(a, getFileAttributesW, dir)
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_DIRECTORY) != 0'i32
   else:
@@ -178,10 +163,7 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
   ## * `fileExists proc`_
   ## * `dirExists proc`_
   when defined(windows):
-    when useWinUnicode:
-      wrapUnary(a, getFileAttributesW, link)
-    else:
-      var a = getFileAttributesA(link)
+    wrapUnary(a, getFileAttributesW, link)
     if a != -1'i32:
       # xxx see: bug #16784 (bug9); checking `IO_REPARSE_TAG_SYMLINK`
       # may also be needed.
@@ -197,15 +179,8 @@ when defined(windows) and not weirdTarget:
       flags = flags or FILE_FLAG_OPEN_REPARSE_POINT
     let access = if writeAccess: GENERIC_WRITE else: 0'i32
 
-    when useWinUnicode:
-      result = createFileW(
-        newWideCString(path), access,
-        FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
-        nil, OPEN_EXISTING, flags, 0
-        )
-    else:
-      result = createFileA(
-        path, access,
-        FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
-        nil, OPEN_EXISTING, flags, 0
-        )
+    result = createFileW(
+      newWideCString(path), access,
+      FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
+      nil, OPEN_EXISTING, flags, 0
+      )

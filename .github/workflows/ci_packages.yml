@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'devel'
+      - 'version-2-0'
       - 'version-1-6'
       - 'version-1-2'
 
@@ -27,12 +28,12 @@ jobs:
       NIM_TESTAMENT_BATCH: ${{ matrix.batch }}
     steps:
       - name: 'Checkout'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 2
 
       - name: 'Install node.js 16.x'
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '16.x'
 

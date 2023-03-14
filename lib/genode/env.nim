@@ -17,7 +17,7 @@
 #
 
 when not defined(genode):
-  {.error: "Genode only include".}
+  {.error: "Genode only module".}
 
 type
   GenodeEnvObj* {.importcpp: "Genode::Env", header: "<base/env.h>", pure.} = object

@@ -10,7 +10,7 @@
 #
 
 const
-  NimbleStableCommit = "d13f3b8ce288b4dc8c34c219a4e050aaeaf43fc9" # master
+  NimbleStableCommit = "7efb226ef908297e8791cade20d991784b4e8bfc" # master
   # examples of possible values: #head, #ea82b54, 1.2.3
   FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
   HeadHash = "#head"
@@ -295,11 +295,7 @@ proc boot(args: string) =
 
   let nimStart = findStartNim().quoteShell()
   for i in 0..2:
-    # Nim versions < (1, 1) expect Nim's exception type to have a 'raiseId' field for
-    # C++ interop. Later Nim versions do this differently and removed the 'raiseId' field.
-    # Thus we always bootstrap the first iteration with "c" and not with "cpp" as
-    # a workaround.
-    let defaultCommand = if useCpp and i > 0: "cpp" else: "c"
+    let defaultCommand = if useCpp: "cpp" else: "c"
     let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
     echo "iteration: ", i+1
     var extraOption = ""
@@ -534,8 +530,7 @@ proc runCI(cmd: string) =
   # boot without -d:nimHasLibFFI to make sure this still works
   # `--lib:lib` is needed for bootstrap on openbsd, for reasons described in
   # https://github.com/nim-lang/Nim/pull/14291 (`getAppFilename` bugsfor older nim on openbsd).
-  kochExecFold("Boot in release mode", "boot -d:release --gc:refc -d:nimStrictMode --lib:lib")
-  kochExecFold("Boot Nim ORC", "boot -d:release --lib:lib")
+  kochExecFold("Boot Nim ORC", "boot -d:release -d:nimStrictMode --lib:lib")
 
   when false: # debugging: when you need to run only 1 test in CI, use something like this:
     execFold("debugging test", "nim r tests/stdlib/tosproc.nim")
@@ -543,6 +538,8 @@ proc runCI(cmd: string) =
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
+
+  execFold("Install smtp", "nimble install smtp -y")
 
   let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
@@ -588,6 +585,9 @@ proc runCI(cmd: string) =
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
     execFold("Run atlas tests", "nim c -r -d:atlasTests tools/atlas/atlas.nim clone https://github.com/disruptek/balls")
+
+    kochExecFold("Testing booting in refc", "boot -d:release --mm:refc -d:nimStrictMode --lib:lib")
+
 
 proc testUnixInstall(cmdLineRest: string) =
   csource("-d:danger" & cmdLineRest)
@@ -676,7 +676,7 @@ when isMainModule:
       case normalize(op.key)
       of "boot": boot(op.cmdLineRest)
       of "clean": clean(op.cmdLineRest)
-      of "doc", "docs": buildDocs(op.cmdLineRest & paCode, localDocsOnly, localDocsOut)
+      of "doc", "docs": buildDocs(op.cmdLineRest & " --d:nimPreviewSlimSystem " & paCode, localDocsOnly, localDocsOut)
       of "doc0", "docs0":
         # undocumented command for Araq-the-merciful:
         buildDocs(op.cmdLineRest & gaCode)

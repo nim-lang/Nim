@@ -13,7 +13,7 @@
 import
   strutils, options, ast, trees, nimsets,
   platform, math, msgs, idents, renderer, types,
-  commands, magicsys, modulegraphs, strtabs, lineinfos
+  commands, magicsys, modulegraphs, strtabs, lineinfos, wordrecg
 
 from system/memory import nimCStrLen
 
@@ -371,6 +371,11 @@ proc rangeCheck(n: PNode, value: Int128; g: ModuleGraph) =
     localError(g.config, n.info, "cannot convert " & $value &
                                     " to " & typeToString(n.typ))
 
+proc floatRangeCheck(n: PNode, value: BiggestFloat; g: ModuleGraph) =
+  if value < firstFloat(n.typ) or value > lastFloat(n.typ):
+    localError(g.config, n.info, "cannot convert " & $value &
+                                    " to " & typeToString(n.typ))
+
 proc foldConv(n, a: PNode; idgen: IdGenerator; g: ModuleGraph; check = false): PNode =
   let dstTyp = skipTypes(n.typ, abstractRange - {tyTypeDesc})
   let srcTyp = skipTypes(a.typ, abstractRange - {tyTypeDesc})
@@ -490,6 +495,83 @@ proc newSymNodeTypeDesc*(s: PSym; idgen: IdGenerator; info: TLineInfo): PNode =
   else:
     result.typ = s.typ
 
+proc foldDefine(m, s: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
+  var name = s.name.s
+  let prag = extractPragma(s)
+  if prag != nil:
+    for it in prag:
+      if it.kind in nkPragmaCallKinds and it.len == 2 and it[0].kind == nkIdent:
+        let word = whichKeyword(it[0].ident)
+        if word in {wStrDefine, wIntDefine, wBoolDefine, wDefine}:
+          # should be processed in pragmas.nim already
+          if it[1].kind in {nkStrLit, nkRStrLit, nkTripleStrLit}:
+            name = it[1].strVal
+  if isDefined(g.config, name):
+    let str = g.config.symbols[name]
+    case s.magic
+    of mIntDefine:
+      try:
+        result = newIntNodeT(toInt128(str.parseInt), n, idgen, g)
+      except ValueError:
+        localError(g.config, s.info,
+          "{.intdefine.} const was set to an invalid integer: '" &
+            str & "'")
+    of mStrDefine:
+      result = newStrNodeT(str, n, g)
+    of mBoolDefine:
+      try:
+        result = newIntNodeT(toInt128(str.parseBool.int), n, idgen, g)
+      except ValueError:
+        localError(g.config, s.info,
+          "{.booldefine.} const was set to an invalid bool: '" &
+            str & "'")
+    of mGenericDefine:
+      let rawTyp = s.typ
+      # pretend we don't support distinct types
+      let typ = rawTyp.skipTypes(abstractVarRange-{tyDistinct})
+      try:
+        template intNode(value): PNode =
+          let val = toInt128(value)
+          rangeCheck(n, val, g)
+          newIntNodeT(val, n, idgen, g)
+        case typ.kind
+        of tyString, tyCstring:
+          result = newStrNodeT(str, n, g)
+        of tyInt..tyInt64:
+          result = intNode(str.parseBiggestInt)
+        of tyUInt..tyUInt64:
+          result = intNode(str.parseBiggestUInt)
+        of tyBool:
+          result = intNode(str.parseBool.int)
+        of tyEnum:
+          # compile time parseEnum
+          let ident = getIdent(g.cache, str)
+          for e in typ.n:
+            if e.kind != nkSym: internalError(g.config, "foldDefine for enum")
+            let es = e.sym
+            let match =
+              if es.ast.isNil:
+                es.name.id == ident.id
+              else:
+                es.ast.strVal == str
+            if match:
+              result = intNode(es.position)
+              break
+          if result.isNil:
+            raise newException(ValueError, "invalid enum value: " & str)
+        else:
+          localError(g.config, s.info, "unsupported type $1 for define '$2'" %
+            [name, typeToString(rawTyp)])
+      except ValueError as e:
+        localError(g.config, s.info,
+          "could not process define '$1' of type $2; $3" %
+            [name, typeToString(rawTyp), e.msg])
+    else: result = copyTree(s.astdef) # unreachable
+  else:
+    result = copyTree(s.astdef)
+    if result != nil:
+      result.info = n.info
+
 proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   result = nil
   case n.kind
@@ -509,33 +591,12 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
       of mBuildOS: result = newStrNodeT(toLowerAscii(platform.OS[g.config.target.hostOS].name), n, g)
       of mBuildCPU: result = newStrNodeT(platform.CPU[g.config.target.hostCPU].name.toLowerAscii, n, g)
       of mAppType: result = getAppType(n, g)
-      of mIntDefine:
-        if isDefined(g.config, s.name.s):
-          try:
-            result = newIntNodeT(toInt128(g.config.symbols[s.name.s].parseInt), n, idgen, g)
-          except ValueError:
-            localError(g.config, s.info,
-              "{.intdefine.} const was set to an invalid integer: '" &
-                g.config.symbols[s.name.s] & "'")
-        else:
-          result = copyTree(s.astdef)
-      of mStrDefine:
-        if isDefined(g.config, s.name.s):
-          result = newStrNodeT(g.config.symbols[s.name.s], n, g)
-        else:
-          result = copyTree(s.astdef)
-      of mBoolDefine:
-        if isDefined(g.config, s.name.s):
-          try:
-            result = newIntNodeT(toInt128(g.config.symbols[s.name.s].parseBool.int), n, idgen, g)
-          except ValueError:
-            localError(g.config, s.info,
-              "{.booldefine.} const was set to an invalid bool: '" &
-                g.config.symbols[s.name.s] & "'")
-        else:
-          result = copyTree(s.astdef)
+      of mIntDefine, mStrDefine, mBoolDefine, mGenericDefine:
+        result = foldDefine(m, s, n, idgen, g)
       else:
         result = copyTree(s.astdef)
+        if result != nil:
+          result.info = n.info
     of skProc, skFunc, skMethod:
       result = n
     of skParam:
@@ -624,7 +685,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
       n[0] = a
   of nkBracket, nkCurly:
     result = copyNode(n)
-    for i, son in n.pairs:
+    for son in n.items:
       var a = getConstExpr(m, son, idgen, g)
       if a == nil: return nil
       result.add a
@@ -648,7 +709,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
     # tuple constructor
     result = copyNode(n)
     if (n.len > 0) and (n[0].kind == nkExprColonExpr):
-      for i, expr in n.pairs:
+      for expr in n.items:
         let exprNew = copyNode(expr) # nkExprColonExpr
         exprNew.add expr[0]
         let a = getConstExpr(m, expr[1], idgen, g)
@@ -656,7 +717,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
         exprNew.add a
         result.add exprNew
     else:
-      for i, expr in n.pairs:
+      for expr in n.items:
         let a = getConstExpr(m, expr, idgen, g)
         if a == nil: return nil
         result.add a

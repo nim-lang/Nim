@@ -247,7 +247,7 @@ proc hash*[T](x: ptr[T]): Hash {.inline.} =
 when defined(nimPreviewHashRef) or defined(nimdoc):
   proc hash*[T](x: ref[T]): Hash {.inline.} =
     ## Efficient `hash` overload.
-    ## 
+    ##
     ## .. important:: Use `-d:nimPreviewHashRef` to
     ##    enable hashing `ref`s. It is expected that this behavior
     ##    becomes the new default in upcoming versions.
@@ -380,16 +380,10 @@ proc hash*(x: string): Hash =
   runnableExamples:
     doAssert hash("abracadabra") != hash("AbracadabrA")
 
-  when not defined(nimToOpenArrayCString):
-    result = 0
-    for c in x:
-      result = result !& ord(c)
-    result = !$result
+  when nimvm:
+    result = hashVmImpl(x, 0, high(x))
   else:
-    when nimvm:
-      result = hashVmImpl(x, 0, high(x))
-    else:
-      result = murmurHash(toOpenArrayByte(x, 0, high(x)))
+    result = murmurHash(toOpenArrayByte(x, 0, high(x)))
 
 proc hash*(x: cstring): Hash =
   ## Efficient hashing of null-terminated strings.
@@ -398,22 +392,14 @@ proc hash*(x: cstring): Hash =
     doAssert hash(cstring"AbracadabrA") == hash("AbracadabrA")
     doAssert hash(cstring"abracadabra") != hash(cstring"AbracadabrA")
 
-  when not defined(nimToOpenArrayCString):
-    result = 0
-    var i = 0
-    while x[i] != '\0':
-      result = result !& ord(x[i])
-      inc i
-    result = !$result
+  when nimvm:
+    hashVmImpl(x, 0, high(x))
   else:
-    when nimvm:
-      hashVmImpl(x, 0, high(x))
+    when not defined(js):
+      murmurHash(toOpenArrayByte(x, 0, x.high))
     else:
-      when not defined(js) and defined(nimToOpenArrayCString):
-        murmurHash(toOpenArrayByte(x, 0, x.high))
-      else:
-        let xx = $x
-        murmurHash(toOpenArrayByte(xx, 0, high(xx)))
+      let xx = $x
+      murmurHash(toOpenArrayByte(xx, 0, high(xx)))
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
@@ -424,13 +410,7 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
     var a = "abracadabra"
     doAssert hash(a, 0, 3) == hash(a, 7, 10)
 
-  when not defined(nimToOpenArrayCString):
-    result = 0
-    for i in sPos..ePos:
-      result = result !& ord(sBuf[i])
-    result = !$result
-  else:
-    murmurHash(toOpenArrayByte(sBuf, sPos, ePos))
+  murmurHash(toOpenArrayByte(sBuf, sPos, ePos))
 
 proc hashIgnoreStyle*(x: string): Hash =
   ## Efficient hashing of strings; style is ignored.
@@ -556,6 +536,7 @@ proc hash*[T: tuple | object | proc](x: T): Hash =
   elif T is (proc):
     result = hash(pointer(x))
   else:
+    result = 0
     for f in fields(x):
       result = result !& hash(f)
     result = !$result
@@ -571,6 +552,7 @@ proc hash*[A](x: openArray[A]): Hash =
     else:
       result = murmurHash(toOpenArrayByte(x, 0, x.high))
   else:
+    result = 0
     for a in x:
       result = result !& hash(a)
     result = !$result
@@ -603,6 +585,7 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
 proc hash*[A](x: set[A]): Hash =
   ## Efficient hashing of sets.
   ## There must be a `hash` proc defined for the element type `A`.
+  result = 0
   for it in items(x):
     result = result !& hash(it)
   result = !$result

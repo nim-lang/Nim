@@ -50,7 +50,7 @@ type
     scheme*, username*, password*: string
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
-    isIpv6: bool # not expose it for compatibility.
+    isIpv6*: bool
 
   UriParseError* = object of ValueError
 

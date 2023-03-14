@@ -269,3 +269,64 @@ proc bug20305 =
   echo x.pChildren
 
 bug20305()
+
+# bug #21023
+block:
+  block:
+    type
+      MGErrorKind = enum
+        mgeUnexpected, mgeNotFound
+
+    type Foo = object
+      kind: MGErrorKind
+      ex: Exception
+
+    type Boo = object
+      a: seq[int]
+
+    type
+      Result2 = object
+        case o: bool
+        of false:
+          e: Foo
+        of true:
+          v: Boo
+
+    proc startSessionSync(): Result2 =
+      return Result2(o: true)
+
+    proc mainSync =
+      let ff = startSessionSync()
+      doAssert ff.o == true
+
+    mainSync()
+
+  block:
+    type
+      MGErrorKind = enum
+        mgeUnexpected, mgeNotFound
+
+    type Foo = object
+      kind: MGErrorKind
+      ex: Exception
+
+    type Boo = object
+      a: seq[int]
+
+    type
+      Result2 = object
+        case o: bool
+        of false:
+          e: Foo
+        of true:
+          v: Boo
+          s: int
+
+    proc startSessionSync(): Result2 =
+      return Result2(o: true, s: 12)
+
+    proc mainSync =
+      let ff = startSessionSync()
+      doAssert ff.s == 12
+
+    mainSync()

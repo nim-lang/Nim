@@ -25,7 +25,7 @@ when defined(windows):
       SpinCount: int
 
     SysCond* {.importc: "RTL_CONDITION_VARIABLE", header: "<windows.h>".} = object
-      thePtr {.importc: "ptr".} : Handle
+      thePtr {.importc: "Ptr".} : Handle
 
   proc initSysLock*(L: var SysLock) {.importc: "InitializeCriticalSection",
                                      header: "<windows.h>".}

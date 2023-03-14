@@ -15,7 +15,7 @@ when defined(nimPreviewSlimSystem):
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs
+  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs, sets
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -170,6 +170,7 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
   # really iterate over all symbols in all the scopes. This is expensive
   # and only used by suggest.nim.
   var isLocal = true
+
   var scopeN = 0
   for scope in allScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
@@ -183,6 +184,17 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
     for s in modulegraphs.allSyms(c.graph, im.m):
       assert s != nil
       yield (s, scopeN, isLocal)
+
+iterator uniqueSyms*(c: PContext): (PSym, int, bool) =
+  ## Like [allSyms] except only returns unique symbols (Uniqueness determined by line + name)
+  # Track seen symbols so we don't duplicate them.
+  # The int is for the symbols name, and line info is
+  # to be able to tell apart symbols with same name but on different lines
+  var seen = initHashSet[(TLineInfo, int)]()
+  for res in allSyms(c):
+    if not seen.containsOrIncl((res[0].info, res[0].name.id)):
+      yield res
+
 
 proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =
   var marked = initIntSet()
@@ -215,6 +227,23 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
         count.inc
     if i == limit: return
     inc i
+
+proc searchInScopesAllCandidatesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
+  result = @[]
+  for scope in allScopes(c.currentScope):
+    var ti: TIdentIter
+    var candidate = initIdentIter(ti, scope.symbols, s)
+    while candidate != nil:
+      if candidate.kind in filter:
+        result.add candidate
+      candidate = nextIdentIter(ti, scope.symbols)
+
+  if result.len == 0:
+    var marked = initIntSet()
+    for im in c.imports.mitems:
+      for s in symbols(im, marked, s, c.graph):
+        if s.kind in filter:
+          result.add s
 
 proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
   result = @[]
@@ -311,9 +340,11 @@ proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
 # xxx pending bootstrap >= 1.4, replace all those overloads with a single one:
 # proc addDecl*(c: PContext, sym: PSym, info = sym.info, scope = c.currentScope) {.inline.} =
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
+  if sym.name.s == "_": return
   let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
-    if sym.kind == skModule and conflict.kind == skModule and sym.owner == conflict.owner:
+    if sym.kind == skModule and conflict.kind == skModule and
+                        sym.position == conflict.position:
       # e.g.: import foo; import foo
       # xxx we could refine this by issuing a different hint for the case
       # where a duplicate import happens inside an include.
@@ -422,7 +453,7 @@ type SpellCandidate = object
   msg: string
   sym: PSym
 
-template toOrderTup(a: SpellCandidate): auto =
+template toOrderTup(a: SpellCandidate): (int, int, string) =
   # `dist` is first, to favor nearby matches
   # `depth` is next, to favor nearby enclosing scopes among ties
   # `sym.name.s` is last, to make the list ordered and deterministic among ties
@@ -445,12 +476,13 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
     let dist = editDistance(name0, sym.name.s.nimIdentNormalize)
     var msg: string
     msg.add "\n ($1, $2): '$3'" % [$dist, $depth, sym.name.s]
-    addDeclaredLoc(msg, c.config, sym) # `msg` needed for deterministic ordering.
     list.push SpellCandidate(dist: dist, depth: depth, msg: msg, sym: sym)
 
   if list.len == 0: return
   let e0 = list[0]
-  var count = 0
+  var
+    count = 0
+    last: PIdent = nil
   while true:
     # pending https://github.com/timotheecour/Nim/issues/373 use more efficient `itemsSorted`.
     if list.len == 0: break
@@ -466,8 +498,10 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
     elif count >= c.config.spellSuggestMax: break
     if count == 0:
       result.add "\ncandidates (edit distance, scope distance); see '--spellSuggest': "
-    result.add e.msg
-    count.inc
+    if e.sym.name != last:
+      result.add e.msg
+      count.inc
+      last = e.sym.name
 
 proc errorUseQualifier(c: PContext; info: TLineInfo; s: PSym; amb: var bool): PSym =
   var err = "ambiguous identifier: '" & s.name.s & "'"

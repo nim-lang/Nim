@@ -887,7 +887,7 @@ proc reversed*(s: openArray[char]): string =
 
 proc graphemeLen*(s: openArray[char]; i: Natural): Natural =
   ## The number of bytes belonging to byte index ``s[i]``,
-  ## including following combining code unit.
+  ## including following combining code units.
   runnableExamples:
     let a = "añyóng"
     doAssert a.graphemeLen(1) == 2 ## ñ

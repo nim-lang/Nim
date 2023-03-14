@@ -36,7 +36,7 @@ import algorithm, sets, prefixmatches, parseutils, tables
 from wordrecg import wDeprecated, wError, wAddr, wYield
 
 when defined(nimsuggest):
-  import passes, tables, pathutils # importer
+  import tables, pathutils # importer
 
 const
   sep = '\t'
@@ -120,7 +120,9 @@ proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int
 proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info: TLineInfo;
                   quality: range[0..100]; prefix: PrefixMatch;
                   inTypeContext: bool; scope: int;
-                  useSuppliedInfo = false): Suggest =
+                  useSuppliedInfo = false,
+                  endLine: uint16 = 0,
+                  endCol = 0): Suggest =
   new(result)
   result.section = section
   result.quality = quality
@@ -176,6 +178,8 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
                       else:
                         getTokenLenFromSource(g.config, s.name.s, infox)
   result.version = g.config.suggestVersion
+  result.endLine = endLine
+  result.endCol = endCol
 
 proc `$`*(suggest: Suggest): string =
   result = $suggest.section
@@ -215,6 +219,12 @@ proc `$`*(suggest: Suggest): string =
       if suggest.section == ideSug:
         result.add(sep)
         result.add($suggest.prefix)
+
+  if (suggest.version == 3 and suggest.section in {ideOutline, ideExpand}):
+    result.add(sep)
+    result.add($suggest.endLine)
+    result.add(sep)
+    result.add($suggest.endCol)
 
 proc suggestResult*(conf: ConfigRef; s: Suggest) =
   if not isNil(conf.suggestionResultHook):
@@ -289,7 +299,7 @@ proc suggestField(c: PContext, s: PSym; f: PNode; info: TLineInfo; outputs: var 
                               s.getQuality, pm, c.inTypeContext > 0, 0))
 
 template wholeSymTab(cond, section: untyped) {.dirty.} =
-  for (item, scopeN, isLocal) in allSyms(c):
+  for (item, scopeN, isLocal) in uniqueSyms(c):
     let it = item
     var pm: PrefixMatch
     if cond:
@@ -362,7 +372,7 @@ proc suggestOperations(c: PContext, n, f: PNode, typ: PType, outputs: var Sugges
 
 proc suggestEverything(c: PContext, n, f: PNode, outputs: var Suggestions) =
   # do not produce too many symbols:
-  for (it, scopeN, isLocal) in allSyms(c):
+  for (it, scopeN, isLocal) in uniqueSyms(c):
     var pm: PrefixMatch
     if filterSym(it, f, pm):
       outputs.add(symToSuggest(c.graph, it, isLocal = isLocal, ideSug, n.info,
@@ -680,7 +690,7 @@ proc suggestSentinel*(c: PContext) =
   inc(c.compilesContextId)
   var outputs: Suggestions = @[]
   # suggest everything:
-  for (it, scopeN, isLocal) in allSyms(c):
+  for (it, scopeN, isLocal) in uniqueSyms(c):
     var pm: PrefixMatch
     if filterSymNoOpr(it, nil, pm):
       outputs.add(symToSuggest(c.graph, it, isLocal = isLocal, ideSug,

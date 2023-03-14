@@ -33,7 +33,7 @@
     </div>
     <div id="global-links">
       <ul class="simple">
-        <li><a href="../../theindex.html">Index</a></li>
+        <li><a id="indexLink" href="../../theindex.html">Index</a></li>
       </ul>
     </div>
     <div id="searchInputDiv">
@@ -59,8 +59,7 @@
   <details open>
     <summary><a class="reference reference-toplevel" href="#7" id="57">Types</a></summary>
     <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#G" title="G[T] = object
-  val: T">G</a></li>
+      <li><a class="reference" href="#G" title="G[T] = object">G</a></li>
 <li><a class="reference" href="#SomeType" title="SomeType = enum
   enumValueA, enumValueB, enumValueC">SomeType</a></li>
 
@@ -226,7 +225,7 @@
                    cmp: proc (x: T; y: K): int {.closure.}): int" href="#binarySearch,openArray[T],K,proc(T,K)">binary search</a>.</p>
 <p>Note that <tt class="docutils literal"><span class="pre"><span class="Keyword">proc</span></span></tt> can be used in postfix form: <a class="reference internal nimdoc" title="proc binarySearch[T, K](a: openArray[T]; key: K;
                    cmp: proc (x: T; y: K): int {.closure.}): int" href="#binarySearch,openArray[T],K,proc(T,K)">binarySearch proc</a>.</p>
-<p>Ref. type like <a class="reference internal nimdoc" title="type G" href="#G">G</a> and <a class="reference internal nimdoc" title="type G" href="#G">type G</a> and <a class="reference internal nimdoc" title="type G" href="#G">G[T]</a> and <a class="reference internal nimdoc" title="type G" href="#G">type G*[T]</a>.</p>
+<p>Ref. type like <a class="reference internal nimdoc" title="object G" href="#G">G</a> and <a class="reference internal nimdoc" title="object G" href="#G">type G</a> and <a class="reference internal nimdoc" title="object G" href="#G">G[T]</a> and <a class="reference internal nimdoc" title="object G" href="#G">type G*[T]</a>.</p>
 <p>Group ref. with capital letters works: <a class="reference internal nimdoc" title="proc fN11 (2 overloads)" href="#fN11-procs-all">fN11</a> or <a class="reference internal nimdoc" title="proc fN11 (2 overloads)" href="#fN11-procs-all">fn11</a> </p>
 Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href="#[],G[T]">[]</a> is the same as <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href="#[],G[T]">proc `[]`(G[T])</a> because there are no overloads. The full form: <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href="#[],G[T]">proc `[]`*[T](x: G[T]): T</a>Ref. <a class="reference internal nimdoc" title="proc `[]=`[T](a: var G[T]; index: int; value: T)" href="#[]=,G[T],int,T">[]=</a> aka <a class="reference internal nimdoc" title="proc `[]=`[T](a: var G[T]; index: int; value: T)" href="#[]=,G[T],int,T">`[]=`(G[T], int, T)</a>.Ref. <a class="reference internal nimdoc" title="proc $ (2 overloads)" href="#$-procs-all">$</a> aka <a class="reference internal nimdoc" title="proc $ (2 overloads)" href="#$-procs-all">proc $</a> or <a class="reference internal nimdoc" title="proc $ (2 overloads)" href="#$-procs-all">proc `$`</a>.Ref. <a class="reference internal nimdoc" title="proc `$`[T](a: ref SomeType): string" href="#$,ref.SomeType">$(a: ref SomeType)</a>.Ref. <a class="reference internal nimdoc" title="iterator fooBar(a: seq[SomeType]): int" href="#fooBar.i,seq[SomeType]">foo_bar</a> aka <a class="reference internal nimdoc" title="iterator fooBar(a: seq[SomeType]): int" href="#fooBar.i,seq[SomeType]">iterator foo_bar_</a>.Ref. <a class="reference internal nimdoc" title="proc fn[T; U, V: SomeFloat]()" href="#fn">fn[T; U,V: SomeFloat]()</a>.Ref. <a class="reference internal nimdoc" title="proc `'big`(a: string): SomeType" href="#'big,string">'big</a> or <a class="reference internal nimdoc" title="proc `'big`(a: string): SomeType" href="#'big,string">func `'big`</a> or <a class="reference internal nimdoc" title="proc `'big`(a: string): SomeType" href="#'big,string">`'big`(string)</a>.
 <h1><a class="toc-backref" id="pandoc-markdown" href="#pandoc-markdown">Pandoc Markdown</a></h1><p>Now repeat all the auto links of above in Pandoc Markdown Syntax.</p>
@@ -240,11 +239,11 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
                    cmp: proc (x: T; y: K): int {.closure.}): int" href="#binarySearch,openArray[T],K,proc(T,K)">binary search</a>.</p>
 <p>Note that <tt class="docutils literal"><span class="pre"><span class="Keyword">proc</span></span></tt> can be used in postfix form: <a class="reference internal nimdoc" title="proc binarySearch[T, K](a: openArray[T]; key: K;
                    cmp: proc (x: T; y: K): int {.closure.}): int" href="#binarySearch,openArray[T],K,proc(T,K)">binarySearch proc</a>.</p>
-<p>Ref. type like <a class="reference internal nimdoc" title="type G" href="#G">G</a> and <a class="reference internal nimdoc" title="type G" href="#G">type G</a> and <a class="reference internal nimdoc" title="type G" href="#G">G[T]</a> and <a class="reference internal nimdoc" title="type G" href="#G">type G*[T]</a>.</p>
+<p>Ref. type like <a class="reference internal nimdoc" title="object G" href="#G">G</a> and <a class="reference internal nimdoc" title="object G" href="#G">type G</a> and <a class="reference internal nimdoc" title="object G" href="#G">G[T]</a> and <a class="reference internal nimdoc" title="object G" href="#G">type G*[T]</a>.</p>
 <p>Group ref. with capital letters works: <a class="reference internal nimdoc" title="proc fN11 (2 overloads)" href="#fN11-procs-all">fN11</a> or <a class="reference internal nimdoc" title="proc fN11 (2 overloads)" href="#fN11-procs-all">fn11</a></p>
 <p>Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href="#[],G[T]">`[]`</a> is the same as <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href="#[],G[T]">proc `[]`(G[T])</a> because there are no overloads. The full form: <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href="#[],G[T]">proc `[]`*[T](x: G[T]): T</a> Ref. <a class="reference internal nimdoc" title="proc `[]=`[T](a: var G[T]; index: int; value: T)" href="#[]=,G[T],int,T">`[]=`</a> aka <a class="reference internal nimdoc" title="proc `[]=`[T](a: var G[T]; index: int; value: T)" href="#[]=,G[T],int,T">`[]=`(G[T], int, T)</a>. Ref. <a class="reference internal nimdoc" title="proc $ (2 overloads)" href="#$-procs-all">$</a> aka <a class="reference internal nimdoc" title="proc $ (2 overloads)" href="#$-procs-all">proc $</a> or <a class="reference internal nimdoc" title="proc $ (2 overloads)" href="#$-procs-all">proc `$`</a>. Ref. <a class="reference internal nimdoc" title="proc `$`[T](a: ref SomeType): string" href="#$,ref.SomeType">$(a: ref SomeType)</a>. Ref. <a class="reference internal nimdoc" title="iterator fooBar(a: seq[SomeType]): int" href="#fooBar.i,seq[SomeType]">foo_bar</a> aka <a class="reference internal nimdoc" title="iterator fooBar(a: seq[SomeType]): int" href="#fooBar.i,seq[SomeType]">iterator foo_bar_</a>. Ref. <a class="reference internal nimdoc" title="proc fn[T; U, V: SomeFloat]()" href="#fn">fn[T; U,V: SomeFloat]()</a>. Ref. <a class="reference internal nimdoc" title="proc `'big`(a: string): SomeType" href="#'big,string">'big</a> or <a class="reference internal nimdoc" title="proc `'big`(a: string): SomeType" href="#'big,string">func `'big`</a> or <a class="reference internal nimdoc" title="proc `'big`(a: string): SomeType" href="#'big,string">`'big`(string)</a>.</p>
 
-<h2><a class="toc-backref" id="pandoc-markdown-link-name-syntax" href="#pandoc-markdown-link-name-syntax">Link name syntax</a></h2><p>Pandoc Markdown has synax for changing text of links: Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href="#[],G[T]">this proc</a> or <a class="reference internal nimdoc" title="type G" href="#G">another symbol</a>.</p>
+<h2><a class="toc-backref" id="pandoc-markdown-link-name-syntax" href="#pandoc-markdown-link-name-syntax">Link name syntax</a></h2><p>Pandoc Markdown has synax for changing text of links: Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href="#[],G[T]">this proc</a> or <a class="reference internal nimdoc" title="object G" href="#G">another symbol</a>.</p>
 
 <h2><a class="toc-backref" id="pandoc-markdown-symbols-documentation" href="#pandoc-markdown-symbols-documentation">Symbols documentation</a></h2><p>Let us repeat auto links from symbols section below:</p>
 <p>There is also variant <a class="reference internal nimdoc" title="proc f(x: G[string])" href="#f,G[string]">f(G[string])</a>. See also <a class="reference internal nimdoc" title="proc f(x: G[int])" href="#f,G[int]">f(G[int])</a>.</p>
@@ -254,8 +253,7 @@ Ref. <a class="reference internal nimdoc" title="proc `[]`[T](x: G[T]): T" href=
   <dl class="item">
     <div id="G">
   <dt><pre><a href="utils.html#G"><span class="Identifier">G</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span> <span class="Other">=</span> <span class="Keyword">object</span>
-  <span class="Identifier">val</span><span class="Other">:</span> <span class="Identifier">T</span>
-</pre></dt>
+  </pre></dt>
   <dd>
     
     

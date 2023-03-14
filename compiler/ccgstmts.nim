@@ -8,7 +8,6 @@
 #
 
 # included from cgen.nim
-
 const
   RangeExpandLimit = 256      # do not generate ranges
                               # over 'RangeExpandLimit' elements
@@ -1079,12 +1078,13 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
           hasImportedCppExceptions = true
         else:
           if orExpr.len != 0: orExpr.add("||")
-          let checkFor = if optTinyRtti in p.config.globalOptions:
-            genTypeInfo2Name(p.module, typeNode.typ)
-          else:
-            genTypeInfoV1(p.module, typeNode.typ, typeNode.info)
           let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
-          appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
+          if optTinyRtti in p.config.globalOptions:
+            let checkFor = $getObjDepth(typeNode.typ)
+            appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor, $genDisplayElem(MD5Digest(hashType(typeNode.typ, p.config)))])
+          else:
+            let checkFor = genTypeInfoV1(p.module, typeNode.typ, typeNode.info)
+            appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
       if orExpr.len != 0:
         if hasIf:
@@ -1297,12 +1297,13 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       for j in 0..<t[i].len - 1:
         assert(t[i][j].kind == nkType)
         if orExpr.len != 0: orExpr.add("||")
-        let checkFor = if optTinyRtti in p.config.globalOptions:
-          genTypeInfo2Name(p.module, t[i][j].typ)
-        else:
-          genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
         let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
-        appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
+        if optTinyRtti in p.config.globalOptions:
+          let checkFor = $getObjDepth(t[i][j].typ)
+          appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor,  $genDisplayElem(MD5Digest(hashType(t[i][j].typ, p.config)))])
+        else:
+          let checkFor = genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
+          appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])
@@ -1441,12 +1442,13 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
       for j in 0..<t[i].len - 1:
         assert(t[i][j].kind == nkType)
         if orExpr.len != 0: orExpr.add("||")
-        let checkFor = if optTinyRtti in p.config.globalOptions:
-          genTypeInfo2Name(p.module, t[i][j].typ)
-        else:
-          genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
         let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
-        appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
+        if optTinyRtti in p.config.globalOptions:
+          let checkFor = $getObjDepth(t[i][j].typ)
+          appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor,  $genDisplayElem(MD5Digest(hashType(t[i][j].typ, p.config)))])
+        else:
+          let checkFor = genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
+          appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])
@@ -1535,7 +1537,7 @@ proc determineSection(n: PNode): TCFileSection =
   result = cfsProcHeaders
   if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
     let sec = n[0].strVal
-    if sec.startsWith("/*TYPESECTION*/"): result = cfsTypes
+    if sec.startsWith("/*TYPESECTION*/"): result = cfsForwardTypes # TODO WORKAROUND
     elif sec.startsWith("/*VARSECTION*/"): result = cfsVars
     elif sec.startsWith("/*INCLUDESECTION*/"): result = cfsHeaders
 
@@ -1552,9 +1554,14 @@ proc genEmit(p: BProc, t: PNode) =
     line(p, cpsStmts, s)
 
 proc genPragma(p: BProc, n: PNode) =
-  for it in n.sons:
+  for i in 0..<n.len:
+    let it = n[i]
     case whichPragma(it)
     of wEmit: genEmit(p, it)
+    of wPush:
+      processPushBackendOption(p.optionsStack, p.options, n, i+1)
+    of wPop:
+      processPopBackendOption(p.optionsStack, p.options)
     else: discard
 
 
@@ -1617,6 +1624,7 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     initLoc(a, locNone, le, OnUnknown)
     a.flags.incl(lfEnforceDeref)
     a.flags.incl(lfPrepareForMutation)
+    genLineDir(p, le) # it can be a nkBracketExpr, which may raise
     expr(p, le, a)
     a.flags.excl(lfPrepareForMutation)
     if fastAsgn: incl(a.flags, lfNoDeepCopy)

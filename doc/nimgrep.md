@@ -77,7 +77,7 @@ That means you can always use only 1 such an option with logical OR, e.g.
 .. Note::
    If you want logical AND on patterns you should compose 1 appropriate pattern,
    possibly combined with multi-line mode `(?s)`:literal:.
-   E.g. to require that multi-line context of matches has occurences of
+   E.g. to require that multi-line context of matches has occurrences of
    **both** PAT1 and PAT2 use positive lookaheads (`(?=PAT)`:literal:):
      ```cmd
      nimgrep --inContext:'(?s)(?=.*PAT1)(?=.*PAT2)'

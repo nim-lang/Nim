@@ -9,10 +9,7 @@
 
 {.push profiler: off.}
 
-when defined(nimHasExceptionsQuery):
-  const gotoBasedExceptions = compileOption("exceptions", "goto")
-else:
-  const gotoBasedExceptions = false
+const gotoBasedExceptions = compileOption("exceptions", "goto")
 
 when hostOS == "standalone":
   include "$projectpath/panicoverride"
@@ -44,7 +41,7 @@ elif (defined(nimQuirky) or defined(nimPanics)) and not defined(nimscript):
         add(buf, name exceptn)
         add(buf, "]\n")
         cstderr.rawWrite buf
-      quit 1
+      rawQuit 1
 
   func sysFatal(exceptn: typedesc, message: string) {.inline, noreturn.} =
     sysFatal(exceptn, message, "")

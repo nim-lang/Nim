@@ -7,4 +7,4 @@ proc findNodeJs*(): string {.inline.} =
     result = findExe("node")
   if result.len == 0:
     echo "Please install NodeJS first, see https://nodejs.org/en/download"
-    raise newException(IOError, "NodeJS not found in PATH: " & result)
+    raise newException(IOError, "NodeJS not found in PATH")

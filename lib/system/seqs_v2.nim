@@ -83,7 +83,8 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [].} =
       for i in countdown(x.len - 1, newLen):
         reset x[i]
     # XXX This is wrong for const seqs that were moved into 'x'!
-    cast[ptr NimSeqV2[T]](addr x).len = newLen
+    {.noSideEffect.}:
+      cast[ptr NimSeqV2[T]](addr x).len = newLen
 
 proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   let oldLen = x.len
@@ -103,16 +104,17 @@ proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffec
   ## containers should also call their adding proc `add` for consistency.
   ## Generic code becomes much easier to write if the Nim naming scheme is
   ## respected.
-  let oldLen = x.len
-  var xu = cast[ptr NimSeqV2[T]](addr x)
-  if xu.p == nil or xu.p.cap < oldLen+1:
-    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T), alignof(T)))
-  xu.len = oldLen+1
-  # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
-  # copyMem(). This is fine as know by construction that
-  # in `xu.p.data[oldLen]` there is nothing to destroy.
-  # We also save the `wasMoved + destroy` pair for the sink parameter.
-  xu.p.data[oldLen] = value
+  {.cast(noSideEffect).}:
+    let oldLen = x.len
+    var xu = cast[ptr NimSeqV2[T]](addr x)
+    if xu.p == nil or xu.p.cap < oldLen+1:
+      xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T), alignof(T)))
+    xu.len = oldLen+1
+    # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
+    # copyMem(). This is fine as know by construction that
+    # in `xu.p.data[oldLen]` there is nothing to destroy.
+    # We also save the `wasMoved + destroy` pair for the sink parameter.
+    xu.p.data[oldLen] = value
 
 proc setLen[T](s: var seq[T], newlen: Natural) =
   {.noSideEffect.}:

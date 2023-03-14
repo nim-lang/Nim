@@ -9,7 +9,7 @@
 
 ## This module is experimental and its interface may change.
 
-import winlean, os
+import std/oserrors
 
 when defined(nimPreviewSlimSystem):
   import std/widestrs

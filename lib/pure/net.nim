@@ -100,7 +100,8 @@ export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
 
 const useWinVersion = defined(windows) or defined(nimdoc)
-const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr)
+const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr) or
+    defined(nuttx)
 const defineSsl = defined(ssl) or defined(nimdoc)
 
 when useWinVersion:
@@ -480,8 +481,8 @@ proc parseIPv6Address(addressStr: string): IpAddress =
 proc parseIpAddress*(addressStr: string): IpAddress =
   ## Parses an IP address
   ##
-  ## Raises ValueError on error. 
-  ## 
+  ## Raises ValueError on error.
+  ##
   ## For IPv4 addresses, only the strict form as
   ## defined in RFC 6943 is considered valid, see
   ## https://datatracker.ietf.org/doc/html/rfc6943#section-3.1.1.
@@ -621,7 +622,7 @@ when defineSsl:
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
                    certFile = "", keyFile = "", cipherList = CiphersIntermediate,
-                   caDir = "", caFile = ""): SslContext =
+                   caDir = "", caFile = "", ciphersuites = CiphersModern): SslContext =
     ## Creates an SSL context.
     ##
     ## Protocol version is currently ignored by default and TLS is used.
@@ -675,10 +676,10 @@ when defineSsl:
       raiseSSLError()
     when not defined(openssl10) and not defined(libressl):
       let sslVersion = getOpenSSLVersion()
-      if sslVersion >= 0x010101000 and not sslVersion == 0x020000000:
+      if sslVersion >= 0x010101000 and sslVersion != 0x020000000:
         # In OpenSSL >= 1.1.1, TLSv1.3 cipher suites can only be configured via
         # this API.
-        if newCTX.SSL_CTX_set_ciphersuites(cipherList) != 1:
+        if newCTX.SSL_CTX_set_ciphersuites(ciphersuites) != 1:
           raiseSSLError()
     # Automatically the best ECDH curve for client exchange. Without this, ECDH
     # ciphers will be ignored by the server.
@@ -1735,15 +1736,36 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
     result = send(socket.fd, data, size, int32(MSG_NOSIGNAL))
 
 proc send*(socket: Socket, data: string,
-           flags = {SocketFlag.SafeDisconn}) {.tags: [WriteIOEffect].} =
-  ## sends data to a socket.
-  let sent = send(socket, cstring(data), data.len)
-  if sent < 0:
-    let lastError = osLastError()
-    socketError(socket, lastError = lastError, flags = flags)
+           flags = {SocketFlag.SafeDisconn}, maxRetries = 100) {.tags: [WriteIOEffect].} =
+  ## Sends data to a socket. Will try to send all the data by handling interrupts
+  ## and incomplete writes up to `maxRetries`.
+  var written = 0
+  var attempts = 0
+  while data.len - written > 0:
+    let sent = send(socket, cstring(data), data.len)
 
-  if sent != data.len:
-    raiseOSError(osLastError(), "Could not send all data.")
+    if sent < 0:
+      let lastError = osLastError()
+      let isBlockingErr =
+        when defined(nimdoc):
+          false
+        elif useWinVersion:
+          lastError.int32 == WSAEINTR or
+          lastError.int32 == WSAEWOULDBLOCK
+        else:
+          lastError.int32 == EINTR or
+          lastError.int32 == EWOULDBLOCK or
+          lastError.int32 == EAGAIN
+
+      if not isBlockingErr:
+        let lastError = osLastError()
+        socketError(socket, lastError = lastError, flags = flags)
+      else:
+        attempts.inc()
+        if attempts > maxRetries:
+          raiseOSError(osLastError(), "Could not send all data.")
+    else:
+      written.inc(sent)
 
 template `&=`*(socket: Socket; data: typed) =
   ## an alias for 'send'.
@@ -1794,7 +1816,7 @@ proc sendTo*(socket: Socket, address: string, port: Port,
   ## This proc sends `data` to the specified `address`,
   ## which may be an IP address or a hostname, if a hostname is specified
   ## this function will try each IP of that hostname.
-  ## 
+  ##
   ## Generally for use with connection-less (UDP) sockets.
   ##
   ## If an error occurs an OSError exception will be raised.
@@ -1806,9 +1828,9 @@ proc sendTo*(socket: Socket, address: IpAddress, port: Port,
              data: string, flags = 0'i32): int {.
               discardable, tags: [WriteIOEffect].} =
   ## This proc sends `data` to the specified `IpAddress` and returns
-  ## the number of bytes written. 
+  ## the number of bytes written.
   ##
-  ## Generally for use with connection-less (UDP) sockets. 
+  ## Generally for use with connection-less (UDP) sockets.
   ##
   ## If an error occurs an OSError exception will be raised.
   ##
@@ -1898,14 +1920,18 @@ proc `==`*(lhs, rhs: IpAddress): bool =
 
 proc `$`*(address: IpAddress): string =
   ## Converts an IpAddress into the textual representation
-  result = ""
   case address.family
   of IpAddressFamily.IPv4:
-    for i in 0 .. 3:
-      if i != 0:
-        result.add('.')
-      result.add($address.address_v4[i])
+    result = newStringOfCap(15)
+    result.addInt address.address_v4[0]
+    result.add '.'
+    result.addInt address.address_v4[1]
+    result.add '.'
+    result.addInt address.address_v4[2]
+    result.add '.'
+    result.addInt address.address_v4[3]
   of IpAddressFamily.IPv6:
+    result = newStringOfCap(39)
     var
       currentZeroStart = -1
       currentZeroCount = 0

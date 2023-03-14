@@ -4,8 +4,11 @@ Advanced commands:
   //compileToOC, objc       compile project to Objective C code
   //js                      compile project to Javascript
   //e                       run a Nimscript file
+  //md2html                 convert a Markdown file to HTML
+                            use `--docCmd:skip` to skip compiling snippets
   //rst2html                convert a reStructuredText file to HTML
                             use `--docCmd:skip` to skip compiling snippets
+  //md2tex                  convert a Markdown file to LaTeX
   //rst2tex                 convert a reStructuredText file to LaTeX
   //doc2tex                 extract the documentation to a LaTeX file
   //jsondoc                 extract the documentation to a json file
@@ -130,7 +133,9 @@ Advanced options:
                             select which memory management to use; default is 'orc'
   --exceptions:setjmp|cpp|goto|quirky
                             select the exception handling implementation
-  --index:on|off            turn index file generation on|off
+  --index:on|off|only       docgen: turn index file generation? (`only` means
+                            not generate output files like HTML)
+  --noImportdoc:on|off      disable loading documentation ``.idx`` files?
   --putenv:key=value        set an environment variable
   --NimblePath:PATH         add a path for Nimble support
   --noNimblePath            deactivate the Nimble path
@@ -167,6 +172,6 @@ Advanced options:
   --useVersion:1.0|1.2|1.6  emulate Nim version X of the Nim compiler, for testing
   --benchmarkVM:on|off      turn benchmarking of VM code with cpuTime() on|off
   --profileVM:on|off        turn compile time VM profiler on|off
-  --sinkInference:on|off    turn sink parameter inference on|off (default: on)
+  --sinkInference:on|off    turn sink parameter inference on|off (default: off)
   --panics:on|off           turn panics into process terminations (default: off)
   --deepcopy:on|off         enable 'system.deepCopy' for ``--mm:arc|orc``

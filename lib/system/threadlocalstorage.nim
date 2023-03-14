@@ -122,4 +122,4 @@ when not defined(useNimRtl):
     if nimThreadVarsSize() > sizeof(ThreadLocalStorage):
       c_fprintf(cstderr, """too large thread local storage size requested,
 use -d:\"nimTlsSize=X\" to setup even more or stop using unittest.nim""")
-      quit 1
+      rawQuit 1

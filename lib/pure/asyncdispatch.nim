@@ -1172,7 +1172,7 @@ else:
   when declared(posix.accept4):
     from posix import accept4, SOCK_CLOEXEC
   when defined(genode):
-    include genode/env # get the implicit Genode env
+    import genode/env # get the implicit Genode env
     import genode/signals
 
   const
@@ -1216,6 +1216,15 @@ else:
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
+  when defined(nuttx):
+    import std/exitprocs
+
+    proc cleanDispatcher() {.noconv.} =
+      gDisp = nil
+
+    proc addFinalyzer() =
+      addExitProc(cleanDispatcher)
+
   proc setGlobalDispatcher*(disp: owned PDispatcher) =
     if not gDisp.isNil:
       assert gDisp.callbacks.len == 0
@@ -1225,6 +1234,8 @@ else:
   proc getGlobalDispatcher*(): PDispatcher =
     if gDisp.isNil:
       setGlobalDispatcher(newDispatcher())
+      when defined(nuttx):
+        addFinalyzer()
     result = gDisp
 
   proc getIoHandler*(disp: PDispatcher): Selector[AsyncData] =
@@ -1591,7 +1602,7 @@ else:
       owned(Future[tuple[address: string, client: AsyncFD]]) =
     var retFuture = newFuture[tuple[address: string,
         client: AsyncFD]]("acceptAddr")
-    proc cb(sock: AsyncFD): bool =
+    proc cb(sock: AsyncFD): bool {.gcsafe.} =
       result = true
       var sockAddress: Sockaddr_storage
       var addrLen = sizeof(sockAddress).SockLen
@@ -1983,7 +1994,8 @@ proc send*(socket: AsyncFD, data: string,
   return retFuture
 
 # -- Await Macro
-include asyncmacro
+import asyncmacro
+export asyncmacro
 
 proc readAll*(future: FutureStream[string]): owned(Future[string]) {.async.} =
   ## Returns a future that will complete when all the string data from the
@@ -2023,7 +2035,7 @@ when defined(posix):
   import posix
 
 when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
-       defined(solaris) or defined(zephyr) or defined(freertos):
+       defined(solaris) or defined(zephyr) or defined(freertos) or defined(nuttx):
   proc maxDescriptors*(): int {.raises: OSError.} =
     ## Returns the maximum number of active file descriptors for the current
     ## process. This involves a system call. For now `maxDescriptors` is

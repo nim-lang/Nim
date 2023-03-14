@@ -1,5 +1,6 @@
 discard """
-  outputsub: '''tproper_stacktrace3.nim(21) main'''
+  matrix: "--stackTrace:on"
+  outputsub: '''tproper_stacktrace3.nim(22) main'''
   exitcode: 1
 """
 

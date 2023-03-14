@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+## This module allows adding hooks to program exit.
+
 import locks
 
 type
@@ -43,6 +45,7 @@ proc callClosures() {.noconv.} =
       case fun.kind
       of kClosure: fun.fun1()
       of kNoconv: fun.fun2()
+    gFuns.setLen(0)
 
 template fun() =
   if gFuns.len == 0:

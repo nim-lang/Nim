@@ -316,14 +316,16 @@ Another way is to make Nim invoke a cross compiler toolchain:
   nim c --cpu:arm --os:linux myproject.nim
   ```
 
-For cross compilation, the compiler invokes a C compiler named
-like `$cpu.$os.$cc` (for example arm.linux.gcc) and the configuration
-system is used to provide meaningful defaults. For example for `ARM` your
+For cross compilation, the compiler invokes a C compiler named like
+`$cpu.$os.$cc` (for example `arm.linux.gcc`) with options defined in
+`$cpu.$os.$cc.options.always`. The configuration system is used to provide
+meaningful defaults. For example, for Linux on a 32-bit ARM CPU, your
 configuration file should contain something like:
 
     arm.linux.gcc.path = "/usr/bin"
     arm.linux.gcc.exe = "arm-linux-gcc"
     arm.linux.gcc.linkerexe = "arm-linux-gcc"
+    arm.linux.gcc.options.always = "-w -fmax-errors=3"
 
 Cross-compilation for Windows
 =============================
@@ -440,6 +442,7 @@ or setup a ``nim.cfg`` file like so:
     #nim.cfg
     --mm:orc
     --d:nimAllocPagesViaMalloc
+    --define:nimInheritHandles
     --passC="-I$DEVKITPRO/libnx/include"
     --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 

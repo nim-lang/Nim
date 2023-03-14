@@ -503,28 +503,6 @@ proc absInt(a: int): int {.compilerproc.} =
 proc absInt64(a: int64): int64 {.compilerproc.} =
   result = if a < 0: a*(-1) else: a
 
-when not defined(nimNoZeroExtendMagic):
-  proc ze*(a: int): int {.compilerproc.} =
-    result = a
-
-  proc ze64*(a: int64): int64 {.compilerproc.} =
-    result = a
-
-  proc toU8*(a: int): int8 {.asmNoStackFrame, compilerproc.} =
-    asm """
-      return `a`;
-    """
-
-  proc toU16*(a: int): int16 {.asmNoStackFrame, compilerproc.} =
-    asm """
-      return `a`;
-    """
-
-  proc toU32*(a: int64): int32 {.asmNoStackFrame, compilerproc.} =
-    asm """
-      return `a`;
-    """
-
 proc nimMin(a, b: int): int {.compilerproc.} = return if a <= b: a else: b
 proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
 

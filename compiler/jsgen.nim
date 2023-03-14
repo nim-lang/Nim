@@ -31,9 +31,11 @@ implements the required case distinction.
 import
   ast, trees, magicsys, options,
   nversion, msgs, idents, types,
-  ropes, passes, ccgutils, wordrecg, renderer,
+  ropes, ccgutils, wordrecg, renderer,
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  transf, injectdestructors, sourcemap, astmsgs
+  transf, injectdestructors, sourcemap, astmsgs, backendpragmas
+
+import pipelineutils
 
 import json, sets, math, tables, intsets
 import strutils except addf
@@ -98,6 +100,7 @@ type
     prc: PSym
     globals, locals, body: Rope
     options: TOptions
+    optionsStack: seq[TOptions]
     module: BModule
     g: PGlobals
     generatedParamCopies: IntSet
@@ -261,7 +264,7 @@ proc mangleName(m: BModule, s: PSym): Rope =
       if m.config.hcrOn:
         # When hot reloading is enabled, we must ensure that the names
         # of functions and types will be preserved across rebuilds:
-        result.add(idOrSig(s, m.module.name.s, m.sigConflicts))
+        result.add(idOrSig(s, m.module.name.s, m.sigConflicts, m.config))
       else:
         result.add("_")
         result.add(rope(s.id))
@@ -724,13 +727,16 @@ proc hasFrameInfo(p: PProc): bool =
       ((p.prc == nil) or not (sfPure in p.prc.flags))
 
 proc lineDir(config: ConfigRef, info: TLineInfo, line: int): Rope =
-  ropes.`%`("/* line $2 \"$1\" */$n",
-         [rope(toFullPath(config, info)), rope(line)])
+  "/* line $2:$3 \"$1\" */$n" % [
+    rope(toFullPath(config, info)), rope(line), rope(info.toColumn)
+  ]
 
 proc genLineDir(p: PProc, n: PNode) =
   let line = toLinenumber(n.info)
   if line < 0:
     return
+  if optEmbedOrigSrc in p.config.globalOptions:
+    lineF(p, "//$1$n", [sourceLine(p.config, n.info)])
   if optLineDir in p.options or optLineDir in p.config.options:
     lineF(p, "$1", [lineDir(p.config, n.info, line)])
   if hasFrameInfo(p):
@@ -1422,6 +1428,13 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
       gen(p, n[0], r)
     of nkHiddenDeref:
       gen(p, n[0], r)
+    of nkDerefExpr:
+      var x = n[0]
+      if n.kind == nkHiddenAddr:
+        x = n[0][0]
+        if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
+          x.typ = n.typ
+      gen(p, x, r)
     of nkHiddenAddr:
       gen(p, n[0], r)
     of nkConv:
@@ -2201,7 +2214,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
       else: binaryExpr(p, n, r, "subInt", "$1 = subInt($3, $2)", true)
   of mSetLengthStr:
-    binaryExpr(p, n, r, "mnewString", "($1.length = $2)")
+    binaryExpr(p, n, r, "mnewString",
+      """if ($1.length < $2) { for (var i = $3.length; i < $4; ++i) $3.push(0); }
+         else {$3.length = $4; }""")
   of mSetLengthSeq:
     var x, y: TCompRes
     gen(p, n[1], x)
@@ -2474,17 +2489,18 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   if prc.typ[0] != nil and sfPure notin prc.flags:
     resultSym = prc.ast[resultPos].sym
     let mname = mangleName(p.module, resultSym)
-    let returnAddress = not isIndirect(resultSym) and
+    # otherwise uses "fat pointers"
+    let useRawPointer = not isIndirect(resultSym) and
       resultSym.typ.kind in {tyVar, tyPtr, tyLent, tyRef, tyOwned} and
         mapType(p, resultSym.typ) == etyBaseIndex
-    if returnAddress:
+    if useRawPointer:
       resultAsgn = p.indentLine(("var $# = null;$n") % [mname])
       resultAsgn.add p.indentLine("var $#_Idx = 0;$n" % [mname])
     else:
       let resVar = createVar(p, resultSym.typ, isIndirect(resultSym))
       resultAsgn = p.indentLine(("var $# = $#;$n") % [mname, resVar])
     gen(p, prc.ast[resultPos], a)
-    if returnAddress:
+    if mapType(p, resultSym.typ) == etyBaseIndex:
       returnStmt = "return [$#, $#];$n" % [a.address, a.res]
     else:
       returnStmt = "return $#;$n" % [a.res]
@@ -2546,9 +2562,14 @@ proc genStmt(p: PProc, n: PNode) =
   if r.res != "": lineF(p, "$#;$n", [r.res])
 
 proc genPragma(p: PProc, n: PNode) =
-  for it in n.sons:
+  for i in 0..<n.len:
+    let it = n[i]
     case whichPragma(it)
     of wEmit: genAsmOrEmitStmt(p, it[1])
+    of wPush:
+      processPushBackendOption(p.optionsStack, p.options, n, i+1)
+    of wPop:
+      processPopBackendOption(p.optionsStack, p.options)
     else: discard
 
 proc genCast(p: PProc, n: PNode, r: var TCompRes) =
@@ -2796,7 +2817,7 @@ proc genModule(p: PProc, n: PNode) =
   if p.config.hcrOn and n.kind == nkStmtList:
     let moduleSym = p.module.module
     var moduleLoadedVar = rope(moduleSym.name.s) & "_loaded" &
-                          idOrSig(moduleSym, moduleSym.name.s, p.module.sigConflicts)
+                          idOrSig(moduleSym, moduleSym.name.s, p.module.sigConflicts, p.config)
     lineF(p, "var $1;$n", [moduleLoadedVar])
     var inGuardedBlock = false
 
@@ -2813,11 +2834,11 @@ proc genModule(p: PProc, n: PNode) =
   if optStackTrace in p.options:
     p.body.add(frameDestroy(p))
 
-proc myProcess(b: PPassContext, n: PNode): PNode =
+proc processJSCodeGen*(b: PPassContext, n: PNode): PNode =
   ## Generate JS code for a node.
   result = n
   let m = BModule(b)
-  if passes.skipCodegen(m.config, n): return n
+  if pipelineutils.skipCodegen(m.config, n): return n
   if m.module == nil: internalError(m.config, n.info, "myProcess")
   let globals = PGlobals(m.graph.backend)
   var p = newInitProc(globals, m)
@@ -2852,7 +2873,7 @@ proc getClassName(t: PType): Rope =
   if s.loc.r != "": result = s.loc.r
   else: result = rope(s.name.s)
 
-proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
+proc finalJSCodeGen*(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   ## Finalize JS code generation of a Nim module.
   ## Param `n` may contain nodes returned from the last module close call.
   var m = BModule(b)
@@ -2862,14 +2883,14 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     for i in countdown(high(graph.globalDestructors), 0):
       n.add graph.globalDestructors[i]
   # Process any nodes left over from the last call to `myClose`.
-  result = myProcess(b, n)
+  result = processJSCodeGen(b, n)
   # Some codegen is different (such as no stacktraces; see `initProcOptions`)
   # when `std/system` is being processed.
   if sfSystemModule in m.module.flags:
     PGlobals(graph.backend).inSystem = false
   # Check if codegen should continue before any files are generated.
   # It may bail early is if too many errors have been raised.
-  if passes.skipCodegen(m.config, n): return n
+  if pipelineutils.skipCodegen(m.config, n): return n
   # Nim modules are compiled into a single JS file.
   # If this is the main module, then this is the final call to `myClose`.
   if sfMainModule in m.module.flags:
@@ -2878,7 +2899,8 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     # Generate an optional source map.
     if optSourcemap in m.config.globalOptions:
       var map: SourceMap
-      (code, map) = genSourceMap($(code), outFile.string)
+      map = genSourceMap($code, outFile.string)
+      code &= "\n//# sourceMappingURL=$#.map" % [outFile.string]
       writeFile(outFile.string & ".map", $(%map))
     # Check if the generated JS code matches the output file, or else
     # write it to the file.
@@ -2886,9 +2908,6 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       if not writeRope(code, outFile):
         rawMessage(m.config, errCannotOpenFile, outFile.string)
 
-proc myOpen(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
-  ## Create the JS backend pass context `BModule` for a Nim module.
+proc setupJSgen*(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
   result = newModule(graph, s)
   result.idgen = idgen
-
-const JSgenPass* = makePass(myOpen, myProcess, myClose)

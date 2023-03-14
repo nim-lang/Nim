@@ -1,3 +1,5 @@
+## This module implements file handling.
+
 from paths import Path, ReadDirEffect, WriteDirEffect
 
 from std/private/osfiles import fileExists, removeFile,

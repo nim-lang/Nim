@@ -1365,6 +1365,23 @@ ambiguous, a static error will be produced.
   p value2
   ```
 
+In some cases, ambiguity of enums is resolved depending on the relation
+between the current scope and the scope the enums were defined in.
+
+  ```nim
+  # a.nim
+  type Foo* = enum abc
+
+  # b.nim
+  import a
+  type Bar = enum abc
+  echo abc is Bar # true
+
+  block:
+    type Baz = enum abc
+    echo abc is Baz # true
+  ```
+
 To implement bit fields with enums see [Bit fields].
 
 
@@ -1950,6 +1967,57 @@ Some restrictions for case objects can be disabled via a `{.cast(uncheckedAssign
     t.kind = intLit
   ```
 
+Default values for object fields
+--------------------------------
+
+Object fields are allowed to have a constant default value. The type of field can be omitted if a default value is given.
+
+```nim test
+type
+  Foo = object
+    a: int = 2
+    b: float = 3.14
+    c = "I can have a default value"
+
+  Bar = ref object
+    a: int = 2
+    b: float = 3.14
+    c = "I can have a default value"
+```
+
+The explicit initialization uses these defaults which includes an `object` created with an object construction expression or the procedure `default`; a `ref object` created with an object construction expression or the procedure `new`; an array or a tuple with a subtype which has a default created with the procedure `default`.
+
+
+```nim test
+type
+  Foo = object
+    a: int = 2
+    b = 3.0
+  Bar = ref object
+    a: int = 2
+    b = 3.0
+
+block: # created with an object construction expression
+  let x = Foo()
+  assert x.a == 2 and x.b == 3.0
+
+  let y = Bar()
+  assert y.a == 2 and y.b == 3.0
+
+block: # created with an object construction expression
+  let x = default(Foo)
+  assert x.a == 2 and x.b == 3.0
+
+  let y = default(array[1, Foo])
+  assert y[0].a == 2 and y[0].b == 3.0
+
+  let z = default(tuple[x: Foo])
+  assert z.x.a == 2 and z.x.b == 3.0
+
+block: # created with the procedure `new`
+  let y = new Bar
+  assert y.a == 2 and y.b == 3.0
+```
 
 Set type
 --------
@@ -3506,8 +3574,8 @@ Example:
   var y = if x > 8: 9 else: 10
   ```
 
-An if expression always results in a value, so the `else` part is
-required. `Elif` parts are also allowed.
+An `if` expression always results in a value, so the `else` part is
+required. `elif` parts are also allowed.
 
 When expression
 ---------------
@@ -4054,7 +4122,7 @@ the operator is in scope (including if it is private).
   ```
 
 Type bound operators are:
-`=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`.
+`=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`, `=wasMoved`.
 
 These operations can be *overridden* instead of *overloaded*. This means that
 the implementation is automatically lifted to structured types. For instance,
@@ -4705,8 +4773,8 @@ Example:
       echo "overflow!"
     except ValueError, IOError:
       echo "catch multiple exceptions!"
-    except:
-      echo "Unknown exception!"
+    except CatchableError:
+      echo "Catchable exception!"
     finally:
       close(f)
   ```
@@ -4717,9 +4785,6 @@ an exception `e` is raised. If the exception type of `e` matches any
 listed in an `except` clause, the corresponding statements are executed.
 The statements following the `except` clauses are called
 `exception handlers`:idx:.
-
-The empty `except`:idx: clause is executed if there is an exception that is
-not listed otherwise. It is similar to an `else` clause in `if` statements.
 
 If there is a `finally`:idx: clause, it is always executed after the
 exception handlers.
@@ -4738,11 +4803,11 @@ Try can also be used as an expression; the type of the `try` branch then
 needs to fit the types of `except` branches, but the type of the `finally`
 branch always has to be `void`:
 
-  ```nim
+  ```nim test
   from std/strutils import parseInt
 
   let x = try: parseInt("133a")
-          except: -1
+          except ValueError: -1
           finally: echo "hi"
   ```
 
@@ -4750,8 +4815,9 @@ branch always has to be `void`:
 To prevent confusing code there is a parsing limitation; if the `try`
 follows a `(` it has to be written as a one liner:
 
-  ```nim
-  let x = (try: parseInt("133a") except: -1)
+  ```nim test
+  from std/strutils import parseInt
+  let x = (try: parseInt("133a") except ValueError: -1)
   ```
 
 
@@ -4799,7 +4865,7 @@ error message from `e`, and for such situations, it is enough to use
   ```nim
   try:
     # ...
-  except:
+  except CatchableError:
     echo getCurrentExceptionMsg()
   ```
 
@@ -4987,7 +5053,7 @@ An empty `raises` list (`raises: []`) means that no exception may be raised:
     try:
       unsafeCall()
       result = true
-    except:
+    except CatchableError:
       result = false
   ```
 
@@ -7981,6 +8047,24 @@ used. To see if a value was provided, `defined(FooBar)` can be used.
 The syntax `-d:flag`:option: is actually just a shortcut for
 `-d:flag=true`:option:.
 
+These pragmas also accept an optional string argument for qualified
+define names.
+
+  ```nim
+  const FooBar {.intdefine: "package.FooBar".}: int = 5
+  echo FooBar
+  ```
+
+  ```cmd
+  nim c -d:package.FooBar=42 foobar.nim
+  ```
+
+This helps disambiguate define names in different packages.
+
+See also the [generic `define` pragma](manual_experimental.html#generic-define-pragma)
+for a version of these pragmas that detects the type of the define based on
+the constant value.
+
 User-defined pragmas
 ====================
 
@@ -8356,22 +8440,11 @@ This is only useful if the program is compiled as a dynamic library via the
 `--app:lib`:option: command-line option.
 
 
-
 Threads
 =======
 
-To enable thread support the `--threads:on`:option: command-line switch needs to
-be used. The [system module](system.html) module then contains several threading primitives.
-See the [channels](channels_builtin.html) modules
-for the low-level thread API. There are also high-level parallelism constructs
-available. See [spawn](manual_experimental.html#parallel-amp-spawn) for
+The `--threads:on`:option: command-line switch is enabled by default. The [typedthreads module](typedthreads.html) module then contains several threading primitives. See [spawn](manual_experimental.html#parallel-amp-spawn) for
 further details.
-
-Nim's memory model for threads is quite different than that of other common
-programming languages (C, Pascal, Java): Each thread has its own (garbage
-collected) heap, and sharing of memory is restricted to global variables. This
-helps to prevent race conditions. GC efficiency is improved quite a lot,
-because the GC never has to stop other threads and see what they reference.
 
 The only way to create a thread is via `spawn` or
 `createThread`. The invoked proc must not use `var` parameters nor must
