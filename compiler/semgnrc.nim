@@ -349,12 +349,19 @@ proc semGenericStmt(c: PContext, n: PNode,
   of nkCaseStmt:
     openScope(c)
     n[0] = semGenericStmt(c, n[0], flags, ctx)
-    for i in 1..<n.len:
-      var a = n[i]
-      checkMinSonsLen(a, 1, c.config)
-      for j in 0..<a.len-1:
-        a[j] = semGenericStmt(c, a[j], flags, ctx)
-      a[^1] = semGenericStmtScope(c, a[^1], flags, ctx)
+    if n[0].typ != nil:
+      let caseTyp = skipTypes(n[0].typ, abstractVar-{tyTypeDesc})
+      case caseTyp.kind
+      of {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt64, tyBool,
+          tyRange, tyFloat..tyFloat128, tyString, tyCstring}:
+        for i in 1..<n.len:
+          var a = n[i]
+          checkMinSonsLen(a, 1, c.config)
+          for j in 0..<a.len-1:
+            a[j] = semGenericStmt(c, a[j], flags, ctx)
+          a[^1] = semGenericStmtScope(c, a[^1], flags, ctx)
+      else:
+        discard
     closeScope(c)
   of nkForStmt, nkParForStmt:
     openScope(c)
