@@ -81,7 +81,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
   var pl = callee & "(" & params
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInst)
-  if typ[0] != nil:
+  if typ[0] != nil and typ[0].kind != tyVoid:
     if isInvalidReturnType(p.config, typ):
       if params.len != 0: pl.add(", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
@@ -462,7 +462,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
   let rawProc = getClosureType(p.module, typ, clHalf)
   let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri[0])
-  if typ[0] != nil:
+  if typ[0] != nil and typ[0].kind != tyVoid:
     if isInvalidReturnType(p.config, typ):
       if ri.len > 1: pl.add(", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
@@ -694,7 +694,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
     genPatternCall(p, ri, pat, typ, pl)
     # simpler version of 'fixupCall' that works with the pl+params combination:
     var typ = skipTypes(ri[0].typ, abstractInst)
-    if typ[0] != nil:
+    if typ[0] != nil and typ[0].kind != tyVoid:
       if p.module.compileToCpp and lfSingleUse in d.flags:
         # do not generate spurious temporaries for C++! For C we're better off
         # with them to prevent undefined behaviour and because the codegen
@@ -763,7 +763,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     pl.add(param.name.s)
     pl.add(": ")
     genArg(p, ri[i], param, ri, pl)
-  if typ[0] != nil:
+  if typ[0] != nil and typ[0].kind != tyVoid:
     if isInvalidReturnType(p.config, typ):
       if ri.len > 1: pl.add(" ")
       # beware of 'result = p(result)'. We always allocate a temporary:
