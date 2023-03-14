@@ -459,9 +459,6 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   when not defined(emscripten):
     if not a.blockChunkSizeIncrease:
       let usedMem = a.occ #a.currMem # - a.freeMem
-      when nimMaxHeap != 0:
-        if usedMem > nimMaxHeap * 1024 * 1024:
-          raiseOutOfMem()
       if usedMem < 64 * 1024:
         a.nextChunkSize = PageSize*4
       else:
@@ -811,9 +808,13 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
   sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
   var size = roundup(requestedSize, MemAlign)
   sysAssert(size >= sizeof(FreeCell), "rawAlloc: requested size too small")
-
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
+
+  when nimMaxHeap != 0:
+    if a.occ + size > nimMaxHeap * 1024 * 1024:
+      raiseOutOfMem()
+
   if size <= SmallChunkSize-smallChunkOverhead():
     # allocate a small block: for small chunks, we use only its next pointer
     let s = size div MemAlign
