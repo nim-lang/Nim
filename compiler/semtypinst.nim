@@ -193,6 +193,24 @@ proc replaceObjBranches(cl: TReplTypeVars, n: PNode): PNode =
     for i in 0..<n.len:
       n[i] = replaceObjBranches(cl, n[i])
 
+proc hasValuelessStatics(n: PNode): bool =
+  # We should only attempt to call an expression that has no tyStatics
+  # As those are unresolved generic parameters, which means in the following
+  # The compiler attempts to do `T == 300` which errors since the typeclass `MyThing` lacks a parameter
+  #[
+    type MyThing[T: static int] = object
+      when T == 300:
+        a
+    proc doThing(_: MyThing)
+  ]#
+  if n.safeLen == 0:
+    n.typ.kind == tyStatic
+  else:
+    for x in n:
+      if hasValuelessStatics(x):
+        return true
+    false
+
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
   if n == nil: return
   result = copyNode(n)
@@ -217,10 +235,11 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       of nkElifBranch:
         checkSonsLen(it, 2, cl.c.config)
         var cond = prepareNode(cl, it[0])
-        var e = cl.c.semConstExpr(cl.c, cond)
-        if e.kind != nkIntLit:
-          internalError(cl.c.config, e.info, "ReplaceTypeVarsN: when condition not a bool")
-        if e.intVal != 0 and branch == nil: branch = it[1]
+        if not cond.hasValuelessStatics:
+          var e = cl.c.semConstExpr(cl.c, cond)
+          if e.kind != nkIntLit:
+            internalError(cl.c.config, e.info, "ReplaceTypeVarsN: when condition not a bool")
+          if e.intVal != 0 and branch == nil: branch = it[1]
       of nkElse:
         checkSonsLen(it, 1, cl.c.config)
         if branch == nil: branch = it[0]
