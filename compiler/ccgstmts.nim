@@ -1579,6 +1579,7 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
         "#FieldDiscriminantCheck((NI)(NU)($1), (NI)(NU)($2), $3, $4);$n",
         [rdLoc(a), rdLoc(tmp), discriminatorTableName(p.module, t, field),
          lit])
+  raiseExit(p)
 
 when false:
   proc genCaseObjDiscMapping(p: BProc, e: PNode, t: PType, field: PSym; d: var TLoc) =
