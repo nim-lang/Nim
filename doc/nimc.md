@@ -715,7 +715,7 @@ Nim's thread API provides a simple wrapper around more advanced
 RTOS task features. Customizing the stack size and stack guard size can
 be done by setting `-d:nimThreadStackSize=16384` or `-d:nimThreadStackGuard=32`.
 
-Currently only Zephyr and FreeRTOS support these configurations.
+Currently only Zephyr, NuttX and FreeRTOS support these configurations.
 
 Nim for realtime systems
 ========================
