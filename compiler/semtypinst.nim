@@ -400,7 +400,23 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     return
 
   let bbody = lastSon body
-  var newbody = replaceTypeVarsT(cl, bbody)
+  let missingStaticParam = block:
+    # This checks for if a generic with a static is being used as a typeclass.
+    # type MyType[T: static int] = object
+    # proc doThing(val: MyType) =...
+    var missing = false
+    for i in 1..<header.len:
+      let typ = header[i]
+      # If it's an inferrable static, we should not replace types
+      if typ.kind == tyStatic and tfInferrableStatic in typ.flags:
+        missing = true
+    missing
+
+  var newbody =
+    if missingStaticParam:
+      bbody
+    else:
+      replaceTypeVarsT(cl, bbody)
   cl.skipTypedesc = oldSkipTypedesc
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
   result.flags = result.flags + newbody.flags - tfInstClearedFlags
