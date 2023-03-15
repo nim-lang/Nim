@@ -349,7 +349,7 @@ proc semGenericStmt(c: PContext, n: PNode,
   of nkCaseStmt:
     var checkCaseBranch = false
     openScope(c)
-    n[0] = semGenericStmt(c, copyTree(n[0]), flags, ctx)
+    n[0] = semGenericStmt(c, n[0], flags, ctx)
     if n[0].typ != nil:
       let caseTyp = skipTypes(n[0].typ, abstractVar-{tyTypeDesc})
       if caseTyp.kind in {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt64, tyBool, tyRange, tyFloat..tyFloat128, tyString, tyCstring}:
