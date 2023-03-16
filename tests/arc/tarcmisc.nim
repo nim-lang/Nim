@@ -558,3 +558,42 @@ block:
     doAssert y.id == 778
     doAssert x[].id == 778
   main()
+
+block: # bug #19857
+  type
+    ValueKind = enum VNull, VFloat, VObject # need 3 elements. Cannot remove VNull or VObject
+
+    Value = object
+      case kind: ValueKind
+      of VFloat: fnum: float
+      of VObject: tab: Table[int, int] # OrderedTable[T, U] also makes it fail.
+                                      # "simpler" types also work though
+      else: discard # VNull can be like this, but VObject must be filled
+
+    # required. Pure proc works
+    FormulaNode = proc(c: OrderedTable[string, int]): Value
+
+  proc toF(v: Value): float =
+    doAssert v.kind == VFloat
+    case v.kind
+    of VFloat: result = v.fnum
+    else: discard
+
+
+  proc foo() =
+    let fuck = initOrderedTable[string, int]()
+    proc cb(fuck: OrderedTable[string, int]): Value =
+                            # works:
+                            #result = Value(kind: VFloat, fnum: fuck["field_that_does_not_exist"].float)
+                            # broken:
+      discard "actuall runs!"
+      let t = fuck["field_that_does_not_exist"]
+      echo "never runs, but we crash after! ", t
+
+    doAssertRaises(KeyError):
+      let fn = FormulaNode(cb)
+      let v = fn(fuck)
+      #echo v
+      let res = v.toF()
+
+  foo()
