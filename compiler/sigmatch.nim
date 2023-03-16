@@ -15,6 +15,8 @@ import
   magicsys, idents, lexer, options, parampatterns, strutils, trees,
   linter, lineinfos, lowerings, modulegraphs, concepts
 
+
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -1941,7 +1943,27 @@ proc isLValue(c: PContext; n: PNode, isOutParam = false): bool {.inline.} =
     result = strictDefs in c.features and sym != nil and sym.kind == skLet and isOutParam
   else:
     result = false
-
+    
+proc analyseIfAddressTaken(c: PContext, n: PNode) =
+  ## See analyseIfAddressTaken in semexprs.nim
+  case n.kind
+  of nkSym:
+    if n.sym.typ != nil and
+        skipTypes(n.sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
+      incl(n.sym.flags, sfAddrTaken)
+  of nkDotExpr:
+    checkSonsLen(n, 2, c.config)
+    if n[1].kind != nkSym:
+      internalError(c.config, n.info, "analyseIfAddressTaken")
+      return
+    if skipTypes(n[1].sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
+      incl(n[1].sym.flags, sfAddrTaken)
+  of nkBracketExpr:
+    checkMinSonsLen(n, 1, c.config)
+    if skipTypes(n[0].typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
+      if n[0].kind == nkSym: incl(n[0].sym.flags, sfAddrTaken)
+  else: discard
+  
 proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
                    arg: PNode): PNode =
   result = nil
@@ -1980,7 +2002,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
         param = implicitConv(nkHiddenSubConv, src, copyTree(arg), m, c)
       elif src.kind in {tyVar}:
         # Analyse the converter return type
-        arg.sym.flags.incl sfAddrTaken
+        c.analyseIfAddressTaken(arg)
         param = newNodeIT(nkHiddenAddr, arg.info, s.typ[1])
         param.add copyTree(arg)
       else:
