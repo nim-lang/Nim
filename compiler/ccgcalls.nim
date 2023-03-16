@@ -475,6 +475,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
           discard "resetLoc(p, d)"
         pl.add(addrLoc(p.config, d))
         genCallPattern()
+        if canRaise: raiseExit(p)
       else:
         var tmp: TLoc
         getTemp(p, typ[0], tmp, needsInit=true)
