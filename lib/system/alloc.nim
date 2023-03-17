@@ -268,6 +268,34 @@ proc getMaxMem(a: var MemRegion): int =
   # maximum of these both values here:
   result = max(a.currMem, a.maxMem)
 
+const nimMaxHeap {.intdefine.} = 0
+
+proc allocPages(a: var MemRegion, size: int): pointer =
+  # TODO REMOVE
+  cprintf("nimMaxHeap %ld\n", nimMaxHeap*1024*1024)
+  cprintf("size request: %ld\n", size)
+  cprintf("a.occ %ld\n", a.occ)
+  cprintf("a.currMem %ld\n", a.currMem)
+  cprintf("maxHeap - currMem > %ld\n", nimMaxHeap*1024*1024 - (a.currMem+size))
+  cprintf("maxHeap - occMem  > %ld\n",  nimMaxHeap*1024*1024 - (a.occ+size))
+  when nimMaxHeap != 0:
+    if a.occ + size > nimMaxHeap * 1024 * 1024:
+      raiseOutOfMem()
+  osAllocPages(size)
+
+proc tryAllocPages(a: var MemRegion, size: int): pointer =
+  # TODO REMOVE
+  cprintf("nimMaxHeap %ld\n", nimMaxHeap*1024*1024)
+  cprintf("size request: %ld\n", size)
+  cprintf("a.occ %ld\n", a.occ)
+  cprintf("a.currMem %ld\n", a.currMem)
+  cprintf("maxHeap - currMem > %ld\n", nimMaxHeap*1024*1024 - (a.currMem+size))
+  cprintf("maxHeap - occMem  > %ld\n",  nimMaxHeap*1024*1024 - (a.occ+size))
+  when nimMaxHeap != 0:
+    if a.occ + size > nimMaxHeap * 1024 * 1024:
+      raiseOutOfMem()
+    osTryAllocPages(size)
+
 proc llAlloc(a: var MemRegion, size: int): pointer =
   # *low-level* alloc for the memory managers data structures. Deallocation
   # is done at the end of the allocator's life time.
@@ -277,7 +305,7 @@ proc llAlloc(a: var MemRegion, size: int): pointer =
     # is one page:
     sysAssert roundup(size+sizeof(LLChunk), PageSize) == PageSize, "roundup 6"
     var old = a.llmem # can be nil and is correct with nil
-    a.llmem = cast[PLLChunk](osAllocPages(PageSize))
+    a.llmem = cast[PLLChunk](allocPages(a, PageSize))
     when defined(nimAvlcorruption):
       trackLocation(a.llmem, PageSize)
     incCurrMem(a, PageSize)
@@ -453,9 +481,8 @@ when false:
                 it, it.next, it.prev, it.size)
       it = it.next
 
-const nimMaxHeap {.intdefine.} = 0
-
 proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
+  cprintf("<== requestOsChunks ==>\n")
   when not defined(emscripten):
     if not a.blockChunkSizeIncrease:
       let usedMem = a.occ #a.currMem # - a.freeMem
@@ -467,11 +494,11 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
 
   var size = size
   if size > a.nextChunkSize:
-    result = cast[PBigChunk](osAllocPages(size))
+    result = cast[PBigChunk](allocPages(a, size))
   else:
-    result = cast[PBigChunk](osTryAllocPages(a.nextChunkSize))
+    result = cast[PBigChunk](tryAllocPages(a, a.nextChunkSize))
     if result == nil:
-      result = cast[PBigChunk](osAllocPages(size))
+      result = cast[PBigChunk](allocPages(a, size))
       a.blockChunkSizeIncrease = true
     else:
       size = a.nextChunkSize
@@ -619,7 +646,9 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   mappingSearch(size, fl, sl)
   sysAssert((size and PageMask) == 0, "getBigChunk: unaligned chunk")
   result = findSuitableBlock(a, fl, sl)
-
+  # TODO REMOVE
+  # cprintf("<=== getBigChunk ===>")
+  # cprintf("size request: %ld\n", size)
   when RegionHasLock:
     if not a.lockActive:
       a.lockActive = true
@@ -651,7 +680,10 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
     releaseSys a.lock
 
 proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
-  result = cast[PBigChunk](osAllocPages(size))
+  # TODO REMOVE
+  # cprintf("<=== getHugeChunk ===>")
+  # cprintf("size request: %ld\n", size)
+  result = cast[PBigChunk](allocPages(a, size))
   when RegionHasLock:
     if not a.lockActive:
       a.lockActive = true
@@ -810,10 +842,6 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
   sysAssert(size >= sizeof(FreeCell), "rawAlloc: requested size too small")
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
-
-  when nimMaxHeap != 0:
-    if a.occ + size > nimMaxHeap * 1024 * 1024:
-      raiseOutOfMem()
 
   if size <= SmallChunkSize-smallChunkOverhead():
     # allocate a small block: for small chunks, we use only its next pointer
