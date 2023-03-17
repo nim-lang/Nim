@@ -1053,13 +1053,15 @@ elif not defined(useNimRtl):
       var mask: Sigset
       chck sigemptyset(mask)
       chck posix_spawnattr_setsigmask(attr, mask)
-      if poDaemon in data.options:
-        chck posix_spawnattr_setpgroup(attr, 0'i32)
+      when not defined(nuttx):
+        if poDaemon in data.options:
+          chck posix_spawnattr_setpgroup(attr, 0'i32)
 
       var flags = POSIX_SPAWN_USEVFORK or
                   POSIX_SPAWN_SETSIGMASK
-      if poDaemon in data.options:
-        flags = flags or POSIX_SPAWN_SETPGROUP
+      when not defined(nuttx):
+        if poDaemon in data.options:
+          flags = flags or POSIX_SPAWN_SETPGROUP
       chck posix_spawnattr_setflags(attr, flags)
 
       if not (poParentStreams in data.options):
