@@ -787,7 +787,7 @@ proc analyseIfAddressTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
   else:
     result = newHiddenAddrTaken(c, n, isOutParam)
 
-proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
+proc analyseIfAddressTakenInCall(c: PContext, n: PNode, isConverter = false) =
   checkMinSonsLen(n, 1, c.config)
   const
     FakeVarParams = {mNew, mNewFinalize, mInc, ast.mDec, mIncl, mExcl,
@@ -800,7 +800,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
     # Call can sometimes be wrapped in a deref
     let node = if n.kind == nkHiddenDeref: n[0] else: n
     if node.kind == nkHiddenCallConv:
-      analyseIfAddressTakenInCall(c, node)
+      analyseIfAddressTakenInCall(c, node, true)
   # get the real type of the callee
   # it may be a proc var with a generic alias type, so we skip over them
   var t = n[0].typ.skipTypes({tyGenericInst, tyAlias, tySink})
@@ -834,8 +834,11 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
     c.checkIfConverterCalled(n[i])
     if i < t.len and
         skipTypes(t[i], abstractInst-{tyTypeDesc}).kind in {tyVar}:
-      if n[i].kind != nkHiddenAddr:
-        n[i] = analyseIfAddressTaken(c, n[i], isOutParam(skipTypes(t[i], abstractInst-{tyTypeDesc})))
+      # Converters wrap var parameters in nkHiddenAddr but they haven't been analysed yet.
+      # So we need to make sure we are checking them still when in a converter call
+      if n[i].kind != nkHiddenAddr or isConverter:
+        n[i] = analyseIfAddressTaken(c, n[i].skipAddr(), isOutParam(skipTypes(t[i], abstractInst-{tyTypeDesc})))
+        
 include semmagic
 
 proc evalAtCompileTime(c: PContext, n: PNode): PNode =
