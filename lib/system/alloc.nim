@@ -271,26 +271,12 @@ proc getMaxMem(a: var MemRegion): int =
 const nimMaxHeap {.intdefine.} = 0
 
 proc allocPages(a: var MemRegion, size: int): pointer =
-  # TODO REMOVE
-  cprintf("nimMaxHeap %ld\n", nimMaxHeap*1024*1024)
-  cprintf("size request: %ld\n", size)
-  cprintf("a.occ %ld\n", a.occ)
-  cprintf("a.currMem %ld\n", a.currMem)
-  cprintf("maxHeap - currMem > %ld\n", nimMaxHeap*1024*1024 - (a.currMem+size))
-  cprintf("maxHeap - occMem  > %ld\n",  nimMaxHeap*1024*1024 - (a.occ+size))
   when nimMaxHeap != 0:
     if a.occ + size > nimMaxHeap * 1024 * 1024:
       raiseOutOfMem()
   osAllocPages(size)
 
 proc tryAllocPages(a: var MemRegion, size: int): pointer =
-  # TODO REMOVE
-  cprintf("nimMaxHeap %ld\n", nimMaxHeap*1024*1024)
-  cprintf("size request: %ld\n", size)
-  cprintf("a.occ %ld\n", a.occ)
-  cprintf("a.currMem %ld\n", a.currMem)
-  cprintf("maxHeap - currMem > %ld\n", nimMaxHeap*1024*1024 - (a.currMem+size))
-  cprintf("maxHeap - occMem  > %ld\n",  nimMaxHeap*1024*1024 - (a.occ+size))
   when nimMaxHeap != 0:
     if a.occ + size > nimMaxHeap * 1024 * 1024:
       raiseOutOfMem()
@@ -482,7 +468,6 @@ when false:
       it = it.next
 
 proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
-  cprintf("<== requestOsChunks ==>\n")
   when not defined(emscripten):
     if not a.blockChunkSizeIncrease:
       let usedMem = a.occ #a.currMem # - a.freeMem
@@ -646,9 +631,7 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   mappingSearch(size, fl, sl)
   sysAssert((size and PageMask) == 0, "getBigChunk: unaligned chunk")
   result = findSuitableBlock(a, fl, sl)
-  # TODO REMOVE
-  # cprintf("<=== getBigChunk ===>")
-  # cprintf("size request: %ld\n", size)
+
   when RegionHasLock:
     if not a.lockActive:
       a.lockActive = true
@@ -680,9 +663,6 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
     releaseSys a.lock
 
 proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
-  # TODO REMOVE
-  # cprintf("<=== getHugeChunk ===>")
-  # cprintf("size request: %ld\n", size)
   result = cast[PBigChunk](allocPages(a, size))
   when RegionHasLock:
     if not a.lockActive:
