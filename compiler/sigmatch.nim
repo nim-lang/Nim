@@ -15,8 +15,6 @@ import
   magicsys, idents, lexer, options, parampatterns, strutils, trees,
   linter, lineinfos, lowerings, modulegraphs, concepts
 
-
-
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -1943,7 +1941,7 @@ proc isLValue(c: PContext; n: PNode, isOutParam = false): bool {.inline.} =
     result = strictDefs in c.features and sym != nil and sym.kind == skLet and isOutParam
   else:
     result = false
-    
+
 proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
                    arg: PNode): PNode =
   result = nil
