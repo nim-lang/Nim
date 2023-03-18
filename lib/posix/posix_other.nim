@@ -646,7 +646,7 @@ elif defined(nuttx):
 else:
   var SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
 
-when defined(linux) or defined(bsd):
+when defined(linux) or defined(bsd) or defined(nuttx):
   var SOCK_CLOEXEC* {.importc, header: "<sys/socket.h>".}: cint
 
 when defined(macosx):
