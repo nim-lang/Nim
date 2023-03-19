@@ -183,7 +183,8 @@ type
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait,
     opcSymOwner,
-    opcSymIsInstantiationOf
+    opcSymIsInstantiationOf,
+    opcModuleSymbols
 
   TBlock* = object
     label*: PSym
