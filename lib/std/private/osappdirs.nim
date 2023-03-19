@@ -13,6 +13,7 @@ proc getHomeDir*(): string {.rtl, extern: "nos$1",
   ##
   ## See also:
   ## * `getDataDir proc`_
+  ## * `getStateDir proc`_
   ## * `getConfigDir proc`_
   ## * `getTempDir proc`_
   ## * `expandTilde proc`_
@@ -36,6 +37,7 @@ proc getDataDir*(): string {.rtl, extern: "nos$1"
   ## 
   ## See also:
   ## * `getHomeDir proc`_
+  ## * `getStateDir proc`_
   ## * `getConfigDir proc`_
   ## * `getTempDir proc`_
   ## * `expandTilde proc`_
@@ -47,6 +49,31 @@ proc getDataDir*(): string {.rtl, extern: "nos$1"
     result = getEnv("XDG_DATA_HOME", getEnv("HOME") / "Library" / "Application Support")
   else:
     result = getEnv("XDG_DATA_HOME", getEnv("HOME") / ".local" / "share")
+  result.normalizePathEnd(trailingSep = true)
+
+proc getStateDir*(): string {.rtl, extern: "nos$1"
+  tags: [ReadEnvEffect, ReadIOEffect].} =
+  ## Returns the state directory of the current user for applications.
+  ##
+  ## On non-Windows OSs, this proc conforms to the XDG Base Directory
+  ## spec. Thus, this proc returns the value of the `XDG_STATE_HOME` environment
+  ## variable if it is set, otherwise it returns the default configuration
+  ## directory ("~/.local/state" or "~/Library/Application Support" on macOS).
+  ##
+  ## See also:
+  ## * `getHomeDir proc`_
+  ## * `getDataDir proc`_
+  ## * `getConfigDir proc`_
+  ## * `getTempDir proc`_
+  ## * `expandTilde proc`_
+  ## * `getCurrentDir proc`_
+  ## * `setCurrentDir proc`_
+  when defined(windows):
+    result = getEnv("LOCALAPPDATA")
+  elif defined(macosx):
+    result = getEnv("XDG_STATE_HOME", getEnv("HOME") / "Library" / "Application Support")
+  else:
+    result = getEnv("XDG_STATE_HOME", getEnv("HOME") / ".local" / "state")
   result.normalizePathEnd(trailingSep = true)
 
 proc getConfigDir*(): string {.rtl, extern: "nos$1",
@@ -64,6 +91,7 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   ## See also:
   ## * `getHomeDir proc`_
   ## * `getDataDir proc`_
+  ## * `getStateDir proc`_
   ## * `getTempDir proc`_
   ## * `expandTilde proc`_
   ## * `getCurrentDir proc`_
@@ -87,6 +115,7 @@ proc getCacheDir*(): string =
   ##
   ## **See also:**
   ## * `getHomeDir proc`_
+  ## * `getStateDir proc`_
   ## * `getTempDir proc`_
   ## * `getConfigDir proc`_
   ## * `getDataDir proc`_
@@ -149,6 +178,7 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ##
   ## See also:
   ## * `getHomeDir proc`_
+  ## * `getStateDir proc`_
   ## * `getConfigDir proc`_
   ## * `expandTilde proc`_
   ## * `getCurrentDir proc`_

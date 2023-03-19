@@ -11,6 +11,7 @@
 
 [//]: # "Additions:"
 - Added `parseutils.parseSize` - inverse to `strutils.formatSize` - to parse human readable sizes.
+- Added `getStateDir` alongside the procs for the other XDG user directories.
 
 [//]: # "Deprecations:"
 
