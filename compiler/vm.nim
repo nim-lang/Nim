@@ -1305,12 +1305,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         else:
           let enablePrivate = regs[rc].intVal.bool
           let node = newNode(nkBracket)
-          const nodeFlags = {nfIsRef, nfNoRewrite}
           for ai in allSyms(c.graph, sym, importHidden = enablePrivate):
             let ni = newSymNode(ai)
-            ni.flags.incl nodeFlags
+            ni.flags.incl nfIsRef
             node.sons.add ni
-          node.flags.incl nodeFlags
+          node.flags.incl nfIsRef
           regs[ra].node = node
     of opcEcho:
       let rb = instr.regB
