@@ -156,8 +156,8 @@ when defined(nimHasEffectsOf):
 else:
   {.pragma: effectsOf.}
 
-proc binarySearch*[T, K](a: openArray[T], key: K,
-                         cmp: proc (x: T, y: K): int {.closure.}): int {.effectsOf: cmp.} =
+proc binarySearch*[T](a: openArray[T], key: T,
+                      cmp: proc (x, y: T): int {.closure.}): int {.effectsOf: cmp.} =
   ## Binary search for `key` in `a`. Return the index of `key` or -1 if not found.
   ## Assumes that `a` is sorted according to `cmp`.
   ##
@@ -218,8 +218,8 @@ proc binarySearch*[T](a: openArray[T], key: T): int =
 const
   onlySafeCode = true
 
-proc lowerBound*[T, K](a: openArray[T], key: K,
-                       cmp: proc(x: T, k: K): int {.closure.}): int {.effectsOf: cmp.} =
+proc lowerBound*[T](a: openArray[T], key: T,
+                    cmp: proc(x, y: T): int {.closure.}): int {.effectsOf: cmp.} =
   ## Returns the index of the first element in `a` that is not less than
   ## (i.e. greater or equal to) `key`, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
@@ -233,7 +233,7 @@ proc lowerBound*[T, K](a: openArray[T], key: K,
   ## The expected return values are the same as those of `system.cmp`.
   ##
   ## **See also:**
-  ## * `upperBound proc<#upperBound,openArray[T],K,proc(T,K)>`_ sorted by `cmp` in the specified order
+  ## * `upperBound proc<#upperBound,openArray[T],T,proc(T,T)>`_ sorted by `cmp` in the specified order
   ## * `upperBound proc<#upperBound,openArray[T],T>`_
   runnableExamples:
     var arr = @[1, 2, 3, 5, 6, 7, 8, 9]
@@ -265,11 +265,11 @@ proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
   ## This version uses the default comparison function `cmp`.
   ##
   ## **See also:**
-  ## * `upperBound proc<#upperBound,openArray[T],K,proc(T,K)>`_ sorted by `cmp` in the specified order
+  ## * `upperBound proc<#upperBound,openArray[T],T,proc(T,T)>`_ sorted by `cmp` in the specified order
   ## * `upperBound proc<#upperBound,openArray[T],T>`_
 
-proc upperBound*[T, K](a: openArray[T], key: K,
-                       cmp: proc(x: T, k: K): int {.closure.}): int {.effectsOf: cmp.} =
+proc upperBound*[T](a: openArray[T], key: T,
+                    cmp: proc(x, y: T): int {.closure.}): int {.effectsOf: cmp.} =
   ## Returns the index of the first element in `a` that is greater than
   ## `key`, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
@@ -283,7 +283,7 @@ proc upperBound*[T, K](a: openArray[T], key: K,
   ## return values are the same as those of `system.cmp`.
   ##
   ## **See also:**
-  ## * `lowerBound proc<#lowerBound,openArray[T],K,proc(T,K)>`_ sorted by `cmp` in the specified order
+  ## * `lowerBound proc<#lowerBound,openArray[T],T,proc(T,T)>`_ sorted by `cmp` in the specified order
   ## * `lowerBound proc<#lowerBound,openArray[T],T>`_
   runnableExamples:
     var arr = @[1, 2, 3, 5, 6, 7, 8, 9]
@@ -315,7 +315,7 @@ proc upperBound*[T](a: openArray[T], key: T): int = upperBound(a, key, cmp[T])
   ## This version uses the default comparison function `cmp`.
   ##
   ## **See also:**
-  ## * `lowerBound proc<#lowerBound,openArray[T],K,proc(T,K)>`_ sorted by `cmp` in the specified order
+  ## * `lowerBound proc<#lowerBound,openArray[T],T,proc(T,T)>`_ sorted by `cmp` in the specified order
   ## * `lowerBound proc<#lowerBound,openArray[T],T>`_
 
 template `<-`(a, b) =
