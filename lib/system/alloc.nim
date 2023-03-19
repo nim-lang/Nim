@@ -280,7 +280,7 @@ proc tryAllocPages(a: var MemRegion, size: int): pointer =
   when nimMaxHeap != 0:
     if a.occ + size > nimMaxHeap * 1024 * 1024:
       raiseOutOfMem()
-    osTryAllocPages(size)
+  osTryAllocPages(size)
 
 proc llAlloc(a: var MemRegion, size: int): pointer =
   # *low-level* alloc for the memory managers data structures. Deallocation
