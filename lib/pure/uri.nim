@@ -14,6 +14,8 @@
 ## as a locator, a name, or both. The term "Uniform Resource Locator"
 ## (URL) refers to the subset of URIs.
 ##
+## .. warning:: URI parsers in this module do not perform security validation.
+##
 ## # Basic usage
 
 
