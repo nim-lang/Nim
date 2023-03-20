@@ -335,9 +335,6 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1", raises: [].} =
   ## It is implemented just calling `cpuinfo.countProcessors`.
   result = cpuinfo.countProcessors()
 
-when not defined(nimHasEffectsOf):
-  {.pragma: effectsOf.}
-
 proc execProcesses*(cmds: openArray[string],
     options = {poStdErrToStdOut, poParentStreams}, n = countProcessors(),
     beforeRunEvent: proc(idx: int) = nil,

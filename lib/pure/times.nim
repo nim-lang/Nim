@@ -1511,8 +1511,7 @@ proc getClockStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].
 # TimeFormat
 #
 
-when defined(nimHasStyleChecks):
-  {.push styleChecks: off.}
+{.push styleChecks: off.}
 
 type
   DateTimeLocale* = object
@@ -1521,8 +1520,7 @@ type
     ddd*: array[dMon..dSun, string]
     dddd*: array[dMon..dSun, string]
 
-when defined(nimHasStyleChecks):
-  {.pop.}
+{.pop.}
 
 type
   AmPm = enum

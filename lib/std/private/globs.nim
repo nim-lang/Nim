@@ -11,11 +11,7 @@ when defined(windows):
 when defined(nimPreviewSlimSystem):
   import std/[assertions, objectdollar]
 
-
-when defined(nimHasEffectsOf):
-  {.experimental: "strictEffects".}
-else:
-  {.pragma: effectsOf.}
+{.experimental: "strictEffects".}
 
 type
   PathEntry* = object

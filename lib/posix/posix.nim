@@ -34,8 +34,7 @@
 # for files that might not exist on a specific platform! The user will get an
 # error only if they actually try to use the missing declaration
 
-when defined(nimHasStyleChecks):
-  {.push styleChecks: off.}
+{.push styleChecks: off.}
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -1172,5 +1171,4 @@ proc getrlimit*(resource: cint, rlp: var RLimit): cint {.
   importc: "getrlimit", header: "<sys/resource.h>".}
   ## The getrlimit() system call gets resource limits.
 
-when defined(nimHasStyleChecks):
-  {.pop.} # {.push styleChecks: off.}
+{.pop.} # {.push styleChecks: off.}

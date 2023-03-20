@@ -50,8 +50,6 @@
 import
   hashes, math
 
-when not defined(nimHasEffectsOf):
-  {.pragma: effectsOf.}
 
 {.pragma: myShallow.}
 # For "integer-like A" that are too big for intsets/bit-vectors to be practical,

@@ -32,8 +32,7 @@ from strutils import startsWith
 when defined(nimPreviewSlimSystem):
   import std/syncio
 
-when defined(nimHasStyleChecks):
-  {.push styleChecks: off.}
+{.push styleChecks: off.}
 
 const useWinVersion = defined(windows) or defined(nimdoc)
 
@@ -827,8 +826,7 @@ proc md5_Str*(str: string): string =
   discard md5_Final(cast[cstring](addr res), ctx)
   result = hexStr(cast[cstring](addr res))
 
-when defined(nimHasStyleChecks):
-  {.pop.}
+{.pop.}
 
 
 # Certificate validation

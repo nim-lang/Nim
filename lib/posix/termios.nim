@@ -243,14 +243,12 @@ when defined(solaris) or defined(sunos):
 else:
   var TIOCGWINSZ*{.importc, header: "<sys/ioctl.h>".}: culong
 
-when defined(nimHasStyleChecks):
-  {.push styleChecks: off.}
+{.push styleChecks: off.}
 
 type IOctl_WinSize* = object
   ws_row*, ws_col*, ws_xpixel*, ws_ypixel*: cushort
 
-when defined(nimHasStyleChecks):
-  {.pop.}
+{.pop.}
 
 proc ioctl*(fd: cint, request: culong, reply: ptr IOctl_WinSize): int {.
   importc: "ioctl", header: "<stdio.h>", varargs.}

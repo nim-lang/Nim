@@ -78,9 +78,6 @@ func addIntImpl(result: var string, x: uint64) {.inline.} =
     dec next
   addChars(result, tmp, next, tmp.len - next)
 
-when not defined(nimHasEnforceNoRaises):
-  {.pragma: enforceNoRaises.}
-
 func addInt*(result: var string, x: uint64) {.enforceNoRaises.} =
   when nimvm: addIntImpl(result, x)
   else:

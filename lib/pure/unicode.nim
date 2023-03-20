@@ -715,8 +715,6 @@ proc capitalize*(s: openArray[char]): string {.noSideEffect,
   fastRuneAt(s, i, rune, doInc = true)
   result = $toUpper(rune) & substr(s.toOpenArray(i, s.high))
 
-when not defined(nimHasEffectsOf):
-  {.pragma: effectsOf.}
 
 proc translate*(s: openArray[char], replacements: proc(key: string): string): string {.
   rtl, extern: "nuc$1", effectsOf: replacements.} =

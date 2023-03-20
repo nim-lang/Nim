@@ -200,9 +200,6 @@ import std/private/since
 import hashes, math, algorithm
 
 
-when not defined(nimHasEffectsOf):
-  {.pragma: effectsOf.}
-
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
   KeyValuePairSeq[A, B] = seq[KeyValuePair[A, B]]

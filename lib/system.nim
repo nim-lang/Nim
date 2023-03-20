@@ -81,9 +81,8 @@ proc `and`*(a, b: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
 proc `not`*(a: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
   ## Constructs an `not` meta class.
 
-when defined(nimHasIterable):
-  type
-    iterable*[T] {.magic: IterableType.}  ## Represents an expression that yields `T`
+type
+  iterable*[T] {.magic: IterableType.}  ## Represents an expression that yields `T`
 
 type
   Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
@@ -354,10 +353,9 @@ proc `=sink`*[T](x: var T; y: T) {.inline, nodestroy, magic: "Asgn".} =
   else:
     shallowCopy(x, y)
 
-when defined(nimHasTrace):
-  proc `=trace`*[T](x: var T; env: pointer) {.inline, magic: "Trace".} =
-    ## Generic `trace`:idx: implementation that can be overridden.
-    discard
+proc `=trace`*[T](x: var T; env: pointer) {.inline, magic: "Trace".} =
+  ## Generic `trace`:idx: implementation that can be overridden.
+  discard
 
 type
   HSlice*[T, U] = object   ## "Heterogeneous" slice type.
@@ -758,10 +756,7 @@ template `isnot`*(x, y: untyped): untyped {.callsite.} = not (x is y)
   ##   assert @[1, 2] isnot enum
   ##   ```
 
-when (defined(nimOwnedEnabled) and not defined(nimscript)) or defined(nimFixedOwned):
-  type owned*[T]{.magic: "BuiltinType".} ## type constructor to mark a ref/ptr or a closure as `owned`.
-else:
-  template owned*(t: typedesc): typedesc = t
+type owned*[T]{.magic: "BuiltinType".} ## type constructor to mark a ref/ptr or a closure as `owned`.
 
 when defined(nimOwnedEnabled) and not defined(nimscript):
   proc new*[T](a: var owned(ref T)) {.magic: "New", noSideEffect.}

@@ -110,8 +110,8 @@ proc initDefines*(symbols: StringTableRef) =
   for s in hintMin..hintMax:
     defineSymbol("nimHasHint" & $s)
 
-  defineSymbol("nimFixedOwned")
-  defineSymbol("nimHasStyleChecks")
+  defineSymbol("nimFixedOwned") # deadcode
+  defineSymbol("nimHasStyleChecks") # deadcode
 
   when defined(nimHasLibFFI):
     # Renaming as we can't conflate input vs output define flags; e.g. this
@@ -120,27 +120,27 @@ proc initDefines*(symbols: StringTableRef) =
     defineSymbol("nimHasLibFFIEnabled") # deadcode
 
   defineSymbol("nimHasStacktraceMsgs") # deadcode
-  defineSymbol("nimDoesntTrackDefects")
+  defineSymbol("nimDoesntTrackDefects") # deadcode
   defineSymbol("nimHasLentIterators") # deadcode
   defineSymbol("nimHasDeclaredMagic") # deadcode
   defineSymbol("nimHasStacktracesModule") # deadcode
   defineSymbol("nimHasEffectTraitsModule")
-  defineSymbol("nimHasCastPragmaBlocks")
+  defineSymbol("nimHasCastPragmaBlocks") # deadcode
   defineSymbol("nimHasDeclaredLocs")
-  defineSymbol("nimHasJsBigIntBackend")
+  defineSymbol("nimHasJsBigIntBackend") # deadcode
   defineSymbol("nimHasWarningAsError")
   defineSymbol("nimHasHintAsError")
-  defineSymbol("nimHasSpellSuggest")
+  defineSymbol("nimHasSpellSuggest") # deadcode
   defineSymbol("nimHasCustomLiterals")
-  defineSymbol("nimHasUnifiedTuple")
-  defineSymbol("nimHasIterable")
+  defineSymbol("nimHasUnifiedTuple") # deadcode
+  defineSymbol("nimHasIterable") # deadcode
   defineSymbol("nimHasTypeofVoid") # deadcode
   defineSymbol("nimHasDragonBox") # deadcode
   defineSymbol("nimHasHintAll")
-  defineSymbol("nimHasTrace")
+  defineSymbol("nimHasTrace") # deadcode
   defineSymbol("nimHasEffectsOf")
 
-  defineSymbol("nimHasEnforceNoRaises")
+  defineSymbol("nimHasEnforceNoRaises") # deadcode
   defineSymbol("nimHasTopDownInference")
   defineSymbol("nimHasTemplateRedefinitionPragma")
   defineSymbol("nimHasCstringCase")

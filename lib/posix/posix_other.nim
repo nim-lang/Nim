@@ -7,8 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-when defined(nimHasStyleChecks):
-  {.push styleChecks: off.}
+{.push styleChecks: off.}
 
 when defined(freertos) or defined(zephyr) or defined(nuttx):
   const
@@ -702,5 +701,4 @@ proc WIFSTOPPED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
 proc WIFCONTINUED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
   ## True if child has been continued.
 
-when defined(nimHasStyleChecks):
-  {.pop.}
+{.pop.}

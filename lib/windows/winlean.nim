@@ -12,8 +12,7 @@
 
 import dynlib
 
-when defined(nimHasStyleChecks):
-  {.push styleChecks: off.}
+{.push styleChecks: off.}
 
 {.passc: "-DWIN32_LEAN_AND_MEAN".}
 
@@ -1069,5 +1068,4 @@ proc checkTokenMembership*(tokenHandle: Handle, sidToCheck: PSID,
 proc freeSid*(pSid: PSID): PSID
      {.stdcall, dynlib: "Advapi32", importc: "FreeSid".}
 
-when defined(nimHasStyleChecks):
-  {.pop.} # {.push styleChecks: off.}
+{.pop.} # {.push styleChecks: off.}

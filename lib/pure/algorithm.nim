@@ -151,10 +151,7 @@ proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T]
   {.inline, deprecated: "use: `reversed(toOpenArray(a, first, last))`".} =
   reversed(toOpenArray(a, first, last))
 
-when defined(nimHasEffectsOf):
-  {.experimental: "strictEffects".}
-else:
-  {.pragma: effectsOf.}
+{.experimental: "strictEffects".}
 
 proc binarySearch*[T, K](a: openArray[T], key: K,
                          cmp: proc (x: T, y: K): int {.closure.}): int {.effectsOf: cmp.} =

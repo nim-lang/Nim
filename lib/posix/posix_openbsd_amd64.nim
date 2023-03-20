@@ -7,8 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-when defined(nimHasStyleChecks):
-  {.push styleChecks: off.}
+{.push styleChecks: off.}
 
 const
   hasSpawnH = true # should exist for every Posix system nowadays
@@ -557,5 +556,4 @@ proc WIFSTOPPED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
 proc WIFCONTINUED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
   ## True if child has been continued.
 
-when defined(nimHasStyleChecks):
-  {.pop.}
+{.pop.}

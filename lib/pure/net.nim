@@ -188,8 +188,7 @@ type
     Peek,
     SafeDisconn ## Ensures disconnection exceptions (ECONNRESET, EPIPE etc) are not thrown.
 
-when defined(nimHasStyleChecks):
-  {.push styleChecks: off.}
+{.push styleChecks: off.}
 
 type
   IpAddressFamily* {.pure.} = enum ## Describes the type of an IP address
@@ -204,8 +203,8 @@ type
     of IpAddressFamily.IPv4:
       address_v4*: array[0..3, uint8]  ## Contains the IP address in bytes in
                                        ## case of IPv4
-when defined(nimHasStyleChecks):
-  {.pop.}
+
+{.pop.}
 
 
 when defined(posix) and not defined(lwip):
@@ -1869,8 +1868,7 @@ when defined(zephyr) or defined(nimNetSocketExtras): # Remove in future
   proc getProtocol*(socket: Socket): Protocol = return socket.protocol
     ## Returns the socket's protocol
 
-when defined(nimHasStyleChecks):
-  {.push styleChecks: off.}
+{.push styleChecks: off.}
 
 proc IPv4_any*(): IpAddress =
   ## Returns the IPv4 any address, which can be used to listen on all available
@@ -1904,8 +1902,7 @@ proc IPv6_loopback*(): IpAddress =
     family: IpAddressFamily.IPv6,
     address_v6: [0'u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
 
-when defined(nimHasStyleChecks):
-  {.pop.}
+{.pop.}
 
 proc `==`*(lhs, rhs: IpAddress): bool =
   ## Compares two IpAddresses for Equality. Returns true if the addresses are equal

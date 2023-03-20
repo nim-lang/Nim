@@ -261,8 +261,7 @@ type
   JitStack16* = object
   JitStack32* = object
 
-when defined(nimHasStyleChecks):
-  {.push styleChecks: off.}
+{.push styleChecks: off.}
 
 # The structure for passing additional data to pcre_exec(). This is defined in
 # such as way as to be extensible. Always add new fields at the end, in order
@@ -302,8 +301,7 @@ type
     mark*            : pointer    ## Pointer to current mark or NULL
     # ------------------------------------------------------------------
 
-when defined(nimHasStyleChecks):
-  {.pop.}
+{.pop.}
 
 # User defined callback which provides a stack just before the match starts.
 type

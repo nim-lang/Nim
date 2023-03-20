@@ -15,8 +15,6 @@ import
 when defined(nimPreviewSlimSystem):
   import std/syncio
 
-when not defined(nimHasEffectsOf):
-  {.pragma: effectsOf.}
 
 const
   maxOS = 20 # max number of OSes

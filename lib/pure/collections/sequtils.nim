@@ -87,11 +87,7 @@ import macros
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-
-when defined(nimHasEffectsOf):
-  {.experimental: "strictEffects".}
-else:
-  {.pragma: effectsOf.}
+{.experimental: "strictEffects".}
 
 macro evalOnceAs(expAlias, exp: untyped,
                  letAssigneable: static[bool]): untyped =

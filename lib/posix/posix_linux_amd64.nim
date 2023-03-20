@@ -21,8 +21,7 @@ const
 # clock_{getcpuclockid, getres, gettime, nanosleep, settime} lives in librt
 {.passl: "-lrt".}
 
-when defined(nimHasStyleChecks):
-  {.push styleChecks: off.}
+{.push styleChecks: off.}
 
 # Types
 
@@ -577,5 +576,4 @@ proc WIFSIGNALED*(s:cint) : bool = (cast[int8]((s and 0x7f) + 1) shr 1) > 0
 proc WIFSTOPPED*(s:cint) : bool = (s and 0xff) == 0x7f
 proc WIFCONTINUED*(s:cint) : bool = s == WCONTINUED
 
-when defined(nimHasStyleChecks):
-  {.pop.} # {.push styleChecks: off.}
+{.pop.} # {.push styleChecks: off.}

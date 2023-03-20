@@ -18,8 +18,7 @@
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values
 ##   for diverse Nim types
 
-when defined(nimHasStyleChecks):
-  {.push styleChecks: off.}
+{.push styleChecks: off.}
 
 type
   MD5State = array[0..3, uint32]
@@ -341,6 +340,4 @@ proc md5Final*(c: var MD5Context, digest: var MD5Digest) =
   decode(digest, c.state)
   clearBuffer(c)
 
-
-when defined(nimHasStyleChecks):
-  {.pop.} #{.push styleChecks: off.}
+{.pop.} #{.push styleChecks: off.}

@@ -1295,9 +1295,6 @@ func parallelReplace*(s: string, subs: varargs[
   # copy the rest:
   add(result, substr(s, i))
 
-when not defined(nimHasEffectsOf):
-  {.pragma: effectsOf.}
-
 func replace*(s: string, sub: Peg, cb: proc(
               match: int, cnt: int, caps: openArray[string]): string): string {.
               rtl, extern: "npegs$1cb", effectsOf: cb.} =
