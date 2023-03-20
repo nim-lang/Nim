@@ -79,3 +79,9 @@ in its description (or name or list of tags).
 ### Install <proj.nimble>
 
 Use the .nimble file to setup the project's dependencies.
+
+### Update [filter]
+
+Update every package in the workspace that has a remote URL that
+matches `filter` if a filter is given. The package is only updated
+if there are no uncommitted changes.
