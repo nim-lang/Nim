@@ -41,6 +41,7 @@ runnableExamples"-b:js -r:off":
 
 
 import std/private/since
+import std/tables
 when not defined(js):
   {.error: "This module only works on the JavaScript platform".}
 
@@ -1711,6 +1712,18 @@ proc isNaN*(x: BiggestFloat): bool {.importc, nodecl.}
   ## see also `math.isNaN`.
 
 proc newEvent*(name: cstring): Event {.importcpp: "new Event(@)", constructor.}
+
+type
+  EventOptions* = object
+    bubbles, cancelable, composed: bool
+  CustomEventOptions* = object
+    detail: Table[cstring, cstring]
+
+proc newEvent*(name: cstring, options: EventOptions): Event {.importcpp: "new Event(@)", constructor.}
+## https://developer.mozilla.org/en-US/docs/Web/API/Event/Event
+
+proc newCustomEvent*(name: cstring, options: CustomEventOptions): Event {.importcpp: "new CustomEvent(@)", constructor.}
+  ## https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent/CustomEvent
 
 proc getElementsByClass*(n: Node; name: cstring): seq[Node] {.
   importcpp: "#.getElementsByClassName(#)", nodecl.}
