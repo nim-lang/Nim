@@ -510,7 +510,7 @@ type
     nfLastRead  # this node is a last read
     nfFirstWrite # this node is a first write
     nfHasComment # node has a comment
-    nfUseDefaultField # node has a default value (object constructor)
+    nfSkipFieldChecking # node skips field visable checking
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 46)
@@ -1081,7 +1081,7 @@ const
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
-                                      nfFirstWrite, nfUseDefaultField}
+                                      nfFirstWrite, nfSkipFieldChecking}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2

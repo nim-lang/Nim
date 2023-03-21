@@ -514,7 +514,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       if isVisable:
         for i in 1..<result.len:
           if result[i].kind == nkExprColonExpr:
-            result[i][1].flags.incl nfUseDefaultField
+            result[i][1].flags.incl nfSkipFieldChecking
   else:
     for i in 0..<n.len:
       result[i] = semGenericStmt(c, n[i], flags, ctx)
