@@ -67,7 +67,7 @@ block:
 
   block:
     var x = Ciao(12, false, false, "123")
-    doAssert x.num == false
+    doAssert x.done == false
 
   block:
     var x = Ciao(12, flag: true, 1, "123")
