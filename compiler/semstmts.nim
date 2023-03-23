@@ -667,6 +667,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         # NOTE: at the moment this is always ast.emptyNode, see parser.nim
         b[1] = a[^2]
         b[2] = def
+        tmpTuple.ast = b
         addToVarSection(c, result, n, b)
       var fieldAssignments = newNodeI(n.kind, a.info)
       for j in 0..<a.len-2:
@@ -833,6 +834,7 @@ proc semConst(c: PContext, n: PNode): PNode =
         # NOTE: at the moment this is always ast.emptyNode, see parser.nim
         b[1] = a[^2]
         b[2] = def
+        tmpTuple.ast = b
         addToVarSection(c, result, n, b)
       var fieldAssignments = newNodeI(n.kind, a.info)
       for j in 0..<a.len-2:
