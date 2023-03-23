@@ -822,21 +822,18 @@ proc semConst(c: PContext, n: PNode): PNode =
       elif a.len-2 != typ.len:
         localError(c.config, a.info, errWrongNumberOfVariables)
       var tmpTuple: PSym
-      # if the RHS is a tuple literal, we can directly assign the variables to
-      # the field expressions, otherwise we have to use a temp
-      let useTemp = def.kind notin {nkPar, nkTupleConstr}
-      if useTemp:
-        tmpTuple = newSym(skConst, getIdent(c.cache, "tmpTuple"), nextSymId c.idgen, getCurrOwner(c), n.info)
-        tmpTuple.typ = typ
-        tmpTuple.flags.incl(sfGenSym)
-        b = newNodeI(nkConstDef, a.info)
-        newSons(b, 3)
-        b[0] = newSymNode(tmpTuple)
-        # NOTE: at the moment this is always ast.emptyNode, see parser.nim
-        b[1] = a[^2]
-        b[2] = def
-        tmpTuple.ast = b
-        addToVarSection(c, result, n, b)
+      # always use temp for const, breaks with seqs otherwise
+      tmpTuple = newSym(skConst, getIdent(c.cache, "tmpTuple"), nextSymId c.idgen, getCurrOwner(c), n.info)
+      tmpTuple.typ = typ
+      tmpTuple.flags.incl(sfGenSym)
+      b = newNodeI(nkConstDef, a.info)
+      newSons(b, 3)
+      b[0] = newSymNode(tmpTuple)
+      # NOTE: at the moment this is always ast.emptyNode, see parser.nim
+      b[1] = a[^2]
+      b[2] = def
+      tmpTuple.ast = b
+      addToVarSection(c, result, n, b)
       var fieldAssignments = newNodeI(n.kind, a.info)
       for j in 0..<a.len-2:
         let name = a[j]
@@ -854,12 +851,7 @@ proc semConst(c: PContext, n: PNode): PNode =
           newSons(tupleField, 3)
           tupleField[0] = name
         tupleField[^2] = c.graph.emptyNode
-        if useTemp:
-          tupleField[^1] = newTreeIT(nkBracketExpr, name.info, typ[j], newSymNode(tmpTuple), newIntNode(nkIntLit, j))
-        else:
-          var val = def[j]
-          if val.kind == nkExprColonExpr: val = val[1]
-          tupleField[^1] = val
+        tupleField[^1] = newTreeIT(nkBracketExpr, name.info, typ[j], newSymNode(tmpTuple), newIntNode(nkIntLit, j))
         fieldAssignments.add(tupleField)
       let resSection = semConst(c, fieldAssignments)
       for resDef in resSection:
