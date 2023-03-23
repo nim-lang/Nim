@@ -269,7 +269,7 @@ proc semConv(c: PContext, n: PNode): PNode =
   result = newNodeI(nkConv, n.info)
 
   var targetType = semTypeNode(c, n[0], nil)
-  case targetType.kind
+  case targetType.skipTypes({tyDistinct}).kind
   of tyTypeDesc:
     internalAssert c.config, targetType.len > 0
     if targetType.base.kind == tyNone:
