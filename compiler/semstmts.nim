@@ -653,39 +653,74 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         localError(c.config, a.info, errXExpected, "tuple")
       elif a.len-2 != tup.len:
         localError(c.config, a.info, errWrongNumberOfVariables)
-      b = newNodeI(nkVarTuple, a.info)
-      newSons(b, a.len)
-      # keep type desc for doc generator
-      # NOTE: at the moment this is always ast.emptyNode, see parser.nim
-      b[^2] = a[^2]
-      b[^1] = def
-      addToVarSection(c, result, n, b)
-    elif tup.kind == tyTuple and def.kind in {nkPar, nkTupleConstr} and
-        a.kind == nkIdentDefs and a.len > 3:
-      message(c.config, a.info, warnEachIdentIsTuple)
-
-    for j in 0..<a.len-2:
-      if a[j].kind == nkDotExpr:
-        fillPartialObject(c, a[j],
-          if a.kind != nkVarTuple: typ else: tup[j])
-        addToVarSection(c, result, n, a)
-        continue
-      var v = semIdentDef(c, a[j], symkind, false)
-      styleCheckDef(c, v)
-      onDef(a[j].info, v)
-      if sfGenSym notin v.flags:
-        if not isDiscardUnderscore(v): addInterfaceDecl(c, v)
-      else:
-        if v.owner == nil: v.owner = c.p.owner
-      when oKeepVariableNames:
-        if c.inUnrolledContext > 0: v.flags.incl(sfShadowed)
+      var tmpTuple: PSym
+      # if the RHS is a tuple literal, we can directly assign the variables to
+      # the field expressions, otherwise we have to use a temp
+      let useTemp = def.kind notin {nkPar, nkTupleConstr}
+      if useTemp:
+        tmpTuple = newSym(skLet, getIdent(c.cache, "tmpTuple"), nextSymId c.idgen, getCurrOwner(c), n.info)
+        tmpTuple.typ = typ
+        tmpTuple.flags.incl(sfGenSym)
+        b = newNodeI(nkIdentDefs, a.info)
+        newSons(b, 3)
+        b[0] = newSymNode(tmpTuple)
+        # NOTE: at the moment this is always ast.emptyNode, see parser.nim
+        b[1] = a[^2]
+        b[2] = def
+        addToVarSection(c, result, n, b)
+      var fieldAssignments = newNodeI(n.kind, a.info)
+      for j in 0..<a.len-2:
+        let name = a[j]
+        if name.kind == nkIdent and name.ident.s == "_":
+          continue
+        var tupleField: PNode
+        if name.kind == nkVarTuple:
+          # nested tuple
+          tupleField = newNodeI(nkVarTuple, name.info)
+          newSons(tupleField, name.len)
+          for k in 0..<name.len-2:
+            tupleField[k] = name[k]
         else:
-          let shadowed = findShadowedVar(c, v)
-          if shadowed != nil:
-            shadowed.flags.incl(sfShadowed)
-            if shadowed.kind == skResult and sfGenSym notin v.flags:
-              message(c.config, a.info, warnResultShadowed)
-      if a.kind != nkVarTuple:
+          tupleField = newNodeI(nkIdentDefs, name.info)
+          newSons(tupleField, 3)
+          tupleField[0] = name
+        tupleField[^2] = c.graph.emptyNode
+        if useTemp:
+          tupleField[^1] = newTreeI(nkBracketExpr, name.info, newSymNode(tmpTuple), newIntNode(nkIntLit, j))
+        else:
+          var val = def[j]
+          if val.kind == nkExprColonExpr: val = val[1]
+          tupleField[^1] = val
+        fieldAssignments.add(tupleField)
+      let resSection = semVarOrLet(c, fieldAssignments, symkind)
+      for resDef in resSection:
+        addToVarSection(c, result, n, resDef)
+    else:
+      if tup.kind == tyTuple and def.kind in {nkPar, nkTupleConstr} and
+          a.kind == nkIdentDefs and a.len > 3:
+        # var a, b = (1, 2)
+        message(c.config, a.info, warnEachIdentIsTuple)
+
+      for j in 0..<a.len-2:
+        if a[j].kind == nkDotExpr:
+          fillPartialObject(c, a[j], typ)
+          addToVarSection(c, result, n, a)
+          continue
+        var v = semIdentDef(c, a[j], symkind, false)
+        styleCheckDef(c, v)
+        onDef(a[j].info, v)
+        if sfGenSym notin v.flags:
+          if not isDiscardUnderscore(v): addInterfaceDecl(c, v)
+        else:
+          if v.owner == nil: v.owner = c.p.owner
+        when oKeepVariableNames:
+          if c.inUnrolledContext > 0: v.flags.incl(sfShadowed)
+          else:
+            let shadowed = findShadowedVar(c, v)
+            if shadowed != nil:
+              shadowed.flags.incl(sfShadowed)
+              if shadowed.kind == skResult and sfGenSym notin v.flags:
+                message(c.config, a.info, warnResultShadowed)
         if def.kind != nkEmpty:
           if sfThread in v.flags: localError(c.config, def.info, errThreadvarCannotInit)
         setVarType(c, v, typ)
@@ -708,35 +743,26 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         b.add copyTree(def)
         addToVarSection(c, result, n, b)
         v.ast = b
-      else:
-        if def.kind in {nkPar, nkTupleConstr}: v.ast = def[j]
-        # bug #7663, for 'nim check' this can be a non-tuple:
-        if tup.kind == tyTuple: setVarType(c, v, tup[j])
-        else: v.typ = tup
-        b[j] = newSymNode(v)
-      if def.kind == nkEmpty:
-        let actualType = v.typ.skipTypes({tyGenericInst, tyAlias,
-                                          tyUserTypeClassInst})
-        if actualType.kind in {tyObject, tyDistinct} and
-           actualType.requiresInit:
-          defaultConstructionError(c, v.typ, v.info)
-        else:
-          checkNilable(c, v)
-        # allow let to not be initialised if imported from C:
-        if v.kind == skLet and sfImportc notin v.flags and (strictDefs notin c.features or not isLocalSym(v)):
-          localError(c.config, a.info, errLetNeedsInit)
-      if sfCompileTime in v.flags:
-        if a.kind != nkVarTuple:
+        if def.kind == nkEmpty:
+          let actualType = v.typ.skipTypes({tyGenericInst, tyAlias,
+                                            tyUserTypeClassInst})
+          if actualType.kind in {tyObject, tyDistinct} and
+            actualType.requiresInit:
+            defaultConstructionError(c, v.typ, v.info)
+          else:
+            checkNilable(c, v)
+          # allow let to not be initialised if imported from C:
+          if v.kind == skLet and sfImportc notin v.flags and (strictDefs notin c.features or not isLocalSym(v)):
+            localError(c.config, a.info, errLetNeedsInit)
+        if sfCompileTime in v.flags:
           var x = newNodeI(result.kind, v.info)
           x.add result[i]
           vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x)
-        else:
-          localError(c.config, a.info, "cannot destructure to compile time variable")
-      if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
-        message(c.config, v.info, hintGlobalVar)
-      if {sfGlobal, sfPure} <= v.flags:
-        globalVarInitCheck(c, def)
-      suggestSym(c.graph, v.info, v, c.graph.usageSym)
+        if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
+          message(c.config, v.info, hintGlobalVar)
+        if {sfGlobal, sfPure} <= v.flags:
+          globalVarInitCheck(c, def)
+        suggestSym(c.graph, v.info, v, c.graph.usageSym)
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
@@ -793,19 +819,56 @@ proc semConst(c: PContext, n: PNode): PNode =
         localError(c.config, a.info, errXExpected, "tuple")
       elif a.len-2 != typ.len:
         localError(c.config, a.info, errWrongNumberOfVariables)
-      b = newNodeI(nkVarTuple, a.info)
-      newSons(b, a.len)
-      b[^2] = a[^2]
-      b[^1] = def
+      var tmpTuple: PSym
+      # if the RHS is a tuple literal, we can directly assign the variables to
+      # the field expressions, otherwise we have to use a temp
+      let useTemp = def.kind notin {nkPar, nkTupleConstr}
+      if useTemp:
+        tmpTuple = newSym(skConst, getIdent(c.cache, "tmpTuple"), nextSymId c.idgen, getCurrOwner(c), n.info)
+        tmpTuple.typ = typ
+        tmpTuple.flags.incl(sfGenSym)
+        b = newNodeI(nkConstDef, a.info)
+        newSons(b, 3)
+        b[0] = newSymNode(tmpTuple)
+        # NOTE: at the moment this is always ast.emptyNode, see parser.nim
+        b[1] = a[^2]
+        b[2] = def
+        addToVarSection(c, result, n, b)
+      var fieldAssignments = newNodeI(n.kind, a.info)
+      for j in 0..<a.len-2:
+        let name = a[j]
+        if name.kind == nkIdent and name.ident.s == "_":
+          continue
+        var tupleField: PNode
+        if name.kind == nkVarTuple:
+          # nested tuple
+          tupleField = newNodeI(nkVarTuple, name.info)
+          newSons(tupleField, name.len)
+          for k in 0..<name.len-2:
+            tupleField[k] = name[k]
+        else:
+          tupleField = newNodeI(nkConstDef, name.info)
+          newSons(tupleField, 3)
+          tupleField[0] = name
+        tupleField[^2] = c.graph.emptyNode
+        if useTemp:
+          tupleField[^1] = newTreeI(nkBracketExpr, name.info, newSymNode(tmpTuple), newIntNode(nkIntLit, j))
+        else:
+          var val = def[j]
+          if val.kind == nkExprColonExpr: val = val[1]
+          tupleField[^1] = val
+        fieldAssignments.add(tupleField)
+      let resSection = semConst(c, fieldAssignments)
+      for resDef in resSection:
+        addToVarSection(c, result, n, resDef)
+    else:
+      for j in 0..<a.len-2:
+        var v = semIdentDef(c, a[j], skConst)
+        if sfGenSym notin v.flags: addInterfaceDecl(c, v)
+        elif v.owner == nil: v.owner = getCurrOwner(c)
+        styleCheckDef(c, v)
+        onDef(a[j].info, v)
 
-    for j in 0..<a.len-2:
-      var v = semIdentDef(c, a[j], skConst)
-      if sfGenSym notin v.flags: addInterfaceDecl(c, v)
-      elif v.owner == nil: v.owner = getCurrOwner(c)
-      styleCheckDef(c, v)
-      onDef(a[j].info, v)
-
-      if a.kind != nkVarTuple:
         setVarType(c, v, typ)
         when false:
           v.ast = def               # no need to copy
@@ -822,12 +885,7 @@ proc semConst(c: PContext, n: PNode): PNode =
         b.add a[1]
         b.add copyTree(def)
         v.ast = b
-      else:
-        setVarType(c, v, typ[j])
-        v.ast = if def[j].kind != nkExprColonExpr: def[j]
-                else: def[j][1]
-        b[j] = newSymNode(v)
-    addToVarSection(c, result, n, b)
+      addToVarSection(c, result, n, b)
   dec c.inStaticContext
 
 include semfields
