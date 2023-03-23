@@ -412,15 +412,83 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
   else:
     assert false, "Must not enter here."
 
+proc replaceObjConstr(c: PContext; field: PNode, result: PNode, iterField: var int, flags: TExprFlags) =
+  if iterField >= result.len:
+    return
+  case field.kind
+  of nkRecCase:
+    # handle defaults if the ast of the field is known
+    var discriminatorVal =
+      case result[iterField].kind
+      of nkExprColonExpr:
+        semExprFlagDispatched(c, result[iterField][1], flags + {efPreferStatic})
+      else:
+        semExprFlagDispatched(c, result[iterField], flags + {efPreferStatic})
+    let oldIterField = iterField
+    replaceObjConstr(c, field[0], result, iterField, flags)
+    if iterField > oldIterField:
+      doAssert discriminatorVal != nil and discriminatorVal.kind == nkIntLit # todo error messages
+      let matchedBranch = field.pickCaseBranch discriminatorVal
+      if matchedBranch != nil:
+        replaceObjConstr(c, matchedBranch.lastSon, result, iterField, flags)
+  of nkSym:
+    if result[iterField].kind != nkExprColonExpr:
+      result[iterField] = newTree(nkExprColonExpr, field, result[iterField])
+      inc iterField
+    elif field.sym.name.id == considerQuotedIdent(c, result[iterField][0]).id:
+      inc iterField
+    else:
+      discard
+  of nkRecList:
+    for f in field:
+      replaceObjConstr(c, f, result, iterField, flags)
+  else:
+    assert false
+
+proc expandObjConstr(c: PContext, n: PNode, t: PType, flags: TExprFlags): PNode =
+  result = n
+  var hasValue = false
+  for i in 1..<n.len:
+    if n[i].kind != nkExprColonExpr:
+      hasValue = true
+      break
+  if hasValue:
+    var iterField = 1
+    replaceObjConstr(c, t.n, result, iterField, flags)
+
+proc useObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): bool =
+  var n = copyTree(n)
+  var t = semTypeNode(c, n[0], nil)
+  if t == nil:
+    return false
+
+  if t.skipTypes({tyGenericInst,
+      tyAlias, tySink, tyOwned, tyRef}).kind != tyObject and
+      expectedType != nil and expectedType.skipTypes({tyGenericInst,
+      tyAlias, tySink, tyOwned, tyRef}).kind == tyObject:
+    t = expectedType
+
+  t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
+  if t.kind == tyRef:
+    t = skipTypes(t[0], {tyGenericInst, tyAlias, tySink, tyOwned})
+
+  if t.kind != tyObject:
+    return false
+
+  var iterField = 1
+  replaceObjConstr(c, t.n, n, iterField, flags)
+  if iterField < n.len:
+    return false
+
+  result = true
+
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   var t = semTypeNode(c, n[0], nil)
   result = newNodeIT(nkObjConstr, n.info, t)
-  for i in 0..<n.len:
-    result.add n[i]
 
   if t == nil:
     return localErrorNode(c, result, "object constructor needs an object type")
-  
+
   if t.skipTypes({tyGenericInst,
       tyAlias, tySink, tyOwned, tyRef}).kind != tyObject and
       expectedType != nil and expectedType.skipTypes({tyGenericInst,
@@ -442,6 +510,10 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
         typeToString(t, preferDesc) &
         "'; the object's generic parameters cannot be inferred and must be explicitly given"
       )
+
+  let expanded = expandObjConstr(c, n, t, flags)
+  for i in 0..<expanded.len:
+    result.add expanded[i]
 
   # Check if the object is fully initialized by recursively testing each
   # field (if this is a case object, initialized fields in two different

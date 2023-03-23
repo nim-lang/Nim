@@ -3072,7 +3072,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
           result = semConv(c, n, expectedType)
         elif ambig and n.len == 1:
           errorUseQualifier(c, n.info, s)
-        elif n.len == 1:
+        elif n.len == 1 or (n.kind == nkCall and useObjConstr(c, n, flags, expectedType)):
           result = semObjConstr(c, n, flags, expectedType)
         elif s.magic == mNone: result = semDirectOp(c, n, flags, expectedType)
         else: result = semMagic(c, n, s, flags, expectedType)
