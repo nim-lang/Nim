@@ -658,7 +658,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       # the field expressions, otherwise we have to use a temp
       let useTemp = def.kind notin {nkPar, nkTupleConstr}
       if useTemp:
-        tmpTuple = newSym(skLet, getIdent(c.cache, "tmpTuple"), nextSymId c.idgen, getCurrOwner(c), n.info)
+        # symkind here should be skLet but generic code doesn't like it if it doesn't match
+        tmpTuple = newSym(symkind, getIdent(c.cache, "tmpTuple"), nextSymId c.idgen, getCurrOwner(c), n.info)
         tmpTuple.typ = typ
         tmpTuple.flags.incl(sfGenSym)
         b = newNodeI(nkIdentDefs, a.info)
@@ -687,7 +688,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           tupleField[0] = name
         tupleField[^2] = c.graph.emptyNode
         if useTemp:
-          tupleField[^1] = newTreeI(nkBracketExpr, name.info, newSymNode(tmpTuple), newIntNode(nkIntLit, j))
+          tupleField[^1] = newTreeIT(nkBracketExpr, name.info, tup[j], newSymNode(tmpTuple), newIntNode(nkIntLit, j))
         else:
           var val = def[j]
           if val.kind == nkExprColonExpr: val = val[1]
@@ -854,7 +855,7 @@ proc semConst(c: PContext, n: PNode): PNode =
           tupleField[0] = name
         tupleField[^2] = c.graph.emptyNode
         if useTemp:
-          tupleField[^1] = newTreeI(nkBracketExpr, name.info, newSymNode(tmpTuple), newIntNode(nkIntLit, j))
+          tupleField[^1] = newTreeIT(nkBracketExpr, name.info, typ[j], newSymNode(tmpTuple), newIntNode(nkIntLit, j))
         else:
           var val = def[j]
           if val.kind == nkExprColonExpr: val = val[1]
