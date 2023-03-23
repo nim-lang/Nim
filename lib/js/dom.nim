@@ -41,7 +41,6 @@ runnableExamples"-b:js -r:off":
 
 
 import std/private/since
-import std/tables
 when not defined(js):
   {.error: "This module only works on the JavaScript platform".}
 
@@ -792,6 +791,10 @@ type
     target*: Node
     `type`*: cstring
     isTrusted*: bool
+
+  CustomEvent*[T : object] = ref CustomEventObj[T]  ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent>`_
+  CustomEventObj[T : object] {.importc.} = object of Event
+    detail*: T
 
   UIEvent* {.importc.} = ref object of Event ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/UIEvent>`_
     detail*: int64
@@ -1714,13 +1717,8 @@ proc isNaN*(x: BiggestFloat): bool {.importc, nodecl.}
 proc newEvent*(name: cstring): Event {.importcpp: "new Event(@)", constructor.}
 
 type
-  EventOptions* = object
-    bubbles, cancelable, composed: bool
-  CustomEventOptions* = object
-    detail: Table[cstring, cstring]
-
-proc newEvent*(name: cstring, options: EventOptions): Event {.importcpp: "new Event(@)", constructor.}
-## https://developer.mozilla.org/en-US/docs/Web/API/Event/Event
+  CustomEventOptions*[T: object] = object
+    detail: T
 
 proc newCustomEvent*(name: cstring, options: CustomEventOptions): Event {.importcpp: "new CustomEvent(@)", constructor.}
   ## https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent/CustomEvent
