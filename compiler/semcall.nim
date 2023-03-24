@@ -338,7 +338,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     if n[0].kind in nkIdentKinds:
       let ident = considerQuotedIdent(c, n[0], n).s
       localError(c.config, n.info, errUndeclaredRoutine % ident)
-    else: 
+    else:
       localError(c.config, n.info, "expression '$1' cannot be called" % n[0].renderTree)
     return
 
@@ -630,7 +630,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
     if efExplain notin flags:
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
-      discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
+      result = semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
     elif efNoUndeclared notin flags:
       notFoundError(c, n, errors)
 

@@ -5455,7 +5455,7 @@ more complex type classes:
 
   ```nim
   # create a type class that will match all tuple and object types
-  type RecordType = tuple or object
+  type RecordType = (tuple or object)
 
   proc printFields[T: RecordType](rec: T) =
     for key, value in fieldPairs(rec):
@@ -5504,7 +5504,7 @@ A type class can be used directly as the parameter's type.
 
   ```nim
   # create a type class that will match all tuple and object types
-  type RecordType = tuple or object
+  type RecordType = (tuple or object)
 
   proc printFields(rec: RecordType) =
     for key, value in fieldPairs(rec):

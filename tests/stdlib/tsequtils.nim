@@ -388,6 +388,11 @@ block: # newSeqWith tests
   seq2D[0][1] = true
   doAssert seq2D == @[@[true, true], @[true, false], @[false, false], @[false, false]]
 
+block: # bug #21538
+  var x: seq[int] = @[2, 4]
+  var y = newSeqWith(x.pop(), true)
+  doAssert y == @[true, true, true, true]
+
 block: # mapLiterals tests
   let x = mapLiterals([0.1, 1.2, 2.3, 3.4], int)
   doAssert x is array[4, int]
