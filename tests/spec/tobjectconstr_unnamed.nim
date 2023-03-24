@@ -4,12 +4,12 @@ type
     b, c: int
 
 block: # positional construction
-  ## It specifies all the unnamed parameters
+  ## It specifies all the unnamed fields
   var x = Vector(1, 2, 3)
   doAssert x.b == 2
 
 block:
-  ## unnamed parameters can be mixed with named parameters
+  ## unnamed fields can be mixed with named fields
   block:
     var x = Vector(a: 1, 2, 3)
     doAssert x.c == 3
@@ -22,14 +22,8 @@ block:
     var x = Vector(1, 2, c: 3)
     doAssert x.c == 3
 
-  block:
-    ## Parameters can be omitted before a named parameter
-    var x = Vector(b: 2, 3)
-    doAssert x.c == 3
-
-
 block:
-  ## Object variants support unnamed parameters for tags, which should be known at the compile time.
+  ## Object variants support unnamed fields for tags, which should be known at the compile time.
   type
     Color = enum
       Red, Blue, Yellow
@@ -71,8 +65,4 @@ block:
 
   block:
     var x = Ciao(12, flag: true, 1, "123")
-    doAssert x.num == 1
-
-  block:
-    var x = Ciao(flag: true, 1, "123")
     doAssert x.num == 1

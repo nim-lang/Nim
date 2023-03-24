@@ -414,6 +414,7 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
 
 proc replaceObjConstr(c: PContext; field: PNode, result: PNode, iterField: var int, flags: TExprFlags) =
   if iterField >= result.len:
+    inc iterField
     return
   case field.kind
   of nkRecCase:
@@ -438,7 +439,7 @@ proc replaceObjConstr(c: PContext; field: PNode, result: PNode, iterField: var i
     elif field.sym.name.id == considerQuotedIdent(c, result[iterField][0]).id:
       inc iterField
     else:
-      discard
+      localError(c.config, result.info, "When mixing named fields and unnamed fields, every field needs to be initialized in order")
   of nkRecList:
     for f in field:
       replaceObjConstr(c, f, result, iterField, flags)
@@ -455,6 +456,10 @@ proc expandObjConstr(c: PContext, n: PNode, t: PType, flags: TExprFlags): PNode 
   if hasValue:
     var iterField = 1
     replaceObjConstr(c, t.n, result, iterField, flags)
+    if iterField > result.len:
+      localError(c.config, result.info, "When mixing named fields and unnamed fields, every field needs to be initialized in order")
+    elif iterField < result.len:
+      localError(c.config, result.info, "The object construction is given more fields than required")
 
 proc filterObjConstr(c: PContext; field: PNode, n: PNode, iterField: var int, flags: TExprFlags): bool =
   result = true
@@ -469,19 +474,19 @@ proc filterObjConstr(c: PContext; field: PNode, n: PNode, iterField: var int, fl
         semExprFlagDispatched(c, n[iterField][1], flags + {efPreferStatic})
       else:
         semExprFlagDispatched(c, n[iterField], flags + {efPreferStatic})
-    let oldIterField = iterField
+
     if not filterObjConstr(c, field[0], n, iterField, flags):
       return false
 
-    if iterField > oldIterField:
-      doAssert discriminatorVal != nil and discriminatorVal.kind == nkIntLit # todo error messages
-      let matchedBranch = field.pickCaseBranch discriminatorVal
-      if matchedBranch != nil:
-        result = filterObjConstr(c, matchedBranch.lastSon, n, iterField, flags)
-      else:
-        result = false
+    if discriminatorVal == nil or discriminatorVal.kind != nkIntLit:
+      return false
+
+    let matchedBranch = field.pickCaseBranch discriminatorVal
+    if matchedBranch != nil:
+      result = filterObjConstr(c, matchedBranch.lastSon, n, iterField, flags)
     else:
       result = false
+
   of nkSym:
     if n[iterField].kind != nkExprColonExpr:
       inc iterField
@@ -515,6 +520,11 @@ proc useObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
 
   if t.kind != tyObject:
     return false
+
+
+  for i in 1..<n.len:
+    if n[i].kind == nkExprColonExpr:
+      return true
 
   var iterField = 1
   result = filterObjConstr(c, t.n, n, iterField, flags)
