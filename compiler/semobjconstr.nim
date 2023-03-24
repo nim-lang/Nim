@@ -456,6 +456,47 @@ proc expandObjConstr(c: PContext, n: PNode, t: PType, flags: TExprFlags): PNode 
     var iterField = 1
     replaceObjConstr(c, t.n, result, iterField, flags)
 
+proc filterObjConstr(c: PContext; field: PNode, n: PNode, iterField: var int, flags: TExprFlags): bool =
+  result = true
+  if iterField >= n.len:
+    return false
+  case field.kind
+  of nkRecCase:
+    # handle defaults if the ast of the field is known
+    var discriminatorVal =
+      case n[iterField].kind
+      of nkExprColonExpr:
+        semExprFlagDispatched(c, n[iterField][1], flags + {efPreferStatic})
+      else:
+        semExprFlagDispatched(c, n[iterField], flags + {efPreferStatic})
+    let oldIterField = iterField
+    if not filterObjConstr(c, field[0], n, iterField, flags):
+      return false
+
+    if iterField > oldIterField:
+      doAssert discriminatorVal != nil and discriminatorVal.kind == nkIntLit # todo error messages
+      let matchedBranch = field.pickCaseBranch discriminatorVal
+      if matchedBranch != nil:
+        result = filterObjConstr(c, matchedBranch.lastSon, n, iterField, flags)
+      else:
+        result = false
+    else:
+      result = false
+  of nkSym:
+    if n[iterField].kind != nkExprColonExpr:
+      inc iterField
+    elif field.sym.name.id == considerQuotedIdent(c, n[iterField][0]).id:
+      inc iterField
+    else:
+      result = false
+  of nkRecList:
+    for f in field:
+      if not filterObjConstr(c, f, n, iterField, flags):
+        result = false
+        break
+  else:
+    assert false
+
 proc useObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): bool =
   var n = copyTree(n)
   var t = semTypeNode(c, n[0], nil)
@@ -476,11 +517,10 @@ proc useObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
     return false
 
   var iterField = 1
-  replaceObjConstr(c, t.n, n, iterField, flags)
-  if iterField < n.len:
+  result = filterObjConstr(c, t.n, n, iterField, flags)
+  if iterField != n.len:
     return false
 
-  result = true
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   var t = semTypeNode(c, n[0], nil)
