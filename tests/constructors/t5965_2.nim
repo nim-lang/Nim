@@ -1,5 +1,5 @@
 discard """
-  errormsg: "incorrect object construction syntax"
+  errormsg: "The object construction is given more fields than required"
   file: "t5965_2.nim"
   line: 10
 """
