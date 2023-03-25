@@ -3109,6 +3109,7 @@ a temporary variable.
     x = 1
     y = 2
     z = 3
+  ```
 
 Tuple unpacking can also be nested:
 
