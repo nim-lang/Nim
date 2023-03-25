@@ -433,10 +433,12 @@ proc replaceObjConstr(c: PContext; field: PNode, result: PNode, iterField: var i
       if matchedBranch != nil:
         replaceObjConstr(c, matchedBranch.lastSon, result, iterField, flags)
   of nkSym:
-    if result[iterField].kind != nkExprColonExpr:
-      result[iterField] = newTree(nkExprColonExpr, field, result[iterField])
+    if result[iterField].kind == nkExprColonExpr and field.sym.name.id == considerQuotedIdent(c, result[iterField][0]).id:
       inc iterField
-    elif field.sym.name.id == considerQuotedIdent(c, result[iterField][0]).id:
+    elif not fieldVisible(c, field.sym):
+      discard
+    elif result[iterField].kind != nkExprColonExpr:
+      result[iterField] = newTree(nkExprColonExpr, field, result[iterField])
       inc iterField
     else:
       localError(c.config, result.info, "When mixing named fields and unnamed fields, every field needs to be initialized in order")
@@ -488,9 +490,11 @@ proc filterObjConstr(c: PContext; field: PNode, n: PNode, iterField: var int, fl
       result = false
 
   of nkSym:
-    if n[iterField].kind != nkExprColonExpr:
+    if n[iterField].kind == nkExprColonExpr and field.sym.name.id == considerQuotedIdent(c, n[iterField][0]).id:
       inc iterField
-    elif field.sym.name.id == considerQuotedIdent(c, n[iterField][0]).id:
+    elif not fieldVisible(c, field.sym):
+      discard
+    elif n[iterField].kind != nkExprColonExpr:
       inc iterField
     else:
       result = false

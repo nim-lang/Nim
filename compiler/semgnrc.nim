@@ -506,12 +506,12 @@ proc semGenericStmt(c: PContext, n: PNode,
       result[i] = semGenericStmt(c, n[i], flags, ctx)
     if result[0].kind == nkSym:
       let fmoduleId = getModule(result[0].sym).id
-      var isVisable = false
+      var isVisible = false
       for module in c.friendModules:
         if module.id == fmoduleId:
-          isVisable = true
+          isVisible = true
           break
-      if isVisable:
+      if isVisible:
         for i in 1..<result.len:
           if result[i].kind == nkExprColonExpr:
             result[i][1].flags.incl nfSkipFieldChecking
