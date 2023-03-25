@@ -3101,7 +3101,7 @@ This is treated as syntax sugar for roughly the following:
 For `var` or `let` statements, if the value expression is a tuple literal,
 each expression is directly expanded into an assignment without the use of
 a temporary variable.
-  
+
   ```nim
   let (x, y, z) = (1, 2, 3)
   # becomes
