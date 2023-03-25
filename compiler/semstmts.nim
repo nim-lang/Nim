@@ -673,7 +673,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       var fieldAssignments = newNodeI(n.kind, a.info)
       for j in 0..<a.len-2:
         let name = a[j]
-        if name.kind == nkIdent and name.ident.s == "_":
+        if useTemp and name.kind == nkIdent and name.ident.s == "_":
           continue
         var tupleField: PNode
         if name.kind == nkVarTuple:

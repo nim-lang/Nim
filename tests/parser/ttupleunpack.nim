@@ -55,11 +55,16 @@ block: # nested unpacking
   
   block: # evaluation semantics preserved between literal and not literal
     var s: seq[string]
-    block:
+    block: # literal
       let (a, (b, c), d) = ((s.add("a"); 1), ((s.add("b"); 2), (s.add("c"); 3)), (s.add("d"); 4))
       doAssert (a, b, c, d) == (1, 2, 3, 4)
       doAssert s == @["a", "b", "c", "d"]
-    block:
+    block: # underscore
+      s = @[]
+      let (a, (_, c), _) = ((s.add("a"); 1), ((s.add("b"); 2), (s.add("c"); 3)), (s.add("d"); 4))
+      doAssert (a, c) == (1, 3)
+      doAssert s == @["a", "b", "c", "d"]
+    block: # temp
       s = @[]
       let foo = ((s.add("a"); 1), ((s.add("b"); 2), (s.add("c"); 3)), (s.add("d"); 4))
       let (a, (b, c), d) = foo
