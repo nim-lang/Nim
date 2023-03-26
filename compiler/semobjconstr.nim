@@ -428,9 +428,8 @@ proc replaceObjConstr(c: PContext; field: PNode, result: PNode, iterField: var i
     let oldIterField = iterField
     replaceObjConstr(c, field[0], result, iterField, flags)
     if iterField > oldIterField:
-      doAssert discriminatorVal != nil and discriminatorVal.kind == nkIntLit # todo error messages
       if discriminatorVal == nil or discriminatorVal.kind != nkIntLit:
-        localError(c.config, result.info, "Using unnamed fields, the discriminator can only be initialized with values known at the compile time")
+        localError(c.config, result.info, "The discriminator can only be initialized with unnamed fields known at the compile time")
       else:
         let matchedBranch = field.pickCaseBranch discriminatorVal
         if matchedBranch != nil:
