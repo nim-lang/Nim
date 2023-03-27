@@ -171,7 +171,9 @@ String handling
 
 * [strformat](strformat.html)
   Macro based standard string interpolation/formatting. Inspired by
-  Python's f-strings.
+  Python's f-strings.\
+  **Note:** if you need templating, consider using Nim
+  [Source Code Filters (SCF)](filters.html).
 
 * [strmisc](strmisc.html)
   This module contains uncommon string handling operations that do not
