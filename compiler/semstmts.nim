@@ -583,13 +583,12 @@ proc globalVarInitCheck(c: PContext, n: PNode) =
   if n.isLocalVarSym or n.kind in nkCallKinds and usesLocalVar(n):
     localError(c.config, n.info, errCannotAssignToGlobal)
 
-proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSymKind): PNode =
+proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSymKind, origResult: var PNode): PNode =
   ## expand tuple unpacking assignments into new var/let/const section
   if typ.kind != tyTuple:
     localError(c.config, a.info, errXExpected, "tuple")
   elif a.len-2 != typ.len:
     localError(c.config, a.info, errWrongNumberOfVariables)
-  result = newNodeI(n.kind, a.info)
   var
     tmpTuple: PSym
     lastDef: PNode
@@ -609,7 +608,8 @@ proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSy
     lastDef[1] = a[^2]
     lastDef[2] = def
     tmpTuple.ast = lastDef
-    result.add(lastDef)
+    addToVarSection(c, origResult, n, lastDef)
+  result = newNodeI(n.kind, a.info)
   for j in 0..<a.len-2:
     let name = a[j]
     if useTemp and name.kind == nkIdent and name.ident.s == "_":
@@ -701,7 +701,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
     if a.kind == nkVarTuple:
       # generate new section from tuple unpacking and embed it into this one
-      let assignments = makeVarTupleSection(c, n, a, def, tup, symkind)
+      let assignments = makeVarTupleSection(c, n, a, def, tup, symkind, result)
       let resSection = semVarOrLet(c, assignments, symkind)
       for resDef in resSection:
         addToVarSection(c, result, n, resDef)
@@ -826,7 +826,7 @@ proc semConst(c: PContext, n: PNode): PNode =
 
     if a.kind == nkVarTuple:
       # generate new section from tuple unpacking and embed it into this one
-      let assignments = makeVarTupleSection(c, n, a, def, typ, skConst)
+      let assignments = makeVarTupleSection(c, n, a, def, typ, skConst, result)
       let resSection = semConst(c, assignments)
       for resDef in resSection:
         addToVarSection(c, result, n, resDef)
