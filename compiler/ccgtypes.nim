@@ -200,6 +200,9 @@ proc isImportedCppType(t: PType): bool =
   result = (t.sym != nil and sfInfixCall in t.sym.flags) or
            (x.sym != nil and sfInfixCall in x.sym.flags)
 
+proc isOrHasImportedCppType(typ: PType): bool =
+  searchTypeFor(typ.skipTypes({tyRef}), isImportedCppType)
+
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKind): Rope
 
 proc isObjLackingTypeField(typ: PType): bool {.inline.} =
@@ -553,7 +556,10 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
       else:
         # don't use fieldType here because we need the
         # tyGenericInst for C++ template support
-        result.addf("$1$3 $2;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, noAlias])
+        if fieldType.isOrHasImportedCppType():
+          result.addf("$1$3 $2{};$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, noAlias])
+        else:
+          result.addf("$1$3 $2;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, noAlias])
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
 
 proc getRecordFields(m: BModule, typ: PType, check: var IntSet): Rope =
