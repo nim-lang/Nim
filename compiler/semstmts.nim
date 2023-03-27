@@ -583,6 +583,57 @@ proc globalVarInitCheck(c: PContext, n: PNode) =
   if n.isLocalVarSym or n.kind in nkCallKinds and usesLocalVar(n):
     localError(c.config, n.info, errCannotAssignToGlobal)
 
+proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSymKind): PNode =
+  ## expand tuple unpacking assignments into new var/let/const section
+  if typ.kind != tyTuple:
+    localError(c.config, a.info, errXExpected, "tuple")
+  elif a.len-2 != typ.len:
+    localError(c.config, a.info, errWrongNumberOfVariables)
+  result = newNodeI(n.kind, a.info)
+  var
+    tmpTuple: PSym
+    lastDef: PNode
+  let defkind = if symkind == skConst: nkConstDef else: nkIdentDefs
+  # temporary not needed if not const and RHS is tuple literal
+  # const breaks with seqs without temporary
+  let useTemp = def.kind notin {nkPar, nkTupleConstr} or symkind == skConst
+  if useTemp:
+    # use same symkind for compatibility with original section
+    tmpTuple = newSym(symkind, getIdent(c.cache, "tmpTuple"), nextSymId c.idgen, getCurrOwner(c), n.info)
+    tmpTuple.typ = typ
+    tmpTuple.flags.incl(sfGenSym)
+    lastDef = newNodeI(defkind, a.info)
+    newSons(lastDef, 3)
+    lastDef[0] = newSymNode(tmpTuple)
+    # NOTE: at the moment this is always ast.emptyNode, see parser.nim
+    lastDef[1] = a[^2]
+    lastDef[2] = def
+    tmpTuple.ast = lastDef
+    result.add(lastDef)
+  for j in 0..<a.len-2:
+    let name = a[j]
+    if useTemp and name.kind == nkIdent and name.ident.s == "_":
+      # skip _ assignments if we are using a temp as they are already evaluated
+      continue
+    if name.kind == nkVarTuple:
+      # nested tuple
+      lastDef = newNodeI(nkVarTuple, name.info)
+      newSons(lastDef, name.len)
+      for k in 0..<name.len-2:
+        lastDef[k] = name[k]
+    else:
+      lastDef = newNodeI(defkind, name.info)
+      newSons(lastDef, 3)
+      lastDef[0] = name
+    lastDef[^2] = c.graph.emptyNode
+    if useTemp:
+      lastDef[^1] = newTreeIT(nkBracketExpr, name.info, typ[j], newSymNode(tmpTuple), newIntNode(nkIntLit, j))
+    else:
+      var val = def[j]
+      if val.kind == nkExprColonExpr: val = val[1]
+      lastDef[^1] = val
+    result.add(lastDef)
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)
@@ -649,57 +700,14 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
     if a.kind == nkVarTuple:
-      if tup.kind != tyTuple:
-        localError(c.config, a.info, errXExpected, "tuple")
-      elif a.len-2 != tup.len:
-        localError(c.config, a.info, errWrongNumberOfVariables)
-      var tmpTuple: PSym
-      # if the RHS is a tuple literal, we can directly assign the variables to
-      # the field expressions, otherwise we have to use a temp
-      let useTemp = def.kind notin {nkPar, nkTupleConstr}
-      if useTemp:
-        # symkind here should be skLet but generic code doesn't like it if it doesn't match
-        tmpTuple = newSym(symkind, getIdent(c.cache, "tmpTuple"), nextSymId c.idgen, getCurrOwner(c), n.info)
-        tmpTuple.typ = typ
-        tmpTuple.flags.incl(sfGenSym)
-        b = newNodeI(nkIdentDefs, a.info)
-        newSons(b, 3)
-        b[0] = newSymNode(tmpTuple)
-        # NOTE: at the moment this is always ast.emptyNode, see parser.nim
-        b[1] = a[^2]
-        b[2] = def
-        tmpTuple.ast = b
-        addToVarSection(c, result, n, b)
-      var fieldAssignments = newNodeI(n.kind, a.info)
-      for j in 0..<a.len-2:
-        let name = a[j]
-        if useTemp and name.kind == nkIdent and name.ident.s == "_":
-          continue
-        var tupleField: PNode
-        if name.kind == nkVarTuple:
-          # nested tuple
-          tupleField = newNodeI(nkVarTuple, name.info)
-          newSons(tupleField, name.len)
-          for k in 0..<name.len-2:
-            tupleField[k] = name[k]
-        else:
-          tupleField = newNodeI(nkIdentDefs, name.info)
-          newSons(tupleField, 3)
-          tupleField[0] = name
-        tupleField[^2] = c.graph.emptyNode
-        if useTemp:
-          tupleField[^1] = newTreeIT(nkBracketExpr, name.info, tup[j], newSymNode(tmpTuple), newIntNode(nkIntLit, j))
-        else:
-          var val = def[j]
-          if val.kind == nkExprColonExpr: val = val[1]
-          tupleField[^1] = val
-        fieldAssignments.add(tupleField)
-      let resSection = semVarOrLet(c, fieldAssignments, symkind)
+      # generate new section from tuple unpacking and embed it into this one
+      let assignments = makeVarTupleSection(c, n, a, def, tup, symkind)
+      let resSection = semVarOrLet(c, assignments, symkind)
       for resDef in resSection:
         addToVarSection(c, result, n, resDef)
     else:
       if tup.kind == tyTuple and def.kind in {nkPar, nkTupleConstr} and
-          a.kind == nkIdentDefs and a.len > 3:
+          a.len > 3:
         # var a, b = (1, 2)
         message(c.config, a.info, warnEachIdentIsTuple)
 
@@ -817,43 +825,9 @@ proc semConst(c: PContext, n: PNode): PNode =
       typeAllowedCheck(c, a.info, typ, skConst, typFlags)
 
     if a.kind == nkVarTuple:
-      if typ.kind != tyTuple:
-        localError(c.config, a.info, errXExpected, "tuple")
-      elif a.len-2 != typ.len:
-        localError(c.config, a.info, errWrongNumberOfVariables)
-      var tmpTuple: PSym
-      # always use temp for const, breaks with seqs otherwise
-      tmpTuple = newSym(skConst, getIdent(c.cache, "tmpTuple"), nextSymId c.idgen, getCurrOwner(c), n.info)
-      tmpTuple.typ = typ
-      tmpTuple.flags.incl(sfGenSym)
-      b = newNodeI(nkConstDef, a.info)
-      newSons(b, 3)
-      b[0] = newSymNode(tmpTuple)
-      # NOTE: at the moment this is always ast.emptyNode, see parser.nim
-      b[1] = a[^2]
-      b[2] = def
-      tmpTuple.ast = b
-      addToVarSection(c, result, n, b)
-      var fieldAssignments = newNodeI(n.kind, a.info)
-      for j in 0..<a.len-2:
-        let name = a[j]
-        if name.kind == nkIdent and name.ident.s == "_":
-          continue
-        var tupleField: PNode
-        if name.kind == nkVarTuple:
-          # nested tuple
-          tupleField = newNodeI(nkVarTuple, name.info)
-          newSons(tupleField, name.len)
-          for k in 0..<name.len-2:
-            tupleField[k] = name[k]
-        else:
-          tupleField = newNodeI(nkConstDef, name.info)
-          newSons(tupleField, 3)
-          tupleField[0] = name
-        tupleField[^2] = c.graph.emptyNode
-        tupleField[^1] = newTreeIT(nkBracketExpr, name.info, typ[j], newSymNode(tmpTuple), newIntNode(nkIntLit, j))
-        fieldAssignments.add(tupleField)
-      let resSection = semConst(c, fieldAssignments)
+      # generate new section from tuple unpacking and embed it into this one
+      let assignments = makeVarTupleSection(c, n, a, def, typ, skConst)
+      let resSection = semConst(c, assignments)
       for resDef in resSection:
         addToVarSection(c, result, n, resDef)
     else:
