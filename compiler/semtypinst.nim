@@ -204,7 +204,7 @@ proc hasValuelessStatics(n: PNode): bool =
     proc doThing(_: MyThing)
   ]#
   if n.safeLen == 0:
-    n.typ.kind == tyStatic
+    n.typ == nil or n.typ.kind == tyStatic
   else:
     for x in n:
       if hasValuelessStatics(x):
