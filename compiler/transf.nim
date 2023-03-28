@@ -941,6 +941,35 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
     else:
       result = n
 
+proc liftGlobals(c: PTransf, n: PNode, globals: PNode): PNode =
+  case n.kind
+  of nkEmpty..nkNilLit:
+    result = n
+  of nkVarSection, nkLetSection:
+    result = newNodeI(n.kind, n.info)
+    for i in 0..<n.len:
+      var it = n[i]
+      if it.kind == nkIdentDefs:
+        var vn = it[0]
+        if vn.kind == nkPragmaExpr:
+          vn = vn[0]
+        if vn.kind == nkSym and {sfPure, sfGlobal} <= vn.sym.flags:
+          let s = newTransNode(nkIdentDefs, it, it.len)
+          s[0] = vn
+          for i in 1..<it.len:
+            s[i] = it[i]
+          globals.add s
+        else:
+          result.add it
+      else:
+        result.add it
+    if result.len == 0:
+      result = newNode(nkEmpty)
+  else:
+    result = n
+    for i in 0..<n.len:
+      result[i] = liftGlobals(c, n[i], globals)
+
 proc transform(c: PTransf, n: PNode): PNode =
   when false:
     var oldDeferAnchor: PNode
@@ -963,7 +992,15 @@ proc transform(c: PTransf, n: PNode): PNode =
       # use the same node as before if still a symbol:
       if result.kind == nkSym: result = n
     else:
-      result = n
+      let varSections = newNodeI(nkVarSection, n.info)
+      let defs = liftGlobals(c, n, varSections)
+      if varSections.len > 0:
+        result = newNodeI(nkStmtList, n.info)
+        defs[namePos].sym.ast = defs
+        result.add varSections
+        result.add defs
+      else:
+        result = n
   of nkMacroDef:
     # XXX no proper closure support yet:
     when false:
