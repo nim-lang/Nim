@@ -187,7 +187,8 @@ conceptDecl = 'concept' conceptParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
               &IND{>} stmt
 typeDef = identVisDot genericParamList? pragma '=' optInd typeDefValue
             indAndComment?
-varTuple = '(' optInd identWithPragma ^+ comma optPar ')' '=' optInd expr
+varTupleLhs = '(' optInd (identWithPragma / varTupleLhs) ^+ comma optPar ')'
+varTuple = varTupleLhs '=' optInd expr
 colonBody = colcom stmt postExprBlocks?
 variable = (varTuple / identColonEquals) colonBody? indAndComment
 constant = (varTuple / identWithPragma) (colon typeDesc)? '=' optInd expr indAndComment

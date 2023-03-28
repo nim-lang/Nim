@@ -343,6 +343,26 @@
 
 - `=wasMoved` can be overridden by users.
 
+- Tuple unpacking for variables is now treated as syntax sugar that directly
+  expands into multiple assignments. Along with this, tuple unpacking for
+  variables can now be nested.
+
+  ```nim
+  proc returnsNestedTuple(): (int, (int, int), int, int) = (4, (5, 7), 2, 3)
+
+  let (x, (_, y), _, z) = returnsNestedTuple()
+  # roughly becomes
+  let
+    tmpTup1 = returnsNestedTuple()
+    x = tmpTup1[0]
+    tmpTup2 = tmpTup1[1]
+    y = tmpTup2[1]
+    z = tmpTup1[3]
+  ```
+
+  As a result `nnkVarTuple` nodes in variable sections will no longer be
+  reflected in `typed` AST.
+
 ## Compiler changes
 
 - The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the

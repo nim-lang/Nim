@@ -3080,8 +3080,8 @@ value is expected to come from native code, typically a C/C++ `const`.
 Tuple unpacking
 ---------------
 
-In a `var` or `let` statement tuple unpacking can be performed. The special
-identifier `_` can be used to ignore some parts of the tuple:
+In a `var`, `let` or `const` statement tuple unpacking can be performed.
+The special identifier `_` can be used to ignore some parts of the tuple:
 
   ```nim
   proc returnsTuple(): (int, int, int) = (4, 2, 3)
@@ -3089,6 +3089,35 @@ identifier `_` can be used to ignore some parts of the tuple:
   let (x, _, z) = returnsTuple()
   ```
 
+This is treated as syntax sugar for roughly the following:
+
+  ```nim
+  let
+    tmpTuple = returnsTuple()
+    x = tmpTuple[0]
+    z = tmpTuple[2]
+  ```
+
+For `var` or `let` statements, if the value expression is a tuple literal,
+each expression is directly expanded into an assignment without the use of
+a temporary variable.
+
+  ```nim
+  let (x, y, z) = (1, 2, 3)
+  # becomes
+  let
+    x = 1
+    y = 2
+    z = 3
+  ```
+
+Tuple unpacking can also be nested:
+
+  ```nim
+  proc returnsNestedTuple(): (int, (int, int), int, int) = (4, (5, 7), 2, 3)
+
+  let (x, (_, y), _, z) = returnsNestedTuple()
+  ```
 
 
 Const section
