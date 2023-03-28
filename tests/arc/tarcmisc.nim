@@ -32,9 +32,9 @@ copying
 123
 42
 ok
+closed
 destroying variable: 20
 destroying variable: 10
-closed
 '''
   cmd: "nim c --gc:arc --deepcopy:on -d:nimAllocPagesViaMalloc $file"
 """

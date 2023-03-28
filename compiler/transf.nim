@@ -942,6 +942,8 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
       result = n
 
 proc liftGlobals(c: PTransf, n: PNode, globals: PNode): PNode =
+  if n == nil:
+    return
   case n.kind
   of nkEmpty..nkNilLit:
     result = n
