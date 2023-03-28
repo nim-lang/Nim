@@ -55,6 +55,7 @@ type
     deferDetected, tooEarly: bool
     graph: ModuleGraph
     idgen: IdGenerator
+    isStmt: bool
 
 proc newTransNode(a: PNode): PNode {.inline.} =
   result = shallowCopy(a)
@@ -994,13 +995,16 @@ proc transform(c: PTransf, n: PNode): PNode =
       # use the same node as before if still a symbol:
       if result.kind == nkSym: result = n
     else:
-      let varSections = newNodeI(nkVarSection, n.info)
-      let defs = liftGlobals(c, n, varSections)
-      if varSections.len > 0:
-        result = newNodeI(nkStmtList, n.info)
-        defs[namePos].sym.ast = defs
-        result.add varSections
-        result.add defs
+      if c.isStmt and sfCompileTime notin s.flags:
+        let varSections = newNodeI(nkVarSection, n.info)
+        let defs = liftGlobals(c, n, varSections)
+        if varSections.len > 0:
+          result = newNodeI(nkStmtList, n.info)
+          defs[namePos].sym.ast = defs
+          result.add varSections
+          result.add defs
+        else:
+          result = n
       else:
         result = n
   of nkMacroDef:
@@ -1223,6 +1227,7 @@ proc transformStmt*(g: ModuleGraph; idgen: IdGenerator; module: PSym, n: PNode):
     result = n
   else:
     var c = openTransf(g, module, "", idgen)
+    c.isStmt = true
     result = processTransf(c, n, module)
     liftDefer(c, result)
     #result = liftLambdasForTopLevel(module, result)
