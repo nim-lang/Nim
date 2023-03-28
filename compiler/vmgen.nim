@@ -1829,7 +1829,7 @@ proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currP
     let field = newNodeI(nkExprColonExpr, result.info)
     field.add(obj)
     let value = getNullValue(obj.sym.typ, result.info, conf)
-    value.flags.incl nfUseDefaultField
+    value.flags.incl nfSkipFieldChecking
     field.add(value)
     result.add field
     doAssert obj.sym.position == currPosition

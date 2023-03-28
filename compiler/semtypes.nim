@@ -519,7 +519,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
         let fSym = newSymNode(field)
         if hasDefaultField:
           fSym.sym.ast = a[^1]
-          fSym.sym.ast.flags.incl nfUseDefaultField
+          fSym.sym.ast.flags.incl nfSkipFieldChecking
         result.n.add fSym
         addSonSkipIntLit(result, typ, c.idgen)
       styleCheckDef(c, a[j].info, field)
@@ -868,7 +868,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       let fSym = newSymNode(f)
       if hasDefaultField:
         fSym.sym.ast = n[^1]
-        fSym.sym.ast.flags.incl nfUseDefaultField
+        fSym.sym.ast.flags.incl nfSkipFieldChecking
       if a.kind == nkEmpty: father.add fSym
       else: a.add fSym
       styleCheckDef(c, f)

@@ -572,7 +572,7 @@ proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool): s
         let asgnExpr = defaultNodeField(c, recNode, recNode.typ)
         if asgnExpr != nil:
           hasDefault = true
-          asgnExpr.flags.incl nfUseDefaultField
+          asgnExpr.flags.incl nfSkipFieldChecking
           result.add newTree(nkExprColonExpr, recNode, asgnExpr)
           return
 
@@ -582,7 +582,7 @@ proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool): s
                       newSymNode(getSysMagic(c.graph, recNode.info, "zeroDefault", mZeroDefault)),
                       newNodeIT(nkType, recNode.info, asgnType)
                     )
-      asgnExpr.flags.incl nfUseDefaultField
+      asgnExpr.flags.incl nfSkipFieldChecking
       asgnExpr.typ = recType
       result.add newTree(nkExprColonExpr, recNode, asgnExpr)
   else:
@@ -604,7 +604,7 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
       defaultValue = newIntNode(nkIntLit#[c.graph]#, 0)
       defaultValue.typ = discriminator.typ
     selectedBranch = recNode.pickCaseBranchIndex defaultValue
-    defaultValue.flags.incl nfUseDefaultField
+    defaultValue.flags.incl nfSkipFieldChecking
     result.add newTree(nkExprColonExpr, discriminator, defaultValue)
     result.add defaultFieldsForTheUninitialized(c, recNode[selectedBranch][^1])
   of nkSym:
@@ -616,7 +616,7 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
       let asgnExpr = defaultNodeField(c, recNode, recType)
       if asgnExpr != nil:
         asgnExpr.typ = recType
-        asgnExpr.flags.incl nfUseDefaultField
+        asgnExpr.flags.incl nfSkipFieldChecking
         result.add newTree(nkExprColonExpr, recNode, asgnExpr)
   else:
     doAssert false
