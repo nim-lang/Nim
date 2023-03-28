@@ -286,7 +286,7 @@ iterator nodes*[T](L: SomeLinkedList[T]): SomeLinkedNode[T] =
         x.value = 5 * x.value - 1
     assert $a == "[49, 99, 199, 249]"
 
-  var it {.cursor.} = L.head
+  var it = L.head
   while it != nil:
     let nxt = it.next
     yield it
@@ -311,7 +311,7 @@ iterator nodes*[T](L: SomeLinkedRing[T]): SomeLinkedNode[T] =
         x.value = 5 * x.value - 1
     assert $a == "[49, 99, 199, 249]"
 
-  var it {.cursor.} = L.head
+  var it = L.head
   if it != nil:
     while true:
       let nxt = it.next
@@ -733,7 +733,7 @@ proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]): bool {.disc
     if L.tail.next == n:
       L.tail.next = L.head # restore cycle
   else:
-    var prev {.cursor.} = L.head
+    var prev = L.head
     while prev.next != n and prev.next != nil:
       prev = prev.next
     if prev.next == nil:
