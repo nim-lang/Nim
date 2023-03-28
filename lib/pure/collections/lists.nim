@@ -286,7 +286,7 @@ iterator nodes*[T](L: SomeLinkedList[T]): SomeLinkedNode[T] =
         x.value = 5 * x.value - 1
     assert $a == "[49, 99, 199, 249]"
 
-  var it = L.head
+  var it {.cursor.} = L.head
   while it != nil:
     let nxt = it.next
     yield it
