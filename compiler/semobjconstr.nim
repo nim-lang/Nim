@@ -412,41 +412,57 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
   else:
     assert false, "Must not enter here."
 
-proc replaceObjConstr(c: PContext; field: PNode, result: PNode, iterField: var int, flags: TExprFlags) =
-  if iterField >= result.len:
-    inc iterField
-    return
+type
+  ObjConstrError = enum
+    none
+    discriminatorError = "The discriminator can only be initialized with unnamed fields known at the compile time"
+    mixingError = "When mixing named fields and unnamed fields, every field needs to be initialized in order"
+    lackingError = "The object construction is given more fields than required"
+
+proc filterObjConstr(c: PContext; field: PNode, n: PNode, iterField: var int, flags: TExprFlags, write: bool): ObjConstrError =
+  result = none
+  if iterField >= n.len:
+    return mixingError
   case field.kind
   of nkRecCase:
     # handle defaults if the ast of the field is known
     var discriminatorVal =
-      case result[iterField].kind
+      case n[iterField].kind
       of nkExprColonExpr:
-        semExprFlagDispatched(c, result[iterField][1], flags + {efPreferStatic})
+        semExprFlagDispatched(c, n[iterField][1], flags + {efPreferStatic})
       else:
-        semExprFlagDispatched(c, result[iterField], flags + {efPreferStatic})
-    let oldIterField = iterField
-    replaceObjConstr(c, field[0], result, iterField, flags)
-    if iterField > oldIterField:
-      if discriminatorVal == nil or discriminatorVal.kind != nkIntLit:
-        localError(c.config, result.info, "The discriminator can only be initialized with unnamed fields known at the compile time")
-      else:
-        let matchedBranch = field.pickCaseBranch discriminatorVal
-        if matchedBranch != nil:
-          replaceObjConstr(c, matchedBranch.lastSon, result, iterField, flags)
+        semExprFlagDispatched(c, n[iterField], flags + {efPreferStatic})
+
+    let ret = filterObjConstr(c, field[0], n, iterField, flags, write)
+    if ret != none:
+      return ret
+
+    if discriminatorVal == nil or discriminatorVal.kind != nkIntLit:
+      return discriminatorError
+
+    let matchedBranch = field.pickCaseBranch discriminatorVal
+    if matchedBranch != nil:
+      result = filterObjConstr(c, matchedBranch.lastSon, n, iterField, flags, write)
+    else:
+      result = none
+
   of nkSym:
-    if result[iterField].kind == nkExprColonExpr and field.sym.name.id == considerQuotedIdent(c, result[iterField][0]).id:
+    if n[iterField].kind == nkExprColonExpr and field.sym.name.id == considerQuotedIdent(c, n[iterField][0]).id:
       inc iterField
     elif not fieldVisible(c, field.sym):
       discard
-    elif result[iterField].kind != nkExprColonExpr:
-      result[iterField] = newTree(nkExprColonExpr, field, result[iterField])
+    elif n[iterField].kind != nkExprColonExpr:
+      if write:
+        n[iterField] = newTree(nkExprColonExpr, field, n[iterField])
       inc iterField
     else:
-      localError(c.config, result.info, "When mixing named fields and unnamed fields, every field needs to be initialized in order")
+      result = mixingError
   of nkRecList:
     for f in field:
-      replaceObjConstr(c, f, result, iterField, flags)
+      let ret = filterObjConstr(c, f, n, iterField, flags, write)
+      if ret != none:
+        result = ret
+        break
   else:
     assert false
 
@@ -459,54 +475,14 @@ proc expandObjConstr(c: PContext, n: PNode, t: PType, flags: TExprFlags): PNode 
       break
   if hasValue:
     var iterField = 1
-    replaceObjConstr(c, t.n, result, iterField, flags)
-    if iterField > result.len:
-      localError(c.config, result.info, "When mixing named fields and unnamed fields, every field needs to be initialized in order")
-    elif iterField < result.len:
-      localError(c.config, result.info, "The object construction is given more fields than required")
-
-proc filterObjConstr(c: PContext; field: PNode, n: PNode, iterField: var int, flags: TExprFlags): bool =
-  result = true
-  if iterField >= n.len:
-    return false
-  case field.kind
-  of nkRecCase:
-    # handle defaults if the ast of the field is known
-    var discriminatorVal =
-      case n[iterField].kind
-      of nkExprColonExpr:
-        semExprFlagDispatched(c, n[iterField][1], flags + {efPreferStatic})
-      else:
-        semExprFlagDispatched(c, n[iterField], flags + {efPreferStatic})
-
-    if not filterObjConstr(c, field[0], n, iterField, flags):
-      return false
-
-    if discriminatorVal == nil or discriminatorVal.kind != nkIntLit:
-      return false
-
-    let matchedBranch = field.pickCaseBranch discriminatorVal
-    if matchedBranch != nil:
-      result = filterObjConstr(c, matchedBranch.lastSon, n, iterField, flags)
+    let ret = filterObjConstr(c, t.n, result, iterField, flags, write = true)
+    if ret != none:
+      localError(c.config, result.info, $ret)
     else:
-      result = false
-
-  of nkSym:
-    if n[iterField].kind == nkExprColonExpr and field.sym.name.id == considerQuotedIdent(c, n[iterField][0]).id:
-      inc iterField
-    elif not fieldVisible(c, field.sym):
-      discard
-    elif n[iterField].kind != nkExprColonExpr:
-      inc iterField
-    else:
-      result = false
-  of nkRecList:
-    for f in field:
-      if not filterObjConstr(c, f, n, iterField, flags):
-        result = false
-        break
-  else:
-    assert false
+      if iterField > result.len:
+        localError(c.config, result.info, $mixingError)
+      elif iterField < result.len:
+        localError(c.config, result.info, $lackingError)
 
 proc useObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): bool =
   var n = copyTree(n)
@@ -527,16 +503,14 @@ proc useObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
   if t.kind != tyObject:
     return false
 
-
   for i in 1..<n.len:
     if n[i].kind == nkExprColonExpr:
       return true
 
   var iterField = 1
-  result = filterObjConstr(c, t.n, n, iterField, flags)
+  result = filterObjConstr(c, t.n, n, iterField, flags, write = false) == none
   if iterField != n.len:
     return false
-
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   var t = semTypeNode(c, n[0], nil)
