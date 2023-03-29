@@ -969,7 +969,7 @@ proc liftGlobals(c: PTransf, n: PNode, globals: PNode): PNode =
     if result.len == 0:
       result = newNode(nkEmpty)
   else:
-    result = n
+    result = newTransNode(n.kind, n, n.len)
     for i in 0..<n.len:
       result[i] = liftGlobals(c, n[i], globals)
 
@@ -995,7 +995,7 @@ proc transform(c: PTransf, n: PNode): PNode =
       # use the same node as before if still a symbol:
       if result.kind == nkSym: result = n
     else:
-      if c.isStmt and sfCompileTime notin s.flags:
+      if c.isStmt and sfCompileTime notin s.flags and n.kind in {nkProcDef, nkFuncDef, nkMethodDef}:
         let varSections = newNodeI(nkVarSection, n.info)
         let defs = liftGlobals(c, n, varSections)
         if varSections.len > 0:
