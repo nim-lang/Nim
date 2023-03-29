@@ -1686,7 +1686,7 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
   of tyTuple:
     var cycleDetectorCopy: IntSet
     for i in 0..<t.len:
-      assign(cycleDetectorCopy, cycleDetector)
+      cycleDetectorCopy = cycleDetector
       if isTupleRecursive(t[i], cycleDetectorCopy):
         return true
   of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink,
