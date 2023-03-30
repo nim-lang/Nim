@@ -386,6 +386,19 @@ proc genWasMoved(c: var Con, n: PNode): PNode =
     #if n.kind != nkSym:
     #  message(c.graph.config, n.info, warnUser, "wasMoved(" & $n & ")")
 
+proc genDup(c: var Con, dest, src: PNode): PNode =
+  let typ = src.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+  let op = getAttachedOp(c.graph, src.typ, attachedDup)
+  if op != nil:
+    result = newNodeI(nkFastAsgn, src.info)
+    result.add dest
+    result.add newTreeI(nkCall, src.info, newSymNode(op), src)
+  else:
+    result = newNodeI(nkCall, src.info)
+    result.add(newSymNode(createMagic(c.graph, c.idgen, "Dup", mDup)))
+    result.add dest
+    result.add src
+
 proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
   result = newNodeI(nkCall, info)
   result.add(newSymNode(createMagic(c.graph, c.idgen, "default", mDefault)))
@@ -425,11 +438,14 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = c.getTemp(s, n.typ, n.info)
   if hasDestructor(c, n.typ):
-    result.add c.genWasMoved(tmp)
-    var m = c.genCopy(tmp, n, {})
-    m.add p(n, c, s, normal)
-    c.finishCopy(m, n, isFromSink = true)
-    result.add m
+    if n.typ.skipTypes(abstractInst).kind == tyRef:
+      result.add c.genDup(tmp, p(n, c, s, normal))
+    else:
+      result.add c.genWasMoved(tmp)
+      var m = c.genCopy(tmp, n, {})
+      m.add p(n, c, s, normal)
+      c.finishCopy(m, n, isFromSink = true)
+      result.add m
     if isLValue(n) and not isCapturedVar(n) and n.typ.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &

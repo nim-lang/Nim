@@ -685,7 +685,7 @@ type
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mOpenArrayToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
-    mMove, mWasMoved, mDestroy, mTrace,
+    mMove, mWasMoved, mDup, mDestroy, mTrace,
     mDefault, mUnown, mFinished, mIsolate, mAccessEnv, mAccessTypeField, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
@@ -940,7 +940,8 @@ type
     attachedAsgn,
     attachedSink,
     attachedTrace,
-    attachedDeepCopy
+    attachedDeepCopy,
+    attachedDup
 
   TType* {.acyclic.} = object of TIdObj # \
                               # types are identical iff they have the
@@ -1503,7 +1504,7 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
 
 const
   AttachedOpToStr*: array[TTypeAttachedOp, string] = [
-    "=wasMoved", "=destroy", "=copy", "=sink", "=trace", "=deepcopy"]
+    "=wasMoved", "=destroy", "=copy", "=sink", "=trace", "=deepcopy", "=dup"]
 
 proc `$`*(s: PSym): string =
   if s != nil:

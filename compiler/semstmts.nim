@@ -1806,9 +1806,12 @@ proc whereToBindTypeHook(c: PContext; t: PType): PType =
 proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let t = s.typ
   var noError = false
-  let cond = if op in {attachedDestructor, attachedWasMoved}:
+  let cond = case op
+             of {attachedDestructor, attachedWasMoved}:
                t.len == 2 and t[0] == nil and t[1].kind == tyVar
-             elif op == attachedTrace:
+             of attachedDup:
+               t.len == 2 and t[0] == nil and t[1].kind == tyRef
+             of attachedTrace:
                t.len == 3 and t[0] == nil and t[1].kind == tyVar and t[2].kind == tyPointer
              else:
                t.len >= 2 and t[0] == nil
@@ -1924,6 +1927,18 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
   of "=wasmoved":
     if s.magic != mWasMoved:
       bindTypeHook(c, s, n, attachedWasMoved)
+  of "=dup":
+    if s.magic != mDup:
+      var t = s.typ[1].skipTypes(abstractInst)
+      while true:
+        if t.kind == tyGenericBody: t = t.lastSon
+        elif t.kind == tyGenericInvocation: t = t[0]
+        else: break
+      if t.kind == tyRef:
+        setAttachedOp(c.graph, c.module.position, t, attachedDup, s)
+      else:
+        localError(c.config, n.info, errGenerated,
+                  "signature for '=dup' must be proc[T: ref](x: T): T")
   else:
     if sfOverriden in s.flags:
       localError(c.config, n.info, errGenerated,
