@@ -1939,6 +1939,8 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       else:
         localError(c.config, n.info, errGenerated,
                   "signature for '=dup' must be proc[T: ref](x: T): T")
+      incl(s.flags, sfUsed)
+      incl(s.flags, sfOverriden)
   else:
     if sfOverriden in s.flags:
       localError(c.config, n.info, errGenerated,

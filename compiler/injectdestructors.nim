@@ -395,7 +395,7 @@ proc genDup(c: var Con, dest, src: PNode): PNode =
     result.add newTreeI(nkCall, src.info, newSymNode(op), src)
   else:
     result = newNodeI(nkCall, src.info)
-    result.add(newSymNode(createMagic(c.graph, c.idgen, "Dup", mDup)))
+    result.add(newSymNode(createMagic(c.graph, c.idgen, "`=dup`", mDup)))
     result.add dest
     result.add src
 
