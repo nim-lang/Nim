@@ -1828,6 +1828,23 @@ an `object` type or a `ref object` type:
 Note that, unlike tuples, objects require the field names along with their values.
 For a `ref object` type `system.new` is invoked implicitly.
 
+The field names can be omitted if all the values are given in order. It can be mixed with field names along with values.
+
+  ```nim
+  var a1 = Student("Anton", 5)
+  var a2 = PStudent("Anton", age: 5)
+  ```
+
+Note that, objects with only one field must use field names along with values. Otherwise, they will be recognized as type conversions.
+
+  ```nim
+  type
+    Teacher = object
+      name: string
+  # var t = Teacher("lisa") # Error: type mismatch: got 'string' for '"lisa"'
+                          # but expected 'Teacher = object'
+  var t = Teacher(name: "lisa")
+  ```
 
 Object variants
 ---------------
