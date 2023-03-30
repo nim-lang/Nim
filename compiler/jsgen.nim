@@ -2181,7 +2181,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "nimCopy(null, $1, $2)" % [x.rdLoc, genTypeInfo(p, n.typ)]
   of mOpenArrayToSeq:
     genCall(p, n, r)
-  of mDestroy, mTrace: discard "ignore calls to the default destructor"
+  of mDestroy, mTrace, mDup: discard "ignore calls to the default destructor"
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
     var x: TCompRes
