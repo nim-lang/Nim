@@ -3076,6 +3076,19 @@ when they are declared. The only exception to this is if the `{.importc.}`
 pragma (or any of the other `importX` pragmas) is applied, in this case the
 value is expected to come from native code, typically a C/C++ `const`.
 
+Special identifier `_` (underscore)
+-----------------------------------
+
+The identifier `_` has a special meaning in declarations.
+Any definition with the name `_` will not be added to scope, meaning the
+definition is evaluated, but cannot be used. As a result the name `_` can be
+indefinitely redefined.
+
+  ```nim
+  let _ = 123
+  echo _ # error
+  let _ = 456 # compiles
+  ```
 
 Tuple unpacking
 ---------------
