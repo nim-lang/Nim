@@ -10,7 +10,6 @@
 
 
 [//]: # "Additions:"
-- Added `parseutils.parseSize` - inverse to `strutils.formatSize` - to parse human readable sizes.
 
 [//]: # "Deprecations:"
 
