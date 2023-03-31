@@ -3,7 +3,7 @@ discard """
   exitcode: "1"
   output: '''
 t14444.nim(13)           t14444
-fatal.nim(51)            sysFatal
+fatal.nim(53)            sysFatal
 Error: unhandled exception: index out of bounds, the container is empty [IndexDefect]
 '''
 """
