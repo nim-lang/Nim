@@ -349,7 +349,6 @@ proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
   discard
 
 proc `=dup`[T](x: var ref T, y: ref T) {.inline, magic: "Dup".} =
-  ## Generic `dup` implementation that can be overridden.
   discard
 
 proc `=dup`*[T](x: ref T): ref T {.inline.} =
