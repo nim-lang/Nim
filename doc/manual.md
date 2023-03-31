@@ -3076,12 +3076,25 @@ when they are declared. The only exception to this is if the `{.importc.}`
 pragma (or any of the other `importX` pragmas) is applied, in this case the
 value is expected to come from native code, typically a C/C++ `const`.
 
+Special identifier `_` (underscore)
+-----------------------------------
+
+The identifier `_` has a special meaning in declarations.
+Any definition with the name `_` will not be added to scope, meaning the
+definition is evaluated, but cannot be used. As a result the name `_` can be
+indefinitely redefined.
+
+  ```nim
+  let _ = 123
+  echo _ # error
+  let _ = 456 # compiles
+  ```
 
 Tuple unpacking
 ---------------
 
-In a `var` or `let` statement tuple unpacking can be performed. The special
-identifier `_` can be used to ignore some parts of the tuple:
+In a `var`, `let` or `const` statement tuple unpacking can be performed.
+The special identifier `_` can be used to ignore some parts of the tuple:
 
   ```nim
   proc returnsTuple(): (int, int, int) = (4, 2, 3)
@@ -3089,6 +3102,35 @@ identifier `_` can be used to ignore some parts of the tuple:
   let (x, _, z) = returnsTuple()
   ```
 
+This is treated as syntax sugar for roughly the following:
+
+  ```nim
+  let
+    tmpTuple = returnsTuple()
+    x = tmpTuple[0]
+    z = tmpTuple[2]
+  ```
+
+For `var` or `let` statements, if the value expression is a tuple literal,
+each expression is directly expanded into an assignment without the use of
+a temporary variable.
+
+  ```nim
+  let (x, y, z) = (1, 2, 3)
+  # becomes
+  let
+    x = 1
+    y = 2
+    z = 3
+  ```
+
+Tuple unpacking can also be nested:
+
+  ```nim
+  proc returnsNestedTuple(): (int, (int, int), int, int) = (4, (5, 7), 2, 3)
+
+  let (x, (_, y), _, z) = returnsNestedTuple()
+  ```
 
 
 Const section

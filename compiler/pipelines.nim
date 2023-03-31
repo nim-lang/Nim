@@ -1,6 +1,6 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
-       packages, syntaxes, depends, vm, pragmas, idents, lookups
+       packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg
 
 import pipelineutils
 

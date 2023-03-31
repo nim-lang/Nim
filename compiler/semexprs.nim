@@ -1824,7 +1824,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     result.add(n[1])
     return semExprNoType(c, result)
   of nkPar, nkTupleConstr:
-    if a.len >= 2:
+    if a.len >= 2 or a.kind == nkTupleConstr:
       # unfortunately we need to rewrite ``(x, y) = foo()`` already here so
       # that overloading of the assignment operator still works. Usually we
       # prefer to do these rewritings in transf.nim:

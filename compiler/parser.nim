@@ -2277,13 +2277,19 @@ proc parseTypeDef(p: var Parser): PNode =
   setEndInfo()
 
 proc parseVarTuple(p: var Parser): PNode =
-  #| varTuple = '(' optInd identWithPragma ^+ comma optPar ')' '=' optInd expr
+  #| varTupleLhs = '(' optInd (identWithPragma / varTupleLhs) ^+ comma optPar ')'
+  #| varTuple = varTupleLhs '=' optInd expr
   result = newNodeP(nkVarTuple, p)
   getTok(p)                   # skip '('
   optInd(p, result)
   # progress guaranteed
-  while p.tok.tokType in {tkSymbol, tkAccent}:
-    var a = identWithPragma(p, allowDot=true)
+  while p.tok.tokType in {tkSymbol, tkAccent, tkParLe}:
+    var a: PNode
+    if p.tok.tokType == tkParLe:
+      a = parseVarTuple(p)
+      a.add(p.emptyNode)
+    else:
+      a = identWithPragma(p, allowDot=true)
     result.add(a)
     if p.tok.tokType != tkComma: break
     getTok(p)

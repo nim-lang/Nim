@@ -396,11 +396,12 @@ proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
   if fn.kind notin OverloadableSyms:
     internalError(c.config, fn.info, "addOverloadableSymAt")
     return
-  let check = strTableGet(scope.symbols, fn.name)
-  if check != nil and check.kind notin OverloadableSyms:
-    wrongRedefinition(c, fn.info, fn.name.s, check.info)
-  else:
-    scope.addSym(fn)
+  if fn.name.s != "_":
+    let check = strTableGet(scope.symbols, fn.name)
+    if check != nil and check.kind notin OverloadableSyms:
+      wrongRedefinition(c, fn.info, fn.name.s, check.info)
+    else:
+      scope.addSym(fn)
 
 proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   ## adds an overloadable symbol on the scope and the interface if appropriate
@@ -546,12 +547,16 @@ proc errorUseQualifier*(c: PContext; info:TLineInfo; choices: PNode) =
   errorUseQualifier(c, info, candidates, prefix)
 
 proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extra = "") =
-  var err = "undeclared identifier: '" & name & "'" & extra
-  if c.recursiveDep.len > 0:
-    err.add "\nThis might be caused by a recursive module dependency:\n"
-    err.add c.recursiveDep
-    # prevent excessive errors for 'nim check'
-    c.recursiveDep = ""
+  var err: string
+  if name == "_":
+    err = "the special identifier '_' is ignored in declarations and cannot be used"
+  else:
+    err = "undeclared identifier: '" & name & "'" & extra
+    if c.recursiveDep.len > 0:
+      err.add "\nThis might be caused by a recursive module dependency:\n"
+      err.add c.recursiveDep
+      # prevent excessive errors for 'nim check'
+      c.recursiveDep = ""
   localError(c.config, info, errGenerated, err)
 
 proc errorUndeclaredIdentifierHint*(c: PContext; n: PNode, ident: PIdent): PSym =
