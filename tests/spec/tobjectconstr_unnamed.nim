@@ -1,3 +1,5 @@
+import mobjectconstr_unnamed
+
 type
   Vector = object
     a: int = 999
@@ -66,3 +68,23 @@ block:
   block:
     var x = Ciao(12, flag: true, 1, "123")
     doAssert x.num == 1
+
+## It works in the third module
+block:
+  doAssert initStandard("", 1, "sky") == Standard(id: 1, owner: "sky")
+  doAssert initStandard("", 1, "sky") == Standard(1, "sky")
+  doAssert toStandard("", 1, "sky") == Standard(1, "sky")
+
+  proc foo() =
+    doAssert initStandard("", 1, "sky") == Standard(id: 1, owner: "sky")
+    doAssert initStandard("", 1, "sky") == Standard(1, "sky")
+    doAssert toStandard("", 1, "sky") == Standard(1, "sky")
+
+  foo()
+
+  template bar() = 
+    doAssert initStandard("", 1, "sky") == Standard(id: 1, owner: "sky")
+    doAssert initStandard("", 1, "sky") == Standard(1, "sky")
+    doAssert toStandard("", 1, "sky") == Standard(1, "sky")
+
+  bar()
