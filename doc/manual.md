@@ -3060,6 +3060,50 @@ But these will compile successfully:
   doAssert string(s) == "test"
   ```
 
+If a procedure call returns a `var`-typed value and is assigned to a
+`var`-declared variable, it is copied. This way, you can modify any
+`var`-declared variable and be sure it will not affect variables out of its
+scope.
+
+By contrast, passing a `var`-typed return value to another procedure call does
+not copy it. See [Var-parameters](#procedures-var-parameters)
+
+If a `var`-declared variable is desired that is not copied and modifies the
+original value, the `byaddr` pragma from [std/decls](decls.html) can be added
+to the `var`-statement.
+
+Alternatively, the `addr` procedure places a pointer to the original value in
+the local variable, which allows modifying the original value thorough the
+dereference operator `[]`. See [Reference and pointer
+types](#types-refere-and-pointer-types)
+
+
+```nim
+type Foo = object
+  x: string
+
+var foo = Foo(x: "this")
+
+proc getX(f: var Foo): var string =
+  f.x
+
+var x = foo.getX             # put a copy of foo.x into x
+x = "that"                   # change the copy
+echo foo.x                   # prints "this", the original value is unchanged
+
+import std/decls
+var y {.byaddr.} = foo.getX  # put the original foo.x into y
+y = "that"                   # change the original value
+echo foo.x                   # prints "that", the original value was changed
+
+var z = addr foo.getX        # puts a reference to foo.x into z
+z[] = "neither"              # changes the original value
+echo foo.x                   # prints "neither", the original value was
+                             # changed again
+
+```
+
+
 Let statement
 -------------
 
