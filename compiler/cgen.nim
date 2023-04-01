@@ -2153,7 +2153,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
 
       if m.g.forwardedProcs.len == 0:
         incl m.flags, objHasKidsValid
-      let disp = generateMethodDispatchers(graph)
+      let disp = generateMethodDispatchers(graph, m.idgen)
       for x in disp: genProcAux(m, x.sym)
 
   let mm = m

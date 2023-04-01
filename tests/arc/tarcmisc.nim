@@ -597,3 +597,14 @@ block: # bug #19857
       let res = v.toF()
 
   foo()
+
+import std/options
+
+type Event* = object
+  code*: string
+
+type App* = ref object of RootObj
+  id*: string
+
+method process*(self: App): Option[Event] {.base.} =
+  raise Exception.new_exception("not impl")
