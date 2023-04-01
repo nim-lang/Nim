@@ -72,7 +72,7 @@ func typeMask[T: SomeInteger](): auto {.inline.} =
   else:
     cast[T](0xffffffff_ffffffff'u).castToUnsigned
 
-proc bitsliced*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
+func bitsliced*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
   ## Returns an extracted (and shifted) slice of bits from `v`.
   runnableExamples:
     doAssert 0b10111.bitsliced(2 .. 4) == 0b101
