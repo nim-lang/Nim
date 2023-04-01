@@ -945,7 +945,7 @@ proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indent
   case n.kind
   of nnkEmpty, nnkNilLit:
     discard # same as nil node in this representation
-  of nnkCharLit .. nnkInt64Lit:
+  of nnkCharLit .. nnkUInt64Lit:
     res.add(" " & $n.intVal)
   of nnkFloatLit .. nnkFloat64Lit:
     res.add(" " & $n.floatVal)
