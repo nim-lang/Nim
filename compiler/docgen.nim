@@ -112,13 +112,16 @@ type
 proc add(dest: var ItemPre, rst: PRstNode) = dest.add ItemFragment(isRst: true, rst: rst)
 proc add(dest: var ItemPre, str: string) = dest.add ItemFragment(isRst: false, str: str)
 
-proc addRstFileIndex(d: PDoc, info: lineinfos.TLineInfo): rstast.FileIndex =
+proc addRstFileIndex(d: PDoc, fileIndex: lineinfos.FileIndex): rstast.FileIndex =
   let invalid = rstast.FileIndex(-1)
-  result = d.nimToRstFid.getOrDefault(info.fileIndex, default = invalid)
+  result = d.nimToRstFid.getOrDefault(fileIndex, default = invalid)
   if result == invalid:
-    let fname = toFullPath(d.conf, info)
+    let fname = toFullPath(d.conf, fileIndex)
     result = addFilename(d.sharedState, fname)
-    d.nimToRstFid[info.fileIndex] = result
+    d.nimToRstFid[fileIndex] = result
+
+proc addRstFileIndex(d: PDoc, info: lineinfos.TLineInfo): rstast.FileIndex =
+  addRstFileIndex(d, info.fileIndex)
 
 proc cmpDecimalsIgnoreCase(a, b: string): int =
   ## For sorting with correct handling of cases like 'uint8' and 'uint16'.
@@ -1060,7 +1063,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
       fileIndex: addRstFileIndex(d, nameNode.info))
   addAnchorNim(d.sharedState, external = false, refn = symbolOrId,
                tooltip = detailedName, langSym = rstLangSymbol,
-               priority = symbolPriority(k), info = lineinfo)
+               priority = symbolPriority(k), info = lineinfo,
+               module = addRstFileIndex(d, FileIndex d.module.position))
 
   let renderFlags =
     if nonExports: {renderNoBody, renderNoComments, renderDocComments, renderSyms,
@@ -1451,7 +1455,8 @@ proc finishGenerateDoc*(d: var PDoc) =
                                   isGroup: true),
                        priority = symbolPriority(k),
                        # select index `0` just to have any meaningful warning:
-                       info = overloadChoices[0].info)
+                       info = overloadChoices[0].info,
+                       module = addRstFileIndex(d, FileIndex d.module.position))
 
   if optGenIndexOnly in d.conf.globalOptions:
     return

@@ -350,7 +350,7 @@ type
     footnoteAnchor = "footnote anchor",
     headlineAnchor = "implicitly-generated headline anchor"
   AnchorSubst = object
-    info: TLineInfo         # where the anchor was defined
+    info: TLineInfo         # the file where the anchor was defined
     priority: int
     case kind: range[arInternalRst .. arNim]
     of arInternalRst:
@@ -360,6 +360,7 @@ type
       anchorTypeExt: RstAnchorKind
       refnameExt: string
     of arNim:
+      module: FileIndex     # anchor's module (generally not the same as file)
       tooltip: string       # displayed tooltip for Nim-generated anchors
       langSym: LangSymbol
       refname: string     # A reference name that will be inserted directly
@@ -519,6 +520,9 @@ proc getFilename(filenames: RstFileTable, fid: FileIndex): string =
 
 proc getFilename(s: PRstSharedState, subst: AnchorSubst): string =
   getFilename(s.filenames, subst.info.fileIndex)
+
+proc getModule(s: PRstSharedState, subst: AnchorSubst): string =
+  result = getFilename(s.filenames, subst.module)
 
 proc currFilename(s: PRstSharedState): string =
   getFilename(s.filenames, s.currFileIdx)
@@ -830,7 +834,7 @@ proc addAnchorExtRst(s: var PRstSharedState, key: string, refn: string,
 
 proc addAnchorNim*(s: var PRstSharedState, external: bool, refn: string, tooltip: string,
                    langSym: LangSymbol, priority: int,
-                   info: TLineInfo) =
+                   info: TLineInfo, module: FileIndex) =
   ## Adds an anchor `refn`, which follows
   ## the rule `arNim` (i.e. a symbol in ``*.nim`` file)
   s.anchors.mgetOrPut(langSym.name, newSeq[AnchorSubst]()).add(
@@ -859,7 +863,7 @@ proc findMainAnchorNim(s: PRstSharedState, signature: PRstNode,
   for subst in substitutions:
     if subst.kind == arNim:
       if match(subst.langSym, langSym):
-        let key: GroupKey = (subst.langSym.symKind, getFilename(s, subst))
+        let key: GroupKey = (subst.langSym.symKind, getModule(s, subst))
         found.mgetOrPut(key, newSeq[AnchorSubst]()).add subst
   for key, sList in found:
     if sList.len == 1:
@@ -880,7 +884,7 @@ proc findMainAnchorNim(s: PRstSharedState, signature: PRstNode,
             break
         doAssert(foundGroup,
                  "docgen has not generated the group for $1 (file $2)" % [
-                 langSym.name, getFilename(s, sList[0]) ])
+                 langSym.name, getModule(s, sList[0]) ])
 
 proc findMainAnchorRst(s: PRstSharedState, linkText: string, info: TLineInfo):
                       seq[AnchorSubst] =
@@ -3552,7 +3556,7 @@ proc loadIdxFile(s: var PRstSharedState, origFilename: string) =
         langSym = langSymbolGroup(kind=entry.linkTitle, name=entry.keyword)
       addAnchorNim(s, external = true, refn = refn, tooltip = entry.linkDesc,
                    langSym = langSym, priority = -4, # lowest
-                   info=info)
+                   info = info, module = info.fileIndex)
   doAssert s.idxImports[origFilename].title != ""
 
 proc preparePass2*(s: var PRstSharedState, mainNode: PRstNode, importdoc = true) =
