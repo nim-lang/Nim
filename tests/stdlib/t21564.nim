@@ -3,6 +3,7 @@ nimout: "OK"
 output: '''
 OK
 '''
+targets: "c js"
 """
 
 import bitops
