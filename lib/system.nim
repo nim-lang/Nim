@@ -1151,12 +1151,12 @@ else:
     ## See also:
     ## * `& proc <#&,seq[T],seq[T]>`_
     runnableExamples:
-      var
-        a = @["a1", "a2"]
+      var a = @["a1", "a2"]
       a.add(["b1", "b2"])
       assert a == @["a1", "a2", "b1", "b2"]
-      a.add(a.toOpenArray(1, 2))
-      assert a == @["a1", "a2", "b1", "b2", "a2", "b1"]
+      var c = @["c0", "c1", "c2", "c3"]
+      a.add(c.toOpenArray(1, 2))
+      assert a == @["a1", "a2", "b1", "b2", "c1", "c2"]
 
     {.noSideEffect.}:
       let xl = x.len
