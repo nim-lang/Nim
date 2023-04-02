@@ -1108,10 +1108,11 @@ when defined(nimscript) or not defined(nimSeqsV2):
     ## containers should also call their adding proc `add` for consistency.
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
-    runnableExamples:
-      var s: seq[string] = @["test2","test2"]
-      s.add("test")
-      assert s == @["test2", "test2", "test"]
+    ##   ```
+    ##   var s: seq[string] = @["test2","test2"]
+    ##   s.add("test")
+    ##   assert s == @["test2", "test2", "test"]
+    ##   ```
 
 when false: # defined(gcDestructors):
   proc add*[T](x: var seq[T], y: sink openArray[T]) {.noSideEffect.} =
