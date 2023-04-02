@@ -219,10 +219,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
     elif not isException(typ):
       localError(c.config, typeNode.info, errExprCannotBeRaised)
     elif not isDefectOrCatchableError(typ):
-      if optPanics in c.config.globalOptions:
-        message(c.config, a.info, warnBareExcept, "catch a more precise Exception deriving from CatchableError.")
-      else:
-        message(c.config, a.info, warnBareExcept, "catch a more precise Exception deriving from CatchableError or Defect.")
+      message(c.config, a.info, warnBareExcept, "catch a more precise Exception deriving from CatchableError.")
 
     if containsOrIncl(check, typ.id):
       localError(c.config, typeNode.info, errExceptionAlreadyHandled)
