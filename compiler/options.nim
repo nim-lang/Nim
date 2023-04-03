@@ -108,6 +108,7 @@ type                          # please make sure we have under 32 options
     optSourcemap
     optProfileVM              # enable VM profiler
     optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.
+    optShowNonExportedFields  # for documentation: show fields that are not exported
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -620,7 +621,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
                             osQnx, osAtari, osAix,
                             osHaiku, osVxWorks, osSolaris, osNetbsd,
                             osFreebsd, osOpenbsd, osDragonfly, osMacosx, osIos,
-                            osAndroid, osNintendoSwitch, osFreeRTOS, osCrossos, osZephyr}
+                            osAndroid, osNintendoSwitch, osFreeRTOS, osCrossos, osZephyr, osNuttX}
     of "linux":
       result = conf.target.targetOS in {osLinux, osAndroid}
     of "bsd":
@@ -642,6 +643,8 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = conf.target.targetOS == osFreeRTOS
     of "zephyr":
       result = conf.target.targetOS == osZephyr
+    of "nuttx":
+      result = conf.target.targetOS == osNuttX
     of "littleendian": result = CPU[conf.target.targetCPU].endian == littleEndian
     of "bigendian": result = CPU[conf.target.targetCPU].endian == bigEndian
     of "cpu8": result = CPU[conf.target.targetCPU].bit == 8
@@ -716,22 +719,24 @@ proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ##  clone or using installed nim, so that these exist: `result/doc/advopt.txt`
   ## and `result/lib/system.nim`
   if not conf.prefixDir.isEmpty: result = conf.prefixDir
-  else: result = AbsoluteDir splitPath(getAppDir()).head
+  else:
+    let binParent = AbsoluteDir splitPath(getAppDir()).head
+    when defined(posix):
+      if binParent == AbsoluteDir"/usr":
+        result = AbsoluteDir"/usr/lib/nim"
+      elif binParent == AbsoluteDir"/usr/local":
+        result = AbsoluteDir"/usr/local/lib/nim"
+      else:
+        result = binParent
+    else:
+      result = binParent
 
 proc setDefaultLibpath*(conf: ConfigRef) =
   # set default value (can be overwritten):
   if conf.libpath.isEmpty:
     # choose default libpath:
     var prefix = getPrefixDir(conf)
-    when defined(posix):
-      if prefix == AbsoluteDir"/usr":
-        conf.libpath = AbsoluteDir"/usr/lib/nim"
-      elif prefix == AbsoluteDir"/usr/local":
-        conf.libpath = AbsoluteDir"/usr/local/lib/nim"
-      else:
-        conf.libpath = prefix / RelativeDir"lib"
-    else:
-      conf.libpath = prefix / RelativeDir"lib"
+    conf.libpath = prefix / RelativeDir"lib"
 
     # Special rule to support other tools (nimble) which import the compiler
     # modules and make use of them.
@@ -1003,6 +1008,9 @@ proc inclDynlibOverride*(conf: ConfigRef; lib: string) =
 proc isDynlibOverride*(conf: ConfigRef; lib: string): bool =
   result = optDynlibOverrideAll in conf.globalOptions or
      conf.dllOverrides.hasKey(lib.canonDynlibName)
+
+proc showNonExportedFields*(conf: ConfigRef) =
+  incl(conf.globalOptions, optShowNonExportedFields)
 
 proc expandDone*(conf: ConfigRef): bool =
   result = conf.ideCmd == ideExpand and conf.expandLevels == 0 and conf.expandProgress

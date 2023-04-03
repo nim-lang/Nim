@@ -23,7 +23,7 @@ import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp
 # Do NOT import suggest. It will lead to weird bugs with
 # suggestionResultHook, because suggest.nim is included by sigmatch.
 # So we import that one instead.
-import compiler / [options, commands, modules, sem,
+import compiler / [options, commands, modules,
   passes, passaux, msgs,
   sigmatch, ast,
   idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
@@ -234,7 +234,7 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
       localError(conf, conf.m.trackPos, "found no symbol at this position " & (conf $ conf.m.trackPos))
 
 proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, graph: ModuleGraph) =
-  executeNoHooks(cmd, file, dirtyfile, line, col, graph)
+  executeNoHooks(cmd, file, dirtyfile, line, col, "", graph)
 
 proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int; tag: string,
              graph: ModuleGraph) =

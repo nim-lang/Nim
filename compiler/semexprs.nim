@@ -302,7 +302,7 @@ proc semConv(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   result = newNodeI(nkConv, n.info)
 
   var targetType = semTypeNode(c, n[0], nil)
-  case targetType.kind
+  case targetType.skipTypes({tyDistinct}).kind
   of tyTypeDesc:
     internalAssert c.config, targetType.len > 0
     if targetType.base.kind == tyNone:
@@ -787,7 +787,7 @@ proc analyseIfAddressTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
   else:
     result = newHiddenAddrTaken(c, n, isOutParam)
 
-proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
+proc analyseIfAddressTakenInCall(c: PContext, n: PNode, isConverter = false) =
   checkMinSonsLen(n, 1, c.config)
   const
     FakeVarParams = {mNew, mNewFinalize, mInc, ast.mDec, mIncl, mExcl,
@@ -795,10 +795,15 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
       mAppendSeqElem, mNewSeq, mReset, mShallowCopy, mDeepCopy, mMove,
       mWasMoved}
 
+  template checkIfConverterCalled(c: PContext, n: PNode) =
+    ## Checks if there is a converter call which wouldn't be checked otherwise
+    # Call can sometimes be wrapped in a deref
+    let node = if n.kind == nkHiddenDeref: n[0] else: n
+    if node.kind == nkHiddenCallConv:
+      analyseIfAddressTakenInCall(c, node, true)
   # get the real type of the callee
   # it may be a proc var with a generic alias type, so we skip over them
   var t = n[0].typ.skipTypes({tyGenericInst, tyAlias, tySink})
-
   if n[0].kind == nkSym and n[0].sym.magic in FakeVarParams:
     # BUGFIX: check for L-Value still needs to be done for the arguments!
     # note sometimes this is eval'ed twice so we check for nkHiddenAddr here:
@@ -813,6 +818,8 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
               discard "allow access within a cast(unsafeAssign) section"
             else:
               localError(c.config, it.info, errVarForOutParamNeededX % $it)
+        # Make sure to still check arguments for converters
+        c.checkIfConverterCalled(n[i])
     # bug #5113: disallow newSeq(result) where result is a 'var T':
     if n[0].sym.magic in {mNew, mNewFinalize, mNewSeq}:
       var arg = n[1] #.skipAddr
@@ -824,15 +831,14 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
     return
   for i in 1..<n.len:
     let n = if n.kind == nkHiddenDeref: n[0] else: n
-    if n[i].kind == nkHiddenCallConv:
-      # we need to recurse explicitly here as converters can create nested
-      # calls and then they wouldn't be analysed otherwise
-      analyseIfAddressTakenInCall(c, n[i])
+    c.checkIfConverterCalled(n[i])
     if i < t.len and
         skipTypes(t[i], abstractInst-{tyTypeDesc}).kind in {tyVar}:
-      if n[i].kind != nkHiddenAddr:
-        n[i] = analyseIfAddressTaken(c, n[i], isOutParam(skipTypes(t[i], abstractInst-{tyTypeDesc})))
-
+      # Converters wrap var parameters in nkHiddenAddr but they haven't been analysed yet.
+      # So we need to make sure we are checking them still when in a converter call
+      if n[i].kind != nkHiddenAddr or isConverter:
+        n[i] = analyseIfAddressTaken(c, n[i].skipAddr(), isOutParam(skipTypes(t[i], abstractInst-{tyTypeDesc})))
+        
 include semmagic
 
 proc evalAtCompileTime(c: PContext, n: PNode): PNode =
@@ -998,7 +1004,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
     if callee.magic != mNone:
-      result = magicsAfterOverloadResolution(c, result, flags)
+      result = magicsAfterOverloadResolution(c, result, flags, expectedType)
     when false:
       if result.typ != nil and
           not (result.typ.kind == tySequence and result.typ[0].kind == tyEmpty):
@@ -1818,7 +1824,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     result.add(n[1])
     return semExprNoType(c, result)
   of nkPar, nkTupleConstr:
-    if a.len >= 2:
+    if a.len >= 2 or a.kind == nkTupleConstr:
       # unfortunately we need to rewrite ``(x, y) = foo()`` already here so
       # that overloading of the assignment operator still works. Usually we
       # prefer to do these rewritings in transf.nim:
@@ -2203,10 +2209,13 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   if ids.len > 0:
     dummyTemplate[paramsPos] = newNodeI(nkFormalParams, n.info)
     dummyTemplate[paramsPos].add getSysSym(c.graph, n.info, "untyped").newSymNode # return type
-    ids.add getSysSym(c.graph, n.info, "untyped").newSymNode # params type
-    ids.add c.graph.emptyNode # no default value
-    dummyTemplate[paramsPos].add newTreeI(nkIdentDefs, n.info, ids)
-
+    dummyTemplate[paramsPos].add newTreeI(nkIdentDefs, n.info, ids[0], getSysSym(c.graph, n.info, "typed").newSymNode, c.graph.emptyNode)
+    for i in 1..<ids.len:
+      let typ = semExprWithType(c, quotes[i+1], {}).typ
+      if tfTriggersCompileTime notin typ.flags and typ.kind != tyTypeDesc:
+        dummyTemplate[paramsPos].add newTreeI(nkIdentDefs, n.info, ids[i], newNodeIT(nkType, n.info, typ), c.graph.emptyNode)
+      else:
+        dummyTemplate[paramsPos].add newTreeI(nkIdentDefs, n.info, ids[i], getSysSym(c.graph, n.info, "typed").newSymNode, c.graph.emptyNode)
   var tmpl = semTemplateDef(c, dummyTemplate)
   quotes[0] = tmpl[namePos]
   # This adds a call to newIdentNode("result") as the first argument to the template call

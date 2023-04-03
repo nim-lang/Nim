@@ -270,7 +270,7 @@ proc onOff(c: PContext, n: PNode, op: TOptions, resOptions: var TOptions) =
   if isTurnedOn(c, n): resOptions.incl op
   else: resOptions.excl op
 
-proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
+proc pragmaNoForward*(c: PContext, n: PNode; flag=sfNoForward) =
   if isTurnedOn(c, n):
     incl(c.module.flags, flag)
     c.features.incl codeReordering
@@ -364,7 +364,7 @@ proc processNote(c: PContext, n: PNode) =
     else: invalidPragma(c, n)
   else: invalidPragma(c, n)
 
-proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
+proc pragmaToOptions*(w: TSpecialWord): TOptions {.inline.} =
   case w
   of wChecks: ChecksOptions
   of wObjChecks: {optObjCheck}
@@ -929,7 +929,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wThreadVar:
         noVal(c, it)
         incl(sym.flags, {sfThread, sfGlobal})
-      of wDeadCodeElimUnused: discard  # deprecated, dead code elim always on
+      of wDeadCodeElimUnused:
+        warningDeprecated(c.config, n.info, "'{.deadcodeelim: on.}' is deprecated, now a noop")  # deprecated, dead code elim always on
       of wNoForward: pragmaNoForward(c, it)
       of wReorder: pragmaNoForward(c, it, flag = sfReorder)
       of wMagic: processMagic(c, it, sym)

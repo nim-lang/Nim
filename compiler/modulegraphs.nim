@@ -11,7 +11,7 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import intsets, tables, hashes, md5_old
+import intsets, tables, hashes, md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
 import ic / [packed_ast, ic]
 
@@ -56,6 +56,18 @@ type
   SymInfoPair* = object
     sym*: PSym
     info*: TLineInfo
+
+  PipelinePass* = enum
+    NonePass
+    SemPass
+    JSgenPass
+    CgenPass
+    EvalPass
+    InterpreterPass
+    GenDependPass
+    Docgen2TexPass
+    Docgen2JsonPass
+    Docgen2Pass
 
   ModuleGraph* {.acyclic.} = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
@@ -104,6 +116,7 @@ type
     cacheCounters*: Table[string, BiggestInt] # IC: implemented
     cacheTables*: Table[string, BTree[string, PNode]] # IC: implemented
     passes*: seq[TPass]
+    pipelinePass*: PipelinePass
     onDefinition*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     onDefinitionResolveForward*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     onUsage*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}

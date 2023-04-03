@@ -135,19 +135,42 @@
 
 - The experimental strictFuncs feature now disallows a store to the heap via a `ref` or `ptr` indirection.
 
-- Underscores (`_`) as routine parameters are now ignored and cannot be used in the routine body.
-  The following code now does not compile:
+- The underscore identifier (`_`) is now generally not added to scope when
+  used as the name of a definition. While this was already the case for
+  variables, it is now also the case for routine parameters, generic
+  parameters, routine declarations, type declarations, etc. This means that the following code now does not compile:
 
   ```nim
   proc foo(_: int): int = _ + 1
   echo foo(1)
+
+  proc foo[_](t: typedesc[_]): seq[_] = @[default(_)]
+  echo foo[int]()
+
+  proc _() = echo "_"
+  _()
+
+  type _ = int
+  let x: _ = 3
   ```
 
-  Instead, the following code now compiles:
+  Whereas the following code now compiles:
 
   ```nim
   proc foo(_, _: int): int = 123
   echo foo(1, 2)
+
+  proc foo[_, _](): int = 123
+  echo foo[int, bool]()
+
+  proc foo[T, U](_: typedesc[T], _: typedesc[U]): (T, U) = (default(T), default(U))
+  echo foo(int, bool)
+
+  proc _() = echo "one"
+  proc _() = echo "two"
+
+  type _ = int
+  type _ = float
   ```
 
 - - Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
@@ -224,6 +247,7 @@
 - Added `openArray[char]` overloads for `std/parseutils` allowing more code reuse.
 - Added `openArray[char]` overloads for `std/unicode` allowing more code reuse.
 - Added `safe` parameter to `base64.encodeMime`.
+- Added `parseutils.parseSize` - inverse to `strutils.formatSize` - to parse human readable sizes.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
@@ -333,6 +357,28 @@
 - Nim now offers a [strict mode](https://nim-lang.github.io/Nim/manual_experimental.html#strict-case-objects) for `case objects`.
 
 - IBM Z architecture and macOS m1 arm64 architecture are supported.
+
+- `=wasMoved` can be overridden by users.
+
+- Tuple unpacking for variables is now treated as syntax sugar that directly
+  expands into multiple assignments. Along with this, tuple unpacking for
+  variables can now be nested.
+
+  ```nim
+  proc returnsNestedTuple(): (int, (int, int), int, int) = (4, (5, 7), 2, 3)
+
+  let (x, (_, y), _, z) = returnsNestedTuple()
+  # roughly becomes
+  let
+    tmpTup1 = returnsNestedTuple()
+    x = tmpTup1[0]
+    tmpTup2 = tmpTup1[1]
+    y = tmpTup2[1]
+    z = tmpTup1[3]
+  ```
+
+  As a result `nnkVarTuple` nodes in variable sections will no longer be
+  reflected in `typed` AST.
 
 ## Compiler changes
 

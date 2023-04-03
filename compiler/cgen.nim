@@ -12,10 +12,12 @@
 import
   ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
   nversion, nimsets, msgs, bitsets, idents, types,
-  ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
+  ccgutils, os, ropes, math, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
-  injectdestructors, astmsgs, modulepaths
+  injectdestructors, astmsgs, modulepaths, backendpragmas
+
+import pipelineutils
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -226,8 +228,12 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
   result.add newCall(ident"rope", resVar)
 
 proc addIndent(p: BProc; result: var Rope) =
-  for i in 0..<p.blocks.len:
-    result.add "\t".rope
+  var i = result.len
+  let newLen = i + p.blocks.len
+  result.setLen newLen
+  while i < newLen:
+    result[i] = '\t'
+    inc i
 
 template appcg(m: BModule, c: var Rope, frmt: FormatStr,
            args: untyped) =
@@ -271,7 +277,8 @@ proc genCLineDir(r: var Rope, filename: string, line: int; conf: ConfigRef) =
         [rope(makeSingleLineCString(filename)), rope(line)])
 
 proc genCLineDir(r: var Rope, info: TLineInfo; conf: ConfigRef) =
-  genCLineDir(r, toFullPath(conf, info), info.safeLineNm, conf)
+  if optLineDir in conf.options:
+    genCLineDir(r, toFullPath(conf, info), info.safeLineNm, conf)
 
 proc freshLineInfo(p: BProc; info: TLineInfo): bool =
   if p.lastLineInfo.line != info.line or
@@ -285,7 +292,7 @@ proc genLineDir(p: BProc, t: PNode) =
 
   if optEmbedOrigSrc in p.config.globalOptions:
     p.s(cpsStmts).add("//" & sourceLine(p.config, t.info) & "\L")
-  genCLineDir(p.s(cpsStmts), toFullPath(p.config, t.info), line, p.config)
+  genCLineDir(p.s(cpsStmts), t.info, p.config)
   if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
     if freshLineInfo(p, t.info):
@@ -491,17 +498,13 @@ proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
       nilLoc.r = rope("NIM_NIL")
       genRefAssign(p, loc, nilLoc)
     else:
-      if typ.kind == tyVar:
-        let tt = typ.skipTypes({tyVar})
-        if isImportedType(tt) and tfRequiresInit in tt.flags:
-          return
       linefmt(p, cpsStmts, "$1 = ($2)0;$n", [rdLoc(loc),
         getTypeDesc(p.module, typ, mapTypeChooser(loc))])
   else:
     if not isTemp or containsGarbageCollectedRef(loc.t):
       # don't use nimZeroMem for temporary values for performance if we can
       # avoid it:
-      if not isImportedCppType(typ):
+      if not isOrHasImportedCppType(typ):
         linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
                 [addrLoc(p.config, loc), getTypeDesc(p.module, typ, mapTypeChooser(loc))])
     genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
@@ -521,7 +524,10 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
 proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   inc(p.labels)
   result.r = "T" & rope(p.labels) & "_"
-  linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t, skVar), result.r])
+  if p.module.compileToCpp and isOrHasImportedCppType(t):
+    linefmt(p, cpsLocals, "$1 $2{};$n", [getTypeDesc(p.module, t, skVar), result.r])
+  else:
+    linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t, skVar), result.r])
   result.k = locTemp
   result.lode = lodeTyp t
   result.storage = OnStack
@@ -562,6 +568,9 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
     result.addf("NIM_ALIGN($1) ", [rope(s.alignment)])
+
+  genCLineDir(result, n.info, p.config)
+
   result.add getTypeDesc(p.module, s.typ, skVar)
   if s.constraint.isNil:
     if sfRegister in s.flags: result.add(" register")
@@ -579,7 +588,7 @@ proc assignLocalVar(p: BProc, n: PNode) =
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
   let nl = if optLineDir in p.config.options: "" else: "\L"
-  let decl = localVarDecl(p, n) & ";" & nl
+  let decl = localVarDecl(p, n) & (if p.module.compileToCpp and isOrHasImportedCppType(n.typ): "{};" else: ";") & nl
   line(p, cpsLocals, decl)
 
 include ccgthreadvars
@@ -632,7 +641,23 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
         if sfVolatile in s.flags: decl.add(" volatile")
         if sfNoalias in s.flags: decl.add(" NIM_NOALIAS")
         if value != "":
-          decl.addf(" $1 = $2;$n", [s.loc.r, value])
+          if p.module.compileToCpp and value.startsWith "{{}":
+            # TODO: taking this branch, re"\{\{\}(,\s\{\})*\}" might be emitted, resulting in
+            # either warnings (GCC 12.2+) or errors (Clang 15, MSVC 19.3+) of C++11+ compilers **when
+            # explicit constructors are around** due to overload resolution rules in place [^0][^1][^2]
+            # *Workaround* here: have C++'s static initialization mechanism do the default init work,
+            # for us lacking a deeper knowledge of an imported object's constructors' ex-/implicitness
+            # (so far) *and yet* trying to achieve default initialization.
+            # Still, generating {}s in genConstObjConstr() just to omit them here is faaaar from ideal;
+            # need to figure out a better way, possibly by keeping around more data about the
+            # imported objects' contructors?
+            #
+            # [^0]: https://en.cppreference.com/w/cpp/language/aggregate_initialization
+            # [^1]: https://cplusplus.github.io/CWG/issues/1518.html
+            # [^2]: https://eel.is/c++draft/over.match.ctor
+            decl.addf(" $1;$n", [s.loc.r])
+          else:
+            decl.addf(" $1 = $2;$n", [s.loc.r, value])
         else:
           decl.addf(" $1;$n", [s.loc.r])
       else:
@@ -1628,7 +1653,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
     hcrModuleMeta.addf("\t\"\"};$n", [])
     hcrModuleMeta.addf("$nN_LIB_EXPORT N_NIMCALL(void**, HcrGetImportedModules)() { return (void**)hcr_module_list; }$n", [])
     hcrModuleMeta.addf("$nN_LIB_EXPORT N_NIMCALL(char*, HcrGetSigHash)() { return \"$1\"; }$n$n",
-                          [($sigHash(m.module)).rope])
+                          [($sigHash(m.module, m.config)).rope])
     if sfMainModule in m.module.flags:
       g.mainModProcs.add(hcrModuleMeta)
       g.mainModProcs.addf("static void* hcr_handle;$N", [])
@@ -1936,8 +1961,7 @@ template injectG() {.dirty.} =
     graph.backend = newModuleList(graph)
   let g = BModuleList(graph.backend)
 
-
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
+proc setupCgen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   injectG()
   result = newModule(g, module, graph.config)
   result.idgen = idgen
@@ -2005,7 +2029,7 @@ proc addHcrInitGuards(p: BProc, n: PNode, inInitGuard: var bool) =
 
 proc genTopLevelStmt*(m: BModule; n: PNode) =
   ## Also called from `ic/cbackend.nim`.
-  if passes.skipCodegen(m.config, n): return
+  if pipelineutils.skipCodegen(m.config, n): return
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
@@ -2017,12 +2041,6 @@ proc genTopLevelStmt*(m: BModule; n: PNode) =
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
     genProcBody(m.initProc, transformedN)
-
-proc myProcess(b: PPassContext, n: PNode): PNode =
-  result = n
-  if b != nil:
-    var m = BModule(b)
-    genTopLevelStmt(m, n)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:
@@ -2100,7 +2118,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
     if {optGenStaticLib, optGenDynLib, optNoMain} * m.config.globalOptions == {}:
       for i in countdown(high(graph.globalDestructors), 0):
         n.add graph.globalDestructors[i]
-  if passes.skipCodegen(m.config, n): return
+  if pipelineutils.skipCodegen(m.config, n): return
   if moduleHasChanged(graph, m.module):
     # if the module is cached, we don't regenerate the main proc
     # nor the dispatchers? But if the dispatchers changed?
@@ -2135,17 +2153,11 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
 
       if m.g.forwardedProcs.len == 0:
         incl m.flags, objHasKidsValid
-      let disp = generateMethodDispatchers(graph)
+      let disp = generateMethodDispatchers(graph, m.idgen)
       for x in disp: genProcAux(m, x.sym)
 
   let mm = m
   m.g.modulesClosed.add mm
-
-
-proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
-  result = n
-  if b == nil: return
-  finalCodegenActions(graph, BModule(b), n)
 
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're given
@@ -2173,5 +2185,3 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
     m.writeModule(pending=true)
   writeMapping(config, g.mapping)
   if g.generatedHeader != nil: writeHeader(g.generatedHeader)
-
-const cgenPass* = makePass(myOpen, myProcess, myClose)

@@ -1496,7 +1496,7 @@ proc postExprBlocks(p: var Parser, x: PNode): PNode =
     result = makeCall(result)
     getTok(p)
     skipComment(p, result)
-    if p.tok.tokType notin {tkOf, tkElif, tkElse, tkExcept}:
+    if p.tok.tokType notin {tkOf, tkElif, tkElse, tkExcept, tkFinally}:
       var stmtList = newNodeP(nkStmtList, p)
       stmtList.add parseStmt(p)
       # to keep backwards compatibility (see tests/vm/tstringnil)
@@ -2277,13 +2277,19 @@ proc parseTypeDef(p: var Parser): PNode =
   setEndInfo()
 
 proc parseVarTuple(p: var Parser): PNode =
-  #| varTuple = '(' optInd identWithPragma ^+ comma optPar ')' '=' optInd expr
+  #| varTupleLhs = '(' optInd (identWithPragma / varTupleLhs) ^+ comma optPar ')'
+  #| varTuple = varTupleLhs '=' optInd expr
   result = newNodeP(nkVarTuple, p)
   getTok(p)                   # skip '('
   optInd(p, result)
   # progress guaranteed
-  while p.tok.tokType in {tkSymbol, tkAccent}:
-    var a = identWithPragma(p, allowDot=true)
+  while p.tok.tokType in {tkSymbol, tkAccent, tkParLe}:
+    var a: PNode
+    if p.tok.tokType == tkParLe:
+      a = parseVarTuple(p)
+      a.add(p.emptyNode)
+    else:
+      a = identWithPragma(p, allowDot=true)
     result.add(a)
     if p.tok.tokType != tkComma: break
     getTok(p)

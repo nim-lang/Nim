@@ -222,9 +222,11 @@ proc isRecursiveType(t: PType, cycleDetector: var IntSet): bool =
 
 proc fitDefaultNode(c: PContext, n: PNode): PType =
   let expectedType = if n[^2].kind != nkEmpty: semTypeNode(c, n[^2], nil) else: nil
+  let oldType = n[^1].typ
   n[^1] = semConstExpr(c, n[^1], expectedType = expectedType)
+  n[^1].flags.incl nfSem
   if n[^2].kind != nkEmpty:
-    if expectedType != nil:
+    if expectedType != nil and oldType != expectedType:
       n[^1] = fitNodeConsiderViewType(c, expectedType, n[^1], n[^1].info)
     result = n[^1].typ
   else:
@@ -517,7 +519,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
         let fSym = newSymNode(field)
         if hasDefaultField:
           fSym.sym.ast = a[^1]
-          fSym.sym.ast.flags.incl nfUseDefaultField
+          fSym.sym.ast.flags.incl nfSkipFieldChecking
         result.n.add fSym
         addSonSkipIntLit(result, typ, c.idgen)
       styleCheckDef(c, a[j].info, field)
@@ -866,7 +868,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       let fSym = newSymNode(f)
       if hasDefaultField:
         fSym.sym.ast = n[^1]
-        fSym.sym.ast.flags.incl nfUseDefaultField
+        fSym.sym.ast.flags.incl nfSkipFieldChecking
       if a.kind == nkEmpty: father.add fSym
       else: a.add fSym
       styleCheckDef(c, f)
@@ -1357,6 +1359,10 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     for j in 0..<a.len-2:
       var arg = newSymG(skParam, if a[j].kind == nkPragmaExpr: a[j][0] else: a[j], c)
+      if arg.name.s == "_":
+        arg.flags.incl(sfGenSym)
+      elif containsOrIncl(check, arg.name.id):
+        localError(c.config, a[j].info, "attempt to redefine: '" & arg.name.s & "'")
       if a[j].kind == nkPragmaExpr:
         pragma(c, arg, a[j][1], paramPragmas)
       if not hasType and not hasDefault and kind notin {skTemplate, skMacro}:
@@ -1365,8 +1371,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         else:
           localError(c.config, a.info, "parameter '$1' requires a type" % arg.name.s)
           typ = errorType(c)
+      var nameForLift = arg.name.s
+      if sfGenSym in arg.flags:
+        nameForLift.add("`gensym" & $arg.id)
       let lifted = liftParamType(c, kind, genericParams, typ,
-                                 arg.name.s, arg.info)
+                                 nameForLift, arg.info)
       let finalType = if lifted != nil: lifted else: typ.skipIntLit(c.idgen)
       arg.typ = finalType
       arg.position = counter
@@ -1374,10 +1383,6 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       inc(counter)
       if def != nil and def.kind != nkEmpty:
         arg.ast = copyTree(def)
-      if arg.name.s == "_":
-        arg.flags.incl(sfGenSym)
-      elif containsOrIncl(check, arg.name.id):
-        localError(c.config, a[j].info, "attempt to redefine: '" & arg.name.s & "'")
       result.n.add newSymNode(arg)
       rawAddSon(result, finalType)
       addParamOrResult(c, arg, kind)

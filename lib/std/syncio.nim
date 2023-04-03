@@ -390,7 +390,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
   proc c_memchr(s: pointer, c: cint, n: csize_t): pointer {.
     importc: "memchr", header: "<string.h>".}
 
-  when defined(windows) and not defined(useWinAnsi):
+  when defined(windows):
     proc readConsole(hConsoleInput: FileHandle, lpBuffer: pointer,
                      nNumberOfCharsToRead: int32,
                      lpNumberOfCharsRead: ptr int32,
@@ -612,7 +612,7 @@ proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
 
 # interface to the C procs:
 
-when defined(windows) and not defined(useWinAnsi):
+when defined(windows):
   when defined(cpp):
     proc wfopen(filename, mode: WideCString): pointer {.
       importcpp: "_wfopen((const wchar_t*)#, (const wchar_t*)#)", nodecl.}

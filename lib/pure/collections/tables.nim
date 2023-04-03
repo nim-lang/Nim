@@ -447,7 +447,7 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   ##
   ##
   ## Note that while the value returned is of type `var B`,
-  ## it is easy to accidentally create an copy of the value at `t[key]`.
+  ## it is easy to accidentally create a copy of the value at `t[key]`.
   ## Remember that seqs and strings are value types, and therefore
   ## cannot be copied into a separate variable for modification.
   ## See the example below.
@@ -828,7 +828,8 @@ proc newTable*[A, B](initialSize = defaultInitialSize): TableRef[A, B] =
       b = newTable[char, seq[int]]()
 
   new(result)
-  result[] = initTable[A, B](initialSize)
+  {.noSideEffect.}:
+    result[] = initTable[A, B](initialSize)
 
 proc newTable*[A, B](pairs: openArray[(A, B)]): TableRef[A, B] =
   ## Creates a new ref hash table that contains the given `pairs`.
@@ -844,14 +845,16 @@ proc newTable*[A, B](pairs: openArray[(A, B)]): TableRef[A, B] =
     assert b == {'a': 5, 'b': 9}.newTable
 
   new(result)
-  result[] = toTable[A, B](pairs)
+  {.noSideEffect.}:
+    result[] = toTable[A, B](pairs)
 
 proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): TableRef[C, B] =
   ## Index the collection with the proc provided.
   # TODO: As soon as supported, change collection: A to collection: A[B]
   result = newTable[C, B]()
-  for item in collection:
-    result[index(item)] = item
+  {.noSideEffect.}:
+    for item in collection:
+      result[index(item)] = item
 
 proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
   ## Retrieves the value at `t[key]`.
@@ -1825,7 +1828,8 @@ proc newOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTableRef[A
       a = newOrderedTable[int, string]()
       b = newOrderedTable[char, seq[int]]()
   new(result)
-  result[] = initOrderedTable[A, B](initialSize)
+  {.noSideEffect.}:
+    result[] = initOrderedTable[A, B](initialSize)
 
 proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] =
   ## Creates a new ordered ref hash table that contains the given `pairs`.
@@ -1842,7 +1846,8 @@ proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] =
     assert b == {'a': 5, 'b': 9}.newOrderedTable
 
   result = newOrderedTable[A, B](pairs.len)
-  for key, val in items(pairs): result[key] = val
+  {.noSideEffect.}:
+    for key, val in items(pairs): result[key] = val
 
 
 proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
@@ -2393,7 +2398,7 @@ proc contains*[A](t: CountTable[A], key: A): bool =
   return hasKey[A](t, key)
 
 proc getOrDefault*[A](t: CountTable[A], key: A; default: int = 0): int =
-  ## Retrieves the value at `t[key]` if`key` is in `t`. Otherwise, the
+  ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, the
   ## integer value of `default` is returned.
   ##
   ## See also:
@@ -2641,13 +2646,15 @@ proc newCountTable*[A](initialSize = defaultInitialSize): CountTableRef[A] =
   ## * `initCountTable proc<#initCountTable>`_ for creating a
   ##   `CountTable`
   new(result)
-  result[] = initCountTable[A](initialSize)
+  {.noSideEffect.}:
+    result[] = initCountTable[A](initialSize)
 
 proc newCountTable*[A](keys: openArray[A]): CountTableRef[A] =
   ## Creates a new ref count table with every member of a container `keys`
   ## having a count of how many times it occurs in that container.
   result = newCountTable[A](keys.len)
-  for key in items(keys): result.inc(key)
+  {.noSideEffect.}:
+    for key in items(keys): result.inc(key)
 
 proc `[]`*[A](t: CountTableRef[A], key: A): int =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
@@ -2671,7 +2678,8 @@ proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
   ## * `inc proc<#inc,CountTableRef[A],A,int>`_ for incrementing a
   ##   value of a key
   assert val > 0
-  t[][key] = val
+  {.noSideEffect.}:
+    t[][key] = val
 
 proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
   ## Increments `t[key]` by `val` (default: 1).
@@ -2680,7 +2688,8 @@ proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
     a.inc('a')
     a.inc('b', 10)
     doAssert a == newCountTable("aaabbbbbbbbbbb")
-  t[].inc(key, val)
+  {.noSideEffect.}:
+    t[].inc(key, val)
 
 proc smallest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
   ## Returns the `(key, value)` pair with the smallest `val`. Efficiency: O(n)
@@ -2713,7 +2722,7 @@ proc contains*[A](t: CountTableRef[A], key: A): bool =
   return hasKey[A](t, key)
 
 proc getOrDefault*[A](t: CountTableRef[A], key: A, default: int): int =
-  ## Retrieves the value at `t[key]` if`key` is in `t`. Otherwise, the
+  ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, the
   ## integer value of `default` is returned.
   ##
   ## See also:

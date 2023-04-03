@@ -1,5 +1,5 @@
 discard """
-  matrix: "--styleCheck:off"
+  matrix: "--styleCheck:off --hint:Name:on"
 """
 
 {.hintAsError[Name]:on.}

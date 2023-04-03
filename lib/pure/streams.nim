@@ -115,7 +115,7 @@ type
     ## * That these fields here shouldn't be used directly.
     ##   They are accessible so that a stream implementation can override them.
     closeImpl*: proc (s: Stream)
-      {.nimcall, raises: [Exception, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+      {.nimcall, raises: [IOError, OSError], tags: [WriteIOEffect], gcsafe.}
     atEndImpl*: proc (s: Stream): bool
       {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
     setPositionImpl*: proc (s: Stream, pos: int)

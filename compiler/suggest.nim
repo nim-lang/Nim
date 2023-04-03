@@ -36,7 +36,7 @@ import algorithm, sets, prefixmatches, parseutils, tables
 from wordrecg import wDeprecated, wError, wAddr, wYield
 
 when defined(nimsuggest):
-  import passes, tables, pathutils # importer
+  import tables, pathutils # importer
 
 const
   sep = '\t'

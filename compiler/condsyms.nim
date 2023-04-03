@@ -25,7 +25,7 @@ proc undefSymbol*(symbols: StringTableRef; symbol: string) =
 #  result = if isDefined(symbol): gSymbols[symbol] else: nil
 
 iterator definedSymbolNames*(symbols: StringTableRef): string =
-  for key, val in pairs(symbols):
+  for key in keys(symbols):
     yield key
 
 proc countDefinedSymbols*(symbols: StringTableRef): int =

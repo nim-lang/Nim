@@ -343,7 +343,8 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
   if sym.name.s == "_": return
   let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
-    if sym.kind == skModule and conflict.kind == skModule and sym.owner == conflict.owner:
+    if sym.kind == skModule and conflict.kind == skModule and
+                        sym.position == conflict.position:
       # e.g.: import foo; import foo
       # xxx we could refine this by issuing a different hint for the case
       # where a duplicate import happens inside an include.
@@ -395,11 +396,12 @@ proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
   if fn.kind notin OverloadableSyms:
     internalError(c.config, fn.info, "addOverloadableSymAt")
     return
-  let check = strTableGet(scope.symbols, fn.name)
-  if check != nil and check.kind notin OverloadableSyms:
-    wrongRedefinition(c, fn.info, fn.name.s, check.info)
-  else:
-    scope.addSym(fn)
+  if fn.name.s != "_":
+    let check = strTableGet(scope.symbols, fn.name)
+    if check != nil and check.kind notin OverloadableSyms:
+      wrongRedefinition(c, fn.info, fn.name.s, check.info)
+    else:
+      scope.addSym(fn)
 
 proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   ## adds an overloadable symbol on the scope and the interface if appropriate
@@ -545,12 +547,16 @@ proc errorUseQualifier*(c: PContext; info:TLineInfo; choices: PNode) =
   errorUseQualifier(c, info, candidates, prefix)
 
 proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extra = "") =
-  var err = "undeclared identifier: '" & name & "'" & extra
-  if c.recursiveDep.len > 0:
-    err.add "\nThis might be caused by a recursive module dependency:\n"
-    err.add c.recursiveDep
-    # prevent excessive errors for 'nim check'
-    c.recursiveDep = ""
+  var err: string
+  if name == "_":
+    err = "the special identifier '_' is ignored in declarations and cannot be used"
+  else:
+    err = "undeclared identifier: '" & name & "'" & extra
+    if c.recursiveDep.len > 0:
+      err.add "\nThis might be caused by a recursive module dependency:\n"
+      err.add c.recursiveDep
+      # prevent excessive errors for 'nim check'
+      c.recursiveDep = ""
   localError(c.config, info, errGenerated, err)
 
 proc errorUndeclaredIdentifierHint*(c: PContext; n: PNode, ident: PIdent): PSym =

@@ -1647,6 +1647,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
     return
   if d.k == locNone:
     getTemp(p, n.typ, d)
+  initLocExpr(p, n[1], a)
   # generate call to newSeq before adding the elements per hand:
   let L = toInt(lengthOrd(p.config, n[1].typ))
   if optSeqDestructors in p.config.globalOptions:
@@ -1658,7 +1659,6 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
     var lit = newRopeAppender()
     intLiteral(L, lit)
     genNewSeqAux(p, d, lit, L == 0)
-  initLocExpr(p, n[1], a)
   # bug #5007; do not produce excessive C source code:
   if L < 10:
     for i in 0..<L:
@@ -1704,7 +1704,7 @@ proc genNewFinalize(p: BProc, e: PNode) =
 
 proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo; result: var Rope) =
   if optTinyRtti in p.config.globalOptions:
-    let token = $genDisplayElem(MD5Digest(hashType(dest)))
+    let token = $genDisplayElem(MD5Digest(hashType(dest, p.config)))
     appcg(p.module, result, "#isObjDisplayCheck($#.m_type, $#, $#)", [a, getObjDepth(dest), token])
   else:
     # unfortunately 'genTypeInfoV1' sets tfObjHasKids as a side effect, so we
@@ -1947,7 +1947,7 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
 
   initLoc(call, locCall, e, OnHeap)
   if not p.module.compileToCpp:
-    const setLenPattern = "($3) #setLengthSeqV2(&($1)->Sup, $4, $2)"
+    const setLenPattern = "($3) #setLengthSeqV2(($1)?&($1)->Sup:NIM_NIL, $4, $2)"
     call.r = ropecg(p.module, setLenPattern, [
       rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
       genTypeInfoV1(p.module, t.skipTypes(abstractInst), e.info)])
@@ -2408,7 +2408,10 @@ proc genDispose(p: BProc; n: PNode) =
       lineCg(p, cpsStmts, ["#nimDestroyAndDispose($#)", rdLoc(a)])
 
 proc genSlice(p: BProc; e: PNode; d: var TLoc) =
-  let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.lastSon)
+  let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.lastSon,
+    prepareForMutation = e[1].kind == nkHiddenDeref and
+                         e[1].typ.skipTypes(abstractInst).kind == tyString and
+                         p.config.selectedGC in {gcArc, gcOrc})
   if d.k == locNone: getTemp(p, e.typ, d)
   linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $3;$n", [rdLoc(d), x, y])
   when false:
@@ -2776,7 +2779,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
     rdMType(p, a, nilCheck, r)
     if optTinyRtti in p.config.globalOptions:
       let checkFor = $getObjDepth(dest)
-      let token = $genDisplayElem(MD5Digest(hashType(dest)))
+      let token = $genDisplayElem(MD5Digest(hashType(dest, p.config)))
       if nilCheck != "":
         linefmt(p, cpsStmts, "if ($1 && !#isObjDisplayCheck($2, $3, $4)){ #raiseObjectConversionError(); ",
                 [nilCheck, r, checkFor, token])

@@ -1979,7 +1979,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       if srca == isSubtype:
         param = implicitConv(nkHiddenSubConv, src, copyTree(arg), m, c)
       elif src.kind in {tyVar}:
-        # Analyse the converter return type
+        # Analyse the converter return type.
         param = newNodeIT(nkHiddenAddr, arg.info, s.typ[1])
         param.add copyTree(arg)
       else:
@@ -2673,7 +2673,7 @@ proc argtypeMatches*(c: PContext, f, a: PType, fromHlo = false): bool =
 
 
 proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
-                      op: TTypeAttachedOp; col: int): PSym {.nosinks.} =
+                      op: TTypeAttachedOp; col: int): PSym =
   var m = newCandidate(c, dc.typ)
   if col >= dc.typ.len:
     localError(c.config, info, "cannot instantiate: '" & dc.name.s & "'")

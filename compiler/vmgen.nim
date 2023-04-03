@@ -32,7 +32,7 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 import
-  strutils, ast, types, msgs, renderer, vmdef,
+  strutils, ast, types, msgs, renderer, vmdef, trees,
   intsets, magicsys, options, lowerings, lineinfos, transf, astmsgs
 
 from modulegraphs import getBody
@@ -1829,7 +1829,7 @@ proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currP
     let field = newNodeI(nkExprColonExpr, result.info)
     field.add(obj)
     let value = getNullValue(obj.sym.typ, result.info, conf)
-    value.flags.incl nfUseDefaultField
+    value.flags.incl nfSkipFieldChecking
     field.add(value)
     result.add field
     doAssert obj.sym.position == currPosition
@@ -1907,6 +1907,19 @@ proc genVarSection(c: PCtx; n: PNode) =
           let tmp = c.genx(a[0], {gfNodeAddr})
           let val = c.genx(a[2])
           c.genAdditionalCopy(a[2], opcWrDeref, tmp, 0, val)
+          c.freeTemp(val)
+          c.freeTemp(tmp)
+        elif not importcCondVar(s) and not (s.typ.kind == tyProc and s.typ.callConv == ccClosure) and
+                sfPure notin s.flags: # fixes #10938
+          # there is a pre-existing issue with closure types in VM
+          # if `(var s: proc () = default(proc ()); doAssert s == nil)` works for you;
+          # you might remove the second condition.
+          # the problem is that closure types are tuples in VM, but the types of its children
+          # shouldn't have the same type as closure types.
+          let tmp = c.genx(a[0], {gfNodeAddr})
+          let sa = getNullValue(s.typ, a.info, c.config)
+          let val = c.genx(sa)
+          c.genAdditionalCopy(sa, opcWrDeref, tmp, 0, val)
           c.freeTemp(val)
           c.freeTemp(tmp)
       else:
@@ -2054,7 +2067,10 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       genLit(c, n, dest)
     of skConst:
       let constVal = if s.astdef != nil: s.astdef else: s.typ.n
-      gen(c, constVal, dest)
+      if dontInlineConstant(n, constVal):
+        genLit(c, constVal, dest)
+      else:
+        gen(c, constVal, dest)
     of skEnumField:
       # we never reach this case - as of the time of this comment,
       # skEnumField is folded to an int in semfold.nim, but this code
