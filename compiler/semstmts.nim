@@ -1857,7 +1857,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
     incl(s.flags, sfOverriden)
     if name == "=":
       message(c.config, n.info, warnDeprecated, "Overriding `=` hook is deprecated; Override `=copy` hook instead")
-    elif name == "=copy" and c.config.selectedGC == gcRefc:
+    elif c.config.selectedGC == gcRefc and name == "=copy":
       message(c.config, n.info, warnCopyHookForRefc)
     let t = s.typ
     if t.len == 3 and t[0] == nil and t[1].kind == tyVar:
