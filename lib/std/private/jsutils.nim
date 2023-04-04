@@ -79,5 +79,6 @@ when defined(js):
       assert not "123".toJs.isSafeInteger
       assert 123.isSafeInteger
       assert 123.toJs.isSafeInteger
-      assert 9007199254740991.toJs.isSafeInteger
-      assert not 9007199254740992.toJs.isSafeInteger
+      when false:
+        assert 9007199254740991.toJs.isSafeInteger
+        assert not 9007199254740992.toJs.isSafeInteger

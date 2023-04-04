@@ -74,8 +74,11 @@ proc parse*(d: DateLib, s: cstring): int {.importcpp.}
 proc newDate*(): DateTime {.
   importcpp: "new Date()".}
 
-proc newDate*(date: int|int64|string): DateTime {.
+proc newDate*(date: int|string): DateTime {.
   importcpp: "new Date(#)".}
+
+proc newDate*(date: int64): DateTime {.
+  importcpp: "new Date(Number(#))".}
 
 proc newDate*(year, month, day, hours, minutes,
              seconds, milliseconds: int): DateTime {.

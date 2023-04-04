@@ -1,7 +1,7 @@
 import std/private/jsutils
 
 
-type JsBigIntImpl {.importc: "bigint".} = int
+type JsBigIntImpl = int64 #{.importc: "bigint".} = int
 type JsBigInt = distinct JsBigIntImpl
 
 doAssert JsBigInt isnot int
