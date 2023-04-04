@@ -314,9 +314,8 @@ block: # bug #17383
   else:
     testRoundtrip(int.high): "9223372036854775807"
     testRoundtrip(uint.high): "18446744073709551615"
-  when not defined(js):
-    testRoundtrip(int64.high): "9223372036854775807"
-    testRoundtrip(uint64.high): "18446744073709551615"
+  testRoundtrip(int64.high): "9223372036854775807"
+  testRoundtrip(uint64.high): "18446744073709551615"
 
 block: # bug #18007
   testRoundtrip([NaN, Inf, -Inf, 0.0, -0.0, 1.0]): """["nan","inf","-inf",0.0,-0.0,1.0]"""

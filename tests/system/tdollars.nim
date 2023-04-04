@@ -66,10 +66,9 @@ block: # `$`(SomeInteger)
   testType int
   testType bool
 
-  when not defined(js): # requires BigInt support
-    testType uint64
-    testType int64
-    testType BiggestInt
+  testType uint64
+  testType int64
+  testType BiggestInt
 
 block: # #14350, #16674, #16686 for JS
   var cstr: cstring
@@ -176,10 +175,8 @@ proc main()=
       res.addInt int64(i)
     doAssert res == "-9-8-7-6-5-4-3-2-10"
 
-    when not defined(js):
-      test2 high(int64), "9223372036854775807"
-      test2 low(int64), "-9223372036854775808"
-
+    test2 high(int64), "9223372036854775807"
+    test2 low(int64), "-9223372036854775808"
     test2 high(int32), "2147483647"
     test2 low(int32), "-2147483648"
     test2 high(int16), "32767"

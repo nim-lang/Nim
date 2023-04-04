@@ -509,10 +509,9 @@ template main() =
   block: # toHex
     doAssert(toHex(100i16, 32) == "00000000000000000000000000000064")
     doAssert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
-    when not defined js:
-      doAssert(toHex(high(uint64)) == "FFFFFFFFFFFFFFFF")
-      doAssert(toHex(high(uint64), 16) == "FFFFFFFFFFFFFFFF")
-      doAssert(toHex(high(uint64), 32) == "0000000000000000FFFFFFFFFFFFFFFF")
+    doAssert(toHex(high(uint64)) == "FFFFFFFFFFFFFFFF")
+    doAssert(toHex(high(uint64), 16) == "FFFFFFFFFFFFFFFF")
+    doAssert(toHex(high(uint64), 32) == "0000000000000000FFFFFFFFFFFFFFFF")
 
   block: # insertSep
     doAssert(insertSep($1000_000) == "1_000_000")
@@ -532,9 +531,8 @@ template main() =
   block: # toBin, toOct
     block:# bug #11369
       var num: int64 = -1
-      when not defined js:
-        doAssert num.toBin(64) == "1111111111111111111111111111111111111111111111111111111111111111"
-        doAssert num.toOct(24) == "001777777777777777777777"
+      doAssert num.toBin(64) == "1111111111111111111111111111111111111111111111111111111111111111"
+      doAssert num.toOct(24) == "001777777777777777777777"
 
   block: # replace
     doAssert "oo".replace("", "abc") == "oo"
@@ -741,8 +739,7 @@ bar
 
   block: # formatSize
     disableVm:
-      when not defined(js):
-        doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB" # <=== bug #8231
+      doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB" # <=== bug #8231
       doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
       doAssert formatSize(4096) == "4KiB"
       doAssert formatSize(4096, prefix = bpColloquial, includeSpace = true) == "4 kB"

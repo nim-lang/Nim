@@ -451,44 +451,44 @@ proc modInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
     return Math.trunc(`a` % `b`);
   """
 
-proc checkOverflowInt64(a: int) {.asmNoStackFrame, compilerproc.} =
+proc checkOverflowInt64(a: int64) {.asmNoStackFrame, compilerproc.} =
   asm """
-    if (`a` > 9223372036854775807 || `a` < -9223372036854775808) `raiseOverflow`();
+    if (`a` > 9223372036854775807n || `a` < -9223372036854775808n) `raiseOverflow`();
   """
 
-proc addInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+proc addInt64(a, b: int64): int64 {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` + `b`;
     `checkOverflowInt64`(result);
     return result;
   """
 
-proc subInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+proc subInt64(a, b: int64): int64 {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` - `b`;
     `checkOverflowInt64`(result);
     return result;
   """
 
-proc mulInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+proc mulInt64(a, b: int64): int64 {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` * `b`;
     `checkOverflowInt64`(result);
     return result;
   """
 
-proc divInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+proc divInt64(a, b: int64): int64 {.asmNoStackFrame, compilerproc.} =
   asm """
-    if (`b` == 0) `raiseDivByZero`();
-    if (`b` == -1 && `a` == 9223372036854775807) `raiseOverflow`();
-    return Math.trunc(`a` / `b`);
+    if (`b` == 0n) `raiseDivByZero`();
+    if (`b` == -1n && `a` == 9223372036854775807n) `raiseOverflow`();
+    return `a` / `b`;
   """
 
-proc modInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+proc modInt64(a, b: int64): int64 {.asmNoStackFrame, compilerproc.} =
   asm """
-    if (`b` == 0) `raiseDivByZero`();
-    if (`b` == -1 && `a` == 9223372036854775807) `raiseOverflow`();
-    return Math.trunc(`a` % `b`);
+    if (`b` == 0n) `raiseDivByZero`();
+    if (`b` == -1n && `a` == 9223372036854775807n) `raiseOverflow`();
+    return `a` % `b`;
   """
 
 proc negInt(a: int): int {.compilerproc.} =

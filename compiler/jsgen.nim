@@ -571,12 +571,20 @@ proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string,
   var x, y: TCompRes
   gen(p, n[1], x)
   gen(p, n[2], y)
-  let trimmer = unsignedTrimmer(n[1].typ.skipTypes(abstractRange).size)
+  let size = n[1].typ.skipTypes(abstractRange).size
   when reassign:
     let (a, tmp) = maybeMakeTempAssignable(p, n[1], x)
-    r.res = "$1 = (($5 $2 $3) $4)" % [a, rope op, y.rdLoc, trimmer, tmp]
+    if size == 8:
+      r.res = "$1 = BigInt.asUintN(64, ($4 $2 $3))" % [a, rope op, y.rdLoc, tmp]
+    else:
+      let trimmer = unsignedTrimmer(size)
+      r.res = "$1 = (($5 $2 $3) $4)" % [a, rope op, y.rdLoc, trimmer, tmp]
   else:
-    r.res = "(($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, trimmer]
+    if size == 8:
+      r.res = "BigInt.asUintN(64, ($1 $2 $3))" % [x.rdLoc, rope op, y.rdLoc]
+    else:
+      let trimmer = unsignedTrimmer(size)
+      r.res = "(($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, trimmer]
   r.kind = resExpr
 
 template ternaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
@@ -618,11 +626,45 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     if i == 0: applyFormat(frmtA) else: applyFormat(frmtB)
 
   case op
-  of mAddI: applyFormat("addInt($1, $2)", "($1 + $2)")
-  of mSubI: applyFormat("subInt($1, $2)", "($1 - $2)")
-  of mMulI: applyFormat("mulInt($1, $2)", "($1 * $2)")
-  of mDivI: applyFormat("divInt($1, $2)", "Math.trunc($1 / $2)")
-  of mModI: applyFormat("modInt($1, $2)", "Math.trunc($1 % $2)")
+  of mAddI:
+    if i == 0:
+      if n[1].typ.skipTypes(abstractVarRange).kind == tyInt64:
+        useMagic(p, "addInt64")
+        applyFormat("addInt64($1, $2)")
+      else:
+        applyFormat("addInt($1, $2)")
+    else:
+      applyFormat("($1 + $2)")
+  of mSubI:
+    if i == 0:
+      if n[1].typ.skipTypes(abstractVarRange).kind == tyInt64:
+        useMagic(p, "subInt64")
+        applyFormat("subInt64($1, $2)")
+      else:
+        applyFormat("subInt($1, $2)")
+    else:
+      applyFormat("($1 - $2)")
+  of mMulI:
+    if i == 0:
+      if n[1].typ.skipTypes(abstractVarRange).kind == tyInt64:
+        useMagic(p, "mulInt64")
+        applyFormat("mulInt64($1, $2)")
+      else:
+        applyFormat("mulInt($1, $2)")
+    else:
+      applyFormat("($1 * $2)")
+  of mDivI:
+    if n[1].typ.skipTypes(abstractVarRange).kind == tyInt64:
+      useMagic(p, "divInt64")
+      applyFormat("divInt64($1, $2)", "$1 / $2")
+    else:
+      applyFormat("divInt($1, $2)", "Math.trunc($1 / $2)")
+  of mModI:
+    if n[1].typ.skipTypes(abstractVarRange).kind == tyInt64:
+      useMagic(p, "modInt64")
+      applyFormat("modInt64($1, $2)", "$1 % $2")
+    else:
+      applyFormat("modInt($1, $2)", "Math.trunc($1 % $2)")
   of mSucc: applyFormat("addInt($1, $2)", "($1 + $2)")
   of mPred: applyFormat("subInt($1, $2)", "($1 - $2)")
   of mAddF64: applyFormat("($1 + $2)", "($1 + $2)")
@@ -631,15 +673,21 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mDivF64: applyFormat("($1 / $2)", "($1 / $2)")
   of mShrI: applyFormat("", "")
   of mShlI:
-    if n[1].typ.size <= 4:
+    case n[1].typ.skipTypes(abstractVarRange).kind
+    of tyInt64:
+      applyFormat("BigInt.asIntN(64, $1 << BigInt($2))")
+    of tyUInt64:
+      applyFormat("BigInt.asUintN(64, $1 << BigInt($2))")
+    else:
       applyFormat("($1 << $2)", "($1 << $2)")
-    else:
-      applyFormat("($1 * Math.pow(2, $2))", "($1 * Math.pow(2, $2))")
   of mAshrI:
-    if n[1].typ.size <= 4:
-      applyFormat("($1 >> $2)", "($1 >> $2)")
+    case n[1].typ.skipTypes(abstractVarRange).kind
+    of tyInt64:
+      applyFormat("BigInt.asIntN(64, $1 >> BigInt($2))")
+    of tyUInt64:
+      applyFormat("BigInt.asUintN(64, $1 >> BigInt($2))")
     else:
-      applyFormat("Math.floor($1 / Math.pow(2, $2))", "Math.floor($1 / Math.pow(2, $2))")
+      applyFormat("($1 >> $2)", "($1 >> $2)")
   of mBitandI: applyFormat("($1 & $2)", "($1 & $2)")
   of mBitorI: applyFormat("($1 | $2)", "($1 | $2)")
   of mBitxorI: applyFormat("($1 ^ $2)", "($1 ^ $2)")
@@ -697,8 +745,9 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mMulU: binaryUintExpr(p, n, r, "*")
   of mDivU:
     binaryUintExpr(p, n, r, "/")
-    if n[1].typ.skipTypes(abstractRange).size == 8:
-      r.res = "Math.trunc($1)" % [r.res]
+    # bigint / already truncates
+    #if n[1].typ.skipTypes(abstractRange).size == 8:
+    #  r.res = "Math.trunc($1)" % [r.res]
   of mDivI:
     arithAux(p, n, r, op)
   of mModI:
@@ -707,7 +756,13 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     var x, y: TCompRes
     gen(p, n[1], x)
     gen(p, n[2], y)
-    r.res = "($1 >>> $2)" % [x.rdLoc, y.rdLoc]
+    case n[1].typ.skipTypes(abstractVarRange).kind
+    of tyInt64:
+      r.res = "BigInt.asIntN(64, BigInt.asUintN(64, $1) >> BigInt($2))" % [x.rdLoc, y.rdLoc]
+    of tyUInt64:
+      r.res = "($1 >> BigInt($2))" % [x.rdLoc, y.rdLoc]
+    else:
+      r.res = "($1 >>> $2)" % [x.rdLoc, y.rdLoc]
   of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mCStrToStr, mStrToStr, mEnumToStr:
     arithAux(p, n, r, op)
   of mEqRef:
@@ -1770,9 +1825,11 @@ proc arrayTypeForElemType(typ: PType): string =
   of tyInt, tyInt32: "Int32Array"
   of tyInt16: "Int16Array"
   of tyInt8: "Int8Array"
+  of tyInt64: "BigInt64Array"
   of tyUInt, tyUInt32: "Uint32Array"
   of tyUInt16: "Uint16Array"
   of tyUInt8, tyChar, tyBool: "Uint8Array"
+  of tyUInt64: "BigUint64Array"
   of tyFloat32: "Float32Array"
   of tyFloat64, tyFloat: "Float64Array"
   of tyEnum:
@@ -1786,11 +1843,10 @@ proc arrayTypeForElemType(typ: PType): string =
 proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   var t = skipTypes(typ, abstractInst)
   case t.kind
-  of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar:
-    if $t.sym.loc.r == "bigint":
-      result = putToSeq("0n", indirect)
-    else:
-      result = putToSeq("0", indirect)
+  of tyInt..tyInt32, tyUInt..tyUInt32, tyEnum, tyChar:
+    result = putToSeq("0", indirect)
+  of tyInt64, tyUInt64:
+    result = putToSeq("0n", indirect)
   of tyFloat..tyFloat128:
     result = putToSeq("0.0", indirect)
   of tyRange, tyGenericInst, tyAlias, tySink, tyOwned, tyLent:
@@ -1979,7 +2035,8 @@ proc genNewSeq(p: PProc, n: PNode) =
 
 proc genOrd(p: PProc, n: PNode, r: var TCompRes) =
   case skipTypes(n[1].typ, abstractVar + abstractRange).kind
-  of tyEnum, tyInt..tyUInt64, tyChar: gen(p, n[1], r)
+  of tyEnum, tyInt..tyInt32, tyUInt..tyUInt32, tyChar: gen(p, n[1], r)
+  of tyInt64, tyUInt64: unaryExpr(p, n, r, "", "Number($1)")
   of tyBool: unaryExpr(p, n, r, "", "($1 ? 1 : 0)")
   else: internalError(p.config, n.info, "genOrd")
 
@@ -2202,14 +2259,30 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "($1).length - 1" % [x.rdLoc]
     r.kind = resExpr
   of mInc:
-    if n[1].typ.skipTypes(abstractRange).kind in {tyUInt..tyUInt64}:
+    let typ = n[1].typ.skipTypes(abstractVarRange)
+    case typ.kind
+    of tyUInt..tyUInt32:
       binaryUintExpr(p, n, r, "+", true)
+    of tyUInt64:
+      binaryExpr(p, n, r, "", "$1 = BigInt.asIntN(64, $3 + BigInt($2))", true)
+    of tyInt64:
+      if optOverflowCheck notin p.options:
+        binaryExpr(p, n, r, "", "$1 = BigInt.asIntN(64, $3 + BigInt($2))", true)
+      else: binaryExpr(p, n, r, "addInt64", "$1 = addInt64($3, BigInt($2))", true)
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 += $2")
       else: binaryExpr(p, n, r, "addInt", "$1 = addInt($3, $2)", true)
   of ast.mDec:
-    if n[1].typ.skipTypes(abstractRange).kind in {tyUInt..tyUInt64}:
+    let typ = n[1].typ.skipTypes(abstractVarRange)
+    case typ.kind
+    of tyUInt..tyUInt32:
       binaryUintExpr(p, n, r, "-", true)
+    of tyUInt64:
+      binaryExpr(p, n, r, "", "$1 = BigInt.asIntN(64, $3 - BigInt($2))", true)
+    of tyInt64:
+      if optOverflowCheck notin p.options:
+        binaryExpr(p, n, r, "", "$1 = BigInt.asIntN(64, $3 - BigInt($2))", true)
+      else: binaryExpr(p, n, r, "subInt64", "$1 = subInt64($3, BigInt($2))", true)
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
       else: binaryExpr(p, n, r, "subInt", "$1 = subInt($3, $2)", true)
@@ -2384,7 +2457,27 @@ proc genConv(p: PProc, n: PNode, r: var TCompRes) =
     r.res = "(!!($1))" % [r.res]
     r.kind = resExpr
   elif toInt:
-    r.res = "(($1) | 0)" % [r.res]
+    if src.kind in {tyInt64, tyUInt64}:
+      r.res = "Number($1)" % [r.res]
+    else:
+      r.res = "(($1) | 0)" % [r.res]
+  elif dest.kind == tyInt64:
+    if fromInt or fromUint or src.kind in {tyBool, tyChar, tyEnum}:
+      r.res = "BigInt($1)" % [r.res]
+    elif src.kind in {tyFloat..tyFloat64}:
+      r.res = "BigInt(Math.trunc($1))" % [r.res]
+    elif src.kind == tyUInt64:
+      r.res = "BigInt.asIntN(64, $1)" % [r.res]
+  elif dest.kind == tyUInt64:
+    if fromInt or fromUint:
+      r.res = "BigInt($1)" % [r.res]
+    elif src.kind in {tyFloat..tyFloat64}:
+      r.res = "BigInt(Math.trunc($1))" % [r.res]
+    elif src.kind == tyInt64:
+      r.res = "BigInt.asUintN(64, $1)" % [r.res]
+  elif toUint or dest.kind in tyFloat..tyFloat64:
+    if src.kind in {tyInt64, tyUInt64}:
+      r.res = "Number($1)" % [r.res]
   else:
     # TODO: What types must we handle here?
     discard
@@ -2395,7 +2488,11 @@ proc upConv(p: PProc, n: PNode, r: var TCompRes) =
 proc genRangeChck(p: PProc, n: PNode, r: var TCompRes, magic: string) =
   var a, b: TCompRes
   gen(p, n[0], r)
-  if optRangeCheck notin p.options or (skipTypes(n.typ, abstractVar).kind in {tyUInt..tyUInt64} and
+  let src = skipTypes(n[0].typ, abstractVarRange)
+  let dest = skipTypes(n.typ, abstractVarRange)
+  if src.kind in {tyInt64, tyUInt64} and dest.kind notin {tyInt64, tyUInt64}:
+    r.res = "Number($1)" % [r.res]
+  if optRangeCheck notin p.options or (dest.kind in {tyUInt..tyUInt64} and
       checkUnsignedConversions notin p.config.legacyFeatures):
     discard "XXX maybe emit masking instructions here"
   else:
@@ -2587,6 +2684,8 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
   if toUint and (fromInt or fromUint):
     let trimmer = unsignedTrimmer(dest.size)
     r.res = "($1 $2)" % [r.res, trimmer]
+  elif toUint and src.kind in {tyInt64, tyUInt64}:
+    r.res = "Number(BigInt.asUintN($1, $2))" % [$(dest.size * 8), r.res]
   elif toInt:
     if fromInt:
       return
@@ -2602,6 +2701,25 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
           of 4: "0xfffffffe"
           else: ""
         r.res = "($1 - ($2 $3))" % [rope minuend, r.res, trimmer]
+    elif src.kind in {tyInt64, tyUInt64}:
+      r.res = "Number(BigInt.asIntN($1, $2))" % [$(dest.size * 8), r.res]
+  elif dest.kind == tyInt64:
+    if fromInt or fromUint or src.kind in {tyBool, tyChar, tyEnum}:
+      r.res = "BigInt($1)" % [r.res]
+    elif src.kind in {tyFloat..tyFloat64}:
+      r.res = "BigInt(Math.trunc($1))" % [r.res]
+    elif src.kind == tyUInt64:
+      r.res = "BigInt.asIntN(64, $1)" % [r.res]
+  elif dest.kind == tyUInt64:
+    if fromInt or fromUint:
+      r.res = "BigInt($1)" % [r.res]
+    elif src.kind in {tyFloat..tyFloat64}:
+      r.res = "BigInt(Math.trunc($1))" % [r.res]
+    elif src.kind == tyInt64:
+      r.res = "BigInt.asUintN(64, $1)" % [r.res]
+  elif dest.kind in tyFloat..tyFloat64:
+    if src.kind in {tyInt64, tyUInt64}:
+      r.res = "Number($1)" % [r.res]
   elif (src.kind == tyPtr and mapType(p, src) == etyObject) and dest.kind == tyPointer:
     r.address = r.res
     r.res = "null"
@@ -2620,8 +2738,15 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkSym:
     genSym(p, n, r)
   of nkCharLit..nkUInt64Lit:
-    if n.typ.kind == tyBool:
+    case n.typ.skipTypes(abstractVarRange).kind
+    of tyBool:
       r.res = if n.intVal == 0: rope"false" else: rope"true"
+    of tyUInt64:
+      r.res = rope($cast[BiggestUInt](n.intVal))
+      r.res.add('n')
+    of tyInt64:
+      r.res = rope(n.intVal)
+      r.res.add('n')
     else:
       r.res = rope(n.intVal)
     r.kind = resExpr
