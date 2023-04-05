@@ -10,11 +10,20 @@
 ## is a cryptographic hash function which takes an input and produces
 ## a 160-bit (20-byte) hash value known as a message digest.
 ##
+## Please note that SHA-1 has been formally deprecated since 2011 and it is
+## strongly recommended to switch to stronger hash functions such as the SHA-2
+## or SHA-3 family.
+##
+## Even though SHA-1 is *formally* deprecated, this module itself is not deprecated
+## and will continue to be usable.
+##
 ## See also
 ## ========
 ## * `base64 module<base64.html>`_ for a Base64 encoder and decoder
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
 ## * `md5 module<md5.html>`_ for the MD5 checksum algorithm
+## * `sha2 module<sha2.html>`_ for the newer hash familiy SHA-2
+## * `sha3 module<sha3.html>`_ for the newest hash family SHA-3
 
 runnableExamples:
   let accessName = secureHash("John Doe")

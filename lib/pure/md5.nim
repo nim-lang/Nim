@@ -9,12 +9,17 @@
 
 ## Module for computing [MD5 checksums](https://en.wikipedia.org/wiki/MD5).
 ##
+## Be aware that using MD5 for cryptographic purposes is *strongly* discouraged as
+## it is no longer deemed secure enough even against consumer grade computational resources.
+##
 ## This module also works at compile time and in JavaScript.
 ##
 ## See also
 ## ========
 ## * `base64 module<base64.html>`_ for a Base64 encoder and decoder
 ## * `std/sha1 module <sha1.html>`_ for the SHA-1 checksum algorithm
+## * `std/sha2 module <sha2.html>`_ for the SHA-2 checksum algorithm
+## * `std/sha3 module <sha3.html>`_ for the SHA-3 checksum algorithm
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values
 ##   for diverse Nim types
 
