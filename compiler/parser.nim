@@ -1197,10 +1197,11 @@ proc parseProcExpr(p: var Parser; isExpr: bool; kind: TNodeKind): PNode =
   let pragmas = optPragmas(p)
   if p.tok.tokType == tkEquals and isExpr:
     getTok(p)
-    skipComment(p, result)
-    result = newProcNode(kind, info, body = parseStmt(p),
+    result = newProcNode(kind, info, body = p.emptyNode,
       params = params, name = p.emptyNode, pattern = p.emptyNode,
       genericParams = p.emptyNode, pragmas = pragmas, exceptions = p.emptyNode)
+    skipComment(p, result)
+    result[bodyPos] = parseStmt(p)
   else:
     result = newNodeI(if kind == nkIteratorDef: nkIteratorTy else: nkProcTy, info)
     if hasSignature:
