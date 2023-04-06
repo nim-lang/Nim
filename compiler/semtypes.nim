@@ -1311,6 +1311,16 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     if hasDefault:
       def = a[^1]
+      if a.len > 3:
+        var msg = ""
+        for j in 0 ..< a.len - 2:
+          if msg.len != 0: msg.add(", ")
+          msg.add($a[j])
+        msg.add(" all have default value '")
+        msg.add(def.renderTree)
+        msg.add("', this may be unintentional, " &
+          "either use ';' (semicolon) or explicitly write each default value")
+        message(c.config, a.info, warnImplicitDefaultValue, msg)
       block determineType:
         var defTyp = typ
         if genericParams != nil and genericParams.len > 0:
