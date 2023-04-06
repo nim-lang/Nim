@@ -79,7 +79,7 @@ from unicode import toLower, toUpper
 export toLower, toUpper
 
 include "system/inclrtl"
-import std/private/since
+import std/private/[since, jsutils]
 from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl,
     startsWithImpl, endsWithImpl
 
@@ -944,20 +944,26 @@ func toHex*[T: SomeInteger](x: T, len: Positive): string =
     doAssert b.toHex(4) == "1001"
     doAssert toHex(62, 3) == "03E"
     doAssert toHex(-8, 6) == "FFFFF8"
-  when T is SomeSignedInt:
-    toHexImpl(cast[BiggestUInt](BiggestInt(x)), len, x < 0)
-  else:
-    toHexImpl(BiggestUInt(x), len, x < 0)
+  whenJsNoBigInt64:
+    toHexImpl(cast[BiggestUInt](x), len, x < 0)
+  do:
+    when T is SomeSignedInt:
+      toHexImpl(cast[BiggestUInt](BiggestInt(x)), len, x < 0)
+    else:
+      toHexImpl(BiggestUInt(x), len, x < 0)
 
 func toHex*[T: SomeInteger](x: T): string =
   ## Shortcut for `toHex(x, T.sizeof * 2)`
   runnableExamples:
     doAssert toHex(1984'i64) == "00000000000007C0"
     doAssert toHex(1984'i16) == "07C0"
-  when T is SomeSignedInt:
-    toHexImpl(cast[BiggestUInt](BiggestInt(x)), 2*sizeof(T), x < 0)
-  else:
-    toHexImpl(BiggestUInt(x), 2*sizeof(T), x < 0)
+  whenJsNoBigInt64:
+    toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
+  do:
+    when T is SomeSignedInt:
+      toHexImpl(cast[BiggestUInt](BiggestInt(x)), 2*sizeof(T), x < 0)
+    else:
+      toHexImpl(BiggestUInt(x), 2*sizeof(T), x < 0)
 
 func toHex*(s: string): string {.rtl.} =
   ## Converts a bytes string to its hexadecimal representation.

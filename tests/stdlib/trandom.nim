@@ -1,9 +1,10 @@
 discard """
   joinable: false # to avoid messing with global rand state
-  targets: "c js"
+  matrix: "; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
 """
 import std/[assertions, formatfloat]
 import std/[random, math, stats, sets, tables]
+import std/private/jsutils
 when not defined(js):
   import std/os
 
@@ -208,8 +209,11 @@ block: # bug #16360
   when withUint:
     test cast[uint](int.high)
     test cast[uint](int.high) + 1
-    test uint64.high
-    test uint64.high - 1
+    whenJsNoBigInt64:
+      discard
+    do:
+      test uint64.high
+      test uint64.high - 1
     test uint.high - 2
     test uint.high - 1
     test uint.high

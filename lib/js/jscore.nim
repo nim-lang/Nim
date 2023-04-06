@@ -13,7 +13,7 @@
 ## specific requirements and solely targets JavaScript, you should be using
 ## the relevant functions in the `math`, `json`, and `times` stdlib
 ## modules instead.
-import std/private/since
+import std/private/[since, jsutils]
 
 when not defined(js):
   {.error: "This module only works on the JavaScript platform".}
@@ -77,8 +77,12 @@ proc newDate*(): DateTime {.
 proc newDate*(date: int|string): DateTime {.
   importcpp: "new Date(#)".}
 
-proc newDate*(date: int64): DateTime {.
-  importcpp: "new Date(Number(#))".}
+whenJsNoBigInt64:
+  proc newDate*(date: int64): DateTime {.
+    importcpp: "new Date(#)".}
+do:
+  proc newDate*(date: int64): DateTime {.
+    importcpp: "new Date(Number(#))".}
 
 proc newDate*(year, month, day, hours, minutes,
              seconds, milliseconds: int): DateTime {.

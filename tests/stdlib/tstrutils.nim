@@ -1,10 +1,11 @@
 discard """
-  targets: "c cpp js"
+  matrix: "; --backend:cpp; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
 """
 
 import std/strutils
 from stdtest/testutils import disableVm
 import std/assertions
+import std/private/jsutils
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
 
 template rejectParse(e) =
@@ -509,9 +510,12 @@ template main() =
   block: # toHex
     doAssert(toHex(100i16, 32) == "00000000000000000000000000000064")
     doAssert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
-    doAssert(toHex(high(uint64)) == "FFFFFFFFFFFFFFFF")
-    doAssert(toHex(high(uint64), 16) == "FFFFFFFFFFFFFFFF")
-    doAssert(toHex(high(uint64), 32) == "0000000000000000FFFFFFFFFFFFFFFF")
+    whenJsNoBigInt64:
+      discard
+    do:
+      doAssert(toHex(high(uint64)) == "FFFFFFFFFFFFFFFF")
+      doAssert(toHex(high(uint64), 16) == "FFFFFFFFFFFFFFFF")
+      doAssert(toHex(high(uint64), 32) == "0000000000000000FFFFFFFFFFFFFFFF")
 
   block: # insertSep
     doAssert(insertSep($1000_000) == "1_000_000")
@@ -529,7 +533,9 @@ template main() =
     doAssert(spaces(0) == "")
 
   block: # toBin, toOct
-    block:# bug #11369
+    whenJsNoBigInt64: # bug #11369
+      discard
+    do:
       var num: int64 = -1
       doAssert num.toBin(64) == "1111111111111111111111111111111111111111111111111111111111111111"
       doAssert num.toOct(24) == "001777777777777777777777"
@@ -739,7 +745,10 @@ bar
 
   block: # formatSize
     disableVm:
-      doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB" # <=== bug #8231
+      whenJsNoBigInt64:
+        discard
+      do:
+        doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB" # <=== bug #8231
       doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
       doAssert formatSize(4096) == "4KiB"
       doAssert formatSize(4096, prefix = bpColloquial, includeSpace = true) == "4 kB"

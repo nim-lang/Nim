@@ -82,3 +82,15 @@ when defined(js):
       when false:
         assert 9007199254740991.toJs.isSafeInteger
         assert not 9007199254740992.toJs.isSafeInteger
+
+template whenJsNoBigInt64*(no64, yes64): untyped =
+  when defined(js):
+    when compiles(compileOption("jsbigint64")):
+      when compileOption("jsbigint64"):
+        yes64
+      else:
+        no64
+    else:
+      no64
+  else:
+    no64

@@ -6,7 +6,7 @@ when not defined(js):
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-type JsBigIntImpl = int64 # int64 codegens as bigint
+type JsBigIntImpl {.importjs: "bigint".} = int # https://github.com/nim-lang/Nim/pull/16606
 type JsBigInt* = distinct JsBigIntImpl         ## Arbitrary precision integer for JavaScript target.
 
 func big*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".} =

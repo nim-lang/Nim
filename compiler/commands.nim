@@ -336,6 +336,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "excessivestacktrace": result = contains(conf.globalOptions, optExcessiveStackTrace)
   of "nilseqs", "nilchecks", "taintmode": warningOptionNoop(switch)
   of "panics": result = contains(conf.globalOptions, optPanics)
+  of "jsbigint64": result = contains(conf.globalOptions, optJsBigInt64)
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
@@ -1101,6 +1102,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optPanics}, arg, pass, info)
     if optPanics in conf.globalOptions:
       defineSymbol(conf.symbols, "nimPanics")
+  of "jsbigint64":
+    processOnOffSwitchG(conf, {optJsBigInt64}, arg, pass, info)
   of "sourcemap": # xxx document in --fullhelp
     conf.globalOptions.incl optSourcemap
     conf.options.incl optLineDir

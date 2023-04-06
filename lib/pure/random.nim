@@ -72,7 +72,7 @@ runnableExamples:
 ##   in the standard library
 
 import algorithm, math
-import std/private/since
+import std/private/[since, jsutils]
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions]
@@ -340,7 +340,10 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   when T is SomeFloat:
     result = rand(r, x.b - x.a) + x.a
   else: # Integers and Enum types
-    result = cast[T](rand(r, cast[uint64](x.b) - cast[uint64](x.a)) + cast[uint64](x.a))
+    whenJsNoBigInt64:
+      result = cast[T](rand(r, cast[uint](x.b) - cast[uint](x.a)) + cast[uint](x.a))
+    do:
+      result = cast[T](rand(r, cast[uint64](x.b) - cast[uint64](x.a)) + cast[uint64](x.a))
 
 proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b`.
@@ -378,9 +381,15 @@ proc rand*[T: Ordinal](r: var Rand; t: typedesc[T]): T {.since: (1, 7, 1).} =
   when T is range or T is enum:
     result = rand(r, low(T)..high(T))
   elif T is bool:
-    result = cast[int64](r.next) < 0
+    whenJsNoBigInt64:
+      result = (r.next or 0) < 0
+    do:
+      result = cast[int64](r.next) < 0
   else:
-    result = cast[T](r.next shr (sizeof(uint64)*8 - sizeof(T)*8))
+    whenJsNoBigInt64:
+      result = cast[T](r.next shr (sizeof(uint)*8 - sizeof(T)*8))
+    do:
+      result = cast[T](r.next shr (sizeof(uint64)*8 - sizeof(T)*8))
 
 proc rand*[T: Ordinal](t: typedesc[T]): T =
   ## Returns a random Ordinal in the range `low(T)..high(T)`.

@@ -175,3 +175,5 @@ Advanced options:
   --sinkInference:on|off    turn sink parameter inference on|off (default: off)
   --panics:on|off           turn panics into process terminations (default: off)
   --deepcopy:on|off         enable 'system.deepCopy' for ``--mm:arc|orc``
+  --jsbigint64:on|off       toggle the use of [BigInt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt)
+                            for 64-bit integers on the JavaScript backend (default: on)

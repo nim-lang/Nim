@@ -109,6 +109,7 @@ type                          # please make sure we have under 32 options
     optProfileVM              # enable VM profiler
     optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.
     optShowNonExportedFields  # for documentation: show fields that are not exported
+    optJsBigInt64             # use bigints for 64-bit integers in JS
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -479,7 +480,8 @@ const
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
     optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
     optTrMacros, optStyleCheck, optCursorInference}
-  DefaultGlobalOptions* = {optThreadAnalysis, optExcessiveStackTrace}
+  DefaultGlobalOptions* = {optThreadAnalysis, optExcessiveStackTrace,
+    optJsBigInt64}
 
 proc getSrcTimestamp(): DateTime =
   try:
