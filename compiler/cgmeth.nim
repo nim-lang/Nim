@@ -11,7 +11,7 @@
 
 import
   intsets, options, ast, msgs, idents, renderer, types, magicsys,
-  sempass2, modulegraphs, lineinfos, liftdestructors
+  sempass2, modulegraphs, lineinfos
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -213,7 +213,7 @@ proc sortBucket(a: var seq[PSym], relevantCols: IntSet) =
       a[j] = v
     if h == 1: break
 
-proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; idgen: IdGenerator): PSym =
+proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PSym =
   var base = methods[0].ast[dispatcherPos].sym
   result = base
   var paramLen = base.typ.len
@@ -254,10 +254,6 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; idg
                            curr.typ[col], false, g.config)
     var ret: PNode
     if retTyp != nil:
-      createTypeBoundOps(g, nil, retTyp, base.info, idgen)
-      if tfHasAsgn in result.typ.flags or optSeqDestructors in g.config.globalOptions:
-        base.flags.incl sfInjectDestructors
-
       var a = newNodeI(nkFastAsgn, base.info)
       a.add newSymNode(base.ast[resultPos].sym)
       a.add call
@@ -276,7 +272,7 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; idg
   nilchecks.flags.incl nfTransf # should not be further transformed
   result.ast[bodyPos] = nilchecks
 
-proc generateMethodDispatchers*(g: ModuleGraph, idgen: IdGenerator): PNode =
+proc generateMethodDispatchers*(g: ModuleGraph): PNode =
   result = newNode(nkStmtList)
   for bucket in 0..<g.methods.len:
     var relevantCols = initIntSet()
@@ -286,4 +282,4 @@ proc generateMethodDispatchers*(g: ModuleGraph, idgen: IdGenerator): PNode =
         # if multi-methods are not enabled, we are interested only in the first field
         break
     sortBucket(g.methods[bucket].methods, relevantCols)
-    result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols, idgen))
+    result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))

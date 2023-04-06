@@ -600,6 +600,7 @@ block: # bug #19857
 
 import std/options
 
+# bug #21592
 type Event* = object
   code*: string
 
@@ -608,3 +609,8 @@ type App* = ref object of RootObj
 
 method process*(self: App): Option[Event] {.base.} =
   raise Exception.new_exception("not impl")
+
+# bug #21617
+type Test2 = ref object of RootObj
+
+method bug(t: Test2): seq[float] {.base.} = discard
