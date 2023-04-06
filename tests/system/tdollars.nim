@@ -67,8 +67,7 @@ block: # `$`(SomeInteger)
   testType int
   testType bool
 
-  whenJsNoBigInt64:
-    discard
+  whenJsNoBigInt64: discard
   do:
     testType uint64
     testType int64
@@ -179,8 +178,7 @@ proc main()=
       res.addInt int64(i)
     doAssert res == "-9-8-7-6-5-4-3-2-10"
 
-    whenJsNoBigInt64:
-      discard
+    whenJsNoBigInt64: discard
     do:
       test2 high(int64), "9223372036854775807"
       test2 low(int64), "-9223372036854775808"

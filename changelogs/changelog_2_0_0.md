@@ -175,6 +175,16 @@
 
 - - Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
 
+- The JavaScript backend now uses [BigInt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt)
+  for 64-bit integer types (`int64` and `uint64`) by default. As this affects
+  JS code generation, code using these types to interface with the JS backend
+  may need to be updated. Note that `int` and `uint` are not affected.
+  
+  For compatibility with [platforms that do not support BigInt](https://caniuse.com/bigint)
+  and in the case of potential bugs with the new implementation, the
+  old behavior is currently still supported with the command line option
+  `--jsbigint64:off`.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"

@@ -61,8 +61,7 @@ template main =
     doAssert -2147483648'i32 == int32.low
     when int.sizeof > 4:
       doAssert -9223372036854775808 == int.low
-    whenJsNoBigInt64:
-      discard
+    whenJsNoBigInt64: discard
     do:
       doAssert -9223372036854775808 == int64.low
 

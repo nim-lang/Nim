@@ -209,8 +209,7 @@ block: # bug #16360
   when withUint:
     test cast[uint](int.high)
     test cast[uint](int.high) + 1
-    whenJsNoBigInt64:
-      discard
+    whenJsNoBigInt64: discard
     do:
       test uint64.high
       test uint64.high - 1
