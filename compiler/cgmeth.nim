@@ -11,7 +11,7 @@
 
 import
   intsets, options, ast, msgs, idents, renderer, types, magicsys,
-  sempass2, modulegraphs, lineinfos, liftdestructors
+  sempass2, modulegraphs, lineinfos
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -254,10 +254,6 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; idg
                            curr.typ[col], false, g.config)
     var ret: PNode
     if retTyp != nil:
-      createTypeBoundOps(g, nil, retTyp, base.info, idgen)
-      if tfHasAsgn in result.typ.flags or optSeqDestructors in g.config.globalOptions:
-        base.flags.incl sfInjectDestructors
-
       var a = newNodeI(nkFastAsgn, base.info)
       a.add newSymNode(base.ast[resultPos].sym)
       a.add call
