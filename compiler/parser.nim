@@ -1197,10 +1197,11 @@ proc parseProcExpr(p: var Parser; isExpr: bool; kind: TNodeKind): PNode =
   let pragmas = optPragmas(p)
   if p.tok.tokType == tkEquals and isExpr:
     getTok(p)
-    skipComment(p, result)
-    result = newProcNode(kind, info, body = parseStmt(p),
+    result = newProcNode(kind, info, body = p.emptyNode,
       params = params, name = p.emptyNode, pattern = p.emptyNode,
       genericParams = p.emptyNode, pragmas = pragmas, exceptions = p.emptyNode)
+    skipComment(p, result)
+    result[bodyPos] = parseStmt(p)
   else:
     result = newNodeI(if kind == nkIteratorDef: nkIteratorTy else: nkProcTy, info)
     if hasSignature:
@@ -2277,13 +2278,19 @@ proc parseTypeDef(p: var Parser): PNode =
   setEndInfo()
 
 proc parseVarTuple(p: var Parser): PNode =
-  #| varTuple = '(' optInd identWithPragma ^+ comma optPar ')' '=' optInd expr
+  #| varTupleLhs = '(' optInd (identWithPragma / varTupleLhs) ^+ comma optPar ')'
+  #| varTuple = varTupleLhs '=' optInd expr
   result = newNodeP(nkVarTuple, p)
   getTok(p)                   # skip '('
   optInd(p, result)
   # progress guaranteed
-  while p.tok.tokType in {tkSymbol, tkAccent}:
-    var a = identWithPragma(p, allowDot=true)
+  while p.tok.tokType in {tkSymbol, tkAccent, tkParLe}:
+    var a: PNode
+    if p.tok.tokType == tkParLe:
+      a = parseVarTuple(p)
+      a.add(p.emptyNode)
+    else:
+      a = identWithPragma(p, allowDot=true)
     result.add(a)
     if p.tok.tokType != tkComma: break
     getTok(p)

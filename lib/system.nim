@@ -1108,6 +1108,11 @@ when defined(nimscript) or not defined(nimSeqsV2):
     ## containers should also call their adding proc `add` for consistency.
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
+    ##   ```
+    ##   var s: seq[string] = @["test2","test2"]
+    ##   s.add("test")
+    ##   assert s == @["test2", "test2", "test"]
+    ##   ```
 
 when false: # defined(gcDestructors):
   proc add*[T](x: var seq[T], y: sink openArray[T]) {.noSideEffect.} =
@@ -1142,13 +1147,17 @@ else:
     ## containers should also call their adding proc `add` for consistency.
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
-    ##   ```
-    ##   var s: seq[string] = @["test2","test2"]
-    ##   s.add("test") # s <- @[test2, test2, test]
-    ##   ```
     ##
     ## See also:
     ## * `& proc <#&,seq[T],seq[T]>`_
+    runnableExamples:
+      var a = @["a1", "a2"]
+      a.add(["b1", "b2"])
+      assert a == @["a1", "a2", "b1", "b2"]
+      var c = @["c0", "c1", "c2", "c3"]
+      a.add(c.toOpenArray(1, 2))
+      assert a == @["a1", "a2", "b1", "b2", "c1", "c2"]
+
     {.noSideEffect.}:
       let xl = x.len
       setLen(x, xl + y.len)

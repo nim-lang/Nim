@@ -1311,6 +1311,16 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     if hasDefault:
       def = a[^1]
+      if a.len > 3:
+        var msg = ""
+        for j in 0 ..< a.len - 2:
+          if msg.len != 0: msg.add(", ")
+          msg.add($a[j])
+        msg.add(" all have default value '")
+        msg.add(def.renderTree)
+        msg.add("', this may be unintentional, " &
+          "either use ';' (semicolon) or explicitly write each default value")
+        message(c.config, a.info, warnImplicitDefaultValue, msg)
       block determineType:
         var defTyp = typ
         if genericParams != nil and genericParams.len > 0:
@@ -1359,6 +1369,10 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     for j in 0..<a.len-2:
       var arg = newSymG(skParam, if a[j].kind == nkPragmaExpr: a[j][0] else: a[j], c)
+      if arg.name.s == "_":
+        arg.flags.incl(sfGenSym)
+      elif containsOrIncl(check, arg.name.id):
+        localError(c.config, a[j].info, "attempt to redefine: '" & arg.name.s & "'")
       if a[j].kind == nkPragmaExpr:
         pragma(c, arg, a[j][1], paramPragmas)
       if not hasType and not hasDefault and kind notin {skTemplate, skMacro}:
@@ -1367,8 +1381,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         else:
           localError(c.config, a.info, "parameter '$1' requires a type" % arg.name.s)
           typ = errorType(c)
+      var nameForLift = arg.name.s
+      if sfGenSym in arg.flags:
+        nameForLift.add("`gensym" & $arg.id)
       let lifted = liftParamType(c, kind, genericParams, typ,
-                                 arg.name.s, arg.info)
+                                 nameForLift, arg.info)
       let finalType = if lifted != nil: lifted else: typ.skipIntLit(c.idgen)
       arg.typ = finalType
       arg.position = counter
@@ -1376,10 +1393,6 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       inc(counter)
       if def != nil and def.kind != nkEmpty:
         arg.ast = copyTree(def)
-      if arg.name.s == "_":
-        arg.flags.incl(sfGenSym)
-      elif containsOrIncl(check, arg.name.id):
-        localError(c.config, a[j].info, "attempt to redefine: '" & arg.name.s & "'")
       result.n.add newSymNode(arg)
       rawAddSon(result, finalType)
       addParamOrResult(c, arg, kind)
