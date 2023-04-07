@@ -199,7 +199,7 @@ type
   Salt* = object
     ## A random 128 bit salt used to provide security against rainbow table attacks
     ## that also includes the bcrypt version and cost factor.
-    costFactor: CostFactor
+    costFactor*: CostFactor
     saltBytes: SaltBytes
     subversion: char
 
