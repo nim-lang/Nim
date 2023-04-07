@@ -31,7 +31,7 @@
 ## be taken to provide `digest` with a correctly sized `dest` array.
 ##
 import std/private/sha_utils
-import std/[algorithm, bitops]
+import std/[algorithm, bitops, assertions]
 
 export sha_utils.`$`
 

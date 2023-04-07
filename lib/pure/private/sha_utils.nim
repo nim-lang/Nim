@@ -5,6 +5,8 @@ import std/strutils # toHex
 ## down to ~3 helper functions.
 
 when defined(js):
+  import std/assertions
+
   type
     # JS target does not do well with 64 bits as integers are always represented
     # as doubles, so we only have 52 bits of perfect accuracy. That's why we represent
