@@ -213,7 +213,7 @@ proc sortBucket(a: var seq[PSym], relevantCols: IntSet) =
       a[j] = v
     if h == 1: break
 
-proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PSym =
+proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; idgen: IdGenerator): PSym =
   var base = methods[0].ast[dispatcherPos].sym
   result = base
   var paramLen = base.typ.len
@@ -272,7 +272,7 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PS
   nilchecks.flags.incl nfTransf # should not be further transformed
   result.ast[bodyPos] = nilchecks
 
-proc generateMethodDispatchers*(g: ModuleGraph): PNode =
+proc generateMethodDispatchers*(g: ModuleGraph, idgen: IdGenerator): PNode =
   result = newNode(nkStmtList)
   for bucket in 0..<g.methods.len:
     var relevantCols = initIntSet()
@@ -282,4 +282,4 @@ proc generateMethodDispatchers*(g: ModuleGraph): PNode =
         # if multi-methods are not enabled, we are interested only in the first field
         break
     sortBucket(g.methods[bucket].methods, relevantCols)
-    result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))
+    result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols, idgen))
