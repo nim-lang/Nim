@@ -1,5 +1,11 @@
-import std/[sysrand, strutils]
-
+#
+#
+#              Nim's Runtime Library
+#        (c) Copyright 2015 Nim Contributors
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
 # Main bcrypt and blowfish implementation based on OpenBSD bcrypt.c and blowfish.c.
 
 ## [bcrypt](https://en.wikipedia.org/wiki/Bcrypt) is a [Blowfish](https://en.wikipedia.org/wiki/Blowfish_(cipher))-based
@@ -26,6 +32,9 @@ runnableExamples:
   let knownGood = "$2b$06$LzUyyYdKBoEy9V4NTvxDH.O11KQP30/Zyp5pQAQ.0Cy89WnkD5Jjy"
 
   assert verify("correct horse battery staple", knownGood)
+
+
+import std/[sysrand, strutils]
 
 const
   cryptBlocksInit = [
