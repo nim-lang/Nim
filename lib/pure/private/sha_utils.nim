@@ -1,5 +1,9 @@
 import std/strutils # toHex
 
+## This modules is basically one big workaround for the fact that JavaScript has no
+## reliable uint64 support (see below). On native backends, this entire module boils
+## down to ~3 helper functions.
+
 when defined(js):
   type
     # JS target does not do well with 64 bits as integers are always represented
