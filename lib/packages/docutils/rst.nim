@@ -2288,7 +2288,7 @@ proc whichSection(p: RstParser): RstNodeKind =
       result = rnEnumList
     elif isOptionList(p):
       result = rnOptionList
-    elif isRst(p) and isDefList(p):
+    elif isDefList(p):
       result = rnDefList
     elif isMd(p) and isMdDefListItem(p, p.idx):
       result = rnMdDefList
@@ -2300,7 +2300,7 @@ proc whichSection(p: RstParser): RstNodeKind =
       if isAdornmentHeadline(p, tokIdx): result = rnHeadline
       else: result = rnParagraph
     elif match(p, p.idx, "e) ") or match(p, p.idx, "e. "): result = rnEnumList
-    elif isRst(p) and isDefList(p): result = rnDefList
+    elif isDefList(p): result = rnDefList
     elif isMd(p) and isMdDefListItem(p, p.idx):
       result = rnMdDefList
     else: result = rnParagraph
