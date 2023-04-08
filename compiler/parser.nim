@@ -1193,7 +1193,7 @@ proc parseProcExpr(p: var Parser; isExpr: bool; kind: TNodeKind): PNode =
   # either a proc type or a anonymous proc
   let info = parLineInfo(p)
   let hasSignature = p.tok.tokType in {tkParLe, tkColon} and p.tok.indent < 0
-  let params = if hasSignature: parseParamList(p) else: p.emptyNode
+  let params = parseParamList(p)
   let pragmas = optPragmas(p)
   if p.tok.tokType == tkEquals and isExpr:
     getTok(p)
@@ -1205,7 +1205,10 @@ proc parseProcExpr(p: var Parser; isExpr: bool; kind: TNodeKind): PNode =
   else:
     result = newNodeI(if kind == nkIteratorDef: nkIteratorTy else: nkProcTy, info)
     if hasSignature or pragmas.kind != nkEmpty:
-      result.add(params)
+      if hasSignature:
+        result.add(params)
+      else: # pragmas but no param list, implies typeclass with pragmas
+        result.add(p.emptyNode)
       if kind == nkFuncDef:
         parMessage(p, "func keyword is not allowed in type descriptions, use proc with {.noSideEffect.} pragma instead")
       result.add(pragmas)
