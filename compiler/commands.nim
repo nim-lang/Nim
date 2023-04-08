@@ -1065,29 +1065,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "expandarc":
     expectArg(conf, switch, arg, pass, info)
     conf.arcToExpand[arg] = "T"
-  of "useversion":
-    expectArg(conf, switch, arg, pass, info)
-    case arg
-    of "1.0":
-      defineSymbol(conf.symbols, "NimMajor", "1")
-      defineSymbol(conf.symbols, "NimMinor", "0")
-      # old behaviors go here:
-      defineSymbol(conf.symbols, "nimOldRelativePathBehavior")
-      undefSymbol(conf.symbols, "nimDoesntTrackDefects")
-      ast.eqTypeFlags.excl {tfGcSafe, tfNoSideEffect}
-      conf.globalOptions.incl optNimV1Emulation
-    of "1.2":
-      defineSymbol(conf.symbols, "NimMajor", "1")
-      defineSymbol(conf.symbols, "NimMinor", "2")
-      conf.globalOptions.incl optNimV12Emulation
-    of "1.6":
-      defineSymbol(conf.symbols, "NimMajor", "1")
-      defineSymbol(conf.symbols, "NimMinor", "6")
-      conf.globalOptions.incl optNimV16Emulation
-    else:
-      localError(conf, info, "unknown Nim version; currently supported values are: `1.0`, `1.2`")
-    # always be compatible with 1.x.100:
-    defineSymbol(conf.symbols, "NimPatch", "100")
   of "benchmarkvm":
     processOnOffSwitchG(conf, {optBenchmarkVM}, arg, pass, info)
   of "profilevm":
