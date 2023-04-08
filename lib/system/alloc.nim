@@ -268,6 +268,20 @@ proc getMaxMem(a: var MemRegion): int =
   # maximum of these both values here:
   result = max(a.currMem, a.maxMem)
 
+const nimMaxHeap {.intdefine.} = 0
+
+proc allocPages(a: var MemRegion, size: int): pointer =
+  when nimMaxHeap != 0:
+    if a.occ + size > nimMaxHeap * 1024 * 1024:
+      raiseOutOfMem()
+  osAllocPages(size)
+
+proc tryAllocPages(a: var MemRegion, size: int): pointer =
+  when nimMaxHeap != 0:
+    if a.occ + size > nimMaxHeap * 1024 * 1024:
+      raiseOutOfMem()
+  osTryAllocPages(size)
+
 proc llAlloc(a: var MemRegion, size: int): pointer =
   # *low-level* alloc for the memory managers data structures. Deallocation
   # is done at the end of the allocator's life time.
@@ -277,7 +291,7 @@ proc llAlloc(a: var MemRegion, size: int): pointer =
     # is one page:
     sysAssert roundup(size+sizeof(LLChunk), PageSize) == PageSize, "roundup 6"
     var old = a.llmem # can be nil and is correct with nil
-    a.llmem = cast[PLLChunk](osAllocPages(PageSize))
+    a.llmem = cast[PLLChunk](allocPages(a, PageSize))
     when defined(nimAvlcorruption):
       trackLocation(a.llmem, PageSize)
     incCurrMem(a, PageSize)
@@ -453,15 +467,10 @@ when false:
                 it, it.next, it.prev, it.size)
       it = it.next
 
-const nimMaxHeap {.intdefine.} = 0
-
 proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   when not defined(emscripten):
     if not a.blockChunkSizeIncrease:
       let usedMem = a.occ #a.currMem # - a.freeMem
-      when nimMaxHeap != 0:
-        if usedMem > nimMaxHeap * 1024 * 1024:
-          raiseOutOfMem()
       if usedMem < 64 * 1024:
         a.nextChunkSize = PageSize*4
       else:
@@ -470,11 +479,11 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
 
   var size = size
   if size > a.nextChunkSize:
-    result = cast[PBigChunk](osAllocPages(size))
+    result = cast[PBigChunk](allocPages(a, size))
   else:
-    result = cast[PBigChunk](osTryAllocPages(a.nextChunkSize))
+    result = cast[PBigChunk](tryAllocPages(a, a.nextChunkSize))
     if result == nil:
-      result = cast[PBigChunk](osAllocPages(size))
+      result = cast[PBigChunk](allocPages(a, size))
       a.blockChunkSizeIncrease = true
     else:
       size = a.nextChunkSize
@@ -654,7 +663,7 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
     releaseSys a.lock
 
 proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
-  result = cast[PBigChunk](osAllocPages(size))
+  result = cast[PBigChunk](allocPages(a, size))
   when RegionHasLock:
     if not a.lockActive:
       a.lockActive = true
@@ -811,9 +820,9 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
   sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
   var size = roundup(requestedSize, MemAlign)
   sysAssert(size >= sizeof(FreeCell), "rawAlloc: requested size too small")
-
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
+
   if size <= SmallChunkSize-smallChunkOverhead():
     # allocate a small block: for small chunks, we use only its next pointer
     let s = size div MemAlign

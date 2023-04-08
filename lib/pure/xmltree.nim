@@ -190,7 +190,7 @@ proc text*(n: XmlNode): lent string {.inline.} =
     assert $c == "<!-- my comment -->"
     assert c.text == "my comment"
 
-  n.expect {xnText, xnComment, xnCData, xnEntity}
+  n.expect {xnText, xnVerbatimText, xnComment, xnCData, xnEntity}
   result = n.fText
 
 proc `text=`*(n: XmlNode, text: sink string) {.inline.} =
@@ -208,7 +208,7 @@ proc `text=`*(n: XmlNode, text: sink string) {.inline.} =
     e.text = "a new entity text"
     assert $e == "&a new entity text;"
 
-  n.expect {xnText, xnComment, xnCData, xnEntity}
+  n.expect {xnText, xnVerbatimText, xnComment, xnCData, xnEntity}
   n.fText = text
 
 proc tag*(n: XmlNode): lent string {.inline.} =
@@ -735,7 +735,7 @@ proc addImpl(result: var string, n: XmlNode, indent = 0, indWidth = 2,
           addNewLines = true, lastNodeIsText = false) =
   proc noWhitespace(n: XmlNode): bool =
     for i in 0 ..< n.len:
-      if n[i].kind in {xnText, xnEntity}: return true
+      if n[i].kind in {xnText, xnVerbatimText, xnEntity}: return true
 
   proc addEscapedAttr(result: var string, s: string) =
     # `addEscaped` alternative with less escaped characters.
@@ -784,7 +784,7 @@ proc addImpl(result: var string, n: XmlNode, indent = 0, indWidth = 2,
     var lastNodeIsText = false
     for i in 0 ..< n.len:
       result.addImpl(n[i], indentNext, indWidth, addNewLines, lastNodeIsText)
-      lastNodeIsText = n[i].kind == xnText
+      lastNodeIsText = (n[i].kind == xnText) or (n[i].kind == xnVerbatimText)
 
     if not n.noWhitespace():
       result.addIndent(indent, addNewLines)

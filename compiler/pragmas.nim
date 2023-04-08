@@ -270,7 +270,7 @@ proc onOff(c: PContext, n: PNode, op: TOptions, resOptions: var TOptions) =
   if isTurnedOn(c, n): resOptions.incl op
   else: resOptions.excl op
 
-proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
+proc pragmaNoForward*(c: PContext, n: PNode; flag=sfNoForward) =
   if isTurnedOn(c, n):
     incl(c.module.flags, flag)
     c.features.incl codeReordering

@@ -1829,7 +1829,7 @@ proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currP
     let field = newNodeI(nkExprColonExpr, result.info)
     field.add(obj)
     let value = getNullValue(obj.sym.typ, result.info, conf)
-    value.flags.incl nfUseDefaultField
+    value.flags.incl nfSkipFieldChecking
     field.add(value)
     result.add field
     doAssert obj.sym.position == currPosition
@@ -1909,7 +1909,8 @@ proc genVarSection(c: PCtx; n: PNode) =
           c.genAdditionalCopy(a[2], opcWrDeref, tmp, 0, val)
           c.freeTemp(val)
           c.freeTemp(tmp)
-        elif not importcCondVar(s) and not (s.typ.kind == tyProc and s.typ.callConv == ccClosure): # fixes #10938
+        elif not importcCondVar(s) and not (s.typ.kind == tyProc and s.typ.callConv == ccClosure) and
+                sfPure notin s.flags: # fixes #10938
           # there is a pre-existing issue with closure types in VM
           # if `(var s: proc () = default(proc ()); doAssert s == nil)` works for you;
           # you might remove the second condition.

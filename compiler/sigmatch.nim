@@ -1295,7 +1295,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyNil: result = isNone
     else: discard
   of tyOrdinal:
-    if isOrdinalType(a, allowEnumWithHoles = optNimV1Emulation in c.c.config.globalOptions):
+    if isOrdinalType(a):
       var x = if a.kind == tyOrdinal: a[0] else: a
       if f[0].kind == tyNone:
         result = isGeneric
@@ -1979,8 +1979,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       if srca == isSubtype:
         param = implicitConv(nkHiddenSubConv, src, copyTree(arg), m, c)
       elif src.kind in {tyVar}:
-        # Analyse the converter return type
-        arg.sym.flags.incl sfAddrTaken
+        # Analyse the converter return type.
         param = newNodeIT(nkHiddenAddr, arg.info, s.typ[1])
         param.add copyTree(arg)
       else:
