@@ -64,9 +64,8 @@ proc renderType(n: PNode, toNormalize: bool): string =
       result = "ptr"
   of nkProcTy:
     assert n.len != 1
-    if n.len > 1:
+    if n.len > 1 and n[0].kind == nkFormalParams:
       let params = n[0]
-      assert params.kind == nkFormalParams
       assert params.len > 0
       result = "proc("
       for i in 1..<params.len: result.add(renderType(params[i], toNormalize) & ',')

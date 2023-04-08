@@ -1639,15 +1639,19 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyBuiltInTypeClass:
     considerPreviousT:
-      let targetKind = f[0].kind
+      let target = f[0]
+      let targetKind = target.kind
       let effectiveArgType = a.skipTypes({tyRange, tyGenericInst,
                                           tyBuiltInTypeClass, tyAlias, tySink, tyOwned})
       if targetKind == effectiveArgType.kind:
         if effectiveArgType.isEmptyContainer:
           return isNone
-        if targetKind == tyProc and
-            f[0].flags * {tfIterator} != effectiveArgType.flags * {tfIterator}:
-          return isNone
+        if targetKind == tyProc:
+          if target.flags * {tfIterator} != effectiveArgType.flags * {tfIterator}:
+            return isNone
+          if tfExplicitCallConv in target.flags and
+              target.callConv != effectiveArgType.callConv:
+            return isNone
         put(c, f, a)
         return isGeneric
       else:

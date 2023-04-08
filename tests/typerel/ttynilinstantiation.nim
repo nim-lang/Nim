@@ -4,4 +4,4 @@ proc foo[T: proc](x: T) =
   # invalid type: 'typeof(nil)' for let
 
 foo(nil) #[tt.Error
-   ^ type mismatch: got typeof(nil)]#
+   ^ type mismatch: got <typeof(nil)>]#
