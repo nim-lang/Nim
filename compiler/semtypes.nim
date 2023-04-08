@@ -130,8 +130,8 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     e.typ = result
     e.position = int(counter)
     let symNode = newSymNode(e)
-    if optNimV1Emulation notin c.config.globalOptions and identToReplace != nil and
-        c.config.cmd notin cmdDocLike: # A hack to produce documentation for enum fields.
+    if identToReplace != nil and c.config.cmd notin cmdDocLike:
+      # A hack to produce documentation for enum fields.
       identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:
@@ -1398,8 +1398,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       addParamOrResult(c, arg, kind)
       styleCheckDef(c, a[j].info, arg)
       onDef(a[j].info, arg)
-      if {optNimV1Emulation, optNimV12Emulation} * c.config.globalOptions == {}:
-        a[j] = newSymNode(arg)
+      a[j] = newSymNode(arg)
 
   var r: PType
   if n[0].kind != nkEmpty:
@@ -1761,7 +1760,7 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
   if n[1].kind != nkEmpty and n[1].len > 0:
     pragma(c, s, n[1], procTypePragmas)
     when useEffectSystem: setEffectsForProcType(c.graph, result, n[1])
-  elif c.optionStack.len > 0 and optNimV1Emulation notin c.config.globalOptions:
+  elif c.optionStack.len > 0:
     # we construct a fake 'nkProcDef' for the 'mergePragmas' inside 'implicitPragmas'...
     s.ast = newTree(nkProcDef, newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info),
         newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info))

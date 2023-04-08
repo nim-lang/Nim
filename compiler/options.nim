@@ -102,9 +102,6 @@ type                          # please make sure we have under 32 options
     optBenchmarkVM            # Enables cpuTime() in the VM
     optProduceAsm             # produce assembler code
     optPanics                 # turn panics (sysFatal) into a process termination
-    optNimV1Emulation         # emulate Nim v1.0
-    optNimV12Emulation        # emulate Nim v1.2
-    optNimV16Emulation        # emulate Nim v1.6
     optSourcemap
     optProfileVM              # enable VM profiler
     optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.
