@@ -175,6 +175,40 @@
 
 - - Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
 
+- The `proc` and `iterator` type classes now respectively only match
+  procs and iterators. Previously both type classes matched any of
+  procs or iterators.
+
+  ```nim
+  proc prc(): int =
+    123
+
+  iterator iter(): int =
+    yield 123
+  
+  proc takesProc[T: proc](x: T) = discard
+  proc takesIter[T: iterator](x: T) = discard
+
+  # always compiled:
+  takesProc(prc)
+  takesIter(iter)
+  # no longer compiles:
+  takesProc(iter)
+  takesIter(prc)
+  ```
+
+- The `proc` and `iterator` type classes now accept a calling convention pragma
+  (i.e. `proc {.closure.}`) that must be shared by matching proc or iterator
+  types. Previously pragmas were parsed but discarded if no parameter list
+  was given.
+
+  This is represented in the AST by an `nnkProcTy`/`nnkIteratorTy` node with
+  an `nnkEmpty` node in the place of the `nnkFormalParams` node, and the pragma
+  node in the same place as in a concrete `proc` or `iterator` type node. This
+  state of the AST may be unexpected to existing code, both due to the
+  replacement of the `nnkFormalParams` node as well as having child nodes
+  unlike other type class AST.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
