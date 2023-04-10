@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
     name: 'i386'
     runs-on: ubuntu-latest
-    container: i386/ubuntu:18.04
+    container: i386/ubuntu:latest
     timeout-minutes: 90 # refs bug #18178
     steps:
       - name: 'Install node'
