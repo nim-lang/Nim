@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 2
 
       - name: 'Install node.js 16.x'
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v1
         with:
           node-version: '16.x'
 
