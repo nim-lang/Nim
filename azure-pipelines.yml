@@ -52,9 +52,7 @@ jobs:
   pool:
     vmImage: $(vmImage)
 
-  container:
-    image: i386/ubuntu:18.04
-    entrypoint: i386
+  container: ubuntu:18.04
 
   workspace:
     clean: all
