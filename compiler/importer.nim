@@ -325,14 +325,19 @@ proc evalImport*(c: PContext, n: PNode): PNode =
     let it = n[i]
     if it.kind in {nkInfix, nkPrefix} and it[^1].kind == nkBracket:
       let lastPos = it.len - 1
-      var imp = copyTree(it)
+      var imp = copyNode(it)
+      newSons(imp, it.len)
+      for i in 0 ..< lastPos: imp[i] = it[i]
       imp[lastPos] = imp[0] # dummy entry, replaced in the loop
       for x in it[lastPos]:
         # transform `a/b/[c as d]` to `/a/b/c as d`
         if x.kind == nkInfix and x[0].ident.s == "as":
-          let impAs = copyTree(x)
+          var impAs = copyNode(x)
+          newSons(impAs, 3)
+          impAs[0] = x[0]
           imp[lastPos] = x[1]
           impAs[1] = imp
+          impAs[2] = x[2]
           impMod(c, impAs, result)
         else:
           imp[lastPos] = x
