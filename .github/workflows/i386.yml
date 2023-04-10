@@ -21,6 +21,23 @@ jobs:
     container: i386/ubuntu:18.04
     timeout-minutes: 90 # refs bug #18178
     steps:
+      - name: 'Install node'
+        shell: bash
+        run: |
+          dpkg --add-architecture i386
+          apt-fast update -qq
+          apt-fast install --no-install-recommends --allow-downgrades -yq nodejs
+
+      - name: 'Checkout'
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - name: 'Install node.js 16.x'
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+
       - name: 'Install dependencies (i386 Linux)'
         shell: bash
         run: |
@@ -43,8 +60,7 @@ jobs:
           DEBIAN_FRONTEND='noninteractive' \
             echo_run apt-fast install --no-install-recommends --allow-downgrades -yq \
               g++-multilib gcc-multilib libcurl4-openssl-dev:i386 libgc-dev:i386 \
-              libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386 libffi-dev:i386 \
-              nodejs
+              libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386 libffi-dev:i386
 
           cat << EOF > bin/gcc
           #!/bin/bash
@@ -60,17 +76,6 @@ jobs:
 
           echo_run chmod 755 bin/gcc
           echo_run chmod 755 bin/g++
-
-      - name: 'Checkout'
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 2
-
-      - name: 'Install node.js 16.x'
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16.x'
-
 
       - name: 'Add build binaries to PATH'
         shell: bash
