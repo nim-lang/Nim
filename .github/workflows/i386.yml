@@ -33,10 +33,10 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: 'Install node.js 16.x'
-        uses: actions/setup-node@v1
-        with:
-          node-version: '16.x'
+      # - name: 'Install node.js 16.x'
+      #   uses: actions/setup-node@v1
+      #   with:
+      #     node-version: '16.x'
 
       - name: 'Install dependencies (i386 Linux)'
         shell: bash
