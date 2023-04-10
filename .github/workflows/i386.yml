@@ -53,12 +53,12 @@ jobs:
           Pin-Priority: 1001
           EOF
 
-          # echo_run apt-fast update -qq
-          echo_run apt-fast update -qq || echo "failed, see bug #17343"
+          # echo_run apt-get update -qq
+          echo_run apt-get update -qq || echo "failed, see bug #17343"
           # `:i386` (e.g. in `libffi-dev:i386`) is needed otherwise you may get:
           # `could not load: libffi.so` during dynamic loading.
           DEBIAN_FRONTEND='noninteractive' \
-            echo_run apt-fast install --no-install-recommends --allow-downgrades -yq \
+            echo_run apt-get install --no-install-recommends --allow-downgrades -yq \
               g++-multilib gcc-multilib libcurl4-openssl-dev:i386 libgc-dev:i386 \
               libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386 libffi-dev:i386
 
