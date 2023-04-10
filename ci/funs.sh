@@ -96,7 +96,7 @@ nimCiSystemInfo(){
   echo_run pwd
   echo_run date
   echo_run uname -a
-  echo_run git log --no-merges -1 --pretty=oneline
+  # echo_run git log --no-merges -1 --pretty=oneline
   echo_run eval echo '$'PATH
   echo_run gcc -v
   echo_run node -v

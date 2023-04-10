@@ -81,9 +81,9 @@ jobs:
         shell: bash
         run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
-      # - name: 'System information'
-      #   shell: bash
-      #   run: . ci/funs.sh && nimCiSystemInfo
+      - name: 'System information'
+        shell: bash
+        run: . ci/funs.sh && nimCiSystemInfo
 
       - name: 'Build csourcesAny'
         shell: bash
