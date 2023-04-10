@@ -25,8 +25,8 @@ jobs:
         shell: bash
         run: |
           dpkg --add-architecture i386
-          apt-fast update -qq
-          apt-fast install --no-install-recommends --allow-downgrades -yq nodejs
+          apt-get update -qq
+          apt-get install --no-install-recommends --allow-downgrades -yq nodejs
 
       - name: 'Checkout'
         uses: actions/checkout@v3
