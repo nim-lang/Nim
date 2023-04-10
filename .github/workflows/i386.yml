@@ -1,0 +1,87 @@
+name: Packages CI
+on:
+  pull_request:
+  push:
+    branches:
+      - 'devel'
+      - 'version-2-0'
+      - 'version-1-6'
+      - 'version-1-2'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+    name: 'i386'
+    runs-on: ubuntu-latest
+    container: i386/ubuntu:18.04
+    timeout-minutes: 90 # refs bug #18178
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - name: 'Install node.js 16.x'
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+
+      - name: 'Install dependencies (i386 Linux)'
+        shell: bash
+        run: |
+          set -e
+          . ci/funs.sh
+          echo_run sudo dpkg --add-architecture i386
+          # Downgrade llvm:
+          # - llvm has to be downgraded to have 32bit version installed for sfml.
+
+          cat << EOF | sudo tee /etc/apt/preferences.d/pin-to-rel
+          Package: libllvm6.0
+          Pin: origin "azure.archive.ubuntu.com"
+          Pin-Priority: 1001
+          EOF
+
+          # echo_run sudo apt-fast update -qq
+          echo_run sudo apt-fast update -qq || echo "failed, see bug #17343"
+          # `:i386` (e.g. in `libffi-dev:i386`) is needed otherwise you may get:
+          # `could not load: libffi.so` during dynamic loading.
+          DEBIAN_FRONTEND='noninteractive' \
+            echo_run sudo apt-fast install --no-install-recommends --allow-downgrades -yq \
+              g++-multilib gcc-multilib libcurl4-openssl-dev:i386 libgc-dev:i386 \
+              libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386 libffi-dev:i386
+
+          cat << EOF > bin/gcc
+          #!/bin/bash
+
+          exec $(which gcc) -m32 "\$@"
+          EOF
+
+          cat << EOF > bin/g++
+          #!/bin/bash
+
+          exec $(which g++) -m32 "\$@"
+          EOF
+
+          echo_run chmod 755 bin/gcc
+          echo_run chmod 755 bin/g++
+
+      - name: 'Add build binaries to PATH'
+        shell: bash
+        run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
+
+      - name: 'System information'
+        shell: bash
+        run: . ci/funs.sh && nimCiSystemInfo
+
+      - name: 'Build csourcesAny'
+        shell: bash
+        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
+
+      - name: 'koch, Run CI'
+        shell: bash
+        run: . ci/funs.sh && nimInternalBuildKochAndRunCI
