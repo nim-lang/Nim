@@ -26,7 +26,7 @@ jobs:
         run: |
           dpkg --add-architecture i386
           apt-get update -qq
-          apt-get install --no-install-recommends --allow-downgrades -yq nodejs curl git
+          apt-get install --no-install-recommends --allow-downgrades -yq nodejs ca-certificates curl git
 
       - name: 'Checkout'
         uses: actions/checkout@v1
