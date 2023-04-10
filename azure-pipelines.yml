@@ -27,7 +27,6 @@ jobs:
         # on 'ubuntu-16.04' (not supported anymore anyways) it errored with:
         # g++-multilib : Depends: gcc-multilib (>= 4:5.3.1-1ubuntu1) but it is not going to be installed
         vmImage: 'ubuntu-latest'
-        container: i386/ubuntu:18.04
         CPU: i386
       # OSX_amd64:
       #   vmImage: 'macOS-11'
@@ -52,6 +51,8 @@ jobs:
 
   pool:
     vmImage: $(vmImage)
+
+  container: i386/ubuntu:18.04
 
   workspace:
     clean: all
