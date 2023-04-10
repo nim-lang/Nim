@@ -21,15 +21,21 @@ jobs:
     container: i386/ubuntu:18.04
     timeout-minutes: 90 # refs bug #18178
     steps:
-      - name: 'Install node.js 16.x'
-        uses: actions/setup-node@v1
-        # with:
-        #   node-version: '16.x'
-
+      - name: 'System nodejs'
+        shell: bash
+        run: |
+               curl -sL https://deb.nodesource.com/setup_12.x
+               sudo -E bash -
+               sudo apt-get install -y nodejs
       - name: 'Checkout'
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
         with:
           fetch-depth: 2
+
+      - name: 'Install node.js 16.x'
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
 
       - name: 'Install dependencies (i386 Linux)'
         shell: bash
