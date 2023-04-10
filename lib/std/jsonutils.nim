@@ -78,11 +78,11 @@ macro getDiscriminants(a: typedesc): seq[string] =
   let sym = a[1]
   let t = sym.getTypeImpl
   let t2 = t[2]
-  if t2.kind == nnkEmpty: # allow empty objects
+  case t2.kind
+  of nnkEmpty: # allow empty objects
     result = quote do:
         seq[string].default
-  else:
-    doAssert t2.kind == nnkRecList
+  of nnkRecList:
     result = newTree(nnkBracket)
     for ti in t2:
       if ti.kind == nnkRecCase:
@@ -94,6 +94,8 @@ macro getDiscriminants(a: typedesc): seq[string] =
     else:
       result = quote do:
         seq[string].default
+  else:
+    doAssert false, "unexpected kind: " & $t2.kind
 
 macro initCaseObject(T: typedesc, fun: untyped): untyped =
   ## does the minimum to construct a valid case object, only initializing
