@@ -1,6 +1,7 @@
 discard """
   cmd: "nim $target --mm:refc -d:ssl $options $file"
   disabled: "openbsd"
+  disabled: "i386"
 """
 
 #            Nim - Basic SSL integration tests

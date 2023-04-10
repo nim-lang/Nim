@@ -1,6 +1,7 @@
 discard """
 action: compile
 disabled: "windows"
+disabled: "i386"
 """
 
 import sfml, os

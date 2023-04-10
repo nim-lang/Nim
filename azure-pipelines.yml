@@ -26,7 +26,7 @@ jobs:
       Linux_i386:
         # on 'ubuntu-16.04' (not supported anymore anyways) it errored with:
         # g++-multilib : Depends: gcc-multilib (>= 4:5.3.1-1ubuntu1) but it is not going to be installed
-        vmImage: 'ubuntu-latest'
+        vmImage: 'ubuntu-22.04'
         CPU: i386
       # OSX_amd64:
       #   vmImage: 'macOS-11'
@@ -51,10 +51,6 @@ jobs:
 
   pool:
     vmImage: $(vmImage)
-
-  container:
-    image: ubuntu:18.04
-    endpoint: i386
 
   workspace:
     clean: all
@@ -111,7 +107,7 @@ jobs:
         DEBIAN_FRONTEND='noninteractive' \
           echo_run sudo apt-fast install --no-install-recommends --allow-downgrades -yq \
             g++-multilib gcc-multilib libcurl4-openssl-dev:i386 libgc-dev:i386 \
-            libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386 libffi-dev:i386
+            libsdl1.2-dev:i386 libglib2.0-dev:i386 libffi-dev:i386
 
         cat << EOF > bin/gcc
         #!/bin/bash

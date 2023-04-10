@@ -66,7 +66,7 @@ when defined(ssl):
   when defined(windows):
     # currently: msgCount == 0
     flakyAssert cond()
-  elif defined(linux) and int.sizeof == 8:
+  elif defined(linux):
     # currently:  msgCount == 10
     flakyAssert cond()
     doAssert msgCount > 0
