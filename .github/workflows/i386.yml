@@ -23,10 +23,7 @@ jobs:
     steps:
       - name: 'System nodejs'
         shell: bash
-        run: |
-               curl -sL https://deb.nodesource.com/setup_12.x
-               sudo -E bash -
-               sudo apt-get install -y nodejs
+        run: sudo apt-get install -y nodejs
       - name: 'Checkout'
         uses: actions/checkout@v3
         with:
