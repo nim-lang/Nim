@@ -128,7 +128,6 @@ jobs:
         echo_run chmod 755 bin/g++
 
       displayName: 'Install dependencies (i386 Linux)'
-      condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'i386'))
 
     - bash: brew install boehmgc make sfml
       displayName: 'Install dependencies (OSX)'
