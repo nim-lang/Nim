@@ -78,19 +78,22 @@ macro getDiscriminants(a: typedesc): seq[string] =
   let sym = a[1]
   let t = sym.getTypeImpl
   let t2 = t[2]
-  doAssert t2.kind == nnkRecList
-  result = newTree(nnkBracket)
-  for ti in t2:
-    if ti.kind == nnkRecCase:
-      let key = ti[0][0]
-      let typ = ti[0][1]
-      result.add newLit key.strVal
-  if result.len > 0:
+  if t2.kind == nnkEmpty: # allow empty objects
     result = quote do:
-      @`result`
+        seq[string].default
   else:
-    result = quote do:
-      seq[string].default
+    doAssert t2.kind == nnkRecList
+    result = newTree(nnkBracket)
+    for ti in t2:
+      if ti.kind == nnkRecCase:
+        let key = ti[0][0]
+        result.add newLit key.strVal
+    if result.len > 0:
+      result = quote do:
+        @`result`
+    else:
+      result = quote do:
+        seq[string].default
 
 macro initCaseObject(T: typedesc, fun: untyped): untyped =
   ## does the minimum to construct a valid case object, only initializing
