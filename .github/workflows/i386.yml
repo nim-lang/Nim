@@ -23,7 +23,8 @@ jobs:
     steps:
       - name: 'System nodejs'
         shell: bash
-        run: sudo apt-get install -y nodejs
+        run: apt-get install -y nodejs
+
       - name: 'Checkout'
         uses: actions/checkout@v3
         with:
