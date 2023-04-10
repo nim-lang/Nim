@@ -54,7 +54,7 @@ jobs:
 
   container:
     image: ubuntu:18.04
-    entrypoint: i386
+    endpoint: i386
 
   workspace:
     clean: all
