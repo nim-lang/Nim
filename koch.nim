@@ -565,7 +565,7 @@ proc runCI(cmd: string) =
     execFold("Run tester", "nim c -r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all -d:nimCoroutines" % batchParam)
 
     block: # nimHasLibFFI:
-      when defined(posix): # windows can be handled in future PR's
+      when defined(posix) and not defined(i386): # windows can be handled in future PR's
         execFold("nimble install -y libffi", "nimble install -y libffi")
         const nimFFI = "bin/nim.ctffi"
         # no need to bootstrap with koch boot (would be slower)
