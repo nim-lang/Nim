@@ -469,6 +469,7 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
       res = t.kind == tyProc and
             t.callConv == ccClosure
     of "iterator":
+      # holdover from when `is iterator` didn't work
       let t = skipTypes(t1, abstractRange)
       res = t.kind == tyProc and
             t.callConv == ccClosure and
