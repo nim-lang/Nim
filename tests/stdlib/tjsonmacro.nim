@@ -436,11 +436,7 @@ proc testJson() =
   block:
     let s = """{"a": 1, "b": 2}"""
     let t = parseJson(s).to(Table[string, int])
-    when not defined(js):
-      # For some reason on the JS backend `{"b": 2, "a": 0}` is
-      # sometimes the value of `t`. This needs investigation. I can't
-      # reproduce it right now in an isolated test.
-      doAssert t["a"] == 1
+    doAssert t["a"] == 1
     doAssert t["b"] == 2
 
   block:
