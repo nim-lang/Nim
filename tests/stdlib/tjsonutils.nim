@@ -409,6 +409,11 @@ template fn() =
       doAssert foo.c == 0
       doAssert foo.c0 == 42
 
+    block: # bug #21638
+      type Something = object
+
+      doAssert "{}".parseJson.jsonTo(Something) == Something()
+
     when false:
       ## TODO: Implement support for nested variant objects allowing the tests
       ## bellow to pass.
