@@ -689,6 +689,32 @@ suite "RST parsing":
                 rnLeaf  'desc2'
       """)
 
+  test "definition lists work correctly with additional indentation in Markdown":
+    check(dedent"""
+        Paragraph:
+          -c  desc1
+          -b  desc2
+        """.toAst() ==
+      dedent"""
+        rnInner
+          rnInner
+            rnLeaf  'Paragraph'
+            rnLeaf  ':'
+          rnOptionList
+            rnOptionListItem  order=1
+              rnOptionGroup
+                rnLeaf  '-'
+                rnLeaf  'c'
+              rnDescription
+                rnLeaf  'desc1'
+            rnOptionListItem  order=2
+              rnOptionGroup
+                rnLeaf  '-'
+                rnLeaf  'b'
+              rnDescription
+                rnLeaf  'desc2'
+      """)
+
   test "RST comment":
     check(dedent"""
         .. comment1
