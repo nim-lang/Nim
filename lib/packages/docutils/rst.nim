@@ -2447,7 +2447,9 @@ proc parseParagraph(p: var RstParser, result: PRstNode) =
           result.addIfNotNil(parseLineBlock(p))
         of rnMarkdownBlockQuote:
           result.addIfNotNil(parseMarkdownBlockQuote(p))
-        else: break
+        else:
+          dec p.idx  # allow subsequent block to be parsed as another section
+          break
       else:
         break
     of tkPunct:

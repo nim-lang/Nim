@@ -438,6 +438,11 @@ template fn() =
       let json = inner.toJson(ToJsonOptions(enumMode: joptEnumSymbol))
       doAssert $json == """{"x":"hello","y":"A"}"""
 
+    block: # bug #21638
+      type Something = object
+
+      doAssert "{}".parseJson.jsonTo(Something) == Something()
+
     when false:
       ## TODO: Implement support for nested variant objects allowing the tests
       ## bellow to pass.
