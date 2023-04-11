@@ -3816,15 +3816,6 @@ every time the function is called.
   proc foo(a: int, b: int = 47): int
   ```
 
-Just as the comma propagates the types from right to left until the
-first parameter or until a semicolon is hit, it also propagates the
-default value starting from the parameter declared with it.
-
-  ```nim
-  # Both a and b are optional with 47 as their default values.
-  proc foo(a, b: int = 47): int
-  ```
-
 Parameters can be declared mutable and so allow the proc to modify those
 arguments, by using the type modifier `var`.
 
@@ -5476,9 +5467,9 @@ type class           matches
 ==================   ===================================================
 `object`             any object type
 `tuple`              any tuple type
-
 `enum`               any enumeration
 `proc`               any proc type
+`iterator`           any iterator type
 `ref`                any `ref` type
 `ptr`                any `ptr` type
 `var`                any `var` type
@@ -5536,6 +5527,17 @@ as `type constraints`:idx: of the generic type parameter:
   onlyIntOrString(450, 616) # valid
   onlyIntOrString(5.0, 0.0) # type mismatch
   onlyIntOrString("xy", 50) # invalid as 'T' cannot be both at the same time
+  ```
+
+`proc` and `iterator` type classes also accept a calling convention pragma
+to restrict the calling convention of the matching `proc` or `iterator` type.
+
+  ```nim
+  proc onlyClosure[T: proc {.closure.}](x: T) = discard
+
+  onlyClosure(proc() = echo "hello") # valid
+  proc foo() {.nimcall.} = discard
+  onlyClosure(foo) # type mismatch
   ```
 
 

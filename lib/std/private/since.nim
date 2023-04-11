@@ -1,5 +1,5 @@
 ##[
-`since` is used to emulate older versions of nim stdlib with `--useVersion`,
+`since` is used to emulate older versions of nim stdlib,
 see `tuse_version.nim`.
 
 If a symbol `foo` is added in version `(1,3,5)`, use `{.since: (1.3.5).}`, not
