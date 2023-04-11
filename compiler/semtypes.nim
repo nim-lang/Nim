@@ -2054,25 +2054,27 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkOutTy: result = semVarOutType(c, n, prev, {tfIsOutParam})
   of nkDistinctTy: result = semDistinct(c, n, prev)
   of nkStaticTy: result = semStaticType(c, n[0], prev)
-  of nkIteratorTy:
-    if n.len == 0:
+  of nkProcTy, nkIteratorTy:
+    if n.len == 0 or n[0].kind == nkEmpty:
+      # 0 length or empty param list with possible pragmas imply typeclass
       result = newTypeS(tyBuiltInTypeClass, c)
       let child = newTypeS(tyProc, c)
-      child.flags.incl tfIterator
+      var symKind: TSymKind
+      if n.kind == nkIteratorTy:
+        child.flags.incl tfIterator
+      if n.len > 0 and n[1].kind != nkEmpty and n[1].len > 0:
+        # typeclass with pragma
+        let symKind = if n.kind == nkIteratorTy: skIterator else: skProc
+        # dummy symbol for `pragma`:
+        var s = newSymS(symKind, newIdentNode(getIdent(c.cache, "dummy"), n.info), c)
+        s.typ = child
+        # for now only call convention pragmas supported in proc typeclass
+        pragma(c, s, n[1], {FirstCallConv..LastCallConv})
       result.addSonSkipIntLit(child, c.idgen)
     else:
-      result = semProcTypeWithScope(c, n, prev, skIterator)
-      if result.kind == tyProc:
-        result.flags.incl(tfIterator)
-        if n.lastSon.kind == nkPragma and hasPragma(n.lastSon, wInline):
-          result.callConv = ccInline
-        else:
-          result.callConv = ccClosure
-  of nkProcTy:
-    if n.len == 0:
-      result = newConstraint(c, tyProc)
-    else:
       result = semProcTypeWithScope(c, n, prev, skProc)
+      if n.kind == nkIteratorTy and result.kind == tyProc:
+        result.flags.incl(tfIterator)
   of nkEnumTy: result = semEnum(c, n, prev)
   of nkType: result = n.typ
   of nkStmtListType: result = semStmtListType(c, n, prev)

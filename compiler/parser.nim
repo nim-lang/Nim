@@ -1204,8 +1204,11 @@ proc parseProcExpr(p: var Parser; isExpr: bool; kind: TNodeKind): PNode =
     result[bodyPos] = parseStmt(p)
   else:
     result = newNodeI(if kind == nkIteratorDef: nkIteratorTy else: nkProcTy, info)
-    if hasSignature:
-      result.add(params)
+    if hasSignature or pragmas.kind != nkEmpty:
+      if hasSignature:
+        result.add(params)
+      else: # pragmas but no param list, implies typeclass with pragmas
+        result.add(p.emptyNode)
       if kind == nkFuncDef:
         parMessage(p, "func keyword is not allowed in type descriptions, use proc with {.noSideEffect.} pragma instead")
       result.add(pragmas)
