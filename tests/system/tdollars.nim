@@ -1,5 +1,5 @@
 discard """
-  targets: "c cpp js"
+  matrix: "; --backend:cpp; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
 """
 
 #[
@@ -12,6 +12,7 @@ duplication (which always results in weaker test coverage in practice).
 ]#
 
 import std/unittest
+import std/private/jsutils
 template test[T](a: T, expected: string) =
   check $a == expected
   var b = a
@@ -66,7 +67,8 @@ block: # `$`(SomeInteger)
   testType int
   testType bool
 
-  when not defined(js): # requires BigInt support
+  whenJsNoBigInt64: discard
+  do:
     testType uint64
     testType int64
     testType BiggestInt
@@ -176,10 +178,10 @@ proc main()=
       res.addInt int64(i)
     doAssert res == "-9-8-7-6-5-4-3-2-10"
 
-    when not defined(js):
+    whenJsNoBigInt64: discard
+    do:
       test2 high(int64), "9223372036854775807"
       test2 low(int64), "-9223372036854775808"
-
     test2 high(int32), "2147483647"
     test2 low(int32), "-2147483648"
     test2 high(int16), "32767"
