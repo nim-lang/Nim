@@ -735,7 +735,7 @@ proc main() =
         progressStatus(i)
         processCategory(r, Category(cati), p.cmdLineRest, testsDir, runJoinableTests = false)
     else:
-      addExitProc azure.finalize
+      # addExitProc azure.finalize
       quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams}, beforeRunEvent = progressStatus)
   of "c", "cat", "category":
     skips = loadSkipFrom(skipFrom)
