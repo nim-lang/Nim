@@ -716,7 +716,10 @@ proc main() =
         cats.add cat
     if isNimRepoTests():
       cats.add AdditionalCategories
-    if useMegatest: cats.add MegaTestCat
+      if useMegatest and not defined(i386):
+        cats.add MegaTestCat
+    elif useMegatest:
+      cats.add MegaTestCat
 
     var cmds: seq[string]
     for cat in cats:
