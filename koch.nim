@@ -562,10 +562,13 @@ proc runCI(cmd: string) =
     # main bottleneck here
     # xxx: even though this is the main bottleneck, we could speedup the rest via batching with `--batch`.
     # BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch, pending bug #14343
-    execFold("Run tester", "nim c -r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all -d:nimCoroutines" % batchParam)
-
+    when defined(i386):
+      execFold("Run tester", "nim c -r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all --megatest:off -d:nimCoroutines" % batchParam)
+    else:
+      execFold("Run tester", "nim c -r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all -d:nimCoroutines" % batchParam)
+    echo "tester done"
     block: # nimHasLibFFI:
-      when defined(posix) and not defined(i386): # windows can be handled in future PR's
+      when defined(posix): # windows can be handled in future PR's
         execFold("nimble install -y libffi", "nimble install -y libffi")
         const nimFFI = "bin/nim.ctffi"
         # no need to bootstrap with koch boot (would be slower)
