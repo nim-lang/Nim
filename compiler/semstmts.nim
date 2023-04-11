@@ -1061,7 +1061,8 @@ proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
   n[^2] = semExprNoDeref(c, n[^2], {efWantIterator})
   var call = n[^2]
-  if call.kind == nkStmtListExpr and isTrivalStmtExpr(call):
+
+  if call.kind == nkStmtListExpr and (isTrivalStmtExpr(call) or (call.lastSon.kind in nkCallKinds and call.lastSon[0].sym.kind == skIterator)):
     call = call.lastSon
     n[^2] = call
   let isCallExpr = call.kind in nkCallKinds
@@ -2302,7 +2303,6 @@ proc semMethod(c: PContext, n: PNode): PNode =
 
 proc semConverterDef(c: PContext, n: PNode): PNode =
   if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "converter")
-  checkSonsLen(n, bodyPos + 1, c.config)
   result = semProcAux(c, n, skConverter, converterPragmas)
   # macros can transform converters to nothing:
   if namePos >= result.safeLen: return result
@@ -2317,7 +2317,6 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
   addConverterDef(c, LazySym(sym: s))
 
 proc semMacroDef(c: PContext, n: PNode): PNode =
-  checkSonsLen(n, bodyPos + 1, c.config)
   result = semProcAux(c, n, skMacro, macroPragmas)
   # macros can transform macros to nothing:
   if namePos >= result.safeLen: return result

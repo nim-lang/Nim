@@ -1099,7 +1099,7 @@ proc genProcBody(p: BProc; procBody: PNode) =
 proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
   sfNoReturn in s.flags and m.config.exc != excGoto
 
-proc genProcAux(m: BModule, prc: PSym) =
+proc genProcAux*(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = newRopeAppender()
   genProcHeader(m, prc, header)
@@ -2107,7 +2107,7 @@ proc updateCachedModule(m: BModule) =
   cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)
 
-proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
+proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode): PNode =
   ## Also called from IC.
   if sfMainModule in m.module.flags:
     # phase ordering problem here: We need to announce this
@@ -2153,8 +2153,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
 
       if m.g.forwardedProcs.len == 0:
         incl m.flags, objHasKidsValid
-      let disp = generateMethodDispatchers(graph, m.idgen)
-      for x in disp: genProcAux(m, x.sym)
+      result = generateMethodDispatchers(graph, m.idgen)
 
   let mm = m
   m.g.modulesClosed.add mm
