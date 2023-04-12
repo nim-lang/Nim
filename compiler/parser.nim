@@ -1717,9 +1717,9 @@ proc parseIfOrWhen(p: var Parser, kind: TNodeKind): PNode =
   setEndInfo()
 
 proc parseIfOrWhenExpr(p: var Parser, kind: TNodeKind): PNode =
-  #| condExpr = expr colcom expr optInd
-  #|         ('elif' expr colcom expr optInd)*
-  #|          'else' colcom expr
+  #| condExpr = expr colcom stmt optInd
+  #|         ('elif' expr colcom stmt optInd)*
+  #|          'else' colcom stmt
   #| ifExpr = 'if' condExpr
   #| whenExpr = 'when' condExpr
   result = newNodeP(kind, p)
@@ -1729,7 +1729,7 @@ proc parseIfOrWhenExpr(p: var Parser, kind: TNodeKind): PNode =
     optInd(p, branch)
     branch.add(parseExpr(p))
     colcom(p, branch)
-    branch.add(parseExpr(p))
+    branch.add(parseStmt(p))
     skipComment(p, branch)
     result.add(branch)
     if p.tok.tokType != tkElif: break
@@ -1737,7 +1737,7 @@ proc parseIfOrWhenExpr(p: var Parser, kind: TNodeKind): PNode =
     var branch = newNodeP(nkElseExpr, p)
     eat(p, tkElse)
     colcom(p, branch)
-    branch.add(parseExpr(p))
+    branch.add(parseStmt(p))
     result.add(branch)
   setEndInfo()
 

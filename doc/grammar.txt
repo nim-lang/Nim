@@ -135,9 +135,9 @@ condStmt = expr colcom stmt COMMENT?
            (IND{=} 'else' colcom stmt)?
 ifStmt = 'if' condStmt
 whenStmt = 'when' condStmt
-condExpr = expr colcom expr optInd
-        ('elif' expr colcom expr optInd)*
-         'else' colcom expr
+condExpr = expr colcom stmt optInd
+        ('elif' expr colcom stmt optInd)*
+         'else' colcom stmt
 ifExpr = 'if' condExpr
 whenExpr = 'when' condExpr
 whileStmt = 'while' expr colcom stmt
