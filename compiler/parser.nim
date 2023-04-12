@@ -362,7 +362,8 @@ template setEndInfo() =
 
 proc parseSymbol(p: var Parser, mode = smNormal): PNode =
   #| symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
-  #|        | IDENT | KEYW
+  #|        | IDENT | 'addr' | 'type' | 'static'
+  #| symbolOrKeyword = symbol | KEYW
   case p.tok.tokType
   of tkSymbol:
     result = newIdentNodeP(p.tok.ident, p)
@@ -539,7 +540,7 @@ proc dotLikeExpr(p: var Parser, a: PNode): PNode =
   result.add(parseSymbol(p, smAfterDot))
 
 proc qualifiedIdent(p: var Parser): PNode =
-  #| qualifiedIdent = symbol ('.' optInd symbol)?
+  #| qualifiedIdent = symbol ('.' optInd symbolOrKeyword)?
   result = parseSymbol(p)
   if p.tok.tokType == tkDot: result = dotExpr(p, result)
 
@@ -869,8 +870,8 @@ proc isDotLike(tok: Token): bool =
 proc primarySuffix(p: var Parser, r: PNode,
                    baseIndent: int, mode: PrimaryMode): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')'
-  #|       | '.' optInd symbol ('[:' exprList ']' ( '(' exprColonEqExpr ')' )?)? generalizedLit?
-  #|       | DOTLIKEOP optInd symbol generalizedLit?
+  #|       | '.' optInd symbolOrKeyword ('[:' exprList ']' ( '(' exprColonEqExpr ')' )?)? generalizedLit?
+  #|       | DOTLIKEOP optInd symbolOrKeyword generalizedLit?
   #|       | '[' optInd exprColonEqExprList optPar ']'
   #|       | '{' optInd exprColonEqExprList optPar '}'
   # XXX strong spaces need to be reflected above
@@ -1005,7 +1006,7 @@ proc parsePragma(p: var Parser): PNode =
 
 proc identVis(p: var Parser; allowDot=false): PNode =
   #| identVis = symbol OPR?  # postfix position
-  #| identVisDot = symbol '.' optInd symbol OPR?
+  #| identVisDot = symbol '.' optInd symbolOrKeyword OPR?
   var a = parseSymbol(p)
   if p.tok.tokType == tkOpr:
     when defined(nimpretty):
