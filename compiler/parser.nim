@@ -321,7 +321,7 @@ proc checkBinary(p: Parser) {.inline.} =
 #| operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
 #|          | 'or' | 'xor' | 'and'
 #|          | 'is' | 'isnot' | 'in' | 'notin' | 'of' | 'as' | 'from'
-#|          | 'div' | 'mod' | 'shl' | 'shr' | 'not' | 'static' | '..'
+#|          | 'div' | 'mod' | 'shl' | 'shr' | 'not' | '..'
 #|
 #| prefixOperator = operator
 #|
@@ -1729,7 +1729,7 @@ proc parseIfOrWhenExpr(p: var Parser, kind: TNodeKind): PNode =
     optInd(p, branch)
     branch.add(parseExpr(p))
     colcom(p, branch)
-    branch.add(parseStmt(p))
+    branch.add(parseExpr(p))
     skipComment(p, branch)
     result.add(branch)
     if p.tok.tokType != tkElif: break
@@ -1737,7 +1737,7 @@ proc parseIfOrWhenExpr(p: var Parser, kind: TNodeKind): PNode =
     var branch = newNodeP(nkElseExpr, p)
     eat(p, tkElse)
     colcom(p, branch)
-    branch.add(parseStmt(p))
+    branch.add(parseExpr(p))
     result.add(branch)
   setEndInfo()
 
