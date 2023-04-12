@@ -61,12 +61,12 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
     var ms = getModule(s)
     result = m.g.modules[ms.position]
 
-proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) =
+proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}) =
   result.k = k
   result.storage = s
   result.lode = lode
   result.r = ""
-  result.flags = {}
+  result.flags = flags
 
 proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc) {.inline.} =
   # fills the loc if it is not already initialized
@@ -698,8 +698,8 @@ proc genLiteral(p: BProc, n: PNode; result: var Rope)
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Rope; argsCounter: var int)
 proc raiseExit(p: BProc)
 
-proc initLocExpr(p: BProc, e: PNode, result: var TLoc) =
-  initLoc(result, locNone, e, OnUnknown)
+proc initLocExpr(p: BProc, e: PNode, result: var TLoc, flags: TLocFlags = {}) =
+  initLoc(result, locNone, e, OnUnknown, flags)
   expr(p, e, result)
 
 proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
