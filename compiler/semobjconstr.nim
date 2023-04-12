@@ -412,15 +412,113 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
   else:
     assert false, "Must not enter here."
 
+type
+  ObjConstrError = enum
+    none
+    discriminatorError = "The discriminator can only be initialized with unnamed fields known at the compile time"
+    mixingError = "When mixing named fields and unnamed fields, every field needs to be initialized in order"
+    lackingError = "The object construction is given more fields than required"
+
+proc filterObjConstr(c: PContext; field: PNode, n: PNode, iterField: var int, flags: TExprFlags, write: bool): ObjConstrError =
+  result = none
+  if iterField >= n.len:
+    return mixingError
+  case field.kind
+  of nkRecCase:
+    # handle defaults if the ast of the field is known
+    var discriminatorVal =
+      case n[iterField].kind
+      of nkExprColonExpr:
+        semExprFlagDispatched(c, n[iterField][1], flags + {efPreferStatic})
+      else:
+        semExprFlagDispatched(c, n[iterField], flags + {efPreferStatic})
+
+    let ret = filterObjConstr(c, field[0], n, iterField, flags, write)
+    if ret != none:
+      return ret
+
+    if discriminatorVal == nil or discriminatorVal.kind != nkIntLit:
+      return discriminatorError
+
+    let matchedBranch = field.pickCaseBranch discriminatorVal
+    if matchedBranch != nil:
+      result = filterObjConstr(c, matchedBranch.lastSon, n, iterField, flags, write)
+    else:
+      result = none
+
+  of nkSym:
+    if n[iterField].kind == nkExprColonExpr and field.sym.name.id == considerQuotedIdent(c, n[iterField][0]).id:
+      inc iterField
+    elif not fieldVisible(c, field.sym):
+      discard
+    elif n[iterField].kind != nkExprColonExpr:
+      if write:
+        n[iterField] = newTree(nkExprColonExpr, field, n[iterField])
+      inc iterField
+    else:
+      result = mixingError
+  of nkRecList:
+    for f in field:
+      let ret = filterObjConstr(c, f, n, iterField, flags, write)
+      if ret != none:
+        result = ret
+        break
+  else:
+    assert false
+
+proc expandObjConstr(c: PContext, n: PNode, t: PType, flags: TExprFlags): PNode =
+  result = n
+  var hasValue = false
+  for i in 1..<n.len:
+    if n[i].kind != nkExprColonExpr:
+      hasValue = true
+      break
+  if hasValue:
+    var iterField = 1
+    let ret = filterObjConstr(c, t.n, result, iterField, flags, write = true)
+    if ret != none:
+      localError(c.config, result.info, $ret)
+    else:
+      if iterField > result.len:
+        localError(c.config, result.info, $mixingError)
+      elif iterField < result.len:
+        localError(c.config, result.info, $lackingError)
+
+proc useObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): bool =
+  var n = copyTree(n)
+  var t = semTypeNode(c, n[0], nil)
+  if t == nil:
+    return false
+
+  if t.skipTypes({tyGenericInst,
+      tyAlias, tySink, tyOwned, tyRef}).kind != tyObject and
+      expectedType != nil and expectedType.skipTypes({tyGenericInst,
+      tyAlias, tySink, tyOwned, tyRef}).kind == tyObject:
+    t = expectedType
+
+  t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
+  if t.kind == tyRef:
+    t = skipTypes(t[0], {tyGenericInst, tyAlias, tySink, tyOwned})
+
+  if t.kind != tyObject:
+    return false
+
+  for i in 1..<n.len:
+    if n[i].kind == nkExprColonExpr:
+      return true
+
+  var iterField = 1
+  result = filterObjConstr(c, t.n, n, iterField, flags, write = false) == none
+  if iterField != n.len:
+    return false
+
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   var t = semTypeNode(c, n[0], nil)
   result = newNodeIT(nkObjConstr, n.info, t)
-  for i in 0..<n.len:
-    result.add n[i]
 
   if t == nil:
     return localErrorNode(c, result, "object constructor needs an object type")
-  
+
   if t.skipTypes({tyGenericInst,
       tyAlias, tySink, tyOwned, tyRef}).kind != tyObject and
       expectedType != nil and expectedType.skipTypes({tyGenericInst,
@@ -442,6 +540,10 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
         typeToString(t, preferDesc) &
         "'; the object's generic parameters cannot be inferred and must be explicitly given"
       )
+
+  let expanded = expandObjConstr(c, n, t, flags)
+  for i in 0..<expanded.len:
+    result.add expanded[i]
 
   # Check if the object is fully initialized by recursively testing each
   # field (if this is a case object, initialized fields in two different
