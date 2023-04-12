@@ -1248,11 +1248,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
     else:
-      if sym == nil or (sym.kind in {skVar, skLet, skConst, skParam, skIterator,
-                        skField, skProc, skFunc, skConverter, skMethod, skType}):
+      if sym != nil:
+        # semCustomPragma still gives appropriate error for invalid pragmas
         n[i] = semCustomPragma(c, it)
-      elif sym != nil:
-        illegalCustomPragma(c, it, sym)
       else:
         invalidPragma(c, it)
 
