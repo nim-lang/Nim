@@ -755,7 +755,7 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
   else:
     result = qualifiedLookUp(c, n, {checkUndeclared})
 
-proc semCustomPragma(c: PContext, n: PNode): PNode =
+proc semCustomPragma(c: PContext, n: PNode, sym: PSym): PNode =
   var callNode: PNode
 
   if n.kind in {nkIdent, nkSym}:
@@ -773,6 +773,11 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
   let r = c.semOverloadedCall(c, callNode, n, {skTemplate}, {efNoUndeclared})
   if r.isNil or sfCustomPragma notin r[0].sym.flags:
     invalidPragma(c, n)
+    return n
+  
+  # we have a valid custom pragma
+  if sym != nil and sym.kind in {skEnumField, skForVar, skModule}:
+    illegalCustomPragma(c, n, sym)
     return n
 
   result = r
@@ -822,7 +827,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     else: discard
     return
   elif key.kind notin nkIdentKinds:
-    n[i] = semCustomPragma(c, it)
+    n[i] = semCustomPragma(c, it, sym)
     return
   let ident = considerQuotedIdent(c, key)
   var userPragma = strTableGet(c.userPragmas, ident)
@@ -1250,7 +1255,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     else:
       if sym != nil:
         # semCustomPragma still gives appropriate error for invalid pragmas
-        n[i] = semCustomPragma(c, it)
+        n[i] = semCustomPragma(c, it, sym)
       else:
         invalidPragma(c, it)
 
