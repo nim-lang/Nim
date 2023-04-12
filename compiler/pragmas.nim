@@ -1261,7 +1261,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
     else:
-      # semCustomPragma still gives appropriate error for invalid pragmas
+      # semCustomPragma gives appropriate error for invalid pragmas
       n[i] = semCustomPragma(c, it, sym)
 
 proc overwriteLineInfo(n: PNode; info: TLineInfo) =
