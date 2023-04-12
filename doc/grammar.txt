@@ -7,7 +7,7 @@ colcom = ':' COMMENT?
 operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
          | 'or' | 'xor' | 'and'
          | 'is' | 'isnot' | 'in' | 'notin' | 'of' | 'as' | 'from'
-         | 'div' | 'mod' | 'shl' | 'shr' | 'not' | 'static' | '..'
+         | 'div' | 'mod' | 'shl' | 'shr' | 'not' | '..'
 prefixOperator = operator
 optInd = COMMENT? IND?
 optPar = (IND{>} | IND{=})?
