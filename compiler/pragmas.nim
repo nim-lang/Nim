@@ -116,7 +116,15 @@ const
 proc invalidPragma*(c: PContext; n: PNode) =
   localError(c.config, n.info, "invalid pragma: " & renderTree(n, {renderNoComments}))
 proc illegalCustomPragma*(c: PContext, n: PNode, s: PSym) =
-  localError(c.config, n.info, "cannot attach a custom pragma to '" & s.name.s & "'")
+  var msg = "cannot attach a custom pragma to '" & s.name.s & "'"
+  if s != nil:
+    msg.add("; custom pragmas are not supported for ")
+    case s.kind
+    of skForVar: msg.add("`for` loop variables")
+    of skEnumField: msg.add("enum fields")
+    of skModule: msg.add("modules")
+    else: msg.add("symbol kind " & $s.kind)
+  localError(c.config, n.info, msg)
 
 proc pragmaProposition(c: PContext, n: PNode) =
   if n.kind notin nkPragmaCallKinds or n.len != 2:
@@ -1253,11 +1261,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
     else:
-      if sym != nil:
-        # semCustomPragma still gives appropriate error for invalid pragmas
-        n[i] = semCustomPragma(c, it, sym)
-      else:
-        invalidPragma(c, it)
+      # semCustomPragma still gives appropriate error for invalid pragmas
+      n[i] = semCustomPragma(c, it, sym)
 
 proc overwriteLineInfo(n: PNode; info: TLineInfo) =
   n.info = info
