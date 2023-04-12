@@ -2339,7 +2339,7 @@ proc genWasMoved(p: BProc; n: PNode) =
   if p.withinBlockLeaveActions > 0 and notYetAlive(n1):
     discard
   else:
-    initLocExpr(p, n1, a)
+    initLocExpr(p, n1, a, {lfEnforceDeref})
     resetLoc(p, a)
     #linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
     #  [addrLoc(p.config, a), getTypeDesc(p.module, a.t)])
