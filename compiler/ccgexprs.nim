@@ -371,6 +371,11 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     if ty.isImportedCppType:
       linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
     elif not isObjLackingTypeField(ty):
+      if optSeqDestructors in p.config.globalOptions:
+        linefmt(p, cpsStmts, "#chckObjAsgn($1, $2);$n",
+              [genTypeInfoV2(p.module, dest.t, dest.lode.info),
+               addrLoc(p.config, src)
+              ])
       genGenericAsgn(p, dest, src, flags)
     elif containsGarbageCollectedRef(ty):
       if ty[0].isNil and asgnComplexity(ty.n) <= 4:

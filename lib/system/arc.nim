@@ -194,6 +194,11 @@ proc GC_ref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
   if x != nil: nimIncRef(cast[pointer](x))
 
+proc chckObjAsgn(dest: PNimTypeV2, src: pointer) {.compilerproc, systemRaisesDefect.} =
+  let srcTyp = cast[ptr PNimTypeV2](src)[]
+  if srcTyp != nil and dest != srcTyp:
+    sysFatal(ObjectAssignmentDefect, "invalid object assignment")
+
 when not defined(gcOrc):
   template GC_fullCollect* =
     ## Forces a full garbage collection pass. With `--gc:arc` a nop.

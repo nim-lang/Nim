@@ -1,7 +1,5 @@
 discard """
-  matrix: "--mm:refc"
-  outputsub: '''ObjectAssignmentDefect'''
-  exitcode: "1"
+  matrix: "--mm:refc; --matrix:arc"
 """
 
 # bug #7637
@@ -20,6 +18,28 @@ method eat(f: Apple) =
 method eat(f: Pear) =
   echo "juicy"
 
-let basket = [Apple(name:"a"), Pear(name:"b")]
+doAssertRaises(ObjectAssignmentDefect):
+  proc foo =
+    let basket = [Apple(name:"a"), Pear(name:"b")]
+  foo()
 
-eat(basket[0])
+
+# bug #7002
+type
+    BaseObj = object of RootObj
+    DerivedObj = object of BaseObj
+
+method `$`(bo: BaseObj): string {.base.} =
+    return "Base"
+
+method `$`(dob: DerivedObj): string =
+    return "Derived"
+
+type Container = object
+    inner: BaseObj
+
+doAssertRaises(ObjectAssignmentDefect):
+  proc foo =
+    var dob = DerivedObj()
+    var cont = Container(inner: dob)
+  foo()
