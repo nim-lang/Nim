@@ -83,7 +83,8 @@ proc `[]`*[T, U: Ordinal](s: string, x: HSlice[T, U]): string {.inline, systemRa
     var s = "abcdef"
     assert s[1..3] == "bcd"
   let a = s ^^ x.a
-  let L = (s ^^ x.b) - a + 1
+  let b = s ^^ x.b
+  let L = b - a + 1
   result = newString(L)
   template impl =
     for i in 0 ..< L: result[i] = s[i + a]
@@ -92,7 +93,10 @@ proc `[]`*[T, U: Ordinal](s: string, x: HSlice[T, U]): string {.inline, systemRa
   else:
     when notJSnotNims:
       if L > 0:
-        copyMem(addr result[0], addr s[a], L)
+        if b < s.len:
+          copyMem(addr result[0], addr s[a], L)
+        else:
+          raiseIndexError3(b, 0, s.high)
     else:
       impl()
 
@@ -108,7 +112,8 @@ proc `[]=`*[T, U: Ordinal](s: var string, x: HSlice[T, U], b: string) {.systemRa
     assert s == "axyzh"
 
   var a = s ^^ x.a
-  var L = (s ^^ x.b) - a + 1
+  var xb = s ^^ x.b
+  var L = xb - a + 1
   template impl =
     for i in 0..<L: s[i+a] = b[i]
   if L == b.len:
@@ -117,9 +122,12 @@ proc `[]=`*[T, U: Ordinal](s: var string, x: HSlice[T, U], b: string) {.systemRa
     else:
       when notJSnotNims:
         if L > 0:
-          when defined(nimSeqsV2):
-            prepareMutation(s)
-          copyMem(addr s[a], addr b[0], L)
+          if xb < s.len:
+            when defined(nimSeqsV2):
+              prepareMutation(s)
+            copyMem(addr s[a], addr b[0], L)
+          else:
+            raiseIndexError3(xb, 0, s.high)
       else:
         impl()
   else:
@@ -133,7 +141,8 @@ proc `[]`*[Idx, T; U, V: Ordinal](a: array[Idx, T], x: HSlice[U, V]): seq[T] {.s
   ##   assert a[0..2] == @[1, 2, 3]
   ##   ```
   let xa = a ^^ x.a
-  let L = (a ^^ x.b) - xa + 1
+  let xb = a ^^ x.b
+  let L = xb - xa + 1
   result = newSeq[T](L)
   template impl =
     for i in 0..<L: result[i] = a[Idx(i + xa)]
@@ -142,7 +151,10 @@ proc `[]`*[Idx, T; U, V: Ordinal](a: array[Idx, T], x: HSlice[U, V]): seq[T] {.s
   else:
     when notJSnotNims and supportsCopyMem(T):
       if L > 0:
-        copyMem(addr result[0], addr a[Idx(xa)], sizeof(T) * L)
+        if xb < a.len:
+          copyMem(addr result[0], addr a[Idx(xa)], sizeof(T) * L)
+        else:
+          raiseIndexError3(xb, 0, a.high)
     else:
       impl()
 
@@ -153,7 +165,8 @@ proc `[]=`*[Idx, T; U, V: Ordinal](a: var array[Idx, T], x: HSlice[U, V], b: ope
     a[1..2] = @[99, 88]
     assert a == [10, 99, 88, 40, 50]
   let xa = a ^^ x.a
-  let L = (a ^^ x.b) - xa + 1
+  let xb = a ^^ x.b
+  let L = xb - xa + 1
   template impl =
     for i in 0..<L: a[Idx(i + xa)] = b[i]
 
@@ -163,7 +176,10 @@ proc `[]=`*[Idx, T; U, V: Ordinal](a: var array[Idx, T], x: HSlice[U, V], b: ope
     else:
       when notJSnotNims and supportsCopyMem(T):
         if L > 0:
-          moveMem(addr a[Idx(xa)], addr b[0], sizeof(T) * L)
+          if xb < a.len:
+            moveMem(addr a[Idx(xa)], addr b[0], sizeof(T) * L)
+          else:
+            raiseIndexError3(xb, 0, a.high)
       else:
         impl()
   else:
@@ -177,7 +193,8 @@ proc `[]`*[T; U, V: Ordinal](s: openArray[T], x: HSlice[U, V]): seq[T] {.systemR
   ##   assert s[0..2] == @[1, 2, 3]
   ##   ```
   let a = s ^^ x.a
-  let L = (s ^^ x.b) - a + 1
+  let xb = s ^^ x.b
+  let L = xb - a + 1
   newSeq(result, L)
   template impl =
     for i in 0 ..< L: result[i] = s[i + a]
@@ -187,7 +204,10 @@ proc `[]`*[T; U, V: Ordinal](s: openArray[T], x: HSlice[U, V]): seq[T] {.systemR
   else:
     when notJSnotNims and supportsCopyMem(T):
       if L > 0:
-        copyMem(addr result[0], addr s[a], sizeof(T) * L)
+        if xb < s.len:
+          copyMem(addr result[0], addr s[a], sizeof(T) * L)
+        else:
+          raiseIndexError3(xb, 0, s.high)
     else:
       impl()
 
@@ -201,7 +221,8 @@ proc `[]=`*[T; U, V: Ordinal](s: var seq[T], x: HSlice[U, V], b: openArray[T]) {
     s[1 .. ^2] = @"xyz"
     assert s == @"axyzh"
   let a = s ^^ x.a
-  let L = (s ^^ x.b) - a + 1
+  let xb = s ^^ x.b
+  let L = xb - a + 1
   template impl =
     for i in 0 ..< L: s[i+a] = b[i]
   if L == b.len:
@@ -210,7 +231,10 @@ proc `[]=`*[T; U, V: Ordinal](s: var seq[T], x: HSlice[U, V], b: openArray[T]) {
     else:
       when notJSnotNims and supportsCopyMem(T):
         if L > 0:
-          moveMem(addr s[a], addr b[0], sizeof(T) * L)
+          if xb < s.len:
+            moveMem(addr s[a], addr b[0], sizeof(T) * L)
+          else:
+            raiseIndexError3(xb, 0, s.high)
       else:
         impl()
   else:
