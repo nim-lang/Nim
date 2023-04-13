@@ -26,7 +26,7 @@ converter intFromFoo(x: Foo): int = 3
 proc consumeInt(x: int) =
   discard
 
-const activeTests = {1..100}
+const activeTests = {range[1..100](1)..100}
 
 when true:
   template test(n, body) =

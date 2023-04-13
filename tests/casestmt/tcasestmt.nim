@@ -50,7 +50,7 @@ block emptyset_when:
     of {}: echo "me not fail"
     of 2: echo "i am always two"
     of []: echo "me neither"
-    of {4,5}: echo "set is 4 not 5"
+    of {range[4..5](4),5}: echo "set is 4 not 5"
     of [6,7]: echo "array is 6 not 7"
     of (when compiles(neverCompilesIBet()): 3 else: {}): echo "compiles for 3"
     #of {},[]: echo "me neither"
@@ -94,14 +94,14 @@ block tduplicates:
   reject:
       var i = 2
       case i
-      of 1, { 1..2 }: discard
+      of 1, { range[1..2](1)..2 }: discard
       else: discard
 
   reject:
       var i = 2
       case i
-      of { 1, 1 }: discard
-      of { 1, 1 }: discard
+      of { range[1..1](1), 1 }: discard
+      of { range[1..1](1), 1 }: discard
       else: discard
 
   reject:
@@ -110,12 +110,12 @@ block tduplicates:
 
   var i = 2
   case i
-  of { 1, 1 }: discard
-  of { 2, 2 }: echo "OK"
+  of { range[1..1](1), 1 }: discard
+  of { range[2..2](2), 2 }: echo "OK"
   else: discard
 
   case i
-  of { 10..30, 15..25, 5..15, 25..35 }: discard
+  of { range[1..50](10)..30, 15..25, 5..15, 25..35 }: discard
   else: echo "OK"
 
   case k
