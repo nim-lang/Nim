@@ -13,8 +13,8 @@ template fun() =
   var b {.byaddr.}: int = s[0]
   doAssert a.addr == b.addr
 
-  when defined(nimHasAliasPragma):
-    # use of {.alias.} pragma disallows redefinitions
+  when defined(nimHasAliasTemplates):
+    # use of {.alias.} template disallows redefinitions
     # see https://github.com/nim-lang/Nim/issues/8275
     doAssert not compiles(block:
       # redeclaration not allowed

@@ -6,10 +6,8 @@ macro byaddr*(sect) =
   ## Allows a syntax for l-value references, being an exact analog to
   ## `auto& a = ex;` in C++.
   ## 
-  ## .. warning:: This makes use of 2 experimental features, namely nullary
-  ##   templates instantiated as symbols and variable macro pragmas.
-  ##   For this reason, its behavior is not stable. The current implementation
-  ##   allows redefinition, but this is not an intended consequence.
+  ## .. note:: This uses 2 experimental features, namely alias templates and
+  ##   variable macro pragmas. This may cause issues.
   runnableExamples:
     var s = @[10, 11, 12]
     var a {.byaddr.} = s[0]
@@ -25,7 +23,7 @@ macro byaddr*(sect) =
     typ = def[1]
     ex = def[2]
     addrTyp = if typ.kind == nnkEmpty: typ else: newTree(nnkPtrTy, typ)
-  when defined(nimHasAliasPragma):
+  when defined(nimHasAliasTemplates):
     result = quote do:
       let tmp: `addrTyp` = addr(`ex`)
       template `lhs`: untyped {.alias.} = tmp[]

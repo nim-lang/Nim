@@ -691,7 +691,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     addInterfaceOverloadableSymAt(c, c.currentScope, s)
   elif not comesFromShadowscope:
     if {sfTemplateRedefinition, sfGenSym} * s.flags == {}:
-      if sfAliasStyle in (proto.flags + s.flags):
+      if sfAliasTemplate in (proto.flags + s.flags):
         # cannot implicitly redefine alias templates
         # in the future, this should be the behavior for all templates
         wrongRedefinition(c, n.info, proto.name.s, proto.info)

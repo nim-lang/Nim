@@ -398,7 +398,9 @@ proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
     return
   if fn.name.s != "_":
     let check = strTableGet(scope.symbols, fn.name)
-    if check != nil and check.kind notin OverloadableSyms:
+    if check != nil and (check.kind notin OverloadableSyms or
+        (check.kind == skTemplate and sfAliasTemplate in check.flags and
+          fn.kind != skTemplate)): # template handles alias redefinition
       wrongRedefinition(c, fn.info, fn.name.s, check.info)
     else:
       scope.addSym(fn)

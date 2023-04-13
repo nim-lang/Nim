@@ -3077,7 +3077,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       #  pretty.checkUse(n[0][1].info, s)
       case s.kind
       of skMacro, skTemplate:
-        result = semDirectOp(c, n, flags, expectedType)
+        if sfAliasTemplate in s.flags:
+          result = semIndirectOp(c, n, flags, expectedType)
+        else:
+          result = semDirectOp(c, n, flags, expectedType)
       of skType:
         # XXX think about this more (``set`` procs)
         let ambig = c.isAmbiguous

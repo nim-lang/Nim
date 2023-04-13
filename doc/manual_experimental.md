@@ -453,8 +453,8 @@ Assuming `foo` is a macro or a template, this is roughly equivalent to:
   ```
 
 
-Alias-style templates and macros
-================================
+Symbols as template/macro calls
+===============================
 
 Templates and macros that take no arguments can be called as lone symbols,
 i.e. without parentheses. This is useful for repeated uses of complex
@@ -471,26 +471,42 @@ expressions that cannot conveniently be represented as runtime values.
   assert bar == 15
   ```
 
-These templates/macros can be annotated with the `{.alias.}` pragma
-to denote their intended use, however this annotation is currently
-not required.
+Alias templates
+---------------
+
+Templates can be annotated with the `{.alias.}` pragma to require this
+call syntax as well as emulate some aspects of other symbols like variables and
+types, such as not interacting with routine overloading and the inability
+to be `implicitly redefined <manual.html#pragmas-redefine-pragma>`_.
 
   ```nim
   type Foo = object
     bar: int
-  
+
   var foo = Foo(bar: 10)
   template bar: int {.alias.} = foo.bar
   assert bar == 10
   bar = 15
   assert bar == 15
   var foo2 = Foo(bar: -10)
+  assert bar == 15
+
+  # calling an alias
+  template minus: untyped {.alias.} = `-`
+  assert minus(bar) == -15
+  assert minus(bar, minus(bar)) == 30
+  discard minus() # does not compile
+
+  # redefine
+  template bar: int {.alias, redefine.} = foo2.bar
+  assert minus(bar) == 10
+
+  # cannot use if overloaded
+  block:
+    template minus(a, b, c): untyped = a - b - c
+    assert minus(3, 5, 8) == -10
+    discard minus(1) # does not compile
   ```
-
-Templates marked `{.alias.}` must have no required parameters, and cannot be
-`implicitly redefined <manual.html#pragmas-redefine-pragma>`_.
-
-In the future, this annotation or the lack of it may gain more meanings.
 
 
 Not nil annotation

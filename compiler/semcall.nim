@@ -74,17 +74,22 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   # luckily `initCandidateSymbols` does just that
   var syms = initCandidateSymbols(c, headSymbol, initialBinding, filter,
                                   best, alt, o, diagnosticsFlag)
-  if len(syms) == 0:
-    return
   # current overload being considered
-  var sym = syms[0].s
-  var scope = syms[0].scope
+  var sym: PSym
+  var scope: int
 
   # starts at 1 because 0 is already done with setup, only needs checking
-  var nextSymIndex = 1
+  var nextSymIndex = 0
   var z: TCandidate # current candidate
-  while true:
+  while nextSymIndex < syms.len:
+    # advance to next sym
+    sym = syms[nextSymIndex].s
+    scope = syms[nextSymIndex].scope
+    inc(nextSymIndex)
     determineType(c, sym)
+    if sym.kind == skTemplate and sfAliasTemplate in sym.flags:
+      # do not consider alias templates in overloading
+      continue
     initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
 
     # this is kinda backwards as without a check here the described
@@ -128,20 +133,6 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       # reset counter because syms may be in a new order
       symCount = c.currentScope.symbols.counter
       nextSymIndex = 0
-
-      # just in case, should be impossible though
-      if syms.len == 0:
-        break
-
-    if nextSymIndex > high(syms):
-      # we have reached the end
-      break
-
-    # advance to next sym
-    sym = syms[nextSymIndex].s
-    scope = syms[nextSymIndex].scope
-    inc(nextSymIndex)
-
 
 proc effectProblem(f, a: PType; result: var string; c: PContext) =
   if f.kind == tyProc and a.kind == tyProc:

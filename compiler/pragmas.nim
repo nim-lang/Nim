@@ -41,7 +41,7 @@ const
     wDelegator, wExportNims, wUsed, wPragma, wRedefine, wCallsite, wAlias}
   macroPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wCompilerProc, wNonReloadable, wCore,
-    wDiscardable, wGensym, wInject, wDelegator, wAlias}
+    wDiscardable, wGensym, wInject, wDelegator}
   iteratorPragmas* = declPragmas + {FirstCallConv..LastCallConv, wNoSideEffect, wSideEffect,
     wMagic, wBorrow,
     wDiscardable, wGensym, wInject, wRaises, wEffectsOf,
@@ -1258,7 +1258,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wSystemRaisesDefect:
         sym.flags.incl sfSystemRaisesDefect
       of wAlias:
-        sym.flags.incl sfAliasStyle
+        if sym != nil and sym.kind == skTemplate:
+          sym.flags.incl sfAliasTemplate
+        else: invalidPragma(c, it)
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
