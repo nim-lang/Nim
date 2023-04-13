@@ -1,6 +1,9 @@
 when not defined(nimHasSystemRaisesDefect):
   {.pragma: systemRaisesDefect.}
 
+proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".} =
+  discard
+
 type
   BackwardsIndex* = distinct int ## Type that is constructed by `^` for
                                  ## reversed array accesses.
@@ -76,14 +79,22 @@ template spliceImpl(s, a, L, b: typed): untyped =
 proc `[]`*[T, U: Ordinal](s: string, x: HSlice[T, U]): string {.inline, systemRaisesDefect.} =
   ## Slice operation for strings.
   ## Returns the inclusive range `[s[x.a], s[x.b]]`:
-  ##   ```
-  ##   var s = "abcdef"
-  ##   assert s[1..3] == "bcd"
-  ##   ```
+  runnableExamples:
+    var s = "abcdef"
+    assert s[1..3] == "bcd"
   let a = s ^^ x.a
   let L = (s ^^ x.b) - a + 1
   result = newString(L)
-  for i in 0 ..< L: result[i] = s[i + a]
+  template impl =
+    for i in 0 ..< L: result[i] = s[i + a]
+  when nimvm:
+    impl()
+  else:
+    when notJSnotNims:
+      if L > 0:
+        copyMem(addr result[0], addr s[a], L)
+    else:
+      impl()
 
 proc `[]=`*[T, U: Ordinal](s: var string, x: HSlice[T, U], b: string) {.systemRaisesDefect.} =
   ## Slice assignment for strings.
@@ -98,8 +109,19 @@ proc `[]=`*[T, U: Ordinal](s: var string, x: HSlice[T, U], b: string) {.systemRa
 
   var a = s ^^ x.a
   var L = (s ^^ x.b) - a + 1
-  if L == b.len:
+  template impl =
     for i in 0..<L: s[i+a] = b[i]
+  if L == b.len:
+    when nimvm:
+      impl()
+    else:
+      when notJSnotNims:
+        if L > 0:
+          when defined(nimSeqsV2):
+            prepareMutation(s)
+          copyMem(addr s[a], addr b[0], L)
+      else:
+        impl()
   else:
     spliceImpl(s, a, L, b)
 
@@ -113,19 +135,37 @@ proc `[]`*[Idx, T; U, V: Ordinal](a: array[Idx, T], x: HSlice[U, V]): seq[T] {.s
   let xa = a ^^ x.a
   let L = (a ^^ x.b) - xa + 1
   result = newSeq[T](L)
-  for i in 0..<L: result[i] = a[Idx(i + xa)]
+  template impl =
+    for i in 0..<L: result[i] = a[Idx(i + xa)]
+  when nimvm:
+    impl()
+  else:
+    when notJSnotNims and supportsCopyMem(T):
+      if L > 0:
+        copyMem(addr result[0], addr a[Idx(xa)], sizeof(T) * L)
+    else:
+      impl()
 
 proc `[]=`*[Idx, T; U, V: Ordinal](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) {.systemRaisesDefect.} =
   ## Slice assignment for arrays.
-  ##   ```
-  ##   var a = [10, 20, 30, 40, 50]
-  ##   a[1..2] = @[99, 88]
-  ##   assert a == [10, 99, 88, 40, 50]
-  ##   ```
+  runnableExamples:
+    var a = [10, 20, 30, 40, 50]
+    a[1..2] = @[99, 88]
+    assert a == [10, 99, 88, 40, 50]
   let xa = a ^^ x.a
   let L = (a ^^ x.b) - xa + 1
-  if L == b.len:
+  template impl =
     for i in 0..<L: a[Idx(i + xa)] = b[i]
+
+  if L == b.len:
+    when nimvm:
+      impl()
+    else:
+      when notJSnotNims and supportsCopyMem(T):
+        if L > 0:
+          moveMem(addr a[Idx(xa)], addr b[0], sizeof(T) * L)
+      else:
+        impl()
   else:
     sysFatal(RangeDefect, "different lengths for slice assignment")
 
@@ -139,7 +179,17 @@ proc `[]`*[T; U, V: Ordinal](s: openArray[T], x: HSlice[U, V]): seq[T] {.systemR
   let a = s ^^ x.a
   let L = (s ^^ x.b) - a + 1
   newSeq(result, L)
-  for i in 0 ..< L: result[i] = s[i + a]
+  template impl =
+    for i in 0 ..< L: result[i] = s[i + a]
+
+  when nimvm:
+    impl()
+  else:
+    when notJSnotNims and supportsCopyMem(T):
+      if L > 0:
+        copyMem(addr result[0], addr s[a], sizeof(T) * L)
+    else:
+      impl()
 
 proc `[]=`*[T; U, V: Ordinal](s: var seq[T], x: HSlice[U, V], b: openArray[T]) {.systemRaisesDefect.} =
   ## Slice assignment for sequences.
@@ -152,7 +202,16 @@ proc `[]=`*[T; U, V: Ordinal](s: var seq[T], x: HSlice[U, V], b: openArray[T]) {
     assert s == @"axyzh"
   let a = s ^^ x.a
   let L = (s ^^ x.b) - a + 1
-  if L == b.len:
+  template impl =
     for i in 0 ..< L: s[i+a] = b[i]
+  if L == b.len:
+    when nimvm:
+      impl()
+    else:
+      when notJSnotNims and supportsCopyMem(T):
+        if L > 0:
+          moveMem(addr s[a], addr b[0], sizeof(T) * L)
+      else:
+        impl()
   else:
     spliceImpl(s, a, L, b)
