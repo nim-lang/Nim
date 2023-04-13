@@ -1,5 +1,6 @@
 nimTitle	utils	subdir/subdir_b/utils.html	module subdir/subdir_b/utils		0
 nim	funWithGenerics	subdir/subdir_b/utils.html#funWithGenerics,T,U	proc funWithGenerics[T, U: SomeFloat](a: T; b: U)		1
+nim	fn2	subdir/subdir_b/utils.html#fn2,int,float,float	proc fn2(x: int; y: float; z: float)		5
 nim	enumValueA	subdir/subdir_b/utils.html#enumValueA	SomeType.enumValueA		45
 nim	enumValueB	subdir/subdir_b/utils.html#enumValueB	SomeType.enumValueB		45
 nim	enumValueC	subdir/subdir_b/utils.html#enumValueC	SomeType.enumValueC		45
@@ -34,7 +35,7 @@ nim	fn	subdir/subdir_b/utils.html#fn	proc fn[T; U, V: SomeFloat]()		160
 nim	`'big`	subdir/subdir_b/utils.html#'big,string	proc `'big`(a: string): SomeType		164
 nimgrp	$	subdir/subdir_b/utils.html#$-procs-all	proc		148
 nimgrp	fn11	subdir/subdir_b/utils.html#fN11-procs-all	proc		85
-nimgrp	fn2	subdir/subdir_b/utils.html#fn2-procs-all	proc		57
+nimgrp	fn2	subdir/subdir_b/utils.html#fn2-procs-all	proc		5
 nimgrp	f	subdir/subdir_b/utils.html#f-procs-all	proc		130
 heading	This is now a header	subdir/subdir_b/utils.html#this-is-now-a-header	 This is now a header		0
 heading	Next header	subdir/subdir_b/utils.html#this-is-now-a-header-next-header	  Next header		0

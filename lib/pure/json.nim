@@ -1110,7 +1110,7 @@ proc initFromJson(dst: var JsonNode; jsonNode: JsonNode; jsonPath: var string) =
   dst = jsonNode.copy
 
 proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
-  when T is uint|uint64 or (not defined(js) and int.sizeof == 4):
+  when T is uint|uint64 or int.sizeof == 4:
     verifyJsonKind(jsonNode, {JInt, JString}, jsonPath)
     case jsonNode.kind
     of JString:

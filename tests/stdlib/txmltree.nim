@@ -99,3 +99,18 @@ block: # bug #21290
   doAssert s == """<foo>
   <bar>Hola<qux>    <plugh />  </qux></bar>
 </foo>"""
+
+block: #21541
+  let root = <>root()
+  root.add <>child(newText("hello"))
+  root.add <>more(newVerbatimText("hola"))
+  let s = $root
+  doAssert s == """<root>
+  <child>hello</child>
+  <more>hola</more>
+</root>"""
+
+  let temp = newVerbatimText("Hello!")
+  doAssert temp.text == "Hello!"
+  temp.text = "Hola!"
+  doAssert temp.text == "Hola!"

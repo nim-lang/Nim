@@ -78,14 +78,18 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     if macroToExpandSym(s):
       onUse(n.info, s)
       result = semTemplateExpr(c, n, s, {efNoSemCheck})
+      c.friendModules.add(s.owner.getModule)
       result = semGenericStmt(c, result, {}, ctx)
+      discard c.friendModules.pop()
     else:
       result = symChoice(c, n, s, scOpen)
   of skMacro:
     if macroToExpandSym(s):
       onUse(n.info, s)
       result = semMacroExpr(c, n, n, s, {efNoSemCheck})
+      c.friendModules.add(s.owner.getModule)
       result = semGenericStmt(c, result, {}, ctx)
+      discard c.friendModules.pop()
     else:
       result = symChoice(c, n, s, scOpen)
   of skGenericParam:
@@ -245,7 +249,9 @@ proc semGenericStmt(c: PContext, n: PNode,
         if macroToExpand(s) and sc.safeLen <= 1:
           onUse(fn.info, s)
           result = semMacroExpr(c, n, n, s, {efNoSemCheck})
+          c.friendModules.add(s.owner.getModule)
           result = semGenericStmt(c, result, flags, ctx)
+          discard c.friendModules.pop()
         else:
           n[0] = sc
           result = n
@@ -254,7 +260,9 @@ proc semGenericStmt(c: PContext, n: PNode,
         if macroToExpand(s) and sc.safeLen <= 1:
           onUse(fn.info, s)
           result = semTemplateExpr(c, n, s, {efNoSemCheck})
+          c.friendModules.add(s.owner.getModule)
           result = semGenericStmt(c, result, flags, ctx)
+          discard c.friendModules.pop()
         else:
           n[0] = sc
           result = n
@@ -493,6 +501,20 @@ proc semGenericStmt(c: PContext, n: PNode,
   of nkExprColonExpr, nkExprEqExpr:
     checkMinSonsLen(n, 2, c.config)
     result[1] = semGenericStmt(c, n[1], flags, ctx)
+  of nkObjConstr:
+    for i in 0..<n.len:
+      result[i] = semGenericStmt(c, n[i], flags, ctx)
+    if result[0].kind == nkSym:
+      let fmoduleId = getModule(result[0].sym).id
+      var isVisable = false
+      for module in c.friendModules:
+        if module.id == fmoduleId:
+          isVisable = true
+          break
+      if isVisable:
+        for i in 1..<result.len:
+          if result[i].kind == nkExprColonExpr:
+            result[i][1].flags.incl nfSkipFieldChecking
   else:
     for i in 0..<n.len:
       result[i] = semGenericStmt(c, n[i], flags, ctx)

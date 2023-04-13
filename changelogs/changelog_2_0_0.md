@@ -135,29 +135,89 @@
 
 - The experimental strictFuncs feature now disallows a store to the heap via a `ref` or `ptr` indirection.
 
-- Underscores (`_`) as routine parameters are now ignored and cannot be used in the routine body.
-  The following code now does not compile:
+- The underscore identifier (`_`) is now generally not added to scope when
+  used as the name of a definition. While this was already the case for
+  variables, it is now also the case for routine parameters, generic
+  parameters, routine declarations, type declarations, etc. This means that the following code now does not compile:
 
   ```nim
   proc foo(_: int): int = _ + 1
   echo foo(1)
+
+  proc foo[_](t: typedesc[_]): seq[_] = @[default(_)]
+  echo foo[int]()
+
+  proc _() = echo "_"
+  _()
+
+  type _ = int
+  let x: _ = 3
   ```
 
-  Instead, the following code now compiles:
+  Whereas the following code now compiles:
 
   ```nim
   proc foo(_, _: int): int = 123
   echo foo(1, 2)
-  ```
-- Underscores (`_`) as generic parameters are not supported and cannot be used.
-  Generics that use `_` as parameters will no longer compile requires you to replace `_` with something else:
-  
-  ```nim
-  proc foo[_](t: typedesc[_]): string = "BAR" # Can not compile
-  proc foo[T](t: typedesc[T]): string = "BAR" # Can compile
+
+  proc foo[_, _](): int = 123
+  echo foo[int, bool]()
+
+  proc foo[T, U](_: typedesc[T], _: typedesc[U]): (T, U) = (default(T), default(U))
+  echo foo(int, bool)
+
+  proc _() = echo "one"
+  proc _() = echo "two"
+
+  type _ = int
+  type _ = float
   ```
 
 - - Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
+
+- The JavaScript backend now uses [BigInt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt)
+  for 64-bit integer types (`int64` and `uint64`) by default. As this affects
+  JS code generation, code using these types to interface with the JS backend
+  may need to be updated. Note that `int` and `uint` are not affected.
+  
+  For compatibility with [platforms that do not support BigInt](https://caniuse.com/bigint)
+  and in the case of potential bugs with the new implementation, the
+  old behavior is currently still supported with the command line option
+  `--jsbigint64:off`.
+
+- The `proc` and `iterator` type classes now respectively only match
+  procs and iterators. Previously both type classes matched any of
+  procs or iterators.
+
+  ```nim
+  proc prc(): int =
+    123
+
+  iterator iter(): int =
+    yield 123
+  
+  proc takesProc[T: proc](x: T) = discard
+  proc takesIter[T: iterator](x: T) = discard
+
+  # always compiled:
+  takesProc(prc)
+  takesIter(iter)
+  # no longer compiles:
+  takesProc(iter)
+  takesIter(prc)
+  ```
+
+- The `proc` and `iterator` type classes now accept a calling convention pragma
+  (i.e. `proc {.closure.}`) that must be shared by matching proc or iterator
+  types. Previously pragmas were parsed but discarded if no parameter list
+  was given.
+
+  This is represented in the AST by an `nnkProcTy`/`nnkIteratorTy` node with
+  an `nnkEmpty` node in the place of the `nnkFormalParams` node, and the pragma
+  node in the same place as in a concrete `proc` or `iterator` type node. This
+  state of the AST may be unexpected to existing code, both due to the
+  replacement of the `nnkFormalParams` node as well as having child nodes
+  unlike other type class AST.
 
 ## Standard library additions and changes
 
@@ -231,6 +291,7 @@
 - Added `openArray[char]` overloads for `std/parseutils` allowing more code reuse.
 - Added `openArray[char]` overloads for `std/unicode` allowing more code reuse.
 - Added `safe` parameter to `base64.encodeMime`.
+- Added `parseutils.parseSize` - inverse to `strutils.formatSize` - to parse human readable sizes.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
@@ -343,6 +404,26 @@
 
 - `=wasMoved` can be overridden by users.
 
+- Tuple unpacking for variables is now treated as syntax sugar that directly
+  expands into multiple assignments. Along with this, tuple unpacking for
+  variables can now be nested.
+
+  ```nim
+  proc returnsNestedTuple(): (int, (int, int), int, int) = (4, (5, 7), 2, 3)
+
+  let (x, (_, y), _, z) = returnsNestedTuple()
+  # roughly becomes
+  let
+    tmpTup1 = returnsNestedTuple()
+    x = tmpTup1[0]
+    tmpTup2 = tmpTup1[1]
+    y = tmpTup2[1]
+    z = tmpTup1[3]
+  ```
+
+  As a result `nnkVarTuple` nodes in variable sections will no longer be
+  reflected in `typed` AST.
+
 ## Compiler changes
 
 - The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the
@@ -364,4 +445,4 @@
 
 ## Tool changes
 
-- Nim now ships Nimble version 0.14 which added support for lock-files. Libraries are stored in `$nimbleDir/pkgs2` (it was `$nimbleDir/pkgs`).
+- Nim now ships Nimble version 0.14 which added support for lock-files. Libraries are stored in `$nimbleDir/pkgs2` (it was `$nimbleDir/pkgs`). Use `nimble develop --global` to create an old style link file in the special links directory documented at https://github.com/nim-lang/nimble#nimble-develop.

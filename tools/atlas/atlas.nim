@@ -9,8 +9,10 @@
 ## Simple tool to automate frequent workflows: Can "clone"
 ## a Nimble dependency and its dependencies recursively.
 
-import std/[parseopt, strutils, os, osproc, unicode, tables, sets, json, jsonutils]
+import std/[parseopt, strutils, os, osproc, tables, sets, json, jsonutils]
 import parse_requires, osutils, packagesjson
+
+from unicode import nil
 
 const
   Version = "0.2"
@@ -25,6 +27,8 @@ Command:
   search keyw keywB...  search for package that contains the given keywords
   extract file.nimble   extract the requirements and custom commands from
                         the given Nimble file
+  update [filter]       update every package in the workspace that has a remote
+                        URL that matches `filter` if a filter is given
 
 Options:
   --keepCommits         do not perform any `git checkouts`
@@ -146,7 +150,7 @@ proc toDepRelation(s: string): DepRelation =
   of ">": strictlyGreater
   else: normal
 
-proc isCleanGit(c: var AtlasContext; dir: string): string =
+proc isCleanGit(c: var AtlasContext): string =
   result = ""
   let (outp, status) = exec(c, GitDiff, [])
   if outp.len != 0:
@@ -264,7 +268,7 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
     if w.commit.len == 0 or cmpIgnoreCase(w.commit, "head") == 0:
       gitPull(c, w.name)
     else:
-      let err = isCleanGit(c, dir)
+      let err = isCleanGit(c)
       if err != "":
         warn c, w.name, err
       else:
@@ -448,6 +452,27 @@ proc installDependencies(c: var AtlasContext; nimbleFile: string) =
   let paths = cloneLoop(c, work)
   patchNimCfg(c, paths, if c.cfgHere: getCurrentDir() else: findSrcDir(c))
 
+proc updateWorkspace(c: var AtlasContext; filter: string) =
+  for kind, file in walkDir(c.workspace):
+    if kind == pcDir and dirExists(file / ".git"):
+      c.withDir file:
+        let pkg = PackageName(file)
+        let (remote, _) = osproc.execCmdEx("git remote -v")
+        if filter.len == 0 or filter in remote:
+          let diff = isCleanGit(c)
+          if diff != "":
+            warn(c, pkg, "has uncommitted changes; skipped")
+          else:
+            let (branch, _) = osproc.execCmdEx("git rev-parse --abbrev-ref HEAD")
+            if branch.strip.len > 0:
+              let (output, exitCode) = osproc.execCmdEx("git pull origin " & branch.strip)
+              if exitCode != 0:
+                error c, pkg, output
+              else:
+                message(c, "[Hint] ", pkg, "successfully updated")
+            else:
+              error c, pkg, "could not fetch current branch name"
+
 proc main =
   var action = ""
   var args: seq[string] = @[]
@@ -525,6 +550,8 @@ proc main =
   of "search", "list":
     updatePackages(c)
     search getPackages(c.workspace), args
+  of "update":
+    updateWorkspace(c, if args.len == 0: "" else: args[0])
   of "extract":
     singleArg()
     if fileExists(args[0]):

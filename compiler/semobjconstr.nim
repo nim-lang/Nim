@@ -76,7 +76,7 @@ proc semConstrField(c: PContext, flags: TExprFlags,
   let assignment = locateFieldInInitExpr(c, field, initExpr)
   if assignment != nil:
     if nfSem in assignment.flags: return assignment[1]
-    if nfUseDefaultField in assignment[1].flags:
+    if nfSkipFieldChecking in assignment[1].flags:
       discard
     elif not fieldVisible(c, field):
       localError(c.config, initExpr.info,
@@ -86,6 +86,7 @@ proc semConstrField(c: PContext, flags: TExprFlags,
     var initValue = semExprFlagDispatched(c, assignment[1], flags, field.typ)
     if initValue != nil:
       initValue = fitNodeConsiderViewType(c, field.typ, initValue, assignment.info)
+    initValue.flags.incl nfSkipFieldChecking
     assignment[0] = newSymNode(field)
     assignment[1] = initValue
     assignment.flags.incl nfSem
@@ -178,7 +179,7 @@ proc collectOrAddMissingCaseFields(c: PContext, branchNode: PNode,
           newSymNode(getSysMagic(c.graph, constrCtx.initExpr.info, "zeroDefault", mZeroDefault)),
           newNodeIT(nkType, constrCtx.initExpr.info, asgnType)
         )
-    asgnExpr.flags.incl nfUseDefaultField
+    asgnExpr.flags.incl nfSkipFieldChecking
     asgnExpr.typ = recTyp
     defaults.add newTree(nkExprColonExpr, newSymNode(sym), asgnExpr)
 

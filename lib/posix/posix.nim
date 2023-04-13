@@ -958,7 +958,7 @@ proc `==`*(x, y: SocketHandle): bool {.borrow.}
 proc accept*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen): SocketHandle {.
   importc, header: "<sys/socket.h>", sideEffect.}
 
-when defined(linux) or defined(bsd):
+when defined(linux) or defined(bsd) or defined(nuttx):
   proc accept4*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen,
                 flags: cint): SocketHandle {.importc, header: "<sys/socket.h>".}
 
