@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:refc; --matrix:arc"
+  matrix: "--mm:refc; --mm:arc"
 """
 
 # bug #7637
