@@ -29,3 +29,22 @@ block:
   template minus(a, b, c): untyped = a - b - c
   doAssert minus(3, 5, 8) == -10
   doAssert not compiles(minus(1))
+
+block:
+  # type alias
+  template Int: untyped {.alias.} = int
+  let x: Int = 123
+  proc generic[T](): string =
+    template U: untyped {.alias.} = T
+    result = $U
+    doAssert result == $T
+  doAssert generic[int]() == "int"
+  doAssert generic[string]() == "string"
+  doAssert generic[seq[int]]() == "seq[int]"
+  discard generic[123]()
+  proc genericStatic[X; T: static[X]](): string =
+    template U: untyped {.alias.} = T
+    result = $U
+    doAssert result == $T
+  doAssert genericStatic[int, 123]() == "123"
+  doAssert genericStatic[(string, bool), ("a", true)]() == "(\"a\", true)"

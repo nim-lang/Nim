@@ -416,68 +416,6 @@ proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, errXExpectsOneTypeParam % "ordinal")
     result = newOrPrevType(tyError, prev, c)
 
-proc semTypeIdent(c: PContext, n: PNode): PSym =
-  if n.kind == nkSym:
-    result = getGenSym(c, n.sym)
-  else:
-    result = pickSym(c, n, {skType, skGenericParam, skParam})
-    if result.isNil:
-      result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
-    if result != nil:
-      markUsed(c, n.info, result)
-      onUse(n.info, result)
-
-      if result.kind == skParam and result.typ.kind == tyTypeDesc:
-        # This is a typedesc param. is it already bound?
-        # it's not bound when it's used multiple times in the
-        # proc signature for example
-        if c.inGenericInst > 0:
-          let bound = result.typ[0].sym
-          if bound != nil: return bound
-          return result
-        if result.typ.sym == nil:
-          localError(c.config, n.info, errTypeExpected)
-          return errorSym(c, n)
-        result = result.typ.sym.copySym(nextSymId c.idgen)
-        result.typ = exactReplica(result.typ)
-        result.typ.flags.incl tfUnresolved
-
-      if result.kind == skGenericParam:
-        if result.typ.kind == tyGenericParam and result.typ.len == 0 and
-           tfWildcard in result.typ.flags:
-          # collapse the wild-card param to a type
-          result.transitionGenericParamToType()
-          result.typ.flags.excl tfWildcard
-          return
-        else:
-          localError(c.config, n.info, errTypeExpected)
-          return errorSym(c, n)
-      if result.kind != skType and result.magic notin {mStatic, mType, mTypeOf}:
-        # this implements the wanted ``var v: V, x: V`` feature ...
-        var ov: TOverloadIter
-        var amb = initOverloadIter(ov, c, n)
-        while amb != nil and amb.kind != skType:
-          amb = nextOverloadIter(ov, c, n)
-        if amb != nil: result = amb
-        else:
-          if result.kind != skError: localError(c.config, n.info, errTypeExpected)
-          return errorSym(c, n)
-      if result.typ.kind != tyGenericParam:
-        # XXX get rid of this hack!
-        var oldInfo = n.info
-        when defined(useNodeIds):
-          let oldId = n.id
-        reset(n[])
-        when defined(useNodeIds):
-          n.id = oldId
-        n.transitionNoneToSym()
-        n.sym = result
-        n.info = oldInfo
-        n.typ = result.typ
-    else:
-      localError(c.config, n.info, "identifier expected")
-      result = errorSym(c, n)
-
 proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 0:
     localError(c.config, n.info, errTypeExpected)
@@ -1800,6 +1738,72 @@ proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
   closeScope(c)
   fixupTypeOf(c, prev, t)
   result = t.typ
+
+proc semTypeIdent(c: PContext, n: PNode): PSym =
+  if n.kind == nkSym:
+    result = getGenSym(c, n.sym)
+  else:
+    result = pickSym(c, n, {skType, skGenericParam, skParam})
+    if result.isNil:
+      result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
+    if result != nil:
+      markUsed(c, n.info, result)
+      onUse(n.info, result)
+
+      if result.kind == skTemplate and sfAliasTemplate in result.flags:
+        let t = semTypeExpr(c, n, nil)
+        result = symFromType(c, t, n.info)
+
+      if result.kind == skParam and result.typ.kind == tyTypeDesc:
+        # This is a typedesc param. is it already bound?
+        # it's not bound when it's used multiple times in the
+        # proc signature for example
+        if c.inGenericInst > 0:
+          let bound = result.typ[0].sym
+          if bound != nil: return bound
+          return result
+        if result.typ.sym == nil:
+          localError(c.config, n.info, errTypeExpected)
+          return errorSym(c, n)
+        result = result.typ.sym.copySym(nextSymId c.idgen)
+        result.typ = exactReplica(result.typ)
+        result.typ.flags.incl tfUnresolved
+
+      if result.kind == skGenericParam:
+        if result.typ.kind == tyGenericParam and result.typ.len == 0 and
+           tfWildcard in result.typ.flags:
+          # collapse the wild-card param to a type
+          result.transitionGenericParamToType()
+          result.typ.flags.excl tfWildcard
+          return
+        else:
+          localError(c.config, n.info, errTypeExpected)
+          return errorSym(c, n)
+      if result.kind != skType and result.magic notin {mStatic, mType, mTypeOf}:
+        # this implements the wanted ``var v: V, x: V`` feature ...
+        var ov: TOverloadIter
+        var amb = initOverloadIter(ov, c, n)
+        while amb != nil and amb.kind != skType:
+          amb = nextOverloadIter(ov, c, n)
+        if amb != nil: result = amb
+        else:
+          if result.kind != skError: localError(c.config, n.info, errTypeExpected)
+          return errorSym(c, n)
+      if result.typ.kind != tyGenericParam:
+        # XXX get rid of this hack!
+        var oldInfo = n.info
+        when defined(useNodeIds):
+          let oldId = n.id
+        reset(n[])
+        when defined(useNodeIds):
+          n.id = oldId
+        n.transitionNoneToSym()
+        n.sym = result
+        n.info = oldInfo
+        n.typ = result.typ
+    else:
+      localError(c.config, n.info, "identifier expected")
+      result = errorSym(c, n)
 
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
