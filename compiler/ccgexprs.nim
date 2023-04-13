@@ -371,7 +371,9 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     if ty.isImportedCppType:
       linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
     elif not isObjLackingTypeField(ty):
-      if optSeqDestructors in p.config.globalOptions:
+      if optSeqDestructors in p.config.globalOptions and
+          not (needToCopy notin flags and
+                 dest.storage == OnStack):
         linefmt(p, cpsStmts, "#chckObjAsgn($1, $2);$n",
               [genTypeInfoV2(p.module, dest.t, dest.lode.info),
                addrLoc(p.config, src)
