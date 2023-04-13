@@ -1353,6 +1353,12 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     markUsed(c, n.info, s)
     onUse(n.info, s)
     result = newSymNode(s, n.info)
+  of skModule:
+    # make sure type is None and not nil for discard checking
+    if efWantStmt in flags: s.typ = newTypeS(tyNone, c)
+    markUsed(c, n.info, s)
+    onUse(n.info, s)
+    result = newSymNode(s, n.info)
   else:
     let info = getCallLineInfo(n)
     #if efInCall notin flags:
