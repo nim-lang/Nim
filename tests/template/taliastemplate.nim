@@ -30,8 +30,7 @@ block:
   doAssert minus(3, 5, 8) == -10
   doAssert not compiles(minus(1))
 
-block:
-  # type alias
+block: # type alias
   template Int: untyped {.alias.} = int
   let x: Int = 123
   proc generic[T](): string =
@@ -48,3 +47,16 @@ block:
     doAssert result == $T
   doAssert genericStatic[int, 123]() == "123"
   doAssert genericStatic[(string, bool), ("a", true)]() == "(\"a\", true)"
+
+block: # inside template
+  template foo =
+    doAssert minus(bar) == 10
+    doAssert minus(bar, minus(bar)) == -20
+    doAssert not compiles(minus())
+    template plus: untyped {.alias.} = `+`
+    doAssert plus(bar) == -10
+    doAssert plus(bar, plus(bar)) == -20
+    doAssert not compiles(plus())
+  foo()
+  block:
+    foo()
