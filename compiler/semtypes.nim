@@ -1750,7 +1750,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
       markUsed(c, n.info, result)
       onUse(n.info, result)
 
-      if result.kind == skTemplate and sfAliasTemplate in result.flags:
+      if result.kind in {skTemplate, skMacro} and sfNoalias notin result.flags:
         let t = semTypeExpr(c, n, nil)
         result = symFromType(c, t, n.info)
 

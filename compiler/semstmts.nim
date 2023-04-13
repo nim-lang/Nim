@@ -2328,10 +2328,13 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   var s = result[namePos].sym
   var t = s.typ
   var allUntyped = true
+  var requiresParams = false
   for i in 1..<t.n.len:
     let param = t.n[i].sym
     if param.typ.kind != tyUntyped: allUntyped = false
+    if param.ast == nil: requiresParams = true
   if allUntyped: incl(s.flags, sfAllUntyped)
+  if requiresParams: incl(s.flags, sfNoalias)
   if n[bodyPos].kind == nkEmpty:
     localError(c.config, n.info, errImplOfXexpected % s.name.s)
 

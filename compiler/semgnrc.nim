@@ -52,12 +52,13 @@ proc semGenericStmtScope(c: PContext, n: PNode,
 
 template macroToExpand(s): untyped =
   s.kind in {skMacro, skTemplate} and
-    (s.typ.len == 1 or sfAllUntyped in s.flags) and
+    sfAllUntyped in s.flags and
     sfAliasTemplate notin s.flags
 
 template macroToExpandSym(s): untyped =
-  sfCustomPragma notin s.flags and s.kind in {skMacro, skTemplate} and
-    (s.typ.len == 1) and not fromDotExpr
+  s.kind in {skMacro, skTemplate} and
+    sfNoalias notin s.flags and
+    not fromDotExpr
 
 template isMixedIn(sym): bool =
   let s = sym

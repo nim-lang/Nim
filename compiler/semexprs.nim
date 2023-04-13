@@ -1259,6 +1259,7 @@ proc readTypeParameter(c: PContext, typ: PType,
   return nil
 
 proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
+  assert n.kind in nkIdentKinds
   let s = getGenSym(c, sym)
   case s.kind
   of skConst:
@@ -1293,9 +1294,8 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     else:
       result = newSymNode(s, n.info)
   of skMacro, skTemplate:
-    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
-       (n.kind notin nkCallKinds and s.requiredParams > 0) or
-       sfCustomPragma in sym.flags:
+    if sfNoalias in s.flags or (efNoEvaluateGeneric in flags and
+        s.ast[genericParamsPos].len > 0):
       let info = getCallLineInfo(n)
       markUsed(c, info, s)
       onUse(info, s)
