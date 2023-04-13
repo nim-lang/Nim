@@ -194,7 +194,8 @@ elif defined(linux) and not defined(nimNoGetRandom) and not defined(emscripten):
       elif readBytes > 0:
         inc(result, readBytes)
       else:
-        if osLastError().int in {EINTR, EAGAIN}:
+        let err = osLastError().int
+        if err == EINTR or err == EAGAIN:
           discard
         else:
           result = -1
