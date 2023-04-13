@@ -1259,7 +1259,7 @@ proc readTypeParameter(c: PContext, typ: PType,
   return nil
 
 proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
-  assert n.kind in nkIdentKinds
+  assert n.kind in nkIdentKinds + {nkDotExpr}
   let s = getGenSym(c, sym)
   case s.kind
   of skConst:
