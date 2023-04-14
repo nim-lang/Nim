@@ -38,10 +38,10 @@ const
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
-    wDelegator, wExportNims, wUsed, wPragma, wRedefine, wCallsite}
+    wDelegator, wExportNims, wUsed, wPragma, wRedefine, wCallsite, wNoalias}
   macroPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wCompilerProc, wNonReloadable, wCore,
-    wDiscardable, wGensym, wInject, wDelegator}
+    wDiscardable, wGensym, wInject, wDelegator, wNoalias}
   iteratorPragmas* = declPragmas + {FirstCallConv..LastCallConv, wNoSideEffect, wSideEffect,
     wMagic, wBorrow,
     wDiscardable, wGensym, wInject, wRaises, wEffectsOf,

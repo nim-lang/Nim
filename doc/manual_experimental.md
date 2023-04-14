@@ -453,8 +453,8 @@ Assuming `foo` is a macro or a template, this is roughly equivalent to:
   ```
 
 
-Symbols as template/macro calls
-===============================
+Symbols as template/macro calls (alias syntax)
+==============================================
 
 Templates and macros that take no arguments can be called as lone symbols,
 i.e. without parentheses. This is useful for repeated uses of complex
@@ -465,15 +465,11 @@ expressions that cannot conveniently be represented as runtime values.
     bar: int
 
   var foo = Foo(bar: 10)
-  template bar: untyped = foo.bar
+  template bar: int = foo.bar
   assert bar == 10
   bar = 15
   assert bar == 15
   ```
-
-In the future, this may require more specific information on template or macro
-signatures to be used. Specializations for some applications of this may also
-be introduced to guarantee consistency and circumvent bugs.
 
 
 Not nil annotation

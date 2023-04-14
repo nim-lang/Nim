@@ -635,6 +635,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   setGenericParamsMisc(c, n)
   # process parameters:
   var allUntyped = true
+  var requiresParams = false
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], n[genericParamsPos], s)
     # a template's parameters are not gensym'ed even if that was originally the
@@ -646,6 +647,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
         param.flags.incl sfTemplateParam
         param.flags.excl sfGenSym
       if param.typ.kind != tyUntyped: allUntyped = false
+      if param.ast == nil: requiresParams = true
   else:
     s.typ = newTypeS(tyProc, c)
     # XXX why do we need tyTyped as a return type again?
@@ -657,6 +659,8 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     n[genericParamsPos] = n[miscPos][1]
     n[miscPos] = c.graph.emptyNode
   if allUntyped: incl(s.flags, sfAllUntyped)
+  if requiresParams or n[bodyPos].kind == nkEmpty:
+    incl(s.flags, sfNoalias)
 
   if n[patternPos].kind != nkEmpty:
     n[patternPos] = semPattern(c, n[patternPos], s)
