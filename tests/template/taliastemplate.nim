@@ -17,6 +17,18 @@ block: # without {.alias.}
   template bar: int {.redefine.} = foo2.bar
   doAssert bar == -10
 
+  block: # subscript
+    var bazVal = @[1, 2, 3]
+    template baz: seq[int] = bazVal
+    doAssert baz[1] == 2
+    proc genericProc2[T](x: T): string =
+      result = $(x, baz[1])
+      baz[1] = 7
+    doAssert genericProc2(true) == "(true, 2)"
+    doAssert baz[1] == 7
+    baz[1] = 14
+    doAssert baz[1] == 14
+
   block: # type alias
     template Int: untyped = int
     let x: Int = 123
@@ -67,6 +79,18 @@ block: # {.alias.}
     template minus(a, b, c): untyped = a - b - c
     doAssert minus(3, 5, 8) == -10
     doAssert not compiles(minus(1))
+  
+  block: # subscript
+    var bazVal = @[1, 2, 3]
+    template baz: seq[int] {.alias.} = bazVal
+    doAssert baz[1] == 2
+    proc genericProc2[T](x: T): string =
+      result = $(x, baz[1])
+      baz[1] = 7
+    doAssert genericProc2(true) == "(true, 2)"
+    doAssert baz[1] == 7
+    baz[1] = 14
+    doAssert baz[1] == 14
 
   block: # type alias
     template Int: untyped {.alias.} = int

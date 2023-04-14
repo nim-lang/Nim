@@ -58,6 +58,8 @@ template macroToExpand(s): untyped =
 template macroToExpandSym(s): untyped =
   s.kind in {skMacro, skTemplate} and
     sfNoalias notin s.flags and
+    # needed to make up for no efNoEvaluateGeneric
+    s.typ.len == 1 and
     not fromDotExpr
 
 template isMixedIn(sym): bool =
