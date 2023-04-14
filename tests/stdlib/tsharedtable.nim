@@ -1,5 +1,5 @@
 discard """
-cmd: "nim $target --threads:on $options $file"
+matrix: "--mm:refc; --mm:orc"
 output: '''
 '''
 """

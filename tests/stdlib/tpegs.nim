@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c cpp js"
   output: '''
 PEG AST traversal output

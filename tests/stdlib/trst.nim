@@ -17,6 +17,7 @@ discard """
 
 [Suite] RST inline markup
 '''
+matrix: "--mm:refc; --mm:orc"
 """
 
 # tests for rst module

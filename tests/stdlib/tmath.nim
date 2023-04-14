@@ -1,6 +1,6 @@
 discard """
   targets: "c cpp js"
-  matrix:"; -d:danger"
+  matrix:"; -d:danger; --mm:refc"
 """
 
 # xxx: there should be a test with `-d:nimTmathCase2 -d:danger --passc:-ffast-math`,
