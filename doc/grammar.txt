@@ -7,7 +7,7 @@ colcom = ':' COMMENT?
 operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
          | 'or' | 'xor' | 'and'
          | 'is' | 'isnot' | 'in' | 'notin' | 'of' | 'as' | 'from'
-         | 'div' | 'mod' | 'shl' | 'shr' | 'not' | 'static' | '..'
+         | 'div' | 'mod' | 'shl' | 'shr' | 'not' | '..'
 prefixOperator = operator
 optInd = COMMENT? IND?
 optPar = (IND{>} | IND{=})?
@@ -26,13 +26,14 @@ operatorB = OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9 |
             'div' | 'mod' | 'shl' | 'shr' | 'in' | 'notin' |
             'is' | 'isnot' | 'not' | 'of' | 'as' | 'from' | '..' | 'and' | 'or' | 'xor'
 symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
-       | IDENT | KEYW
+       | IDENT | 'addr' | 'type' | 'static'
+symbolOrKeyword = symbol | KEYW
 exprColonEqExpr = expr (':'|'=' expr)?
 exprEqExpr = expr ('=' expr)?
 exprList = expr ^+ comma
 optionalExprList = expr ^* comma
 exprColonEqExprList = exprColonEqExpr (comma exprColonEqExpr)* (comma)?
-qualifiedIdent = symbol ('.' optInd symbol)?
+qualifiedIdent = symbol ('.' optInd symbolOrKeyword)?
 setOrTableConstr = '{' ((exprColonEqExpr comma)* | ':' ) '}'
 castExpr = 'cast' ('[' optInd typeDesc optPar ']' '(' optInd expr optPar ')') /
 parKeyw = 'discard' | 'include' | 'if' | 'while' | 'case' | 'try'
@@ -58,13 +59,13 @@ identOrLiteral = generalizedLit | symbol | literal
 tupleConstr = '(' optInd (exprColonEqExpr comma?)* optPar ')'
 arrayConstr = '[' optInd (exprColonEqExpr comma?)* optPar ']'
 primarySuffix = '(' (exprColonEqExpr comma?)* ')'
-      | '.' optInd symbol ('[:' exprList ']' ( '(' exprColonEqExpr ')' )?)? generalizedLit?
-      | DOTLIKEOP optInd symbol generalizedLit?
+      | '.' optInd symbolOrKeyword ('[:' exprList ']' ( '(' exprColonEqExpr ')' )?)? generalizedLit?
+      | DOTLIKEOP optInd symbolOrKeyword generalizedLit?
       | '[' optInd exprColonEqExprList optPar ']'
       | '{' optInd exprColonEqExprList optPar '}'
 pragma = '{.' optInd (exprColonEqExpr comma?)* optPar ('.}' | '}')
 identVis = symbol OPR?  # postfix position
-identVisDot = symbol '.' optInd symbol OPR?
+identVisDot = symbol '.' optInd symbolOrKeyword OPR?
 identWithPragma = identVis pragma?
 identWithPragmaDot = identVisDot pragma?
 declColonEquals = identWithPragma (comma identWithPragma)* comma?
@@ -135,9 +136,9 @@ condStmt = expr colcom stmt COMMENT?
            (IND{=} 'else' colcom stmt)?
 ifStmt = 'if' condStmt
 whenStmt = 'when' condStmt
-condExpr = expr colcom expr optInd
-        ('elif' expr colcom expr optInd)*
-         'else' colcom expr
+condExpr = expr colcom stmt optInd
+        ('elif' expr colcom stmt optInd)*
+         'else' colcom stmt
 ifExpr = 'if' condExpr
 whenExpr = 'when' condExpr
 whileStmt = 'while' expr colcom stmt
