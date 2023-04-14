@@ -442,7 +442,37 @@
 
 - When compiling for Release the flag `-fno-math-errno` is used for GCC.
 
+## Docgen
+
+- Markdown mode is now default markup language of doc comments (instead
+  of legacy `RstMarkdown` mode), which means that some RST features,
+  that have a Markdown equivalent, are turned off.
+    * Added `{.doctype: RST | Markdown | RstMarkdown.}` pragma allowing to
+      select the markup language mode in the doc comments of current `.nim`
+      file for processing by `nim doc`.
+- Added Pandoc Markdown bracket syntax `[...]` for making anchor-less links.
+- Docgen now supports concise syntax for referencing Nim symbols:
+  instead of specifying HTML anchors directly one can use original
+  Nim symbol declarations (adding the aforementioned link brackets
+  `[...]` around them).
+    * to use this feature across modules a new `importdoc` directive is added.
+  Using this feature for referencing also helps to ensure that links
+  (inside one module or the whole project) are not broken.
+- Added support for RST & Markdown quote blocks (blocks starting from `>`).
+- Added a popular Markdown definition lists extension.
+- Added Markdown indented code blocks (blocks indented by >= 4 spaces).
+- Added syntax for additional parameters to Markdown code blocks:
+
+       ```nim test="nim c $1"
+       ...
+       ```
 
 ## Tool changes
 
 - Nim now ships Nimble version 0.14 which added support for lock-files. Libraries are stored in `$nimbleDir/pkgs2` (it was `$nimbleDir/pkgs`). Use `nimble develop --global` to create an old style link file in the special links directory documented at https://github.com/nim-lang/nimble#nimble-develop.
+- nimgrep added option `--inContext` (and `--notInContext`), which
+  allows to filter only matches with context block containing a given pattern.
+- nimgrep: names of options containing "include/exclude" are deprecated,
+  e.g. instead of `--includeFile` and `--excludeFile` we have
+  `--filename` and `--notFilename` respectively.
+  Also semantics becomes consistent for such positive/negative filters.
