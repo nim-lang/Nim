@@ -613,7 +613,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
       if (t[0].kind != nkIntLit) or (t[0].intVal == 0):
         lineF(p, cpsStmts, "if (!$1) goto ", [rdLoc(a)])
         assignLabel(p.blocks[p.breakIdx], p.s(cpsStmts))
-        lineF(p, cpsStmts, ";$n", [])
+        appcg(p, cpsStmts, ";$n", [])
       genStmts(p, loopBody)
 
       if optProfiler in p.options:
