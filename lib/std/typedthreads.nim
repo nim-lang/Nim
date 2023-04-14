@@ -34,6 +34,10 @@
 ##
 ##  deinitLock(L)
 
+
+when defined(windows) and defined(gcc) and (not compileOption("tlsEmulation")):
+  {.passL: "-Wl,-Bstatic -lpthread".}
+
 import std/private/[threadtypes]
 export Thread
 
