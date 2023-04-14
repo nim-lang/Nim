@@ -624,7 +624,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     if f.len != a.len: return
     result = isEqual      # start with maximum; also correct for no
                           # params at all
-    
+
     if f.flags * {tfIterator} != a.flags * {tfIterator}:
       return isNone
 
@@ -712,7 +712,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
       if alreadyBound != nil: typ = alreadyBound
 
       template paramSym(kind): untyped =
-        newSym(kind, typeParamName, nextSymId(c.idgen), typeClass.sym, typeClass.sym.info, {})
+        newSym(kind, typeParamName, c.idgen, typeClass.sym, typeClass.sym.info, {})
 
       block addTypeParam:
         for prev in typeParams:

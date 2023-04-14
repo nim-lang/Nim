@@ -79,7 +79,7 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: P
   if avoidTemp:
     tempAsNode = value
   else:
-    var temp = newSym(skTemp, getIdent(g.cache, genPrefix), nextSymId(idgen),
+    var temp = newSym(skTemp, getIdent(g.cache, genPrefix), idgen,
                   owner, value.info, g.config.options)
     temp.typ = skipTypes(value.typ, abstractInst)
     incl(temp.flags, sfFromGeneric)
@@ -100,7 +100,7 @@ proc evalOnce*(g: ModuleGraph; value: PNode; idgen: IdGenerator; owner: PSym): P
   ## freely, multiple times. This is frequently required and such a builtin would also be
   ## handy to have in macros.nim. The value that can be reused is 'result.lastSon'!
   result = newNodeIT(nkStmtListExpr, value.info, value.typ)
-  var temp = newSym(skTemp, getIdent(g.cache, genPrefix), nextSymId(idgen),
+  var temp = newSym(skTemp, getIdent(g.cache, genPrefix), idgen,
                     owner, value.info, g.config.options)
   temp.typ = skipTypes(value.typ, abstractInst)
   incl(temp.flags, sfFromGeneric)
@@ -126,7 +126,7 @@ proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; idgen: IdGenerator; o
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
 
-  var temp = newSym(skTemp, getIdent(g.cache, "_"), nextSymId(idgen), owner, value.info, owner.options)
+  var temp = newSym(skTemp, getIdent(g.cache, "_"), idgen, owner, value.info, owner.options)
   var v = newNodeI(nkLetSection, value.info)
   let tempAsNode = newSymNode(temp) #newIdentNode(getIdent(genPrefix & $temp.id), value.info)
 
@@ -144,7 +144,7 @@ proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; idgen: IdGenerator; o
 proc lowerSwap*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode =
   result = newNodeI(nkStmtList, n.info)
   # note: cannot use 'skTemp' here cause we really need the copy for the VM :-(
-  var temp = newSym(skVar, getIdent(g.cache, genPrefix), nextSymId(idgen), owner, n.info, owner.options)
+  var temp = newSym(skVar, getIdent(g.cache, genPrefix), idgen, owner, n.info, owner.options)
   temp.typ = n[1].typ
   incl(temp.flags, sfFromGeneric)
   incl(temp.flags, sfGenSym)
@@ -171,8 +171,7 @@ proc createObj*(g: ModuleGraph; idgen: IdGenerator; owner: PSym, info: TLineInfo
     rawAddSon(result, getCompilerProc(g, "RootObj").typ)
   result.n = newNodeI(nkRecList, info)
   let s = newSym(skType, getIdent(g.cache, "Env_" & toFilename(g.config, info) & "_" & $owner.name.s),
-                  nextSymId(idgen),
-                  owner, info, owner.options)
+                  idgen, owner, info, owner.options)
   incl s.flags, sfAnon
   s.typ = result
   result.sym = s
@@ -234,7 +233,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym
   # because of 'gensym' support, we have to mangle the name with its ID.
   # This is hacky but the clean solution is much more complex than it looks.
   var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len),
-                     nextSymId(idgen), s.owner, s.info, s.options)
+                     idgen, s.owner, s.info, s.options)
   field.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
   let t = skipIntLit(s.typ, idgen)
   field.typ = t
@@ -250,7 +249,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym
 proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym {.discardable.} =
   result = lookupInRecord(obj.n, s.itemId)
   if result == nil:
-    var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len), nextSymId(idgen),
+    var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len), idgen,
                        s.owner, s.info, s.options)
     field.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
     let t = skipIntLit(s.typ, idgen)

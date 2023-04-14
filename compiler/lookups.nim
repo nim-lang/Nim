@@ -274,7 +274,7 @@ proc errorSym*(c: PContext, n: PNode): PSym =
       considerQuotedIdent(c, m)
     else:
       getIdent(c.cache, "err:" & renderTree(m))
-  result = newSym(skError, ident, nextSymId(c.idgen), getCurrOwner(c), n.info, {})
+  result = newSym(skError, ident, c.idgen, getCurrOwner(c), n.info, {})
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
   # pretend it's from the top level scope to prevent cascading errors:

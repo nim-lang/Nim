@@ -45,7 +45,7 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
     var q = a.sym
     if q.typ.kind in {tyTypeDesc, tyGenericParam, tyStatic, tyConcept}+tyTypeClasses:
       let symKind = if q.typ.kind == tyStatic: skConst else: skType
-      var s = newSym(symKind, q.name, nextSymId(c.idgen), getCurrOwner(c), q.info)
+      var s = newSym(symKind, q.name, c.idgen, getCurrOwner(c), q.info)
       s.flags.incl {sfUsed, sfFromGeneric}
       var t = PType(idTableGet(pt, q.typ))
       if t == nil:
@@ -100,7 +100,7 @@ proc freshGenSyms(c: PContext; n: PNode, owner, orig: PSym, symMap: var TIdTable
       n.sym = x
     elif s.owner == nil or s.owner.kind == skPackage:
       #echo "copied this ", s.name.s
-      x = copySym(s, nextSymId c.idgen)
+      x = copySym(s, c.idgen)
       x.owner = owner
       idTablePut(symMap, s, x)
       n.sym = x
@@ -128,7 +128,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
     freshGenSyms(c, b, result, orig, symMap)
 
-    if sfBorrow notin orig.flags: 
+    if sfBorrow notin orig.flags:
       # We do not want to generate a body for generic borrowed procs.
       # As body is a sym to the borrowed proc.
       let resultType = # todo probably refactor it into a function
@@ -193,7 +193,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
     var param: PSym
 
     template paramSym(kind): untyped =
-      newSym(kind, genParam.sym.name, nextSymId c.idgen, genericTyp.sym, genParam.sym.info)
+      newSym(kind, genParam.sym.name, c.idgen, genericTyp.sym, genParam.sym.info)
 
     if genParam.kind == tyStatic:
       param = paramSym skConst
@@ -263,7 +263,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
 
     internalAssert c.config, originalParams[i].kind == nkSym
     let oldParam = originalParams[i].sym
-    let param = copySym(oldParam, nextSymId c.idgen)
+    let param = copySym(oldParam, c.idgen)
     param.owner = prc
     param.typ = result[i]
 
@@ -340,7 +340,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   c.matchedConcept = nil
   let oldScope = c.currentScope
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
-  result = copySym(fn, nextSymId c.idgen)
+  result = copySym(fn, c.idgen)
   incl(result.flags, sfFromGeneric)
   result.owner = fn
   result.ast = n
