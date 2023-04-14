@@ -603,7 +603,6 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   let useRenderModule = false
   let loc = d.conf.toFileLineCol(n.info)
   let code = extractRunnableExamplesSource(d.conf, n)
-  let codeIndent = extractRunnableExamplesSource(d.conf, n, indent = 2)
 
   if d.conf.errorCounter > 0:
     return (rdoccmd, code)
@@ -619,6 +618,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
     docComment.comment = comment
     var runnableExamples = newTree(nkStmtList,
         docComment,
+        newTree(nkImportStmt, newStrNode(nkStrLit, "std/assertions")),
         newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
     runnableExamples.info = n.info
     for a in n.lastSon: runnableExamples.add a
@@ -632,6 +632,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   else:
     var code2 = code
     if code.len > 0 and "codeReordering" notin code:
+      let codeIndent = extractRunnableExamplesSource(d.conf, n, indent = 2)
       # hacky but simplest solution, until we devise a way to make `{.line.}`
       # work without introducing a scope
       code2 = """
@@ -642,6 +643,7 @@ $#
 #[
 $#
 ]#
+import std/assertions
 import $#
 $#
 """ % [comment, d.filename.quoted, code2]
