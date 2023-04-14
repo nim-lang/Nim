@@ -24,13 +24,13 @@ template main2 = # bug #15958
   proc byLent[T](a: T): lent T = a
   let a = [11,12]
   let b = @[21,23]
-  let ss = {1'u8, 2, 3, 5}
+  let ss = {1, 2, 3, 5}
   doAssert byLent(a) == [11,12]
   doAssert sameAddress(byLent(a), a)
   doAssert byLent(b) == @[21,23]
   # pending bug #16073
   doAssert sameAddress(byLent(b), b)
-  doAssert byLent(ss) == {1'u8, 2, 3, 5}
+  doAssert byLent(ss) == {1, 2, 3, 5}
   doAssert sameAddress(byLent(ss), ss)
 
   let r = new(float)

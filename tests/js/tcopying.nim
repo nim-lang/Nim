@@ -51,7 +51,7 @@ block:
     echo obj.x, " ", s[0].x
 
 block:
-    var nums = {range[1..5](1), 2, 3, 4}
+    var nums = {1, 2, 3, 4}
     let obj = (n: nums)
     nums.incl 5
     echo (5 in nums), " ", (5 in obj.n)

@@ -29,7 +29,7 @@ proc `==`*(x, y: bool): bool {.magic: "EqB", noSideEffect.}
 proc `==`*[T](x, y: set[T]): bool {.magic: "EqSet", noSideEffect.} =
   ## Checks for equality between two variables of type `set`.
   runnableExamples:
-    assert {1'u8, 2, 2, 3} == {1'u8, 2, 3} # duplication in sets is ignored
+    assert {1, 2, 2, 3} == {1, 2, 3} # duplication in sets is ignored
 
 proc `==`*[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
   ## Checks that two `ref` variables refer to the same item.
@@ -70,9 +70,9 @@ proc `<=`*[T](x, y: set[T]): bool {.magic: "LeSet", noSideEffect.} =
   ## have more members than `x`. That is, `x` can be equal to `y`.
   runnableExamples:
     let
-      a = {3'u8, 5}
-      b = {1'u8, 3, 5, 7}
-      c = {2'u8}
+      a = {3, 5}
+      b = {1, 3, 5, 7}
+      c = {2}
     assert a <= b
     assert a <= a
     assert not (a <= c)
@@ -113,9 +113,9 @@ proc `<`*[T](x, y: set[T]): bool {.magic: "LtSet", noSideEffect.} =
   ## more elements than `y`.
   runnableExamples:
     let
-      a = {3'u8, 5}
-      b = {1'u8, 3, 5, 7}
-      c = {2'u8}
+      a = {3, 5}
+      b = {1, 3, 5, 7}
+      c = {2}
     assert a < b
     assert not (a < a)
     assert not (a < c)

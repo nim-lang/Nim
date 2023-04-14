@@ -3,11 +3,11 @@ func incl*[T](x: var set[T], y: T) {.magic: "Incl".} =
   ##
   ## This is the same as `x = x + {y}`, but it might be more efficient.
   runnableExamples:
-    var a = {1'u8, 3, 5}
+    var a = {1, 3, 5}
     a.incl(2)
-    assert a == {1'u8, 2, 3, 5}
+    assert a == {1, 2, 3, 5}
     a.incl(4)
-    assert a == {1'u8, 2, 3, 4, 5}
+    assert a == {1, 2, 3, 4, 5}
 
 when not defined(nimHasCallsitePragma):
   {.pragma: callsite.}
@@ -15,10 +15,10 @@ when not defined(nimHasCallsitePragma):
 template incl*[T](x: var set[T], y: set[T]) {.callsite.} =
   ## Includes the set `y` in the set `x`.
   runnableExamples:
-    var a = {1'u8, 3, 5, 7}
-    var b = {4'u8, 5, 6}
+    var a = {1, 3, 5, 7}
+    var b = {4, 5, 6}
     a.incl(b)
-    assert a == {1'u8, 3, 4, 5, 6, 7}
+    assert a == {1, 3, 4, 5, 6, 7}
   x = x + y
 
 func excl*[T](x: var set[T], y: T) {.magic: "Excl".} =
@@ -26,26 +26,26 @@ func excl*[T](x: var set[T], y: T) {.magic: "Excl".} =
   ##
   ## This is the same as `x = x - {y}`, but it might be more efficient.
   runnableExamples:
-    var b = {2'u8, 3, 5, 6, 12, 54}
+    var b = {2, 3, 5, 6, 12, 54}
     b.excl(5)
-    assert b == {2'u8, 3, 6, 12, 54}
+    assert b == {2, 3, 6, 12, 54}
 
 template excl*[T](x: var set[T], y: set[T]) {.callsite.} =
   ## Excludes the set `y` from the set `x`.
   runnableExamples:
-    var a = {1'u8, 3, 5, 7}
-    var b = {3'u8, 4, 5}
+    var a = {1, 3, 5, 7}
+    var b = {3, 4, 5}
     a.excl(b) 
-    assert a == {1'u8, 7}
+    assert a == {1, 7}
   x = x - y
 
 func card*[T](x: set[T]): int {.magic: "Card".} =
   ## Returns the cardinality of the set `x`, i.e. the number of elements
   ## in the set.
   runnableExamples:
-    var a = {1'u8, 3, 5, 7}
+    var a = {1, 3, 5, 7}
     assert card(a) == 4
-    var b = {1'u8, 3, 5, 7, 5}
+    var b = {1, 3, 5, 7, 5}
     assert card(b) == 4 # repeated 5 doesn't count
 
 func len*[T](x: set[T]): int {.magic: "Card".}
@@ -55,17 +55,17 @@ func len*[T](x: set[T]): int {.magic: "Card".}
 func `*`*[T](x, y: set[T]): set[T] {.magic: "MulSet".} =
   ## This operator computes the intersection of two sets.
   runnableExamples:
-    assert {1'u8, 2, 3} * {2'u8, 3, 4} == {2'u8, 3}
+    assert {1, 2, 3} * {2, 3, 4} == {2, 3}
 
 func `+`*[T](x, y: set[T]): set[T] {.magic: "PlusSet".} =
   ## This operator computes the union of two sets.
   runnableExamples:
-    assert {1'u8, 2, 3} + {2'u8, 3, 4} == {1'u8, 2, 3, 4}
+    assert {1, 2, 3} + {2, 3, 4} == {1, 2, 3, 4}
 
 func `-`*[T](x, y: set[T]): set[T] {.magic: "MinusSet".} =
   ## This operator computes the difference of two sets.
   runnableExamples:
-    assert {1'u8, 2, 3} - {2'u8, 3, 4} == {1'u8}
+    assert {1, 2, 3} - {2, 3, 4} == {1}
 
 func contains*[T](x: set[T], y: T): bool {.magic: "InSet".} =
   ## One should overload this proc if one wants to overload the `in` operator.

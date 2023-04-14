@@ -224,7 +224,7 @@ proc main() =
     doAssert "{}abc`testStr' `testFlt:1.2f' `1+1' ``".fmt('`', '\'') == "{}abcfoobar 3.14 2 `"
     doAssert """x = '"foo" & "bar"'
                 y = '123 + 111'
-                z = '3 in {range[2..7](2)..7}'
+                z = '3 in {2..7}'
              """.fmt('\'') ==
              """x = foobar
                 y = 234

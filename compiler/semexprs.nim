@@ -2583,11 +2583,13 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
     if not isOrdinalType(typ, allowEnumWithHoles=true):
       localError(c.config, n.info, errOrdinalTypeExpected % typeToString(typ, preferDesc))
       typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
+    elif isIntLit(typ):
+      # set of int literal, use a default range smaller than the max range
+      typ = makeRangeType(c, 0, DefaultSetElements-1, n.info) 
     elif lengthOrd(c.config, typ) > MaxSetElements:
       message(c.config, n.info, warnImplicitMaxSizeSet, "type '" &
         typeToString(typ, preferDesc) & "' is too big to be a `set` element, " &
-        "assuming `set` element type to be range[0.." & $(MaxSetElements - 1) &
-        "] which uses a lot of memory")
+        "assuming a range of 0.." & $(MaxSetElements - 1))
       typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
     addSonSkipIntLit(result.typ, typ, c.idgen)
     for i in 0..<n.len:

@@ -426,7 +426,7 @@ proc sample*[T](r: var Rand; s: set[T]): T =
   ##   cumulative distribution function
   runnableExamples:
     var r = initRand(987)
-    let s = {1'u8, 3, 5, 7, 9}
+    let s = {1, 3, 5, 7, 9}
     assert r.sample(s) in s
 
   assert card(s) != 0
@@ -450,7 +450,7 @@ proc sample*[T](s: set[T]): T =
   ##   cumulative distribution function
   runnableExamples:
     randomize(987)
-    let s = {1'u8, 3, 5, 7, 9}
+    let s = {1, 3, 5, 7, 9}
     assert sample(s) in s
 
   sample(state, s)

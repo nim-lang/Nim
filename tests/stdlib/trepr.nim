@@ -13,7 +13,7 @@ macro deb(a): string = newLit a.repr.strip
 macro debTyped(a: typed): string = newLit a.repr.strip
 
 template main() =
-  doAssert repr({range[3..5](3),5}) == "{3, 5}"
+  doAssert repr({3,5}) == "{3, 5}"
 
   block:
     type TEnum = enum a, b
