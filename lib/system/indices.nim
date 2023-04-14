@@ -93,10 +93,10 @@ proc `[]`*[T, U: Ordinal](s: string, x: HSlice[T, U]): string {.inline, systemRa
   else:
     when notJSnotNims:
       if L > 0:
-        if b < s.len:
+        if b <= s.len:
           copyMem(addr result[0], addr s[a], L)
         else:
-          raiseIndexError3(b, 0, s.high)
+          raiseIndexError3(b, 0, s.len-1)
     else:
       impl()
 
@@ -122,12 +122,12 @@ proc `[]=`*[T, U: Ordinal](s: var string, x: HSlice[T, U], b: string) {.systemRa
     else:
       when notJSnotNims:
         if L > 0:
-          if xb < s.len:
+          if xb <= s.len:
             when defined(nimSeqsV2):
               prepareMutation(s)
             copyMem(addr s[a], addr b[0], L)
           else:
-            raiseIndexError3(xb, 0, s.high)
+            raiseIndexError3(xb, 0, s.len-1)
       else:
         impl()
   else:
@@ -151,10 +151,10 @@ proc `[]`*[Idx, T; U, V: Ordinal](a: array[Idx, T], x: HSlice[U, V]): seq[T] {.s
   else:
     when notJSnotNims and supportsCopyMem(T):
       if L > 0:
-        if xb < a.len:
+        if xb <= a.len:
           copyMem(addr result[0], addr a[Idx(xa)], sizeof(T) * L)
         else:
-          raiseIndexError3(xb, 0, a.high)
+          raiseIndexError3(xb, 0, a.len-1)
     else:
       impl()
 
@@ -176,10 +176,10 @@ proc `[]=`*[Idx, T; U, V: Ordinal](a: var array[Idx, T], x: HSlice[U, V], b: ope
     else:
       when notJSnotNims and supportsCopyMem(T):
         if L > 0:
-          if xb < a.len:
+          if xb <= a.len:
             moveMem(addr a[Idx(xa)], addr b[0], sizeof(T) * L)
           else:
-            raiseIndexError3(xb, 0, a.high)
+            raiseIndexError3(xb, 0, a.len-1)
       else:
         impl()
   else:
@@ -204,10 +204,10 @@ proc `[]`*[T; U, V: Ordinal](s: openArray[T], x: HSlice[U, V]): seq[T] {.systemR
   else:
     when notJSnotNims and supportsCopyMem(T):
       if L > 0:
-        if xb < s.len:
+        if xb <= s.len:
           copyMem(addr result[0], addr s[a], sizeof(T) * L)
         else:
-          raiseIndexError3(xb, 0, s.high)
+          raiseIndexError3(xb, 0, s.len-1)
     else:
       impl()
 
@@ -231,10 +231,10 @@ proc `[]=`*[T; U, V: Ordinal](s: var seq[T], x: HSlice[U, V], b: openArray[T]) {
     else:
       when notJSnotNims and supportsCopyMem(T):
         if L > 0:
-          if xb < s.len:
+          if xb <= s.len:
             moveMem(addr s[a], addr b[0], sizeof(T) * L)
           else:
-            raiseIndexError3(xb, 0, s.high)
+            raiseIndexError3(xb, 0, s.len-1)
       else:
         impl()
   else:
