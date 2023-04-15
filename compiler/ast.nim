@@ -521,6 +521,8 @@ type
     tfInheritable,    # is the object inheritable?
     tfHasOwned,       # type contains an 'owned' type and must be moved
     tfEnumHasHoles,   # enum cannot be mapped into a range
+                      # for objects becomes tfObjHasKids
+                      # for routines becomes tfHasVarargsParam
     tfShallow,        # type can be shallow copied on assignment
     tfThread,         # proc type is marked as ``thread``; alias for ``gcsafe``
     tfFromGeneric,    # type is an instantiation of a generic; this is needed
@@ -629,6 +631,7 @@ const
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
   tfObjHasKids* = tfEnumHasHoles
+  tfHasVarargsParam* = tfEnumHasHoles ## routine type has varargs parameter
   tfReturnsNew* = tfInheritable
   skError* = skUnknown
 
@@ -917,6 +920,8 @@ type
                               # for modules, an unique index corresponding
                               # to the module's fileIdx
                               # for variables a slot index for the evaluator
+                              # for routines the minimum required parameters
+                              # (could be part of the type but no space there)
     offset*: int              # offset of record field
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a

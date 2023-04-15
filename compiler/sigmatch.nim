@@ -2399,8 +2399,9 @@ proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
 
 proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var IntSet) =
 
-  template noMatch() =
-    c.mergeShadowScope #merge so that we don't have to resem for later overloads
+  template noMatch(paramScopeOpen = true) =
+    when paramScopeOpen:
+      c.mergeShadowScope #merge so that we don't have to resem for later overloads
     m.state = csNoMatch
     m.firstMismatch.arg = a
     m.firstMismatch.formal = formal
@@ -2438,6 +2439,27 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     formal = if formalLen > 1: m.callee.n[1].sym else: nil # current routine parameter
     container: PNode = nil # constructed container
   let firstArgBlock = findFirstArgBlock(m, n)
+
+  # early check for parameter count
+  block:
+    let givenCount = n.len - 1
+    # routine symbols precalculate minimum argument count in `position` field
+    # if there is no routine symbol, don't bother calculating
+    if m.calleeSym != nil and m.calleeSym.kind in skProcKinds:
+      # if this is unset, it's 0 by default, which matches everything anyway
+      let minCount = m.calleeSym.position
+      if givenCount < minCount:
+        m.firstMismatch.kind = kMissingParam
+        a = givenCount
+        noMatch(paramScopeOpen = false)
+    # no max param count for varargs
+    if {tfVarargs, tfHasVarargsParam} * m.callee.flags == {}:
+      let maxCount = formalLen - f
+      if givenCount > maxCount:
+        m.firstMismatch.kind = kExtraArg
+        a = maxCount
+        noMatch(paramScopeOpen = false)
+
   while a < n.len:
     c.openShadowScope
 

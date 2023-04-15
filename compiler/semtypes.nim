@@ -1281,6 +1281,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   result = newProcType(c, n.info, prev)
   var check = initIntSet()
   var counter = 0
+  var requiredCounter = 0 # minimum required parameters
 
   for i in 1..<n.len:
     var a = n[i]
@@ -1306,6 +1307,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       if kind in {skProc, skFunc} and (typ.kind == tyTyped or typ.kind == tyUntyped):
         if not isMagic(getCurrOwner(c)):
           localError(c.config, a[^2].info, "'" & typ.sym.name.s & "' is only allowed in templates and macros or magic procs")
+      if typ.kind == tyVarargs:
+        result.flags.incl tfHasVarargsParam
 
 
     if hasDefault:
@@ -1358,6 +1361,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         elif typ.kind == tyStatic:
           def = semConstExpr(c, def)
           def = fitNode(c, typ, def, def.info)
+    else: # no default value
+      requiredCounter += a.len - 2
 
     if not hasType and not hasDefault:
       if isType: localError(c.config, a.info, "':' expected")
@@ -1398,6 +1403,13 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       styleCheckDef(c, a[j].info, arg)
       onDef(a[j].info, arg)
       a[j] = newSymNode(arg)
+
+  if not isType:
+    # routine symbol for which the params are being checked
+    let s = result.owner
+    if s != nil:
+      # set the position field to the minimum number of required parameters
+      s.position = requiredCounter
 
   var r: PType
   if n[0].kind != nkEmpty:
