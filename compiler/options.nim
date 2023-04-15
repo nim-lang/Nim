@@ -233,6 +233,10 @@ type
     laxEffects
       ## Lax effects system prior to Nim 2.0.
     verboseTypeMismatch
+    noEagerParamCountMatch
+      ## Routine calls will not eagerly fail a match on incompatible
+      ## parameter counts. This causes some `untyped` parameters to become
+      ## typed.
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest

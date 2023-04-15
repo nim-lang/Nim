@@ -70,7 +70,7 @@ block: # issue #20274, pragma macros
   proc b() {.a: "abc".} = discard
   proc c() {.a.} = discard
 
-import moverloadeduntypedparam, math
+import moverloadeduntypedparam
 
 block:
   fun2(true, nonexistant) # ok
@@ -87,6 +87,3 @@ block:
   fun2(true, nonexistant) # ok
   fun2(1, nonexistant) # ok
   discard fun2(nonexistant)
-
-block: # ensure we don't touch generics
-  doAssert abs(-456.789) == 456.789

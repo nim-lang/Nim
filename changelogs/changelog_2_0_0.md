@@ -219,6 +219,25 @@
   replacement of the `nnkFormalParams` node as well as having child nodes
   unlike other type class AST.
 
+- Overloaded routine calls will now eagerly check if the parameter counts are
+  compatible with each overload. This means `untyped` parameters will not be
+  type checked in some cases where they previously were, i.e.:
+
+  ```nim
+  template foo(x: int, body: untyped) = 
+    let value {.inject.} = x
+    body
+  template foo(body: untyped) = foo(123, body)
+
+  # previously did not compile, now compiles:
+  foo:
+    echo value # 123
+  ```
+
+  To fix cases where code depended on this old behavior, change the relevant
+  `untyped` parameters to `typed`. The switch `--legacy:noEagerParamCountMatch`
+  is also provided to use the old behavior for the time being.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
