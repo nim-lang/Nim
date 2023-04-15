@@ -444,12 +444,25 @@
 
 ## Docgen
 
-- Markdown mode is now default markup language of doc comments (instead
-  of legacy `RstMarkdown` mode), which means that some RST features,
-  that have a Markdown equivalent, are turned off.
-    * Added `{.doctype: RST | Markdown | RstMarkdown.}` pragma allowing to
-      select the markup language mode in the doc comments of current `.nim`
-      file for processing by `nim doc`.
+- `Markdown` is now default markup language of doc comments (instead
+  of legacy `RstMarkdown` mode). In this release we begin to separate
+  RST and Markdown features to better follow specification of each
+  language, with the focus on Markdown development.
+
+  * So we add `{.doctype: Markdown | RST | RstMarkdown.}` pragma allowing to
+    select the markup language mode in the doc comments of current `.nim`
+    file for processing by `nim doc`:
+
+      1. `Markdown` (default) is basically CommonMark (standard Markdown) +
+         some Pandoc Markdown features + some RST features that are missing
+         in our current implementation of CommonMark and Pandoc Markdown.
+      2. `RST` closely follows RST spec with few additional Nim features.
+      3. `RstMarkdown` is a maximum mix of RST and Markdown features, which
+          is kept for the sake of compatibility and ease of migration.
+
+  * and we add separate `md2html` and `rst2html` commands for processing
+    standalone `.md` and `.rst` files respectively (and also `md2tex/rst2tex`).
+
 - Added Pandoc Markdown bracket syntax `[...]` for making anchor-less links.
 - Docgen now supports concise syntax for referencing Nim symbols:
   instead of specifying HTML anchors directly one can use original
