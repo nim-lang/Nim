@@ -2443,27 +2443,27 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
   # early check for parameter count (nimsuggest allows partial calls)
   let givenCount = n.len - 1
   let expectedCount = formalLen - f
-  when not defined(nimsuggest):
-    if givenCount != expectedCount and
-        noEagerParamCountMatch notin c.config.legacyFeatures:
-      # routine symbols precalculate minimum argument count in `position` field
-      # if there is no routine symbol, don't bother calculating
-      if m.callee.kind == tyProc and m.calleeSym != nil:
-        # if this fails just add it as an `and`:
-        assert m.calleeSym.kind in skProcKinds
-        # if this is unset, it's 0 by default, which matches everything anyway:
-        let minCount = m.calleeSym.position
-        if givenCount < minCount:
-          m.firstMismatch.kind = kMissingParam
-          a = givenCount + 1
-          formal = m.callee.n[a].sym
-          noMatch(paramScopeOpen = false)
-      # no max param count for varargs
-      if {tfVarargs, tfHasVarargsParam} * m.callee.flags == {}:
-        if givenCount > expectedCount:
-          m.firstMismatch.kind = kExtraArg
-          a = expectedCount + 1
-          noMatch(paramScopeOpen = false)
+  if givenCount != expectedCount and
+      noEagerParamCountMatch notin c.config.legacyFeatures and
+      (when defined(nimsuggest): c.config.ideCmd notin {ideSug, ideCon} else: true):
+    # routine symbols precalculate minimum argument count in `position` field
+    # if there is no routine symbol, don't bother calculating
+    if m.callee.kind == tyProc and m.calleeSym != nil:
+      # if this fails just add it as an `and`:
+      assert m.calleeSym.kind in skProcKinds
+      # if this is unset, it's 0 by default, which matches everything anyway:
+      let minCount = m.calleeSym.position
+      if givenCount < minCount:
+        m.firstMismatch.kind = kMissingParam
+        a = givenCount + 1
+        formal = m.callee.n[a].sym
+        noMatch(paramScopeOpen = false)
+    # no max param count for varargs
+    if {tfVarargs, tfHasVarargsParam} * m.callee.flags == {}:
+      if givenCount > expectedCount:
+        m.firstMismatch.kind = kExtraArg
+        a = expectedCount + 1
+        noMatch(paramScopeOpen = false)
 
   while a < n.len:
     c.openShadowScope
