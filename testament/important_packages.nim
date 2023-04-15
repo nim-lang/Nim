@@ -33,7 +33,7 @@ var packages*: seq[NimblePackage]
 proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true, allowFailure = false) =
   packages.add NimblePackage(name: name, cmd: cmd, url: url, useHead: useHead, allowFailure: allowFailure)
 
-pkg "alea", "nimble test --legacy:noEagerParamCountMatch" # pending https://github.com/andreaferretti/alea/pull/9
+pkg "alea", "nim c --debuginfo --path:. --run --define:reportConceptFailures --legacy:noEagerParamCountMatch tests/test.nim" # pending https://github.com/andreaferretti/alea/pull/9
 pkg "argparse"
 pkg "arraymancer", "nim c tests/tests_cpu.nim"
 pkg "ast_pattern_matching", "nim c -r tests/test1.nim"
