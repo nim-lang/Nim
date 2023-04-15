@@ -461,8 +461,8 @@ proc sameConstant*(a, b: PNode): bool =
       # if a.floatVal == 0.0: result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
       # else: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
-    of nkType, nkNilLit: result = a.typ == b.typ
-    of nkEmpty: result = true
+    of nkType: result = a.typ == b.typ
+    of nkEmpty, nkNilLit: result = true
     else:
       if a.len == b.len:
         for i in 0..<a.len:

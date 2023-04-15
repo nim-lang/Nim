@@ -2448,8 +2448,9 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
       (when defined(nimsuggest): c.config.ideCmd notin {ideSug, ideCon} else: true):
     # routine symbols precalculate minimum argument count in `position` field
     # if there is no routine symbol, don't bother calculating
-    if m.callee.kind == tyProc and m.calleeSym != nil and
-        m.calleeSym.kind in skProcKinds:
+    if m.callee.kind == tyProc and m.calleeSym != nil:
+      # if this fails just add it as an `and`:
+      assert m.calleeSym.kind in skProcKinds
       # if this is unset, it's 0 by default, which matches everything anyway:
       let minCount = m.calleeSym.position
       if givenCount < minCount:
