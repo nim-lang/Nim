@@ -475,4 +475,4 @@
 - nimgrep: names of options containing "include/exclude" are deprecated,
   e.g. instead of `--includeFile` and `--excludeFile` we have
   `--filename` and `--notFilename` respectively.
-  Also semantics becomes consistent for such positive/negative filters.
+  Also the semantics become consistent for such positive/negative filters.
