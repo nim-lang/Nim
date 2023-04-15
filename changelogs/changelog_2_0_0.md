@@ -219,6 +219,9 @@
   replacement of the `nnkFormalParams` node as well as having child nodes
   unlike other type class AST.
 
+- Signed integer literals in `set` literals now default to a range type of
+  `0..255` instead of `0..65535` (the maximum size of sets).
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
