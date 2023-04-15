@@ -34,7 +34,8 @@ block: # type alias
   proc generic[T](): string =
     template U: untyped = T
     var x: U
-    result = $typeof(U)
+    result = $typeof(x)
+    doAssert result == $U
     doAssert result == $T
   doAssert generic[int]() == "int"
   doAssert generic[Int2]() == "int"
