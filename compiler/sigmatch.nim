@@ -2441,13 +2441,17 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
   let firstArgBlock = findFirstArgBlock(m, n)
 
   # early check for parameter count (nimsuggest allows partial calls)
+  let givenCount = n.len - 1
+  let expectedCount = formalLen - f
   when not defined(nimsuggest):
-    if noEagerParamCountMatch notin c.config.legacyFeatures:
-      let givenCount = n.len - 1
+    if givenCount != expectedCount and
+        noEagerParamCountMatch notin c.config.legacyFeatures:
       # routine symbols precalculate minimum argument count in `position` field
       # if there is no routine symbol, don't bother calculating
       if m.callee.kind == tyProc and m.calleeSym != nil:
-        # if this is unset, it's 0 by default, which matches everything anyway
+        # if this fails just add it as an `and`:
+        assert m.calleeSym.kind in skProcKinds
+        # if this is unset, it's 0 by default, which matches everything anyway:
         let minCount = m.calleeSym.position
         if givenCount < minCount:
           m.firstMismatch.kind = kMissingParam
@@ -2456,10 +2460,9 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
           noMatch(paramScopeOpen = false)
       # no max param count for varargs
       if {tfVarargs, tfHasVarargsParam} * m.callee.flags == {}:
-        let maxCount = formalLen - f
-        if givenCount > maxCount:
+        if givenCount > expectedCount:
           m.firstMismatch.kind = kExtraArg
-          a = maxCount + 1
+          a = expectedCount + 1
           noMatch(paramScopeOpen = false)
 
   while a < n.len:

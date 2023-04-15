@@ -87,3 +87,21 @@ block:
   fun2(true, nonexistant) # ok
   fun2(1, nonexistant) # ok
   discard fun2(nonexistant)
+
+block: # make sure using position field is compatible
+  template code: untyped =
+    type Foo = object
+      x, y, z: int
+      p: proc ()
+    let a = 1
+    let b = 2
+    let c = 3
+    let p = proc() = discard
+    p()
+    let foo = Foo(x: a, y: b, z: c, p: p)
+    foo.p()
+    proc bar(x, y, z: int, p: proc()) =
+      p()
+    bar(a, b, c, p)
+  static: code()
+  code()
