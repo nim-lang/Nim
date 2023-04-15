@@ -2445,19 +2445,21 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     let givenCount = n.len - 1
     # routine symbols precalculate minimum argument count in `position` field
     # if there is no routine symbol, don't bother calculating
-    if m.calleeSym != nil and m.calleeSym.kind in skProcKinds:
+    if m.callee.kind == tyProc and m.calleeSym != nil and
+        m.calleeSym.kind in skProcKinds:
       # if this is unset, it's 0 by default, which matches everything anyway
       let minCount = m.calleeSym.position
       if givenCount < minCount:
         m.firstMismatch.kind = kMissingParam
-        a = givenCount
+        a = givenCount + 1
+        formal = m.callee.n[a].sym
         noMatch(paramScopeOpen = false)
     # no max param count for varargs
     if {tfVarargs, tfHasVarargsParam} * m.callee.flags == {}:
       let maxCount = formalLen - f
       if givenCount > maxCount:
         m.firstMismatch.kind = kExtraArg
-        a = maxCount
+        a = maxCount + 1
         noMatch(paramScopeOpen = false)
 
   while a < n.len:

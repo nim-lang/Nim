@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim c --verbosity:0 --colors:off $file"
+  cmd: "nim c --verbosity:0 --colors:off --showAllMismatches:on $file"
   nimout: '''
 texplain.nim(162, 10) Hint: Non-matching candidates for e(y)
 proc e(i: int): int
@@ -54,9 +54,8 @@ proc r(o: RegularConcept): int
 texplain.nim(173, 9) template/generic instantiation of `assert` from here
 texplain.nim(132, 5) RegularConcept: concept predicate failed
 proc r[T](a: SomeNumber; b: T; c: auto)
-  first type mismatch at position: 1
-  required type for a: SomeNumber
-  but expression 'n' is of type: NonMatchingType
+  first type mismatch at position: 2
+  missing parameter: b
 
 expression: r(n)
 texplain.nim(174, 20) Hint: Non-matching candidates for r(y)
@@ -65,9 +64,8 @@ proc r(i: string): int
   required type for i: string
   but expression 'y' is of type: MatchingType
 proc r[T](a: SomeNumber; b: T; c: auto)
-  first type mismatch at position: 1
-  required type for a: SomeNumber
-  but expression 'y' is of type: MatchingType
+  first type mismatch at position: 2
+  missing parameter: b
 
 texplain.nim(182, 2) Error: type mismatch: got <MatchingType>
 but expected one of:
@@ -90,6 +88,8 @@ expression: f(y)'''
 # proc r[T](a: SomeNumber; b: T; c: auto)
 # proc r(i: string): int
 # proc r(o: RegularConcept): int
+
+
 
 
 

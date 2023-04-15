@@ -7,9 +7,8 @@ proc f(a: A)
   first type mismatch at position: 2
   extra argument given
 proc f(b: B)
-  first type mismatch at position: 1
-  required type for b: B
-  but expression 'A()' is of type: A
+  first type mismatch at position: 2
+  extra argument given
 
 expression: f(A(), "extra")
 tsigmatch.nim(125, 6) Error: type mismatch: got <(string, proc (){.gcsafe.})>
@@ -43,16 +42,15 @@ expression: takesFuncs([proc (x: int) {.gcsafe.} = echo [x]])
 tsigmatch.nim(149, 4) Error: type mismatch: got <int literal(10), a0: int literal(5), string>
 but expected one of:
 proc f(a0: uint8; b: string)
-  first type mismatch at position: 2
-  named param already provided: a0
+  first type mismatch at position: 3
+  extra argument given
 
 expression: f(10, a0 = 5, "")
 tsigmatch.nim(156, 4) Error: type mismatch: got <string, string, string, string, string, float64, string>
 but expected one of:
 proc f(a1: int)
-  first type mismatch at position: 1
-  required type for a1: int
-  but expression '"asdf"' is of type: string
+  first type mismatch at position: 2
+  extra argument given
 proc f(a1: string; a2: varargs[string]; a3: float; a4: var string)
   first type mismatch at position: 7
   required type for a4: var string
@@ -92,6 +90,8 @@ expression: fun1(default(Mystring), "asdf")
 #[
 see also: tests/errmsgs/tdeclaredlocs.nim
 ]#
+
+
 
 
 

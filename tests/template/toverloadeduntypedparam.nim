@@ -56,6 +56,11 @@ block: # adapted tests from PR #18618 for RFC 402, covers issue #19556
     fun(true, nonexistant) # ok
     fun(1, nonexistant) # ok
     fun(nonexistant) # Error: undeclared identifier: 'nonexistant'
+    template varargsUntypedRedirection(x: varargs[untyped]) =
+      fun(x)
+    varargsUntypedRedirection(true, nonexistant)
+    varargsUntypedRedirection(1, nonexistant)
+    varargsUntypedRedirection(nonexistant)
 
 block: # issue #20274, pragma macros
   macro a(path: string, fn: untyped): untyped =
@@ -64,3 +69,24 @@ block: # issue #20274, pragma macros
     result = fn
   proc b() {.a: "abc".} = discard
   proc c() {.a.} = discard
+
+import moverloadeduntypedparam, math
+
+block:
+  fun2(true, nonexistant) # ok
+  fun2(1, nonexistant) # ok
+  fun2(nonexistant) # Error: undeclared identifier: 'nonexistant'
+
+block:
+  template fun2(body: untyped): int = 123
+  fun2(true, nonexistant) # ok
+  fun2(1, nonexistant) # ok
+  discard fun2(nonexistant) # Error: undeclared identifier: 'nonexistant'
+  template fun2(a: bool, body: untyped): untyped = discard
+  template fun2(a: int, body: untyped): untyped = discard
+  fun2(true, nonexistant) # ok
+  fun2(1, nonexistant) # ok
+  discard fun2(nonexistant)
+
+block: # ensure we don't touch generics
+  doAssert abs(-456.789) == 456.789
