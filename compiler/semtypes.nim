@@ -1281,7 +1281,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   result = newProcType(c, n.info, prev)
   var check = initIntSet()
   var counter = 0
-  var requiredCounter = 0 # minimum required parameters
+  var requiredCount = 0 # minimum required parameters
 
   for i in 1..<n.len:
     var a = n[i]
@@ -1362,7 +1362,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           def = semConstExpr(c, def)
           def = fitNode(c, typ, def, def.info)
     else: # no default value
-      requiredCounter += a.len - 2
+      if not (hasType and typ.kind in {tyVarargs, tyVoid}):
+        requiredCount += a.len - 2
 
     if not hasType and not hasDefault:
       if isType: localError(c.config, a.info, "':' expected")
@@ -1409,7 +1410,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     let s = result.owner
     if s != nil:
       # set the position field to the minimum number of required parameters
-      s.position = requiredCounter
+      s.position = requiredCount
 
   var r: PType
   if n[0].kind != nkEmpty:
