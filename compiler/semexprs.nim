@@ -1588,7 +1588,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result.add(x[0])
     return
   checkMinSonsLen(n, 2, c.config)
-  # signal that generic parameters may be applied
+  # signal that generic parameters may be applied after
   n[0] = semExprWithType(c, n[0], {efNoEvaluateGeneric})
   var arr = skipTypes(n[0].typ, {tyGenericInst, tyUserTypeClassInst, tyOwned,
                                       tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})

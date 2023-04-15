@@ -29,21 +29,25 @@ block: # subscript
   doAssert baz[1] == 14
 
 block: # type alias
-  template Int: untyped = int
-  let x: Int = 123
+  template Int2: untyped = int
+  let x: Int2 = 123
   proc generic[T](): string =
     template U: untyped = T
-    result = $U
+    var x: U
+    result = $typeof(U)
     doAssert result == $T
   doAssert generic[int]() == "int"
+  doAssert generic[Int2]() == "int"
   doAssert generic[string]() == "string"
   doAssert generic[seq[int]]() == "seq[int]"
+  doAssert generic[seq[Int2]]() == "seq[int]"
   discard generic[123]()
   proc genericStatic[X; T: static[X]](): string =
     template U: untyped = T
     result = $U
     doAssert result == $T
   doAssert genericStatic[int, 123]() == "123"
+  doAssert genericStatic[Int2, 123]() == "123"
   doAssert genericStatic[(string, bool), ("a", true)]() == "(\"a\", true)"
 
 block: # issue #13515
