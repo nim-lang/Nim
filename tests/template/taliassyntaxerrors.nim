@@ -21,7 +21,7 @@ block: # generic template
   template bar[T]: T = T(foo.bar)
   let a = bar #[tt.Error
       ^ invalid type: 'template (): T' for let. Did you mean to call the template with '()'?; tt.Error
-          ^ 'bar' doesn't have a concrete type, due to unspecified generic parameters.]#
+          ^ 'bar' has unspecified generic parameters]#
   let b = bar[float]()
   doAssert b == 10.0
   bar = 15 #[tt.Error
