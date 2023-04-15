@@ -1,7 +1,3 @@
-discard """
-  matrix: "--mm:orc"
-"""
-
 import atomicSample
 
 block crossFileObjectContainingAGenericWithAComplexObject:
