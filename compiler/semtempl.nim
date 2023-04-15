@@ -659,7 +659,10 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     n[genericParamsPos] = n[miscPos][1]
     n[miscPos] = c.graph.emptyNode
   if allUntyped: incl(s.flags, sfAllUntyped)
-  if requiresParams or n[bodyPos].kind == nkEmpty:
+  if requiresParams or
+      n[bodyPos].kind == nkEmpty or
+      n[genericParamsPos].kind != nkEmpty:
+    # template cannot be called with alias syntax
     incl(s.flags, sfNoalias)
 
   if n[patternPos].kind != nkEmpty:

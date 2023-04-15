@@ -68,11 +68,8 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   of skProc, skFunc, skMethod, skIterator, skConverter, skModule:
     result = symChoice(c, n, s, scOpen)
   of skTemplate, skMacro:
-    # see semSym for skTemplate, skMacro
-    if sfNoalias notin s.flags and
-        # needed to make up for no efNoEvaluateGeneric
-        s.typ.len == 1 and
-        not fromDotExpr:
+    # alias syntax, see semSym for skTemplate, skMacro
+    if sfNoalias notin s.flags and not fromDotExpr:
       onUse(n.info, s)
       case s.kind
       of skTemplate: result = semTemplateExpr(c, n, s, {efNoSemCheck})

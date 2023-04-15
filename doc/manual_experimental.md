@@ -456,9 +456,10 @@ Assuming `foo` is a macro or a template, this is roughly equivalent to:
 Symbols as template/macro calls (alias syntax)
 ==============================================
 
-Templates and macros that take no arguments can be called as lone symbols,
-i.e. without parentheses. This is useful for repeated uses of complex
-expressions that cannot conveniently be represented as runtime values.
+Templates and macros that have no generic parameters and no required arguments
+can be called as lone symbols, i.e. without parentheses. This is useful for
+repeated uses of complex expressions that cannot conveniently be represented
+as runtime values.
 
   ```nim
   type Foo = object

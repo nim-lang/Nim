@@ -2334,7 +2334,9 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
     if param.typ.kind != tyUntyped: allUntyped = false
     if param.ast == nil: requiresParams = true
   if allUntyped: incl(s.flags, sfAllUntyped)
-  if requiresParams: incl(s.flags, sfNoalias)
+  if requiresParams or n[genericParamsPos].kind != nkEmpty:
+    # macro cannot be called with alias syntax
+    incl(s.flags, sfNoalias)
   if n[bodyPos].kind == nkEmpty:
     localError(c.config, n.info, errImplOfXexpected % s.name.s)
 
