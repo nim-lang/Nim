@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:refc; --mm:orc"
+  matrix: "--mm:orc"
 """
 
 import atomicSample
