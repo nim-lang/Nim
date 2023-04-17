@@ -22,6 +22,7 @@ type
     taNoUntyped
     taIsTemplateOrMacro
     taProcContextIsNotMacro
+    taIsCastable
 
   TTypeAllowedFlags* = set[TTypeAllowedFlag]
 
@@ -60,7 +61,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     elif taIsOpenArray in flags:
       result = t
     elif t.kind == tyLent and ((kind != skResult and views notin c.features) or
-                              kind == skParam): # lent can't be used as parameters.
+      (kind == skParam and {taIsCastable, taField} * flags == {})): # lent cannot be used as parameters.
+                                                       # except in the cast environment and as the field of an object
       result = t
     else:
       var t2 = skipTypes(t[0], abstractInst-{tyTypeDesc, tySink})
