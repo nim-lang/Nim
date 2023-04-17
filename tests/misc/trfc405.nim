@@ -89,6 +89,8 @@ template main =
       worked = true
     doAssert worked
     worked = false
+    hi(doAssert(not worked), doesntCompile, againDoesntCompile):
+      definitelyDoesntCompile
 
     template hi2(a: bool, b: untyped, c: varargs[untyped]): untyped =
       b
@@ -97,6 +99,8 @@ template main =
     hi2 worked:
       worked = true
     doAssert worked
+    hi2 worked, doAssert(worked), againDoesntCompile:
+      definitelyDoesntCompile
 
 static: main()
 main()
