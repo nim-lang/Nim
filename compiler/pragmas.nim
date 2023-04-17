@@ -12,7 +12,7 @@
 import
   os, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
-  types, lookups, lineinfos, pathutils, linter
+  types, lookups, lineinfos, pathutils, linter, modulepaths
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -517,6 +517,10 @@ proc relativeFile(c: PContext; n: PNode; ext=""): AbsoluteFile =
       if result.isEmpty: result = AbsoluteFile s
 
 proc processCompile(c: PContext, n: PNode) =
+  ## This pragma can take two forms. The first is a simple file input:
+  ##     {.compile: "file.c".}
+  ## The second is a tuple where the second arg is the output name strutils formatter:
+  ##     {.compile: ("file.c", "$1.o").}
   proc docompile(c: PContext; it: PNode; src, dest: AbsoluteFile; customArgs: string) =
     var cf = Cfile(nimname: splitFile(src).name,
                    cname: src, obj: dest, flags: {CfileFlag.External},
@@ -565,7 +569,8 @@ proc processCompile(c: PContext, n: PNode) =
       else:
         found = findFile(c.config, s)
         if found.isEmpty: found = AbsoluteFile s
-    let obj = toObjFile(c.config, completeCfilePath(c.config, found, false))
+    let mangled = completeCfilePath(c.config, mangleModuleName(c.config, found).AbsoluteFile)
+    let obj = toObjFile(c.config, mangled)
     docompile(c, it, found, obj, customArgs)
 
 proc processLink(c: PContext, n: PNode) =
