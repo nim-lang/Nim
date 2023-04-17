@@ -85,11 +85,11 @@ block: # bug #21674
 
   proc foo(s: Lent) =
     var m = 12
-    var x: lent int = cast[lent int](m)
+    discard cast[lent int](m)
 
   proc main =
-    var m = 123
-    var x = Lent(data: m)
+    var m1 = 123
+    var x = Lent(data: m1)
     foo(x)
 
   main()
