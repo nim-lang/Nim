@@ -194,8 +194,8 @@ elif defined(linux) and not defined(nimNoGetRandom) and not defined(emscripten):
       elif readBytes > 0:
         inc(result, readBytes)
       else:
-        if osLastError().int in {EINTR, EAGAIN}:
-          discard
+        case osLastError().int
+        of EINTR, EAGAIN: discard
         else:
           result = -1
           break
