@@ -2389,7 +2389,9 @@ proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
     # checking `nfBlockArg in n[a2].flags` wouldn't work inside templates
     if n[a2].kind != nkStmtList: break
     let formalLast = m.callee.n[m.callee.n.len - (n.len - a2)]
-    if formalLast.kind == nkSym and formalLast.sym.ast == nil:
+    # parameter has to occupy space (no default value, not void or varargs)
+    if formalLast.kind == nkSym and formalLast.sym.ast == nil and
+        formalLast.sym.typ.kind notin {tyVoid, tyVarargs}:
       result = a2
     else: break
 
