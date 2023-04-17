@@ -1849,9 +1849,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       elif f.base.kind == tyNone:
         result = isGeneric
       else:
-        let r = typeRel(c, f.base, a.base, flags)
-        if r >= isIntConv:
-          result = r
+        result = typeRel(c, f.base, a.base, flags)
 
       if result != isNone:
         put(c, f, a)
@@ -1859,9 +1857,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if tfUnresolved in f.flags:
         result = typeRel(c, prev.base, a, flags)
       elif a.kind == tyTypeDesc:
-        let r = typeRel(c, prev.base, a.base, flags)
-        if r >= isIntConv:
-          result = r
+        result = typeRel(c, prev.base, a.base, flags)
       else:
         result = isNone
 
