@@ -1116,18 +1116,15 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     let base = (if lifted != nil: lifted else: paramType.base)
     if base.isMetaType and procKind == skMacro:
       localError(c.config, info, errMacroBodyDependsOnGenericTypes % paramName)
+    paramTypId = nil # do not bind once static values
     result = addImplicitGeneric(c, c.newTypeWithSons(tyStatic, @[base]),
         paramTypId, info, genericParams, paramName)
     if result != nil: result.flags.incl({tfHasStatic, tfUnresolved})
 
   of tyTypeDesc:
     if tfUnresolved notin paramType.flags:
-      # naked typedescs are not bindOnce types
-      if paramType.base.kind == tyNone and paramTypId != nil and
-          (paramTypId.id == getIdent(c.cache, "typedesc").id or
-          paramTypId.id == getIdent(c.cache, "type").id):
-        # XXX Why doesn't this check for tyTypeDesc instead?
-        paramTypId = nil
+      # typedescs are not bindOnce types
+      paramTypId = nil
       let t = c.newTypeWithSons(tyTypeDesc, @[paramType.base])
       incl t.flags, tfCheckedForDestructor
       result = addImplicitGeneric(c, t, paramTypId, info, genericParams, paramName)

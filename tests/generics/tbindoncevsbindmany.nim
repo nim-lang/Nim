@@ -66,3 +66,10 @@ accept distinctGeneric2(f1, f1)
 accept distinctGeneric3(f1, f1)
 accept distinctGeneric4(f1, f1)
 
+block: # statics should never bind once, issue #16187
+  type Foo = static int
+  proc bar(a, b: Foo) =
+    static:
+      doAssert a + b == 3
+  bar(1, 2)
+
