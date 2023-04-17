@@ -79,6 +79,24 @@ template main =
       foobar3
       foobar4
     doAssert a2 == (1, 20, "\nfoobar1\nfoobar2", "\nfoobar3\nfoobar4")
+  
+  block: # issue #19015
+    template hi(a: untyped, b: varargs[untyped]): untyped =
+      a
+
+    var worked = false
+    hi:
+      worked = true
+    doAssert worked
+    worked = false
+
+    template hi2(a: bool, b: untyped, c: varargs[untyped]): untyped =
+      b
+      doAssert a
+
+    hi2 worked:
+      worked = true
+    doAssert worked
 
 static: main()
 main()
