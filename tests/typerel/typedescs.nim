@@ -11,11 +11,11 @@ block: # issue #21677
 
   template constructor(name: untyped, typ: typedesc[Uints], typ2: typedesc[Uints]) =
     type
-      name* = object
-        data*: typ
+      name = object
+        data: typ
         data2: typ2
 
-    proc `init name`*(data: typ, data2: typ2): name =
+    proc `init name`(data: typ, data2: typ2): name =
       result.data = data
       result.data2 = data2
 
