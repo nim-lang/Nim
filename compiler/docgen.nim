@@ -565,10 +565,13 @@ proc runAllExamples(d: PDoc) =
     # most useful semantics is that `docCmd` comes after `rdoccmd`, so that we can (temporarily) override
     # via command line
     # D20210224T221756:here
-    let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off --path:$path --nimcache:$nimcache $rdoccmd $docCmd $file" % [
+    var pathArgs = "--path:$path" % [ "path", quoteShell(d.conf.projectPath) ]
+    for p in d.conf.searchPaths:
+      pathArgs = "$args --path:$path" % [ "args", pathArgs, "path", quoteShell(p) ]
+    let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off $pathArgs --nimcache:$nimcache $rdoccmd $docCmd $file" % [
       "nim", quoteShell(os.getAppFilename()),
       "backend", $d.conf.backend,
-      "path", quoteShell(d.conf.projectPath),
+      "pathArgs", pathArgs,
       "libpath", quoteShell(d.conf.libpath),
       "nimcache", quoteShell(outputDir),
       "file", quoteShell(outp),
