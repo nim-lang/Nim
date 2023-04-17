@@ -65,7 +65,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = t
     elif t.kind == tyLent and ((kind != skResult and views notin c.features) or
       (kind == skParam and {taIsCastable, taField} * flags == {})): # lent cannot be used as parameters.
-                                                       # but it is valid in the cast environment and as the field of an object
+                                                       # except in the cast environment and as the field of an object
       result = t
     elif isOutParam(t) and kind != skParam:
       result = t
