@@ -89,6 +89,8 @@ template main =
       worked = true
     doAssert worked
     worked = false
+    hi(doAssert(not worked)):
+      doesntCompile
     hi(doAssert(not worked), doesntCompile, againDoesntCompile):
       definitelyDoesntCompile
 
@@ -99,6 +101,10 @@ template main =
     hi2 worked:
       worked = true
     doAssert worked
+    hi2 worked, doAssert(worked):
+      doesntCompile
+    hi2 worked, doAssert(worked), doesntCompile, againDoesntCompile:
+      definitelyDoesntCompile
     hi2 worked, doAssert(worked), againDoesntCompile:
       definitelyDoesntCompile
 
