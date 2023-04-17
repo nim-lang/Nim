@@ -77,3 +77,19 @@ type Inner = object
 var o = Outer(value: 1234)
 var v = Inner(owner: o).owner.value
 doAssert v == 1234
+
+block: # bug #21674
+  type
+    Lent = object
+      data: lent int
+
+  proc foo(s: Lent) =
+    var m = 12
+    discard cast[lent int](m)
+
+  proc main =
+    var m1 = 123
+    var x = Lent(data: m1)
+    foo(x)
+
+  main()
