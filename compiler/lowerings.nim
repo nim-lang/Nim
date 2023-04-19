@@ -347,7 +347,8 @@ proc genDeref*(n: PNode; k = nkHiddenDeref): PNode =
 
 proc callCodegenProc*(g: ModuleGraph; name: string;
                       info: TLineInfo = unknownLineInfo;
-                      arg1, arg2, arg3, optionalArgs: PNode = nil): PNode =
+                      arg1: PNode = nil, arg2: PNode = nil,
+                      arg3: PNode = nil, optionalArgs: PNode = nil): PNode =
   result = newNodeI(nkCall, info)
   let sym = magicsys.getCompilerProc(g, name)
   if sym == nil:

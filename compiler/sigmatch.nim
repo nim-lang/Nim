@@ -1849,9 +1849,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       elif f.base.kind == tyNone:
         result = isGeneric
       else:
-        let r = typeRel(c, f.base, a.base, flags)
-        if r >= isIntConv:
-          result = r
+        result = typeRel(c, f.base, a.base, flags)
 
       if result != isNone:
         put(c, f, a)
@@ -1859,9 +1857,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if tfUnresolved in f.flags:
         result = typeRel(c, prev.base, a, flags)
       elif a.kind == tyTypeDesc:
-        let r = typeRel(c, prev.base, a.base, flags)
-        if r >= isIntConv:
-          result = r
+        result = typeRel(c, prev.base, a.base, flags)
       else:
         result = isNone
 
@@ -2393,7 +2389,9 @@ proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
     # checking `nfBlockArg in n[a2].flags` wouldn't work inside templates
     if n[a2].kind != nkStmtList: break
     let formalLast = m.callee.n[m.callee.n.len - (n.len - a2)]
-    if formalLast.kind == nkSym and formalLast.sym.ast == nil:
+    # parameter has to occupy space (no default value, not void or varargs)
+    if formalLast.kind == nkSym and formalLast.sym.ast == nil and
+        formalLast.sym.typ.kind notin {tyVoid, tyVarargs}:
       result = a2
     else: break
 

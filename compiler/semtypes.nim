@@ -1843,7 +1843,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semTypeExpr(c, n, prev)
     else:
       let op = considerQuotedIdent(c, n[0])
-      if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
+      if op.id == ord(wAnd) or op.id == ord(wOr) or op.s == "|":
         checkSonsLen(n, 3, c.config)
         var
           t1 = semTypeNode(c, n[1], nil)
@@ -2059,7 +2059,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       # 0 length or empty param list with possible pragmas imply typeclass
       result = newTypeS(tyBuiltInTypeClass, c)
       let child = newTypeS(tyProc, c)
-      var symKind: TSymKind
       if n.kind == nkIteratorTy:
         child.flags.incl tfIterator
       if n.len > 0 and n[1].kind != nkEmpty and n[1].len > 0:
@@ -2072,7 +2071,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         pragma(c, s, n[1], {FirstCallConv..LastCallConv})
       result.addSonSkipIntLit(child, c.idgen)
     else:
-      result = semProcTypeWithScope(c, n, prev, skProc)
+      let symKind = if n.kind == nkIteratorTy: skIterator else: skProc
+      result = semProcTypeWithScope(c, n, prev, symKind)
       if n.kind == nkIteratorTy and result.kind == tyProc:
         result.flags.incl(tfIterator)
   of nkEnumTy: result = semEnum(c, n, prev)

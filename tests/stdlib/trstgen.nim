@@ -618,8 +618,8 @@ context2
 This is too short to be a transition:
 
 ---
-
 context2
+---
 """
     var error2 = new string
     let output2 = input2.toHtml(error=error2)
