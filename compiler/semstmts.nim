@@ -684,6 +684,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           # tfUnresolved in typ.flags:
           let owner = typ.owner
           let err =
+            # consistent error message with evaltempl/semMacroExpr
             if owner != nil and owner.kind in {skTemplate, skMacro}:
               errMissingGenericParamsForTemplate % def.renderTree
             else:
@@ -2338,6 +2339,7 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   for i in 1..<t.n.len:
     let param = t.n[i].sym
     if param.typ.kind != tyUntyped: allUntyped = false
+    # no default value, parameters required in call
     if param.ast == nil: requiresParams = true
   if allUntyped: incl(s.flags, sfAllUntyped)
   if requiresParams or n[genericParamsPos].kind != nkEmpty:

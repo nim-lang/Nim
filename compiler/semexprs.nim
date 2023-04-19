@@ -59,6 +59,7 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       #and tfUnresolved in result.typ.flags:
       let owner = result.typ.owner
       let err =
+        # consistent error message with evaltempl/semMacroExpr
         if owner != nil and owner.kind in {skTemplate, skMacro}:
           errMissingGenericParamsForTemplate % n.renderTree
         else:
@@ -1300,7 +1301,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     else:
       result = newSymNode(s, n.info)
   of skMacro, skTemplate:
-    # check for alias syntax
+    # check if we cannot use alias syntax (no required args or generic params)
     if sfNoalias in s.flags:
       let info = getCallLineInfo(n)
       markUsed(c, info, s)

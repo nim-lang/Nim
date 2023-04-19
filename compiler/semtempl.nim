@@ -647,6 +647,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
         param.flags.incl sfTemplateParam
         param.flags.excl sfGenSym
       if param.typ.kind != tyUntyped: allUntyped = false
+      # no default value, parameters required in call
       if param.ast == nil: requiresParams = true
   else:
     s.typ = newTypeS(tyProc, c)

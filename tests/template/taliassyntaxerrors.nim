@@ -26,14 +26,3 @@ block: # generic template
   doAssert b == 10.0
   bar = 15 #[tt.Error
   ^ 'bar' cannot be assigned to]#
-
-block: # {.noalias.}
-  type Foo = object
-    bar: int
-
-  var foo = Foo(bar: 10)
-  template bar: int {.noalias.} = foo.bar
-  let a = bar #[tt.Error
-      ^ invalid type: 'template (): int' for let. Did you mean to call the template with '()'?]#
-  bar = 15 #[tt.Error
-  ^ 'bar' cannot be assigned to]#

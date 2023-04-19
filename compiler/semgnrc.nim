@@ -234,6 +234,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       let sc = symChoice(c, fn, s, whichChoice)
       case s.kind
       of skMacro, skTemplate:
+        # unambiguous macros/templates are expanded if all params are untyped
         if sfAllUntyped in s.flags and sc.safeLen <= 1:
           onUse(fn.info, s)
           case s.kind
