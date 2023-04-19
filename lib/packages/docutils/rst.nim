@@ -2124,17 +2124,20 @@ proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
     while p.tok[i].kind notin {tkEof, tkIndent}:
       headlineLen += p.tok[i].symbol.len
       inc i
-    result = p.tok[adornmentIdx].symbol.len >= headlineLen and
-         headlineLen != 0
-    if result:
-      result = result and p.tok[i].kind == tkIndent and
-         p.tok[i+1].kind == tkAdornment and
-         p.tok[i+1].symbol == p.tok[adornmentIdx].symbol
-      if not result:
-        failure = "(underline '" & p.tok[i+1].symbol & "' does not match " &
-            "overline '" & p.tok[adornmentIdx].symbol & "')"
-    else:
-      failure = "(overline '" & p.tok[adornmentIdx].symbol & "' is too short)"
+    if p.tok[i].kind == tkIndent and
+       p.tok[i+1].kind == tkAdornment and
+       p.tok[i+1].symbol[0] == p.tok[adornmentIdx].symbol[0]:
+      result = p.tok[adornmentIdx].symbol.len >= headlineLen and
+           headlineLen != 0
+      if result:
+        result = p.tok[i+1].symbol == p.tok[adornmentIdx].symbol
+        if not result:
+          failure = "(underline '" & p.tok[i+1].symbol & "' does not match " &
+              "overline '" & p.tok[adornmentIdx].symbol & "')"
+      else:
+        failure = "(overline '" & p.tok[adornmentIdx].symbol & "' is too short)"
+    else:  # it's not overline/underline section, not reporting error
+      return false
   if not result:
     rstMessage(p, meNewSectionExpected, failure)
 
@@ -2261,10 +2264,11 @@ proc whichSection(p: RstParser): RstNodeKind =
       result = rnLineBlock
     elif roSupportMarkdown in p.s.options and isMarkdownBlockQuote(p):
       result = rnMarkdownBlockQuote
-    elif match(p, p.idx + 1, "i") and isAdornmentHeadline(p, p.idx):
+    elif (match(p, p.idx + 1, "i") and not match(p, p.idx + 2, "I")) and
+         isAdornmentHeadline(p, p.idx):
       result = rnOverline
     else:
-      result = rnLeaf
+      result = rnParagraph
   of tkPunct:
     if isMarkdownHeadline(p):
       result = rnMarkdownHeadline

@@ -613,7 +613,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
       if (t[0].kind != nkIntLit) or (t[0].intVal == 0):
         lineF(p, cpsStmts, "if (!$1) goto ", [rdLoc(a)])
         assignLabel(p.blocks[p.breakIdx], p.s(cpsStmts))
-        lineF(p, cpsStmts, ";$n", [])
+        appcg(p, cpsStmts, ";$n", [])
       genStmts(p, loopBody)
 
       if optProfiler in p.options:
@@ -653,7 +653,7 @@ proc genParForStmt(p: BProc, t: PNode) =
     #initLoc(forLoopVar.loc, locLocalVar, forLoopVar.typ, onStack)
     #discard mangleName(forLoopVar)
     let call = t[1]
-    assert(call.len in {4, 5})
+    assert(call.len == 4 or call.len == 5)
     initLocExpr(p, call[1], rangeA)
     initLocExpr(p, call[2], rangeB)
 

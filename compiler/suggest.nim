@@ -213,7 +213,7 @@ proc `$`*(suggest: Suggest): string =
     result.add(sep)
     when defined(nimsuggest) and not defined(noDocgen) and not defined(leanCompiler):
       result.add(suggest.doc.escape)
-    if suggest.version in {0, 3}:
+    if suggest.version == 0 or suggest.version == 3:
       result.add(sep)
       result.add($suggest.quality)
       if suggest.section == ideSug:
