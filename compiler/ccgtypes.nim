@@ -522,14 +522,14 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
               else:
                 unionBody.addf("#pragma pack(push, 1)$nstruct{", [])
             unionBody.add(a)
-            unionBody.addf("} $1;$n", [structName])
+            unionBody.addf("} $1;\n", [structName])
             if tfPacked in rectype.flags and hasAttribute notin CC[m.config.cCompiler].props:
-              unionBody.addf("#pragma pack(pop)$n", [])
+              unionBody.addf("#pragma pack(pop)\n", [])
         else:
           genRecordFieldsAux(m, k, rectype, check, unionBody, unionPrefix)
       else: internalError(m.config, "genRecordFieldsAux(record case branch)")
     if unionBody != "":
-      result.addf("union{$n$1};$n", [unionBody])
+      result.addf("union{\n$1};\n", [unionBody])
   of nkSym:
     let field = n.sym
     if field.typ.kind == tyVoid: return
@@ -546,20 +546,20 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
 
       let fieldType = field.loc.lode.typ.skipTypes(abstractInst)
       if fieldType.kind == tyUncheckedArray:
-        result.addf("$1 $2[SEQ_DECL_SIZE];$n",
+        result.addf("\t$1 $2[SEQ_DECL_SIZE];\n",
             [getTypeDescAux(m, fieldType.elemType, check, skField), sname])
       elif fieldType.kind == tySequence:
         # we need to use a weak dependency here for trecursive_table.
-        result.addf("$1$3 $2;$n", [getTypeDescWeak(m, field.loc.t, check, skField), sname, noAlias])
+        result.addf("\t$1$3 $2;\n", [getTypeDescWeak(m, field.loc.t, check, skField), sname, noAlias])
       elif field.bitsize != 0:
-        result.addf("$1$4 $2:$3;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, rope($field.bitsize), noAlias])
+        result.addf("\t$1$4 $2:$3;\n", [getTypeDescAux(m, field.loc.t, check, skField), sname, rope($field.bitsize), noAlias])
       else:
         # don't use fieldType here because we need the
         # tyGenericInst for C++ template support
         if fieldType.isOrHasImportedCppType():
-          result.addf("$1$3 $2{};$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, noAlias])
+          result.addf("\t$1$3 $2{};\n", [getTypeDescAux(m, field.loc.t, check, skField), sname, noAlias])
         else:
-          result.addf("$1$3 $2;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, noAlias])
+          result.addf("\t$1$3 $2;\n", [getTypeDescAux(m, field.loc.t, check, skField), sname, noAlias])
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
 
 proc getRecordFields(m: BModule, typ: PType, check: var IntSet): Rope =
@@ -593,36 +593,36 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
   if typ.kind == tyObject:
     if typ[0] == nil:
       if lacksMTypeField(typ):
-        appcg(m, result, " {$n", [])
+        appcg(m, result, " {\n", [])
       else:
         if optTinyRtti in m.config.globalOptions:
-          appcg(m, result, " {$n#TNimTypeV2* m_type;$n", [])
+          appcg(m, result, " {$n#TNimTypeV2* m_type;\n", [])
         else:
-          appcg(m, result, " {$n#TNimType* m_type;$n", [])
+          appcg(m, result, " {$n#TNimType* m_type;\n", [])
         hasField = true
     elif m.compileToCpp:
-      appcg(m, result, " : public $1 {$n",
+      appcg(m, result, " : public $1 {\n",
                       [getTypeDescAux(m, typ[0].skipTypes(skipPtrs), check, skField)])
       if typ.isException and m.config.exc == excCpp:
         when false:
-          appcg(m, result, "virtual void raise() { throw *this; }$n", []) # required for polymorphic exceptions
+          appcg(m, result, "virtual void raise() { throw *this; }\n", []) # required for polymorphic exceptions
           if typ.sym.magic == mException:
             # Add cleanup destructor to Exception base class
-            appcg(m, result, "~$1();$n", [name])
+            appcg(m, result, "~$1();\n", [name])
             # define it out of the class body and into the procs section so we don't have to
             # artificially forward-declare popCurrentExceptionEx (very VERY troublesome for HCR)
-            appcg(m, cfsProcs, "inline $1::~$1() {if(this->raiseId) #popCurrentExceptionEx(this->raiseId);}$n", [name])
+            appcg(m, cfsProcs, "inline $1::~$1() {if(this->raiseId) #popCurrentExceptionEx(this->raiseId);}\n", [name])
       hasField = true
     else:
-      appcg(m, result, " {$n  $1 Sup;$n",
+      appcg(m, result, " {$n  $1 Sup;\n",
                       [getTypeDescAux(m, typ[0].skipTypes(skipPtrs), check, skField)])
       hasField = true
   else:
-    result.addf(" {$n", [name])
+    result.addf(" {\n", [name])
 
   let desc = getRecordFields(m, typ, check)
   if desc == "" and not hasField:
-    result.addf("char dummy;$n", [])
+    result.addf("char dummy;\n", [])
   else:
     result.add(desc)
   result.add("};\L")
