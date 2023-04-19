@@ -221,6 +221,9 @@
 
 - Signed integer literals in `set` literals now default to a range type of
   `0..255` instead of `0..65535` (the maximum size of sets).
+  
+- Case statements with else branches put before elif/of branches in macros
+  are rejected with "invalid order of case branches".
 
 ## Standard library additions and changes
 
