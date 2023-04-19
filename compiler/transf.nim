@@ -945,6 +945,7 @@ proc transformDerefBlock(c: PTransf, n: PNode): PNode =
   # We transform (block: x)[] to (block: x[])
   let e0 = n[0]
   result = shallowCopy(e0)
+  result.typ = n.typ
   for i in 0 ..< e0.len - 1:
     result[i] = e0[i]
   result[e0.len-1] = newTreeIT(nkHiddenDeref, n.info, n.typ, e0[e0.len-1])
