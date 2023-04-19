@@ -753,7 +753,7 @@ proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
       tfVarIsPtr notin skipTypes(typ, abstractInstOwned).flags
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc) =
-  assert e[0].kind notin {nkBlockExpr, nkBlockStmt}, "it should be transformed in transf"
+  assert e[0].kind notin {nkBlockExpr, nkBlockStmt}, "it should have been transformed in transf"
 
   let mt = mapType(p.config, e[0].typ, mapTypeChooser(e[0]))
   if mt in {ctArray, ctPtrToArray} and lfEnforceDeref notin d.flags:
