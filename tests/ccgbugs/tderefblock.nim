@@ -23,43 +23,54 @@ proc m() =
 
 m()
 
-# bug #21540
+block: # bug #21540
+  type
+    Option = object
+      val: string
+      has: bool
 
-type
-  Option = object
-    val: string
-    has: bool
+  proc some(val: string): Option =
+    result.has = true
+    result.val = val
 
-proc some(val: string): Option =
-  result.has = true
-  result.val = val
+  # Remove lent and it works
+  proc get(self: Option): lent string =
+    result = self.val
 
-# Remove lent and it works
-proc get(self: Option): lent string =
-  result = self.val
+  type
+    StringStream = ref object
+      data: string
+      pos: int
 
-type
-  StringStream = ref object
-    data: string
-    pos: int
+  proc readAll(s: StringStream): string =
+    result = newString(s.data.len)
+    copyMem(addr(result[0]), addr(s.data[0]), s.data.len)
 
-proc readAll(s: StringStream): string =
-  result = newString(s.data.len)
-  copyMem(addr(result[0]), addr(s.data[0]), s.data.len)
+  proc newStringStream(s: string = ""): StringStream =
+    new(result)
+    result.data = s
 
-proc newStringStream(s: string = ""): StringStream =
-  new(result)
-  result.data = s
+  proc parseJson(s: string): string =
+    let stream = newStringStream(s)
+    result = stream.readAll()
 
-proc parseJson(s: string): string =
-  let stream = newStringStream(s)
-  result = stream.readAll()
+  proc main =
+    let initialFEN = block:
+      let initialFEN = some parseJson("startpos")
+      initialFEN.get
 
-proc main =
-  let initialFEN = block:
-    let initialFEN = some parseJson("startpos")
+    doAssert initialFEN == "startpos"
+
+  main()
+
+import std/[
+    json,
+    options
+]
+
+block: # bug #21540
+  let cheek = block:
+    let initialFEN = some("""{"initialFen": "startpos"}""".parseJson{"initialFen"}.getStr)
     initialFEN.get
 
-  doAssert initialFEN == "startpos"
-
-main()
+  doAssert cheek == "startpos"
