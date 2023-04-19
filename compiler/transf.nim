@@ -1024,7 +1024,7 @@ proc transform(c: PTransf, n: PNode): PNode =
     if n[0].kind in {nkBlockExpr, nkBlockStmt}:
       # bug #20107 bug #21540. Watch out to not deref the pointer too late.
       let e = transformDerefBlock(c, n)
-      result = transformAddrDeref(c, e, {nkAddr, nkHiddenAddr})
+      result = transformBlock(c, e)
     else:
       result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
