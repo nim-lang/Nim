@@ -78,12 +78,12 @@ Enum, sets and casting can be used together as in:
 
   ```nim
   type
-    MyFlag* {.size: sizeof(cint).} = enum
+    MyFlag* = enum
       A
       B
       C
       D
-    MyFlags = set[MyFlag]
+    MyFlags {.size: sizeof(cint).} = set[MyFlag]
 
   proc toNum(f: MyFlags): int = cast[cint](f)
   proc toFlags(v: int): MyFlags = cast[MyFlags](v)
