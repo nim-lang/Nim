@@ -225,6 +225,11 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; im
     for i in 0..n.safeLen-1:
       importForwarded(c, n[i], exceptSet, fromMod, importSet)
 
+proc addUnique[T](x: var seq[T], y: sink T) {.noSideEffect.} =
+  for i in 0..high(x):
+    if x[i] == y: return
+  x.add y
+    
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool): PSym =
   result = realModule
   template createModuleAliasImpl(ident): untyped =
@@ -242,6 +247,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool)
     result.options.incl optImportHidden
   c.unusedImports.add((result, n.info))
   c.importModuleMap[result.id] = realModule.id
+  c.importModuleLookup.mgetOrPut(realModule.name.id, @[]).addUnique realModule.id
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
   var ret: typeof(result)
