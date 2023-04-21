@@ -1123,6 +1123,7 @@ proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var 
     dst = cast[T](jsonNode.num)
 
 proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
+  verifyJsonKind(jsonNode, {JInt, JFloat, JString}, jsonPath)
   if jsonNode.kind == JString:
     case jsonNode.str
     of "nan":
@@ -1138,7 +1139,6 @@ proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var st
       dst = T(b)
     else: raise newException(JsonKindError, "expected 'nan|inf|-inf', got " & jsonNode.str)
   else:
-    verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)
     if jsonNode.kind == JFloat:
       dst = T(jsonNode.fnum)
     else:

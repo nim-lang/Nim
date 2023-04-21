@@ -1,5 +1,5 @@
 discard """
-  matrix: "--threads:on"
+  matrix: "--mm:orc; --mm:refc"
 """
 
 import std/sharedlist

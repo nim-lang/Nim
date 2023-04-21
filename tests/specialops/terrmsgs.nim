@@ -1,7 +1,7 @@
 discard """
 action: reject
 cmd: '''nim check $options $file'''
-matrix: "; -d:testWithout"
+matrix: "; -d:testWithout; --mm:refc"
 """
 
 when not defined(testWithout): # test for same errors before and after

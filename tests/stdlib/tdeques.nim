@@ -1,5 +1,5 @@
 discard """
-  matrix: "--gc:refc; --gc:orc"
+  matrix: "--mm:refc; --mm:orc"
   targets: "c cpp js"
 """
 
