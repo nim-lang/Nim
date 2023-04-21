@@ -1,5 +1,5 @@
 discard """
-  output: ""
+  matrix: "--mm:refc; --mm:orc"
 """
 
 import std/[strscans, strutils, assertions]

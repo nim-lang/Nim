@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import std/unittest
 import std/[cgi, strtabs, sugar]
 import std/assertions

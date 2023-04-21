@@ -1,5 +1,6 @@
 discard """
-outputsub: ""
+  matrix: "--mm:refc; --mm:orc"
+  disabled: windows
 """
 
 # Test Posix interface

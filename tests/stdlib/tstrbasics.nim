@@ -1,6 +1,6 @@
 discard """
   targets: "c cpp js"
-  matrix: "--gc:refc; --gc:arc"
+  matrix: "--mm:refc; --mm:orc"
 """
 
 import std/[strbasics, sugar, assertions]
