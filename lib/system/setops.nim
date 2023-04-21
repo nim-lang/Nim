@@ -87,3 +87,9 @@ func contains*[T](x: set[T], y: T): bool {.magic: "InSet".} =
   ## `set[char]`! The solution is to bind `T` to `range['a'..'z']`. This
   ## is achieved by reversing the parameters for `contains`; `in` then
   ## passes its arguments in reverse order.
+
+func contains*[T](x: set[T], y: int): bool =
+  if y >= low(T).int and y <= high(T).int:
+    result = contains(x, y.T)
+  else:
+    result = false
