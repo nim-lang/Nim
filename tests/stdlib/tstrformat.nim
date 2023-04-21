@@ -1,4 +1,6 @@
-# xxx: test js target
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
 
 import genericstrformat
 import std/[strformat, strutils, times, tables, json]

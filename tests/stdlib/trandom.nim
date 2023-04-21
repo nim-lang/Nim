@@ -1,6 +1,6 @@
 discard """
   joinable: false # to avoid messing with global rand state
-  matrix: "; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
+  matrix: "--mm:refc; --mm:orc; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
 """
 import std/[assertions, formatfloat]
 import std/[random, math, stats, sets, tables]

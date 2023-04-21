@@ -1,5 +1,5 @@
 discard """
-  matrix: "; --backend:cpp; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
+  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
 """
 
 import std/strutils

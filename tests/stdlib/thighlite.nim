@@ -1,3 +1,6 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
 
 import unittest, strutils
 import ../../lib/packages/docutils/highlite
