@@ -161,6 +161,8 @@ pkgs/db_connector/src/db_connector/db_mysql.nim
 pkgs/db_connector/src/db_connector/db_odbc.nim
 pkgs/db_connector/src/db_connector/db_postgres.nim
 pkgs/db_connector/src/db_connector/db_sqlite.nim
+pkgs/checksums/checksums/sha1.nim
+pkgs/checksums/checksums/md5.nim
 """.splitWhitespace()
 
   officialPackagesListWithoutIndex = """
@@ -345,7 +347,7 @@ proc buildJS(): string =
 proc buildDocsDir*(args: string, dir: string) =
   let args = nimArgs & " " & args
   let docHackJsSource = buildJS()
-  gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector"])
+  gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector", "checksums"])
   createDir(dir)
   buildDocSamples(args, dir)
 
