@@ -173,16 +173,6 @@ pkgs/db_connector/src/db_connector/odbcsql.nim
 pkgs/db_connector/src/db_connector/private/dbutils.nim
 """.splitWhitespace()
 
-proc findName(name: string): string =
-  doAssert name[0..4] == "pkgs/"
-  var i = 5
-  while i < name.len:
-    if name[i] != '/':
-      inc i
-      result.add name[i]
-    else:
-      break
-
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
   proc isRelativeTo(path, base: string): bool =
     let path = path.normalizedPath
