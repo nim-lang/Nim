@@ -41,6 +41,15 @@ when defined(profiler) or defined(memProfiler):
   {.hint: "Profiling support is turned on!".}
   import nimprof
 
+proc nimbleLockExists(config: ConfigRef): bool =
+  const nimbleLock = "nimble.lock"
+  let pd = if not config.projectPath.isEmpty: config.projectPath else: AbsoluteDir(getCurrentDir())
+  if optSkipParentConfigFiles notin config.globalOptions:
+    for dir in parentDirs(pd.string, fromRoot=true, inclusive=false):
+      if fileExists(dir / nimbleLock):
+        return true
+  return fileExists(pd.string / nimbleLock)
+
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
@@ -74,6 +83,11 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
         config.arguments.len > 0 and config.cmd notin {cmdTcc, cmdNimscript, cmdCrun}:
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
+  if config.nimbleLockExists:
+    # disable nimble path if nimble.lock is present.
+    # see https://github.com/nim-lang/nimble/issues/1004
+    disableNimblePath(config)
+
 proc getNimRunExe(conf: ConfigRef): string =
   # xxx consider defining `conf.getConfigVar("nimrun.exe")` to allow users to
   # customize the binary to run the command with, e.g. for custom `nodejs` or `wine`.
@@ -97,6 +111,10 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if not self.loadConfigsAndProcessCmdLine(cache, conf, graph):
     return
 
+  if conf.cmd == cmdCheck and optWasNimscript notin conf.globalOptions and
+       conf.backend == backendInvalid:
+    conf.backend = backendC
+
   if conf.selectedGC == gcUnselected:
     if conf.backend in {backendC, backendCpp, backendObjc}:
       initOrcDefines(conf)
@@ -113,7 +131,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     case conf.cmd
     of cmdBackends, cmdTcc:
       let nimRunExe = getNimRunExe(conf)
-      var cmdPrefix: string
+      var cmdPrefix = ""
       if nimRunExe.len > 0: cmdPrefix.add nimRunExe.quoteShell
       case conf.backend
       of backendC, backendCpp, backendObjc: discard

@@ -7,6 +7,9 @@ import
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
+when defined(nimDebugReorder):
+  import std/tables
+
 type
   DepN = ref object
     pnode: PNode
@@ -14,11 +17,11 @@ type
     onStack: bool
     kids: seq[DepN]
     hAQ, hIS, hB, hCmd: int
-    when defined(debugReorder):
+    when defined(nimDebugReorder):
       expls: seq[string]
   DepG = seq[DepN]
 
-when defined(debugReorder):
+when defined(nimDebugReorder):
   var idNames = newTable[int, string]()
 
 proc newDepN(id: int, pnode: PNode): DepN =
@@ -33,7 +36,7 @@ proc newDepN(id: int, pnode: PNode): DepN =
   result.hIS = -1
   result.hB = -1
   result.hCmd = -1
-  when defined(debugReorder):
+  when defined(nimDebugReorder):
     result.expls = @[]
 
 proc accQuoted(cache: IdentCache; n: PNode): PIdent =
@@ -49,16 +52,16 @@ proc addDecl(cache: IdentCache; n: PNode; declares: var IntSet) =
   of nkPragmaExpr: addDecl(cache, n[0], declares)
   of nkIdent:
     declares.incl n.ident.id
-    when defined(debugReorder):
+    when defined(nimDebugReorder):
       idNames[n.ident.id] = n.ident.s
   of nkSym:
     declares.incl n.sym.name.id
-    when defined(debugReorder):
+    when defined(nimDebugReorder):
       idNames[n.sym.name.id] = n.sym.name.s
   of nkAccQuoted:
     let a = accQuoted(cache, n)
     declares.incl a.id
-    when defined(debugReorder):
+    when defined(nimDebugReorder):
       idNames[a.id] = a.s
   of nkEnumFieldDef:
     addDecl(cache, n[0], declares)
@@ -103,6 +106,7 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
     if a.kind == nkExprColonExpr and a[0].kind == nkIdent and a[0].ident.s == "pragma":
       # user defined pragma
       decl(a[1])
+      for i in 1..<n.safeLen: deps(n[i])
     else:
       for i in 0..<n.safeLen: deps(n[i])
   of nkMixinStmt, nkBindStmt: discard
@@ -193,7 +197,7 @@ proc mergeSections(conf: ConfigRef; comps: seq[seq[DepN]], res: PNode) =
         # consecutive type and const sections
         var wmsg = "Circular dependency detected. `codeReordering` pragma may not be able to" &
           " reorder some nodes properly"
-        when defined(debugReorder):
+        when defined(nimDebugReorder):
           wmsg &= ":\n"
           for i in 0..<cs.len-1:
             for j in i..<cs.len:
@@ -332,13 +336,13 @@ proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
       if j < i and nj.hasCommand and niHasCmd:
         # Preserve order for commands and calls
         ni.kids.add nj
-        when defined(debugReorder):
+        when defined(nimDebugReorder):
           ni.expls.add "both have commands and one comes after the other"
       elif j < i and nj.hasImportStmt:
         # Every node that comes after an import statement must
         # depend on that import
         ni.kids.add nj
-        when defined(debugReorder):
+        when defined(nimDebugReorder):
           ni.expls.add "parent is, or contains, an import statement and child comes after it"
       elif j < i and niHasBody and nj.hasAccQuotedDef:
         # Every function, macro, template... with a body depends
@@ -346,13 +350,13 @@ proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
         # That's because it is hard to detect the use of functions
         # like "[]=", "[]", "or" ... in their bodies.
         ni.kids.add nj
-        when defined(debugReorder):
+        when defined(nimDebugReorder):
           ni.expls.add "one declares a quoted identifier and the other has a body and comes after it"
       elif j < i and niHasBody and not nj.hasBody and
         intersects(deps[i][0], declares):
           # Keep function declaration before function definition
           ni.kids.add nj
-          when defined(debugReorder):
+          when defined(nimDebugReorder):
             for dep in deps[i][0]:
               if dep in declares:
                 ni.expls.add "one declares \"" & idNames[dep] & "\" and the other defines it"
@@ -360,7 +364,7 @@ proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
         for d in declares:
           if uses.contains(d):
             ni.kids.add nj
-            when defined(debugReorder):
+            when defined(nimDebugReorder):
               ni.expls.add "one declares \"" & idNames[d] & "\" and the other uses it"
 
 proc strongConnect(v: var DepN, idx: var int, s: var seq[DepN],

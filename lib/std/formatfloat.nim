@@ -7,10 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
+## This module implements formatting floats as strings.
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
-else:
-  {.deprecated: "formatfloat is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/formatfloat`".}
 
 proc c_memcpy(a, b: pointer, size: csize_t): pointer {.importc: "memcpy", header: "<string.h>", discardable.}
 
@@ -28,11 +28,11 @@ proc writeFloatToBufferRoundtrip*(buf: var array[65, char]; value: BiggestFloat)
   ##
   ## returns the amount of bytes written to `buf` not counting the
   ## terminating '\0' character.
-  result = toChars(buf, value, forceTrailingDotZero=true)
+  result = toChars(buf, value, forceTrailingDotZero=true).int
   buf[result] = '\0'
 
 proc writeFloatToBufferRoundtrip*(buf: var array[65, char]; value: float32): int =
-  result = float32ToChars(buf, value, forceTrailingDotZero=true)
+  result = float32ToChars(buf, value, forceTrailingDotZero=true).int
   buf[result] = '\0'
 
 proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
@@ -49,7 +49,7 @@ proc writeFloatToBufferSprintf*(buf: var array[65, char]; value: BiggestFloat): 
   ##
   ## returns the amount of bytes written to `buf` not counting the
   ## terminating '\0' character.
-  var n: int = c_sprintf(addr buf, "%.16g", value)
+  var n = c_sprintf(cast[cstring](addr buf), "%.16g", value).int
   var hasDot = false
   for i in 0..n-1:
     if buf[i] == ',':
@@ -90,7 +90,7 @@ proc addFloatRoundtrip*(result: var string; x: float | float32) =
   else:
     var buffer {.noinit.}: array[65, char]
     let n = writeFloatToBufferRoundtrip(buffer, x)
-    result.addCstringN(cstring(buffer[0].addr), n)
+    result.addCstringN(cast[cstring](buffer[0].addr), n)
 
 proc addFloatSprintf*(result: var string; x: float) =
   when nimvm:
@@ -98,7 +98,7 @@ proc addFloatSprintf*(result: var string; x: float) =
   else:
     var buffer {.noinit.}: array[65, char]
     let n = writeFloatToBufferSprintf(buffer, x)
-    result.addCstringN(cstring(buffer[0].addr), n)
+    result.addCstringN(cast[cstring](buffer[0].addr), n)
 
 proc nimFloatToString(a: float): cstring =
   ## ensures the result doesn't print like an integer, i.e. return 2.0, not 2

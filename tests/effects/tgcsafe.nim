@@ -1,5 +1,5 @@
 discard """
-  errormsg: "'mainUnsafe' is not GC-safe"
+  errormsg: "'mainUnsafe' is not GC-safe as it performs an indirect call here"
   line: 26
   cmd: "nim $target --hints:on --threads:on $options $file"
 """
@@ -13,7 +13,7 @@ proc myproc(i: int) {.gcsafe.} =
   if isNil(global_proc):
     return
 
-proc mymap(x: proc ()) =
+proc mymap(x: proc ()) {.effectsOf: x.} =
   x()
 
 var

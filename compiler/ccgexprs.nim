@@ -298,8 +298,8 @@ proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc) =
       linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $2Len_0;$n",
         [rdLoc(d), a.rdLoc])
   of tySequence:
-    linefmt(p, cpsStmts, "$1.Field0 = $2$3; $1.Field1 = $4;$n",
-      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
+    linefmt(p, cpsStmts, "$1.Field0 = ($5) ? ($2$3) : NIM_NIL; $1.Field1 = $4;$n",
+      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a), dataFieldAccessor(p, a.rdLoc)])
   of tyArray:
     linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $3;$n",
       [rdLoc(d), rdLoc(a), rope(lengthOrd(p.config, a.t))])
@@ -308,8 +308,8 @@ proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc) =
     if etyp.kind in {tyVar} and optSeqDestructors in p.config.globalOptions:
       linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
 
-    linefmt(p, cpsStmts, "$1.Field0 = $2$3; $1.Field1 = $4;$n",
-      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
+    linefmt(p, cpsStmts, "$1.Field0 = ($5) ? ($2$3) : NIM_NIL; $1.Field1 = $4;$n",
+      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a), dataFieldAccessor(p, a.rdLoc)])
   else:
     internalError(p.config, a.lode.info, "cannot handle " & $a.t.kind)
 
@@ -752,21 +752,8 @@ proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
       skipTypes(typ, abstractInstOwned).kind in {tyVar} and
       tfVarIsPtr notin skipTypes(typ, abstractInstOwned).flags
 
-proc derefBlock(p: BProc, e: PNode, d: var TLoc) =
-  # We transform (block: x)[] to (block: x[])
-  let e0 = e[0]
-  var n = shallowCopy(e0)
-  n.typ = e.typ
-  for i in 0 ..< e0.len - 1:
-    n[i] = e0[i]
-  n[e0.len-1] = newTreeIT(nkHiddenDeref, e.info, e.typ, e0[e0.len-1])
-  expr p, n, d
-
 proc genDeref(p: BProc, e: PNode, d: var TLoc) =
-  if e.kind == nkHiddenDeref and e[0].kind in {nkBlockExpr, nkBlockStmt}:
-    # bug #20107. Watch out to not deref the pointer too late.
-    derefBlock(p, e, d)
-    return
+  assert e[0].kind notin {nkBlockExpr, nkBlockStmt}, "it should have been transformed in transf"
 
   let mt = mapType(p.config, e[0].typ, mapTypeChooser(e[0]))
   if mt in {ctArray, ctPtrToArray} and lfEnforceDeref notin d.flags:
@@ -1647,6 +1634,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
     return
   if d.k == locNone:
     getTemp(p, n.typ, d)
+  initLocExpr(p, n[1], a)
   # generate call to newSeq before adding the elements per hand:
   let L = toInt(lengthOrd(p.config, n[1].typ))
   if optSeqDestructors in p.config.globalOptions:
@@ -1658,7 +1646,6 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
     var lit = newRopeAppender()
     intLiteral(L, lit)
     genNewSeqAux(p, d, lit, L == 0)
-  initLocExpr(p, n[1], a)
   # bug #5007; do not produce excessive C source code:
   if L < 10:
     for i in 0..<L:
@@ -1704,11 +1691,8 @@ proc genNewFinalize(p: BProc, e: PNode) =
 
 proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo; result: var Rope) =
   if optTinyRtti in p.config.globalOptions:
-    let ti = genTypeInfo2Name(p.module, dest)
-    inc p.module.labels
-    let cache = "Nim_OfCheck_CACHE" & p.module.labels.rope
-    p.module.s[cfsVars].addf("static TNimTypeV2* $#[2];$n", [cache])
-    appcg(p.module, result, "#isObjWithCache($#.m_type, $#, $#)", [a, ti, cache])
+    let token = $genDisplayElem(MD5Digest(hashType(dest, p.config)))
+    appcg(p.module, result, "#isObjDisplayCheck($#.m_type, $#, $#)", [a, getObjDepth(dest), token])
   else:
     # unfortunately 'genTypeInfoV1' sets tfObjHasKids as a side effect, so we
     # have to call it here first:
@@ -1722,10 +1706,6 @@ proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo; result: var Ro
       let cache = "Nim_OfCheck_CACHE" & p.module.labels.rope
       p.module.s[cfsVars].addf("static TNimType* $#[2];$n", [cache])
       appcg(p.module, result, "#isObjWithCache($#.m_type, $#, $#)", [a, ti, cache])
-    when false:
-      # former version:
-      appcg(p.module, result, "#isObj($1.m_type, $2)",
-            [a, genTypeInfoV1(p.module, dest, info)])
 
 proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var a: TLoc
@@ -1799,7 +1779,9 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
       putIntoDest(p, b, e, "$1, $1Len_0" % [rdLoc(a)], a.storage)
     of tyString, tySequence:
       putIntoDest(p, b, e,
-                  "$1$3, $2" % [rdLoc(a), lenExpr(p, a), dataField(p)], a.storage)
+                  "($4) ? ($1$3) : NIM_NIL, $2" %
+                    [rdLoc(a), lenExpr(p, a), dataField(p), dataFieldAccessor(p, a.rdLoc)],
+                  a.storage)
     of tyArray:
       putIntoDest(p, b, e,
                   "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, a.t))], a.storage)
@@ -1884,9 +1866,13 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     # Bug #9279, len(toOpenArray()) has to work:
     if a.kind in nkCallKinds and a[0].kind == nkSym and a[0].sym.magic == mSlice:
       # magic: pass slice to openArray:
+      var m: TLoc
       var b, c: TLoc
+      initLocExpr(p, a[1], m)
       initLocExpr(p, a[2], b)
       initLocExpr(p, a[3], c)
+      if optBoundsCheck in p.options:
+        genBoundsCheck(p, m, b, c)
       if op == mHigh:
         putIntoDest(p, d, e, ropecg(p.module, "($2)-($1)", [rdLoc(b), rdLoc(c)]))
       else:
@@ -1948,7 +1934,7 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
 
   initLoc(call, locCall, e, OnHeap)
   if not p.module.compileToCpp:
-    const setLenPattern = "($3) #setLengthSeqV2(&($1)->Sup, $4, $2)"
+    const setLenPattern = "($3) #setLengthSeqV2(($1)?&($1)->Sup:NIM_NIL, $4, $2)"
     call.r = ropecg(p.module, setLenPattern, [
       rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
       genTypeInfoV1(p.module, t.skipTypes(abstractInst), e.info)])
@@ -2127,7 +2113,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mCard:
       var a: TLoc
       initLocExpr(p, e[1], a)
-      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [rdCharLoc(a), size]))
+      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [addrLoc(p.config, a), size]))
     of mLtSet, mLeSet:
       getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i) # our counter
       initLocExpr(p, e[1], a)
@@ -2252,8 +2238,7 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
       cgsym(p.module, raiser)
 
       let boundaryCast =
-        if n0t.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64} or
-            (n0t.sym != nil and sfSystemModule in n0t.sym.owner.flags and n0t.sym.name.s == "csize"):
+        if n0t.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64}:
           "(NI64)"
         else:
           ""
@@ -2341,7 +2326,7 @@ proc genWasMoved(p: BProc; n: PNode) =
   if p.withinBlockLeaveActions > 0 and notYetAlive(n1):
     discard
   else:
-    initLocExpr(p, n1, a)
+    initLocExpr(p, n1, a, {lfEnforceDeref})
     resetLoc(p, a)
     #linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
     #  [addrLoc(p.config, a), getTypeDesc(p.module, a.t)])
@@ -2410,7 +2395,10 @@ proc genDispose(p: BProc; n: PNode) =
       lineCg(p, cpsStmts, ["#nimDestroyAndDispose($#)", rdLoc(a)])
 
 proc genSlice(p: BProc; e: PNode; d: var TLoc) =
-  let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.lastSon)
+  let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.lastSon,
+    prepareForMutation = e[1].kind == nkHiddenDeref and
+                         e[1].typ.skipTypes(abstractInst).kind == tyString and
+                         p.config.selectedGC in {gcArc, gcOrc})
   if d.k == locNone: getTemp(p, e.typ, d)
   linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $3;$n", [rdLoc(d), x, y])
   when false:
@@ -2573,7 +2561,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
         p.module.s[cfsDynLibInit].addf("\t$1 = ($2) hcrGetProc($3, \"$1\");$n",
              [mangleDynLibProc(prc), getTypeDesc(p.module, prc.loc.t), getModuleDllPath(p.module, prc)])
     genCall(p, e, d)
-  of mDefault: genDefault(p, e, d)
+  of mDefault, mZeroDefault: genDefault(p, e, d)
   of mReset: genReset(p, e)
   of mEcho: genEcho(p, e[1].skipConv)
   of mArrToSeq: genArrToSeq(p, e, d)
@@ -2776,16 +2764,23 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
     var nilCheck = ""
     var r = newRopeAppender()
     rdMType(p, a, nilCheck, r)
-    let checkFor = if optTinyRtti in p.config.globalOptions:
-                     genTypeInfo2Name(p.module, dest)
-                   else:
-                     genTypeInfoV1(p.module, dest, n.info)
-    if nilCheck != "":
-      linefmt(p, cpsStmts, "if ($1 && !#isObj($2, $3)){ #raiseObjectConversionError(); ",
-              [nilCheck, r, checkFor])
+    if optTinyRtti in p.config.globalOptions:
+      let checkFor = $getObjDepth(dest)
+      let token = $genDisplayElem(MD5Digest(hashType(dest, p.config)))
+      if nilCheck != "":
+        linefmt(p, cpsStmts, "if ($1 && !#isObjDisplayCheck($2, $3, $4)){ #raiseObjectConversionError(); ",
+                [nilCheck, r, checkFor, token])
+      else:
+        linefmt(p, cpsStmts, "if (!#isObjDisplayCheck($1, $2, $3)){ #raiseObjectConversionError(); ",
+                [r, checkFor, token])
     else:
-      linefmt(p, cpsStmts, "if (!#isObj($1, $2)){ #raiseObjectConversionError(); ",
-              [r, checkFor])
+      let checkFor = genTypeInfoV1(p.module, dest, n.info)
+      if nilCheck != "":
+        linefmt(p, cpsStmts, "if ($1 && !#isObj($2, $3)){ #raiseObjectConversionError(); ",
+                [nilCheck, r, checkFor])
+      else:
+        linefmt(p, cpsStmts, "if (!#isObj($1, $2)){ #raiseObjectConversionError(); ",
+                [r, checkFor])
     raiseInstr(p, p.s(cpsStmts))
     linefmt p, cpsStmts, "}$n", []
 
@@ -3047,7 +3042,16 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkObjConstr: genObjConstr(p, n, d)
   of nkCast: genCast(p, n, d)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: genConv(p, n, d)
-  of nkHiddenAddr, nkAddr: genAddr(p, n, d)
+  of nkHiddenAddr:
+    if n[0].kind == nkDerefExpr:
+      # addr ( deref ( x )) --> x
+      var x = n[0][0]
+      if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
+        x.typ = n.typ
+      expr(p, x, d)
+      return
+    genAddr(p, n, d)
+  of nkAddr: genAddr(p, n, d)
   of nkBracketExpr: genBracketExpr(p, n, d)
   of nkDerefExpr, nkHiddenDeref: genDeref(p, n, d)
   of nkDotExpr: genRecordField(p, n, d)
@@ -3087,7 +3091,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     cow(p, n[1])
     if nfPreventCg notin n.flags:
       genAsgn(p, n, fastAsgn=false)
-  of nkFastAsgn:
+  of nkFastAsgn, nkSinkAsgn:
     cow(p, n[1])
     if nfPreventCg notin n.flags:
       # transf is overly aggressive with 'nkFastAsgn', so we work around here.
@@ -3186,6 +3190,8 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Rope) =
     result.add "}"
   of tyTuple:
     result.add "{"
+    if p.vccAndC and t.len == 0:
+      result.add "0"
     for i in 0..<t.len:
       if i > 0: result.add ", "
       getDefaultValue(p, t[i], info, result)
@@ -3220,6 +3226,11 @@ proc caseObjDefaultBranch(obj: PNode; branch: Int128): int =
       return i
   assert(false, "unreachable")
 
+proc isEmptyCaseObjectBranch(n: PNode): bool =
+  for it in n:
+    if it.kind == nkSym and not isEmptyType(it.sym.typ): return false
+  return true
+
 proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
                      result: var Rope; count: var int;
                      isConst: bool, info: TLineInfo) =
@@ -3248,7 +3259,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
     let b = lastSon(obj[selectedBranch])
     # designated initilization is the only way to init non first element of unions
     # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
-    if b.kind == nkRecList and b.len > 0:
+    if b.kind == nkRecList and not isEmptyCaseObjectBranch(b):
       result.add "._" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = {"
       getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
       result.add "}"
@@ -3264,6 +3275,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
     if constOrNil != nil:
       for i in 1..<constOrNil.len:
         if constOrNil[i].kind == nkExprColonExpr:
+          assert constOrNil[i][0].kind == nkSym, "illformed object constr; the field is not a sym"
           if constOrNil[i][0].sym.name.id == field.name.id:
             genBracedInit(p, constOrNil[i][1], isConst, field.typ, result)
             return
@@ -3309,6 +3321,8 @@ proc genConstObjConstr(p: BProc; n: PNode; isConst: bool; result: var Rope) =
 
 proc genConstSimpleList(p: BProc, n: PNode; isConst: bool; result: var Rope) =
   result.add "{"
+  if p.vccAndC and n.len == 0 and n.typ.kind == tyArray:
+    getDefaultValue(p, n.typ[1], n.info, result)
   for i in 0..<n.len:
     let it = n[i]
     if i > 0: result.add ",\n"
@@ -3318,6 +3332,8 @@ proc genConstSimpleList(p: BProc, n: PNode; isConst: bool; result: var Rope) =
 
 proc genConstTuple(p: BProc, n: PNode; isConst: bool; tup: PType; result: var Rope) =
   result.add "{"
+  if p.vccAndC and n.len == 0:
+    result.add "0"
   for i in 0..<n.len:
     let it = n[i]
     if i > 0: result.add ",\n"

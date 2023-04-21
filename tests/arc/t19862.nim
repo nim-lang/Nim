@@ -2,6 +2,8 @@ discard """
   matrix: "--gc:refc; --gc:arc"
 """
 
+import std/widestrs
+
 # bug #19862
 type NewString = object
 

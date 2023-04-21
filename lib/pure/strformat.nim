@@ -171,9 +171,9 @@ For strings and numeric types the optional argument is a so-called
 
 # Standard format specifiers for strings, integers and floats
 
-The general form of a standard format specifier is::
+The general form of a standard format specifier is:
 
-  [[fill]align][sign][#][0][minimumwidth][.precision][type]
+    [[fill]align][sign][#][0][minimumwidth][.precision][type]
 
 The square brackets `[]` indicate an optional element.
 
@@ -423,9 +423,9 @@ proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string
 proc parseStandardFormatSpecifier*(s: string; start = 0;
                                    ignoreUnknownSuffix = false): StandardFormatSpecifier =
   ## An exported helper proc that parses the "standard format specifiers",
-  ## as specified by the grammar::
+  ## as specified by the grammar:
   ##
-  ##   [[fill]align][sign][#][0][minimumwidth][.precision][type]
+  ##     [[fill]align][sign][#][0][minimumwidth][.precision][type]
   ##
   ## This is only of interest if you want to write a custom `format` proc that
   ## should support the standard format specifiers. If `ignoreUnknownSuffix` is true,

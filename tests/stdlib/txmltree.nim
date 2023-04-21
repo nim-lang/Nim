@@ -1,4 +1,4 @@
-import std/[xmltree, assertions]
+import std/[xmltree, assertions, xmlparser]
 
 
 block:
@@ -83,3 +83,34 @@ block:
   x.add newElement("sonTag")
   x.add newEntity("my entity")
   doAssert $x == "<myTag>my text<sonTag />&my entity;</myTag>"
+
+block: # bug #21290
+  let x = newXmlTree("foo",[
+    newXmlTree("bar",[
+      newText("Hola"),
+      newXmlTree("qux",[
+        newXmlTree("plugh",[])
+      ])
+    ])
+  ])
+
+  let s = $x
+  doAssert $parseXml(s) == s
+  doAssert s == """<foo>
+  <bar>Hola<qux>    <plugh />  </qux></bar>
+</foo>"""
+
+block: #21541
+  let root = <>root()
+  root.add <>child(newText("hello"))
+  root.add <>more(newVerbatimText("hola"))
+  let s = $root
+  doAssert s == """<root>
+  <child>hello</child>
+  <more>hola</more>
+</root>"""
+
+  let temp = newVerbatimText("Hello!")
+  doAssert temp.text == "Hello!"
+  temp.text = "Hola!"
+  doAssert temp.text == "Hola!"

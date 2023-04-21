@@ -106,9 +106,9 @@ block:
 
 block:
   var
-    pStack: seq[string] = @[]
-    valStack: seq[float] = @[]
-    opStack = ""
+    pStack {.threadvar.}: seq[string]
+    valStack {.threadvar.}: seq[float]
+    opStack {.threadvar.}: string
   let
     parseArithExpr = pegAst.eventParser:
       pkNonTerminal:
@@ -328,7 +328,16 @@ call()
       doAssert program.len == program.rawMatch(grammar, 0, c)
       doAssert c.ml == 1
 
+    block:
+      # bug #21632
+
+      let p = peg"""
+        atext <- \w / \d
+      """
+
+      doAssert "a".match(p)
+      doAssert "1".match(p)
+
   pegsTest()
   static:
     pegsTest()
-

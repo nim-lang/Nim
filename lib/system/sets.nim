@@ -9,11 +9,8 @@
 
 # set handling
 
-type
-  NimSet = array[0..4*2048-1, uint8]
 
-
-proc cardSet(s: NimSet, len: int): int {.compilerproc, inline.} =
+proc cardSetImpl(s: ptr UncheckedArray[uint8], len: int): int {.inline.} =
   var i = 0
   result = 0
   when defined(x86) or defined(amd64):
@@ -24,3 +21,6 @@ proc cardSet(s: NimSet, len: int): int {.compilerproc, inline.} =
   while i < len:
     inc(result, countBits32(uint32(s[i])))
     inc(i, 1)
+
+proc cardSet(s: ptr UncheckedArray[uint8], len: int): int {.compilerproc, inline.} =
+  result = cardSetImpl(s, len)

@@ -11,10 +11,10 @@
 ## language.
 
 import
-  ast, modules, idents, passes, condsyms,
-  options, sem, llstream, vm, vmdef, commands,
+  ast, modules, idents, condsyms,
+  options, llstream, vm, vmdef, commands,
   os, times, osproc, wordrecg, strtabs, modulegraphs,
-  pathutils
+  pathutils, pipelines
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -181,15 +181,13 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     options.cppDefine(conf, a.getString(0))
   cbexc stdinReadLine, EOFError:
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
-      discard
-    else:
       setResult(a, "")
+    else:
       setResult(a, stdin.readLine())
   cbexc stdinReadAll, EOFError:
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
-      discard
-    else:
       setResult(a, "")
+    else:
       setResult(a, stdin.readAll())
 
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
@@ -199,13 +197,11 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   conf.symbolFiles = disabledSf
 
   let graph = newModuleGraph(cache, conf)
-  connectCallbacks(graph)
+  connectPipelineCallbacks(graph)
   if freshDefines: initDefines(conf.symbols)
 
   defineSymbol(conf.symbols, "nimscript")
   defineSymbol(conf.symbols, "nimconfig")
-  registerPass(graph, semPass)
-  registerPass(graph, evalPass)
 
   conf.searchPaths.add(conf.libpath)
 
@@ -220,8 +216,9 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   var vm = setupVM(m, cache, scriptName.string, graph, idgen)
   graph.vm = vm
 
-  graph.compileSystemModule()
-  discard graph.processModule(m, vm.idgen, stream)
+  graph.setPipeLinePass(EvalPass)
+  graph.compilePipelineSystemModule()
+  discard graph.processPipelineModule(m, vm.idgen, stream)
 
   # watch out, "newruntime" can be set within NimScript itself and then we need
   # to remember this:

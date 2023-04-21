@@ -146,7 +146,7 @@ proc wsFlush(s: Stream) =
   s.lastFlush = s.buf.len
 
 proc rsClose(s: Stream) =
-  {.cast(tags: []).}:
+  {.cast(raises: [IOError, OSError]), cast(tags: []).}: # todo fixme maybe do something?
     var s = ReadSocketStream(s)
     s.data.close()
 

@@ -66,9 +66,9 @@ without additional annotations:
   ```
 
 This program contains a famous "index out of bounds" bug. DrNim
-detects it and produces the following error message::
+detects it and produces the following error message:
 
-  cannot prove: i <= len(a) + -1; counter example: i -> 0 a.len -> 0 [IndexCheck]
+    cannot prove: i <= len(a) + -1; counter example: i -> 0 a.len -> 0 [IndexCheck]
 
 In other words for `i == 0` and `a.len == 0` (for example!) there would be
 an index out of bounds error.
@@ -146,9 +146,9 @@ Example: insertionSort
 Unfortunately, the invariants required to prove that this code is correct take more
 code than the imperative instructions. However, this effort can be compensated
 by the fact that the result needs very little testing. Be aware though that
-DrNim only proves that after `insertionSort` this condition holds::
+DrNim only proves that after `insertionSort` this condition holds:
 
-  forall(i in 1..<a.len, a[i-1] <= a[i])
+    forall(i in 1..<a.len, a[i-1] <= a[i])
 
 
 This is required, but not sufficient to describe that a `sort` operation
@@ -170,23 +170,23 @@ Syntax of propositions
 ======================
 
 The basic syntax is `ensures|requires|invariant: <prop>`.
-A `prop` is either a comparison or a compound::
+A `prop` is either a comparison or a compound:
 
-  prop = nim_bool_expression
-       | prop 'and' prop
-       | prop 'or' prop
-       | prop '->' prop # implication
-       | prop '<->' prop
-       | 'not' prop
-       | '(' prop ')' # you can group props via ()
-       | forallProp
-       | existsProp
+    prop = nim_bool_expression
+         | prop 'and' prop
+         | prop 'or' prop
+         | prop '->' prop # implication
+         | prop '<->' prop
+         | 'not' prop
+         | '(' prop ')' # you can group props via ()
+         | forallProp
+         | existsProp
 
-  forallProp = 'forall' '(' quantifierList ',' prop ')'
-  existsProp = 'exists' '(' quantifierList ',' prop ')'
+    forallProp = 'forall' '(' quantifierList ',' prop ')'
+    existsProp = 'exists' '(' quantifierList ',' prop ')'
 
-  quantifierList = quantifier (',' quantifier)*
-  quantifier = <new identifier> 'in' nim_iteration_expression
+    quantifierList = quantifier (',' quantifier)*
+    quantifier = <new identifier> 'in' nim_iteration_expression
 
 
 `nim_iteration_expression` here is an ordinary expression of Nim code

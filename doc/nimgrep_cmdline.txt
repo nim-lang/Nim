@@ -1,12 +1,17 @@
 
 Usage:
 
-* To search::
-    nimgrep [options] PATTERN [(FILE/DIRECTORY)*/-]
-* To replace::
-    nimgrep [options] PATTERN --replace REPLACEMENT (FILE/DIRECTORY)*/-
-* To list file names::
-    nimgrep [options] --filenames [PATTERN] [(FILE/DIRECTORY)*]
+* To search:
+
+      nimgrep [options] PATTERN [(FILE/DIRECTORY)*/-]
+
+* To replace:
+
+      nimgrep [options] PATTERN --replace REPLACEMENT (FILE/DIRECTORY)*/-
+
+* To list file names:
+
+      nimgrep [options] --filenames [PATTERN] [(FILE/DIRECTORY)*]
 
 Positional arguments, from left to right:
 1) PATTERN is either Regex (default) or Peg if `--peg` is specified.
@@ -42,10 +47,11 @@ Options:
                       to abort any time without touching the file
   --filenames         just list filenames. Provide a PATTERN to find it in
                       the filenames (not in the contents of a file) or run
-                      with empty pattern to just list all files::
-                        nimgrep --filenames               # In current dir
-                        nimgrep --filenames "" DIRECTORY
-                          # Note empty pattern "", lists all files in DIRECTORY
+                      with empty pattern to just list all files:
+
+                          nimgrep --filenames               # In current dir
+                          nimgrep --filenames "" DIRECTORY
+                           # Note empty pattern "", lists all files in DIRECTORY
 * Interprete patterns:
   --peg               PATTERN and PAT are Peg
   --re                PATTERN and PAT are regular expressions (default)

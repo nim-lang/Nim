@@ -241,13 +241,13 @@ found an ambiguity error is produced.
 
 However before the PATH is used the current directory is checked for the
 file's existence. So if PATH contains ``$lib`` and ``$lib/bar`` and the
-directory structure looks like this::
+directory structure looks like this:
 
-  $lib/x.nim
-  $lib/bar/x.nim
-  foo/x.nim
-  foo/main.nim
-  other.nim
+    $lib/x.nim
+    $lib/bar/x.nim
+    foo/x.nim
+    foo/main.nim
+    other.nim
 
 And `main` imports `x`, `foo/x` is imported. If `other` imports `x`
 then both ``$lib/x.nim`` and ``$lib/bar/x.nim`` match but ``$lib/x.nim`` is used
@@ -316,14 +316,16 @@ Another way is to make Nim invoke a cross compiler toolchain:
   nim c --cpu:arm --os:linux myproject.nim
   ```
 
-For cross compilation, the compiler invokes a C compiler named
-like `$cpu.$os.$cc` (for example arm.linux.gcc) and the configuration
-system is used to provide meaningful defaults. For example for `ARM` your
-configuration file should contain something like::
+For cross compilation, the compiler invokes a C compiler named like
+`$cpu.$os.$cc` (for example `arm.linux.gcc`) with options defined in
+`$cpu.$os.$cc.options.always`. The configuration system is used to provide
+meaningful defaults. For example, for Linux on a 32-bit ARM CPU, your
+configuration file should contain something like:
 
-  arm.linux.gcc.path = "/usr/bin"
-  arm.linux.gcc.exe = "arm-linux-gcc"
-  arm.linux.gcc.linkerexe = "arm-linux-gcc"
+    arm.linux.gcc.path = "/usr/bin"
+    arm.linux.gcc.exe = "arm-linux-gcc"
+    arm.linux.gcc.linkerexe = "arm-linux-gcc"
+    arm.linux.gcc.options.always = "-w -fmax-errors=3"
 
 Cross-compilation for Windows
 =============================
@@ -435,13 +437,14 @@ and `passL`:option: command line switches to something like:
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
   ```
 
-or setup a ``nim.cfg`` file like so::
+or setup a ``nim.cfg`` file like so:
 
-  #nim.cfg
-  --mm:orc
-  --d:nimAllocPagesViaMalloc
-  --passC="-I$DEVKITPRO/libnx/include"
-  --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
+    #nim.cfg
+    --mm:orc
+    --d:nimAllocPagesViaMalloc
+    --define:nimInheritHandles
+    --passC="-I$DEVKITPRO/libnx/include"
+    --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 
 The devkitPro setup must be the same as the default with their new installer
 [here for Mac/Linux](https://github.com/devkitPro/pacman/releases) or
@@ -712,7 +715,7 @@ Nim's thread API provides a simple wrapper around more advanced
 RTOS task features. Customizing the stack size and stack guard size can
 be done by setting `-d:nimThreadStackSize=16384` or `-d:nimThreadStackGuard=32`.
 
-Currently only Zephyr and FreeRTOS support these configurations.
+Currently only Zephyr, NuttX and FreeRTOS support these configurations.
 
 Nim for realtime systems
 ========================
@@ -777,20 +780,6 @@ For `let` symbols a copy is not always necessary:
   ```Nim
   let s = varA    # may only copy a pointer if it safe to do so
   ```
-
-
-If you know what you're doing, you can also mark single-string (or sequence)
-objects as `shallow`:idx:\:
-
-  ```Nim
-  var s = "abc"
-  shallow(s) # mark 's' as a shallow string
-  var x = s  # now might not copy the string!
-  ```
-
-Usage of `shallow` is always safe once you know the string won't be modified
-anymore, similar to Ruby's `freeze`:idx:.
-
 
 The compiler optimizes string case statements: A hashing scheme is used for them
 if several different string constants are used. So code like this is reasonably

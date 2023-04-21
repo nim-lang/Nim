@@ -76,11 +76,10 @@ At least the following standard library modules are available:
 * [htmlgen](htmlgen.html)
 * [httpcore](httpcore.html)
 * [lenientops](lenientops.html)
-* [mersenne](mersenne.html)
 * [options](options.html)
 * [parseutils](parseutils.html)
 * [punycode](punycode.html)
-* [random](punycode.html)
+* [random](random.html)
 * [stats](stats.html)
 * [strformat](strformat.html)
 * [strmisc](strmisc.html)
@@ -89,7 +88,6 @@ At least the following standard library modules are available:
 * [uri](uri.html)
 * [std/editdistance](editdistance.html)
 * [std/wordwrap](wordwrap.html)
-* [std/sums](sums.html)
 * [parsecsv](parsecsv.html)
 * [parsecfg](parsecfg.html)
 * [parsesql](parsesql.html)
@@ -213,7 +211,7 @@ ends with ``.nims``:
   echo "hello world"
   ```
 
-Use `#!/usr/bin/env -S nim --hints:off` to disable hints.
+Use `#!/usr/bin/env -S nim e --hints:off` to disable hints and relax the file extension constraint.
 
 
 Benefits

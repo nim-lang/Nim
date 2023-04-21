@@ -28,21 +28,28 @@ system by this day and age, your project is already in big trouble.
 Installation
 ------------
 
-Nimfix is part of the compiler distribution. Compile via::
+Nimfix is part of the compiler distribution. Compile via:
 
+  ```cmd
   nim c compiler/nimfix/nimfix.nim
   mv compiler/nimfix/nimfix bin
+  ```
 
-Or on windows::
+Or on windows:
 
+  ```cmd
   nim c compiler\nimfix\nimfix.nim
   move compiler\nimfix\nimfix.exe bin
+  ```
 
 Usage
 -----
 
 Usage:
+
+  ```cmd
   nimfix [options] projectfile.nim
+  ```
 
 Options:
 

@@ -9,6 +9,7 @@ nil
 2
 Obj(member: ref @["hello"])
 ref (member: ref @["hello"])
+ObjUa(v: 0, a: [...])
 '''
 """
 
@@ -87,3 +88,10 @@ macro extract(): untyped =
   test(parseExpr("discard"))
   
 extract()
+
+type
+  ObjUa = ref object
+    v: int
+    a: UncheckedArray[char]
+
+echo ObjUa().repr

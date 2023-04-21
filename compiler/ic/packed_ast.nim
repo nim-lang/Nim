@@ -84,7 +84,6 @@ type
     size*: BiggestInt
     align*: int16
     paddingAtEnd*: int16
-    lockLevel*: TLockLevel # lock level as required for deadlock checking
     # not serialized: loc*: TLoc because it is backend-specific
     typeInst*: PackedItemId
     nonUniqueId*: int32

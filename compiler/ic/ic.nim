@@ -43,11 +43,10 @@ type
     reexports*: seq[(LitId, PackedItemId)]
     compilerProcs*: seq[(LitId, int32)]
     converters*, methods*, trmacros*, pureEnums*: seq[int32]
-    macroUsages*: seq[(PackedItemId, PackedLineInfo)]
 
     typeInstCache*: seq[(PackedItemId, PackedItemId)]
     procInstCache*: seq[PackedInstantiation]
-    attachedOps*: seq[(TTypeAttachedOp, PackedItemId, PackedItemId)]
+    attachedOps*: seq[(PackedItemId, TTypeAttachedOp, PackedItemId)]
     methodsPerType*: seq[(PackedItemId, int, PackedItemId)]
     enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
 
@@ -355,7 +354,7 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
 
     var p = PackedType(kind: t.kind, flags: t.flags, callConv: t.callConv,
       size: t.size, align: t.align, nonUniqueId: t.itemId.item,
-      paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel)
+      paddingAtEnd: t.paddingAtEnd)
     storeNode(p, t, n)
     p.typeInst = t.typeInst.storeType(c, m)
     for kid in items t.sons:
@@ -529,6 +528,15 @@ proc toPackedGeneratedProcDef*(s: PSym, encoder: var PackedEncoder; m: var Packe
   toPackedProcDef(s.ast, m.topLevel, encoder, m)
   #flush encoder, m
 
+proc storeAttachedProcDef*(t: PType; op: TTypeAttachedOp; s: PSym,
+                           encoder: var PackedEncoder; m: var PackedModule) =
+  assert s.kind in routineKinds
+  assert isActive(encoder)
+  let tid = storeTypeLater(t, encoder, m)
+  let sid = storeSymLater(s, encoder, m)
+  m.attachedOps.add (tid, op, sid)
+  toPackedGeneratedProcDef(s, encoder, m)
+
 proc storeInstantiation*(c: var PackedEncoder; m: var PackedModule; s: PSym; i: PInstantiation) =
   var t = newSeq[PackedItemId](i.concreteTypes.len)
   for j in 0..high(i.concreteTypes):
@@ -597,7 +605,6 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection convertersSection, m.converters
   loadSeqSection methodsSection, m.methods
   loadSeqSection pureEnumsSection, m.pureEnums
-  loadSeqSection macroUsagesSection, m.macroUsages
 
   loadSeqSection toReplaySection, m.toReplay.nodes
   loadSeqSection topLevelSection, m.topLevel.nodes
@@ -661,7 +668,6 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection convertersSection, m.converters
   storeSeqSection methodsSection, m.methods
   storeSeqSection pureEnumsSection, m.pureEnums
-  storeSeqSection macroUsagesSection, m.macroUsages
 
   storeSeqSection toReplaySection, m.toReplay.nodes
   storeSeqSection topLevelSection, m.topLevel.nodes
@@ -894,7 +900,7 @@ proc typeHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
                           t: PackedType; si, item: int32): PType =
   result = PType(itemId: ItemId(module: si, item: t.nonUniqueId), kind: t.kind,
                 flags: t.flags, size: t.size, align: t.align,
-                paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel,
+                paddingAtEnd: t.paddingAtEnd,
                 uniqueId: ItemId(module: si, item: item),
                 callConv: t.callConv)
 

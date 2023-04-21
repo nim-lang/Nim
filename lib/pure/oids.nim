@@ -17,6 +17,9 @@
 import hashes, times, endians, random
 from std/private/decode_helpers import handleHexChar
 
+when defined(nimPreviewSlimSystem):
+  import std/sysatomics
+
 type
   Oid* = object ## An OID.
     time: int64
@@ -41,9 +44,9 @@ proc hexbyte*(hex: char): int {.inline.} =
 
 proc parseOid*(str: cstring): Oid =
   ## Parses an OID.
-  var bytes = cast[cstring](addr(result.time))
+  var bytes = cast[cstring](cast[pointer](cast[int](addr(result.time)) + 4))
   var i = 0
-  while i < 16:
+  while i < 12:
     bytes[i] = chr((hexbyte(str[2 * i]) shl 4) or hexbyte(str[2 * i + 1]))
     inc(i)
 
@@ -51,12 +54,12 @@ proc `$`*(oid: Oid): string =
   ## Converts an OID to a string.
   const hex = "0123456789abcdef"
 
-  result.setLen 32
+  result.setLen 24
 
   var o = oid
-  var bytes = cast[cstring](addr(o))
+  var bytes = cast[cstring](cast[pointer](cast[int](addr(o)) + 4))
   var i = 0
-  while i < 16:
+  while i < 12:
     let b = bytes[i].ord
     result[2 * i] = hex[(b and 0xF0) shr 4]
     result[2 * i + 1] = hex[b and 0xF]
@@ -83,9 +86,9 @@ template genOid(result: var Oid, incr: var int, fuzz: int32) =
 proc genOid*(): Oid =
   ## Generates a new OID.
   runnableExamples:
-    doAssert ($genOid()).len == 32
+    doAssert ($genOid()).len == 24
   runnableExamples("-r:off"):
-    echo $genOid() # for example, "00000000632c452db08c3d19ee9073e5"
+    echo $genOid() # for example, "5fc7f546ddbbc84800006aaf"
   genOid(result, incr, fuzz)
 
 proc generatedTime*(oid: Oid): Time =

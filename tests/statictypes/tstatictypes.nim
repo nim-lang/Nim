@@ -391,3 +391,23 @@ var sorted = newSeq[int](1000)
 for i in 0..<sorted.len: sorted[i] = i*2
 doAssert isSorted2(sorted, compare)
 doAssert isSorted2(sorted, proc (a, b: int): bool {.inline.} = a < b)
+
+
+block: # Ensure static descriminated objects compile
+  type
+    ObjKind = enum
+      KindA, KindB, KindC
+
+    MyObject[kind: static[ObjKind]] = object of RootObj
+      myNumber: int
+      when kind != KindA:
+        driverType: int
+        otherField: int
+      elif kind == KindC:
+        driverType: uint
+        otherField: int
+
+  var instance: MyObject[KindA]
+  discard instance
+  discard MyObject[KindC]()
+

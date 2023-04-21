@@ -10,6 +10,8 @@
 ## This module implements a simple HTTP client that can be used to retrieve
 ## webpages and other data.
 ##
+## .. warning:: Validate untrusted inputs: URI parsers and getters are not detecting malicious URIs.
+##
 ## Retrieving a website
 ## ====================
 ##
@@ -33,7 +35,7 @@
 ##   proc asyncProc(): Future[string] {.async.} =
 ##     var client = newAsyncHttpClient()
 ##     try:
-##       return await client.getContent("http://example.com")
+##       return await client.getContent("http://google.com")
 ##     finally:
 ##       client.close()
 ##
@@ -45,6 +47,10 @@
 ##
 ## **Note:** You need to run asynchronous examples in an async proc
 ## otherwise you will get an `Undeclared identifier: 'await'` error.
+##
+## **Note:** An asynchronous client instance can only deal with one
+## request at a time. To send multiple requests in parallel, use
+## multiple client instances.
 ##
 ## Using HTTP POST
 ## ===============
@@ -195,6 +201,14 @@
 ##    import std/httpclient
 ##
 ##    let myProxy = newProxy("http://myproxy.network")
+##    let client = newHttpClient(proxy = myProxy)
+##
+## Use proxies with basic authentication:
+##
+## .. code-block:: Nim
+##    import std/httpclient
+##    
+##    let myProxy = newProxy("http://myproxy.network", auth="user:password")
 ##    let client = newHttpClient(proxy = myProxy)
 ##
 ## Get Proxy URL from environment variables:

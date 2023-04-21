@@ -1,5 +1,5 @@
 discard """
-  matrix: "--useVersion:1.0"
+  matrix: "-d:NimMajor=1 -d:NimMinor=0 -d:NimPatch=100"
 """
 
 {.warning[UnusedImport]: off.}
@@ -17,7 +17,7 @@ import std/[
 
   # Strings:
   editdistance, wordwrap, parseutils, ropes,
-  pegs, punycode, strformat, strmisc, strscans, strtabs,
+  pegs, strformat, strmisc, strscans, strtabs,
   strutils, unicode, unidecode,
 
   # Generic operator system services:

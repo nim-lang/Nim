@@ -253,3 +253,17 @@ block:
 
   var x: Que[int]
   doAssert(x.x == 0)
+
+
+# bug #4466
+proc identity[T](t: T): T = t
+
+proc doSomething[A, B](t: tuple[a: A, b: B]) = discard
+
+discard identity((c: 1, d: 2))
+doSomething(identity((1, 2)))
+
+# bug #6231
+proc myProc[T, U](x: T or U) = discard
+
+myProc[int, string](x = 2)

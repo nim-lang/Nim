@@ -175,12 +175,14 @@ when not defined(nimseqsv2):
       var emptySeq: seq[int] = newSeq[int]()
       block:
         var t = @[1,2,3]
-        shallow(nilSeq)
+        when defined(gcRefc):
+          shallow(nilSeq)
         t = nilSeq
         doAssert t == @[]
       block:
         var t = @[1,2,3]
-        shallow(emptySeq)
+        when defined(gcRefc):
+          shallow(emptySeq)
         t = emptySeq
         doAssert t == @[]
       block:

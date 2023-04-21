@@ -9,7 +9,7 @@ block:
   static:
     foo(int)
 
-# #4412
+# bug #4412
 block:
   proc default[T](t: typedesc[T]): T {.inline.} = discard
 
@@ -361,7 +361,7 @@ block: # bug #14340
     envelopeSin[a]()
 
   block:
-    type Mutator = proc() {.noSideEffect, gcsafe, locks: 0.}
+    type Mutator = proc() {.noSideEffect, gcsafe.}
     proc mutator0() = discard
     const mTable = [Mutator(mutator0)]
     var i=0
@@ -564,11 +564,95 @@ block:
 block:
   static:
     let x = int 1
-    echo x.type   # Foo
+    doAssert $(x.type) == "Foo"  # Foo
 
 block:
   static:
     let x = int 1
     let y = x + 1
     # Error: unhandled exception: value out of range: -8 notin 0 .. 65535 [RangeDefect]
-    echo y
+    doAssert y == 2
+
+
+type Atom* = object
+  bar: int
+
+proc main() = # bug #12994
+  var s: seq[Atom]
+  var atom: Atom
+  var checked = 0
+  for i in 0..<2:
+    atom.bar = 5
+    s.add atom
+    atom.reset
+    if i == 0:
+      checked += 1
+      doAssert $s == "@[(bar: 5)]"
+    else:
+      checked += 1
+      doAssert $s == "@[(bar: 5), (bar: 5)]"
+  doAssert checked == 2
+
+static: main()
+main()
+
+# bug #19201
+proc foo(s: sink string) = doAssert s.len == 3
+
+static:
+  foo("abc")
+
+
+static:
+  for i in '1' .. '2': # bug #10938
+    var s: set[char]
+    doAssert s == {}
+    incl(s, i)
+
+  for _ in 0 ..< 3: # bug #13312
+    var s: string
+    s.add("foo")
+    doAssert s == "foo"
+
+  for i in 1 .. 5: # bug #13918
+    var arr: array[3, int]
+    var val: int
+    doAssert arr == [0, 0, 0] and val == 0
+    for j in 0 ..< len(arr):
+      arr[j] = i
+      val = i
+
+# bug #20985
+let a = block:
+  var groups: seq[seq[int]]
+  for i in 0 ..< 3:
+    var group: seq[int]
+    for j in 0 ..< 3:
+      group.add j
+    groups.add group
+  groups
+
+const b = block:
+  var groups: seq[seq[int]]
+  for i in 0 ..< 3:
+    var group: seq[int]
+    for j in 0 ..< 3:
+      group.add j
+    groups.add group
+  groups
+
+doAssert a == @[@[0, 1, 2], @[0, 1, 2], @[0, 1, 2]]
+doAssert b == @[@[0, 1, 2], @[0, 1, 2], @[0, 1, 2]]
+
+macro m1(s: string): int =
+  var ProcID {.global, compileTime.}: int
+  inc(ProcID)
+  result = newLit(ProcID)
+
+proc macroGlobal =
+  doAssert m1("Macro argument") == 1
+  doAssert m1("Macro argument") == 2
+  doAssert m1("Macro argument") == 3
+
+static: macroGlobal()
+macroGlobal()

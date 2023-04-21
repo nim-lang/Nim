@@ -399,12 +399,39 @@ block:
 
   discard Hello(a: 1.0, b: 12)
 
-# custom pragma on iterators
+# test routines
+block:
+  template prag {.pragma.}
+  proc hello {.prag.} = discard
+  iterator hello2: int {.prag.} = discard
+  template hello3(x: int): int {.prag.} = x
+  macro hello4(x: int): int {.prag.} = x
+  func hello5(x: int): int {.prag.} = x
+  doAssert hello.hasCustomPragma(prag)
+  doAssert hello2.hasCustomPragma(prag)
+  doAssert hello3.hasCustomPragma(prag)
+  doAssert hello4.hasCustomPragma(prag)
+  doAssert hello5.hasCustomPragma(prag)
+
+# test push doesn't break
 block:
   template prag {.pragma.}
   {.push prag.}
   proc hello = discard
   iterator hello2: int = discard
+  template hello3(x: int): int = x
+  macro hello4(x: int): int = x
+  func hello5(x: int): int = x
+  type
+    Foo = enum a
+    Bar[T] = ref object of RootObj
+      x: T
+      case y: bool
+      of false: discard
+      else:
+        when true: discard
+  for a in [1]: discard a
+  {.pop.}
 
 # issue #11511
 when false:
@@ -422,6 +449,31 @@ when false:
     newLit(hasAttr)
 
   doAssert hasMyAttr(TObj)
+
+
+# bug #11415
+template noserialize() {.pragma.}
+
+type
+  Point[T] = object
+    x, y: T
+
+  ReplayEventKind = enum
+    FoodAppeared, FoodEaten, DirectionChanged
+
+  ReplayEvent = object
+    case kind: ReplayEventKind
+    of FoodEaten, FoodAppeared: # foodPos is in multiple branches
+      foodPos {.noserialize.}: Point[float]
+    of DirectionChanged:
+      playerPos: float
+let ev = ReplayEvent(
+    kind: FoodEaten,
+    foodPos: Point[float](x: 5.0, y: 1.0)
+  )
+
+doAssert ev.foodPos.hasCustomPragma(noserialize)
+
 
 when false:
   # misc

@@ -157,3 +157,165 @@ block: # bug #19020
   static:
     doAssert $bar.getCustomPragmaVal(typ) == "foo"
   doAssert $bar.getCustomPragmaVal(typ) == "foo"
+
+block hasCustomPragmaGeneric:
+  template examplePragma() {.pragma.}
+  type
+    Foo[T] {.examplePragma.} = object
+      x {.examplePragma.}: T
+  var f: Foo[string]
+  doAssert f.hasCustomPragma(examplePragma)
+  doAssert f.x.hasCustomPragma(examplePragma)
+
+block getCustomPragmaValGeneric:
+  template examplePragma(x: int) {.pragma.}
+  type
+    Foo[T] {.examplePragma(42).} = object
+      x {.examplePragma(25).}: T
+  var f: Foo[string]
+  doAssert f.getCustomPragmaVal(examplePragma) == 42
+  doAssert f.x.getCustomPragmaVal(examplePragma) == 25
+
+block: # bug #21326
+  macro foo(body: untyped): untyped =
+    let a = body.lineInfoObj()
+    let aLit = a.newLit
+    result = quote do:
+      doAssert $`a` == $`aLit`
+
+  foo:
+    let c = 1
+
+  template name(a: LineInfo): untyped =
+    discard a # `aLit` works though
+
+  macro foo3(body: untyped): untyped =
+    let a = body.lineInfoObj()
+    # let ax = newLit(a)
+    result = getAst(name(a))
+
+  foo3:
+    let c = 1
+
+block: # bug #7375
+  macro fails(b: static[bool]): untyped =
+    doAssert b == false
+    result = newStmtList()
+
+  macro foo(): untyped =
+
+    var b = false
+
+    ## Fails
+    result = quote do:
+      fails(`b`)
+
+  foo()
+
+  macro someMacro(): untyped =
+    template tmpl(boolean: bool) =
+      when boolean:
+        discard "it's true!"
+      else:
+        doAssert false
+    result = getAst(tmpl(true))
+
+  someMacro()
+
+block:
+  macro foo(): untyped =
+    result = quote do: `littleEndian`
+
+  doAssert littleEndian == foo()
+
+block:
+  macro eqSym(x, y: untyped): untyped =
+    let eq = $x == $y # Unfortunately eqIdent compares to string.
+    result = quote do: `eq`
+
+  var r, a, b: int
+
+  template fma(result: var int, a, b: int, op: untyped) =
+    # fused multiple-add
+    when eqSym(op, `+=`):
+      discard "+="
+    else:
+      discard "+"
+
+  fma(r, a, b, `+=`)
+
+block:
+  template test(boolArg: bool) =
+    static:
+      doAssert typeof(boolArg) is bool
+    let x: bool = boolArg # compile error here, because boolArg became an int
+
+  macro testWrapped1(boolArg: bool): untyped =
+    # forwarding boolArg directly works
+    result = getAst(test(boolArg))
+
+  macro testWrapped2(boolArg: bool): untyped =
+    # forwarding boolArg via a local variable also works
+    let b = boolArg
+    result = getAst(test(b))
+
+  macro testWrapped3(boolArg: bool): untyped =
+    # but using a literal `true` as a local variable will be converted to int
+    let b = true
+    result = getAst(test(b))
+
+  test(true) # ok
+  testWrapped1(true) # ok
+  testWrapped2(true) # ok
+  testWrapped3(true) 
+
+block:
+  macro foo(): untyped =
+    var s = { 'a', 'b' }
+    quote do:              
+      let t = `s`         
+      doAssert $typeof(t) == "set[char]"
+
+  foo()
+
+block: # bug #9607
+  proc fun1(info:LineInfo): string = "bar"
+  proc fun2(info:int): string = "bar"
+
+  macro echoL(args: varargs[untyped]): untyped =
+    let info = args.lineInfoObj
+    let fun1 = bindSym"fun1"
+    let fun2 = bindSym"fun2"
+
+    # this would work instead
+    # result = newCall(bindSym"fun2", info.line.newLit)
+
+    result = quote do:
+
+      # BUG1: ???(0, 0) Error: internal error: genLiteral: ty is nil
+      `fun1`(`info`)
+
+  macro echoM(args: varargs[untyped]): untyped =
+    let info = args.lineInfoObj
+    let fun1 = bindSym"fun1"
+    let fun2 = bindSym"fun2"
+
+    # this would work instead
+    # result = newCall(bindSym"fun2", info.line.newLit)
+
+    result = quote do:
+
+      # BUG1: ???(0, 0) Error: internal error: genLiteral: ty is nil
+      `fun2`(`info`.line)
+
+
+  doAssert echoL() == "bar"
+  doAssert echoM() == "bar"
+
+block:
+  macro hello[T](x: T): untyped =
+    result = quote do:
+      let m: `T` = `x`
+      discard m
+
+  hello(12)

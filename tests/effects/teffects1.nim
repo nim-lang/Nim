@@ -17,7 +17,7 @@ proc forw: int {. .}
 proc lier(): int {.raises: [IO2Error].} = #[tt.Hint
                             ^ 'lier' cannot raise 'IO2Error' [XCannotRaiseY] ]#
   writeLine stdout, "arg" #[tt.Error
-            ^ writeLine stdout, ["arg"] can raise an unlisted exception: ref IOError ]#
+  ^ writeLine stdout, ["arg"] can raise an unlisted exception: ref IOError ]#
 
 proc forw: int =
   raise newException(IOError, "arg")
@@ -34,7 +34,7 @@ proc foo(x: int): string {.nimcall, raises: [ValueError].} =
 
 var p: MyProcType = foo #[tt.Error
                     ^
-type mismatch: got <proc (x: int): string{.nimcall, noSideEffect, gcsafe, locks: 0.}> but expected 'MyProcType = proc (x: int): string{.closure.}'
+type mismatch: got <proc (x: int): string{.nimcall, noSideEffect, gcsafe.}> but expected 'MyProcType = proc (x: int): string{.closure.}'
   Calling convention mismatch: got '{.nimcall.}', but expected '{.closure.}'.
 .raise effects differ
 ]#

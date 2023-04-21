@@ -302,8 +302,7 @@ proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
       unzipped2 = @['a', 'b', 'c']
     assert zipped.unzip() == (unzipped1, unzipped2)
     assert zip(unzipped1, unzipped2).unzip() == (unzipped1, unzipped2)
-  result[0] = newSeq[S](s.len)
-  result[1] = newSeq[T](s.len)
+  result = (newSeq[S](s.len), newSeq[T](s.len))
   for i in 0..<s.len:
     result[0][i] = s[i][0]
     result[1][i] = s[i][1]
@@ -1078,9 +1077,9 @@ template newSeqWith*(len: int, init: untyped): untyped =
     import std/random
     var seqRand = newSeqWith(20, rand(1.0))
     assert seqRand[0] != seqRand[1]
-
-  var result = newSeq[typeof(init)](len)
-  for i in 0 ..< len:
+  let newLen = len
+  var result = newSeq[typeof(init)](newLen)
+  for i in 0 ..< newLen:
     result[i] = init
   move(result) # refs bug #7295
 

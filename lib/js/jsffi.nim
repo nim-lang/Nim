@@ -268,15 +268,14 @@ macro `.()`*(obj: JsObject,
   ## so be careful when using this.)
   ##
   ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  # Let's get back to the console example:
-  ##  var console {.importc, nodecl.}: JsObject
-  ##  let res = console.log("I return undefined!")
-  ##  console.log(res) # This prints undefined, as console.log always returns
-  ##                   # undefined. Thus one has to be careful, when using
-  ##                   # JsObject calls.
+  ##   ```nim
+  ##   # Let's get back to the console example:
+  ##   var console {.importc, nodecl.}: JsObject
+  ##   let res = console.log("I return undefined!")
+  ##   console.log(res) # This prints undefined, as console.log always returns
+  ##                    # undefined. Thus one has to be careful, when using
+  ##                    # JsObject calls.
+  ##   ```
   var importString: string
   if validJsName($field):
     importString = "#." & $field & "(@)"
@@ -407,21 +406,20 @@ macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
   ##
   ## Example:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
+  ##   # Let's say we have a type with a ton of fields, where some fields do not
+  ##   # need to be set, and we do not want those fields to be set to `nil`:
+  ##   type
+  ##     ExtremelyHugeType = ref object
+  ##       a, b, c, d, e, f, g: int
+  ##       h, i, j, k, l: cstring
+  ##       # And even more fields ...
   ##
-  ##  # Let's say we have a type with a ton of fields, where some fields do not
-  ##  # need to be set, and we do not want those fields to be set to `nil`:
-  ##  type
-  ##    ExtremelyHugeType = ref object
-  ##      a, b, c, d, e, f, g: int
-  ##      h, i, j, k, l: cstring
-  ##      # And even more fields ...
+  ##   let obj = ExtremelyHugeType{ a: 1, k: "foo".cstring, d: 42 }
   ##
-  ##  let obj = ExtremelyHugeType{ a: 1, k: "foo".cstring, d: 42 }
-  ##
-  ##  # This generates roughly the same JavaScript as:
-  ##  {.emit: "var obj = {a: 1, k: "foo", d: 42};".}
-  ##
+  ##   # This generates roughly the same JavaScript as:
+  ##   {.emit: "var obj = {a: 1, k: "foo", d: 42};".}
+  ##   ```
   let a = ident"a"
   var body = quote do:
     var `a` {.noinit.}: `typ`
@@ -471,24 +469,25 @@ macro bindMethod*(procedure: typed): auto =
   ## Example:
   ##
   ## We want to generate roughly this JavaScript:
-  ##
-  ## .. code-block:: js
-  ##  var obj = {a: 10};
-  ##  obj.someMethod = function() {
-  ##    return this.a + 42;
-  ##  };
+  ##   ```js
+  ##   var obj = {a: 10};
+  ##   obj.someMethod = function() {
+  ##     return this.a + 42;
+  ##   };
+  ##   ```
   ##
   ## We can achieve this using the `bindMethod` macro:
   ##
-  ## .. code-block:: nim
-  ##  let obj = JsObject{ a: 10 }
-  ##  proc someMethodImpl(that: JsObject): int =
-  ##    that.a.to(int) + 42
-  ##  obj.someMethod = bindMethod someMethodImpl
+  ##   ```nim
+  ##   let obj = JsObject{ a: 10 }
+  ##   proc someMethodImpl(that: JsObject): int =
+  ##     that.a.to(int) + 42
+  ##   obj.someMethod = bindMethod someMethodImpl
   ##
-  ##  # Alternatively:
-  ##  obj.someMethod = bindMethod
-  ##    proc(that: JsObject): int = that.a.to(int) + 42
+  ##   # Alternatively:
+  ##   obj.someMethod = bindMethod
+  ##     proc(that: JsObject): int = that.a.to(int) + 42
+  ##   ```
   if not (procedure.kind == nnkSym or procedure.kind == nnkLambda):
     error("Argument has to be a proc or a symbol corresponding to a proc.")
   var

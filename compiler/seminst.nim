@@ -40,7 +40,7 @@ const
 
 iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym =
   internalAssert c.config, n.kind == nkGenericParams
-  for i, a in n.pairs:
+  for a in n.items:
     internalAssert c.config, a.kind == nkSym
     var q = a.sym
     if q.typ.kind in {tyTypeDesc, tyGenericParam, tyStatic, tyConcept}+tyTypeClasses:
@@ -127,11 +127,18 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
         if sfGenSym in param.flags:
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
     freshGenSyms(c, b, result, orig, symMap)
-    
+
     if sfBorrow notin orig.flags: 
       # We do not want to generate a body for generic borrowed procs.
       # As body is a sym to the borrowed proc.
-      b = semProcBody(c, b)
+      let resultType = # todo probably refactor it into a function
+        if result.kind == skMacro:
+          sysTypeFromName(c.graph, n.info, "NimNode")
+        elif not isInlineIterator(result.typ):
+          result.typ[0]
+        else:
+          nil
+      b = semProcBody(c, b, resultType)
     result.ast[bodyPos] = hloBody(c, b)
     excl(result.flags, sfForward)
     trackProc(c, result, result.ast[bodyPos])
@@ -314,7 +321,7 @@ proc fillMixinScope(c: PContext) =
     p = p.next
 
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
-                      info: TLineInfo): PSym {.nosinks.} =
+                      info: TLineInfo): PSym =
   ## Generates a new instance of a generic procedure.
   ## The `pt` parameter is a type-unsafe mapping table used to link generic
   ## parameters to their concrete types within the generic instance.
