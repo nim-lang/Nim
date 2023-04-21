@@ -307,5 +307,4 @@ template main() =
 
 static:
   main()
-  mainProc()
 main()
