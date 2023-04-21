@@ -79,6 +79,19 @@ proc test() =
       proc foo(_: int) =
         let a = _
     doAssert not compiles(main())
+  
+  block: # generic params
+    doAssert not (compiles do:
+      proc foo[_](t: typedesc[_]): seq[_] = @[default(_)]
+      doAssert foo[int]() == 0)
+  
+  block:
+    proc foo[_, _](): int = 123
+    doAssert foo[int, bool]() == 123
+  
+  block:
+    proc foo[T; U](_: typedesc[T]; _: typedesc[U]): (T, U) = (default(T), default(U))
+    doAssert foo(int, bool) == (0, false)
 
 proc closureTest() =
   var x = 0

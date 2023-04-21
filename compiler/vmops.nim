@@ -38,7 +38,6 @@ when defined(nimPreviewSlimSystem):
 else:
   from std/formatfloat import addFloatRoundtrip, addFloatSprintf
 
-from std/strutils import formatBiggestFloat, FloatFormatMode
 
 # There are some useful procs in vmconv.
 import vmconv, vmmarshal

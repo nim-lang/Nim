@@ -84,10 +84,12 @@ type
     warnPtrToCstringConv = "PtrToCstringConv",
     warnEffect = "Effect",
     warnCastSizes = "CastSizes"
+    warnAboveMaxSizeSet = "AboveMaxSizeSet",
     warnImplicitTemplateRedefinition = "ImplicitTemplateRedefinition",
     warnUnnamedBreak = "UnnamedBreak",
     warnStmtListLambda = "StmtListLambda",
     warnBareExcept = "BareExcept",
+    warnImplicitDefaultValue = "ImplicitDefaultValue",
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -185,10 +187,12 @@ const
     warnPtrToCstringConv: "unsafe conversion to 'cstring' from '$1'; this will become a compile time error in the future",
     warnEffect: "$1",
     warnCastSizes: "$1",
+    warnAboveMaxSizeSet: "$1",
     warnImplicitTemplateRedefinition: "template '$1' is implicitly redefined; this is deprecated, add an explicit .redefine pragma",
     warnUnnamedBreak: "Using an unnamed break in a block is deprecated; Use a named block with a named break instead",
     warnStmtListLambda: "statement list expression assumed to be anonymous proc; this is deprecated, use `do (): ...` or `proc () = ...` instead",
     warnBareExcept: "$1",
+    warnImplicitDefaultValue: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`

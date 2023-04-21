@@ -501,7 +501,7 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
     h = h !& ord(c)
   result = !$h
 
-proc hash*[T: tuple | object | proc](x: T): Hash =
+proc hash*[T: tuple | object | proc | iterator {.closure.}](x: T): Hash =
   ## Efficient `hash` overload.
   runnableExamples:
     # for `tuple|object`, `hash` must be defined for each component of `x`.

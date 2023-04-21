@@ -1077,9 +1077,9 @@ template newSeqWith*(len: int, init: untyped): untyped =
     import std/random
     var seqRand = newSeqWith(20, rand(1.0))
     assert seqRand[0] != seqRand[1]
-
-  var result = newSeq[typeof(init)](len)
-  for i in 0 ..< len:
+  let newLen = len
+  var result = newSeq[typeof(init)](newLen)
+  for i in 0 ..< newLen:
     result[i] = init
   move(result) # refs bug #7295
 

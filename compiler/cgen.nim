@@ -61,12 +61,12 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
     var ms = getModule(s)
     result = m.g.modules[ms.position]
 
-proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) =
+proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}) =
   result.k = k
   result.storage = s
   result.lode = lode
   result.r = ""
-  result.flags = {}
+  result.flags = flags
 
 proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc) {.inline.} =
   # fills the loc if it is not already initialized
@@ -228,8 +228,12 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
   result.add newCall(ident"rope", resVar)
 
 proc addIndent(p: BProc; result: var Rope) =
-  for i in 0..<p.blocks.len:
-    result.add "\t".rope
+  var i = result.len
+  let newLen = i + p.blocks.len
+  result.setLen newLen
+  while i < newLen:
+    result[i] = '\t'
+    inc i
 
 template appcg(m: BModule, c: var Rope, frmt: FormatStr,
            args: untyped) =
@@ -483,9 +487,6 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
 
-proc isOrHasImportedCppType(typ: PType): bool =
-  searchTypeFor(typ.skipTypes({tyRef}), isImportedCppType)
-
 proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
   let typ = loc.t
   if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst + {tyStatic}).kind in {tyString, tySequence}:
@@ -640,7 +641,23 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
         if sfVolatile in s.flags: decl.add(" volatile")
         if sfNoalias in s.flags: decl.add(" NIM_NOALIAS")
         if value != "":
-          decl.addf(" $1 = $2;$n", [s.loc.r, value])
+          if p.module.compileToCpp and value.startsWith "{{}":
+            # TODO: taking this branch, re"\{\{\}(,\s\{\})*\}" might be emitted, resulting in
+            # either warnings (GCC 12.2+) or errors (Clang 15, MSVC 19.3+) of C++11+ compilers **when
+            # explicit constructors are around** due to overload resolution rules in place [^0][^1][^2]
+            # *Workaround* here: have C++'s static initialization mechanism do the default init work,
+            # for us lacking a deeper knowledge of an imported object's constructors' ex-/implicitness
+            # (so far) *and yet* trying to achieve default initialization.
+            # Still, generating {}s in genConstObjConstr() just to omit them here is faaaar from ideal;
+            # need to figure out a better way, possibly by keeping around more data about the
+            # imported objects' contructors?
+            #
+            # [^0]: https://en.cppreference.com/w/cpp/language/aggregate_initialization
+            # [^1]: https://cplusplus.github.io/CWG/issues/1518.html
+            # [^2]: https://eel.is/c++draft/over.match.ctor
+            decl.addf(" $1;$n", [s.loc.r])
+          else:
+            decl.addf(" $1 = $2;$n", [s.loc.r, value])
         else:
           decl.addf(" $1;$n", [s.loc.r])
       else:
@@ -681,8 +698,8 @@ proc genLiteral(p: BProc, n: PNode; result: var Rope)
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Rope; argsCounter: var int)
 proc raiseExit(p: BProc)
 
-proc initLocExpr(p: BProc, e: PNode, result: var TLoc) =
-  initLoc(result, locNone, e, OnUnknown)
+proc initLocExpr(p: BProc, e: PNode, result: var TLoc, flags: TLocFlags = {}) =
+  initLoc(result, locNone, e, OnUnknown, flags)
   expr(p, e, result)
 
 proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
@@ -1082,7 +1099,7 @@ proc genProcBody(p: BProc; procBody: PNode) =
 proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
   sfNoReturn in s.flags and m.config.exc != excGoto
 
-proc genProcAux(m: BModule, prc: PSym) =
+proc genProcAux*(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = newRopeAppender()
   genProcHeader(m, prc, header)
@@ -2090,7 +2107,7 @@ proc updateCachedModule(m: BModule) =
   cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)
 
-proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
+proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode): PNode =
   ## Also called from IC.
   if sfMainModule in m.module.flags:
     # phase ordering problem here: We need to announce this
@@ -2136,8 +2153,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
 
       if m.g.forwardedProcs.len == 0:
         incl m.flags, objHasKidsValid
-      let disp = generateMethodDispatchers(graph)
-      for x in disp: genProcAux(m, x.sym)
+      result = generateMethodDispatchers(graph, m.idgen)
 
   let mm = m
   m.g.modulesClosed.add mm

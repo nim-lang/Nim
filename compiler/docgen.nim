@@ -112,13 +112,16 @@ type
 proc add(dest: var ItemPre, rst: PRstNode) = dest.add ItemFragment(isRst: true, rst: rst)
 proc add(dest: var ItemPre, str: string) = dest.add ItemFragment(isRst: false, str: str)
 
-proc addRstFileIndex(d: PDoc, info: lineinfos.TLineInfo): rstast.FileIndex =
+proc addRstFileIndex(d: PDoc, fileIndex: lineinfos.FileIndex): rstast.FileIndex =
   let invalid = rstast.FileIndex(-1)
-  result = d.nimToRstFid.getOrDefault(info.fileIndex, default = invalid)
+  result = d.nimToRstFid.getOrDefault(fileIndex, default = invalid)
   if result == invalid:
-    let fname = toFullPath(d.conf, info)
+    let fname = toFullPath(d.conf, fileIndex)
     result = addFilename(d.sharedState, fname)
-    d.nimToRstFid[info.fileIndex] = result
+    d.nimToRstFid[fileIndex] = result
+
+proc addRstFileIndex(d: PDoc, info: lineinfos.TLineInfo): rstast.FileIndex =
+  addRstFileIndex(d, info.fileIndex)
 
 proc cmpDecimalsIgnoreCase(a, b: string): int =
   ## For sorting with correct handling of cases like 'uint8' and 'uint16'.
@@ -562,10 +565,13 @@ proc runAllExamples(d: PDoc) =
     # most useful semantics is that `docCmd` comes after `rdoccmd`, so that we can (temporarily) override
     # via command line
     # D20210224T221756:here
-    let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off --path:$path --nimcache:$nimcache $rdoccmd $docCmd $file" % [
+    var pathArgs = "--path:$path" % [ "path", quoteShell(d.conf.projectPath) ]
+    for p in d.conf.searchPaths:
+      pathArgs = "$args --path:$path" % [ "args", pathArgs, "path", quoteShell(p) ]
+    let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off $pathArgs --nimcache:$nimcache $rdoccmd $docCmd $file" % [
       "nim", quoteShell(os.getAppFilename()),
       "backend", $d.conf.backend,
-      "path", quoteShell(d.conf.projectPath),
+      "pathArgs", pathArgs,
       "libpath", quoteShell(d.conf.libpath),
       "nimcache", quoteShell(outputDir),
       "file", quoteShell(outp),
@@ -600,7 +606,6 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   let useRenderModule = false
   let loc = d.conf.toFileLineCol(n.info)
   let code = extractRunnableExamplesSource(d.conf, n)
-  let codeIndent = extractRunnableExamplesSource(d.conf, n, indent = 2)
 
   if d.conf.errorCounter > 0:
     return (rdoccmd, code)
@@ -616,6 +621,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
     docComment.comment = comment
     var runnableExamples = newTree(nkStmtList,
         docComment,
+        newTree(nkImportStmt, newStrNode(nkStrLit, "std/assertions")),
         newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
     runnableExamples.info = n.info
     for a in n.lastSon: runnableExamples.add a
@@ -629,6 +635,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   else:
     var code2 = code
     if code.len > 0 and "codeReordering" notin code:
+      let codeIndent = extractRunnableExamplesSource(d.conf, n, indent = 2)
       # hacky but simplest solution, until we devise a way to make `{.line.}`
       # work without introducing a scope
       code2 = """
@@ -639,6 +646,7 @@ $#
 #[
 $#
 ]#
+import std/assertions
 import $#
 $#
 """ % [comment, d.filename.quoted, code2]
@@ -1060,7 +1068,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
       fileIndex: addRstFileIndex(d, nameNode.info))
   addAnchorNim(d.sharedState, external = false, refn = symbolOrId,
                tooltip = detailedName, langSym = rstLangSymbol,
-               priority = symbolPriority(k), info = lineinfo)
+               priority = symbolPriority(k), info = lineinfo,
+               module = addRstFileIndex(d, FileIndex d.module.position))
 
   let renderFlags =
     if nonExports: {renderNoBody, renderNoComments, renderDocComments, renderSyms,
@@ -1451,7 +1460,8 @@ proc finishGenerateDoc*(d: var PDoc) =
                                   isGroup: true),
                        priority = symbolPriority(k),
                        # select index `0` just to have any meaningful warning:
-                       info = overloadChoices[0].info)
+                       info = overloadChoices[0].info,
+                       module = addRstFileIndex(d, FileIndex d.module.position))
 
   if optGenIndexOnly in d.conf.globalOptions:
     return

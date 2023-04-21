@@ -229,6 +229,14 @@ proc buildTools(args: string = "") =
   nimCompileFold("Compile atlas", "tools/atlas/atlas.nim", options = "-d:release " & args,
       outputName = "atlas")
 
+proc testTools(args: string = "") =
+  nimCompileFold("Compile nimgrep", "tools/nimgrep.nim",
+                 options = "-d:release " & args)
+  when defined(windows): buildVccTool(args)
+  bundleNimpretty(args)
+  nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release " & args)
+  nimCompileFold("Compile atlas", "tools/atlas/atlas.nim", options = "-d:release " & args,
+      outputName = "atlas")
 
 proc nsis(latest: bool; args: string) =
   bundleNimbleExe(latest, args)
@@ -546,7 +554,7 @@ proc runCI(cmd: string) =
     nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release")
     execFold("Test selected Nimble packages", "testament $# pcat nimble-packages" % batchParam)
   else:
-    buildTools()
+    testTools()
 
     for a in "zip opengl sdl1 jester@#head".split:
       let buildDeps = "build"/"deps" # xxx factor pending https://github.com/timotheecour/Nim/issues/616

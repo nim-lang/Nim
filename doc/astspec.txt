@@ -1348,7 +1348,7 @@ Generic parameters are treated in the type, not the ``proc`` itself.
 Concrete syntax:
 
   ```nim
-  type MyProc[T] = proc(x: T)
+  type MyProc[T] = proc(x: T) {.nimcall.}
   ```
 
 AST:
@@ -1363,13 +1363,45 @@ AST:
     nnkProcTy( # behaves like a procedure declaration from here on
       nnkFormalParams(
         # ...
-      )
+      ),
+      nnkPragma(nnkIdent("nimcall"))
     )
   )
   ```
 
 The same syntax applies to ``iterator`` (with ``nnkIteratorTy``), but
 *does not* apply to ``converter`` or ``template``.
+
+Type class versions of these nodes generally share the same node kind but
+without any child nodes. The ``tuple`` type class is represented by
+``nnkTupleClassTy``, while a ``proc`` or ``iterator`` type class with pragmas
+has an ``nnkEmpty`` node in place of the ``nnkFormalParams`` node of a
+concrete ``proc`` or ``iterator`` type node.
+
+  ```nim
+  type TypeClass = proc {.nimcall.} | ref | tuple
+  ```
+
+AST:
+
+  ```nim
+  nnkTypeDef(
+    nnkIdent("TypeClass"),
+    nnkEmpty(),
+    nnkInfix(
+      nnkIdent("|"),
+      nnkProcTy(
+        nnkEmpty(),
+        nnkPragma(nnkIdent("nimcall"))
+      ),
+      nnkInfix(
+        nnkIdent("|"),
+        nnkRefTy(),
+        nnkTupleClassTy()
+      )
+    )
+  )
+  ```
 
 Mixin statement
 ---------------

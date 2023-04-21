@@ -234,7 +234,7 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
       localError(conf, conf.m.trackPos, "found no symbol at this position " & (conf $ conf.m.trackPos))
 
 proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, graph: ModuleGraph) =
-  executeNoHooks(cmd, file, dirtyfile, line, col, graph)
+  executeNoHooks(cmd, file, dirtyfile, line, col, "", graph)
 
 proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int; tag: string,
              graph: ModuleGraph) =

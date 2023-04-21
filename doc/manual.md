@@ -3076,12 +3076,25 @@ when they are declared. The only exception to this is if the `{.importc.}`
 pragma (or any of the other `importX` pragmas) is applied, in this case the
 value is expected to come from native code, typically a C/C++ `const`.
 
+Special identifier `_` (underscore)
+-----------------------------------
+
+The identifier `_` has a special meaning in declarations.
+Any definition with the name `_` will not be added to scope, meaning the
+definition is evaluated, but cannot be used. As a result the name `_` can be
+indefinitely redefined.
+
+  ```nim
+  let _ = 123
+  echo _ # error
+  let _ = 456 # compiles
+  ```
 
 Tuple unpacking
 ---------------
 
-In a `var` or `let` statement tuple unpacking can be performed. The special
-identifier `_` can be used to ignore some parts of the tuple:
+In a `var`, `let` or `const` statement tuple unpacking can be performed.
+The special identifier `_` can be used to ignore some parts of the tuple:
 
   ```nim
   proc returnsTuple(): (int, int, int) = (4, 2, 3)
@@ -3089,6 +3102,35 @@ identifier `_` can be used to ignore some parts of the tuple:
   let (x, _, z) = returnsTuple()
   ```
 
+This is treated as syntax sugar for roughly the following:
+
+  ```nim
+  let
+    tmpTuple = returnsTuple()
+    x = tmpTuple[0]
+    z = tmpTuple[2]
+  ```
+
+For `var` or `let` statements, if the value expression is a tuple literal,
+each expression is directly expanded into an assignment without the use of
+a temporary variable.
+
+  ```nim
+  let (x, y, z) = (1, 2, 3)
+  # becomes
+  let
+    x = 1
+    y = 2
+    z = 3
+  ```
+
+Tuple unpacking can also be nested:
+
+  ```nim
+  proc returnsNestedTuple(): (int, (int, int), int, int) = (4, (5, 7), 2, 3)
+
+  let (x, (_, y), _, z) = returnsNestedTuple()
+  ```
 
 
 Const section
@@ -3772,15 +3814,6 @@ every time the function is called.
   ```nim
   # b is optional with 47 as its default value.
   proc foo(a: int, b: int = 47): int
-  ```
-
-Just as the comma propagates the types from right to left until the
-first parameter or until a semicolon is hit, it also propagates the
-default value starting from the parameter declared with it.
-
-  ```nim
-  # Both a and b are optional with 47 as their default values.
-  proc foo(a, b: int = 47): int
   ```
 
 Parameters can be declared mutable and so allow the proc to modify those
@@ -5434,9 +5467,9 @@ type class           matches
 ==================   ===================================================
 `object`             any object type
 `tuple`              any tuple type
-
 `enum`               any enumeration
 `proc`               any proc type
+`iterator`           any iterator type
 `ref`                any `ref` type
 `ptr`                any `ptr` type
 `var`                any `var` type
@@ -5455,7 +5488,7 @@ more complex type classes:
 
   ```nim
   # create a type class that will match all tuple and object types
-  type RecordType = tuple or object
+  type RecordType = (tuple or object)
 
   proc printFields[T: RecordType](rec: T) =
     for key, value in fieldPairs(rec):
@@ -5496,6 +5529,17 @@ as `type constraints`:idx: of the generic type parameter:
   onlyIntOrString("xy", 50) # invalid as 'T' cannot be both at the same time
   ```
 
+`proc` and `iterator` type classes also accept a calling convention pragma
+to restrict the calling convention of the matching `proc` or `iterator` type.
+
+  ```nim
+  proc onlyClosure[T: proc {.closure.}](x: T) = discard
+
+  onlyClosure(proc() = echo "hello") # valid
+  proc foo() {.nimcall.} = discard
+  onlyClosure(foo) # type mismatch
+  ```
+
 
 Implicit generics
 -----------------
@@ -5504,7 +5548,7 @@ A type class can be used directly as the parameter's type.
 
   ```nim
   # create a type class that will match all tuple and object types
-  type RecordType = tuple or object
+  type RecordType = (tuple or object)
 
   proc printFields(rec: RecordType) =
     for key, value in fieldPairs(rec):
