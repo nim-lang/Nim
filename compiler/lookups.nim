@@ -490,8 +490,9 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
     let e = list.pop()
     if c.config.spellSuggestMax == spellSuggestSecretSauce:
       const
+        minLengthForSuggestion = 4
         maxCount = 3 # avoids ton of matches; three counts for equal distances
-      if e.dist > e0.dist or count >= maxCount: break
+      if e.dist > e0.dist or count >= maxCount or name0.len < minLengthForSuggestion: break
     elif count >= c.config.spellSuggestMax: break
     if count == 0:
       result.add "\ncandidates (edit distance, scope distance); see '--spellSuggest': "
