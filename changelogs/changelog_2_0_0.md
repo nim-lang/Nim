@@ -126,6 +126,8 @@
   - `std/db_mysql` => `db_connector/db_mysql`
   - `std/db_postgres` => `db_connector/db_postgres`
   - `std/db_odbc` => `db_connector/db_odbc`
+  - `std/md5` => `checksums/md5`
+  - `std/sha1` => `checksums/sha1`
 
 - Previously, calls like `foo(a, b): ...` or `foo(a, b) do: ...` where the final argument of
   `foo` had type `proc ()` were assumed by the compiler to mean `foo(a, b, proc () = ...)`.
