@@ -154,3 +154,5 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasGenericDefine")
   defineSymbol("nimHasDefineAliases")
   defineSymbol("nimHasWarnBareExcept")
+  # can test with `proc is iterator` but `is` not always available in system:
+  defineSymbol("nimHasDistinctIteratorType")

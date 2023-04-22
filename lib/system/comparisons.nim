@@ -35,8 +35,11 @@ proc `==`*[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
   ## Checks that two `ref` variables refer to the same item.
 proc `==`*[T](x, y: ptr T): bool {.magic: "EqRef", noSideEffect.}
   ## Checks that two `ptr` variables refer to the same item.
-proc `==`*[T: proc | iterator {.closure.}](x, y: T): bool {.magic: "EqProc", noSideEffect.}
+proc `==`*[T: proc](x, y: T): bool {.magic: "EqProc", noSideEffect.}
   ## Checks that two `proc` variables refer to the same procedure.
+when defined(nimHasDistinctIteratorType):
+  proc `==`*[T: iterator](x, y: T): bool {.magic: "EqProc", noSideEffect.}
+    ## Checks that two `iterator` variables refer to the same closure iterator.
 
 proc `<=`*[Enum: enum](x, y: Enum): bool {.magic: "LeEnum", noSideEffect.}
 proc `<=`*(x, y: string): bool {.magic: "LeStr", noSideEffect.} =
