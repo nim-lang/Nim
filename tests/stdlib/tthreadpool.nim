@@ -1,5 +1,5 @@
 discard """
-  matrix: "--threads:on --gc:arc"
+  matrix: "--mm:arc; --mm:refc"
   disabled: "freebsd"
   output: "42"
 """

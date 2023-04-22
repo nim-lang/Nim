@@ -321,7 +321,7 @@ proc checkBinary(p: Parser) {.inline.} =
 #| operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
 #|          | 'or' | 'xor' | 'and'
 #|          | 'is' | 'isnot' | 'in' | 'notin' | 'of' | 'as' | 'from'
-#|          | 'div' | 'mod' | 'shl' | 'shr' | 'not' | 'static' | '..'
+#|          | 'div' | 'mod' | 'shl' | 'shr' | 'not' | '..'
 #|
 #| prefixOperator = operator
 #|
@@ -362,7 +362,8 @@ template setEndInfo() =
 
 proc parseSymbol(p: var Parser, mode = smNormal): PNode =
   #| symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
-  #|        | IDENT | KEYW
+  #|        | IDENT | 'addr' | 'type' | 'static'
+  #| symbolOrKeyword = symbol | KEYW
   case p.tok.tokType
   of tkSymbol:
     result = newIdentNodeP(p.tok.ident, p)
@@ -539,7 +540,7 @@ proc dotLikeExpr(p: var Parser, a: PNode): PNode =
   result.add(parseSymbol(p, smAfterDot))
 
 proc qualifiedIdent(p: var Parser): PNode =
-  #| qualifiedIdent = symbol ('.' optInd symbol)?
+  #| qualifiedIdent = symbol ('.' optInd symbolOrKeyword)?
   result = parseSymbol(p)
   if p.tok.tokType == tkDot: result = dotExpr(p, result)
 
@@ -869,8 +870,8 @@ proc isDotLike(tok: Token): bool =
 proc primarySuffix(p: var Parser, r: PNode,
                    baseIndent: int, mode: PrimaryMode): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')'
-  #|       | '.' optInd symbol ('[:' exprList ']' ( '(' exprColonEqExpr ')' )?)? generalizedLit?
-  #|       | DOTLIKEOP optInd symbol generalizedLit?
+  #|       | '.' optInd symbolOrKeyword ('[:' exprList ']' ( '(' exprColonEqExpr ')' )?)? generalizedLit?
+  #|       | DOTLIKEOP optInd symbolOrKeyword generalizedLit?
   #|       | '[' optInd exprColonEqExprList optPar ']'
   #|       | '{' optInd exprColonEqExprList optPar '}'
   # XXX strong spaces need to be reflected above
@@ -1005,7 +1006,7 @@ proc parsePragma(p: var Parser): PNode =
 
 proc identVis(p: var Parser; allowDot=false): PNode =
   #| identVis = symbol OPR?  # postfix position
-  #| identVisDot = symbol '.' optInd symbol OPR?
+  #| identVisDot = symbol '.' optInd symbolOrKeyword OPR?
   var a = parseSymbol(p)
   if p.tok.tokType == tkOpr:
     when defined(nimpretty):
@@ -1197,14 +1198,18 @@ proc parseProcExpr(p: var Parser; isExpr: bool; kind: TNodeKind): PNode =
   let pragmas = optPragmas(p)
   if p.tok.tokType == tkEquals and isExpr:
     getTok(p)
-    skipComment(p, result)
-    result = newProcNode(kind, info, body = parseStmt(p),
+    result = newProcNode(kind, info, body = p.emptyNode,
       params = params, name = p.emptyNode, pattern = p.emptyNode,
       genericParams = p.emptyNode, pragmas = pragmas, exceptions = p.emptyNode)
+    skipComment(p, result)
+    result[bodyPos] = parseStmt(p)
   else:
     result = newNodeI(if kind == nkIteratorDef: nkIteratorTy else: nkProcTy, info)
-    if hasSignature:
-      result.add(params)
+    if hasSignature or pragmas.kind != nkEmpty:
+      if hasSignature:
+        result.add(params)
+      else: # pragmas but no param list, implies typeclass with pragmas
+        result.add(p.emptyNode)
       if kind == nkFuncDef:
         parMessage(p, "func keyword is not allowed in type descriptions, use proc with {.noSideEffect.} pragma instead")
       result.add(pragmas)
@@ -1713,9 +1718,9 @@ proc parseIfOrWhen(p: var Parser, kind: TNodeKind): PNode =
   setEndInfo()
 
 proc parseIfOrWhenExpr(p: var Parser, kind: TNodeKind): PNode =
-  #| condExpr = expr colcom expr optInd
-  #|         ('elif' expr colcom expr optInd)*
-  #|          'else' colcom expr
+  #| condExpr = expr colcom stmt optInd
+  #|         ('elif' expr colcom stmt optInd)*
+  #|          'else' colcom stmt
   #| ifExpr = 'if' condExpr
   #| whenExpr = 'when' condExpr
   result = newNodeP(kind, p)

@@ -115,7 +115,8 @@ proc echoCode*(c: PCtx; start=0; last = -1) {.deprecated.} =
   codeListing(c, buf, start, last)
   echo buf
 
-proc gABC(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister = 0) =
+proc gABC(ctx: PCtx; n: PNode; opc: TOpcode;
+          a: TRegister = 0, b: TRegister = 0, c: TRegister = 0) =
   ## Takes the registers `b` and `c`, applies the operation `opc` to them, and
   ## stores the result into register `a`
   ## The node is needed for debug information

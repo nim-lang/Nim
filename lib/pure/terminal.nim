@@ -291,25 +291,57 @@ else:
     ## Returns some reasonable terminal width from either standard file
     ## descriptors, controlling terminal, environment variables or tradition.
 
-    var w = terminalWidthIoctl([0, 1, 2]) #Try standard file descriptors
+    # POSIX environment variable takes precendence.
+    # _COLUMNS_: This variable shall represent a decimal integer >0 used
+    # to indicate the user's preferred width in column positions for
+    # the terminal screen or window. If this variable is unset or null,
+    # the implementation determines the number of columns, appropriate
+    # for the terminal or window, in an unspecified manner.
+    # When COLUMNS is set, any terminal-width information implied by TERM
+    # is overridden. Users and conforming applications should not set COLUMNS
+    # unless they wish to override the system selection and produce output
+    # unrelated to the terminal characteristics.
+    # See POSIX Base Definitions Section 8.1 Environment Variable Definition
+
+    var w: int
+    var s = getEnv("COLUMNS") # Try standard env var
+    if len(s) > 0 and parseInt(s, w) > 0 and w > 0:
+      return w
+    w = terminalWidthIoctl([0, 1, 2]) # Try standard file descriptors
     if w > 0: return w
-    var cterm = newString(L_ctermid) #Try controlling tty
+    var cterm = newString(L_ctermid) # Try controlling tty
     var fd = open(ctermid(cstring(cterm)), O_RDONLY)
     if fd != -1:
       w = terminalWidthIoctl([int(fd)])
     discard close(fd)
     if w > 0: return w
-    var s = getEnv("COLUMNS") #Try standard env var
-    if len(s) > 0 and parseInt(s, w) > 0 and w > 0:
-      return w
-    return 80 #Finally default to venerable value
+    return 80 # Finally default to venerable value
 
   proc terminalHeight*(): int =
     ## Returns some reasonable terminal height from either standard file
     ## descriptors, controlling terminal, environment variables or tradition.
     ## Zero is returned if the height could not be determined.
 
-    var h = terminalHeightIoctl([0, 1, 2]) # Try standard file descriptors
+    # POSIX environment variable takes precendence.
+    # _LINES_: This variable shall represent a decimal integer >0 used
+    # to indicate the user's preferred number of lines on a page or
+    # the vertical screen or window size in lines. A line in this case
+    # is a vertical measure large enough to hold the tallest character
+    # in the character set being displayed. If this variable is unset or null,
+    # the implementation determines the number of lines, appropriate
+    # for the terminal or window (size, terminal baud rate, and so on),
+    # in an unspecified manner.
+    # When LINES is set, any terminal-height information implied by TERM
+    # is overridden. Users and conforming applications should not set LINES
+    # unless they wish to override the system selection and produce output
+    # unrelated to the terminal characteristics.
+    # See POSIX Base Definitions Section 8.1 Environment Variable Definition
+
+    var h: int
+    var s = getEnv("LINES") # Try standard env var
+    if len(s) > 0 and parseInt(s, h) > 0 and h > 0:
+      return h
+    h = terminalHeightIoctl([0, 1, 2]) # Try standard file descriptors
     if h > 0: return h
     var cterm = newString(L_ctermid) # Try controlling tty
     var fd = open(ctermid(cstring(cterm)), O_RDONLY)
@@ -317,9 +349,6 @@ else:
       h = terminalHeightIoctl([int(fd)])
     discard close(fd)
     if h > 0: return h
-    var s = getEnv("LINES") # Try standard env var
-    if len(s) > 0 and parseInt(s, h) > 0 and h > 0:
-      return h
     return 0 # Could not determine height
 
 proc terminalSize*(): tuple[w, h: int] =

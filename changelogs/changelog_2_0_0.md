@@ -135,29 +135,95 @@
 
 - The experimental strictFuncs feature now disallows a store to the heap via a `ref` or `ptr` indirection.
 
-- Underscores (`_`) as routine parameters are now ignored and cannot be used in the routine body.
-  The following code now does not compile:
+- The underscore identifier (`_`) is now generally not added to scope when
+  used as the name of a definition. While this was already the case for
+  variables, it is now also the case for routine parameters, generic
+  parameters, routine declarations, type declarations, etc. This means that the following code now does not compile:
 
   ```nim
   proc foo(_: int): int = _ + 1
   echo foo(1)
+
+  proc foo[_](t: typedesc[_]): seq[_] = @[default(_)]
+  echo foo[int]()
+
+  proc _() = echo "_"
+  _()
+
+  type _ = int
+  let x: _ = 3
   ```
 
-  Instead, the following code now compiles:
+  Whereas the following code now compiles:
 
   ```nim
   proc foo(_, _: int): int = 123
   echo foo(1, 2)
-  ```
-- Underscores (`_`) as generic parameters are not supported and cannot be used.
-  Generics that use `_` as parameters will no longer compile requires you to replace `_` with something else:
-  
-  ```nim
-  proc foo[_](t: typedesc[_]): string = "BAR" # Can not compile
-  proc foo[T](t: typedesc[T]): string = "BAR" # Can compile
+
+  proc foo[_, _](): int = 123
+  echo foo[int, bool]()
+
+  proc foo[T, U](_: typedesc[T], _: typedesc[U]): (T, U) = (default(T), default(U))
+  echo foo(int, bool)
+
+  proc _() = echo "one"
+  proc _() = echo "two"
+
+  type _ = int
+  type _ = float
   ```
 
 - - Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
+
+- The JavaScript backend now uses [BigInt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt)
+  for 64-bit integer types (`int64` and `uint64`) by default. As this affects
+  JS code generation, code using these types to interface with the JS backend
+  may need to be updated. Note that `int` and `uint` are not affected.
+  
+  For compatibility with [platforms that do not support BigInt](https://caniuse.com/bigint)
+  and in the case of potential bugs with the new implementation, the
+  old behavior is currently still supported with the command line option
+  `--jsbigint64:off`.
+
+- The `proc` and `iterator` type classes now respectively only match
+  procs and iterators. Previously both type classes matched any of
+  procs or iterators.
+
+  ```nim
+  proc prc(): int =
+    123
+
+  iterator iter(): int =
+    yield 123
+  
+  proc takesProc[T: proc](x: T) = discard
+  proc takesIter[T: iterator](x: T) = discard
+
+  # always compiled:
+  takesProc(prc)
+  takesIter(iter)
+  # no longer compiles:
+  takesProc(iter)
+  takesIter(prc)
+  ```
+
+- The `proc` and `iterator` type classes now accept a calling convention pragma
+  (i.e. `proc {.closure.}`) that must be shared by matching proc or iterator
+  types. Previously pragmas were parsed but discarded if no parameter list
+  was given.
+
+  This is represented in the AST by an `nnkProcTy`/`nnkIteratorTy` node with
+  an `nnkEmpty` node in the place of the `nnkFormalParams` node, and the pragma
+  node in the same place as in a concrete `proc` or `iterator` type node. This
+  state of the AST may be unexpected to existing code, both due to the
+  replacement of the `nnkFormalParams` node as well as having child nodes
+  unlike other type class AST.
+
+- Signed integer literals in `set` literals now default to a range type of
+  `0..255` instead of `0..65535` (the maximum size of sets).
+  
+- Case statements with else branches put before elif/of branches in macros
+  are rejected with "invalid order of case branches".
 
 ## Standard library additions and changes
 
@@ -231,6 +297,7 @@
 - Added `openArray[char]` overloads for `std/parseutils` allowing more code reuse.
 - Added `openArray[char]` overloads for `std/unicode` allowing more code reuse.
 - Added `safe` parameter to `base64.encodeMime`.
+- Added `parseutils.parseSize` - inverse to `strutils.formatSize` - to parse human readable sizes.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
@@ -381,7 +448,50 @@
 
 - When compiling for Release the flag `-fno-math-errno` is used for GCC.
 
+## Docgen
+
+- `Markdown` is now default markup language of doc comments (instead
+  of legacy `RstMarkdown` mode). In this release we begin to separate
+  RST and Markdown features to better follow specification of each
+  language, with the focus on Markdown development.
+
+  * So we add `{.doctype: Markdown | RST | RstMarkdown.}` pragma allowing to
+    select the markup language mode in the doc comments of current `.nim`
+    file for processing by `nim doc`:
+
+      1. `Markdown` (default) is basically CommonMark (standard Markdown) +
+         some Pandoc Markdown features + some RST features that are missing
+         in our current implementation of CommonMark and Pandoc Markdown.
+      2. `RST` closely follows RST spec with few additional Nim features.
+      3. `RstMarkdown` is a maximum mix of RST and Markdown features, which
+          is kept for the sake of compatibility and ease of migration.
+
+  * and we add separate `md2html` and `rst2html` commands for processing
+    standalone `.md` and `.rst` files respectively (and also `md2tex/rst2tex`).
+
+- Added Pandoc Markdown bracket syntax `[...]` for making anchor-less links.
+- Docgen now supports concise syntax for referencing Nim symbols:
+  instead of specifying HTML anchors directly one can use original
+  Nim symbol declarations (adding the aforementioned link brackets
+  `[...]` around them).
+    * to use this feature across modules a new `importdoc` directive is added.
+  Using this feature for referencing also helps to ensure that links
+  (inside one module or the whole project) are not broken.
+- Added support for RST & Markdown quote blocks (blocks starting from `>`).
+- Added a popular Markdown definition lists extension.
+- Added Markdown indented code blocks (blocks indented by >= 4 spaces).
+- Added syntax for additional parameters to Markdown code blocks:
+
+       ```nim test="nim c $1"
+       ...
+       ```
 
 ## Tool changes
 
-- Nim now ships Nimble version 0.14 which added support for lock-files. Libraries are stored in `$nimbleDir/pkgs2` (it was `$nimbleDir/pkgs`).
+- Nim now ships Nimble version 0.14 which added support for lock-files. Libraries are stored in `$nimbleDir/pkgs2` (it was `$nimbleDir/pkgs`). Use `nimble develop --global` to create an old style link file in the special links directory documented at https://github.com/nim-lang/nimble#nimble-develop.
+- nimgrep added option `--inContext` (and `--notInContext`), which
+  allows to filter only matches with context block containing a given pattern.
+- nimgrep: names of options containing "include/exclude" are deprecated,
+  e.g. instead of `--includeFile` and `--excludeFile` we have
+  `--filename` and `--notFilename` respectively.
+  Also the semantics become consistent for such positive/negative filters.

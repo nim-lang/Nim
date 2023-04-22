@@ -12,7 +12,7 @@
 import
   os, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
-  types, lookups, lineinfos, pathutils, linter
+  types, lookups, lineinfos, pathutils, linter, modulepaths
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -116,7 +116,15 @@ const
 proc invalidPragma*(c: PContext; n: PNode) =
   localError(c.config, n.info, "invalid pragma: " & renderTree(n, {renderNoComments}))
 proc illegalCustomPragma*(c: PContext, n: PNode, s: PSym) =
-  localError(c.config, n.info, "cannot attach a custom pragma to '" & s.name.s & "'")
+  var msg = "cannot attach a custom pragma to '" & s.name.s & "'"
+  if s != nil:
+    msg.add("; custom pragmas are not supported for ")
+    case s.kind
+    of skForVar: msg.add("`for` loop variables")
+    of skEnumField: msg.add("enum fields")
+    of skModule: msg.add("modules")
+    else: msg.add("symbol kind " & $s.kind)
+  localError(c.config, n.info, msg)
 
 proc pragmaProposition(c: PContext, n: PNode) =
   if n.kind notin nkPragmaCallKinds or n.len != 2:
@@ -509,6 +517,10 @@ proc relativeFile(c: PContext; n: PNode; ext=""): AbsoluteFile =
       if result.isEmpty: result = AbsoluteFile s
 
 proc processCompile(c: PContext, n: PNode) =
+  ## This pragma can take two forms. The first is a simple file input:
+  ##     {.compile: "file.c".}
+  ## The second is a tuple where the second arg is the output name strutils formatter:
+  ##     {.compile: ("file.c", "$1.o").}
   proc docompile(c: PContext; it: PNode; src, dest: AbsoluteFile; customArgs: string) =
     var cf = Cfile(nimname: splitFile(src).name,
                    cname: src, obj: dest, flags: {CfileFlag.External},
@@ -557,7 +569,8 @@ proc processCompile(c: PContext, n: PNode) =
       else:
         found = findFile(c.config, s)
         if found.isEmpty: found = AbsoluteFile s
-    let obj = toObjFile(c.config, completeCfilePath(c.config, found, false))
+    let mangled = completeCfilePath(c.config, mangleModuleName(c.config, found).AbsoluteFile)
+    let obj = toObjFile(c.config, mangled)
     docompile(c, it, found, obj, customArgs)
 
 proc processLink(c: PContext, n: PNode) =
@@ -755,7 +768,7 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
   else:
     result = qualifiedLookUp(c, n, {checkUndeclared})
 
-proc semCustomPragma(c: PContext, n: PNode): PNode =
+proc semCustomPragma(c: PContext, n: PNode, sym: PSym): PNode =
   var callNode: PNode
 
   if n.kind in {nkIdent, nkSym}:
@@ -773,6 +786,11 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
   let r = c.semOverloadedCall(c, callNode, n, {skTemplate}, {efNoUndeclared})
   if r.isNil or sfCustomPragma notin r[0].sym.flags:
     invalidPragma(c, n)
+    return n
+  
+  # we have a valid custom pragma
+  if sym != nil and sym.kind in {skEnumField, skForVar, skModule}:
+    illegalCustomPragma(c, n, sym)
     return n
 
   result = r
@@ -822,7 +840,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     else: discard
     return
   elif key.kind notin nkIdentKinds:
-    n[i] = semCustomPragma(c, it)
+    n[i] = semCustomPragma(c, it, sym)
     return
   let ident = considerQuotedIdent(c, key)
   var userPragma = strTableGet(c.userPragmas, ident)
@@ -1248,13 +1266,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
     else:
-      if sym == nil or (sym.kind in {skVar, skLet, skConst, skParam, skIterator,
-                        skField, skProc, skFunc, skConverter, skMethod, skType}):
-        n[i] = semCustomPragma(c, it)
-      elif sym != nil:
-        illegalCustomPragma(c, it, sym)
-      else:
-        invalidPragma(c, it)
+      # semCustomPragma gives appropriate error for invalid pragmas
+      n[i] = semCustomPragma(c, it, sym)
 
 proc overwriteLineInfo(n: PNode; info: TLineInfo) =
   n.info = info

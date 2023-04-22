@@ -32,6 +32,17 @@ Compiler Usage
 
 Command-line switches
 ---------------------
+All options that take a `PATH` or `DIR` argument are subject to path substitution:
+
+- `$nim`: The global nim prefix path
+- `$lib`: The stdlib path
+- `$home` and `~`: The user's home path
+- `$config`: The directory of the module currently being compiled
+- `$projectname`: The project file's name without file extension
+- `$projectpath` and `$projectdir`: The project file's path
+- `$nimcache`: The nimcache path
+
+
 Basic command-line switches are:
 
 .. no syntax highlighting in the below included files at the moment

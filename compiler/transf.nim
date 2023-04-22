@@ -941,6 +941,15 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
     else:
       result = n
 
+proc transformDerefBlock(c: PTransf, n: PNode): PNode =
+  # We transform (block: x)[] to (block: x[])
+  let e0 = n[0]
+  result = shallowCopy(e0)
+  result.typ = n.typ
+  for i in 0 ..< e0.len - 1:
+    result[i] = e0[i]
+  result[e0.len-1] = newTreeIT(nkHiddenDeref, n.info, n.typ, e0[e0.len-1])
+
 proc transform(c: PTransf, n: PNode): PNode =
   when false:
     var oldDeferAnchor: PNode
@@ -1012,7 +1021,12 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkAddr:
     result = transformAddrDeref(c, n, {nkDerefExpr, nkHiddenDeref})
   of nkDerefExpr, nkHiddenDeref:
-    result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
+    if n[0].kind in {nkBlockExpr, nkBlockStmt}:
+      # bug #20107 bug #21540. Watch out to not deref the pointer too late.
+      let e = transformDerefBlock(c, n)
+      result = transformBlock(c, e)
+    else:
+      result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = transformConv(c, n)
   of nkDiscardStmt:

@@ -624,6 +624,9 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     if f.len != a.len: return
     result = isEqual      # start with maximum; also correct for no
                           # params at all
+    
+    if f.flags * {tfIterator} != a.flags * {tfIterator}:
+      return isNone
 
     template checkParam(f, a) =
       result = minRel(result, procParamTypeRel(c, f, a))
@@ -1295,7 +1298,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyNil: result = isNone
     else: discard
   of tyOrdinal:
-    if isOrdinalType(a, allowEnumWithHoles = optNimV1Emulation in c.c.config.globalOptions):
+    if isOrdinalType(a):
       var x = if a.kind == tyOrdinal: a[0] else: a
       if f[0].kind == tyNone:
         result = isGeneric
@@ -1636,13 +1639,19 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyBuiltInTypeClass:
     considerPreviousT:
-      let targetKind = f[0].kind
+      let target = f[0]
+      let targetKind = target.kind
       let effectiveArgType = a.skipTypes({tyRange, tyGenericInst,
                                           tyBuiltInTypeClass, tyAlias, tySink, tyOwned})
-      let typeClassMatches = targetKind == effectiveArgType.kind and
-                             not effectiveArgType.isEmptyContainer
-      if typeClassMatches or
-        (targetKind in {tyProc, tyPointer} and effectiveArgType.kind == tyNil):
+      if targetKind == effectiveArgType.kind:
+        if effectiveArgType.isEmptyContainer:
+          return isNone
+        if targetKind == tyProc:
+          if target.flags * {tfIterator} != effectiveArgType.flags * {tfIterator}:
+            return isNone
+          if tfExplicitCallConv in target.flags and
+              target.callConv != effectiveArgType.callConv:
+            return isNone
         put(c, f, a)
         return isGeneric
       else:
@@ -1840,9 +1849,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       elif f.base.kind == tyNone:
         result = isGeneric
       else:
-        let r = typeRel(c, f.base, a.base, flags)
-        if r >= isIntConv:
-          result = r
+        result = typeRel(c, f.base, a.base, flags)
 
       if result != isNone:
         put(c, f, a)
@@ -1850,9 +1857,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if tfUnresolved in f.flags:
         result = typeRel(c, prev.base, a, flags)
       elif a.kind == tyTypeDesc:
-        let r = typeRel(c, prev.base, a.base, flags)
-        if r >= isIntConv:
-          result = r
+        result = typeRel(c, prev.base, a.base, flags)
       else:
         result = isNone
 
@@ -2384,7 +2389,9 @@ proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
     # checking `nfBlockArg in n[a2].flags` wouldn't work inside templates
     if n[a2].kind != nkStmtList: break
     let formalLast = m.callee.n[m.callee.n.len - (n.len - a2)]
-    if formalLast.kind == nkSym and formalLast.sym.ast == nil:
+    # parameter has to occupy space (no default value, not void or varargs)
+    if formalLast.kind == nkSym and formalLast.sym.ast == nil and
+        formalLast.sym.typ.kind notin {tyVoid, tyVarargs}:
       result = a2
     else: break
 

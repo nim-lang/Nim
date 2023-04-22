@@ -1,5 +1,6 @@
 discard """
   nimout: "OK"
+  matrix: "--mm:refc; --mm:orc"
   output: '''
 OK
 '''
