@@ -1237,6 +1237,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     assert b[0].len == 0
     result = a[0].kind == b[0].kind
     if result and a[0].kind == tyProc:
+      # iterator and callconv typeclass
       const procEqFlags = {tfIterator, tfExplicitCallConv}
       result = a[0].flags * procEqFlags == b[0].flags * procEqFlags and
                ((IgnoreCC in c.flags or tfExplicitCallConv notin a[0].flags) or
