@@ -620,8 +620,9 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 
 proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   case a.kind
-  of tyProc:
-    if f.len != a.len: return
+  of tyProc:    
+    # void skipping can't work with this
+    #if f.len != a.len: return
     result = isEqual      # start with maximum; also correct for no
                           # params at all
     
@@ -632,10 +633,33 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       result = minRel(result, procParamTypeRel(c, f, a))
       if result == isNone: return
 
+    # compare params with voids skipped over
+    var
+      fi = 1
+      ai = 1
+    while true:
+      while fi < f.len and f[fi].kind == tyVoid:
+        inc fi
+        continue
+      while ai < a.len and a[ai].kind == tyVoid:
+        inc ai
+        continue
+      
+      if (fi == f.len and ai != a.len) or (fi != f.len and ai == a.len):
+        return isNone
+      
+      if fi == f.len and ai == a.len:
+        result = isEqual
+        break
+      
+      checkParam(f[fi], a[ai])
+      inc fi
+      inc ai
+
     # Note: We have to do unification for the parameters before the
     # return type!
-    for i in 1..<f.len:
-      checkParam(f[i], a[i])
+    #for i in 1..<f.len:
+    #  checkParam(f[i], a[i])
 
     if f[0] != nil:
       if a[0] != nil:
@@ -2552,6 +2576,13 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
           m.baseTypeMatch = false
           m.typedescMatched = false
           n[a] = prepareOperand(c, formal.typ, n[a])
+
+          # void params get skipped implicitly (maybe a bad idea)
+          if formal.typ.kind == tyVoid and n[a].typ.kind != tyVoid:
+            setSon(m.call, f, m.callee.n[f])
+            inc f
+            continue
+
           arg = paramTypesMatch(m, formal.typ, n[a].typ,
                                     n[a], nOrig[a])
           if arg == nil:
@@ -2632,7 +2663,11 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           var container = newNodeIT(cnKind, n.info, arrayConstr(c, n.info))
           setSon(m.call, formal.position + 1,
                  implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
+        elif formal.typ.kind == tyVoid:
+          # Void params get skipped so we can just pass this along
+          setSon(m.call, formal.position+1, m.callee.n[f])
         else:
+          #echo m.callee
           # no default value
           m.state = csNoMatch
           m.firstMismatch.kind = kMissingParam
