@@ -30,7 +30,7 @@ type
   Ref = ref object
     id: int
 
-  RefCustom = ref object
+  RefCustom = object
     id: int
 
 proc inc(x: sink Ref) =
@@ -39,7 +39,7 @@ proc inc(x: sink Ref) =
 proc inc(x: sink RefCustom) =
   doAssert x.id == 777
 
-proc `=dup`(x: RefCustom): RefCustom =
+proc `=dup`(x: var RefCustom): RefCustom =
   result = x
 
 proc foo =

@@ -1812,7 +1812,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
              of {attachedDestructor, attachedWasMoved}:
                t.len == 2 and t[0] == nil and t[1].kind == tyVar
              of attachedDup:
-               t.len == 2 and t[0] == nil and t[1].kind == tyRef
+               t.len == 2 and t[0] != nil and t[1].kind == tyVar
              of attachedTrace:
                t.len == 3 and t[0] == nil and t[1].kind == tyVar and t[2].kind == tyPointer
              else:
@@ -1839,9 +1839,13 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
         localError(c.config, n.info, errGenerated,
           "type bound operation `" & s.name.s & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
   if not noError and sfSystemModule notin s.owner.flags:
-    if op == attachedTrace:
+    case op
+    of attachedTrace:
       localError(c.config, n.info, errGenerated,
         "signature for '=trace' must be proc[T: object](x: var T; env: pointer)")
+    of attachedDup:
+      localError(c.config, n.info, errGenerated,
+        "signature for '=dup' must be proc[T: object](x: var T): T")
     else:
       localError(c.config, n.info, errGenerated,
         "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
@@ -1931,18 +1935,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       bindTypeHook(c, s, n, attachedWasMoved)
   of "=dup":
     if s.magic != mDup:
-      var t = s.typ[1].skipTypes(abstractInst)
-      while true:
-        if t.kind == tyGenericBody: t = t.lastSon
-        elif t.kind == tyGenericInvocation: t = t[0]
-        else: break
-      if t.kind == tyRef:
-        setAttachedOp(c.graph, c.module.position, t, attachedDup, s)
-      else:
-        localError(c.config, n.info, errGenerated,
-                  "signature for '=dup' must be proc[T: ref](x: T): T")
-      incl(s.flags, sfUsed)
-      incl(s.flags, sfOverriden)
+      bindTypeHook(c, s, n, attachedDup)
   else:
     if sfOverriden in s.flags:
       localError(c.config, n.info, errGenerated,

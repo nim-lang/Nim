@@ -386,19 +386,6 @@ proc genWasMoved(c: var Con, n: PNode): PNode =
     #if n.kind != nkSym:
     #  message(c.graph.config, n.info, warnUser, "wasMoved(" & $n & ")")
 
-proc genDup(c: var Con, dest, src: PNode): PNode =
-  let typ = src.typ.skipTypes({tyGenericInst, tyAlias, tySink})
-  let op = getAttachedOp(c.graph, src.typ, attachedDup)
-  if op != nil:
-    result = newNodeI(nkFastAsgn, src.info)
-    result.add dest
-    result.add newTreeI(nkCall, src.info, newSymNode(op), src)
-  else:
-    result = newNodeI(nkCall, src.info)
-    result.add(newSymNode(createMagic(c.graph, c.idgen, "`=dup`", mDup)))
-    result.add dest
-    result.add src
-
 proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
   result = newNodeI(nkCall, info)
   result.add(newSymNode(createMagic(c.graph, c.idgen, "default", mDefault)))
@@ -438,8 +425,20 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = c.getTemp(s, n.typ, n.info)
   if hasDestructor(c, n.typ):
-    if n.typ.skipTypes(abstractInst).kind == tyRef:
-      result.add c.genDup(tmp, p(n, c, s, normal))
+    let typ = n.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+    let op = getAttachedOp(c.graph, typ, attachedDup)
+    if op != nil:
+      let src = p(n, c, s, normal)
+      result.add newTreeI(nkFastAsgn,
+          src.info, tmp,
+          genOp(c, op, src)
+      )
+    elif typ.kind == tyRef:
+      let src = p(n, c, s, normal)
+      result.add newTreeI(nkCall, src.info,
+        newSymNode(createMagic(c.graph, c.idgen, "`=dup`", mDup)),
+        tmp, src
+      )
     else:
       result.add c.genWasMoved(tmp)
       var m = c.genCopy(tmp, n, {})
