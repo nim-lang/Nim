@@ -57,7 +57,14 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # XXX tyGenericInst here?
     if result.typ.kind == tyProc and hasUnresolvedParams(result, {efOperand}):
       #and tfUnresolved in result.typ.flags:
-      localError(c.config, n.info, errProcHasNoConcreteType % n.renderTree)
+      let owner = result.typ.owner
+      let err =
+        # consistent error message with evaltempl/semMacroExpr
+        if owner != nil and owner.kind in {skTemplate, skMacro}:
+          errMissingGenericParamsForTemplate % n.renderTree
+        else:
+          errProcHasNoConcreteType % n.renderTree
+      localError(c.config, n.info, err)
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
   elif {efWantStmt, efAllowStmt} * flags != {}:
     result.typ = newTypeS(tyVoid, c)
@@ -261,7 +268,7 @@ proc isCastable(c: PContext; dst, src: PType, info: TLineInfo): bool =
     return false
   elif srcSize < 0:
     return false
-  elif typeAllowed(dst, skParam, c) != nil:
+  elif typeAllowed(dst, skParam, c, {taIsCastable}) != nil:
     return false
   elif dst.kind == tyProc and dst.callConv == ccClosure:
     return src.kind == tyProc and src.callConv == ccClosure
@@ -1259,6 +1266,7 @@ proc readTypeParameter(c: PContext, typ: PType,
   return nil
 
 proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
+  assert n.kind in nkIdentKinds + {nkDotExpr}
   let s = getGenSym(c, sym)
   case s.kind
   of skConst:
@@ -1293,9 +1301,8 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     else:
       result = newSymNode(s, n.info)
   of skMacro, skTemplate:
-    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
-       (n.kind notin nkCallKinds and s.requiredParams > 0) or
-       sfCustomPragma in sym.flags:
+    # check if we cannot use alias syntax (no required args or generic params)
+    if sfNoalias in s.flags:
       let info = getCallLineInfo(n)
       markUsed(c, info, s)
       onUse(info, s)
@@ -1588,9 +1595,8 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result.add(x[0])
     return
   checkMinSonsLen(n, 2, c.config)
-  # make sure we don't evaluate generic macros/templates
-  n[0] = semExprWithType(c, n[0],
-                              {efNoEvaluateGeneric})
+  # signal that generic parameters may be applied after
+  n[0] = semExprWithType(c, n[0], {efNoEvaluateGeneric})
   var arr = skipTypes(n[0].typ, {tyGenericInst, tyUserTypeClassInst, tyOwned,
                                       tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
   if arr.kind == tyStatic:
@@ -2563,34 +2569,39 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
     # only semantic checking for all elements, later type checking:
     var typ: PType = nil
     for i in 0..<n.len:
+      let doSetType = typ == nil
       if isRange(n[i]):
         checkSonsLen(n[i], 3, c.config)
         n[i][1] = semExprWithType(c, n[i][1], {efTypeAllowed}, expectedElementType)
         n[i][2] = semExprWithType(c, n[i][2], {efTypeAllowed}, expectedElementType)
-        if typ == nil:
+        if doSetType:
           typ = skipTypes(n[i][1].typ,
                           {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
-          if expectedElementType == nil:
-            expectedElementType = typ
         n[i].typ = n[i][2].typ # range node needs type too
       elif n[i].kind == nkRange:
         # already semchecked
-        if typ == nil:
+        if doSetType:
           typ = skipTypes(n[i][0].typ,
                           {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
-          if expectedElementType == nil:
-            expectedElementType = typ
       else:
         n[i] = semExprWithType(c, n[i], {efTypeAllowed}, expectedElementType)
-        if typ == nil:
+        if doSetType:
           typ = skipTypes(n[i].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
-          if expectedElementType == nil:
-            expectedElementType = typ
-    if not isOrdinalType(typ, allowEnumWithHoles=true):
-      localError(c.config, n.info, errOrdinalTypeExpected % typeToString(typ, preferDesc))
-      typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
-    elif lengthOrd(c.config, typ) > MaxSetElements:
-      typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
+      if doSetType:
+        if not isOrdinalType(typ, allowEnumWithHoles=true):
+          localError(c.config, n.info, errOrdinalTypeExpected % typeToString(typ, preferDesc))
+          typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
+        elif isIntLit(typ):
+          # set of int literal, use a default range smaller than the max range
+          typ = makeRangeType(c, 0, DefaultSetElements-1, n.info) 
+        elif lengthOrd(c.config, typ) > MaxSetElements:
+          message(c.config, n.info, warnAboveMaxSizeSet, "type '" &
+            typeToString(typ, preferDesc) & "' is too big to be a `set` element, " &
+            "assuming a range of 0.." & $(MaxSetElements - 1) &
+            ", explicitly write this range to get rid of warning")
+          typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
+        if expectedElementType == nil:
+          expectedElementType = typ
     addSonSkipIntLit(result.typ, typ, c.idgen)
     for i in 0..<n.len:
       var m: PNode

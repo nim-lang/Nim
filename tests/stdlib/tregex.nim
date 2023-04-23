@@ -1,5 +1,6 @@
 discard """
   output: "key: keyAYes!"
+  matrix: "--mm:refc; --mm:orc"
 """
 # Test the new regular expression module
 # which is based on the PCRE library

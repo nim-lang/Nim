@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 #[
 xxx macros tests need to be reorganized to makes sure each API is tested once
 See also:

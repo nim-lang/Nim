@@ -6676,6 +6676,8 @@ even when one version does not export some of these identifiers.
 
 The `import` statement is only allowed at the top level.
 
+String literals can be used for import/include statements.
+The compiler performs [path substitution](nimc.html#compiler-usage-commandminusline-switches) when used.
 
 Include statement
 -----------------

@@ -72,7 +72,7 @@ Features
 A large subset is implemented with some [limitations] and
 [additional Nim-specific features].
 
-Supported standard RST features:
+Supported common RST/Markdown features:
 
 * body elements
   + sections
@@ -83,10 +83,8 @@ Supported standard RST features:
     characters:  1. ... 2. ... *or* a. ... b. ... *or* A. ... B. ...
   + footnotes (including manually numbered, auto-numbered, auto-numbered
     with label, and auto-symbol footnotes) and citations
-  + definition lists
   + field lists
   + option lists
-  + indented literal blocks
   + quoted literal blocks
   + line blocks
   + simple tables
@@ -108,6 +106,33 @@ Supported standard RST features:
     ``emphasis``, ``:sub:``/``:subscript:``, ``:sup:``/``:superscript:``
     (see [RST roles list] for description).
   + inline internal targets
+
+RST mode only features
+----------------------
+
++ RST syntax for definition lists (that is additional indentation after
+  a definition line)
++ indented literal blocks starting from ``::``
+
+Markdown-specific features
+--------------------------
+
+* Markdown tables
+* Markdown code blocks. For them the same additional arguments as for RST
+  code blocks can be provided (e.g. `test` or `number-lines`) but with
+  a one-line syntax like this:
+
+      ```nim test number-lines=10
+      echo "ok"
+      ```
+* Markdown links ``[...](...)``
+* Pandoc syntax for automatic links ``[...]``, see [Referencing] for description
++ Markdown literal blocks indented by 4 or more spaces
+* Markdown headlines
+* Markdown block quotes
+* Markdown syntax for definition lists
+* using ``1`` as auto-enumerator in enumerated lists like RST ``#``
+  (auto-enumerator ``1`` can not be used with ``#`` in the same list)
 
 Additional Nim-specific features
 --------------------------------
@@ -144,35 +169,16 @@ Additional Nim-specific features
 
   Here the dummy `//` will disappear, while options `compile`:option:
   and `doc`:option: will be left in the final document.
+* emoji / smiley symbols
 
 \[cmp:Sphinx] similar but different from the directives of
    Python [Sphinx directives] and [Sphinx roles] extensions
 
-Extra features
---------------
-
-Optional additional features, by default turned on:
-
-* emoji / smiley symbols
-* Markdown tables
-* Markdown code blocks. For them the same additional arguments as for RST
-  code blocks can be provided (e.g. `test` or `number-lines`) but with
-  a one-line syntax like this:
-
-      ```nim test number-lines=10
-      echo "ok"
-      ```
-* Markdown links
-* Markdown headlines
-* Markdown block quotes
-* using ``1`` as auto-enumerator in enumerated lists like RST ``#``
-  (auto-enumerator ``1`` can not be used with ``#`` in the same list)
-
 .. Note:: By default Nim has ``roSupportMarkdown`` and
    ``roSupportRawDirective`` turned **on**.
 
-.. warning:: Using Nim-specific features can cause other RST implementations
-  to fail on your document.
+.. warning:: Using Nim-specific features can cause other Markdown and
+  RST implementations to fail on your document.
 
 Referencing
 ===========

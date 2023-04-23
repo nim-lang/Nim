@@ -565,10 +565,13 @@ proc runAllExamples(d: PDoc) =
     # most useful semantics is that `docCmd` comes after `rdoccmd`, so that we can (temporarily) override
     # via command line
     # D20210224T221756:here
-    let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off --path:$path --nimcache:$nimcache $rdoccmd $docCmd $file" % [
+    var pathArgs = "--path:$path" % [ "path", quoteShell(d.conf.projectPath) ]
+    for p in d.conf.searchPaths:
+      pathArgs = "$args --path:$path" % [ "args", pathArgs, "path", quoteShell(p) ]
+    let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off $pathArgs --nimcache:$nimcache $rdoccmd $docCmd $file" % [
       "nim", quoteShell(os.getAppFilename()),
       "backend", $d.conf.backend,
-      "path", quoteShell(d.conf.projectPath),
+      "pathArgs", pathArgs,
       "libpath", quoteShell(d.conf.libpath),
       "nimcache", quoteShell(outputDir),
       "file", quoteShell(outp),
@@ -603,7 +606,6 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   let useRenderModule = false
   let loc = d.conf.toFileLineCol(n.info)
   let code = extractRunnableExamplesSource(d.conf, n)
-  let codeIndent = extractRunnableExamplesSource(d.conf, n, indent = 2)
 
   if d.conf.errorCounter > 0:
     return (rdoccmd, code)
@@ -619,6 +621,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
     docComment.comment = comment
     var runnableExamples = newTree(nkStmtList,
         docComment,
+        newTree(nkImportStmt, newStrNode(nkStrLit, "std/assertions")),
         newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
     runnableExamples.info = n.info
     for a in n.lastSon: runnableExamples.add a
@@ -632,6 +635,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   else:
     var code2 = code
     if code.len > 0 and "codeReordering" notin code:
+      let codeIndent = extractRunnableExamplesSource(d.conf, n, indent = 2)
       # hacky but simplest solution, until we devise a way to make `{.line.}`
       # work without introducing a scope
       code2 = """
@@ -642,6 +646,7 @@ $#
 #[
 $#
 ]#
+import std/assertions
 import $#
 $#
 """ % [comment, d.filename.quoted, code2]

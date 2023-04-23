@@ -1,5 +1,6 @@
 discard """
   targets: "c js"
+  matrix: "--mm:refc; --mm:orc"
   output:'''@["3", "2", "1"]
 '''
 """

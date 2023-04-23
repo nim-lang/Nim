@@ -166,6 +166,7 @@ type
     lastTLineInfo*: TLineInfo
     sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
     inUncheckedAssignSection*: int
+    importModuleLookup*: Table[int, seq[int]] # (module.ident.id, [module.id])
 
 template config*(c: PContext): ConfigRef = c.graph.config
 

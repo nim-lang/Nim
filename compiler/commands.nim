@@ -876,7 +876,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "verbosity":
     expectArg(conf, switch, arg, pass, info)
     let verbosity = parseInt(arg)
-    if verbosity notin {0..3}:
+    if verbosity notin 0..3:
       localError(conf, info, "invalid verbosity level: '$1'" % arg)
     conf.verbosity = verbosity
     var verb = NotesVerbosity[conf.verbosity]
