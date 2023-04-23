@@ -1,6 +1,6 @@
 discard """
   matrix: "--gc:refc; --gc:arc; --gc:orc"
-  target: "c"
+  targets: "c"
 """
 
 when compileOption("gc", "refc") or not defined(openbsd):

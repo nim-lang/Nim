@@ -8,7 +8,7 @@
 #
 
 # This module implements lookup helpers.
-import std/[algorithm, strutils]
+import std/[algorithm, strutils, tables]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -343,14 +343,15 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
   if sym.name.s == "_": return
   let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
-    if sym.kind == skModule and conflict.kind == skModule and
-                        sym.position == conflict.position:
+    if sym.kind == skModule and conflict.kind == skModule:      
       # e.g.: import foo; import foo
       # xxx we could refine this by issuing a different hint for the case
-      # where a duplicate import happens inside an include.
-      localError(c.config, info, hintDuplicateModuleImport,
-        "duplicate import of '$1'; previous import here: $2" %
-        [sym.name.s, c.config $ conflict.info])
+      # where a duplicate import happens inside an include.      
+      if c.importModuleMap[sym.id] == c.importModuleMap[conflict.id]:
+        #only hints if the conflict is the actual module not just a shared name
+        localError(c.config, info, hintDuplicateModuleImport,
+          "duplicate import of '$1'; previous import here: $2" %
+          [sym.name.s, c.config $ conflict.info])
     else:
       wrongRedefinition(c, info, sym.name.s, conflict.info, errGenerated)
 
@@ -490,12 +491,9 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
     let e = list.pop()
     if c.config.spellSuggestMax == spellSuggestSecretSauce:
       const
-        smallThres = 2
-        maxCountForSmall = 4
-        # avoids ton of operator matches when mis-matching short symbols such as `i`
-        # other heuristics could be devised, such as only suggesting operators if `name0`
-        # is an operator (likewise with non-operators).
-      if e.dist > e0.dist or (name0.len <= smallThres and count >= maxCountForSmall): break
+        minLengthForSuggestion = 4
+        maxCount = 3 # avoids ton of matches; three counts for equal distances
+      if e.dist > e0.dist or count >= maxCount or name0.len < minLengthForSuggestion: break
     elif count >= c.config.spellSuggestMax: break
     if count == 0:
       result.add "\ncandidates (edit distance, scope distance); see '--spellSuggest': "
@@ -634,7 +632,11 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         if m == c.module:
           result = strTableGet(c.topLevelScope.symbols, ident).skipAlias(n, c.config)
         else:
-          result = someSym(c.graph, m, ident).skipAlias(n, c.config)
+          if c.importModuleLookup.getOrDefault(m.name.id).len > 1:
+            var amb: bool
+            result = errorUseQualifier(c, n.info, m, amb)
+          else:
+            result = someSym(c.graph, m, ident).skipAlias(n, c.config)
         if result == nil and checkUndeclared in flags:
           result = errorUndeclaredIdentifierHint(c, n[1], ident)
       elif n[1].kind == nkSym:

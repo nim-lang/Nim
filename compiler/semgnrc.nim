@@ -50,13 +50,6 @@ proc semGenericStmtScope(c: PContext, n: PNode,
   result = semGenericStmt(c, n, flags, ctx)
   closeScope(c)
 
-template macroToExpand(s): untyped =
-  s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfAllUntyped in s.flags)
-
-template macroToExpandSym(s): untyped =
-  sfCustomPragma notin s.flags and s.kind in {skMacro, skTemplate} and
-    (s.typ.len == 1) and not fromDotExpr
-
 template isMixedIn(sym): bool =
   let s = sym
   s.name.id in ctx.toMixin or (withinConcept in flags and
@@ -74,19 +67,14 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     result = n
   of skProc, skFunc, skMethod, skIterator, skConverter, skModule:
     result = symChoice(c, n, s, scOpen)
-  of skTemplate:
-    if macroToExpandSym(s):
+  of skTemplate, skMacro:
+    # alias syntax, see semSym for skTemplate, skMacro
+    if sfNoalias notin s.flags and not fromDotExpr:
       onUse(n.info, s)
-      result = semTemplateExpr(c, n, s, {efNoSemCheck})
-      c.friendModules.add(s.owner.getModule)
-      result = semGenericStmt(c, result, {}, ctx)
-      discard c.friendModules.pop()
-    else:
-      result = symChoice(c, n, s, scOpen)
-  of skMacro:
-    if macroToExpandSym(s):
-      onUse(n.info, s)
-      result = semMacroExpr(c, n, n, s, {efNoSemCheck})
+      case s.kind
+      of skTemplate: result = semTemplateExpr(c, n, s, {efNoSemCheck})
+      of skMacro: result = semMacroExpr(c, n, n, s, {efNoSemCheck})
+      else: discard # unreachable
       c.friendModules.add(s.owner.getModule)
       result = semGenericStmt(c, result, {}, ctx)
       discard c.friendModules.pop()
@@ -245,21 +233,14 @@ proc semGenericStmt(c: PContext, n: PNode,
                         else: scOpen
       let sc = symChoice(c, fn, s, whichChoice)
       case s.kind
-      of skMacro:
-        if macroToExpand(s) and sc.safeLen <= 1:
+      of skMacro, skTemplate:
+        # unambiguous macros/templates are expanded if all params are untyped
+        if sfAllUntyped in s.flags and sc.safeLen <= 1:
           onUse(fn.info, s)
-          result = semMacroExpr(c, n, n, s, {efNoSemCheck})
-          c.friendModules.add(s.owner.getModule)
-          result = semGenericStmt(c, result, flags, ctx)
-          discard c.friendModules.pop()
-        else:
-          n[0] = sc
-          result = n
-        mixinContext = true
-      of skTemplate:
-        if macroToExpand(s) and sc.safeLen <= 1:
-          onUse(fn.info, s)
-          result = semTemplateExpr(c, n, s, {efNoSemCheck})
+          case s.kind
+          of skMacro: result = semMacroExpr(c, n, n, s, {efNoSemCheck})
+          of skTemplate: result = semTemplateExpr(c, n, s, {efNoSemCheck})
+          else: discard # unreachable
           c.friendModules.add(s.owner.getModule)
           result = semGenericStmt(c, result, flags, ctx)
           discard c.friendModules.pop()
