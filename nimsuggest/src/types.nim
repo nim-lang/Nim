@@ -1,6 +1,14 @@
+## Base types needed across nimsuggest
 import compiler/options
 import compiler/pathutils
 import macros
+
+import net 
+
+type
+  ThreadParams* = tuple[port: Port; address: string]
+
+
 type CommandData* = object
   ideCmd* :IdeCmd
   dirtyFile* :AbsoluteFile

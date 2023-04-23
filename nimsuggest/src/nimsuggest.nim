@@ -42,6 +42,7 @@ import compiler/lineinfos
 import compiler/cmdlinehelper
 import compiler/pathutils
 import compiler/condsyms
+import types
 
 when defined(nimPreviewSlimSystem):
   import std/typedthreads
@@ -99,6 +100,8 @@ proc execCmd(cmdLineString: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) 
 
 
 proc mainThread(graph: ModuleGraph) =
+  ## The main thread that recieves input from external sources and executes nimsuggest commands
+
   let conf = graph.config
   myLog "searchPaths: "
   for it in conf.searchPaths:
@@ -141,6 +144,7 @@ var
 proc mainCommand(graph: ModuleGraph) =
   ## Orchestrates running interactions with the user.
   ## Starts the requests and results channels the user will use to communicate
+  ## Then loads up the main thread that will handle the requests
   let conf = graph.config
   clearPasses(graph)
   registerPass graph, verbosePass

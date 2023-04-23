@@ -8,10 +8,10 @@ import times
 import v3/v3
 import setup
 import utils
-import emacs
 import execution
 
 import communication
+import types
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
 when not defined(nimcore):

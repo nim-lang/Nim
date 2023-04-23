@@ -7,6 +7,7 @@ import communication
 import consts
 
 import compiler/[options, sigmatch, ast, lineinfos]
+import types
 
 proc toStdout() {.gcsafe.} =
   while true:

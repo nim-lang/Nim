@@ -1,5 +1,5 @@
-## Any code that directly handles sending messages out via a port or stdout
-## 
+## Hooks to send to the results channel 
+## functions to bind to incoming and outgoing ports
 import compiler/renderer
 import setup
 import net 
@@ -11,8 +11,6 @@ proc connectToNextFreePort*(server: Socket, host: string): Port =
   let (_, port) = server.getLocalAddr
   result = port
 
-type
-  ThreadParams* = tuple[port: Port; address: string]
 
 proc writelnToChannel*(line: string) =
   results.send(Suggest(section: ideMsg, doc: line))
