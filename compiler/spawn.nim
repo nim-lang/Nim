@@ -317,7 +317,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
       call.add(threadLocal.newSymNode)
 
 proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExpr: PNode; retType: PType;
-                       barrier, dest: PNode = nil): PNode =
+                       barrier: PNode = nil, dest: PNode = nil): PNode =
   # if 'barrier' != nil, then it is in a 'parallel' section and we
   # generate quite different code
   let n = spawnExpr[^2]
