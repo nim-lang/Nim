@@ -113,8 +113,7 @@ block :tmp:
       var :tmpD
       sym = shadowScope.symbols[i]
       addInterfaceDecl(c):
-        `=wasMoved`(:tmpD)
-        `=copy_1`(:tmpD, sym)
+        :tmpD = `=dup`(sym)
         :tmpD
       inc(i, 1)
 `=destroy`(shadowScope)
