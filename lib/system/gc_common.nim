@@ -391,7 +391,6 @@ else:
             let regEnd = sp +% sizeof(registers)
             while sp <% regEnd:
               gcMark(gch, cast[PPointer](sp)[])
-              gcMark(gch, cast[PPointer](sp +% sizeof(pointer) div 2)[])
               sp = sp +% sizeof(pointer)
         # Make sure sp is word-aligned
         sp = sp and not (sizeof(pointer) - 1)

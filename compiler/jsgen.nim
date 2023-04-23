@@ -259,7 +259,7 @@ proc mangleName(m: BModule, s: PSym): Rope =
       if m.config.hcrOn:
         # When hot reloading is enabled, we must ensure that the names
         # of functions and types will be preserved across rebuilds:
-        result.add(idOrSig(s, m.module.name.s, m.sigConflicts))
+        result.add(idOrSig(s, m.module.name.s, m.sigConflicts, m.config))
       else:
         result.add("_")
         result.add(rope(s.id))
@@ -2393,17 +2393,18 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   if prc.typ[0] != nil and sfPure notin prc.flags:
     resultSym = prc.ast[resultPos].sym
     let mname = mangleName(p.module, resultSym)
-    let returnAddress = not isIndirect(resultSym) and
+    # otherwise uses "fat pointers"
+    let useRawPointer = not isIndirect(resultSym) and
       resultSym.typ.kind in {tyVar, tyPtr, tyLent, tyRef, tyOwned} and
         mapType(p, resultSym.typ) == etyBaseIndex
-    if returnAddress:
+    if useRawPointer:
       resultAsgn = p.indentLine(("var $# = null;$n") % [mname])
       resultAsgn.add p.indentLine("var $#_Idx = 0;$n" % [mname])
     else:
       let resVar = createVar(p, resultSym.typ, isIndirect(resultSym))
       resultAsgn = p.indentLine(("var $# = $#;$n") % [mname, resVar])
     gen(p, prc.ast[resultPos], a)
-    if returnAddress:
+    if mapType(p, resultSym.typ) == etyBaseIndex:
       returnStmt = "return [$#, $#];$n" % [a.address, a.res]
     else:
       returnStmt = "return $#;$n" % [a.res]
@@ -2711,7 +2712,7 @@ proc genModule(p: PProc, n: PNode) =
   if p.config.hcrOn and n.kind == nkStmtList:
     let moduleSym = p.module.module
     var moduleLoadedVar = rope(moduleSym.name.s) & "_loaded" &
-                          idOrSig(moduleSym, moduleSym.name.s, p.module.sigConflicts)
+                          idOrSig(moduleSym, moduleSym.name.s, p.module.sigConflicts, p.config)
     lineF(p, "var $1;$n", [moduleLoadedVar])
     var inGuardedBlock = false
 

@@ -14,6 +14,9 @@ when not defined(ODBCVER):
 when defined(windows):
   {.push callconv: stdcall.}
   const odbclib = "odbc32.dll"
+elif defined(macosx):
+  {.push callconv: stdcall.}
+  const odbclib = "libodbc.dylib"
 else:
   {.push callconv: cdecl.}
   const odbclib = "libodbc.so"

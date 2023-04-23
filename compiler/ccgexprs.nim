@@ -1577,6 +1577,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
     return
   if d.k == locNone:
     getTemp(p, n.typ, d)
+  initLocExpr(p, n[1], a)
   # generate call to newSeq before adding the elements per hand:
   let L = toInt(lengthOrd(p.config, n[1].typ))
   if optSeqDestructors in p.config.globalOptions:
@@ -1586,7 +1587,6 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
       getSeqPayloadType(p.module, seqtype)])
   else:
     genNewSeqAux(p, d, intLiteral(L), L == 0)
-  initLocExpr(p, n[1], a)
   # bug #5007; do not produce excessive C source code:
   if L < 10:
     for i in 0..<L:
@@ -1864,7 +1864,7 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
 
   initLoc(call, locCall, e, OnHeap)
   if not p.module.compileToCpp:
-    const setLenPattern = "($3) #setLengthSeqV2(&($1)->Sup, $4, $2)"
+    const setLenPattern = "($3) #setLengthSeqV2(($1)?&($1)->Sup:NIM_NIL, $4, $2)"
     call.r = ropecg(p.module, setLenPattern, [
       rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
       genTypeInfoV1(p.module, t.skipTypes(abstractInst), e.info)])
@@ -2036,7 +2036,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mCard:
       var a: TLoc
       initLocExpr(p, e[1], a)
-      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [rdCharLoc(a), size]))
+      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [addrLoc(p.config, a), size]))
     of mLtSet, mLeSet:
       getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i) # our counter
       initLocExpr(p, e[1], a)
@@ -2299,7 +2299,10 @@ proc genDispose(p: BProc; n: PNode) =
       lineCg(p, cpsStmts, ["#nimDestroyAndDispose($#)", rdLoc(a)])
 
 proc genSlice(p: BProc; e: PNode; d: var TLoc) =
-  let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.lastSon)
+  let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.lastSon,
+    prepareForMutation = e[1].kind == nkHiddenDeref and
+                         e[1].typ.skipTypes(abstractInst).kind == tyString and
+                         p.config.selectedGC in {gcArc, gcOrc})
   if d.k == locNone: getTemp(p, e.typ, d)
   linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $3;$n", [rdLoc(d), x, y])
   when false:
