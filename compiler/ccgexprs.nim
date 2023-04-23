@@ -2346,9 +2346,10 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
     genAssignment(p, d, a, {})
     resetLoc(p, a)
 
-proc genDup(p: BProc; dest, src: TLoc) =
+proc genDup(p: BProc; src: TLoc; d: var TLoc; n: PNode) =
+  if d.k == locNone: getTemp(p, n.typ, d)
   linefmt(p, cpsStmts, "#nimDupRef((void*)$1, (void*)$2);$n",
-          [addrLoc(p.config, dest), rdLoc(src)])
+          [addrLoc(p.config, d), rdLoc(src)])
 
 proc genDestroy(p: BProc; n: PNode) =
   if optSeqDestructors in p.config.globalOptions:
@@ -2602,11 +2603,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mSlice: genSlice(p, e, d)
   of mTrace: discard "no code to generate"
   of mDup:
-    var a, b: TLoc
+    var a: TLoc
     let x = if e[1].kind in {nkAddr, nkHiddenAddr}: e[1][0] else: e[1]
     initLocExpr(p, x, a)
-    initLocExpr(p, e[2], b)
-    genDup(p, a, b)
+    genDup(p, a, d, e)
   else:
     when defined(debugMagics):
       echo p.prc.name.s, " ", p.prc.id, " ", p.prc.flags, " ", p.prc.ast[genericParamsPos].kind

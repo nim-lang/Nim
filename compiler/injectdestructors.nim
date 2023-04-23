@@ -435,9 +435,11 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
       )
     elif typ.kind == tyRef:
       let src = p(n, c, s, normal)
-      result.add newTreeI(nkCall, src.info,
-        newSymNode(createMagic(c.graph, c.idgen, "`=dup`", mDup)),
-        tmp, src
+      result.add newTreeI(nkFastAsgn,
+          src.info, tmp,
+          newTreeIT(nkCall, src.info, src.typ,
+            newSymNode(createMagic(c.graph, c.idgen, "`=dup`", mDup)),
+            src)
       )
     else:
       result.add c.genWasMoved(tmp)

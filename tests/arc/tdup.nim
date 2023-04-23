@@ -31,23 +31,28 @@ type
     id: int
 
   RefCustom = object
-    id: int
+    id: ptr int
 
 proc inc(x: sink Ref) =
-  doAssert x.id == 8
+  inc x.id
 
 proc inc(x: sink RefCustom) =
-  doAssert x.id == 777
+  inc x.id[]
 
 proc `=dup`(x: var RefCustom): RefCustom =
-  result = x
+  result.id = x.id
 
 proc foo =
   var x = Ref(id: 8)
   inc(x)
+  doAssert x.id == 9
   inc(x)
-  var s = RefCustom(id: 777)
+  doAssert x.id == 10
+  var id = 777
+  var s = RefCustom(id: addr id)
   inc s
+  doAssert s.id[] == 778
   inc s
+  doAssert s.id[] == 779
 
 foo()

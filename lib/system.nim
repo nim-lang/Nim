@@ -348,12 +348,9 @@ proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
   ## Generic `destructor`:idx: implementation that can be overridden.
   discard
 
-proc `=dup`[T](x: var ref T, y: ref T) {.inline, magic: "Dup".} =
-  discard
-
-proc `=dup`*[T](x: ref T): ref T {.inline.} =
+proc `=dup`*[T](x: ref T): ref T {.inline, magic: "Dup".} =
   ## Generic `dup` implementation that can be overridden.
-  `=dup`(result, x)
+  discard
 
 proc `=sink`*[T](x: var T; y: T) {.inline, nodestroy, magic: "Asgn".} =
   ## Generic `sink`:idx: implementation that can be overridden.
