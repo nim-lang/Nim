@@ -35,7 +35,7 @@ proc `==`*[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
   ## Checks that two `ref` variables refer to the same item.
 proc `==`*[T](x, y: ptr T): bool {.magic: "EqRef", noSideEffect.}
   ## Checks that two `ptr` variables refer to the same item.
-proc `==`*[T: proc](x, y: T): bool {.magic: "EqProc", noSideEffect.}
+proc `==`*[T: proc | iterator](x, y: T): bool {.magic: "EqProc", noSideEffect.}
   ## Checks that two `proc` variables refer to the same procedure.
 
 proc `<=`*[Enum: enum](x, y: Enum): bool {.magic: "LeEnum", noSideEffect.}

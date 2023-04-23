@@ -362,7 +362,7 @@ proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   of tyOwned:
     # bug #11257: the comparison system.`==`[T: proc](x, y: T) works
     # better without the 'owned' type:
-    if f != nil and f.len > 0 and f[0].skipTypes({tyBuiltInTypeClass}).kind == tyProc:
+    if f != nil and f.len > 0 and f[0].skipTypes({tyBuiltInTypeClass, tyOr}).kind == tyProc:
       result = t.lastSon
     else:
       result = t
