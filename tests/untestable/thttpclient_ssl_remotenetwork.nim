@@ -205,7 +205,7 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
       ("expired.badssl.com", 443.Port, bad, "expired"),
     ]
   else:
-    const net_test: array[0..0, NetSocketTest] = [
+    const net_tests: array[0..0, NetSocketTest] = [
       ("imap.gmail.com", 993.Port, good, "IMAP")
     ]
   # TODO: ("null.badssl.com", 443.Port, bad_broken, "null"),
