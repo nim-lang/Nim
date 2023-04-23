@@ -1,4 +1,5 @@
-
+## Code to handle communction with a repl via stdin or tcp.
+## for emacs specific repl implimentation see emacs/emacs.nim
 import compiler/renderer
 import setup
 import net, rdstdin

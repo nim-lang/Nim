@@ -1,4 +1,5 @@
-
+## Handles executing various IdeCmd commands
+## Takes the parsed input of a command and performs an operation on the ModuleGraph such as compining the project
 import compiler/renderer
 import strformat
 import times
@@ -7,7 +8,8 @@ import strutils, net
 import utils
 import v3/v3
 import communication
-
+import parsing
+import types
 
 import compiler/options
 import compiler/passes
@@ -17,22 +19,23 @@ import compiler/modulegraphs
 import compiler/lineinfos
 import compiler/pathutils
 
+proc executeNoHooks(cmd:CommandData, graph: ModuleGraph) =
 
-proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, tag: string,
-             graph: ModuleGraph) =
+  #This exposes all it's props as variables in the current scope
+  destructure cmd
   let conf = graph.config
 
   if conf.suggestVersion == 3:
     let command = fmt "cmd = {cmd} {file}:{line}:{col}"
     benchmark command:
-      executeNoHooksV3(cmd, file, dirtyfile, line, col, tag, graph)
+      executeNoHooksV3(cmd, graph)
     return
 
   myLog("cmd: " & $cmd & ", file: " & file.string &
         ", dirtyFile: " & dirtyfile.string &
         "[" & $line & ":" & $col & "]")
-  conf.ideCmd = cmd
-  if cmd == ideUse and conf.suggestVersion != 0:
+  conf.ideCmd = ideCmd
+  if ideCmd == ideUse and conf.suggestVersion != 0:
     graph.resetAllModules()
   var isKnownFile = true
   let dirtyIdx = fileInfoIdx(conf, file, isKnownFile)
@@ -47,32 +50,32 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
     graph.usageSym = nil
   if not isKnownFile:
     graph.compileProject(dirtyIdx)
-  if conf.suggestVersion == 0 and conf.ideCmd in {ideUse, ideDus} and
+  if conf.suggestVersion == 0 and ideCmd in {ideUse, ideDus} and
       dirtyfile.isEmpty:
     discard "no need to recompile anything"
   else:
     let modIdx = graph.parentModule(dirtyIdx)
     graph.markDirty dirtyIdx
     graph.markClientsDirty dirtyIdx
-    if conf.ideCmd != ideMod:
+    if ideCmd != ideMod:
       if isKnownFile:
         graph.compileProject(modIdx)
-  if conf.ideCmd in {ideUse, ideDus}:
+  if ideCmd in {ideUse, ideDus}:
     let u = if conf.suggestVersion != 1: graph.symFromInfo(conf.m.trackPos) else: graph.usageSym
     if u != nil:
       listUsages(graph, u)
     else:
       localError(conf, conf.m.trackPos, "found no symbol at this position " & (conf $ conf.m.trackPos))
 
-proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, graph: ModuleGraph) =
-  executeNoHooks(cmd, file, dirtyfile, line, col, "", graph)
+# proc executeNoHooks*(cmd:CommandData, graph: ModuleGraph) =
+#   cmd.tag=""
+#   executeNoHooks(cmd:CommandData, graph)
 
-proc execute*(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int; tag: string,
-             graph: ModuleGraph) =
-  if cmd == ideChk:
+proc execute*(cmd:CommandData,graph: ModuleGraph) =
+  if cmd.ideCmd == ideChk:
     graph.config.structuredErrorHook = errorHook
     graph.config.writelnHook = myLog
   else:
     graph.config.structuredErrorHook = nil
     graph.config.writelnHook = myLog
-  executeNoHooks(cmd, file, dirtyfile, line, col, tag, graph)
+  executeNoHooks(cmd, graph)

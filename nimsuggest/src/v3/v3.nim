@@ -6,7 +6,7 @@ import algorithm
 import tables
 import std/sha1
 import times
-
+import ../types
 import strutils, net, sequtils, parseutils
 
 import ../compiler/options
@@ -78,9 +78,13 @@ proc findDef(n: PNode, line: uint16, col: int16): PNode =
 
 
 
-proc executeNoHooksV3*(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, line, col: int; tag: string,
-    graph: ModuleGraph) =
+proc executeNoHooksV3*(cmd:CommandData,graph: ModuleGraph) =
+
+  #This exposes all it's props as variables in the current scope
+  destructure cmd
+
   let conf = graph.config
+
   conf.writelnHook = proc (s: string) = discard
   conf.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo;
                                    msg: string; sev: Severity) =
@@ -88,13 +92,13 @@ proc executeNoHooksV3*(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile,
       line: toLinenumber(info), column: toColumn(info), doc: msg, forth: $sev)
     graph.suggestErrors.mgetOrPut(info.fileIndex, @[]).add suggest
 
-  conf.ideCmd = cmd
+  conf.ideCmd = ideCmd
 
-  myLog fmt "cmd: {cmd}, file: {file}[{line}:{col}], dirtyFile: {dirtyfile}, tag: {tag}"
+  myLog fmt "cmd: {ideCmd}, file: {file}[{line}:{col}], dirtyFile: {dirtyFile}, tag: {tag}"
 
   var fileIndex: FileIndex
 
-  if not (cmd in {ideRecompile, ideGlobalSymbols}):
+  if not (ideCmd in {ideRecompile, ideGlobalSymbols}):
     if not fileInfoKnown(conf, file):
       myLog fmt "{file} is unknown, returning no results"
       return
@@ -103,13 +107,14 @@ proc executeNoHooksV3*(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile,
     msgs.setDirtyFile(
       conf,
       fileIndex,
-      if dirtyfile.isEmpty: AbsoluteFile"" else: dirtyfile)
+      #TODO: We can probably skip this because this will allways be absolutefile ""
+      if dirtyFile.isEmpty: AbsoluteFile"" else: dirtyFile)
 
-    if not dirtyfile.isEmpty:
+    if not dirtyFile.isEmpty:
       graph.markDirtyIfNeeded(dirtyFile.string, fileInfoIdx(conf, file))
 
   # these commands require fully compiled project
-  if cmd in {ideUse, ideDus, ideGlobalSymbols, ideChk} and graph.needsCompilation():
+  if ideCmd in {ideUse, ideDus, ideGlobalSymbols, ideChk} and graph.needsCompilation():
     graph.recompilePartially()
     # when doing incremental build for the project root we should make sure that
     # everything is unmarked as no longer beeing dirty in case there is no
@@ -118,10 +123,10 @@ proc executeNoHooksV3*(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile,
     graph.unmarkAllDirty()
 
   # these commands require partially compiled project
-  elif cmd in {ideSug, ideOutline, ideHighlight, ideDef, ideChkFile, ideType, ideDeclaration, ideExpand} and
-       (graph.needsCompilation(fileIndex) or cmd == ideSug):
+  elif ideCmd in {ideSug, ideOutline, ideHighlight, ideDef, ideChkFile, ideType, ideDeclaration, ideExpand} and
+       (graph.needsCompilation(fileIndex) or ideCmd == ideSug):
     # for ideSug use v2 implementation
-    if cmd == ideSug:
+    if ideCmd == ideSug:
       conf.m.trackPos = newLineInfo(fileIndex, line, col)
       conf.m.trackPosAttached = false
     else:
@@ -129,7 +134,7 @@ proc executeNoHooksV3*(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile,
 
     graph.recompilePartially(fileIndex)
 
-  case cmd
+  case ideCmd
   of ideDef:
     let s = graph.findSymData(file, line, col)
     if not s.isNil:

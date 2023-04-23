@@ -13,12 +13,13 @@ import times
 
 import setup
 import utils
-import emacs
+import emacs/emacs
 import execution
 import repl
 
 import communication
 import consts
+import parsing
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
 when not defined(nimcore):
@@ -52,18 +53,9 @@ else:
 
 
 
-proc parseQuoted*(cmd: string; outp: var string; start: int): int =
-  var i = start
-  i += skipWhitespace(cmd, i)
-  if i < cmd.len and cmd[i] == '"':
-    i += parseUntil(cmd, outp, '"', i+1)+2
-  else:
-    i += parseUntil(cmd, outp, seps, i)
-  result = i
 
 
-
-proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
+proc execCmd(cmdLineString: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   let conf = graph.config
 
   template sentinel() =
@@ -82,59 +74,27 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
     echo Help
     sentinel()
     return
+  let cmd=parseCommandLine(cmdLineString,string conf.projectFull)
+  ##If we can't parse an ideCmd then it's either a nimsuggest command or grabage 
+  if cmd.ideCmd==ideNone:
+    case cmd.ideCmdString: 
+    of "quit":
+      sentinel()
+      quit()
+    of "debug": toggle optIdeDebug
+    of "terse": toggle optIdeTerse
+    else: err()
+  conf.ideCmd=cmd.ideCmd
 
-  var opc = ""
-  var i = parseIdent(cmd, opc, 0)
-  case opc.normalize
-  of "sug": conf.ideCmd = ideSug
-  of "con": conf.ideCmd = ideCon
-  of "def": conf.ideCmd = ideDef
-  of "use": conf.ideCmd = ideUse
-  of "dus": conf.ideCmd = ideDus
-  of "mod": conf.ideCmd = ideMod
-  of "chk": conf.ideCmd = ideChk
-  of "highlight": conf.ideCmd = ideHighlight
-  of "outline": conf.ideCmd = ideOutline
-  of "quit":
-    sentinel()
-    quit()
-  of "debug": toggle optIdeDebug
-  of "terse": toggle optIdeTerse
-  of "known": conf.ideCmd = ideKnown
-  of "project": conf.ideCmd = ideProject
-  of "changed": conf.ideCmd = ideChanged
-  of "globalsymbols": conf.ideCmd = ideGlobalSymbols
-  of "declaration": conf.ideCmd = ideDeclaration
-  of "expand": conf.ideCmd = ideExpand
-  of "chkfile": conf.ideCmd = ideChkFile
-  of "recompile": conf.ideCmd = ideRecompile
-  of "type": conf.ideCmd = ideType
-  else: err()
-  var dirtyfile = ""
-  var orig = ""
-  i += skipWhitespace(cmd, i)
-  if i < cmd.len and cmd[i] in {'0'..'9'}:
-    orig = string conf.projectFull
-  else:
-    i = parseQuoted(cmd, orig, i)
-    if i < cmd.len and cmd[i] == ';':
-      i = parseQuoted(cmd, dirtyfile, i+1)
-    i += skipWhile(cmd, seps, i)
-  var line = 0
-  var col = -1
-  i += parseInt(cmd, line, i)
-  i += skipWhile(cmd, seps, i)
-  i += parseInt(cmd, col, i)
-  let tag = substr(cmd, i)
 
-  if conf.ideCmd == ideKnown:
-    results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, AbsoluteFile orig))))
-  elif conf.ideCmd == ideProject:
+  if cmd.ideCmd == ideKnown:
+    results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf,  AbsoluteFile cmd.file))))
+  elif cmd.ideCmd == ideProject:
     results.send(Suggest(section: ideProject, filePath: string conf.projectFull))
   else:
-    if conf.ideCmd == ideChk:
+    if cmd.ideCmd == ideChk:
       for cm in cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
-    execute(conf.ideCmd, AbsoluteFile orig, AbsoluteFile dirtyfile, line, col, tag, graph)
+    execute(cmd, graph)
   sentinel()
 
 

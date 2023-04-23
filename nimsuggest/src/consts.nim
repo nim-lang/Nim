@@ -35,7 +35,6 @@ are supported.
 
 
 const
-  seps* = {':', ';', ' ', '\t'}
   Help* = "usage: sug|con|def|use|dus|chk|mod|highlight|outline|known|project file.nim[;dirtyfile.nim]:line:col\n" &
          "type 'quit' to quit\n" &
          "type 'debug' to toggle debug mode on/off\n" &

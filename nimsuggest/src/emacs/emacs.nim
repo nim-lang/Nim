@@ -8,8 +8,8 @@ import ../setup
 import ../execution
 import ../communication
 import ../utils
+import ../types
 import sexp
-
 import compiler/ [options, msgs,
   sigmatch, ast,
  modulegraphs, prefixmatches, 
@@ -148,13 +148,17 @@ proc replEpc*(x: ThreadParams) {.thread.} =
       quit errMessage
 
 
-proc executeEpc(cmd: IdeCmd, args: SexpNode;
-                graph: ModuleGraph) =
-  let
-    file = AbsoluteFile args[0].getStr
-    line = args[1].getNum
-    column = args[2].getNum
+proc executeEpc(ideCmd: IdeCmd, args: SexpNode, graph: ModuleGraph) =
   var dirtyfile = AbsoluteFile""
   if len(args) > 3:
     dirtyfile = AbsoluteFile args[3].getStr("")
-  execute(cmd, file, dirtyfile, int(line), int(column), args[3].getStr, graph)
+
+  let cmd= CommandData( 
+      ideCmd:ideCmd,
+      file:AbsoluteFile args[0].getStr,
+      dirtyFile:dirtyfile,
+      line: int(args[1].getNum),
+      col:  int(args[2].getNum),
+      tag: args[3].getStr
+      )
+  execute(cmd, graph)
