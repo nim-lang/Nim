@@ -40,7 +40,7 @@ proc fillBackendName(m: BModule; s: PSym) =
     result.add "__"
     result.add m.g.graph.ifaces[s.itemId.module].uniqueName
     result.add "_u"
-    result.addInt s.disamb # s.itemId.item
+    result.addInt s.itemId.item # s.disamb #
     if m.hcrOn:
       result.add '_'
       result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
