@@ -2348,7 +2348,7 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
 
 proc genDup(p: BProc; src: TLoc; d: var TLoc; n: PNode) =
   if d.k == locNone: getTemp(p, n.typ, d)
-  linefmt(p, cpsStmts, "#nimDupRef((void*)$1, (void*)$2);$n",
+  linefmt(p, cpsStmts, "#nimDupRef((void**)$1, (void*)$2);$n",
           [addrLoc(p.config, d), rdLoc(src)])
 
 proc genDestroy(p: BProc; n: PNode) =
