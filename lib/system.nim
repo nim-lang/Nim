@@ -1405,7 +1405,7 @@ proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
-proc isNil*[T: proc](x: T): bool {.noSideEffect, magic: "IsNil".}
+proc isNil*[T: proc | iterator {.closure.}](x: T): bool {.noSideEffect, magic: "IsNil".}
   ## Fast check whether `x` is nil. This is sometimes more efficient than
   ## `== nil`.
 
