@@ -20,9 +20,8 @@ proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
     var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, result[1].info, typ))
     asgnExpr.typ = typ
     var t = typ.skipTypes({tyGenericInst, tyAlias, tySink})[0]
-    var id = initIntSet()
     while true:
-      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, id)
+      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n)
       let base = t[0]
       if base == nil:
         break
@@ -211,6 +210,11 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
       arg = arg.base.skipTypes(skippedTypes + {tyGenericInst})
       if not rec: break
     result = getTypeDescNode(c, arg, operand.owner, traitCall.info)
+  of "rangeBase":
+    # return the base type of a range type
+    var arg = operand.skipTypes({tyGenericInst})
+    assert arg.kind == tyRange
+    result = getTypeDescNode(c, arg.base, operand.owner, traitCall.info)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)
@@ -527,7 +531,7 @@ proc checkDefault(c: PContext, n: PNode): PNode =
     message(c.config, n.info, warnUnsafeDefault, typeToString(constructed))
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
-                                   flags: TExprFlags): PNode =
+                                   flags: TExprFlags; expectedType: PType = nil): PNode =
   ## This is the preferred code point to implement magics.
   ## ``c`` the current module, a symbol table to a very good approximation
   ## ``n`` the ast like it would be passed to a real macro
@@ -636,5 +640,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = n
   of mPrivateAccess:
     result = semPrivateAccess(c, n)
+  of mArrToSeq:
+    result = n
+    if result.typ != nil and expectedType != nil and result.typ.kind == tySequence and expectedType.kind == tySequence and result.typ[0].kind == tyEmpty:
+      result.typ = expectedType # type inference for empty sequence # bug #21377
   else:
     result = n

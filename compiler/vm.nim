@@ -10,10 +10,10 @@
 ## This file implements the new evaluation engine for Nim code.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-
+import semmacrosanity
 import
   std/[strutils, tables, parseutils],
-  msgs, vmdef, vmgen, nimsets, types, passes,
+  msgs, vmdef, vmgen, nimsets, types,
   parser, vmdeps, idents, trees, renderer, options, transf,
   gorgeimpl, lineinfos, btrees, macrocacheimpl,
   modulegraphs, sighashes, int128, vmprofiler
@@ -1271,7 +1271,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
             let ast = a.sym.ast.shallowCopy
             for i in 0..<a.sym.ast.len:
               ast[i] = a.sym.ast[i]
-            ast[bodyPos] = transformBody(c.graph, c.idgen, a.sym, useCache)
+            ast[bodyPos] = transformBody(c.graph, c.idgen, a.sym, useCache, force=true)
             ast.copyTree()
     of opcSymOwner:
       decodeB(rkNode)
@@ -1351,7 +1351,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let prc = if not isClosure: bb.sym else: bb[0].sym
       if prc.offset < -1:
         # it's a callback:
-        c.callbacks[-prc.offset-2].value(
+        c.callbacks[-prc.offset-2](
           VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                  currentException: c.currentExceptionA,
                  currentLineInfo: c.debug[pc])
@@ -1408,6 +1408,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         for i in 1..rc-1:
           let node = regs[rb+i].regToNode
           node.info = c.debug[pc]
+          if prc.typ[i].kind notin {tyTyped, tyUntyped}:
+            node.annotateType(prc.typ[i], c.config)
+
           macroCall.add(node)
         var a = evalTemplate(macroCall, prc, genSymOwner, c.config, c.cache, c.templInstCounter, c.idgen)
         if a.kind == nkStmtList and a.len == 1: a = a[0]
@@ -1603,7 +1606,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcRepr:
       decodeB(rkNode)
       createStr regs[ra]
-      regs[ra].node.strVal = renderTree(regs[rb].regToNode, {renderNoComments, renderDocComments})
+      regs[ra].node.strVal = renderTree(regs[rb].regToNode, {renderNoComments, renderDocComments, renderNonExportedFields})
     of opcQuit:
       if c.mode in {emRepl, emStaticExpr, emStaticStmt}:
         message(c.config, c.debug[pc], hintQuitCalled)
@@ -1674,7 +1677,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         rb = instr.regB
         rc = instr.regC
         idx = int(regs[rb+rc-1].intVal)
-        callback = c.callbacks[idx].value
+        callback = c.callbacks[idx]
         args = VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                 currentException: c.currentExceptionA,
                 currentLineInfo: c.debug[pc])
@@ -1852,7 +1855,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if regs[rb].node.kind != nkSym:
         stackTrace(c, tos, pc, "node is not a symbol")
       else:
-        regs[ra].node.strVal = $sigHash(regs[rb].node.sym)
+        regs[ra].node.strVal = $sigHash(regs[rb].node.sym, c.config)
     of opcSlurp:
       decodeB(rkNode)
       createStr regs[ra]
@@ -1890,7 +1893,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var error: string
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
                             regs[rc].node.strVal, 0,
-                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) {.nosinks.} =
+                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
@@ -1905,7 +1908,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var error: string
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
                             regs[rc].node.strVal, 0,
-                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) {.nosinks.} =
+                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
@@ -2071,12 +2074,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         dest.ident = regs[rb].node.ident
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "ident")
-    of opcNSetType:
-      decodeB(rkNode)
-      let b = regs[rb].node
-      internalAssert c.config, b.kind == nkSym and b.sym.kind == skType
-      internalAssert c.config, regs[ra].node != nil
-      regs[ra].node.typ = b.sym.typ
     of opcNSetStrVal:
       decodeB(rkNode)
       var dest = regs[ra].node
@@ -2312,7 +2309,7 @@ proc setupGlobalCtx*(module: PSym; graph: ModuleGraph; idgen: IdGenerator) =
   else:
     refresh(PCtx graph.vm, module, idgen)
 
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
+proc setupEvalGen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   #var c = newEvalContext(module, emRepl)
   #c.features = {allowCast, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())
@@ -2321,7 +2318,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext 
   setupGlobalCtx(module, graph, idgen)
   result = PCtx graph.vm
 
-proc myProcess(c: PPassContext, n: PNode): PNode =
+proc interpreterCode*(c: PPassContext, n: PNode): PNode =
   let c = PCtx(c)
   # don't eval errornous code:
   if c.oldErrorCount == c.config.errorCounter:
@@ -2331,14 +2328,12 @@ proc myProcess(c: PPassContext, n: PNode): PNode =
     result = n
   c.oldErrorCount = c.config.errorCounter
 
-proc myClose(graph: ModuleGraph; c: PPassContext, n: PNode): PNode =
-  result = myProcess(c, n)
-
-const evalPass* = makePass(myOpen, myProcess, myClose)
-
 proc evalConstExprAux(module: PSym; idgen: IdGenerator;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
+  when defined(nimsuggest):
+    if g.config.expandDone():
+      return n
   #if g.config.errorCounter > 0: return n
   let n = transformExpr(g, idgen, module, n)
   setupGlobalCtx(module, g, idgen)

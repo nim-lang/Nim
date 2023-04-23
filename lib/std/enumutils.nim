@@ -112,9 +112,9 @@ const invalidSlot = uint8.high
 
 proc genLookup[T: typedesc[HoleyEnum]](_: T): auto =
   const n = span(T)
-  var ret: array[n, uint8]
   var i = 0
   assert n <= invalidSlot.int
+  var ret {.noinit.}: array[n, uint8]
   for ai in mitems(ret): ai = invalidSlot
   for ai in items(T):
     ret[ai.ord - T.low.ord] = uint8(i)

@@ -100,7 +100,8 @@ export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
 
 const useWinVersion = defined(windows) or defined(nimdoc)
-const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr)
+const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr) or
+    defined(nuttx)
 const defineSsl = defined(ssl) or defined(nimdoc)
 
 when useWinVersion:
@@ -621,7 +622,7 @@ when defineSsl:
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
                    certFile = "", keyFile = "", cipherList = CiphersIntermediate,
-                   caDir = "", caFile = ""): SslContext =
+                   caDir = "", caFile = "", ciphersuites = CiphersModern): SslContext =
     ## Creates an SSL context.
     ##
     ## Protocol version is currently ignored by default and TLS is used.
@@ -675,10 +676,10 @@ when defineSsl:
       raiseSSLError()
     when not defined(openssl10) and not defined(libressl):
       let sslVersion = getOpenSSLVersion()
-      if sslVersion >= 0x010101000 and not sslVersion == 0x020000000:
+      if sslVersion >= 0x010101000 and sslVersion != 0x020000000:
         # In OpenSSL >= 1.1.1, TLSv1.3 cipher suites can only be configured via
         # this API.
-        if newCTX.SSL_CTX_set_ciphersuites(cipherList) != 1:
+        if newCTX.SSL_CTX_set_ciphersuites(ciphersuites) != 1:
           raiseSSLError()
     # Automatically the best ECDH curve for client exchange. Without this, ECDH
     # ciphers will be ignored by the server.
@@ -1921,7 +1922,7 @@ proc `$`*(address: IpAddress): string =
   ## Converts an IpAddress into the textual representation
   case address.family
   of IpAddressFamily.IPv4:
-    result = newStringOfCap(16)
+    result = newStringOfCap(15)
     result.addInt address.address_v4[0]
     result.add '.'
     result.addInt address.address_v4[1]
@@ -1930,7 +1931,7 @@ proc `$`*(address: IpAddress): string =
     result.add '.'
     result.addInt address.address_v4[3]
   of IpAddressFamily.IPv6:
-    result = newStringOfCap(48)
+    result = newStringOfCap(39)
     var
       currentZeroStart = -1
       currentZeroCount = 0

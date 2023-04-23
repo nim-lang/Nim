@@ -322,26 +322,32 @@ proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
   else:
     result = arg.typ.typeToString(prefer)
 
+template describeArgImpl(c: PContext, n: PNode, i: int, startIdx = 1; prefer = preferName) =
+  var arg = n[i]
+  if n[i].kind == nkExprEqExpr:
+    result.add renderTree(n[i][0])
+    result.add ": "
+    if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
+      # XXX we really need to 'tryExpr' here!
+      arg = c.semOperand(c, n[i][1])
+      n[i].typ = arg.typ
+      n[i][1] = arg
+  else:
+    if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo, nkElse,
+                                          nkOfBranch, nkElifBranch,
+                                          nkExceptBranch}:
+      arg = c.semOperand(c, n[i])
+      n[i] = arg
+  if arg.typ != nil and arg.typ.kind == tyError: return
+  result.add argTypeToString(arg, prefer)
+
+proc describeArg*(c: PContext, n: PNode, i: int, startIdx = 1; prefer = preferName): string =
+  describeArgImpl(c, n, i, startIdx, prefer)
+
 proc describeArgs*(c: PContext, n: PNode, startIdx = 1; prefer = preferName): string =
   result = ""
   for i in startIdx..<n.len:
-    var arg = n[i]
-    if n[i].kind == nkExprEqExpr:
-      result.add renderTree(n[i][0])
-      result.add ": "
-      if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
-        # XXX we really need to 'tryExpr' here!
-        arg = c.semOperand(c, n[i][1])
-        n[i].typ = arg.typ
-        n[i][1] = arg
-    else:
-      if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo, nkElse,
-                                           nkOfBranch, nkElifBranch,
-                                           nkExceptBranch}:
-        arg = c.semOperand(c, n[i])
-        n[i] = arg
-    if arg.typ != nil and arg.typ.kind == tyError: return
-    result.add argTypeToString(arg, prefer)
+    describeArgImpl(c, n, i, startIdx, prefer)
     if i != n.len - 1: result.add ", "
 
 proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
@@ -618,6 +624,9 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     if f.len != a.len: return
     result = isEqual      # start with maximum; also correct for no
                           # params at all
+    
+    if f.flags * {tfIterator} != a.flags * {tfIterator}:
+      return isNone
 
     template checkParam(f, a) =
       result = minRel(result, procParamTypeRel(c, f, a))
@@ -1289,7 +1298,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyNil: result = isNone
     else: discard
   of tyOrdinal:
-    if isOrdinalType(a, allowEnumWithHoles = optNimV1Emulation in c.c.config.globalOptions):
+    if isOrdinalType(a):
       var x = if a.kind == tyOrdinal: a[0] else: a
       if f[0].kind == tyNone:
         result = isGeneric
@@ -1630,13 +1639,19 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyBuiltInTypeClass:
     considerPreviousT:
-      let targetKind = f[0].kind
+      let target = f[0]
+      let targetKind = target.kind
       let effectiveArgType = a.skipTypes({tyRange, tyGenericInst,
                                           tyBuiltInTypeClass, tyAlias, tySink, tyOwned})
-      let typeClassMatches = targetKind == effectiveArgType.kind and
-                             not effectiveArgType.isEmptyContainer
-      if typeClassMatches or
-        (targetKind in {tyProc, tyPointer} and effectiveArgType.kind == tyNil):
+      if targetKind == effectiveArgType.kind:
+        if effectiveArgType.isEmptyContainer:
+          return isNone
+        if targetKind == tyProc:
+          if target.flags * {tfIterator} != effectiveArgType.flags * {tfIterator}:
+            return isNone
+          if tfExplicitCallConv in target.flags and
+              target.callConv != effectiveArgType.callConv:
+            return isNone
         put(c, f, a)
         return isGeneric
       else:
@@ -1969,7 +1984,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       if srca == isSubtype:
         param = implicitConv(nkHiddenSubConv, src, copyTree(arg), m, c)
       elif src.kind in {tyVar}:
-        # Analyse the converter return type
+        # Analyse the converter return type.
         param = newNodeIT(nkHiddenAddr, arg.info, s.typ[1])
         param.add copyTree(arg)
       else:
@@ -2374,7 +2389,9 @@ proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
     # checking `nfBlockArg in n[a2].flags` wouldn't work inside templates
     if n[a2].kind != nkStmtList: break
     let formalLast = m.callee.n[m.callee.n.len - (n.len - a2)]
-    if formalLast.kind == nkSym and formalLast.sym.ast == nil:
+    # parameter has to occupy space (no default value, not void or varargs)
+    if formalLast.kind == nkSym and formalLast.sym.ast == nil and
+        formalLast.sym.typ.kind notin {tyVoid, tyVarargs}:
       result = a2
     else: break
 
@@ -2663,7 +2680,7 @@ proc argtypeMatches*(c: PContext, f, a: PType, fromHlo = false): bool =
 
 
 proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
-                      op: TTypeAttachedOp; col: int): PSym {.nosinks.} =
+                      op: TTypeAttachedOp; col: int): PSym =
   var m = newCandidate(c, dc.typ)
   if col >= dc.typ.len:
     localError(c.config, info, "cannot instantiate: '" & dc.name.s & "'")

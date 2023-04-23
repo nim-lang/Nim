@@ -1,8 +1,5 @@
 discard """
   action: reject
-  nimout: '''
-t11634.nim(20, 7) Error: cannot destructure to compile time variable
-'''
 """
 
 type Foo = ref object

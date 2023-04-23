@@ -62,11 +62,11 @@ proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
     doAssert type(myFoo()) is string
     doAssert typeof(myFoo()) is string
     doAssert typeof(myFoo(), typeOfIter) is string
-    doAssert typeof(myFoo3) is "iterator"
+    doAssert typeof(myFoo3) is iterator
 
     doAssert typeof(myFoo(), typeOfProc) is float
     doAssert typeof(0.0, typeOfProc) is float
-    doAssert typeof(myFoo3, typeOfProc) is "iterator"
+    doAssert typeof(myFoo3, typeOfProc) is iterator
     doAssert not compiles(typeof(myFoo2(), typeOfProc))
       # this would give: Error: attempting to call routine: 'myFoo2'
       # since `typeOfProc` expects a typed expression and `myFoo2()` can
@@ -1081,31 +1081,9 @@ proc align(address, alignment: int): int =
   else:
     result = (address + (alignment - 1)) and not (alignment - 1)
 
-when defined(nimNoQuit):
-  proc rawQuit(errorcode: int = QuitSuccess) = discard "ignoring quit"
-
-elif defined(genode):
-  import genode/env
-
-  var systemEnv {.exportc: runtimeEnvSym.}: GenodeEnvPtr
-
-  type GenodeEnv* = GenodeEnvPtr
-    ## Opaque type representing Genode environment.
-
-  proc rawQuit(env: GenodeEnv; errorcode: int) {.magic: "Exit", noreturn,
-    importcpp: "#->parent().exit(@); Genode::sleep_forever()", header: "<base/sleep.h>".}
-
-  proc rawQuit(errorcode: int = QuitSuccess) {.inline, noreturn.} =
-    systemEnv.rawQuit(errorcode)
-
-
-elif defined(js) and defined(nodejs) and not defined(nimscript):
-  proc rawQuit(errorcode: int = QuitSuccess) {.magic: "Exit",
-    importc: "process.exit", noreturn.}
-
-else:
-  proc rawQuit(errorcode: cint) {.
-    magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
+include system/rawquits
+when defined(genode):
+  export GenodeEnv
 
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
@@ -1130,6 +1108,11 @@ when defined(nimscript) or not defined(nimSeqsV2):
     ## containers should also call their adding proc `add` for consistency.
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
+    ##   ```
+    ##   var s: seq[string] = @["test2","test2"]
+    ##   s.add("test")
+    ##   assert s == @["test2", "test2", "test"]
+    ##   ```
 
 when false: # defined(gcDestructors):
   proc add*[T](x: var seq[T], y: sink openArray[T]) {.noSideEffect.} =
@@ -1164,13 +1147,17 @@ else:
     ## containers should also call their adding proc `add` for consistency.
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
-    ##   ```
-    ##   var s: seq[string] = @["test2","test2"]
-    ##   s.add("test") # s <- @[test2, test2, test]
-    ##   ```
     ##
     ## See also:
     ## * `& proc <#&,seq[T],seq[T]>`_
+    runnableExamples:
+      var a = @["a1", "a2"]
+      a.add(["b1", "b2"])
+      assert a == @["a1", "a2", "b1", "b2"]
+      var c = @["c0", "c1", "c2", "c3"]
+      a.add(c.toOpenArray(1, 2))
+      assert a == @["a1", "a2", "b1", "b2", "c1", "c2"]
+
     {.noSideEffect.}:
       let xl = x.len
       setLen(x, xl + y.len)
@@ -2201,39 +2188,30 @@ when notJSnotNims:
     include "system/profiler"
   {.pop.}
 
-  proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
+  proc rawProc*[T: proc {.closure.} | iterator {.closure.}](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw proc pointer of the closure `x`. This is
     ## useful for interfacing closures with C/C++, hash compuations, etc.
-    when T is "closure":
-      #[
-      The conversion from function pointer to `void*` is a tricky topic, but this
-      should work at least for c++ >= c++11, e.g. for `dlsym` support.
-      refs: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57869,
-      https://stackoverflow.com/questions/14125474/casts-between-pointer-to-function-and-pointer-to-object-in-c-and-c
-      ]#
-      {.emit: """
-      `result` = (void*)`x`.ClP_0;
-      """.}
-    else:
-      {.error: "Only closure function and iterator are allowed!".}
+    #[
+    The conversion from function pointer to `void*` is a tricky topic, but this
+    should work at least for c++ >= c++11, e.g. for `dlsym` support.
+    refs: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57869,
+    https://stackoverflow.com/questions/14125474/casts-between-pointer-to-function-and-pointer-to-object-in-c-and-c
+    ]#
+    {.emit: """
+    `result` = (void*)`x`.ClP_0;
+    """.}
 
-  proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
+  proc rawEnv*[T: proc {.closure.} | iterator {.closure.}](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw environment pointer of the closure `x`. See also `rawProc`.
-    when T is "closure":
-      {.emit: """
-      `result` = `x`.ClE_0;
-      """.}
-    else:
-      {.error: "Only closure function and iterator are allowed!".}
+    {.emit: """
+    `result` = `x`.ClE_0;
+    """.}
 
-  proc finished*[T: proc](x: T): bool {.noSideEffect, inline, magic: "Finished".} =
+  proc finished*[T: iterator {.closure.}](x: T): bool {.noSideEffect, inline, magic: "Finished".} =
     ## It can be used to determine if a first class iterator has finished.
-    when T is "iterator":
-      {.emit: """
-      `result` = ((NI*) `x`.ClE_0)[1] < 0;
-      """.}
-    else:
-      {.error: "Only closure iterator is allowed!".}
+    {.emit: """
+    `result` = ((NI*) `x`.ClE_0)[1] < 0;
+    """.}
 
 from std/private/digitsutils import addInt
 export addInt
@@ -2710,6 +2688,7 @@ when notJSnotNims:
                     not defined(nintendoswitch) and
                     not defined(freertos) and
                     not defined(zephyr) and
+                    not defined(nuttx) and
                     hostOS != "any"
 
   proc raiseEIO(msg: string) {.noinline, noreturn.} =

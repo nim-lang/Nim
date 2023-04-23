@@ -31,6 +31,7 @@ elif defined(js):
 else:
   {.pragma: noNimJs.}
 
+## .. importdoc:: os.nim
 
 proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ## Create a symbolic link at `dest` which points to the item specified
@@ -47,14 +48,10 @@ proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
     const SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE = 2
     # allows anyone with developer mode on to create a link
     let flag = dirExists(src).int32 or SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
-    when useWinUnicode:
-      var wSrc = newWideCString(src)
-      var wDst = newWideCString(dest)
-      if createSymbolicLinkW(wDst, wSrc, flag) == 0 or getLastError() != 0:
-        raiseOSError(osLastError(), $(src, dest))
-    else:
-      if createSymbolicLinkA(dest, src, flag) == 0 or getLastError() != 0:
-        raiseOSError(osLastError(), $(src, dest))
+    var wSrc = newWideCString(src)
+    var wDst = newWideCString(dest)
+    if createSymbolicLinkW(wDst, wSrc, flag) == 0 or getLastError() != 0:
+      raiseOSError(osLastError(), $(src, dest))
   else:
     if symlink(src, dest) != 0:
       raiseOSError(osLastError(), $(src, dest))
@@ -66,7 +63,7 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   ##
   ## See also:
   ## * `createSymlink proc`_
-  when defined(windows):
+  when defined(windows) or defined(nintendoswitch):
     result = symlinkPath
   else:
     result = newString(maxSymlinkLen)

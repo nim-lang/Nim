@@ -23,6 +23,8 @@ when defined(nimPreviewSlimSystem):
 
 ## .. include:: ../../doc/astspec.txt
 
+## .. importdoc:: system.nim
+
 # If you look for the implementation of the magic symbol
 # ``{.magic: "Foo".}``, search for `mFoo` and `opcFoo`.
 
@@ -945,6 +947,8 @@ proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indent
     discard # same as nil node in this representation
   of nnkCharLit .. nnkInt64Lit:
     res.add(" " & $n.intVal)
+  of nnkUIntLit .. nnkUInt64Lit:
+    res.add(" " & $cast[uint64](n.intVal))
   of nnkFloatLit .. nnkFloat64Lit:
     res.add(" " & $n.floatVal)
   of nnkStrLit .. nnkTripleStrLit, nnkCommentStmt, nnkIdent, nnkSym:
@@ -1589,7 +1593,7 @@ proc customPragmaNode(n: NimNode): NimNode =
     elif impl.kind in {nnkIdentDefs, nnkConstDef} and impl[0].kind == nnkPragmaExpr:
       return impl[0][1]
     else:
-      let timpl = typ.getImpl()
+      let timpl = getImpl(if typ.kind == nnkBracketExpr: typ[0] else: typ)
       if timpl.len>0 and timpl[0].len>1:
         return timpl[0][1]
       else:

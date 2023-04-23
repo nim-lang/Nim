@@ -10,6 +10,8 @@ export ReadDirEffect, WriteDirEffect
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
 
+## .. importdoc:: osappdirs.nim, osdirs.nim, osseps.nim, os.nim
+
 const weirdTarget = defined(nimscript) or defined(js)
 
 when weirdTarget:
@@ -569,7 +571,7 @@ proc normExt(ext: string): string =
 
 proc searchExtPos*(path: string): int =
   ## Returns index of the `'.'` char in `path` if it signifies the beginning
-  ## of extension. Returns -1 otherwise.
+  ## of the file extension. Returns -1 otherwise.
   ##
   ## See also:
   ## * `splitFile proc`_
@@ -847,30 +849,17 @@ when not defined(nimscript):
       doAssert false, "use -d:nodejs to have `getCurrentDir` defined"
     elif defined(windows):
       var bufsize = MAX_PATH.int32
-      when useWinUnicode:
-        var res = newWideCString("", bufsize)
-        while true:
-          var L = getCurrentDirectoryW(bufsize, res)
-          if L == 0'i32:
-            raiseOSError(osLastError())
-          elif L > bufsize:
-            res = newWideCString("", L)
-            bufsize = L
-          else:
-            result = res$L
-            break
-      else:
-        result = newString(bufsize)
-        while true:
-          var L = getCurrentDirectoryA(bufsize, result)
-          if L == 0'i32:
-            raiseOSError(osLastError())
-          elif L > bufsize:
-            result = newString(L)
-            bufsize = L
-          else:
-            setLen(result, L)
-            break
+      var res = newWideCString("", bufsize)
+      while true:
+        var L = getCurrentDirectoryW(bufsize, res)
+        if L == 0'i32:
+          raiseOSError(osLastError())
+        elif L > bufsize:
+          res = newWideCString("", L)
+          bufsize = L
+        else:
+          result = res$L
+          break
     else:
       var bufsize = 1024 # should be enough
       result = newString(bufsize)
