@@ -1,14 +1,14 @@
-
+## Everything required for the nimsuggest emacs intergration.
 import compiler/renderer
 import strutils, os, net
 import sequtils
 import times
 
-import setup
+import ../setup
+import ../execution
+import ../communication
+import ../utils
 import sexp
-import execution
-import communication
-import utils
 
 import compiler/ [options, msgs,
   sigmatch, ast,

@@ -179,6 +179,8 @@ var
   inputThread: Thread[ThreadParams]
 
 proc mainCommand(graph: ModuleGraph) =
+  ## Orchestrates running interactions with the user.
+  ## Starts the requests and results channels the user will use to communicate
   let conf = graph.config
   clearPasses(graph)
   registerPass graph, verbosePass

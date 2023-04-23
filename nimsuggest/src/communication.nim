@@ -1,4 +1,5 @@
-
+## Any code that directly handles sending messages out via a port or stdout
+## 
 import compiler/renderer
 import setup
 import net 

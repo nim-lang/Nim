@@ -1,3 +1,4 @@
+## Constant strings
 
 const DummyEof* = "!EOF!"
 const Usage* = """
