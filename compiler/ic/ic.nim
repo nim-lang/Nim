@@ -390,7 +390,7 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
     assert sfForward notin s.flags
 
     var p = PackedSym(kind: s.kind, flags: s.flags, info: s.info.toPackedInfo(c, m), magic: s.magic,
-      position: s.position, offset: s.offset, options: s.options,
+      position: s.position, offset: s.offset, disamb: s.disamb, options: s.options,
       name: s.name.s.toLitId(m))
 
     storeNode(p, s, ast)
@@ -830,6 +830,7 @@ proc symHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
     options: s.options,
     position: if s.kind in {skForVar, skVar, skLet, skTemp}: 0 else: s.position,
     offset: if s.kind in routineKinds: defaultOffset else: s.offset,
+    disamb: s.disamb,
     name: getIdent(c.cache, g[si].fromDisk.strings[s.name])
   )
 

@@ -465,7 +465,7 @@ proc semGenericStmt(c: PContext, n: PNode,
                                               flags, ctx)
     if n[paramsPos].kind != nkEmpty:
       if n[paramsPos][0].kind != nkEmpty:
-        addPrelimDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nextSymId c.idgen, nil, n.info))
+        addPrelimDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), c.idgen, nil, n.info))
       n[paramsPos] = semGenericStmt(c, n[paramsPos], flags, ctx)
     n[pragmasPos] = semGenericStmt(c, n[pragmasPos], flags, ctx)
     var body: PNode
