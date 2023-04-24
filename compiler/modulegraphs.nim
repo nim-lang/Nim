@@ -411,7 +411,7 @@ proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
 
 proc createMagic*(g: ModuleGraph; idgen: IdGenerator; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(g.cache, name), nextSymId(idgen), nil, unknownLineInfo, {})
+  result = newSym(skProc, getIdent(g.cache, name), idgen, nil, unknownLineInfo, {})
   result.magic = m
   result.flags = {sfNeverRaises}
 

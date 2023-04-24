@@ -919,7 +919,9 @@ type
                               # for modules, an unique index corresponding
                               # to the module's fileIdx
                               # for variables a slot index for the evaluator
-    offset*: int              # offset of record field
+    offset*: int32            # offset of record field
+    disamb*: int32            # disambiguation number; the basic idea is that
+                              # `<procname>__<module>_<disamb>`
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to save space)
@@ -1143,13 +1145,17 @@ type
     symId*: int32
     typeId*: int32
     sealed*: bool
+    disambTable*: CountTable[PIdent]
 
 const
   PackageModuleId* = -3'i32
 
 proc idGeneratorFromModule*(m: PSym): IdGenerator =
   assert m.kind == skModule
-  result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0)
+  result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0, disambTable: initCountTable[PIdent]())
+
+proc idGeneratorForPackage*(nextIdWillBe: int32): IdGenerator =
+  result = IdGenerator(module: PackageModuleId, symId: nextIdWillBe - 1'i32, typeId: 0, disambTable: initCountTable[PIdent]())
 
 proc nextSymId*(x: IdGenerator): ItemId {.inline.} =
   assert(not x.sealed)
@@ -1341,11 +1347,15 @@ when false:
       echo k
       echo v
 
-proc newSym*(symKind: TSymKind, name: PIdent, id: ItemId, owner: PSym,
+proc newSym*(symKind: TSymKind, name: PIdent, idgen: IdGenerator; owner: PSym,
              info: TLineInfo; options: TOptions = {}): PSym =
   # generates a symbol and initializes the hash field too
+  assert not name.isNil
+  let id = nextSymId idgen
   result = PSym(name: name, kind: symKind, flags: {}, info: info, itemId: id,
-                options: options, owner: owner, offset: defaultOffset)
+                options: options, owner: owner, offset: defaultOffset,
+                disamb: getOrDefault(idgen.disambTable, name).int32)
+  idgen.disambTable.inc name
   when false:
     if id.module == 48 and id.item == 39:
       writeStackTrace()
@@ -1559,8 +1569,8 @@ proc copyType*(t: PType, id: ItemId, owner: PSym): PType =
 proc exactReplica*(t: PType): PType =
   result = copyType(t, t.itemId, t.owner)
 
-proc copySym*(s: PSym; id: ItemId): PSym =
-  result = newSym(s.kind, s.name, id, s.owner, s.info, s.options)
+proc copySym*(s: PSym; idgen: IdGenerator): PSym =
+  result = newSym(s.kind, s.name, idgen, s.owner, s.info, s.options)
   #result.ast = nil            # BUGFIX; was: s.ast which made problems
   result.typ = s.typ
   result.flags = s.flags
@@ -1575,9 +1585,9 @@ proc copySym*(s: PSym; id: ItemId): PSym =
     result.bitsize = s.bitsize
     result.alignment = s.alignment
 
-proc createModuleAlias*(s: PSym, id: ItemId, newIdent: PIdent, info: TLineInfo;
+proc createModuleAlias*(s: PSym, idgen: IdGenerator, newIdent: PIdent, info: TLineInfo;
                         options: TOptions): PSym =
-  result = newSym(s.kind, newIdent, id, s.owner, info, options)
+  result = newSym(s.kind, newIdent, idgen, s.owner, info, options)
   # keep ID!
   result.ast = s.ast
   #result.id = s.id # XXX figure out what to do with the ID.
