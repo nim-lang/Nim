@@ -1,5 +1,5 @@
 discard """
-  matrix: "--gc:refc; --gc:arc"
+  matrix: "--mm:refc; --mm:orc"
   input: "Arne"
   output: '''
 Hello! What is your name?

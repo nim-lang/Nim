@@ -348,20 +348,20 @@ func is1xx*(code: HttpCode): bool {.inline, since: (1, 5).} =
   runnableExamples:
     doAssert is1xx(HttpCode(103))
 
-  code.int in {100 .. 199}
+  code.int in 100 .. 199
 
 func is2xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether `code` is a 2xx HTTP status code.
-  code.int in {200 .. 299}
+  code.int in 200 .. 299
 
 func is3xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether `code` is a 3xx HTTP status code.
-  code.int in {300 .. 399}
+  code.int in 300 .. 399
 
 func is4xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether `code` is a 4xx HTTP status code.
-  code.int in {400 .. 499}
+  code.int in 400 .. 499
 
 func is5xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether `code` is a 5xx HTTP status code.
-  code.int in {500 .. 599}
+  code.int in 500 .. 599

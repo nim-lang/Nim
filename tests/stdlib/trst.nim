@@ -17,6 +17,7 @@ discard """
 
 [Suite] RST inline markup
 '''
+matrix: "--mm:refc; --mm:orc"
 """
 
 # tests for rst module
@@ -67,6 +68,45 @@ proc toAst(input: string,
       result = e.msg
 
 suite "RST parsing":
+  test "Standalone punctuation is not parsed as heading overlines":
+    check(dedent"""
+        Paragraph
+
+        !""".toAst ==
+      dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Paragraph'
+          rnParagraph
+            rnLeaf  '!'
+      """)
+
+    check(dedent"""
+        Paragraph1
+
+        ...
+
+        Paragraph2""".toAst ==
+      dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Paragraph1'
+          rnParagraph
+            rnLeaf  '...'
+          rnParagraph
+            rnLeaf  'Paragraph2'
+      """)
+
+    check(dedent"""
+        ---
+        Paragraph""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  '---'
+          rnLeaf  ' '
+          rnLeaf  'Paragraph'
+      """)
+
   test "References are whitespace-neutral and case-insensitive":
     # refname is 'lexical-analysis', the same for all the 3 variants:
     check(dedent"""

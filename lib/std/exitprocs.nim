@@ -10,6 +10,8 @@
 ## This module allows adding hooks to program exit.
 
 import locks
+when defined(js) and not defined(nodejs):
+  import std/assertions
 
 type
   FunKind = enum kClosure, kNoconv # extend as needed

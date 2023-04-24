@@ -372,7 +372,7 @@ proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   of tyOwned:
     # bug #11257: the comparison system.`==`[T: proc](x, y: T) works
     # better without the 'owned' type:
-    if f != nil and f.len > 0 and f[0].skipTypes({tyBuiltInTypeClass}).kind == tyProc:
+    if f != nil and f.len > 0 and f[0].skipTypes({tyBuiltInTypeClass, tyOr}).kind == tyProc:
       result = t.lastSon
     else:
       result = t
@@ -624,7 +624,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     if f.len != a.len: return
     result = isEqual      # start with maximum; also correct for no
                           # params at all
-    
+
     if f.flags * {tfIterator} != a.flags * {tfIterator}:
       return isNone
 
@@ -712,7 +712,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
       if alreadyBound != nil: typ = alreadyBound
 
       template paramSym(kind): untyped =
-        newSym(kind, typeParamName, nextSymId(c.idgen), typeClass.sym, typeClass.sym.info, {})
+        newSym(kind, typeParamName, c.idgen, typeClass.sym, typeClass.sym.info, {})
 
       block addTypeParam:
         for prev in typeParams:
@@ -1849,9 +1849,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       elif f.base.kind == tyNone:
         result = isGeneric
       else:
-        let r = typeRel(c, f.base, a.base, flags)
-        if r >= isIntConv:
-          result = r
+        result = typeRel(c, f.base, a.base, flags)
 
       if result != isNone:
         put(c, f, a)
@@ -1859,9 +1857,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if tfUnresolved in f.flags:
         result = typeRel(c, prev.base, a, flags)
       elif a.kind == tyTypeDesc:
-        let r = typeRel(c, prev.base, a.base, flags)
-        if r >= isIntConv:
-          result = r
+        result = typeRel(c, prev.base, a.base, flags)
       else:
         result = isNone
 
@@ -2393,7 +2389,9 @@ proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
     # checking `nfBlockArg in n[a2].flags` wouldn't work inside templates
     if n[a2].kind != nkStmtList: break
     let formalLast = m.callee.n[m.callee.n.len - (n.len - a2)]
-    if formalLast.kind == nkSym and formalLast.sym.ast == nil:
+    # parameter has to occupy space (no default value, not void or varargs)
+    if formalLast.kind == nkSym and formalLast.sym.ast == nil and
+        formalLast.sym.typ.kind notin {tyVoid, tyVarargs}:
       result = a2
     else: break
 

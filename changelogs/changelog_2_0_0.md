@@ -175,6 +175,16 @@
 
 - - Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
 
+- The JavaScript backend now uses [BigInt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt)
+  for 64-bit integer types (`int64` and `uint64`) by default. As this affects
+  JS code generation, code using these types to interface with the JS backend
+  may need to be updated. Note that `int` and `uint` are not affected.
+  
+  For compatibility with [platforms that do not support BigInt](https://caniuse.com/bigint)
+  and in the case of potential bugs with the new implementation, the
+  old behavior is currently still supported with the command line option
+  `--jsbigint64:off`.
+
 - The `proc` and `iterator` type classes now respectively only match
   procs and iterators. Previously both type classes matched any of
   procs or iterators.
@@ -208,6 +218,12 @@
   state of the AST may be unexpected to existing code, both due to the
   replacement of the `nnkFormalParams` node as well as having child nodes
   unlike other type class AST.
+
+- Signed integer literals in `set` literals now default to a range type of
+  `0..255` instead of `0..65535` (the maximum size of sets).
+  
+- Case statements with else branches put before elif/of branches in macros
+  are rejected with "invalid order of case branches".
 
 ## Standard library additions and changes
 
@@ -432,7 +448,50 @@
 
 - When compiling for Release the flag `-fno-math-errno` is used for GCC.
 
+## Docgen
+
+- `Markdown` is now default markup language of doc comments (instead
+  of legacy `RstMarkdown` mode). In this release we begin to separate
+  RST and Markdown features to better follow specification of each
+  language, with the focus on Markdown development.
+
+  * So we add `{.doctype: Markdown | RST | RstMarkdown.}` pragma allowing to
+    select the markup language mode in the doc comments of current `.nim`
+    file for processing by `nim doc`:
+
+      1. `Markdown` (default) is basically CommonMark (standard Markdown) +
+         some Pandoc Markdown features + some RST features that are missing
+         in our current implementation of CommonMark and Pandoc Markdown.
+      2. `RST` closely follows RST spec with few additional Nim features.
+      3. `RstMarkdown` is a maximum mix of RST and Markdown features, which
+          is kept for the sake of compatibility and ease of migration.
+
+  * and we add separate `md2html` and `rst2html` commands for processing
+    standalone `.md` and `.rst` files respectively (and also `md2tex/rst2tex`).
+
+- Added Pandoc Markdown bracket syntax `[...]` for making anchor-less links.
+- Docgen now supports concise syntax for referencing Nim symbols:
+  instead of specifying HTML anchors directly one can use original
+  Nim symbol declarations (adding the aforementioned link brackets
+  `[...]` around them).
+    * to use this feature across modules a new `importdoc` directive is added.
+  Using this feature for referencing also helps to ensure that links
+  (inside one module or the whole project) are not broken.
+- Added support for RST & Markdown quote blocks (blocks starting from `>`).
+- Added a popular Markdown definition lists extension.
+- Added Markdown indented code blocks (blocks indented by >= 4 spaces).
+- Added syntax for additional parameters to Markdown code blocks:
+
+       ```nim test="nim c $1"
+       ...
+       ```
 
 ## Tool changes
 
 - Nim now ships Nimble version 0.14 which added support for lock-files. Libraries are stored in `$nimbleDir/pkgs2` (it was `$nimbleDir/pkgs`). Use `nimble develop --global` to create an old style link file in the special links directory documented at https://github.com/nim-lang/nimble#nimble-develop.
+- nimgrep added option `--inContext` (and `--notInContext`), which
+  allows to filter only matches with context block containing a given pattern.
+- nimgrep: names of options containing "include/exclude" are deprecated,
+  e.g. instead of `--includeFile` and `--excludeFile` we have
+  `--filename` and `--notFilename` respectively.
+  Also the semantics become consistent for such positive/negative filters.

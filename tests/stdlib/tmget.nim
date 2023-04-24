@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   output: '''Can't access 6
 10
 11

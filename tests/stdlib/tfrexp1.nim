@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "js c cpp"
 """
 

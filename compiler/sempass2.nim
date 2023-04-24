@@ -233,7 +233,7 @@ proc markGcUnsafe(a: PEffects; reason: PNode) =
       if reason.kind == nkSym:
         a.owner.gcUnsafetyReason = reason.sym
       else:
-        a.owner.gcUnsafetyReason = newSym(skUnknown, a.owner.name, nextSymId a.c.idgen,
+        a.owner.gcUnsafetyReason = newSym(skUnknown, a.owner.name, a.c.idgen,
                                           a.owner, reason.info, {})
 
 proc markSideEffect(a: PEffects; reason: PNode | PSym; useLoc: TLineInfo) =
@@ -246,7 +246,7 @@ proc markSideEffect(a: PEffects; reason: PNode | PSym; useLoc: TLineInfo) =
           sym = reason.sym
         else:
           let kind = if reason.kind == nkHiddenDeref: skParam else: skUnknown
-          sym = newSym(kind, a.owner.name, nextSymId a.c.idgen, a.owner, reason.info, {})
+          sym = newSym(kind, a.owner.name, a.c.idgen, a.owner, reason.info, {})
       else:
         sym = reason
       a.c.sideEffects.mgetOrPut(a.owner.id, @[]).add (useLoc, sym)
