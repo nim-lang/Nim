@@ -1054,7 +1054,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
     else:
       result = newTree(nkFastAsgn, dest, p(ri, c, s, normal))
   else:
-    case ri.kind
+    let ri2 = if ri.kind == nkWhen: ri[1][0] else: ri
+    case ri2.kind
     of nkCallKinds:
       result = c.genSink(s, dest, p(ri, c, s, consumed), flags)
     of nkBracketExpr:
