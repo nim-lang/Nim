@@ -1121,7 +1121,7 @@ when defined(nimFixedForwardGeneric):
       dst = cast[T](jsonNode.num)
 
   proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
-    verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)
+    verifyJsonKind(jsonNode, {JInt, JFloat, JString}, jsonPath)
     if jsonNode.kind == JString:
       case jsonNode.str
       of "nan":
