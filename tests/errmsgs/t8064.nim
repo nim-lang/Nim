@@ -1,6 +1,8 @@
-discard """
-  errormsg: "expression has no type: values"
-"""
 import tables
 
 values
+
+
+discard """
+  errormsg: "expression has no type: values"
+"""

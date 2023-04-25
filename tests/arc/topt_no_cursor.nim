@@ -1,7 +1,8 @@
 discard """
   nimoutFull: true
   cmd: '''nim c -r --warnings:off --hints:off --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
-  nimout: '''--expandArc: newTarget
+  nimout: '''
+--expandArc: newTarget
 
 var
   splat
@@ -11,9 +12,9 @@ splat = splitDrive do:
   let blitTmp = path
   blitTmp
 :tmp = splat.drive
-wasMoved(splat.drive)
+`=wasMoved`(splat.drive)
 :tmp_1 = splat.path_1
-wasMoved(splat.path_1)
+`=wasMoved`(splat.path_1)
 result = (
   let blitTmp_1 = :tmp
   blitTmp_1,
@@ -60,10 +61,10 @@ var
 try:
   it_cursor = x
   a = (
-    wasMoved(:tmpD)
+    `=wasMoved`(:tmpD)
     `=copy`(:tmpD, it_cursor.key)
     :tmpD,
-    wasMoved(:tmpD_1)
+    `=wasMoved`(:tmpD_1)
     `=copy`(:tmpD_1, it_cursor.val)
     :tmpD_1)
   echo [
@@ -112,7 +113,7 @@ block :tmp:
       var :tmpD
       sym = shadowScope.symbols[i]
       addInterfaceDecl(c):
-        wasMoved(:tmpD)
+        `=wasMoved`(:tmpD)
         `=copy_1`(:tmpD, sym)
         :tmpD
       inc(i, 1)
@@ -125,7 +126,7 @@ this.isValid = fileExists(this.value)
 if dirExists(this.value):
   var :tmpD
   par = (dir:
-    wasMoved(:tmpD)
+    `=wasMoved`(:tmpD)
     `=copy`(:tmpD, this.value)
     :tmpD, front: "") else:
   var
@@ -133,10 +134,10 @@ if dirExists(this.value):
     :tmpD_2
     :tmpD_3
   par = (dir_1: parentDir(this.value), front_1:
-    wasMoved(:tmpD_1)
+    `=wasMoved`(:tmpD_1)
     `=copy`(:tmpD_1,
       :tmpD_3 = splitDrive do:
-        wasMoved(:tmpD_2)
+        `=wasMoved`(:tmpD_2)
         `=copy`(:tmpD_2, this.value)
         :tmpD_2
       :tmpD_3.path)

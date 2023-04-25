@@ -9,11 +9,13 @@
 
 # This module implements the semantic checking pass.
 
+import tables
+
 import
   ast, strutils, options, astalgo, trees,
   wordrecg, ropes, msgs, idents, renderer, types, platform, math,
   magicsys, nversion, nimsets, semfold, modulepaths, importer,
-  procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
+  procfind, lookups, pragmas, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, strtabs, int128,
@@ -219,7 +221,7 @@ proc commonType*(c: PContext; x: PType, y: PNode): PType =
   commonType(c, x, y.typ)
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
-  result = newSym(kind, considerQuotedIdent(c, n), nextSymId c.idgen, getCurrOwner(c), n.info)
+  result = newSym(kind, considerQuotedIdent(c, n), c.idgen, getCurrOwner(c), n.info)
   when defined(nimsuggest):
     suggestDecl(c, n, result)
 
@@ -242,7 +244,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     # template; we must fix it here: see #909
     result.owner = getCurrOwner(c)
   else:
-    result = newSym(kind, considerQuotedIdent(c, n), nextSymId c.idgen, getCurrOwner(c), n.info)
+    result = newSym(kind, considerQuotedIdent(c, n), c.idgen, getCurrOwner(c), n.info)
   #if kind in {skForVar, skLet, skVar} and result.owner.kind == skModule:
   #  incl(result.flags, sfGlobal)
   when defined(nimsuggest):
@@ -281,7 +283,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
 
 proc symFromType(c: PContext; t: PType, info: TLineInfo): PSym =
   if t.sym != nil: return t.sym
-  result = newSym(skType, getIdent(c.cache, "AnonType"), nextSymId c.idgen, t.owner, info)
+  result = newSym(skType, getIdent(c.cache, "AnonType"), c.idgen, t.owner, info)
   result.flags.incl sfAnon
   result.typ = t
 
@@ -572,7 +574,7 @@ proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool): s
         let asgnExpr = defaultNodeField(c, recNode, recNode.typ)
         if asgnExpr != nil:
           hasDefault = true
-          asgnExpr.flags.incl nfUseDefaultField
+          asgnExpr.flags.incl nfSkipFieldChecking
           result.add newTree(nkExprColonExpr, recNode, asgnExpr)
           return
 
@@ -582,7 +584,7 @@ proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool): s
                       newSymNode(getSysMagic(c.graph, recNode.info, "zeroDefault", mZeroDefault)),
                       newNodeIT(nkType, recNode.info, asgnType)
                     )
-      asgnExpr.flags.incl nfUseDefaultField
+      asgnExpr.flags.incl nfSkipFieldChecking
       asgnExpr.typ = recType
       result.add newTree(nkExprColonExpr, recNode, asgnExpr)
   else:
@@ -604,7 +606,7 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
       defaultValue = newIntNode(nkIntLit#[c.graph]#, 0)
       defaultValue.typ = discriminator.typ
     selectedBranch = recNode.pickCaseBranchIndex defaultValue
-    defaultValue.flags.incl nfUseDefaultField
+    defaultValue.flags.incl nfSkipFieldChecking
     result.add newTree(nkExprColonExpr, discriminator, defaultValue)
     result.add defaultFieldsForTheUninitialized(c, recNode[selectedBranch][^1])
   of nkSym:
@@ -616,7 +618,7 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
       let asgnExpr = defaultNodeField(c, recNode, recType)
       if asgnExpr != nil:
         asgnExpr.typ = recType
-        asgnExpr.flags.incl nfUseDefaultField
+        asgnExpr.flags.incl nfSkipFieldChecking
         result.add newTree(nkExprColonExpr, recNode, asgnExpr)
   else:
     doAssert false
@@ -666,41 +668,46 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
         n.add prc.ast
   c.lastGenericIdx = c.generics.len
 
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
-  var c = newContext(graph, module)
-  c.idgen = idgen
-  c.enforceVoidContext = newType(tyTyped, nextTypeId(idgen), nil)
-  c.voidType = newType(tyVoid, nextTypeId(idgen), nil)
+proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PContext =
+  result = newContext(graph, module)
+  result.idgen = idgen
+  result.enforceVoidContext = newType(tyTyped, nextTypeId(idgen), nil)
+  result.voidType = newType(tyVoid, nextTypeId(idgen), nil)
 
-  if c.p != nil: internalError(graph.config, module.info, "sem.myOpen")
-  c.semConstExpr = semConstExpr
-  c.semExpr = semExpr
-  c.semTryExpr = tryExpr
-  c.semTryConstExpr = tryConstExpr
-  c.computeRequiresInit = computeRequiresInit
-  c.semOperand = semOperand
-  c.semConstBoolExpr = semConstBoolExpr
-  c.semOverloadedCall = semOverloadedCall
-  c.semInferredLambda = semInferredLambda
-  c.semGenerateInstance = generateInstance
-  c.semTypeNode = semTypeNode
-  c.instTypeBoundOp = sigmatch.instTypeBoundOp
-  c.hasUnresolvedArgs = hasUnresolvedArgs
-  c.templInstCounter = new int
+  if result.p != nil: internalError(graph.config, module.info, "sem.preparePContext")
+  result.semConstExpr = semConstExpr
+  result.semExpr = semExpr
+  result.semTryExpr = tryExpr
+  result.semTryConstExpr = tryConstExpr
+  result.computeRequiresInit = computeRequiresInit
+  result.semOperand = semOperand
+  result.semConstBoolExpr = semConstBoolExpr
+  result.semOverloadedCall = semOverloadedCall
+  result.semInferredLambda = semInferredLambda
+  result.semGenerateInstance = generateInstance
+  result.semTypeNode = semTypeNode
+  result.instTypeBoundOp = sigmatch.instTypeBoundOp
+  result.hasUnresolvedArgs = hasUnresolvedArgs
+  result.templInstCounter = new int
 
-  pushProcCon(c, module)
-  pushOwner(c, c.module)
+  pushProcCon(result, module)
+  pushOwner(result, result.module)
 
-  c.moduleScope = openScope(c)
-  c.moduleScope.addSym(module) # a module knows itself
+  result.moduleScope = openScope(result)
+  result.moduleScope.addSym(module) # a module knows itself
 
   if sfSystemModule in module.flags:
     graph.systemModule = module
-  c.topLevelScope = openScope(c)
-  result = c
+  result.topLevelScope = openScope(result)
 
 proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
   if g.systemModule == nil: return false
+  var n = n
+  if n.kind == nkStmtList:
+    for i in 0..<n.len-1:
+      if n[i].kind notin {nkCommentStmt, nkEmpty}:
+        n = n[i]
+        break
   case n.kind
   of nkImportStmt:
     for x in n:
@@ -765,8 +772,7 @@ proc recoverContext(c: PContext) =
   while getCurrOwner(c).kind != skModule: popOwner(c)
   while c.p != nil and c.p.owner.kind != skModule: c.p = c.p.next
 
-proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
-  var c = PContext(context)
+proc semWithPContext*(c: PContext, n: PNode): PNode =
   # no need for an expensive 'try' if we stop after the first error anyway:
   if c.config.errorMax <= 1:
     result = semStmtAndGenerateGenerics(c, n)
@@ -787,13 +793,13 @@ proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
   storeRodNode(c, result)
 
+
 proc reportUnusedModules(c: PContext) =
   for i in 0..high(c.unusedImports):
     if sfUsed notin c.unusedImports[i][0].flags:
       message(c.config, c.unusedImports[i][1], warnUnusedImportX, c.unusedImports[i][0].name.s)
 
-proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
-  var c = PContext(context)
+proc closePContext*(graph: ModuleGraph; c: PContext, n: PNode): PNode =
   if c.config.cmd == cmdIdeTools and not c.suggestionsMade:
     suggestSentinel(c)
   closeScope(c)         # close module's scope
@@ -808,6 +814,3 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   popOwner(c)
   popProcCon(c)
   sealRodFile(c)
-
-const semPass* = makePass(myOpen, myProcess, myClose,
-                          isFrontend = true)

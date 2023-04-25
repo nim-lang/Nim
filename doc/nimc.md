@@ -32,6 +32,17 @@ Compiler Usage
 
 Command-line switches
 ---------------------
+All options that take a `PATH` or `DIR` argument are subject to path substitution:
+
+- `$nim`: The global nim prefix path
+- `$lib`: The stdlib path
+- `$home` and `~`: The user's home path
+- `$config`: The directory of the module currently being compiled
+- `$projectname`: The project file's name without file extension
+- `$projectpath` and `$projectdir`: The project file's path
+- `$nimcache`: The nimcache path
+
+
 Basic command-line switches are:
 
 .. no syntax highlighting in the below included files at the moment
@@ -316,14 +327,16 @@ Another way is to make Nim invoke a cross compiler toolchain:
   nim c --cpu:arm --os:linux myproject.nim
   ```
 
-For cross compilation, the compiler invokes a C compiler named
-like `$cpu.$os.$cc` (for example arm.linux.gcc) and the configuration
-system is used to provide meaningful defaults. For example for `ARM` your
+For cross compilation, the compiler invokes a C compiler named like
+`$cpu.$os.$cc` (for example `arm.linux.gcc`) with options defined in
+`$cpu.$os.$cc.options.always`. The configuration system is used to provide
+meaningful defaults. For example, for Linux on a 32-bit ARM CPU, your
 configuration file should contain something like:
 
     arm.linux.gcc.path = "/usr/bin"
     arm.linux.gcc.exe = "arm-linux-gcc"
     arm.linux.gcc.linkerexe = "arm-linux-gcc"
+    arm.linux.gcc.options.always = "-w -fmax-errors=3"
 
 Cross-compilation for Windows
 =============================
@@ -713,7 +726,7 @@ Nim's thread API provides a simple wrapper around more advanced
 RTOS task features. Customizing the stack size and stack guard size can
 be done by setting `-d:nimThreadStackSize=16384` or `-d:nimThreadStackGuard=32`.
 
-Currently only Zephyr and FreeRTOS support these configurations.
+Currently only Zephyr, NuttX and FreeRTOS support these configurations.
 
 Nim for realtime systems
 ========================

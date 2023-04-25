@@ -50,6 +50,7 @@ type
     module: PSym
     transCon: PTransCon      # top of a TransCon stack
     inlining: int            # > 0 if we are in inlining context (copy vars)
+    isIntroducingNewLocalVars: bool  # true if we are in `introducingNewLocalVars` (don't transform yields)
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
     deferDetected, tooEarly: bool
     graph: ModuleGraph
@@ -90,7 +91,7 @@ proc getCurrOwner(c: PTransf): PSym =
   else: result = c.module
 
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
-  let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), nextSymId(c.idgen), getCurrOwner(c), info)
+  let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), c.idgen, getCurrOwner(c), info)
   r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flags, sfFromGeneric)
   let owner = getCurrOwner(c)
@@ -176,7 +177,7 @@ proc freshVar(c: PTransf; v: PSym): PNode =
   if owner.isIterator and not c.tooEarly:
     result = freshVarForClosureIter(c.graph, v, c.idgen, owner)
   else:
-    var newVar = copySym(v, nextSymId(c.idgen))
+    var newVar = copySym(v, c.idgen)
     incl(newVar.flags, sfFromGeneric)
     newVar.owner = owner
     result = newSymNode(newVar)
@@ -248,8 +249,7 @@ proc hasContinue(n: PNode): bool =
       if hasContinue(n[i]): return true
 
 proc newLabel(c: PTransf, n: PNode): PSym =
-  result = newSym(skLabel, nil, nextSymId(c.idgen), getCurrOwner(c), n.info)
-  result.name = getIdent(c.graph.cache, genPrefix)
+  result = newSym(skLabel, getIdent(c.graph.cache, genPrefix), c.idgen, getCurrOwner(c), n.info)
 
 proc transformBlock(c: PTransf, n: PNode): PNode =
   var labl: PSym
@@ -450,7 +450,9 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     result.add(c.transCon.forLoopBody)
   else:
     # we need to introduce new local variables:
+    c.isIntroducingNewLocalVars = true # don't transform yields when introducing new local vars
     result.add(introduceNewLocalVars(c, c.transCon.forLoopBody))
+    c.isIntroducingNewLocalVars = false
 
   for idx in 0 ..< result.len:
     var changeNode = result[idx]
@@ -938,6 +940,15 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
     else:
       result = n
 
+proc transformDerefBlock(c: PTransf, n: PNode): PNode =
+  # We transform (block: x)[] to (block: x[])
+  let e0 = n[0]
+  result = shallowCopy(e0)
+  result.typ = n.typ
+  for i in 0 ..< e0.len - 1:
+    result[i] = e0[i]
+  result[e0.len-1] = newTreeIT(nkHiddenDeref, n.info, n.typ, e0[e0.len-1])
+
 proc transform(c: PTransf, n: PNode): PNode =
   when false:
     var oldDeferAnchor: PNode
@@ -1009,7 +1020,12 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkAddr:
     result = transformAddrDeref(c, n, {nkDerefExpr, nkHiddenDeref})
   of nkDerefExpr, nkHiddenDeref:
-    result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
+    if n[0].kind in {nkBlockExpr, nkBlockStmt}:
+      # bug #20107 bug #21540. Watch out to not deref the pointer too late.
+      let e = transformDerefBlock(c, n)
+      result = transformBlock(c, e)
+    else:
+      result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = transformConv(c, n)
   of nkDiscardStmt:
@@ -1036,7 +1052,7 @@ proc transform(c: PTransf, n: PNode): PNode =
     else:
       result = transformSons(c, n)
   of nkYieldStmt:
-    if c.inlining > 0:
+    if c.inlining > 0 and not c.isIntroducingNewLocalVars:
       result = transformYield(c, n)
     else:
       result = transformSons(c, n)

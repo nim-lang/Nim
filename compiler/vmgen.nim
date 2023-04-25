@@ -115,7 +115,8 @@ proc echoCode*(c: PCtx; start=0; last = -1) {.deprecated.} =
   codeListing(c, buf, start, last)
   echo buf
 
-proc gABC(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister = 0) =
+proc gABC(ctx: PCtx; n: PNode; opc: TOpcode;
+          a: TRegister = 0, b: TRegister = 0, c: TRegister = 0) =
   ## Takes the registers `b` and `c`, applies the operation `opc` to them, and
   ## stores the result into register `a`
   ## The node is needed for debug information
@@ -1829,7 +1830,7 @@ proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currP
     let field = newNodeI(nkExprColonExpr, result.info)
     field.add(obj)
     let value = getNullValue(obj.sym.typ, result.info, conf)
-    value.flags.incl nfUseDefaultField
+    value.flags.incl nfSkipFieldChecking
     field.add(value)
     result.add field
     doAssert obj.sym.position == currPosition
@@ -1907,6 +1908,19 @@ proc genVarSection(c: PCtx; n: PNode) =
           let tmp = c.genx(a[0], {gfNodeAddr})
           let val = c.genx(a[2])
           c.genAdditionalCopy(a[2], opcWrDeref, tmp, 0, val)
+          c.freeTemp(val)
+          c.freeTemp(tmp)
+        elif not importcCondVar(s) and not (s.typ.kind == tyProc and s.typ.callConv == ccClosure) and
+                sfPure notin s.flags: # fixes #10938
+          # there is a pre-existing issue with closure types in VM
+          # if `(var s: proc () = default(proc ()); doAssert s == nil)` works for you;
+          # you might remove the second condition.
+          # the problem is that closure types are tuples in VM, but the types of its children
+          # shouldn't have the same type as closure types.
+          let tmp = c.genx(a[0], {gfNodeAddr})
+          let sa = getNullValue(s.typ, a.info, c.config)
+          let val = c.genx(sa)
+          c.genAdditionalCopy(sa, opcWrDeref, tmp, 0, val)
           c.freeTemp(val)
           c.freeTemp(tmp)
       else:
@@ -2030,7 +2044,7 @@ proc procIsCallback(c: PCtx; s: PSym): bool =
   if c.callbackIndex.contains(key):
     let index = c.callbackIndex[key]
     doAssert s.offset == -1
-    s.offset = -2 - index
+    s.offset = -2'i32 - index.int32
     result = true
   else:
     result = false
@@ -2330,7 +2344,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.patch(procStart)
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
-    s.offset = c.prc.regInfo.len
+    s.offset = c.prc.regInfo.len.int32
     #if s.name.s == "main" or s.name.s == "[]":
     #  echo renderTree(body)
     #  c.echoCode(result)

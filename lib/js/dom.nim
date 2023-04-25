@@ -1503,7 +1503,7 @@ proc confirm*(w: Window, msg: cstring): bool
 proc disableExternalCapture*(w: Window)
 proc enableExternalCapture*(w: Window)
 proc find*(w: Window, text: cstring, caseSensitive = false,
-           backwards = false)
+           backwards = false): bool
 proc focus*(w: Window)
 proc forward*(w: Window)
 proc getComputedStyle*(w: Window, e: Node, pe: Node = nil): Style

@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 include parsecsv
 import strutils, os
 import std/assertions

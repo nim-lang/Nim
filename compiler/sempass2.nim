@@ -233,7 +233,7 @@ proc markGcUnsafe(a: PEffects; reason: PNode) =
       if reason.kind == nkSym:
         a.owner.gcUnsafetyReason = reason.sym
       else:
-        a.owner.gcUnsafetyReason = newSym(skUnknown, a.owner.name, nextSymId a.c.idgen,
+        a.owner.gcUnsafetyReason = newSym(skUnknown, a.owner.name, a.c.idgen,
                                           a.owner, reason.info, {})
 
 proc markSideEffect(a: PEffects; reason: PNode | PSym; useLoc: TLineInfo) =
@@ -246,7 +246,7 @@ proc markSideEffect(a: PEffects; reason: PNode | PSym; useLoc: TLineInfo) =
           sym = reason.sym
         else:
           let kind = if reason.kind == nkHiddenDeref: skParam else: skUnknown
-          sym = newSym(kind, a.owner.name, nextSymId a.c.idgen, a.owner, reason.info, {})
+          sym = newSym(kind, a.owner.name, a.c.idgen, a.owner, reason.info, {})
       else:
         sym = reason
       a.c.sideEffects.mgetOrPut(a.owner.id, @[]).add (useLoc, sym)
@@ -396,7 +396,7 @@ proc addRaiseEffect(a: PEffects, e, comesFrom: PNode) =
     if sameType(a.graph.excType(aa[i]), a.graph.excType(e)): return
 
   if e.typ != nil:
-    if optNimV1Emulation in a.config.globalOptions or not isDefectException(e.typ):
+    if not isDefectException(e.typ):
       throws(a.exc, e, comesFrom)
 
 proc addTag(a: PEffects, e, comesFrom: PNode) =
@@ -822,9 +822,6 @@ proc checkForSink(tracked: PEffects; n: PNode) =
   if tracked.inIfStmt == 0 and optSinkInference in tracked.config.options:
     checkForSink(tracked.config, tracked.c.idgen, tracked.owner, n)
 
-proc strictFuncsActive(tracked: PEffects): bool {.inline.} =
-  sfNoSideEffect in tracked.owner.flags and strictFuncs in tracked.c.features and not tracked.inEnforcedNoSideEffects
-
 proc trackCall(tracked: PEffects; n: PNode) =
   template gcsafeAndSideeffectCheck() =
     if notGcSafe(op) and not importedFromC(a):
@@ -934,9 +931,11 @@ proc trackCall(tracked: PEffects; n: PNode) =
           # initialized until after the call. Since we do this after we analysed the
           # call, this is fine.
           initVar(tracked, n[i].skipAddr, false)
-        if tracked.strictFuncsActive and isDangerousLocation(n[i].skipAddr, tracked.owner):
-          localError(tracked.config, n[i].info,
-            "cannot pass $1 to `var T` parameter within a strict func" % renderTree(n[i]))
+        if strictFuncs in tracked.c.features and not tracked.inEnforcedNoSideEffects and
+           isDangerousLocation(n[i].skipAddr, tracked.owner):
+          if sfNoSideEffect in tracked.owner.flags:
+            localError(tracked.config, n[i].info,
+              "cannot pass $1 to `var T` parameter within a strict func" % renderTree(n[i]))
           tracked.hasSideEffect = true
       else: discard
 
@@ -1090,10 +1089,12 @@ proc track(tracked: PEffects, n: PNode) =
       createTypeBoundOps(tracked, n[0].typ, n.info)
     if n[0].kind != nkSym or not isLocalSym(tracked, n[0].sym):
       checkForSink(tracked, n[1])
-      if tracked.strictFuncsActive and isDangerousLocation(n[0], tracked.owner):
+      if strictFuncs in tracked.c.features and not tracked.inEnforcedNoSideEffects and
+         isDangerousLocation(n[0], tracked.owner):
         tracked.hasSideEffect = true
-        localError(tracked.config, n[0].info,
-            "cannot mutate location $1 within a strict func" % renderTree(n[0]))
+        if sfNoSideEffect in tracked.owner.flags:
+          localError(tracked.config, n[0].info,
+              "cannot mutate location $1 within a strict func" % renderTree(n[0]))
   of nkVarSection, nkLetSection:
     for child in n:
       let last = lastSon(child)

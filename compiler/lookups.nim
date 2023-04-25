@@ -8,7 +8,7 @@
 #
 
 # This module implements lookup helpers.
-import std/[algorithm, strutils]
+import std/[algorithm, strutils, tables]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -274,7 +274,7 @@ proc errorSym*(c: PContext, n: PNode): PSym =
       considerQuotedIdent(c, m)
     else:
       getIdent(c.cache, "err:" & renderTree(m))
-  result = newSym(skError, ident, nextSymId(c.idgen), getCurrOwner(c), n.info, {})
+  result = newSym(skError, ident, c.idgen, getCurrOwner(c), n.info, {})
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
   # pretend it's from the top level scope to prevent cascading errors:
@@ -343,13 +343,15 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
   if sym.name.s == "_": return
   let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
-    if sym.kind == skModule and conflict.kind == skModule and sym.owner == conflict.owner:
+    if sym.kind == skModule and conflict.kind == skModule:      
       # e.g.: import foo; import foo
       # xxx we could refine this by issuing a different hint for the case
-      # where a duplicate import happens inside an include.
-      localError(c.config, info, hintDuplicateModuleImport,
-        "duplicate import of '$1'; previous import here: $2" %
-        [sym.name.s, c.config $ conflict.info])
+      # where a duplicate import happens inside an include.      
+      if c.importModuleMap[sym.id] == c.importModuleMap[conflict.id]:
+        #only hints if the conflict is the actual module not just a shared name
+        localError(c.config, info, hintDuplicateModuleImport,
+          "duplicate import of '$1'; previous import here: $2" %
+          [sym.name.s, c.config $ conflict.info])
     else:
       wrongRedefinition(c, info, sym.name.s, conflict.info, errGenerated)
 
@@ -395,11 +397,12 @@ proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
   if fn.kind notin OverloadableSyms:
     internalError(c.config, fn.info, "addOverloadableSymAt")
     return
-  let check = strTableGet(scope.symbols, fn.name)
-  if check != nil and check.kind notin OverloadableSyms:
-    wrongRedefinition(c, fn.info, fn.name.s, check.info)
-  else:
-    scope.addSym(fn)
+  if fn.name.s != "_":
+    let check = strTableGet(scope.symbols, fn.name)
+    if check != nil and check.kind notin OverloadableSyms:
+      wrongRedefinition(c, fn.info, fn.name.s, check.info)
+    else:
+      scope.addSym(fn)
 
 proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   ## adds an overloadable symbol on the scope and the interface if appropriate
@@ -488,12 +491,9 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
     let e = list.pop()
     if c.config.spellSuggestMax == spellSuggestSecretSauce:
       const
-        smallThres = 2
-        maxCountForSmall = 4
-        # avoids ton of operator matches when mis-matching short symbols such as `i`
-        # other heuristics could be devised, such as only suggesting operators if `name0`
-        # is an operator (likewise with non-operators).
-      if e.dist > e0.dist or (name0.len <= smallThres and count >= maxCountForSmall): break
+        minLengthForSuggestion = 4
+        maxCount = 3 # avoids ton of matches; three counts for equal distances
+      if e.dist > e0.dist or count >= maxCount or name0.len < minLengthForSuggestion: break
     elif count >= c.config.spellSuggestMax: break
     if count == 0:
       result.add "\ncandidates (edit distance, scope distance); see '--spellSuggest': "
@@ -545,12 +545,16 @@ proc errorUseQualifier*(c: PContext; info:TLineInfo; choices: PNode) =
   errorUseQualifier(c, info, candidates, prefix)
 
 proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extra = "") =
-  var err = "undeclared identifier: '" & name & "'" & extra
-  if c.recursiveDep.len > 0:
-    err.add "\nThis might be caused by a recursive module dependency:\n"
-    err.add c.recursiveDep
-    # prevent excessive errors for 'nim check'
-    c.recursiveDep = ""
+  var err: string
+  if name == "_":
+    err = "the special identifier '_' is ignored in declarations and cannot be used"
+  else:
+    err = "undeclared identifier: '" & name & "'" & extra
+    if c.recursiveDep.len > 0:
+      err.add "\nThis might be caused by a recursive module dependency:\n"
+      err.add c.recursiveDep
+      # prevent excessive errors for 'nim check'
+      c.recursiveDep = ""
   localError(c.config, info, errGenerated, err)
 
 proc errorUndeclaredIdentifierHint*(c: PContext; n: PNode, ident: PIdent): PSym =
@@ -628,7 +632,11 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         if m == c.module:
           result = strTableGet(c.topLevelScope.symbols, ident).skipAlias(n, c.config)
         else:
-          result = someSym(c.graph, m, ident).skipAlias(n, c.config)
+          if c.importModuleLookup.getOrDefault(m.name.id).len > 1:
+            var amb: bool
+            result = errorUseQualifier(c, n.info, m, amb)
+          else:
+            result = someSym(c.graph, m, ident).skipAlias(n, c.config)
         if result == nil and checkUndeclared in flags:
           result = errorUndeclaredIdentifierHint(c, n[1], ident)
       elif n[1].kind == nkSym:

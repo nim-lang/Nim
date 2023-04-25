@@ -752,21 +752,8 @@ proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
       skipTypes(typ, abstractInstOwned).kind in {tyVar} and
       tfVarIsPtr notin skipTypes(typ, abstractInstOwned).flags
 
-proc derefBlock(p: BProc, e: PNode, d: var TLoc) =
-  # We transform (block: x)[] to (block: x[])
-  let e0 = e[0]
-  var n = shallowCopy(e0)
-  n.typ = e.typ
-  for i in 0 ..< e0.len - 1:
-    n[i] = e0[i]
-  n[e0.len-1] = newTreeIT(nkHiddenDeref, e.info, e.typ, e0[e0.len-1])
-  expr p, n, d
-
 proc genDeref(p: BProc, e: PNode, d: var TLoc) =
-  if e.kind == nkHiddenDeref and e[0].kind in {nkBlockExpr, nkBlockStmt}:
-    # bug #20107. Watch out to not deref the pointer too late.
-    derefBlock(p, e, d)
-    return
+  assert e[0].kind notin {nkBlockExpr, nkBlockStmt}, "it should have been transformed in transf"
 
   let mt = mapType(p.config, e[0].typ, mapTypeChooser(e[0]))
   if mt in {ctArray, ctPtrToArray} and lfEnforceDeref notin d.flags:
@@ -1704,7 +1691,7 @@ proc genNewFinalize(p: BProc, e: PNode) =
 
 proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo; result: var Rope) =
   if optTinyRtti in p.config.globalOptions:
-    let token = $genDisplayElem(MD5Digest(hashType(dest)))
+    let token = $genDisplayElem(MD5Digest(hashType(dest, p.config)))
     appcg(p.module, result, "#isObjDisplayCheck($#.m_type, $#, $#)", [a, getObjDepth(dest), token])
   else:
     # unfortunately 'genTypeInfoV1' sets tfObjHasKids as a side effect, so we
@@ -1947,7 +1934,7 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
 
   initLoc(call, locCall, e, OnHeap)
   if not p.module.compileToCpp:
-    const setLenPattern = "($3) #setLengthSeqV2(&($1)->Sup, $4, $2)"
+    const setLenPattern = "($3) #setLengthSeqV2(($1)?&($1)->Sup:NIM_NIL, $4, $2)"
     call.r = ropecg(p.module, setLenPattern, [
       rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
       genTypeInfoV1(p.module, t.skipTypes(abstractInst), e.info)])
@@ -2339,7 +2326,7 @@ proc genWasMoved(p: BProc; n: PNode) =
   if p.withinBlockLeaveActions > 0 and notYetAlive(n1):
     discard
   else:
-    initLocExpr(p, n1, a)
+    initLocExpr(p, n1, a, {lfEnforceDeref})
     resetLoc(p, a)
     #linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
     #  [addrLoc(p.config, a), getTypeDesc(p.module, a.t)])
@@ -2408,7 +2395,10 @@ proc genDispose(p: BProc; n: PNode) =
       lineCg(p, cpsStmts, ["#nimDestroyAndDispose($#)", rdLoc(a)])
 
 proc genSlice(p: BProc; e: PNode; d: var TLoc) =
-  let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.lastSon)
+  let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.lastSon,
+    prepareForMutation = e[1].kind == nkHiddenDeref and
+                         e[1].typ.skipTypes(abstractInst).kind == tyString and
+                         p.config.selectedGC in {gcArc, gcOrc})
   if d.k == locNone: getTemp(p, e.typ, d)
   linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $3;$n", [rdLoc(d), x, y])
   when false:
@@ -2776,7 +2766,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
     rdMType(p, a, nilCheck, r)
     if optTinyRtti in p.config.globalOptions:
       let checkFor = $getObjDepth(dest)
-      let token = $genDisplayElem(MD5Digest(hashType(dest)))
+      let token = $genDisplayElem(MD5Digest(hashType(dest, p.config)))
       if nilCheck != "":
         linefmt(p, cpsStmts, "if ($1 && !#isObjDisplayCheck($2, $3, $4)){ #raiseObjectConversionError(); ",
                 [nilCheck, r, checkFor, token])

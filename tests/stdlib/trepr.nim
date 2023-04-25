@@ -1,6 +1,6 @@
 discard """
   targets: "c cpp js"
-  matrix: ";--gc:arc"
+  matrix: "--mm:refc;--mm:arc"
 """
 
 # if excessive, could remove 'cpp' from targets

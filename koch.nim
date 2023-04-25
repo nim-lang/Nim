@@ -229,6 +229,14 @@ proc buildTools(args: string = "") =
   nimCompileFold("Compile atlas", "tools/atlas/atlas.nim", options = "-d:release " & args,
       outputName = "atlas")
 
+proc testTools(args: string = "") =
+  nimCompileFold("Compile nimgrep", "tools/nimgrep.nim",
+                 options = "-d:release " & args)
+  when defined(windows): buildVccTool(args)
+  bundleNimpretty(args)
+  nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release " & args)
+  nimCompileFold("Compile atlas", "tools/atlas/atlas.nim", options = "-d:release " & args,
+      outputName = "atlas")
 
 proc nsis(latest: bool; args: string) =
   bundleNimbleExe(latest, args)
@@ -295,11 +303,7 @@ proc boot(args: string) =
 
   let nimStart = findStartNim().quoteShell()
   for i in 0..2:
-    # Nim versions < (1, 1) expect Nim's exception type to have a 'raiseId' field for
-    # C++ interop. Later Nim versions do this differently and removed the 'raiseId' field.
-    # Thus we always bootstrap the first iteration with "c" and not with "cpp" as
-    # a workaround.
-    let defaultCommand = if useCpp and i > 0: "cpp" else: "c"
+    let defaultCommand = if useCpp: "cpp" else: "c"
     let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
     echo "iteration: ", i+1
     var extraOption = ""
@@ -534,8 +538,7 @@ proc runCI(cmd: string) =
   # boot without -d:nimHasLibFFI to make sure this still works
   # `--lib:lib` is needed for bootstrap on openbsd, for reasons described in
   # https://github.com/nim-lang/Nim/pull/14291 (`getAppFilename` bugsfor older nim on openbsd).
-  kochExecFold("Boot in release mode", "boot -d:release --gc:refc -d:nimStrictMode --lib:lib")
-  kochExecFold("Boot Nim ORC", "boot -d:release --lib:lib")
+  kochExecFold("Boot Nim ORC", "boot -d:release -d:nimStrictMode --lib:lib")
 
   when false: # debugging: when you need to run only 1 test in CI, use something like this:
     execFold("debugging test", "nim r tests/stdlib/tosproc.nim")
@@ -551,7 +554,7 @@ proc runCI(cmd: string) =
     nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release")
     execFold("Test selected Nimble packages", "testament $# pcat nimble-packages" % batchParam)
   else:
-    buildTools()
+    testTools()
 
     for a in "zip opengl sdl1 jester@#head".split:
       let buildDeps = "build"/"deps" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
@@ -590,6 +593,9 @@ proc runCI(cmd: string) =
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
     execFold("Run atlas tests", "nim c -r -d:atlasTests tools/atlas/atlas.nim clone https://github.com/disruptek/balls")
+
+    kochExecFold("Testing booting in refc", "boot -d:release --mm:refc -d:nimStrictMode --lib:lib")
+
 
 proc testUnixInstall(cmdLineRest: string) =
   csource("-d:danger" & cmdLineRest)

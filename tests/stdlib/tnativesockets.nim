@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import std/nativesockets
 import stdtest/testutils
 import std/assertions

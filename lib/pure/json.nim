@@ -465,11 +465,12 @@ proc `==`*(a, b: JsonNode): bool {.noSideEffect.} =
       if a.fields.len != b.fields.len: return false
       for key, val in a.fields:
         if not b.fields.hasKey(key): return false
-        when defined(nimHasEffectsOf):
-          {.noSideEffect.}:
+        {.cast(raises: []).}:
+          when defined(nimHasEffectsOf):
+            {.noSideEffect.}:
+              if b.fields[key] != val: return false
+          else:
             if b.fields[key] != val: return false
-        else:
-          if b.fields[key] != val: return false
       result = true
 
 proc hash*(n: OrderedTable[string, JsonNode]): Hash {.noSideEffect.}
@@ -1109,7 +1110,7 @@ proc initFromJson(dst: var JsonNode; jsonNode: JsonNode; jsonPath: var string) =
   dst = jsonNode.copy
 
 proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
-  when T is uint|uint64 or (not defined(js) and int.sizeof == 4):
+  when T is uint|uint64 or int.sizeof == 4:
     verifyJsonKind(jsonNode, {JInt, JString}, jsonPath)
     case jsonNode.kind
     of JString:
@@ -1122,6 +1123,7 @@ proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var 
     dst = cast[T](jsonNode.num)
 
 proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
+  verifyJsonKind(jsonNode, {JInt, JFloat, JString}, jsonPath)
   if jsonNode.kind == JString:
     case jsonNode.str
     of "nan":
@@ -1137,7 +1139,6 @@ proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var st
       dst = T(b)
     else: raise newException(JsonKindError, "expected 'nan|inf|-inf', got " & jsonNode.str)
   else:
-    verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)
     if jsonNode.kind == JFloat:
       dst = T(jsonNode.fnum)
     else:

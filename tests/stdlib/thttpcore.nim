@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import httpcore, strutils
 import std/assertions
 

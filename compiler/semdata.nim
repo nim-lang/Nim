@@ -168,6 +168,7 @@ type
     lastTLineInfo*: TLineInfo
     sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
     inUncheckedAssignSection*: int
+    importModuleLookup*: Table[int, seq[int]] # (module.ident.id, [module.id])
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -432,7 +433,7 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   incl typedesc.flags, tfCheckedForDestructor
   internalAssert(c.config, typ != nil)
   typedesc.addSonSkipIntLit(typ, c.idgen)
-  let sym = newSym(skType, c.cache.idAnon, nextSymId(c.idgen), getCurrOwner(c), info,
+  let sym = newSym(skType, c.cache.idAnon, c.idgen, getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
   result = newSymNode(sym, info)
 

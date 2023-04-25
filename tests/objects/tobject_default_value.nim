@@ -3,7 +3,7 @@ discard """
   targets: "c cpp js"
 """
 
-import std/[times, macros]
+import std/[times, macros, tables]
 
 type
   Guess = object
@@ -236,6 +236,7 @@ template main {.dirty.} =
     doAssert x.obj.name.scale == 1
 
   when nimvm:
+    # todo
     discard "fixme"
   else:
     when defined(gcArc) or defined(gcOrc):
@@ -522,6 +523,74 @@ template main {.dirty.} =
       Either[O,void](kind:true,a: o)
 
     discard oToEither(O())
+
+  block: # bug #20695
+    type
+      Default = object
+        tabs: Table[string, int] = initTable[string, int]()
+
+    let d = default(Default)
+    doAssert d.tabs.len == 0
+
+  block:
+    type
+      Default = object
+        tabs: Table[string, int] = Table[string, int]()
+
+    let d = default(Default)
+    doAssert d.tabs.len == 0
+
+
+  block:
+    type DjangoDateTime = distinct DateTime
+
+    type Default = object
+      data: DjangoDateTime = DjangoDateTime(DateTime())
+
+    let x = default(Default)
+    doAssert x.data is DjangoDateTime
+
+  block:
+    type DjangoDateTime = distinct DateTime
+
+    type Default = object
+      data = DjangoDateTime(DateTime())
+
+    let x = default(Default)
+    doAssert x.data is DjangoDateTime
+
+  block:
+    type
+      Result2 = object
+        case o: bool
+        of false:
+          e: float
+        of true:
+          v {.requiresInit.} : int = 1
+
+    proc startSessionSync(): Result2 =
+      return Result2(o: true)
+
+    proc mainSync =
+      let ff = startSessionSync()
+      doAssert ff.v == 1
+
+    mainSync()
+
+  block:
+    type
+      Result2 = object
+        v {.requiresInit.} : int = 1
+
+    proc startSessionSync(): Result2 =
+      return Result2()
+
+    proc mainSync =
+      let ff = startSessionSync()
+      doAssert ff.v == 1
+
+    mainSync()
+
 
 static: main()
 main()
