@@ -10,7 +10,7 @@ t20922.nim(26, 7) Error: attempting to call undeclared routine: '<Error>'
 Error: in expression ' '+'': identifier expected, but found ''
 t20922.nim(26, 7) Error: attempting to call undeclared routine: '<Error>'
 t20922.nim(26, 7) Error: expression '' cannot be called
-t20922.nim(26, 7) Error: expression '' has no type (or is ambiguous)
+t20922.nim(26, 7) Error: expression ' '+'' has no type (or is ambiguous)
 t20922.nim(26, 7) Error: VM problem: dest register is not set
 '''
 """
