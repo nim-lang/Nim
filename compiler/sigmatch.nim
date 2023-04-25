@@ -1888,7 +1888,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if f.n == nil or f.n.kind == nkEmpty: return isGeneric
     let reevaluated = tryResolvingStaticExpr(c, f.n)
     if reevaluated == nil:
-      result = isNone
+      result = isGeneric
       return 
     case reevaluated.typ.kind
     of tyTypeDesc:
