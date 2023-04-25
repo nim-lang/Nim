@@ -131,7 +131,7 @@
   `foo` had type `proc ()` were assumed by the compiler to mean `foo(a, b, proc () = ...)`.
   This behavior is now deprecated. Use `foo(a, b) do (): ...` or `foo(a, b, proc () = ...)` instead.
 
-- If no exception or any exception deriving from Exception but not Defect or CatchableError given in except, a `warnBareExcept` warning will be triggered.
+- When `--warning[BareExcept]:on` is enable, if no exception or any exception deriving from Exception but not Defect or CatchableError given in except, a `warnBareExcept` warning will be triggered.
 
 - The experimental strictFuncs feature now disallows a store to the heap via a `ref` or `ptr` indirection.
 
