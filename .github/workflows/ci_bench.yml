@@ -62,7 +62,7 @@ jobs:
       - name: 'Checkout minimize'
         uses: actions/checkout@v3
         with:
-          repository: 'FedericoCeratto/minimize'
+          repository: 'nim-lang/ci_bench'
           path: minimize
 
       - name: 'Run minimize benchmarks'
