@@ -123,7 +123,7 @@ proc newTryFinally*(body, final: PNode): PNode =
   result = newTree(nkHiddenTryStmt, body, newTree(nkFinally, final))
 
 proc genTempSymNode*(g: ModuleGraph; info: TLineInfo; idgen: IdGenerator; owner: PSym): PNode =
-  var temp = newSym(skTemp, getIdent(g.cache, "_"), nextSymId(idgen), owner, info, owner.options)
+  var temp = newSym(skTemp, getIdent(g.cache, genPrefix), idgen, owner, info, owner.options)
   result = newSymNode(temp)
 
 proc lowerTupleUnpackingForAsgn*(n: PNode; temp: PNode): PNode =
