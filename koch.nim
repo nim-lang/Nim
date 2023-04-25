@@ -149,6 +149,8 @@ proc bundleNimbleExe(latest: bool, args: string) =
   let commit = if latest: "HEAD" else: NimbleStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/nimble.git",
                   commit = commit, allowBundled = true)
+  cloneDependency(distDir / "nimble" / distDir, "https://github.com/nim-lang/checksums.git",
+                commit = commit, allowBundled = true) # or copy it from dist?
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
              options = "-d:release --mm:refc --noNimblePath " & args)
@@ -184,8 +186,7 @@ proc bundleWinTools(args: string) =
 
 proc bundleChecksums(latest: bool) =
   let commit = if latest: "HEAD" else: ChecksumsStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit,
-                  allowBundled = true)
+  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit)
 
 proc zip(latest: bool; args: string) =
   bundleChecksums(latest)
