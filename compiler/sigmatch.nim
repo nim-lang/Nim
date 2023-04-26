@@ -43,7 +43,9 @@ type
   TCandidate* = object
     c*: PContext
     exactMatches*: int       # also misused to prefer iters over procs
+    typeClassMatches: int
     genericMatches: int      # also misused to prefer constraints
+    genericConstrainMatches: int
     subtypeMatches: int
     intConvMatches: int      # conversions to int are not as expensive
     convMatches: int
@@ -182,6 +184,7 @@ proc copyCandidate(a: var TCandidate, b: TCandidate) =
   a.convMatches = b.convMatches
   a.intConvMatches = b.intConvMatches
   a.genericMatches = b.genericMatches
+  a.typeClassMatches = b.typeClassMatches
   a.state = b.state
   a.callee = b.callee
   a.calleeSym = b.calleeSym
@@ -282,7 +285,9 @@ proc complexDisambiguation(a, b: PType): int =
 proc writeMatches*(c: TCandidate) =
   echo "Candidate '", c.calleeSym.name.s, "' at ", c.c.config $ c.calleeSym.info
   echo "  exact matches: ", c.exactMatches
+  echo "  type class matches: ", c.typeClassMatches
   echo "  generic matches: ", c.genericMatches
+  echo "  generic constrain matches: ", c.genericConstrainMatches
   echo "  subtype matches: ", c.subtypeMatches
   echo "  intconv matches: ", c.intConvMatches
   echo "  conv matches: ", c.convMatches
@@ -291,7 +296,19 @@ proc writeMatches*(c: TCandidate) =
 proc cmpCandidates*(a, b: TCandidate): int =
   result = a.exactMatches - b.exactMatches
   if result != 0: return
-  result = a.genericMatches - b.genericMatches
+  result = a.typeClassMatches - b.typeClassMatches
+  if result != 0: return
+  let ag = a.genericMatches + a.genericConstrainMatches
+  let bg = b.genericMatches + b.genericConstrainMatches
+  result = ag - bg
+  if result != 0: return
+  result = a.subtypeMatches - b.subtypeMatches
+  if result != 0: return
+  result = a.typeClassMatches - b.typeClassMatches
+  if result != 0: return
+  let ag = a.genericMatches + a.genericConstrainMatches
+  let bg = b.genericMatches + b.genericConstrainMatches
+  result = ag - bg
   if result != 0: return
   result = a.subtypeMatches - b.subtypeMatches
   if result != 0: return
@@ -1653,7 +1670,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
               target.callConv != effectiveArgType.callConv:
             return isNone
         put(c, f, a)
-        return isGeneric
+        return isTypeClass
       else:
         return isNone
 
@@ -2033,7 +2050,8 @@ proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
   case r
   of isConvertible, isIntConv: inc(m.convMatches, convMatch)
   of isSubtype, isSubrange: inc(m.subtypeMatches)
-  of isGeneric, isInferred, isBothMetaConvertible: inc(m.genericMatches)
+  of isTypeClass: inc(m.typeClassMatches, 2)
+  of isGeneric, isInferred, isBothMetaConvertible: inc(m.genericMatches, 2)
   of isFromIntLit: inc(m.intConvMatches, 256)
   of isInferredConvertible:
     inc(m.convMatches)
@@ -2173,9 +2191,12 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       inc(m.convMatches)
       result = implicitConv(nkHiddenStdConv, f, result, m, c)
     else:
-      inc(m.genericMatches)
-  of isGeneric:
-    inc(m.genericMatches)
+      inc(m.genericMatches, 2)
+  of isGeneric, isTypeClass:
+    if r == isGeneric:
+      inc(m.genericMatches, 2)
+    else:
+      inc(m.typeClassMatches, 2)
     if arg.typ == nil:
       result = arg
     elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple or
@@ -2204,7 +2225,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isNone:
     # do not do this in ``typeRel`` as it then can't infer T in ``ref T``:
     if a.kind in {tyProxy, tyUnknown}:
-      inc(m.genericMatches)
+      inc(m.genericMatches, 2)
       m.fauxMatch = a.kind
       return arg
     elif a.kind == tyVoid and f.matchesVoidProc and argOrig.kind == nkStmtList:
@@ -2216,7 +2237,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
           params = nkFormalParams.newTree(p.emptyNode), name = p.emptyNode, pattern = p.emptyNode,
           genericParams = p.emptyNode, pragmas = p.emptyNode, exceptions = p.emptyNode), {})
       if f.kind == tyBuiltInTypeClass:
-        inc m.genericMatches
+        inc m.typeClassMatches, 2
         put(m, f, lifted.typ)
       inc m.convMatches
       return implicitConv(nkHiddenStdConv, f, lifted, m, c)
@@ -2395,6 +2416,36 @@ proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
       result = a2
     else: break
 
+proc checkGenericConstraint(m: var TCandidate; t: PType; typ: PType): bool =
+  if typ == nil: return
+  case t.kind
+  of tyOr:
+    for s in t.sons:
+      if m.checkGenericConstraint(s, typ):
+        return true
+  of tyAnd:
+    for s in t.sons:
+      if m.checkGenericConstraint(s, typ):
+        result = true
+      else:
+        result = false
+        break
+  of tyNot:
+    if t[0].kind == tyGenericParam:
+      let tt = PType(idTableGet(m.bindings, t[0]))
+      if tt != nil:
+        return not m.checkGenericConstraint(tt, typ)
+    return not m.checkGenericConstraint(t[0], typ)
+  of tyBuiltInTypeClass:
+    return m.checkGenericConstraint(t[0], typ)
+  of tyTypeDesc:
+    return m.checkGenericConstraint(t[0], typ[0])
+  of tyGenericParam:
+    if t.len == 0: return true
+    result = m.checkGenericConstraint(t[0], typ)
+  else:
+    return t.kind == typ.kind
+
 proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var IntSet) =
 
   template noMatch() =
@@ -2421,6 +2472,9 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
       elif not (isLValue(c, n, isOutParam(formal.typ))):
         m.firstMismatch.kind = kVarNeeded
         noMatch()
+    if formal.typ.kind == tyGenericParam and formal.typ.len > 0:
+      if m.checkGenericConstraint(formal.typ, n.typ):
+        inc(m.genericConstrainMatches, 1)
 
   m.state = csMatch # until proven otherwise
   m.firstMismatch = MismatchInfo()

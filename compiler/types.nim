@@ -42,6 +42,7 @@ type
     isInferred,              # generic proc was matched against a concrete type
     isInferredConvertible,   # same as above, but requiring proc CC conversion
     isGeneric,
+    isTypeClass,
     isFromIntLit,            # conversion *from* int literal; proven safe
     isEqual
 

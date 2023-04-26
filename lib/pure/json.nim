@@ -390,6 +390,11 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   assert(obj.kind == JObject)
   obj.fields[key] = val
 
+proc `%`*(o: enum): JsonNode =
+  ## Construct a JsonNode that represents the specified enum value as a
+  ## string. Creates a new `JString JsonNode`.
+  result = %($o)
+
 proc `%`*[T: object](o: T): JsonNode =
   ## Construct JsonNode from tuples and objects.
   result = newJObject()
@@ -401,11 +406,6 @@ proc `%`*(o: ref object): JsonNode =
     result = newJNull()
   else:
     result = %(o[])
-
-proc `%`*(o: enum): JsonNode =
-  ## Construct a JsonNode that represents the specified enum value as a
-  ## string. Creates a new `JString JsonNode`.
-  result = %($o)
 
 proc toJsonImpl(x: NimNode): NimNode =
   case x.kind

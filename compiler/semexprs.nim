@@ -1874,7 +1874,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           rhsTyp = rhsTyp.lastSon
         if lhs.sym.typ.kind == tyAnything:
           rhsTyp = rhsTyp.skipIntLit(c.idgen)
-        if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
+        if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual, isTypeClass}:
           internalAssert c.config, c.p.resultSym != nil
           # Make sure the type is valid for the result variable
           typeAllowedCheck(c, n.info, rhsTyp, skResult)
