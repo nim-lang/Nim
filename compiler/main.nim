@@ -29,7 +29,7 @@ when defined(nimPreviewSlimSystem):
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
 
-import ../dist/checksums/checksums/sha1
+import ../dist/checksums/src/checksums/sha1
 
 import pipelines
 

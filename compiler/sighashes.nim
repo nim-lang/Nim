@@ -12,7 +12,7 @@
 import ast, tables, ropes, modulegraphs, options, msgs, pathutils
 from hashes import Hash
 import types
-import ../dist/checksums/checksums/md5
+import ../dist/checksums/src/checksums/md5
 
 
 when defined(nimPreviewSlimSystem):

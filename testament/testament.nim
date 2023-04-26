@@ -19,7 +19,7 @@ import lib/stdtest/testutils
 from lib/stdtest/specialpaths import splitTestFile
 from std/private/gitutils import diffStrings
 
-import ../dist/checksums/checksums/md5
+import ../dist/checksums/src/checksums/md5
 
 proc trimUnitSep(x: var string) =
   let L = x.len

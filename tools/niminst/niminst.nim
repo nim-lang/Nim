@@ -10,7 +10,7 @@
 import
   os, strutils, parseopt, parsecfg, strtabs, streams, debcreation
 
-import ../../dist/checksums/checksums/sha1
+import ../../dist/checksums/src/checksums/sha1
 
 when defined(nimPreviewSlimSystem):
   import std/syncio

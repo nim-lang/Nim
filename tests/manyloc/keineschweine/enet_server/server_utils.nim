@@ -1,4 +1,4 @@
-import ../../../../dist/checksums/checksums/md5
+import ../../../../dist/checksums/src/checksums/md5
 
 import enet, sg_packets, estreams, zlib_helpers, client_helpers, strutils,
   idgen, sg_assets, tables, os

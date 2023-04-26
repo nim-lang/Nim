@@ -21,7 +21,7 @@ import std / strutils except addf
 when defined(nimPreviewSlimSystem):
   import std/syncio
 
-import ../dist/checksums/checksums/sha1
+import ../dist/checksums/src/checksums/sha1
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:

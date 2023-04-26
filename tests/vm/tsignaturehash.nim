@@ -1,7 +1,7 @@
 # test sym digest is computable at compile time
 
 import macros, algorithm
-import ../../dist/checksums/checksums/md5
+import ../../dist/checksums/src/checksums/md5
 
 macro testmacro(s: typed{nkSym}): string =
   let s = getMD5(signaturehash(s) & " - " & symBodyHash(s))

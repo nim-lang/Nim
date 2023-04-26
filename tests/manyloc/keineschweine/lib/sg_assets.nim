@@ -1,4 +1,4 @@
-import ../../../../dist/checksums/checksums/md5
+import ../../../../dist/checksums/src/checksums/md5
 
 import
   re, json, strutils, tables, math, os, math_helpers,

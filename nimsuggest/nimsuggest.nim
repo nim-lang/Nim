@@ -13,7 +13,7 @@ import algorithm
 import tables
 import times
 
-import ../dist/checksums/checksums/sha1
+import ../dist/checksums/src/checksums/sha1
 
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 

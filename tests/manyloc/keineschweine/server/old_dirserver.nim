@@ -1,6 +1,6 @@
 ## directory server
 ## handles client authorization and assets
-import ../../../dist/checksums/checksums/md5
+import ../../../dist/checksums/src/checksums/md5
 import
   sockets, times, streams, streams_enh, tables, json, os,
   sg_packets, sg_assets, server_utils, map_filter

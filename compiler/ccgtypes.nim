@@ -12,7 +12,7 @@
 # ------------------------- Name Mangling --------------------------------
 
 import sighashes, modulegraphs
-import ../dist/checksums/checksums/md5
+import ../dist/checksums/src/checksums/md5
 
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords

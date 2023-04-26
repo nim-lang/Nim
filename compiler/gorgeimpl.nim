@@ -15,7 +15,7 @@ import msgs, os, osproc, streams, options,
 when defined(nimPreviewSlimSystem):
   import std/syncio
 
-import ../dist/checksums/checksums/sha1
+import ../dist/checksums/src/checksums/sha1
 
 proc readOutput(p: Process): (string, int) =
   result[0] = ""

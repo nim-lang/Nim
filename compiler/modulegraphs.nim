@@ -12,7 +12,7 @@
 ## or stored in a rod-file.
 
 import intsets, tables, hashes
-import ../dist/checksums/checksums/md5
+import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
 import ic / [packed_ast, ic]
 

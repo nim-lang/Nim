@@ -1,4 +1,4 @@
-import ../../../dist/checksums/checksums/md5
+import ../../../dist/checksums/src/checksums/md5
 
 import
   streams, sockets,
