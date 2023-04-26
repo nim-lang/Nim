@@ -18,7 +18,7 @@ not use classical GC algorithms anymore but is based on destructors and
 move semantics. The advantages are that Nim programs become
 oblivious to the involved heap sizes and programs are easier to write to make
 effective use of multi-core machines. As a nice bonus, files and sockets and
-the like can be written not ot require manual `close` calls anymore.
+the like can be written not to require manual `close` calls anymore.
 
 This document aims to be a precise specification about how
 move semantics and destructors work in Nim.
