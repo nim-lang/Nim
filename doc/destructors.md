@@ -136,6 +136,10 @@ A `=destroy` is implicitly annotated with `.raises: []`; a destructor
 should not raise exceptions. For backwards compatibility the compiler
 produces a warning for a `=destroy` that does raise.
 
+A `=destroy` can explicitly list the exceptions it can raise, if any,
+but this of little utility as a raising destructor is implementation defined
+behavior. Later versions of the language specification might cover this case precisely.
+
 
 `=sink` hook
 ------------
