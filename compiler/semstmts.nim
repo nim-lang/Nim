@@ -2019,6 +2019,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   s.ast = n
   s.options = c.config.options
   #s.scope = c.currentScope
+  if s.kind in {skMacro, skTemplate}:
+    # push noalias flag at first to prevent unwanted recursive calls:
+    incl(s.flags, sfNoalias)
 
   # before compiling the proc params & body, set as current the scope
   # where the proc was declared
@@ -2335,16 +2338,16 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   var s = result[namePos].sym
   var t = s.typ
   var allUntyped = true
-  var requiresParams = false
+  var nullary = true
   for i in 1..<t.n.len:
     let param = t.n[i].sym
     if param.typ.kind != tyUntyped: allUntyped = false
     # no default value, parameters required in call
-    if param.ast == nil: requiresParams = true
+    if param.ast == nil: nullary = false
   if allUntyped: incl(s.flags, sfAllUntyped)
-  if requiresParams or n[genericParamsPos].kind != nkEmpty:
-    # macro cannot be called with alias syntax
-    incl(s.flags, sfNoalias)
+  if nullary and n[genericParamsPos].kind == nkEmpty:
+    # macro can be called with alias syntax, remove pushed noalias flag
+    excl(s.flags, sfNoalias)
   if n[bodyPos].kind == nkEmpty:
     localError(c.config, n.info, errImplOfXexpected % s.name.s)
 
