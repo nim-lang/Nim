@@ -236,7 +236,7 @@ proc addUnique[T](x: var seq[T], y: sink T) {.noSideEffect.} =
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool): PSym =
   result = realModule
   template createModuleAliasImpl(ident): untyped =
-    createModuleAlias(realModule, nextSymId c.idgen, ident, n.info, c.config.options)
+    createModuleAlias(realModule, c.idgen, ident, n.info, c.config.options)
   if n.kind != nkImportAs: discard
   elif n.len != 2 or n[1].kind != nkIdent:
     localError(c.config, n.info, "module alias must be an identifier")

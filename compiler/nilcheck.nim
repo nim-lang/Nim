@@ -909,7 +909,7 @@ proc infix(ctx: NilCheckerContext, l: PNode, r: PNode, magic: TMagic): PNode =
     else: ""
 
   var cache = newIdentCache()
-  var op = newSym(skVar, cache.getIdent(name), nextSymId ctx.idgen, nil, r.info)
+  var op = newSym(skVar, cache.getIdent(name), ctx.idgen, nil, r.info)
 
   op.magic = magic
   result = nkInfix.newTree(
@@ -920,7 +920,7 @@ proc infix(ctx: NilCheckerContext, l: PNode, r: PNode, magic: TMagic): PNode =
 
 proc prefixNot(ctx: NilCheckerContext, node: PNode): PNode =
   var cache = newIdentCache()
-  var op = newSym(skVar, cache.getIdent("not"), nextSymId ctx.idgen, nil, node.info)
+  var op = newSym(skVar, cache.getIdent("not"), ctx.idgen, nil, node.info)
 
   op.magic = mNot
   result = nkPrefix.newTree(

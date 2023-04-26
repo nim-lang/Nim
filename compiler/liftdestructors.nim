@@ -243,7 +243,7 @@ proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
     # for every field (dependent on dest.kind):
     #   `=` dest.field, src.field
     # =destroy(blob)
-    var dummy = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), nextSymId c.idgen, c.fn, c.info)
+    var dummy = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.idgen, c.fn, c.info)
     dummy.typ = y.typ
     if ccgIntroducedPtr(c.g.config, dummy, y.typ):
       # Because of potential aliasing when the src param is passed by ref, we need to check for equality here,
@@ -252,7 +252,7 @@ proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
         newTreeIT(nkAddr, c.info, makePtrType(c.fn, x.typ, c.idgen), x), newTreeIT(nkAddr, c.info, makePtrType(c.fn, y.typ, c.idgen), y))
       cond.typ = getSysType(c.g, x.info, tyBool)
       body.add genIf(c, cond, newTreeI(nkReturnStmt, c.info, newNodeI(nkEmpty, c.info)))
-    var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), nextSymId c.idgen, c.fn, c.info)
+    var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.idgen, c.fn, c.info)
     temp.typ = x.typ
     incl(temp.flags, sfFromGeneric)
     var v = newNodeI(nkVarSection, c.info)
@@ -464,7 +464,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       result = true
 
 proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
-  var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), nextSymId(c.idgen), c.fn, c.info)
+  var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.idgen, c.fn, c.info)
   temp.typ = getSysType(c.g, body.info, tyInt)
   incl(temp.flags, sfFromGeneric)
 
@@ -474,7 +474,7 @@ proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
   body.add v
 
 proc declareTempOf(c: var TLiftCtx; body: PNode; value: PNode): PNode =
-  var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), nextSymId(c.idgen), c.fn, c.info)
+  var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.idgen, c.fn, c.info)
   temp.typ = value.typ
   incl(temp.flags, sfFromGeneric)
 
@@ -954,10 +954,10 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
               info: TLineInfo; idgen: IdGenerator): PSym =
 
   let procname = getIdent(g.cache, AttachedOpToStr[kind])
-  result = newSym(skProc, procname, nextSymId(idgen), owner, info)
-  let dest = newSym(skParam, getIdent(g.cache, "dest"), nextSymId(idgen), result, info)
+  result = newSym(skProc, procname, idgen, owner, info)
+  let dest = newSym(skParam, getIdent(g.cache, "dest"), idgen, result, info)
   let src = newSym(skParam, getIdent(g.cache, if kind == attachedTrace: "env" else: "src"),
-                   nextSymId(idgen), result, info)
+                   idgen, result, info)
   dest.typ = makeVarType(typ.owner, typ, idgen)
   if kind == attachedTrace:
     src.typ = getSysType(g, info, tyPointer)
@@ -972,7 +972,7 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   if kind == attachedAsgn and g.config.selectedGC == gcOrc and
       cyclicType(typ.skipTypes(abstractInst)):
     let cycleParam = newSym(skParam, getIdent(g.cache, "cyclic"),
-                            nextSymId(idgen), result, info)
+                            idgen, result, info)
     cycleParam.typ = getSysType(g, info, tyBool)
     result.typ.addParam cycleParam
 
@@ -1049,7 +1049,7 @@ proc produceDestructorForDiscriminator*(g: ModuleGraph; typ: PType; field: PSym,
   a.addMemReset = true
   let discrimantDest = result.typ.n[1].sym
 
-  let dst = newSym(skVar, getIdent(g.cache, "dest"), nextSymId(idgen), result, info)
+  let dst = newSym(skVar, getIdent(g.cache, "dest"), idgen, result, info)
   dst.typ = makePtrType(typ.owner, typ, idgen)
   let dstSym = newSymNode(dst)
   let d = newDeref(dstSym)

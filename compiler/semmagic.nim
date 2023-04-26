@@ -420,14 +420,14 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
     #if n.kind == nkDerefExpr and sameType(n[0].typ, old):
     #  result =
 
-  result = copySym(orig, nextSymId c.idgen)
+  result = copySym(orig, c.idgen)
   result.info = info
   result.flags.incl sfFromGeneric
   result.owner = orig
   let origParamType = orig.typ[1]
   let newParamType = makeVarType(result, origParamType.skipTypes(abstractPtrs), c.idgen)
   let oldParam = orig.typ.n[1].sym
-  let newParam = newSym(skParam, oldParam.name, nextSymId c.idgen, result, result.info)
+  let newParam = newSym(skParam, oldParam.name, c.idgen, result, result.info)
   newParam.typ = newParamType
   # proc body:
   result.ast = transform(c, orig.ast, origParamType, newParamType, oldParam, newParam)
@@ -493,8 +493,8 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
           getAttachedOp(c.graph, t, attachedDestructor).owner == fin:
         discard "already turned this one into a finalizer"
       else:
-        let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), nextSymId c.idgen, fin.owner, fin.info)
-        let selfSymNode = newSymNode(copySym(fin.ast[paramsPos][1][0].sym, nextSymId c.idgen))
+        let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), c.idgen, fin.owner, fin.info)
+        let selfSymNode = newSymNode(copySym(fin.ast[paramsPos][1][0].sym, c.idgen))
         selfSymNode.typ = fin.typ[1]
         wrapperSym.flags.incl sfUsed
 
