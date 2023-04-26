@@ -61,3 +61,14 @@ block: # issue #13515
     if not test:
       doAssert false
   x
+
+import macros
+
+block: # issue #21727
+  template debugAnnotation(s: typed): string =
+    astToStr s
+
+  macro cpsJump(x: int): untyped =
+    result = newLit(debugAnnotation(cpsJump))
+  
+  doAssert cpsJump(13) == "cpsJump"
