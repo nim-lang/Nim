@@ -6,8 +6,9 @@ when not defined(js):
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-type JsBigIntImpl {.importjs: "bigint".} = int # https://github.com/nim-lang/Nim/pull/16606
-type JsBigInt* = distinct JsBigIntImpl         ## Arbitrary precision integer for JavaScript target.
+type JsBigIntImpl = ref object
+type JsBigInt* {.requiresInit.} = distinct JsBigIntImpl
+  ## Arbitrary precision integer for JavaScript target.
 
 func big*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
@@ -218,13 +219,14 @@ runnableExamples:
     doAssert big2 < big1
     doAssert big2 <= big1
     doAssert not(big1 == big2)
-    let z = JsBigInt.default
-    doAssert $z == "0n"
-  block:
-    var a: seq[JsBigInt]
-    a.setLen 2
-    doAssert a == @[big"0", big"0"]
-    doAssert a[^1] == big"0"
-    var b: JsBigInt
-    doAssert b == big"0"
-    doAssert b == JsBigInt.default
+  when false: # jsbigint defaults to nil now
+    block:
+      let z = JsBigInt.default
+      doAssert $z == "0n"
+      var a: seq[JsBigInt]
+      a.setLen 2
+      doAssert a == @[big"0", big"0"]
+      doAssert a[^1] == big"0"
+      var b: JsBigInt
+      doAssert b == big"0"
+      doAssert b == JsBigInt.default

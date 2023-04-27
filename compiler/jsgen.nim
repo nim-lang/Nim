@@ -1858,13 +1858,8 @@ proc arrayTypeForElemType(conf: ConfigRef; typ: PType): string =
 proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   var t = skipTypes(typ, abstractInst)
   case t.kind
-  of tyInt8..tyInt32, tyUInt8..tyUInt32, tyEnum, tyChar:
+  of tyInt..tyInt32, tyUInt..tyUInt32, tyEnum, tyChar:
     result = putToSeq("0", indirect)
-  of tyInt, tyUInt:
-    if $t.sym.loc.r == "bigint":
-      result = putToSeq("0n", indirect)
-    else:
-      result = putToSeq("0", indirect)
   of tyInt64, tyUInt64:
     if optJsBigInt64 in p.config.globalOptions:
       result = putToSeq("0n", indirect)
