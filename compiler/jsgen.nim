@@ -1829,7 +1829,12 @@ proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: v
 proc arrayTypeForElemType(conf: ConfigRef; typ: PType): string =
   let typ = typ.skipTypes(abstractRange)
   case typ.kind
-  of tyInt, tyInt32: "Int32Array"
+  of tyInt:
+    if $typ.sym.loc.r != "bigint":
+      "Int32Array"
+    else:
+      ""
+  of tyInt32: "Int32Array"
   of tyInt16: "Int16Array"
   of tyInt8: "Int8Array"
   of tyInt64:

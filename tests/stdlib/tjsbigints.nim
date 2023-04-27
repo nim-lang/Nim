@@ -44,3 +44,9 @@ block:
   doAssert -b ** 3'big == -8'big
   doAssert -b ** big"2" == big"4" # not -4 because of precedence
   doAssert -big"3" == big"-3"
+
+block: # array generates correctly
+  var a: array[0 .. 5, JsBigInt]
+  for i in 0 .. 5:
+    a[i] = big(i)
+  doAssert a == [0'big, 1'big, 2'big, 3'big, 4'big, 5'big]
