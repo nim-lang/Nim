@@ -66,7 +66,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     # Introduced in this pass! Leave it as an identifier.
     result = n
   of skProc, skFunc, skMethod, skIterator, skConverter, skModule:
-    result = symChoice(c, n, s, scOpen)
+    result = symChoice(c, n, s, if fromDotExpr: scForceOpen else: scOpen)
   of skTemplate, skMacro:
     # alias syntax, see semSym for skTemplate, skMacro
     if sfNoalias notin s.flags and not fromDotExpr:
@@ -79,7 +79,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       result = semGenericStmt(c, result, {}, ctx)
       discard c.friendModules.pop()
     else:
-      result = symChoice(c, n, s, scOpen)
+      result = symChoice(c, n, s, if fromDotExpr: scForceOpen else: scOpen)
   of skGenericParam:
     if s.typ != nil and s.typ.kind == tyStatic:
       if s.typ.n != nil:
@@ -100,7 +100,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       result = n
     onUse(n.info, s)
   of skEnumField:
-    result = symChoice(c, n, s, scOpen)
+    result = symChoice(c, n, s, if fromDotExpr: scForceOpen else: scOpen)
   else:
     result = newSymNode(s, n.info)
     onUse(n.info, s)
@@ -159,7 +159,8 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
         let syms = semGenericStmtSymbol(c, n, s, ctx, flags, fromDotExpr=true)
         if syms.kind == nkSym:
           let choice = symChoice(c, n, s, scForceOpen)
-          choice.transitionSonsKind(nkClosedSymChoice)
+          # don't close, we don't know if it's an object field yet:
+          #choice.transitionSonsKind(nkClosedSymChoice)
           result = newDot(result, choice)
         else:
           result = newDot(result, syms)
