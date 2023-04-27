@@ -1235,7 +1235,11 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     assert a[0].len == 0
     assert b.len == 1
     assert b[0].len == 0
-    result = a[0].kind == b[0].kind
+    result = a[0].kind == b[0].kind and sameFlags(a[0], b[0])
+    if result and a[0].kind == tyProc and IgnoreCC notin c.flags:
+      let ecc = a[0].flags * {tfExplicitCallConv}
+      result = ecc == b[0].flags * {tfExplicitCallConv} and
+               (ecc == {} or a[0].callConv == b[0].callConv)
   of tyGenericInvocation, tyGenericBody, tySequence, tyOpenArray, tySet, tyRef,
      tyPtr, tyVar, tyLent, tySink, tyUncheckedArray, tyArray, tyProc, tyVarargs,
      tyOrdinal, tyCompositeTypeClass, tyUserTypeClass, tyUserTypeClassInst,

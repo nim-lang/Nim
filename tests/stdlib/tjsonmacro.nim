@@ -1,5 +1,6 @@
 discard """
   output: ""
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
 """
 

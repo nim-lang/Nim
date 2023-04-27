@@ -131,7 +131,7 @@
   `foo` had type `proc ()` were assumed by the compiler to mean `foo(a, b, proc () = ...)`.
   This behavior is now deprecated. Use `foo(a, b) do (): ...` or `foo(a, b, proc () = ...)` instead.
 
-- If no exception or any exception deriving from Exception but not Defect or CatchableError given in except, a `warnBareExcept` warning will be triggered.
+- When `--warning[BareExcept]:on` is enabled, if no exception or any exception deriving from Exception but not Defect or CatchableError given in except, a `warnBareExcept` warning will be triggered.
 
 - The experimental strictFuncs feature now disallows a store to the heap via a `ref` or `ptr` indirection.
 
@@ -179,7 +179,7 @@
   for 64-bit integer types (`int64` and `uint64`) by default. As this affects
   JS code generation, code using these types to interface with the JS backend
   may need to be updated. Note that `int` and `uint` are not affected.
-  
+
   For compatibility with [platforms that do not support BigInt](https://caniuse.com/bigint)
   and in the case of potential bugs with the new implementation, the
   old behavior is currently still supported with the command line option
@@ -195,7 +195,7 @@
 
   iterator iter(): int =
     yield 123
-  
+
   proc takesProc[T: proc](x: T) = discard
   proc takesIter[T: iterator](x: T) = discard
 
@@ -221,9 +221,14 @@
 
 - Signed integer literals in `set` literals now default to a range type of
   `0..255` instead of `0..65535` (the maximum size of sets).
-  
+
 - Case statements with else branches put before elif/of branches in macros
   are rejected with "invalid order of case branches".
+
+- Destructors now default to `.raises: []` (i.e. destructors must not raise
+  unlisted exceptions) and explicitly raising destructors are implementation
+  defined behavior.
+
 
 ## Standard library additions and changes
 

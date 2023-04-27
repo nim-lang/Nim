@@ -63,7 +63,8 @@ type
     alignment*: int # for alignment
     options*: TOptions
     position*: int
-    offset*: int
+    offset*: int32
+    disamb*: int32
     externalName*: LitId # instead of TLoc
     locFlags*: TLocFlags
     annex*: PackedLib

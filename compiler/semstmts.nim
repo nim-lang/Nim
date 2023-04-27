@@ -460,7 +460,7 @@ proc fillPartialObject(c: PContext; n: PNode; typ: PType) =
     let y = considerQuotedIdent(c, n[1])
     let obj = x.typ.skipTypes(abstractPtrs)
     if obj.kind == tyObject and tfPartial in obj.flags:
-      let field = newSym(skField, getIdent(c.cache, y.s), nextSymId c.idgen, obj.sym, n[1].info)
+      let field = newSym(skField, getIdent(c.cache, y.s), c.idgen, obj.sym, n[1].info)
       field.typ = skipIntLit(typ, c.idgen)
       field.position = obj.n.len
       obj.n.add newSymNode(field)
@@ -599,7 +599,7 @@ proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSy
   let useTemp = def.kind notin {nkPar, nkTupleConstr} or symkind == skConst
   if useTemp:
     # use same symkind for compatibility with original section
-    tmpTuple = newSym(symkind, getIdent(c.cache, "tmpTuple"), nextSymId c.idgen, getCurrOwner(c), n.info)
+    tmpTuple = newSym(symkind, getIdent(c.cache, "tmpTuple"), c.idgen, getCurrOwner(c), n.info)
     tmpTuple.typ = typ
     tmpTuple.flags.incl(sfGenSym)
     lastDef = newNodeI(defkind, a.info)
@@ -682,7 +682,14 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           localError(c.config, def.info, errCannotInferTypeOfTheLiteral % typ.kind.toHumanStr)
         elif typ.kind == tyProc and def.kind == nkSym and isGenericRoutine(def.sym.ast):
           # tfUnresolved in typ.flags:
-          localError(c.config, def.info, errProcHasNoConcreteType % def.renderTree)
+          let owner = typ.owner
+          let err =
+            # consistent error message with evaltempl/semMacroExpr
+            if owner != nil and owner.kind in {skTemplate, skMacro}:
+              errMissingGenericParamsForTemplate % def.renderTree
+            else:
+              errProcHasNoConcreteType % def.renderTree
+          localError(c.config, def.info, err)
         when false:
           # XXX This typing rule is neither documented nor complete enough to
           # justify it. Instead use the newer 'unowned x' until we figured out
@@ -1120,10 +1127,10 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
     popCaseContext(c)
     closeScope(c)
     return handleCaseStmtMacro(c, n, flags)
-  template invalidOrderOfBranches(n: PNode) = 
+  template invalidOrderOfBranches(n: PNode) =
     localError(c.config, n.info, "invalid order of case branches")
     break
-  
+
   for i in 1..<n.len:
     setCaseContextIdx(c, i)
     var x = n[i]
@@ -1469,7 +1476,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       if tfInheritable in oldFlags and tfFinal in objTy.flags:
         excl(objTy.flags, tfFinal)
       let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
-                       nextSymId c.idgen, getCurrOwner(c), s.info)
+                       c.idgen, getCurrOwner(c), s.info)
       obj.flags.incl sfGeneratedType
       let symNode = newSymNode(obj)
       obj.ast = a.shallowCopy
@@ -1649,7 +1656,7 @@ proc swapResult(n: PNode, sRes: PSym, dNode: PNode) =
 
 proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
   template genResSym(s) =
-    var s = newSym(skResult, getIdent(c.cache, "result"), nextSymId c.idgen,
+    var s = newSym(skResult, getIdent(c.cache, "result"), c.idgen,
                    getCurrOwner(c), n.info)
     s.typ = t
     incl(s.flags, sfUsed)
@@ -1850,6 +1857,11 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
   case name
   of "=destroy":
     bindTypeHook(c, s, n, attachedDestructor)
+    if s.ast != nil:
+      if s.ast[pragmasPos].kind == nkEmpty:
+        s.ast[pragmasPos] = newNodeI(nkPragma, s.info)
+      s.ast[pragmasPos].add newTree(nkExprColonExpr,
+          newIdentNode(c.cache.getIdent("raises"),  s.info), newNodeI(nkBracket, s.info))
   of "deepcopy", "=deepcopy":
     if s.typ.len == 2 and
         s.typ[1].skipTypes(abstractInst).kind in {tyRef, tyPtr} and
@@ -1990,7 +2002,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   case n[namePos].kind
   of nkEmpty:
-    s = newSym(kind, c.cache.idAnon, nextSymId c.idgen, c.getCurrOwner, n.info)
+    s = newSym(kind, c.cache.idAnon, c.idgen, c.getCurrOwner, n.info)
     s.flags.incl sfUsed
     n[namePos] = newSymNode(s)
   of nkSym:
@@ -2012,6 +2024,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   s.ast = n
   s.options = c.config.options
   #s.scope = c.currentScope
+  if s.kind in {skMacro, skTemplate}:
+    # push noalias flag at first to prevent unwanted recursive calls:
+    incl(s.flags, sfNoalias)
 
   # before compiling the proc params & body, set as current the scope
   # where the proc was declared
@@ -2204,7 +2219,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         trackProc(c, s, s.ast[bodyPos])
       else:
         if (s.typ[0] != nil and s.kind != skIterator):
-          addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nextSymId c.idgen, s, n.info))
+          addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), c.idgen, s, n.info))
 
         openScope(c)
         n[bodyPos] = semGenericStmt(c, n[bodyPos])
@@ -2328,10 +2343,16 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   var s = result[namePos].sym
   var t = s.typ
   var allUntyped = true
+  var nullary = true
   for i in 1..<t.n.len:
     let param = t.n[i].sym
     if param.typ.kind != tyUntyped: allUntyped = false
+    # no default value, parameters required in call
+    if param.ast == nil: nullary = false
   if allUntyped: incl(s.flags, sfAllUntyped)
+  if nullary and n[genericParamsPos].kind == nkEmpty:
+    # macro can be called with alias syntax, remove pushed noalias flag
+    excl(s.flags, sfNoalias)
   if n[bodyPos].kind == nkEmpty:
     localError(c.config, n.info, errImplOfXexpected % s.name.s)
 

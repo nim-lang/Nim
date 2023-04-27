@@ -6676,6 +6676,8 @@ even when one version does not export some of these identifiers.
 
 The `import` statement is only allowed at the top level.
 
+String literals can be used for import/include statements.
+The compiler performs [path substitution](nimc.html#compiler-usage-commandminusline-switches) when used.
 
 Include statement
 -----------------
@@ -6887,6 +6889,35 @@ iterator in which case the overloading resolution takes place:
   var x = 4
   write(stdout, x) # not ambiguous: uses the module C's x
   ```
+Modules can share their name, however, when trying to qualify a identifier with the module name the compiler will fail with ambiguous identifier error. One can qualify the identifier by aliasing the module. 
+
+
+```nim
+# Module A/C
+proc fb* = echo "fizz"
+```
+
+
+```nim
+# Module B/C
+proc fb* = echo "buzz"
+```
+
+
+```nim
+import A/C
+import B/C
+
+C.fb() # Error: ambiguous identifier: 'fb'
+```
+
+
+```nim
+import A/C as fizz
+import B/C 
+
+fizz.fb() # Works
+```
 
 
 Packages

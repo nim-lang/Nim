@@ -94,7 +94,7 @@ proc repr*(p: pointer): string =
         result[j] = HexChars[n and 0xF]
         n = n shr 4
 
-proc repr*(p: proc): string =
+proc repr*(p: proc | iterator {.closure.}): string =
   ## repr of a proc as its address
   repr(cast[ptr pointer](unsafeAddr p)[])
 

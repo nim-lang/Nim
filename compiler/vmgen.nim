@@ -2044,7 +2044,7 @@ proc procIsCallback(c: PCtx; s: PSym): bool =
   if c.callbackIndex.contains(key):
     let index = c.callbackIndex[key]
     doAssert s.offset == -1
-    s.offset = -2 - index
+    s.offset = -2'i32 - index.int32
     result = true
   else:
     result = false
@@ -2344,7 +2344,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.patch(procStart)
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
-    s.offset = c.prc.regInfo.len
+    s.offset = c.prc.regInfo.len.int32
     #if s.name.s == "main" or s.name.s == "[]":
     #  echo renderTree(body)
     #  c.echoCode(result)

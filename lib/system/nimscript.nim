@@ -86,6 +86,7 @@ proc patchFile*(package, filename, replacement: string) =
   ## is interpreted to be local to the Nimscript file that contains
   ## the call to `patchFile`, Nim's `--path` is not used at all
   ## to resolve the filename!
+  ## The compiler also performs `path substitution <nimc.html#compiler-usage-commandminusline-switches>`_ on `replacement`.
   ##
   ## Example:
   ##
