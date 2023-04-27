@@ -319,3 +319,14 @@ block:
       discard m
 
   hello(12)
+
+block:
+  proc hello(x: int, y: typedesc) =
+    discard
+
+  macro main =
+    let x = 12
+    result = quote do:
+      `hello`(12, type(x))
+
+  main()
