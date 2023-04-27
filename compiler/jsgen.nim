@@ -1830,10 +1830,10 @@ proc arrayTypeForElemType(conf: ConfigRef; typ: PType): string =
   let typ = typ.skipTypes(abstractRange)
   case typ.kind
   of tyInt:
-    if $typ.sym.loc.r != "bigint":
-      "Int32Array"
-    else:
+    if $typ.sym.loc.r == "bigint":
       ""
+    else:
+      "Int32Array"
   of tyInt32: "Int32Array"
   of tyInt16: "Int16Array"
   of tyInt8: "Int8Array"
