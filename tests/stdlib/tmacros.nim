@@ -139,7 +139,7 @@ block: # SameType
     x2 = Tensor[A]()
     x3 = Tensor[B]()
 
-  static: 
+  static:
     assert testTensorInt(x)
     assert not testTensorInt(x1)
     assert testTensorInt(x2)
