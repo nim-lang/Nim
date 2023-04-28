@@ -62,7 +62,8 @@
   enumValueA2">Foo</a></li>
 <li><a class="reference" href="#FooBuzz" title="FooBuzz {.deprecated: &quot;FooBuzz msg&quot;.} = int">FooBuzz</a></li>
 <li><a class="reference" href="#MyObject" title="MyObject = object
-  someString*: string        ## This is a string">MyObject</a></li>
+  someString*: string        ## This is a string
+  annotated* {.somePragma.}: string ## This is an annotated string">MyObject</a></li>
 <li><a class="reference" href="#Shapes" title="Shapes = enum
   Circle,                   ## A circle
   Triangle,                 ## A three-sided shape
@@ -401,6 +402,7 @@
 <div id="MyObject">
   <dt><pre><a href="testproject.html#MyObject"><span class="Identifier">MyObject</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
   <span class="Identifier">someString</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>        <span class="Comment">## This is a string</span>
+  <span class="Identifier">annotated</span><span class="Operator">*</span> {.<span class="Identifier">somePragma</span>.}<span class="Other">:</span> <span class="Identifier">string</span> <span class="Comment">## This is an annotated string</span>
   </pre></dt>
   <dd>
     
