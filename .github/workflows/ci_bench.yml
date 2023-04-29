@@ -73,22 +73,22 @@ jobs:
         id: minimize-cache
         uses: actions/cache/restore@v3
         with:
-          path: minimize.sqlite
+          path: minimize.csv
           key: minimize-db-key
 
       - name: 'Update minimize db'
         shell: bash
         run: ./minimize/minimize update-db
 
-            # - name: 'Save minimize cached database'
-            #if: |
-            #  github.event_name == 'push' && github.ref == 'refs/heads/devel' &&
-            #  matrix.target == 'linux'
-            #   id: minimize-cache
-            #   uses: actions/cache/save@v3
-            #   with:
-            #     path: minimize.sqlite
-            #     key: minimize-db-key
+      - name: 'Save minimize cached database'
+        if: |
+          github.event_name == 'push' && github.ref == 'refs/heads/devel' &&
+          matrix.target == 'linux'
+        id: minimize-cache
+        uses: actions/cache/save@v3
+        with:
+          path: minimize.csv
+          key: minimize-db-key
 
       - name: 'Generate minimize report'
         shell: bash
