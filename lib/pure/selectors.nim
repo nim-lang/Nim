@@ -328,7 +328,7 @@ else:
     doAssert(timeout >= -1, "Cannot select with a negative value, got: " & $timeout)
 
   when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
-       defined(solaris) or defined(zephyr) or defined(freertos) or defined(nuttx):
+       defined(solaris) or defined(zephyr) or defined(freertos) or defined(nuttx) or defined(haiku):
     template maxDescriptors*(): int =
       ## Returns the maximum number of active file descriptors for the current
       ## process. This involves a system call. For now `maxDescriptors` is
