@@ -84,7 +84,6 @@ jobs:
         if: |
           github.event_name == 'push' && github.ref == 'refs/heads/devel' &&
           matrix.target == 'linux'
-        id: minimize-cache
         uses: actions/cache/save@v3
         with:
           path: minimize.csv
