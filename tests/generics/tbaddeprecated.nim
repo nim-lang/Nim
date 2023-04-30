@@ -18,6 +18,11 @@ block: # deprecated
     if o.hey:
       echo "not deprecated"
   gen(SomeObj(hey: true))
+  doAssert not (compiles do:
+    proc gen2(o: auto) =
+      if o.hey():
+        echo "not deprecated"
+    gen2(SomeObj(hey: true)))
   {.pop.}
 block: # error
   type
@@ -29,3 +34,8 @@ block: # error
     if o.hey:
       echo "not error"
   gen(SomeObj(hey: true))
+  doAssert not (compiles do:
+    proc gen2(o: auto) =
+      if o.hey():
+        echo "not deprecated"
+    gen2(SomeObj(hey: true)))
