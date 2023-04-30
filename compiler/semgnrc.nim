@@ -56,17 +56,27 @@ template isMixedIn(sym): bool =
                                s.magic == mNone and
                                s.kind in OverloadableSyms)
 
+proc maybeDotChoice(c: PContext, n: PNode, s: PSym, fromDotExpr=false): PNode =
+  if fromDotExpr:
+    result = symChoice(c, n, s, scForceOpen)
+    if result.len == 1:
+      result.transitionSonsKind(nkClosedSymChoice)
+    else:
+      result.transitionSonsKind(nkOpenSymChoice)
+  else:
+    result = symChoice(c, n, s, scOpen)
+
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; flags: TSemGenericFlags,
-                          fromDotExpr=false, choiceKind=scOpen): PNode =
+                          fromDotExpr=false): PNode =
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
   incl(s.flags, sfUsed)
   case s.kind
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of skProc, skFunc, skMethod, skIterator, skConverter, skModule:
-    result = symChoice(c, n, s, choiceKind)
+  of skProc, skFunc, skMethod, skIterator, skConverter, skModule, skEnumField:
+    result = maybeDotChoice(c, n, s, fromDotExpr)
   of skTemplate, skMacro:
     # alias syntax, see semSym for skTemplate, skMacro
     if sfNoalias notin s.flags and not fromDotExpr:
@@ -79,7 +89,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       result = semGenericStmt(c, result, {}, ctx)
       discard c.friendModules.pop()
     else:
-      result = symChoice(c, n, s, choiceKind)
+      result = maybeDotChoice(c, n, s, fromDotExpr)
   of skGenericParam:
     if s.typ != nil and s.typ.kind == tyStatic:
       if s.typ.n != nil:
@@ -99,8 +109,6 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     else:
       result = n
     onUse(n.info, s)
-  of skEnumField:
-    result = symChoice(c, n, s, choiceKind)
   else:
     result = newSymNode(s, n.info)
     onUse(n.info, s)
@@ -133,8 +141,7 @@ proc newDot(n, b: PNode): PNode =
   result.add(b)
 
 proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
-                 ctx: var GenericCtx; isMacro: var bool;
-                 inCall: bool): PNode =
+                 ctx: var GenericCtx; isMacro: var bool): PNode =
   assert n.kind == nkDotExpr
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
 
@@ -157,15 +164,8 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
       elif s.isMixedIn:
         result = newDot(result, symChoice(c, n, s, scForceOpen))
       else:
-        let fieldChoiceKind = if inCall: scOpen else: scForceOpen
-        let syms = semGenericStmtSymbol(c, n, s, ctx, flags, fromDotExpr=true,
-                                        choiceKind=fieldChoiceKind)
-        if syms.kind == nkSym:
-          let choice = symChoice(c, n, s, scForceOpen)
-          choice.transitionSonsKind(nkClosedSymChoice)
-          result = newDot(result, choice)
-        else:
-          result = newDot(result, syms)
+        let syms = semGenericStmtSymbol(c, n, s, ctx, flags, fromDotExpr=true)
+        result = newDot(result, syms)
 
 proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
   let s = newSymS(skUnknown, getIdentNode(c, n), c)
@@ -195,7 +195,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     #if s != nil: result = semGenericStmtSymbol(c, n, s)
     # XXX for example: ``result.add`` -- ``add`` needs to be looked up here...
     var dummy: bool
-    result = fuzzyLookup(c, n, flags, ctx, dummy, inCall=false)
+    result = fuzzyLookup(c, n, flags, ctx, dummy)
   of nkSym:
     let a = n.sym
     let b = getGenSym(c, a)
@@ -280,7 +280,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         onUse(fn.info, s)
         first = 1
     elif fn.kind == nkDotExpr:
-      result[0] = fuzzyLookup(c, fn, flags, ctx, mixinContext, inCall=true)
+      result[0] = fuzzyLookup(c, fn, flags, ctx, mixinContext)
       first = 1
     # Consider 'when declared(globalsSlot): ThreadVarSetValue(globalsSlot, ...)'
     # in threads.nim: the subtle preprocessing here binds 'globalsSlot' which
