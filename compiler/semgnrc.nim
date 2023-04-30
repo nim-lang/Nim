@@ -58,7 +58,7 @@ template isMixedIn(sym): bool =
 
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; flags: TSemGenericFlags,
-                          fromDotExpr=false): PNode =
+                          fromDotExpr=false, choiceKind=scOpen): PNode =
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
   incl(s.flags, sfUsed)
   case s.kind
@@ -66,7 +66,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     # Introduced in this pass! Leave it as an identifier.
     result = n
   of skProc, skFunc, skMethod, skIterator, skConverter, skModule:
-    result = symChoice(c, n, s, if fromDotExpr: scForceOpen else: scOpen)
+    result = symChoice(c, n, s, choiceKind)
   of skTemplate, skMacro:
     # alias syntax, see semSym for skTemplate, skMacro
     if sfNoalias notin s.flags and not fromDotExpr:
@@ -79,7 +79,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       result = semGenericStmt(c, result, {}, ctx)
       discard c.friendModules.pop()
     else:
-      result = symChoice(c, n, s, if fromDotExpr: scForceOpen else: scOpen)
+      result = symChoice(c, n, s, choiceKind)
   of skGenericParam:
     if s.typ != nil and s.typ.kind == tyStatic:
       if s.typ.n != nil:
@@ -100,7 +100,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       result = n
     onUse(n.info, s)
   of skEnumField:
-    result = symChoice(c, n, s, if fromDotExpr: scForceOpen else: scOpen)
+    result = symChoice(c, n, s, choiceKind)
   else:
     result = newSymNode(s, n.info)
     onUse(n.info, s)
@@ -133,7 +133,8 @@ proc newDot(n, b: PNode): PNode =
   result.add(b)
 
 proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
-                 ctx: var GenericCtx; isMacro: var bool): PNode =
+                 ctx: var GenericCtx; isMacro: var bool;
+                 inCall: bool): PNode =
   assert n.kind == nkDotExpr
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
 
@@ -156,11 +157,12 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
       elif s.isMixedIn:
         result = newDot(result, symChoice(c, n, s, scForceOpen))
       else:
-        let syms = semGenericStmtSymbol(c, n, s, ctx, flags, fromDotExpr=true)
+        let fieldChoiceKind = if inCall: scOpen else: scForceOpen
+        let syms = semGenericStmtSymbol(c, n, s, ctx, flags, fromDotExpr=true,
+                                        choiceKind=fieldChoiceKind)
         if syms.kind == nkSym:
           let choice = symChoice(c, n, s, scForceOpen)
-          # don't close, we don't know if it's an object field yet:
-          #choice.transitionSonsKind(nkClosedSymChoice)
+          choice.transitionSonsKind(nkClosedSymChoice)
           result = newDot(result, choice)
         else:
           result = newDot(result, syms)
@@ -193,7 +195,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     #if s != nil: result = semGenericStmtSymbol(c, n, s)
     # XXX for example: ``result.add`` -- ``add`` needs to be looked up here...
     var dummy: bool
-    result = fuzzyLookup(c, n, flags, ctx, dummy)
+    result = fuzzyLookup(c, n, flags, ctx, dummy, inCall=false)
   of nkSym:
     let a = n.sym
     let b = getGenSym(c, a)
@@ -278,7 +280,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         onUse(fn.info, s)
         first = 1
     elif fn.kind == nkDotExpr:
-      result[0] = fuzzyLookup(c, fn, flags, ctx, mixinContext)
+      result[0] = fuzzyLookup(c, fn, flags, ctx, mixinContext, inCall=true)
       first = 1
     # Consider 'when declared(globalsSlot): ThreadVarSetValue(globalsSlot, ...)'
     # in threads.nim: the subtle preprocessing here binds 'globalsSlot' which
