@@ -14,6 +14,7 @@ block: # deprecated
       hey: bool
   proc hey() {.deprecated: "Shouldn't use this".} = echo "hey"
   proc gen(o: auto) =
+    doAssert not compiles(o.hey())
     if o.hey:
       echo "not deprecated"
   gen(SomeObj(hey: true))
@@ -24,6 +25,7 @@ block: # error
       hey: bool
   proc hey() {.error: "Shouldn't use this".} = echo "hey"
   proc gen(o: auto) =
+    doAssert not compiles(o.hey())
     if o.hey:
       echo "not error"
   gen(SomeObj(hey: true))
