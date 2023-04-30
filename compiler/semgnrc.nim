@@ -61,8 +61,6 @@ proc maybeDotChoice(c: PContext, n: PNode, s: PSym, fromDotExpr=false): PNode =
     result = symChoice(c, n, s, scForceOpen)
     if result.len == 1:
       result.transitionSonsKind(nkClosedSymChoice)
-    else:
-      result.transitionSonsKind(nkOpenSymChoice)
   else:
     result = symChoice(c, n, s, scOpen)
 
