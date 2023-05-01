@@ -671,6 +671,11 @@ proc strformatImpl(f: string; openChar, closeChar: char,
   if strlit.len > 0:
     result.add newCall(bindSym"add", res, newLit(strlit))
   result.add res
+  # workaround for #20381
+  var blockExpr = newNimNode(nnkBlockExpr, lineInfoNode)
+  blockExpr.add(newEmptyNode())
+  blockExpr.add(result)
+  result = blockExpr
   when defined(debugFmtDsl):
     echo repr result
 
