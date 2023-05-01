@@ -265,14 +265,17 @@ when defineSsl:
       ErrClearError()
       # Call the desired operation.
       opResult = op
-
+      let err =
+        if opResult < 0:
+          getSslError(socket, opResult.cint)
+        else:
+          SSL_ERROR_NONE
       # Send any remaining pending SSL data.
       await sendPendingSslData(socket, flags)
 
       # If the operation failed, try to see if SSL has some data to read
       # or write.
       if opResult < 0:
-        let err = getSslError(socket, opResult.cint)
         let fut = appeaseSsl(socket, flags, err.cint)
         yield fut
         if not fut.read():
