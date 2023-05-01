@@ -291,11 +291,11 @@ proc parseTypeDefValue(p: var Parser): PNode
 proc parseParamList(p: var Parser, retColon = true): PNode
 
 proc isSigilLike(tok: Token): bool {.inline.} =
-  result = tok.tokType == tkOpr and tok.constant.ident.s[0] == '@'
+  result = tok.tokType == tkOpr and tok.ident.s[0] == '@'
 
 proc isRightAssociative(tok: Token): bool {.inline.} =
   ## Determines whether the token is right assocative.
-  result = tok.tokType == tkOpr and tok.constant.ident.s[0] == '^'
+  result = tok.tokType == tkOpr and tok.ident.s[0] == '^'
   # or (tok.ident.s.len > 1 and tok.ident.s[^1] == '>')
 
 proc isUnary(tok: Token): bool =
@@ -365,12 +365,12 @@ proc parseSymbol(p: var Parser, mode = smNormal): PNode =
   #| symbolOrKeyword = symbol | KEYW
   case p.tok.tokType
   of tkSymbol:
-    result = newIdentNodeP(p.tok.constant.ident, p)
+    result = newIdentNodeP(p.tok.ident, p)
     getTok(p)
   of tokKeywordLow..tokKeywordHigh:
     if p.tok.tokType in tkBuiltInMagics or mode == smAfterDot:
       # for backwards compatibility these 2 are always valid:
-      result = newIdentNodeP(p.tok.constant.ident, p)
+      result = newIdentNodeP(p.tok.ident, p)
       getTok(p)
     elif p.tok.tokType == tkNil and mode == smAllowNil:
       result = newNodeP(nkNilLit, p)
@@ -532,7 +532,7 @@ proc dotLikeExpr(p: var Parser, a: PNode): PNode =
   var info = p.parLineInfo
   result = newNodeI(nkInfix, info)
   optInd(p, result)
-  var opNode = newIdentNodeP(p.tok.constant.ident, p)
+  var opNode = newIdentNodeP(p.tok.ident, p)
   getTok(p)
   result.add(opNode)
   result.add(a)
@@ -729,65 +729,65 @@ proc identOrLiteral(p: var Parser, mode: PrimaryMode): PNode =
   #| arrayConstr = '[' optInd (exprColonEqExpr comma?)* optPar ']'
   case p.tok.tokType
   of tkSymbol, tkBuiltInMagics, tkOut:
-    result = newIdentNodeP(p.tok.constant.ident, p)
+    result = newIdentNodeP(p.tok.ident, p)
     getTok(p)
     result = parseGStrLit(p, result)
   of tkAccent:
     result = parseSymbol(p)       # literals
   of tkIntLit:
-    result = newIntNodeP(nkIntLit, p.tok.constant.iNumber, p)
+    result = newIntNodeP(nkIntLit, p.tok.iNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkInt8Lit:
-    result = newIntNodeP(nkInt8Lit, p.tok.constant.iNumber, p)
+    result = newIntNodeP(nkInt8Lit, p.tok.iNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkInt16Lit:
-    result = newIntNodeP(nkInt16Lit, p.tok.constant.iNumber, p)
+    result = newIntNodeP(nkInt16Lit, p.tok.iNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkInt32Lit:
-    result = newIntNodeP(nkInt32Lit, p.tok.constant.iNumber, p)
+    result = newIntNodeP(nkInt32Lit, p.tok.iNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkInt64Lit:
-    result = newIntNodeP(nkInt64Lit, p.tok.constant.iNumber, p)
+    result = newIntNodeP(nkInt64Lit, p.tok.iNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkUIntLit:
-    result = newIntNodeP(nkUIntLit, p.tok.constant.iNumber, p)
+    result = newIntNodeP(nkUIntLit, p.tok.iNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkUInt8Lit:
-    result = newIntNodeP(nkUInt8Lit, p.tok.constant.iNumber, p)
+    result = newIntNodeP(nkUInt8Lit, p.tok.iNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkUInt16Lit:
-    result = newIntNodeP(nkUInt16Lit, p.tok.constant.iNumber, p)
+    result = newIntNodeP(nkUInt16Lit, p.tok.iNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkUInt32Lit:
-    result = newIntNodeP(nkUInt32Lit, p.tok.constant.iNumber, p)
+    result = newIntNodeP(nkUInt32Lit, p.tok.iNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkUInt64Lit:
-    result = newIntNodeP(nkUInt64Lit, p.tok.constant.iNumber, p)
+    result = newIntNodeP(nkUInt64Lit, p.tok.iNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkFloatLit:
-    result = newFloatNodeP(nkFloatLit, p.tok.constant.fNumber, p)
+    result = newFloatNodeP(nkFloatLit, p.tok.fNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkFloat32Lit:
-    result = newFloatNodeP(nkFloat32Lit, p.tok.constant.fNumber, p)
+    result = newFloatNodeP(nkFloat32Lit, p.tok.fNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkFloat64Lit:
-    result = newFloatNodeP(nkFloat64Lit, p.tok.constant.fNumber, p)
+    result = newFloatNodeP(nkFloat64Lit, p.tok.fNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkFloat128Lit:
-    result = newFloatNodeP(nkFloat128Lit, p.tok.constant.fNumber, p)
+    result = newFloatNodeP(nkFloat128Lit, p.tok.fNumber, p)
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkStrLit:
@@ -803,7 +803,7 @@ proc identOrLiteral(p: var Parser, mode: PrimaryMode): PNode =
     result = newIntNodeP(nkCharLit, ord(p.tok.literal[0]), p)
     getTok(p)
   of tkCustomLit:
-    let splitPos = p.tok.constant.iNumber.int
+    let splitPos = p.tok.iNumber.int
     let str = newStrNodeP(nkRStrLit, p.tok.literal.substr(0, splitPos-1), p)
     let callee = newIdentNodeP(getIdent(p.lex.cache, p.tok.literal.substr(splitPos)), p)
     result = newNodeP(nkDotExpr, p)
@@ -863,8 +863,8 @@ proc commandExpr(p: var Parser; r: PNode; mode: PrimaryMode): PNode =
     result.add commandParam(p, isFirstParam, mode)
 
 proc isDotLike(tok: Token): bool =
-  result = tok.tokType == tkOpr and tok.constant.ident.s.len > 1 and
-    tok.constant.ident.s[0] == '.' and tok.constant.ident.s[1] != '.'
+  result = tok.tokType == tkOpr and tok.ident.s.len > 1 and
+    tok.ident.s[0] == '.' and tok.ident.s[1] != '.'
 
 proc primarySuffix(p: var Parser, r: PNode,
                    baseIndent: int, mode: PrimaryMode): PNode =
@@ -940,7 +940,7 @@ proc parseOperators(p: var Parser, headNode: PNode,
     checkBinary(p)
     let leftAssoc = ord(not isRightAssociative(p.tok))
     var a = newNodeP(nkInfix, p)
-    var opNode = newIdentNodeP(p.tok.constant.ident, p) # skip operator:
+    var opNode = newIdentNodeP(p.tok.ident, p) # skip operator:
     getTok(p)
     flexComment(p, a)
     optPar(p)
@@ -1011,7 +1011,7 @@ proc identVis(p: var Parser; allowDot=false): PNode =
     when defined(nimpretty):
       starWasExportMarker(p.em)
     result = newNodeP(nkPostfix, p)
-    result.add(newIdentNodeP(p.tok.constant.ident, p))
+    result.add(newIdentNodeP(p.tok.ident, p))
     result.add(a)
     getTok(p)
   elif p.tok.tokType == tkDot and allowDot:
@@ -1153,7 +1153,7 @@ proc parseParamList(p: var Parser, retColon = true): PNode =
     optPar(p)
     eat(p, tkParRi)
   let hasRet = if retColon: p.tok.tokType == tkColon
-               else: p.tok.tokType == tkOpr and p.tok.constant.ident.s == "->"
+               else: p.tok.tokType == tkOpr and p.tok.ident.s == "->"
   if hasRet and p.tok.indent < 0:
     getTok(p)
     optInd(p, result)
@@ -1249,9 +1249,9 @@ proc parseTypeDescKAux(p: var Parser, kind: TNodeKind,
   if kind == nkDistinctTy and p.tok.tokType == tkSymbol:
     # XXX document this feature!
     var nodeKind: TNodeKind
-    if p.tok.constant.ident.s == "with":
+    if p.tok.ident.s == "with":
       nodeKind = nkWith
-    elif p.tok.constant.ident.s == "without":
+    elif p.tok.ident.s == "without":
       nodeKind = nkWithout
     else:
       return result
@@ -1350,7 +1350,7 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
     # and should be removed for Nim 2.0, I don't think anybody uses them.
     let isSigil = isSigilLike(p.tok)
     result = newNodeP(nkPrefix, p)
-    var a = newIdentNodeP(p.tok.constant.ident, p)
+    var a = newIdentNodeP(p.tok.ident, p)
     result.add(a)
     getTok(p)
     optInd(p, a)
@@ -1390,7 +1390,7 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
 
 proc binaryNot(p: var Parser; a: PNode): PNode =
   if p.tok.tokType == tkNot:
-    let notOpr = newIdentNodeP(p.tok.constant.ident, p)
+    let notOpr = newIdentNodeP(p.tok.ident, p)
     getTok(p)
     optInd(p, notOpr)
     let b = parseExpr(p)
@@ -2538,7 +2538,7 @@ proc parseTopLevelStmt(p: var Parser): PNode =
       if p.firstTok and p.tok.indent < 0: discard
       elif p.tok.tokType != tkSemiColon:
         # special casing for better error messages:
-        if p.tok.tokType == tkOpr and p.tok.constant.ident.s == "*":
+        if p.tok.tokType == tkOpr and p.tok.ident.s == "*":
           parMessage(p, errGenerated,
             "invalid indentation; an export marker '*' follows the declared identifier")
         else:
