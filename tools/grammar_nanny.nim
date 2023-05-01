@@ -30,7 +30,7 @@ proc checkGrammarFileImpl(cache: IdentCache, config: ConfigRef) =
     while tok.tokType != tkEof:
       #printTok(config, tok)
       if isKeyword(tok.tokType) or tok.tokType == tkSymbol:
-        word = tok.ident.s
+        word = tok.constant.ident.s
         rawGetTok(L, tok)
         if tok.tokType == tkEquals:
           declaredSyms.incl word

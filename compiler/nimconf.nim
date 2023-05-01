@@ -35,7 +35,7 @@ proc parseAtom(L: var Lexer, tok: var Token; config: ConfigRef): bool =
     ppGetTok(L, tok)
     result = not parseAtom(L, tok, config)
   else:
-    result = isDefined(config, tok.ident.s)
+    result = isDefined(config, tok.constant.ident.s)
     ppGetTok(L, tok)
 
 proc parseAndExpr(L: var Lexer, tok: var Token; config: ConfigRef): bool =
@@ -87,9 +87,9 @@ proc jumpToDirective(L: var Lexer, tok: var Token, dest: TJumpDest; config: Conf
                      condStack: var seq[bool]) =
   var nestedIfs = 0
   while true:
-    if tok.ident != nil and tok.ident.s == "@":
+    if tok.constant.ident != nil and tok.constant.ident.s == "@":
       ppGetTok(L, tok)
-      case whichKeyword(tok.ident)
+      case whichKeyword(tok.constant.ident)
       of wIf:
         inc(nestedIfs)
       of wElse:
@@ -115,7 +115,7 @@ proc jumpToDirective(L: var Lexer, tok: var Token, dest: TJumpDest; config: Conf
 
 proc parseDirective(L: var Lexer, tok: var Token; config: ConfigRef; condStack: var seq[bool]) =
   ppGetTok(L, tok)            # skip @
-  case whichKeyword(tok.ident)
+  case whichKeyword(tok.constant.ident)
   of wIf:
     setLen(condStack, condStack.len + 1)
     let res = evalppIf(L, tok, config)
@@ -130,7 +130,7 @@ proc parseDirective(L: var Lexer, tok: var Token; config: ConfigRef; condStack: 
                                 {useEnvironment, useKey}))
     ppGetTok(L, tok)
   else:
-    case tok.ident.s.normalize
+    case tok.constant.ident.s.normalize
     of "putenv":
       ppGetTok(L, tok)
       var key = $tok
@@ -154,7 +154,7 @@ proc parseDirective(L: var Lexer, tok: var Token; config: ConfigRef; condStack: 
 
 proc confTok(L: var Lexer, tok: var Token; config: ConfigRef; condStack: var seq[bool]) =
   ppGetTok(L, tok)
-  while tok.ident != nil and tok.ident.s == "@":
+  while tok.constant.ident != nil and tok.constant.ident.s == "@":
     parseDirective(L, tok, config, condStack)    # else: give the token to the parser
 
 proc checkSymbol(L: Lexer, tok: Token) =
@@ -163,8 +163,8 @@ proc checkSymbol(L: Lexer, tok: Token) =
 
 proc parseAssignment(L: var Lexer, tok: var Token;
                      config: ConfigRef; condStack: var seq[bool]) =
-  if tok.ident != nil:
-    if tok.ident.s == "-" or tok.ident.s == "--":
+  if tok.constant.ident != nil:
+    if tok.constant.ident.s == "-" or tok.constant.ident.s == "--":
       confTok(L, tok, config, condStack)           # skip unnecessary prefix
   var info = getLineInfo(L, tok) # save for later in case of an error
   checkSymbol(L, tok)
@@ -187,7 +187,7 @@ proc parseAssignment(L: var Lexer, tok: var Token;
     if tok.tokType == tkBracketRi: confTok(L, tok, config, condStack)
     else: lexMessage(L, errGenerated, "expected closing ']'")
     val.add(']')
-  let percent = tok.ident != nil and tok.ident.s == "%="
+  let percent = tok.constant.ident != nil and tok.constant.ident.s == "%="
   if tok.tokType in {tkColon, tkEquals} or percent:
     if val.len > 0: val.add(':')
     confTok(L, tok, config, condStack)           # skip ':' or '=' or '%'
@@ -200,7 +200,7 @@ proc parseAssignment(L: var Lexer, tok: var Token;
       checkSymbol(L, tok)
       val.add($tok) # add the token after it
       confTok(L, tok, config, condStack)           # skip symbol
-    while tok.ident != nil and tok.ident.s == "&":
+    while tok.constant.ident != nil and tok.constant.ident.s == "&":
       confTok(L, tok, config, condStack)
       checkSymbol(L, tok)
       val.add($tok)
