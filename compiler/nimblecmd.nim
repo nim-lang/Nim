@@ -10,10 +10,12 @@
 ## Implements some helper procs for Nimble (Nim's package manager) support.
 
 import parseutils, strutils, os, options, msgs, sequtils, lineinfos, pathutils,
-  std/sha1, tables
+  tables
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
+
+import ../dist/checksums/src/checksums/sha1
 
 proc addPath*(conf: ConfigRef; path: AbsoluteDir, info: TLineInfo) =
   if not conf.searchPaths.contains(path):

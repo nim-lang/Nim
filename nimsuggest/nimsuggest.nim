@@ -11,8 +11,9 @@ import compiler/renderer
 import strformat
 import algorithm
 import tables
-import std/sha1
 import times
+
+import ../dist/checksums/src/checksums/sha1
 
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 

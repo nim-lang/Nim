@@ -7,12 +7,14 @@
 #    distribution, for details about the copyright.
 #
 
-import hashes, tables, intsets, std/sha1
+import hashes, tables, intsets
 import packed_ast, bitabs, rodfiles
 import ".." / [ast, idents, lineinfos, msgs, ropes, options,
   pathutils, condsyms, packages, modulepaths]
 #import ".." / [renderer, astalgo]
 from os import removeFile, isAbsolute
+
+import ../../dist/checksums/src/checksums/sha1
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, formatfloat]

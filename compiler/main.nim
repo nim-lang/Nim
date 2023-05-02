@@ -13,7 +13,7 @@ when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
 import
-  std/[strutils, os, times, tables, sha1, with, json],
+  std/[strutils, os, times, tables, with, json],
   llstream, ast, lexer, syntaxes, options, msgs,
   condsyms,
   idents, extccomp,
@@ -28,6 +28,8 @@ when defined(nimPreviewSlimSystem):
 
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
+
+import ../dist/checksums/src/checksums/sha1
 
 import pipelines
 

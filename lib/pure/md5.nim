@@ -18,6 +18,8 @@
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values
 ##   for diverse Nim types
 
+{.deprecated: "use command `nimble install checksums` and import `checksums/md5` instead".}
+
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
