@@ -56,25 +56,24 @@ template isMixedIn(sym): bool =
                                s.magic == mNone and
                                s.kind in OverloadableSyms)
 
-proc maybeDotChoice(c: PContext, n: PNode, s: PSym, fromDotExpr=false): PNode =
-  if fromDotExpr:
-    result = symChoice(c, n, s, scForceOpen)
-    if result.len == 1:
-      result.transitionSonsKind(nkClosedSymChoice)
-  else:
-    result = symChoice(c, n, s, scOpen)
-
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; flags: TSemGenericFlags,
-                          fromDotExpr=false): PNode =
+                          fromDotExpr: static bool = false): PNode =
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
   incl(s.flags, sfUsed)
+  template maybeDotChoice(c: PContext, n: PNode, s: PSym, fromDotExpr: bool) =
+    when fromDotExpr:
+      result = symChoice(c, n, s, scForceOpen)
+      if result.len == 1:
+        result.transitionSonsKind(nkClosedSymChoice)
+    else:
+      result = symChoice(c, n, s, scOpen)
   case s.kind
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
   of skProc, skFunc, skMethod, skIterator, skConverter, skModule, skEnumField:
-    result = maybeDotChoice(c, n, s, fromDotExpr)
+    maybeDotChoice(c, n, s, fromDotExpr)
   of skTemplate, skMacro:
     # alias syntax, see semSym for skTemplate, skMacro
     if sfNoalias notin s.flags and not fromDotExpr:
@@ -87,7 +86,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       result = semGenericStmt(c, result, {}, ctx)
       discard c.friendModules.pop()
     else:
-      result = maybeDotChoice(c, n, s, fromDotExpr)
+      maybeDotChoice(c, n, s, fromDotExpr)
   of skGenericParam:
     if s.typ != nil and s.typ.kind == tyStatic:
       if s.typ.n != nil:
