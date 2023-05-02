@@ -108,7 +108,7 @@ type
     fNumber*: BiggestFloat       # the parsed floating point literal
     literal*: string             # the parsed (string) literal; and
                                  # documentation comments are here too
-    line*, col*: int32
+    line*, col*: int
     when defined(nimpretty):
       offsetA*, offsetB*: int # used for pretty printing so that literals
                               # like 0b01 or  r"\L" are unaffected
@@ -131,7 +131,7 @@ type
     config*: ConfigRef
 
 proc getLineInfo*(L: Lexer, tok: Token): TLineInfo {.inline.} =
-  result = newLineInfo(L.fileIdx, tok.line.int, tok.col.int)
+  result = newLineInfo(L.fileIdx, tok.line, tok.col)
   when defined(nimpretty):
     result.offsetA = tok.offsetA
     result.offsetB = tok.offsetB
@@ -199,18 +199,6 @@ proc fillToken(L: var Token) =
     L.commentOffsetA = 0
     L.commentOffsetB = 0
 
-proc setLine*(tok: var Token, line: int) =
-  if line > high(int32):
-    tok.line = high(int32)
-  else:
-    tok.line = line.int32
-
-proc setColumn*(tok: var Token, col: int) =
-  if col > high(int32):
-    tok.col = high(int32)
-  else:
-    tok.col = col.int32
-
 proc openLexer*(lex: var Lexer, fileIdx: FileIndex, inputstream: PLLStream;
                  cache: IdentCache; config: ConfigRef) =
   openBaseLexer(lex, inputstream)
@@ -245,7 +233,7 @@ proc lexMessage*(L: Lexer, msg: TMsgKind, arg = "") =
   L.dispMessage(getLineInfo(L), msg, arg)
 
 proc lexMessageTok*(L: Lexer, msg: TMsgKind, tok: Token, arg = "") =
-  var info = newLineInfo(L.fileIdx, tok.line.int, tok.col.int)
+  var info = newLineInfo(L.fileIdx, tok.line, tok.col)
   L.dispMessage(info, msg, arg)
 
 proc lexMessagePos(L: var Lexer, msg: TMsgKind, pos: int, arg = "") =
@@ -1189,7 +1177,7 @@ proc skip(L: var Lexer, tok: var Token) =
           when defined(nimpretty):
             hasComment = true
             if tok.line < 0:
-              tok.setLine(L.lineNumber)
+              tok.line = L.lineNumber
               commentIndent = indent
           skipMultiLineComment(L, tok, pos+2, false)
           pos = L.bufpos
@@ -1208,7 +1196,7 @@ proc skip(L: var Lexer, tok: var Token) =
       when defined(nimpretty):
         hasComment = true
         if tok.line < 0:
-          tok.setLine(L.lineNumber)
+          tok.line = L.lineNumber
 
       if L.buf[pos+1] == '[':
         skipMultiLineComment(L, tok, pos+2, false)
@@ -1256,8 +1244,8 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
       L.indentAhead = L.currLineIndent
       return
   var c = L.buf[L.bufpos]
-  tok.setLine(L.lineNumber)
-  tok.setColumn(getColNumber(L, L.bufpos))
+  tok.line = L.lineNumber
+  tok.col = getColNumber(L, L.bufpos)
   if c in SymStartChars - {'r', 'R'} - UnicodeOperatorStartChars:
     getSymbol(L, tok)
   else:
@@ -1294,8 +1282,8 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
       else:
         tok.tokType = tkParLe
         when defined(nimsuggest):
-          if L.fileIdx == L.config.m.trackPos.fileIndex and tok.col < L.config.m.trackPos.col.int32 and
-                    tok.line == L.config.m.trackPos.line.int32 and L.config.ideCmd == ideCon:
+          if L.fileIdx == L.config.m.trackPos.fileIndex and tok.col < L.config.m.trackPos.col and
+                    tok.line == L.config.m.trackPos.line.int and L.config.ideCmd == ideCon:
             L.config.m.trackPos.col = tok.col.int16
     of ')':
       tok.tokType = tkParRi
@@ -1315,8 +1303,8 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
       inc(L.bufpos)
     of '.':
       when defined(nimsuggest):
-        if L.fileIdx == L.config.m.trackPos.fileIndex and tok.col+1 == L.config.m.trackPos.col.int32 and
-            tok.line == L.config.m.trackPos.line.int32 and L.config.ideCmd == ideSug:
+        if L.fileIdx == L.config.m.trackPos.fileIndex and tok.col+1 == L.config.m.trackPos.col and
+            tok.line == L.config.m.trackPos.line.int and L.config.ideCmd == ideSug:
           tok.tokType = tkDot
           L.config.m.trackPos.col = tok.col.int16
           inc(L.bufpos)
