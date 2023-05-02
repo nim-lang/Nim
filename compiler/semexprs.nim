@@ -1646,7 +1646,10 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
         {tyInt..tyInt64}:
       let idx = getOrdValue(n[1])
       if idx >= 0 and idx < arr.len: n.typ = arr[toInt(idx)]
-      else: localError(c.config, n.info, "invalid index value for tuple subscript")
+      else:
+        localError(c.config, n.info,
+          "invalid index $1 in subscript for tuple of length $2" %
+            [$idx, $arr.len])
       result = n
     else:
       result = nil
