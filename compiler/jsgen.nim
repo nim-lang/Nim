@@ -2174,6 +2174,13 @@ proc genMove(p: PProc; n: PNode; r: var TCompRes) =
   genReset(p, n)
   #lineF(p, "$1 = $2;$n", [dest.rdLoc, src.rdLoc])
 
+proc genDup(p: PProc; n: PNode; r: var TCompRes) =
+  var a: TCompRes
+  r.kind = resVal
+  r.res = p.getTemp()
+  gen(p, n[1], a)
+  lineF(p, "$1 = $2;$n", [r.rdLoc, a.rdLoc])
+
 proc genJSArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   r.res = rope("[")
@@ -2264,7 +2271,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "nimCopy(null, $1, $2)" % [x.rdLoc, genTypeInfo(p, n.typ)]
   of mOpenArrayToSeq:
     genCall(p, n, r)
-  of mDestroy, mTrace, mDup: discard "ignore calls to the default destructor"
+  of mDestroy, mTrace: discard "ignore calls to the default destructor"
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
     var x: TCompRes
@@ -2368,6 +2375,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     r.kind = resExpr
   of mMove:
     genMove(p, n, r)
+  of mDup:
+    genDup(p, n, r)
   else:
     genCall(p, n, r)
     #else internalError(p.config, e.info, 'genMagic: ' + magicToStr[op]);

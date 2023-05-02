@@ -1388,7 +1388,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     globalError(c.config, n.info, sizeOfLikeMsg("offsetof"))
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
-  of mDestroy, mTrace, mDup: discard "ignore calls to the default destructor"
+  of mDestroy, mTrace: discard "ignore calls to the default destructor"
   of mMove:
     let arg = n[1]
     let a = c.genx(arg)
@@ -1399,6 +1399,12 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     # c.gABx(n, opcLdNull, a, c.genType(arg.typ))
     # c.gABx(n, opcNodeToReg, a, a)
     # c.genAsgnPatch(arg, a)
+    c.freeTemp(a)
+  of mDup:
+    let arg = n[1]
+    let a = c.genx(arg)
+    if dest < 0: dest = c.getTemp(arg.typ)
+    gABC(c, arg, whichAsgnOpc(arg, requiresCopy=false), dest, a)
     c.freeTemp(a)
   of mNodeId:
     c.genUnaryABC(n, dest, opcNodeId)
