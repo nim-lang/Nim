@@ -1076,7 +1076,7 @@ proc track(tracked: PEffects, n: PNode) =
       elif child.kind == nkVarTuple and last.kind != nkEmpty:
         for i in 0..<child.len-1:
           if child[i].kind == nkEmpty or
-            child[i].kind == nkSym and child[i].sym.name.s == "_":
+            child[i].kind == nkSym and child[i].sym.name.id == ord(wUnderscore):
             continue
           initVar(tracked, child[i], volatileCheck=false)
           if last.kind in {nkPar, nkTupleConstr}:

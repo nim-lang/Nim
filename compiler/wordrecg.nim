@@ -32,6 +32,7 @@ type
 
     wColon = ":", wColonColon = "::", wEquals = "=", wDot = ".", wDotDot = "..",
     wStar = "*", wMinus = "-",
+    wUnderscore = "_",
     wMagic = "magic", wThread = "thread", wFinal = "final", wProfiler = "profiler",
     wMemTracker = "memtracker", wObjChecks = "objchecks",
     wIntDefine = "intdefine", wStrDefine = "strdefine", wBoolDefine = "booldefine",

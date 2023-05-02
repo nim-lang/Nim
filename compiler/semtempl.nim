@@ -228,7 +228,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
           closeScope(c)
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
-      if n.kind != nkSym and not (n.kind == nkIdent and n.ident.s == "_"):
+      if n.kind != nkSym and not (n.kind == nkIdent and n.ident.id == ord(wUnderscore)):
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
         styleCheckDef(c.c, n.info, local)

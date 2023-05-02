@@ -11,7 +11,7 @@
 import std/[algorithm, strutils, tables]
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs
+  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs, wordrecg
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -311,10 +311,10 @@ proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
   let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
-    if sym.kind == skModule and conflict.kind == skModule:      
+    if sym.kind == skModule and conflict.kind == skModule:
       # e.g.: import foo; import foo
       # xxx we could refine this by issuing a different hint for the case
-      # where a duplicate import happens inside an include.      
+      # where a duplicate import happens inside an include.
       if c.importModuleMap[sym.id] == c.importModuleMap[conflict.id]:
         #only hints if the conflict is the actual module not just a shared name
         localError(c.config, info, hintDuplicateModuleImport,

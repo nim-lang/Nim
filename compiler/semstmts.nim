@@ -388,7 +388,7 @@ proc addToVarSection(c: PContext; result: PNode; orig, identDefs: PNode) =
     result.add identDefs
 
 proc isDiscardUnderscore(v: PSym): bool =
-  if v.name.s == "_":
+  if v.name.id == ord(wUnderscore):
     v.flags.incl(sfGenSym)
     result = true
 
