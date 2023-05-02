@@ -31,7 +31,7 @@ block tinherit:
 
 block tspecialise:
   type
-    TGen[T] = object {.inheritable.}
+    TGen[T] {.inheritable.} = object
     TSpef = object of TGen[string]
 
 

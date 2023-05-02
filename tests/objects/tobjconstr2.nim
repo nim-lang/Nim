@@ -15,8 +15,8 @@ echo s[0].x
 
 # bug #563
 type
-  Foo =
-    object {.inheritable.}
+  Foo {.inheritable.} =
+    object
       x: int
 
   Bar =
