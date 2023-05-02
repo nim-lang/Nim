@@ -9,9 +9,10 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, tables, ropes, md5, modulegraphs, options, msgs, pathutils
+import ast, tables, ropes, modulegraphs, options, msgs, pathutils
 from hashes import Hash
 import types
+import ../dist/checksums/src/checksums/md5
 
 
 when defined(nimPreviewSlimSystem):
