@@ -13,12 +13,12 @@ Nim Destructors and Move Semantics
 About this document
 ===================
 
-This document describes the upcoming Nim runtime which does
+This document describes the ARC/ORC Nim runtime which does
 not use classical GC algorithms anymore but is based on destructors and
-move semantics. The new runtime's advantages are that Nim programs become
+move semantics. The advantages are that Nim programs become
 oblivious to the involved heap sizes and programs are easier to write to make
 effective use of multi-core machines. As a nice bonus, files and sockets and
-the like will not require manual `close` calls anymore.
+the like can be written not to require manual `close` calls anymore.
 
 This document aims to be a precise specification about how
 move semantics and destructors work in Nim.
@@ -131,6 +131,14 @@ The general pattern in `=destroy` looks like:
     if x.field != nil:
       freeResource(x.field)
   ```
+
+A `=destroy` is implicitly annotated with `.raises: []`; a destructor
+should not raise exceptions. For backwards compatibility the compiler
+produces a warning for a `=destroy` that does raise.
+
+A `=destroy` can explicitly list the exceptions it can raise, if any,
+but this of little utility as a raising destructor is implementation defined
+behavior. Later versions of the language specification might cover this case precisely.
 
 
 `=sink` hook

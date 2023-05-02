@@ -182,7 +182,7 @@ proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
       result[i] = onlyReplaceParams(c, n[i])
 
 proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
-  result = newSym(kind, considerQuotedIdent(c.c, n), nextSymId c.c.idgen, c.owner, n.info)
+  result = newSym(kind, considerQuotedIdent(c.c, n), c.c.idgen, c.owner, n.info)
   incl(result.flags, sfGenSym)
   incl(result.flags, sfShadowed)
 
@@ -626,6 +626,8 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   onDef(n[namePos].info, s)
   # check parameter list:
   #s.scope = c.currentScope
+  # push noalias flag at first to prevent unwanted recursive calls:
+  incl(s.flags, sfNoalias)
   pushOwner(c, s)
   openScope(c)
   n[namePos] = newSymNode(s)
@@ -635,6 +637,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   setGenericParamsMisc(c, n)
   # process parameters:
   var allUntyped = true
+  var nullary = true
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], n[genericParamsPos], s)
     # a template's parameters are not gensym'ed even if that was originally the
@@ -646,6 +649,8 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
         param.flags.incl sfTemplateParam
         param.flags.excl sfGenSym
       if param.typ.kind != tyUntyped: allUntyped = false
+      # no default value, parameters required in call
+      if param.ast == nil: nullary = false
   else:
     s.typ = newTypeS(tyProc, c)
     # XXX why do we need tyTyped as a return type again?
@@ -657,6 +662,11 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     n[genericParamsPos] = n[miscPos][1]
     n[miscPos] = c.graph.emptyNode
   if allUntyped: incl(s.flags, sfAllUntyped)
+  if nullary and
+      n[genericParamsPos].kind == nkEmpty and
+      n[bodyPos].kind != nkEmpty:
+    # template can be called with alias syntax, remove pushed noalias flag
+    excl(s.flags, sfNoalias)
 
   if n[patternPos].kind != nkEmpty:
     n[patternPos] = semPattern(c, n[patternPos], s)

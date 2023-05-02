@@ -431,7 +431,7 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   incl typedesc.flags, tfCheckedForDestructor
   internalAssert(c.config, typ != nil)
   typedesc.addSonSkipIntLit(typ, c.idgen)
-  let sym = newSym(skType, c.cache.idAnon, nextSymId(c.idgen), getCurrOwner(c), info,
+  let sym = newSym(skType, c.cache.idAnon, c.idgen, getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
   result = newSymNode(sym, info)
 

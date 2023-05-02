@@ -267,7 +267,7 @@ proc hashType*(t: PType; conf: ConfigRef; flags: set[ConsiderFlag] = {CoType}): 
     db.exec(sql"INSERT OR IGNORE INTO sighashes(type, hash) VALUES (?, ?)",
             typeToString(t), $result)
 
-proc hashProc*(s: PSym; conf: ConfigRef): SigHash =
+proc hashProc(s: PSym; conf: ConfigRef): SigHash =
   var c: MD5Context
   md5Init c
   hashType c, s.typ, {CoProc}, conf

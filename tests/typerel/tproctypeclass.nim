@@ -73,4 +73,17 @@ proc main =
   doAssert closureProc is proc
   takesAnyProc(closureProc)
 
+  block: # supposed to test that sameType works 
+    template ensureNotRedefine(Ty): untyped =
+      proc foo[T: Ty](x: T) = discard
+      doAssert not (compiles do:
+        proc bar[T: Ty](x: T) = discard
+        proc bar[T: Ty](x: T) = discard)
+    ensureNotRedefine proc
+    ensureNotRedefine iterator
+    ensureNotRedefine proc {.nimcall.}
+    ensureNotRedefine iterator {.nimcall.}
+    ensureNotRedefine proc {.closure.}
+    ensureNotRedefine iterator {.closure.}
+
 main()
