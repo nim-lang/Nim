@@ -555,5 +555,16 @@ proc main() =
     doAssert &"""{(if true: "'" & "'" & ')' else: "")}""" == "'')"
     doAssert &"{(if true: \"\'\" & \"'\" & ')' else: \"\")}" == "'')"
     doAssert fmt"""{(if true: "'" & ')' else: "")}""" == "')"
+
+  block: # issue #20381
+    var ss: seq[string]
+    template myTemplate(s: string) =
+      ss.add s
+      ss.add s
+    proc foo() =
+      myTemplate fmt"hello"
+    foo()
+    doAssert ss == @["hello", "hello"]
+
 # xxx static: main()
 main()
