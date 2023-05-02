@@ -393,7 +393,7 @@ proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
     result.add identDefs
 
 proc isDiscardUnderscore(v: PSym): bool =
-  if v.name.s == "_":
+  if v.name.id == ord(wUnderscore):
     v.flags.incl(sfGenSym)
     result = true
 
@@ -613,7 +613,7 @@ proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSy
   result = newNodeI(n.kind, a.info)
   for j in 0..<a.len-2:
     let name = a[j]
-    if useTemp and name.kind == nkIdent and name.ident.s == "_":
+    if useTemp and name.kind == nkIdent and name.ident.id == ord(wUnderscore):
       # skip _ assignments if we are using a temp as they are already evaluated
       continue
     if name.kind == nkVarTuple:

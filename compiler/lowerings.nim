@@ -132,7 +132,7 @@ proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; idgen: IdGenerator; o
 
   var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
   vpart[0] = tempAsNode
-  vpart[1] = newNodeI(nkEmpty, value.info)
+  vpart[1] = newNodeI(nkTupleClassTy, value.info)
   vpart[2] = value
   v.add vpart
   result.add(v)

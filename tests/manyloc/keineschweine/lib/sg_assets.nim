@@ -1,6 +1,8 @@
+import ../../../../dist/checksums/src/checksums/md5
+
 import
   re, json, strutils, tables, math, os, math_helpers,
-  sg_packets, md5, zlib_helpers
+  sg_packets, zlib_helpers
 
 when defined(NoSFML):
   import server_utils

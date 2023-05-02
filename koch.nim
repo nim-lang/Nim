@@ -10,9 +10,10 @@
 #
 
 const
-  NimbleStableCommit = "7efb226ef908297e8791cade20d991784b4e8bfc" # master
+  NimbleStableCommit = "168416290e49023894fc26106799d6f1fc964a2d" # master
   # examples of possible values: #head, #ea82b54, 1.2.3
   FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
+  ChecksumsStableCommit = "3fa15df7d27ecef624ed932d60f63d6a8949618d"
   HeadHash = "#head"
 when not defined(windows):
   const
@@ -148,6 +149,8 @@ proc bundleNimbleExe(latest: bool, args: string) =
   let commit = if latest: "HEAD" else: NimbleStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/nimble.git",
                   commit = commit, allowBundled = true)
+  cloneDependency(distDir / "nimble" / distDir, "https://github.com/nim-lang/checksums.git",
+                commit = ChecksumsStableCommit, allowBundled = true) # or copy it from dist?
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
              options = "-d:release --mm:refc --noNimblePath " & args)
@@ -181,7 +184,12 @@ proc bundleWinTools(args: string) =
     nimCompile(r"tools\downloader.nim",
                options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
 
+proc bundleChecksums(latest: bool) =
+  let commit = if latest: "HEAD" else: ChecksumsStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit)
+
 proc zip(latest: bool; args: string) =
+  bundleChecksums(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleNimpretty(args)
@@ -239,6 +247,7 @@ proc testTools(args: string = "") =
       outputName = "atlas")
 
 proc nsis(latest: bool; args: string) =
+  bundleChecksums(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleWinTools(args)
@@ -300,6 +309,9 @@ proc boot(args: string) =
   let useCpp = doUseCpp()
   let smartNimcache = (if "release" in args or "danger" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOS & "_" & hostCPU
+
+  if not dirExists("dist/checksums"):
+    bundleChecksums(false)
 
   let nimStart = findStartNim().quoteShell()
   for i in 0..2:
@@ -450,6 +462,9 @@ proc temp(args: string) =
     while i < args.len:
       result[1].add " " & quoteShell(args[i])
       inc i
+
+  if not dirExists("dist/checksums"):
+    bundleChecksums(false)
 
   let d = getAppDir()
   let output = d / "compiler" / "nim".exe
@@ -711,6 +726,8 @@ when isMainModule:
       of "tools":
         buildTools(op.cmdLineRest)
         bundleNimbleExe(latest, op.cmdLineRest)
+      of "checksums":
+        bundleChecksums(latest)
       of "pushcsource":
         quit "use this instead: https://github.com/nim-lang/csources_v1/blob/master/push_c_code.nim"
       of "valgrind": valgrind(op.cmdLineRest)

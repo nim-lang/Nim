@@ -12,7 +12,7 @@
 # ------------------------- Name Mangling --------------------------------
 
 import sighashes, modulegraphs
-import std/md5
+import ../dist/checksums/src/checksums/md5
 
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
@@ -576,22 +576,11 @@ proc fillObjectFields*(m: BModule; typ: PType) =
 
 proc mangleDynLibProc(sym: PSym): Rope
 
-proc getRecordDesc(m: BModule; typ: PType, name: Rope,
-                   check: var IntSet): Rope =
-  # declare the record:
-  var hasField = false
-
-  if tfPacked in typ.flags:
-    if hasAttribute in CC[m.config.cCompiler].props:
-      result = structOrUnion(typ) & " __attribute__((__packed__))"
-    else:
-      result = "#pragma pack(push, 1)\L" & structOrUnion(typ)
-  else:
-    result = structOrUnion(typ)
-
-  result.add " "
-  result.add name
-
+template cgDeclFrmt*(s: PSym): string =
+  s.constraint.strVal
+  
+proc getRecordDescAux(m: BModule; typ: PType, name, baseType: Rope,
+                   check: var IntSet, hasField:var bool): Rope =                 
   if typ.kind == tyObject:
     if typ[0] == nil:
       if lacksMTypeField(typ):
@@ -603,8 +592,7 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
           appcg(m, result, " {$n#TNimType* m_type;\n", [])
         hasField = true
     elif m.compileToCpp:
-      appcg(m, result, " : public $1 {\n",
-                      [getTypeDescAux(m, typ[0].skipTypes(skipPtrs), check, skField)])
+      appcg(m, result, " : public $1 {\n", [baseType])
       if typ.isException and m.config.exc == excCpp:
         when false:
           appcg(m, result, "virtual void raise() { throw *this; }\n", []) # required for polymorphic exceptions
@@ -616,18 +604,38 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
             appcg(m, cfsProcs, "inline $1::~$1() {if(this->raiseId) #popCurrentExceptionEx(this->raiseId);}\n", [name])
       hasField = true
     else:
-      appcg(m, result, " {$n  $1 Sup;\n",
-                      [getTypeDescAux(m, typ[0].skipTypes(skipPtrs), check, skField)])
+      appcg(m, result, " {$n  $1 Sup;\n", [baseType])
       hasField = true
   else:
     result.addf(" {\n", [name])
 
-  let desc = getRecordFields(m, typ, check)
-  if desc == "" and not hasField:
-    result.addf("char dummy;\n", [])
+proc getRecordDesc(m: BModule; typ: PType, name: Rope,
+                   check: var IntSet): Rope =
+  # declare the record:
+  var hasField = false
+  var structOrUnion: string
+  if tfPacked in typ.flags:
+      if hasAttribute in CC[m.config.cCompiler].props:
+        structOrUnion = structOrUnion(typ) & " __attribute__((__packed__))"
+      else:
+        structOrUnion = "#pragma pack(push, 1)\L" & structOrUnion(typ)
   else:
-    result.add(desc)
-  result.add("};\L")
+    structOrUnion = structOrUnion(typ)
+  var baseType: string 
+  if typ[0] != nil: 
+    baseType = getTypeDescAux(m, typ[0].skipTypes(skipPtrs), check, skField)
+  if typ.sym == nil or typ.sym.constraint == nil:
+    result = structOrUnion & " " & name
+    result.add(getRecordDescAux(m, typ, name, baseType, check, hasField))
+    let desc = getRecordFields(m, typ, check)
+    if desc == "" and not hasField:
+      result.addf("char dummy;\n", [])
+    else:
+      result.add(desc)
+    result.add("};\L")
+  else:
+    let desc = getRecordFields(m, typ, check)
+    result = runtimeFormat(typ.sym.cgDeclFrmt, [name, desc, baseType])
   if tfPacked in typ.flags and hasAttribute notin CC[m.config.cCompiler].props:
     result.add "#pragma pack(pop)\L"
 
@@ -956,8 +964,6 @@ proc finishTypeDescriptions(m: BModule) =
     inc(i)
   m.typeStack.setLen 0
 
-template cgDeclFrmt*(s: PSym): string =
-  s.constraint.strVal
 
 proc isReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable notin prc.flags
