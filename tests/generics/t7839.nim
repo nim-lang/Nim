@@ -3,7 +3,7 @@
 type A[I: SomeOrdinal, E] = tuple # same for object
   length: int
  
-doAssert A.sizeof == 8 # works without the following proc
+doAssert A.sizeof == sizeof(int) # works without the following proc
  
 proc newA*[I: SomeOrdinal, E](): A[I, E] = # works without `SomeOrdinal`
   discard
