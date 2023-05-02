@@ -227,7 +227,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
           closeScope(c)
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
-      if n.kind != nkSym and not (n.kind == nkIdent and n.ident.s == "_"):
+      if n.kind != nkSym and not (n.kind == nkIdent and n.ident.id == ord(wUnderscore)):
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
         styleCheckDef(c.c, n.info, local)
@@ -645,7 +645,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     # body by the absence of the sfGenSym flag:
     for i in 1..<s.typ.n.len:
       let param = s.typ.n[i].sym
-      if param.name.s != "_":
+      if param.name.id != ord(wUnderscore):
         param.flags.incl sfTemplateParam
         param.flags.excl sfGenSym
       if param.typ.kind != tyUntyped: allUntyped = false
