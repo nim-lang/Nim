@@ -15,7 +15,7 @@ when defined(nimPreviewSlimSystem):
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs, sets
+  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs, sets, wordrecg
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -340,7 +340,7 @@ proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
 # xxx pending bootstrap >= 1.4, replace all those overloads with a single one:
 # proc addDecl*(c: PContext, sym: PSym, info = sym.info, scope = c.currentScope) {.inline.} =
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
-  if sym.name.s == "_": return
+  if sym.name.id == ord(wUnderscore): return
   let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
     if sym.kind == skModule and conflict.kind == skModule:      
@@ -397,7 +397,7 @@ proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
   if fn.kind notin OverloadableSyms:
     internalError(c.config, fn.info, "addOverloadableSymAt")
     return
-  if fn.name.s != "_":
+  if fn.name.id != ord(wUnderscore):
     let check = strTableGet(scope.symbols, fn.name)
     if check != nil and check.kind notin OverloadableSyms:
       wrongRedefinition(c, fn.info, fn.name.s, check.info)
