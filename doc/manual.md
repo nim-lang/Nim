@@ -7597,7 +7597,7 @@ Compile pragma
 The `compile` pragma can be used to compile and link a C/C++ source file
 with the project:
 
-This pragma can take two forms. The first is a simple file input:
+This pragma can take three forms. The first is a simple file input:
   ```Nim
   {.compile: "myfile.cpp".}
   ```
