@@ -62,3 +62,27 @@ when not defined(windows):
         )
         doAssert buffer == sent
         doAssert bytesRead == int(MQ_MESSAGE_SIZE)
+
+  block:
+    var rl: RLimit
+    var res = getrlimit(RLIMIT_STACK, rl)
+    doAssert res == 0
+
+    # save old value
+    let oldrlim = rl.rlim_cur
+
+    # set new value
+    rl.rlim_cur = rl.rlim_max - 1
+    res = setrlimit(RLIMIT_STACK, rl)
+    doAssert res == 0
+
+    # get new value
+    var rl1: RLimit
+    res = getrlimit(RLIMIT_STACK, rl1)
+    doAssert res == 0
+    doAssert rl1.rlim_cur == rl.rlim_max - 1
+
+    # restore old value
+    rl.rlim_cur = oldrlim
+    res = setrlimit(RLIMIT_STACK, rl)
+    doAssert res == 0
