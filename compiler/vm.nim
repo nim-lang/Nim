@@ -2328,12 +2328,6 @@ proc interpreterCode*(c: PPassContext, n: PNode): PNode =
     result = n
   c.oldErrorCount = c.config.errorCounter
 
-proc resetNimNodeFlag(n: PNode) =
-  if n != nil:
-    excl n.flags, nfIsRef # remove nfIsRef from the output of macros
-    for i in 0..<n.safeLen:
-      resetNimNodeFlag(n[i])
-
 proc evalConstExprAux(module: PSym; idgen: IdGenerator;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =

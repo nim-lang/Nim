@@ -415,12 +415,6 @@ proc resetSemFlag(n: PNode) =
     for i in 0..<n.safeLen:
       resetSemFlag(n[i])
 
-proc resetNimNodeFlag(n: PNode) =
-  if n != nil:
-    excl n.flags, nfIsRef # remove nfIsRef from the output of macros
-    for i in 0..<n.safeLen:
-      resetNimNodeFlag(n[i])
-
 proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
                        s: PSym, flags: TExprFlags; expectedType: PType = nil): PNode =
   ## Semantically check the output of a macro.
