@@ -1236,11 +1236,7 @@ proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
 
 proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
-  if lfNoDecl in sym.loc.flags: return
-  if sfVirtual in sym.flags:
-      echo " genProcPrototype ", sym.name.s
-      # echo m.s[cfsTypes]
-      return
+  if lfNoDecl in sym.loc.flags or sfVirtual in sym.flags: return
   if lfDynamicLib in sym.loc.flags:
     if sym.itemId.module != m.module.position and
         not containsOrIncl(m.declaredThings, sym.id):
