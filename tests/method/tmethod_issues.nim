@@ -10,7 +10,7 @@ type B
 
 
 # bug #1659
-type Animal = ref object {.inheritable.}
+type Animal {.inheritable.} = ref object
 type Dog = ref object of Animal
 
 method say(a: Animal): auto {.base.} = "wat!"
