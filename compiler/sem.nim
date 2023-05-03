@@ -412,6 +412,7 @@ include hlo, seminst, semcall
 proc resetSemFlag(n: PNode) =
   if n != nil:
     excl n.flags, nfSem
+    excl n.flags, nfIsRef # remove nfIsRef from the output of macros
     for i in 0..<n.safeLen:
       resetSemFlag(n[i])
 
