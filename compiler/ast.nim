@@ -312,6 +312,7 @@ type
                       #
                       # This is disallowed but can cause the typechecking to go into
                       # an infinite loop, this flag is used as a sentinel to stop it.
+    sfVirtual         # proc is a C++ virtual function
 
   TSymFlags* = set[TSymFlag]
 

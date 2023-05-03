@@ -426,7 +426,7 @@ proc paramStorageLoc(param: PSym): TStorageLoc =
 
 proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
                    check: var IntSet, declareEnvironment=true;
-                   weakDep=false) =
+                   weakDep=false; isVirtual=false) =
   params = "("
   if t[0] == nil or isInvalidReturnType(m.config, t):
     rettype = "void"
@@ -440,6 +440,7 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
     fillParamName(m, param)
     fillLoc(param.loc, locParam, t.n[i],
             param.paramStorageLoc)
+    if isVirtual and i == 1: continue #skips this param
     if ccgIntroducedPtr(m.config, param, t[0]):
       params.add(getTypeDescWeak(m, param.typ, check, skParam))
       params.add("*")
@@ -977,11 +978,15 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false)
   fillBackendName(m, prc)
   fillLoc(prc.loc, locProc, prc.ast[namePos], OnUnknown)
   var rettype, params: Rope
-  genProcParams(m, prc.typ, rettype, params, check)
+  let isVirtual = sfVirtual in prc.flags
+  genProcParams(m, prc.typ, rettype, params, check, true, false, isVirtual)
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with "_actual" postfix
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
   var name = prc.loc.r
+  if isVirtual:
+    let structType = prc.typ.n[1].sym.typ.sons[0]
+    name = getTypeDescWeak(m, structType, check, skParam) & "::" & name
   if isReloadable(m, prc) and not asPtr:
     name.add("_actual")
   # careful here! don't access ``prc.ast`` as that could reload large parts of
