@@ -412,9 +412,14 @@ include hlo, seminst, semcall
 proc resetSemFlag(n: PNode) =
   if n != nil:
     excl n.flags, nfSem
-    excl n.flags, nfIsRef # remove nfIsRef from the output of macros
     for i in 0..<n.safeLen:
       resetSemFlag(n[i])
+
+proc resetNimNodeFlag(n: PNode) =
+  if n != nil:
+    excl n.flags, nfIsRef # remove nfIsRef from the output of macros
+    for i in 0..<n.safeLen:
+      resetNimNodeFlag(n[i])
 
 proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
                        s: PSym, flags: TExprFlags; expectedType: PType = nil): PNode =
@@ -500,6 +505,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   result = evalMacroCall(c.module, c.idgen, c.graph, c.templInstCounter, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags, expectedType)
+  resetNimNodeFlag(result)
   if c.config.macrosToExpand.hasKey(sym.name.s):
     message(c.config, nOrig.info, hintExpandMacro, renderTree(result))
   result = wrapInComesFrom(nOrig.info, sym, result)

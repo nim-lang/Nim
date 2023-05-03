@@ -442,7 +442,7 @@ proc genAndOr(c: PCtx; n: PNode; opc: TOpcode; dest: var TDest) =
 proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
   #assert(n.kind != nkCall)
-  assert nfIsRef notin n.flags
+  assert nfIsRef notin n.flags, $(n.kind, n.renderTree)
   n.flags.incl nfAllConst
   c.constants.add n
   internalAssert c.config, result < regBxMax
