@@ -61,7 +61,7 @@ proc startBlockInternal(p: BProc): int {.discardable.} =
   p.blocks[result].nestedTryStmts = p.nestedTryStmts.len.int16
   p.blocks[result].nestedExceptStmts = p.inExceptBlockLen.int16
 
-template startBlock(p: BProc, start: FormatStr = "{\n",
+template startBlock(p: BProc, start: FormatStr = "{$n",
                 args: varargs[Rope]): int =
   lineCg(p, cpsStmts, start, args)
   startBlockInternal(p)
@@ -173,8 +173,7 @@ proc endBlock(p: BProc) =
   if p.blocks[topBlock].label.len != 0:
     blockEnd.addf("} $1: ;$n", [p.blocks[topBlock].label])
   else:
-    #blockEnd.addf("}$n", [])
-    blockEnd.add("}\n")
+    blockEnd.addf("}$n", [])
   endBlock(p, blockEnd)
 
 proc genSimpleBlock(p: BProc, stmts: PNode) {.inline.} =
@@ -447,9 +446,9 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
             [rdLoc(a), lelse])
       if p.module.compileToCpp:
         # avoid "jump to label crosses initialization" error:
-        p.s(cpsStmts).add "{\n"
+        p.s(cpsStmts).add "{"
         expr(p, it[1], d)
-        p.s(cpsStmts).add "}\n"
+        p.s(cpsStmts).add "}"
       else:
         expr(p, it[1], d)
       endBlock(p)
@@ -608,13 +607,13 @@ proc genWhileStmt(p: BProc, t: PNode) =
         loopBody = loopBody[1]
       genComputedGoto(p, loopBody)
     else:
-      p.breakIdx = startBlock(p, "while (1) {\n")
+      p.breakIdx = startBlock(p, "while (1) {$n")
       p.blocks[p.breakIdx].isLoop = true
       initLocExpr(p, t[0], a)
       if (t[0].kind != nkIntLit) or (t[0].intVal == 0):
         lineF(p, cpsStmts, "if (!$1) goto ", [rdLoc(a)])
         assignLabel(p.blocks[p.breakIdx], p.s(cpsStmts))
-        appcg(p, cpsStmts, ";\n", [])
+        appcg(p, cpsStmts, ";$n", [])
       genStmts(p, loopBody)
 
       if optProfiler in p.options:
@@ -978,8 +977,8 @@ proc genCase(p: BProc, t: PNode, d: var TLoc) =
   of tyCstring:
     genStringCase(p, t, tyCstring, d)
   of tyFloat..tyFloat128:
-    genCaseGeneric(p, t, d, "if ($1 >= $2 && $1 <= $3) goto $4;\n",
-                            "if ($1 == $2) goto $3;\n")
+    genCaseGeneric(p, t, d, "if ($1 >= $2 && $1 <= $3) goto $4;$n",
+                            "if ($1 == $2) goto $3;$n")
   else:
     if t[0].kind == nkSym and sfGoto in t[0].sym.flags:
       genGotoForCase(p, t)
@@ -990,9 +989,9 @@ proc genRestoreFrameAfterException(p: BProc) =
   if optStackTrace in p.module.config.options:
     if hasCurFramePointer notin p.flags:
       p.flags.incl hasCurFramePointer
-      p.procSec(cpsLocals).add(ropecg(p.module, "\tTFrame* _nimCurFrame;\n", []))
-      p.procSec(cpsInit).add(ropecg(p.module, "\t_nimCurFrame = #getFrame();\n", []))
-    linefmt(p, cpsStmts, "#setFrame(_nimCurFrame);\n", [])
+      p.procSec(cpsLocals).add(ropecg(p.module, "\tTFrame* _nimCurFrame;$n", []))
+      p.procSec(cpsInit).add(ropecg(p.module, "\t_nimCurFrame = #getFrame();$n", []))
+    linefmt(p, cpsStmts, "#setFrame(_nimCurFrame);$n", [])
 
 proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #[ code to generate:
@@ -1028,26 +1027,25 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   inc(p.labels, 2)
   let etmp = p.labels
 
-  p.procSec(cpsInit).add(ropecg(p.module, "\tstd::exception_ptr T$1_ = nullptr;\n", [etmp]))
+  p.procSec(cpsInit).add(ropecg(p.module, "\tstd::exception_ptr T$1_ = nullptr;$n", [etmp]))
 
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
   p.nestedTryStmts.add((fin, false, 0.Natural))
 
   if t.kind == nkHiddenTryStmt:
-    lineCg(p, cpsStmts, "try {\n", [])
+    lineCg(p, cpsStmts, "try {$n", [])
     expr(p, t[0], d)
-    lineCg(p, cpsStmts, "}\n", [])
+    lineCg(p, cpsStmts, "}$n", [])
   else:
-    startBlock(p, "try {\n")
+    startBlock(p, "try {$n")
     expr(p, t[0], d)
     endBlock(p)
 
   # First pass: handle Nim based exceptions:  
-  #lineCg(p, cpsStmts, "catch (#Exception* T$1_) {\n", [etmp+1])
-  startBlock(p, "catch (#Exception* T$1_) {\n", rope(etmp+1))
+  lineCg(p, cpsStmts, "catch (#Exception* T$1_) {$n", [etmp+1])
   genRestoreFrameAfterException(p)
   # an unhandled exception happened!
-  lineCg(p, cpsStmts, "T$1_ = std::current_exception();\n", [etmp])
+  lineCg(p, cpsStmts, "T$1_ = std::current_exception();$n", [etmp])
   p.nestedTryStmts[^1].inExcept = true
   var hasImportedCppExceptions = false
   var i = 1
@@ -1063,9 +1061,9 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       if hasIf: lineF(p, cpsStmts, "else ", [])
       startBlock(p)
       # we handled the error:
-      linefmt(p, cpsStmts, "T$1_ = nullptr;\n", [etmp])
+      linefmt(p, cpsStmts, "T$1_ = nullptr;$n", [etmp])
       expr(p, t[i][0], d)
-      linefmt(p, cpsStmts, "#popCurrentException();\n", [])
+      linefmt(p, cpsStmts, "#popCurrentException();$n", [])
       endBlock(p)
     else:
       var orExpr = newRopeAppender()
@@ -1090,25 +1088,24 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
 
       if orExpr.len != 0:
         if hasIf:
-          startBlock(p, "else if ($1) {\n", [orExpr])
+          startBlock(p, "else if ($1) {$n", [orExpr])
         else:
-          startBlock(p, "if ($1) {\n", [orExpr])
+          startBlock(p, "if ($1) {$n", [orExpr])
           hasIf = true
         if exvar != nil:
           fillLocalName(p, exvar.sym)
           fillLoc(exvar.sym.loc, locTemp, exvar, OnStack)
-          linefmt(p, cpsStmts, "$1 $2 = T$3_;\n", [getTypeDesc(p.module, exvar.sym.typ),
+          linefmt(p, cpsStmts, "$1 $2 = T$3_;$n", [getTypeDesc(p.module, exvar.sym.typ),
             rdLoc(exvar.sym.loc), rope(etmp+1)])
         # we handled the error:
-        linefmt(p, cpsStmts, "T$1_ = nullptr;\n", [etmp])
+        linefmt(p, cpsStmts, "T$1_ = nullptr;$n", [etmp])
         expr(p, t[i][^1], d)
-        linefmt(p, cpsStmts, "#popCurrentException();\n", [])
+        linefmt(p, cpsStmts, "#popCurrentException();$n", [])
         endBlock(p)
     inc(i)
   if hasIf and not hasElse:
-    linefmt(p, cpsStmts, "else throw;\n", [etmp])
-  #linefmt(p, cpsStmts, "}\n", [])
-  endBlock(p)
+    linefmt(p, cpsStmts, "else throw;$n", [etmp])
+  linefmt(p, cpsStmts, "}$n", [])
 
   # Second pass: handle C++ based exceptions:
   template genExceptBranchBody(body: PNode) {.dirty.} =
@@ -1127,7 +1124,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
 
       if t[i].len == 1:
         # general except section:
-        startBlock(p, "catch (...) {\n", [])
+        startBlock(p, "catch (...) {$n", [])
         genExceptBranchBody(t[i][0])
         endBlock(p)
         catchAllPresent = true
@@ -1140,11 +1137,11 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
               let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
               fillLocalName(p, exvar.sym)
               fillLoc(exvar.sym.loc, locTemp, exvar, OnStack)
-              startBlock(p, "catch ($1& $2) {\n", getTypeDesc(p.module, typeNode.typ), rdLoc(exvar.sym.loc))
+              startBlock(p, "catch ($1& $2) {$n", getTypeDesc(p.module, typeNode.typ), rdLoc(exvar.sym.loc))
               genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
               endBlock(p)
           elif isImportedException(typeNode.typ, p.config):
-            startBlock(p, "catch ($1&) {\n", getTypeDesc(p.module, t[i][j].typ))
+            startBlock(p, "catch ($1&) {$n", getTypeDesc(p.module, t[i][j].typ))
             genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
             endBlock(p)
 
@@ -1153,14 +1150,14 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   # general finally block:
   if t.len > 0 and t[^1].kind == nkFinally:
     if not catchAllPresent:
-      startBlock(p, "catch (...) {\n", [])
+      startBlock(p, "catch (...) {$n", [])
       genRestoreFrameAfterException(p)
-      linefmt(p, cpsStmts, "T$1_ = std::current_exception();\n", [etmp])
+      linefmt(p, cpsStmts, "T$1_ = std::current_exception();$n", [etmp])
       endBlock(p)
 
     startBlock(p)
     genStmts(p, t[^1][0])
-    linefmt(p, cpsStmts, "if (T$1_) std::rethrow_exception(T$1_);\n", [etmp])
+    linefmt(p, cpsStmts, "if (T$1_) std::rethrow_exception(T$1_);$n", [etmp])
     endBlock(p)
 
 proc genTryCppOld(p: BProc, t: PNode, d: var TLoc) =
