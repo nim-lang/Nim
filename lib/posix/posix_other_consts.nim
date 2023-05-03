@@ -467,7 +467,6 @@ var POSIX_TYPED_MEM_MAP_ALLOCATABLE* {.importc: "POSIX_TYPED_MEM_MAP_ALLOCATABLE
 
 # <sys/resource.h>
 var RLIMIT_NOFILE* {.importc: "RLIMIT_NOFILE", header: "<sys/resource.h>".}: cint
-var RLIMIT_STACK* {.importc: "RLIMIT_STACK", header: "<sys/resource.h>".}: cint
 
 # <sys/select.h>
 var FD_SETSIZE* {.importc: "FD_SETSIZE", header: "<sys/select.h>".}: cint

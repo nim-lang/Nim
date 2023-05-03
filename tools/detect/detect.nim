@@ -618,6 +618,7 @@ v("MAP_POPULATE", no_other = true)
 
 header("<sys/resource.h>")
 v("RLIMIT_NOFILE")
+v("RLIMIT_STACK")
 
 header("<sys/select.h>")
 v("FD_SETSIZE")
