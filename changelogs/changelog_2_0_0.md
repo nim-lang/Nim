@@ -40,7 +40,7 @@
     `ptr int32`, `ptr int64`, `ptr float32`, `ptr float64`
 
 - Enabling `-d:nimPreviewSlimSystem` removes the import of `channels_builtin` in
-  in the `system` module.
+  in the `system` module, which is replaced by [threading/channels](https://github.com/nim-lang/threading/blob/master/threading/channels.nim). Use the command "nimble install threading" and import `threading/channels`.
 
 - Enabling `-d:nimPreviewCstringConversion`, `ptr char`, `ptr array[N, char]` and `ptr UncheckedArray[N, char]` don't support conversion to cstring anymore.
 
