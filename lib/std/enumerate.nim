@@ -32,6 +32,14 @@ macro enumerate*(x: ForLoopStmt): untyped {.since: (1, 3).} =
       d.add((i, x))
     assert d == @[(97, 'a'), (98, 'b'), (99, 'c'), (100, 'd')]
 
+    var y: seq[(int, int)] = @[]
+    for i, x in enumerate(5 .. 9): y.add((i, x))
+    assert y == @[(0, 5), (1, 6), (2, 7), (3, 8), (4, 9)]
+
+    var z: seq[(int, int)] = @[]
+    for i, x in enumerate({9, 8, 7, 6, 5}): z.add((i, x))
+    assert z == @[(0, 5), (1, 6), (2, 7), (3, 8), (4, 9)]
+
   template genCounter(x): untyped =
     # We strip off the first for loop variable and use it as an integer counter.
     # We must immediately decrement it by one, because it gets incremented before
