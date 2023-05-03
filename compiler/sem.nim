@@ -499,7 +499,6 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   result = evalMacroCall(c.module, c.idgen, c.graph, c.templInstCounter, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags, expectedType)
-  resetNimNodeFlag(result)
   if c.config.macrosToExpand.hasKey(sym.name.s):
     message(c.config, nOrig.info, hintExpandMacro, renderTree(result))
   result = wrapInComesFrom(nOrig.info, sym, result)

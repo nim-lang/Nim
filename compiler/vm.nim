@@ -2336,7 +2336,6 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
       return n
   #if g.config.errorCounter > 0: return n
   let n = transformExpr(g, idgen, module, n)
-  resetNimNodeFlag(n)
   setupGlobalCtx(module, g, idgen)
   var c = PCtx g.vm
   let oldMode = c.mode

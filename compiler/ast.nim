@@ -1827,12 +1827,6 @@ proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
         return true
     result = false
 
-proc resetNimNodeFlag*(n: PNode) =
-  if n != nil:
-    excl n.flags, nfIsRef # remove nfIsRef from the output of macros
-    for i in 0..<n.safeLen:
-      resetNimNodeFlag(n[i])
-
 proc getInt*(a: PNode): Int128 =
   case a.kind
   of nkCharLit, nkUIntLit..nkUInt64Lit:
