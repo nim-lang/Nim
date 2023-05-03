@@ -16,7 +16,7 @@ block:
   static:
     var x = default(type(0))
 
-# #6379
+# bug #6379
 import algorithm
 
 static:
@@ -28,7 +28,7 @@ static:
   str.sort(cmp)
   doAssert str == "abc"
 
-# #6086
+# bug #6086
 import math, sequtils, sugar
 
 block:
@@ -83,7 +83,7 @@ block:
     doAssert fileExists("MISSINGFILE") == false
     doAssert dirExists("MISSINGDIR") == false
 
-# #7210
+# bug #7210
 block:
   static:
     proc f(size: int): int =
@@ -91,7 +91,7 @@ block:
       result = size
     doAssert f(4) == 4
 
-# #6689
+# bug #6689
 block:
   static:
     proc foo(): int = 0
@@ -106,7 +106,7 @@ block:
     new(x)
     doAssert(not x.isNil)
 
-# #7871
+# bug #7871
 static:
   type Obj = object
     field: int
@@ -116,11 +116,11 @@ static:
   o.field = 2
   doAssert s[0].field == 0
 
-# #8125
+# bug #8125
 static:
    let def_iter_var = ident("it")
 
-# #8142
+# bug #8142
 static:
   type Obj = object
     names: string
@@ -136,7 +136,7 @@ static:
   o.pushName()
   doAssert o.names == "FOOBARFOOBAR"
 
-# #8154
+# bug #8154
 import parseutils
 
 static:
@@ -149,7 +149,7 @@ static:
   static:
     doAssert foo().i == 1
 
-# #10333
+# bug #10333
 block:
   const
     encoding: auto = [
@@ -160,7 +160,7 @@ block:
     ]
   doAssert encoding.len == 4
 
-# #10886
+# bug #10886
 
 proc tor(): bool =
   result = true
@@ -656,3 +656,15 @@ proc macroGlobal =
 
 static: macroGlobal()
 macroGlobal()
+
+block: # bug #10108
+  template reject(x) =
+    static: doAssert(not compiles(x))
+
+  static:
+    let x: int = 2
+    proc deliver_x(): int = x
+    var y2 = deliver_x()
+    discard y2
+    reject:
+      const c5 = deliver_x()
