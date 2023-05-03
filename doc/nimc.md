@@ -526,7 +526,7 @@ Define                   Effect
                          This only works with `--mm:none`:option:,
                          `--mm:arc`:option: and `--mm:orc`:option:.
 `useRealtimeGC`          Enables support of Nim's GC for *soft* realtime
-                         systems. See the documentation of the [mm](mm.html)
+                         systems. See the documentation of the [refc](refc.html)
                          for further information.
 `logGC`                  Enable GC logging to stdout.
 `nodejs`                 The JS target is actually ``node.js``.
