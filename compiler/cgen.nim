@@ -1172,12 +1172,12 @@ proc genProcAux*(m: BModule, prc: PSym) =
         #incl(res.loc.flags, lfIndirect)
         res.loc.storage = OnUnknown
 
-  if sfVirtual in prc.flags: #not sure if I should put this check somewhere else
+  if m.config.backend == backendCpp and sfVirtual in prc.flags:
     let thisParam = prc.typ.n[1].sym 
     var check: IntSet
     p.s(cpsLocals).addf("\t$1 $2 = this; $n",
       [getTypeDescWeak(m, thisParam.typ, check, skParam), thisParam.loc.r])
-   
+
   for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym
     if param.typ.isCompileTimeOnly: continue

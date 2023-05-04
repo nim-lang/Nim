@@ -1264,8 +1264,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         sym.flags.incl sfSystemRaisesDefect
       of wVirtual:
         noVal(c, it)
-        incl(sym.flags, sfVirtual)
-        incl(sym.flags, sfInfixCall)
+        sym.flags.incl {sfVirtual, sfInfixCall}
+      
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"

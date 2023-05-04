@@ -565,9 +565,17 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
           result.addf("\t$1$3 $2;\n", [getTypeDescAux(m, field.loc.t, check, skField), sname, noAlias])
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
 
+proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, fromType = false)
+
 proc getRecordFields(m: BModule; typ: PType, check: var IntSet): Rope =
   result = newRopeAppender()
   genRecordFieldsAux(m, typ.n, typ, check, result)
+  if typ.itemId in m.g.graph.virtualProcsPerType:
+    let procs = m.g.graph.virtualProcsPerType[typ.itemId]
+    for p in procs:
+      var temp: Rope
+      genProcHeader(m, p, temp, false, true)
+      result.add "\t" & temp & ";\n"
 
 proc fillObjectFields*(m: BModule; typ: PType) =
   # sometimes generic objects are not consistently merged. We patch over
@@ -611,7 +619,7 @@ proc getRecordDescAux(m: BModule; typ: PType, name, baseType: Rope,
     result.addf(" {\n", [name])
 
 proc getRecordDesc(m: BModule; typ: PType, name: Rope,
-                   check: var IntSet): Rope =
+                   check: var IntSet): Rope =             
   # declare the record:
   var hasField = false
   var structOrUnion: string
@@ -972,7 +980,7 @@ proc isReloadable(m: BModule; prc: PSym): bool =
 proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 
-proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false) =
+proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, fromType = false) =
   # using static is needed for inline procs
   var check = initIntSet()
   fillBackendName(m, prc)
@@ -985,8 +993,11 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false)
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
   var name = prc.loc.r
   if isVirtual:
-    let structType = prc.typ.n[1].sym.typ.sons[0]
-    name = getTypeDescWeak(m, structType, check, skParam) & "::" & name
+    if fromType:
+      rettype = "virtual " & rettype
+    else:
+      let structType = prc.typ.n[1].sym.typ.sons[0]
+      name = getTypeDescWeak(m, structType, check, skParam) & "::" & name
   if isReloadable(m, prc) and not asPtr:
     name.add("_actual")
   # careful here! don't access ``prc.ast`` as that could reload large parts of
