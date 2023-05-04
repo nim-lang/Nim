@@ -58,11 +58,11 @@ template isMixedIn(sym): bool =
 
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; flags: TSemGenericFlags,
-                          fromDotExpr: static bool = false): PNode =
+                          fromDotExpr=false): PNode =
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
   incl(s.flags, sfUsed)
   template maybeDotChoice(c: PContext, n: PNode, s: PSym, fromDotExpr: bool) =
-    when fromDotExpr:
+    if fromDotExpr:
       result = symChoice(c, n, s, scForceOpen)
       if result.len == 1:
         result.transitionSonsKind(nkClosedSymChoice)
