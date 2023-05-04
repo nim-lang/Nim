@@ -70,7 +70,6 @@ jobs:
         run: ./minimize/minimize ci-bench
 
       - name: 'Restore minimize cached database'
-        id: minimize-cache
         uses: actions/cache/restore@v3
         with:
           path: minimize.csv
@@ -84,7 +83,6 @@ jobs:
         if: |
           github.event_name == 'push' && github.ref == 'refs/heads/devel' &&
           matrix.target == 'linux'
-        id: minimize-cache
         uses: actions/cache/save@v3
         with:
           path: minimize.csv
