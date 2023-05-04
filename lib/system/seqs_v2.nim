@@ -107,7 +107,7 @@ proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffec
   {.cast(noSideEffect).}:
     let oldLen = x.len
     var xu = cast[ptr NimSeqV2[T]](addr x)
-    if xu.p == nil or xu.p.cap < oldLen+1:
+    if xu.p == nil or (xu.p.cap and not strlitFlag) < oldLen+1:
       xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T), alignof(T)))
     xu.len = oldLen+1
     # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
