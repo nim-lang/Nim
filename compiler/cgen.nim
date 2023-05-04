@@ -276,7 +276,7 @@ proc genCLineDir(r: var Rope, filename: string, line: int; conf: ConfigRef) =
     r.addf("\n#line $2 $1\n",
         [rope(makeSingleLineCString(filename)), rope(line)])
 
-proc genCLineDir(r: var Rope, filename: string, line: int; p: BProc; info: TLineInfo; lastFileIndex: FileIndex; lastLine: uint16) =
+proc genCLineDir(r: var Rope, filename: string, line: int; p: BProc; info: TLineInfo; lastFileIndex: FileIndex) =
   assert line >= 0
   if optLineDir in p.config.options and line > 0:
     if lastFileIndex == info.fileIndex:
@@ -296,18 +296,24 @@ proc freshLineInfo(p: BProc; info: TLineInfo): bool =
     p.lastLineInfo.fileIndex = info.fileIndex
     result = true
 
+proc genCLineDir(r: var Rope, p: BProc, info: TLineInfo; conf: ConfigRef) =
+  if optLineDir in conf.options:
+    let lastFileIndex = p.lastLineInfo.fileIndex
+    if freshLineInfo(p, info):
+      genCLineDir(r, toFullPath(conf, info), info.safeLineNm, p, info, lastFileIndex)
+
 proc genLineDir(p: BProc, t: PNode) =
   let line = t.info.safeLineNm
 
   if optEmbedOrigSrc in p.config.globalOptions:
     p.s(cpsStmts).add("//" & sourceLine(p.config, t.info) & "\L")
+  let lastFileIndex = p.lastLineInfo.fileIndex
+  let freshLine = freshLineInfo(p, t.info)
+  if freshLine:
+    genCLineDir(p.s(cpsStmts), toFullPath(p.config, t.info), line, p, t.info, lastFileIndex)
   if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
-      let lastFileIndex = p.lastLineInfo.fileIndex
-      let lastLine = p.lastLineInfo.line
-      let freshLine = freshLineInfo(p, t.info)
       if freshLine:
-        genCLineDir(p.s(cpsStmts), toFullPath(p.config, t.info), line, p, t.info, lastFileIndex, lastLine)    
         if lastFileIndex == t.info.fileIndex:
           linefmt(p, cpsStmts, "nimln_($1);\n",
               [line])
@@ -473,9 +479,9 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
     let atyp = skipTypes(loc.t, abstractInst)
     if atyp.kind in {tyVar, tyLent}:
-      linefmt(p, cpsStmts, "$1->len = 0; $1->p = NIM_NIL;\n", [rdLoc(loc)])
+      linefmt(p, cpsStmts, "$1->len = 0; $1->p = NIM_NIL;$n", [rdLoc(loc)])
     else:
-      linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;\n", [rdLoc(loc)])
+      linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
     if containsGcRef:
       var nilLoc: TLoc
@@ -488,7 +494,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
     if loc.storage != OnStack and containsGcRef:
       specializeReset(p, loc)
       when false:
-        linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);\n",
+        linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
                 [addrLoc(p.config, loc), genTypeInfoV1(p.module, loc.t, loc.lode.info)])
       # XXX: generated reset procs should not touch the m_type
       # field, so disabling this should be safe:
@@ -496,7 +502,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
     else:
       # array passed as argument decayed into pointer, bug #7332
       # so we use getTypeDesc here rather than rdLoc(loc)
-      linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));\n",
+      linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
               [addrLoc(p.config, loc),
               getTypeDesc(p.module, loc.t, mapTypeChooser(loc))])
       # XXX: We can be extra clever here and call memset only
@@ -506,7 +512,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
   let typ = loc.t
   if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst + {tyStatic}).kind in {tyString, tySequence}:
-    linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;\n", [rdLoc(loc)])
+    linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
     if containsGarbageCollectedRef(loc.t):
       var nilLoc: TLoc
@@ -514,14 +520,14 @@ proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
       nilLoc.r = rope("NIM_NIL")
       genRefAssign(p, loc, nilLoc)
     else:
-      linefmt(p, cpsStmts, "$1 = ($2)0;\n", [rdLoc(loc),
+      linefmt(p, cpsStmts, "$1 = ($2)0;$n", [rdLoc(loc),
         getTypeDesc(p.module, typ, mapTypeChooser(loc))])
   else:
     if not isTemp or containsGarbageCollectedRef(loc.t):
       # don't use nimZeroMem for temporary values for performance if we can
       # avoid it:
       if not isOrHasImportedCppType(typ):
-        linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));\n",
+        linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
                 [addrLoc(p.config, loc), getTypeDesc(p.module, typ, mapTypeChooser(loc))])
     genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
 
@@ -541,9 +547,9 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   inc(p.labels)
   result.r = "T" & rope(p.labels) & "_"
   if p.module.compileToCpp and isOrHasImportedCppType(t):
-    linefmt(p, cpsLocals, "$1 $2{};\n", [getTypeDesc(p.module, t, skVar), result.r])
+    linefmt(p, cpsLocals, "$1 $2{};$n", [getTypeDesc(p.module, t, skVar), result.r])
   else:
-    linefmt(p, cpsLocals, "$1 $2;\n", [getTypeDesc(p.module, t, skVar), result.r])
+    linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t, skVar), result.r])
   result.k = locTemp
   result.lode = lodeTyp t
   result.storage = OnStack
@@ -561,7 +567,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
 proc getTempCpp(p: BProc, t: PType, result: var TLoc; value: Rope) =
   inc(p.labels)
   result.r = "T" & rope(p.labels) & "_"
-  linefmt(p, cpsStmts, "$1 $2 = $3;\n", [getTypeDesc(p.module, t, skVar), result.r, value])
+  linefmt(p, cpsStmts, "$1 $2 = $3;$n", [getTypeDesc(p.module, t, skVar), result.r, value])
   result.k = locTemp
   result.lode = lodeTyp t
   result.storage = OnStack
@@ -570,7 +576,7 @@ proc getTempCpp(p: BProc, t: PType, result: var TLoc; value: Rope) =
 proc getIntTemp(p: BProc, result: var TLoc) =
   inc(p.labels)
   result.r = "T" & rope(p.labels) & "_"
-  linefmt(p, cpsLocals, "NI $1;\n", [result.r])
+  linefmt(p, cpsLocals, "NI $1;$n", [result.r])
   result.k = locTemp
   result.storage = OnStack
   result.lode = lodeTyp getSysType(p.module.g.graph, unknownLineInfo, tyInt)
@@ -585,13 +591,7 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
   if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
     result.addf("NIM_ALIGN($1) ", [rope(s.alignment)])
 
-  if optLineDir in p.config.options:
-    let line = n.info.safeLineNm
-    let lastFileIndex = p.lastLineInfo.fileIndex
-    let lastLine = p.lastLineInfo.line
-    discard freshLineInfo(p, n.info)  
-    genCLineDir(result, toFullPath(p.config, n.info), line, p, n.info, lastFileIndex, lastLine)
-    addIndent(p, result)
+  genCLineDir(result, p, n.info, p.config)
 
   result.add getTypeDesc(p.module, s.typ, skVar)
   if s.constraint.isNil:
@@ -609,8 +609,8 @@ proc assignLocalVar(p: BProc, n: PNode) =
   #assert(s.loc.k == locNone) # not yet assigned
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
-  #let nl = if optLineDir in p.config.options: "" else: "\n"
-  let decl = localVarDecl(p, n) & (if p.module.compileToCpp and isOrHasImportedCppType(n.typ): "{};\n" else: ";\n")
+  let nl = if optLineDir in p.config.options: "" else: "\n"
+  let decl = localVarDecl(p, n) & (if p.module.compileToCpp and isOrHasImportedCppType(n.typ): "{};" else: ";") & nl
   line(p, cpsLocals, decl)
 
 include ccgthreadvars
@@ -707,7 +707,6 @@ proc getLabel(p: BProc): TLabel =
   result = "LA" & rope(p.labels) & "_"
 
 proc fixLabel(p: BProc, labl: TLabel) =
-  #lineF(p, cpsStmts, "$1: ;$n", [labl])
   p.s(cpsStmts).add("$1: ;$n" % [labl])
 
 proc genVarPrototype(m: BModule, n: PNode)
@@ -761,7 +760,7 @@ $1define nimfr_(proc, file) \
     appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, ["#"])
 
   cgsym(p.module, "nimFrame")
-  result = ropecg(p.module, "\tnimfr_($1, $2);\n", [procname, filename])
+  result = ropecg(p.module, "\tnimfr_($1, $2);$n", [procname, filename])
 
 proc initFrameNoDebug(p: BProc; frame, procname, filename: Rope; line: int): Rope =
   cgsym(p.module, "nimFrame")
@@ -774,7 +773,7 @@ proc deinitFrameNoDebug(p: BProc; frame: Rope): Rope =
   result = ropecg(p.module, "\t#popFrameOfAddr(&$1);$n", [frame])
 
 proc deinitFrame(p: BProc): Rope =
-  result = ropecg(p.module, "\t#popFrame();\n", [])
+  result = ropecg(p.module, "\t#popFrame();$n", [])
 
 include ccgexprs
 
@@ -1137,6 +1136,9 @@ proc genProcAux*(m: BModule, prc: PSym) =
   if sfInjectDestructors in prc.flags:
     procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
 
+  let tmpInfo = prc.info
+  discard freshLineInfo(p, prc.info)
+
   if sfPure notin prc.flags and prc.typ[0] != nil:
     if resultPos >= prc.ast.len:
       internalError(m.config, prc.info, "proc has no result symbol")
@@ -1148,13 +1150,13 @@ proc genProcAux*(m: BModule, prc: PSym) =
         var decl = localVarDecl(p, resNode)
         var a: TLoc
         initLocExprSingleUse(p, val, a)
-        linefmt(p, cpsStmts, "$1 = $2;\n", [decl, rdLoc(a)])
+        linefmt(p, cpsStmts, "$1 = $2;$n", [decl, rdLoc(a)])
       else:
         # declare the result symbol:
         assignLocalVar(p, resNode)
         assert(res.loc.r != "")
         initLocalVar(p, res, immediateAsgn=false)
-      returnStmt = ropecg(p.module, "\treturn $1;\n", [rdLoc(res.loc)])
+      returnStmt = ropecg(p.module, "\treturn $1;$n", [rdLoc(res.loc)])
     else:
       fillResult(p.config, resNode, prc.typ)
       assignParam(p, res, prc.typ[0])
@@ -1179,6 +1181,8 @@ proc genProcAux*(m: BModule, prc: PSym) =
   closureSetup(p, prc)
   genProcBody(p, procBody)
 
+  prc.info = tmpInfo
+
   var generatedProc: Rope
   generatedProc.genCLineDir prc.info, m.config
   if isNoReturn(p.module, prc):
@@ -1195,7 +1199,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
       # This fixes the use of methods and also the case when 2 functions within the same module
       # call each other using directly the "_actual" versions (an optimization) - see issue #11608
       m.s[cfsProcHeaders].addf("$1;\n", [header])
-    generatedProc.add ropecg(p.module, "$1 {\n", [header])
+    generatedProc.add ropecg(p.module, "$1 {$n", [header])
     if optStackTrace in prc.options:
       generatedProc.add(p.s(cpsLocals))
       var procname = makeCString(prc.name.s)
@@ -1210,7 +1214,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
     if beforeRetNeeded in p.flags: generatedProc.add("{")
     generatedProc.add(p.s(cpsInit))
     generatedProc.add(p.s(cpsStmts))
-    if beforeRetNeeded in p.flags: generatedProc.add("\t}\nBeforeRet_: ;\n")
+    if beforeRetNeeded in p.flags: generatedProc.add("\t}BeforeRet_: ;\n")
     if optStackTrace in prc.options: generatedProc.add(deinitFrame(p))
     generatedProc.add(returnStmt)
     generatedProc.add("}\n")
