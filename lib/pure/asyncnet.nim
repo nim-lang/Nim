@@ -136,7 +136,7 @@ type
 
 proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
                      sockType: SockType = SOCK_STREAM,
-                     protocol: Protocol = IPPROTO_TCP,
+                     protocol: Protocol = IPPROTO_DEFAULT,
                      buffered = true,
                      inheritable = defined(nimInheritHandles)): owned(AsyncSocket) =
   ## Creates a new `AsyncSocket` based on the supplied params.
@@ -163,7 +163,7 @@ proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
     result.currPos = 0
 
 proc newAsyncSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
-                     protocol: Protocol = IPPROTO_TCP, buffered = true,
+                     protocol: Protocol = IPPROTO_DEFAULT, buffered = true,
                      inheritable = defined(nimInheritHandles)): owned(AsyncSocket) =
   ## Creates a new asynchronous socket.
   ##
@@ -283,7 +283,7 @@ when defineSsl:
           else:
             raiseSSLError("Socket has been disconnected")
 
-proc dial*(address: string, port: Port, protocol = IPPROTO_TCP,
+proc dial*(address: string, port: Port, protocol = IPPROTO_DEFAULT,
            buffered = true): owned(Future[AsyncSocket]) {.async.} =
   ## Establishes connection to the specified `address`:`port` pair via the
   ## specified protocol. The procedure iterates through possible

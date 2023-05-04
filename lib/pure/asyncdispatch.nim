@@ -1728,7 +1728,7 @@ proc createAsyncNativeSocket*(domain: cint, sockType: cint,
 
 proc createAsyncNativeSocket*(domain: Domain = Domain.AF_INET,
                               sockType: SockType = SOCK_STREAM,
-                              protocol: Protocol = IPPROTO_TCP,
+                              protocol: Protocol = IPPROTO_DEFAULT,
                               inheritable = defined(nimInheritHandles)): AsyncFD =
   createAsyncNativeSocketImpl(domain, sockType, protocol, inheritable)
 
@@ -1887,7 +1887,7 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
   tryNextAddrInfo(nil)
 
 proc dial*(address: string, port: Port,
-           protocol: Protocol = IPPROTO_TCP): owned(Future[AsyncFD]) =
+           protocol: Protocol = IPPROTO_DEFAULT): owned(Future[AsyncFD]) =
   ## Establishes connection to the specified `address`:`port` pair via the
   ## specified protocol. The procedure iterates through possible
   ## resolutions of the `address` until it succeeds, meaning that it

@@ -263,7 +263,7 @@ proc toOSFlags*(socketFlags: set[SocketFlag]): cint =
 
 proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
     sockType: SockType = SOCK_STREAM,
-    protocol: Protocol = IPPROTO_TCP, buffered = true): owned(Socket) =
+    protocol: Protocol = IPPROTO_DEFAULT, buffered = true): owned(Socket) =
   ## Creates a new socket as specified by the params.
   assert fd != osInvalidSocket
   result = Socket(
@@ -295,7 +295,7 @@ proc newSocket*(domain, sockType, protocol: cint, buffered = true,
                      buffered)
 
 proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
-                protocol: Protocol = IPPROTO_TCP, buffered = true,
+                protocol: Protocol = IPPROTO_DEFAULT, buffered = true,
                 inheritable = defined(nimInheritHandles)): owned(Socket) =
   ## Creates a new socket.
   ##
@@ -1987,7 +1987,7 @@ proc `$`*(address: IpAddress): string =
           printedLastGroup = true
 
 proc dial*(address: string, port: Port,
-           protocol = IPPROTO_TCP, buffered = true): owned(Socket)
+           protocol = IPPROTO_DEFAULT, buffered = true): owned(Socket)
            {.tags: [ReadIOEffect, WriteIOEffect].} =
   ## Establishes connection to the specified `address`:`port` pair via the
   ## specified protocol. The procedure iterates through possible
