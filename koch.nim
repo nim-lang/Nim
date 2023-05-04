@@ -186,7 +186,7 @@ proc bundleWinTools(args: string) =
 
 proc bundleChecksums(latest: bool) =
   let commit = if latest: "HEAD" else: ChecksumsStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit)
+  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit, allowBundled = true)
 
 proc zip(latest: bool; args: string) =
   bundleChecksums(latest)
