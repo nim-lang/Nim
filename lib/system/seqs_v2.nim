@@ -91,7 +91,7 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   #sysAssert newLen >= x.len, "invalid newLen parameter for 'grow'"
   if newLen <= oldLen: return
   var xu = cast[ptr NimSeqV2[T]](addr x)
-  if xu.p == nil or xu.p.cap < newLen:
+  if xu.p == nil or (xu.p.cap and not strlitFlag) < newLen:
     xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
   xu.len = newLen
   for i in oldLen .. newLen-1:
@@ -107,7 +107,7 @@ proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffec
   {.cast(noSideEffect).}:
     let oldLen = x.len
     var xu = cast[ptr NimSeqV2[T]](addr x)
-    if xu.p == nil or xu.p.cap < oldLen+1:
+    if xu.p == nil or (xu.p.cap and not strlitFlag) < oldLen+1:
       xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T), alignof(T)))
     xu.len = oldLen+1
     # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
@@ -124,7 +124,7 @@ proc setLen[T](s: var seq[T], newlen: Natural) =
       let oldLen = s.len
       if newlen <= oldLen: return
       var xu = cast[ptr NimSeqV2[T]](addr s)
-      if xu.p == nil or xu.p.cap < newlen:
+      if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
         xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
       xu.len = newlen
       for i in oldLen..<newlen:
@@ -136,7 +136,7 @@ proc newSeq[T](s: var seq[T], len: Natural) =
 
 
 template capacityImpl(sek: NimSeqV2): int =
-  if sek.p != nil: sek.p.cap else: 0
+  if sek.p != nil: (xu.p.cap and not strlitFlag) else: 0
 
 func capacity*[T](self: seq[T]): int {.inline.} =
   ## Returns the current capacity of the seq.
