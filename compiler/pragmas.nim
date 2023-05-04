@@ -1265,6 +1265,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wVirtual:
         noVal(c, it)
         sym.flags.incl {sfVirtual, sfInfixCall}
+        sym.typ.callConv = ccNoConvention
       
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
