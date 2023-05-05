@@ -2182,7 +2182,11 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if sfVirtual in s.flags:
     if c.config.backend == backendCpp:
       let typ = s.typ.sons[1][0] #TODO error if not a ptr or should we allow ref/objects?
-      c.graph.virtualProcsPerType.mgetOrPut(typ.itemId, @[]).add s
+      if typ.owner.id == s.owner.id and c.module.id == s.owner.id:
+        c.graph.virtualProcsPerType.mgetOrPut(typ.itemId, @[]).add s
+      else:
+        localError(c.config, n.info, 
+          "virtual procs must be defined in the same scope as the type they are virtual for and it must be a top level scope")
     else:
       localError(c.config, n.info, "virtual procs are only supported in C++")
 
