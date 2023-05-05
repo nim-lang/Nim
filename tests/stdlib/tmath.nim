@@ -446,3 +446,18 @@ template main() =
 
 static: main()
 main()
+
+when not defined(js) and not defined(danger):
+  block: # bug #21792
+    block:
+      type Digit = 0..9
+      var x = [Digit 4, 7]
+
+      doAssertRaises(RangeDefect):
+        discard sum(x)
+
+    block:
+      var x = [int8 124, 127]
+
+      doAssertRaises(OverflowDefect):
+        discard sum(x)
