@@ -7485,6 +7485,37 @@ generates:
   ```
 
 
+size pragma
+-----------
+Nim automatically determine the size of an enum.
+But when wrapping a C enum type, it need to be specific size.
+`size pragma` allows specifying the size of the enum type.
+
+  ```Nim
+  type
+    EventType* {.size: sizeof(uint32).} = enum
+      QuitEvent,
+      AppTerminating,
+      AppLowMemory
+
+  doAssert sizeof(EventType) == sizeof(uint32)
+  ```
+
+`size pragma` can also specifys the size of importc incomplete object type
+so that you can get the size of it at compile time even if it was declared without fields.
+
+  ```Nim
+    type
+      AtomicFlag* {.importc: "atomic_flag", header: "<stdatomic.h>", size: 1.} = object
+
+    static:
+      # if AtomicFlag didn't have size pragma, this code result in compile error.
+      echo sizeof(AtomicFlag)
+  ```
+
+size pragma accepts only 1, 2, 4 or 8.
+
+
 Align pragma
 ------------
 
