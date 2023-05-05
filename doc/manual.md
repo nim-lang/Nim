@@ -7597,8 +7597,14 @@ Compile pragma
 The `compile` pragma can be used to compile and link a C/C++ source file
 with the project:
 
+This pragma can take three forms. The first is a simple file input:
   ```Nim
   {.compile: "myfile.cpp".}
+  ```
+
+The second form is a tuple where the second arg is the output name strutils formatter:
+  ```Nim
+  {.compile: ("file.c", "$1.o").}
   ```
 
 **Note**: Nim computes a SHA1 checksum and only recompiles the file if it
