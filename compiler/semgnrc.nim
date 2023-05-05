@@ -61,12 +61,19 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           fromDotExpr=false): PNode =
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
   incl(s.flags, sfUsed)
+  template maybeDotChoice(c: PContext, n: PNode, s: PSym, fromDotExpr: bool) =
+    if fromDotExpr:
+      result = symChoice(c, n, s, scForceOpen)
+      if result.len == 1:
+        result.transitionSonsKind(nkClosedSymChoice)
+    else:
+      result = symChoice(c, n, s, scOpen)
   case s.kind
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of skProc, skFunc, skMethod, skIterator, skConverter, skModule:
-    result = symChoice(c, n, s, scOpen)
+  of skProc, skFunc, skMethod, skIterator, skConverter, skModule, skEnumField:
+    maybeDotChoice(c, n, s, fromDotExpr)
   of skTemplate, skMacro:
     # alias syntax, see semSym for skTemplate, skMacro
     if sfNoalias notin s.flags and not fromDotExpr:
@@ -79,7 +86,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       result = semGenericStmt(c, result, {}, ctx)
       discard c.friendModules.pop()
     else:
-      result = symChoice(c, n, s, scOpen)
+      maybeDotChoice(c, n, s, fromDotExpr)
   of skGenericParam:
     if s.typ != nil and s.typ.kind == tyStatic:
       if s.typ.n != nil:
@@ -99,8 +106,6 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     else:
       result = n
     onUse(n.info, s)
-  of skEnumField:
-    result = symChoice(c, n, s, scOpen)
   else:
     result = newSymNode(s, n.info)
     onUse(n.info, s)
@@ -157,12 +162,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
         result = newDot(result, symChoice(c, n, s, scForceOpen))
       else:
         let syms = semGenericStmtSymbol(c, n, s, ctx, flags, fromDotExpr=true)
-        if syms.kind == nkSym:
-          let choice = symChoice(c, n, s, scForceOpen)
-          choice.transitionSonsKind(nkClosedSymChoice)
-          result = newDot(result, choice)
-        else:
-          result = newDot(result, syms)
+        result = newDot(result, syms)
 
 proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
   let s = newSymS(skUnknown, getIdentNode(c, n), c)
