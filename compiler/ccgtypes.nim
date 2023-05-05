@@ -565,7 +565,7 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
           result.addf("\t$1$3 $2;\n", [getTypeDescAux(m, field.loc.t, check, skField), sname, noAlias])
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
 
-proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, fromType = false)
+proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, fromType:bool = false)
 
 proc getRecordFields(m: BModule; typ: PType, check: var IntSet): Rope =
   result = newRopeAppender()
@@ -574,7 +574,7 @@ proc getRecordFields(m: BModule; typ: PType, check: var IntSet): Rope =
     let procs = m.g.graph.virtualProcsPerType[typ.itemId]
     for p in procs:
       var temp: Rope
-      genProcHeader(m, p, temp, false, true)
+      genVirtualProcHeader(m, p, temp, false, true)
       result.add "\t" & temp & ";\n"
 
 proc fillObjectFields*(m: BModule; typ: PType) =
@@ -980,24 +980,24 @@ proc isReloadable(m: BModule; prc: PSym): bool =
 proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 
-proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, fromType = false) =
+proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, fromType : bool = false) =
   # using static is needed for inline procs
+  assert sfVirtual in prc.flags
   var check = initIntSet()
   fillBackendName(m, prc)
   fillLoc(prc.loc, locProc, prc.ast[namePos], OnUnknown)
   var rettype, params: Rope
-  let isVirtual = sfVirtual in prc.flags
-  genProcParams(m, prc.typ, rettype, params, check, true, false, isVirtual)
+  genProcParams(m, prc.typ, rettype, params, check, true, false, true)
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with "_actual" postfix
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
   var name = prc.loc.r
-  if isVirtual:
-    if fromType:
-      rettype = "virtual " & rettype
-    else:
-      let structType = prc.typ.n[1].sym.typ.sons[0]
-      name = getTypeDescWeak(m, structType, check, skParam) & "::" & name
+  if fromType:
+    rettype = "virtual " & rettype
+  else:
+    let structType = prc.typ.n[1].sym.typ.sons[0]
+    name = getTypeDescWeak(m, structType, check, skParam) & "::" & name
+  
   if isReloadable(m, prc) and not asPtr:
     name.add("_actual")
   # careful here! don't access ``prc.ast`` as that could reload large parts of
@@ -1018,6 +1018,37 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false,
   else:
     let asPtrStr = if asPtr: (rope("(*") & name & ")") else: name
     result.add runtimeFormat(prc.cgDeclFrmt, [rettype, asPtrStr, params])
+
+proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false) =
+  # using static is needed for inline procs
+  var check = initIntSet()
+  fillBackendName(m, prc)
+  fillLoc(prc.loc, locProc, prc.ast[namePos], OnUnknown)
+  var rettype, params: Rope
+  genProcParams(m, prc.typ, rettype, params, check, true, false)
+  # handle the 2 options for hotcodereloading codegen - function pointer
+  # (instead of forward declaration) or header for function body with "_actual" postfix
+  let asPtrStr = rope(if asPtr: "_PTR" else: "")
+  var name = prc.loc.r
+  # careful here! don't access ``prc.ast`` as that could reload large parts of
+  # the object graph!
+  if prc.constraint.isNil:
+    if lfExportLib in prc.loc.flags:
+      if isHeaderFile in m.flags:
+        result.add "N_LIB_IMPORT "
+      else:
+        result.add "N_LIB_EXPORT "
+    elif prc.typ.callConv == ccInline or asPtr or isNonReloadable(m, prc):
+      result.add "static "
+    elif sfImportc notin prc.flags:
+      result.add "N_LIB_PRIVATE "
+    result.addf("$1$2($3, $4)$5",
+         [rope(CallingConvToStr[prc.typ.callConv]), asPtrStr, rettype, name,
+         params])
+  else:
+    let asPtrStr = if asPtr: (rope("(*") & name & ")") else: name
+    result.add runtimeFormat(prc.cgDeclFrmt, [rettype, asPtrStr, params])
+
 
 # ------------------ type info generation -------------------------------------
 

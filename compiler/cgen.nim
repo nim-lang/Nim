@@ -1129,7 +1129,11 @@ proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
 proc genProcAux*(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = newRopeAppender()
-  genProcHeader(m, prc, header)
+  let isVirtual = m.config.backend == backendCpp and sfVirtual in prc.flags
+  if isVirtual:
+    genVirtualProcHeader(m, prc, header)
+  else:
+    genProcHeader(m, prc, header)
   var returnStmt: Rope = ""
   assert(prc.ast != nil)
 
@@ -1171,12 +1175,9 @@ proc genProcAux*(m: BModule, prc: PSym) =
       if skipTypes(res.typ, abstractInst).kind == tyArray:
         #incl(res.loc.flags, lfIndirect)
         res.loc.storage = OnUnknown
-
-  if m.config.backend == backendCpp and sfVirtual in prc.flags:
-    let thisParam = prc.typ.n[1].sym 
-    var check: IntSet
-    p.s(cpsLocals).addf("\t$1 $2 = this; $n",
-      [getTypeDescWeak(m, thisParam.typ, check, skParam), thisParam.loc.r])
+  if isVirtual:
+    var thisParam = prc.typ.n[1].sym 
+    thisParam.loc.r = "this" #the user first param becomes the C++ this
 
   for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym
