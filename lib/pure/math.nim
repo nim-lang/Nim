@@ -326,68 +326,8 @@ func nextPowerOfTwo*(x: int): int =
   result = result or (result shr 1)
   result += 1 + ord(x <= 0)
 
-func sum*[T](x: openArray[T]): T =
-  ## Computes the sum of the elements in `x`.
-  ##
-  ## If `x` is empty, 0 is returned.
-  ##
-  ## **See also:**
-  ## * `prod func <#prod,openArray[T]>`_
-  ## * `cumsum func <#cumsum,openArray[T]>`_
-  ## * `cumsummed func <#cumsummed,openArray[T]>`_
-  runnableExamples:
-    doAssert sum([1, 2, 3, 4]) == 10
-    doAssert sum([-4, 3, 5]) == 4
 
-  for i in items(x): result = result + i
 
-func prod*[T](x: openArray[T]): T =
-  ## Computes the product of the elements in `x`.
-  ##
-  ## If `x` is empty, 1 is returned.
-  ##
-  ## **See also:**
-  ## * `sum func <#sum,openArray[T]>`_
-  ## * `fac func <#fac,int>`_
-  runnableExamples:
-    doAssert prod([1, 2, 3, 4]) == 24
-    doAssert prod([-4, 3, 5]) == -60
-
-  result = T(1)
-  for i in items(x): result = result * i
-
-func cumsummed*[T](x: openArray[T]): seq[T] =
-  ## Returns the cumulative (aka prefix) summation of `x`.
-  ##
-  ## If `x` is empty, `@[]` is returned.
-  ##
-  ## **See also:**
-  ## * `sum func <#sum,openArray[T]>`_
-  ## * `cumsum func <#cumsum,openArray[T]>`_ for the in-place version
-  runnableExamples:
-    doAssert cumsummed([1, 2, 3, 4]) == @[1, 3, 6, 10]
-
-  let xLen = x.len
-  if xLen == 0:
-    return @[]
-  result.setLen(xLen)
-  result[0] = x[0]
-  for i in 1 ..< xLen: result[i] = result[i - 1] + x[i]
-
-func cumsum*[T](x: var openArray[T]) =
-  ## Transforms `x` in-place (must be declared as `var`) into its
-  ## cumulative (aka prefix) summation.
-  ##
-  ## **See also:**
-  ## * `sum func <#sum,openArray[T]>`_
-  ## * `cumsummed func <#cumsummed,openArray[T]>`_ for a version which
-  ##   returns a cumsummed sequence
-  runnableExamples:
-    var a = [1, 2, 3, 4]
-    cumsum(a)
-    doAssert a == @[1, 3, 6, 10]
-
-  for i in 1 ..< x.len: x[i] = x[i - 1] + x[i]
 
 when not defined(js): # C
   func sqrt*(x: float32): float32 {.importc: "sqrtf", header: "<math.h>".}
@@ -1132,6 +1072,69 @@ func sgn*[T: SomeNumber](x: T): int {.inline.} =
 
 {.pop.}
 {.pop.}
+
+func sum*[T](x: openArray[T]): T =
+  ## Computes the sum of the elements in `x`.
+  ##
+  ## If `x` is empty, 0 is returned.
+  ##
+  ## **See also:**
+  ## * `prod func <#prod,openArray[T]>`_
+  ## * `cumsum func <#cumsum,openArray[T]>`_
+  ## * `cumsummed func <#cumsummed,openArray[T]>`_
+  runnableExamples:
+    doAssert sum([1, 2, 3, 4]) == 10
+    doAssert sum([-4, 3, 5]) == 4
+
+  for i in items(x): result = result + i
+
+func prod*[T](x: openArray[T]): T =
+  ## Computes the product of the elements in `x`.
+  ##
+  ## If `x` is empty, 1 is returned.
+  ##
+  ## **See also:**
+  ## * `sum func <#sum,openArray[T]>`_
+  ## * `fac func <#fac,int>`_
+  runnableExamples:
+    doAssert prod([1, 2, 3, 4]) == 24
+    doAssert prod([-4, 3, 5]) == -60
+
+  result = T(1)
+  for i in items(x): result = result * i
+
+func cumsummed*[T](x: openArray[T]): seq[T] =
+  ## Returns the cumulative (aka prefix) summation of `x`.
+  ##
+  ## If `x` is empty, `@[]` is returned.
+  ##
+  ## **See also:**
+  ## * `sum func <#sum,openArray[T]>`_
+  ## * `cumsum func <#cumsum,openArray[T]>`_ for the in-place version
+  runnableExamples:
+    doAssert cumsummed([1, 2, 3, 4]) == @[1, 3, 6, 10]
+
+  let xLen = x.len
+  if xLen == 0:
+    return @[]
+  result.setLen(xLen)
+  result[0] = x[0]
+  for i in 1 ..< xLen: result[i] = result[i - 1] + x[i]
+
+func cumsum*[T](x: var openArray[T]) =
+  ## Transforms `x` in-place (must be declared as `var`) into its
+  ## cumulative (aka prefix) summation.
+  ##
+  ## **See also:**
+  ## * `sum func <#sum,openArray[T]>`_
+  ## * `cumsummed func <#cumsummed,openArray[T]>`_ for a version which
+  ##   returns a cumsummed sequence
+  runnableExamples:
+    var a = [1, 2, 3, 4]
+    cumsum(a)
+    doAssert a == @[1, 3, 6, 10]
+
+  for i in 1 ..< x.len: x[i] = x[i - 1] + x[i]
 
 func `^`*[T: SomeNumber](x: T, y: Natural): T =
   ## Computes `x` to the power of `y`.
