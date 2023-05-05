@@ -63,6 +63,7 @@ Options:
   --nim:path               use specified path for nim binary
   --localdocs[:path]       only build local documentations. If a path is not
                            specified (or empty), the default is used.
+  --skipIntegrityCheck     skips integrity check when booting the compiler
 Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
@@ -295,7 +296,7 @@ proc thVersion(i: int): string =
 
 template doUseCpp(): bool = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
 
-proc boot(args: string) =
+proc boot(args: string, skipIntegrityCheck: bool) =
   ## bootstrapping is a process that involves 3 steps:
   ## 1. use csourcesAny to produce nim1.exe. This nim1.exe is buggy but
   ## rock solid for building a Nim compiler. It shouldn't be used for anything else.
@@ -314,7 +315,8 @@ proc boot(args: string) =
     bundleChecksums(false)
 
   let nimStart = findStartNim().quoteShell()
-  for i in 0..2:
+  let times = 2 - ord(skipIntegrityCheck)
+  for i in 0..times:
     let defaultCommand = if useCpp: "cpp" else: "c"
     let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
     echo "iteration: ", i+1
@@ -345,7 +347,9 @@ proc boot(args: string) =
       return
     copyExe(output, (i+1).thVersion)
   copyExe(output, finalDest)
-  when not defined(windows): echo "[Warning] executables are still not equal"
+  when not defined(windows):
+    if not skipIntegrityCheck:
+      echo "[Warning] executables are still not equal"
 
 # -------------- clean --------------------------------------------------------
 
@@ -681,6 +685,7 @@ when isMainModule:
     latest = false
     localDocsOnly = false
     localDocsOut = ""
+    skipIntegrityCheck = false
   while true:
     op.next()
     case op.kind
@@ -694,10 +699,12 @@ when isMainModule:
         localDocsOnly = true
         if op.val.len > 0:
           localDocsOut = op.val.absolutePath
+      of "skipintegritycheck":
+        skipIntegrityCheck = true
       else: showHelp(success = false)
     of cmdArgument:
       case normalize(op.key)
-      of "boot": boot(op.cmdLineRest)
+      of "boot": boot(op.cmdLineRest, skipIntegrityCheck)
       of "clean": clean(op.cmdLineRest)
       of "doc", "docs": buildDocs(op.cmdLineRest & " --d:nimPreviewSlimSystem " & paCode, localDocsOnly, localDocsOut)
       of "doc0", "docs0":
