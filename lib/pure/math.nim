@@ -326,6 +326,8 @@ func nextPowerOfTwo*(x: int): int =
   result = result or (result shr 1)
   result += 1 + ord(x <= 0)
 
+{.push checks:on.}
+
 func sum*[T](x: openArray[T]): T =
   ## Computes the sum of the elements in `x`.
   ##
@@ -388,6 +390,8 @@ func cumsum*[T](x: var openArray[T]) =
     doAssert a == @[1, 3, 6, 10]
 
   for i in 1 ..< x.len: x[i] = x[i - 1] + x[i]
+
+{.pop.}
 
 when not defined(js): # C
   func sqrt*(x: float32): float32 {.importc: "sqrtf", header: "<math.h>".}
