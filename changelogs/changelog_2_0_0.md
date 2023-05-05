@@ -502,3 +502,4 @@
   e.g. instead of `--includeFile` and `--excludeFile` we have
   `--filename` and `--notFilename` respectively.
   Also the semantics become consistent for such positive/negative filters.
+- koch now supports the `--skipIntegrityCheck` option. The command `koch --skipIntegrityCheck boot -d:release` always builds the compiler twice.
