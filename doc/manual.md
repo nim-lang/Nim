@@ -7487,8 +7487,8 @@ generates:
 
 size pragma
 -----------
-Nim automatically determine the size of an enum.
-But when wrapping a C enum type, it need to be specific size.
+Nim automatically determines the size of an enum.
+But when wrapping a C enum type, it needs to be a specific size.
 `size pragma` allows specifying the size of the enum type.
 
   ```Nim
@@ -7501,7 +7501,7 @@ But when wrapping a C enum type, it need to be specific size.
   doAssert sizeof(EventType) == sizeof(uint32)
   ```
 
-`size pragma` can also specifys the size of importc incomplete object type
+`size pragma` can also specify the size of importc incomplete object type
 so that you can get the size of it at compile time even if it was declared without fields.
 
   ```Nim
