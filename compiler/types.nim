@@ -396,9 +396,9 @@ proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool =
       result = true
     elif not containsOrIncl(marker, t.id):
       for i in 0..<t.len:
-        result = canFormAcycleAux(marker, t[i], startId)
+        result = canFormAcycleAux(marker, t[i], abs startId)
         if result: return
-      if t.n != nil: result = canFormAcycleNode(marker, t.n, startId)
+      if t.n != nil: result = canFormAcycleNode(marker, t.n, abs startId)
     # Inheritance can introduce cyclic types, however this is not relevant
     # as the type that is passed to 'new' is statically known!
     # er but we use it also for the write barrier ...
@@ -415,7 +415,10 @@ proc isFinal*(t: PType): bool =
 proc canFormAcycle*(typ: PType): bool =
   var marker = initIntSet()
   let t = skipTypes(typ, abstractInst+{tyOwned}-{tyTypeDesc})
-  result = canFormAcycleAux(marker, t, t.id)
+  # startId begins with a negative value that is only in the first recursion
+  # and the following recursions set to its real value. This fixes
+  # bug #21753:
+  result = canFormAcycleAux(marker, t, -t.id)
 
 proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
                    closure: RootRef): PType
