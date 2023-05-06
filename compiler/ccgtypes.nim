@@ -565,7 +565,7 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
           result.addf("\t$1$3 $2;\n", [getTypeDescAux(m, field.loc.t, check, skField), sname, noAlias])
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
 
-proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, fromType:bool = false)
+proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl:bool = false)
 
 proc getRecordFields(m: BModule; typ: PType, check: var IntSet): Rope =
   result = newRopeAppender()
@@ -979,46 +979,80 @@ proc isReloadable(m: BModule; prc: PSym): bool =
 
 proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
+import std/strscans
+proc parseVFunctionDecl(val: string; name, params, genericParams: var string; constIdx, overrideIdx: var int = -1) =
+  var afterParams: string
+  if scanf(val, "$*($*)$s$*", name, params, afterParams):
+    constIdx = afterParams.find("const")
+    overrideIdx = afterParams.find("override")
+    if constIdx != -1:
+      constIdx += val.len - afterParams.len
+    if overrideIdx != -1:
+      overrideIdx += val.len - afterParams.len
+    discard scanf(name, "$*<$*>", name, genericParams)
+    name.removePrefix("#->")
 
-proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, fromType : bool = false) =
+proc parseExistingParams(params:string, parsedParams: var (seq[string], seq[string])) =
+  #instead of messing with all the logic in params we do a pass over them here to extract them. 
+  #Ideally genProcParams would be refactored to return a pair. So this is a temporary solution.
+  let splitParams = params.multiReplace(("(", ""), (")", "")).split(", ")
+  for i, paramString in splitParams:
+    let splitParam = paramString.split(" ")
+    if splitParam.len == 2:
+      parsedParams[0].add splitParam[0]
+      if i < splitParams.len - 1:
+       parsedParams[1].add splitParam[1] #& ", "
+      else:
+        parsedParams[1].add splitParam[1]
+      
+
+import sequtils
+proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl : bool = false) =
   # using static is needed for inline procs
   assert sfVirtual in prc.flags
   var check = initIntSet()
   fillBackendName(m, prc)
   fillLoc(prc.loc, locProc, prc.ast[namePos], OnUnknown)
   var rettype, params: Rope
-  genProcParams(m, prc.typ, rettype, params, check, true, false, true)
+  genProcParams(m, prc.typ, rettype, params, check, true, false, true) 
+  var parsedNimParams = (newSeq[string](), newSeq[string]())
+  parseExistingParams(params, parsedNimParams)
+
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with "_actual" postfix
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
-  var name = prc.loc.r
-  if fromType:
+  var name, userDeclParams, genericParams : string
+  var constIdx, overrideIdx : int = -1
+  parseVFunctionDecl(prc.loc.r, name, userDeclParams, genericParams, constIdx, overrideIdx)
+  echo "\nprc.loc.r:", prc.loc.r, " name:", name, " userDeclParams:", userDeclParams, " genericParams ", genericParams, " constIdx:", constIdx, " overrideIdx:", overrideIdx
+  #first we format the name to get rid of the $
+  if len(parsedNimParams[0]) > 0: #TODO do a proper check an  erorr here
+    var declParams = userDeclParams 
+    declParams = runtimeFormat(declParams.replace("%", "$"), parsedNimParams[0])
+    declParams = runtimeFormat(declParams.replace("^", "$"), parsedNimParams[1])
+    echo "Names parsed:", declParams
+    params = "(" & declParams & ")"
+  
+  var fnConst, override : string
+  if name == "": #user didn't specify a value for virtual
+    name = prc.loc.r
+  if constIdx > 0:
+    fnConst = " const"
+  if isFwdDecl:
     rettype = "virtual " & rettype
-  else:
+    if overrideIdx > 0: #only needed in forward declaration inside the type
+      override = " override"
+  else: 
     let structType = prc.typ.n[1].sym.typ.sons[0]
     name = getTypeDescWeak(m, structType, check, skParam) & "::" & name
+    if name != "":
+      prc.loc.r =  name #at this point it's parsed
   
-  if isReloadable(m, prc) and not asPtr:
-    name.add("_actual")
-  # careful here! don't access ``prc.ast`` as that could reload large parts of
-  # the object graph!
-  if prc.constraint.isNil:
-    if lfExportLib in prc.loc.flags:
-      if isHeaderFile in m.flags:
-        result.add "N_LIB_IMPORT "
-      else:
-        result.add "N_LIB_EXPORT "
-    elif prc.typ.callConv == ccInline or asPtr or isNonReloadable(m, prc):
-      result.add "static "
-    elif sfImportc notin prc.flags:
-      result.add "N_LIB_PRIVATE "
-    result.addf("$1$2($3, $4)$5",
-         [rope(CallingConvToStr[prc.typ.callConv]), asPtrStr, rettype, name,
-         params])
-  else:
-    let asPtrStr = if asPtr: (rope("(*") & name & ")") else: name
-    result.add runtimeFormat(prc.cgDeclFrmt, [rettype, asPtrStr, params])
-
+  result.add "N_LIB_PRIVATE "
+  result.addf("$1$2($3, $4)$5 $6 $7",
+        [rope(CallingConvToStr[prc.typ.callConv]), asPtrStr, rettype, name,
+        params, fnConst, override])
+  
 proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false) =
   # using static is needed for inline procs
   var check = initIntSet()

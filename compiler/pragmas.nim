@@ -202,6 +202,15 @@ proc processImportCpp(c: PContext; s: PSym, extname: string, info: TLineInfo) =
     incl(m.flags, sfCompileToCpp)
   incl c.config.globalOptions, optMixedMode
 
+
+proc processVirtual(c: PContext; s: PSym, extname: string, info: TLineInfo) =
+  setExternName(c, s, extname, info)
+  s.flags.incl {sfVirtual, sfInfixCall}
+  s.flags.excl {sfExportc}
+  s.typ.callConv = ccNoConvention
+  incl c.config.globalOptions, optMixedMode
+
+
 proc processImportObjC(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
   incl(s.flags, sfImportc)
@@ -1263,9 +1272,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wSystemRaisesDefect:
         sym.flags.incl sfSystemRaisesDefect
       of wVirtual:
-        noVal(c, it)
-        sym.flags.incl {sfVirtual, sfInfixCall}
-        sym.typ.callConv = ccNoConvention
+          processVirtual(c, sym, getOptionalStr(c, it, "$1"), it.info)
       
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
