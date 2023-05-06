@@ -1,6 +1,6 @@
 discard """
   nimoutFull: true
-  cmd: '''nim c -r --warnings:off --hints:off --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
+  cmd: '''nim c -r --warnings:off --hints:off --mm:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
   nimout: '''
 --expandArc: newTarget
 
