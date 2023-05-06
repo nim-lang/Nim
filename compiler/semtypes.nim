@@ -16,6 +16,7 @@ const
   errIntLiteralExpected = "integer literal expected"
   errWrongNumberOfVariables = "wrong number of variables"
   errInvalidOrderInEnumX = "invalid order in enum '$1'"
+  errOverflowInEnumX = "The enum '$1' exceeds its maximum value ($2)"
   errOrdinalTypeExpected = "ordinal type expected"
   errSetTooBig = "set is too large"
   errBaseTypeMustBeOrdinal = "base type of a set must be an ordinal"
@@ -151,7 +152,11 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
         declarePureEnumField(c, e)
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
-    inc(counter)
+    if counter == high(typeof(counter)):
+      if i > 1 and result.n[i-2].sym.position == high(int):
+        localError(c.config, n[i].info, errOverflowInEnumX % [e.name.s, $high(typeof(counter))])
+    else:
+      inc(counter)
   if isPure and sfExported in result.sym.flags:
     addPureEnum(c, LazySym(sym: result.sym))
   if tfNotNil in e.typ.flags and not hasNull:

@@ -163,3 +163,11 @@ block size_one_byte: #issue 15752
 
   static:
     assert 1 == sizeof(Flag)
+
+    block: # bug #21280
+      type
+        Test = enum
+          B = 19
+          A = int64.high()
+
+      doAssert ord(A) == int64.high()
