@@ -7513,7 +7513,7 @@ so that one can get the size of it at compile time even if it was declared witho
       echo sizeof(AtomicFlag)
   ```
 
-The `size pragma` accepts only the value 1, 2, 4 or 8.
+The `size pragma` accepts only the values 1, 2, 4 or 8.
 
 
 Align pragma
