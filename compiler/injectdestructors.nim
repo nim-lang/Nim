@@ -425,11 +425,28 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = c.getTemp(s, n.typ, n.info)
   if hasDestructor(c, n.typ):
-    result.add c.genWasMoved(tmp)
-    var m = c.genCopy(tmp, n, {})
-    m.add p(n, c, s, normal)
-    c.finishCopy(m, n, isFromSink = true)
-    result.add m
+    let typ = n.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+    let op = getAttachedOp(c.graph, typ, attachedDup)
+    if op != nil:
+      let src = p(n, c, s, normal)
+      result.add newTreeI(nkFastAsgn,
+          src.info, tmp,
+          genOp(c, op, src)
+      )
+    elif typ.kind == tyRef:
+      let src = p(n, c, s, normal)
+      result.add newTreeI(nkFastAsgn,
+          src.info, tmp,
+          newTreeIT(nkCall, src.info, src.typ,
+            newSymNode(createMagic(c.graph, c.idgen, "`=dup`", mDup)),
+            src)
+      )
+    else:
+      result.add c.genWasMoved(tmp)
+      var m = c.genCopy(tmp, n, {})
+      m.add p(n, c, s, normal)
+      c.finishCopy(m, n, isFromSink = true)
+      result.add m
     if isLValue(n) and not isCapturedVar(n) and n.typ.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &

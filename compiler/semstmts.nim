@@ -1815,9 +1815,12 @@ proc whereToBindTypeHook(c: PContext; t: PType): PType =
 proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let t = s.typ
   var noError = false
-  let cond = if op in {attachedDestructor, attachedWasMoved}:
+  let cond = case op
+             of {attachedDestructor, attachedWasMoved}:
                t.len == 2 and t[0] == nil and t[1].kind == tyVar
-             elif op == attachedTrace:
+             of attachedDup:
+               t.len == 2 and t[0] != nil and t[1].kind == tyVar
+             of attachedTrace:
                t.len == 3 and t[0] == nil and t[1].kind == tyVar and t[2].kind == tyPointer
              else:
                t.len >= 2 and t[0] == nil
@@ -1843,9 +1846,13 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
         localError(c.config, n.info, errGenerated,
           "type bound operation `" & s.name.s & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
   if not noError and sfSystemModule notin s.owner.flags:
-    if op == attachedTrace:
+    case op
+    of attachedTrace:
       localError(c.config, n.info, errGenerated,
         "signature for '=trace' must be proc[T: object](x: var T; env: pointer)")
+    of attachedDup:
+      localError(c.config, n.info, errGenerated,
+        "signature for '=dup' must be proc[T: object](x: var T): T")
     else:
       localError(c.config, n.info, errGenerated,
         "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
@@ -1938,6 +1945,9 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
   of "=wasmoved":
     if s.magic != mWasMoved:
       bindTypeHook(c, s, n, attachedWasMoved)
+  of "=dup":
+    if s.magic != mDup:
+      bindTypeHook(c, s, n, attachedDup)
   else:
     if sfOverriden in s.flags:
       localError(c.config, n.info, errGenerated,
