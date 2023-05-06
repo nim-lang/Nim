@@ -653,6 +653,7 @@ proc processPragma(c: PContext, n: PNode, i: int) =
     invalidPragma(c, n)
 
   var userPragma = newSym(skTemplate, it[1].ident, nextSymId(c.idgen), c.module, it.info, c.config.options)
+  styleCheckDef(c, userPragma)
   userPragma.ast = newTreeI(nkPragma, n.info, n.sons[i+1..^1])
   strTableAdd(c.userPragmas, userPragma)
 
@@ -848,7 +849,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
   else:
     let k = whichKeyword(ident)
     if k in validPragmas:
-      checkPragmaUse(c.config, key.info, k, ident.s)
+      checkPragmaUse(c, key.info, k, ident.s, (if sym != nil: sym else: c.module))
       case k
       of wExportc, wExportCpp:
         makeExternExport(c, sym, getOptionalStr(c, it, "$1"), it.info)
