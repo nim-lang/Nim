@@ -66,7 +66,7 @@ proc hasDestructor(c: Con; t: PType): bool {.inline.} =
   result = ast.hasDestructor(t)
   when toDebug.len > 0:
     # for more effective debugging
-    if not result and c.graph.config.selectedGC in {gcArc, gcOrc}:
+    if not result and c.graph.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
       assert(not containsGarbageCollectedRef(t))
 
 proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
@@ -435,7 +435,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
         "if possible, rearrange your program's control flow to prevent it") % $n)
   else:
-    if c.graph.config.selectedGC in {gcArc, gcOrc}:
+    if c.graph.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
       assert(not containsManagedMemory(n.typ))
     if n.typ.skipTypes(abstractInst).kind in {tyOpenArray, tyVarargs}:
       localError(c.graph.config, n.info, "cannot create an implicit openArray copy to be passed to a sink parameter")
@@ -478,7 +478,7 @@ proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope): PNode =
     result = arg
 
 proc cycleCheck(n: PNode; c: var Con) =
-  if c.graph.config.selectedGC != gcArc: return
+  if c.graph.config.selectedGC notin {gcArc, gcAtomicArc}: return
   var value = n[1]
   if value.kind == nkClosure:
     value = value[1]
@@ -821,7 +821,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
 
       if n[0].kind == nkSym and n[0].sym.magic in {mNew, mNewFinalize}:
         result[0] = copyTree(n[0])
-        if c.graph.config.selectedGC in {gcHooks, gcArc, gcOrc}:
+        if c.graph.config.selectedGC in {gcHooks, gcArc, gcAtomicArc, gcOrc}:
           let destroyOld = c.genDestroy(result[1])
           result = newTree(nkStmtList, destroyOld, result)
       else:
