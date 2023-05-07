@@ -12,6 +12,7 @@
 # ------------------------- Name Mangling --------------------------------
 
 import sighashes, modulegraphs
+import strscans
 import ../dist/checksums/src/checksums/md5
 
 proc isKeyword(w: PIdent): bool =
@@ -572,11 +573,12 @@ proc getRecordFields(m: BModule; typ: PType, check: var IntSet): Rope =
   genRecordFieldsAux(m, typ.n, typ, check, result)
   if typ.itemId in m.g.graph.virtualProcsPerType:
     let procs = m.g.graph.virtualProcsPerType[typ.itemId]
-    for p in procs:
-      var temp: Rope
-      genVirtualProcHeader(m, p, temp, false, true)
-      result.add "\t" & temp & ";\n"
-
+    for prc in procs:
+      if "#->" in prc.loc.r or "#." in prc.loc.r: continue     
+      var header: Rope
+      genVirtualProcHeader(m, prc, header, false, true)
+      result.add "\t" & header & ";\n"
+    
 proc fillObjectFields*(m: BModule; typ: PType) =
   # sometimes generic objects are not consistently merged. We patch over
   # this fact here.
@@ -979,7 +981,6 @@ proc isReloadable(m: BModule; prc: PSym): bool =
 
 proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
-import std/strscans
 
 proc parseVFunctionDecl(val: string; name, params, retType: var string; isFnConst, isOverride: var bool) =
   var afterParams: string
@@ -988,19 +989,15 @@ proc parseVFunctionDecl(val: string; name, params, retType: var string; isFnCons
     isOverride = afterParams.find("override") > -1
     discard scanf(afterParams, "->$s$* ", retType)
 
-proc parseExistingParams(params:string, parsedParams: var (seq[string], seq[string])) =
-  #instead of messing with all the logic in params we do a pass over them here to extract them. 
-  #Ideally genProcParams would be refactored to return a pair. So this is a temporary solution.
+proc parseExistingParams(params:string, parsedParams: var OrderedTable[string, string]) =
+  #instead of messing with all the logic in params we do a pass over them here to "happy" extract them
+  #Ideally genProcParams would be refactored to return a table. So this is a temporary solution.
   let splitParams = params.multiReplace(("(", ""), (")", "")).split(", ")
-  for i, paramString in splitParams:
-    let splitParam = paramString.split(" ")
-    if splitParam.len == 2:
-      parsedParams[0].add splitParam[0]
-      if i < splitParams.len - 1:
-       parsedParams[1].add splitParam[1] #& ", "
-      else:
-        parsedParams[1].add splitParam[1]
-  
+  for p in splitParams:
+    var pair = p.split(" ")
+    if pair.len == 2:
+      parsedParams[pair[0].strip()] = pair[1].strip()
+import std/sequtils
 proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl : bool = false) =
   assert sfVirtual in prc.flags
   # using static is needed for inline procs
@@ -1015,23 +1012,22 @@ proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool =
   let typDesc = getTypeDescWeak(m, typ, check, skParam)
   var rettype, params: Rope
   genProcParams(m, prc.typ, rettype, params, check, true, false, true) 
-  var nimParams = (@[typDesc], @["this"]) #just for ref. It shouldnt be used (also for obj is (*this))
+  var nimParams = {typDesc: "this"}.toOrderedTable #just for ref/consistency. this shouldnt be used (also for obj is (*this))
   parseExistingParams(params, nimParams)
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with "_actual" postfix
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
-  var name, userDeclParams, userRetTyp : string
+  var name, declParams, userRetTyp : string
   var isFnConst, isOverride: bool
-  parseVFunctionDecl(prc.loc.r, name, userDeclParams, userRetTyp, isFnConst, isOverride)
-  echo "\nvirtual:", prc.loc.r, " typ:", typDesc,  " name:", name, " userDeclParams:", userDeclParams, " fnConst:", isFnConst, " override:", isOverride
+  parseVFunctionDecl(prc.loc.r, name, declParams, userRetTyp, isFnConst, isOverride)
   #first we format the name to get rid of the $
-  if len(nimParams[0]) > 0: #TODO do a proper check an erorr here
-    userDeclParams = runtimeFormat(userDeclParams.replace("#", "$"), nimParams[0] & " " & nimParams[1])
-    userDeclParams = runtimeFormat(userDeclParams.replace("%", "$"), nimParams[0])
-    userDeclParams = runtimeFormat(userDeclParams.replace("^", "$"), nimParams[1])
-    params = "(" & userDeclParams & ")"
+  template `%`(s: string, args: openArray[string]): string = runtimeFormat(s, args)
+  declParams = declParams.replace("#", "$") % nimParams.pairs.toSeq.mapIt(it[0] & " " & it[1])
+  declParams = declParams.replace("%", "$") %  nimParams.keys.toSeq
+  declParams = declParams.replace("^", "$") % nimParams.values.toSeq
+  params = "(" & declParams & ")"
   if userRetTyp != "":
-    rettype = runtimeFormat(userRetTyp.replace("%0", "$1"), [rettype])
+    rettype = userRetTyp.replace("%0", "$1") % [rettype]
   var fnConst, override : string
   if isFnConst:
     fnConst = " const"
@@ -1040,8 +1036,8 @@ proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool =
     if isOverride: 
       override = " override"
   else: 
-    prc.loc.r = memberOp & name & "(@)"
-    name = typDesc & "::" & name
+    prc.loc.r = "$1 $2 (@)" % [memberOp, name]
+    name = "$1::$2" % [typDesc, name]
   
   result.add "N_LIB_PRIVATE "
   result.addf("$1$2($3, $4)$5 $6 $7",
