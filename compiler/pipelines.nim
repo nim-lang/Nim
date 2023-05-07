@@ -1,7 +1,7 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
        packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg,
-       liftdestructors
+       liftdestructors, modulepaths
 
 import pipelineutils
 
@@ -273,38 +273,9 @@ proc compilePipelineSystemModule*(graph: ModuleGraph) =
         graph.config.libpath / RelativeFile"system.nim")
     discard graph.compilePipelineModule(graph.config.m.systemFileIdx, {sfSystemModule})
 
-proc resolveModuleOverridePaths(conf: ConfigRef) =
-  ## Resolve the target and patch module paths set with `nimscript.patchModule`.
-  ## This resolution needs performed after all module search paths have been defined.
-  ##
-  ## See Also:
-  ## * `nimscript.patchModule`
-  ## * `options.patchModule`
-  let curDir = getCurrentDir()
-  for (target, override) in conf.unresolvedModuleOverrides.pairs:
-    var
-      resolvedTarget = target
-      resolvedOverride = override
-    if not target.isAbsolute:
-      resolvedTarget = findModule(conf, target, conf.projectFull.string, patch = false).string
-      if resolvedTarget.len == 0:
-        rawMessage(conf, warnCannotOpen, target)
-        continue
-    else:
-      resolvedTarget = target
-    if not override.isAbsolute:
-      resolvedOverride = findModule(conf, override, conf.projectFull.string, patch = false).string
-      if resolvedOverride.len == 0:
-        rawMessage(conf, warnCannotOpen, override)
-    else:
-      resolvedOverride = override
-    if resolvedTarget.len > 0 and resolvedOverride.len > 0:
-      conf.moduleOverridePaths[resolvedTarget] = resolvedOverride
-
 proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   connectPipelineCallbacks(graph)
   let conf = graph.config
-  resolveModuleOverridePaths(conf)
   wantMainModule(conf)
   configComplete(graph)
 
