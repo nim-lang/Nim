@@ -1176,11 +1176,11 @@ proc genProcAux*(m: BModule, prc: PSym) =
         #incl(res.loc.flags, lfIndirect)
         res.loc.storage = OnUnknown
   if isVirtual:
-    var thisParam = prc.typ.n[1].sym 
-    if thisParam.typ.kind == tyPtr:
-      thisParam.loc.r = "this"
+    var this = prc.typ.n[1].sym 
+    if this.typ.kind == tyPtr:
+      this.loc.r = "this"
     else:
-      thisParam.loc.r = "(*this)"
+      this.loc.r = "(*this)"
 
   for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym

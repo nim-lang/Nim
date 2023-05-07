@@ -980,16 +980,13 @@ proc isReloadable(m: BModule; prc: PSym): bool =
 proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 import std/strscans
-proc parseVFunctionDecl(val: string; name, params, genericParams: var string; constIdx, overrideIdx: var int = -1) =
+
+proc parseVFunctionDecl(val: string; name, params, retType: var string; isFnConst, isOverride: var bool) =
   var afterParams: string
   if scanf(val, "$*($*)$s$*", name, params, afterParams):
-    constIdx = afterParams.find("const")
-    overrideIdx = afterParams.find("override")
-    if constIdx != -1:
-      constIdx += val.len - afterParams.len
-    if overrideIdx != -1:
-      overrideIdx += val.len - afterParams.len
-    discard scanf(name, "$*<$*>", name, genericParams)
+    isFnConst = afterParams.find("const") > -1
+    isOverride = afterParams.find("override") > -1
+    discard scanf(afterParams, "->$s$* ", retType)
 
 proc parseExistingParams(params:string, parsedParams: var (seq[string], seq[string])) =
   #instead of messing with all the logic in params we do a pass over them here to extract them. 
@@ -1003,52 +1000,48 @@ proc parseExistingParams(params:string, parsedParams: var (seq[string], seq[stri
        parsedParams[1].add splitParam[1] #& ", "
       else:
         parsedParams[1].add splitParam[1]
-      
-
+  
 proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl : bool = false) =
-  # using static is needed for inline procs
   assert sfVirtual in prc.flags
+  # using static is needed for inline procs
   var check = initIntSet()
   fillBackendName(m, prc)
   fillLoc(prc.loc, locProc, prc.ast[namePos], OnUnknown)
+  var typ = prc.typ.n[1].sym.typ
+  var memberOp = "#."
+  if typ.kind == tyPtr:
+    typ = typ[0]
+    memberOp = "#->"
+  let typDesc = getTypeDescWeak(m, typ, check, skParam)
   var rettype, params: Rope
   genProcParams(m, prc.typ, rettype, params, check, true, false, true) 
-  var parsedNimParams = (newSeq[string](), newSeq[string]())
-  parseExistingParams(params, parsedNimParams)
-
+  var nimParams = (@[typDesc], @["this"]) #just for ref. It shouldnt be used (also for obj is (*this))
+  parseExistingParams(params, nimParams)
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with "_actual" postfix
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
-  var name, userDeclParams, genericParams : string
-  var constIdx, overrideIdx : int = -1
-  parseVFunctionDecl(prc.loc.r, name, userDeclParams, genericParams, constIdx, overrideIdx)
-  echo "\nprc.loc.r:", prc.loc.r, " name:", name, " userDeclParams:", userDeclParams, " genericParams ", genericParams, " constIdx:", constIdx, " overrideIdx:", overrideIdx
+  var name, userDeclParams, userRetTyp : string
+  var isFnConst, isOverride: bool
+  parseVFunctionDecl(prc.loc.r, name, userDeclParams, userRetTyp, isFnConst, isOverride)
+  echo "\nvirtual:", prc.loc.r, " typ:", typDesc,  " name:", name, " userDeclParams:", userDeclParams, " fnConst:", isFnConst, " override:", isOverride
   #first we format the name to get rid of the $
-  if len(parsedNimParams[0]) > 0: #TODO do a proper check an  erorr here
-    var declParams = userDeclParams 
-    declParams = runtimeFormat(declParams.replace("%", "$"), parsedNimParams[0])
-    declParams = runtimeFormat(declParams.replace("^", "$"), parsedNimParams[1])
-    echo "Names parsed:", declParams
-    params = "(" & declParams & ")"
-  
+  if len(nimParams[0]) > 0: #TODO do a proper check an erorr here
+    userDeclParams = runtimeFormat(userDeclParams.replace("#", "$"), nimParams[0] & " " & nimParams[1])
+    userDeclParams = runtimeFormat(userDeclParams.replace("%", "$"), nimParams[0])
+    userDeclParams = runtimeFormat(userDeclParams.replace("^", "$"), nimParams[1])
+    params = "(" & userDeclParams & ")"
+  if userRetTyp != "":
+    rettype = runtimeFormat(userRetTyp.replace("%0", "$1"), [rettype])
   var fnConst, override : string
-  if name == "": #user didn't specify a value for virtual
-    name = prc.loc.r
-  if constIdx > 0:
+  if isFnConst:
     fnConst = " const"
   if isFwdDecl:
     rettype = "virtual " & rettype
-    if overrideIdx > 0: #only needed in forward declaration inside the type
+    if isOverride: 
       override = " override"
   else: 
-    prc.loc.r = name & "(@)"
-    var typ = prc.typ.n[1].sym.typ
-    if typ.kind == tyPtr:
-      typ = typ[0]
-      prc.loc.r = "#->" & prc.loc.r
-    else:
-      prc.loc.r = "#." & prc.loc.r
-    name = getTypeDescWeak(m, typ, check, skParam) & "::" & name
+    prc.loc.r = memberOp & name & "(@)"
+    name = typDesc & "::" & name
   
   result.add "N_LIB_PRIVATE "
   result.addf("$1$2($3, $4)$5 $6 $7",
