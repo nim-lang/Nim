@@ -1,4 +1,4 @@
-import ast, options, lineinfos, pathutils, msgs, modulegraphs, packages
+import ast, options, lineinfos, pathutils, msgs, modulegraphs, packages, modulepaths
 
 proc skipCodegen*(config: ConfigRef; n: PNode): bool {.inline.} =
   # can be used by codegen passes to determine whether they should do
