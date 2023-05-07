@@ -990,7 +990,6 @@ proc parseVFunctionDecl(val: string; name, params, genericParams: var string; co
     if overrideIdx != -1:
       overrideIdx += val.len - afterParams.len
     discard scanf(name, "$*<$*>", name, genericParams)
-    name.removePrefix("#->")
 
 proc parseExistingParams(params:string, parsedParams: var (seq[string], seq[string])) =
   #instead of messing with all the logic in params we do a pass over them here to extract them. 
@@ -1006,7 +1005,6 @@ proc parseExistingParams(params:string, parsedParams: var (seq[string], seq[stri
         parsedParams[1].add splitParam[1]
       
 
-import sequtils
 proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl : bool = false) =
   # using static is needed for inline procs
   assert sfVirtual in prc.flags
@@ -1043,10 +1041,14 @@ proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool =
     if overrideIdx > 0: #only needed in forward declaration inside the type
       override = " override"
   else: 
-    let structType = prc.typ.n[1].sym.typ.sons[0]
-    name = getTypeDescWeak(m, structType, check, skParam) & "::" & name
-    if name != "":
-      prc.loc.r =  name #at this point it's parsed
+    prc.loc.r = name & "(@)"
+    var typ = prc.typ.n[1].sym.typ
+    if typ.kind == tyPtr:
+      typ = typ[0]
+      prc.loc.r = "#->" & prc.loc.r
+    else:
+      prc.loc.r = "#." & prc.loc.r
+    name = getTypeDescWeak(m, typ, check, skParam) & "::" & name
   
   result.add "N_LIB_PRIVATE "
   result.addf("$1$2($3, $4)$5 $6 $7",

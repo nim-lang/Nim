@@ -1177,7 +1177,10 @@ proc genProcAux*(m: BModule, prc: PSym) =
         res.loc.storage = OnUnknown
   if isVirtual:
     var thisParam = prc.typ.n[1].sym 
-    thisParam.loc.r = "this" #the user first param becomes the C++ this
+    if thisParam.typ.kind == tyPtr:
+      thisParam.loc.r = "this"
+    else:
+      thisParam.loc.r = "(*this)"
 
   for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym

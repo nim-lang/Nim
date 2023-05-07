@@ -2181,7 +2181,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   
   if sfVirtual in s.flags:
     if c.config.backend == backendCpp:
-      let typ = s.typ.sons[1][0] #TODO error if not a ptr or should we allow ref/objects?
+      var typ = s.typ.sons[1] #TODO error on ref and on generics
+      if typ.kind == tyPtr:
+        typ = typ[0]
       if typ.owner.id == s.owner.id and c.module.id == s.owner.id:
         c.graph.virtualProcsPerType.mgetOrPut(typ.itemId, @[]).add s
       else:
