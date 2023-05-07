@@ -5,19 +5,26 @@ switch("warning", "all:off")
 --warning:CannotOpen
 --hint:Patch
 
-# Patch a foreign and `stdlib` module:
+# Tests:
+#   - patching a foreign and `stdlib` module
+#   - patch resolved relative to config
+#   - that path substitution is performed
 patchModule("std/httpclient", "mpatchModule")
 
-# Patch one of multiple modules with the same name and in the same package:
-patchModule("b/module_name_clashes", "mpatchModule")
-
-# Patch a module with an absolute target path given and a relative patch:
-# (This is also tests that path substitution is performed)
-patchModule("$lib/impure/db_postgres.nim", "$projectpath/mpatchModule.nim")
+# Tests:
+#   - patching one of multiple modules with the same name and in the same package
+#     ```
+#     ├── a
+#     │   └── same_module_name.nim
+#     ├── b
+#     │   └── same_module_name.nim
+#     ```
+#   - patching a module with an absolute target path given
+patchModule("$projectpath/b/same_module_name.nim", "$projectpath/mpatchModule.nim")
 
 # Patch a target module that is imported using an absolute path:
 # (This also tests that `patchModule` overrides `patchFile`.)
-# patchFile("stdlib", "oids", "b/module_name_clashes")
+patchFile("stdlib", "oids", "b/same_module_name")
 patchModule("oids", "mpatchModule")
 
 # Patch with a module that is in a foreign package:

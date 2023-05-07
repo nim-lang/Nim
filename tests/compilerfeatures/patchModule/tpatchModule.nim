@@ -1,12 +1,12 @@
 discard """
   nimout: '''
-tpatchModule.nims(38, 12) Warning: cannot open: missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
-tpatchModule.nims(41, 12) Warning: cannot open: missingPatch_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
-tpatchModule.nims(44, 12) Warning: cannot open: missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
-tpatchModule.nims(47, 12) Warning: cannot open:  [CannotOpen]
-tpatchModule.nims(50, 12) Warning: cannot open:  [CannotOpen]
-tpatchModule.nims(53, 12) Warning: cannot open:  [CannotOpen]
-a${/}module_name_clashes.nim(3, 12) Hint: tests/modules/b/module_name_clashes patched with tests/modules/mpatchModule [Patch]
+tpatchModule.nims(45, 12) Warning: cannot open: missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
+tpatchModule.nims(48, 12) Warning: cannot open: missingPatch_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
+tpatchModule.nims(51, 12) Warning: cannot open: missingTarget_uasdygf8a7fg8uq23vfquoevfqo8ef [CannotOpen]
+tpatchModule.nims(54, 12) Warning: cannot open:  [CannotOpen]
+tpatchModule.nims(57, 12) Warning: cannot open:  [CannotOpen]
+tpatchModule.nims(60, 12) Warning: cannot open:  [CannotOpen]
+a${/}same_module_name.nim(3, 12) Hint: tests/compilerfeatures/patchModule/b/same_module_name patched with tests/compilerfeatures/patchModule/mpatchModule [Patch]
 '''
 """
 
@@ -18,36 +18,37 @@ a${/}module_name_clashes.nim(3, 12) Hint: tests/modules/b/module_name_clashes pa
 
 # Test patching foreign and `stdlib` modules:
 import std/httpclient #[tt.Hint
-          ^ std/httpclient patched with tests/modules/mpatchModule [Patch] ]#
-var client = newHttpClient()
-doAssert client.getContent("https://example.com") == "patched!"
+          ^ std/httpclient patched with tests/compilerfeatures/patchModule/mpatchModule [Patch] ]#
+var client = httpclient.newHttpClient() #[
+  Using this ^^^^^^^^^^ package symbol tests that an alias symbol is created
+  for the patching module.]#
+doAssert client.getContent("https://localhost") == "patched!"
 
-# Test patching one of multiple modules with the same name in the same
-# package doesn't patch all of them:
-import a/module_name_clashes
+# Tests:
+#   - patching one of multiple modules with the same name and in the same package
+#     ```
+#     ├── a
+#     │   └── same_module_name.nim
+#     ├── b
+#     │   └── same_module_name.nim
+#     ```
+#   - patching a module with an absolute target path given
+import a/same_module_name
 doAssert typeof(A.b) is int
-
-# Test patching absolute paths and patch paths that are relative to the configuring
-# script given in `tpatchModule.nims`. This also tests that an alias symbol is created
-# for the patching module (the `db_postgres.open` call would use the real module otherwise):
-import std/db_postgres #[tt.Hint
-          ^ std/db_postgres patched with tests/modules/mpatchModule [Patch] ]#
-let db = db_postgres.open("/run/postgresql", "user", "password", "database")
-doAssert db.getAllRows(sql"SELECT version();")[0][0] == "patched!"
 
 # Test patching an absolute import:
 import "$lib/pure/oids" #[tt.Hint
-       ^ std/oids patched with tests/modules/mpatchModule [Patch] ]#
+       ^ std/oids patched with tests/compilerfeatures/patchModule/mpatchModule [Patch] ]#
 doAssert genOid() == genOid() # `genOid` is patched to always return the same value
 
 # Test using a patch in a foreign package:
 import mpatchModule_f #[tt.Hint
-       ^ tests/modules/mpatchModule_f patched with mpatchModulePkg [Patch] ]#
+       ^ tests/compilerfeatures/patchModule/mpatchModule_f patched with mpatchModulePkg [Patch] ]#
 doAssert mpatchModule_f.id == "mpatchModulePkg"
 
 # Test using a patch that is also patched:
 import mpatchModule_a #[tt.Hint
-       ^ tests/modules/mpatchModule_a patched with tests/modules/mpatchModule_b [Patch] ]#
+       ^ tests/compilerfeatures/patchModule/mpatchModule_a patched with tests/compilerfeatures/patchModule/mpatchModule_b [Patch] ]#
 # `mpatchModule_b` is patched by `mpatchModule_c`, but that doesn't affect `mpatchModule_b`
 # patching `mpatchModule_a` unless `mpatchModule_c` is assigned to patch `mpatchModule_a`
 # after `mpatchModule_b` is assigned to patch `mpatchModule_a`.
