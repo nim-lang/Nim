@@ -227,6 +227,7 @@ proc isRecursiveType(t: PType, cycleDetector: var IntSet): bool =
 
 proc fitDefaultNode(c: PContext, n: PNode): PType =
   let expectedType = if n[^2].kind != nkEmpty: semTypeNode(c, n[^2], nil) else: nil
+  n[^1] = semExprWithType(c, n[^1], {efTypeAllowed}, expectedType)
   let oldType = n[^1].typ
   n[^1] = semConstExpr(c, n[^1], expectedType = expectedType)
   n[^1].flags.incl nfSem
