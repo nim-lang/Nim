@@ -1119,7 +1119,7 @@ proc genProcBody(p: BProc; procBody: PNode) =
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   if {nimErrorFlagAccessed, nimErrorFlagDeclared} * p.flags == {nimErrorFlagAccessed}:
     p.flags.incl nimErrorFlagDeclared
-    p.blocks[0].sections[cpsLocals].add(ropecg(p.module, "NIM_BOOL* nimErr_;$n", []))
+    p.blocks[0].sections[cpsLocals].add(ropecg(p.module, "bool* nimErr_;$n", []))
     p.blocks[0].sections[cpsInit].add(ropecg(p.module, "nimErr_ = #nimErrorFlag();$n", []))
 
 proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
@@ -1806,7 +1806,7 @@ proc genInitCode(m: BModule) =
 
   if m.hcrOn:
     prc.addf("\tint* nim_hcr_dummy_ = 0;$n" &
-              "\tNIM_BOOL nim_hcr_do_init_ = " &
+              "\bool nim_hcr_do_init_ = " &
                   "hcrRegisterGlobal($1, \"module_initialized_\", 1, NULL, (void**)&nim_hcr_dummy_);$n",
       [getModuleDllPath(m, m.module)])
 

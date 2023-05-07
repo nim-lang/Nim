@@ -58,8 +58,8 @@ proc genLiteral(p: BProc, n: PNode, ty: PType; result: var Rope) =
     of tyChar, tyNil:
       intLiteral(n.intVal, result)
     of tyBool:
-      if n.intVal != 0: result.add "NIM_TRUE"
-      else: result.add "NIM_FALSE"
+      if n.intVal != 0: result.add "true"
+      else: result.add "false"
     of tyInt64: int64Literal(n.intVal, result)
     of tyUInt64: uint64Literal(uint64(n.intVal), result)
     else:
@@ -3177,7 +3177,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
 proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Rope) =
   var t = skipTypes(typ, abstractRange+{tyOwned}-{tyTypeDesc})
   case t.kind
-  of tyBool: result.add rope"NIM_FALSE"
+  of tyBool: result.add rope"false"
   of tyEnum, tyChar, tyInt..tyInt64, tyUInt..tyUInt64: result.add rope"0"
   of tyFloat..tyFloat128: result.add rope"0.0"
   of tyCstring, tyVar, tyLent, tyPointer, tyPtr, tyUntyped,

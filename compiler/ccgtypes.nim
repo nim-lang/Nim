@@ -293,8 +293,8 @@ proc getSimpleTypeDesc(m: BModule; typ: PType): Rope =
       cgsym(m, "NimStringDesc")
       result = typeNameOrLiteral(m, typ, "NimStringDesc*")
   of tyCstring: result = typeNameOrLiteral(m, typ, "NCSTRING")
-  of tyBool: result = typeNameOrLiteral(m, typ, "NIM_BOOL")
-  of tyChar: result = typeNameOrLiteral(m, typ, "NIM_CHAR")
+  of tyBool: result = typeNameOrLiteral(m, typ, "bool")
+  of tyChar: result = typeNameOrLiteral(m, typ, "char")
   of tyNil: result = typeNameOrLiteral(m, typ, "void*")
   of tyInt..tyUInt64:
     result = typeNameOrLiteral(m, typ, NumericalTypeToStr[typ.kind])

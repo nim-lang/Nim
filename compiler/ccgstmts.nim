@@ -123,7 +123,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     # insert the registration of the globals for the different parts of the tuple at the
     # start of the current scope (after they have been iterated) and init a boolean to
     # check if any of them is newly introduced and the initializing code has to be ran
-    lineCg(p, cpsLocals, "NIM_BOOL $1 = NIM_FALSE;$n", [hcrCond])
+    lineCg(p, cpsLocals, "NIM_BOOL $1 = false;$n", [hcrCond])
     for curr in hcrGlobals:
       lineCg(p, cpsLocals, "$1 |= hcrRegisterGlobal($4, \"$2\", sizeof($3), $5, (void**)&$2);$N",
               [hcrCond, curr.loc.r, rdLoc(curr.loc), getModuleDllPath(p.module, n[0].sym), curr.tp])
@@ -1290,7 +1290,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       if i > 1: lineF(p, cpsStmts, "else", [])
       startBlock(p)
       # we handled the exception, remember this:
-      linefmt(p, cpsStmts, "*nimErr_ = NIM_FALSE;$n", [])
+      linefmt(p, cpsStmts, "*nimErr_ = false;$n", [])
       expr(p, t[i][0], d)
     else:
       var orExpr = newRopeAppender()
@@ -1308,7 +1308,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])
       # we handled the exception, remember this:
-      linefmt(p, cpsStmts, "*nimErr_ = NIM_FALSE;$n", [])
+      linefmt(p, cpsStmts, "*nimErr_ = false;$n", [])
       expr(p, t[i][^1], d)
 
     linefmt(p, cpsStmts, "#popCurrentException();$n", [])
@@ -1328,7 +1328,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
     else:
       # pretend we did handle the error for the safe execution of the 'finally' section:
       p.procSec(cpsLocals).add(ropecg(p.module, "NIM_BOOL oldNimErrFin$1_;$n", [lab]))
-      linefmt(p, cpsStmts, "oldNimErrFin$1_ = *nimErr_; *nimErr_ = NIM_FALSE;$n", [lab])
+      linefmt(p, cpsStmts, "oldNimErrFin$1_ = *nimErr_; *nimErr_ = false;$n", [lab])
       genStmts(p, t[i][0])
       # this is correct for all these cases:
       # 1. finally is run during ordinary control flow

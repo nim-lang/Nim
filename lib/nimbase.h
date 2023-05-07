@@ -310,28 +310,23 @@ __AVR__
 namespace USE_NIM_NAMESPACE {
 #endif
 
-// preexisting check, seems paranoid, maybe remove
-#if defined(NIM_TRUE) || defined(NIM_FALSE) || defined(NIM_BOOL)
-#error "nim reserved preprocessor macros clash"
-#endif
-
 /* bool types (C++ has it): */
-#ifdef __cplusplus
-#define NIM_BOOL bool
-#elif (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901)
-// see #13798: to avoid conflicts for code emitting `#include <stdbool.h>`
-#define NIM_BOOL _Bool
-#else
-typedef unsigned char NIM_BOOL; // best effort
+#ifndef __cplusplus
+#  if (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901)
+#    include <stdbool.h>
+#  else
+#    define bool  unsigned char
+#    define true	1
+#    define false	0
+#  endif
 #endif
-
-NIM_STATIC_ASSERT(sizeof(NIM_BOOL) == 1, ""); // check whether really needed
+#define NIM_BOOL bool
+#define NIM_TRUE true
+#define NIM_FALSE false
+NIM_STATIC_ASSERT(sizeof(bool) == 1, ""); // check whether really needed
 NIM_STATIC_ASSERT(CHAR_BIT == 8, "");
   // fail fast for (rare) environments where this doesn't hold, as some implicit
   // assumptions would need revisiting (e.g. `uint8` or https://github.com/nim-lang/Nim/pull/18505)
-
-#define NIM_TRUE true
-#define NIM_FALSE false
 
 #ifdef __cplusplus
 #  if __cplusplus >= 201103L
@@ -346,7 +341,6 @@ NIM_STATIC_ASSERT(CHAR_BIT == 8, "");
 #    define NIM_NIL 0
 #  endif
 #else
-#  include <stdbool.h>
 #  define NIM_NIL ((void*)0) /* C's NULL is fucked up in some C compilers, so
                               the generated code does not rely on it anymore */
 #endif
@@ -474,7 +468,7 @@ typedef char* NCSTRING;
 #define STRING_LITERAL(name, str, length) \
    static const struct {                   \
      TGenericSeq Sup;                      \
-     NIM_CHAR data[(length) + 1];          \
+     char data[(length) + 1];          \
   } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
 
 /* declared size of a sequence/variable length array: */
