@@ -19,12 +19,8 @@ type
 proc resize[T](s: var CellSeq[T]) =
   s.cap = s.cap * 3 div 2
   var newSize = s.cap * sizeof(CellTuple[T])
-
   when compileOption("threads"):
-    let oldData = s.d
-    s.d = cast[CellArray[T]](allocShared(newSize))
-    copyMem(s.d, oldData, s.len * sizeof(CellTuple[T]))
-    deallocShared(oldData)
+    s.d = cast[CellArray[T]](reallocShared(s.d, newSize))
   else:
     s.d = cast[CellArray[T]](realloc(s.d, newSize))
 
