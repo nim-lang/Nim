@@ -123,7 +123,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     # insert the registration of the globals for the different parts of the tuple at the
     # start of the current scope (after they have been iterated) and init a boolean to
     # check if any of them is newly introduced and the initializing code has to be ran
-    lineCg(p, cpsLocals, "NIM_BOOL $1 = false;$n", [hcrCond])
+    lineCg(p, cpsLocals, "bool $1 = false;$n", [hcrCond])
     for curr in hcrGlobals:
       lineCg(p, cpsLocals, "$1 |= hcrRegisterGlobal($4, \"$2\", sizeof($3), $5, (void**)&$2);$N",
               [hcrCond, curr.loc.r, rdLoc(curr.loc), getModuleDllPath(p.module, n[0].sym), curr.tp])
@@ -1327,7 +1327,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       genStmts(p, t[i][0])
     else:
       # pretend we did handle the error for the safe execution of the 'finally' section:
-      p.procSec(cpsLocals).add(ropecg(p.module, "NIM_BOOL oldNimErrFin$1_;$n", [lab]))
+      p.procSec(cpsLocals).add(ropecg(p.module, "bool oldNimErrFin$1_;$n", [lab]))
       linefmt(p, cpsStmts, "oldNimErrFin$1_ = *nimErr_; *nimErr_ = false;$n", [lab])
       genStmts(p, t[i][0])
       # this is correct for all these cases:
