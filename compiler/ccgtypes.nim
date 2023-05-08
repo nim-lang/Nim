@@ -574,7 +574,7 @@ proc getRecordFields(m: BModule; typ: PType, check: var IntSet): Rope =
   if typ.itemId in m.g.graph.virtualProcsPerType:
     let procs = m.g.graph.virtualProcsPerType[typ.itemId]
     for prc in procs:
-      if "#->" in prc.loc.r or "#." in prc.loc.r: continue     
+      if "#->" in prc.loc.r or "#." in prc.loc.r: continue # already generated     
       var header: Rope
       genVirtualProcHeader(m, prc, header, false, true)
       result.add "\t" & header & ";\n"

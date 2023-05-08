@@ -2181,9 +2181,15 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   
   if sfVirtual in s.flags:
     if c.config.backend == backendCpp:
-      var typ = s.typ.sons[1] #TODO error on ref and on generics
+      for son in s.typ.sons:
+        if son!=nil and son.isMetaType:
+          localError(c.config, n.info, "virtual unsupported for generic routine")
+
+      var typ = s.typ.sons[1]
       if typ.kind == tyPtr:
         typ = typ[0]
+      if typ.kind != tyObject:
+        localError(c.config, n.info, "virtual must be a non ref object type")
       if typ.owner.id == s.owner.id and c.module.id == s.owner.id:
         c.graph.virtualProcsPerType.mgetOrPut(typ.itemId, @[]).add s
       else:
