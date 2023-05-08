@@ -238,7 +238,7 @@ proc processCompile(conf: ConfigRef; filename: string) =
   extccomp.addExternalFileToCompile(conf, found)
 
 const
-  errNoneBoehmRefcExpectedButXFound = "'arc', 'orc', 'markAndSweep', 'boehm', 'go', 'none', 'regions', or 'refc' expected, but '$1' found"
+  errNoneBoehmRefcExpectedButXFound = "'arc', 'orc', 'atomicArc', 'markAndSweep', 'boehm', 'go', 'none', 'regions', or 'refc' expected, but '$1' found"
   errNoneSpeedOrSizeExpectedButXFound = "'none', 'speed' or 'size' expected, but '$1' found"
   errGuiConsoleOrLibExpectedButXFound = "'gui', 'console' or 'lib' expected, but '$1' found"
   errInvalidExceptionSystem = "'goto', 'setjmp', 'cpp' or 'quirky' expected, but '$1' found"
@@ -262,6 +262,7 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "go": result = conf.selectedGC == gcGo
     of "none": result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
+    of "atomicarc": result = conf.selectedGC == gcAtomicArc
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "opt":
     case arg.normalize
@@ -516,14 +517,7 @@ proc initOrcDefines*(conf: ConfigRef) =
   if conf.exc == excNone and conf.backend != backendCpp:
     conf.exc = excGoto
 
-proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef, isOrc: bool) =
-  if isOrc:
-    conf.selectedGC = gcOrc
-    defineSymbol(conf.symbols, "gcorc")
-  else:
-    conf.selectedGC = gcArc
-    defineSymbol(conf.symbols, "gcarc")
-
+proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef) =
   defineSymbol(conf.symbols, "gcdestructors")
   incl conf.globalOptions, optSeqDestructors
   incl conf.globalOptions, optTinyRtti
@@ -562,9 +556,17 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       conf.selectedGC = gcMarkAndSweep
       defineSymbol(conf.symbols, "gcmarkandsweep")
     of "destructors", "arc":
-      registerArcOrc(pass, conf, false)
+      conf.selectedGC = gcArc
+      defineSymbol(conf.symbols, "gcarc")
+      registerArcOrc(pass, conf)
     of "orc":
-      registerArcOrc(pass, conf, true)
+      conf.selectedGC = gcOrc
+      defineSymbol(conf.symbols, "gcorc")
+      registerArcOrc(pass, conf)
+    of "atomicarc":
+      conf.selectedGC = gcAtomicArc
+      defineSymbol(conf.symbols, "gcatomicarc")
+      registerArcOrc(pass, conf)
     of "hooks":
       conf.selectedGC = gcHooks
       defineSymbol(conf.symbols, "gchooks")

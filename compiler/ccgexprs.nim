@@ -382,7 +382,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   of tyArray:
-    if containsGarbageCollectedRef(dest.t) and p.config.selectedGC notin {gcArc, gcOrc, gcHooks}:
+    if containsGarbageCollectedRef(dest.t) and p.config.selectedGC notin {gcArc, gcAtomicArc, gcOrc, gcHooks}:
       genGenericAsgn(p, dest, src, flags)
     else:
       linefmt(p, cpsStmts,
@@ -2403,7 +2403,7 @@ proc genSlice(p: BProc; e: PNode; d: var TLoc) =
   let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.lastSon,
     prepareForMutation = e[1].kind == nkHiddenDeref and
                          e[1].typ.skipTypes(abstractInst).kind == tyString and
-                         p.config.selectedGC in {gcArc, gcOrc})
+                         p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc})
   if d.k == locNone: getTemp(p, e.typ, d)
   linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $3;$n", [rdLoc(d), x, y])
   when false:
@@ -2585,7 +2585,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       let n = semparallel.liftParallel(p.module.g.graph, p.module.idgen, p.module.module, e)
       expr(p, n, d)
   of mDeepCopy:
-    if p.config.selectedGC in {gcArc, gcOrc} and optEnableDeepCopy notin p.config.globalOptions:
+    if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and optEnableDeepCopy notin p.config.globalOptions:
       localError(p.config, e.info,
         "for --gc:arc|orc 'deepcopy' support has to be enabled with --deepcopy:on")
 
