@@ -12,7 +12,7 @@
 # ------------------------- Name Mangling --------------------------------
 
 import sighashes, modulegraphs
-import strscans
+import strscans, sequtils
 import ../dist/checksums/src/checksums/md5
 
 proc isKeyword(w: PIdent): bool =
@@ -997,7 +997,7 @@ proc parseExistingParams(params:string, parsedParams: var OrderedTable[string, s
     var pair = p.split(" ")
     if pair.len == 2:
       parsedParams[pair[0].strip()] = pair[1].strip()
-import std/sequtils
+
 proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl : bool = false) =
   assert sfVirtual in prc.flags
   # using static is needed for inline procs
@@ -1017,7 +1017,7 @@ proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool =
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with "_actual" postfix
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
-  var name, declParams, userRetTyp : string
+  var name, declParams, userRetTyp: string
   var isFnConst, isOverride: bool
   parseVFunctionDecl(prc.loc.r, name, declParams, userRetTyp, isFnConst, isOverride)
   #first we format the name to get rid of the $
@@ -1025,7 +1025,7 @@ proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool =
   declParams = declParams.replace("#", "$") % nimParams.pairs.toSeq.mapIt(it[0] & " " & it[1])
   declParams = declParams.replace("%", "$") %  nimParams.keys.toSeq
   declParams = declParams.replace("^", "$") % nimParams.values.toSeq
-  params = "(" & declParams & ")"
+  params = "($1)" % [declParams]
   if userRetTyp != "":
     rettype = userRetTyp.replace("%0", "$1") % [rettype]
   var fnConst, override : string
