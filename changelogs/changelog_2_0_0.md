@@ -454,6 +454,7 @@
   static libraries.
 
 - When compiling for Release the flag `-fno-math-errno` is used for GCC.
+- When compiling for Release the flag `--build-id=none` is used for GCC Linker.
 
 ## Docgen
 
