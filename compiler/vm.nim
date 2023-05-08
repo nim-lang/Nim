@@ -121,7 +121,7 @@ template decodeBx(k: untyped) {.dirty.} =
   ensureKind(k)
 
 template move(a, b: untyped) {.dirty.} =
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
     a = move b
   else:
     system.shallowCopy(a, b)
@@ -550,7 +550,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   # Used to keep track of where the execution is resumed.
   var savedPC = -1
   var savedFrame: PStackFrame
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
     template updateRegsAlias = discard
     template regs: untyped = tos.slots
   else:
