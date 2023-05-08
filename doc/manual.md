@@ -8116,8 +8116,8 @@ CodegenDecl pragma
 ------------------
 
 The `codegenDecl` pragma can be used to directly influence Nim's code
-generator. It receives a format string that determines how the variable
-or proc is declared in the generated code.
+generator. It receives a format string that determines how the variable, 
+proc or object type is declared in the generated code.
 
 For variables, $1 in the format string represents the type of the variable,
 $2 is the name of the variable, and each appearance of $# represents $1/$2
@@ -8152,7 +8152,30 @@ will generate this code:
   ```c
   __interrupt void myinterrupt()
   ```
+  
+For object types, the $1 represents the name of the object type, $2 is the list of
+fields and $3 is the base type.
 
+```nim
+
+const strTemplate = """
+  struct $1 {
+    $2
+  };  
+"""
+type Foo {.codegenDecl:strTemplate.} = object
+  a, b: int
+```
+
+will generate this code:
+
+
+```c
+struct Foo {
+  NI a;
+  NI b;
+}; 
+```
 
 `cppNonPod` pragma
 ------------------
