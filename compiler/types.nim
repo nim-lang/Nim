@@ -370,21 +370,21 @@ proc containsHiddenPointer*(typ: PType): bool =
   # that need to be copied deeply)
   result = searchTypeFor(typ, isHiddenPointer)
 
-proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool
-proc canFormAcycleNode(marker: var IntSet, n: PNode, startId: int): bool =
+proc canFormAcycleAux(g: ModuleGraph; marker: var IntSet, typ: PType, startId: int): bool
+proc canFormAcycleNode(g: ModuleGraph; marker: var IntSet, n: PNode, startId: int): bool =
   result = false
   if n != nil:
-    result = canFormAcycleAux(marker, n.typ, startId)
+    result = canFormAcycleAux(g, marker, n.typ, startId)
     if not result:
       case n.kind
       of nkNone..nkNilLit:
         discard
       else:
         for i in 0..<n.len:
-          result = canFormAcycleNode(marker, n[i], startId)
+          result = canFormAcycleNode(g, marker, n[i], startId)
           if result: return
 
-proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool =
+proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, startId: int): bool =
   result = false
   if typ == nil: return
   if tfAcyclic in typ.flags: return
@@ -396,15 +396,20 @@ proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool =
       result = true
     elif not containsOrIncl(marker, t.id):
       for i in 0..<t.len:
-        result = canFormAcycleAux(marker, t[i], startId)
+        result = canFormAcycleAux(g, marker, t[i], abs startId)
         if result: return
-      if t.n != nil: result = canFormAcycleNode(marker, t.n, startId)
+      if t.n != nil: result = canFormAcycleNode(g, marker, t.n, abs startId)
     # Inheritance can introduce cyclic types, however this is not relevant
     # as the type that is passed to 'new' is statically known!
     # er but we use it also for the write barrier ...
-    if t.kind == tyObject and tfFinal notin t.flags:
-      # damn inheritance may introduce cycles:
-      result = true
+    if t.kind == tyObject:
+      let op = getAttachedOp(g, t, attachedTrace)
+      if op != nil and sfOverriden in op.flags:
+        # assume objects with a custom trace hook might form a cycle
+        result = true
+      elif tfFinal notin t.flags:
+        # damn inheritance may introduce cycles:
+        result = true
   of tyProc: result = typ.callConv == ccClosure
   else: discard
 
@@ -412,10 +417,13 @@ proc isFinal*(t: PType): bool =
   let t = t.skipTypes(abstractInst)
   result = t.kind != tyObject or tfFinal in t.flags or isPureObject(t)
 
-proc canFormAcycle*(typ: PType): bool =
+proc canFormAcycle*(g: ModuleGraph, typ: PType): bool =
   var marker = initIntSet()
   let t = skipTypes(typ, abstractInst+{tyOwned}-{tyTypeDesc})
-  result = canFormAcycleAux(marker, t, t.id)
+  # startId begins with a negative value that is only in the first recursion
+  # and the following recursions set to its real value. This fixes
+  # bug #21753:
+  result = canFormAcycleAux(g, marker, t, -t.id)
 
 proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
                    closure: RootRef): PType

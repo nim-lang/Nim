@@ -1414,7 +1414,7 @@ proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope; needsInit: bool) =
       p.module.s[cfsTypeInit3].addf("$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
 
     if a.storage == OnHeap and usesWriteBarrier(p.config):
-      if canFormAcycle(a.t):
+      if canFormAcycle(p.module.g.graph, a.t):
         linefmt(p, cpsStmts, "if ($1) { #nimGCunrefRC1($1); $1 = NIM_NIL; }$n", [a.rdLoc])
       else:
         linefmt(p, cpsStmts, "if ($1) { #nimGCunrefNoCycle($1); $1 = NIM_NIL; }$n", [a.rdLoc])
@@ -1451,7 +1451,7 @@ proc genNewSeqAux(p: BProc, dest: TLoc, length: Rope; lenIsZero: bool) =
   var call: TLoc
   initLoc(call, locExpr, dest.lode, OnHeap)
   if dest.storage == OnHeap and usesWriteBarrier(p.config):
-    if canFormAcycle(dest.t):
+    if canFormAcycle(p.module.g.graph, dest.t):
       linefmt(p, cpsStmts, "if ($1) { #nimGCunrefRC1($1); $1 = NIM_NIL; }$n", [dest.rdLoc])
     else:
       linefmt(p, cpsStmts, "if ($1) { #nimGCunrefNoCycle($1); $1 = NIM_NIL; }$n", [dest.rdLoc])
