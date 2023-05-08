@@ -125,7 +125,13 @@ __AVR__
   NIM_THREADVAR declaration based on
   http://stackoverflow.com/questions/18298280/how-to-declare-a-variable-as-thread-local-portably
 */
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
+#if defined _WIN32
+#  if defined _MSC_VER || defined __DMC__ || defined __BORLANDC__
+#    define NIM_THREADVAR __declspec(thread)
+#  else
+#    define NIM_THREADVAR __thread
+#  endif
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #  define NIM_THREADVAR _Thread_local
 #elif defined _WIN32 && ( \
        defined _MSC_VER || \
