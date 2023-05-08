@@ -301,14 +301,13 @@ proc isRightAssociative(tok: Token): bool {.inline.} =
 proc isUnary(tok: Token): bool =
   ## Check if the given token is a unary operator
   tok.tokType in {tkOpr, tkDotDot} and
-  tok.strongSpaceB == tsNone and
-  tok.strongSpaceA
+  tok.spacing == {tsLeading}
 
 proc checkBinary(p: Parser) {.inline.} =
   ## Check if the current parser token is a binary operator.
   # we don't check '..' here as that's too annoying
   if p.tok.tokType == tkOpr:
-    if p.tok.strongSpaceB == tsTrailing and not p.tok.strongSpaceA:
+    if p.tok.spacing == {tsTrailing}:
       parMessage(p, warnInconsistentSpacing, prettyTok(p.tok))
 
 #| module = stmt ^* (';' / IND{=})
@@ -516,7 +515,7 @@ proc dotExpr(p: var Parser, a: PNode): PNode =
   optInd(p, result)
   result.add(a)
   result.add(parseSymbol(p, smAfterDot))
-  if p.tok.tokType == tkBracketLeColon and not p.tok.strongSpaceA:
+  if p.tok.tokType == tkBracketLeColon and tsLeading notin p.tok.spacing:
     var x = newNodeI(nkBracketExpr, p.parLineInfo)
     # rewrite 'x.y[:z]()' to 'y[z](x)'
     x.add result[1]
@@ -525,7 +524,7 @@ proc dotExpr(p: var Parser, a: PNode): PNode =
     var y = newNodeI(nkCall, p.parLineInfo)
     y.add x
     y.add result[0]
-    if p.tok.tokType == tkParLe and not p.tok.strongSpaceA:
+    if p.tok.tokType == tkParLe and tsLeading notin p.tok.spacing:
       exprColonEqExprListAux(p, tkParRi, y)
     result = y
 
@@ -883,7 +882,7 @@ proc primarySuffix(p: var Parser, r: PNode,
     case p.tok.tokType
     of tkParLe:
       # progress guaranteed
-      if p.tok.strongSpaceA:
+      if tsLeading in p.tok.spacing:
         result = commandExpr(p, result, mode)
         break
       result = namedParams(p, result, nkCall, tkParRi)
@@ -895,13 +894,13 @@ proc primarySuffix(p: var Parser, r: PNode,
       result = parseGStrLit(p, result)
     of tkBracketLe:
       # progress guaranteed
-      if p.tok.strongSpaceA:
+      if tsLeading in p.tok.spacing:
         result = commandExpr(p, result, mode)
         break
       result = namedParams(p, result, nkBracketExpr, tkBracketRi)
     of tkCurlyLe:
       # progress guaranteed
-      if p.tok.strongSpaceA:
+      if tsLeading in p.tok.spacing:
         result = commandExpr(p, result, mode)
         break
       result = namedParams(p, result, nkCurlyExpr, tkCurlyRi)
@@ -2525,7 +2524,7 @@ proc parseAll(p: var Parser): PNode =
   setEndInfo()
 
 proc checkFirstLineIndentation*(p: var Parser) =
-  if p.tok.indent != 0 and p.tok.strongSpaceA:
+  if p.tok.indent != 0 and tsLeading in p.tok.spacing:
     parMessage(p, errInvalidIndentation)
 
 proc parseTopLevelStmt(p: var Parser): PNode =
