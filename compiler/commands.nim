@@ -1092,7 +1092,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     # Max line lenght for source code, lines longer than this can produce a warning.
     let maxLineLength = parseInt(arg)
-    if maxLineLength < 80:  # maxLineLen must be >= 80.
+    if maxLineLength < 80:
       localError(conf, info, "maxLineLen must be >=80")
     conf.maxLineLen = maxLineLength
   of "": # comes from "-" in for example: `nim c -r -` (gets stripped from -)
