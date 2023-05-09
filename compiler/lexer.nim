@@ -23,7 +23,6 @@ when defined(nimPreviewSlimSystem):
   import std/[assertions, formatfloat]
 
 const
-  MaxLineLength* = 80         # lines longer than this lead to a warning
   numChars*: set[char] = {'0'..'9', 'a'..'z', 'A'..'Z'}
   SymChars*: set[char] = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
   SymStartChars*: set[char] = {'a'..'z', 'A'..'Z', '\x80'..'\xFF'}
@@ -737,7 +736,8 @@ proc handleCRLF(L: var Lexer, pos: int): int =
     let col = L.getColNumber(pos)
 
     when not defined(nimpretty):
-      if col > MaxLineLength:
+      # If maxLineLen == 0 is ignored, maxLineLen > 0 then line len is checked.
+      if L.config.maxLineLen > 0 and col > L.config.maxLineLen:
         lexMessagePos(L, hintLineTooLong, pos)
 
   case L.buf[pos]
