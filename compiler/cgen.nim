@@ -1172,6 +1172,20 @@ proc genProcNoForward(m: BModule, prc: PSym) =
   if lfNoDecl in prc.loc.flags:
     fillProcLoc(m, prc.ast[namePos])
     genProcPrototype(m, prc)
+  elif lfDynamicLib in prc.loc.flags:
+    var q = findPendingModule(m, prc)
+    fillProcLoc(q, prc.ast[namePos])
+    genProcPrototype(m, prc)
+    if q != nil and not containsOrIncl(q.declaredThings, prc.id):
+      symInDynamicLib(q, prc)
+      # register the procedure even though it is in a different dynamic library and will not be
+      # reloadable (and has no _actual suffix) - other modules will need to be able to get it through
+      # the hcr dynlib (also put it in the DynLibInit section - right after it gets loaded)
+      if isReloadable(q, prc):
+        q.s[cfsDynLibInit].addf("\t$1 = ($2) hcrRegisterProc($3, \"$1\", (void*)$1);$n",
+            [prc.loc.r, getTypeDesc(q, prc.loc.t), getModuleDllPath(m, q.module)])
+    else:
+      symInDynamicLibPartial(m, prc)
   elif prc.typ.callConv == ccInline:
     # We add inline procs to the calling module to enable C based inlining.
     # This also means that a check with ``q.declaredThings`` is wrong, we need
@@ -1190,20 +1204,6 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       #  prc.loc.r = mangleName(m, prc)
       genProcPrototype(m, prc)
       genProcAux(m, prc)
-  elif lfDynamicLib in prc.loc.flags:
-    var q = findPendingModule(m, prc)
-    fillProcLoc(q, prc.ast[namePos])
-    genProcPrototype(m, prc)
-    if q != nil and not containsOrIncl(q.declaredThings, prc.id):
-      symInDynamicLib(q, prc)
-      # register the procedure even though it is in a different dynamic library and will not be
-      # reloadable (and has no _actual suffix) - other modules will need to be able to get it through
-      # the hcr dynlib (also put it in the DynLibInit section - right after it gets loaded)
-      if isReloadable(q, prc):
-        q.s[cfsDynLibInit].addf("\t$1 = ($2) hcrRegisterProc($3, \"$1\", (void*)$1);$n",
-            [prc.loc.r, getTypeDesc(q, prc.loc.t), getModuleDllPath(m, q.module)])
-    else:
-      symInDynamicLibPartial(m, prc)
   elif sfImportc notin prc.flags:
     var q = findPendingModule(m, prc)
     fillProcLoc(q, prc.ast[namePos])
