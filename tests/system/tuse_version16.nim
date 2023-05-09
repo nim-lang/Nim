@@ -1,5 +1,5 @@
 discard """
-  matrix: "--useVersion:1.6"
+  matrix: "-d:NimMajor=1 -d:NimMinor=6 -d:NimPatch=100"
 """
 
 {.warning[UnusedImport]: off.}

@@ -1482,7 +1482,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkRecList:
     indentNL(g)
     for i in 0..<n.len:
-      if n[i].kind == nkIdentDefs and n[i][0].kind == nkPostfix or
+      if n[i].kind == nkIdentDefs and n[i][0].skipPragmaExpr.kind == nkPostfix or
                         renderNonExportedFields in g.flags:
         optNL(g)
         gsub(g, n[i], c)

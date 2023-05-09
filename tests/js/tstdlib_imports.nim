@@ -62,7 +62,7 @@ import std/[
   htmlgen,
 
   # Hashing:
-  base64, hashes, md5,
+  base64, hashes,
   # fails due to cstring cast/endians import: oids
   # fails due to copyMem/endians import: sha1
 

@@ -10,7 +10,7 @@
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
-when defined(freertos) or defined(zephyr) or defined(nuttx):
+when defined(freertos) or defined(zephyr):
   const
     hasSpawnH = false # should exist for every Posix system nowadays
     hasAioH = false
@@ -646,7 +646,7 @@ elif defined(nuttx):
 else:
   var SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
 
-when defined(linux) or defined(bsd):
+when defined(linux) or defined(bsd) or defined(nuttx):
   var SOCK_CLOEXEC* {.importc, header: "<sys/socket.h>".}: cint
 
 when defined(macosx):
@@ -675,14 +675,14 @@ when defined(haiku):
 
 when hasSpawnH:
   when defined(linux):
-    # better be safe than sorry; Linux has this flag, macosx doesn't, don't
-    # know about the other OSes
+    # better be safe than sorry; Linux has this flag, macosx and NuttX don't,
+    # don't know about the other OSes
 
-    # Non-GNU systems like TCC and musl-libc  don't define __USE_GNU, so we
+    # Non-GNU systems like TCC and musl-libc don't define __USE_GNU, so we
     # can't get the magic number from spawn.h
     const POSIX_SPAWN_USEVFORK* = cint(0x40)
   else:
-    # macosx lacks this, so we define the constant to be 0 to not affect
+    # macosx and NuttX lack this, so we define the constant to be 0 to not affect
     # OR'ing of flags:
     const POSIX_SPAWN_USEVFORK* = cint(0)
 

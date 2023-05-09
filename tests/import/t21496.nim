@@ -1,5 +1,5 @@
 discard """
-  errormsg: "redefinition of 'm21496'; previous declaration here: t21496.nim(5, 12)"
+  errormsg: "ambiguous identifier: 'm21496'"
 """
 
 import fizz/m21496, buzz/m21496

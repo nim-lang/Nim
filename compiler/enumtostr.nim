@@ -6,12 +6,12 @@ when defined(nimPreviewSlimSystem):
 
 
 proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph; idgen: IdGenerator): PSym =
-  result = newSym(skProc, getIdent(g.cache, "$"), nextSymId idgen, t.owner, info)
+  result = newSym(skProc, getIdent(g.cache, "$"), idgen, t.owner, info)
 
-  let dest = newSym(skParam, getIdent(g.cache, "e"), nextSymId idgen, result, info)
+  let dest = newSym(skParam, getIdent(g.cache, "e"), idgen, result, info)
   dest.typ = t
 
-  let res = newSym(skResult, getIdent(g.cache, "result"), nextSymId idgen, result, info)
+  let res = newSym(skResult, getIdent(g.cache, "result"), idgen, result, info)
   res.typ = getSysType(g, info, tyString)
 
   result.typ = newType(tyProc, nextTypeId idgen, t.owner)
@@ -67,12 +67,12 @@ proc searchObjCase(t: PType; field: PSym): PNode =
   doAssert result != nil
 
 proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGraph; idgen: IdGenerator): PSym =
-  result = newSym(skProc, getIdent(g.cache, "objDiscMapping"), nextSymId idgen, t.owner, info)
+  result = newSym(skProc, getIdent(g.cache, "objDiscMapping"), idgen, t.owner, info)
 
-  let dest = newSym(skParam, getIdent(g.cache, "e"), nextSymId idgen, result, info)
+  let dest = newSym(skParam, getIdent(g.cache, "e"), idgen, result, info)
   dest.typ = field.typ
 
-  let res = newSym(skResult, getIdent(g.cache, "result"), nextSymId idgen, result, info)
+  let res = newSym(skResult, getIdent(g.cache, "result"), idgen, result, info)
   res.typ = getSysType(g, info, tyUInt8)
 
   result.typ = newType(tyProc, nextTypeId idgen, t.owner)

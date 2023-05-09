@@ -1,4 +1,6 @@
-# xxx: test js target
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
 
 import genericstrformat
 import std/[strformat, strutils, times, tables, json]
@@ -560,6 +562,16 @@ proc main() =
     doAssert &"""{(if true: "'" & "'" & ')' else: "")}""" == "'')"
     doAssert &"{(if true: \"\'\" & \"'\" & ')' else: \"\")}" == "'')"
     doAssert fmt"""{(if true: "'" & ')' else: "")}""" == "')"
+  
+  block: # issue #20381
+    var ss: seq[string]
+    template myTemplate(s: string) =
+      ss.add s
+      ss.add s
+    proc foo() =
+      myTemplate fmt"hello"
+    foo()
+    doAssert ss == @["hello", "hello"]
 
 static: main()
 main()

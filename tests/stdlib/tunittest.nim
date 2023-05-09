@@ -19,6 +19,7 @@ discard """
 
 [Suite] test name filtering
 '''
+matrix: "--mm:refc; --mm:orc"
 targets: "c js"
 """
 

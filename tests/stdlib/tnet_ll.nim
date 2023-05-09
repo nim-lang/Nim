@@ -1,5 +1,6 @@
 discard """
   action: run
+  matrix: "--mm:refc; --mm:orc"
   output: '''
 
 [Suite] inet_ntop tests

@@ -196,6 +196,10 @@ runnableExamples:
   proc fun*()=echo "foo9"
   fun()
 
+# import std/assertions by default
+runnableExamples("-d:nimPreviewSlimSystem"):
+  doAssert true
+
 # note: there are yet other examples where putting runnableExamples at module
 # scope is needed, for example when using an `include` before an `import`, etc.
 

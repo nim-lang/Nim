@@ -72,7 +72,7 @@ runnableExamples:
 ##   in the standard library
 
 import algorithm, math
-import std/private/since
+import std/private/[since, jsutils]
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions]
@@ -231,11 +231,14 @@ proc rand[T: uint | uint64](r: var Rand; max: T): T =
     let max = uint64(max)
     when T.high.uint64 == uint64.high:
       if max == uint64.high: return T(next(r))
+    var iters = 0
     while true:
       let x = next(r)
       # avoid `mod` bias
-      if x <= randMax - (randMax mod max):
+      if x <= randMax - (randMax mod max) or iters > 20:
         return T(x mod (max + 1))
+      else:
+        inc iters
 
 proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random integer in the range `0..max` using the given state.
@@ -337,9 +340,9 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   when T is SomeFloat:
     result = rand(r, x.b - x.a) + x.a
   else: # Integers and Enum types
-    when defined(js):
+    whenJsNoBigInt64:
       result = cast[T](rand(r, cast[uint](x.b) - cast[uint](x.a)) + cast[uint](x.a))
-    else:
+    do:
       result = cast[T](rand(r, cast[uint64](x.b) - cast[uint64](x.a)) + cast[uint64](x.a))
 
 proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
@@ -378,14 +381,14 @@ proc rand*[T: Ordinal](r: var Rand; t: typedesc[T]): T {.since: (1, 7, 1).} =
   when T is range or T is enum:
     result = rand(r, low(T)..high(T))
   elif T is bool:
-    when defined(js):
+    whenJsNoBigInt64:
       result = (r.next or 0) < 0
-    else:
+    do:
       result = cast[int64](r.next) < 0
   else:
-    when defined(js):
+    whenJsNoBigInt64:
       result = cast[T](r.next shr (sizeof(uint)*8 - sizeof(T)*8))
-    else:
+    do:
       result = cast[T](r.next shr (sizeof(uint64)*8 - sizeof(T)*8))
 
 proc rand*[T: Ordinal](t: typedesc[T]): T =

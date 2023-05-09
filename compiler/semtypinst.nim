@@ -204,7 +204,7 @@ proc hasValuelessStatics(n: PNode): bool =
     proc doThing(_: MyThing)
   ]#
   if n.safeLen == 0:
-    n.typ.kind == tyStatic
+    n.typ == nil or n.typ.kind == tyStatic
   else:
     for x in n:
       if hasValuelessStatics(x):
@@ -300,7 +300,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
       var g: G[string]
 
   ]#
-  result = copySym(s, nextSymId cl.c.idgen)
+  result = copySym(s, cl.c.idgen)
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner

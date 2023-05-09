@@ -150,6 +150,8 @@ lib/posix/posix_other_consts.nim
 lib/posix/posix_freertos_consts.nim
 lib/posix/posix_openbsd_amd64.nim
 lib/posix/posix_haiku.nim
+lib/pure/md5.nim
+lib/std/sha1.nim
 """.splitWhitespace()
 
   officialPackagesList = """
@@ -161,6 +163,8 @@ pkgs/db_connector/src/db_connector/db_mysql.nim
 pkgs/db_connector/src/db_connector/db_odbc.nim
 pkgs/db_connector/src/db_connector/db_postgres.nim
 pkgs/db_connector/src/db_connector/db_sqlite.nim
+pkgs/checksums/src/checksums/md5.nim
+pkgs/checksums/src/checksums/sha1.nim
 """.splitWhitespace()
 
   officialPackagesListWithoutIndex = """
@@ -170,16 +174,6 @@ pkgs/db_connector/src/db_connector/postgres.nim
 pkgs/db_connector/src/db_connector/odbcsql.nim
 pkgs/db_connector/src/db_connector/private/dbutils.nim
 """.splitWhitespace()
-
-proc findName(name: string): string =
-  doAssert name[0..4] == "pkgs/"
-  var i = 5
-  while i < name.len:
-    if name[i] != '/':
-      inc i
-      result.add name[i]
-    else:
-      break
 
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
   proc isRelativeTo(path, base: string): bool =
@@ -345,7 +339,7 @@ proc buildJS(): string =
 proc buildDocsDir*(args: string, dir: string) =
   let args = nimArgs & " " & args
   let docHackJsSource = buildJS()
-  gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector"])
+  gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector", "checksums"])
   createDir(dir)
   buildDocSamples(args, dir)
 

@@ -10,6 +10,8 @@
 ## This module implements a simple HTTP client that can be used to retrieve
 ## webpages and other data.
 ##
+## .. warning:: Validate untrusted inputs: URI parsers and getters are not detecting malicious URIs.
+##
 ## Retrieving a website
 ## ====================
 ##
