@@ -374,7 +374,7 @@ proc canFormAcycleAux(g: ModuleGraph; marker: var IntSet, typ: PType, orig: PTyp
 proc canFormAcycleNode(g: ModuleGraph; marker: var IntSet, n: PNode, orig: PType, startId: int): bool =
   result = false
   if n != nil:
-    result = canFormAcycleAux(g, marker, n.typ, startId)
+    result = canFormAcycleAux(g, marker, n.typ, orig, startId)
     if not result:
       case n.kind
       of nkNone..nkNilLit:
