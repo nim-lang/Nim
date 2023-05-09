@@ -460,7 +460,7 @@
   lines longer than this can produce a hint (use `hintAsError` for an error),
   this replaces the old hint `LineTooLong` hardcoded to `80` characters maximum,
   see `nimpretty` option `--maxLineLen=N` to format/prettify the line lenght,
-  example `nim c --maxLineLen=80 --hintAsError:lineTooLong filewithlonglines.nim`.
+  example `nim c --maxLineLen=120 --hintAsError:lineTooLong filewithlonglines.nim`.
 
 
 ## Docgen
