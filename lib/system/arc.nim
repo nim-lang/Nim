@@ -207,5 +207,5 @@ template tearDownForeignThreadGc* =
   ## With `--gc:arc` a nop.
   discard
 
-proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): bool {.compilerRtl, inline.} =
+proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): bool {.compilerproc, inline.} =
   result = targetDepth <= source.depth and source.display[targetDepth] == token
