@@ -35,6 +35,11 @@ when system.appType != "lib":
 when not defined(createNimRtl):
   {.error: "This file has to be compiled with '-d:createNimRtl'".}
 
+when defined(gcDestructors):
+  # XXX nimPrepareStrMutationV2, nimAddCharV1, isObjDisplayCheck
+  # all give multiple definition error on ARC/ORC
+  {.passL: "-Wl,--allow-multiple-definition".}
+
 import
   parseutils, strutils, parseopt, parsecfg, strtabs, unicode, pegs, ropes,
   os, osproc, times, cstrutils
