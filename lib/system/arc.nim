@@ -120,7 +120,7 @@ proc isUniqueRef*[T](x: ref T): bool {.inline.} =
   ## the object which is subject to lots of optimizations! In other words
   ## the value of `isUniqueRef` can depend on the used compiler version and
   ## optimizer setting.
-  ## Nevertheless it can be used  is a very valuable debugging tool and can
+  ## Nevertheless it can be used as a very valuable debugging tool and can
   ## be used to specify the constraints of a threading related API
   ## via `assert isUniqueRef(x)`.
   head(cast[pointer](x)).rc == 0
