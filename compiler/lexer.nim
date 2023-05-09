@@ -736,7 +736,6 @@ proc handleCRLF(L: var Lexer, pos: int): int =
     let col = L.getColNumber(pos)
 
     when not defined(nimpretty):
-      # If maxLineLen == 0 is ignored, maxLineLen > 0 then line len is checked.
       if L.config.maxLineLen > 0 and col > L.config.maxLineLen:
         lexMessagePos(L, hintLineTooLong, pos)
 
