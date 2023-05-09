@@ -176,4 +176,4 @@ Advanced options:
   --deepcopy:on|off         enable 'system.deepCopy' for ``--mm:arc|orc``
   --jsbigint64:on|off       toggle the use of [BigInt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt)
                             for 64-bit integers on the JavaScript backend (default: on)
-  --maxLineLen:N            maximum line length, maxLineLen must be >=80
+  --maxLineLen:N            maximum line length, maxLineLen must be >=80 (default: off)
