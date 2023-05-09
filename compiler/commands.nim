@@ -1090,7 +1090,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optEnableDeepCopy}, arg, pass, info)
   of "maxlinelen":
     expectArg(conf, switch, arg, pass, info)
-    # Max line lenght for source code, lines longer than this can produce a warning.
+    # Max line lenght for source code, lines longer than this can produce a LineTooLong hint.
     let maxLineLength = parseInt(arg)
     if maxLineLength < 80:
       localError(conf, info, "maxLineLen must be >=80")
