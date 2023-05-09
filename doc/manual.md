@@ -7485,6 +7485,37 @@ generates:
   ```
 
 
+size pragma
+-----------
+Nim automatically determines the size of an enum.
+But when wrapping a C enum type, it needs to be of a specific size.
+The `size pragma` allows specifying the size of the enum type.
+
+  ```Nim
+  type
+    EventType* {.size: sizeof(uint32).} = enum
+      QuitEvent,
+      AppTerminating,
+      AppLowMemory
+
+  doAssert sizeof(EventType) == sizeof(uint32)
+  ```
+
+The `size pragma` can also specify the size of an `importc` incomplete object type
+so that one can get the size of it at compile time even if it was declared without fields.
+
+  ```Nim
+    type
+      AtomicFlag* {.importc: "atomic_flag", header: "<stdatomic.h>", size: 1.} = object
+
+    static:
+      # if AtomicFlag didn't have the size pragma, this code would result in a compile time error.
+      echo sizeof(AtomicFlag)
+  ```
+
+The `size pragma` accepts only the values 1, 2, 4 or 8.
+
+
 Align pragma
 ------------
 
@@ -8041,8 +8072,8 @@ CodegenDecl pragma
 ------------------
 
 The `codegenDecl` pragma can be used to directly influence Nim's code
-generator. It receives a format string that determines how the variable
-or proc is declared in the generated code.
+generator. It receives a format string that determines how the variable, 
+proc or object type is declared in the generated code.
 
 For variables, $1 in the format string represents the type of the variable,
 $2 is the name of the variable, and each appearance of $# represents $1/$2
@@ -8077,7 +8108,30 @@ will generate this code:
   ```c
   __interrupt void myinterrupt()
   ```
+  
+For object types, the $1 represents the name of the object type, $2 is the list of
+fields and $3 is the base type.
 
+```nim
+
+const strTemplate = """
+  struct $1 {
+    $2
+  };  
+"""
+type Foo {.codegenDecl:strTemplate.} = object
+  a, b: int
+```
+
+will generate this code:
+
+
+```c
+struct Foo {
+  NI a;
+  NI b;
+}; 
+```
 
 `cppNonPod` pragma
 ------------------

@@ -37,7 +37,7 @@ proc spawnResult*(t: PType; inParallel: bool): TSpawnResult =
   else: srFlowVar
 
 proc flowVarKind(c: ConfigRef, t: PType): TFlowVarKind =
-  if c.selectedGC in {gcArc, gcOrc}: fvBlob
+  if c.selectedGC in {gcArc, gcOrc, gcAtomicArc}: fvBlob
   elif t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: fvGC
   elif containsGarbageCollectedRef(t): fvInvalid
   else: fvBlob
@@ -66,7 +66,7 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; idgen: IdGenerator;
   vpart[2] = if varInit.isNil: v else: vpart[1]
   varSection.add vpart
   if varInit != nil:
-    if g.config.selectedGC in {gcArc, gcOrc}:
+    if g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
       # inject destructors pass will do its own analysis
       varInit.add newFastMoveStmt(g, newSymNode(result), v)
     else:

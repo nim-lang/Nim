@@ -443,6 +443,7 @@ proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
   #assert(n.kind != nkCall)
   n.flags.incl nfAllConst
+  n.flags.excl nfIsRef
   c.constants.add n
   internalAssert c.config, result < regBxMax
 
@@ -1399,6 +1400,12 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     # c.gABx(n, opcLdNull, a, c.genType(arg.typ))
     # c.gABx(n, opcNodeToReg, a, a)
     # c.genAsgnPatch(arg, a)
+    c.freeTemp(a)
+  of mDup:
+    let arg = n[1]
+    let a = c.genx(arg)
+    if dest < 0: dest = c.getTemp(arg.typ)
+    gABC(c, arg, whichAsgnOpc(arg, requiresCopy=false), dest, a)
     c.freeTemp(a)
   of mNodeId:
     c.genUnaryABC(n, dest, opcNodeId)

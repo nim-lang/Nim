@@ -16,6 +16,7 @@ const
   errIntLiteralExpected = "integer literal expected"
   errWrongNumberOfVariables = "wrong number of variables"
   errInvalidOrderInEnumX = "invalid order in enum '$1'"
+  errOverflowInEnumX = "The enum '$1' exceeds its maximum value ($2)"
   errOrdinalTypeExpected = "ordinal type expected; given: $1"
   errSetTooBig = "set is too large; use `std/sets` for ordinal types with more than 2^16 elements"
   errBaseTypeMustBeOrdinal = "base type of a set must be an ordinal"
@@ -147,7 +148,11 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
         declarePureEnumField(c, e)
     if (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
-    inc(counter)
+    if counter == high(typeof(counter)):
+      if i > 1 and result.n[i-2].sym.position == high(int):
+        localError(c.config, n[i].info, errOverflowInEnumX % [e.name.s, $high(typeof(counter))])
+    else:
+      inc(counter)
   if isPure and sfExported in result.sym.flags:
     addPureEnum(c, LazySym(sym: result.sym))
   if tfNotNil in e.typ.flags and not hasNull:
@@ -222,8 +227,8 @@ proc isRecursiveType(t: PType, cycleDetector: var IntSet): bool =
 
 proc fitDefaultNode(c: PContext, n: PNode): PType =
   let expectedType = if n[^2].kind != nkEmpty: semTypeNode(c, n[^2], nil) else: nil
-  let oldType = n[^1].typ
   n[^1] = semConstExpr(c, n[^1], expectedType = expectedType)
+  let oldType = n[^1].typ
   n[^1].flags.incl nfSem
   if n[^2].kind != nkEmpty:
     if expectedType != nil and oldType != expectedType:
@@ -963,7 +968,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
       t.rawAddSonNoPropagationOfTypeFlags result
       result = t
     else: discard
-    if result.kind == tyRef and c.config.selectedGC in {gcArc, gcOrc}:
+    if result.kind == tyRef and c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
       result.flags.incl tfHasAsgn
 
 proc findEnforcedStaticType(t: PType): PType =

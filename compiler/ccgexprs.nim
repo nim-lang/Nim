@@ -382,7 +382,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   of tyArray:
-    if containsGarbageCollectedRef(dest.t) and p.config.selectedGC notin {gcArc, gcOrc, gcHooks}:
+    if containsGarbageCollectedRef(dest.t) and p.config.selectedGC notin {gcArc, gcAtomicArc, gcOrc, gcHooks}:
       genGenericAsgn(p, dest, src, flags)
     else:
       linefmt(p, cpsStmts,
@@ -2346,6 +2346,11 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
     genAssignment(p, d, a, {})
     resetLoc(p, a)
 
+proc genDup(p: BProc; src: TLoc; d: var TLoc; n: PNode) =
+  if d.k == locNone: getTemp(p, n.typ, d)
+  linefmt(p, cpsStmts, "#nimDupRef((void**)$1, (void*)$2);$n",
+          [addrLoc(p.config, d), rdLoc(src)])
+
 proc genDestroy(p: BProc; n: PNode) =
   if optSeqDestructors in p.config.globalOptions:
     let arg = n[1].skipAddr
@@ -2398,7 +2403,7 @@ proc genSlice(p: BProc; e: PNode; d: var TLoc) =
   let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.lastSon,
     prepareForMutation = e[1].kind == nkHiddenDeref and
                          e[1].typ.skipTypes(abstractInst).kind == tyString and
-                         p.config.selectedGC in {gcArc, gcOrc})
+                         p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc})
   if d.k == locNone: getTemp(p, e.typ, d)
   linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $3;$n", [rdLoc(d), x, y])
   when false:
@@ -2580,7 +2585,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       let n = semparallel.liftParallel(p.module.g.graph, p.module.idgen, p.module.module, e)
       expr(p, n, d)
   of mDeepCopy:
-    if p.config.selectedGC in {gcArc, gcOrc} and optEnableDeepCopy notin p.config.globalOptions:
+    if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and optEnableDeepCopy notin p.config.globalOptions:
       localError(p.config, e.info,
         "for --gc:arc|orc 'deepcopy' support has to be enabled with --deepcopy:on")
 
@@ -2597,6 +2602,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mAccessTypeField: genAccessTypeField(p, e, d)
   of mSlice: genSlice(p, e, d)
   of mTrace: discard "no code to generate"
+  of mDup:
+    var a: TLoc
+    let x = if e[1].kind in {nkAddr, nkHiddenAddr}: e[1][0] else: e[1]
+    initLocExpr(p, x, a)
+    genDup(p, a, d, e)
   else:
     when defined(debugMagics):
       echo p.prc.name.s, " ", p.prc.id, " ", p.prc.flags, " ", p.prc.ast[genericParamsPos].kind

@@ -591,6 +591,29 @@ template main {.dirty.} =
 
     mainSync()
 
+  block: # bug #21801
+    func evaluate(i: int): float =
+      0.0
+
+    func evaluate(): float =
+      0.0
+
+    type SearchOptions = object
+        evaluation: proc(): float = evaluate
+
+  block:
+    func evaluate(): float =
+      0.0
+
+    type SearchOptions = object
+        evaluation: proc(): float = evaluate
+
+  block:
+    func evaluate(i: int): float =
+      0.0
+
+    type SearchOptions = object
+        evaluation = evaluate
 
 static: main()
 main()
