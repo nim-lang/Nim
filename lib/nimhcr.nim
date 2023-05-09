@@ -305,7 +305,7 @@ when defined(createNimHcr):
       hash: string
       gen: int
       lastModification: Time
-      handlers: seq[tuple[isBefore: bool, cb: proc ()]]
+      handlers: seq[tuple[isBefore: bool, cb: proc () {.nimcall.}]]
 
   proc newModuleDesc(): ModuleDesc =
     result.procs = initTable[string, ProcSym]()
@@ -557,8 +557,12 @@ when defined(createNimHcr):
     # Future versions of NIMHCR won't use the GC, because all globals and the
     # metadata needed to access them will be placed in shared memory, so they
     # can be manipulated from external programs without reloading.
-    GC_disable()
-    defer: GC_enable()
+    when declared(GC_disable):
+      GC_disable()
+      defer: GC_enable()
+    elif declared(GC_disableOrc):
+      GC_disableOrc()
+      defer: GC_enableOrc()
 
     inc(generation)
     trace "HCR RELOADING: ", generation
@@ -598,7 +602,7 @@ when defined(createNimHcr):
       hashToModuleMap.del(modules[name].hash)
       modules.del(name)
 
-  proc hcrAddEventHandler*(isBefore: bool, cb: proc ()) {.nimhcr.} =
+  proc hcrAddEventHandler*(isBefore: bool, cb: proc () {.nimcall.}) {.nimhcr.} =
     modules[currentModule].handlers.add(
       (isBefore: isBefore, cb: cb))
 
@@ -649,7 +653,7 @@ elif defined(hotcodereloading) or defined(testNimHcr):
 
     proc hcrPerformCodeReload*() {.nimhcr.}
 
-    proc hcrAddEventHandler*(isBefore: bool, cb: proc ()) {.nimhcr.}
+    proc hcrAddEventHandler*(isBefore: bool, cb: proc () {.nimcall.}) {.nimhcr.}
 
     proc hcrMarkGlobals*() {.raises: [], nimhcr, nimcall, gcsafe.}
 
@@ -661,7 +665,7 @@ elif defined(hotcodereloading) or defined(testNimHcr):
       # TODO
       false
 
-    proc hcrAddEventHandler*(isBefore: bool, cb: proc ()) =
+    proc hcrAddEventHandler*(isBefore: bool, cb: proc () {.nimcall.}) =
       # TODO
       discard
 

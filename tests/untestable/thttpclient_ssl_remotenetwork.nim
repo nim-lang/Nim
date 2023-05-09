@@ -32,8 +32,8 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
       good, bad, dubious, good_broken, bad_broken, dubious_broken
     CertTest = tuple[url:string, category:Category, desc: string]
 
-  # XXX re-enable when badssl fixes certs, some expired as of 2023-04-23 (#21709)
-  when false:
+  # badssl certs sometimes expire, set to false when that happens
+  when true:
     const certificate_tests: array[0..54, CertTest] = [
       ("https://wrong.host.badssl.com/", bad, "wrong.host"),
       ("https://captive-portal.badssl.com/", bad, "captive-portal"),
@@ -196,8 +196,8 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
 
 
   type NetSocketTest = tuple[hostname: string, port: Port, category:Category, desc: string]
-  # XXX re-enable when badssl fixes certs, some expired as of 2023-04-23 (#21709)
-  when false:
+  # badssl certs sometimes expire, set to false when that happens
+  when true:
     const net_tests:array[0..3, NetSocketTest] = [
       ("imap.gmail.com", 993.Port, good, "IMAP"),
       ("wrong.host.badssl.com", 443.Port, bad, "wrong.host"),

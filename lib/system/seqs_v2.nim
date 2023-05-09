@@ -48,7 +48,7 @@ template `-!`(p: pointer, s: int): pointer =
   cast[pointer](cast[int](p) -% s)
 
 proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
-    noSideEffect, raises: [], compilerRtl.} =
+    noSideEffect, tags: [], raises: [], compilerRtl.} =
   {.noSideEffect.}:
     let headerSize = align(sizeof(NimSeqPayloadBase), elemAlign)
     if addlen <= 0:
