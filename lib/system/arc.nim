@@ -12,26 +12,6 @@ In this new runtime we simplify the object layouts a bit: The runtime type
 information is only accessed for the objects that have it and it's always
 at offset 0 then. The ``ref`` object header is independent from the
 runtime type and only contains a reference count.
-
-Object subtyping is checked via the generated 'name'. This should have
-comparable overhead to the old pointer chasing approach but has the benefit
-that it works across DLL boundaries.
-
-The generated name is a concatenation of the object names in the hierarchy
-so that a subtype check becomes a substring check. For example::
-
-  type
-    ObjectA = object of RootObj
-    ObjectB = object of ObjectA
-
-ObjectA's ``name`` is "|ObjectA|RootObj|".
-ObjectB's ``name`` is "|ObjectB|ObjectA|RootObj|".
-
-Now to check for ``x of ObjectB`` we need to check
-for ``x.typ.name.hasSubstring("|ObjectB|")``. In the actual implementation,
-however, we could also use a
-hash of ``package & "." & module & "." & name`` to save space.
-
 ]#
 
 when defined(gcOrc):
@@ -77,6 +57,21 @@ elif defined(nimArcIds):
 
   const traceId = -1
 
+when defined(gcAtomicArc) and hasThreadSupport:
+  template decrement(cell: Cell): untyped =
+    discard atomicDec(cell.rc, rcIncrement)
+  template increment(cell: Cell): untyped =
+    discard atomicInc(cell.rc, rcIncrement)
+  template count(x: Cell): untyped =
+    atomicLoadN(x.rc.addr, ATOMIC_ACQUIRE) shr rcShift
+else:
+  template decrement(cell: Cell): untyped =
+    dec(cell.rc, rcIncrement)
+  template increment(cell: Cell): untyped =
+    inc(cell.rc, rcIncrement)
+  template count(x: Cell): untyped =
+    x.rc shr rcShift
+
 proc nimNewObj(size, alignment: int): pointer {.compilerRtl.} =
   let hdrSize = align(sizeof(RefHeader), alignment)
   let s = size + hdrSize
@@ -89,7 +84,7 @@ proc nimNewObj(size, alignment: int): pointer {.compilerRtl.} =
     atomicInc gRefId
     if head(result).refId == traceId:
       writeStackTrace()
-      cfprintf(cstderr, "[nimNewObj] %p %ld\n", result, head(result).rc shr rcShift)
+      cfprintf(cstderr, "[nimNewObj] %p %ld\n", result, head(result).count)
   when traceCollector:
     cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
 
@@ -110,21 +105,21 @@ proc nimNewObjUninit(size, alignment: int): pointer {.compilerRtl.} =
     atomicInc gRefId
     if head(result).refId == traceId:
       writeStackTrace()
-      cfprintf(cstderr, "[nimNewObjUninit] %p %ld\n", result, head(result).rc shr rcShift)
+      cfprintf(cstderr, "[nimNewObjUninit] %p %ld\n", result, head(result).count)
 
   when traceCollector:
     cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
 
 proc nimDecWeakRef(p: pointer) {.compilerRtl, inl.} =
-  dec head(p).rc, rcIncrement
+  decrement head(p)
 
 proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   when defined(nimArcDebug):
     if head(p).refId == traceId:
       writeStackTrace()
-      cfprintf(cstderr, "[IncRef] %p %ld\n", p, head(p).rc shr rcShift)
+      cfprintf(cstderr, "[IncRef] %p %ld\n", p, head(p).count)
 
-  inc head(p).rc, rcIncrement
+  increment head(p)
   when traceCollector:
     cprintf("[INCREF] %p\n", head(p))
 
@@ -154,7 +149,7 @@ proc nimRawDispose(p: pointer, alignment: int) {.compilerRtl.} =
     when defined(nimOwnedEnabled):
       if head(p).rc >= rcIncrement:
         cstderr.rawWrite "[FATAL] dangling references exist\n"
-        quit 1
+        rawQuit 1
     when defined(nimArcDebug):
       # we do NOT really free the memory here in order to reliably detect use-after-frees
       if freedCells.data == nil: init(freedCells)
@@ -193,24 +188,26 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
     when defined(nimArcDebug):
       if cell.refId == traceId:
         writeStackTrace()
-        cfprintf(cstderr, "[DecRef] %p %ld\n", p, cell.rc shr rcShift)
+        cfprintf(cstderr, "[DecRef] %p %ld\n", p, cell.count)
 
-    if (cell.rc and not rcMask) == 0:
+    if cell.count == 0:
       result = true
       when traceCollector:
         cprintf("[ABOUT TO DESTROY] %p\n", cell)
     else:
-      dec cell.rc, rcIncrement
+      decrement cell
       # According to Lins it's correct to do nothing else here.
       when traceCollector:
-        cprintf("[DeCREF] %p\n", cell)
+        cprintf("[DECREF] %p\n", cell)
+
+proc nimDupRef(dest: ptr pointer, src: pointer) {.compilerRtl, inl.} =
+  dest[] = src
+  if src != nil: nimIncRef src
 
 proc GC_unref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
-  if nimDecRefIsLast(cast[pointer](x)):
-    # XXX this does NOT work for virtual destructors!
-    `=destroy`(x[])
-    nimRawDispose(cast[pointer](x), T.alignOf)
+  var y {.cursor.} = x
+  `=destroy`(y)
 
 proc GC_ref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
@@ -229,11 +226,5 @@ template tearDownForeignThreadGc* =
   ## With `--gc:arc` a nop.
   discard
 
-proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
-  proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
-
-  result = strstr(obj.name, subclass) != nil
-
-proc chckObj(obj: PNimTypeV2, subclass: cstring) {.compilerRtl.} =
-  # checks if obj is of type subclass:
-  if not isObj(obj, subclass): sysFatal(ObjectConversionDefect, "invalid object conversion")
+proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): bool {.compilerRtl, inline.} =
+  result = targetDepth <= source.depth and source.display[targetDepth] == token

@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim check --hint[Processing]:off --hint[Conf]:off $file"
+  cmd: "nim check --hint:Processing:off --hint:Conf:off $file"
   errormsg: "18446744073709551615 can't be converted to int8"
   nimout: '''tcompiletime_range_checks.nim(36, 21) Error: 2147483648 can't be converted to int32
 tcompiletime_range_checks.nim(37, 23) Error: -1 can't be converted to uint64

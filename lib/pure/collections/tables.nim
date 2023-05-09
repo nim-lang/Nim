@@ -136,6 +136,8 @@ runnableExamples:
 ## a more complex object as a key you will be greeted by a strange compiler
 ## error:
 ##
+## .. code::
+##
 ##   Error: type mismatch: got (Person)
 ##   but expected one of:
 ##   hashes.hash(x: openArray[A]): Hash
@@ -189,14 +191,17 @@ runnableExamples:
 ##
 ## * `json module<json.html>`_ for table-like structure which allows
 ##   heterogeneous members
-## * `sharedtables module<sharedtables.html>`_ for shared hash table support
 ## * `strtabs module<strtabs.html>`_ for efficient hash tables
 ##   mapping from strings to strings
 ## * `hashes module<hashes.html>`_ for helper functions for hashing
 
 
 import std/private/since
-import std/[hashes, math, algorithm]
+import hashes, math, algorithm
+
+
+when not defined(nimHasEffectsOf):
+  {.pragma: effectsOf.}
 
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
@@ -227,6 +232,12 @@ template dataLen(t): untyped = len(t.data)
 
 include tableimpl
 
+proc raiseKeyError[T](key: T) {.noinline, noreturn.} =
+  when compiles($key):
+    raise newException(KeyError, "key not found: " & $key)
+  else:
+    raise newException(KeyError, "key not found")
+
 template get(t, key): untyped =
   ## retrieves the value at `t[key]`. The value can be modified.
   ## If `key` is not in `t`, the `KeyError` exception is raised.
@@ -235,10 +246,7 @@ template get(t, key): untyped =
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
   else:
-    when compiles($key):
-      raise newException(KeyError, "key not found: " & $key)
-    else:
-      raise newException(KeyError, "key not found")
+    raiseKeyError(key)
 
 proc enlarge[A, B](t: var Table[A, B]) =
   var n: KeyValuePairSeq[A, B]
@@ -321,7 +329,7 @@ proc `[]`*[A, B](t: Table[A, B], key: A): B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,Table[A,B],A,B>`_ for inserting a new
+  ## * `[]= proc<#[]=,Table[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,Table[A,B],A>`_ for checking if a key is in
   ##   the table
@@ -342,7 +350,7 @@ proc `[]`*[A, B](t: var Table[A, B], key: A): var B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,Table[A,B],A,B>`_ for inserting a new
+  ## * `[]= proc<#[]=,Table[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,Table[A,B],A>`_ for checking if a key is in
   ##   the table
@@ -439,7 +447,7 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   ##
   ##
   ## Note that while the value returned is of type `var B`,
-  ## it is easy to accidentally create an copy of the value at `t[key]`.
+  ## it is easy to accidentally create a copy of the value at `t[key]`.
   ## Remember that seqs and strings are value types, and therefore
   ## cannot be copied into a separate variable for modification.
   ## See the example below.
@@ -485,7 +493,7 @@ proc add*[A, B](t: var Table[A, B], key: A, val: sink B) {.deprecated:
   ##
   ## **This can introduce duplicate keys into the table!**
   ##
-  ## Use `[]= proc<#[]=,Table[A,B],A,B>`_ for inserting a new
+  ## Use `[]= proc<#[]=,Table[A,B],A,sinkB>`_ for inserting a new
   ## (key, value) pair in the table without introducing duplicates.
   addImpl(enlarge)
 
@@ -495,6 +503,9 @@ template tabCellHash(i)  = t.data[i].hcode
 
 proc del*[A, B](t: var Table[A, B], key: A) =
   ## Deletes `key` from hash table `t`. Does nothing if the key does not exist.
+  ##
+  ## .. warning:: If duplicate keys were added (via the now deprecated `add` proc),
+  ##   this may need to be called multiple times.
   ##
   ## See also:
   ## * `pop proc<#pop,Table[A,B],A,B>`_
@@ -513,6 +524,9 @@ proc pop*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   ## Returns `true`, if the `key` existed, and sets `val` to the
   ## mapping of the key. Otherwise, returns `false`, and the `val` is
   ## unchanged.
+  ##
+  ## .. warning:: If duplicate keys were added (via the now deprecated `add` proc),
+  ##   this may need to be called multiple times.
   ##
   ## See also:
   ## * `del proc<#del,Table[A,B],A>`_
@@ -594,17 +608,17 @@ template withValue*[A, B](t: var Table[A, B], key: A, value, body: untyped) =
     let u = User(name: "Hello", uid: 99)
     t[1] = u
 
-    t.withValue(1, value) do:
+    t.withValue(1, value):
       # block is executed only if `key` in `t`
       value.name = "Nim"
       value.uid = 1314
 
-    t.withValue(2, value) do:
+    t.withValue(2, value):
       value.name = "No"
       value.uid = 521
 
-    doAssert t[1].name == "Nim"
-    doAssert t[1].uid == 1314
+    assert t[1].name == "Nim"
+    assert t[1].uid == 1314
 
   mixin rawGet
   var hc: Hash
@@ -629,16 +643,22 @@ template withValue*[A, B](t: var Table[A, B], key: A,
     let u = User(name: "Hello", uid: 99)
     t[1] = u
 
-    t.withValue(1, value) do:
+    t.withValue(1, value):
       # block is executed only if `key` in `t`
       value.name = "Nim"
       value.uid = 1314
-    # do:
-    #   # block is executed when `key` not in `t`
-    #   raise newException(KeyError, "Key not found")
 
-    doAssert t[1].name == "Nim"
-    doAssert t[1].uid == 1314
+    t.withValue(521, value):
+      doAssert false
+    do:
+      # block is executed when `key` not in `t`
+      t[1314] = User(name: "exist", uid: 521)
+
+    assert t[1].name == "Nim"
+    assert t[1].uid == 1314
+    assert t[1314].name == "exist"
+    assert t[1314].uid == 521
+
   mixin rawGet
   var hc: Hash
   var index = rawGet(t, key, hc)
@@ -795,7 +815,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B {.deprecated:
 # -------------------------------------------------------------------
 
 
-proc newTable*[A, B](initialSize = defaultInitialSize): <//>TableRef[A, B] =
+proc newTable*[A, B](initialSize = defaultInitialSize): TableRef[A, B] =
   ## Creates a new ref hash table that is empty.
   ##
   ## See also:
@@ -808,9 +828,10 @@ proc newTable*[A, B](initialSize = defaultInitialSize): <//>TableRef[A, B] =
       b = newTable[char, seq[int]]()
 
   new(result)
-  result[] = initTable[A, B](initialSize)
+  {.noSideEffect.}:
+    result[] = initTable[A, B](initialSize)
 
-proc newTable*[A, B](pairs: openArray[(A, B)]): <//>TableRef[A, B] =
+proc newTable*[A, B](pairs: openArray[(A, B)]): TableRef[A, B] =
   ## Creates a new ref hash table that contains the given `pairs`.
   ##
   ## `pairs` is a container consisting of `(key, value)` tuples.
@@ -824,14 +845,16 @@ proc newTable*[A, B](pairs: openArray[(A, B)]): <//>TableRef[A, B] =
     assert b == {'a': 5, 'b': 9}.newTable
 
   new(result)
-  result[] = toTable[A, B](pairs)
+  {.noSideEffect.}:
+    result[] = toTable[A, B](pairs)
 
-proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): <//>TableRef[C, B] =
+proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): TableRef[C, B] =
   ## Index the collection with the proc provided.
   # TODO: As soon as supported, change collection: A to collection: A[B]
   result = newTable[C, B]()
-  for item in collection:
-    result[index(item)] = item
+  {.noSideEffect.}:
+    for item in collection:
+      result[index(item)] = item
 
 proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
   ## Retrieves the value at `t[key]`.
@@ -901,7 +924,7 @@ proc contains*[A, B](t: TableRef[A, B], key: A): bool =
 
   return hasKey[A, B](t, key)
 
-proc hasKeyOrPut*[A, B](t: var TableRef[A, B], key: A, val: B): bool =
+proc hasKeyOrPut*[A, B](t: TableRef[A, B], key: A, val: B): bool =
   ## Returns true if `key` is in the table, otherwise inserts `value`.
   ##
   ## See also:
@@ -1015,7 +1038,8 @@ proc add*[A, B](t: TableRef[A, B], key: A, val: sink B) {.deprecated:
 proc del*[A, B](t: TableRef[A, B], key: A) =
   ## Deletes `key` from hash table `t`. Does nothing if the key does not exist.
   ##
-  ## **If duplicate keys were added, this may need to be called multiple times.**
+  ## .. warning:: If duplicate keys were added (via the now deprecated `add` proc),
+  ##   this may need to be called multiple times.
   ##
   ## See also:
   ## * `pop proc<#pop,TableRef[A,B],A,B>`_
@@ -1035,7 +1059,8 @@ proc pop*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
   ## mapping of the key. Otherwise, returns `false`, and the `val` is
   ## unchanged.
   ##
-  ## **If duplicate keys were added, this may need to be called multiple times.**
+  ## .. warning:: If duplicate keys were added (via the now deprecated `add` proc),
+  ##   this may need to be called multiple times.
   ##
   ## See also:
   ## * `del proc<#del,TableRef[A,B],A>`_
@@ -1579,7 +1604,7 @@ proc clear*[A, B](t: var OrderedTable[A, B]) =
   t.last = -1
 
 proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x, y: (A, B)): int,
-    order = SortOrder.Ascending) =
+    order = SortOrder.Ascending) {.effectsOf: cmp.} =
   ## Sorts `t` according to the function `cmp`.
   ##
   ## This modifies the internal list
@@ -1790,7 +1815,7 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
 # --------------------------- OrderedTableRef -------------------------------
 # ---------------------------------------------------------------------------
 
-proc newOrderedTable*[A, B](initialSize = defaultInitialSize): <//>OrderedTableRef[A, B] =
+proc newOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTableRef[A, B] =
   ## Creates a new ordered ref hash table that is empty.
   ##
   ## See also:
@@ -1803,9 +1828,10 @@ proc newOrderedTable*[A, B](initialSize = defaultInitialSize): <//>OrderedTableR
       a = newOrderedTable[int, string]()
       b = newOrderedTable[char, seq[int]]()
   new(result)
-  result[] = initOrderedTable[A, B](initialSize)
+  {.noSideEffect.}:
+    result[] = initOrderedTable[A, B](initialSize)
 
-proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): <//>OrderedTableRef[A, B] =
+proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] =
   ## Creates a new ordered ref hash table that contains the given `pairs`.
   ##
   ## `pairs` is a container consisting of `(key, value)` tuples.
@@ -1820,7 +1846,8 @@ proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): <//>OrderedTableRef[A, B]
     assert b == {'a': 5, 'b': 9}.newOrderedTable
 
   result = newOrderedTable[A, B](pairs.len)
-  for key, val in items(pairs): result[key] = val
+  {.noSideEffect.}:
+    for key, val in items(pairs): result[key] = val
 
 
 proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
@@ -1890,7 +1917,7 @@ proc contains*[A, B](t: OrderedTableRef[A, B], key: A): bool =
 
   return hasKey[A, B](t, key)
 
-proc hasKeyOrPut*[A, B](t: var OrderedTableRef[A, B], key: A, val: B): bool =
+proc hasKeyOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): bool =
   ## Returns true if `key` is in the table, otherwise inserts `value`.
   ##
   ## See also:
@@ -2036,7 +2063,7 @@ proc clear*[A, B](t: OrderedTableRef[A, B]) =
   clear(t[])
 
 proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x, y: (A, B)): int,
-    order = SortOrder.Ascending) =
+    order = SortOrder.Ascending) {.effectsOf: cmp.} =
   ## Sorts `t` according to the function `cmp`.
   ##
   ## This modifies the internal list
@@ -2371,7 +2398,7 @@ proc contains*[A](t: CountTable[A], key: A): bool =
   return hasKey[A](t, key)
 
 proc getOrDefault*[A](t: CountTable[A], key: A; default: int = 0): int =
-  ## Retrieves the value at `t[key]` if`key` is in `t`. Otherwise, the
+  ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, the
   ## integer value of `default` is returned.
   ##
   ## See also:
@@ -2610,7 +2637,7 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
 
 proc inc*[A](t: CountTableRef[A], key: A, val = 1)
 
-proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
+proc newCountTable*[A](initialSize = defaultInitialSize): CountTableRef[A] =
   ## Creates a new ref count table that is empty.
   ##
   ## See also:
@@ -2619,13 +2646,15 @@ proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
   ## * `initCountTable proc<#initCountTable>`_ for creating a
   ##   `CountTable`
   new(result)
-  result[] = initCountTable[A](initialSize)
+  {.noSideEffect.}:
+    result[] = initCountTable[A](initialSize)
 
-proc newCountTable*[A](keys: openArray[A]): <//>CountTableRef[A] =
+proc newCountTable*[A](keys: openArray[A]): CountTableRef[A] =
   ## Creates a new ref count table with every member of a container `keys`
   ## having a count of how many times it occurs in that container.
   result = newCountTable[A](keys.len)
-  for key in items(keys): result.inc(key)
+  {.noSideEffect.}:
+    for key in items(keys): result.inc(key)
 
 proc `[]`*[A](t: CountTableRef[A], key: A): int =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
@@ -2649,7 +2678,8 @@ proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
   ## * `inc proc<#inc,CountTableRef[A],A,int>`_ for incrementing a
   ##   value of a key
   assert val > 0
-  t[][key] = val
+  {.noSideEffect.}:
+    t[][key] = val
 
 proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
   ## Increments `t[key]` by `val` (default: 1).
@@ -2658,7 +2688,8 @@ proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
     a.inc('a')
     a.inc('b', 10)
     doAssert a == newCountTable("aaabbbbbbbbbbb")
-  t[].inc(key, val)
+  {.noSideEffect.}:
+    t[].inc(key, val)
 
 proc smallest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
   ## Returns the `(key, value)` pair with the smallest `val`. Efficiency: O(n)
@@ -2691,7 +2722,7 @@ proc contains*[A](t: CountTableRef[A], key: A): bool =
   return hasKey[A](t, key)
 
 proc getOrDefault*[A](t: CountTableRef[A], key: A, default: int): int =
-  ## Retrieves the value at `t[key]` if`key` is in `t`. Otherwise, the
+  ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, the
   ## integer value of `default` is returned.
   ##
   ## See also:

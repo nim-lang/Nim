@@ -1,8 +1,12 @@
 discard """
-  output: '''true
+  output: '''
 true
 true
-true inner B'''
+true
+true inner B
+running with pragma
+ran with pragma
+'''
 """
 
 template withValue(a, b, c, d, e: untyped) =
@@ -77,3 +81,14 @@ proc main2 =
       echo "true inner B"
 
 main2()
+
+proc withPragma(foo: int, bar: proc() {.raises: [].}) =
+  echo "running with pragma"
+  bar()
+
+withPragma(3) do {.raises: [].}:
+  echo "ran with pragma"
+
+doAssert not (compiles do:
+  withPragma(3) do {.raises: [].}:
+    raise newException(Exception))

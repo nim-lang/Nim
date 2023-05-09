@@ -2,13 +2,22 @@
 {.push stackTrace: off.}
 
 proc allocImpl(size: Natural): pointer =
-  c_malloc(size.csize_t)
+  result = c_malloc(size.csize_t)
+  when defined(zephyr):
+    if result == nil:
+      raiseOutOfMem()
 
 proc alloc0Impl(size: Natural): pointer =
-  c_calloc(size.csize_t, 1)
+  result = c_calloc(size.csize_t, 1)
+  when defined(zephyr):
+    if result == nil:
+      raiseOutOfMem()
 
 proc reallocImpl(p: pointer, newSize: Natural): pointer =
-  c_realloc(p, newSize.csize_t)
+  result = c_realloc(p, newSize.csize_t)
+  when defined(zephyr):
+    if result == nil:
+      raiseOutOfMem()
 
 proc realloc0Impl(p: pointer, oldsize, newSize: Natural): pointer =
   result = realloc(p, newSize.csize_t)

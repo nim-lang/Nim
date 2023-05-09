@@ -1,3 +1,3 @@
 discard """
-exitcode: 1
+  exitcode: 1
 """

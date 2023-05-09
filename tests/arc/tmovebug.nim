@@ -93,6 +93,7 @@ destroy
 destroy
 destroy
 sink
+sink
 destroy
 copy
 (f: 1)
@@ -292,7 +293,7 @@ when false:
 
 # bug #13456
 
-iterator combinations[T](s: openarray[T], k: int): seq[T] =
+iterator combinations[T](s: openArray[T], k: int): seq[T] =
   let n = len(s)
   assert k >= 0 and k <= n
   var pos = newSeq[int](k)
@@ -455,7 +456,7 @@ initFoo7(2)
 
 
 # bug #14902
-iterator zip[T](s: openarray[T]): (T, T) =
+iterator zip[T](s: openArray[T]): (T, T) =
   var i = 0
   while i < 10:
     yield (s[i mod 2], s[i mod 2 + 1])
@@ -767,8 +768,7 @@ proc initC(): C =
   C(o: initO())
 
 proc pair(): tuple[a: C, b: C] =
-  result.a = initC() # <- when firstWrite tries to find this node to start its analysis it fails, because injectdestructors uses copyTree/shallowCopy
-  result.b = initC()
+  result = (a: initC(), b: initC())# <- when firstWrite tries to find this node to start its analysis it fails, because injectdestructors uses copyTree/shallowCopy
 
 discard pair()
 
@@ -784,3 +784,58 @@ proc main3 =
 
 main3()
 
+# misc
+proc smoltest(x: bool): bool =
+  while true:
+    if true: return x
+
+discard smoltest(true)
+
+# bug #18002
+type
+  TTypeAttachedOp = enum
+    attachedAsgn
+    attachedSink
+    attachedTrace
+
+  PNode = ref object
+    discard
+
+proc genAddrOf(n: PNode) =
+  assert n != nil, "moved?!"
+
+proc atomicClosureOp =
+  let x = PNode()
+
+  genAddrOf:
+    block:
+      x
+
+  case attachedTrace
+  of attachedSink: discard
+  of attachedAsgn: discard
+  of attachedTrace: genAddrOf(x)
+
+atomicClosureOp()
+
+
+template assertEq(a, b: untyped): untyped =
+  block:
+    let
+      aval = a
+      bval = b
+
+    if aval != bval:
+      quit "bug!"
+
+proc convoluted =
+  let _ = (;
+    var val1: string;
+    if true: val1 = "22"
+    true
+  )
+
+  assertEq val1, "22"
+  assertEq val1, "22"
+
+convoluted()

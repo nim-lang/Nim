@@ -1,0 +1,36 @@
+[
+  {
+    "name": "bytes2human",
+    "url": "https://github.com/juancarlospaco/nim-bytes2human",
+    "method": "git",
+    "tags": [
+      "bytes",
+      "human",
+      "minimalism",
+      "size"
+    ],
+    "description": "Convert bytes to kilobytes, megabytes, gigabytes, etc.",
+    "license": "LGPLv3",
+    "web": "https://github.com/juancarlospaco/nim-bytes2human"
+  },
+  {
+    "name": "npeg",
+    "url": "https://github.com/zevv/npeg",
+    "method": "git",
+    "tags": [
+      "PEG",
+      "parser",
+      "parsing",
+      "regexp",
+      "regular",
+      "grammar",
+      "lexer",
+      "lexing",
+      "pattern",
+      "matching"
+    ],
+    "description": "PEG (Parsing Expression Grammars) string matching library for Nim",
+    "license": "MIT",
+    "web": "https://github.com/zevv/npeg"
+  }
+]

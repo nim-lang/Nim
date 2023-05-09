@@ -10,5 +10,5 @@ highlight;;skProc;;1;;7;;4
 highlight;;skTemplate;;2;;7;;4
 highlight;;skTemplate;;2;;7;;4
 highlight;;skTemplate;;2;;7;;4
-highlight;;skProc;;3;;8;;1
+highlight;;skFunc;;3;;8;;1
 """

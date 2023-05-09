@@ -8,11 +8,11 @@
 #
 
 ## Nim coroutines implementation, supports several context switching methods:
-## --------  ------------
+## ========  ============
 ## ucontext  available on unix and alike (default)
 ## setjmp    available on unix and alike (x86/64 only)
 ## fibers    available and required on windows.
-## --------  ------------
+## ========  ============
 ##
 ## -d:nimCoroutines               Required to build this module.
 ## -d:nimCoroutinesUcontext       Use ucontext backend.
@@ -20,6 +20,8 @@
 ## -d:nimCoroutinesSetjmpBundled  Use bundled setjmp implementation.
 ##
 ## Unstable API.
+
+import system/coro_detection
 
 when not nimCoroutines and not defined(nimdoc):
   when defined(noNimCoroutines):
@@ -30,6 +32,9 @@ when not nimCoroutines and not defined(nimdoc):
 import os
 import lists
 include system/timers
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 const defaultStackSize = 512 * 1024
 const useOrcArc = defined(gcArc) or defined(gcOrc)
@@ -274,11 +279,10 @@ proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discar
     coro.execContext = CreateFiberEx(stacksize, stacksize,
       FIBER_FLAG_FLOAT_SWITCH,
       (proc(p: pointer) {.stdcall.} = runCurrentTask()), nil)
-    coro.stack.size = stacksize
   else:
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine) + stacksize))
-    coro.stack.top = cast[pointer](cast[ByteAddress](coro) + sizeof(Coroutine))
-    coro.stack.bottom = cast[pointer](cast[ByteAddress](coro.stack.top) + stacksize)
+    coro.stack.top = cast[pointer](cast[int](coro) + sizeof(Coroutine))
+    coro.stack.bottom = cast[pointer](cast[int](coro.stack.top) + stacksize)
     when coroBackend == CORO_BACKEND_UCONTEXT:
       discard getcontext(coro.execContext)
       coro.execContext.uc_stack.ss_sp = coro.stack.top
@@ -293,9 +297,9 @@ proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discar
   return coro.reference
 
 proc run*() =
-  initialize()
   ## Starts main coroutine scheduler loop which exits when all coroutines exit.
   ## Calling this proc starts execution of first coroutine.
+  initialize()
   ctx.current = ctx.coroutines.head
   var minDelay: float = 0
   while ctx.current != nil:

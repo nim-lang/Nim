@@ -14,4 +14,4 @@ type
     of {b, c} - {a}:
       y: int
 
-discard U(k: b, y: 1)
+doAssert U(k: b, y: 1).y == 1

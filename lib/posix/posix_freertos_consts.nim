@@ -363,6 +363,8 @@ var SEM_FAILED* {.importc: "SEM_FAILED", header: "<semaphore.h>".}: pointer
 # <sys/resource.h>
 # var RLIMIT_NOFILE* {.importc: "RLIMIT_NOFILE", header: "<sys/resource.h>".}: cint
 
+var FD_MAX* {.importc: "CONFIG_LWIP_MAX_SOCKETS", header: "<lwipopts.h>".}: cint
+
 # <sys/select.h>
 var FD_SETSIZE* {.importc: "FD_SETSIZE", header: "<sys/select.h>".}: cint
 
@@ -498,3 +500,7 @@ const F_TEST* = cint(3)
 const F_TLOCK* = cint(2)
 const F_ULOCK* = cint(0)
 
+# <stdio.h>
+const SEEK_SET* = cint(0)
+const SEEK_CUR* = cint(1)
+const SEEK_END* = cint(2)

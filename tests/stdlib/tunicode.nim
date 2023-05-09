@@ -1,5 +1,9 @@
-import unicode
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
 
+import std/unicode
+import std/assertions
 
 proc asRune(s: static[string]): Rune =
   ## Compile-time conversion proc for converting string literals to a Rune
@@ -213,3 +217,10 @@ block differentSizes:
   doAssert swapCase("ⱥbCd") == "ȺBcD"
   doAssert swapCase("XyꟆaB") == "xYᶎAb"
   doAssert swapCase("aᵹcᲈd") == "AꝽCꙊD"
+
+block: # bug #17768
+  let s1 = "abcdef"
+  let s2 = "abcdéf"
+
+  doAssert s1.runeSubStr(0, -1) == "abcde"
+  doAssert s2.runeSubStr(0, -1) == "abcdé"

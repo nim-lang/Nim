@@ -9,6 +9,13 @@ these dont' seem needed --debuginfo
 nor these from the previous main.nim.cfg: --app:console
 ]#
 
+#[
+Test the realtime GC without linking nimrtl.dll/so.
+
+To build by hand and run the test for 35 minutes:
+`nim r --threads:on -d:runtimeSecs:2100 tests/realtimeGC/tmain.nim`
+]#
+
 import times, os, strformat, strutils
 from stdtest/specialpaths import buildDir
 # import threadpool
@@ -16,9 +23,10 @@ from stdtest/specialpaths import buildDir
 const runtimeSecs {.intdefine.} = 5
 
 const file = "shared.nim"
-const dllname = buildDir / (DynlibFormat % file)
+const dllname = buildDir / (DynlibFormat % "shared_D20210524T180506")
 
 static:
+  # D20210524T180826:here we compile the dependency on the fly
   let nim = getCurrentCompilerExe()
   let (output, exitCode) = gorgeEx(fmt"{nim} c -o:{dllname} --debuginfo --app:lib --threads:on -d:release -d:useRealtimeGC {file}")
   doAssert exitCode == 0, output

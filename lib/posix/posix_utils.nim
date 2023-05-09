@@ -7,18 +7,21 @@
 #
 
 ## A set of helpers for the POSIX module.
-## Raw interfaces are in the other posix*.nim files.
+## Raw interfaces are in the other ``posix*.nim`` files.
 
 # Where possible, contribute OS-independent procs in `os <os.html>`_ instead.
 
 import posix, parsecfg, os
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type Uname* = object
   sysname*, nodename*, release*, version*, machine*: string
 
 template charArrayToString(input: typed): string =
-  $cstring(addr input)
+  $cast[cstring](addr input)
 
 proc uname*(): Uname =
   ## Provides system information in a `Uname` struct with sysname, nodename,
@@ -40,8 +43,8 @@ proc uname*(): Uname =
   result.machine = charArrayToString u.machine
 
 proc fsync*(fd: int) =
- ## synchronize a file's buffer cache to the storage device
- if fsync(fd.cint) != 0:
+  ## synchronize a file's buffer cache to the storage device
+  if fsync(fd.cint) != 0:
     raise newException(OSError, $strerror(errno))
 
 proc stat*(path: string): Stat =
@@ -57,9 +60,10 @@ proc memoryLock*(a1: pointer, a2: int) =
 proc memoryLockAll*(flags: int) =
   ## Locks all memory for the running process to prevent swapping.
   ##
-  ## example::
-  ##
+  ## example:
+  ##   ```nim
   ##   memoryLockAll(MCL_CURRENT or MCL_FUTURE)
+  ##   ```
   if mlockall(flags.cint) != 0:
     raise newException(OSError, $strerror(errno))
 
@@ -86,7 +90,7 @@ proc mkstemp*(prefix: string, suffix=""): (string, File) =
   ## Returns the filename and a file opened in r/w mode.
   var tmpl = cstring(prefix & "XXXXXX" & suffix)
   let fd =
-    if len(suffix)==0:
+    if len(suffix) == 0:
       when declared(mkostemp):
         mkostemp(tmpl, O_CLOEXEC)
       else:

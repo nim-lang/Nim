@@ -220,7 +220,7 @@ when defined(windows):
         clientCount.inc
         break
       else:
-        if line.startswith("Message "):
+        if line.startsWith("Message "):
           msgCount.inc
         else:
           doAssert false

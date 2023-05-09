@@ -19,10 +19,12 @@ discard """
 
 [Suite] test name filtering
 '''
+matrix: "--mm:refc; --mm:orc"
 targets: "c js"
 """
 
-import std/[unittest, sequtils]
+import std/[unittest, sequtils, assertions]
+from std/unittest {.all.} import matchFilter
 
 proc doThings(spuds: var int): int =
   spuds = 24

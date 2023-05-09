@@ -1,5 +1,5 @@
 discard """
-outputsub: ""
+  matrix: "--mm:refc; --mm:orc"
 """
 
 import algorithm

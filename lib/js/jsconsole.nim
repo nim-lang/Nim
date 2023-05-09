@@ -118,6 +118,7 @@ since (1, 5):
 
   func timeStamp*(console: Console; label: cstring) {.importcpp.}
     ## https://developer.mozilla.org/en-US/docs/Web/API/Console/timeStamp
+    ##
     ## ..warning:: non-standard
 
 

@@ -1,12 +1,15 @@
 discard """
   exitcode: 0
   output: ""
-  matrix: "; -d:nimInheritHandles"
+  matrix: "; -d:nimInheritHandles; --mm:refc"
   joinable: false
 """
 
 import os, osproc, strutils, nativesockets, net, selectors, memfiles,
        asyncdispatch, asyncnet
+
+import std/[assertions, syncio]
+
 when defined(windows):
   import winlean
 
@@ -56,7 +59,7 @@ proc isValidHandle(f: int): bool =
 proc main() =
   if paramCount() == 0:
     # Parent process
-    let f = system.open("__test_fdleak", fmReadWrite)
+    let f = syncio.open("__test_fdleak", fmReadWrite)
     defer: close f
 
     leakCheck(f.getOsFileHandle, "system.open()")

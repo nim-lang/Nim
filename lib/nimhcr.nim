@@ -200,6 +200,9 @@ batchable: false
 #     block. Perhaps something can be done about this - some way of re-allocating
 #     the state and transferring the old...
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 when not defined(js) and (defined(hotcodereloading) or
                           defined(createNimHcr) or
                           defined(testNimHcr)):
@@ -209,7 +212,7 @@ when not defined(js) and (defined(hotcodereloading) or
              else: "so"
   type
     HcrProcGetter* = proc (libHandle: pointer, procName: cstring): pointer {.nimcall.}
-    HcrGcMarkerProc = proc () {.nimcall.}
+    HcrGcMarkerProc = proc () {.nimcall, raises: [].}
     HcrModuleInitializer* = proc () {.nimcall.}
 
 when defined(createNimHcr):
@@ -487,7 +490,7 @@ when defined(createNimHcr):
           recursiveDiscovery(modules[curr].imports)
           allModulesOrderedByDFS.add(curr)
           continue
-      loadDll(curr)
+      loadDll(curr.cstring)
       # first load all dependencies of the current module and init it after that
       recursiveDiscovery(modules[curr].imports)
 
@@ -497,20 +500,20 @@ when defined(createNimHcr):
   proc initModules() =
     # first init the pointers to hcr functions and also do the registering of typeinfo globals
     for curr in modulesToInit:
-      initHcrData(curr)
-      initTypeInfoGlobals(curr)
+      initHcrData(curr.cstring)
+      initTypeInfoGlobals(curr.cstring)
     # for now system always gets fully inited before any other module (including when reloading)
-    initPointerData(system)
-    initGlobalScope(system)
+    initPointerData(system.cstring)
+    initGlobalScope(system.cstring)
     # proceed with the DatInit calls - for all modules - including the main one!
     for curr in allModulesOrderedByDFS:
       if curr != system:
-        initPointerData(curr)
+        initPointerData(curr.cstring)
     mainDatInit()
     # execute top-level code (in global scope)
     for curr in modulesToInit:
       if curr != system:
-        initGlobalScope(curr)
+        initGlobalScope(curr.cstring)
     # cleanup old symbols which are gone now
     for curr in modulesToInit:
       cleanupSymbols(curr)
@@ -606,7 +609,7 @@ when defined(createNimHcr):
   proc hcrGeneration*(): int {.nimhcr.} =
     generation
 
-  proc hcrMarkGlobals*() {.nimhcr, nimcall, gcsafe.} =
+  proc hcrMarkGlobals*() {.compilerproc, exportc, dynlib, nimcall, gcsafe.} =
     # This is gcsafe, because it will be registered
     # only in the GC of the main thread.
     {.gcsafe.}:
@@ -648,10 +651,10 @@ elif defined(hotcodereloading) or defined(testNimHcr):
 
     proc hcrAddEventHandler*(isBefore: bool, cb: proc ()) {.nimhcr.}
 
-    proc hcrMarkGlobals*() {.nimhcr, nimcall, gcsafe.}
+    proc hcrMarkGlobals*() {.raises: [], nimhcr, nimcall, gcsafe.}
 
     when declared(nimRegisterGlobalMarker):
-      nimRegisterGlobalMarker(hcrMarkGlobals)
+      nimRegisterGlobalMarker(cast[GlobalMarkerProc](hcrMarkGlobals))
 
   else:
     proc hcrHasModuleChanged*(moduleHash: string): bool =

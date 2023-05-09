@@ -47,14 +47,14 @@ proc nimLoadLibraryError(path: string) =
         copyMem(msg[msgIdx].addr, badExe.cstring, badExe.len)
       discard MessageBoxA(nil, msg[0].addr, nil, 0)
   cstderr.rawWrite("\n")
-  quit(1)
+  rawQuit(1)
 
 proc procAddrError(name: cstring) {.compilerproc, nonReloadable, hcrInline.} =
   # carefully written to avoid memory allocation:
   cstderr.rawWrite("could not import: ")
   cstderr.rawWrite(name)
   cstderr.rawWrite("\n")
-  quit(1)
+  rawQuit(1)
 
 # this code was inspired from Lua's source code:
 # Lua - An Extensible Extension Language
@@ -161,38 +161,38 @@ elif defined(windows) or defined(dos):
         dec(m)
         k = k div 10
         if k == 0: break
-      result = getProcAddress(cast[THINSTANCE](lib), addr decorated)
+      result = getProcAddress(cast[THINSTANCE](lib), cast[cstring](addr decorated))
       if result != nil: return
     procAddrError(name)
 
 elif defined(genode):
 
-  proc nimUnloadLibrary(lib: LibHandle) {.
-    error: "nimUnloadLibrary not implemented".}
+  proc nimUnloadLibrary(lib: LibHandle) =
+    raiseAssert("nimUnloadLibrary not implemented")
 
-  proc nimLoadLibrary(path: string): LibHandle {.
-    error: "nimLoadLibrary not implemented".}
+  proc nimLoadLibrary(path: string): LibHandle =
+    raiseAssert("nimLoadLibrary not implemented")
 
-  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.
-    error: "nimGetProcAddr not implemented".}
+  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
+    raiseAssert("nimGetProcAddr not implemented")
 
-elif defined(nintendoswitch) or defined(freertos):
+elif defined(nintendoswitch) or defined(freertos) or defined(zephyr) or defined(nuttx):
   proc nimUnloadLibrary(lib: LibHandle) =
     cstderr.rawWrite("nimUnLoadLibrary not implemented")
     cstderr.rawWrite("\n")
-    quit(1)
+    rawQuit(1)
 
   proc nimLoadLibrary(path: string): LibHandle =
     cstderr.rawWrite("nimLoadLibrary not implemented")
     cstderr.rawWrite("\n")
-    quit(1)
+    rawQuit(1)
 
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     cstderr.rawWrite("nimGetProAddr not implemented")
     cstderr.rawWrite(name)
     cstderr.rawWrite("\n")
-    quit(1)
+    rawQuit(1)
 
 else:
   {.error: "no implementation for dyncalls".}

@@ -33,7 +33,7 @@ type
   Dirent* {.importc: "struct dirent",
             header: "<dirent.h>", final, pure.} = object ## dirent_t struct
     d_ino*: Ino
-    d_type*: int8  # cuchar really!
+    d_type*: int8  # uint8 really!
     d_name*: array[256, cchar]
 
   Tflock* {.importc: "struct flock", final, pure,
@@ -286,7 +286,7 @@ type
             header: "<signal.h>", final, pure.} = object ## stack_t
     ss_sp*: pointer  ## Stack base or pointer.
     ss_flags*: cint  ## Flags.
-    ss_size*: csize  ## Stack size.
+    ss_size*: csize_t ## Stack size.
 
   SigInfo* {.importc: "siginfo_t",
               header: "<signal.h>", final, pure.} = object ## siginfo_t
@@ -321,7 +321,7 @@ type
     aio_lio_opcode*: cint     ## Operation to be performed.
     aio_reqprio*: cint        ## Request priority offset.
     aio_buf*: pointer         ## Location of buffer.
-    aio_nbytes*: csize        ## Length of transfer.
+    aio_nbytes*: csize_t      ## Length of transfer.
     aio_sigevent*: SigEvent   ## Signal number and value.
     next_prio: pointer
     abs_prio: cint
@@ -347,20 +347,20 @@ type
 
   SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
               pure, final.} = object ## struct sockaddr
-    sa_len: cuchar
+    sa_len: uint8
     sa_family*: TSa_Family         ## Address family.
     sa_data*: array[14, char] ## Socket address (variable-length data).
 
   Sockaddr_storage* {.importc: "struct sockaddr_storage",
                        header: "<sys/socket.h>",
                        pure, final.} = object ## struct sockaddr_storage
-    ss_len: cuchar
+    ss_len: uint8
     ss_family*: TSa_Family ## Address family.
-    ss_padding1: array[64 - sizeof(cuchar) - sizeof(cshort), char]
+    ss_padding1: array[64 - sizeof(uint8) - sizeof(cshort), char]
     ss_align: clonglong
     ss_padding2: array[
-      128 - sizeof(cuchar) - sizeof(cshort) -
-      (64 - sizeof(cuchar) - sizeof(cshort)) - 64, char]
+      128 - sizeof(uint8) - sizeof(cshort) -
+      (64 - sizeof(uint8) - sizeof(cshort)) - 64, char]
 
   Tif_nameindex* {.importc: "struct if_nameindex", final,
                    pure, header: "<net/if.h>".} = object ## struct if_nameindex
@@ -378,15 +378,15 @@ type
     msg_name*: pointer  ## Optional address.
     msg_namelen*: SockLen  ## Size of address.
     msg_iov*: ptr IOVec    ## Scatter/gather array.
-    msg_iovlen*: csize   ## Members in msg_iov.
+    msg_iovlen*: csize_t   ## Members in msg_iov.
     msg_control*: pointer  ## Ancillary data; see below.
-    msg_controllen*: csize ## Ancillary data buffer len.
+    msg_controllen*: csize_t ## Ancillary data buffer len.
     msg_flags*: cint ## Flags on received message.
 
 
   Tcmsghdr* {.importc: "struct cmsghdr", pure, final,
               header: "<sys/socket.h>".} = object ## struct cmsghdr
-    cmsg_len*: csize ## Data byte count, including the cmsghdr.
+    cmsg_len*: csize_t ## Data byte count, including the cmsghdr.
     cmsg_level*: cint   ## Originating protocol.
     cmsg_type*: cint    ## Protocol-specific type.
 

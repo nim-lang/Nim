@@ -484,6 +484,26 @@ func expMin: float {.aadMin.} = 1
 echo expMin()
 
 
+# doubly-typed forward decls
+macro noop(x: typed) = x
+noop:
+  proc cally() = discard
+
+cally()
+
+noop:
+  proc barry()
+
+proc barry() = discard
+
+# some more:
+proc barry2() {.noop.}
+proc barry2() = discard
+
+proc barry3() {.noop.}
+proc barry3() {.noop.} = discard
+
+
 # issue #15389
 block double_sem_for_procs:
 

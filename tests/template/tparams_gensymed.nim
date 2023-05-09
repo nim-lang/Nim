@@ -72,7 +72,7 @@ proc concreteProc(x: int) =
   forStatic i, 0..3:
     echo i
 
-proc genericProc(x: any) =
+proc genericProc(x: auto) =
   forStatic i, 0..3:
     echo i
 

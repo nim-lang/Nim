@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc"
   outputsub: '''ObjectAssignmentDefect'''
   exitcode: "1"
 """

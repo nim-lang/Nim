@@ -153,7 +153,7 @@ block tsplit2:
   var errored = false
   try:
     discard "hello".split("")
-  except AssertionError:
+  except AssertionDefect:
     errored = true
   doAssert errored
 

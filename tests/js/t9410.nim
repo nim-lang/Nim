@@ -447,10 +447,10 @@ template tests =
       doAssert seqOfSeqs == @[@[10, 2], @[30, 4]]
 
   when false:
-    block: # openarray
+    block: # openArray
           # Error: internal error: genAddr: nkStmtListExpr
       var calls = 0
-      proc getvarint(x: var openarray[int]): var int =
+      proc getvarint(x: var openArray[int]): var int =
         calls += 1
         if true:
           x[1]

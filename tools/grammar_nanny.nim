@@ -3,8 +3,11 @@
 
 import std / [strutils, sets]
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 import ".." / compiler / [
-  llstream, ast, lexer, options, msgs, idents,
+  llstream, lexer, options, msgs, idents,
   lineinfos, pathutils]
 
 proc checkGrammarFileImpl(cache: IdentCache, config: ConfigRef) =
@@ -13,6 +16,7 @@ proc checkGrammarFileImpl(cache: IdentCache, config: ConfigRef) =
   var stream = llStreamOpen(data)
   var declaredSyms = initHashSet[string]()
   var usedSyms = initHashSet[string]()
+  usedSyms.incl "module" # 'module' is the start rule.
   if stream != nil:
     declaredSyms.incl "section" # special case for 'section(RULE)' in the grammar
     var
@@ -35,6 +39,10 @@ proc checkGrammarFileImpl(cache: IdentCache, config: ConfigRef) =
           usedSyms.incl word
       else:
         rawGetTok(L, tok)
+    for u in declaredSyms:
+      if u notin usedSyms:
+        echo "Unused non-terminal: ", u
+
     for u in usedSyms:
       if u notin declaredSyms:
         echo "Undeclared non-terminal: ", u

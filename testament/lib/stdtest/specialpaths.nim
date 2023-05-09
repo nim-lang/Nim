@@ -13,6 +13,8 @@ import compiler/nimpaths
 ]#
 
 import os
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 # Note: all the const paths defined here are known at compile time and valid
 # so long Nim repo isn't relocated after compilation.

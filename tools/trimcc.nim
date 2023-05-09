@@ -31,7 +31,7 @@ proc processIncludes(dir: string, whitelist: StringTableRef) =
       if ('.' notin name and "include" in path) or ("c++" in path):
         let n = whitelist.getOrDefault(name)
         if n != "processed": whitelist[name] = "found"
-      if name.endswith(".h"):
+      if name.endsWith(".h"):
         let n = whitelist.getOrDefault(name)
         if n == "found": includes(path, name, whitelist)
     of pcDir: processIncludes(path, whitelist)

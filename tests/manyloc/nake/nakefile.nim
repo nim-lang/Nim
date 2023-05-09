@@ -29,11 +29,12 @@ task "test2", "Build release test build test release build":
   if shell("nim", ReleaseDefines, ReleaseTestDefines, "compile", ExeName) == 0:
     shell "."/ExeName
 
-discard """task "dirserver", "build the directory server":
-  withDir "server":
-    if shell("nim", ServerDefines, "compile", "dirserver") != 0:
-      echo "Failed to build the dirserver"
-      quit 1"""
+when false:
+  task "dirserver", "build the directory server":
+    withDir "server":
+      if shell("nim", ServerDefines, "compile", "dirserver") != 0:
+        echo "Failed to build the dirserver"
+        quit 1
 
 task "zoneserver", "build the zone server":
   withDir "enet_server":

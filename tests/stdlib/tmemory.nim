@@ -1,3 +1,4 @@
+import std/assertions
 
 block: # cmpMem
   type
@@ -12,4 +13,4 @@ block: # cmpMem
 
   doAssert cmpMem(a.addr, b.addr, sizeof(SomeHash)) > 0
   doAssert cmpMem(b.addr, a.addr, sizeof(SomeHash)) < 0
-  doAssert cmpMem(a.addr, c.unsafeAddr, sizeof(SomeHash)) == 0
+  doAssert cmpMem(a.addr, c.addr, sizeof(SomeHash)) == 0

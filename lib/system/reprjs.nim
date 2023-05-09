@@ -8,7 +8,12 @@
 #
 # The generic ``repr`` procedure for the javascript backend.
 
+when defined(nimPreviewSlimSystem):
+  import std/formatfloat
+
 proc reprInt(x: int64): string {.compilerproc.} = $x
+proc reprInt(x: uint64): string {.compilerproc.} = $x
+proc reprInt(x: int): string {.compilerproc.} = $x
 proc reprFloat(x: float): string {.compilerproc.} = $x
 
 proc reprPointer(p: pointer): string {.compilerproc.} =
@@ -29,6 +34,8 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
     result = makeNimstrLit(item.name)
   else:
     result = $e & " (invalid data!)"
+
+include system/repr_impl
 
 proc reprChar(x: char): string {.compilerRtl.} =
   result = "\'"
@@ -113,7 +120,6 @@ proc reprArray(a: pointer, typ: PNimType,
   # We prepend @ to seq, the C backend prepends the pointer to the seq.
   result = if typ.kind == tySequence: "@[" else: "["
   var len: int = 0
-  var i: int = 0
 
   {. emit: "`len` = `a`.length;\n" .}
   var dereffed: pointer = a
@@ -188,8 +194,12 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
     return
   dec(cl.recDepth)
   case typ.kind
-  of tyInt..tyInt64, tyUInt..tyUInt64:
+  of tyInt..tyInt32, tyUInt..tyUInt32:
     add(result, reprInt(cast[int](p)))
+  of tyInt64:
+    add(result, reprInt(cast[int64](p)))
+  of tyUInt64:
+    add(result, reprInt(cast[uint64](p)))
   of tyChar:
     add(result, reprChar(cast[char](p)))
   of tyBool:
@@ -200,7 +210,7 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
     var fp: int
     {. emit: "`fp` = `p`;\n" .}
     add(result, reprStr(cast[string](p)))
-  of tyCString:
+  of tyCstring:
     var fp: cstring
     {. emit: "`fp` = `p`;\n" .}
     if fp.isNil:

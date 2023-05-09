@@ -1,5 +1,5 @@
 discard """
-action: "reject"
+  action: "reject"
 """
 
 # Because we set action="reject", we expect this line not to compile. But the

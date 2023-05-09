@@ -1,6 +1,6 @@
 discard """
-sortoutput: true
-output: '''
+  sortoutput: true
+  output: '''
 2
 1
 '''

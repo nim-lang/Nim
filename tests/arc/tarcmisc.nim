@@ -1,5 +1,6 @@
 discard """
   output: '''
+=destroy called
 123xyzabc
 destroyed: false
 destroyed: false
@@ -26,13 +27,65 @@ new line after - @['a']
 finalizer
 aaaaa
 hello
+true
+copying
+123
+42
 ok
-closed
 destroying variable: 20
 destroying variable: 10
+closed
 '''
-  cmd: "nim c --gc:arc --deepcopy:on $file"
+  cmd: "nim c --gc:arc --deepcopy:on -d:nimAllocPagesViaMalloc $file"
 """
+
+# bug #9401
+
+type
+  MyObj = object
+    len: int
+    data: ptr UncheckedArray[float]
+
+proc `=destroy`*(m: var MyObj) =
+
+  echo "=destroy called"
+
+  if m.data != nil:
+    deallocShared(m.data)
+    m.data = nil
+
+type
+  MyObjDistinct = distinct MyObj
+
+proc `=copy`*(m: var MyObj, m2: MyObj) =
+  if m.data == m2.data: return
+  if m.data != nil:
+    `=destroy`(m)
+  m.len = m2.len
+  if m.len > 0:
+    m.data = cast[ptr UncheckedArray[float]](allocShared(sizeof(float) * m.len))
+    copyMem(m.data, m2.data, sizeof(float) * m.len)
+
+
+proc `=sink`*(m: var MyObj, m2: MyObj) =
+  if m.data != m2.data:
+    if m.data != nil:
+      `=destroy`(m)
+    m.len = m2.len
+    m.data = m2.data
+
+proc newMyObj(len: int): MyObj =
+  result.len = len
+  result.data = cast[ptr UncheckedArray[float]](allocShared(sizeof(float) * len))
+
+proc newMyObjDistinct(len: int): MyObjDistinct =
+  MyObjDistinct(newMyObj(len))
+
+proc fooDistinct =
+  doAssert newMyObjDistinct(2).MyObj.len == 2
+
+fooDistinct()
+
 
 proc takeSink(x: sink string): bool = true
 
@@ -71,7 +124,7 @@ proc test(count: int) =
 test(3)
 
 proc test2(count: int) =
-  #block: #XXX: Fails with block currently
+  block: #XXX: Fails with block currently
     var v {.global.} = newVariable(20)
 
     var count = count - 1
@@ -422,3 +475,142 @@ proc test3 =
 
 static: test3() # was buggy
 test3()
+
+# bug #17712
+proc t17712 =
+  var ppv = new int
+  discard @[ppv]
+  var el: ref int
+  el = [ppv][0]
+  echo el != nil
+
+t17712()
+
+# bug #18030
+
+type
+  Foo = object
+    n: int
+
+proc `=copy`(dst: var Foo, src: Foo) =
+  echo "copying"
+  dst.n = src.n
+
+proc `=sink`(dst: var Foo, src: Foo) =
+  echo "sinking"
+  dst.n = src.n
+
+var a: Foo
+
+proc putValue[T](n: T)
+
+proc useForward =
+  putValue(123)
+
+proc putValue[T](n: T) =
+  var b = Foo(n:n)
+  a = b
+  echo b.n
+
+useForward()
+
+
+# bug #17319
+type
+  BrokenObject = ref object
+    brokenType: seq[int]
+
+proc use(obj: BrokenObject) =
+  discard
+
+method testMethod(self: BrokenObject) {.base.} =
+  iterator testMethodIter() {.closure.} =
+    use(self)
+
+  var nameIterVar = testMethodIter
+  nameIterVar()
+
+let mikasa = BrokenObject()
+mikasa.testMethod()
+
+# bug #19205
+type
+  InputSectionBase* = object of RootObj
+    relocations*: seq[int]   # traced reference. string has a similar SIGSEGV.
+  InputSection* = object of InputSectionBase
+
+proc fooz(sec: var InputSectionBase) =
+  if sec of InputSection:  # this line SIGSEGV.
+    echo 42
+
+var sec = create(InputSection)
+sec[] = InputSection(relocations: newSeq[int]())
+fooz sec[]
+
+block:
+  type
+    Data = ref object
+      id: int
+  proc main =
+    var x = Data(id: 99)
+    var y = x
+    x[] = Data(id: 778)[]
+    doAssert y.id == 778
+    doAssert x[].id == 778
+  main()
+
+block: # bug #19857
+  type
+    ValueKind = enum VNull, VFloat, VObject # need 3 elements. Cannot remove VNull or VObject
+
+    Value = object
+      case kind: ValueKind
+      of VFloat: fnum: float
+      of VObject: tab: Table[int, int] # OrderedTable[T, U] also makes it fail.
+                                      # "simpler" types also work though
+      else: discard # VNull can be like this, but VObject must be filled
+
+    # required. Pure proc works
+    FormulaNode = proc(c: OrderedTable[string, int]): Value
+
+  proc toF(v: Value): float =
+    doAssert v.kind == VFloat
+    case v.kind
+    of VFloat: result = v.fnum
+    else: discard
+
+
+  proc foo() =
+    let fuck = initOrderedTable[string, int]()
+    proc cb(fuck: OrderedTable[string, int]): Value =
+                            # works:
+                            #result = Value(kind: VFloat, fnum: fuck["field_that_does_not_exist"].float)
+                            # broken:
+      discard "actuall runs!"
+      let t = fuck["field_that_does_not_exist"]
+      echo "never runs, but we crash after! ", t
+
+    doAssertRaises(KeyError):
+      let fn = FormulaNode(cb)
+      let v = fn(fuck)
+      #echo v
+      let res = v.toF()
+
+  foo()
+
+import std/options
+
+# bug #21592
+type Event* = object
+  code*: string
+
+type App* = ref object of RootObj
+  id*: string
+
+method process*(self: App): Option[Event] {.base.} =
+  raise Exception.new_exception("not impl")
+
+# bug #21617
+type Test2 = ref object of RootObj
+
+method bug(t: Test2): seq[float] {.base.} = discard

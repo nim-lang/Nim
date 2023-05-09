@@ -14,7 +14,10 @@ type
     moTwo,
     moThree,
     moFoure,
-
+  
+  MyObj = object
+    a*: int
+    b*: string
 
 var counter = 0
 
@@ -74,7 +77,13 @@ proc testProc(): void =
   var myOtherTable = {"one": 1, "two": 2, "three": 3}.toTable
   myDebug(myOtherTable) #14
 
-  echo(counter)
+  var obj = MyObj(a: 1, b: "some string")
+  myDebug(obj) #15
+
+  var tup = ("hello", 42)
+  myDebug(tup) # 16
+
+  assert counter == 16
 
 
 testProc()

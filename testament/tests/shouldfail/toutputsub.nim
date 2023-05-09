@@ -1,5 +1,5 @@
 discard """
-outputsub: "something else"
+  outputsub: "something else"
 """
 
 echo "Hello World!"

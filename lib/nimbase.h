@@ -75,7 +75,8 @@ __AVR__
 #endif
 /* ------------------------------------------------------------------------- */
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__ZEPHYR__)
+/* Zephyr does some magic in it's headers that override the GCC stdlib. This breaks that. */
 #  define _GNU_SOURCE 1
 #endif
 
@@ -124,7 +125,13 @@ __AVR__
   NIM_THREADVAR declaration based on
   http://stackoverflow.com/questions/18298280/how-to-declare-a-variable-as-thread-local-portably
 */
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
+#if defined _WIN32
+#  if defined _MSC_VER || defined __DMC__ || defined __BORLANDC__
+#    define NIM_THREADVAR __declspec(thread)
+#  else
+#    define NIM_THREADVAR __thread
+#  endif
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #  define NIM_THREADVAR _Thread_local
 #elif defined _WIN32 && ( \
        defined _MSC_VER || \
@@ -325,6 +332,9 @@ typedef unsigned char NIM_BOOL; // best effort
 #endif
 
 NIM_STATIC_ASSERT(sizeof(NIM_BOOL) == 1, ""); // check whether really needed
+NIM_STATIC_ASSERT(CHAR_BIT == 8, "");
+  // fail fast for (rare) environments where this doesn't hold, as some implicit
+  // assumptions would need revisiting (e.g. `uint8` or https://github.com/nim-lang/Nim/pull/18505)
 
 #define NIM_TRUE true
 #define NIM_FALSE false
@@ -474,7 +484,9 @@ typedef char* NCSTRING;
   } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
 
 /* declared size of a sequence/variable length array: */
-#if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
+#if defined(__cplusplus) && defined(__clang__)
+#  define SEQ_DECL_SIZE 1
+#elif defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
 #  define SEQ_DECL_SIZE /* empty is correct! */
 #else
 #  define SEQ_DECL_SIZE 1000000
@@ -543,7 +555,7 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
 #endif
 
 // Test to see if Nim and the C compiler agree on the size of a pointer.
-NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "");
+NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "Pointer size mismatch between Nim and C/C++ backend. You probably need to setup the backend compiler for target CPU.");
 
 #ifdef USE_NIM_NAMESPACE
 }

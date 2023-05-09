@@ -25,3 +25,34 @@ t.curr = TokenObject(kind: Token.bar, bar: BasicNumber(value: 12.34))
 t.curr = TokenObject(kind: Token.foo, foo: "foo")
 
 echo "SUCCESS"
+
+proc passToVar(x: var Token) = discard
+
+{.cast(uncheckedAssign).}:
+  passToVar(t.curr.kind)
+
+  t.curr = TokenObject(kind: t.curr.kind, foo: "abc")
+
+  t.curr.kind = Token.foo
+
+
+block:
+  type
+    TokenKind = enum
+      strLit, intLit
+    Token = object
+      case kind*: TokenKind
+      of strLit:
+        s*: string
+      of intLit:
+        i*: int64
+
+  var t = Token(kind: strLit, s: "abc")
+
+  {.cast(uncheckedAssign).}:
+
+    # inside the 'cast' section it is allowed to assign to the 't.kind' field directly:
+    t.kind = intLit
+
+  {.cast(uncheckedAssign).}:
+    t.kind = strLit

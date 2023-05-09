@@ -1,18 +1,9 @@
 discard """
-  cmd:      "nim c -r --styleCheck:hint --panics:on $options $file"
-  targets:  "c"
-  nimout:   ""
-  action:   "run"
-  exitcode: 0
-  timeout:  60.0
+  matrix: "--mm:refc; --mm:orc"
 """
 
 import nativesockets
-
-
-when not defined(netbsd):
-  # Ref: https://github.com/nim-lang/Nim/issues/15452 - NetBSD doesn't define an `ip` protocol
-  doAssert getProtoByName("ip") == 0
+import std/assertions
 
 doAssert getProtoByName("ipv6") == 41
 doAssert getProtoByName("tcp") == 6

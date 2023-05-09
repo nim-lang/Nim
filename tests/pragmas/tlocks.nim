@@ -1,4 +1,3 @@
-
 type SomeBase* = ref object of RootObj
 type SomeDerived* = ref object of SomeBase
   memberProc*: proc ()

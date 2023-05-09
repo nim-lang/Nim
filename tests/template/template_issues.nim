@@ -173,7 +173,7 @@ block t2585:
       st
       echo "a ", $fb
 
-  proc render(rdat: var RenderData; passes: var openarray[RenderPass]; proj: Mat2;
+  proc render(rdat: var RenderData; passes: var openArray[RenderPass]; proj: Mat2;
               indexType = 1) =
       for i in 0 ..< len(passes):
           echo "blah ", repr(passes[i])

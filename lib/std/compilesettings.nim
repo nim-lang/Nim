@@ -1,6 +1,6 @@
 #
 #
-#           The Nim Compiler
+#              Nim's Runtime Library
 #        (c) Copyright 2020 Nim Contributors
 #
 #    See the file "copying.txt", included in this
@@ -8,7 +8,7 @@
 #
 
 ## This module allows querying the compiler about
-## diverse configuration settings.
+## diverse configuration settings. See also `compileOption`.
 
 # Note: Only add new enum values at the end to ensure binary compatibility with
 # other Nim compiler versions!
@@ -32,6 +32,8 @@ type
     backend           ## the backend (eg: c|cpp|objc|js); both `nim doc --backend:js`
                       ## and `nim js` would imply backend=js
     libPath           ## the absolute path to the stdlib library, i.e. nim's `--lib`, since 1.5.1
+    gc {.deprecated.} ## gc selected
+    mm                ## memory management selected
 
   MultipleValueSetting* {.pure.} = enum ## \
                       ## settings resulting in a seq of string values

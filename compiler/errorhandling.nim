@@ -10,7 +10,10 @@
 ## This module contains support code for new-styled error
 ## handling via an `nkError` node kind.
 
-import ast, renderer, options, lineinfos, strutils, types
+import ast, renderer, options, strutils, types
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type
   ErrorKind* = enum ## expand as you need.

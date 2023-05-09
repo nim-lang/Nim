@@ -27,7 +27,7 @@ template decRef(x): untyped = atomicDec(x.refcount)
 
 proc makeShared*[T](x: sink T): SharedPtr[T] =
   # XXX could benefit from a macro that generates it.
-  result = cast[SharedPtr[T]](allocShared(sizeof(x)))
+  result = cast[SharedPtr[T]](allocShared0(sizeof(x)))
   result.x[] = x
   echo "allocating"
 
@@ -72,6 +72,7 @@ template `.=`*[T](s: SharedPtr[T]; field, value: untyped) =
 from macros import unpackVarargs
 
 template `.()`*[T](s: SharedPtr[T]; field: untyped, args: varargs[untyped]): untyped =
+  # xxx this isn't used, the test should be improved
   unpackVarargs(s.x.field, args)
 
 

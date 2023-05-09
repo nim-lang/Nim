@@ -6,7 +6,7 @@ ABCDC
 foo
 first0second32third64
 my value A1my value Bconc2valueCabc4abc
-my value A0my value Bconc1valueCabc3valueC
+my value A0my value Bconc1valueCabc3abc
 '''
 """
 
@@ -124,25 +124,25 @@ block tnamedfields:
   # trick the optimizer with a variable:
   var x = valueD
   echo valueA, ord(valueA), valueB, ord(valueB), valueC, valueD, ord(valueD), x
+  doAssert $x == $valueD, $x
+  doAssert $x == "abc", $x
 
 
-
-block toptions:
+block tfakeOptions:
   type
-    # please make sure we have under 32 options (improves code efficiency!)
-    TOption = enum
-      optNone, optForceFullMake, optBoehmGC, optRefcGC, optRangeCheck,
-      optBoundsCheck, optOverflowCheck, optNilCheck, optAssert, optLineDir,
-      optWarns, optHints, optListCmd, optCompileOnly,
-      optSafeCode,             # only allow safe code
-      optStyleCheck, optOptimizeSpeed, optOptimizeSize, optGenDynLib,
-      optGenGuiApp, optStackTrace
+    TFakeOption = enum
+      fakeNone, fakeForceFullMake, fakeBoehmGC, fakeRefcGC, fakeRangeCheck,
+      fakeBoundsCheck, fakeOverflowCheck, fakeNilCheck, fakeAssert, fakeLineDir,
+      fakeWarns, fakeHints, fakeListCmd, fakeCompileOnly,
+      fakeSafeCode,             # only allow safe code
+      fakeStyleCheck, fakeOptimizeSpeed, fakeOptimizeSize, fakeGenDynLib,
+      fakeGenGuiApp, fakeStackTrace
 
-    TOptionset = set[TOption]
+    TFakeOptionset = set[TFakeOption]
 
   var
-    gOptions: TOptionset = {optRefcGC, optRangeCheck, optBoundsCheck,
-      optOverflowCheck, optAssert, optWarns, optHints, optLineDir, optStackTrace}
+    gFakeOptions: TFakeOptionset = {fakeRefcGC, fakeRangeCheck, fakeBoundsCheck,
+      fakeOverflowCheck, fakeAssert, fakeWarns, fakeHints, fakeLineDir, fakeStackTrace}
     compilerArgs: int
     gExitcode: int8
 
@@ -155,7 +155,7 @@ block nonzero: # bug #6959
     C
   let slice = SomeEnum.low..SomeEnum.high
 
-block size_one_byte: #issue 15752
+block size_one_byte: # bug #15752
   type
     Flag = enum
       Disabled = 0x00
@@ -163,3 +163,24 @@ block size_one_byte: #issue 15752
 
   static:
     assert 1 == sizeof(Flag)
+
+block: # bug #12589
+  when not defined(i386):
+    type
+      OGRwkbGeometryType {.size: sizeof(cuint).} = enum
+        wkbPoint25D = 0x80000001.cuint, wkbLineString25D = 0x80000002,
+        wkbPolygon25D = 0x80000003
+
+    proc typ(): OGRwkbGeometryType =
+      return wkbPoint25D
+
+    when not defined(gcRefc):
+      doAssert $typ() == "wkbPoint25D"
+
+    block: # bug #21280
+      type
+        Test = enum
+          B = 19
+          A = int64.high()
+
+      doAssert ord(A) == int64.high()

@@ -1,5 +1,5 @@
 discard """
-  cmd: '''nim c --warningAsError[Uninit]:on --skipCfg --skipParentCfg $file'''
+  cmd: '''nim c --warningAsError:Uninit:on --skipCfg --skipParentCfg $file'''
   errormsg: "use explicit initialization of 'x' for clarity [Uninit]"
   line: 24
   disabled: "true"

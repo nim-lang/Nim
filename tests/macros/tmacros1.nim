@@ -60,3 +60,22 @@ macro foo(t: static Tuple): untyped =
   doAssert t.b == 12345
 
 foo((a: "foo", b: 12345))
+
+
+# bug #16307
+
+macro bug(x: untyped): string =
+  newLit repr(x)
+
+let res = bug:
+  block:
+    ## one
+    ## two
+    ## three
+
+doAssert res == """
+
+block:
+  ## one
+  ## two
+  ## three"""

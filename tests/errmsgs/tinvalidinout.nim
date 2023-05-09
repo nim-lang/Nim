@@ -9,7 +9,7 @@ tinvalidinout.nim(18, 9) Error: the 'in' modifier can be used only with imported
 """
 
 type
-  Foo {.header: "foo.h", importcpp.} [in T] = object
+  Foo[in T] {.header: "foo.h", importcpp.} = object
 
   Bar[out X] = object
     x: int

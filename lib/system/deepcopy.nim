@@ -61,8 +61,8 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType;
 proc genericDeepCopyAux(dest, src: pointer, n: ptr TNimNode;
                         tab: var PtrTable) {.benign.} =
   var
-    d = cast[ByteAddress](dest)
-    s = cast[ByteAddress](src)
+    d = cast[int](dest)
+    s = cast[int](src)
   case n.kind
   of nkSlot:
     genericDeepCopyAux(cast[pointer](d +% n.offset),
@@ -85,8 +85,8 @@ proc genericDeepCopyAux(dest, src: pointer, n: ptr TNimNode;
 
 proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
   var
-    d = cast[ByteAddress](dest)
-    s = cast[ByteAddress](src)
+    d = cast[int](dest)
+    s = cast[int](src)
   sysAssert(mt != nil, "genericDeepCopyAux 2")
   case mt.kind
   of tyString:
@@ -113,11 +113,11 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
         return
       sysAssert(dest != nil, "genericDeepCopyAux 3")
       unsureAsgnRef(x, newSeq(mt, seq.len))
-      var dst = cast[ByteAddress](cast[PPointer](dest)[])
+      var dst = cast[int](cast[PPointer](dest)[])
       for i in 0..seq.len-1:
         genericDeepCopyAux(
           cast[pointer](dst +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size),
-          cast[pointer](cast[ByteAddress](s2) +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size),
+          cast[pointer](cast[int](s2) +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size),
           mt.base, tab)
   of tyObject:
     # we need to copy m_type field for tyObject, as it could be empty for
@@ -199,8 +199,8 @@ proc genericSeqDeepCopy(dest, src: pointer, mt: PNimType) {.compilerproc.} =
 proc genericDeepCopyOpenArray(dest, src: pointer, len: int,
                             mt: PNimType) {.compilerproc.} =
   var
-    d = cast[ByteAddress](dest)
-    s = cast[ByteAddress](src)
+    d = cast[int](dest)
+    s = cast[int](src)
   for i in 0..len-1:
     genericDeepCopy(cast[pointer](d +% i *% mt.base.size),
                     cast[pointer](s +% i *% mt.base.size), mt.base)

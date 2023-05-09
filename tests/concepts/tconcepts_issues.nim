@@ -27,6 +27,8 @@ false
 true
 -1
 Meow
+10 0.0
+1 2.0
 '''
 joinable: false
 """
@@ -324,15 +326,15 @@ block t6691:
 block t6782:
   type
     Reader = concept c
-      c.read(openarray[byte], int, int) is int
+      c.read(openArray[byte], int, int) is int
     Rdr = concept c
-      c.rd(openarray[byte], int, int) is int
+      c.rd(openArray[byte], int, int) is int
 
   type TestFile = object
 
-  proc read(r: TestFile, dest: openarray[byte], offset: int, limit: int): int =
+  proc read(r: TestFile, dest: openArray[byte], offset: int, limit: int): int =
       result = 0
-  proc rd(r: TestFile, dest: openarray[byte], offset: int, limit: int): int =
+  proc rd(r: TestFile, dest: openArray[byte], offset: int, limit: int): int =
       result = 0
 
   doAssert TestFile is Reader
@@ -484,10 +486,10 @@ type
 var address = pointer(nil)
 proc prod(r: var QuadraticExt, b: QuadraticExt) =
   if address == nil:
-    address = unsafeAddr b
+    address = addr b
     prod(r, b)
   else:
-    assert address == unsafeAddr b
+    assert address == addr b
 
 type
   Fp2[N: static int, T] {.byref.} = object
@@ -500,3 +502,26 @@ var r, b: Fp2[6, uint64]
 
 prod(r, b)
 
+
+block: # bug #21263
+  type
+    DateDayFraction = concept # no T, an atom
+      proc date(a: Self): int
+      proc fraction(b: Self): float
+    Date = distinct int
+    DateDayFractionImpl = object
+      date : int
+      fraction : float
+
+  proc date(a: Date): int = a.int
+  proc fraction(a:Date): float = 0.0
+
+  proc date(a: DateDayFractionImpl): int = a.date
+  proc fraction(b: DateDayFractionImpl): float = b.fraction
+
+
+  proc print(a: DateDayFraction) =
+    echo a.date, " ", a.fraction
+
+  print(10.Date) # ok
+  print(DateDayFractionImpl(date: 1, fraction: 2))  # error

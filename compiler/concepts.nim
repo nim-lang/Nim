@@ -11,10 +11,12 @@
 ## for details. Note this is a first implementation and only the "Concept matching"
 ## section has been implemented.
 
-import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer,
-  types, intsets
+import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer, types, intsets
 
 from magicsys import addSonSkipIntLit
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 const
   logBindings = false
@@ -23,16 +25,16 @@ const
 ## --------------------------------------
 
 proc declareSelf(c: PContext; info: TLineInfo) =
-  ## adds the magical 'Self' symbols to the current scope.
+  ## Adds the magical 'Self' symbols to the current scope.
   let ow = getCurrOwner(c)
-  let s = newSym(skType, getIdent(c.cache, "Self"), nextSymId(c.idgen), ow, info)
+  let s = newSym(skType, getIdent(c.cache, "Self"), c.idgen, ow, info)
   s.typ = newType(tyTypeDesc, nextTypeId(c.idgen), ow)
   s.typ.flags.incl {tfUnresolved, tfPacked}
   s.typ.add newType(tyEmpty, nextTypeId(c.idgen), ow)
   addDecl(c, s, info)
 
 proc isSelf*(t: PType): bool {.inline.} =
-  ## is this the magical 'Self' type?
+  ## Is this the magical 'Self' type?
   t.kind == tyTypeDesc and tfPacked in t.flags
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
@@ -45,8 +47,8 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
 
 proc semConceptDecl(c: PContext; n: PNode): PNode =
   ## Recursive helper for semantic checking for the concept declaration.
-  ## Currently we only support lists of statements containing 'proc'
-  ## declarations and the like.
+  ## Currently we only support (possibly empty) lists of statements
+  ## containing 'proc' declarations and the like.
   case n.kind
   of nkStmtList, nkStmtListExpr:
     result = shallowCopy(n)
@@ -59,8 +61,10 @@ proc semConceptDecl(c: PContext; n: PNode): PNode =
     for i in 0..<n.len-1:
       result[i] = n[i]
     result[^1] = semConceptDecl(c, n[^1])
+  of nkCommentStmt:
+    discard
   else:
-    localError(c.config, n.info, "unexpected construct in the new-styled concept " & renderTree(n))
+    localError(c.config, n.info, "unexpected construct in the new-styled concept: " & renderTree(n))
     result = n
 
 proc semConceptDeclaration*(c: PContext; n: PNode): PNode =
@@ -97,7 +101,7 @@ proc existingBinding(m: MatchCon; key: PType): PType =
 proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool
 
 proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
-  ## the heart of the concept matching process. 'f' is the formal parameter of some
+  ## The heart of the concept matching process. 'f' is the formal parameter of some
   ## routine inside the concept that we're looking for. 'a' is the formal parameter
   ## of a routine that might match.
   const
@@ -139,7 +143,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
           if result:
             when logBindings: echo "A adding ", f, " ", ak
             m.inferred.add((f, ak))
-        elif m.magic == mArrGet and ak.kind in {tyArray, tyOpenArray, tySequence, tyVarargs, tyCString, tyString}:
+        elif m.magic == mArrGet and ak.kind in {tyArray, tyOpenArray, tySequence, tyVarargs, tyCstring, tyString}:
           when logBindings: echo "B adding ", f, " ", lastSon ak
           m.inferred.add((f, lastSon ak))
           result = true
@@ -165,7 +169,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
       result = false
   of tyEnum, tyObject, tyDistinct:
     result = sameType(f, a)
-  of tyEmpty, tyString, tyCString, tyPointer, tyNil, tyUntyped, tyTyped, tyVoid:
+  of tyEmpty, tyString, tyCstring, tyPointer, tyNil, tyUntyped, tyTyped, tyVoid:
     result = a.skipTypes(ignorableForArgType).kind == f.kind
   of tyBool, tyChar, tyInt..tyUInt64:
     let ak = a.skipTypes(ignorableForArgType)
@@ -270,7 +274,7 @@ proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
 proc matchSyms(c: PContext, n: PNode; kinds: set[TSymKind]; m: var MatchCon): bool =
   ## Walk the current scope, extract candidates which the same name as 'n[namePos]',
   ## 'n' is the nkProcDef or similar from the concept that we try to match.
-  let candidates = searchInScopesFilterBy(c, n[namePos].sym.name, kinds)
+  let candidates = searchInScopesAllCandidatesFilterBy(c, n[namePos].sym.name, kinds)
   for candidate in candidates:
     #echo "considering ", typeToString(candidate.typ), " ", candidate.magic
     m.magic = candidate.magic
@@ -312,7 +316,7 @@ proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var TIdTable; invo
   ## concept's requirements. If so, we return true and fill the 'bindings' with pairs of
   ## (typeVar, instance) pairs. ('typeVar' is usually simply written as a generic 'T'.)
   ## 'invocation' can be nil for atomic concepts. For non-atomic concepts, it contains the
-  ## 'C[S, T]' parent type that we look for. We need this because we need to store bindings
+  ## `C[S, T]` parent type that we look for. We need this because we need to store bindings
   ## for 'S' and 'T' inside 'bindings' on a successful match. It is very important that
   ## we do not add any bindings at all on an unsuccessful match!
   var m = MatchCon(inferred: @[], potentialImplementation: arg)

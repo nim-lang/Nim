@@ -1,6 +1,6 @@
 #
 #
-#           The Nim Compiler
+#            Nim's Runtime Library
 #        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -13,6 +13,9 @@
 
 import
   strutils, streams
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 const
   EndOfFile* = '\0' ## end of file marker

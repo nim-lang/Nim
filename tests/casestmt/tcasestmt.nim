@@ -287,3 +287,14 @@ doAssert(foo2("Y", "a2") == 0)
 doAssert(foo2("Y", "2a") == 2)
 doAssert(foo2("N", "a3") == 3)
 doAssert(foo2("z", "2") == 0)
+
+
+# bug #20031
+proc main(a: uint64) =
+  case a
+  else:
+    discard
+
+static:
+  main(10)
+main(10)

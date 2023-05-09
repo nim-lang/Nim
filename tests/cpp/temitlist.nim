@@ -1,12 +1,14 @@
 discard """
   targets: "cpp"
-  output: '''6.0
+  output: '''
+6.0
 0'''
+disabled: "windows" # pending bug #18011
 """
 
 # bug #4730
 
-type Vector* {.importcpp: "std::vector", header: "<vector>".}[T] = object
+type Vector*[T] {.importcpp: "std::vector", header: "<vector>".} = object
 
 template `[]=`*[T](v: var Vector[T], key: int, val: T) =
   {.emit: [v, "[", key, "] = ", val, ";"].}

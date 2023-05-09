@@ -1,6 +1,6 @@
 discard """
   targets: "c"
-  cmd: "nim $target --os:freertos --gc:arc $options $file"
+  cmd: "nim $target --compileOnly --os:freertos --gc:arc $options $file"
   disabled: "bsd"
   disabled: "windows"
   action: compile

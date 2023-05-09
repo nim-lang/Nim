@@ -253,7 +253,7 @@ when false:
 
 # bug #13456
 
-iterator combinations[T](s: openarray[T], k: int): seq[T] =
+iterator combinations[T](s: openArray[T], k: int): seq[T] =
   let n = len(s)
   assert k >= 0 and k <= n
   var pos = newSeq[int](k)
@@ -416,7 +416,7 @@ initFoo7(2)
 
 
 # bug #14902
-iterator zip[T](s: openarray[T]): (T, T) =
+iterator zip[T](s: openArray[T]): (T, T) =
   var i = 0
   while i < 10:
     yield (s[i mod 2], s[i mod 2 + 1])

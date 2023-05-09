@@ -26,7 +26,7 @@ proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
   result = systemModuleSym(g, getIdent(g.cache, name))
   if result == nil:
     localError(g.config, info, "system module needs: " & name)
-    result = newSym(skError, getIdent(g.cache, name), nextSymId(g.idgen), g.systemModule, g.systemModule.info, {})
+    result = newSym(skError, getIdent(g.cache, name), g.idgen, g.systemModule, g.systemModule.info, {})
     result.typ = newType(tyError, nextTypeId(g.idgen), g.systemModule)
   if result.kind == skAlias: result = result.owner
 
@@ -39,7 +39,7 @@ proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSy
       result = r
   if result != nil: return result
   localError(g.config, info, "system module needs: " & name)
-  result = newSym(skError, id, nextSymId(g.idgen), g.systemModule, g.systemModule.info, {})
+  result = newSym(skError, id, g.idgen, g.systemModule, g.systemModule.info, {})
   result.typ = newType(tyError, nextTypeId(g.idgen), g.systemModule)
 
 proc sysTypeFromName*(g: ModuleGraph; info: TLineInfo; name: string): PType =
@@ -50,6 +50,7 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
   result = g.sysTypes[kind]
   if result == nil:
     case kind
+    of tyVoid: result = sysTypeFromName("void")
     of tyInt: result = sysTypeFromName("int")
     of tyInt8: result = sysTypeFromName("int8")
     of tyInt16: result = sysTypeFromName("int16")
@@ -67,7 +68,7 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
     of tyBool: result = sysTypeFromName("bool")
     of tyChar: result = sysTypeFromName("char")
     of tyString: result = sysTypeFromName("string")
-    of tyCString: result = sysTypeFromName("cstring")
+    of tyCstring: result = sysTypeFromName("cstring")
     of tyPointer: result = sysTypeFromName("pointer")
     of tyNil: result = newSysType(g, tyNil, g.config.target.ptrSize)
     else: internalError(g.config, "request for typekind: " & $kind)

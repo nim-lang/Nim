@@ -7,7 +7,6 @@ discard """
 import
   asyncjs,
   dom,
-  dom_extensions,
   jsconsole,
   jsffi,
   jsre

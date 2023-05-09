@@ -121,7 +121,7 @@ proc createSeq*[T](elems: varargs[T]): myseq[T] =
   result.data = cast[type(result.data)](alloc(result.cap * sizeof(T)))
   inc allocCount
   when supportsCopyMem(T):
-    copyMem(result.data, unsafeAddr(elems[0]), result.cap * sizeof(T))
+    copyMem(result.data, addr(elems[0]), result.cap * sizeof(T))
   else:
     for i in 0..<result.len:
       result.data[i] = elems[i]

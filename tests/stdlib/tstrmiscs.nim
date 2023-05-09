@@ -1,4 +1,9 @@
-import strmisc
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
+import std/strmisc
+import std/assertions
 
 
 doAssert expandTabs("\t", 4) == "    "

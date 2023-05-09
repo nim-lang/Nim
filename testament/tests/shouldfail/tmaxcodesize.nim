@@ -1,5 +1,5 @@
 discard """
-maxcodesize: 1
+  maxcodesize: 1
 """
 
 echo "Hello World"

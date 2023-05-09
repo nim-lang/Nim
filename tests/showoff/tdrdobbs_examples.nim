@@ -40,12 +40,12 @@ const msb3999 = mostSignificantBit(3999)
 
 echo msb3999, " ", mostSignificantBit(0), " ", square(44)
 
-proc filter[T](a: openarray[T], predicate: proc (x: T): bool): seq[T] =
+proc filter[T](a: openArray[T], predicate: proc (x: T): bool): seq[T] =
   result = @[] # @[] constructs the empty seq
   for x in a:
     if predicate(x): result.add(x)
 
-proc map[T, S](a: openarray[T], fn: proc (x: T): S): seq[S] =
+proc map[T, S](a: openArray[T], fn: proc (x: T): S): seq[S] =
   newSeq(result, a.len)
   for i in 0 ..< a.len: result[i] = fn(a[i])
 

@@ -871,11 +871,20 @@ static:
 
   scope:
     macro testRecCase(ast: untyped): untyped =
-      ast.peelOff({nnkStmtList, nnkTypeSection})[2].matchAst:
-      of nnkObjectTy(
-        nnkPragma(
-          ident"inheritable"
+      ast.peelOff({nnkStmtList, nnkTypeSection}).matchAst:
+      of nnkTypeDef(
+        nnkPragmaExpr(
+          ident"Obj",
+          nnkPragma(ident"inheritable")
         ),
+        nnkGenericParams(
+        nnkIdentDefs(
+          ident"T",
+          nnkEmpty(),
+          nnkEmpty())
+        ),
+        nnkObjectTy(
+        nnkEmpty(),
         nnkEmpty(),
         nnkRecList( # list of object parameters
           nnkIdentDefs(
@@ -914,6 +923,7 @@ static:
                     ident"T"
                   ),
                   nnkEmpty()
+                  )
                 )
               )
             )
@@ -922,10 +932,8 @@ static:
       ):
         echo "ok"
 
-
-
     testRecCase:
-      type Obj[T] = object {.inheritable.}
+      type Obj[T] {.inheritable.} = object
         name: string
         case isFat: bool
         of true:

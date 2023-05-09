@@ -41,8 +41,11 @@ runnableExamples("-r:off"):
 
 import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
-from nativesockets import getLocalAddr, AF_INET
+from nativesockets import getLocalAddr, Domain, AF_INET, AF_INET6
 import std/private/since
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 export httpcore except parseHeader
 
@@ -82,21 +85,7 @@ proc getPort*(self: AsyncHttpServer): Port {.since: (1, 5, 1).} =
     server.listen(Port(0))
     assert server.getPort.uint16 > 0
     server.close()
-  result = getLocalAddr(self.socket.getFd, AF_INET)[1]
-
-func getSocket*(self: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
-  ## Field accessor.
-  runnableExamples:
-    from std/asyncnet import getFd
-    from std/nativesockets import getLocalAddr, AF_INET, Port
-    let server = newAsyncHttpServer()
-    server.listen(Port(0)) # Socket is not bound until this point
-    # note: a more direct way to get the port is `getPort`.
-    let (laddr, port) = getLocalAddr(server.getSocket.getFd, AF_INET)
-    assert uint16(port) > 0
-    assert laddr == "0.0.0.0"
-    server.close()
-  self.socket
+  result = getLocalAddr(self.socket)[1]
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608): AsyncHttpServer =
@@ -122,7 +111,7 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ##
   ## Example:
   ##
-  ## .. code-block::nim
+  ## .. code-block:: Nim
   ##    import std/json
   ##    proc handler(req: Request) {.async.} =
   ##      if req.url.path == "/hello-world":
@@ -169,7 +158,7 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
-func hasChunkedEncoding(request: Request): bool = 
+func hasChunkedEncoding(request: Request): bool =
   ## Searches for a chunked transfer encoding
   const transferEncoding = "Transfer-Encoding"
 
@@ -184,7 +173,7 @@ proc processRequest(
   server: AsyncHttpServer,
   req: FutureVar[Request],
   client: AsyncSocket,
-  address: string,
+  address: sink string,
   lineFut: FutureVar[string],
   callback: proc (request: Request): Future[void] {.closure, gcsafe.},
 ): Future[bool] {.async.} =
@@ -198,7 +187,10 @@ proc processRequest(
   # \n
   request.headers.clear()
   request.body = ""
-  request.hostname.shallowCopy(address)
+  when defined(gcArc) or defined(gcOrc):
+    request.hostname = address
+  else:
+    request.hostname.shallowCopy(address)
   assert client != nil
   request.client = client
 
@@ -308,7 +300,7 @@ proc processRequest(
     while true:
       lineFut.mget.setLen(0)
       lineFut.clean()
-      
+
       # The encoding format alternates between specifying a number of bytes to read
       # and the data to be read, of the previously specified size
       if sizeOrData mod 2 == 0:
@@ -376,7 +368,9 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
     let retry = await processRequest(
       server, request, client, address, lineFut, callback
     )
-    if not retry: break
+    if not retry:
+      client.close()
+      break
 
 const
   nimMaxDescriptorsFallback* {.intdefine.} = 16_000 ## fallback value for \
@@ -384,17 +378,18 @@ const
     ## This can be set on the command line during compilation
     ## via `-d:nimMaxDescriptorsFallback=N`
 
-proc listen*(server: AsyncHttpServer; port: Port; address = "") =
+proc listen*(server: AsyncHttpServer; port: Port; address = ""; domain = AF_INET) =
   ## Listen to the given port and address.
   when declared(maxDescriptors):
     server.maxFDs = try: maxDescriptors() except: nimMaxDescriptorsFallback
   else:
     server.maxFDs = nimMaxDescriptorsFallback
-  server.socket = newAsyncSocket()
+  server.socket = newAsyncSocket(domain)
   if server.reuseAddr:
     server.socket.setSockOpt(OptReuseAddr, true)
-  if server.reusePort:
-    server.socket.setSockOpt(OptReusePort, true)
+  when not defined(nuttx):
+    if server.reusePort:
+      server.socket.setSockOpt(OptReusePort, true)
   server.socket.bindAddr(port, address)
   server.socket.listen()
 
@@ -416,7 +411,8 @@ proc acceptRequest*(server: AsyncHttpServer,
 proc serve*(server: AsyncHttpServer, port: Port,
             callback: proc (request: Request): Future[void] {.closure, gcsafe.},
             address = "";
-            assumedDescriptorsPerRequest = -1) {.async.} =
+            assumedDescriptorsPerRequest = -1;
+            domain = AF_INET) {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the
   ## specified address and port.
   ##
@@ -429,7 +425,7 @@ proc serve*(server: AsyncHttpServer, port: Port,
   ##
   ## You should prefer to call `acceptRequest` instead with a custom server
   ## loop so that you're in control over the error handling and logging.
-  listen server, port, address
+  listen server, port, address, domain
   while true:
     if shouldAcceptRequest(server, assumedDescriptorsPerRequest):
       var (address, client) = await server.socket.acceptAddr()

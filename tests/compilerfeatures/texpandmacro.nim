@@ -1,6 +1,6 @@
 discard """
   cmd: "nim c --expandMacro:foo $file"
-  nimout: '''Hint: expanded macro:
+  nimout: '''texpandmacro.nim(17, 1) Hint: expanded macro:
 echo ["injected echo"]
 var x = 4 [ExpandMacro]
 '''

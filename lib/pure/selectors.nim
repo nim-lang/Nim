@@ -27,13 +27,17 @@
 ##
 ## TODO: `/dev/poll`, `event ports` and filesystem events.
 
-import os, nativesockets
+import nativesockets
+import std/oserrors
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
 const ioselSupportedPlatform* = defined(macosx) or defined(freebsd) or
                                 defined(netbsd) or defined(openbsd) or
-                                defined(dragonfly) or
+                                defined(dragonfly) or defined(nuttx) or
                                 (defined(linux) and not defined(android) and not defined(emscripten))
   ## This constant is used to determine whether the destination platform is
   ## fully supported by `ioselectors` module.
@@ -321,7 +325,24 @@ else:
   proc verifySelectParams(timeout: int) =
     # Timeout of -1 means: wait forever
     # Anything higher is the time to wait in milliseconds.
-    doAssert(timeout >= -1, "Cannot select with a negative value, got " & $timeout)
+    doAssert(timeout >= -1, "Cannot select with a negative value, got: " & $timeout)
+
+  when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
+       defined(solaris) or defined(zephyr) or defined(freertos) or defined(nuttx) or defined(haiku):
+    template maxDescriptors*(): int =
+      ## Returns the maximum number of active file descriptors for the current
+      ## process. This involves a system call. For now `maxDescriptors` is
+      ## supported on the following OSes: Windows, Linux, OSX, BSD, Solaris.
+      when defined(windows):
+        16_700_000
+      elif defined(zephyr) or defined(freertos):
+        FD_MAX
+      else:
+        var fdLim: RLimit
+        var res = int(getrlimit(RLIMIT_NOFILE, fdLim))
+        if res >= 0:
+          res = int(fdLim.rlim_cur) - 1
+        res
 
   when defined(linux) and not defined(emscripten):
     include ioselects/ioselectors_epoll
@@ -337,5 +358,9 @@ else:
     include ioselects/ioselectors_select
   elif defined(freertos) or defined(lwip):
     include ioselects/ioselectors_select
+  elif defined(zephyr):
+    include ioselects/ioselectors_poll
+  elif defined(nuttx):
+    include ioselects/ioselectors_epoll
   else:
     include ioselects/ioselectors_poll

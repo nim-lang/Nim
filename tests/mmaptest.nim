@@ -19,8 +19,11 @@ proc `+!!`(p: pointer, size: int): pointer {.inline.} =
   result = cast[pointer](cast[int](p) + size)
 
 const
-  PageShift = when defined(cpu16): 8 else: 12 # \
-    # my tests showed no improvements for using larger page sizes.
+  PageShift = when defined(nimPage256) or defined(cpu16): 8
+              elif defined(nimPage512): 9
+              elif defined(nimPage1k): 10
+              else: 12 # \ # my tests showed no improvements for using larger page sizes.
+
   PageSize = 1 shl PageShift
 
 var p = osAllocPages(3 * PageSize)
