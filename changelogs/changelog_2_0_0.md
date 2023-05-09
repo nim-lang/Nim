@@ -455,6 +455,12 @@
 
 - When compiling for Release the flag `-fno-math-errno` is used for GCC.
 - When compiling for Release the flag `--build-id=none` is used for GCC Linker.
+- Added `--maxLineLen=N` where `N` is a `Natural` positive integer `>=80`,
+  this is the total maximum line lenght for Nim source code including indentations,
+  lines longer than this can produce a warning (use `warningAsError` for an error),
+  this replaces the old hint `LineTooLong` hardcoded to `80` characters maximum,
+  see `nimpretty` option `--maxLineLen=N` to format the line lenght.
+
 
 ## Docgen
 
