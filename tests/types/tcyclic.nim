@@ -94,3 +94,10 @@ block:
   cyclicYes(Base3)
   cyclicYes(Base4)
   cyclicYes(ref Base4)
+
+block:
+  type Cyclic2 = object
+    x: ref (Cyclic2, int)
+
+  cyclicYes (Cyclic2, int)
+  cyclicYes (ref (Cyclic2, int))

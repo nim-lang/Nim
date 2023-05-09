@@ -370,21 +370,23 @@ proc containsHiddenPointer*(typ: PType): bool =
   # that need to be copied deeply)
   result = searchTypeFor(typ, isHiddenPointer)
 
-proc canFormAcycleAux(g: ModuleGraph; marker: var IntSet, typ: PType, orig: PType, startId: int, withRef: bool): bool
-proc canFormAcycleNode(g: ModuleGraph; marker: var IntSet, n: PNode, orig: PType, startId: int, withRef: bool): bool =
+proc canFormAcycleAux(g: ModuleGraph; marker: var IntSet, typ: PType, orig: PType, withRef: bool): bool
+proc canFormAcycleNode(g: ModuleGraph; marker: var IntSet, n: PNode, orig: PType, withRef: bool): bool =
   result = false
   if n != nil:
-    result = canFormAcycleAux(g, marker, n.typ, orig, startId, withRef)
+    result = canFormAcycleAux(g, marker, n.typ, orig, withRef)
     if not result:
       case n.kind
       of nkNone..nkNilLit:
         discard
       else:
         for i in 0..<n.len:
-          result = canFormAcycleNode(g, marker, n[i], orig, startId, withRef)
+          result = canFormAcycleNode(g, marker, n[i], orig, withRef)
           if result: return
 
-proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PType, startId: int, withRef: bool): bool =
+
+proc sameBackendType*(x, y: PType): bool
+proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PType, withRef: bool): bool =
   result = false
   if typ == nil: return
   if tfAcyclic in typ.flags: return
@@ -392,20 +394,20 @@ proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PTyp
   if tfAcyclic in t.flags: return
   case t.kind
   of tyRef:
-    if withRef and (t.id == startId or (t.id > 0 and orig.kind == tyRef and t.base.id == orig.base.id)):
+    if withRef and sameBackendType(t, orig):
       result = true
     elif not containsOrIncl(marker, t.id):
       for i in 0..<t.len:
-        result = canFormAcycleAux(g, marker, t[i], orig, abs startId, true)
+        result = canFormAcycleAux(g, marker, t[i], orig, true)
         if result: return
   of tyTuple, tyObject, tySequence, tyArray, tyOpenArray, tyVarargs:
-    if withRef and t.id == startId:
+    if withRef and sameBackendType(t, orig):
       result = true
     elif not containsOrIncl(marker, t.id):
       for i in 0..<t.len:
-        result = canFormAcycleAux(g, marker, t[i], orig, abs startId, withRef)
+        result = canFormAcycleAux(g, marker, t[i], orig, withRef)
         if result: return
-      if t.n != nil: result = canFormAcycleNode(g, marker, t.n, orig, abs startId, withRef)
+      if t.n != nil: result = canFormAcycleNode(g, marker, t.n, orig, withRef)
     # Inheritance can introduce cyclic types, however this is not relevant
     # as the type that is passed to 'new' is statically known!
     # er but we use it also for the write barrier ...
@@ -430,7 +432,7 @@ proc canFormAcycle*(g: ModuleGraph, typ: PType): bool =
   # startId begins with a negative value that is only in the first recursion
   # and the following recursions set to its real value. This fixes
   # bug #21753:
-  result = canFormAcycleAux(g, marker, t, t, -t.id, false)
+  result = canFormAcycleAux(g, marker, t, t, false)
 
 proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
                    closure: RootRef): PType
