@@ -53,18 +53,16 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc =
     else:
       ""
 
-  if not defined(windows) or not isOrc: # todo fix me on windows
-    var test1 = makeTest("lib/nimrtl.nim", options & " --outdir:tests/dll", cat)
-    test1.spec.action = actionCompile
-    testSpec c, test1
+  var test1 = makeTest("lib/nimrtl.nim", options & " --outdir:tests/dll", cat)
+  test1.spec.action = actionCompile
+  testSpec c, test1
   var test2 = makeTest("tests/dll/server.nim", options & " --threads:on" & rpath, cat)
   test2.spec.action = actionCompile
   testSpec c, test2
 
-  if not isOrc:
-    var test3 = makeTest("lib/nimhcr.nim", options & " --threads:off --outdir:tests/dll" & rpath, cat)
-    test3.spec.action = actionCompile
-    testSpec c, test3
+  var test3 = makeTest("lib/nimhcr.nim", options & " --threads:off --outdir:tests/dll" & rpath, cat)
+  test3.spec.action = actionCompile
+  testSpec c, test3
   var test4 = makeTest("tests/dll/visibility.nim", options & " --threads:off --app:lib" & rpath, cat)
   test4.spec.action = actionCompile
   testSpec c, test4
@@ -79,9 +77,8 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc =
     putEnv(libpathenv, "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
     defer: putEnv(libpathenv, libpath)
 
-  if not isOrc:
-    testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
-    testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
+  testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
+  testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
   testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
 
   if "boehm" notin options:
@@ -686,7 +683,7 @@ proc processCategory(r: var TResults, cat: Category,
       else:
         jsTests(r, cat, options)
     of "dll":
-      dllTests(r, cat, options)
+      dllTests(r, cat, options & " -d:nimDebugDlOpen")
     of "gc":
       gcTests(r, cat, options)
     of "debugger":
