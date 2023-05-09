@@ -36,7 +36,7 @@ template frees(s) =
 
 proc resize(old: int): int {.inline.} =
   if old <= 0: result = 4
-  elif old < 65536: result = old * 2
+  elif old <= high(int16): result = old * 2
   else: result = old * 3 div 2 # for large arrays * 3/2 is better
 
 proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
@@ -89,7 +89,7 @@ proc cstrToNimstr(str: cstring): NimStringV2 {.compilerRtl.} =
 
 proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, inline.} =
   if s.len == 0: result = cstring""
-  else: result = cstring(unsafeAddr s.p.data)
+  else: result = cast[cstring](unsafeAddr s.p.data)
 
 proc appendString(dest: var NimStringV2; src: NimStringV2) {.compilerproc, inline.} =
   if src.len > 0:
@@ -175,3 +175,19 @@ proc prepareMutation*(s: var string) {.inline.} =
   {.cast(noSideEffect).}:
     let s = unsafeAddr s
     nimPrepareStrMutationV2(cast[ptr NimStringV2](s)[])
+
+
+template capacityImpl(str: NimStringV2): int =
+  if str.p != nil: str.p.cap else: 0
+
+func capacity*(self: string): int {.inline.} =
+  ## Returns the current capacity of the string.
+  # See https://github.com/nim-lang/RFCs/issues/460
+  runnableExamples:
+    var str = newStringOfCap(cap = 42)
+    str.add "Nim"
+    assert str.capacity == 42
+
+  {.cast(noSideEffect).}:
+    let str = unsafeAddr self
+    result = capacityImpl(cast[ptr NimStringV2](str)[])

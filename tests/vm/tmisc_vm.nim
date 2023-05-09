@@ -1,7 +1,12 @@
 discard """
+  targets: "c js"
   output: '''
 [127, 127, 0, 255][127, 127, 0, 255]
 (data: 1)
+(2, 1)
+(2, 1)
+(2, 1)
+(f0: 5)
 '''
 
   nimout: '''caught Exception
@@ -17,6 +22,19 @@ foo4
 (a: 0, b: 0)
 (a: 0, b: 0)
 (a: 0, b: 0)
+z1 m: (lo: 12)
+z2 a: (lo: 3)
+x1 a: (lo: 3)
+x2 a: (lo: 6)
+x3 a: (lo: 0)
+z3 a: (lo: 3)
+x1 a: (lo: 3)
+x2 a: (lo: 6)
+x3 a: (lo: 0)
+(2, 1)
+(2, 1)
+(2, 1)
+(f0: 5)
 '''
 """
 import std/sets
@@ -249,3 +267,193 @@ static:
   echo x2[]
   let x3 = new(ref MyObject) # cannot generate VM code for ref MyObject
   echo x3[]
+
+# bug #19464
+type
+  Wrapper = object
+    inner: int
+
+proc assign(r: var Wrapper, a: Wrapper) =
+  r = a
+
+proc myEcho(a: Wrapper) =
+  var tmp = a
+  assign(tmp, Wrapper(inner: 0)) # this shouldn't modify `a`
+  doAssert a.inner == 1
+
+static:
+  var result: Wrapper
+  assign(result, Wrapper(inner: 1))
+  myEcho(result)
+
+when true:
+  # bug #15974
+  type Foo = object
+    f0: int
+
+  proc fn(a: var Foo) =
+    var s: Foo
+    a = Foo(f0: 2)
+    s = a
+    doAssert s.f0 == 2
+    a = Foo(f0: 3)
+    doAssert s.f0 == 2
+
+  proc test2()=
+    var a = Foo(f0: 1)
+    fn(a)
+
+  static: test2()
+  test2()
+
+# bug #12551
+type
+  StUint = object
+    lo: uint64
+
+func `+=`(x: var Stuint, y: Stuint) =
+  x.lo += y.lo
+
+func `-`(x, y: Stuint): Stuint =
+  result.lo = x.lo - y.lo
+
+func `+`(x, y: Stuint): Stuint =
+  result.lo = x.lo + y.lo
+
+func `-=`(x: var Stuint, y: Stuint) =
+  x = x - y
+
+func `<`(x, y: Stuint): bool=
+  x.lo < y.lo
+
+func `==`(x, y: Stuint): bool =
+  x.lo == y.lo
+
+func `<=`(x, y: Stuint): bool =
+  x.lo <= y.lo
+
+proc div3n2n(r: var Stuint, b: Stuint) =
+  var d: Stuint
+  r = d
+  r += b
+
+func div2n1n(r: var Stuint, b: Stuint) =
+  div3n2n(r, b)
+
+func divmodBZ(x, y: Stuint, r: var Stuint)=
+  div2n1n(r, y)
+  r.lo = 3
+
+func `mod`(x, y: Stuint): Stuint =
+  divmodBZ(x, y, result)
+
+func doublemod_internal(a, m: Stuint): Stuint =
+  result = a
+  if a >= m - a:
+    result -= m
+  result += a
+
+func mulmod_internal(a, b, m: Stuint): Stuint =
+  var (a, b) = (a, b)
+  swap(a, b)
+  debugEcho "x1 a: ", a
+  a = doublemod_internal(a, m)
+  debugEcho "x2 a: ", a
+  a = doublemod_internal(a, m)
+  debugEcho "x3 a: ", a
+
+func powmod_internal(a, m: Stuint): Stuint =
+  var a = a
+  debugEcho "z1 m: ", m
+  debugEcho "z2 a: ", a
+  result = mulmod_internal(result, a, m)
+  debugEcho "z3 a: ", a
+  a = mulmod_internal(a, a, m)
+
+func powmod*(a, m: Stuint) =
+  discard powmod_internal(a mod m, m)
+
+static:
+  var x = Stuint(lo: high(uint64))
+  var y = Stuint(lo: 12)
+
+  powmod(x, y)
+
+# bug #16780
+when true:
+  template swap*[T](a, b: var T) =
+    var a2 = addr(a)
+    var b2 = addr(b)
+    var aOld = a2[]
+    a2[] = b2[]
+    b2[] = aOld
+
+  proc rather =
+    block:
+      var a = 1
+      var b = 2
+      swap(a, b)
+      echo (a,b)
+
+    block:
+      type Foo = ref object
+        x: int
+      var a = Foo(x:1)
+      var b = Foo(x:2)
+      swap(a, b)
+      echo (a.x, b.x)
+
+    block:
+      type Foo = object
+        x: int
+      var a = Foo(x:1)
+      var b = Foo(x:2)
+      swap(a, b)
+      echo (a.x,b.x)
+
+  static: rather()
+  rather()
+
+# bug #16020
+when true:
+  block:
+    type Foo = object
+      f0: int
+    proc main=
+      var f = Foo(f0: 3)
+      var f2 = f.addr
+      f2[].f0 += 1
+      f2.f0 += 1
+      echo f
+    static: main()
+    main()
+
+import tables, strutils
+
+# bug #14553
+const PpcPatterns = @[("aaaa", "bbbb"), ("aaaaa", "bbbbb"), ("aaaaaa", "bbbbbb"), ("aaaaaaa", "bbbbbbb"), ("aaaaaaaa", "bbbbb")]
+
+static:
+    var
+        needSecondIdentifier = initTable[uint32, seq[(string, string)]]()
+
+    for (name, pattern) in PpcPatterns:
+        let
+            firstPart = 0'u32
+            lastPart = "test"
+
+        needSecondIdentifier.mgetOrPut(firstPart, @[]).add((name, pattern))
+
+    doAssert needSecondIdentifier[0] == @[("aaaa", "bbbb"), ("aaaaa", "bbbbb"), ("aaaaaa", "bbbbbb"), ("aaaaaaa", "bbbbbbb"), ("aaaaaaaa", "bbbbb")]
+
+# bug #17864
+macro transform*(fn: typed) =
+  quote do:
+    `fn`
+
+var map: Table[string, HashSet[string]]
+proc publish*(): void {.transform.} =
+  map["k"] = init_hash_set[string]()
+  map["k"].incl "d"
+
+publish()

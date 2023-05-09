@@ -1,8 +1,13 @@
+discard """
+  matrix: "--mm:orc; --mm:refc"
+"""
+
 # xxx also test on js
 
 import std/genasts
 import std/macros
 from std/strformat import `&`
+import std/assertions
 import ./mgenast
 
 proc main =

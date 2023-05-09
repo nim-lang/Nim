@@ -13,7 +13,7 @@ import streams, json, intsets, tables, ast, astalgo, idents, types, msgs,
   options, lineinfos
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, formatfloat]
 
 proc ptrToInt(x: PNode): int {.inline.} =
   result = cast[int](x) # don't skip alignment
@@ -224,7 +224,7 @@ proc loadAny(p: var JsonParser, t: PType,
       if pos >= result.len:
         setLen(result.sons, pos + 1)
       let fieldNode = newNode(nkExprColonExpr)
-      fieldNode.add newSymNode(newSym(skField, ident, nextSymId(idgen), nil, unknownLineInfo))
+      fieldNode.add newSymNode(newSym(skField, ident, idgen, nil, unknownLineInfo))
       fieldNode.add loadAny(p, field.typ, tab, cache, conf, idgen)
       result[pos] = fieldNode
     if p.kind == jsonObjectEnd: next(p)

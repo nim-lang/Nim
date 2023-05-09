@@ -86,6 +86,7 @@ proc patchFile*(package, filename, replacement: string) =
   ## is interpreted to be local to the Nimscript file that contains
   ## the call to `patchFile`, Nim's `--path` is not used at all
   ## to resolve the filename!
+  ## The compiler also performs `path substitution <nimc.html#compiler-usage-commandminusline-switches>`_ on `replacement`.
   ##
   ## Example:
   ##
@@ -342,16 +343,16 @@ template withDir*(dir: string; body: untyped): untyped =
   ## Usage example:
   ##
   ## .. code-block:: nim
+  ##   # inside /some/path/
   ##   withDir "foo":
-  ##     # inside foo
-  ##   #back to last dir
-  var curDir = getCurrentDir()
+  ##     # move to /some/path/foo/
+  ##   # back in /some/path/
+  let curDir = getCurrentDir()
   try:
     cd(dir)
     body
   finally:
     cd(curDir)
-
 
 proc writeTask(name, desc: string) =
   if desc.len > 0:

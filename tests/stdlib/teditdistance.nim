@@ -1,4 +1,9 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import std/editdistance
+import std/assertions
 
 doAssert editDistance("", "") == 0
 doAssert editDistance("kitten", "sitting") == 3 # from Wikipedia

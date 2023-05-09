@@ -5,9 +5,10 @@ The System module imports several separate modules, and their documentation
 is in separate files:
 
 * `iterators <iterators.html>`_
+* `exceptions <exceptions.html>`_
 * `assertions <assertions.html>`_
 * `dollars <dollars.html>`_
-* `widestrs <widestrs.html>`_
+* `ctypes <ctypes.html>`_
 
 
 Here is a short overview of the most commonly used functions from the
@@ -98,6 +99,7 @@ Proc                                Usage
 ===============================     ======================================
 
 **See also:**
+* `setutils module <setutils.html>`_ for bit set convenience functions
 * `sets module <sets.html>`_ for hash sets
 * `intsets module <intsets.html>`_ for efficient int sets
 

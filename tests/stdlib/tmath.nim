@@ -1,12 +1,14 @@
 discard """
   targets: "c cpp js"
-  matrix:"; -d:danger"
+  matrix:"; -d:danger; --mm:refc"
 """
 
 # xxx: there should be a test with `-d:nimTmathCase2 -d:danger --passc:-ffast-math`,
 # but it requires disabling certain lines with `when not defined(nimTmathCase2)`
 
 import std/math
+import std/assertions
+
 
 # Function for approximate comparison of floats
 proc `==~`(x, y: float): bool = abs(x - y) < 1e-9
@@ -437,6 +439,20 @@ template main() =
       doAssert lgamma(-0.0) == Inf
       doAssert lgamma(-1.0) == Inf
 
-
 static: main()
 main()
+
+when not defined(js) and not defined(danger):
+  block: # bug #21792
+    block:
+      type Digit = 0..9
+      var x = [Digit 4, 7]
+
+      doAssertRaises(RangeDefect):
+        discard sum(x)
+
+    block:
+      var x = [int8 124, 127]
+
+      doAssertRaises(OverflowDefect):
+        discard sum(x)

@@ -1,9 +1,10 @@
 discard """
-  targets: "c cpp js"
+  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:on; --backend:js --jsbigint64:off"
 """
 
 import std/hashes
 from stdtest/testutils import disableVm, whenVMorJs
+import std/assertions
 
 when not defined(js) and not defined(cpp):
   block:

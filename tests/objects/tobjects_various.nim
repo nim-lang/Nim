@@ -31,7 +31,7 @@ block tobject2:
 
 block tofopr:
   type
-    TMyType = object {.inheritable.}
+    TMyType {.inheritable.} = object
       len: int
       data: string
 
@@ -105,3 +105,16 @@ block t7244:
 
   proc test(foo: var Foo) = discard
   proc test(bar: var Bar) = test(Foo(bar))
+
+
+import std/macros
+
+#bug #20856
+macro ensureImplWorksOnConstr(t: typed): untyped =
+  expectKind(t, nnkObjConstr)
+  doAssert t[0].getTypeInst.getImpl.repr == "A = object"
+  doAssert t[0].getImpl.repr == "A = object"
+
+type A = object
+
+ensureImplWorksOnConstr(A())

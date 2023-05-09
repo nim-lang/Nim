@@ -9,6 +9,8 @@ disabled: true
 import
   parseopt
 
+import std/[assertions, syncio]
+
 proc writeHelp() =
   writeLine(stdout, "Usage: tparsopt [options] filename [options]")
 

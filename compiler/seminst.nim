@@ -28,43 +28,24 @@ proc addObjFieldsToLocalScope(c: PContext; n: PNode) =
       # it is not an error to shadow fields via parameters
   else: discard
 
-proc rawPushProcCon(c: PContext, owner: PSym) =
+proc pushProcCon*(c: PContext; owner: PSym) =
   var x: PProcCon
   new(x)
   x.owner = owner
   x.next = c.p
   c.p = x
 
-proc rawHandleSelf(c: PContext; owner: PSym) =
-  const callableSymbols = {skProc, skFunc, skMethod, skConverter, skIterator, skMacro}
-  if c.selfName != nil and owner.kind in callableSymbols and owner.typ != nil:
-    let params = owner.typ.n
-    if params.len > 1:
-      let arg = params[1].sym
-      if arg.name.id == c.selfName.id:
-        c.p.selfSym = arg
-        arg.flags.incl sfIsSelf
-        var t = c.p.selfSym.typ.skipTypes(abstractPtrs)
-        while t.kind == tyObject:
-          addObjFieldsToLocalScope(c, t.n)
-          if t[0] == nil: break
-          t = t[0].skipTypes(skipPtrs)
-
-proc pushProcCon*(c: PContext; owner: PSym) =
-  rawPushProcCon(c, owner)
-  rawHandleSelf(c, owner)
-
 const
   errCannotInstantiateX = "cannot instantiate: '$1'"
 
 iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym =
   internalAssert c.config, n.kind == nkGenericParams
-  for i, a in n.pairs:
+  for a in n.items:
     internalAssert c.config, a.kind == nkSym
     var q = a.sym
     if q.typ.kind in {tyTypeDesc, tyGenericParam, tyStatic, tyConcept}+tyTypeClasses:
       let symKind = if q.typ.kind == tyStatic: skConst else: skType
-      var s = newSym(symKind, q.name, nextSymId(c.idgen), getCurrOwner(c), q.info)
+      var s = newSym(symKind, q.name, c.idgen, getCurrOwner(c), q.info)
       s.flags.incl {sfUsed, sfFromGeneric}
       var t = PType(idTableGet(pt, q.typ))
       if t == nil:
@@ -73,7 +54,8 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
           # later by semAsgn in return type inference scenario
           t = q.typ
         else:
-          localError(c.config, a.info, errCannotInstantiateX % s.name.s)
+          if q.typ.kind != tyCompositeTypeClass:
+            localError(c.config, a.info, errCannotInstantiateX % s.name.s)
           t = errorType(c)
       elif t.kind in {tyGenericParam, tyConcept}:
         localError(c.config, a.info, errCannotInstantiateX % q.name.s)
@@ -118,7 +100,7 @@ proc freshGenSyms(c: PContext; n: PNode, owner, orig: PSym, symMap: var TIdTable
       n.sym = x
     elif s.owner == nil or s.owner.kind == skPackage:
       #echo "copied this ", s.name.s
-      x = copySym(s, nextSymId c.idgen)
+      x = copySym(s, c.idgen)
       x.owner = owner
       idTablePut(symMap, s, x)
       n.sym = x
@@ -145,11 +127,18 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
         if sfGenSym in param.flags:
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
     freshGenSyms(c, b, result, orig, symMap)
-    
-    if sfBorrow notin orig.flags: 
+
+    if sfBorrow notin orig.flags:
       # We do not want to generate a body for generic borrowed procs.
       # As body is a sym to the borrowed proc.
-      b = semProcBody(c, b)
+      let resultType = # todo probably refactor it into a function
+        if result.kind == skMacro:
+          sysTypeFromName(c.graph, n.info, "NimNode")
+        elif not isInlineIterator(result.typ):
+          result.typ[0]
+        else:
+          nil
+      b = semProcBody(c, b, resultType)
     result.ast[bodyPos] = hloBody(c, b)
     excl(result.flags, sfForward)
     trackProc(c, result, result.ast[bodyPos])
@@ -204,7 +193,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
     var param: PSym
 
     template paramSym(kind): untyped =
-      newSym(kind, genParam.sym.name, nextSymId c.idgen, genericTyp.sym, genParam.sym.info)
+      newSym(kind, genParam.sym.name, c.idgen, genericTyp.sym, genParam.sym.info)
 
     if genParam.kind == tyStatic:
       param = paramSym skConst
@@ -274,7 +263,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
 
     internalAssert c.config, originalParams[i].kind == nkSym
     let oldParam = originalParams[i].sym
-    let param = copySym(oldParam, nextSymId c.idgen)
+    let param = copySym(oldParam, c.idgen)
     param.owner = prc
     param.typ = result[i]
 
@@ -332,7 +321,7 @@ proc fillMixinScope(c: PContext) =
     p = p.next
 
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
-                      info: TLineInfo): PSym {.nosinks.} =
+                      info: TLineInfo): PSym =
   ## Generates a new instance of a generic procedure.
   ## The `pt` parameter is a type-unsafe mapping table used to link generic
   ## parameters to their concrete types within the generic instance.
@@ -351,7 +340,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   c.matchedConcept = nil
   let oldScope = c.currentScope
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
-  result = copySym(fn, nextSymId c.idgen)
+  result = copySym(fn, c.idgen)
   incl(result.flags, sfFromGeneric)
   result.owner = fn
   result.ast = n
@@ -377,7 +366,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     addDecl(c, s)
     entry.concreteTypes[i] = s.typ
     inc i
-  rawPushProcCon(c, result)
+  pushProcCon(c, result)
   instantiateProcType(c, pt, result, info)
   for j in 1..<result.typ.len:
     entry.concreteTypes[i] = result.typ[j]
@@ -392,7 +381,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     # a ``compiles`` context but this is the lesser evil. See
     # bug #1055 (tevilcompiles).
     #if c.compilesContextId == 0:
-    rawHandleSelf(c, result)
     entry.compilesId = c.compilesContextId
     addToGenericProcCache(c, fn, entry)
     c.generics.add(makeInstPair(fn, entry))

@@ -7,6 +7,7 @@ discard """
 
 import strutils
 from net import TimeoutError
+import std/assertions
 
 import httpclient, asynchttpserver, asyncdispatch, asyncfutures
 
@@ -111,9 +112,9 @@ proc testCustomContentLength() {.async.} =
 
   runTest(handler, request, test)
 
-waitfor(test200())
-waitfor(test404())
-waitfor(testCustomEmptyHeaders())
-waitfor(testCustomContentLength())
+waitFor(test200())
+waitFor(test404())
+waitFor(testCustomEmptyHeaders())
+waitFor(testCustomContentLength())
 
 echo "OK"

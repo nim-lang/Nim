@@ -1,4 +1,9 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import std/with
+import std/[assertions, formatfloat]
 
 type
   Foo = object

@@ -4,7 +4,8 @@ discard """
 @[1953719668, 875770417]
 destroying O1'''
   cmd: '''nim c --gc:arc --expandArc:main --expandArc:main1 --expandArc:main2 --expandArc:main3 --hints:off --assertions:off $file'''
-  nimout: '''--expandArc: main
+  nimout: '''
+--expandArc: main
 
 var
   data
@@ -12,7 +13,7 @@ var
   :tmpD_1
   :tmpD_2
 data =
-  wasMoved(:tmpD)
+  `=wasMoved`(:tmpD)
   `=copy`(:tmpD, cast[string](
     :tmpD_2 = encode(cast[seq[byte]](
       :tmpD_1 = newString(100)
@@ -32,7 +33,7 @@ var
   :tmpD_1
 s = newString(100)
 data =
-  wasMoved(:tmpD)
+  `=wasMoved`(:tmpD)
   `=copy`(:tmpD, cast[string](
     :tmpD_1 = encode(toOpenArrayByte(s, 0, len(s) - 1))
     :tmpD_1))
@@ -50,7 +51,7 @@ var
   :tmpD_1
 s = newSeq(100)
 data =
-  wasMoved(:tmpD)
+  `=wasMoved`(:tmpD)
   `=copy`(:tmpD, cast[string](
     :tmpD_1 = encode(s)
     :tmpD_1))
@@ -67,7 +68,7 @@ var
   :tmpD_1
   :tmpD_2
 data =
-  wasMoved(:tmpD)
+  `=wasMoved`(:tmpD)
   `=copy`(:tmpD, cast[string](
     :tmpD_2 = encode do:
       :tmpD_1 = newSeq(100)
@@ -77,7 +78,8 @@ data =
 `=destroy`(:tmpD_2)
 `=destroy`(:tmpD_1)
 `=destroy_1`(data)
--- end of expandArc ------------------------'''
+-- end of expandArc ------------------------
+'''
 """
 
 func encode*(src: openArray[byte]): seq[byte] =

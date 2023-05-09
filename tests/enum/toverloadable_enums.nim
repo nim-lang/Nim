@@ -84,3 +84,37 @@ proc g3[T](x: T, e: E2): int =
   of value2: echo "E2-B"
 
 let v5 = g3(99, E2.value2)
+
+block: # only allow enums to overload enums
+  # mirrors behavior without overloadableEnums
+  proc foo() = discard
+  block:
+    type Foo = enum foo
+    doAssert foo is Foo
+    foo()
+
+import macros
+block: # test with macros/templates
+  type
+    Enum1 = enum
+      value01, value02
+    Enum2 = enum
+      value01, value10
+
+  macro isOneM(a: untyped): bool =
+    result = newCall(bindSym"==", a, ident"value01")
+
+  macro isOneMS(a: untyped): bool =
+    result = newCall(bindSym"==", a, bindSym"value01")
+
+  template isOneT(a: untyped): bool =
+    a == value01
+
+  let e1 = Enum1.value01
+  let e2 = Enum2.value01
+  doAssert isOneM(e1)
+  doAssert isOneM(e2)
+  doAssert isOneMS(e1)
+  doAssert isOneMS(e2)
+  doAssert isOneT(e1)
+  doAssert isOneT(e2)

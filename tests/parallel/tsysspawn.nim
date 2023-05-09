@@ -5,7 +5,7 @@ discard """
 2
 2
 '''
-  cmd: "nim $target --threads:on $options $file"
+  matrix: "--mm:refc"
 """
 
 import threadpool

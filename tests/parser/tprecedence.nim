@@ -54,3 +54,10 @@ let
 const
   test =
     proc(): int = 1
+
+# bug #8759
+block:
+  template `=>`(a, b): untyped = (a, b)
+  template `+=`(a, b): untyped = a * b
+
+  doAssert ("abc" => 3 += 5) == ("abc", 15)

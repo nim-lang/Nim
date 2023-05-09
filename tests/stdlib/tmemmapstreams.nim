@@ -12,6 +12,8 @@ Readed line: Hello!
 Position after reading line: 7'''
 """
 import os, streams, memfiles
+import std/syncio
+
 const
   fn = "test.mmapstream"
 var

@@ -1,0 +1,72 @@
+name:        "Feature request"
+description: "Create a new Feature Request. Do you want to suggest a new feature? Use this form."
+title:       "Think about the title, twice."
+labels:      ["unconfirmed"]
+body:
+
+- type: markdown
+  attributes:
+    value: |
+      - Please provide a minimal code example that illustrates the basic idea behind your feature request.
+        Reports with full repro code and descriptive detailed information will likely receive feedback faster.
+      - There is a separate repository for the detailed RFCs and proposals: https://github.com/nim-lang/RFCs.
+        If you have a simple feature request, you can post it here using this form,
+        but bear in mind that adding new features to the language is currently a low priority.
+
+- type: textarea
+  id: summary
+  attributes:
+    label: Summary
+    description: |
+      Use DETAILED DESCRIPTIVE information about the feature request.
+      Here, you go into more details about your ideas. This section can be a few paragraphs long.
+    placeholder: Short summary of your proposed feature.
+  validations:
+    required: true
+
+- type: textarea
+  id: description
+  attributes:
+    label: Description
+    description: Describe your solution, what problem does it fix?
+  validations:
+    required: true
+
+- type: textarea
+  id: alternatives
+  attributes:
+    label: Alternatives
+    description: Are there any alternatives you've considered?
+  validations:
+    required: false
+
+- type: textarea
+  id: Examples
+  attributes:
+    label: Examples
+    description: Provide examples for your feature request here.
+    placeholder: Example code here.
+
+- type: textarea
+  id: incompatibility
+  attributes:
+    label: Backwards Compatibility
+    description: If your Feature Request introduces backward-incompatible changes, describe them and propose how to deal with them.
+  validations:
+    required: false
+
+- type: textarea
+  id: links
+  attributes:
+    label: Links
+    description: Please copy and paste any relevant links to projects, issues, discussions, technical documentations, code samples, etc.
+  validations:
+    required: false
+
+- type: markdown
+  attributes:
+    value: |
+      - Thanks for your contributions!, your ideas will receive feedback from the community soon...
+      - **Remember to :star: Star the Nim project on GitHub!.**
+      - Consider writing a PR targetting devel branch after filing this, see [contributing](https://nim-lang.github.io/Nim/contributing.html).
+      - [Please, consider a Donation for the Nim project.](https://nim-lang.org/donate.html)

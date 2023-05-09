@@ -17,7 +17,7 @@
 
 include "system/inclrtl"
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[syncio, assertions]
 
 const
   useUnicode = true ## change this to deactivate proper UTF-8 support
@@ -168,8 +168,9 @@ func charSet*(s: set[char]): Peg {.rtl, extern: "npegs$1".} =
   ## constructs a PEG from a character set `s`
   assert '\0' notin s
   result = Peg(kind: pkCharChoice)
-  new(result.charChoice)
-  result.charChoice[] = s
+  {.cast(noSideEffect).}:
+    new(result.charChoice)
+    result.charChoice[] = s
 
 func len(a: Peg): int {.inline.} = return a.sons.len
 func add(d: var Peg, s: Peg) {.inline.} = add(d.sons, s)
@@ -561,7 +562,7 @@ template matchOrParse(mopProc: untyped) =
   # procs. For the former, *enter* and *leave* event handler code generators
   # are provided which just return *discard*.
 
-  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int =
+  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int {.gcsafe.} =
     proc matchBackRef(s: string, p: Peg, start: int, c: var Captures): int =
       # Parse handler code must run in an *of* clause of its own for each
       # *PegKind*, so we encapsulate the identical clause body for
@@ -838,10 +839,13 @@ template matchOrParse(mopProc: untyped) =
         var idx = c.ml # reserve a slot for the subpattern
         result = mopProc(s, p.sons[0], start, c)
         if result >= 0:
-          inc(c.ml)
           if idx < MaxSubpatterns:
+            if idx != c.ml:
+              for i in countdown(c.ml, idx):
+                c.matches[i+1] = c.matches[i]
             c.matches[idx] = (start, start+result-1)
           #else: silently ignore the capture
+          inc(c.ml)
       leave(pkCapture, s, p, start, result)
     of pkBackRef:
       enter(pkBackRef, s, p, start)
@@ -1023,7 +1027,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## Symbols  declared in an *enter* handler can be made visible in the
   ## corresponding *leave* handler by annotating them with an *inject* pragma.
   proc rawParse(s: string, p: Peg, start: int, c: var Captures): int
-      {.genSym.} =
+      {.gensym.} =
 
     # binding from *macros*
     bind strVal
@@ -1058,7 +1062,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
     matchOrParse(parseIt)
     parseIt(s, p, start, c)
 
-  proc parser(s: string): int {.genSym.} =
+  proc parser(s: string): int {.gensym.} =
     # the proc to be returned
     var
       ms: array[MaxSubpatterns, (int, int)]
@@ -1169,7 +1173,7 @@ iterator findAll*(s: string, pattern: Peg, start = 0): string =
 func findAll*(s: string, pattern: Peg, start = 0): seq[string] {.
   rtl, extern: "npegs$1".} =
   ## returns all matching *substrings* of `s` that match `pattern`.
-  ## If it does not match, @[] is returned.
+  ## If it does not match, `@[]` is returned.
   result = @[]
   for it in findAll(s, pattern, start): result.add it
 
@@ -1820,9 +1824,7 @@ type
     skip: Peg
 
 func pegError(p: PegParser, msg: string, line = -1, col = -1) =
-  var e: ref EInvalidPeg
-  new(e)
-  e.msg = errorStr(p, msg, line, col)
+  var e = (ref EInvalidPeg)(msg: errorStr(p, msg, line, col))
   raise e
 
 func getTok(p: var PegParser) =
@@ -1906,7 +1908,8 @@ func primary(p: var PegParser): Peg =
       getTok(p)
     elif not arrowIsNextTok(p):
       var nt = getNonTerminal(p, p.tok.literal)
-      incl(nt.flags, ntUsed)
+      {.cast(noSideEffect).}:
+        incl(nt.flags, ntUsed)
       result = nonterminal(nt).token(p)
       getTok(p)
     else:
@@ -1999,12 +2002,14 @@ func parseRule(p: var PegParser): NonTerminal =
     result = getNonTerminal(p, p.tok.literal)
     if ntDeclared in result.flags:
       pegError(p, "attempt to redefine: " & result.name)
-    result.line = getLine(p)
-    result.col = getColumn(p)
+    {.cast(noSideEffect).}:
+      result.line = getLine(p)
+      result.col = getColumn(p)
     getTok(p)
     eat(p, tkArrow)
-    result.rule = parseExpr(p)
-    incl(result.flags, ntDeclared) # NOW inlining may be attempted
+    {.cast(noSideEffect).}:
+      result.rule = parseExpr(p)
+      incl(result.flags, ntDeclared) # NOW inlining may be attempted
   else:
     pegError(p, "rule expected, but found: " & p.tok.literal)
 
@@ -2055,9 +2060,9 @@ func parsePeg*(pattern: string, filename = "pattern", line = 1, col = 0): Peg =
 
 func peg*(pattern: string): Peg =
   ## constructs a Peg object from the `pattern`. The short name has been
-  ## chosen to encourage its use as a raw string modifier::
+  ## chosen to encourage its use as a raw string modifier:
   ##
-  ##   peg"{\ident} \s* '=' \s* {.*}"
+  ##     peg"{\ident} \s* '=' \s* {.*}"
   result = parsePeg(pattern, "pattern")
 
 func escapePeg*(s: string): string =

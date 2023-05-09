@@ -47,7 +47,6 @@ runnableExamples:
 ## See also
 ## ========
 ## * `lists module <lists.html>`_ for singly and doubly linked lists and rings
-## * `channels module <channels_builtin.html>`_ for inter-thread communication
 
 import std/private/since
 
@@ -441,7 +440,7 @@ proc shrink*[T](deq: var Deque[T], fromFirst = 0, fromLast = 0) =
     deq.head = (deq.head + 1) and deq.mask
 
   for i in 0 ..< fromLast:
-    destroy(deq.data[deq.tail])
+    destroy(deq.data[(deq.tail - 1) and deq.mask])
     deq.tail = (deq.tail - 1) and deq.mask
 
   dec deq.count, fromFirst + fromLast

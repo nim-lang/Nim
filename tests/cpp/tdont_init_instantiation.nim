@@ -20,7 +20,7 @@ template <typename X> class C {
 };
 """.}
 
-type C{.importcpp, header: "<stdio.h>", nodecl.} [X] = object
+type C[X] {.importcpp, header: "<stdio.h>", nodecl.} = object
 proc mkC[X]: C[X] {.importcpp: "C<'*0>()", constructor, nodecl.}
 
 proc foo(): C[int] =

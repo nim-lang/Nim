@@ -16,6 +16,7 @@ endif
 
 target := ?{"$(binDir)/" & toLowerAscii(c.name)}
 
+
 ucpu := $(shell sh -c 'uname -m | tr "[:upper:]" "[:lower:]"')
 ifeq ($(OS),Windows_NT)
   uos := windows
@@ -103,8 +104,17 @@ endif
 ifeq ($(ucpu),x86_64)
   mycpu = amd64
 endif
+ifeq ($(ucpu),parisc64)
+  mycpu = hppa
+endif
+ifeq ($(ucpu),s390x)
+  mycpu = s390x
+endif
 ifeq ($(ucpu),sparc)
   mycpu = sparc
+endif
+ifeq ($(ucpu),sparc64)
+  mycpu = sparc64
 endif
 ifeq ($(ucpu),sun)
   mycpu = sparc
@@ -131,7 +141,7 @@ ifeq ($(ucpu),powerpc)
   endif
 endif
 ifeq ($(ucpu),ppc)
-  mycpu = ppc
+   mycpu = powerpc
 endif
 ifneq (,$(filter $(ucpu), mips mips64))
   mycpu = $(shell /bin/sh -c '"$(CC)" -dumpmachine | sed "s/-.*//"')
@@ -161,6 +171,9 @@ ifeq ($(ucpu),armv8l)
   mycpu = arm
 endif
 ifeq ($(ucpu),aarch64)
+  mycpu = arm64
+endif
+ifeq ($(ucpu),arm64)
   mycpu = arm64
 endif
 ifeq ($(ucpu),riscv64)
