@@ -683,7 +683,7 @@ proc processCategory(r: var TResults, cat: Category,
       else:
         jsTests(r, cat, options)
     of "dll":
-      dllTests(r, cat, options)
+      dllTests(r, cat, options & " -d:nimDebugDlOpen")
     of "gc":
       gcTests(r, cat, options)
     of "debugger":

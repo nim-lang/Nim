@@ -38,7 +38,10 @@ when not defined(createNimRtl):
 when defined(gcDestructors):
   # XXX nimPrepareStrMutationV2, nimAddCharV1, isObjDisplayCheck
   # all give multiple definition error on ARC/ORC
-  {.passL: "-Wl,--allow-multiple-definition".}
+  when defined(clang):
+    {.passL: "-Wl,-Xlink=-force:multiple".}
+  else:
+    {.passL: "-Wl,--allow-multiple-definition".}
 
 import
   parseutils, strutils, parseopt, parsecfg, strtabs, unicode, pegs, ropes,
