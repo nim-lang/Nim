@@ -101,3 +101,23 @@ block:
 
   cyclicYes (Cyclic2, int)
   cyclicYes (ref (Cyclic2, int))
+
+block:
+  type
+    myseq[T] = object
+      data: ptr UncheckedArray[T]
+    Node = ref object
+      kids: myseq[Node]
+
+  cyclicNo(Node)
+
+block:
+  type
+    myseq[T] = object
+      data: ptr UncheckedArray[T]
+    Node = ref object
+      kids: myseq[Node]
+
+  proc `=trace`(x: var myseq[Node]; env: pointer) = discard
+
+  cyclicYes(Node)
