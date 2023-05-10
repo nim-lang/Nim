@@ -415,7 +415,6 @@ type
     expandLevels*: int
     expandNodeResult*: string
     expandPosition*: TLineInfo
-    maxLineLen*: int
 
 
 proc parseNimVersion*(a: string): NimVer =
