@@ -1088,13 +1088,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.options.incl optLineDir
   of "deepcopy":
     processOnOffSwitchG(conf, {optEnableDeepCopy}, arg, pass, info)
-  of "maxlinelen":
-    expectArg(conf, switch, arg, pass, info)
-    # Max line lenght for source code, lines longer than this can produce a LineTooLong hint.
-    let maxLineLenght = parseInt(arg)
-    if maxLineLenght < 80:
-      localError(conf, info, "maxLineLen must be >=80")
-    conf.maxLineLen = maxLineLenght
   of "": # comes from "-" in for example: `nim c -r -` (gets stripped from -)
     handleStdinInput(conf)
   of "nilseqs", "nilchecks", "symbol", "taintmode", "cs", "deadcodeelim": warningOptionNoop(switch)
