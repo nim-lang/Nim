@@ -10,9 +10,10 @@
 ## This module implements the symbol importing mechanism.
 
 import
-  intsets, ast, astalgo, msgs, options, idents, lookups,
-  semdata, modulepaths, sigmatch, lineinfos, sets,
-  modulegraphs, wordrecg, tables
+  std/[os, intsets, sets, tables],
+  ast, astalgo, msgs, options, idents, lookups,
+  semdata, modulepaths, sigmatch, lineinfos,
+  modulegraphs, wordrecg
 from strutils import `%`
 
 when defined(nimPreviewSlimSystem):
@@ -244,8 +245,33 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool)
     # some misguided guy will write 'import abc.foo as foo' ...
     result = createModuleAliasImpl(n[1].ident)
   if result == realModule:
-    # avoids modifying `realModule`, see D20201209T194412 for `import {.all.}`
-    result = createModuleAliasImpl(realModule.name)
+    # A module alias is created using the ident of the specifed module
+    # when is doesn't match the real module's name. This is to support
+    # `nimscript.patchModule` so that qualifying a symbol in a target
+    # module like `target.symbol` matches against the patch module instead
+    # of the target module.
+    #
+    # XXX: I'm not sure why an alias for `realModule` is created. See the
+    #      original comment below.
+    proc moduleIdent(node: PNode): PIdent =
+      if node.kind == nkIdent:
+        # import module
+        node.ident
+      elif node.kind in nkStrKinds:
+        # import "/path/to/module.nim"
+        getIdent(c.cache, splitFile(node.strVal).name)
+      else:
+        # import dir/module
+        # import dir/dir/module
+        moduleIdent(node.lastSon)
+    let alias = block:
+      let ident = moduleIdent(n)
+      if ident != realModule.name:
+        ident
+      else:
+        # avoids modifying `realModule`, see D20201209T194412 for `import {.all.}`
+        realModule.name
+    result = createModuleAliasImpl(alias)
   if importHidden:
     result.options.incl optImportHidden
   c.unusedImports.add((result, n.info))

@@ -32,7 +32,7 @@
 
 # included from sigmatch.nim
 
-import algorithm, sets, prefixmatches, parseutils, tables
+import algorithm, sets, prefixmatches, parseutils, tables, modulepaths
 from wordrecg import wDeprecated, wError, wAddr, wYield
 
 when defined(nimsuggest):
@@ -386,7 +386,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
   when defined(nimsuggest):
     if n.kind == nkSym and n.sym.kind == skError and c.config.suggestVersion == 0:
       # consider 'foo.|' where 'foo' is some not imported module.
-      let fullPath = findModule(c.config, n.sym.name.s, toFullPath(c.config, n.info))
+      let fullPath = findModule(c.config, n.sym.name.s, toFullPath(c.config, n.info), n.info)
       if fullPath.isEmpty:
         # error: no known module name:
         typ = nil

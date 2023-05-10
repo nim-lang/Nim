@@ -14,7 +14,7 @@ import
   ast, modules, idents, condsyms,
   options, llstream, vm, vmdef, commands,
   os, times, osproc, wordrecg, strtabs, modulegraphs,
-  pathutils, pipelines
+  pathutils, pipelines, modulepaths
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -175,6 +175,8 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     elif not isAbsolute(val):
       val = vthisDir / val
     conf.moduleOverrides[key] = val
+  cbconf patchModule:
+    conf.addModulePatch(a.getString(0), a.getString(1), vthisDir, a.currentLineInfo)
   cbconf selfExe:
     setResult(a, os.getAppFilename())
   cbconf cppDefine:

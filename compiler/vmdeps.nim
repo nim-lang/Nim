@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, types, msgs, os, options, idents, lineinfos
+import ast, types, msgs, os, options, idents, lineinfos, searchpaths
 from pathutils import AbsoluteFile
 
 when defined(nimPreviewSlimSystem):

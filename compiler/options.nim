@@ -367,7 +367,11 @@ type
     jsonBuildFile*: AbsoluteFile
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
     nimStdlibVersion*: NimVer
-    dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
+    dllOverrides: StringTableRef
+    moduleOverrides*: StringTableRef
+    modulePatches*: StringTableRef
+    unresolvedModulePatches*: seq[tuple[target, patch: string, lineInfo: TLineInfo]]
+    cfileSpecificOptions*: StringTableRef
     projectName*: string # holds a name like 'nim'
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
     projectFull*: AbsoluteFile # projectPath/projectName
@@ -549,6 +553,7 @@ proc newConfigRef*(): ConfigRef =
     libpath: AbsoluteDir"", nimcacheDir: AbsoluteDir"",
     dllOverrides: newStringTable(modeCaseInsensitive),
     moduleOverrides: newStringTable(modeStyleInsensitive),
+    modulePatches: newStringTable(modeStyleInsensitive),
     cfileSpecificOptions: newStringTable(modeCaseSensitive),
     projectName: "", # holds a name like 'nim'
     projectPath: AbsoluteDir"", # holds a path like /home/alice/projects/nim/compiler/
@@ -839,33 +844,6 @@ proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
       conf.quitOrRaise "cannot create directory: " & subdir.string
   result = subdir / RelativeFile f.string.splitPath.tail
 
-proc rawFindFile(conf: ConfigRef; f: RelativeFile; suppressStdlib: bool): AbsoluteFile =
-  for it in conf.searchPaths:
-    if suppressStdlib and it.string.startsWith(conf.libpath.string):
-      continue
-    result = it / f
-    if fileExists(result):
-      return canonicalizePath(conf, result)
-  result = AbsoluteFile""
-
-proc rawFindFile2(conf: ConfigRef; f: RelativeFile): AbsoluteFile =
-  for i, it in conf.lazyPaths:
-    result = it / f
-    if fileExists(result):
-      # bring to front
-      for j in countdown(i, 1):
-        swap(conf.lazyPaths[j], conf.lazyPaths[j-1])
-
-      return canonicalizePath(conf, result)
-  result = AbsoluteFile""
-
-template patchModule(conf: ConfigRef) {.dirty.} =
-  if not result.isEmpty and conf.moduleOverrides.len > 0:
-    let key = getPackageName(conf, result.string) & "_" & splitFile(result).name
-    if conf.moduleOverrides.hasKey(key):
-      let ov = conf.moduleOverrides[key]
-      if ov.len > 0: result = AbsoluteFile(ov)
-
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
   proc isRelativeTo(path, base: string): bool =
     # pending #13212 use os.isRelativeTo
@@ -884,8 +862,8 @@ const stdlibDirs* = [
   "deprecated/pure"]
 
 const
-  pkgPrefix = "pkg/"
-  stdPrefix = "std/"
+  pkgPrefix* = "pkg/"
+  stdPrefix* = "std/"
 
 proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle = false): RelativeFile =
   let f = $f
@@ -901,39 +879,6 @@ proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle = 
         return relativePath(f, it).RelativeFile
   search(conf.searchPaths)
   search(conf.lazyPaths)
-
-proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile =
-  if f.isAbsolute:
-    result = if f.fileExists: AbsoluteFile(f) else: AbsoluteFile""
-  else:
-    result = rawFindFile(conf, RelativeFile f, suppressStdlib)
-    if result.isEmpty:
-      result = rawFindFile(conf, RelativeFile f.toLowerAscii, suppressStdlib)
-      if result.isEmpty:
-        result = rawFindFile2(conf, RelativeFile f)
-        if result.isEmpty:
-          result = rawFindFile2(conf, RelativeFile f.toLowerAscii)
-  patchModule(conf)
-
-proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFile =
-  # returns path to module
-  var m = addFileExt(modulename, NimExt)
-  if m.startsWith(pkgPrefix):
-    result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
-  else:
-    if m.startsWith(stdPrefix):
-      let stripped = m.substr(stdPrefix.len)
-      for candidate in stdlibDirs:
-        let path = (conf.libpath.string / candidate / stripped)
-        if fileExists(path):
-          result = AbsoluteFile path
-          break
-    else: # If prefixed with std/ why would we add the current module path!
-      let currentPath = currentModule.splitFile.dir
-      result = AbsoluteFile currentPath / m
-    if not fileExists(result):
-      result = findFile(conf, m)
-  patchModule(conf)
 
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
   const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]
