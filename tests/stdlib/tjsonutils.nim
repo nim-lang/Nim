@@ -59,8 +59,7 @@ template fn() =
         testRoundtrip(pointer(nil)): """0"""
         testRoundtrip(cast[pointer](nil)): """0"""
 
-    # causes workaround in `fromJson` potentially related to
-    # https://github.com/nim-lang/Nim/issues/12282
+    # refs bug #9423
     testRoundtrip(Foo(1.5)): """1.5"""
 
   block: # OrderedTable
