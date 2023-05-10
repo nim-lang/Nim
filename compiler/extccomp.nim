@@ -1016,7 +1016,11 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
         (path, $secureHashFile(path)))
     bcache.nimexe = hashNimExe()
   conf.jsonBuildFile = conf.jsonBuildInstructionsFile
-  conf.jsonBuildFile.string.writeFile(bcache.toJson.pretty)
+  # 1024 because the JSON all empty use ~1024 chars.
+  var jsonBuildInstructions = newStringOfCap(1024)
+  toUgly(jsonBuildInstructions, bcache.toJson)
+  writeFile(conf.jsonBuildFile.string, jsonBuildInstructions)
+
 
 proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile): bool =
   if not fileExists(jsonFile) or not fileExists(conf.absOutFile): return true
