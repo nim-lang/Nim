@@ -399,7 +399,7 @@ proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PTyp
         result = true
       elif not containsOrIncl(marker, t.id):
         for i in 0..<t.len:
-          result = canFormAcycleAux(g, marker, t[i], orig, true, hasTrace)
+          result = canFormAcycleAux(g, marker, t[i], orig, withRef or t.kind != tyUncheckedArray, hasTrace)
           if result: return
   of tyObject:
     if withRef and sameBackendType(t, orig):
