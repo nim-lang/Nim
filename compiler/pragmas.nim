@@ -202,15 +202,6 @@ proc processImportCpp(c: PContext; s: PSym, extname: string, info: TLineInfo) =
     incl(m.flags, sfCompileToCpp)
   incl c.config.globalOptions, optMixedMode
 
-
-proc processVirtual(c: PContext; s: PSym, extname: string, info: TLineInfo) =
-  setExternName(c, s, extname, info)
-  s.flags.incl {sfVirtual, sfInfixCall}
-  s.flags.excl {sfExportc}
-  s.typ.callConv = ccNoConvention
-  incl c.config.globalOptions, optMixedMode
-
-
 proc processImportObjC(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
   incl(s.flags, sfImportc)
@@ -219,9 +210,9 @@ proc processImportObjC(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   let m = s.getModule()
   incl(m.flags, sfCompileToObjc)
 
-proc newEmptyStrNode(c: PContext; n: PNode): PNode {.noinline.} =
+proc newEmptyStrNode(c: PContext; n: PNode, strVal: string = ""): PNode {.noinline.} =
   result = newNodeIT(nkStrLit, n.info, getSysType(c.graph, n.info, tyString))
-  result.strVal = ""
+  result.strVal = strVal
 
 proc getStrLitNode(c: PContext, n: PNode): PNode =
   if n.kind notin nkPragmaCallKinds or n.len != 2:
@@ -252,6 +243,14 @@ proc expectIntLit(c: PContext, n: PNode): int =
 proc getOptionalStr(c: PContext, n: PNode, defaultStr: string): string =
   if n.kind in nkPragmaCallKinds: result = expectStrLit(c, n)
   else: result = defaultStr
+
+proc processVirtual(c: PContext, n: PNode, s: PSym) =
+  s.constraint = newEmptyStrNode(c, n, getOptionalStr(c, n, "$1"))
+  s.constraint.strVal = s.constraint.strVal % s.name.s #TODO dont do this, move it into the parser
+  s.flags.incl {sfVirtual, sfInfixCall, sfExportc, sfMangleCpp}
+  
+  s.typ.callConv = ccNoConvention
+  incl c.config.globalOptions, optMixedMode
 
 proc processCodegenDecl(c: PContext, n: PNode, sym: PSym) =
   sym.constraint = getStrLitNode(c, n)
@@ -1272,7 +1271,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wSystemRaisesDefect:
         sym.flags.incl sfSystemRaisesDefect
       of wVirtual:
-          processVirtual(c, sym, getOptionalStr(c, it, "$1"), it.info)
+          processVirtual(c, it, sym)
       
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:

@@ -574,7 +574,6 @@ proc getRecordFields(m: BModule; typ: PType, check: var IntSet): Rope =
   if typ.itemId in m.g.graph.virtualProcsPerType:
     let procs = m.g.graph.virtualProcsPerType[typ.itemId]
     for prc in procs:
-      if "#->" in prc.loc.r or "#." in prc.loc.r: continue # already generated     
       var header: Rope
       genVirtualProcHeader(m, prc, header, false, true)
       result.add "\t" & header & ";\n"
@@ -621,7 +620,7 @@ proc getRecordDescAux(m: BModule; typ: PType, name, baseType: Rope,
     result.addf(" {\n", [name])
 
 proc getRecordDesc(m: BModule; typ: PType, name: Rope,
-                   check: var IntSet): Rope =             
+                   check: var IntSet): Rope =
   # declare the record:
   var hasField = false
   var structOrUnion: string
@@ -1019,16 +1018,16 @@ proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool =
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
   var name, declParams, userRetTyp: string
   var isFnConst, isOverride: bool
-  parseVFunctionDecl(prc.loc.r, name, declParams, userRetTyp, isFnConst, isOverride)
+  parseVFunctionDecl(prc.constraint.strVal, name, declParams, userRetTyp, isFnConst, isOverride)
   #first we format the name to get rid of the $
   template `%`(s: string, args: openArray[string]): string = runtimeFormat(s, args)
   declParams = declParams.replace("#", "$") % nimParams.pairs.toSeq.mapIt(it[0] & " " & it[1])
-  declParams = declParams.replace("%", "$") %  nimParams.keys.toSeq
+  declParams = declParams.replace("%", "$") % nimParams.keys.toSeq
   declParams = declParams.replace("^", "$") % nimParams.values.toSeq
   params = "($1)" % [declParams]
   if userRetTyp != "":
     rettype = userRetTyp.replace("%0", "$1") % [rettype]
-  var fnConst, override : string
+  var fnConst, override: string
   if isFnConst:
     fnConst = " const"
   if isFwdDecl:
