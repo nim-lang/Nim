@@ -904,9 +904,14 @@ proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
   # via: `template default*[T](t: typedesc[T]): T = (var v: T; v)`
 
 
-proc reset*[T](obj: var T) {.noSideEffect.} =
+proc reset*[T](obj: var T) {.noSideEffect.}=
   ## Resets an object `obj` to its default value.
-  obj = default(typeof(obj))
+  when defined(gcDestructors):
+    {.cast(noSideEffect), cast(raises: []), cast(tags: []).}:
+      `=destroy`(obj)
+      wasMoved(obj)
+  else:
+    obj = default(typeof(obj))
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.
   magic: "SetLengthSeq", noSideEffect.}
