@@ -1016,7 +1016,7 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
 
 
 # deprecated declarations
-when declared(fileExists) and declared(dirExists):
+when not weirdTarget:
   template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
     fileExists(args)
   template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
