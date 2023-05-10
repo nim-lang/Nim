@@ -910,9 +910,9 @@ proc reset*[T](obj: var T) {.noSideEffect.} =
     obj = default(typeof(obj))
   else:
     when defined(gcDestructors):
-      {.cast(noSideEffect).}:
+      {.cast(noSideEffect), cast(raises: []), cast(tags: []).}:
         `=destroy`(obj)
-      wasMoved(obj)
+        wasMoved(obj)
     else:
       obj = default(typeof(obj))
 
