@@ -907,7 +907,7 @@ proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
 proc reset*[T](obj: var T) {.noSideEffect.} =
   ## Resets an object `obj` to its default value.
   when defined(gcDestructors):
-    {.cast(noSideEffect), cast(raises: []), cast(tags: []).}:
+    {.cast(noSideEffect).}:
       `=destroy`(obj)
       wasMoved(obj)
   else:

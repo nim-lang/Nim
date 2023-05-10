@@ -81,7 +81,8 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [].} =
     #sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
     when not supportsCopyMem(T):
       for i in countdown(x.len - 1, newLen):
-        reset x[i]
+        {.cast(raises: []), cast(tags: []).}:
+          reset x[i]
     # XXX This is wrong for const seqs that were moved into 'x'!
     {.noSideEffect.}:
       cast[ptr NimSeqV2[T]](addr x).len = newLen
