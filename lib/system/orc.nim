@@ -392,7 +392,7 @@ proc collectCycles() =
     # of the cycle collector's effectiveness:
     # we're effective when we collected 50% or more of the nodes
     # we touched. If we're effective, we can reset the threshold:
-    if j.keepThreshold and rootsThreshold <= 0:
+    if j.keepThreshold:
       discard
     elif j.freed * 2 >= j.touched:
       when not defined(nimFixedOrc):
@@ -401,7 +401,7 @@ proc collectCycles() =
         rootsThreshold = 0
       #cfprintf(cstderr, "[collectCycles] freed %ld, touched %ld new threshold %ld\n", j.freed, j.touched, rootsThreshold)
     elif rootsThreshold < high(int) div 4:
-      rootsThreshold = rootsThreshold * 3 div 2
+      rootsThreshold = (if rootsThreshold <= 0: defaultThreshold else: rootsThreshold) * 3 div 2
   when logOrc:
     cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld touched: %ld mem: %ld rcSum: %ld edges: %ld\n", j.freed, rootsThreshold, j.touched,
       getOccupiedMem(), j.rcSum, j.edges)
