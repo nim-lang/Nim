@@ -1211,13 +1211,7 @@ macro assignDistinctImpl[T: distinct](dst: var T;jsonNode: JsonNode; jsonPath: v
   let baseTyp = typImpl[0]
 
   result = quote do:
-    when nimvm:
-      # workaround #12282
-      var tmp: `baseTyp`
-      initFromJson( tmp, `jsonNode`, `jsonPath`)
-      `dst` = `typInst`(tmp)
-    else:
-      initFromJson( `baseTyp`(`dst`), `jsonNode`, `jsonPath`)
+    initFromJson(`baseTyp`(`dst`), `jsonNode`, `jsonPath`)
 
 proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
   assignDistinctImpl(dst, jsonNode, jsonPath)
