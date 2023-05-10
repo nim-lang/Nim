@@ -376,7 +376,6 @@ proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V]), op
   ##
   ## See also:
   ## * `fromJsonHook proc<#fromJsonHook,,JsonNode>`_
-  # pending PR #9217 use: toSeq(a) instead of `collect` in `runnableExamples`.
   runnableExamples:
     import std/[tables, json, sugar]
     let foo = (

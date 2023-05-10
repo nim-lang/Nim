@@ -1380,15 +1380,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkAccQuoted:
     put(g, tkAccent, "`")
     for i in 0..<n.len:
-      proc getStrVal(n: PNode): string =
-        # pending https://github.com/nim-lang/Nim/pull/17540, use `getStrVal`
-        case n.kind
-        of nkIdent: n.ident.s
-        of nkSym: n.sym.name.s
-        else: ""
       proc isAlpha(n: PNode): bool =
         if n.kind in {nkIdent, nkSym}:
-          let tmp = n.getStrVal
+          let tmp = n.getPIdent.s
           result = tmp.len > 0 and tmp[0] in {'a'..'z', 'A'..'Z'}
       var useSpace = false
       if i == 1 and n[0].kind == nkIdent and n[0].ident.s in ["=", "'"]:
