@@ -51,10 +51,7 @@ cyclicNo((Cyclone, ))
 cyclicNo(Acyclic)
 
 cyclicYes(LinkedNode)
-
-when false:
-  # todo fix me
-  cyclicNo(LinkedNodeWithCursor)
+cyclicNo(LinkedNodeWithCursor) # cursor doesn't increase rc, cannot form a cycle
 
 type
   ObjectWithoutCycles = object
@@ -121,3 +118,18 @@ block:
   proc `=trace`(x: var myseq[Node]; env: pointer) = discard
 
   cyclicYes(Node)
+
+block:
+  type
+    Foo = object
+      id: ptr ref Foo
+
+  cyclicNo(Foo)
+
+block:
+  type
+    InheritableObj = object of RootObj
+    InheritableRef = ref object of RootObj
+
+  cyclicYes(InheritableObj)
+  cyclicYes(InheritableRef)
