@@ -231,6 +231,23 @@
   unlisted exceptions) and explicitly raising destructors are implementation
   defined behavior.
 
+- The very old, undocumented deprecated pragma statement syntax for
+  deprecated aliases is now a no-op. The regular deprecated pragma syntax is
+  generally sufficient instead.
+
+  ```nim
+  # now does nothing:
+  {.deprecated: [OldName: NewName].}
+
+  # instead use:
+  type OldName* {.deprecated: "use NewName instead".} = NewName
+  const oldName* {.deprecated: "use newName instead".} = newName
+  ```
+
+  `defined(nimalias)` can be used to check for versions when this syntax was
+  available; however since code that used this syntax is usually very old,
+  these deprecated aliases are likely not used anymore and it may make sense
+  to simply remove these statements.
 
 ## Standard library additions and changes
 
