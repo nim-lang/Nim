@@ -1,6 +1,6 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import std/[os, strutils, osproc, sets, pathnorm, sequtils]
+import std/[os, strutils, osproc, sets, pathnorm, sequtils, pegs]
 
 import officialpackages
 export exec
@@ -8,9 +8,6 @@ export exec
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-# XXX: Remove this feature check once the csources supports it.
-when defined(nimHasCastPragmaBlocks):
-  import std/pegs
 from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
 import "../compiler/nimpaths"
 
@@ -373,9 +370,7 @@ proc buildDocs*(args: string, localOnly = false, localOutDir = "") =
   if not localOnly:
     buildDocsDir(args, webUploadOutput / NimVersion)
 
-    # XXX: Remove this feature check once the csources supports it.
-    when defined(nimHasCastPragmaBlocks):
-      let gaFilter = peg"@( y'--doc.googleAnalytics:' @(\s / $) )"
-      args = args.replace(gaFilter)
+    let gaFilter = peg"@( y'--doc.googleAnalytics:' @(\s / $) )"
+    args = args.replace(gaFilter)
 
   buildDocsDir(args, localOutDir)
