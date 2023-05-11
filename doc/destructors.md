@@ -101,7 +101,7 @@ well as other standard collections is performed via so-called
 "Lifetime-tracking hooks", which are particular [type bound operators](
 manual.html#procedures-type-bound-operators).
 
-There are 4 different hooks for each (generic or concrete) object type `T` (`T` can also be a
+There are 6 different hooks for each (generic or concrete) object type `T` (`T` can also be a
 `distinct` type) that are called implicitly by the compiler.
 
 (Note: The word "hook" here does not imply any kind of dynamic binding
@@ -262,6 +262,41 @@ The general pattern in using `=destroy` with `=trace` looks like:
 **Note**: The `=trace` hooks (which are only used by `--mm:orc`) are currently more experimental and less refined
 than the other hooks.
 
+`=WasMoved` hook
+----------------
+
+A `wasMoved` hook resets the memory of an object to its initial (binary zero) value to signify it was "moved" and to signify its destructor should do nothing and ideally be optimized away.
+
+The prototype of this hook for a type `T` needs to be:
+
+  ```nim
+  proc `=wasMoved`(x: var T)
+  ```
+
+`=dup` hook
+-----------
+
+A `=dup` hook duplicates the memory of an object. `=dup(x)` can be regarded as an optimization replacing the `wasMoved(dest); =copy(dest, x)` operation.
+
+The prototype of this hook for a type `T` needs to be:
+
+  ```nim
+  proc `=dup`(x: T): T
+  ```
+
+The general pattern in implementing `=dup` looks like:
+
+  ```nim
+  type
+    Ref[T] = object
+      data: ptr T
+      rc: ptr int
+
+  proc `=dup`[T](x: Ref[T]): Ref[T] =
+    result = x
+    if x.rc != nil:
+      inc x.rc[]
+  ```
 
 Move semantics
 ==============

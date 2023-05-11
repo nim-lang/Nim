@@ -431,7 +431,9 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
       let src = p(n, c, s, normal)
       result.add newTreeI(nkFastAsgn,
           src.info, tmp,
-          genOp(c, op, src)
+          newTreeIT(nkCall, src.info, src.typ,
+            newSymNode(op),
+            src)
       )
     elif typ.kind == tyRef:
       let src = p(n, c, s, normal)
