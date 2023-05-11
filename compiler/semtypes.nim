@@ -1181,7 +1181,6 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
   of tyGenericParam:
     markUsed(c, paramType.sym.info, paramType.sym)
-    onUse(paramType.sym.info, paramType.sym)
     if tfWildcard in paramType.flags:
       paramType.flags.excl tfWildcard
       paramType.sym.transitionGenericParamToType()
@@ -1753,7 +1752,6 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
       result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
     if result != nil:
       markUsed(c, n.info, result)
-      onUse(n.info, result)
 
       # alias syntax, see semSym for skTemplate, skMacro
       if result.kind in {skTemplate, skMacro} and sfNoalias notin result.flags:
@@ -2045,7 +2043,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         assignType(prev, t)
         result = prev
       markUsed(c, n.info, n.sym)
-      onUse(n.info, n.sym)
     else:
       if s.kind != skError:
         if s.typ == nil:

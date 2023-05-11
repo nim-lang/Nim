@@ -79,7 +79,6 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
         incl(s.flags, sfUsed)
         n[0] = x
         suggestSym(c.graph, x.info, s, c.graph.usageSym)
-        onUse(x.info, s)
       else:
         localError(c.config, n.info, errInvalidControlFlowX % s.name.s)
     else:
@@ -1042,7 +1041,6 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
   if r.state == csMatch:
     var match = r.calleeSym
     markUsed(c, n[0].info, match)
-    onUse(n[0].info, match)
 
     # but pass 'n' to the `case` macro, not 'n[0]':
     r.call[1] = n
@@ -2145,9 +2143,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         " '" & s.name.s & "' from " & c.config$s.info))
 
   styleCheckDef(c, s)
-  if hasProto:
-    onDefResolveForward(n[namePos].info, proto)
-  else:
+  if not hasProto:
     onDef(n[namePos].info, s)
 
   if hasProto:

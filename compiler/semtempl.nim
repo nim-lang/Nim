@@ -67,7 +67,6 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     if not isField or sfGenSym notin s.flags:
       result = newSymNode(s, info)
       markUsed(c, info, s)
-      onUse(info, s)
     else:
       result = n
   else:
@@ -82,7 +81,6 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
         incl(a.flags, sfUsed)
         markOwnerModuleAsUsed(c, a)
         result.add newSymNode(a, info)
-        onUse(info, a)
       a = nextOverloadIter(o, c, n)
 
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
@@ -176,7 +174,6 @@ proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
       if s.owner == c.owner and s.kind == skParam:
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
-        onUse(n.info, s)
   else:
     for i in 0..<n.safeLen:
       result[i] = onlyReplaceParams(c, n[i])
@@ -244,7 +241,7 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   # the symbol as used properly, but the nfSem mechanism currently prevents
   # that from happening, so we mark the module as used here already:
   markOwnerModuleAsUsed(c, s)
-  # we do not call onUse here, as the identifier is not really
+  # we do not call markUsed here, as the identifier is not really
   # resolved here. We will fixup the used identifiers later.
   case s.kind
   of skUnknown:
@@ -284,7 +281,6 @@ proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
       if s.owner == c.owner and (s.kind == skParam or sfGenSym in s.flags):
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
-        onUse(n.info, s)
   else:
     for i in 0..<n.safeLen:
       result[i] = semRoutineInTemplName(c, n[i])
@@ -364,7 +360,6 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       if s.owner == c.owner and s.kind == skParam and sfTemplateParam in s.flags:
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
-        onUse(n.info, s)
       elif contains(c.toBind, s.id):
         result = symChoice(c.c, n, s, scClosed, c.noGenSym > 0)
       elif contains(c.toMixin, s.name.id):
@@ -374,7 +369,6 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         # var yz: T
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
-        onUse(n.info, s)
       else:
         if s.kind in {skType, skVar, skLet, skConst}:
           discard qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
@@ -548,7 +542,6 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       if s.owner == c.owner and s.kind == skParam and
           n.kind == nkAccQuoted and n.len == 1:
         incl(s.flags, sfUsed)
-        onUse(n.info, s)
         return newSymNode(s, n.info)
       elif contains(c.toBind, s.id):
         return symChoice(c.c, n, s, scClosed, c.noGenSym > 0)
@@ -717,7 +710,6 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     # semtypes.addParamOrResult). Within the pattern we have to ensure
     # to use the param with the proper type though:
     incl(s.flags, sfUsed)
-    onUse(n.info, s)
     let x = c.owner.typ.n[s.position+1].sym
     assert x.name == s.name
     result = newSymNode(x, n.info)

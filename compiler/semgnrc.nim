@@ -77,7 +77,6 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   of skTemplate, skMacro:
     # alias syntax, see semSym for skTemplate, skMacro
     if sfNoalias notin s.flags and not fromDotExpr:
-      onUse(n.info, s)
       case s.kind
       of skTemplate: result = semTemplateExpr(c, n, s, {efNoSemCheck})
       of skMacro: result = semMacroExpr(c, n, n, s, {efNoSemCheck})
@@ -95,20 +94,16 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         result = n
     else:
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
-    onUse(n.info, s)
   of skParam:
     result = n
-    onUse(n.info, s)
   of skType:
     if (s.typ != nil) and
        (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
     else:
       result = n
-    onUse(n.info, s)
   else:
     result = newSymNode(s, n.info)
-    onUse(n.info, s)
 
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
             ctx: var GenericCtx): PNode =
@@ -236,7 +231,6 @@ proc semGenericStmt(c: PContext, n: PNode,
       of skMacro, skTemplate:
         # unambiguous macros/templates are expanded if all params are untyped
         if sfAllUntyped in s.flags and sc.safeLen <= 1:
-          onUse(fn.info, s)
           case s.kind
           of skMacro: result = semMacroExpr(c, n, n, s, {efNoSemCheck})
           of skTemplate: result = semTemplateExpr(c, n, s, {efNoSemCheck})
@@ -264,17 +258,14 @@ proc semGenericStmt(c: PContext, n: PNode,
           first = result.safeLen # see trunnableexamples.fun3
       of skGenericParam:
         result[0] = newSymNodeTypeDesc(s, c.idgen, fn.info)
-        onUse(fn.info, s)
         first = 1
       of skType:
         # bad hack for generics:
         if (s.typ != nil) and (s.typ.kind != tyGenericParam):
           result[0] = newSymNodeTypeDesc(s, c.idgen, fn.info)
-          onUse(fn.info, s)
           first = 1
       else:
         result[0] = newSymNode(s, fn.info)
-        onUse(fn.info, s)
         first = 1
     elif fn.kind == nkDotExpr:
       result[0] = fuzzyLookup(c, fn, flags, ctx, mixinContext)

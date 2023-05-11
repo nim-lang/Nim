@@ -568,7 +568,6 @@ proc semResolvedCall(c: PContext, x: TCandidate,
   var finalCallee = x.calleeSym
   let info = getCallLineInfo(n)
   markUsed(c, info, finalCallee)
-  onUse(info, finalCallee)
   assert finalCallee.ast != nil
   if x.hasFauxMatch:
     result = x.call
@@ -659,7 +658,6 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   newInst.typ.flags.excl tfUnresolved
   let info = getCallLineInfo(n)
   markUsed(c, info, s)
-  onUse(info, s)
   result = newSymNode(newInst, info)
 
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =

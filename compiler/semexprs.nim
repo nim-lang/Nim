@@ -30,7 +30,6 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   rememberExpansion(c, n.info, s)
   let info = getCallLineInfo(n)
   markUsed(c, info, s)
-  onUse(info, s)
   # Note: This is n.info on purpose. It prevents template from creating an info
   # context when called from an another template
   pushInfoContext(c.config, n.info, s.detailedInfo)
@@ -391,7 +390,6 @@ proc semConv(c: PContext, n: PNode; expectedType: PType = nil): PNode =
       let status = checkConvertible(c, result.typ, it)
       if status in {convOK, convNotNeedeed}:
         markUsed(c, n.info, it.sym)
-        onUse(n.info, it.sym)
         markIndirect(c, it.sym)
         return it
     errorUseQualifier(c, n.info, op[0].sym)
@@ -1272,7 +1270,6 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   of skConst:
     if n.kind != nkDotExpr: # dotExpr is already checked by builtinFieldAccess
       markUsed(c, n.info, s)
-    onUse(n.info, s)
     let typ = skipTypes(s.typ, abstractInst-{tyTypeDesc})
     case typ.kind
     of  tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
@@ -1305,7 +1302,6 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     if sfNoalias in s.flags:
       let info = getCallLineInfo(n)
       markUsed(c, info, s)
-      onUse(info, s)
       result = symChoice(c, n, s, scClosed)
     else:
       case s.kind
@@ -1314,7 +1310,6 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       else: discard # unreachable
   of skParam:
     markUsed(c, n.info, s)
-    onUse(n.info, s)
     if s.typ != nil and s.typ.kind == tyStatic and s.typ.n != nil:
       # XXX see the hack in sigmatch.nim ...
       return s.typ.n
@@ -1328,7 +1323,6 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
 
     if n.kind != nkDotExpr: # dotExpr is already checked by builtinFieldAccess
       markUsed(c, n.info, s)
-    onUse(n.info, s)
     result = newSymNode(s, n.info)
     # We cannot check for access to outer vars for example because it's still
     # not sure the symbol really ends up being used:
@@ -1338,7 +1332,6 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       message(c.config, n.info, warnResultUsed)
 
   of skGenericParam:
-    onUse(n.info, s)
     if s.typ.kind == tyStatic:
       result = newSymNode(s, n.info)
       result.typ = s.typ
@@ -1350,7 +1343,6 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   of skType:
     if n.kind != nkDotExpr: # dotExpr is already checked by builtinFieldAccess
       markUsed(c, n.info, s)
-    onUse(n.info, s)
     if s.typ.kind == tyStatic and s.typ.base.kind != tyNone and s.typ.n != nil:
       return s.typ.n
     result = newSymNode(s, n.info)
@@ -1358,19 +1350,16 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   of skField:
     # old code, not sure if it's live code:
     markUsed(c, n.info, s)
-    onUse(n.info, s)
     result = newSymNode(s, n.info)
   of skModule:
     # make sure type is None and not nil for discard checking
     if efWantStmt in flags: s.typ = newTypeS(tyNone, c)
     markUsed(c, n.info, s)
-    onUse(n.info, s)
     result = newSymNode(s, n.info)
   else:
     let info = getCallLineInfo(n)
     #if efInCall notin flags:
     markUsed(c, info, s)
-    onUse(info, s)
     result = newSymNode(s, info)
 
 proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
@@ -1407,7 +1396,6 @@ proc tryReadingTypeField(c: PContext, n: PNode, i: PIdent, ty: PType): PNode =
       result.info = n.info
       result.typ = ty
       markUsed(c, n.info, f)
-      onUse(n.info, f)
   of tyObject, tyTuple:
     if ty.n != nil and ty.n.kind == nkRecList:
       let field = lookupInRecord(ty.n, i)
@@ -1441,7 +1429,6 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
     else:
       markUsed(c, n[1].info, s)
       result = semSym(c, n, s, flags)
-    onUse(n[1].info, s)
     return
 
   n[0] = semExprWithType(c, n[0], flags+{efDetermineType, efWantIterable})
@@ -1493,7 +1480,6 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
       if not visibilityCheckNeeded or fieldVisible(c, f):
         # is the access to a public field or in the same module or in a friend?
         markUsed(c, n[1].info, f)
-        onUse(n[1].info, f)
         let info = n[1].info
         n[0] = makeDeref(n[0])
         n[1] = newSymNode(f) # we now have the correct field
@@ -1509,7 +1495,6 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
     f = getSymFromList(ty.n, i)
     if f != nil:
       markUsed(c, n[1].info, f)
-      onUse(n[1].info, f)
       n[0] = makeDeref(n[0])
       n[1] = newSymNode(f)
       n.typ = f.typ
@@ -2107,7 +2092,6 @@ proc semExpandToAst(c: PContext, n: PNode): PNode =
 
     macroCall[0] = newSymNode(expandedSym, macroCall.info)
     markUsed(c, n.info, expandedSym)
-    onUse(n.info, expandedSym)
 
   if isCallExpr(macroCall):
     for i in 1..<macroCall.len:
@@ -2132,7 +2116,6 @@ proc semExpandToAst(c: PContext, n: PNode): PNode =
       let info = macroCall[0].info
       macroCall[0] = newSymNode(cand, info)
       markUsed(c, info, cand)
-      onUse(info, cand)
 
     # we just perform overloading resolution here:
     #n[1] = semOverloadedCall(c, macroCall, macroCall, {skTemplate, skMacro})
@@ -2908,7 +2891,6 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
     if sfGenSym notin s.flags:
       result = newSymNode(s, info)
       markUsed(c, info, s)
-      onUse(info, s)
     else:
       result = n
   else:
@@ -2919,7 +2901,6 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
         incl(a.flags, sfUsed)
         markOwnerModuleAsUsed(c, a)
         result.add newSymNode(a, info)
-        onUse(info, a)
       a = nextOverloadIter(o, c, n)
 
 proc semPragmaStmt(c: PContext; n: PNode) =

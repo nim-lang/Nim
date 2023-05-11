@@ -2311,7 +2311,6 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     else:
       # only one valid interpretation found:
       markUsed(m.c, arg.info, arg[best].sym)
-      onUse(arg.info, arg[best].sym)
       result = paramTypesMatchAux(m, f, arg[best].typ, arg[best], argOrig)
   when false:
     if m.calleeSym != nil and m.calleeSym.name.s == "[]":

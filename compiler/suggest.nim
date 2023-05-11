@@ -712,3 +712,5 @@ when defined(nimsuggest):
   template onDef*(info: TLineInfo; s: PSym) =
     let c = getPContext()
     onDef(c.graph, s, info)
+else:
+  template onDef*(info: TLineInfo; s: PSym) = discard
