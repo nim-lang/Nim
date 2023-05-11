@@ -38,6 +38,8 @@ block tdotlookup:
   # bug #1444
   fn(4)
   doAssert doStrip(123) == "123"
+  # bug #14254
+  doAssert baz2[float](1'i8) == 1
 
 block tmodule_same_as_proc:
   # bug #1965
