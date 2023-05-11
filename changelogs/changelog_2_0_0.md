@@ -364,7 +364,7 @@
     ```
   - A generic `define` pragma for constants has been added that interprets
     the value of the define based on the type of the constant value.
-    See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#generic-define-pragma)
+    See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#generic-nimdefine-pragma)
     for a list of supported types.
 
 - [Macro pragmas](https://nim-lang.github.io/Nim/manual.html#userminusdefined-pragmas-macro-pragmas) changes:
