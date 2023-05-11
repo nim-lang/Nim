@@ -620,13 +620,14 @@ type
                           # file (it is loaded on demand, which may
                           # mean: never)
     skPackage,            # symbol is a package (used for canonicalization)
-    skAlias               # an alias (needs to be resolved immediately)
+    skDeprecatedAlias     # XXX remove along with deprecated statement
   TSymKinds* = set[TSymKind]
 
 const
   routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
-  ExportableSymKinds* = {skVar, skLet, skConst, skType, skEnumField, skStub, skAlias} + routineKinds
+  ExportableSymKinds* = {skVar, skLet, skConst, skType,
+    skEnumField, skStub, skDeprecatedAlias} + routineKinds
 
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread

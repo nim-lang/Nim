@@ -15,7 +15,7 @@ when defined(nimPreviewSlimSystem):
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs, sets, wordrecg
+  renderer, lineinfos, modulegraphs, astmsgs, sets, wordrecg
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 

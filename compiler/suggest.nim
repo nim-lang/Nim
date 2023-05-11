@@ -34,6 +34,7 @@
 
 import algorithm, sets, prefixmatches, parseutils, tables
 from wordrecg import wDeprecated, wError, wAddr, wYield
+import nimfix/prettybase
 
 when defined(nimsuggest):
   import tables, pathutils # importer
@@ -602,6 +603,12 @@ proc markUsed(c: PContext; info: TLineInfo; s: PSym) =
         c.lastTLineInfo = info
 
     if sfError in s.flags: userError(conf, info, s)
+  if s.kind == skDeprecatedAlias: # XXX remove along with deprecated statement
+    if c.config.cmd == cmdNimfix:
+      prettybase.replaceDeprecated(c.config, n.info, s, s.owner)
+    else:
+      message(c.config, info, warnDeprecated, "use " & s.owner.name.s & " instead; " &
+              s.name.s & " is deprecated")
   when defined(nimsuggest):
     suggestSym(c.graph, info, s, c.graph.usageSym, false)
   styleCheckUse(c, info, s)
