@@ -250,7 +250,8 @@ func maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
 
 func minmax*[T](x: openArray[T]): (T, T) =
   ## The minimum and maximum values of `x`. `T` needs to have a `<` operator.
-  var l, h: T = x[0]
+  var l = x[0]
+  var h = x[0]
   for i in 1..high(x):
     if x[i] < l: l = x[i]
     if h < x[i]: h = x[i]
