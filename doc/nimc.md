@@ -115,7 +115,6 @@ ExprAlwaysX
 ExtendedContext
 GCStats                          Dumps statistics about the Garbage Collector.
 GlobalVar                        Shows global variables declarations.
-LineTooLong                      Line exceeds the maximum length.
 Link                             Linking phase.
 Name
 Path                             Search paths modifications.
