@@ -372,15 +372,18 @@ proc canFormAcycleAux(g: ModuleGraph; marker: var IntSet, typ: PType, orig: PTyp
 proc canFormAcycleNode(g: ModuleGraph; marker: var IntSet, n: PNode, orig: PType, withRef: bool, hasTrace: bool): bool =
   result = false
   if n != nil:
-    result = canFormAcycleAux(g, marker, n.typ, orig, withRef, hasTrace)
-    if not result:
-      case n.kind
-      of nkNone..nkNilLit:
-        discard
-      else:
-        for i in 0..<n.len:
-          result = canFormAcycleNode(g, marker, n[i], orig, withRef, hasTrace)
-          if result: return
+    var hasCursor = n.kind == nkSym and sfCursor in n.sym.flags
+    # cursor fields don't own the refs, which cannot form reference cycles
+    if hasTrace or not hasCursor:
+      result = canFormAcycleAux(g, marker, n.typ, orig, withRef, hasTrace)
+      if not result:
+        case n.kind
+        of nkNone..nkNilLit:
+          discard
+        else:
+          for i in 0..<n.len:
+            result = canFormAcycleNode(g, marker, n[i], orig, withRef, hasTrace)
+            if result: return
 
 
 proc sameBackendType*(x, y: PType): bool
