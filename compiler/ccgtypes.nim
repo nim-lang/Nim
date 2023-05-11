@@ -1036,7 +1036,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
   # compute type flags for GC optimization
   var flags = 0
   if not containsGarbageCollectedRef(typ): flags = flags or 1
-  if not canFormAcycle(typ): flags = flags or 2
+  if not canFormAcycle(m.g.graph, typ): flags = flags or 2
   #else echo("can contain a cycle: " & typeToString(typ))
   if flags != 0:
     m.s[cfsTypeInit3].addf("$1.flags = $2;$n", [nameHcr, rope(flags)])
@@ -1318,7 +1318,7 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result:
     result.add theProc.loc.r
 
     when false:
-      if not canFormAcycle(t) and op == attachedTrace:
+      if not canFormAcycle(m.g.graph, t) and op == attachedTrace:
         echo "ayclic but has this =trace ", t, " ", theProc.ast
   else:
     when false:
@@ -1364,7 +1364,7 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLin
   m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
 
   var flags = 0
-  if not canFormAcycle(t): flags = flags or 1
+  if not canFormAcycle(m.g.graph, t): flags = flags or 1
 
   var typeEntry = newRopeAppender()
   addf(typeEntry, "$1.destructor = (void*)", [name])
@@ -1405,7 +1405,7 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
 
   var flags = 0
-  if not canFormAcycle(t): flags = flags or 1
+  if not canFormAcycle(m.g.graph, t): flags = flags or 1
 
   var typeEntry = newRopeAppender()
   addf(typeEntry, "N_LIB_PRIVATE TNimTypeV2 $1 = {", [name])

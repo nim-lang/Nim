@@ -215,6 +215,10 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     var arg = operand.skipTypes({tyGenericInst})
     assert arg.kind == tyRange
     result = getTypeDescNode(c, arg.base, operand.owner, traitCall.info)
+  of "isCyclic":
+    var operand = operand.skipTypes({tyGenericInst})
+    let isCyclic = canFormAcycle(c.graph, operand)
+    result = newIntNodeT(toInt128(ord(isCyclic)), traitCall, c.idgen, c.graph)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)
