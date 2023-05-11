@@ -605,7 +605,7 @@ proc markUsed(c: PContext; info: TLineInfo; s: PSym) =
     if sfError in s.flags: userError(conf, info, s)
   if s.kind == skDeprecatedAlias: # XXX remove along with deprecated statement
     if c.config.cmd == cmdNimfix:
-      prettybase.replaceDeprecated(c.config, n.info, s, s.owner)
+      prettybase.replaceDeprecated(c.config, info, s, s.owner)
     else:
       message(c.config, info, warnDeprecated, "use " & s.owner.name.s & " instead; " &
               s.name.s & " is deprecated")
