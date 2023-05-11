@@ -27,14 +27,14 @@ new line after - @['a']
 finalizer
 aaaaa
 hello
-ok
 true
 copying
 123
 42
-closed
+ok
 destroying variable: 20
 destroying variable: 10
+closed
 '''
   cmd: "nim c --gc:arc --deepcopy:on -d:nimAllocPagesViaMalloc $file"
 """
@@ -124,7 +124,7 @@ proc test(count: int) =
 test(3)
 
 proc test2(count: int) =
-  #block: #XXX: Fails with block currently
+  block: #XXX: Fails with block currently
     var v {.global.} = newVariable(20)
 
     var count = count - 1
@@ -546,3 +546,71 @@ proc fooz(sec: var InputSectionBase) =
 var sec = create(InputSection)
 sec[] = InputSection(relocations: newSeq[int]())
 fooz sec[]
+
+block:
+  type
+    Data = ref object
+      id: int
+  proc main =
+    var x = Data(id: 99)
+    var y = x
+    x[] = Data(id: 778)[]
+    doAssert y.id == 778
+    doAssert x[].id == 778
+  main()
+
+block: # bug #19857
+  type
+    ValueKind = enum VNull, VFloat, VObject # need 3 elements. Cannot remove VNull or VObject
+
+    Value = object
+      case kind: ValueKind
+      of VFloat: fnum: float
+      of VObject: tab: Table[int, int] # OrderedTable[T, U] also makes it fail.
+                                      # "simpler" types also work though
+      else: discard # VNull can be like this, but VObject must be filled
+
+    # required. Pure proc works
+    FormulaNode = proc(c: OrderedTable[string, int]): Value
+
+  proc toF(v: Value): float =
+    doAssert v.kind == VFloat
+    case v.kind
+    of VFloat: result = v.fnum
+    else: discard
+
+
+  proc foo() =
+    let fuck = initOrderedTable[string, int]()
+    proc cb(fuck: OrderedTable[string, int]): Value =
+                            # works:
+                            #result = Value(kind: VFloat, fnum: fuck["field_that_does_not_exist"].float)
+                            # broken:
+      discard "actuall runs!"
+      let t = fuck["field_that_does_not_exist"]
+      echo "never runs, but we crash after! ", t
+
+    doAssertRaises(KeyError):
+      let fn = FormulaNode(cb)
+      let v = fn(fuck)
+      #echo v
+      let res = v.toF()
+
+  foo()
+
+import std/options
+
+# bug #21592
+type Event* = object
+  code*: string
+
+type App* = ref object of RootObj
+  id*: string
+
+method process*(self: App): Option[Event] {.base.} =
+  raise Exception.new_exception("not impl")
+
+# bug #21617
+type Test2 = ref object of RootObj
+
+method bug(t: Test2): seq[float] {.base.} = discard

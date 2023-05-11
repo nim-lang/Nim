@@ -210,6 +210,11 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
       arg = arg.base.skipTypes(skippedTypes + {tyGenericInst})
       if not rec: break
     result = getTypeDescNode(c, arg, operand.owner, traitCall.info)
+  of "rangeBase":
+    # return the base type of a range type
+    var arg = operand.skipTypes({tyGenericInst})
+    assert arg.kind == tyRange
+    result = getTypeDescNode(c, arg.base, operand.owner, traitCall.info)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)
@@ -415,14 +420,14 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
     #if n.kind == nkDerefExpr and sameType(n[0].typ, old):
     #  result =
 
-  result = copySym(orig, nextSymId c.idgen)
+  result = copySym(orig, c.idgen)
   result.info = info
   result.flags.incl sfFromGeneric
   result.owner = orig
   let origParamType = orig.typ[1]
   let newParamType = makeVarType(result, origParamType.skipTypes(abstractPtrs), c.idgen)
   let oldParam = orig.typ.n[1].sym
-  let newParam = newSym(skParam, oldParam.name, nextSymId c.idgen, result, result.info)
+  let newParam = newSym(skParam, oldParam.name, c.idgen, result, result.info)
   newParam.typ = newParamType
   # proc body:
   result.ast = transform(c, orig.ast, origParamType, newParamType, oldParam, newParam)
@@ -488,8 +493,8 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
           getAttachedOp(c.graph, t, attachedDestructor).owner == fin:
         discard "already turned this one into a finalizer"
       else:
-        let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), nextSymId c.idgen, fin.owner, fin.info)
-        let selfSymNode = newSymNode(copySym(fin.ast[paramsPos][1][0].sym, nextSymId c.idgen))
+        let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), c.idgen, fin.owner, fin.info)
+        let selfSymNode = newSymNode(copySym(fin.ast[paramsPos][1][0].sym, c.idgen))
         selfSymNode.typ = fin.typ[1]
         wrapperSym.flags.incl sfUsed
 
@@ -526,7 +531,7 @@ proc checkDefault(c: PContext, n: PNode): PNode =
     message(c.config, n.info, warnUnsafeDefault, typeToString(constructed))
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
-                                   flags: TExprFlags): PNode =
+                                   flags: TExprFlags; expectedType: PType = nil): PNode =
   ## This is the preferred code point to implement magics.
   ## ``c`` the current module, a symbol table to a very good approximation
   ## ``n`` the ast like it would be passed to a real macro
@@ -586,7 +591,10 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     else:
       result = plugin(c, n)
   of mNew:
-    result = addDefaultFieldForNew(c, n)
+    if n[0].sym.name.s == "unsafeNew": # special case for unsafeNew
+      result = n
+    else:
+      result = addDefaultFieldForNew(c, n)
   of mNewFinalize:
     result = semNewFinalize(c, n)
   of mDestroy:
@@ -632,5 +640,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = n
   of mPrivateAccess:
     result = semPrivateAccess(c, n)
+  of mArrToSeq:
+    result = n
+    if result.typ != nil and expectedType != nil and result.typ.kind == tySequence and expectedType.kind == tySequence and result.typ[0].kind == tyEmpty:
+      result.typ = expectedType # type inference for empty sequence # bug #21377
   else:
     result = n

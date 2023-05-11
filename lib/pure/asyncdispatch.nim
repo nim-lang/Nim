@@ -281,6 +281,8 @@ proc adjustTimeout(
   result = max(nextTimer.get(), 0)
   result = min(pollTimeout, result)
 
+proc runOnce(timeout: int): bool {.gcsafe.}
+
 proc callSoon*(cbproc: proc () {.gcsafe.}) {.gcsafe.}
   ## Schedule `cbproc` to be called as soon as possible.
   ## The callback is called when control returns to the event loop.
@@ -390,7 +392,7 @@ when defined(windows) or defined(nimdoc):
     let p = getGlobalDispatcher()
     p.handles.len != 0 or p.timers.len != 0 or p.callbacks.len != 0
 
-  proc runOnce(timeout = 500): bool =
+  proc runOnce(timeout: int): bool =
     let p = getGlobalDispatcher()
     if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
       raise newException(ValueError,
@@ -1169,6 +1171,9 @@ else:
                     MSG_NOSIGNAL
   when declared(posix.accept4):
     from posix import accept4, SOCK_CLOEXEC
+  when defined(genode):
+    import genode/env # get the implicit Genode env
+    import genode/signals
 
   const
     InitCallbackListSize = 4         # initial size of callbacks sequence,
@@ -1187,6 +1192,8 @@ else:
 
     PDispatcher* = ref object of PDispatcherBase
       selector: Selector[AsyncData]
+      when defined(genode):
+        signalHandler: SignalHandler
 
   proc `==`*(x, y: AsyncFD): bool {.borrow.}
   proc `==`*(x, y: AsyncEvent): bool {.borrow.}
@@ -1202,8 +1209,21 @@ else:
     result.selector = newSelector[AsyncData]()
     result.timers.clear()
     result.callbacks = initDeque[proc () {.closure, gcsafe.}](InitDelayedCallbackListSize)
+    when defined(genode):
+      let entrypoint = ep(cast[GenodeEnv](runtimeEnv))
+      result.signalHandler = newSignalHandler(entrypoint):
+        discard runOnce(0)
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
+
+  when defined(nuttx):
+    import std/exitprocs
+
+    proc cleanDispatcher() {.noconv.} =
+      gDisp = nil
+
+    proc addFinalyzer() =
+      addExitProc(cleanDispatcher)
 
   proc setGlobalDispatcher*(disp: owned PDispatcher) =
     if not gDisp.isNil:
@@ -1214,6 +1234,8 @@ else:
   proc getGlobalDispatcher*(): PDispatcher =
     if gDisp.isNil:
       setGlobalDispatcher(newDispatcher())
+      when defined(nuttx):
+        addFinalyzer()
     result = gDisp
 
   proc getIoHandler*(disp: PDispatcher): Selector[AsyncData] =
@@ -1371,10 +1393,11 @@ else:
           ValueError, "Expecting async operations to stop when fd has closed."
         )
 
-
-  proc runOnce(timeout = 500): bool =
+  proc runOnce(timeout: int): bool =
     let p = getGlobalDispatcher()
     if p.selector.isEmpty() and p.timers.len == 0 and p.callbacks.len == 0:
+      when defined(genode):
+        if timeout == 0: return
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
 
@@ -1579,7 +1602,7 @@ else:
       owned(Future[tuple[address: string, client: AsyncFD]]) =
     var retFuture = newFuture[tuple[address: string,
         client: AsyncFD]]("acceptAddr")
-    proc cb(sock: AsyncFD): bool =
+    proc cb(sock: AsyncFD): bool {.gcsafe.} =
       result = true
       var sockAddress: Sockaddr_storage
       var addrLen = sizeof(sockAddress).SockLen
@@ -1971,7 +1994,8 @@ proc send*(socket: AsyncFD, data: string,
   return retFuture
 
 # -- Await Macro
-include asyncmacro
+import asyncmacro
+export asyncmacro
 
 proc readAll*(future: FutureStream[string]): owned(Future[string]) {.async.} =
   ## Returns a future that will complete when all the string data from the
@@ -2011,7 +2035,7 @@ when defined(posix):
   import posix
 
 when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
-       defined(solaris) or defined(zephyr) or defined(freertos):
+       defined(solaris) or defined(zephyr) or defined(freertos) or defined(nuttx) or defined(haiku):
   proc maxDescriptors*(): int {.raises: OSError.} =
     ## Returns the maximum number of active file descriptors for the current
     ## process. This involves a system call. For now `maxDescriptors` is
@@ -2025,3 +2049,17 @@ when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
       if getrlimit(RLIMIT_NOFILE, fdLim) < 0:
         raiseOSError(osLastError())
       result = int(fdLim.rlim_cur) - 1
+
+when defined(genode):
+  proc scheduleCallbacks*(): bool {.discardable.} =
+    ## *Genode only.*
+    ## Schedule callback processing and return immediately.
+    ## Returns `false` if there is nothing to schedule.
+    ## RPC servers should call this to dispatch `callSoon`
+    ## bodies after retiring an RPC to its client.
+    ## This is effectively a non-blocking `poll(…)` and is
+    ## equivalent to scheduling a momentary no-op timeout
+    ## but faster and with less overhead.
+    let dis = getGlobalDispatcher()
+    result = dis.callbacks.len > 0
+    if result: submit(dis.signalHandler.cap)

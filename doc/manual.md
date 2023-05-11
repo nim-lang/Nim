@@ -257,6 +257,18 @@ Multiline documentation comments also exist and support nesting too:
     ]##
   ```
 
+You can also use the [discard statement](#statements-and-expressions-discard-statement) together with
+[triple quoted string literals](#lexical-analysis-triple-quoted-string-literals) to create multiline comments:
+
+  ```nim
+  discard """ You can have any Nim code text commented
+  out inside this with no indentation restrictions.
+        yes("May I ask a pointless question?") """
+  ```
+
+This was how multiline comments were done before version 0.13.0,
+and it is used to provide specifications to [testament](testament.html#writing-unitests) test framework.
+
 
 Identifiers & Keywords
 ----------------------
@@ -1353,6 +1365,23 @@ ambiguous, a static error will be produced.
   p value2
   ```
 
+In some cases, ambiguity of enums is resolved depending on the relation
+between the current scope and the scope the enums were defined in.
+
+  ```nim
+  # a.nim
+  type Foo* = enum abc
+
+  # b.nim
+  import a
+  type Bar = enum abc
+  echo abc is Bar # true
+
+  block:
+    type Baz = enum abc
+    echo abc is Baz # true
+  ```
+
 To implement bit fields with enums see [Bit fields].
 
 
@@ -1938,6 +1967,57 @@ Some restrictions for case objects can be disabled via a `{.cast(uncheckedAssign
     t.kind = intLit
   ```
 
+Default values for object fields
+--------------------------------
+
+Object fields are allowed to have a constant default value. The type of field can be omitted if a default value is given.
+
+```nim test
+type
+  Foo = object
+    a: int = 2
+    b: float = 3.14
+    c = "I can have a default value"
+
+  Bar = ref object
+    a: int = 2
+    b: float = 3.14
+    c = "I can have a default value"
+```
+
+The explicit initialization uses these defaults which includes an `object` created with an object construction expression or the procedure `default`; a `ref object` created with an object construction expression or the procedure `new`; an array or a tuple with a subtype which has a default created with the procedure `default`.
+
+
+```nim test
+type
+  Foo = object
+    a: int = 2
+    b = 3.0
+  Bar = ref object
+    a: int = 2
+    b = 3.0
+
+block: # created with an object construction expression
+  let x = Foo()
+  assert x.a == 2 and x.b == 3.0
+
+  let y = Bar()
+  assert y.a == 2 and y.b == 3.0
+
+block: # created with an object construction expression
+  let x = default(Foo)
+  assert x.a == 2 and x.b == 3.0
+
+  let y = default(array[1, Foo])
+  assert y[0].a == 2 and y[0].b == 3.0
+
+  let z = default(tuple[x: Foo])
+  assert z.x.a == 2 and z.x.b == 3.0
+
+block: # created with the procedure `new`
+  let y = new Bar
+  assert y.a == 2 and y.b == 3.0
+```
 
 Set type
 --------
@@ -2996,12 +3076,25 @@ when they are declared. The only exception to this is if the `{.importc.}`
 pragma (or any of the other `importX` pragmas) is applied, in this case the
 value is expected to come from native code, typically a C/C++ `const`.
 
+Special identifier `_` (underscore)
+-----------------------------------
+
+The identifier `_` has a special meaning in declarations.
+Any definition with the name `_` will not be added to scope, meaning the
+definition is evaluated, but cannot be used. As a result the name `_` can be
+indefinitely redefined.
+
+  ```nim
+  let _ = 123
+  echo _ # error
+  let _ = 456 # compiles
+  ```
 
 Tuple unpacking
 ---------------
 
-In a `var` or `let` statement tuple unpacking can be performed. The special
-identifier `_` can be used to ignore some parts of the tuple:
+In a `var`, `let` or `const` statement tuple unpacking can be performed.
+The special identifier `_` can be used to ignore some parts of the tuple:
 
   ```nim
   proc returnsTuple(): (int, int, int) = (4, 2, 3)
@@ -3009,6 +3102,35 @@ identifier `_` can be used to ignore some parts of the tuple:
   let (x, _, z) = returnsTuple()
   ```
 
+This is treated as syntax sugar for roughly the following:
+
+  ```nim
+  let
+    tmpTuple = returnsTuple()
+    x = tmpTuple[0]
+    z = tmpTuple[2]
+  ```
+
+For `var` or `let` statements, if the value expression is a tuple literal,
+each expression is directly expanded into an assignment without the use of
+a temporary variable.
+
+  ```nim
+  let (x, y, z) = (1, 2, 3)
+  # becomes
+  let
+    x = 1
+    y = 2
+    z = 3
+  ```
+
+Tuple unpacking can also be nested:
+
+  ```nim
+  proc returnsNestedTuple(): (int, (int, int), int, int) = (4, (5, 7), 2, 3)
+
+  let (x, (_, y), _, z) = returnsNestedTuple()
+  ```
 
 
 Const section
@@ -3494,8 +3616,8 @@ Example:
   var y = if x > 8: 9 else: 10
   ```
 
-An if expression always results in a value, so the `else` part is
-required. `Elif` parts are also allowed.
+An `if` expression always results in a value, so the `else` part is
+required. `elif` parts are also allowed.
 
 When expression
 ---------------
@@ -3692,15 +3814,6 @@ every time the function is called.
   ```nim
   # b is optional with 47 as its default value.
   proc foo(a: int, b: int = 47): int
-  ```
-
-Just as the comma propagates the types from right to left until the
-first parameter or until a semicolon is hit, it also propagates the
-default value starting from the parameter declared with it.
-
-  ```nim
-  # Both a and b are optional with 47 as their default values.
-  proc foo(a, b: int = 47): int
   ```
 
 Parameters can be declared mutable and so allow the proc to modify those
@@ -4042,7 +4155,7 @@ the operator is in scope (including if it is private).
   ```
 
 Type bound operators are:
-`=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`.
+`=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`, `=wasMoved`.
 
 These operations can be *overridden* instead of *overloaded*. This means that
 the implementation is automatically lifted to structured types. For instance,
@@ -4693,8 +4806,8 @@ Example:
       echo "overflow!"
     except ValueError, IOError:
       echo "catch multiple exceptions!"
-    except:
-      echo "Unknown exception!"
+    except CatchableError:
+      echo "Catchable exception!"
     finally:
       close(f)
   ```
@@ -4705,9 +4818,6 @@ an exception `e` is raised. If the exception type of `e` matches any
 listed in an `except` clause, the corresponding statements are executed.
 The statements following the `except` clauses are called
 `exception handlers`:idx:.
-
-The empty `except`:idx: clause is executed if there is an exception that is
-not listed otherwise. It is similar to an `else` clause in `if` statements.
 
 If there is a `finally`:idx: clause, it is always executed after the
 exception handlers.
@@ -4726,11 +4836,11 @@ Try can also be used as an expression; the type of the `try` branch then
 needs to fit the types of `except` branches, but the type of the `finally`
 branch always has to be `void`:
 
-  ```nim
+  ```nim test
   from std/strutils import parseInt
 
   let x = try: parseInt("133a")
-          except: -1
+          except ValueError: -1
           finally: echo "hi"
   ```
 
@@ -4738,8 +4848,9 @@ branch always has to be `void`:
 To prevent confusing code there is a parsing limitation; if the `try`
 follows a `(` it has to be written as a one liner:
 
-  ```nim
-  let x = (try: parseInt("133a") except: -1)
+  ```nim test
+  from std/strutils import parseInt
+  let x = (try: parseInt("133a") except ValueError: -1)
   ```
 
 
@@ -4787,7 +4898,7 @@ error message from `e`, and for such situations, it is enough to use
   ```nim
   try:
     # ...
-  except:
+  except CatchableError:
     echo getCurrentExceptionMsg()
   ```
 
@@ -4975,7 +5086,7 @@ An empty `raises` list (`raises: []`) means that no exception may be raised:
     try:
       unsafeCall()
       result = true
-    except:
+    except CatchableError:
       result = false
   ```
 
@@ -5356,9 +5467,9 @@ type class           matches
 ==================   ===================================================
 `object`             any object type
 `tuple`              any tuple type
-
 `enum`               any enumeration
 `proc`               any proc type
+`iterator`           any iterator type
 `ref`                any `ref` type
 `ptr`                any `ptr` type
 `var`                any `var` type
@@ -5377,7 +5488,7 @@ more complex type classes:
 
   ```nim
   # create a type class that will match all tuple and object types
-  type RecordType = tuple or object
+  type RecordType = (tuple or object)
 
   proc printFields[T: RecordType](rec: T) =
     for key, value in fieldPairs(rec):
@@ -5418,6 +5529,17 @@ as `type constraints`:idx: of the generic type parameter:
   onlyIntOrString("xy", 50) # invalid as 'T' cannot be both at the same time
   ```
 
+`proc` and `iterator` type classes also accept a calling convention pragma
+to restrict the calling convention of the matching `proc` or `iterator` type.
+
+  ```nim
+  proc onlyClosure[T: proc {.closure.}](x: T) = discard
+
+  onlyClosure(proc() = echo "hello") # valid
+  proc foo() {.nimcall.} = discard
+  onlyClosure(foo) # type mismatch
+  ```
+
 
 Implicit generics
 -----------------
@@ -5426,7 +5548,7 @@ A type class can be used directly as the parameter's type.
 
   ```nim
   # create a type class that will match all tuple and object types
-  type RecordType = tuple or object
+  type RecordType = (tuple or object)
 
   proc printFields(rec: RecordType) =
     for key, value in fieldPairs(rec):
@@ -6554,6 +6676,8 @@ even when one version does not export some of these identifiers.
 
 The `import` statement is only allowed at the top level.
 
+String literals can be used for import/include statements.
+The compiler performs [path substitution](nimc.html#compiler-usage-commandminusline-switches) when used.
 
 Include statement
 -----------------
@@ -6765,6 +6889,35 @@ iterator in which case the overloading resolution takes place:
   var x = 4
   write(stdout, x) # not ambiguous: uses the module C's x
   ```
+Modules can share their name, however, when trying to qualify a identifier with the module name the compiler will fail with ambiguous identifier error. One can qualify the identifier by aliasing the module. 
+
+
+```nim
+# Module A/C
+proc fb* = echo "fizz"
+```
+
+
+```nim
+# Module B/C
+proc fb* = echo "buzz"
+```
+
+
+```nim
+import A/C
+import B/C
+
+C.fb() # Error: ambiguous identifier: 'fb'
+```
+
+
+```nim
+import A/C as fizz
+import B/C 
+
+fizz.fb() # Works
+```
 
 
 Packages
@@ -7332,6 +7485,37 @@ generates:
   ```
 
 
+size pragma
+-----------
+Nim automatically determines the size of an enum.
+But when wrapping a C enum type, it needs to be of a specific size.
+The `size pragma` allows specifying the size of the enum type.
+
+  ```Nim
+  type
+    EventType* {.size: sizeof(uint32).} = enum
+      QuitEvent,
+      AppTerminating,
+      AppLowMemory
+
+  doAssert sizeof(EventType) == sizeof(uint32)
+  ```
+
+The `size pragma` can also specify the size of an `importc` incomplete object type
+so that one can get the size of it at compile time even if it was declared without fields.
+
+  ```Nim
+    type
+      AtomicFlag* {.importc: "atomic_flag", header: "<stdatomic.h>", size: 1.} = object
+
+    static:
+      # if AtomicFlag didn't have the size pragma, this code would result in a compile time error.
+      echo sizeof(AtomicFlag)
+  ```
+
+The `size pragma` accepts only the values 1, 2, 4 or 8.
+
+
 Align pragma
 ------------
 
@@ -7444,8 +7628,14 @@ Compile pragma
 The `compile` pragma can be used to compile and link a C/C++ source file
 with the project:
 
+This pragma can take three forms. The first is a simple file input:
   ```Nim
   {.compile: "myfile.cpp".}
+  ```
+
+The second form is a tuple where the second arg is the output name strutils formatter:
+  ```Nim
+  {.compile: ("file.c", "$1.o").}
   ```
 
 **Note**: Nim computes a SHA1 checksum and only recompiles the file if it
@@ -7882,8 +8072,8 @@ CodegenDecl pragma
 ------------------
 
 The `codegenDecl` pragma can be used to directly influence Nim's code
-generator. It receives a format string that determines how the variable
-or proc is declared in the generated code.
+generator. It receives a format string that determines how the variable, 
+proc or object type is declared in the generated code.
 
 For variables, $1 in the format string represents the type of the variable,
 $2 is the name of the variable, and each appearance of $# represents $1/$2
@@ -7918,7 +8108,30 @@ will generate this code:
   ```c
   __interrupt void myinterrupt()
   ```
+  
+For object types, the $1 represents the name of the object type, $2 is the list of
+fields and $3 is the base type.
 
+```nim
+
+const strTemplate = """
+  struct $1 {
+    $2
+  };  
+"""
+type Foo {.codegenDecl:strTemplate.} = object
+  a, b: int
+```
+
+will generate this code:
+
+
+```c
+struct Foo {
+  NI a;
+  NI b;
+}; 
+```
 
 `cppNonPod` pragma
 ------------------
@@ -7968,6 +8181,24 @@ used. To see if a value was provided, `defined(FooBar)` can be used.
 
 The syntax `-d:flag`:option: is actually just a shortcut for
 `-d:flag=true`:option:.
+
+These pragmas also accept an optional string argument for qualified
+define names.
+
+  ```nim
+  const FooBar {.intdefine: "package.FooBar".}: int = 5
+  echo FooBar
+  ```
+
+  ```cmd
+  nim c -d:package.FooBar=42 foobar.nim
+  ```
+
+This helps disambiguate define names in different packages.
+
+See also the [generic `define` pragma](manual_experimental.html#generic-define-pragma)
+for a version of these pragmas that detects the type of the define based on
+the constant value.
 
 User-defined pragmas
 ====================
@@ -8344,22 +8575,11 @@ This is only useful if the program is compiled as a dynamic library via the
 `--app:lib`:option: command-line option.
 
 
-
 Threads
 =======
 
-To enable thread support the `--threads:on`:option: command-line switch needs to
-be used. The [system module](system.html) module then contains several threading primitives.
-See the [channels](channels_builtin.html) modules
-for the low-level thread API. There are also high-level parallelism constructs
-available. See [spawn](manual_experimental.html#parallel-amp-spawn) for
+The `--threads:on`:option: command-line switch is enabled by default. The [typedthreads module](typedthreads.html) module then contains several threading primitives. See [spawn](manual_experimental.html#parallel-amp-spawn) for
 further details.
-
-Nim's memory model for threads is quite different than that of other common
-programming languages (C, Pascal, Java): Each thread has its own (garbage
-collected) heap, and sharing of memory is restricted to global variables. This
-helps to prevent race conditions. GC efficiency is improved quite a lot,
-because the GC never has to stop other threads and see what they reference.
 
 The only way to create a thread is via `spawn` or
 `createThread`. The invoked proc must not use `var` parameters nor must

@@ -62,9 +62,6 @@ import std/private/since
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-when not defined(nimHasCursor):
-  {.pragma: cursor.}
-
 type
   DoublyLinkedNodeObj*[T] = object
     ## A node of a doubly linked list.
@@ -191,13 +188,13 @@ func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (
     result.add(elem)
 
 template itemsListImpl() {.dirty.} =
-  var it = L.head
+  var it {.cursor.} = L.head
   while it != nil:
     yield it.value
     it = it.next
 
 template itemsRingImpl() {.dirty.} =
-  var it = L.head
+  var it {.cursor.} = L.head
   if it != nil:
     while true:
       yield it.value

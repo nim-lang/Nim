@@ -1,6 +1,6 @@
 discard """
   targets: "c cpp js"
-  matrix: ";--gc:arc"
+  matrix: "--mm:refc;--mm:arc"
 """
 
 # if excessive, could remove 'cpp' from targets
@@ -270,6 +270,57 @@ func fn1(): int =
 func fn2(): int =
   ## comment
   result = 1"""
+
+  block: # block calls
+    let a = deb:
+      foo(a, b, (c, d)):
+        e
+        f
+      do: g
+      of h: i
+      elif j: k
+      except m: n
+      do () -> u: v
+      finally: o
+
+      a + b:
+        c
+        d
+      do:
+        e
+        f
+      else: g
+
+      *a: b
+      do: c
+    
+    doAssert a == """foo(a, b, (c, d)):
+  e
+  f
+do:
+  g
+of h:
+  i
+elif j:
+  k
+except m:
+  n
+do -> u:
+  v
+finally:
+  o
+a + b:
+  c
+  d
+do:
+  e
+  f
+else:
+  g
+*a:
+  b
+do:
+  c"""
 
 static: main()
 main()

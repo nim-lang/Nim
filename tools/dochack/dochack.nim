@@ -1,5 +1,6 @@
 import dom
 import fuzzysearch
+import std/[jsfetch, asyncjs]
 
 
 proc setTheme(theme: cstring) {.exportc.} =
@@ -252,21 +253,7 @@ proc escapeCString(x: var cstring) =
 
 proc dosearch(value: cstring): Element =
   if db.len == 0:
-    var stuff: Element
-    {.emit: """
-    var request = new XMLHttpRequest();
-    request.open("GET", "theindex.html", false);
-    request.send(null);
-
-    var doc = document.implementation.createHTMLDocument("theindex");
-    doc.documentElement.innerHTML = request.responseText;
-
-    `stuff` = doc.documentElement;
-    """.}
-    db = stuff.getElementsByClass"reference"
-    contents = @[]
-    for ahref in db:
-      contents.add ahref.getAttribute("data-doc-search-tag")
+    return
   let ul = tree("UL")
   result = tree("DIV")
   result.setClass"search_results"
@@ -293,8 +280,28 @@ proc dosearch(value: cstring): Element =
     result.add tree("B", text"search results")
     result.add ul
 
-var oldtoc: Element
-var timer: Timeout
+proc loadIndex() {.async.} =
+  ## Loads theindex.html to enable searching
+  let
+    indexURL = document.getElementById("indexLink").getAttribute("href")
+    # Get root of project documentation by cutting off theindex.html from index href
+    rootURL = ($indexURL)[0 ..< ^"theindex.html".len]
+  var resp = fetch(indexURL).await().text().await()
+  # Convert into element so we can use DOM functions to parse the html
+  var indexElem = document.createElement("div")
+  indexElem.innerHtml = resp
+  # Add items into the DB/contents
+  for href in indexElem.getElementsByClass("reference"):
+    # Make links be relative to project root instead of current page
+    href.setAttr("href", cstring(rootURL & $href.getAttribute("href")))
+    db &= href
+    contents &= href.getAttribute("data-doc-search-tag")
+
+
+var
+  oldtoc: Element
+  timer: Timeout
+  loadIndexFut: Future[void] = nil
 
 proc search*() {.exportc.} =
   proc wrapper() =
@@ -307,7 +314,12 @@ proc search*() {.exportc.} =
       replaceById("tocRoot", results)
     elif not oldtoc.isNil:
       replaceById("tocRoot", oldtoc)
-
+  # Start loading index as soon as user starts typing.
+  # Will only be loaded the once anyways
+  if loadIndexFut == nil:
+    loadIndexFut = loadIndex()
+    # Run wrapper once loaded so we don't miss the users query
+    discard loadIndexFut.then(wrapper)
   if timer != nil: clearTimeout(timer)
   timer = setTimeout(wrapper, 400)
 

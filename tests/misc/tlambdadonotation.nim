@@ -67,7 +67,7 @@ proc main2() =
   proc foo() =
     subscriber.consume()
 
-  emitter.on_event() do:
+  emitter.on_event() do ():
     subscriber.consume()
 
   # this works

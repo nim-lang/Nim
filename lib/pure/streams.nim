@@ -98,6 +98,7 @@ import std/private/since
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
+  export FileMode
 
 proc newEIO(msg: string): owned(ref IOError) =
   new(result)
@@ -114,7 +115,7 @@ type
     ## * That these fields here shouldn't be used directly.
     ##   They are accessible so that a stream implementation can override them.
     closeImpl*: proc (s: Stream)
-      {.nimcall, raises: [Exception, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+      {.nimcall, raises: [IOError, OSError], tags: [WriteIOEffect], gcsafe.}
     atEndImpl*: proc (s: Stream): bool
       {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
     setPositionImpl*: proc (s: Stream, pos: int)
@@ -173,10 +174,20 @@ proc close*(s: Stream) =
   ## See also:
   ## * `flush proc <#flush,Stream>`_
   runnableExamples:
-    var strm = newStringStream("The first line\nthe second line\nthe third line")
-    ## do something...
-    strm.close()
-  if not isNil(s.closeImpl): s.closeImpl(s)
+    block:
+      let strm = newStringStream("The first line\nthe second line\nthe third line")
+      ## do something...
+      strm.close()
+      
+    block:
+      let strm = newFileStream("amissingfile.txt")
+      # deferring works even if newFileStream fails
+      defer: strm.close()
+      if not isNil(strm):
+        ## do something...
+
+  if not isNil(s) and not isNil(s.closeImpl):
+    s.closeImpl(s)
 
 proc atEnd*(s: Stream): bool =
   ## Checks if more data can be read from `s`. Returns ``true`` if all data has

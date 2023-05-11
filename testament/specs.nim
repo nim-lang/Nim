@@ -105,7 +105,7 @@ type
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:
-    result = compilerPrefix & " $target --hints:on -d:testing --nimblePath:build/deps/pkgs $options $file"
+    result = compilerPrefix & " $target --hints:on -d:testing --nimblePath:build/deps/pkgs2 $options $file"
   else:
     result = s.cmd
 
@@ -222,7 +222,10 @@ proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var T
 
   while result < s.len-1:
     if s[result] == '\n':
-      msg.add '\n'
+      if result > 0 and s[result - 1] == '\r':
+        msg[^1] = '\n'
+      else:
+        msg.add '\n'
       inc result
       inc line
       col = 1

@@ -57,6 +57,7 @@ type
     warnRstBrokenLink = "BrokenLink",
     warnRstLanguageXNotSupported = "LanguageXNotSupported",
     warnRstFieldXNotSupported = "FieldXNotSupported",
+    warnRstUnusedImportdoc = "UnusedImportdoc",
     warnRstStyle = "warnRstStyle",
     warnCommentXIgnored = "CommentXIgnored",
     warnTypelessParam = "TypelessParam",
@@ -80,9 +81,15 @@ type
     warnAnyEnumConv = "AnyEnumConv",
     warnHoleEnumConv = "HoleEnumConv",
     warnCstringConv = "CStringConv",
+    warnPtrToCstringConv = "PtrToCstringConv",
     warnEffect = "Effect",
     warnCastSizes = "CastSizes"
-    warnTemplateRedefinition = "TemplateRedefinition",
+    warnAboveMaxSizeSet = "AboveMaxSizeSet",
+    warnImplicitTemplateRedefinition = "ImplicitTemplateRedefinition",
+    warnUnnamedBreak = "UnnamedBreak",
+    warnStmtListLambda = "StmtListLambda",
+    warnBareExcept = "BareExcept",
+    warnImplicitDefaultValue = "ImplicitDefaultValue",
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -138,6 +145,7 @@ const
     warnRstBrokenLink: "broken link '$1'",
     warnRstLanguageXNotSupported: "language '$1' not supported",
     warnRstFieldXNotSupported: "field '$1' not supported",
+    warnRstUnusedImportdoc: "importdoc for '$1' is not used",
     warnRstStyle: "RST style: $1",
     warnCommentXIgnored: "comment '$1' ignored",
     warnTypelessParam: "", # deadcode
@@ -176,9 +184,15 @@ const
     warnAnyEnumConv: "$1",
     warnHoleEnumConv: "$1",
     warnCstringConv: "$1",
+    warnPtrToCstringConv: "unsafe conversion to 'cstring' from '$1'; this will become a compile time error in the future",
     warnEffect: "$1",
     warnCastSizes: "$1",
-    warnTemplateRedefinition: "template '$1' is implicitly redefined, consider adding an explicit .redefine pragma",
+    warnAboveMaxSizeSet: "$1",
+    warnImplicitTemplateRedefinition: "template '$1' is implicitly redefined; this is deprecated, add an explicit .redefine pragma",
+    warnUnnamedBreak: "Using an unnamed break in a block is deprecated; Use a named block with a named break instead",
+    warnStmtListLambda: "statement list expression assumed to be anonymous proc; this is deprecated, use `do (): ...` or `proc () = ...` instead",
+    warnBareExcept: "$1",
+    warnImplicitDefaultValue: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
@@ -234,7 +248,7 @@ type
   TNoteKinds* = set[TNoteKind]
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
-  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv}
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept}
   result[2] = result[3] - {hintStackTrace, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,

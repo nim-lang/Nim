@@ -8,14 +8,14 @@
 #
 
 # This module implements lookup helpers.
-import std/[algorithm, strutils]
+import std/[algorithm, strutils, tables]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs
+  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs, sets, wordrecg
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -48,6 +48,11 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
         case x.kind
         of nkIdent: id.add(x.ident.s)
         of nkSym: id.add(x.sym.name.s)
+        of nkSymChoices:
+          if x[0].kind == nkSym:
+            id.add(x[0].sym.name.s)
+          else:
+            handleError(n, origin)
         of nkLiterals - nkFloatLiterals: id.add(x.renderTree)
         else: handleError(n, origin)
       result = getIdent(c.cache, id)
@@ -165,6 +170,7 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
   # really iterate over all symbols in all the scopes. This is expensive
   # and only used by suggest.nim.
   var isLocal = true
+
   var scopeN = 0
   for scope in allScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
@@ -178,6 +184,17 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
     for s in modulegraphs.allSyms(c.graph, im.m):
       assert s != nil
       yield (s, scopeN, isLocal)
+
+iterator uniqueSyms*(c: PContext): (PSym, int, bool) =
+  ## Like [allSyms] except only returns unique symbols (Uniqueness determined by line + name)
+  # Track seen symbols so we don't duplicate them.
+  # The int is for the symbols name, and line info is
+  # to be able to tell apart symbols with same name but on different lines
+  var seen = initHashSet[(TLineInfo, int)]()
+  for res in allSyms(c):
+    if not seen.containsOrIncl((res[0].info, res[0].name.id)):
+      yield res
+
 
 proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =
   var marked = initIntSet()
@@ -211,6 +228,23 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
     if i == limit: return
     inc i
 
+proc searchInScopesAllCandidatesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
+  result = @[]
+  for scope in allScopes(c.currentScope):
+    var ti: TIdentIter
+    var candidate = initIdentIter(ti, scope.symbols, s)
+    while candidate != nil:
+      if candidate.kind in filter:
+        result.add candidate
+      candidate = nextIdentIter(ti, scope.symbols)
+
+  if result.len == 0:
+    var marked = initIntSet()
+    for im in c.imports.mitems:
+      for s in symbols(im, marked, s, c.graph):
+        if s.kind in filter:
+          result.add s
+
 proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
   result = @[]
   block outer:
@@ -240,7 +274,7 @@ proc errorSym*(c: PContext, n: PNode): PSym =
       considerQuotedIdent(c, m)
     else:
       getIdent(c.cache, "err:" & renderTree(m))
-  result = newSym(skError, ident, nextSymId(c.idgen), getCurrOwner(c), n.info, {})
+  result = newSym(skError, ident, c.idgen, getCurrOwner(c), n.info, {})
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
   # pretend it's from the top level scope to prevent cascading errors:
@@ -306,15 +340,18 @@ proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
 # xxx pending bootstrap >= 1.4, replace all those overloads with a single one:
 # proc addDecl*(c: PContext, sym: PSym, info = sym.info, scope = c.currentScope) {.inline.} =
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
+  if sym.name.id == ord(wUnderscore): return
   let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
-    if sym.kind == skModule and conflict.kind == skModule and sym.owner == conflict.owner:
+    if sym.kind == skModule and conflict.kind == skModule:      
       # e.g.: import foo; import foo
       # xxx we could refine this by issuing a different hint for the case
-      # where a duplicate import happens inside an include.
-      localError(c.config, info, hintDuplicateModuleImport,
-        "duplicate import of '$1'; previous import here: $2" %
-        [sym.name.s, c.config $ conflict.info])
+      # where a duplicate import happens inside an include.      
+      if c.importModuleMap[sym.id] == c.importModuleMap[conflict.id]:
+        #only hints if the conflict is the actual module not just a shared name
+        localError(c.config, info, hintDuplicateModuleImport,
+          "duplicate import of '$1'; previous import here: $2" %
+          [sym.name.s, c.config $ conflict.info])
     else:
       wrongRedefinition(c, info, sym.name.s, conflict.info, errGenerated)
 
@@ -360,11 +397,12 @@ proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
   if fn.kind notin OverloadableSyms:
     internalError(c.config, fn.info, "addOverloadableSymAt")
     return
-  let check = strTableGet(scope.symbols, fn.name)
-  if check != nil and check.kind notin OverloadableSyms:
-    wrongRedefinition(c, fn.info, fn.name.s, check.info)
-  else:
-    scope.addSym(fn)
+  if fn.name.id != ord(wUnderscore):
+    let check = strTableGet(scope.symbols, fn.name)
+    if check != nil and check.kind notin OverloadableSyms:
+      wrongRedefinition(c, fn.info, fn.name.s, check.info)
+    else:
+      scope.addSym(fn)
 
 proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   ## adds an overloadable symbol on the scope and the interface if appropriate
@@ -417,7 +455,7 @@ type SpellCandidate = object
   msg: string
   sym: PSym
 
-template toOrderTup(a: SpellCandidate): auto =
+template toOrderTup(a: SpellCandidate): (int, int, string) =
   # `dist` is first, to favor nearby matches
   # `depth` is next, to favor nearby enclosing scopes among ties
   # `sym.name.s` is last, to make the list ordered and deterministic among ties
@@ -440,29 +478,29 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
     let dist = editDistance(name0, sym.name.s.nimIdentNormalize)
     var msg: string
     msg.add "\n ($1, $2): '$3'" % [$dist, $depth, sym.name.s]
-    addDeclaredLoc(msg, c.config, sym) # `msg` needed for deterministic ordering.
     list.push SpellCandidate(dist: dist, depth: depth, msg: msg, sym: sym)
 
   if list.len == 0: return
   let e0 = list[0]
-  var count = 0
+  var
+    count = 0
+    last: PIdent = nil
   while true:
     # pending https://github.com/timotheecour/Nim/issues/373 use more efficient `itemsSorted`.
     if list.len == 0: break
     let e = list.pop()
     if c.config.spellSuggestMax == spellSuggestSecretSauce:
       const
-        smallThres = 2
-        maxCountForSmall = 4
-        # avoids ton of operator matches when mis-matching short symbols such as `i`
-        # other heuristics could be devised, such as only suggesting operators if `name0`
-        # is an operator (likewise with non-operators).
-      if e.dist > e0.dist or (name0.len <= smallThres and count >= maxCountForSmall): break
+        minLengthForSuggestion = 4
+        maxCount = 3 # avoids ton of matches; three counts for equal distances
+      if e.dist > e0.dist or count >= maxCount or name0.len < minLengthForSuggestion: break
     elif count >= c.config.spellSuggestMax: break
     if count == 0:
       result.add "\ncandidates (edit distance, scope distance); see '--spellSuggest': "
-    result.add e.msg
-    count.inc
+    if e.sym.name != last:
+      result.add e.msg
+      count.inc
+      last = e.sym.name
 
 proc errorUseQualifier(c: PContext; info: TLineInfo; s: PSym; amb: var bool): PSym =
   var err = "ambiguous identifier: '" & s.name.s & "'"
@@ -507,12 +545,16 @@ proc errorUseQualifier*(c: PContext; info:TLineInfo; choices: PNode) =
   errorUseQualifier(c, info, candidates, prefix)
 
 proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extra = "") =
-  var err = "undeclared identifier: '" & name & "'" & extra
-  if c.recursiveDep.len > 0:
-    err.add "\nThis might be caused by a recursive module dependency:\n"
-    err.add c.recursiveDep
-    # prevent excessive errors for 'nim check'
-    c.recursiveDep = ""
+  var err: string
+  if name == "_":
+    err = "the special identifier '_' is ignored in declarations and cannot be used"
+  else:
+    err = "undeclared identifier: '" & name & "'" & extra
+    if c.recursiveDep.len > 0:
+      err.add "\nThis might be caused by a recursive module dependency:\n"
+      err.add c.recursiveDep
+      # prevent excessive errors for 'nim check'
+      c.recursiveDep = ""
   localError(c.config, info, errGenerated, err)
 
 proc errorUndeclaredIdentifierHint*(c: PContext; n: PNode, ident: PIdent): PSym =
@@ -590,7 +632,11 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         if m == c.module:
           result = strTableGet(c.topLevelScope.symbols, ident).skipAlias(n, c.config)
         else:
-          result = someSym(c.graph, m, ident).skipAlias(n, c.config)
+          if c.importModuleLookup.getOrDefault(m.name.id).len > 1:
+            var amb: bool
+            result = errorUseQualifier(c, n.info, m, amb)
+          else:
+            result = someSym(c.graph, m, ident).skipAlias(n, c.config)
         if result == nil and checkUndeclared in flags:
           result = errorUndeclaredIdentifierHint(c, n[1], ident)
       elif n[1].kind == nkSym:

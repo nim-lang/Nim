@@ -36,7 +36,7 @@ template frees(s) =
 
 proc resize(old: int): int {.inline.} =
   if old <= 0: result = 4
-  elif old < 65536: result = old * 2
+  elif old <= high(int16): result = old * 2
   else: result = old * 3 div 2 # for large arrays * 3/2 is better
 
 proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
@@ -62,7 +62,7 @@ proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
         s.p = cast[ptr NimStrPayload](realloc0(s.p, contentSize(oldCap), contentSize(newCap)))
       s.p.cap = newCap
 
-proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl, inline.} =
+proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl, inl.} =
   #if (s.p == nil) or (s.len+1 > s.p.cap and not strlitFlag):
   prepareAdd(s, 1)
   s.p.data[s.len] = c
@@ -89,7 +89,7 @@ proc cstrToNimstr(str: cstring): NimStringV2 {.compilerRtl.} =
 
 proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, inline.} =
   if s.len == 0: result = cstring""
-  else: result = cstring(unsafeAddr s.p.data)
+  else: result = cast[cstring](unsafeAddr s.p.data)
 
 proc appendString(dest: var NimStringV2; src: NimStringV2) {.compilerproc, inline.} =
   if src.len > 0:
@@ -165,7 +165,7 @@ proc nimPrepareStrMutationImpl(s: var NimStringV2) =
   s.p.cap = s.len
   copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len+1)
 
-proc nimPrepareStrMutationV2(s: var NimStringV2) {.compilerRtl, inline.} =
+proc nimPrepareStrMutationV2(s: var NimStringV2) {.compilerRtl, inl.} =
   if s.p != nil and (s.p.cap and strlitFlag) == strlitFlag:
     nimPrepareStrMutationImpl(s)
 

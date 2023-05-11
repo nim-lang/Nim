@@ -65,6 +65,29 @@ However, a `void` type cannot be inferred in generic code:
 The `void` type is only valid for parameters and return types; other symbols
 cannot have the type `void`.
 
+Generic `define` pragma
+=======================
+
+Aside the [typed define pragmas for constants](manual.html#implementation-specific-pragmas-compileminustime-define-pragmas),
+there is a generic `{.define.}` pragma that interprets the value of the define
+based on the type of the constant value.
+
+  ```nim
+  const foo {.define: "package.foo".} = 123
+  const bar {.define: "package.bar".} = false
+  ```
+
+  ```cmd
+  nim c -d:package.foo=456 -d:package.bar foobar.nim
+  ```
+
+The following types are supported:
+
+* `string` and `cstring`
+* Signed and unsigned integer types
+* `bool`
+* Enums
+
 Top-down type inference
 =======================
 
@@ -430,27 +453,24 @@ Assuming `foo` is a macro or a template, this is roughly equivalent to:
   ```
 
 
-Symbols as template/macro calls
-===============================
+Symbols as template/macro calls (alias syntax)
+==============================================
 
-Templates and macros that take no arguments can be called as lone symbols,
-i.e. without parentheses. This is useful for repeated uses of complex
-expressions that cannot conveniently be represented as runtime values.
+Templates and macros that have no generic parameters and no required arguments
+can be called as lone symbols, i.e. without parentheses. This is useful for
+repeated uses of complex expressions that cannot conveniently be represented
+as runtime values.
 
   ```nim
   type Foo = object
     bar: int
 
   var foo = Foo(bar: 10)
-  template bar: untyped = foo.bar
+  template bar: int = foo.bar
   assert bar == 10
   bar = 15
   assert bar == 15
   ```
-
-In the future, this may require more specific information on template or macro
-signatures to be used. Specializations for some applications of this may also
-be introduced to guarantee consistency and circumvent bugs.
 
 
 Not nil annotation
@@ -519,8 +539,7 @@ Since version 1.4, a stricter definition of "side effect" is available.
 In addition to the existing rule that a side effect is calling a function
 with side effects, the following rule is also enforced:
 
-Any mutation to an object does count as a side effect if that object is reachable
-via a parameter that is not declared as a `var` parameter.
+A store to the heap via a `ref` or `ptr` indirection is not allowed.
 
 For example:
 
@@ -540,15 +559,12 @@ For example:
       it = it.ri
 
   func mut(n: Node) =
-    let m = n # is the statement that connected the mutation to the parameter
-    m.data = "yeah" # the mutation is here
-    # Error: 'mut' can have side effects
-    # an object reachable from 'n' is potentially mutated
+    var it = n
+    while it != nil:
+      it.data = "yeah" # forbidden mutation
+      it = it.ri
+
   ```
-
-
-The algorithm behind this analysis is described in
-the [view types algorithm].
 
 
 View types
@@ -1859,6 +1875,20 @@ before it is used. Thus the following is valid:
 
 In this example every path does set `s` to a value before it is used.
 
+  ```nim
+  {.experimental: "strictDefs".}
+
+  proc test(cond: bool) =
+    let s: seq[string]
+    if cond:
+      s = @["y"]
+    else:
+      s = @[]
+  ```
+
+With `experimental: "strictDefs"`, `let` statements are allowed to not have an initial value, but every path should set `s` to a value before it is used.
+
+
 `out` parameters
 ----------------
 
@@ -1940,4 +1970,40 @@ constructors that take inheritance into account.
 
 
 **Note**: The implementation of "strict definitions" and "out parameters" is experimental but the concept
+is solid and it is expected that eventually this mode becomes the default in later versions.
+
+
+Strict case objects
+===================
+
+With `experimental: "strictCaseObjects"` *every* field access is checked to be valid at compile-time.
+The field is within a `case` section of an `object`.
+
+  ```nim
+  {.experimental: "strictCaseObjects".}
+
+  type
+    Foo = object
+      case b: bool
+      of false:
+        s: string
+      of true:
+        x: int
+
+  var x = Foo(b: true, x: 4)
+  case x.b
+  of true:
+    echo x.x # valid
+  of false:
+    echo "no"
+
+  case x.b
+  of false:
+    echo x.x # error: field access outside of valid case branch: x.x
+  of true:
+    echo "no"
+
+  ```
+
+**Note**: The implementation of "strict case objects" is experimental but the concept
 is solid and it is expected that eventually this mode becomes the default in later versions.

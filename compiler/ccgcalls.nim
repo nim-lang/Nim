@@ -14,7 +14,8 @@ proc canRaiseDisp(p: BProc; n: PNode): bool =
   if n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
     result = false
   elif optPanics in p.config.globalOptions or
-      (n.kind == nkSym and sfSystemModule in getModule(n.sym).flags):
+      (n.kind == nkSym and sfSystemModule in getModule(n.sym).flags and
+       sfSystemRaisesDefect notin n.sym.flags):
     # we know we can be strict:
     result = canRaise(n)
   else:
@@ -155,7 +156,7 @@ proc reifiedOpenArray(n: PNode): bool {.inline.} =
   else:
     result = true
 
-proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, Rope) =
+proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareForMutation = false): (Rope, Rope) =
   var a, b, c: TLoc
   initLocExpr(p, q[1], a)
   initLocExpr(p, q[2], b)
@@ -163,6 +164,8 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, 
   # but first produce the required index checks:
   if optBoundsCheck in p.options:
     genBoundsCheck(p, a, b, c)
+  if prepareForMutation:
+    linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
   let ty = skipTypes(a.t, abstractVar+{tyPtr})
   let dest = getTypeDesc(p.module, destType)
   let lengthExpr = "($1)-($2)+1" % [rdLoc(c), rdLoc(b)]
@@ -194,10 +197,12 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, 
         optSeqDestructors in p.config.globalOptions:
       linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
     if atyp.kind in {tyVar} and not compileToCpp(p.module):
-      result = ("($4*)(*$1)$3+($2)" % [rdLoc(a), rdLoc(b), dataField(p), dest],
+      result = ("(($5) ? (($4*)(*$1)$3+($2)) : NIM_NIL)" %
+                  [rdLoc(a), rdLoc(b), dataField(p), dest, dataFieldAccessor(p, "*" & rdLoc(a))],
                 lengthExpr)
     else:
-      result = ("($4*)$1$3+($2)" % [rdLoc(a), rdLoc(b), dataField(p), dest],
+      result = ("(($5) ? (($4*)$1$3+($2)) : NIM_NIL)" %
+                  [rdLoc(a), rdLoc(b), dataField(p), dest, dataFieldAccessor(p, rdLoc(a))],
                 lengthExpr)
   else:
     internalError(p.config, "openArrayLoc: " & typeToString(a.t))
@@ -238,9 +243,12 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
       if ntyp.kind in {tyVar} and not compileToCpp(p.module):
         var t: TLoc
         t.r = "(*$1)" % [a.rdLoc]
-        result.add "(*$1)$3, $2" % [a.rdLoc, lenExpr(p, t), dataField(p)]
+        result.add "($4) ? ((*$1)$3) : NIM_NIL, $2" %
+                     [a.rdLoc, lenExpr(p, t), dataField(p),
+                      dataFieldAccessor(p, "*" & a.rdLoc)]
       else:
-        result.add "$1$3, $2" % [a.rdLoc, lenExpr(p, a), dataField(p)]
+        result.add "($4) ? ($1$3) : NIM_NIL, $2" %
+                     [a.rdLoc, lenExpr(p, a), dataField(p), dataFieldAccessor(p, a.rdLoc)]
     of tyArray:
       result.add "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, a.t))]
     of tyPtr, tyRef:
@@ -248,7 +256,9 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
       of tyString, tySequence:
         var t: TLoc
         t.r = "(*$1)" % [a.rdLoc]
-        result.add "(*$1)$3, $2" % [a.rdLoc, lenExpr(p, t), dataField(p)]
+        result.add "($4) ? ((*$1)$3) : NIM_NIL, $2" %
+                     [a.rdLoc, lenExpr(p, t), dataField(p),
+                      dataFieldAccessor(p, "*" & a.rdLoc)]
       of tyArray:
         result.add "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, lastSon(a.t)))]
       else:
@@ -259,7 +269,7 @@ proc withTmpIfNeeded(p: BProc, a: TLoc, needsTmp: bool): TLoc =
   # Bug https://github.com/status-im/nimbus-eth2/issues/1549
   # Aliasing is preferred over stack overflows.
   # Also don't regress for non ARC-builds, too risky.
-  if needsTmp and a.lode.typ != nil and p.config.selectedGC in {gcArc, gcOrc} and
+  if needsTmp and a.lode.typ != nil and p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and
       getSize(p.config, a.lode.typ) < 1024:
     getTemp(p, a.lode.typ, result, needsInit=false)
     genAssignment(p, result, a, {})
@@ -465,6 +475,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
           discard "resetLoc(p, d)"
         pl.add(addrLoc(p.config, d))
         genCallPattern()
+        if canRaise: raiseExit(p)
       else:
         var tmp: TLoc
         getTemp(p, typ[0], tmp, needsInit=true)

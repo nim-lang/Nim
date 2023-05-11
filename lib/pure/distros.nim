@@ -31,7 +31,7 @@ from std/strutils import contains, toLowerAscii
 
 when not defined(nimscript):
   from std/osproc import execProcess
-  from std/os import existsEnv
+  from std/envvars import existsEnv
 
 type
   Distribution* {.pure.} = enum ## the list of known distributions

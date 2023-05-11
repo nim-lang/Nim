@@ -67,6 +67,27 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
         else: annotateType(n[i], x[i], conf)
     elif x.kind == tyProc and x.callConv == ccClosure:
       n.typ = t
+    elif x.kind == tyOpenArray: # `opcSlice` transforms slices into tuples
+      if n.kind == nkTupleConstr:
+        let
+          bracketExpr = newNodeI(nkBracket, n.info)
+          left = int n[1].intVal
+          right = int n[2].intVal
+        bracketExpr.flags = n.flags
+        case n[0].kind # is this a string slice or a array slice
+        of nkStrKinds:
+          for i in left..right:
+            bracketExpr.add newIntNode(nkCharLit, BiggestInt n[0].strVal[i])
+            annotateType(bracketExpr[^1], t[0], conf)
+        of nkBracket:
+          for i in left..right:
+            bracketExpr.add n[0][i]
+            annotateType(bracketExpr[^1], t[0], conf)
+        else:
+          globalError(conf, n.info, "Incorrectly generated tuple constr")
+        n[] = bracketExpr[]
+
+      n.typ = t
     else:
       globalError(conf, n.info, "() must have a tuple type")
   of nkBracket:

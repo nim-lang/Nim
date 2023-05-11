@@ -150,7 +150,7 @@ import
   strutils, lexbase, streams, unicode
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, syncio]
 
 # the parser treats ``<br />`` as ``<br></br>``
 

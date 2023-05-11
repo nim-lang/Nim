@@ -10,7 +10,7 @@
 import
   std/[strutils, os, tables, terminal, macros, times],
   std/private/miscdollars,
-  options, lineinfos, pathutils, strutils2
+  options, lineinfos, pathutils
 
 import ropes except `%`
 
@@ -23,6 +23,10 @@ template instLoc*(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
 template toStdOrrKind(stdOrr): untyped =
   if stdOrr == stdout: stdOrrStdout else: stdOrrStderr
+
+proc toLowerAscii(a: var string) {.inline.} =
+  for c in mitems(a):
+    if isUpperAscii(c): c = char(uint8(c) xor 0b0010_0000'u8)
 
 proc flushDot*(conf: ConfigRef) =
   ## safe to call multiple times
@@ -78,7 +82,7 @@ when defined(nimpretty):
   proc fileSection*(conf: ConfigRef; fid: FileIndex; a, b: int): string =
     substr(conf.m.fileInfos[fid.int].fullContent, a, b)
 
-proc canonicalCase(path: var string) =
+proc canonicalCase(path: var string) {.inline.} =
   ## the idea is to only use this for checking whether a path is already in
   ## the table but otherwise keep the original case
   when FileSystemCaseSensitive: discard
@@ -101,16 +105,13 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
 
   try:
     canon = canonicalizePath(conf, filename)
-    when not defined(nimSeqsV2):
-      shallow(canon.string)
   except OSError:
     canon = filename
     # The compiler uses "filenames" such as `command line` or `stdin`
     # This flag indicates that we are working with such a path here
     pseudoPath = true
 
-  var canon2: string
-  forceCopy(canon2, canon.string) # because `canon` may be shallow
+  var canon2 = canon.string
   canon2.canonicalCase
 
   if conf.m.filenameToIndexTbl.hasKey(canon2):
@@ -119,7 +120,6 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
   else:
     isKnownFile = false
     result = conf.m.fileInfos.len.FileIndex
-    #echo "ID ", result.int, " ", canon2
     conf.m.fileInfos.add(newFileInfo(canon, if pseudoPath: RelativeFile filename
                                             else: relativeTo(canon, conf.projectPath)))
     conf.m.filenameToIndexTbl[canon2] = result
@@ -127,6 +127,13 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
 proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
   var dummy: bool
   result = fileInfoIdx(conf, filename, dummy)
+
+proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile; isKnownFile: var bool): FileIndex =
+  fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), isKnownFile)
+
+proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile): FileIndex =
+  var dummy: bool
+  fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), dummy)
 
 proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
   result.fileIndex = fileInfoIdx
@@ -219,7 +226,7 @@ proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: AbsoluteFile) 
 
 proc setHash*(conf: ConfigRef; fileIdx: FileIndex; hash: string) =
   assert fileIdx.int32 >= 0
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
     conf.m.fileInfos[fileIdx.int32].hash = hash
   else:
     shallowCopy(conf.m.fileInfos[fileIdx.int32].hash, hash)
@@ -227,7 +234,7 @@ proc setHash*(conf: ConfigRef; fileIdx: FileIndex; hash: string) =
 
 proc getHash*(conf: ConfigRef; fileIdx: FileIndex): string =
   assert fileIdx.int32 >= 0
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
     result = conf.m.fileInfos[fileIdx.int32].hash
   else:
     shallowCopy(result, conf.m.fileInfos[fileIdx.int32].hash)
@@ -534,10 +541,11 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     ignoreMsg = not conf.hasWarn(msg)
     if not ignoreMsg and msg in conf.warningAsErrors:
       title = ErrorTitle
+      color = ErrorColor
     else:
       title = WarningTitle
+      color = WarningColor
     if not ignoreMsg: writeContext(conf, info)
-    color = WarningColor
     inc(conf.warnCounter)
   of hintMin..hintMax:
     sev = Severity.Hint

@@ -36,3 +36,12 @@ echo f -4
 
 echo int -1 # doesn't compile
 echo int `-` 1 # compiles
+
+var num = 1
+num += int 2
+doAssert num == 3
+
+import options
+var opt = some some none int
+opt = some some none int
+opt = some none Option[int]

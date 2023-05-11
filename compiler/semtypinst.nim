@@ -193,6 +193,24 @@ proc replaceObjBranches(cl: TReplTypeVars, n: PNode): PNode =
     for i in 0..<n.len:
       n[i] = replaceObjBranches(cl, n[i])
 
+proc hasValuelessStatics(n: PNode): bool =
+  # We should only attempt to call an expression that has no tyStatics
+  # As those are unresolved generic parameters, which means in the following
+  # The compiler attempts to do `T == 300` which errors since the typeclass `MyThing` lacks a parameter
+  #[
+    type MyThing[T: static int] = object
+      when T == 300:
+        a
+    proc doThing(_: MyThing)
+  ]#
+  if n.safeLen == 0:
+    n.typ == nil or n.typ.kind == tyStatic
+  else:
+    for x in n:
+      if hasValuelessStatics(x):
+        return true
+    false
+
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
   if n == nil: return
   result = copyNode(n)
@@ -217,10 +235,11 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       of nkElifBranch:
         checkSonsLen(it, 2, cl.c.config)
         var cond = prepareNode(cl, it[0])
-        var e = cl.c.semConstExpr(cl.c, cond)
-        if e.kind != nkIntLit:
-          internalError(cl.c.config, e.info, "ReplaceTypeVarsN: when condition not a bool")
-        if e.intVal != 0 and branch == nil: branch = it[1]
+        if not cond.hasValuelessStatics:
+          var e = cl.c.semConstExpr(cl.c, cond)
+          if e.kind != nkIntLit:
+            internalError(cl.c.config, e.info, "ReplaceTypeVarsN: when condition not a bool")
+          if e.intVal != 0 and branch == nil: branch = it[1]
       of nkElse:
         checkSonsLen(it, 1, cl.c.config)
         if branch == nil: branch = it[0]
@@ -281,7 +300,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
       var g: G[string]
 
   ]#
-  result = copySym(s, nextSymId cl.c.idgen)
+  result = copySym(s, cl.c.idgen)
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner
@@ -499,10 +518,20 @@ proc propagateFieldFlags(t: PType, n: PNode) =
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   template bailout =
-    if t.sym != nil and sfGeneratedType in t.sym.flags:
-      # Only consider the recursion limit if the symbol is a type with generic
-      # parameters that have not been explicitly supplied, typechecking should
-      # terminate when generic parameters are explicitly supplied.
+    if (t.sym == nil) or (t.sym != nil and sfGeneratedType in t.sym.flags):
+      # In the first case 't.sym' can be 'nil' if the type is a ref/ptr, see
+      # issue https://github.com/nim-lang/Nim/issues/20416 for more details.
+      # Fortunately for us this works for now because partial ref/ptr types are
+      # not allowed in object construction, eg.
+      #   type
+      #     Container[T] = ...
+      #     O = object
+      #      val: ref Container
+      #
+      # In the second case only consider the recursion limit if the symbol is a
+      # type with generic parameters that have not been explicitly supplied,
+      # typechecking should terminate when generic parameters are explicitly
+      # supplied.
       if cl.recursionLimit > 100:
         # bail out, see bug #2509. But note this caching is in general wrong,
         # look at this example where TwoVectors should not share the generic

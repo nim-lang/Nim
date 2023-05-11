@@ -402,6 +402,9 @@ proc transformSlices(g: ModuleGraph; idgen: IdGenerator; n: PNode): PNode =
     let op = n[0].sym
     if op.name.s == "[]" and op.fromSystem:
       result = copyNode(n)
+      var typ = newType(tyOpenArray, nextTypeId(g.idgen), result.typ.owner)
+      typ.add result.typ[0]
+      result.typ = typ
       let opSlice = newSymNode(createMagic(g, idgen, "slice", mSlice))
       opSlice.typ = getSysType(g, n.info, tyInt)
       result.add opSlice
@@ -483,7 +486,7 @@ proc liftParallel*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): P
   checkArgs(a, body)
 
   var varSection = newNodeI(nkVarSection, n.info)
-  var temp = newSym(skTemp, getIdent(g.cache, "barrier"), nextSymId idgen, owner, n.info)
+  var temp = newSym(skTemp, getIdent(g.cache, "barrier"), idgen, owner, n.info)
   temp.typ = magicsys.getCompilerProc(g, "Barrier").typ
   incl(temp.flags, sfFromGeneric)
   let tempNode = newSymNode(temp)

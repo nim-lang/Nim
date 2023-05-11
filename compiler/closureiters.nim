@@ -183,7 +183,7 @@ proc newStateAssgn(ctx: var Ctx, stateNo: int = -2): PNode =
   ctx.newStateAssgn(newIntTypeNode(stateNo, ctx.g.getSysType(TLineInfo(), tyInt)))
 
 proc newEnvVar(ctx: var Ctx, name: string, typ: PType): PSym =
-  result = newSym(skVar, getIdent(ctx.g.cache, name), nextSymId(ctx.idgen), ctx.fn, ctx.fn.info)
+  result = newSym(skVar, getIdent(ctx.g.cache, name), ctx.idgen, ctx.fn, ctx.fn.info)
   result.typ = typ
   assert(not typ.isNil)
 
@@ -1155,7 +1155,7 @@ proc newArrayType(g: ModuleGraph; n: int, t: PType; idgen: IdGenerator; owner: P
   result = newType(tyArray, nextTypeId(idgen), owner)
 
   let rng = newType(tyRange, nextTypeId(idgen), owner)
-  rng.n = newTree(nkRange, g.newIntLit(owner.info, 0), g.newIntLit(owner.info, n))
+  rng.n = newTree(nkRange, g.newIntLit(owner.info, 0), g.newIntLit(owner.info, n - 1))
   rng.rawAddSon(t)
 
   result.rawAddSon(rng)
@@ -1348,7 +1348,7 @@ proc freshVars(n: PNode; c: var FreshVarsContext): PNode =
         let idefs = copyNode(it)
         for v in 0..it.len-3:
           if it[v].kind == nkSym:
-            let x = copySym(it[v].sym, nextSymId(c.idgen))
+            let x = copySym(it[v].sym, c.idgen)
             c.tab[it[v].sym.id] = x
             idefs.add newSymNode(x)
           else:
@@ -1372,6 +1372,7 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
   # detect: 'finally: raises X' which is currently not supported. We produce
   # an error for this case for now. All this will be done properly with Yuriy's
   # patch.
+
   result = n
   case n.kind
   of nkTryStmt:
@@ -1388,6 +1389,7 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
       discard c.finallys.pop()
 
   of nkWhileStmt, nkBlockStmt:
+    if n.hasYields == false: return n
     c.blocks.add((n, c.finallys.len))
     for i in 0 ..< n.len:
       result[i] = preprocess(c, n[i])
@@ -1429,9 +1431,9 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
     # Lambda lifting was not done yet. Use temporary :state sym, which will
     # be handled specially by lambda lifting. Local temp vars (if needed)
     # should follow the same logic.
-    ctx.stateVarSym = newSym(skVar, getIdent(ctx.g.cache, ":state"), nextSymId(idgen), fn, fn.info)
+    ctx.stateVarSym = newSym(skVar, getIdent(ctx.g.cache, ":state"), idgen, fn, fn.info)
     ctx.stateVarSym.typ = g.createClosureIterStateType(fn, idgen)
-  ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), nextSymId(idgen), fn, fn.info)
+  ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), idgen, fn, fn.info)
   var pc = PreprocessContext(finallys: @[], config: g.config, idgen: idgen)
   var n = preprocess(pc, n.toStmtList)
   #echo "transformed into ", n

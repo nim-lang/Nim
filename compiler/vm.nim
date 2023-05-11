@@ -10,10 +10,10 @@
 ## This file implements the new evaluation engine for Nim code.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-
+import semmacrosanity
 import
   std/[strutils, tables, parseutils],
-  msgs, vmdef, vmgen, nimsets, types, passes,
+  msgs, vmdef, vmgen, nimsets, types,
   parser, vmdeps, idents, trees, renderer, options, transf,
   gorgeimpl, lineinfos, btrees, macrocacheimpl,
   modulegraphs, sighashes, int128, vmprofiler
@@ -121,7 +121,7 @@ template decodeBx(k: untyped) {.dirty.} =
   ensureKind(k)
 
 template move(a, b: untyped) {.dirty.} =
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
     a = move b
   else:
     system.shallowCopy(a, b)
@@ -460,8 +460,11 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
           else: int(src.intVal != 0)
     of tyFloat..tyFloat64:
       dest.ensureKind(rkFloat)
-      case skipTypes(srctyp, abstractRange).kind
+      let srcKind = skipTypes(srctyp, abstractRange).kind
+      case srcKind
       of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyBool, tyChar:
+        dest.floatVal = toBiggestFloat(src.intVal)
+      elif src.kind == rkInt:
         dest.floatVal = toBiggestFloat(src.intVal)
       else:
         dest.floatVal = src.floatVal
@@ -528,12 +531,18 @@ template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
   else:
     false
 
-when not defined(nimHasSinkInference):
-  {.pragma: nosinks.}
-
 template takeAddress(reg, source) =
   reg.nodeAddr = addr source
   GC_ref source
+
+proc takeCharAddress(c: PCtx, src: PNode, index: BiggestInt, pc: int): TFullReg =
+  let typ = newType(tyPtr, nextTypeId c.idgen, c.module.owner)
+  typ.add getSysType(c.graph, c.debug[pc], tyChar)
+  var node = newNodeIT(nkIntLit, c.debug[pc], typ) # xxx nkPtrLit
+  node.intVal = cast[int](src.strVal[index].addr)
+  node.flags.incl nfIsPtr
+  TFullReg(kind: rkNode, node: node)
+
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
@@ -541,7 +550,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   # Used to keep track of where the execution is resumed.
   var savedPC = -1
   var savedFrame: PStackFrame
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
     template updateRegsAlias = discard
     template regs: untyped = tos.slots
   else:
@@ -668,6 +677,48 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         else:
           ensureKind(rkNode)
           regs[ra].node = nb
+    of opcSlice:
+      # A bodge, but this takes in `toOpenArray(rb, rc, rc)` and emits
+      # nkTupleConstr(x, y, z) into the `regs[ra]`. These can later be used for calculating the slice we have taken.
+      decodeBC(rkNode)
+      let
+        collection = regs[ra].node
+        leftInd = regs[rb].intVal
+        rightInd = regs[rc].intVal
+
+      proc rangeCheck(left, right: BiggestInt, safeLen: BiggestInt) =
+        if left < 0:
+          stackTrace(c, tos, pc, formatErrorIndexBound(left, safeLen))
+
+        if right > safeLen:
+          stackTrace(c, tos, pc, formatErrorIndexBound(right, safeLen))
+
+      case collection.kind
+      of nkTupleConstr: # slice of a slice
+        let safeLen = collection[2].intVal - collection[1].intVal
+        rangeCheck(leftInd, rightInd, safeLen)
+        let
+          leftInd = leftInd + collection[1].intVal # Slice is from the start of the old
+          rightInd = rightInd + collection[1].intVal
+
+        regs[ra].node = newTree(
+          nkTupleConstr,
+          collection[0],
+          newIntNode(nkIntLit, BiggestInt leftInd),
+          newIntNode(nkIntLit, BiggestInt rightInd)
+        )
+
+      else:
+        let safeLen = safeArrLen(collection) - 1
+        rangeCheck(leftInd, rightInd, safeLen)
+        regs[ra].node = newTree(
+          nkTupleConstr,
+          collection,
+          newIntNode(nkIntLit, BiggestInt leftInd),
+          newIntNode(nkIntLit, BiggestInt rightInd)
+        )
+
+
     of opcLdArr:
       # a = b[c]
       decodeBC(rkNode)
@@ -675,7 +726,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, formatErrorIndexBound(regs[rc].intVal, high(int)))
       let idx = regs[rc].intVal.int
       let src = regs[rb].node
-      if src.kind in {nkStrLit..nkTripleStrLit}:
+      case src.kind
+      of nkTupleConstr: # refer to `of opcSlice`
+        let
+          left = src[1].intVal
+          right = src[2].intVal
+          realIndex = left + idx
+        if idx in 0..(right - left):
+          case src[0].kind
+          of nkStrKinds:
+            regs[ra].node =  newIntNode(nkCharLit, ord src[0].strVal[int realIndex])
+          of nkBracket:
+            regs[ra].node = src[0][int realIndex]
+          else:
+            stackTrace(c, tos, pc, "opcLdArr internal error")
+        else:
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
+
+      of nkStrLit..nkTripleStrLit:
         if idx <% src.strVal.len:
           regs[ra].node = newNodeI(nkCharLit, c.debug[pc])
           regs[ra].node.intVal = src.strVal[idx].ord
@@ -692,14 +760,31 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, formatErrorIndexBound(regs[rc].intVal, high(int)))
       let idx = regs[rc].intVal.int
       let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
-      if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
-        takeAddress regs[ra], src.sons[idx]
+      case src.kind
+      of nkTupleConstr:
+        let
+          left = src[1].intVal
+          right = src[2].intVal
+          realIndex = left + idx
+        if idx in 0..(right - left): # Refer to `opcSlice`
+          case src[0].kind
+          of nkStrKinds:
+            regs[ra] = takeCharAddress(c, src[0], realIndex, pc)
+          of nkBracket:
+            takeAddress regs[ra], src.sons[0].sons[realIndex]
+          else:
+            stackTrace(c, tos, pc, "opcLdArrAddr internal error")
+        else:
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
+        if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
+          takeAddress regs[ra], src.sons[idx]
+        else:
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
     of opcLdStrIdx:
       decodeBC(rkInt)
       let idx = regs[rc].intVal.int
-      let s = regs[rb].node.strVal
+      let s {.cursor.} = regs[rb].node.strVal
       if idx <% s.len:
         regs[ra].intVal = s[idx].ord
       else:
@@ -712,13 +797,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let idx = regs[rc].intVal.int
       let s = regs[rb].node.strVal.addr # or `byaddr`
       if idx <% s[].len:
-         # `makePtrType` not accessible from vm.nim
-        let typ = newType(tyPtr, nextTypeId c.idgen, c.module.owner)
-        typ.add getSysType(c.graph, c.debug[pc], tyChar)
-        let node = newNodeIT(nkIntLit, c.debug[pc], typ) # xxx nkPtrLit
-        node.intVal = cast[int](s[][idx].addr)
-        node.flags.incl nfIsPtr
-        regs[ra].node = node
+        regs[ra] = takeCharAddress(c, regs[rb].node, idx, pc)
       else:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, s[].len-1))
     of opcWrArr:
@@ -726,7 +805,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
       let arr = regs[ra].node
-      if arr.kind in {nkStrLit..nkTripleStrLit}:
+      case arr.kind
+      of nkTupleConstr: # refer to `opcSlice`
+        let
+          src = arr[0]
+          left = arr[1].intVal
+          right = arr[2].intVal
+          realIndex = left + idx
+        if idx in 0..(right - left):
+          case src.kind
+          of nkStrKinds:
+            src.strVal[int(realIndex)] = char(regs[rc].intVal)
+          of nkBracket:
+            src[int(realIndex)] = regs[rc].node
+          else:
+            stackTrace(c, tos, pc, "opcWrArr internal error")
+        else:
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
+      of {nkStrLit..nkTripleStrLit}:
         if idx <% arr.strVal.len:
           arr.strVal[idx] = chr(regs[rc].intVal)
         else:
@@ -884,14 +980,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLenSeq:
       decodeBImm(rkInt)
       #assert regs[rb].kind == nkBracket
-      let high = (imm and 1) # discard flags
+      let
+        high = (imm and 1) # discard flags
+        node = regs[rb].node
       if (imm and nimNodeFlag) != 0:
         # used by mNLen (NimNode.len)
         regs[ra].intVal = regs[rb].node.safeLen - high
       else:
-        # safeArrLen also return string node len
-        # used when string is passed as openArray in VM
-        regs[ra].intVal = regs[rb].node.safeArrLen - high
+        case node.kind
+        of nkTupleConstr: # refer to `of opcSlice`
+          regs[ra].intVal = node[2].intVal - node[1].intVal + 1 - high
+        else:
+          # safeArrLen also return string node len
+          # used when string is passed as openArray in VM
+          regs[ra].intVal = node.safeArrLen - high
+
     of opcLenStr:
       decodeBImm(rkInt)
       assert regs[rb].kind == rkNode
@@ -1168,7 +1271,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
             let ast = a.sym.ast.shallowCopy
             for i in 0..<a.sym.ast.len:
               ast[i] = a.sym.ast[i]
-            ast[bodyPos] = transformBody(c.graph, c.idgen, a.sym, useCache)
+            ast[bodyPos] = transformBody(c.graph, c.idgen, a.sym, useCache, force=true)
             ast.copyTree()
     of opcSymOwner:
       decodeB(rkNode)
@@ -1205,15 +1308,32 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = ord(inSet(regs[rb].node, regs[rc].regToNode))
     of opcParseFloat:
       decodeBC(rkInt)
-      inc pc
-      assert c.code[pc].opcode == opcParseFloat
-      let rd = c.code[pc].regA
       var rcAddr = addr(regs[rc])
       if rcAddr.kind == rkRegisterAddr: rcAddr = rcAddr.regAddr
       elif regs[rc].kind != rkFloat:
         regs[rc] = TFullReg(kind: rkFloat)
-      regs[ra].intVal = parseBiggestFloat(regs[rb].node.strVal,
-                                          rcAddr.floatVal, regs[rd].intVal.int)
+
+      let coll = regs[rb].node
+
+      case coll.kind
+      of nkTupleConstr:
+        let
+          data = coll[0]
+          left = coll[1].intVal
+          right = coll[2].intVal
+        case data.kind
+        of nkStrKinds:
+          regs[ra].intVal = parseBiggestFloat(data.strVal.toOpenArray(int left, int right), rcAddr.floatVal)
+        of nkBracket:
+          var s = newStringOfCap(right - left + 1)
+          for i in left..right:
+            s.add char data[int i].intVal
+          regs[ra].intVal = parseBiggestFloat(s, rcAddr.floatVal)
+        else:
+          internalError(c.config, c.debug[pc], "opcParseFloat: Incorrectly created openarray")
+      else:
+        regs[ra].intVal = parseBiggestFloat(regs[ra].node.strVal, rcAddr.floatVal)
+
     of opcRangeChck:
       let rb = instr.regB
       let rc = instr.regC
@@ -1231,7 +1351,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let prc = if not isClosure: bb.sym else: bb[0].sym
       if prc.offset < -1:
         # it's a callback:
-        c.callbacks[-prc.offset-2].value(
+        c.callbacks[-prc.offset-2](
           VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                  currentException: c.currentExceptionA,
                  currentLineInfo: c.debug[pc])
@@ -1288,6 +1408,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         for i in 1..rc-1:
           let node = regs[rb+i].regToNode
           node.info = c.debug[pc]
+          if prc.typ[i].kind notin {tyTyped, tyUntyped}:
+            node.annotateType(prc.typ[i], c.config)
+
           macroCall.add(node)
         var a = evalTemplate(macroCall, prc, genSymOwner, c.config, c.cache, c.templInstCounter, c.idgen)
         if a.kind == nkStmtList and a.len == 1: a = a[0]
@@ -1483,7 +1606,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcRepr:
       decodeB(rkNode)
       createStr regs[ra]
-      regs[ra].node.strVal = renderTree(regs[rb].regToNode, {renderNoComments, renderDocComments})
+      regs[ra].node.strVal = renderTree(regs[rb].regToNode, {renderNoComments, renderDocComments, renderNonExportedFields})
     of opcQuit:
       if c.mode in {emRepl, emStaticExpr, emStaticStmt}:
         message(c.config, c.debug[pc], hintQuitCalled)
@@ -1554,7 +1677,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         rb = instr.regB
         rc = instr.regC
         idx = int(regs[rb+rc-1].intVal)
-        callback = c.callbacks[idx].value
+        callback = c.callbacks[idx]
         args = VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                 currentException: c.currentExceptionA,
                 currentLineInfo: c.debug[pc])
@@ -1732,7 +1855,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if regs[rb].node.kind != nkSym:
         stackTrace(c, tos, pc, "node is not a symbol")
       else:
-        regs[ra].node.strVal = $sigHash(regs[rb].node.sym)
+        regs[ra].node.strVal = $sigHash(regs[rb].node.sym, c.config)
     of opcSlurp:
       decodeB(rkNode)
       createStr regs[ra]
@@ -1770,7 +1893,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var error: string
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
                             regs[rc].node.strVal, 0,
-                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) {.nosinks.} =
+                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
@@ -1785,7 +1908,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var error: string
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
                             regs[rc].node.strVal, 0,
-                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) {.nosinks.} =
+                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
@@ -1809,14 +1932,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of 1: # getLine
         regs[ra].node = newIntNode(nkIntLit, n.info.line.int)
       of 2: # getColumn
-        regs[ra].node = newIntNode(nkIntLit, n.info.col)
+        regs[ra].node = newIntNode(nkIntLit, n.info.col.int)
       else:
         internalAssert c.config, false
       regs[ra].node.info = n.info
       regs[ra].node.typ = n.typ
-    of opcNSetLineInfo:
+    of opcNCopyLineInfo:
       decodeB(rkNode)
       regs[ra].node.info = regs[rb].node.info
+    of opcNSetLineInfoLine:
+      decodeB(rkNode)
+      regs[ra].node.info.line = regs[rb].intVal.uint16
+    of opcNSetLineInfoColumn:
+      decodeB(rkNode)
+      regs[ra].node.info.col = regs[rb].intVal.int16
+    of opcNSetLineInfoFile:
+      decodeB(rkNode)
+      regs[ra].node.info.fileIndex =
+        fileInfoIdx(c.config, RelativeFile regs[rb].node.strVal)
     of opcEqIdent:
       decodeBC(rkInt)
       # aliases for shorter and easier to understand code below
@@ -1941,12 +2074,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         dest.ident = regs[rb].node.ident
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "ident")
-    of opcNSetType:
-      decodeB(rkNode)
-      let b = regs[rb].node
-      internalAssert c.config, b.kind == nkSym and b.sym.kind == skType
-      internalAssert c.config, regs[ra].node != nil
-      regs[ra].node.typ = b.sym.typ
     of opcNSetStrVal:
       decodeB(rkNode)
       var dest = regs[ra].node
@@ -1996,18 +2123,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                  else: regs[rc].node.strVal
       if k < 0 or k > ord(high(TSymKind)):
         internalError(c.config, c.debug[pc], "request to create symbol of invalid kind")
-      var sym = newSym(k.TSymKind, getIdent(c.cache, name), nextSymId c.idgen, c.module.owner, c.debug[pc])
+      var sym = newSym(k.TSymKind, getIdent(c.cache, name), c.idgen, c.module.owner, c.debug[pc])
       incl(sym.flags, sfGenSym)
       regs[ra].node = newSymNode(sym)
       regs[ra].node.flags.incl nfIsRef
     of opcNccValue:
       decodeB(rkInt)
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       regs[ra].intVal = getOrDefault(c.graph.cacheCounters, destKey)
     of opcNccInc:
       let g = c.graph
       declBC()
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       let by = regs[rc].intVal
       let v = getOrDefault(g.cacheCounters, destKey)
       g.cacheCounters[destKey] = v+by
@@ -2015,7 +2142,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNcsAdd:
       let g = c.graph
       declBC()
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       let val = regs[rc].node
       if not contains(g.cacheSeqs, destKey):
         g.cacheSeqs[destKey] = newTree(nkStmtList, val)
@@ -2025,7 +2152,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNcsIncl:
       let g = c.graph
       declBC()
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       let val = regs[rc].node
       if not contains(g.cacheSeqs, destKey):
         g.cacheSeqs[destKey] = newTree(nkStmtList, val)
@@ -2039,22 +2166,22 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNcsLen:
       let g = c.graph
       decodeB(rkInt)
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       regs[ra].intVal =
         if contains(g.cacheSeqs, destKey): g.cacheSeqs[destKey].len else: 0
     of opcNcsAt:
       let g = c.graph
       decodeBC(rkNode)
       let idx = regs[rc].intVal
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       if contains(g.cacheSeqs, destKey) and idx <% g.cacheSeqs[destKey].len:
         regs[ra].node = g.cacheSeqs[destKey][idx.int]
       else:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, g.cacheSeqs[destKey].len-1))
     of opcNctPut:
       let g = c.graph
-      let destKey = regs[ra].node.strVal
-      let key = regs[instr.regB].node.strVal
+      let destKey {.cursor.} = regs[ra].node.strVal
+      let key {.cursor.} = regs[instr.regB].node.strVal
       let val = regs[instr.regC].node
       if not contains(g.cacheTables, destKey):
         g.cacheTables[destKey] = initBTree[string, PNode]()
@@ -2066,14 +2193,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNctLen:
       let g = c.graph
       decodeB(rkInt)
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       regs[ra].intVal =
         if contains(g.cacheTables, destKey): g.cacheTables[destKey].len else: 0
     of opcNctGet:
       let g = c.graph
       decodeBC(rkNode)
-      let destKey = regs[rb].node.strVal
-      let key = regs[rc].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
+      let key {.cursor.} = regs[rc].node.strVal
       if contains(g.cacheTables, destKey):
         if contains(g.cacheTables[destKey], key):
           regs[ra].node = getOrDefault(g.cacheTables[destKey], key)
@@ -2084,7 +2211,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNctHasNext:
       let g = c.graph
       decodeBC(rkInt)
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       regs[ra].intVal =
         if g.cacheTables.contains(destKey):
           ord(btrees.hasNext(g.cacheTables[destKey], regs[rc].intVal.int))
@@ -2093,7 +2220,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNctNext:
       let g = c.graph
       decodeBC(rkNode)
-      let destKey = regs[rb].node.strVal
+      let destKey {.cursor.} = regs[rb].node.strVal
       let index = regs[rc].intVal
       if contains(g.cacheTables, destKey):
         let (k, v, nextIndex) = btrees.next(g.cacheTables[destKey], index.int)
@@ -2182,7 +2309,7 @@ proc setupGlobalCtx*(module: PSym; graph: ModuleGraph; idgen: IdGenerator) =
   else:
     refresh(PCtx graph.vm, module, idgen)
 
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
+proc setupEvalGen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   #var c = newEvalContext(module, emRepl)
   #c.features = {allowCast, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())
@@ -2191,7 +2318,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext 
   setupGlobalCtx(module, graph, idgen)
   result = PCtx graph.vm
 
-proc myProcess(c: PPassContext, n: PNode): PNode =
+proc interpreterCode*(c: PPassContext, n: PNode): PNode =
   let c = PCtx(c)
   # don't eval errornous code:
   if c.oldErrorCount == c.config.errorCounter:
@@ -2201,14 +2328,12 @@ proc myProcess(c: PPassContext, n: PNode): PNode =
     result = n
   c.oldErrorCount = c.config.errorCounter
 
-proc myClose(graph: ModuleGraph; c: PPassContext, n: PNode): PNode =
-  result = myProcess(c, n)
-
-const evalPass* = makePass(myOpen, myProcess, myClose)
-
 proc evalConstExprAux(module: PSym; idgen: IdGenerator;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
+  when defined(nimsuggest):
+    if g.config.expandDone():
+      return n
   #if g.config.errorCounter > 0: return n
   let n = transformExpr(g, idgen, module, n)
   setupGlobalCtx(module, g, idgen)

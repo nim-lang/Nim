@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim -d:testdef $target $file"
+  matrix: "-d:testdef"
   output: '''works 34
 34
 defined

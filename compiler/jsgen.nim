@@ -31,9 +31,11 @@ implements the required case distinction.
 import
   ast, trees, magicsys, options,
   nversion, msgs, idents, types,
-  ropes, passes, ccgutils, wordrecg, renderer,
+  ropes, ccgutils, wordrecg, renderer,
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  transf, injectdestructors, sourcemap, astmsgs
+  transf, injectdestructors, sourcemap, astmsgs, backendpragmas
+
+import pipelineutils
 
 import json, sets, math, tables, intsets
 import strutils except addf
@@ -98,6 +100,7 @@ type
     prc: PSym
     globals, locals, body: Rope
     options: TOptions
+    optionsStack: seq[TOptions]
     module: BModule
     g: PGlobals
     generatedParamCopies: IntSet
@@ -261,7 +264,7 @@ proc mangleName(m: BModule, s: PSym): Rope =
       if m.config.hcrOn:
         # When hot reloading is enabled, we must ensure that the names
         # of functions and types will be preserved across rebuilds:
-        result.add(idOrSig(s, m.module.name.s, m.sigConflicts))
+        result.add(idOrSig(s, m.module.name.s, m.sigConflicts, m.config))
       else:
         result.add("_")
         result.add(rope(s.id))
@@ -568,12 +571,20 @@ proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string,
   var x, y: TCompRes
   gen(p, n[1], x)
   gen(p, n[2], y)
-  let trimmer = unsignedTrimmer(n[1].typ.skipTypes(abstractRange).size)
+  let size = n[1].typ.skipTypes(abstractRange).size
   when reassign:
     let (a, tmp) = maybeMakeTempAssignable(p, n[1], x)
-    r.res = "$1 = (($5 $2 $3) $4)" % [a, rope op, y.rdLoc, trimmer, tmp]
+    if size == 8 and optJsBigInt64 in p.config.globalOptions:
+      r.res = "$1 = BigInt.asUintN(64, ($4 $2 $3))" % [a, rope op, y.rdLoc, tmp]
+    else:
+      let trimmer = unsignedTrimmer(size)
+      r.res = "$1 = (($5 $2 $3) $4)" % [a, rope op, y.rdLoc, trimmer, tmp]
   else:
-    r.res = "(($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, trimmer]
+    if size == 8 and optJsBigInt64 in p.config.globalOptions:
+      r.res = "BigInt.asUintN(64, ($1 $2 $3))" % [x.rdLoc, rope op, y.rdLoc]
+    else:
+      let trimmer = unsignedTrimmer(size)
+      r.res = "(($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, trimmer]
   r.kind = resExpr
 
 template ternaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
@@ -615,11 +626,45 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     if i == 0: applyFormat(frmtA) else: applyFormat(frmtB)
 
   case op
-  of mAddI: applyFormat("addInt($1, $2)", "($1 + $2)")
-  of mSubI: applyFormat("subInt($1, $2)", "($1 - $2)")
-  of mMulI: applyFormat("mulInt($1, $2)", "($1 * $2)")
-  of mDivI: applyFormat("divInt($1, $2)", "Math.trunc($1 / $2)")
-  of mModI: applyFormat("modInt($1, $2)", "Math.trunc($1 % $2)")
+  of mAddI:
+    if i == 0:
+      if n[1].typ.size == 8 and optJsBigInt64 in p.config.globalOptions:
+        useMagic(p, "addInt64")
+        applyFormat("addInt64($1, $2)")
+      else:
+        applyFormat("addInt($1, $2)")
+    else:
+      applyFormat("($1 + $2)")
+  of mSubI:
+    if i == 0:
+      if n[1].typ.size == 8 and optJsBigInt64 in p.config.globalOptions:
+        useMagic(p, "subInt64")
+        applyFormat("subInt64($1, $2)")
+      else:
+        applyFormat("subInt($1, $2)")
+    else:
+      applyFormat("($1 - $2)")
+  of mMulI:
+    if i == 0:
+      if n[1].typ.size == 8 and optJsBigInt64 in p.config.globalOptions:
+        useMagic(p, "mulInt64")
+        applyFormat("mulInt64($1, $2)")
+      else:
+        applyFormat("mulInt($1, $2)")
+    else:
+      applyFormat("($1 * $2)")
+  of mDivI:
+    if n[1].typ.size == 8 and optJsBigInt64 in p.config.globalOptions:
+      useMagic(p, "divInt64")
+      applyFormat("divInt64($1, $2)", "$1 / $2")
+    else:
+      applyFormat("divInt($1, $2)", "Math.trunc($1 / $2)")
+  of mModI:
+    if n[1].typ.size == 8 and optJsBigInt64 in p.config.globalOptions:
+      useMagic(p, "modInt64")
+      applyFormat("modInt64($1, $2)", "$1 % $2")
+    else:
+      applyFormat("modInt($1, $2)", "Math.trunc($1 % $2)")
   of mSucc: applyFormat("addInt($1, $2)", "($1 + $2)")
   of mPred: applyFormat("subInt($1, $2)", "($1 - $2)")
   of mAddF64: applyFormat("($1 + $2)", "($1 + $2)")
@@ -628,15 +673,27 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mDivF64: applyFormat("($1 / $2)", "($1 / $2)")
   of mShrI: applyFormat("", "")
   of mShlI:
-    if n[1].typ.size <= 4:
+    let typ = n[1].typ.skipTypes(abstractVarRange)
+    if typ.size == 8:
+      if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
+        applyFormat("BigInt.asIntN(64, $1 << BigInt($2))")
+      elif typ.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
+        applyFormat("BigInt.asUintN(64, $1 << BigInt($2))")
+      else:
+        applyFormat("($1 * Math.pow(2, $2))")
+    else:
       applyFormat("($1 << $2)", "($1 << $2)")
-    else:
-      applyFormat("($1 * Math.pow(2, $2))", "($1 * Math.pow(2, $2))")
   of mAshrI:
-    if n[1].typ.size <= 4:
-      applyFormat("($1 >> $2)", "($1 >> $2)")
+    let typ = n[1].typ.skipTypes(abstractVarRange)
+    if typ.size == 8:
+      if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
+        applyFormat("BigInt.asIntN(64, $1 >> BigInt($2))")
+      elif typ.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
+        applyFormat("BigInt.asUintN(64, $1 >> BigInt($2))")
+      else:
+        applyFormat("Math.floor($1 / Math.pow(2, $2))")
     else:
-      applyFormat("Math.floor($1 / Math.pow(2, $2))", "Math.floor($1 / Math.pow(2, $2))")
+      applyFormat("($1 >> $2)", "($1 >> $2)")
   of mBitandI: applyFormat("($1 & $2)", "($1 & $2)")
   of mBitorI: applyFormat("($1 | $2)", "($1 | $2)")
   of mBitxorI: applyFormat("($1 ^ $2)", "($1 ^ $2)")
@@ -694,7 +751,9 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mMulU: binaryUintExpr(p, n, r, "*")
   of mDivU:
     binaryUintExpr(p, n, r, "/")
-    if n[1].typ.skipTypes(abstractRange).size == 8:
+    if optJsBigInt64 notin p.config.globalOptions and
+        n[1].typ.skipTypes(abstractRange).size == 8:
+      # bigint / already truncates
       r.res = "Math.trunc($1)" % [r.res]
   of mDivI:
     arithAux(p, n, r, op)
@@ -704,7 +763,13 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     var x, y: TCompRes
     gen(p, n[1], x)
     gen(p, n[2], y)
-    r.res = "($1 >>> $2)" % [x.rdLoc, y.rdLoc]
+    let typ = n[1].typ.skipTypes(abstractVarRange)
+    if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
+      r.res = "BigInt.asIntN(64, BigInt.asUintN(64, $1) >> BigInt($2))" % [x.rdLoc, y.rdLoc]
+    elif typ.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
+      r.res = "($1 >> BigInt($2))" % [x.rdLoc, y.rdLoc]
+    else:
+      r.res = "($1 >>> $2)" % [x.rdLoc, y.rdLoc]
   of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mCStrToStr, mStrToStr, mEnumToStr:
     arithAux(p, n, r, op)
   of mEqRef:
@@ -724,13 +789,16 @@ proc hasFrameInfo(p: PProc): bool =
       ((p.prc == nil) or not (sfPure in p.prc.flags))
 
 proc lineDir(config: ConfigRef, info: TLineInfo, line: int): Rope =
-  ropes.`%`("/* line $2 \"$1\" */$n",
-         [rope(toFullPath(config, info)), rope(line)])
+  "/* line $2:$3 \"$1\" */$n" % [
+    rope(toFullPath(config, info)), rope(line), rope(info.toColumn)
+  ]
 
 proc genLineDir(p: PProc, n: PNode) =
   let line = toLinenumber(n.info)
   if line < 0:
     return
+  if optEmbedOrigSrc in p.config.globalOptions:
+    lineF(p, "//$1$n", [sourceLine(p.config, n.info)])
   if optLineDir in p.options or optLineDir in p.config.options:
     lineF(p, "$1", [lineDir(p.config, n.info, line)])
   if hasFrameInfo(p):
@@ -1422,6 +1490,13 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
       gen(p, n[0], r)
     of nkHiddenDeref:
       gen(p, n[0], r)
+    of nkDerefExpr:
+      var x = n[0]
+      if n.kind == nkHiddenAddr:
+        x = n[0][0]
+        if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
+          x.typ = n.typ
+      gen(p, x, r)
     of nkHiddenAddr:
       gen(p, n[0], r)
     of nkConv:
@@ -1751,15 +1826,25 @@ proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: v
     createRecordVarAux(p, t.n, excludedFieldIDs, output)
     t = t[0]
 
-proc arrayTypeForElemType(typ: PType): string =
+proc arrayTypeForElemType(conf: ConfigRef; typ: PType): string =
   let typ = typ.skipTypes(abstractRange)
   case typ.kind
   of tyInt, tyInt32: "Int32Array"
   of tyInt16: "Int16Array"
   of tyInt8: "Int8Array"
+  of tyInt64:
+    if optJsBigInt64 in conf.globalOptions:
+      "BigInt64Array"
+    else:
+      ""
   of tyUInt, tyUInt32: "Uint32Array"
   of tyUInt16: "Uint16Array"
   of tyUInt8, tyChar, tyBool: "Uint8Array"
+  of tyUInt64:
+    if optJsBigInt64 in conf.globalOptions:
+      "BigUint64Array"
+    else:
+      ""
   of tyFloat32: "Float32Array"
   of tyFloat64, tyFloat: "Float64Array"
   of tyEnum:
@@ -1773,8 +1858,15 @@ proc arrayTypeForElemType(typ: PType): string =
 proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   var t = skipTypes(typ, abstractInst)
   case t.kind
-  of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar:
+  of tyInt8..tyInt32, tyUInt8..tyUInt32, tyEnum, tyChar:
+    result = putToSeq("0", indirect)
+  of tyInt, tyUInt:
     if $t.sym.loc.r == "bigint":
+      result = putToSeq("0n", indirect)
+    else:
+      result = putToSeq("0", indirect)
+  of tyInt64, tyUInt64:
+    if optJsBigInt64 in p.config.globalOptions:
       result = putToSeq("0n", indirect)
     else:
       result = putToSeq("0", indirect)
@@ -1791,7 +1883,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   of tyArray:
     let length = toInt(lengthOrd(p.config, t))
     let e = elemType(t)
-    let jsTyp = arrayTypeForElemType(e)
+    let jsTyp = arrayTypeForElemType(p.config, e)
     if jsTyp.len > 0:
       result = "new $1($2)" % [rope(jsTyp), rope(length)]
     elif length > 32:
@@ -1966,7 +2058,11 @@ proc genNewSeq(p: PProc, n: PNode) =
 
 proc genOrd(p: PProc, n: PNode, r: var TCompRes) =
   case skipTypes(n[1].typ, abstractVar + abstractRange).kind
-  of tyEnum, tyInt..tyUInt64, tyChar: gen(p, n[1], r)
+  of tyEnum, tyInt..tyInt32, tyUInt..tyUInt32, tyChar: gen(p, n[1], r)
+  of tyInt64, tyUInt64:
+    if optJsBigInt64 in p.config.globalOptions:
+      unaryExpr(p, n, r, "", "Number($1)")
+    else: gen(p, n[1], r)
   of tyBool: unaryExpr(p, n, r, "", "($1 ? 1 : 0)")
   else: internalError(p.config, n.info, "genOrd")
 
@@ -2077,6 +2173,13 @@ proc genMove(p: PProc; n: PNode; r: var TCompRes) =
   lineF(p, "$1 = $2;$n", [r.rdLoc, a.rdLoc])
   genReset(p, n)
   #lineF(p, "$1 = $2;$n", [dest.rdLoc, src.rdLoc])
+
+proc genDup(p: PProc; n: PNode; r: var TCompRes) =
+  var a: TCompRes
+  r.kind = resVal
+  r.res = p.getTemp()
+  gen(p, n[1], a)
+  lineF(p, "$1 = $2;$n", [r.rdLoc, a.rdLoc])
 
 proc genJSArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
@@ -2189,19 +2292,41 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "($1).length - 1" % [x.rdLoc]
     r.kind = resExpr
   of mInc:
-    if n[1].typ.skipTypes(abstractRange).kind in {tyUInt..tyUInt64}:
+    let typ = n[1].typ.skipTypes(abstractVarRange)
+    case typ.kind
+    of tyUInt..tyUInt32:
       binaryUintExpr(p, n, r, "+", true)
+    of tyUInt64:
+      if optJsBigInt64 in p.config.globalOptions:
+        binaryExpr(p, n, r, "", "$1 = BigInt.asUintN(64, $3 + BigInt($2))", true)
+      else: binaryUintExpr(p, n, r, "+", true)
+    elif typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
+      if optOverflowCheck notin p.options:
+        binaryExpr(p, n, r, "", "$1 = BigInt.asIntN(64, $3 + BigInt($2))", true)
+      else: binaryExpr(p, n, r, "addInt64", "$1 = addInt64($3, BigInt($2))", true)
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 += $2")
       else: binaryExpr(p, n, r, "addInt", "$1 = addInt($3, $2)", true)
   of ast.mDec:
-    if n[1].typ.skipTypes(abstractRange).kind in {tyUInt..tyUInt64}:
+    let typ = n[1].typ.skipTypes(abstractVarRange)
+    case typ.kind
+    of tyUInt..tyUInt32:
       binaryUintExpr(p, n, r, "-", true)
+    of tyUInt64:
+      if optJsBigInt64 in p.config.globalOptions:
+        binaryExpr(p, n, r, "", "$1 = BigInt.asUintN(64, $3 - BigInt($2))", true)
+      else: binaryUintExpr(p, n, r, "+", true)
+    elif typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
+      if optOverflowCheck notin p.options:
+        binaryExpr(p, n, r, "", "$1 = BigInt.asIntN(64, $3 - BigInt($2))", true)
+      else: binaryExpr(p, n, r, "subInt64", "$1 = subInt64($3, BigInt($2))", true)
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
       else: binaryExpr(p, n, r, "subInt", "$1 = subInt($3, $2)", true)
   of mSetLengthStr:
-    binaryExpr(p, n, r, "mnewString", "($1.length = $2)")
+    binaryExpr(p, n, r, "mnewString",
+      """if ($1.length < $2) { for (var i = $3.length; i < $4; ++i) $3.push(0); }
+         else {$3.length = $4; }""")
   of mSetLengthSeq:
     var x, y: TCompRes
     gen(p, n[1], x)
@@ -2250,6 +2375,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     r.kind = resExpr
   of mMove:
     genMove(p, n, r)
+  of mDup:
+    genDup(p, n, r)
   else:
     genCall(p, n, r)
     #else internalError(p.config, e.info, 'genMagic: ' + magicToStr[op]);
@@ -2288,7 +2415,7 @@ proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   ## Nim sequence maps to JS array.
   var t = skipTypes(n.typ, abstractInst)
   let e = elemType(t)
-  let jsTyp = arrayTypeForElemType(e)
+  let jsTyp = arrayTypeForElemType(p.config, e)
   if skipTypes(n.typ, abstractVarRange).kind != tySequence and jsTyp.len > 0:
     # generate typed array
     # for example Nim generates `new Uint8Array([1, 2, 3])` for `[byte(1), 2, 3]`
@@ -2369,7 +2496,27 @@ proc genConv(p: PProc, n: PNode, r: var TCompRes) =
     r.res = "(!!($1))" % [r.res]
     r.kind = resExpr
   elif toInt:
-    r.res = "(($1) | 0)" % [r.res]
+    if src.kind in {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
+      r.res = "Number($1)" % [r.res]
+    else:
+      r.res = "(($1) | 0)" % [r.res]
+  elif dest.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
+    if fromInt or fromUint or src.kind in {tyBool, tyChar, tyEnum}:
+      r.res = "BigInt($1)" % [r.res]
+    elif src.kind in {tyFloat..tyFloat64}:
+      r.res = "BigInt(Math.trunc($1))" % [r.res]
+    elif src.kind == tyUInt64:
+      r.res = "BigInt.asIntN(64, $1)" % [r.res]
+  elif dest.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
+    if fromInt or fromUint:
+      r.res = "BigInt($1)" % [r.res]
+    elif src.kind in {tyFloat..tyFloat64}:
+      r.res = "BigInt(Math.trunc($1))" % [r.res]
+    elif src.kind == tyInt64:
+      r.res = "BigInt.asUintN(64, $1)" % [r.res]
+  elif toUint or dest.kind in tyFloat..tyFloat64:
+    if src.kind in {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
+      r.res = "Number($1)" % [r.res]
   else:
     # TODO: What types must we handle here?
     discard
@@ -2380,7 +2527,11 @@ proc upConv(p: PProc, n: PNode, r: var TCompRes) =
 proc genRangeChck(p: PProc, n: PNode, r: var TCompRes, magic: string) =
   var a, b: TCompRes
   gen(p, n[0], r)
-  if optRangeCheck notin p.options or (skipTypes(n.typ, abstractVar).kind in {tyUInt..tyUInt64} and
+  let src = skipTypes(n[0].typ, abstractVarRange)
+  let dest = skipTypes(n.typ, abstractVarRange)
+  if src.kind in {tyInt64, tyUInt64} and dest.kind notin {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
+    r.res = "Number($1)" % [r.res]
+  if optRangeCheck notin p.options or (dest.kind in {tyUInt..tyUInt64} and
       checkUnsignedConversions notin p.config.legacyFeatures):
     discard "XXX maybe emit masking instructions here"
   else:
@@ -2474,17 +2625,18 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   if prc.typ[0] != nil and sfPure notin prc.flags:
     resultSym = prc.ast[resultPos].sym
     let mname = mangleName(p.module, resultSym)
-    let returnAddress = not isIndirect(resultSym) and
+    # otherwise uses "fat pointers"
+    let useRawPointer = not isIndirect(resultSym) and
       resultSym.typ.kind in {tyVar, tyPtr, tyLent, tyRef, tyOwned} and
         mapType(p, resultSym.typ) == etyBaseIndex
-    if returnAddress:
+    if useRawPointer:
       resultAsgn = p.indentLine(("var $# = null;$n") % [mname])
       resultAsgn.add p.indentLine("var $#_Idx = 0;$n" % [mname])
     else:
       let resVar = createVar(p, resultSym.typ, isIndirect(resultSym))
       resultAsgn = p.indentLine(("var $# = $#;$n") % [mname, resVar])
     gen(p, prc.ast[resultPos], a)
-    if returnAddress:
+    if mapType(p, resultSym.typ) == etyBaseIndex:
       returnStmt = "return [$#, $#];$n" % [a.address, a.res]
     else:
       returnStmt = "return $#;$n" % [a.res]
@@ -2546,9 +2698,14 @@ proc genStmt(p: PProc, n: PNode) =
   if r.res != "": lineF(p, "$#;$n", [r.res])
 
 proc genPragma(p: PProc, n: PNode) =
-  for it in n.sons:
+  for i in 0..<n.len:
+    let it = n[i]
     case whichPragma(it)
     of wEmit: genAsmOrEmitStmt(p, it[1])
+    of wPush:
+      processPushBackendOption(p.optionsStack, p.options, n, i+1)
+    of wPop:
+      processPopBackendOption(p.optionsStack, p.options)
     else: discard
 
 proc genCast(p: PProc, n: PNode, r: var TCompRes) =
@@ -2566,6 +2723,8 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
   if toUint and (fromInt or fromUint):
     let trimmer = unsignedTrimmer(dest.size)
     r.res = "($1 $2)" % [r.res, trimmer]
+  elif toUint and src.kind in {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
+    r.res = "Number(BigInt.asUintN($1, $2))" % [$(dest.size * 8), r.res]
   elif toInt:
     if fromInt:
       return
@@ -2581,6 +2740,25 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
           of 4: "0xfffffffe"
           else: ""
         r.res = "($1 - ($2 $3))" % [rope minuend, r.res, trimmer]
+    elif src.kind in {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
+      r.res = "Number(BigInt.asIntN($1, $2))" % [$(dest.size * 8), r.res]
+  elif dest.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
+    if fromInt or fromUint or src.kind in {tyBool, tyChar, tyEnum}:
+      r.res = "BigInt($1)" % [r.res]
+    elif src.kind in {tyFloat..tyFloat64}:
+      r.res = "BigInt(Math.trunc($1))" % [r.res]
+    elif src.kind == tyUInt64:
+      r.res = "BigInt.asIntN(64, $1)" % [r.res]
+  elif dest.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
+    if fromInt or fromUint:
+      r.res = "BigInt($1)" % [r.res]
+    elif src.kind in {tyFloat..tyFloat64}:
+      r.res = "BigInt(Math.trunc($1))" % [r.res]
+    elif src.kind == tyInt64:
+      r.res = "BigInt.asUintN(64, $1)" % [r.res]
+  elif dest.kind in tyFloat..tyFloat64:
+    if src.kind in {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
+      r.res = "Number($1)" % [r.res]
   elif (src.kind == tyPtr and mapType(p, src) == etyObject) and dest.kind == tyPointer:
     r.address = r.res
     r.res = "null"
@@ -2599,8 +2777,17 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkSym:
     genSym(p, n, r)
   of nkCharLit..nkUInt64Lit:
-    if n.typ.kind == tyBool:
+    case n.typ.skipTypes(abstractVarRange).kind
+    of tyBool:
       r.res = if n.intVal == 0: rope"false" else: rope"true"
+    of tyUInt64:
+      r.res = rope($cast[BiggestUInt](n.intVal))
+      if optJsBigInt64 in p.config.globalOptions:
+        r.res.add('n')
+    of tyInt64:
+      r.res = rope(n.intVal)
+      if optJsBigInt64 in p.config.globalOptions:
+        r.res.add('n')
     else:
       r.res = rope(n.intVal)
     r.kind = resExpr
@@ -2796,7 +2983,7 @@ proc genModule(p: PProc, n: PNode) =
   if p.config.hcrOn and n.kind == nkStmtList:
     let moduleSym = p.module.module
     var moduleLoadedVar = rope(moduleSym.name.s) & "_loaded" &
-                          idOrSig(moduleSym, moduleSym.name.s, p.module.sigConflicts)
+                          idOrSig(moduleSym, moduleSym.name.s, p.module.sigConflicts, p.config)
     lineF(p, "var $1;$n", [moduleLoadedVar])
     var inGuardedBlock = false
 
@@ -2813,11 +3000,11 @@ proc genModule(p: PProc, n: PNode) =
   if optStackTrace in p.options:
     p.body.add(frameDestroy(p))
 
-proc myProcess(b: PPassContext, n: PNode): PNode =
+proc processJSCodeGen*(b: PPassContext, n: PNode): PNode =
   ## Generate JS code for a node.
   result = n
   let m = BModule(b)
-  if passes.skipCodegen(m.config, n): return n
+  if pipelineutils.skipCodegen(m.config, n): return n
   if m.module == nil: internalError(m.config, n.info, "myProcess")
   let globals = PGlobals(m.graph.backend)
   var p = newInitProc(globals, m)
@@ -2834,7 +3021,7 @@ proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
       var p = newInitProc(globals, m)
       attachProc(p, prc)
 
-  var disp = generateMethodDispatchers(graph)
+  var disp = generateMethodDispatchers(graph, m.idgen)
   for i in 0..<disp.len:
     let prc = disp[i].sym
     if not globals.generatedSyms.containsOrIncl(prc.id):
@@ -2852,7 +3039,7 @@ proc getClassName(t: PType): Rope =
   if s.loc.r != "": result = s.loc.r
   else: result = rope(s.name.s)
 
-proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
+proc finalJSCodeGen*(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   ## Finalize JS code generation of a Nim module.
   ## Param `n` may contain nodes returned from the last module close call.
   var m = BModule(b)
@@ -2862,14 +3049,14 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     for i in countdown(high(graph.globalDestructors), 0):
       n.add graph.globalDestructors[i]
   # Process any nodes left over from the last call to `myClose`.
-  result = myProcess(b, n)
+  result = processJSCodeGen(b, n)
   # Some codegen is different (such as no stacktraces; see `initProcOptions`)
   # when `std/system` is being processed.
   if sfSystemModule in m.module.flags:
     PGlobals(graph.backend).inSystem = false
   # Check if codegen should continue before any files are generated.
   # It may bail early is if too many errors have been raised.
-  if passes.skipCodegen(m.config, n): return n
+  if pipelineutils.skipCodegen(m.config, n): return n
   # Nim modules are compiled into a single JS file.
   # If this is the main module, then this is the final call to `myClose`.
   if sfMainModule in m.module.flags:
@@ -2878,7 +3065,8 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     # Generate an optional source map.
     if optSourcemap in m.config.globalOptions:
       var map: SourceMap
-      (code, map) = genSourceMap($(code), outFile.string)
+      map = genSourceMap($code, outFile.string)
+      code &= "\n//# sourceMappingURL=$#.map" % [outFile.string]
       writeFile(outFile.string & ".map", $(%map))
     # Check if the generated JS code matches the output file, or else
     # write it to the file.
@@ -2886,9 +3074,6 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       if not writeRope(code, outFile):
         rawMessage(m.config, errCannotOpenFile, outFile.string)
 
-proc myOpen(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
-  ## Create the JS backend pass context `BModule` for a Nim module.
+proc setupJSgen*(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
   result = newModule(graph, s)
   result.idgen = idgen
-
-const JSgenPass* = makePass(myOpen, myProcess, myClose)

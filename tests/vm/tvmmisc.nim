@@ -9,14 +9,14 @@ block:
   static:
     foo(int)
 
-# #4412
+# bug #4412
 block:
   proc default[T](t: typedesc[T]): T {.inline.} = discard
 
   static:
     var x = default(type(0))
 
-# #6379
+# bug #6379
 import algorithm
 
 static:
@@ -28,7 +28,7 @@ static:
   str.sort(cmp)
   doAssert str == "abc"
 
-# #6086
+# bug #6086
 import math, sequtils, sugar
 
 block:
@@ -83,7 +83,7 @@ block:
     doAssert fileExists("MISSINGFILE") == false
     doAssert dirExists("MISSINGDIR") == false
 
-# #7210
+# bug #7210
 block:
   static:
     proc f(size: int): int =
@@ -91,7 +91,7 @@ block:
       result = size
     doAssert f(4) == 4
 
-# #6689
+# bug #6689
 block:
   static:
     proc foo(): int = 0
@@ -106,7 +106,7 @@ block:
     new(x)
     doAssert(not x.isNil)
 
-# #7871
+# bug #7871
 static:
   type Obj = object
     field: int
@@ -116,11 +116,11 @@ static:
   o.field = 2
   doAssert s[0].field == 0
 
-# #8125
+# bug #8125
 static:
    let def_iter_var = ident("it")
 
-# #8142
+# bug #8142
 static:
   type Obj = object
     names: string
@@ -136,7 +136,7 @@ static:
   o.pushName()
   doAssert o.names == "FOOBARFOOBAR"
 
-# #8154
+# bug #8154
 import parseutils
 
 static:
@@ -149,7 +149,7 @@ static:
   static:
     doAssert foo().i == 1
 
-# #10333
+# bug #10333
 block:
   const
     encoding: auto = [
@@ -160,7 +160,7 @@ block:
     ]
   doAssert encoding.len == 4
 
-# #10886
+# bug #10886
 
 proc tor(): bool =
   result = true
@@ -564,14 +564,14 @@ block:
 block:
   static:
     let x = int 1
-    echo x.type   # Foo
+    doAssert $(x.type) == "Foo"  # Foo
 
 block:
   static:
     let x = int 1
     let y = x + 1
     # Error: unhandled exception: value out of range: -8 notin 0 .. 65535 [RangeDefect]
-    echo y
+    doAssert y == 2
 
 
 type Atom* = object
@@ -595,3 +595,76 @@ proc main() = # bug #12994
 
 static: main()
 main()
+
+# bug #19201
+proc foo(s: sink string) = doAssert s.len == 3
+
+static:
+  foo("abc")
+
+
+static:
+  for i in '1' .. '2': # bug #10938
+    var s: set[char]
+    doAssert s == {}
+    incl(s, i)
+
+  for _ in 0 ..< 3: # bug #13312
+    var s: string
+    s.add("foo")
+    doAssert s == "foo"
+
+  for i in 1 .. 5: # bug #13918
+    var arr: array[3, int]
+    var val: int
+    doAssert arr == [0, 0, 0] and val == 0
+    for j in 0 ..< len(arr):
+      arr[j] = i
+      val = i
+
+# bug #20985
+let a = block:
+  var groups: seq[seq[int]]
+  for i in 0 ..< 3:
+    var group: seq[int]
+    for j in 0 ..< 3:
+      group.add j
+    groups.add group
+  groups
+
+const b = block:
+  var groups: seq[seq[int]]
+  for i in 0 ..< 3:
+    var group: seq[int]
+    for j in 0 ..< 3:
+      group.add j
+    groups.add group
+  groups
+
+doAssert a == @[@[0, 1, 2], @[0, 1, 2], @[0, 1, 2]]
+doAssert b == @[@[0, 1, 2], @[0, 1, 2], @[0, 1, 2]]
+
+macro m1(s: string): int =
+  var ProcID {.global, compileTime.}: int
+  inc(ProcID)
+  result = newLit(ProcID)
+
+proc macroGlobal =
+  doAssert m1("Macro argument") == 1
+  doAssert m1("Macro argument") == 2
+  doAssert m1("Macro argument") == 3
+
+static: macroGlobal()
+macroGlobal()
+
+block: # bug #10108
+  template reject(x) =
+    static: doAssert(not compiles(x))
+
+  static:
+    let x: int = 2
+    proc deliver_x(): int = x
+    var y2 = deliver_x()
+    discard y2
+    reject:
+      const c5 = deliver_x()

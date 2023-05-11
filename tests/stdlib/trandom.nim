@@ -1,9 +1,10 @@
 discard """
   joinable: false # to avoid messing with global rand state
-  targets: "c js"
+  matrix: "--mm:refc; --mm:orc; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
 """
 import std/[assertions, formatfloat]
 import std/[random, math, stats, sets, tables]
+import std/private/jsutils
 when not defined(js):
   import std/os
 
@@ -208,8 +209,8 @@ block: # bug #16360
   when withUint:
     test cast[uint](int.high)
     test cast[uint](int.high) + 1
-    when not defined(js):
-      # pending bug #16411
+    whenJsNoBigInt64: discard
+    do:
       test uint64.high
       test uint64.high - 1
     test uint.high - 2
@@ -239,16 +240,12 @@ block: # bug #16296
   test(int.low .. -1)
   test(int.low .. 1)
   test(int64.low .. 1'i64)
-  when not defined(js):
-    # pending bug #16411
-    test(10'u64 .. uint64.high)
+  test(10'u64 .. uint64.high)
 
 block: # bug #17670
-  when not defined(js):
-    # pending bug #16411
-    type UInt48 = range[0'u64..2'u64^48-1]
-    let x = rand(UInt48)
-    doAssert x is UInt48
+  type UInt48 = range[0'u64..2'u64^48-1]
+  let x = rand(UInt48)
+  doAssert x is UInt48
 
 block: # bug #17898
   # Checks whether `initRand()` generates unique states.
