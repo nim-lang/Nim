@@ -8,7 +8,7 @@
 #
 
 ## This module implements lifting for type-bound operations
-## (``=sink``, ``=copy``, ``=destroy``, ``=deepCopy``).
+## (`=sink`, `=copy`, `=destroy`, `=deepCopy`, `=wasMoved`, `=dup`).
 
 import modulegraphs, lineinfos, idents, ast, renderer, semdata,
   sighashes, lowerings, options, types, msgs, magicsys, tables, ccgutils
