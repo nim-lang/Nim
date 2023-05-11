@@ -416,6 +416,7 @@ type
     expandNodeResult*: string
     expandPosition*: TLineInfo
 
+
 proc parseNimVersion*(a: string): NimVer =
   # could be moved somewhere reusable
   if a.len > 0:
