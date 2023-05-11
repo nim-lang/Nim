@@ -374,16 +374,22 @@ proc canFormAcycleAux(g: ModuleGraph; marker: var IntSet, typ: PType, orig: PTyp
 proc canFormAcycleNode(g: ModuleGraph; marker: var IntSet, n: PNode, orig: PType, withRef: bool, hasTrace: bool): bool =
   result = false
   if n != nil:
-    result = canFormAcycleAux(g, marker, n.typ, orig, withRef, hasTrace)
-    if not result:
-      case n.kind
-      of nkNone..nkNilLit:
-        discard
-      else:
-        for i in 0..<n.len:
-          result = canFormAcycleNode(g, marker, n[i], orig, withRef, hasTrace)
-          if result: return
+    var hasCursor = n.kind == nkSym and sfCursor in n.sym.flags
+    # cursor fields don't own the refs, which cannot form a reference cycle
+    if hasTrace or not hasCursor:
+      result = canFormAcycleAux(g, marker, n.typ, orig, withRef, hasTrace)
+      if not result:
+        case n.kind
+        of nkNone..nkNilLit:
+          discard
+        else:
+          for i in 0..<n.len:
+            result = canFormAcycleNode(g, marker, n[i], orig, withRef, hasTrace)
+            if result: return
 
+proc isFinal*(t: PType): bool =
+  let t = t.skipTypes(abstractInst)
+  result = t.kind != tyObject or tfFinal in t.flags or isPureObject(t)
 
 proc sameBackendType*(x, y: PType): bool
 proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PType, withRef: bool, hasTrace: bool): bool =
@@ -428,10 +434,6 @@ proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PTyp
         if result: return
   of tyProc: result = typ.callConv == ccClosure
   else: discard
-
-proc isFinal*(t: PType): bool =
-  let t = t.skipTypes(abstractInst)
-  result = t.kind != tyObject or tfFinal in t.flags or isPureObject(t)
 
 proc canFormAcycle*(g: ModuleGraph, typ: PType): bool =
   var marker = initIntSet()
