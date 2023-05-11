@@ -375,7 +375,7 @@ proc canFormAcycleNode(g: ModuleGraph; marker: var IntSet, n: PNode, orig: PType
   result = false
   if n != nil:
     var hasCursor = n.kind == nkSym and sfCursor in n.sym.flags
-    # cursor fields don't own the refs, which cannot form a reference cycle
+    # cursor fields don't own the refs, which cannot form reference cycles
     if hasTrace or not hasCursor:
       result = canFormAcycleAux(g, marker, n.typ, orig, withRef, hasTrace)
       if not result:
