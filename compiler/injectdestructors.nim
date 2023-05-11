@@ -381,7 +381,7 @@ proc genWasMoved(c: var Con, n: PNode): PNode =
     result = genOp(c, op, n)
   else:
     result = newNodeI(nkCall, n.info)
-    result.add(newSymNode(createMagic(c.graph, c.idgen, "wasMoved", mWasMoved)))
+    result.add(newSymNode(createMagic(c.graph, c.idgen, "`=wasMoved`", mWasMoved)))
     result.add copyTree(n) #mWasMoved does not take the address
     #if n.kind != nkSym:
     #  message(c.graph.config, n.info, warnUser, "wasMoved(" & $n & ")")
