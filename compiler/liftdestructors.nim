@@ -518,7 +518,7 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     forallElements(c, t, body, x, y)
     body.add genBuiltin(c, mDestroy, "destroy", x)
   of attachedTrace:
-    if canFormAcycle(t.elemType):
+    if canFormAcycle(c.g, t.elemType):
       # follow all elements:
       forallElements(c, t, body, x, y)
 
@@ -553,7 +553,7 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     doAssert t.destructor != nil
     body.add destructorCall(c, t.destructor, x)
   of attachedTrace:
-    if t.kind != tyString and canFormAcycle(t.elemType):
+    if t.kind != tyString and canFormAcycle(c.g, t.elemType):
       let op = getAttachedOp(c.g, t, c.kind)
       if op == nil:
         return # protect from recursion
@@ -574,9 +574,9 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedTrace:
     discard "strings are atomic and have no inner elements that are to trace"
 
-proc cyclicType*(t: PType): bool =
+proc cyclicType*(g: ModuleGraph, t: PType): bool =
   case t.kind
-  of tyRef: result = types.canFormAcycle(t.lastSon)
+  of tyRef: result = types.canFormAcycle(g, t.lastSon)
   of tyProc: result = t.callConv == ccClosure
   else: result = false
 
@@ -604,7 +604,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let elemType = t.lastSon
 
   createTypeBoundOps(c.g, c.c, elemType, c.info, c.idgen)
-  let isCyclic = c.g.config.selectedGC == gcOrc and types.canFormAcycle(elemType)
+  let isCyclic = c.g.config.selectedGC == gcOrc and types.canFormAcycle(c.g, elemType)
 
   let tmp =
     if isCyclic and c.kind in {attachedAsgn, attachedSink}:
@@ -929,7 +929,7 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
     result.typ.addParam src
 
   if kind == attachedAsgn and g.config.selectedGC == gcOrc and
-      cyclicType(typ.skipTypes(abstractInst)):
+      cyclicType(g, typ.skipTypes(abstractInst)):
     let cycleParam = newSym(skParam, getIdent(g.cache, "cyclic"),
                             nextSymId(idgen), result, info)
     cycleParam.typ = getSysType(g, info, tyBool)
