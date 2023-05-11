@@ -265,7 +265,7 @@ than the other hooks.
 `=WasMoved` hook
 ----------------
 
-A `wasMoved` hook resets the memory of an object its initial (binary zero) value to signify it was "moved" and to signify its destructor should do nothing and ideally be optimized away.
+A `wasMoved` hook resets the memory of an object to its initial (binary zero) value to signify it was "moved" and to signify its destructor should do nothing and ideally be optimized away.
 
 The prototype of this hook for a type `T` needs to be:
 
