@@ -1210,8 +1210,7 @@ const
                    nnkIteratorDef, nnkTemplateDef, nnkConverterDef, nnkMacroDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
   # see matching set nnkCallKinds above
-  CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
-    nnkCallStrLit, nnkHiddenCallConv}
+  CallNodes* = nnkCallKinds
 
 proc expectKind*(n: NimNode; k: set[NimNodeKind]) =
   ## Checks that `n` is of kind `k`. If this is not the case,
