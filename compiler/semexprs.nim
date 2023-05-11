@@ -10,6 +10,8 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
+import nimfix/prettybase
+
 when defined(nimCompilerStacktraceHints):
   import std/stackframes
 
@@ -1366,6 +1368,16 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     markUsed(c, n.info, s)
     onUse(n.info, s)
     result = newSymNode(s, n.info)
+  of skAlias:
+    let info = getCallLineInfo(n)
+    markUsed(c, info, s)
+    onUse(info, s)
+    if c.config.cmd == cmdNimfix:
+      prettybase.replaceDeprecated(c.config, n.info, s, s.owner)
+    else:
+      message(c.config, info, warnDeprecated, "use " & s.owner.name.s & " instead; " &
+              s.name.s & " is deprecated")
+    result = semSym(c, n, s.owner, flags)
   else:
     let info = getCallLineInfo(n)
     #if efInCall notin flags:
