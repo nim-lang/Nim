@@ -135,8 +135,9 @@ type
 
 const
   nnkLiterals* = {nnkCharLit..nnkNilLit}
+  # see matching set CallNodes below
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
-                   nnkCallStrLit}
+                   nnkCallStrLit, nnkHiddenCallConv}
   nnkPragmaCallKinds = {nnkExprColonExpr, nnkCall, nnkCallStrLit}
 
 {.push warnings: off.}
@@ -1174,6 +1175,7 @@ const
   RoutineNodes* = {nnkProcDef, nnkFuncDef, nnkMethodDef, nnkDo, nnkLambda,
                    nnkIteratorDef, nnkTemplateDef, nnkConverterDef, nnkMacroDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
+  # see matching set nnkCallKinds above
   CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
     nnkCallStrLit, nnkHiddenCallConv}
 
