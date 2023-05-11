@@ -8196,7 +8196,7 @@ define names.
 
 This helps disambiguate define names in different packages.
 
-See also the [generic `define` pragma](manual_experimental.html#generic-define-pragma)
+See also the [generic `define` pragma](manual_experimental.html#generic-nimdefine-pragma)
 for a version of these pragmas that detects the type of the define based on
 the constant value.
 
