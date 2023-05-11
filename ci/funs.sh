@@ -58,8 +58,8 @@ _nimNumCpu(){
   # FreeBSD | macOS: $(sysctl -n hw.ncpu)
   # OpenBSD: $(sysctl -n hw.ncpuonline)
   # windows: $NUMBER_OF_PROCESSORS ?
-  if env | grep -q '^NCPU='; then
-    echo $NCPU
+  if env | grep -q '^NIMCORES='; then
+    echo $NIMCORES
   else
     echo $(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || 1)
   fi
