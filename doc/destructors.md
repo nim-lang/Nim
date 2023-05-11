@@ -284,7 +284,7 @@ The prototype of this hook for a type `T` needs to be:
   proc `=dup`(x: T): T
   ```
 
-The general pattern in using `=dup` looks like:
+The general pattern in implementing `=dup` looks like:
 
   ```nim
   type
