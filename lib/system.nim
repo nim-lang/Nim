@@ -350,7 +350,7 @@ proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
 
 when defined(nimHasDup):
   proc `=dup`*[T](x: ref T): ref T {.inline, magic: "Dup".} =
-    ## Generic `dup` implementation that can be overridden.
+    ## Generic `dup`:idx: implementation that can be overridden.
     discard
 
 proc `=sink`*[T](x: var T; y: T) {.inline, nodestroy, magic: "Asgn".} =

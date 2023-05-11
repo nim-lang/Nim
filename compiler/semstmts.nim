@@ -1819,7 +1819,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
              of {attachedDestructor, attachedWasMoved}:
                t.len == 2 and t[0] == nil and t[1].kind == tyVar
              of attachedDup:
-               t.len == 2 and t[0] != nil and t[1].kind == tyVar
+               t.len == 2 and t[0] != nil
              of attachedTrace:
                t.len == 3 and t[0] == nil and t[1].kind == tyVar and t[2].kind == tyPointer
              else:
