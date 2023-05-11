@@ -387,9 +387,6 @@ proc canFormAcycleNode(g: ModuleGraph; marker: var IntSet, n: PNode, orig: PType
             result = canFormAcycleNode(g, marker, n[i], orig, withRef, hasTrace)
             if result: return
 
-proc isFinal*(t: PType): bool =
-  let t = t.skipTypes(abstractInst)
-  result = t.kind != tyObject or tfFinal in t.flags or isPureObject(t)
 
 proc sameBackendType*(x, y: PType): bool
 proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PType, withRef: bool, hasTrace: bool): bool =
@@ -434,6 +431,10 @@ proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PTyp
         if result: return
   of tyProc: result = typ.callConv == ccClosure
   else: discard
+
+proc isFinal*(t: PType): bool =
+  let t = t.skipTypes(abstractInst)
+  result = t.kind != tyObject or tfFinal in t.flags or isPureObject(t)
 
 proc canFormAcycle*(g: ModuleGraph, typ: PType): bool =
   var marker = initIntSet()
