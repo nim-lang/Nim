@@ -33,13 +33,7 @@ proc getDataDir*(): string {.rtl, extern: "nos$1"
   ## * `expandTilde proc`_
   ## * `getCurrentDir proc`_
   ## * `setCurrentDir proc`_
-  when defined(windows):
-    result = getEnv("APPDATA")
-  elif defined(macosx):
-    result = getEnv("XDG_DATA_HOME", getEnv("HOME") / "Library" / "Application Support")
-  else:
-    result = getEnv("XDG_DATA_HOME", getEnv("HOME") / ".local" / "share")
-  result.normalizePathEnd(trailingSep = true)
+  result = Path(osappdirs.getDataDir())
 
 proc getConfigDir*(): Path {.inline, tags: [ReadEnvEffect, ReadIOEffect].} =
   ## Returns the config directory of the current user for applications.
