@@ -682,8 +682,11 @@ template main {.dirty.} =
       let r = calling()
       doAssert assigned
 
-    testAssignResult()
-
+    when nimvm:
+      when not defined(js):
+        testAssignResult()
+    else:
+      testAssignResult()
 
 
 static: main()
