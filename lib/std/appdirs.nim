@@ -17,8 +17,7 @@ proc getHomeDir*(): Path {.inline, tags: [ReadEnvEffect, ReadIOEffect].} =
   ## * `getTempDir proc`_
   result = Path(osappdirs.getHomeDir())
 
-proc getDataDir*(): string {.rtl, extern: "nos$1"
-  tags: [ReadEnvEffect, ReadIOEffect].} =
+proc getDataDir*(): Path {.inline, tags: [ReadEnvEffect, ReadIOEffect].} =
   ## Returns the data directory of the current user for applications.
   ## 
   ## On non-Windows OSs, this proc conforms to the XDG Base Directory
