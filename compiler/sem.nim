@@ -578,14 +578,14 @@ proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool): s
           result.add newTree(nkExprColonExpr, recNode, asgnExpr)
           return
 
-      let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), recType.owner)
-      rawAddSon(asgnType, recType)
+      let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), recNode.typ.owner)
+      rawAddSon(asgnType, recNode.typ)
       let asgnExpr = newTree(nkCall,
                       newSymNode(getSysMagic(c.graph, recNode.info, "zeroDefault", mZeroDefault)),
                       newNodeIT(nkType, recNode.info, asgnType)
                     )
       asgnExpr.flags.incl nfSkipFieldChecking
-      asgnExpr.typ = recType
+      asgnExpr.typ = recNode.typ
       result.add newTree(nkExprColonExpr, recNode, asgnExpr)
   else:
     doAssert false
@@ -615,9 +615,9 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
     if field.ast != nil: #Try to use default value
       result.add newTree(nkExprColonExpr, recNode, field.ast)
     elif recType.kind in {tyObject, tyArray, tyTuple}:
-      let asgnExpr = defaultNodeField(c, recNode, recType)
+      let asgnExpr = defaultNodeField(c, recNode, recNode.typ)
       if asgnExpr != nil:
-        asgnExpr.typ = recType
+        asgnExpr.typ = recNode.typ
         asgnExpr.flags.incl nfSkipFieldChecking
         result.add newTree(nkExprColonExpr, recNode, asgnExpr)
   else:
