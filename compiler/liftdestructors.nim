@@ -934,8 +934,14 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       defaultOp(c, t, body, x, y)
   of tyObject:
     if not considerUserDefinedOp(c, t, body, x, y):
-      if c.kind in {attachedAsgn, attachedSink} and t.sym != nil and sfImportc in t.sym.flags:
-        body.add newAsgnStmt(x, y)
+      if t.sym != nil and sfImportc in t.sym.flags:
+        case c.kind
+        of {attachedAsgn, attachedSink}:
+          body.add newAsgnStmt(x, y)
+        of attachedWasMoved:
+          body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
+        else:
+          fillBodyObjT(c, t, body, x, y)
       else:
         fillBodyObjT(c, t, body, x, y)
   of tyDistinct:
