@@ -305,6 +305,7 @@
 - Added `openArray[char]` overloads for `std/unicode` allowing more code reuse.
 - Added `safe` parameter to `base64.encodeMime`.
 - Added `parseutils.parseSize` - inverse to `strutils.formatSize` - to parse human readable sizes.
+- Added `minmax` to `sequtils`, as a more efficient `(min(_), max(_))` over sequences.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
