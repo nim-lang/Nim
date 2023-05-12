@@ -628,8 +628,8 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
   if aTypSkip.kind == tyObject:
     let child = defaultFieldsForTheUninitialized(c, aTypSkip.n)
     if child.len > 0:
-      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTypSkip))
-      asgnExpr.typ = aTypSkip
+      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTyp))
+      asgnExpr.typ = aTyp
       asgnExpr.sons.add child
       result = semExpr(c, asgnExpr)
   elif aTypSkip.kind == tyArray:
