@@ -41,6 +41,15 @@ proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises
   else:
     result = nil
 
+proc newSeqPayloadUninitialized(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises: [].} =
+  # Used in `newSeqOfCap()`.
+  if cap > 0:
+    var p = cast[ptr NimSeqPayloadBase](alignedAlloc(align(sizeof(NimSeqPayloadBase), elemAlign) + cap * elemSize, elemAlign))
+    p.cap = cap
+    result = p
+  else:
+    result = nil
+
 template `+!`(p: pointer, s: int): pointer =
   cast[pointer](cast[int](p) +% s)
 
