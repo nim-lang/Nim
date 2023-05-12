@@ -613,6 +613,15 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     let op = getAttachedOp(c.graph, t, attachedTrace)
     if op != nil:
       result[0] = newSymNode(op)
+  of mWasMoved:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    let op = getAttachedOp(c.graph, t, attachedWasMoved)
+    if op != nil:
+      result[0] = newSymNode(op)
+      let addrExp = newNodeIT(nkHiddenAddr, result[1].info, makePtrType(c, t))
+      addrExp.add result[1]
+      result[1] = addrExp
   of mUnown:
     result = semUnown(c, n)
   of mExists, mForall:

@@ -89,7 +89,7 @@ proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     call.typ = t
     body.add newAsgnStmt(x, call)
   elif c.kind == attachedWasMoved:
-    body.add genBuiltin(c, mWasMoved, "wasMoved", x)
+    body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
 
 proc genAddr(c: var TLiftCtx; x: PNode): PNode =
   if x.kind == nkHiddenDeref:
@@ -143,7 +143,7 @@ proc destructorCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
   if sfNeverRaises notin op.flags:
     c.canRaise = true
   if c.addMemReset:
-    result = newTree(nkStmtList, destroy, genBuiltin(c, mWasMoved,  "wasMoved", x))
+    result = newTree(nkStmtList, destroy, genBuiltin(c, mWasMoved,  "`=wasMoved`", x))
   else:
     result = destroy
 
@@ -262,7 +262,7 @@ proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
     #body.add newAsgnStmt(blob, x)
 
     var wasMovedCall = newNodeI(nkCall, c.info)
-    wasMovedCall.add(newSymNode(createMagic(c.g, c.idgen, "wasMoved", mWasMoved)))
+    wasMovedCall.add(newSymNode(createMagic(c.g, c.idgen, "`=wasMoved`", mWasMoved)))
     wasMovedCall.add x # mWasMoved does not take the address
     body.add wasMovedCall
 
@@ -548,7 +548,7 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     if canFormAcycle(c.g, t.elemType):
       # follow all elements:
       forallElements(c, t, body, x, y)
-  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
+  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
   of attachedDup:
     assert false, "cannot happen"
 
@@ -588,7 +588,7 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       if op == nil:
         return # protect from recursion
       body.add newHookCall(c, op, x, y)
-  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
+  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
   of attachedDup:
     assert false, "cannot happen"
 
@@ -606,7 +606,7 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genBuiltin(c, mDestroy, "destroy", x)
   of attachedTrace:
     discard "strings are atomic and have no inner elements that are to trace"
-  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
+  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
   of attachedDup:
     assert false, "cannot happen"
 
@@ -707,7 +707,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
         # If the ref is polymorphic we have to account for this
         body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(x, c.idgen), y)
       #echo "can follow ", elemType, " static ", isFinal(elemType)
-  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
+  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
   of attachedDup:
     assert false, "cannot happen"
 
@@ -758,7 +758,7 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
     body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(xenv, c.idgen), y)
-  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
+  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
   of attachedDup:
     assert false, "cannot happen"
 
@@ -785,7 +785,7 @@ proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.sons.insert(des, 0)
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace: discard
-  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
+  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
   of attachedDup:
     assert false, "cannot happen"
 
@@ -813,7 +813,7 @@ proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, x, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace: discard
-  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
+  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
   of attachedDup:
     assert false, "cannot happen"
 
@@ -850,7 +850,7 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
         body.sons.insert(des, 0)
     of attachedDeepCopy: assert(false, "cannot happen")
     of attachedTrace: discard
-    of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
+    of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
     of attachedDup:
       assert false, "cannot happen"
 
@@ -868,7 +868,7 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, xx, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace: discard
-  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
+  of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
   of attachedDup:
     assert false, "cannot happen"
 
@@ -934,8 +934,14 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       defaultOp(c, t, body, x, y)
   of tyObject:
     if not considerUserDefinedOp(c, t, body, x, y):
-      if c.kind in {attachedAsgn, attachedSink} and t.sym != nil and sfImportc in t.sym.flags:
-        body.add newAsgnStmt(x, y)
+      if t.sym != nil and sfImportc in t.sym.flags:
+        case c.kind
+        of {attachedAsgn, attachedSink}:
+          body.add newAsgnStmt(x, y)
+        of attachedWasMoved:
+          body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
+        else:
+          fillBodyObjT(c, t, body, x, y)
       else:
         fillBodyObjT(c, t, body, x, y)
   of tyDistinct:
@@ -1004,6 +1010,9 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   result.ast = n
   incl result.flags, sfFromGeneric
   incl result.flags, sfGeneratedOp
+  if kind == attachedWasMoved:
+    incl result.flags, sfNoSideEffect
+    incl result.typ.flags, tfNoSideEffect
 
 proc genTypeFieldCopy(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xx = genBuiltin(c, mAccessTypeField, "accessTypeField", x)
