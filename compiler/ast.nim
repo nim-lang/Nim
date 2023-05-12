@@ -515,7 +515,7 @@ type
     nfSkipFieldChecking # node skips field visable checking
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 46)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -585,6 +585,7 @@ type
     tfIsConstructor
     tfEffectSystemWorkaround
     tfIsOutParam
+    tfSendable
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -635,7 +636,7 @@ const
   skError* = skUnknown
 
 var
-  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect, tfIsOutParam}
+  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect, tfIsOutParam, tfSendable}
     ## type flags that are essential for type equality.
     ## This is now a variable because for emulation of version:1.0 we
     ## might exclude {tfGcSafe, tfNoSideEffect}.

@@ -106,7 +106,7 @@ proc containsDangerousRefAux(t: PType; marker: var IntSet): SearchResult =
 
   if t.kind == tyRef or (t.kind == tyProc and t.callConv == ccClosure):
     result = Found
-  elif t.kind == tyObject and t.sym.name.s == "Isolated":
+  elif tfSendable in t.flags:
     result = Abort
   else:
     # continue the type traversal:

@@ -6889,7 +6889,7 @@ iterator in which case the overloading resolution takes place:
   var x = 4
   write(stdout, x) # not ambiguous: uses the module C's x
   ```
-Modules can share their name, however, when trying to qualify a identifier with the module name the compiler will fail with ambiguous identifier error. One can qualify the identifier by aliasing the module. 
+Modules can share their name, however, when trying to qualify a identifier with the module name the compiler will fail with ambiguous identifier error. One can qualify the identifier by aliasing the module.
 
 
 ```nim
@@ -6914,7 +6914,7 @@ C.fb() # Error: ambiguous identifier: 'fb'
 
 ```nim
 import A/C as fizz
-import B/C 
+import B/C
 
 fizz.fb() # Works
 ```
@@ -7253,7 +7253,7 @@ echo foo() # 2
 template foo: int = 3
 ```
 
-This is mostly intended for macro generated code. 
+This is mostly intended for macro generated code.
 
 compilation option pragmas
 --------------------------
@@ -8072,7 +8072,7 @@ CodegenDecl pragma
 ------------------
 
 The `codegenDecl` pragma can be used to directly influence Nim's code
-generator. It receives a format string that determines how the variable, 
+generator. It receives a format string that determines how the variable,
 proc or object type is declared in the generated code.
 
 For variables, $1 in the format string represents the type of the variable,
@@ -8108,7 +8108,7 @@ will generate this code:
   ```c
   __interrupt void myinterrupt()
   ```
-  
+
 For object types, the $1 represents the name of the object type, $2 is the list of
 fields and $3 is the base type.
 
@@ -8117,7 +8117,7 @@ fields and $3 is the base type.
 const strTemplate = """
   struct $1 {
     $2
-  };  
+  };
 """
 type Foo {.codegenDecl:strTemplate.} = object
   a, b: int
@@ -8130,7 +8130,7 @@ will generate this code:
 struct Foo {
   NI a;
   NI b;
-}; 
+};
 ```
 
 `cppNonPod` pragma
@@ -8581,10 +8581,8 @@ Threads
 The `--threads:on`:option: command-line switch is enabled by default. The [typedthreads module](typedthreads.html) module then contains several threading primitives. See [spawn](manual_experimental.html#parallel-amp-spawn) for
 further details.
 
-The only way to create a thread is via `spawn` or
-`createThread`. The invoked proc must not use `var` parameters nor must
-any of its parameters contain a `ref` or `closure` type. This enforces
-the *no heap sharing restriction*.
+The only ways to create a thread is via `spawn` or `createThread`.
+
 
 Thread pragma
 -------------
@@ -8703,7 +8701,7 @@ model low level lockfree mechanisms:
 The `locks` pragma takes a list of lock expressions `locks: [a, b, ...]`
 in order to support *multi lock* statements. Why these are essential is
 explained in the [lock levels](manual_experimental.md#lock-levels) section
-of experimental manual.
+of the experimental manual.
 
 
 ### Protecting general locations

@@ -71,7 +71,8 @@ const
     wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wShallow,
     wIncompleteStruct, wCompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wCppNonPod, wBorrow, wGcSafe, wPartial, wExplain, wPackage, wCodegenDecl}
+    wCppNonPod, wBorrow, wGcSafe, wPartial, wExplain, wPackage, wCodegenDecl,
+    wSendable}
   fieldPragmas* = declPragmas + {wGuard, wBitsize, wCursor,
     wRequiresInit, wNoalias, wAlign} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
@@ -1068,6 +1069,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.typ != nil:
           incl(sym.typ.flags, tfThread)
           if sym.typ.callConv == ccClosure: sym.typ.callConv = ccNimCall
+      of wSendable:
+        noVal(c, it)
+        if sym != nil and sym.typ != nil:
+          incl(sym.typ.flags, tfSendable)
+        else:
+          invalidPragma(c, it)
       of wGcSafe:
         noVal(c, it)
         if sym != nil:
