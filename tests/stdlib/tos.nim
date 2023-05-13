@@ -831,7 +831,7 @@ block:  # isValidFilename
   doAssert isValidFilename("nim.nim")
   doAssert isValidFilename("foo.log")
 
-import std/strutils
+import std/random
 block: # Issue 200611
   when defined(posix):
     doAssert not findExe("which").isEmptyOrWhitespace()
@@ -839,3 +839,14 @@ block: # Issue 200611
   when defined(windows):
     doAssert not findExe("cmd.exe").isEmptyOrWhitespace()
   doAssert findExe("").isEmptyOrWhitespace()
+  randomize()
+  proc generateRandomExe(len: int = 16): string =
+    const alphabet = Digits + IdentChars
+    for i in 0..16:
+      result = result & sample(alphabet)
+    when defined(windows):
+      let pick = sample(ExeExts)
+      result = result & pick
+  let fakeExe = generateRandomExe()
+  doAssert findExe(fakeExe).isEmptyOrWhitespace()
+  doAssert findExeAll(fakeExe).len == 0

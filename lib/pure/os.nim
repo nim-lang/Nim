@@ -274,7 +274,6 @@ iterator exes(exe: string, followSymlinks: bool = true;
             else:
               break
         yield x
-  yield ""
 
 proc findExeAll*(exe: string, followSymlinks: bool = true;
               extensions: openArray[string] = ExeExts): seq[string] {.
