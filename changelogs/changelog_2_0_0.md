@@ -231,6 +231,23 @@
   unlisted exceptions) and explicitly raising destructors are implementation
   defined behavior.
 
+- The very old, undocumented deprecated pragma statement syntax for
+  deprecated aliases is now a no-op. The regular deprecated pragma syntax is
+  generally sufficient instead.
+
+  ```nim
+  # now does nothing:
+  {.deprecated: [OldName: NewName].}
+
+  # instead use:
+  type OldName* {.deprecated: "use NewName instead".} = NewName
+  const oldName* {.deprecated: "use newName instead".} = newName
+  ```
+
+  `defined(nimalias)` can be used to check for versions when this syntax was
+  available; however since code that used this syntax is usually very old,
+  these deprecated aliases are likely not used anymore and it may make sense
+  to simply remove these statements.
 
 ## Standard library additions and changes
 
@@ -305,6 +322,7 @@
 - Added `openArray[char]` overloads for `std/unicode` allowing more code reuse.
 - Added `safe` parameter to `base64.encodeMime`.
 - Added `parseutils.parseSize` - inverse to `strutils.formatSize` - to parse human readable sizes.
+- Added `minmax` to `sequtils`, as a more efficient `(min(_), max(_))` over sequences.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
@@ -364,7 +382,7 @@
     ```
   - A generic `define` pragma for constants has been added that interprets
     the value of the define based on the type of the constant value.
-    See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#generic-define-pragma)
+    See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#generic-nimdefine-pragma)
     for a list of supported types.
 
 - [Macro pragmas](https://nim-lang.github.io/Nim/manual.html#userminusdefined-pragmas-macro-pragmas) changes:
@@ -455,6 +473,8 @@
 
 - When compiling for Release the flag `-fno-math-errno` is used for GCC.
 - When compiling for Release the flag `--build-id=none` is used for GCC Linker.
+- Removed deprecated `LineTooLong` hint.
+
 
 ## Docgen
 

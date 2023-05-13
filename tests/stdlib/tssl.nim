@@ -1,11 +1,11 @@
 discard """
   matrix: "--mm:refc; --mm:orc"
   joinable: false
-  disabled: "freebsd"
-  disabled: "openbsd"
-  disabled: "netbsd"
+  disabled: "freebsd" # see #15713
+  disabled: "openbsd" # see #15713
+  disabled: "netbsd" # see #15713
 """
-# disabled: pending bug #15713
+
 import std/[net, nativesockets, assertions, typedthreads]
 
 when defined(posix): import os, posix

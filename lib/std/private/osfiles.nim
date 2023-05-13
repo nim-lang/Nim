@@ -155,10 +155,14 @@ when hasCCopyfile:
   proc copyfile_state_alloc(): copyfile_state_t
   proc copyfile_state_free(state: copyfile_state_t): cint
   proc c_copyfile(src, dst: cstring,  state: copyfile_state_t, flags: copyfile_flags_t): cint {.importc: "copyfile".}
-  # replace with `let` pending bootstrap >= 1.4.0
-  var
-    COPYFILE_DATA {.nodecl.}: copyfile_flags_t
-    COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
+  when (NimMajor, NimMinor) >= (1, 4):
+    let
+      COPYFILE_DATA {.nodecl.}: copyfile_flags_t
+      COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
+  else:
+    var
+      COPYFILE_DATA {.nodecl.}: copyfile_flags_t
+      COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
   {.pop.}
 
 type

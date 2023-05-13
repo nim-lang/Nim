@@ -4155,7 +4155,7 @@ the operator is in scope (including if it is private).
   ```
 
 Type bound operators are:
-`=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`, `=wasMoved`.
+`=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`, `=wasMoved`, `=dup`.
 
 These operations can be *overridden* instead of *overloaded*. This means that
 the implementation is automatically lifted to structured types. For instance,
@@ -6889,7 +6889,7 @@ iterator in which case the overloading resolution takes place:
   var x = 4
   write(stdout, x) # not ambiguous: uses the module C's x
   ```
-Modules can share their name, however, when trying to qualify a identifier with the module name the compiler will fail with ambiguous identifier error. One can qualify the identifier by aliasing the module. 
+Modules can share their name, however, when trying to qualify a identifier with the module name the compiler will fail with ambiguous identifier error. One can qualify the identifier by aliasing the module.
 
 
 ```nim
@@ -6914,7 +6914,7 @@ C.fb() # Error: ambiguous identifier: 'fb'
 
 ```nim
 import A/C as fizz
-import B/C 
+import B/C
 
 fizz.fb() # Works
 ```
@@ -7253,7 +7253,7 @@ echo foo() # 2
 template foo: int = 3
 ```
 
-This is mostly intended for macro generated code. 
+This is mostly intended for macro generated code.
 
 compilation option pragmas
 --------------------------
@@ -7323,7 +7323,7 @@ but are used to override the settings temporarily. Example:
   template example(): string = "https://nim-lang.org"
   {.pop.}
 
-  {.push deprecated, hint[LineTooLong]: off, used, stackTrace: off.}
+  {.push deprecated, used, stackTrace: off.}
   proc sample(): bool = true
   {.pop.}
   ```
@@ -7362,14 +7362,14 @@ and before any variable in a module that imports it.
 
 Disabling certain messages
 --------------------------
-Nim generates some warnings and hints ("line too long") that may annoy the
+Nim generates some warnings and hints that may annoy the
 user. A mechanism for disabling certain messages is provided: Each hint
 and warning message is associated with a symbol. This is the message's
 identifier, which can be used to enable or disable the message by putting it
 in brackets following the pragma:
 
   ```Nim
-  {.hint[LineTooLong]: off.} # turn off the hint about too long lines
+  {.hint[XDeclaredButNotUsed]: off.} # Turn off the hint about declared but not used symbols.
   ```
 
 This is often better than disabling all warnings at once.
@@ -8072,7 +8072,7 @@ CodegenDecl pragma
 ------------------
 
 The `codegenDecl` pragma can be used to directly influence Nim's code
-generator. It receives a format string that determines how the variable, 
+generator. It receives a format string that determines how the variable,
 proc or object type is declared in the generated code.
 
 For variables, $1 in the format string represents the type of the variable,
@@ -8108,7 +8108,7 @@ will generate this code:
   ```c
   __interrupt void myinterrupt()
   ```
-  
+
 For object types, the $1 represents the name of the object type, $2 is the list of
 fields and $3 is the base type.
 
@@ -8117,7 +8117,7 @@ fields and $3 is the base type.
 const strTemplate = """
   struct $1 {
     $2
-  };  
+  };
 """
 type Foo {.codegenDecl:strTemplate.} = object
   a, b: int
@@ -8130,7 +8130,7 @@ will generate this code:
 struct Foo {
   NI a;
   NI b;
-}; 
+};
 ```
 
 `cppNonPod` pragma
@@ -8196,7 +8196,7 @@ define names.
 
 This helps disambiguate define names in different packages.
 
-See also the [generic `define` pragma](manual_experimental.html#generic-define-pragma)
+See also the [generic `define` pragma](manual_experimental.html#generic-nimdefine-pragma)
 for a version of these pragmas that detects the type of the define based on
 the constant value.
 
