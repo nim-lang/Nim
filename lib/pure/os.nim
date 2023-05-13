@@ -220,9 +220,11 @@ const
     ## On Windows ``["exe", "cmd", "bat"]``, on Posix ``[""]``.
     when defined(windows): ["exe", "cmd", "bat"] else: [""]
 
-proc findExe*(exe: string, followSymlinks: bool = true;
-              extensions: openArray[string]=ExeExts): string {.
+iterator exes(exe: string, followSymlinks: bool = true;
+              extensions: openArray[string] = ExeExts): string {.
   tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect], noNimJs.} =
+  ## Common functionality between `findExe` and `findExeAll`.
+  ##
   ## Searches for `exe` in the current working directory and then
   ## in directories listed in the ``PATH`` environment variable.
   ##
@@ -232,12 +234,12 @@ proc findExe*(exe: string, followSymlinks: bool = true;
   ## If the system supports symlinks it also resolves them until it
   ## meets the actual file. This behavior can be disabled if desired
   ## by setting `followSymlinks = false`.
-
-  if exe.len == 0: return
+  ##
+  if exe.len == 0: yield ""
   template checkCurrentDir() =
     for ext in extensions:
-      result = addFileExt(exe, ext)
-      if fileExists(result): return
+      let temp = addFileExt(exe, ext)
+      if fileExists(temp): yield temp
   when defined(posix):
     if '/' in exe: checkCurrentDir()
   else:
@@ -247,7 +249,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
     if candidate.len == 0: continue
     when defined(windows):
       var x = (if candidate[0] == '"' and candidate[^1] == '"':
-                substr(candidate, 1, candidate.len-2) else: candidate) /
+        substr(candidate, 1, candidate.len-2) else: candidate) /
               exe
     else:
       var x = expandTilde(candidate) / exe
@@ -271,8 +273,40 @@ proc findExe*(exe: string, followSymlinks: bool = true;
                 x = parentDir(x) / r
             else:
               break
-        return x
-  result = ""
+        yield x
+  yield ""
+
+proc findExeAll*(exe: string, followSymlinks: bool = true;
+              extensions: openArray[string] = ExeExts): seq[string] {.
+  tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect], noNimJs.} =
+  ## Searches for **all** `exe` in the current working directory and then
+  ## in directories listed in the ``PATH`` environment variable.
+  ##
+  ## Returns an empty sequence if no `exe` cannot be found. `exe`
+  ## is added the `ExeExts`_ file extensions if it has none.
+  ##
+  ## If the system supports symlinks it also resolves them until it
+  ## meets the actual file. This behavior can be disabled if desired
+  ## by setting `followSymlinks = false`.
+  ##
+  result = newSeq[string]()
+  for exe in exes(exe, followSymlinks, extensions):
+    result.add(exe)
+
+proc findExe*(exe: string, followSymlinks: bool = true;
+              extensions: openArray[string] = ExeExts): string {.
+  tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect], noNimJs.} =
+  ## Searches for `exe` in the current working directory and then
+  ## in directories listed in the ``PATH`` environment variable.
+  ##
+  ## Returns `""` if the `exe` cannot be found. `exe`
+  ## is added the `ExeExts`_ file extensions if it has none.
+  ##
+  ## If the system supports symlinks it also resolves them until it
+  ## meets the actual file. This behavior can be disabled if desired
+  ## by setting `followSymlinks = false`.
+  ##
+  for exe in exes(exe, followSymlinks, extensions): return exe
 
 when weirdTarget:
   const times = "fake const"

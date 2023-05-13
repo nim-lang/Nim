@@ -830,3 +830,12 @@ block:  # isValidFilename
   doAssert isValidFilename("ux.bat")
   doAssert isValidFilename("nim.nim")
   doAssert isValidFilename("foo.log")
+
+import std/strutils
+block: # Issue 200611
+  when defined(posix):
+    doAssert not findExe("which").isEmptyOrWhitespace()
+    doAssert findExeAll("which").len > 1
+  when defined(windows):
+    doAssert not findExe("cmd.exe").isEmptyOrWhitespace()
+  doAssert findExe("").isEmptyOrWhitespace()
