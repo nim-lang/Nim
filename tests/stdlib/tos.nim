@@ -834,8 +834,8 @@ block:  # isValidFilename
 import std/random
 block: # Issue 200611
   when defined(posix):
-    doAssert not findExe("which").isEmptyOrWhitespace()
-    doAssert findExeAll("which").len > 1
+    doAssert not findExe("sh").isEmptyOrWhitespace()
+    doAssert findExeAll("sh").len > 1
   when defined(windows):
     doAssert not findExe("cmd.exe").isEmptyOrWhitespace()
   doAssert findExe("").isEmptyOrWhitespace()
