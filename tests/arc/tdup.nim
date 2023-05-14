@@ -40,7 +40,7 @@ proc inc(x: sink Ref) =
 proc inc(x: sink RefCustom) =
   inc x.id[]
 
-proc `=dup`(x: var RefCustom): RefCustom =
+proc `=dup`(x: RefCustom): RefCustom =
   result.id = x.id
 
 proc foo =

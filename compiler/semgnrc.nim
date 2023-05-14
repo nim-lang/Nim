@@ -115,7 +115,7 @@ proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
   result = n
   let ident = considerQuotedIdent(c, n)
   var amb = false
-  var s = searchInScopes(c, ident, amb).skipAlias(n, c.config)
+  var s = searchInScopes(c, ident, amb)
   if s == nil:
     s = strTableGet(c.pureEnumFields, ident)
     #if s != nil and contains(c.ambiguousSymbols, s.id):
@@ -152,7 +152,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
     result = n
     let n = n[1]
     let ident = considerQuotedIdent(c, n)
-    var candidates = searchInScopesFilterBy(c, ident, routineKinds) # .skipAlias(n, c.config)
+    var candidates = searchInScopesFilterBy(c, ident, routineKinds)
     if candidates.len > 0:
       let s = candidates[0] # XXX take into account the other candidates!
       isMacro = s.kind in {skTemplate, skMacro}

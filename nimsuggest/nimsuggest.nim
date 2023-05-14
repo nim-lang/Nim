@@ -732,7 +732,7 @@ func deduplicateSymInfoPair[SymInfoPair](xs: seq[SymInfoPair]): seq[SymInfoPair]
   # sym may not match. This can happen when xs contains the same definition but
   # with different signature because suggestSym might be called multiple times
   # for the same symbol (e. g. including/excluding the pragma)
-  result = @[]
+  result = newSeqOfCap[SymInfoPair](xs.len)
   for itm in xs.reversed:
     var found = false
     for res in result:

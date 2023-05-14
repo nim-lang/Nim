@@ -137,15 +137,20 @@ proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
   ## **Note**: The `finalizer` refers to the type `T`, not to the object!
   ## This means that for each object of type `T` the finalizer will be called!
 
-proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
+proc `=wasMoved`[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
+  ## Generic `wasMoved`:idx: implementation that can be overridden.
+
+proc wasMoved*[T](obj: var T) {.inline, noSideEffect.} =
   ## Resets an object `obj` to its initial (binary zero) value to signify
   ## it was "moved" and to signify its destructor should do nothing and
   ## ideally be optimized away.
-  discard
+  {.cast(raises: []), cast(tags: []).}:
+    `=wasMoved`(obj)
 
 proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
   result = x
-  wasMoved(x)
+  {.cast(raises: []), cast(tags: []).}:
+    `=wasMoved`(x)
 
 type
   range*[T]{.magic: "Range".}         ## Generic type to construct range types.
@@ -350,7 +355,7 @@ proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
 
 when defined(nimHasDup):
   proc `=dup`*[T](x: ref T): ref T {.inline, magic: "Dup".} =
-    ## Generic `dup` implementation that can be overridden.
+    ## Generic `dup`:idx: implementation that can be overridden.
     discard
 
 proc `=sink`*[T](x: var T; y: T) {.inline, nodestroy, magic: "Asgn".} =
@@ -906,7 +911,15 @@ proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
 
 proc reset*[T](obj: var T) {.noSideEffect.} =
   ## Resets an object `obj` to its default value.
-  obj = default(typeof(obj))
+  when nimvm:
+    obj = default(typeof(obj))
+  else:
+    when defined(gcDestructors):
+      {.cast(noSideEffect), cast(raises: []), cast(tags: []).}:
+        `=destroy`(obj)
+        `=wasMoved`(obj)
+    else:
+      obj = default(typeof(obj))
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.
   magic: "SetLengthSeq", noSideEffect.}

@@ -1,6 +1,5 @@
 discard """
-  # pending bug #16521 (bug 12) use `matrix`
-  cmd: "nim c --spellsuggest:15 --hints:off $file"
+  matrix: "--spellsuggest:15 --hints:off"
   action: "reject"
   nimout: '''
 tspellsuggest.nim(45, 13) Error: undeclared identifier: 'fooBar'
@@ -24,6 +23,7 @@ candidates (edit distance, scope distance); see '--spellSuggest':
 """
 
 # tests `--spellsuggest:num`
+
 
 
 

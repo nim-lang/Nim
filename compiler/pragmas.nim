@@ -737,19 +737,8 @@ proc deprecatedStmt(c: PContext; outerPragma: PNode) =
     return
   if pragma.kind != nkBracket:
     localError(c.config, pragma.info, "list of key:value pairs expected"); return
-  for n in pragma:
-    if n.kind in nkPragmaCallKinds and n.len == 2:
-      let dest = qualifiedLookUp(c, n[1], {checkUndeclared})
-      if dest == nil or dest.kind in routineKinds:
-        localError(c.config, n.info, warnUser, "the .deprecated pragma is unreliable for routines")
-      let src = considerQuotedIdent(c, n[0])
-      let alias = newSym(skAlias, src, c.idgen, dest, n[0].info, c.config.options)
-      incl(alias.flags, sfExported)
-      if sfCompilerProc in dest.flags: markCompilerProc(c, alias)
-      addInterfaceDecl(c, alias)
-      n[1] = newSymNode(dest)
-    else:
-      localError(c.config, n.info, "key:value pair expected")
+  message(c.config, pragma.info, warnDeprecated,
+    "deprecated statement is now a no-op, use regular deprecated pragma")
 
 proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
   if it.kind notin nkPragmaCallKinds or it.len != 2:

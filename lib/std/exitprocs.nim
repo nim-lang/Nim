@@ -81,7 +81,6 @@ when not defined(nimscript):
       doAssert false
 
   proc setProgramResult*(a: int) =
-    # pending https://github.com/nim-lang/Nim/issues/14674
     when defined(js) and defined(nodejs):
       asm """
 process.exitCode = `a`;
