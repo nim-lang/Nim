@@ -154,4 +154,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasWarnBareExcept")
   defineSymbol("nimHasDup")
   defineSymbol("nimHasChecksums")
-
+  defineSymbol("nimHasSendable")
