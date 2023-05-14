@@ -69,7 +69,7 @@ proc addExitProc*(cl: proc() {.noconv.}) =
     fun()
     gFuns.add Fun(kind: kNoconv, fun2: cl)
 
-when not defined(nimscript) or not (defined(js) and not defined(nodejs)):
+when not defined(nimscript) and (not defined(js) or defined(nodejs)):
   proc getProgramResult*(): int =
     when defined(js) and defined(nodejs):
       asm """
