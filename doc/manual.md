@@ -6889,7 +6889,7 @@ iterator in which case the overloading resolution takes place:
   var x = 4
   write(stdout, x) # not ambiguous: uses the module C's x
   ```
-Modules can share their name, however, when trying to qualify a identifier with the module name the compiler will fail with ambiguous identifier error. One can qualify the identifier by aliasing the module.
+Modules can share their name, however, when trying to qualify an identifier with the module name the compiler will fail with ambiguous identifier error. One can qualify the identifier by aliasing the module.
 
 
 ```nim
@@ -8581,10 +8581,8 @@ Threads
 The `--threads:on`:option: command-line switch is enabled by default. The [typedthreads module](typedthreads.html) module then contains several threading primitives. See [spawn](manual_experimental.html#parallel-amp-spawn) for
 further details.
 
-The only way to create a thread is via `spawn` or
-`createThread`. The invoked proc must not use `var` parameters nor must
-any of its parameters contain a `ref` or `closure` type. This enforces
-the *no heap sharing restriction*.
+The only ways to create a thread is via `spawn` or `createThread`.
+
 
 Thread pragma
 -------------
@@ -8703,7 +8701,7 @@ model low level lockfree mechanisms:
 The `locks` pragma takes a list of lock expressions `locks: [a, b, ...]`
 in order to support *multi lock* statements. Why these are essential is
 explained in the [lock levels](manual_experimental.md#lock-levels) section
-of experimental manual.
+of the experimental manual.
 
 
 ### Protecting general locations
