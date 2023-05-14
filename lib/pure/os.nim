@@ -235,45 +235,45 @@ iterator exes(exe: string, followSymlinks: bool = true;
   ## meets the actual file. This behavior can be disabled if desired
   ## by setting `followSymlinks = false`.
   ##
-  if exe.len == 0: yield ""
-  template checkCurrentDir() =
-    for ext in extensions:
-      let temp = addFileExt(exe, ext)
-      if fileExists(temp): yield temp
-  when defined(posix):
-    if '/' in exe: checkCurrentDir()
-  else:
-    checkCurrentDir()
-  let path = getEnv("PATH")
-  for candidate in split(path, PathSep):
-    if candidate.len == 0: continue
-    when defined(windows):
-      var x = (if candidate[0] == '"' and candidate[^1] == '"':
-        substr(candidate, 1, candidate.len-2) else: candidate) /
-              exe
+  if exe.len > 0:
+    template checkCurrentDir() =
+      for ext in extensions:
+        let temp = addFileExt(exe, ext)
+        if fileExists(temp): yield temp
+    when defined(posix):
+      if '/' in exe: checkCurrentDir()
     else:
-      var x = expandTilde(candidate) / exe
-    for ext in extensions:
-      var x = addFileExt(x, ext)
-      if fileExists(x):
-        when not (defined(windows) or defined(nintendoswitch)):
-          while followSymlinks: # doubles as if here
-            if x.symlinkExists:
-              var r = newString(maxSymlinkLen)
-              var len = readlink(x.cstring, r.cstring, maxSymlinkLen)
-              if len < 0:
-                raiseOSError(osLastError(), exe)
-              if len > maxSymlinkLen:
-                r = newString(len+1)
-                len = readlink(x.cstring, r.cstring, len)
-              setLen(r, len)
-              if isAbsolute(r):
-                x = r
+      checkCurrentDir()
+    let path = getEnv("PATH")
+    for candidate in split(path, PathSep):
+      if candidate.len == 0: continue
+      when defined(windows):
+        var x = (if candidate[0] == '"' and candidate[^1] == '"':
+          substr(candidate, 1, candidate.len-2) else: candidate) /
+                exe
+      else:
+        var x = expandTilde(candidate) / exe
+      for ext in extensions:
+        var x = addFileExt(x, ext)
+        if fileExists(x):
+          when not (defined(windows) or defined(nintendoswitch)):
+            while followSymlinks: # doubles as if here
+              if x.symlinkExists:
+                var r = newString(maxSymlinkLen)
+                var len = readlink(x.cstring, r.cstring, maxSymlinkLen)
+                if len < 0:
+                  raiseOSError(osLastError(), exe)
+                if len > maxSymlinkLen:
+                  r = newString(len+1)
+                  len = readlink(x.cstring, r.cstring, len)
+                setLen(r, len)
+                if isAbsolute(r):
+                  x = r
+                else:
+                  x = parentDir(x) / r
               else:
-                x = parentDir(x) / r
-            else:
-              break
-        yield x
+                break
+          yield x
 
 proc findExeAll*(exe: string, followSymlinks: bool = true;
               extensions: openArray[string] = ExeExts): seq[string] {.

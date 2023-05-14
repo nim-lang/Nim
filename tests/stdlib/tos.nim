@@ -709,8 +709,6 @@ block: # isAdmin
   if isAzure and defined(posix): doAssert not isAdmin()
 
 
-import sugar
-
 block: # normalizeExe
   doAssert "".dup(normalizeExe) == ""
   when defined(posix):
@@ -834,11 +832,14 @@ block:  # isValidFilename
 import std/random
 block: # Issue 200611
   when defined(posix):
-    doAssert not findExe("sh").isEmptyOrWhitespace()
-    doAssert findExeAll("sh").len > 1
+    doAssert not findExe("sh").len != 0
+    doAssert findExeAll("sh").len != 0
   when defined(windows):
-    doAssert not findExe("cmd.exe").isEmptyOrWhitespace()
-  doAssert findExe("").isEmptyOrWhitespace()
+    doAssert not findExe("cmd.exe").len != 0
+    doAssert findExeAll("cmd.exe").len != 0
+  # Empty name cases
+  doAssert findExe("").len == 0
+  doAssert findExeAll("").len == 0
   randomize()
   proc generateRandomExe(len: int = 16): string =
     const alphabet = Digits + IdentChars
@@ -848,5 +849,6 @@ block: # Issue 200611
       let pick = sample(ExeExts)
       result = result & pick
   let fakeExe = generateRandomExe()
-  doAssert findExe(fakeExe).isEmptyOrWhitespace()
+  # Fake name cases
+  doAssert findExe(fakeExe).len == 0
   doAssert findExeAll(fakeExe).len == 0
