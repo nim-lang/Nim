@@ -2058,7 +2058,13 @@ As you can see, this is a new builtin because the check it performs on `x` is no
 If `T` does not contain a `ref` or `closure` type, it is isolated. Else the syntactic
 structure of `x` is analyzed:
 
-- Atoms like `nil`, `4`, `"abc"` are isolated.
+- Literals like `nil`, `4`, `"abc"` are isolated.
+- A local variable or a routine parameter is isolated if either of these conditions is true:
+  1. Its type is annotated with the `.sendable` pragma. Note `Isolated[T]` is annotated as
+     `.sendable`.
+  2. Its type contains the potentially dangerous `ref` and `proc {.closure}` types
+     only in places that are protected via a `.sendable` container.
+
 - An array constructor `[x...]` is isolated if every element `x` is isolated.
 - An object constructor `Obj(x...)` is isolated if every element `x` is isolated.
 - An `if` or `case` expression is isolated if all possible values the expression
@@ -2069,10 +2075,10 @@ structure of `x` is analyzed:
   - `x` is isolated **or**
   - `f`'s return type cannot *alias* `x`'s type. This is checked via a form of alias analysis as explained in the next paragraph.
 
-**Note**: Previously the spec said that `f` must be `.gcsafe`, this is not sufficient, we cannot guarantee isolation for a .threadvar location.
 
 
-# Alias analysis
+Alias analysis
+--------------
 
 We start with an important, simple case that must be valid: Sending the result
 of `parseJson` to a channel. Since the signature
@@ -2100,6 +2106,27 @@ In general type `A` can alias type `T` if:
 Sendable pragma
 ---------------
 
-A type can be marked as `.sendable`. A sendable type participates in the isolation
-check in a clean way: A **variable** of a sendable type can be accessed within an `isolate`
-environment.
+A container type can be marked as `.sendable`. `.sendable` declares that the type
+encapsulates a `ref` type effectively so that a variable of this container type
+can be used in an `isolate` context:
+
+  ```nim
+
+  type
+    Isolated*[T] {.sendable.} = object ## Isolated data can only be moved, not copied.
+      value: T
+
+  proc `=copy`*[T](dest: var Isolated[T]; src: Isolated[T]) {.error.}
+
+  proc `=sink`*[T](dest: var Isolated[T]; src: Isolated[T]) {.inline.} =
+    # delegate to value's sink operation
+    `=sink`(dest.value, src.value)
+
+  proc `=destroy`*[T](dest: var Isolated[T]) {.inline.} =
+    # delegate to value's destroy operation
+    `=destroy`(dest.value)
+
+  ```
+
+The `.sendable` pragma itself is an experimenal, unchecked, unsafe annotation. It is
+currently only used by `Isolated[T]`.
