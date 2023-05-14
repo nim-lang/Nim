@@ -6889,7 +6889,7 @@ iterator in which case the overloading resolution takes place:
   var x = 4
   write(stdout, x) # not ambiguous: uses the module C's x
   ```
-Modules can share their name, however, when trying to qualify a identifier with the module name the compiler will fail with ambiguous identifier error. One can qualify the identifier by aliasing the module.
+Modules can share their name, however, when trying to qualify an identifier with the module name the compiler will fail with ambiguous identifier error. One can qualify the identifier by aliasing the module.
 
 
 ```nim
