@@ -20,7 +20,7 @@ import
 
 when defined(nimPreviewSlimSystem):
   import std/formatfloat
-
+import astalgo
 import ast except getstr
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -845,7 +845,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         let n = src[rc + 1].skipColon
         regs[ra].node = n
       of nkTupleConstr:
-        let n = src[rc].skipColon
+        let n = if tfTriggersCompileTime in src.typ.flags:
+            src[rc]
+          else:
+            src[rc].skipColon
         regs[ra].node = n
       else:
         let n = src[rc]
