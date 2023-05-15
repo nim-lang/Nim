@@ -845,7 +845,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         let n = src[rc + 1].skipColon
         regs[ra].node = n
       of nkTupleConstr:
-        let n = if tfTriggersCompileTime in src.typ.flags:
+        let n = if src.typ != nil and tfTriggersCompileTime in src.typ.flags:
             src[rc]
           else:
             src[rc].skipColon
