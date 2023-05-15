@@ -1888,7 +1888,13 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
   of tyTuple:
     result = newNodeIT(nkTupleConstr, info, t)
     for i in 0..<t.len:
-      result.add getNullValue(t[i], info, conf)
+      if t.n == nil:
+        result.add getNullValue(t[i], info, conf)
+      else:
+        result.add newTree(nkExprColonExpr,
+          t.n[i],
+          getNullValue(t[i], info, conf)
+        )
   of tySet:
     result = newNodeIT(nkCurly, info, t)
   of tySequence, tyOpenArray:
