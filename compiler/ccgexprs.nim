@@ -3377,18 +3377,19 @@ proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool; result: var Rope) 
 
 proc genConstSeqV2(p: BProc, n: PNode, t: PType; isConst: bool; result: var Rope) =
   let base = t.skipTypes(abstractInst)[0]
-  var data = rope"{"
-  for i in 0..<n.len:
-    if i > 0: data.addf(",$n", [])
-    genBracedInit(p, n[i], isConst, base, data)
-  data.add("}")
+  var data = rope""
+  if n.len > 0:
+    data.add(", {")
+    for i in 0..<n.len:
+      if i > 0: data.addf(",$n", [])
+      genBracedInit(p, n[i], isConst, base, data)
+    data.add("}")
 
   let payload = getTempName(p.module)
-
   appcg(p.module, cfsStrData,
     "static $5 struct {$n" &
     "  NI cap; $1 data[$2];$n" &
-    "} $3 = {$2 | NIM_STRLIT_FLAG, $4};$n", [
+    "} $3 = {$2 | NIM_STRLIT_FLAG$4};$n", [
     getTypeDesc(p.module, base), n.len, payload, data,
     if isConst: "const" else: ""])
   result.add "{$1, ($2*)&$3}" % [rope(n.len), getSeqPayloadType(p.module, t), payload]
