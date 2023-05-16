@@ -12,7 +12,7 @@
 # ------------------------- Name Mangling --------------------------------
 
 import sighashes, modulegraphs
-import strscans, sequtils
+import strscans
 import ../dist/checksums/src/checksums/md5
 
 proc isKeyword(w: PIdent): bool =
@@ -425,9 +425,105 @@ proc paramStorageLoc(param: PSym): TStorageLoc =
   else:
     result = OnUnknown
 
+macro unrollChars(x: static openArray[char], name, body: untyped) =
+  result = newStmtList()
+  for a in x:
+    result.add(newBlockStmt(newStmtList(
+      newConstStmt(name, newLit(a)),
+      copy body
+    )))
+
+proc multiFormat*(frmt: var string, chars : static openArray[char], args: openArray[seq[string]]) =
+  var res : string
+  unrollChars(chars, c):
+    res = ""
+    let arg = args[find(chars, c)]
+    var i = 0
+    var num = 0
+    while i < frmt.len:
+      if frmt[i] == c:
+        inc(i)                  
+        case frmt[i]
+        of c:
+          res.add(c)
+          inc(i)
+        of '0'..'9':
+          var j = 0
+          while true:
+            j = j * 10 + ord(frmt[i]) - ord('0')
+            inc(i)
+            if i >= frmt.len or frmt[i] notin {'0'..'9'}: break
+          num = j
+          if j > high(arg) + 1:
+            doAssert false, "invalid format string: " & frmt
+          else:
+            res.add(arg[j-1])
+        else:
+          doAssert false, "invalid format string: " & frmt
+      var start = i
+      while i < frmt.len:
+        if frmt[i] != c: inc(i)
+        else: break
+      if i - 1 >= start:
+        res.add(substr(frmt, start, i - 1))
+    frmt = res
+
+proc genVirtualProcParams(m: BModule; t: PType, rettype, params: var string,
+                   check: var IntSet, declareEnvironment=true;
+                   weakDep=false;) =
+  if t[0] == nil or isInvalidReturnType(m.config, t):
+    rettype = "void"
+  else:
+    if rettype == "":
+      rettype = getTypeDescAux(m, t[0], check, skResult)
+    else:
+      rettype = runtimeFormat(rettype.replace("'0", "$1"), [getTypeDescAux(m, t[0], check, skResult)])
+  var this = t.n[1].sym
+  fillParamName(m, this)
+  fillLoc(this.loc, locParam, t.n[1],
+          this.paramStorageLoc)
+  if this.typ.kind == tyPtr:
+    this.loc.r = "this"
+  else:
+    this.loc.r = "(*this)"
+  
+  var types = @[getTypeDescWeak(m, this.typ, check, skParam)]
+  var names = @[this.loc.r]
+
+  for i in 2..<t.n.len: 
+    if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genVirtualProcParams")
+    var param = t.n[i].sym
+    var typ, name : string
+    fillParamName(m, param)
+    fillLoc(param.loc, locParam, t.n[i],
+            param.paramStorageLoc)
+    if ccgIntroducedPtr(m.config, param, t[0]):
+      typ = getTypeDescWeak(m, param.typ, check, skParam) & "*"
+      incl(param.loc.flags, lfIndirect)
+      param.loc.storage = OnUnknown
+    elif weakDep:
+      typ = getTypeDescWeak(m, param.typ, check, skParam)
+    else:
+      typ = getTypeDescAux(m, param.typ, check, skParam)
+    if sfNoalias in param.flags:
+      typ.add("NIM_NOALIAS ")
+
+    name = param.loc.r
+    types.add typ
+    names.add name
+  multiFormat(params, @['\'', '#'], [types, names])
+  if params == "()":
+    params = "(void)"
+  if tfVarargs in t.flags:
+    if params != "(":
+      params[^1] = ','
+    else:
+      params.delete(params.len()-1..params.len()-1)
+    params.add("...)")
+
 proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
                    check: var IntSet, declareEnvironment=true;
-                   weakDep=false; isVirtual=false) =
+                   weakDep=false;) =
   params = "("
   if t[0] == nil or isInvalidReturnType(m.config, t):
     rettype = "void"
@@ -441,7 +537,6 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
     fillParamName(m, param)
     fillLoc(param.loc, locParam, t.n[i],
             param.paramStorageLoc)
-    if isVirtual and i == 1: continue #skips this param
     if ccgIntroducedPtr(m.config, param, t[0]):
       params.add(getTypeDescWeak(m, param.typ, check, skParam))
       params.add("*")
@@ -987,15 +1082,7 @@ proc parseVFunctionDecl(val: string; name, params, retType: var string; isFnCons
     isFnConst = afterParams.find("const") > -1
     isOverride = afterParams.find("override") > -1
     discard scanf(afterParams, "->$s$* ", retType)
-
-proc parseExistingParams(params:string, parsedParams: var OrderedTable[string, string]) =
-  #instead of messing with all the logic in params we do a pass over them here to "happy" extract them
-  #Ideally genProcParams would be refactored to return a table. So this is a temporary solution.
-  let splitParams = params.multiReplace(("(", ""), (")", "")).split(", ")
-  for p in splitParams:
-    var pair = p.split(" ")
-    if pair.len == 2:
-      parsedParams[pair[0].strip()] = pair[1].strip()
+  params = "(" & params & ")"
 
 proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl : bool = false) =
   assert sfVirtual in prc.flags
@@ -1008,25 +1095,12 @@ proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool =
   if typ.kind == tyPtr:
     typ = typ[0]
     memberOp = "#->"
-  let typDesc = getTypeDescWeak(m, typ, check, skParam)
-  var rettype, params: Rope
-  genProcParams(m, prc.typ, rettype, params, check, true, false, true) 
-  var nimParams = {typDesc: "this"}.toOrderedTable #just for ref/consistency. this shouldnt be used (also for obj is (*this))
-  parseExistingParams(params, nimParams)
-  # handle the 2 options for hotcodereloading codegen - function pointer
-  # (instead of forward declaration) or header for function body with "_actual" postfix
+  var typDesc = getTypeDescWeak(m, typ, check, skParam)
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
-  var name, declParams, userRetTyp: string
+  var name, params, rettype: string
   var isFnConst, isOverride: bool
-  parseVFunctionDecl(prc.constraint.strVal, name, declParams, userRetTyp, isFnConst, isOverride)
-  #first we format the name to get rid of the $
-  template `%`(s: string, args: openArray[string]): string = runtimeFormat(s, args)
-  declParams = declParams.replace("#", "$") % nimParams.pairs.toSeq.mapIt(it[0] & " " & it[1])
-  declParams = declParams.replace("%", "$") % nimParams.keys.toSeq
-  declParams = declParams.replace("^", "$") % nimParams.values.toSeq
-  params = "($1)" % [declParams]
-  if userRetTyp != "":
-    rettype = userRetTyp.replace("%0", "$1") % [rettype]
+  parseVFunctionDecl(prc.constraint.strVal, name, params, rettype, isFnConst, isOverride)
+  genVirtualProcParams(m, prc.typ, rettype, params, check, true, false) 
   var fnConst, override: string
   if isFnConst:
     fnConst = " const"
@@ -1039,7 +1113,7 @@ proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool =
     name = "$1::$2" % [typDesc, name]
   
   result.add "N_LIB_PRIVATE "
-  result.addf("$1$2($3, $4)$5 $6 $7",
+  result.addf("$1$2($3, $4)$5$6$7",
         [rope(CallingConvToStr[prc.typ.callConv]), asPtrStr, rettype, name,
         params, fnConst, override])
   

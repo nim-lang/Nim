@@ -1129,8 +1129,7 @@ proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
 proc genProcAux*(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = newRopeAppender()
-  let isVirtual = m.config.backend == backendCpp and sfVirtual in prc.flags
-  if isVirtual:
+  if m.config.backend == backendCpp and sfVirtual in prc.flags:
     genVirtualProcHeader(m, prc, header)
   else:
     genProcHeader(m, prc, header)
@@ -1175,12 +1174,6 @@ proc genProcAux*(m: BModule, prc: PSym) =
       if skipTypes(res.typ, abstractInst).kind == tyArray:
         #incl(res.loc.flags, lfIndirect)
         res.loc.storage = OnUnknown
-  if isVirtual:
-    var this = prc.typ.n[1].sym 
-    if this.typ.kind == tyPtr:
-      this.loc.r = "this"
-    else:
-      this.loc.r = "(*this)"
 
   for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym

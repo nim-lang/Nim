@@ -246,7 +246,7 @@ proc getOptionalStr(c: PContext, n: PNode, defaultStr: string): string =
 
 proc processVirtual(c: PContext, n: PNode, s: PSym) =
   s.constraint = newEmptyStrNode(c, n, getOptionalStr(c, n, "$1"))
-  s.constraint.strVal = s.constraint.strVal % s.name.s #TODO dont do this, move it into the parser
+  s.constraint.strVal = s.constraint.strVal % s.name.s
   s.flags.incl {sfVirtual, sfInfixCall, sfExportc, sfMangleCpp}
   
   s.typ.callConv = ccNoConvention

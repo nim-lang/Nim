@@ -55,10 +55,10 @@ CppPrinter().printConst(message)
 
 #notice override is optional. 
 #Will make the cpp compiler to fail if not virtual function with the same signature if found in the base type
-proc printConst(self:NimPrinter, message:cstring) {.virtual:"$1(#2) const override".} =
+proc printConst(self:NimPrinter, message:cstring) {.virtual:"$1('2 #2) const override".} =
   echo "NimPrinter: " & $message
 
-proc printConstRef(self:NimPrinter, message:cstring, flag:int32) {.virtual:"$1(#2, const %3& ^3 ) const override".} =
+proc printConstRef(self:NimPrinter, message:cstring, flag:int32) {.virtual:"$1('2 #2, const '3& #3 ) const override".} =
   echo "NimPrinterConstRef: " & $message
 
 NimPrinter().printConst(message)
