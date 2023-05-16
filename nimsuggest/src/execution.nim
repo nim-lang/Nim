@@ -72,9 +72,6 @@ proc executeNoHooks(cmd: CommandData, graph: ModuleGraph) =
       executeNoHooksV3(cmd, graph)
   else:
     executeNoHooksDefault(cmd, graph)
-# proc executeNoHooks*(cmd:CommandData, graph: ModuleGraph) =
-#   cmd.tag=""
-#   executeNoHooks(cmd:CommandData, graph)
 
 proc execute*(cmd: CommandData, graph: ModuleGraph) =
   if cmd.ideCmd == ideChk:

@@ -60,8 +60,6 @@ proc calculateExpandRange*(n: PNode, info: TLineInfo): TLineInfo =
     result = unknownLineInfo
 
 
-
-
 proc findSymData*(graph: ModuleGraph, trackPos: TLineInfo):
     ref SymInfoPair =
   for s in graph.fileSymbols(trackPos.fileIndex).deduplicateSymInfoPair:

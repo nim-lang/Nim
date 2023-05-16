@@ -26,12 +26,9 @@ proc toSocket(stdoutSocket: Socket) {.gcsafe.} =
     of ideProject: stdoutSocket.send(res.filePath & "\c\L")
     else: stdoutSocket.send($res & "\c\L")
 
-
-
 template setVerbosity(level: typed) =
   gVerbosity = level
   conf.notes = NotesVerbosity[gVerbosity]
-
 
 proc replStdinSingleCmd(line: string) =
   requests.send line

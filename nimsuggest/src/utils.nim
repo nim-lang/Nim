@@ -25,8 +25,6 @@ proc recompileFullProject*(graph: ModuleGraph) =
     GC_fullCollect()
     graph.compileProject()
 
-
-
 proc findNode*(n: PNode; trackPos: TLineInfo): PSym =
   #echo "checking node ", n.info
   if n.kind == nkSym:
@@ -40,9 +38,6 @@ proc symFromInfo*(graph: ModuleGraph; trackPos: TLineInfo): PSym =
   let m = graph.getModule(trackPos.fileIndex)
   if m != nil and m.ast != nil:
     result = findNode(m.ast, trackPos)
-
-
-
 
 template checkSanity*(client, sizeHex, size, messageBuffer: typed) =
   if client.recv(sizeHex, 6) != 6:

@@ -40,10 +40,6 @@ proc markDirtyIfNeeded(graph: ModuleGraph, file: string, originalFileIdx: FileIn
   else:
     myLog fmt "No changes in file {file} compared to last compilation"
 
-
-
-
-
 const
   # kinds for ideOutline and ideGlobalSymbols
   searchableSymKinds = {skField, skEnumField, skIterator, skMethod, skFunc, skProc, skConverter, skTemplate}
@@ -60,8 +56,6 @@ proc findDef(n: PNode, line: uint16, col: int16): PNode =
     for i in 0 ..< safeLen(n):
       let res = findDef(n[i], line, col)
       if res != nil: return res
-
-
 
 proc executeNoHooksV3*(cmd: CommandData, graph: ModuleGraph) =
 

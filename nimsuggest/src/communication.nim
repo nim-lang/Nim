@@ -9,7 +9,6 @@ proc connectToNextFreePort*(server: Socket, host: string): Port =
   let (_, port) = server.getLocalAddr
   result = port
 
-
 proc writelnToChannel*(line: string) =
   results.send(Suggest(section: ideMsg, doc: line))
 

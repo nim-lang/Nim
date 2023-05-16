@@ -16,7 +16,6 @@ proc parseQuoted(cmd: string; outp: var string; start: int): int =
     i += parseUntil(cmd, outp, seps, i)
   result = i
 
-
 proc parseCommandLine*(cmdLine: string; projectFull: string): CommandData =
   ## Parses an input line to nimsuggest and returns a CommandData object with the content
 
