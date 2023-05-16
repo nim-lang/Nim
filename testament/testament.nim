@@ -12,12 +12,14 @@
 import
   strutils, pegs, os, osproc, streams, json, std/exitprocs,
   backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, times, md5, azure, intsets, macros
+  algorithm, times, azure, intsets, macros
 from std/sugar import dup
 import compiler/nodejs
 import lib/stdtest/testutils
 from lib/stdtest/specialpaths import splitTestFile
 from std/private/gitutils import diffStrings
+
+import ../dist/checksums/src/checksums/md5
 
 proc trimUnitSep(x: var string) =
   let L = x.len

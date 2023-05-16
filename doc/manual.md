@@ -4155,7 +4155,7 @@ the operator is in scope (including if it is private).
   ```
 
 Type bound operators are:
-`=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`, `=wasMoved`.
+`=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`, `=wasMoved`, `=dup`.
 
 These operations can be *overridden* instead of *overloaded*. This means that
 the implementation is automatically lifted to structured types. For instance,
@@ -6676,6 +6676,8 @@ even when one version does not export some of these identifiers.
 
 The `import` statement is only allowed at the top level.
 
+String literals can be used for import/include statements.
+The compiler performs [path substitution](nimc.html#compiler-usage-commandminusline-switches) when used.
 
 Include statement
 -----------------
@@ -6887,6 +6889,35 @@ iterator in which case the overloading resolution takes place:
   var x = 4
   write(stdout, x) # not ambiguous: uses the module C's x
   ```
+Modules can share their name, however, when trying to qualify an identifier with the module name the compiler will fail with ambiguous identifier error. One can qualify the identifier by aliasing the module.
+
+
+```nim
+# Module A/C
+proc fb* = echo "fizz"
+```
+
+
+```nim
+# Module B/C
+proc fb* = echo "buzz"
+```
+
+
+```nim
+import A/C
+import B/C
+
+C.fb() # Error: ambiguous identifier: 'fb'
+```
+
+
+```nim
+import A/C as fizz
+import B/C
+
+fizz.fb() # Works
+```
 
 
 Packages
@@ -7222,7 +7253,7 @@ echo foo() # 2
 template foo: int = 3
 ```
 
-This is mostly intended for macro generated code. 
+This is mostly intended for macro generated code.
 
 compilation option pragmas
 --------------------------
@@ -7292,7 +7323,7 @@ but are used to override the settings temporarily. Example:
   template example(): string = "https://nim-lang.org"
   {.pop.}
 
-  {.push deprecated, hint[LineTooLong]: off, used, stackTrace: off.}
+  {.push deprecated, used, stackTrace: off.}
   proc sample(): bool = true
   {.pop.}
   ```
@@ -7331,14 +7362,14 @@ and before any variable in a module that imports it.
 
 Disabling certain messages
 --------------------------
-Nim generates some warnings and hints ("line too long") that may annoy the
+Nim generates some warnings and hints that may annoy the
 user. A mechanism for disabling certain messages is provided: Each hint
 and warning message is associated with a symbol. This is the message's
 identifier, which can be used to enable or disable the message by putting it
 in brackets following the pragma:
 
   ```Nim
-  {.hint[LineTooLong]: off.} # turn off the hint about too long lines
+  {.hint[XDeclaredButNotUsed]: off.} # Turn off the hint about declared but not used symbols.
   ```
 
 This is often better than disabling all warnings at once.
@@ -7454,6 +7485,37 @@ generates:
   ```
 
 
+size pragma
+-----------
+Nim automatically determines the size of an enum.
+But when wrapping a C enum type, it needs to be of a specific size.
+The `size pragma` allows specifying the size of the enum type.
+
+  ```Nim
+  type
+    EventType* {.size: sizeof(uint32).} = enum
+      QuitEvent,
+      AppTerminating,
+      AppLowMemory
+
+  doAssert sizeof(EventType) == sizeof(uint32)
+  ```
+
+The `size pragma` can also specify the size of an `importc` incomplete object type
+so that one can get the size of it at compile time even if it was declared without fields.
+
+  ```Nim
+    type
+      AtomicFlag* {.importc: "atomic_flag", header: "<stdatomic.h>", size: 1.} = object
+
+    static:
+      # if AtomicFlag didn't have the size pragma, this code would result in a compile time error.
+      echo sizeof(AtomicFlag)
+  ```
+
+The `size pragma` accepts only the values 1, 2, 4 or 8.
+
+
 Align pragma
 ------------
 
@@ -7566,8 +7628,14 @@ Compile pragma
 The `compile` pragma can be used to compile and link a C/C++ source file
 with the project:
 
+This pragma can take three forms. The first is a simple file input:
   ```Nim
   {.compile: "myfile.cpp".}
+  ```
+
+The second form is a tuple where the second arg is the output name strutils formatter:
+  ```Nim
+  {.compile: ("file.c", "$1.o").}
   ```
 
 **Note**: Nim computes a SHA1 checksum and only recompiles the file if it
@@ -8004,8 +8072,8 @@ CodegenDecl pragma
 ------------------
 
 The `codegenDecl` pragma can be used to directly influence Nim's code
-generator. It receives a format string that determines how the variable
-or proc is declared in the generated code.
+generator. It receives a format string that determines how the variable,
+proc or object type is declared in the generated code.
 
 For variables, $1 in the format string represents the type of the variable,
 $2 is the name of the variable, and each appearance of $# represents $1/$2
@@ -8041,6 +8109,29 @@ will generate this code:
   __interrupt void myinterrupt()
   ```
 
+For object types, the $1 represents the name of the object type, $2 is the list of
+fields and $3 is the base type.
+
+```nim
+
+const strTemplate = """
+  struct $1 {
+    $2
+  };
+"""
+type Foo {.codegenDecl:strTemplate.} = object
+  a, b: int
+```
+
+will generate this code:
+
+
+```c
+struct Foo {
+  NI a;
+  NI b;
+};
+```
 
 `cppNonPod` pragma
 ------------------
@@ -8105,7 +8196,7 @@ define names.
 
 This helps disambiguate define names in different packages.
 
-See also the [generic `define` pragma](manual_experimental.html#generic-define-pragma)
+See also the [generic `define` pragma](manual_experimental.html#generic-nimdefine-pragma)
 for a version of these pragmas that detects the type of the define based on
 the constant value.
 
@@ -8490,10 +8581,8 @@ Threads
 The `--threads:on`:option: command-line switch is enabled by default. The [typedthreads module](typedthreads.html) module then contains several threading primitives. See [spawn](manual_experimental.html#parallel-amp-spawn) for
 further details.
 
-The only way to create a thread is via `spawn` or
-`createThread`. The invoked proc must not use `var` parameters nor must
-any of its parameters contain a `ref` or `closure` type. This enforces
-the *no heap sharing restriction*.
+The only ways to create a thread is via `spawn` or `createThread`.
+
 
 Thread pragma
 -------------
@@ -8612,7 +8701,7 @@ model low level lockfree mechanisms:
 The `locks` pragma takes a list of lock expressions `locks: [a, b, ...]`
 in order to support *multi lock* statements. Why these are essential is
 explained in the [lock levels](manual_experimental.md#lock-levels) section
-of experimental manual.
+of the experimental manual.
 
 
 ### Protecting general locations

@@ -443,6 +443,7 @@ proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
   #assert(n.kind != nkCall)
   n.flags.incl nfAllConst
+  n.flags.excl nfIsRef
   c.constants.add n
   internalAssert c.config, result < regBxMax
 
@@ -849,7 +850,7 @@ proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =
   let targ2 = arg.typ.skipTypes({tyDistinct})
 
   proc implicitConv(): bool =
-    if sameType(t2, targ2): return true
+    if sameBackendType(t2, targ2): return true
     # xxx consider whether to use t2 and targ2 here
     if n.typ.kind == arg.typ.kind and arg.typ.kind == tyProc:
       # don't do anything for lambda lifting conversions:
@@ -1400,6 +1401,12 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     # c.gABx(n, opcNodeToReg, a, a)
     # c.genAsgnPatch(arg, a)
     c.freeTemp(a)
+  of mDup:
+    let arg = n[1]
+    let a = c.genx(arg)
+    if dest < 0: dest = c.getTemp(arg.typ)
+    gABC(c, arg, whichAsgnOpc(arg, requiresCopy=false), dest, a)
+    c.freeTemp(a)
   of mNodeId:
     c.genUnaryABC(n, dest, opcNodeId)
   else:
@@ -1409,7 +1416,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
 proc unneededIndirection(n: PNode): bool =
   n.typ.skipTypes(abstractInstOwned-{tyTypeDesc}).kind == tyRef
 
-proc canElimAddr(n: PNode): PNode =
+proc canElimAddr(n: PNode; idgen: IdGenerator): PNode =
   case n[0].kind
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     var m = n[0][0]
@@ -1417,19 +1424,28 @@ proc canElimAddr(n: PNode): PNode =
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
       result = copyNode(n[0])
       result.add m[0]
+      if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
+        result.typ = n.typ
+      elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
+        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, idgen)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n[0][1]
     if m.kind in {nkDerefExpr, nkHiddenDeref}:
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
       result = copyNode(n[0])
+      result.add n[0][0]
       result.add m[0]
+      if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
+        result.typ = n.typ
+      elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
+        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, idgen)
   else:
     if n[0].kind in {nkDerefExpr, nkHiddenDeref}:
       # addr ( deref ( x )) --> x
       result = n[0][0]
 
 proc genAddr(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
-  if (let m = canElimAddr(n); m != nil):
+  if (let m = canElimAddr(n, c.idgen); m != nil):
     gen(c, m, dest, flags)
     return
 
@@ -2044,7 +2060,7 @@ proc procIsCallback(c: PCtx; s: PSym): bool =
   if c.callbackIndex.contains(key):
     let index = c.callbackIndex[key]
     doAssert s.offset == -1
-    s.offset = -2 - index
+    s.offset = -2'i32 - index.int32
     result = true
   else:
     result = false
@@ -2344,7 +2360,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.patch(procStart)
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
-    s.offset = c.prc.regInfo.len
+    s.offset = c.prc.regInfo.len.int32
     #if s.name.s == "main" or s.name.s == "[]":
     #  echo renderTree(body)
     #  c.echoCode(result)

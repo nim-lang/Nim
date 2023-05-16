@@ -9,9 +9,10 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, tables, ropes, md5, modulegraphs, options, msgs, pathutils
+import ast, tables, ropes, modulegraphs, options, msgs, pathutils
 from hashes import Hash
 import types
+import ../dist/checksums/src/checksums/md5
 
 
 when defined(nimPreviewSlimSystem):
@@ -267,7 +268,7 @@ proc hashType*(t: PType; conf: ConfigRef; flags: set[ConsiderFlag] = {CoType}): 
     db.exec(sql"INSERT OR IGNORE INTO sighashes(type, hash) VALUES (?, ?)",
             typeToString(t), $result)
 
-proc hashProc*(s: PSym; conf: ConfigRef): SigHash =
+proc hashProc(s: PSym; conf: ConfigRef): SigHash =
   var c: MD5Context
   md5Init c
   hashType c, s.typ, {CoProc}, conf

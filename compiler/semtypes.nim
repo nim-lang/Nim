@@ -16,6 +16,7 @@ const
   errIntLiteralExpected = "integer literal expected"
   errWrongNumberOfVariables = "wrong number of variables"
   errInvalidOrderInEnumX = "invalid order in enum '$1'"
+  errOverflowInEnumX = "The enum '$1' exceeds its maximum value ($2)"
   errOrdinalTypeExpected = "ordinal type expected; given: $1"
   errSetTooBig = "set is too large; use `std/sets` for ordinal types with more than 2^16 elements"
   errBaseTypeMustBeOrdinal = "base type of a set must be an ordinal"
@@ -147,7 +148,11 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
         declarePureEnumField(c, e)
     if (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
-    inc(counter)
+    if counter == high(typeof(counter)):
+      if i > 1 and result.n[i-2].sym.position == high(int):
+        localError(c.config, n[i].info, errOverflowInEnumX % [e.name.s, $high(typeof(counter))])
+    else:
+      inc(counter)
   if isPure and sfExported in result.sym.flags:
     addPureEnum(c, LazySym(sym: result.sym))
   if tfNotNil in e.typ.flags and not hasNull:
@@ -222,8 +227,8 @@ proc isRecursiveType(t: PType, cycleDetector: var IntSet): bool =
 
 proc fitDefaultNode(c: PContext, n: PNode): PType =
   let expectedType = if n[^2].kind != nkEmpty: semTypeNode(c, n[^2], nil) else: nil
-  let oldType = n[^1].typ
   n[^1] = semConstExpr(c, n[^1], expectedType = expectedType)
+  let oldType = n[^1].typ
   n[^1].flags.incl nfSem
   if n[^2].kind != nkEmpty:
     if expectedType != nil and oldType != expectedType:
@@ -415,68 +420,6 @@ proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
   else:
     localError(c.config, n.info, errXExpectsOneTypeParam % "ordinal")
     result = newOrPrevType(tyError, prev, c)
-
-proc semTypeIdent(c: PContext, n: PNode): PSym =
-  if n.kind == nkSym:
-    result = getGenSym(c, n.sym)
-  else:
-    result = pickSym(c, n, {skType, skGenericParam, skParam})
-    if result.isNil:
-      result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
-    if result != nil:
-      markUsed(c, n.info, result)
-      onUse(n.info, result)
-
-      if result.kind == skParam and result.typ.kind == tyTypeDesc:
-        # This is a typedesc param. is it already bound?
-        # it's not bound when it's used multiple times in the
-        # proc signature for example
-        if c.inGenericInst > 0:
-          let bound = result.typ[0].sym
-          if bound != nil: return bound
-          return result
-        if result.typ.sym == nil:
-          localError(c.config, n.info, errTypeExpected)
-          return errorSym(c, n)
-        result = result.typ.sym.copySym(nextSymId c.idgen)
-        result.typ = exactReplica(result.typ)
-        result.typ.flags.incl tfUnresolved
-
-      if result.kind == skGenericParam:
-        if result.typ.kind == tyGenericParam and result.typ.len == 0 and
-           tfWildcard in result.typ.flags:
-          # collapse the wild-card param to a type
-          result.transitionGenericParamToType()
-          result.typ.flags.excl tfWildcard
-          return
-        else:
-          localError(c.config, n.info, errTypeExpected)
-          return errorSym(c, n)
-      if result.kind != skType and result.magic notin {mStatic, mType, mTypeOf}:
-        # this implements the wanted ``var v: V, x: V`` feature ...
-        var ov: TOverloadIter
-        var amb = initOverloadIter(ov, c, n)
-        while amb != nil and amb.kind != skType:
-          amb = nextOverloadIter(ov, c, n)
-        if amb != nil: result = amb
-        else:
-          if result.kind != skError: localError(c.config, n.info, errTypeExpected)
-          return errorSym(c, n)
-      if result.typ.kind != tyGenericParam:
-        # XXX get rid of this hack!
-        var oldInfo = n.info
-        when defined(useNodeIds):
-          let oldId = n.id
-        reset(n[])
-        when defined(useNodeIds):
-          n.id = oldId
-        n.transitionNoneToSym()
-        n.sym = result
-        n.info = oldInfo
-        n.typ = result.typ
-    else:
-      localError(c.config, n.info, "identifier expected")
-      result = errorSym(c, n)
 
 proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 0:
@@ -1025,7 +968,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
       t.rawAddSonNoPropagationOfTypeFlags result
       result = t
     else: discard
-    if result.kind == tyRef and c.config.selectedGC in {gcArc, gcOrc}:
+    if result.kind == tyRef and c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
       result.flags.incl tfHasAsgn
 
 proc findEnforcedStaticType(t: PType): PType =
@@ -1043,7 +986,7 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   if kind == skMacro:
     let staticType = findEnforcedStaticType(param.typ)
     if staticType != nil:
-      var a = copySym(param, nextSymId c.idgen)
+      var a = copySym(param, c.idgen)
       a.typ = staticType.base
       addDecl(c, a)
       #elif param.typ != nil and param.typ.kind == tyTypeDesc:
@@ -1051,7 +994,7 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
     else:
       # within a macro, every param has the type NimNode!
       let nn = getSysSym(c.graph, param.info, "NimNode")
-      var a = copySym(param, nextSymId c.idgen)
+      var a = copySym(param, c.idgen)
       a.typ = nn.typ
       addDecl(c, a)
   else:
@@ -1081,7 +1024,7 @@ proc addImplicitGeneric(c: PContext; typeClass: PType, typId: PIdent;
 
   let owner = if typeClass.sym != nil: typeClass.sym
               else: getCurrOwner(c)
-  var s = newSym(skType, finalTypId, nextSymId c.idgen, owner, info)
+  var s = newSym(skType, finalTypId, c.idgen, owner, info)
   if sfExplain in owner.flags: s.flags.incl sfExplain
   if typId == nil: s.flags.incl(sfAnon)
   s.linkTo(typeClass)
@@ -1368,7 +1311,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     for j in 0..<a.len-2:
       var arg = newSymG(skParam, if a[j].kind == nkPragmaExpr: a[j][0] else: a[j], c)
-      if arg.name.s == "_":
+      if arg.name.id == ord(wUnderscore):
         arg.flags.incl(sfGenSym)
       elif containsOrIncl(check, arg.name.id):
         localError(c.config, a[j].info, "attempt to redefine: '" & arg.name.s & "'")
@@ -1695,7 +1638,7 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
 
     internalAssert c.config, dummyName.kind == nkIdent
     var dummyParam = newSym(if modifier == tyTypeDesc: skType else: skVar,
-                            dummyName.ident, nextSymId c.idgen, owner, param.info)
+                            dummyName.ident, c.idgen, owner, param.info)
     dummyParam.typ = dummyType
     incl dummyParam.flags, sfUsed
     addDecl(c, dummyParam)
@@ -1800,6 +1743,73 @@ proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
   closeScope(c)
   fixupTypeOf(c, prev, t)
   result = t.typ
+
+proc semTypeIdent(c: PContext, n: PNode): PSym =
+  if n.kind == nkSym:
+    result = getGenSym(c, n.sym)
+  else:
+    result = pickSym(c, n, {skType, skGenericParam, skParam})
+    if result.isNil:
+      result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
+    if result != nil:
+      markUsed(c, n.info, result)
+      onUse(n.info, result)
+
+      # alias syntax, see semSym for skTemplate, skMacro
+      if result.kind in {skTemplate, skMacro} and sfNoalias notin result.flags:
+        let t = semTypeExpr(c, n, nil)
+        result = symFromType(c, t, n.info)
+
+      if result.kind == skParam and result.typ.kind == tyTypeDesc:
+        # This is a typedesc param. is it already bound?
+        # it's not bound when it's used multiple times in the
+        # proc signature for example
+        if c.inGenericInst > 0:
+          let bound = result.typ[0].sym
+          if bound != nil: return bound
+          return result
+        if result.typ.sym == nil:
+          localError(c.config, n.info, errTypeExpected)
+          return errorSym(c, n)
+        result = result.typ.sym.copySym(c.idgen)
+        result.typ = exactReplica(result.typ)
+        result.typ.flags.incl tfUnresolved
+
+      if result.kind == skGenericParam:
+        if result.typ.kind == tyGenericParam and result.typ.len == 0 and
+           tfWildcard in result.typ.flags:
+          # collapse the wild-card param to a type
+          result.transitionGenericParamToType()
+          result.typ.flags.excl tfWildcard
+          return
+        else:
+          localError(c.config, n.info, errTypeExpected)
+          return errorSym(c, n)
+      if result.kind != skType and result.magic notin {mStatic, mType, mTypeOf}:
+        # this implements the wanted ``var v: V, x: V`` feature ...
+        var ov: TOverloadIter
+        var amb = initOverloadIter(ov, c, n)
+        while amb != nil and amb.kind != skType:
+          amb = nextOverloadIter(ov, c, n)
+        if amb != nil: result = amb
+        else:
+          if result.kind != skError: localError(c.config, n.info, errTypeExpected)
+          return errorSym(c, n)
+      if result.typ.kind != tyGenericParam:
+        # XXX get rid of this hack!
+        var oldInfo = n.info
+        when defined(useNodeIds):
+          let oldId = n.id
+        reset(n[])
+        when defined(useNodeIds):
+          n.id = oldId
+        n.transitionNoneToSym()
+        n.sym = result
+        n.info = oldInfo
+        n.typ = result.typ
+    else:
+      localError(c.config, n.info, "identifier expected")
+      result = errorSym(c, n)
 
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil

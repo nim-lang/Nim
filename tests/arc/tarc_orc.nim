@@ -45,3 +45,17 @@ proc main() = # todo bug with templates
     doAssert b() == @[]
 static: main()
 main()
+
+
+type Obj = tuple
+  value: int
+  arr: seq[int]
+
+proc bug(): seq[Obj] =
+  result.add (value: 0, arr: @[])
+  result[^1].value = 1
+  result[^1].arr.add 1
+
+# bug #19990
+let s = bug()
+doAssert s[0] == (value: 1, arr: @[1])

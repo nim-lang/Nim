@@ -10,9 +10,10 @@
 #
 
 const
-  NimbleStableCommit = "7efb226ef908297e8791cade20d991784b4e8bfc" # master
+  NimbleStableCommit = "168416290e49023894fc26106799d6f1fc964a2d" # master
   # examples of possible values: #head, #ea82b54, 1.2.3
   FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
+  ChecksumsStableCommit = "b4c73320253f78e3a265aec6d9e8feb83f97c77b"
   HeadHash = "#head"
 when not defined(windows):
   const
@@ -62,6 +63,7 @@ Options:
   --nim:path               use specified path for nim binary
   --localdocs[:path]       only build local documentations. If a path is not
                            specified (or empty), the default is used.
+  --skipIntegrityCheck     skips integrity check when booting the compiler
 Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
@@ -148,6 +150,8 @@ proc bundleNimbleExe(latest: bool, args: string) =
   let commit = if latest: "HEAD" else: NimbleStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/nimble.git",
                   commit = commit, allowBundled = true)
+  cloneDependency(distDir / "nimble" / distDir, "https://github.com/nim-lang/checksums.git",
+                commit = ChecksumsStableCommit, allowBundled = true) # or copy it from dist?
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
              options = "-d:release --mm:refc --noNimblePath " & args)
@@ -181,7 +185,12 @@ proc bundleWinTools(args: string) =
     nimCompile(r"tools\downloader.nim",
                options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
 
+proc bundleChecksums(latest: bool) =
+  let commit = if latest: "HEAD" else: ChecksumsStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit, allowBundled = true)
+
 proc zip(latest: bool; args: string) =
+  bundleChecksums(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleNimpretty(args)
@@ -239,6 +248,7 @@ proc testTools(args: string = "") =
       outputName = "atlas")
 
 proc nsis(latest: bool; args: string) =
+  bundleChecksums(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleWinTools(args)
@@ -286,7 +296,7 @@ proc thVersion(i: int): string =
 
 template doUseCpp(): bool = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
 
-proc boot(args: string) =
+proc boot(args: string, skipIntegrityCheck: bool) =
   ## bootstrapping is a process that involves 3 steps:
   ## 1. use csourcesAny to produce nim1.exe. This nim1.exe is buggy but
   ## rock solid for building a Nim compiler. It shouldn't be used for anything else.
@@ -301,8 +311,12 @@ proc boot(args: string) =
   let smartNimcache = (if "release" in args or "danger" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOS & "_" & hostCPU
 
+  if not dirExists("dist/checksums"):
+    bundleChecksums(false)
+
   let nimStart = findStartNim().quoteShell()
-  for i in 0..2:
+  let times = 2 - ord(skipIntegrityCheck)
+  for i in 0..times:
     let defaultCommand = if useCpp: "cpp" else: "c"
     let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
     echo "iteration: ", i+1
@@ -333,7 +347,9 @@ proc boot(args: string) =
       return
     copyExe(output, (i+1).thVersion)
   copyExe(output, finalDest)
-  when not defined(windows): echo "[Warning] executables are still not equal"
+  when not defined(windows):
+    if not skipIntegrityCheck:
+      echo "[Warning] executables are still not equal"
 
 # -------------- clean --------------------------------------------------------
 
@@ -450,6 +466,9 @@ proc temp(args: string) =
     while i < args.len:
       result[1].add " " & quoteShell(args[i])
       inc i
+
+  if not dirExists("dist/checksums"):
+    bundleChecksums(false)
 
   let d = getAppDir()
   let output = d / "compiler" / "nim".exe
@@ -666,6 +685,7 @@ when isMainModule:
     latest = false
     localDocsOnly = false
     localDocsOut = ""
+    skipIntegrityCheck = false
   while true:
     op.next()
     case op.kind
@@ -679,10 +699,12 @@ when isMainModule:
         localDocsOnly = true
         if op.val.len > 0:
           localDocsOut = op.val.absolutePath
+      of "skipintegritycheck":
+        skipIntegrityCheck = true
       else: showHelp(success = false)
     of cmdArgument:
       case normalize(op.key)
-      of "boot": boot(op.cmdLineRest)
+      of "boot": boot(op.cmdLineRest, skipIntegrityCheck)
       of "clean": clean(op.cmdLineRest)
       of "doc", "docs": buildDocs(op.cmdLineRest & " --d:nimPreviewSlimSystem " & paCode, localDocsOnly, localDocsOut)
       of "doc0", "docs0":
@@ -711,6 +733,8 @@ when isMainModule:
       of "tools":
         buildTools(op.cmdLineRest)
         bundleNimbleExe(latest, op.cmdLineRest)
+      of "checksums":
+        bundleChecksums(latest)
       of "pushcsource":
         quit "use this instead: https://github.com/nim-lang/csources_v1/blob/master/push_c_code.nim"
       of "valgrind": valgrind(op.cmdLineRest)

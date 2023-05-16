@@ -184,6 +184,7 @@ type
     gcRegions = "regions"
     gcArc = "arc"
     gcOrc = "orc"
+    gcAtomicArc = "atomicArc"
     gcMarkAndSweep = "markAndSweep"
     gcHooks = "hooks"
     gcRefc = "refc"
@@ -414,6 +415,7 @@ type
     expandLevels*: int
     expandNodeResult*: string
     expandPosition*: TLineInfo
+
 
 proc parseNimVersion*(a: string): NimVer =
   # could be moved somewhere reusable
@@ -864,14 +866,6 @@ template patchModule(conf: ConfigRef) {.dirty.} =
     if conf.moduleOverrides.hasKey(key):
       let ov = conf.moduleOverrides[key]
       if ov.len > 0: result = AbsoluteFile(ov)
-
-when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
-  proc isRelativeTo(path, base: string): bool =
-    # pending #13212 use os.isRelativeTo
-    let path = path.normalizedPath
-    let base = base.normalizedPath
-    let ret = relativePath(path, base)
-    result = path.len > 0 and not ret.startsWith ".."
 
 const stdlibDirs* = [
   "pure", "core", "arch",

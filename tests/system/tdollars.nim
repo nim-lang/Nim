@@ -1,5 +1,5 @@
 discard """
-  matrix: "; --backend:cpp; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
+  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
 """
 
 #[
@@ -45,8 +45,7 @@ block: # `$`(SomeInteger)
 
   check $int8.low == "-128"
   check $int8(-128) == "-128"
-  when not defined js: # pending https://github.com/nim-lang/Nim/issues/14127
-    check $cast[int8](-128) == "-128"
+  check $cast[int8](-128) == "-128"
 
   var a = 12345'u16
   check $a == "12345"

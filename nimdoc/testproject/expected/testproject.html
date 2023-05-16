@@ -61,6 +61,9 @@
 <li><a class="reference" href="#Foo" title="Foo = enum
   enumValueA2">Foo</a></li>
 <li><a class="reference" href="#FooBuzz" title="FooBuzz {.deprecated: &quot;FooBuzz msg&quot;.} = int">FooBuzz</a></li>
+<li><a class="reference" href="#MyObject" title="MyObject = object
+  someString*: string        ## This is a string
+  annotated* {.somePragma.}: string ## This is an annotated string">MyObject</a></li>
 <li><a class="reference" href="#Shapes" title="Shapes = enum
   Circle,                   ## A circle
   Triangle,                 ## A three-sided shape
@@ -303,6 +306,10 @@
   <li><a class="reference" href="#myfn.t" title="myfn()">myfn()</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">somePragma
+  <li><a class="reference" href="#somePragma.t" title="somePragma()">somePragma()</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">testNimDocTrailingExample
   <li><a class="reference" href="#testNimDocTrailingExample.t" title="testNimDocTrailingExample()">testNimDocTrailingExample()</a></li>
 
@@ -388,6 +395,17 @@
   <b>Deprecated:</b> FooBuzz msg
 </div>
 
+    
+    
+  </dd>
+</div>
+<div id="MyObject">
+  <dt><pre><a href="testproject.html#MyObject"><span class="Identifier">MyObject</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">someString</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>        <span class="Comment">## This is a string</span>
+  <span class="Identifier">annotated</span><span class="Operator">*</span> {.<span class="Identifier">somePragma</span>.}<span class="Other">:</span> <span class="Identifier">string</span> <span class="Comment">## This is an annotated string</span>
+  </pre></dt>
+  <dd>
+    
     
     
   </dd>
@@ -1123,6 +1141,17 @@ bar
 <span class="Keyword">block</span><span class="Punctuation">:</span>
   <span class="Keyword">discard</span> <span class="HexNumber">0xff</span> <span class="Comment"># elu par cette crapule</span>
 <span class="Comment"># should be in</span></pre>should be still in
+    
+  </dd>
+</div>
+
+</div>
+<div id="somePragma-templates-all">
+  <div id="somePragma.t">
+  <dt><pre><span class="Keyword">template</span> <a href="#somePragma.t"><span class="Identifier">somePragma</span></a><span class="Other">(</span><span class="Other">)</span> {.<span class="Identifier">pragma</span>.}</pre></dt>
+  <dd>
+    
+    Just some annotation
     
   </dd>
 </div>

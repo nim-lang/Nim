@@ -227,7 +227,7 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   if optOwnedRefs in oldGlobalOptions:
     conf.globalOptions.incl {optTinyRtti, optOwnedRefs, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
-  if conf.selectedGC in {gcArc, gcOrc}:
+  if conf.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
     conf.globalOptions.incl {optTinyRtti, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
 

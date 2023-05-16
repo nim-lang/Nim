@@ -9,6 +9,8 @@
 
 # This module implements the semantic checking pass.
 
+import tables
+
 import
   ast, strutils, options, astalgo, trees,
   wordrecg, ropes, msgs, idents, renderer, types, platform, math,
@@ -219,7 +221,7 @@ proc commonType*(c: PContext; x: PType, y: PNode): PType =
   commonType(c, x, y.typ)
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
-  result = newSym(kind, considerQuotedIdent(c, n), nextSymId c.idgen, getCurrOwner(c), n.info)
+  result = newSym(kind, considerQuotedIdent(c, n), c.idgen, getCurrOwner(c), n.info)
   when defined(nimsuggest):
     suggestDecl(c, n, result)
 
@@ -242,7 +244,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     # template; we must fix it here: see #909
     result.owner = getCurrOwner(c)
   else:
-    result = newSym(kind, considerQuotedIdent(c, n), nextSymId c.idgen, getCurrOwner(c), n.info)
+    result = newSym(kind, considerQuotedIdent(c, n), c.idgen, getCurrOwner(c), n.info)
   #if kind in {skForVar, skLet, skVar} and result.owner.kind == skModule:
   #  incl(result.flags, sfGlobal)
   when defined(nimsuggest):
@@ -281,7 +283,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
 
 proc symFromType(c: PContext; t: PType, info: TLineInfo): PSym =
   if t.sym != nil: return t.sym
-  result = newSym(skType, getIdent(c.cache, "AnonType"), nextSymId c.idgen, t.owner, info)
+  result = newSym(skType, getIdent(c.cache, "AnonType"), c.idgen, t.owner, info)
   result.flags.incl sfAnon
   result.typ = t
 
@@ -576,14 +578,14 @@ proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool): s
           result.add newTree(nkExprColonExpr, recNode, asgnExpr)
           return
 
-      let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), recType.owner)
-      rawAddSon(asgnType, recType)
+      let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), recNode.typ.owner)
+      rawAddSon(asgnType, recNode.typ)
       let asgnExpr = newTree(nkCall,
                       newSymNode(getSysMagic(c.graph, recNode.info, "zeroDefault", mZeroDefault)),
                       newNodeIT(nkType, recNode.info, asgnType)
                     )
       asgnExpr.flags.incl nfSkipFieldChecking
-      asgnExpr.typ = recType
+      asgnExpr.typ = recNode.typ
       result.add newTree(nkExprColonExpr, recNode, asgnExpr)
   else:
     doAssert false
@@ -613,9 +615,9 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
     if field.ast != nil: #Try to use default value
       result.add newTree(nkExprColonExpr, recNode, field.ast)
     elif recType.kind in {tyObject, tyArray, tyTuple}:
-      let asgnExpr = defaultNodeField(c, recNode, recType)
+      let asgnExpr = defaultNodeField(c, recNode, recNode.typ)
       if asgnExpr != nil:
-        asgnExpr.typ = recType
+        asgnExpr.typ = recNode.typ
         asgnExpr.flags.incl nfSkipFieldChecking
         result.add newTree(nkExprColonExpr, recNode, asgnExpr)
   else:
@@ -626,8 +628,8 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
   if aTypSkip.kind == tyObject:
     let child = defaultFieldsForTheUninitialized(c, aTypSkip.n)
     if child.len > 0:
-      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTypSkip))
-      asgnExpr.typ = aTypSkip
+      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTyp))
+      asgnExpr.typ = aTyp
       asgnExpr.sons.add child
       result = semExpr(c, asgnExpr)
   elif aTypSkip.kind == tyArray:

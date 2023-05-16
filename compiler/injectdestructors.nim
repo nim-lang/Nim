@@ -66,11 +66,11 @@ proc hasDestructor(c: Con; t: PType): bool {.inline.} =
   result = ast.hasDestructor(t)
   when toDebug.len > 0:
     # for more effective debugging
-    if not result and c.graph.config.selectedGC in {gcArc, gcOrc}:
+    if not result and c.graph.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
       assert(not containsGarbageCollectedRef(t))
 
 proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
-  let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), nextSymId c.idgen, c.owner, info)
+  let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.idgen, c.owner, info)
   sym.typ = typ
   s.vars.add(sym)
   result = newSymNode(sym)
@@ -305,13 +305,13 @@ proc isCriticalLink(dest: PNode): bool {.inline.} =
 proc finishCopy(c: var Con; result, dest: PNode; isFromSink: bool) =
   if c.graph.config.selectedGC == gcOrc:
     let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
-    if cyclicType(t):
+    if cyclicType(c.graph, t):
       result.add boolLit(c.graph, result.info, isFromSink or isCriticalLink(dest))
 
 proc genMarkCyclic(c: var Con; result, dest: PNode) =
   if c.graph.config.selectedGC == gcOrc:
     let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
-    if cyclicType(t):
+    if cyclicType(c.graph, t):
       if t.kind == tyRef:
         result.add callCodegenProc(c.graph, "nimMarkCyclic", dest.info, dest)
       else:
@@ -381,7 +381,7 @@ proc genWasMoved(c: var Con, n: PNode): PNode =
     result = genOp(c, op, n)
   else:
     result = newNodeI(nkCall, n.info)
-    result.add(newSymNode(createMagic(c.graph, c.idgen, "wasMoved", mWasMoved)))
+    result.add(newSymNode(createMagic(c.graph, c.idgen, "`=wasMoved`", mWasMoved)))
     result.add copyTree(n) #mWasMoved does not take the address
     #if n.kind != nkSym:
     #  message(c.graph.config, n.info, warnUser, "wasMoved(" & $n & ")")
@@ -399,7 +399,7 @@ proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
   else:
     result = newNodeIT(nkStmtListExpr, n.info, n.typ)
 
-    var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), nextSymId c.idgen, c.owner, n.info)
+    var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), c.idgen, c.owner, n.info)
     temp.typ = n.typ
     var v = newNodeI(nkLetSection, n.info)
     let tempAsNode = newSymNode(temp)
@@ -425,17 +425,36 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = c.getTemp(s, n.typ, n.info)
   if hasDestructor(c, n.typ):
-    result.add c.genWasMoved(tmp)
-    var m = c.genCopy(tmp, n, {})
-    m.add p(n, c, s, normal)
-    c.finishCopy(m, n, isFromSink = true)
-    result.add m
+    let typ = n.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+    let op = getAttachedOp(c.graph, typ, attachedDup)
+    if op != nil:
+      let src = p(n, c, s, normal)
+      result.add newTreeI(nkFastAsgn,
+          src.info, tmp,
+          newTreeIT(nkCall, src.info, src.typ,
+            newSymNode(op),
+            src)
+      )
+    elif typ.kind == tyRef:
+      let src = p(n, c, s, normal)
+      result.add newTreeI(nkFastAsgn,
+          src.info, tmp,
+          newTreeIT(nkCall, src.info, src.typ,
+            newSymNode(createMagic(c.graph, c.idgen, "`=dup`", mDup)),
+            src)
+      )
+    else:
+      result.add c.genWasMoved(tmp)
+      var m = c.genCopy(tmp, n, {})
+      m.add p(n, c, s, normal)
+      c.finishCopy(m, n, isFromSink = true)
+      result.add m
     if isLValue(n) and not isCapturedVar(n) and n.typ.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
         "if possible, rearrange your program's control flow to prevent it") % $n)
   else:
-    if c.graph.config.selectedGC in {gcArc, gcOrc}:
+    if c.graph.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
       assert(not containsManagedMemory(n.typ))
     if n.typ.skipTypes(abstractInst).kind in {tyOpenArray, tyVarargs}:
       localError(c.graph.config, n.info, "cannot create an implicit openArray copy to be passed to a sink parameter")
@@ -478,7 +497,7 @@ proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope): PNode =
     result = arg
 
 proc cycleCheck(n: PNode; c: var Con) =
-  if c.graph.config.selectedGC != gcArc: return
+  if c.graph.config.selectedGC notin {gcArc, gcAtomicArc}: return
   var value = n[1]
   if value.kind == nkClosure:
     value = value[1]
@@ -821,7 +840,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
 
       if n[0].kind == nkSym and n[0].sym.magic in {mNew, mNewFinalize}:
         result[0] = copyTree(n[0])
-        if c.graph.config.selectedGC in {gcHooks, gcArc, gcOrc}:
+        if c.graph.config.selectedGC in {gcHooks, gcArc, gcAtomicArc, gcOrc}:
           let destroyOld = c.genDestroy(result[1])
           result = newTree(nkStmtList, destroyOld, result)
       else:
@@ -1023,7 +1042,7 @@ proc sameLocation*(a, b: PNode): bool =
 
 proc genFieldAccessSideEffects(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFlag] = {}): PNode =
   # with side effects
-  var temp = newSym(skLet, getIdent(c.graph.cache, "bracketTmp"), nextSymId c.idgen, c.owner, ri[1].info)
+  var temp = newSym(skLet, getIdent(c.graph.cache, "bracketTmp"), c.idgen, c.owner, ri[1].info)
   temp.typ = ri[1].typ
   var v = newNodeI(nkLetSection, ri[1].info)
   let tempAsNode = newSymNode(temp)
@@ -1054,7 +1073,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
     else:
       result = newTree(nkFastAsgn, dest, p(ri, c, s, normal))
   else:
-    case ri.kind
+    let ri2 = if ri.kind == nkWhen: ri[1][0] else: ri
+    case ri2.kind
     of nkCallKinds:
       result = c.genSink(s, dest, p(ri, c, s, consumed), flags)
     of nkBracketExpr:

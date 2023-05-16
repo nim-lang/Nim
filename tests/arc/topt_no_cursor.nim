@@ -1,6 +1,6 @@
 discard """
   nimoutFull: true
-  cmd: '''nim c -r --warnings:off --hints:off --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
+  cmd: '''nim c -r --warnings:off --hints:off --mm:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
   nimout: '''
 --expandArc: newTarget
 
@@ -113,8 +113,7 @@ block :tmp:
       var :tmpD
       sym = shadowScope.symbols[i]
       addInterfaceDecl(c):
-        `=wasMoved`(:tmpD)
-        `=copy_1`(:tmpD, sym)
+        :tmpD = `=dup`(sym)
         :tmpD
       inc(i, 1)
 `=destroy`(shadowScope)

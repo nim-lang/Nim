@@ -273,7 +273,16 @@ proc safeLineNm(info: TLineInfo): int =
 proc genCLineDir(r: var Rope, filename: string, line: int; conf: ConfigRef) =
   assert line >= 0
   if optLineDir in conf.options and line > 0:
-    r.addf("$N#line $2 $1$N",
+    r.addf("\n#line $2 $1\n",
+        [rope(makeSingleLineCString(filename)), rope(line)])
+
+proc genCLineDir(r: var Rope, filename: string, line: int; p: BProc; info: TLineInfo; lastFileIndex: FileIndex) =
+  assert line >= 0
+  if optLineDir in p.config.options and line > 0:
+    if lastFileIndex == info.fileIndex:
+        r.addf("\n#line $1\n", [rope(line)])
+    else:
+      r.addf("\n#line $2 $1\n",
         [rope(makeSingleLineCString(filename)), rope(line)])
 
 proc genCLineDir(r: var Rope, info: TLineInfo; conf: ConfigRef) =
@@ -287,16 +296,29 @@ proc freshLineInfo(p: BProc; info: TLineInfo): bool =
     p.lastLineInfo.fileIndex = info.fileIndex
     result = true
 
+proc genCLineDir(r: var Rope, p: BProc, info: TLineInfo; conf: ConfigRef) =
+  if optLineDir in conf.options:
+    let lastFileIndex = p.lastLineInfo.fileIndex
+    if freshLineInfo(p, info):
+      genCLineDir(r, toFullPath(conf, info), info.safeLineNm, p, info, lastFileIndex)
+
 proc genLineDir(p: BProc, t: PNode) =
   let line = t.info.safeLineNm
 
   if optEmbedOrigSrc in p.config.globalOptions:
     p.s(cpsStmts).add("//" & sourceLine(p.config, t.info) & "\L")
-  genCLineDir(p.s(cpsStmts), t.info, p.config)
+  let lastFileIndex = p.lastLineInfo.fileIndex
+  let freshLine = freshLineInfo(p, t.info)
+  if freshLine:
+    genCLineDir(p.s(cpsStmts), toFullPath(p.config, t.info), line, p, t.info, lastFileIndex)
   if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
-    if freshLineInfo(p, t.info):
-      linefmt(p, cpsStmts, "nimln_($1, $2);$n",
+      if freshLine:
+        if lastFileIndex == t.info.fileIndex:
+          linefmt(p, cpsStmts, "nimln_($1);\n",
+              [line])
+        else:
+          linefmt(p, cpsStmts, "nimlf_($1, $2);\n",
               [line, quotedFilename(p.config, t.info)])
 
 proc accessThreadLocalVar(p: BProc, s: PSym)
@@ -569,7 +591,7 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
   if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
     result.addf("NIM_ALIGN($1) ", [rope(s.alignment)])
 
-  genCLineDir(result, n.info, p.config)
+  genCLineDir(result, p, n.info, p.config)
 
   result.add getTypeDesc(p.module, s.typ, skVar)
   if s.constraint.isNil:
@@ -587,7 +609,7 @@ proc assignLocalVar(p: BProc, n: PNode) =
   #assert(s.loc.k == locNone) # not yet assigned
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
-  let nl = if optLineDir in p.config.options: "" else: "\L"
+  let nl = if optLineDir in p.config.options: "" else: "\n"
   let decl = localVarDecl(p, n) & (if p.module.compileToCpp and isOrHasImportedCppType(n.typ): "{};" else: ";") & nl
   line(p, cpsLocals, decl)
 
@@ -685,7 +707,7 @@ proc getLabel(p: BProc): TLabel =
   result = "LA" & rope(p.labels) & "_"
 
 proc fixLabel(p: BProc, labl: TLabel) =
-  lineF(p, cpsStmts, "$1: ;$n", [labl])
+  p.s(cpsStmts).add("$1: ;$n" % [labl])
 
 proc genVarPrototype(m: BModule, n: PNode)
 proc requestConstImpl(p: BProc, sym: PSym)
@@ -727,8 +749,12 @@ $1define nimfr_(proc, file) \
     struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;VarSlot s[slots];} FR_; \
     FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; #nimFrame((TFrame*)&FR_);
 
-  $1define nimln_(n, file) \
+  $1define nimln_(n) \
+    FR_.line = n;
+
+  $1define nimlf_(n, file) \
     FR_.line = n; FR_.filename = file;
+
 """
   if p.module.s[cfsFrameDefines].len == 0:
     appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, ["#"])
@@ -1110,6 +1136,9 @@ proc genProcAux*(m: BModule, prc: PSym) =
   if sfInjectDestructors in prc.flags:
     procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
 
+  let tmpInfo = prc.info
+  discard freshLineInfo(p, prc.info)
+
   if sfPure notin prc.flags and prc.typ[0] != nil:
     if resultPos >= prc.ast.len:
       internalError(m.config, prc.info, "proc has no result symbol")
@@ -1151,6 +1180,8 @@ proc genProcAux*(m: BModule, prc: PSym) =
     assignParam(p, param, prc.typ[0])
   closureSetup(p, prc)
   genProcBody(p, procBody)
+
+  prc.info = tmpInfo
 
   var generatedProc: Rope
   generatedProc.genCLineDir prc.info, m.config
@@ -1239,6 +1270,20 @@ proc genProcNoForward(m: BModule, prc: PSym) =
   if lfNoDecl in prc.loc.flags:
     fillProcLoc(m, prc.ast[namePos])
     genProcPrototype(m, prc)
+  elif lfDynamicLib in prc.loc.flags:
+    var q = findPendingModule(m, prc)
+    fillProcLoc(q, prc.ast[namePos])
+    genProcPrototype(m, prc)
+    if q != nil and not containsOrIncl(q.declaredThings, prc.id):
+      symInDynamicLib(q, prc)
+      # register the procedure even though it is in a different dynamic library and will not be
+      # reloadable (and has no _actual suffix) - other modules will need to be able to get it through
+      # the hcr dynlib (also put it in the DynLibInit section - right after it gets loaded)
+      if isReloadable(q, prc):
+        q.s[cfsDynLibInit].addf("\t$1 = ($2) hcrRegisterProc($3, \"$1\", (void*)$1);$n",
+            [prc.loc.r, getTypeDesc(q, prc.loc.t), getModuleDllPath(m, q.module)])
+    else:
+      symInDynamicLibPartial(m, prc)
   elif prc.typ.callConv == ccInline:
     # We add inline procs to the calling module to enable C based inlining.
     # This also means that a check with ``q.declaredThings`` is wrong, we need
@@ -1257,20 +1302,6 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       #  prc.loc.r = mangleName(m, prc)
       genProcPrototype(m, prc)
       genProcAux(m, prc)
-  elif lfDynamicLib in prc.loc.flags:
-    var q = findPendingModule(m, prc)
-    fillProcLoc(q, prc.ast[namePos])
-    genProcPrototype(m, prc)
-    if q != nil and not containsOrIncl(q.declaredThings, prc.id):
-      symInDynamicLib(q, prc)
-      # register the procedure even though it is in a different dynamic library and will not be
-      # reloadable (and has no _actual suffix) - other modules will need to be able to get it through
-      # the hcr dynlib (also put it in the DynLibInit section - right after it gets loaded)
-      if isReloadable(q, prc):
-        q.s[cfsDynLibInit].addf("\t$1 = ($2) hcrRegisterProc($3, \"$1\", (void*)$1);$n",
-            [prc.loc.r, getTypeDesc(q, prc.loc.t), getModuleDllPath(m, q.module)])
-    else:
-      symInDynamicLibPartial(m, prc)
   elif sfImportc notin prc.flags:
     var q = findPendingModule(m, prc)
     fillProcLoc(q, prc.ast[namePos])
@@ -1452,19 +1483,19 @@ proc genMainProc(m: BModule) =
       "}$N$N" &
       "$4" &
       "N_LIB_PRIVATE void $3PreMain(void) {$N" &
-      "\t##if $5$N" & # 1 for volatile call, 0 for non-volatile
+      "##if $5$N" & # 1 for volatile call, 0 for non-volatile
       "\tvoid (*volatile inner)(void);$N" &
       "\tinner = $3PreMainInner;$N" &
       "$1" &
       "\t(*inner)();$N" &
-      "\t##else$N" &
+      "##else$N" &
       "$1" &
       "\t$3PreMainInner();$N" &
-      "\t##endif$N" &
+      "##endif$N" &
       "}$N$N"
 
     MainProcs =
-      "\t$^NimMain();$N"
+      "\t\t$^NimMain();$N"
 
     MainProcsWithResult =
       MainProcs & ("\treturn $1nim_program_result;$N")
@@ -1475,17 +1506,17 @@ proc genMainProc(m: BModule) =
 
     NimMainProc =
       "N_CDECL(void, $5NimMain)(void) {$N" &
-      "\t##if $6$N" & # 1 for volatile call, 0 for non-volatile
+      "##if $6$N" & # 1 for volatile call, 0 for non-volatile
       "\tvoid (*volatile inner)(void);$N" &
       "$4" &
       "\tinner = $5NimMainInner;$N" &
       "$2" &
       "\t(*inner)();$N" &
-      "\t##else$N" &
+      "##else$N" &
       "$4" &
       "$2" &
       "\t$5NimMainInner();$N" &
-      "\t##endif$N" &
+      "##endif$N" &
       "}$N$N"
 
     NimMainBody = NimMainInner & NimMainProc
@@ -1516,7 +1547,7 @@ proc genMainProc(m: BModule) =
     WinCDllMain =
       "BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $N" &
       "                    LPVOID lpvReserved) {$N" &
-      "\tif(fwdreason == DLL_PROCESS_ATTACH) {$N" & MainProcs & "}$N" &
+      "\tif (fwdreason == DLL_PROCESS_ATTACH) {$N" & MainProcs & "\t}$N" &
       "\treturn 1;$N}$N$N"
 
     PosixNimDllMain = WinNimDllMain
@@ -1550,11 +1581,11 @@ proc genMainProc(m: BModule) =
     m.includeHeader("<libc/component.h>")
 
   let initStackBottomCall =
-    if m.config.target.targetOS == osStandalone or m.config.selectedGC in {gcNone, gcArc, gcOrc}: "".rope
+    if m.config.target.targetOS == osStandalone or m.config.selectedGC in {gcNone, gcArc, gcAtomicArc, gcOrc}: "".rope
     else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N", [])
   inc(m.labels)
 
-  let isVolatile = if m.config.selectedGC notin {gcNone, gcArc, gcOrc}: "1" else: "0"
+  let isVolatile = if m.config.selectedGC notin {gcNone, gcArc, gcAtomicArc, gcOrc}: "1" else: "0"
   appcg(m, m.s[cfsProcs], PreMainBody, [m.g.mainDatInit, m.g.otherModsInit, m.config.nimMainPrefix, posixCmdLine, isVolatile])
 
   if m.config.target.targetOS == osWindows and
@@ -1694,7 +1725,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
   if sfSystemModule in m.module.flags:
     if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
       g.mainDatInit.add(ropecg(m, "\t#initThreadVarsEmulation();$N", []))
-    if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
+    if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcAtomicArc, gcOrc}:
       g.mainDatInit.add(ropecg(m, "\t#initStackBottomWith((void *)&inner);$N", []))
 
   if m.s[cfsInitProc].len > 0:
@@ -1888,7 +1919,7 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
   if m.s[cfsFrameDefines].len > 0:
     result.add(m.s[cfsFrameDefines])
   else:
-    result.add("#define nimfr_(x, y)\n#define nimln_(x, y)\n")
+    result.add("#define nimfr_(x, y)\n#define nimln_(x)\n\n#define nimlf_(x, y)\n")
 
   for i in cfsForwardTypes..cfsProcs:
     if m.s[i].len > 0:
@@ -2146,7 +2177,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode): PNode =
         cgsym(m, "rawWrite")
 
       # raise dependencies on behalf of genMainProc
-      if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
+      if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcAtomicArc, gcOrc}:
         cgsym(m, "initStackBottomWith")
       if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
         cgsym(m, "initThreadVarsEmulation")

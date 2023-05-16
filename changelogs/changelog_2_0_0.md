@@ -40,7 +40,7 @@
     `ptr int32`, `ptr int64`, `ptr float32`, `ptr float64`
 
 - Enabling `-d:nimPreviewSlimSystem` removes the import of `channels_builtin` in
-  in the `system` module.
+  in the `system` module, which is replaced by [threading/channels](https://github.com/nim-lang/threading/blob/master/threading/channels.nim). Use the command "nimble install threading" and import `threading/channels`.
 
 - Enabling `-d:nimPreviewCstringConversion`, `ptr char`, `ptr array[N, char]` and `ptr UncheckedArray[N, char]` don't support conversion to cstring anymore.
 
@@ -126,12 +126,14 @@
   - `std/db_mysql` => `db_connector/db_mysql`
   - `std/db_postgres` => `db_connector/db_postgres`
   - `std/db_odbc` => `db_connector/db_odbc`
+  - `std/md5` => `checksums/md5`
+  - `std/sha1` => `checksums/sha1`
 
 - Previously, calls like `foo(a, b): ...` or `foo(a, b) do: ...` where the final argument of
   `foo` had type `proc ()` were assumed by the compiler to mean `foo(a, b, proc () = ...)`.
   This behavior is now deprecated. Use `foo(a, b) do (): ...` or `foo(a, b, proc () = ...)` instead.
 
-- If no exception or any exception deriving from Exception but not Defect or CatchableError given in except, a `warnBareExcept` warning will be triggered.
+- When `--warning[BareExcept]:on` is enabled, if no exception or any exception deriving from Exception but not Defect or CatchableError given in except, a `warnBareExcept` warning will be triggered.
 
 - The experimental strictFuncs feature now disallows a store to the heap via a `ref` or `ptr` indirection.
 
@@ -179,7 +181,7 @@
   for 64-bit integer types (`int64` and `uint64`) by default. As this affects
   JS code generation, code using these types to interface with the JS backend
   may need to be updated. Note that `int` and `uint` are not affected.
-  
+
   For compatibility with [platforms that do not support BigInt](https://caniuse.com/bigint)
   and in the case of potential bugs with the new implementation, the
   old behavior is currently still supported with the command line option
@@ -195,7 +197,7 @@
 
   iterator iter(): int =
     yield 123
-  
+
   proc takesProc[T: proc](x: T) = discard
   proc takesIter[T: iterator](x: T) = discard
 
@@ -221,9 +223,31 @@
 
 - Signed integer literals in `set` literals now default to a range type of
   `0..255` instead of `0..65535` (the maximum size of sets).
-  
+
 - Case statements with else branches put before elif/of branches in macros
   are rejected with "invalid order of case branches".
+
+- Destructors now default to `.raises: []` (i.e. destructors must not raise
+  unlisted exceptions) and explicitly raising destructors are implementation
+  defined behavior.
+
+- The very old, undocumented deprecated pragma statement syntax for
+  deprecated aliases is now a no-op. The regular deprecated pragma syntax is
+  generally sufficient instead.
+
+  ```nim
+  # now does nothing:
+  {.deprecated: [OldName: NewName].}
+
+  # instead use:
+  type OldName* {.deprecated: "use NewName instead".} = NewName
+  const oldName* {.deprecated: "use newName instead".} = newName
+  ```
+
+  `defined(nimalias)` can be used to check for versions when this syntax was
+  available; however since code that used this syntax is usually very old,
+  these deprecated aliases are likely not used anymore and it may make sense
+  to simply remove these statements.
 
 ## Standard library additions and changes
 
@@ -298,6 +322,7 @@
 - Added `openArray[char]` overloads for `std/unicode` allowing more code reuse.
 - Added `safe` parameter to `base64.encodeMime`.
 - Added `parseutils.parseSize` - inverse to `strutils.formatSize` - to parse human readable sizes.
+- Added `minmax` to `sequtils`, as a more efficient `(min(_), max(_))` over sequences.
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
@@ -357,7 +382,7 @@
     ```
   - A generic `define` pragma for constants has been added that interprets
     the value of the define based on the type of the constant value.
-    See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#generic-define-pragma)
+    See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#generic-nimdefine-pragma)
     for a list of supported types.
 
 - [Macro pragmas](https://nim-lang.github.io/Nim/manual.html#userminusdefined-pragmas-macro-pragmas) changes:
@@ -447,6 +472,9 @@
   static libraries.
 
 - When compiling for Release the flag `-fno-math-errno` is used for GCC.
+- When compiling for Release the flag `--build-id=none` is used for GCC Linker.
+- Removed deprecated `LineTooLong` hint.
+
 
 ## Docgen
 
@@ -495,3 +523,4 @@
   e.g. instead of `--includeFile` and `--excludeFile` we have
   `--filename` and `--notFilename` respectively.
   Also the semantics become consistent for such positive/negative filters.
+- koch now supports the `--skipIntegrityCheck` option. The command `koch --skipIntegrityCheck boot -d:release` always builds the compiler twice.

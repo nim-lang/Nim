@@ -226,7 +226,7 @@ proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: AbsoluteFile) 
 
 proc setHash*(conf: ConfigRef; fileIdx: FileIndex; hash: string) =
   assert fileIdx.int32 >= 0
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
     conf.m.fileInfos[fileIdx.int32].hash = hash
   else:
     shallowCopy(conf.m.fileInfos[fileIdx.int32].hash, hash)
@@ -234,7 +234,7 @@ proc setHash*(conf: ConfigRef; fileIdx: FileIndex; hash: string) =
 
 proc getHash*(conf: ConfigRef; fileIdx: FileIndex): string =
   assert fileIdx.int32 >= 0
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
     result = conf.m.fileInfos[fileIdx.int32].hash
   else:
     shallowCopy(result, conf.m.fileInfos[fileIdx.int32].hash)
