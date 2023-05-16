@@ -1,4 +1,4 @@
-#Help texts 
+#Help texts
 import utils
 
 const Usage* = """

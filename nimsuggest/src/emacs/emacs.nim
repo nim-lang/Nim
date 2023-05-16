@@ -42,7 +42,8 @@ proc listEpc*(): SexpNode =
     argspecs = sexp("file line column dirtyfile".split(" ").map(newSSymbol))
     docstring = sexp("line starts at 1, column at 0, dirtyfile is optional")
   result = newSList()
-  for command in ["sug", "con", "def", "use", "dus", "chk", "mod", "globalSymbols", "recompile", "saved", "chkFile", "declaration"]:
+  for command in ["sug", "con", "def", "use", "dus", "chk", "mod", "globalSymbols", "recompile",
+      "saved", "chkFile", "declaration"]:
     let
       cmd = sexp(command)
       methodDesc = newSList()
@@ -134,10 +135,10 @@ proc replEpc*(x: ThreadParams) {.thread.} =
       quit("received epc error: " & $messageBuffer)
     else:
       let errMessage = case epcApi
-                       of "return", "return-error":
-                         "no return expected"
-                       else:
-                         "unexpected call: " & epcApi
+        of "return", "return-error":
+          "no return expected"
+        else:
+          "unexpected call: " & epcApi
       quit errMessage
 
 
@@ -146,12 +147,12 @@ proc executeEpc(ideCmd: IdeCmd, args: SexpNode, graph: ModuleGraph) =
   if len(args) > 3:
     dirtyfile = AbsoluteFile args[3].getStr("")
 
-  let cmd= CommandData( 
-      ideCmd:ideCmd,
-      file:AbsoluteFile args[0].getStr,
-      dirtyFile:dirtyfile,
+  let cmd = CommandData(
+      ideCmd: ideCmd,
+      file: AbsoluteFile args[0].getStr,
+      dirtyFile: dirtyfile,
       line: int(args[1].getNum),
-      col:  int(args[2].getNum),
+      col: int(args[2].getNum),
       tag: args[3].getStr
-      )
+    )
   execute(cmd, graph)

@@ -1,6 +1,7 @@
 import strutils, net, sequtils, parseutils, strformat, algorithm, tables, std/sha1, times
 
-import ../compiler/[renderer, options, msgs, sigmatch, ast, idents, modulegraphs, lineinfos, pathutils, syntaxes, passes]
+import ../compiler/[renderer, options, msgs, sigmatch, ast, idents, modulegraphs, lineinfos,
+    pathutils, syntaxes, passes]
 
 import ../[globals, types, utils]
 
@@ -63,7 +64,7 @@ proc findDef(n: PNode, line: uint16, col: int16): PNode =
 
 
 
-proc executeNoHooksV3*(cmd:CommandData,graph: ModuleGraph) =
+proc executeNoHooksV3*(cmd: CommandData, graph: ModuleGraph) =
 
   #This exposes all it's props as variables in the current scope
   destructure cmd

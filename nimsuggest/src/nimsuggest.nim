@@ -9,7 +9,8 @@
 
 import strutils, os, parseopt, net, tables, times, communication, consts, parsing
 
-import compiler/[renderer ,options, commands, modules, passes, passaux, msgs, idents, modulegraphs, lineinfos, cmdlinehelper, pathutils, condsyms]
+import compiler/[renderer, options, commands, modules, passes, passaux, msgs, idents, modulegraphs,
+    lineinfos, cmdlinehelper, pathutils, condsyms]
 
 import globals
 import utils
@@ -59,21 +60,22 @@ proc execCmd(cmdLineString: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) 
     echo Help
     sentinel()
     return
-  let cmd=parseCommandLine(cmdLineString,string conf.projectFull)
-  ##If we can't parse an ideCmd then it's either a nimsuggest command or grabage 
-  if cmd.ideCmd==ideNone:
-    case cmd.ideCmdString: 
+  let cmd = parseCommandLine(cmdLineString, string conf.projectFull)
+  ##If we can't parse an ideCmd then it's either a nimsuggest command or grabage
+  if cmd.ideCmd == ideNone:
+    case cmd.ideCmdString:
     of "quit":
       sentinel()
       quit()
     of "debug": toggle optIdeDebug
     of "terse": toggle optIdeTerse
     else: err()
-  conf.ideCmd=cmd.ideCmd
+  conf.ideCmd = cmd.ideCmd
 
 
   if cmd.ideCmd == ideKnown:
-    results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf,  AbsoluteFile cmd.file))))
+    results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf,
+        AbsoluteFile cmd.file))))
   elif cmd.ideCmd == ideProject:
     results.send(Suggest(section: ideProject, filePath: string conf.projectFull))
   else:
@@ -117,7 +119,8 @@ proc mainThread(graph: ModuleGraph) =
       conf.ideCmd = ideChk
       conf.writelnHook = proc (s: string) = discard
       cachedMsgs.setLen 0
-      conf.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
+      conf.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string;
+          sev: Severity) =
         cachedMsgs.add(CachedMsg(info: info, msg: msg, sev: sev))
       conf.suggestionResultHook = proc (s: Suggest) = discard
       recompileFullProject(graph)
@@ -147,7 +150,8 @@ proc mainCommand(graph: ModuleGraph) =
   conf.writelnHook = proc (msg: string) = discard
 
   if graph.config.suggestVersion == 3:
-    graph.config.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
+    graph.config.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string;
+        sev: Severity) =
       let suggest = Suggest(section: ideChk, filePath: toFullPath(conf, info),
         line: toLinenumber(info), column: toColumn(info), doc: msg, forth: $sev)
       graph.suggestErrors.mgetOrPut(info.fileIndex, @[]).add suggest
@@ -173,7 +177,7 @@ proc mainCommand(graph: ModuleGraph) =
   close(requests)
   close(results)
 
-proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
+proc processCmdLine*(pass: TCmdLinePass; cmd: string; conf: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
   var findProject = false
   while true:
@@ -205,7 +209,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         incl(conf.globalOptions, optIdeDebug)
       of "epc":
         gMode = mepc
-        conf.verbosity = 0          # Port number gotta be first.
+        conf.verbosity = 0 # Port number gotta be first.
       of "debug": incl(conf.globalOptions, optIdeDebug)
       of "v1": conf.suggestVersion = 1
       of "v2": conf.suggestVersion = 0
@@ -274,5 +278,5 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
 when isMainModule:
   handleCmdLine(newIdentCache(), newConfigRef())
 else:
- import testInterface
- export testInterface
+  import testInterface
+  export testInterface

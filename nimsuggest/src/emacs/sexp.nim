@@ -17,19 +17,19 @@ when defined(nimPreviewSlimSystem):
   import std/[assertions, formatfloat]
 
 type
-  SexpEventKind* = enum  ## enumeration of all events that may occur when parsing
-    sexpError,           ## an error occurred during parsing
-    sexpEof,             ## end of file reached
-    sexpString,          ## a string literal
-    sexpSymbol,          ## a symbol
-    sexpInt,             ## an integer literal
-    sexpFloat,           ## a float literal
-    sexpNil,             ## the value ``nil``
-    sexpDot,             ## the dot to separate car/cdr
-    sexpListStart,       ## start of a list: the ``(`` token
-    sexpListEnd,         ## end of a list: the ``)`` token
+  SexpEventKind* = enum ## enumeration of all events that may occur when parsing
+    sexpError,          ## an error occurred during parsing
+    sexpEof,            ## end of file reached
+    sexpString,         ## a string literal
+    sexpSymbol,         ## a symbol
+    sexpInt,            ## an integer literal
+    sexpFloat,          ## a float literal
+    sexpNil,            ## the value ``nil``
+    sexpDot,            ## the dot to separate car/cdr
+    sexpListStart,      ## start of a list: the ``(`` token
+    sexpListEnd,        ## end of a list: the ``)`` token
 
-  TTokKind = enum        # must be synchronized with SexpEventKind!
+  TTokKind = enum # must be synchronized with SexpEventKind!
     tkError,
     tkEof,
     tkString,
@@ -42,12 +42,12 @@ type
     tkParensRi
     tkSpace
 
-  SexpError* = enum        ## enumeration that lists all errors that can occur
-    errNone,               ## no error
-    errInvalidToken,       ## invalid token
-    errParensRiExpected,    ## ``)`` expected
-    errQuoteExpected,      ## ``"`` expected
-    errEofExpected,        ## EOF expected
+  SexpError* = enum      ## enumeration that lists all errors that can occur
+    errNone,             ## no error
+    errInvalidToken,     ## invalid token
+    errParensRiExpected, ## ``)`` expected
+    errQuoteExpected,    ## ``"`` expected
+    errEofExpected,      ## EOF expected
 
   SexpParser* = object of BaseLexer ## the parser object.
     a: string
@@ -403,7 +403,7 @@ macro convertSexp*(x: untyped): untyped =
   ## `%` for every element.
   result = toSexp(x)
 
-func `==`* (a, b: SexpNode): bool =
+func `==`*(a, b: SexpNode): bool =
   ## Check two nodes for equality
   if a.isNil:
     if b.isNil: return true
@@ -427,7 +427,7 @@ func `==`* (a, b: SexpNode): bool =
     of SCons:
       a.car == b.car and a.cdr == b.cdr
 
-proc hash* (n:SexpNode): Hash =
+proc hash*(n: SexpNode): Hash =
   ## Compute the hash for a SEXP node
   case n.kind
   of SList:

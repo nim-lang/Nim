@@ -17,10 +17,10 @@ IdeCon #Show the signature of the function whos parameters the cursor is in
 IdeDef #return the definition location of the symbol
 ]#
 
-proc executeNoHooksDefault(cmd:CommandData,graph:ModuleGraph)=
+proc executeNoHooksDefault(cmd: CommandData, graph: ModuleGraph) =
 
   let conf = graph.config
-  let suggestVersion=conf.suggestVersion
+  let suggestVersion = conf.suggestVersion
   #This exposes all it's props as variables in the current scope
   destructure cmd
 
@@ -28,11 +28,11 @@ proc executeNoHooksDefault(cmd:CommandData,graph:ModuleGraph)=
         ", dirtyFile: " & dirtyfile.string &
         "[" & $line & ":" & $col & "]")
   conf.ideCmd = ideCmd
-  #TODO: why do we need to reset when we get a use? 
+  #TODO: why do we need to reset when we get a use?
   if ideCmd == ideUse and suggestVersion != 0:
     graph.resetAllModules()
 
-  #set the current location and  file, or dirty file if it exists  
+  #set the current location and  file, or dirty file if it exists
   var isKnownFile = true
   let dirtyIdx = fileInfoIdx(conf, file, isKnownFile)
   if not dirtyfile.isEmpty: msgs.setDirtyFile(conf, dirtyIdx, dirtyfile)
@@ -40,10 +40,10 @@ proc executeNoHooksDefault(cmd:CommandData,graph:ModuleGraph)=
   conf.m.trackPos = newLineInfo(dirtyIdx, line, col)
   conf.m.trackPosAttached = false
   conf.errorCounter = 0
-  
+
   if suggestVersion == 1:
     graph.usageSym = nil
-  
+
   if not isKnownFile:
     graph.compileProject(dirtyIdx)
   if suggestVersion == 0 and ideCmd in {ideUse, ideDus} and dirtyfile.isEmpty:
@@ -62,10 +62,11 @@ proc executeNoHooksDefault(cmd:CommandData,graph:ModuleGraph)=
     if u != nil:
       listUsages(graph, u)
     else:
-      localError(conf, conf.m.trackPos, "found no symbol at this position " & (conf $ conf.m.trackPos))
-  
+      localError(conf, conf.m.trackPos, "found no symbol at this position " & (conf $
+          conf.m.trackPos))
 
-proc executeNoHooks(cmd:CommandData, graph: ModuleGraph) =
+
+proc executeNoHooks(cmd: CommandData, graph: ModuleGraph) =
   ##Executes the provided command on the provided graph
   ##Though this doesn't return anything it does call procs which call `suggestResult`
   ##which triggers the suggestionResultHook, or a print statement if no hook is provided
@@ -80,7 +81,7 @@ proc executeNoHooks(cmd:CommandData, graph: ModuleGraph) =
 #   cmd.tag=""
 #   executeNoHooks(cmd:CommandData, graph)
 
-proc execute*(cmd:CommandData,graph: ModuleGraph) =
+proc execute*(cmd: CommandData, graph: ModuleGraph) =
   if cmd.ideCmd == ideChk:
     graph.config.structuredErrorHook = errorHook
     graph.config.writelnHook = myLog

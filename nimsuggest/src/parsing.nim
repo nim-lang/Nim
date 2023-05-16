@@ -1,5 +1,5 @@
 ## Handles parsing of the input to nimsuggest
-import strutils,  parseutils
+import strutils, parseutils
 
 import compiler/[options, pathUtils]
 

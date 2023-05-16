@@ -3,9 +3,11 @@ import symbolUtils, net
 import ../compiler/[renderer, options, msgs, sigmatch, ast, idents, modulegraphs, lineinfos, pathutils]
 
 ## A collection of utility functions for use in traversing graphs
-proc outlineNode*(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: seq[SymInfoPair]): bool =
+proc outlineNode*(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: seq[
+    SymInfoPair]): bool =
   proc checkSymbol(sym: PSym, info: TLineInfo): bool =
-    result = (sym.owner.kind in {skModule, skType} or sym.kind in {skProc, skMethod, skIterator, skTemplate, skType})
+    result = (sym.owner.kind in {skModule, skType} or sym.kind in {skProc, skMethod, skIterator,
+        skTemplate, skType})
 
   if n.kind == nkSym and n.sym.checkSymbol(n.info):
     graph.suggestResult(n.sym, n.sym.info, ideOutline, endInfo.line, endInfo.col)
@@ -13,11 +15,12 @@ proc outlineNode*(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: s
   elif n.kind == nkIdent:
     let symData = findByTLineInfo(n.info, infoPairs)
     if symData != nil and symData.sym.checkSymbol(symData.info):
-       let sym = symData.sym
-       graph.suggestResult(sym, sym.info, ideOutline, endInfo.line, endInfo.col)
-       return true
+      let sym = symData.sym
+      graph.suggestResult(sym, sym.info, ideOutline, endInfo.line, endInfo.col)
+      return true
 
-proc handleIdentOrSym*(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: seq[SymInfoPair]): bool =
+proc handleIdentOrSym*(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: seq[
+    SymInfoPair]): bool =
   for child in n:
     if child.kind in {nkIdent, nkSym}:
       if graph.outlineNode(child, endInfo, infoPairs):
@@ -30,10 +33,12 @@ proc iterateOutlineNodes*(graph: ModuleGraph, n: PNode, infoPairs: seq[SymInfoPa
   var matched = true
   if n.kind == nkIdent:
     let symData = findByTLineInfo(n.info, infoPairs)
-    if symData != nil and symData.sym.kind == skEnumField and symData.info.exactEquals(symData.sym.info):
-       let sym = symData.sym
-       graph.suggestResult(sym, sym.info, ideOutline, n.endInfo.line, n.endInfo.col)
-  elif (n.kind in {nkFuncDef, nkProcDef, nkTypeDef, nkMacroDef, nkTemplateDef, nkConverterDef, nkEnumFieldDef, nkConstDef}):
+    if symData != nil and symData.sym.kind == skEnumField and symData.info.exactEquals(
+        symData.sym.info):
+      let sym = symData.sym
+      graph.suggestResult(sym, sym.info, ideOutline, n.endInfo.line, n.endInfo.col)
+  elif (n.kind in {nkFuncDef, nkProcDef, nkTypeDef, nkMacroDef, nkTemplateDef, nkConverterDef,
+      nkEnumFieldDef, nkConstDef}):
     matched = handleIdentOrSym(graph, n, n.endInfo, infoPairs)
   else:
     matched = false

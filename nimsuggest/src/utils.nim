@@ -1,6 +1,7 @@
 import strutils, os, parseutils, net, strformat, times
 
-import compiler/[renderer, options, modules, passes, msgs, sigmatch, ast, idents, modulegraphs, lineinfos, pathutils]
+import compiler/[renderer, options, modules, passes, msgs, sigmatch, ast, idents, modulegraphs,
+    lineinfos, pathutils]
 
 import globals
 

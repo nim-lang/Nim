@@ -1,18 +1,18 @@
 ## Base types needed across nimsuggest
 import compiler/[options, pathutils]
-import macros, net 
+import macros, net
 
 type
   ThreadParams* = tuple[port: Port; address: string]
 
 
 type CommandData* = object
-  ideCmd* :IdeCmd
-  dirtyFile* :AbsoluteFile
-  file* : AbsoluteFile
-  col*, line* :int
-  tag* :string
-  ideCmdString*:string
+  ideCmd*: IdeCmd
+  dirtyFile*: AbsoluteFile
+  file*: AbsoluteFile
+  col*, line*: int
+  tag*: string
+  ideCmdString*: string
 
 macro unpackLet*(argsBody: untyped): untyped =
   expectKind argsBody[0], nnkAsgn
@@ -31,6 +31,6 @@ macro unpackLet*(argsBody: untyped): untyped =
   # put everything into let section
   result = nnkLetSection.newTree(result)
 
-template destructure*(cmd:CommandData)=
+template destructure*(cmd: CommandData) =
   ##Exposes all the properties of a CommandData object as local variables within the calling scope
   unpackLet: (ideCmd, file, line, col, dirtyFile, tag) = cmd

@@ -1,14 +1,14 @@
 import net
 
-import compiler/[options, msgs, lineinfos ]
+import compiler/[options, msgs, lineinfos]
 
 type
-  Mode * = enum mstdin, mtcp, mepc, mcmdsug, mcmdcon
-  CachedMsg * = object
+  Mode* = enum mstdin, mtcp, mepc, mcmdsug, mcmdcon
+  CachedMsg* = object
     info*: TLineInfo
     msg*: string
     sev*: Severity
-  CachedMsgs * = seq[CachedMsg]
+  CachedMsgs* = seq[CachedMsg]
 
 var
   gPort* = 6000.Port

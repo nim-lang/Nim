@@ -1,7 +1,8 @@
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
-import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp, strformat, algorithm, tables, std/sha1, times
-import compiler/ [options, commands, modules, passes, passaux, msgs,
+import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp, strformat, algorithm,
+    tables, std/sha1, times
+import compiler / [options, commands, modules, passes, passaux, msgs,
   sigmatch, ast,
   idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
   pathutils, condsyms, syntaxes, renderer]
@@ -17,7 +18,7 @@ import types
 when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
-const nimsuggest=true
+const nimsuggest = true
 
 export Suggest
 export IdeCmd
@@ -104,7 +105,8 @@ proc initNimSuggest*(project: string, nimPath: string = ""): NimSuggest =
   retval.doStopCompile = proc (): bool = false
   return NimSuggest(graph: retval, idle: 0, cachedMsgs: @[])
 
-proc runCmd*(nimsuggest: NimSuggest, cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int): seq[Suggest] =
+proc runCmd*(nimsuggest: NimSuggest, cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line,
+    col: int): seq[Suggest] =
   var retval: seq[Suggest] = @[]
   let conf = nimsuggest.graph.config
   conf.ideCmd = cmd
@@ -122,7 +124,8 @@ proc runCmd*(nimsuggest: NimSuggest, cmd: IdeCmd, file, dirtyfile: AbsoluteFile,
     if conf.ideCmd == ideChk:
       for cm in nimsuggest.cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
     if conf.ideCmd == ideChk:
-      conf.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
+      conf.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string;
+          sev: Severity) =
         retval.add(Suggest(section: ideChk, filePath: toFullPath(conf, info),
           line: toLinenumber(info), column: toColumn(info), doc: msg,
           forth: $sev))
