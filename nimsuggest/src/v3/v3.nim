@@ -5,8 +5,7 @@ import ../compiler/[renderer, options, msgs, sigmatch, ast, idents, modulegraphs
 
 import ../[globals, types, utils]
 
-import graphUtils
-import symbolUtils
+import graphUtils, symbolUtils
 
 proc recompilePartially(graph: ModuleGraph, projectFileIdx = InvalidFileIdx) =
   if projectFileIdx == InvalidFileIdx:

@@ -7,19 +7,14 @@
 #    distribution, for details about the copyright.
 #
 
+## Nimsuggest is a tool that helps to give editors IDE like capabilities.
+
 import strutils, os, parseopt, net, tables, times, communication, consts, parsing
 
 import compiler/[renderer, options, commands, modules, passes, passaux, msgs, idents, modulegraphs,
     lineinfos, cmdlinehelper, pathutils, condsyms]
 
-import globals
-import utils
-import emacs/emacs
-import execution
-import repl
-import types
-
-## Nimsuggest is a tool that helps to give editors IDE like capabilities.
+import globals, utils, emacs/emacs, execution, repl, types
 
 when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
@@ -28,7 +23,6 @@ when not defined(nimcore):
 # suggestionResultHook, because suggest.nim is included by sigmatch.
 # So we import that one instead.
 
-
 when defined(nimPreviewSlimSystem):
   import std/typedthreads
 
@@ -36,9 +30,6 @@ when defined(windows):
   import winlean
 else:
   import posix
-
-
-
 
 
 proc execCmd(cmdLineString: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =

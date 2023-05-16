@@ -2,13 +2,9 @@
 ## Takes the parsed input of a command and performs an operation on the ModuleGraph such as compining the project
 import strformat, times, strutils, net
 
-import compiler/[renerer, options, passes, msgs, sigmatch, modulegraphs, lineinfos, pathutils]
+import compiler/[renderer, options, passes, msgs, sigmatch, modulegraphs, lineinfos, pathutils]
 
-import globals
-import utils
-import v3/v3
-import communication
-import types
+import globals, utils, v3/v3, communication, types
 
 #[Quick reference of ideCmds
 IdeUse #find useages of symbol at cursor
@@ -18,7 +14,6 @@ IdeDef #return the definition location of the symbol
 ]#
 
 proc executeNoHooksDefault(cmd: CommandData, graph: ModuleGraph) =
-
   let conf = graph.config
   let suggestVersion = conf.suggestVersion
   #This exposes all it's props as variables in the current scope

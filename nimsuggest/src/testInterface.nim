@@ -2,18 +2,13 @@
 
 import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp, strformat, algorithm,
     tables, std/sha1, times
+
 import compiler / [options, commands, modules, passes, passaux, msgs,
   sigmatch, ast,
   idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
   pathutils, condsyms, syntaxes, renderer]
 
-
-import v3/v3
-import globals
-import utils
-import execution
-import communication
-import types
+import v3/v3, globals, utils, execution, communication, types
 
 when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}

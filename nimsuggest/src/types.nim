@@ -1,10 +1,10 @@
 ## Base types needed across nimsuggest
-import compiler/[options, pathutils]
 import macros, net
+
+import compiler/[options, pathutils]
 
 type
   ThreadParams* = tuple[port: Port; address: string]
-
 
 type CommandData* = object
   ideCmd*: IdeCmd
