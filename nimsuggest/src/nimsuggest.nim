@@ -9,7 +9,7 @@
 
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
-import strutils, os, parseopt, net, tables, times, communication, consts, parsing
+import strutils, os, parseopt, net, tables, times, communication, helpText, parsing
 
 import compiler/[renderer, options, commands, modules, passes, passaux, msgs, idents, modulegraphs,
     lineinfos, cmdlinehelper, pathutils, condsyms]

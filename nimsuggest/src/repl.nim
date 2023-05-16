@@ -4,7 +4,7 @@ import net, rdstdin
 
 import compiler/[renderer, options, sigmatch, ast, lineinfos]
 
-import globals, communication, consts, utils, types
+import globals, communication, utils, types, helpText
 
 proc toStdout() {.gcsafe.} =
   while true:
