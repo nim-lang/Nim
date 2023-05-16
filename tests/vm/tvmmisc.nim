@@ -688,3 +688,13 @@ block: # bug #7590
   # const c=(foo:(bar1: 0.0))
   const c=(foo:(bar1:"foo1"))
   fun2(c)
+
+block: # bug #21708
+  type
+    Tup = tuple[name: string]
+
+  const X: array[2, Tup] = [(name: "foo",), (name: "bar",)]
+
+  static:
+    let s = X[0]
+    doAssert s[0] == "foo"
