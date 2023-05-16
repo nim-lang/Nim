@@ -10,10 +10,7 @@ import ../communication
 import ../utils
 import ../types
 import sexp
-import compiler/ [options, msgs,
-  sigmatch, ast,
- modulegraphs, prefixmatches, 
-  pathutils]
+import compiler/[options, msgs, sigmatch, ast, modulegraphs, prefixmatches, pathutils]
 
 proc sexp(s: IdeCmd|TSymKind|PrefixMatch): SexpNode = sexp($s)
 

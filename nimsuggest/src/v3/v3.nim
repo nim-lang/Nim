@@ -1,6 +1,5 @@
 import graphUtils
 import ../setup
-import ../compiler/renderer
 import strformat
 import algorithm
 import tables
@@ -9,16 +8,7 @@ import times
 import ../types
 import strutils, net, sequtils, parseutils
 
-import ../compiler/options
-import ../compiler/msgs
-import ../compiler/sigmatch
-import ../compiler/ast
-import ../compiler/idents
-import ../compiler/modulegraphs
-import ../compiler/lineinfos
-import ../compiler/pathutils
-import ../compiler/syntaxes
-import ../compiler/passes
+import ../compiler/[renderer, options, msgs, sigmatch, ast, idents, modulegraphs, lineinfos, pathutils, syntaxes, passes]
 import ../utils
 import symbolUtils
 

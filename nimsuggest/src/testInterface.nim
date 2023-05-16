@@ -6,7 +6,7 @@ import std/sha1
 import times
 
 import v3/v3
-import setup
+import globals
 import utils
 import execution
 

@@ -1,6 +1,5 @@
-## Constant strings
-
-const DummyEof* = "!EOF!"
+#Help texts 
+import utils
 const Usage* = """
 Nimsuggest - Tool to give every editor IDE like capabilities for Nim
 Usage:
@@ -31,8 +30,6 @@ If --autobind is used, the binded port number will be printed to stdout.
 In addition, all command line options of Nim that do not affect code generation
 are supported.
 """
-
-
 
 const
   Help* = "usage: sug|con|def|use|dus|chk|mod|highlight|outline|known|project file.nim[;dirtyfile.nim]:line:col\n" &

@@ -11,7 +11,7 @@ import compiler/renderer
 import tables
 import times
 
-import setup
+import globals
 import utils
 import emacs/emacs
 import execution
@@ -25,23 +25,12 @@ import parsing
 when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
-import strutils, os, parseopt, parseutils,  net 
+import strutils, os, parseopt,  net 
 # Do NOT import suggest. It will lead to weird bugs with
 # suggestionResultHook, because suggest.nim is included by sigmatch.
 # So we import that one instead.
 
-import compiler/options
-import compiler/commands
-import compiler/modules
-import compiler/passes
-import compiler/passaux
-import compiler/msgs
-import compiler/idents
-import compiler/modulegraphs
-import compiler/lineinfos
-import compiler/cmdlinehelper
-import compiler/pathutils
-import compiler/condsyms
+import compiler/[options, commands, modules, passes, passaux, msgs, idents, modulegraphs, lineinfos, cmdlinehelper, pathutils, condsyms]
 import types
 
 when defined(nimPreviewSlimSystem):

@@ -1,18 +1,9 @@
 
-import ../compiler/renderer
-import algorithm
 
 import symbolUtils
 import net
 
-import ../compiler/options
-import ../compiler/msgs
-import ../compiler/sigmatch
-import ../compiler/ast
-import ../compiler/idents
-import ../compiler/modulegraphs
-import ../compiler/lineinfos
-import ../compiler/pathutils
+import ../compiler/[renderer, options, msgs, sigmatch, ast, idents, modulegraphs, lineinfos, pathutils]
 
 ## A collection of utility functions for use in traversing graphs
 proc outlineNode*(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: seq[SymInfoPair]): bool =

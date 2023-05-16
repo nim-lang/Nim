@@ -1,7 +1,7 @@
 ## Hooks to send to the results channel 
 ## functions to bind to incoming and outgoing ports
 import compiler/renderer
-import setup
+import globals
 import net 
 
 import compiler/[options, msgs, lineinfos ]

@@ -1,10 +1,11 @@
 ## Code to handle communction with a repl via stdin or tcp.
 ## for emacs specific repl implimentation see emacs/emacs.nim
 import compiler/renderer
-import setup
+import globals
 import net, rdstdin
 import communication
 import consts
+import utils
 
 import compiler/[options, sigmatch, ast, lineinfos]
 import types

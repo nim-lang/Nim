@@ -1,17 +1,10 @@
 
-import ../compiler/renderer
 import algorithm
 import tables
 
 import  net
 
-import ../compiler/options
-import ../compiler/msgs
-import ../compiler/sigmatch
-import ../compiler/ast
-import ../compiler/modulegraphs
-import ../compiler/prefixmatches
-import ../compiler/lineinfos
+import ../compiler/[renderer, options, msgs, sigmatch, ast, modulegraphs, prefixmatches, lineinfos]
 
 
 proc findByTLineInfo*(trackPos: TLineInfo, infoPairs: seq[SymInfoPair]):

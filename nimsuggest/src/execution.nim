@@ -3,21 +3,14 @@
 import compiler/renderer
 import strformat
 import times
-import setup
+import globals
 import strutils, net
 import utils
 import v3/v3
 import communication
-import parsing
 import types
 
-import compiler/options
-import compiler/passes
-import compiler/msgs
-import compiler/sigmatch
-import compiler/modulegraphs
-import compiler/lineinfos
-import compiler/pathutils
+import compiler/[options, passes, msgs, sigmatch, modulegraphs, lineinfos, pathutils]
 
 #[Quick reference of ideCmds
 IdeUse #find useages of symbol at cursor

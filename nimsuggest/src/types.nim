@@ -1,6 +1,5 @@
 ## Base types needed across nimsuggest
-import compiler/options
-import compiler/pathutils
+import compiler/[options, pathutils]
 import macros
 
 import net 

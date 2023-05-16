@@ -1,23 +1,15 @@
 import compiler/renderer
 import strformat
 import times
-import setup
+import globals
 
 import strutils, os, parseutils, net
 
 
-import compiler/options
-import compiler/modules
-import compiler/passes
-import compiler/msgs
-import compiler/sigmatch
-import compiler/ast
-import compiler/idents
-import compiler/modulegraphs
-import compiler/lineinfos
-import compiler/pathutils
+import compiler/[options, modules, passes, msgs, sigmatch, ast, idents, modulegraphs, lineinfos, pathutils]
 
 
+const DummyEof* = "!EOF!"
 
 template benchmark*(benchmarkName: untyped, code: untyped) =
   block:

@@ -1,6 +1,3 @@
-
-
-
 import  net
 # Do NOT import suggest. It will lead to weird bugs with
 # suggestionResultHook, because suggest.nim is included by sigmatch.
@@ -26,5 +23,6 @@ var
 
   requests*: Channel[string]
   results*: Channel[Suggest]
+
 proc myLog*(s: string) =
   if gLogging: log(s)
