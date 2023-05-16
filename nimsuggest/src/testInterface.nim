@@ -1,28 +1,23 @@
-import compiler/renderer
-import strformat
-import algorithm
-import tables
-import std/sha1
-import times
+## Nimsuggest is a tool that helps to give editors IDE like capabilities.
+
+import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp, strformat, algorithm, tables, std/sha1, times
+import compiler/ [options, commands, modules, passes, passaux, msgs,
+  sigmatch, ast,
+  idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
+  pathutils, condsyms, syntaxes, renderer]
+
 
 import v3/v3
 import globals
 import utils
 import execution
-
 import communication
 import types
-## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
 when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
 const nimsuggest=true
-import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp
-import compiler/ [options, commands, modules, passes, passaux, msgs,
-  sigmatch, ast,
-  idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
-  pathutils, condsyms, syntaxes]
 
 export Suggest
 export IdeCmd

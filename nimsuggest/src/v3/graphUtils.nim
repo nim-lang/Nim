@@ -1,7 +1,4 @@
-
-
-import symbolUtils
-import net
+import symbolUtils, net
 
 import ../compiler/[renderer, options, msgs, sigmatch, ast, idents, modulegraphs, lineinfos, pathutils]
 

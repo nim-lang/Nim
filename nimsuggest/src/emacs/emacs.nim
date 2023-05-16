@@ -1,16 +1,12 @@
 ## Everything required for the nimsuggest emacs intergration.
-import compiler/renderer
-import strutils, os, net
-import sequtils
-import times
+import strutils, os, net, sequtils, times
 
-import ../setup
-import ../execution
-import ../communication
-import ../utils
-import ../types
+import compiler/[renderer, options, msgs, sigmatch, ast, modulegraphs, prefixmatches, pathutils]
+
+import ../[globals, execution, communication, utils, types]
+
 import sexp
-import compiler/[options, msgs, sigmatch, ast, modulegraphs, prefixmatches, pathutils]
+
 
 proc sexp(s: IdeCmd|TSymKind|PrefixMatch): SexpNode = sexp($s)
 

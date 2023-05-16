@@ -1,8 +1,6 @@
 ## Base types needed across nimsuggest
 import compiler/[options, pathutils]
-import macros
-
-import net 
+import macros, net 
 
 type
   ThreadParams* = tuple[port: Port; address: string]

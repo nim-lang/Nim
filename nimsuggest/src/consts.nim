@@ -1,5 +1,6 @@
 #Help texts 
 import utils
+
 const Usage* = """
 Nimsuggest - Tool to give every editor IDE like capabilities for Nim
 Usage:

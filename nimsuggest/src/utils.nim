@@ -1,13 +1,8 @@
-import compiler/renderer
-import strformat
-import times
+import strutils, os, parseutils, net, strformat, times
+
+import compiler/[renderer, options, modules, passes, msgs, sigmatch, ast, idents, modulegraphs, lineinfos, pathutils]
+
 import globals
-
-import strutils, os, parseutils, net
-
-
-import compiler/[options, modules, passes, msgs, sigmatch, ast, idents, modulegraphs, lineinfos, pathutils]
-
 
 const DummyEof* = "!EOF!"
 

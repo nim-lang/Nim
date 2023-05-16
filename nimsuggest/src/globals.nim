@@ -1,8 +1,6 @@
-import  net
-# Do NOT import suggest. It will lead to weird bugs with
-# suggestionResultHook, because suggest.nim is included by sigmatch.
-# So we import that one instead.
-import compiler/[options , msgs, lineinfos ]
+import net
+
+import compiler/[options, msgs, lineinfos ]
 
 type
   Mode * = enum mstdin, mtcp, mepc, mcmdsug, mcmdcon

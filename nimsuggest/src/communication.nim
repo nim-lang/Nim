@@ -1,10 +1,8 @@
 ## Hooks to send to the results channel 
 ## functions to bind to incoming and outgoing ports
-import compiler/renderer
-import globals
-import net 
+import globals, net 
 
-import compiler/[options, msgs, lineinfos ]
+import compiler/[renderer,options, msgs, lineinfos ]
 
 proc connectToNextFreePort*(server: Socket, host: string): Port =
   server.bindAddr(Port(0), host)

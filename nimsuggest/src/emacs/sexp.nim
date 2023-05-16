@@ -9,8 +9,7 @@
 
 ## **Note:** Import ``nimsuggest/sexp`` to use this module
 
-import
-  hashes, strutils, lexbase, streams, unicode, macros
+import hashes, strutils, lexbase, streams, unicode, macros
 
 import std/private/decode_helpers
 

@@ -1,15 +1,10 @@
-import graphUtils
-import ../setup
-import strformat
-import algorithm
-import tables
-import std/sha1
-import times
-import ../types
-import strutils, net, sequtils, parseutils
+import strutils, net, sequtils, parseutils, strformat, algorithm, tables, std/sha1, times
 
 import ../compiler/[renderer, options, msgs, sigmatch, ast, idents, modulegraphs, lineinfos, pathutils, syntaxes, passes]
-import ../utils
+
+import ../[globals, types, utils]
+
+import graphUtils
 import symbolUtils
 
 proc recompilePartially(graph: ModuleGraph, projectFileIdx = InvalidFileIdx) =

@@ -1,8 +1,5 @@
 
-import algorithm
-import tables
-
-import  net
+import algorithm, tables, net
 
 import ../compiler/[renderer, options, msgs, sigmatch, ast, modulegraphs, prefixmatches, lineinfos]
 

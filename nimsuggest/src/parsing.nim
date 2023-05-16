@@ -1,11 +1,11 @@
 ## Handles parsing of the input to nimsuggest
-import compiler/[options, pathUtils]
-
 import strutils,  parseutils
 
-import types
-const seps* = {':', ';', ' ', '\t'}
+import compiler/[options, pathUtils]
 
+import types
+
+const seps* = {':', ';', ' ', '\t'}
 
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start

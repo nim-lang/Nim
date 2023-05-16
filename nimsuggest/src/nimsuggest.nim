@@ -7,31 +7,26 @@
 #    distribution, for details about the copyright.
 #
 
-import compiler/renderer
-import tables
-import times
+import strutils, os, parseopt, net, tables, times, communication, consts, parsing
+
+import compiler/[renderer ,options, commands, modules, passes, passaux, msgs, idents, modulegraphs, lineinfos, cmdlinehelper, pathutils, condsyms]
 
 import globals
 import utils
 import emacs/emacs
 import execution
 import repl
+import types
 
-import communication
-import consts
-import parsing
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
 when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
-import strutils, os, parseopt,  net 
 # Do NOT import suggest. It will lead to weird bugs with
 # suggestionResultHook, because suggest.nim is included by sigmatch.
 # So we import that one instead.
 
-import compiler/[options, commands, modules, passes, passaux, msgs, idents, modulegraphs, lineinfos, cmdlinehelper, pathutils, condsyms]
-import types
 
 when defined(nimPreviewSlimSystem):
   import std/typedthreads

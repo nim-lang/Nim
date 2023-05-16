@@ -1,16 +1,14 @@
 ## Handles executing various IdeCmd commands
 ## Takes the parsed input of a command and performs an operation on the ModuleGraph such as compining the project
-import compiler/renderer
-import strformat
-import times
+import strformat, times, strutils, net
+
+import compiler/[renerer, options, passes, msgs, sigmatch, modulegraphs, lineinfos, pathutils]
+
 import globals
-import strutils, net
 import utils
 import v3/v3
 import communication
 import types
-
-import compiler/[options, passes, msgs, sigmatch, modulegraphs, lineinfos, pathutils]
 
 #[Quick reference of ideCmds
 IdeUse #find useages of symbol at cursor
