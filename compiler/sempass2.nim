@@ -833,7 +833,6 @@ proc trackCall(tracked: PEffects; n: PNode) =
       # and it's not a recursive call:
       if not (a.kind == nkSym and a.sym == tracked.owner):
         markSideEffect(tracked, a, n.info)
-
   # p's effects are ours too:
   var a = n[0]
   #if canRaise(a):

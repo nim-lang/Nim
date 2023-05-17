@@ -1128,7 +1128,10 @@ proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
 proc genProcAux*(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = newRopeAppender()
-  genProcHeader(m, prc, header)
+  if m.config.backend == backendCpp and sfVirtual in prc.flags:
+    genVirtualProcHeader(m, prc, header)
+  else:
+    genProcHeader(m, prc, header)
   var returnStmt: Rope = ""
   assert(prc.ast != nil)
 
@@ -1234,7 +1237,7 @@ proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
 
 proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
-  if lfNoDecl in sym.loc.flags: return
+  if lfNoDecl in sym.loc.flags or sfVirtual in sym.flags: return
   if lfDynamicLib in sym.loc.flags:
     if sym.itemId.module != m.module.position and
         not containsOrIncl(m.declaredThings, sym.id):

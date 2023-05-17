@@ -34,7 +34,7 @@ const
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wEffectsOf, wTags, wForbids, wLocks, wDelegator, wGcSafe,
     wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy,
-    wRequires, wEnsures, wEnforceNoRaises, wSystemRaisesDefect}
+    wRequires, wEnsures, wEnforceNoRaises, wSystemRaisesDefect, wVirtual}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
@@ -211,9 +211,9 @@ proc processImportObjC(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   let m = s.getModule()
   incl(m.flags, sfCompileToObjc)
 
-proc newEmptyStrNode(c: PContext; n: PNode): PNode {.noinline.} =
+proc newEmptyStrNode(c: PContext; n: PNode, strVal: string = ""): PNode {.noinline.} =
   result = newNodeIT(nkStrLit, n.info, getSysType(c.graph, n.info, tyString))
-  result.strVal = ""
+  result.strVal = strVal
 
 proc getStrLitNode(c: PContext, n: PNode): PNode =
   if n.kind notin nkPragmaCallKinds or n.len != 2:
@@ -244,6 +244,14 @@ proc expectIntLit(c: PContext, n: PNode): int =
 proc getOptionalStr(c: PContext, n: PNode, defaultStr: string): string =
   if n.kind in nkPragmaCallKinds: result = expectStrLit(c, n)
   else: result = defaultStr
+
+proc processVirtual(c: PContext, n: PNode, s: PSym) =
+  s.constraint = newEmptyStrNode(c, n, getOptionalStr(c, n, "$1"))
+  s.constraint.strVal = s.constraint.strVal % s.name.s
+  s.flags.incl {sfVirtual, sfInfixCall, sfExportc, sfMangleCpp}
+  
+  s.typ.callConv = ccNoConvention
+  incl c.config.globalOptions, optMixedMode
 
 proc processCodegenDecl(c: PContext, n: PNode, sym: PSym) =
   sym.constraint = getStrLitNode(c, n)
@@ -1263,6 +1271,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         sym.flags.incl sfNeverRaises
       of wSystemRaisesDefect:
         sym.flags.incl sfSystemRaisesDefect
+      of wVirtual:
+          processVirtual(c, it, sym)
+      
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
