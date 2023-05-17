@@ -2130,3 +2130,80 @@ can be used in an `isolate` context:
 
 The `.sendable` pragma itself is an experimenal, unchecked, unsafe annotation. It is
 currently only used by `Isolated[T]`.
+
+Virtual pragma
+----------------
+
+The `virtual` is designed to extend or create virtual functions when targeting the cpp backend. When a procedure is marked with virtual, it forward declares the function implementation within the type's body.
+
+Here's an example of how to use the virtual pragma:
+
+```nim
+
+proc newCpp*[T](): ptr T {.importcpp:"new '*0()".}
+type 
+  Foo = object of RootObj
+  FooPtr = ptr Foo
+  Boo = object of Foo
+  BooPtr = ptr Boo
+
+proc salute(self:FooPtr) {.virtual.} = 
+  echo "hello foo"
+
+proc salute(self:BooPtr) {.virtual.} =
+  echo "hello boo"
+
+let foo = newCpp[Foo]()
+let boo = newCpp[Boo]()
+let booAsFoo = cast[FooPtr](newCpp[Boo]())
+
+foo.salute() #prints hello foo
+boo.salute() #prints hello boo
+booAsFoo.salute() ##prints hello boo
+
+```
+In this example, we've marked the salute function as virtual in both Foo and Boo types. This allows for polymorphism.
+
+The virtual pragma also supports a special syntax to express Cpp constraints. Here's how it works:
+
+`$1` refers to the function name
+`'idx` refers to the type of the argument at the position idx. Where idx = 1 is the `this` argument.
+`#idx` refers to the argument name.
+
+The return type can be referred to as `-> '0`, but this is optional and often not needed.
+
+ ```nim
+ {.emit:"""/*TYPESECTION*/
+#include <iostream>
+  class CppPrinter {
+  public:
+    
+    virtual void printConst(char* message) const {
+        std::cout << "Const Message: " << message << std::endl;
+    }
+    virtual void printConstRef(char* message, const int& flag) const {
+        std::cout << "Const Ref Message: " << message << std::endl;
+    }  
+};
+""".}
+
+type
+  CppPrinter {.importcpp, inheritable.} = object
+  NimPrinter {.exportc.} = object of CppPrinter
+
+proc printConst(self:CppPrinter, message:cstring) {.importcpp.}
+CppPrinter().printConst(message)
+
+#notice override is optional. 
+#Will make the cpp compiler to fail if not virtual function with the same signature if found in the base type
+proc printConst(self:NimPrinter, message:cstring) {.virtual:"$1('2 #2) const override".} =
+  echo "NimPrinter: " & $message
+
+proc printConstRef(self:NimPrinter, message:cstring, flag:int32) {.virtual:"$1('2 #2, const '3& #3 ) const override".} =
+  echo "NimPrinterConstRef: " & $message
+
+NimPrinter().printConst(message)
+var val : int32 = 10
+NimPrinter().printConstRef(message, val)
+
+```
