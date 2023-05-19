@@ -453,27 +453,24 @@ Assuming `foo` is a macro or a template, this is roughly equivalent to:
   ```
 
 
-Symbols as template/macro calls
-===============================
+Symbols as template/macro calls (alias syntax)
+==============================================
 
-Templates and macros that take no arguments can be called as lone symbols,
-i.e. without parentheses. This is useful for repeated uses of complex
-expressions that cannot conveniently be represented as runtime values.
+Templates and macros that have no generic parameters and no required arguments
+can be called as lone symbols, i.e. without parentheses. This is useful for
+repeated uses of complex expressions that cannot conveniently be represented
+as runtime values.
 
   ```nim
   type Foo = object
     bar: int
 
   var foo = Foo(bar: 10)
-  template bar: untyped = foo.bar
+  template bar: int = foo.bar
   assert bar == 10
   bar = 15
   assert bar == 15
   ```
-
-In the future, this may require more specific information on template or macro
-signatures to be used. Specializations for some applications of this may also
-be introduced to guarantee consistency and circumvent bugs.
 
 
 Not nil annotation
@@ -2010,3 +2007,126 @@ The field is within a `case` section of an `object`.
 
 **Note**: The implementation of "strict case objects" is experimental but the concept
 is solid and it is expected that eventually this mode becomes the default in later versions.
+
+
+Threading under ARC/ORC
+=======================
+
+ARC/ORC supports a shared heap out of the box. This means that messages can be sent between
+threads without copies. However, without copying the data there is an inherent danger of
+data races. Data races are prevented at compile-time if it is enforced that
+only **isolated** subgraphs can be sent around.
+
+
+Isolation
+---------
+
+The standard library module `isolation.nim` provides a generic type `Isolated[T]` that
+captures the important notion that nothing else can reference the graph that is wrapped
+inside `Isolated[T]`. It is what a channel implementation should use in order to enforce
+the freedom of data races:
+
+  ```nim
+
+  proc send*[T](c: var Channel[T]; msg: sink Isolated[T])
+  proc recv*[T](c: var Channel[T]): T
+    ## Note: Returns T, not Isolated[T] for convenience.
+
+  proc recvIso*[T](c: var Channel[T]): Isolated[T]
+    ## remembers the data is Isolated[T].
+
+  ```
+
+In order to create an `Isolated` graph one has to use either `isolate` or `unsafeIsolate`.
+`unsafeIsolate` is as its name says unsafe and no checking is performed. It should be considered
+to be as dangerous as a `cast` operation.
+
+
+Construction must ensure that the invariant holds, namely that the wrapped `T`
+is free of external aliases into it. `isolate` ensures this invariant. It is
+inspired by Pony's `recover` construct:
+
+  ```nim
+
+  func isolate(x: sink T): Isolated[T] {.magic: "Isolate".}
+
+  ```
+
+
+As you can see, this is a new builtin because the check it performs on `x` is non-trivial:
+
+If `T` does not contain a `ref` or `closure` type, it is isolated. Else the syntactic
+structure of `x` is analyzed:
+
+- Literals like `nil`, `4`, `"abc"` are isolated.
+- A local variable or a routine parameter is isolated if either of these conditions is true:
+  1. Its type is annotated with the `.sendable` pragma. Note `Isolated[T]` is annotated as
+     `.sendable`.
+  2. Its type contains the potentially dangerous `ref` and `proc {.closure}` types
+     only in places that are protected via a `.sendable` container.
+
+- An array constructor `[x...]` is isolated if every element `x` is isolated.
+- An object constructor `Obj(x...)` is isolated if every element `x` is isolated.
+- An `if` or `case` expression is isolated if all possible values the expression
+  may return are isolated.
+- A type conversion `C(x)` is isolated if `x` is isolated. Analogous for `cast`
+  expressions.
+- A function call `f(x...)` is isolated if `f` is `.noSideEffect` and for every argument `x`:
+  - `x` is isolated **or**
+  - `f`'s return type cannot *alias* `x`'s type. This is checked via a form of alias analysis as explained in the next paragraph.
+
+
+
+Alias analysis
+--------------
+
+We start with an important, simple case that must be valid: Sending the result
+of `parseJson` to a channel. Since the signature
+is `func parseJson(input: string): JsonNode` it is easy to see that JsonNode
+can never simply be a view into `input` which is a `string`.
+
+A different case is the identity function `id`, `send id(myJsonGraph)` must be
+invalid because we do not know how many aliases into `myJsonGraph` exist
+elsewhere.
+
+In general type `A` can alias type `T` if:
+
+- `A` and `T` are the same types.
+- `A` is a distinct type derived from `T`.
+- `A` is a field inside `T` if `T` is a final object type.
+- `T` is an inheritable object type. (An inherited type could always contain
+  a `field: A`).
+- `T` is a closure type. Reason: `T`'s environment can contain a field of
+  type `A`.
+- `A` is the element type of `T` if `T` is an array, sequence or pointer type.
+
+
+
+
+Sendable pragma
+---------------
+
+A container type can be marked as `.sendable`. `.sendable` declares that the type
+encapsulates a `ref` type effectively so that a variable of this container type
+can be used in an `isolate` context:
+
+  ```nim
+
+  type
+    Isolated*[T] {.sendable.} = object ## Isolated data can only be moved, not copied.
+      value: T
+
+  proc `=copy`*[T](dest: var Isolated[T]; src: Isolated[T]) {.error.}
+
+  proc `=sink`*[T](dest: var Isolated[T]; src: Isolated[T]) {.inline.} =
+    # delegate to value's sink operation
+    `=sink`(dest.value, src.value)
+
+  proc `=destroy`*[T](dest: var Isolated[T]) {.inline.} =
+    # delegate to value's destroy operation
+    `=destroy`(dest.value)
+
+  ```
+
+The `.sendable` pragma itself is an experimenal, unchecked, unsafe annotation. It is
+currently only used by `Isolated[T]`.

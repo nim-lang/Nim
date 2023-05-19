@@ -1,5 +1,5 @@
 discard """
-  targets: "c js"
+  matrix: "--mm:refc; --mm:orc; --backend:js --jsbigint64:on; --backend:js --jsbigint64:off"
 """
 
 import times, strutils, unittest

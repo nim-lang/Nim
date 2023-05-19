@@ -110,3 +110,4 @@ htmldocs
 nimdoc.out.css
 # except here:
 !/nimdoc/testproject/expected/*
+pkgs/

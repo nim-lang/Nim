@@ -78,19 +78,24 @@ macro getDiscriminants(a: typedesc): seq[string] =
   let sym = a[1]
   let t = sym.getTypeImpl
   let t2 = t[2]
-  doAssert t2.kind == nnkRecList
-  result = newTree(nnkBracket)
-  for ti in t2:
-    if ti.kind == nnkRecCase:
-      let key = ti[0][0]
-      let typ = ti[0][1]
-      result.add newLit key.strVal
-  if result.len > 0:
+  case t2.kind
+  of nnkEmpty: # allow empty objects
     result = quote do:
-      @`result`
+        seq[string].default
+  of nnkRecList:
+    result = newTree(nnkBracket)
+    for ti in t2:
+      if ti.kind == nnkRecCase:
+        let key = ti[0][0]
+        result.add newLit key.strVal
+    if result.len > 0:
+      result = quote do:
+        @`result`
+    else:
+      result = quote do:
+        seq[string].default
   else:
-    result = quote do:
-      seq[string].default
+    doAssert false, "unexpected kind: " & $t2.kind
 
 macro initCaseObject(T: typedesc, fun: untyped): untyped =
   ## does the minimum to construct a valid case object, only initializing
@@ -217,12 +222,7 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
   elif T is uint|uint64: a = T(to(b, uint64))
   elif T is Ordinal: a = cast[T](to(b, int))
   elif T is pointer: a = cast[pointer](to(b, int))
-  elif T is distinct:
-    when nimvm:
-      # bug, potentially related to https://github.com/nim-lang/Nim/issues/12282
-      a = T(jsonTo(b, distinctBase(T)))
-    else:
-      a.distinctBase.fromJson(b)
+  elif T is distinct: a.distinctBase.fromJson(b)
   elif T is string|SomeNumber: a = to(b,T)
   elif T is cstring:
     case b.kind
@@ -371,7 +371,6 @@ proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V]), op
   ##
   ## See also:
   ## * `fromJsonHook proc<#fromJsonHook,,JsonNode>`_
-  # pending PR #9217 use: toSeq(a) instead of `collect` in `runnableExamples`.
   runnableExamples:
     import std/[tables, json, sugar]
     let foo = (

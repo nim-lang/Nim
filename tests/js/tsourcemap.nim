@@ -1,6 +1,6 @@
 discard """
   action: "run"
-  target: "js"
+  targets: "js"
   cmd: "nim js -r -d:nodejs $options --sourceMap:on $file"
 """
 import std/[os, json, strutils, sequtils, algorithm, assertions, paths, compilesettings]

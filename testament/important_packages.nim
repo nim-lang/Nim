@@ -43,13 +43,14 @@ pkg "awk"
 pkg "bigints"
 pkg "binaryheap", "nim c -r binaryheap.nim"
 pkg "BipBuffer"
-pkg "blscurve", allowFailure = true # pending https://github.com/status-im/nim-blscurve/issues/39
+pkg "blscurve", allowFailure = true
 pkg "bncurve"
 pkg "brainfuck", "nim c -d:release -r tests/compile.nim"
 pkg "bump", "nim c --gc:arc --path:. -r tests/tbump.nim", "https://github.com/disruptek/bump", allowFailure = true
 pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "cello", url = "https://github.com/nim-lang/cello", useHead = true
+pkg "checksums"
 pkg "chroma"
 pkg "chronicles", "nim c -o:chr -r chronicles.nim", url = "https://github.com/nim-lang/nim-chronicles"
 pkg "chronos", "nim c -r -d:release tests/testall"
@@ -57,7 +58,7 @@ pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --gc:orc"
 pkg "compactdict"
 pkg "comprehension", "nimble test", "https://github.com/alehander92/comprehension"
-pkg "criterion", allowFailure = true # pending https://github.com/disruptek/criterion/issues/3 (wrongly closed)
+pkg "criterion", allowFailure = true # needs testing binary
 pkg "datamancer"
 pkg "dashing", "nim c tests/functional.nim"
 pkg "delaunay"
@@ -103,8 +104,8 @@ pkg "NimData", "nim c -o:nimdataa src/nimdata.nim"
 pkg "nimes", "nim c src/nimes.nim"
 pkg "nimfp", "nim c -o:nfp -r src/fp.nim"
 pkg "nimgame2", "nim c --mm:refc nimgame2/nimgame.nim"
-  # XXX Doesn't work with deprecated 'randomize', will create a PR.
 pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
+pkg "nimib"
 pkg "nimlsp"
 pkg "nimly", "nim c -r tests/test_readme_example.nim"
 pkg "nimongo", "nimble test_ci", allowFailure = true
@@ -114,11 +115,11 @@ pkg "nimpy", "nim c -r tests/nimfrompy.nim"
 pkg "nimquery"
 pkg "nimsl"
 pkg "nimsvg"
-pkg "nimterop", "nimble minitest"
+pkg "nimterop", "nimble minitest", url = "https://github.com/nim-lang/nimterop"
 pkg "nimwc", "nim c nimwc.nim", allowFailure = true
 pkg "nimx", "nim c --threads:on test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
-pkg "norm", "testament r tests/sqlite/trows.nim", allowFailure = true
+pkg "norm", "testament r tests/common/tmodel.nim"
 pkg "npeg", "nimble testarc"
 pkg "numericalnim", "nimble nimCI"
 pkg "optionsutils"
@@ -135,7 +136,7 @@ pkg "pylib"
 pkg "rbtree"
 pkg "react", "nimble example"
 pkg "regex", "nim c src/regex"
-pkg "result", "nim c -r result.nim"
+pkg "results", "nim c -r results.nim"
 pkg "RollingHash", "nim c -r tests/test_cyclichash.nim"
 pkg "rosencrantz", "nim c -o:rsncntz -r rosencrantz.nim"
 pkg "sdl1", "nim c -r src/sdl.nim"

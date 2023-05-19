@@ -13,12 +13,12 @@ Nim Destructors and Move Semantics
 About this document
 ===================
 
-This document describes the upcoming Nim runtime which does
+This document describes the ARC/ORC Nim runtime which does
 not use classical GC algorithms anymore but is based on destructors and
-move semantics. The new runtime's advantages are that Nim programs become
+move semantics. The advantages are that Nim programs become
 oblivious to the involved heap sizes and programs are easier to write to make
 effective use of multi-core machines. As a nice bonus, files and sockets and
-the like will not require manual `close` calls anymore.
+the like can be written not to require manual `close` calls anymore.
 
 This document aims to be a precise specification about how
 move semantics and destructors work in Nim.
@@ -101,7 +101,7 @@ well as other standard collections is performed via so-called
 "Lifetime-tracking hooks", which are particular [type bound operators](
 manual.html#procedures-type-bound-operators).
 
-There are 4 different hooks for each (generic or concrete) object type `T` (`T` can also be a
+There are 6 different hooks for each (generic or concrete) object type `T` (`T` can also be a
 `distinct` type) that are called implicitly by the compiler.
 
 (Note: The word "hook" here does not imply any kind of dynamic binding
@@ -131,6 +131,14 @@ The general pattern in `=destroy` looks like:
     if x.field != nil:
       freeResource(x.field)
   ```
+
+A `=destroy` is implicitly annotated with `.raises: []`; a destructor
+should not raise exceptions. For backwards compatibility the compiler
+produces a warning for a `=destroy` that does raise.
+
+A `=destroy` can explicitly list the exceptions it can raise, if any,
+but this of little utility as a raising destructor is implementation defined
+behavior. Later versions of the language specification might cover this case precisely.
 
 
 `=sink` hook
@@ -254,6 +262,41 @@ The general pattern in using `=destroy` with `=trace` looks like:
 **Note**: The `=trace` hooks (which are only used by `--mm:orc`) are currently more experimental and less refined
 than the other hooks.
 
+`=WasMoved` hook
+----------------
+
+A `wasMoved` hook resets the memory of an object to its initial (binary zero) value to signify it was "moved" and to signify its destructor should do nothing and ideally be optimized away.
+
+The prototype of this hook for a type `T` needs to be:
+
+  ```nim
+  proc `=wasMoved`(x: var T)
+  ```
+
+`=dup` hook
+-----------
+
+A `=dup` hook duplicates the memory of an object. `=dup(x)` can be regarded as an optimization replacing the `wasMoved(dest); =copy(dest, x)` operation.
+
+The prototype of this hook for a type `T` needs to be:
+
+  ```nim
+  proc `=dup`(x: T): T
+  ```
+
+The general pattern in implementing `=dup` looks like:
+
+  ```nim
+  type
+    Ref[T] = object
+      data: ptr T
+      rc: ptr int
+
+  proc `=dup`[T](x: Ref[T]): Ref[T] =
+    result = x
+    if x.rc != nil:
+      inc x.rc[]
+  ```
 
 Move semantics
 ==============

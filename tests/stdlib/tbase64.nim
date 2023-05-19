@@ -1,4 +1,5 @@
 ﻿discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
 """
 import std/assertions

@@ -35,7 +35,7 @@ block: # issue #8063
     Foo = enum
       fooX
 
-  {.deprecated: [fooA: fooX].}
+  const fooA {.deprecated: "use fooX instead".} = fooX
   let
     foo: Foo = fooA
   echo foo

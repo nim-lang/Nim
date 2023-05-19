@@ -72,6 +72,69 @@ proc isValueOnlyType(t: PType): bool =
   proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr, tyVar, tyLent}
   result = not types.searchTypeFor(t, wrap)
 
+type
+  SearchResult = enum
+    NotFound, Abort, Found
+
+proc containsDangerousRefAux(t: PType; marker: var IntSet): SearchResult
+
+proc containsDangerousRefAux(n: PNode; marker: var IntSet): SearchResult =
+  result = NotFound
+  case n.kind
+  of nkRecList:
+    for i in 0..<n.len:
+      result = containsDangerousRefAux(n[i], marker)
+      if result == Found: return result
+  of nkRecCase:
+    assert(n[0].kind == nkSym)
+    result = containsDangerousRefAux(n[0], marker)
+    if result == Found: return result
+    for i in 1..<n.len:
+      case n[i].kind
+      of nkOfBranch, nkElse:
+        result = containsDangerousRefAux(lastSon(n[i]), marker)
+        if result == Found: return result
+      else: discard
+  of nkSym:
+    result = containsDangerousRefAux(n.sym.typ, marker)
+  else: discard
+
+proc containsDangerousRefAux(t: PType; marker: var IntSet): SearchResult =
+  result = NotFound
+  if t == nil: return result
+  if containsOrIncl(marker, t.id): return result
+
+  if t.kind == tyRef or (t.kind == tyProc and t.callConv == ccClosure):
+    result = Found
+  elif tfSendable in t.flags:
+    result = Abort
+  else:
+    # continue the type traversal:
+    result = NotFound
+
+  if result != NotFound: return result
+  case t.kind
+  of tyObject:
+    if t[0] != nil:
+      result = containsDangerousRefAux(t[0].skipTypes(skipPtrs), marker)
+    if result == NotFound: result = containsDangerousRefAux(t.n, marker)
+  of tyGenericInst, tyDistinct, tyAlias, tySink:
+    result = containsDangerousRefAux(lastSon(t), marker)
+  of tyArray, tySet, tyTuple, tySequence:
+    for i in 0..<t.len:
+      result = containsDangerousRefAux(t[i], marker)
+      if result == Found: return result
+  else:
+    discard
+
+proc containsDangerousRef(t: PType): bool =
+  # a `ref` type is "dangerous" if it occurs not within a type that is like `Isolated[T]`.
+  # For example:
+  # `ref int` # dangerous
+  # `Isolated[ref int]` # not dangerous
+  var marker = initIntSet()
+  result = containsDangerousRefAux(t, marker) == Found
+
 proc canAlias*(arg, ret: PType): bool =
   if isValueOnlyType(arg):
     # can alias only with addr(arg.x) and we don't care if it is not safe
@@ -80,12 +143,15 @@ proc canAlias*(arg, ret: PType): bool =
     var marker = initIntSet()
     result = canAlias(arg, ret, marker)
 
+const
+  SomeVar = {skForVar, skParam, skVar, skLet, skConst, skResult, skTemp}
+
 proc containsVariable(n: PNode): bool =
   case n.kind
   of nodesToIgnoreSet:
     result = false
   of nkSym:
-    result = n.sym.kind in {skForVar, skParam, skVar, skLet, skConst, skResult, skTemp}
+    result = n.sym.kind in SomeVar
   else:
     for ch in n:
       if containsVariable(ch): return true
@@ -109,7 +175,7 @@ proc checkIsolate*(n: PNode): bool =
           discard "fine, it is isolated already"
         else:
           let argType = n[i].typ
-          if argType != nil and not isCompileTimeOnly(argType) and containsTyRef(argType):
+          if argType != nil and not isCompileTimeOnly(argType) and containsDangerousRef(argType):
             if argType.canAlias(n.typ) or containsVariable(n[i]):
               # bug #19013: Alias information is not enough, we need to check for potential
               # "overlaps". I claim the problem can only happen by reading again from a location
@@ -143,6 +209,12 @@ proc checkIsolate*(n: PNode): bool =
         result = checkIsolate(n[^1])
       else:
         result = false
+    of nkSym:
+      result = true
+      if n.sym.kind in SomeVar:
+        let argType = n.typ
+        if argType != nil and not isCompileTimeOnly(argType) and containsDangerousRef(argType):
+          result = false
     else:
       # unanalysable expression:
       result = false

@@ -112,13 +112,16 @@ type
 proc add(dest: var ItemPre, rst: PRstNode) = dest.add ItemFragment(isRst: true, rst: rst)
 proc add(dest: var ItemPre, str: string) = dest.add ItemFragment(isRst: false, str: str)
 
-proc addRstFileIndex(d: PDoc, info: lineinfos.TLineInfo): rstast.FileIndex =
+proc addRstFileIndex(d: PDoc, fileIndex: lineinfos.FileIndex): rstast.FileIndex =
   let invalid = rstast.FileIndex(-1)
-  result = d.nimToRstFid.getOrDefault(info.fileIndex, default = invalid)
+  result = d.nimToRstFid.getOrDefault(fileIndex, default = invalid)
   if result == invalid:
-    let fname = toFullPath(d.conf, info)
+    let fname = toFullPath(d.conf, fileIndex)
     result = addFilename(d.sharedState, fname)
-    d.nimToRstFid[info.fileIndex] = result
+    d.nimToRstFid[fileIndex] = result
+
+proc addRstFileIndex(d: PDoc, info: lineinfos.TLineInfo): rstast.FileIndex =
+  addRstFileIndex(d, info.fileIndex)
 
 proc cmpDecimalsIgnoreCase(a, b: string): int =
   ## For sorting with correct handling of cases like 'uint8' and 'uint16'.
@@ -562,10 +565,13 @@ proc runAllExamples(d: PDoc) =
     # most useful semantics is that `docCmd` comes after `rdoccmd`, so that we can (temporarily) override
     # via command line
     # D20210224T221756:here
-    let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off --path:$path --nimcache:$nimcache $rdoccmd $docCmd $file" % [
+    var pathArgs = "--path:$path" % [ "path", quoteShell(d.conf.projectPath) ]
+    for p in d.conf.searchPaths:
+      pathArgs = "$args --path:$path" % [ "args", pathArgs, "path", quoteShell(p) ]
+    let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off $pathArgs --nimcache:$nimcache $rdoccmd $docCmd $file" % [
       "nim", quoteShell(os.getAppFilename()),
       "backend", $d.conf.backend,
-      "path", quoteShell(d.conf.projectPath),
+      "pathArgs", pathArgs,
       "libpath", quoteShell(d.conf.libpath),
       "nimcache", quoteShell(outputDir),
       "file", quoteShell(outp),
@@ -600,7 +606,6 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   let useRenderModule = false
   let loc = d.conf.toFileLineCol(n.info)
   let code = extractRunnableExamplesSource(d.conf, n)
-  let codeIndent = extractRunnableExamplesSource(d.conf, n, indent = 2)
 
   if d.conf.errorCounter > 0:
     return (rdoccmd, code)
@@ -616,6 +621,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
     docComment.comment = comment
     var runnableExamples = newTree(nkStmtList,
         docComment,
+        newTree(nkImportStmt, newStrNode(nkStrLit, "std/assertions")),
         newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
     runnableExamples.info = n.info
     for a in n.lastSon: runnableExamples.add a
@@ -629,6 +635,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   else:
     var code2 = code
     if code.len > 0 and "codeReordering" notin code:
+      let codeIndent = extractRunnableExamplesSource(d.conf, n, indent = 2)
       # hacky but simplest solution, until we devise a way to make `{.line.}`
       # work without introducing a scope
       code2 = """
@@ -639,6 +646,7 @@ $#
 #[
 $#
 ]#
+import std/assertions
 import $#
 $#
 """ % [comment, d.filename.quoted, code2]
@@ -1008,7 +1016,7 @@ proc toLangSymbol(k: TSymKind, n: PNode, baseName: string): LangSymbol =
 
   if k == skType: result.symTypeKind = getTypeKind(n)
 
-proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
+proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonExports: bool = false) =
   if (docFlags != kForceExport) and not isVisible(d, nameNode): return
   let
     name = getName(nameNode)
@@ -1060,10 +1068,14 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
       fileIndex: addRstFileIndex(d, nameNode.info))
   addAnchorNim(d.sharedState, external = false, refn = symbolOrId,
                tooltip = detailedName, langSym = rstLangSymbol,
-               priority = symbolPriority(k), info = lineinfo)
+               priority = symbolPriority(k), info = lineinfo,
+               module = addRstFileIndex(d, FileIndex d.module.position))
 
-  nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
-    renderDocComments, renderSyms, renderExpandUsing}, symbolOrIdEnc)
+  let renderFlags =
+    if nonExports: {renderNoBody, renderNoComments, renderDocComments, renderSyms,
+      renderExpandUsing, renderNonExportedFields}
+    else: {renderNoBody, renderNoComments, renderDocComments, renderSyms, renderExpandUsing}
+  nodeToHighlightedHtml(d, n, result, renderFlags, symbolOrIdEnc)
 
   let seeSrc = genSeeSrc(d, toFullPath(d.conf, n.info), n.info.line.int)
 
@@ -1311,12 +1323,13 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
     if p5 != nil: n[pragmasPos].add p5
     if p6 != nil: n[pragmasPos].add p6
 
-proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
+proc generateDoc*(d: PDoc, n, orig: PNode, config: ConfigRef, docFlags: DocFlags = kDefault) =
   ## Goes through nim nodes recursively and collects doc comments.
   ## Main function for `doc`:option: command,
   ## which is implemented in ``docgen2.nim``.
   template genItemAux(skind) =
     genItem(d, n, n[namePos], skind, docFlags)
+  let showNonExports = optShowNonExportedFields in config.globalOptions
   case n.kind
   of nkPragma:
     let pragmaNode = findPragma(n, wDeprecated)
@@ -1343,20 +1356,20 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
       if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         genItem(d, n[i], n[i][0],
-                succ(skType, ord(n.kind)-ord(nkTypeSection)), docFlags)
+                succ(skType, ord(n.kind)-ord(nkTypeSection)), docFlags, showNonExports)
   of nkStmtList:
-    for i in 0..<n.len: generateDoc(d, n[i], orig)
+    for i in 0..<n.len: generateDoc(d, n[i], orig, config)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n[0][0]):
-      generateDoc(d, lastSon(n[0]), orig)
+      generateDoc(d, lastSon(n[0]), orig, config)
   of nkImportStmt:
     for it in n: traceDeps(d, it)
   of nkExportStmt:
     for it in n:
       if it.kind == nkSym:
         if d.module != nil and d.module == it.sym.owner:
-          generateDoc(d, it.sym.ast, orig, kForceExport)
+          generateDoc(d, it.sym.ast, orig, config, kForceExport)
         elif it.sym.ast != nil:
           exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
@@ -1447,7 +1460,8 @@ proc finishGenerateDoc*(d: var PDoc) =
                                   isGroup: true),
                        priority = symbolPriority(k),
                        # select index `0` just to have any meaningful warning:
-                       info = overloadChoices[0].info)
+                       info = overloadChoices[0].info,
+                       module = addRstFileIndex(d, FileIndex d.module.position))
 
   if optGenIndexOnly in d.conf.globalOptions:
     return
@@ -1786,7 +1800,7 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf, hasToc = true)
-  generateDoc(d, ast, ast)
+  generateDoc(d, ast, ast, conf)
   finishGenerateDoc(d)
   writeOutput(d)
   generateIndex(d)

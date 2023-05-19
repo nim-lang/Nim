@@ -23,7 +23,8 @@ type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,
     renderNoPragmas, renderIds, renderNoProcDefs, renderSyms, renderRunnableExamples,
-    renderIr, renderExpandUsing
+    renderIr, renderNonExportedFields, renderExpandUsing
+
   TRenderFlags* = set[TRenderFlag]
   TRenderTok* = object
     kind*: TokType
@@ -652,7 +653,7 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
     inHideable = false
 
 proc gcomma(g: var TSrcGen, n: PNode, c: TContext, start: int = 0,
-            theEnd: int = - 1) =
+            theEnd: int = -1) =
   var ind: int
   if rfInConstExpr in c.flags:
     ind = g.indent + IndentWidth
@@ -1379,15 +1380,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkAccQuoted:
     put(g, tkAccent, "`")
     for i in 0..<n.len:
-      proc getStrVal(n: PNode): string =
-        # pending https://github.com/nim-lang/Nim/pull/17540, use `getStrVal`
-        case n.kind
-        of nkIdent: n.ident.s
-        of nkSym: n.sym.name.s
-        else: ""
       proc isAlpha(n: PNode): bool =
         if n.kind in {nkIdent, nkSym}:
-          let tmp = n.getStrVal
+          let tmp = n.getPIdent.s
           result = tmp.len > 0 and tmp[0] in {'a'..'z', 'A'..'Z'}
       var useSpace = false
       if i == 1 and n[0].kind == nkIdent and n[0].ident.s in ["=", "'"]:
@@ -1481,9 +1476,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkRecList:
     indentNL(g)
     for i in 0..<n.len:
-      optNL(g)
-      gsub(g, n[i], c)
-      gcoms(g)
+      if n[i].kind == nkIdentDefs and n[i][0].skipPragmaExpr.kind == nkPostfix or
+                        renderNonExportedFields in g.flags:
+        optNL(g)
+        gsub(g, n[i], c)
+        gcoms(g)
     dedent(g)
     putNL(g)
   of nkOfInherit:

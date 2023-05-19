@@ -33,7 +33,7 @@ type
     vccplatUWP = "uwp", ## Universal Windows Platform (UWP) Application
     vccplatOneCore = "onecore" # Undocumented platform type in the Windows SDK, probably XBox One SDK platform type.
 
-proc vccVarsAll*(path: string, arch: VccArch = vccarchUnspecified, platform_type: VccPlatformType = vccplatEmpty, sdk_version: string = "", verbose: bool = false): StringTableRef =
+proc vccVarsAll*(path: string, arch: VccArch = vccarchUnspecified, platform_type: VccPlatformType = vccplatEmpty, sdk_version, vctoolset: string = "", verbose: bool = false): StringTableRef =
   ## Returns a string table containing the proper process environment to successfully execute VCC compile commands for the specified SDK version, CPU architecture and platform type.
   ##
   ## path
@@ -44,6 +44,8 @@ proc vccVarsAll*(path: string, arch: VccArch = vccarchUnspecified, platform_type
   ##   The compile target Platform Type. Defaults to the Windows Desktop platform, i.e. a regular Windows executable binary.
   ## sdk_version
   ##   The Windows SDK version to use.
+  ## vctoolset
+  ##  Visual Studio compiler toolset to use.
   ## verbose
   ##   Echo the command-line passed on to the system to load the VCC environment. Defaults to `false`.
 
@@ -63,6 +65,9 @@ proc vccVarsAll*(path: string, arch: VccArch = vccarchUnspecified, platform_type
 
   if sdk_version.len > 0:
     args.add(sdk_version)
+  
+  if vctoolset.len > 0:
+    args.add("-vcvars_ver="&vctoolset)
 
   let argStr = args.join " "
   

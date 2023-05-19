@@ -9,11 +9,13 @@
 
 ## Module that implements ``gorge`` for the compiler.
 
-import msgs, std / sha1, os, osproc, streams, options,
+import msgs, os, osproc, streams, options,
   lineinfos, pathutils
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
+
+import ../dist/checksums/src/checksums/sha1
 
 proc readOutput(p: Process): (string, int) =
   result[0] = ""

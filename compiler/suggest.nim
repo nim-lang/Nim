@@ -36,7 +36,7 @@ import algorithm, sets, prefixmatches, parseutils, tables
 from wordrecg import wDeprecated, wError, wAddr, wYield
 
 when defined(nimsuggest):
-  import passes, tables, pathutils # importer
+  import tables, pathutils # importer
 
 const
   sep = '\t'
@@ -120,7 +120,9 @@ proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int
 proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info: TLineInfo;
                   quality: range[0..100]; prefix: PrefixMatch;
                   inTypeContext: bool; scope: int;
-                  useSuppliedInfo = false): Suggest =
+                  useSuppliedInfo = false,
+                  endLine: uint16 = 0,
+                  endCol = 0): Suggest =
   new(result)
   result.section = section
   result.quality = quality
@@ -176,6 +178,8 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
                       else:
                         getTokenLenFromSource(g.config, s.name.s, infox)
   result.version = g.config.suggestVersion
+  result.endLine = endLine
+  result.endCol = endCol
 
 proc `$`*(suggest: Suggest): string =
   result = $suggest.section
@@ -209,12 +213,18 @@ proc `$`*(suggest: Suggest): string =
     result.add(sep)
     when defined(nimsuggest) and not defined(noDocgen) and not defined(leanCompiler):
       result.add(suggest.doc.escape)
-    if suggest.version in {0, 3}:
+    if suggest.version == 0 or suggest.version == 3:
       result.add(sep)
       result.add($suggest.quality)
       if suggest.section == ideSug:
         result.add(sep)
         result.add($suggest.prefix)
+
+  if (suggest.version == 3 and suggest.section in {ideOutline, ideExpand}):
+    result.add(sep)
+    result.add($suggest.endLine)
+    result.add(sep)
+    result.add($suggest.endCol)
 
 proc suggestResult*(conf: ConfigRef; s: Suggest) =
   if not isNil(conf.suggestionResultHook):

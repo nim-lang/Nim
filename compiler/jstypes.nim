@@ -133,7 +133,7 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
       "var $1 = {size: 0,kind: $2,base: null,node: null,finalizer: null};$n" %
       [result, rope(ord(t.kind))]
     prepend(p.g.typeInfo, s)
-  of tyVar, tyLent, tyRef, tyPtr, tySequence, tyRange, tySet:
+  of tyVar, tyLent, tyRef, tyPtr, tySequence, tyRange, tySet, tyOpenArray:
     var s =
       "var $1 = {size: 0, kind: $2, base: null, node: null, finalizer: null};$n" %
               [result, rope(ord(t.kind))]

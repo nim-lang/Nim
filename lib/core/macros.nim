@@ -145,8 +145,9 @@ type
 
 const
   nnkLiterals* = {nnkCharLit..nnkNilLit}
+  # see matching set CallNodes below
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
-                   nnkCallStrLit}
+                   nnkCallStrLit, nnkHiddenCallConv}
   nnkPragmaCallKinds = {nnkExprColonExpr, nnkCall, nnkCallStrLit}
 
 {.push warnings: off.}
@@ -947,6 +948,8 @@ proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indent
     discard # same as nil node in this representation
   of nnkCharLit .. nnkInt64Lit:
     res.add(" " & $n.intVal)
+  of nnkUIntLit .. nnkUInt64Lit:
+    res.add(" " & $cast[uint64](n.intVal))
   of nnkFloatLit .. nnkFloat64Lit:
     res.add(" " & $n.floatVal)
   of nnkStrLit .. nnkTripleStrLit, nnkCommentStmt, nnkIdent, nnkSym:
@@ -1206,8 +1209,8 @@ const
   RoutineNodes* = {nnkProcDef, nnkFuncDef, nnkMethodDef, nnkDo, nnkLambda,
                    nnkIteratorDef, nnkTemplateDef, nnkConverterDef, nnkMacroDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
-  CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
-    nnkCallStrLit, nnkHiddenCallConv}
+  # see matching set nnkCallKinds above
+  CallNodes* = nnkCallKinds
 
 proc expectKind*(n: NimNode; k: set[NimNodeKind]) =
   ## Checks that `n` is of kind `k`. If this is not the case,

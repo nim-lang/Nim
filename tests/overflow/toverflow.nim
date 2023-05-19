@@ -1,6 +1,6 @@
 discard """
   output: "ok"
-  cmd: "nim $target --overflowChecks:off $options $file"
+  matrix: "--overflowChecks:off; --overflowChecks:off --b:js"
 """
 # Tests nim's ability to detect overflows
 
@@ -12,7 +12,7 @@ var
   overflowDetected = false
 
 try:
-  writeLine(stdout, b - a)
+  echo(b - a)
 except OverflowDefect:
   overflowDetected = true
 

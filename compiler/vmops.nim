@@ -36,7 +36,8 @@ from std/osproc import nil
 when defined(nimPreviewSlimSystem):
   import std/syncio
 else:
-  from std/formatfloat import addFloatRoundtrip, addFloatSprintf 
+  from std/formatfloat import addFloatRoundtrip, addFloatSprintf
+
 
 # There are some useful procs in vmconv.
 import vmconv, vmmarshal
@@ -254,7 +255,7 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2si(readLines, ioop)
     systemop getCurrentExceptionMsg
     systemop getCurrentException
-    registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
+    registerCallback c, "stdlib.osdirs.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
     registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) =
       setResult(a, querySettingImpl(c.config, getInt(a, 0)))
@@ -281,6 +282,12 @@ proc registerAdditionalOps*(c: PCtx) =
     if n.kind != nkSym:
       stackTrace2(c, "isExported() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n)
     setResult(a, sfExported in n.sym.flags)
+
+  registerCallback c, "stdlib.macrocache.hasKey", proc (a: VmArgs) =
+    let
+      table = getString(a, 0)
+      key = getString(a, 1)
+    setResult(a, table in c.graph.cacheTables and key in c.graph.cacheTables[table])
 
   registerCallback c, "stdlib.vmutils.vmTrace", proc (a: VmArgs) =
     c.config.isVmTrace = getBool(a, 0)
@@ -373,6 +380,10 @@ proc registerAdditionalOps*(c: PCtx) =
     let p = a.getVar(0)
     let x = a.getFloat(1)
     addFloatSprintf(p.strVal, x)
+
+  registerCallback c, "stdlib.strutils.formatBiggestFloat", proc(a: VmArgs) =
+    setResult(a, formatBiggestFloat(a.getFloat(0), FloatFormatMode(a.getInt(1)),
+                                    a.getInt(2), chr(a.getInt(3))))
 
   wrapIterator("stdlib.envvars.envPairsImplSeq"): envPairs()
 

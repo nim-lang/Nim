@@ -238,7 +238,7 @@ proc processCompile(conf: ConfigRef; filename: string) =
   extccomp.addExternalFileToCompile(conf, found)
 
 const
-  errNoneBoehmRefcExpectedButXFound = "'arc', 'orc', 'markAndSweep', 'boehm', 'go', 'none', 'regions', or 'refc' expected, but '$1' found"
+  errNoneBoehmRefcExpectedButXFound = "'arc', 'orc', 'atomicArc', 'markAndSweep', 'boehm', 'go', 'none', 'regions', or 'refc' expected, but '$1' found"
   errNoneSpeedOrSizeExpectedButXFound = "'none', 'speed' or 'size' expected, but '$1' found"
   errGuiConsoleOrLibExpectedButXFound = "'gui', 'console' or 'lib' expected, but '$1' found"
   errInvalidExceptionSystem = "'goto', 'setjmp', 'cpp' or 'quirky' expected, but '$1' found"
@@ -262,6 +262,7 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "go": result = conf.selectedGC == gcGo
     of "none": result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
+    of "atomicarc": result = conf.selectedGC == gcAtomicArc
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "opt":
     case arg.normalize
@@ -336,6 +337,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "excessivestacktrace": result = contains(conf.globalOptions, optExcessiveStackTrace)
   of "nilseqs", "nilchecks", "taintmode": warningOptionNoop(switch)
   of "panics": result = contains(conf.globalOptions, optPanics)
+  of "jsbigint64": result = contains(conf.globalOptions, optJsBigInt64)
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
@@ -515,14 +517,7 @@ proc initOrcDefines*(conf: ConfigRef) =
   if conf.exc == excNone and conf.backend != backendCpp:
     conf.exc = excGoto
 
-proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef, isOrc: bool) =
-  if isOrc:
-    conf.selectedGC = gcOrc
-    defineSymbol(conf.symbols, "gcorc")
-  else:
-    conf.selectedGC = gcArc
-    defineSymbol(conf.symbols, "gcarc")
-
+proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef) =
   defineSymbol(conf.symbols, "gcdestructors")
   incl conf.globalOptions, optSeqDestructors
   incl conf.globalOptions, optTinyRtti
@@ -561,9 +556,17 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       conf.selectedGC = gcMarkAndSweep
       defineSymbol(conf.symbols, "gcmarkandsweep")
     of "destructors", "arc":
-      registerArcOrc(pass, conf, false)
+      conf.selectedGC = gcArc
+      defineSymbol(conf.symbols, "gcarc")
+      registerArcOrc(pass, conf)
     of "orc":
-      registerArcOrc(pass, conf, true)
+      conf.selectedGC = gcOrc
+      defineSymbol(conf.symbols, "gcorc")
+      registerArcOrc(pass, conf)
+    of "atomicarc":
+      conf.selectedGC = gcAtomicArc
+      defineSymbol(conf.symbols, "gcatomicarc")
+      registerArcOrc(pass, conf)
     of "hooks":
       conf.selectedGC = gcHooks
       defineSymbol(conf.symbols, "gchooks")
@@ -875,7 +878,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "verbosity":
     expectArg(conf, switch, arg, pass, info)
     let verbosity = parseInt(arg)
-    if verbosity notin {0..3}:
+    if verbosity notin 0..3:
       localError(conf, info, "invalid verbosity level: '$1'" % arg)
     conf.verbosity = verbosity
     var verb = NotesVerbosity[conf.verbosity]
@@ -1008,6 +1011,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(conf, switch, arg, pass, info)
     conf.exc = low(ExceptionSystem)
     defineSymbol(conf.symbols, "noCppExceptions")
+  of "shownonexports":
+    expectNoArg(conf, switch, arg, pass, info)
+    showNonExportedFields(conf)
   of "exceptions":
     case arg.normalize
     of "cpp": conf.exc = excCpp
@@ -1062,29 +1068,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "expandarc":
     expectArg(conf, switch, arg, pass, info)
     conf.arcToExpand[arg] = "T"
-  of "useversion":
-    expectArg(conf, switch, arg, pass, info)
-    case arg
-    of "1.0":
-      defineSymbol(conf.symbols, "NimMajor", "1")
-      defineSymbol(conf.symbols, "NimMinor", "0")
-      # old behaviors go here:
-      defineSymbol(conf.symbols, "nimOldRelativePathBehavior")
-      undefSymbol(conf.symbols, "nimDoesntTrackDefects")
-      ast.eqTypeFlags.excl {tfGcSafe, tfNoSideEffect}
-      conf.globalOptions.incl optNimV1Emulation
-    of "1.2":
-      defineSymbol(conf.symbols, "NimMajor", "1")
-      defineSymbol(conf.symbols, "NimMinor", "2")
-      conf.globalOptions.incl optNimV12Emulation
-    of "1.6":
-      defineSymbol(conf.symbols, "NimMajor", "1")
-      defineSymbol(conf.symbols, "NimMinor", "6")
-      conf.globalOptions.incl optNimV16Emulation
-    else:
-      localError(conf, info, "unknown Nim version; currently supported values are: `1.0`, `1.2`")
-    # always be compatible with 1.x.100:
-    defineSymbol(conf.symbols, "NimPatch", "100")
   of "benchmarkvm":
     processOnOffSwitchG(conf, {optBenchmarkVM}, arg, pass, info)
   of "profilevm":
@@ -1098,6 +1081,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optPanics}, arg, pass, info)
     if optPanics in conf.globalOptions:
       defineSymbol(conf.symbols, "nimPanics")
+  of "jsbigint64":
+    processOnOffSwitchG(conf, {optJsBigInt64}, arg, pass, info)
   of "sourcemap": # xxx document in --fullhelp
     conf.globalOptions.incl optSourcemap
     conf.options.incl optLineDir
