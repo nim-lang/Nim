@@ -2132,7 +2132,7 @@ The `.sendable` pragma itself is an experimenal, unchecked, unsafe annotation. I
 currently only used by `Isolated[T]`.
 
 Virtual pragma
-----------------
+==============
 
 `virtual` is designed to extend or create virtual functions when targeting the cpp backend. When a proc is marked with virtual, it forward declares the proc header within the type's body.
 
