@@ -68,7 +68,7 @@ const
     wRaises, wLocks, wTags, wForbids, wRequires, wEnsures, wEffectsOf,
     wGcSafe, wCodegenDecl, wNoInit, wCompileTime}
   typePragmas* = declPragmas + {wMagic, wAcyclic,
-    wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wShallow,
+    wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wSizeof, wShallow,
     wIncompleteStruct, wCompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wCppNonPod, wBorrow, wGcSafe, wPartial, wExplain, wPackage, wCodegenDecl,
@@ -919,6 +919,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           sym.typ.align = floatInt64Align(c.config)
         else:
           localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
+      of wSizeof:
+        incl(sym.flags, sfSizeOf)
       of wAlign:
         let alignment = expectIntLit(c, it)
         if isPowerOfTwo(alignment) and alignment > 0:

@@ -408,8 +408,25 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
       typ.paddingAtEnd = typ.lastSon.paddingAtEnd
+  
+  of tyGenericInst:
+    var index = typ.len - 1
+    if sfSizeOf in typ[0].sym.flags:
+      var id:int
+      for n in typ[0].sym.ast[0][1].sons:
+        if n.kind == nkCall and n[0].kind == nkIdent and n[0].ident.s == "sizeOf":
+          id = n[1].ident.id
+          break
+      for i,g in typ[0].sym.ast[1].sons:
+        if g.sym.name.id == id:
+          index = i + 1
+          break
+    computeSizeAlign(conf, typ.sons[index])
+    typ.size = typ.sons[index].size
+    typ.align = typ.sons[index].align
+    typ.paddingAtEnd = typ.sons[index].paddingAtEnd
 
-  of tyGenericInst, tyDistinct, tyGenericBody, tyAlias, tySink, tyOwned:
+  of tyDistinct, tyGenericBody, tyAlias, tySink, tyOwned:
     computeSizeAlign(conf, typ.lastSon)
     typ.size = typ.lastSon.size
     typ.align = typ.lastSon.align
