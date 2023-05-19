@@ -93,7 +93,7 @@ pkg "measuremancer", "nimble testDeps; nimble -y test"
 pkg "memo"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
 pkg "nake", "nim c nakefile.nim"
-pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim", "-b patch-1 https://github.com/metagn/neo"
+pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim", "https://github.com/metagn/neo"
 # remove custom url when https://github.com/andreaferretti/neo/pull/53 is merged
 pkg "nesm", "nimble tests", "https://github.com/nim-lang/NESM", useHead = true
 pkg "netty"
