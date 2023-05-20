@@ -171,5 +171,5 @@ pkg "winim", "nim c winim.nim"
 pkg "with"
 pkg "ws", allowFailure = true
 pkg "yaml", "nim c -r test/tserialization.nim"
-pkg "zero_functional", "nim c -r -d:nimNoLentIterators test.nim"
+pkg "zero_functional", "nim c -r test.nim"
 pkg "zippy"
