@@ -99,7 +99,7 @@ proc main =
   if opt.indWidth notin {2, 4, 6, 8}:
     quit "[Error] indent must be in {2, 4, 6, 8}"
 
-  if opt.maxLineLen >= 80:
+  if not(opt.maxLineLen >= 80):
     quit "[Error] maxLineLen must be >= 80"
 
   if outfile.len == 0 and outdir.len == 0:
