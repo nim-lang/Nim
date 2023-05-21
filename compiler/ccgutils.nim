@@ -122,8 +122,10 @@ proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
   var pt = skipTypes(s.typ, typedescInst)
   assert skResult != s.kind
   
+  #note precedence: params override types
   if optByRef in s.options: return true
-  if tfByRef in pt.flags: return true
+  elif sfByCopy in s.flags: return false 
+  elif tfByRef in pt.flags: return true
   elif tfByCopy in pt.flags: return false
   case pt.kind
   of tyObject:
