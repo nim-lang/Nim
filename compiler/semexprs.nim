@@ -1522,7 +1522,9 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
     flags.incl efCannotBeDotCall
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
-  if isSymChoice(n[1]):
+  if isSymChoice(n[1]) or
+      # generics usually leave field names as symchoices, but not types
+      (n[1].kind == nkSym and n[1].sym.kind == skType):
     result = newNodeI(nkDotCall, n.info)
     result.add n[1]
     result.add copyTree(n[0])

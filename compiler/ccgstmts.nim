@@ -329,7 +329,8 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
   else:
     let imm = isAssignedImmediately(p.config, value)
     if imm and p.module.compileToCpp and p.splitDecls == 0 and
-        not containsHiddenPointer(v.typ):
+        not containsHiddenPointer(v.typ) and
+        nimErrorFlagAccessed notin p.flags:
       # C++ really doesn't like things like 'Foo f; f = x' as that invokes a
       # parameterless constructor followed by an assignment operator. So we
       # generate better code here: 'Foo f = x;'
@@ -1622,7 +1623,7 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     let le = e[0]
     let ri = e[1]
     var a: TLoc
-    discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs), skVar)
+    discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs), dkVar)
     initLoc(a, locNone, le, OnUnknown)
     a.flags.incl(lfEnforceDeref)
     a.flags.incl(lfPrepareForMutation)

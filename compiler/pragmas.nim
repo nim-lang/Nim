@@ -84,7 +84,7 @@ const
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wDefine,
     wCompilerProc, wCore}
-  paramPragmas* = {wNoalias, wInject, wGensym}
+  paramPragmas* = {wNoalias, wInject, wGensym, wByRef, wByCopy}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
                       wThread, wRaises, wEffectsOf, wLocks, wTags, wForbids, wGcSafe,
@@ -1198,13 +1198,17 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           invalidPragma(c, it)
       of wByRef:
         noVal(c, it)
-        if sym == nil or sym.typ == nil:
+        if sym != nil and sym.kind == skParam:
+          sym.options.incl optByRef
+        elif sym == nil or sym.typ == nil:
           processOption(c, it, c.config.options)
         else:
           incl(sym.typ.flags, tfByRef)
       of wByCopy:
         noVal(c, it)
-        if sym.kind != skType or sym.typ == nil: invalidPragma(c, it)
+        if sym.kind == skParam:
+          incl(sym.flags, sfByCopy)
+        elif sym.kind != skType or sym.typ == nil: invalidPragma(c, it)
         else: incl(sym.typ.flags, tfByCopy)
       of wPartial:
         noVal(c, it)

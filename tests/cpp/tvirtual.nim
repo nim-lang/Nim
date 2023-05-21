@@ -8,6 +8,7 @@ hello boo
 Const Message: hello world
 NimPrinter: hello world
 NimPrinterConstRef: hello world
+NimPrinterConstRefByRef: hello world
 '''
 """
 
@@ -22,6 +23,10 @@ NimPrinterConstRef: hello world
     virtual void printConstRef(char* message, const int& flag) const {
         std::cout << "Const Ref Message: " << message << std::endl;
     }  
+    virtual void printConstRef2(char* message, const int& flag) const {
+        std::cout << "Const Ref2 Message: " << message << std::endl;
+    }  
+    
 };
 """.}
 
@@ -34,10 +39,10 @@ type
   CppPrinter {.importcpp, inheritable.} = object
   NimPrinter {.exportc.} = object of CppPrinter
 
-proc salute(self:FooPtr) {.virtual.} = 
+proc salute(self: FooPtr) {.virtual.} = 
   echo "hello foo"
 
-proc salute(self:BooPtr) {.virtual.} =
+proc salute(self: BooPtr) {.virtual.} =
   echo "hello boo"
 
 let foo = newCpp[Foo]()
@@ -50,19 +55,23 @@ boo.salute()
 booAsFoo.salute()
 let message = "hello world".cstring
 
-proc printConst(self:CppPrinter, message:cstring) {.importcpp.}
+proc printConst(self: CppPrinter, message: cstring) {.importcpp.}
 CppPrinter().printConst(message)
 
 #notice override is optional. 
 #Will make the cpp compiler to fail if not virtual function with the same signature if found in the base type
-proc printConst(self:NimPrinter, message:cstring) {.virtual:"$1('2 #2) const override".} =
+proc printConst(self: NimPrinter, message: cstring) {.virtual:"$1('2 #2) const override".} =
   echo "NimPrinter: " & $message
 
-proc printConstRef(self:NimPrinter, message:cstring, flag:int32) {.virtual:"$1('2 #2, const '3& #3 ) const override".} =
+proc printConstRef(self: NimPrinter, message: cstring, flag: int32) {.virtual:"$1('2 #2, const '3& #3 ) const override".} =
   echo "NimPrinterConstRef: " & $message
+
+proc printConstRef2(self: NimPrinter, message: cstring, flag {.byref.}: int32) {.virtual:"$1('2 #2, const '3 #3 ) const override".} =
+  echo "NimPrinterConstRefByRef: " & $message
 
 NimPrinter().printConst(message)
 var val : int32 = 10
 NimPrinter().printConstRef(message, val)
+NimPrinter().printConstRef2(message, val)
 
 

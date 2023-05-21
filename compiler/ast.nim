@@ -231,7 +231,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 50 flags!
+  TSymFlag* = enum    # 51 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -314,6 +314,7 @@ type
                       # an infinite loop, this flag is used as a sentinel to stop it.
     sfVirtual         # proc is a C++ virtual function
     sfSizeOf
+    sfByCopy          # param is marked as pass bycopy
 
   TSymFlags* = set[TSymFlag]
 
