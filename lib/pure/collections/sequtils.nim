@@ -201,7 +201,7 @@ func deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
     assert unique1 == @[1, 3, 4, 2, 8]
     assert unique2 == @["a", "c", "d"]
 
-  result = @[]
+  result = newSeqOfCap[T](s.len div 4)
   if s.len > 0:
     if isSorted:
       var prev = s[0]
@@ -491,7 +491,7 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
     assert f1 == @["red", "black"]
     assert f2 == @["yellow"]
 
-  result = newSeq[T]()
+  result = newSeqOfCap[T](s.len div 4)
   for i in 0 ..< s.len:
     if pred(s[i]):
       result.add(s[i])
