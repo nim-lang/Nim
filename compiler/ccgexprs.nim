@@ -755,7 +755,7 @@ proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
 proc genDeref(p: BProc, e: PNode, d: var TLoc) =
   assert e[0].kind notin {nkBlockExpr, nkBlockStmt}, "it should have been transformed in transf"
 
-  let mt = mapType(p.config, e[0].typ, mapTypeChooser(e[0]))
+  let mt = mapType(p.config, e[0].typ, mapTypeChooser(e[0]) == skParam)
   if mt in {ctArray, ctPtrToArray} and lfEnforceDeref notin d.flags:
     # XXX the amount of hacks for C's arrays is incredible, maybe we should
     # simply wrap them in a struct? --> Losing auto vectorization then?
@@ -823,7 +823,7 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     initLocExpr(p, e[0], a)
     putIntoDest(p, d, e, "&" & a.r, a.storage)
     #Message(e.info, warnUser, "HERE NEW &")
-  elif mapType(p.config, e[0].typ, mapTypeChooser(e[0])) == ctArray or isCppRef(p, e.typ):
+  elif mapType(p.config, e[0].typ, mapTypeChooser(e[0]) == skParam) == ctArray or isCppRef(p, e.typ):
     expr(p, e[0], d)
   else:
     var a: TLoc
@@ -2510,10 +2510,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mNewSeqOfCap: genNewSeqOfCap(p, e, d)
   of mSizeOf:
     let t = e[1].typ.skipTypes({tyTypeDesc})
-    putIntoDest(p, d, e, "((NI)sizeof($1))" % [getTypeDesc(p.module, t, skVar)])
+    putIntoDest(p, d, e, "((NI)sizeof($1))" % [getTypeDesc(p.module, t, dkVar)])
   of mAlignOf:
     let t = e[1].typ.skipTypes({tyTypeDesc})
-    putIntoDest(p, d, e, "((NI)NIM_ALIGNOF($1))" % [getTypeDesc(p.module, t, skVar)])
+    putIntoDest(p, d, e, "((NI)NIM_ALIGNOF($1))" % [getTypeDesc(p.module, t, dkVar)])
   of mOffsetOf:
     var dotExpr: PNode
     if e[1].kind == nkDotExpr:
@@ -2523,7 +2523,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else:
       internalError(p.config, e.info, "unknown ast")
     let t = dotExpr[0].typ.skipTypes({tyTypeDesc})
-    let tname = getTypeDesc(p.module, t, skVar)
+    let tname = getTypeDesc(p.module, t, dkVar)
     let member =
       if t.kind == tyTuple:
         "Field" & rope(dotExpr[1].sym.position)
@@ -2843,7 +2843,7 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
     # expression not found in the cache:
     inc(p.module.labels)
     p.module.s[cfsData].addf("static NIM_CONST $1 $2 = ",
-         [getTypeDesc(p.module, t, skConst), tmp])
+         [getTypeDesc(p.module, t, dkConst), tmp])
     genBracedInit(p, n, isConst = true, t, p.module.s[cfsData])
     p.module.s[cfsData].addf(";$n", [])
 
@@ -2870,13 +2870,13 @@ proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =
     if not genConstSetup(p, sym): return
   assert(sym.loc.r != "", $sym.name.s & $sym.itemId)
   if m.hcrOn:
-    m.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t, skVar), sym.loc.r]);
+    m.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t, dkVar), sym.loc.r]);
     m.initProc.procSec(cpsLocals).addf(
       "\t$1 = ($2*)hcrGetGlobal($3, \"$1\");$n", [sym.loc.r,
-      getTypeDesc(m, sym.loc.t, skVar), getModuleDllPath(q, sym)])
+      getTypeDesc(m, sym.loc.t, dkVar), getModuleDllPath(q, sym)])
   else:
     let headerDecl = "extern NIM_CONST $1 $2;$n" %
-        [getTypeDesc(m, sym.loc.t, skVar), sym.loc.r]
+        [getTypeDesc(m, sym.loc.t, dkVar), sym.loc.r]
     m.s[cfsData].add(headerDecl)
     if sfExportc in sym.flags and p.module.g.generatedHeader != nil:
       p.module.g.generatedHeader.s[cfsData].add(headerDecl)
@@ -2892,7 +2892,7 @@ proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
   q.s[cfsData].add data
   if q.hcrOn:
     # generate the global pointer with the real name
-    q.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(q, sym.loc.t, skVar), sym.loc.r])
+    q.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(q, sym.loc.t, dkVar), sym.loc.r])
     # register it (but ignore the boolean result of hcrRegisterGlobal)
     q.initProc.procSec(cpsLocals).addf(
       "\thcrRegisterGlobal($1, \"$2\", sizeof($3), NULL, (void**)&$2);$n",

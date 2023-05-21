@@ -152,12 +152,16 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
     result = n
     let n = n[1]
     let ident = considerQuotedIdent(c, n)
-    var candidates = searchInScopesFilterBy(c, ident, routineKinds)
+    var candidates = searchInScopesFilterBy(c, ident, routineKinds+{skType})
+    # skType here because could be type conversion
     if candidates.len > 0:
       let s = candidates[0] # XXX take into account the other candidates!
       isMacro = s.kind in {skTemplate, skMacro}
       if withinBind in flags or s.id in ctx.toBind:
-        result = newDot(result, symChoice(c, n, s, scClosed))
+        if s.kind == skType: # don't put types in sym choice
+          result = newDot(result, semGenericStmtSymbol(c, n, s, ctx, flags, fromDotExpr=true))
+        else:
+          result = newDot(result, symChoice(c, n, s, scClosed))
       elif s.isMixedIn:
         result = newDot(result, symChoice(c, n, s, scForceOpen))
       else:

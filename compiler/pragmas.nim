@@ -34,7 +34,7 @@ const
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wEffectsOf, wTags, wForbids, wLocks, wDelegator, wGcSafe,
     wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy,
-    wRequires, wEnsures, wEnforceNoRaises, wSystemRaisesDefect}
+    wRequires, wEnsures, wEnforceNoRaises, wSystemRaisesDefect, wVirtual}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
@@ -84,7 +84,7 @@ const
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wDefine,
     wCompilerProc, wCore}
-  paramPragmas* = {wNoalias, wInject, wGensym}
+  paramPragmas* = {wNoalias, wInject, wGensym, wByRef, wByCopy}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
                       wThread, wRaises, wEffectsOf, wLocks, wTags, wForbids, wGcSafe,
@@ -211,9 +211,9 @@ proc processImportObjC(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   let m = s.getModule()
   incl(m.flags, sfCompileToObjc)
 
-proc newEmptyStrNode(c: PContext; n: PNode): PNode {.noinline.} =
+proc newEmptyStrNode(c: PContext; n: PNode, strVal: string = ""): PNode {.noinline.} =
   result = newNodeIT(nkStrLit, n.info, getSysType(c.graph, n.info, tyString))
-  result.strVal = ""
+  result.strVal = strVal
 
 proc getStrLitNode(c: PContext, n: PNode): PNode =
   if n.kind notin nkPragmaCallKinds or n.len != 2:
@@ -244,6 +244,14 @@ proc expectIntLit(c: PContext, n: PNode): int =
 proc getOptionalStr(c: PContext, n: PNode, defaultStr: string): string =
   if n.kind in nkPragmaCallKinds: result = expectStrLit(c, n)
   else: result = defaultStr
+
+proc processVirtual(c: PContext, n: PNode, s: PSym) =
+  s.constraint = newEmptyStrNode(c, n, getOptionalStr(c, n, "$1"))
+  s.constraint.strVal = s.constraint.strVal % s.name.s
+  s.flags.incl {sfVirtual, sfInfixCall, sfExportc, sfMangleCpp}
+  
+  s.typ.callConv = ccNoConvention
+  incl c.config.globalOptions, optMixedMode
 
 proc processCodegenDecl(c: PContext, n: PNode, sym: PSym) =
   sym.constraint = getStrLitNode(c, n)
@@ -1188,13 +1196,17 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           invalidPragma(c, it)
       of wByRef:
         noVal(c, it)
-        if sym == nil or sym.typ == nil:
+        if sym != nil and sym.kind == skParam:
+          sym.options.incl optByRef
+        elif sym == nil or sym.typ == nil:
           processOption(c, it, c.config.options)
         else:
           incl(sym.typ.flags, tfByRef)
       of wByCopy:
         noVal(c, it)
-        if sym.kind != skType or sym.typ == nil: invalidPragma(c, it)
+        if sym.kind == skParam:
+          incl(sym.flags, sfByCopy)
+        elif sym.kind != skType or sym.typ == nil: invalidPragma(c, it)
         else: incl(sym.typ.flags, tfByCopy)
       of wPartial:
         noVal(c, it)
@@ -1263,6 +1275,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         sym.flags.incl sfNeverRaises
       of wSystemRaisesDefect:
         sym.flags.incl sfSystemRaisesDefect
+      of wVirtual:
+          processVirtual(c, it, sym)
+      
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
