@@ -1206,7 +1206,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         if sym.kind == skParam:
           incl(sym.flags, sfByCopy)
-        elif sym.kind != skType or sym.typ == nil:invalidPragma(c, it)
+        elif sym.kind != skType or sym.typ == nil: invalidPragma(c, it)
         else: incl(sym.typ.flags, tfByCopy)
       of wPartial:
         noVal(c, it)
