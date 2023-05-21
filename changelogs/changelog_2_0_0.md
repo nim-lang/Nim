@@ -524,3 +524,4 @@
   `--filename` and `--notFilename` respectively.
   Also the semantics become consistent for such positive/negative filters.
 - koch now supports the `--skipIntegrityCheck` option. The command `koch --skipIntegrityCheck boot -d:release` always builds the compiler twice.
+- Nimpretty `--indent` argument must be in `{2, 4, 6, 8}` and `--maxLineLen` argument must be >= `80`.
