@@ -96,8 +96,8 @@ proc main =
   if outfile.len != 0 and outdir.len != 0:
     quit "[Error] out and outDir cannot both be specified"
 
-  if opt.indWidth notin {2, 4, 6, 8}:
-    quit "[Error] indent must be in {2, 4, 6, 8}"
+  if opt.indWidth notin {0, 2, 4, 6, 8}:
+    quit "[Error] indent must be in {0, 2, 4, 6, 8}"
 
   if not(opt.maxLineLen >= 80):
     quit "[Error] maxLineLen must be >= 80"
