@@ -474,6 +474,7 @@
 - When compiling for Release the flag `-fno-math-errno` is used for GCC.
 - When compiling for Release the flag `--build-id=none` is used for GCC Linker.
 - Removed deprecated `LineTooLong` hint.
+- Line numbers and filenames of source files work correctly inside templates for JavaScript targets.
 
 
 ## Docgen
