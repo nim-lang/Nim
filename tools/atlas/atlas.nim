@@ -248,7 +248,9 @@ proc toUrl(c: var AtlasContext; p: string): string =
     fillPackageLookupTable(c)
     result = c.p.getOrDefault(unicode.toLower p)
   if result.len == 0:
-    inc c.errors
+    result = getUrlFromGithub(p)
+    if result.len == 0:
+      inc c.errors
 
 proc toName(p: string): PackageName =
   if p.isUrl:
