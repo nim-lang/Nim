@@ -793,6 +793,7 @@ proc lineDir(config: ConfigRef, info: TLineInfo, line: int): Rope =
     rope(toFullPath(config, info)), rope(line), rope(info.toColumn)
   ]
 
+var previousFileName = newStringOfCap(20)  # For frameInfo inside templates.
 proc genLineDir(p: PProc, n: PNode) =
   let line = toLinenumber(n.info)
   if line < 0:
@@ -803,6 +804,10 @@ proc genLineDir(p: PProc, n: PNode) =
     lineF(p, "$1", [lineDir(p.config, n.info, line)])
   if hasFrameInfo(p):
     lineF(p, "F.line = $1;$n", [rope(line)])
+    let currentFileName = toFilename(p.config, n.info)
+    if previousFileName != currentFileName:
+      lineF(p, "F.filename = $1;$n", [makeJSString(currentFileName)])
+      previousFileName = currentFileName
 
 proc genWhileStmt(p: PProc, n: PNode) =
   var cond: TCompRes
