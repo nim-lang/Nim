@@ -29,6 +29,8 @@ Command:
                         the given Nimble file
   update [filter]       update every package in the workspace that has a remote
                         URL that matches `filter` if a filter is given
+  build|test|doc|tasks  currently delegates to `nimble build|test|doc`
+  task <taskname>       currently delegates to `nimble <taskname>`
 
 Options:
   --keepCommits         do not perform any `git checkouts`
@@ -91,6 +93,20 @@ type
 
 include testdata
 
+proc silentExec(cmd: string; args: openArray[string]): (string, int) =
+  var cmdLine = cmd
+  for i in 0..<args.len:
+    cmdLine.add ' '
+    cmdLine.add quoteShell(args[i])
+  result = osproc.execCmdEx(cmdLine)
+
+proc nimbleExec(cmd: string; args: openArray[string]) =
+  var cmdLine = "nimble " & cmd
+  for i in 0..<args.len:
+    cmdLine.add ' '
+    cmdLine.add quoteShell(args[i])
+  discard os.execShellCmd(cmdLine)
+
 proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, int) =
   when MockupRun:
     assert TestLog[c.step].cmd == cmd, $(TestLog[c.step].cmd, cmd)
@@ -109,11 +125,7 @@ proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, 
       result[1] = TestLog[c.step].exitCode
     inc c.step
   else:
-    var cmdLine = $cmd
-    for i in 0..<args.len:
-      cmdLine.add ' '
-      cmdLine.add quoteShell(args[i])
-    result = osproc.execCmdEx(cmdLine)
+    result = silentExec($cmd, args)
     when ProduceTest:
       echo "cmd ", cmd, " args ", args, " --> ", result
 
@@ -448,7 +460,7 @@ proc installDependencies(c: var AtlasContext; nimbleFile: string) =
   # 1. find .nimble file in CWD
   # 2. install deps from .nimble
   var work: seq[Dependency] = @[]
-  let (path, pkgname, _) = splitFile(nimbleFile)
+  let (_, pkgname, _) = splitFile(nimbleFile)
   let dep = Dependency(name: toName(pkgname), url: "", commit: "")
   discard collectDeps(c, work, dep, nimbleFile)
   let paths = cloneLoop(c, work)
@@ -560,6 +572,10 @@ proc main =
       echo toJson(extractRequiresInfo(args[0]))
     else:
       error "File does not exist: " & args[0]
+  of "build", "test", "doc", "tasks":
+    nimbleExec(action, args)
+  of "task":
+    nimbleExec("", args)
   else:
     error "Invalid action: " & action
 
