@@ -44,13 +44,15 @@ Thanks to this setup, it's easy to develop multiple projects at the same time.
 A project plus its dependencies are stored in a workspace:
 
   $workspace / main project
-  $workspace / dependency A
-  $workspace / dependency B
+  $workspace / _deps / dependency A
+  $workspace / _deps / dependency B
 
+The deps directory can be set via `--deps:DIR` explicitly. It defaults to `_deps`.
+If you want it to be the same as the workspace use `--deps:.`.
 
-No attempts are being made at keeping directory hygiene inside the
-workspace, you're supposed to create appropriate `$workspace` directories
-at your own leisure.
+You can move a dependency out of the `_deps` subdirectory into the workspace.
+This can be convenient should you decide to work on a dependency too. You need to
+patch the `nim.cfg` then.
 
 
 ## Commands
@@ -85,3 +87,7 @@ Use the .nimble file to setup the project's dependencies.
 Update every package in the workspace that has a remote URL that
 matches `filter` if a filter is given. The package is only updated
 if there are no uncommitted changes.
+
+### Others
+
+Run `atlas --help` for more features.
