@@ -29,12 +29,17 @@ Command:
                         the given Nimble file
   update [filter]       update every package in the workspace that has a remote
                         URL that matches `filter` if a filter is given
+  build|test|doc|tasks  currently delegates to `nimble build|test|doc`
+  task <taskname>       currently delegates to `nimble <taskname>`
 
 Options:
   --keepCommits         do not perform any `git checkouts`
   --cfgHere             also create/maintain a nim.cfg in the current
                         working directory
   --workspace=DIR       use DIR as workspace
+  --deps=DIR            store dependencies in DIR instead of the workspace
+                        (if DIR is a relative path, it is interpreted to
+                        be relative to the workspace)
   --version             show the version
   --help                show this help
 """
@@ -63,7 +68,7 @@ type
     url, commit: string
     rel: DepRelation # "requires x < 1.0" is silly, but Nimble allows it so we have too.
   AtlasContext = object
-    projectDir, workspace: string
+    projectDir, workspace, depsDir: string
     hasPackageList: bool
     keepCommits: bool
     cfgHere: bool
@@ -91,6 +96,20 @@ type
 
 include testdata
 
+proc silentExec(cmd: string; args: openArray[string]): (string, int) =
+  var cmdLine = cmd
+  for i in 0..<args.len:
+    cmdLine.add ' '
+    cmdLine.add quoteShell(args[i])
+  result = osproc.execCmdEx(cmdLine)
+
+proc nimbleExec(cmd: string; args: openArray[string]) =
+  var cmdLine = "nimble " & cmd
+  for i in 0..<args.len:
+    cmdLine.add ' '
+    cmdLine.add quoteShell(args[i])
+  discard os.execShellCmd(cmdLine)
+
 proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, int) =
   when MockupRun:
     assert TestLog[c.step].cmd == cmd, $(TestLog[c.step].cmd, cmd)
@@ -109,11 +128,7 @@ proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, 
       result[1] = TestLog[c.step].exitCode
     inc c.step
   else:
-    var cmdLine = $cmd
-    for i in 0..<args.len:
-      cmdLine.add ' '
-      cmdLine.add quoteShell(args[i])
-    result = osproc.execCmdEx(cmdLine)
+    result = silentExec($cmd, args)
     when ProduceTest:
       echo "cmd ", cmd, " args ", args, " --> ", result
 
@@ -265,7 +280,10 @@ proc isShortCommitHash(commit: string): bool {.inline.} =
   commit.len >= 4 and commit.len < 40
 
 proc checkoutCommit(c: var AtlasContext; w: Dependency) =
-  let dir = c.workspace / w.name.string
+  var dir = c.workspace / w.name.string
+  if not dirExists(dir):
+    dir = c.depsDir / w.name.string
+
   withDir c, dir:
     if w.commit.len == 0 or cmpIgnoreCase(w.commit, "head") == 0:
       gitPull(c, w.name)
@@ -372,8 +390,8 @@ proc cloneLoop(c: var AtlasContext; work: var seq[Dependency]): seq[string] =
     let destDir = toDestDir(w.name)
     let oldErrors = c.errors
 
-    if not dirExists(c.workspace / destDir):
-      withDir c, c.workspace:
+    if not dirExists(c.workspace / destDir) and not dirExists(c.depsDir / destDir):
+      withDir c, (if i == 0: c.workspace else: c.depsDir):
         let err = cloneUrl(c, w.url, destDir, false)
         if err != "":
           error c, w.name, err
@@ -405,7 +423,9 @@ proc patchNimCfg(c: var AtlasContext; deps: seq[string]; cfgPath: string) =
   var paths = "--noNimblePath\n"
   for d in deps:
     let pkgname = toDestDir d.PackageName
-    let x = relativePath(c.workspace / pkgname, cfgPath, '/')
+    let pkgdir = if dirExists(c.workspace / pkgname): c.workspace / pkgname
+                 else: c.depsDir / pkgName
+    let x = relativePath(pkgdir, cfgPath, '/')
     paths.add "--path:\"" & x & "\"\n"
   var cfgContent = configPatternBegin & paths & configPatternEnd
 
@@ -448,14 +468,14 @@ proc installDependencies(c: var AtlasContext; nimbleFile: string) =
   # 1. find .nimble file in CWD
   # 2. install deps from .nimble
   var work: seq[Dependency] = @[]
-  let (path, pkgname, _) = splitFile(nimbleFile)
+  let (_, pkgname, _) = splitFile(nimbleFile)
   let dep = Dependency(name: toName(pkgname), url: "", commit: "")
   discard collectDeps(c, work, dep, nimbleFile)
   let paths = cloneLoop(c, work)
   patchNimCfg(c, paths, if c.cfgHere: getCurrentDir() else: findSrcDir(c))
 
-proc updateWorkspace(c: var AtlasContext; filter: string) =
-  for kind, file in walkDir(c.workspace):
+proc updateWorkspace(c: var AtlasContext; dir, filter: string) =
+  for kind, file in walkDir(dir):
     if kind == pcDir and dirExists(file / ".git"):
       c.withDir file:
         let pkg = PackageName(file)
@@ -508,6 +528,11 @@ proc main =
           createDir(val)
         else:
           writeHelp()
+      of "deps":
+        if val.len > 0:
+          c.depsDir = val
+        else:
+          writeHelp()
       of "cfghere": c.cfgHere = true
       else: writeHelp()
     of cmdEnd: assert false, "cannot happen"
@@ -518,6 +543,19 @@ proc main =
     c.workspace = getCurrentDir()
     while c.workspace.len > 0 and dirExists(c.workspace / ".git"):
       c.workspace = c.workspace.parentDir()
+
+  when MockupRun:
+    c.depsDir = c.workspace
+  else:
+    if c.depsDir.len > 0:
+      if c.depsDir == ".":
+        c.depsDir = c.workspace
+      elif not isAbsolute(c.depsDir):
+        c.depsDir = c.workspace / c.depsDir
+    else:
+      c.depsDir = c.workspace / "_deps"
+    createDir(c.depsDir)
+
   echo "Using workspace ", c.workspace
 
   case action
@@ -553,13 +591,18 @@ proc main =
     updatePackages(c)
     search getPackages(c.workspace), args
   of "update":
-    updateWorkspace(c, if args.len == 0: "" else: args[0])
+    updateWorkspace(c, c.workspace, if args.len == 0: "" else: args[0])
+    updateWorkspace(c, c.depsDir, if args.len == 0: "" else: args[0])
   of "extract":
     singleArg()
     if fileExists(args[0]):
       echo toJson(extractRequiresInfo(args[0]))
     else:
       error "File does not exist: " & args[0]
+  of "build", "test", "doc", "tasks":
+    nimbleExec(action, args)
+  of "task":
+    nimbleExec("", args)
   else:
     error "Invalid action: " & action
 
