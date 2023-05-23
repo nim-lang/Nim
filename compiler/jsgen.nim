@@ -110,6 +110,7 @@ type
     extraIndent: int
     up: PProc     # up the call chain; required for closure support
     declaredGlobals: IntSet
+    previousFileName: string  # For frameInfo inside templates.
 
 template config*(p: PProc): ConfigRef = p.module.config
 
@@ -803,6 +804,10 @@ proc genLineDir(p: PProc, n: PNode) =
     lineF(p, "$1", [lineDir(p.config, n.info, line)])
   if hasFrameInfo(p):
     lineF(p, "F.line = $1;$n", [rope(line)])
+    let currentFileName = toFilename(p.config, n.info)
+    if p.previousFileName != currentFileName:
+      lineF(p, "F.filename = $1;$n", [makeJSString(currentFileName)])
+      p.previousFileName = currentFileName
 
 proc genWhileStmt(p: PProc, n: PNode) =
   var cond: TCompRes
