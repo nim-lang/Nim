@@ -473,6 +473,7 @@
 
 - When compiling for Release the flag `-fno-math-errno` is used for GCC.
 - Removed deprecated `LineTooLong` hint.
+- Line numbers and filenames of source files work correctly inside templates for JavaScript targets.
 
 
 ## Docgen
