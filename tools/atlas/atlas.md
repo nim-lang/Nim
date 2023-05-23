@@ -60,16 +60,20 @@ patch the `nim.cfg` then.
 Atlas supports the following commands:
 
 
-### Clone <url>
+### Clone/Update <url>
 
 Clones a URL and all of its dependencies (recursively) into the workspace.
 Creates or patches a `nim.cfg` file with the required `--path` entries.
 
+**Note**: Due to the used algorithms an `update` is the same as a `clone`.
 
-### Clone <package name>
+
+### Clone/Update <package name>
 
 The `<package name>` is translated into an URL via `packages.json` and
 then `clone <url>` is performed.
+
+**Note**: Due to the used algorithms an `update` is the same as a `clone`.
 
 
 ### Search <term term2 term3 ...>
@@ -82,7 +86,7 @@ in its description (or name or list of tags).
 
 Use the .nimble file to setup the project's dependencies.
 
-### Update [filter]
+### UpdateWorkspace [filter]
 
 Update every package in the workspace that has a remote URL that
 matches `filter` if a filter is given. The package is only updated
