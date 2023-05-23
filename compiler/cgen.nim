@@ -623,6 +623,27 @@ proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
       # and s.owner.kind == skModule # owner isn't always a module (global pragma on local var)
       # and s.loc.k == locGlobalVar  # loc isn't always initialized when this proc is used
 
+proc genGlobalVarDecl(p: BProc, n: PNode; td, value: Rope; decl: var Rope) = 
+  let s = n.sym
+  if s.constraint.isNil:
+    if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
+      decl.addf "NIM_ALIGN($1) ", [rope(s.alignment)]
+    if p.hcrOn: decl.add("static ")
+    elif sfImportc in s.flags: decl.add("extern ")
+    elif lfExportLib in s.loc.flags: decl.add("N_LIB_EXPORT_VAR ")
+    else: decl.add("N_LIB_PRIVATE ")
+    if s.kind == skLet and value != "": decl.add("NIM_CONST ")
+    decl.add(td)
+    if p.hcrOn: decl.add("*")
+    if sfRegister in s.flags: decl.add(" register")
+    if sfVolatile in s.flags: decl.add(" volatile")
+    if sfNoalias in s.flags: decl.add(" NIM_NOALIAS")
+  else:
+    if value != "":
+      decl = runtimeFormat(s.cgDeclFrmt & " = $#;$n", [td, s.loc.r, value])
+    else:
+      decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
+    
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
   let s = n.sym
   if s.loc.k == locNone:
@@ -649,44 +670,28 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
     else:
       var decl: Rope = ""
       var td = getTypeDesc(p.module, s.loc.t, dkVar)
-      if s.constraint.isNil:
-        if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
-          decl.addf "NIM_ALIGN($1) ", [rope(s.alignment)]
-        if p.hcrOn: decl.add("static ")
-        elif sfImportc in s.flags: decl.add("extern ")
-        elif lfExportLib in s.loc.flags: decl.add("N_LIB_EXPORT_VAR ")
-        else: decl.add("N_LIB_PRIVATE ")
-        if s.kind == skLet and value != "": decl.add("NIM_CONST ")
-        decl.add(td)
-        if p.hcrOn: decl.add("*")
-        if sfRegister in s.flags: decl.add(" register")
-        if sfVolatile in s.flags: decl.add(" volatile")
-        if sfNoalias in s.flags: decl.add(" NIM_NOALIAS")
-        if value != "":
-          if p.module.compileToCpp and value.startsWith "{{}":
-            # TODO: taking this branch, re"\{\{\}(,\s\{\})*\}" might be emitted, resulting in
-            # either warnings (GCC 12.2+) or errors (Clang 15, MSVC 19.3+) of C++11+ compilers **when
-            # explicit constructors are around** due to overload resolution rules in place [^0][^1][^2]
-            # *Workaround* here: have C++'s static initialization mechanism do the default init work,
-            # for us lacking a deeper knowledge of an imported object's constructors' ex-/implicitness
-            # (so far) *and yet* trying to achieve default initialization.
-            # Still, generating {}s in genConstObjConstr() just to omit them here is faaaar from ideal;
-            # need to figure out a better way, possibly by keeping around more data about the
-            # imported objects' contructors?
-            #
-            # [^0]: https://en.cppreference.com/w/cpp/language/aggregate_initialization
-            # [^1]: https://cplusplus.github.io/CWG/issues/1518.html
-            # [^2]: https://eel.is/c++draft/over.match.ctor
-            decl.addf(" $1;$n", [s.loc.r])
-          else:
-            decl.addf(" $1 = $2;$n", [s.loc.r, value])
-        else:
+      genGlobalVarDecl(p, n, td, value, decl)
+      if value != "":
+        if p.module.compileToCpp and value.startsWith "{{}":
+          # TODO: taking this branch, re"\{\{\}(,\s\{\})*\}" might be emitted, resulting in
+          # either warnings (GCC 12.2+) or errors (Clang 15, MSVC 19.3+) of C++11+ compilers **when
+          # explicit constructors are around** due to overload resolution rules in place [^0][^1][^2]
+          # *Workaround* here: have C++'s static initialization mechanism do the default init work,
+          # for us lacking a deeper knowledge of an imported object's constructors' ex-/implicitness
+          # (so far) *and yet* trying to achieve default initialization.
+          # Still, generating {}s in genConstObjConstr() just to omit them here is faaaar from ideal;
+          # need to figure out a better way, possibly by keeping around more data about the
+          # imported objects' contructors?
+          #
+          # [^0]: https://en.cppreference.com/w/cpp/language/aggregate_initialization
+          # [^1]: https://cplusplus.github.io/CWG/issues/1518.html
+          # [^2]: https://eel.is/c++draft/over.match.ctor
           decl.addf(" $1;$n", [s.loc.r])
-      else:
-        if value != "":
-          decl = runtimeFormat(s.cgDeclFrmt & " = $#;$n", [td, s.loc.r, value])
         else:
-          decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
+          decl.addf(" $1 = $2;$n", [s.loc.r, value])
+      else:
+        decl.addf(" $1;$n", [s.loc.r])
+      
       p.module.s[cfsVars].add(decl)
   if p.withinLoop > 0 and value == "":
     # fixes tests/run/tzeroarray:
