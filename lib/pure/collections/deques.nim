@@ -71,9 +71,8 @@ template initImpl(result: typed, initialSize: int) =
   newSeq(result.data, correctSize)
 
 template checkIfInitialized(deq: typed) =
-  when compiles(defaultInitialSize):
-    if deq.mask == 0:
-      initImpl(deq, defaultInitialSize)
+  if deq.mask == 0:
+    initImpl(deq, defaultInitialSize)
 
 proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
   ## Creates a new empty deque.

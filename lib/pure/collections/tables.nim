@@ -217,8 +217,6 @@ type
     ## For creating a new empty TableRef, use `newTable proc
     ## <#newTable>`_.
 
-const
-  defaultInitialSize* = 32
 
 # ------------------------------ helpers ---------------------------------
 

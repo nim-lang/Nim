@@ -2930,6 +2930,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         else:
           {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
       s = qualifiedLookUp(c, n, checks)
+      if s == nil:
+        return
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
     of skProc, skFunc, skMethod, skConverter, skIterator:
