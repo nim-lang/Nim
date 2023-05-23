@@ -9,13 +9,14 @@
 ## Simple tool to automate frequent workflows: Can "clone"
 ## a Nimble dependency and its dependencies recursively.
 
-import std/[parseopt, strutils, os, osproc, tables, sets, json, jsonutils]
+import std / [parseopt, strutils, os, osproc, tables, sets, json, jsonutils]
 import parse_requires, osutils, packagesjson
 
 from unicode import nil
 
 const
-  Version = "0.2"
+  Version = "0.3"
+  LockFileName = "atlas.lock"
   Usage = "atlas - Nim Package Cloner Version " & Version & """
 
   (c) 2021 Andreas Rumpf
@@ -23,11 +24,13 @@ Usage:
   atlas [options] [command] [arguments]
 Command:
   clone url|pkgname     clone a package and all of its dependencies
+  update url|pkgname    update a package and all of its dependencies
   install proj.nimble   use the .nimble file to setup the project's dependencies
   search keyw keywB...  search for package that contains the given keywords
   extract file.nimble   extract the requirements and custom commands from
                         the given Nimble file
-  update [filter]       update every package in the workspace that has a remote
+  updateWorkspace [filter]
+                        update every package in the workspace that has a remote
                         URL that matches `filter` if a filter is given
   build|test|doc|tasks  currently delegates to `nimble build|test|doc`
   task <taskname>       currently delegates to `nimble <taskname>`
@@ -40,6 +43,8 @@ Options:
   --deps=DIR            store dependencies in DIR instead of the workspace
                         (if DIR is a relative path, it is interpreted to
                         be relative to the workspace)
+  --genlock             generate a lock file (use with `clone` and `update`)
+  --uselock             use the lock file for the build
   --version             show the version
   --help                show this help
 """
@@ -59,6 +64,12 @@ const
   TestsDir = "tools/atlas/tests"
 
 type
+  LockOption = enum
+    noLock, genLock, useLock
+
+  LockFileEntry = object
+    dir, url, commit: string
+
   PackageName = distinct string
   DepRelation = enum
     normal, strictlyLess, strictlyGreater
@@ -75,6 +86,9 @@ type
     p: Table[string, string] # name -> url mapping
     processed: HashSet[string] # the key is (url / commit)
     errors: int
+    lockOption: LockOption
+    lockFileToWrite: seq[LockFileEntry]
+    lockFileToUse: Table[string, LockFileEntry]
     when MockupRun:
       currentDir: string
       step: int
@@ -279,23 +293,51 @@ proc needsCommitLookup(commit: string): bool {.inline.} =
 proc isShortCommitHash(commit: string): bool {.inline.} =
   commit.len >= 4 and commit.len < 40
 
+proc getRequiredCommit(c: var AtlasContext; w: Dependency): string =
+  if needsCommitLookup(w.commit): versionToCommit(c, w)
+  elif isShortCommitHash(w.commit): shortToCommit(c, w.commit)
+  else: w.commit
+
+proc getRemoteUrl(): string =
+  execProcess("git config --get remote.origin.url").strip()
+
+proc genLockEntry(c: var AtlasContext; w: Dependency; dir: string) =
+  let url = getRemoteUrl()
+  var commit = getRequiredCommit(c, w)
+  if commit.len == 0 or needsCommitLookup(commit):
+    commit = execProcess("git log -1 --pretty=format:%H").strip()
+  c.lockFileToWrite.add LockFileEntry(dir: relativePath(dir, c.workspace, '/'), url: url, commit: commit)
+
+proc commitFromLockFile(c: var AtlasContext; dir: string): string =
+  let url = getRemoteUrl()
+  let d = relativePath(dir, c.workspace, '/')
+  if d in c.lockFileToUse:
+    result = c.lockFileToUse[d].commit
+    let wanted = c.lockFileToUse[d].url
+    if wanted != url:
+      error c, PackageName(d), "remote URL has been compromised: got: " &
+          url & " but wanted: " & wanted
+  else:
+    error c, PackageName(d), "package is not listed in the lock file"
+
 proc checkoutCommit(c: var AtlasContext; w: Dependency) =
   var dir = c.workspace / w.name.string
   if not dirExists(dir):
     dir = c.depsDir / w.name.string
 
   withDir c, dir:
-    if w.commit.len == 0 or cmpIgnoreCase(w.commit, "head") == 0:
+    if c.lockOption == genLock:
+      genLockEntry(c, w, dir)
+    elif c.lockOption == useLock:
+      checkoutGitCommit(c, w.name, commitFromLockFile(c, dir))
+    elif w.commit.len == 0 or cmpIgnoreCase(w.commit, "head") == 0:
       gitPull(c, w.name)
     else:
       let err = isCleanGit(c)
       if err != "":
         warn c, w.name, err
       else:
-        let requiredCommit =
-          if needsCommitLookup(w.commit): versionToCommit(c, w)
-          elif isShortCommitHash(w.commit): shortToCommit(c, w.commit)
-          else: w.commit
+        let requiredCommit = getRequiredCommit(c, w)
         let (cc, status) = exec(c, GitCurrentCommit, [])
         let currentCommit = strutils.strip(cc)
         if requiredCommit == "" or status != 0:
@@ -403,6 +445,14 @@ proc cloneLoop(c: var AtlasContext; work: var seq[Dependency]): seq[string] =
       collectNewDeps(c, work, w, result, i == 0)
     inc i
 
+proc readLockFile(c: var AtlasContext) =
+  let jsonAsStr = readFile(c.projectDir / LockFileName)
+  let jsonTree = parseJson(jsonAsStr)
+  let data = to(jsonTree, seq[LockFileEntry])
+  c.lockFileToUse = initTable[string, LockFileEntry]()
+  for d in items(data):
+    c.lockFileToUse[d.dir] = d
+
 proc clone(c: var AtlasContext; start: string): seq[string] =
   # non-recursive clone.
   let url = toUrl(c, start)
@@ -413,7 +463,11 @@ proc clone(c: var AtlasContext; start: string): seq[string] =
     return
 
   c.projectDir = c.workspace / toDestDir(work[0].name)
+  if c.lockOption == useLock:
+    readLockFile c
   result = cloneLoop(c, work)
+  if c.lockOption == genLock:
+    writeFile c.projectDir / LockFileName, toJson(c.lockFileToWrite).pretty
 
 const
   configPatternBegin = "############# begin Atlas config section ##########\n"
@@ -534,6 +588,16 @@ proc main =
         else:
           writeHelp()
       of "cfghere": c.cfgHere = true
+      of "genlock":
+        if c.lockOption != useLock:
+          c.lockOption = genLock
+        else:
+          writeHelp()
+      of "uselock":
+        if c.lockOption != genLock:
+          c.lockOption = useLock
+        else:
+          writeHelp()
       else: writeHelp()
     of cmdEnd: assert false, "cannot happen"
 
@@ -561,7 +625,7 @@ proc main =
   case action
   of "":
     error "No action."
-  of "clone":
+  of "clone", "update":
     singleArg()
     let deps = clone(c, args[0])
     patchNimCfg c, deps, if c.cfgHere: getCurrentDir() else: findSrcDir(c)
@@ -590,7 +654,7 @@ proc main =
   of "search", "list":
     updatePackages(c)
     search getPackages(c.workspace), args
-  of "update":
+  of "updateworkspace":
     updateWorkspace(c, c.workspace, if args.len == 0: "" else: args[0])
     updateWorkspace(c, c.depsDir, if args.len == 0: "" else: args[0])
   of "extract":
