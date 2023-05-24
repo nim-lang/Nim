@@ -23,6 +23,8 @@ const
 Usage:
   atlas [options] [command] [arguments]
 Command:
+  use url|pkgname       clone a package and all of its dependencies and make
+                        it importable for the current project
   clone url|pkgname     clone a package and all of its dependencies
   update url|pkgname    update a package and all of its dependencies
   install proj.nimble   use the .nimble file to setup the project's dependencies
@@ -193,13 +195,14 @@ proc message(c: var AtlasContext; category: string; p: PackageName; args: vararg
     msg.add ' '
     msg.add a
   stdout.writeLine msg
-  inc c.errors
 
 proc warn(c: var AtlasContext; p: PackageName; args: varargs[string]) =
   message(c, "[Warning] ", p, args)
+  inc c.errors
 
 proc error(c: var AtlasContext; p: PackageName; args: varargs[string]) =
   message(c, "[Error] ", p, args)
+  inc c.errors
 
 proc sameVersionAs(tag, ver: string): bool =
   const VersionChars = {'0'..'9', '.'}
@@ -424,7 +427,7 @@ proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
   else:
     result.add toDestDir(dep.name)
 
-proc cloneLoop(c: var AtlasContext; work: var seq[Dependency]): seq[string] =
+proc cloneLoop(c: var AtlasContext; work: var seq[Dependency]; startIsDep: bool): seq[string] =
   result = @[]
   var i = 0
   while i < work.len:
@@ -433,7 +436,7 @@ proc cloneLoop(c: var AtlasContext; work: var seq[Dependency]): seq[string] =
     let oldErrors = c.errors
 
     if not dirExists(c.workspace / destDir) and not dirExists(c.depsDir / destDir):
-      withDir c, (if i == 0: c.workspace else: c.depsDir):
+      withDir c, (if i != 0 or startIsDep: c.depsDir else: c.workspace):
         let err = cloneUrl(c, w.url, destDir, false)
         if err != "":
           error c, w.name, err
@@ -453,7 +456,7 @@ proc readLockFile(c: var AtlasContext) =
   for d in items(data):
     c.lockFileToUse[d.dir] = d
 
-proc clone(c: var AtlasContext; start: string): seq[string] =
+proc clone(c: var AtlasContext; start: string; startIsDep: bool): seq[string] =
   # non-recursive clone.
   let url = toUrl(c, start)
   var work = @[Dependency(name: toName(start), url: url, commit: "")]
@@ -465,7 +468,7 @@ proc clone(c: var AtlasContext; start: string): seq[string] =
   c.projectDir = c.workspace / toDestDir(work[0].name)
   if c.lockOption == useLock:
     readLockFile c
-  result = cloneLoop(c, work)
+  result = cloneLoop(c, work, startIsDep)
   if c.lockOption == genLock:
     writeFile c.projectDir / LockFileName, toJson(c.lockFileToWrite).pretty
 
@@ -525,7 +528,7 @@ proc installDependencies(c: var AtlasContext; nimbleFile: string) =
   let (_, pkgname, _) = splitFile(nimbleFile)
   let dep = Dependency(name: toName(pkgname), url: "", commit: "")
   discard collectDeps(c, work, dep, nimbleFile)
-  let paths = cloneLoop(c, work)
+  let paths = cloneLoop(c, work, startIsDep = true)
   patchNimCfg(c, paths, if c.cfgHere: getCurrentDir() else: findSrcDir(c))
 
 proc updateWorkspace(c: var AtlasContext; dir, filter: string) =
@@ -548,6 +551,71 @@ proc updateWorkspace(c: var AtlasContext; dir, filter: string) =
                 message(c, "[Hint] ", pkg, "successfully updated")
             else:
               error c, pkg, "could not fetch current branch name"
+
+proc addUnique[T](s: var seq[T]; elem: sink T) =
+  if not s.contains(elem): s.add elem
+
+proc addDepFromNimble(c: var AtlasContext; deps: var seq[string]; project: PackageName; dep: string) =
+  var depDir = c.workspace / dep
+  if not dirExists(depDir):
+    depDir = c.depsDir /  dep
+  if dirExists(depDir):
+    withDir c, depDir:
+      let src = findSrcDir(c)
+      if src.len != 0:
+        deps.addUnique dep / src
+      else:
+        deps.addUnique dep
+  else:
+    warn c, project, "cannot find: " & depDir
+
+proc patchNimbleFile(c: var AtlasContext; dep: string; deps: var seq[string]) =
+  let thisProject = getCurrentDir().splitPath.tail
+  let oldErrors = c.errors
+  let url = toUrl(c, dep)
+  if oldErrors != c.errors:
+    warn c, toName(dep), "cannot resolve package name"
+  else:
+    var nimbleFile = ""
+    for x in walkFiles("*.nimble"):
+      if nimbleFile.len == 0:
+        nimbleFile = x
+      else:
+        # ambiguous .nimble file
+        warn c, toName(dep), "cannot determine `.nimble` file; there are multiple to choose from"
+        return
+    # see if we have this requirement already listed. If so, do nothing:
+    var found = false
+    if nimbleFile.len > 0:
+      let nimbleInfo = extractRequiresInfo(c, nimbleFile)
+      for r in nimbleInfo.requires:
+        var tokens: seq[string] = @[]
+        for token in tokenizeRequires(r):
+          tokens.add token
+        if tokens.len > 0:
+          let oldErrors = c.errors
+          let urlB = toUrl(c, tokens[0])
+          if oldErrors != c.errors:
+            warn c, toName(tokens[0]), "cannot resolve package name; found in: " & nimbleFile
+          if url == urlB:
+            found = true
+
+          if cmpIgnoreCase(tokens[0], "nim") != 0:
+            c.addDepFromNimble deps, toName(thisProject), tokens[0]
+
+    if not found:
+      let line = "requires \"$1@#head\"\n" % dep.escape("", "")
+      if nimbleFile.len > 0:
+        let oldContent = readFile(nimbleFile)
+        writeFile nimbleFile, oldContent & "\n" & line
+        message(c, "[Info] ", toName(thisProject), "updated: " & nimbleFile)
+      else:
+        let outfile = thisProject & ".nimble"
+        writeFile outfile, line
+        message(c, "[Info] ", toName(thisProject), "created: " & outfile)
+      c.addDepFromNimble deps, toName(thisProject), dep
+    else:
+      message(c, "[Info] ", toName(thisProject), "up to date: " & nimbleFile)
 
 proc main =
   var action = ""
@@ -627,7 +695,7 @@ proc main =
     error "No action."
   of "clone", "update":
     singleArg()
-    let deps = clone(c, args[0])
+    let deps = clone(c, args[0], startIsDep = false)
     patchNimCfg c, deps, if c.cfgHere: getCurrentDir() else: findSrcDir(c)
     when MockupRun:
       if not c.mockupSuccess:
@@ -635,6 +703,14 @@ proc main =
     else:
       if c.errors > 0:
         error "There were problems."
+  of "use":
+    singleArg()
+    discard clone(c, args[0], startIsDep = true)
+    var deps: seq[string] = @[]
+    patchNimbleFile(c, args[0], deps)
+    patchNimCfg c, deps, getCurrentDir()
+    if c.errors > 0:
+      error "There were problems."
   of "install":
     if args.len > 1:
       error "install command takes a single argument"
