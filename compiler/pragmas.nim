@@ -51,7 +51,6 @@ const
     wHint, wWarning, wError,
     wFatal, wDefine, wUndef, wCompile, wLink, wLinksys, wPure, wPush, wPop,
     wPassl, wPassc, wLocalPassc,
-    wDeadCodeElimUnused,  # deprecated, always on
     wDeprecated,
     wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
@@ -249,7 +248,7 @@ proc processVirtual(c: PContext, n: PNode, s: PSym) =
   s.constraint = newEmptyStrNode(c, n, getOptionalStr(c, n, "$1"))
   s.constraint.strVal = s.constraint.strVal % s.name.s
   s.flags.incl {sfVirtual, sfInfixCall, sfExportc, sfMangleCpp}
-  
+
   s.typ.callConv = ccNoConvention
   incl c.config.globalOptions, optMixedMode
 
@@ -950,8 +949,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wThreadVar:
         noVal(c, it)
         incl(sym.flags, {sfThread, sfGlobal})
-      of wDeadCodeElimUnused:
-        warningDeprecated(c.config, n.info, "'{.deadcodeelim: on.}' is deprecated, now a noop")  # deprecated, dead code elim always on
       of wNoForward: pragmaNoForward(c, it)
       of wReorder: pragmaNoForward(c, it, flag = sfReorder)
       of wMagic: processMagic(c, it, sym)
@@ -1277,7 +1274,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         sym.flags.incl sfSystemRaisesDefect
       of wVirtual:
           processVirtual(c, it, sym)
-      
+
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
