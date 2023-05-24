@@ -1,5 +1,5 @@
-import std/tables
-import std/hashes
+import std/[tables, hashes, assertions]
+
 
 let t = ()
 var a = toTable({t:t})
