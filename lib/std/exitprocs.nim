@@ -69,23 +69,19 @@ proc addExitProc*(cl: proc() {.noconv.}) =
     fun()
     gFuns.add Fun(kind: kNoconv, fun2: cl)
 
-when not defined(nimscript):
+when not defined(nimscript) and (not defined(js) or defined(nodejs)):
   proc getProgramResult*(): int =
     when defined(js) and defined(nodejs):
       asm """
 `result` = process.exitCode;
 """
-    elif not defined(js):
-      result = programResult
     else:
-      doAssert false
+      result = programResult
 
   proc setProgramResult*(a: int) =
     when defined(js) and defined(nodejs):
       asm """
 process.exitCode = `a`;
 """
-    elif not defined(js):
-      programResult = a
     else:
-      doAssert false
+      programResult = a

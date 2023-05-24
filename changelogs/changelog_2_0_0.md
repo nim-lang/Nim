@@ -249,6 +249,10 @@
   these deprecated aliases are likely not used anymore and it may make sense
   to simply remove these statements.
 
+- `getProgramResult` and `setProgramResult` in `std/exitprocs` are no longer
+  declared when they are not available on the backend. Previously it would call
+  `doAssert false` at runtime despite the condition being compile-time.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
