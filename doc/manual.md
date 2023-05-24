@@ -8444,8 +8444,7 @@ is available and a literal dollar sign must be written as ``$$``.
 Bycopy pragma
 -------------
 
-The `bycopy` pragma can be applied to an object or tuple type and
-instructs the compiler to pass the type by value to procs:
+The `bycopy` pragma can be applied to an object or tuple type or a proc param. It instructs the compiler to pass the type by value to procs:
 
   ```nim
   type
@@ -8453,14 +8452,19 @@ instructs the compiler to pass the type by value to procs:
       x, y, z: float
   ```
 
-The Nim compiler automatically determines whether a parameter is passed by value or by reference based on the parameter type's size. If a parameter must be passed by value or by reference, (such as when interfacing with a C library) use the bycopy or byref pragmas.
+The Nim compiler automatically determines whether a parameter is passed by value or 
+by reference based on the parameter type's size. If a parameter must be passed by value 
+or by reference, (such as when interfacing with a C library) use the bycopy or byref pragmas. 
+Notice params marked as `byref` takes precedence over types marked as `bycopy`.
 
 Byref pragma
 ------------
 
-The `byref` pragma can be applied to an object or tuple type and instructs
-the compiler to pass the type by reference (hidden pointer) to procs.
-
+The `byref` pragma can be applied to an object or tuple type or a proc param.
+When applied to a type it instructs the compiler to pass the type by reference 
+(hidden pointer) to procs. When applied to a param it will take precedence, even 
+if the the type was marked as `bycopy`. When using the Cpp backend, params marked 
+as byref will translate to cpp references `&`.
 
 Varargs pragma
 --------------
