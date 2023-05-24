@@ -74,6 +74,7 @@ type
     wWrites = "writes", wReads = "reads", wSize = "size", wEffects = "effects", wTags = "tags",
     wForbids = "forbids", wRequires = "requires", wEnsures = "ensures", wInvariant = "invariant",
     wAssume = "assume", wAssert = "assert",
+    wDeadCodeElimUnused = "deadCodeElim",  # deprecated, dead code elim always happens
     wSafecode = "safecode", wPackage = "package", wNoForward = "noforward", wReorder = "reorder",
     wNoRewrite = "norewrite", wNoDestroy = "nodestroy", wPragma = "pragma",
     wCompileTime = "compileTime", wNoInit = "noinit", wPassc = "passc", wPassl = "passl",
