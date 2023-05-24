@@ -25,7 +25,7 @@ const
 
 const
   declPragmas = {wImportc, wImportObjC, wImportCpp, wImportJs, wExportc, wExportCpp,
-    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed}
+    wExtern, wDeprecated, wNodecl, wError, wUsed}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
@@ -38,7 +38,7 @@ const
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
-    wDelegator, wExportNims, wUsed, wPragma, wRedefine, wCallsite}
+    wDelegator, wUsed, wPragma, wRedefine, wCallsite}
   macroPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wCompilerProc, wNonReloadable, wCore,
     wDiscardable, wGensym, wInject, wDelegator}
@@ -74,7 +74,7 @@ const
     wCppNonPod, wBorrow, wGcSafe, wPartial, wExplain, wPackage, wCodegenDecl,
     wSendable}
   fieldPragmas* = declPragmas + {wGuard, wBitsize, wCursor,
-    wRequiresInit, wNoalias, wAlign} - {wExportNims, wNodecl} # why exclude these?
+    wRequiresInit, wNoalias, wAlign} - {wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
     wNoInit, wCompileTime, wGlobal,
@@ -249,7 +249,7 @@ proc processVirtual(c: PContext, n: PNode, s: PSym) =
   s.constraint = newEmptyStrNode(c, n, getOptionalStr(c, n, "$1"))
   s.constraint.strVal = s.constraint.strVal % s.name.s
   s.flags.incl {sfVirtual, sfInfixCall, sfExportc, sfMangleCpp}
-  
+
   s.typ.callConv = ccNoConvention
   incl c.config.globalOptions, optMixedMode
 
@@ -1241,9 +1241,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           invalidPragma(c, it)
         else:
           sym.flags.incl sfGoto
-      of wExportNims:
-        if sym == nil: invalidPragma(c, it)
-        else: magicsys.registerNimScriptSymbol(c.graph, sym)
       of wExperimental:
         if not isTopLevel(c):
           localError(c.config, n.info, "'experimental' pragma only valid as toplevel statement or in a 'push' environment")
@@ -1277,7 +1274,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         sym.flags.incl sfSystemRaisesDefect
       of wVirtual:
           processVirtual(c, it, sym)
-      
+
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
