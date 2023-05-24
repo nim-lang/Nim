@@ -643,7 +643,20 @@ proc genGlobalVarDecl(p: BProc, n: PNode; td, value: Rope; decl: var Rope) =
       decl = runtimeFormat(s.cgDeclFrmt & " = $#;$n", [td, s.loc.r, value])
     else:
       decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
-    
+
+proc genCppVarForConstructor(p: BProc, v: PSym; vn, value: PNode; decl: var Rope) 
+
+proc callGlobalVarCppConstructor(p: BProc; v: PSym; vn, value: PNode) =
+  let s = vn.sym
+  fillBackendName(p.module, s)
+  fillLoc(s.loc, locGlobalVar, vn, OnHeap)
+  var decl: Rope
+  let td = getTypeDesc(p.module, vn.sym.typ, dkVar)
+  genGlobalVarDecl(p, vn, td, "", decl)
+  decl.add " " & $s.loc.r
+  genCppVarForConstructor(p, v, vn, value, decl)
+  p.module.s[cfsVars].add decl
+
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
   let s = n.sym
   if s.loc.k == locNone:
@@ -669,7 +682,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
         internalError(p.config, n.info, ".threadvar variables cannot have a value")
     else:
       var decl: Rope = ""
-      var td = getTypeDesc(p.module, s.loc.t, dkVar)
+      let td = getTypeDesc(p.module, s.loc.t, dkVar)
       genGlobalVarDecl(p, n, td, value, decl)
       if s.constraint.isNil:
         if value != "":
