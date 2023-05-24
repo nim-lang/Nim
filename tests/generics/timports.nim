@@ -40,6 +40,12 @@ block tdotlookup:
   doAssert doStrip(123) == "123"
   # bug #14254
   doAssert baz2[float](1'i8) == 1
+  # bug #21883
+  proc abc[T: not not int](x: T): T =
+    var x = x
+    x.set("hello", "world")
+    result = x
+  doAssert abc(5) == 10
 
 block tmodule_same_as_proc:
   # bug #1965
