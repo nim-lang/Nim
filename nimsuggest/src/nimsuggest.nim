@@ -235,7 +235,7 @@ proc processCmdLine*(pass: TCmdLinePass; cmd: string; conf: ConfigRef) =
           conf.projectName = a
       # if processArgument(pass, p, argsCount): break
 
-proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
+proc handleCmdLine*(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(
     suggestMode: true,
     processCmdLine: processCmdLine
@@ -266,8 +266,4 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if self.loadConfigsAndProcessCmdLine(cache, conf, graph):
     mainCommand(graph)
 
-when isMainModule:
-  handleCmdLine(newIdentCache(), newConfigRef())
-else:
-  import testInterface
-  export testInterface
+

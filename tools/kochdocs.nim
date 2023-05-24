@@ -205,7 +205,7 @@ lib/system/ctypes.nim
        a.nativeToUnixPath in docIgnore:
          continue
     result.add a
-  result.add normalizePath("nimsuggest/sexp.nim")
+  result.add normalizePath("nimsuggest/src/emacs/sexp.nim")
 
 let doc = getDocList()
 
