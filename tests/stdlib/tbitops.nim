@@ -1,10 +1,12 @@
 discard """
   nimout: "OK"
+  matrix: "--mm:refc; --mm:orc"
   output: '''
 OK
 '''
 """
 import bitops
+import std/assertions
 
 proc main() =
   const U8 = 0b0011_0010'u8

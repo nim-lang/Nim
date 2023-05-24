@@ -32,6 +32,7 @@ type
 
     wColon = ":", wColonColon = "::", wEquals = "=", wDot = ".", wDotDot = "..",
     wStar = "*", wMinus = "-",
+    wUnderscore = "_",
     wMagic = "magic", wThread = "thread", wFinal = "final", wProfiler = "profiler",
     wMemTracker = "memtracker", wObjChecks = "objchecks",
     wIntDefine = "intdefine", wStrDefine = "strdefine", wBoolDefine = "booldefine",
@@ -86,8 +87,8 @@ type
     wAsmNoStackFrame = "asmNoStackFrame", wImplicitStatic = "implicitStatic",
     wGlobal = "global", wCodegenDecl = "codegenDecl", wUnchecked = "unchecked",
     wGuard = "guard", wLocks = "locks", wPartial = "partial", wExplain = "explain",
-    wLiftLocals = "liftlocals", wEnforceNoRaises = "enforceNoRaises",
-    wRedefine = "redefine",
+    wLiftLocals = "liftlocals", wEnforceNoRaises = "enforceNoRaises", wSystemRaisesDefect = "systemRaisesDefect",
+    wRedefine = "redefine", wCallsite = "callsite",
 
     wAuto = "auto", wBool = "bool", wCatch = "catch", wChar = "char",
     wClass = "class", wCompl = "compl", wConstCast = "const_cast", wDefault = "default",
@@ -112,6 +113,7 @@ type
 
     wInOut = "inout", wByCopy = "bycopy", wByRef = "byref", wOneWay = "oneway",
     wBitsize = "bitsize", wImportHidden = "all",
+    wSendable = "sendable"
 
   TSpecialWords* = set[TSpecialWord]
 
@@ -130,20 +132,7 @@ const
     wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing}
 
 
-const enumUtilsExist = compiles:
-  import std/enumutils
-
-when enumUtilsExist:
-  from std/enumutils import genEnumCaseStmt
-  from strutils import normalize
-  proc findStr*[T: enum](a, b: static[T], s: string, default: T): T =
-    genEnumCaseStmt(T, s, default, ord(a), ord(b), normalize)
-
-else:
-  from strutils import cmpIgnoreStyle
-  proc findStr*[T: enum](a, b: static[T], s: string, default: T): T {.deprecated.} =
-    # used for compiler bootstrapping only
-    for i in a..b:
-      if cmpIgnoreStyle($i, s) == 0:
-        return i
-    result = default
+from std/enumutils import genEnumCaseStmt
+from strutils import normalize
+proc findStr*[T: enum](a, b: static[T], s: string, default: T): T =
+  genEnumCaseStmt(T, s, default, ord(a), ord(b), normalize)

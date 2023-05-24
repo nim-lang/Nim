@@ -44,6 +44,9 @@ import httpcore
 from nativesockets import getLocalAddr, Domain, AF_INET, AF_INET6
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 export httpcore except parseHeader
 
 const
@@ -155,7 +158,7 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
-func hasChunkedEncoding(request: Request): bool = 
+func hasChunkedEncoding(request: Request): bool =
   ## Searches for a chunked transfer encoding
   const transferEncoding = "Transfer-Encoding"
 
@@ -297,7 +300,7 @@ proc processRequest(
     while true:
       lineFut.mget.setLen(0)
       lineFut.clean()
-      
+
       # The encoding format alternates between specifying a number of bytes to read
       # and the data to be read, of the previously specified size
       if sizeOrData mod 2 == 0:
@@ -384,8 +387,9 @@ proc listen*(server: AsyncHttpServer; port: Port; address = ""; domain = AF_INET
   server.socket = newAsyncSocket(domain)
   if server.reuseAddr:
     server.socket.setSockOpt(OptReuseAddr, true)
-  if server.reusePort:
-    server.socket.setSockOpt(OptReusePort, true)
+  when not defined(nuttx):
+    if server.reusePort:
+      server.socket.setSockOpt(OptReusePort, true)
   server.socket.bindAddr(port, address)
   server.socket.listen()
 

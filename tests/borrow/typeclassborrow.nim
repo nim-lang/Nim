@@ -30,3 +30,19 @@ baz.doThing()
 assert $seq[int](foo) == $foo
 assert $seq[int](bar) == $bar
 assert $seq[int](baz) == $baz
+
+type
+  Fine* = distinct string
+
+proc `==`*(x, y: Fine): bool {.borrow.} =
+  ## Here is the documentation
+  runnableExamples:
+    var x = Fine("1234")
+    var y = Fine("1234")
+    doAssert x == y
+  doAssert false
+
+
+var x = Fine("1234")
+var y = Fine("1234")
+doAssert x == y

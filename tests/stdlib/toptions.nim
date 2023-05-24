@@ -1,11 +1,12 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
 """
 
 import std/[json, options]
 
-when defined(nimPreviewSlimSystem):
-  import std/objectdollar
+import std/assertions
+import std/objectdollar
 
 
 # RefPerson is used to test that overloaded `==` operator is not called by

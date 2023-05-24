@@ -48,7 +48,6 @@ type
   ProcConvMismatch* = enum
     pcmNoSideEffect
     pcmNotGcSafe
-    pcmLockDifference
     pcmNotIterator
     pcmDifferentCallConv
 
@@ -371,41 +370,65 @@ proc containsHiddenPointer*(typ: PType): bool =
   # that need to be copied deeply)
   result = searchTypeFor(typ, isHiddenPointer)
 
-proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool
-proc canFormAcycleNode(marker: var IntSet, n: PNode, startId: int): bool =
+proc canFormAcycleAux(g: ModuleGraph; marker: var IntSet, typ: PType, orig: PType, withRef: bool, hasTrace: bool): bool
+proc canFormAcycleNode(g: ModuleGraph; marker: var IntSet, n: PNode, orig: PType, withRef: bool, hasTrace: bool): bool =
   result = false
   if n != nil:
-    result = canFormAcycleAux(marker, n.typ, startId)
-    if not result:
-      case n.kind
-      of nkNone..nkNilLit:
-        discard
-      else:
-        for i in 0..<n.len:
-          result = canFormAcycleNode(marker, n[i], startId)
-          if result: return
+    var hasCursor = n.kind == nkSym and sfCursor in n.sym.flags
+    # cursor fields don't own the refs, which cannot form reference cycles
+    if hasTrace or not hasCursor:
+      result = canFormAcycleAux(g, marker, n.typ, orig, withRef, hasTrace)
+      if not result:
+        case n.kind
+        of nkNone..nkNilLit:
+          discard
+        else:
+          for i in 0..<n.len:
+            result = canFormAcycleNode(g, marker, n[i], orig, withRef, hasTrace)
+            if result: return
 
-proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool =
+
+proc sameBackendType*(x, y: PType): bool
+proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PType, withRef: bool, hasTrace: bool): bool =
   result = false
   if typ == nil: return
   if tfAcyclic in typ.flags: return
   var t = skipTypes(typ, abstractInst+{tyOwned}-{tyTypeDesc})
   if tfAcyclic in t.flags: return
   case t.kind
-  of tyTuple, tyObject, tyRef, tySequence, tyArray, tyOpenArray, tyVarargs:
-    if t.id == startId:
+  of tyRef, tyPtr, tyUncheckedArray:
+    if t.kind == tyRef or hasTrace:
+      if withRef and sameBackendType(t, orig):
+        result = true
+      elif not containsOrIncl(marker, t.id):
+        for i in 0..<t.len:
+          result = canFormAcycleAux(g, marker, t[i], orig, withRef or t.kind != tyUncheckedArray, hasTrace)
+          if result: return
+  of tyObject:
+    if withRef and sameBackendType(t, orig):
       result = true
     elif not containsOrIncl(marker, t.id):
+      var hasTrace = hasTrace
+      let op = getAttachedOp(g, t.skipTypes({tyRef}), attachedTrace)
+      if op != nil and sfOverriden in op.flags:
+        hasTrace = true
       for i in 0..<t.len:
-        result = canFormAcycleAux(marker, t[i], startId)
+        result = canFormAcycleAux(g, marker, t[i], orig, withRef, hasTrace)
         if result: return
-      if t.n != nil: result = canFormAcycleNode(marker, t.n, startId)
+      if t.n != nil: result = canFormAcycleNode(g, marker, t.n, orig, withRef, hasTrace)
     # Inheritance can introduce cyclic types, however this is not relevant
     # as the type that is passed to 'new' is statically known!
     # er but we use it also for the write barrier ...
-    if t.kind == tyObject and tfFinal notin t.flags:
+    if tfFinal notin t.flags:
       # damn inheritance may introduce cycles:
       result = true
+  of tyTuple, tySequence, tyArray, tyOpenArray, tyVarargs:
+    if withRef and sameBackendType(t, orig):
+      result = true
+    elif not containsOrIncl(marker, t.id):
+      for i in 0..<t.len:
+        result = canFormAcycleAux(g, marker, t[i], orig, withRef, hasTrace)
+        if result: return
   of tyProc: result = typ.callConv == ccClosure
   else: discard
 
@@ -413,10 +436,10 @@ proc isFinal*(t: PType): bool =
   let t = t.skipTypes(abstractInst)
   result = t.kind != tyObject or tfFinal in t.flags or isPureObject(t)
 
-proc canFormAcycle*(typ: PType): bool =
+proc canFormAcycle*(g: ModuleGraph, typ: PType): bool =
   var marker = initIntSet()
   let t = skipTypes(typ, abstractInst+{tyOwned}-{tyTypeDesc})
-  result = canFormAcycleAux(marker, t, t.id)
+  result = canFormAcycleAux(g, marker, t, t, false, false)
 
 proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
                    closure: RootRef): PType
@@ -451,7 +474,10 @@ proc mutateType(t: PType, iter: TTypeMutator, closure: RootRef): PType =
 
 proc valueToString(a: PNode): string =
   case a.kind
-  of nkCharLit..nkUInt64Lit: result = $a.intVal
+  of nkCharLit, nkUIntLit..nkUInt64Lit:
+    result = $cast[uint64](a.intVal)
+  of nkIntLit..nkInt64Lit:
+    result = $a.intVal
   of nkFloatLit..nkFloat128Lit: result = $a.floatVal
   of nkStrLit..nkTripleStrLit: result = a.strVal
   else: result = "<invalid value>"
@@ -685,7 +711,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           elif t.len == 1: result.add(",")
         result.add(')')
     of tyPtr, tyRef, tyVar, tyLent:
-      result = typeToStr[t.kind]
+      result = if isOutParam(t): "out " else: typeToStr[t.kind]
       if t.len >= 2:
         setLen(result, result.len-1)
         result.add '['
@@ -728,9 +754,6 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if tfThread in t.flags:
         addSep(prag)
         prag.add("gcsafe")
-      if t.lockLevel.ord != UnspecifiedLockLevel.ord:
-        addSep(prag)
-        prag.add("locks: " & $t.lockLevel)
       if prag.len != 0: result.add("{." & prag & ".}")
     of tyVarargs:
       result = typeToStr[t.kind] % typeToString(t[0])
@@ -754,8 +777,13 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
     assert(t.n.kind == nkRange)
     result = getOrdValue(t.n[0])
   of tyInt:
-    if conf != nil and conf.target.intSize == 4:
-      result = toInt128(-2147483648)
+    if conf != nil:
+      case conf.target.intSize
+      of 8: result = toInt128(0x8000000000000000'i64)
+      of 4: result = toInt128(-2147483648)
+      of 2: result = toInt128(-32768)
+      of 1: result = toInt128(-128)
+      else: discard
     else:
       result = toInt128(0x8000000000000000'i64)
   of tyInt8: result =  toInt128(-128)
@@ -798,6 +826,29 @@ proc firstFloat*(t: PType): BiggestFloat =
     internalError(newPartialConfigRef(), "invalid kind for firstFloat(" & $t.kind & ')')
     NaN
 
+proc targetSizeSignedToKind*(conf: ConfigRef): TTypeKind =
+  case conf.target.intSize
+  of 8: result = tyInt64
+  of 4: result = tyInt32
+  of 2: result = tyInt16
+  else: discard
+
+proc targetSizeUnsignedToKind*(conf: ConfigRef): TTypeKind =
+  case conf.target.intSize
+  of 8: result = tyUInt64
+  of 4: result = tyUInt32
+  of 2: result = tyUInt16
+  else: discard
+
+proc normalizeKind*(conf: ConfigRef, k: TTypeKind): TTypeKind =
+  case k
+  of tyInt:
+    result = conf.targetSizeSignedToKind()
+  of tyUInt:
+    result = conf.targetSizeUnsignedToKind()
+  else:
+    result = k
+
 proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
   case t.kind
   of tyBool: result = toInt128(1'u)
@@ -809,7 +860,13 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
     assert(t.n.kind == nkRange)
     result = getOrdValue(t.n[1])
   of tyInt:
-    if conf != nil and conf.target.intSize == 4: result = toInt128(0x7FFFFFFF)
+    if conf != nil:
+      case conf.target.intSize
+      of 8: result = toInt128(0x7FFFFFFFFFFFFFFF'u64)
+      of 4: result = toInt128(0x7FFFFFFF)
+      of 2: result = toInt128(0x00007FFF)
+      of 1: result = toInt128(0x0000007F)
+      else: discard
     else: result = toInt128(0x7FFFFFFFFFFFFFFF'u64)
   of tyInt8: result = toInt128(0x0000007F)
   of tyInt16: result = toInt128(0x00007FFF)
@@ -1153,13 +1210,14 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCstring,
      tyInt..tyUInt64, tyTyped, tyUntyped, tyVoid:
     result = sameFlags(a, b)
-    if result and PickyCAliases in c.flags:
+    if result and {PickyCAliases, ExactTypeDescValues} <= c.flags:
       # additional requirement for the caching of generics for importc'ed types:
       # the symbols must be identical too:
       let symFlagsA = if a.sym != nil: a.sym.flags else: {}
       let symFlagsB = if b.sym != nil: b.sym.flags else: {}
       if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
         result = symFlagsA == symFlagsB
+
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
     if result and a.len == b.len and a.len == 1:
@@ -1201,7 +1259,11 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     assert a[0].len == 0
     assert b.len == 1
     assert b[0].len == 0
-    result = a[0].kind == b[0].kind
+    result = a[0].kind == b[0].kind and sameFlags(a[0], b[0])
+    if result and a[0].kind == tyProc and IgnoreCC notin c.flags:
+      let ecc = a[0].flags * {tfExplicitCallConv}
+      result = ecc == b[0].flags * {tfExplicitCallConv} and
+               (ecc == {} or a[0].callConv == b[0].callConv)
   of tyGenericInvocation, tyGenericBody, tySequence, tyOpenArray, tySet, tyRef,
      tyPtr, tyVar, tyLent, tySink, tyUncheckedArray, tyArray, tyProc, tyVarargs,
      tyOrdinal, tyCompositeTypeClass, tyUserTypeClass, tyUserTypeClassInst,
@@ -1211,7 +1273,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameChildrenAux(a, b, c)
     if result:
       if IgnoreTupleFields in c.flags:
-        result = a.flags * {tfVarIsPtr} == b.flags * {tfVarIsPtr}
+        result = a.flags * {tfVarIsPtr, tfIsOutParam} == b.flags * {tfVarIsPtr, tfIsOutParam}
       else:
         result = sameFlags(a, b)
     if result and ExactGcSafety in c.flags:
@@ -1386,7 +1448,6 @@ type
     efRaisesUnknown
     efTagsDiffer
     efTagsUnknown
-    efLockLevelsDiffer
     efEffectsDelayed
     efTagsIllegal
 
@@ -1430,17 +1491,13 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
       elif hasIncompatibleEffect(sn, real[tagEffects]):
         return efTagsIllegal
 
-  if formal.lockLevel.ord < 0 or
-      actual.lockLevel.ord <= formal.lockLevel.ord:
+  for i in 1 ..< min(formal.n.len, actual.n.len):
+    if formal.n[i].sym.flags * {sfEffectsDelayed} != actual.n[i].sym.flags * {sfEffectsDelayed}:
+      result = efEffectsDelayed
+      break
 
-    for i in 1 ..< min(formal.n.len, actual.n.len):
-      if formal.n[i].sym.flags * {sfEffectsDelayed} != actual.n[i].sym.flags * {sfEffectsDelayed}:
-        result = efEffectsDelayed
-        break
+  result = efCompat
 
-    result = efCompat
-  else:
-    result = efLockLevelsDiffer
 
 proc isCompileTimeOnly*(t: PType): bool {.inline.} =
   result = t.kind in {tyTypeDesc, tyStatic}
@@ -1572,16 +1629,10 @@ proc getProcConvMismatch*(c: ConfigRef, f, a: PType, rel = isNone): (set[ProcCon
       of isInferred: result[1] = isInferredConvertible
       of isBothMetaConvertible: result[1] = isBothMetaConvertible
       elif result[1] != isNone: result[1] = isConvertible
+      else: result[0].incl pcmDifferentCallConv
     else:
       result[1] = isNone
       result[0].incl pcmDifferentCallConv
-
-  if f.lockLevel.ord != UnspecifiedLockLevel.ord and
-     a.lockLevel.ord != UnspecifiedLockLevel.ord:
-       # proctypeRel has more logic to catch this difference,
-       # so dont need to do `rel = isNone`
-       # but it's a pragma mismatch reason which is why it's here
-       result[0].incl pcmLockDifference
 
 proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, conf: ConfigRef) =
   assert formal.kind == tyProc and actual.kind == tyProc
@@ -1597,9 +1648,6 @@ proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, c
       expectedPragmas.add "noSideEffect, "
     of pcmNotGcSafe:
       expectedPragmas.add "gcsafe, "
-    of pcmLockDifference:
-      gotPragmas.add("locks: " & $actual.lockLevel & ", ")
-      expectedPragmas.add("locks: " & $formal.lockLevel & ", ")
     of pcmNotIterator: discard
 
   if expectedPragmas.len > 0:
@@ -1607,6 +1655,23 @@ proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, c
     expectedPragmas.setLen(max(0, expectedPragmas.len - 2)) # Remove ", "
     message.add "\n  Pragma mismatch: got '{.$1.}', but expected '{.$2.}'." % [gotPragmas, expectedPragmas]
 
+proc processPragmaAndCallConvMismatch(msg: var string, formal, actual: PType, conf: ConfigRef) =
+  if formal.kind == tyProc and actual.kind == tyProc:
+    msg.addPragmaAndCallConvMismatch(formal, actual, conf)
+    case compatibleEffects(formal, actual)
+    of efCompat: discard
+    of efRaisesDiffer:
+      msg.add "\n.raise effects differ"
+    of efRaisesUnknown:
+      msg.add "\n.raise effect is 'can raise any'"
+    of efTagsDiffer:
+      msg.add "\n.tag effects differ"
+    of efTagsUnknown:
+      msg.add "\n.tag effect is 'any tag allowed'"
+    of efEffectsDelayed:
+      msg.add "\n.effectsOf annotations differ"
+    of efTagsIllegal:
+      msg.add "\n.notTag catched an illegal effect"
 
 proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: PNode) =
   if formal.kind != tyError and actual.kind != tyError:
@@ -1626,25 +1691,18 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
       msg.add "\n"
     msg.add " but expected '$1'" % x
     if verbose: msg.addDeclaredLoc(conf, formal)
-
-    if formal.kind == tyProc and actual.kind == tyProc:
-      msg.addPragmaAndCallConvMismatch(formal, actual, conf)
-      case compatibleEffects(formal, actual)
-      of efCompat: discard
-      of efRaisesDiffer:
-        msg.add "\n.raise effects differ"
-      of efRaisesUnknown:
-        msg.add "\n.raise effect is 'can raise any'"
-      of efTagsDiffer:
-        msg.add "\n.tag effects differ"
-      of efTagsUnknown:
-        msg.add "\n.tag effect is 'any tag allowed'"
-      of efLockLevelsDiffer:
-        msg.add "\nlock levels differ"
-      of efEffectsDelayed:
-        msg.add "\n.effectsOf annotations differ"
-      of efTagsIllegal:
-        msg.add "\n.notTag catched an illegal effect"
+    var a = formal
+    var b = actual
+    if formal.kind == tyArray and actual.kind == tyArray:
+      a = formal[1]
+      b = actual[1]
+      processPragmaAndCallConvMismatch(msg, a, b, conf)
+    elif formal.kind == tySequence and actual.kind == tySequence:
+      a = formal[0]
+      b = actual[0]
+      processPragmaAndCallConvMismatch(msg, a, b, conf)
+    else:
+      processPragmaAndCallConvMismatch(msg, a, b, conf)
     localError(conf, info, msg)
 
 proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
@@ -1656,7 +1714,7 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
   of tyTuple:
     var cycleDetectorCopy: IntSet
     for i in 0..<t.len:
-      assign(cycleDetectorCopy, cycleDetector)
+      cycleDetectorCopy = cycleDetector
       if isTupleRecursive(t[i], cycleDetectorCopy):
         return true
   of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink,
@@ -1686,6 +1744,18 @@ proc isDefectException*(t: PType): bool =
     if t.sym != nil and t.sym.owner != nil and
         sfSystemModule in t.sym.owner.flags and
         t.sym.name.s == "Defect":
+      return true
+    if t[0] == nil: break
+    t = skipTypes(t[0], abstractPtrs)
+  return false
+
+proc isDefectOrCatchableError*(t: PType): bool =
+  var t = t.skipTypes(abstractPtrs)
+  while t.kind == tyObject:
+    if t.sym != nil and t.sym.owner != nil and
+        sfSystemModule in t.sym.owner.flags and
+        (t.sym.name.s == "Defect" or
+        t.sym.name.s == "CatchableError"):
       return true
     if t[0] == nil: break
     t = skipTypes(t[0], abstractPtrs)

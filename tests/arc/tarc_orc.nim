@@ -33,3 +33,29 @@ proc bug20303() =
   doAssert res == "are"
 
 bug20303()
+
+proc main() = # todo bug with templates
+  block: # bug #11267
+    var a: seq[char] = block: @[]
+    doAssert a == @[]
+    # 2
+    proc b: seq[string] =
+      discard
+      @[]
+    doAssert b() == @[]
+static: main()
+main()
+
+
+type Obj = tuple
+  value: int
+  arr: seq[int]
+
+proc bug(): seq[Obj] =
+  result.add (value: 0, arr: @[])
+  result[^1].value = 1
+  result[^1].arr.add 1
+
+# bug #19990
+let s = bug()
+doAssert s[0] == (value: 1, arr: @[1])

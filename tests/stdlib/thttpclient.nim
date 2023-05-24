@@ -14,6 +14,9 @@ from net import TimeoutError
 
 import nativesockets, os, httpclient, asyncdispatch
 
+import std/[assertions, syncio]
+from stdtest/testutils import enableRemoteNetworking
+
 const manualTests = false
 
 proc makeIPv6HttpServer(hostname: string, port: Port,
@@ -54,8 +57,9 @@ proc asyncTest() {.async.} =
   doAssert(resp.code == Http404)
   doAssert(resp.status == $Http404)
 
-  resp = await client.request("https://google.com/")
-  doAssert(resp.code.is2xx or resp.code.is3xx)
+  when false: # occasionally does not give success code 
+    resp = await client.request("https://google.com/")
+    doAssert(resp.code.is2xx or resp.code.is3xx)
 
   # getContent
   try:
@@ -115,8 +119,9 @@ proc syncTest() =
   doAssert(resp.code == Http404)
   doAssert(resp.status == $Http404)
 
-  resp = client.request("https://google.com/")
-  doAssert(resp.code.is2xx or resp.code.is3xx)
+  when false: # occasionally does not give success code
+    resp = client.request("https://google.com/")
+    doAssert(resp.code.is2xx or resp.code.is3xx)
 
   # getContent
   try:
@@ -176,5 +181,7 @@ proc ipv6Test() =
   client.close()
 
 ipv6Test()
-syncTest()
-waitFor(asyncTest())
+
+when enableRemoteNetworking:
+  syncTest()
+  waitFor(asyncTest())

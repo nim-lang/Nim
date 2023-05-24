@@ -16,7 +16,6 @@ import
 type
   TLabel* = Rope              # for the C generator a label is just a rope
   TCFileSection* = enum       # the sections a generated C file consists of
-    cfsMergeInfo,             # section containing merge information
     cfsHeaders,               # section for C include file headers
     cfsFrameDefines           # section for nim frame macros
     cfsForwardTypes,          # section for C forward typedefs
@@ -24,21 +23,17 @@ type
     cfsSeqTypes,              # section for sequence types only
                               # this is needed for strange type generation
                               # reasons
-    cfsFieldInfo,             # section for field information
     cfsTypeInfo,              # section for type information (ag ABI checks)
     cfsProcHeaders,           # section for C procs prototypes
+    cfsStrData,               # section for constant string literals
     cfsData,                  # section for C constant data
     cfsVars,                  # section for C variable declarations
     cfsProcs,                 # section for C procs that are not inline
     cfsInitProc,              # section for the C init proc
     cfsDatInitProc,           # section for the C datInit proc
     cfsTypeInit1,             # section 1 for declarations of type information
-    cfsTypeInit2,             # section 2 for init of type information
     cfsTypeInit3,             # section 3 for init of type information
-    cfsDebugInit,             # section for init of debug information
     cfsDynLibInit,            # section for init of dynamic library binding
-    cfsDynLibDeinit           # section for deinitialization of dynamic
-                              # libraries
   TCTypeKind* = enum          # describes the type kind of a C type
     ctVoid, ctChar, ctBool,
     ctInt, ctInt8, ctInt16, ctInt32, ctInt64,
@@ -91,6 +86,7 @@ type
     options*: TOptions        # options that should be used for code
                               # generation; this is the same as prc.options
                               # unless prc == nil
+    optionsStack*: seq[TOptions]
     module*: BModule          # used to prevent excessive parameter passing
     withinLoop*: int          # > 0 if we are within a loop
     splitDecls*: int          # > 0 if we are in some context for C++ that
@@ -177,6 +173,7 @@ type
 
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
+template vccAndC*(p: BProc): bool = p.module.config.cCompiler == ccVcc and p.module.config.backend == backendC
 
 proc includeHeader*(this: BModule; header: string) =
   if not this.headerFiles.contains header:
@@ -190,13 +187,18 @@ proc procSec*(p: BProc, s: TCProcSection): var Rope {.inline.} =
   # top level proc sections
   result = p.blocks[0].sections[s]
 
+proc initBlock*(): TBlock =
+  result = TBlock()
+  for i in low(result.sections)..high(result.sections):
+    result.sections[i] = newRopeAppender()
+
 proc newProc*(prc: PSym, module: BModule): BProc =
   new(result)
   result.prc = prc
   result.module = module
   result.options = if prc != nil: prc.options
                    else: module.config.options
-  newSeq(result.blocks, 1)
+  result.blocks = @[initBlock()]
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
   result.sigConflicts = initCountTable[string]()

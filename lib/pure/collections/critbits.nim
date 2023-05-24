@@ -36,6 +36,9 @@ runnableExamples:
 
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   NodeObj[T] {.acyclic.} = object
     byte: int ## byte index of the difference

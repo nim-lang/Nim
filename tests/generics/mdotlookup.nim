@@ -14,3 +14,12 @@ var intset = initHashSet[int]()
 proc fn*[T](a: T) =
   if a in intset: echo("true")
   else: echo("false")
+
+import strutils
+
+proc doStrip*[T](a: T): string =
+  result = ($a).strip()
+
+type Foo = int32
+proc baz2*[T](y: int): auto =
+  result = y.Foo

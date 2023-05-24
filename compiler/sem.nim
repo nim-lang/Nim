@@ -9,11 +9,13 @@
 
 # This module implements the semantic checking pass.
 
+import tables
+
 import
   ast, strutils, options, astalgo, trees,
   wordrecg, ropes, msgs, idents, renderer, types, platform, math,
   magicsys, nversion, nimsets, semfold, modulepaths, importer,
-  procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
+  procfind, lookups, pragmas, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, strtabs, int128,
@@ -81,7 +83,7 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
   let x = arg.skipConv
   if (x.kind == nkCurly and formal.kind == tySet and formal.base.kind != tyGenericParam) or
-    (x.kind in {nkPar, nkTupleConstr}) and formal.kind notin {tyUntyped, tyBuiltInTypeClass}:
+    (x.kind in {nkPar, nkTupleConstr}) and formal.kind notin {tyUntyped, tyBuiltInTypeClass, tyAnything}:
     changeType(c, x, formal, check=true)
   result = arg
   result = skipHiddenSubConv(result, c.graph, c.idgen)
@@ -219,7 +221,7 @@ proc commonType*(c: PContext; x: PType, y: PNode): PType =
   commonType(c, x, y.typ)
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
-  result = newSym(kind, considerQuotedIdent(c, n), nextSymId c.idgen, getCurrOwner(c), n.info)
+  result = newSym(kind, considerQuotedIdent(c, n), c.idgen, getCurrOwner(c), n.info)
   when defined(nimsuggest):
     suggestDecl(c, n, result)
 
@@ -242,7 +244,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     # template; we must fix it here: see #909
     result.owner = getCurrOwner(c)
   else:
-    result = newSym(kind, considerQuotedIdent(c, n), nextSymId c.idgen, getCurrOwner(c), n.info)
+    result = newSym(kind, considerQuotedIdent(c, n), c.idgen, getCurrOwner(c), n.info)
   #if kind in {skForVar, skLet, skVar} and result.owner.kind == skModule:
   #  incl(result.flags, sfGlobal)
   when defined(nimsuggest):
@@ -281,7 +283,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
 
 proc symFromType(c: PContext; t: PType, info: TLineInfo): PSym =
   if t.sym != nil: return t.sym
-  result = newSym(skType, getIdent(c.cache, "AnonType"), nextSymId c.idgen, t.owner, info)
+  result = newSym(skType, getIdent(c.cache, "AnonType"), c.idgen, t.owner, info)
   result.flags.incl sfAnon
   result.typ = t
 
@@ -405,9 +407,6 @@ proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags; expectedTyp
       evaluated = evalAtCompileTime(c, result)
       if evaluated != nil: return evaluated
 
-when not defined(nimHasSinkInference):
-  {.pragma: nosinks.}
-
 include hlo, seminst, semcall
 
 proc resetSemFlag(n: PNode) =
@@ -439,7 +438,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
       # does not mean we expect a tyTypeDesc.
       retType = retType[0]
     case retType.kind
-    of tyUntyped:
+    of tyUntyped, tyAnything:
       # Not expecting a type here allows templates like in ``tmodulealias.in``.
       result = semExpr(c, result, flags, expectedType)
     of tyTyped:
@@ -538,6 +537,125 @@ proc setGenericParamsMisc(c: PContext; n: PNode) =
   else:
     n[miscPos][1] = orig
 
+proc caseBranchMatchesExpr(branch, matched: PNode): bool =
+  for i in 0 ..< branch.len-1:
+    if branch[i].kind == nkRange:
+      if overlap(branch[i], matched): return true
+    elif exprStructuralEquivalent(branch[i], matched):
+      return true
+
+proc pickCaseBranchIndex(caseExpr, matched: PNode): int =
+  let endsWithElse = caseExpr[^1].kind == nkElse
+  for i in 1..<caseExpr.len - endsWithElse.int:
+    if caseExpr[i].caseBranchMatchesExpr(matched):
+      return i
+  if endsWithElse:
+    return caseExpr.len - 1
+
+proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode]
+proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode
+proc defaultNodeField(c: PContext, a: PNode): PNode
+
+const defaultFieldsSkipTypes = {tyGenericInst, tyAlias, tySink}
+
+proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool): seq[PNode] =
+  case recNode.kind
+  of nkRecList:
+    for field in recNode:
+      result.add defaultFieldsForTuple(c, field, hasDefault)
+  of nkSym:
+    let field = recNode.sym
+    let recType = recNode.typ.skipTypes(defaultFieldsSkipTypes)
+    if field.ast != nil: #Try to use default value
+      hasDefault = true
+      result.add newTree(nkExprColonExpr, recNode, field.ast)
+    else:
+      if recType.kind in {tyObject, tyArray, tyTuple}:
+        let asgnExpr = defaultNodeField(c, recNode, recNode.typ)
+        if asgnExpr != nil:
+          hasDefault = true
+          asgnExpr.flags.incl nfSkipFieldChecking
+          result.add newTree(nkExprColonExpr, recNode, asgnExpr)
+          return
+
+      let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), recNode.typ.owner)
+      rawAddSon(asgnType, recNode.typ)
+      let asgnExpr = newTree(nkCall,
+                      newSymNode(getSysMagic(c.graph, recNode.info, "zeroDefault", mZeroDefault)),
+                      newNodeIT(nkType, recNode.info, asgnType)
+                    )
+      asgnExpr.flags.incl nfSkipFieldChecking
+      asgnExpr.typ = recNode.typ
+      result.add newTree(nkExprColonExpr, recNode, asgnExpr)
+  else:
+    doAssert false
+
+proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
+  case recNode.kind
+  of nkRecList:
+    for field in recNode:
+      result.add defaultFieldsForTheUninitialized(c, field)
+  of nkRecCase:
+    let discriminator = recNode[0]
+    var selectedBranch: int
+    var defaultValue = discriminator.sym.ast
+    if defaultValue == nil:
+      # None of the branches were explicitly selected by the user and no value
+      # was given to the discrimator. We can assume that it will be initialized
+      # to zero and this will select a particular branch as a result:
+      defaultValue = newIntNode(nkIntLit#[c.graph]#, 0)
+      defaultValue.typ = discriminator.typ
+    selectedBranch = recNode.pickCaseBranchIndex defaultValue
+    defaultValue.flags.incl nfSkipFieldChecking
+    result.add newTree(nkExprColonExpr, discriminator, defaultValue)
+    result.add defaultFieldsForTheUninitialized(c, recNode[selectedBranch][^1])
+  of nkSym:
+    let field = recNode.sym
+    let recType = recNode.typ.skipTypes(defaultFieldsSkipTypes)
+    if field.ast != nil: #Try to use default value
+      result.add newTree(nkExprColonExpr, recNode, field.ast)
+    elif recType.kind in {tyObject, tyArray, tyTuple}:
+      let asgnExpr = defaultNodeField(c, recNode, recNode.typ)
+      if asgnExpr != nil:
+        asgnExpr.typ = recNode.typ
+        asgnExpr.flags.incl nfSkipFieldChecking
+        result.add newTree(nkExprColonExpr, recNode, asgnExpr)
+  else:
+    doAssert false
+
+proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
+  let aTypSkip = aTyp.skipTypes(defaultFieldsSkipTypes)
+  if aTypSkip.kind == tyObject:
+    let child = defaultFieldsForTheUninitialized(c, aTypSkip.n)
+    if child.len > 0:
+      var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTyp))
+      asgnExpr.typ = aTyp
+      asgnExpr.sons.add child
+      result = semExpr(c, asgnExpr)
+  elif aTypSkip.kind == tyArray:
+    let child = defaultNodeField(c, a, aTypSkip[1])
+
+    if child != nil:
+      let node = newNode(nkIntLit)
+      node.intVal = toInt64(lengthOrd(c.graph.config, aTypSkip))
+      result = semExpr(c, newTree(nkCall, newSymNode(getCompilerProc(c.graph, "nimArrayWith"), a.info),
+        semExprWithType(c, child),
+        node
+          ))
+      result.typ = aTyp
+  elif aTypSkip.kind == tyTuple:
+    var hasDefault = false
+    if aTypSkip.n != nil:
+      let children = defaultFieldsForTuple(c, aTypSkip.n, hasDefault)
+      if hasDefault and children.len > 0:
+        result = newNodeI(nkTupleConstr, a.info)
+        result.typ = aTyp
+        result.sons.add children
+        result = semExpr(c, result)
+
+proc defaultNodeField(c: PContext, a: PNode): PNode =
+  result = defaultNodeField(c, a, a.typ)
+
 include semtempl, semgnrc, semstmts, semexprs
 
 proc addCodeForGenerics(c: PContext, n: PNode) =
@@ -550,41 +668,46 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
         n.add prc.ast
   c.lastGenericIdx = c.generics.len
 
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
-  var c = newContext(graph, module)
-  c.idgen = idgen
-  c.enforceVoidContext = newType(tyTyped, nextTypeId(idgen), nil)
-  c.voidType = newType(tyVoid, nextTypeId(idgen), nil)
+proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PContext =
+  result = newContext(graph, module)
+  result.idgen = idgen
+  result.enforceVoidContext = newType(tyTyped, nextTypeId(idgen), nil)
+  result.voidType = newType(tyVoid, nextTypeId(idgen), nil)
 
-  if c.p != nil: internalError(graph.config, module.info, "sem.myOpen")
-  c.semConstExpr = semConstExpr
-  c.semExpr = semExpr
-  c.semTryExpr = tryExpr
-  c.semTryConstExpr = tryConstExpr
-  c.computeRequiresInit = computeRequiresInit
-  c.semOperand = semOperand
-  c.semConstBoolExpr = semConstBoolExpr
-  c.semOverloadedCall = semOverloadedCall
-  c.semInferredLambda = semInferredLambda
-  c.semGenerateInstance = generateInstance
-  c.semTypeNode = semTypeNode
-  c.instTypeBoundOp = sigmatch.instTypeBoundOp
-  c.hasUnresolvedArgs = hasUnresolvedArgs
-  c.templInstCounter = new int
+  if result.p != nil: internalError(graph.config, module.info, "sem.preparePContext")
+  result.semConstExpr = semConstExpr
+  result.semExpr = semExpr
+  result.semTryExpr = tryExpr
+  result.semTryConstExpr = tryConstExpr
+  result.computeRequiresInit = computeRequiresInit
+  result.semOperand = semOperand
+  result.semConstBoolExpr = semConstBoolExpr
+  result.semOverloadedCall = semOverloadedCall
+  result.semInferredLambda = semInferredLambda
+  result.semGenerateInstance = generateInstance
+  result.semTypeNode = semTypeNode
+  result.instTypeBoundOp = sigmatch.instTypeBoundOp
+  result.hasUnresolvedArgs = hasUnresolvedArgs
+  result.templInstCounter = new int
 
-  pushProcCon(c, module)
-  pushOwner(c, c.module)
+  pushProcCon(result, module)
+  pushOwner(result, result.module)
 
-  c.moduleScope = openScope(c)
-  c.moduleScope.addSym(module) # a module knows itself
+  result.moduleScope = openScope(result)
+  result.moduleScope.addSym(module) # a module knows itself
 
   if sfSystemModule in module.flags:
     graph.systemModule = module
-  c.topLevelScope = openScope(c)
-  result = c
+  result.topLevelScope = openScope(result)
 
 proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
   if g.systemModule == nil: return false
+  var n = n
+  if n.kind == nkStmtList:
+    for i in 0..<n.len-1:
+      if n[i].kind notin {nkCommentStmt, nkEmpty}:
+        n = n[i]
+        break
   case n.kind
   of nkImportStmt:
     for x in n:
@@ -649,8 +772,7 @@ proc recoverContext(c: PContext) =
   while getCurrOwner(c).kind != skModule: popOwner(c)
   while c.p != nil and c.p.owner.kind != skModule: c.p = c.p.next
 
-proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
-  var c = PContext(context)
+proc semWithPContext*(c: PContext, n: PNode): PNode =
   # no need for an expensive 'try' if we stop after the first error anyway:
   if c.config.errorMax <= 1:
     result = semStmtAndGenerateGenerics(c, n)
@@ -671,13 +793,13 @@ proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
   storeRodNode(c, result)
 
+
 proc reportUnusedModules(c: PContext) =
   for i in 0..high(c.unusedImports):
     if sfUsed notin c.unusedImports[i][0].flags:
       message(c.config, c.unusedImports[i][1], warnUnusedImportX, c.unusedImports[i][0].name.s)
 
-proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
-  var c = PContext(context)
+proc closePContext*(graph: ModuleGraph; c: PContext, n: PNode): PNode =
   if c.config.cmd == cmdIdeTools and not c.suggestionsMade:
     suggestSentinel(c)
   closeScope(c)         # close module's scope
@@ -692,6 +814,3 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   popOwner(c)
   popProcCon(c)
   sealRodFile(c)
-
-const semPass* = makePass(myOpen, myProcess, myClose,
-                          isFrontend = true)

@@ -1,7 +1,9 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
 """
 
 import std/private/ntpath
+import std/assertions
 
 block: # From Python's `Lib/test/test_ntpath.py`
   doAssert splitDrive(r"c:\foo\bar") == (r"c:", r"\foo\bar")

@@ -1,9 +1,11 @@
 discard """
+matrix: "--mm:refc; --mm:orc"
 outputsub: ""
 """
 
 import net, nativesockets
 import unittest
+import std/assertions
 
 block: # isIpAddress tests
   block: # 127.0.0.1 is valid

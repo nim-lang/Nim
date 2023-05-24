@@ -65,64 +65,28 @@ However, a `void` type cannot be inferred in generic code:
 The `void` type is only valid for parameters and return types; other symbols
 cannot have the type `void`.
 
+Generic `define` pragma
+=======================
 
-Unicode Operators
-=================
+Aside the [typed define pragmas for constants](manual.html#implementation-specific-pragmas-compileminustime-define-pragmas),
+there is a generic `{.define.}` pragma that interprets the value of the define
+based on the type of the constant value.
 
-Under the `--experimental:unicodeOperators`:option: switch,
-these Unicode operators are also parsed as operators::
-
-  ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
-  ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
-
-
-If enabled, Unicode operators can be combined with non-Unicode operator
-symbols. The usual precedence extensions then apply, for example, `⊠=` is an
-assignment like operator just like `*=` is.
-
-No Unicode normalization step is performed.
-
-.. note:: Due to parser limitations one **cannot** enable this feature via a
-  pragma `{.experimental: "unicodeOperators".}` reliably.
-
-
-Overloadable enum value names
-=============================
-
-Enum value names are overloadable, much like routines. If both of the enums
-`T` and `U` have a member named `foo`, then the identifier `foo` corresponds
-to a choice between `T.foo` and `U.foo`. During overload resolution,
-the correct type of `foo` is decided from the context. If the type of `foo` is
-ambiguous, a static error will be produced.
-
-  ```nim  test = "nim c $1"
-
-  type
-    E1 = enum
-      value1,
-      value2
-    E2 = enum
-      value1,
-      value2 = 4
-
-  const
-    Lookuptable = [
-      E1.value1: "1",
-      # no need to qualify value2, known to be E1.value2
-      value2: "2"
-    ]
-
-  proc p(e: E1) =
-    # disambiguation in 'case' statements:
-    case e
-    of value1: echo "A"
-    of value2: echo "B"
-
-  p value2
+  ```nim
+  const foo {.define: "package.foo".} = 123
+  const bar {.define: "package.bar".} = false
   ```
 
-Previously required `{.experimental: "overloadableEnums".}` to enable,
-now always enabled.
+  ```cmd
+  nim c -d:package.foo=456 -d:package.bar foobar.nim
+  ```
+
+The following types are supported:
+
+* `string` and `cstring`
+* Signed and unsigned integer types
+* `bool`
+* Enums
 
 Top-down type inference
 =======================
@@ -171,7 +135,7 @@ let x: seq[seq[float]] = @[@[1, 2, 3], @[4, 5, 6]]
 
 This behavior is tied to the `@` overloads in the `system` module,
 so overloading `@` can disable this behavior. This can be circumvented by
-specifying the `` system.`@` `` overload. 
+specifying the `` system.`@` `` overload.
 
 ```nim
 proc `@`(x: string): string = "@" & x
@@ -345,29 +309,6 @@ scope. Therefore, the following will *fail to compile:*
 This feature will likely be replaced with a better solution to remove
 the need for forward declarations.
 
-
-Automatic dereferencing
-=======================
-
-Automatic dereferencing is performed for the first argument of a routine call.
-This feature has to be enabled via `{.experimental: "implicitDeref".}`:
-
-  ```nim
-  {.experimental: "implicitDeref".}
-
-  type
-    NodeObj = object
-      # ...
-    Node = ref NodeObj
-
-  proc depth(x: NodeObj): int = ...
-
-  let n = Node()
-  echo n.depth
-  # no need to write n[].depth
-  ```
-
-
 Special Operators
 =================
 
@@ -512,27 +453,24 @@ Assuming `foo` is a macro or a template, this is roughly equivalent to:
   ```
 
 
-Symbols as template/macro calls
-===============================
+Symbols as template/macro calls (alias syntax)
+==============================================
 
-Templates and macros that take no arguments can be called as lone symbols,
-i.e. without parentheses. This is useful for repeated uses of complex
-expressions that cannot conveniently be represented as runtime values.
+Templates and macros that have no generic parameters and no required arguments
+can be called as lone symbols, i.e. without parentheses. This is useful for
+repeated uses of complex expressions that cannot conveniently be represented
+as runtime values.
 
   ```nim
   type Foo = object
     bar: int
-  
+
   var foo = Foo(bar: 10)
-  template bar: untyped = foo.bar
+  template bar: int = foo.bar
   assert bar == 10
   bar = 15
   assert bar == 15
   ```
-
-In the future, this may require more specific information on template or macro
-signatures to be used. Specializations for some applications of this may also
-be introduced to guarantee consistency and circumvent bugs.
 
 
 Not nil annotation
@@ -601,8 +539,7 @@ Since version 1.4, a stricter definition of "side effect" is available.
 In addition to the existing rule that a side effect is calling a function
 with side effects, the following rule is also enforced:
 
-Any mutation to an object does count as a side effect if that object is reachable
-via a parameter that is not declared as a `var` parameter.
+A store to the heap via a `ref` or `ptr` indirection is not allowed.
 
 For example:
 
@@ -622,15 +559,12 @@ For example:
       it = it.ri
 
   func mut(n: Node) =
-    let m = n # is the statement that connected the mutation to the parameter
-    m.data = "yeah" # the mutation is here
-    # Error: 'mut' can have side effects
-    # an object reachable from 'n' is potentially mutated
+    var it = n
+    while it != nil:
+      it.data = "yeah" # forbidden mutation
+      it = it.ri
+
   ```
-
-
-The algorithm behind this analysis is described in
-the [view types algorithm].
 
 
 View types
@@ -849,9 +783,9 @@ be part of a single graph.
 Assignments like `a = b` "connect" two variables, both variables end up in the
 same graph `{a, b} = G(a) = G(b)`. Unfortunately, the pattern to look for is
 much more complex than that and can involve multiple assignment targets
-and sources::
+and sources:
 
-  f(x, y) = g(a, b)
+    f(x, y) = g(a, b)
 
 connects `x` and `y` to `a` and `b`: `G(x) = G(y) = G(a) = G(b) = {x, y, a, b}`.
 A type based alias analysis rules out some of these combinations, for example
@@ -1645,16 +1579,16 @@ all the arguments, but also the matched operators in reverse polish notation:
   ```
 
 This passes the expression `x + y * z - x` to the `optM` macro as
-an `nnkArgList` node containing::
+an `nnkArgList` node containing:
 
-  Arglist
-    Sym "x"
-    Sym "y"
-    Sym "z"
-    Sym "*"
-    Sym "+"
-    Sym "x"
-    Sym "-"
+    Arglist
+      Sym "x"
+      Sym "y"
+      Sym "z"
+      Sym "*"
+      Sym "+"
+      Sym "x"
+      Sym "-"
 
 (This is the reverse polish notation of `x + y * z - x`.)
 
@@ -1788,7 +1722,7 @@ the overhead of an indirection via `FlowVar[T]` to ensure correctness.
 .. note:: Currently exceptions are not propagated between `spawn`'ed tasks!
 
 This feature is likely to be removed in the future as external packages
-can have better solutions. 
+can have better solutions.
 
 
 Spawn statement
@@ -1899,100 +1833,376 @@ restrictions / changes:
   yet performed for ordinary slices outside of a `parallel` section.
 
 
+Strict definitions and `out` parameters
+=======================================
 
-Lock levels
-===========
-
-Lock levels are used to enforce a global locking order in order to detect
-potential deadlocks during semantic analysis. A lock level is an constant
-integer in the range 0..1_000. Lock level 0 means that no lock is acquired at
-all.
-
-If a section of code holds a lock of level `M`, it can also acquire any
-lock of level `N < M`. Another lock of level `M` cannot be acquired. Locks
-of the same level can only be acquired *at the same time* within a
-single `locks` section:
+With `experimental: "strictDefs"` *every* local variable must be initialized explicitly before it can be used:
 
   ```nim
-  var a, b: TLock[2]
-  var x: TLock[1]
-  # invalid locking order: TLock[1] cannot be acquired before TLock[2]:
-  {.locks: [x].}:
-    {.locks: [a].}:
-      ...
-  # valid locking order: TLock[2] acquired before TLock[1]:
-  {.locks: [a].}:
-    {.locks: [x].}:
-      ...
+  {.experimental: "strictDefs".}
 
-  # invalid locking order: TLock[2] acquired before TLock[2]:
-  {.locks: [a].}:
-    {.locks: [b].}:
-      ...
+  proc test =
+    var s: seq[string]
+    s.add "abc" # invalid!
 
-  # valid locking order, locks of the same level acquired at the same time:
-  {.locks: [a, b].}:
-    ...
   ```
 
-
-Here is how a typical multilock statement can be implemented in Nim. Note how
-the runtime check is required to ensure a global ordering for two locks `a`
-and `b` of the same lock level:
+Needs to be written as:
 
   ```nim
-  template multilock(a, b: ptr TLock; body: untyped) =
-    if cast[ByteAddress](a) < cast[ByteAddress](b):
-      pthread_mutex_lock(a)
-      pthread_mutex_lock(b)
+  {.experimental: "strictDefs".}
+
+  proc test =
+    var s: seq[string] = @[]
+    s.add "abc" # valid!
+
+  ```
+
+A control flow analysis is performed in order to prove that a variable has been written to
+before it is used. Thus the following is valid:
+
+  ```nim
+  {.experimental: "strictDefs".}
+
+  proc test(cond: bool) =
+    var s: seq[string]
+    if cond:
+      s = @["y"]
     else:
-      pthread_mutex_lock(b)
-      pthread_mutex_lock(a)
-    {.locks: [a, b].}:
-      try:
-        body
-      finally:
-        pthread_mutex_unlock(a)
-        pthread_mutex_unlock(b)
+      s = @[]
+    s.add "abc" # valid!
   ```
 
-
-Whole routines can also be annotated with a `locks` pragma that takes a lock
-level. This then means that the routine may acquire locks of up to this level.
-This is essential so that procs can be called within a `locks` section:
+In this example every path does set `s` to a value before it is used.
 
   ```nim
-  proc p() {.locks: 3.} = discard
+  {.experimental: "strictDefs".}
 
-  var a: TLock[4]
-  {.locks: [a].}:
-    # p's locklevel (3) is strictly less than a's (4) so the call is allowed:
-    p()
+  proc test(cond: bool) =
+    let s: seq[string]
+    if cond:
+      s = @["y"]
+    else:
+      s = @[]
   ```
 
+With `experimental: "strictDefs"`, `let` statements are allowed to not have an initial value, but every path should set `s` to a value before it is used.
 
-As usual, `locks` is an inferred effect and there is a subtype
-relation: `proc () {.locks: N.}` is a subtype of `proc () {.locks: M.}`
-iff (M <= N).
 
-The `locks` pragma can also take the special value `"unknown"`. This
-is useful in the context of dynamic method dispatching. In the following
-example, the compiler can infer a lock level of 0 for the `base` case.
-However, one of the overloaded methods calls a procvar which is
-potentially locking. Thus, the lock level of calling `g.testMethod`
-cannot be inferred statically, leading to compiler warnings. By using
-`{.locks: "unknown".}`, the base method can be marked explicitly as
-having unknown lock level as well:
+`out` parameters
+----------------
+
+An `out` parameter is like a `var` parameter but it must be written to before it can be used:
 
   ```nim
-  type SomeBase* = ref object of RootObj
-  type SomeDerived* = ref object of SomeBase
-    memberProc*: proc ()
 
-  method testMethod(g: SomeBase) {.base, locks: "unknown".} = discard
-  method testMethod(g: SomeDerived) =
-    if g.memberProc != nil:
-      g.memberProc()
+  proc myopen(f: out File; name: string): bool =
+    f = default(File)
+    result = open(f, name)
+
   ```
 
-This feature may be removed in the future due to its practical difficulties.
+While it is usually the better style to use the return type in order to return results API and ABI
+considerations might make this infeasible. Like for `var T` Nim maps `out T` to a hidden pointer.
+For example POSIX's `stat` routine can be wrapped as:
+
+  ```nim
+
+  proc stat*(a1: cstring, a2: out Stat): cint {.importc, header: "<sys/stat.h>".}
+
+  ```
+
+When the implementation of a routine with output parameters is analysed, the compiler
+checks that every path before the (implicit or explicit) return does set every output
+parameter:
+
+  ```nim
+
+  proc p(x: out int; y: out string; cond: bool) =
+    x = 4
+    if cond:
+      y = "abc"
+    # error: not every path initializes 'y'
+
+  ```
+
+
+Out parameters and exception handling
+-------------------------------------
+
+The analysis should take exceptions into account (but currently does not):
+
+  ```nim
+
+  proc p(x: out int; y: out string; cond: bool) =
+    x = canRaise(45)
+    y = "abc" # <-- error: not every path initializes 'y'
+
+  ```
+
+Once the implementation takes exceptions into account it is easy enough to
+use `outParam = default(typeof(outParam))` in the beginning of the proc body.
+
+Out parameters and inheritance
+------------------------------
+
+It is not valid to pass an lvalue of a supertype to an `out T` parameter:
+
+  ```nim
+
+  type
+    Superclass = object of RootObj
+      a: int
+    Subclass = object of Superclass
+      s: string
+
+  proc init(x: out Superclass) =
+    x = Superclass(a: 8)
+
+  var v: Subclass
+  init v
+  use v.s # the 's' field was never initialized!
+
+  ```
+
+However, in the future this could be allowed and provide a better way to write object
+constructors that take inheritance into account.
+
+
+**Note**: The implementation of "strict definitions" and "out parameters" is experimental but the concept
+is solid and it is expected that eventually this mode becomes the default in later versions.
+
+
+Strict case objects
+===================
+
+With `experimental: "strictCaseObjects"` *every* field access is checked to be valid at compile-time.
+The field is within a `case` section of an `object`.
+
+  ```nim
+  {.experimental: "strictCaseObjects".}
+
+  type
+    Foo = object
+      case b: bool
+      of false:
+        s: string
+      of true:
+        x: int
+
+  var x = Foo(b: true, x: 4)
+  case x.b
+  of true:
+    echo x.x # valid
+  of false:
+    echo "no"
+
+  case x.b
+  of false:
+    echo x.x # error: field access outside of valid case branch: x.x
+  of true:
+    echo "no"
+
+  ```
+
+**Note**: The implementation of "strict case objects" is experimental but the concept
+is solid and it is expected that eventually this mode becomes the default in later versions.
+
+
+Threading under ARC/ORC
+=======================
+
+ARC/ORC supports a shared heap out of the box. This means that messages can be sent between
+threads without copies. However, without copying the data there is an inherent danger of
+data races. Data races are prevented at compile-time if it is enforced that
+only **isolated** subgraphs can be sent around.
+
+
+Isolation
+---------
+
+The standard library module `isolation.nim` provides a generic type `Isolated[T]` that
+captures the important notion that nothing else can reference the graph that is wrapped
+inside `Isolated[T]`. It is what a channel implementation should use in order to enforce
+the freedom of data races:
+
+  ```nim
+
+  proc send*[T](c: var Channel[T]; msg: sink Isolated[T])
+  proc recv*[T](c: var Channel[T]): T
+    ## Note: Returns T, not Isolated[T] for convenience.
+
+  proc recvIso*[T](c: var Channel[T]): Isolated[T]
+    ## remembers the data is Isolated[T].
+
+  ```
+
+In order to create an `Isolated` graph one has to use either `isolate` or `unsafeIsolate`.
+`unsafeIsolate` is as its name says unsafe and no checking is performed. It should be considered
+to be as dangerous as a `cast` operation.
+
+
+Construction must ensure that the invariant holds, namely that the wrapped `T`
+is free of external aliases into it. `isolate` ensures this invariant. It is
+inspired by Pony's `recover` construct:
+
+  ```nim
+
+  func isolate(x: sink T): Isolated[T] {.magic: "Isolate".}
+
+  ```
+
+
+As you can see, this is a new builtin because the check it performs on `x` is non-trivial:
+
+If `T` does not contain a `ref` or `closure` type, it is isolated. Else the syntactic
+structure of `x` is analyzed:
+
+- Literals like `nil`, `4`, `"abc"` are isolated.
+- A local variable or a routine parameter is isolated if either of these conditions is true:
+  1. Its type is annotated with the `.sendable` pragma. Note `Isolated[T]` is annotated as
+     `.sendable`.
+  2. Its type contains the potentially dangerous `ref` and `proc {.closure}` types
+     only in places that are protected via a `.sendable` container.
+
+- An array constructor `[x...]` is isolated if every element `x` is isolated.
+- An object constructor `Obj(x...)` is isolated if every element `x` is isolated.
+- An `if` or `case` expression is isolated if all possible values the expression
+  may return are isolated.
+- A type conversion `C(x)` is isolated if `x` is isolated. Analogous for `cast`
+  expressions.
+- A function call `f(x...)` is isolated if `f` is `.noSideEffect` and for every argument `x`:
+  - `x` is isolated **or**
+  - `f`'s return type cannot *alias* `x`'s type. This is checked via a form of alias analysis as explained in the next paragraph.
+
+
+
+Alias analysis
+--------------
+
+We start with an important, simple case that must be valid: Sending the result
+of `parseJson` to a channel. Since the signature
+is `func parseJson(input: string): JsonNode` it is easy to see that JsonNode
+can never simply be a view into `input` which is a `string`.
+
+A different case is the identity function `id`, `send id(myJsonGraph)` must be
+invalid because we do not know how many aliases into `myJsonGraph` exist
+elsewhere.
+
+In general type `A` can alias type `T` if:
+
+- `A` and `T` are the same types.
+- `A` is a distinct type derived from `T`.
+- `A` is a field inside `T` if `T` is a final object type.
+- `T` is an inheritable object type. (An inherited type could always contain
+  a `field: A`).
+- `T` is a closure type. Reason: `T`'s environment can contain a field of
+  type `A`.
+- `A` is the element type of `T` if `T` is an array, sequence or pointer type.
+
+
+
+
+Sendable pragma
+---------------
+
+A container type can be marked as `.sendable`. `.sendable` declares that the type
+encapsulates a `ref` type effectively so that a variable of this container type
+can be used in an `isolate` context:
+
+  ```nim
+
+  type
+    Isolated*[T] {.sendable.} = object ## Isolated data can only be moved, not copied.
+      value: T
+
+  proc `=copy`*[T](dest: var Isolated[T]; src: Isolated[T]) {.error.}
+
+  proc `=sink`*[T](dest: var Isolated[T]; src: Isolated[T]) {.inline.} =
+    # delegate to value's sink operation
+    `=sink`(dest.value, src.value)
+
+  proc `=destroy`*[T](dest: var Isolated[T]) {.inline.} =
+    # delegate to value's destroy operation
+    `=destroy`(dest.value)
+
+  ```
+
+The `.sendable` pragma itself is an experimenal, unchecked, unsafe annotation. It is
+currently only used by `Isolated[T]`.
+
+Virtual pragma
+==============
+
+`virtual` is designed to extend or create virtual functions when targeting the cpp backend. When a proc is marked with virtual, it forward declares the proc header within the type's body.
+
+Here's an example of how to use the virtual pragma:
+
+```nim
+
+proc newCpp*[T](): ptr T {.importcpp: "new '*0()".}
+type 
+  Foo = object of RootObj
+  FooPtr = ptr Foo
+  Boo = object of Foo
+  BooPtr = ptr Boo
+
+proc salute(self: FooPtr) {.virtual.} = 
+  echo "hello foo"
+
+proc salute(self: BooPtr) {.virtual.} =
+  echo "hello boo"
+
+let foo = newCpp[Foo]()
+let boo = newCpp[Boo]()
+let booAsFoo = cast[FooPtr](newCpp[Boo]())
+
+foo.salute() # prints hello foo
+boo.salute() # prints hello boo
+booAsFoo.salute() # prints hello boo
+
+```
+In this example, the `salute` function is virtual in both Foo and Boo types. This allows for polymorphism.
+
+The virtual pragma also supports a special syntax to express Cpp constraints. Here's how it works:
+
+`$1` refers to the function name
+`'idx` refers to the type of the argument at the position idx. Where idx = 1 is the `this` argument.
+`#idx` refers to the argument name.
+
+The return type can be referred to as `-> '0`, but this is optional and often not needed.
+
+ ```nim
+ {.emit:"""/*TYPESECTION*/
+#include <iostream>
+  class CppPrinter {
+  public:
+    
+    virtual void printConst(char* message) const {
+        std::cout << "Const Message: " << message << std::endl;
+    }
+    virtual void printConstRef(char* message, const int& flag) const {
+        std::cout << "Const Ref Message: " << message << std::endl;
+    }  
+};
+""".}
+
+type
+  CppPrinter {.importcpp, inheritable.} = object
+  NimPrinter {.exportc.} = object of CppPrinter
+
+proc printConst(self: CppPrinter; message:cstring) {.importcpp.}
+CppPrinter().printConst(message)
+
+# override is optional. 
+proc printConst(self: NimPrinter; message: cstring) {.virtual: "$1('2 #2) const override".} =
+  echo "NimPrinter: " & $message
+
+proc printConstRef(self: NimPrinter; message: cstring; flag:int32) {.virtual: "$1('2 #2, const '3& #3 ) const override".} =
+  echo "NimPrinterConstRef: " & $message
+
+NimPrinter().printConst(message)
+var val: int32 = 10
+NimPrinter().printConstRef(message, val)
+
+```

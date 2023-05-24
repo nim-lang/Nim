@@ -12,14 +12,13 @@
 # the data structures here are used in various places of the compiler.
 
 import
-  ast, hashes, intsets, strutils, options, lineinfos, ropes, idents, rodutils,
+  ast, hashes, intsets, options, lineinfos, ropes, idents, rodutils,
   msgs
+
+import strutils except addf
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
-
-when not defined(nimHasCursor):
-  {.pragma: cursor.}
 
 proc hashNode*(p: RootRef): Hash
 proc treeToYaml*(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
@@ -258,7 +257,7 @@ proc makeYamlString*(s: string): Rope =
   # this could trigger InternalError(111). See the ropes module for
   # further information.
   const MaxLineLength = 64
-  result = nil
+  result = ""
   var res = "\""
   for i in 0..<s.len:
     if (i + 1) mod MaxLineLength == 0:
@@ -274,9 +273,9 @@ proc flagsToStr[T](flags: set[T]): Rope =
   if flags == {}:
     result = rope("[]")
   else:
-    result = nil
+    result = ""
     for x in items(flags):
-      if result != nil: result.add(", ")
+      if result != "": result.add(", ")
       result.add(makeYamlString($x))
     result = "[" & result & "]"
 
@@ -331,7 +330,7 @@ proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
     sonsRope = rope("null")
   elif containsOrIncl(marker, n.id):
     sonsRope = "\"$1 @$2\"" % [rope($n.kind), rope(
-        strutils.toHex(cast[ByteAddress](n), sizeof(n) * 2))]
+        strutils.toHex(cast[int](n), sizeof(n) * 2))]
   else:
     if n.len > 0:
       sonsRope = rope("[")

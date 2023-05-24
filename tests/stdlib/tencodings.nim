@@ -1,4 +1,9 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import std/encodings
+import std/assertions
 
 var fromGBK = open("utf-8", "gbk")
 var toGBK = open("gbk", "utf-8")

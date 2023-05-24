@@ -1,7 +1,9 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
 """
 
 import std/os
+import std/assertions
 
 when doslikeFileSystem:
   import std/pathnorm

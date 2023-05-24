@@ -182,7 +182,7 @@ proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
       result[i] = onlyReplaceParams(c, n[i])
 
 proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
-  result = newSym(kind, considerQuotedIdent(c.c, n), nextSymId c.c.idgen, c.owner, n.info)
+  result = newSym(kind, considerQuotedIdent(c.c, n), c.c.idgen, c.owner, n.info)
   incl(result.flags, sfGenSym)
   incl(result.flags, sfShadowed)
 
@@ -227,7 +227,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
           closeScope(c)
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
-      if n.kind != nkSym:
+      if n.kind != nkSym and not (n.kind == nkIdent and n.ident.id == ord(wUnderscore)):
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
         styleCheckDef(c.c, n.info, local)
@@ -376,6 +376,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         result = newSymNode(s, n.info)
         onUse(n.info, s)
       else:
+        if s.kind in {skType, skVar, skLet, skConst}:
+          discard qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
         result = semTemplSymbol(c.c, n, s, c.noGenSym > 0)
   of nkBind:
     result = semTemplBody(c, n[0])
@@ -511,7 +513,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result.add newIdentNode(getIdent(c.c.cache, "{}"), n.info)
     for i in 0..<n.len: result.add(n[i])
     result = semTemplBodySons(c, result)
-  of nkAsgn, nkFastAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     checkSonsLen(n, 2, c.c.config)
     let a = n[0]
     let b = n[1]
@@ -620,16 +622,12 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     s = semIdentVis(c, skTemplate, n[namePos], {})
   assert s.kind == skTemplate
 
-  if s.owner != nil:
-    const names = ["!=", ">=", ">", "incl", "excl", "in", "notin", "isnot"]
-    if sfSystemModule in s.owner.flags and s.name.s in names or
-       s.owner.name.s == "vm" and s.name.s == "stackTrace":
-      incl(s.flags, sfCallsite)
-
   styleCheckDef(c, s)
   onDef(n[namePos].info, s)
   # check parameter list:
   #s.scope = c.currentScope
+  # push noalias flag at first to prevent unwanted recursive calls:
+  incl(s.flags, sfNoalias)
   pushOwner(c, s)
   openScope(c)
   n[namePos] = newSymNode(s)
@@ -639,6 +637,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   setGenericParamsMisc(c, n)
   # process parameters:
   var allUntyped = true
+  var nullary = true
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], n[genericParamsPos], s)
     # a template's parameters are not gensym'ed even if that was originally the
@@ -646,9 +645,12 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     # body by the absence of the sfGenSym flag:
     for i in 1..<s.typ.n.len:
       let param = s.typ.n[i].sym
-      param.flags.incl sfTemplateParam
-      param.flags.excl sfGenSym
+      if param.name.id != ord(wUnderscore):
+        param.flags.incl sfTemplateParam
+        param.flags.excl sfGenSym
       if param.typ.kind != tyUntyped: allUntyped = false
+      # no default value, parameters required in call
+      if param.ast == nil: nullary = false
   else:
     s.typ = newTypeS(tyProc, c)
     # XXX why do we need tyTyped as a return type again?
@@ -660,6 +662,11 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     n[genericParamsPos] = n[miscPos][1]
     n[miscPos] = c.graph.emptyNode
   if allUntyped: incl(s.flags, sfAllUntyped)
+  if nullary and
+      n[genericParamsPos].kind == nkEmpty and
+      n[bodyPos].kind != nkEmpty:
+    # template can be called with alias syntax, remove pushed noalias flag
+    excl(s.flags, sfNoalias)
 
   if n[patternPos].kind != nkEmpty:
     n[patternPos] = semPattern(c, n[patternPos], s)
@@ -695,7 +702,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   elif not comesFromShadowscope:
     if {sfTemplateRedefinition, sfGenSym} * s.flags == {}:
       #wrongRedefinition(c, n.info, proto.name.s, proto.info)
-      message(c.config, n.info, warnTemplateRedefinition, s.name.s)
+      message(c.config, n.info, warnImplicitTemplateRedefinition, s.name.s)
     symTabReplace(c.currentScope.symbols, proto, s)
   if n[patternPos].kind != nkEmpty:
     c.patterns.add(s)

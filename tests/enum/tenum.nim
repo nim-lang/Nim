@@ -155,7 +155,7 @@ block nonzero: # bug #6959
     C
   let slice = SomeEnum.low..SomeEnum.high
 
-block size_one_byte: #issue 15752
+block size_one_byte: # bug #15752
   type
     Flag = enum
       Disabled = 0x00
@@ -163,3 +163,24 @@ block size_one_byte: #issue 15752
 
   static:
     assert 1 == sizeof(Flag)
+
+block: # bug #12589
+  when not defined(i386):
+    type
+      OGRwkbGeometryType {.size: sizeof(cuint).} = enum
+        wkbPoint25D = 0x80000001.cuint, wkbLineString25D = 0x80000002,
+        wkbPolygon25D = 0x80000003
+
+    proc typ(): OGRwkbGeometryType =
+      return wkbPoint25D
+
+    when not defined(gcRefc):
+      doAssert $typ() == "wkbPoint25D"
+
+    block: # bug #21280
+      type
+        Test = enum
+          B = 19
+          A = int64.high()
+
+      doAssert ord(A) == int64.high()

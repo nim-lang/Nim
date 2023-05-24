@@ -1,7 +1,8 @@
 discard """
   output: ''''''
   cmd: '''nim c --gc:arc --expandArc:main --expandArc:tfor --hint:Performance:off $file'''
-  nimout: '''--expandArc: main
+  nimout: '''
+--expandArc: main
 
 var
   a
@@ -29,6 +30,7 @@ try:
   x = f()
   block :tmp:
     var i_cursor
+    mixin inc
     var i_1 = 0
     block :tmp_1:
       while i_1 < 4:
@@ -37,25 +39,26 @@ try:
         if i_cursor == 2:
           return
         add(a):
-          wasMoved(:tmpD)
+          `=wasMoved`(:tmpD)
           `=copy`(:tmpD, x)
           :tmpD
         inc i_1, 1
   if cond:
     add(a):
       let blitTmp = x
-      wasMoved(x)
+      `=wasMoved`(x)
       blitTmp
   else:
     add(b):
       let blitTmp_1 = x
-      wasMoved(x)
+      `=wasMoved`(x)
       blitTmp_1
 finally:
   `=destroy`(x)
   `=destroy_1`(b)
   `=destroy_1`(a)
--- end of expandArc ------------------------'''
+-- end of expandArc ------------------------
+'''
 """
 
 proc f(): seq[int] =

@@ -15,6 +15,9 @@
 import strutils, lexbase
 import std/private/decode_helpers
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 # ------------------- scanner -------------------------------------------------
 
 type
@@ -57,7 +60,7 @@ const
 
   reservedKeywords = @[
     # statements
-    "select", "from", "where", "group", "limit", "having",
+    "select", "from", "where", "group", "limit", "offset", "having",
     # functions
     "count",
   ]
@@ -506,6 +509,7 @@ type
     nkFromItemPair,
     nkGroup,
     nkLimit,
+    nkOffset,
     nkHaving,
     nkOrder,
     nkJoin,
@@ -1123,6 +1127,11 @@ proc parseSelect(p: var SqlParser): SqlNode =
     var l = newNode(nkLimit)
     l.add(parseExpr(p))
     result.add(l)
+  if isKeyw(p, "offset"):
+    getTok(p)
+    var o = newNode(nkOffset)
+    o.add(parseExpr(p))
+    result.add(o)
 
 proc parseStmt(p: var SqlParser; parent: SqlNode) =
   if isKeyw(p, "create"):
@@ -1384,6 +1393,9 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     s.addMulti(n)
   of nkLimit:
     s.addKeyw("limit")
+    s.addMulti(n)
+  of nkOffset:
+    s.addKeyw("offset")
     s.addMulti(n)
   of nkHaving:
     s.addKeyw("having")

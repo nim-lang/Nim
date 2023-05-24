@@ -1,10 +1,12 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   joinable: false
-  disabled: "freebsd"
-  disabled: "openbsd"
+  disabled: "freebsd" # see #15713
+  disabled: "openbsd" # see #15713
+  disabled: "netbsd" # see #15713
 """
-# disabled: pending bug #15713
-import net, nativesockets
+
+import std/[net, nativesockets, assertions, typedthreads]
 
 when defined(posix): import os, posix
 else:
@@ -16,22 +18,9 @@ when not defined(ssl):
 
 const DummyData = "dummy data\n"
 
-proc createSocket(): Socket =
-  result = newSocket(buffered = false)
-  result.setSockOpt(OptReuseAddr, true)
-  result.setSockOpt(OptReusePort, true)
-
-proc createServer(serverContext: SslContext): (Socket, Port) =
-  var server = createSocket()
-  serverContext.wrapSocket(server)
-  server.bindAddr(address = "localhost")
-  let (_, port) = server.getLocalAddr()
-  server.listen()
-  return (server, port)
-
 proc abruptShutdown(port: Port) {.thread.} =
   let clientContext = newContext(verifyMode = CVerifyNone)
-  var client = createSocket()
+  var client = newSocket(buffered = false)
   clientContext.wrapSocket(client)
   client.connect("localhost", port)
 
@@ -40,7 +29,7 @@ proc abruptShutdown(port: Port) {.thread.} =
 
 proc notifiedShutdown(port: Port) {.thread.} =
   let clientContext = newContext(verifyMode = CVerifyNone)
-  var client = createSocket()
+  var client = newSocket(buffered = false)
   clientContext.wrapSocket(client)
   client.connect("localhost", port)
 
@@ -62,7 +51,13 @@ proc main() =
                                  keyFile = "tests/testdata/mycert.pem")
 
   block peer_close_during_write_without_shutdown:
-    var (server, port) = createServer(serverContext)
+    var server = newSocket(buffered = false)
+    defer: server.close()
+    serverContext.wrapSocket(server)
+    server.bindAddr(address = "localhost")
+    let (_, port) = server.getLocalAddr()
+    server.listen()
+
     var clientThread: Thread[Port]
     createThread(clientThread, abruptShutdown, port)
 
@@ -80,14 +75,19 @@ proc main() =
       discard
     finally:
       peer.close()
-      server.close()
 
   when defined(posix):
     if sigaction(SIGPIPE, oldSigPipeHandler, nil) == -1:
       raiseOSError(osLastError(), "Couldn't restore SIGPIPE handler")
 
   block peer_close_before_received_shutdown:
-    var (server, port) = createServer(serverContext)
+    var server = newSocket(buffered = false)
+    defer: server.close()
+    serverContext.wrapSocket(server)
+    server.bindAddr(address = "localhost")
+    let (_, port) = server.getLocalAddr()
+    server.listen()
+
     var clientThread: Thread[Port]
     createThread(clientThread, abruptShutdown, port)
 
@@ -106,10 +106,15 @@ proc main() =
         discard peer.getFd.shutdown(SD_SEND)
     finally:
       peer.close()
-      server.close()
 
   block peer_close_after_received_shutdown:
-    var (server, port) = createServer(serverContext)
+    var server = newSocket(buffered = false)
+    defer: server.close()
+    serverContext.wrapSocket(server)
+    server.bindAddr(address = "localhost")
+    let (_, port) = server.getLocalAddr()
+    server.listen()
+
     var clientThread: Thread[Port]
     createThread(clientThread, notifiedShutdown, port)
 
@@ -129,6 +134,5 @@ proc main() =
         discard peer.getFd.shutdown(SD_SEND)
     finally:
       peer.close()
-      server.close()
 
 when isMainModule: main()

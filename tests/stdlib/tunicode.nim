@@ -1,5 +1,9 @@
-import std/unicode
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
 
+import std/unicode
+import std/assertions
 
 proc asRune(s: static[string]): Rune =
   ## Compile-time conversion proc for converting string literals to a Rune

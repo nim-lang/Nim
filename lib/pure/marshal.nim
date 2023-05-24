@@ -56,6 +56,9 @@ Please contribute a new implementation.""".}
 
 import streams, typeinfo, json, intsets, tables, unicode
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, formatfloat]
+
 proc ptrToInt(x: pointer): int {.inline.} =
   result = cast[int](x) # don't skip alignment
 

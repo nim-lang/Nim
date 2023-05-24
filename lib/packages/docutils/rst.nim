@@ -7,235 +7,22 @@
 #    distribution, for details about the copyright.
 #
 
-## ==================================
-##       packages/docutils/rst
-## ==================================
-##
-## ------------------------------------------
-## Nim-flavored reStructuredText and Markdown
-## ------------------------------------------
-##
 ## This module implements a `reStructuredText`:idx: (RST) and
 ## `Markdown`:idx: parser.
-## A large subset is implemented with some limitations_ and
-## `Nim-specific features`_.
-## Both Markdown and RST are mark-up languages whose goal is to
-## typeset texts with complex structure, formatting and references
-## using simple plaintext representation.
+## User's manual on supported markup syntax and command line usage can be
+## found in [Nim-flavored Markdown and reStructuredText](markdown_rst.html).
 ##
-## This module is also embedded into Nim compiler; the compiler can output
-## the result to HTML \[#html] or Latex \[#latex].
+## * See also [Nim DocGen Tools Guide](docgen.html) for handling of
+##   ``.nim`` files.
+## * See also [packages/docutils/rstgen module](rstgen.html) to know how to
+##   generate HTML or Latex strings (for embedding them into custom documents).
 ##
-## \[#html] commands `nim doc`:cmd: for ``*.nim`` files and
-##    `nim rst2html`:cmd: for ``*.rst`` files
-##
-## \[#latex] commands `nim doc2tex`:cmd: for ``*.nim`` and
-##    `nim rst2tex`:cmd: for ``*.rst``.
-##
-## If you are new to Markdown/RST please consider reading the following:
-##
-## 1) `Markdown Basic Syntax`_
-## 2) a long specification of Markdown: `CommonMark Spec`_
-## 3) a short `quick introduction`_ to RST
-## 4) an `RST reference`_: a comprehensive cheatsheet for RST
-## 5) a more formal 50-page `RST specification`_.
-##
-## Features
-## --------
-##
-## Supported standard RST features:
-##
-## * body elements
-##   + sections
-##   + transitions
-##   + paragraphs
-##   + bullet lists using \+, \*, \-
-##   + enumerated lists using arabic numerals or alphabet
-##     characters:  1. ... 2. ... *or* a. ... b. ... *or* A. ... B. ...
-##   + footnotes (including manually numbered, auto-numbered, auto-numbered
-##     with label, and auto-symbol footnotes) and citations
-##   + definition lists
-##   + field lists
-##   + option lists
-##   + indented literal blocks
-##   + quoted literal blocks
-##   + line blocks
-##   + simple tables
-##   + directives (see official documentation in `RST directives list`_):
-##     - ``image``, ``figure`` for including images and videos
-##     - ``code``
-##     - ``contents`` (table of contents), ``container``, ``raw``
-##     - ``include``
-##     - admonitions: "attention", "caution", "danger", "error", "hint",
-##       "important", "note", "tip", "warning", "admonition"
-##     - substitution definitions: `replace` and `image`
-##   + comments
-## * inline markup
-##   + *emphasis*, **strong emphasis**,
-##     ``inline literals``, hyperlink references (including embedded URI),
-##     substitution references, standalone hyperlinks,
-##     internal links (inline and outline)
-##   + \`interpreted text\` with roles ``:literal:``, ``:strong:``,
-##     ``emphasis``, ``:sub:``/``:subscript:``, ``:sup:``/``:superscript:``
-##     (see `RST roles list`_ for description).
-##   + inline internal targets
-##
-## .. _`Nim-specific features`:
-##
-## Additional Nim-specific features:
-##
-## * directives: ``code-block`` \[cmp:Sphinx], ``title``,
-##   ``index`` \[cmp:Sphinx]
-## * predefined roles
-##   - ``:nim:`` (default), ``:c:`` (C programming language),
-##     ``:python:``, ``:yaml:``, ``:java:``, ``:cpp:`` (C++), ``:csharp`` (C#).
-##     That is every language that `highlite <highlite.html>`_ supports.
-##     They turn on appropriate syntax highlighting in inline code.
-##
-##     .. Note:: default role for Nim files is ``:nim:``,
-##               for ``*.rst`` it's currently ``:literal:``.
-##
-##   - generic command line highlighting roles:
-##     - ``:cmd:`` for commands and common shells syntax
-##     - ``:console:`` the same  for interactive sessions
-##       (commands should be prepended by ``$``)
-##     - ``:program:`` for executable names \[cmp:Sphinx]
-##       (one can just use ``:cmd:`` on single word)
-##     - ``:option:`` for command line options \[cmp:Sphinx]
-##   - ``:tok:``, a role for highlighting of programming language tokens
-## * ***triple emphasis*** (bold and italic) using \*\*\*
-## * ``:idx:`` role for \`interpreted text\` to include the link to this
-##   text into an index (example: `Nim index`_).
-## * double slash `//` in option lists serves as a prefix for any option that
-##   starts from a word (without any leading symbols like `-`, `--`, `/`)::
-##
-##     //compile   compile the project
-##     //doc       generate documentation
-##
-##   Here the dummy `//` will disappear, while options `compile`:option:
-##   and `doc`:option: will be left in the final document.
-##
-## \[cmp:Sphinx] similar but different from the directives of
-##    Python `Sphinx directives`_ and `Sphinx roles`_ extensions
-##
-## .. _`extra features`:
-##
-## Optional additional features, turned on by ``options: RstParseOption`` in
-## `proc rstParse`_:
-##
-## * emoji / smiley symbols
-## * Markdown tables
-## * Markdown code blocks. For them the same additional arguments as for RST
-##   code blocks can be provided (e.g. `test` or `number-lines`) but with
-##   a one-line syntax like this::
-##
-##     ```nim test number-lines=10
-##     echo "ok"
-##     ```
-## * Markdown links
-## * Markdown headlines
-## * Markdown block quotes
-## * using ``1`` as auto-enumerator in enumerated lists like RST ``#``
-##   (auto-enumerator ``1`` can not be used with ``#`` in the same list)
-##
-## .. Note:: By default Nim has ``roSupportMarkdown`` and
-##    ``roSupportRawDirective`` turned **on**.
-##
-## .. warning:: Using Nim-specific features can cause other RST implementations
-##   to fail on your document.
-##
-## Idiosyncrasies
-## --------------
-##
-## Currently we do **not** aim at 100% Markdown or RST compatibility in inline
-## markup recognition rules because that would provide very little user value.
-## This parser has 2 modes for inline markup:
-##
-## 1) Markdown-like mode which is enabled by `roPreferMarkdown` option
-##    (turned **on** by default).
-##
-##    .. Note:: RST features like directives are still turned **on**
-##
-## 2) Compatibility mode which is RST rules.
-##
-## .. Note:: in both modes the parser interpretes text between single
-##      backticks (code) identically:
-##      backslash does not escape; the only exception: ``\`` folowed by `
-##      does escape so that we can always input a single backtick ` in
-##      inline code. However that makes impossible to input code with
-##      ``\`` at the end in *single* backticks, one must use *double*
-##      backticks::
-##
-##        `\`   -- WRONG
-##        ``\`` -- GOOD
-##        So single backticks can always be input: `\`` will turn to ` code
-##
-## .. Attention::
-##    We don't support some obviously poor design choices of Markdown (or RST).
-##
-##    - no support for the rule of 2 spaces causing a line break in Markdown
-##      (use RST "line blocks" syntax for making line breaks)
-##
-##    - interpretation of Markdown block quotes is also slightly different,
-##      e.g. case
-##
-##      ::
-##
-##        >>> foo
-##        > bar
-##        >>baz
-##
-##      is a single 3rd-level quote `foo bar baz` in original Markdown, while
-##      in Nim we naturally see it as 3rd-level quote `foo` + 1st level `bar` +
-##      2nd level `baz`:
-##
-##      >>> foo
-##      > bar
-##      >>baz
-##
-## Limitations
-## -----------
-##
-## * no Unicode support in character width calculations
-## * body elements
-##   - no roman numerals in enumerated lists
-##   - no doctest blocks
-##   - no grid tables
-##   - some directives are missing (check official `RST directives list`_):
-##     ``parsed-literal``, ``sidebar``, ``topic``, ``math``, ``rubric``,
-##     ``epigraph``, ``highlights``, ``pull-quote``, ``compound``,
-##     ``table``, ``csv-table``, ``list-table``, ``section-numbering``,
-##     ``header``, ``footer``, ``meta``, ``class``
-##     - no ``role`` directives and no custom interpreted text roles
-##     - some standard roles are not supported (check `RST roles list`_)
-##     - no generic admonition support
-## * inline markup
-##   - no simple-inline-markup
-##   - no embedded aliases
-##
-## Usage
-## -----
-##
-## See `Nim DocGen Tools Guide <docgen.html>`_ for the details about
-## `nim doc`:cmd:, `nim rst2html`:cmd: and `nim rst2tex`:cmd: commands.
-##
-## See `packages/docutils/rstgen module <rstgen.html>`_ to know how to
-## generate HTML or Latex strings to embed them into your documents.
-##
-## .. _Markdown Basic Syntax: https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax
-## .. _CommonMark Spec: https://spec.commonmark.org/0.30
-## .. _quick introduction: https://docutils.sourceforge.io/docs/user/rst/quickstart.html
-## .. _RST reference: https://docutils.sourceforge.io/docs/user/rst/quickref.html
-## .. _RST specification: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html
-## .. _RST directives list: https://docutils.sourceforge.io/docs/ref/rst/directives.html
-## .. _RST roles list: https://docutils.sourceforge.io/docs/ref/rst/roles.html
-## .. _Nim index: https://nim-lang.org/docs/theindex.html
-## .. _Sphinx directives: https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html
-## .. _Sphinx roles: https://www.sphinx-doc.org/en/master/usage/restructuredtext/roles.html
+## Choice between Markdown and RST as well as optional additional features are
+## turned on by passing ``options:`` [RstParseOptions] to [proc rstParse].
 
 import
   os, strutils, rstast, dochelpers, std/enumutils, algorithm, lists, sequtils,
-  std/private/miscdollars, tables, strscans
+  std/private/miscdollars, tables, strscans, rstidx
 from highlite import SourceLanguage, getSourceLanguage
 
 when defined(nimPreviewSlimSystem):
@@ -253,7 +40,7 @@ type
     roNimFile                 ## set for Nim files where default interpreted
                               ## text role should be :nim:
     roSandboxDisabled         ## this option enables certain options
-                              ## (e.g. raw, include)
+                              ## (e.g. raw, include, importdoc)
                               ## which are disabled by default as they can
                               ## enable users to read arbitrary data and
                               ## perform XSS if the parser is used in a web
@@ -286,11 +73,17 @@ type
     mwUnsupportedLanguage = "language '$1' not supported",
     mwUnsupportedField = "field '$1' not supported",
     mwRstStyle = "RST style: $1",
+    mwUnusedImportdoc = "importdoc for '$1' is not used",
     meSandboxedDirective = "disabled directive: '$1'",
 
   MsgHandler* = proc (filename: string, line, col: int, msgKind: MsgKind,
                        arg: string) {.closure, gcsafe.} ## what to do in case of an error
   FindFileHandler* = proc (filename: string): string {.closure, gcsafe.}
+  FindRefFileHandler* =
+    proc (targetRelPath: string):
+         tuple[targetPath: string, linkRelPath: string] {.closure, gcsafe.}
+    ## returns where .html or .idx file should be found by its relative path;
+    ## `linkRelPath` is a prefix to be added before a link anchor from such file
 
 proc rstnodeToRefname*(n: PRstNode): string
 proc addNodes*(n: PRstNode): string
@@ -546,7 +339,8 @@ type
     arInternalRst,  ## For automatically generated RST anchors (from
                     ## headings, footnotes, inline internal targets):
                     ## case-insensitive, 1-space-significant (by RST spec)
-    arNim   ## For anchors generated by ``docgen.rst``: Nim-style case
+    arExternalRst,  ## For external .nim doc comments or .rst/.md
+    arNim   ## For anchors generated by ``docgen.nim``: Nim-style case
             ## sensitivity, etc. (see `proc normalizeNimName`_ for details)
     arHyperlink,  ## For links with manually set anchors in
                   ## form `text <pagename.html#anchor>`_
@@ -556,17 +350,22 @@ type
     footnoteAnchor = "footnote anchor",
     headlineAnchor = "implicitly-generated headline anchor"
   AnchorSubst = object
-    info: TLineInfo         # where the anchor was defined
+    info: TLineInfo         # the file where the anchor was defined
     priority: int
     case kind: range[arInternalRst .. arNim]
     of arInternalRst:
       anchorType: RstAnchorKind
       target: PRstNode
+    of arExternalRst:
+      anchorTypeExt: RstAnchorKind
+      refnameExt: string
     of arNim:
+      module: FileIndex     # anchor's module (generally not the same as file)
       tooltip: string       # displayed tooltip for Nim-generated anchors
       langSym: LangSymbol
       refname: string     # A reference name that will be inserted directly
                           # into HTML/Latex.
+      external: bool
   AnchorSubstTable = Table[string, seq[AnchorSubst]]
                          # use `seq` to account for duplicate anchors
   FootnoteType = enum
@@ -585,6 +384,12 @@ type
   RstFileTable* = object
     filenameToIdx*: Table[string, FileIndex]
     idxToFilename*: seq[string]
+  ImportdocInfo = object
+    used: bool             # was this import used?
+    fromInfo: TLineInfo    # place of `.. importdoc::` directive
+    idxPath: string        # full path to ``.idx`` file
+    linkRelPath: string    # prefix before target anchor
+    title: string          # document title obtained from ``.idx``
   RstSharedState = object
     options*: RstParseOptions   # parsing options
     hLevels: LevelMap           # hierarchy of heading styles
@@ -606,12 +411,17 @@ type
     footnotes: seq[FootnoteSubst] # correspondence b/w footnote label,
                                   # number, order of occurrence
     msgHandler: MsgHandler      # How to handle errors.
-    findFile: FindFileHandler   # How to find files.
+    findFile: FindFileHandler   # How to find files for include.
+    findRefFile: FindRefFileHandler
+                                # How to find files imported by importdoc.
     filenames*: RstFileTable    # map file name <-> FileIndex (for storing
                                 # file names for warnings after 1st stage)
     currFileIdx*: FileIndex     # current index in `filenames`
     tocPart*: seq[PRstNode]     # all the headings of a document
     hasToc*: bool
+    idxImports*: Table[string, ImportdocInfo]
+                                # map `importdoc`ed filename -> it's info
+    nimFileImported*: bool      # Was any ``.nim`` module `importdoc`ed ?
 
   PRstSharedState* = ref RstSharedState
   ManualAnchor = object
@@ -665,6 +475,9 @@ proc defaultFindFile*(filename: string): string =
   if fileExists(filename): result = filename
   else: result = ""
 
+proc defaultFindRefFile*(filename: string): (string, string) =
+  (filename, "")
+
 proc defaultRole(options: RstParseOptions): string =
   if roNimFile in options: "nim" else: "literal"
 
@@ -705,12 +518,19 @@ proc getFilename(filenames: RstFileTable, fid: FileIndex): string =
         $fid.int, $(filenames.len - 1)])
   result = filenames.idxToFilename[fid.int]
 
+proc getFilename(s: PRstSharedState, subst: AnchorSubst): string =
+  getFilename(s.filenames, subst.info.fileIndex)
+
+proc getModule(s: PRstSharedState, subst: AnchorSubst): string =
+  result = getFilename(s.filenames, subst.module)
+
 proc currFilename(s: PRstSharedState): string =
   getFilename(s.filenames, s.currFileIdx)
 
 proc newRstSharedState*(options: RstParseOptions,
                         filename: string,
                         findFile: FindFileHandler,
+                        findRefFile: FindRefFileHandler,
                         msgHandler: MsgHandler,
                         hasToc: bool): PRstSharedState =
   let r = defaultRole(options)
@@ -720,6 +540,9 @@ proc newRstSharedState*(options: RstParseOptions,
       options: options,
       msgHandler: if not isNil(msgHandler): msgHandler else: defaultMsgHandler,
       findFile: if not isNil(findFile): findFile else: defaultFindFile,
+      findRefFile:
+        if not isNil(findRefFile): findRefFile
+        else: defaultFindRefFile,
       hasToc: hasToc
   )
   setCurrFilename(result, filename)
@@ -737,6 +560,14 @@ proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string) =
 
 proc rstMessage(s: PRstSharedState, msgKind: MsgKind, arg: string) =
   s.msgHandler(s.currFilename, LineRstInit, ColRstInit, msgKind, arg)
+
+proc rstMessage(s: PRstSharedState, msgKind: MsgKind, arg: string;
+                line, col: int) =
+  s.msgHandler(s.currFilename, line, col, msgKind, arg)
+
+proc rstMessage(s: PRstSharedState, filename: string, msgKind: MsgKind,
+                arg: string) =
+  s.msgHandler(filename, LineRstInit, ColRstInit, msgKind, arg)
 
 proc rstMessage*(filenames: RstFileTable, f: MsgHandler,
                  info: TLineInfo, msgKind: MsgKind, arg: string) =
@@ -969,6 +800,14 @@ proc internalRefPriority(k: RstAnchorKind): int =
   of footnoteAnchor: result = 4
   of headlineAnchor: result = 3
 
+proc `$`(subst: AnchorSubst): string =  # for debug
+  let s =
+    case subst.kind
+    of arInternalRst: "type=" & $subst.anchorType
+    of arExternalRst: "type=" & $subst.anchorTypeExt
+    of arNim: "langsym=" & $subst.langSym
+  result = "(kind=$1, priority=$2, $3)" % [$subst.kind, $subst.priority, s]
+
 proc addAnchorRst(p: var RstParser, name: string, target: PRstNode,
                   anchorType: RstAnchorKind) =
   ## Associates node `target` (which has field `anchor`) with an
@@ -984,31 +823,49 @@ proc addAnchorRst(p: var RstParser, name: string, target: PRstNode,
                     info: prevLineInfo(p), anchorType: anchorType))
   p.curAnchors.setLen 0
 
-proc addAnchorNim*(s: var PRstSharedState, refn: string, tooltip: string,
+proc addAnchorExtRst(s: var PRstSharedState, key: string, refn: string,
+                  anchorType: RstAnchorKind, info: TLineInfo) =
+  let name = key.toLowerAscii
+  let prio = internalRefPriority(anchorType)
+  s.anchors.mgetOrPut(name, newSeq[AnchorSubst]()).add(
+      AnchorSubst(kind: arExternalRst, refnameExt: refn, priority: prio,
+                  info: info,
+                  anchorTypeExt: anchorType))
+
+proc addAnchorNim*(s: var PRstSharedState, external: bool, refn: string, tooltip: string,
                    langSym: LangSymbol, priority: int,
-                   info: TLineInfo) =
+                   info: TLineInfo, module: FileIndex) =
   ## Adds an anchor `refn`, which follows
   ## the rule `arNim` (i.e. a symbol in ``*.nim`` file)
   s.anchors.mgetOrPut(langSym.name, newSeq[AnchorSubst]()).add(
-      AnchorSubst(kind: arNim, refname: refn, langSym: langSym,
+      AnchorSubst(kind: arNim, external: external, refname: refn, langSym: langSym,
                   tooltip: tooltip, priority: priority,
                   info: info))
 
 proc findMainAnchorNim(s: PRstSharedState, signature: PRstNode,
                        info: TLineInfo):
                       seq[AnchorSubst] =
-  let langSym = toLangSymbol(signature)
+  var langSym: LangSymbol
+  try:
+    langSym = toLangSymbol(signature)
+  except ValueError:  # parsing failed, not a Nim symbol
+    return
   let substitutions = s.anchors.getOrDefault(langSym.name,
                                              newSeq[AnchorSubst]())
   if substitutions.len == 0:
     return
-  # map symKind (like "proc") -> found symbols/groups:
-  var found: Table[string, seq[AnchorSubst]]
-  for s in substitutions:
-    if s.kind == arNim:
-      if match(s.langSym, langSym):
-        found.mgetOrPut(s.langSym.symKind, newSeq[AnchorSubst]()).add s
-  for symKind, sList in found:
+  # logic to select only groups instead of concrete symbols
+  # with overloads, note that the same symbol can be defined
+  # in multiple modules and `importdoc`ed:
+  type GroupKey = tuple[symKind: string, origModule: string]
+  # map (symKind, file) (like "proc", "os.nim") -> found symbols/groups:
+  var found: Table[GroupKey, seq[AnchorSubst]]
+  for subst in substitutions:
+    if subst.kind == arNim:
+      if match(subst.langSym, langSym):
+        let key: GroupKey = (subst.langSym.symKind, getModule(s, subst))
+        found.mgetOrPut(key, newSeq[AnchorSubst]()).add subst
+  for key, sList in found:
     if sList.len == 1:
       result.add sList[0]
     else:  # > 1, there are overloads, potential ambiguity in this `symKind`
@@ -1025,14 +882,16 @@ proc findMainAnchorNim(s: PRstSharedState, signature: PRstNode,
             result.add s
             foundGroup = true
             break
-        doAssert foundGroup, "docgen has not generated the group"
+        doAssert(foundGroup,
+                 "docgen has not generated the group for $1 (file $2)" % [
+                 langSym.name, getModule(s, sList[0]) ])
 
 proc findMainAnchorRst(s: PRstSharedState, linkText: string, info: TLineInfo):
                       seq[AnchorSubst] =
   let name = linkText.toLowerAscii
   let substitutions = s.anchors.getOrDefault(name, newSeq[AnchorSubst]())
   for s in substitutions:
-    if s.kind == arInternalRst:
+    if s.kind in {arInternalRst, arExternalRst}:
       result.add s
 
 proc addFootnoteNumManual(p: var RstParser, num: int) =
@@ -1823,7 +1682,7 @@ proc getFootnoteType(label: PRstNode): (FootnoteType, int) =
   elif label.len == 1 and label.sons[0].kind == rnLeaf:
     try:
       result = (fnManualNumber, parseInt(label.sons[0].text))
-    except:
+    except ValueError:
       result = (fnCitation, -1)
   else:
     result = (fnCitation, -1)
@@ -2265,17 +2124,20 @@ proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
     while p.tok[i].kind notin {tkEof, tkIndent}:
       headlineLen += p.tok[i].symbol.len
       inc i
-    result = p.tok[adornmentIdx].symbol.len >= headlineLen and
-         headlineLen != 0
-    if result:
-      result = result and p.tok[i].kind == tkIndent and
-         p.tok[i+1].kind == tkAdornment and
-         p.tok[i+1].symbol == p.tok[adornmentIdx].symbol
-      if not result:
-        failure = "(underline '" & p.tok[i+1].symbol & "' does not match " &
-            "overline '" & p.tok[adornmentIdx].symbol & "')"
-    else:
-      failure = "(overline '" & p.tok[adornmentIdx].symbol & "' is too short)"
+    if p.tok[i].kind == tkIndent and
+       p.tok[i+1].kind == tkAdornment and
+       p.tok[i+1].symbol[0] == p.tok[adornmentIdx].symbol[0]:
+      result = p.tok[adornmentIdx].symbol.len >= headlineLen and
+           headlineLen != 0
+      if result:
+        result = p.tok[i+1].symbol == p.tok[adornmentIdx].symbol
+        if not result:
+          failure = "(underline '" & p.tok[i+1].symbol & "' does not match " &
+              "overline '" & p.tok[adornmentIdx].symbol & "')"
+      else:
+        failure = "(overline '" & p.tok[adornmentIdx].symbol & "' is too short)"
+    else:  # it's not overline/underline section, not reporting error
+      return false
   if not result:
     rstMessage(p, meNewSectionExpected, failure)
 
@@ -2385,7 +2247,7 @@ proc whichSection(p: RstParser): RstNodeKind =
     # for punctuation sequences that can be both tkAdornment and tkPunct
     if isMarkdownCodeBlock(p):
       return rnCodeBlock
-    elif currentTok(p).symbol == "::":
+    elif isRst(p) and currentTok(p).symbol == "::":
       return rnLiteralBlock
     elif currentTok(p).symbol == ".."  and
        nextTok(p).kind in {tkWhite, tkIndent}:
@@ -2402,10 +2264,11 @@ proc whichSection(p: RstParser): RstNodeKind =
       result = rnLineBlock
     elif roSupportMarkdown in p.s.options and isMarkdownBlockQuote(p):
       result = rnMarkdownBlockQuote
-    elif match(p, p.idx + 1, "i") and isAdornmentHeadline(p, p.idx):
+    elif (match(p, p.idx + 1, "i") and not match(p, p.idx + 2, "I")) and
+         isAdornmentHeadline(p, p.idx):
       result = rnOverline
     else:
-      result = rnLeaf
+      result = rnParagraph
   of tkPunct:
     if isMarkdownHeadline(p):
       result = rnMarkdownHeadline
@@ -2575,8 +2438,10 @@ proc parseParagraph(p: var RstParser, result: PRstNode) =
     of tkIndent:
       if nextTok(p).kind == tkIndent:
         inc p.idx
-        break
-      elif currentTok(p).ival == currInd(p):
+        break  # blank line breaks paragraph for both Md & Rst
+      elif currentTok(p).ival == currInd(p) or (
+          isMd(p) and currentTok(p).ival > currInd(p)):
+          # (Md allows adding additional indentation inside paragraphs)
         inc p.idx
         case whichSection(p)
         of rnParagraph, rnLeaf, rnHeadline, rnMarkdownHeadline,
@@ -2586,11 +2451,14 @@ proc parseParagraph(p: var RstParser, result: PRstNode) =
           result.addIfNotNil(parseLineBlock(p))
         of rnMarkdownBlockQuote:
           result.addIfNotNil(parseMarkdownBlockQuote(p))
-        else: break
+        else:
+          dec p.idx  # allow subsequent block to be parsed as another section
+          break
       else:
         break
     of tkPunct:
-      if (let literalBlockKind = whichRstLiteralBlock(p);
+      if isRst(p) and (
+          let literalBlockKind = whichRstLiteralBlock(p);
           literalBlockKind != lbNone):
         result.add newLeaf(":")
         inc p.idx            # skip '::'
@@ -3109,13 +2977,13 @@ proc parseEnumList(p: var RstParser): PRstNode =
       let enumerator = p.tok[p.idx + 1 + wildIndex[w]].symbol
       # check that it's in sequence: enumerator == next(prevEnum)
       if "n" in wildcards[w]:  # arabic numeral
-        let prevEnumI = try: parseInt(prevEnum) except: 1
+        let prevEnumI = try: parseInt(prevEnum) except ValueError: 1
         if enumerator in autoEnums:
           if prevAE != "" and enumerator != prevAE:
             break
           prevAE = enumerator
           curEnum = prevEnumI + 1
-        else: curEnum = (try: parseInt(enumerator) except: 1)
+        else: curEnum = (try: parseInt(enumerator) except ValueError: 1)
         if curEnum - prevEnumI != 1:
           break
         prevEnum = enumerator
@@ -3145,11 +3013,11 @@ proc parseSection(p: var RstParser, result: PRstNode) =
       elif currentTok(p).ival > currInd(p):
         if roPreferMarkdown in p.s.options:  # Markdown => normal paragraphs
           if currentTok(p).ival - currInd(p) >= 4:
-            rstMessage(p, mwRstStyle,
-                       "Markdown indented code not implemented")
-          pushInd(p, currentTok(p).ival)
-          parseSection(p, result)
-          popInd(p)
+            result.add parseLiteralBlock(p)
+          else:
+            pushInd(p, currentTok(p).ival)
+            parseSection(p, result)
+            popInd(p)
         else:  # RST mode => block quotes
           pushInd(p, currentTok(p).ival)
           var a = newRstNodeA(p, rnBlockQuote)
@@ -3461,6 +3329,15 @@ proc dirRaw(p: var RstParser): PRstNode =
   else:
     dirRawAux(p, result, rnRaw, parseSectionWrapper)
 
+proc dirImportdoc(p: var RstParser): PRstNode =
+  result = parseDirective(p, rnDirective, {}, parseLiteralBlock)
+  assert result.sons[2].kind == rnLiteralBlock
+  assert result.sons[2].sons[0].kind == rnLeaf
+  let filenames: seq[string] = split(result.sons[2].sons[0].text, seps = {','})
+  proc rmSpaces(s: string): string = s.split.join("")
+  for origFilename in filenames:
+    p.s.idxImports[origFilename.rmSpaces] = ImportdocInfo(fromInfo: lineInfo(p))
+
 proc selectDir(p: var RstParser, d: string): PRstNode =
   result = nil
   let tok = p.tok[p.idx-2] # report on directive in ".. directive::"
@@ -3481,6 +3358,7 @@ proc selectDir(p: var RstParser, d: string): PRstNode =
   of "hint": result = dirAdmonition(p, d)
   of "image": result = dirImage(p)
   of "important": result = dirAdmonition(p, d)
+  of "importdoc": result = dirImportdoc(p)
   of "include": result = dirInclude(p)
   of "index": result = dirIndex(p)
   of "note": result = dirAdmonition(p, d)
@@ -3611,11 +3489,90 @@ proc rstParsePass1*(fragment: string,
   getTokens(fragment, p.tok)
   result = parseDoc(p)
 
-proc preparePass2*(s: PRstSharedState, mainNode: PRstNode) =
+proc extractLinkEnd(x: string): string =
+  ## From links like `path/to/file.html#/%` extract `file.html#/%`.
+  let i = find(x, '#')
+  let last =
+    if i >= 0: i
+    else: x.len - 1
+  let j = rfind(x, '/', start=0, last=last)
+  if j >= 0:
+    result = x[j+1 .. ^1]
+  else:
+    result = x
+
+proc loadIdxFile(s: var PRstSharedState, origFilename: string) =
+  doAssert roSandboxDisabled in s.options
+  var info: TLineInfo
+  info.fileIndex = addFilename(s, origFilename)
+  var (dir, basename, ext) = origFilename.splitFile
+  if ext notin [".md", ".rst", ".nim", ""]:
+    rstMessage(s.filenames, s.msgHandler, s.idxImports[origFilename].fromInfo,
+               meCannotOpenFile, origFilename & ": unknown extension")
+  let idxFilename = dir / basename & ".idx"
+  let (idxPath, linkRelPath) = s.findRefFile(idxFilename)
+  s.idxImports[origFilename].linkRelPath = linkRelPath
+  var
+    fileEntries: seq[IndexEntry]
+    title: IndexEntry
+  try:
+    (fileEntries, title) = parseIdxFile(idxPath)
+  except IOError:
+    rstMessage(s.filenames, s.msgHandler, s.idxImports[origFilename].fromInfo,
+               meCannotOpenFile, idxPath)
+  except ValueError as e:
+    s.msgHandler(idxPath, LineRstInit, ColRstInit, meInvalidField, e.msg)
+
+  var isMarkup = false  # for sanity check to avoid mixing .md <-> .nim
+  for entry in fileEntries:
+    # Though target .idx already has inside it the path to HTML relative
+    # project's root, we won't rely on it and use `linkRelPath` instead.
+    let refn = extractLinkEnd(entry.link)
+    # select either markup (rst/md) or Nim cases:
+    if entry.kind in {ieMarkupTitle, ieNimTitle}:
+      s.idxImports[origFilename].title = entry.keyword
+    case entry.kind
+    of ieIdxRole, ieHeading, ieMarkupTitle:
+      if ext == ".nim" and entry.kind == ieMarkupTitle:
+        rstMessage(s, idxPath, meInvalidField,
+                   $ieMarkupTitle & " in supposedly .nim-derived file")
+      if entry.kind == ieMarkupTitle:
+        isMarkup = true
+      info.line = entry.line.uint16
+      addAnchorExtRst(s, key = entry.keyword, refn = refn,
+                      anchorType = headlineAnchor, info=info)
+    of ieNim, ieNimGroup, ieNimTitle:
+      if ext in [".md", ".rst"] or isMarkup:
+        rstMessage(s, idxPath, meInvalidField,
+                   $entry.kind & " in supposedly markup-derived file")
+      s.nimFileImported = true
+      var langSym: LangSymbol
+      if entry.kind in {ieNim, ieNimTitle}:
+        var q: RstParser
+        initParser(q, s)
+        info.line = entry.line.uint16
+        setLen(q.tok, 0)
+        q.idx = 0
+        getTokens(entry.linkTitle, q.tok)
+        var sons = newSeq[PRstNode](q.tok.len)
+        for i in 0 ..< q.tok.len: sons[i] = newLeaf(q.tok[i].symbol)
+        let linkTitle = newRstNode(rnInner, sons)
+        langSym = linkTitle.toLangSymbol
+      else:  # entry.kind == ieNimGroup
+        langSym = langSymbolGroup(kind=entry.linkTitle, name=entry.keyword)
+      addAnchorNim(s, external = true, refn = refn, tooltip = entry.linkDesc,
+                   langSym = langSym, priority = -4, # lowest
+                   info = info, module = info.fileIndex)
+  doAssert s.idxImports[origFilename].title != ""
+
+proc preparePass2*(s: var PRstSharedState, mainNode: PRstNode, importdoc = true) =
   ## Records titles in node `mainNode` and orders footnotes.
   countTitles(s, mainNode)
   fixHeadlines(s)
   orderFootnotes(s)
+  if importdoc:
+    for origFilename in s.idxImports.keys:
+      loadIdxFile(s, origFilename)
 
 proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
     # Associate this link alias with its target and change node kind to
@@ -3633,6 +3590,9 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
       tooltip: string
       target: PRstNode
       info: TLineInfo
+      externFilename: string
+        # when external anchor: origin filename where anchor was defined
+      isTitle: bool
     proc cmp(x, y: LinkDef): int =
       result = cmp(x.priority, y.priority)
       if result == 0:
@@ -3645,26 +3605,67 @@ proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
                              target: y.value, info: y.info,
                              tooltip: "(" & $y.kind & ")")
     let substRst = findMainAnchorRst(s, alias.addNodes, n.info)
+    template getExternFilename(subst: AnchorSubst): string =
+      if subst.kind == arExternalRst or
+          (subst.kind == arNim and subst.external):
+        getFilename(s, subst)
+      else: ""
     for subst in substRst:
-      foundLinks.add LinkDef(ar: arInternalRst, priority: subst.priority,
-                             target: newLeaf(subst.target.anchor),
+      var refname, fullRefname: string
+      if subst.kind == arInternalRst:
+        refname = subst.target.anchor
+        fullRefname = refname
+      else:  # arExternalRst
+        refname = subst.refnameExt
+        fullRefname = s.idxImports[getFilename(s, subst)].linkRelPath &
+                        "/" & refname
+      let anchorType =
+        if subst.kind == arInternalRst: subst.anchorType
+        else: subst.anchorTypeExt  # arExternalRst
+      foundLinks.add LinkDef(ar: subst.kind, priority: subst.priority,
+                             target: newLeaf(fullRefname),
                              info: subst.info,
-                             tooltip: "(" & $subst.anchorType & ")")
+                             externFilename: getExternFilename(subst),
+                             isTitle: isDocumentationTitle(refname),
+                             tooltip: "(" & $anchorType & ")")
     # find anchors automatically generated from Nim symbols
-    if roNimFile in s.options:
+    if roNimFile in s.options or s.nimFileImported:
       let substNim = findMainAnchorNim(s, signature=alias, n.info)
       for subst in substNim:
-        foundLinks.add LinkDef(ar: arNim, priority: subst.priority,
-                               target: newLeaf(subst.refname),
+        let fullRefname =
+          if subst.external:
+            s.idxImports[getFilename(s, subst)].linkRelPath &
+                "/" & subst.refname
+          else: subst.refname
+        foundLinks.add LinkDef(ar: subst.kind, priority: subst.priority,
+                               target: newLeaf(fullRefname),
+                               externFilename: getExternFilename(subst),
+                               isTitle: isDocumentationTitle(subst.refname),
                                info: subst.info, tooltip: subst.tooltip)
     foundLinks.sort(cmp = cmp, order = Descending)
     let aliasStr = addNodes(alias)
     if foundLinks.len >= 1:
-      let kind = if foundLinks[0].ar == arHyperlink: rnHyperlink
-                 elif foundLinks[0].ar == arNim: rnNimdocRef
+      if foundLinks[0].externFilename != "":
+        s.idxImports[foundLinks[0].externFilename].used = true
+      let kind = if foundLinks[0].ar in {arHyperlink, arExternalRst}: rnHyperlink
+                 elif foundLinks[0].ar == arNim:
+                   if foundLinks[0].externFilename == "": rnNimdocRef
+                   else: rnHyperlink
                  else: rnInternalRef
       result = newRstNode(kind)
-      result.sons = @[newRstNode(rnInner, desc.sons), foundLinks[0].target]
+      let documentName =  # filename without ext for `.nim`, title for `.md`
+        if foundLinks[0].ar == arNim:
+          changeFileExt(foundLinks[0].externFilename.extractFilename, "")
+        elif foundLinks[0].externFilename != "":
+          s.idxImports[foundLinks[0].externFilename].title
+        else: foundLinks[0].externFilename.extractFilename
+      let linkText =
+        if foundLinks[0].externFilename != "":
+          if foundLinks[0].isTitle: newLeaf(addNodes(desc))
+          else: newLeaf(documentName & ": " & addNodes(desc))
+        else:
+          newRstNode(rnInner, desc.sons)
+      result.sons = @[linkText, foundLinks[0].target]
       if kind == rnNimdocRef: result.tooltip = foundLinks[0].tooltip
       if foundLinks.len > 1:  # report ambiguous link
         var targets = newSeq[string]()
@@ -3778,20 +3779,28 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
           inc i
       result.sons = newSons
 
+proc completePass2*(s: PRstSharedState) =
+  for (filename, importdocInfo) in s.idxImports.pairs:
+    if not importdocInfo.used:
+      rstMessage(s.filenames, s.msgHandler, importdocInfo.fromInfo,
+                 mwUnusedImportdoc, filename)
+
 proc rstParse*(text, filename: string,
                line, column: int,
                options: RstParseOptions,
                findFile: FindFileHandler = nil,
+               findRefFile: FindRefFileHandler = nil,
                msgHandler: MsgHandler = nil):
               tuple[node: PRstNode, filenames: RstFileTable, hasToc: bool] =
   ## Parses the whole `text`. The result is ready for `rstgen.renderRstToOut`,
   ## note that 2nd tuple element should be fed to `initRstGenerator`
   ## argument `filenames` (it is being filled here at least with `filename`
   ## and possibly with other files from RST ``.. include::`` statement).
-  var sharedState = newRstSharedState(options, filename, findFile,
+  var sharedState = newRstSharedState(options, filename, findFile, findRefFile,
                                       msgHandler, hasToc=false)
   let unresolved = rstParsePass1(text, line, column, sharedState)
   preparePass2(sharedState, unresolved)
   result.node = resolveSubs(sharedState, unresolved)
+  completePass2(sharedState)
   result.filenames = sharedState.filenames
   result.hasToc = sharedState.hasToc

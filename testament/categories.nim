@@ -47,7 +47,7 @@ proc isTestFile*(file: string): bool =
 
 # --------------------- DLL generation tests ----------------------------------
 
-proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
+proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc = false) =
   const rpath = when defined(macosx):
       " --passL:-rpath --passL:@loader_path"
     else:
@@ -59,6 +59,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   var test2 = makeTest("tests/dll/server.nim", options & " --threads:on" & rpath, cat)
   test2.spec.action = actionCompile
   testSpec c, test2
+
   var test3 = makeTest("lib/nimhcr.nim", options & " --threads:off --outdir:tests/dll" & rpath, cat)
   test3.spec.action = actionCompile
   testSpec c, test3
@@ -94,8 +95,10 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
   var c = initResults()
 
-  runBasicDLLTest c, r, cat, options
-  runBasicDLLTest c, r, cat, options & " -d:release"
+  runBasicDLLTest c, r, cat, options & " --mm:refc"
+  runBasicDLLTest c, r, cat, options & " -d:release --mm:refc"
+  runBasicDLLTest c, r, cat, options, isOrc = true
+  runBasicDLLTest c, r, cat, options & " -d:release", isOrc = true
   when not defined(windows):
     # still cannot find a recent Windows version of boehm.dll:
     runBasicDLLTest c, r, cat, options & " --gc:boehm"
@@ -105,9 +108,9 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 
 proc gcTests(r: var TResults, cat: Category, options: string) =
   template testWithoutMs(filename: untyped) =
-    testSpec r, makeTest("tests/gc" / filename, options, cat)
+    testSpec r, makeTest("tests/gc" / filename, options & "--mm:refc", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release -d:useRealtimeGC", cat)
+                  " -d:release -d:useRealtimeGC --mm:refc", cat)
     when filename != "gctest":
       testSpec r, makeTest("tests/gc" / filename, options &
                     " --gc:orc", cat)
@@ -680,7 +683,7 @@ proc processCategory(r: var TResults, cat: Category,
       else:
         jsTests(r, cat, options)
     of "dll":
-      dllTests(r, cat, options)
+      dllTests(r, cat, options & " -d:nimDebugDlOpen")
     of "gc":
       gcTests(r, cat, options)
     of "debugger":
@@ -718,6 +721,8 @@ proc processCategory(r: var TResults, cat: Category,
     case cat2
     of "megatest":
       runJoinedTest(r, cat, testsDir, options)
+      if isNimRepoTests():
+        runJoinedTest(r, cat, testsDir, options & " --mm:refc")
     else:
       var testsRun = 0
       var files: seq[string]

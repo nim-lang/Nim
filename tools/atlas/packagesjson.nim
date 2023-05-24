@@ -1,5 +1,5 @@
 
-import std / [json, os, sets, strutils]
+import std / [json, os, sets, strutils, httpclient, uri]
 
 type
   Package* = ref object
@@ -65,11 +65,57 @@ proc `$`*(pkg: Package): string =
   if pkg.web.len > 0:
     result &= "  website:     " & pkg.web & "\n"
 
+proc toTags(j: JsonNode): seq[string] =
+  result = @[]
+  if j.kind == JArray:
+    for elem in items j:
+      result.add elem.getStr("")
+
+proc singleGithubSearch(term: string): JsonNode =
+  # For example:
+  # https://api.github.com/search/repositories?q=weave+language:nim
+  var client = newHttpClient()
+  try:
+    let x = client.getContent("https://api.github.com/search/repositories?q=" & encodeUrl(term) & "+language:nim")
+    result = parseJson(x)
+  except:
+    discard "it's a failed search, ignore"
+  finally:
+    client.close()
+
+proc githubSearch(seen: var HashSet[string]; terms: seq[string]) =
+  for term in terms:
+    let results = singleGithubSearch(term)
+    for j in items(results.getOrDefault("items")):
+      let p = Package(
+        name: j.getOrDefault("name").getStr,
+        url: j.getOrDefault("html_url").getStr,
+        downloadMethod: "git",
+        tags: toTags(j.getOrDefault("topics")),
+        description: "<none>, not listed in packages.json",
+        web: j.getOrDefault("html_url").getStr
+      )
+      if not seen.containsOrIncl(p.url):
+        echo p
+
+proc getUrlFromGithub*(term: string): string =
+  let results = singleGithubSearch(term)
+  var matches = 0
+  result = ""
+  for j in items(results.getOrDefault("items")):
+    if cmpIgnoreCase(j.getOrDefault("name").getStr, term) == 0:
+      if matches == 0:
+        result = j.getOrDefault("html_url").getStr
+      inc matches
+  if matches != 1:
+    # ambiguous, not ok!
+    result = ""
+
 proc search*(pkgList: seq[Package]; terms: seq[string]) =
-  var found = false
+  var seen = initHashSet[string]()
   template onFound =
     echo pkg
-    found = true
+    seen.incl pkg.url
     break forPackage
 
   for pkg in pkgList:
@@ -86,8 +132,8 @@ proc search*(pkgList: seq[Package]; terms: seq[string]) =
               onFound()
     else:
       echo(pkg)
-
-  if not found and terms.len > 0:
+  githubSearch seen, terms
+  if seen.len == 0 and terms.len > 0:
     echo("No package found.")
 
 type PkgCandidates* = array[3, seq[Package]]

@@ -1,4 +1,5 @@
 discard """
+  matrix: "--stackTrace:on --hint:all:off --warnings:off"
   output: '''ok'''
 """
 import strscans, strutils
@@ -76,10 +77,10 @@ when true:
       bar()
 
     const expectedStackTrace = """
-      tproper_stacktrace.nim(86) tproper_stacktrace
-      tproper_stacktrace.nim(76) foo
-      tproper_stacktrace.nim(73) bar
-      tproper_stacktrace.nim(7) raiseTestException
+      tproper_stacktrace.nim(87) tproper_stacktrace
+      tproper_stacktrace.nim(77) foo
+      tproper_stacktrace.nim(74) bar
+      tproper_stacktrace.nim(8) raiseTestException
     """
 
     verifyStackTrace expectedStackTrace:
@@ -93,9 +94,9 @@ when true:
       bar(x)
 
     const expectedStackTrace = """
-      tproper_stacktrace.nim(103) tproper_stacktrace
-      tproper_stacktrace.nim(90) bar
-      tproper_stacktrace.nim(7) raiseTestException
+      tproper_stacktrace.nim(104) tproper_stacktrace
+      tproper_stacktrace.nim(91) bar
+      tproper_stacktrace.nim(8) raiseTestException
     """
 
     verifyStackTrace expectedStackTrace:
@@ -110,10 +111,10 @@ when true:
       bar()
 
     const expectedStackTrace = """
-      tproper_stacktrace.nim(120) tproper_stacktrace
-      tproper_stacktrace.nim(110) foo
-      tproper_stacktrace.nim(107) bar
-      tproper_stacktrace.nim(7) raiseTestException
+      tproper_stacktrace.nim(121) tproper_stacktrace
+      tproper_stacktrace.nim(111) foo
+      tproper_stacktrace.nim(108) bar
+      tproper_stacktrace.nim(8) raiseTestException
     """
 
     verifyStackTrace expectedStackTrace:
@@ -129,10 +130,10 @@ when true:
       bar()
 
     const expectedStackTrace = """
-      tproper_stacktrace.nim(139) tproper_stacktrace
-      tproper_stacktrace.nim(129) foo
-      tproper_stacktrace.nim(125) baz
-      tproper_stacktrace.nim(7) raiseTestException
+      tproper_stacktrace.nim(140) tproper_stacktrace
+      tproper_stacktrace.nim(130) foo
+      tproper_stacktrace.nim(126) baz
+      tproper_stacktrace.nim(8) raiseTestException
     """
 
     verifyStackTrace expectedStackTrace:

@@ -14,10 +14,14 @@
 
 import ropes, platform, condsyms, options, msgs, lineinfos, pathutils, modulepaths
 
-import std/[os, strutils, osproc, sha1, streams, sequtils, times, strtabs, json, jsonutils, sugar, parseutils]
+import std/[os, osproc, streams, sequtils, times, strtabs, json, jsonutils, sugar, parseutils]
+
+import std / strutils except addf
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
+
+import ../dist/checksums/src/checksums/sha1
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -89,7 +93,7 @@ compiler gcc:
     asmStmtFrmt: "__asm__($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
     produceAsm: gnuAsmListing,
-    cppXsupport: "-std=gnu++14 -funsigned-char",
+    cppXsupport: "-std=gnu++17 -funsigned-char",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
@@ -116,7 +120,7 @@ compiler nintendoSwitchGCC:
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
     produceAsm: gnuAsmListing,
-    cppXsupport: "-std=gnu++14 -funsigned-char",
+    cppXsupport: "-std=gnu++17 -funsigned-char",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
@@ -153,7 +157,7 @@ compiler vcc:
     compileTmpl: "/c$vccplatform $options $include /nologo /Fo$objfile $file",
     buildGui: " /SUBSYSTEM:WINDOWS user32.lib ",
     buildDll: " /LD",
-    buildLib: "lib /OUT:$libfile $objfiles",
+    buildLib: "vccexe --command:lib$vccplatform /nologo /OUT:$libfile $objfiles",
     linkerExe: "cl",
     linkTmpl: "$builddll$vccplatform /Fe$exefile $objfiles $buildgui /nologo $options",
     includeCmd: " /I",
@@ -326,7 +330,9 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
                      platform.OS[conf.target.targetOS].name & '.' &
                      CC[c].name & fullSuffix
     result = getConfigVar(conf, fullCCname)
-    if result.len == 0:
+    if existsConfigVar(conf, fullCCname):
+      result = getConfigVar(conf, fullCCname)
+    else:
       # not overridden for this cross compilation setting?
       result = getConfigVar(conf, CC[c].name & fullSuffix)
   else:
@@ -526,7 +532,7 @@ proc ccHasSaneOverflow*(conf: ConfigRef): bool =
     var exe = getConfigVar(conf, conf.cCompiler, ".exe")
     if exe.len == 0: exe = CC[conf.cCompiler].compilerExe
     # NOTE: should we need the full version, use -dumpfullversion
-    let (s, exitCode) = try: execCmdEx(exe & " -dumpversion") except: ("", 1)
+    let (s, exitCode) = try: execCmdEx(exe & " -dumpversion") except IOError, OSError, ValueError: ("", 1)
     if exitCode == 0:
       var major: int
       discard parseInt(s, major)
@@ -616,7 +622,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
           "for the selected C compiler: " & CC[conf.cCompiler].name)
 
   result.add(' ')
-  result.addf(CC[c].compileTmpl, [
+  strutils.addf(result, CC[c].compileTmpl, [
     "dfile", dfile,
     "file", cfsh, "objfile", quoteShell(objfile),
     "options", options, "include", includeCmd,
@@ -674,7 +680,8 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
     if removeStaticFile:
       removeFile output # fixes: bug #16947
     result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(output),
-                                            "objfiles", objfiles]
+                                            "objfiles", objfiles,
+                                            "vccplatform", vccplatform(conf)]
   else:
     var linkerExe = getConfigVar(conf, conf.cCompiler, ".linkerexe")
     if linkerExe.len == 0: linkerExe = getLinkerExe(conf, conf.cCompiler)
@@ -707,7 +714,7 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
         "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles,
         "exefile", exefile, "nim", getPrefixDir(conf).string, "lib", conf.libpath.string])
     result.add ' '
-    result.addf(linkTmpl, ["builddll", builddll,
+    strutils.addf(result, linkTmpl, ["builddll", builddll,
         "mapfile", mapfile,
         "buildgui", buildgui, "options", linkOptions,
         "objfiles", objfiles, "exefile", exefile,
@@ -831,6 +838,15 @@ proc linkViaResponseFile(conf: ConfigRef; cmd: string) =
   finally:
     removeFile(linkerArgs)
 
+proc linkViaShellScript(conf: ConfigRef; cmd: string) =
+  let linkerScript = conf.projectName & "_" & "linkerScript.sh"
+  writeFile(linkerScript, cmd)
+  let shell = getEnv("SHELL")
+  try:
+    execLinkCmd(conf, shell & " " & linkerScript)
+  finally:
+    removeFile(linkerScript)
+
 proc getObjFilePath(conf: ConfigRef, f: Cfile): string =
   if noAbsolutePaths(conf): f.obj.extractFilename
   else: f.obj.string
@@ -848,6 +864,20 @@ proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
     else:
       result = MsgKindToStr[hintCC] % demangleModuleName(path.splitFile.name)
 
+proc preventLinkCmdMaxCmdLen(conf: ConfigRef, linkCmd: string) =
+  # Prevent linkcmd from exceeding the maximum command line length.
+  # Windows's command line limit is about 8K (8191 characters) so C compilers on
+  # Windows support a feature where the command line can be passed via ``@linkcmd``
+  # to them.
+  const MaxCmdLen = when defined(windows): 8_000 elif defined(macosx): 260_000 else: 32_000
+  if linkCmd.len > MaxCmdLen:
+    when defined(macosx):
+      linkViaShellScript(conf, linkCmd)
+    else:
+      linkViaResponseFile(conf, linkCmd)
+  else:
+    execLinkCmd(conf, linkCmd)
+
 proc callCCompiler*(conf: ConfigRef) =
   var
     linkCmd: string
@@ -856,7 +886,7 @@ proc callCCompiler*(conf: ConfigRef) =
     return # speed up that call if only compiling and no script shall be
            # generated
   #var c = cCompiler
-  var script: Rope = nil
+  var script: Rope = ""
   var cmds: TStringSeq
   var prettyCmds: TStringSeq
   let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
@@ -924,14 +954,7 @@ proc callCCompiler*(conf: ConfigRef) =
       linkCmd = getLinkCmd(conf, mainOutput, objfiles, removeStaticFile = true)
       extraCmds = getExtraCmds(conf, mainOutput)
       if optCompileOnly notin conf.globalOptions:
-        const MaxCmdLen = when defined(windows): 8_000 else: 32_000
-        if linkCmd.len > MaxCmdLen:
-          # Windows's command line limit is about 8K (don't laugh...) so C compilers on
-          # Windows support a feature where the command line can be passed via ``@linkcmd``
-          # to them.
-          linkViaResponseFile(conf, linkCmd)
-        else:
-          execLinkCmd(conf, linkCmd)
+        preventLinkCmdMaxCmdLen(conf, linkCmd)
         for cmd in extraCmds:
           execExternalProgram(conf, cmd, hintExecuting)
   else:
@@ -1015,7 +1038,7 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: Absolute
 proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
   var bcache: BuildCache
   try: bcache.fromJson(jsonFile.string.parseFile)
-  except:
+  except ValueError, KeyError, JsonKindError:
     let e = getCurrentException()
     conf.quitOrRaise "\ncaught exception:\n$#\nstacktrace:\n$#error evaluating JSON file: $#" %
       [e.msg, e.getStackTrace(), jsonFile.string]
@@ -1032,7 +1055,7 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
     cmds.add cmd
     prettyCmds.add displayProgressCC(conf, name, cmd)
   execCmdsInParallel(conf, cmds, prettyCb)
-  execLinkCmd(conf, bcache.linkcmd)
+  preventLinkCmdMaxCmdLen(conf, bcache.linkcmd)
   for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
 
 proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =

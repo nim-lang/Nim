@@ -7,6 +7,8 @@ discard """
 
 [Suite] RST indentation
 
+[Suite] Markdown indentation
+
 [Suite] Warnings
 
 [Suite] RST include directive
@@ -15,6 +17,7 @@ discard """
 
 [Suite] RST inline markup
 '''
+matrix: "--mm:refc; --mm:orc"
 """
 
 # tests for rst module
@@ -23,6 +26,7 @@ import ../../lib/packages/docutils/[rstgen, rst, rstast]
 import unittest, strutils
 import std/private/miscdollars
 import os
+import std/[assertions, syncio]
 
 const preferMarkdown = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled}
 const preferRst = {roSupportMarkdown, roNimFile, roSandboxDisabled}
@@ -57,13 +61,52 @@ proc toAst(input: string,
       result = ""
 
     var (rst, _, _) = rstParse(input, filen, line=LineRstInit, column=ColRstInit,
-                               rstOptions, myFindFile, testMsgHandler)
+                               rstOptions, myFindFile, nil, testMsgHandler)
     result = treeRepr(rst)
   except EParseError as e:
     if e.msg != "":
       result = e.msg
 
 suite "RST parsing":
+  test "Standalone punctuation is not parsed as heading overlines":
+    check(dedent"""
+        Paragraph
+
+        !""".toAst ==
+      dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Paragraph'
+          rnParagraph
+            rnLeaf  '!'
+      """)
+
+    check(dedent"""
+        Paragraph1
+
+        ...
+
+        Paragraph2""".toAst ==
+      dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Paragraph1'
+          rnParagraph
+            rnLeaf  '...'
+          rnParagraph
+            rnLeaf  'Paragraph2'
+      """)
+
+    check(dedent"""
+        ---
+        Paragraph""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  '---'
+          rnLeaf  ' '
+          rnLeaf  'Paragraph'
+      """)
+
   test "References are whitespace-neutral and case-insensitive":
     # refname is 'lexical-analysis', the same for all the 3 variants:
     check(dedent"""
@@ -123,12 +166,12 @@ suite "RST parsing":
     check(dedent"""
         Paragraph::
 
-        >x""".toAst == expected)
+        >x""".toAst(rstOptions = preferRst) == expected)
 
     check(dedent"""
         Paragraph::
 
-            >x""".toAst == expected)
+            >x""".toAst(rstOptions = preferRst) == expected)
 
   test "RST quoted literal blocks, :: at a separate line":
     let expected =
@@ -147,7 +190,7 @@ suite "RST parsing":
         ::
 
         >x
-        >>y""".toAst == expected)
+        >>y""".toAst(rstOptions = preferRst) == expected)
 
     check(dedent"""
         Paragraph
@@ -155,7 +198,7 @@ suite "RST parsing":
         ::
 
           >x
-          >>y""".toAst == expected)
+          >>y""".toAst(rstOptions = preferRst) == expected)
 
   test "Markdown quoted blocks":
     check(dedent"""
@@ -686,6 +729,32 @@ suite "RST parsing":
                 rnLeaf  'desc2'
       """)
 
+  test "definition lists work correctly with additional indentation in Markdown":
+    check(dedent"""
+        Paragraph:
+          -c  desc1
+          -b  desc2
+        """.toAst() ==
+      dedent"""
+        rnInner
+          rnInner
+            rnLeaf  'Paragraph'
+            rnLeaf  ':'
+          rnOptionList
+            rnOptionListItem  order=1
+              rnOptionGroup
+                rnLeaf  '-'
+                rnLeaf  'c'
+              rnDescription
+                rnLeaf  'desc1'
+            rnOptionListItem  order=2
+              rnOptionGroup
+                rnLeaf  '-'
+                rnLeaf  'b'
+              rnDescription
+                rnLeaf  'desc2'
+      """)
+
   test "RST comment":
     check(dedent"""
         .. comment1
@@ -778,13 +847,39 @@ suite "RST parsing":
 
         code
 
-      """.toAst ==
+      """.toAst(rstOptions = preferRst) ==
       dedent"""
         rnInner
           rnLeaf  'Check'
           rnLeaf  ':'
           rnLiteralBlock
             rnLeaf  'code'
+      """)
+
+  test "Markdown indented code blocks":
+    check(dedent"""
+      See
+
+          some code""".toAst ==
+      dedent"""
+        rnInner
+          rnInner
+            rnLeaf  'See'
+          rnLiteralBlock
+            rnLeaf  'some code'
+      """)
+
+    # not a code block -- no blank line before:
+    check(dedent"""
+      See
+          some code""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'See'
+          rnLeaf  ' '
+          rnLeaf  'some'
+          rnLeaf  ' '
+          rnLeaf  'code'
       """)
 
 suite "RST tables":
@@ -1235,6 +1330,31 @@ suite "RST indentation":
             rnDefBody
               rnInner
                 rnLeaf  'term3definition2'
+      """)
+
+suite "Markdown indentation":
+  test "Markdown paragraph indentation":
+    # Additional spaces (<=3) of indentation does not break the paragraph.
+    # TODO: in 2nd case de-indentation causes paragraph to break, this is
+    # reasonable but does not seem to conform the Markdown spec.
+    check(dedent"""
+      Start1
+        stop1
+
+        Start2
+      stop2
+      """.toAst ==
+      dedent"""
+        rnInner
+          rnParagraph
+            rnLeaf  'Start1'
+            rnLeaf  ' '
+            rnLeaf  'stop1'
+          rnParagraph
+            rnLeaf  'Start2'
+          rnParagraph
+            rnLeaf  'stop2'
+            rnLeaf  ' '
       """)
 
 suite "Warnings":

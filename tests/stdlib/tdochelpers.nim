@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   output: '''
 
 [Suite] Integration with Nim
@@ -9,6 +10,7 @@ discard """
 
 import ../../lib/packages/docutils/[rstast, rst, dochelpers]
 import unittest
+import std/assertions
 
 proc testMsgHandler(filename: string, line, col: int, msgkind: MsgKind,
                     arg: string) =
@@ -199,5 +201,21 @@ suite "Integration with Nim":
     let expected = LangSymbol(symKind: "type",
                               symTypeKind: "enum",
                               name: "Copyflag")
+    check inputRst.fromRst == expected
+    check inputMd.fromMd == expected
+
+  test "prefixed module":
+    let inputRst = "`module std / paths`_"
+    let inputMd = "[module std / paths]"
+    let expected = LangSymbol(symKind: "module",
+                              name: "std/paths")
+    check inputRst.fromRst == expected
+    check inputMd.fromMd == expected
+
+  test "postfixed module":
+    let inputRst = "`std / paths module`_"
+    let inputMd = "[std / paths module]"
+    let expected = LangSymbol(symKind: "module",
+                              name: "std/paths")
     check inputRst.fromRst == expected
     check inputMd.fromMd == expected

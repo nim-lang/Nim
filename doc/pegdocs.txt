@@ -131,44 +131,44 @@ notation           meaning
 Supported PEG grammar
 ---------------------
 
-The PEG parser implements this grammar (written in PEG syntax)::
+The PEG parser implements this grammar (written in PEG syntax):
 
-  # Example grammar of PEG in PEG syntax.
-  # Comments start with '#'.
-  # First symbol is the start symbol.
+    # Example grammar of PEG in PEG syntax.
+    # Comments start with '#'.
+    # First symbol is the start symbol.
 
-  grammar <- rule* / expr
+    grammar <- rule* / expr
 
-  identifier <- [A-Za-z][A-Za-z0-9_]*
-  charsetchar <- "\\" . / [^\]]
-  charset <- "[" "^"? (charsetchar ("-" charsetchar)?)+ "]"
-  stringlit <- identifier? ("\"" ("\\" . / [^"])* "\"" /
-                            "'" ("\\" . / [^'])* "'")
-  builtin <- "\\" identifier / [^\13\10]
+    identifier <- [A-Za-z][A-Za-z0-9_]*
+    charsetchar <- "\\" . / [^\]]
+    charset <- "[" "^"? (charsetchar ("-" charsetchar)?)+ "]"
+    stringlit <- identifier? ("\"" ("\\" . / [^"])* "\"" /
+                              "'" ("\\" . / [^'])* "'")
+    builtin <- "\\" identifier / [^\13\10]
 
-  comment <- '#' @ \n
-  ig <- (\s / comment)* # things to ignore
+    comment <- '#' @ \n
+    ig <- (\s / comment)* # things to ignore
 
-  rule <- identifier \s* "<-" expr ig
-  identNoArrow <- identifier !(\s* "<-")
-  prefixOpr <- ig '&' / ig '!' / ig '@' / ig '{@}' / ig '@@'
-  literal <- ig identifier? '$' '^'? [0-9]+ / '$' / '^' /
-             ig identNoArrow /
-             ig charset /
-             ig stringlit /
-             ig builtin /
-             ig '.' /
-             ig '_' /
-             (ig "(" expr ig ")") /
-             (ig "{" expr? ig "}")
-  postfixOpr <- ig '?' / ig '*' / ig '+'
-  primary <- prefixOpr* (literal postfixOpr*)
+    rule <- identifier \s* "<-" expr ig
+    identNoArrow <- identifier !(\s* "<-")
+    prefixOpr <- ig '&' / ig '!' / ig '@' / ig '{@}' / ig '@@'
+    literal <- ig identifier? '$' '^'? [0-9]+ / '$' / '^' /
+               ig identNoArrow /
+               ig charset /
+               ig stringlit /
+               ig builtin /
+               ig '.' /
+               ig '_' /
+               (ig "(" expr ig ")") /
+               (ig "{" expr? ig "}")
+    postfixOpr <- ig '?' / ig '*' / ig '+'
+    primary <- prefixOpr* (literal postfixOpr*)
 
-  # Concatenation has higher priority than choice:
-  # ``a b / c`` means ``(a b) / c``
+    # Concatenation has higher priority than choice:
+    # ``a b / c`` means ``(a b) / c``
 
-  seqExpr <- primary+
-  expr <- seqExpr (ig "/" expr)*
+    seqExpr <- primary+
+    expr <- seqExpr (ig "/" expr)*
 
 
 **Note**: As a special syntactic extension if the whole PEG is only a single

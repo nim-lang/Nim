@@ -379,22 +379,22 @@ func sort*[T](a: var openArray[T],
   ## `cmp`, you may use `system.cmp` or instead call the overloaded
   ## version of `sort`, which uses `system.cmp`.
   ##
-  ## .. code-block:: nim
-  ##
-  ##    sort(myIntArray, system.cmp[int])
-  ##    # do not use cmp[string] here as we want to use the specialized
-  ##    # overload:
-  ##    sort(myStrArray, system.cmp)
+  ##   ```nim
+  ##   sort(myIntArray, system.cmp[int])
+  ##   # do not use cmp[string] here as we want to use the specialized
+  ##   # overload:
+  ##   sort(myStrArray, system.cmp)
+  ##   ```
   ##
   ## You can inline adhoc comparison procs with the `do notation
   ## <manual_experimental.html#do-notation>`_. Example:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   people.sort do (x, y: Person) -> int:
   ##     result = cmp(x.surname, y.surname)
   ##     if result == 0:
   ##       result = cmp(x.name, y.name)
+  ##   ```
   ##
   ## **See also:**
   ## * `sort proc<#sort,openArray[T]>`_

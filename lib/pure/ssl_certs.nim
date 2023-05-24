@@ -88,7 +88,7 @@ when defined(haiku):
   proc find_paths_etc(architecture: cstring, baseDirectory: cint,
                       subPath: cstring, flags: uint32,
                       paths: var ptr UncheckedArray[cstring],
-                      pathCount: var csize): int32
+                      pathCount: var csize_t): int32
                      {.importc, header: "<FindDirectory.h>".}
   proc free(p: pointer) {.importc, header: "<stdlib.h>".}
 
@@ -137,7 +137,7 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
     else:
       var
         paths: ptr UncheckedArray[cstring]
-        size: csize
+        size: csize_t
       let err = find_paths_etc(
         nil, B_FIND_PATH_DATA_DIRECTORY, "ssl/CARootCertificates.pem",
         B_FIND_PATH_EXISTING_ONLY, paths, size

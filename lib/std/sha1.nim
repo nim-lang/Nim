@@ -26,6 +26,9 @@ runnableExamples("-r:off"):
     b = parseSecureHash("10DFAEBF6BFDBC7939957068E2EFACEC4972933C")
   assert a == b, "files don't match"
 
+
+{.deprecated: "use command `nimble install checksums` and import `checksums/sha1` instead".}
+
 import strutils
 from endians import bigEndian32, bigEndian64
 
