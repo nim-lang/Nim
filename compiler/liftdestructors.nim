@@ -82,7 +82,7 @@ proc genBuiltin(c: var TLiftCtx; magic: TMagic; name: string; i: PNode): PNode =
   result = genBuiltin(c.g, c.idgen, magic, name, i)
 
 proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
-  if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink}:
+  if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink, attachedDup}:
     body.add newAsgnStmt(x, y)
   elif c.kind == attachedDestructor and c.addMemReset:
     let call = genBuiltin(c, mDefault, "default", x)
@@ -976,8 +976,34 @@ proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
   result = getAttachedOp(g, baseType, kind)
   setAttachedOp(g, idgen.module, typ, kind, result)
 
+proc symDupPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
+              info: TLineInfo; idgen: IdGenerator): PSym =
+  let procname = getIdent(g.cache, AttachedOpToStr[kind])
+  result = newSym(skProc, procname, idgen, owner, info)
+  let res = newSym(skResult, getIdent(g.cache, "result"), idgen, result, info)
+  let src = newSym(skParam, getIdent(g.cache, "src"),
+                   idgen, result, info)
+  res.typ = typ
+  src.typ = typ
+
+  result.typ = newProcType(info, nextTypeId(idgen), owner)
+  result.typ[0] = res.typ
+  result.typ.addParam src
+
+  var n = newNodeI(nkProcDef, info, bodyPos+1)
+  for i in 0..<n.len: n[i] = newNodeI(nkEmpty, info)
+  n[namePos] = newSymNode(result)
+  n[paramsPos] = result.typ.n
+  n[bodyPos] = newNodeI(nkStmtList, info)
+  n[resultPos] = newSymNode(res)
+  result.ast = n
+  incl result.flags, sfFromGeneric
+  incl result.flags, sfGeneratedOp
+
 proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator): PSym =
+  if kind == attachedDup:
+    return symDupPrototype(g, typ, owner, kind, info, idgen)
 
   let procname = getIdent(g.cache, AttachedOpToStr[kind])
   result = newSym(skProc, procname, idgen, owner, info)

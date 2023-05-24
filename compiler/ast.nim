@@ -942,12 +942,12 @@ type
 
   TTypeAttachedOp* = enum ## as usual, order is important here
     attachedWasMoved,
+    attachedDup,
     attachedDestructor,
     attachedAsgn,
     attachedSink,
     attachedTrace,
-    attachedDeepCopy,
-    attachedDup
+    attachedDeepCopy
 
   TType* {.acyclic.} = object of TIdObj # \
                               # types are identical iff they have the
@@ -1518,7 +1518,7 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
 
 const
   AttachedOpToStr*: array[TTypeAttachedOp, string] = [
-    "=wasMoved", "=destroy", "=copy", "=sink", "=trace", "=deepcopy", "=dup"]
+    "=wasMoved", "=dup", "=destroy", "=copy", "=sink", "=trace", "=deepcopy"]
 
 proc `$`*(s: PSym): string =
   if s != nil:
