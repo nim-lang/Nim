@@ -64,7 +64,7 @@ Atlas supports the following commands:
 
 Clone the package behind `url` or `package name` and its dependencies into
 the `_deps` directory and make it available for your current project which
-should be in the current working director. Atlas will create or patch
+should be in the current working directory. Atlas will create or patch
 the files `$project.nimble` and `nim.cfg` for you so that you can simply
 import the required modules.
 
