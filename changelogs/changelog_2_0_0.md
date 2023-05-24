@@ -249,6 +249,10 @@
   these deprecated aliases are likely not used anymore and it may make sense
   to simply remove these statements.
 
+- `getProgramResult` and `setProgramResult` in `std/exitprocs` are no longer
+  declared when they are not available on the backend. Previously it would call
+  `doAssert false` at runtime despite the condition being compile-time.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
@@ -472,8 +476,8 @@
   static libraries.
 
 - When compiling for Release the flag `-fno-math-errno` is used for GCC.
-- When compiling for Release the flag `--build-id=none` is used for GCC Linker.
 - Removed deprecated `LineTooLong` hint.
+- Line numbers and filenames of source files work correctly inside templates for JavaScript targets.
 
 
 ## Docgen
