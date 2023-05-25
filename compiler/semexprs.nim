@@ -348,7 +348,7 @@ proc semConv(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   if n[1].kind == nkExprEqExpr and
       targetType.skipTypes(abstractPtrs).kind == tyObject:
     localError(c.config, n.info, "object construction uses ':', not '='")
-  var op = semExprWithType(c, n[1])
+  var op = semExprWithType(c, n[1], {efTypeAllowed})
   if targetType.kind != tyGenericParam and targetType.isMetaType:
     let final = inferWithMetatype(c, targetType, op, true)
     result.add final
@@ -363,6 +363,13 @@ proc semConv(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   if targetType.kind == tyGenericParam:
     result.typ = makeTypeFromExpr(c, copyTree(result))
     return result
+
+  # if op.kind == nkClosedSymChoice and
+  #     op[0].sym.kind == skEnumField:
+  #   debug op
+  #   echo "---------------------------"
+  #   op = ambiguousSymChoice(c, n, op)
+  #   debug op
 
   if not isSymChoice(op):
     let status = checkConvertible(c, result.typ, op)
