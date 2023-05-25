@@ -313,7 +313,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
   var targetProc = p
   var valueAsRope = ""
   potentialValueInit(p, v, value, valueAsRope)
-  if sfGlobal in v.flags:  
+  if sfGlobal in v.flags:
     if v.flags * {sfImportc, sfExportc} == {sfImportc} and
         value.kind == nkEmpty and
         v.loc.flags * {lfHeader, lfNoDecl} != {}:
@@ -1052,7 +1052,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     expr(p, t[0], d)
     endBlock(p)
 
-  # First pass: handle Nim based exceptions:  
+  # First pass: handle Nim based exceptions:
   lineCg(p, cpsStmts, "catch (#Exception* T$1_) {$n", [etmp+1])
   genRestoreFrameAfterException(p)
   # an unhandled exception happened!
@@ -1383,8 +1383,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
   #
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
-  let quirkyExceptions = p.config.exc == excQuirky or
-      (t.kind == nkHiddenTryStmt and sfSystemModule in p.module.module.flags)
+  let quirkyExceptions = (t.kind == nkHiddenTryStmt and sfSystemModule in p.module.module.flags)
   if not quirkyExceptions:
     p.module.includeHeader("<setjmp.h>")
   else:
