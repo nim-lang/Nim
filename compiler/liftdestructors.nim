@@ -526,7 +526,7 @@ proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
 proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
-  of attachedAsgn, attachedDeepCopy:
+  of attachedAsgn, attachedDeepCopy, attachedDup:
     # we generate:
     # setLen(dest, y.len)
     # var i = 0
@@ -549,8 +549,6 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       # follow all elements:
       forallElements(c, t, body, x, y)
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
-  of attachedDup:
-    assert false, "cannot happen"
 
 proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   createTypeBoundOps(c.g, c.c, t, body.info, c.idgen)
@@ -594,7 +592,7 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
 proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
-  of attachedAsgn, attachedDeepCopy:
+  of attachedAsgn, attachedDeepCopy, attachedDup:
     body.add callCodegenProc(c.g, "nimAsgnStrV2", c.info, genAddr(c, x), y)
   of attachedSink:
     let moveCall = genBuiltin(c, mMove, "move", x)
@@ -607,8 +605,6 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedTrace:
     discard "strings are atomic and have no inner elements that are to trace"
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
-  of attachedDup:
-    assert false, "cannot happen"
 
 proc cyclicType*(g: ModuleGraph, t: PType): bool =
   case t.kind
@@ -1059,8 +1055,8 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   var a = TLiftCtx(info: info, g: g, kind: kind, c: c, asgnForType: typ, idgen: idgen,
                    fn: result)
 
-  let dest = result.typ.n[1].sym
-  let d = newDeref(newSymNode(dest))
+  let dest = if kind == attachedDup: result.typ.n[0].sym else: result.typ.n[1].sym
+  let d = if kind == attachedDup: newSymNode(dest) else: newDeref(newSymNode(dest))
   let src = if kind in {attachedDestructor, attachedWasMoved, attachedDup}: newNodeIT(nkSym, info, getSysType(g, info, tyPointer))
             else: newSymNode(result.typ.n[2].sym)
 
