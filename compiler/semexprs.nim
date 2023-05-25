@@ -348,7 +348,10 @@ proc semConv(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   if n[1].kind == nkExprEqExpr and
       targetType.skipTypes(abstractPtrs).kind == tyObject:
     localError(c.config, n.info, "object construction uses ':', not '='")
-  var op = semExprWithType(c, n[1], {efTypeAllowed})
+  var op = semExprWithType(c, n[1])
+  if op.kind == nkClosedSymChoice and op.len > 0 and
+      op[0].sym.kind == skEnumField: # resolves overloadedable enums
+    op = ambiguousSymChoice(c, n, op)
   if targetType.kind != tyGenericParam and targetType.isMetaType:
     let final = inferWithMetatype(c, targetType, op, true)
     result.add final
