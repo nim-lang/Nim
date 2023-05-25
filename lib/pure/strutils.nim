@@ -1803,22 +1803,26 @@ func abbrev*(s: string, possibilities: openArray[string]): int =
 
 # ---------------------------------------------------------------------------
 
+
 func join*(a: openArray[string], sep: string = ""): string {.rtl,
     extern: "nsuJoinSep".} =
   ## Concatenates all strings in the container `a`, separating them with `sep`.
   runnableExamples:
     doAssert join(["A", "B", "Conclusion"], " -> ") == "A -> B -> Conclusion"
 
-  if len(a) > 0:
-    var L = sep.len * (a.len-1)
-    for i in 0..high(a): inc(L, a[i].len)
-    result = newStringOfCap(L)
-    add(result, a[0])
-    for i in 1..high(a):
-      add(result, sep)
-      add(result, a[i])
+  case a.len
+  of 0: result = ""    # a == [] then result = ""
+  of 1: result = a[0]  # a == ["A"] then result = "A"
   else:
-    result = ""
+    var capacity = sep.len * a.high
+    for i in 0 .. a.high: inc(capacity, a[i].len)
+    result = newStringOfCap(capacity)
+    result.add a[0]
+    let sepLenGt0 = sep.len > 0
+    for i in 1 .. a.high:
+      if sepLenGt0: result.add sep
+      result.add a[i]
+
 
 func join*[T: not string](a: openArray[T], sep: string = ""): string =
   ## Converts all elements in the container `a` to strings using `$`,
@@ -1826,11 +1830,24 @@ func join*[T: not string](a: openArray[T], sep: string = ""): string =
   runnableExamples:
     doAssert join([1, 2, 3], " -> ") == "1 -> 2 -> 3"
 
-  result = ""
-  for i, x in a:
-    if i > 0:
-      add(result, sep)
-    add(result, $x)
+  case a.len
+  of 0: result = ""       # a == [] then result = ""
+  of 1: result = $(a[0])  # a == [obj] then result = $(a[0])
+  else:
+    result = $(a[0])
+    let sepLenGt0 = sep.len > 0
+    for i, x in a:
+      if i > 0 and sepLenGt0:
+        result.add sep
+      when T is SomeInteger:
+        result.addInt x
+      elif T is SomeFloat:
+        result.addFloat x
+      elif T is char:
+        result.add x
+      else:
+        result.add $x
+
 
 type
   SkipTable* = array[char, int] ## Character table for efficient substring search.
