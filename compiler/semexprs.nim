@@ -364,13 +364,6 @@ proc semConv(c: PContext, n: PNode; expectedType: PType = nil): PNode =
     result.typ = makeTypeFromExpr(c, copyTree(result))
     return result
 
-  # if op.kind == nkClosedSymChoice and
-  #     op[0].sym.kind == skEnumField:
-  #   debug op
-  #   echo "---------------------------"
-  #   op = ambiguousSymChoice(c, n, op)
-  #   debug op
-
   if not isSymChoice(op):
     let status = checkConvertible(c, result.typ, op)
     case status
