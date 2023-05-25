@@ -256,8 +256,6 @@
   declared when they are not available on the backend. Previously it would call
   `doAssert false` at runtime despite the condition being compile-time.
 
-- `strutils.split` and `strutils.rsplit` now forbid an empty separator.
-
 - Relative imports will not resolve to searched paths anymore, e.g. `import ./tables` now reports an error properly.
 
 ## Standard library additions and changes
@@ -273,6 +271,7 @@
 - Changed `mimedb` to use an `OrderedTable` instead of `OrderedTableRef` to support `const` tables.
 - `strutils.find` now uses and defaults to `last = -1` for whole string searches,
   making limiting it to just the first char (`last = 0`) valid.
+- `strutils.split` and `strutils.rsplit` now return a source string as a single element for an empty separator.
 - `random.rand` now works with `Ordinal`s.
 - Undeprecated `os.isvalidfilename`.
 - `std/oids` now uses `int64` to store time internally (before it was int32).
