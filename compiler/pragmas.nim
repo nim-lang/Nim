@@ -249,7 +249,7 @@ proc processVirtual(c: PContext, n: PNode, s: PSym) =
   s.constraint = newEmptyStrNode(c, n, getOptionalStr(c, n, "$1"))
   s.constraint.strVal = s.constraint.strVal % s.name.s
   s.flags.incl {sfVirtual, sfInfixCall, sfExportc, sfMangleCpp}
-  
+
   s.typ.callConv = ccNoConvention
   incl c.config.globalOptions, optMixedMode
 
@@ -991,9 +991,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.flags, sfSideEffect)
       of wNoreturn:
         noVal(c, it)
-        # Disable the 'noreturn' annotation when in the "Quirky Exceptions" mode!
-        if c.config.exc != excQuirky:
-          incl(sym.flags, sfNoReturn)
+        incl(sym.flags, sfNoReturn)
         if sym.typ[0] != nil:
           localError(c.config, sym.ast[paramsPos][0].info,
             ".noreturn with return type not allowed")
@@ -1277,7 +1275,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         sym.flags.incl sfSystemRaisesDefect
       of wVirtual:
           processVirtual(c, it, sym)
-      
+
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
