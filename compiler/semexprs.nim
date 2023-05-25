@@ -1293,7 +1293,8 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       if s.astdef.safeLen == 0: result = inlineConst(c, n, s)
       else: result = newSymNode(s, n.info)
     of tyStatic:
-      if typ.n != nil:
+      let staticDuringGenericInst = (c.inStaticContext > 0 and c.inGenericInst > 0)
+      if (c.inExplicitGenericSym <= 0 or staticDuringGenericInst) and typ.n != nil:
         result = typ.n
         result.typ = typ.base
       else:

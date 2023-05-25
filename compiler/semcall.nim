@@ -641,7 +641,7 @@ proc explicitGenericInstError(c: PContext; n: PNode): PNode =
 proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   # binding has to stay 'nil' for this to work!
   var m = newCandidate(c, s, nil)
-
+  inc c.inExplicitGenericSym
   for i in 1..<n.len:
     let formal = s.ast[genericParamsPos][i-1].typ
     var arg = n[i].typ
@@ -660,6 +660,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   let info = getCallLineInfo(n)
   markUsed(c, info, s)
   onUse(info, s)
+  dec c.inExplicitGenericSym
   result = newSymNode(newInst, info)
 
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
