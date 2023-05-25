@@ -39,10 +39,10 @@ const
   exponentMask: BitsType = maxIeeeExponent shl (significandSize - 1)
   signMask: BitsType = not (not BitsType(0) shr 1)
 
-proc constructSingle(bits: BitsType): Single {.constructor.} =
+proc constructSingle(bits: BitsType): Single  =
   result.bits = bits
 
-proc constructSingle(value: ValueType): Single {.constructor.} =
+proc constructSingle(value: ValueType): Single  =
   result.bits = cast[typeof(result.bits)](value)
 
 proc physicalSignificand(this: Single): BitsType {.noSideEffect.} =
