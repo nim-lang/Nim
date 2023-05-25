@@ -11,7 +11,7 @@
 
 const
   gotoBasedExceptions = compileOption("exceptions", "goto")
-  quirkyExceptions = compileOption("exceptions", "quirky")
+
 
 when hostOS == "standalone":
   include "$projectpath/panicoverride"
@@ -23,7 +23,7 @@ when hostOS == "standalone":
     rawoutput(message)
     panic(arg)
 
-elif (quirkyExceptions or defined(nimPanics)) and not defined(nimscript):
+elif defined(nimPanics) and not defined(nimscript):
   import ansi_c
 
   func name(t: typedesc): string {.magic: "TypeTrait".}
