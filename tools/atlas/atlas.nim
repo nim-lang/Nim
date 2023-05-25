@@ -329,11 +329,13 @@ proc commitFromLockFile(c: var AtlasContext; dir: string): string =
   else:
     error c, PackageName(d), "package is not listed in the lock file"
 
-proc checkoutCommit(c: var AtlasContext; w: Dependency) =
-  var dir = c.workspace / w.name.string
-  if not dirExists(dir):
-    dir = c.depsDir / w.name.string
+proc dependencyDir(c: AtlasContext; w: Dependency): string =
+  result = c.workspace / w.name.string
+  if not dirExists(result):
+    result = c.depsDir / w.name.string
 
+proc checkoutCommit(c: var AtlasContext; w: Dependency) =
+  let dir = dependencyDir(c, w)
   withDir c, dir:
     if c.lockOption == genLock:
       genLockEntry(c, w, dir)
@@ -375,10 +377,11 @@ proc findNimbleFile(c: AtlasContext; dep: Dependency): string =
     result = TestsDir / dep.name.string & ".nimble"
     doAssert fileExists(result), "file does not exist " & result
   else:
-    result = c.workspace / dep.name.string / (dep.name.string & ".nimble")
+    let dir = dependencyDir(c, dep)
+    result = dir / (dep.name.string & ".nimble")
     if not fileExists(result):
       result = ""
-      for x in walkFiles(c.workspace / dep.name.string / "*.nimble"):
+      for x in walkFiles(dir / "*.nimble"):
         if result.len == 0:
           result = x
         else:
