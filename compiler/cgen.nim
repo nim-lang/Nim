@@ -1490,9 +1490,9 @@ proc genMainProc(m: BModule) =
 
   var posixCmdLine: Rope
   if optNoMain notin m.config.globalOptions:
-    posixCmdLine.add "\tN_LIB_PRIVATE int cmdCount;\L"
-    posixCmdLine.add "\tN_LIB_PRIVATE char** cmdLine;\L"
-    posixCmdLine.add "\tN_LIB_PRIVATE char** gEnv;\L"
+    posixCmdLine.add "N_LIB_PRIVATE int cmdCount;\L"
+    posixCmdLine.add "N_LIB_PRIVATE char** cmdLine;\L"
+    posixCmdLine.add "N_LIB_PRIVATE char** gEnv;\L"
 
   const
     # The use of a volatile function pointer to call Pre/NimMainInner
@@ -1517,7 +1517,7 @@ proc genMainProc(m: BModule) =
       "}$N$N"
 
     MainProcs =
-      "\t\t$^NimMain();$N"
+      "\t$^NimMain();$N"
 
     MainProcsWithResult =
       MainProcs & ("\treturn $1nim_program_result;$N")
@@ -1633,7 +1633,7 @@ proc genMainProc(m: BModule) =
     appcg(m, m.s[cfsProcs], nimMain,
         [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix, isVolatile])
 
-  if optNoMain notin m.config.globalOptions:
+  if optNoMain notin m.config.globalOptions or optGenDynLib in m.config.globalOptions:
     if m.config.cppCustomNamespace.len > 0:
       closeNamespaceNim(m.s[cfsProcs])
       m.s[cfsProcs].add "using namespace " & m.config.cppCustomNamespace & ";\L"
@@ -1940,8 +1940,6 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
     openNamespaceNim(m.config.cppCustomNamespace, result)
   if m.s[cfsFrameDefines].len > 0:
     result.add(m.s[cfsFrameDefines])
-  else:
-    result.add("#define nimfr_(x, y)\n#define nimln_(x)\n\n#define nimlf_(x, y)\n")
 
   for i in cfsForwardTypes..cfsProcs:
     if m.s[i].len > 0:
