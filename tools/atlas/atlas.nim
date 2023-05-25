@@ -638,6 +638,12 @@ proc absoluteDepsDir(workspace, value: string): string =
   else:
     result = workspace / value
 
+when MockupRun:
+  proc autoWorkspace(): string =
+    result = getCurrentDir()
+    while result.len > 0 and dirExists(result / ".git"):
+      result = result.parentDir()
+
 proc createWorkspaceIn(workspace, depsDir: string) =
   if not fileExists(workspace / AtlasWorkspace):
     writeFile workspace / AtlasWorkspace, "deps=\"$#\"" % escape(depsDir, "", "")
@@ -733,13 +739,16 @@ proc main =
   if c.workspace.len > 0:
     if not dirExists(c.workspace): error "Workspace directory '" & c.workspace & "' not found."
   elif action != "init":
-    c.workspace = detectWorkspace()
-    if c.workspace.len > 0:
-      readConfig c
+    when MockupRun:
+      c.workspace = autoWorkspace()
     else:
-      error "No workspace found. Run `atlas init` if you want this current directory to be your workspace."
-      return
-    echo "Using workspace ", c.workspace
+      c.workspace = detectWorkspace()
+      if c.workspace.len > 0:
+        readConfig c
+      else:
+        error "No workspace found. Run `atlas init` if you want this current directory to be your workspace."
+        return
+      echo "Using workspace ", c.workspace
 
   when MockupRun:
     c.depsDir = c.workspace
