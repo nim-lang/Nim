@@ -448,7 +448,7 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
     else:
       pushCurrentException(e)
       {.emit: "throw `e`;".}
-  elif quirkyExceptions or gotoBasedExceptions:
+  elif gotoBasedExceptions:
     pushCurrentException(e)
     when gotoBasedExceptions:
       inc nimInErrorMode
@@ -559,8 +559,7 @@ proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
 
 when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     not defined(js) and not defined(nimscript) and
-    hostOS != "standalone" and hostOS != "any" and not defined(noCppExceptions) and
-    not quirkyExceptions:
+    hostOS != "standalone" and hostOS != "any" and not defined(noCppExceptions):
 
   type
     StdException {.importcpp: "std::exception", header: "<exception>".} = object
