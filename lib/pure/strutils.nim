@@ -1837,16 +1837,17 @@ func join*[T: not string](a: openArray[T], sep: string = ""): string =
     result = $(a[0])
     let sepLenGt0 = sep.len > 0
     for i, x in a:
-      if i > 0 and sepLenGt0:
-        result.add sep
-      when T is SomeInteger:
-        result.addInt x
-      elif T is SomeFloat:
-        result.addFloat x
-      elif T is char:
-        result.add x
-      else:
-        result.add $x
+      if i > 0:
+        if sepLenGt0:
+          result.add sep
+        when T is char:
+          result.add x
+        elif T is SomeInteger:
+          result.addInt x
+        elif T is SomeFloat:
+          result.addFloat x
+        else:
+          result.add $x
 
 
 type
