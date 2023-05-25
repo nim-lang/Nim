@@ -422,7 +422,7 @@ else:
   # Still track when using older versions
   {.pragma: parseFormatRaises, raises: [TimeParseError, TimeFormatParseError, Defect].}
   {.pragma: parseRaises, raises: [TimeParseError, Defect].}
-  
+
 
 #
 # Helper procs
@@ -608,8 +608,8 @@ proc stringifyUnit(value: int | int64, unit: TimeUnit): string =
   ## Stringify time unit with it's name, lowercased
   let strUnit = $unit
   result = ""
-  result.add($value)
-  result.add(" ")
+  result.addInt value
+  result.add ' '
   if abs(value) != 1:
     result.add(strUnit.toLowerAscii())
   else:
@@ -1502,16 +1502,25 @@ proc getDateStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].}
   runnableExamples:
     echo getDateStr(now() - 1.months)
   assertDateTimeInitialized dt
-  result = $dt.year & '-' & intToStr(dt.monthZero, 2) &
-    '-' & intToStr(dt.monthday, 2)
+  result = newStringOfCap(10)  # len("YYYY-MM-DD") == 10
+  result.addInt dt.year
+  result.add '-'
+  result.add intToStr(dt.monthZero, 2)
+  result.add '-'
+  result.add intToStr(dt.monthday, 2)
 
 proc getClockStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## Gets the current local clock time as a string of the format `HH:mm:ss`.
   runnableExamples:
     echo getClockStr(now() - 1.hours)
   assertDateTimeInitialized dt
-  result = intToStr(dt.hour, 2) & ':' & intToStr(dt.minute, 2) &
-    ':' & intToStr(dt.second, 2)
+  result = newStringOfCap(8)  # len("HH:mm:ss") == 8
+  result.add intToStr(dt.hour, 2)
+  result.add ':'
+  result.add intToStr(dt.minute, 2)
+  result.add ':'
+  result.add intToStr(dt.second, 2)
+
 
 #
 # Iso week
@@ -2154,19 +2163,19 @@ proc toDateTimeByWeek(p: ParsedTime, zone: Timezone, f: TimeFormat,
   var isoyear = p.isoyear.get(0)
   var yearweek = p.yearweek.get(1)
   var weekday = p.weekday.get(dMon)
-  
+
   if p.amPm != apUnknown:
     raiseParseException(f, input, "Parsing iso weekyear dates does not support am/pm")
-  
+
   if p.year.isSome:
     raiseParseException(f, input, "Use iso-year GG or GGGG as year with iso week number")
-  
+
   if p.month.isSome:
     raiseParseException(f, input, "Use either iso week number V or VV or month")
-  
+
   if p.monthday.isSome:
     raiseParseException(f, input, "Use weekday ddd or dddd as day with with iso week number")
-  
+
   if p.isoyear.isNone:
     raiseParseException(f, input, "Need iso-year with week number")
 

@@ -60,6 +60,27 @@ patch the `nim.cfg` then.
 Atlas supports the following commands:
 
 
+## Use <url> / <package name>
+
+Clone the package behind `url` or `package name` and its dependencies into
+the `_deps` directory and make it available for your current project which
+should be in the current working directory. Atlas will create or patch
+the files `$project.nimble` and `nim.cfg` for you so that you can simply
+import the required modules.
+
+For example:
+
+```
+  mkdir newproject
+  cd newproject
+  git init
+  atlas use lexim
+  # add `import lexim` to your example.nim file
+  nim c example.nim
+
+```
+
+
 ### Clone/Update <url>
 
 Clones a URL and all of its dependencies (recursively) into the workspace.

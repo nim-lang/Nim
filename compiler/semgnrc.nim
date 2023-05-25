@@ -138,7 +138,8 @@ proc newDot(n, b: PNode): PNode =
   result.add(b)
 
 proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
-                 ctx: var GenericCtx; isMacro: var bool): PNode =
+                 ctx: var GenericCtx; isMacro: var bool;
+                 inCall = false): PNode =
   assert n.kind == nkDotExpr
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
 
@@ -152,8 +153,9 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
     result = n
     let n = n[1]
     let ident = considerQuotedIdent(c, n)
-    var candidates = searchInScopesFilterBy(c, ident, routineKinds+{skType})
-    # skType here because could be type conversion
+    # could be type conversion if like a.T and not a.T()
+    let symKinds = if inCall: routineKinds else: routineKinds+{skType}
+    var candidates = searchInScopesFilterBy(c, ident, symKinds)
     if candidates.len > 0:
       let s = candidates[0] # XXX take into account the other candidates!
       isMacro = s.kind in {skTemplate, skMacro}
@@ -281,7 +283,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         onUse(fn.info, s)
         first = 1
     elif fn.kind == nkDotExpr:
-      result[0] = fuzzyLookup(c, fn, flags, ctx, mixinContext)
+      result[0] = fuzzyLookup(c, fn, flags, ctx, mixinContext, inCall = true)
       first = 1
     # Consider 'when declared(globalsSlot): ThreadVarSetValue(globalsSlot, ...)'
     # in threads.nim: the subtle preprocessing here binds 'globalsSlot' which
