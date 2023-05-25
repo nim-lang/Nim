@@ -447,7 +447,7 @@ iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   splitCommon(s, sep, maxsplit, 1)
 
 iterator split*(s: string, seps: set[char] = Whitespace,
-                maxsplit: int = -1): string =
+                maxsplit: int = -1): string {.raises: [ValueError].} =
   ## Splits the string `s` into substrings using a group of separators.
   ##
   ## Substrings are separated by a substring containing only `seps`.
@@ -488,14 +488,18 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   ##   "08"
   ##   "08.398990"
   ##
+  ## Raises `ValueError` for an empty separator set.
+  ##
   ## See also:
   ## * `rsplit iterator<#rsplit.i,string,set[char],int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
   ## * `split func<#split,string,set[char],int>`_
+  if seps.card == 0:
+    raise newException(ValueError, "Empty separator")
   splitCommon(s, seps, maxsplit, 1)
 
-iterator split*(s: string, sep: string, maxsplit: int = -1): string =
+iterator split*(s: string, sep: string, maxsplit: int = -1): string {.raises: [ValueError].} =
   ## Splits the string `s` into substrings using a string separator.
   ##
   ## Substrings are separated by the string `sep`.
@@ -512,11 +516,15 @@ iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   ##   "is"
   ##   "corrupted"
   ##
+  ## Raises `ValueError` for an empty separator.
+  ##
   ## See also:
   ## * `rsplit iterator<#rsplit.i,string,string,int,bool>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
   ## * `split func<#split,string,string,int>`_
+  if sep.len == 0:
+    raise newException(ValueError, "Empty separator")
   splitCommon(s, sep, maxsplit, sep.len)
 
 
@@ -570,7 +578,7 @@ iterator rsplit*(s: string, sep: char,
   rsplitCommon(s, sep, maxsplit, 1)
 
 iterator rsplit*(s: string, seps: set[char] = Whitespace,
-                 maxsplit: int = -1): string =
+                 maxsplit: int = -1): string {.raises: [ValueError].} =
   ## Splits the string `s` into substrings from the right using a
   ## string separator. Works exactly the same as `split iterator
   ## <#split.i,string,char,int>`_ except in reverse order.
@@ -587,15 +595,19 @@ iterator rsplit*(s: string, seps: set[char] = Whitespace,
   ##
   ## Substrings are separated from the right by the set of chars `seps`
   ##
+  ## Raises `ValueError` for an empty separator set.
+  ##
   ## See also:
   ## * `split iterator<#split.i,string,set[char],int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
   ## * `rsplit func<#rsplit,string,set[char],int>`_
+  if seps.card == 0:
+    raise newException(ValueError, "Empty separator")
   rsplitCommon(s, seps, maxsplit, 1)
 
 iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
-                 keepSeparators: bool = false): string =
+                 keepSeparators: bool = false): string {.raises: [ValueError].} =
   ## Splits the string `s` into substrings from the right using a
   ## string separator. Works exactly the same as `split iterator
   ## <#split.i,string,string,int>`_ except in reverse order.
@@ -612,11 +624,15 @@ iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
   ##
   ## Substrings are separated from the right by the string `sep`
   ##
+  ## Raises `ValueError` for an empty separator.
+  ##
   ## See also:
   ## * `split iterator<#split.i,string,string,int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
   ## * `rsplit func<#rsplit,string,string,int>`_
+  if sep.len == 0:
+    raise newException(ValueError, "Empty separator")
   rsplitCommon(s, sep, maxsplit, sep.len)
 
 iterator splitLines*(s: string, keepEol = false): string =
@@ -724,9 +740,11 @@ func split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
   accResult(split(s, sep, maxsplit))
 
 func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
-    string] {.rtl, extern: "nsuSplitCharSet".} =
+    string] {.rtl, extern: "nsuSplitCharSet", raises: [ValueError].} =
   ## The same as the `split iterator <#split.i,string,set[char],int>`_ (see its
   ## documentation), but is a func that returns a sequence of substrings.
+  ##
+  ## Raises `ValueError` for an empty separator set.
   ##
   ## See also:
   ## * `split iterator <#split.i,string,set[char],int>`_
@@ -739,11 +757,13 @@ func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
   accResult(split(s, seps, maxsplit))
 
 func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
-    extern: "nsuSplitString".} =
+    extern: "nsuSplitString", raises: [ValueError].} =
   ## Splits the string `s` into substrings using a string separator.
   ##
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string,int>`_.
+  ##
+  ## Raises `ValueError` for an empty separator.
   ##
   ## See also:
   ## * `split iterator <#split.i,string,string,int>`_
@@ -757,8 +777,6 @@ func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
     doAssert "a  largely    spaced sentence".split(" ") == @["a", "", "largely",
         "", "", "", "spaced", "sentence"]
     doAssert "a  largely    spaced sentence".split(" ", maxsplit = 1) == @["a", " largely    spaced sentence"]
-  doAssert(sep.len > 0)
-
   accResult(split(s, sep, maxsplit))
 
 func rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
@@ -790,7 +808,7 @@ func rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
 
 func rsplit*(s: string, seps: set[char] = Whitespace,
              maxsplit: int = -1): seq[string]
-             {.rtl, extern: "nsuRSplitCharSet".} =
+             {.rtl, extern: "nsuRSplitCharSet", raises: [ValueError].} =
   ## The same as the `rsplit iterator <#rsplit.i,string,set[char],int>`_, but is a
   ## func that returns a sequence of substrings.
   ##
@@ -808,6 +826,8 @@ func rsplit*(s: string, seps: set[char] = Whitespace,
   ## .. code-block:: nim
   ##   @["Root#Object#Method", "Index"]
   ##
+  ## Raises `ValueError` for an empty separator set.
+  ##
   ## See also:
   ## * `rsplit iterator <#rsplit.i,string,set[char],int>`_
   ## * `split func<#split,string,set[char],int>`_
@@ -817,7 +837,7 @@ func rsplit*(s: string, seps: set[char] = Whitespace,
   result.reverse()
 
 func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
-    extern: "nsuRSplitString".} =
+    extern: "nsuRSplitString", raises: [ValueError].} =
   ## The same as the `rsplit iterator <#rsplit.i,string,string,int,bool>`_, but is a func
   ## that returns a sequence of substrings.
   ##
@@ -834,6 +854,8 @@ func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
   ##
   ## .. code-block:: nim
   ##   @["Root#Object#Method", "Index"]
+  ##
+  ## Raises `ValueError` for an empty separator.
   ##
   ## See also:
   ## * `rsplit iterator <#rsplit.i,string,string,int,bool>`_

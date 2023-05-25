@@ -266,6 +266,7 @@
 - Changed `mimedb` to use an `OrderedTable` instead of `OrderedTableRef` to support `const` tables.
 - `strutils.find` now uses and defaults to `last = -1` for whole string searches,
   making limiting it to just the first char (`last = 0`) valid.
+- `strutils.split` and `strutils.rsplit` now raise a `ValueError` on an empty separator.
 - `random.rand` now works with `Ordinal`s.
 - Undeprecated `os.isvalidfilename`.
 - `std/oids` now uses `int64` to store time internally (before it was int32).
