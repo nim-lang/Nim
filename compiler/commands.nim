@@ -241,7 +241,7 @@ const
   errNoneBoehmRefcExpectedButXFound = "'arc', 'orc', 'atomicArc', 'markAndSweep', 'boehm', 'go', 'none', 'regions', or 'refc' expected, but '$1' found"
   errNoneSpeedOrSizeExpectedButXFound = "'none', 'speed' or 'size' expected, but '$1' found"
   errGuiConsoleOrLibExpectedButXFound = "'gui', 'console' or 'lib' expected, but '$1' found"
-  errInvalidExceptionSystem = "'goto', 'setjmp', 'cpp' or 'quirky' expected, but '$1' found"
+  errInvalidExceptionSystem = "'goto', 'setjmp' or 'cpp' expected, but '$1' found"
 
 template warningOptionNoop(switch: string) =
   warningDeprecated(conf, info, "'$#' is deprecated, now a noop" % switch)
@@ -286,7 +286,6 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     case arg.normalize
     of "cpp": result = conf.exc == excCpp
     of "setjmp": result = conf.exc == excSetjmp
-    of "quirky": result = conf.exc == excQuirky
     of "goto": result = conf.exc == excGoto
     else: localError(conf, info, errInvalidExceptionSystem % arg)
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
@@ -493,9 +492,7 @@ proc setCommandEarly*(conf: ConfigRef, command: string) =
 
 proc specialDefine(conf: ConfigRef, key: string; pass: TCmdLinePass) =
   # Keep this syncronized with the default config/nim.cfg!
-  if cmpIgnoreStyle(key, "nimQuirky") == 0:
-    conf.exc = excQuirky
-  elif cmpIgnoreStyle(key, "release") == 0 or cmpIgnoreStyle(key, "danger") == 0:
+  if cmpIgnoreStyle(key, "release") == 0 or cmpIgnoreStyle(key, "danger") == 0:
     if pass in {passCmd1, passPP}:
       conf.options.excl {optStackTrace, optLineTrace, optLineDir, optOptimizeSize}
       conf.globalOptions.excl {optExcessiveStackTrace, optCDebug}
@@ -1024,7 +1021,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     case arg.normalize
     of "cpp": conf.exc = excCpp
     of "setjmp": conf.exc = excSetjmp
-    of "quirky": conf.exc = excQuirky
     of "goto": conf.exc = excGoto
     else: localError(conf, info, errInvalidExceptionSystem % arg)
   of "cppdefine":
