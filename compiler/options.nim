@@ -247,7 +247,6 @@ type
     excSetjmp, # setjmp based exception handling
     excCpp,    # use C++'s native exception handling
     excGoto,   # exception handling based on goto (should become the new default for C)
-    excQuirky  # quirky exception handling
 
   CfileFlag* {.pure.} = enum
     Cached,    ## no need to recompile this time
