@@ -389,16 +389,31 @@ proc findNimbleFile(c: AtlasContext; dep: Dependency): string =
           return ""
 
 proc addUniqueDep(c: var AtlasContext; work: var seq[Dependency];
-                  tokens: seq[string]) =
+                  tokens: seq[string]; lockfile: Table[string, LockFileEntry]) =
+  let pkgName = tokens[0]
   let oldErrors = c.errors
-  let url = toUrl(c, tokens[0])
+  let url = toUrl(c, pkgName)
   if oldErrors != c.errors:
-    warn c, toName(tokens[0]), "cannot resolve package name"
+    warn c, toName(pkgName), "cannot resolve package name"
   elif not c.processed.containsOrIncl(url / tokens[2]):
-    work.add Dependency(name: toName(tokens[0]), url: url, commit: tokens[2],
-                        rel: toDepRelation(tokens[1]))
+    if lockfile.contains(pkgName):
+      work.add Dependency(name: toName(pkgName),
+                          url: lockfile[pkgName].url,
+                          commit: lockfile[pkgName].commit,
+                          rel: normal)
+    else:
+      work.add Dependency(name: toName(pkgName), url: url, commit: tokens[2],
+                          rel: toDepRelation(tokens[1]))
 
 template toDestDir(p: PackageName): string = p.string
+
+proc readLockFile(filename: string): Table[string, LockFileEntry] =
+  let jsonAsStr = readFile(filename)
+  let jsonTree = parseJson(jsonAsStr)
+  let data = to(jsonTree, seq[LockFileEntry])
+  result = initTable[string, LockFileEntry]()
+  for d in items(data):
+    result[d.dir] = d
 
 proc collectDeps(c: var AtlasContext; work: var seq[Dependency];
                  dep: Dependency; nimbleFile: string): string =
@@ -406,6 +421,11 @@ proc collectDeps(c: var AtlasContext; work: var seq[Dependency];
   # else return "".
   assert nimbleFile != ""
   let nimbleInfo = extractRequiresInfo(c, nimbleFile)
+
+  let lockFilePath = dependencyDir(c, dep) / LockFileName
+  let lockFile = if fileExists(lockFilePath): readLockFile(lockFilePath)
+                 else: initTable[string, LockFileEntry]()
+
   for r in nimbleInfo.requires:
     var tokens: seq[string] = @[]
     for token in tokenizeRequires(r):
@@ -423,7 +443,7 @@ proc collectDeps(c: var AtlasContext; work: var seq[Dependency];
       tokens.add commit
 
     if tokens.len >= 3 and cmpIgnoreCase(tokens[0], "nim") != 0:
-      c.addUniqueDep work, tokens
+      c.addUniqueDep work, tokens, lockFile
   result = toDestDir(dep.name) / nimbleInfo.srcDir
 
 proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
@@ -457,14 +477,6 @@ proc cloneLoop(c: var AtlasContext; work: var seq[Dependency]; startIsDep: bool)
       collectNewDeps(c, work, w, result, i == 0)
     inc i
 
-proc readLockFile(c: var AtlasContext) =
-  let jsonAsStr = readFile(c.projectDir / LockFileName)
-  let jsonTree = parseJson(jsonAsStr)
-  let data = to(jsonTree, seq[LockFileEntry])
-  c.lockFileToUse = initTable[string, LockFileEntry]()
-  for d in items(data):
-    c.lockFileToUse[d.dir] = d
-
 proc clone(c: var AtlasContext; start: string; startIsDep: bool): seq[string] =
   # non-recursive clone.
   let url = toUrl(c, start)
@@ -476,7 +488,7 @@ proc clone(c: var AtlasContext; start: string; startIsDep: bool): seq[string] =
 
   c.projectDir = c.workspace / toDestDir(work[0].name)
   if c.lockOption == useLock:
-    readLockFile c
+    c.lockFileToUse = readLockFile(c.projectDir / LockFileName)
   result = cloneLoop(c, work, startIsDep)
   if c.lockOption == genLock:
     writeFile c.projectDir / LockFileName, toJson(c.lockFileToWrite).pretty
