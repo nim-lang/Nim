@@ -810,7 +810,7 @@ proc main =
     updatePackages(c)
     search getPackages(c.workspace), args
   of "search":
-    if dirExists(c.workspace):
+    if c.workspace.len != 0:
       updatePackages(c)
       search getPackages(c.workspace), args
     else: search @[], args
