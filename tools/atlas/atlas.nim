@@ -794,7 +794,8 @@ proc main =
         break
     if nimbleFile.len == 0:
       error "could not find a .nimble file"
-    installDependencies(c, nimbleFile)
+    else:
+      installDependencies(c, nimbleFile)
   of "refresh":
     noArgs()
     updatePackages(c)
