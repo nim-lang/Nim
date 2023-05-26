@@ -7,6 +7,55 @@ Atlas is compatible with Nimble in the sense that it supports the Nimble
 file format.
 
 
+## Concepts
+
+Atlas uses three concepts:
+
+1. Workspaces
+2. Projects
+3. Dependencies
+
+### Workspaces
+
+Every workspace is isolated, nothing is shared between workspaces.
+A workspace is a directory that has a file `atlas.workspace` inside it. If `atlas`
+is run on a (sub-)directory that is not within a workspace, a workspace is created
+automatically for you. Atlas picks the current directory or one of its parent directories
+that has no `.git` subdirectory inside it as its workspace.
+
+Thanks to this setup, it's easy to develop multiple projects at the same time.
+
+A project plus its dependencies are stored in a workspace:
+
+  $workspace / main project
+  $workspace / _deps / dependency A
+  $workspace / _deps / dependency B
+
+The deps directory can be set via `--deps:DIR` explicitly. It defaults to `_deps`.
+If you want it to be the same as the workspace use `--deps:.`.
+
+
+### Projects
+
+A workspace contains one or multiple "projects". These projects can use each other and it
+is easy to develop multiple projects at the same time.
+
+### Dependencies
+
+Inside a workspace there can be a `_deps` directory where your dependencies are kept. It is
+easy to move a dependency one level up and out the `_deps` directory, turning it into a project.
+Likewise, you can move a project to the `_deps` directory, turning it into a dependency.
+
+The only distinction between a project and a dependency is its location. For dependency resolution
+a project always has a higher priority than a dependency.
+
+
+## No magic
+
+Atlas works by managing two files for you, the `project.nimble` file and the `nim.cfg` file. You can
+edit these manually too, Atlas doesn't touch what should be left untouched.
+
+
 ## How it works
 
 Atlas uses git commits internally; version requirements are translated
@@ -30,29 +79,6 @@ a `nim.cfg` file for the compiler. For example:
 The version selection is deterministic, it picks up the *minimum* required
 version. Thanks to this design, lock files are much less important.
 
-
-## Dependencies
-
-Dependencies are neither installed globally, nor locally into the current
-project. Instead a "workspace" is used. The workspace is the nearest parent
-directory of the current directory that does not contain a `.git` subdirectory.
-Dependencies are managed as **siblings**, not as children. Dependencies are
-kept as git repositories.
-
-Thanks to this setup, it's easy to develop multiple projects at the same time.
-
-A project plus its dependencies are stored in a workspace:
-
-  $workspace / main project
-  $workspace / _deps / dependency A
-  $workspace / _deps / dependency B
-
-The deps directory can be set via `--deps:DIR` explicitly. It defaults to `_deps`.
-If you want it to be the same as the workspace use `--deps:.`.
-
-You can move a dependency out of the `_deps` subdirectory into the workspace.
-This can be convenient should you decide to work on a dependency too. You need to
-patch the `nim.cfg` then.
 
 
 ## Commands
