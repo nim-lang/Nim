@@ -756,10 +756,10 @@ proc main =
       c.workspace = detectWorkspace()
       if c.workspace.len > 0:
         readConfig c
-      else:
+        echo "Using workspace ", c.workspace
+      elif action != "search":
         error "No workspace found. Run `atlas init` if you want this current directory to be your workspace."
         return
-      echo "Using workspace ", c.workspace
 
   when MockupRun:
     c.depsDir = c.workspace
@@ -806,9 +806,14 @@ proc main =
   of "refresh":
     noArgs()
     updatePackages(c)
-  of "search", "list":
+  of "list":
     updatePackages(c)
     search getPackages(c.workspace), args
+  of "search":
+    if dirExists(c.workspace):
+      updatePackages(c)
+      search getPackages(c.workspace), args
+    else: search @[], args
   of "updateprojects":
     updateDir(c, c.workspace, if args.len == 0: "" else: args[0])
   of "updatedeps":
