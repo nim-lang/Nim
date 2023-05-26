@@ -8,7 +8,7 @@ proc syncDownload(url, file: string) =
     message.add ' '
     message.addInt speed div 1000
     message.add "kb/s\n"
-    message.addInt clamp(int(progress * 100 div total), 0, 100)
+    message.add $clamp(int(progress * 100 div total), 0, 100)
     message.add '%'
     echo message
 
