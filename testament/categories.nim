@@ -80,6 +80,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc =
   testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
   testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
   testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
+  testSpec r, makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off" & rpath, cat)
 
   if "boehm" notin options:
     # force build required - see the comments in the .nim file for more details
