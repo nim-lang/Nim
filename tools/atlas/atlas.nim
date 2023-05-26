@@ -787,8 +787,7 @@ proc main =
   of "use":
     projectCmd()
     singleArg()
-    discard clone(c, args[0], startIsDep = true)
-    var deps: seq[string] = @[]
+    var deps = clone(c, args[0], startIsDep = true)
     patchNimbleFile(c, args[0], deps)
     patchNimCfg c, deps, getCurrentDir()
     if c.errors > 0:
