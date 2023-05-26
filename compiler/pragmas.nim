@@ -52,7 +52,7 @@ const
     wDeprecated,
     wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
-    wExperimental, wThis, wUsed, wInvariant, wAssume, wAssert}
+    wExperimental, wDoctype, wThis, wUsed, wInvariant, wAssume, wAssert}
   stmtPragmasTopLevel* = {wChecks, wObjChecks, wFieldChecks, wRangeChecks,
     wBoundChecks, wOverflowChecks, wNilChecks, wStaticBoundchecks,
     wStyleChecks, wAssertions,
@@ -1213,6 +1213,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if not isTopLevel(c):
           localError(c.config, n.info, "'experimental' pragma only valid as toplevel statement or in a 'push' environment")
         processExperimental(c, it)
+      of wDoctype:
+        if not isTopLevel(c):
+          localError(c.config, n.info, "\"doctype\" pragma only valid as top-level statement")
+        message(c.config, it.info, hintUser,
+                "doctype is not really implemented in Nim 1")
       of wThis:
         if it.kind in nkPragmaCallKinds and it.len == 2:
           c.selfName = considerQuotedIdent(c, it[1])
