@@ -472,7 +472,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(result))
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
-                 allowed: TSymFlags): PSym =
+                 allowed: TSymFlags, reportToNimsuggest = false): PSym =
   # identifier with visibility
   if n.kind == nkPostfix:
     if n.len == 2:
@@ -491,6 +491,10 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
       illFormedAst(n, c.config)
   else:
     result = newSymG(kind, n, c)
+
+  if reportToNimsuggest:
+    let info = getLineInfo(n)
+    suggestSym(c.graph, info, result, c.graph.usageSym)
 
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym =

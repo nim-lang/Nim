@@ -616,10 +616,10 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   result = n
   var s: PSym
   if isTopLevel(c):
-    s = semIdentVis(c, skTemplate, n[namePos], {sfExported})
+    s = semIdentVis(c, skTemplate, n[namePos], {sfExported}, true)
     incl(s.flags, sfGlobal)
   else:
-    s = semIdentVis(c, skTemplate, n[namePos], {})
+    s = semIdentVis(c, skTemplate, n[namePos], {}, true)
   assert s.kind == skTemplate
 
   styleCheckDef(c, s)

@@ -251,7 +251,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     suggestDecl(c, n, result)
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
-                 allowed: TSymFlags): PSym
+                 allowed: TSymFlags, reportToNimsuggest = false): PSym
   # identifier with visibility
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym
@@ -515,6 +515,18 @@ proc semConstBoolExpr(c: PContext, n: PNode): PNode =
 
 proc semGenericStmt(c: PContext, n: PNode): PNode
 proc semConceptBody(c: PContext, n: PNode): PNode
+
+proc getLineInfo(n: PNode): TLineInfo =
+  case n.kind
+  of nkPostfix:
+    if len(n) > 1:
+      return getLineInfo(n[1])
+  of nkAccQuoted, nkPragmaExpr:
+    if len(n) > 0:
+      return getLineInfo(n[0])
+  else:
+    discard
+  result = n.info
 
 include semtypes
 
