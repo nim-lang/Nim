@@ -18,21 +18,17 @@ Atlas uses three concepts:
 ### Workspaces
 
 Every workspace is isolated, nothing is shared between workspaces.
-A workspace is a directory that has a file `atlas.workspace` inside it. If `atlas`
-is run on a (sub-)directory that is not within a workspace, a workspace is created
-automatically for you. Atlas picks the current directory or one of its parent directories
-that has no `.git` subdirectory inside it as its workspace.
+A workspace is a directory that has a file `atlas.workspace` inside it. Use `atlas init`
+to create a workspace out of the current working directory.
 
-Thanks to this setup, it's easy to develop multiple projects at the same time.
-
-A project plus its dependencies are stored in a workspace:
+Projects plus their dependencies are stored in a workspace:
 
   $workspace / main project
+  $workspace / other project
   $workspace / _deps / dependency A
   $workspace / _deps / dependency B
 
-The deps directory can be set via `--deps:DIR` explicitly. It defaults to `_deps`.
-If you want it to be the same as the workspace use `--deps:.`.
+The deps directory can be set via `--deps:DIR` during `atlas init`.
 
 
 ### Projects
