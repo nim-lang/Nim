@@ -34,6 +34,7 @@ type
 
 template destructor*(t: PType): PSym = getAttachedOp(c.g, t, attachedDestructor)
 template assignment*(t: PType): PSym = getAttachedOp(c.g, t, attachedAsgn)
+template dup*(t: PType): PSym = getAttachedOp(c.g, t, attachedDup)
 template asink*(t: PType): PSym = getAttachedOp(c.g, t, attachedSink)
 
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode)
@@ -283,7 +284,7 @@ proc boolLit*(g: ModuleGraph; info: TLineInfo; value: bool): PNode =
   result.typ = getSysType(g, info, tyBool)
 
 proc getCycleParam(c: TLiftCtx): PNode =
-  assert c.kind == attachedAsgn
+  assert c.kind in {attachedAsgn, attachedDup}
   if c.fn.typ.len == 4:
     result = c.fn.typ.n.lastSon
     assert result.kind == nkSym
@@ -320,6 +321,9 @@ proc newOpCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
     c.canRaise = true
 
 proc newDeepCopyCall(c: var TLiftCtx; op: PSym; x, y: PNode): PNode =
+  result = newAsgnStmt(x, newOpCall(c, op, y))
+
+proc newDupCall(c: var TLiftCtx; op: PSym; x, y: PNode): PNode =
   result = newAsgnStmt(x, newOpCall(c, op, y))
 
 proc usesBuiltinArc(t: PType): bool =
@@ -464,7 +468,18 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       result = true
 
   of attachedDup:
-    assert false, "cannot happen"
+    var op = getAttachedOp(c.g, t, attachedDup)
+    if op != nil and sfOverriden in op.flags:
+
+      if op.ast.isGenericRoutine:
+        # patch generic destructor:
+        op = instantiateGeneric(c, op, t, t.typeInst)
+        setAttachedOp(c.g, c.idgen.module, t, attachedDup, op)
+
+      #markUsed(c.g.config, c.info, op, c.g.usageSym)
+      onUse(c.info, op)
+      body.add newDupCall(c, op, x, y)
+      result = true
 
 proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
   var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.idgen, c.fn, c.info)
@@ -555,7 +570,7 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   # recursions are tricky, so we might need to forward the generated
   # operation here:
   var t = t
-  if t.assignment == nil or t.destructor == nil:
+  if t.assignment == nil or t.destructor == nil or t.dup == nil:
     let h = sighashes.hashType(t,c.g.config, {CoType, CoConsiderOwned, CoDistinct})
     let canon = c.g.canonTypes.getOrDefault(h)
     if canon != nil: t = canon
@@ -588,7 +603,11 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.add newHookCall(c, op, x, y)
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
   of attachedDup:
-    assert false, "cannot happen"
+    # XXX: replace these with assertions.
+    let op = getAttachedOp(c.g, t, c.kind)
+    if op == nil:
+      return # protect from recursion
+    body.add newDupCall(c, op, x, y)
 
 proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
@@ -705,7 +724,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       #echo "can follow ", elemType, " static ", isFinal(elemType)
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
   of attachedDup:
-    assert false, "cannot happen"
+    body.add callCodegenProc(c.g, "nimDupRef", c.info, genAddrOf(x, c.idgen), y)
 
 proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   ## Closures are really like refs except they always use a virtual destructor
@@ -737,7 +756,7 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     else:
       body.add genIf(c, cond, actions)
       body.add newAsgnStmt(x, y)
-  of attachedAsgn:
+  of attachedAsgn, attachedDup:
     let yenv = genBuiltin(c, mAccessEnv, "accessEnv", y)
     yenv.typ = getSysType(c.g, c.info, tyPointer)
     if isCyclic:
@@ -755,8 +774,6 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedTrace:
     body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(xenv, c.idgen), y)
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
-  of attachedDup:
-    assert false, "cannot happen"
 
 proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
@@ -765,7 +782,7 @@ proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # count value:
     body.add genIf(c, x, callCodegenProc(c.g, "nimDecWeakRef", c.info, x))
     body.add newAsgnStmt(x, y)
-  of attachedAsgn:
+  of attachedAsgn, attachedDup:
     body.add genIf(c, y, callCodegenProc(c.g, "nimIncRef", c.info, y))
     body.add genIf(c, x, callCodegenProc(c.g, "nimDecWeakRef", c.info, x))
     body.add newAsgnStmt(x, y)
@@ -782,8 +799,6 @@ proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace: discard
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
-  of attachedDup:
-    assert false, "cannot happen"
 
 proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   var actions = newNodeI(nkStmtList, c.info)
@@ -802,7 +817,7 @@ proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, x)
 
   case c.kind
-  of attachedSink, attachedAsgn:
+  of attachedSink, attachedAsgn, attachedDup:
     body.add genIf(c, x, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
@@ -810,8 +825,6 @@ proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace: discard
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
-  of attachedDup:
-    assert false, "cannot happen"
 
 proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   if c.kind == attachedDeepCopy:
@@ -832,7 +845,7 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       # count value:
       body.add genIf(c, xx, callCodegenProc(c.g, "nimDecWeakRef", c.info, xx))
       body.add newAsgnStmt(x, y)
-    of attachedAsgn:
+    of attachedAsgn, attachedDup:
       let yy = genBuiltin(c, mAccessEnv, "accessEnv", y)
       yy.typ = getSysType(c.g, c.info, tyPointer)
       body.add genIf(c, yy, callCodegenProc(c.g, "nimIncRef", c.info, yy))
@@ -847,8 +860,6 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     of attachedDeepCopy: assert(false, "cannot happen")
     of attachedTrace: discard
     of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
-    of attachedDup:
-      assert false, "cannot happen"
 
 proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xx = genBuiltin(c, mAccessEnv, "accessEnv", x)
@@ -857,7 +868,7 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   #discard addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(xx))
   actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, xx)
   case c.kind
-  of attachedSink, attachedAsgn:
+  of attachedSink, attachedAsgn, attachedDup:
     body.add genIf(c, xx, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
@@ -865,8 +876,6 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace: discard
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
-  of attachedDup:
-    assert false, "cannot happen"
 
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
@@ -982,11 +991,14 @@ proc symDupPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttache
   res.typ = typ
   src.typ = typ
 
-  result.typ = newProcType(info, nextTypeId(idgen), owner)
-  result.typ[0] = res.typ
+  result.typ = newType(tyProc, nextTypeId idgen, owner)
+  result.typ.n = newNodeI(nkFormalParams, info)
+  rawAddSon(result.typ, res.typ)
+  result.typ.n.add newNodeI(nkEffectList, info)
+
   result.typ.addParam src
 
-  var n = newNodeI(nkProcDef, info, bodyPos+1)
+  var n = newNodeI(nkProcDef, info, bodyPos+2)
   for i in 0..<n.len: n[i] = newNodeI(nkEmpty, info)
   n[namePos] = newSymNode(result)
   n[paramsPos] = result.typ.n
@@ -1014,7 +1026,7 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
 
   result.typ = newProcType(info, nextTypeId(idgen), owner)
   result.typ.addParam dest
-  if kind notin {attachedDestructor, attachedWasMoved, attachedDup}:
+  if kind notin {attachedDestructor, attachedWasMoved}:
     result.typ.addParam src
 
   if kind == attachedAsgn and g.config.selectedGC == gcOrc and
@@ -1055,9 +1067,11 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   var a = TLiftCtx(info: info, g: g, kind: kind, c: c, asgnForType: typ, idgen: idgen,
                    fn: result)
 
-  let dest = if kind == attachedDup: result.typ.n[0].sym else: result.typ.n[1].sym
+  let dest = if kind == attachedDup: result.ast[resultPos].sym else: result.typ.n[1].sym
   let d = if kind == attachedDup: newSymNode(dest) else: newDeref(newSymNode(dest))
-  let src = if kind in {attachedDestructor, attachedWasMoved, attachedDup}: newNodeIT(nkSym, info, getSysType(g, info, tyPointer))
+  let src = case kind
+            of {attachedDestructor, attachedWasMoved}: newNodeIT(nkSym, info, getSysType(g, info, tyPointer))
+            of attachedDup: newSymNode(result.typ.n[1].sym)
             else: newSymNode(result.typ.n[2].sym)
 
   # register this operation already:
