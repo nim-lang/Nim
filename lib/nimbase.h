@@ -91,10 +91,10 @@ __AVR__
 
 /* Calling conventions and inline attributes for the supported C compilers */
 #if defined(__GNUC__) || defined(__clang__)  /* GCC and Clang */
-#  if __has_attribute(__always_inline__)
-#    define N_INLINE(rettype, name) __attribute__((__always_inline__)) rettype name
+#  if __has_attribute(__forceinline)
+#    define N_INLINE(rettype, name) __attribute__((__forceinline)) rettype name
 #  else
-#    warning "C compiler do not support '__always_inline__', fallback to 'inline'."
+#    warning "C compiler do not support '__forceinline', fallback to 'inline'."
 #    define N_INLINE(rettype, name) inline rettype name
 #  endif
 #elif defined(_MSC_VER)  /* MSVC */
