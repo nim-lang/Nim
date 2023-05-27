@@ -45,7 +45,7 @@ Command:
                         URL that matches `filter` if a filter is given
   tag [major|minor|patch]
                         add and push a new tag, input must be one of:
-                        'major' or 'minor' or 'patch' or a custom tag '1.0.3'
+                        'major'|'minor'|'patch' or a custom tag '1.0.3'
                         or a letter from 'a' to 'z': a.b.c.d.e.f.g
   build|test|doc|tasks  currently delegates to `nimble build|test|doc`
   task <taskname>       currently delegates to `nimble <taskname>`
