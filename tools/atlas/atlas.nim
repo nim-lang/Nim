@@ -86,7 +86,7 @@ type
     normal, strictlyLess, strictlyGreater
 
   SemVerField = enum
-    major = 0, minor = 1, patch = 2
+    major, minor, patch
 
   Dependency = object
     name: PackageName
