@@ -87,13 +87,17 @@ type
     name: PackageName
     url, commit: string
     rel: DepRelation # "requires x < 1.0" is silly, but Nimble allows it so we have too.
+    parents: seq[int] # why we need this dependency
+  DepGraph = object
+    nodes: seq[Dependency]
+    processed: Table[string, int] # the key is (url / commit)
+
   AtlasContext = object
     projectDir, workspace, depsDir: string
     hasPackageList: bool
     keepCommits: bool
     cfgHere: bool
     p: Table[string, string] # name -> url mapping
-    processed: HashSet[string] # the key is (url / commit)
     errors: int
     lockOption: LockOption
     lockFileToWrite: seq[LockFileEntry]
@@ -394,22 +398,32 @@ proc findNimbleFile(c: AtlasContext; dep: Dependency): string =
           # ambiguous .nimble file
           return ""
 
-proc addUniqueDep(c: var AtlasContext; work: var seq[Dependency];
+proc addUnique[T](s: var seq[T]; elem: sink T) =
+  if not s.contains(elem): s.add elem
+
+proc addUniqueDep(c: var AtlasContext; g: var DepGraph; parent: int;
                   tokens: seq[string]; lockfile: Table[string, LockFileEntry]) =
   let pkgName = tokens[0]
   let oldErrors = c.errors
   let url = toUrl(c, pkgName)
   if oldErrors != c.errors:
     warn c, toName(pkgName), "cannot resolve package name"
-  elif not c.processed.containsOrIncl(url / tokens[2]):
-    if lockfile.contains(pkgName):
-      work.add Dependency(name: toName(pkgName),
-                          url: lockfile[pkgName].url,
-                          commit: lockfile[pkgName].commit,
-                          rel: normal)
+  else:
+    let key = url / tokens[2]
+    if g.processed.hasKey(key):
+      g.nodes[g.processed[key]].parents.addUnique parent
     else:
-      work.add Dependency(name: toName(pkgName), url: url, commit: tokens[2],
-                          rel: toDepRelation(tokens[1]))
+      g.processed[key] = g.nodes.len
+      if lockfile.contains(pkgName):
+        g.nodes.add Dependency(name: toName(pkgName),
+                            url: lockfile[pkgName].url,
+                            commit: lockfile[pkgName].commit,
+                            rel: normal,
+                            parents: @[parent])
+      else:
+        g.nodes.add Dependency(name: toName(pkgName), url: url, commit: tokens[2],
+                               rel: toDepRelation(tokens[1]),
+                               parents: @[parent])
 
 template toDestDir(p: PackageName): string = p.string
 
@@ -421,7 +435,7 @@ proc readLockFile(filename: string): Table[string, LockFileEntry] =
   for d in items(data):
     result[d.dir] = d
 
-proc collectDeps(c: var AtlasContext; work: var seq[Dependency];
+proc collectDeps(c: var AtlasContext; g: var DepGraph; parent: int;
                  dep: Dependency; nimbleFile: string): CfgPath =
   # If there is a .nimble file, return the dependency path & srcDir
   # else return "".
@@ -449,25 +463,22 @@ proc collectDeps(c: var AtlasContext; work: var seq[Dependency];
       tokens.add commit
 
     if tokens.len >= 3 and cmpIgnoreCase(tokens[0], "nim") != 0:
-      c.addUniqueDep work, tokens, lockFile
+      c.addUniqueDep g, parent, tokens, lockFile
   result = CfgPath(toDestDir(dep.name) / nimbleInfo.srcDir)
 
-proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
-                    dep: Dependency; isMainProject: bool): CfgPath =
+proc collectNewDeps(c: var AtlasContext; g: var DepGraph; parent: int;
+                    dep: Dependency): CfgPath =
   let nimbleFile = findNimbleFile(c, dep)
   if nimbleFile != "":
-    result = collectDeps(c, work, dep, nimbleFile)
+    result = collectDeps(c, g, parent, dep, nimbleFile)
   else:
     result = CfgPath toDestDir(dep.name)
 
-proc addUnique[T](s: var seq[T]; elem: sink T) =
-  if not s.contains(elem): s.add elem
-
-proc traverseLoop(c: var AtlasContext; work: var seq[Dependency]; startIsDep: bool): seq[CfgPath] =
+proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[CfgPath] =
   result = @[]
   var i = 0
-  while i < work.len:
-    let w = work[i]
+  while i < g.nodes.len:
+    let w = g.nodes[i]
     let destDir = toDestDir(w.name)
     let oldErrors = c.errors
 
@@ -481,22 +492,22 @@ proc traverseLoop(c: var AtlasContext; work: var seq[Dependency]; startIsDep: bo
       # even if the checkout fails, we can make use of the somewhat
       # outdated .nimble file to clone more of the most likely still relevant
       # dependencies:
-      result.addUnique collectNewDeps(c, work, w, i == 0)
+      result.addUnique collectNewDeps(c, g, i, w)
     inc i
 
 proc traverse(c: var AtlasContext; start: string; startIsDep: bool): seq[CfgPath] =
   # returns the list of paths for the nim.cfg file.
   let url = toUrl(c, start)
-  var work = @[Dependency(name: toName(start), url: url, commit: "")]
+  var g = DepGraph(nodes: @[Dependency(name: toName(start), url: url, commit: "")])
 
   if url == "":
     error c, toName(start), "cannot resolve package name"
     return
 
-  c.projectDir = c.workspace / toDestDir(work[0].name)
+  c.projectDir = c.workspace / toDestDir(g.nodes[0].name)
   if c.lockOption == useLock:
     c.lockFileToUse = readLockFile(c.projectDir / LockFileName)
-  result = traverseLoop(c, work, startIsDep)
+  result = traverseLoop(c, g, startIsDep)
   if c.lockOption == genLock:
     writeFile c.projectDir / LockFileName, toJson(c.lockFileToWrite).pretty
 
@@ -553,14 +564,30 @@ proc findSrcDir(c: var AtlasContext): string =
     return nimbleInfo.srcDir
   return ""
 
+proc generateDepGraph(g: DepGraph) =
+  # currently unused.
+  var dotGraph = ""
+  for i in 0 ..< g.nodes.len:
+    for p in items g.nodes[i].parents:
+      if p >= 0:
+        dotGraph.addf("\"$1\" -> \"$2\";\n", [g.nodes[p].name.string, g.nodes[i].name.string])
+  writeFile("deps.dot", "digraph deps {\n$1}\n" % dotGraph)
+  let graphvizDotPath = findExe("dot")
+  if graphvizDotPath.len == 0:
+    #echo("gendepend: Graphviz's tool dot is required, " &
+    #  "see https://graphviz.org/download for downloading")
+    discard
+  else:
+    discard execShellCmd("dot -Tpng -odeps.png deps.dot")
+
 proc installDependencies(c: var AtlasContext; nimbleFile: string) =
   # 1. find .nimble file in CWD
   # 2. install deps from .nimble
-  var work: seq[Dependency] = @[]
+  var g = DepGraph(nodes: @[])
   let (_, pkgname, _) = splitFile(nimbleFile)
   let dep = Dependency(name: toName(pkgname), url: "", commit: "")
-  discard collectDeps(c, work, dep, nimbleFile)
-  let paths = traverseLoop(c, work, startIsDep = true)
+  discard collectDeps(c, g, -1, dep, nimbleFile)
+  let paths = traverseLoop(c, g, startIsDep = true)
   patchNimCfg(c, paths, if c.cfgHere: getCurrentDir() else: findSrcDir(c))
 
 proc updateDir(c: var AtlasContext; dir, filter: string) =
