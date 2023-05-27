@@ -306,7 +306,7 @@ proc incrementLastTag(c: var AtlasContext; field: SemVerField): string =
       currentCommit = cc.strip()
 
     if lastTaggedRef == currentCommit:
-      warn c, c.projectDir.PackageName, "the current commit '" & currentCommit & "' is already tagged '" & lastTag & '\''
+      info c, c.projectDir.PackageName, "the current commit '" & currentCommit & "' is already tagged '" & lastTag & '\''
       lastTag
     else:
       incrementTag(lastTag, field)
@@ -326,7 +326,7 @@ proc tag(c: var AtlasContext; field: SemVerField) =
   let newTag = incrementLastTag(c, field)
   if c.errors == oldErrors:
     gitTag(c, newTag)
-  pushTag(c, newTag)
+    pushTag(c, newTag)
 
 proc updatePackages(c: var AtlasContext) =
   if dirExists(c.workspace / PackagesDir):
