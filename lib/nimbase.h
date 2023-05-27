@@ -94,14 +94,12 @@ __AVR__
 #  if __has_attribute(__forceinline)
 #    define N_INLINE(rettype, name) __attribute__((__forceinline)) rettype name
 #  else
-#    warning "C compiler do not support '__forceinline', fallback to 'inline'."
 #    define N_INLINE(rettype, name) inline rettype name
 #  endif
 #elif defined(_MSC_VER)  /* MSVC */
 #  if _MSC_VER > 1200
 #    define N_INLINE(rettype, name) __forceinline rettype name
 #  else
-#    warning "C compiler do not support '__forceinline', fallback to 'inline'."
 #    define N_INLINE(rettype, name) inline rettype name
 #  endif
 #elif defined(__TINYC__) || defined(__BORLANDC__)  /* TinyC and BorlandC */
@@ -109,7 +107,6 @@ __AVR__
 #elif defined(__AVR__)  /* Atmel Advanced Virtual RISC */
 #  define N_INLINE(rettype, name) inline rettype name
 #else  /* Unsupported C compilers */
-#  warning "C compiler do not support 'inline', fallback to non inline."
 #  define N_INLINE(rettype, name) rettype name
 #endif
 
