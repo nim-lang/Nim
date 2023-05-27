@@ -880,7 +880,7 @@ proc main =
       error "File does not exist: " & args[0]
   of "tag":
     projectCmd()
-    if args[0].len == 0:
+    if args.len == 0:
       tag(c, ord(patch))
     elif args[0].len == 1 and args[0][0] in {'a'..'z'}:
       let field = ord(args[0][0]) - ord('a')
