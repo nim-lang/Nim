@@ -112,7 +112,7 @@ type
   Command = enum
     GitDiff = "git diff",
     GitTag = "git tag",
-    GitRefsTags = "git show-ref --tags",
+    GitTags = "git show-ref --tags",
     GitLastTaggedRef = "git rev-list --tags --max-count=1",
     GitRevParse = "git rev-parse",
     GitCheckout = "git checkout",
@@ -141,7 +141,7 @@ proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, 
   when MockupRun:
     assert TestLog[c.step].cmd == cmd, $(TestLog[c.step].cmd, cmd)
     case cmd
-    of GitDiff, GitTag, GitTagLast, GitRefsTags, GitRevParse, GitPull, GitCurrentCommit:
+    of GitDiff, GitTag, GitTags, GitLastTaggedRef, GitRevParse, GitPush, GitPull, GitCurrentCommit:
       result = (TestLog[c.step].output, TestLog[c.step].exitCode)
     of GitCheckout:
       assert args[0] == TestLog[c.step].output
@@ -230,7 +230,7 @@ proc sameVersionAs(tag, ver: string): bool =
       safeCharAt(tag, idx+ver.len) notin VersionChars
 
 proc versionToCommit(c: var AtlasContext; d: Dependency): string =
-  let (outp, status) = exec(c, GitRefsTags, [])
+  let (outp, status) = exec(c, GitTags, [])
   if status == 0:
     var useNextOne = false
     for line in splitLines(outp):
@@ -292,7 +292,6 @@ proc incrementLastTag(c: var AtlasContext): string =
   else: "v0.0.1" # assuming no tags have been made yet
 
 proc pushTag(c: var AtlasContext; tag: string) =
-  let oldErrors = c.errors
   let (outp, status) = exec(c, GitPush, [tag])
   if status != 0:
     error(c, c.projectDir.PackageName, "could not 'git push " & tag & "'")
