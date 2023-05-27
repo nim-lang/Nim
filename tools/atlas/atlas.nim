@@ -43,6 +43,10 @@ Command:
   updateDeps [filter]
                         update every dependency that has a remote
                         URL that matches `filter` if a filter is given
+  tag [major|minor|patch]
+                        add and push a new tag, input must be one of:
+                        ['major'|'minor'|'patch'] or a SemVer tag like ['1.0.3']
+                        or a letter ['a'..'z']: a.b.c.d.e.f.g
   build|test|doc|tasks  currently delegates to `nimble build|test|doc`
   task <taskname>       currently delegates to `nimble <taskname>`
 
@@ -84,6 +88,9 @@ type
   DepRelation = enum
     normal, strictlyLess, strictlyGreater
 
+  SemVerField = enum
+    major, minor, patch
+
   Dependency = object
     name: PackageName
     url, commit: string
@@ -118,9 +125,12 @@ const
 type
   Command = enum
     GitDiff = "git diff",
+    GitTag = "git tag",
     GitTags = "git show-ref --tags",
+    GitLastTaggedRef = "git rev-list --tags --max-count=1",
     GitRevParse = "git rev-parse",
     GitCheckout = "git checkout",
+    GitPush = "git push origin",
     GitPull = "git pull",
     GitCurrentCommit = "git log -n 1 --format=%H"
     GitMergeBase = "git merge-base"
@@ -145,7 +155,7 @@ proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, 
   when MockupRun:
     assert TestLog[c.step].cmd == cmd, $(TestLog[c.step].cmd, cmd)
     case cmd
-    of GitDiff, GitTags, GitRevParse, GitPull, GitCurrentCommit:
+    of GitDiff, GitTag, GitTags, GitLastTaggedRef, GitRevParse, GitPush, GitPull, GitCurrentCommit:
       result = (TestLog[c.step].output, TestLog[c.step].exitCode)
     of GitCheckout:
       assert args[0] == TestLog[c.step].output
@@ -277,6 +287,62 @@ proc gitPull(c: var AtlasContext; p: PackageName) =
   let (_, status) = exec(c, GitPull, [])
   if status != 0:
     error(c, p, "could not 'git pull'")
+
+proc gitTag(c: var AtlasContext; tag: string) =
+  let (_, status) = exec(c, GitTag, [tag])
+  if status != 0:
+    error(c, c.projectDir.PackageName, "could not 'git tag " & tag & "'")
+
+proc pushTag(c: var AtlasContext; tag: string) =
+  let (outp, status) = exec(c, GitPush, [tag])
+  if status != 0:
+    error(c, c.projectDir.PackageName, "could not 'git push " & tag & "'")
+  elif outp.strip() == "Everything up-to-date":
+    info(c, c.projectDir.PackageName, "is up-to-date")
+  else:
+    info(c, c.projectDir.PackageName, "successfully pushed tag: " & tag)
+
+proc incrementTag(lastTag: string; field: Natural): string =
+  var startPos =
+    if lastTag[0] in {'0'..'9'}: 0
+    else: 1
+  var endPos = lastTag.find('.', startPos)
+  if field >= 1:
+    for i in 1 .. field:
+      assert endPos != -1, "the last tag '" & lastTag & "' is missing . periods"
+      startPos = endPos + 1
+      endPos = lastTag.find('.', startPos)
+  if endPos == -1:
+    endPos = len(lastTag)
+  let patchNumber = parseInt(lastTag[startPos..<endPos])
+  lastTag[0..<startPos] & $(patchNumber + 1) & lastTag[endPos..^1]
+
+proc incrementLastTag(c: var AtlasContext; field: Natural): string =
+  let (ltr, status) = exec(c, GitLastTaggedRef, [])
+  if status == 0:
+    let
+      lastTaggedRef = ltr.strip()
+      (lt, _) = osproc.execCmdEx("git describe --tags " & lastTaggedRef)
+      lastTag = lt.strip()
+      (cc, _) = exec(c, GitCurrentCommit, [])
+      currentCommit = cc.strip()
+
+    if lastTaggedRef == currentCommit:
+      info c, c.projectDir.PackageName, "the current commit '" & currentCommit & "' is already tagged '" & lastTag & "'"
+      lastTag
+    else:
+      incrementTag(lastTag, field)
+  else: "v0.0.1" # assuming no tags have been made yet
+
+proc tag(c: var AtlasContext; tag: string) =
+  gitTag(c, tag)
+  pushTag(c, tag)
+
+proc tag(c: var AtlasContext; field: Natural) =
+  let oldErrors = c.errors
+  let newTag = incrementLastTag(c, field)
+  if c.errors == oldErrors:
+    tag(c, newTag)
 
 proc updatePackages(c: var AtlasContext) =
   if dirExists(c.workspace / PackagesDir):
@@ -850,6 +916,20 @@ proc main =
       echo toJson(extractRequiresInfo(args[0]))
     else:
       fatal "File does not exist: " & args[0]
+  of "tag":
+    projectCmd()
+    if args.len == 0:
+      tag(c, ord(patch))
+    elif args[0].len == 1 and args[0][0] in {'a'..'z'}:
+      let field = ord(args[0][0]) - ord('a')
+      tag(c, field)
+    elif '.' in args[0]:
+      tag(c, args[0])
+    else:
+      var field: SemVerField
+      try: field = parseEnum[SemVerField](args[0])
+      except: error "tag command takes one of 'patch' 'minor' 'major', a SemVer tag, or a letter from 'a' to 'z'"
+      tag(c, ord(field))
   of "build", "test", "doc", "tasks":
     projectCmd()
     nimbleExec(action, args)
