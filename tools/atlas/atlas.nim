@@ -274,7 +274,7 @@ proc gitTag(c: var AtlasContext; tag: string) =
   if status != 0:
     error(c, c.projectDir.PackageName, "could not 'git tag " & tag & "'")
 
-proc incrementTag(lastTag: string, field: SemVerField): string =
+proc incrementTag(lastTag: string; field: SemVerField): string =
   var startPos =
     if lastTag[0] in {'0'..'9'}: 0
     else: 1
@@ -288,7 +288,7 @@ proc incrementTag(lastTag: string, field: SemVerField): string =
   let patchNumber = parseInt(lastTag[startPos..<endPos])
   lastTag[0 ..< startPos] & $(patchNumber + 1) & lastTag[endPos..^1]
 
-proc incrementLastTag(c: var AtlasContext, field: SemVerField): string =
+proc incrementLastTag(c: var AtlasContext; field: SemVerField): string =
   let (ltr, status) = exec(c, GitLastTaggedRef, [])
   if status == 0:
     let
