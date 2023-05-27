@@ -280,13 +280,13 @@ proc gitTag(c: var AtlasContext; tag: string) =
   if status != 0:
     error(c, c.projectDir.PackageName, "could not 'git tag " & tag & "'")
 
-proc incrementTag(lastTag: string; field: SemVerField): string =
+proc incrementTag(lastTag: string; field: Natural): string =
   var startPos =
     if lastTag[0] in {'0'..'9'}: 0
     else: 1
   var endPos = lastTag.find('.', startPos)
-  if ord(field) >= 1:
-    for i in 1 .. ord(field):
+  if field >= 1:
+    for i in 1 .. field:
       assert endPos != -1, "last tag '" & lastTag & "' is missing . periods"
       startPos = endPos + 1
       endPos = lastTag.find('.', startPos)
@@ -295,7 +295,7 @@ proc incrementTag(lastTag: string; field: SemVerField): string =
   let patchNumber = parseInt(lastTag[startPos..<endPos])
   lastTag[0 ..< startPos] & $(patchNumber + 1) & lastTag[endPos..^1]
 
-proc incrementLastTag(c: var AtlasContext; field: SemVerField): string =
+proc incrementLastTag(c: var AtlasContext; field: Natural): string =
   let (ltr, status) = exec(c, GitLastTaggedRef, [])
   if status == 0:
     let
@@ -325,7 +325,7 @@ proc tag(c: var AtlasContext; tag: string) =
   gitTag(c, tag)
   pushTag(c, tag)
 
-proc tag(c: var AtlasContext; field: SemVerField) =
+proc tag(c: var AtlasContext; field: Natural) =
   let oldErrors = c.errors
   let newTag = incrementLastTag(c, field)
   if c.errors == oldErrors:
@@ -880,14 +880,17 @@ proc main =
   of "tag":
     projectCmd()
     if args[0].len == 0:
-      tag(c, patch)
+      tag(c, ord(patch))
+    elif args[0].len == 1 and args[0][0] in {'a'..'z'}:
+      let field = ord(args[0][0]) - ord('a')
+      tag(c, field)
     elif '.' in args[0]:
       tag(c, args[0])
     else:
       var field: SemVerField
       try: field = parseEnum[SemVerField](args[0])
       except: error "tag command takes one of 'patch' 'minor' 'major' or a SemVer tag"
-      tag(c, field)
+      tag(c, ord(field))
   of "build", "test", "doc", "tasks":
     projectCmd()
     nimbleExec(action, args)
