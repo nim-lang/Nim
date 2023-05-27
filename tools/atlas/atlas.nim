@@ -276,7 +276,8 @@ proc incrementTag(lastTag: string): string =
   lastTag[0 ..< patchNumberPos] & $(patchNumber + 1)
 
 proc incrementLastTag(c: var AtlasContext): string =
-  let (lastTaggedRef, status) = exec(c, GitLastTaggedRef, [])
+  let (ltr, status) = exec(c, GitLastTaggedRef, [])
+  let lastTaggedRef = ltr.strip()
   if status == 0:
     let
       (lt, _) = osproc.execCmdEx("git describe --tags " & lastTaggedRef)
@@ -284,7 +285,7 @@ proc incrementLastTag(c: var AtlasContext): string =
       lastTag = lt.strip()
       currentCommit = cc.strip()
 
-    if lastTaggedRef.strip() == currentCommit:
+    if lastTaggedRef == currentCommit:
       warn c, c.projectDir.PackageName, "the current commit '" & currentCommit & "' is already tagged '" & lastTag & '\''
       lastTag
     else:
