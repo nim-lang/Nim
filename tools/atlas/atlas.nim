@@ -881,7 +881,7 @@ proc main =
     else:
       error "File does not exist: " & args[0]
   of "tag":
-    # projectCmd()
+    projectCmd()
     var field: SemVerField
     if args.len == 0:
       field = patch
