@@ -10,7 +10,7 @@
 ## a Nimble dependency and its dependencies recursively.
 
 import std / [parseopt, strutils, os, osproc, tables, sets, json, jsonutils,
-  parsecfg, streams]
+  parsecfg, streams, terminal]
 import parse_requires, osutils, packagesjson
 
 from unicode import nil
@@ -53,6 +53,7 @@ Options:
   --workspace=DIR       use DIR as workspace
   --genlock             generate a lock file (use with `clone` and `update`)
   --uselock             use the lock file for the build
+  --colors=on|off       turn on|off colored output
   --version             show the version
   --help                show this help
 """
@@ -106,6 +107,7 @@ type
       currentDir: string
       step: int
       mockupSuccess: bool
+    noColors: bool
 
 proc `==`(a, b: CfgPath): bool {.borrow.}
 
@@ -202,23 +204,29 @@ proc isCleanGit(c: var AtlasContext): string =
   elif status != 0:
     result = "'git diff' returned non-zero"
 
-proc message(c: var AtlasContext; category: string; p: PackageName; args: varargs[string]) =
-  var msg = category & "(" & p.string & ")"
-  for a in args:
-    msg.add ' '
-    msg.add a
+proc message(c: var AtlasContext; category: string; p: PackageName; arg: string) =
+  var msg = category & "(" & p.string & ") " & arg
   stdout.writeLine msg
 
-proc warn(c: var AtlasContext; p: PackageName; args: varargs[string]) =
-  message(c, "[Warning] ", p, args)
+proc warn(c: var AtlasContext; p: PackageName; arg: string) =
+  if c.noColors:
+    message(c, "[Warning] ", p, arg)
+  else:
+    stdout.styledWriteLine(fgYellow, styleBright, "[Warning] ", resetStyle, fgCyan, "(", p.string, ")", fgDefault, " ", arg)
   inc c.errors
 
-proc error(c: var AtlasContext; p: PackageName; args: varargs[string]) =
-  message(c, "[Error] ", p, args)
+proc error(c: var AtlasContext; p: PackageName; arg: string) =
+  if c.noColors:
+    message(c, "[Error] ", p, arg)
+  else:
+    stdout.styledWriteLine(fgRed, styleBright, "[Error] ", resetStyle, fgCyan, "(", p.string, ")", fgDefault, " ", arg)
   inc c.errors
 
-proc info(c: var AtlasContext; p: PackageName; args: varargs[string]) =
-  message(c, "[Info] ", p, args)
+proc info(c: var AtlasContext; p: PackageName; arg: string) =
+  if c.noColors:
+    message(c, "[Info] ", p, arg)
+  else:
+    stdout.styledWriteLine(fgGreen, styleBright, "[Info] ", resetStyle, fgCyan, "(", p.string, ")", fgDefault, " ", arg)
 
 proc sameVersionAs(tag, ver: string): bool =
   const VersionChars = {'0'..'9', '.'}
@@ -263,7 +271,7 @@ proc shortToCommit(c: var AtlasContext; short: string): string =
 proc checkoutGitCommit(c: var AtlasContext; p: PackageName; commit: string) =
   let (_, status) = exec(c, GitCheckout, [commit])
   if status != 0:
-    error(c, p, "could not checkout commit", commit)
+    error(c, p, "could not checkout commit " & commit)
 
 proc gitPull(c: var AtlasContext; p: PackageName) =
   let (_, status) = exec(c, GitPull, [])
@@ -365,7 +373,7 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
           if requiredCommit == "" and w.commit == InvalidCommit:
             warn c, w.name, "package has no tagged releases"
           else:
-            warn c, w.name, "cannot find specified version/commit", w.commit
+            warn c, w.name, "cannot find specified version/commit " & w.commit
         else:
           if currentCommit != requiredCommit:
             # checkout the later commit:
@@ -553,7 +561,7 @@ proc patchNimCfg(c: var AtlasContext; deps: seq[CfgPath]; cfgPath: string) =
         writeFile(cfg, cfgContent)
         info(c, projectFromCurrentDir(), "updated: " & cfg)
 
-proc error*(msg: string) =
+proc fatal*(msg: string) =
   when defined(debug):
     writeStackTrace()
   quit "[Error] " & msg
@@ -607,7 +615,7 @@ proc updateDir(c: var AtlasContext; dir, filter: string) =
               if exitCode != 0:
                 error c, pkg, output
               else:
-                message(c, "[Hint] ", pkg, "successfully updated")
+                info(c, pkg, "successfully updated")
             else:
               error c, pkg, "could not fetch current branch name"
 
@@ -713,16 +721,15 @@ proc main =
   var args: seq[string] = @[]
   template singleArg() =
     if args.len != 1:
-      error action & " command takes a single package name"
+      fatal action & " command takes a single package name"
 
   template noArgs() =
     if args.len != 0:
-      error action & " command takes no arguments"
+      fatal action & " command takes no arguments"
 
   template projectCmd() =
     if getCurrentDir() == c.workspace or getCurrentDir() == c.depsDir:
-      error action & " command must be executed in a project, not in the workspace"
-      return
+      fatal action & " command must be executed in a project, not in the workspace"
 
   var c = AtlasContext(projectDir: getCurrentDir(), workspace: "")
 
@@ -764,11 +771,16 @@ proc main =
           c.lockOption = useLock
         else:
           writeHelp()
+      of "colors":
+        case val.normalize
+        of "off": c.noColors = true
+        of "on": c.noColors = false
+        else: writeHelp()
       else: writeHelp()
     of cmdEnd: assert false, "cannot happen"
 
   if c.workspace.len > 0:
-    if not dirExists(c.workspace): error "Workspace directory '" & c.workspace & "' not found."
+    if not dirExists(c.workspace): fatal "Workspace directory '" & c.workspace & "' not found."
   elif action != "init":
     when MockupRun:
       c.workspace = autoWorkspace()
@@ -776,17 +788,16 @@ proc main =
       c.workspace = detectWorkspace()
       if c.workspace.len > 0:
         readConfig c
-        echo "Using workspace ", c.workspace
+        info c, toName(c.workspace), " is the current workspace"
       elif action notin ["search", "list"]:
-        error "No workspace found. Run `atlas init` if you want this current directory to be your workspace."
-        return
+        fatal "No workspace found. Run `atlas init` if you want this current directory to be your workspace."
 
   when MockupRun:
     c.depsDir = c.workspace
 
   case action
   of "":
-    error "No action."
+    fatal "No action."
   of "init":
     c.workspace = getCurrentDir()
     createWorkspaceIn c.workspace, c.depsDir
@@ -796,10 +807,10 @@ proc main =
     patchNimCfg c, deps, if c.cfgHere: getCurrentDir() else: findSrcDir(c)
     when MockupRun:
       if not c.mockupSuccess:
-        error "There were problems."
+        fatal "There were problems."
     else:
       if c.errors > 0:
-        error "There were problems."
+        fatal "There were problems."
   of "use":
     projectCmd()
     singleArg()
@@ -809,7 +820,7 @@ proc main =
   of "install":
     projectCmd()
     if args.len > 1:
-      error "install command takes a single argument"
+      fatal "install command takes a single argument"
     var nimbleFile = ""
     if args.len == 1:
       nimbleFile = args[0]
@@ -818,7 +829,7 @@ proc main =
         nimbleFile = x
         break
     if nimbleFile.len == 0:
-      error "could not find a .nimble file"
+      fatal "could not find a .nimble file"
     else:
       installDependencies(c, nimbleFile)
   of "refresh":
@@ -838,7 +849,7 @@ proc main =
     if fileExists(args[0]):
       echo toJson(extractRequiresInfo(args[0]))
     else:
-      error "File does not exist: " & args[0]
+      fatal "File does not exist: " & args[0]
   of "build", "test", "doc", "tasks":
     projectCmd()
     nimbleExec(action, args)
@@ -846,8 +857,7 @@ proc main =
     projectCmd()
     nimbleExec("", args)
   else:
-    error "Invalid action: " & action
+    fatal "Invalid action: " & action
 
 when isMainModule:
   main()
-
