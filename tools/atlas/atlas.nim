@@ -43,8 +43,8 @@ Command:
   updateDeps [filter]
                         update every dependency that has a remote
                         URL that matches `filter` if a filter is given
-  tag [version]         tag an incremental release or an explicit version
-                        if one is given
+  tag [version]         tag and push an incremental release
+                        or an explicit version if one is given
   build|test|doc|tasks  currently delegates to `nimble build|test|doc`
   task <taskname>       currently delegates to `nimble <taskname>`
 
