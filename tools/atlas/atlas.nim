@@ -219,6 +219,11 @@ proc error(c: var AtlasContext; p: PackageName; args: varargs[string]) =
   message(c, "[Error] ", p, args)
   inc c.errors
 
+proc error*(msg: string) =
+  when defined(debug):
+    writeStackTrace()
+  quit "[Error] " & msg
+
 proc sameVersionAs(tag, ver: string): bool =
   const VersionChars = {'0'..'9', '.'}
 
@@ -281,6 +286,8 @@ proc incrementTag(lastTag: string; field: SemVerField): string =
   var endPos = lastTag.find('.', startPos)
   if ord(field) >= 1:
     for i in 1 .. ord(field):
+      if endPos == -1:
+        error "last tag '" & lastTag & "' is missing . periods"
       startPos = endPos + 1
       endPos = lastTag.find('.', startPos)
   if endPos == -1:
@@ -589,11 +596,6 @@ proc patchNimCfg(c: var AtlasContext; deps: seq[string]; cfgPath: string) =
         # do not touch the file if nothing changed
         # (preserves the file date information):
         writeFile(cfg, cfgContent)
-
-proc error*(msg: string) =
-  when defined(debug):
-    writeStackTrace()
-  quit "[Error] " & msg
 
 proc findSrcDir(c: var AtlasContext): string =
   for nimbleFile in walkPattern("*.nimble"):
