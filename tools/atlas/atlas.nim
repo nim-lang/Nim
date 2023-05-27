@@ -275,31 +275,11 @@ proc incrementLastTag(c: var AtlasContext): string =
     incrementTag(outp.strip())
   else: "v0.0.1" # assuming no tags have been made yet
   
-proc changeNimbleVersion(nimbleFile: string; newVersion: string) =
-  let nimbleContent = open(nimbleFile).readAll()
-  let newNimble = open(nimbleFile, fmWrite)
-  for line in nimbleContent.splitLines:
-    if not line.startsWith("version"):
-      newNimble.writeLine line
-      continue
-    let fields = line.split('=')
-    if fields.len != 2:
-      newNimble.writeLine line
-      continue
-    let newVersionLine = fields[0] & "= \"" & newVersion & '"'
-    newNimble.writeLine newVersionLine
-
 proc tag(c: var AtlasContext; tag: string) =
   let newTag =
     if tag.len == 0: incrementLastTag(c)
     else: tag
   discard exec(c, GitTag, [newTag])
-  var nimbleFile = ""
-  for x in walkFiles("*.nimble"):
-    nimbleFile = x
-  if nimbleFile.len != 0:
-    changeNimbleVersion(nimbleFile, if newTag[0] == 'v': newTag[1..^1] else: newTag)
-    discard exec(c, GitAdd, [nimbleFile])
 
 proc updatePackages(c: var AtlasContext) =
   if dirExists(c.workspace / PackagesDir):
