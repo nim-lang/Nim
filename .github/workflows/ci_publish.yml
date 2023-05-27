@@ -68,7 +68,7 @@ jobs:
 
       - name: 'Action'
         shell: bash
-        run: nim c -r -d:release ci/action.nim
+        run: python ci/action.py
 
       - name: 'Comment'
         uses: actions/github-script@v6
@@ -87,4 +87,3 @@ jobs:
             } catch (err) {
               console.error(err);
             }
-
