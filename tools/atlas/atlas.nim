@@ -43,6 +43,8 @@ Command:
   updateDeps [filter]
                         update every dependency that has a remote
                         URL that matches `filter` if a filter is given
+  tag [version]         tag an incremental release or an explicit version
+                        if one is given
   build|test|doc|tasks  currently delegates to `nimble build|test|doc`
   task <taskname>       currently delegates to `nimble <taskname>`
 
@@ -109,7 +111,8 @@ const
 type
   Command = enum
     GitDiff = "git diff",
-    GitTags = "git show-ref --tags",
+    GitTag = "git tag",
+    GitRefsTags = "git show-ref --tags",
     GitRevParse = "git rev-parse",
     GitCheckout = "git checkout",
     GitPull = "git pull",
@@ -136,7 +139,7 @@ proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, 
   when MockupRun:
     assert TestLog[c.step].cmd == cmd, $(TestLog[c.step].cmd, cmd)
     case cmd
-    of GitDiff, GitTags, GitRevParse, GitPull, GitCurrentCommit:
+    of GitDiff, GitTag, GitRefsTags, GitRevParse, GitPull, GitCurrentCommit:
       result = (TestLog[c.step].output, TestLog[c.step].exitCode)
     of GitCheckout:
       assert args[0] == TestLog[c.step].output
@@ -187,6 +190,15 @@ proc toDepRelation(s: string): DepRelation =
   of ">": strictlyGreater
   else: normal
 
+proc tagsArePrefixedWithV(c: var AtlasContext): bool =
+  discard
+
+proc tag(c: var AtlasContext; version: string) =
+  if version.len == 0:
+    discard
+  else:
+    discard
+
 proc isCleanGit(c: var AtlasContext): string =
   result = ""
   let (outp, status) = exec(c, GitDiff, [])
@@ -225,7 +237,7 @@ proc sameVersionAs(tag, ver: string): bool =
       safeCharAt(tag, idx+ver.len) notin VersionChars
 
 proc versionToCommit(c: var AtlasContext; d: Dependency): string =
-  let (outp, status) = exec(c, GitTags, [])
+  let (outp, status) = exec(c, GitRefsTags, [])
   if status == 0:
     var useNextOne = false
     for line in splitLines(outp):
@@ -821,6 +833,9 @@ proc main =
       echo toJson(extractRequiresInfo(args[0]))
     else:
       error "File does not exist: " & args[0]
+  of "tag":
+    projectCmd()
+    tag(c, if args.len == 0: "" else: args[0])
   of "build", "test", "doc", "tasks":
     projectCmd()
     nimbleExec(action, args)
