@@ -112,6 +112,7 @@ type
   Command = enum
     GitDiff = "git diff",
     GitTag = "git tag",
+    GitLastTag = "git describe --abbrev=0 --tags",
     GitRefsTags = "git show-ref --tags",
     GitRevParse = "git rev-parse",
     GitCheckout = "git checkout",
@@ -190,10 +191,14 @@ proc toDepRelation(s: string): DepRelation =
   of ">": strictlyGreater
   else: normal
 
-proc tagsArePrefixedWithV(c: var AtlasContext): bool =
-  discard
+proc lastTagHasVPrefix(c: var AtlasContext): bool =
+  let (outp, status) = exec(c, GitLastTag, [])
+  if status == 0:
+    outp[0] == 'v'
+  else: true # default to v prefix
 
 proc tag(c: var AtlasContext; version: string) =
+  let useVPrefix = lastTagHasVPrefix(c)
   if version.len == 0:
     discard
   else:
