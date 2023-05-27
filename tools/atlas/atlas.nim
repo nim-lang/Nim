@@ -275,12 +275,14 @@ proc gitTag(c: var AtlasContext; tag: string) =
     error(c, c.projectDir.PackageName, "could not 'git tag " & tag & "'")
 
 proc incrementTag(lastTag: string, field: SemVerField): string =
-  var startPos = 0
-  var endPos = 0
-  for i in 0 .. ord(field):
-    if i != 0:
+  var startPos, endPos =
+    if lastTag[0] in {'0'..'9'}: 0
+    else: 1
+  endPos = lastTag.find('.', startPos)
+  if ord(field) >= 1:
+    for i in 1 .. ord(field):
       startPos = endPos + 1
-    endPos = lastTag.find('.', startPos)
+      endPos = lastTag.find('.', startPos)
   if endPos == -1:
     endPos = len(lastTag)
   let patchNumber = parseInt(lastTag[startPos..<endPos])
