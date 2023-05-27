@@ -447,16 +447,14 @@ proc collectDeps(c: var AtlasContext; work: var seq[Dependency];
   result = toDestDir(dep.name) / nimbleInfo.srcDir
 
 proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
-                    dep: Dependency; result: var seq[string];
-                    isMainProject: bool) =
+                    dep: Dependency; isMainProject: bool): string =
   let nimbleFile = findNimbleFile(c, dep)
   if nimbleFile != "":
-    let x = collectDeps(c, work, dep, nimbleFile)
-    result.add x
+    result = collectDeps(c, work, dep, nimbleFile)
   else:
-    result.add toDestDir(dep.name)
+    result = toDestDir(dep.name)
 
-proc cloneLoop(c: var AtlasContext; work: var seq[Dependency]; startIsDep: bool): seq[string] =
+proc traverseLoop(c: var AtlasContext; work: var seq[Dependency]; startIsDep: bool): seq[string] =
   result = @[]
   var i = 0
   while i < work.len:
@@ -474,11 +472,11 @@ proc cloneLoop(c: var AtlasContext; work: var seq[Dependency]; startIsDep: bool)
       # even if the checkout fails, we can make use of the somewhat
       # outdated .nimble file to clone more of the most likely still relevant
       # dependencies:
-      collectNewDeps(c, work, w, result, i == 0)
+      result.add collectNewDeps(c, work, w, i == 0)
     inc i
 
-proc clone(c: var AtlasContext; start: string; startIsDep: bool): seq[string] =
-  # non-recursive clone.
+proc traverse(c: var AtlasContext; start: string; startIsDep: bool): seq[string] =
+  # returns the list of paths for the nim.cfg file.
   let url = toUrl(c, start)
   var work = @[Dependency(name: toName(start), url: url, commit: "")]
 
@@ -489,7 +487,7 @@ proc clone(c: var AtlasContext; start: string; startIsDep: bool): seq[string] =
   c.projectDir = c.workspace / toDestDir(work[0].name)
   if c.lockOption == useLock:
     c.lockFileToUse = readLockFile(c.projectDir / LockFileName)
-  result = cloneLoop(c, work, startIsDep)
+  result = traverseLoop(c, work, startIsDep)
   if c.lockOption == genLock:
     writeFile c.projectDir / LockFileName, toJson(c.lockFileToWrite).pretty
 
@@ -549,7 +547,7 @@ proc installDependencies(c: var AtlasContext; nimbleFile: string) =
   let (_, pkgname, _) = splitFile(nimbleFile)
   let dep = Dependency(name: toName(pkgname), url: "", commit: "")
   discard collectDeps(c, work, dep, nimbleFile)
-  let paths = cloneLoop(c, work, startIsDep = true)
+  let paths = traverseLoop(c, work, startIsDep = true)
   patchNimCfg(c, paths, if c.cfgHere: getCurrentDir() else: findSrcDir(c))
 
 proc updateDir(c: var AtlasContext; dir, filter: string) =
@@ -706,9 +704,7 @@ proc main =
       error action & " command must be executed in a project, not in the workspace"
       return
 
-  var c = AtlasContext(
-    projectDir: getCurrentDir(),
-    workspace: "")
+  var c = AtlasContext(projectDir: getCurrentDir(), workspace: "")
 
   for kind, key, val in getopt():
     case kind
@@ -776,7 +772,7 @@ proc main =
     createWorkspaceIn c.workspace, c.depsDir
   of "clone", "update":
     singleArg()
-    let deps = clone(c, args[0], startIsDep = false)
+    let deps = traverse(c, args[0], startIsDep = false)
     patchNimCfg c, deps, if c.cfgHere: getCurrentDir() else: findSrcDir(c)
     when MockupRun:
       if not c.mockupSuccess:
@@ -787,7 +783,7 @@ proc main =
   of "use":
     projectCmd()
     singleArg()
-    var deps = clone(c, args[0], startIsDep = true)
+    var deps = traverse(c, args[0], startIsDep = true)
     patchNimbleFile(c, args[0], deps)
     patchNimCfg c, deps, getCurrentDir()
     if c.errors > 0:
