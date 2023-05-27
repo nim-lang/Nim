@@ -44,10 +44,9 @@ Command:
                         update every dependency that has a remote
                         URL that matches `filter` if a filter is given
   tag [major|minor|patch]
-                        add and push a new tag, input must be one of
-                        'major' or 'minor' or 'patch': major.minor.patch
-                        a custom tag '1.0.3': 1.0.3
-                        a letter from 'a' to 'z': a.b.c.d.e.f.g
+                        add and push a new tag, input must be one of:
+                        'major' or 'minor' or 'patch' or a custom tag '1.0.3'
+                        or a letter from 'a' to 'z': a.b.c.d.e.f.g
   build|test|doc|tasks  currently delegates to `nimble build|test|doc`
   task <taskname>       currently delegates to `nimble <taskname>`
 
