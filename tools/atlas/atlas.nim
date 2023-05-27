@@ -277,9 +277,9 @@ proc incrementTag(lastTag: string): string =
 
 proc incrementLastTag(c: var AtlasContext): string =
   let (ltr, status) = exec(c, GitLastTaggedRef, [])
-  let lastTaggedRef = ltr.strip()
   if status == 0:
     let
+      lastTaggedRef = ltr.strip()
       (lt, _) = osproc.execCmdEx("git describe --tags " & lastTaggedRef)
       (cc, _) = exec(c, GitCurrentCommit, [])
       lastTag = lt.strip()
