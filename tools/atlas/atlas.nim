@@ -654,14 +654,14 @@ proc generateDepGraph(g: DepGraph) =
   else:
     discard execShellCmd("dot -Tpng -odeps.png deps.dot")
 
-proc installDependencies(c: var AtlasContext; nimbleFile: string) =
+proc installDependencies(c: var AtlasContext; nimbleFile: string; startIsDep: bool) =
   # 1. find .nimble file in CWD
   # 2. install deps from .nimble
   var g = DepGraph(nodes: @[])
   let (_, pkgname, _) = splitFile(nimbleFile)
   let dep = Dependency(name: toName(pkgname), url: "", commit: "")
   discard collectDeps(c, g, -1, dep, nimbleFile)
-  let paths = traverseLoop(c, g, startIsDep = true)
+  let paths = traverseLoop(c, g, startIsDep)
   patchNimCfg(c, paths, if c.cfgHere: getCurrentDir() else: findSrcDir(c))
 
 proc updateDir(c: var AtlasContext; dir, filter: string) =
@@ -854,7 +854,7 @@ proc main =
       c.workspace = detectWorkspace()
       if c.workspace.len > 0:
         readConfig c
-        info c, toName(c.workspace), " is the current workspace"
+        info c, toName(c.workspace), "is the current workspace"
       elif action notin ["search", "list"]:
         fatal "No workspace found. Run `atlas init` if you want this current directory to be your workspace."
 
@@ -882,7 +882,7 @@ proc main =
     singleArg()
     let nimbleFile = patchNimbleFile(c, args[0])
     if nimbleFile.len > 0:
-      installDependencies(c, nimbleFile)
+      installDependencies(c, nimbleFile, startIsDep = false)
   of "install":
     projectCmd()
     if args.len > 1:
@@ -897,7 +897,7 @@ proc main =
     if nimbleFile.len == 0:
       fatal "could not find a .nimble file"
     else:
-      installDependencies(c, nimbleFile)
+      installDependencies(c, nimbleFile, startIsDep = true)
   of "refresh":
     noArgs()
     updatePackages(c)
