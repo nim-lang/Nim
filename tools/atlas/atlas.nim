@@ -112,7 +112,7 @@ type
   Command = enum
     GitDiff = "git diff",
     GitTag = "git tag",
-    GitLastTag = "git describe --abbrev=0 --tags",
+    GitLastTag = "git describe --tags $(git rev-list --tags --max-count=1)",
     GitRefsTags = "git show-ref --tags",
     GitRevParse = "git rev-parse",
     GitCheckout = "git checkout",
@@ -140,7 +140,7 @@ proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, 
   when MockupRun:
     assert TestLog[c.step].cmd == cmd, $(TestLog[c.step].cmd, cmd)
     case cmd
-    of GitDiff, GitTag, GitRefsTags, GitRevParse, GitPull, GitCurrentCommit:
+    of GitDiff, GitTag, GitTagLast, GitRefsTags, GitRevParse, GitPull, GitCurrentCommit:
       result = (TestLog[c.step].output, TestLog[c.step].exitCode)
     of GitCheckout:
       assert args[0] == TestLog[c.step].output
@@ -190,19 +190,6 @@ proc toDepRelation(s: string): DepRelation =
   of "<": strictlyLess
   of ">": strictlyGreater
   else: normal
-
-proc lastTagHasVPrefix(c: var AtlasContext): bool =
-  let (outp, status) = exec(c, GitLastTag, [])
-  if status == 0:
-    outp[0] == 'v'
-  else: true # default to v prefix
-
-proc tag(c: var AtlasContext; version: string) =
-  let useVPrefix = lastTagHasVPrefix(c)
-  if version.len == 0:
-    discard
-  else:
-    discard
 
 proc isCleanGit(c: var AtlasContext): string =
   result = ""
@@ -276,6 +263,43 @@ proc gitPull(c: var AtlasContext; p: PackageName) =
   let (_, status) = exec(c, GitPull, [])
   if status != 0:
     error(c, p, "could not 'git pull'")
+
+proc incrementTag(lastTag: string): string =
+  let patchNumberPos = lastTag.rfind('.') + 1
+  var patchNumber = parseInt(lastTag[patchNumberPos..^1])
+  lastTag[0 ..< patchNumberPos] & $(patchNumber + 1)
+
+proc incrementLastTag(c: var AtlasContext): string =
+  let (outp, status) = exec(c, GitLastTag, []) # This probably has problems with word tags and other nonsense
+  if status == 0:
+    incrementTag(outp.strip())
+  else: "v0.0.1" # assuming no tags have been made yet
+  
+proc changeNimbleVersion(nimbleFile: string; newVersion: string) =
+  let nimbleContent = open(nimbleFile).readAll()
+  let newNimble = open(nimbleFile, fmWrite)
+  for line in nimbleContent.splitLines:
+    if not line.startsWith("version"):
+      newNimble.writeLine line
+      continue
+    let fields = line.split('=')
+    if fields.len != 2:
+      newNimble.writeLine line
+      continue
+    let newVersionLine = fields[0] & "= \"" & newVersion & '"'
+    newNimble.writeLine newVersionLine
+
+proc tag(c: var AtlasContext; tag: string) =
+  let newTag =
+    if tag.len == 0: incrementLastTag(c)
+    else: tag
+  discard exec(c, GitTag, [newTag])
+  var nimbleFile = ""
+  for x in walkFiles("*.nimble"):
+    nimbleFile = x
+  if nimbleFile.len != 0:
+    changeNimbleVersion(nimbleFile, if newTag[0] == 'v': newTag[1..^1] else: newTag)
+    discard exec(c, GitAdd, [nimbleFile])
 
 proc updatePackages(c: var AtlasContext) =
   if dirExists(c.workspace / PackagesDir):
@@ -839,7 +863,7 @@ proc main =
     else:
       error "File does not exist: " & args[0]
   of "tag":
-    projectCmd()
+    # projectCmd()
     tag(c, if args.len == 0: "" else: args[0])
   of "build", "test", "doc", "tasks":
     projectCmd()
