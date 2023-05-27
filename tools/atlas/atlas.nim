@@ -928,7 +928,7 @@ proc main =
     else:
       var field: SemVerField
       try: field = parseEnum[SemVerField](args[0])
-      except: error "tag command takes one of 'patch' 'minor' 'major', a SemVer tag, or a letter from 'a' to 'z'"
+      except: fatal "tag command takes one of 'patch' 'minor' 'major', a SemVer tag, or a letter from 'a' to 'z'"
       tag(c, ord(field))
   of "build", "test", "doc", "tasks":
     projectCmd()
