@@ -112,10 +112,11 @@ type
   Command = enum
     GitDiff = "git diff",
     GitTag = "git tag",
-    GitLastTag = "git describe --tags $(git rev-list --tags --max-count=1)",
     GitRefsTags = "git show-ref --tags",
+    GitLastTaggedRef = "git rev-list --tags --max-count=1",
     GitRevParse = "git rev-parse",
     GitCheckout = "git checkout",
+    GitPush = "git push origin",
     GitPull = "git pull",
     GitCurrentCommit = "git log -n 1 --format=%H"
     GitMergeBase = "git merge-base"
@@ -264,22 +265,46 @@ proc gitPull(c: var AtlasContext; p: PackageName) =
   if status != 0:
     error(c, p, "could not 'git pull'")
 
+proc gitTag(c: var AtlasContext; tag: string) =
+  let (_, status) = exec(c, GitTag, [tag])
+  if status != 0:
+    error(c, c.projectDir.PackageName, "could not 'git tag " & tag & "'")
+
+proc gitPushTag(c: var AtlasContext; tag: string) =
+  let (_, status) = exec(c, GitPush, [tag])
+  if status != 0:
+    error(c, c.projectDir.PackageName, "could not 'git push " & tag & "'")
+
 proc incrementTag(lastTag: string): string =
   let patchNumberPos = lastTag.rfind('.') + 1
-  var patchNumber = parseInt(lastTag[patchNumberPos..^1])
+  let patchNumber = parseInt(lastTag[patchNumberPos..^1])
   lastTag[0 ..< patchNumberPos] & $(patchNumber + 1)
 
 proc incrementLastTag(c: var AtlasContext): string =
-  let (outp, status) = exec(c, GitLastTag, []) # This probably has problems with word tags and other nonsense
+  let (lastTaggedRef, status) = exec(c, GitLastTaggedRef, [])
   if status == 0:
-    incrementTag(outp.strip())
+    let
+      (lt, _) = osproc.execCmdEx("git describe --tags " & lastTaggedRef)
+      (cc, _) = exec(c, GitCurrentCommit, [])
+      lastTag = lt.strip()
+      currentCommit = cc.strip()
+
+    if lastTaggedRef.strip() == currentCommit:
+      error(c, c.projectDir.PackageName, "the current commit '" & currentCommit & "' is already tagged '" & lastTag & '\'')
+      lastTag
+    else:
+      incrementTag(lastTag)
   else: "v0.0.1" # assuming no tags have been made yet
-  
+
 proc tag(c: var AtlasContext; tag: string) =
+  let oldErrors = c.errors
   let newTag =
     if tag.len == 0: incrementLastTag(c)
     else: tag
-  discard exec(c, GitTag, [newTag])
+  if c.errors != oldErrors:
+    return
+  gitTag(c, newTag)
+  gitPushTag(c, newTag)
 
 proc updatePackages(c: var AtlasContext) =
   if dirExists(c.workspace / PackagesDir):
@@ -843,7 +868,7 @@ proc main =
     else:
       error "File does not exist: " & args[0]
   of "tag":
-    # projectCmd()
+    projectCmd()
     tag(c, if args.len == 0: "" else: args[0])
   of "build", "test", "doc", "tasks":
     projectCmd()
