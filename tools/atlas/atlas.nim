@@ -877,7 +877,7 @@ proc main =
   of "tag":
     projectCmd()
     var field: SemVerField
-    if args.len == 0:
+    if args[0].len == 0:
       field = patch
     else:
       try: field = parseEnum[SemVerField](args[0])
