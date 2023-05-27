@@ -321,12 +321,15 @@ proc pushTag(c: var AtlasContext; tag: string) =
   else:
     message(c, "[Info] ", c.projectDir.PackageName, "successfully pushed tag: " & tag)
 
+proc tag(c: var AtlasContext; tag: string) =
+  gitTag(c, tag)
+  pushTag(c, tag)
+
 proc tag(c: var AtlasContext; field: SemVerField) =
   let oldErrors = c.errors
   let newTag = incrementLastTag(c, field)
   if c.errors == oldErrors:
-    gitTag(c, newTag)
-    pushTag(c, newTag)
+    tag(c, newTag)
 
 proc updatePackages(c: var AtlasContext) =
   if dirExists(c.workspace / PackagesDir):
@@ -876,13 +879,15 @@ proc main =
       error "File does not exist: " & args[0]
   of "tag":
     projectCmd()
-    var field: SemVerField
     if args[0].len == 0:
-      field = patch
+      tag(c, patch)
+    elif '.' in args[0]:
+      tag(c, args[0])
     else:
+      var field: SemVerField
       try: field = parseEnum[SemVerField](args[0])
-      except: error "tag command takes one of 'patch' 'minor' or 'major'"
-    tag(c, field)
+      except: error "tag command takes one of 'patch' 'minor' 'major' or a SemVer tag"
+      tag(c, field)
   of "build", "test", "doc", "tasks":
     projectCmd()
     nimbleExec(action, args)
