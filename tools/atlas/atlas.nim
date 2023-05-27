@@ -270,11 +270,6 @@ proc gitTag(c: var AtlasContext; tag: string) =
   if status != 0:
     error(c, c.projectDir.PackageName, "could not 'git tag " & tag & "'")
 
-proc gitPushTag(c: var AtlasContext; tag: string) =
-  let (_, status) = exec(c, GitPush, [tag])
-  if status != 0:
-    error(c, c.projectDir.PackageName, "could not 'git push " & tag & "'")
-
 proc incrementTag(lastTag: string): string =
   let patchNumberPos = lastTag.rfind('.') + 1
   let patchNumber = parseInt(lastTag[patchNumberPos..^1])
@@ -290,21 +285,30 @@ proc incrementLastTag(c: var AtlasContext): string =
       currentCommit = cc.strip()
 
     if lastTaggedRef.strip() == currentCommit:
-      error(c, c.projectDir.PackageName, "the current commit '" & currentCommit & "' is already tagged '" & lastTag & '\'')
+      warn c, c.projectDir.PackageName, "the current commit '" & currentCommit & "' is already tagged '" & lastTag & '\''
       lastTag
     else:
       incrementTag(lastTag)
   else: "v0.0.1" # assuming no tags have been made yet
+
+proc pushTag(c: var AtlasContext; tag: string) =
+  let oldErrors = c.errors
+  let (outp, status) = exec(c, GitPush, [tag])
+  if status != 0:
+    error(c, c.projectDir.PackageName, "could not 'git push " & tag & "'")
+  elif outp.strip() == "Everything up-to-date":
+    message(c, "[Info] ", c.projectDir.PackageName, "is up-to-date")
+  else:
+    message(c, "[Info] ", c.projectDir.PackageName, "successfully pushed tag: " & tag)
 
 proc tag(c: var AtlasContext; tag: string) =
   let oldErrors = c.errors
   let newTag =
     if tag.len == 0: incrementLastTag(c)
     else: tag
-  if c.errors != oldErrors:
-    return
-  gitTag(c, newTag)
-  gitPushTag(c, newTag)
+  if c.errors == oldErrors:
+    gitTag(c, newTag)
+  pushTag(c, newTag)
 
 proc updatePackages(c: var AtlasContext) =
   if dirExists(c.workspace / PackagesDir):
