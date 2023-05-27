@@ -1882,8 +1882,17 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
         if op == mHigh: unaryExpr(p, e, d, "($1Len_0-1)")
         else: unaryExpr(p, e, d, "$1Len_0")
       else:
-        if op == mHigh: unaryExpr(p, e, d, "($1.Field1-1)")
-        else: unaryExpr(p, e, d, "$1.Field1")
+        let isDeref = a.kind in {nkHiddenDeref, nkDerefExpr}
+        if op == mHigh:
+          if isDeref:
+            unaryExpr(p, e, d, "($1->Field1-1)")
+          else:
+            unaryExpr(p, e, d, "($1.Field1-1)")
+        else:
+          if isDeref:
+            unaryExpr(p, e, d, "$1->Field1")
+          else:
+            unaryExpr(p, e, d, "$1.Field1")
   of tyCstring:
     if op == mHigh: unaryExpr(p, e, d, "($1 ? (#nimCStrLen($1)-1) : -1)")
     else: unaryExpr(p, e, d, "($1 ? #nimCStrLen($1) : 0)")
