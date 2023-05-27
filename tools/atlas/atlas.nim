@@ -281,6 +281,15 @@ proc gitTag(c: var AtlasContext; tag: string) =
   if status != 0:
     error(c, c.projectDir.PackageName, "could not 'git tag " & tag & "'")
 
+proc pushTag(c: var AtlasContext; tag: string) =
+  let (outp, status) = exec(c, GitPush, [tag])
+  if status != 0:
+    error(c, c.projectDir.PackageName, "could not 'git push " & tag & "'")
+  elif outp.strip() == "Everything up-to-date":
+    info(c, c.projectDir.PackageName, "is up-to-date")
+  else:
+    info(c, c.projectDir.PackageName, "successfully pushed tag: " & tag)
+
 proc incrementTag(lastTag: string; field: Natural): string =
   var startPos =
     if lastTag[0] in {'0'..'9'}: 0
@@ -294,7 +303,7 @@ proc incrementTag(lastTag: string; field: Natural): string =
   if endPos == -1:
     endPos = len(lastTag)
   let patchNumber = parseInt(lastTag[startPos..<endPos])
-  lastTag[0 ..< startPos] & $(patchNumber + 1) & lastTag[endPos..^1]
+  lastTag[0..<startPos] & $(patchNumber + 1) & lastTag[endPos..^1]
 
 proc incrementLastTag(c: var AtlasContext; field: Natural): string =
   let (ltr, status) = exec(c, GitLastTaggedRef, [])
@@ -302,25 +311,16 @@ proc incrementLastTag(c: var AtlasContext; field: Natural): string =
     let
       lastTaggedRef = ltr.strip()
       (lt, _) = osproc.execCmdEx("git describe --tags " & lastTaggedRef)
-      (cc, _) = exec(c, GitCurrentCommit, [])
       lastTag = lt.strip()
+      (cc, _) = exec(c, GitCurrentCommit, [])
       currentCommit = cc.strip()
 
     if lastTaggedRef == currentCommit:
-      info c, c.projectDir.PackageName, "the current commit '" & currentCommit & "' is already tagged '" & lastTag & '\''
+      info c, c.projectDir.PackageName, "the current commit '" & currentCommit & "' is already tagged '" & lastTag & "'"
       lastTag
     else:
       incrementTag(lastTag, field)
   else: "v0.0.1" # assuming no tags have been made yet
-
-proc pushTag(c: var AtlasContext; tag: string) =
-  let (outp, status) = exec(c, GitPush, [tag])
-  if status != 0:
-    error(c, c.projectDir.PackageName, "could not 'git push " & tag & "'")
-  elif outp.strip() == "Everything up-to-date":
-    message(c, "[Info] ", c.projectDir.PackageName, "is up-to-date")
-  else:
-    message(c, "[Info] ", c.projectDir.PackageName, "successfully pushed tag: " & tag)
 
 proc tag(c: var AtlasContext; tag: string) =
   gitTag(c, tag)
