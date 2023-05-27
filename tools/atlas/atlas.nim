@@ -79,6 +79,7 @@ type
     dir, url, commit: string
 
   PackageName = distinct string
+  CfgPath = distinct string # put into a config `--path:"../x"`
   DepRelation = enum
     normal, strictlyLess, strictlyGreater
 
@@ -101,6 +102,8 @@ type
       currentDir: string
       step: int
       mockupSuccess: bool
+
+proc `==`(a, b: CfgPath): bool {.borrow.}
 
 const
   InvalidCommit = "<invalid commit>"
@@ -209,6 +212,9 @@ proc warn(c: var AtlasContext; p: PackageName; args: varargs[string]) =
 proc error(c: var AtlasContext; p: PackageName; args: varargs[string]) =
   message(c, "[Error] ", p, args)
   inc c.errors
+
+proc info(c: var AtlasContext; p: PackageName; args: varargs[string]) =
+  message(c, "[Info] ", p, args)
 
 proc sameVersionAs(tag, ver: string): bool =
   const VersionChars = {'0'..'9', '.'}
@@ -416,7 +422,7 @@ proc readLockFile(filename: string): Table[string, LockFileEntry] =
     result[d.dir] = d
 
 proc collectDeps(c: var AtlasContext; work: var seq[Dependency];
-                 dep: Dependency; nimbleFile: string): string =
+                 dep: Dependency; nimbleFile: string): CfgPath =
   # If there is a .nimble file, return the dependency path & srcDir
   # else return "".
   assert nimbleFile != ""
@@ -444,17 +450,20 @@ proc collectDeps(c: var AtlasContext; work: var seq[Dependency];
 
     if tokens.len >= 3 and cmpIgnoreCase(tokens[0], "nim") != 0:
       c.addUniqueDep work, tokens, lockFile
-  result = toDestDir(dep.name) / nimbleInfo.srcDir
+  result = CfgPath(toDestDir(dep.name) / nimbleInfo.srcDir)
 
 proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
-                    dep: Dependency; isMainProject: bool): string =
+                    dep: Dependency; isMainProject: bool): CfgPath =
   let nimbleFile = findNimbleFile(c, dep)
   if nimbleFile != "":
     result = collectDeps(c, work, dep, nimbleFile)
   else:
-    result = toDestDir(dep.name)
+    result = CfgPath toDestDir(dep.name)
 
-proc traverseLoop(c: var AtlasContext; work: var seq[Dependency]; startIsDep: bool): seq[string] =
+proc addUnique[T](s: var seq[T]; elem: sink T) =
+  if not s.contains(elem): s.add elem
+
+proc traverseLoop(c: var AtlasContext; work: var seq[Dependency]; startIsDep: bool): seq[CfgPath] =
   result = @[]
   var i = 0
   while i < work.len:
@@ -472,10 +481,10 @@ proc traverseLoop(c: var AtlasContext; work: var seq[Dependency]; startIsDep: bo
       # even if the checkout fails, we can make use of the somewhat
       # outdated .nimble file to clone more of the most likely still relevant
       # dependencies:
-      result.add collectNewDeps(c, work, w, i == 0)
+      result.addUnique collectNewDeps(c, work, w, i == 0)
     inc i
 
-proc traverse(c: var AtlasContext; start: string; startIsDep: bool): seq[string] =
+proc traverse(c: var AtlasContext; start: string; startIsDep: bool): seq[CfgPath] =
   # returns the list of paths for the nim.cfg file.
   let url = toUrl(c, start)
   var work = @[Dependency(name: toName(start), url: url, commit: "")]
@@ -495,10 +504,12 @@ const
   configPatternBegin = "############# begin Atlas config section ##########\n"
   configPatternEnd =   "############# end Atlas config section   ##########\n"
 
-proc patchNimCfg(c: var AtlasContext; deps: seq[string]; cfgPath: string) =
+template projectFromCurrentDir(): PackageName = PackageName(getCurrentDir().splitPath.tail)
+
+proc patchNimCfg(c: var AtlasContext; deps: seq[CfgPath]; cfgPath: string) =
   var paths = "--noNimblePath\n"
   for d in deps:
-    let pkgname = toDestDir d.PackageName
+    let pkgname = toDestDir d.string.PackageName
     let pkgdir = if dirExists(c.workspace / pkgname): c.workspace / pkgname
                  else: c.depsDir / pkgName
     let x = relativePath(pkgdir, cfgPath, '/')
@@ -514,6 +525,7 @@ proc patchNimCfg(c: var AtlasContext; deps: seq[string]; cfgPath: string) =
       error(c, c.projectDir.PackageName, "could not write the nim.cfg")
     elif not fileExists(cfg):
       writeFile(cfg, cfgContent)
+      info(c, projectFromCurrentDir(), "created: " & cfg)
     else:
       let content = readFile(cfg)
       let start = content.find(configPatternBegin)
@@ -528,6 +540,7 @@ proc patchNimCfg(c: var AtlasContext; deps: seq[string]; cfgPath: string) =
         # do not touch the file if nothing changed
         # (preserves the file date information):
         writeFile(cfg, cfgContent)
+        info(c, projectFromCurrentDir(), "updated: " & cfg)
 
 proc error*(msg: string) =
   when defined(debug):
@@ -571,42 +584,25 @@ proc updateDir(c: var AtlasContext; dir, filter: string) =
             else:
               error c, pkg, "could not fetch current branch name"
 
-proc addUnique[T](s: var seq[T]; elem: sink T) =
-  if not s.contains(elem): s.add elem
-
-proc addDepFromNimble(c: var AtlasContext; deps: var seq[string]; project: PackageName; dep: string) =
-  var depDir = c.workspace / dep
-  if not dirExists(depDir):
-    depDir = c.depsDir /  dep
-  if dirExists(depDir):
-    withDir c, depDir:
-      let src = findSrcDir(c)
-      if src.len != 0:
-        deps.addUnique dep / src
-      else:
-        deps.addUnique dep
-  else:
-    warn c, project, "cannot find: " & depDir
-
-proc patchNimbleFile(c: var AtlasContext; dep: string; deps: var seq[string]) =
+proc patchNimbleFile(c: var AtlasContext; dep: string): string =
   let thisProject = getCurrentDir().splitPath.tail
   let oldErrors = c.errors
   let url = toUrl(c, dep)
+  result = ""
   if oldErrors != c.errors:
     warn c, toName(dep), "cannot resolve package name"
   else:
-    var nimbleFile = ""
     for x in walkFiles("*.nimble"):
-      if nimbleFile.len == 0:
-        nimbleFile = x
+      if result.len == 0:
+        result = x
       else:
         # ambiguous .nimble file
         warn c, toName(dep), "cannot determine `.nimble` file; there are multiple to choose from"
-        return
+        return ""
     # see if we have this requirement already listed. If so, do nothing:
     var found = false
-    if nimbleFile.len > 0:
-      let nimbleInfo = extractRequiresInfo(c, nimbleFile)
+    if result.len > 0:
+      let nimbleInfo = extractRequiresInfo(c, result)
       for r in nimbleInfo.requires:
         var tokens: seq[string] = @[]
         for token in tokenizeRequires(r):
@@ -615,26 +611,23 @@ proc patchNimbleFile(c: var AtlasContext; dep: string; deps: var seq[string]) =
           let oldErrors = c.errors
           let urlB = toUrl(c, tokens[0])
           if oldErrors != c.errors:
-            warn c, toName(tokens[0]), "cannot resolve package name; found in: " & nimbleFile
+            warn c, toName(tokens[0]), "cannot resolve package name; found in: " & result
           if url == urlB:
             found = true
-
-          if cmpIgnoreCase(tokens[0], "nim") != 0:
-            c.addDepFromNimble deps, toName(thisProject), tokens[0]
+            break
 
     if not found:
-      let line = "requires \"$1@#head\"\n" % dep.escape("", "")
-      if nimbleFile.len > 0:
-        let oldContent = readFile(nimbleFile)
-        writeFile nimbleFile, oldContent & "\n" & line
-        message(c, "[Info] ", toName(thisProject), "updated: " & nimbleFile)
+      let line = "requires \"$1#head\"\n" % dep.escape("", "")
+      if result.len > 0:
+        let oldContent = readFile(result)
+        writeFile result, oldContent & "\n" & line
+        info(c, toName(thisProject), "updated: " & result)
       else:
-        let outfile = thisProject & ".nimble"
-        writeFile outfile, line
-        message(c, "[Info] ", toName(thisProject), "created: " & outfile)
-      c.addDepFromNimble deps, toName(thisProject), dep
+        result = thisProject & ".nimble"
+        writeFile result, line
+        info(c, toName(thisProject), "created: " & result)
     else:
-      message(c, "[Info] ", toName(thisProject), "up to date: " & nimbleFile)
+      info(c, toName(thisProject), "up to date: " & result)
 
 proc detectWorkspace(): string =
   result = getCurrentDir()
@@ -756,10 +749,10 @@ proc main =
       c.workspace = detectWorkspace()
       if c.workspace.len > 0:
         readConfig c
-      else:
+        echo "Using workspace ", c.workspace
+      elif action notin ["search", "list"]:
         error "No workspace found. Run `atlas init` if you want this current directory to be your workspace."
         return
-      echo "Using workspace ", c.workspace
 
   when MockupRun:
     c.depsDir = c.workspace
@@ -783,11 +776,9 @@ proc main =
   of "use":
     projectCmd()
     singleArg()
-    var deps = traverse(c, args[0], startIsDep = true)
-    patchNimbleFile(c, args[0], deps)
-    patchNimCfg c, deps, getCurrentDir()
-    if c.errors > 0:
-      error "There were problems."
+    let nimbleFile = patchNimbleFile(c, args[0])
+    if nimbleFile.len > 0:
+      installDependencies(c, nimbleFile)
   of "install":
     projectCmd()
     if args.len > 1:
@@ -807,8 +798,10 @@ proc main =
     noArgs()
     updatePackages(c)
   of "search", "list":
-    updatePackages(c)
-    search getPackages(c.workspace), args
+    if c.workspace.len != 0:
+      updatePackages(c)
+      search getPackages(c.workspace), args
+    else: search @[], args
   of "updateprojects":
     updateDir(c, c.workspace, if args.len == 0: "" else: args[0])
   of "updatedeps":
