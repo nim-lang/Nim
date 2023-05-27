@@ -757,7 +757,7 @@ proc main =
       if c.workspace.len > 0:
         readConfig c
         echo "Using workspace ", c.workspace
-      elif action != "search":
+      elif action notin ["search", "list"]:
         error "No workspace found. Run `atlas init` if you want this current directory to be your workspace."
         return
 
@@ -806,10 +806,7 @@ proc main =
   of "refresh":
     noArgs()
     updatePackages(c)
-  of "list":
-    updatePackages(c)
-    search getPackages(c.workspace), args
-  of "search":
+  of "search", "list":
     if c.workspace.len != 0:
       updatePackages(c)
       search getPackages(c.workspace), args
