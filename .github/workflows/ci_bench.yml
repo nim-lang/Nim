@@ -10,9 +10,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-22.04]
         cpu: [amd64]
-    name: '${{ matrix.os }}'
+    name: 'benchmarks-${{ matrix.os }}'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60 # refs bug #18178
     steps:
@@ -21,13 +21,7 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: 'Install node.js 16.x'
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16.x'
-
-      - name: 'Install dependencies (Linux amd64)'
-        if: runner.os == 'Linux' && matrix.cpu == 'amd64'
+      - name: 'Install dependencies'
         run: |
           sudo apt-fast update -qq
           DEBIAN_FRONTEND='noninteractive' \
@@ -36,27 +30,21 @@ jobs:
               valgrind libc6-dbg libblas-dev xorg-dev
 
       - name: 'Add build binaries to PATH'
-        shell: bash
         run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
       - name: 'Build csourcesAny'
-        shell: bash
         run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
 
       - name: 'Build koch'
-        shell: bash
         run: nim c koch
 
       - name: 'Build Nim'
-        shell: bash
         run: ./koch boot -d:release -d:nimStrictMode --lib:lib
 
       - name: 'Build Nimble'
-        shell: bash
         run: ./koch nimble
 
       - name: 'Action'
-        shell: bash
         run: python ci/action.py
 
       - name: 'Checkout minimize'
@@ -66,7 +54,6 @@ jobs:
           path: minimize
 
       - name: 'Run minimize benchmarks'
-        shell: bash
         run: ./minimize/minimize ci-bench
 
       - name: 'Restore minimize cached database'
@@ -76,13 +63,11 @@ jobs:
           key: minimize-db-key
 
       - name: 'Update minimize db'
-        shell: bash
         run: ./minimize/minimize update-db
 
       - name: 'Save minimize cached database'
         if: |
-          github.event_name == 'push' && github.ref == 'refs/heads/devel' &&
-          matrix.target == 'linux'
+          github.event_name == 'push' && github.ref == 'refs/heads/devel'
         uses: actions/cache/save@v3
         with:
           path: minimize.csv
