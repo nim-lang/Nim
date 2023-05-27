@@ -32,7 +32,7 @@ proc cloneUrl*(url, dest: string; cloneUsingHttps: bool): string =
 
   if xcode == QuitSuccess:
     # retry multiple times to avoid annoying github timeouts:
-    let cmd = "git clone " & modUrl & " " & dest
+    let cmd = "git clone --recursive " & modUrl & " " & dest
     for i in 0..4:
       if execShellCmd(cmd) == 0: return ""
       os.sleep(4000)
