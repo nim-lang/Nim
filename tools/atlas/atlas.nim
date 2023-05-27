@@ -288,7 +288,7 @@ proc incrementTag(lastTag: string; field: Natural): string =
   var endPos = lastTag.find('.', startPos)
   if field >= 1:
     for i in 1 .. field:
-      assert endPos != -1, "last tag '" & lastTag & "' is missing . periods"
+      assert endPos != -1, "the last tag '" & lastTag & "' is missing . periods"
       startPos = endPos + 1
       endPos = lastTag.find('.', startPos)
   if endPos == -1:
