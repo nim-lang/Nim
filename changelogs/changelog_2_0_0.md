@@ -253,6 +253,9 @@
   declared when they are not available on the backend. Previously it would call
   `doAssert false` at runtime despite the condition being compile-time.
 
+- Pragma `{.inline.}` generates `__forceinline` if `__has_attribute(__forceinline)` for GCC and Clang.
+
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
