@@ -450,9 +450,10 @@ proc genDeepCopy(p: BProc; dest, src: TLoc) =
               [addrLoc(p.config, dest), rdLoc(src),
               genTypeInfoV1(p.module, dest.t, dest.lode.info)])
   of tyOpenArray, tyVarargs:
+    let source = addrLocOrTemp(src)
     linefmt(p, cpsStmts,
-         "#genericDeepCopyOpenArray((void*)$1, (void*)$2, $1Len_0, $3);$n",
-         [addrLoc(p.config, dest), addrLocOrTemp(src),
+         "#genericDeepCopyOpenArray((void*)$1, (void*)$2, $2->Field1, $3);$n",
+         [addrLoc(p.config, dest), source,
          genTypeInfoV1(p.module, dest.t, dest.lode.info)])
   of tySet:
     if mapSetType(p.config, ty) == ctArray:
