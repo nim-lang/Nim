@@ -43,8 +43,9 @@ Command:
   updateDeps [filter]
                         update every dependency that has a remote
                         URL that matches `filter` if a filter is given
-  tag [version]         tag and push an incremental release
-                        or an explicit version if one is given
+  tag [major|minor|patch]
+                        tag and push an incremental release
+                        increments field specified in input
   build|test|doc|tasks  currently delegates to `nimble build|test|doc`
   task <taskname>       currently delegates to `nimble <taskname>`
 
@@ -83,6 +84,9 @@ type
   PackageName = distinct string
   DepRelation = enum
     normal, strictlyLess, strictlyGreater
+
+  SemVerField = enum
+    major = 0, minor = 1, patch = 2
 
   Dependency = object
     name: PackageName
@@ -270,12 +274,19 @@ proc gitTag(c: var AtlasContext; tag: string) =
   if status != 0:
     error(c, c.projectDir.PackageName, "could not 'git tag " & tag & "'")
 
-proc incrementTag(lastTag: string): string =
-  let patchNumberPos = lastTag.rfind('.') + 1
-  let patchNumber = parseInt(lastTag[patchNumberPos..^1])
-  lastTag[0 ..< patchNumberPos] & $(patchNumber + 1)
+proc incrementTag(lastTag: string, field: SemVerField): string =
+  var startPos = 0
+  var endPos = 0
+  for i in 0 .. ord(field):
+    if i != 0:
+      startPos = endPos + 1
+    endPos = lastTag.find('.', startPos)
+  if endPos == -1:
+    endPos = len(lastTag)
+  let patchNumber = parseInt(lastTag[startPos..<endPos])
+  lastTag[0 ..< startPos] & $(patchNumber + 1) & lastTag[endPos..^1]
 
-proc incrementLastTag(c: var AtlasContext): string =
+proc incrementLastTag(c: var AtlasContext, field: SemVerField): string =
   let (ltr, status) = exec(c, GitLastTaggedRef, [])
   if status == 0:
     let
@@ -289,7 +300,7 @@ proc incrementLastTag(c: var AtlasContext): string =
       warn c, c.projectDir.PackageName, "the current commit '" & currentCommit & "' is already tagged '" & lastTag & '\''
       lastTag
     else:
-      incrementTag(lastTag)
+      incrementTag(lastTag, field)
   else: "v0.0.1" # assuming no tags have been made yet
 
 proc pushTag(c: var AtlasContext; tag: string) =
@@ -301,11 +312,9 @@ proc pushTag(c: var AtlasContext; tag: string) =
   else:
     message(c, "[Info] ", c.projectDir.PackageName, "successfully pushed tag: " & tag)
 
-proc tag(c: var AtlasContext; tag: string) =
+proc tag(c: var AtlasContext; field: SemVerField) =
   let oldErrors = c.errors
-  let newTag =
-    if tag.len == 0: incrementLastTag(c)
-    else: tag
+  let newTag = incrementLastTag(c, field)
   if c.errors == oldErrors:
     gitTag(c, newTag)
   pushTag(c, newTag)
@@ -872,8 +881,14 @@ proc main =
     else:
       error "File does not exist: " & args[0]
   of "tag":
-    projectCmd()
-    tag(c, if args.len == 0: "" else: args[0])
+    # projectCmd()
+    var field: SemVerField
+    if args.len == 0:
+      field = patch
+    else:
+      try: field = parseEnum[SemVerField](args[0])
+      except: error "tag command takes one of 'patch' 'minor' or 'major'"
+    tag(c, field)
   of "build", "test", "doc", "tasks":
     projectCmd()
     nimbleExec(action, args)
