@@ -256,7 +256,7 @@ proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
   addSonSkipIntLitChecked(c, result, semTypeNode(c, n[0], nil), n[0], c.idgen)
   if n.len > 1: result.n = n[1]
 
-proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
+proc semRangeAux(c: PContext, n: PNode, prev: PType; force0index: static[bool] = false): PType =
   assert isRange(n)
   checkSonsLen(n, 3, c.config)
   result = newOrPrevType(tyRange, prev, c)
@@ -289,6 +289,9 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     elif enumHasHoles(rangeT[0]):
       localError(c.config, n.info, "enum '$1' has holes" % typeToString(rangeT[0]))
 
+  template arrayIndexErr(s: static[string]; i: 0 .. 1): string =
+    s & " is not a valid range " & (if i == 0: "start" else: "end")
+
   for i in 0..1:
     if hasUnresolvedArgs(c, range[i]):
       result.n.add makeStaticExpr(c, range[i])
@@ -296,9 +299,27 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     else:
       result.n.add semConstExpr(c, range[i])
 
-  if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and result.n[0].floatVal.isNaN) or
-      (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and result.n[1].floatVal.isNaN):
-    localError(c.config, n.info, "NaN is not a valid start or end for a range")
+    # If reaches here, it must be ordinal or float, so no need to check for all nk* types.
+    case result.n[i].kind  # 0 is array start, 1 is array end.
+    of {nkIntLit .. nkInt64Lit}:  # Int-based array indexing.
+      # Checks cint, cint32, etc; Not checks Unsigned.
+      if force0index and not(result.n[i].intVal >= 0):
+        # Arrays must use 0-based indexing, in old versions `array[-9..0, int]` compiled,
+        # because of a bug, semArrayIndex() always checks for negative literal int index,
+        # but not for slice, because is sent here, there was no check in place for index,
+        # therefore producing bad codegen and bugs, so this check enforces 0-based index.
+        # Use `force0index=true` to force 0-based index, but this cant be always `true`,
+        # because code like `range[-9 .. 0]` is valid, but `array[-9 .. -1, int]` is not.
+        # Stdlib is not really prepared to work with negative-indexed Arrays whatsoever!.
+        localError(c.config, n.info, arrayIndexErr("Negative integer", i))  # array[-9..0, T]
+    of {nkFloatLit .. nkFloat128Lit}:  # Float-based array indexing.
+      if result.n[i].floatVal.isNan:   # -Inf,+Inf,-0.0 dont reach here, so no need to check.
+        localError(c.config, n.info, arrayIndexErr("NaN", i))  # array[NaN..NaN, T]
+    of nkCharLit:                      # Char-based array indexing.
+      if result.n[i].intVal == 0:
+        localError(c.config, n.info, arrayIndexErr("Null character", i))  # array['\0'..'\0', T]
+    else: discard
+    # This is a valid array index if reaches here.
 
   if weakLeValue(result.n[0], result.n[1]) == impNo:
     localError(c.config, n.info, "range is empty")
@@ -334,7 +355,8 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
 
 proc semArrayIndex(c: PContext, n: PNode): PType =
   if isRange(n):
-    result = semRangeAux(c, n, nil)
+    # This is an array index, so it must be 0-indexed.
+    result = semRangeAux(c, n, nil, force0index = true)
   elif n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "..<":
     result = errorType(c)
   else:
@@ -373,6 +395,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
       else:
         result = x.typ.skipTypes({tyTypeDesc})
         #localError(c.config, n[1].info, errConstExprExpected)
+
 
 proc semArray(c: PContext, n: PNode, prev: PType): PType =
   var base: PType
