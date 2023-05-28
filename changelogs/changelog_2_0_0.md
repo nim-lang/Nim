@@ -175,7 +175,7 @@
   type _ = float
   ```
 
-- - Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
+- Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
 
 - The JavaScript backend now uses [BigInt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt)
   for 64-bit integer types (`int64` and `uint64`) by default. As this affects
@@ -249,6 +249,13 @@
   these deprecated aliases are likely not used anymore and it may make sense
   to simply remove these statements.
 
+- `getProgramResult` and `setProgramResult` in `std/exitprocs` are no longer
+  declared when they are not available on the backend. Previously it would call
+  `doAssert false` at runtime despite the condition being compile-time.
+
+- Pragma `{.inline.}` generates `__forceinline` if `__has_attribute(__forceinline)` for GCC and Clang.
+
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
@@ -306,9 +313,6 @@
   - Added `std/paths`, `std/dirs`, `std/files`, `std/symlinks` and `std/appdirs`.
   - Added `std/cmdline` for reading command line parameters.
 - Added `sep` parameter in `std/uri` to specify the query separator.
-- Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
-  and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)
-  in `jscore` for JavaScript targets.
 - Added `UppercaseLetters`, `LowercaseLetters`, `PunctuationChars`, `PrintableChars` sets to `std/strutils`.
 - Added `complex.sgn` for obtaining the phase of complex numbers.
 - Added `insertAdjacentText`, `insertAdjacentElement`, `insertAdjacentHTML`,
@@ -323,6 +327,11 @@
 - Added `safe` parameter to `base64.encodeMime`.
 - Added `parseutils.parseSize` - inverse to `strutils.formatSize` - to parse human readable sizes.
 - Added `minmax` to `sequtils`, as a more efficient `(min(_), max(_))` over sequences.
+- `std/jscore` for JavaScript targets:
+  + Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
+  and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask).
+  + Added `toDateString`, `toISOString`, `toJSON`, `toTimeString`, `toUTCString` converters for `DateTime`.
+
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
@@ -474,6 +483,8 @@
 - When compiling for Release the flag `-fno-math-errno` is used for GCC.
 - Removed deprecated `LineTooLong` hint.
 - Line numbers and filenames of source files work correctly inside templates for JavaScript targets.
+
+- Removed support for LCC (Local C), Pelles C, Digital Mars, Watcom compilers.
 
 
 ## Docgen

@@ -643,7 +643,20 @@ proc genGlobalVarDecl(p: BProc, n: PNode; td, value: Rope; decl: var Rope) =
       decl = runtimeFormat(s.cgDeclFrmt & " = $#;$n", [td, s.loc.r, value])
     else:
       decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
-    
+
+proc genCppVarForConstructor(p: BProc, v: PSym; vn, value: PNode; decl: var Rope) 
+
+proc callGlobalVarCppConstructor(p: BProc; v: PSym; vn, value: PNode) =
+  let s = vn.sym
+  fillBackendName(p.module, s)
+  fillLoc(s.loc, locGlobalVar, vn, OnHeap)
+  var decl: Rope
+  let td = getTypeDesc(p.module, vn.sym.typ, dkVar)
+  genGlobalVarDecl(p, vn, td, "", decl)
+  decl.add " " & $s.loc.r
+  genCppVarForConstructor(p, v, vn, value, decl)
+  p.module.s[cfsVars].add decl
+
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
   let s = n.sym
   if s.loc.k == locNone:
@@ -669,7 +682,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
         internalError(p.config, n.info, ".threadvar variables cannot have a value")
     else:
       var decl: Rope = ""
-      var td = getTypeDesc(p.module, s.loc.t, dkVar)
+      let td = getTypeDesc(p.module, s.loc.t, dkVar)
       genGlobalVarDecl(p, n, td, value, decl)
       if s.constraint.isNil:
         if value != "":
@@ -1477,9 +1490,9 @@ proc genMainProc(m: BModule) =
 
   var posixCmdLine: Rope
   if optNoMain notin m.config.globalOptions:
-    posixCmdLine.add "\tN_LIB_PRIVATE int cmdCount;\L"
-    posixCmdLine.add "\tN_LIB_PRIVATE char** cmdLine;\L"
-    posixCmdLine.add "\tN_LIB_PRIVATE char** gEnv;\L"
+    posixCmdLine.add "N_LIB_PRIVATE int cmdCount;\L"
+    posixCmdLine.add "N_LIB_PRIVATE char** cmdLine;\L"
+    posixCmdLine.add "N_LIB_PRIVATE char** gEnv;\L"
 
   const
     # The use of a volatile function pointer to call Pre/NimMainInner
@@ -1504,7 +1517,7 @@ proc genMainProc(m: BModule) =
       "}$N$N"
 
     MainProcs =
-      "\t\t$^NimMain();$N"
+      "\t$^NimMain();$N"
 
     MainProcsWithResult =
       MainProcs & ("\treturn $1nim_program_result;$N")
@@ -1620,7 +1633,7 @@ proc genMainProc(m: BModule) =
     appcg(m, m.s[cfsProcs], nimMain,
         [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode, m.config.nimMainPrefix, isVolatile])
 
-  if optNoMain notin m.config.globalOptions:
+  if optNoMain notin m.config.globalOptions or optGenDynLib in m.config.globalOptions:
     if m.config.cppCustomNamespace.len > 0:
       closeNamespaceNim(m.s[cfsProcs])
       m.s[cfsProcs].add "using namespace " & m.config.cppCustomNamespace & ";\L"
@@ -1927,8 +1940,6 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
     openNamespaceNim(m.config.cppCustomNamespace, result)
   if m.s[cfsFrameDefines].len > 0:
     result.add(m.s[cfsFrameDefines])
-  else:
-    result.add("#define nimfr_(x, y)\n#define nimln_(x)\n\n#define nimlf_(x, y)\n")
 
   for i in cfsForwardTypes..cfsProcs:
     if m.s[i].len > 0:
@@ -2169,7 +2180,10 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode): PNode =
 
     if m.hcrOn:
       # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)
-      cgsym(m, "programResult")
+      let sym = magicsys.getCompilerProc(m.g.graph, "programResult")
+      # ignore when not available, could be a module imported early in `system`
+      if sym != nil:
+        cgsymImpl m, sym
       if m.inHcrInitGuard:
         endBlock(m.initProc)
 
