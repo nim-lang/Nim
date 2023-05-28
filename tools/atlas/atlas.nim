@@ -10,7 +10,7 @@
 ## a Nimble dependency and its dependencies recursively.
 
 import std / [parseopt, strutils, os, osproc, tables, sets, json, jsonutils,
-  parsecfg, streams]
+  parsecfg, streams, terminal]
 import parse_requires, osutils, packagesjson
 
 from unicode import nil
@@ -43,6 +43,10 @@ Command:
   updateDeps [filter]
                         update every dependency that has a remote
                         URL that matches `filter` if a filter is given
+  tag [major|minor|patch]
+                        add and push a new tag, input must be one of:
+                        ['major'|'minor'|'patch'] or a SemVer tag like ['1.0.3']
+                        or a letter ['a'..'z']: a.b.c.d.e.f.g
   build|test|doc|tasks  currently delegates to `nimble build|test|doc`
   task <taskname>       currently delegates to `nimble <taskname>`
 
@@ -53,6 +57,7 @@ Options:
   --workspace=DIR       use DIR as workspace
   --genlock             generate a lock file (use with `clone` and `update`)
   --uselock             use the lock file for the build
+  --colors=on|off       turn on|off colored output
   --version             show the version
   --help                show this help
 """
@@ -79,20 +84,28 @@ type
     dir, url, commit: string
 
   PackageName = distinct string
+  CfgPath = distinct string # put into a config `--path:"../x"`
   DepRelation = enum
     normal, strictlyLess, strictlyGreater
+
+  SemVerField = enum
+    major, minor, patch
 
   Dependency = object
     name: PackageName
     url, commit: string
     rel: DepRelation # "requires x < 1.0" is silly, but Nimble allows it so we have too.
+    parents: seq[int] # why we need this dependency
+  DepGraph = object
+    nodes: seq[Dependency]
+    processed: Table[string, int] # the key is (url / commit)
+
   AtlasContext = object
     projectDir, workspace, depsDir: string
     hasPackageList: bool
     keepCommits: bool
     cfgHere: bool
     p: Table[string, string] # name -> url mapping
-    processed: HashSet[string] # the key is (url / commit)
     errors: int
     lockOption: LockOption
     lockFileToWrite: seq[LockFileEntry]
@@ -101,6 +114,9 @@ type
       currentDir: string
       step: int
       mockupSuccess: bool
+    noColors: bool
+
+proc `==`(a, b: CfgPath): bool {.borrow.}
 
 const
   InvalidCommit = "<invalid commit>"
@@ -109,9 +125,13 @@ const
 type
   Command = enum
     GitDiff = "git diff",
+    GitTag = "git tag",
     GitTags = "git show-ref --tags",
+    GitLastTaggedRef = "git rev-list --tags --max-count=1",
+    GitDescribe = "git describe",
     GitRevParse = "git rev-parse",
     GitCheckout = "git checkout",
+    GitPush = "git push origin",
     GitPull = "git pull",
     GitCurrentCommit = "git log -n 1 --format=%H"
     GitMergeBase = "git merge-base"
@@ -136,7 +156,7 @@ proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, 
   when MockupRun:
     assert TestLog[c.step].cmd == cmd, $(TestLog[c.step].cmd, cmd)
     case cmd
-    of GitDiff, GitTags, GitRevParse, GitPull, GitCurrentCommit:
+    of GitDiff, GitTag, GitTags, GitLastTaggedRef, GitDescribe, GitRevParse, GitPush, GitPull, GitCurrentCommit:
       result = (TestLog[c.step].output, TestLog[c.step].exitCode)
     of GitCheckout:
       assert args[0] == TestLog[c.step].output
@@ -195,20 +215,29 @@ proc isCleanGit(c: var AtlasContext): string =
   elif status != 0:
     result = "'git diff' returned non-zero"
 
-proc message(c: var AtlasContext; category: string; p: PackageName; args: varargs[string]) =
-  var msg = category & "(" & p.string & ")"
-  for a in args:
-    msg.add ' '
-    msg.add a
+proc message(c: var AtlasContext; category: string; p: PackageName; arg: string) =
+  var msg = category & "(" & p.string & ") " & arg
   stdout.writeLine msg
 
-proc warn(c: var AtlasContext; p: PackageName; args: varargs[string]) =
-  message(c, "[Warning] ", p, args)
+proc warn(c: var AtlasContext; p: PackageName; arg: string) =
+  if c.noColors:
+    message(c, "[Warning] ", p, arg)
+  else:
+    stdout.styledWriteLine(fgYellow, styleBright, "[Warning] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
   inc c.errors
 
-proc error(c: var AtlasContext; p: PackageName; args: varargs[string]) =
-  message(c, "[Error] ", p, args)
+proc error(c: var AtlasContext; p: PackageName; arg: string) =
+  if c.noColors:
+    message(c, "[Error] ", p, arg)
+  else:
+    stdout.styledWriteLine(fgRed, styleBright, "[Error] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
   inc c.errors
+
+proc info(c: var AtlasContext; p: PackageName; arg: string) =
+  if c.noColors:
+    message(c, "[Info] ", p, arg)
+  else:
+    stdout.styledWriteLine(fgGreen, styleBright, "[Info] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
 
 proc sameVersionAs(tag, ver: string): bool =
   const VersionChars = {'0'..'9', '.'}
@@ -224,6 +253,18 @@ proc sameVersionAs(tag, ver: string): bool =
     result = safeCharAt(tag, idx-1) notin VersionChars and
       safeCharAt(tag, idx+ver.len) notin VersionChars
 
+proc gitDescribeRefTag(c: var AtlasContext; commit: string): string =
+  let (lt, status) = exec(c, GitDescribe, ["--tags", commit])
+  result = if status == 0: strutils.strip(lt) else: ""
+
+proc getLastTaggedCommit(c: var AtlasContext): string =
+  let (ltr, status) = exec(c, GitLastTaggedRef, [])
+  if status == 0:
+    let lastTaggedRef = ltr.strip()
+    let lastTag = gitDescribeRefTag(c, lastTaggedRef)
+    if lastTag.len != 0:
+      result = lastTag
+
 proc versionToCommit(c: var AtlasContext; d: Dependency): string =
   let (outp, status) = exec(c, GitTags, [])
   if status == 0:
@@ -236,7 +277,9 @@ proc versionToCommit(c: var AtlasContext; d: Dependency): string =
           if commitsAndTags[1].sameVersionAs(d.commit):
             return commitsAndTags[0]
         of strictlyLess:
-          if d.commit == InvalidCommit or not commitsAndTags[1].sameVersionAs(d.commit):
+          if d.commit == InvalidCommit:
+            return getLastTaggedCommit(c)
+          elif not commitsAndTags[1].sameVersionAs(d.commit):
             return commitsAndTags[0]
         of strictlyGreater:
           if commitsAndTags[1].sameVersionAs(d.commit):
@@ -253,12 +296,66 @@ proc shortToCommit(c: var AtlasContext; short: string): string =
 proc checkoutGitCommit(c: var AtlasContext; p: PackageName; commit: string) =
   let (_, status) = exec(c, GitCheckout, [commit])
   if status != 0:
-    error(c, p, "could not checkout commit", commit)
+    error(c, p, "could not checkout commit " & commit)
 
 proc gitPull(c: var AtlasContext; p: PackageName) =
   let (_, status) = exec(c, GitPull, [])
   if status != 0:
     error(c, p, "could not 'git pull'")
+
+proc gitTag(c: var AtlasContext; tag: string) =
+  let (_, status) = exec(c, GitTag, [tag])
+  if status != 0:
+    error(c, c.projectDir.PackageName, "could not 'git tag " & tag & "'")
+
+proc pushTag(c: var AtlasContext; tag: string) =
+  let (outp, status) = exec(c, GitPush, [tag])
+  if status != 0:
+    error(c, c.projectDir.PackageName, "could not 'git push " & tag & "'")
+  elif outp.strip() == "Everything up-to-date":
+    info(c, c.projectDir.PackageName, "is up-to-date")
+  else:
+    info(c, c.projectDir.PackageName, "successfully pushed tag: " & tag)
+
+proc incrementTag(lastTag: string; field: Natural): string =
+  var startPos =
+    if lastTag[0] in {'0'..'9'}: 0
+    else: 1
+  var endPos = lastTag.find('.', startPos)
+  if field >= 1:
+    for i in 1 .. field:
+      assert endPos != -1, "the last tag '" & lastTag & "' is missing . periods"
+      startPos = endPos + 1
+      endPos = lastTag.find('.', startPos)
+  if endPos == -1:
+    endPos = len(lastTag)
+  let patchNumber = parseInt(lastTag[startPos..<endPos])
+  lastTag[0..<startPos] & $(patchNumber + 1) & lastTag[endPos..^1]
+
+proc incrementLastTag(c: var AtlasContext; field: Natural): string =
+  let (ltr, status) = exec(c, GitLastTaggedRef, [])
+  if status == 0:
+    let
+      lastTaggedRef = ltr.strip()
+      lastTag = gitDescribeRefTag(c, lastTaggedRef)
+      currentCommit = exec(c, GitCurrentCommit, [])[0].strip()
+
+    if lastTaggedRef == currentCommit:
+      info c, c.projectDir.PackageName, "the current commit '" & currentCommit & "' is already tagged '" & lastTag & "'"
+      lastTag
+    else:
+      incrementTag(lastTag, field)
+  else: "v0.0.1" # assuming no tags have been made yet
+
+proc tag(c: var AtlasContext; tag: string) =
+  gitTag(c, tag)
+  pushTag(c, tag)
+
+proc tag(c: var AtlasContext; field: Natural) =
+  let oldErrors = c.errors
+  let newTag = incrementLastTag(c, field)
+  if c.errors == oldErrors:
+    tag(c, newTag)
 
 proc updatePackages(c: var AtlasContext) =
   if dirExists(c.workspace / PackagesDir):
@@ -355,7 +452,7 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
           if requiredCommit == "" and w.commit == InvalidCommit:
             warn c, w.name, "package has no tagged releases"
           else:
-            warn c, w.name, "cannot find specified version/commit", w.commit
+            warn c, w.name, "cannot find specified version/commit " & w.commit
         else:
           if currentCommit != requiredCommit:
             # checkout the later commit:
@@ -388,22 +485,32 @@ proc findNimbleFile(c: AtlasContext; dep: Dependency): string =
           # ambiguous .nimble file
           return ""
 
-proc addUniqueDep(c: var AtlasContext; work: var seq[Dependency];
+proc addUnique[T](s: var seq[T]; elem: sink T) =
+  if not s.contains(elem): s.add elem
+
+proc addUniqueDep(c: var AtlasContext; g: var DepGraph; parent: int;
                   tokens: seq[string]; lockfile: Table[string, LockFileEntry]) =
   let pkgName = tokens[0]
   let oldErrors = c.errors
   let url = toUrl(c, pkgName)
   if oldErrors != c.errors:
     warn c, toName(pkgName), "cannot resolve package name"
-  elif not c.processed.containsOrIncl(url / tokens[2]):
-    if lockfile.contains(pkgName):
-      work.add Dependency(name: toName(pkgName),
-                          url: lockfile[pkgName].url,
-                          commit: lockfile[pkgName].commit,
-                          rel: normal)
+  else:
+    let key = url / tokens[2]
+    if g.processed.hasKey(key):
+      g.nodes[g.processed[key]].parents.addUnique parent
     else:
-      work.add Dependency(name: toName(pkgName), url: url, commit: tokens[2],
-                          rel: toDepRelation(tokens[1]))
+      g.processed[key] = g.nodes.len
+      if lockfile.contains(pkgName):
+        g.nodes.add Dependency(name: toName(pkgName),
+                            url: lockfile[pkgName].url,
+                            commit: lockfile[pkgName].commit,
+                            rel: normal,
+                            parents: @[parent])
+      else:
+        g.nodes.add Dependency(name: toName(pkgName), url: url, commit: tokens[2],
+                               rel: toDepRelation(tokens[1]),
+                               parents: @[parent])
 
 template toDestDir(p: PackageName): string = p.string
 
@@ -415,8 +522,8 @@ proc readLockFile(filename: string): Table[string, LockFileEntry] =
   for d in items(data):
     result[d.dir] = d
 
-proc collectDeps(c: var AtlasContext; work: var seq[Dependency];
-                 dep: Dependency; nimbleFile: string): string =
+proc collectDeps(c: var AtlasContext; g: var DepGraph; parent: int;
+                 dep: Dependency; nimbleFile: string): CfgPath =
   # If there is a .nimble file, return the dependency path & srcDir
   # else return "".
   assert nimbleFile != ""
@@ -443,24 +550,22 @@ proc collectDeps(c: var AtlasContext; work: var seq[Dependency];
       tokens.add commit
 
     if tokens.len >= 3 and cmpIgnoreCase(tokens[0], "nim") != 0:
-      c.addUniqueDep work, tokens, lockFile
-  result = toDestDir(dep.name) / nimbleInfo.srcDir
+      c.addUniqueDep g, parent, tokens, lockFile
+  result = CfgPath(toDestDir(dep.name) / nimbleInfo.srcDir)
 
-proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
-                    dep: Dependency; result: var seq[string];
-                    isMainProject: bool) =
+proc collectNewDeps(c: var AtlasContext; g: var DepGraph; parent: int;
+                    dep: Dependency): CfgPath =
   let nimbleFile = findNimbleFile(c, dep)
   if nimbleFile != "":
-    let x = collectDeps(c, work, dep, nimbleFile)
-    result.add x
+    result = collectDeps(c, g, parent, dep, nimbleFile)
   else:
-    result.add toDestDir(dep.name)
+    result = CfgPath toDestDir(dep.name)
 
-proc cloneLoop(c: var AtlasContext; work: var seq[Dependency]; startIsDep: bool): seq[string] =
+proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[CfgPath] =
   result = @[]
   var i = 0
-  while i < work.len:
-    let w = work[i]
+  while i < g.nodes.len:
+    let w = g.nodes[i]
     let destDir = toDestDir(w.name)
     let oldErrors = c.errors
 
@@ -474,22 +579,22 @@ proc cloneLoop(c: var AtlasContext; work: var seq[Dependency]; startIsDep: bool)
       # even if the checkout fails, we can make use of the somewhat
       # outdated .nimble file to clone more of the most likely still relevant
       # dependencies:
-      collectNewDeps(c, work, w, result, i == 0)
+      result.addUnique collectNewDeps(c, g, i, w)
     inc i
 
-proc clone(c: var AtlasContext; start: string; startIsDep: bool): seq[string] =
-  # non-recursive clone.
+proc traverse(c: var AtlasContext; start: string; startIsDep: bool): seq[CfgPath] =
+  # returns the list of paths for the nim.cfg file.
   let url = toUrl(c, start)
-  var work = @[Dependency(name: toName(start), url: url, commit: "")]
+  var g = DepGraph(nodes: @[Dependency(name: toName(start), url: url, commit: "")])
 
   if url == "":
     error c, toName(start), "cannot resolve package name"
     return
 
-  c.projectDir = c.workspace / toDestDir(work[0].name)
+  c.projectDir = c.workspace / toDestDir(g.nodes[0].name)
   if c.lockOption == useLock:
     c.lockFileToUse = readLockFile(c.projectDir / LockFileName)
-  result = cloneLoop(c, work, startIsDep)
+  result = traverseLoop(c, g, startIsDep)
   if c.lockOption == genLock:
     writeFile c.projectDir / LockFileName, toJson(c.lockFileToWrite).pretty
 
@@ -497,10 +602,12 @@ const
   configPatternBegin = "############# begin Atlas config section ##########\n"
   configPatternEnd =   "############# end Atlas config section   ##########\n"
 
-proc patchNimCfg(c: var AtlasContext; deps: seq[string]; cfgPath: string) =
+template projectFromCurrentDir(): PackageName = PackageName(getCurrentDir().splitPath.tail)
+
+proc patchNimCfg(c: var AtlasContext; deps: seq[CfgPath]; cfgPath: string) =
   var paths = "--noNimblePath\n"
   for d in deps:
-    let pkgname = toDestDir d.PackageName
+    let pkgname = toDestDir d.string.PackageName
     let pkgdir = if dirExists(c.workspace / pkgname): c.workspace / pkgname
                  else: c.depsDir / pkgName
     let x = relativePath(pkgdir, cfgPath, '/')
@@ -516,6 +623,7 @@ proc patchNimCfg(c: var AtlasContext; deps: seq[string]; cfgPath: string) =
       error(c, c.projectDir.PackageName, "could not write the nim.cfg")
     elif not fileExists(cfg):
       writeFile(cfg, cfgContent)
+      info(c, projectFromCurrentDir(), "created: " & cfg)
     else:
       let content = readFile(cfg)
       let start = content.find(configPatternBegin)
@@ -530,8 +638,9 @@ proc patchNimCfg(c: var AtlasContext; deps: seq[string]; cfgPath: string) =
         # do not touch the file if nothing changed
         # (preserves the file date information):
         writeFile(cfg, cfgContent)
+        info(c, projectFromCurrentDir(), "updated: " & cfg)
 
-proc error*(msg: string) =
+proc fatal*(msg: string) =
   when defined(debug):
     writeStackTrace()
   quit "[Error] " & msg
@@ -542,14 +651,30 @@ proc findSrcDir(c: var AtlasContext): string =
     return nimbleInfo.srcDir
   return ""
 
-proc installDependencies(c: var AtlasContext; nimbleFile: string) =
+proc generateDepGraph(g: DepGraph) =
+  # currently unused.
+  var dotGraph = ""
+  for i in 0 ..< g.nodes.len:
+    for p in items g.nodes[i].parents:
+      if p >= 0:
+        dotGraph.addf("\"$1\" -> \"$2\";\n", [g.nodes[p].name.string, g.nodes[i].name.string])
+  writeFile("deps.dot", "digraph deps {\n$1}\n" % dotGraph)
+  let graphvizDotPath = findExe("dot")
+  if graphvizDotPath.len == 0:
+    #echo("gendepend: Graphviz's tool dot is required, " &
+    #  "see https://graphviz.org/download for downloading")
+    discard
+  else:
+    discard execShellCmd("dot -Tpng -odeps.png deps.dot")
+
+proc installDependencies(c: var AtlasContext; nimbleFile: string; startIsDep: bool) =
   # 1. find .nimble file in CWD
   # 2. install deps from .nimble
-  var work: seq[Dependency] = @[]
+  var g = DepGraph(nodes: @[])
   let (_, pkgname, _) = splitFile(nimbleFile)
   let dep = Dependency(name: toName(pkgname), url: "", commit: "")
-  discard collectDeps(c, work, dep, nimbleFile)
-  let paths = cloneLoop(c, work, startIsDep = true)
+  discard collectDeps(c, g, -1, dep, nimbleFile)
+  let paths = traverseLoop(c, g, startIsDep)
   patchNimCfg(c, paths, if c.cfgHere: getCurrentDir() else: findSrcDir(c))
 
 proc updateDir(c: var AtlasContext; dir, filter: string) =
@@ -569,46 +694,29 @@ proc updateDir(c: var AtlasContext; dir, filter: string) =
               if exitCode != 0:
                 error c, pkg, output
               else:
-                message(c, "[Hint] ", pkg, "successfully updated")
+                info(c, pkg, "successfully updated")
             else:
               error c, pkg, "could not fetch current branch name"
 
-proc addUnique[T](s: var seq[T]; elem: sink T) =
-  if not s.contains(elem): s.add elem
-
-proc addDepFromNimble(c: var AtlasContext; deps: var seq[string]; project: PackageName; dep: string) =
-  var depDir = c.workspace / dep
-  if not dirExists(depDir):
-    depDir = c.depsDir /  dep
-  if dirExists(depDir):
-    withDir c, depDir:
-      let src = findSrcDir(c)
-      if src.len != 0:
-        deps.addUnique dep / src
-      else:
-        deps.addUnique dep
-  else:
-    warn c, project, "cannot find: " & depDir
-
-proc patchNimbleFile(c: var AtlasContext; dep: string; deps: var seq[string]) =
+proc patchNimbleFile(c: var AtlasContext; dep: string): string =
   let thisProject = getCurrentDir().splitPath.tail
   let oldErrors = c.errors
   let url = toUrl(c, dep)
+  result = ""
   if oldErrors != c.errors:
     warn c, toName(dep), "cannot resolve package name"
   else:
-    var nimbleFile = ""
     for x in walkFiles("*.nimble"):
-      if nimbleFile.len == 0:
-        nimbleFile = x
+      if result.len == 0:
+        result = x
       else:
         # ambiguous .nimble file
         warn c, toName(dep), "cannot determine `.nimble` file; there are multiple to choose from"
-        return
+        return ""
     # see if we have this requirement already listed. If so, do nothing:
     var found = false
-    if nimbleFile.len > 0:
-      let nimbleInfo = extractRequiresInfo(c, nimbleFile)
+    if result.len > 0:
+      let nimbleInfo = extractRequiresInfo(c, result)
       for r in nimbleInfo.requires:
         var tokens: seq[string] = @[]
         for token in tokenizeRequires(r):
@@ -617,26 +725,23 @@ proc patchNimbleFile(c: var AtlasContext; dep: string; deps: var seq[string]) =
           let oldErrors = c.errors
           let urlB = toUrl(c, tokens[0])
           if oldErrors != c.errors:
-            warn c, toName(tokens[0]), "cannot resolve package name; found in: " & nimbleFile
+            warn c, toName(tokens[0]), "cannot resolve package name; found in: " & result
           if url == urlB:
             found = true
-
-          if cmpIgnoreCase(tokens[0], "nim") != 0:
-            c.addDepFromNimble deps, toName(thisProject), tokens[0]
+            break
 
     if not found:
-      let line = "requires \"$1@#head\"\n" % dep.escape("", "")
-      if nimbleFile.len > 0:
-        let oldContent = readFile(nimbleFile)
-        writeFile nimbleFile, oldContent & "\n" & line
-        message(c, "[Info] ", toName(thisProject), "updated: " & nimbleFile)
+      let line = "requires \"$1\"\n" % dep.escape("", "")
+      if result.len > 0:
+        let oldContent = readFile(result)
+        writeFile result, oldContent & "\n" & line
+        info(c, toName(thisProject), "updated: " & result)
       else:
-        let outfile = thisProject & ".nimble"
-        writeFile outfile, line
-        message(c, "[Info] ", toName(thisProject), "created: " & outfile)
-      c.addDepFromNimble deps, toName(thisProject), dep
+        result = thisProject & ".nimble"
+        writeFile result, line
+        info(c, toName(thisProject), "created: " & result)
     else:
-      message(c, "[Info] ", toName(thisProject), "up to date: " & nimbleFile)
+      info(c, toName(thisProject), "up to date: " & result)
 
 proc detectWorkspace(): string =
   result = getCurrentDir()
@@ -695,20 +800,17 @@ proc main =
   var args: seq[string] = @[]
   template singleArg() =
     if args.len != 1:
-      error action & " command takes a single package name"
+      fatal action & " command takes a single package name"
 
   template noArgs() =
     if args.len != 0:
-      error action & " command takes no arguments"
+      fatal action & " command takes no arguments"
 
   template projectCmd() =
     if getCurrentDir() == c.workspace or getCurrentDir() == c.depsDir:
-      error action & " command must be executed in a project, not in the workspace"
-      return
+      fatal action & " command must be executed in a project, not in the workspace"
 
-  var c = AtlasContext(
-    projectDir: getCurrentDir(),
-    workspace: "")
+  var c = AtlasContext(projectDir: getCurrentDir(), workspace: "")
 
   for kind, key, val in getopt():
     case kind
@@ -748,11 +850,16 @@ proc main =
           c.lockOption = useLock
         else:
           writeHelp()
+      of "colors":
+        case val.normalize
+        of "off": c.noColors = true
+        of "on": c.noColors = false
+        else: writeHelp()
       else: writeHelp()
     of cmdEnd: assert false, "cannot happen"
 
   if c.workspace.len > 0:
-    if not dirExists(c.workspace): error "Workspace directory '" & c.workspace & "' not found."
+    if not dirExists(c.workspace): fatal "Workspace directory '" & c.workspace & "' not found."
   elif action != "init":
     when MockupRun:
       c.workspace = autoWorkspace()
@@ -760,42 +867,39 @@ proc main =
       c.workspace = detectWorkspace()
       if c.workspace.len > 0:
         readConfig c
-      else:
-        error "No workspace found. Run `atlas init` if you want this current directory to be your workspace."
-        return
-      echo "Using workspace ", c.workspace
+        info c, toName(c.workspace), "is the current workspace"
+      elif action notin ["search", "list"]:
+        fatal "No workspace found. Run `atlas init` if you want this current directory to be your workspace."
 
   when MockupRun:
     c.depsDir = c.workspace
 
   case action
   of "":
-    error "No action."
+    fatal "No action."
   of "init":
     c.workspace = getCurrentDir()
     createWorkspaceIn c.workspace, c.depsDir
   of "clone", "update":
     singleArg()
-    let deps = clone(c, args[0], startIsDep = false)
+    let deps = traverse(c, args[0], startIsDep = false)
     patchNimCfg c, deps, if c.cfgHere: getCurrentDir() else: findSrcDir(c)
     when MockupRun:
       if not c.mockupSuccess:
-        error "There were problems."
+        fatal "There were problems."
     else:
       if c.errors > 0:
-        error "There were problems."
+        fatal "There were problems."
   of "use":
     projectCmd()
     singleArg()
-    var deps = clone(c, args[0], startIsDep = true)
-    patchNimbleFile(c, args[0], deps)
-    patchNimCfg c, deps, getCurrentDir()
-    if c.errors > 0:
-      error "There were problems."
+    let nimbleFile = patchNimbleFile(c, args[0])
+    if nimbleFile.len > 0:
+      installDependencies(c, nimbleFile, startIsDep = false)
   of "install":
     projectCmd()
     if args.len > 1:
-      error "install command takes a single argument"
+      fatal "install command takes a single argument"
     var nimbleFile = ""
     if args.len == 1:
       nimbleFile = args[0]
@@ -804,15 +908,17 @@ proc main =
         nimbleFile = x
         break
     if nimbleFile.len == 0:
-      error "could not find a .nimble file"
+      fatal "could not find a .nimble file"
     else:
-      installDependencies(c, nimbleFile)
+      installDependencies(c, nimbleFile, startIsDep = true)
   of "refresh":
     noArgs()
     updatePackages(c)
   of "search", "list":
-    updatePackages(c)
-    search getPackages(c.workspace), args
+    if c.workspace.len != 0:
+      updatePackages(c)
+      search getPackages(c.workspace), args
+    else: search @[], args
   of "updateprojects":
     updateDir(c, c.workspace, if args.len == 0: "" else: args[0])
   of "updatedeps":
@@ -822,7 +928,21 @@ proc main =
     if fileExists(args[0]):
       echo toJson(extractRequiresInfo(args[0]))
     else:
-      error "File does not exist: " & args[0]
+      fatal "File does not exist: " & args[0]
+  of "tag":
+    projectCmd()
+    if args.len == 0:
+      tag(c, ord(patch))
+    elif args[0].len == 1 and args[0][0] in {'a'..'z'}:
+      let field = ord(args[0][0]) - ord('a')
+      tag(c, field)
+    elif '.' in args[0]:
+      tag(c, args[0])
+    else:
+      var field: SemVerField
+      try: field = parseEnum[SemVerField](args[0])
+      except: fatal "tag command takes one of 'patch' 'minor' 'major', a SemVer tag, or a letter from 'a' to 'z'"
+      tag(c, ord(field))
   of "build", "test", "doc", "tasks":
     projectCmd()
     nimbleExec(action, args)
@@ -830,8 +950,7 @@ proc main =
     projectCmd()
     nimbleExec("", args)
   else:
-    error "Invalid action: " & action
+    fatal "Invalid action: " & action
 
 when isMainModule:
   main()
-

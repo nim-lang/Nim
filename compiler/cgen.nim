@@ -2180,7 +2180,10 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode): PNode =
 
     if m.hcrOn:
       # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)
-      cgsym(m, "programResult")
+      let sym = magicsys.getCompilerProc(m.g.graph, "programResult")
+      # ignore when not available, could be a module imported early in `system`
+      if sym != nil:
+        cgsymImpl m, sym
       if m.inHcrInitGuard:
         endBlock(m.initProc)
 

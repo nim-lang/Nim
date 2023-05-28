@@ -92,7 +92,8 @@ proc githubSearch(seen: var HashSet[string]; terms: seq[string]) =
         url: j.getOrDefault("html_url").getStr,
         downloadMethod: "git",
         tags: toTags(j.getOrDefault("topics")),
-        description: "<none>, not listed in packages.json",
+        description: j.getOrDefault("description").getStr,
+        license: j.getOrDefault("license").getOrDefault("spdx_id").getStr,
         web: j.getOrDefault("html_url").getStr
       )
       if not seen.containsOrIncl(p.url):
