@@ -103,7 +103,7 @@ type
     imports*: seq[ImportedModule] # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols
     p*: PProcCon               # procedure context
-    intTypeCache*: array[-5..32, PType] # cache some common integer types
+    intTypeCache*: array[27, PType] # cache some common integer types
                                         # to avoid type allocations
     nilTypeCache*: PType
     matchedConcept*: ptr TMatchedConcept # the current concept being matched
