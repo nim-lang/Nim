@@ -106,7 +106,7 @@ type
     keepCommits: bool
     cfgHere: bool
     p: Table[string, string] # name -> url mapping
-    errors: int
+    errors, warnings: int
     lockOption: LockOption
     lockFileToWrite: seq[LockFileEntry]
     lockFileToUse: Table[string, LockFileEntry]
@@ -224,7 +224,7 @@ proc warn(c: var AtlasContext; p: PackageName; arg: string) =
     message(c, "[Warning] ", p, arg)
   else:
     stdout.styledWriteLine(fgYellow, styleBright, "[Warning] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
-  inc c.errors
+  inc c.warnings
 
 proc error(c: var AtlasContext; p: PackageName; arg: string) =
   if c.noColors:
@@ -238,6 +238,8 @@ proc info(c: var AtlasContext; p: PackageName; arg: string) =
     message(c, "[Info] ", p, arg)
   else:
     stdout.styledWriteLine(fgGreen, styleBright, "[Info] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
+
+template projectFromCurrentDir(): PackageName = PackageName(getCurrentDir().splitPath.tail)
 
 proc sameVersionAs(tag, ver: string): bool =
   const VersionChars = {'0'..'9', '.'}
@@ -317,14 +319,16 @@ proc pushTag(c: var AtlasContext; tag: string) =
   else:
     info(c, c.projectDir.PackageName, "successfully pushed tag: " & tag)
 
-proc incrementTag(lastTag: string; field: Natural): string =
+proc incrementTag(c: var AtlasContext; lastTag: string; field: Natural): string =
   var startPos =
     if lastTag[0] in {'0'..'9'}: 0
     else: 1
   var endPos = lastTag.find('.', startPos)
   if field >= 1:
     for i in 1 .. field:
-      assert endPos != -1, "the last tag '" & lastTag & "' is missing . periods"
+      if endPos == -1:
+        error c, projectFromCurrentDir(), "the last tag '" & lastTag & "' is missing . periods"
+        return ""
       startPos = endPos + 1
       endPos = lastTag.find('.', startPos)
   if endPos == -1:
@@ -344,7 +348,7 @@ proc incrementLastTag(c: var AtlasContext; field: Natural): string =
       info c, c.projectDir.PackageName, "the current commit '" & currentCommit & "' is already tagged '" & lastTag & "'"
       lastTag
     else:
-      incrementTag(lastTag, field)
+      incrementTag(c, lastTag, field)
   else: "v0.0.1" # assuming no tags have been made yet
 
 proc tag(c: var AtlasContext; tag: string) =
@@ -601,8 +605,6 @@ proc traverse(c: var AtlasContext; start: string; startIsDep: bool): seq[CfgPath
 const
   configPatternBegin = "############# begin Atlas config section ##########\n"
   configPatternEnd =   "############# end Atlas config section   ##########\n"
-
-template projectFromCurrentDir(): PackageName = PackageName(getCurrentDir().splitPath.tail)
 
 proc patchNimCfg(c: var AtlasContext; deps: seq[CfgPath]; cfgPath: string) =
   var paths = "--noNimblePath\n"
@@ -935,6 +937,9 @@ proc main =
       tag(c, ord(patch))
     elif args[0].len == 1 and args[0][0] in {'a'..'z'}:
       let field = ord(args[0][0]) - ord('a')
+      tag(c, field)
+    elif args[0].len == 1 and args[0][0] in {'A'..'Z'}:
+      let field = ord(args[0][0]) - ord('A')
       tag(c, field)
     elif '.' in args[0]:
       tag(c, args[0])
