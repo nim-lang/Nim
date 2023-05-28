@@ -488,7 +488,7 @@
 - Fixed negative-indexed and Null-indexed arrays, so code like this do not compile anymore:
 
   ```nim
-  var a: array[-9 .. 0, T]
+  var a: array[-9 .. -1, T]
   var b: array['\0' .. '\0', T]
   ```
 
