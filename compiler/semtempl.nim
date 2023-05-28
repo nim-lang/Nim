@@ -616,11 +616,14 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   result = n
   var s: PSym
   if isTopLevel(c):
-    s = semIdentVis(c, skTemplate, n[namePos], {sfExported}, true)
+    s = semIdentVis(c, skTemplate, n[namePos], {sfExported})
     incl(s.flags, sfGlobal)
   else:
-    s = semIdentVis(c, skTemplate, n[namePos], {}, true)
+    s = semIdentVis(c, skTemplate, n[namePos], {})
   assert s.kind == skTemplate
+  
+  let info = getLineInfo(n[namePos])
+  suggestSym(c.graph, info, s, c.graph.usageSym)
 
   styleCheckDef(c, s)
   onDef(n[namePos].info, s)

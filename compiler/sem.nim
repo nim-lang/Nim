@@ -251,7 +251,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     suggestDecl(c, n, result)
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
-                 allowed: TSymFlags, reportToNimsuggest = false): PSym
+                 allowed: TSymFlags): PSym
   # identifier with visibility
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym
