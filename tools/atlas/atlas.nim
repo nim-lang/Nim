@@ -126,6 +126,7 @@ type
     GitTag = "git tag",
     GitTags = "git show-ref --tags",
     GitLastTaggedRef = "git rev-list --tags --max-count=1",
+    GitDescribe = "git describe",
     GitRevParse = "git rev-parse",
     GitCheckout = "git checkout",
     GitPush = "git push origin",
@@ -153,7 +154,7 @@ proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, 
   when MockupRun:
     assert TestLog[c.step].cmd == cmd, $(TestLog[c.step].cmd, cmd)
     case cmd
-    of GitDiff, GitTag, GitTags, GitLastTaggedRef, GitRevParse, GitPush, GitPull, GitCurrentCommit:
+    of GitDiff, GitTag, GitTags, GitLastTaggedRef, GitDescribe, GitRevParse, GitPush, GitPull, GitCurrentCommit:
       result = (TestLog[c.step].output, TestLog[c.step].exitCode)
     of GitCheckout:
       assert args[0] == TestLog[c.step].output
@@ -244,6 +245,18 @@ proc sameVersionAs(tag, ver: string): bool =
     result = safeCharAt(tag, idx-1) notin VersionChars and
       safeCharAt(tag, idx+ver.len) notin VersionChars
 
+proc gitDescribeRefTag(c: var AtlasContext; commit: string): string =
+  let (lt, status) = exec(c, GitDescribe, ["--tags", commit])
+  result = if status == 0: strutils.strip(lt) else: ""
+
+proc getLastTaggedCommit(c: var AtlasContext): string =
+  let (ltr, status) = exec(c, GitLastTaggedRef, [])
+  if status == 0:
+    let lastTaggedRef = ltr.strip()
+    let lastTag = gitDescribeRefTag(c, lastTaggedRef)
+    if lastTag.len != 0:
+      result = lastTag
+
 proc versionToCommit(c: var AtlasContext; d: Dependency): string =
   let (outp, status) = exec(c, GitTags, [])
   if status == 0:
@@ -256,7 +269,9 @@ proc versionToCommit(c: var AtlasContext; d: Dependency): string =
           if commitsAndTags[1].sameVersionAs(d.commit):
             return commitsAndTags[0]
         of strictlyLess:
-          if d.commit == InvalidCommit or not commitsAndTags[1].sameVersionAs(d.commit):
+          if d.commit == InvalidCommit:
+            return getLastTaggedCommit(c)
+          elif not commitsAndTags[1].sameVersionAs(d.commit):
             return commitsAndTags[0]
         of strictlyGreater:
           if commitsAndTags[1].sameVersionAs(d.commit):
@@ -314,10 +329,8 @@ proc incrementLastTag(c: var AtlasContext; field: Natural): string =
   if status == 0:
     let
       lastTaggedRef = ltr.strip()
-      (lt, _) = osproc.execCmdEx("git describe --tags " & lastTaggedRef)
-      lastTag = lt.strip()
-      (cc, _) = exec(c, GitCurrentCommit, [])
-      currentCommit = cc.strip()
+      lastTag = gitDescribeRefTag(c, lastTaggedRef)
+      currentCommit = exec(c, GitCurrentCommit, [])[0].strip()
 
     if lastTaggedRef == currentCommit:
       info c, c.projectDir.PackageName, "the current commit '" & currentCommit & "' is already tagged '" & lastTag & "'"
@@ -710,7 +723,7 @@ proc patchNimbleFile(c: var AtlasContext; dep: string): string =
             break
 
     if not found:
-      let line = "requires \"$1#head\"\n" % dep.escape("", "")
+      let line = "requires \"$1\"\n" % dep.escape("", "")
       if result.len > 0:
         let oldContent = readFile(result)
         writeFile result, oldContent & "\n" & line
