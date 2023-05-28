@@ -313,7 +313,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType; force0index: static[bool] =
         # Stdlib is not really prepared to work with negative-indexed Arrays whatsoever!.
         localError(c.config, n.info, arrayIndexErr("Negative integer", i))  # array[-9..0, T]
     of {nkFloatLit .. nkFloat128Lit}:  # Float-based array indexing.
-      if result.n[i].floatVal.isNan:   # -Inf,+Inf,-0.0 dont reach here, so no need to check.
+      if result.n[i].floatVal.isNaN:   # -Inf,+Inf,-0.0 dont reach here, so no need to check.
         localError(c.config, n.info, arrayIndexErr("NaN", i))  # array[NaN..NaN, T]
     of nkCharLit:                      # Char-based array indexing.
       if result.n[i].intVal == 0:
