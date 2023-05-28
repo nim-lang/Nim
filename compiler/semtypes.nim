@@ -311,7 +311,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType; force0index: static[bool] =
         # Use `force0index=true` to force 0-based index, but this cant be always `true`,
         # because code like `range[-9 .. 0]` is valid, but `array[-9 .. -1, int]` is not.
         # Stdlib is not really prepared to work with negative-indexed Arrays whatsoever!.
-        localError(c.config, n.info, arrayIndexErr("Negative integer", i))  # array[-9..0, T]
+        # localError(c.config, n.info, arrayIndexErr("Negative integer", i))  # array[-9..0, T]
+        message(c.config, n.info, warnProveIndex, arrayIndexErr("Negative integer", i))  # array[-9..0, T]
     of {nkFloatLit .. nkFloat128Lit}:  # Float-based array indexing.
       if result.n[i].floatVal.isNaN:   # -Inf,+Inf,-0.0 dont reach here, so no need to check.
         localError(c.config, n.info, arrayIndexErr("NaN", i))  # array[NaN..NaN, T]
