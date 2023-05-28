@@ -42,5 +42,5 @@ The standard distribution ships with the following tools:
     so can be useful to run your tests, even the most complex ones.
 
 - | [atlas](atlas.html)
-  | `atlas`:cmd: is a simple package cloner tool that automates some of the
-    workflows and needs for Nim's stdlib evolution.
+  | `atlas`:cmd: is a simple package cloner tool. It manages an isolated workspace that
+    contains projects and dependencies.
