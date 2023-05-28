@@ -1,9 +1,7 @@
 discard """
   targets: "cpp"
   cmd: "nim cpp $file"
-    output: '''
-NimClassNoNarent constructor one param called
-NimClass constructor one param called
+  output: '''
 1
 '''
 """
@@ -35,8 +33,8 @@ type NimClassNoNarent* = object
   x: int32
 
 proc makeNimClassNoParent(x:int32): NimClassNoNarent {. constructor.} =
-  echo "NimClassNoNarent constructor one param called"
-  this.x = 1
+  this.x = x
+  discard
 
 let nimClassNoParent = makeNimClassNoParent(1)
 echo nimClassNoParent.x #acess to this just fine. Notice the field will appear last because we are dealing with constructor calls here
@@ -47,8 +45,7 @@ var nimClassNoParentDef {.used.}: NimClassNoNarent  #test has a default construc
 type NimClass* = object of CppClass
 
 proc makeNimClass(x:int32): NimClass {. constructor:"NimClass('1 #1) : CppClass(0, #1) ".} =
-  echo "NimClass constructor one param called"
-  this.x = 1
+  this.x = x
 
 #optinially define the default constructor so we get rid of the cpp warn and we can declare the obj (note: default constructor of 'tyObject_NimClass__apRyyO8cfRsZtsldq1rjKA' is implicitly deleted because base class 'CppClass' has no default constructor)
 proc makeCppClass(): NimClass {. constructor: "NimClass() : CppClass(0, 0) ".} = 
