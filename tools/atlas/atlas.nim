@@ -222,21 +222,21 @@ proc warn(c: var AtlasContext; p: PackageName; arg: string) =
   if c.noColors:
     message(c, "[Warning] ", p, arg)
   else:
-    stdout.styledWriteLine(fgYellow, styleBright, "[Warning] ", resetStyle, fgCyan, "(", p.string, ")", fgDefault, " ", arg)
+    stdout.styledWriteLine(fgYellow, styleBright, "[Warning] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
   inc c.errors
 
 proc error(c: var AtlasContext; p: PackageName; arg: string) =
   if c.noColors:
     message(c, "[Error] ", p, arg)
   else:
-    stdout.styledWriteLine(fgRed, styleBright, "[Error] ", resetStyle, fgCyan, "(", p.string, ")", fgDefault, " ", arg)
+    stdout.styledWriteLine(fgRed, styleBright, "[Error] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
   inc c.errors
 
 proc info(c: var AtlasContext; p: PackageName; arg: string) =
   if c.noColors:
     message(c, "[Info] ", p, arg)
   else:
-    stdout.styledWriteLine(fgGreen, styleBright, "[Info] ", resetStyle, fgCyan, "(", p.string, ")", fgDefault, " ", arg)
+    stdout.styledWriteLine(fgGreen, styleBright, "[Info] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
 
 proc sameVersionAs(tag, ver: string): bool =
   const VersionChars = {'0'..'9', '.'}
