@@ -1219,14 +1219,11 @@ proc insert*[T](x: var seq[T], item: sink T, i = 0.Natural) {.noSideEffect.} =
       while j >= i:
         movingCopy(x[j+1], x[j])
         dec(j)
-    when nimvm:
-      defaultImpl()
+    when defined(js):
+      var it : T
+      {.emit: "`x` = `x` || []; `x`.splice(`i`, 0, `it`);".}
     else:
-      when defined(js):
-        var it : T
-        {.emit: "`x` = `x` || []; `x`.splice(`i`, 0, `it`);".}
-      else:
-        defaultImpl()
+      defaultImpl()
     x[i] = item
 
 when not defined(nimV2):
