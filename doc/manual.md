@@ -1601,9 +1601,9 @@ Often fixed size arrays turn out to be too inflexible; procedures should
 be able to deal with arrays of different sizes. The `openarray`:idx: type
 allows this; it can only be used for parameters. Open arrays are always
 indexed with an `int` starting at position 0. The `len`, `low`
-and `high` operations are available for open arrays too. Any array with
-a compatible base type can be passed to an open array parameter, the index
-type does not matter. In addition to arrays, sequences can also be passed
+and `high` operations are available for open arrays too. Arrays with
+an index starting at 0 and a compatible base type can be passed to an
+open array parameter. In addition to arrays, sequences can also be passed
 to an open array parameter.
 
 The `openarray` type cannot be nested: multidimensional open arrays are not
@@ -1614,6 +1614,16 @@ supported because this is seldom needed and cannot be done efficiently.
 
   testOpenArray([1,2,3])  # array[]
   testOpenArray(@[1,2,3]) # seq[]
+  ```
+
+To pass an array with an index not starting at 0 to an open array parameter,
+a type conversion may be used.
+
+  ```nim
+  proc testOpenArray(x: openArray[int]) = echo repr(x)
+
+  var x: array[3..5, int] = [1, 2, 3]
+  testOpenArray(array[0..2, int](x))
   ```
 
 Varargs

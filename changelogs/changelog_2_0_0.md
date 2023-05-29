@@ -224,6 +224,21 @@
 - Signed integer literals in `set` literals now default to a range type of
   `0..255` instead of `0..65535` (the maximum size of sets).
 
+- Arrays that start with an index other than 0 now cannot be passed to
+  `openArray` parameters. This is because procs defined on `openArray` that
+  return index values (like `algorithm.binarySearch`) will not give indexes
+  that are compatible with the original array. A type conversion may be used
+  to achieve the old behavior.
+
+  ```nim
+  proc foo(x: openArray[int]) = discard
+
+  var x: array[3..5, int] = [1, 2, 3]
+  foo(x) # error
+  foo(array[0..2, int](x)) # compiles
+  foo(x.toOpenArray(0, 2)) # also compiles
+  ```
+
 - Case statements with else branches put before elif/of branches in macros
   are rejected with "invalid order of case branches".
 

@@ -1263,7 +1263,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyArray:
       if (f[0].kind != tyGenericParam) and (a[1].kind == tyEmpty):
         return isSubtype
-      if firstOrd(nil, a[0]) != Zero:
+      if a[0].kind != tyGenericParam and firstOrd(c.c.config, a[0]) != Zero:
         # only arrays with a lower bound of 0 are compatible
         return isNone
       matchArrayOrSeq(a[1])

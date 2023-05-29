@@ -80,8 +80,9 @@ doAssertRaises(IndexDefect):
   foo(toOpenArray(seqq, 0, -2))
 
 foo(toOpenArray(arr, 9, 8))
-foo(toOpenArray(arr, 0, -1))
-foo(toOpenArray(arr, 1, 0))
+when false: # out of range indexes, give compile error
+  foo(toOpenArray(arr, 0, -1))
+  foo(toOpenArray(arr, 1, 0))
 doAssertRaises(IndexDefect):
   foo(toOpenArray(arr, 10, 8))
 
@@ -99,12 +100,13 @@ oaFirstElm(toOpenArray(seqq, 1, seqq.len-1))
 
 var arrNeg: array[-3 .. -1, int] = [1, 2, 3]
 foo(toOpenArray(arrNeg, -3, -1))
-foo(toOpenArray(arrNeg, 0, -1))
-foo(toOpenArray(arrNeg, -3, -4))
-doAssertRaises(IndexDefect):
-  foo(toOpenArray(arrNeg, -4, -1))
-doAssertRaises(IndexDefect):
-  foo(toOpenArray(arrNeg, -1, 0))
+when false: # out of range indexes, give compile error
+  foo(toOpenArray(arrNeg, 0, -1))
+  foo(toOpenArray(arrNeg, -3, -4))
+  doAssertRaises(IndexDefect):
+    foo(toOpenArray(arrNeg, -4, -1))
+  doAssertRaises(IndexDefect):
+    foo(toOpenArray(arrNeg, -1, 0))
 doAssertRaises(IndexDefect):
   foo(toOpenArray(arrNeg, -1, -3))
 doAssertRaises(Exception):
