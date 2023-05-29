@@ -485,12 +485,7 @@
 - Line numbers and filenames of source files work correctly inside templates for JavaScript targets.
 
 - Removed support for LCC (Local C), Pelles C, Digital Mars, Watcom compilers.
-- Fixed negative-indexed and Null-indexed arrays, so code like this do not compile anymore:
-
-  ```nim
-  var a: array[-9 .. -1, T]
-  var b: array['\0' .. '\0', T]
-  ```
+- Negative-indexed arrays and Null-indexed arrays now produce an error.
 
 
 ## Docgen
