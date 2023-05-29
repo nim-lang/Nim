@@ -1381,11 +1381,16 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyNil: result = f.allowsNil
     of tyProc:
       if a.callConv != ccClosure: result = isConvertible
+      result = isNone
     of tyPtr:
       # 'pointer' is NOT compatible to regionized pointers
       # so 'dealloc(regionPtr)' fails:
       if a.len == 1: result = isConvertible
-    of tyCstring: result = isConvertible
+    of tyCstring:
+      if isDefined(c.c.config, "nimPreviewCstringConversion"):
+        result = isNone
+      else:
+        result = isConvertible
     else: discard
   of tyString:
     case a.kind
