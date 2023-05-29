@@ -22,6 +22,7 @@ runnableExamples:
   assert myFile.changeFileExt("c") == "/path/to/my/file.c"
 
 ## **See also:**
+## * `paths <paths.html>`_ and `files <files.html>`_ modules for high-level file manipulation
 ## * `osproc module <osproc.html>`_ for process communication beyond
 ##   `execShellCmd proc`_
 ## * `uri module <uri.html>`_
