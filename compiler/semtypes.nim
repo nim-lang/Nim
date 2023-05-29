@@ -317,8 +317,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType; force0index: static[bool] =
       if result.n[i].floatVal.isNaN:   # -Inf,+Inf,-0.0 dont reach here, so no need to check.
         localError(c.config, n.info, arrayIndexErr("NaN", i))  # array[NaN..NaN, T]
     of nkCharLit:                      # Char-based array indexing.
-      #if result.n[i].intVal == 0:
-      localError(c.config, n.info, arrayIndexErr("Null character", i))  # array['\0'..'\0', T]
+      if result.n[i].intVal == 0:
+        localError(c.config, n.info, arrayIndexErr("Null character", i))  # array['\0'..'\0', T]
     else: discard
     # This is a valid array index if reaches here.
 
