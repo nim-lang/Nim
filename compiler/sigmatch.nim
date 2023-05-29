@@ -1387,7 +1387,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # so 'dealloc(regionPtr)' fails:
       if a.len == 1: result = isConvertible
     of tyCstring:
-      if isDefined(c.c.config, "nimPreviewCstringConversion"):
+      if true or isDefined(c.c.config, "nimPreviewCstringConversion"):
         result = isNone
       else:
         result = isConvertible
