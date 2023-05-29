@@ -1387,10 +1387,10 @@ proc genVarPrototype(m: BModule, n: PNode) =
   if sym.owner.id != m.module.id:
     # else we already have the symbol generated!
     assert(sym.loc.r != "")
+    incl(m.declaredThings, sym.id)
     if sfThread in sym.flags:
       declareThreadVar(m, sym, true)
     else:
-      incl(m.declaredThings, sym.id)
       if sym.kind in {skLet, skVar, skField, skForVar} and sym.alignment > 0:
         m.s[cfsVars].addf "NIM_ALIGN($1) ", [rope(sym.alignment)]
       m.s[cfsVars].add(if m.hcrOn: "static " else: "extern ")
