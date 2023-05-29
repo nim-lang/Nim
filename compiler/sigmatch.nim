@@ -1386,11 +1386,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # 'pointer' is NOT compatible to regionized pointers
       # so 'dealloc(regionPtr)' fails:
       if a.len == 1: result = isConvertible
-    of tyCstring:
-      if true or isDefined(c.c.config, "nimPreviewCstringConversion"):
-        result = isNone
-      else:
-        result = isConvertible
+    of tyCstring: result = isConvertible
     else: discard
   of tyString:
     case a.kind
