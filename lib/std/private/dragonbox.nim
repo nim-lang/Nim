@@ -34,7 +34,6 @@ const
 ##
 ##  It is a simplified version of the reference implementation found here:
 ##  https://github.com/jk-jeon/dragonbox
-##  https://github.com/jk-jeon/dragonbox
 ##
 ##  The reference implementation also works with single-precision floating-point numbers and
 ##  has options to configure the rounding mode.
