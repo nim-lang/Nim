@@ -335,7 +335,10 @@ proc getSimpleTypeDesc(m: BModule; typ: PType): Rope =
 proc pushType(m: BModule; typ: PType) =
   for i in 0..high(m.typeStack):
     # pointer equality is good enough here:
-    if m.typeStack[i] == typ: return
+    #if m.typeStack[i] == typ: return
+    let sig = hashType(typ, m.config)
+    let sig2 = hashType(m.typeStack[i], m.config)
+    if sig == sig2: return
   m.typeStack.add(typ)
 
 proc getTypePre(m: BModule; typ: PType; sig: SigHash): Rope =
@@ -431,12 +434,9 @@ proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
   else:
     # little hack for now to prevent multiple definitions of the same
     # Seq_Content:
-    appcg(m, m.s[cfsTypes], """$N
-$3ifndef $2_Content_PP
-$3define $2_Content_PP
-struct $2_Content { NI cap; $1 data[SEQ_DECL_SIZE];};
-$3endif$N
-      """, [getTypeDescAux(m, t.skipTypes(abstractInst)[0], check, dkVar), result, rope"#"])
+    appcg(m, m.s[cfsTypes], """
+struct $2_Content { NI cap; $1 data[SEQ_DECL_SIZE]; };
+""", [getTypeDescAux(m, t.skipTypes(abstractInst)[0], check, dkVar), result])
 
 proc paramStorageLoc(param: PSym): TStorageLoc =
   if param.typ.skipTypes({tyVar, tyLent, tyTypeDesc}).kind notin {
