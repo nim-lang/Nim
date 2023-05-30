@@ -868,7 +868,7 @@ proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
       error c, toName("nim"), "cannot parse version requirement"
       return
   let csourcesVersion =
-    if nimVersion.isDevel or (major >= 1 and minor >= 9):
+    if nimVersion.isDevel or (major >= 1 and minor >= 9) or major >= 2:
       # already uses csources_v2
       "csources_v2"
     elif major == 0:
@@ -909,7 +909,7 @@ proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
     let pathEntry = (c.workspace / nimDest / "bin")
     when defined(windows):
       writeFile "activate.bat", BatchFile % pathEntry.replace('/', '\\')
-      info c, toName(nimDest), "RUN\nnim-" & nimVersion & "activate.bat"
+      info c, toName(nimDest), "RUN\nnim-" & nimVersion & "\\activate.bat"
     else:
       writeFile "activate.sh", ShellFile % pathEntry
       info c, toName(nimDest), "RUN\nsource nim-" & nimVersion & "/activate.sh"
