@@ -1158,6 +1158,8 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false)
   # (instead of forward declaration) or header for function body with "_actual" postfix
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
   var name = prc.loc.r
+  if not asPtr and isReloadable(m, prc):
+    name.add("_actual")
   # careful here! don't access ``prc.ast`` as that could reload large parts of
   # the object graph!
   if prc.constraint.isNil:

@@ -216,13 +216,9 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
     elif frmt[i] == '#' and frmt[i+1] == '#':
       inc(i, 2)
       strLit.add("#")
-
-    var start = i
-    while i < frmt.len:
-      if frmt[i] != '$' and frmt[i] != '#': inc(i)
-      else: break
-    if i - 1 >= start:
-      strLit.add(substr(frmt, start, i - 1))
+    else:
+      strLit.add(frmt[i])
+      inc(i)
 
   flushStrLit()
   result.add newCall(ident"rope", resVar)
@@ -1387,10 +1383,10 @@ proc genVarPrototype(m: BModule, n: PNode) =
   if sym.owner.id != m.module.id:
     # else we already have the symbol generated!
     assert(sym.loc.r != "")
+    incl(m.declaredThings, sym.id)
     if sfThread in sym.flags:
       declareThreadVar(m, sym, true)
     else:
-      incl(m.declaredThings, sym.id)
       if sym.kind in {skLet, skVar, skField, skForVar} and sym.alignment > 0:
         m.s[cfsVars].addf "NIM_ALIGN($1) ", [rope(sym.alignment)]
       m.s[cfsVars].add(if m.hcrOn: "static " else: "extern ")
@@ -1479,12 +1475,15 @@ proc genMainProc(m: BModule) =
                        [handle, strLit])
 
     preMainCode.add(loadLib("hcr_handle", "hcrGetProc"))
-    preMainCode.add("\tvoid* rtl_handle;\L")
-    preMainCode.add(loadLib("rtl_handle", "nimGC_setStackBottom"))
-    preMainCode.add(hcrGetProcLoadCode(m, "nimGC_setStackBottom", "nimrtl_", "rtl_handle", "nimGetProcAddr"))
-    preMainCode.add("\tinner = PreMain;\L")
-    preMainCode.add("\tinitStackBottomWith_actual((void *)&inner);\L")
-    preMainCode.add("\t(*inner)();\L")
+    if m.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
+      preMainCode.add("\t$1PreMain();\L" % [rope m.config.nimMainPrefix])
+    else:
+      preMainCode.add("\tvoid* rtl_handle;\L")
+      preMainCode.add(loadLib("rtl_handle", "nimGC_setStackBottom"))
+      preMainCode.add(hcrGetProcLoadCode(m, "nimGC_setStackBottom", "nimrtl_", "rtl_handle", "nimGetProcAddr"))
+      preMainCode.add("\tinner = $1PreMain;\L" % [rope m.config.nimMainPrefix])
+      preMainCode.add("\tinitStackBottomWith_actual((void *)&inner);\L")
+      preMainCode.add("\t(*inner)();\L")
   else:
     preMainCode.add("\t$1PreMain();\L" % [rope m.config.nimMainPrefix])
 
