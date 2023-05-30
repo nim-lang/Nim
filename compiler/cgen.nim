@@ -216,13 +216,9 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
     elif frmt[i] == '#' and frmt[i+1] == '#':
       inc(i, 2)
       strLit.add("#")
-
-    var start = i
-    while i < frmt.len:
-      if frmt[i] != '$' and frmt[i] != '#': inc(i)
-      else: break
-    if i - 1 >= start:
-      strLit.add(substr(frmt, start, i - 1))
+    else:
+      strLit.add(frmt[i])
+      inc(i)
 
   flushStrLit()
   result.add newCall(ident"rope", resVar)
