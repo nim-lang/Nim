@@ -11,7 +11,7 @@
 
 import std / [parseopt, strutils, os, osproc, tables, sets, json, jsonutils,
   parsecfg, streams, terminal]
-import parse_requires, osutils, packagesjson
+import parse_requires, osutils, packagesjson, compiledpatterns
 
 from unicode import nil
 
@@ -57,6 +57,7 @@ Options:
   --workspace=DIR       use DIR as workspace
   --genlock             generate a lock file (use with `clone` and `update`)
   --uselock             use the lock file for the build
+  --autoinit            auto initialize a workspace
   --colors=on|off       turn on|off colored output
   --version             show the version
   --help                show this help
@@ -105,8 +106,10 @@ type
     hasPackageList: bool
     keepCommits: bool
     cfgHere: bool
+    usesOverrides: bool
     p: Table[string, string] # name -> url mapping
     errors, warnings: int
+    overrides: Patterns
     lockOption: LockOption
     lockFileToWrite: seq[LockFileEntry]
     lockFileToUse: Table[string, LockFileEntry]
@@ -382,14 +385,27 @@ proc fillPackageLookupTable(c: var AtlasContext) =
 
 proc toUrl(c: var AtlasContext; p: string): string =
   if p.isUrl:
+    if c.usesOverrides:
+      result = c.overrides.substitute(p)
+      if result.len > 0: return result
     result = p
   else:
+    # either the project name or the URL can be overwritten!
+    if c.usesOverrides:
+      result = c.overrides.substitute(p)
+      if result.len > 0: return result
+
     fillPackageLookupTable(c)
     result = c.p.getOrDefault(unicode.toLower p)
-  if result.len == 0:
-    result = getUrlFromGithub(p)
+
     if result.len == 0:
-      inc c.errors
+      result = getUrlFromGithub(p)
+      if result.len == 0:
+        inc c.errors
+
+    if c.usesOverrides:
+      let newUrl = c.overrides.substitute(result)
+      if newUrl.len > 0: return newUrl
 
 proc toName(p: string): PackageName =
   if p.isUrl:
@@ -760,16 +776,41 @@ proc absoluteDepsDir(workspace, value: string): string =
   else:
     result = workspace / value
 
-when MockupRun:
-  proc autoWorkspace(): string =
-    result = getCurrentDir()
-    while result.len > 0 and dirExists(result / ".git"):
-      result = result.parentDir()
+proc autoWorkspace(): string =
+  result = getCurrentDir()
+  while result.len > 0 and dirExists(result / ".git"):
+    result = result.parentDir()
 
 proc createWorkspaceIn(workspace, depsDir: string) =
   if not fileExists(workspace / AtlasWorkspace):
     writeFile workspace / AtlasWorkspace, "deps=\"$#\"" % escape(depsDir, "", "")
   createDir absoluteDepsDir(workspace, depsDir)
+
+proc parseOverridesFile(c: var AtlasContext; filename: string) =
+  const Separator = " -> "
+  let path = c.workspace / filename
+  var f: File
+  if open(f, path):
+    c.usesOverrides = true
+    try:
+      var lineCount = 1
+      for line in lines(path):
+        let splitPos = line.find(Separator)
+        if splitPos >= 0 and line[0] != '#':
+          let key = line.substr(0, splitPos-1)
+          let val = line.substr(splitPos+len(Separator))
+          if key.len == 0 or val.len == 0:
+            error c, toName(path), "key/value must not be empty"
+          let err = c.overrides.addPattern(key, val)
+          if err.len > 0:
+            error c, toName(path), "(" & $lineCount & "): " & err
+        else:
+          discard "ignore the line"
+        inc lineCount
+    finally:
+      close f
+  else:
+    error c, toName(path), "cannot open: " & path
 
 proc readConfig(c: var AtlasContext) =
   let configFile = c.workspace / AtlasWorkspace
@@ -789,6 +830,8 @@ proc readConfig(c: var AtlasContext) =
       case e.key.normalize
       of "deps":
         c.depsDir = absoluteDepsDir(c.workspace, e.value)
+      of "overrides":
+        parseOverridesFile(c, e.value)
       else:
         warn c, toName(configFile), "ignored unknown setting: " & e.key
     of cfgOption:
@@ -813,7 +856,7 @@ proc main =
       fatal action & " command must be executed in a project, not in the workspace"
 
   var c = AtlasContext(projectDir: getCurrentDir(), workspace: "")
-
+  var autoinit = false
   for kind, key, val in getopt():
     case kind
     of cmdArgument:
@@ -842,6 +885,7 @@ proc main =
         else:
           writeHelp()
       of "cfghere": c.cfgHere = true
+      of "autoinit": autoinit = true
       of "genlock":
         if c.lockOption != useLock:
           c.lockOption = genLock
@@ -870,6 +914,9 @@ proc main =
       if c.workspace.len > 0:
         readConfig c
         info c, toName(c.workspace), "is the current workspace"
+      elif autoinit:
+        c.workspace = autoWorkspace()
+        createWorkspaceIn c.workspace, c.depsDir
       elif action notin ["search", "list"]:
         fatal "No workspace found. Run `atlas init` if you want this current directory to be your workspace."
 
