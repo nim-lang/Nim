@@ -255,6 +255,7 @@
 
 - Pragma `{.inline.}` generates `__forceinline` if `__has_attribute(__forceinline)` for GCC and Clang.
 
+- `strutils.split` and `strutils.rsplit` now forbid an empty separator.
 
 ## Standard library additions and changes
 
