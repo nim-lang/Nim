@@ -53,6 +53,13 @@ template main() =
     doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
     doAssert s.split(' ', maxsplit = 1) == @["", "this is an example  "]
     doAssert s.split(" ", maxsplit = 4) == @["", "this", "is", "an", "example  "]
+    # Empty string:
+    doAssert "".split() == @[""]
+    doAssert "".split(" ") == @[""]
+    doAssert "".split({' '}) == @[""]
+    # Empty separators:
+    doAssertRaises(AssertionDefect): discard s.split({})
+    doAssertRaises(AssertionDefect): discard s.split("")
 
   block: # splitLines
     let fixture = "a\nb\rc\r\nd"
@@ -69,6 +76,13 @@ template main() =
     doAssert rsplit(":foo:bar", sep = ':', maxsplit = 2) == @["", "foo", "bar"]
     doAssert rsplit(":foo:bar", sep = ':', maxsplit = 3) == @["", "foo", "bar"]
     doAssert rsplit("foothebar", sep = "the") == @["foo", "bar"]
+    # Empty string:
+    doAssert "".rsplit() == @[""]
+    doAssert "".rsplit(" ") == @[""]
+    doAssert "".rsplit({' '}) == @[""]
+    # Empty separators:
+    doAssertRaises(AssertionDefect): discard "".rsplit({})
+    doAssertRaises(AssertionDefect): discard "".rsplit("")
 
   block: # splitWhitespace
     let s = " this is an example  "
