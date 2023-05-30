@@ -1159,7 +1159,7 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
   genMemberProcParams(m, prc, superCall, rettype, params, check, true, false) 
   var fnConst, override: string
   if isCtor:
-      name = typDesc
+    name = typDesc
   if isFnConst:
     fnConst = " const"
   if isFwdDecl:
