@@ -933,10 +933,17 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     var discIndex = newRopeAppender()
     rdSetElemLoc(p.config, v, u.t, discIndex)
     if optTinyRtti in p.config.globalOptions:
-      # not sure how to use `genEnumToStr` here
-      if p.config.getStdlibVersion < (1, 5, 1):
-        const code = "{ #raiseFieldError($1); "
-        linefmt(p, cpsStmts, code, [strLit])
+      let base = disc.typ.skipTypes(abstractInst+{tyRange})
+      case base.kind
+      of tyEnum:
+        const code = "{ #raiseFieldErrorStr($1, $2); "
+        let toStrProc = getToStringProc(p.module.g.graph, base)
+        # XXX need to modify this logic for IC.
+        # need to analyze nkFieldCheckedExpr and marks procs "used" like range checks in dce
+        var toStr: TLoc
+        expr(p, newSymNode(toStrProc), toStr)
+        let enumStr = "$1($2)" % [rdLoc(toStr), rdLoc(v)]
+        linefmt(p, cpsStmts, code, [strLit, enumStr])
       else:
         const code = "{ #raiseFieldError2($1, (NI)$2); "
         linefmt(p, cpsStmts, code, [strLit, discIndex])
@@ -947,12 +954,8 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
       var firstLit = newRopeAppender()
       int64Literal(cast[int](first), firstLit)
       let discName = genTypeInfo(p.config, p.module, disc.sym.typ, e.info)
-      if p.config.getStdlibVersion < (1,5,1):
-        const code = "{ #raiseFieldError($1); "
-        linefmt(p, cpsStmts, code, [strLit])
-      else:
-        const code = "{ #raiseFieldError2($1, #reprDiscriminant(((NI)$2) + (NI)$3, $4)); "
-        linefmt(p, cpsStmts, code, [strLit, discIndex, firstLit, discName])
+      const code = "{ #raiseFieldError2($1, #reprDiscriminant(((NI)$2) + (NI)$3, $4)); "
+      linefmt(p, cpsStmts, code, [strLit, discIndex, firstLit, discName])
 
     raiseInstr(p, p.s(cpsStmts))
     linefmt p, cpsStmts, "}$n", []

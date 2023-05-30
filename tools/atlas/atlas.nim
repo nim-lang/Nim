@@ -106,7 +106,7 @@ type
     keepCommits: bool
     cfgHere: bool
     p: Table[string, string] # name -> url mapping
-    errors: int
+    errors, warnings: int
     lockOption: LockOption
     lockFileToWrite: seq[LockFileEntry]
     lockFileToUse: Table[string, LockFileEntry]
@@ -128,6 +128,7 @@ type
     GitTag = "git tag",
     GitTags = "git show-ref --tags",
     GitLastTaggedRef = "git rev-list --tags --max-count=1",
+    GitDescribe = "git describe",
     GitRevParse = "git rev-parse",
     GitCheckout = "git checkout",
     GitPush = "git push origin",
@@ -155,7 +156,7 @@ proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, 
   when MockupRun:
     assert TestLog[c.step].cmd == cmd, $(TestLog[c.step].cmd, cmd)
     case cmd
-    of GitDiff, GitTag, GitTags, GitLastTaggedRef, GitRevParse, GitPush, GitPull, GitCurrentCommit:
+    of GitDiff, GitTag, GitTags, GitLastTaggedRef, GitDescribe, GitRevParse, GitPush, GitPull, GitCurrentCommit:
       result = (TestLog[c.step].output, TestLog[c.step].exitCode)
     of GitCheckout:
       assert args[0] == TestLog[c.step].output
@@ -222,21 +223,23 @@ proc warn(c: var AtlasContext; p: PackageName; arg: string) =
   if c.noColors:
     message(c, "[Warning] ", p, arg)
   else:
-    stdout.styledWriteLine(fgYellow, styleBright, "[Warning] ", resetStyle, fgCyan, "(", p.string, ")", fgDefault, " ", arg)
-  inc c.errors
+    stdout.styledWriteLine(fgYellow, styleBright, "[Warning] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
+  inc c.warnings
 
 proc error(c: var AtlasContext; p: PackageName; arg: string) =
   if c.noColors:
     message(c, "[Error] ", p, arg)
   else:
-    stdout.styledWriteLine(fgRed, styleBright, "[Error] ", resetStyle, fgCyan, "(", p.string, ")", fgDefault, " ", arg)
+    stdout.styledWriteLine(fgRed, styleBright, "[Error] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
   inc c.errors
 
 proc info(c: var AtlasContext; p: PackageName; arg: string) =
   if c.noColors:
     message(c, "[Info] ", p, arg)
   else:
-    stdout.styledWriteLine(fgGreen, styleBright, "[Info] ", resetStyle, fgCyan, "(", p.string, ")", fgDefault, " ", arg)
+    stdout.styledWriteLine(fgGreen, styleBright, "[Info] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
+
+template projectFromCurrentDir(): PackageName = PackageName(getCurrentDir().splitPath.tail)
 
 proc sameVersionAs(tag, ver: string): bool =
   const VersionChars = {'0'..'9', '.'}
@@ -252,6 +255,18 @@ proc sameVersionAs(tag, ver: string): bool =
     result = safeCharAt(tag, idx-1) notin VersionChars and
       safeCharAt(tag, idx+ver.len) notin VersionChars
 
+proc gitDescribeRefTag(c: var AtlasContext; commit: string): string =
+  let (lt, status) = exec(c, GitDescribe, ["--tags", commit])
+  result = if status == 0: strutils.strip(lt) else: ""
+
+proc getLastTaggedCommit(c: var AtlasContext): string =
+  let (ltr, status) = exec(c, GitLastTaggedRef, [])
+  if status == 0:
+    let lastTaggedRef = ltr.strip()
+    let lastTag = gitDescribeRefTag(c, lastTaggedRef)
+    if lastTag.len != 0:
+      result = lastTag
+
 proc versionToCommit(c: var AtlasContext; d: Dependency): string =
   let (outp, status) = exec(c, GitTags, [])
   if status == 0:
@@ -264,7 +279,9 @@ proc versionToCommit(c: var AtlasContext; d: Dependency): string =
           if commitsAndTags[1].sameVersionAs(d.commit):
             return commitsAndTags[0]
         of strictlyLess:
-          if d.commit == InvalidCommit or not commitsAndTags[1].sameVersionAs(d.commit):
+          if d.commit == InvalidCommit:
+            return getLastTaggedCommit(c)
+          elif not commitsAndTags[1].sameVersionAs(d.commit):
             return commitsAndTags[0]
         of strictlyGreater:
           if commitsAndTags[1].sameVersionAs(d.commit):
@@ -302,14 +319,16 @@ proc pushTag(c: var AtlasContext; tag: string) =
   else:
     info(c, c.projectDir.PackageName, "successfully pushed tag: " & tag)
 
-proc incrementTag(lastTag: string; field: Natural): string =
+proc incrementTag(c: var AtlasContext; lastTag: string; field: Natural): string =
   var startPos =
     if lastTag[0] in {'0'..'9'}: 0
     else: 1
   var endPos = lastTag.find('.', startPos)
   if field >= 1:
     for i in 1 .. field:
-      assert endPos != -1, "the last tag '" & lastTag & "' is missing . periods"
+      if endPos == -1:
+        error c, projectFromCurrentDir(), "the last tag '" & lastTag & "' is missing . periods"
+        return ""
       startPos = endPos + 1
       endPos = lastTag.find('.', startPos)
   if endPos == -1:
@@ -322,16 +341,14 @@ proc incrementLastTag(c: var AtlasContext; field: Natural): string =
   if status == 0:
     let
       lastTaggedRef = ltr.strip()
-      (lt, _) = osproc.execCmdEx("git describe --tags " & lastTaggedRef)
-      lastTag = lt.strip()
-      (cc, _) = exec(c, GitCurrentCommit, [])
-      currentCommit = cc.strip()
+      lastTag = gitDescribeRefTag(c, lastTaggedRef)
+      currentCommit = exec(c, GitCurrentCommit, [])[0].strip()
 
     if lastTaggedRef == currentCommit:
       info c, c.projectDir.PackageName, "the current commit '" & currentCommit & "' is already tagged '" & lastTag & "'"
       lastTag
     else:
-      incrementTag(lastTag, field)
+      incrementTag(c, lastTag, field)
   else: "v0.0.1" # assuming no tags have been made yet
 
 proc tag(c: var AtlasContext; tag: string) =
@@ -589,8 +606,6 @@ const
   configPatternBegin = "############# begin Atlas config section ##########\n"
   configPatternEnd =   "############# end Atlas config section   ##########\n"
 
-template projectFromCurrentDir(): PackageName = PackageName(getCurrentDir().splitPath.tail)
-
 proc patchNimCfg(c: var AtlasContext; deps: seq[CfgPath]; cfgPath: string) =
   var paths = "--noNimblePath\n"
   for d in deps:
@@ -718,7 +733,7 @@ proc patchNimbleFile(c: var AtlasContext; dep: string): string =
             break
 
     if not found:
-      let line = "requires \"$1#head\"\n" % dep.escape("", "")
+      let line = "requires \"$1\"\n" % dep.escape("", "")
       if result.len > 0:
         let oldContent = readFile(result)
         writeFile result, oldContent & "\n" & line
@@ -922,6 +937,9 @@ proc main =
       tag(c, ord(patch))
     elif args[0].len == 1 and args[0][0] in {'a'..'z'}:
       let field = ord(args[0][0]) - ord('a')
+      tag(c, field)
+    elif args[0].len == 1 and args[0][0] in {'A'..'Z'}:
+      let field = ord(args[0][0]) - ord('A')
       tag(c, field)
     elif '.' in args[0]:
       tag(c, args[0])

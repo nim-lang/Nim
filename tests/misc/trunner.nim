@@ -434,7 +434,6 @@ mused3.nim(75, 10) Hint: duplicate import of 'mused3a'; previous import here: mu
     fn("-d:case2 --gc:refc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
     fn("-d:case1 -b:js"): """mfield_defect.nim(25, 15) Error: field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
     fn("-d:case2 -b:js"): """field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
-    # 3 instead of k3, because of lack of RTTI
-    fn("-d:case2 --gc:arc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = 3'"""
+    fn("-d:case2 --gc:arc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
 else:
   discard # only during debugging, tests added here will run with `-d:nimTestsTrunnerDebugging` enabled

@@ -1,7 +1,7 @@
 # Atlas Package Cloner
 
-Atlas is a simple package cloner tool that automates some of the
-workflows and needs for Nim's stdlib evolution.
+Atlas is a simple package cloner tool. It manages an isolated workspace that
+contains projects and dependencies.
 
 Atlas is compatible with Nimble in the sense that it supports the Nimble
 file format.
@@ -103,7 +103,7 @@ For example:
 ```
 
 
-### Clone/Update <url>
+### Clone/Update <url>/<package name>
 
 Clones a URL and all of its dependencies (recursively) into the workspace.
 Creates or patches a `nim.cfg` file with the required `--path` entries.
@@ -111,12 +111,8 @@ Creates or patches a `nim.cfg` file with the required `--path` entries.
 **Note**: Due to the used algorithms an `update` is the same as a `clone`.
 
 
-### Clone/Update <package name>
-
-The `<package name>` is translated into an URL via `packages.json` and
-then `clone <url>` is performed.
-
-**Note**: Due to the used algorithms an `update` is the same as a `clone`.
+If a `<package name>` is given instead the name is first translated into an URL
+via `packages.json` or via a github search.
 
 
 ### Search <term term2 term3 ...>
@@ -129,10 +125,10 @@ in its description (or name or list of tags).
 
 Use the .nimble file to setup the project's dependencies.
 
-### UpdateWorkspace [filter]
+### UpdateProjects / updateDeps [filter]
 
-Update every package in the workspace that has a remote URL that
-matches `filter` if a filter is given. The package is only updated
+Update every project / dependency in the workspace that has a remote URL that
+matches `filter` if a filter is given. The project / dependency is only updated
 if there are no uncommitted changes.
 
 ### Others
