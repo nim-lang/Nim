@@ -75,10 +75,10 @@ const
 const
   signMask*: BitsType = not (not BitsType(0) shr 1)
 
-proc constructDouble*(bits: BitsType): Double {.constructor.} =
+proc constructDouble*(bits: BitsType): Double  =
   result.bits = bits
 
-proc constructDouble*(value: ValueType): Double {.constructor.} =
+proc constructDouble*(value: ValueType): Double  =
   result.bits = cast[typeof(result.bits)](value)
 
 proc physicalSignificand*(this: Double): BitsType {.noSideEffect.} =
