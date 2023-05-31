@@ -21,8 +21,3 @@ jobs:
             or it will be closed in 30 days. Thank you for your contributions.
           close-pr-message: >
             This pull request has been marked as stale and closed due to inactivity after 395 days.
-          stale-issue-message: >
-            This issue is stale because it has been open for 5 years with no activity.
-            Contribute a fix or comment on the issue, or it will be closed in 90 days.
-          close-issue-message: >
-            This issue has been marked as stale and closed due to inactivity after 1915 days.
