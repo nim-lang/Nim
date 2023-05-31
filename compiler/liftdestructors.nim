@@ -83,7 +83,10 @@ proc genBuiltin(c: var TLiftCtx; magic: TMagic; name: string; i: PNode): PNode =
   result = genBuiltin(c.g, c.idgen, magic, name, i)
 
 proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
-  if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink, attachedDup}:
+  if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink}:
+    body.add newAsgnStmt(x, y)
+  elif c.kind == attachedDup:
+    body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
     body.add newAsgnStmt(x, y)
   elif c.kind == attachedDestructor and c.addMemReset:
     let call = genBuiltin(c, mDefault, "default", x)
@@ -541,7 +544,11 @@ proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
 proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
-  of attachedAsgn, attachedDeepCopy, attachedDup:
+  of attachedDup:
+    body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
+    body.add setLenSeqCall(c, t, x, y)
+    forallElements(c, t, body, x, y)
+  of attachedAsgn, attachedDeepCopy:
     # we generate:
     # setLen(dest, y.len)
     # var i = 0
@@ -611,7 +618,10 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
 proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
-  of attachedAsgn, attachedDeepCopy, attachedDup:
+  of attachedDup:
+    body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
+    body.add callCodegenProc(c.g, "nimAsgnStrV2", c.info, genAddr(c, x), y)
+  of attachedAsgn, attachedDeepCopy:
     body.add callCodegenProc(c.g, "nimAsgnStrV2", c.info, genAddr(c, x), y)
   of attachedSink:
     let moveCall = genBuiltin(c, mMove, "move", x)
@@ -663,7 +673,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   # dynamic Acyclic refs need to use dyn decRef
 
   let tmp =
-    if isCyclic and c.kind in {attachedAsgn, attachedSink}:
+    if isCyclic and c.kind in {attachedAsgn, attachedSink, attachedDup}:
       declareTempOf(c, body, x)
     else:
       x
@@ -734,7 +744,7 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
   let isCyclic = c.g.config.selectedGC == gcOrc
   let tmp =
-    if isCyclic and c.kind in {attachedAsgn, attachedSink}:
+    if isCyclic and c.kind in {attachedAsgn, attachedSink, attachedDup}:
       declareTempOf(c, body, xenv)
     else:
       xenv
@@ -757,6 +767,8 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.add genIf(c, cond, actions)
       body.add newAsgnStmt(x, y)
   of attachedAsgn, attachedDup:
+    if c.kind == attachedDup:
+      body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
     let yenv = genBuiltin(c, mAccessEnv, "accessEnv", y)
     yenv.typ = getSysType(c.g, c.info, tyPointer)
     if isCyclic:
@@ -846,6 +858,8 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.add genIf(c, xx, callCodegenProc(c.g, "nimDecWeakRef", c.info, xx))
       body.add newAsgnStmt(x, y)
     of attachedAsgn, attachedDup:
+      if c.kind == attachedDup:
+        body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
       let yy = genBuiltin(c, mAccessEnv, "accessEnv", y)
       yy.typ = getSysType(c.g, c.info, tyPointer)
       body.add genIf(c, yy, callCodegenProc(c.g, "nimIncRef", c.info, yy))
@@ -869,6 +883,8 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, xx)
   case c.kind
   of attachedSink, attachedAsgn, attachedDup:
+    if c.kind == attachedDup:
+      body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
     body.add genIf(c, xx, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
