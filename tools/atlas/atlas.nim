@@ -56,6 +56,7 @@ Options:
   --cfgHere             also create/maintain a nim.cfg in the current
                         working directory
   --workspace=DIR       use DIR as workspace
+  --project=DIR         use DIR as the current project
   --genlock             generate a lock file (use with `clone` and `update`)
   --uselock             use the lock file for the build
   --autoinit            auto initialize a workspace
@@ -103,7 +104,7 @@ type
     processed: Table[string, int] # the key is (url / commit)
 
   AtlasContext = object
-    projectDir, workspace, depsDir: string
+    projectDir, workspace, depsDir, currentDir: string
     hasPackageList: bool
     keepCommits: bool
     cfgHere: bool
@@ -115,7 +116,6 @@ type
     lockFileToWrite: seq[LockFileEntry]
     lockFileToUse: Table[string, LockFileEntry]
     when MockupRun:
-      currentDir: string
       step: int
       mockupSuccess: bool
     noColors: bool
@@ -188,7 +188,6 @@ proc cloneUrl(c: var AtlasContext; url, dest: string; cloneUsingHttps: bool): st
 
 template withDir*(c: var AtlasContext; dir: string; body: untyped) =
   when MockupRun:
-    c.currentDir = dir
     body
   else:
     let oldDir = getCurrentDir()
@@ -243,7 +242,9 @@ proc info(c: var AtlasContext; p: PackageName; arg: string) =
   else:
     stdout.styledWriteLine(fgGreen, styleBright, "[Info] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
 
-template projectFromCurrentDir(): PackageName = PackageName(getCurrentDir().splitPath.tail)
+template projectFromCurrentDir(): PackageName = PackageName(c.currentDir.splitPath.tail)
+
+proc readableFile(s: string): string = relativePath(s, getCurrentDir())
 
 proc sameVersionAs(tag, ver: string): bool =
   const VersionChars = {'0'..'9', '.'}
@@ -582,7 +583,10 @@ proc collectNewDeps(c: var AtlasContext; g: var DepGraph; parent: int;
   else:
     result = CfgPath toDestDir(dep.name)
 
+proc selectDir(a, b: string): string = (if dirExists(a): a else: b)
+
 proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[CfgPath] =
+  const FileProtocol = "file://"
   result = @[]
   var i = 0
   while i < g.nodes.len:
@@ -592,11 +596,16 @@ proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[C
 
     if not dirExists(c.workspace / destDir) and not dirExists(c.depsDir / destDir):
       withDir c, (if i != 0 or startIsDep: c.depsDir else: c.workspace):
-        let err = cloneUrl(c, w.url, destDir, false)
-        if err != "":
-          error c, w.name, err
+        if w.url.startsWith(FileProtocol):
+          var u = w.url.substr(FileProtocol.len)
+          if u.startsWith("./"): u = c.workspace / u.substr(2)
+          copyDir(selectDir(u & "@" & w.commit, u), destDir)
+        else:
+          let err = cloneUrl(c, w.url, destDir, false)
+          if err != "":
+            error c, w.name, err
     if oldErrors == c.errors:
-      if not c.keepCommits: checkoutCommit(c, w)
+      if not c.keepCommits and not w.url.startsWith(FileProtocol): checkoutCommit(c, w)
       # even if the checkout fails, we can make use of the somewhat
       # outdated .nimble file to clone more of the most likely still relevant
       # dependencies:
@@ -638,11 +647,12 @@ proc patchNimCfg(c: var AtlasContext; deps: seq[CfgPath]; cfgPath: string) =
     c.mockupSuccess = true
   else:
     let cfg = cfgPath / "nim.cfg"
+    assert cfgPath.len > 0
     if cfgPath.len > 0 and not dirExists(cfgPath):
       error(c, c.projectDir.PackageName, "could not write the nim.cfg")
     elif not fileExists(cfg):
       writeFile(cfg, cfgContent)
-      info(c, projectFromCurrentDir(), "created: " & cfg)
+      info(c, projectFromCurrentDir(), "created: " & cfg.readableFile)
     else:
       let content = readFile(cfg)
       let start = content.find(configPatternBegin)
@@ -657,7 +667,7 @@ proc patchNimCfg(c: var AtlasContext; deps: seq[CfgPath]; cfgPath: string) =
         # do not touch the file if nothing changed
         # (preserves the file date information):
         writeFile(cfg, cfgContent)
-        info(c, projectFromCurrentDir(), "updated: " & cfg)
+        info(c, projectFromCurrentDir(), "updated: " & cfg.readableFile)
 
 proc fatal*(msg: string) =
   when defined(debug):
@@ -665,10 +675,10 @@ proc fatal*(msg: string) =
   quit "[Error] " & msg
 
 proc findSrcDir(c: var AtlasContext): string =
-  for nimbleFile in walkPattern("*.nimble"):
+  for nimbleFile in walkPattern(c.currentDir / "*.nimble"):
     let nimbleInfo = extractRequiresInfo(c, nimbleFile)
-    return nimbleInfo.srcDir
-  return ""
+    return c.currentDir / nimbleInfo.srcDir
+  return c.currentDir
 
 proc generateDepGraph(g: DepGraph) =
   # currently unused.
@@ -694,7 +704,7 @@ proc installDependencies(c: var AtlasContext; nimbleFile: string; startIsDep: bo
   let dep = Dependency(name: toName(pkgname), url: "", commit: "")
   discard collectDeps(c, g, -1, dep, nimbleFile)
   let paths = traverseLoop(c, g, startIsDep)
-  patchNimCfg(c, paths, if c.cfgHere: getCurrentDir() else: findSrcDir(c))
+  patchNimCfg(c, paths, if c.cfgHere: c.currentDir else: findSrcDir(c))
 
 proc updateDir(c: var AtlasContext; dir, filter: string) =
   for kind, file in walkDir(dir):
@@ -718,14 +728,14 @@ proc updateDir(c: var AtlasContext; dir, filter: string) =
               error c, pkg, "could not fetch current branch name"
 
 proc patchNimbleFile(c: var AtlasContext; dep: string): string =
-  let thisProject = getCurrentDir().splitPath.tail
+  let thisProject = c.currentDir.splitPath.tail
   let oldErrors = c.errors
   let url = toUrl(c, dep)
   result = ""
   if oldErrors != c.errors:
     warn c, toName(dep), "cannot resolve package name"
   else:
-    for x in walkFiles("*.nimble"):
+    for x in walkFiles(c.currentDir / "*.nimble"):
       if result.len == 0:
         result = x
       else:
@@ -754,16 +764,16 @@ proc patchNimbleFile(c: var AtlasContext; dep: string): string =
       if result.len > 0:
         let oldContent = readFile(result)
         writeFile result, oldContent & "\n" & line
-        info(c, toName(thisProject), "updated: " & result)
+        info(c, toName(thisProject), "updated: " & result.readableFile)
       else:
-        result = thisProject & ".nimble"
+        result = c.currentDir / thisProject & ".nimble"
         writeFile result, line
-        info(c, toName(thisProject), "created: " & result)
+        info(c, toName(thisProject), "created: " & result.readableFile)
     else:
-      info(c, toName(thisProject), "up to date: " & result)
+      info(c, toName(thisProject), "up to date: " & result.readableFile)
 
-proc detectWorkspace(): string =
-  result = getCurrentDir()
+proc detectWorkspace(currentDir: string): string =
+  result = currentDir
   while result.len > 0:
     if fileExists(result / AtlasWorkspace):
       return result
@@ -777,8 +787,8 @@ proc absoluteDepsDir(workspace, value: string): string =
   else:
     result = workspace / value
 
-proc autoWorkspace(): string =
-  result = getCurrentDir()
+proc autoWorkspace(currentDir: string): string =
+  result = currentDir
   while result.len > 0 and dirExists(result / ".git"):
     result = result.parentDir()
 
@@ -868,7 +878,7 @@ proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
       error c, toName("nim"), "cannot parse version requirement"
       return
   let csourcesVersion =
-    if nimVersion.isDevel or (major >= 1 and minor >= 9) or major >= 2:
+    if nimVersion.isDevel or (major == 1 and minor >= 9) or major >= 2:
       # already uses csources_v2
       "csources_v2"
     elif major == 0:
@@ -926,10 +936,10 @@ proc main =
       fatal action & " command takes no arguments"
 
   template projectCmd() =
-    if getCurrentDir() == c.workspace or getCurrentDir() == c.depsDir:
+    if c.projectDir == c.workspace or c.projectDir == c.depsDir:
       fatal action & " command must be executed in a project, not in the workspace"
 
-  var c = AtlasContext(projectDir: getCurrentDir(), workspace: "")
+  var c = AtlasContext(projectDir: getCurrentDir(), currentDir: getCurrentDir(), workspace: "")
   var autoinit = false
   for kind, key, val in getopt():
     case kind
@@ -953,6 +963,11 @@ proc main =
           createWorkspaceIn c.workspace, c.depsDir
         else:
           writeHelp()
+      of "project":
+        if isAbsolute(val):
+          c.currentDir = val
+        else:
+          c.currentDir = getCurrentDir() / val
       of "deps":
         if val.len > 0:
           c.depsDir = val
@@ -982,14 +997,14 @@ proc main =
     if not dirExists(c.workspace): fatal "Workspace directory '" & c.workspace & "' not found."
   elif action != "init":
     when MockupRun:
-      c.workspace = autoWorkspace()
+      c.workspace = autoWorkspace(c.currentDir)
     else:
-      c.workspace = detectWorkspace()
+      c.workspace = detectWorkspace(c.currentDir)
       if c.workspace.len > 0:
         readConfig c
-        info c, toName(c.workspace), "is the current workspace"
+        info c, toName(c.workspace.readableFile), "is the current workspace"
       elif autoinit:
-        c.workspace = autoWorkspace()
+        c.workspace = autoWorkspace(c.currentDir)
         createWorkspaceIn c.workspace, c.depsDir
       elif action notin ["search", "list"]:
         fatal "No workspace found. Run `atlas init` if you want this current directory to be your workspace."
@@ -1006,7 +1021,7 @@ proc main =
   of "clone", "update":
     singleArg()
     let deps = traverse(c, args[0], startIsDep = false)
-    patchNimCfg c, deps, if c.cfgHere: getCurrentDir() else: findSrcDir(c)
+    patchNimCfg c, deps, if c.cfgHere: c.currentDir else: findSrcDir(c)
     when MockupRun:
       if not c.mockupSuccess:
         fatal "There were problems."
