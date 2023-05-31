@@ -335,10 +335,7 @@ proc getSimpleTypeDesc(m: BModule; typ: PType): Rope =
 proc pushType(m: BModule; typ: PType) =
   for i in 0..high(m.typeStack):
     # pointer equality is good enough here:
-    #if m.typeStack[i] == typ: return
-    let sig = hashType(typ, m.config)
-    let sig2 = hashType(m.typeStack[i], m.config)
-    if sig == sig2: return
+    if m.typeStack[i] == typ: return
   m.typeStack.add(typ)
 
 proc getTypePre(m: BModule; typ: PType; sig: SigHash): Rope =
@@ -412,12 +409,13 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet; kind: TypeDescKind
         m.typeCache[sig] = result
         #echo "adding ", sig, " ", typeToString(t), " ", m.module.name.s
         appcg(m, m.s[cfsTypes],
-          "struct $1 {$N" &
-          "  NI len; $1_Content* p;$N" &
-          "};$N", [result])
+          "struct $1 {\n" &
+          "  NI len; $1_Content* p;\n" &
+          "};\n", [result])
+        pushType(m, t)
     else:
       result = getTypeForward(m, t, sig) & seqStar(m)
-    pushType(m, t)
+      pushType(m, t)
   else:
     result = getTypeDescAux(m, t, check, kind)
 
@@ -432,8 +430,6 @@ proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
   if result == "":
     discard getTypeDescAux(m, t, check, dkVar)
   else:
-    # little hack for now to prevent multiple definitions of the same
-    # Seq_Content:
     appcg(m, m.s[cfsTypes], """
 struct $2_Content { NI cap; $1 data[SEQ_DECL_SIZE]; };
 """, [getTypeDescAux(m, t.skipTypes(abstractInst)[0], check, dkVar), result])
@@ -1098,7 +1094,6 @@ proc finishTypeDescriptions(m: BModule) =
       discard getTypeDescAux(m, t, check, dkParam)
     inc(i)
   m.typeStack.setLen 0
-
 
 proc isReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable notin prc.flags
