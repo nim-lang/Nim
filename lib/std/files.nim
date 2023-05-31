@@ -1,4 +1,7 @@
 ## This module implements file handling.
+##
+## **See also:**
+## * `paths module <paths.html>`_ for path manipulation
 
 from paths import Path, ReadDirEffect, WriteDirEffect
 

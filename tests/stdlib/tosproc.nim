@@ -94,9 +94,7 @@ else: # main driver
   const sourcePath = currentSourcePath()
   let dir = getCurrentDir() / "tests" / "osproc"
 
-  template deferScoped(cleanup, body) =
-    # pending https://github.com/nim-lang/RFCs/issues/236#issuecomment-646855314
-    # xxx move to std/sugar or (preferably) some low level module
+  template deferring(cleanup, body) =
     try: body
     finally: cleanup
 
@@ -250,14 +248,14 @@ else: # main driver
     var x = newStringOfCap(120)
     block: # startProcess stdout poStdErrToStdOut (replaces old test `tstdout` + `ta_out`)
       var p = startProcess(output, dir, options={poStdErrToStdOut})
-      deferScoped: p.close()
+      deferring: p.close()
       do:
         var sout: seq[string]
         while p.outputStream.readLine(x): sout.add x
         doAssert sout == @["start ta_out", "to stdout", "to stdout", "to stderr", "to stderr", "to stdout", "to stdout", "end ta_out"]
     block: # startProcess stderr (replaces old test `tstderr` + `ta_out`)
       var p = startProcess(output, dir, options={})
-      deferScoped: p.close()
+      deferring: p.close()
       do:
         var serr, sout: seq[string]
         while p.errorStream.readLine(x): serr.add x

@@ -115,7 +115,7 @@ proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
   result = n
   let ident = considerQuotedIdent(c, n)
   var amb = false
-  var s = searchInScopes(c, ident, amb).skipAlias(n, c.config)
+  var s = searchInScopes(c, ident, amb)
   if s == nil:
     s = strTableGet(c.pureEnumFields, ident)
     #if s != nil and contains(c.ambiguousSymbols, s.id):
@@ -138,7 +138,8 @@ proc newDot(n, b: PNode): PNode =
   result.add(b)
 
 proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
-                 ctx: var GenericCtx; isMacro: var bool): PNode =
+                 ctx: var GenericCtx; isMacro: var bool;
+                 inCall = false): PNode =
   assert n.kind == nkDotExpr
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
 
@@ -152,12 +153,17 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
     result = n
     let n = n[1]
     let ident = considerQuotedIdent(c, n)
-    var candidates = searchInScopesFilterBy(c, ident, routineKinds) # .skipAlias(n, c.config)
+    # could be type conversion if like a.T and not a.T()
+    let symKinds = if inCall: routineKinds else: routineKinds+{skType}
+    var candidates = searchInScopesFilterBy(c, ident, symKinds)
     if candidates.len > 0:
       let s = candidates[0] # XXX take into account the other candidates!
       isMacro = s.kind in {skTemplate, skMacro}
       if withinBind in flags or s.id in ctx.toBind:
-        result = newDot(result, symChoice(c, n, s, scClosed))
+        if s.kind == skType: # don't put types in sym choice
+          result = newDot(result, semGenericStmtSymbol(c, n, s, ctx, flags, fromDotExpr=true))
+        else:
+          result = newDot(result, symChoice(c, n, s, scClosed))
       elif s.isMixedIn:
         result = newDot(result, symChoice(c, n, s, scForceOpen))
       else:
@@ -277,7 +283,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         onUse(fn.info, s)
         first = 1
     elif fn.kind == nkDotExpr:
-      result[0] = fuzzyLookup(c, fn, flags, ctx, mixinContext)
+      result[0] = fuzzyLookup(c, fn, flags, ctx, mixinContext, inCall = true)
       first = 1
     # Consider 'when declared(globalsSlot): ThreadVarSetValue(globalsSlot, ...)'
     # in threads.nim: the subtle preprocessing here binds 'globalsSlot' which

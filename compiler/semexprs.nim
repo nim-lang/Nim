@@ -349,6 +349,9 @@ proc semConv(c: PContext, n: PNode; expectedType: PType = nil): PNode =
       targetType.skipTypes(abstractPtrs).kind == tyObject:
     localError(c.config, n.info, "object construction uses ':', not '='")
   var op = semExprWithType(c, n[1])
+  if op.kind == nkClosedSymChoice and op.len > 0 and
+      op[0].sym.kind == skEnumField: # resolves overloadedable enums
+    op = ambiguousSymChoice(c, n, op)
   if targetType.kind != tyGenericParam and targetType.isMetaType:
     let final = inferWithMetatype(c, targetType, op, true)
     result.add final
@@ -1047,7 +1050,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       if s != nil:
         setGenericParams(c, n[0])
         return semDirectOp(c, n, flags, expectedType)
-    elif isSymChoice(n[0]):
+    elif isSymChoice(n[0]) and nfDotField notin n.flags:
       # overloaded generic procs e.g. newSeq[int] can end up here
       return semDirectOp(c, n, flags, expectedType)
 
@@ -1522,7 +1525,9 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
     flags.incl efCannotBeDotCall
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
-  if isSymChoice(n[1]):
+  if isSymChoice(n[1]) or
+      # generics usually leave field names as symchoices, but not types
+      (n[1].kind == nkSym and n[1].sym.kind == skType):
     result = newNodeI(nkDotCall, n.info)
     result.add n[1]
     result.add copyTree(n[0])
@@ -2982,6 +2987,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         else:
           {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
       s = qualifiedLookUp(c, n, checks)
+      if s == nil:
+        return
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
     of skProc, skFunc, skMethod, skConverter, skIterator:

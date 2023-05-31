@@ -110,7 +110,7 @@ func `==`*(x, y: JsBigInt): bool {.importjs: "(# == #)".} =
     doAssert big"42" == big"42"
 
 func `**`*(x, y: JsBigInt): JsBigInt {.importjs: "((#) $1 #)".} =
-  # (#) needed, refs https://github.com/nim-lang/Nim/pull/16409#issuecomment-760550812
+  # (#) needed due to unary minus
   runnableExamples:
     doAssert big"2" ** big"64" == big"18446744073709551616"
     doAssert big"-2" ** big"3" == big"-8"
@@ -120,8 +120,6 @@ func `**`*(x, y: JsBigInt): JsBigInt {.importjs: "((#) $1 #)".} =
     try: discard big"2" ** big"-1" # raises foreign `RangeError`
     except: ok = true
     doAssert ok
-  # pending https://github.com/nim-lang/Nim/pull/15940, simplify to:
-  # doAssertRaises: discard big"2" ** big"-1" # raises foreign `RangeError`
 
 func `and`*(x, y: JsBigInt): JsBigInt {.importjs: "(# & #)".} =
   runnableExamples:

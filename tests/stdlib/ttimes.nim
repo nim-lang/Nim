@@ -742,3 +742,27 @@ block: # ttimes
     doAssert getWeeksInIsoYear(2014.IsoYear) == 52
     doAssert getWeeksInIsoYear(2015.IsoYear) == 53
     doAssert getWeeksInIsoYear(2016.IsoYear) == 52
+
+  block: # parse and generate iso years
+    # short calendar week with text
+    parseTest("KW 23 2023", "'KW' VV GGGG",
+      "2023-06-05T00:00:00Z", 155)
+    parseTest("KW 5 2023", "'KW' V GGGG",
+      "2023-01-30T00:00:00Z", 29)
+    parseTest("KW 05 23 Saturday", "'KW' V GG dddd",
+      "2023-02-04T00:00:00Z", 34)
+    parseTest("KW 53 20 Fri", "'KW' VV GG ddd",
+      "2021-01-01T00:00:00Z", 0)
+
+    parseTestExcp("KW 23", "'KW' VV") # no year
+    parseTestExcp("KW 23", "'KW' V") # no year
+    parseTestExcp("KW 23", "'KW' GG") # no week
+    parseTestExcp("KW 2023", "'KW' GGGG") # no week
+    
+    var dt = initDateTime(5, mJan, 2023, 0, 0, 0, utc())
+    check dt.format("V") == "1"
+    check dt.format("VV") == "01"
+    check dt.format("GG") == "23"
+    check dt.format("GGGG") == "2023"
+    check dt.format("dddd 'KW'V GGGG") == "Thursday KW1 2023"
+

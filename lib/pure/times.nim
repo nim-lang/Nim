@@ -62,6 +62,8 @@
                                                                                                   | `Monday -> Mon`
   `dddd`       Full string for the day of the week.                                               | `Saturday -> Saturday`
                                                                                                   | `Monday -> Monday`
+  `GG`         The last two digits of the Iso Week-Year                                           | `30/12/2012 -> 13`
+  `GGGG`       The Iso week-calendar year padded to four digits                                   | `30/12/2012 -> 2013`
   `h`          The hours in one digit if possible. Ranging from 1-12.                             | `5pm -> 5`
                                                                                                   | `2am -> 2`
   `hh`         The hours in two digits always. If the hour is one digit, 0 is prepended.          | `5pm -> 05`
@@ -104,6 +106,10 @@
                                                                                                   | `24 AD -> 24`
                                                                                                   | `24 BC -> -23`
                                                                                                   | `12345 AD -> 12345`
+  `V`          The Iso Week-Number as one or two digits                                           | `3/2/2012 -> 5`
+                                                                                                  | `1/4/2012 -> 13`
+  `VV`         The Iso Week-Number as two digits always. 0 is prepended if one digit.             | `3/2/2012 -> 05`
+                                                                                                  | `1/4/2012 -> 13`
   `z`          Displays the timezone offset from UTC.                                             | `UTC+7 -> +7`
                                                                                                   | `UTC-5 -> -5`
   `zz`         Same as above but with leading 0.                                                  | `UTC+7 -> +07`
@@ -416,7 +422,7 @@ else:
   # Still track when using older versions
   {.pragma: parseFormatRaises, raises: [TimeParseError, TimeFormatParseError, Defect].}
   {.pragma: parseRaises, raises: [TimeParseError, Defect].}
-  
+
 
 #
 # Helper procs
@@ -602,8 +608,8 @@ proc stringifyUnit(value: int | int64, unit: TimeUnit): string =
   ## Stringify time unit with it's name, lowercased
   let strUnit = $unit
   result = ""
-  result.add($value)
-  result.add(" ")
+  result.addInt value
+  result.add ' '
   if abs(value) != 1:
     result.add(strUnit.toLowerAscii())
   else:
@@ -1496,16 +1502,52 @@ proc getDateStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].}
   runnableExamples:
     echo getDateStr(now() - 1.months)
   assertDateTimeInitialized dt
-  result = $dt.year & '-' & intToStr(dt.monthZero, 2) &
-    '-' & intToStr(dt.monthday, 2)
+  result = newStringOfCap(10)  # len("YYYY-MM-DD") == 10
+  result.addInt dt.year
+  result.add '-'
+  result.add intToStr(dt.monthZero, 2)
+  result.add '-'
+  result.add intToStr(dt.monthday, 2)
 
 proc getClockStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## Gets the current local clock time as a string of the format `HH:mm:ss`.
   runnableExamples:
     echo getClockStr(now() - 1.hours)
   assertDateTimeInitialized dt
-  result = intToStr(dt.hour, 2) & ':' & intToStr(dt.minute, 2) &
-    ':' & intToStr(dt.second, 2)
+  result = newStringOfCap(8)  # len("HH:mm:ss") == 8
+  result.add intToStr(dt.hour, 2)
+  result.add ':'
+  result.add intToStr(dt.minute, 2)
+  result.add ':'
+  result.add intToStr(dt.second, 2)
+
+
+#
+# Iso week
+#
+
+proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
+                   hour: HourRange, minute: MinuteRange, second: SecondRange,
+                   nanosecond: NanosecondRange,
+                   zone: Timezone = local()): DateTime {.since: (1, 5).} =
+  ## Create a new `DateTime <#DateTime>`_ from a weekday and an ISO 8601 week number and year
+  ## in the specified timezone.
+  ##
+  ## .. warning:: The ISO week-based year can correspond to the following or previous year from 29 December to January 3.
+  runnableExamples:
+    assert initDateTime(21, mApr, 2018, 00, 00, 00) == initDateTime(dSat, 16, 2018.IsoYear, 00, 00, 00)
+    assert initDateTime(30, mDec, 2019, 00, 00, 00) == initDateTime(dMon, 01, 2020.IsoYear, 00, 00, 00)
+    assert initDateTime(13, mSep, 2020, 00, 00, 00) == initDateTime(dSun, 37, 2020.IsoYear, 00, 00, 00)
+    assert initDateTime(2, mJan, 2021, 00, 00, 00) == initDateTime(dSat, 53, 2020.IsoYear, 00, 00, 00)
+
+  # source https://webspace.science.uu.nl/~gent0113/calendar/isocalendar.htm
+  let d = isoweek * 7 + weekday.int - initDateTime(4, mJan, isoyear.int, 00, 00, 00).weekday.int - 4
+  initDateTime(1, mJan, isoyear.int, hour, minute, second, nanosecond, zone) + initDuration(days=d)
+
+proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
+                   hour: HourRange, minute: MinuteRange, second: SecondRange,
+                   zone: Timezone = local()): DateTime {.since: (1, 5).} =
+  initDateTime(weekday, isoweek, isoyear, hour, minute, second, 0, zone)
 
 #
 # TimeFormat
@@ -1537,6 +1579,9 @@ type
     year: Option[int]
     month: Option[int]
     monthday: Option[int]
+    isoyear: Option[int]
+    yearweek: Option[int]
+    weekday: Option[WeekDay]
     utcOffset: Option[int]
 
     # '0' as default for these work fine
@@ -1551,6 +1596,7 @@ type
 
   FormatPattern {.pure.} = enum
     d, dd, ddd, dddd
+    GG, GGGG
     h, hh, H, HH
     m, mm, M, MM, MMM, MMMM
     s, ss
@@ -1560,6 +1606,7 @@ type
     YYYY
     uuuu
     UUUU
+    V, VV
     z, zz, zzz, zzzz
     ZZZ, ZZZZ
     g
@@ -1688,6 +1735,8 @@ proc stringToPattern(str: string): FormatPattern =
   of "dd": result = dd
   of "ddd": result = ddd
   of "dddd": result = dddd
+  of "GG": result = GG
+  of "GGGG": result = GGGG
   of "h": result = h
   of "hh": result = hh
   of "H": result = H
@@ -1710,6 +1759,8 @@ proc stringToPattern(str: string): FormatPattern =
   of "YYYY": result = YYYY
   of "uuuu": result = uuuu
   of "UUUU": result = UUUU
+  of "V": result = V
+  of "VV": result = VV
   of "z": result = z
   of "zz": result = zz
   of "zzz": result = zzz
@@ -1759,6 +1810,10 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string,
     result.add loc.ddd[dt.weekday]
   of dddd:
     result.add loc.dddd[dt.weekday]
+  of GG:
+    result.add (dt.getIsoWeekAndYear.isoyear.int mod 100).intToStr(2)
+  of GGGG:
+    result.add $dt.getIsoWeekAndYear.isoyear
   of h:
     result.add(
       if dt.hour == 0: "12"
@@ -1822,6 +1877,10 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string,
       result.add '+' & $year
   of UUUU:
     result.add $dt.year
+  of V:
+    result.add $dt.getIsoWeekAndYear.isoweek
+  of VV:
+    result.add dt.getIsoWeekAndYear.isoweek.intToStr(2)
   of z, zz, zzz, zzzz, ZZZ, ZZZZ:
     if dt.timezone != nil and dt.timezone.name == "Etc/UTC":
       result.add 'Z'
@@ -1876,18 +1935,30 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
     result = monthday in MonthdayRange
   of ddd:
     result = false
-    for v in loc.ddd:
+    for d, v in loc.ddd:
       if input.substr(i, i+v.len-1).cmpIgnoreCase(v) == 0:
+        parsed.weekday = some(d.WeekDay)
         result = true
         i.inc v.len
         break
   of dddd:
     result = false
-    for v in loc.dddd:
+    for d, v in loc.dddd:
       if input.substr(i, i+v.len-1).cmpIgnoreCase(v) == 0:
+        parsed.weekday = some(d.WeekDay)
         result = true
         i.inc v.len
         break
+  of GG:
+    # Assumes current century
+    var isoyear = takeInt(2..2)
+    var thisCen = now().year div 100
+    parsed.isoyear = some(thisCen*100 + isoyear)
+    result = isoyear > 0
+  of GGGG:
+    let isoyear = takeInt(1..high(int))
+    parsed.isoyear = some(isoyear)
+    result = isoyear > 0
   of h, H:
     parsed.hour = takeInt(1..2)
     result = parsed.hour in HourRange
@@ -1978,6 +2049,14 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
     parsed.year = some(year)
   of UUUU:
     parsed.year = some(takeInt(1..high(int), allowSign = true))
+  of V:
+    let yearweek = takeInt(1..2)
+    parsed.yearweek = some(yearweek)
+    result = yearweek in IsoWeekRange
+  of VV:
+    let yearweek = takeInt(2..2)
+    parsed.yearweek = some(yearweek)
+    result = yearweek in IsoWeekRange
   of z, zz, zzz, zzzz, ZZZ, ZZZZ:
     case input[i]
     of '+', '-':
@@ -2077,6 +2156,38 @@ proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
   else:
     # Otherwise convert to `zone`
     result = (dateTime(year, month, monthday, hour, minute, second, nanosecond, utc()).toTime +
+      initDuration(seconds = p.utcOffset.get())).inZone(zone)
+
+proc toDateTimeByWeek(p: ParsedTime, zone: Timezone, f: TimeFormat,
+                   input: string): DateTime =
+  var isoyear = p.isoyear.get(0)
+  var yearweek = p.yearweek.get(1)
+  var weekday = p.weekday.get(dMon)
+
+  if p.amPm != apUnknown:
+    raiseParseException(f, input, "Parsing iso weekyear dates does not support am/pm")
+
+  if p.year.isSome:
+    raiseParseException(f, input, "Use iso-year GG or GGGG as year with iso week number")
+
+  if p.month.isSome:
+    raiseParseException(f, input, "Use either iso week number V or VV or month")
+
+  if p.monthday.isSome:
+    raiseParseException(f, input, "Use weekday ddd or dddd as day with with iso week number")
+
+  if p.isoyear.isNone:
+    raiseParseException(f, input, "Need iso-year with week number")
+
+  let hour = p.hour
+  let minute = p.minute
+  let second = p.second
+  let nanosecond = p.nanosecond
+
+  if p.utcOffset.isNone:
+    result = initDateTime(weekday, yearweek.IsoWeekRange, isoyear.IsoYear, hour, minute, second, nanosecond, zone)
+  else:
+    result = (initDateTime(weekday, yearweek.IsoWeekRange, isoyear.IsoYear, hour, minute, second, nanosecond, zone).toTime +
       initDuration(seconds = p.utcOffset.get())).inZone(zone)
 
 proc format*(dt: DateTime, f: TimeFormat,
@@ -2184,7 +2295,12 @@ proc parse*(input: string, f: TimeFormat, zone: Timezone = local(),
     raiseParseException(f, input,
                             "Parsing ended but there was still patterns remaining")
 
-  result = toDateTime(parsed, zone, f, input)
+  if parsed.yearweek.isSome:
+    result = toDateTimeByWeek(parsed, zone, f, input)
+  elif parsed.isoyear.isSome:
+    raiseParseException(f, input, "Iso year GG or GGGG require iso week V or VV")
+  else:
+    result = toDateTime(parsed, zone, f, input)
 
 proc parse*(input, f: string, tz: Timezone = local(),
     loc: DateTimeLocale = DefaultLocale): DateTime {.parseFormatRaises.} =
@@ -2644,33 +2760,6 @@ proc `+=`*(t: var Time, b: TimeInterval) =
 
 proc `-=`*(t: var Time, b: TimeInterval) =
   t = t - b
-
-#
-# Day of year
-#
-
-proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
-                   hour: HourRange, minute: MinuteRange, second: SecondRange,
-                   nanosecond: NanosecondRange,
-                   zone: Timezone = local()): DateTime {.since: (1, 5).} =
-  ## Create a new `DateTime <#DateTime>`_ from a weekday and an ISO 8601 week number and year
-  ## in the specified timezone.
-  ##
-  ## .. warning:: The ISO week-based year can correspond to the following or previous year from 29 December to January 3.
-  runnableExamples:
-    assert initDateTime(21, mApr, 2018, 00, 00, 00) == initDateTime(dSat, 16, 2018.IsoYear, 00, 00, 00)
-    assert initDateTime(30, mDec, 2019, 00, 00, 00) == initDateTime(dMon, 01, 2020.IsoYear, 00, 00, 00)
-    assert initDateTime(13, mSep, 2020, 00, 00, 00) == initDateTime(dSun, 37, 2020.IsoYear, 00, 00, 00)
-    assert initDateTime(2, mJan, 2021, 00, 00, 00) == initDateTime(dSat, 53, 2020.IsoYear, 00, 00, 00)
-
-  # source https://webspace.science.uu.nl/~gent0113/calendar/isocalendar.htm
-  let d = isoweek * 7 + weekday.int - initDateTime(4, mJan, isoyear.int, 00, 00, 00).weekday.int - 4
-  initDateTime(1, mJan, isoyear.int, hour, minute, second, nanosecond, zone) + initTimeInterval(days=d)
-
-proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
-                   hour: HourRange, minute: MinuteRange, second: SecondRange,
-                   zone: Timezone = local()): DateTime {.since: (1, 5).} =
-  initDateTime(weekday, isoweek, isoyear, hour, minute, second, 0, zone)
 
 #
 # Other

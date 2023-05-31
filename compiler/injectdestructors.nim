@@ -305,13 +305,13 @@ proc isCriticalLink(dest: PNode): bool {.inline.} =
 proc finishCopy(c: var Con; result, dest: PNode; isFromSink: bool) =
   if c.graph.config.selectedGC == gcOrc:
     let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
-    if cyclicType(t):
+    if cyclicType(c.graph, t):
       result.add boolLit(c.graph, result.info, isFromSink or isCriticalLink(dest))
 
 proc genMarkCyclic(c: var Con; result, dest: PNode) =
   if c.graph.config.selectedGC == gcOrc:
     let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
-    if cyclicType(t):
+    if cyclicType(c.graph, t):
       if t.kind == tyRef:
         result.add callCodegenProc(c.graph, "nimMarkCyclic", dest.info, dest)
       else:
@@ -381,7 +381,7 @@ proc genWasMoved(c: var Con, n: PNode): PNode =
     result = genOp(c, op, n)
   else:
     result = newNodeI(nkCall, n.info)
-    result.add(newSymNode(createMagic(c.graph, c.idgen, "wasMoved", mWasMoved)))
+    result.add(newSymNode(createMagic(c.graph, c.idgen, "`=wasMoved`", mWasMoved)))
     result.add copyTree(n) #mWasMoved does not take the address
     #if n.kind != nkSym:
     #  message(c.graph.config, n.info, warnUser, "wasMoved(" & $n & ")")
@@ -431,7 +431,9 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
       let src = p(n, c, s, normal)
       result.add newTreeI(nkFastAsgn,
           src.info, tmp,
-          genOp(c, op, src)
+          newTreeIT(nkCall, src.info, src.typ,
+            newSymNode(op),
+            src)
       )
     elif typ.kind == tyRef:
       let src = p(n, c, s, normal)

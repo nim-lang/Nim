@@ -231,7 +231,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 49 flags!
+  TSymFlag* = enum    # 51 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -312,6 +312,8 @@ type
                       #
                       # This is disallowed but can cause the typechecking to go into
                       # an infinite loop, this flag is used as a sentinel to stop it.
+    sfVirtual         # proc is a C++ virtual function
+    sfByCopy          # param is marked as pass bycopy
 
   TSymFlags* = set[TSymFlag]
 
@@ -515,7 +517,7 @@ type
     nfSkipFieldChecking # node skips field visable checking
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 46)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -585,6 +587,7 @@ type
     tfIsConstructor
     tfEffectSystemWorkaround
     tfIsOutParam
+    tfSendable
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -620,13 +623,12 @@ type
                           # file (it is loaded on demand, which may
                           # mean: never)
     skPackage,            # symbol is a package (used for canonicalization)
-    skAlias               # an alias (needs to be resolved immediately)
   TSymKinds* = set[TSymKind]
 
 const
   routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
-  ExportableSymKinds* = {skVar, skLet, skConst, skType, skEnumField, skStub, skAlias} + routineKinds
+  ExportableSymKinds* = {skVar, skLet, skConst, skType, skEnumField, skStub} + routineKinds
 
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
@@ -635,7 +637,7 @@ const
   skError* = skUnknown
 
 var
-  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect, tfIsOutParam}
+  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect, tfIsOutParam, tfSendable}
     ## type flags that are essential for type equality.
     ## This is now a variable because for emulation of version:1.0 we
     ## might exclude {tfGcSafe, tfNoSideEffect}.
@@ -929,7 +931,7 @@ type
       cname*: string          # resolved C declaration name in importc decl, e.g.:
                               # proc fun() {.importc: "$1aux".} => cname = funaux
     constraint*: PNode        # additional constraints like 'lit|result'; also
-                              # misused for the codegenDecl pragma in the hope
+                              # misused for the codegenDecl and virtual pragmas in the hope
                               # it won't cause problems
                               # for skModule the string literal to output for
                               # deprecated modules.
