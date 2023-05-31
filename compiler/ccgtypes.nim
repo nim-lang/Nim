@@ -408,12 +408,13 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet; kind: TypeDescKind
         m.typeCache[sig] = result
         #echo "adding ", sig, " ", typeToString(t), " ", m.module.name.s
         appcg(m, m.s[cfsTypes],
-          "struct $1 {$N" &
-          "  NI len; $1_Content* p;$N" &
-          "};$N", [result])
+          "struct $1 {\n" &
+          "  NI len; $1_Content* p;\n" &
+          "};\n", [result])
+        pushType(m, t)
     else:
       result = getTypeForward(m, t, sig) & seqStar(m)
-    pushType(m, t)
+      pushType(m, t)
   else:
     result = getTypeDescAux(m, t, check, kind)
 
@@ -428,14 +429,9 @@ proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
   if result == "":
     discard getTypeDescAux(m, t, check, dkVar)
   else:
-    # little hack for now to prevent multiple definitions of the same
-    # Seq_Content:
-    appcg(m, m.s[cfsTypes], """$N
-$3ifndef $2_Content_PP
-$3define $2_Content_PP
-struct $2_Content { NI cap; $1 data[SEQ_DECL_SIZE];};
-$3endif$N
-      """, [getTypeDescAux(m, t.skipTypes(abstractInst)[0], check, dkVar), result, rope"#"])
+    appcg(m, m.s[cfsTypes], """
+struct $2_Content { NI cap; $1 data[SEQ_DECL_SIZE]; };
+""", [getTypeDescAux(m, t.skipTypes(abstractInst)[0], check, dkVar), result])
 
 proc paramStorageLoc(param: PSym): TStorageLoc =
   if param.typ.skipTypes({tyVar, tyLent, tyTypeDesc}).kind notin {
@@ -1115,7 +1111,6 @@ proc finishTypeDescriptions(m: BModule) =
       discard getTypeDescAux(m, t, check, dkParam)
     inc(i)
   m.typeStack.setLen 0
-
 
 proc isReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable notin prc.flags
