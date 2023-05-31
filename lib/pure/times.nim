@@ -557,7 +557,12 @@ proc getDaysInYear*(year: int): int =
   result = 365 + (if isLeapYear(year): 1 else: 0)
 
 proc `==`*(a, b: IsoYear): bool {.borrow.}
-proc `$`*(p: IsoYear): string {.borrow.}
+
+
+proc `$`*(self: IsoYear): string =
+  result = newStringOfCap(4)  # Must be 4 chars.
+  result.addInt self.int      # len("1984") == 4
+
 
 proc getWeeksInIsoYear*(y: IsoYear): IsoWeekRange {.since: (1, 5).} =
   ## Returns the number of weeks in the specified ISO 8601 week-based year, which can be
