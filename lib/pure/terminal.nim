@@ -305,11 +305,8 @@ else:
 
     var w: int
     var s = getEnv("COLUMNS") # Try standard env var
-    try:
-      if len(s) > 0 and parseInt(s, w) > 0 and w > 0:
-        return w
-    except ValueError:
-      return high(int) # Out of `int` range
+    if len(s) > 0 and parseSaturatedNatural(s, w) > 0 and w > 0:
+      return w
     w = terminalWidthIoctl([0, 1, 2]) # Try standard file descriptors
     if w > 0: return w
     var cterm = newString(L_ctermid) # Try controlling tty
@@ -342,11 +339,8 @@ else:
 
     var h: int
     var s = getEnv("LINES") # Try standard env var
-    try:
-      if len(s) > 0 and parseInt(s, h) > 0 and h > 0:
-        return h
-    except ValueError:
-      return high(int) # Out of `int` range
+    if len(s) > 0 and parseSaturatedNatural(s, h) > 0 and h > 0:
+      return h
     h = terminalHeightIoctl([0, 1, 2]) # Try standard file descriptors
     if h > 0: return h
     var cterm = newString(L_ctermid) # Try controlling tty
