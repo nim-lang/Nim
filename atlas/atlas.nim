@@ -585,8 +585,36 @@ proc collectNewDeps(c: var AtlasContext; g: var DepGraph; parent: int;
 
 proc selectDir(a, b: string): string = (if dirExists(a): a else: b)
 
+const
+  FileProtocol = "file://"
+  ThisVersion = "current_version.atlas"
+
+proc copyFromDisk(c: var AtlasContext; w: Dependency) =
+  let destDir = toDestDir(w.name)
+  var u = w.url.substr(FileProtocol.len)
+  if u.startsWith("./"): u = c.workspace / u.substr(2)
+  copyDir(selectDir(u & "@" & w.commit, u), destDir)
+  writeFile destDir / ThisVersion, w.commit
+  echo "WRITTEN ", destDir / ThisVersion
+
+proc isNewerVersion(a, b: string): bool =
+  # only used for testing purposes.
+  if a == InvalidCommit or b == InvalidCommit:
+    return true
+  var amajor, aminor, apatch, bmajor, bminor, bpatch: int
+  if scanf(a, "$i.$i.$i", amajor, aminor, apatch):
+    assert scanf(b, "$i.$i.$i", bmajor, bminor, bpatch)
+    result = (amajor, aminor, apatch) > (bmajor, bminor, bpatch)
+  else:
+    assert scanf(a, "$i.$i", amajor, aminor)
+    assert scanf(b, "$i.$i", bmajor, bminor)
+    result = (amajor, aminor) > (bmajor, bminor)
+
+proc isLaterCommit(destDir, version: string): bool =
+  let oldVersion = try: readFile(destDir / ThisVersion).strip: except: "0.0"
+  result = isNewerVersion(version, oldVersion)
+
 proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[CfgPath] =
-  const FileProtocol = "file://"
   result = @[]
   var i = 0
   while i < g.nodes.len:
@@ -597,15 +625,18 @@ proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[C
     if not dirExists(c.workspace / destDir) and not dirExists(c.depsDir / destDir):
       withDir c, (if i != 0 or startIsDep: c.depsDir else: c.workspace):
         if w.url.startsWith(FileProtocol):
-          var u = w.url.substr(FileProtocol.len)
-          if u.startsWith("./"): u = c.workspace / u.substr(2)
-          copyDir(selectDir(u & "@" & w.commit, u), destDir)
+          copyFromDisk c, w
         else:
           let err = cloneUrl(c, w.url, destDir, false)
           if err != "":
             error c, w.name, err
     if oldErrors == c.errors:
-      if not c.keepCommits and not w.url.startsWith(FileProtocol): checkoutCommit(c, w)
+      if not c.keepCommits:
+        if not w.url.startsWith(FileProtocol): checkoutCommit(c, w)
+        else:
+          withDir c, (if i != 0 or startIsDep: c.depsDir else: c.workspace):
+            if isLaterCommit(destDir, w.commit):
+              copyFromDisk c, w
       # even if the checkout fails, we can make use of the somewhat
       # outdated .nimble file to clone more of the most likely still relevant
       # dependencies:
