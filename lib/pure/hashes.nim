@@ -534,7 +534,7 @@ proc hash*[T: tuple | object | proc | iterator {.closure.}](x: T): Hash =
   when T is "closure":
     result = hash((rawProc(x), rawEnv(x)))
   elif T is (proc):
-    result = hash(pointer(x))
+    result = hash(cast[pointer](x))
   else:
     result = 0
     for f in fields(x):

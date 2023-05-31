@@ -971,8 +971,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         # only supported for backwards compat, doesn't do anything anymore
         noVal(c, it)
       of wConstructor:
-        noVal(c, it)
         incl(sym.flags, sfConstructor)
+        if sfImportc notin sym.flags:
+          sym.constraint = newEmptyStrNode(c, it, getOptionalStr(c, it, ""))
+          sym.constraint.strVal = sym.constraint.strVal
+          sym.flags.incl {sfExportc, sfMangleCpp}
+          sym.typ.callConv = ccNoConvention
       of wHeader:
         var lib = getLib(c, libHeader, getStrLitNode(c, it))
         addToLib(lib, sym)

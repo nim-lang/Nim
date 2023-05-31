@@ -171,3 +171,18 @@ https://github.com/$+ -> https://utopia.forall/$#
 ```
 
 You can use `$1` or `$#` to refer to captures.
+
+
+### Virtual Nim environments
+
+Atlas supports setting up a virtual Nim environment via the `env` command. You can
+even install multiple different Nim versions into the same workspace.
+
+For example:
+
+```
+atlas env 1.6.12
+atlas env devel
+```
+
+When completed, run `source nim-1.6.12/activate.sh` on UNIX and `nim-1.6.12/activate.bat` on Windows.

@@ -10,7 +10,7 @@
 ## a Nimble dependency and its dependencies recursively.
 
 import std / [parseopt, strutils, os, osproc, tables, sets, json, jsonutils,
-  parsecfg, streams, terminal]
+  parsecfg, streams, terminal, strscans]
 import parse_requires, osutils, packagesjson, compiledpatterns
 
 from unicode import nil
@@ -49,6 +49,7 @@ Command:
                         or a letter ['a'..'z']: a.b.c.d.e.f.g
   build|test|doc|tasks  currently delegates to `nimble build|test|doc`
   task <taskname>       currently delegates to `nimble <taskname>`
+  env <nimversion>      setup a Nim virtual environment
 
 Options:
   --keepCommits         do not perform any `git checkouts`
@@ -840,6 +841,79 @@ proc readConfig(c: var AtlasContext) =
       error c, toName(configFile), e.msg
   close(p)
 
+const
+  BatchFile = """
+@echo off
+set PATH="$1";%PATH%
+"""
+  ShellFile = "export PATH=$1:$$PATH\n"
+
+proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
+  template isDevel(nimVersion: string): bool = nimVersion == "devel"
+
+  template exec(c: var AtlasContext; command: string) =
+    let cmd = command # eval once
+    if os.execShellCmd(cmd) != 0:
+      error c, toName("nim-" & nimVersion), "failed: " & cmd
+      return
+
+  let nimDest = "nim-" & nimVersion
+  if dirExists(c.workspace / nimDest):
+    info c, toName(nimDest), "already exists; remove or rename and try again"
+    return
+
+  var major, minor, patch: int
+  if nimVersion != "devel":
+    if not scanf(nimVersion, "$i.$i.$i", major, minor, patch):
+      error c, toName("nim"), "cannot parse version requirement"
+      return
+  let csourcesVersion =
+    if nimVersion.isDevel or (major >= 1 and minor >= 9) or major >= 2:
+      # already uses csources_v2
+      "csources_v2"
+    elif major == 0:
+      "csources" # has some chance of working
+    else:
+      "csources_v1"
+  withDir c, c.workspace:
+    if not dirExists(csourcesVersion):
+      exec c, "git clone https://github.com/nim-lang/" & csourcesVersion
+    exec c, "git clone https://github.com/nim-lang/nim " & nimDest
+  withDir c, c.workspace / csourcesVersion:
+    when defined(windows):
+      exec c, "build.bat"
+    else:
+      let makeExe = findExe("make")
+      if makeExe.len == 0:
+        exec c, "sh build.sh"
+      else:
+        exec c, "make"
+  let nimExe0 = ".." / csourcesVersion / "bin" / "nim".addFileExt(ExeExt)
+  withDir c, c.workspace / nimDest:
+    let nimExe = "bin" / "nim".addFileExt(ExeExt)
+    copyFileWithPermissions nimExe0, nimExe
+    let dep = Dependency(name: toName(nimDest), rel: normal, commit: nimVersion)
+    if not nimVersion.isDevel:
+      let commit = versionToCommit(c, dep)
+      if commit.len == 0:
+        error c, toName(nimDest), "cannot resolve version to a commit"
+        return
+      checkoutGitCommit(c, dep.name, commit)
+    exec c, nimExe & " c --noNimblePath --skipUserCfg --skipParentCfg --hints:off koch"
+    let kochExe = when defined(windows): "koch.exe" else: "./koch"
+    exec c, kochExe & " boot -d:release --skipUserCfg --skipParentCfg --hints:off"
+    exec c, kochExe & " tools --skipUserCfg --skipParentCfg --hints:off"
+    # remove any old atlas binary that we now would end up using:
+    if cmpPaths(getAppDir(), c.workspace / nimDest / "bin") != 0:
+      removeFile "bin" / "atlas".addFileExt(ExeExt)
+    let pathEntry = (c.workspace / nimDest / "bin")
+    when defined(windows):
+      writeFile "activate.bat", BatchFile % pathEntry.replace('/', '\\')
+      info c, toName(nimDest), "RUN\nnim-" & nimVersion & "\\activate.bat"
+    else:
+      writeFile "activate.sh", ShellFile % pathEntry
+      info c, toName(nimDest), "RUN\nsource nim-" & nimVersion & "/activate.sh"
+
 proc main =
   var action = ""
   var args: seq[string] = @[]
@@ -1001,6 +1075,9 @@ proc main =
   of "task":
     projectCmd()
     nimbleExec("", args)
+  of "env":
+    singleArg()
+    setupNimEnv c, args[0]
   else:
     fatal "Invalid action: " & action
 
