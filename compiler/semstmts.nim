@@ -1654,6 +1654,16 @@ proc swapResult(n: PNode, sRes: PSym, dNode: PNode) =
         n[i] = dNode
     swapResult(n[i], sRes, dNode)
 
+
+proc addThis(c: PContext, n: PNode, t: PType, owner: TSymKind) =  
+  var s = newSym(skResult, getIdent(c.cache, "this"), c.idgen,
+              getCurrOwner(c), n.info)     
+  s.typ = t
+  incl(s.flags, sfUsed) 
+  c.p.resultSym = s
+  n.add newSymNode(c.p.resultSym)
+  addParamOrResult(c, c.p.resultSym, owner)
+
 proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
   template genResSym(s) =
     var s = newSym(skResult, getIdent(c.cache, "result"), c.idgen,
@@ -2189,24 +2199,33 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if sfBorrow in s.flags and c.config.cmd notin cmdDocLike:
     result[bodyPos] = c.graph.emptyNode
   
-  if sfVirtual in s.flags:
+  if {sfVirtual, sfConstructor} * s.flags != {} and sfImportc notin s.flags:
+    let isVirtual = sfVirtual in s.flags
+    let pragmaName = if isVirtual: "virtual" else: "constructor"
     if c.config.backend == backendCpp:
+      if s.typ.sons.len < 2 and isVirtual:
+        localError(c.config, n.info, "virtual must have at least one parameter") 
       for son in s.typ.sons:
         if son!=nil and son.isMetaType:
-          localError(c.config, n.info, "virtual unsupported for generic routine")
-
-      var typ = s.typ.sons[1]
-      if typ.kind == tyPtr:
+          localError(c.config, n.info, pragmaName & " unsupported for generic routine")
+      var typ: PType 
+      if sfConstructor in s.flags:
+        typ = s.typ.sons[0]
+        if typ == nil or typ.kind != tyObject:
+          localError(c.config, n.info, "constructor must return an object")
+      else:
+        typ = s.typ.sons[1]
+      if typ.kind == tyPtr and isVirtual:
         typ = typ[0]
       if typ.kind != tyObject:
-        localError(c.config, n.info, "virtual must be a non ref object type")
+        localError(c.config, n.info, "virtual must be either ptr to object or object type.")
       if typ.owner.id == s.owner.id and c.module.id == s.owner.id:
-        c.graph.virtualProcsPerType.mgetOrPut(typ.itemId, @[]).add s
+        c.graph.memberProcsPerType.mgetOrPut(typ.itemId, @[]).add s
       else:
         localError(c.config, n.info, 
-          "virtual procs must be defined in the same scope as the type they are virtual for and it must be a top level scope")
+          pragmaName & " procs must be defined in the same scope as the type they are virtual for and it must be a top level scope")
     else:
-      localError(c.config, n.info, "virtual procs are only supported in C++")
+      localError(c.config, n.info, pragmaName & " procs are only supported in C++")
 
   if n[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation we allow sfImportc to have a body, for use in VM
@@ -2232,15 +2251,19 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # Macros and Templates can have generic parameters, but they are only
         # used for overload resolution (there is no instantiation of the symbol)
         if s.kind notin {skMacro, skTemplate} and s.magic == mNone: paramsTypeCheck(c, s.typ)
-
-        maybeAddResult(c, s, n)
-        let resultType =
-          if s.kind == skMacro:
-            sysTypeFromName(c.graph, n.info, "NimNode")
-          elif not isInlineIterator(s.typ):
-            s.typ[0]
-          else:
-            nil
+        var resultType: PType
+        if sfConstructor in s.flags:
+          resultType = makePtrType(c, s.typ[0])
+          addThis(c, n, resultType, skProc)
+        else:
+          maybeAddResult(c, s, n)
+          resultType =
+            if s.kind == skMacro:
+              sysTypeFromName(c.graph, n.info, "NimNode")
+            elif not isInlineIterator(s.typ):
+              s.typ[0]
+            else:
+              nil
         # semantic checking also needed with importc in case used in VM
         s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], resultType))
         # unfortunately we cannot skip this step when in 'system.compiles'
