@@ -2206,3 +2206,61 @@ var val: int32 = 10
 NimPrinter().printConstRef(message, val)
 
 ```
+
+constructor pragma
+==================
+
+Now `constructor` has two way of being used: in conjuntion with `importcpp` as described in the Wrapping Constructions section and a new way to declare constructors that works similar to `virtual`. 
+
+Consider,
+
+```nim
+
+type Foo* = object
+  x: int32
+
+proc makeFoo(x:int32): Foo {. constructor .} =
+  this.x = x
+
+```
+
+It will forward declare the constructor in the type definition. When the constructor has params, it will also generate a default constructor. 
+Notice, inside the body of the constructor one has access to `this` which is of the type `ptr Foo`. No `result` variable will be generated. 
+
+As `virtual`, `constructor` now also supports a syntax that allows to express Cpp constraints. 
+
+See
+
+```nim
+
+
+{.emit:"""/*TYPESECTION*/
+struct CppClass {
+  int x;
+  int y;
+  CppClass(int inX, int inY) {
+    this->x = inX;
+    this->y = inY;
+  }
+  //CppClass() = default; 
+};
+""".}
+
+type 
+  CppClass* {.importcpp, inheritable.} = object
+    x: int32
+    y: int32
+  NimClass* = object of CppClass
+
+proc makeNimClass(x:int32): NimClass {. constructor:"NimClass('1 #1) : CppClass(0, #1) ".} =
+  this.x = x
+
+#optionally define the default constructor explicitally
+proc makeCppClass(): NimClass {. constructor: "NimClass() : CppClass(0, 0) ".} = 
+  this.x = 1
+
+```
+
+In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropiate constructor. 
+
+Notice when calling constructor in a global variable, it will be called before `NimMain` meaning Nim is not fully initialized.
