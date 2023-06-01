@@ -31,7 +31,7 @@ proc `=sink`*(a: var Matrix; b: Matrix) =
   a.m = b.m
   a.n = b.n
 
-proc `=`*(a: var Matrix; b: Matrix) =
+proc `=copy`*(a: var Matrix; b: Matrix) =
   if a.data != nil and a.data != b.data:
     dealloc(a.data)
     deallocCount.inc
@@ -42,6 +42,9 @@ proc `=`*(a: var Matrix; b: Matrix) =
     a.data = cast[type(a.data)](alloc(a.m * a.n * sizeof(float)))
     allocCount.inc
     copyMem(a.data, b.data, b.m * b.n * sizeof(float))
+
+proc `=dup`*(a: Matrix): Matrix =
+  `=copy`(result, a)
 
 proc matrix*(m, n: int, s: float): Matrix =
   ## Construct an m-by-n constant matrix.

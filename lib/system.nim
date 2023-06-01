@@ -137,7 +137,7 @@ proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
   ## **Note**: The `finalizer` refers to the type `T`, not to the object!
   ## This means that for each object of type `T` the finalizer will be called!
 
-proc `=wasMoved`[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
+proc `=wasMoved`*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   ## Generic `wasMoved`:idx: implementation that can be overridden.
 
 proc wasMoved*[T](obj: var T) {.inline, noSideEffect.} =
