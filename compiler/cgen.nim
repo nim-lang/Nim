@@ -216,13 +216,9 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
     elif frmt[i] == '#' and frmt[i+1] == '#':
       inc(i, 2)
       strLit.add("#")
-
-    var start = i
-    while i < frmt.len:
-      if frmt[i] != '$' and frmt[i] != '#': inc(i)
-      else: break
-    if i - 1 >= start:
-      strLit.add(substr(frmt, start, i - 1))
+    else:
+      strLit.add(frmt[i])
+      inc(i)
 
   flushStrLit()
   result.add newCall(ident"rope", resVar)
@@ -644,9 +640,9 @@ proc genGlobalVarDecl(p: BProc, n: PNode; td, value: Rope; decl: var Rope) =
     else:
       decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
 
-proc genCppVarForConstructor(p: BProc, v: PSym; vn, value: PNode; decl: var Rope) 
+proc genCppVarForCtor(p: BProc, v: PSym; vn, value: PNode; decl: var Rope) 
 
-proc callGlobalVarCppConstructor(p: BProc; v: PSym; vn, value: PNode) =
+proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode) =
   let s = vn.sym
   fillBackendName(p.module, s)
   fillLoc(s.loc, locGlobalVar, vn, OnHeap)
@@ -654,7 +650,7 @@ proc callGlobalVarCppConstructor(p: BProc; v: PSym; vn, value: PNode) =
   let td = getTypeDesc(p.module, vn.sym.typ, dkVar)
   genGlobalVarDecl(p, vn, td, "", decl)
   decl.add " " & $s.loc.r
-  genCppVarForConstructor(p, v, vn, value, decl)
+  genCppVarForCtor(p, v, vn, value, decl)
   p.module.s[cfsVars].add decl
 
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
@@ -1147,8 +1143,8 @@ proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
 proc genProcAux*(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = newRopeAppender()
-  if m.config.backend == backendCpp and sfVirtual in prc.flags:
-    genVirtualProcHeader(m, prc, header)
+  if m.config.backend == backendCpp and {sfVirtual, sfConstructor} * prc.flags != {}:
+    genMemberProcHeader(m, prc, header)
   else:
     genProcHeader(m, prc, header)
   var returnStmt: Rope = ""
@@ -1166,7 +1162,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
       internalError(m.config, prc.info, "proc has no result symbol")
     let resNode = prc.ast[resultPos]
     let res = resNode.sym # get result symbol
-    if not isInvalidReturnType(m.config, prc.typ):
+    if not isInvalidReturnType(m.config, prc.typ) and sfConstructor notin prc.flags:
       if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
       if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(procBody); val != nil):
         var decl = localVarDecl(p, resNode)
@@ -1179,6 +1175,8 @@ proc genProcAux*(m: BModule, prc: PSym) =
         assert(res.loc.r != "")
         initLocalVar(p, res, immediateAsgn=false)
       returnStmt = ropecg(p.module, "\treturn $1;$n", [rdLoc(res.loc)])
+    elif sfConstructor in prc.flags:
+      fillLoc(resNode.sym.loc, locParam, resNode, "this", OnHeap)      
     else:
       fillResult(p.config, resNode, prc.typ)
       assignParam(p, res, prc.typ[0])
@@ -1256,7 +1254,7 @@ proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
 
 proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
-  if lfNoDecl in sym.loc.flags or sfVirtual in sym.flags: return
+  if lfNoDecl in sym.loc.flags or {sfVirtual, sfConstructor} * sym.flags != {}: return
   if lfDynamicLib in sym.loc.flags:
     if sym.itemId.module != m.module.position and
         not containsOrIncl(m.declaredThings, sym.id):
@@ -1479,12 +1477,15 @@ proc genMainProc(m: BModule) =
                        [handle, strLit])
 
     preMainCode.add(loadLib("hcr_handle", "hcrGetProc"))
-    preMainCode.add("\tvoid* rtl_handle;\L")
-    preMainCode.add(loadLib("rtl_handle", "nimGC_setStackBottom"))
-    preMainCode.add(hcrGetProcLoadCode(m, "nimGC_setStackBottom", "nimrtl_", "rtl_handle", "nimGetProcAddr"))
-    preMainCode.add("\tinner = PreMain;\L")
-    preMainCode.add("\tinitStackBottomWith_actual((void *)&inner);\L")
-    preMainCode.add("\t(*inner)();\L")
+    if m.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
+      preMainCode.add("\t$1PreMain();\L" % [rope m.config.nimMainPrefix])
+    else:
+      preMainCode.add("\tvoid* rtl_handle;\L")
+      preMainCode.add(loadLib("rtl_handle", "nimGC_setStackBottom"))
+      preMainCode.add(hcrGetProcLoadCode(m, "nimGC_setStackBottom", "nimrtl_", "rtl_handle", "nimGetProcAddr"))
+      preMainCode.add("\tinner = $1PreMain;\L" % [rope m.config.nimMainPrefix])
+      preMainCode.add("\tinitStackBottomWith_actual((void *)&inner);\L")
+      preMainCode.add("\t(*inner)();\L")
   else:
     preMainCode.add("\t$1PreMain();\L" % [rope m.config.nimMainPrefix])
 

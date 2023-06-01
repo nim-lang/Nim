@@ -1,2 +1,3 @@
 --d:nimPreviewSlimSystem
 --d:nimPreviewCstringConversion
+--d:nimPreviewProcConversion

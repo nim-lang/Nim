@@ -21,8 +21,8 @@ type
                        # though it is not necessary)
   Rope* = string
 
-proc newRopeAppender*(): string {.inline.} =
-  result = newString(0)
+proc newRopeAppender*(cap = 80): string {.inline.} =
+  result = newStringOfCap(cap)
 
 proc freeze*(r: Rope) {.inline.} = discard
 
@@ -102,12 +102,9 @@ proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
         inc(i)
       else:
         doAssert false, "invalid format string: " & frmt
-    var start = i
-    while i < frmt.len:
-      if frmt[i] != '$': inc(i)
-      else: break
-    if i - 1 >= start:
-      result.add(substr(frmt, start, i - 1))
+    else:
+      result.add(frmt[i])
+      inc(i)
 
 proc `%`*(frmt: static[FormatStr], args: openArray[Rope]): Rope =
   runtimeFormat(frmt, args)

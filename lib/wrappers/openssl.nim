@@ -589,7 +589,7 @@ when not useWinVersion and not defined(macosx) and not defined(android) and useN
     if p != nil: deallocShared(p)
 
   proc CRYPTO_malloc_init*() =
-    CRYPTO_set_mem_functions(allocWrapper, reallocWrapper, deallocWrapper)
+    CRYPTO_set_mem_functions(cast[pointer](allocWrapper), cast[pointer](reallocWrapper), cast[pointer](deallocWrapper))
 else:
   proc CRYPTO_malloc_init*() =
     discard

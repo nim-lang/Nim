@@ -10,8 +10,8 @@
 ## a Nimble dependency and its dependencies recursively.
 
 import std / [parseopt, strutils, os, osproc, tables, sets, json, jsonutils,
-  parsecfg, streams, terminal]
-import parse_requires, osutils, packagesjson
+  parsecfg, streams, terminal, strscans]
+import parse_requires, osutils, packagesjson, compiledpatterns
 
 from unicode import nil
 
@@ -49,6 +49,7 @@ Command:
                         or a letter ['a'..'z']: a.b.c.d.e.f.g
   build|test|doc|tasks  currently delegates to `nimble build|test|doc`
   task <taskname>       currently delegates to `nimble <taskname>`
+  env <nimversion>      setup a Nim virtual environment
 
 Options:
   --keepCommits         do not perform any `git checkouts`
@@ -57,6 +58,7 @@ Options:
   --workspace=DIR       use DIR as workspace
   --genlock             generate a lock file (use with `clone` and `update`)
   --uselock             use the lock file for the build
+  --autoinit            auto initialize a workspace
   --colors=on|off       turn on|off colored output
   --version             show the version
   --help                show this help
@@ -105,8 +107,10 @@ type
     hasPackageList: bool
     keepCommits: bool
     cfgHere: bool
+    usesOverrides: bool
     p: Table[string, string] # name -> url mapping
     errors, warnings: int
+    overrides: Patterns
     lockOption: LockOption
     lockFileToWrite: seq[LockFileEntry]
     lockFileToUse: Table[string, LockFileEntry]
@@ -382,14 +386,27 @@ proc fillPackageLookupTable(c: var AtlasContext) =
 
 proc toUrl(c: var AtlasContext; p: string): string =
   if p.isUrl:
+    if c.usesOverrides:
+      result = c.overrides.substitute(p)
+      if result.len > 0: return result
     result = p
   else:
+    # either the project name or the URL can be overwritten!
+    if c.usesOverrides:
+      result = c.overrides.substitute(p)
+      if result.len > 0: return result
+
     fillPackageLookupTable(c)
     result = c.p.getOrDefault(unicode.toLower p)
-  if result.len == 0:
-    result = getUrlFromGithub(p)
+
     if result.len == 0:
-      inc c.errors
+      result = getUrlFromGithub(p)
+      if result.len == 0:
+        inc c.errors
+
+    if c.usesOverrides:
+      let newUrl = c.overrides.substitute(result)
+      if newUrl.len > 0: return newUrl
 
 proc toName(p: string): PackageName =
   if p.isUrl:
@@ -760,16 +777,41 @@ proc absoluteDepsDir(workspace, value: string): string =
   else:
     result = workspace / value
 
-when MockupRun:
-  proc autoWorkspace(): string =
-    result = getCurrentDir()
-    while result.len > 0 and dirExists(result / ".git"):
-      result = result.parentDir()
+proc autoWorkspace(): string =
+  result = getCurrentDir()
+  while result.len > 0 and dirExists(result / ".git"):
+    result = result.parentDir()
 
 proc createWorkspaceIn(workspace, depsDir: string) =
   if not fileExists(workspace / AtlasWorkspace):
     writeFile workspace / AtlasWorkspace, "deps=\"$#\"" % escape(depsDir, "", "")
   createDir absoluteDepsDir(workspace, depsDir)
+
+proc parseOverridesFile(c: var AtlasContext; filename: string) =
+  const Separator = " -> "
+  let path = c.workspace / filename
+  var f: File
+  if open(f, path):
+    c.usesOverrides = true
+    try:
+      var lineCount = 1
+      for line in lines(path):
+        let splitPos = line.find(Separator)
+        if splitPos >= 0 and line[0] != '#':
+          let key = line.substr(0, splitPos-1)
+          let val = line.substr(splitPos+len(Separator))
+          if key.len == 0 or val.len == 0:
+            error c, toName(path), "key/value must not be empty"
+          let err = c.overrides.addPattern(key, val)
+          if err.len > 0:
+            error c, toName(path), "(" & $lineCount & "): " & err
+        else:
+          discard "ignore the line"
+        inc lineCount
+    finally:
+      close f
+  else:
+    error c, toName(path), "cannot open: " & path
 
 proc readConfig(c: var AtlasContext) =
   let configFile = c.workspace / AtlasWorkspace
@@ -789,6 +831,8 @@ proc readConfig(c: var AtlasContext) =
       case e.key.normalize
       of "deps":
         c.depsDir = absoluteDepsDir(c.workspace, e.value)
+      of "overrides":
+        parseOverridesFile(c, e.value)
       else:
         warn c, toName(configFile), "ignored unknown setting: " & e.key
     of cfgOption:
@@ -796,6 +840,79 @@ proc readConfig(c: var AtlasContext) =
     of cfgError:
       error c, toName(configFile), e.msg
   close(p)
+
+const
+  BatchFile = """
+@echo off
+set PATH="$1";%PATH%
+"""
+  ShellFile = "export PATH=$1:$$PATH\n"
+
+proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
+  template isDevel(nimVersion: string): bool = nimVersion == "devel"
+
+  template exec(c: var AtlasContext; command: string) =
+    let cmd = command # eval once
+    if os.execShellCmd(cmd) != 0:
+      error c, toName("nim-" & nimVersion), "failed: " & cmd
+      return
+
+  let nimDest = "nim-" & nimVersion
+  if dirExists(c.workspace / nimDest):
+    info c, toName(nimDest), "already exists; remove or rename and try again"
+    return
+
+  var major, minor, patch: int
+  if nimVersion != "devel":
+    if not scanf(nimVersion, "$i.$i.$i", major, minor, patch):
+      error c, toName("nim"), "cannot parse version requirement"
+      return
+  let csourcesVersion =
+    if nimVersion.isDevel or (major >= 1 and minor >= 9) or major >= 2:
+      # already uses csources_v2
+      "csources_v2"
+    elif major == 0:
+      "csources" # has some chance of working
+    else:
+      "csources_v1"
+  withDir c, c.workspace:
+    if not dirExists(csourcesVersion):
+      exec c, "git clone https://github.com/nim-lang/" & csourcesVersion
+    exec c, "git clone https://github.com/nim-lang/nim " & nimDest
+  withDir c, c.workspace / csourcesVersion:
+    when defined(windows):
+      exec c, "build.bat"
+    else:
+      let makeExe = findExe("make")
+      if makeExe.len == 0:
+        exec c, "sh build.sh"
+      else:
+        exec c, "make"
+  let nimExe0 = ".." / csourcesVersion / "bin" / "nim".addFileExt(ExeExt)
+  withDir c, c.workspace / nimDest:
+    let nimExe = "bin" / "nim".addFileExt(ExeExt)
+    copyFileWithPermissions nimExe0, nimExe
+    let dep = Dependency(name: toName(nimDest), rel: normal, commit: nimVersion)
+    if not nimVersion.isDevel:
+      let commit = versionToCommit(c, dep)
+      if commit.len == 0:
+        error c, toName(nimDest), "cannot resolve version to a commit"
+        return
+      checkoutGitCommit(c, dep.name, commit)
+    exec c, nimExe & " c --noNimblePath --skipUserCfg --skipParentCfg --hints:off koch"
+    let kochExe = when defined(windows): "koch.exe" else: "./koch"
+    exec c, kochExe & " boot -d:release --skipUserCfg --skipParentCfg --hints:off"
+    exec c, kochExe & " tools --skipUserCfg --skipParentCfg --hints:off"
+    # remove any old atlas binary that we now would end up using:
+    if cmpPaths(getAppDir(), c.workspace / nimDest / "bin") != 0:
+      removeFile "bin" / "atlas".addFileExt(ExeExt)
+    let pathEntry = (c.workspace / nimDest / "bin")
+    when defined(windows):
+      writeFile "activate.bat", BatchFile % pathEntry.replace('/', '\\')
+      info c, toName(nimDest), "RUN\nnim-" & nimVersion & "\\activate.bat"
+    else:
+      writeFile "activate.sh", ShellFile % pathEntry
+      info c, toName(nimDest), "RUN\nsource nim-" & nimVersion & "/activate.sh"
 
 proc main =
   var action = ""
@@ -813,7 +930,7 @@ proc main =
       fatal action & " command must be executed in a project, not in the workspace"
 
   var c = AtlasContext(projectDir: getCurrentDir(), workspace: "")
-
+  var autoinit = false
   for kind, key, val in getopt():
     case kind
     of cmdArgument:
@@ -842,6 +959,7 @@ proc main =
         else:
           writeHelp()
       of "cfghere": c.cfgHere = true
+      of "autoinit": autoinit = true
       of "genlock":
         if c.lockOption != useLock:
           c.lockOption = genLock
@@ -870,6 +988,9 @@ proc main =
       if c.workspace.len > 0:
         readConfig c
         info c, toName(c.workspace), "is the current workspace"
+      elif autoinit:
+        c.workspace = autoWorkspace()
+        createWorkspaceIn c.workspace, c.depsDir
       elif action notin ["search", "list"]:
         fatal "No workspace found. Run `atlas init` if you want this current directory to be your workspace."
 
@@ -954,6 +1075,9 @@ proc main =
   of "task":
     projectCmd()
     nimbleExec("", args)
+  of "env":
+    singleArg()
+    setupNimEnv c, args[0]
   else:
     fatal "Invalid action: " & action
 

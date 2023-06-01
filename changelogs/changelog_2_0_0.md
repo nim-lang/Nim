@@ -44,6 +44,9 @@
 
 - Enabling `-d:nimPreviewCstringConversion`, `ptr char`, `ptr array[N, char]` and `ptr UncheckedArray[N, char]` don't support conversion to cstring anymore.
 
+- Enabling `-d:nimPreviewProcConversion`, `proc` does not support conversion to
+  `pointer`. `cast` may be used instead.
+
 - The `gc:v2` option is removed.
 
 - The `mainmodule` and `m` options are removed.
@@ -255,6 +258,7 @@
 
 - Pragma `{.inline.}` generates `__forceinline` if `__has_attribute(__forceinline)` for GCC and Clang.
 
+- `strutils.split` and `strutils.rsplit` now forbid an empty separator.
 
 ## Standard library additions and changes
 

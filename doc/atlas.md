@@ -23,10 +23,12 @@ to create a workspace out of the current working directory.
 
 Projects plus their dependencies are stored in a workspace:
 
+```
   $workspace / main project
   $workspace / other project
   $workspace / _deps / dependency A
   $workspace / _deps / dependency B
+```
 
 The deps directory can be set via `--deps:DIR` during `atlas init`.
 
@@ -134,3 +136,53 @@ if there are no uncommitted changes.
 ### Others
 
 Run `atlas --help` for more features.
+
+
+### Overrides
+
+You can override how Atlas resolves a package name or a URL. The overrides use
+a simple pattern matching language and are flexible enough to integrate private
+gitlab repositories.
+
+To setup an override file, edit the `$workspace/atlas.workspace` file to contain
+a line like `overrides="urls.rules"`. Then create a file `urls.rules` that can
+contain lines like:
+
+```
+customProject -> https://gitlab.company.com/customProject
+https://github.com/araq/ormin -> https://github.com/useMyForkInstead/ormin
+```
+
+The `$` has a special meaning in a pattern:
+
+=================   ========================================================
+``$$``              Matches a single dollar sign.
+``$*``              Matches until the token following the ``$*`` was found.
+                    The match is allowed to be of 0 length.
+``$+``              Matches until the token following the ``$+`` was found.
+                    The match must consist of at least one char.
+``$s``              Skips optional whitespace.
+=================   ========================================================
+
+For example, here is how to override any github link:
+
+```
+https://github.com/$+ -> https://utopia.forall/$#
+```
+
+You can use `$1` or `$#` to refer to captures.
+
+
+### Virtual Nim environments
+
+Atlas supports setting up a virtual Nim environment via the `env` command. You can
+even install multiple different Nim versions into the same workspace.
+
+For example:
+
+```
+atlas env 1.6.12
+atlas env devel
+```
+
+When completed, run `source nim-1.6.12/activate.sh` on UNIX and `nim-1.6.12/activate.bat` on Windows.

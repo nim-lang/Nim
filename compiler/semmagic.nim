@@ -524,7 +524,9 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
 
 proc semPrivateAccess(c: PContext, n: PNode): PNode =
   let t = n[1].typ[0].toObjectFromRefPtrGeneric
-  c.currentScope.allowPrivateAccess.add t.sym
+  if t.kind == tyObject:
+    assert t.sym != nil
+    c.currentScope.allowPrivateAccess.add t.sym
   result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
 
 proc checkDefault(c: PContext, n: PNode): PNode =
