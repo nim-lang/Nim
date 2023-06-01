@@ -86,6 +86,8 @@ proc singleGithubSearch(term: string): JsonNode =
 proc githubSearch(seen: var HashSet[string]; terms: seq[string]) =
   for term in terms:
     let results = singleGithubSearch(term)
+    if results.isNil:
+      return
     for j in items(results.getOrDefault("items")):
       let p = Package(
         name: j.getOrDefault("name").getStr,
@@ -101,6 +103,8 @@ proc githubSearch(seen: var HashSet[string]; terms: seq[string]) =
 
 proc getUrlFromGithub*(term: string): string =
   let results = singleGithubSearch(term)
+  if results.isNil:
+    return ""
   var matches = 0
   result = ""
   for j in items(results.getOrDefault("items")):
