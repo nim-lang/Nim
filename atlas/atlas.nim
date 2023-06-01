@@ -932,7 +932,7 @@ proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
   let nimExe0 = ".." / csourcesVersion / "bin" / "nim".addFileExt(ExeExt)
   withDir c, c.workspace / nimDest:
     let nimExe = "bin" / "nim".addFileExt(ExeExt)
-    copyFile nimExe0, nimExe
+    copyFileWithPermissions nimExe0, nimExe
     let dep = Dependency(name: toName(nimDest), rel: normal, commit: nimVersion)
     if not nimVersion.isDevel:
       let commit = versionToCommit(c, dep)
