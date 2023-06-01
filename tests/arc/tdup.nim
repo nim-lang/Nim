@@ -18,7 +18,7 @@ inc:
 var id_1 = 777
 s = RefCustom(id_2: addr(id_1))
 inc_1 :
-  :tmpD_1 = `=dup`(s)
+  :tmpD_1 = `=dup_1`(s)
   :tmpD_1
 inc_1 :
   let blitTmp_1 = s

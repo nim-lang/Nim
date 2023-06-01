@@ -1,7 +1,7 @@
 discard """
   errormsg: "'=dup' is not available for type <Foo>; requires a copy because it's not the last read of 'otherTree'"
   file: "tprevent_assign3.nim"
-  line: 46
+  line: 47
 """
 
 type

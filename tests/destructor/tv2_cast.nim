@@ -3,7 +3,7 @@ discard """
 @[116, 101, 115, 116]
 @[1953719668, 875770417]
 destroying O1'''
-  cmd: '''nim c --gc:arc --expandArc:main --expandArc:main1 --expandArc:main2 --expandArc:main3 --hints:off --assertions:off $file'''
+  cmd: '''nim c --mm:arc --expandArc:main --expandArc:main1 --expandArc:main2 --expandArc:main3 --hints:off --assertions:off $file'''
   nimout: '''
 --expandArc: main
 
@@ -75,10 +75,6 @@ data =
 `=destroy`(:tmpD_1)
 `=destroy_1`(data)
 -- end of expandArc ------------------------
-@[1]
-@[116, 101, 115, 116]
-@[1953719668, 875770417]
-destroying O1
 '''
 """
 
