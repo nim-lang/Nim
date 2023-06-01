@@ -483,14 +483,6 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       onUse(c.info, op)
       body.add newDupCall(c, op, x, y)
       result = true
-    else:
-      var op2 = getAttachedOp(c.g, t, attachedAsgn)
-      if op2 != nil and sfOverriden in op2.flags:
-        #markUsed(c.g.config, c.info, op, c.g.usageSym)
-        onUse(c.info, op2)
-        body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
-        body.add newHookCall(c, t.assignment, x, y)
-        result = true
 
 proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
   var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.idgen, c.fn, c.info)
