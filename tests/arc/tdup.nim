@@ -34,14 +34,15 @@ type
   RefCustom = object
     id: ptr int
 
+proc `=dup`(x: RefCustom): RefCustom =
+  result.id = x.id
+
 proc inc(x: sink Ref) =
   inc x.id
 
 proc inc(x: sink RefCustom) =
   inc x.id[]
 
-proc `=dup`(x: RefCustom): RefCustom =
-  result.id = x.id
 
 proc foo =
   var x = Ref(id: 8)
