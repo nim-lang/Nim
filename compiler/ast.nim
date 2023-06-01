@@ -2008,7 +2008,7 @@ proc toObjectFromRefPtrGeneric*(typ: PType): PType =
     of tyRef, tyPtr, tyGenericInst, tyGenericInvocation, tyAlias: result = result[0]
       # automatic dereferencing is deep, refs #18298.
     else: break
-  assert result.sym != nil
+  # result does not have to be object type
 
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert t != nil
