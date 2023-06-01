@@ -9,7 +9,9 @@ type
     x: int
 
 proc `=destroy`(f: var Foo) = f.x = 0
-proc `=`(a: var Foo; b: Foo) {.error.} # = a.x = b.x
+proc `=copy`(a: var Foo; b: Foo) {.error.} # = a.x = b.x
+proc `=dup`(a: Foo): Foo {.error.}
+
 proc `=sink`(a: var Foo; b: Foo) = a.x = b.x
 
 proc createTree(x: int): Foo =
