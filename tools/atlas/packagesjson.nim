@@ -79,7 +79,7 @@ proc singleGithubSearch(term: string): JsonNode =
     let x = client.getContent("https://api.github.com/search/repositories?q=" & encodeUrl(term) & "+language:nim")
     result = parseJson(x)
   except:
-    discard "it's a failed search, ignore"
+    result = parseJson("{\"items\": []}")
   finally:
     client.close()
 

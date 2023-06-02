@@ -18,7 +18,7 @@ inc:
 var id_1 = 777
 s = RefCustom(id_2: addr(id_1))
 inc_1 :
-  :tmpD_1 = `=dup`(s)
+  :tmpD_1 = `=dup_1`(s)
   :tmpD_1
 inc_1 :
   let blitTmp_1 = s
@@ -34,14 +34,15 @@ type
   RefCustom = object
     id: ptr int
 
+proc `=dup`(x: RefCustom): RefCustom =
+  result.id = x.id
+
 proc inc(x: sink Ref) =
   inc x.id
 
 proc inc(x: sink RefCustom) =
   inc x.id[]
 
-proc `=dup`(x: RefCustom): RefCustom =
-  result.id = x.id
 
 proc foo =
   var x = Ref(id: 8)
