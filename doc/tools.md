@@ -40,3 +40,7 @@ The standard distribution ships with the following tools:
     [simulated Dry-Runs](https://en.wikipedia.org/wiki/Dry_run_(testing)),
     has logging, can generate HTML reports, skip tests from a file, and more,
     so can be useful to run your tests, even the most complex ones.
+
+- | [atlas](atlas.html)
+  | `atlas`:cmd: is a simple package cloner tool. It manages an isolated workspace that
+    contains projects and dependencies.

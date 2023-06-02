@@ -19,3 +19,10 @@ import strutils
 
 proc doStrip*[T](a: T): string =
   result = ($a).strip()
+
+type Foo = int32
+proc baz2*[T](y: int): auto =
+  result = y.Foo
+
+proc set*(x: var int, a, b: string) =
+  x = a.len + b.len

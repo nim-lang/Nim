@@ -654,6 +654,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if backend == TBackend.default: localError(conf, info, "invalid backend: '$1'" % arg)
     if backend == backendJs: # bug #21209
       conf.globalOptions.excl {optThreadAnalysis, optThreads}
+      if optRun in conf.globalOptions:
+        # for now, -r uses nodejs, so define nodejs
+        defineSymbol(conf.symbols, "nodejs")
     conf.backend = backend
   of "doccmd": conf.docCmd = arg
   of "define", "d":
@@ -796,11 +799,13 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "consoleapp")
     of "lib":
       incl(conf.globalOptions, optGenDynLib)
+      incl(conf.globalOptions, optNoMain)
       excl(conf.globalOptions, optGenGuiApp)
       defineSymbol(conf.symbols, "library")
       defineSymbol(conf.symbols, "dll")
     of "staticlib":
       incl(conf.globalOptions, optGenStaticLib)
+      incl(conf.globalOptions, optNoMain)
       excl(conf.globalOptions, optGenGuiApp)
       defineSymbol(conf.symbols, "library")
       defineSymbol(conf.symbols, "staticlib")
@@ -864,6 +869,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       setTarget(conf.target, conf.target.targetOS, cpu)
   of "run", "r":
     processOnOffSwitchG(conf, {optRun}, arg, pass, info)
+    if conf.backend == backendJs:
+      # for now, -r uses nodejs, so define nodejs
+      defineSymbol(conf.symbols, "nodejs")
   of "maxloopiterationsvm":
     expectArg(conf, switch, arg, pass, info)
     conf.maxLoopIterationsVM = parseInt(arg)

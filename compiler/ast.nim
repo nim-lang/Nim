@@ -231,7 +231,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 49 flags!
+  TSymFlag* = enum    # 51 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -312,6 +312,8 @@ type
                       #
                       # This is disallowed but can cause the typechecking to go into
                       # an infinite loop, this flag is used as a sentinel to stop it.
+    sfVirtual         # proc is a C++ virtual function
+    sfByCopy          # param is marked as pass bycopy
 
   TSymFlags* = set[TSymFlag]
 
@@ -929,7 +931,7 @@ type
       cname*: string          # resolved C declaration name in importc decl, e.g.:
                               # proc fun() {.importc: "$1aux".} => cname = funaux
     constraint*: PNode        # additional constraints like 'lit|result'; also
-                              # misused for the codegenDecl pragma in the hope
+                              # misused for the codegenDecl and virtual pragmas in the hope
                               # it won't cause problems
                               # for skModule the string literal to output for
                               # deprecated modules.
@@ -942,10 +944,10 @@ type
     attachedWasMoved,
     attachedDestructor,
     attachedAsgn,
+    attachedDup,
     attachedSink,
     attachedTrace,
-    attachedDeepCopy,
-    attachedDup
+    attachedDeepCopy
 
   TType* {.acyclic.} = object of TIdObj # \
                               # types are identical iff they have the
@@ -1516,7 +1518,7 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
 
 const
   AttachedOpToStr*: array[TTypeAttachedOp, string] = [
-    "=wasMoved", "=destroy", "=copy", "=sink", "=trace", "=deepcopy", "=dup"]
+    "=wasMoved", "=destroy", "=copy", "=dup", "=sink", "=trace", "=deepcopy"]
 
 proc `$`*(s: PSym): string =
   if s != nil:
@@ -2006,7 +2008,7 @@ proc toObjectFromRefPtrGeneric*(typ: PType): PType =
     of tyRef, tyPtr, tyGenericInst, tyGenericInvocation, tyAlias: result = result[0]
       # automatic dereferencing is deep, refs #18298.
     else: break
-  assert result.sym != nil
+  # result does not have to be object type
 
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert t != nil

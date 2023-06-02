@@ -467,8 +467,11 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
         retType = generateTypeInstance(c, paramTypes,
                                        macroResult.info, retType)
 
-      result = semExpr(c, result, flags, expectedType)
-      result = fitNode(c, retType, result, result.info)
+      if retType.kind == tyVoid:
+        result = semStmt(c, result, flags)
+      else:
+        result = semExpr(c, result, flags, expectedType)
+        result = fitNode(c, retType, result, result.info)
       #globalError(s.info, errInvalidParamKindX, typeToString(s.typ[0]))
   dec(c.config.evalTemplateCounter)
   discard c.friendModules.pop()

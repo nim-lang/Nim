@@ -35,7 +35,9 @@ proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
   if n.kind == nkEmpty:
     result = false
   elif n.kind in nkCallKinds and n[0] != nil and n[0].typ != nil and n[0].typ.skipTypes(abstractInst).kind == tyProc:
-    if isInvalidReturnType(conf, n[0].typ, true):
+    if n[0].kind == nkSym and sfConstructor in n[0].sym.flags:
+      result = true
+    elif isInvalidReturnType(conf, n[0].typ, true):
       # var v = f()
       # is transformed into: var v;  f(addr v)
       # where 'f' **does not** initialize the result!
@@ -288,15 +290,32 @@ proc potentialValueInit(p: BProc; v: PSym; value: PNode; result: var Rope) =
     #echo "New code produced for ", v.name.s, " ", p.config $ value.info
     genBracedInit(p, value, isConst = false, v.typ, result)
 
+proc genCppVarForCtor(p: BProc, v: PSym; vn, value: PNode; decl: var Rope) =
+  var params = newRopeAppender()
+  var argsCounter = 0
+  let typ = skipTypes(value[0].typ, abstractInst)
+  assert(typ.kind == tyProc)
+  for i in 1..<value.len:
+    assert(typ.len == typ.n.len)
+    genOtherArg(p, value, i, typ, params, argsCounter)
+  if params.len == 0:
+    decl = runtimeFormat("$#;\n", [decl])
+  else:
+    decl = runtimeFormat("$#($#);\n", [decl, params])
+
 proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
   if sfGoto in v.flags:
     # translate 'var state {.goto.} = X' into 'goto LX':
     genGotoVar(p, value)
     return
+  let imm = isAssignedImmediately(p.config, value)
+  let isCppCtorCall = p.module.compileToCpp and imm and
+    value.kind in nkCallKinds and value[0].kind == nkSym and
+    v.typ.kind != tyPtr and sfConstructor in value[0].sym.flags
   var targetProc = p
   var valueAsRope = ""
   potentialValueInit(p, v, value, valueAsRope)
-  if sfGlobal in v.flags:
+  if sfGlobal in v.flags:  
     if v.flags * {sfImportc, sfExportc} == {sfImportc} and
         value.kind == nkEmpty and
         v.loc.flags * {lfHeader, lfNoDecl} != {}:
@@ -304,7 +323,11 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     if sfPure in v.flags:
       # v.owner.kind != skModule:
       targetProc = p.module.preInitProc
-    assignGlobalVar(targetProc, vn, valueAsRope)
+    if isCppCtorCall and not containsHiddenPointer(v.typ):
+      callGlobalVarCppCtor(targetProc, v, vn, value)
+    else:
+      assignGlobalVar(targetProc, vn, valueAsRope)
+
     # XXX: be careful here.
     # Global variables should not be zeromem-ed within loops
     # (see bug #20).
@@ -313,7 +336,6 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     # global variables will be initialized to zero.
     if valueAsRope.len == 0:
       var loc = v.loc
-
       # When the native TLS is unavailable, a global thread-local variable needs
       # one more layer of indirection in order to access the TLS block.
       # Only do this for complex types that may need a call to `objectInit`
@@ -327,28 +349,18 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
       genVarPrototype(p.module.g.generatedHeader, vn)
     registerTraverseProc(p, v)
   else:
-    let imm = isAssignedImmediately(p.config, value)
     if imm and p.module.compileToCpp and p.splitDecls == 0 and
-        not containsHiddenPointer(v.typ):
+        not containsHiddenPointer(v.typ) and
+        nimErrorFlagAccessed notin p.flags:
       # C++ really doesn't like things like 'Foo f; f = x' as that invokes a
       # parameterless constructor followed by an assignment operator. So we
       # generate better code here: 'Foo f = x;'
       genLineDir(p, vn)
-      let decl = localVarDecl(p, vn)
+      var decl = localVarDecl(p, vn)
       var tmp: TLoc
-      if value.kind in nkCallKinds and value[0].kind == nkSym and
-           sfConstructor in value[0].sym.flags:
-        var params = newRopeAppender()
-        var argsCounter = 0
-        let typ = skipTypes(value[0].typ, abstractInst)
-        assert(typ.kind == tyProc)
-        for i in 1..<value.len:
-          assert(typ.len == typ.n.len)
-          genOtherArg(p, value, i, typ, params, argsCounter)
-        if params.len == 0:
-          lineF(p, cpsStmts, "$#;\n", [decl])
-        else:
-          lineF(p, cpsStmts, "$#($#);\n", [decl, params])
+      if isCppCtorCall:
+        genCppVarForCtor(p, v, vn, value, decl)
+        line(p, cpsStmts, decl)
       else:
         initLocExprSingleUse(p, value, tmp)
         lineF(p, cpsStmts, "$# = $#;\n", [decl, tmp.rdLoc])
@@ -378,7 +390,8 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     startBlock(targetProc)
   if value.kind != nkEmpty and valueAsRope.len == 0:
     genLineDir(targetProc, vn)
-    loadInto(targetProc, vn, value, v.loc)
+    if not isCppCtorCall:
+      loadInto(targetProc, vn, value, v.loc)
   if forHcr:
     endBlock(targetProc)
 
@@ -1622,7 +1635,7 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     let le = e[0]
     let ri = e[1]
     var a: TLoc
-    discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs), skVar)
+    discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs), dkVar)
     initLoc(a, locNone, le, OnUnknown)
     a.flags.incl(lfEnforceDeref)
     a.flags.incl(lfPrepareForMutation)

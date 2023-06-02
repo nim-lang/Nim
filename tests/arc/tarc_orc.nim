@@ -45,3 +45,47 @@ proc main() = # todo bug with templates
     doAssert b() == @[]
 static: main()
 main()
+
+
+type Obj = tuple
+  value: int
+  arr: seq[int]
+
+proc bug(): seq[Obj] =
+  result.add (value: 0, arr: @[])
+  result[^1].value = 1
+  result[^1].arr.add 1
+
+# bug #19990
+let s = bug()
+doAssert s[0] == (value: 1, arr: @[1])
+
+block: # bug #21974
+  type Test[T] = ref object
+      values : seq[T]
+      counter: int
+
+  proc newTest[T](): Test[T] =
+      result         = new(Test[T])
+      result.values  = newSeq[T](16)
+      result.counter = 0
+
+  proc push[T](self: Test[T], value: T) =
+      self.counter += 1
+      if self.counter >= self.values.len:
+          self.values.setLen(self.values.len * 2)
+      self.values[self.counter - 1] = value
+
+  proc pop[T](self: Test[T]): T =
+      result         = self.values[0]
+      self.values[0] = self.values[self.counter - 1] # <--- This line
+      self.counter  -= 1
+
+
+  type X = tuple
+      priority: int
+      value   : string
+
+  var a = newTest[X]()
+  a.push((1, "One"))
+  doAssert a.pop.value == "One"

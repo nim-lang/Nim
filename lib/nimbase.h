@@ -10,11 +10,7 @@
 /* compiler symbols:
 __BORLANDC__
 _MSC_VER
-__WATCOMC__
-__LCC__
 __GNUC__
-__DMC__
-__POCC__
 __TINYC__
 __clang__
 __AVR__
@@ -88,34 +84,32 @@ __AVR__
 #  define __DECLSPEC_SUPPORTED 1
 #endif
 
-/* calling convention mess ----------------------------------------------- */
-#if defined(__GNUC__) || defined(__LCC__) || defined(__POCC__) \
-                      || defined(__TINYC__)
-  /* these should support C99's inline */
-  /* the test for __POCC__ has to come before the test for _MSC_VER,
-     because PellesC defines _MSC_VER too. This is brain-dead. */
-#  define N_INLINE(rettype, name) inline rettype name
-#elif defined(__BORLANDC__) || defined(_MSC_VER)
-/* Borland's compiler is really STRANGE here; note that the __fastcall
-   keyword cannot be before the return type, but __inline cannot be after
-   the return type, so we do not handle this mess in the code generator
-   but rather here. */
+
+/* Calling conventions and inline attributes for the supported C compilers */
+#if defined(__GNUC__) || defined(__clang__)  /* GCC and Clang */
+#  if __has_attribute(__forceinline)
+#    define N_INLINE(rettype, name) __attribute__((__forceinline)) rettype name
+#  else
+#    define N_INLINE(rettype, name) inline rettype name
+#  endif
+#elif defined(_MSC_VER)  /* MSVC */
+#  if _MSC_VER > 1200
+#    define N_INLINE(rettype, name) __forceinline rettype name
+#  else
+#    define N_INLINE(rettype, name) inline rettype name
+#  endif
+#elif defined(__TINYC__) || defined(__BORLANDC__)  /* TinyC and BorlandC */
 #  define N_INLINE(rettype, name) __inline rettype name
-#elif defined(__DMC__)
+#elif defined(__AVR__)  /* Atmel Advanced Virtual RISC */
 #  define N_INLINE(rettype, name) inline rettype name
-#elif defined(__WATCOMC__)
-#  define N_INLINE(rettype, name) __inline rettype name
-#else /* others are less picky: */
-#  define N_INLINE(rettype, name) rettype __inline name
+#else  /* Unsupported C compilers */
+#  define N_INLINE(rettype, name) rettype name
 #endif
+
 
 #define N_INLINE_PTR(rettype, name) rettype (*name)
 
-#if defined(__POCC__)
-#  define NIM_CONST /* PCC is really picky with const modifiers */
-#  undef _MSC_VER /* Yeah, right PCC defines _MSC_VER even if it is
-                     not that compatible. Well done. */
-#elif defined(__cplusplus)
+#if defined(__cplusplus)
 #  define NIM_CONST /* C++ is picky with const modifiers */
 #else
 #  define NIM_CONST  const
@@ -126,7 +120,7 @@ __AVR__
   http://stackoverflow.com/questions/18298280/how-to-declare-a-variable-as-thread-local-portably
 */
 #if defined _WIN32
-#  if defined _MSC_VER || defined __DMC__ || defined __BORLANDC__
+#  if defined _MSC_VER || defined __BORLANDC__
 #    define NIM_THREADVAR __declspec(thread)
 #  else
 #    define NIM_THREADVAR __thread
@@ -136,7 +130,6 @@ __AVR__
 #elif defined _WIN32 && ( \
        defined _MSC_VER || \
        defined __ICL || \
-       defined __DMC__ || \
        defined __BORLANDC__ )
 #  define NIM_THREADVAR __declspec(thread)
 #elif defined(__TINYC__) || defined(__GENODE__)
@@ -155,8 +148,7 @@ __AVR__
 #endif
 
 /* --------------- how int64 constants should be declared: ----------- */
-#if defined(__GNUC__) || defined(__LCC__) || \
-    defined(__POCC__) || defined(__DMC__) || defined(_MSC_VER)
+#if defined(__GNUC__) || defined(_MSC_VER)
 #  define IL64(x) x##LL
 #else /* works only without LL */
 #  define IL64(x) ((NI64)x)
@@ -247,8 +239,7 @@ __AVR__
 
 #define N_NOINLINE_PTR(rettype, name) rettype (*name)
 
-#if defined(__BORLANDC__) || defined(__WATCOMC__) || \
-    defined(__POCC__) || defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
+#if defined(__BORLANDC__) || defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
 /* these compilers have a fastcall so use it: */
 #  ifdef __TINYC__
 #    define N_NIMCALL(rettype, name) rettype __attribute((__fastcall)) name
@@ -296,8 +287,7 @@ __AVR__
 #endif
 
 /* Known compiler with stdint.h that doesn't fit the general pattern? */
-#if defined(__LCC__) || defined(__DMC__) || defined(__POCC__) || \
-  defined(__AVR__) || (defined(__cplusplus) && (__cplusplus < 201103))
+#if defined(__AVR__) || (defined(__cplusplus) && (__cplusplus < 201103))
 #  define HAVE_STDINT_H
 #endif
 
@@ -357,8 +347,7 @@ NIM_STATIC_ASSERT(CHAR_BIT == 8, "");
                               the generated code does not rely on it anymore */
 #endif
 
-#if defined(__BORLANDC__) || defined(__DMC__) \
-   || defined(__WATCOMC__) || defined(_MSC_VER)
+#if defined(__BORLANDC__) || defined(_MSC_VER)
 typedef signed char NI8;
 typedef signed short int NI16;
 typedef signed int NI32;
