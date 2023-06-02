@@ -766,7 +766,7 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     else:
       body.add genIf(c, cond, actions)
       body.add newAsgnStmt(x, y)
-  of attachedAsgn, attachedDup:
+  of attachedAsgn:
     let yenv = genBuiltin(c, mAccessEnv, "accessEnv", y)
     yenv.typ = getSysType(c.g, c.info, tyPointer)
     if isCyclic:
@@ -778,6 +778,15 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
       body.add genIf(c, cond, actions)
       body.add newAsgnStmt(x, y)
+  of attachedDup:
+    let yenv = genBuiltin(c, mAccessEnv, "accessEnv", y)
+    yenv.typ = getSysType(c.g, c.info, tyPointer)
+    if isCyclic:
+      body.add newAsgnStmt(x, y)
+      body.add genIf(c, yenv, callCodegenProc(c.g, "nimIncRefCyclic", c.info, yenv, getCycleParam(c)))
+    else:
+      body.add newAsgnStmt(x, y)
+      body.add genIf(c, yenv, callCodegenProc(c.g, "nimIncRef", c.info, yenv))
   of attachedDestructor:
     body.add genIf(c, cond, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
@@ -792,10 +801,13 @@ proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # count value:
     body.add genIf(c, x, callCodegenProc(c.g, "nimDecWeakRef", c.info, x))
     body.add newAsgnStmt(x, y)
-  of attachedAsgn, attachedDup:
+  of attachedAsgn:
     body.add genIf(c, y, callCodegenProc(c.g, "nimIncRef", c.info, y))
     body.add genIf(c, x, callCodegenProc(c.g, "nimDecWeakRef", c.info, x))
     body.add newAsgnStmt(x, y)
+  of attachedDup:
+    body.add newAsgnStmt(x, y)
+    body.add genIf(c, y, callCodegenProc(c.g, "nimIncRef", c.info, y))
   of attachedDestructor:
     # it's better to prepend the destruction of weak refs in order to
     # prevent wrong "dangling refs exist" problems:
@@ -827,8 +839,10 @@ proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, x)
 
   case c.kind
-  of attachedSink, attachedAsgn, attachedDup:
+  of attachedSink, attachedAsgn:
     body.add genIf(c, x, actions)
+    body.add newAsgnStmt(x, y)
+  of attachedDup:
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
     body.add genIf(c, x, actions)
@@ -855,12 +869,17 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       # count value:
       body.add genIf(c, xx, callCodegenProc(c.g, "nimDecWeakRef", c.info, xx))
       body.add newAsgnStmt(x, y)
-    of attachedAsgn, attachedDup:
+    of attachedAsgn:
       let yy = genBuiltin(c, mAccessEnv, "accessEnv", y)
       yy.typ = getSysType(c.g, c.info, tyPointer)
       body.add genIf(c, yy, callCodegenProc(c.g, "nimIncRef", c.info, yy))
       body.add genIf(c, xx, callCodegenProc(c.g, "nimDecWeakRef", c.info, xx))
       body.add newAsgnStmt(x, y)
+    of attachedDup:
+      let yy = genBuiltin(c, mAccessEnv, "accessEnv", y)
+      yy.typ = getSysType(c.g, c.info, tyPointer)
+      body.add newAsgnStmt(x, y)
+      body.add genIf(c, yy, callCodegenProc(c.g, "nimIncRef", c.info, yy))
     of attachedDestructor:
       let des = genIf(c, xx, callCodegenProc(c.g, "nimDecWeakRef", c.info, xx))
       if body.len == 0:
@@ -878,8 +897,10 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   #discard addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(xx))
   actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, xx)
   case c.kind
-  of attachedSink, attachedAsgn, attachedDup:
+  of attachedSink, attachedAsgn:
     body.add genIf(c, xx, actions)
+    body.add newAsgnStmt(x, y)
+  of attachedDup:
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
     body.add genIf(c, xx, actions)
