@@ -188,7 +188,7 @@ template isUnpackedTuple(n: PNode): bool =
 
 proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
-  if (opname == "=" or opname == "=copy") and ri != nil:
+  if (opname == "=" or opname == "=copy" or opname == "=dup") and ri != nil:
     m.add "; requires a copy because it's not the last read of '"
     m.add renderTree(ri)
     m.add '\''
@@ -427,21 +427,17 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   if hasDestructor(c, n.typ):
     let typ = n.typ.skipTypes({tyGenericInst, tyAlias, tySink})
     let op = getAttachedOp(c.graph, typ, attachedDup)
-    if op != nil:
+    if op != nil and tfHasOwned notin typ.flags:
+      if sfError in op.flags:
+        c.checkForErrorPragma(n.typ, n, "=dup")
       let src = p(n, c, s, normal)
-      result.add newTreeI(nkFastAsgn,
-          src.info, tmp,
-          newTreeIT(nkCall, src.info, src.typ,
+      var newCall = newTreeIT(nkCall, src.info, src.typ,
             newSymNode(op),
             src)
-      )
-    elif typ.kind == tyRef:
-      let src = p(n, c, s, normal)
+      c.finishCopy(newCall, n, isFromSink = true)
       result.add newTreeI(nkFastAsgn,
           src.info, tmp,
-          newTreeIT(nkCall, src.info, src.typ,
-            newSymNode(createMagic(c.graph, c.idgen, "`=dup`", mDup)),
-            src)
+          newCall
       )
     else:
       result.add c.genWasMoved(tmp)
