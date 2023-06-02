@@ -197,7 +197,7 @@ runnableExamples:
 
 
 import std/private/since
-import hashes, math, algorithm
+import hashes, math, algorithm, macros
 
 
 when not defined(nimHasEffectsOf):
@@ -626,8 +626,8 @@ template withValue*[A, B](t: var Table[A, B], key: A, value, body: untyped) =
     var value {.inject.} = addr(t.data[index].val)
     body
 
-template withValue*[A, B](t: var Table[A, B], key: A,
-                          value, body1, body2: untyped) =
+macro withValue*[A, B](t: var Table[A, B], key: A,
+                          value, body1, body2: untyped): untyped =
   ## Retrieves the value at `t[key]`.
   ##
   ## `value` can be modified in the scope of the `withValue` call.
@@ -652,21 +652,29 @@ template withValue*[A, B](t: var Table[A, B], key: A,
       # block is executed when `key` not in `t`
       t[1314] = User(name: "exist", uid: 521)
 
+    # Since Nim 2.0
+    t.withValue(522, value):
+      doAssert false
+    else:
+      # block is executed when `key` not in `t`
+      discard
+
     assert t[1].name == "Nim"
     assert t[1].uid == 1314
     assert t[1314].name == "exist"
     assert t[1314].uid == 521
 
-  mixin rawGet
-  var hc: Hash
-  var index = rawGet(t, key, hc)
-  let hasKey = index >= 0
-  if hasKey:
-    var value {.inject.} = addr(t.data[index].val)
-    body1
-  else:
-    body2
-
+  let elseBody = body2[0]
+  quote do:
+    mixin rawGet
+    var hc: Hash
+    var index = rawGet(`t`, `key`, hc)
+    let hasKey = index >= 0
+    if hasKey:
+      var `value` {.inject.} = addr(`t`.data[index].val)
+      `body1`
+    else:
+      `elseBody`
 
 iterator pairs*[A, B](t: Table[A, B]): (A, B) =
   ## Iterates over any `(key, value)` pair in the table `t`.
