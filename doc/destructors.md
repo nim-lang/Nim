@@ -59,6 +59,14 @@ written as:
       for i in 0..<a.len:
         a.data[i] = b.data[i]
 
+  proc `=dup`*[T](a: myseq[T]): myseq[T] =
+    result.len = a.len
+    result.cap = a.cap
+    if a.data != nil:
+      result.data = cast[typeof(result.data)](alloc(result.cap * sizeof(T)))
+      for i in 0..<result.len:
+        result.data[i] = a.data[i]
+
   proc `=sink`*[T](a: var myseq[T]; b: myseq[T]) =
     # move assignment, optional.
     # Compiler is using `=destroy` and `copyMem` when not provided
@@ -444,7 +452,7 @@ destroyed at the scope exit.
 
     f_sink(notLastReadOf y)
     --------------------------     (copy-to-sink)
-    (let tmp; `=copy`(tmp, y);
+    (let tmp = `=dup`(y);
     f_sink(tmp))
 
 
