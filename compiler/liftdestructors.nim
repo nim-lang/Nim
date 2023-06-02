@@ -727,14 +727,14 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       #echo "can follow ", elemType, " static ", isFinal(elemType)
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
   of attachedDup:
-    let typ = makePtrType(x.typ.owner, getSysType(c.g, c.info, tyPointer), c.idgen)
-    let castExpr = newNodeIT(nkCast, c.info, typ)
-    castExpr.add newNodeIT(nkType, c.info, typ)
-    castExpr.add genAddrOf(x, c.idgen)
     if isCyclic:
-      body.add callCodegenProc(c.g, "nimDupRefDyn", c.info, castExpr, y, getCycleParam(c))
+      body.add newAsgnStmt(x, y)
+      body.add genIf(c, y, callCodegenProc(c.g,
+          "nimIncRefCyclic", c.info, y, getCycleParam(c)))
     else:
-      body.add callCodegenProc(c.g, "nimDupRef", c.info, castExpr, y)
+      body.add newAsgnStmt(x, y)
+      body.add genIf(c, y, callCodegenProc(c.g,
+          "nimIncRef", c.info, y))
 
 proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   ## Closures are really like refs except they always use a virtual destructor

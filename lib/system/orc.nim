@@ -508,7 +508,3 @@ proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerR
       dec cell.rc, rcIncrement
     #if cell.color == colPurple:
     rememberCycle(result, cell, desc)
-
-proc nimDupRefDyn(dest: ptr pointer, src: pointer; cyclic: bool) {.compilerRtl, inl.} =
-  dest[] = src
-  if src != nil: nimIncRefCyclic src, cyclic
