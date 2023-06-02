@@ -1008,6 +1008,13 @@ proc symDupPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttache
 
   result.typ.addParam src
 
+  if g.config.selectedGC == gcOrc and
+    cyclicType(g, typ.skipTypes(abstractInst)):
+    let cycleParam = newSym(skParam, getIdent(g.cache, "cyclic"),
+                            idgen, result, info)
+    cycleParam.typ = getSysType(g, info, tyBool)
+    result.typ.addParam cycleParam
+
   var n = newNodeI(nkProcDef, info, bodyPos+2)
   for i in 0..<n.len: n[i] = newNodeI(nkEmpty, info)
   n[namePos] = newSymNode(result)

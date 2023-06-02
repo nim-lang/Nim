@@ -431,11 +431,13 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
       if sfError in op.flags:
         c.checkForErrorPragma(n.typ, n, "=dup")
       let src = p(n, c, s, normal)
-      result.add newTreeI(nkFastAsgn,
-          src.info, tmp,
-          newTreeIT(nkCall, src.info, src.typ,
+      var newCall = newTreeIT(nkCall, src.info, src.typ,
             newSymNode(op),
             src)
+      c.finishCopy(newCall, n, isFromSink = true)
+      result.add newTreeI(nkFastAsgn,
+          src.info, tmp,
+          newCall
       )
     else:
       result.add c.genWasMoved(tmp)
