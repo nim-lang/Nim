@@ -95,7 +95,7 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [].} =
     {.noSideEffect.}:
       cast[ptr NimSeqV2[T]](addr x).len = newLen
 
-proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
+proc grow*[T](x: var seq[T]; newLen: Natural; value: T) {.nodestroy.} =
   let oldLen = x.len
   #sysAssert newLen >= x.len, "invalid newLen parameter for 'grow'"
   if newLen <= oldLen: return
@@ -104,7 +104,7 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
     xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
   xu.len = newLen
   for i in oldLen .. newLen-1:
-    xu.p.data[i] = value
+    xu.p.data[i] = `=dup`(value)
 
 proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffect, nodestroy.} =
   ## Generic proc for adding a data item `y` to a container `x`.
