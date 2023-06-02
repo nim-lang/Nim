@@ -60,6 +60,8 @@ written as:
         a.data[i] = b.data[i]
 
   proc `=dup`*[T](a: myseq[T]): myseq[T] =
+    # an optimized version of `wasMoved(tmp); `=copy(s, tmp)`
+    # usually present if a custom `=copy` hook is implemented
     result.len = a.len
     result.cap = a.cap
     if a.data != nil:
