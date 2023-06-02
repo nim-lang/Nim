@@ -202,7 +202,7 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
 
 proc nimDupRef(dest: ptr pointer, src: pointer) {.compilerRtl, inl.} =
   dest[] = src
-  if src != nil: nimIncRef src # todo nimIncRefCyclic ?
+  if src != nil: nimIncRef src
 
 proc GC_unref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.

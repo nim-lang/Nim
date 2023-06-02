@@ -731,7 +731,10 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     let castExpr = newNodeIT(nkCast, c.info, typ)
     castExpr.add newNodeIT(nkType, c.info, typ)
     castExpr.add genAddrOf(x, c.idgen)
-    body.add callCodegenProc(c.g, "nimDupRef", c.info, castExpr, y)
+    if isCyclic:
+      body.add callCodegenProc(c.g, "nimDupRefDyn", c.info, castExpr, y, getCycleParam(c))
+    else:
+      body.add callCodegenProc(c.g, "nimDupRef", c.info, castExpr, y)
 
 proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   ## Closures are really like refs except they always use a virtual destructor
