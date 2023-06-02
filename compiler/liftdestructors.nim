@@ -972,7 +972,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     if not considerUserDefinedOp(c, t, body, x, y):
       if t.sym != nil and sfImportc in t.sym.flags:
         case c.kind
-        of {attachedAsgn, attachedSink}:
+        of {attachedAsgn, attachedSink, attachedDup}:
           body.add newAsgnStmt(x, y)
         of attachedWasMoved:
           body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x)
@@ -1133,7 +1133,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
       fillStrOp(a, typ, result.ast[bodyPos], d, src)
     else:
       fillBody(a, typ, result.ast[bodyPos], d, src)
-      if tk == tyObject and a.kind in {attachedAsgn, attachedSink, attachedDeepCopy} and not lacksMTypeField(typ):
+      if tk == tyObject and a.kind in {attachedAsgn, attachedSink, attachedDeepCopy, attachedDup} and not lacksMTypeField(typ):
         # bug #19205: Do not forget to also copy the hidden type field:
         genTypeFieldCopy(a, typ, result.ast[bodyPos], d, src)
 
