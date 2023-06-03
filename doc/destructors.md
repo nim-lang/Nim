@@ -57,7 +57,17 @@ written as:
     if b.data != nil:
       a.data = cast[typeof(a.data)](alloc(a.cap * sizeof(T)))
       for i in 0..<a.len:
-        a.data[i] = b.data[i]
+       a.data[i] = b.data[i]
+
+  proc `=dup`*[T](a: myseq[T]): myseq[T] {.nodestroy.} =
+    # an optimized version of `=wasMoved(tmp); `=copy(tmp, src)`
+    # usually present if a custom `=copy` hook is overridden
+    result.len = a.len
+    result.cap = a.cap
+    if a.data != nil:
+      result.data = cast[typeof(result.data)](alloc(result.cap * sizeof(T)))
+      for i in 0..<result.len:
+        result.data[i] = `=dup`(a.data[i])
 
   proc `=sink`*[T](a: var myseq[T]; b: myseq[T]) =
     # move assignment, optional.
@@ -444,7 +454,7 @@ destroyed at the scope exit.
 
     f_sink(notLastReadOf y)
     --------------------------     (copy-to-sink)
-    (let tmp; `=copy`(tmp, y);
+    (let tmp = `=dup`(y);
     f_sink(tmp))
 
 
