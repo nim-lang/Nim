@@ -104,7 +104,10 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) {.nodestroy.} =
     xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
   xu.len = newLen
   for i in oldLen .. newLen-1:
-    xu.p.data[i] = `=dup`(value)
+    when defined(nimHasDup):
+      xu.p.data[i] = `=dup`(value)
+    else:
+      xu.p.data[i] = value
 
 proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffect, nodestroy.} =
   ## Generic proc for adding a data item `y` to a container `x`.
