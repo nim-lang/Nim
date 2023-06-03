@@ -179,7 +179,7 @@ proc bundleWinTools(args: string) =
   buildVccTool(args)
   nimCompile("tools/nimgrab.nim", options = "-d:ssl " & args)
   nimCompile("tools/nimgrep.nim", options = args)
-  nimCompile("tools/atlas/atlas.nim", options = args)
+  nimCompile("atlas/atlas.nim", options = args)
   nimCompile("testament/testament.nim", options = args)
   when false:
     # not yet a tool worth including
@@ -236,7 +236,7 @@ proc buildTools(args: string = "") =
       "--opt:speed --stacktrace -d:debug --stacktraceMsgs -d:nimCompilerStacktraceHints " & args,
       outputName = "nim_dbg")
 
-  nimCompileFold("Compile atlas", "tools/atlas/atlas.nim", options = "-d:release " & args,
+  nimCompileFold("Compile atlas", "atlas/atlas.nim", options = "-d:release " & args,
       outputName = "atlas")
 
 proc testTools(args: string = "") =
@@ -245,7 +245,7 @@ proc testTools(args: string = "") =
   when defined(windows): buildVccTool(args)
   bundleNimpretty(args)
   nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release " & args)
-  nimCompileFold("Compile atlas", "tools/atlas/atlas.nim", options = "-d:release " & args,
+  nimCompileFold("Compile atlas", "atlas/atlas.nim", options = "-d:release " & args,
       outputName = "atlas")
 
 proc nsis(latest: bool; args: string) =
@@ -612,7 +612,7 @@ proc runCI(cmd: string) =
       execFold("build nimsuggest_testing", "nim c -o:bin/nimsuggest_testing -d:release nimsuggest/nimsuggest")
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
-    execFold("Run atlas tests", "nim c -r -d:atlasTests tools/atlas/atlas.nim clone https://github.com/disruptek/balls")
+    execFold("Run atlas tests", "nim c -r -d:atlasTests atlas/atlas.nim clone https://github.com/disruptek/balls")
 
     kochExecFold("Testing booting in refc", "boot -d:release --mm:refc -d:nimStrictMode --lib:lib")
 
