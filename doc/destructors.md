@@ -59,7 +59,7 @@ written as:
       for i in 0..<a.len:
        a.data[i] = b.data[i]
 
-  proc `=dup`*[T](a: myseq[T]): myseq[T] =
+  proc `=dup`*[T](a: myseq[T]): myseq[T] {.nodestroy.} =
     # an optimized version of `=wasMoved(tmp); `=copy(tmp, src)`
     # usually present if a custom `=copy` hook is overridden
     result.len = a.len
