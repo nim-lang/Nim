@@ -426,7 +426,9 @@ proc toName(p: string): PackageName =
     result = PackageName p
 
 proc generateDepGraph(c: var AtlasContext; g: DepGraph) =
-  proc repr(w: Dependency): string = w.url / w.commit
+  proc repr(w: Dependency): string =
+    if w.url.endsWith("/"): w.url & w.commit
+    else: w.url & "/" & w.commit
 
   var dotGraph = ""
   for i in 0 ..< g.nodes.len:

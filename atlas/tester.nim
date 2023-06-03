@@ -33,6 +33,10 @@ proc testWsConflict() =
   createDir(myproject)
   exec atlasExe & " --project=" & myproject & " --showGraph --genLock use https://github.com/apkg"
   sameDirContents("atlas/tests/ws_conflict/expected", myproject)
+  removeDir("atlas/tests/ws_conflict/apkg")
+  removeDir("atlas/tests/ws_conflict/bpkg")
+  removeDir("atlas/tests/ws_conflict/cpkg")
+  removeDir("atlas/tests/ws_conflict/dpkg")
   removeDir(myproject)
 
 testWsConflict()
