@@ -87,7 +87,7 @@ pkg "kdtree", "nimble test -d:nimLegacyRandomInitRand", "https://github.com/jbli
 pkg "loopfusion"
 pkg "lockfreequeues"
 pkg "macroutils"
-pkg "manu", url = "https://github.com/nim-lang/manu"
+pkg "manu"
 pkg "markdown"
 pkg "measuremancer", "nimble testDeps; nimble -y test"
 pkg "memo"
