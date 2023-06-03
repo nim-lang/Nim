@@ -78,7 +78,7 @@ proc writeVersion() =
 
 const
   MockupRun = defined(atlasTests)
-  TestsDir = "tools/atlas/tests"
+  TestsDir = "atlas/tests"
 
 type
   LockOption = enum
@@ -485,7 +485,7 @@ proc dependencyDir(c: AtlasContext; w: Dependency): string =
   if not dirExists(result):
     result = c.depsDir / w.name.string
 
-proc selected(c: var AtlasContext; g: var DepGraph; w: Dependency) =
+proc selectNode(c: var AtlasContext; g: var DepGraph; w: Dependency) =
   # all other nodes of the same project name are not active
   for e in items g.byName[w.name]:
     g.nodes[e].active = e == w.self
@@ -522,10 +522,10 @@ proc checkoutCommit(c: var AtlasContext; g: var DepGraph; w: Dependency) =
               # conflict resolution: pick the later commit:
               if mergeBase == currentCommit:
                 checkoutGitCommit(c, w.name, requiredCommit)
-                selected c, g, w
+                selectNode c, g, w
             else:
               checkoutGitCommit(c, w.name, requiredCommit)
-              selected c, g, w
+              selectNode c, g, w
               when false:
                 warn c, w.name, "do not know which commit is more recent:",
                   currentCommit, "(current) or", w.commit, " =", requiredCommit, "(required)"
@@ -674,7 +674,7 @@ proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[C
           if err != "":
             error c, w.name, err
     # assume this is the selected version, it might get overwritten later:
-    selected c, g, w
+    selectNode c, g, w
     if oldErrors == c.errors:
       if not c.keepCommits:
         if not w.url.startsWith(FileProtocol):
@@ -683,7 +683,7 @@ proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[C
           withDir c, (if i != 0 or startIsDep: c.depsDir else: c.workspace):
             if isLaterCommit(destDir, w.commit):
               copyFromDisk c, w
-              selected c, g, w
+              selectNode c, g, w
       # even if the checkout fails, we can make use of the somewhat
       # outdated .nimble file to clone more of the most likely still relevant
       # dependencies:
@@ -694,6 +694,7 @@ proc traverse(c: var AtlasContext; start: string; startIsDep: bool): seq[CfgPath
   # returns the list of paths for the nim.cfg file.
   let url = toUrl(c, start)
   var g = DepGraph(nodes: @[Dependency(name: toName(start), url: url, commit: "", self: 0)])
+  g.byName.mgetOrPut(toName(start), @[]).add 0
 
   if url == "":
     error c, toName(start), "cannot resolve package name"
