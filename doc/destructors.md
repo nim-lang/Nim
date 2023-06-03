@@ -61,7 +61,7 @@ written as:
 
   proc `=dup`*[T](a: myseq[T]): myseq[T] =
     # an optimized version of `=wasMoved(tmp); `=copy(tmp, src)`
-    # usually present if a custom `=copy` hook is implemented
+    # usually present if a custom `=copy` hook is overridden
     result.len = a.len
     result.cap = a.cap
     if a.data != nil:
