@@ -613,6 +613,10 @@ proc runCI(cmd: string) =
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
     execFold("Run atlas tests", "nim c -r -d:atlasTests atlas/atlas.nim clone https://github.com/disruptek/balls")
+    # compile it again to get rid of `-d:atlasTests`:
+    nimCompileFold("Compile atlas", "atlas/atlas.nim", options = "-d:release " & args,
+        outputName = "atlas")
+    execFold("Run more atlas tests", "nim c -r atlas/tester.nim")
 
     kochExecFold("Testing booting in refc", "boot -d:release --mm:refc -d:nimStrictMode --lib:lib")
 

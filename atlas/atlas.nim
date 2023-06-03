@@ -433,7 +433,7 @@ proc generateDepGraph(c: var AtlasContext; g: DepGraph) =
     for p in items g.nodes[i].parents:
       if p >= 0:
         dotGraph.addf("\"$1\" -> \"$2\";\n", [g.nodes[p].repr, g.nodes[i].repr])
-  let dotFile = c.workspace / "deps.dot"
+  let dotFile = c.currentDir / "deps.dot"
   writeFile(dotFile, "digraph deps {\n$1}\n" % dotGraph)
   let graphvizDotPath = findExe("dot")
   if graphvizDotPath.len == 0:
