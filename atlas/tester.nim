@@ -31,9 +31,9 @@ proc sameDirContents(expected, given: string) =
 proc testWsConflict() =
   const myproject = "atlas/tests/ws_conflict/myproject"
   createDir(myproject)
-  exec atlasExe & " --project=" & myproject & " --showGraph use https://github.com/apkg"
+  exec atlasExe & " --project=" & myproject & " --showGraph --genLock use https://github.com/apkg"
   sameDirContents("atlas/tests/ws_conflict/expected", myproject)
-  #removeDir(myproject)
+  removeDir(myproject)
 
 testWsConflict()
 if failures > 0: quit($failures & " failures occurred.")

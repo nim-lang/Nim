@@ -7,6 +7,5 @@ digraph deps {
 "file:/source/apkg/<invalid commit>" -> "file:/source/bpkg/1.0";
 "file:/source/apkg/<invalid commit>" -> "file:/source/cpkg/1.0";
 "file:/source/bpkg/1.0" -> "file:/source/cpkg/2.0";
-"file:/source/cpkg/1.0" -> "file:/source/dpkg/1.0";
 "file:/source/cpkg/2.0" -> "file:/source/dpkg/1.0";
 }
