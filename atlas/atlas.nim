@@ -10,7 +10,7 @@
 ## a Nimble dependency and its dependencies recursively.
 
 import std / [parseopt, strutils, os, osproc, tables, sets, json, jsonutils,
-  parsecfg, streams, terminal, strscans]
+  parsecfg, streams, terminal, strscans, hashes]
 import parse_requires, osutils, packagesjson, compiledpatterns
 
 from unicode import nil
@@ -61,6 +61,7 @@ Options:
   --uselock             use the lock file for the build
   --autoinit            auto initialize a workspace
   --colors=on|off       turn on|off colored output
+  --showGraph           show the dependency graph
   --version             show the version
   --help                show this help
 """
@@ -98,10 +99,13 @@ type
     name: PackageName
     url, commit: string
     rel: DepRelation # "requires x < 1.0" is silly, but Nimble allows it so we have too.
+    self: int # position in the graph
     parents: seq[int] # why we need this dependency
+    active: bool
   DepGraph = object
     nodes: seq[Dependency]
     processed: Table[string, int] # the key is (url / commit)
+    byName: Table[PackageName, seq[int]]
 
   AtlasContext = object
     projectDir, workspace, depsDir, currentDir: string
@@ -119,8 +123,12 @@ type
       step: int
       mockupSuccess: bool
     noColors: bool
+    showGraph: bool
 
-proc `==`(a, b: CfgPath): bool {.borrow.}
+proc `==`*(a, b: CfgPath): bool {.borrow.}
+
+proc `==`*(a, b: PackageName): bool {.borrow.}
+proc hash*(a: PackageName): Hash {.borrow.}
 
 const
   InvalidCommit = "<invalid commit>"
@@ -415,6 +423,30 @@ proc toName(p: string): PackageName =
   else:
     result = PackageName p
 
+proc generateDepGraph(c: var AtlasContext; g: DepGraph) =
+  proc repr(w: Dependency): string = w.url / w.commit
+
+  var dotGraph = ""
+  for i in 0 ..< g.nodes.len:
+    dotGraph.addf("\"$1\" [label=\"$2\"];\n", [g.nodes[i].repr, if g.nodes[i].active: "" else: "unused"])
+  for i in 0 ..< g.nodes.len:
+    for p in items g.nodes[i].parents:
+      if p >= 0:
+        dotGraph.addf("\"$1\" -> \"$2\";\n", [g.nodes[p].repr, g.nodes[i].repr])
+  let dotFile = c.workspace / "deps.dot"
+  writeFile(dotFile, "digraph deps {\n$1}\n" % dotGraph)
+  let graphvizDotPath = findExe("dot")
+  if graphvizDotPath.len == 0:
+    #echo("gendepend: Graphviz's tool dot is required, " &
+    #  "see https://graphviz.org/download for downloading")
+    discard
+  else:
+    discard execShellCmd("dot -Tpng -odeps.png " & quoteShell(dotFile))
+
+proc showGraph(c: var AtlasContext; g: DepGraph) =
+  if c.showGraph:
+    generateDepGraph c, g
+
 proc needsCommitLookup(commit: string): bool {.inline.} =
   '.' in commit or commit == InvalidCommit
 
@@ -453,7 +485,12 @@ proc dependencyDir(c: AtlasContext; w: Dependency): string =
   if not dirExists(result):
     result = c.depsDir / w.name.string
 
-proc checkoutCommit(c: var AtlasContext; w: Dependency) =
+proc selected(c: var AtlasContext; g: var DepGraph; w: Dependency) =
+  # all other nodes of the same project name are not active
+  for e in items g.byName[w.name]:
+    g.nodes[e].active = e == w.self
+
+proc checkoutCommit(c: var AtlasContext; g: var DepGraph; w: Dependency) =
   let dir = dependencyDir(c, w)
   withDir c, dir:
     if c.lockOption == genLock:
@@ -485,8 +522,10 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
               # conflict resolution: pick the later commit:
               if mergeBase == currentCommit:
                 checkoutGitCommit(c, w.name, requiredCommit)
+                selected c, g, w
             else:
               checkoutGitCommit(c, w.name, requiredCommit)
+              selected c, g, w
               when false:
                 warn c, w.name, "do not know which commit is more recent:",
                   currentCommit, "(current) or", w.commit, " =", requiredCommit, "(required)"
@@ -522,16 +561,20 @@ proc addUniqueDep(c: var AtlasContext; g: var DepGraph; parent: int;
     if g.processed.hasKey(key):
       g.nodes[g.processed[key]].parents.addUnique parent
     else:
-      g.processed[key] = g.nodes.len
+      let self = g.nodes.len
+      g.byName.mgetOrPut(toName(pkgName), @[]).add self
+      g.processed[key] = self
       if lockfile.contains(pkgName):
         g.nodes.add Dependency(name: toName(pkgName),
                             url: lockfile[pkgName].url,
                             commit: lockfile[pkgName].commit,
                             rel: normal,
+                            self: self,
                             parents: @[parent])
       else:
         g.nodes.add Dependency(name: toName(pkgName), url: url, commit: tokens[2],
                                rel: toDepRelation(tokens[1]),
+                               self: self,
                                parents: @[parent])
 
 template toDestDir(p: PackageName): string = p.string
@@ -595,7 +638,7 @@ proc copyFromDisk(c: var AtlasContext; w: Dependency) =
   if u.startsWith("./"): u = c.workspace / u.substr(2)
   copyDir(selectDir(u & "@" & w.commit, u), destDir)
   writeFile destDir / ThisVersion, w.commit
-  echo "WRITTEN ", destDir / ThisVersion
+  #echo "WRITTEN ", destDir / ThisVersion
 
 proc isNewerVersion(a, b: string): bool =
   # only used for testing purposes.
@@ -630,13 +673,17 @@ proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[C
           let err = cloneUrl(c, w.url, destDir, false)
           if err != "":
             error c, w.name, err
+    # assume this is the selected version, it might get overwritten later:
+    selected c, g, w
     if oldErrors == c.errors:
       if not c.keepCommits:
-        if not w.url.startsWith(FileProtocol): checkoutCommit(c, w)
+        if not w.url.startsWith(FileProtocol):
+          checkoutCommit(c, g, w)
         else:
           withDir c, (if i != 0 or startIsDep: c.depsDir else: c.workspace):
             if isLaterCommit(destDir, w.commit):
               copyFromDisk c, w
+              selected c, g, w
       # even if the checkout fails, we can make use of the somewhat
       # outdated .nimble file to clone more of the most likely still relevant
       # dependencies:
@@ -646,7 +693,7 @@ proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[C
 proc traverse(c: var AtlasContext; start: string; startIsDep: bool): seq[CfgPath] =
   # returns the list of paths for the nim.cfg file.
   let url = toUrl(c, start)
-  var g = DepGraph(nodes: @[Dependency(name: toName(start), url: url, commit: "")])
+  var g = DepGraph(nodes: @[Dependency(name: toName(start), url: url, commit: "", self: 0)])
 
   if url == "":
     error c, toName(start), "cannot resolve package name"
@@ -658,6 +705,7 @@ proc traverse(c: var AtlasContext; start: string; startIsDep: bool): seq[CfgPath
   result = traverseLoop(c, g, startIsDep)
   if c.lockOption == genLock:
     writeFile c.projectDir / LockFileName, toJson(c.lockFileToWrite).pretty
+  showGraph c, g
 
 const
   configPatternBegin = "############# begin Atlas config section ##########\n"
@@ -711,31 +759,16 @@ proc findSrcDir(c: var AtlasContext): string =
     return c.currentDir / nimbleInfo.srcDir
   return c.currentDir
 
-proc generateDepGraph(g: DepGraph) =
-  # currently unused.
-  var dotGraph = ""
-  for i in 0 ..< g.nodes.len:
-    for p in items g.nodes[i].parents:
-      if p >= 0:
-        dotGraph.addf("\"$1\" -> \"$2\";\n", [g.nodes[p].name.string, g.nodes[i].name.string])
-  writeFile("deps.dot", "digraph deps {\n$1}\n" % dotGraph)
-  let graphvizDotPath = findExe("dot")
-  if graphvizDotPath.len == 0:
-    #echo("gendepend: Graphviz's tool dot is required, " &
-    #  "see https://graphviz.org/download for downloading")
-    discard
-  else:
-    discard execShellCmd("dot -Tpng -odeps.png deps.dot")
-
 proc installDependencies(c: var AtlasContext; nimbleFile: string; startIsDep: bool) =
   # 1. find .nimble file in CWD
   # 2. install deps from .nimble
   var g = DepGraph(nodes: @[])
   let (_, pkgname, _) = splitFile(nimbleFile)
-  let dep = Dependency(name: toName(pkgname), url: "", commit: "")
+  let dep = Dependency(name: toName(pkgname), url: "", commit: "", self: 0)
   discard collectDeps(c, g, -1, dep, nimbleFile)
   let paths = traverseLoop(c, g, startIsDep)
   patchNimCfg(c, paths, if c.cfgHere: c.currentDir else: findSrcDir(c))
+  showGraph c, g
 
 proc updateDir(c: var AtlasContext; dir, filter: string) =
   for kind, file in walkDir(dir):
@@ -933,7 +966,7 @@ proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
   withDir c, c.workspace / nimDest:
     let nimExe = "bin" / "nim".addFileExt(ExeExt)
     copyFileWithPermissions nimExe0, nimExe
-    let dep = Dependency(name: toName(nimDest), rel: normal, commit: nimVersion)
+    let dep = Dependency(name: toName(nimDest), rel: normal, commit: nimVersion, self: 0)
     if not nimVersion.isDevel:
       let commit = versionToCommit(c, dep)
       if commit.len == 0:
@@ -1006,6 +1039,7 @@ proc main =
           writeHelp()
       of "cfghere": c.cfgHere = true
       of "autoinit": autoinit = true
+      of "showgraph": c.showGraph = true
       of "genlock":
         if c.lockOption != useLock:
           c.lockOption = genLock
