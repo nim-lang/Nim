@@ -11,6 +11,11 @@
 # import typetraits
 # strs already imported allocateds for us.
 
+when defined(nimHasDup):
+  {.pragma: myNoDestroy, nodestroy.}
+else:
+  {.pragma: myNoDestroy.}
+
 proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
 
 ## Default seq implementation used by Nim's core.
@@ -95,7 +100,7 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [].} =
     {.noSideEffect.}:
       cast[ptr NimSeqV2[T]](addr x).len = newLen
 
-proc grow*[T](x: var seq[T]; newLen: Natural; value: T) {.nodestroy.} =
+proc grow*[T](x: var seq[T]; newLen: Natural; value: T) {.myNoDestroy.} =
   let oldLen = x.len
   #sysAssert newLen >= x.len, "invalid newLen parameter for 'grow'"
   if newLen <= oldLen: return
