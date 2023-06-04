@@ -20,7 +20,6 @@ import
 
 when defined(nimPreviewSlimSystem):
   import std/formatfloat
-import astalgo
 import ast except getstr
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
