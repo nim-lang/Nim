@@ -16,10 +16,10 @@ import parse_requires, osutils, packagesjson, compiledpatterns
 from unicode import nil
 
 const
-  Version = "0.4"
+  AtlasVersion = "0.4"
   LockFileName = "atlas.lock"
   AtlasWorkspace = "atlas.workspace"
-  Usage = "atlas - Nim Package Cloner Version " & Version & """
+  Usage = "atlas - Nim Package Cloner Version " & AtlasVersion & """
 
   (c) 2021 Andreas Rumpf
 Usage:
@@ -51,6 +51,7 @@ Command:
   build|test|doc|tasks  currently delegates to `nimble build|test|doc`
   task <taskname>       currently delegates to `nimble <taskname>`
   env <nimversion>      setup a Nim virtual environment
+    --keep              keep the c_code subdirectory
 
 Options:
   --keepCommits         do not perform any `git checkouts`
@@ -60,6 +61,8 @@ Options:
   --project=DIR         use DIR as the current project
   --genlock             generate a lock file (use with `clone` and `update`)
   --uselock             use the lock file for the build
+  --autoenv             detect the minimal Nim $version and setup a
+                        corresponding Nim virtual environment
   --autoinit            auto initialize a workspace
   --colors=on|off       turn on|off colored output
   --showGraph           show the dependency graph
@@ -73,7 +76,7 @@ proc writeHelp() =
   quit(0)
 
 proc writeVersion() =
-  stdout.write(Version & "\n")
+  stdout.write(AtlasVersion & "\n")
   stdout.flushFile()
   quit(0)
 
@@ -107,16 +110,24 @@ type
     nodes: seq[Dependency]
     processed: Table[string, int] # the key is (url / commit)
     byName: Table[PackageName, seq[int]]
+    bestNimVersion: (int, int, int) # Nim is a special snowflake
 
   LockFile = object # serialized as JSON so an object for extensibility
     items: OrderedTable[string, LockFileEntry]
 
+  Flag = enum
+    KeepCommits
+    CfgHere
+    UsesOverrides
+    Keep
+    NoColors
+    ShowGraph
+    AutoEnv
+
   AtlasContext = object
     projectDir, workspace, depsDir, currentDir: string
     hasPackageList: bool
-    keepCommits: bool
-    cfgHere: bool
-    usesOverrides: bool
+    flags: set[Flag]
     p: Table[string, string] # name -> url mapping
     errors, warnings: int
     overrides: Patterns
@@ -125,8 +136,6 @@ type
     when MockupRun:
       step: int
       mockupSuccess: bool
-    noColors: bool
-    showGraph: bool
 
 proc `==`*(a, b: CfgPath): bool {.borrow.}
 
@@ -234,21 +243,21 @@ proc message(c: var AtlasContext; category: string; p: PackageName; arg: string)
   stdout.writeLine msg
 
 proc warn(c: var AtlasContext; p: PackageName; arg: string) =
-  if c.noColors:
+  if NoColors in c.flags:
     message(c, "[Warning] ", p, arg)
   else:
     stdout.styledWriteLine(fgYellow, styleBright, "[Warning] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
   inc c.warnings
 
 proc error(c: var AtlasContext; p: PackageName; arg: string) =
-  if c.noColors:
+  if NoColors in c.flags:
     message(c, "[Error] ", p, arg)
   else:
     stdout.styledWriteLine(fgRed, styleBright, "[Error] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
   inc c.errors
 
 proc info(c: var AtlasContext; p: PackageName; arg: string) =
-  if c.noColors:
+  if NoColors in c.flags:
     message(c, "[Info] ", p, arg)
   else:
     stdout.styledWriteLine(fgGreen, styleBright, "[Info] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
@@ -398,13 +407,13 @@ proc fillPackageLookupTable(c: var AtlasContext) =
 
 proc toUrl(c: var AtlasContext; p: string): string =
   if p.isUrl:
-    if c.usesOverrides:
+    if UsesOverrides in c.flags:
       result = c.overrides.substitute(p)
       if result.len > 0: return result
     result = p
   else:
     # either the project name or the URL can be overwritten!
-    if c.usesOverrides:
+    if UsesOverrides in c.flags:
       result = c.overrides.substitute(p)
       if result.len > 0: return result
 
@@ -416,7 +425,7 @@ proc toUrl(c: var AtlasContext; p: string): string =
       if result.len == 0:
         inc c.errors
 
-    if c.usesOverrides:
+    if UsesOverrides in c.flags:
       let newUrl = c.overrides.substitute(result)
       if newUrl.len > 0: return newUrl
 
@@ -448,9 +457,14 @@ proc generateDepGraph(c: var AtlasContext; g: DepGraph) =
   else:
     discard execShellCmd("dot -Tpng -odeps.png " & quoteShell(dotFile))
 
-proc showGraph(c: var AtlasContext; g: DepGraph) =
-  if c.showGraph:
+proc setupNimEnv(c: var AtlasContext; nimVersion: string)
+
+proc afterGraphActions(c: var AtlasContext; g: DepGraph) =
+  if ShowGraph in c.flags:
     generateDepGraph c, g
+  if AutoEnv in c.flags and g.bestNimVersion != (0, 0, 0):
+    let v = $g.bestNimVersion[0] & "." & $g.bestNimVersion[1] & "." & $g.bestNimVersion[2]
+    setupNimEnv c, v
 
 proc needsCommitLookup(commit: string): bool {.inline.} =
   '.' in commit or commit == InvalidCommit
@@ -598,6 +612,12 @@ proc readLockFile(filename: string): LockFile =
   let jsonTree = parseJson(jsonAsStr)
   result = to(jsonTree, LockFile)
 
+proc rememberNimVersion(g: var DepGraph; tokens: seq[string]) =
+  if tokens[1] in ["==", ">="]:
+    var v = (0, 0, 0)
+    if scanf(tokens[2], "$i.$i.$i", v[0], v[1], v[2]):
+      if v > g.bestNimVersion: g.bestNimVersion = v
+
 proc collectDeps(c: var AtlasContext; g: var DepGraph; parent: int;
                  dep: Dependency; nimbleFile: string): CfgPath =
   # If there is a .nimble file, return the dependency path & srcDir
@@ -620,8 +640,11 @@ proc collectDeps(c: var AtlasContext; g: var DepGraph; parent: int;
       tokens[1] = "=="
       tokens.add commit
 
-    if tokens.len >= 3 and cmpIgnoreCase(tokens[0], "nim") != 0:
-      c.addUniqueDep g, parent, tokens
+    if tokens.len >= 3:
+      if cmpIgnoreCase(tokens[0], "nim") != 0:
+        c.addUniqueDep g, parent, tokens
+      else:
+        rememberNimVersion g, tokens
   result = CfgPath(toDestDir(dep.name) / nimbleInfo.srcDir)
 
 proc collectNewDeps(c: var AtlasContext; g: var DepGraph; parent: int;
@@ -682,7 +705,7 @@ proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[C
     # assume this is the selected version, it might get overwritten later:
     selectNode c, g, w
     if oldErrors == c.errors:
-      if not c.keepCommits:
+      if KeepCommits notin c.flags:
         if not w.url.startsWith(FileProtocol):
           checkoutCommit(c, g, w)
         else:
@@ -711,7 +734,7 @@ proc traverse(c: var AtlasContext; start: string; startIsDep: bool): seq[CfgPath
 
   c.projectDir = c.workspace / toDestDir(g.nodes[0].name)
   result = traverseLoop(c, g, startIsDep)
-  showGraph c, g
+  afterGraphActions c, g
 
 const
   configPatternBegin = "############# begin Atlas config section ##########\n"
@@ -773,8 +796,8 @@ proc installDependencies(c: var AtlasContext; nimbleFile: string; startIsDep: bo
   let dep = Dependency(name: toName(pkgname), url: "", commit: "", self: 0)
   discard collectDeps(c, g, -1, dep, nimbleFile)
   let paths = traverseLoop(c, g, startIsDep)
-  patchNimCfg(c, paths, if c.cfgHere: c.currentDir else: findSrcDir(c))
-  showGraph c, g
+  patchNimCfg(c, paths, if CfgHere in c.flags: c.currentDir else: findSrcDir(c))
+  afterGraphActions c, g
 
 proc updateDir(c: var AtlasContext; dir, filter: string) =
   for kind, file in walkDir(dir):
@@ -872,7 +895,7 @@ proc parseOverridesFile(c: var AtlasContext; filename: string) =
   let path = c.workspace / filename
   var f: File
   if open(f, path):
-    c.usesOverrides = true
+    c.flags.incl UsesOverrides
     try:
       var lineCount = 1
       for line in lines(path):
@@ -928,6 +951,15 @@ set PATH="$1";%PATH%
 """
   ShellFile = "export PATH=$1:$$PATH\n"
 
+const
+  ActivationFile = when defined(windows): "activate.bat" else: "activate.sh"
+
+proc infoAboutActivation(c: var AtlasContext; nimDest, nimVersion: string) =
+  when defined(windows):
+    info c, toName(nimDest), "RUN\nnim-" & nimVersion & "\\activate.bat"
+  else:
+    info c, toName(nimDest), "RUN\nsource nim-" & nimVersion & "/activate.sh"
+
 proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
   template isDevel(nimVersion: string): bool = nimVersion == "devel"
 
@@ -939,7 +971,10 @@ proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
 
   let nimDest = "nim-" & nimVersion
   if dirExists(c.workspace / nimDest):
-    info c, toName(nimDest), "already exists; remove or rename and try again"
+    if not fileExists(c.workspace / nimDest / ActivationFile):
+      info c, toName(nimDest), "already exists; remove or rename and try again"
+    else:
+      infoAboutActivation c, nimDest, nimVersion
     return
 
   var major, minor, patch: int
@@ -986,13 +1021,16 @@ proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
     # remove any old atlas binary that we now would end up using:
     if cmpPaths(getAppDir(), c.workspace / nimDest / "bin") != 0:
       removeFile "bin" / "atlas".addFileExt(ExeExt)
+    # unless --keep is used delete the csources because it takes up about 2GB and
+    # is not necessary afterwards:
+    if Keep notin c.flags:
+      removeDir c.workspace / csourcesVersion / "c_code"
     let pathEntry = (c.workspace / nimDest / "bin")
     when defined(windows):
       writeFile "activate.bat", BatchFile % pathEntry.replace('/', '\\')
-      info c, toName(nimDest), "RUN\nnim-" & nimVersion & "\\activate.bat"
     else:
       writeFile "activate.sh", ShellFile % pathEntry
-      info c, toName(nimDest), "RUN\nsource nim-" & nimVersion & "/activate.sh"
+    infoAboutActivation c, nimDest, nimVersion
 
 proc extractVersion(s: string): string =
   var i = 0
@@ -1062,7 +1100,7 @@ proc main =
       case normalize(key)
       of "help", "h": writeHelp()
       of "version", "v": writeVersion()
-      of "keepcommits": c.keepCommits = true
+      of "keepcommits": c.flags.incl KeepCommits
       of "workspace":
         if val == ".":
           c.workspace = getCurrentDir()
@@ -1083,9 +1121,11 @@ proc main =
           c.depsDir = val
         else:
           writeHelp()
-      of "cfghere": c.cfgHere = true
+      of "cfghere": c.flags.incl CfgHere
       of "autoinit": autoinit = true
-      of "showgraph": c.showGraph = true
+      of "showgraph": c.flags.incl ShowGraph
+      of "keep": c.flags.incl Keep
+      of "autoenv": c.flags.incl AutoEnv
       of "genlock":
         if c.lockMode != useLock:
           c.lockMode = genLock
@@ -1098,8 +1138,8 @@ proc main =
           writeHelp()
       of "colors":
         case val.normalize
-        of "off": c.noColors = true
-        of "on": c.noColors = false
+        of "off": c.flags.incl NoColors
+        of "on": c.flags.excl NoColors
         else: writeHelp()
       else: writeHelp()
     of cmdEnd: assert false, "cannot happen"
@@ -1132,7 +1172,7 @@ proc main =
   of "clone", "update":
     singleArg()
     let deps = traverse(c, args[0], startIsDep = false)
-    patchNimCfg c, deps, if c.cfgHere: c.currentDir else: findSrcDir(c)
+    patchNimCfg c, deps, if CfgHere in c.flags: c.currentDir else: findSrcDir(c)
     when MockupRun:
       if not c.mockupSuccess:
         fatal "There were problems."
