@@ -16,10 +16,10 @@ import parse_requires, osutils, packagesjson, compiledpatterns
 from unicode import nil
 
 const
-  Version = "0.4"
+  AtlasVersion = "0.4"
   LockFileName = "atlas.lock"
   AtlasWorkspace = "atlas.workspace"
-  Usage = "atlas - Nim Package Cloner Version " & Version & """
+  Usage = "atlas - Nim Package Cloner Version " & AtlasVersion & """
 
   (c) 2021 Andreas Rumpf
 Usage:
@@ -47,9 +47,11 @@ Command:
                         add and push a new tag, input must be one of:
                         ['major'|'minor'|'patch'] or a SemVer tag like ['1.0.3']
                         or a letter ['a'..'z']: a.b.c.d.e.f.g
+  outdated              list the packages that are outdated
   build|test|doc|tasks  currently delegates to `nimble build|test|doc`
   task <taskname>       currently delegates to `nimble <taskname>`
   env <nimversion>      setup a Nim virtual environment
+    --keep              keep the c_code subdirectory
 
 Options:
   --keepCommits         do not perform any `git checkouts`
@@ -59,6 +61,8 @@ Options:
   --project=DIR         use DIR as the current project
   --genlock             generate a lock file (use with `clone` and `update`)
   --uselock             use the lock file for the build
+  --autoenv             detect the minimal Nim $version and setup a
+                        corresponding Nim virtual environment
   --autoinit            auto initialize a workspace
   --colors=on|off       turn on|off colored output
   --showGraph           show the dependency graph
@@ -72,7 +76,7 @@ proc writeHelp() =
   quit(0)
 
 proc writeVersion() =
-  stdout.write(Version & "\n")
+  stdout.write(AtlasVersion & "\n")
   stdout.flushFile()
   quit(0)
 
@@ -81,11 +85,11 @@ const
   TestsDir = "atlas/tests"
 
 type
-  LockOption = enum
+  LockMode = enum
     noLock, genLock, useLock
 
   LockFileEntry = object
-    dir, url, commit: string
+    url, commit: string
 
   PackageName = distinct string
   CfgPath = distinct string # put into a config `--path:"../x"`
@@ -106,24 +110,32 @@ type
     nodes: seq[Dependency]
     processed: Table[string, int] # the key is (url / commit)
     byName: Table[PackageName, seq[int]]
+    bestNimVersion: (int, int, int) # Nim is a special snowflake
+
+  LockFile = object # serialized as JSON so an object for extensibility
+    items: OrderedTable[string, LockFileEntry]
+
+  Flag = enum
+    KeepCommits
+    CfgHere
+    UsesOverrides
+    Keep
+    NoColors
+    ShowGraph
+    AutoEnv
 
   AtlasContext = object
     projectDir, workspace, depsDir, currentDir: string
     hasPackageList: bool
-    keepCommits: bool
-    cfgHere: bool
-    usesOverrides: bool
+    flags: set[Flag]
     p: Table[string, string] # name -> url mapping
     errors, warnings: int
     overrides: Patterns
-    lockOption: LockOption
-    lockFileToWrite: seq[LockFileEntry]
-    lockFileToUse: Table[string, LockFileEntry]
+    lockMode: LockMode
+    lockFile: LockFile
     when MockupRun:
       step: int
       mockupSuccess: bool
-    noColors: bool
-    showGraph: bool
 
 proc `==`*(a, b: CfgPath): bool {.borrow.}
 
@@ -231,21 +243,21 @@ proc message(c: var AtlasContext; category: string; p: PackageName; arg: string)
   stdout.writeLine msg
 
 proc warn(c: var AtlasContext; p: PackageName; arg: string) =
-  if c.noColors:
+  if NoColors in c.flags:
     message(c, "[Warning] ", p, arg)
   else:
     stdout.styledWriteLine(fgYellow, styleBright, "[Warning] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
   inc c.warnings
 
 proc error(c: var AtlasContext; p: PackageName; arg: string) =
-  if c.noColors:
+  if NoColors in c.flags:
     message(c, "[Error] ", p, arg)
   else:
     stdout.styledWriteLine(fgRed, styleBright, "[Error] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
   inc c.errors
 
 proc info(c: var AtlasContext; p: PackageName; arg: string) =
-  if c.noColors:
+  if NoColors in c.flags:
     message(c, "[Info] ", p, arg)
   else:
     stdout.styledWriteLine(fgGreen, styleBright, "[Info] ", resetStyle, fgCyan, "(", p.string, ")", resetStyle, " ", arg)
@@ -395,13 +407,13 @@ proc fillPackageLookupTable(c: var AtlasContext) =
 
 proc toUrl(c: var AtlasContext; p: string): string =
   if p.isUrl:
-    if c.usesOverrides:
+    if UsesOverrides in c.flags:
       result = c.overrides.substitute(p)
       if result.len > 0: return result
     result = p
   else:
     # either the project name or the URL can be overwritten!
-    if c.usesOverrides:
+    if UsesOverrides in c.flags:
       result = c.overrides.substitute(p)
       if result.len > 0: return result
 
@@ -413,7 +425,7 @@ proc toUrl(c: var AtlasContext; p: string): string =
       if result.len == 0:
         inc c.errors
 
-    if c.usesOverrides:
+    if UsesOverrides in c.flags:
       let newUrl = c.overrides.substitute(result)
       if newUrl.len > 0: return newUrl
 
@@ -424,7 +436,9 @@ proc toName(p: string): PackageName =
     result = PackageName p
 
 proc generateDepGraph(c: var AtlasContext; g: DepGraph) =
-  proc repr(w: Dependency): string = w.url / w.commit
+  proc repr(w: Dependency): string =
+    if w.url.endsWith("/"): w.url & w.commit
+    else: w.url & "/" & w.commit
 
   var dotGraph = ""
   for i in 0 ..< g.nodes.len:
@@ -433,7 +447,7 @@ proc generateDepGraph(c: var AtlasContext; g: DepGraph) =
     for p in items g.nodes[i].parents:
       if p >= 0:
         dotGraph.addf("\"$1\" -> \"$2\";\n", [g.nodes[p].repr, g.nodes[i].repr])
-  let dotFile = c.workspace / "deps.dot"
+  let dotFile = c.currentDir / "deps.dot"
   writeFile(dotFile, "digraph deps {\n$1}\n" % dotGraph)
   let graphvizDotPath = findExe("dot")
   if graphvizDotPath.len == 0:
@@ -443,9 +457,14 @@ proc generateDepGraph(c: var AtlasContext; g: DepGraph) =
   else:
     discard execShellCmd("dot -Tpng -odeps.png " & quoteShell(dotFile))
 
-proc showGraph(c: var AtlasContext; g: DepGraph) =
-  if c.showGraph:
+proc setupNimEnv(c: var AtlasContext; nimVersion: string)
+
+proc afterGraphActions(c: var AtlasContext; g: DepGraph) =
+  if ShowGraph in c.flags:
     generateDepGraph c, g
+  if AutoEnv in c.flags and g.bestNimVersion != (0, 0, 0):
+    let v = $g.bestNimVersion[0] & "." & $g.bestNimVersion[1] & "." & $g.bestNimVersion[2]
+    setupNimEnv c, v
 
 proc needsCommitLookup(commit: string): bool {.inline.} =
   '.' in commit or commit == InvalidCommit
@@ -461,42 +480,48 @@ proc getRequiredCommit(c: var AtlasContext; w: Dependency): string =
 proc getRemoteUrl(): string =
   execProcess("git config --get remote.origin.url").strip()
 
-proc genLockEntry(c: var AtlasContext; w: Dependency; dir: string) =
+proc genLockEntry(c: var AtlasContext; w: Dependency) =
   let url = getRemoteUrl()
   var commit = getRequiredCommit(c, w)
   if commit.len == 0 or needsCommitLookup(commit):
     commit = execProcess("git log -1 --pretty=format:%H").strip()
-  c.lockFileToWrite.add LockFileEntry(dir: relativePath(dir, c.workspace, '/'), url: url, commit: commit)
+  c.lockFile.items[w.name.string] = LockFileEntry(url: url, commit: commit)
 
-proc commitFromLockFile(c: var AtlasContext; dir: string): string =
+proc commitFromLockFile(c: var AtlasContext; w: Dependency): string =
   let url = getRemoteUrl()
-  let d = relativePath(dir, c.workspace, '/')
-  if d in c.lockFileToUse:
-    result = c.lockFileToUse[d].commit
-    let wanted = c.lockFileToUse[d].url
-    if wanted != url:
-      error c, PackageName(d), "remote URL has been compromised: got: " &
-          url & " but wanted: " & wanted
+  let entry = c.lockFile.items.getOrDefault(w.name.string)
+  if entry.commit.len > 0:
+    result = entry.commit
+    if entry.url != url:
+      error c, w.name, "remote URL has been compromised: got: " &
+          url & " but wanted: " & entry.url
   else:
-    error c, PackageName(d), "package is not listed in the lock file"
+    error c, w.name, "package is not listed in the lock file"
 
 proc dependencyDir(c: AtlasContext; w: Dependency): string =
   result = c.workspace / w.name.string
   if not dirExists(result):
     result = c.depsDir / w.name.string
 
+const
+  FileProtocol = "file://"
+  ThisVersion = "current_version.atlas"
+
 proc selectNode(c: var AtlasContext; g: var DepGraph; w: Dependency) =
   # all other nodes of the same project name are not active
   for e in items g.byName[w.name]:
     g.nodes[e].active = e == w.self
+  if c.lockMode == genLock:
+    if w.url.startsWith(FileProtocol):
+      c.lockFile.items[w.name.string] = LockFileEntry(url: w.url, commit: w.commit)
+    else:
+      genLockEntry(c, w)
 
 proc checkoutCommit(c: var AtlasContext; g: var DepGraph; w: Dependency) =
   let dir = dependencyDir(c, w)
   withDir c, dir:
-    if c.lockOption == genLock:
-      genLockEntry(c, w, dir)
-    elif c.lockOption == useLock:
-      checkoutGitCommit(c, w.name, commitFromLockFile(c, dir))
+    if c.lockMode == useLock:
+      checkoutGitCommit(c, w.name, commitFromLockFile(c, w))
     elif w.commit.len == 0 or cmpIgnoreCase(w.commit, "head") == 0:
       gitPull(c, w.name)
     else:
@@ -550,7 +575,7 @@ proc addUnique[T](s: var seq[T]; elem: sink T) =
   if not s.contains(elem): s.add elem
 
 proc addUniqueDep(c: var AtlasContext; g: var DepGraph; parent: int;
-                  tokens: seq[string]; lockfile: Table[string, LockFileEntry]) =
+                  tokens: seq[string]) =
   let pkgName = tokens[0]
   let oldErrors = c.errors
   let url = toUrl(c, pkgName)
@@ -564,13 +589,16 @@ proc addUniqueDep(c: var AtlasContext; g: var DepGraph; parent: int;
       let self = g.nodes.len
       g.byName.mgetOrPut(toName(pkgName), @[]).add self
       g.processed[key] = self
-      if lockfile.contains(pkgName):
-        g.nodes.add Dependency(name: toName(pkgName),
-                            url: lockfile[pkgName].url,
-                            commit: lockfile[pkgName].commit,
-                            rel: normal,
-                            self: self,
-                            parents: @[parent])
+      if c.lockMode == useLock:
+        if c.lockfile.items.contains(pkgName):
+          g.nodes.add Dependency(name: toName(pkgName),
+                              url: c.lockfile.items[pkgName].url,
+                              commit: c.lockfile.items[pkgName].commit,
+                              rel: normal,
+                              self: self,
+                              parents: @[parent])
+        else:
+          error c, toName(pkgName), "package is not listed in the lock file"
       else:
         g.nodes.add Dependency(name: toName(pkgName), url: url, commit: tokens[2],
                                rel: toDepRelation(tokens[1]),
@@ -579,13 +607,16 @@ proc addUniqueDep(c: var AtlasContext; g: var DepGraph; parent: int;
 
 template toDestDir(p: PackageName): string = p.string
 
-proc readLockFile(filename: string): Table[string, LockFileEntry] =
+proc readLockFile(filename: string): LockFile =
   let jsonAsStr = readFile(filename)
   let jsonTree = parseJson(jsonAsStr)
-  let data = to(jsonTree, seq[LockFileEntry])
-  result = initTable[string, LockFileEntry]()
-  for d in items(data):
-    result[d.dir] = d
+  result = to(jsonTree, LockFile)
+
+proc rememberNimVersion(g: var DepGraph; tokens: seq[string]) =
+  if tokens[1] in ["==", ">="]:
+    var v = (0, 0, 0)
+    if scanf(tokens[2], "$i.$i.$i", v[0], v[1], v[2]):
+      if v > g.bestNimVersion: g.bestNimVersion = v
 
 proc collectDeps(c: var AtlasContext; g: var DepGraph; parent: int;
                  dep: Dependency; nimbleFile: string): CfgPath =
@@ -593,11 +624,6 @@ proc collectDeps(c: var AtlasContext; g: var DepGraph; parent: int;
   # else return "".
   assert nimbleFile != ""
   let nimbleInfo = extractRequiresInfo(c, nimbleFile)
-
-  let lockFilePath = dependencyDir(c, dep) / LockFileName
-  let lockFile = if fileExists(lockFilePath): readLockFile(lockFilePath)
-                 else: initTable[string, LockFileEntry]()
-
   for r in nimbleInfo.requires:
     var tokens: seq[string] = @[]
     for token in tokenizeRequires(r):
@@ -614,8 +640,11 @@ proc collectDeps(c: var AtlasContext; g: var DepGraph; parent: int;
       tokens[1] = "=="
       tokens.add commit
 
-    if tokens.len >= 3 and cmpIgnoreCase(tokens[0], "nim") != 0:
-      c.addUniqueDep g, parent, tokens, lockFile
+    if tokens.len >= 3:
+      if cmpIgnoreCase(tokens[0], "nim") != 0:
+        c.addUniqueDep g, parent, tokens
+      else:
+        rememberNimVersion g, tokens
   result = CfgPath(toDestDir(dep.name) / nimbleInfo.srcDir)
 
 proc collectNewDeps(c: var AtlasContext; g: var DepGraph; parent: int;
@@ -627,10 +656,6 @@ proc collectNewDeps(c: var AtlasContext; g: var DepGraph; parent: int;
     result = CfgPath toDestDir(dep.name)
 
 proc selectDir(a, b: string): string = (if dirExists(a): a else: b)
-
-const
-  FileProtocol = "file://"
-  ThisVersion = "current_version.atlas"
 
 proc copyFromDisk(c: var AtlasContext; w: Dependency) =
   let destDir = toDestDir(w.name)
@@ -658,6 +683,10 @@ proc isLaterCommit(destDir, version: string): bool =
   result = isNewerVersion(version, oldVersion)
 
 proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[CfgPath] =
+  if c.lockMode == useLock:
+    let lockFilePath = dependencyDir(c, g.nodes[0]) / LockFileName
+    c.lockFile = readLockFile(lockFilePath)
+
   result = @[]
   var i = 0
   while i < g.nodes.len:
@@ -676,7 +705,7 @@ proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[C
     # assume this is the selected version, it might get overwritten later:
     selectNode c, g, w
     if oldErrors == c.errors:
-      if not c.keepCommits:
+      if KeepCommits notin c.flags:
         if not w.url.startsWith(FileProtocol):
           checkoutCommit(c, g, w)
         else:
@@ -690,6 +719,9 @@ proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[C
       result.addUnique collectNewDeps(c, g, i, w)
     inc i
 
+  if c.lockMode == genLock:
+    writeFile c.currentDir / LockFileName, toJson(c.lockFile).pretty
+
 proc traverse(c: var AtlasContext; start: string; startIsDep: bool): seq[CfgPath] =
   # returns the list of paths for the nim.cfg file.
   let url = toUrl(c, start)
@@ -701,12 +733,8 @@ proc traverse(c: var AtlasContext; start: string; startIsDep: bool): seq[CfgPath
     return
 
   c.projectDir = c.workspace / toDestDir(g.nodes[0].name)
-  if c.lockOption == useLock:
-    c.lockFileToUse = readLockFile(c.projectDir / LockFileName)
   result = traverseLoop(c, g, startIsDep)
-  if c.lockOption == genLock:
-    writeFile c.projectDir / LockFileName, toJson(c.lockFileToWrite).pretty
-  showGraph c, g
+  afterGraphActions c, g
 
 const
   configPatternBegin = "############# begin Atlas config section ##########\n"
@@ -768,8 +796,8 @@ proc installDependencies(c: var AtlasContext; nimbleFile: string; startIsDep: bo
   let dep = Dependency(name: toName(pkgname), url: "", commit: "", self: 0)
   discard collectDeps(c, g, -1, dep, nimbleFile)
   let paths = traverseLoop(c, g, startIsDep)
-  patchNimCfg(c, paths, if c.cfgHere: c.currentDir else: findSrcDir(c))
-  showGraph c, g
+  patchNimCfg(c, paths, if CfgHere in c.flags: c.currentDir else: findSrcDir(c))
+  afterGraphActions c, g
 
 proc updateDir(c: var AtlasContext; dir, filter: string) =
   for kind, file in walkDir(dir):
@@ -867,7 +895,7 @@ proc parseOverridesFile(c: var AtlasContext; filename: string) =
   let path = c.workspace / filename
   var f: File
   if open(f, path):
-    c.usesOverrides = true
+    c.flags.incl UsesOverrides
     try:
       var lineCount = 1
       for line in lines(path):
@@ -923,6 +951,15 @@ set PATH="$1";%PATH%
 """
   ShellFile = "export PATH=$1:$$PATH\n"
 
+const
+  ActivationFile = when defined(windows): "activate.bat" else: "activate.sh"
+
+proc infoAboutActivation(c: var AtlasContext; nimDest, nimVersion: string) =
+  when defined(windows):
+    info c, toName(nimDest), "RUN\nnim-" & nimVersion & "\\activate.bat"
+  else:
+    info c, toName(nimDest), "RUN\nsource nim-" & nimVersion & "/activate.sh"
+
 proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
   template isDevel(nimVersion: string): bool = nimVersion == "devel"
 
@@ -934,7 +971,10 @@ proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
 
   let nimDest = "nim-" & nimVersion
   if dirExists(c.workspace / nimDest):
-    info c, toName(nimDest), "already exists; remove or rename and try again"
+    if not fileExists(c.workspace / nimDest / ActivationFile):
+      info c, toName(nimDest), "already exists; remove or rename and try again"
+    else:
+      infoAboutActivation c, nimDest, nimVersion
     return
 
   var major, minor, patch: int
@@ -981,13 +1021,56 @@ proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
     # remove any old atlas binary that we now would end up using:
     if cmpPaths(getAppDir(), c.workspace / nimDest / "bin") != 0:
       removeFile "bin" / "atlas".addFileExt(ExeExt)
+    # unless --keep is used delete the csources because it takes up about 2GB and
+    # is not necessary afterwards:
+    if Keep notin c.flags:
+      removeDir c.workspace / csourcesVersion / "c_code"
     let pathEntry = (c.workspace / nimDest / "bin")
     when defined(windows):
       writeFile "activate.bat", BatchFile % pathEntry.replace('/', '\\')
-      info c, toName(nimDest), "RUN\nnim-" & nimVersion & "\\activate.bat"
     else:
       writeFile "activate.sh", ShellFile % pathEntry
-      info c, toName(nimDest), "RUN\nsource nim-" & nimVersion & "/activate.sh"
+    infoAboutActivation c, nimDest, nimVersion
+
+proc extractVersion(s: string): string =
+  var i = 0
+  while i < s.len and s[i] notin {'0'..'9'}: inc i
+  result = s.substr(i)
+
+proc listOutdated(c: var AtlasContext; dir: string) =
+  var updateable = 0
+  for k, f in walkDir(dir, relative=true):
+    if k in {pcDir, pcLinkToDir} and dirExists(dir / f / ".git"):
+      withDir c, dir / f:
+        let (outp, status) = silentExec("git fetch", [])
+        if status == 0:
+          let (cc, status) = exec(c, GitLastTaggedRef, [])
+          let latestVersion = strutils.strip(cc)
+          if status == 0 and latestVersion.len > 0:
+            # see if we're past that commit:
+            let (cc, status) = exec(c, GitCurrentCommit, [])
+            if status == 0:
+              let currentCommit = strutils.strip(cc)
+              if currentCommit != latestVersion:
+                # checkout the later commit:
+                # git merge-base --is-ancestor <commit> <commit>
+                let (cc, status) = exec(c, GitMergeBase, [currentCommit, latestVersion])
+                let mergeBase = strutils.strip(cc)
+                #echo f, " I'm at ", currentCommit, " release is at ", latestVersion, " merge base is ", mergeBase
+                if status == 0 and mergeBase == currentCommit:
+                  let v = extractVersion gitDescribeRefTag(c, latestVersion)
+                  if v.len > 0:
+                    info c, toName(f), "new version available: " & v
+                    inc updateable
+        else:
+          warn c, toName(f), "`git fetch` failed: " & outp
+  if updateable == 0:
+    info c, toName(c.workspace), "all packages are up to date"
+
+proc listOutdated(c: var AtlasContext) =
+  if c.depsDir.len > 0 and c.depsDir != c.workspace:
+    listOutdated c, c.depsDir
+  listOutdated c, c.workspace
 
 proc main =
   var action = ""
@@ -1017,7 +1100,7 @@ proc main =
       case normalize(key)
       of "help", "h": writeHelp()
       of "version", "v": writeVersion()
-      of "keepcommits": c.keepCommits = true
+      of "keepcommits": c.flags.incl KeepCommits
       of "workspace":
         if val == ".":
           c.workspace = getCurrentDir()
@@ -1038,23 +1121,25 @@ proc main =
           c.depsDir = val
         else:
           writeHelp()
-      of "cfghere": c.cfgHere = true
+      of "cfghere": c.flags.incl CfgHere
       of "autoinit": autoinit = true
-      of "showgraph": c.showGraph = true
+      of "showgraph": c.flags.incl ShowGraph
+      of "keep": c.flags.incl Keep
+      of "autoenv": c.flags.incl AutoEnv
       of "genlock":
-        if c.lockOption != useLock:
-          c.lockOption = genLock
+        if c.lockMode != useLock:
+          c.lockMode = genLock
         else:
           writeHelp()
       of "uselock":
-        if c.lockOption != genLock:
-          c.lockOption = useLock
+        if c.lockMode != genLock:
+          c.lockMode = useLock
         else:
           writeHelp()
       of "colors":
         case val.normalize
-        of "off": c.noColors = true
-        of "on": c.noColors = false
+        of "off": c.flags.incl NoColors
+        of "on": c.flags.excl NoColors
         else: writeHelp()
       else: writeHelp()
     of cmdEnd: assert false, "cannot happen"
@@ -1087,7 +1172,7 @@ proc main =
   of "clone", "update":
     singleArg()
     let deps = traverse(c, args[0], startIsDep = false)
-    patchNimCfg c, deps, if c.cfgHere: c.currentDir else: findSrcDir(c)
+    patchNimCfg c, deps, if CfgHere in c.flags: c.currentDir else: findSrcDir(c)
     when MockupRun:
       if not c.mockupSuccess:
         fatal "There were problems."
@@ -1159,6 +1244,8 @@ proc main =
   of "env":
     singleArg()
     setupNimEnv c, args[0]
+  of "outdated":
+    listOutdated(c)
   else:
     fatal "Invalid action: " & action
 
