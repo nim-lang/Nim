@@ -47,6 +47,7 @@ Command:
                         add and push a new tag, input must be one of:
                         ['major'|'minor'|'patch'] or a SemVer tag like ['1.0.3']
                         or a letter ['a'..'z']: a.b.c.d.e.f.g
+  outdated              list the packages that are outdated
   build|test|doc|tasks  currently delegates to `nimble build|test|doc`
   task <taskname>       currently delegates to `nimble <taskname>`
   env <nimversion>      setup a Nim virtual environment
@@ -993,6 +994,46 @@ proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
       writeFile "activate.sh", ShellFile % pathEntry
       info c, toName(nimDest), "RUN\nsource nim-" & nimVersion & "/activate.sh"
 
+proc extractVersion(s: string): string =
+  var i = 0
+  while i < s.len and s[i] notin {'0'..'9'}: inc i
+  result = s.substr(i)
+
+proc listOutdated(c: var AtlasContext; dir: string) =
+  var updateable = 0
+  for k, f in walkDir(dir, relative=true):
+    if k in {pcDir, pcLinkToDir} and dirExists(dir / f / ".git"):
+      withDir c, dir / f:
+        let (outp, status) = silentExec("git fetch", [])
+        if status == 0:
+          let (cc, status) = exec(c, GitLastTaggedRef, [])
+          let latestVersion = strutils.strip(cc)
+          if status == 0 and latestVersion.len > 0:
+            # see if we're past that commit:
+            let (cc, status) = exec(c, GitCurrentCommit, [])
+            if status == 0:
+              let currentCommit = strutils.strip(cc)
+              if currentCommit != latestVersion:
+                # checkout the later commit:
+                # git merge-base --is-ancestor <commit> <commit>
+                let (cc, status) = exec(c, GitMergeBase, [currentCommit, latestVersion])
+                let mergeBase = strutils.strip(cc)
+                #echo f, " I'm at ", currentCommit, " release is at ", latestVersion, " merge base is ", mergeBase
+                if status == 0 and mergeBase == currentCommit:
+                  let v = extractVersion gitDescribeRefTag(c, latestVersion)
+                  if v.len > 0:
+                    info c, toName(f), "new version available: " & v
+                    inc updateable
+        else:
+          warn c, toName(f), "`git fetch` failed: " & outp
+  if updateable == 0:
+    info c, toName(c.workspace), "all packages are up to date"
+
+proc listOutdated(c: var AtlasContext) =
+  if c.depsDir.len > 0 and c.depsDir != c.workspace:
+    listOutdated c, c.depsDir
+  listOutdated c, c.workspace
+
 proc main =
   var action = ""
   var args: seq[string] = @[]
@@ -1163,6 +1204,8 @@ proc main =
   of "env":
     singleArg()
     setupNimEnv c, args[0]
+  of "outdated":
+    listOutdated(c)
   else:
     fatal "Invalid action: " & action
 
