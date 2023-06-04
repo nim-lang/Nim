@@ -90,7 +90,10 @@ const
   errLetNeedsInit = "'let' symbol requires an initialization"
 
 proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
-  if typ == nil: return
+  if typ == nil or sfGeneratedOp in tracked.owner.flags:
+    # don't create type bound ops for anything in a function with a `nodestroy` pragma
+    # bug #21987
+    return
   when false:
     let realType = typ.skipTypes(abstractInst)
     if realType.kind == tyRef and
