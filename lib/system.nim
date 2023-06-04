@@ -2725,11 +2725,12 @@ when notJSnotNims:
         s.add arg
       android_log_print(ANDROID_LOG_VERBOSE, "nim", s)
     else:
+      let echoFile = when defined(echoStderr): cstderr else: cstdout
       # flockfile deadlocks some versions of Android 5.x.x
       when stdOutLock:
         proc flockfile(f: CFilePtr) {.importc, nodecl.}
         proc funlockfile(f: CFilePtr) {.importc, nodecl.}
-        flockfile(cstdout)
+        flockfile(echoFile)
       when defined(windows) and compileOption("threads"):
         acquireSys echoLock
       for s in args:
@@ -2755,14 +2756,14 @@ when notJSnotNims:
                   if doRaise: raiseEIO("cannot write string to file")
                   break
                 inc i, w
-          writeWindows(cstdout, s)
+          writeWindows(echoFile, s)
         else:
-          discard c_fwrite(s.cstring, cast[csize_t](s.len), 1, cstdout)
+          discard c_fwrite(s.cstring, cast[csize_t](s.len), 1, echoFile)
       const linefeed = "\n"
-      discard c_fwrite(linefeed.cstring, linefeed.len, 1, cstdout)
-      discard c_fflush(cstdout)
+      discard c_fwrite(linefeed.cstring, linefeed.len, 1, echoFile)
+      discard c_fflush(echoFile)
       when stdOutLock:
-        funlockfile(cstdout)
+        funlockfile(echoFile)
       when defined(windows) and compileOption("threads"):
         releaseSys echoLock
 
