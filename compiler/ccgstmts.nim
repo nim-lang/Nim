@@ -781,7 +781,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     genLineDir(p, t)
     # reraise the last exception:
     if p.config.exc == excCpp:
-      line(p, cpsStmts, "throw;\n")
+      line(p, cpsStmts, "struct Dummy{}; throw Dummy{};\n")
     else:
       linefmt(p, cpsStmts, "#reraiseException();$n", [])
   raiseInstr(p, p.s(cpsStmts))
