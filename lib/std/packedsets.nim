@@ -438,6 +438,9 @@ proc `=copy`*[A](dest: var PackedSet[A], src: PackedSet[A]) =
       dest.data[h] = n
       it = it.next
 
+proc `=dup`*[A](src: PackedSet[A]): PackedSet[A] {.inline.} =
+  `=copy`(result, src)
+
 proc assign*[A](dest: var PackedSet[A], src: PackedSet[A]) {.inline, deprecated.} =
   ## Copies `src` to `dest`.
   ## `dest` does not need to be initialized by the `initPackedSet proc <#initPackedSet>`_.

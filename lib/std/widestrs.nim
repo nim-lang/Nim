@@ -33,6 +33,7 @@ when not (defined(cpu16) or defined(cpu8)):
           dealloc(a.data)
 
     proc `=copy`(a: var WideCStringObj; b: WideCStringObj) {.error.}
+    proc `=dup`(a: WideCStringObj): WideCStringObj {.error.}
 
     proc `=sink`(a: var WideCStringObj; b: WideCStringObj) =
       a.bytes = b.bytes

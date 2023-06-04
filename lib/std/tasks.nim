@@ -67,6 +67,7 @@ type
 
 
 proc `=copy`*(x: var Task, y: Task) {.error.}
+proc `=dup`*(x: Task): Task {.error.}
 
 proc `=destroy`*(t: var Task) {.inline, gcsafe.} =
   ## Frees the resources allocated for a `Task`.
