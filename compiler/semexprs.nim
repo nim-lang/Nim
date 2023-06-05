@@ -132,6 +132,7 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
     result.typ = errorType(c)
   elif efTypeAllowed in flags and result.typ.kind == tyProc and
       hasUnresolvedParams(result, {}):
+    # mirrored with semOperand but only on efTypeAllowed
     let owner = result.typ.owner
     let err =
       # consistent error message with evaltempl/semMacroExpr
