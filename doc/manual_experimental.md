@@ -2118,7 +2118,6 @@ can be used in an `isolate` context:
 
   proc `=copy`*[T](dest: var Isolated[T]; src: Isolated[T]) {.error.}
 
-
   proc `=sink`*[T](dest: var Isolated[T]; src: Isolated[T]) {.inline.} =
     # delegate to value's sink operation
     `=sink`(dest.value, src.value)
