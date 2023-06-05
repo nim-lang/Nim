@@ -680,6 +680,15 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           typ = typ.lastSon
         if hasEmpty(typ):
           localError(c.config, def.info, errCannotInferTypeOfTheLiteral % typ.kind.toHumanStr)
+        elif typ.kind == tyProc and def.kind == nkSym and isGenericRoutine(def.sym.ast):
+          let owner = typ.owner
+          let err =
+            # consistent error message with evaltempl/semMacroExpr
+            if owner != nil and owner.kind in {skTemplate, skMacro}:
+              errMissingGenericParamsForTemplate % def.renderTree
+            else:
+              errProcHasNoConcreteType % def.renderTree
+          localError(c.config, def.info, err)
         when false:
           # XXX This typing rule is neither documented nor complete enough to
           # justify it. Instead use the newer 'unowned x' until we figured out
