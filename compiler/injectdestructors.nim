@@ -186,8 +186,11 @@ template isUnpackedTuple(n: PNode): bool =
   ## hence unpacked tuples themselves don't need to be destroyed
   (n.kind == nkSym and n.sym.kind == skTemp and n.sym.typ.kind == tyTuple)
 
-proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
+proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string; inferredFromCopy = false) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
+  if inferredFromCopy:
+    m.add ", which is inferred from unavailable '=copy'"
+
   if (opname == "=" or opname == "=copy" or opname == "=dup") and ri != nil:
     m.add "; requires a copy because it's not the last read of '"
     m.add renderTree(ri)
@@ -430,6 +433,12 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
     if op != nil and tfHasOwned notin typ.flags:
       if sfError in op.flags:
         c.checkForErrorPragma(n.typ, n, "=dup")
+      else:
+        let copyOp = getAttachedOp(c.graph, typ, attachedAsgn)
+        if copyOp != nil and sfError in copyOp.flags and
+           sfOverriden notin op.flags:
+          c.checkForErrorPragma(n.typ, n, "=dup", inferredFromCopy = true)
+
       let src = p(n, c, s, normal)
       var newCall = newTreeIT(nkCall, src.info, src.typ,
             newSymNode(op),
