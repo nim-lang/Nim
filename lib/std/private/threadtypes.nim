@@ -174,4 +174,3 @@ type
       rawStack*: pointer
 
 proc `=copy`*[TArg](x: var Thread[TArg], y: Thread[TArg]) {.error.}
-proc `=dup`*[TArg](x: Thread[TArg]): Thread[TArg] {.error.}
