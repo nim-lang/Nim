@@ -1,3 +1,7 @@
+discard """
+  joinable: false
+"""
+
 # bug #1562
 type Foo* {.pure, final.} = object
   elt: float

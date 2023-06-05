@@ -1,4 +1,4 @@
-import distros
+import std/[assertions, distros]
 
 when defined(windows):
     doAssert detectOs(Windows) == true

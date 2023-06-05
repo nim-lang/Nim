@@ -15,7 +15,7 @@ var
   inp: File
   line: string
 
-if open(inp, "tests/misc/treadln.nim"):
+if open(inp, "tests/stdlib/treadln.nim"):
   while not endOfFile(inp):
     line = readLine(inp)
     if line.len >= 2 and line[0] == '#' and line[1] == ' ':
