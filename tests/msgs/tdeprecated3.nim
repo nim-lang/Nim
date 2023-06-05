@@ -2,7 +2,7 @@ discard """
   matrix: "--hint:all:off"
   nimoutFull: true
   nimout: '''
-tdeprecated3.nim(21, 8) Warning: goodbye; importme is deprecated [Deprecated]
+tdeprecated3.nim(21, 8) Warning: goodbye; mdeprecated3 is deprecated [Deprecated]
 tdeprecated3.nim(24, 10) Warning: Ty is deprecated [Deprecated]
 tdeprecated3.nim(27, 10) Warning: hello; Ty1 is deprecated [Deprecated]
 tdeprecated3.nim(30, 8) Warning: aVar is deprecated [Deprecated]
