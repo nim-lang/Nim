@@ -626,8 +626,8 @@ template withValue*[A, B](t: var Table[A, B], key: A, value, body: untyped) =
     var value {.inject.} = addr(t.data[index].val)
     body
 
-macro withValue*[A, B](t: var Table[A, B], key: A,
-                          value, body1, body2: untyped): untyped =
+template withValue*[A, B](t: var Table[A, B], key: A,
+                          value, body1, body2: untyped) =
   ## Retrieves the value at `t[key]`.
   ##
   ## `value` can be modified in the scope of the `withValue` call.
@@ -664,17 +664,15 @@ macro withValue*[A, B](t: var Table[A, B], key: A,
     assert t[1314].name == "exist"
     assert t[1314].uid == 521
 
-  let elseBody = body2[0]
-  quote do:
-    mixin rawGet
-    var hc: Hash
-    var index = rawGet(`t`, `key`, hc)
-    let hasKey = index >= 0
-    if hasKey:
-      var `value` {.inject.} = addr(`t`.data[index].val)
-      `body1`
-    else:
-      `elseBody`
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  let hasKey = index >= 0
+  if hasKey:
+    var value {.inject.} = addr(t.data[index].val)
+    body1
+  else:
+    unpackElse(body2)
 
 iterator pairs*[A, B](t: Table[A, B]): (A, B) =
   ## Iterates over any `(key, value)` pair in the table `t`.
