@@ -57,3 +57,6 @@ echo mystr
 var s = "abcdef"
 s[1 .. ^2] = "xyz"
 assert s == "axyzf"
+
+type Foo = distinct uint64
+const slice = 0 .. 42.Foo

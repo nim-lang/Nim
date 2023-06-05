@@ -1,5 +1,5 @@
 discard """
-matrix: "--mm:refc"
+matrix: "--mm:refc; --mm:orc"
 outputsub: '''
 Simple tree node allocation worked!
 Simple cycle allocation worked!
@@ -11,7 +11,6 @@ joinable: false
 # and the code generation for gc walkers
 # (and the garbage collector):
 
-## todo fixme it doesn't work for ORC
 type
   PNode = ref TNode
   TNode = object
@@ -26,7 +25,10 @@ proc finalizer(n: PNode) =
   write(stdout, " is now freed\n")
 
 proc newNode(data: int, le, ri: PNode): PNode =
-  new(result, finalizer)
+  when defined(gcDestructors): # using finalizer breaks the test for orc
+    new(result)
+  else:
+    new(result, finalizer)
   result.le = le
   result.ri = ri
   result.data = data

@@ -1,10 +1,5 @@
 import distros
 
-discard """
-  exitcode: 0
-  output: ""
-"""
-
 when defined(windows):
     doAssert detectOs(Windows) == true
     doAssert detectOs(Linux) == false

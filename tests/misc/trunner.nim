@@ -404,7 +404,7 @@ running: v2
 
   block: # UnusedImport
     proc fn(opt: string, expected: string) =
-      let output = runNimCmdChk("pragmas/mused3.nim", fmt"--warning:all:off --warning:UnusedImport --hint:DuplicateModuleImport {opt}")
+      let output = runNimCmdChk("msgs/mused3.nim", fmt"--warning:all:off --warning:UnusedImport --hint:DuplicateModuleImport {opt}")
       doAssert output == expected, opt & "\noutput:\n" & output & "expected:\n" & expected
     fn("-d:case1"): """
 mused3.nim(13, 8) Warning: imported and not used: 'mused3b' [UnusedImport]

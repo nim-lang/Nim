@@ -6,6 +6,8 @@ Macintosh, Unix or Windows text format.
 '''
 """
 
+import std/syncio
+
 # test the improved readline handling that does not care whether its
 # Macintosh, Unix or Windows text format.
 
