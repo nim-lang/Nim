@@ -49,7 +49,7 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
         of nkIdent: id.add(x.ident.s)
         of nkSym: id.add(x.sym.name.s)
         of nkSymChoices:
-          if x[0].kind == nkSym:
+          if x.len != 0 and x[0].kind == nkSym:
             id.add(x[0].sym.name.s)
           else:
             handleError(n, origin)
@@ -57,7 +57,7 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
         else: handleError(n, origin)
       result = getIdent(c.cache, id)
   of nkOpenSymChoice, nkClosedSymChoice:
-    if n[0].kind == nkSym:
+    if n.len != 0 and n[0].kind == nkSym:
       result = n[0].sym.name
     else:
       handleError(n, origin)
@@ -689,7 +689,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         result = errorSym(c, n[1])
   of nkClosedSymChoice, nkOpenSymChoice:
     o.mode = oimSymChoice
-    if n[0].kind == nkSym:
+    if n.len != 0 and n[0].kind == nkSym:
       result = n[0].sym
     else:
       o.mode = oimDone
