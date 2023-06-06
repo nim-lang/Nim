@@ -679,7 +679,7 @@ proc isNewerVersion(a, b: string): bool =
     result = (amajor, aminor) > (bmajor, bminor)
 
 proc isLaterCommit(destDir, version: string): bool =
-  let oldVersion = try: readFile(destDir / ThisVersion).strip: except: "0.0"
+  let oldVersion = try: readFile(destDir / ThisVersion).strip except: "0.0"
   result = isNewerVersion(version, oldVersion)
 
 proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[CfgPath] =
