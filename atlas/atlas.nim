@@ -10,8 +10,8 @@
 ## a Nimble dependency and its dependencies recursively.
 
 import std / [parseopt, strutils, os, osproc, tables, sets, json, jsonutils,
-  parsecfg, streams, terminal, strscans, hashes]
-import parse_requires, osutils, packagesjson, compiledpatterns
+  parsecfg, streams, terminal, strscans, hashes, algorithm]
+import parse_requires, osutils, packagesjson, compiledpatterns, versions, sat
 
 from unicode import nil
 
@@ -65,6 +65,8 @@ Options:
                         corresponding Nim virtual environment
   --autoinit            auto initialize a workspace
   --colors=on|off       turn on|off colored output
+  --resolver=minver|semver|maxver
+                        which resolution algorithm to use, default is minver
   --showGraph           show the dependency graph
   --version             show the version
   --help                show this help
@@ -99,6 +101,9 @@ type
   SemVerField = enum
     major, minor, patch
 
+  ResolutionAlgorithm = enum
+    MinVer, SemVer, MaxVer
+
   Dependency = object
     name: PackageName
     url, commit: string
@@ -106,10 +111,12 @@ type
     self: int # position in the graph
     parents: seq[int] # why we need this dependency
     active: bool
+    algo: ResolutionAlgorithm
   DepGraph = object
     nodes: seq[Dependency]
     processed: Table[string, int] # the key is (url / commit)
     byName: Table[PackageName, seq[int]]
+    availableVersions: Table[PackageName, seq[(string, Version)]] # sorted, latest version comes first
     bestNimVersion: (int, int, int) # Nim is a special snowflake
 
   LockFile = object # serialized as JSON so an object for extensibility
@@ -133,6 +140,7 @@ type
     overrides: Patterns
     lockMode: LockMode
     lockFile: LockFile
+    defaultAlgo: ResolutionAlgorithm
     when MockupRun:
       step: int
       mockupSuccess: bool
@@ -298,7 +306,7 @@ proc versionToCommit(c: var AtlasContext; d: Dependency): string =
     var useNextOne = false
     for line in splitLines(outp):
       let commitsAndTags = strutils.splitWhitespace(line)
-      if commitsAndTags.len == 2:
+      if commitsAndTags.len == 2 and not line.endsWith("^{}"):
         case d.rel
         of normal:
           if commitsAndTags[1].sameVersionAs(d.commit):
@@ -596,14 +604,16 @@ proc addUniqueDep(c: var AtlasContext; g: var DepGraph; parent: int;
                               commit: c.lockfile.items[pkgName].commit,
                               rel: normal,
                               self: self,
-                              parents: @[parent])
+                              parents: @[parent],
+                              algo: c.defaultAlgo)
         else:
           error c, toName(pkgName), "package is not listed in the lock file"
       else:
         g.nodes.add Dependency(name: toName(pkgName), url: url, commit: tokens[2],
                                rel: toDepRelation(tokens[1]),
                                self: self,
-                               parents: @[parent])
+                               parents: @[parent],
+                               algo: c.defaultAlgo)
 
 template toDestDir(p: PackageName): string = p.string
 
@@ -665,22 +675,38 @@ proc copyFromDisk(c: var AtlasContext; w: Dependency) =
   writeFile destDir / ThisVersion, w.commit
   #echo "WRITTEN ", destDir / ThisVersion
 
-proc isNewerVersion(a, b: string): bool =
-  # only used for testing purposes.
-  if a == InvalidCommit or b == InvalidCommit:
-    return true
-  var amajor, aminor, apatch, bmajor, bminor, bpatch: int
-  if scanf(a, "$i.$i.$i", amajor, aminor, apatch):
-    assert scanf(b, "$i.$i.$i", bmajor, bminor, bpatch)
-    result = (amajor, aminor, apatch) > (bmajor, bminor, bpatch)
-  else:
-    assert scanf(a, "$i.$i", amajor, aminor)
-    assert scanf(b, "$i.$i", bmajor, bminor)
-    result = (amajor, aminor) > (bmajor, bminor)
-
 proc isLaterCommit(destDir, version: string): bool =
   let oldVersion = try: readFile(destDir / ThisVersion).strip: except: "0.0"
-  result = isNewerVersion(version, oldVersion)
+  if isValidVersion(oldVersion) and isValidVersion(version):
+    result = Version(version) < Version(oldVersion)
+  else:
+    result = true
+
+proc collectTaggedVersions(c: var AtlasContext): seq[(string, Version)] =
+  let (outp, status) = exec(c, GitTags, [])
+  result = @[]
+  if status == 0:
+    for line in splitLines(outp):
+      if not line.endsWith("^{}"):
+        var i = 0
+        while i < line.len and line[i] notin Whitespace: inc i
+        let commitEnd = i
+        while i < line.len and line[i] in Whitespace: inc i
+        while i < line.len and line[i] notin Digits: inc i
+        let v = parseVersion(line, i)
+        if v != Version(""):
+          result.add (line.substr(0, commitEnd-1), v)
+  result.sort proc (a, b: (string, Version)): int =
+    (if a[1] < b[1]: 1
+    elif a[1] == b[1]: 0
+    else: -1)
+
+proc collectAvailableVersions(c: var AtlasContext; g: var DepGraph; w: Dependency) =
+  if not g.availableVersions.hasKey(w.name):
+    g.availableVersions[w.name] = collectTaggedVersions(c)
+
+proc resolve(c: var AtlasContext; g: var DepGraph) =
+  discard
 
 proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[CfgPath] =
   if c.lockMode == useLock:
@@ -694,7 +720,8 @@ proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[C
     let destDir = toDestDir(w.name)
     let oldErrors = c.errors
 
-    if not dirExists(c.workspace / destDir) and not dirExists(c.depsDir / destDir):
+    let dir = selectDir(c.workspace / destDir, c.depsDir / destDir)
+    if not dirExists(dir):
       withDir c, (if i != 0 or startIsDep: c.depsDir else: c.workspace):
         if w.url.startsWith(FileProtocol):
           copyFromDisk c, w
@@ -702,10 +729,16 @@ proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[C
           let err = cloneUrl(c, w.url, destDir, false)
           if err != "":
             error c, w.name, err
+          elif w.algo != MinVer:
+            collectAvailableVersions c, g, w
+    elif w.algo != MinVer:
+      withDir c, dir:
+        collectAvailableVersions c, g, w
+
     # assume this is the selected version, it might get overwritten later:
     selectNode c, g, w
     if oldErrors == c.errors:
-      if KeepCommits notin c.flags:
+      if KeepCommits notin c.flags and w.algo == MinVer:
         if not w.url.startsWith(FileProtocol):
           checkoutCommit(c, g, w)
         else:
@@ -719,20 +752,27 @@ proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[C
       result.addUnique collectNewDeps(c, g, i, w)
     inc i
 
+  if g.availableVersions.len > 0:
+    resolve c, g
   if c.lockMode == genLock:
     writeFile c.currentDir / LockFileName, toJson(c.lockFile).pretty
+
+proc createGraph(c: var AtlasContext; start, url: string): DepGraph =
+  result = DepGraph(nodes: @[Dependency(name: toName(start), url: url, commit: "", self: 0,
+                                       algo: c.defaultAlgo)])
+  result.byName.mgetOrPut(toName(start), @[]).add 0
 
 proc traverse(c: var AtlasContext; start: string; startIsDep: bool): seq[CfgPath] =
   # returns the list of paths for the nim.cfg file.
   let url = toUrl(c, start)
-  var g = DepGraph(nodes: @[Dependency(name: toName(start), url: url, commit: "", self: 0)])
-  g.byName.mgetOrPut(toName(start), @[]).add 0
+  var g = createGraph(c, start, url)
 
   if url == "":
     error c, toName(start), "cannot resolve package name"
     return
 
   c.projectDir = c.workspace / toDestDir(g.nodes[0].name)
+
   result = traverseLoop(c, g, startIsDep)
   afterGraphActions c, g
 
@@ -793,7 +833,8 @@ proc installDependencies(c: var AtlasContext; nimbleFile: string; startIsDep: bo
   # 2. install deps from .nimble
   var g = DepGraph(nodes: @[])
   let (_, pkgname, _) = splitFile(nimbleFile)
-  let dep = Dependency(name: toName(pkgname), url: "", commit: "", self: 0)
+  let dep = Dependency(name: toName(pkgname), url: "", commit: "", self: 0,
+                       algo: c.defaultAlgo)
   discard collectDeps(c, g, -1, dep, nimbleFile)
   let paths = traverseLoop(c, g, startIsDep)
   patchNimCfg(c, paths, if CfgHere in c.flags: c.currentDir else: findSrcDir(c))
@@ -936,6 +977,11 @@ proc readConfig(c: var AtlasContext) =
         c.depsDir = absoluteDepsDir(c.workspace, e.value)
       of "overrides":
         parseOverridesFile(c, e.value)
+      of "resolver":
+        try:
+          c.defaultAlgo = parseEnum[ResolutionAlgorithm](e.value)
+        except ValueError:
+          warn c, toName(configFile), "ignored unknown resolver: " & e.key
       else:
         warn c, toName(configFile), "ignored unknown setting: " & e.key
     of cfgOption:
@@ -1007,7 +1053,8 @@ proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
   withDir c, c.workspace / nimDest:
     let nimExe = "bin" / "nim".addFileExt(ExeExt)
     copyFileWithPermissions nimExe0, nimExe
-    let dep = Dependency(name: toName(nimDest), rel: normal, commit: nimVersion, self: 0)
+    let dep = Dependency(name: toName(nimDest), rel: normal, commit: nimVersion, self: 0,
+                         algo: c.defaultAlgo)
     if not nimVersion.isDevel:
       let commit = versionToCommit(c, dep)
       if commit.len == 0:
@@ -1056,7 +1103,8 @@ proc listOutdated(c: var AtlasContext; dir: string) =
                 # git merge-base --is-ancestor <commit> <commit>
                 let (cc, status) = exec(c, GitMergeBase, [currentCommit, latestVersion])
                 let mergeBase = strutils.strip(cc)
-                #echo f, " I'm at ", currentCommit, " release is at ", latestVersion, " merge base is ", mergeBase
+                #if mergeBase != latestVersion:
+                #  echo f, " I'm at ", currentCommit, " release is at ", latestVersion, " merge base is ", mergeBase
                 if status == 0 and mergeBase == currentCommit:
                   let v = extractVersion gitDescribeRefTag(c, latestVersion)
                   if v.len > 0:
@@ -1141,6 +1189,11 @@ proc main =
         of "off": c.flags.incl NoColors
         of "on": c.flags.excl NoColors
         else: writeHelp()
+      of "resolver":
+        try:
+          c.defaultAlgo = parseEnum[ResolutionAlgorithm](val)
+        except ValueError:
+          quit "unknown resolver: " & val
       else: writeHelp()
     of cmdEnd: assert false, "cannot happen"
 
