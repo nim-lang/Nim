@@ -1,5 +1,5 @@
 discard """
-  errormsg: "'=dup' is not available for type <Foo>, which is inferred from unavailable '=copy'; requires a copy because it's not the last read of 'otherTree'; another read is done here: tprevent_assign2.nim(51, 31); routine: preventThis"
+  errormsg: "'=copy' is not available for type <Foo>; requires a copy because it's not the last read of 'otherTree'; another read is done here: tprevent_assign2.nim(51, 31); routine: preventThis"
   file: "tprevent_assign2.nim"
   line: 49
 """

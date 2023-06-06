@@ -61,9 +61,11 @@ var
 try:
   it_cursor = x
   a = (
-    :tmpD = `=dup`(it_cursor.key)
+    `=wasMoved`(:tmpD)
+    `=copy`(:tmpD, it_cursor.key)
     :tmpD,
-    :tmpD_1 = `=dup`(it_cursor.val)
+    `=wasMoved`(:tmpD_1)
+    `=copy`(:tmpD_1, it_cursor.val)
     :tmpD_1)
   echo [
     :tmpD_2 = `$$`(a)
