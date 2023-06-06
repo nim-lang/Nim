@@ -89,3 +89,51 @@ block: # bug #21974
   var a = newTest[X]()
   a.push((1, "One"))
   doAssert a.pop.value == "One"
+
+# bug #21987
+
+type
+  EmbeddedImage* = distinct Image
+  Image = object
+    len: int
+
+proc imageCopy*(image: Image): Image {.nodestroy.}
+
+proc `=destroy`*(x: var Image) =
+  discard
+proc `=sink`*(dest: var Image; source: Image) =
+  `=destroy`(dest)
+  wasMoved(dest)
+
+proc `=dup`*(source: Image): Image {.nodestroy.} =
+  result = imageCopy(source)
+
+proc `=copy`*(dest: var Image; source: Image) =
+  dest = imageCopy(source) # calls =sink implicitly
+
+proc `=destroy`*(x: var EmbeddedImage) = discard
+
+proc `=dup`*(source: EmbeddedImage): EmbeddedImage {.nodestroy.} = source
+
+proc `=copy`*(dest: var EmbeddedImage; source: EmbeddedImage) {.nodestroy.} =
+  dest = source
+
+proc imageCopy*(image: Image): Image =
+  result = image
+
+proc main2 =
+  block:
+    var a = Image(len: 2).EmbeddedImage
+    var b = Image(len: 1).EmbeddedImage
+    b = a
+    doAssert Image(a).len == 2
+    doAssert Image(b).len == 2
+
+  block:
+    var a = Image(len: 2)
+    var b = Image(len: 1)
+    b = a
+    doAssert a.len == 2
+    doAssert b.len == 0
+
+main2()

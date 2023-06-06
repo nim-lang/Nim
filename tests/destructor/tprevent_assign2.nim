@@ -1,5 +1,5 @@
 discard """
-  errormsg: "'=dup' is not available for type <Foo>; requires a copy because it's not the last read of 'otherTree'"
+  errormsg: "'=dup' is not available for type <Foo>, which is inferred from unavailable '=copy'; requires a copy because it's not the last read of 'otherTree'; another read is done here: tprevent_assign2.nim(51, 31); routine: preventThis"
   file: "tprevent_assign2.nim"
   line: 49
 """
@@ -10,7 +10,7 @@ type
 
 proc `=destroy`(f: var Foo) = f.x = 0
 proc `=copy`(a: var Foo; b: Foo) {.error.} # = a.x = b.x
-proc `=dup`(a: Foo): Foo {.error.}
+
 proc `=sink`(a: var Foo; b: Foo) = a.x = b.x
 
 proc createTree(x: int): Foo =
