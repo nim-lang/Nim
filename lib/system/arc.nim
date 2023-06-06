@@ -60,7 +60,7 @@ elif defined(nimArcIds):
 when defined(gcAtomicArc) and hasThreadSupport:
   template decrement(cell: Cell): untyped =
     discard atomicDec(cell.rc, rcIncrement)
-  template increment(cell: Cell): untyped =
+  proc increment(cell: Cell) =
     discard atomicInc(cell.rc, rcIncrement)
   template count(x: Cell): untyped =
     atomicLoadN(x.rc.addr, ATOMIC_ACQUIRE) shr rcShift
