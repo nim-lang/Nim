@@ -1,6 +1,6 @@
 discard """
   errormsg: "type mismatch: got <int>"
-  file: "tinc.nim"
+  file: "timmutableinc.nim"
   line: 8
 """
 var x = 0

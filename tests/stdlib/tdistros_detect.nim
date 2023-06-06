@@ -1,9 +1,4 @@
-import distros
-
-discard """
-  exitcode: 0
-  output: ""
-"""
+import std/[assertions, distros]
 
 when defined(windows):
     doAssert detectOs(Windows) == true

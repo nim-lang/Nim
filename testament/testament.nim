@@ -380,7 +380,7 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest,
     r.addResult(test, target, extraOptions, expected.nimout, given.nimout, reMsgsDiffer)
   elif extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
-    r.addResult(test, target, extraOptions, expected.filename, given.file, reFilesDiffer)
+    r.addResult(test, target, extraOptions, expected.file, given.file, reFilesDiffer)
   elif expected.line != given.line and expected.line != 0 or
        expected.column != given.column and expected.column != 0:
     r.addResult(test, target, extraOptions, $expected.line & ':' & $expected.column,

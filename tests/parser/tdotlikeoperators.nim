@@ -1,3 +1,6 @@
+discard """
+  matrix: "-d:nimPreviewDotLikeOps"
+"""
 # test for https://github.com/nim-lang/RFCs/issues/341
 import std/json
 import std/jsonutils

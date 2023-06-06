@@ -1,6 +1,6 @@
 discard """
   errormsg: "type mismatch"
-  file: "tnot.nim"
+  file: "tinvalidnot.nim"
   line: 14
 """
 # BUG: following compiles, but should not:

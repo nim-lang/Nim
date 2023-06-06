@@ -3,7 +3,7 @@ discard """
   joinable: "false"
 """
 
-{.compile: "test.c".}
+{.compile: "tcompile.c".}
 
 proc foo(a, b: cint): cint {.importc: "foo", cdecl.}
 

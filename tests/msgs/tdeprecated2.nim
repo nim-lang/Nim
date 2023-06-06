@@ -1,8 +1,8 @@
 discard """
   nimout: '''
-tdeprecated.nim(23, 3) Warning: a is deprecated [Deprecated]
-tdeprecated.nim(30, 11) Warning: asdf; enum 'Foo' which contains field 'a' is deprecated [Deprecated]
-tdeprecated.nim(40, 16) Warning: use fooX instead; fooA is deprecated [Deprecated]
+tdeprecated2.nim(23, 3) Warning: a is deprecated [Deprecated]
+tdeprecated2.nim(30, 11) Warning: asdf; enum 'Foo' which contains field 'a' is deprecated [Deprecated]
+tdeprecated2.nim(40, 16) Warning: use fooX instead; fooA is deprecated [Deprecated]
 end
 '''
 """
