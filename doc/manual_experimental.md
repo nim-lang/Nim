@@ -2210,26 +2210,26 @@ NimPrinter().printConstRef(message, val)
 constructor pragma
 ==================
 
-Now `constructor` has two way of being used: in conjuntion with `importcpp` as described in the Wrapping Constructions section and a new way to declare constructors that works similar to `virtual`. 
+The `constructor` pragmas has two ways of being used: in conjunction with `importcpp` to import a C++ constructor and as a way to declare constructors that works similarly to `virtual`. 
 
-Consider,
+Consider:
 
 ```nim
 
 type Foo* = object
   x: int32
 
-proc makeFoo(x:int32): Foo {. constructor .} =
+proc makeFoo(x: int32): Foo {.constructor.} =
   this.x = x
 
 ```
 
-It will forward declare the constructor in the type definition. When the constructor has params, it will also generate a default constructor. 
-Notice, inside the body of the constructor one has access to `this` which is of the type `ptr Foo`. No `result` variable will be generated. 
+It forward declares the constructor in the type definition. When the constructor has parameters, it also generates a default constructor. 
+Notice, inside the body of the constructor one has access to `this` which is of the type `ptr Foo`. No `result` variable is available.
 
-As `virtual`, `constructor` now also supports a syntax that allows to express Cpp constraints. 
+Like `virtual`, `constructor` also supports a syntax that allows to express C++ constraints. 
 
-See
+For example:
 
 ```nim
 
@@ -2252,11 +2252,11 @@ type
     y: int32
   NimClass* = object of CppClass
 
-proc makeNimClass(x:int32): NimClass {. constructor:"NimClass('1 #1) : CppClass(0, #1) ".} =
+proc makeNimClass(x: int32): NimClass {.constructor:"NimClass('1 #1) : CppClass(0, #1)".} =
   this.x = x
 
-#optionally define the default constructor explicitally
-proc makeCppClass(): NimClass {. constructor: "NimClass() : CppClass(0, 0) ".} = 
+# Optional: define the default constructor explicitly
+proc makeCppClass(): NimClass {.constructor: "NimClass() : CppClass(0, 0)".} = 
   this.x = 1
 
 ```
