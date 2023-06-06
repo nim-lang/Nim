@@ -430,7 +430,9 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   if hasDestructor(c, n.typ):
     let typ = n.typ.skipTypes({tyGenericInst, tyAlias, tySink})
     let op = getAttachedOp(c.graph, typ, attachedDup)
-    if op != nil and (sfOverriden in op.flags or typ.skipTypes({tyDistinct}).kind notin {tyObject, tyTuple, tyArray, tySequence}):
+    if op != nil and (tfHasOwned notin typ.flags or
+          sfOverriden in op.flags or
+          typ.skipTypes({tyDistinct}).kind notin {tyObject, tyTuple, tyArray, tySequence}):
       if sfError in op.flags:
         c.checkForErrorPragma(n.typ, n, "=dup")
       else:
