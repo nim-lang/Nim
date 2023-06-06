@@ -85,7 +85,7 @@ pkg "kdtree", "nimble test -d:nimLegacyRandomInitRand", "https://github.com/jbli
 pkg "loopfusion"
 pkg "lockfreequeues"
 pkg "macroutils"
-pkg "manu"
+# pkg "manu"
 pkg "markdown"
 pkg "memo"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
