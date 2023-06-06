@@ -211,6 +211,11 @@ when isMainModule:
   if verboseArg:
     vccOptions.incl poEchoCmd
 
+  let currentDir = getCurrentDir()
+  for arg in clArgs.mitems:
+    if fileExists(arg):
+      arg = relativePath(arg, currentDir)
+
   # Default to the cl.exe command if no secondary command was specified
   if commandArg.len < 1:
     commandArg = "cl.exe"
