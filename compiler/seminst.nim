@@ -388,8 +388,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
       pragma(c, result, n[pragmasPos], allRoutinePragmas)
     if isNil(n[bodyPos]):
       n[bodyPos] = copyTree(getBody(c.graph, fn))
-    if c.inGenericContext == 0:
-      instantiateBody(c, n, fn.typ.n, result, fn)
+    instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)
     if result.magic notin {mSlice, mTypeOf}:
       # 'toOpenArray' is special and it is allowed to return 'openArray':

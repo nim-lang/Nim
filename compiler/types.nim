@@ -209,6 +209,8 @@ proc iterOverNode(marker: var IntSet, n: PNode, iter: TTypeIter,
       # a leaf
       result = iterOverTypeAux(marker, n.typ, iter, closure)
     else:
+      result = iterOverTypeAux(marker, n.typ, iter, closure)
+      if result: return
       for i in 0..<n.len:
         result = iterOverNode(marker, n[i], iter, closure)
         if result: return
@@ -480,6 +482,7 @@ proc valueToString(a: PNode): string =
     result = $a.intVal
   of nkFloatLit..nkFloat128Lit: result = $a.floatVal
   of nkStrLit..nkTripleStrLit: result = a.strVal
+  of nkStaticExpr: result = "static(" & a[0].renderTree & ")"
   else: result = "<invalid value>"
 
 proc rangeToStr(n: PNode): string =
@@ -1513,7 +1516,7 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
 
 
 proc isCompileTimeOnly*(t: PType): bool {.inline.} =
-  result = t.kind in {tyTypeDesc, tyStatic}
+  result = t.kind in {tyTypeDesc, tyStatic, tyGenericParam}
 
 proc containsCompileTimeOnly*(t: PType): bool =
   if isCompileTimeOnly(t): return true

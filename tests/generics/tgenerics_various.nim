@@ -127,7 +127,7 @@ block trefs:
 
 
 
-block tsharedcases:
+block thardcases:
   proc typeNameLen(x: typedesc): int {.compileTime.} =
     result = x.name.len
   macro selectType(a, b: typedesc): typedesc =
@@ -136,8 +136,8 @@ block tsharedcases:
   type
     Foo[T] = object
       data1: array[T.high, int]
-      data2: array[typeNameLen(T), float]
-      data3: array[0..T.typeNameLen, selectType(float, int)]
+      data2: array[untyped typeNameLen(T), float]
+      data3: array[0..untyped T.typeNameLen, selectType(float, int)]
     MyEnum = enum A, B, C, D
 
   var f1: Foo[MyEnum]

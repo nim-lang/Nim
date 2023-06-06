@@ -250,7 +250,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       result = newNodeI(nkRecList, n.info)
   of nkStaticExpr:
     var n = prepareNode(cl, n)
-    n = reResolveCallsWithTypedescParams(cl, n)
+    #n = reResolveCallsWithTypedescParams(cl, n)
     result = if cl.allowMetaTypes: n
              else: cl.c.semExpr(cl.c, n)
     if not cl.allowMetaTypes:

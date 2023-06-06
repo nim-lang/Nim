@@ -277,7 +277,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     rangeT[i] = range[i].typ.skipTypes({tyStatic}).skipIntLit(c.idgen)
 
   let hasUnknownTypes = c.inGenericContext > 0 and
-    rangeT[0].kind == tyFromExpr or rangeT[1].kind == tyFromExpr
+    (rangeT[0].kind == tyFromExpr or rangeT[1].kind == tyFromExpr)
 
   if not hasUnknownTypes:
     if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
@@ -380,7 +380,8 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     let indx = semArrayIndex(c, n[1])
     var indxB = indx
     if indxB.kind in {tyGenericInst, tyAlias, tySink}: indxB = lastSon(indxB)
-    if indxB.kind notin {tyGenericParam, tyStatic, tyFromExpr}:
+    if indxB.kind notin {tyGenericParam, tyStatic, tyFromExpr} and
+        tfUnresolved notin indxB.flags:
       if indxB.skipTypes({tyRange}).kind in {tyUInt, tyUInt64}:
         discard
       elif not isOrdinalType(indxB):
@@ -394,6 +395,8 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     # bug #6682: Do not propagate initialization requirements etc for the
     # index type:
     rawAddSonNoPropagationOfTypeFlags(result, indx)
+    if tfUnresolved in indxB.flags:
+      result.flags.incl tfUnresolved
     addSonSkipIntLit(result, base, c.idgen)
   else:
     localError(c.config, n.info, errArrayExpectsTwoTypeParams)
