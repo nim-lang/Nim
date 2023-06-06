@@ -72,7 +72,9 @@ proc semConstrField(c: PContext, flags: TExprFlags,
   let assignment = locateFieldInInitExpr(c, field, initExpr)
   if assignment != nil:
     if nfSem in assignment.flags: return assignment[1]
-    if not fieldVisible(c, field):
+    if nfSkipFieldChecking in assignment[1].flags:
+      discard
+    elif not fieldVisible(c, field):
       localError(c.config, initExpr.info,
         "the field '$1' is not accessible." % [field.name.s])
       return
