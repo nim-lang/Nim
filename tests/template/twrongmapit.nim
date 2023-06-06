@@ -1,9 +1,6 @@
 discard """
-  disabled: true
-  output: "####"
+  joinable: false
 """
-# unfortunately our tester doesn't support multiple lines of compiler
-# error messages yet...
 
 # bug #1562
 type Foo* {.pure, final.} = object
@@ -30,4 +27,4 @@ import sequtils
 
 (var i = @[""];i).applyIt(it)
 # now works:
-echo "##", i[0], "##"
+doAssert i[0] == ""

@@ -676,7 +676,7 @@ proc copyFromDisk(c: var AtlasContext; w: Dependency) =
   #echo "WRITTEN ", destDir / ThisVersion
 
 proc isLaterCommit(destDir, version: string): bool =
-  let oldVersion = try: readFile(destDir / ThisVersion).strip: except: "0.0"
+  let oldVersion = try: readFile(destDir / ThisVersion).strip except: "0.0"
   if isValidVersion(oldVersion) and isValidVersion(version):
     result = Version(version) < Version(oldVersion)
   else:

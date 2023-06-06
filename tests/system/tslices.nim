@@ -57,3 +57,9 @@ echo mystr
 var s = "abcdef"
 s[1 .. ^2] = "xyz"
 assert s == "axyzf"
+
+# issue mentioned in PR #19219
+type Foo = distinct uint64
+# < here calls `pred` which used to cause a codegen error
+# `pred` compiles because distinct ordinals are considered ordinal
+const slice = 0 ..< 42.Foo
