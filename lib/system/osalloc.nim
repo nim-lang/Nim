@@ -29,7 +29,7 @@ const doNotUnmap = not (defined(amd64) or defined(i386)) or
 
 
 when defined(nimAllocPagesViaMalloc):
-  when not defined(gcArc) and not defined(gcOrc):
+  when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc):
     {.error: "-d:nimAllocPagesViaMalloc is only supported with --gc:arc or --gc:orc".}
 
   proc osTryAllocPages(size: int): pointer {.inline.} =
