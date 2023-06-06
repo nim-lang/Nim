@@ -59,3 +59,81 @@ proc bug(): seq[Obj] =
 # bug #19990
 let s = bug()
 doAssert s[0] == (value: 1, arr: @[1])
+
+block: # bug #21974
+  type Test[T] = ref object
+      values : seq[T]
+      counter: int
+
+  proc newTest[T](): Test[T] =
+      result         = new(Test[T])
+      result.values  = newSeq[T](16)
+      result.counter = 0
+
+  proc push[T](self: Test[T], value: T) =
+      self.counter += 1
+      if self.counter >= self.values.len:
+          self.values.setLen(self.values.len * 2)
+      self.values[self.counter - 1] = value
+
+  proc pop[T](self: Test[T]): T =
+      result         = self.values[0]
+      self.values[0] = self.values[self.counter - 1] # <--- This line
+      self.counter  -= 1
+
+
+  type X = tuple
+      priority: int
+      value   : string
+
+  var a = newTest[X]()
+  a.push((1, "One"))
+  doAssert a.pop.value == "One"
+
+# bug #21987
+
+type
+  EmbeddedImage* = distinct Image
+  Image = object
+    len: int
+
+proc imageCopy*(image: Image): Image {.nodestroy.}
+
+proc `=destroy`*(x: var Image) =
+  discard
+proc `=sink`*(dest: var Image; source: Image) =
+  `=destroy`(dest)
+  wasMoved(dest)
+
+proc `=dup`*(source: Image): Image {.nodestroy.} =
+  result = imageCopy(source)
+
+proc `=copy`*(dest: var Image; source: Image) =
+  dest = imageCopy(source) # calls =sink implicitly
+
+proc `=destroy`*(x: var EmbeddedImage) = discard
+
+proc `=dup`*(source: EmbeddedImage): EmbeddedImage {.nodestroy.} = source
+
+proc `=copy`*(dest: var EmbeddedImage; source: EmbeddedImage) {.nodestroy.} =
+  dest = source
+
+proc imageCopy*(image: Image): Image =
+  result = image
+
+proc main2 =
+  block:
+    var a = Image(len: 2).EmbeddedImage
+    var b = Image(len: 1).EmbeddedImage
+    b = a
+    doAssert Image(a).len == 2
+    doAssert Image(b).len == 2
+
+  block:
+    var a = Image(len: 2)
+    var b = Image(len: 1)
+    b = a
+    doAssert a.len == 2
+    doAssert b.len == 0
+
+main2()

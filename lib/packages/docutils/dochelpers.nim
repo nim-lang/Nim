@@ -288,7 +288,7 @@ proc match*(generated: LangSymbol, docLink: LangSymbol): bool =
         if g.`type` == d.name:
           onlyType = true  # only types, not names, are provided in `docLink`
       if onlyType:
-        result = g.`type` == d.name:
+        result = g.`type` == d.name
       else:
         if d.`type` != "":
           result = g.`type` == d.`type`

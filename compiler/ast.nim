@@ -944,10 +944,10 @@ type
     attachedWasMoved,
     attachedDestructor,
     attachedAsgn,
+    attachedDup,
     attachedSink,
     attachedTrace,
-    attachedDeepCopy,
-    attachedDup
+    attachedDeepCopy
 
   TType* {.acyclic.} = object of TIdObj # \
                               # types are identical iff they have the
@@ -1518,7 +1518,7 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
 
 const
   AttachedOpToStr*: array[TTypeAttachedOp, string] = [
-    "=wasMoved", "=destroy", "=copy", "=sink", "=trace", "=deepcopy", "=dup"]
+    "=wasMoved", "=destroy", "=copy", "=dup", "=sink", "=trace", "=deepcopy"]
 
 proc `$`*(s: PSym): string =
   if s != nil:
@@ -2008,7 +2008,7 @@ proc toObjectFromRefPtrGeneric*(typ: PType): PType =
     of tyRef, tyPtr, tyGenericInst, tyGenericInvocation, tyAlias: result = result[0]
       # automatic dereferencing is deep, refs #18298.
     else: break
-  assert result.sym != nil
+  # result does not have to be object type
 
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert t != nil

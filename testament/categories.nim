@@ -215,9 +215,9 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
   for testfile in ["exception/texceptions", "exception/texcpt1",
                    "exception/texcsub", "exception/tfinally",
                    "exception/tfinally2", "exception/tfinally3",
-                   "actiontable/tactiontable", "method/tmultimjs",
+                   "collections/tactiontable", "method/tmultimjs",
                    "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
-                   "varres/tvartup", "misc/tints", "misc/tunsignedinc",
+                   "varres/tvartup", "int/tints", "int/tunsignedinc",
                    "async/tjsandnativeasync"]:
     test "tests/" & testfile & ".nim"
 
