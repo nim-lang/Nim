@@ -779,11 +779,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
   else:
     finallyActions(p)
     genLineDir(p, t)
-    # reraise the last exception:
-    if p.config.exc == excCpp:
-      line(p, cpsStmts, "throw;\n")
-    else:
-      linefmt(p, cpsStmts, "#reraiseException();$n", [])
+    linefmt(p, cpsStmts, "#reraiseException();$n", [])
   raiseInstr(p, p.s(cpsStmts))
 
 template genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
