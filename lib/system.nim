@@ -147,10 +147,24 @@ proc wasMoved*[T](obj: var T) {.inline, noSideEffect.} =
   {.cast(raises: []), cast(tags: []).}:
     `=wasMoved`(obj)
 
-proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
-  result = x
-  {.cast(raises: []), cast(tags: []).}:
-    `=wasMoved`(x)
+const notJSnotNims = not defined(js) and not defined(nimscript)
+
+when notJSnotNims and defined(gcDestructors):
+  proc moveImpl[T](x: var T): T {.magic: "Move", noSideEffect, compilerproc.} =
+    result = x
+
+  proc move*[T](x: var T): T {.noSideEffect, nodestroy.} =
+    when nimvm:
+      result = moveImpl(x)
+    else:
+      result = moveImpl(x)
+      {.cast(raises: []), cast(tags: []).}:
+        `=wasMoved`(x)
+else:
+  proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+    result = x
+    {.cast(raises: []), cast(tags: []).}:
+      `=wasMoved`(x)
 
 type
   range*[T]{.magic: "Range".}         ## Generic type to construct range types.
@@ -415,7 +429,6 @@ include "system/inclrtl"
 const NoFakeVars = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
-const notJSnotNims = not defined(js) and not defined(nimscript)
 
 when not defined(js) and not defined(nimSeqsV2):
   type
