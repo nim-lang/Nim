@@ -148,8 +148,9 @@ proc wasMoved*[T](obj: var T) {.inline, noSideEffect.} =
     `=wasMoved`(obj)
 
 const notJSnotNims = not defined(js) and not defined(nimscript)
+const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
 
-when notJSnotNims and defined(gcDestructors):
+when notJSnotNims and arcLikeMem:
   proc moveImpl[T](x: var T): T {.magic: "Move", noSideEffect, compilerproc.} =
     result = x
 
