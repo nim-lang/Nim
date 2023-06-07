@@ -979,7 +979,16 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
         else:
           fillBodyObjT(c, t, body, x, y)
       else:
-        fillBodyObjT(c, t, body, x, y)
+        if c.kind == attachedDup:
+          var op2 = getAttachedOp(c.g, t, attachedAsgn)
+          if op2 != nil and sfOverriden in op2.flags:
+            #markUsed(c.g.config, c.info, op, c.g.usageSym)
+            onUse(c.info, op2)
+            body.add newHookCall(c, t.assignment, x, y)
+          else:
+            fillBodyObjT(c, t, body, x, y)
+        else:
+          fillBodyObjT(c, t, body, x, y)
   of tyDistinct:
     if not considerUserDefinedOp(c, t, body, x, y):
       fillBody(c, t[0], body, x, y)

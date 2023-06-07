@@ -1930,11 +1930,6 @@ proc isCompileTimeProc*(s: PSym): bool {.inline.} =
   result = s.kind == skMacro or
            s.kind in {skProc, skFunc} and sfCompileTime in s.flags
 
-proc isRunnableExamples*(n: PNode): bool =
-  # Templates and generics don't perform symbol lookups.
-  result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
-    n.kind == nkIdent and n.ident.s == "runnableExamples"
-
 proc hasPattern*(s: PSym): bool {.inline.} =
   result = isRoutine(s) and s.ast[patternPos].kind != nkEmpty
 
