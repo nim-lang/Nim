@@ -514,6 +514,10 @@ const
   errFieldXNotFound = "node lacks field: "
 
 
+template errUnderOrOver(number: SomeInteger): string =
+  $type(number) & (if number < 0: " overflow" else: " underflow")
+
+
 template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
   let node = node2 # prevent double evaluation
   if node.kind == nkNilLit:
@@ -949,7 +953,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if (sum xor bVal) >= 0 or (sum xor cVal) >= 0:
         regs[ra].intVal = sum
       else:
-        stackTrace(c, tos, pc, errOverOrUnderflow)
+        stackTrace(c, tos, pc, errUnderOrOver(sum))
     of opcAddImmInt:
       decodeBImm(rkInt)
       #message(c.config, c.debug[pc], warnUser, "came here")
@@ -961,7 +965,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if (sum xor bVal) >= 0 or (sum xor cVal) >= 0:
         regs[ra].intVal = sum
       else:
-        stackTrace(c, tos, pc, errOverOrUnderflow)
+        stackTrace(c, tos, pc, errUnderOrOver(sum))
     of opcSubInt:
       decodeBC(rkInt)
       let
@@ -971,7 +975,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if (diff xor bVal) >= 0 or (diff xor not cVal) >= 0:
         regs[ra].intVal = diff
       else:
-        stackTrace(c, tos, pc, errOverOrUnderflow)
+        stackTrace(c, tos, pc, errUnderOrOver(diff))
     of opcSubImmInt:
       decodeBImm(rkInt)
       let
@@ -981,7 +985,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if (diff xor bVal) >= 0 or (diff xor not cVal) >= 0:
         regs[ra].intVal = diff
       else:
-        stackTrace(c, tos, pc, errOverOrUnderflow)
+        stackTrace(c, tos, pc, errUnderOrOver(diff))
     of opcLenSeq:
       decodeBImm(rkInt)
       #assert regs[rb].kind == nkBracket
