@@ -276,7 +276,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
 
     elif not isOrdinalType(rangeT[0]) and rangeT[0].kind notin {tyFloat..tyFloat128} or
         rangeT[0].kind == tyBool:
-      localError(c.config, n.info, "ordinal or float type expected")
+      localError(c.config, n.info, "ordinal or float type expected, but got " & typeToString(rangeT[0]))
     elif enumHasHoles(rangeT[0]):
       localError(c.config, n.info, "enum '$1' has holes" % typeToString(rangeT[0]))
 
