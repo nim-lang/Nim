@@ -10,7 +10,7 @@
 ## a Nimble dependency and its dependencies recursively.
 
 import std / [parseopt, strutils, os, osproc, tables, sets, json, jsonutils,
-  parsecfg, streams, terminal, strscans, hashes, algorithm]
+  parsecfg, streams, terminal, strscans, hashes]
 import parse_requires, osutils, packagesjson, compiledpatterns, versions, sat
 
 from unicode import nil
@@ -107,7 +107,7 @@ type
   Dependency = object
     name: PackageName
     url, commit: string
-    rel: DepRelation # "requires x < 1.0" is silly, but Nimble allows it so we have too.
+    query: VersionInterval
     self: int # position in the graph
     parents: seq[int] # why we need this dependency
     active: bool
@@ -117,7 +117,7 @@ type
     processed: Table[string, int] # the key is (url / commit)
     byName: Table[PackageName, seq[int]]
     availableVersions: Table[PackageName, seq[(string, Version)]] # sorted, latest version comes first
-    bestNimVersion: (int, int, int) # Nim is a special snowflake
+    bestNimVersion: Version # Nim is a special snowflake
 
   LockFile = object # serialized as JSON so an object for extensibility
     items: OrderedTable[string, LockFileEntry]
@@ -232,12 +232,6 @@ proc extractRequiresInfo(c: var AtlasContext; nimbleFile: string): NimbleFileInf
   when ProduceTest:
     echo "nimble ", nimbleFile, " info ", result
 
-proc toDepRelation(s: string): DepRelation =
-  case s
-  of "<": strictlyLess
-  of ">": strictlyGreater
-  else: normal
-
 proc isCleanGit(c: var AtlasContext): string =
   result = ""
   let (outp, status) = exec(c, GitDiff, [])
@@ -300,29 +294,22 @@ proc getLastTaggedCommit(c: var AtlasContext): string =
     if lastTag.len != 0:
       result = lastTag
 
-proc versionToCommit(c: var AtlasContext; d: Dependency): string =
+proc collectTaggedVersions(c: var AtlasContext): seq[(string, Version)] =
   let (outp, status) = exec(c, GitTags, [])
   if status == 0:
-    var useNextOne = false
-    for line in splitLines(outp):
-      let commitsAndTags = strutils.splitWhitespace(line)
-      if commitsAndTags.len == 2 and not line.endsWith("^{}"):
-        case d.rel
-        of normal:
-          if commitsAndTags[1].sameVersionAs(d.commit):
-            return commitsAndTags[0]
-        of strictlyLess:
-          if d.commit == InvalidCommit:
-            return getLastTaggedCommit(c)
-          elif not commitsAndTags[1].sameVersionAs(d.commit):
-            return commitsAndTags[0]
-        of strictlyGreater:
-          if commitsAndTags[1].sameVersionAs(d.commit):
-            useNextOne = true
-          elif useNextOne:
-            return commitsAndTags[0]
+    result = parseTaggedVersions(outp)
+  else:
+    result = @[]
 
-  return ""
+proc versionToCommit(c: var AtlasContext; d: Dependency): string =
+  let allVersions = collectTaggedVersions(c)
+  case d.algo
+  of MinVer:
+    result = selectBestCommitMinVer(allVersions, d.query)
+  of SemVer:
+    result = selectBestCommitSemVer(allVersions, d.query)
+  of MaxVer:
+    result = selectBestCommitMaxVer(allVersions, d.query)
 
 proc shortToCommit(c: var AtlasContext; short: string): string =
   let (cc, status) = exec(c, GitRevParse, [short])
@@ -470,9 +457,8 @@ proc setupNimEnv(c: var AtlasContext; nimVersion: string)
 proc afterGraphActions(c: var AtlasContext; g: DepGraph) =
   if ShowGraph in c.flags:
     generateDepGraph c, g
-  if AutoEnv in c.flags and g.bestNimVersion != (0, 0, 0):
-    let v = $g.bestNimVersion[0] & "." & $g.bestNimVersion[1] & "." & $g.bestNimVersion[2]
-    setupNimEnv c, v
+  if AutoEnv in c.flags and g.bestNimVersion != Version"":
+    setupNimEnv c, g.bestNimVersion.string
 
 proc needsCommitLookup(commit: string): bool {.inline.} =
   '.' in commit or commit == InvalidCommit
@@ -583,35 +569,34 @@ proc addUnique[T](s: var seq[T]; elem: sink T) =
   if not s.contains(elem): s.add elem
 
 proc addUniqueDep(c: var AtlasContext; g: var DepGraph; parent: int;
-                  tokens: seq[string]) =
-  let pkgName = tokens[0]
+                  pkgName: PackageName; query: VersionInterval) =
+  let commit = versionKey(query)
   let oldErrors = c.errors
-  let url = toUrl(c, pkgName)
+  let url = toUrl(c, pkgName.string)
   if oldErrors != c.errors:
-    warn c, toName(pkgName), "cannot resolve package name"
+    warn c, pkgName, "cannot resolve package name"
   else:
-    let key = url / tokens[2]
+    let key = url / commit
     if g.processed.hasKey(key):
       g.nodes[g.processed[key]].parents.addUnique parent
     else:
       let self = g.nodes.len
-      g.byName.mgetOrPut(toName(pkgName), @[]).add self
+      g.byName.mgetOrPut(pkgName, @[]).add self
       g.processed[key] = self
       if c.lockMode == useLock:
-        if c.lockfile.items.contains(pkgName):
-          g.nodes.add Dependency(name: toName(pkgName),
-                              url: c.lockfile.items[pkgName].url,
-                              commit: c.lockfile.items[pkgName].commit,
-                              rel: normal,
-                              self: self,
-                              parents: @[parent],
-                              algo: c.defaultAlgo)
+        if c.lockfile.items.contains(pkgName.string):
+          g.nodes.add Dependency(name: pkgName,
+                                 url: c.lockfile.items[pkgName.string].url,
+                                 commit: c.lockfile.items[pkgName.string].commit,
+                                 self: self,
+                                 parents: @[parent],
+                                 algo: c.defaultAlgo)
         else:
-          error c, toName(pkgName), "package is not listed in the lock file"
+          error c, pkgName, "package is not listed in the lock file"
       else:
-        g.nodes.add Dependency(name: toName(pkgName), url: url, commit: tokens[2],
-                               rel: toDepRelation(tokens[1]),
+        g.nodes.add Dependency(name: pkgName, url: url, commit: commit,
                                self: self,
+                               query: query,
                                parents: @[parent],
                                algo: c.defaultAlgo)
 
@@ -622,11 +607,9 @@ proc readLockFile(filename: string): LockFile =
   let jsonTree = parseJson(jsonAsStr)
   result = to(jsonTree, LockFile)
 
-proc rememberNimVersion(g: var DepGraph; tokens: seq[string]) =
-  if tokens[1] in ["==", ">="]:
-    var v = (0, 0, 0)
-    if scanf(tokens[2], "$i.$i.$i", v[0], v[1], v[2]):
-      if v > g.bestNimVersion: g.bestNimVersion = v
+proc rememberNimVersion(g: var DepGraph; q: VersionInterval) =
+  let v = extractGeQuery(q)
+  if v != Version"" and v > g.bestNimVersion: g.bestNimVersion = v
 
 proc collectDeps(c: var AtlasContext; g: var DepGraph; parent: int;
                  dep: Dependency; nimbleFile: string): CfgPath =
@@ -635,26 +618,18 @@ proc collectDeps(c: var AtlasContext; g: var DepGraph; parent: int;
   assert nimbleFile != ""
   let nimbleInfo = extractRequiresInfo(c, nimbleFile)
   for r in nimbleInfo.requires:
-    var tokens: seq[string] = @[]
-    for token in tokenizeRequires(r):
-      tokens.add token
-    if tokens.len == 1:
-      # nimx uses dependencies like 'requires "sdl2"'.
-      # Via this hack we map them to the first tagged release.
-      # (See the `isStrictlySmallerThan` logic.)
-      tokens.add "<"
-      tokens.add InvalidCommit
-    elif tokens.len == 2 and tokens[1].startsWith("#"):
-      # Dependencies can also look like 'requires "sdl2#head"
-      var commit = tokens[1][1 .. ^1]
-      tokens[1] = "=="
-      tokens.add commit
-
-    if tokens.len >= 3:
-      if cmpIgnoreCase(tokens[0], "nim") != 0:
-        c.addUniqueDep g, parent, tokens
+    var i = 0
+    while i < r.len and r[i] notin {'#', '<', '=', '>'} + Whitespace: inc i
+    let pkgName = r.substr(0, i-1)
+    var err = pkgName.len == 0
+    let query = parseVersionInterval(r, i, err)
+    if err:
+      error c, toName(nimbleFile), "invalid 'requires' syntax: " & r
+    else:
+      if cmpIgnoreCase(pkgName, "nim") != 0:
+        c.addUniqueDep g, parent, toName(pkgName), query
       else:
-        rememberNimVersion g, tokens
+        rememberNimVersion g, query
   result = CfgPath(toDestDir(dep.name) / nimbleInfo.srcDir)
 
 proc collectNewDeps(c: var AtlasContext; g: var DepGraph; parent: int;
@@ -678,28 +653,9 @@ proc copyFromDisk(c: var AtlasContext; w: Dependency) =
 proc isLaterCommit(destDir, version: string): bool =
   let oldVersion = try: readFile(destDir / ThisVersion).strip except: "0.0"
   if isValidVersion(oldVersion) and isValidVersion(version):
-    result = Version(version) < Version(oldVersion)
+    result = Version(oldVersion) < Version(version)
   else:
     result = true
-
-proc collectTaggedVersions(c: var AtlasContext): seq[(string, Version)] =
-  let (outp, status) = exec(c, GitTags, [])
-  result = @[]
-  if status == 0:
-    for line in splitLines(outp):
-      if not line.endsWith("^{}"):
-        var i = 0
-        while i < line.len and line[i] notin Whitespace: inc i
-        let commitEnd = i
-        while i < line.len and line[i] in Whitespace: inc i
-        while i < line.len and line[i] notin Digits: inc i
-        let v = parseVersion(line, i)
-        if v != Version(""):
-          result.add (line.substr(0, commitEnd-1), v)
-  result.sort proc (a, b: (string, Version)): int =
-    (if a[1] < b[1]: 1
-    elif a[1] == b[1]: 0
-    else: -1)
 
 proc collectAvailableVersions(c: var AtlasContext; g: var DepGraph; w: Dependency) =
   if not g.availableVersions.hasKey(w.name):
@@ -1053,8 +1009,9 @@ proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
   withDir c, c.workspace / nimDest:
     let nimExe = "bin" / "nim".addFileExt(ExeExt)
     copyFileWithPermissions nimExe0, nimExe
-    let dep = Dependency(name: toName(nimDest), rel: normal, commit: nimVersion, self: 0,
-                         algo: c.defaultAlgo)
+    let dep = Dependency(name: toName(nimDest), commit: nimVersion, self: 0,
+                         algo: c.defaultAlgo,
+                         query: createQueryEq(if nimVersion.isDevel: Version"#head" else: Version(nimVersion)))
     if not nimVersion.isDevel:
       let commit = versionToCommit(c, dep)
       if commit.len == 0:

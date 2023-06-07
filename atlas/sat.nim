@@ -34,8 +34,9 @@ proc falseLit(): Atom {.inline.} = Atom(FalseForm)
 
 proc lit(k: FormKind): Atom {.inline.} = Atom(k)
 
-proc isTrueLit(a: Atom): bool {.inline.} = a.kind == TrueForm
-proc isFalseLit(a: Atom): bool {.inline.} = a.kind == FalseForm
+when false:
+  proc isTrueLit(a: Atom): bool {.inline.} = a.kind == TrueForm
+  proc isFalseLit(a: Atom): bool {.inline.} = a.kind == FalseForm
 
 proc varId(a: Atom): VarId =
   assert a.kind == VarForm
