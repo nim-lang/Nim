@@ -2207,10 +2207,10 @@ NimPrinter().printConstRef(message, val)
 
 ```
 
-constructor pragma
+Constructor pragma
 ==================
 
-The `constructor` pragmas has two ways of being used: in conjunction with `importcpp` to import a C++ constructor and as a way to declare constructors that works similarly to `virtual`. 
+The `constructor` pragma has two ways of being used: in conjunction with `importcpp` to import a C++ constructor and as a way to declare constructors that work similarly to `virtual`. 
 
 Consider:
 
