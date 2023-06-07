@@ -155,12 +155,13 @@ when notJSnotNims and arcLikeMem:
     result = x
 
   proc move*[T](x: var T): T {.noSideEffect, nodestroy.} =
-    when nimvm:
-      result = moveImpl(x)
-    else:
-      result = moveImpl(x)
-      {.cast(raises: []), cast(tags: []).}:
-        `=wasMoved`(x)
+    {.cast(noSideEffect).}:
+      when nimvm:
+        result = moveImpl(x)
+      else:
+        result = moveImpl(x)
+        {.cast(raises: []), cast(tags: []).}:
+          `=wasMoved`(x)
 else:
   proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
     result = x
