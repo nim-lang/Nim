@@ -1,5 +1,5 @@
 discard """
-  errormsg: "over- or underflow"
+  errormsg: "int64 underflow"
 """
 
 static:
