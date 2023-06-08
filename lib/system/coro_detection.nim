@@ -1,7 +1,7 @@
 ## Coroutine detection logic
 
 template coroutinesSupportedPlatform(): bool =
-  when defined(sparc) or defined(ELATE) or defined(boehmgc) or defined(gogc) or
+  when defined(sparc) or defined(ELATE) or defined(boehmgc) or
     defined(nogc) or defined(gcRegions) or defined(gcMarkAndSweep):
     false
   else:
