@@ -410,7 +410,7 @@ proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PTyp
     elif not containsOrIncl(marker, t.id):
       var hasTrace = hasTrace
       let op = getAttachedOp(g, t.skipTypes({tyRef}), attachedTrace)
-      if op != nil and sfOverriden in op.flags:
+      if op != nil and sfOverridden in op.flags:
         hasTrace = true
       for i in 0..<t.len:
         result = canFormAcycleAux(g, marker, t[i], orig, withRef, hasTrace)
@@ -1434,6 +1434,19 @@ proc compatibleEffectsAux(se, re: PNode): bool =
       return false
   result = true
 
+proc isDefectException*(t: PType): bool
+proc compatibleExceptions(se, re: PNode): bool =
+  if re.isNil: return false
+  for r in items(re):
+    block search:
+      if isDefectException(r.typ):
+        break search
+      for s in items(se):
+        if safeInheritanceDiff(r.typ, s.typ) <= 0:
+          break search
+      return false
+  result = true
+
 proc hasIncompatibleEffect(se, re: PNode): bool =
   if re.isNil: return false
   for r in items(re):
@@ -1472,7 +1485,7 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
     if not isNil(se) and se.kind != nkArgList:
       # spec requires some exception or tag, but we don't know anything:
       if real.len == 0: return efRaisesUnknown
-      let res = compatibleEffectsAux(se, real[exceptionEffects])
+      let res = compatibleExceptions(se, real[exceptionEffects])
       if not res: return efRaisesDiffer
 
     let st = spec[tagEffects]
