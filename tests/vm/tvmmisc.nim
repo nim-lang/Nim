@@ -698,3 +698,17 @@ block: # bug #21708
   static:
     let s = X[0]
     doAssert s[0] == "foo"
+
+block:
+  proc swap[T](x: var T): T =
+    result = x
+    x = default(T)
+
+  proc merge[T](a, b: var openArray[T]) =
+    a[0] = swap b[0]
+
+  static:
+    var x = "abc"
+    var y = "356"
+    merge(x, y)
+    doAssert x == "3bc"
