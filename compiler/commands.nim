@@ -259,7 +259,6 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "destructors", "arc": result = conf.selectedGC == gcArc
     of "orc": result = conf.selectedGC == gcOrc
     of "hooks": result = conf.selectedGC == gcHooks
-    of "go": result = conf.selectedGC == gcGo
     of "none": result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
     of "atomicarc": result = conf.selectedGC == gcAtomicArc
@@ -574,10 +573,6 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       processOnOffSwitchG(conf, {optSeqDestructors}, arg, pass, info)
       if pass in {passCmd2, passPP}:
         defineSymbol(conf.symbols, "nimSeqsV2")
-    of "go":
-      unregisterArcOrc(conf)
-      conf.selectedGC = gcGo
-      defineSymbol(conf.symbols, "gogc")
     of "none":
       unregisterArcOrc(conf)
       conf.selectedGC = gcNone
