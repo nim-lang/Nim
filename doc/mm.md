@@ -65,9 +65,6 @@ Other MM modes
 --mm:markAndSweep  Simple Mark-And-Sweep based garbage collector.
   Heaps are thread-local.
 --mm:boehm    Boehm based garbage collector, it offers a shared heap.
---mm:go    Go's garbage collector, useful for interoperability with Go.
-  Offers a shared heap.
-
 --mm:none    No memory management strategy nor a garbage collector. Allocated memory is
   simply never freed. You should use `--mm:arc` instead.
 
@@ -78,10 +75,10 @@ Memory Management  Heap     Reference Cycles  Stop-The-World Command line switch
 ================== ======== ================= ============== ===================
 ORC                Shared   Cycle Collector   No             `--mm:orc`
 ARC                Shared   Leak              No             `--mm:arc`
+ARC Atomic         Shared   Leak              No             `--mm:atomicArc`
 RefC               Local    Cycle Collector   No             `--mm:refc`
 Mark & Sweep       Local    Cycle Collector   No             `--mm:markAndSweep`
 Boehm              Shared   Cycle Collector   Yes            `--mm:boehm`
-Go                 Shared   Cycle Collector   Yes            `--mm:go`
 None               Manual   Manual            Manual         `--mm:none`
 ================== ======== ================= ============== ===================
 
