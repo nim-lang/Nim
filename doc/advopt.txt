@@ -129,7 +129,7 @@ Advanced options:
   --skipUserCfg:on|off      do not read the user's configuration file
   --skipParentCfg:on|off    do not read the parent dirs' configuration files
   --skipProjCfg:on|off      do not read the project's configuration file
-  --mm:orc|arc|refc|markAndSweep|boehm|go|none|regions
+  --mm:orc|arc|atomicArc|refc|markAndSweep|boehm|none|regions
                             select which memory management to use; default is 'orc'
   --exceptions:setjmp|cpp|goto|quirky
                             select the exception handling implementation
