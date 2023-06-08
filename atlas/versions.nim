@@ -230,7 +230,7 @@ proc matches(pattern: VersionReq; v: Version): bool =
   of verAny:
     result = true
 
-proc matches(pattern: VersionInterval; v: Version): bool =
+proc matches*(pattern: VersionInterval; v: Version): bool =
   if pattern.isInterval:
     result = matches(pattern.a, v) and matches(pattern.b, v)
   else:
@@ -247,15 +247,17 @@ proc selectBestCommitMaxVer*(data: openArray[(string, Version)]; elem: VersionIn
     if elem.matches(data[i][1]): return data[i][0]
   return ""
 
-proc selectBestCommitSemVer*(data: openArray[(string, Version)]; elem: VersionInterval): string =
-  var elem = elem
-  if not elem.isInterval and elem.a.r in {verGe, verGt}:
+proc toSemVer*(i: VersionInterval): VersionInterval =
+  result = i
+  if not result.isInterval and result.a.r in {verGe, verGt}:
     var major = 0
-    let l1 = parseSaturatedNatural(elem.a.v.string, major, 0)
+    let l1 = parseSaturatedNatural(result.a.v.string, major, 0)
     if l1 > 0:
-      elem.isInterval = true
-      elem.b = VersionReq(r: verLt, v: Version($(major+1)))
-  result = selectBestCommitMaxVer(data, elem)
+      result.isInterval = true
+      result.b = VersionReq(r: verLt, v: Version($(major+1)))
+
+proc selectBestCommitSemVer*(data: openArray[(string, Version)]; elem: VersionInterval): string =
+  result = selectBestCommitMaxVer(data, elem.toSemVer)
 
 when isMainModule:
   template v(x): untyped = Version(x)

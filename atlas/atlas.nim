@@ -666,7 +666,61 @@ proc collectAvailableVersions(c: var AtlasContext; g: var DepGraph; w: Dependenc
       g.availableVersions[w.name] = collectTaggedVersions(c)
 
 proc resolve(c: var AtlasContext; g: var DepGraph) =
-  discard
+  var b = sat.Builder()
+  b.openOpr(AndForm)
+  # Root must true:
+  b.add newVar(VarId 0)
+
+  assert g.nodes.len > 0
+  assert g.nodes[0].active
+  # Implications:
+  for i in 0..<g.nodes.len:
+    if g.nodes[i].active:
+      for j in g.nodes[i].parents:
+        # "parent has a dependency on x" is translated to:
+        # "parent implies x" which is "not parent or x"
+        if j >= 0:
+          b.openOpr(OrForm)
+          b.openOpr(NotForm)
+          b.add newVar(VarId j)
+          b.closeOpr
+          b.add newVar(VarId i)
+          b.closeOpr
+  var idgen = 0
+  var mapping: seq[(string, string, Version)] = @[]
+  # Version selection:
+  for i in 0..<g.nodes.len:
+    if g.nodes[i].active:
+      # A -> (exactly one of: A1, A2, A3)
+      b.openOpr(OrForm)
+      b.openOpr(NotForm)
+      b.add newVar(VarId i)
+      b.closeOpr
+      b.openOpr(ExactlyOneOfForm)
+
+      let av {.cursor.} = g.availableVersions[g.nodes[i].name]
+      var q = g.nodes[i].query
+      if g.nodes[i].algo == SemVer: q = toSemVer(q)
+      for a in av:
+        if q.matches(a[1]):
+          mapping.add (g.nodes[i].name.string, a[0], a[1])
+          b.add newVar(VarId(idgen + g.nodes.len))
+          inc idgen
+
+      b.closeOpr # ExactlyOneOfForm
+      b.closeOpr # OrForm
+  b.closeOpr()
+  let f = toForm(b)
+  var s = newSeq[BindingKind](idgen)
+  if satisfiable(f, s):
+    echo "selecting: "
+    for i in g.nodes.len..<s.len:
+      if s[i] == setToTrue:
+        echo mapping[i - g.nodes.len]
+  else:
+    # XXX Better conflict analysis
+    error c, toName(c.workspace), "version conflict"
+
 
 proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[CfgPath] =
   if c.lockMode == useLock:
