@@ -53,8 +53,7 @@ proc rawNewStringNoInit(space: int): NimString {.compilerproc.} =
   result = allocStrNoInit(sizeof(TGenericSeq) + s + 1)
   result.reserved = s
   result.len = 0
-  when defined(gogc):
-    result.elemSize = 1
+
 
 proc rawNewString(space: int): NimString {.compilerproc.} =
   var s = space
@@ -62,8 +61,7 @@ proc rawNewString(space: int): NimString {.compilerproc.} =
   result = allocStr(sizeof(TGenericSeq) + s + 1)
   result.reserved = s
   result.len = 0
-  when defined(gogc):
-    result.elemSize = 1
+
 
 proc mnewString(len: int): NimString {.compilerproc.} =
   result = rawNewString(len)
@@ -134,8 +132,6 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
         result = cast[NimString](newObjRC1(addr(strDesc), sizeof(TGenericSeq) +
                                 s+1))
         result.reserved = s
-        when defined(gogc):
-          result.elemSize = 1
       else:
         result = rawNewStringNoInit(src.len)
       result.len = src.len
@@ -288,8 +284,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, elemAlign, newLen: int): PGenericS
   elif newLen < result.len:
     # we need to decref here, otherwise the GC leaks!
     when not defined(boehmGC) and not defined(nogc) and
-         not defined(gcMarkAndSweep) and not defined(gogc) and
-         not defined(gcRegions):
+         not defined(gcMarkAndSweep) and not defined(gcRegions):
       if ntfNoRefs notin extGetCellType(result).base.flags:
         for i in newLen..result.len-1:
           forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
@@ -322,8 +317,7 @@ proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
       result = s
       # we need to decref here, otherwise the GC leaks!
       when not defined(boehmGC) and not defined(nogc) and
-          not defined(gcMarkAndSweep) and not defined(gogc) and
-          not defined(gcRegions):
+          not defined(gcMarkAndSweep) and not defined(gcRegions):
         if ntfNoRefs notin typ.base.flags:
           for i in newLen..result.len-1:
             forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
