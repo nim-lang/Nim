@@ -129,7 +129,7 @@ Other useful procs from [system](system.html) you can use to keep track of memor
 * `GC_getStatistics()` Garbage collector statistics as a human-readable string.
 
 These numbers are usually only for the running thread, not for the whole heap,
-with the exception of `--mm:boehm`:option: and `--mm:go`:option:.
+with the exception of `--mm:boehm`:option:.
 
 In addition to `GC_ref` and `GC_unref` you can avoid the garbage collector by manually
 allocating memory with procs like `alloc`, `alloc0`, `allocShared`, `allocShared0` or `allocCStringArray`.
