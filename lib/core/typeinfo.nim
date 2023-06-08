@@ -97,14 +97,10 @@ when not defined(gcDestructors):
   type
     TGenericSeq {.importc.} = object
       len, space: int
-      when defined(gogc):
-        elemSize: int
+
     PGenSeq = ptr TGenericSeq
 
-  when defined(gogc):
-    const GenericSeqSize = 3 * sizeof(int)
-  else:
-    const GenericSeqSize = 2 * sizeof(int)
+  const GenericSeqSize = 2 * sizeof(int)
 
 else:
   include system/seqs_v2_reimpl
