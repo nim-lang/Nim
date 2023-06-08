@@ -151,7 +151,7 @@ proc `==`*(a, b: PackageName): bool {.borrow.}
 proc hash*(a: PackageName): Hash {.borrow.}
 
 const
-  InvalidCommit = "<invalid commit>"
+  InvalidCommit = "#head" #"<invalid commit>"
   ProduceTest = false
 
 type
@@ -186,7 +186,7 @@ proc nimbleExec(cmd: string; args: openArray[string]) =
 
 proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, int) =
   when MockupRun:
-    assert TestLog[c.step].cmd == cmd, $(TestLog[c.step].cmd, cmd)
+    assert TestLog[c.step].cmd == cmd, $(TestLog[c.step].cmd, cmd, c.step)
     case cmd
     of GitDiff, GitTag, GitTags, GitLastTaggedRef, GitDescribe, GitRevParse, GitPush, GitPull, GitCurrentCommit:
       result = (TestLog[c.step].output, TestLog[c.step].exitCode)
@@ -569,32 +569,32 @@ proc addUnique[T](s: var seq[T]; elem: sink T) =
   if not s.contains(elem): s.add elem
 
 proc addUniqueDep(c: var AtlasContext; g: var DepGraph; parent: int;
-                  pkgName: PackageName; query: VersionInterval) =
+                  pkg: string; query: VersionInterval) =
   let commit = versionKey(query)
   let oldErrors = c.errors
-  let url = toUrl(c, pkgName.string)
+  let url = toUrl(c, pkg)
   if oldErrors != c.errors:
-    warn c, pkgName, "cannot resolve package name"
+    warn c, toName(pkg), "cannot resolve package name"
   else:
     let key = url / commit
     if g.processed.hasKey(key):
       g.nodes[g.processed[key]].parents.addUnique parent
     else:
       let self = g.nodes.len
-      g.byName.mgetOrPut(pkgName, @[]).add self
+      g.byName.mgetOrPut(toName(pkg), @[]).add self
       g.processed[key] = self
       if c.lockMode == useLock:
-        if c.lockfile.items.contains(pkgName.string):
-          g.nodes.add Dependency(name: pkgName,
-                                 url: c.lockfile.items[pkgName.string].url,
-                                 commit: c.lockfile.items[pkgName.string].commit,
+        if c.lockfile.items.contains(pkg):
+          g.nodes.add Dependency(name: toName(pkg),
+                                 url: c.lockfile.items[pkg].url,
+                                 commit: c.lockfile.items[pkg].commit,
                                  self: self,
                                  parents: @[parent],
                                  algo: c.defaultAlgo)
         else:
-          error c, pkgName, "package is not listed in the lock file"
+          error c, toName(pkg), "package is not listed in the lock file"
       else:
-        g.nodes.add Dependency(name: pkgName, url: url, commit: commit,
+        g.nodes.add Dependency(name: toName(pkg), url: url, commit: commit,
                                self: self,
                                query: query,
                                parents: @[parent],
@@ -627,7 +627,7 @@ proc collectDeps(c: var AtlasContext; g: var DepGraph; parent: int;
       error c, toName(nimbleFile), "invalid 'requires' syntax: " & r
     else:
       if cmpIgnoreCase(pkgName, "nim") != 0:
-        c.addUniqueDep g, parent, toName(pkgName), query
+        c.addUniqueDep g, parent, pkgName, query
       else:
         rememberNimVersion g, query
   result = CfgPath(toDestDir(dep.name) / nimbleInfo.srcDir)
@@ -658,8 +658,12 @@ proc isLaterCommit(destDir, version: string): bool =
     result = true
 
 proc collectAvailableVersions(c: var AtlasContext; g: var DepGraph; w: Dependency) =
-  if not g.availableVersions.hasKey(w.name):
+  when MockupRun:
+    # don't cache when doing the MockupRun:
     g.availableVersions[w.name] = collectTaggedVersions(c)
+  else:
+    if not g.availableVersions.hasKey(w.name):
+      g.availableVersions[w.name] = collectTaggedVersions(c)
 
 proc resolve(c: var AtlasContext; g: var DepGraph) =
   discard

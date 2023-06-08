@@ -2,7 +2,7 @@
   "items": {
     "apkg": {
       "url": "file://./source/apkg",
-      "commit": "<invalid commit>"
+      "commit": "#head"
     },
     "bpkg": {
       "url": "file://./source/bpkg",

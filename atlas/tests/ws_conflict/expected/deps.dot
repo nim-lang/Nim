@@ -1,11 +1,11 @@
 digraph deps {
-"file://./source/apkg/<invalid commit>" [label=""];
+"file://./source/apkg/#head" [label=""];
 "file://./source/bpkg/1.0" [label=""];
 "file://./source/cpkg/1.0" [label="unused"];
 "file://./source/cpkg/2.0" [label=""];
 "file://./source/dpkg/1.0" [label=""];
-"file://./source/apkg/<invalid commit>" -> "file://./source/bpkg/1.0";
-"file://./source/apkg/<invalid commit>" -> "file://./source/cpkg/1.0";
+"file://./source/apkg/#head" -> "file://./source/bpkg/1.0";
+"file://./source/apkg/#head" -> "file://./source/cpkg/1.0";
 "file://./source/bpkg/1.0" -> "file://./source/cpkg/2.0";
 "file://./source/cpkg/2.0" -> "file://./source/dpkg/1.0";
 }
