@@ -5013,6 +5013,38 @@ exceptions inherit from `Defect`.
 Exceptions that indicate any other runtime error that can be caught inherit from
 `system.CatchableError` (which is a subtype of `Exception`).
 
+```
+Exception
+|-- CatchableError
+|   |-- IOError
+|   |   `-- EOFError
+|   |-- OSError
+|   |-- ResourceExhaustedError
+|   `-- ValueError
+|       `-- KeyError
+`-- Defect
+    |-- AccessViolationDefect
+    |-- ArithmeticDefect
+    |   |-- DivByZeroDefect
+    |   `-- OverflowDefect
+    |-- AssertionDefect
+    |-- DeadThreadDefect
+    |-- FieldDefect
+    |-- FloatingPointDefect
+    |   |-- FloatDivByZeroDefect
+    |   |-- FloatInvalidOpDefect
+    |   |-- FloatOverflowDefect
+    |   |-- FloatUnderflowDefect
+    |   `-- InexactDefect
+    |-- IndexDefect
+    |-- NilAccessDefect
+    |-- ObjectAssignmentDefect
+    |-- ObjectConversionDefect
+    |-- OutOfMemoryDefect
+    |-- RangeDefect
+    |-- ReraiseDefect
+    `-- StackOverflowDefect
+```
 
 Imported exceptions
 -------------------
