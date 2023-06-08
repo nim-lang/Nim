@@ -490,6 +490,8 @@
 
 - Removed support for LCC (Local C), Pelles C, Digital Mars, Watcom compilers.
 
+- Removed support for `--gc:go`.
+
 
 ## Docgen
 
