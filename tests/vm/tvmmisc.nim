@@ -657,3 +657,17 @@ proc macroGlobal =
 
 static: macroGlobal()
 macroGlobal()
+
+block:
+  proc swap[T](x: var T): T =
+    result = x
+    x = default(T)
+
+  proc merge[T](a, b: var openArray[T]) =
+    a[0] = swap b[0]
+
+  static:
+    var x = "abc"
+    var y = "356"
+    merge(x, y)
+    doAssert x == "3bc"
