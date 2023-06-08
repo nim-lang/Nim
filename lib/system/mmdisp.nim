@@ -51,10 +51,7 @@ proc raiseOutOfMem() {.noinline.} =
 when defined(boehmgc):
   include system / mm / boehm
 
-elif defined(gogc):
-  include system / mm / go
-
-elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
+elif defined(gcDestructors) and defined(useMalloc):
   include system / mm / malloc
 
   when defined(nogc):
