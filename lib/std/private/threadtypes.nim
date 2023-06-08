@@ -1,6 +1,6 @@
 include system/inclrtl
 
-const hasSharedHeap* = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
+const hasSharedHeap* = defined(boehmgc)  # don't share heaps; every thread has its own
 
 when defined(windows):
   type
