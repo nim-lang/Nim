@@ -70,6 +70,9 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
       onUse(info, s)
     else:
       result = n
+  elif i == 0:
+    # forced open but symbol not in scope, retain information
+    result = n
   else:
     # semantic checking requires a type; ``fitNode`` deals with it
     # appropriately
@@ -110,14 +113,10 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
 
 proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
   result = copyNode(n)
-  var count = 0
   for i in 0..<n.len:
     toMixin.incl(considerQuotedIdent(c, n[i]).id)
     let x = symChoice(c, n[i], nil, scForceOpen)
-    inc count, x.len
     result.add x
-  if count == 0:
-    result = newNodeI(nkEmpty, n.info)
 
 proc replaceIdentBySym(c: PContext; n: var PNode, s: PNode) =
   case n.kind

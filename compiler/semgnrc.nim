@@ -64,7 +64,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   template maybeDotChoice(c: PContext, n: PNode, s: PSym, fromDotExpr: bool) =
     if fromDotExpr:
       result = symChoice(c, n, s, scForceOpen)
-      if result.len == 1:
+      if result.kind == nkOpenSymChoice and result.len == 1:
         result.transitionSonsKind(nkClosedSymChoice)
     else:
       result = symChoice(c, n, s, scOpen)
