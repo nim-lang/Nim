@@ -421,9 +421,7 @@ when not defined(js) and not defined(nimSeqsV2):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
-      when defined(gogc):
-        elemSize: int
-        elemAlign: int
+
     PGenericSeq {.exportc.} = ptr TGenericSeq
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
@@ -1043,7 +1041,7 @@ const
 
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
-  hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
+  hasSharedHeap = defined(boehmgc)  # don't share heaps; every thread has its own
 
 when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
   # tcc doesn't support TLS
@@ -2130,10 +2128,7 @@ when notJSnotNims:
   import system/countbits_impl
   include "system/sets"
 
-  when defined(gogc):
-    const GenericSeqSize = (3 * sizeof(int))
-  else:
-    const GenericSeqSize = (2 * sizeof(int))
+  const GenericSeqSize = (2 * sizeof(int))
 
   proc getDiscriminant(aa: pointer, n: ptr TNimNode): uint =
     sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
