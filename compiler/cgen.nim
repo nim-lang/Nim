@@ -619,7 +619,7 @@ proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
       # and s.owner.kind == skModule # owner isn't always a module (global pragma on local var)
       # and s.loc.k == locGlobalVar  # loc isn't always initialized when this proc is used
 
-proc genGlobalVarDecl(p: BProc, n: PNode; td, value: Rope; decl: var Rope) = 
+proc genGlobalVarDecl(p: BProc, n: PNode; td, value: Rope; decl: var Rope) =
   let s = n.sym
   if s.constraint.isNil:
     if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
@@ -640,7 +640,7 @@ proc genGlobalVarDecl(p: BProc, n: PNode; td, value: Rope; decl: var Rope) =
     else:
       decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
 
-proc genCppVarForCtor(p: BProc, v: PSym; vn, value: PNode; decl: var Rope) 
+proc genCppVarForCtor(p: BProc, v: PSym; vn, value: PNode; decl: var Rope)
 
 proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode) =
   let s = vn.sym
@@ -701,7 +701,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
             decl.addf(" $1 = $2;$n", [s.loc.r, value])
         else:
           decl.addf(" $1;$n", [s.loc.r])
-      
+
       p.module.s[cfsVars].add(decl)
   if p.withinLoop > 0 and value == "":
     # fixes tests/run/tzeroarray:
@@ -977,12 +977,8 @@ proc closureSetup(p: BProc, prc: PSym) =
   #echo "created environment: ", env.id, " for ", prc.name.s
   assignLocalVar(p, ls)
   # generate cast assignment:
-  if p.config.selectedGC == gcGo:
-    linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, ($2) ClE_0);$n",
-            [addrLoc(p.config, env.loc), getTypeDesc(p.module, env.typ)])
-  else:
-    linefmt(p, cpsStmts, "$1 = ($2) ClE_0;$n",
-            [rdLoc(env.loc), getTypeDesc(p.module, env.typ)])
+  linefmt(p, cpsStmts, "$1 = ($2) ClE_0;$n",
+          [rdLoc(env.loc), getTypeDesc(p.module, env.typ)])
 
 proc containsResult(n: PNode): bool =
   result = false
@@ -1176,7 +1172,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
         initLocalVar(p, res, immediateAsgn=false)
       returnStmt = ropecg(p.module, "\treturn $1;$n", [rdLoc(res.loc)])
     elif sfConstructor in prc.flags:
-      fillLoc(resNode.sym.loc, locParam, resNode, "this", OnHeap)      
+      fillLoc(resNode.sym.loc, locParam, resNode, "this", OnHeap)
     else:
       fillResult(p.config, resNode, prc.typ)
       assignParam(p, res, prc.typ[0])
