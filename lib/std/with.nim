@@ -46,4 +46,3 @@ macro with*(arg: typed; calls: varargs[untyped]): untyped =
 
   result = newNimNode(nnkStmtList, arg)
   underscoredCalls(result, calls, arg)
-  echo result.astGenRepr
