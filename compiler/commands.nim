@@ -21,7 +21,6 @@ bootSwitch(usedDanger, defined(danger), "-d:danger")
 bootSwitch(useLinenoise, defined(nimUseLinenoise) or defined(useLinenoise), "-d:nimUseLinenoise")
 bootSwitch(usedBoehm, defined(boehmgc), "--gc:boehm")
 bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
-bootSwitch(usedGoGC, defined(gogc), "--gc:go")
 bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
 import std/[setutils, os, strutils, parseutils, parseopt, sequtils, strtabs]
@@ -101,7 +100,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
 
     msgWriteln(conf, "active boot switches:" & usedRelease & usedDanger &
       usedTinyC & useLinenoise &
-      usedFFI & usedBoehm & usedMarkAndSweep & usedGoGC & usedNoGC,
+      usedFFI & usedBoehm & usedMarkAndSweep & usedNoGC,
                {msgStdout})
     msgQuit(0)
 
