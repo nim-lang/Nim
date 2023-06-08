@@ -410,7 +410,7 @@ proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PTyp
     elif not containsOrIncl(marker, t.id):
       var hasTrace = hasTrace
       let op = getAttachedOp(g, t.skipTypes({tyRef}), attachedTrace)
-      if op != nil and sfOverriden in op.flags:
+      if op != nil and sfOverridden in op.flags:
         hasTrace = true
       for i in 0..<t.len:
         result = canFormAcycleAux(g, marker, t[i], orig, withRef, hasTrace)
