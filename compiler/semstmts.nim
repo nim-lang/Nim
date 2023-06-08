@@ -565,6 +565,7 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
 template isLocalSym(sym: PSym): bool =
   sym.kind in {skVar, skLet, skParam} and not
     ({sfGlobal, sfPure} * sym.flags != {} or
+      sym.typ.kind == tyTypeDesc or
       sfCompileTime in sym.flags) or
       sym.kind in {skProc, skFunc, skIterator} and
       sfGlobal notin sym.flags
