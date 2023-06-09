@@ -3,6 +3,9 @@
 import std / [strutils, os, sequtils]
 from std/private/gitutils import diffFiles
 
+if execShellCmd("nim c -r atlas/versions.nim") != 0:
+  quit("FAILURE: unit tests in atlas/versions.nim failed")
+
 var failures = 0
 
 when defined(develop):

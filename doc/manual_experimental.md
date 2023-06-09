@@ -2207,10 +2207,10 @@ NimPrinter().printConstRef(message, val)
 
 ```
 
-constructor pragma
+Constructor pragma
 ==================
 
-The `constructor` pragmas has two ways of being used: in conjunction with `importcpp` to import a C++ constructor and as a way to declare constructors that works similarly to `virtual`. 
+The `constructor` pragma can be used in two ways: in conjunction with `importcpp` to import a C++ constructor, and to declare constructors that operate similarly to `virtual`.
 
 Consider:
 
@@ -2263,4 +2263,4 @@ proc makeCppClass(): NimClass {.constructor: "NimClass() : CppClass(0, 0)".} =
 
 In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropiate constructor. 
 
-Notice when calling constructor in a global variable, it will be called before `NimMain` meaning Nim is not fully initialized.
+Notice when calling a constructor in the section of a global variable initialization, it will be called before `NimMain` meaning Nim is not fully initialized.

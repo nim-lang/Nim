@@ -2357,7 +2357,8 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
   else:
     if d.k == locNone: getTemp(p, n.typ, d)
     genAssignment(p, d, a, {})
-    resetLoc(p, a)
+    if p.config.selectedGC notin {gcArc, gcAtomicArc, gcOrc}:
+      resetLoc(p, a)
 
 proc genDestroy(p: BProc; n: PNode) =
   if optSeqDestructors in p.config.globalOptions:
