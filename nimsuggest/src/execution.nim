@@ -7,10 +7,25 @@ import compiler/[renderer, options, passes, msgs, sigmatch, modulegraphs, linein
 import globals, utils, v3/v3, communication, types
 
 #[Quick reference of ideCmds
-IdeUse #find useages of symbol at cursor
-IdeSug #suggest completions at cursor
 IdeCon #Show the signature of the function whos parameters the cursor is in
 IdeDef #return the definition location of the symbol
+IdeSug #suggest completions at cursor
+ideUse #Get's a symbols usages. Used for gotoReference
+ideDus #Get's a symbols defUsages. As far as i can till it's the same as ideUse
+IdeChk #Check a file for errors and warnings (in v3 this checks a file and it's dependencies)
+IdeChkFile #V3 command to check a single file for errors without its dependencies
+ideMod #Something related to module import suggestions. Not exactly sure if it works or is implimented. Isn't used in either nimlsp or langserver
+ideHightlight #Provides hover docs for a partcular line and column
+ideOutline #gives a list of the files top level functions and declarations
+ideKnown #reports 'true' or 'false' depending on whether the current nimsuggest instance is aware of a file
+ideMsg #Not a command to be sent from outside. Just used as a label for responses
+ideProject #returns the path of the root file of the project 
+ideglobalSymbols #v3: lists all symbols available in the project(up to 100)
+ideRecompile #v3: forces a recompile of the whole project
+ideChanged #v3: marks a file as dirty when changed 
+ideType #v3: trys to get the type at file:line:col position. like hightlight but just for type information
+ideDeclaration #v3: trys to find a symbols declaraiton. Often the same as ideDef. These commands are different when searching for a symbol that's defined in a header file
+ideExpand #v3: custom lsp command for expanding macros. Unsure if this is actually used 
 ]#
 
 proc executeNoHooksDefault(cmd: CommandData, graph: ModuleGraph) =
