@@ -151,15 +151,15 @@ const notJSnotNims = not defined(js) and not defined(nimscript)
 const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
 
 when notJSnotNims and arcLikeMem:
-  proc moveImpl[T](x: var T): T {.magic: "Move", noSideEffect, compilerproc.} =
+  proc internalMove[T](x: var T): T {.magic: "Move", noSideEffect, compilerproc.} =
     result = x
 
   proc move*[T](x: var T): T {.noSideEffect, nodestroy.} =
     {.cast(noSideEffect).}:
       when nimvm:
-        result = moveImpl(x)
+        result = internalMove(x)
       else:
-        result = moveImpl(x)
+        result = internalMove(x)
         {.cast(raises: []), cast(tags: []).}:
           `=wasMoved`(x)
 else:
