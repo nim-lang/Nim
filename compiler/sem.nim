@@ -21,8 +21,6 @@ import
   lowerings, plugins/active, lineinfos, strtabs, int128,
   isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs
 
-when defined(nimfix):
-  import nimfix/prettybase
 
 when not defined(leanCompiler):
   import spawn
