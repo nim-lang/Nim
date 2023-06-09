@@ -61,7 +61,7 @@ proc executeNoHooksDefault(cmd: CommandData, graph: ModuleGraph) =
           conf.m.trackPos))
 
 
-proc executeNoHooks(cmd: CommandData, graph: ModuleGraph) =
+proc executeNoHooks*(cmd: CommandData, graph: ModuleGraph) =
   ##Executes the provided command on the provided graph
   ##Though this doesn't return anything it does call procs which call `suggestResult`
   ##which triggers the suggestionResultHook, or a print statement if no hook is provided
