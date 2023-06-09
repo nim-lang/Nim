@@ -270,6 +270,9 @@ proc satisfiable*(f: Formular; s: var Solution): bool =
           result = true
         else:
           result = satisfiable(trueGuess, s)
+          if not result:
+            # heuristic that provides a solution that comes closest to the "real" conflict:
+            s[v.int] = if trueGuess.len <= falseGuess.len: setToFalse else: setToTrue
 
 when isMainModule:
   proc main =
@@ -288,9 +291,9 @@ when isMainModule:
     b.add newVar(VarId 6)
     b.add newVar(VarId 7)
 
-    b.openOpr(NotForm)
+    #b.openOpr(NotForm)
     b.add newVar(VarId 8)
-    b.closeOpr
+    #b.closeOpr
     b.closeOpr
 
     b.add newVar(VarId 5)
@@ -303,6 +306,8 @@ when isMainModule:
 
     var s: Solution
     echo satisfiable(f, s)
-    echo "solution ", s
+    echo "solution"
+    for i in 0..<s.len:
+      echo "v", i, " ", s[i]
 
   main()

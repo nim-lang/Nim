@@ -720,17 +720,31 @@ proc resolve(c: var AtlasContext; g: var DepGraph) =
   let f = toForm(b)
   var s = newSeq[BindingKind](idgen)
   if satisfiable(f, s):
-    echo "selecting: "
     for i in g.nodes.len..<s.len:
       if s[i] == setToTrue:
-        echo "[x] ", mapping[i - g.nodes.len]
-      else:
-        echo "[ ] ", mapping[i - g.nodes.len]
-    echo f
+        let destDir = mapping[i - g.nodes.len][0]
+        let dir = selectDir(c.workspace / destDir, c.depsDir / destDir)
+        withDir c, dir:
+          checkoutGitCommit(c, toName(destDir), mapping[i - g.nodes.len][1])
+    when false:
+      echo "selecting: "
+      for i in g.nodes.len..<s.len:
+        if s[i] == setToTrue:
+          echo "[x] ", mapping[i - g.nodes.len]
+        else:
+          echo "[ ] ", mapping[i - g.nodes.len]
+      echo f
   else:
-    # XXX Better conflict analysis
-    error c, toName(c.workspace), "version conflict"
-
+    error c, toName(c.workspace), "version conflict; for more information use --showGraph"
+    var usedVersions = initCountTable[string]()
+    for i in g.nodes.len..<s.len:
+      if s[i] == setToTrue:
+        usedVersions.inc mapping[i - g.nodes.len][0]
+    for i in g.nodes.len..<s.len:
+      if s[i] == setToTrue:
+        let counter = usedVersions.getOrDefault(mapping[i - g.nodes.len][0])
+        if counter > 0:
+          error c, toName(mapping[i - g.nodes.len][0]), $mapping[i - g.nodes.len][2] & " required"
 
 proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[CfgPath] =
   if c.lockMode == useLock:
