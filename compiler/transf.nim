@@ -802,7 +802,14 @@ proc transformArrayAccess(c: PTransf, n: PNode): PNode =
     result = n
   else:
     result = newTransNode(n)
-    for i in 0..<n.len:
+    if n[0].kind in {nkHiddenStdConv, nkHiddenSubConv} and
+          n[0].typ != nil and
+          n[0].typ.skipTypes(abstractInst+{tyVar}).kind == tyTuple:
+      # do not skip conv for tuples # bug #22054
+      result[0] = transform(c, n[0])
+    else:
+      result[0] = transform(c, skipConv(n[0]))
+    for i in 1..<n.len:
       result[i] = transform(c, skipConv(n[i]))
 
 proc getMergeOp(n: PNode): PSym =
