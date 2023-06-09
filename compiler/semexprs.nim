@@ -2614,7 +2614,7 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
           typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
         elif isIntLit(typ):
           # set of int literal, use a default range smaller than the max range
-          typ = makeRangeType(c, 0, DefaultSetElements-1, n.info) 
+          typ = makeRangeType(c, 0, DefaultSetElements-1, n.info)
         elif lengthOrd(c.config, typ) > MaxSetElements:
           message(c.config, n.info, warnAboveMaxSizeSet, "type '" &
             typeToString(typ, preferDesc) & "' is too big to be a `set` element, " &
@@ -3107,8 +3107,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     c.isAmbiguous = false
     var s = qualifiedLookUp(c, n[0], mode)
     if s != nil:
-      #if c.config.cmd == cmdNimfix and n[0].kind == nkDotExpr:
-      #  pretty.checkUse(n[0][1].info, s)
       case s.kind
       of skMacro, skTemplate:
         result = semDirectOp(c, n, flags, expectedType)
