@@ -1264,8 +1264,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             result = isSubtype
           else:
             result = isNone
-        elif tfNotNil in f.flags and tfNotNil notin a.flags:
-          result = isNilConversion
     of tyNil: result = isNone
     else: discard
   of tyOrdinal:
@@ -1362,11 +1360,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     else: discard
   of tyString:
     case a.kind
-    of tyString:
-      if tfNotNil in f.flags and tfNotNil notin a.flags:
-        result = isNilConversion
-      else:
-        result = isEqual
+    of tyString: result = isEqual
     of tyNil: result = isNone
     else: discard
   of tyCstring:
