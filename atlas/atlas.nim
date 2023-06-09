@@ -11,7 +11,7 @@
 
 import std / [parseopt, strutils, os, osproc, tables, sets, json, jsonutils,
   parsecfg, streams, terminal, strscans, hashes]
-import parse_requires, osutils, packagesjson, compiledpatterns
+import parse_requires, osutils, packagesjson, compiledpatterns, versions, sat
 
 from unicode import nil
 
@@ -65,6 +65,8 @@ Options:
                         corresponding Nim virtual environment
   --autoinit            auto initialize a workspace
   --colors=on|off       turn on|off colored output
+  --resolver=minver|semver|maxver
+                        which resolution algorithm to use, default is minver
   --showGraph           show the dependency graph
   --version             show the version
   --help                show this help
@@ -99,18 +101,23 @@ type
   SemVerField = enum
     major, minor, patch
 
+  ResolutionAlgorithm = enum
+    MinVer, SemVer, MaxVer
+
   Dependency = object
     name: PackageName
     url, commit: string
-    rel: DepRelation # "requires x < 1.0" is silly, but Nimble allows it so we have too.
+    query: VersionInterval
     self: int # position in the graph
     parents: seq[int] # why we need this dependency
     active: bool
+    algo: ResolutionAlgorithm
   DepGraph = object
     nodes: seq[Dependency]
     processed: Table[string, int] # the key is (url / commit)
     byName: Table[PackageName, seq[int]]
-    bestNimVersion: (int, int, int) # Nim is a special snowflake
+    availableVersions: Table[PackageName, seq[(string, Version)]] # sorted, latest version comes first
+    bestNimVersion: Version # Nim is a special snowflake
 
   LockFile = object # serialized as JSON so an object for extensibility
     items: OrderedTable[string, LockFileEntry]
@@ -133,6 +140,7 @@ type
     overrides: Patterns
     lockMode: LockMode
     lockFile: LockFile
+    defaultAlgo: ResolutionAlgorithm
     when MockupRun:
       step: int
       mockupSuccess: bool
@@ -143,7 +151,7 @@ proc `==`*(a, b: PackageName): bool {.borrow.}
 proc hash*(a: PackageName): Hash {.borrow.}
 
 const
-  InvalidCommit = "<invalid commit>"
+  InvalidCommit = "#head" #"<invalid commit>"
   ProduceTest = false
 
 type
@@ -178,7 +186,7 @@ proc nimbleExec(cmd: string; args: openArray[string]) =
 
 proc exec(c: var AtlasContext; cmd: Command; args: openArray[string]): (string, int) =
   when MockupRun:
-    assert TestLog[c.step].cmd == cmd, $(TestLog[c.step].cmd, cmd)
+    assert TestLog[c.step].cmd == cmd, $(TestLog[c.step].cmd, cmd, c.step)
     case cmd
     of GitDiff, GitTag, GitTags, GitLastTaggedRef, GitDescribe, GitRevParse, GitPush, GitPull, GitCurrentCommit:
       result = (TestLog[c.step].output, TestLog[c.step].exitCode)
@@ -223,12 +231,6 @@ proc extractRequiresInfo(c: var AtlasContext; nimbleFile: string): NimbleFileInf
   result = extractRequiresInfo(nimbleFile)
   when ProduceTest:
     echo "nimble ", nimbleFile, " info ", result
-
-proc toDepRelation(s: string): DepRelation =
-  case s
-  of "<": strictlyLess
-  of ">": strictlyGreater
-  else: normal
 
 proc isCleanGit(c: var AtlasContext): string =
   result = ""
@@ -292,29 +294,22 @@ proc getLastTaggedCommit(c: var AtlasContext): string =
     if lastTag.len != 0:
       result = lastTag
 
-proc versionToCommit(c: var AtlasContext; d: Dependency): string =
+proc collectTaggedVersions(c: var AtlasContext): seq[(string, Version)] =
   let (outp, status) = exec(c, GitTags, [])
   if status == 0:
-    var useNextOne = false
-    for line in splitLines(outp):
-      let commitsAndTags = strutils.splitWhitespace(line)
-      if commitsAndTags.len == 2:
-        case d.rel
-        of normal:
-          if commitsAndTags[1].sameVersionAs(d.commit):
-            return commitsAndTags[0]
-        of strictlyLess:
-          if d.commit == InvalidCommit:
-            return getLastTaggedCommit(c)
-          elif not commitsAndTags[1].sameVersionAs(d.commit):
-            return commitsAndTags[0]
-        of strictlyGreater:
-          if commitsAndTags[1].sameVersionAs(d.commit):
-            useNextOne = true
-          elif useNextOne:
-            return commitsAndTags[0]
+    result = parseTaggedVersions(outp)
+  else:
+    result = @[]
 
-  return ""
+proc versionToCommit(c: var AtlasContext; d: Dependency): string =
+  let allVersions = collectTaggedVersions(c)
+  case d.algo
+  of MinVer:
+    result = selectBestCommitMinVer(allVersions, d.query)
+  of SemVer:
+    result = selectBestCommitSemVer(allVersions, d.query)
+  of MaxVer:
+    result = selectBestCommitMaxVer(allVersions, d.query)
 
 proc shortToCommit(c: var AtlasContext; short: string): string =
   let (cc, status) = exec(c, GitRevParse, [short])
@@ -462,9 +457,8 @@ proc setupNimEnv(c: var AtlasContext; nimVersion: string)
 proc afterGraphActions(c: var AtlasContext; g: DepGraph) =
   if ShowGraph in c.flags:
     generateDepGraph c, g
-  if AutoEnv in c.flags and g.bestNimVersion != (0, 0, 0):
-    let v = $g.bestNimVersion[0] & "." & $g.bestNimVersion[1] & "." & $g.bestNimVersion[2]
-    setupNimEnv c, v
+  if AutoEnv in c.flags and g.bestNimVersion != Version"":
+    setupNimEnv c, g.bestNimVersion.string
 
 proc needsCommitLookup(commit: string): bool {.inline.} =
   '.' in commit or commit == InvalidCommit
@@ -575,35 +569,36 @@ proc addUnique[T](s: var seq[T]; elem: sink T) =
   if not s.contains(elem): s.add elem
 
 proc addUniqueDep(c: var AtlasContext; g: var DepGraph; parent: int;
-                  tokens: seq[string]) =
-  let pkgName = tokens[0]
+                  pkg: string; query: VersionInterval) =
+  let commit = versionKey(query)
   let oldErrors = c.errors
-  let url = toUrl(c, pkgName)
+  let url = toUrl(c, pkg)
   if oldErrors != c.errors:
-    warn c, toName(pkgName), "cannot resolve package name"
+    warn c, toName(pkg), "cannot resolve package name"
   else:
-    let key = url / tokens[2]
+    let key = url / commit
     if g.processed.hasKey(key):
       g.nodes[g.processed[key]].parents.addUnique parent
     else:
       let self = g.nodes.len
-      g.byName.mgetOrPut(toName(pkgName), @[]).add self
+      g.byName.mgetOrPut(toName(pkg), @[]).add self
       g.processed[key] = self
       if c.lockMode == useLock:
-        if c.lockfile.items.contains(pkgName):
-          g.nodes.add Dependency(name: toName(pkgName),
-                              url: c.lockfile.items[pkgName].url,
-                              commit: c.lockfile.items[pkgName].commit,
-                              rel: normal,
-                              self: self,
-                              parents: @[parent])
+        if c.lockfile.items.contains(pkg):
+          g.nodes.add Dependency(name: toName(pkg),
+                                 url: c.lockfile.items[pkg].url,
+                                 commit: c.lockfile.items[pkg].commit,
+                                 self: self,
+                                 parents: @[parent],
+                                 algo: c.defaultAlgo)
         else:
-          error c, toName(pkgName), "package is not listed in the lock file"
+          error c, toName(pkg), "package is not listed in the lock file"
       else:
-        g.nodes.add Dependency(name: toName(pkgName), url: url, commit: tokens[2],
-                               rel: toDepRelation(tokens[1]),
+        g.nodes.add Dependency(name: toName(pkg), url: url, commit: commit,
                                self: self,
-                               parents: @[parent])
+                               query: query,
+                               parents: @[parent],
+                               algo: c.defaultAlgo)
 
 template toDestDir(p: PackageName): string = p.string
 
@@ -612,11 +607,9 @@ proc readLockFile(filename: string): LockFile =
   let jsonTree = parseJson(jsonAsStr)
   result = to(jsonTree, LockFile)
 
-proc rememberNimVersion(g: var DepGraph; tokens: seq[string]) =
-  if tokens[1] in ["==", ">="]:
-    var v = (0, 0, 0)
-    if scanf(tokens[2], "$i.$i.$i", v[0], v[1], v[2]):
-      if v > g.bestNimVersion: g.bestNimVersion = v
+proc rememberNimVersion(g: var DepGraph; q: VersionInterval) =
+  let v = extractGeQuery(q)
+  if v != Version"" and v > g.bestNimVersion: g.bestNimVersion = v
 
 proc collectDeps(c: var AtlasContext; g: var DepGraph; parent: int;
                  dep: Dependency; nimbleFile: string): CfgPath =
@@ -625,26 +618,18 @@ proc collectDeps(c: var AtlasContext; g: var DepGraph; parent: int;
   assert nimbleFile != ""
   let nimbleInfo = extractRequiresInfo(c, nimbleFile)
   for r in nimbleInfo.requires:
-    var tokens: seq[string] = @[]
-    for token in tokenizeRequires(r):
-      tokens.add token
-    if tokens.len == 1:
-      # nimx uses dependencies like 'requires "sdl2"'.
-      # Via this hack we map them to the first tagged release.
-      # (See the `isStrictlySmallerThan` logic.)
-      tokens.add "<"
-      tokens.add InvalidCommit
-    elif tokens.len == 2 and tokens[1].startsWith("#"):
-      # Dependencies can also look like 'requires "sdl2#head"
-      var commit = tokens[1][1 .. ^1]
-      tokens[1] = "=="
-      tokens.add commit
-
-    if tokens.len >= 3:
-      if cmpIgnoreCase(tokens[0], "nim") != 0:
-        c.addUniqueDep g, parent, tokens
+    var i = 0
+    while i < r.len and r[i] notin {'#', '<', '=', '>'} + Whitespace: inc i
+    let pkgName = r.substr(0, i-1)
+    var err = pkgName.len == 0
+    let query = parseVersionInterval(r, i, err)
+    if err:
+      error c, toName(nimbleFile), "invalid 'requires' syntax: " & r
+    else:
+      if cmpIgnoreCase(pkgName, "nim") != 0:
+        c.addUniqueDep g, parent, pkgName, query
       else:
-        rememberNimVersion g, tokens
+        rememberNimVersion g, query
   result = CfgPath(toDestDir(dep.name) / nimbleInfo.srcDir)
 
 proc collectNewDeps(c: var AtlasContext; g: var DepGraph; parent: int;
@@ -665,22 +650,101 @@ proc copyFromDisk(c: var AtlasContext; w: Dependency) =
   writeFile destDir / ThisVersion, w.commit
   #echo "WRITTEN ", destDir / ThisVersion
 
-proc isNewerVersion(a, b: string): bool =
-  # only used for testing purposes.
-  if a == InvalidCommit or b == InvalidCommit:
-    return true
-  var amajor, aminor, apatch, bmajor, bminor, bpatch: int
-  if scanf(a, "$i.$i.$i", amajor, aminor, apatch):
-    assert scanf(b, "$i.$i.$i", bmajor, bminor, bpatch)
-    result = (amajor, aminor, apatch) > (bmajor, bminor, bpatch)
-  else:
-    assert scanf(a, "$i.$i", amajor, aminor)
-    assert scanf(b, "$i.$i", bmajor, bminor)
-    result = (amajor, aminor) > (bmajor, bminor)
-
 proc isLaterCommit(destDir, version: string): bool =
   let oldVersion = try: readFile(destDir / ThisVersion).strip except: "0.0"
-  result = isNewerVersion(version, oldVersion)
+  if isValidVersion(oldVersion) and isValidVersion(version):
+    result = Version(oldVersion) < Version(version)
+  else:
+    result = true
+
+proc collectAvailableVersions(c: var AtlasContext; g: var DepGraph; w: Dependency) =
+  when MockupRun:
+    # don't cache when doing the MockupRun:
+    g.availableVersions[w.name] = collectTaggedVersions(c)
+  else:
+    if not g.availableVersions.hasKey(w.name):
+      g.availableVersions[w.name] = collectTaggedVersions(c)
+
+proc resolve(c: var AtlasContext; g: var DepGraph) =
+  var b = sat.Builder()
+  b.openOpr(AndForm)
+  # Root must true:
+  b.add newVar(VarId 0)
+
+  assert g.nodes.len > 0
+  assert g.nodes[0].active
+  # Implications:
+  for i in 0..<g.nodes.len:
+    if g.nodes[i].active:
+      for j in g.nodes[i].parents:
+        # "parent has a dependency on x" is translated to:
+        # "parent implies x" which is "not parent or x"
+        if j >= 0:
+          b.openOpr(OrForm)
+          b.openOpr(NotForm)
+          b.add newVar(VarId j)
+          b.closeOpr
+          b.add newVar(VarId i)
+          b.closeOpr
+  var idgen = 0
+  var mapping: seq[(string, string, Version)] = @[]
+  # Version selection:
+  for i in 0..<g.nodes.len:
+    if g.nodes[i].active:
+      # A -> (exactly one of: A1, A2, A3)
+      b.openOpr(OrForm)
+      b.openOpr(NotForm)
+      b.add newVar(VarId i)
+      b.closeOpr
+      b.openOpr(ExactlyOneOfForm)
+
+      let av {.cursor.} = g.availableVersions[g.nodes[i].name]
+      var q = g.nodes[i].query
+      if g.nodes[i].algo == SemVer: q = toSemVer(q)
+      if g.nodes[i].algo == MinVer:
+        for j in countup(0, av.len-1):
+          if q.matches(av[j][1]):
+            mapping.add (g.nodes[i].name.string, av[j][0], av[j][1])
+            b.add newVar(VarId(idgen + g.nodes.len))
+            inc idgen
+      else:
+        for j in countdown(av.len-1, 0):
+          if q.matches(av[j][1]):
+            mapping.add (g.nodes[i].name.string, av[j][0], av[j][1])
+            b.add newVar(VarId(idgen + g.nodes.len))
+            inc idgen
+
+      b.closeOpr # ExactlyOneOfForm
+      b.closeOpr # OrForm
+  b.closeOpr()
+  let f = toForm(b)
+  var s = newSeq[BindingKind](idgen)
+  if satisfiable(f, s):
+    for i in g.nodes.len..<s.len:
+      if s[i] == setToTrue:
+        let destDir = mapping[i - g.nodes.len][0]
+        let dir = selectDir(c.workspace / destDir, c.depsDir / destDir)
+        withDir c, dir:
+          checkoutGitCommit(c, toName(destDir), mapping[i - g.nodes.len][1])
+    when false:
+      echo "selecting: "
+      for i in g.nodes.len..<s.len:
+        if s[i] == setToTrue:
+          echo "[x] ", mapping[i - g.nodes.len]
+        else:
+          echo "[ ] ", mapping[i - g.nodes.len]
+      echo f
+  else:
+    error c, toName(c.workspace), "version conflict; for more information use --showGraph"
+    var usedVersions = initCountTable[string]()
+    for i in g.nodes.len..<s.len:
+      if s[i] == setToTrue:
+        usedVersions.inc mapping[i - g.nodes.len][0]
+    for i in g.nodes.len..<s.len:
+      if s[i] == setToTrue:
+        let counter = usedVersions.getOrDefault(mapping[i - g.nodes.len][0])
+        if counter > 0:
+          error c, toName(mapping[i - g.nodes.len][0]), $mapping[i - g.nodes.len][2] & " required"
 
 proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[CfgPath] =
   if c.lockMode == useLock:
@@ -694,7 +758,8 @@ proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[C
     let destDir = toDestDir(w.name)
     let oldErrors = c.errors
 
-    if not dirExists(c.workspace / destDir) and not dirExists(c.depsDir / destDir):
+    let dir = selectDir(c.workspace / destDir, c.depsDir / destDir)
+    if not dirExists(dir):
       withDir c, (if i != 0 or startIsDep: c.depsDir else: c.workspace):
         if w.url.startsWith(FileProtocol):
           copyFromDisk c, w
@@ -702,10 +767,16 @@ proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[C
           let err = cloneUrl(c, w.url, destDir, false)
           if err != "":
             error c, w.name, err
+          elif w.algo != MinVer:
+            collectAvailableVersions c, g, w
+    elif w.algo != MinVer:
+      withDir c, dir:
+        collectAvailableVersions c, g, w
+
     # assume this is the selected version, it might get overwritten later:
     selectNode c, g, w
     if oldErrors == c.errors:
-      if KeepCommits notin c.flags:
+      if KeepCommits notin c.flags and w.algo == MinVer:
         if not w.url.startsWith(FileProtocol):
           checkoutCommit(c, g, w)
         else:
@@ -719,20 +790,27 @@ proc traverseLoop(c: var AtlasContext; g: var DepGraph; startIsDep: bool): seq[C
       result.addUnique collectNewDeps(c, g, i, w)
     inc i
 
+  if g.availableVersions.len > 0:
+    resolve c, g
   if c.lockMode == genLock:
     writeFile c.currentDir / LockFileName, toJson(c.lockFile).pretty
+
+proc createGraph(c: var AtlasContext; start, url: string): DepGraph =
+  result = DepGraph(nodes: @[Dependency(name: toName(start), url: url, commit: "", self: 0,
+                                       algo: c.defaultAlgo)])
+  result.byName.mgetOrPut(toName(start), @[]).add 0
 
 proc traverse(c: var AtlasContext; start: string; startIsDep: bool): seq[CfgPath] =
   # returns the list of paths for the nim.cfg file.
   let url = toUrl(c, start)
-  var g = DepGraph(nodes: @[Dependency(name: toName(start), url: url, commit: "", self: 0)])
-  g.byName.mgetOrPut(toName(start), @[]).add 0
+  var g = createGraph(c, start, url)
 
   if url == "":
     error c, toName(start), "cannot resolve package name"
     return
 
   c.projectDir = c.workspace / toDestDir(g.nodes[0].name)
+
   result = traverseLoop(c, g, startIsDep)
   afterGraphActions c, g
 
@@ -793,7 +871,8 @@ proc installDependencies(c: var AtlasContext; nimbleFile: string; startIsDep: bo
   # 2. install deps from .nimble
   var g = DepGraph(nodes: @[])
   let (_, pkgname, _) = splitFile(nimbleFile)
-  let dep = Dependency(name: toName(pkgname), url: "", commit: "", self: 0)
+  let dep = Dependency(name: toName(pkgname), url: "", commit: "", self: 0,
+                       algo: c.defaultAlgo)
   discard collectDeps(c, g, -1, dep, nimbleFile)
   let paths = traverseLoop(c, g, startIsDep)
   patchNimCfg(c, paths, if CfgHere in c.flags: c.currentDir else: findSrcDir(c))
@@ -936,6 +1015,11 @@ proc readConfig(c: var AtlasContext) =
         c.depsDir = absoluteDepsDir(c.workspace, e.value)
       of "overrides":
         parseOverridesFile(c, e.value)
+      of "resolver":
+        try:
+          c.defaultAlgo = parseEnum[ResolutionAlgorithm](e.value)
+        except ValueError:
+          warn c, toName(configFile), "ignored unknown resolver: " & e.key
       else:
         warn c, toName(configFile), "ignored unknown setting: " & e.key
     of cfgOption:
@@ -1007,7 +1091,9 @@ proc setupNimEnv(c: var AtlasContext; nimVersion: string) =
   withDir c, c.workspace / nimDest:
     let nimExe = "bin" / "nim".addFileExt(ExeExt)
     copyFileWithPermissions nimExe0, nimExe
-    let dep = Dependency(name: toName(nimDest), rel: normal, commit: nimVersion, self: 0)
+    let dep = Dependency(name: toName(nimDest), commit: nimVersion, self: 0,
+                         algo: c.defaultAlgo,
+                         query: createQueryEq(if nimVersion.isDevel: Version"#head" else: Version(nimVersion)))
     if not nimVersion.isDevel:
       let commit = versionToCommit(c, dep)
       if commit.len == 0:
@@ -1056,7 +1142,8 @@ proc listOutdated(c: var AtlasContext; dir: string) =
                 # git merge-base --is-ancestor <commit> <commit>
                 let (cc, status) = exec(c, GitMergeBase, [currentCommit, latestVersion])
                 let mergeBase = strutils.strip(cc)
-                #echo f, " I'm at ", currentCommit, " release is at ", latestVersion, " merge base is ", mergeBase
+                #if mergeBase != latestVersion:
+                #  echo f, " I'm at ", currentCommit, " release is at ", latestVersion, " merge base is ", mergeBase
                 if status == 0 and mergeBase == currentCommit:
                   let v = extractVersion gitDescribeRefTag(c, latestVersion)
                   if v.len > 0:
@@ -1141,6 +1228,11 @@ proc main =
         of "off": c.flags.incl NoColors
         of "on": c.flags.excl NoColors
         else: writeHelp()
+      of "resolver":
+        try:
+          c.defaultAlgo = parseEnum[ResolutionAlgorithm](val)
+        except ValueError:
+          quit "unknown resolver: " & val
       else: writeHelp()
     of cmdEnd: assert false, "cannot happen"
 
