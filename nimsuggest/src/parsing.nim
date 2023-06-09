@@ -26,9 +26,11 @@ proc parseCommandLine*(cmdLine: string; projectFull: string): CommandData =
   var opc = ""
   var i = parseIdent(cmdLine, opc, 0)
 # TODO: Repl this with a call to parseCommand
-  let cmdString = opc.normalize
+  let cmdString = opc
+
   let ideCmd = parseIdeCmd cmdString
   cmdDat.ideCmd = ideCmd
+  #If the command cannot be parsed return it to the caller
   if ideCmd == ideNone:
     cmdDat.ideCmdString = cmdString
     return cmdDat
@@ -37,7 +39,7 @@ proc parseCommandLine*(cmdLine: string; projectFull: string): CommandData =
   var file = ""
   i += skipWhitespace(cmdLine, i)
   if i < cmdLine.len and cmdLine[i] in {'0'..'9'}:
-    file = string projectFull
+    file = projectFull
   else:
     i = parseQuoted(cmdLine, file, i)
     if i < cmdLine.len and cmdLine[i] == ';':

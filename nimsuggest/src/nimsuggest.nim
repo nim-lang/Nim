@@ -62,11 +62,11 @@ proc execCmd(cmdLineString: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) 
     of "terse": toggle optIdeTerse
     else: err()
   conf.ideCmd = cmd.ideCmd
+  myLog("Cmd parsed:"& $cmd)
 
 
   if cmd.ideCmd == ideKnown:
-    results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf,
-        AbsoluteFile cmd.file))))
+    results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf,  cmd.file))))
   elif cmd.ideCmd == ideProject:
     results.send(Suggest(section: ideProject, filePath: string conf.projectFull))
   else:

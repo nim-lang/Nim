@@ -1027,6 +1027,8 @@ proc parseIdeCmd*(s: string): IdeCmd =
   of "recompile": ideRecompile
   of "changed": ideChanged
   of "type": ideType
+  of "declaration": ideDeclaration
+  of "expand": ideExpand
   else: ideNone
 
 proc `$`*(c: IdeCmd): string =

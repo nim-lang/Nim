@@ -1,6 +1,6 @@
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
-import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp, strformat, algorithm,
+import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, strformat, algorithm,
     tables, std/sha1, times
 
 import compiler / [options, commands, modules, passes, passaux, msgs,
@@ -8,7 +8,7 @@ import compiler / [options, commands, modules, passes, passaux, msgs,
   idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
   pathutils, condsyms, syntaxes, renderer]
 
-import v3/v3, globals, utils, execution, communication, types
+import v3/v3, globals, utils, execution, communication, types, emacs/sexp
 
 when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
@@ -127,6 +127,13 @@ proc runCmd*(nimsuggest: NimSuggest, cmd: IdeCmd, file, dirtyfile: AbsoluteFile,
 
     else:
       conf.structuredErrorHook = nil
-    executeNoHooks(conf.ideCmd, file, dirtyfile, line, col, nimsuggest.graph)
+    let data=CommandData(
+      ideCmd:conf.ideCmd,
+      file:file,
+      dirtyFile:dirtyfile,
+      line:line,
+      col:col    
+      )
+    executeNoHooks(data, nimsuggest.graph)
   return retval
 
