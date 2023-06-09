@@ -356,7 +356,7 @@ proc genDiscriminantAsgn(c: var Con; s: var Scope; n: PNode): PNode =
 
   if hasDestructor(c, objType):
     if getAttachedOp(c.graph, objType, attachedDestructor) != nil and
-        sfOverriden in getAttachedOp(c.graph, objType, attachedDestructor).flags:
+        sfOverridden in getAttachedOp(c.graph, objType, attachedDestructor).flags:
       localError(c.graph.config, n.info, errGenerated, """Assignment to discriminant for objects with user defined destructor is not supported, object must have default destructor.
 It is best to factor out piece of object that needs custom destructor into separate object or not use discriminator assignment""")
       result.add newTree(nkFastAsgn, le, tmp)
@@ -436,7 +436,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
       else:
         let copyOp = getAttachedOp(c.graph, typ, attachedAsgn)
         if copyOp != nil and sfError in copyOp.flags and
-           sfOverriden notin op.flags:
+           sfOverridden notin op.flags:
           c.checkForErrorPragma(n.typ, n, "=dup", inferredFromCopy = true)
 
       let src = p(n, c, s, normal)

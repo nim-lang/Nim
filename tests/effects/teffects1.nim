@@ -22,6 +22,11 @@ proc lier(): int {.raises: [IO2Error].} = #[tt.Hint
 proc forw: int =
   raise newException(IOError, "arg")
 
+block:
+  proc someProc(t: string) {.raises: [Defect].} =
+    discard
+  let vh: proc(topic: string) {.raises: [].} = someProc
+
 {.push raises: [Defect].}
 
 type
