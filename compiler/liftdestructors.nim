@@ -553,7 +553,7 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add setLenSeqCall(c, t, x, y)
     forallElements(c, t, body, x, y)
   of attachedSink:
-    let moveCall = genBuiltin(c, mMove, "move", x)
+    let moveCall = genBuiltin(c, mMove, "internalMove", x)
     moveCall.add y
     doAssert t.destructor != nil
     moveCall.add destructorCall(c, t.destructor, x)
@@ -586,7 +586,7 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add newHookCall(c, t.assignment, x, y)
   of attachedSink:
     # we always inline the move for better performance:
-    let moveCall = genBuiltin(c, mMove, "move", x)
+    let moveCall = genBuiltin(c, mMove, "internalMove", x)
     moveCall.add y
     doAssert t.destructor != nil
     moveCall.add destructorCall(c, t.destructor, x)
@@ -617,7 +617,7 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedAsgn, attachedDeepCopy, attachedDup:
     body.add callCodegenProc(c.g, "nimAsgnStrV2", c.info, genAddr(c, x), y)
   of attachedSink:
-    let moveCall = genBuiltin(c, mMove, "move", x)
+    let moveCall = genBuiltin(c, mMove, "internalMove", x)
     moveCall.add y
     doAssert t.destructor != nil
     moveCall.add destructorCall(c, t.destructor, x)
