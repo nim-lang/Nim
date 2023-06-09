@@ -701,11 +701,18 @@ proc resolve(c: var AtlasContext; g: var DepGraph) =
       let av {.cursor.} = g.availableVersions[g.nodes[i].name]
       var q = g.nodes[i].query
       if g.nodes[i].algo == SemVer: q = toSemVer(q)
-      for a in av:
-        if q.matches(a[1]):
-          mapping.add (g.nodes[i].name.string, a[0], a[1])
-          b.add newVar(VarId(idgen + g.nodes.len))
-          inc idgen
+      if g.nodes[i].algo == MinVer:
+        for j in countup(0, av.len-1):
+          if q.matches(av[j][1]):
+            mapping.add (g.nodes[i].name.string, av[j][0], av[j][1])
+            b.add newVar(VarId(idgen + g.nodes.len))
+            inc idgen
+      else:
+        for j in countdown(av.len-1, 0):
+          if q.matches(av[j][1]):
+            mapping.add (g.nodes[i].name.string, av[j][0], av[j][1])
+            b.add newVar(VarId(idgen + g.nodes.len))
+            inc idgen
 
       b.closeOpr # ExactlyOneOfForm
       b.closeOpr # OrForm
@@ -716,7 +723,10 @@ proc resolve(c: var AtlasContext; g: var DepGraph) =
     echo "selecting: "
     for i in g.nodes.len..<s.len:
       if s[i] == setToTrue:
-        echo mapping[i - g.nodes.len]
+        echo "[x] ", mapping[i - g.nodes.len]
+      else:
+        echo "[ ] ", mapping[i - g.nodes.len]
+    echo f
   else:
     # XXX Better conflict analysis
     error c, toName(c.workspace), "version conflict"
