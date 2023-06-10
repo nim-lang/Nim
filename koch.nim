@@ -189,7 +189,6 @@ proc bundleWinTools(args: string) =
   buildVccTool(args)
   nimCompile("tools/nimgrab.nim", options = "-d:ssl " & args)
   nimCompile("tools/nimgrep.nim", options = args)
-  nimCompile("atlas/atlas.nim", options = args)
   nimCompile("testament/testament.nim", options = args)
   when false:
     # not yet a tool worth including
@@ -203,6 +202,7 @@ proc bundleChecksums(latest: bool) =
 proc zip(latest: bool; args: string) =
   bundleChecksums(latest)
   bundleNimbleExe(latest, args)
+  bundleAtlasExe(latest, args)
   bundleNimsuggest(args)
   bundleNimpretty(args)
   bundleWinTools(args)
@@ -246,9 +246,6 @@ proc buildTools(args: string = "") =
       "--opt:speed --stacktrace -d:debug --stacktraceMsgs -d:nimCompilerStacktraceHints " & args,
       outputName = "nim_dbg")
 
-  nimCompileFold("Compile atlas", "atlas/atlas.nim", options = "-d:release " & args,
-      outputName = "atlas")
-
 proc testTools(args: string = "") =
   nimCompileFold("Compile nimgrep", "tools/nimgrep.nim",
                  options = "-d:release " & args)
@@ -259,6 +256,7 @@ proc testTools(args: string = "") =
 proc nsis(latest: bool; args: string) =
   bundleChecksums(latest)
   bundleNimbleExe(latest, args)
+  bundleAtlasExe(latest, args)
   bundleNimsuggest(args)
   bundleWinTools(args)
   # make sure we have generated the niminst executables:
@@ -619,12 +617,6 @@ proc runCI(cmd: string) =
       # of rebuilding is this won't affect bin/nimsuggest when running runCI locally
       execFold("build nimsuggest_testing", "nim c -o:bin/nimsuggest_testing -d:release nimsuggest/nimsuggest")
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
-
-    execFold("Run atlas tests", "nim c -r -d:atlasTests atlas/atlas.nim clone https://github.com/disruptek/balls")
-    # compile it again to get rid of `-d:atlasTests`:
-    nimCompileFold("Compile atlas", "atlas/atlas.nim", options = "-d:release ",
-        outputName = "atlas")
-    execFold("Run more atlas tests", "nim c -r atlas/tester.nim")
 
     kochExecFold("Testing booting in refc", "boot -d:release --mm:refc -d:nimStrictMode --lib:lib")
 
