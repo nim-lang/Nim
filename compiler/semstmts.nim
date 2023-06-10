@@ -1655,11 +1655,11 @@ proc swapResult(n: PNode, sRes: PSym, dNode: PNode) =
     swapResult(n[i], sRes, dNode)
 
 
-proc addThis(c: PContext, n: PNode, t: PType, owner: TSymKind) =  
+proc addThis(c: PContext, n: PNode, t: PType, owner: TSymKind) =
   var s = newSym(skResult, getIdent(c.cache, "this"), c.idgen,
-              getCurrOwner(c), n.info)     
+              getCurrOwner(c), n.info)
   s.typ = t
-  incl(s.flags, sfUsed) 
+  incl(s.flags, sfUsed)
   c.p.resultSym = s
   n.add newSymNode(c.p.resultSym)
   addParamOrResult(c, c.p.resultSym, owner)
@@ -2198,17 +2198,17 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if sfBorrow in s.flags and c.config.cmd notin cmdDocLike:
     result[bodyPos] = c.graph.emptyNode
-  
+
   if {sfVirtual, sfConstructor} * s.flags != {} and sfImportc notin s.flags:
     let isVirtual = sfVirtual in s.flags
     let pragmaName = if isVirtual: "virtual" else: "constructor"
     if c.config.backend == backendCpp:
       if s.typ.sons.len < 2 and isVirtual:
-        localError(c.config, n.info, "virtual must have at least one parameter") 
+        localError(c.config, n.info, "virtual must have at least one parameter")
       for son in s.typ.sons:
         if son!=nil and son.isMetaType:
           localError(c.config, n.info, pragmaName & " unsupported for generic routine")
-      var typ: PType 
+      var typ: PType
       if sfConstructor in s.flags:
         typ = s.typ.sons[0]
         if typ == nil or typ.kind != tyObject:
@@ -2222,7 +2222,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if typ.owner.id == s.owner.id and c.module.id == s.owner.id:
         c.graph.memberProcsPerType.mgetOrPut(typ.itemId, @[]).add s
       else:
-        localError(c.config, n.info, 
+        localError(c.config, n.info,
           pragmaName & " procs must be defined in the same scope as the type they are virtual for and it must be a top level scope")
     else:
       localError(c.config, n.info, pragmaName & " procs are only supported in C++")
@@ -2576,12 +2576,6 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType =
      nfBlockArg notin n.flags and
      result[0].kind != nkDefer:
     result = result[0]
-
-  when defined(nimfix):
-    if result.kind == nkCommentStmt and not result.comment.isNil and
-        not (result.comment[0] == '#' and result.comment[1] == '#'):
-      # it is an old-style comment statement: we replace it with 'discard ""':
-      prettybase.replaceComment(result.info)
 
 proc semStmt(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if efInTypeof notin flags:

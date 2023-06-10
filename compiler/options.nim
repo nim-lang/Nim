@@ -166,7 +166,6 @@ type
     cmdInteractive # start interactive session
     cmdNop
     cmdJsonscript # compile a .json build file
-    cmdNimfix
     # old unused: cmdInterpret, cmdDef: def feature (find definition for IDEs)
 
 const

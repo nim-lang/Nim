@@ -277,7 +277,7 @@ type
                                # and parsed; usually "" but is used
                                # for 'nimsuggest'
     hash*: string              # the checksum of the file
-    dirty*: bool               # for 'nimfix' / 'nimpretty' like tooling
+    dirty*: bool               # for 'nimpretty' like tooling
     when defined(nimpretty):
       fullContent*: string
   FileIndex* = distinct int32

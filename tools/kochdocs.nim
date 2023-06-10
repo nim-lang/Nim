@@ -97,11 +97,10 @@ proc getMd2html(): seq[string] =
   for a in walkDirRecFilter("doc"):
     let path = a.path
     if a.kind == pcFile and path.splitFile.ext == ".md" and path.lastPathPart notin
-        ["docs.md", "nimfix.md",
+        ["docs.md",
          "docstyle.md" # docstyle.md shouldn't be converted to html separately;
                        # it's included in contributing.md.
         ]:
-          # maybe we should still show nimfix, could help reviving it
           # `docs` is redundant with `overview`, might as well remove that file?
       result.add path
   doAssert "doc/manual/var_t_return.md".unixToNativePath in result # sanity check
