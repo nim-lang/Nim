@@ -26,3 +26,19 @@ with f:
 doAssert f.col == "(2, 3, 4)"
 doAssert f.pos == "(0.0, 1.0)"
 doAssert f.name == "bar"
+
+type
+  Baz* = object
+    a*, b*: int
+  Bar* = object
+    x*: int
+    baz*: Baz
+
+var bar: Bar
+with bar:
+  x = 1
+  with baz:
+    a = 2
+
+doAssert bar.x == 1
+doAssert bar.baz.a == 2

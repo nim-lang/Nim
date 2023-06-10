@@ -685,7 +685,7 @@ when defineSsl:
     # ciphers will be ignored by the server.
     #
     # From OpenSSL >= 1.1.0, this setting is set by default and can't be
-    # overriden.
+    # overridden.
     if newCTX.SSL_CTX_set_ecdh_auto(1) != 1:
       raiseSSLError()
 
