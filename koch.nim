@@ -11,6 +11,7 @@
 
 const
   NimbleStableCommit = "168416290e49023894fc26106799d6f1fc964a2d" # master
+  AtlasStableCommit = "#head"
   # examples of possible values: #head, #ea82b54, 1.2.3
   FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
   ChecksumsStableCommit = "b4c73320253f78e3a265aec6d9e8feb83f97c77b"
@@ -72,6 +73,7 @@ Possible Commands:
                            e.g. nimble)
                            doesn't require network connectivity
   nimble                   builds the Nimble tool
+  atlas                    builds the Atlas tool
   fusion                   installs fusion via Nimble
 
 Boot options:
@@ -155,6 +157,14 @@ proc bundleNimbleExe(latest: bool, args: string) =
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
              options = "-d:release --mm:refc --noNimblePath " & args)
+
+proc bundleAtlasExe(latest: bool, args: string) =
+  let commit = if latest: "HEAD" else: AtlasStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/atlas.git",
+                  commit = commit, allowBundled = true)
+  # installer.ini expects it under $nim/bin
+  nimCompile("dist/atlas/src/atlas.nim",
+             options = "-d:release --noNimblePath " & args)
 
 proc bundleNimsuggest(args: string) =
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
@@ -245,8 +255,6 @@ proc testTools(args: string = "") =
   when defined(windows): buildVccTool(args)
   bundleNimpretty(args)
   nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release " & args)
-  nimCompileFold("Compile atlas", "atlas/atlas.nim", options = "-d:release " & args,
-      outputName = "atlas")
 
 proc nsis(latest: bool; args: string) =
   bundleChecksums(latest)
@@ -731,6 +739,7 @@ when isMainModule:
       of "xtemp": xtemp(op.cmdLineRest)
       of "wintools": bundleWinTools(op.cmdLineRest)
       of "nimble": bundleNimbleExe(latest, op.cmdLineRest)
+      of "atlas": bundleAtlasExe(latest, op.cmdLineRest)
       of "nimsuggest": bundleNimsuggest(op.cmdLineRest)
       # toolsNoNimble is kept for backward compatibility with build scripts
       of "toolsnonimble", "toolsnoexternal":
@@ -738,6 +747,7 @@ when isMainModule:
       of "tools":
         buildTools(op.cmdLineRest)
         bundleNimbleExe(latest, op.cmdLineRest)
+        bundleAtlasExe(latest, op.cmdLineRest)
       of "checksums":
         bundleChecksums(latest)
       of "pushcsource":
