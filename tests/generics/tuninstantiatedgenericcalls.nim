@@ -1,5 +1,5 @@
 discard """
-  matrix: "; -d:useUntyped; --experimental:genericBodyInstantiateCalls -d:useUntyped"
+  matrix: "; --experimental:genericBodyInstantiateCalls -d:useUntyped"
 """
 
 # Cases that work due to weird workarounds in the compiler involving not
@@ -55,7 +55,7 @@ block:
 import typetraits
 
 block thardcases:
-  proc typeNameLen(x: typedesc): int =
+  proc typeNameLen(x: typedesc): int {.compileTime.} =
     result = x.name.len
   macro selectType(a, b: typedesc): typedesc =
     result = a
