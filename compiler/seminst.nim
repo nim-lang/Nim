@@ -388,8 +388,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
       pragma(c, result, n[pragmasPos], allRoutinePragmas)
     if isNil(n[bodyPos]):
       n[bodyPos] = copyTree(getBody(c.graph, fn))
-    if not (uninstantiatedGenericCalls in c.config.legacyFeatures and
-        c.inGenericContext != 0):
+    if c.inGenericContext == 0 or
+        genericBodyInstantiateCalls in c.config.features:
       instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)
     if result.magic notin {mSlice, mTypeOf}:

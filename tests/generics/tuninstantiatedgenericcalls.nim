@@ -1,14 +1,16 @@
 discard """
-  matrix: "--legacy:uninstantiatedGenericCalls"
+  matrix: "; -d:useUntyped; --experimental:genericBodyInstantiateCalls -d:useUntyped"
 """
 
-# Cases that used to work due to weird workarounds in the compiler
-# that were removed due to unsound logic which breaks other code with statics.
-# Ideally these work in the future (with the same behavior as the relevant
-# parts being wrapped in an `untyped` call), but these are just compiled as
-# regular expressions with unresolved generic parameter types which are
-# special cased to behave as `untyped` in a couple places in the compiler,
-# It's hard to do this without losing some information (by turning every call
+# Cases that work due to weird workarounds in the compiler involving not
+# instantiating calls in generic bodies which are removed with
+# --experimental:instantiatedGenericCalls due to breaking statics.
+# Ideally these work in the future, with the same behavior as the relevant
+# parts being wrapped in an `untyped` call. The issue is that these calls are
+# compiled as regular expressions at the generic declaration with
+# unresolved generic parameter types, which are special cased in some
+# places in the compiler, but sometimes treated like real types.
+# It's hard to fix this without losing some information (by turning every call
 # in `range` into `nkStaticExpr`) or compiler performance (by checking if
 # the expression compiles then using `nkStaticExpr`, which does not always
 # work since the compiler can wrongly treat unresolved generic params as
@@ -31,12 +33,19 @@ block:
         10
       else:
         20
-
-  type
-    Base10Buf[T: SomeUnsignedInt] = object
-      data: array[maxLen(Base10, T), byte]
-        # workaround without legacy switch is `untyped maxLen(Base10, T)`
-      len: int8
+  
+  when not defined(useUntyped):
+    type
+      Base10Buf[T: SomeUnsignedInt] = object
+        data: array[maxLen(Base10, T), byte]
+          # workaround for experimental switch is `untyped maxLen(Base10, T)`
+        len: int8
+  else:
+    type
+      Base10Buf[T: SomeUnsignedInt] = object
+        data: array[untyped maxLen(Base10, T), byte]
+          # test workaround
+        len: int8
   
   var x: Base10Buf[uint32]
   doAssert x.data.len == 10
@@ -45,20 +54,30 @@ block:
 
 import typetraits
 
-block:
+block thardcases:
   proc typeNameLen(x: typedesc): int =
     result = x.name.len
   macro selectType(a, b: typedesc): typedesc =
     result = a
 
-  type
-    Foo[T] = object
-      data1: array[T.high, int]
-      data2: array[typeNameLen(T), float]
-        # workaround without legacy switch is `untyped typeNameLen(T)`
-      data3: array[0..T.typeNameLen, selectType(float, int)]
-        # workaround without legacy switch is `untyped T.typeNameLen``
-    MyEnum = enum A, B, C, D
+  when not defined(useUntyped):
+    type
+      Foo[T] = object
+        data1: array[T.high, int]
+        data2: array[typeNameLen(T), float]
+          # workaround for experimental switch is `untyped typeNameLen(T)`
+        data3: array[0..T.typeNameLen, selectType(float, int)]
+          # workaround for experimental switch is `untyped T.typeNameLen`
+  else:
+    type
+      Foo[T] = object
+        data1: array[T.high, int]
+        data2: array[untyped typeNameLen(T), float]
+          # test workaround
+        data3: array[0..untyped T.typeNameLen, selectType(float, int)]
+          # test workaround
+  
+  type MyEnum = enum A, B, C, D
 
   var f1: Foo[MyEnum]
   var f2: Foo[int8]
