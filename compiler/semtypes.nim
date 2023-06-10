@@ -269,6 +269,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, "range is empty")
 
   var range: array[2, PNode]
+  # XXX this is still a hard compilation in a generic context, this can
+  # result in unresolved generic parameters being treated like real types
   range[0] = semExprWithType(c, n[1], {efDetermineType})
   range[1] = semExprWithType(c, n[2], {efDetermineType})
 
@@ -337,6 +339,8 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
   elif n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "..<":
     result = errorType(c)
   else:
+    # XXX this is still a hard compilation in a generic context, this can
+    # result in unresolved generic parameters being treated like real types
     let e = semExprWithType(c, n, {efDetermineType})
     if e.typ.kind == tyFromExpr:
       result = makeRangeWithStaticExpr(c, e.typ.n)
@@ -357,7 +361,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
       if not isOrdinalType(e.typ.skipTypes({tyStatic, tyAlias, tyGenericInst, tySink})):
         localError(c.config, n[1].info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
       # This is an int returning call, depending on an
-      # yet unknown generic param (see tgenericshardcases).
+      # yet unknown generic param (see tuninstantiatedgenericcalls).
       # We are going to construct a range type that will be
       # properly filled-out in semtypinst (see how tyStaticExpr
       # is handled there).
@@ -395,8 +399,6 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     # bug #6682: Do not propagate initialization requirements etc for the
     # index type:
     rawAddSonNoPropagationOfTypeFlags(result, indx)
-    if tfUnresolved in indxB.flags:
-      result.flags.incl tfUnresolved
     addSonSkipIntLit(result, base, c.idgen)
   else:
     localError(c.config, n.info, errArrayExpectsTwoTypeParams)
@@ -740,6 +742,8 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
           if e.kind != nkIntLit: discard "don't report followup error"
           elif e.intVal != 0 and branch == nil: branch = it[1]
         else:
+          # XXX this is still a hard compilation in a generic context, this can
+          # result in unresolved generic parameters being treated like real types
           it[0] = forceBool(c, semExprWithType(c, it[0]))
       of nkElse:
         checkSonsLen(it, 1, c.config)

@@ -142,7 +142,7 @@ proc isTypeParam(n: PNode): bool =
            (n.sym.kind == skType and sfFromGeneric in n.sym.flags))
 
 proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
-  # This is needed for tgenericshardcases
+  # This is needed for tuninstantiatedgenericcalls
   # It's possible that a generic param will be used in a proc call to a
   # typedesc accepting proc. After generic param substitution, such procs
   # should be optionally instantiated with the correct type. In order to
@@ -250,7 +250,8 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       result = newNodeI(nkRecList, n.info)
   of nkStaticExpr:
     var n = prepareNode(cl, n)
-    #n = reResolveCallsWithTypedescParams(cl, n)
+    if uninstantiatedGenericCalls in cl.c.config.legacyFeatures:
+      n = reResolveCallsWithTypedescParams(cl, n)
     result = if cl.allowMetaTypes: n
              else: cl.c.semExpr(cl.c, n)
     if not cl.allowMetaTypes:

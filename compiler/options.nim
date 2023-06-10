@@ -233,6 +233,7 @@ type
     laxEffects
       ## Lax effects system prior to Nim 2.0.
     verboseTypeMismatch
+    uninstantiatedGenericCalls
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest

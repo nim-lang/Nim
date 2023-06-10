@@ -49,6 +49,7 @@ block:
     doAssert x is array[a .. c, int]
 
 block:
+  # `untyped` needed here for now because compiler expects `T` to support `+`:
   type Foo[T; U: static T] = array[T(0) .. untyped U + 1, int]
 
   block:
