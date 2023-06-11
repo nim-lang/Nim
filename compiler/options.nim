@@ -924,7 +924,7 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
     else: # If prefixed with std/ why would we add the current module path!
       let currentPath = currentModule.splitFile.dir
       result = AbsoluteFile currentPath / m
-      if m[0] == '.' and m[1] != '.':
+      if not fileExists(result) and m[0] == '.' and m[1] != '.':
         result = AbsoluteFile ""
         hasRelativeDot = true
 
