@@ -137,7 +137,7 @@ template main =
     macro deb2(a): untyped =
       a[1] = ident($a[1])
       newLit a.lispRepr
-    doAssert deb1(-12'wrap) == "-12'wrap", deb1(-12'wrap)
+    doAssert deb1(-12'wrap) == "-12'wrap"
     doAssert deb1(-12'nonexistent) == "-12'nonexistent"
     doAssert deb2(-12'nonexistent) == """(DotExpr (RStrLit "-12") (Ident "\'nonexistent"))"""
     doAssert deb2(-12.wrap2) == """(DotExpr (IntLit -12) (Ident "wrap2"))"""
