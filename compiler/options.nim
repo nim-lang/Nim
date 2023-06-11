@@ -910,7 +910,6 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile
 proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFile =
   # returns path to module
   var m = addFileExt(modulename, NimExt)
-  var hasRelativeDot = false
   if m.startsWith(pkgPrefix):
     result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
   else:
@@ -925,9 +924,9 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
       let currentPath = currentModule.splitFile.dir
       result = AbsoluteFile currentPath / m
       if m[0] == '.' and m[1] != '.':
-        hasRelativeDot = true
+        result = AbsoluteFile ""
 
-    if not fileExists(result) and not hasRelativeDot:
+    if not fileExists(result):
       result = findFile(conf, m)
   patchModule(conf)
 
