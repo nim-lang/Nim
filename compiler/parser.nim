@@ -1396,7 +1396,7 @@ proc binaryNot(p: var Parser; a: PNode): PNode =
     let notOpr = newIdentNodeP(p.tok.ident, p)
     getTok(p)
     optInd(p, notOpr)
-    let b = parseExpr(p)
+    let b = simpleExpr(p, pmTypeDesc)
     result = newNodeP(nkInfix, p)
     result.add notOpr
     result.add a
@@ -1407,8 +1407,8 @@ proc binaryNot(p: var Parser; a: PNode): PNode =
 proc parseTypeDesc(p: var Parser, fullExpr = false): PNode =
   #| rawTypeDesc = (tupleType | routineType | 'enum' | 'object' |
   #|                 ('var' | 'out' | 'ref' | 'ptr' | 'distinct') typeDesc?)
-  #|                 ('not' expr)?
-  #| typeDescExpr = (routineType / simpleExpr) ('not' expr)?
+  #|                 ('not' simpleExpr)?
+  #| typeDescExpr = (routineType / simpleExpr) ('not' simpleExpr)?
   #| typeDesc = rawTypeDesc / typeDescExpr
   newlineWasSplitting(p)
   if fullExpr:
@@ -1445,7 +1445,7 @@ proc parseTypeDefValue(p: var Parser): PNode =
   #| typeDefValue = ((tupleDecl | enumDecl | objectDecl | conceptDecl |
   #|                  ('ref' | 'ptr' | 'distinct') (tupleDecl | objectDecl))
   #|                / (simpleExpr (exprEqExpr ^+ comma postExprBlocks?)?))
-  #|                ('not' expr)?
+  #|                ('not' simpleExpr)?
   case p.tok.tokType
   of tkTuple: result = parseTuple(p, true)
   of tkRef: result = parseTypeDescKAux(p, nkRefTy, pmTypeDef)
