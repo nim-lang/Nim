@@ -162,21 +162,16 @@ template main =
     doAssert fn2() == "[[-12]]"
     doAssert fn3() == "[[-12]]"
 
-    when false: # xxx this fails; bug 9 from https://github.com/nim-lang/Nim/pull/17020#issuecomment-803193947
-      #[
-      possible workaround: use `genAst` (https://github.com/nim-lang/Nim/pull/17426) and this:
-      let a3 = `'wrap3`("-128")
-      ]#
-      block:
-        macro metawrap(): untyped =
-          func wrap1(a: string): string = "{" & a & "}"
-          func `'wrap3`(a: string): string = "{" & a & "}"
-          result = quote do:
-            let a1 = wrap1"-128"
-            let a2 = -128'wrap3
-        metawrap()
-        doAssert a1 == "{-128}"
-        doAssert a2 == "{-128}"
+    block: # bug 9 from https://github.com/nim-lang/Nim/pull/17020#issuecomment-803193947
+      macro metawrap(): untyped =
+        func wrap1(a: string): string = "{" & a & "}"
+        func `'wrap3`(a: string): string = "{" & a & "}"
+        result = quote do:
+          let a1 {.inject.} = wrap1"-128"
+          let a2 {.inject.} = -128'wrap3
+      metawrap()
+      doAssert a1 == "{-128}"
+      doAssert a2 == "{-128}"
 
 static: main()
 main()
