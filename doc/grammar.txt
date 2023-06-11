@@ -104,13 +104,13 @@ primary = simplePrimary (commandStart expr (doBlock extraPostExprBlock*)?)?
         / prefixOperator primary
 rawTypeDesc = (tupleType | routineType | 'enum' | 'object' |
                 ('var' | 'out' | 'ref' | 'ptr' | 'distinct') typeDesc?)
-                ('not' simpleExpr)?
-typeDescExpr = (routineType / simpleExpr) ('not' simpleExpr)?
+                ('not' primary)?
+typeDescExpr = (routineType / simpleExpr) ('not' primary)?
 typeDesc = rawTypeDesc / typeDescExpr
 typeDefValue = ((tupleDecl | enumDecl | objectDecl | conceptDecl |
                  ('ref' | 'ptr' | 'distinct') (tupleDecl | objectDecl))
                / (simpleExpr (exprEqExpr ^+ comma postExprBlocks?)?))
-               ('not' simpleExpr)?
+               ('not' primary)?
 extraPostExprBlock = ( IND{=} doBlock
                      | IND{=} 'of' exprList ':' stmt
                      | IND{=} 'elif' expr ':' stmt
