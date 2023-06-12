@@ -1,5 +1,5 @@
 discard """
-  errormsg: "cannot open file: ./asynchttpserver"
+  errormsg: "cannot open file: ./sugar"
 """
 
-import ./asynchttpserver
+import ./sugar
