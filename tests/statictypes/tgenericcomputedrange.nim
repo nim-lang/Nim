@@ -29,6 +29,7 @@ block: # issue #20937
       cells: array[C.volume, T]
 
   let m = Matrix3[(1.uint, 1.uint, 1.uint), uint](cells: [0.uint])
+  doAssert m.cells.len == 1
   let m2 = Matrix3[(4.uint, 3.uint, 5.uint), uint]()
   doAssert m2.cells.len == 60
 
