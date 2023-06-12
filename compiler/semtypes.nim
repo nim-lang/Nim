@@ -882,7 +882,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
     else:
       var concreteBase = skipGenericInvocation(base)
       if concreteBase.kind in {tyObject, tyGenericParam,
-        tyGenericInvocation} and tfFinal notin concreteBase.flags:
+        tyGenericInvocation} and tfFinal notin concreteBase.flags and 
+        not (concreteBase.len > 0 and concreteBase[0] != nil and concreteBase.sym.id == concreteBase[0].id): #prevents ilegal recursion
         # we only check fields duplication of object inherited from
         # concrete object. If inheriting from generic object or partial
         # specialized object, there will be second check after instantiation

@@ -1567,7 +1567,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
           incl(s.flags, sfGenSym)
       for sk in c.skipTypes:
         discard semTypeNode(c, sk, nil)
-
+      c.skipTypes = @[]
   #instAllTypeBoundOp(c, n.info)
 
 
