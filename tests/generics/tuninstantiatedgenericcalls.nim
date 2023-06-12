@@ -1,5 +1,5 @@
 discard """
-  matrix: "; --experimental:genericBodyInstantiateCalls -d:useUntyped"
+  matrix: "; --experimental:genericBodyInstantiateCalls; --experimental:genericBodyInstantiateCalls -d:useUntyped"
 """
 
 # Cases that work due to weird workarounds in the compiler involving not
