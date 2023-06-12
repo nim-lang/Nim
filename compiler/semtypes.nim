@@ -854,14 +854,15 @@ proc skipGenericInvocation(t: PType): PType {.inline.} =
     result = lastSon(result)
 
 proc tryAddInheritedFields(c: PContext, check: var IntSet, pos: var int,
-                        obj: PType, n: PNode, isPartial = false): bool =
-  if (not isPartial) and (obj.kind notin {tyObject, tyGenericParam} or tfFinal in obj.flags):
+                        obj: PType, n: PNode, isPartial = false, innerObj: PType = nil): bool =
+  if ((not isPartial) and (obj.kind notin {tyObject, tyGenericParam} or tfFinal in obj.flags)) or
+    (innerObj != nil and obj.sym.id == innerObj.sym.id):
     localError(c.config, n.info, "Cannot inherit from: '" & $obj & "'")
     result = false
   elif obj.kind == tyObject:
     result = true
     if (obj.len > 0) and (obj[0] != nil):
-      result = result and tryAddInheritedFields(c, check, pos, obj[0].skipGenericInvocation, n)
+      result = result and tryAddInheritedFields(c, check, pos, obj[0].skipGenericInvocation, n, false, obj)
     addInheritedFieldsAux(c, check, pos, obj.n)
   else:
     result = true
@@ -875,15 +876,14 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
   # n[0] contains the pragmas (if any). We process these later...
   checkSonsLen(n, 3, c.config)
   if n[1].kind != nkEmpty:
-    realBase = semTypeNode(c, n[1][0], nil)
+    realBase = semTypeNode(c, n[1][0], nil)    
     base = skipTypesOrNil(realBase, skipPtrs)
     if base.isNil:
       localError(c.config, n.info, "cannot inherit from a type that is not an object type")
     else:
       var concreteBase = skipGenericInvocation(base)
       if concreteBase.kind in {tyObject, tyGenericParam,
-        tyGenericInvocation} and tfFinal notin concreteBase.flags and 
-        not (concreteBase.len > 0 and concreteBase[0] != nil and concreteBase.sym.id == concreteBase[0].id): #prevents ilegal recursion
+        tyGenericInvocation} and tfFinal notin concreteBase.flags: 
         # we only check fields duplication of object inherited from
         # concrete object. If inheriting from generic object or partial
         # specialized object, there will be second check after instantiation
