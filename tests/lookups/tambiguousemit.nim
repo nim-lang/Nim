@@ -1,3 +1,8 @@
+discard """
+  cmd: "nim check $options $file" # use check to assure error is pre-codegen
+  matrix: "; --backend:js" # backend shouldn't matter but at least check js
+"""
+
 proc foo(x: int) = discard
 proc foo(x: float) = discard
 
