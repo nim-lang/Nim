@@ -744,7 +744,11 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         else:
           # XXX this is still a hard compilation in a generic context, this can
           # result in unresolved generic parameters being treated like real types
-          it[0] = forceBool(c, semExprWithType(c, it[0]))
+          let e = semExprWithType(c, it[0], {efDetermineType})
+          if e.typ.kind == tyFromExpr:
+            it[0] = makeStaticExpr(c, e)
+          else:
+            it[0] = forceBool(c, e)
       of nkElse:
         checkSonsLen(it, 1, c.config)
         if branch == nil: branch = it[0]

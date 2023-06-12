@@ -218,7 +218,6 @@ type
     strictEffects,
     unicodeOperators, # deadcode
     flexibleOptionalParams,
-    genericBodyInstantiateCalls,
     strictDefs,
     strictCaseObjects
 

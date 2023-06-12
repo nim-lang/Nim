@@ -340,6 +340,7 @@ proc semConv(c: PContext, n: PNode; expectedType: PType = nil): PNode =
       targetType = targetType.base
   of tyUntyped:
     if c.inGenericContext > 0:
+      # could add `and efDetermineType in flags`, but no flags param
       result = n[1]
       result.typ = makeTypeFromExpr(c, result.copyTree)
       return
@@ -978,7 +979,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
 
   if result != nil:
     if result[0].kind != nkSym:
-      if c.inGenericContext == 0:
+      if not (efDetermineType in flags and c.inGenericContext > 0):
         internalError(c.config, "semOverloadedCallAnalyseEffects")
       return
     let callee = result[0].sym

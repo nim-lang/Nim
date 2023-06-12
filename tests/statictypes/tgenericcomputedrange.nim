@@ -1,7 +1,3 @@
-discard """
-  matrix: "--experimental:genericBodyInstantiateCalls"
-"""
-
 import math
 
 block: # issue #19916

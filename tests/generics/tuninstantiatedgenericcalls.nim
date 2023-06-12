@@ -1,20 +1,10 @@
-discard """
-  matrix: "; --experimental:genericBodyInstantiateCalls; --experimental:genericBodyInstantiateCalls -d:useUntyped"
-"""
-
-# Cases that work due to weird workarounds in the compiler involving not
-# instantiating calls in generic bodies which are removed with
-# --experimental:instantiatedGenericCalls due to breaking statics.
-# Ideally these work in the future, with the same behavior as the relevant
-# parts being wrapped in an `untyped` call. The issue is that these calls are
-# compiled as regular expressions at the generic declaration with
-# unresolved generic parameter types, which are special cased in some
-# places in the compiler, but sometimes treated like real types.
-# It's hard to fix this without losing some information (by turning every call
-# in `range` into `nkStaticExpr`) or compiler performance (by checking if
-# the expression compiles then using `nkStaticExpr`, which does not always
-# work since the compiler can wrongly treat unresolved generic params as
-# real types).
+# Cases that used to only work due to weird workarounds in the compiler
+# involving not instantiating calls in generic bodies which are removed
+# due to breaking statics.
+# The issue was that these calls are compiled as regular expressions at
+# the generic declaration with unresolved generic parameter types,
+# which are special cased in some places in the compiler, but sometimes
+# treated like real types.
 
 block:
   type Base10 = object
@@ -34,23 +24,27 @@ block:
       else:
         20
   
-  when not defined(useUntyped):
+  block:
     type
       Base10Buf[T: SomeUnsignedInt] = object
         data: array[maxLen(Base10, T), byte]
-          # workaround for experimental switch is `untyped maxLen(Base10, T)`
         len: int8
-  else:
+  
+    var x: Base10Buf[uint32]
+    doAssert x.data.len == 10
+    var y: Base10Buf[uint16]
+    doAssert y.data.len == 5
+  block: # with `untyped`
     type
       Base10Buf[T: SomeUnsignedInt] = object
         data: array[untyped maxLen(Base10, T), byte]
-          # test workaround
+          # same as what the compiler infers above
         len: int8
   
-  var x: Base10Buf[uint32]
-  doAssert x.data.len == 10
-  var y: Base10Buf[uint16]
-  doAssert y.data.len == 5
+    var x: Base10Buf[uint32]
+    doAssert x.data.len == 10
+    var y: Base10Buf[uint16]
+    doAssert y.data.len == 5
 
 import typetraits
 
@@ -60,22 +54,11 @@ block thardcases:
   macro selectType(a, b: typedesc): typedesc =
     result = a
 
-  when not defined(useUntyped):
-    type
-      Foo[T] = object
-        data1: array[T.high, int]
-        data2: array[typeNameLen(T), float]
-          # workaround for experimental switch is `untyped typeNameLen(T)`
-        data3: array[0..T.typeNameLen, selectType(float, int)]
-          # workaround for experimental switch is `untyped T.typeNameLen`
-  else:
-    type
-      Foo[T] = object
-        data1: array[T.high, int]
-        data2: array[untyped typeNameLen(T), float]
-          # test workaround
-        data3: array[0..untyped T.typeNameLen, selectType(float, int)]
-          # test workaround
+  type
+    Foo[T] = object
+      data1: array[T.high, int]
+      data2: array[typeNameLen(T), float]
+      data3: array[0..T.typeNameLen, selectType(float, int)]
   
   type MyEnum = enum A, B, C, D
 
