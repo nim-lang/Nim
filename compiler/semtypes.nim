@@ -894,6 +894,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
           if not tryAddInheritedFields(c, check, pos, concreteBase, n):
             return newType(tyError, nextTypeId c.idgen, result.owner)
 
+      elif concreteBase.kind == tyForward:
+        c.skipTypes.add n #we retry in the final pass
       else:
         if concreteBase.kind != tyError:
           localError(c.config, n[1].info, "inheritance only works with non-final objects; " &
