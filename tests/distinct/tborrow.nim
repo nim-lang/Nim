@@ -89,3 +89,12 @@ block: # Borrow from generic alias
     e = default(E)
   assert c.i == int(0)
   assert e.i == 0d
+
+block: # issue #22069
+  type
+    Vehicle[C: static[int]] = object
+      color: array[C, int]
+    Car[C: static[int]] {.borrow: `.`.} = distinct Vehicle[C]
+    MuscleCar = Car[128]
+  var x: MuscleCar
+  doAssert x.color is array[128, int]

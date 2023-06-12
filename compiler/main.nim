@@ -417,7 +417,7 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdJsonscript:
     setOutFile(graph.config)
     commandJsonScript(graph)
-  of cmdUnknown, cmdNone, cmdIdeTools, cmdNimfix:
+  of cmdUnknown, cmdNone, cmdIdeTools:
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
   if conf.errorCounter == 0 and conf.cmd notin {cmdTcc, cmdDump, cmdNop}:
