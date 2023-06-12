@@ -1838,7 +1838,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # when `f` is an unresolved typedesc, `a` could be any
       # type, so we should not perform this check earlier
       if a.kind != tyTypeDesc or a.base.kind == tyGenericParam:
-        if (c.c.inGenericContext == 0 or c.matchedConcept != nil) and
+        if (c.c.inGenericContext == 0 or c.c.matchedConcept != nil) and
             a.kind == tyGenericParam and tfWildcard in a.flags:
           # TODO: prevent `a` from matching as a wildcard again
           result = isGeneric
