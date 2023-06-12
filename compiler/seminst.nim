@@ -388,7 +388,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
       pragma(c, result, n[pragmasPos], allRoutinePragmas)
     if isNil(n[bodyPos]):
       n[bodyPos] = copyTree(getBody(c.graph, fn))
-    if c.inGenericContext == 0 or
+    if c.inGenericContext == 0 or true or
         genericBodyInstantiateCalls in c.config.features:
       instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)

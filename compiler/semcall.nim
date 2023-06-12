@@ -627,7 +627,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
               candidates)
     result = semResolvedCall(c, r, n, flags)
   else:
-    if c.inGenericContext > 0:
+    if efDetermineType in flags and c.inGenericContext > 0 and c.matchedConcept == nil:
       result = n
       result.typ = makeTypeFromExpr(c, result.copyTree)
     elif efExplain notin flags:

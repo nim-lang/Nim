@@ -250,7 +250,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       result = newNodeI(nkRecList, n.info)
   of nkStaticExpr:
     var n = prepareNode(cl, n)
-    if genericBodyInstantiateCalls notin cl.c.config.features:
+    if false and genericBodyInstantiateCalls notin cl.c.config.features:
       n = reResolveCallsWithTypedescParams(cl, n)
     result = if cl.allowMetaTypes: n
              else: cl.c.semExpr(cl.c, n)
