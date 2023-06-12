@@ -93,6 +93,10 @@ proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options
   let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   execFold(desc, cmd)
 
+const officialPackagesMarkdown = """
+pkgs/atlas/doc/atlas.md
+""".splitWhitespace()
+
 proc getMd2html(): seq[string] =
   for a in walkDirRecFilter("doc"):
     let path = a.path
@@ -103,6 +107,8 @@ proc getMd2html(): seq[string] =
         ]:
           # `docs` is redundant with `overview`, might as well remove that file?
       result.add path
+  for md in officialPackagesMarkdown:
+    result.add md
   doAssert "doc/manual/var_t_return.md".unixToNativePath in result # sanity check
 
 const
@@ -335,7 +341,7 @@ proc buildJS(): string =
 proc buildDocsDir*(args: string, dir: string) =
   let args = nimArgs & " " & args
   let docHackJsSource = buildJS()
-  gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector", "checksums"])
+  gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector", "checksums", "atlas"])
   createDir(dir)
   buildDocSamples(args, dir)
 
