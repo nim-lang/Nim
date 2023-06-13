@@ -1567,7 +1567,6 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         # fix bug #5170, bug #17162, bug #15526: ensure locally scoped types get a unique name:
         if s.typ.kind in {tyEnum, tyRef, tyObject} and not isTopLevel(c):
           incl(s.flags, sfGenSym)
-      
   #instAllTypeBoundOp(c, n.info)
 
 

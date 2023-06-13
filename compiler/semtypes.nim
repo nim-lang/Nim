@@ -876,14 +876,14 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
   # n[0] contains the pragmas (if any). We process these later...
   checkSonsLen(n, 3, c.config)
   if n[1].kind != nkEmpty:
-    realBase = semTypeNode(c, n[1][0], nil)    
+    realBase = semTypeNode(c, n[1][0], nil)
     base = skipTypesOrNil(realBase, skipPtrs)
     if base.isNil:
       localError(c.config, n.info, "cannot inherit from a type that is not an object type")
     else:
       var concreteBase = skipGenericInvocation(base)
       if concreteBase.kind in {tyObject, tyGenericParam,
-        tyGenericInvocation} and tfFinal notin concreteBase.flags: 
+        tyGenericInvocation} and tfFinal notin concreteBase.flags:
         # we only check fields duplication of object inherited from
         # concrete object. If inheriting from generic object or partial
         # specialized object, there will be second check after instantiation
