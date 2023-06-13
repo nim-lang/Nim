@@ -525,3 +525,58 @@ block: # bug #21263
 
   print(10.Date) # ok
   print(DateDayFractionImpl(date: 1, fraction: 2))  # error
+
+import sets
+import deques
+
+type AnyTree[V] = concept t, type T
+  for v in t.leaves(V):
+    v is V
+
+type BreadthOrder[V] = ref object
+  frontier: Deque[V]
+  visited: HashSet[V]
+
+proc expand[V, T](order: ref BreadthOrder[T], tree: AnyTree[V], node: V, transform: (V) -> (T)) =
+  for leaf in tree.leaves(node):
+    if not order.visited.containsOrIncl(transform(leaf)):
+      order.frontier.addLast(transform(leaf))
+
+proc hasNext[V](order: ref BreadthOrder[V]): bool =
+  order.frontier.len > 0
+
+proc init[V](_: typedesc[BreadthOrder]): ref BreadthOrder[V] =
+  result.new()
+  result[] = BreadthOrder[V](frontier: initDeque[V](), visited: initHashSet[V]())
+
+proc popNext[V](order: ref BreadthOrder[V]): V =
+  order.frontier.popFirst()
+
+type LevelNode[V] = tuple
+  depth: uint
+  node: V
+
+proc depthOf*[V](orderType: typedesc[BreadthOrder], tree: AnyTree[V], root, goal: V): uint =
+  if root == goal:
+    return 0
+  var order = init[LevelNode[V]](orderType)
+  order.expand(tree, root, (leaf) => (1, leaf))
+  while order.hasNext():
+    let depthNode: LevelNode[V] = order.popNext()
+    if depthNode.node == goal:
+      return depthNode.depth
+    order.expand(tree, depthNode.node, (leaf) => (depthNode.depth + 1, leaf))
+
+type CappedStringTree = ref object
+  symbols: string
+  cap: Natural
+
+iterator leaves*(t: CappedStringTree, s: string): string =
+  if s.len < t.cap:
+    for c in t.symbols:
+      yield s & c
+
+block: # bug #12852
+  var tree = CappedStringTree(symbols: "^v><", cap: 5)
+
+  doAssert BreadthOrder.depthOf(tree, "", ">>>") == 3

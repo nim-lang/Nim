@@ -436,7 +436,8 @@ proc colonOrEquals(p: var Parser, a: PNode): PNode =
     result = equals(p, a)
 
 proc exprColonEqExpr(p: var Parser): PNode =
-  #| exprColonEqExpr = expr (':'|'=' expr)?
+  #| exprColonEqExpr = expr ((':'|'=') expr
+  #|                        / doBlock extraPostExprBlock*)?
   var a = parseExpr(p)
   if p.tok.tokType == tkDo:
     result = postExprBlocks(p, a)
@@ -444,7 +445,8 @@ proc exprColonEqExpr(p: var Parser): PNode =
     result = colonOrEquals(p, a)
 
 proc exprEqExpr(p: var Parser): PNode =
-  #| exprEqExpr = expr ('=' expr)?
+  #| exprEqExpr = expr ('=' expr
+  #|                   / doBlock extraPostExprBlock*)?
   var a = parseExpr(p)
   if p.tok.tokType == tkDo:
     result = postExprBlocks(p, a)
@@ -647,7 +649,8 @@ proc parsePar(p: var Parser): PNode =
   #|           ( &parKeyw (ifExpr / complexOrSimpleStmt) ^+ ';'
   #|           | ';' (ifExpr / complexOrSimpleStmt) ^+ ';'
   #|           | pragmaStmt
-  #|           | simpleExpr ( ('=' expr (';' (ifExpr / complexOrSimpleStmt) ^+ ';' )? )
+  #|           | simpleExpr ( (doBlock extraPostExprBlock*)
+  #|                        | ('=' expr (';' (ifExpr / complexOrSimpleStmt) ^+ ';' )? )
   #|                        | (':' expr (',' exprColonEqExpr     ^+ ',' )? ) ) )
   #|           optPar ')'
   #
@@ -1336,7 +1339,7 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
   #| simplePrimary = SIGILLIKEOP? identOrLiteral primarySuffix*
   #| commandStart = &('`'|IDENT|literal|'cast'|'addr'|'type'|'var'|'out'|
   #|                  'static'|'enum'|'tuple'|'object'|'proc')
-  #| primary = simplePrimary (commandStart expr)
+  #| primary = simplePrimary (commandStart expr (doBlock extraPostExprBlock*)?)?
   #|         / operatorB primary
   #|         / routineExpr
   #|         / rawTypeDesc
@@ -1393,7 +1396,7 @@ proc binaryNot(p: var Parser; a: PNode): PNode =
     let notOpr = newIdentNodeP(p.tok.ident, p)
     getTok(p)
     optInd(p, notOpr)
-    let b = parseExpr(p)
+    let b = primary(p, pmTypeDesc)
     result = newNodeP(nkInfix, p)
     result.add notOpr
     result.add a
@@ -1404,8 +1407,8 @@ proc binaryNot(p: var Parser; a: PNode): PNode =
 proc parseTypeDesc(p: var Parser, fullExpr = false): PNode =
   #| rawTypeDesc = (tupleType | routineType | 'enum' | 'object' |
   #|                 ('var' | 'out' | 'ref' | 'ptr' | 'distinct') typeDesc?)
-  #|                 ('not' expr)?
-  #| typeDescExpr = (routineType / simpleExpr) ('not' expr)?
+  #|                 ('not' primary)?
+  #| typeDescExpr = (routineType / simpleExpr) ('not' primary)?
   #| typeDesc = rawTypeDesc / typeDescExpr
   newlineWasSplitting(p)
   if fullExpr:
@@ -1441,8 +1444,8 @@ proc parseTypeDesc(p: var Parser, fullExpr = false): PNode =
 proc parseTypeDefValue(p: var Parser): PNode =
   #| typeDefValue = ((tupleDecl | enumDecl | objectDecl | conceptDecl |
   #|                  ('ref' | 'ptr' | 'distinct') (tupleDecl | objectDecl))
-  #|                / (simpleExpr (exprEqExpr ^+ comma postExprBlocks)?))
-  #|                ('not' expr)?
+  #|                / (simpleExpr (exprEqExpr ^+ comma postExprBlocks?)?))
+  #|                ('not' primary)?
   case p.tok.tokType
   of tkTuple: result = parseTuple(p, true)
   of tkRef: result = parseTypeDescKAux(p, nkRefTy, pmTypeDef)
@@ -1478,12 +1481,13 @@ proc makeCall(n: PNode): PNode =
     result.add n
 
 proc postExprBlocks(p: var Parser, x: PNode): PNode =
-  #| postExprBlocks = ':' stmt? ( IND{=} doBlock
-  #|                            | IND{=} 'of' exprList ':' stmt
-  #|                            | IND{=} 'elif' expr ':' stmt
-  #|                            | IND{=} 'except' optionalExprList ':' stmt
-  #|                            | IND{=} 'finally' ':' stmt
-  #|                            | IND{=} 'else' ':' stmt )*
+  #| extraPostExprBlock = ( IND{=} doBlock
+  #|                      | IND{=} 'of' exprList ':' stmt
+  #|                      | IND{=} 'elif' expr ':' stmt
+  #|                      | IND{=} 'except' optionalExprList ':' stmt
+  #|                      | IND{=} 'finally' ':' stmt
+  #|                      | IND{=} 'else' ':' stmt )
+  #| postExprBlocks = (doBlock / ':' (extraPostExprBlock / stmt)) extraPostExprBlock*
   result = x
   if p.tok.indent >= 0: return
 
@@ -1500,7 +1504,7 @@ proc postExprBlocks(p: var Parser, x: PNode): PNode =
     result = makeCall(result)
     getTok(p)
     skipComment(p, result)
-    if p.tok.tokType notin {tkOf, tkElif, tkElse, tkExcept, tkFinally}:
+    if not (p.tok.tokType in {tkOf, tkElif, tkElse, tkExcept, tkFinally} and sameInd(p)):
       var stmtList = newNodeP(nkStmtList, p)
       stmtList.add parseStmt(p)
       # to keep backwards compatibility (see tests/vm/tstringnil)

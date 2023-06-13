@@ -304,7 +304,7 @@ proc store*[T](s: Stream, data: sink T) =
 
   var stored = initIntSet()
   var d: T
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc)or defined(gcAtomicArc):
     d = data
   else:
     shallowCopy(d, data)
@@ -333,7 +333,7 @@ proc `$$`*[T](x: sink T): string =
   else:
     var stored = initIntSet()
     var d: T
-    when defined(gcArc) or defined(gcOrc):
+    when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
       d = x
     else:
       shallowCopy(d, x)

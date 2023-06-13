@@ -116,7 +116,7 @@ proc ambiguousSymChoice(c: PContext, orig, n: PNode): PNode =
     result = n
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
-  result = semExprCheck(c, n, flags, expectedType)
+  result = semExprCheck(c, n, flags-{efTypeAllowed}, expectedType)
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
   elif (result.typ == nil or result.typ.kind == tyNone) and
@@ -129,6 +129,18 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
     result.typ = errorType(c)
   elif result.typ.kind == tyError:
     # associates the type error to the current owner
+    result.typ = errorType(c)
+  elif efTypeAllowed in flags and result.typ.kind == tyProc and
+      hasUnresolvedParams(result, {}):
+    # mirrored with semOperand but only on efTypeAllowed
+    let owner = result.typ.owner
+    let err =
+      # consistent error message with evaltempl/semMacroExpr
+      if owner != nil and owner.kind in {skTemplate, skMacro}:
+        errMissingGenericParamsForTemplate % n.renderTree
+      else:
+        errProcHasNoConcreteType % n.renderTree
+    localError(c.config, n.info, err)
     result.typ = errorType(c)
   else:
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
@@ -2602,7 +2614,7 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
           typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
         elif isIntLit(typ):
           # set of int literal, use a default range smaller than the max range
-          typ = makeRangeType(c, 0, DefaultSetElements-1, n.info) 
+          typ = makeRangeType(c, 0, DefaultSetElements-1, n.info)
         elif lengthOrd(c.config, typ) > MaxSetElements:
           message(c.config, n.info, warnAboveMaxSizeSet, "type '" &
             typeToString(typ, preferDesc) & "' is too big to be a `set` element, " &
@@ -3095,8 +3107,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     c.isAmbiguous = false
     var s = qualifiedLookUp(c, n[0], mode)
     if s != nil:
-      #if c.config.cmd == cmdNimfix and n[0].kind == nkDotExpr:
-      #  pretty.checkUse(n[0][1].info, s)
       case s.kind
       of skMacro, skTemplate:
         result = semDirectOp(c, n, flags, expectedType)

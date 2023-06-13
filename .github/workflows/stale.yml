@@ -13,6 +13,8 @@ jobs:
         with:
           days-before-pr-stale:    365
           days-before-pr-close:    30
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
           exempt-pr-labels:    "ARC,bounty,Codegen,Crash,Generics,High Priority,Macros,Next release,Showstopper,Static[T]"
           exempt-issue-labels: "Showstopper,Severe,bounty,Compiler Crash,Medium Priority"
           stale-pr-message: >

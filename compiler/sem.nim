@@ -21,8 +21,6 @@ import
   lowerings, plugins/active, lineinfos, strtabs, int128,
   isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs
 
-when defined(nimfix):
-  import nimfix/prettybase
 
 when not defined(leanCompiler):
   import spawn
@@ -680,6 +678,7 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   if result.p != nil: internalError(graph.config, module.info, "sem.preparePContext")
   result.semConstExpr = semConstExpr
   result.semExpr = semExpr
+  result.semExprWithType = semExprWithType
   result.semTryExpr = tryExpr
   result.semTryConstExpr = tryConstExpr
   result.computeRequiresInit = computeRequiresInit

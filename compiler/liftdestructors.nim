@@ -50,9 +50,9 @@ proc at(a, i: PNode, elemType: PType): PNode =
   result[1] = i
   result.typ = elemType
 
-proc destructorOverriden(g: ModuleGraph; t: PType): bool =
+proc destructorOverridden(g: ModuleGraph; t: PType): bool =
   let op = getAttachedOp(g, t, attachedDestructor)
-  op != nil and sfOverriden in op.flags
+  op != nil and sfOverridden in op.flags
 
 proc fillBodyTup(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   for i in 0..<t.len:
@@ -350,9 +350,9 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
                         field: var PSym): bool =
   if optSeqDestructors in c.g.config.globalOptions:
     var op = field
-    let destructorOverriden = destructorOverriden(c.g, t)
+    let destructorOverridden = destructorOverridden(c.g, t)
     if op != nil and op != c.fn and
-        (sfOverriden in op.flags or destructorOverriden):
+        (sfOverridden in op.flags or destructorOverridden):
       if sfError in op.flags:
         incl c.fn.flags, sfError
       #else:
@@ -360,7 +360,7 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
       onUse(c.info, op)
       body.add newHookCall(c, op, x, y)
       result = true
-    elif op == nil and destructorOverriden:
+    elif op == nil and destructorOverridden:
       op = produceSym(c.g, c.c, t, c.kind, c.info, c.idgen)
       body.add newHookCall(c, op, x, y)
       result = true
@@ -398,7 +398,7 @@ proc addDestructorCall(c: var TLiftCtx; orig: PType; body, x: PNode) =
   let t = orig.skipTypes(abstractInst - {tyDistinct})
   var op = t.destructor
 
-  if op != nil and sfOverriden in op.flags:
+  if op != nil and sfOverridden in op.flags:
     if op.ast.isGenericRoutine:
       # patch generic destructor:
       op = instantiateGeneric(c, op, t, t.typeInst)
@@ -421,7 +421,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
   case c.kind
   of attachedDestructor:
     var op = t.destructor
-    if op != nil and sfOverriden in op.flags:
+    if op != nil and sfOverridden in op.flags:
 
       if op.ast.isGenericRoutine:
         # patch generic destructor:
@@ -435,7 +435,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
     #result = addDestructorCall(c, t, body, x)
   of attachedAsgn, attachedSink, attachedTrace:
     var op = getAttachedOp(c.g, t, c.kind)
-    if op != nil and sfOverriden in op.flags:
+    if op != nil and sfOverridden in op.flags:
       if op.ast.isGenericRoutine:
         # patch generic =trace:
         op = instantiateGeneric(c, op, t, t.typeInst)
@@ -455,7 +455,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
 
   of attachedWasMoved:
     var op = getAttachedOp(c.g, t, attachedWasMoved)
-    if op != nil and sfOverriden in op.flags:
+    if op != nil and sfOverridden in op.flags:
 
       if op.ast.isGenericRoutine:
         # patch generic destructor:
@@ -469,7 +469,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
 
   of attachedDup:
     var op = getAttachedOp(c.g, t, attachedDup)
-    if op != nil and sfOverriden in op.flags:
+    if op != nil and sfOverridden in op.flags:
 
       if op.ast.isGenericRoutine:
         # patch generic destructor:
@@ -553,7 +553,7 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add setLenSeqCall(c, t, x, y)
     forallElements(c, t, body, x, y)
   of attachedSink:
-    let moveCall = genBuiltin(c, mMove, "move", x)
+    let moveCall = genBuiltin(c, mMove, "internalMove", x)
     moveCall.add y
     doAssert t.destructor != nil
     moveCall.add destructorCall(c, t.destructor, x)
@@ -586,7 +586,7 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add newHookCall(c, t.assignment, x, y)
   of attachedSink:
     # we always inline the move for better performance:
-    let moveCall = genBuiltin(c, mMove, "move", x)
+    let moveCall = genBuiltin(c, mMove, "internalMove", x)
     moveCall.add y
     doAssert t.destructor != nil
     moveCall.add destructorCall(c, t.destructor, x)
@@ -617,7 +617,7 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedAsgn, attachedDeepCopy, attachedDup:
     body.add callCodegenProc(c.g, "nimAsgnStrV2", c.info, genAddr(c, x), y)
   of attachedSink:
-    let moveCall = genBuiltin(c, mMove, "move", x)
+    let moveCall = genBuiltin(c, mMove, "internalMove", x)
     moveCall.add y
     doAssert t.destructor != nil
     moveCall.add destructorCall(c, t.destructor, x)
@@ -979,7 +979,16 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
         else:
           fillBodyObjT(c, t, body, x, y)
       else:
-        fillBodyObjT(c, t, body, x, y)
+        if c.kind == attachedDup:
+          var op2 = getAttachedOp(c.g, t, attachedAsgn)
+          if op2 != nil and sfOverridden in op2.flags:
+            #markUsed(c.g.config, c.info, op, c.g.usageSym)
+            onUse(c.info, op2)
+            body.add newHookCall(c, t.assignment, x, y)
+          else:
+            fillBodyObjT(c, t, body, x, y)
+        else:
+          fillBodyObjT(c, t, body, x, y)
   of tyDistinct:
     if not considerUserDefinedOp(c, t, body, x, y):
       fillBody(c, t[0], body, x, y)
@@ -1115,7 +1124,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   # register this operation already:
   setAttachedOpPartial(g, idgen.module, typ, kind, result)
 
-  if kind == attachedSink and destructorOverriden(g, typ):
+  if kind == attachedSink and destructorOverridden(g, typ):
     ## compiler can use a combination of `=destroy` and memCopy for sink op
     dest.flags.incl sfCursor
     result.ast[bodyPos].add newOpCall(a, getAttachedOp(g, typ, attachedDestructor), d[0])

@@ -285,7 +285,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
 
     elif not isOrdinalType(rangeT[0]) and rangeT[0].kind notin {tyFloat..tyFloat128} or
         rangeT[0].kind == tyBool:
-      localError(c.config, n.info, "ordinal or float type expected")
+      localError(c.config, n.info, "ordinal or float type expected, but got " & typeToString(rangeT[0]))
     elif enumHasHoles(rangeT[0]):
       localError(c.config, n.info, "enum '$1' has holes" % typeToString(rangeT[0]))
 
@@ -296,9 +296,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     else:
       result.n.add semConstExpr(c, range[i])
 
-  if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and result.n[0].floatVal.isNaN) or
-      (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and result.n[1].floatVal.isNaN):
-    localError(c.config, n.info, "NaN is not a valid start or end for a range")
+    if result.n[i].kind in {nkFloatLit..nkFloat64Lit} and result.n[i].floatVal.isNaN:
+      localError(c.config, n.info, "NaN is not a valid range " & (if i == 0: "start" else: "end"))
 
   if weakLeValue(result.n[0], result.n[1]) == impNo:
     localError(c.config, n.info, "range is empty")

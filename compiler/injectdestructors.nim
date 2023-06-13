@@ -186,8 +186,11 @@ template isUnpackedTuple(n: PNode): bool =
   ## hence unpacked tuples themselves don't need to be destroyed
   (n.kind == nkSym and n.sym.kind == skTemp and n.sym.typ.kind == tyTuple)
 
-proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
+proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string; inferredFromCopy = false) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
+  if inferredFromCopy:
+    m.add ", which is inferred from unavailable '=copy'"
+
   if (opname == "=" or opname == "=copy" or opname == "=dup") and ri != nil:
     m.add "; requires a copy because it's not the last read of '"
     m.add renderTree(ri)
@@ -353,7 +356,7 @@ proc genDiscriminantAsgn(c: var Con; s: var Scope; n: PNode): PNode =
 
   if hasDestructor(c, objType):
     if getAttachedOp(c.graph, objType, attachedDestructor) != nil and
-        sfOverriden in getAttachedOp(c.graph, objType, attachedDestructor).flags:
+        sfOverridden in getAttachedOp(c.graph, objType, attachedDestructor).flags:
       localError(c.graph.config, n.info, errGenerated, """Assignment to discriminant for objects with user defined destructor is not supported, object must have default destructor.
 It is best to factor out piece of object that needs custom destructor into separate object or not use discriminator assignment""")
       result.add newTree(nkFastAsgn, le, tmp)
@@ -430,6 +433,12 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
     if op != nil and tfHasOwned notin typ.flags:
       if sfError in op.flags:
         c.checkForErrorPragma(n.typ, n, "=dup")
+      else:
+        let copyOp = getAttachedOp(c.graph, typ, attachedAsgn)
+        if copyOp != nil and sfError in copyOp.flags and
+           sfOverridden notin op.flags:
+          c.checkForErrorPragma(n.typ, n, "=dup", inferredFromCopy = true)
+
       let src = p(n, c, s, normal)
       var newCall = newTreeIT(nkCall, src.info, src.typ,
             newSymNode(op),
@@ -694,6 +703,24 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
   of nkWhen: # This should be a "when nimvm" node.
     result = copyTree(n)
     result[1][0] = processCall(n[1][0], s)
+
+  of nkPragmaBlock:
+    var inUncheckedAssignSection = 0
+    let pragmaList = n[0]
+    for pi in pragmaList:
+      if whichPragma(pi) == wCast:
+        case whichPragma(pi[1])
+        of wUncheckedAssign:
+          inUncheckedAssignSection = 1
+        else:
+          discard
+    result = shallowCopy(n)
+    inc c.inUncheckedAssignSection, inUncheckedAssignSection
+    for i in 0 ..< n.len-1:
+      result[i] = p(n[i], c, s, normal)
+    result[^1] = maybeVoid(n[^1], s)
+    dec c.inUncheckedAssignSection, inUncheckedAssignSection
+
   else: assert(false)
 
 proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
@@ -723,7 +750,7 @@ proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
 
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSingleUsedTemp}): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
-                nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt}:
+                nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt, nkPragmaBlock}:
     template process(child, s): untyped = p(child, c, s, mode)
     handleNestedTempl(n, process, tmpFlags = tmpFlags)
   elif mode == sinkArg:
@@ -915,25 +942,6 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       result = shallowCopy(n)
       for i in 0 ..< n.len:
         result[i] = p(n[i], c, s, normal)
-      if n.typ != nil and hasDestructor(c, n.typ):
-        if mode == normal:
-          result = ensureDestruction(result, n, c, s)
-
-    of nkPragmaBlock:
-      var inUncheckedAssignSection = 0
-      let pragmaList = n[0]
-      for pi in pragmaList:
-        if whichPragma(pi) == wCast:
-          case whichPragma(pi[1])
-          of wUncheckedAssign:
-            inUncheckedAssignSection = 1
-          else:
-            discard
-      result = shallowCopy(n)
-      inc c.inUncheckedAssignSection, inUncheckedAssignSection
-      for i in 0 ..< n.len:
-        result[i] = p(n[i], c, s, normal)
-      dec c.inUncheckedAssignSection, inUncheckedAssignSection
       if n.typ != nil and hasDestructor(c, n.typ):
         if mode == normal:
           result = ensureDestruction(result, n, c, s)

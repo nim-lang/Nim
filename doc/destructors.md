@@ -57,7 +57,7 @@ written as:
     if b.data != nil:
       a.data = cast[typeof(a.data)](alloc(a.cap * sizeof(T)))
       for i in 0..<a.len:
-       a.data[i] = b.data[i]
+        a.data[i] = b.data[i]
 
   proc `=dup`*[T](a: myseq[T]): myseq[T] {.nodestroy.} =
     # an optimized version of `=wasMoved(tmp); `=copy(tmp, src)`

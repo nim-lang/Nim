@@ -260,6 +260,8 @@
 
 - `strutils.split` and `strutils.rsplit` now forbid an empty separator.
 
+- Relative imports will not resolve to stdlib anymore, e.g. `import ./tables` now reports an error properly.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
@@ -335,6 +337,8 @@
   + Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
   and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask).
   + Added `toDateString`, `toISOString`, `toJSON`, `toTimeString`, `toUTCString` converters for `DateTime`.
+- Added `BackwardsIndex` overload for `CacheSeq`.
+- Added support for nested `with` blocks in `std/with`.
 
 
 [//]: # "Deprecations:"

@@ -283,7 +283,7 @@ type
     sfNamedParamCall, # symbol needs named parameter call syntax in target
                       # language; for interfacing with Objective C
     sfDiscardable,    # returned value may be discarded implicitly
-    sfOverriden,      # proc is overridden
+    sfOverridden,      # proc is overridden
     sfCallsite        # A flag for template symbols to tell the
                       # compiler it should use line information from
                       # the calling side of the macro, not from the
@@ -339,8 +339,8 @@ const
 
   sfCompileToCpp* = sfInfixCall       # compile the module as C++ code
   sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code
-  sfExperimental* = sfOverriden       # module uses the .experimental switch
-  sfGoto* = sfOverriden               # var is used for 'goto' code generation
+  sfExperimental* = sfOverridden       # module uses the .experimental switch
+  sfGoto* = sfOverridden               # var is used for 'goto' code generation
   sfWrittenTo* = sfBorrow             # param is assigned to
                                       # currently unimplemented
   sfBase* = sfDiscriminant
@@ -822,9 +822,6 @@ type
     locOther                  # location is something other
   TLocFlag* = enum
     lfIndirect,               # backend introduced a pointer
-    lfFullExternalName, # only used when 'conf.cmd == cmdNimfix': Indicates
-      # that the symbol has been imported via 'importc: "fullname"' and
-      # no format string.
     lfNoDeepCopy,             # no need for a deep copy
     lfNoDecl,                 # do not declare it in C
     lfDynamicLib,             # link symbol to dynamic library
@@ -859,7 +856,7 @@ type
                               # keep in sync with PackedLib
     kind*: TLibKind
     generated*: bool          # needed for the backends:
-    isOverriden*: bool
+    isOverridden*: bool
     name*: Rope
     path*: PNode              # can be a string literal!
 
@@ -1128,11 +1125,10 @@ const
 
 proc getPIdent*(a: PNode): PIdent {.inline.} =
   ## Returns underlying `PIdent` for `{nkSym, nkIdent}`, or `nil`.
-  # xxx consider whether also returning the 1st ident for {nkOpenSymChoice, nkClosedSymChoice}
-  # which may simplify code.
   case a.kind
   of nkSym: a.sym.name
   of nkIdent: a.ident
+  of nkOpenSymChoice, nkClosedSymChoice: a.sons[0].sym.name
   else: nil
 
 const
@@ -1929,11 +1925,6 @@ proc isRoutine*(s: PSym): bool {.inline.} =
 proc isCompileTimeProc*(s: PSym): bool {.inline.} =
   result = s.kind == skMacro or
            s.kind in {skProc, skFunc} and sfCompileTime in s.flags
-
-proc isRunnableExamples*(n: PNode): bool =
-  # Templates and generics don't perform symbol lookups.
-  result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
-    n.kind == nkIdent and n.ident.s == "runnableExamples"
 
 proc hasPattern*(s: PSym): bool {.inline.} =
   result = isRoutine(s) and s.ast[patternPos].kind != nkEmpty
