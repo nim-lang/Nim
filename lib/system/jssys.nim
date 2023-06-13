@@ -40,13 +40,14 @@ var
   lastJSError {.importc, nodecl, volatile.}: PJSError = nil
 
 {.push stacktrace: off, profiler:off.}
-proc nimBoolToStr(x: bool): string {.compilerproc.} =
-  if x: result = "true"
-  else: result = "false"
+proc nimBoolToStr(x: bool): string {.compilerproc, asmNoStackFrame.} =
+  if x: {.emit: "return [116, 114, 117, 101];".}      # "true"
+  else: {.emit: "return [102, 97, 108, 115, 101];".}  # "false"
 
-proc nimCharToStr(x: char): string {.compilerproc.} =
-  result = newString(1)
-  result[0] = x
+
+proc nimCharToStr(x: char): string {.compilerproc, asmNoStackFrame.} =
+  {.emit: "return [`x`];".}
+
 
 proc isNimException(): bool {.asmNoStackFrame.} =
   asm "return `lastJSError` && `lastJSError`.m_type;"
@@ -570,7 +571,7 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
     # In order to prevent a type change (TypedArray -> Array) and to have better copying performance,
     # arrays constructors are considered separately
     asm """
-      if(ArrayBuffer.isView(`src`)) { 
+      if(ArrayBuffer.isView(`src`)) {
         if(`dest` === null || `dest` === undefined || `dest`.length != `src`.length) {
           `dest` = new `src`.constructor(`src`);
         } else {
@@ -687,17 +688,6 @@ proc addChar(x: string, c: char) {.compilerproc, asmNoStackFrame.} =
 
 {.pop.}
 
-proc tenToThePowerOf(b: int): BiggestFloat =
-  # xxx deadcode
-  var b = b
-  var a = 10.0
-  result = 1.0
-  while true:
-    if (b and 1) == 1:
-      result = result * a
-    b = b shr 1
-    if b == 0: break
-    a = a * a
 
 const
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
