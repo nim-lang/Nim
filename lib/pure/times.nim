@@ -1529,11 +1529,11 @@ proc getClockStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].
 proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
                    nanosecond: NanosecondRange,
-                   zone: Timezone = local()): DateTime {.since: (1, 5).}
+                   zone: Timezone = local()): DateTime {.raises: [], tags: [], since: (1, 5).}
 
 proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
-                   zone: Timezone = local()): DateTime {.since: (1, 5).}
+                   zone: Timezone = local()): DateTime {.raises: [], tags: [], since: (1, 5).}
 
 #
 # TimeFormat
@@ -2754,7 +2754,7 @@ proc `-=`*(t: var Time, b: TimeInterval) =
 proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
                    nanosecond: NanosecondRange,
-                   zone: Timezone = local()): DateTime {.since: (1, 5).} =
+                   zone: Timezone = local()): DateTime {.raises: [], tags: [], since: (1, 5).} =
   ## Create a new `DateTime <#DateTime>`_ from a weekday and an ISO 8601 week number and year
   ## in the specified timezone.
   ##
@@ -2771,7 +2771,7 @@ proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
 
 proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
-                   zone: Timezone = local()): DateTime {.since: (1, 5).} =
+                   zone: Timezone = local()): DateTime {.raises: [], tags: [], since: (1, 5).} =
   initDateTime(weekday, isoweek, isoyear, hour, minute, second, 0, zone)
 
 #
