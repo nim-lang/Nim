@@ -24,27 +24,15 @@ block:
       else:
         20
   
-  block:
-    type
-      Base10Buf[T: SomeUnsignedInt] = object
-        data: array[maxLen(Base10, T), byte]
-        len: int8
-  
-    var x: Base10Buf[uint32]
-    doAssert x.data.len == 10
-    var y: Base10Buf[uint16]
-    doAssert y.data.len == 5
-  block: # with `untyped`
-    type
-      Base10Buf[T: SomeUnsignedInt] = object
-        data: array[untyped maxLen(Base10, T), byte]
-          # same as what the compiler infers above
-        len: int8
-  
-    var x: Base10Buf[uint32]
-    doAssert x.data.len == 10
-    var y: Base10Buf[uint16]
-    doAssert y.data.len == 5
+  type
+    Base10Buf[T: SomeUnsignedInt] = object
+      data: array[maxLen(Base10, T), byte]
+      len: int8
+
+  var x: Base10Buf[uint32]
+  doAssert x.data.len == 10
+  var y: Base10Buf[uint16]
+  doAssert y.data.len == 5
 
 import typetraits
 

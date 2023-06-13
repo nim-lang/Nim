@@ -338,15 +338,7 @@ proc semConv(c: PContext, n: PNode; expectedType: PType = nil): PNode =
       return evaluated
     else:
       targetType = targetType.base
-  of tyUntyped:
-    if c.inGenericContext > 0:
-      # could add `and efDetermineType in flags`, but no flags param
-      result = n[1]
-      result.typ = makeTypeFromExpr(c, result.copyTree)
-      return
-    else:
-      localError(c.config, n.info, "illegal type conversion to '$1'" % typeToString(targetType))
-  of tyAnything, tyTyped:
+  of tyAnything, tyUntyped, tyTyped:
     localError(c.config, n.info, "illegal type conversion to '$1'" % typeToString(targetType))
   else: discard
 
