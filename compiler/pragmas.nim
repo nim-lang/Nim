@@ -629,7 +629,7 @@ proc pragmaEmit(c: PContext, n: PNode) =
     if n1.kind == nkBracket:
       var b = newNodeI(nkBracket, n1.info, n1.len)
       for i in 0..<n1.len:
-        b[i] = c.semExpr(c, n1[i])
+        b[i] = c.semExprWithType(c, n1[i], {efTypeAllowed})
       n[1] = b
     else:
       n[1] = c.semConstExpr(c, n1)
