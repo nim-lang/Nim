@@ -1542,7 +1542,7 @@ proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
 
   # source https://webspace.science.uu.nl/~gent0113/calendar/isocalendar.htm
   let d = isoweek * 7 + weekday.int - initDateTime(4, mJan, isoyear.int, 00, 00, 00, zone).weekday.int - 4
-  initDateTime(1, mJan, isoyear.int, hour, minute, second, nanosecond, zone) + initDuration(days=d)
+  initDateTime(1, mJan, isoyear.int, hour, minute, second, nanosecond, zone) + initTimeInterval(days=d)
 
 proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
