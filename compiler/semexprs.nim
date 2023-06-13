@@ -971,7 +971,8 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
 
   if result != nil:
     if result[0].kind != nkSym:
-      internalError(c.config, "semOverloadedCallAnalyseEffects")
+      if not (efDetermineType in flags and c.inGenericContext > 0):
+        internalError(c.config, "semOverloadedCallAnalyseEffects")
       return
     let callee = result[0].sym
     case callee.kind
@@ -1007,6 +1008,8 @@ proc setGenericParams(c: PContext, n: PNode) =
 proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   if efNoSemCheck notin flags and n.typ != nil and n.typ.kind == tyError:
     return errorNode(c, n)
+  if n.typ != nil and n.typ.kind == tyFromExpr and c.inGenericContext > 0:
+    return n
 
   result = n
 

@@ -1837,7 +1837,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # proc foo(T: typedesc, x: T)
       # when `f` is an unresolved typedesc, `a` could be any
       # type, so we should not perform this check earlier
-      if a.kind != tyTypeDesc:
+      if c.c.inGenericContext > 0 and
+          a.skipTypes({tyTypeDesc}).kind == tyGenericParam:
+        # generic type bodies can sometimes compile call expressions
+        # prevent unresolved generic parameters from being passed to procs as
+        # typedesc parameters
+        result = isNone
+      elif a.kind != tyTypeDesc:
         if a.kind == tyGenericParam and tfWildcard in a.flags:
           # TODO: prevent `a` from matching as a wildcard again
           result = isGeneric
