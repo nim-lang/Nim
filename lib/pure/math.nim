@@ -761,7 +761,17 @@ when not defined(js): # C
       doAssert -6.5 mod  2.5 == -1.5
       doAssert  6.5 mod -2.5 ==  1.5
       doAssert -6.5 mod -2.5 == -1.5
+  
+  func divmod*(x, y: clonglong): (clonglong, clonglong) {.importc: "lldiv".}
+  func divmod*(x, y: int32): (int32, int32) {.importc: "div".}
+  func divmod*(x, y: int): (int, int) {.importc: "ldiv".} = 
+    ## Specialized instructions for computing both division and modulus.
+    ## Return structure is: (quotient, remainder)
+    runnableExamples:
+      doAssert divmod(5, 2) ==  (2, 1)
+      doAssert divmod(5, -3) == (-1, 2)
 
+  
 else: # JS
   func hypot*(x, y: float32): float32 {.importc: "Math.hypot", varargs, nodecl.}
   func hypot*(x, y: float64): float64 {.importc: "Math.hypot", varargs, nodecl.}
@@ -793,6 +803,14 @@ else: # JS
       doAssert -6.5 mod  2.5 == -1.5
       doAssert  6.5 mod -2.5 ==  1.5
       doAssert -6.5 mod -2.5 == -1.5
+  
+  func divmod*(num, denom: int): (int, int) = 
+    runnableExamples:
+      doAssert  divmod(5, 2) ==  (2, 1)
+      doAssert divmod(5, -3) == (-1, 2)
+    result[0] = (num / denom).floor
+    result[1] = num mod denom
+  
 
 func round*[T: float32|float64](x: T, places: int): T =
   ## Decimal rounding on a binary floating point number.
