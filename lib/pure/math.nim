@@ -664,6 +664,15 @@ when not defined(js): # C
       doAssert ceil(2.9)  == 3.0
       doAssert ceil(-2.1) == -2.0
 
+  func divmod*(x, y: clonglong): (clonglong, clonglong) {.importc: "lldiv".}
+  func divmod*(x, y: int32): (int32, int32) {.importc: "div".}
+  func divmod*(x, y: int): (int, int) {.importc: "ldiv".} = 
+    ## Specialized instructions for computing both division and modulus.
+    ## Return structure is: (quotient, remainder)
+    runnableExamples:
+      doAssert divmod(5, 2) ==  (2, 1)
+      doAssert divmod(5, -3) == (-1, 2)
+
   when windowsCC89:
     # MSVC 2010 don't have trunc/truncf
     # this implementation was inspired by Go-lang Math.Trunc
@@ -761,17 +770,7 @@ when not defined(js): # C
       doAssert -6.5 mod  2.5 == -1.5
       doAssert  6.5 mod -2.5 ==  1.5
       doAssert -6.5 mod -2.5 == -1.5
-  
-  func divmod*(x, y: clonglong): (clonglong, clonglong) {.importc: "lldiv".}
-  func divmod*(x, y: int32): (int32, int32) {.importc: "div".}
-  func divmod*(x, y: int): (int, int) {.importc: "ldiv".} = 
-    ## Specialized instructions for computing both division and modulus.
-    ## Return structure is: (quotient, remainder)
-    runnableExamples:
-      doAssert divmod(5, 2) ==  (2, 1)
-      doAssert divmod(5, -3) == (-1, 2)
 
-  
 else: # JS
   func hypot*(x, y: float32): float32 {.importc: "Math.hypot", varargs, nodecl.}
   func hypot*(x, y: float64): float64 {.importc: "Math.hypot", varargs, nodecl.}
