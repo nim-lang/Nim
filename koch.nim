@@ -169,7 +169,7 @@ proc bundleAtlasExe(latest: bool, args: string) =
              options = "-d:release --noNimblePath " & args)
 
 proc bundleNimsuggest(args: string) =
-  nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
+  nimCompileFold("Compile nimsuggest", "nimsuggest/src/nimsuggest.nim",
                  options = "-d:danger " & args)
 
 proc buildVccTool(args: string) =
