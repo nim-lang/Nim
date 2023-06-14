@@ -2203,7 +2203,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     let ff = skipTypes(f, abstractVar-{tyTypeDesc})
     if (ff.kind == tyTuple or
       (arg.typ != nil and skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple)) and
-      m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}:
+      m.calleeSym != nil and m.calleeSym.kind == skTemplate:
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isNone:
     # do not do this in ``typeRel`` as it then can't infer T in ``ref T``:
