@@ -1932,7 +1932,26 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
     else:
       result.typ = errorType(c)
   else:
-    result.typ = f.skipTypes({tySink, tyVar})
+    result.typ = f.skipTypes({tySink})
+  if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
+  result.add c.graph.emptyNode
+  result.add arg
+
+proc implicitTupleConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
+                  c: PContext): PNode =
+  result = newNodeI(kind, arg.info)
+  if containsGenericType(f):
+    if not m.hasFauxMatch:
+      result.typ = getInstantiatedType(c, arg, m, f).skipTypes({tySink})
+    else:
+      result.typ = errorType(c)
+  else:
+    let ff = f.skipTypes({tySink})
+    if arg.typ.kind == tyVar:
+      result.typ = toVar(ff, tyVar, c.idgen)
+    else:
+      result.typ = ff.skipTypes({tyVar})
+
   if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
   result.add c.graph.emptyNode
   result.add arg
@@ -2201,10 +2220,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     inc(m.exactMatches)
     result = arg
     let ff = skipTypes(f, abstractVar-{tyTypeDesc})
-    if (ff.kind == tyTuple or
-      (arg.typ != nil and skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple)) and
-      m.calleeSym != nil and m.calleeSym.kind == skTemplate:
-      result = implicitConv(nkHiddenSubConv, f, arg, m, c)
+    if ff.kind == tyTuple or
+      (arg.typ != nil and skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple):
+      result = implicitTupleConv(nkHiddenSubConv, f, arg, m, c)
   of isNone:
     # do not do this in ``typeRel`` as it then can't infer T in ``ref T``:
     if a.kind in {tyProxy, tyUnknown}:
