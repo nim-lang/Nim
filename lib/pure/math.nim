@@ -815,7 +815,7 @@ else: # JS
     runnableExamples:
       doAssert  divmod(5, 2) ==  (2, 1)
       doAssert divmod(5, -3) == (-1, 2)
-    result[0] = (num / denom).floor
+    result[0] = num div denom
     result[1] = num mod denom
   
 
