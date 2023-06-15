@@ -1934,7 +1934,7 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
   else:
     let ff = f.skipTypes({tySink})
     # keep varness
-    if arg.typ.kind == tyVar:
+    if arg.typ != nil and arg.typ.kind == tyVar:
       result.typ = toVar(ff, tyVar, c.idgen)
     else:
       result.typ = ff.skipTypes({tyVar})
