@@ -258,7 +258,7 @@
 
 - `strutils.split` and `strutils.rsplit` now forbid an empty separator.
 
-- Relative imports will not resolve to stdlib anymore, e.g. `import ./tables` now reports an error properly.
+- Relative imports will not resolve to searched paths anymore, e.g. `import ./tables` now reports an error properly.
 
 ## Standard library additions and changes
 

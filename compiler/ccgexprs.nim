@@ -754,8 +754,6 @@ proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
       tfVarIsPtr notin skipTypes(typ, abstractInstOwned).flags
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc) =
-  assert e[0].kind notin {nkBlockExpr, nkBlockStmt}, "it should have been transformed in transf"
-
   let mt = mapType(p.config, e[0].typ, mapTypeChooser(e[0]) == skParam)
   if mt in {ctArray, ctPtrToArray} and lfEnforceDeref notin d.flags:
     # XXX the amount of hacks for C's arrays is incredible, maybe we should
