@@ -22,7 +22,7 @@ block:
     FakeTokTypeRange = range[k2..k101]
     FakeTokTypes = set[FakeTokTypeRange]
     Foo = object
-      field: set[Bar] ##6259
+      field: set[Bar] #Bug: 6259
     Bar = enum
       bar1, bar2, bar3
 
