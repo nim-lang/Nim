@@ -39,7 +39,7 @@ proc setResult*(a: VmArgs; v: seq[string]) =
   for x in v: n.add newStrNode(nkStrLit, x)
   a.slots[a.ra].node = n
 
-proc setResult*[T:BiggestInt](a: VmArgs; v: (T,T)) =
+proc setResult*[T: BiggestInt](a: VmArgs; v: (T,T)) =
   a.slots[a.ra].ensureKind(rkNode)
   var tuplen = newNode(nkTupleConstr)
   tuplen.add newIntNode(nkIntLit, v[0])

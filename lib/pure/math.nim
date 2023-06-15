@@ -663,15 +663,23 @@ when not defined(js): # C
       doAssert ceil(2.1)  == 3.0
       doAssert ceil(2.9)  == 3.0
       doAssert ceil(-2.1) == -2.0
-
-  func divmod*(x, y: clonglong): (clonglong, clonglong) {.importc: "lldiv".}
-  func divmod*(x, y: int32): (int32, int32) {.importc: "div".}
-  func divmod*(x, y: int): (int, int) {.importc: "ldiv".} = 
+  
+  type
+    div_t {.importc, header: "<stdlib.h>".} = object
+    ldiv_t {.importc, header: "<stdlib.h>".} = object
+    lldiv_t {.importc, header: "<stdlib.h>".} = object
+  
+  func divmod_c(x, y: clonglong): lldiv_t {.importc: "lldiv", header: "<stdlib.h>".}
+  func divmod_c(x, y: int32): div_t {.importc: "div", header: "<stdlib.h>".}
+  func divmod_c(x, y: int): ldiv_t {.importc: "ldiv", header: "<stdlib.h>".}
+  
+  func divmod*[T: SomeInteger](x, y: T): (T, T)  = 
     ## Specialized instructions for computing both division and modulus.
     ## Return structure is: (quotient, remainder)
     runnableExamples:
       doAssert divmod(5, 2) ==  (2, 1)
       doAssert divmod(5, -3) == (-1, 2)
+    return cast[(T,T)](divmod_c(x, y))
 
   when windowsCC89:
     # MSVC 2010 don't have trunc/truncf
