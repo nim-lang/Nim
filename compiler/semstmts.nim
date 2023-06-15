@@ -1498,7 +1498,9 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         obj.flags.incl sfPure
       obj.typ = objTy
       objTy.sym = obj
-
+  for sk in c.skipTypes:
+    discard semTypeNode(c, sk, nil)
+  c.skipTypes = @[]
 proc checkForMetaFields(c: PContext; n: PNode) =
   proc checkMeta(c: PContext; n: PNode; t: PType) =
     if t != nil and t.isMetaType and tfGenericTypeParam notin t.flags:
@@ -1565,7 +1567,6 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         # fix bug #5170, bug #17162, bug #15526: ensure locally scoped types get a unique name:
         if s.typ.kind in {tyEnum, tyRef, tyObject} and not isTopLevel(c):
           incl(s.flags, sfGenSym)
-
   #instAllTypeBoundOp(c, n.info)
 
 
