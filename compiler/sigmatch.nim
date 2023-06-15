@@ -2162,7 +2162,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isSubrange:
     inc(m.subtypeMatches)
-    result = implicitConv(nkHiddenStdConv, f, arg, m, c)
+    if f.kind in {tyVar}:
+      result = arg
+    else:
+      result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isInferred, isInferredConvertible:
     if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
       result = c.semInferredLambda(c, m.bindings, arg)
