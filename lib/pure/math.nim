@@ -77,6 +77,28 @@ when defined(c) or defined(cpp):
       importc: "frexpf", header: "<math.h>".}
   func c_frexp2(x: cdouble, exponent: var cint): cdouble {.
       importc: "frexp", header: "<math.h>".}
+  
+  type
+    div_t {.importc, header: "<stdlib.h>".} = object
+    ldiv_t {.importc, header: "<stdlib.h>".} = object
+    lldiv_t {.importc, header: "<stdlib.h>".} = object
+  
+  when(cint isnot clong):
+    func divmod_c(x, y: cint): div_t {.importc: "div", header: "<stdlib.h>".}
+  when(clong isnot clonglong):
+    func divmod_c(x, y: clonglong): lldiv_t {.importc: "lldiv", header: "<stdlib.h>".}
+  func divmod_c(x, y: clong): ldiv_t {.importc: "ldiv", header: "<stdlib.h>".}
+  proc divmod*[T: SomeInteger](x, y: T): (T, T)  = 
+    ## Specialized instructions for computing both division and modulus.
+    ## Return structure is: (quotient, remainder)
+    runnableExamples:
+      doAssert divmod(5, 2) ==  (2, 1)
+      doAssert divmod(5, -3) == (-1, 2)
+    when(T is cint | clong | clonglong):
+      result = cast[(T,T)](divmod_c(x, y))
+    else:
+      result[0] = x div y
+      result[1] = x mod y
 
 func binom*(n, k: int): int =
   ## Computes the [binomial coefficient](https://en.wikipedia.org/wiki/Binomial_coefficient).
@@ -663,24 +685,6 @@ when not defined(js): # C
       doAssert ceil(2.1)  == 3.0
       doAssert ceil(2.9)  == 3.0
       doAssert ceil(-2.1) == -2.0
-  
-  type
-    div_t {.importc, header: "<stdlib.h>".} = object
-    ldiv_t {.importc, header: "<stdlib.h>".} = object
-    lldiv_t {.importc, header: "<stdlib.h>".} = object
-  
-  func divmod_c(x, y: clonglong): lldiv_t {.importc: "lldiv", header: "<stdlib.h>".}
-  when(cint isnot clong):
-    func divmod_c(x, y: cint): div_t {.importc: "div", header: "<stdlib.h>".}
-  func divmod_c(x, y: clong): ldiv_t {.importc: "ldiv", header: "<stdlib.h>".}
-  
-  func divmod*[T: SomeInteger](x, y: T): (T, T)  = 
-    ## Specialized instructions for computing both division and modulus.
-    ## Return structure is: (quotient, remainder)
-    runnableExamples:
-      doAssert divmod(5, 2) ==  (2, 1)
-      doAssert divmod(5, -3) == (-1, 2)
-    return cast[(T,T)](divmod_c(x, y))
 
   when windowsCC89:
     # MSVC 2010 don't have trunc/truncf
