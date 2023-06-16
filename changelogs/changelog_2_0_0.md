@@ -256,11 +256,9 @@
   declared when they are not available on the backend. Previously it would call
   `doAssert false` at runtime despite the condition being compile-time.
 
-- Pragma `{.inline.}` generates `__forceinline` if `__has_attribute(__forceinline)` for GCC and Clang.
-
 - `strutils.split` and `strutils.rsplit` now forbid an empty separator.
 
-- Relative imports will not resolve to stdlib anymore, e.g. `import ./tables` now reports an error properly.
+- Relative imports will not resolve to searched paths anymore, e.g. `import ./tables` now reports an error properly.
 
 ## Standard library additions and changes
 

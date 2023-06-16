@@ -166,7 +166,9 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
     addSonSkipIntLit(result, base, c.idgen)
     if base.kind in {tyGenericInst, tyAlias, tySink}: base = lastSon(base)
     if base.kind notin {tyGenericParam, tyGenericInvocation}:
-      if not isOrdinalType(base, allowEnumWithHoles = true):
+      if base.kind == tyForward:
+        c.skipTypes.add n
+      elif not isOrdinalType(base, allowEnumWithHoles = true):
         localError(c.config, n.info, errOrdinalTypeExpected % typeToString(base, preferDesc))
       elif lengthOrd(c.config, base) > MaxSetElements:
         localError(c.config, n.info, errSetTooBig)
@@ -865,14 +867,15 @@ proc skipGenericInvocation(t: PType): PType {.inline.} =
     result = lastSon(result)
 
 proc tryAddInheritedFields(c: PContext, check: var IntSet, pos: var int,
-                        obj: PType, n: PNode, isPartial = false): bool =
-  if (not isPartial) and (obj.kind notin {tyObject, tyGenericParam} or tfFinal in obj.flags):
+                        obj: PType, n: PNode, isPartial = false, innerObj: PType = nil): bool =
+  if ((not isPartial) and (obj.kind notin {tyObject, tyGenericParam} or tfFinal in obj.flags)) or
+    (innerObj != nil and obj.sym.id == innerObj.sym.id):
     localError(c.config, n.info, "Cannot inherit from: '" & $obj & "'")
     result = false
   elif obj.kind == tyObject:
     result = true
     if (obj.len > 0) and (obj[0] != nil):
-      result = result and tryAddInheritedFields(c, check, pos, obj[0].skipGenericInvocation, n)
+      result = result and tryAddInheritedFields(c, check, pos, obj[0].skipGenericInvocation, n, false, obj)
     addInheritedFieldsAux(c, check, pos, obj.n)
   else:
     result = true
@@ -905,6 +908,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
           if not tryAddInheritedFields(c, check, pos, concreteBase, n):
             return newType(tyError, nextTypeId c.idgen, result.owner)
 
+      elif concreteBase.kind == tyForward:
+        c.skipTypes.add n #we retry in the final pass
       else:
         if concreteBase.kind != tyError:
           localError(c.config, n[1].info, "inheritance only works with non-final objects; " &
