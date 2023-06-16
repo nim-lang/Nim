@@ -206,7 +206,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
         illFormedAst(x, c.c.config)
     let ident = getIdentNode(c, x)
     if not isTemplParam(c, ident):
-      c.toInject.incl(x.ident.id)
+      if k != skField: c.toInject.incl(x.ident.id)
     else:
       replaceIdentBySym(c.c, n, ident)
   else:
