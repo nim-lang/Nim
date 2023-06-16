@@ -685,6 +685,7 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   result.semOperand = semOperand
   result.semConstBoolExpr = semConstBoolExpr
   result.semOverloadedCall = semOverloadedCall
+  result.afterCallActions = afterCallActions
   result.semInferredLambda = semInferredLambda
   result.semGenerateInstance = generateInstance
   result.semTypeNode = semTypeNode

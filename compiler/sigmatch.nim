@@ -1993,6 +1993,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       else:
         param = copyTree(arg)
       result.add param
+      result = c.afterCallActions(c, result, arg, {})
 
       if dest.kind in {tyVar, tyLent}:
         dest.flags.incl tfVarIsPtr

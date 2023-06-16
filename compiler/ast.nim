@@ -1924,7 +1924,7 @@ proc isRoutine*(s: PSym): bool {.inline.} =
 
 proc isCompileTimeProc*(s: PSym): bool {.inline.} =
   result = s.kind == skMacro or
-           s.kind in {skProc, skFunc} and sfCompileTime in s.flags
+           s.kind in {skProc, skFunc, skConverter} and sfCompileTime in s.flags
 
 proc hasPattern*(s: PSym): bool {.inline.} =
   result = isRoutine(s) and s.ast[patternPos].kind != nkEmpty

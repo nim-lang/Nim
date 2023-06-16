@@ -597,7 +597,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
         result = copyTree(s.astdef)
         if result != nil:
           result.info = n.info
-    of skProc, skFunc, skMethod:
+    of skProc, skFunc, skMethod, skConverter:
       result = n
     of skParam:
       if s.typ != nil and s.typ.kind == tyTypeDesc:
