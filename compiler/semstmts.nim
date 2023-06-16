@@ -2299,6 +2299,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)
 
+  if n.kind in { nkLambda } and s.typ != nil and s.typ.len > 0 and s.typ[0] != nil and
+   s.typ[0].kind == tyAnything: 
+      let res = tryExpr(c, n[bodyPos], flags = {efPreferNilResult, efDetermineType, efPreferStatic})
+      if res != nil and isEmptyType(res.typ):
+        s.typ[0] = nil
+        
   closeScope(c)           # close scope for parameters
   # c.currentScope = oldScope
   popOwner(c)
