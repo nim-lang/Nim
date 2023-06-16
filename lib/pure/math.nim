@@ -88,7 +88,7 @@ when defined(c) or defined(cpp):
   when(clong isnot clonglong):
     func divmod_c(x, y: clonglong): lldiv_t {.importc: "lldiv", header: "<stdlib.h>".}
   func divmod_c(x, y: clong): ldiv_t {.importc: "ldiv", header: "<stdlib.h>".}
-  proc divmod*[T: SomeInteger](x, y: T): (T, T)  = 
+  func divmod*[T: SomeInteger](x, y: T): (T, T) {. inline .} = 
     ## Specialized instructions for computing both division and modulus.
     ## Return structure is: (quotient, remainder)
     runnableExamples:
