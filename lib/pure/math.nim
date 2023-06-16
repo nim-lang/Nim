@@ -83,19 +83,19 @@ when defined(c) or defined(cpp):
     ldiv_t {.importc, header: "<stdlib.h>".} = object
     lldiv_t {.importc, header: "<stdlib.h>".} = object
   
-  when(cint isnot clong):
+  when cint isnot clong:
     func divmod_c(x, y: cint): div_t {.importc: "div", header: "<stdlib.h>".}
-  when(clong isnot clonglong):
+  when clong isnot clonglong:
     func divmod_c(x, y: clonglong): lldiv_t {.importc: "lldiv", header: "<stdlib.h>".}
   func divmod_c(x, y: clong): ldiv_t {.importc: "ldiv", header: "<stdlib.h>".}
-  func divmod*[T: SomeInteger](x, y: T): (T, T) {. inline .} = 
+  func divmod*[T: SomeInteger](x, y: T): (T, T) {.inline.} = 
     ## Specialized instructions for computing both division and modulus.
     ## Return structure is: (quotient, remainder)
     runnableExamples:
-      doAssert divmod(5, 2) ==  (2, 1)
+      doAssert divmod(5, 2) == (2, 1)
       doAssert divmod(5, -3) == (-1, 2)
-    when(T is cint | clong | clonglong):
-      result = cast[(T,T)](divmod_c(x, y))
+    when T is cint | clong | clonglong:
+      result = cast[(T ,T)](divmod_c(x, y))
     else:
       result[0] = x div y
       result[1] = x mod y
