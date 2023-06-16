@@ -2681,14 +2681,29 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
   if not handleConstExpr(p, n, d):
     let t = n.typ
     discard getTypeDesc(p.module, t) # so that any fields are initialized
-    if d.k == locNone: getTemp(p, t, d)
+
+    var tmp: TLoc
+    # bug #16331
+    let doesAlias = lhsDoesAlias(d.lode, n)
+    let dest = if doesAlias: addr(tmp) else: addr(d)
+    if doesAlias:
+      getTemp(p, n.typ, tmp)
+    elif d.k == locNone:
+      getTemp(p, n.typ, d)
+
     for i in 0..<n.len:
       var it = n[i]
       if it.kind == nkExprColonExpr: it = it[1]
-      initLoc(rec, locExpr, it, d.storage)
-      rec.r = "$1.Field$2" % [rdLoc(d), rope(i)]
+      initLoc(rec, locExpr, it, dest[].storage)
+      rec.r = "$1.Field$2" % [rdLoc(dest[]), rope(i)]
       rec.flags.incl(lfEnforceDeref)
       expr(p, it, rec)
+
+    if doesAlias:
+      if d.k == locNone:
+        d = tmp
+      else:
+        genAssignment(p, d, tmp, {})
 
 proc isConstClosure(n: PNode): bool {.inline.} =
   result = n[0].kind == nkSym and isRoutine(n[0].sym) and
