@@ -21,4 +21,4 @@ block: # issue #7209
   proc `+`[A; M: static[A]](x, y: Modulo[A, M]): Modulo[A, M] =
     (A(x) + A(y)).modulo(M)
 
-  doAssert (3.modulo(7) + 5.modulo(7)) == "1 mod 7"
+  doAssert $(3.modulo(7) + 5.modulo(7)) == "1 mod 7"
