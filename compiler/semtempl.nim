@@ -186,11 +186,12 @@ proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
   incl(result.flags, sfShadowed)
 
 proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
-  # locals default to 'gensym':
-  if n.kind == nkPragmaExpr and symBinding(n[1]) == spInject:
+  # locals default to 'gensym', fields default to 'inject':
+  if (n.kind == nkPragmaExpr and symBinding(n[1]) == spInject) or
+      k == skField:
     # even if injected, don't produce a sym choice here:
     #n = semTemplBody(c, n)
-    var x = n[0]
+    var x = n
     while true:
       case x.kind
       of nkPostfix: x = x[1]
@@ -488,7 +489,16 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result = semTemplBodySons(c, n)
     closeScope(c)
   of nkRecList:
-    semTemplSomeDecl(c, n, skField)
+    for i in 0..<n.len:
+      var a = n[i]
+      case a.kind:
+      of nkCommentStmt, nkNilLit, nkSym, nkEmpty: continue
+      of nkIdentDefs:
+        semTemplIdentDef(c, a, skField)
+      of nkRecCase, nkRecWhen:
+        n[i] = semTemplBody(c, a)
+      else:
+        illFormedAst(a, c.c.config)
   of nkRecCase:
     semTemplIdentDef(c, n[0], skField)
     for i in 1..<n.len:
