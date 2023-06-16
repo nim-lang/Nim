@@ -326,21 +326,24 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   # close scope for parameters
   closeScope(c)
 
+proc semTemplIdentDef(c: var TemplCtx, a: PNode, symKind: TSymKind) =
+  checkMinSonsLen(a, 3, c.c.config)
+  when defined(nimsuggest):
+    inc c.c.inTypeContext
+  a[^2] = semTemplBody(c, a[^2])
+  when defined(nimsuggest):
+    dec c.c.inTypeContext
+  a[^1] = semTemplBody(c, a[^1])
+  for j in 0..<a.len-2:
+    addLocalDecl(c, a[j], symKind)
+
 proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start = 0) =
   for i in start..<n.len:
     var a = n[i]
     case a.kind:
     of nkCommentStmt: continue
     of nkIdentDefs, nkVarTuple, nkConstDef:
-      checkMinSonsLen(a, 3, c.c.config)
-      when defined(nimsuggest):
-        inc c.c.inTypeContext
-      a[^2] = semTemplBody(c, a[^2])
-      when defined(nimsuggest):
-        dec c.c.inTypeContext
-      a[^1] = semTemplBody(c, a[^1])
-      for j in 0..<a.len-2:
-        addLocalDecl(c, a[j], symKind)
+      semTemplIdentDef(c, a, symKind)
     else:
       illFormedAst(a, c.c.config)
 
@@ -480,6 +483,16 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         closeScope(c)
       else:
         a[2] = semTemplBody(c, a[2])
+  of nkObjectTy:
+    openScope(c)
+    result = semTemplBodySons(c, n)
+    closeScope(c)
+  of nkRecList:
+    semTemplSomeDecl(c, n, skField)
+  of nkRecCase:
+    semTemplIdentDef(c, n[0], skField)
+    for i in 1..<n.len:
+      n[i] = semTemplBody(c, n[i])
   of nkProcDef, nkLambdaKinds:
     result = semRoutineInTemplBody(c, n, skProc)
   of nkFuncDef:
