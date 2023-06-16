@@ -670,8 +670,9 @@ when not defined(js): # C
     lldiv_t {.importc, header: "<stdlib.h>".} = object
   
   func divmod_c(x, y: clonglong): lldiv_t {.importc: "lldiv", header: "<stdlib.h>".}
-  func divmod_c(x, y: int32): div_t {.importc: "div", header: "<stdlib.h>".}
-  func divmod_c(x, y: int): ldiv_t {.importc: "ldiv", header: "<stdlib.h>".}
+  when(cint isnot clong):
+    func divmod_c(x, y: cint): div_t {.importc: "div", header: "<stdlib.h>".}
+  func divmod_c(x, y: clong): ldiv_t {.importc: "ldiv", header: "<stdlib.h>".}
   
   func divmod*[T: SomeInteger](x, y: T): (T, T)  = 
     ## Specialized instructions for computing both division and modulus.
