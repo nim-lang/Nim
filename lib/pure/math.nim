@@ -80,8 +80,14 @@ when defined(c) or defined(cpp):
   
   type
     div_t {.importc, header: "<stdlib.h>".} = object
+      quot: cint
+      rem: cint
     ldiv_t {.importc, header: "<stdlib.h>".} = object
+      quot: clong
+      rem: clong
     lldiv_t {.importc, header: "<stdlib.h>".} = object
+      quot: clonglong
+      rem: clonglong
   
   when cint isnot clong:
     func divmod_c(x, y: cint): div_t {.importc: "div", header: "<stdlib.h>".}
@@ -95,7 +101,9 @@ when defined(c) or defined(cpp):
       doAssert divmod(5, 2) == (2, 1)
       doAssert divmod(5, -3) == (-1, 2)
     when T is cint | clong | clonglong:
-      result = cast[(T ,T)](divmod_c(x, y))
+      let res = divmod_c(x, y)
+      result[0] = res.quot
+      result[1] = res.rem
     else:
       result[0] = x div y
       result[1] = x mod y
