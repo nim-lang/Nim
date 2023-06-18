@@ -13,7 +13,12 @@ import algorithm
 import tables
 import times
 
-import ../dist/checksums/src/checksums/sha1
+template tryImport(module) = import module
+
+when compiles tryImport ../dist/checksums/src/checksums/sha1:
+  import ../dist/checksums/src/checksums/sha1
+else:
+  import checksums/sha1
 
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
