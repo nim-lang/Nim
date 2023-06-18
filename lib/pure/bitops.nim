@@ -27,7 +27,7 @@
 
 import macros
 import std/private/since
-from std/private/bitops_utils import forwardImpl
+from std/private/bitops_utils import forwardImpl, castToUnsigned
 
 func bitnot*[T: SomeInteger](x: T): T {.magic: "BitnotI".}
   ## Computes the `bitwise complement` of the integer `x`.
