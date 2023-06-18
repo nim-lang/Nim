@@ -223,7 +223,7 @@ proc parseIdent*(s: openArray[char], ident: var string): int =
   if i < s.len and s[i] in IdentStartChars:
     inc(i)
     while i < s.len and s[i] in IdentChars: inc(i)
-    ident = substr(s.toOpenArray(0, i-1))
+    ident = substr($s.toOpenArray(0, i-1))
     result = i
 
 proc parseIdent*(s: openArray[char]): string =
@@ -239,7 +239,7 @@ proc parseIdent*(s: openArray[char]): string =
   if i < s.len and s[i] in IdentStartChars:
     inc(i)
     while i < s.len and s[i] in IdentChars: inc(i)
-    result = substr(s.toOpenArray(0, i - 1))
+    result = substr($s.toOpenArray(0, i - 1))
 
 proc parseChar*(s: openArray[char], c: var char): int =
   ## Parses a single character, stores it in `c` and returns 1.
@@ -701,7 +701,7 @@ iterator interpolatedFragments*(s: openArray[char]): tuple[kind: InterpolatedKin
             else: discard
             inc j
           raise newException(ValueError,
-            "Expected closing '}': " & substr(s.toOpenArray(i, s.high)))
+            "Expected closing '}': " & substr($s.toOpenArray(i, s.high)))
         inc i, 2 # skip ${
         kind = ikExpr
       elif j+1 < s.len and s[j+1] in IdentStartChars:
@@ -715,13 +715,13 @@ iterator interpolatedFragments*(s: openArray[char]): tuple[kind: InterpolatedKin
         kind = ikDollar
       else:
         raise newException(ValueError,
-          "Unable to parse a variable name at " & substr(s.toOpenArray(i, s.high)))
+          "Unable to parse a variable name at " & substr($s.toOpenArray(i, s.high)))
     else:
       while j < s.len and s[j] != '$': inc j
       kind = ikStr
     if j > i:
       # do not copy the trailing } for ikExpr:
-      yield (kind, substr(s.toOpenArray(i, j-1-ord(kind == ikExpr))))
+      yield (kind, substr($s.toOpenArray(i, j-1-ord(kind == ikExpr))))
     else:
       break
     i = j
