@@ -38,7 +38,7 @@ template createCb(retFutureSym, iteratorNameSym,
         else:
           {.gcsafe.}:
             next.addCallback cast[proc() {.closure, gcsafe.}](identName)
-    except:
+    except CatchableError:
       futureVarCompletions
       if retFutureSym.finished:
         # Take a look at tasyncexceptions for the bug which this fixes.
