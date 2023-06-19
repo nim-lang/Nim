@@ -2808,6 +2808,6 @@ proc nimArrayWith[T](y: T, size: static int): array[size, T] {.compilerRtl, rais
 
 
 since (1, 9):
-  when notJSnotNims and hasThreadSupport and arcLikeMem and not declared(isUniqueRef):
+  when notJSnotNims and hasThreadSupport and hasAlloc and arcLikeMem and not declared(isUniqueRef):
     from system/arc import isUniqueRef
     export isUniqueRef
