@@ -2808,6 +2808,6 @@ proc nimArrayWith[T](y: T, size: static int): array[size, T] {.compilerRtl, rais
 
 
 since (1, 9):
-  when not defined(nimscript) and not defined(js) and defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+  when not defined(nimscript) and not defined(js) and not declared(isUniqueRef) and defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
     from std/system/arc import isUniqueRef
     export isUniqueRef
