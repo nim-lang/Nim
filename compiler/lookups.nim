@@ -624,6 +624,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
       elif n[1].kind == nkSym:
         result = n[1].sym
         if result.owner != nil and result.owner != m and checkUndeclared in flags:
+          # dotExpr in templates can end up here
           result = errorUndeclaredIdentifierHint(c, n[1], considerQuotedIdent(c, n[1]))
       elif checkUndeclared in flags and
            n[1].kind notin {nkOpenSymChoice, nkClosedSymChoice}:
