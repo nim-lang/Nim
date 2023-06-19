@@ -186,7 +186,15 @@ template main() =
     when not defined(nimTmathCase2):
       doAssert classify(trunc(f_nan.float32)) == fcNan
     doAssert classify(trunc(0.0'f32)) == fcZero
-
+  
+  block: # divmod
+    doAssert divmod(int.high, 1) == (int.high, 0)
+    doAssert divmod(-1073741823, 17) == (-63161283, -12)
+    when not defined(js):
+      doAssert divmod(int32.high, 1.int32) == (int32.high, 0.int32)
+      doAssert divmod(1073741823.int32, 5.int32) == (214748364.int32, 3.int32)
+      doAssert divmod(4611686018427387903.int64, 5.int64) == (922337203685477580.int64, 3.int64)
+  
   block: # log
     doAssert log(4.0, 3.0) ==~ ln(4.0) / ln(3.0)
     doAssert log2(8.0'f64) == 3.0'f64

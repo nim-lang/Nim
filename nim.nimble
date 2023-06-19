@@ -1,7 +1,7 @@
 include "lib/system/compilation.nim"
 version = $NimMajor & "." & $NimMinor & "." & $NimPatch
 author = "Andreas Rumpf"
-description = "Compiler package providing the compiler sources as a library."
+description = "Nim package providing the compiler binary"
 license = "MIT"
 
 bin = @["compiler/nim", "nimsuggest/nimsuggest"]

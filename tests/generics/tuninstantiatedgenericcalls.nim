@@ -70,3 +70,11 @@ block thardcases:
     doAssert high(f2.data3) == 4 # length of int8
 
     doAssert f2.data3[0] is float
+
+import muninstantiatedgenericcalls
+
+block:
+  var x: Leb128Buf[uint32]
+  doAssert x.data.len == 5
+  var y: Leb128Buf[uint16]
+  doAssert y.data.len == 3

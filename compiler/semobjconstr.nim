@@ -376,7 +376,9 @@ proc semConstructTypeAux(c: PContext,
     if status in {initPartial, initNone, initUnknown}:
       discard collectMissingFields(c, t.n, constrCtx, result.defaults)
     let base = t[0]
-    if base == nil: break
+    if base == nil or base.id == t.id or 
+      base.kind in { tyRef, tyPtr } and base[0].id == t.id: 
+        break
     t = skipTypes(base, skipPtrs)
     if t.kind != tyObject:
       # XXX: This is not supposed to happen, but apparently

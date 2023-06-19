@@ -84,28 +84,19 @@ __AVR__
 #  define __DECLSPEC_SUPPORTED 1
 #endif
 
-
-/* Calling conventions and inline attributes for the supported C compilers */
-#if defined(__GNUC__) || defined(__clang__)  /* GCC and Clang */
-#  if __has_attribute(__forceinline)
-#    define N_INLINE(rettype, name) __attribute__((__forceinline)) rettype name
-#  else
-#    define N_INLINE(rettype, name) inline rettype name
-#  endif
-#elif defined(_MSC_VER)  /* MSVC */
-#  if _MSC_VER > 1200
-#    define N_INLINE(rettype, name) __forceinline rettype name
-#  else
-#    define N_INLINE(rettype, name) inline rettype name
-#  endif
-#elif defined(__TINYC__) || defined(__BORLANDC__)  /* TinyC and BorlandC */
-#  define N_INLINE(rettype, name) __inline rettype name
-#elif defined(__AVR__)  /* Atmel Advanced Virtual RISC */
+/* calling convention mess ----------------------------------------------- */
+#if defined(__GNUC__) || defined(__TINYC__)
+  /* these should support C99's inline */
 #  define N_INLINE(rettype, name) inline rettype name
-#else  /* Unsupported C compilers */
-#  define N_INLINE(rettype, name) rettype name
+#elif defined(__BORLANDC__) || defined(_MSC_VER)
+/* Borland's compiler is really STRANGE here; note that the __fastcall
+   keyword cannot be before the return type, but __inline cannot be after
+   the return type, so we do not handle this mess in the code generator
+   but rather here. */
+#  define N_INLINE(rettype, name) __inline rettype name
+#else /* others are less picky: */
+#  define N_INLINE(rettype, name) rettype __inline name
 #endif
-
 
 #define N_INLINE_PTR(rettype, name) rettype (*name)
 

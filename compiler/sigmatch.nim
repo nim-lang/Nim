@@ -1932,7 +1932,13 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
     else:
       result.typ = errorType(c)
   else:
-    result.typ = f.skipTypes({tySink, tyVar})
+    result.typ = f.skipTypes({tySink})
+  # keep varness
+  if arg.typ != nil and arg.typ.kind == tyVar:
+    result.typ = toVar(result.typ, tyVar, c.idgen)
+  else:
+    result.typ = result.typ.skipTypes({tyVar})
+
   if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
   result.add c.graph.emptyNode
   result.add arg
