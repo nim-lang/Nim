@@ -2805,3 +2805,9 @@ proc nimArrayWith[T](y: T, size: static int): array[size, T] {.compilerRtl, rais
   ## Creates a new array filled with `y`.
   for i in 0..size-1:
     result[i] = y
+
+
+since (1, 9):
+  when not defined(nimscript) and not defined(js) and defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+    from std/system/arc import isUniqueRef
+    export isUniqueRef
