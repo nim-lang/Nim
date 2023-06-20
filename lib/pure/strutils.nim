@@ -2972,9 +2972,3 @@ func isEmptyOrWhitespace*(s: string): bool {.rtl,
     extern: "nsuIsEmptyOrWhitespace".} =
   ## Checks if `s` is empty or consists entirely of whitespace characters.
   result = s.allCharsInSet(Whitespace)
-
-
-since (1, 9):
-  when not defined(nimscript) and not defined(js) and defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
-    from system/strs_v2 import capacity
-    export capacity
