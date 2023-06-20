@@ -102,7 +102,7 @@ when defined(c) or defined(cpp):
       doAssert divmod(5, -3) == (-1, 2)
     when T is cint | clong | clonglong:
       when compileOption("overflowChecks"):
-        if y == 0 or (x == T.low and y == -1):
+        if y == 0 or (x == T.low and y == -1.T):
           raise new(OverflowDefect)
       let res = divmod_c(x, y)
       result[0] = res.quot
