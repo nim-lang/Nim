@@ -470,6 +470,8 @@
   As a result `nnkVarTuple` nodes in variable sections will no longer be
   reflected in `typed` AST.
 
+- Custom destructors now supports non-var parameters, e.g. `proc =destroy[T: object](x: T)` is valid.
+
 ## Compiler changes
 
 - The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the
