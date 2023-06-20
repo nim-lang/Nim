@@ -639,10 +639,10 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
     if child != nil:
       let node = newNode(nkIntLit)
       node.intVal = toInt64(lengthOrd(c.graph.config, aTypSkip))
-      result = semExpr(c, newTree(nkCall, newSymNode(getCompilerProc(c.graph, "nimArrayWith"), a.info),
-        semExprWithType(c, child),
-        node
-          ))
+      result = semExpr(c, newTree(nkCall, newSymNode(getSysSym(c.graph, a.info, "arrayWith"), a.info),
+              semExprWithType(c, child),
+              node
+                ))
       result.typ = aTyp
   elif aTypSkip.kind == tyTuple:
     var hasDefault = false

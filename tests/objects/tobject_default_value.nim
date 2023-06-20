@@ -688,6 +688,20 @@ template main {.dirty.} =
     else:
       testAssignResult()
 
+  block: # bug #22123
+    type Thing = object
+      x: float32 = 1
+
+    type ThingWithArray = object
+        arr: array[256, float32]
+        n: float32 = 1
+
+    type Container = ref object
+        thing: array[5, Thing]
+        thing_with_array: array[5, ThingWithArray]
+
+    var foo = new Container
+    doAssert int(foo.thing[0].x) == 1
 
 static: main()
 main()

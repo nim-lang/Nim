@@ -2801,13 +2801,14 @@ when notJSnotNims and not defined(nimSeqsV2):
       assert y == "abcgh"
     discard
 
-proc nimArrayWith[T](y: T, size: static int): array[size, T] {.compilerRtl, raises: [].} =
+proc arrayWith*[T](y: T, size: static int): array[size, T] {.raises: [].} =
   ## Creates a new array filled with `y`.
   for i in 0..size-1:
-    result[i] = y
+    when nimvm:
+      result[i] = y
+    else:
+      result[i] = `=dup`(y)
 
 
-since (1, 9):
-  when notJSnotNims and hasThreadSupport and hasAlloc and arcLikeMem and not declared(isUniqueRef):
-    from system/arc import isUniqueRef
-    export isUniqueRef
+when defined(nimV2):
+  include system/arc
