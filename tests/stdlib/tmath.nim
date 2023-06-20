@@ -193,13 +193,14 @@ template main() =
     doAssert divmod(int32.high, 1.int32) == (int32.high, 0.int32)
     doAssert divmod(1073741823.int32, 5.int32) == (214748364.int32, 3.int32)
     doAssert divmod(4611686018427387903.int64, 5.int64) == (922337203685477580.int64, 3.int64)
-    when not defined(js) and not compileOption("panics"):
+    when not defined(js) and (not compileOption("panics")) and compileOption("overflowChecks"):
       when nimvm:
         discard # cannot catch OverflowDefect here
       else:
         doAssertRaises(OverflowDefect, (discard divmod(cint.low, -1.cint)))
         doAssertRaises(OverflowDefect, (discard divmod(clong.low, -1.clong)))
         doAssertRaises(OverflowDefect, (discard divmod(clonglong.low, -1.clonglong)))
+        doAssertRaises(DivByZeroDefect, (discard divmod(1, 0)))
   
   block: # log
     doAssert log(4.0, 3.0) ==~ ln(4.0) / ln(3.0)
