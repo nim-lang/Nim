@@ -2811,4 +2811,5 @@ proc arrayWith*[T](y: T, size: static int): array[size, T] {.raises: [].} =
 
 
 when defined(nimV2):
-  include system/arc
+  from std/system/arc import isUniqueRef
+  export isUniqueRef
