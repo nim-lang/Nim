@@ -24,14 +24,9 @@ proc `=sink`*[T](dest: var Isolated[T]; src: Isolated[T]) {.inline.} =
   # delegate to value's sink operation
   `=sink`(dest.value, src.value)
 
-when defined(nimAllowNonVarDestructor):
-  proc `=destroy`*[T](dest: Isolated[T]) {.inline.} =
-    # delegate to value's destroy operation
-    `=destroy`(dest.value)
-else:
-  proc `=destroy`*[T](dest: var Isolated[T]) {.inline.} =
-    # delegate to value's destroy operation
-    `=destroy`(dest.value)
+proc `=destroy`*[T](dest: var Isolated[T]) {.inline.} =
+  # delegate to value's destroy operation
+  `=destroy`(dest.value)
 
 func isolate*[T](value: sink T): Isolated[T] {.magic: "Isolate".} =
   ## Creates an isolated subgraph from the expression `value`.

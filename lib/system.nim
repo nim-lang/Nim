@@ -369,6 +369,10 @@ when defined(nimAllowNonVarDestructor):
   proc `=destroy`*[T](x: T) {.inline, magic: "Destroy".} =
     ## Generic `destructor`:idx: implementation that can be overridden.
     discard
+
+  proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
+    ## Generic `destructor`:idx: implementation that can be overridden.
+    discard
 else:
   proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
     ## Generic `destructor`:idx: implementation that can be overridden.
