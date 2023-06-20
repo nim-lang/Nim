@@ -2810,6 +2810,6 @@ proc arrayWith*[T](y: T, size: static int): array[size, T] {.raises: [].} =
       result[i] = `=dup`(y)
 
 
-when defined(nimV2):
+when defined(nimV2) and hasThreadSupport:
   from system/arc import isUniqueRef
   export isUniqueRef
