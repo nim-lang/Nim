@@ -1139,3 +1139,9 @@ iterator items*[T](xs: iterator: T): T =
   ## templates.
   for x in xs():
     yield x
+
+
+since (1, 9):
+  when not defined(nimscript) and not defined(js) and defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+    from system/seqs_v2 import capacity
+    export capacity
