@@ -1828,14 +1828,52 @@ proc whereToBindTypeHook(c: PContext; t: PType): PType =
   if result.kind in {tyObject, tyDistinct, tySequence, tyString}:
     result = canonType(c, result)
 
+proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
+  let t = s.typ
+  var noError = false
+  let cond = t.len == 2 and t[0] != nil
+
+  if cond:
+    var obj = t[1]
+    while true:
+      incl(obj.flags, tfHasAsgn)
+      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.lastSon
+      elif obj.kind == tyGenericInvocation: obj = obj[0]
+      else: break
+
+    var res = t[0]
+    while true:
+      if res.kind in {tyGenericBody, tyGenericInst}: res = res.lastSon
+      elif res.kind == tyGenericInvocation: res = res[0]
+      else: break
+
+    if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, res):
+      obj = canonType(c, obj)
+      let ao = getAttachedOp(c.graph, obj, op)
+      if ao == s:
+        discard "forward declared destructor"
+      elif ao.isNil and tfCheckedForDestructor notin obj.flags:
+        setAttachedOp(c.graph, c.module.position, obj, op, s)
+      else:
+        prevDestructor(c, ao, obj, n.info)
+      noError = true
+      if obj.owner.getModule != s.getModule:
+        localError(c.config, n.info, errGenerated,
+          "type bound operation `" & s.name.s & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+
+  if not noError and sfSystemModule notin s.owner.flags:
+    localError(c.config, n.info, errGenerated,
+      "signature for '=dup' must be proc[T: object](x: T): T")
+
+  incl(s.flags, sfUsed)
+  incl(s.flags, sfOverridden)
+
 proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let t = s.typ
   var noError = false
   let cond = case op
              of {attachedDestructor, attachedWasMoved}:
                t.len == 2 and t[0] == nil and t[1].kind == tyVar
-             of attachedDup:
-               t.len == 2 and t[0] != nil
              of attachedTrace:
                t.len == 3 and t[0] == nil and t[1].kind == tyVar and t[2].kind == tyPointer
              else:
@@ -1866,9 +1904,6 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
     of attachedTrace:
       localError(c.config, n.info, errGenerated,
         "signature for '=trace' must be proc[T: object](x: var T; env: pointer)")
-    of attachedDup:
-      localError(c.config, n.info, errGenerated,
-        "signature for '=dup' must be proc[T: object](x: var T): T")
     else:
       localError(c.config, n.info, errGenerated,
         "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
@@ -1963,7 +1998,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       bindTypeHook(c, s, n, attachedWasMoved)
   of "=dup":
     if s.magic != mDup:
-      bindTypeHook(c, s, n, attachedDup)
+      bindDupHook(c, s, n, attachedDup)
   else:
     if sfOverridden in s.flags:
       localError(c.config, n.info, errGenerated,
