@@ -470,6 +470,10 @@
   As a result `nnkVarTuple` nodes in variable sections will no longer be
   reflected in `typed` AST.
 
+- C++ interoperability:
+  - New [`virtual`](https://nim-lang.github.io/Nim/manual_experimental.html#virtual-pragma) pragma added.
+  - Improvements to [`constructor`](https://nim-lang.github.io/Nim/manual_experimental.html#constructor-pragma) pragma.
+
 ## Compiler changes
 
 - The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the
