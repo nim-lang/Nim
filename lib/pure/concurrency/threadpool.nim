@@ -208,14 +208,9 @@ proc finished(fv: var FlowVarBaseObj) =
   # the worker thread waits for "data" to be set to nil before shutting down
   owner.data = nil
 
-when defined(nimAllowNonVarDestructor):
-  proc `=destroy`[T](fv: FlowVarObj[T]) =
-    finished(fv)
-    `=destroy`(fv.blob)
-else:
-  proc `=destroy`[T](fv: var FlowVarObj[T]) =
-    finished(fv)
-    `=destroy`(fv.blob)
+proc `=destroy`[T](fv: var FlowVarObj[T]) =
+  finished(fv)
+  `=destroy`(fv.blob)
 
 proc nimCreateFlowVar[T](): FlowVar[T] {.compilerproc.} =
   new(result)
