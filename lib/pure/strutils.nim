@@ -487,7 +487,7 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   ##   "22"
   ##   "08"
   ##   "08.398990"
-  ## 
+  ##
   ## .. warning:: `seps` should not be empty.
   ##
   ## See also:
@@ -592,7 +592,7 @@ iterator rsplit*(s: string, seps: set[char] = Whitespace,
   ##   "foo"
   ##
   ## Substrings are separated from the right by the set of chars `seps`.
-  ## 
+  ##
   ## .. warning:: `seps` should not be empty.
   ##
   ## See also:
@@ -620,7 +620,7 @@ iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
   ##   "foo"
   ##
   ## Substrings are separated from the right by the string `sep`.
-  ## 
+  ##
   ## .. warning:: `sep` should not be empty.
   ##
   ## See also:
@@ -2972,3 +2972,9 @@ func isEmptyOrWhitespace*(s: string): bool {.rtl,
     extern: "nsuIsEmptyOrWhitespace".} =
   ## Checks if `s` is empty or consists entirely of whitespace characters.
   result = s.allCharsInSet(Whitespace)
+
+
+since (1, 9):
+  when not defined(nimscript) and not defined(js) and defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+    from system/strs_v2 import capacity
+    export capacity
