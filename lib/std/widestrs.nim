@@ -25,7 +25,7 @@ when not (defined(cpu16) or defined(cpu8)):
         bytes: int
         data: WideCString
 
-    proc `=destroy`(a: var WideCStringObj) =
+    proc `=destroy`(a: WideCStringObj) =
       if a.data != nil:
         when compileOption("threads"):
           deallocShared(a.data)

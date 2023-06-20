@@ -1832,7 +1832,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let t = s.typ
   var noError = false
   let cond = case op
-             of {attachedDestructor, attachedWasMoved}:
+             of attachedWasMoved:
                t.len == 2 and t[0] == nil and t[1].kind == tyVar
              of attachedDup:
                t.len == 2 and t[0] != nil

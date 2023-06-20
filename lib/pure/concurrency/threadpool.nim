@@ -208,7 +208,7 @@ proc finished(fv: var FlowVarBaseObj) =
   # the worker thread waits for "data" to be set to nil before shutting down
   owner.data = nil
 
-proc `=destroy`[T](fv: var FlowVarObj[T]) =
+proc `=destroy`[T](fv: FlowVarObj[T]) =
   finished(fv)
   `=destroy`(fv.blob)
 
