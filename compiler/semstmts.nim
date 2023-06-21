@@ -1869,6 +1869,9 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
     of attachedDup:
       localError(c.config, n.info, errGenerated,
         "signature for '=dup' must be proc[T: object](x: var T): T")
+    of attachedDestructor:
+      localError(c.config, n.info, errGenerated,
+        "signature for '=destroy' must be proc[T: object](x: var T) or proc[T: object](x: T)")
     else:
       localError(c.config, n.info, errGenerated,
         "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")

@@ -127,16 +127,18 @@ other associated resources. Variables are destroyed via this hook when
 they go out of scope or when the routine they were declared in is about
 to return.
 
-The prototype of this hook for a type `T` needs to be:
+A `=destroy` hook is allowed to have a parameter of a `var T` or `T` type. The prototype of this hook for a type `T` needs to be:
 
   ```nim
   proc `=destroy`(x: var T)
+  # or
+  proc `=destroy`(x: T)
   ```
 
 The general pattern in `=destroy` looks like:
 
   ```nim
-  proc `=destroy`(x: var T) =
+  proc `=destroy`(x: var T) = # or proc `=destroy`(x: T)
     # first check if 'x' was moved to somewhere else:
     if x.field != nil:
       freeResource(x.field)
