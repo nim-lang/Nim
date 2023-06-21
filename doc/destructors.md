@@ -127,16 +127,16 @@ other associated resources. Variables are destroyed via this hook when
 they go out of scope or when the routine they were declared in is about
 to return.
 
-The prototype of this hook for a type `T` needs to be:
+A `=destroy` hook is allowed to have a parameter of a `var T` or `T` type. Taking a `var T` type is deprecated. The prototype of this hook for a type `T` needs to be:
 
   ```nim
-  proc `=destroy`(x: var T)
+  proc `=destroy`(x: T)
   ```
 
 The general pattern in `=destroy` looks like:
 
   ```nim
-  proc `=destroy`(x: var T) =
+  proc `=destroy`(x: T) =
     # first check if 'x' was moved to somewhere else:
     if x.field != nil:
       freeResource(x.field)
@@ -690,11 +690,11 @@ The ability to override a hook leads to a phase ordering problem:
     # error: destructor for 'f' called here before
     # it was seen in this module.
 
-  proc `=destroy`[T](f: var Foo[T]) =
+  proc `=destroy`[T](f: Foo[T]) =
     discard
   ```
 
-The solution is to define ``proc `=destroy`[T](f: var Foo[T])`` before
+The solution is to define ``proc `=destroy`[T](f: Foo[T])`` before
 it is used. The compiler generates implicit
 hooks for all types in *strategic places* so that an explicitly provided
 hook that comes too "late" can be detected reliably. These *strategic places*
@@ -723,7 +723,7 @@ used to specialize the object traversal in order to avoid deep recursions:
   type Tree = object
     root: Node
 
-  proc `=destroy`(t: var Tree) {.nodestroy.} =
+  proc `=destroy`(t: Tree) {.nodestroy.} =
     # use an explicit stack so that we do not get stack overflows:
     var s: seq[Node] = @[t.root]
     while s.len > 0:

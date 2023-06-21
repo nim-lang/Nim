@@ -68,12 +68,20 @@ type
 
 proc `=copy`*(x: var Task, y: Task) {.error.}
 
-proc `=destroy`*(t: var Task) {.inline, gcsafe.} =
-  ## Frees the resources allocated for a `Task`.
-  if t.args != nil:
-    if t.destroy != nil:
-      t.destroy(t.args)
-    deallocShared(t.args)
+when defined(nimAllowNonVarDestructor):
+  proc `=destroy`*(t: Task) {.inline, gcsafe.} =
+    ## Frees the resources allocated for a `Task`.
+    if t.args != nil:
+      if t.destroy != nil:
+        t.destroy(t.args)
+      deallocShared(t.args)
+else:
+  proc `=destroy`*(t: var Task) {.inline, gcsafe.} =
+    ## Frees the resources allocated for a `Task`.
+    if t.args != nil:
+      if t.destroy != nil:
+        t.destroy(t.args)
+      deallocShared(t.args)
 
 proc invoke*(task: Task; res: pointer = nil) {.inline, gcsafe.} =
   ## Invokes the `task`.

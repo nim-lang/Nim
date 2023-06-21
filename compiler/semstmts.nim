@@ -1872,7 +1872,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let t = s.typ
   var noError = false
   let cond = case op
-             of {attachedDestructor, attachedWasMoved}:
+             of attachedWasMoved:
                t.len == 2 and t[0] == nil and t[1].kind == tyVar
              of attachedTrace:
                t.len == 3 and t[0] == nil and t[1].kind == tyVar and t[2].kind == tyPointer
@@ -1887,6 +1887,8 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
       elif obj.kind == tyGenericInvocation: obj = obj[0]
       else: break
     if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
+      if op == attachedDestructor and t[1].kind == tyVar:
+        message(c.config, n.info, warnDeprecated, "A custom '=destroy' hook which takes a 'var T' parameter is deprecated; it should take a 'T' parameter")
       obj = canonType(c, obj)
       let ao = getAttachedOp(c.graph, obj, op)
       if ao == s:
@@ -1904,6 +1906,9 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
     of attachedTrace:
       localError(c.config, n.info, errGenerated,
         "signature for '=trace' must be proc[T: object](x: var T; env: pointer)")
+    of attachedDestructor:
+      localError(c.config, n.info, errGenerated,
+        "signature for '=destroy' must be proc[T: object](x: var T) or proc[T: object](x: T)")
     else:
       localError(c.config, n.info, errGenerated,
         "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")

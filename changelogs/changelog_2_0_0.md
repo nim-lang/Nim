@@ -258,6 +258,8 @@
 
 - `strutils.split` and `strutils.rsplit` now forbid an empty separator.
 
+- Custom destructors now supports non-var parameters, e.g. `proc =destroy[T: object](x: T)` is valid. `proc =destroy[T: object](x: var T)` is deprecated.
+
 - Relative imports will not resolve to searched paths anymore, e.g. `import ./tables` now reports an error properly.
 
 ## Standard library additions and changes

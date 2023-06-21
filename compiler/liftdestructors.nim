@@ -140,7 +140,10 @@ proc genContainerOf(c: var TLiftCtx; objType: PType, field, x: PSym): PNode =
 proc destructorCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
   var destroy = newNodeIT(nkCall, x.info, op.typ[0])
   destroy.add(newSymNode(op))
-  destroy.add genAddr(c, x)
+  if op.typ[1].kind != tyVar:
+    destroy.add x
+  else:
+    destroy.add genAddr(c, x)
   if sfNeverRaises notin op.flags:
     c.canRaise = true
   if c.addMemReset:
@@ -1115,7 +1118,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
                    fn: result)
 
   let dest = if kind == attachedDup: result.ast[resultPos].sym else: result.typ.n[1].sym
-  let d = if kind == attachedDup: newSymNode(dest) else: newDeref(newSymNode(dest))
+  let d = if result.typ[1].kind == tyVar: newDeref(newSymNode(dest)) else: newSymNode(dest)
   let src = case kind
             of {attachedDestructor, attachedWasMoved}: newNodeIT(nkSym, info, getSysType(g, info, tyPointer))
             of attachedDup: newSymNode(result.typ.n[1].sym)
@@ -1127,7 +1130,8 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   if kind == attachedSink and destructorOverridden(g, typ):
     ## compiler can use a combination of `=destroy` and memCopy for sink op
     dest.flags.incl sfCursor
-    result.ast[bodyPos].add newOpCall(a, getAttachedOp(g, typ, attachedDestructor), d[0])
+    let op = getAttachedOp(g, typ, attachedDestructor)
+    result.ast[bodyPos].add newOpCall(a, op, if op.typ[1].kind == tyVar: d[0] else: d)
     result.ast[bodyPos].add newAsgnStmt(d, src)
   else:
     var tk: TTypeKind
