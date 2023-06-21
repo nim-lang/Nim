@@ -1849,6 +1849,8 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
       elif obj.kind == tyGenericInvocation: obj = obj[0]
       else: break
     if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
+      if op == attachedDestructor and t[1].kind == tyVar:
+        message(c.config, n.info, warnDeprecated, "A custom '=destroy' hook which takes a 'var T' parameter is deprecated; it should take a 'T' parameter")
       obj = canonType(c, obj)
       let ao = getAttachedOp(c.graph, obj, op)
       if ao == s:
