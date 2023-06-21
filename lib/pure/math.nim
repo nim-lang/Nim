@@ -101,6 +101,11 @@ when defined(c) or defined(cpp):
       doAssert divmod(5, 2) == (2, 1)
       doAssert divmod(5, -3) == (-1, 2)
     when T is cint | clong | clonglong:
+      when compileOption("overflowChecks"):
+        if y == 0:
+          raise new(DivByZeroDefect)
+        elif (x == T.low and y == -1.T):
+          raise new(OverflowDefect)
       let res = divmod_c(x, y)
       result[0] = res.quot
       result[1] = res.rem
@@ -824,7 +829,7 @@ else: # JS
       doAssert  6.5 mod -2.5 ==  1.5
       doAssert -6.5 mod -2.5 == -1.5
   
-  func divmod*(num, denom: int): (int, int) = 
+  func divmod*[T:SomeInteger](num, denom: T): (T, T) = 
     runnableExamples:
       doAssert  divmod(5, 2) ==  (2, 1)
       doAssert divmod(5, -3) == (-1, 2)
