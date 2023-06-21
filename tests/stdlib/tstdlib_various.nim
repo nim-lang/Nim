@@ -26,7 +26,6 @@ Hi Andreas! How do you feel, Rumpf?
 [2, 3, 4, 5]
 [2, 3, 4, 5, 6]
 [1, 2, 3, 4, 5, 6]
-true
 <h1><a href="http://force7.de/nim">Nim</a></h1>
 '''
 """
@@ -206,11 +205,7 @@ block tsplit2:
     s.add("#")
     s.add(w)
 
-  try:
-    discard "hello".split("")
-    echo "false"
-  except AssertionDefect:
-    echo "true"
+  doAssert "true".split("") == @["true"]
 
 
 
