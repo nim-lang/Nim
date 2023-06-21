@@ -11,6 +11,9 @@
 
 include hashcommon
 
+const
+  defaultInitialSize* = 32
+
 template rawGetDeepImpl() {.dirty.} =   # Search algo for unconditional add
   genHashImpl(key, hc)
   var h: Hash = hc and maxHash(t)
@@ -31,9 +34,8 @@ proc rawInsert[X, A, B](t: var X, data: var KeyValuePairSeq[A, B],
   rawInsertImpl()
 
 template checkIfInitialized() =
-  when compiles(defaultInitialSize):
-    if t.dataLen == 0:
-      initImpl(t, defaultInitialSize)
+  if t.dataLen == 0:
+    initImpl(t, defaultInitialSize)
 
 template addImpl(enlarge) {.dirty.} =
   checkIfInitialized()

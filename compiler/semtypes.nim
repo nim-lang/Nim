@@ -166,7 +166,9 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
     addSonSkipIntLit(result, base, c.idgen)
     if base.kind in {tyGenericInst, tyAlias, tySink}: base = lastSon(base)
     if base.kind notin {tyGenericParam, tyGenericInvocation}:
-      if not isOrdinalType(base, allowEnumWithHoles = true):
+      if base.kind == tyForward:
+        c.skipTypes.add n
+      elif not isOrdinalType(base, allowEnumWithHoles = true):
         localError(c.config, n.info, errOrdinalTypeExpected % typeToString(base, preferDesc))
       elif lengthOrd(c.config, base) > MaxSetElements:
         localError(c.config, n.info, errSetTooBig)
@@ -269,6 +271,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, "range is empty")
 
   var range: array[2, PNode]
+  # XXX this is still a hard compilation in a generic context, this can
+  # result in unresolved generic parameters being treated like real types
   range[0] = semExprWithType(c, n[1], {efDetermineType})
   range[1] = semExprWithType(c, n[2], {efDetermineType})
 
@@ -277,7 +281,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     rangeT[i] = range[i].typ.skipTypes({tyStatic}).skipIntLit(c.idgen)
 
   let hasUnknownTypes = c.inGenericContext > 0 and
-    rangeT[0].kind == tyFromExpr or rangeT[1].kind == tyFromExpr
+    (rangeT[0].kind == tyFromExpr or rangeT[1].kind == tyFromExpr)
 
   if not hasUnknownTypes:
     if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
@@ -285,7 +289,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
 
     elif not isOrdinalType(rangeT[0]) and rangeT[0].kind notin {tyFloat..tyFloat128} or
         rangeT[0].kind == tyBool:
-      localError(c.config, n.info, "ordinal or float type expected")
+      localError(c.config, n.info, "ordinal or float type expected, but got " & typeToString(rangeT[0]))
     elif enumHasHoles(rangeT[0]):
       localError(c.config, n.info, "enum '$1' has holes" % typeToString(rangeT[0]))
 
@@ -296,9 +300,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     else:
       result.n.add semConstExpr(c, range[i])
 
-  if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and result.n[0].floatVal.isNaN) or
-      (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and result.n[1].floatVal.isNaN):
-    localError(c.config, n.info, "NaN is not a valid start or end for a range")
+    if result.n[i].kind in {nkFloatLit..nkFloat64Lit} and result.n[i].floatVal.isNaN:
+      localError(c.config, n.info, "NaN is not a valid range " & (if i == 0: "start" else: "end"))
 
   if weakLeValue(result.n[0], result.n[1]) == impNo:
     localError(c.config, n.info, "range is empty")
@@ -338,6 +341,8 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
   elif n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "..<":
     result = errorType(c)
   else:
+    # XXX this is still a hard compilation in a generic context, this can
+    # result in unresolved generic parameters being treated like real types
     let e = semExprWithType(c, n, {efDetermineType})
     if e.typ.kind == tyFromExpr:
       result = makeRangeWithStaticExpr(c, e.typ.n)
@@ -358,7 +363,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
       if not isOrdinalType(e.typ.skipTypes({tyStatic, tyAlias, tyGenericInst, tySink})):
         localError(c.config, n[1].info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
       # This is an int returning call, depending on an
-      # yet unknown generic param (see tgenericshardcases).
+      # yet unknown generic param (see tuninstantiatedgenericcalls).
       # We are going to construct a range type that will be
       # properly filled-out in semtypinst (see how tyStaticExpr
       # is handled there).
@@ -381,7 +386,8 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     let indx = semArrayIndex(c, n[1])
     var indxB = indx
     if indxB.kind in {tyGenericInst, tyAlias, tySink}: indxB = lastSon(indxB)
-    if indxB.kind notin {tyGenericParam, tyStatic, tyFromExpr}:
+    if indxB.kind notin {tyGenericParam, tyStatic, tyFromExpr} and
+        tfUnresolved notin indxB.flags:
       if indxB.skipTypes({tyRange}).kind in {tyUInt, tyUInt64}:
         discard
       elif not isOrdinalType(indxB):
@@ -738,7 +744,13 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
           if e.kind != nkIntLit: discard "don't report followup error"
           elif e.intVal != 0 and branch == nil: branch = it[1]
         else:
-          it[0] = forceBool(c, semExprWithType(c, it[0]))
+          # XXX this is still a hard compilation in a generic context, this can
+          # result in unresolved generic parameters being treated like real types
+          let e = semExprWithType(c, it[0], {efDetermineType})
+          if e.typ.kind == tyFromExpr:
+            it[0] = makeStaticExpr(c, e)
+          else:
+            it[0] = forceBool(c, e)
       of nkElse:
         checkSonsLen(it, 1, c.config)
         if branch == nil: branch = it[0]
@@ -854,12 +866,19 @@ proc skipGenericInvocation(t: PType): PType {.inline.} =
   while result.kind in {tyGenericInst, tyGenericBody, tyRef, tyPtr, tyAlias, tySink, tyOwned}:
     result = lastSon(result)
 
-proc addInheritedFields(c: PContext, check: var IntSet, pos: var int,
-                        obj: PType) =
-  assert obj.kind == tyObject
-  if (obj.len > 0) and (obj[0] != nil):
-    addInheritedFields(c, check, pos, obj[0].skipGenericInvocation)
-  addInheritedFieldsAux(c, check, pos, obj.n)
+proc tryAddInheritedFields(c: PContext, check: var IntSet, pos: var int,
+                        obj: PType, n: PNode, isPartial = false, innerObj: PType = nil): bool =
+  if ((not isPartial) and (obj.kind notin {tyObject, tyGenericParam} or tfFinal in obj.flags)) or
+    (innerObj != nil and obj.sym.id == innerObj.sym.id):
+    localError(c.config, n.info, "Cannot inherit from: '" & $obj & "'")
+    result = false
+  elif obj.kind == tyObject:
+    result = true
+    if (obj.len > 0) and (obj[0] != nil):
+      result = result and tryAddInheritedFields(c, check, pos, obj[0].skipGenericInvocation, n, false, obj)
+    addInheritedFieldsAux(c, check, pos, obj.n)
+  else:
+    result = true
 
 proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType =
   if n.len == 0:
@@ -886,7 +905,11 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
           if concreteBase.sym != nil and concreteBase.sym.magic == mException and
               sfSystemModule notin c.module.flags:
             message(c.config, n.info, warnInheritFromException, "")
-          addInheritedFields(c, check, pos, concreteBase)
+          if not tryAddInheritedFields(c, check, pos, concreteBase, n):
+            return newType(tyError, nextTypeId c.idgen, result.owner)
+
+      elif concreteBase.kind == tyForward:
+        c.skipTypes.add n #we retry in the final pass
       else:
         if concreteBase.kind != tyError:
           localError(c.config, n[1].info, "inheritance only works with non-final objects; " &
@@ -904,7 +927,9 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
     result.n = newNodeI(nkRecList, n.info)
   else:
     # partial object so add things to the check
-    addInheritedFields(c, check, pos, result)
+    if not tryAddInheritedFields(c, check, pos, result, n, isPartial = true):
+      return newType(tyError, nextTypeId c.idgen, result.owner)
+
   semRecordNodeAux(c, n[2], check, pos, result.n, result)
   if n[0].kind != nkEmpty:
     # dummy symbol for `pragma`:
@@ -1435,19 +1460,21 @@ proc semGenericParamInInvocation(c: PContext, n: PNode): PType =
   result = semTypeNode(c, n, nil)
   n.typ = makeTypeDesc(c, result)
 
-proc semObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType) =
+proc trySemObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType): bool =
   var
     check = initIntSet()
     pos = 0
   let
     realBase = t[0]
     base = skipTypesOrNil(realBase, skipPtrs)
+  result = true
   if base.isNil:
     localError(c.config, n.info, errIllegalRecursionInTypeX % "object")
   else:
     let concreteBase = skipGenericInvocation(base)
     if concreteBase.kind == tyObject and tfFinal notin concreteBase.flags:
-      addInheritedFields(c, check, pos, concreteBase)
+      if not tryAddInheritedFields(c, check, pos, concreteBase, n):
+        return false
     else:
       if concreteBase.kind != tyError:
         localError(c.config, n.info, errInheritanceOnlyWithNonFinalObjects)
@@ -1527,7 +1554,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     return errorType(c)
   if tx != result and tx.kind == tyObject:
     if tx[0] != nil:
-      semObjectTypeForInheritedGenericInst(c, n, tx)
+      if not trySemObjectTypeForInheritedGenericInst(c, n, tx):
+        return newOrPrevType(tyError, prev, c)
     var position = 0
     recomputeFieldPositions(tx, tx.n, position)
 

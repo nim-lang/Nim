@@ -77,6 +77,41 @@ when defined(c) or defined(cpp):
       importc: "frexpf", header: "<math.h>".}
   func c_frexp2(x: cdouble, exponent: var cint): cdouble {.
       importc: "frexp", header: "<math.h>".}
+  
+  type
+    div_t {.importc, header: "<stdlib.h>".} = object
+      quot: cint
+      rem: cint
+    ldiv_t {.importc, header: "<stdlib.h>".} = object
+      quot: clong
+      rem: clong
+    lldiv_t {.importc, header: "<stdlib.h>".} = object
+      quot: clonglong
+      rem: clonglong
+  
+  when cint isnot clong:
+    func divmod_c(x, y: cint): div_t {.importc: "div", header: "<stdlib.h>".}
+  when clong isnot clonglong:
+    func divmod_c(x, y: clonglong): lldiv_t {.importc: "lldiv", header: "<stdlib.h>".}
+  func divmod_c(x, y: clong): ldiv_t {.importc: "ldiv", header: "<stdlib.h>".}
+  func divmod*[T: SomeInteger](x, y: T): (T, T) {.inline.} = 
+    ## Specialized instructions for computing both division and modulus.
+    ## Return structure is: (quotient, remainder)
+    runnableExamples:
+      doAssert divmod(5, 2) == (2, 1)
+      doAssert divmod(5, -3) == (-1, 2)
+    when T is cint | clong | clonglong:
+      when compileOption("overflowChecks"):
+        if y == 0:
+          raise new(DivByZeroDefect)
+        elif (x == T.low and y == -1.T):
+          raise new(OverflowDefect)
+      let res = divmod_c(x, y)
+      result[0] = res.quot
+      result[1] = res.rem
+    else:
+      result[0] = x div y
+      result[1] = x mod y
 
 func binom*(n, k: int): int =
   ## Computes the [binomial coefficient](https://en.wikipedia.org/wiki/Binomial_coefficient).
@@ -793,6 +828,14 @@ else: # JS
       doAssert -6.5 mod  2.5 == -1.5
       doAssert  6.5 mod -2.5 ==  1.5
       doAssert -6.5 mod -2.5 == -1.5
+  
+  func divmod*[T:SomeInteger](num, denom: T): (T, T) = 
+    runnableExamples:
+      doAssert  divmod(5, 2) ==  (2, 1)
+      doAssert divmod(5, -3) == (-1, 2)
+    result[0] = num div denom
+    result[1] = num mod denom
+  
 
 func round*[T: float32|float64](x: T, places: int): T =
   ## Decimal rounding on a binary floating point number.

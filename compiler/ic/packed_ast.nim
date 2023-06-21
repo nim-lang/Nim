@@ -45,7 +45,7 @@ type
   PackedLib* = object
     kind*: TLibKind
     generated*: bool
-    isOverriden*: bool
+    isOverridden*: bool
     name*: LitId
     path*: NodeId
 

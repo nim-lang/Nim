@@ -277,6 +277,7 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
       var symObj = f.owner
       if symObj.typ.skipTypes({tyGenericBody, tyGenericInst, tyGenericInvocation, tyAlias}).kind in {tyRef, tyPtr}:
         symObj = symObj.typ.toObjectFromRefPtrGeneric.sym
+        assert symObj != nil
       for scope in allScopes(c.currentScope):
         for sym in scope.allowPrivateAccess:
           if symObj.id == sym.id: return true

@@ -22,6 +22,7 @@ runnableExamples:
   assert myFile.changeFileExt("c") == "/path/to/my/file.c"
 
 ## **See also:**
+## * `paths <paths.html>`_ and `files <files.html>`_ modules for high-level file manipulation
 ## * `osproc module <osproc.html>`_ for process communication beyond
 ##   `execShellCmd proc`_
 ## * `uri module <uri.html>`_
@@ -1016,10 +1017,8 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
 
 
 # deprecated declarations
-when not defined(nimscript):
-  when not defined(js): # `noNimJs` doesn't work with templates, this should improve.
-    template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
-      fileExists(args)
-    template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
-      dirExists(args)
-  # {.deprecated: [existsFile: fileExists].} # pending bug #14819; this would avoid above mentioned issue
+when not weirdTarget:
+  template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
+    fileExists(args)
+  template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
+    dirExists(args)

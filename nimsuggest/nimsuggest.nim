@@ -13,7 +13,12 @@ import algorithm
 import tables
 import times
 
-import ../dist/checksums/src/checksums/sha1
+template tryImport(module) = import module
+
+when compiles tryImport ../dist/checksums/src/checksums/sha1:
+  import ../dist/checksums/src/checksums/sha1
+else:
+  import checksums/sha1
 
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
@@ -732,7 +737,7 @@ func deduplicateSymInfoPair[SymInfoPair](xs: seq[SymInfoPair]): seq[SymInfoPair]
   # sym may not match. This can happen when xs contains the same definition but
   # with different signature because suggestSym might be called multiple times
   # for the same symbol (e. g. including/excluding the pragma)
-  result = @[]
+  result = newSeqOfCap[SymInfoPair](xs.len)
   for itm in xs.reversed:
     var found = false
     for res in result:

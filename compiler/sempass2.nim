@@ -90,7 +90,10 @@ const
   errLetNeedsInit = "'let' symbol requires an initialization"
 
 proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
-  if typ == nil: return
+  if typ == nil or sfGeneratedOp in tracked.owner.flags:
+    # don't create type bound ops for anything in a function with a `nodestroy` pragma
+    # bug #21987
+    return
   when false:
     let realType = typ.skipTypes(abstractInst)
     if realType.kind == tyRef and
@@ -833,7 +836,6 @@ proc trackCall(tracked: PEffects; n: PNode) =
       # and it's not a recursive call:
       if not (a.kind == nkSym and a.sym == tracked.owner):
         markSideEffect(tracked, a, n.info)
-
   # p's effects are ours too:
   var a = n[0]
   #if canRaise(a):

@@ -25,12 +25,20 @@ when not (defined(cpu16) or defined(cpu8)):
         bytes: int
         data: WideCString
 
-    proc `=destroy`(a: var WideCStringObj) =
-      if a.data != nil:
-        when compileOption("threads"):
-          deallocShared(a.data)
-        else:
-          dealloc(a.data)
+    when defined(nimAllowNonVarDestructor):
+      proc `=destroy`(a: WideCStringObj) =
+        if a.data != nil:
+          when compileOption("threads"):
+            deallocShared(a.data)
+          else:
+            dealloc(a.data)
+    else:
+      proc `=destroy`(a: var WideCStringObj) =
+        if a.data != nil:
+          when compileOption("threads"):
+            deallocShared(a.data)
+          else:
+            dealloc(a.data)
 
     proc `=copy`(a: var WideCStringObj; b: WideCStringObj) {.error.}
 

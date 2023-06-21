@@ -145,8 +145,9 @@ type
 
 const
   nnkLiterals* = {nnkCharLit..nnkNilLit}
+  # see matching set CallNodes below
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
-                   nnkCallStrLit}
+                   nnkCallStrLit, nnkHiddenCallConv}
   nnkPragmaCallKinds = {nnkExprColonExpr, nnkCall, nnkCallStrLit}
 
 {.push warnings: off.}
@@ -1208,8 +1209,8 @@ const
   RoutineNodes* = {nnkProcDef, nnkFuncDef, nnkMethodDef, nnkDo, nnkLambda,
                    nnkIteratorDef, nnkTemplateDef, nnkConverterDef, nnkMacroDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
-  CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
-    nnkCallStrLit, nnkHiddenCallConv}
+  # see matching set nnkCallKinds above
+  CallNodes* = nnkCallKinds
 
 proc expectKind*(n: NimNode; k: set[NimNodeKind]) =
   ## Checks that `n` is of kind `k`. If this is not the case,

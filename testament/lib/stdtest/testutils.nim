@@ -40,7 +40,7 @@ when not defined(js) and not defined(nimscript):
         yield line
     template isMatch(lhsi, rhsi): bool =
       if allowPrefixMatch:
-        startsWith(rhsi, lhsi):
+        startsWith(rhsi, lhsi)
       else:
         lhsi == rhsi
 

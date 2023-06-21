@@ -231,7 +231,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 49 flags!
+  TSymFlag* = enum    # 51 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -283,7 +283,7 @@ type
     sfNamedParamCall, # symbol needs named parameter call syntax in target
                       # language; for interfacing with Objective C
     sfDiscardable,    # returned value may be discarded implicitly
-    sfOverriden,      # proc is overridden
+    sfOverridden,      # proc is overridden
     sfCallsite        # A flag for template symbols to tell the
                       # compiler it should use line information from
                       # the calling side of the macro, not from the
@@ -312,6 +312,8 @@ type
                       #
                       # This is disallowed but can cause the typechecking to go into
                       # an infinite loop, this flag is used as a sentinel to stop it.
+    sfVirtual         # proc is a C++ virtual function
+    sfByCopy          # param is marked as pass bycopy
 
   TSymFlags* = set[TSymFlag]
 
@@ -337,8 +339,8 @@ const
 
   sfCompileToCpp* = sfInfixCall       # compile the module as C++ code
   sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code
-  sfExperimental* = sfOverriden       # module uses the .experimental switch
-  sfGoto* = sfOverriden               # var is used for 'goto' code generation
+  sfExperimental* = sfOverridden       # module uses the .experimental switch
+  sfGoto* = sfOverridden               # var is used for 'goto' code generation
   sfWrittenTo* = sfBorrow             # param is assigned to
                                       # currently unimplemented
   sfBase* = sfDiscriminant
@@ -515,7 +517,7 @@ type
     nfSkipFieldChecking # node skips field visable checking
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 46)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -585,6 +587,7 @@ type
     tfIsConstructor
     tfEffectSystemWorkaround
     tfIsOutParam
+    tfSendable
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -620,13 +623,12 @@ type
                           # file (it is loaded on demand, which may
                           # mean: never)
     skPackage,            # symbol is a package (used for canonicalization)
-    skAlias               # an alias (needs to be resolved immediately)
   TSymKinds* = set[TSymKind]
 
 const
   routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
-  ExportableSymKinds* = {skVar, skLet, skConst, skType, skEnumField, skStub, skAlias} + routineKinds
+  ExportableSymKinds* = {skVar, skLet, skConst, skType, skEnumField, skStub} + routineKinds
 
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
@@ -635,7 +637,7 @@ const
   skError* = skUnknown
 
 var
-  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect, tfIsOutParam}
+  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect, tfIsOutParam, tfSendable}
     ## type flags that are essential for type equality.
     ## This is now a variable because for emulation of version:1.0 we
     ## might exclude {tfGcSafe, tfNoSideEffect}.
@@ -820,9 +822,6 @@ type
     locOther                  # location is something other
   TLocFlag* = enum
     lfIndirect,               # backend introduced a pointer
-    lfFullExternalName, # only used when 'conf.cmd == cmdNimfix': Indicates
-      # that the symbol has been imported via 'importc: "fullname"' and
-      # no format string.
     lfNoDeepCopy,             # no need for a deep copy
     lfNoDecl,                 # do not declare it in C
     lfDynamicLib,             # link symbol to dynamic library
@@ -857,7 +856,7 @@ type
                               # keep in sync with PackedLib
     kind*: TLibKind
     generated*: bool          # needed for the backends:
-    isOverriden*: bool
+    isOverridden*: bool
     name*: Rope
     path*: PNode              # can be a string literal!
 
@@ -929,7 +928,7 @@ type
       cname*: string          # resolved C declaration name in importc decl, e.g.:
                               # proc fun() {.importc: "$1aux".} => cname = funaux
     constraint*: PNode        # additional constraints like 'lit|result'; also
-                              # misused for the codegenDecl pragma in the hope
+                              # misused for the codegenDecl and virtual pragmas in the hope
                               # it won't cause problems
                               # for skModule the string literal to output for
                               # deprecated modules.
@@ -942,10 +941,10 @@ type
     attachedWasMoved,
     attachedDestructor,
     attachedAsgn,
+    attachedDup,
     attachedSink,
     attachedTrace,
-    attachedDeepCopy,
-    attachedDup
+    attachedDeepCopy
 
   TType* {.acyclic.} = object of TIdObj # \
                               # types are identical iff they have the
@@ -1126,11 +1125,10 @@ const
 
 proc getPIdent*(a: PNode): PIdent {.inline.} =
   ## Returns underlying `PIdent` for `{nkSym, nkIdent}`, or `nil`.
-  # xxx consider whether also returning the 1st ident for {nkOpenSymChoice, nkClosedSymChoice}
-  # which may simplify code.
   case a.kind
   of nkSym: a.sym.name
   of nkIdent: a.ident
+  of nkOpenSymChoice, nkClosedSymChoice: a.sons[0].sym.name
   else: nil
 
 const
@@ -1516,7 +1514,7 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
 
 const
   AttachedOpToStr*: array[TTypeAttachedOp, string] = [
-    "=wasMoved", "=destroy", "=copy", "=sink", "=trace", "=deepcopy", "=dup"]
+    "=wasMoved", "=destroy", "=copy", "=dup", "=sink", "=trace", "=deepcopy"]
 
 proc `$`*(s: PSym): string =
   if s != nil:
@@ -1928,11 +1926,6 @@ proc isCompileTimeProc*(s: PSym): bool {.inline.} =
   result = s.kind == skMacro or
            s.kind in {skProc, skFunc} and sfCompileTime in s.flags
 
-proc isRunnableExamples*(n: PNode): bool =
-  # Templates and generics don't perform symbol lookups.
-  result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
-    n.kind == nkIdent and n.ident.s == "runnableExamples"
-
 proc hasPattern*(s: PSym): bool {.inline.} =
   result = isRoutine(s) and s.ast[patternPos].kind != nkEmpty
 
@@ -2006,7 +1999,7 @@ proc toObjectFromRefPtrGeneric*(typ: PType): PType =
     of tyRef, tyPtr, tyGenericInst, tyGenericInvocation, tyAlias: result = result[0]
       # automatic dereferencing is deep, refs #18298.
     else: break
-  assert result.sym != nil
+  # result does not have to be object type
 
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert t != nil

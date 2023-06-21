@@ -20,7 +20,6 @@ import
 
 when defined(nimPreviewSlimSystem):
   import std/formatfloat
-
 import ast except getstr
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -634,6 +633,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].intVal = cast[int](regs[rb].node.intVal)
         of rkNodeAddr:
           regs[ra].intVal = cast[int](regs[rb].nodeAddr)
+        of rkInt:
+          regs[ra].intVal = regs[rb].intVal
         else:
           stackTrace(c, tos, pc, "opcCastPtrToInt: got " & $regs[rb].kind)
       of 2: # tyRef
@@ -779,6 +780,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
           takeAddress regs[ra], src.sons[idx]
+        elif src.kind in nkStrKinds and idx <% src.strVal.len:
+          regs[ra] = takeCharAddress(c, src, idx, pc)
         else:
           stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
     of opcLdStrIdx:
@@ -843,6 +846,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, errNilAccess & " " & $("kind", src.kind, "typ", typeToString(src.typ), "rc", rc))
       of nkObjConstr:
         let n = src[rc + 1].skipColon
+        regs[ra].node = n
+      of nkTupleConstr:
+        let n = if src.typ != nil and tfTriggersCompileTime in src.typ.flags:
+            src[rc]
+          else:
+            src[rc].skipColon
         regs[ra].node = n
       else:
         let n = src[rc]

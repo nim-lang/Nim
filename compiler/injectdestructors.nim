@@ -186,9 +186,12 @@ template isUnpackedTuple(n: PNode): bool =
   ## hence unpacked tuples themselves don't need to be destroyed
   (n.kind == nkSym and n.sym.kind == skTemp and n.sym.typ.kind == tyTuple)
 
-proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
+proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string; inferredFromCopy = false) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
-  if (opname == "=" or opname == "=copy") and ri != nil:
+  if inferredFromCopy:
+    m.add ", which is inferred from unavailable '=copy'"
+
+  if (opname == "=" or opname == "=copy" or opname == "=dup") and ri != nil:
     m.add "; requires a copy because it's not the last read of '"
     m.add renderTree(ri)
     m.add '\''
@@ -210,8 +213,12 @@ proc makePtrType(c: var Con, baseType: PType): PType =
   addSonSkipIntLit(result, baseType, c.idgen)
 
 proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
-  let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
-  addrExp.add(dest)
+  var addrExp: PNode
+  if op.typ != nil and op.typ.len > 1 and op.typ[1].kind != tyVar:
+    addrExp = dest
+  else:
+    addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
+    addrExp.add(dest)
   result = newTree(nkCall, newSymNode(op), addrExp)
 
 proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
@@ -305,13 +312,13 @@ proc isCriticalLink(dest: PNode): bool {.inline.} =
 proc finishCopy(c: var Con; result, dest: PNode; isFromSink: bool) =
   if c.graph.config.selectedGC == gcOrc:
     let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
-    if cyclicType(t):
+    if cyclicType(c.graph, t):
       result.add boolLit(c.graph, result.info, isFromSink or isCriticalLink(dest))
 
 proc genMarkCyclic(c: var Con; result, dest: PNode) =
   if c.graph.config.selectedGC == gcOrc:
     let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
-    if cyclicType(t):
+    if cyclicType(c.graph, t):
       if t.kind == tyRef:
         result.add callCodegenProc(c.graph, "nimMarkCyclic", dest.info, dest)
       else:
@@ -353,7 +360,7 @@ proc genDiscriminantAsgn(c: var Con; s: var Scope; n: PNode): PNode =
 
   if hasDestructor(c, objType):
     if getAttachedOp(c.graph, objType, attachedDestructor) != nil and
-        sfOverriden in getAttachedOp(c.graph, objType, attachedDestructor).flags:
+        sfOverridden in getAttachedOp(c.graph, objType, attachedDestructor).flags:
       localError(c.graph.config, n.info, errGenerated, """Assignment to discriminant for objects with user defined destructor is not supported, object must have default destructor.
 It is best to factor out piece of object that needs custom destructor into separate object or not use discriminator assignment""")
       result.add newTree(nkFastAsgn, le, tmp)
@@ -381,7 +388,7 @@ proc genWasMoved(c: var Con, n: PNode): PNode =
     result = genOp(c, op, n)
   else:
     result = newNodeI(nkCall, n.info)
-    result.add(newSymNode(createMagic(c.graph, c.idgen, "wasMoved", mWasMoved)))
+    result.add(newSymNode(createMagic(c.graph, c.idgen, "`=wasMoved`", mWasMoved)))
     result.add copyTree(n) #mWasMoved does not take the address
     #if n.kind != nkSym:
     #  message(c.graph.config, n.info, warnUser, "wasMoved(" & $n & ")")
@@ -427,19 +434,23 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   if hasDestructor(c, n.typ):
     let typ = n.typ.skipTypes({tyGenericInst, tyAlias, tySink})
     let op = getAttachedOp(c.graph, typ, attachedDup)
-    if op != nil:
+    if op != nil and tfHasOwned notin typ.flags:
+      if sfError in op.flags:
+        c.checkForErrorPragma(n.typ, n, "=dup")
+      else:
+        let copyOp = getAttachedOp(c.graph, typ, attachedAsgn)
+        if copyOp != nil and sfError in copyOp.flags and
+           sfOverridden notin op.flags:
+          c.checkForErrorPragma(n.typ, n, "=dup", inferredFromCopy = true)
+
       let src = p(n, c, s, normal)
-      result.add newTreeI(nkFastAsgn,
-          src.info, tmp,
-          genOp(c, op, src)
-      )
-    elif typ.kind == tyRef:
-      let src = p(n, c, s, normal)
-      result.add newTreeI(nkFastAsgn,
-          src.info, tmp,
-          newTreeIT(nkCall, src.info, src.typ,
-            newSymNode(createMagic(c.graph, c.idgen, "`=dup`", mDup)),
+      var newCall = newTreeIT(nkCall, src.info, src.typ,
+            newSymNode(op),
             src)
+      c.finishCopy(newCall, n, isFromSink = true)
+      result.add newTreeI(nkFastAsgn,
+          src.info, tmp,
+          newCall
       )
     else:
       result.add c.genWasMoved(tmp)
@@ -696,6 +707,24 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
   of nkWhen: # This should be a "when nimvm" node.
     result = copyTree(n)
     result[1][0] = processCall(n[1][0], s)
+
+  of nkPragmaBlock:
+    var inUncheckedAssignSection = 0
+    let pragmaList = n[0]
+    for pi in pragmaList:
+      if whichPragma(pi) == wCast:
+        case whichPragma(pi[1])
+        of wUncheckedAssign:
+          inUncheckedAssignSection = 1
+        else:
+          discard
+    result = shallowCopy(n)
+    inc c.inUncheckedAssignSection, inUncheckedAssignSection
+    for i in 0 ..< n.len-1:
+      result[i] = p(n[i], c, s, normal)
+    result[^1] = maybeVoid(n[^1], s)
+    dec c.inUncheckedAssignSection, inUncheckedAssignSection
+
   else: assert(false)
 
 proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
@@ -725,7 +754,7 @@ proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
 
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSingleUsedTemp}): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
-                nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt}:
+                nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt, nkPragmaBlock}:
     template process(child, s): untyped = p(child, c, s, mode)
     handleNestedTempl(n, process, tmpFlags = tmpFlags)
   elif mode == sinkArg:
@@ -921,25 +950,6 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         if mode == normal:
           result = ensureDestruction(result, n, c, s)
 
-    of nkPragmaBlock:
-      var inUncheckedAssignSection = 0
-      let pragmaList = n[0]
-      for pi in pragmaList:
-        if whichPragma(pi) == wCast:
-          case whichPragma(pi[1])
-          of wUncheckedAssign:
-            inUncheckedAssignSection = 1
-          else:
-            discard
-      result = shallowCopy(n)
-      inc c.inUncheckedAssignSection, inUncheckedAssignSection
-      for i in 0 ..< n.len:
-        result[i] = p(n[i], c, s, normal)
-      dec c.inUncheckedAssignSection, inUncheckedAssignSection
-      if n.typ != nil and hasDestructor(c, n.typ):
-        if mode == normal:
-          result = ensureDestruction(result, n, c, s)
-
     of nkHiddenSubConv, nkHiddenStdConv, nkConv:
       # we have an "ownership invariance" for all constructors C(x).
       # See the comment for nkBracket construction. If the caller wants
@@ -1014,7 +1024,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
 
 proc sameLocation*(a, b: PNode): bool =
   proc sameConstant(a, b: PNode): bool =
-    a.kind in nkLiterals and a.intVal == b.intVal
+    a.kind in nkLiterals and b.kind in nkLiterals and a.intVal == b.intVal
 
   const nkEndPoint = {nkSym, nkDotExpr, nkCheckedFieldExpr, nkBracketExpr}
   if a.kind in nkEndPoint and b.kind in nkEndPoint:

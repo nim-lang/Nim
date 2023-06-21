@@ -53,6 +53,15 @@ template main() =
     doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
     doAssert s.split(' ', maxsplit = 1) == @["", "this is an example  "]
     doAssert s.split(" ", maxsplit = 4) == @["", "this", "is", "an", "example  "]
+    # Empty string:
+    doAssert "".split() == @[""]
+    doAssert "".split(" ") == @[""]
+    doAssert "".split({' '}) == @[""]
+    # Empty separators:
+    doAssert "".split({}) == @[""]
+    doAssert "".split("") == @[""]
+    doAssert s.split({}) == @[s]
+    doAssert s.split("") == @[s]
 
   block: # splitLines
     let fixture = "a\nb\rc\r\nd"
@@ -63,12 +72,21 @@ template main() =
   block: # rsplit
     doAssert rsplit("foo bar", seps = Whitespace) == @["foo", "bar"]
     doAssert rsplit(" foo bar", seps = Whitespace, maxsplit = 1) == @[" foo", "bar"]
-    doAssert rsplit(" foo bar ", seps = Whitespace, maxsplit = 1) == @[
-        " foo bar", ""]
+    doAssert rsplit(" foo bar ", seps = Whitespace, maxsplit = 1) == @[" foo bar", ""]
     doAssert rsplit(":foo:bar", sep = ':') == @["", "foo", "bar"]
     doAssert rsplit(":foo:bar", sep = ':', maxsplit = 2) == @["", "foo", "bar"]
     doAssert rsplit(":foo:bar", sep = ':', maxsplit = 3) == @["", "foo", "bar"]
     doAssert rsplit("foothebar", sep = "the") == @["foo", "bar"]
+    # Empty string:
+    doAssert "".rsplit() == @[""]
+    doAssert "".rsplit(" ") == @[""]
+    doAssert "".rsplit({' '}) == @[""]
+    # Empty separators:
+    let s = " this is an example  "
+    doAssert "".rsplit({}) == @[""]
+    doAssert "".rsplit("") == @[""]
+    doAssert s.rsplit({}) == @[s]
+    doAssert s.rsplit("") == @[s]
 
   block: # splitWhitespace
     let s = " this is an example  "

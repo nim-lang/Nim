@@ -44,6 +44,9 @@
 
 - Enabling `-d:nimPreviewCstringConversion`, `ptr char`, `ptr array[N, char]` and `ptr UncheckedArray[N, char]` don't support conversion to cstring anymore.
 
+- Enabling `-d:nimPreviewProcConversion`, `proc` does not support conversion to
+  `pointer`. `cast` may be used instead.
+
 - The `gc:v2` option is removed.
 
 - The `mainmodule` and `m` options are removed.
@@ -175,7 +178,7 @@
   type _ = float
   ```
 
-- - Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
+- Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
 
 - The JavaScript backend now uses [BigInt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt)
   for 64-bit integer types (`int64` and `uint64`) by default. As this affects
@@ -231,6 +234,31 @@
   unlisted exceptions) and explicitly raising destructors are implementation
   defined behavior.
 
+- The very old, undocumented deprecated pragma statement syntax for
+  deprecated aliases is now a no-op. The regular deprecated pragma syntax is
+  generally sufficient instead.
+
+  ```nim
+  # now does nothing:
+  {.deprecated: [OldName: NewName].}
+
+  # instead use:
+  type OldName* {.deprecated: "use NewName instead".} = NewName
+  const oldName* {.deprecated: "use newName instead".} = newName
+  ```
+
+  `defined(nimalias)` can be used to check for versions when this syntax was
+  available; however since code that used this syntax is usually very old,
+  these deprecated aliases are likely not used anymore and it may make sense
+  to simply remove these statements.
+
+- `getProgramResult` and `setProgramResult` in `std/exitprocs` are no longer
+  declared when they are not available on the backend. Previously it would call
+  `doAssert false` at runtime despite the condition being compile-time.
+
+- Custom destructors now supports non-var parameters, e.g. `proc =destroy[T: object](x: T)` is valid. `proc =destroy[T: object](x: var T)` is deprecated.
+
+- Relative imports will not resolve to searched paths anymore, e.g. `import ./tables` now reports an error properly.
 
 ## Standard library additions and changes
 
@@ -245,6 +273,7 @@
 - Changed `mimedb` to use an `OrderedTable` instead of `OrderedTableRef` to support `const` tables.
 - `strutils.find` now uses and defaults to `last = -1` for whole string searches,
   making limiting it to just the first char (`last = 0`) valid.
+- `strutils.split` and `strutils.rsplit` now return a source string as a single element for an empty separator.
 - `random.rand` now works with `Ordinal`s.
 - Undeprecated `os.isvalidfilename`.
 - `std/oids` now uses `int64` to store time internally (before it was int32).
@@ -289,9 +318,6 @@
   - Added `std/paths`, `std/dirs`, `std/files`, `std/symlinks` and `std/appdirs`.
   - Added `std/cmdline` for reading command line parameters.
 - Added `sep` parameter in `std/uri` to specify the query separator.
-- Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
-  and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)
-  in `jscore` for JavaScript targets.
 - Added `UppercaseLetters`, `LowercaseLetters`, `PunctuationChars`, `PrintableChars` sets to `std/strutils`.
 - Added `complex.sgn` for obtaining the phase of complex numbers.
 - Added `insertAdjacentText`, `insertAdjacentElement`, `insertAdjacentHTML`,
@@ -305,6 +331,14 @@
 - Added `openArray[char]` overloads for `std/unicode` allowing more code reuse.
 - Added `safe` parameter to `base64.encodeMime`.
 - Added `parseutils.parseSize` - inverse to `strutils.formatSize` - to parse human readable sizes.
+- Added `minmax` to `sequtils`, as a more efficient `(min(_), max(_))` over sequences.
+- `std/jscore` for JavaScript targets:
+  + Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
+  and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask).
+  + Added `toDateString`, `toISOString`, `toJSON`, `toTimeString`, `toUTCString` converters for `DateTime`.
+- Added `BackwardsIndex` overload for `CacheSeq`.
+- Added support for nested `with` blocks in `std/with`.
+
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
@@ -364,7 +398,7 @@
     ```
   - A generic `define` pragma for constants has been added that interprets
     the value of the define based on the type of the constant value.
-    See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#generic-define-pragma)
+    See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#generic-nimdefine-pragma)
     for a list of supported types.
 
 - [Macro pragmas](https://nim-lang.github.io/Nim/manual.html#userminusdefined-pragmas-macro-pragmas) changes:
@@ -437,6 +471,10 @@
   As a result `nnkVarTuple` nodes in variable sections will no longer be
   reflected in `typed` AST.
 
+- C++ interoperability:
+  - New [`virtual`](https://nim-lang.github.io/Nim/manual_experimental.html#virtual-pragma) pragma added.
+  - Improvements to [`constructor`](https://nim-lang.github.io/Nim/manual_experimental.html#constructor-pragma) pragma.
+
 ## Compiler changes
 
 - The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the
@@ -454,7 +492,11 @@
   static libraries.
 
 - When compiling for Release the flag `-fno-math-errno` is used for GCC.
-- When compiling for Release the flag `--build-id=none` is used for GCC Linker.
+- Removed deprecated `LineTooLong` hint.
+- Line numbers and filenames of source files work correctly inside templates for JavaScript targets.
+
+- Removed support for LCC (Local C), Pelles C, Digital Mars, Watcom compilers.
+
 
 ## Docgen
 

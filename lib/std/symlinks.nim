@@ -6,7 +6,7 @@ from paths import Path, ReadDirEffect
 
 from std/private/ossymlinks import symlinkExists, createSymlink, expandSymlink
 
-proc symlinkExists*(link: Path): bool {.inline, tags: [ReadDirEffect].} =
+proc symlinkExists*(link: Path): bool {.inline, tags: [ReadDirEffect], sideEffect.} =
   ## Returns true if the symlink `link` exists. Will return true
   ## regardless of whether the link points to a directory or file.
   result = symlinkExists(link.string)

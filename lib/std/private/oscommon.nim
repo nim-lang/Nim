@@ -119,7 +119,7 @@ when not defined(windows):
   const maxSymlinkLen* = 1024
 
 proc fileExists*(filename: string): bool {.rtl, extern: "nos$1",
-                                          tags: [ReadDirEffect], noNimJs.} =
+                                          tags: [ReadDirEffect], noNimJs, sideEffect.} =
   ## Returns true if `filename` exists and is a regular file or symlink.
   ##
   ## Directories, device files, named pipes and sockets return false.
@@ -137,7 +137,7 @@ proc fileExists*(filename: string): bool {.rtl, extern: "nos$1",
 
 
 proc dirExists*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect],
-                                     noNimJs.} =
+                                     noNimJs, sideEffect.} =
   ## Returns true if the directory `dir` exists. If `dir` is a file, false
   ## is returned. Follows symlinks.
   ##
@@ -155,7 +155,7 @@ proc dirExists*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect]
 
 proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
                                           tags: [ReadDirEffect],
-                                          noWeirdTarget.} =
+                                          noWeirdTarget, sideEffect.} =
   ## Returns true if the symlink `link` exists. Will return true
   ## regardless of whether the link points to a directory or file.
   ##

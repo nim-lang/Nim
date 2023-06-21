@@ -614,6 +614,94 @@ template main {.dirty.} =
 
     type SearchOptions = object
         evaluation = evaluate
+  block:
+    type
+      Result[T, E] = object
+        when T is void:
+          when E is void:
+            oResultPrivate: bool
+          else:
+            case oResultPrivate: bool
+            of false:
+              eResultPrivate: E
+            of true:
+              discard
+        else:
+          when E is void:
+            case oResultPrivate: bool
+            of false:
+              discard
+            of true:
+              vResultPrivate: T
+          else:
+            case oResultPrivate: bool
+            of false:
+              eResultPrivate: E
+            of true:
+              vResultPrivate: T
+
+
+    template `?`[T, E](self: Result[T, E]): auto =
+      let v = (self)
+      if not v.oResultPrivate:
+        when compiles(`assignResult?`(default(typeof(result)))):
+          when typeof(result) is typeof(v):
+            `assignResult?`(v)
+          elif E is void:
+            `assignResult?`(err(typeof(result)))
+          else:
+            `assignResult?`(err(typeof(result), v.eResultPrivate))
+          return
+        else:
+          return
+            when typeof(result) is typeof(v):
+              v
+            elif E is void:
+              err(typeof(result))
+            else:
+              err(typeof(result), v.eResultPrivate)
+
+      when not(T is void):
+        v.vResultPrivate
+        
+    type R = Result[int, string]
+
+    proc testAssignResult() =
+      var assigned: bool
+      template `assignResult?`(v: Result) =
+        assigned = true
+        result = v
+
+      proc failed(): Result[int, string] =
+        discard
+
+      proc calling(): Result[int, string] =
+        let _ = ? failed()
+        doAssert false
+
+      let r = calling()
+      doAssert assigned
+
+    when nimvm:
+      when not defined(js):
+        testAssignResult()
+    else:
+      testAssignResult()
+
+  block: # bug #22123
+    type Thing = object
+      x: float32 = 1
+
+    type ThingWithArray = object
+        arr: array[256, float32]
+        n: float32 = 1
+
+    type Container = ref object
+        thing: array[5, Thing]
+        thing_with_array: array[5, ThingWithArray]
+
+    var foo = new Container
+    doAssert int(foo.thing[0].x) == 1
 
 static: main()
 main()

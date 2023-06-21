@@ -81,7 +81,11 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc =
   testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
   testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
 
-  if "boehm" notin options:
+  if "boehm" notin options and not isOrc:
+    # hcr tests
+    
+    testSpec r, makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+
     # force build required - see the comments in the .nim file for more details
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",
                                    options & " --threads:off --forceBuild --hotCodeReloading:on" & rpath, cat)
@@ -211,9 +215,9 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
   for testfile in ["exception/texceptions", "exception/texcpt1",
                    "exception/texcsub", "exception/tfinally",
                    "exception/tfinally2", "exception/tfinally3",
-                   "actiontable/tactiontable", "method/tmultimjs",
+                   "collections/tactiontable", "method/tmultimjs",
                    "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
-                   "varres/tvartup", "misc/tints", "misc/tunsignedinc",
+                   "varres/tvartup", "int/tints", "int/tunsignedinc",
                    "async/tjsandnativeasync"]:
     test "tests/" & testfile & ".nim"
 

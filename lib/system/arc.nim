@@ -113,6 +113,18 @@ proc nimNewObjUninit(size, alignment: int): pointer {.compilerRtl.} =
 proc nimDecWeakRef(p: pointer) {.compilerRtl, inl.} =
   decrement head(p)
 
+proc isUniqueRef*[T](x: ref T): bool {.inline.} =
+  ## Returns true if the object `x` points to is uniquely referenced. Such
+  ## an object can potentially be passed over to a different thread safely,
+  ## if great care is taken. This queries the internal reference count of
+  ## the object which is subject to lots of optimizations! In other words
+  ## the value of `isUniqueRef` can depend on the used compiler version and
+  ## optimizer setting.
+  ## Nevertheless it can be used as a very valuable debugging tool and can
+  ## be used to specify the constraints of a threading related API
+  ## via `assert isUniqueRef(x)`.
+  head(cast[pointer](x)).rc == 0
+
 proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   when defined(nimArcDebug):
     if head(p).refId == traceId:
@@ -199,10 +211,6 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
       # According to Lins it's correct to do nothing else here.
       when traceCollector:
         cprintf("[DECREF] %p\n", cell)
-
-proc nimDupRef(dest: ptr pointer, src: pointer) {.compilerRtl, inl.} =
-  dest[] = src
-  if src != nil: nimIncRef src
 
 proc GC_unref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.

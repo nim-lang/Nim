@@ -34,7 +34,7 @@ const
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wEffectsOf, wTags, wForbids, wLocks, wDelegator, wGcSafe,
     wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy,
-    wRequires, wEnsures, wEnforceNoRaises, wSystemRaisesDefect}
+    wRequires, wEnsures, wEnforceNoRaises, wSystemRaisesDefect, wVirtual}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
@@ -71,7 +71,8 @@ const
     wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wShallow,
     wIncompleteStruct, wCompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wCppNonPod, wBorrow, wGcSafe, wPartial, wExplain, wPackage, wCodegenDecl}
+    wCppNonPod, wBorrow, wGcSafe, wPartial, wExplain, wPackage, wCodegenDecl,
+    wSendable}
   fieldPragmas* = declPragmas + {wGuard, wBitsize, wCursor,
     wRequiresInit, wNoalias, wAlign} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
@@ -83,7 +84,7 @@ const
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wDefine,
     wCompilerProc, wCore}
-  paramPragmas* = {wNoalias, wInject, wGensym}
+  paramPragmas* = {wNoalias, wInject, wGensym, wByRef, wByCopy}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
                       wThread, wRaises, wEffectsOf, wLocks, wTags, wForbids, wGcSafe,
@@ -173,9 +174,7 @@ proc setExternName(c: PContext; s: PSym, extname: string, info: TLineInfo) =
       localError(c.config, info, "invalid extern name: '" & extname & "'. (Forgot to escape '$'?)")
   when hasFFI:
     s.cname = $s.loc.r
-  if c.config.cmd == cmdNimfix and '$' notin extname:
-    # note that '{.importc.}' is transformed into '{.importc: "$1".}'
-    s.loc.flags.incl(lfFullExternalName)
+
 
 proc makeExternImport(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
@@ -210,9 +209,9 @@ proc processImportObjC(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   let m = s.getModule()
   incl(m.flags, sfCompileToObjc)
 
-proc newEmptyStrNode(c: PContext; n: PNode): PNode {.noinline.} =
+proc newEmptyStrNode(c: PContext; n: PNode, strVal: string = ""): PNode {.noinline.} =
   result = newNodeIT(nkStrLit, n.info, getSysType(c.graph, n.info, tyString))
-  result.strVal = ""
+  result.strVal = strVal
 
 proc getStrLitNode(c: PContext, n: PNode): PNode =
   if n.kind notin nkPragmaCallKinds or n.len != 2:
@@ -243,6 +242,14 @@ proc expectIntLit(c: PContext, n: PNode): int =
 proc getOptionalStr(c: PContext, n: PNode, defaultStr: string): string =
   if n.kind in nkPragmaCallKinds: result = expectStrLit(c, n)
   else: result = defaultStr
+
+proc processVirtual(c: PContext, n: PNode, s: PSym) =
+  s.constraint = newEmptyStrNode(c, n, getOptionalStr(c, n, "$1"))
+  s.constraint.strVal = s.constraint.strVal % s.name.s
+  s.flags.incl {sfVirtual, sfInfixCall, sfExportc, sfMangleCpp}
+
+  s.typ.callConv = ccNoConvention
+  incl c.config.globalOptions, optMixedMode
 
 proc processCodegenDecl(c: PContext, n: PNode, sym: PSym) =
   sym.constraint = getStrLitNode(c, n)
@@ -310,7 +317,7 @@ proc getLib(c: PContext, kind: TLibKind, path: PNode): PLib =
   result.path = path
   c.libs.add result
   if path.kind in {nkStrLit..nkTripleStrLit}:
-    result.isOverriden = options.isDynlibOverride(c.config, path.strVal)
+    result.isOverridden = options.isDynlibOverride(c.config, path.strVal)
 
 proc expectDynlibNode(c: PContext, n: PNode): PNode =
   if n.kind notin nkPragmaCallKinds or n.len != 2:
@@ -330,12 +337,12 @@ proc expectDynlibNode(c: PContext, n: PNode): PNode =
 proc processDynLib(c: PContext, n: PNode, sym: PSym) =
   if (sym == nil) or (sym.kind == skModule):
     let lib = getLib(c, libDynamic, expectDynlibNode(c, n))
-    if not lib.isOverriden:
+    if not lib.isOverridden:
       c.optionStack[^1].dynlib = lib
   else:
     if n.kind in nkPragmaCallKinds:
       var lib = getLib(c, libDynamic, expectDynlibNode(c, n))
-      if not lib.isOverriden:
+      if not lib.isOverridden:
         addToLib(lib, sym)
         incl(sym.loc.flags, lfDynamicLib)
     else:
@@ -622,7 +629,7 @@ proc pragmaEmit(c: PContext, n: PNode) =
     if n1.kind == nkBracket:
       var b = newNodeI(nkBracket, n1.info, n1.len)
       for i in 0..<n1.len:
-        b[i] = c.semExpr(c, n1[i])
+        b[i] = c.semExprWithType(c, n1[i], {efTypeAllowed})
       n[1] = b
     else:
       n[1] = c.semConstExpr(c, n1)
@@ -736,19 +743,8 @@ proc deprecatedStmt(c: PContext; outerPragma: PNode) =
     return
   if pragma.kind != nkBracket:
     localError(c.config, pragma.info, "list of key:value pairs expected"); return
-  for n in pragma:
-    if n.kind in nkPragmaCallKinds and n.len == 2:
-      let dest = qualifiedLookUp(c, n[1], {checkUndeclared})
-      if dest == nil or dest.kind in routineKinds:
-        localError(c.config, n.info, warnUser, "the .deprecated pragma is unreliable for routines")
-      let src = considerQuotedIdent(c, n[0])
-      let alias = newSym(skAlias, src, c.idgen, dest, n[0].info, c.config.options)
-      incl(alias.flags, sfExported)
-      if sfCompilerProc in dest.flags: markCompilerProc(c, alias)
-      addInterfaceDecl(c, alias)
-      n[1] = newSymNode(dest)
-    else:
-      localError(c.config, n.info, "key:value pair expected")
+  message(c.config, pragma.info, warnDeprecated,
+    "deprecated statement is now a no-op, use regular deprecated pragma")
 
 proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
   if it.kind notin nkPragmaCallKinds or it.len != 2:
@@ -973,8 +969,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         # only supported for backwards compat, doesn't do anything anymore
         noVal(c, it)
       of wConstructor:
-        noVal(c, it)
         incl(sym.flags, sfConstructor)
+        if sfImportc notin sym.flags:
+          sym.constraint = newEmptyStrNode(c, it, getOptionalStr(c, it, ""))
+          sym.constraint.strVal = sym.constraint.strVal
+          sym.flags.incl {sfExportc, sfMangleCpp}
+          sym.typ.callConv = ccNoConvention
       of wHeader:
         var lib = getLib(c, libHeader, getStrLitNode(c, it))
         addToLib(lib, sym)
@@ -1068,6 +1068,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.typ != nil:
           incl(sym.typ.flags, tfThread)
           if sym.typ.callConv == ccClosure: sym.typ.callConv = ccNimCall
+      of wSendable:
+        noVal(c, it)
+        if sym != nil and sym.typ != nil:
+          incl(sym.typ.flags, tfSendable)
+        else:
+          invalidPragma(c, it)
       of wGcSafe:
         noVal(c, it)
         if sym != nil:
@@ -1192,13 +1198,17 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           invalidPragma(c, it)
       of wByRef:
         noVal(c, it)
-        if sym == nil or sym.typ == nil:
+        if sym != nil and sym.kind == skParam:
+          sym.options.incl optByRef
+        elif sym == nil or sym.typ == nil:
           processOption(c, it, c.config.options)
         else:
           incl(sym.typ.flags, tfByRef)
       of wByCopy:
         noVal(c, it)
-        if sym.kind != skType or sym.typ == nil: invalidPragma(c, it)
+        if sym.kind == skParam:
+          incl(sym.flags, sfByCopy)
+        elif sym.kind != skType or sym.typ == nil: invalidPragma(c, it)
         else: incl(sym.typ.flags, tfByCopy)
       of wPartial:
         noVal(c, it)
@@ -1267,6 +1277,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         sym.flags.incl sfNeverRaises
       of wSystemRaisesDefect:
         sym.flags.incl sfSystemRaisesDefect
+      of wVirtual:
+          processVirtual(c, it, sym)
+
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"

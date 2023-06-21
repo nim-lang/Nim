@@ -519,6 +519,12 @@ proc exceptionTypeName(e: ref Exception): string {.inline.} =
   if e == nil: "<foreign exception>"
   else: $e.name
 
+when not declared(setProgramResult):
+  {.warning: "setProgramResult not available on platform, unittest will not" &
+    " give failing exit code on test failure".}
+  template setProgramResult(a: int) =
+    discard
+
 template test*(name, body) {.dirty.} =
   ## Define a single test case identified by `name`.
   ##
