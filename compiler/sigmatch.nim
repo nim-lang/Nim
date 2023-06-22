@@ -246,7 +246,13 @@ proc sumGeneric(t: PType): int =
       break
     of tyStatic:
       return sumGeneric(t[0]) + 1
-    of tyGenericParam, tyUntyped, tyTyped: break
+    of tyGenericParam:
+      if t.sons.len > 0:
+        t = t.lastSon
+        inc result
+      else:
+        break
+    of tyUntyped, tyTyped: break
     of tyAlias, tySink: t = t.lastSon
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
