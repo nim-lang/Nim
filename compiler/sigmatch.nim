@@ -239,7 +239,7 @@ proc sumGeneric(t: PType): int =
       if t.kind == tyEmpty: break
       inc result
     of tyGenericInvocation, tyTuple, tyProc, tyAnd:
-      result += ord(t.kind in {tyGenericInvocation, tyAnd})
+      result += ord(t.kind in {tyAnd})
       for i in 0..<t.len:
         if t[i] != nil:
           result += sumGeneric(t[i])
@@ -1655,6 +1655,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
               target.callConv != effectiveArgType.callConv:
             return isNone
         put(c, f, a)
+        return isGeneric
+      elif targetKind == tyObject and effectiveArgType.kind == tyGenericParam:
         return isGeneric
       else:
         return isNone
