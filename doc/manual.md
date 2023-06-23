@@ -2634,7 +2634,9 @@ of the argument.
    range.
 3. Generic match: `f` is a generic type and `a` matches, for
    instance `a` is `int` and `f` is a generic (constrained) parameter
-   type (like in `[T]` or `[T: int|char]`).
+   type (like in `[T]` or `[T: int|char]`). Constraints given an alias (as in `T`)
+   shall be used to define `f`, when `f` is composed of `T`, following simple variable
+   substitution.
 4. Subrange or subtype match: `a` is a `range[T]` and `T`
    matches `f` exactly. Or: `a` is a subtype of `f`.
 5. Integral conversion match: `a` is convertible to `f` and `f` and `a`
