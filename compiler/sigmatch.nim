@@ -249,7 +249,6 @@ proc sumGeneric(t: PType): int =
     of tyGenericParam:
       if t.sons.len > 0:
         t = t.lastSon
-        inc result
       else:
         break
     of tyUntyped, tyTyped: break
