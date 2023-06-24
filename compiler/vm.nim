@@ -448,7 +448,8 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         let srcDist = (sizeof(src.intVal) - srcSize) * 8
         let destDist = (sizeof(dest.intVal) - destSize) * 8
         var srcVal = src.intVal
-        srcVal = (srcVal shl srcDist) shr srcDist
+        when false: # this needs to use unsigned right shift, but shouldn't be needed anyway
+          srcVal = (srcVal shl srcDist) shr srcDist
         var value = cast[BiggestUInt](srcVal)
         value = (value shl destDist) shr destDist
         dest.intVal = cast[BiggestInt](value)
