@@ -447,8 +447,9 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         let destSize = getSize(c.config, desttyp)
         let srcDist = (sizeof(src.intVal) - srcSize) * 8
         let destDist = (sizeof(dest.intVal) - destSize) * 8
-        var value = cast[BiggestUInt](src.intVal)
-        value = (value shl srcDist) shr srcDist
+        var srcVal = src.intVal
+        srcVal = (srcVal shl srcDist) shr srcDist
+        var value = cast[BiggestUInt](srcVal)
         value = (value shl destDist) shr destDist
         dest.intVal = cast[BiggestInt](value)
     of tyBool:
