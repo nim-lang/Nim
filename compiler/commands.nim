@@ -829,6 +829,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "header":
     if conf != nil: conf.headerFile = arg
     incl(conf.globalOptions, optGenIndex)
+  of "nimbasepattern":
+    if conf != nil: conf.nimbasePattern = arg
   of "index":
     case arg.normalize
     of "", "on": conf.globalOptions.incl {optGenIndex}
