@@ -2518,7 +2518,7 @@ proc genConv(p: PProc, n: PNode, r: var TCompRes) =
     elif fromInt: # could be negative
       r.res = "BigInt.asUintN(64, BigInt($1))" % [r.res]
     elif src.kind in {tyFloat..tyFloat64}:
-      r.res = "BigInt(Math.trunc($1))" % [r.res]
+      r.res = "BigInt.asUintN(64, BigInt(Math.trunc($1)))" % [r.res]
     elif src.kind == tyInt64:
       r.res = "BigInt.asUintN(64, $1)" % [r.res]
   elif toUint or dest.kind in tyFloat..tyFloat64:
@@ -2762,7 +2762,7 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
     elif fromInt: # could be negative
       r.res = "BigInt.asUintN(64, BigInt($1))" % [r.res]
     elif src.kind in {tyFloat..tyFloat64}:
-      r.res = "BigInt(Math.trunc($1))" % [r.res]
+      r.res = "BigInt.asUintN(64, BigInt(Math.trunc($1)))" % [r.res]
     elif src.kind == tyInt64:
       r.res = "BigInt.asUintN(64, $1)" % [r.res]
   elif dest.kind in tyFloat..tyFloat64:
