@@ -935,7 +935,9 @@ proc cgsymValue(m: BModule, name: string): Rope =
     result.addActualSuffixForHCR(m.module, sym)
 
 proc generateHeaders(m: BModule) =
-  m.s[cfsHeaders].add("\L#include \"nimbase.h\"\L")
+  var nimbase = m.config.nimbasePattern
+  if nimbase == "": nimbase = "nimbase.h"
+  m.s[cfsHeaders].addf("\L#include \"$1\"\L", [nimbase])
 
   for it in m.headerFiles:
     if it[0] == '#':

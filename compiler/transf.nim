@@ -324,6 +324,14 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     if a.kind == nkSym:
       n[1] = transformSymAux(c, a)
     return n
+  of nkProcDef: # todo optimize nosideeffects?
+    result = newTransNode(n)
+    let x = freshVar(c, n[namePos].sym)
+    idNodeTablePut(c.transCon.mapping, n[namePos].sym, x)
+    result[namePos] = x # we have to copy proc definitions for iters
+    for i in 1..<n.len:
+      result[i] = introduceNewLocalVars(c, n[i])
+    result[namePos].sym.ast = result
   else:
     result = newTransNode(n)
     for i in 0..<n.len:
