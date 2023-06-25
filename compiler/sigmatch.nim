@@ -250,7 +250,9 @@ proc sumGeneric(t: PType): int =
     of tyAlias, tySink: t = t.lastSon
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
-        tyUInt..tyUInt64, tyCompositeTypeClass, tyBuiltInTypeClass:
+        tyUInt..tyUInt64, tyCompositeTypeClass:
+      return isvar + 1
+    of tyBuiltInTypeClass:
       return isvar
     else:
       return 0
