@@ -627,7 +627,10 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
               candidates)
     result = semResolvedCall(c, r, n, flags)
   else:
-    if efExplain notin flags:
+    if efDetermineType in flags and c.inGenericContext > 0 and c.matchedConcept == nil:
+      result = semGenericStmt(c, n)
+      result.typ = makeTypeFromExpr(c, result.copyTree)
+    elif efExplain notin flags:
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
       result = semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})

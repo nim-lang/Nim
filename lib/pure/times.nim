@@ -1523,31 +1523,17 @@ proc getClockStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].
 
 
 #
-# Iso week
+# Iso week forward declarations
 #
 
 proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
                    nanosecond: NanosecondRange,
-                   zone: Timezone = local()): DateTime {.since: (1, 5).} =
-  ## Create a new `DateTime <#DateTime>`_ from a weekday and an ISO 8601 week number and year
-  ## in the specified timezone.
-  ##
-  ## .. warning:: The ISO week-based year can correspond to the following or previous year from 29 December to January 3.
-  runnableExamples:
-    assert initDateTime(21, mApr, 2018, 00, 00, 00) == initDateTime(dSat, 16, 2018.IsoYear, 00, 00, 00)
-    assert initDateTime(30, mDec, 2019, 00, 00, 00) == initDateTime(dMon, 01, 2020.IsoYear, 00, 00, 00)
-    assert initDateTime(13, mSep, 2020, 00, 00, 00) == initDateTime(dSun, 37, 2020.IsoYear, 00, 00, 00)
-    assert initDateTime(2, mJan, 2021, 00, 00, 00) == initDateTime(dSat, 53, 2020.IsoYear, 00, 00, 00)
-
-  # source https://webspace.science.uu.nl/~gent0113/calendar/isocalendar.htm
-  let d = isoweek * 7 + weekday.int - initDateTime(4, mJan, isoyear.int, 00, 00, 00).weekday.int - 4
-  initDateTime(1, mJan, isoyear.int, hour, minute, second, nanosecond, zone) + initDuration(days=d)
+                   zone: Timezone = local()): DateTime {.raises: [], tags: [], since: (1, 5).}
 
 proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
-                   zone: Timezone = local()): DateTime {.since: (1, 5).} =
-  initDateTime(weekday, isoweek, isoyear, hour, minute, second, 0, zone)
+                   zone: Timezone = local()): DateTime {.raises: [], tags: [], since: (1, 5).}
 
 #
 # TimeFormat
@@ -2760,6 +2746,33 @@ proc `+=`*(t: var Time, b: TimeInterval) =
 
 proc `-=`*(t: var Time, b: TimeInterval) =
   t = t - b
+
+#
+# Iso week
+#
+
+proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
+                   hour: HourRange, minute: MinuteRange, second: SecondRange,
+                   nanosecond: NanosecondRange,
+                   zone: Timezone = local()): DateTime {.raises: [], tags: [], since: (1, 5).} =
+  ## Create a new `DateTime <#DateTime>`_ from a weekday and an ISO 8601 week number and year
+  ## in the specified timezone.
+  ##
+  ## .. warning:: The ISO week-based year can correspond to the following or previous year from 29 December to January 3.
+  runnableExamples:
+    assert initDateTime(21, mApr, 2018, 00, 00, 00) == initDateTime(dSat, 16, 2018.IsoYear, 00, 00, 00)
+    assert initDateTime(30, mDec, 2019, 00, 00, 00) == initDateTime(dMon, 01, 2020.IsoYear, 00, 00, 00)
+    assert initDateTime(13, mSep, 2020, 00, 00, 00) == initDateTime(dSun, 37, 2020.IsoYear, 00, 00, 00)
+    assert initDateTime(2, mJan, 2021, 00, 00, 00) == initDateTime(dSat, 53, 2020.IsoYear, 00, 00, 00)
+
+  # source https://webspace.science.uu.nl/~gent0113/calendar/isocalendar.htm
+  let d = isoweek * 7 + weekday.int - initDateTime(4, mJan, isoyear.int, 00, 00, 00, zone).weekday.int - 4
+  initDateTime(1, mJan, isoyear.int, hour, minute, second, nanosecond, zone) + initTimeInterval(days=d)
+
+proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
+                   hour: HourRange, minute: MinuteRange, second: SecondRange,
+                   zone: Timezone = local()): DateTime {.raises: [], tags: [], since: (1, 5).} =
+  initDateTime(weekday, isoweek, isoyear, hour, minute, second, 0, zone)
 
 #
 # Other

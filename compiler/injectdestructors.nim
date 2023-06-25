@@ -213,8 +213,12 @@ proc makePtrType(c: var Con, baseType: PType): PType =
   addSonSkipIntLit(result, baseType, c.idgen)
 
 proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
-  let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
-  addrExp.add(dest)
+  var addrExp: PNode
+  if op.typ != nil and op.typ.len > 1 and op.typ[1].kind != tyVar:
+    addrExp = dest
+  else:
+    addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
+    addrExp.add(dest)
   result = newTree(nkCall, newSymNode(op), addrExp)
 
 proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =

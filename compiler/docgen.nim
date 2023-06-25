@@ -418,10 +418,13 @@ proc getVarIdx(varnames: openArray[string], id: string): int =
 proc genComment(d: PDoc, n: PNode): PRstNode =
   if n.comment.len > 0:
     d.sharedState.currFileIdx = addRstFileIndex(d, n.info)
-    result = parseRst(n.comment,
-                      toLinenumber(n.info),
-                      toColumn(n.info) + DocColOffset,
-                      d.conf, d.sharedState)
+    try:
+      result = parseRst(n.comment,
+                        toLinenumber(n.info),
+                        toColumn(n.info) + DocColOffset,
+                        d.conf, d.sharedState)
+    except ERecoverableError:
+      result = nil
 
 proc genRecCommentAux(d: PDoc, n: PNode): PRstNode =
   if n == nil: return nil
@@ -1811,13 +1814,16 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen, cache, conf, outExt, standaloneDoc = true,
                         preferMarkdown = preferMarkdown, hasToc = false)
-  let rst = parseRst(readFile(filen.string),
-                     line=LineRstInit, column=ColRstInit,
-                     conf, d.sharedState)
-  d.modDescPre = @[ItemFragment(isRst: true, rst: rst)]
-  finishGenerateDoc(d)
-  writeOutput(d)
-  generateIndex(d)
+  try:
+    let rst = parseRst(readFile(filen.string),
+                      line=LineRstInit, column=ColRstInit,
+                      conf, d.sharedState)
+    d.modDescPre = @[ItemFragment(isRst: true, rst: rst)]
+    finishGenerateDoc(d)
+    writeOutput(d)
+    generateIndex(d)
+  except ERecoverableError:
+    discard "already reported the error"
 
 proc commandRst2Html*(cache: IdentCache, conf: ConfigRef,
                       preferMarkdown=false) =

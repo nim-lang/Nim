@@ -186,11 +186,12 @@ proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
   incl(result.flags, sfShadowed)
 
 proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
-  # locals default to 'gensym':
-  if n.kind == nkPragmaExpr and symBinding(n[1]) == spInject:
+  # locals default to 'gensym', fields default to 'inject':
+  if (n.kind == nkPragmaExpr and symBinding(n[1]) == spInject) or
+      k == skField:
     # even if injected, don't produce a sym choice here:
     #n = semTemplBody(c, n)
-    var x = n[0]
+    var x = n
     while true:
       case x.kind
       of nkPostfix: x = x[1]
@@ -205,7 +206,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
         illFormedAst(x, c.c.config)
     let ident = getIdentNode(c, x)
     if not isTemplParam(c, ident):
-      c.toInject.incl(x.ident.id)
+      if k != skField: c.toInject.incl(x.ident.id)
     else:
       replaceIdentBySym(c.c, n, ident)
   else:
@@ -326,21 +327,24 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   # close scope for parameters
   closeScope(c)
 
+proc semTemplIdentDef(c: var TemplCtx, a: PNode, symKind: TSymKind) =
+  checkMinSonsLen(a, 3, c.c.config)
+  when defined(nimsuggest):
+    inc c.c.inTypeContext
+  a[^2] = semTemplBody(c, a[^2])
+  when defined(nimsuggest):
+    dec c.c.inTypeContext
+  a[^1] = semTemplBody(c, a[^1])
+  for j in 0..<a.len-2:
+    addLocalDecl(c, a[j], symKind)
+
 proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start = 0) =
   for i in start..<n.len:
     var a = n[i]
     case a.kind:
     of nkCommentStmt: continue
     of nkIdentDefs, nkVarTuple, nkConstDef:
-      checkMinSonsLen(a, 3, c.c.config)
-      when defined(nimsuggest):
-        inc c.c.inTypeContext
-      a[^2] = semTemplBody(c, a[^2])
-      when defined(nimsuggest):
-        dec c.c.inTypeContext
-      a[^1] = semTemplBody(c, a[^1])
-      for j in 0..<a.len-2:
-        addLocalDecl(c, a[j], symKind)
+      semTemplIdentDef(c, a, symKind)
     else:
       illFormedAst(a, c.c.config)
 
@@ -480,6 +484,25 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         closeScope(c)
       else:
         a[2] = semTemplBody(c, a[2])
+  of nkObjectTy:
+    openScope(c)
+    result = semTemplBodySons(c, n)
+    closeScope(c)
+  of nkRecList:
+    for i in 0..<n.len:
+      var a = n[i]
+      case a.kind:
+      of nkCommentStmt, nkNilLit, nkSym, nkEmpty: continue
+      of nkIdentDefs:
+        semTemplIdentDef(c, a, skField)
+      of nkRecCase, nkRecWhen:
+        n[i] = semTemplBody(c, a)
+      else:
+        illFormedAst(a, c.c.config)
+  of nkRecCase:
+    semTemplIdentDef(c, n[0], skField)
+    for i in 1..<n.len:
+      n[i] = semTemplBody(c, n[i])
   of nkProcDef, nkLambdaKinds:
     result = semRoutineInTemplBody(c, n, skProc)
   of nkFuncDef:

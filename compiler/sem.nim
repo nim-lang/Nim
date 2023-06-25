@@ -405,6 +405,8 @@ proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags; expectedTyp
       evaluated = evalAtCompileTime(c, result)
       if evaluated != nil: return evaluated
 
+proc semGenericStmt(c: PContext, n: PNode): PNode
+
 include hlo, seminst, semcall
 
 proc resetSemFlag(n: PNode) =
@@ -513,8 +515,6 @@ proc semConstBoolExpr(c: PContext, n: PNode): PNode =
   result = forceBool(c, semConstExpr(c, n, getSysType(c.graph, n.info, tyBool)))
   if result.kind != nkIntLit:
     localError(c.config, n.info, errConstExprExpected)
-
-proc semGenericStmt(c: PContext, n: PNode): PNode
 proc semConceptBody(c: PContext, n: PNode): PNode
 
 include semtypes
@@ -639,10 +639,10 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
     if child != nil:
       let node = newNode(nkIntLit)
       node.intVal = toInt64(lengthOrd(c.graph.config, aTypSkip))
-      result = semExpr(c, newTree(nkCall, newSymNode(getCompilerProc(c.graph, "nimArrayWith"), a.info),
-        semExprWithType(c, child),
-        node
-          ))
+      result = semExpr(c, newTree(nkCall, newSymNode(getSysSym(c.graph, a.info, "arrayWith"), a.info),
+              semExprWithType(c, child),
+              node
+                ))
       result.typ = aTyp
   elif aTypSkip.kind == tyTuple:
     var hasDefault = false

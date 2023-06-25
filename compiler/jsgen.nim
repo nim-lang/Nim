@@ -2513,10 +2513,12 @@ proc genConv(p: PProc, n: PNode, r: var TCompRes) =
     elif src.kind == tyUInt64:
       r.res = "BigInt.asIntN(64, $1)" % [r.res]
   elif dest.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
-    if fromInt or fromUint:
+    if fromUint or src.kind in {tyBool, tyChar, tyEnum}:
       r.res = "BigInt($1)" % [r.res]
+    elif fromInt: # could be negative
+      r.res = "BigInt.asUintN(64, BigInt($1))" % [r.res]
     elif src.kind in {tyFloat..tyFloat64}:
-      r.res = "BigInt(Math.trunc($1))" % [r.res]
+      r.res = "BigInt.asUintN(64, BigInt(Math.trunc($1)))" % [r.res]
     elif src.kind == tyInt64:
       r.res = "BigInt.asUintN(64, $1)" % [r.res]
   elif toUint or dest.kind in tyFloat..tyFloat64:
@@ -2755,10 +2757,12 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
     elif src.kind == tyUInt64:
       r.res = "BigInt.asIntN(64, $1)" % [r.res]
   elif dest.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
-    if fromInt or fromUint:
+    if fromUint or src.kind in {tyBool, tyChar, tyEnum}:
       r.res = "BigInt($1)" % [r.res]
+    elif fromInt: # could be negative
+      r.res = "BigInt.asUintN(64, BigInt($1))" % [r.res]
     elif src.kind in {tyFloat..tyFloat64}:
-      r.res = "BigInt(Math.trunc($1))" % [r.res]
+      r.res = "BigInt.asUintN(64, BigInt(Math.trunc($1)))" % [r.res]
     elif src.kind == tyInt64:
       r.res = "BigInt.asUintN(64, $1)" % [r.res]
   elif dest.kind in tyFloat..tyFloat64:
@@ -2790,11 +2794,17 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       if optJsBigInt64 in p.config.globalOptions:
         r.res.add('n')
     of tyInt64:
-      r.res = rope(n.intVal)
+      let wrap = n.intVal < 0 # wrap negative integers with parens
+      if wrap: r.res.add '('
+      r.res.addInt n.intVal
       if optJsBigInt64 in p.config.globalOptions:
         r.res.add('n')
+      if wrap: r.res.add ')'
     else:
-      r.res = rope(n.intVal)
+      let wrap = n.intVal < 0 # wrap negative integers with parens
+      if wrap: r.res.add '('
+      r.res.addInt n.intVal
+      if wrap: r.res.add ')'
     r.kind = resExpr
   of nkNilLit:
     if isEmptyType(n.typ):

@@ -1837,7 +1837,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # proc foo(T: typedesc, x: T)
       # when `f` is an unresolved typedesc, `a` could be any
       # type, so we should not perform this check earlier
-      if a.kind != tyTypeDesc:
+      if c.c.inGenericContext > 0 and
+          a.skipTypes({tyTypeDesc}).kind == tyGenericParam:
+        # generic type bodies can sometimes compile call expressions
+        # prevent unresolved generic parameters from being passed to procs as
+        # typedesc parameters
+        result = isNone
+      elif a.kind != tyTypeDesc:
         if a.kind == tyGenericParam and tfWildcard in a.flags:
           # TODO: prevent `a` from matching as a wildcard again
           result = isGeneric
@@ -1926,7 +1932,13 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
     else:
       result.typ = errorType(c)
   else:
-    result.typ = f.skipTypes({tySink, tyVar})
+    result.typ = f.skipTypes({tySink})
+  # keep varness
+  if arg.typ != nil and arg.typ.kind == tyVar:
+    result.typ = toVar(result.typ, tyVar, c.idgen)
+  else:
+    result.typ = result.typ.skipTypes({tyVar})
+
   if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
   result.add c.graph.emptyNode
   result.add arg
