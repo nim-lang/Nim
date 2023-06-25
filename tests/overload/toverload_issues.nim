@@ -208,9 +208,18 @@ block: # issue #22142
     proc test[J;H: A[J];T: B[H]](param: T): bool = false
     proc test[T](param: B[T]): bool = true
     doAssert test(B[A[int]]()) == false
+  block:  # object is more specific then `T`
+    proc p[H:object;T:ptr[H]](param:T):bool = false
+    proc p[T](param:ptr[T]):bool= true
+    var l: ptr[C]
+    doAssert p(l) == false
+  block:
+    proc p[T:A[object]](param:T):bool = false
+    proc p[T](param: A[T]):bool= true
+    doAssert p(A[C]()) == false
   
   # change (previously ambiguous)
-  block:  
+  block:  # A is more specific than `object`
     proc test[T: A](param: T): bool = false
     proc test[T: object](param: T): bool = true
     doAssert test(A[int]()) == false
@@ -229,8 +238,20 @@ block: # issue #22142
   block:
     #[
     This was referenced in the nim compiler source (`sumGeneric`) as a case
-    that was supposed to not be ambiguous, yet it was not
+    that was supposed to not be ambiguous, yet it was
     ]#
     proc test[J;H:A[J]; T: A[H]](param: T): bool = false
     proc test[H;T: A[H]](param: T): bool = true
-    discard test(A[A[C]]())
+    doAssert test(A[A[C]]()) == false
+  block:
+    proc test[J;T:A[J]](param: A[T]): bool = false
+    proc test[T](param: A[T]): bool = true
+    doAssert test(A[A[C]]()) == false
+  block: #anti-regression (object is more specific then `T`)
+    proc test[J;T:A[J]](param: A[T]): bool = false
+    proc test(param: A[A[object]]): bool = true
+    doAssert test(A[A[C]]()) == true
+  block:
+    proc test[T](param: A[T]): bool = false
+    proc test[T: object](param: A[T]): bool = true
+    doAssert test(A[C]()) == true

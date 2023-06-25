@@ -256,7 +256,10 @@ proc sumGeneric(t: PType): int =
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
         tyUInt..tyUInt64, tyCompositeTypeClass:
-      return isvar
+      return isvar + 1  # the +1 is to differentiate object from specifics
+    of tyBuiltInTypeClass:  # e.g. `object` must be more specific then bare `T`
+      inc result
+      break
     else:
       return 0
 
@@ -1656,7 +1659,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             return isNone
         put(c, f, a)
         return isGeneric
-      elif targetKind == tyObject and effectiveArgType.kind == tyGenericParam:
+      elif effectiveArgType.kind == tyGenericParam:
         return isGeneric
       else:
         return isNone
