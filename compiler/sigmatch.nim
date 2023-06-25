@@ -215,7 +215,7 @@ proc sumGeneric(t: PType): int =
   # and Foo[T] has the value 2 so that we know Foo[Foo[T]] is more
   # specific than Foo[T].
   var t = t
-  var isvar = 0
+  var isvar = 1
   while true:
     case t.kind
     of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyUncheckedArray,
@@ -257,9 +257,8 @@ proc sumGeneric(t: PType): int =
         tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
         tyUInt..tyUInt64, tyCompositeTypeClass:
       return isvar + 1  # the +1 is to differentiate object from specifics
-      break
     of tyBuiltInTypeClass:  # e.g. `object` must be more specific then bare `T`
-      return isvar
+      return result + 1
     else:
       return 0
 
