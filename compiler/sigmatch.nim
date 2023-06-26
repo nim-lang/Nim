@@ -1659,7 +1659,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         put(c, f, a)
         return isGeneric
       elif effectiveArgType.kind == tyGenericParam:
-        return isGeneric
+        return isConvertible
       else:
         return isNone
 
