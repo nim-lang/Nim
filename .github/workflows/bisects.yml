@@ -13,6 +13,6 @@ jobs:
       with:
         nim-version: 'devel'
 
-    - uses: juancarlospaco/nimrun-action@main
+    - uses: juancarlospaco/nimrun-action@nim
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
