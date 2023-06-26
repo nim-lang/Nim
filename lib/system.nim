@@ -365,6 +365,10 @@ proc arrGet[I: Ordinal;T](a: T; i: I): T {.
 proc arrPut[I: Ordinal;T,S](a: T; i: I;
   x: S) {.noSideEffect, magic: "ArrPut".}
 
+when defined(nimAllowNonVarDestructor):
+  proc `=destroy`*[T](x: ref T) {.inline, magic: "Destroy".} =
+    discard
+
 proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
   ## Generic `destructor`:idx: implementation that can be overridden.
   discard
