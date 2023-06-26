@@ -1,0 +1,18 @@
+# See https://github.com/juancarlospaco/nimrun-action/issues/3#issuecomment-1607344901
+name: issue comments bisects
+on:
+  issue_comment:
+    types: created
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: jiro4989/setup-nim-action@v1
+      with:
+        nim-version: 'devel'
+
+    - uses: juancarlospaco/nimrun-action@main
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
