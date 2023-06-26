@@ -256,7 +256,7 @@
   declared when they are not available on the backend. Previously it would call
   `doAssert false` at runtime despite the condition being compile-time.
 
-- `strutils.split` and `strutils.rsplit` now forbid an empty separator.
+- Custom destructors now supports non-var parameters, e.g. `proc =destroy[T: object](x: T)` is valid. `proc =destroy[T: object](x: var T)` is deprecated.
 
 - Relative imports will not resolve to searched paths anymore, e.g. `import ./tables` now reports an error properly.
 
@@ -273,6 +273,7 @@
 - Changed `mimedb` to use an `OrderedTable` instead of `OrderedTableRef` to support `const` tables.
 - `strutils.find` now uses and defaults to `last = -1` for whole string searches,
   making limiting it to just the first char (`last = 0`) valid.
+- `strutils.split` and `strutils.rsplit` now return a source string as a single element for an empty separator.
 - `random.rand` now works with `Ordinal`s.
 - Undeprecated `os.isvalidfilename`.
 - `std/oids` now uses `int64` to store time internally (before it was int32).
@@ -469,6 +470,10 @@
 
   As a result `nnkVarTuple` nodes in variable sections will no longer be
   reflected in `typed` AST.
+
+- C++ interoperability:
+  - New [`virtual`](https://nim-lang.github.io/Nim/manual_experimental.html#virtual-pragma) pragma added.
+  - Improvements to [`constructor`](https://nim-lang.github.io/Nim/manual_experimental.html#constructor-pragma) pragma.
 
 ## Compiler changes
 

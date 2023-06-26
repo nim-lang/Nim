@@ -366,11 +366,14 @@ func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
 # --------- Private templates for different split separators -----------
 
 func substrEq(s: string, pos: int, substr: string): bool =
-  var i = 0
+  # Always returns false for empty `substr`
   var length = substr.len
-  while i < length and pos+i < s.len and s[pos+i] == substr[i]:
-    inc i
-  return i == length
+  if length > 0:
+    var i = 0
+    while i < length and pos+i < s.len and s[pos+i] == substr[i]:
+      inc i
+    i == length
+  else: false
 
 template stringHasSep(s: string, index: int, seps: set[char]): bool =
   s[index] in seps
@@ -487,15 +490,15 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   ##   "22"
   ##   "08"
   ##   "08.398990"
-  ## 
-  ## .. warning:: `seps` should not be empty.
+  ##
+  ##  .. note:: Empty separator set results in returning an original string,
+  ##   following the interpretation "split by no element".
   ##
   ## See also:
   ## * `rsplit iterator<#rsplit.i,string,set[char],int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
   ## * `split func<#split,string,set[char],int>`_
-  assert seps.card > 0, "Empty separator"
   splitCommon(s, seps, maxsplit, 1)
 
 iterator split*(s: string, sep: string, maxsplit: int = -1): string =
@@ -515,15 +518,17 @@ iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   ##   "is"
   ##   "corrupted"
   ##
-  ## .. warning:: `sep` should not be empty.
+  ##  .. note:: Empty separator string results in returning an original string,
+  ##   following the interpretation "split by no element".
   ##
   ## See also:
   ## * `rsplit iterator<#rsplit.i,string,string,int,bool>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
   ## * `split func<#split,string,string,int>`_
-  assert sep.len > 0, "Empty separator"
-  splitCommon(s, sep, maxsplit, sep.len)
+  let sepLen = if sep.len == 0: 1 # prevents infinite loop
+    else: sep.len
+  splitCommon(s, sep, maxsplit, sepLen)
 
 
 template rsplitCommon(s, sep, maxsplit, sepLen) =
@@ -591,16 +596,16 @@ iterator rsplit*(s: string, seps: set[char] = Whitespace,
   ##   "bar"
   ##   "foo"
   ##
-  ## Substrings are separated from the right by the set of chars `seps`.
-  ## 
-  ## .. warning:: `seps` should not be empty.
+  ## Substrings are separated from the right by the set of chars `seps`
+  ##
+  ##  .. note:: Empty separator set results in returning an original string,
+  ##   following the interpretation "split by no element".
   ##
   ## See also:
   ## * `split iterator<#split.i,string,set[char],int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
   ## * `rsplit func<#rsplit,string,set[char],int>`_
-  assert seps.card > 0, "Empty separator"
   rsplitCommon(s, seps, maxsplit, 1)
 
 iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
@@ -619,17 +624,19 @@ iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
   ##   "bar"
   ##   "foo"
   ##
-  ## Substrings are separated from the right by the string `sep`.
-  ## 
-  ## .. warning:: `sep` should not be empty.
+  ## Substrings are separated from the right by the string `sep`
+  ##
+  ##  .. note:: Empty separator string results in returning an original string,
+  ##   following the interpretation "split by no element".
   ##
   ## See also:
   ## * `split iterator<#split.i,string,string,int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
   ## * `rsplit func<#rsplit,string,string,int>`_
-  assert sep.len > 0, "Empty separator"
-  rsplitCommon(s, sep, maxsplit, sep.len)
+  let sepLen = if sep.len == 0: 1 # prevents infinite loop
+    else: sep.len
+  rsplitCommon(s, sep, maxsplit, sepLen)
 
 iterator splitLines*(s: string, keepEol = false): string =
   ## Splits the string `s` into its containing lines.
@@ -740,7 +747,8 @@ func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
   ## The same as the `split iterator <#split.i,string,set[char],int>`_ (see its
   ## documentation), but is a func that returns a sequence of substrings.
   ##
-  ## .. warning:: `seps` should not be empty.
+  ##  .. note:: Empty separator set results in returning an original string,
+  ##   following the interpretation "split by no element".
   ##
   ## See also:
   ## * `split iterator <#split.i,string,set[char],int>`_
@@ -750,6 +758,7 @@ func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
   runnableExamples:
     doAssert "a,b;c".split({',', ';'}) == @["a", "b", "c"]
     doAssert "".split({' '}) == @[""]
+    doAssert "empty seps return unsplit s".split({}) == @["empty seps return unsplit s"]
   accResult(split(s, seps, maxsplit))
 
 func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
@@ -759,7 +768,8 @@ func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string,int>`_.
   ##
-  ## .. warning:: `sep` should not be empty.
+  ##  .. note:: Empty separator string results in returning an original string,
+  ##   following the interpretation "split by no element".
   ##
   ## See also:
   ## * `split iterator <#split.i,string,string,int>`_
@@ -773,6 +783,7 @@ func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
     doAssert "a  largely    spaced sentence".split(" ") == @["a", "", "largely",
         "", "", "", "spaced", "sentence"]
     doAssert "a  largely    spaced sentence".split(" ", maxsplit = 1) == @["a", " largely    spaced sentence"]
+    doAssert "empty sep returns unsplit s".split("") == @["empty sep returns unsplit s"]
   accResult(split(s, sep, maxsplit))
 
 func rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
@@ -822,7 +833,8 @@ func rsplit*(s: string, seps: set[char] = Whitespace,
   ## .. code-block:: nim
   ##   @["Root#Object#Method", "Index"]
   ##
-  ## .. warning:: `seps` should not be empty.
+  ##  .. note:: Empty separator set results in returning an original string,
+  ##   following the interpretation "split by no element".
   ##
   ## See also:
   ## * `rsplit iterator <#rsplit.i,string,set[char],int>`_
@@ -851,7 +863,8 @@ func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
   ## .. code-block:: nim
   ##   @["Root#Object#Method", "Index"]
   ##
-  ## .. warning:: `sep` should not be empty.
+  ##  .. note:: Empty separator string results in returning an original string,
+  ##   following the interpretation "split by no element".
   ##
   ## See also:
   ## * `rsplit iterator <#rsplit.i,string,string,int,bool>`_
@@ -867,6 +880,7 @@ func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
     doAssert "".rsplit("Elon Musk") == @[""]
     doAssert "a  largely    spaced sentence".rsplit(" ") == @["a", "",
         "largely", "", "", "", "spaced", "sentence"]
+    doAssert "empty sep returns unsplit s".rsplit("") == @["empty sep returns unsplit s"]
   accResult(rsplit(s, sep, maxsplit))
   result.reverse()
 

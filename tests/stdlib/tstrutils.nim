@@ -58,8 +58,10 @@ template main() =
     doAssert "".split(" ") == @[""]
     doAssert "".split({' '}) == @[""]
     # Empty separators:
-    doAssertRaises(AssertionDefect): discard s.split({})
-    doAssertRaises(AssertionDefect): discard s.split("")
+    doAssert "".split({}) == @[""]
+    doAssert "".split("") == @[""]
+    doAssert s.split({}) == @[s]
+    doAssert s.split("") == @[s]
 
   block: # splitLines
     let fixture = "a\nb\rc\r\nd"
@@ -70,8 +72,7 @@ template main() =
   block: # rsplit
     doAssert rsplit("foo bar", seps = Whitespace) == @["foo", "bar"]
     doAssert rsplit(" foo bar", seps = Whitespace, maxsplit = 1) == @[" foo", "bar"]
-    doAssert rsplit(" foo bar ", seps = Whitespace, maxsplit = 1) == @[
-        " foo bar", ""]
+    doAssert rsplit(" foo bar ", seps = Whitespace, maxsplit = 1) == @[" foo bar", ""]
     doAssert rsplit(":foo:bar", sep = ':') == @["", "foo", "bar"]
     doAssert rsplit(":foo:bar", sep = ':', maxsplit = 2) == @["", "foo", "bar"]
     doAssert rsplit(":foo:bar", sep = ':', maxsplit = 3) == @["", "foo", "bar"]
@@ -81,8 +82,11 @@ template main() =
     doAssert "".rsplit(" ") == @[""]
     doAssert "".rsplit({' '}) == @[""]
     # Empty separators:
-    doAssertRaises(AssertionDefect): discard "".rsplit({})
-    doAssertRaises(AssertionDefect): discard "".rsplit("")
+    let s = " this is an example  "
+    doAssert "".rsplit({}) == @[""]
+    doAssert "".rsplit("") == @[""]
+    doAssert s.rsplit({}) == @[s]
+    doAssert s.rsplit("") == @[s]
 
   block: # splitWhitespace
     let s = " this is an example  "

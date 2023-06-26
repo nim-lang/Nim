@@ -333,6 +333,7 @@ type
 
     cppDefines*: HashSet[string] # (*)
     headerFile*: string
+    nimbasePattern*: string # pattern to find nimbase.h
     features*: set[Feature]
     legacyFeatures*: set[LegacyFeature]
     arguments*: string ## the arguments to be passed to the program that

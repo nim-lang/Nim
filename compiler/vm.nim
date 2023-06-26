@@ -443,12 +443,16 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
       of tyFloat..tyFloat64:
         dest.intVal = int(src.floatVal)
       else:
-        let srcSize = getSize(c.config, styp)
         let destSize = getSize(c.config, desttyp)
-        let srcDist = (sizeof(src.intVal) - srcSize) * 8
         let destDist = (sizeof(dest.intVal) - destSize) * 8
         var value = cast[BiggestUInt](src.intVal)
-        value = (value shl srcDist) shr srcDist
+        when false:
+          # this would make uint64(-5'i8) evaluate to 251
+          # but at runtime, uint64(-5'i8) is 18446744073709551611
+          # so don't do it
+          let srcSize = getSize(c.config, styp)
+          let srcDist = (sizeof(src.intVal) - srcSize) * 8
+          value = (value shl srcDist) shr srcDist
         value = (value shl destDist) shr destDist
         dest.intVal = cast[BiggestInt](value)
     of tyBool:
