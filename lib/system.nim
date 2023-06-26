@@ -2836,7 +2836,7 @@ when notJSnotNims:
                     hostOS != "any"
 
   proc raiseEIO(msg: string) {.noinline, noreturn.} =
-    sysFatal(IOError, msg)
+    raise newException(IOError, msg)
 
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
     when defined(androidNDK):
