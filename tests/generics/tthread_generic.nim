@@ -5,8 +5,8 @@ discard """
 
 type
   ThreadFuncArgs[T] = object of RootObj
-    a: proc(): T {.thread.}
-    b: proc(val: T) {.thread.}
+    a: proc(): T {.thread, raises:[].}
+    b: proc(val: T) {.thread, raises: [].}
 
 proc handleThreadFunc(arg: ThreadFuncArgs[int]){.thread.} =
   var fn = arg.a
@@ -14,8 +14,8 @@ proc handleThreadFunc(arg: ThreadFuncArgs[int]){.thread.} =
   var output = fn()
   callback(output)
 
-proc `@||->`*[T](fn: proc(): T {.thread.},
-                 callback: proc(val: T){.thread.}): Thread[ThreadFuncArgs[T]] =
+proc `@||->`*[T](fn: proc(): T {.thread, raises: [].},
+                 callback: proc(val: T){.thread, raises: [].}): Thread[ThreadFuncArgs[T]] =
   var thr: Thread[ThreadFuncArgs[T]]
   var args: ThreadFuncArgs[T]
   args.a = fn
@@ -23,7 +23,7 @@ proc `@||->`*[T](fn: proc(): T {.thread.},
   createThread(thr, handleThreadFunc, args)
   return thr
 
-proc `||->`*[T](fn: proc(): T{.thread.}, callback: proc(val: T){.thread.}) =
+proc `||->`*[T](fn: proc(): T{.thread, raises: [].}, callback: proc(val: T){.thread, raises: [].}) =
   discard fn @||-> callback
 
 when true:
