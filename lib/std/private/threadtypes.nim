@@ -1,6 +1,12 @@
 include system/inclrtl
 
 const hasSharedHeap* = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
+const strictThreadsRaises* {.booldefine.} = true # when (NimMajor, NimMinor) > (1, 6)
+
+when strictThreadsRaises:
+  {.pragma: threadProc,thread, nimcall, gcsafe, raises: [].}
+else:
+  {.pragma: threadProc, thread, nimcall, gcsafe.}
 
 when defined(windows):
   type
@@ -166,9 +172,9 @@ type
     core*: PGcThread
     sys*: SysThread
     when TArg is void:
-      dataFn*: proc () {.nimcall, gcsafe.}
+      dataFn*: proc () {.threadProc.}
     else:
-      dataFn*: proc (m: TArg) {.nimcall, gcsafe.}
+      dataFn*: proc (m: TArg) {.threadProc.}
       data*: TArg
     when hasAllocStack:
       rawStack*: pointer

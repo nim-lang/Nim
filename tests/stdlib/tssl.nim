@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:refc; --mm:orc"
+  matrix: "--mm:refc -d:strictThreadsRaises:off; --mm:orc -d:strictThreadsRaises:off"
   joinable: false
   disabled: "freebsd" # see #15713
   disabled: "openbsd" # see #15713
@@ -26,7 +26,6 @@ proc abruptShutdown(port: Port) {.thread.} =
 
   discard client.recvLine()
   client.getFd.close()
-
 proc notifiedShutdown(port: Port) {.thread.} =
   let clientContext = newContext(verifyMode = CVerifyNone)
   var client = newSocket(buffered = false)

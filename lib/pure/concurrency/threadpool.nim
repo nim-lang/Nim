@@ -122,7 +122,7 @@ type
     empty: Semaphore
     data: array[128, pointer]
 
-  WorkerProc = proc (thread, args: pointer) {.nimcall, gcsafe.}
+  WorkerProc = proc (thread, args: pointer) {.nimcall, gcsafe, raises: [].}
   Worker = object
     taskArrived: Semaphore
     taskStarted: Semaphore #\
@@ -336,7 +336,7 @@ numSlavesLock.initLock
 
 gSomeReady.initSemaphore()
 
-proc slave(w: ptr Worker) {.thread.} =
+proc slave(w: ptr Worker) {.thread, raises: [].} =
   isSlave = true
   while true:
     if w.shutdown:

@@ -15,7 +15,7 @@ const
   ThreadStackMask = 1024*256*sizeof(int)-1
   ThreadStackSize = ThreadStackMask+1 - StackGuardSize
 
-type ThreadFunc = proc() {.thread.}
+type ThreadFunc = proc() {.thread, raises: [].}
 
 when defined(posix):
   import posix
