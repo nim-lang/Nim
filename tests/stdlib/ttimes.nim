@@ -766,3 +766,7 @@ block: # ttimes
     check dt.format("GGGG") == "2023"
     check dt.format("dddd 'KW'V GGGG") == "Thursday KW1 2023"
 
+  block: # Can be used inside gcsafe proc
+    proc test(): DateTime {.gcsafe.} =
+      result = "1970".parse("yyyy")
+    doAssert test().year == 1970

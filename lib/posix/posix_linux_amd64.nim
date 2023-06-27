@@ -241,6 +241,7 @@ type
     st_atim*: Timespec   ## Time of last access.
     st_mtim*: Timespec   ## Time of last data modification.
     st_ctim*: Timespec   ## Time of last status change.
+    reserved: array[3, clong]
 
   Statvfs* {.importc: "struct statvfs", header: "<sys/statvfs.h>",
               final, pure.} = object ## struct statvfs
@@ -309,7 +310,7 @@ type
     sa_mask*: Sigset ## Set of signals to be blocked during execution of
                       ## the signal handling function.
     sa_flags*: cint   ## Special flags.
-    sa_sigaction*: proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}
+    sa_restorer: proc() {.noconv.}   ## not intended for application use.
 
   Stack* {.importc: "stack_t",
             header: "<signal.h>", final, pure.} = object ## stack_t
@@ -325,9 +326,9 @@ type
   SigInfo* {.importc: "siginfo_t",
               header: "<signal.h>", final, pure.} = object ## siginfo_t
     si_signo*: cint    ## Signal number.
-    si_code*: cint     ## Signal code.
     si_errno*: cint    ## If non-zero, an errno value associated with
                        ## this signal, as defined in <errno.h>.
+    si_code*: cint     ## Signal code.
     si_pid*: Pid       ## Sending process ID.
     si_uid*: Uid       ## Real user ID of sending process.
     si_addr*: pointer  ## Address of faulting instruction.
@@ -336,6 +337,12 @@ type
     si_value*: SigVal  ## Signal value.
     pad {.importc: "_pad".}: array[128 - 56, uint8]
 
+template sa_sigaction*(v: Sigaction): proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.} =
+  cast[proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}](v.sa_handler)
+proc `sa_sigaction=`*(v: var Sigaction, x: proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}) =
+  v.sa_handler = cast[proc (x: cint) {.noconv.}](x)
+
+type
   Nl_item* {.importc: "nl_item", header: "<nl_types.h>".} = cint
   Nl_catd* {.importc: "nl_catd", header: "<nl_types.h>".} = pointer
 

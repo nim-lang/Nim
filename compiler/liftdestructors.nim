@@ -1068,7 +1068,12 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   let dest = newSym(skParam, getIdent(g.cache, "dest"), idgen, result, info)
   let src = newSym(skParam, getIdent(g.cache, if kind == attachedTrace: "env" else: "src"),
                    idgen, result, info)
-  dest.typ = makeVarType(typ.owner, typ, idgen)
+
+  if kind == attachedDestructor and typ.kind in {tyRef, tyString, tySequence} and g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
+    dest.typ = typ
+  else:
+    dest.typ = makeVarType(typ.owner, typ, idgen)
+
   if kind == attachedTrace:
     src.typ = getSysType(g, info, tyPointer)
   else:
@@ -1191,7 +1196,7 @@ proc patchBody(g: ModuleGraph; c: PContext; n: PNode; info: TLineInfo; idgen: Id
       if op != nil:
         if op.ast.isGenericRoutine:
           internalError(g.config, info, "resolved destructor is generic")
-        if op.magic == mDestroy:
+        if op.magic == mDestroy and t.kind != tyString:
           internalError(g.config, info, "patching mDestroy with mDestroy?")
         n[0] = newSymNode(op)
   for x in n: patchBody(g, c, x, info, idgen)
