@@ -366,6 +366,12 @@ proc arrPut[I: Ordinal;T,S](a: T; i: I;
   x: S) {.noSideEffect, magic: "ArrPut".}
 
 when defined(nimAllowNonVarDestructor):
+  proc `=destroy`*(x: string) {.inline, magic: "Destroy".} =
+    discard
+
+  proc `=destroy`*[T](x: seq[T]) {.inline, magic: "Destroy".} =
+    discard
+
   proc `=destroy`*[T](x: ref T) {.inline, magic: "Destroy".} =
     discard
 
