@@ -1436,6 +1436,8 @@ else:
         if (customSet * events) != {}:
           isCustomEvent = true
           processCustomCallbacks(p, fd)
+          if events.contains(Event.Process):
+            p.selector.unregister(fd.int)
           result = true
 
       # because state `data` can be modified in callback we need to update
