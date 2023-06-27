@@ -29,7 +29,9 @@ import os
 import std/[assertions, syncio]
 
 const preferMarkdown = {roPreferMarkdown, roSupportMarkdown, roNimFile, roSandboxDisabled}
+# legacy nimforum / old default mode:
 const preferRst = {roSupportMarkdown, roNimFile, roSandboxDisabled}
+const pureRst = {roNimFile, roSandboxDisabled}
 
 proc toAst(input: string,
             rstOptions: RstParseOptions = preferMarkdown,
@@ -917,9 +919,30 @@ suite "RST tables":
         ======   ======
          Inputs  Output
         ======   ======
-        """.toAst(error=error) == "")
+        """.toAst(rstOptions = pureRst, error = error) == "")
     check(error[] == "input(2, 2) Error: Illformed table: " &
                      "this word crosses table column from the right")
+
+    # In nimforum compatibility mode & Markdown we raise a warning instead:
+    let expected = dedent"""
+      rnTable  colCount=2
+        rnTableRow
+          rnTableDataCell
+            rnLeaf  'Inputs'
+          rnTableDataCell
+            rnLeaf  'Output'
+      """
+    for opt in [preferRst, preferMarkdown]:
+      var warnings = new seq[string]
+
+      check(
+        dedent"""
+          ======   ======
+           Inputs  Output
+          ======   ======
+          """.toAst(rstOptions = opt, warnings = warnings) == expected)
+      check(warnings[] == @[
+        "input(2, 2) Warning: RST style: this word crosses table column from the right"])
 
   test "tables with slightly overflowed cells cause an error (2)":
     var error = new string
@@ -929,7 +952,7 @@ suite "RST tables":
       =====  =====  ======
       False  False  False
       =====  =====  ======
-      """.toAst(error=error))
+      """.toAst(rstOptions = pureRst, error = error))
     check(error[] == "input(2, 8) Error: Illformed table: " &
                      "this word crosses table column from the right")
 
@@ -941,7 +964,7 @@ suite "RST tables":
       =====  =====  ======
       False  False  False
       =====  =====  ======
-      """.toAst(error=error))
+      """.toAst(rstOptions = pureRst, error = error))
     check(error[] == "input(2, 7) Error: Illformed table: " &
                      "this word crosses table column from the left")
 
@@ -954,7 +977,7 @@ suite "RST tables":
       =====  ======
       False  False
       =====  =======
-      """.toAst(error=error))
+      """.toAst(rstOptions = pureRst, error = error))
     check(error[] == "input(5, 14) Error: Illformed table: " &
                      "end of table column #2 should end at position 13")
 
@@ -966,7 +989,7 @@ suite "RST tables":
       =====  =======
       False  False
       =====  ======
-      """.toAst(error=error))
+      """.toAst(rstOptions = pureRst, error = error))
     check(error[] == "input(3, 14) Error: Illformed table: " &
                      "end of table column #2 should end at position 13")
 
