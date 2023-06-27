@@ -1529,11 +1529,11 @@ proc getClockStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].
 proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
                    nanosecond: NanosecondRange,
-                   zone: Timezone = local()): DateTime {.raises: [], tags: [], since: (1, 5).}
+                   zone: Timezone = local()): DateTime {.gcsafe, raises: [], tags: [], since: (1, 5).}
 
 proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
-                   zone: Timezone = local()): DateTime {.raises: [], tags: [], since: (1, 5).}
+                   zone: Timezone = local()): DateTime {.gcsafe, raises: [], tags: [], since: (1, 5).}
 
 #
 # TimeFormat

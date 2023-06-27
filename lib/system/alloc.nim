@@ -1139,7 +1139,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
   proc realloc0Impl(p: pointer, oldSize, newSize: Natural): pointer =
     result = realloc(allocator, p, newSize)
     if newSize > oldSize:
-      zeroMem(cast[pointer](cast[int](result) + oldSize), newSize - oldSize)
+      zeroMem(cast[pointer](cast[uint](result) + uint(oldSize)), newSize - oldSize)
 
   when false:
     proc countFreeMem(): int =
