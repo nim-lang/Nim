@@ -36,7 +36,7 @@ written as:
       len, cap: int
       data: ptr UncheckedArray[T]
 
-  proc `=destroy`*[T](x: var myseq[T]) =
+  proc `=destroy`*[T](x: myseq[T]) =
     if x.data != nil:
       for i in 0..<x.len: `=destroy`(x.data[i])
       dealloc(x.data)
@@ -256,10 +256,10 @@ The general pattern in using `=destroy` with `=trace` looks like:
     Test[T](size: size, arr: cast[ptr UncheckedArray[T]](alloc0(sizeof(T) * size)))
 
 
-  proc `=destroy`[T](dest: var Test[T]) =
+  proc `=destroy`[T](dest: Test[T]) =
     if dest.arr != nil:
       for i in 0 ..< dest.size: dest.arr[i].`=destroy`
-      dest.arr.dealloc
+      dealloc dest.arr
 
   proc `=trace`[T](dest: var Test[T]; env: pointer) =
     if dest.arr != nil:
