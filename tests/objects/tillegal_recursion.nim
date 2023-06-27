@@ -1,5 +1,5 @@
 discard """
-  errormsg: "inheritance only works with non-final objects"
+  errormsg: "Cannot inherit from: 'Foo:ObjectType'"
   line: 7
 """
 # bug #1691

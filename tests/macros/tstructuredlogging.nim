@@ -1,7 +1,7 @@
 discard """
 output: '''
 main started: a=10, b=inner-b, c=10, d=some-d, x=16, z=20
-exiting: a=12, b=overriden-b, c=100, msg=bye bye, x=16
+exiting: a=12, b=overridden-b, c=100, msg=bye bye, x=16
 '''
 """
 
@@ -134,7 +134,7 @@ scope:
 
 scope:
   x = 16
-  b = "overriden-b"
+  b = "overridden-b"
 
 scope:
   c = 100

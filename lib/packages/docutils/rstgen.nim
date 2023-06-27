@@ -591,10 +591,16 @@ proc readIndexDir*(dir: string):
     if path.endsWith(IndexExt):
       var (fileEntries, title) = parseIdxFile(path)
       # Depending on type add this to the list of symbols or table of APIs.
-      if title.kind == ieNimTitle:
+      if title.kind in {ieNimTitle, ieIdxRole}:
         for i in 0 ..< fileEntries.len:
-          if fileEntries[i].kind != ieNim:
-            continue
+          if title.kind == ieIdxRole:
+            # Don't add to symbols TOC entries (they start with a whitespace).
+            let toc = fileEntries[i].linkTitle
+            if toc.len > 0 and toc[0] == ' ':
+              continue
+          else:
+            if fileEntries[i].kind != ieNim:
+              continue
           # Ok, non TOC entry, add it.
           setLen(result.symbols, L + 1)
           result.symbols[L] = fileEntries[i]

@@ -1,5 +1,7 @@
 discard """
   targets: "c js"
+  matrix: "--mm:refc; --mm:orc"
+
   output: '''
 x + y = 30
 '''

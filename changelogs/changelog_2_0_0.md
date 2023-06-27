@@ -40,9 +40,12 @@
     `ptr int32`, `ptr int64`, `ptr float32`, `ptr float64`
 
 - Enabling `-d:nimPreviewSlimSystem` removes the import of `channels_builtin` in
-  in the `system` module.
+  in the `system` module, which is replaced by [threading/channels](https://github.com/nim-lang/threading/blob/master/threading/channels.nim). Use the command "nimble install threading" and import `threading/channels`.
 
 - Enabling `-d:nimPreviewCstringConversion`, `ptr char`, `ptr array[N, char]` and `ptr UncheckedArray[N, char]` don't support conversion to cstring anymore.
+
+- Enabling `-d:nimPreviewProcConversion`, `proc` does not support conversion to
+  `pointer`. `cast` may be used instead.
 
 - The `gc:v2` option is removed.
 
@@ -126,12 +129,14 @@
   - `std/db_mysql` => `db_connector/db_mysql`
   - `std/db_postgres` => `db_connector/db_postgres`
   - `std/db_odbc` => `db_connector/db_odbc`
+  - `std/md5` => `checksums/md5`
+  - `std/sha1` => `checksums/sha1`
 
 - Previously, calls like `foo(a, b): ...` or `foo(a, b) do: ...` where the final argument of
   `foo` had type `proc ()` were assumed by the compiler to mean `foo(a, b, proc () = ...)`.
   This behavior is now deprecated. Use `foo(a, b) do (): ...` or `foo(a, b, proc () = ...)` instead.
 
-- If no exception or any exception deriving from Exception but not Defect or CatchableError given in except, a `warnBareExcept` warning will be triggered.
+- When `--warning[BareExcept]:on` is enabled, if no exception or any exception deriving from Exception but not Defect or CatchableError given in except, a `warnBareExcept` warning will be triggered.
 
 - The experimental strictFuncs feature now disallows a store to the heap via a `ref` or `ptr` indirection.
 
@@ -173,13 +178,13 @@
   type _ = float
   ```
 
-- - Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
+- Added the `--legacy:verboseTypeMismatch` switch to get legacy type mismatch error messages.
 
 - The JavaScript backend now uses [BigInt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt)
   for 64-bit integer types (`int64` and `uint64`) by default. As this affects
   JS code generation, code using these types to interface with the JS backend
   may need to be updated. Note that `int` and `uint` are not affected.
-  
+
   For compatibility with [platforms that do not support BigInt](https://caniuse.com/bigint)
   and in the case of potential bugs with the new implementation, the
   old behavior is currently still supported with the command line option
@@ -195,7 +200,7 @@
 
   iterator iter(): int =
     yield 123
-  
+
   proc takesProc[T: proc](x: T) = discard
   proc takesIter[T: iterator](x: T) = discard
 
@@ -221,9 +226,39 @@
 
 - Signed integer literals in `set` literals now default to a range type of
   `0..255` instead of `0..65535` (the maximum size of sets).
-  
+
 - Case statements with else branches put before elif/of branches in macros
   are rejected with "invalid order of case branches".
+
+- Destructors now default to `.raises: []` (i.e. destructors must not raise
+  unlisted exceptions) and explicitly raising destructors are implementation
+  defined behavior.
+
+- The very old, undocumented deprecated pragma statement syntax for
+  deprecated aliases is now a no-op. The regular deprecated pragma syntax is
+  generally sufficient instead.
+
+  ```nim
+  # now does nothing:
+  {.deprecated: [OldName: NewName].}
+
+  # instead use:
+  type OldName* {.deprecated: "use NewName instead".} = NewName
+  const oldName* {.deprecated: "use newName instead".} = newName
+  ```
+
+  `defined(nimalias)` can be used to check for versions when this syntax was
+  available; however since code that used this syntax is usually very old,
+  these deprecated aliases are likely not used anymore and it may make sense
+  to simply remove these statements.
+
+- `getProgramResult` and `setProgramResult` in `std/exitprocs` are no longer
+  declared when they are not available on the backend. Previously it would call
+  `doAssert false` at runtime despite the condition being compile-time.
+
+- Custom destructors now supports non-var parameters, e.g. `proc =destroy[T: object](x: T)` is valid. `proc =destroy[T: object](x: var T)` is deprecated.
+
+- Relative imports will not resolve to searched paths anymore, e.g. `import ./tables` now reports an error properly.
 
 ## Standard library additions and changes
 
@@ -238,6 +273,7 @@
 - Changed `mimedb` to use an `OrderedTable` instead of `OrderedTableRef` to support `const` tables.
 - `strutils.find` now uses and defaults to `last = -1` for whole string searches,
   making limiting it to just the first char (`last = 0`) valid.
+- `strutils.split` and `strutils.rsplit` now return a source string as a single element for an empty separator.
 - `random.rand` now works with `Ordinal`s.
 - Undeprecated `os.isvalidfilename`.
 - `std/oids` now uses `int64` to store time internally (before it was int32).
@@ -282,9 +318,6 @@
   - Added `std/paths`, `std/dirs`, `std/files`, `std/symlinks` and `std/appdirs`.
   - Added `std/cmdline` for reading command line parameters.
 - Added `sep` parameter in `std/uri` to specify the query separator.
-- Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
-  and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask)
-  in `jscore` for JavaScript targets.
 - Added `UppercaseLetters`, `LowercaseLetters`, `PunctuationChars`, `PrintableChars` sets to `std/strutils`.
 - Added `complex.sgn` for obtaining the phase of complex numbers.
 - Added `insertAdjacentText`, `insertAdjacentElement`, `insertAdjacentHTML`,
@@ -298,6 +331,14 @@
 - Added `openArray[char]` overloads for `std/unicode` allowing more code reuse.
 - Added `safe` parameter to `base64.encodeMime`.
 - Added `parseutils.parseSize` - inverse to `strutils.formatSize` - to parse human readable sizes.
+- Added `minmax` to `sequtils`, as a more efficient `(min(_), max(_))` over sequences.
+- `std/jscore` for JavaScript targets:
+  + Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
+  and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask).
+  + Added `toDateString`, `toISOString`, `toJSON`, `toTimeString`, `toUTCString` converters for `DateTime`.
+- Added `BackwardsIndex` overload for `CacheSeq`.
+- Added support for nested `with` blocks in `std/with`.
+
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
@@ -357,7 +398,7 @@
     ```
   - A generic `define` pragma for constants has been added that interprets
     the value of the define based on the type of the constant value.
-    See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#generic-define-pragma)
+    See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#generic-nimdefine-pragma)
     for a list of supported types.
 
 - [Macro pragmas](https://nim-lang.github.io/Nim/manual.html#userminusdefined-pragmas-macro-pragmas) changes:
@@ -430,6 +471,10 @@
   As a result `nnkVarTuple` nodes in variable sections will no longer be
   reflected in `typed` AST.
 
+- C++ interoperability:
+  - New [`virtual`](https://nim-lang.github.io/Nim/manual_experimental.html#virtual-pragma) pragma added.
+  - Improvements to [`constructor`](https://nim-lang.github.io/Nim/manual_experimental.html#constructor-pragma) pragma.
+
 ## Compiler changes
 
 - The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the
@@ -447,6 +492,11 @@
   static libraries.
 
 - When compiling for Release the flag `-fno-math-errno` is used for GCC.
+- Removed deprecated `LineTooLong` hint.
+- Line numbers and filenames of source files work correctly inside templates for JavaScript targets.
+
+- Removed support for LCC (Local C), Pelles C, Digital Mars, Watcom compilers.
+
 
 ## Docgen
 
@@ -495,3 +545,4 @@
   e.g. instead of `--includeFile` and `--excludeFile` we have
   `--filename` and `--notFilename` respectively.
   Also the semantics become consistent for such positive/negative filters.
+- koch now supports the `--skipIntegrityCheck` option. The command `koch --skipIntegrityCheck boot -d:release` always builds the compiler twice.

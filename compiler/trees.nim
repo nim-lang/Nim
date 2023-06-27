@@ -214,3 +214,8 @@ proc dontInlineConstant*(orig, cnst: PNode): bool {.inline.} =
   result = orig.kind != cnst.kind and
            cnst.kind in {nkCurly, nkPar, nkTupleConstr, nkBracket, nkObjConstr} and
            cnst.len > ord(cnst.kind == nkObjConstr)
+
+proc isRunnableExamples*(n: PNode): bool =
+  # Templates and generics don't perform symbol lookups.
+  result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
+    n.kind == nkIdent and n.ident.id == ord(wRunnableExamples)

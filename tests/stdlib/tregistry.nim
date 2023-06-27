@@ -1,6 +1,6 @@
 discard """
   disabled: "unix"
-  matrix: "--gc:refc; --gc:arc"
+  matrix: "--mm:refc; --mm:orc"
 """
 
 when defined(windows):

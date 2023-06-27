@@ -24,7 +24,7 @@ import ic/replayer
 export skipCodegen, resolveMod, prepareConfigNotes
 
 when defined(nimsuggest):
-  import std/sha1
+  import ../dist/checksums/src/checksums/sha1
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]

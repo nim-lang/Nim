@@ -23,7 +23,6 @@ when defined(nimPreviewSlimSystem):
   import std/[assertions, formatfloat]
 
 const
-  MaxLineLength* = 80         # lines longer than this lead to a warning
   numChars*: set[char] = {'0'..'9', 'a'..'z', 'A'..'Z'}
   SymChars*: set[char] = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
   SymStartChars*: set[char] = {'a'..'z', 'A'..'Z', '\x80'..'\xFF'}
@@ -94,19 +93,18 @@ type
     base2, base8, base16
 
   TokenSpacing* = enum
-    tsNone, tsTrailing, tsEof
+    tsLeading, tsTrailing, tsEof
 
   Token* = object                # a Nim token
     tokType*: TokType            # the type of the token
+    base*: NumericalBase         # the numerical base; only valid for int
+                                 # or float literals
+    spacing*: set[TokenSpacing]  # spaces around token
     indent*: int                 # the indentation; != -1 if the token has been
                                  # preceded with indentation
     ident*: PIdent               # the parsed identifier
     iNumber*: BiggestInt         # the parsed integer literal
     fNumber*: BiggestFloat       # the parsed floating point literal
-    base*: NumericalBase         # the numerical base; only valid for int
-                                 # or float literals
-    strongSpaceA*: bool          # leading spaces of an operator
-    strongSpaceB*: TokenSpacing  # trailing spaces of an operator
     literal*: string             # the parsed (string) literal; and
                                  # documentation comments are here too
     line*, col*: int
@@ -178,7 +176,7 @@ proc initToken*(L: var Token) =
   L.tokType = tkInvalid
   L.iNumber = 0
   L.indent = 0
-  L.strongSpaceA = false
+  L.spacing = {}
   L.literal = ""
   L.fNumber = 0.0
   L.base = base10
@@ -191,7 +189,7 @@ proc fillToken(L: var Token) =
   L.tokType = tkInvalid
   L.iNumber = 0
   L.indent = 0
-  L.strongSpaceA = false
+  L.spacing = {}
   setLen(L.literal, 0)
   L.fNumber = 0.0
   L.base = base10
@@ -737,10 +735,6 @@ proc handleCRLF(L: var Lexer, pos: int): int =
   template registerLine =
     let col = L.getColNumber(pos)
 
-    when not defined(nimpretty):
-      if col > MaxLineLength:
-        lexMessagePos(L, hintLineTooLong, pos)
-
   case L.buf[pos]
   of CR:
     registerLine()
@@ -960,13 +954,15 @@ proc getOperator(L: var Lexer, tok: var Token) =
   tokenEnd(tok, pos-1)
   # advance pos but don't store it in L.bufpos so the next token (which might
   # be an operator too) gets the preceding spaces:
-  tok.strongSpaceB = tsNone
+  tok.spacing = tok.spacing - {tsTrailing, tsEof}
+  var trailing = false
   while L.buf[pos] == ' ':
     inc pos
-    if tok.strongSpaceB != tsTrailing:
-      tok.strongSpaceB = tsTrailing
+    trailing = true
   if L.buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
-    tok.strongSpaceB = tsEof
+    tok.spacing.incl(tsEof)
+  elif trailing:
+    tok.spacing.incl(tsTrailing)
 
 proc getPrecedence*(tok: Token): int =
   ## Calculates the precedence of the given token.
@@ -1077,7 +1073,6 @@ proc skipMultiLineComment(L: var Lexer; tok: var Token; start: int;
       when defined(nimpretty): tok.literal.add "\L"
       if isDoc:
         when not defined(nimpretty): tok.literal.add "\n"
-        inc tok.iNumber
         var c = toStrip
         while L.buf[pos] == ' ' and c > 0:
           inc pos
@@ -1096,8 +1091,6 @@ proc skipMultiLineComment(L: var Lexer; tok: var Token; start: int;
 proc scanComment(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
   tok.tokType = tkComment
-  # iNumber contains the number of '\n' in the token
-  tok.iNumber = 0
   assert L.buf[pos+1] == '#'
   when defined(nimpretty):
     tok.commentOffsetA = L.offsetBase + pos
@@ -1140,7 +1133,6 @@ proc scanComment(L: var Lexer, tok: var Token) =
         while L.buf[pos] == ' ' and c > 0:
           inc pos
           dec c
-        inc tok.iNumber
     else:
       if L.buf[pos] > ' ':
         L.indentAhead = indent
@@ -1153,7 +1145,7 @@ proc scanComment(L: var Lexer, tok: var Token) =
 proc skip(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
   tokenBegin(tok, pos)
-  tok.strongSpaceA = false
+  tok.spacing.excl(tsLeading)
   when defined(nimpretty):
     var hasComment = false
     var commentIndent = L.currLineIndent
@@ -1164,8 +1156,7 @@ proc skip(L: var Lexer, tok: var Token) =
     case L.buf[pos]
     of ' ':
       inc(pos)
-      if not tok.strongSpaceA:
-        tok.strongSpaceA = true
+      tok.spacing.incl(tsLeading)
     of '\t':
       if not L.allowTabs: lexMessagePos(L, errGenerated, pos, "tabs are not allowed, use spaces instead")
       inc(pos)
@@ -1187,7 +1178,7 @@ proc skip(L: var Lexer, tok: var Token) =
           pos = L.bufpos
         else:
           break
-      tok.strongSpaceA = false
+      tok.spacing.excl(tsLeading)
       when defined(nimpretty):
         if L.buf[pos] == '#' and tok.line < 0: commentIndent = indent
       if L.buf[pos] > ' ' and (L.buf[pos] != '#' or L.buf[pos+1] == '#'):

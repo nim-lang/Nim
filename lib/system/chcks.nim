@@ -38,6 +38,10 @@ when defined(nimV2):
   proc raiseFieldError2(f: string, discVal: int) {.compilerproc, noinline.} =
     ## raised when field is inaccessible given runtime value of discriminant
     sysFatal(FieldDefect, f & $discVal & "'")
+
+  proc raiseFieldErrorStr(f: string, discVal: string) {.compilerproc, noinline.} =
+    ## raised when field is inaccessible given runtime value of discriminant
+    sysFatal(FieldDefect, formatFieldDefect(f, discVal))
 else:
   proc raiseFieldError2(f: string, discVal: string) {.compilerproc, noinline.} =
     ## raised when field is inaccessible given runtime value of discriminant

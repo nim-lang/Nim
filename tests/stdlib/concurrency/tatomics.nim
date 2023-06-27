@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 # test atomic operations
 
 import std/[atomics, bitops]

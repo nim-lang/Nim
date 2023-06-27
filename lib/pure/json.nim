@@ -856,7 +856,7 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool, depth = 0): Json
   case p.tok
   of tkString:
     # we capture 'p.a' here, so we need to give it a fresh buffer afterwards:
-    when defined(gcArc) or defined(gcOrc):
+    when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
       result = JsonNode(kind: JString, str: move p.a)
     else:
       result = JsonNode(kind: JString)
@@ -1211,13 +1211,7 @@ macro assignDistinctImpl[T: distinct](dst: var T;jsonNode: JsonNode; jsonPath: v
   let baseTyp = typImpl[0]
 
   result = quote do:
-    when nimvm:
-      # workaround #12282
-      var tmp: `baseTyp`
-      initFromJson( tmp, `jsonNode`, `jsonPath`)
-      `dst` = `typInst`(tmp)
-    else:
-      initFromJson( `baseTyp`(`dst`), `jsonNode`, `jsonPath`)
+    initFromJson(`baseTyp`(`dst`), `jsonNode`, `jsonPath`)
 
 proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
   assignDistinctImpl(dst, jsonNode, jsonPath)

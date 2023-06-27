@@ -1,5 +1,5 @@
 discard """
-  matrix: "--threads:on"
+  matrix: "--mm:refc; --mm:orc"
 """
 
 import std/rlocks

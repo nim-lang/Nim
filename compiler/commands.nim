@@ -238,9 +238,9 @@ proc processCompile(conf: ConfigRef; filename: string) =
   extccomp.addExternalFileToCompile(conf, found)
 
 const
-  errNoneBoehmRefcExpectedButXFound = "'arc', 'orc', 'markAndSweep', 'boehm', 'go', 'none', 'regions', or 'refc' expected, but '$1' found"
+  errNoneBoehmRefcExpectedButXFound = "'arc', 'orc', 'atomicArc', 'markAndSweep', 'boehm', 'go', 'none', 'regions', or 'refc' expected, but '$1' found"
   errNoneSpeedOrSizeExpectedButXFound = "'none', 'speed' or 'size' expected, but '$1' found"
-  errGuiConsoleOrLibExpectedButXFound = "'gui', 'console' or 'lib' expected, but '$1' found"
+  errGuiConsoleOrLibExpectedButXFound = "'gui', 'console', 'lib' or 'staticlib' expected, but '$1' found"
   errInvalidExceptionSystem = "'goto', 'setjmp', 'cpp' or 'quirky' expected, but '$1' found"
 
 template warningOptionNoop(switch: string) =
@@ -262,6 +262,7 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "go": result = conf.selectedGC == gcGo
     of "none": result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
+    of "atomicarc": result = conf.selectedGC == gcAtomicArc
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "opt":
     case arg.normalize
@@ -516,14 +517,7 @@ proc initOrcDefines*(conf: ConfigRef) =
   if conf.exc == excNone and conf.backend != backendCpp:
     conf.exc = excGoto
 
-proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef, isOrc: bool) =
-  if isOrc:
-    conf.selectedGC = gcOrc
-    defineSymbol(conf.symbols, "gcorc")
-  else:
-    conf.selectedGC = gcArc
-    defineSymbol(conf.symbols, "gcarc")
-
+proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef) =
   defineSymbol(conf.symbols, "gcdestructors")
   incl conf.globalOptions, optSeqDestructors
   incl conf.globalOptions, optTinyRtti
@@ -562,9 +556,17 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       conf.selectedGC = gcMarkAndSweep
       defineSymbol(conf.symbols, "gcmarkandsweep")
     of "destructors", "arc":
-      registerArcOrc(pass, conf, false)
+      conf.selectedGC = gcArc
+      defineSymbol(conf.symbols, "gcarc")
+      registerArcOrc(pass, conf)
     of "orc":
-      registerArcOrc(pass, conf, true)
+      conf.selectedGC = gcOrc
+      defineSymbol(conf.symbols, "gcorc")
+      registerArcOrc(pass, conf)
+    of "atomicarc":
+      conf.selectedGC = gcAtomicArc
+      defineSymbol(conf.symbols, "gcatomicarc")
+      registerArcOrc(pass, conf)
     of "hooks":
       conf.selectedGC = gcHooks
       defineSymbol(conf.symbols, "gchooks")
@@ -652,6 +654,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if backend == TBackend.default: localError(conf, info, "invalid backend: '$1'" % arg)
     if backend == backendJs: # bug #21209
       conf.globalOptions.excl {optThreadAnalysis, optThreads}
+      if optRun in conf.globalOptions:
+        # for now, -r uses nodejs, so define nodejs
+        defineSymbol(conf.symbols, "nodejs")
     conf.backend = backend
   of "doccmd": conf.docCmd = arg
   of "define", "d":
@@ -794,11 +799,13 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "consoleapp")
     of "lib":
       incl(conf.globalOptions, optGenDynLib)
+      incl(conf.globalOptions, optNoMain)
       excl(conf.globalOptions, optGenGuiApp)
       defineSymbol(conf.symbols, "library")
       defineSymbol(conf.symbols, "dll")
     of "staticlib":
       incl(conf.globalOptions, optGenStaticLib)
+      incl(conf.globalOptions, optNoMain)
       excl(conf.globalOptions, optGenGuiApp)
       defineSymbol(conf.symbols, "library")
       defineSymbol(conf.symbols, "staticlib")
@@ -822,6 +829,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "header":
     if conf != nil: conf.headerFile = arg
     incl(conf.globalOptions, optGenIndex)
+  of "nimbasepattern":
+    if conf != nil: conf.nimbasePattern = arg
   of "index":
     case arg.normalize
     of "", "on": conf.globalOptions.incl {optGenIndex}
@@ -862,6 +871,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       setTarget(conf.target, conf.target.targetOS, cpu)
   of "run", "r":
     processOnOffSwitchG(conf, {optRun}, arg, pass, info)
+    if conf.backend == backendJs:
+      # for now, -r uses nodejs, so define nodejs
+      defineSymbol(conf.symbols, "nodejs")
   of "maxloopiterationsvm":
     expectArg(conf, switch, arg, pass, info)
     conf.maxLoopIterationsVM = parseInt(arg)

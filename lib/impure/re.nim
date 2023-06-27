@@ -65,10 +65,16 @@ type
     ## is raised if the pattern is no valid regular expression.
 
 when defined(gcDestructors):
-  proc `=destroy`(x: var RegexDesc) =
-    pcre.free_substring(cast[cstring](x.h))
-    if not isNil(x.e):
-      pcre.free_study(x.e)
+  when defined(nimAllowNonVarDestructor):
+    proc `=destroy`(x: RegexDesc) =
+      pcre.free_substring(cast[cstring](x.h))
+      if not isNil(x.e):
+        pcre.free_study(x.e)
+  else:
+    proc `=destroy`(x: var RegexDesc) =
+      pcre.free_substring(cast[cstring](x.h))
+      if not isNil(x.e):
+        pcre.free_study(x.e)
 
 proc raiseInvalidRegex(msg: string) {.noinline, noreturn.} =
   var e: ref RegexError

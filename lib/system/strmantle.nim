@@ -178,7 +178,9 @@ proc nimParseBiggestFloat(s: openArray[char], number: var BiggestFloat,
 
   # if exponent greater than can be represented: +/- zero or infinity
   if absExponent > 999:
-    if expNegative:
+    if integer == 0:
+      number = 0.0
+    elif expNegative:
       number = 0.0*sign
     else:
       number = Inf*sign

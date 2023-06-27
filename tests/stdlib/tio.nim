@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 # xxx move to here other tests that belong here; io is a proper module
 
 import std/os

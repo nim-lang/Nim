@@ -62,7 +62,7 @@ runnableExamples:
 ## ========
 ## * `md5 module <md5.html>`_ for the MD5 checksum algorithm
 ## * `base64 module <base64.html>`_ for a Base64 encoder and decoder
-## * `std/sha1 module <sha1.html>`_ for the SHA-1 checksum algorithm
+## * `sha1 module <sha1.html>`_ for the SHA-1 checksum algorithm
 ## * `tables module <tables.html>`_ for hash tables
 
 import std/private/since
@@ -534,7 +534,7 @@ proc hash*[T: tuple | object | proc | iterator {.closure.}](x: T): Hash =
   when T is "closure":
     result = hash((rawProc(x), rawEnv(x)))
   elif T is (proc):
-    result = hash(pointer(x))
+    result = hash(cast[pointer](x))
   else:
     result = 0
     for f in fields(x):

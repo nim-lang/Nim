@@ -1,5 +1,5 @@
 discard """
-cmd: "nim doc --doccmd:--hints:off --hints:off $file"
+cmd: '''nim doc --doccmd:"-d:testFooExternal --hints:off" --hints:off $file'''
 action: "compile"
 nimoutFull: true
 nimout: '''
@@ -19,12 +19,6 @@ foo6
 joinable: false
 """
 
-#[
-pending bug #18077, use instead:
-cmd: "nim doc --doccmd:'-d:testFooExternal --hints:off' --hints:off $file"
-and merge trunnableexamples2 back here
-]#
-{.define(testFooExternal).}
 
 proc fun*() =
   runnableExamples:
@@ -212,3 +206,8 @@ snippet:
   doAssert defined(testFooExternal)
 
 ]##
+
+when true: # runnableExamples with rdoccmd
+  runnableExamples "-d:testFoo -d:testBar":
+    doAssert defined(testFoo) and defined(testBar)
+    doAssert defined(testFooExternal)
