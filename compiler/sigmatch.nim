@@ -251,7 +251,6 @@ proc sumGeneric(t: PType): int =
         t = t.lastSon
       else:
         break
-    of tyUntyped, tyTyped: break
     of tyAlias, tySink: t = t.lastSon
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
@@ -260,7 +259,7 @@ proc sumGeneric(t: PType): int =
     of tyBuiltInTypeClass:  # e.g. `object` must be more specific then bare `T`
       return result + 1
     else:
-      return 0
+      break
 
 proc complexDisambiguation(a, b: PType): int =
   # 'a' matches better if *every* argument matches better or equal than 'b'.
@@ -996,8 +995,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   # of the designated type class.
   #
   # 3) When used with two type classes, it will check whether the types
-  # matching the first type class are a strict subset of the types matching
-  # the other. This allows us to compare the signatures of generic procs in
+  # matching the first type class (aOrig) are a strict subset of the types matching
+  # the other (f). This allows us to compare the signatures of generic procs in
   # order to give preferrence to the most specific one:
   #
   # seq[seq[any]] is a strict subset of seq[any] and hence more specific.
@@ -1352,17 +1351,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyPtr, tyRef:
     skipOwned(a)
-    if a.kind == f.kind:
+    let effectiveArgType = a.skipTypes({tyGenericParam, tyCompositeTypeClass, tyGenericBody, tyGenericInst})
+    if effectiveArgType.kind == f.kind:
       # ptr[R, T] can be passed to ptr[T], but not the other way round:
-      if a.len < f.len: return isNone
+      if effectiveArgType.len < f.len: return isNone
       for i in 0..<f.len-1:
-        if typeRel(c, f[i], a[i], flags) == isNone: return isNone
-      result = typeRel(c, f.lastSon, a.lastSon, flags + {trNoCovariance})
+        if typeRel(c, f[i], effectiveArgType[i], flags) == isNone: return isNone
+      result = typeRel(c, f.lastSon, effectiveArgType.lastSon, flags + {trNoCovariance})
       subtypeCheck()
       if result <= isIntConv: result = isNone
-      elif tfNotNil in f.flags and tfNotNil notin a.flags:
+      elif tfNotNil in f.flags and tfNotNil notin effectiveArgType.flags:
         result = isNilConversion
-    elif a.kind == tyNil: result = f.allowsNil
+    elif effectiveArgType.kind == tyNil: result = f.allowsNil
     else: discard
   of tyProc:
     skipOwned(a)
@@ -1645,8 +1645,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     considerPreviousT:
       let target = f[0]
       let targetKind = target.kind
-      let effectiveArgType = a.skipTypes({tyRange, tyGenericInst,
+      let effectiveArgType = a.skipTypesOrNil({tyRange, tyGenericInst,tyGenericParam,tyCompositeTypeClass, tyGenericBody,
                                           tyBuiltInTypeClass, tyAlias, tySink, tyOwned})
+      if effectiveArgType == nil: return isNone
       if targetKind == effectiveArgType.kind:
         if effectiveArgType.isEmptyContainer:
           return isNone
@@ -1658,8 +1659,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             return isNone
         put(c, f, a)
         return isGeneric
-      elif effectiveArgType.kind == tyGenericParam:
-        return isConvertible
       else:
         return isNone
 
