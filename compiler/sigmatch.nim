@@ -1351,7 +1351,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyPtr, tyRef:
     skipOwned(a)
-    let effectiveArgType = a.skipTypes({tyGenericParam, tyCompositeTypeClass, tyGenericBody, tyGenericInst})
+    let effectiveArgType = a.skipTypesOrNil({tyGenericParam, tyCompositeTypeClass, tyGenericBody, tyGenericInst})
+    if effectiveArgType == nil:
+      return isNone
     if effectiveArgType.kind == f.kind:
       # ptr[R, T] can be passed to ptr[T], but not the other way round:
       if effectiveArgType.len < f.len: return isNone
