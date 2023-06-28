@@ -1,4 +1,5 @@
 discard """
+matrix: "--mm:refc"
 targets: "c"
 ccodecheck: "\\i @('atmaatsmodule_name_clashesdotnim_DatInit000')"
 ccodecheck: "\\i @('atmbatsmodule_name_clashesdotnim_DatInit000')"

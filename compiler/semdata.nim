@@ -36,9 +36,9 @@ type
                                  # statements
     owner*: PSym              # the symbol this context belongs to
     resultSym*: PSym          # the result symbol (if we are in a proc)
-    selfSym*: PSym            # the 'self' symbol (if available)
     nestedLoopCounter*: int   # whether we are in a loop or not
     nestedBlockCounter*: int  # whether we are in a block or not
+    breakInLoop*: bool        # whether we are in a loop without block
     next*: PProcCon           # used for stacking procedure contexts
     mappingExists*: bool
     mapping*: TIdTable
@@ -70,9 +70,12 @@ type
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efWantValue, efOperand, efNoSemCheck,
     efNoEvaluateGeneric, efInCall, efFromHlo, efNoSem2Check,
-    efNoUndeclared
+    efNoUndeclared, efIsDotCall, efCannotBeDotCall,
       # Use this if undeclared identifiers should not raise an error during
       # overload resolution.
+    efNoDiagnostics,
+    efTypeAllowed # typeAllowed will be called after
+    efWantNoDefaults
 
   TExprFlags* = set[TExprFlag]
 
@@ -121,10 +124,11 @@ type
     symMapping*: TIdTable      # every gensym'ed symbol needs to be mapped
                                # to some new symbol in a generic instantiation
     libs*: seq[PLib]           # all libs used by this module
-    semConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # for the pragmas
-    semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
+    semConstExpr*: proc (c: PContext, n: PNode; expectedType: PType = nil): PNode {.nimcall.} # for the pragmas
+    semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode {.nimcall.}
+    semExprWithType*: proc (c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode {.nimcall.}
     semTryExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
-    semTryConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.}
+    semTryConstExpr*: proc (c: PContext, n: PNode; expectedType: PType = nil): PNode {.nimcall.}
     computeRequiresInit*: proc (c: PContext, t: PType): bool {.nimcall.}
     hasUnresolvedArgs*: proc (c: PContext, n: PNode): bool
 
@@ -149,7 +153,6 @@ type
     inParallelStmt*: int
     instTypeBoundOp*: proc (c: PContext; dc: PSym; t: PType; info: TLineInfo;
                             op: TTypeAttachedOp; col: int): PSym {.nimcall.}
-    selfName*: PIdent
     cache*: IdentCache
     graph*: ModuleGraph
     signatures*: TStrTable
@@ -164,6 +167,8 @@ type
     lastTLineInfo*: TLineInfo
     sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
     inUncheckedAssignSection*: int
+    importModuleLookup*: Table[int, seq[int]] # (module.ident.id, [module.id])
+    skipTypes*: seq[PNode] # used to skip types between passes in type section. So far only used for inheritance and sets.
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -428,7 +433,7 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   incl typedesc.flags, tfCheckedForDestructor
   internalAssert(c.config, typ != nil)
   typedesc.addSonSkipIntLit(typ, c.idgen)
-  let sym = newSym(skType, c.cache.idAnon, nextSymId(c.idgen), getCurrOwner(c), info,
+  let sym = newSym(skType, c.cache.idAnon, c.idgen, getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
   result = newSymNode(sym, info)
 

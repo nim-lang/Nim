@@ -1,11 +1,13 @@
 discard """
   targets: "c js"
+  matrix: "--mm:refc; --mm:orc"
   output:'''@["3", "2", "1"]
 '''
 """
 #12928,10456
 
 import std/[sequtils, algorithm, json, sugar]
+import std/assertions
 
 proc test() = 
   try: 

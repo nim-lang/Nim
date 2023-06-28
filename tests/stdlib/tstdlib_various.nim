@@ -1,4 +1,5 @@
 discard """
+matrix: "--mm:refc"
 output: '''
 abc
 def
@@ -26,15 +27,14 @@ Hi Andreas! How do you feel, Rumpf?
 [2, 3, 4, 5]
 [2, 3, 4, 5, 6]
 [1, 2, 3, 4, 5, 6]
-true
 <h1><a href="http://force7.de/nim">Nim</a></h1>
 '''
 """
 
 import
-  critbits, sets, strutils, tables, random, algorithm, re, ropes,
-  segfaults, lists, parsesql, streams, os, htmlgen, xmltree, strtabs
-
+  std/[critbits, sets, strutils, tables, random, algorithm, re, ropes,
+  segfaults, lists, parsesql, streams, os, htmlgen, xmltree, strtabs]
+import std/[syncio, assertions]
 
 block tcritbits:
   var r: CritBitTree[void]
@@ -206,11 +206,7 @@ block tsplit2:
     s.add("#")
     s.add(w)
 
-  try:
-    discard "hello".split("")
-    echo "false"
-  except AssertionDefect:
-    echo "true"
+  doAssert "true".split("") == @["true"]
 
 
 

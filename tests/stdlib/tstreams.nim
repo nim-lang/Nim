@@ -1,5 +1,5 @@
 discard """
-  matrix: "--gc:refc; --gc:arc"
+  matrix: "--mm:refc; --mm:orc"
   input: "Arne"
   output: '''
 Hello! What is your name?
@@ -16,7 +16,7 @@ GROOT
 """
 
 
-import streams
+import std/[syncio, streams, assertions]
 
 
 block tstreams:
@@ -49,6 +49,12 @@ block tstreams3:
     for line in s.lines:
       echo line
     s.close
+
+
+block:
+  let fs = newFileStream("amissingfile.txt")
+  defer: fs.close()
+  doAssert isNil(fs)
 
 # bug #12410
 
@@ -85,3 +91,13 @@ block:
 static: # Ensure streams it doesnt break with nimscript on arc/orc #19716
   let s = newStringStream("a")
   doAssert s.data == "a"
+
+template main =
+  var strm = newStringStream("abcde")
+  var buffer = "12345"
+  doAssert strm.readDataStr(buffer, 0..3) == 4
+  doAssert buffer == "abcd5"
+  strm.close()
+
+static: main()
+main()

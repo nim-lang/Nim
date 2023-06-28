@@ -1,8 +1,14 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import std/packedsets
 import std/sets
 
 import sequtils
 import algorithm
+
+import std/assertions
 
 block basicIntSetTests:
   var y = initPackedSet[int]()

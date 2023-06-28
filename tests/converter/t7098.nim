@@ -14,8 +14,8 @@ proc initBytesRange*(s: var Bytes, ibegin = 0, iend = -1): BytesRange =
   let e = if iend < 0: s.len + iend + 1
           else: iend
   assert ibegin >= 0 and e <= s.len
-
-  shallow(s)
+  when defined(gcRefc):
+    shallow(s)
   result.bytes = s
   result.ibegin = ibegin
   result.iend = e

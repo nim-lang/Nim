@@ -43,8 +43,7 @@ import stdtest/testutils
 
 proc main =
   const nim = getCurrentCompilerExe()
-  # TODO: bin/testament instead? like other tools (eg bin/nim, bin/nimsuggest etc)
-  let testamentExe = "testament/testament"
+  let testamentExe = "bin/testament"
   let cmd = fmt"{testamentExe} --directory:testament --colors:off --backendLogging:off --nim:{nim} category shouldfail"
   let (outp, status) = execCmdEx(cmd)
   doAssert status == 1, $status

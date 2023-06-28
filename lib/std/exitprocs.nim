@@ -7,7 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
+## This module allows adding hooks to program exit.
+
 import locks
+when defined(js) and not defined(nodejs):
+  import std/assertions
 
 type
   FunKind = enum kClosure, kNoconv # extend as needed
@@ -43,6 +47,7 @@ proc callClosures() {.noconv.} =
       case fun.kind
       of kClosure: fun.fun1()
       of kNoconv: fun.fun2()
+    gFuns.setLen(0)
 
 template fun() =
   if gFuns.len == 0:
@@ -64,24 +69,19 @@ proc addExitProc*(cl: proc() {.noconv.}) =
     fun()
     gFuns.add Fun(kind: kNoconv, fun2: cl)
 
-when not defined(nimscript):
+when not defined(nimscript) and (not defined(js) or defined(nodejs)):
   proc getProgramResult*(): int =
     when defined(js) and defined(nodejs):
       asm """
 `result` = process.exitCode;
 """
-    elif not defined(js):
-      result = programResult
     else:
-      doAssert false
+      result = programResult
 
   proc setProgramResult*(a: int) =
-    # pending https://github.com/nim-lang/Nim/issues/14674
     when defined(js) and defined(nodejs):
       asm """
 process.exitCode = `a`;
 """
-    elif not defined(js):
-      programResult = a
     else:
-      doAssert false
+      programResult = a

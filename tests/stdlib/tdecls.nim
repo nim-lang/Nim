@@ -1,7 +1,8 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c cpp js"
 """
-
+import std/assertions
 import std/decls
 
 template fun() =
@@ -13,18 +14,18 @@ template fun() =
   var b {.byaddr.}: int = s[0]
   doAssert a.addr == b.addr
 
-  when false:
-    # template specific redeclaration issue
-    # see https://github.com/nim-lang/Nim/issues/8275
-    doAssert not compiles(block:
-      # redeclaration not allowed
-      var foo = 0
-      var foo {.byaddr.} = s[0])
+  {.push warningAsError[ImplicitTemplateRedefinition]: on.}
+  # in the future ImplicitTemplateRedefinition will be an error anyway
+  doAssert not compiles(block:
+    # redeclaration not allowed
+    var foo = 0
+    var foo {.byaddr.} = s[0])
 
-    doAssert not compiles(block:
-      # ditto
-      var foo {.byaddr.} = s[0]
-      var foo {.byaddr.} = s[0])
+  doAssert not compiles(block:
+    # ditto
+    var foo {.byaddr.} = s[0]
+    var foo {.byaddr.} = s[0])
+  {.pop.}
 
   block:
     var b {.byaddr.} = s[1] # redeclaration ok in sub scope

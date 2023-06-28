@@ -1,6 +1,12 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 # test atomic operations
 
 import std/[atomics, bitops]
+import std/assertions
+
 
 type
   Object = object

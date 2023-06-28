@@ -1,4 +1,9 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import std/[rationals, math]
+import std/assertions
 
 template main() =
   var

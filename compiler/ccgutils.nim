@@ -53,7 +53,7 @@ proc hashString*(conf: ConfigRef; s: string): BiggestInt =
     a = a + (a shl 3)
     a = a xor (a shr 11)
     a = a + (a shl 15)
-    result = cast[Hash](a)
+    result = cast[Hash](uint(a))
 
 template getUniqueType*(key: PType): PType = key
 
@@ -121,8 +121,11 @@ proc mapSetType(conf: ConfigRef; typ: PType): TCTypeKind =
 proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
   var pt = skipTypes(s.typ, typedescInst)
   assert skResult != s.kind
-
-  if tfByRef in pt.flags: return true
+  
+  #note precedence: params override types
+  if optByRef in s.options: return true
+  elif sfByCopy in s.flags: return false 
+  elif tfByRef in pt.flags: return true
   elif tfByCopy in pt.flags: return false
   case pt.kind
   of tyObject:

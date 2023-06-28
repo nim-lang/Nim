@@ -22,7 +22,11 @@ runnableExamples("-r:off"):
     if line.len > 0: echo line
   echo "exiting"
 
+
 when defined(windows):
+  when defined(nimPreviewSlimSystem):
+    import std/syncio
+
   proc readLineFromStdin*(prompt: string): string {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a line from stdin.

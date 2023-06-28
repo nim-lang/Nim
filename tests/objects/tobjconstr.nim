@@ -50,27 +50,30 @@ type
   BS = object of B
   C = object of BS
     z*: int
-# inherited fields are ignored, so no fields are set
-when true:
-  var
-    o: B
-  o = B(x: 123)
-  echo o
-  o = B(y: 678, x: 123)
-  echo o
 
-# inherited fields are ignored
-echo C(x: 128, z: 89)          # (y: 0, x: 0)
-echo B(y: 678, x: 123)  # (y: 678, x: 0)
-echo B(x: 123, y: 678)  # (y: 678, x: 0)
+proc main2 =
+  # inherited fields are ignored, so no fields are set
+  when true:
+    var
+      o: B
+    o = B(x: 123)
+    echo o
+    o = B(y: 678, x: 123)
+    echo o
 
-when true:
-  # correct, both with `var` and `let`;
-  var b=B(x: 123)
-  echo b                  # (y: 0, x: 123)
-  b=B(y: 678, x: 123)
-  echo b                  # (y: 678, x: 123)
-  b=B(y: b.x, x: b.y)
-  echo b                  # (y: 123, x: 678)
+  # inherited fields are ignored
+  echo C(x: 128, z: 89)          # (y: 0, x: 0)
+  echo B(y: 678, x: 123)  # (y: 678, x: 0)
+  echo B(x: 123, y: 678)  # (y: 678, x: 0)
 
+  when true:
+    # correct, both with `var` and `let`;
+    var b=B(x: 123)
+    echo b                  # (y: 0, x: 123)
+    b=B(y: 678, x: 123)
+    echo b                  # (y: 678, x: 123)
+    b=B(y: b.x, x: b.y)
+    echo b                  # (y: 123, x: 678)
+
+main2()
 GC_fullCollect()

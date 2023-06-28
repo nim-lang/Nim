@@ -21,6 +21,8 @@ when defined(nimPreviewSlimSystem):
 
 when defined(windows):
   import winlean
+  when defined(nimPreviewSlimSystem):
+    import std/widestrs
   from os import absolutePath
 else:
   import os
@@ -38,15 +40,17 @@ proc prepare(s: string): string =
   else:
     result = "file://" & absolutePath(s)
 
-proc openDefaultBrowserImpl(url: string) =
+proc openDefaultBrowserImplPrep(url: string) =
+  ## note the url argument should be alreadly prepared, i.e. the url is passed "AS IS"
+
   when defined(windows):
     var o = newWideCString(osOpenCmd)
-    var u = newWideCString(prepare url)
+    var u = newWideCString(url)
     discard shellExecuteW(0'i32, o, u, nil, nil, SW_SHOWNORMAL)
   elif defined(macosx):
-    discard execShellCmd(osOpenCmd & " " & quoteShell(prepare url))
+    discard execShellCmd(osOpenCmd & " " & quoteShell(url))
   else:
-    var u = quoteShell(prepare url)
+    var u = quoteShell(url)
     if execShellCmd(osOpenCmd & " " & u) == 0: return
     for b in getEnv("BROWSER").split(PathSep):
       try:
@@ -55,6 +59,9 @@ proc openDefaultBrowserImpl(url: string) =
         return
       except OSError:
         discard
+
+proc openDefaultBrowserImpl(url: string) =
+  openDefaultBrowserImplPrep(prepare url)
 
 proc openDefaultBrowser*(url: string) =
   ## Opens `url` with the user's default browser. This does not block.
@@ -67,8 +74,9 @@ proc openDefaultBrowser*(url: string) =
   ##
   ## This proc doesn't raise an exception on error, beware.
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   block: openDefaultBrowser("https://nim-lang.org")
+  ##   ```
   doAssert url.len > 0, "URL must not be empty string"
   openDefaultBrowserImpl(url)
 
@@ -83,10 +91,11 @@ proc openDefaultBrowser*() {.since: (1, 1).} =
   ##
   ## This proc doesn't raise an exception on error, beware.
   ##
+  ##   ```nim
+  ##   block: openDefaultBrowser()
+  ##   ```
+  ##
   ## **See also:**
   ##
   ## * https://tools.ietf.org/html/rfc6694#section-3
-  ##
-  ## .. code-block:: nim
-  ##   block: openDefaultBrowser()
-  openDefaultBrowserImpl("http:about:blank")  # See IETF RFC-6694 Section 3.
+  openDefaultBrowserImplPrep("about:blank")  # See IETF RFC-6694 Section 3.

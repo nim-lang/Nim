@@ -8,7 +8,7 @@
 #
 
 ## Package related procs.
-## 
+##
 ## See Also:
 ## * `packagehandling` for package path handling
 ## * `modulegraphs.getPackage`
@@ -16,9 +16,13 @@
 
 import "." / [options, ast, lineinfos, idents, pathutils, msgs]
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 proc getPackage*(conf: ConfigRef; cache: IdentCache; fileIdx: FileIndex): PSym =
   ## Return a new package symbol.
-  ## 
+  ##
   ## See Also:
   ## * `modulegraphs.getPackage`
   let
@@ -27,7 +31,7 @@ proc getPackage*(conf: ConfigRef; cache: IdentCache; fileIdx: FileIndex): PSym =
     info = newLineInfo(fileIdx, 1, 1)
     pkgName = getPackageName(conf, filename.string)
     pkgIdent = getIdent(cache, pkgName)
-  newSym(skPackage, pkgIdent, ItemId(module: PackageModuleId, item: int32(fileIdx)), nil, info)
+  newSym(skPackage, pkgIdent, idGeneratorForPackage(int32(fileIdx)), nil, info)
 
 func getPackageSymbol*(sym: PSym): PSym =
   ## Return the owning package symbol.
@@ -43,7 +47,7 @@ func getPackageId*(sym: PSym): int =
 
 func belongsToProjectPackage*(conf: ConfigRef, sym: PSym): bool =
   ## Return whether the symbol belongs to the project's package.
-  ## 
+  ##
   ## See Also:
   ## * `modulegraphs.belongsToStdlib`
   conf.mainPackageId == sym.getPackageId

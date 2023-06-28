@@ -1,0 +1,1 @@
+proc fb* = echo "buzz!"

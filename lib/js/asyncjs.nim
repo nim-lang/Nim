@@ -17,37 +17,42 @@
 ##
 ## This is roughly equivalent to the `async` keyword in JavaScript code.
 ##
-## .. code-block:: nim
-##  proc loadGame(name: string): Future[Game] {.async.} =
-##    # code
+##   ```nim
+##   proc loadGame(name: string): Future[Game] {.async.} =
+##     # code
+##   ```
 ##
 ## should be equivalent to
 ##
-## .. code-block:: javascript
+##   ```javascript
 ##   async function loadGame(name) {
 ##     // code
 ##   }
+##   ```
 ##
 ## A call to an asynchronous procedure usually needs `await` to wait for
 ## the completion of the `Future`.
 ##
-## .. code-block:: nim
+##   ```nim
 ##   var game = await loadGame(name)
+##   ```
 ##
 ## Often, you might work with callback-based API-s. You can wrap them with
 ## asynchronous procedures using promises and `newPromise`:
 ##
-## .. code-block:: nim
+##   ```nim
 ##   proc loadGame(name: string): Future[Game] =
 ##     var promise = newPromise() do (resolve: proc(response: Game)):
 ##       cbBasedLoadGame(name) do (game: Game):
 ##         resolve(game)
 ##     return promise
+##   ```
 ##
 ## Forward definitions work properly, you just need to always add the `{.async.}` pragma:
 ##
-## .. code-block:: nim
+##   ```nim
 ##   proc loadGame(name: string): Future[Game] {.async.}
+##   ```
 ##
 ## JavaScript compatibility
 ## ========================
@@ -57,7 +62,7 @@
 ## If you need to use this module with older versions of JavaScript, you can
 ## use a tool that backports the resulting JavaScript code, as babel.
 
-# xxx code-block:: javascript above gives `LanguageXNotSupported` warning.
+# xxx code: javascript above gives `LanguageXNotSupported` warning.
 
 when not defined(js) and not defined(nimsuggest):
   {.fatal: "Module asyncjs is designed to be used with the JavaScript backend.".}
@@ -95,9 +100,17 @@ proc isFutureVoid(node: NimNode): bool =
            node[1].kind == nnkIdent and $node[1] == "void"
 
 proc generateJsasync(arg: NimNode): NimNode =
-  if arg.kind notin {nnkProcDef, nnkLambda, nnkMethodDef, nnkDo}:
+  if arg.kind notin {nnkProcDef, nnkLambda, nnkMethodDef, nnkDo, nnkProcTy}:
       error("Cannot transform this node kind into an async proc." &
             " proc/method definition or lambda node expected.")
+
+  # Transform type X = proc (): something {.async.}
+  # into      type X = proc (): Future[something]
+  if arg.kind == nnkProcTy:
+    result = arg
+    if arg[0][0].kind == nnkEmpty:
+      result[0][0] = quote do: Future[void]
+    return result
 
   result = arg
   var isVoid = false

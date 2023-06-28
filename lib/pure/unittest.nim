@@ -108,6 +108,9 @@
 import std/private/since
 import std/exitprocs
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import macros, strutils, streams, times, sets, sequtils
 
 when declared(stdout):
@@ -430,8 +433,6 @@ proc matchFilter(suiteName, testName, filter: string): bool =
   return glob(suiteName, suiteAndTestFilters[0]) and
          glob(testName, suiteAndTestFilters[1])
 
-when defined(testing): export matchFilter
-
 proc shouldRun(currentSuiteName, testName: string): bool =
   ## Check if a test should be run by matching suiteName and testName against
   ## test filters.
@@ -518,6 +519,12 @@ proc exceptionTypeName(e: ref Exception): string {.inline.} =
   if e == nil: "<foreign exception>"
   else: $e.name
 
+when not declared(setProgramResult):
+  {.warning: "setProgramResult not available on platform, unittest will not" &
+    " give failing exit code on test failure".}
+  template setProgramResult(a: int) =
+    discard
+
 template test*(name, body) {.dirty.} =
   ## Define a single test case identified by `name`.
   ##
@@ -543,11 +550,14 @@ template test*(name, body) {.dirty.} =
     for formatter in formatters:
       formatter.testStarted(name)
 
+    {.push warning[BareExcept]:off.}
     try:
       when declared(testSetupIMPLFlag): testSetupIMPL()
       when declared(testTeardownIMPLFlag):
         defer: testTeardownIMPL()
+      {.push warning[BareExcept]:on.}
       body
+      {.pop.}
 
     except:
       let e = getCurrentException()
@@ -569,6 +579,7 @@ template test*(name, body) {.dirty.} =
       )
       testEnded(testResult)
       checkpoints = @[]
+    {.pop.}
 
 proc checkpoint*(msg: string) =
   ## Set a checkpoint identified by `msg`. Upon test failure all
@@ -704,7 +715,9 @@ macro check*(conditions: untyped): untyped =
     result = quote do:
       block:
         `assigns`
-        if not `check`:
+        if `check`:
+          discard
+        else:
           checkpoint(`lineinfo` & ": Check failed: " & `callLit`)
           `printOuts`
           fail()
@@ -720,7 +733,9 @@ macro check*(conditions: untyped): untyped =
     let callLit = checked.toStrLit
 
     result = quote do:
-      if not `checked`:
+      if `checked`:
+        discard
+      else:
         checkpoint(`lineinfo` & ": Check failed: " & `callLit`)
         fail()
 
@@ -752,8 +767,11 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
       defectiveRobot()
 
   template expectBody(errorTypes, lineInfoLit, body): NimNode {.dirty.} =
+    {.push warning[BareExcept]:off.}
     try:
+      {.push warning[BareExcept]:on.}
       body
+      {.pop.}
       checkpoint(lineInfoLit & ": Expect Failed, no exception was thrown.")
       fail()
     except errorTypes:
@@ -761,6 +779,7 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
     except:
       checkpoint(lineInfoLit & ": Expect Failed, unexpected exception was thrown.")
       fail()
+    {.pop.}
 
   var errorTypes = newNimNode(nnkBracket)
   for exp in exceptions:

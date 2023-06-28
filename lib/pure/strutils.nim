@@ -79,8 +79,9 @@ from unicode import toLower, toUpper
 export toLower, toUpper
 
 include "system/inclrtl"
-import std/private/since
-from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl, startsWithImpl, endsWithImpl
+import std/private/[since, jsutils]
+from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl,
+    startsWithImpl, endsWithImpl
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -93,6 +94,15 @@ const
 
   Letters* = {'A'..'Z', 'a'..'z'}
     ## The set of letters.
+
+  UppercaseLetters* = {'A'..'Z'}
+    ## The set of uppercase ASCII letters.
+
+  LowercaseLetters* = {'a'..'z'}
+    ## The set of lowercase ASCII letters.
+
+  PunctuationChars* = {'!'..'/', ':'..'@', '['..'`', '{'..'~'}
+    ## The set of all ASCII punctuation characters.
 
   Digits* = {'0'..'9'}
     ## The set of digits.
@@ -109,6 +119,9 @@ const
   Newlines* = {'\13', '\10'}
     ## The set of characters a newline terminator can start with (carriage
     ## return, line feed).
+
+  PrintableChars* = Letters + Digits + PunctuationChars + Whitespace
+    ## The set of all printable ASCII characters (letters, digits, whitespace, and punctuation characters).
 
   AllChars* = {'\x00'..'\xFF'}
     ## A set with all the possible characters.
@@ -172,7 +185,7 @@ func isLowerAscii*(c: char): bool {.rtl, extern: "nsuIsLowerAsciiChar".} =
     doAssert isLowerAscii('e') == true
     doAssert isLowerAscii('E') == false
     doAssert isLowerAscii('7') == false
-  return c in {'a'..'z'}
+  return c in LowercaseLetters
 
 func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
   ## Checks whether or not `c` is an upper case character.
@@ -186,8 +199,7 @@ func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
     doAssert isUpperAscii('e') == false
     doAssert isUpperAscii('E') == true
     doAssert isUpperAscii('7') == false
-  return c in {'A'..'Z'}
-
+  return c in UppercaseLetters
 
 func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   ## Returns the lower case version of character `c`.
@@ -202,7 +214,7 @@ func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   runnableExamples:
     doAssert toLowerAscii('A') == 'a'
     doAssert toLowerAscii('e') == 'e'
-  if c in {'A'..'Z'}:
+  if c in UppercaseLetters:
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
@@ -239,7 +251,7 @@ func toUpperAscii*(c: char): char {.rtl, extern: "nsuToUpperAsciiChar".} =
   runnableExamples:
     doAssert toUpperAscii('a') == 'A'
     doAssert toUpperAscii('E') == 'E'
-  if c in {'a'..'z'}:
+  if c in LowercaseLetters:
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
@@ -289,7 +301,7 @@ func nimIdentNormalize*(s: string): string =
   result[0] = s[0]
   var j = 1
   for i in 1..len(s) - 1:
-    if s[i] in {'A'..'Z'}:
+    if s[i] in UppercaseLetters:
       result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
       inc j
     elif s[i] != '_':
@@ -311,7 +323,7 @@ func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
   result = newString(s.len)
   var j = 0
   for i in 0..len(s) - 1:
-    if s[i] in {'A'..'Z'}:
+    if s[i] in UppercaseLetters:
       result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
       inc j
     elif s[i] != '_':
@@ -354,11 +366,14 @@ func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
 # --------- Private templates for different split separators -----------
 
 func substrEq(s: string, pos: int, substr: string): bool =
-  var i = 0
+  # Always returns false for empty `substr`
   var length = substr.len
-  while i < length and pos+i < s.len and s[pos+i] == substr[i]:
-    inc i
-  return i == length
+  if length > 0:
+    var i = 0
+    while i < length and pos+i < s.len and s[pos+i] == substr[i]:
+      inc i
+    i == length
+  else: false
 
 template stringHasSep(s: string, index: int, seps: set[char]): bool =
   s[index] in seps
@@ -476,6 +491,9 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   ##   "08"
   ##   "08.398990"
   ##
+  ##  .. note:: Empty separator set results in returning an original string,
+  ##   following the interpretation "split by no element".
+  ##
   ## See also:
   ## * `rsplit iterator<#rsplit.i,string,set[char],int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
@@ -500,12 +518,17 @@ iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   ##   "is"
   ##   "corrupted"
   ##
+  ##  .. note:: Empty separator string results in returning an original string,
+  ##   following the interpretation "split by no element".
+  ##
   ## See also:
   ## * `rsplit iterator<#rsplit.i,string,string,int,bool>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
   ## * `split func<#split,string,string,int>`_
-  splitCommon(s, sep, maxsplit, sep.len)
+  let sepLen = if sep.len == 0: 1 # prevents infinite loop
+    else: sep.len
+  splitCommon(s, sep, maxsplit, sepLen)
 
 
 template rsplitCommon(s, sep, maxsplit, sepLen) =
@@ -575,6 +598,9 @@ iterator rsplit*(s: string, seps: set[char] = Whitespace,
   ##
   ## Substrings are separated from the right by the set of chars `seps`
   ##
+  ##  .. note:: Empty separator set results in returning an original string,
+  ##   following the interpretation "split by no element".
+  ##
   ## See also:
   ## * `split iterator<#split.i,string,set[char],int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
@@ -600,19 +626,24 @@ iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
   ##
   ## Substrings are separated from the right by the string `sep`
   ##
+  ##  .. note:: Empty separator string results in returning an original string,
+  ##   following the interpretation "split by no element".
+  ##
   ## See also:
   ## * `split iterator<#split.i,string,string,int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
   ## * `rsplit func<#rsplit,string,string,int>`_
-  rsplitCommon(s, sep, maxsplit, sep.len)
+  let sepLen = if sep.len == 0: 1 # prevents infinite loop
+    else: sep.len
+  rsplitCommon(s, sep, maxsplit, sepLen)
 
 iterator splitLines*(s: string, keepEol = false): string =
   ## Splits the string `s` into its containing lines.
   ##
   ## Every `character literal <manual.html#lexical-analysis-character-literals>`_
   ## newline combination (CR, LF, CR-LF) is supported. The result strings
-  ## contain no trailing end of line characters unless parameter `keepEol`
+  ## contain no trailing end of line characters unless the parameter `keepEol`
   ## is set to `true`.
   ##
   ## Example:
@@ -716,6 +747,9 @@ func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
   ## The same as the `split iterator <#split.i,string,set[char],int>`_ (see its
   ## documentation), but is a func that returns a sequence of substrings.
   ##
+  ##  .. note:: Empty separator set results in returning an original string,
+  ##   following the interpretation "split by no element".
+  ##
   ## See also:
   ## * `split iterator <#split.i,string,set[char],int>`_
   ## * `rsplit func<#rsplit,string,set[char],int>`_
@@ -724,6 +758,7 @@ func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
   runnableExamples:
     doAssert "a,b;c".split({',', ';'}) == @["a", "b", "c"]
     doAssert "".split({' '}) == @[""]
+    doAssert "empty seps return unsplit s".split({}) == @["empty seps return unsplit s"]
   accResult(split(s, seps, maxsplit))
 
 func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
@@ -732,6 +767,9 @@ func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
   ##
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string,int>`_.
+  ##
+  ##  .. note:: Empty separator string results in returning an original string,
+  ##   following the interpretation "split by no element".
   ##
   ## See also:
   ## * `split iterator <#split.i,string,string,int>`_
@@ -745,8 +783,7 @@ func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
     doAssert "a  largely    spaced sentence".split(" ") == @["a", "", "largely",
         "", "", "", "spaced", "sentence"]
     doAssert "a  largely    spaced sentence".split(" ", maxsplit = 1) == @["a", " largely    spaced sentence"]
-  doAssert(sep.len > 0)
-
+    doAssert "empty sep returns unsplit s".split("") == @["empty sep returns unsplit s"]
   accResult(split(s, sep, maxsplit))
 
 func rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
@@ -796,6 +833,9 @@ func rsplit*(s: string, seps: set[char] = Whitespace,
   ## .. code-block:: nim
   ##   @["Root#Object#Method", "Index"]
   ##
+  ##  .. note:: Empty separator set results in returning an original string,
+  ##   following the interpretation "split by no element".
+  ##
   ## See also:
   ## * `rsplit iterator <#rsplit.i,string,set[char],int>`_
   ## * `split func<#split,string,set[char],int>`_
@@ -823,6 +863,9 @@ func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
   ## .. code-block:: nim
   ##   @["Root#Object#Method", "Index"]
   ##
+  ##  .. note:: Empty separator string results in returning an original string,
+  ##   following the interpretation "split by no element".
+  ##
   ## See also:
   ## * `rsplit iterator <#rsplit.i,string,string,int,bool>`_
   ## * `split func<#split,string,string,int>`_
@@ -837,6 +880,7 @@ func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
     doAssert "".rsplit("Elon Musk") == @[""]
     doAssert "a  largely    spaced sentence".rsplit(" ") == @["a", "",
         "largely", "", "", "", "spaced", "sentence"]
+    doAssert "empty sep returns unsplit s".rsplit("") == @["empty sep returns unsplit s"]
   accResult(rsplit(s, sep, maxsplit))
   result.reverse()
 
@@ -932,14 +976,26 @@ func toHex*[T: SomeInteger](x: T, len: Positive): string =
     doAssert b.toHex(4) == "1001"
     doAssert toHex(62, 3) == "03E"
     doAssert toHex(-8, 6) == "FFFFF8"
-  toHexImpl(cast[BiggestUInt](x), len, x < 0)
+  whenJsNoBigInt64:
+    toHexImpl(cast[BiggestUInt](x), len, x < 0)
+  do:
+    when T is SomeSignedInt:
+      toHexImpl(cast[BiggestUInt](BiggestInt(x)), len, x < 0)
+    else:
+      toHexImpl(BiggestUInt(x), len, x < 0)
 
 func toHex*[T: SomeInteger](x: T): string =
   ## Shortcut for `toHex(x, T.sizeof * 2)`
   runnableExamples:
     doAssert toHex(1984'i64) == "00000000000007C0"
     doAssert toHex(1984'i16) == "07C0"
-  toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
+  whenJsNoBigInt64:
+    toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
+  do:
+    when T is SomeSignedInt:
+      toHexImpl(cast[BiggestUInt](BiggestInt(x)), 2*sizeof(T), x < 0)
+    else:
+      toHexImpl(BiggestUInt(x), 2*sizeof(T), x < 0)
 
 func toHex*(s: string): string {.rtl.} =
   ## Converts a bytes string to its hexadecimal representation.
@@ -1515,7 +1571,8 @@ func delete*(s: var string, slice: Slice[int]) =
       inc(j)
     setLen(s, newLen)
 
-func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete", deprecated: "use `delete(s, first..last)`".} =
+func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete",
+    deprecated: "use `delete(s, first..last)`".} =
   ## Deletes in `s` the characters at positions `first .. last` (both ends included).
   runnableExamples("--warning:deprecated:off"):
     var a = "abracadabra"
@@ -1635,7 +1692,7 @@ func removePrefix*(s: var string, chars: set[char] = Newlines) {.rtl,
 
   var start = 0
   while start < s.len and s[start] in chars: start += 1
-  if start > 0: s.delete(0, start - 1)
+  if start > 0: s.delete(0..start - 1)
 
 func removePrefix*(s: var string, c: char) {.rtl,
     extern: "nsuRemovePrefixChar".} =
@@ -1662,8 +1719,8 @@ func removePrefix*(s: var string, prefix: string) {.rtl,
     var answers = "yesyes"
     answers.removePrefix("yes")
     doAssert answers == "yes"
-  if s.startsWith(prefix):
-    s.delete(0, prefix.len - 1)
+  if s.startsWith(prefix) and prefix.len > 0:
+    s.delete(0..prefix.len - 1)
 
 func removeSuffix*(s: var string, chars: set[char] = Newlines) {.rtl,
     extern: "nsuRemoveSuffixCharSet".} =
@@ -1869,9 +1926,6 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = -1): int {.
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
   func c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
                 importc: "memchr", header: "<string.h>".}
-  func c_strstr(haystack, needle: cstring): cstring {.
-    importc: "strstr", header: "<string.h>".}
-
   const hasCStringBuiltin = true
 else:
   const hasCStringBuiltin = false
@@ -1904,7 +1958,7 @@ func find*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
       if length > 0:
         let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](length))
         if not found.isNil:
-          return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+          return cast[int](found) -% cast[int](s.cstring)
     else:
       findImpl()
 
@@ -1925,6 +1979,14 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
   for i in int(start)..last:
     if s[i] in chars:
       return i
+
+when defined(linux):
+  proc memmem(haystack: pointer, haystacklen: csize_t,
+              needle: pointer, needlelen: csize_t): pointer {.importc, header: """#define _GNU_SOURCE
+#include <string.h>""".}
+elif defined(bsd) or (defined(macosx) and not defined(ios)):
+  proc memmem(haystack: pointer, haystacklen: csize_t,
+              needle: pointer, needlelen: csize_t): pointer {.importc, header: "#include <string.h>".}
 
 func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuFindStr".} =
@@ -1947,11 +2009,12 @@ func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   when nimvm:
     useSkipTable()
   else:
-    when hasCStringBuiltin:
-      if last < 0 and start < s.len:
-        let found = c_strstr(s[start].unsafeAddr, sub)
+    when declared(memmem):
+      let subLen = sub.len
+      if last < 0 and start < s.len and subLen != 0:
+        let found = memmem(s[start].unsafeAddr, csize_t(s.len - start), sub.cstring, csize_t(subLen))
         result = if not found.isNil:
-            cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+            cast[int](found) -% cast[int](s.cstring)
           else:
             -1
       else:
@@ -2009,7 +2072,8 @@ func rfind*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
   if sub.len == 0:
-    return -1
+    let rightIndex: Natural = if last < 0: s.len else: last
+    return max(start, rightIndex)
   if sub.len > s.len - start:
     return -1
   let last = if last == -1: s.high else: last
@@ -2239,7 +2303,7 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
     doAssert insertSep("1000000") == "1_000_000"
   result = newStringOfCap(s.len)
   let hasPrefix = isDigit(s[s.low]) == false
-  var idx:int
+  var idx: int
   if hasPrefix:
     result.add s[s.low]
     for i in (s.low + 1)..s.high:
@@ -2253,7 +2317,7 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
   result.setLen(L + idx)
   var j = 0
   dec(L)
-  for i in countdown(partsLen-1,0):
+  for i in countdown(partsLen-1, 0):
     if j == digits:
       result[L + idx] = sep
       dec(L)
@@ -2354,7 +2418,7 @@ func validIdentifier*(s: string): bool {.rtl, extern: "nsuValidIdentifier".} =
 # floating point formatting:
 when not defined(js):
   func c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
-                                     importc: "sprintf", varargs}
+                                     importc: "sprintf", varargs.}
 
 type
   FloatFormatMode* = enum
@@ -2381,60 +2445,63 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
     doAssert x.formatBiggestFloat() == "123.4560000000000"
     doAssert x.formatBiggestFloat(ffDecimal, 4) == "123.4560"
     doAssert x.formatBiggestFloat(ffScientific, 2) == "1.23e+02"
-  when defined(js):
-    var precision = precision
-    if precision == -1:
-      # use the same default precision as c_sprintf
-      precision = 6
-    var res: cstring
-    case format
-    of ffDefault:
-      {.emit: "`res` = `f`.toString();".}
-    of ffDecimal:
-      {.emit: "`res` = `f`.toFixed(`precision`);".}
-    of ffScientific:
-      {.emit: "`res` = `f`.toExponential(`precision`);".}
-    result = $res
-    if 1.0 / f == -Inf:
-      # JavaScript removes the "-" from negative Zero, add it back here
-      result = "-" & $res
-    for i in 0 ..< result.len:
-      # Depending on the locale either dot or comma is produced,
-      # but nothing else is possible:
-      if result[i] in {'.', ','}: result[i] = decimalSep
+  when nimvm:
+    discard "implemented in the vmops"
   else:
-    const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
-    var
-      frmtstr {.noinit.}: array[0..5, char]
-      buf {.noinit.}: array[0..2500, char]
-      L: cint
-    frmtstr[0] = '%'
-    if precision >= 0:
-      frmtstr[1] = '#'
-      frmtstr[2] = '.'
-      frmtstr[3] = '*'
-      frmtstr[4] = floatFormatToChar[format]
-      frmtstr[5] = '\0'
-      L = c_sprintf(addr buf, addr frmtstr, precision, f)
+    when defined(js):
+      var precision = precision
+      if precision == -1:
+        # use the same default precision as c_sprintf
+        precision = 6
+      var res: cstring
+      case format
+      of ffDefault:
+        {.emit: "`res` = `f`.toString();".}
+      of ffDecimal:
+        {.emit: "`res` = `f`.toFixed(`precision`);".}
+      of ffScientific:
+        {.emit: "`res` = `f`.toExponential(`precision`);".}
+      result = $res
+      if 1.0 / f == -Inf:
+        # JavaScript removes the "-" from negative Zero, add it back here
+        result = "-" & $res
+      for i in 0 ..< result.len:
+        # Depending on the locale either dot or comma is produced,
+        # but nothing else is possible:
+        if result[i] in {'.', ','}: result[i] = decimalSep
     else:
-      frmtstr[1] = floatFormatToChar[format]
-      frmtstr[2] = '\0'
-      L = c_sprintf(addr buf, addr frmtstr, f)
-    result = newString(L)
-    for i in 0 ..< L:
-      # Depending on the locale either dot or comma is produced,
-      # but nothing else is possible:
-      if buf[i] in {'.', ','}: result[i] = decimalSep
-      else: result[i] = buf[i]
-    when defined(windows):
-      # VS pre 2015 violates the C standard: "The exponent always contains at
-      # least two digits, and only as many more digits as necessary to
-      # represent the exponent." [C11 §7.21.6.1]
-      # The following post-processing fixes this behavior.
-      if result.len > 4 and result[^4] == '+' and result[^3] == '0':
-        result[^3] = result[^2]
-        result[^2] = result[^1]
-        result.setLen(result.len - 1)
+      const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
+      var
+        frmtstr {.noinit.}: array[0..5, char]
+        buf {.noinit.}: array[0..2500, char]
+        L: cint
+      frmtstr[0] = '%'
+      if precision >= 0:
+        frmtstr[1] = '#'
+        frmtstr[2] = '.'
+        frmtstr[3] = '*'
+        frmtstr[4] = floatFormatToChar[format]
+        frmtstr[5] = '\0'
+        L = c_sprintf(cast[cstring](addr buf), cast[cstring](addr frmtstr), precision, f)
+      else:
+        frmtstr[1] = floatFormatToChar[format]
+        frmtstr[2] = '\0'
+        L = c_sprintf(cast[cstring](addr buf), cast[cstring](addr frmtstr), f)
+      result = newString(L)
+      for i in 0 ..< L:
+        # Depending on the locale either dot or comma is produced,
+        # but nothing else is possible:
+        if buf[i] in {'.', ','}: result[i] = decimalSep
+        else: result[i] = buf[i]
+      when defined(windows):
+        # VS pre 2015 violates the C standard: "The exponent always contains at
+        # least two digits, and only as many more digits as necessary to
+        # represent the exponent." [C11 §7.21.6.1]
+        # The following post-processing fixes this behavior.
+        if result.len > 4 and result[^4] == '+' and result[^3] == '0':
+          result[^3] = result[^2]
+          result[^2] = result[^1]
+          result.setLen(result.len - 1)
 
 func formatFloat*(f: float, format: FloatFormatMode = ffDefault,
                   precision: range[-1..32] = 16; decimalSep = '.'): string {.
@@ -2474,7 +2541,8 @@ func trimZeros*(x: var string; decimalSep = '.') =
     var pos = last
     while pos >= 0 and x[pos] == '0': dec(pos)
     if pos > sPos: inc(pos)
-    x.delete(pos, last)
+    if last >= pos:
+      x.delete(pos..last)
 
 type
   BinaryPrefixMode* = enum ## The different names for binary prefixes.
@@ -2685,8 +2753,8 @@ func findNormalized(x: string, inArray: openArray[string]): int =
               # security hole...
   return -1
 
-func invalidFormatString() {.noinline.} =
-  raise newException(ValueError, "invalid format string")
+func invalidFormatString(formatstr: string) {.noinline.} =
+  raise newException(ValueError, "invalid format string: " & formatstr)
 
 func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
     extern: "nsuAddf".} =
@@ -2698,7 +2766,7 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
     if formatstr[i] == '$' and i+1 < len(formatstr):
       case formatstr[i+1]
       of '#':
-        if num > a.high: invalidFormatString()
+        if num > a.high: invalidFormatString(formatstr)
         add s, a[num]
         inc i, 2
         inc num
@@ -2714,7 +2782,7 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
           j = j * 10 + ord(formatstr[i]) - ord('0')
           inc(i)
         let idx = if not negative: j-1 else: a.len-j
-        if idx < 0 or idx > a.high: invalidFormatString()
+        if idx < 0 or idx > a.high: invalidFormatString(formatstr)
         add s, a[idx]
       of '{':
         var j = i+2
@@ -2731,22 +2799,22 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
           inc(j)
         if isNumber == 1:
           let idx = if not negative: k-1 else: a.len-k
-          if idx < 0 or idx > a.high: invalidFormatString()
+          if idx < 0 or idx > a.high: invalidFormatString(formatstr)
           add s, a[idx]
         else:
           var x = findNormalized(substr(formatstr, i+2, j-1), a)
           if x >= 0 and x < high(a): add s, a[x+1]
-          else: invalidFormatString()
+          else: invalidFormatString(formatstr)
         i = j+1
       of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
         var j = i+1
         while j < formatstr.len and formatstr[j] in PatternChars: inc(j)
         var x = findNormalized(substr(formatstr, i+1, j-1), a)
         if x >= 0 and x < high(a): add s, a[x+1]
-        else: invalidFormatString()
+        else: invalidFormatString(formatstr)
         i = j
       else:
-        invalidFormatString()
+        invalidFormatString(formatstr)
     else:
       add s, formatstr[i]
       inc(i)

@@ -1,4 +1,9 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import std/re
+import std/assertions
 
 proc testAll() =
   doAssert match("(a b c)", rex"\( .* \)")

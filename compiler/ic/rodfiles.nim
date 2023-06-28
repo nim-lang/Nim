@@ -24,7 +24,7 @@ when defined(nimPreviewSlimSystem):
 ## `RodFile` represents a Rod File (versioned binary format), and the
 ## associated data for common interactions such as IO and error tracking
 ## (`RodFileError`). The file format broken up into sections (`RodSection`)
-## and preceeded by a header (see: `cookie`). The precise layout, section
+## and preceded by a header (see: `cookie`). The precise layout, section
 ## ordering and data following the section are determined by the user. See
 ## `ic.loadRodFile`.
 ##
@@ -37,8 +37,7 @@ when defined(nimPreviewSlimSystem):
 ##
 ## Now read the bits below to understand what's missing.
 ##
-## Issues with the Example
-## ```````````````````````
+## ### Issues with the Example
 ## Missing Sections:
 ## This is a low level API, so headers and sections need to be stored and
 ## loaded by the user, see `storeHeader` & `loadHeader` and `storeSection` &
@@ -85,7 +84,6 @@ type
     convertersSection
     methodsSection
     pureEnumsSection
-    macroUsagesSection
     toReplaySection
     topLevelSection
     bodiesSection

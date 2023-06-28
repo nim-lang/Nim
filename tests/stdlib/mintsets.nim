@@ -1,4 +1,5 @@
 import std/intsets
+import std/assertions
 
 proc test1*[]() =
   let a = initIntSet()
