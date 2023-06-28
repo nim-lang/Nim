@@ -2,21 +2,6 @@ include system/inclrtl
 
 const hasSharedHeap* = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
 
-# In strict mode, thread entry point must catch exceptions that may be raised
-# by the code, for example using:
-# `try: myCode() except CatchableError as exc: handleIt(exc)`
-# In non-strict mode, a warning is printed when thread entry point may raise -
-# any exceptions that escape the thread entry point will cause the application
-# to terminate without cleanup.
-# Strict mode is enabled in slim preview mode, to be made default together with
-# it - it can also be enabled by adding `-d:nimThreadsStrictRaises` to the build.
-const nimThreadsStrictRaises* {.booldefine.} = defined(nimPreviewSlimSystem) # when (NimMajor, NimMinor) > (1, 6)
-
-when nimThreadsStrictRaises:
-  {.pragma: threadProc,thread, nimcall, gcsafe, raises: [].}
-else:
-  {.pragma: threadProc, thread, nimcall, gcsafe.}
-
 when defined(windows):
   type
     Handle* = int
@@ -181,9 +166,9 @@ type
     core*: PGcThread
     sys*: SysThread
     when TArg is void:
-      dataFn*: proc () {.threadProc.}
+      dataFn*: proc () {.thread, nimcall, gcsafe.}
     else:
-      dataFn*: proc (m: TArg) {.threadProc.}
+      dataFn*: proc (m: TArg) {.thread, nimcall, gcsafe.}
       data*: TArg
     when hasAllocStack:
       rawStack*: pointer

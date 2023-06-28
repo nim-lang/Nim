@@ -114,3 +114,4 @@ template nimThreadProcWrapperBody*(closure: untyped): untyped =
   thrd.core = nil
   thrd.dataFn = nil
   deallocThreadStorage(cast[pointer](core))
+

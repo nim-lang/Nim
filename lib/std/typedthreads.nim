@@ -39,11 +39,6 @@ export Thread
 
 import system/ansi_c
 
-when nimThreadsStrictRaises:
-  {.pragma: threadProc,thread, nimcall, gcsafe, raises: [].}
-else:
-  {.pragma: threadProc, thread, nimcall, gcsafe.}
-
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -171,7 +166,7 @@ when false:
 
 when hostOS == "windows":
   proc createThreadImpl[TArg](t: var Thread[TArg],
-                              tp: proc (arg: TArg) {.threadProc.},
+                              tp: proc (arg: TArg) {.thread, nimcall, gcsafe.},
                               param: TArg) =
     ## Creates a new thread `t` and starts its execution.
     ##
@@ -201,7 +196,7 @@ elif defined(genode):
     ## CPU affinity offset for next thread, safe to roll-over.
 
   proc createThreadImpl[TArg](t: var Thread[TArg],
-                              tp: proc (arg: TArg) {.threadProc.},
+                              tp: proc (arg: TArg) {.thread, nimcall, gcsafe.},
                               param: TArg) =
     t.core = cast[PGcThread](allocThreadStorage(sizeof(GcThread)))
 
@@ -220,7 +215,7 @@ elif defined(genode):
 
 else:
   proc createThreadImpl[TArg](t: var Thread[TArg],
-                              tp: proc (arg: TArg) {.threadProc.},
+                              tp: proc (arg: TArg) {.thread, nimcall, gcsafe.},
                               param: TArg) =
     ## Creates a new thread `t` and starts its execution.
     ##
@@ -264,19 +259,31 @@ else:
 proc checkRaises(tp: proc() {.raises: [].}) = discard
 proc checkRaises[TArg](tp: proc(arg: TArg) {.raises: [].}) = discard
 
-template createThread*[TArg](t: var Thread[TArg],
-                             tp: proc (arg: TArg) {.threadProc.},
-                             param: TArg) =
-  when not nimThreadsStrictRaises and not compiles(checkRaises(tp)):
-    {.warning: "Thread procedure may raise exceptions causing the application to crash - annotate with {.raises: [].} to see details".}
+proc startThread*[TArg](t: var Thread[TArg],
+                        tp: proc (arg: TArg) {.thread, nimcall, gcsafe, raises: [].},
+                        param: TArg) =
   createThreadImpl(t, tp, param)
 
-template createThread*(t: var Thread[void], tp: proc () {.threadProc.}) =
-  when not nimThreadsStrictRaises and not compiles(checkRaises(tp)):
-    {.warning: "Thread procedure may raise exceptions causing the application to crash - annotate with {.raises: [].} to see details".}
+proc startThread*(t: var Thread[void], tp: proc () {.thread, nimcall, gcsafe, raises: [].}) =
   createThreadImpl[void](t, tp)
 
+proc createThread*[TArg](t: var Thread[TArg],
+                         tp: proc (arg: TArg) {.thread, nimcall, gcsafe.},
+                         param: TArg) {.deprecated: "startThread".} =
+  ## Uncaught exceptions will cause the application to crash - to avoid this,
+  ## port your code to `startThread` by enveloping it in:
+  ## `try: ... except CatchableError as exc: handleError()` handling the
+  ## exceptions as appropriate.
+  when not compiles(checkRaises(tp)):
+    {.warning: "Thread procedure may raise exceptions causing the application to crash - annotate with {.raises: [].} to see details".}
 
+  createThreadImpl(t, tp, param)
+
+proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall, gcsafe.}) {.deprecated: "startThread".} =
+  when not compiles(checkRaises(tp)):
+    {.warning: "Thread procedure may raise exceptions causing the application to crash - annotate with {.raises: [].} to see details".}
+
+  createThreadImpl[void](t, tp)
 
 when not defined(gcOrc):
   include system/threadids
