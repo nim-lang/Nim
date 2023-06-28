@@ -215,7 +215,7 @@ proc sumGeneric(t: PType): int =
   # and Foo[T] has the value 2 so that we know Foo[Foo[T]] is more
   # specific than Foo[T].
   var t = t
-  var isvar = 1
+  var isvar = 0
   while true:
     case t.kind
     of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyUncheckedArray,
@@ -258,6 +258,8 @@ proc sumGeneric(t: PType): int =
       return isvar + 1  # the +1 is to differentiate object from specifics
     of tyBuiltInTypeClass:  # e.g. `object` must be more specific then bare `T`
       return result + 1
+    of tyTyped, tyUntyped:
+      return 0
     else:
       break
 
@@ -1647,9 +1649,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     considerPreviousT:
       let target = f[0]
       let targetKind = target.kind
-      let effectiveArgType = a.skipTypesOrNil({tyRange, tyGenericInst,tyGenericParam,tyCompositeTypeClass, tyGenericBody,
+      var effectiveArgType = a.skipTypesOrNil({tyRange, tyGenericInst, tyGenericParam,
                                           tyBuiltInTypeClass, tyAlias, tySink, tyOwned})
       if effectiveArgType == nil: return isNone
+      if effectiveArgType.kind == tyGenericInvocation:
+        if effectiveArgType[0] != nil:
+          effectiveArgType = effectiveArgType[0]
+      if effectiveArgType.kind == tyGenericBody:
+        effectiveArgType = effectiveArgType.lastSon
       if targetKind == effectiveArgType.kind:
         if effectiveArgType.isEmptyContainer:
           return isNone
@@ -1774,7 +1781,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         else:
           concrete = concreteType(c, a, f)
           if concrete == nil:
-            return isNone
+            return isGeneric
         if doBindGP:
           put(c, f, concrete)
       elif result > isGeneric:
