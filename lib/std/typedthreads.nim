@@ -39,7 +39,7 @@ export Thread
 
 import system/ansi_c
 
-when strictThreadsRaises:
+when nimThreadsStrictRaises:
   {.pragma: threadProc,thread, nimcall, gcsafe, raises: [].}
 else:
   {.pragma: threadProc, thread, nimcall, gcsafe.}
@@ -267,12 +267,12 @@ proc checkRaises[TArg](tp: proc(arg: TArg) {.raises: [].}) = discard
 template createThread*[TArg](t: var Thread[TArg],
                              tp: proc (arg: TArg) {.threadProc.},
                              param: TArg) =
-  when not strictThreadsRaises and not compiles(checkRaises(tp)):
+  when not nimThreadsStrictRaises and not compiles(checkRaises(tp)):
     {.warning: "Thread procedure may raise exceptions causing the application to crash - annotate with {.raises: [].} to see details".}
   createThreadImpl(t, tp, param)
 
 template createThread*(t: var Thread[void], tp: proc () {.threadProc.}) =
-  when not strictThreadsRaises and not compiles(checkRaises(tp)):
+  when not nimThreadsStrictRaises and not compiles(checkRaises(tp)):
     {.warning: "Thread procedure may raise exceptions causing the application to crash - annotate with {.raises: [].} to see details".}
   createThreadImpl[void](t, tp)
 

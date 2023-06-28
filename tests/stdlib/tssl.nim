@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:refc -d:strictThreadsRaises:off; --mm:orc -d:strictThreadsRaises:off"
+  matrix: "--mm:refc; --mm:orc"
   joinable: false
   disabled: "freebsd" # see #15713
   disabled: "openbsd" # see #15713
