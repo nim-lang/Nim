@@ -2616,7 +2616,7 @@ proc getColumns(p: RstParser, cols: var RstCols, startIdx: int): int =
     if p.tok[result].kind != tkAdornment: break
   if p.tok[result].kind == tkIndent: inc result
 
-proc checkColumns(p: RstParser, cols: RstCols): bool =
+proc checkColumns(p: RstParser, cols: RstCols) =
   var i = p.idx
   if p.tok[i].symbol[0] != '=':
     stopOrWarn(p, meIllformedTable,
@@ -2638,8 +2638,6 @@ proc checkColumns(p: RstParser, cols: RstCols): bool =
     else:
       stopOrWarn(p, meIllformedTable,
                  "no enough table columns", p.tok[i].line, p.tok[i].col)
-      # return false
-  result = true
 
 proc getSpans(p: RstParser, nextLine: int,
               cols: RstCols, unitedCols: RstCols): seq[int] =
@@ -2732,12 +2730,12 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
   result = newRstNodeA(p, rnTable)
   let startIdx = getColumns(p, cols, p.idx)
   let colChar = currentTok(p).symbol[0]
-  if not checkColumns(p, cols): return nil
+  checkColumns(p, cols)
   p.idx = startIdx
   result.colCount = cols.len
   while true:
     if currentTok(p).kind == tkAdornment:
-      if not checkColumns(p, cols): return nil
+      checkColumns(p, cols)
       p.idx = tokenAfterNewline(p)
       if currentTok(p).kind in {tkEof, tkIndent}:
         # skip last adornment line:
