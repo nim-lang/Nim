@@ -1652,7 +1652,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       var effectiveArgType = a.skipTypesOrNil({tyRange, tyGenericInst, tyGenericParam,
                                           tyBuiltInTypeClass, tyAlias, tySink, tyOwned})
       if effectiveArgType == nil: return isNone
-      if effectiveArgType.kind == tyGenericInvocation:
+      if effectiveArgType.kind in {tyGenericInvocation, tyCompositeTypeClass}:
         if effectiveArgType[0] != nil:
           effectiveArgType = effectiveArgType[0]
       if effectiveArgType.kind == tyGenericBody:
