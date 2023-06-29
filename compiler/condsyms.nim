@@ -145,7 +145,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasCallsitePragma")
   defineSymbol("nimHasAmbiguousEnumHint")
 
-  defineSymbol("nimHasWarnCastSizes")
+  defineSymbol("nimHasWarnCastSizes") # deadcode
   defineSymbol("nimHasOutParams")
   defineSymbol("nimHasSystemRaisesDefect")
   defineSymbol("nimHasWarnUnnamedBreak")
