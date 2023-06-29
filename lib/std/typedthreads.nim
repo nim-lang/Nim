@@ -267,7 +267,7 @@ proc startThread*[TArg](t: var Thread[TArg],
 proc startThread*(t: var Thread[void], tp: proc () {.thread, nimcall, gcsafe, raises: [].}) =
   createThreadImpl[void](t, tp)
 
-proc createThread*[TArg](t: var Thread[TArg],
+template createThread*[TArg](t: var Thread[TArg],
                          tp: proc (arg: TArg) {.thread, nimcall, gcsafe.},
                          param: TArg) {.deprecated: "startThread".} =
   ## Uncaught exceptions will cause the application to crash - to avoid this,
@@ -279,7 +279,7 @@ proc createThread*[TArg](t: var Thread[TArg],
 
   createThreadImpl(t, tp, param)
 
-proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall, gcsafe.}) {.deprecated: "startThread".} =
+template createThread*(t: var Thread[void], tp: proc () {.thread, nimcall, gcsafe.}) {.deprecated: "startThread".} =
   when not compiles(checkRaises(tp)):
     {.warning: "Thread procedure may raise exceptions causing the application to crash - annotate with {.raises: [].} to see details".}
 
