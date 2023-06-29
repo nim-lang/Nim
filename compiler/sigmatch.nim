@@ -985,6 +985,43 @@ when false:
 template skipOwned(a) =
   if a.kind == tyOwned: a = a.skipTypes({tyOwned, tyGenericInst})
 
+proc getObjectTypeOrNil(f: PType): PType =
+  #[
+    Returns a type that is f's effective typeclass. This is usually just one level deeper
+    in the hierarchy of generality for a type. `object`, `ref object`, `enum` and user defined
+    tyObjects are common return values.
+    this proc exists because skipTypes can gut out important information sometimes
+  ]#
+  case f.kind:
+  of tyGenericParam:
+    if f.len <= 0 or f.lastSon == nil:
+      result = nil
+    else:
+      result = getObjectTypeOrNil(f.lastSon)
+  of tyGenericInvocation, tyCompositeTypeClass, tyAlias:
+    if f.len <= 0 or f[0] == nil:
+      result = nil
+    else:
+      result = getObjectTypeOrNil(f[0])
+  of tyGenericBody, tyGenericInst:
+    result = f.lastSon
+  of tyUserTypeClass:
+    if tfResolved in f.flags:
+      result = f.base  # ?? idk if this is right
+    else:
+      result = f.lastSon
+  of tyStatic, tyVar, tyLent, tySink:
+    result = getObjectTypeOrNil(f.base)
+  of tyInferred:
+    # This is not true "After a candidate type is selected"
+    result = getObjectTypeOrNil(f.base)
+  of tyTyped, tyUntyped, tyFromExpr:
+    result = nil
+  of tyRange:
+    result = f.lastSon
+  else:
+    result = f
+
 proc typeRel(c: var TCandidate, f, aOrig: PType,
              flags: TTypeRelFlags = {}): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
@@ -1324,12 +1361,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyTuple:
     if a.kind == tyTuple: result = recordRel(c, f, a)
   of tyObject:
-    if a.kind == tyObject:
-      if sameObjectTypes(f, a):
-        result = isEqual
+    let effectiveArgType = getObjectTypeOrNil(a)
+    if effectiveArgType == nil: return isNone
+    if effectiveArgType.kind == tyObject:
+      if sameObjectTypes(f, effectiveArgType):
+        result = if sameObjectTypes(a, effectiveArgType): isEqual else: isGeneric
         # elif tfHasMeta in f.flags: result = recordRel(c, f, a)
       elif trIsOutParam notin flags:
-        var depth = isObjectSubtype(c, a, f, nil)
+        var depth = isObjectSubtype(c, effectiveArgType, f, nil)
         if depth > 0:
           inc(c.inheritancePenalty, depth)
           result = isSubtype
@@ -1355,9 +1394,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyPtr, tyRef:
     skipOwned(a)
-    let effectiveArgType = a.skipTypesOrNil({tyGenericParam, tyCompositeTypeClass, tyGenericBody, tyGenericInst})
-    if effectiveArgType == nil:
-      return isNone
+    let effectiveArgType = getObjectTypeOrNil(a)
+    if effectiveArgType == nil: return isNone
     if effectiveArgType.kind == f.kind:
       # ptr[R, T] can be passed to ptr[T], but not the other way round:
       if effectiveArgType.len < f.len: return isNone
@@ -1524,6 +1562,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyGenericInvocation:
     var x = a.skipGenericAlias
+    if x.kind == tyGenericParam and x.len > 0:
+      x = x.lastSon
     let concpt = f[0].skipTypes({tyGenericBody})
     var preventHack = concpt.kind == tyConcept
     if x.kind == tyOwned and f[0].kind != tyOwned:
@@ -1651,14 +1691,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     considerPreviousT:
       let target = f[0]
       let targetKind = target.kind
-      var effectiveArgType = a.skipTypesOrNil({tyRange, tyGenericInst, tyGenericParam,
-                                          tyBuiltInTypeClass, tyAlias, tySink, tyOwned})
+      var effectiveArgType = a.getObjectTypeOrNil()
       if effectiveArgType == nil: return isNone
-      if effectiveArgType.kind in {tyGenericInvocation, tyCompositeTypeClass}:
-        if effectiveArgType[0] != nil:
-          effectiveArgType = effectiveArgType[0]
-      if effectiveArgType.kind == tyGenericBody:
-        effectiveArgType = effectiveArgType.lastSon
       if targetKind == effectiveArgType.kind:
         if effectiveArgType.isEmptyContainer:
           return isNone
