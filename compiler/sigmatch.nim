@@ -1235,6 +1235,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         return inferStaticsInRange(c, fRange, a)
       elif c.c.matchedConcept != nil and aRange.rangeHasUnresolvedStatic:
         return inferStaticsInRange(c, aRange, f)
+      elif result == isGeneric and concreteType(c, aa, ff) == nil:
+        return isNone
       else:
         if lengthOrd(c.c.config, fRange) != lengthOrd(c.c.config, aRange):
           result = isNone
@@ -1779,9 +1781,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           a.sym.transitionGenericParamToType()
           a.flags.excl tfWildcard
         else:
-          concrete = concreteType(c, a, f)
-          if concrete == nil:
+          var effectiveArg = a.skipTypesOrNil({tyGenericParam, tyGenericInvocation})
+          if effectiveArg == nil:
             return isGeneric
+          concrete = concreteType(c, effectiveArg, f)
+          if concrete == nil:
+            return isNone
         if doBindGP:
           put(c, f, concrete)
       elif result > isGeneric:
