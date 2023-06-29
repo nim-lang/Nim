@@ -2,7 +2,7 @@
 
 
 ## Changes affecting backward compatibility
-- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response. It follows Apache HttpClient(Java), http(go) and .Net HttpWebResponse(C#) behavior. Previously it raised `ValueError`.
+- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response. It follows Apache's HttpClient(Java), http(go) and .Net HttpWebResponse(C#) behaviors. Previously it raised `ValueError`.
 
 - `addr` is now available for all addressable locations,
   `unsafeAddr` is now deprecated and an alias for `addr`.
@@ -91,8 +91,6 @@
 - [Overloadable enums](https://nim-lang.github.io/Nim/manual.html#overloadable-enum-value-names) and Unicode Operators
   are no longer experimental.
 
-- Removed the `nimIncrSeqV3` define.
-
 - `macros.getImpl` for `const` symbols now returns the full definition node
   (as `nnkConstDef`) rather than the AST of the constant value.
 
@@ -120,7 +118,7 @@
 
 - Using an unnamed break in a block is deprecated. This warning will become an error in future versions! Use a named block with a named break instead.
 
-- Several Standard libraries are moved to nimble packages, use `nimble` to install them:
+- Several Standard libraries have been moved to nimble packages, use `nimble` to install them:
   - `std/punycode` => `punycode`
   - `std/asyncftpclient` => `asyncftpclient`
   - `std/smtp` => `smtp`
@@ -254,7 +252,7 @@
 
 - `getProgramResult` and `setProgramResult` in `std/exitprocs` are no longer
   declared when they are not available on the backend. Previously it would call
-  `doAssert false` at runtime despite the condition being compile-time.
+  `doAssert false` at runtime despite the condition being checkable at compile-time.
 
 - Custom destructors now supports non-var parameters, e.g. `proc =destroy[T: object](x: T)` is valid. `proc =destroy[T: object](x: var T)` is deprecated.
 
@@ -282,17 +280,16 @@
 - `std/logging.ConsoleLogger` and `FileLogger` now have a `flushThreshold` attribute to set what log message levels are automatically flushed. For Nim v1 use `-d:nimFlushAllLogs` to automatically flush all message levels. Flushing all logs is the default behavior for Nim v2.
 
 
-- `std/net.IpAddress` dollar `$` improved, uses a fixed capacity for the `string` result based from the `IpAddressFamily`.
-- `std/jsfetch.newFetchOptions` now has default values for all parameters
-- `std/jsformdata` now accepts `Blob` data type.
+- `std/jsfetch.newFetchOptions` now has default values for all parameters.
+- `std/jsformdata` now accepts the `Blob` data type.
 
 - `std/sharedlist` and `std/sharedtables` are now deprecated, see RFC [#433](https://github.com/nim-lang/RFCs/issues/433).
 
-- New compile flag (`-d:nimNoGetRandom`) when building `std/sysrand` to remove dependency on linux `getrandom` syscall.
+- There is a new compile flag (`-d:nimNoGetRandom`) when building `std/sysrand` to remove dependency on Linux `getrandom` syscall.
 
-  This compile flag only affects linux builds and is necessary if either compiling on a linux kernel version < 3.17, or if code built will be executing on kernel < 3.17.
+  This compile flag only affects Linux builds and is necessary if either compiling on a Linux kernel version < 3.17, or if code built will be executing on kernel < 3.17.
 
-  On linux kernels < 3.17 (such as kernel 3.10 in RHEL7 and CentOS7), the `getrandom` syscall was not yet introduced. Without this, the `std/sysrand` module will not build properly, and if code is built on a kernel >= 3.17 without the flag, any usage of the `std/sysrand` module will fail to execute on a kernel < 3.17 (since it attempts to perform a syscall to `getrandom`, which isn't present in the current kernel). A compile flag has been added to force the `std/sysrand` module to use /dev/urandom (available since linux kernel 1.3.30), rather than the `getrandom` syscall. This allows for use of a cryptographically secure PRNG, regardless of kernel support for the `getrandom` syscall.
+  On Linux kernels < 3.17 (such as kernel 3.10 in RHEL7 and CentOS7), the `getrandom` syscall was not yet introduced. Without this, the `std/sysrand` module will not build properly, and if code is built on a kernel >= 3.17 without the flag, any usage of the `std/sysrand` module will fail to execute on a kernel < 3.17 (since it attempts to perform a syscall to `getrandom`, which isn't present in the current kernel). A compile flag has been added to force the `std/sysrand` module to use /dev/urandom (available since Linux kernel 1.3.30), rather than the `getrandom` syscall. This allows for use of a cryptographically secure PRNG, regardless of kernel support for the `getrandom` syscall.
 
   When building for RHEL7/CentOS7 for example, the entire build process for nim from a source package would then be:
   ```sh
@@ -304,7 +301,7 @@
   $ ./koch tools -d:nimNoGetRandom  # pass the nimNoGetRandom flag to compile std/sysrand without support for getrandom syscall
   ```
 
-  This is necessary to pass when building nim on kernel versions < 3.17 in particular to avoid an error of "SYS_getrandom undeclared" during the build process for stdlib (sysrand in particular).
+  This is necessary to pass when building Nim on kernel versions < 3.17 in particular to avoid an error of "SYS_getrandom undeclared" during the build process for the stdlib (sysrand in particular).
 
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
@@ -327,8 +324,8 @@
   `toggleAttribute`, and `matches` to `std/dom`.
 - Added [`jsre.hasIndices`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/hasIndices)
 - Added `capacity` for `string` and `seq` to return the current capacity, see https://github.com/nim-lang/RFCs/issues/460
-- Added `openArray[char]` overloads for `std/parseutils` allowing more code reuse.
-- Added `openArray[char]` overloads for `std/unicode` allowing more code reuse.
+- Added `openArray[char]` overloads for `std/parseutils` allowing for more code reuse.
+- Added `openArray[char]` overloads for `std/unicode` allowing for more code reuse.
 - Added `safe` parameter to `base64.encodeMime`.
 - Added `parseutils.parseSize` - inverse to `strutils.formatSize` - to parse human readable sizes.
 - Added `minmax` to `sequtils`, as a more efficient `(min(_), max(_))` over sequences.
@@ -539,7 +536,7 @@
 ## Tool changes
 
 - Nim now ships Nimble version 0.14 which added support for lock-files. Libraries are stored in `$nimbleDir/pkgs2` (it was `$nimbleDir/pkgs`). Use `nimble develop --global` to create an old style link file in the special links directory documented at https://github.com/nim-lang/nimble#nimble-develop.
-- nimgrep added option `--inContext` (and `--notInContext`), which
+- nimgrep added the option `--inContext` (and `--notInContext`), which
   allows to filter only matches with context block containing a given pattern.
 - nimgrep: names of options containing "include/exclude" are deprecated,
   e.g. instead of `--includeFile` and `--excludeFile` we have
