@@ -187,13 +187,15 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil):
       it[0] = forceBool(c, semExprWithType(c, it[0], expectedType = getSysType(c.graph, n.info, tyBool)))
       it[1] = semExprBranch(c, it[1], flags, expectedType)
       typ = commonType(c, typ, it[1])
-      expectedType = typ
+      if not endsInNoReturn(it[1]):
+        expectedType = typ
       closeScope(c)
     elif it.len == 1:
       hasElse = true
       it[0] = semExprBranchScope(c, it[0], expectedType)
       typ = commonType(c, typ, it[0])
-      expectedType = typ
+      if not endsInNoReturn(it[0]):
+        expectedType = typ
     else: illFormedAst(it, c.config)
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
       (not hasElse and efInTypeof notin flags):
@@ -234,7 +236,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
   var expectedType = expectedType
   n[0] = semExprBranchScope(c, n[0], expectedType)
   typ = commonType(c, typ, n[0].typ)
-  expectedType = typ
+  if not endsInNoReturn(n[0]):
+    expectedType = typ
 
   var last = n.len - 1
   var catchAllExcepts = 0
@@ -295,7 +298,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
     if a.kind != nkFinally:
       a[^1] = semExprBranchScope(c, a[^1], expectedType)
       typ = commonType(c, typ, a[^1])
-      expectedType = typ
+      if not endsInNoReturn(a[^1]):
+        expectedType = typ
     else:
       a[^1] = semExprBranchScope(c, a[^1])
       dec last
@@ -554,6 +558,7 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
 template isLocalSym(sym: PSym): bool =
   sym.kind in {skVar, skLet, skParam} and not
     ({sfGlobal, sfPure} * sym.flags != {} or
+      sym.typ.kind == tyTypeDesc or
       sfCompileTime in sym.flags) or
       sym.kind in {skProc, skFunc, skIterator} and
       sfGlobal notin sym.flags
@@ -670,7 +675,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if hasEmpty(typ):
           localError(c.config, def.info, errCannotInferTypeOfTheLiteral % typ.kind.toHumanStr)
         elif typ.kind == tyProc and def.kind == nkSym and isGenericRoutine(def.sym.ast):
-          # tfUnresolved in typ.flags:
           let owner = typ.owner
           let err =
             # consistent error message with evaltempl/semMacroExpr
@@ -1134,7 +1138,8 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
       var last = x.len-1
       x[last] = semExprBranchScope(c, x[last], expectedType)
       typ = commonType(c, typ, x[last])
-      expectedType = typ
+      if not endsInNoReturn(x[last]):
+        expectedType = typ
     of nkElifBranch:
       if hasElse: invalidOrderOfBranches(x)
       chckCovered = false
@@ -1143,13 +1148,15 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
       x[0] = forceBool(c, semExprWithType(c, x[0], expectedType = getSysType(c.graph, n.info, tyBool)))
       x[1] = semExprBranch(c, x[1], expectedType = expectedType)
       typ = commonType(c, typ, x[1])
-      expectedType = typ
+      if not endsInNoReturn(x[1]):
+        expectedType = typ
       closeScope(c)
     of nkElse:
       checkSonsLen(x, 1, c.config)
       x[0] = semExprBranchScope(c, x[0], expectedType)
       typ = commonType(c, typ, x[0])
-      expectedType = typ
+      if not endsInNoReturn(x[0]):
+        expectedType = typ
       if (chckCovered and covered == toCover(c, n[0].typ)) or hasElse:
         message(c.config, x.info, warnUnreachableElse)
       hasElse = true
@@ -1445,9 +1452,14 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
     if sfExportc in s.flags and s.typ.kind == tyAlias:
       localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
 
-    if tfBorrowDot in s.typ.flags and s.typ.skipTypes({tyGenericBody}).kind != tyDistinct:
-      excl s.typ.flags, tfBorrowDot
-      localError(c.config, name.info, "only a 'distinct' type can borrow `.`")
+    if tfBorrowDot in s.typ.flags:
+      let body = s.typ.skipTypes({tyGenericBody})
+      if body.kind != tyDistinct:
+        # flag might be copied from alias/instantiation:
+        let t = body.skipTypes({tyAlias, tyGenericInst})
+        if not (t.kind == tyDistinct and tfBorrowDot in t.flags):
+          excl s.typ.flags, tfBorrowDot
+          localError(c.config, name.info, "only a 'distinct' type can borrow `.`")
     let aa = a[2]
     if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
        aa[0].kind == nkObjectTy:
@@ -1482,7 +1494,9 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         obj.flags.incl sfPure
       obj.typ = objTy
       objTy.sym = obj
-
+  for sk in c.skipTypes:
+    discard semTypeNode(c, sk, nil)
+  c.skipTypes = @[]
 proc checkForMetaFields(c: PContext; n: PNode) =
   proc checkMeta(c: PContext; n: PNode; t: PType) =
     if t != nil and t.isMetaType and tfGenericTypeParam notin t.flags:
@@ -1549,7 +1563,6 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         # fix bug #5170, bug #17162, bug #15526: ensure locally scoped types get a unique name:
         if s.typ.kind in {tyEnum, tyRef, tyObject} and not isTopLevel(c):
           incl(s.flags, sfGenSym)
-
   #instAllTypeBoundOp(c, n.info)
 
 
@@ -1642,6 +1655,16 @@ proc swapResult(n: PNode, sRes: PSym, dNode: PNode) =
     if n[i].kind == nkSym and n[i].sym == sRes:
         n[i] = dNode
     swapResult(n[i], sRes, dNode)
+
+
+proc addThis(c: PContext, n: PNode, t: PType, owner: TSymKind) =
+  var s = newSym(skResult, getIdent(c.cache, "this"), c.idgen,
+              getCurrOwner(c), n.info)
+  s.typ = t
+  incl(s.flags, sfUsed)
+  c.p.resultSym = s
+  n.add newSymNode(c.p.resultSym)
+  addParamOrResult(c, c.p.resultSym, owner)
 
 proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
   template genResSym(s) =
@@ -1786,7 +1809,7 @@ proc canonType(c: PContext, t: PType): PType =
 
 proc prevDestructor(c: PContext; prevOp: PSym; obj: PType; info: TLineInfo) =
   var msg = "cannot bind another '" & prevOp.name.s & "' to: " & typeToString(obj)
-  if sfOverriden notin prevOp.flags:
+  if sfOverridden notin prevOp.flags:
     msg.add "; previous declaration was constructed here implicitly: " & (c.config $ prevOp.info)
   else:
     msg.add "; previous declaration was here: " & (c.config $ prevOp.info)
@@ -1801,14 +1824,52 @@ proc whereToBindTypeHook(c: PContext; t: PType): PType =
   if result.kind in {tyObject, tyDistinct, tySequence, tyString}:
     result = canonType(c, result)
 
+proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
+  let t = s.typ
+  var noError = false
+  let cond = t.len == 2 and t[0] != nil
+
+  if cond:
+    var obj = t[1]
+    while true:
+      incl(obj.flags, tfHasAsgn)
+      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.lastSon
+      elif obj.kind == tyGenericInvocation: obj = obj[0]
+      else: break
+
+    var res = t[0]
+    while true:
+      if res.kind in {tyGenericBody, tyGenericInst}: res = res.lastSon
+      elif res.kind == tyGenericInvocation: res = res[0]
+      else: break
+
+    if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, res):
+      obj = canonType(c, obj)
+      let ao = getAttachedOp(c.graph, obj, op)
+      if ao == s:
+        discard "forward declared destructor"
+      elif ao.isNil and tfCheckedForDestructor notin obj.flags:
+        setAttachedOp(c.graph, c.module.position, obj, op, s)
+      else:
+        prevDestructor(c, ao, obj, n.info)
+      noError = true
+      if obj.owner.getModule != s.getModule:
+        localError(c.config, n.info, errGenerated,
+          "type bound operation `" & s.name.s & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+
+  if not noError and sfSystemModule notin s.owner.flags:
+    localError(c.config, n.info, errGenerated,
+      "signature for '=dup' must be proc[T: object](x: T): T")
+
+  incl(s.flags, sfUsed)
+  incl(s.flags, sfOverridden)
+
 proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let t = s.typ
   var noError = false
   let cond = case op
-             of {attachedDestructor, attachedWasMoved}:
+             of attachedWasMoved:
                t.len == 2 and t[0] == nil and t[1].kind == tyVar
-             of attachedDup:
-               t.len == 2 and t[0] != nil
              of attachedTrace:
                t.len == 3 and t[0] == nil and t[1].kind == tyVar and t[2].kind == tyPointer
              else:
@@ -1822,6 +1883,8 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
       elif obj.kind == tyGenericInvocation: obj = obj[0]
       else: break
     if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
+      if op == attachedDestructor and t[1].kind == tyVar:
+        message(c.config, n.info, warnDeprecated, "A custom '=destroy' hook which takes a 'var T' parameter is deprecated; it should take a 'T' parameter")
       obj = canonType(c, obj)
       let ao = getAttachedOp(c.graph, obj, op)
       if ao == s:
@@ -1839,14 +1902,14 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
     of attachedTrace:
       localError(c.config, n.info, errGenerated,
         "signature for '=trace' must be proc[T: object](x: var T; env: pointer)")
-    of attachedDup:
+    of attachedDestructor:
       localError(c.config, n.info, errGenerated,
-        "signature for '=dup' must be proc[T: object](x: var T): T")
+        "signature for '=destroy' must be proc[T: object](x: var T) or proc[T: object](x: T)")
     else:
       localError(c.config, n.info, errGenerated,
         "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
   incl(s.flags, sfUsed)
-  incl(s.flags, sfOverriden)
+  incl(s.flags, sfOverridden)
 
 proc semOverride(c: PContext, s: PSym, n: PNode) =
   let name = s.name.s.normalize
@@ -1887,11 +1950,11 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       localError(c.config, n.info, errGenerated,
                  "signature for 'deepCopy' must be proc[T: ptr|ref](x: T): T")
     incl(s.flags, sfUsed)
-    incl(s.flags, sfOverriden)
+    incl(s.flags, sfOverridden)
   of "=", "=copy", "=sink":
     if s.magic == mAsgn: return
     incl(s.flags, sfUsed)
-    incl(s.flags, sfOverriden)
+    incl(s.flags, sfOverridden)
     if name == "=":
       message(c.config, n.info, warnDeprecated, "Overriding `=` hook is deprecated; Override `=copy` hook instead")
     let t = s.typ
@@ -1936,9 +1999,9 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       bindTypeHook(c, s, n, attachedWasMoved)
   of "=dup":
     if s.magic != mDup:
-      bindTypeHook(c, s, n, attachedDup)
+      bindDupHook(c, s, n, attachedDup)
   else:
-    if sfOverriden in s.flags:
+    if sfOverridden in s.flags:
       localError(c.config, n.info, errGenerated,
                  "'destroy' or 'deepCopy' expected for 'override'")
 
@@ -2166,7 +2229,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     pushOwner(c, s)
 
   if not isAnon:
-    if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
+    if sfOverridden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
     elif s.name.s[0] in {'.', '('}:
       if s.name.s in [".", ".()", ".="] and {Feature.destructor, dotOperators} * c.features == {}:
         localError(c.config, n.info, "the overloaded " & s.name.s &
@@ -2177,25 +2240,34 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if sfBorrow in s.flags and c.config.cmd notin cmdDocLike:
     result[bodyPos] = c.graph.emptyNode
-  
-  if sfVirtual in s.flags:
+
+  if {sfVirtual, sfConstructor} * s.flags != {} and sfImportc notin s.flags:
+    let isVirtual = sfVirtual in s.flags
+    let pragmaName = if isVirtual: "virtual" else: "constructor"
     if c.config.backend == backendCpp:
+      if s.typ.sons.len < 2 and isVirtual:
+        localError(c.config, n.info, "virtual must have at least one parameter")
       for son in s.typ.sons:
         if son!=nil and son.isMetaType:
-          localError(c.config, n.info, "virtual unsupported for generic routine")
-
-      var typ = s.typ.sons[1]
-      if typ.kind == tyPtr:
+          localError(c.config, n.info, pragmaName & " unsupported for generic routine")
+      var typ: PType
+      if sfConstructor in s.flags:
+        typ = s.typ.sons[0]
+        if typ == nil or typ.kind != tyObject:
+          localError(c.config, n.info, "constructor must return an object")
+      else:
+        typ = s.typ.sons[1]
+      if typ.kind == tyPtr and isVirtual:
         typ = typ[0]
       if typ.kind != tyObject:
-        localError(c.config, n.info, "virtual must be a non ref object type")
+        localError(c.config, n.info, "virtual must be either ptr to object or object type.")
       if typ.owner.id == s.owner.id and c.module.id == s.owner.id:
-        c.graph.virtualProcsPerType.mgetOrPut(typ.itemId, @[]).add s
+        c.graph.memberProcsPerType.mgetOrPut(typ.itemId, @[]).add s
       else:
-        localError(c.config, n.info, 
-          "virtual procs must be defined in the same scope as the type they are virtual for and it must be a top level scope")
+        localError(c.config, n.info,
+          pragmaName & " procs must be defined in the same scope as the type they are virtual for and it must be a top level scope")
     else:
-      localError(c.config, n.info, "virtual procs are only supported in C++")
+      localError(c.config, n.info, pragmaName & " procs are only supported in C++")
 
   if n[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation we allow sfImportc to have a body, for use in VM
@@ -2221,15 +2293,19 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # Macros and Templates can have generic parameters, but they are only
         # used for overload resolution (there is no instantiation of the symbol)
         if s.kind notin {skMacro, skTemplate} and s.magic == mNone: paramsTypeCheck(c, s.typ)
-
-        maybeAddResult(c, s, n)
-        let resultType =
-          if s.kind == skMacro:
-            sysTypeFromName(c.graph, n.info, "NimNode")
-          elif not isInlineIterator(s.typ):
-            s.typ[0]
-          else:
-            nil
+        var resultType: PType
+        if sfConstructor in s.flags:
+          resultType = makePtrType(c, s.typ[0])
+          addThis(c, n, resultType, skProc)
+        else:
+          maybeAddResult(c, s, n)
+          resultType =
+            if s.kind == skMacro:
+              sysTypeFromName(c.graph, n.info, "NimNode")
+            elif not isInlineIterator(s.typ):
+              s.typ[0]
+            else:
+              nil
         # semantic checking also needed with importc in case used in VM
         s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], resultType))
         # unfortunately we cannot skip this step when in 'system.compiles'
@@ -2542,12 +2618,6 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType =
      nfBlockArg notin n.flags and
      result[0].kind != nkDefer:
     result = result[0]
-
-  when defined(nimfix):
-    if result.kind == nkCommentStmt and not result.comment.isNil and
-        not (result.comment[0] == '#' and result.comment[1] == '#'):
-      # it is an old-style comment statement: we replace it with 'discard ""':
-      prettybase.replaceComment(result.info)
 
 proc semStmt(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if efInTypeof notin flags:

@@ -39,8 +39,7 @@ try:
         if i_cursor == 2:
           return
         add(a):
-          `=wasMoved`(:tmpD)
-          `=copy`(:tmpD, x)
+          :tmpD = `=dup`(x)
           :tmpD
         inc i_1, 1
   if cond:

@@ -36,7 +36,7 @@ written as:
       len, cap: int
       data: ptr UncheckedArray[T]
 
-  proc `=destroy`*[T](x: var myseq[T]) =
+  proc `=destroy`*[T](x: myseq[T]) =
     if x.data != nil:
       for i in 0..<x.len: `=destroy`(x.data[i])
       dealloc(x.data)
@@ -58,6 +58,16 @@ written as:
       a.data = cast[typeof(a.data)](alloc(a.cap * sizeof(T)))
       for i in 0..<a.len:
         a.data[i] = b.data[i]
+
+  proc `=dup`*[T](a: myseq[T]): myseq[T] {.nodestroy.} =
+    # an optimized version of `=wasMoved(tmp); `=copy(tmp, src)`
+    # usually present if a custom `=copy` hook is overridden
+    result.len = a.len
+    result.cap = a.cap
+    if a.data != nil:
+      result.data = cast[typeof(result.data)](alloc(result.cap * sizeof(T)))
+      for i in 0..<result.len:
+        result.data[i] = `=dup`(a.data[i])
 
   proc `=sink`*[T](a: var myseq[T]; b: myseq[T]) =
     # move assignment, optional.
@@ -117,16 +127,16 @@ other associated resources. Variables are destroyed via this hook when
 they go out of scope or when the routine they were declared in is about
 to return.
 
-The prototype of this hook for a type `T` needs to be:
+A `=destroy` hook is allowed to have a parameter of a `var T` or `T` type. Taking a `var T` type is deprecated. The prototype of this hook for a type `T` needs to be:
 
   ```nim
-  proc `=destroy`(x: var T)
+  proc `=destroy`(x: T)
   ```
 
 The general pattern in `=destroy` looks like:
 
   ```nim
-  proc `=destroy`(x: var T) =
+  proc `=destroy`(x: T) =
     # first check if 'x' was moved to somewhere else:
     if x.field != nil:
       freeResource(x.field)
@@ -246,10 +256,10 @@ The general pattern in using `=destroy` with `=trace` looks like:
     Test[T](size: size, arr: cast[ptr UncheckedArray[T]](alloc0(sizeof(T) * size)))
 
 
-  proc `=destroy`[T](dest: var Test[T]) =
+  proc `=destroy`[T](dest: Test[T]) =
     if dest.arr != nil:
       for i in 0 ..< dest.size: dest.arr[i].`=destroy`
-      dest.arr.dealloc
+      dealloc dest.arr
 
   proc `=trace`[T](dest: var Test[T]; env: pointer) =
     if dest.arr != nil:
@@ -444,7 +454,7 @@ destroyed at the scope exit.
 
     f_sink(notLastReadOf y)
     --------------------------     (copy-to-sink)
-    (let tmp; `=copy`(tmp, y);
+    (let tmp = `=dup`(y);
     f_sink(tmp))
 
 
@@ -680,11 +690,11 @@ The ability to override a hook leads to a phase ordering problem:
     # error: destructor for 'f' called here before
     # it was seen in this module.
 
-  proc `=destroy`[T](f: var Foo[T]) =
+  proc `=destroy`[T](f: Foo[T]) =
     discard
   ```
 
-The solution is to define ``proc `=destroy`[T](f: var Foo[T])`` before
+The solution is to define ``proc `=destroy`[T](f: Foo[T])`` before
 it is used. The compiler generates implicit
 hooks for all types in *strategic places* so that an explicitly provided
 hook that comes too "late" can be detected reliably. These *strategic places*
@@ -713,7 +723,7 @@ used to specialize the object traversal in order to avoid deep recursions:
   type Tree = object
     root: Node
 
-  proc `=destroy`(t: var Tree) {.nodestroy.} =
+  proc `=destroy`(t: Tree) {.nodestroy.} =
     # use an explicit stack so that we do not get stack overflows:
     var s: seq[Node] = @[t.root]
     while s.len > 0:

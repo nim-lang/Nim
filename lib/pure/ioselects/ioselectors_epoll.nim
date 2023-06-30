@@ -138,7 +138,7 @@ template checkFd(s, f) =
     var numFD = s.numFD
     while numFD <= f: numFD *= 2
     when hasThreadSupport:
-      s.fds = reallocSharedArray(s.fds, numFD)
+      s.fds = reallocSharedArray(s.fds, s.numFD, numFD)
     else:
       s.fds.setLen(numFD)
     for i in s.numFD ..< numFD:

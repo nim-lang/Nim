@@ -856,7 +856,7 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool, depth = 0): Json
   case p.tok
   of tkString:
     # we capture 'p.a' here, so we need to give it a fresh buffer afterwards:
-    when defined(gcArc) or defined(gcOrc):
+    when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
       result = JsonNode(kind: JString, str: move p.a)
     else:
       result = JsonNode(kind: JString)

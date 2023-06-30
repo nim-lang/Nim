@@ -324,6 +324,14 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     if a.kind == nkSym:
       n[1] = transformSymAux(c, a)
     return n
+  of nkProcDef: # todo optimize nosideeffects?
+    result = newTransNode(n)
+    let x = newSymNode(copySym(n[namePos].sym, c.idgen))
+    idNodeTablePut(c.transCon.mapping, n[namePos].sym, x)
+    result[namePos] = x # we have to copy proc definitions for iters
+    for i in 1..<n.len:
+      result[i] = introduceNewLocalVars(c, n[i])
+    result[namePos].sym.ast = result
   else:
     result = newTransNode(n)
     for i in 0..<n.len:
@@ -1019,7 +1027,9 @@ proc transform(c: PTransf, n: PNode): PNode =
     result = transformAddrDeref(c, n, {nkHiddenDeref})
   of nkAddr:
     result = transformAddrDeref(c, n, {nkDerefExpr, nkHiddenDeref})
-  of nkDerefExpr, nkHiddenDeref:
+  of nkDerefExpr:
+    result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
+  of nkHiddenDeref:
     if n[0].kind in {nkBlockExpr, nkBlockStmt}:
       # bug #20107 bug #21540. Watch out to not deref the pointer too late.
       let e = transformDerefBlock(c, n)

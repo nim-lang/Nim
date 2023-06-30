@@ -11,8 +11,7 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-import sighashes, modulegraphs
-import strscans
+import sighashes, modulegraphs, strscans
 import ../dist/checksums/src/checksums/md5
 
 type
@@ -409,12 +408,13 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet; kind: TypeDescKind
         m.typeCache[sig] = result
         #echo "adding ", sig, " ", typeToString(t), " ", m.module.name.s
         appcg(m, m.s[cfsTypes],
-          "struct $1 {$N" &
-          "  NI len; $1_Content* p;$N" &
-          "};$N", [result])
+          "struct $1 {\n" &
+          "  NI len; $1_Content* p;\n" &
+          "};\n", [result])
+        pushType(m, t)
     else:
       result = getTypeForward(m, t, sig) & seqStar(m)
-    pushType(m, t)
+      pushType(m, t)
   else:
     result = getTypeDescAux(m, t, check, kind)
 
@@ -429,14 +429,9 @@ proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
   if result == "":
     discard getTypeDescAux(m, t, check, dkVar)
   else:
-    # little hack for now to prevent multiple definitions of the same
-    # Seq_Content:
-    appcg(m, m.s[cfsTypes], """$N
-$3ifndef $2_Content_PP
-$3define $2_Content_PP
-struct $2_Content { NI cap; $1 data[SEQ_DECL_SIZE];};
-$3endif$N
-      """, [getTypeDescAux(m, t.skipTypes(abstractInst)[0], check, dkVar), result, rope"#"])
+    appcg(m, m.s[cfsTypes], """
+struct $2_Content { NI cap; $1 data[SEQ_DECL_SIZE]; };
+""", [getTypeDescAux(m, t.skipTypes(abstractInst)[0], check, dkVar), result])
 
 proc paramStorageLoc(param: PSym): TStorageLoc =
   if param.typ.skipTypes({tyVar, tyLent, tyTypeDesc}).kind notin {
@@ -488,30 +483,36 @@ proc multiFormat*(frmt: var string, chars : static openArray[char], args: openAr
         res.add(substr(frmt, start, i - 1))
     frmt = res
 
-proc genVirtualProcParams(m: BModule; t: PType, rettype, params: var string,
+proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var string,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false;) =
-  if t[0] == nil or isInvalidReturnType(m.config, t):
+  let t = prc.typ
+  let isCtor = sfConstructor in prc.flags
+  if isCtor:
+    rettype = ""
+  elif t[0] == nil or isInvalidReturnType(m.config, t):
     rettype = "void"
   else:
     if rettype == "":
       rettype = getTypeDescAux(m, t[0], check, dkResult)
     else:
       rettype = runtimeFormat(rettype.replace("'0", "$1"), [getTypeDescAux(m, t[0], check, dkResult)])
-  var this = t.n[1].sym
-  fillParamName(m, this)
-  fillLoc(this.loc, locParam, t.n[1],
-          this.paramStorageLoc)
-  if this.typ.kind == tyPtr:
-    this.loc.r = "this"
-  else:
-    this.loc.r = "(*this)"
-  
-  var types = @[getTypeDescWeak(m, this.typ, check, dkParam)]
-  var names = @[this.loc.r]
+  var types, names, args: seq[string]
+  if not isCtor:    
+    var this = t.n[1].sym
+    fillParamName(m, this)
+    fillLoc(this.loc, locParam, t.n[1],
+            this.paramStorageLoc)
+    if this.typ.kind == tyPtr:
+      this.loc.r = "this"
+    else:
+      this.loc.r = "(*this)"
+    names.add this.loc.r
+    types.add getTypeDescWeak(m, this.typ, check, dkParam)
 
-  for i in 2..<t.n.len: 
-    if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genVirtualProcParams")
+  let firstParam = if isCtor: 1 else: 2
+  for i in firstParam..<t.n.len: 
+    if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genMemberProcParams")
     var param = t.n[i].sym
     var descKind = dkParam
     if optByRef in param.options:
@@ -534,9 +535,15 @@ proc genVirtualProcParams(m: BModule; t: PType, rettype, params: var string,
     name = param.loc.r
     types.add typ
     names.add name
+    args.add types[^1] & " " & names[^1]
+
   multiFormat(params, @['\'', '#'], [types, names])
+  multiFormat(superCall, @['\'', '#'], [types, names])
   if params == "()":
-    params = "(void)"
+    if types.len == 0:
+      params = "(void)"
+    else:
+      params = "(" & args.join(", ") & ")"
   if tfVarargs in t.flags:
     if params != "(":
       params[^1] = ','
@@ -687,17 +694,25 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
           result.addf("\t$1$3 $2;$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias])
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
 
-proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl:bool = false)
+proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl:bool = false)
 
 proc getRecordFields(m: BModule; typ: PType, check: var IntSet): Rope =
   result = newRopeAppender()
   genRecordFieldsAux(m, typ.n, typ, check, result)
-  if typ.itemId in m.g.graph.virtualProcsPerType:
-    let procs = m.g.graph.virtualProcsPerType[typ.itemId]
+  if typ.itemId in m.g.graph.memberProcsPerType:
+    let procs = m.g.graph.memberProcsPerType[typ.itemId]
+    var isDefaultCtorGen, isCtorGen: bool
     for prc in procs:
       var header: Rope
-      genVirtualProcHeader(m, prc, header, false, true)
-      result.add "\t" & header & ";\n"
+      if sfConstructor in prc.flags:
+        isCtorGen = true
+        if prc.typ.n.len == 1:
+          isDefaultCtorGen = true
+      genMemberProcHeader(m, prc, header, false, true)
+      result.addf "$1;$n", [header]
+    if isCtorGen and not isDefaultCtorGen:
+      var ch: IntSet
+      result.addf "$1() = default;$n", [getTypeDescAux(m, typ, ch, dkOther)]
     
 proc fillObjectFields*(m: BModule; typ: PType) =
   # sometimes generic objects are not consistently merged. We patch over
@@ -759,8 +774,15 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
     result = structOrUnion & " " & name
     result.add(getRecordDescAux(m, typ, name, baseType, check, hasField))
     let desc = getRecordFields(m, typ, check)
-    if desc == "" and not hasField:
-      result.addf("char dummy;$n", [])
+    if not hasField:
+      if desc == "":
+        result.add("\tchar dummy;\n")
+      elif typ.len == 1 and typ.n[0].kind == nkSym:
+        let field = typ.n[0].sym
+        let fieldType = field.typ.skipTypes(abstractInst)
+        if fieldType.kind == tyUncheckedArray:
+          result.add("\tchar dummy;\n")
+      result.add(desc)
     else:
       result.add(desc)
     result.add("};\L")
@@ -825,8 +847,6 @@ proc getOpenArrayDesc(m: BModule; t: PType, check: var IntSet; kind: TypeDescKin
 
 proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDescKind): Rope =
   # returns only the type's name
-  if kind == dkRefParam:
-    echo "llega con typedesc aux:", $origTyp.kind
   var t = origTyp.skipTypes(irrelevantForBackend-{tyOwned})
   if containsOrIncl(check, t.id):
     if not (isImportedCppType(origTyp) or isImportedCppType(t)):
@@ -1099,53 +1119,69 @@ proc finishTypeDescriptions(m: BModule) =
     inc(i)
   m.typeStack.setLen 0
 
-
 proc isReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable notin prc.flags
 
 proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 
-proc parseVFunctionDecl(val: string; name, params, retType: var string; isFnConst, isOverride: var bool) =
+proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride: var bool; isCtor: bool) =
   var afterParams: string
   if scanf(val, "$*($*)$s$*", name, params, afterParams):
     isFnConst = afterParams.find("const") > -1
     isOverride = afterParams.find("override") > -1
-    discard scanf(afterParams, "->$s$* ", retType)
+    if isCtor:
+      discard scanf(afterParams, ":$s$*", superCall)
+    else:
+      discard scanf(afterParams, "->$s$* ", retType)
+
   params = "(" & params & ")"
 
-proc genVirtualProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl : bool = false) =
-  assert sfVirtual in prc.flags
-  # using static is needed for inline procs
+proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl : bool = false) =
+  assert {sfVirtual, sfConstructor} * prc.flags != {}
+  let isCtor = sfConstructor in prc.flags
+  let isVirtual = not isCtor
   var check = initIntSet()
   fillBackendName(m, prc)
   fillLoc(prc.loc, locProc, prc.ast[namePos], OnUnknown)
-  var typ = prc.typ.n[1].sym.typ
-  var memberOp = "#."
+  var memberOp = "#." #only virtual
+  var typ: PType
+  if isCtor:
+    typ = prc.typ.sons[0]
+  else:
+    typ = prc.typ.sons[1]
   if typ.kind == tyPtr:
     typ = typ[0]
     memberOp = "#->"
   var typDesc = getTypeDescWeak(m, typ, check, dkParam)
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
-  var name, params, rettype: string
+  var name, params, rettype, superCall: string
   var isFnConst, isOverride: bool
-  parseVFunctionDecl(prc.constraint.strVal, name, params, rettype, isFnConst, isOverride)
-  genVirtualProcParams(m, prc.typ, rettype, params, check, true, false) 
+  parseVFunctionDecl(prc.constraint.strVal, name, params, rettype, superCall, isFnConst, isOverride, isCtor)
+  genMemberProcParams(m, prc, superCall, rettype, params, check, true, false) 
   var fnConst, override: string
+  if isCtor:
+    name = typDesc
   if isFnConst:
     fnConst = " const"
   if isFwdDecl:
-    rettype = "virtual " & rettype
-    if isOverride: 
-      override = " override"
-  else: 
-    prc.loc.r = "$1 $2 (@)" % [memberOp, name]
+    if isVirtual:
+      rettype = "virtual " & rettype
+      if isOverride: 
+        override = " override"
+    superCall = ""
+  else:
+    if isVirtual:
+      prc.loc.r = "$1$2(@)" % [memberOp, name]
+    elif superCall != "":
+      superCall = " : " & superCall
+    
     name = "$1::$2" % [typDesc, name]
-  
+
   result.add "N_LIB_PRIVATE "
-  result.addf("$1$2($3, $4)$5$6$7",
+  result.addf("$1$2($3, $4)$5$6$7$8",
         [rope(CallingConvToStr[prc.typ.callConv]), asPtrStr, rettype, name,
-        params, fnConst, override])
+        params, fnConst, override, superCall])
   
 proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false) =
   # using static is needed for inline procs
@@ -1158,6 +1194,8 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false)
   # (instead of forward declaration) or header for function body with "_actual" postfix
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
   var name = prc.loc.r
+  if not asPtr and isReloadable(m, prc):
+    name.add("_actual")
   # careful here! don't access ``prc.ast`` as that could reload large parts of
   # the object graph!
   if prc.constraint.isNil:

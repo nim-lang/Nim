@@ -35,7 +35,9 @@ proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
   if n.kind == nkEmpty:
     result = false
   elif n.kind in nkCallKinds and n[0] != nil and n[0].typ != nil and n[0].typ.skipTypes(abstractInst).kind == tyProc:
-    if isInvalidReturnType(conf, n[0].typ, true):
+    if n[0].kind == nkSym and sfConstructor in n[0].sym.flags:
+      result = true
+    elif isInvalidReturnType(conf, n[0].typ, true):
       # var v = f()
       # is transformed into: var v;  f(addr v)
       # where 'f' **does not** initialize the result!
@@ -288,7 +290,7 @@ proc potentialValueInit(p: BProc; v: PSym; value: PNode; result: var Rope) =
     #echo "New code produced for ", v.name.s, " ", p.config $ value.info
     genBracedInit(p, value, isConst = false, v.typ, result)
 
-proc genCppVarForConstructor(p: BProc, v: PSym; vn, value: PNode; decl: var Rope) =
+proc genCppVarForCtor(p: BProc, v: PSym; vn, value: PNode; decl: var Rope) =
   var params = newRopeAppender()
   var argsCounter = 0
   let typ = skipTypes(value[0].typ, abstractInst)
@@ -307,7 +309,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     genGotoVar(p, value)
     return
   let imm = isAssignedImmediately(p.config, value)
-  let isCppConstructorCall = p.module.compileToCpp and imm and
+  let isCppCtorCall = p.module.compileToCpp and imm and
     value.kind in nkCallKinds and value[0].kind == nkSym and
     v.typ.kind != tyPtr and sfConstructor in value[0].sym.flags
   var targetProc = p
@@ -321,8 +323,8 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     if sfPure in v.flags:
       # v.owner.kind != skModule:
       targetProc = p.module.preInitProc
-    if isCppConstructorCall and not containsHiddenPointer(v.typ):
-      callGlobalVarCppConstructor(targetProc, v, vn, value)
+    if isCppCtorCall and not containsHiddenPointer(v.typ):
+      callGlobalVarCppCtor(targetProc, v, vn, value)
     else:
       assignGlobalVar(targetProc, vn, valueAsRope)
 
@@ -356,8 +358,8 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
       genLineDir(p, vn)
       var decl = localVarDecl(p, vn)
       var tmp: TLoc
-      if isCppConstructorCall:
-        genCppVarForConstructor(p, v, vn, value, decl)
+      if isCppCtorCall:
+        genCppVarForCtor(p, v, vn, value, decl)
         line(p, cpsStmts, decl)
       else:
         initLocExprSingleUse(p, value, tmp)
@@ -388,7 +390,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     startBlock(targetProc)
   if value.kind != nkEmpty and valueAsRope.len == 0:
     genLineDir(targetProc, vn)
-    if not isCppConstructorCall:
+    if not isCppCtorCall:
       loadInto(targetProc, vn, value, v.loc)
   if forHcr:
     endBlock(targetProc)
@@ -777,11 +779,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
   else:
     finallyActions(p)
     genLineDir(p, t)
-    # reraise the last exception:
-    if p.config.exc == excCpp:
-      line(p, cpsStmts, "throw;\n")
-    else:
-      linefmt(p, cpsStmts, "#reraiseException();$n", [])
+    linefmt(p, cpsStmts, "#reraiseException();$n", [])
   raiseInstr(p, p.s(cpsStmts))
 
 template genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
@@ -1007,7 +1005,7 @@ proc genRestoreFrameAfterException(p: BProc) =
 proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #[ code to generate:
 
-    std::exception_ptr error = nullptr;
+    std::exception_ptr error;
     try {
       body;
     } catch (Exception e) {
@@ -1038,7 +1036,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   inc(p.labels, 2)
   let etmp = p.labels
 
-  p.procSec(cpsInit).add(ropecg(p.module, "\tstd::exception_ptr T$1_ = nullptr;$n", [etmp]))
+  lineCg(p, cpsStmts, "std::exception_ptr T$1_;$n", [etmp])
 
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
   p.nestedTryStmts.add((fin, false, 0.Natural))
@@ -1072,7 +1070,6 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       if hasIf: lineF(p, cpsStmts, "else ", [])
       startBlock(p)
       # we handled the error:
-      linefmt(p, cpsStmts, "T$1_ = nullptr;$n", [etmp])
       expr(p, t[i][0], d)
       linefmt(p, cpsStmts, "#popCurrentException();$n", [])
       endBlock(p)

@@ -352,7 +352,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
 
   openScope(c)
   let gp = n[genericParamsPos]
-  internalAssert c.config, gp.kind == nkGenericParams
+  if gp.kind != nkGenericParams:
+    # bug #22137
+    globalError(c.config, info, "generic instantiation too nested")
   n[namePos] = newSymNode(result)
   pushInfoContext(c.config, info, fn.detailedInfo)
   var entry = TInstantiation.new
@@ -388,8 +390,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
       pragma(c, result, n[pragmasPos], allRoutinePragmas)
     if isNil(n[bodyPos]):
       n[bodyPos] = copyTree(getBody(c.graph, fn))
-    if c.inGenericContext == 0:
-      instantiateBody(c, n, fn.typ.n, result, fn)
+    instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)
     if result.magic notin {mSlice, mTypeOf}:
       # 'toOpenArray' is special and it is allowed to return 'openArray':

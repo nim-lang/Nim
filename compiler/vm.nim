@@ -20,7 +20,6 @@ import
 
 when defined(nimPreviewSlimSystem):
   import std/formatfloat
-import astalgo
 import ast except getstr
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -444,12 +443,16 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
       of tyFloat..tyFloat64:
         dest.intVal = int(src.floatVal)
       else:
-        let srcSize = getSize(c.config, styp)
         let destSize = getSize(c.config, desttyp)
-        let srcDist = (sizeof(src.intVal) - srcSize) * 8
         let destDist = (sizeof(dest.intVal) - destSize) * 8
         var value = cast[BiggestUInt](src.intVal)
-        value = (value shl srcDist) shr srcDist
+        when false:
+          # this would make uint64(-5'i8) evaluate to 251
+          # but at runtime, uint64(-5'i8) is 18446744073709551611
+          # so don't do it
+          let srcSize = getSize(c.config, styp)
+          let srcDist = (sizeof(src.intVal) - srcSize) * 8
+          value = (value shl srcDist) shr srcDist
         value = (value shl destDist) shr destDist
         dest.intVal = cast[BiggestInt](value)
     of tyBool:
@@ -634,6 +637,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].intVal = cast[int](regs[rb].node.intVal)
         of rkNodeAddr:
           regs[ra].intVal = cast[int](regs[rb].nodeAddr)
+        of rkInt:
+          regs[ra].intVal = regs[rb].intVal
         else:
           stackTrace(c, tos, pc, "opcCastPtrToInt: got " & $regs[rb].kind)
       of 2: # tyRef
@@ -779,6 +784,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
           takeAddress regs[ra], src.sons[idx]
+        elif src.kind in nkStrKinds and idx <% src.strVal.len:
+          regs[ra] = takeCharAddress(c, src, idx, pc)
         else:
           stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
     of opcLdStrIdx:

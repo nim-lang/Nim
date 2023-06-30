@@ -137,7 +137,7 @@ proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
   ## **Note**: The `finalizer` refers to the type `T`, not to the object!
   ## This means that for each object of type `T` the finalizer will be called!
 
-proc `=wasMoved`[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
+proc `=wasMoved`*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   ## Generic `wasMoved`:idx: implementation that can be overridden.
 
 proc wasMoved*[T](obj: var T) {.inline, noSideEffect.} =
@@ -147,10 +147,26 @@ proc wasMoved*[T](obj: var T) {.inline, noSideEffect.} =
   {.cast(raises: []), cast(tags: []).}:
     `=wasMoved`(obj)
 
-proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
-  result = x
-  {.cast(raises: []), cast(tags: []).}:
-    `=wasMoved`(x)
+const notJSnotNims = not defined(js) and not defined(nimscript)
+const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
+
+when notJSnotNims and arcLikeMem:
+  proc internalMove[T](x: var T): T {.magic: "Move", noSideEffect, compilerproc.} =
+    result = x
+
+  proc move*[T](x: var T): T {.noSideEffect, nodestroy.} =
+    {.cast(noSideEffect).}:
+      when nimvm:
+        result = internalMove(x)
+      else:
+        result = internalMove(x)
+        {.cast(raises: []), cast(tags: []).}:
+          `=wasMoved`(x)
+else:
+  proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+    result = x
+    {.cast(raises: []), cast(tags: []).}:
+      `=wasMoved`(x)
 
 type
   range*[T]{.magic: "Range".}         ## Generic type to construct range types.
@@ -325,7 +341,7 @@ proc low*(x: string): int {.magic: "Low", noSideEffect.}
   ## See also:
   ## * `high(string) <#high,string>`_
 
-when not defined(gcArc) and not defined(gcOrc):
+when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc):
   proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
     ## Use this instead of `=` for a `shallow copy`:idx:.
     ##
@@ -349,18 +365,28 @@ proc arrGet[I: Ordinal;T](a: T; i: I): T {.
 proc arrPut[I: Ordinal;T,S](a: T; i: I;
   x: S) {.noSideEffect, magic: "ArrPut".}
 
+when defined(nimAllowNonVarDestructor) and arcLikeMem:
+  proc `=destroy`*(x: string) {.inline, magic: "Destroy".} =
+    discard
+
+  proc `=destroy`*[T](x: seq[T]) {.inline, magic: "Destroy".} =
+    discard
+
+  proc `=destroy`*[T](x: ref T) {.inline, magic: "Destroy".} =
+    discard
+
 proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
   ## Generic `destructor`:idx: implementation that can be overridden.
   discard
 
 when defined(nimHasDup):
-  proc `=dup`*[T](x: ref T): ref T {.inline, magic: "Dup".} =
+  proc `=dup`*[T](x: T): T {.inline, magic: "Dup".} =
     ## Generic `dup`:idx: implementation that can be overridden.
     discard
 
 proc `=sink`*[T](x: var T; y: T) {.inline, nodestroy, magic: "Asgn".} =
   ## Generic `sink`:idx: implementation that can be overridden.
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
     x = y
   else:
     shallowCopy(x, y)
@@ -415,7 +441,6 @@ include "system/inclrtl"
 const NoFakeVars = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
-const notJSnotNims = not defined(js) and not defined(nimscript)
 
 when not defined(js) and not defined(nimSeqsV2):
   type
@@ -2336,7 +2361,7 @@ when compileOption("rangechecks"):
 else:
   template rangeCheck*(cond) = discard
 
-when not defined(gcArc) and not defined(gcOrc):
+when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc):
   proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
     ## Marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
     ## perform deep copies of `s`.
@@ -2393,7 +2418,7 @@ when hasAlloc or defined(nimscript):
     setLen(x, xl+item.len)
     var j = xl-1
     while j >= i:
-      when defined(gcArc) or defined(gcOrc):
+      when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
         x[j+item.len] = move x[j]
       else:
         shallowCopy(x[j+item.len], x[j])
@@ -2786,7 +2811,10 @@ when notJSnotNims and not defined(nimSeqsV2):
       assert y == "abcgh"
     discard
 
-proc nimArrayWith[T](y: T, size: static int): array[size, T] {.compilerRtl, raises: [].} =
+proc arrayWith*[T](y: T, size: static int): array[size, T] {.raises: [].} =
   ## Creates a new array filled with `y`.
   for i in 0..size-1:
-    result[i] = y
+    when nimvm:
+      result[i] = y
+    else:
+      result[i] = `=dup`(y)

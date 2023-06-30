@@ -10,10 +10,10 @@
 ## OpenSSL wrapper. Supports OpenSSL >= 1.1.0 dynamically (as default) or statically linked
 ## using `--dynlibOverride:ssl`.
 ##
-## `-d:sslVersion=1.2.3` can be used to force an SSL version. 
+## `-d:sslVersion=1.2.3` can be used to force an SSL version.
 ## This version must be included in the library name.
 ## `-d:useOpenssl3` may be set for OpenSSL 3 instead.
-## 
+##
 ## There is also limited support for OpenSSL 1.0.x which may require `-d:openssl10`.
 ##
 ## Build and test examples:
@@ -529,11 +529,8 @@ proc BIO_do_handshake*(bio: BIO): int =
 proc BIO_do_connect*(bio: BIO): int =
   return BIO_do_handshake(bio)
 
-when not defined(nimfix):
-  proc BIO_read*(b: BIO, data: cstring, length: cint): cint{.cdecl,
-      dynlib: DLLUtilName, importc.}
-  proc BIO_write*(b: BIO, data: cstring, length: cint): cint{.cdecl,
-      dynlib: DLLUtilName, importc.}
+proc BIO_read*(b: BIO, data: cstring, length: cint): cint{.cdecl, dynlib: DLLUtilName, importc.}
+proc BIO_write*(b: BIO, data: cstring, length: cint): cint{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc BIO_free*(b: BIO): cint{.cdecl, dynlib: DLLUtilName, importc.}
 
@@ -589,7 +586,7 @@ when not useWinVersion and not defined(macosx) and not defined(android) and useN
     if p != nil: deallocShared(p)
 
   proc CRYPTO_malloc_init*() =
-    CRYPTO_set_mem_functions(allocWrapper, reallocWrapper, deallocWrapper)
+    CRYPTO_set_mem_functions(cast[pointer](allocWrapper), cast[pointer](reallocWrapper), cast[pointer](deallocWrapper))
 else:
   proc CRYPTO_malloc_init*() =
     discard

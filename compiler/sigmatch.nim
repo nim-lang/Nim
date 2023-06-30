@@ -215,7 +215,7 @@ proc sumGeneric(t: PType): int =
   # and Foo[T] has the value 2 so that we know Foo[Foo[T]] is more
   # specific than Foo[T].
   var t = t
-  var isvar = 1
+  var isvar = 0
   while true:
     case t.kind
     of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyUncheckedArray,
@@ -251,6 +251,8 @@ proc sumGeneric(t: PType): int =
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
         tyUInt..tyUInt64, tyCompositeTypeClass:
+      return isvar + 1
+    of tyBuiltInTypeClass:
       return isvar
     else:
       return 0
@@ -1138,6 +1140,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let x = typeRel(c, a, f, flags + {trDontBind})
       if x >= isGeneric:
         return isGeneric
+  
+  of tyFromExpr:
+    if c.c.inGenericContext > 0:
+      # generic type bodies can sometimes compile call expressions
+      # prevent expressions with unresolved types from
+      # being passed as parameters
+      return isNone
   else: discard
 
   case f.kind
@@ -1293,8 +1302,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             result = isSubtype
           else:
             result = isNone
-        elif tfNotNil in f.flags and tfNotNil notin a.flags:
-          result = isNilConversion
     of tyNil: result = isNone
     else: discard
   of tyOrdinal:
@@ -1380,7 +1387,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         result = isEqual
     of tyNil: result = f.allowsNil
     of tyProc:
-      if a.callConv != ccClosure: result = isConvertible
+      if isDefined(c.c.config, "nimPreviewProcConversion"):
+        result = isNone
+      else:
+        if a.callConv != ccClosure: result = isConvertible
     of tyPtr:
       # 'pointer' is NOT compatible to regionized pointers
       # so 'dealloc(regionPtr)' fails:
@@ -1389,11 +1399,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     else: discard
   of tyString:
     case a.kind
-    of tyString:
-      if tfNotNil in f.flags and tfNotNil notin a.flags:
-        result = isNilConversion
-      else:
-        result = isEqual
+    of tyString: result = isEqual
     of tyNil: result = isNone
     else: discard
   of tyCstring:
@@ -1840,7 +1846,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # proc foo(T: typedesc, x: T)
       # when `f` is an unresolved typedesc, `a` could be any
       # type, so we should not perform this check earlier
-      if a.kind != tyTypeDesc:
+      if c.c.inGenericContext > 0 and
+          a.skipTypes({tyTypeDesc}).kind == tyGenericParam:
+        # generic type bodies can sometimes compile call expressions
+        # prevent unresolved generic parameters from being passed to procs as
+        # typedesc parameters
+        result = isNone
+      elif a.kind != tyTypeDesc:
         if a.kind == tyGenericParam and tfWildcard in a.flags:
           # TODO: prevent `a` from matching as a wildcard again
           result = isGeneric
@@ -1929,7 +1941,13 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
     else:
       result.typ = errorType(c)
   else:
-    result.typ = f.skipTypes({tySink, tyVar})
+    result.typ = f.skipTypes({tySink})
+  # keep varness
+  if arg.typ != nil and arg.typ.kind == tyVar:
+    result.typ = toVar(result.typ, tyVar, c.idgen)
+  else:
+    result.typ = result.typ.skipTypes({tyVar})
+
   if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
   result.add c.graph.emptyNode
   result.add arg
@@ -2204,6 +2222,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isNone:
     # do not do this in ``typeRel`` as it then can't infer T in ``ref T``:
     if a.kind in {tyProxy, tyUnknown}:
+      if a.kind == tyUnknown and c.inGenericContext > 0:
+        # don't bother with fauxMatch mechanism in generic type,
+        # reject match, typechecking will be delayed to instantiation
+        return nil
       inc(m.genericMatches)
       m.fauxMatch = a.kind
       return arg
