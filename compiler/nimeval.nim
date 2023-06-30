@@ -12,7 +12,9 @@ import
   ast, astalgo, modules, passes, condsyms,
   options, sem, llstream, lineinfos, vm,
   vmdef, modulegraphs, idents, os, pathutils,
-  passaux, scriptconfig, std/compilesettings
+  passaux,
+  scriptconfig, std/[compilesettings, tables]
+
 
 type
   Interpreter* = ref object ## Use Nim as an interpreter with this object
@@ -72,6 +74,9 @@ proc evalScript*(i: Interpreter; scriptStream: PLLStream = nil) =
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
   initStrTables(i.graph, i.mainModule)
+  i.graph.cacheSeqs.clear()
+  i.graph.cacheCounters.clear()
+  i.graph.cacheTables.clear()
   i.mainModule.ast = nil
 
   let s = if scriptStream != nil: scriptStream
