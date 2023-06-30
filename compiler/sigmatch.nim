@@ -732,7 +732,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
             param.typ.flags.incl tfInferrableStatic
           else:
             param.ast = typ.n
-        of tyUnknown:
+        of tyFromExpr:
           param = paramSym skVar
           param.typ = typ.exactReplica
           #copyType(typ, nextTypeId(c.idgen), typ.owner)
@@ -2221,11 +2221,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isNone:
     # do not do this in ``typeRel`` as it then can't infer T in ``ref T``:
-    if false and a.kind in {tyProxy, tyUnknown}:
-      if a.kind == tyUnknown and c.inGenericContext > 0:
-        # don't bother with fauxMatch mechanism in generic type,
-        # reject match, typechecking will be delayed to instantiation
-        return nil
+    if a.kind == tyProxy:
       inc(m.genericMatches)
       m.fauxMatch = a.kind
       return arg

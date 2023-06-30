@@ -573,9 +573,9 @@ proc semResolvedCall(c: PContext, x: TCandidate,
   if x.hasFauxMatch:
     result = x.call
     result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
-    if containsGenericType(result.typ) or x.fauxMatch == tyUnknown:
+    if containsGenericType(result.typ):
       result.typ = newTypeS(x.fauxMatch, c)
-      if result.typ.kind == tyError: incl result.typ.flags, tfCheckedForDestructor
+      incl result.typ.flags, tfCheckedForDestructor
     return
   let gp = finalCallee.ast[genericParamsPos]
   if gp.isGenericParams:
