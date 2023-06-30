@@ -2205,8 +2205,15 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
     var lbl = p.labels.rope
     var tmp: TLoc
     tmp.r = "LOC$1.source" % [lbl]
-    linefmt(p, cpsLocals, "union { $1 source; $2 dest; } LOC$3;$n",
-      [getTypeDesc(p.module, e[1].typ), getTypeDesc(p.module, e.typ), lbl])
+    let destsize = getSize(p.config, destt)
+    let srcsize = getSize(p.config, srct)
+
+    if destsize > srcsize:
+      linefmt(p, cpsLocals, "union { $1 dest; $2 source; } LOC$3;$n #nimZeroMem(&LOC$3, sizeof(LOC$3));$n",
+        [getTypeDesc(p.module, e.typ), getTypeDesc(p.module, e[1].typ), lbl])
+    else:
+      linefmt(p, cpsLocals, "union { $1 source; $2 dest; } LOC$3;$n",
+        [getTypeDesc(p.module, e[1].typ), getTypeDesc(p.module, e.typ), lbl])
     tmp.k = locExpr
     tmp.lode = lodeTyp srct
     tmp.storage = OnStack
