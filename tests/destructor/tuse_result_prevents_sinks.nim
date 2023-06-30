@@ -18,7 +18,7 @@ proc `=sink`(self: var Foo; other: Foo) =
 proc `=destroy`(self: var Foo) = discard
 
 template preventCursorInference(x) =
-  let p = unsafeAddr(x)
+  let p = addr(x)
 
 proc test(): Foo =
   result = Foo()

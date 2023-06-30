@@ -1,8 +1,9 @@
-import nativesockets
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
 
-when not defined(netbsd):
-  # Ref: https://github.com/nim-lang/Nim/issues/15452 - NetBSD doesn't define an `ip` protocol
-  doAssert getProtoByName("ip") == 0
+import nativesockets
+import std/assertions
 
 doAssert getProtoByName("ipv6") == 41
 doAssert getProtoByName("tcp") == 6

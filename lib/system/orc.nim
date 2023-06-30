@@ -8,7 +8,7 @@
 #
 
 # Cycle collector based on
-# https://researcher.watson.ibm.com/researcher/files/us-bacon/Bacon01Concurrent.pdf
+# https://www.cs.purdue.edu/homes/hosking/690M/Bacon01Concurrent.pdf
 # And ideas from Lins' in 2008 by the notion of "critical links", see
 # "Cyclic reference counting" by Rafael Dueire Lins
 # R.D. Lins / Information Processing Letters 109 (2008) 71–78
@@ -114,12 +114,12 @@ template orcAssert(cond, msg) =
   when logOrc:
     if not cond:
       cfprintf(cstderr, "[Bug!] %s\n", msg)
-      quit 1
+      rawQuit 1
 
 when logOrc:
   proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
 
-proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inline.} =
+proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inl.} =
   let p = cast[ptr pointer](q)
   if p[] != nil:
 
@@ -128,7 +128,7 @@ proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inli
     var j = cast[ptr GcEnv](env)
     j.traceStack.add(p, desc)
 
-proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inline.} =
+proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inl.} =
   let p = cast[ptr pointer](q)
   if p[] != nil:
     var j = cast[ptr GcEnv](env)
@@ -143,7 +143,7 @@ proc unregisterCycle(s: Cell) =
   when false:
     if idx >= roots.len or idx < 0:
       cprintf("[Bug!] %ld\n", idx)
-      quit 1
+      rawQuit 1
   roots.d[idx] = roots.d[roots.len-1]
   roots.d[idx][0].rootIdx = idx+1
   dec roots.len
@@ -350,7 +350,7 @@ const
 when defined(nimStressOrc):
   const rootsThreshold = 10 # broken with -d:nimStressOrc: 10 and for havlak iterations 1..8
 else:
-  var rootsThreshold = defaultThreshold
+  var rootsThreshold {.threadvar.}: int
 
 proc partialCollect(lowMark: int) =
   when false:
@@ -392,16 +392,16 @@ proc collectCycles() =
     # of the cycle collector's effectiveness:
     # we're effective when we collected 50% or more of the nodes
     # we touched. If we're effective, we can reset the threshold:
-    if j.keepThreshold and rootsThreshold <= defaultThreshold:
+    if j.keepThreshold:
       discard
     elif j.freed * 2 >= j.touched:
       when not defined(nimFixedOrc):
         rootsThreshold = max(rootsThreshold div 3 * 2, 16)
       else:
-        rootsThreshold = defaultThreshold
+        rootsThreshold = 0
       #cfprintf(cstderr, "[collectCycles] freed %ld, touched %ld new threshold %ld\n", j.freed, j.touched, rootsThreshold)
     elif rootsThreshold < high(int) div 4:
-      rootsThreshold = rootsThreshold * 3 div 2
+      rootsThreshold = (if rootsThreshold <= 0: defaultThreshold else: rootsThreshold) * 3 div 2
   when logOrc:
     cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld touched: %ld mem: %ld rcSum: %ld edges: %ld\n", j.freed, rootsThreshold, j.touched,
       getOccupiedMem(), j.rcSum, j.edges)
@@ -411,7 +411,7 @@ proc registerCycle(s: Cell; desc: PNimTypeV2) =
   if roots.d == nil: init(roots)
   add(roots, s, desc)
 
-  if roots.len >= rootsThreshold:
+  if roots.len >= rootsThreshold+defaultThreshold:
     collectCycles()
   when logOrc:
     writeCell("[added root]", s, desc)
@@ -427,7 +427,7 @@ proc GC_enableOrc*() =
   ## Enables the cycle collector subsystem of `--gc:orc`. This is a `--gc:orc`
   ## specific API. Check with `when defined(gcOrc)` for its existence.
   when not defined(nimStressOrc):
-    rootsThreshold = defaultThreshold
+    rootsThreshold = 0
 
 proc GC_disableOrc*() =
   ## Disables the cycle collector subsystem of `--gc:orc`. This is a `--gc:orc`
@@ -484,6 +484,19 @@ proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
       dec cell.rc, rcIncrement
     #if cell.color == colPurple:
     rememberCycle(result, cell, cast[ptr PNimTypeV2](p)[])
+
+proc nimDecRefIsLastDyn(p: pointer): bool {.compilerRtl, inl.} =
+  if p != nil:
+    var cell = head(p)
+    if (cell.rc and not rcMask) == 0:
+      result = true
+      #cprintf("[DESTROY] %p\n", p)
+    else:
+      dec cell.rc, rcIncrement
+    #if cell.color == colPurple:
+    if result:
+      if cell.rootIdx > 0:
+        unregisterCycle(cell)
 
 proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerRtl, inl.} =
   if p != nil:

@@ -15,6 +15,9 @@ import
   modulegraphs, wordrecg, tables
 from strutils import `%`
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
   result = initIntSet()
@@ -185,11 +188,13 @@ template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
   for it in mitems c.graph.ifaces[fromMod.position].converters:
     if filter:
       loadPackedSym(c.graph, it)
-      addConverter(c, it)
+      if sfExported in it.sym.flags:
+        addConverter(c, it)
   for it in mitems c.graph.ifaces[fromMod.position].patterns:
     if filter:
       loadPackedSym(c.graph, it)
-      addPattern(c, it)
+      if sfExported in it.sym.flags:
+        addPattern(c, it)
   for it in mitems c.graph.ifaces[fromMod.position].pureEnums:
     if filter:
       loadPackedSym(c.graph, it)
@@ -197,7 +202,7 @@ template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
 
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
   c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
-  addUnnamedIt(c, fromMod, it.sym.id notin exceptSet)
+  addUnnamedIt(c, fromMod, it.sym.name.id notin exceptSet)
 
 proc importAllSymbols*(c: PContext, fromMod: PSym) =
   c.addImport ImportedModule(m: fromMod, mode: importAll)
@@ -223,10 +228,15 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; im
     for i in 0..n.safeLen-1:
       importForwarded(c, n[i], exceptSet, fromMod, importSet)
 
+proc addUnique[T](x: var seq[T], y: sink T) {.noSideEffect.} =
+  for i in 0..high(x):
+    if x[i] == y: return
+  x.add y
+    
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool): PSym =
   result = realModule
   template createModuleAliasImpl(ident): untyped =
-    createModuleAlias(realModule, nextSymId c.idgen, ident, n.info, c.config.options)
+    createModuleAlias(realModule, c.idgen, ident, n.info, c.config.options)
   if n.kind != nkImportAs: discard
   elif n.len != 2 or n[1].kind != nkIdent:
     localError(c.config, n.info, "module alias must be an identifier")
@@ -240,6 +250,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool)
     result.options.incl optImportHidden
   c.unusedImports.add((result, n.info))
   c.importModuleMap[result.id] = realModule.id
+  c.importModuleLookup.mgetOrPut(realModule.name.id, @[]).addUnique realModule.id
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
   var ret: typeof(result)
@@ -318,22 +329,24 @@ proc evalImport*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   for i in 0..<n.len:
     let it = n[i]
-    if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
-      let sep = it[0]
-      let dir = it[1]
-      var imp = newNodeI(nkInfix, it.info)
-      imp.add sep
-      imp.add dir
-      imp.add sep # dummy entry, replaced in the loop
-      for x in it[2]:
+    if it.kind in {nkInfix, nkPrefix} and it[^1].kind == nkBracket:
+      let lastPos = it.len - 1
+      var imp = copyNode(it)
+      newSons(imp, it.len)
+      for i in 0 ..< lastPos: imp[i] = it[i]
+      imp[lastPos] = imp[0] # dummy entry, replaced in the loop
+      for x in it[lastPos]:
         # transform `a/b/[c as d]` to `/a/b/c as d`
         if x.kind == nkInfix and x[0].ident.s == "as":
-          let impAs = copyTree(x)
-          imp[2] = x[1]
+          var impAs = copyNode(x)
+          newSons(impAs, 3)
+          impAs[0] = x[0]
+          imp[lastPos] = x[1]
           impAs[1] = imp
-          impMod(c, imp, result)
+          impAs[2] = x[2]
+          impMod(c, impAs, result)
         else:
-          imp[2] = x
+          imp[lastPos] = x
           impMod(c, imp, result)
     else:
       impMod(c, it, result)

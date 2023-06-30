@@ -1,7 +1,12 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 # xxx move to here other tests that belong here; io is a proper module
 
 import std/os
 from stdtest/specialpaths import buildDir
+import std/[assertions, syncio]
 
 block: # readChars
   let file = buildDir / "D20201118T205105.txt"
@@ -35,3 +40,21 @@ block: # readChars
         break
     doAssert n2s == @[2,2,2,1,0]
     doAssert s2 == s
+
+
+import std/strutils
+
+block: # bug #21273
+  let FILE = buildDir / "D20220119T134305.txt"
+
+  let hex = "313632313920313632343720313632353920313632363020313632393020323035363520323037323120323131353020323239393820323331303520323332313020323332343820323332363820"
+
+
+  writeFile FILE, parseHexStr(hex)
+
+  doAssert readFile(FILE).toHex == hex
+
+  let f = open(FILE)
+  var s = newString(80)
+  while f.readLine(s):
+    doAssert s.toHex == hex

@@ -1,12 +1,14 @@
 discard """
   targets: "c cpp js"
-  matrix:"; -d:danger"
+  matrix:"; -d:danger; --mm:refc"
 """
 
 # xxx: there should be a test with `-d:nimTmathCase2 -d:danger --passc:-ffast-math`,
 # but it requires disabling certain lines with `when not defined(nimTmathCase2)`
 
 import std/math
+import std/assertions
+
 
 # Function for approximate comparison of floats
 proc `==~`(x, y: float): bool = abs(x - y) < 1e-9
@@ -184,7 +186,22 @@ template main() =
     when not defined(nimTmathCase2):
       doAssert classify(trunc(f_nan.float32)) == fcNan
     doAssert classify(trunc(0.0'f32)) == fcZero
-
+  
+  block: # divmod
+    doAssert divmod(int.high, 1) == (int.high, 0)
+    doAssert divmod(-1073741823, 17) == (-63161283, -12)
+    doAssert divmod(int32.high, 1.int32) == (int32.high, 0.int32)
+    doAssert divmod(1073741823.int32, 5.int32) == (214748364.int32, 3.int32)
+    doAssert divmod(4611686018427387903.int64, 5.int64) == (922337203685477580.int64, 3.int64)
+    when not defined(js) and (not compileOption("panics")) and compileOption("overflowChecks"):
+      when nimvm:
+        discard # cannot catch OverflowDefect here
+      else:
+        doAssertRaises(OverflowDefect, (discard divmod(cint.low, -1.cint)))
+        doAssertRaises(OverflowDefect, (discard divmod(clong.low, -1.clong)))
+        doAssertRaises(OverflowDefect, (discard divmod(clonglong.low, -1.clonglong)))
+        doAssertRaises(DivByZeroDefect, (discard divmod(1, 0)))
+  
   block: # log
     doAssert log(4.0, 3.0) ==~ ln(4.0) / ln(3.0)
     doAssert log2(8.0'f64) == 3.0'f64
@@ -437,12 +454,20 @@ template main() =
       doAssert lgamma(-0.0) == Inf
       doAssert lgamma(-1.0) == Inf
 
-      when nimvm: discard
-      else:
-        var exponent: cint
-        doAssert c_frexp(0.0, exponent) == 0.0
-        doAssert c_frexp(-0.0, exponent) == -0.0
-        doAssert classify(c_frexp(-0.0, exponent)) == fcNegZero
-
 static: main()
 main()
+
+when not defined(js) and not defined(danger):
+  block: # bug #21792
+    block:
+      type Digit = 0..9
+      var x = [Digit 4, 7]
+
+      doAssertRaises(RangeDefect):
+        discard sum(x)
+
+    block:
+      var x = [int8 124, 127]
+
+      doAssertRaises(OverflowDefect):
+        discard sum(x)

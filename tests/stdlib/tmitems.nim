@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   output: '''@[11, 12, 13]
 @[11, 12, 13]
 @[1, 3, 5]
@@ -62,6 +63,7 @@ block:
 
 block:
   var x = "foobar"
+  prepareMutation(x)
   var y = cast[cstring](addr x[0])
   for c in y.mitems:
     inc c
@@ -75,6 +77,7 @@ block:
 
 block:
   var x = "foobar"
+  prepareMutation(x)
   var y = cast[cstring](addr x[0])
   for i, c in y.mpairs:
     inc c, i

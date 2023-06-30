@@ -47,7 +47,6 @@ runnableExamples:
 ## See also
 ## ========
 ## * `lists module <lists.html>`_ for singly and doubly linked lists and rings
-## * `channels module <channels_builtin.html>`_ for inter-thread communication
 
 import std/private/since
 
@@ -71,9 +70,8 @@ template initImpl(result: typed, initialSize: int) =
   newSeq(result.data, correctSize)
 
 template checkIfInitialized(deq: typed) =
-  when compiles(defaultInitialSize):
-    if deq.mask == 0:
-      initImpl(deq, defaultInitialSize)
+  if deq.mask == 0:
+    initImpl(deq, defaultInitialSize)
 
 proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
   ## Creates a new empty deque.
@@ -86,20 +84,6 @@ proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
   ## **See also:**
   ## * `toDeque proc <#toDeque,openArray[T]>`_
   result.initImpl(initialSize)
-
-proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
-  ## Creates a new deque that contains the elements of `x` (in the same order).
-  ##
-  ## **See also:**
-  ## * `initDeque proc <#initDeque,int>`_
-  runnableExamples:
-    let a = toDeque([7, 8, 9])
-    assert len(a) == 3
-    assert $a == "[7, 8, 9]"
-
-  result.initImpl(x.len)
-  for item in items(x):
-    result.addLast(item)
 
 proc len*[T](deq: Deque[T]): int {.inline.} =
   ## Returns the number of elements of `deq`.
@@ -303,6 +287,20 @@ proc addLast*[T](deq: var Deque[T], item: sink T) =
   deq.data[deq.tail] = item
   deq.tail = (deq.tail + 1) and deq.mask
 
+proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
+  ## Creates a new deque that contains the elements of `x` (in the same order).
+  ##
+  ## **See also:**
+  ## * `initDeque proc <#initDeque,int>`_
+  runnableExamples:
+    let a = toDeque([7, 8, 9])
+    assert len(a) == 3
+    assert $a == "[7, 8, 9]"
+
+  result.initImpl(x.len)
+  for item in items(x):
+    result.addLast(item)
+
 proc peekFirst*[T](deq: Deque[T]): lent T {.inline.} =
   ## Returns the first element of `deq`, but does not remove it from the deque.
   ##
@@ -441,7 +439,7 @@ proc shrink*[T](deq: var Deque[T], fromFirst = 0, fromLast = 0) =
     deq.head = (deq.head + 1) and deq.mask
 
   for i in 0 ..< fromLast:
-    destroy(deq.data[deq.tail])
+    destroy(deq.data[(deq.tail - 1) and deq.mask])
     deq.tail = (deq.tail - 1) and deq.mask
 
   dec deq.count, fromFirst + fromLast

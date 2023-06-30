@@ -8,7 +8,7 @@ type
 converter to_py*(i: int) : PPyRef = nil
 
 when false:
-  proc to_tuple*(vals: openarray[PPyRef]): PPyRef =
+  proc to_tuple*(vals: openArray[PPyRef]): PPyRef =
     discard
 
 proc abc(args: varargs[PPyRef]) =

@@ -18,7 +18,7 @@ type
   # it's also possible to use a strongly typed tuple here
   VTable = array[0..1, pointer]
 
-  TBase = object {.inheritable.}
+  TBase {.inheritable.} = object
     vtbl: ptr VTable
 
   TUserObject1 = object of TBase

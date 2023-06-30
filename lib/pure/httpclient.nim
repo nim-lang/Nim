@@ -10,6 +10,8 @@
 ## This module implements a simple HTTP client that can be used to retrieve
 ## webpages and other data.
 ##
+## .. warning:: Validate untrusted inputs: URI parsers and getters are not detecting malicious URIs.
+##
 ## Retrieving a website
 ## ====================
 ##
@@ -19,7 +21,10 @@
 ## .. code-block:: Nim
 ##   import std/httpclient
 ##   var client = newHttpClient()
-##   echo client.getContent("http://google.com")
+##   try:
+##     echo client.getContent("http://google.com")
+##   finally:
+##     client.close()
 ##
 ## The same action can also be performed asynchronously, simply use the
 ## `AsyncHttpClient`:
@@ -29,7 +34,10 @@
 ##
 ##   proc asyncProc(): Future[string] {.async.} =
 ##     var client = newAsyncHttpClient()
-##     return await client.getContent("http://example.com")
+##     try:
+##       return await client.getContent("http://google.com")
+##     finally:
+##       client.close()
 ##
 ##   echo waitFor asyncProc()
 ##
@@ -39,6 +47,10 @@
 ##
 ## **Note:** You need to run asynchronous examples in an async proc
 ## otherwise you will get an `Undeclared identifier: 'await'` error.
+##
+## **Note:** An asynchronous client instance can only deal with one
+## request at a time. To send multiple requests in parallel, use
+## multiple client instances.
 ##
 ## Using HTTP POST
 ## ===============
@@ -53,8 +65,10 @@
 ##   data["output"] = "soap12"
 ##   data["uploaded_file"] = ("test.html", "text/html",
 ##     "<html><head></head><body><p>test</p></body></html>")
-##
-##   echo client.postContent("http://validator.w3.org/check", multipart=data)
+##   try:
+##     echo client.postContent("http://validator.w3.org/check", multipart=data)
+##   finally:
+##     client.close()
 ##
 ## To stream files from disk when performing the request, use `addFiles`.
 ##
@@ -66,8 +80,10 @@
 ##   var client = newHttpClient()
 ##   var data = newMultipartData()
 ##   data.addFiles({"uploaded_file": "test.html"}, mimeDb = mimes)
-##
-##   echo client.postContent("http://validator.w3.org/check", multipart=data)
+##   try:
+##     echo client.postContent("http://validator.w3.org/check", multipart=data)
+##   finally:
+##     client.close()
 ##
 ## You can also make post requests with custom headers.
 ## This example sets `Content-Type` to `application/json`
@@ -81,8 +97,11 @@
 ##   let body = %*{
 ##       "data": "some text"
 ##   }
-##   let response = client.request("http://some.api", httpMethod = HttpPost, body = $body)
-##   echo response.status
+##   try:
+##     let response = client.request("http://some.api", httpMethod = HttpPost, body = $body)
+##     echo response.status
+##   finally:
+##     client.close()
 ##
 ## Progress reporting
 ## ==================
@@ -101,7 +120,10 @@
 ##    proc asyncProc() {.async.} =
 ##      var client = newAsyncHttpClient()
 ##      client.onProgressChanged = onProgressChanged
-##      discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+##      try:
+##        discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+##      finally:
+##        client.close()
 ##
 ##    waitFor asyncProc()
 ##
@@ -181,6 +203,14 @@
 ##    let myProxy = newProxy("http://myproxy.network")
 ##    let client = newHttpClient(proxy = myProxy)
 ##
+## Use proxies with basic authentication:
+##
+## .. code-block:: Nim
+##    import std/httpclient
+##    
+##    let myProxy = newProxy("http://myproxy.network", auth="user:password")
+##    let client = newHttpClient(proxy = myProxy)
+##
 ## Get Proxy URL from environment variables:
 ##
 ## .. code-block:: Nim
@@ -221,6 +251,9 @@ import std/[
   asyncnet, asyncdispatch, asyncfile, nativesockets,
 ]
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
 export httpcore except parseHeader # TODO: The `except` doesn't work
 
 type
@@ -258,9 +291,9 @@ proc contentLength*(response: Response | AsyncResponse): int =
   ## This is effectively the value of the "Content-Length" header.
   ##
   ## A `ValueError` exception will be raised if the value is not an integer.
-  var contentLengthHeader = response.headers.getOrDefault("Content-Length")
+  ## If the Content-Length header is not set in the response, ContentLength is set to the value -1.
+  var contentLengthHeader = response.headers.getOrDefault("Content-Length", @["-1"])
   result = contentLengthHeader.parseInt()
-  doAssert(result >= 0 and result <= high(int32))
 
 proc lastModified*(response: Response | AsyncResponse): DateTime =
   ## Retrieves the specified response's last modified time.
@@ -523,7 +556,7 @@ proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeade
   # Proxy auth header.
   if not proxy.isNil and proxy.auth != "":
     let auth = base64.encode(proxy.auth)
-    add(result, "Proxy-Authorization: basic " & auth & httpNewLine)
+    add(result, "Proxy-Authorization: Basic " & auth & httpNewLine)
 
   for key, val in headers:
     add(result, key & ": " & val & httpNewLine)
@@ -673,7 +706,7 @@ proc reportProgress(client: HttpClient | AsyncHttpClient,
                     progress: BiggestInt) {.multisync.} =
   client.contentProgress += progress
   client.oneSecondProgress += progress
-  if (getMonoTime() - client.lastProgressReport).inSeconds > 1:
+  if (getMonoTime() - client.lastProgressReport).inSeconds >= 1:
     if not client.onProgressChanged.isNil:
       await client.onProgressChanged(client.contentTotal,
                                      client.contentProgress,
@@ -881,6 +914,9 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       client.parseBodyFut.addCallback do():
         if client.parseBodyFut.failed:
           client.bodyStream.fail(client.parseBodyFut.error)
+  else:
+    when client is AsyncHttpClient:
+      result.bodyStream.complete()
 
 proc newConnection(client: HttpClient | AsyncHttpClient,
                    url: Uri) {.multisync.} =

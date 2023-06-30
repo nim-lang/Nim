@@ -31,12 +31,21 @@ block tclosed_sym:
   proc same(r:R, d:int) = echo "TEST1"
   doIt(Data[int](d:123), R())
 
+import strutils, unicode # ambiguous `strip`
 
 block tdotlookup:
   foo(7)
   # bug #1444
   fn(4)
-
+  doAssert doStrip(123) == "123"
+  # bug #14254
+  doAssert baz2[float](1'i8) == 1
+  # bug #21883
+  proc abc[T: not not int](x: T): T =
+    var x = x
+    x.set("hello", "world")
+    result = x
+  doAssert abc(5) == 10
 
 block tmodule_same_as_proc:
   # bug #1965

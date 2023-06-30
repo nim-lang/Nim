@@ -5,6 +5,9 @@
 
 from math import trunc
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   Int128* = object
     udata: array[4, uint32]
@@ -30,38 +33,33 @@ template high*(t: typedesc[Int128]): Int128 = Max
 proc `$`*(a: Int128): string
 
 proc toInt128*[T: SomeInteger | bool](arg: T): Int128 =
-  when T is bool: result.sdata(0) = int32(arg)
-  elif T is SomeUnsignedInt:
-    when sizeof(arg) <= 4:
-      result.udata[0] = uint32(arg)
+  {.noSideEffect.}:
+    when T is bool: result.sdata(0) = int32(arg)
+    elif T is SomeUnsignedInt:
+      when sizeof(arg) <= 4:
+        result.udata[0] = uint32(arg)
+      else:
+        result.udata[0] = uint32(arg and T(0xffffffff))
+        result.udata[1] = uint32(arg shr 32)
+    elif sizeof(arg) <= 4:
+      result.sdata(0) = int32(arg)
+      if arg < 0: # sign extend
+        result.sdata(1) = -1
+        result.sdata(2) = -1
+        result.sdata(3) = -1
     else:
-      result.udata[0] = uint32(arg and T(0xffffffff))
-      result.udata[1] = uint32(arg shr 32)
-  elif sizeof(arg) <= 4:
-    result.sdata(0) = int32(arg)
-    if arg < 0: # sign extend
-      result.sdata(1) = -1
-      result.sdata(2) = -1
-      result.sdata(3) = -1
-  else:
-    let tmp = int64(arg)
-    result.udata[0] = uint32(tmp and 0xffffffff)
-    result.sdata(1) = int32(tmp shr 32)
-    if arg < 0: # sign extend
-      result.sdata(2) = -1
-      result.sdata(3) = -1
+      let tmp = int64(arg)
+      result.udata[0] = uint32(tmp and 0xffffffff)
+      result.sdata(1) = int32(tmp shr 32)
+      if arg < 0: # sign extend
+        result.sdata(2) = -1
+        result.sdata(3) = -1
 
 template isNegative(arg: Int128): bool =
   arg.sdata(3) < 0
 
-template isNegative(arg: int32): bool =
-  arg < 0
-
 proc bitconcat(a, b: uint32): uint64 =
   (uint64(a) shl 32) or uint64(b)
-
-proc bitsplit(a: uint64): (uint32, uint32) =
-  (cast[uint32](a shr 32), cast[uint32](a))
 
 proc toInt64*(arg: Int128): int64 =
   if isNegative(arg):
@@ -208,12 +206,6 @@ proc `==`*(a, b: Int128): bool =
   if a.udata[3] != b.udata[3]: return false
   return true
 
-proc inplaceBitnot(a: var Int128) =
-  a.udata[0] = not a.udata[0]
-  a.udata[1] = not a.udata[1]
-  a.udata[2] = not a.udata[2]
-  a.udata[3] = not a.udata[3]
-
 proc bitnot*(a: Int128): Int128 =
   result.udata[0] = not a.udata[0]
   result.udata[1] = not a.udata[1]
@@ -354,23 +346,10 @@ proc low64(a: Int128): uint64 =
   bitconcat(a.udata[1], a.udata[0])
 
 proc `*`*(lhs, rhs: Int128): Int128 =
-  let
-    a = cast[uint64](lhs.udata[0])
-    b = cast[uint64](lhs.udata[1])
-    c = cast[uint64](lhs.udata[2])
-    d = cast[uint64](lhs.udata[3])
-
-    e = cast[uint64](rhs.udata[0])
-    f = cast[uint64](rhs.udata[1])
-    g = cast[uint64](rhs.udata[2])
-    h = cast[uint64](rhs.udata[3])
-
-
-  let a32 = cast[uint64](lhs.udata[1])
-  let a00 = cast[uint64](lhs.udata[0])
-  let b32 = cast[uint64](rhs.udata[1])
-  let b00 = cast[uint64](rhs.udata[0])
-
+  let a32 = uint64(lhs.udata[1])
+  let a00 = uint64(lhs.udata[0])
+  let b32 = uint64(rhs.udata[1])
+  let b00 = uint64(rhs.udata[0])
   result = makeInt128(high64(lhs) * low64(rhs) + low64(lhs) * high64(rhs) + a32 * b32, a00 * b00)
   result += toInt128(a32 * b00) shl 32
   result += toInt128(a00 * b32) shl 32
@@ -441,17 +420,17 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
     result.remainder = dividend
 
 proc `div`*(a, b: Int128): Int128 =
-  let (a, b) = divMod(a, b)
+  let (a, _) = divMod(a, b)
   return a
 
 proc `mod`*(a, b: Int128): Int128 =
-  let (a, b) = divMod(a, b)
+  let (_, b) = divMod(a, b)
   return b
 
 proc addInt128*(result: var string; value: Int128) =
   let initialSize = result.len
   if value == Zero:
-    result.add "0"
+    result.add '0'
   elif value == low(Int128):
     result.add "-170141183460469231731687303715884105728"
   else:
@@ -472,6 +451,8 @@ proc addInt128*(result: var string; value: Int128) =
       j -= 1
 
 proc `$`*(a: Int128): string =
+  # "-170141183460469231731687303715884105728".len == 41
+  result = newStringOfCap(41)
   result.addInt128(a)
 
 proc parseDecimalInt128*(arg: string, pos: int = 0): Int128 =

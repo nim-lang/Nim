@@ -10,6 +10,9 @@
 import ast, types, msgs, os, options, idents, lineinfos
 from pathutils import AbsoluteFile
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): string =
   try:
     var filename = parentDir(toFullPath(conf, info)) / file
@@ -26,7 +29,7 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): str
 
 proc atomicTypeX(cache: IdentCache; name: string; m: TMagic; t: PType; info: TLineInfo;
                  idgen: IdGenerator): PNode =
-  let sym = newSym(skType, getIdent(cache, name), nextSymId(idgen), t.owner, info)
+  let sym = newSym(skType, getIdent(cache, name), idgen, t.owner, info)
   sym.magic = m
   sym.typ = t
   result = newSymNode(sym)

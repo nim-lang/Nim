@@ -399,16 +399,20 @@ elif defined(zephyr):
     const Sockaddr_max_length* = 24
   elif defined(net_raw):
     const Sockaddr_max_length* = 20
-  else:
+  elif defined(net_ipv4):
     const Sockaddr_max_length* = 8
+  else:
+    const Sockaddr_max_length* = 255 # just for compilation purposes
+
   const Sockaddr_un_path_length* = Sockaddr_max_length
   # Zephyr is heavily customizable so it's easy to get to a state  
   # where Nim & Zephyr IPv6 settings are out of sync, causing painful runtime failures. 
-  {.emit: ["NIM_STATIC_ASSERT(NET_SOCKADDR_MAX_SIZE == ",
-      Sockaddr_max_length,
-      ",\"NET_SOCKADDR_MAX_SIZE and Sockaddr_max_length size mismatch!",
-      " Check that Nim and Zephyr IPv4/IPv6 settings match.",
-      " Try adding -d:net_ipv6 to enable IPv6 for Nim on Zephyr.\" );"].}
+  when defined(net_ipv4) or defined(net_ipv6) or defined(net_raw):
+    {.emit: ["NIM_STATIC_ASSERT(NET_SOCKADDR_MAX_SIZE == ",
+        Sockaddr_max_length,
+        ",\"NET_SOCKADDR_MAX_SIZE and Sockaddr_max_length size mismatch!",
+        " Check that Nim and Zephyr IPv4/IPv6 settings match.",
+        " Try adding -d:net_ipv6 to enable IPv6 for Nim on Zephyr.\" );"].}
 elif defined(freertos) or defined(lwip):
   const Sockaddr_max_length* = 14
   const Sockaddr_un_path_length* = 108
@@ -636,10 +640,13 @@ when defined(linux) or defined(nimdoc):
       ## or UDP packets. (Requires Linux kernel > 3.9)
   else:
     const SO_REUSEPORT* = cint(15)
+elif defined(nuttx):
+  # Not supported, use SO_REUSEADDR to avoid compilation errors.
+  var SO_REUSEPORT* {.importc: "SO_REUSEADDR", header: "<sys/socket.h>".}: cint
 else:
   var SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
 
-when defined(linux) or defined(bsd):
+when defined(linux) or defined(bsd) or defined(nuttx):
   var SOCK_CLOEXEC* {.importc, header: "<sys/socket.h>".}: cint
 
 when defined(macosx):
@@ -668,14 +675,14 @@ when defined(haiku):
 
 when hasSpawnH:
   when defined(linux):
-    # better be safe than sorry; Linux has this flag, macosx doesn't, don't
-    # know about the other OSes
+    # better be safe than sorry; Linux has this flag, macosx and NuttX don't,
+    # don't know about the other OSes
 
-    # Non-GNU systems like TCC and musl-libc  don't define __USE_GNU, so we
+    # Non-GNU systems like TCC and musl-libc don't define __USE_GNU, so we
     # can't get the magic number from spawn.h
     const POSIX_SPAWN_USEVFORK* = cint(0x40)
   else:
-    # macosx lacks this, so we define the constant to be 0 to not affect
+    # macosx and NuttX lack this, so we define the constant to be 0 to not affect
     # OR'ing of flags:
     const POSIX_SPAWN_USEVFORK* = cint(0)
 

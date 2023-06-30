@@ -3,5 +3,5 @@ discard """
   line: 7
 """
 
-template foo(v: varargs[int]) = unsafeAddr v 
+template foo(v: varargs[int]) = addr v 
 foo(1, 2)

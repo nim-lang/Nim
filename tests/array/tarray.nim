@@ -44,7 +44,7 @@ block tarray:
       arr: TMyarray
 
 
-  proc sum(a: openarray[int]): int =
+  proc sum(a: openArray[int]): int =
     result = 0
     var i = 0
     while i < len(a):

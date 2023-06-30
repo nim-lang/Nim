@@ -16,6 +16,9 @@ import hashes, tables, strtabs
 import bitabs
 import ".." / [ast, options]
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   SymId* = distinct int32
   ModuleId* = distinct int32
@@ -42,7 +45,7 @@ type
   PackedLib* = object
     kind*: TLibKind
     generated*: bool
-    isOverriden*: bool
+    isOverridden*: bool
     name*: LitId
     path*: NodeId
 
@@ -60,7 +63,8 @@ type
     alignment*: int # for alignment
     options*: TOptions
     position*: int
-    offset*: int
+    offset*: int32
+    disamb*: int32
     externalName*: LitId # instead of TLoc
     locFlags*: TLocFlags
     annex*: PackedLib
@@ -81,7 +85,6 @@ type
     size*: BiggestInt
     align*: int16
     paddingAtEnd*: int16
-    lockLevel*: TLockLevel # lock level as required for deadlock checking
     # not serialized: loc*: TLoc because it is backend-specific
     typeInst*: PackedItemId
     nonUniqueId*: int32

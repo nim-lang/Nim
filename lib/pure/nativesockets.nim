@@ -16,12 +16,15 @@ import os, options
 import std/private/since
 import std/strbasics
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
 
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
 
 const useWinVersion = defined(windows) or defined(nimdoc)
-const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr)
+const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr) or
+    defined(nuttx)
 
 when useWinVersion:
   import winlean
@@ -167,7 +170,7 @@ when not useWinVersion:
 
 else:
   proc toInt(domain: Domain): cint =
-    result = toU32(ord(domain)).cint
+    result = cast[cint](uint32(ord(domain)))
 
   proc toKnownDomain*(family: cint): Option[Domain] =
     ## Converts the platform-dependent `cint` to the Domain or none(),
@@ -214,7 +217,7 @@ proc getProtoByName*(name: string): int {.since: (1, 3, 5).} =
     let protoent = posix.getprotobyname(name.cstring)
 
   if protoent == nil:
-    raise newException(OSError, "protocol not found")
+    raise newException(OSError, "protocol not found: " & name)
 
   result = protoent.p_proto.int
 
@@ -300,9 +303,9 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
     if domain == AF_INET6:
       hints.ai_flags = AI_V4MAPPED
   let socketPort = if sockType == SOCK_RAW: "" else: $port
-  var gaiResult = getaddrinfo(address, socketPort, addr(hints), result)
+  var gaiResult = getaddrinfo(address, socketPort.cstring, addr(hints), result)
   if gaiResult != 0'i32:
-    when useWinVersion or defined(freertos):
+    when useWinVersion or defined(freertos) or defined(nuttx):
       raiseOSError(osLastError())
     else:
       raiseOSError(osLastError(), $gai_strerror(gaiResult))
@@ -349,7 +352,7 @@ proc getSockDomain*(socket: SocketHandle): Domain =
   else:
     raise newException(IOError, "Unknown socket family in getSockDomain")
 
-when not useNimNetLite: 
+when not useNimNetLite:
   proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
     ## Searches the database from the beginning and finds the first entry for
     ## which the service name specified by `name` matches the s_name member
@@ -373,9 +376,9 @@ when not useNimNetLite:
     ##
     ## On posix this will search through the `/etc/services` file.
     when useWinVersion:
-      var s = winlean.getservbyport(ze(int16(port)).cint, proto)
+      var s = winlean.getservbyport(uint16(port).cint, proto)
     else:
-      var s = posix.getservbyport(ze(int16(port)).cint, proto)
+      var s = posix.getservbyport(uint16(port).cint, proto)
     if s == nil: raiseOSError(osLastError(), "Service not found.")
     result.name = $s.s_name
     result.aliases = cstringArrayToSeq(s.s_aliases)
@@ -460,10 +463,10 @@ when not useNimNetLite:
     const size = 256
     result = newString(size)
     when useWinVersion:
-      let success = winlean.gethostname(result, size)
+      let success = winlean.gethostname(result.cstring, size)
     else:
       # Posix
-      let success = posix.gethostname(result, size)
+      let success = posix.gethostname(result.cstring, size)
     if success != 0.cint:
       raiseOSError(osLastError())
     let x = len(cstring(result))
@@ -479,13 +482,13 @@ when not useNimNetLite:
       result = newString(addrLen)
       let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
       when not useWinVersion:
-        if posix.inet_ntop(posix.AF_INET6, addr6, addr result[0],
+        if posix.inet_ntop(posix.AF_INET6, addr6, cast[cstring](addr result[0]),
                           result.len.int32) == nil:
           raiseOSError(osLastError())
         if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
           result.setSlice("::ffff:".len..<addrLen)
       else:
-        if winlean.inet_ntop(winlean.AF_INET6, addr6, addr result[0],
+        if winlean.inet_ntop(winlean.AF_INET6, addr6, cast[cstring](addr result[0]),
                             result.len.int32) == nil:
           raiseOSError(osLastError())
       setLen(result, len(cstring(result)))
@@ -507,23 +510,23 @@ when not useNimNetLite:
     if sockAddr.sa_family.cint == nativeAfInet:
       let addr4 = addr cast[ptr Sockaddr_in](sockAddr).sin_addr
       when not useWinVersion:
-        if posix.inet_ntop(posix.AF_INET, addr4, addr strAddress[0],
+        if posix.inet_ntop(posix.AF_INET, addr4, cast[cstring](addr strAddress[0]),
                           strAddress.len.int32) == nil:
           raiseOSError(osLastError())
       else:
-        if winlean.inet_ntop(winlean.AF_INET, addr4, addr strAddress[0],
+        if winlean.inet_ntop(winlean.AF_INET, addr4, cast[cstring](addr strAddress[0]),
                             strAddress.len.int32) == nil:
           raiseOSError(osLastError())
     elif sockAddr.sa_family.cint == nativeAfInet6:
       let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
       when not useWinVersion:
-        if posix.inet_ntop(posix.AF_INET6, addr6, addr strAddress[0],
+        if posix.inet_ntop(posix.AF_INET6, addr6, cast[cstring](addr strAddress[0]),
                           strAddress.len.int32) == nil:
           raiseOSError(osLastError())
         if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
           strAddress.setSlice("::ffff:".len..<length)
       else:
-        if winlean.inet_ntop(winlean.AF_INET6, addr6, addr strAddress[0],
+        if winlean.inet_ntop(winlean.AF_INET6, addr6, cast[cstring](addr strAddress[0]),
                             strAddress.len.int32) == nil:
           raiseOSError(osLastError())
     else:
@@ -582,7 +585,7 @@ when not useNimNetLite:
       # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
       result[0] = newString(64)
       if inet_ntop(name.sin6_family.cint,
-          addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
+          addr name.sin6_addr, cast[cstring](addr result[0][0]), (result[0].len+1).int32).isNil:
         raiseOSError(osLastError())
       setLen(result[0], result[0].cstring.len)
       result[1] = Port(nativesockets.ntohs(name.sin6_port))
@@ -619,7 +622,7 @@ when not useNimNetLite:
       # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
       result[0] = newString(64)
       if inet_ntop(name.sin6_family.cint,
-          addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
+          addr name.sin6_addr, cast[cstring](addr result[0][0]), (result[0].len+1).int32).isNil:
         raiseOSError(osLastError())
       setLen(result[0], result[0].cstring.len)
       result[1] = Port(nativesockets.ntohs(name.sin6_port))
@@ -633,8 +636,8 @@ when useNimNetLite:
       INET_ADDRSTRLEN = 16
       INET6_ADDRSTRLEN = 46 # it's actually 46 in both cases
 
-  proc sockAddrToStr(sa: ptr Sockaddr): string {.noinit.} =
-    let af_family = sa.sa_family 
+  proc sockAddrToStr(sa: ptr SockAddr): string {.noinit.} =
+    let af_family = sa.sa_family
     var nl, v4Slice: cint
     var si_addr: ptr InAddr
 
@@ -810,7 +813,7 @@ proc accept*(fd: SocketHandle, inheritable = defined(nimInheritHandles)): (Socke
   ## child processes.
   ##
   ## Returns (osInvalidSocket, "") if an error occurred.
-  var sockAddress: Sockaddr
+  var sockAddress: SockAddr
   var addrLen = sizeof(sockAddress).SockLen
   var sock =
     when (defined(linux) or defined(bsd)) and not defined(nimdoc):

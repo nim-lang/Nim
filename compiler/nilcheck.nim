@@ -10,6 +10,9 @@
 import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, idents, treetab, hashes
 import sequtils, strutils, sets
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 # IMPORTANT: notes not up to date, i'll update this comment again
 #
 # notes:
@@ -906,7 +909,7 @@ proc infix(ctx: NilCheckerContext, l: PNode, r: PNode, magic: TMagic): PNode =
     else: ""
 
   var cache = newIdentCache()
-  var op = newSym(skVar, cache.getIdent(name), nextSymId ctx.idgen, nil, r.info)
+  var op = newSym(skVar, cache.getIdent(name), ctx.idgen, nil, r.info)
 
   op.magic = magic
   result = nkInfix.newTree(
@@ -917,7 +920,7 @@ proc infix(ctx: NilCheckerContext, l: PNode, r: PNode, magic: TMagic): PNode =
 
 proc prefixNot(ctx: NilCheckerContext, node: PNode): PNode =
   var cache = newIdentCache()
-  var op = newSym(skVar, cache.getIdent("not"), nextSymId ctx.idgen, nil, node.info)
+  var op = newSym(skVar, cache.getIdent("not"), ctx.idgen, nil, node.info)
 
   op.magic = mNot
   result = nkPrefix.newTree(
@@ -1239,7 +1242,7 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
     result = check(n.sons[0], ctx, map)
   of nkIfStmt, nkIfExpr:
     result = checkIf(n, ctx, map)
-  of nkAsgn:
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
     result = checkAsgn(n[0], n[1], ctx, map)
   of nkVarSection:
     result.map = map

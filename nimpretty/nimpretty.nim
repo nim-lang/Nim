@@ -69,8 +69,8 @@ proc main =
 
   var backup = false
     # when `on`, create a backup file of input in case
-    # `prettyPrint` could over-write it (note that the backup may happen even
-    # if input is not actually over-written, when nimpretty is a noop).
+    # `prettyPrint` could overwrite it (note that the backup may happen even
+    # if input is not actually overwritten, when nimpretty is a noop).
     # --backup was un-documented (rely on git instead).
   var opt = PrettyOptions(indWidth: 0, maxLineLen: 80)
 

@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc"
   output: '''obj = (inner: (kind: Just, id: 7))
 obj.inner.id = 7
 id = 7

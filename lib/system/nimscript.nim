@@ -86,6 +86,7 @@ proc patchFile*(package, filename, replacement: string) =
   ## is interpreted to be local to the Nimscript file that contains
   ## the call to `patchFile`, Nim's `--path` is not used at all
   ## to resolve the filename!
+  ## The compiler also performs `path substitution <nimc.html#compiler-usage-commandminusline-switches>`_ on `replacement`.
   ##
   ## Example:
   ##
@@ -136,17 +137,8 @@ proc dirExists*(dir: string): bool {.
   ## Checks if the directory `dir` exists.
   builtin
 
-template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
-  # xxx: warning won't be shown for nimsscript because of current logic handling
-  # `foreignPackageNotes`
-  fileExists(args)
-
-template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
-  dirExists(args)
-
-proc selfExe*(): string =
+proc selfExe*(): string {.deprecated: "Deprecated since v1.7; Use getCurrentCompilerExe".} =
   ## Returns the currently running nim or nimble executable.
-  # TODO: consider making this as deprecated alias of `getCurrentCompilerExe`
   builtin
 
 proc toExe*(filename: string): string =
@@ -351,16 +343,16 @@ template withDir*(dir: string; body: untyped): untyped =
   ## Usage example:
   ##
   ## .. code-block:: nim
+  ##   # inside /some/path/
   ##   withDir "foo":
-  ##     # inside foo
-  ##   #back to last dir
-  var curDir = getCurrentDir()
+  ##     # move to /some/path/foo/
+  ##   # back in /some/path/
+  let curDir = getCurrentDir()
   try:
     cd(dir)
     body
   finally:
     cd(curDir)
-
 
 proc writeTask(name, desc: string) =
   if desc.len > 0:

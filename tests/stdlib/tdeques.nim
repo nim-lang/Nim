@@ -1,11 +1,11 @@
 discard """
-  matrix: "--gc:refc; --gc:orc"
+  matrix: "--mm:refc; --mm:orc"
   targets: "c cpp js"
 """
 
 import std/deques
 from std/sequtils import toSeq
-
+import std/assertions
 
 block:
   proc index(self: Deque[int], idx: Natural): int =
@@ -182,6 +182,12 @@ proc main() =
     doAssert $a == "[10, 20, 30, 40, 50]"
     clear(a)
     doAssert len(a) == 0
+
+  block: # bug #21278
+    var a = [10, 20, 30, 40].toDeque
+
+    a.shrink(fromFirst = 0, fromLast = 1)
+    doAssert $a == "[10, 20, 30]"
 
 
 static: main()

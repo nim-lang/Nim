@@ -1,383 +1,207 @@
-import os, strformat, strutils, tables, sets, ropes, json, algorithm
+import std/[strutils, strscans, parseutils, assertions]
 
 type
-  SourceNode* = ref object
-    line*:      int
-    column*:    int
-    source*:    string
-    name*:      string
-    children*:  seq[Child]
+  Segment = object
+    ## Segment refers to a block of something in the JS output.
+    ## This could be a token or an entire line
+    original: int # Column in the Nim source
+    generated: int # Column in the generated JS
+    name: int # Index into names list (-1 for no name)
 
-  C = enum cSourceNode, cSourceString
+  Mapping = object
+    ## Mapping refers to a line in the JS output.
+    ## It is made up of segments which refer to the tokens in the line
+    case inSource: bool # Whether the line in JS has Nim equivilant
+    of true:
+      file: int # Index into files list
+      line: int # 0 indexed line of code in the Nim source
+      segments: seq[Segment]
+    else: discard
 
-  Child* = ref object
-    case kind*: C:
-    of cSourceNode:
-      node*:  SourceNode
-    of cSourceString:
-      s*:     string
+  SourceInfo = object
+    mappings: seq[Mapping]
+    names, files: seq[string]
 
-  SourceMap* = ref object
+  SourceMap* = object
     version*:   int
     sources*:   seq[string]
     names*:     seq[string]
     mappings*:  string
     file*:      string
-    # sourceRoot*: string
-    # sourcesContent*: string
 
-  SourceMapGenerator = ref object
-    file:           string
-    sourceRoot:     string
-    skipValidation: bool
-    sources:        seq[string]
-    names:          seq[string]
-    mappings:       seq[Mapping]
+func addSegment(info: var SourceInfo, original, generated: int, name: string = "") {.raises: [].} =
+  ## Adds a new segment into the current line
+  assert info.mappings.len > 0, "No lines have been added yet"
+  var segment = Segment(original: original, generated: generated, name: -1)
+  if name != "":
+    # Make name be index into names list
+    segment.name = info.names.find(name)
+    if segment.name == -1:
+      segment.name = info.names.len
+      info.names &= name
 
-  Mapping* = ref object
-    source*:        string
-    original*:      tuple[line: int, column: int]
-    generated*:     tuple[line: int, column: int]
-    name*:          string
-    noSource*:      bool
-    noName*:        bool
+  assert info.mappings[^1].inSource, "Current line isn't in Nim source"
+  info.mappings[^1].segments &= segment
 
+func newLine(info: var SourceInfo) {.raises: [].} =
+  ## Add new mapping which doesn't appear in the Nim source
+  info.mappings &= Mapping(inSource: false)
 
-proc child*(s: string): Child =
-  Child(kind: cSourceString, s: s)
-
-
-proc child*(node: SourceNode): Child =
-  Child(kind: cSourceNode, node: node)
-
-
-proc newSourceNode(line: int, column: int, path: string, node: SourceNode, name: string = ""): SourceNode =
-  SourceNode(line: line, column: column, source: path, name: name, children: @[child(node)])
-
-
-proc newSourceNode(line: int, column: int, path: string, s: string, name: string = ""): SourceNode =
-  SourceNode(line: line, column: column, source: path, name: name, children: @[child(s)])
-
-
-proc newSourceNode(line: int, column: int, path: string, children: seq[Child], name: string = ""): SourceNode =
-  SourceNode(line: line, column: column, source: path, name: name, children: children)
-
-
-
-
-# debugging
-
-
-proc text*(sourceNode: SourceNode, depth: int): string =
-  let empty = "  "
-  result = &"{repeat(empty, depth)}SourceNode({sourceNode.source}:{sourceNode.line}:{sourceNode.column}):\n"
-  for child in sourceNode.children:
-    if child.kind == cSourceString:
-      result.add(&"{repeat(empty, depth + 1)}{child.s}\n")
-    else:
-      result.add(child.node.text(depth + 1))
-
-
-proc `$`*(sourceNode: SourceNode): string = text(sourceNode, 0)
+func newLine(info: var SourceInfo, file: string, line: int) {.raises: [].} =
+  ## Starts a new line in the mappings. Call addSegment after this to add
+  ## segments into the line
+  var mapping = Mapping(inSource: true, line: line)
+  # Set file to file position. Add in if needed
+  mapping.file = info.files.find(file)
+  if mapping.file == -1:
+    mapping.file = info.files.len
+    info.files &= file
+  info.mappings &= mapping
 
 
 # base64_VLQ
+func encode*(values: seq[int]): string {.raises: [].} =
+  ## Encodes a series of integers into a VLQ base64 encoded string
+  # References:
+  #   - https://www.lucidchart.com/techblog/2019/08/22/decode-encoding-base64-vlqs-source-maps/
+  #   - https://github.com/rails/sprockets/blob/main/guides/source_maps.md#source-map-file
+  const
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    shift = 5
+    continueBit = 1 shl 5
+    mask = continueBit - 1
+  for val in values:
+    # Sign is stored in first bit
+    var newVal = abs(val) shl 1
+    if val < 0:
+      newVal = newVal or 1
+    # Now comes the variable length part
+    # This is how we are able to store large numbers
+    while true:
+      # We only encode 5 bits.
+      var masked = newVal and mask
+      newVal = newVal shr shift
+      # If there is still something left
+      # then signify with the continue bit that the
+      # decoder should keep decoding
+      if newVal > 0:
+        masked = masked or continueBit
+      result &= alphabet[masked]
+      # If the value is zero then we have nothing left to encode
+      if newVal == 0:
+        break
 
+iterator tokenize*(line: string): (int, string) =
+  ## Goes through a line and splits it into Nim identifiers and
+  ## normal JS code. This allows us to map mangled names back to Nim names.
+  ## Yields (column, name). Doesn't yield anything but identifiers.
+  ## See mangleName in compiler/jsgen.nim for how name mangling is done
+  var
+    col = 0
+    token = ""
+  while col < line.len:
+    var
+      token: string
+      name: string
+    # First we find the next identifier
+    col += line.skipWhitespace(col)
+    col += line.skipUntil(IdentStartChars, col)
+    let identStart = col
+    col += line.parseIdent(token, col)
+    # Idents will either be originalName_randomInt or HEXhexCode_randomInt
+    if token.startsWith("HEX"):
+      var hex: int
+      # 3 = "HEX".len and we only want to parse the two integers after it
+      discard token[3 ..< 5].parseHex(hex)
+      name = $chr(hex)
+    elif not token.endsWith("_Idx"): # Ignore address indexes
+      # It might be in the form originalName_randomInt
+      let lastUnderscore = token.rfind('_')
+      if lastUnderscore != -1:
+        name = token[0..<lastUnderscore]
+    if name != "":
+      yield (identStart, name)
 
-let integers = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
-
-
-proc encode*(i: int): string =
-  result = ""
-  var n = i
-  if n < 0:
-    n = (-n shl 1) or 1
-  else:
-    n = n shl 1
-
-  var z = 0
-  while z == 0 or n > 0:
-    var e = n and 31
-    n = n shr 5
-    if n > 0:
-      e = e or 32
-
-    result.add(integers[e])
-    z += 1
-
-
-type TokenState = enum Normal, String, Ident, Mangled
-
-iterator tokenize*(line: string): (bool, string) =
-  # result = @[]
-  var state = Normal
-  var token = ""
-  var isMangled = false
-  for z, ch in line:
-    if ch.isAlphaAscii:
-      if state == Normal:
-        state = Ident
-        if token.len > 0:
-          yield (isMangled, token)
-        token = $ch
-        isMangled = false
-      else:
-        token.add(ch)
-    elif ch == '_':
-      if state == Ident:
-        state = Mangled
-        isMangled = true
-      token.add($ch)
-    elif ch != '"' and not ch.isAlphaNumeric:
-      if state in {Ident, Mangled}:
-        state = Normal
-        if token.len > 0:
-          yield (isMangled, token)
-        token = $ch
-        isMangled = false
-      else:
-        token.add($ch)
-    elif ch == '"':
-      if state != String:
-        state = String
-        if token.len > 0:
-          yield (isMangled, token)
-        token = $ch
-        isMangled = false
-      else:
-        state = Normal
-        token.add($ch)
-        if token.len > 0:
-          yield (isMangled, token)
-        isMangled = false
-        token = ""
+func parse*(source: string): SourceInfo =
+  ## Parses the JS output for embedded line info
+  ## So it can convert those into a series of mappings
+  var
+    skipFirstLine = true
+    currColumn = 0
+    currLine = 0
+    currFile = ""
+  # Add each line as a node into the output
+  for line in source.splitLines():
+    var
+      lineNumber: int
+      linePath: string
+      column: int
+    if line.strip().scanf("/* line $i:$i \"$+\" */", lineNumber, column, linePath):
+      # When we reach the first line mappinsegmentg then we can assume
+      # we can map the rest of the JS lines to Nim lines
+      currColumn = column # Column is already zero indexed
+      currLine = lineNumber - 1
+      currFile = linePath
+      # Lines are zero indexed
+      result.newLine(currFile, currLine)
+      # Skip whitespace to find the starting column
+      result.addSegment(currColumn, line.skipWhitespace())
+    elif currFile != "":
+      result.newLine(currFile, currLine)
+      # There mightn't be any tokens so add a starting segment
+      result.addSegment(currColumn, line.skipWhitespace())
+      for jsColumn, token in line.tokenize:
+        result.addSegment(currColumn, jsColumn, token)
     else:
-      token.add($ch)
-  if token.len > 0:
-    yield (isMangled, token)
+      result.newLine()
 
-proc parse*(source: string, path: string): SourceNode =
-  let lines = source.splitLines()
-  var lastLocation: SourceNode = nil
-  result = newSourceNode(0, 0, path, @[])
-    
-  # we just use one single parent and add all nim lines
-  # as its children, I guess in typical codegen
-  # that happens recursively on ast level
-  # we also don't have column info, but I doubt more one nim lines can compile to one js
-  # maybe in macros?
+func toSourceMap*(info: SourceInfo, file: string): SourceMap {.raises: [].} =
+  ## Convert from high level SourceInfo into the required SourceMap object
+  # Add basic info
+  result.version = 3
+  result.file = file
+  result.sources = info.files
+  result.names = info.names
+  # Convert nodes into mappings.
+  # Mappings are split into blocks where each block referes to a line in the outputted JS.
+  # Blocks can be separated into statements which refere to tokens on the line.
+  # Since the mappings depend on previous values we need to
+  # keep track of previous file, name, etc
+  var
+    prevFile = 0
+    prevLine = 0
+    prevName = 0
+    prevNimCol = 0
 
-  for i, originalLine in lines:
-    let line = originalLine.strip
-    if line.len == 0:
-      continue
-      
-    # this shouldn't be a problem:
-    # jsgen doesn't generate comments
-    # and if you emit // line you probably know what you're doing
-    if line.startsWith("// line"):
-      if result.children.len > 0:
-        result.children[^1].node.children.add(child(line & "\n"))
-      let pos = line.find(" ", 8)
-      let lineNumber = line[8 .. pos - 1].parseInt
-      let linePath = line[pos + 2 .. ^2] # quotes
-      
-      lastLocation = newSourceNode(
-        lineNumber,
-        0,
-        linePath,
-        @[])
-      result.children.add(child(lastLocation))
-    else:
-      var last: SourceNode
-      for token in line.tokenize():
-        var name = ""
-        if token[0]:
-          name = token[1].split('_', 1)[0]
-        
-        
-        if result.children.len > 0:
-          result.children[^1].node.children.add(
-            child(
-              newSourceNode(
-                result.children[^1].node.line,
-                0,
-                result.children[^1].node.source,
-                token[1],
-                name)))
-          last = result.children[^1].node.children[^1].node
-        else:
-          result.children.add(
-            child(
-              newSourceNode(i + 1, 0, path, token[1], name)))
-          last = result.children[^1].node
-      let nl = "\n"
-      if not last.isNil:
-        last.source.add(nl)
+  for mapping in info.mappings:
+    # We know need to encode segments with the following fields
+    # All these fields are relative to their previous values
+    # - 0: Column in generated code
+    # - 1: Index of Nim file in source list
+    # - 2: Line in Nim source
+    # - 3: Column in Nim source
+    # - 4: Index in names list
+    if mapping.inSource:
+      # JS Column is special in that it is reset after every line
+      var prevJSCol = 0
+      for segment in mapping.segments:
+        var values = @[segment.generated - prevJSCol, mapping.file - prevFile, mapping.line - prevLine, segment.original - prevNimCol]
+        # Add name field if needed
+        if segment.name != -1:
+          values &= segment.name - prevName
+          prevName = segment.name
+        prevJSCol = segment.generated
+        prevNimCol = segment.original
+        prevFile = mapping.file
+        prevLine = mapping.line
+        result.mappings &= encode(values) & ","
+      # Remove trailing ,
+      if mapping.segments.len > 0:
+        result.mappings.setLen(result.mappings.len - 1)
 
-proc cmp(a: Mapping, b: Mapping): int =
-  var c = cmp(a.generated, b.generated)
-  if c != 0:
-    return c
+    result.mappings &= ";"
 
-  c = cmp(a.source, b.source)
-  if c != 0:
-    return c
-
-  c = cmp(a.original, b.original)
-  if c != 0:
-    return c
-
-  return cmp(a.name, b.name)
-
-
-proc index*[T](elements: seq[T], element: T): int =
-  for z in 0 ..< elements.len:
-    if elements[z] == element:
-      return z
-  return -1
-
-
-proc serializeMappings(map: SourceMapGenerator, mappings: seq[Mapping]): string =
-  var previous = Mapping(generated: (line: 1, column: 0), original: (line: 0, column: 0), name: "", source: "")
-  var previousSourceId = 0
-  var previousNameId = 0
-  var next = ""
-  var nameId = 0
-  var sourceId = 0
-  result = ""
-
-  for z, mapping in mappings:
-    next = ""
-
-    if mapping.generated.line != previous.generated.line:
-      previous.generated.column = 0
-
-      while mapping.generated.line != previous.generated.line:
-        next.add(";")
-        previous.generated.line += 1
-
-    else:
-      if z > 0:
-        if cmp(mapping, mappings[z - 1]) == 0:
-          continue
-        next.add(",")
-
-    next.add(encode(mapping.generated.column - previous.generated.column))
-    previous.generated.column = mapping.generated.column
-
-    if not mapping.noSource and mapping.source.len > 0:
-      sourceId = map.sources.index(mapping.source)
-      next.add(encode(sourceId - previousSourceId))
-      previousSourceId = sourceId
-      next.add(encode(mapping.original.line - 1 - previous.original.line))
-      previous.original.line = mapping.original.line - 1
-      next.add(encode(mapping.original.column - previous.original.column))
-      previous.original.column = mapping.original.column
-
-      if not mapping.noName and mapping.name.len > 0:
-        nameId = map.names.index(mapping.name)
-        next.add(encode(nameId - previousNameId))
-        previousNameId = nameId
-
-    result.add(next)
-
-
-proc gen*(map: SourceMapGenerator): SourceMap =
-  var mappings = map.mappings.sorted do (a: Mapping, b: Mapping) -> int:
-    cmp(a, b)
-  result = SourceMap(
-    file: map.file,
-    version: 3,
-    sources: map.sources[0..^1],
-    names: map.names[0..^1],
-    mappings: map.serializeMappings(mappings))
-
-
-
-proc addMapping*(map: SourceMapGenerator, mapping: Mapping) =
-  if not mapping.noSource and mapping.source notin map.sources:
-    map.sources.add(mapping.source)
-
-  if not mapping.noName and mapping.name.len > 0 and mapping.name notin map.names:
-    map.names.add(mapping.name)
-
-  # echo "map ", mapping.source, " ", mapping.original, " ", mapping.generated, " ", mapping.name
-  map.mappings.add(mapping)
-
-
-proc walk*(node: SourceNode, fn: proc(line: string, original: SourceNode)) =
-  for child in node.children:
-    if child.kind == cSourceString and child.s.len > 0:
-      fn(child.s, node)
-    else:
-      child.node.walk(fn)
-
-
-proc toSourceMap*(node: SourceNode, file: string): SourceMapGenerator =
-  var map = SourceMapGenerator(file: file, sources: @[], names: @[], mappings: @[])
-
-  var generated = (line: 1, column: 0)
-  var sourceMappingActive = false
-  var lastOriginal = SourceNode(source: "", line: -1, column: 0, name: "", children: @[])
-
-  node.walk do (line: string, original: SourceNode):
-    if original.source.endsWith(".js"):
-      # ignore it
-      discard
-    else:
-      if original.line != -1:
-        if lastOriginal.source != original.source or
-           lastOriginal.line != original.line or
-           lastOriginal.column != original.column or
-           lastOriginal.name != original.name:
-          map.addMapping(
-            Mapping(
-              source: original.source,
-              original: (line: original.line, column: original.column),
-              generated: (line: generated.line, column: generated.column),
-              name: original.name))
-
-        lastOriginal = SourceNode(
-          source: original.source,
-          line: original.line,
-          column: original.column,
-          name: original.name,
-          children: lastOriginal.children)
-        sourceMappingActive = true
-      elif sourceMappingActive:
-        map.addMapping(
-          Mapping(
-            noSource: true,
-            noName: true,
-            generated: (line: generated.line, column: generated.column),
-            original: (line: -1, column: -1)))
-        lastOriginal.line = -1
-        sourceMappingActive = false
-
-    for z in 0 ..< line.len:
-      if line[z] in Newlines:
-        generated.line += 1
-        generated.column = 0
-
-        if z == line.len - 1:
-          lastOriginal.line = -1
-          sourceMappingActive = false
-        elif sourceMappingActive:
-          map.addMapping(
-            Mapping(
-              source: original.source,
-              original: (line: original.line, column: original.column),
-              generated: (line: generated.line, column: generated.column),
-              name: original.name))
-      else:
-        generated.column += 1
-    
-  map
-
-
-proc genSourceMap*(source: string, outFile: string): (Rope, SourceMap) =
-  let node = parse(source, outFile)
-  let map = node.toSourceMap(file = outFile)
-  ((&"{source}\n//# sourceMappingURL={outFile}.map").rope, map.gen)
+proc genSourceMap*(source: string, outFile: string): SourceMap =
+  let node = parse(source)
+  result = node.toSourceMap(outFile)
 

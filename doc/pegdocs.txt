@@ -13,12 +13,12 @@ notation           meaning
 ``A / ... / Z``    Ordered choice: Apply expressions `A`, ..., `Z`, in this
                    order, to the text ahead, until one of them succeeds and
                    possibly consumes some text. Indicate success if one of
-                   expressions succeeded. Otherwise do not consume any text
+                   expressions succeeded. Otherwise, do not consume any text
                    and indicate failure.
 ``A ... Z``        Sequence: Apply expressions `A`, ..., `Z`, in this order,
                    to consume consecutive portions of the text ahead, as long
                    as they succeed. Indicate success if all succeeded.
-                   Otherwise do not consume any text and indicate failure.
+                   Otherwise, do not consume any text and indicate failure.
                    The sequence's precedence is higher than that of ordered
                    choice: ``A B / C`` means ``(A B) / Z`` and
                    not ``A (B / Z)``.
@@ -44,20 +44,20 @@ notation           meaning
 ``E+``             One or more: Apply expression `E` repeatedly to match
                    the text ahead, as long as it succeeds. Consume the matched
                    text (if any) and indicate success if there was at least
-                   one match. Otherwise indicate failure.
+                   one match. Otherwise, indicate failure.
 ``E*``             Zero or more: Apply expression `E` repeatedly to match
                    the text ahead, as long as it succeeds. Consume the matched
                    text (if any). Always indicate success.
 ``E?``             Zero or one: If expression `E` matches the text ahead,
                    consume it. Always indicate success.
 ``[s]``            Character class: If the character ahead appears in the
-                   string `s`, consume it and indicate success. Otherwise
+                   string `s`, consume it and indicate success. Otherwise,
                    indicate failure.
 ``[a-b]``          Character range: If the character ahead is one from the
                    range `a` through `b`, consume it and indicate success.
-                   Otherwise indicate failure.
+                   Otherwise, indicate failure.
 ``'s'``            String: If the text ahead is the string `s`, consume it
-                   and indicate success. Otherwise indicate failure.
+                   and indicate success. Otherwise, indicate failure.
 ``i's'``           String match ignoring case.
 ``y's'``           String match ignoring style.
 ``v's'``           Verbatim string match: Use this to override a global
@@ -66,15 +66,15 @@ notation           meaning
 ``y$j``            String match ignoring style for back reference.
 ``v$j``            Verbatim string match for back reference.
 ``.``              Any character: If there is a character ahead, consume it
-                   and indicate success. Otherwise (that is, at the end of
+                   and indicate success. Otherwise, (that is, at the end of
                    input) indicate failure.
-``_``              Any Unicode character: If there is an UTF-8 character
-                   ahead, consume it and indicate success. Otherwise indicate
+``_``              Any Unicode character: If there is a UTF-8 character
+                   ahead, consume it and indicate success. Otherwise, indicate
                    failure.
 ``@E``             Search: Shorthand for ``(!E .)* E``. (Search loop for the
                    pattern `E`.)
 ``{@} E``          Captured Search: Shorthand for ``{(!E .)*} E``. (Search
-                   loop for the pattern `E`.) Everything until and exluding
+                   loop for the pattern `E`.) Everything until and excluding
                    `E` is captured.
 ``@@ E``           Same as ``{@} E``.
 ``A <- E``         Rule: Bind the expression `E` to the *nonterminal symbol*
@@ -82,7 +82,7 @@ notation           meaning
                    matching engine.**
 ``\identifier``    Built-in macro for a longer expression.
 ``\ddd``           Character with decimal code *ddd*.
-``\"``, etc        Literal ``"``, etc.
+``\"``, etc.       Literal ``"``, etc.
 ===============    ============================================================
 
 
@@ -131,52 +131,53 @@ notation           meaning
 Supported PEG grammar
 ---------------------
 
-The PEG parser implements this grammar (written in PEG syntax)::
+The PEG parser implements this grammar (written in PEG syntax):
 
-  # Example grammar of PEG in PEG syntax.
-  # Comments start with '#'.
-  # First symbol is the start symbol.
+    # Example grammar of PEG in PEG syntax.
+    # Comments start with '#'.
+    # First symbol is the start symbol.
 
-  grammar <- rule* / expr
+    grammar <- rule* / expr
 
-  identifier <- [A-Za-z][A-Za-z0-9_]*
-  charsetchar <- "\\" . / [^\]]
-  charset <- "[" "^"? (charsetchar ("-" charsetchar)?)+ "]"
-  stringlit <- identifier? ("\"" ("\\" . / [^"])* "\"" /
-                            "'" ("\\" . / [^'])* "'")
-  builtin <- "\\" identifier / [^\13\10]
+    identifier <- [A-Za-z][A-Za-z0-9_]*
+    charsetchar <- "\\" . / [^\]]
+    charset <- "[" "^"? (charsetchar ("-" charsetchar)?)+ "]"
+    stringlit <- identifier? ("\"" ("\\" . / [^"])* "\"" /
+                              "'" ("\\" . / [^'])* "'")
+    builtin <- "\\" identifier / [^\13\10]
 
-  comment <- '#' @ \n
-  ig <- (\s / comment)* # things to ignore
+    comment <- '#' @ \n
+    ig <- (\s / comment)* # things to ignore
 
-  rule <- identifier \s* "<-" expr ig
-  identNoArrow <- identifier !(\s* "<-")
-  prefixOpr <- ig '&' / ig '!' / ig '@' / ig '{@}' / ig '@@'
-  literal <- ig identifier? '$' '^'? [0-9]+ / '$' / '^' /
-             ig identNoArrow /
-             ig charset /
-             ig stringlit /
-             ig builtin /
-             ig '.' /
-             ig '_' /
-             (ig "(" expr ig ")") /
-             (ig "{" expr? ig "}")
-  postfixOpr <- ig '?' / ig '*' / ig '+'
-  primary <- prefixOpr* (literal postfixOpr*)
+    rule <- identifier \s* "<-" expr ig
+    identNoArrow <- identifier !(\s* "<-")
+    prefixOpr <- ig '&' / ig '!' / ig '@' / ig '{@}' / ig '@@'
+    literal <- ig identifier? '$' '^'? [0-9]+ / '$' / '^' /
+               ig identNoArrow /
+               ig charset /
+               ig stringlit /
+               ig builtin /
+               ig '.' /
+               ig '_' /
+               (ig "(" expr ig ")") /
+               (ig "{" expr? ig "}")
+    postfixOpr <- ig '?' / ig '*' / ig '+'
+    primary <- prefixOpr* (literal postfixOpr*)
 
-  # Concatenation has higher priority than choice:
-  # ``a b / c`` means ``(a b) / c``
+    # Concatenation has higher priority than choice:
+    # ``a b / c`` means ``(a b) / c``
 
-  seqExpr <- primary+
-  expr <- seqExpr (ig "/" expr)*
+    seqExpr <- primary+
+    expr <- seqExpr (ig "/" expr)*
 
 
 **Note**: As a special syntactic extension if the whole PEG is only a single
 expression, identifiers are not interpreted as non-terminals, but are
 interpreted as verbatim string:
 
-.. code-block:: nim
+  ```nim
   abc =~ peg"abc" # is true
+  ```
 
 So it is not necessary to write ``peg" 'abc' "`` in the above example.
 
@@ -186,22 +187,25 @@ Examples
 
 Check if `s` matches Nim's "while" keyword:
 
-.. code-block:: nim
+  ```nim
   s =~ peg" y'while'"
+  ```
 
 Exchange (key, val)-pairs:
 
-.. code-block:: nim
+  ```nim
   "key: val; key2: val2".replacef(peg"{\ident} \s* ':' \s* {\ident}", "$2: $1")
+  ```
 
 Determine the ``#include``'ed files of a C file:
 
-.. code-block:: nim
+  ```nim
   for line in lines("myfile.c"):
     if line =~ peg"""s <- ws '#include' ws '"' {[^"]+} '"' ws
                      comment <- '/*' @ '*/' / '//' .*
                      ws <- (comment / \s+)* """:
       echo matches[0]
+  ```
 
 PEG vs regular expression
 -------------------------

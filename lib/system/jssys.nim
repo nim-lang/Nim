@@ -130,7 +130,8 @@ proc unhandledException(e: ref Exception) {.
   when NimStackTrace:
     add(buf, rawWriteStackTrace())
   let cbuf = cstring(buf)
-  framePtr = nil
+  when NimStackTrace:
+    framePtr = nil
   {.emit: """
   if (typeof(Error) !== "undefined") {
     throw new Error(`cbuf`);
@@ -450,44 +451,44 @@ proc modInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
     return Math.trunc(`a` % `b`);
   """
 
-proc checkOverflowInt64(a: int) {.asmNoStackFrame, compilerproc.} =
+proc checkOverflowInt64(a: int64) {.asmNoStackFrame, compilerproc.} =
   asm """
-    if (`a` > 9223372036854775807 || `a` < -9223372036854775808) `raiseOverflow`();
+    if (`a` > 9223372036854775807n || `a` < -9223372036854775808n) `raiseOverflow`();
   """
 
-proc addInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+proc addInt64(a, b: int64): int64 {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` + `b`;
     `checkOverflowInt64`(result);
     return result;
   """
 
-proc subInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+proc subInt64(a, b: int64): int64 {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` - `b`;
     `checkOverflowInt64`(result);
     return result;
   """
 
-proc mulInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+proc mulInt64(a, b: int64): int64 {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` * `b`;
     `checkOverflowInt64`(result);
     return result;
   """
 
-proc divInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+proc divInt64(a, b: int64): int64 {.asmNoStackFrame, compilerproc.} =
   asm """
-    if (`b` == 0) `raiseDivByZero`();
-    if (`b` == -1 && `a` == 9223372036854775807) `raiseOverflow`();
-    return Math.trunc(`a` / `b`);
+    if (`b` == 0n) `raiseDivByZero`();
+    if (`b` == -1n && `a` == 9223372036854775807n) `raiseOverflow`();
+    return `a` / `b`;
   """
 
-proc modInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+proc modInt64(a, b: int64): int64 {.asmNoStackFrame, compilerproc.} =
   asm """
-    if (`b` == 0) `raiseDivByZero`();
-    if (`b` == -1 && `a` == 9223372036854775807) `raiseOverflow`();
-    return Math.trunc(`a` % `b`);
+    if (`b` == 0n) `raiseDivByZero`();
+    if (`b` == -1n && `a` == 9223372036854775807n) `raiseOverflow`();
+    return `a` % `b`;
   """
 
 proc negInt(a: int): int {.compilerproc.} =
@@ -501,28 +502,6 @@ proc absInt(a: int): int {.compilerproc.} =
 
 proc absInt64(a: int64): int64 {.compilerproc.} =
   result = if a < 0: a*(-1) else: a
-
-when not defined(nimNoZeroExtendMagic):
-  proc ze*(a: int): int {.compilerproc.} =
-    result = a
-
-  proc ze64*(a: int64): int64 {.compilerproc.} =
-    result = a
-
-  proc toU8*(a: int): int8 {.asmNoStackFrame, compilerproc.} =
-    asm """
-      return `a`;
-    """
-
-  proc toU16*(a: int): int16 {.asmNoStackFrame, compilerproc.} =
-    asm """
-      return `a`;
-    """
-
-  proc toU32*(a: int64): int32 {.asmNoStackFrame, compilerproc.} =
-    asm """
-      return `a`;
-    """
 
 proc nimMin(a, b: int): int {.compilerproc.} = return if a <= b: a else: b
 proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
@@ -587,7 +566,33 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
     else:
       asm "`result` = (`dest` === null || `dest` === undefined) ? {} : `dest`;"
     nimCopyAux(result, src, ti.node)
-  of tySequence, tyArrayConstr, tyOpenArray, tyArray:
+  of tyArrayConstr, tyArray:
+    # In order to prevent a type change (TypedArray -> Array) and to have better copying performance,
+    # arrays constructors are considered separately
+    asm """
+      if(ArrayBuffer.isView(`src`)) { 
+        if(`dest` === null || `dest` === undefined || `dest`.length != `src`.length) {
+          `dest` = new `src`.constructor(`src`);
+        } else {
+          `dest`.set(`src`, 0);
+        }
+        `result` = `dest`;
+      } else {
+        if (`src` === null) {
+          `result` = null;
+        }
+        else {
+          if (`dest` === null || `dest` === undefined || `dest`.length != `src`.length) {
+            `dest` = new Array(`src`.length);
+          }
+          `result` = `dest`;
+          for (var i = 0; i < `src`.length; ++i) {
+            `result`[i] = nimCopy(`result`[i], `src`[i], `ti`.base);
+          }
+        }
+      }
+    """
+  of tySequence, tyOpenArray:
     asm """
       if (`src` === null) {
         `result` = null;
@@ -698,19 +703,20 @@ const
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
 
-proc parseFloatNative(a: string): float =
-  let a2 = a.cstring
+proc parseFloatNative(a: openarray[char]): float =
+  var str = ""
+  for x in a:
+    str.add x
+
+  let cstr = cstring str
+
   asm """
-  `result` = Number(`a2`);
+  `result` = Number(`cstr`);
   """
 
-#[
-xxx how come code like this doesn't give IndexDefect ?
-let z = s[10000] == 'a'
-]#
-proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start: int): int {.compilerproc.} =
+proc nimParseBiggestFloat(s: openarray[char], number: var BiggestFloat): int {.compilerproc.} =
   var sign: bool
-  var i = start
+  var i = 0
   if s[i] == '+': inc(i)
   elif s[i] == '-':
     sign = true
@@ -720,14 +726,14 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start: int): int 
       if s[i+2] == 'N' or s[i+2] == 'n':
         if s[i+3] notin IdentChars:
           number = NaN
-          return i+3 - start
+          return i+3
     return 0
   if s[i] == 'I' or s[i] == 'i':
     if s[i+1] == 'N' or s[i+1] == 'n':
       if s[i+2] == 'F' or s[i+2] == 'f':
         if s[i+3] notin IdentChars:
           number = if sign: -Inf else: Inf
-          return i+3 - start
+          return i+3
     return 0
 
   var buf: string
@@ -759,7 +765,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start: int): int 
       addInc()
       eatUnderscores()
   number = parseFloatNative(buf)
-  result = i - start
+  result = i
 
 # Workaround for IE, IE up to version 11 lacks 'Math.trunc'. We produce
 # 'Math.trunc' for Nim's ``div`` and ``mod`` operators:

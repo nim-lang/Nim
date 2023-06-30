@@ -131,12 +131,12 @@ let str = "0123456789"
 foo(toOpenArrayByte(str, 0, str.high))
 
 
-template boundedOpenArray[T](x: seq[T], first, last: int): openarray[T] =
+template boundedOpenArray[T](x: seq[T], first, last: int): openArray[T] =
   toOpenarray(x, max(0, first), min(x.high, last))
 
 # bug #9281
 
-proc foo[T](x: openarray[T]) =
+proc foo[T](x: openArray[T]) =
   echo x.len
 
 let a = @[1, 2, 3]

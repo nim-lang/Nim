@@ -1,5 +1,5 @@
 type
-  TAnimal=object {.inheritable.}
+  TAnimal{.inheritable.}=object
   PAnimal=ref TAnimal
 
   TDog=object of TAnimal
@@ -12,7 +12,7 @@ type
 
 proc newDog():PDog = new(result)
 proc newCat():PCat = new(result)
-proc test(a:openarray[PAnimal])=
+proc test(a:openArray[PAnimal])=
   echo("dummy")
 
 #test(newDog(),newCat()) #does not work

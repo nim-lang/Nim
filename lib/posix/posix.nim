@@ -37,6 +37,9 @@
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 # TODO these constants don't seem to be fetched from a header file for unknown
 #      platforms - where do they come from and why are they here?
 when false:
@@ -155,9 +158,9 @@ when not defined(zephyr):
   proc inet_addr*(a1: cstring): InAddrT {.importc, header: "<arpa/inet.h>".}
   proc inet_ntoa*(a1: InAddr): cstring {.importc, header: "<arpa/inet.h>".}
 
-proc inet_ntop*(a1: cint, a2: pointer, a3: cstring, a4: int32): cstring {.
+proc inet_ntop*(a1: cint, a2: pointer | ptr InAddr | ptr In6Addr, a3: cstring, a4: int32): cstring {.
   importc:"(char *)$1", header: "<arpa/inet.h>".}
-proc inet_pton*(a1: cint, a2: cstring, a3: pointer): cint {.
+proc inet_pton*(a1: cint, a2: cstring, a3: pointer | ptr InAddr | ptr In6Addr): cint {.
   importc, header: "<arpa/inet.h>".}
 
 var
@@ -192,8 +195,29 @@ proc open*(a1: cstring, a2: cint, mode: Mode | cint = 0.Mode): cint {.inline.} =
 
 proc posix_fadvise*(a1: cint, a2, a3: Off, a4: cint): cint {.
   importc, header: "<fcntl.h>".}
-proc posix_fallocate*(a1: cint, a2, a3: Off): cint {.
-  importc, header: "<fcntl.h>".}
+
+proc ftruncate*(a1: cint, a2: Off): cint {.importc, header: "<unistd.h>".}
+when defined(osx):              # 2001 POSIX evidently does not concern Apple
+  type FStore {.importc: "fstore_t", header: "<fcntl.h>", bycopy.} = object
+    fst_flags: uint32           ## IN: flags word
+    fst_posmode: cint           ## IN: indicates offset field
+    fst_offset,                 ## IN: start of the region
+      fst_length,               ## IN: size of the region
+      fst_bytesalloc: Off       ## OUT: number of bytes allocated
+  var F_PEOFPOSMODE {.importc, header: "<fcntl.h>".}: cint
+  var F_ALLOCATEALL {.importc, header: "<fcntl.h>".}: uint32
+  var F_PREALLOCATE {.importc, header: "<fcntl.h>".}: cint
+  proc posix_fallocate*(a1: cint, a2, a3: Off): cint =
+    var fst = FStore(fst_flags: F_ALLOCATEALL, fst_posmode: F_PEOFPOSMODE,
+                     fst_offset: a2, fst_length: a3)
+    # Must also call ftruncate to match what POSIX does. Unlike posix_fallocate,
+    # this can shrink files.  Could guard w/getFileSize, but caller likely knows
+    # present size & has no good reason to call this unless it is growing.
+    if fcntl(a1, F_PREALLOCATE, fst.addr) != cint(-1): ftruncate(a1, a2 + a3)
+    else: cint(-1)
+else:
+  proc posix_fallocate*(a1: cint, a2, a3: Off): cint {.
+    importc, header: "<fcntl.h>".}
 
 when not defined(haiku) and not defined(openbsd):
   proc fmtmsg*(a1: int, a2: cstring, a3: cint,
@@ -246,26 +270,52 @@ proc setlocale*(a1: cint, a2: cstring): cstring {.
 proc strfmon*(a1: cstring, a2: int, a3: cstring): int {.varargs,
    importc, header: "<monetary.h>".}
 
-when not defined(nintendoswitch):
-  proc mq_close*(a1: Mqd): cint {.importc, header: "<mqueue.h>".}
-  proc mq_getattr*(a1: Mqd, a2: ptr MqAttr): cint {.
-    importc, header: "<mqueue.h>".}
-  proc mq_notify*(a1: Mqd, a2: ptr SigEvent): cint {.
-    importc, header: "<mqueue.h>".}
-  proc mq_open*(a1: cstring, a2: cint): Mqd {.
-    varargs, importc, header: "<mqueue.h>".}
-  proc mq_receive*(a1: Mqd, a2: cstring, a3: int, a4: var int): int {.
-    importc, header: "<mqueue.h>".}
-  proc mq_send*(a1: Mqd, a2: cstring, a3: int, a4: int): cint {.
-    importc, header: "<mqueue.h>".}
-  proc mq_setattr*(a1: Mqd, a2, a3: ptr MqAttr): cint {.
+when not (defined(nintendoswitch) or defined(macos) or defined(macosx)):
+  proc mq_notify*(mqdes: Mqd, event: ptr SigEvent): cint {.
     importc, header: "<mqueue.h>".}
 
-  proc mq_timedreceive*(a1: Mqd, a2: cstring, a3: int, a4: int,
-                        a5: ptr Timespec): int {.importc, header: "<mqueue.h>".}
-  proc mq_timedsend*(a1: Mqd, a2: cstring, a3: int, a4: int,
-                     a5: ptr Timespec): cint {.importc, header: "<mqueue.h>".}
-  proc mq_unlink*(a1: cstring): cint {.importc, header: "<mqueue.h>".}
+  proc mq_open*(name: cstring, flags: cint): Mqd {.
+    varargs, importc, header: "<mqueue.h>".}
+
+  proc mq_close*(mqdes: Mqd): cint {.importc, header: "<mqueue.h>".}
+
+  proc mq_receive*(
+    mqdes: Mqd,
+    buffer: cstring,
+    length: csize_t,
+    priority: var cuint
+  ): int {.importc, header: "<mqueue.h>".}
+
+  proc mq_timedreceive*(
+    mqdes: Mqd,
+    buffer: cstring,
+    length: csize_t,
+    priority: cuint,
+    timeout: ptr Timespec
+  ): int {.importc, header: "<mqueue.h>".}
+
+  proc mq_send*(
+    mqdes: Mqd,
+    buffer: cstring,
+    length: csize_t,
+    priority: cuint
+  ): cint {.importc, header: "<mqueue.h>".}
+
+  proc mq_timedsend*(
+    mqdes: Mqd,
+    buffer: cstring,
+    length: csize_t,
+    priority: cuint,
+    timeout: ptr Timespec
+  ): cint {.importc, header: "<mqueue.h>".}
+
+  proc mq_getattr*(mqdes: Mqd, attribute: ptr MqAttr): cint {.
+    importc, header: "<mqueue.h>".}
+
+  proc mq_setattr*(mqdes: Mqd, newAttribute, oldAttribute: ptr MqAttr): cint {.
+    importc, header: "<mqueue.h>".}
+
+  proc mq_unlink*(mqdes: cstring): cint {.importc, header: "<mqueue.h>".}
 
 
 proc getpwnam*(a1: cstring): ptr Passwd {.importc, header: "<pwd.h>".}
@@ -482,7 +532,6 @@ proc fpathconf*(a1, a2: cint): int {.importc, header: "<unistd.h>".}
 proc fsync*(a1: cint): cint {.importc, header: "<unistd.h>".}
  ## synchronize a file's buffer cache to the storage device
 
-proc ftruncate*(a1: cint, a2: Off): cint {.importc, header: "<unistd.h>".}
 proc getcwd*(a1: cstring, a2: int): cstring {.importc, header: "<unistd.h>", sideEffect.}
 proc getuid*(): Uid {.importc, header: "<unistd.h>", sideEffect.}
  ## returns the real user ID of the calling process
@@ -535,7 +584,8 @@ proc pread*(a1: cint, a2: pointer, a3: int, a4: Off): int {.
 proc pwrite*(a1: cint, a2: pointer, a3: int, a4: Off): int {.
   importc, header: "<unistd.h>".}
 proc read*(a1: cint, a2: pointer, a3: int): int {.importc, header: "<unistd.h>".}
-proc readlink*(a1, a2: cstring, a3: int): int {.importc, header: "<unistd.h>".}
+when not defined(nintendoswitch):
+  proc readlink*(a1, a2: cstring, a3: int): int {.importc, header: "<unistd.h>".}
 proc ioctl*(f: FileHandle, device: uint): int {.importc: "ioctl",
       header: "<sys/ioctl.h>", varargs, tags: [WriteIOEffect].}
   ## A system call for device-specific input/output operations and other
@@ -554,7 +604,10 @@ proc setsid*(): Pid {.importc, header: "<unistd.h>".}
 proc setuid*(a1: Uid): cint {.importc, header: "<unistd.h>".}
 proc sleep*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc swab*(a1, a2: pointer, a3: int) {.importc, header: "<unistd.h>".}
-proc symlink*(a1, a2: cstring): cint {.importc, header: "<unistd.h>".}
+when not defined(nintendoswitch):
+  proc symlink*(a1, a2: cstring): cint {.importc, header: "<unistd.h>".}
+else:
+  proc symlink*(a1, a2: cstring): cint = -1
 proc sync*() {.importc, header: "<unistd.h>".}
 proc sysconf*(a1: cint): int {.importc, header: "<unistd.h>".}
 proc tcgetpgrp*(a1: cint): Pid {.importc, header: "<unistd.h>".}
@@ -772,6 +825,13 @@ else:
   proc sigtimedwait*(a1: var Sigset, a2: var SigInfo,
                      a3: var Timespec): cint {.importc, header: "<signal.h>".}
 
+when defined(sunos) or defined(solaris):
+  # The following compile time flag is needed on Illumos/Solaris to use the POSIX
+  # `sigwait` implementation. See the documentation here:
+  # https://docs.oracle.com/cd/E19455-01/806-5257/6je9h033k/index.html
+  # https://www.illumos.org/man/2/sigwait
+  {.passc: "-D_POSIX_PTHREAD_SEMANTICS".}
+
 proc sigwait*(a1: var Sigset, a2: var cint): cint {.
   importc, header: "<signal.h>".}
 proc sigwaitinfo*(a1: var Sigset, a2: var SigInfo): cint {.
@@ -884,18 +944,8 @@ proc CMSG_NXTHDR*(mhdr: ptr Tmsghdr, cmsg: ptr Tcmsghdr): ptr Tcmsghdr {.
 proc CMSG_FIRSTHDR*(mhdr: ptr Tmsghdr): ptr Tcmsghdr {.
   importc, header: "<sys/socket.h>".}
 
-{.push warning[deprecated]: off.}
-proc CMSG_SPACE*(len: csize): csize {.
-  importc, header: "<sys/socket.h>", deprecated: "argument `len` should be of type `csize_t`".}
-{.pop.}
-
 proc CMSG_SPACE*(len: csize_t): csize_t {.
   importc, header: "<sys/socket.h>".}
-
-{.push warning[deprecated]: off.}
-proc CMSG_LEN*(len: csize): csize {.
-  importc, header: "<sys/socket.h>", deprecated: "argument `len` should be of type `csize_t`".}
-{.pop.}
 
 proc CMSG_LEN*(len: csize_t): csize_t {.
   importc, header: "<sys/socket.h>".}
@@ -908,7 +958,7 @@ proc `==`*(x, y: SocketHandle): bool {.borrow.}
 proc accept*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen): SocketHandle {.
   importc, header: "<sys/socket.h>", sideEffect.}
 
-when defined(linux) or defined(bsd):
+when defined(linux) or defined(bsd) or defined(nuttx):
   proc accept4*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen,
                 flags: cint): SocketHandle {.importc, header: "<sys/socket.h>".}
 
@@ -1006,7 +1056,7 @@ proc endhostent*() {.importc, header: "<netdb.h>".}
 proc endnetent*() {.importc, header: "<netdb.h>".}
 proc endprotoent*() {.importc, header: "<netdb.h>".}
 proc endservent*() {.importc, header: "<netdb.h>".}
-proc freeaddrinfo*(a1: ptr AddrInfo) {.importc, header: "<netdb.h>".}
+proc freeAddrInfo*(a1: ptr AddrInfo) {.importc: "freeaddrinfo", header: "<netdb.h>".}
 
 proc gai_strerror*(a1: cint): cstring {.importc:"(char *)$1", header: "<netdb.h>".}
 
@@ -1093,11 +1143,11 @@ template onSignal*(signals: varargs[cint], body: untyped) =
   ## scope.
   ##
   ## Example:
-  ##
-  ## .. code-block::
+  ##   ```Nim
   ##   from std/posix import SIGINT, SIGTERM, onSignal
   ##   onSignal(SIGINT, SIGTERM):
   ##     echo "bye from signal ", sig
+  ##   ```
 
   for s in signals:
     handle_signal(s,
@@ -1114,12 +1164,12 @@ type
   ## The getrlimit() and setrlimit() system calls get and set resource limits respectively.
   ## Each resource has an associated soft and hard limit, as defined by the RLimit structure
 
-proc setrlimit*(resource: cint, rlp: var RLimit): cint
-      {.importc: "setrlimit",header: "<sys/resource.h>".}
+proc setrlimit*(resource: cint, rlp: var RLimit): cint {.
+  importc: "setrlimit", header: "<sys/resource.h>".}
   ## The setrlimit() system calls sets resource limits.
 
-proc getrlimit*(resource: cint, rlp: var RLimit): cint
-      {.importc: "getrlimit",header: "<sys/resource.h>".}
+proc getrlimit*(resource: cint, rlp: var RLimit): cint {.
+  importc: "getrlimit", header: "<sys/resource.h>".}
   ## The getrlimit() system call gets resource limits.
 
 when defined(nimHasStyleChecks):

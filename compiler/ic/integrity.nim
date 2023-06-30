@@ -11,6 +11,10 @@
 ## The set must cover a complete Nim project.
 
 import sets
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import ".." / [ast, modulegraphs]
 import packed_ast, bitabs, ic
 

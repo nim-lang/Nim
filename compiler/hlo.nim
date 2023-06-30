@@ -8,6 +8,10 @@
 #
 
 # This include implements the high level optimization pass.
+# included from sem.nim
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 proc hlo(c: PContext, n: PNode): PNode
 
@@ -67,7 +71,7 @@ proc hlo(c: PContext, n: PNode): PNode =
     # already processed (special cases in semstmts.nim)
     result = n
   else:
-    if n.kind in {nkFastAsgn, nkAsgn, nkIdentDefs, nkVarTuple} and
+    if n.kind in {nkFastAsgn, nkAsgn, nkSinkAsgn, nkIdentDefs, nkVarTuple} and
         n[0].kind == nkSym and
         {sfGlobal, sfPure} * n[0].sym.flags == {sfGlobal, sfPure}:
       # do not optimize 'var g {.global} = re(...)' again!

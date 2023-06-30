@@ -48,7 +48,7 @@ template `-!`(p: pointer, s: int): pointer =
   cast[pointer](cast[int](p) -% s)
 
 proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
-    noSideEffect, raises: [], compilerRtl.} =
+    noSideEffect, tags: [], raises: [], compilerRtl.} =
   {.noSideEffect.}:
     let headerSize = align(sizeof(NimSeqPayloadBase), elemAlign)
     if addlen <= 0:
@@ -75,21 +75,23 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): poin
 
 proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [].} =
   when nimvm:
-    setLen(x, newLen)
+    {.cast(tags: []).}:
+      setLen(x, newLen)
   else:
     #sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
     when not supportsCopyMem(T):
       for i in countdown(x.len - 1, newLen):
         reset x[i]
     # XXX This is wrong for const seqs that were moved into 'x'!
-    cast[ptr NimSeqV2[T]](addr x).len = newLen
+    {.noSideEffect.}:
+      cast[ptr NimSeqV2[T]](addr x).len = newLen
 
 proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   let oldLen = x.len
   #sysAssert newLen >= x.len, "invalid newLen parameter for 'grow'"
   if newLen <= oldLen: return
   var xu = cast[ptr NimSeqV2[T]](addr x)
-  if xu.p == nil or xu.p.cap < newLen:
+  if xu.p == nil or (xu.p.cap and not strlitFlag) < newLen:
     xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
   xu.len = newLen
   for i in oldLen .. newLen-1:
@@ -102,16 +104,17 @@ proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffec
   ## containers should also call their adding proc `add` for consistency.
   ## Generic code becomes much easier to write if the Nim naming scheme is
   ## respected.
-  let oldLen = x.len
-  var xu = cast[ptr NimSeqV2[T]](addr x)
-  if xu.p == nil or xu.p.cap < oldLen+1:
-    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T), alignof(T)))
-  xu.len = oldLen+1
-  # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
-  # copyMem(). This is fine as know by construction that
-  # in `xu.p.data[oldLen]` there is nothing to destroy.
-  # We also save the `wasMoved + destroy` pair for the sink parameter.
-  xu.p.data[oldLen] = value
+  {.cast(noSideEffect).}:
+    let oldLen = x.len
+    var xu = cast[ptr NimSeqV2[T]](addr x)
+    if xu.p == nil or (xu.p.cap and not strlitFlag) < oldLen+1:
+      xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T), alignof(T)))
+    xu.len = oldLen+1
+    # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
+    # copyMem(). This is fine as know by construction that
+    # in `xu.p.data[oldLen]` there is nothing to destroy.
+    # We also save the `wasMoved + destroy` pair for the sink parameter.
+    xu.p.data[oldLen] = value
 
 proc setLen[T](s: var seq[T], newlen: Natural) =
   {.noSideEffect.}:
@@ -121,10 +124,28 @@ proc setLen[T](s: var seq[T], newlen: Natural) =
       let oldLen = s.len
       if newlen <= oldLen: return
       var xu = cast[ptr NimSeqV2[T]](addr s)
-      if xu.p == nil or xu.p.cap < newlen:
+      if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
         xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
       xu.len = newlen
+      for i in oldLen..<newlen:
+        xu.p.data[i] = default(T)
 
 proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
   setLen(s, len)
+
+
+template capacityImpl(sek: NimSeqV2): int =
+  if sek.p != nil: (xu.p.cap and not strlitFlag) else: 0
+
+func capacity*[T](self: seq[T]): int {.inline.} =
+  ## Returns the current capacity of the seq.
+  # See https://github.com/nim-lang/RFCs/issues/460
+  runnableExamples:
+    var lst = newSeqOfCap[string](cap = 42)
+    lst.add "Nim"
+    assert lst.capacity == 42
+
+  {.cast(noSideEffect).}:
+    let sek = unsafeAddr self
+    result = capacityImpl(cast[ptr NimSeqV2](sek)[])

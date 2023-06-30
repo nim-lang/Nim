@@ -8,10 +8,13 @@
 #
 
 ## This module contains 'typeAllowed' and friends which check
-## for invalid types like 'openArray[var int]'.
+## for invalid types like `openArray[var int]`.
 
 import
   intsets, ast, renderer, options, semdata, types
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type
   TTypeAllowedFlag* = enum
@@ -22,6 +25,7 @@ type
     taNoUntyped
     taIsTemplateOrMacro
     taProcContextIsNotMacro
+    taIsCastable
 
   TTypeAllowedFlags* = set[TTypeAllowedFlag]
 
@@ -57,8 +61,13 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyVar, tyLent:
     if kind in {skProc, skFunc, skConst} and (views notin c.features):
       result = t
+    elif taIsOpenArray in flags:
+      result = t
     elif t.kind == tyLent and ((kind != skResult and views notin c.features) or
-                              kind == skParam): # lent can't be used as parameters.
+      (kind == skParam and {taIsCastable, taField} * flags == {})): # lent cannot be used as parameters.
+                                                       # except in the cast environment and as the field of an object
+      result = t
+    elif isOutParam(t) and kind != skParam:
       result = t
     else:
       var t2 = skipTypes(t[0], abstractInst-{tyTypeDesc, tySink})
@@ -231,7 +240,7 @@ proc classifyViewTypeAux(marker: var IntSet, t: PType): ViewTypeKind =
   case t.kind
   of tyVar:
     result = mutableView
-  of tyLent, tyOpenArray:
+  of tyLent, tyOpenArray, tyVarargs:
     result = immutableView
   of tyGenericInst, tyDistinct, tyAlias, tyInferred, tySink, tyOwned,
      tyUncheckedArray, tySequence, tyArray, tyRef, tyStatic:

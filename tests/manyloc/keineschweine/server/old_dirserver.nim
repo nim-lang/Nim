@@ -1,9 +1,9 @@
 ## directory server
 ## handles client authorization and assets
-
+import ../../../dist/checksums/src/checksums/md5
 import
   sockets, times, streams, streams_enh, tables, json, os,
-  sg_packets, sg_assets, md5, server_utils, map_filter
+  sg_packets, sg_assets, server_utils, map_filter
 type
   THandler = proc(client: PCLient; stream: PStream)
 var

@@ -59,8 +59,8 @@ runnableExamples:
 
 import std/private/since
 
-when not defined(nimHasCursor):
-  {.pragma: cursor.}
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type
   DoublyLinkedNodeObj*[T] = object
@@ -188,13 +188,13 @@ func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (
     result.add(elem)
 
 template itemsListImpl() {.dirty.} =
-  var it = L.head
+  var it {.cursor.} = L.head
   while it != nil:
     yield it.value
     it = it.next
 
 template itemsRingImpl() {.dirty.} =
-  var it = L.head
+  var it {.cursor.} = L.head
   if it != nil:
     while true:
       yield it.value
@@ -530,11 +530,12 @@ proc addMoved*[T](a, b: var SinglyLinkedList[T]) {.since: (1, 5, 1).} =
         ci
     assert s == [0, 1, 0, 1, 0, 1]
 
-  if a.tail != nil:
-    a.tail.next = b.head
-  a.tail = b.tail
-  if a.head == nil:
-    a.head = b.head
+  if b.head != nil:
+    if a.head == nil:
+      a.head = b.head
+    else:
+      a.tail.next = b.head
+    a.tail = b.tail
   if a.addr != b.addr:
     b.head = nil
     b.tail = nil
@@ -674,12 +675,12 @@ proc addMoved*[T](a, b: var DoublyLinkedList[T]) {.since: (1, 5, 1).} =
     assert s == [0, 1, 0, 1, 0, 1]
 
   if b.head != nil:
-    b.head.prev = a.tail
-  if a.tail != nil:
-    a.tail.next = b.head
-  a.tail = b.tail
-  if a.head == nil:
-    a.head = b.head
+    if a.head == nil:
+      a.head = b.head
+    else:
+      b.head.prev = a.tail
+      a.tail.next = b.head
+    a.tail = b.tail
   if a.addr != b.addr:
     b.head = nil
     b.tail = nil
@@ -738,6 +739,8 @@ proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]): bool {.disc
     if prev.next == nil:
       return false
     prev.next = n.next
+    if L.tail == n:
+      L.tail = prev # update tail if we removed the last node
   true
 
 proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =

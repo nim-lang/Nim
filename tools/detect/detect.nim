@@ -12,7 +12,10 @@
 # The second one is more portable, and less semantically correct. It only works
 # when there's a backing C compiler available as well, preventing standalone
 # compilation.
-import os, strutils
+import std/[os, strutils]
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 when defined(openbsd) or defined(freebsd) or defined(netbsd):
   const
@@ -615,6 +618,7 @@ v("MAP_POPULATE", no_other = true)
 
 header("<sys/resource.h>")
 v("RLIMIT_NOFILE")
+v("RLIMIT_STACK")
 
 header("<sys/select.h>")
 v("FD_SETSIZE")

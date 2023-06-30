@@ -17,10 +17,26 @@ block:
     MyObj = object
       myField1, myField2 {.myAttr: "hi".}: int
 
+    MyGenericObj[T] = object
+      myField1, myField2 {.myAttr: "hi".}: int
+
+    MyOtherObj = MyObj
+
+
   var o: MyObj
   static:
     doAssert o.myField2.hasCustomPragma(myAttr)
     doAssert(not o.myField1.hasCustomPragma(myAttr))
+    doAssert(not o.myField1.hasCustomPragma(MyObj))
+    doAssert(not o.myField1.hasCustomPragma(MyOtherObj))
+
+  var ogen: MyGenericObj[int]
+  static:
+    doAssert ogen.myField2.hasCustomPragma(myAttr)
+    doAssert(not ogen.myField1.hasCustomPragma(myAttr))
+    doAssert(not ogen.myField1.hasCustomPragma(MyGenericObj))
+    doAssert(not ogen.myField1.hasCustomPragma(MyGenericObj))
+
 
 import custom_pragma
 block: # A bit more advanced case
@@ -383,6 +399,40 @@ block:
 
   discard Hello(a: 1.0, b: 12)
 
+# test routines
+block:
+  template prag {.pragma.}
+  proc hello {.prag.} = discard
+  iterator hello2: int {.prag.} = discard
+  template hello3(x: int): int {.prag.} = x
+  macro hello4(x: int): int {.prag.} = x
+  func hello5(x: int): int {.prag.} = x
+  doAssert hello.hasCustomPragma(prag)
+  doAssert hello2.hasCustomPragma(prag)
+  doAssert hello3.hasCustomPragma(prag)
+  doAssert hello4.hasCustomPragma(prag)
+  doAssert hello5.hasCustomPragma(prag)
+
+# test push doesn't break
+block:
+  template prag {.pragma.}
+  {.push prag.}
+  proc hello = discard
+  iterator hello2: int = discard
+  template hello3(x: int): int = x
+  macro hello4(x: int): int = x
+  func hello5(x: int): int = x
+  type
+    Foo = enum a
+    Bar[T] = ref object of RootObj
+      x: T
+      case y: bool
+      of false: discard
+      else:
+        when true: discard
+  for a in [1]: discard a
+  {.pop.}
+
 # issue #11511
 when false:
   template myAttr {.pragma.}
@@ -400,6 +450,31 @@ when false:
 
   doAssert hasMyAttr(TObj)
 
+
+# bug #11415
+template noserialize() {.pragma.}
+
+type
+  Point[T] = object
+    x, y: T
+
+  ReplayEventKind = enum
+    FoodAppeared, FoodEaten, DirectionChanged
+
+  ReplayEvent = object
+    case kind: ReplayEventKind
+    of FoodEaten, FoodAppeared: # foodPos is in multiple branches
+      foodPos {.noserialize.}: Point[float]
+    of DirectionChanged:
+      playerPos: float
+let ev = ReplayEvent(
+    kind: FoodEaten,
+    foodPos: Point[float](x: 5.0, y: 1.0)
+  )
+
+doAssert ev.foodPos.hasCustomPragma(noserialize)
+
+
 when false:
   # misc
   {.pragma: haha.}
@@ -416,3 +491,43 @@ when false:
 
   # left-to-right priority/override order for getCustomPragmaVal
   assert bb.getCustomPragmaVal(hehe) == (key: "hi", val: "hu", haha: "he")
+
+{.experimental: "dynamicBindSym".}
+
+# const
+block:
+  template myAttr() {.pragma.}
+  template myAttr2(x: int) {.pragma.}
+  template myAttr3(x: string) {.pragma.}
+
+  type
+    MyObj2 = ref object
+
+  const a {.myAttr,myAttr2(2),myAttr3:"test".}: int = 0
+  const b {.myAttr,myAttr2(2),myAttr3:"test".} = 0
+
+  macro forceHasCustomPragma(x: untyped, y: typed): untyped =
+    var x = bindSym(x.repr)
+    for c in x:
+      if c.symKind == nskConst:
+        x = c
+        break
+    result = getAst(hasCustomPragma(x, y))
+
+  macro forceGetCustomPragmaVal(x: untyped, y: typed): untyped =
+    var x = bindSym(x.repr)
+    for c in x:
+      if c.symKind == nskConst:
+        x = c
+        break
+    result = getAst(getCustomPragmaVal(x, y))
+
+  template check(s: untyped) =
+    doAssert forceHasCustomPragma(s, myAttr)
+    doAssert forceHasCustomPragma(s, myAttr2)
+    doAssert forceGetCustomPragmaVal(s, myAttr2) == 2
+    doAssert forceHasCustomPragma(s, myAttr3)
+    doAssert forceGetCustomPragmaVal(s, myAttr3) == "test"
+
+  check(a)
+  check(b)

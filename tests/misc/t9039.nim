@@ -15,7 +15,7 @@ but expression 'nesting + 1' is of type: int
 # line 15
 func default(T: typedesc[array]): T = discard
 doAssert default(array[3, int]) == [0, 0, 0]
-func shapeBad*[T: not char](s: openarray[T], rank: static[int], nesting = 0, parent_shape = default(array[rank, int])): array[rank, int] =
+func shapeBad*[T: not char](s: openArray[T], rank: static[int], nesting = 0, parent_shape = default(array[rank, int])): array[rank, int] =
   result = parent_shape
   result[nesting] = s.len
   when (T is seq|array):

@@ -26,6 +26,12 @@ type
   H1*[T] = ref H2[T]
   H*[T] = H1[T]
 
+  Pity[T] = object
+    a: T
+  PityRef*[T] = ref Pity[T]
+  Hope*[T] = ref object
+    a: T
+
 type BAalias* = typeof(B.default)
   # typeof is not a transparent abstraction, creates a `tyAlias`
 

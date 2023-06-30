@@ -9,6 +9,9 @@
 
 import pathutils
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 template setX(k, field) {.dirty.} =
   a.slots[a.ra].ensureKind(k)
   a.slots[a.ra].field = v
@@ -35,6 +38,13 @@ proc setResult*(a: VmArgs; v: seq[string]) =
   var n = newNode(nkBracket)
   for x in v: n.add newStrNode(nkStrLit, x)
   a.slots[a.ra].node = n
+
+proc setResult*(a: VmArgs; v: (BiggestInt, BiggestInt)) =
+  a.slots[a.ra].ensureKind(rkNode)
+  var tuplen = newNode(nkTupleConstr)
+  tuplen.add newIntNode(nkIntLit, v[0])
+  tuplen.add newIntNode(nkIntLit, v[1]) 
+  a.slots[a.ra].node = tuplen
 
 template getReg(a, i): untyped =
   doAssert i < a.rc-1

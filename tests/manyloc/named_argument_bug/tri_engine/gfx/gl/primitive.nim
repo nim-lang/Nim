@@ -47,7 +47,7 @@ proc newVert*(rect: rect.TRect): seq[TVert] =
 proc newVertAttrib(i: GLuint, size: GLint, stride: GLsizei, offset: GLvoid): TVertAttrib =
   TVertAttrib(i: i, size: size, stride: stride, offset: offset)
 
-proc genBuf*[T](vboTarget, objUsage: GLenum, data: var openarray[T]): GLuint =
+proc genBuf*[T](vboTarget, objUsage: GLenum, data: var openArray[T]): GLuint =
   result = 0.GLuint
   ?glGenBuffers(1, result.addr)
   ?glBindBuffer(vboTarget, result)

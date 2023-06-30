@@ -27,13 +27,17 @@
 ##
 ## TODO: `/dev/poll`, `event ports` and filesystem events.
 
-import os, nativesockets
+import nativesockets
+import std/oserrors
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
 const ioselSupportedPlatform* = defined(macosx) or defined(freebsd) or
                                 defined(netbsd) or defined(openbsd) or
-                                defined(dragonfly) or
+                                defined(dragonfly) or defined(nuttx) or
                                 (defined(linux) and not defined(android) and not defined(emscripten))
   ## This constant is used to determine whether the destination platform is
   ## fully supported by `ioselectors` module.
@@ -243,8 +247,8 @@ else:
     proc allocSharedArray[T](nsize: int): ptr SharedArray[T] =
       result = cast[ptr SharedArray[T]](allocShared0(sizeof(T) * nsize))
 
-    proc reallocSharedArray[T](sa: ptr SharedArray[T], nsize: int): ptr SharedArray[T] =
-      result = cast[ptr SharedArray[T]](reallocShared(sa, sizeof(T) * nsize))
+    proc reallocSharedArray[T](sa: ptr SharedArray[T], oldsize, nsize: int): ptr SharedArray[T] =
+      result = cast[ptr SharedArray[T]](reallocShared0(sa, oldsize * sizeof(T), sizeof(T) * nsize))
 
     proc deallocSharedArray[T](sa: ptr SharedArray[T]) =
       deallocShared(cast[pointer](sa))
@@ -324,11 +328,11 @@ else:
     doAssert(timeout >= -1, "Cannot select with a negative value, got: " & $timeout)
 
   when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
-       defined(zephyr) or defined(freertos):
+       defined(solaris) or defined(zephyr) or defined(freertos) or defined(nuttx) or defined(haiku):
     template maxDescriptors*(): int =
       ## Returns the maximum number of active file descriptors for the current
       ## process. This involves a system call. For now `maxDescriptors` is
-      ## supported on the following OSes: Windows, Linux, OSX, BSD.
+      ## supported on the following OSes: Windows, Linux, OSX, BSD, Solaris.
       when defined(windows):
         16_700_000
       elif defined(zephyr) or defined(freertos):
@@ -356,5 +360,7 @@ else:
     include ioselects/ioselectors_select
   elif defined(zephyr):
     include ioselects/ioselectors_poll
+  elif defined(nuttx):
+    include ioselects/ioselectors_epoll
   else:
     include ioselects/ioselectors_poll

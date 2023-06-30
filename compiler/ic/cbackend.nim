@@ -20,8 +20,11 @@
 
 import std/packedsets, algorithm, tables
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 import ".."/[ast, options, lineinfos, modulegraphs, cgendata, cgen,
-  pathutils, extccomp, msgs]
+  pathutils, extccomp, msgs, modulepaths]
 
 import packed_ast, ic, dce, rodfiles
 
@@ -47,7 +50,10 @@ proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule; alive: var Alive
     let n = unpackTree(g, m.module.position, m.fromDisk.topLevel, p)
     cgen.genTopLevelStmt(bmod, n)
 
-  finalCodegenActions(g, bmod, newNodeI(nkStmtList, m.module.info))
+  let disps = finalCodegenActions(g, bmod, newNodeI(nkStmtList, m.module.info))
+  if disps != nil:
+    for disp in disps:
+      genProcAux(bmod, disp.sym)
   m.fromDisk.backendFlags = cgen.whichInitProcs(bmod)
 
 proc replayTypeInfo(g: ModuleGraph; m: var LoadedModule; origin: FileIndex) =
@@ -61,7 +67,8 @@ proc addFileToLink(config: ConfigRef; m: PSym) =
       if config.backend == backendCpp: ".nim.cpp"
       elif config.backend == backendObjc: ".nim.m"
       else: ".nim.c"
-  let cfile = changeFileExt(completeCfilePath(config, withPackageName(config, filename)), ext)
+  let cfile = changeFileExt(completeCfilePath(config,
+                            mangleModuleName(config, filename).AbsoluteFile), ext)
   let objFile = completeCfilePath(config, toObjFile(config, cfile))
   if fileExists(objFile):
     var cf = Cfile(nimname: m.name.s, cname: cfile,

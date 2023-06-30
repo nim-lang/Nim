@@ -3,6 +3,9 @@
 when not defined(js):
   {.fatal: "Module jsbigints is designed to be used with the JavaScript backend.".}
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type JsBigIntImpl {.importjs: "bigint".} = int # https://github.com/nim-lang/Nim/pull/16606
 type JsBigInt* = distinct JsBigIntImpl         ## Arbitrary precision integer for JavaScript target.
 
@@ -61,10 +64,10 @@ func wrapToUint*(this: JsBigInt; bits: Natural): JsBigInt {.importjs:
   runnableExamples:
     doAssert (big("3") + big("2") ** big("66")).wrapToUint(66) == big("3")
 
-func toNumber*(this: JsBigInt): BiggestInt {.importjs: "Number(#)".} =
+func toNumber*(this: JsBigInt): int {.importjs: "Number(#)".} =
   ## Does not do any bounds check and may or may not return an inexact representation.
   runnableExamples:
-    doAssert toNumber(big"2147483647") == 2147483647.BiggestInt
+    doAssert toNumber(big"2147483647") == 2147483647.int
 
 func `+`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)".} =
   runnableExamples:
@@ -107,7 +110,7 @@ func `==`*(x, y: JsBigInt): bool {.importjs: "(# == #)".} =
     doAssert big"42" == big"42"
 
 func `**`*(x, y: JsBigInt): JsBigInt {.importjs: "((#) $1 #)".} =
-  # (#) needed, refs https://github.com/nim-lang/Nim/pull/16409#issuecomment-760550812
+  # (#) needed due to unary minus
   runnableExamples:
     doAssert big"2" ** big"64" == big"18446744073709551616"
     doAssert big"-2" ** big"3" == big"-8"
@@ -117,8 +120,6 @@ func `**`*(x, y: JsBigInt): JsBigInt {.importjs: "((#) $1 #)".} =
     try: discard big"2" ** big"-1" # raises foreign `RangeError`
     except: ok = true
     doAssert ok
-  # pending https://github.com/nim-lang/Nim/pull/15940, simplify to:
-  # doAssertRaises: discard big"2" ** big"-1" # raises foreign `RangeError`
 
 func `and`*(x, y: JsBigInt): JsBigInt {.importjs: "(# & #)".} =
   runnableExamples:

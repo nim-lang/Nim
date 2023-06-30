@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   output: "all ok"
 """
 
@@ -210,12 +211,12 @@ const
     "::a:b:85:e4d9:252.9.229.056",
   ]
 
-proc ok(pos: openarray[string]) =
+proc ok(pos: openArray[string]) =
   for p in pos:
     if not isIpAddress(p):
       echo "failure ", p
 
-proc notok(neg: openarray[string]) =
+proc notok(neg: openArray[string]) =
   for n in neg:
     if isIpAddress(n):
       echo "failure ", n

@@ -234,7 +234,7 @@ when not defined(windows):
       if fd == -1:
         raiseOsError(osLastError())
       let length = len(data).cint
-      if posix.write(fd, cast[pointer](unsafeAddr data[0]),
+      if posix.write(fd, cast[pointer](addr data[0]),
                      len(data).cint) != length:
         raiseOsError(osLastError())
       if posix.close(fd) == -1:
@@ -288,8 +288,8 @@ when not defined(windows):
         events: set[Event]
 
     proc vnode_test(): bool =
-      proc validate(test: openarray[ReadyKey],
-                    check: openarray[valType]): bool =
+      proc validate(test: openArray[ReadyKey],
+                    check: openArray[valType]): bool =
         result = false
         if len(test) == len(check):
           for checkItem in check:

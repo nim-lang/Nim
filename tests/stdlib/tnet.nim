@@ -1,9 +1,11 @@
 discard """
+matrix: "--mm:refc; --mm:orc"
 outputsub: ""
 """
 
 import net, nativesockets
 import unittest
+import std/assertions
 
 block: # isIpAddress tests
   block: # 127.0.0.1 is valid
@@ -93,7 +95,7 @@ block: # "IpAddress/Sockaddr conversion"
     doAssert($ipaddrstr == $ipaddr_1)
 
     var sockaddr: Sockaddr_storage
-    var socklen: Socklen
+    var socklen: SockLen
     var ipaddr_2: IpAddress
     var port_2: Port
 

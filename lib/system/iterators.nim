@@ -1,4 +1,9 @@
-when defined(nimHasLentIterators) and not defined(nimNoLentIterators):
+## Default iterators for some Nim types.
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+when not defined(nimNoLentIterators):
   template lent2(T): untyped = lent T
 else:
   template lent2(T): untyped = T
@@ -89,6 +94,7 @@ iterator mitems*(a: var cstring): var char {.inline.} =
   runnableExamples:
     from std/sugar import collect
     var a = "abc\0def"
+    prepareMutation(a)
     var b = a.cstring
     let s = collect:
       for bi in mitems(b):

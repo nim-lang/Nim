@@ -19,8 +19,10 @@ import
   hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream,
   wordrecg, lineinfos, pathutils, parseutils
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, formatfloat]
+
 const
-  MaxLineLength* = 80         # lines longer than this lead to a warning
   numChars*: set[char] = {'0'..'9', 'a'..'z', 'A'..'Z'}
   SymChars*: set[char] = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
   SymStartChars*: set[char] = {'a'..'z', 'A'..'Z', '\x80'..'\xFF'}
@@ -90,19 +92,21 @@ type
                               # so that it is the correct default value
     base2, base8, base16
 
-  Token* = object             # a Nim token
-    tokType*: TokType         # the type of the token
-    indent*: int              # the indentation; != -1 if the token has been
-                              # preceded with indentation
-    ident*: PIdent            # the parsed identifier
-    iNumber*: BiggestInt      # the parsed integer literal
-    fNumber*: BiggestFloat    # the parsed floating point literal
-    base*: NumericalBase      # the numerical base; only valid for int
-                              # or float literals
-    strongSpaceA*: int8       # leading spaces of an operator
-    strongSpaceB*: int8       # trailing spaces of an operator
-    literal*: string          # the parsed (string) literal; and
-                              # documentation comments are here too
+  TokenSpacing* = enum
+    tsLeading, tsTrailing, tsEof
+
+  Token* = object                # a Nim token
+    tokType*: TokType            # the type of the token
+    base*: NumericalBase         # the numerical base; only valid for int
+                                 # or float literals
+    spacing*: set[TokenSpacing]  # spaces around token
+    indent*: int                 # the indentation; != -1 if the token has been
+                                 # preceded with indentation
+    ident*: PIdent               # the parsed identifier
+    iNumber*: BiggestInt         # the parsed integer literal
+    fNumber*: BiggestFloat       # the parsed floating point literal
+    literal*: string             # the parsed (string) literal; and
+                                 # documentation comments are here too
     line*, col*: int
     when defined(nimpretty):
       offsetA*, offsetB*: int # used for pretty printing so that literals
@@ -121,6 +125,8 @@ type
     cache*: IdentCache
     when defined(nimsuggest):
       previousToken: TLineInfo
+      tokenEnd*: TLineInfo
+      previousTokenEnd*: TLineInfo
     config*: ConfigRef
 
 proc getLineInfo*(L: Lexer, tok: Token): TLineInfo {.inline.} =
@@ -170,7 +176,7 @@ proc initToken*(L: var Token) =
   L.tokType = tkInvalid
   L.iNumber = 0
   L.indent = 0
-  L.strongSpaceA = 0
+  L.spacing = {}
   L.literal = ""
   L.fNumber = 0.0
   L.base = base10
@@ -183,7 +189,7 @@ proc fillToken(L: var Token) =
   L.tokType = tkInvalid
   L.iNumber = 0
   L.indent = 0
-  L.strongSpaceA = 0
+  L.spacing = {}
   setLen(L.literal, 0)
   L.fNumber = 0.0
   L.base = base10
@@ -502,11 +508,11 @@ proc getNumber(L: var Lexer, result: var Token) =
         of tkUInt16Lit: setNumber result.iNumber, xi and 0xffff
         of tkUInt32Lit: setNumber result.iNumber, xi and 0xffffffff
         of tkFloat32Lit:
-          setNumber result.fNumber, (cast[PFloat32](addr(xi)))[]
+          setNumber result.fNumber, (cast[ptr float32](addr(xi)))[]
           # note: this code is endian neutral!
           # XXX: Test this on big endian machine!
         of tkFloat64Lit, tkFloatLit:
-          setNumber result.fNumber, (cast[PFloat64](addr(xi)))[]
+          setNumber result.fNumber, (cast[ptr float64](addr(xi)))[]
         else: internalError(L.config, getLineInfo(L), "getNumber")
 
         # Bounds checks. Non decimal literals are allowed to overflow the range of
@@ -729,10 +735,6 @@ proc handleCRLF(L: var Lexer, pos: int): int =
   template registerLine =
     let col = L.getColNumber(pos)
 
-    when not defined(nimpretty):
-      if col > MaxLineLength:
-        lexMessagePos(L, hintLineTooLong, pos)
-
   case L.buf[pos]
   of CR:
     registerLine()
@@ -904,7 +906,7 @@ proc getSymbol(L: var Lexer, tok: var Token) =
       inc(pos)
       suspicious = true
     of '\x80'..'\xFF':
-      if c in UnicodeOperatorStartChars and unicodeOperators in L.config.features and unicodeOprLen(L.buf, pos)[0] != 0:
+      if c in UnicodeOperatorStartChars and unicodeOprLen(L.buf, pos)[0] != 0:
         break
       else:
         h = h !& ord(c)
@@ -912,7 +914,7 @@ proc getSymbol(L: var Lexer, tok: var Token) =
     else: break
   tokenEnd(tok, pos-1)
   h = !$h
-  tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
+  tok.ident = L.cache.getIdent(cast[cstring](addr(L.buf[L.bufpos])), pos - L.bufpos, h)
   if (tok.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
       (tok.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
     tok.tokType = tkSymbol
@@ -926,7 +928,7 @@ proc getSymbol(L: var Lexer, tok: var Token) =
 proc endOperator(L: var Lexer, tok: var Token, pos: int,
                  hash: Hash) {.inline.} =
   var h = !$hash
-  tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
+  tok.ident = L.cache.getIdent(cast[cstring](addr(L.buf[L.bufpos])), pos - L.bufpos, h)
   if (tok.ident.id < oprLow) or (tok.ident.id > oprHigh): tok.tokType = tkOpr
   else: tok.tokType = TokType(tok.ident.id - oprLow + ord(tkColon))
   L.bufpos = pos
@@ -940,7 +942,7 @@ proc getOperator(L: var Lexer, tok: var Token) =
     if c in OpChars:
       h = h !& ord(c)
       inc(pos)
-    elif c in UnicodeOperatorStartChars and unicodeOperators in L.config.features:
+    elif c in UnicodeOperatorStartChars:
       let oprLen = unicodeOprLen(L.buf, pos)[0]
       if oprLen == 0: break
       for i in 0..<oprLen:
@@ -952,12 +954,15 @@ proc getOperator(L: var Lexer, tok: var Token) =
   tokenEnd(tok, pos-1)
   # advance pos but don't store it in L.bufpos so the next token (which might
   # be an operator too) gets the preceding spaces:
-  tok.strongSpaceB = 0
+  tok.spacing = tok.spacing - {tsTrailing, tsEof}
+  var trailing = false
   while L.buf[pos] == ' ':
     inc pos
-    inc tok.strongSpaceB
+    trailing = true
   if L.buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
-    tok.strongSpaceB = -1
+    tok.spacing.incl(tsEof)
+  elif trailing:
+    tok.spacing.incl(tsTrailing)
 
 proc getPrecedence*(tok: Token): int =
   ## Calculates the precedence of the given token.
@@ -970,7 +975,7 @@ proc getPrecedence*(tok: Token): int =
 
     # arrow like?
     if tok.ident.s.len > 1 and tok.ident.s[^1] == '>' and
-      tok.ident.s[^2] in {'-', '~', '='}: return 1
+      tok.ident.s[^2] in {'-', '~', '='}: return 0
 
     template considerAsgn(value: untyped) =
       result = if tok.ident.s[^1] == '=': 1 else: value
@@ -1068,7 +1073,6 @@ proc skipMultiLineComment(L: var Lexer; tok: var Token; start: int;
       when defined(nimpretty): tok.literal.add "\L"
       if isDoc:
         when not defined(nimpretty): tok.literal.add "\n"
-        inc tok.iNumber
         var c = toStrip
         while L.buf[pos] == ' ' and c > 0:
           inc pos
@@ -1087,8 +1091,6 @@ proc skipMultiLineComment(L: var Lexer; tok: var Token; start: int;
 proc scanComment(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
   tok.tokType = tkComment
-  # iNumber contains the number of '\n' in the token
-  tok.iNumber = 0
   assert L.buf[pos+1] == '#'
   when defined(nimpretty):
     tok.commentOffsetA = L.offsetBase + pos
@@ -1131,7 +1133,6 @@ proc scanComment(L: var Lexer, tok: var Token) =
         while L.buf[pos] == ' ' and c > 0:
           inc pos
           dec c
-        inc tok.iNumber
     else:
       if L.buf[pos] > ' ':
         L.indentAhead = indent
@@ -1144,7 +1145,7 @@ proc scanComment(L: var Lexer, tok: var Token) =
 proc skip(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
   tokenBegin(tok, pos)
-  tok.strongSpaceA = 0
+  tok.spacing.excl(tsLeading)
   when defined(nimpretty):
     var hasComment = false
     var commentIndent = L.currLineIndent
@@ -1155,7 +1156,7 @@ proc skip(L: var Lexer, tok: var Token) =
     case L.buf[pos]
     of ' ':
       inc(pos)
-      inc(tok.strongSpaceA)
+      tok.spacing.incl(tsLeading)
     of '\t':
       if not L.allowTabs: lexMessagePos(L, errGenerated, pos, "tabs are not allowed, use spaces instead")
       inc(pos)
@@ -1177,7 +1178,7 @@ proc skip(L: var Lexer, tok: var Token) =
           pos = L.bufpos
         else:
           break
-      tok.strongSpaceA = 0
+      tok.spacing.excl(tsLeading)
       when defined(nimpretty):
         if L.buf[pos] == '#' and tok.line < 0: commentIndent = indent
       if L.buf[pos] > ' ' and (L.buf[pos] != '#' or L.buf[pos+1] == '#'):
@@ -1216,6 +1217,10 @@ proc skip(L: var Lexer, tok: var Token) =
 proc rawGetTok*(L: var Lexer, tok: var Token) =
   template atTokenEnd() {.dirty.} =
     when defined(nimsuggest):
+      L.previousTokenEnd.line = L.tokenEnd.line
+      L.previousTokenEnd.col = L.tokenEnd.col
+      L.tokenEnd.line = tok.line.uint16
+      L.tokenEnd.col = getColNumber(L, L.bufpos).int16
       # we attach the cursor to the last *strong* token
       if tok.tokType notin weakTokens:
         L.previousToken.line = tok.line.uint16
@@ -1241,7 +1246,7 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
   else:
     case c
     of UnicodeOperatorStartChars:
-      if unicodeOperators in L.config.features and unicodeOprLen(L.buf, L.bufpos)[0] != 0:
+      if unicodeOprLen(L.buf, L.bufpos)[0] != 0:
         getOperator(L, tok)
       else:
         getSymbol(L, tok)
@@ -1352,7 +1357,7 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
       getNumber(L, tok)
       let c = L.buf[L.bufpos]
       if c in SymChars+{'_'}:
-        if c in UnicodeOperatorStartChars and unicodeOperators in L.config.features and
+        if c in UnicodeOperatorStartChars and
             unicodeOprLen(L.buf, L.bufpos)[0] != 0:
           discard
         else:
@@ -1367,7 +1372,7 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
         getNumber(L, tok)
         let c = L.buf[L.bufpos]
         if c in SymChars+{'_'}:
-          if c in UnicodeOperatorStartChars and unicodeOperators in L.config.features and
+          if c in UnicodeOperatorStartChars and
               unicodeOprLen(L.buf, L.bufpos)[0] != 0:
             discard
           else:

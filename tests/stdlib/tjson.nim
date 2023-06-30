@@ -1,5 +1,5 @@
 discard """
-  targets: "c cpp js"
+  matrix: "--mm:refc; --backend:cpp --mm:refc; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
 """
 
 
@@ -8,11 +8,13 @@ Note: Macro tests are in tests/stdlib/tjsonmacro.nim
 ]#
 
 import std/[json,parsejson,strutils]
+import std/private/jsutils
 from std/math import isNaN
 when not defined(js):
   import std/streams
 import stdtest/testutils
 from std/fenv import epsilon
+import std/[assertions, objectdollar]
 
 proc testRoundtrip[T](t: T, expected: string) =
   # checks that `T => json => T2 => json2` is such that json2 = json
@@ -49,7 +51,7 @@ for i in 0 .. 10000:
   except:
     discard
 # memory diff should less than 4M
-doAssert(abs(getOccupiedMem() - startMemory) < 4 * 1024 * 1024)
+doAssert(abs(getOccupiedMem() - startMemory) < 4 * 1024 * 1024) # todo fixme doesn;t work for ORC
 
 
 # test `$`
@@ -312,7 +314,8 @@ block: # bug #17383
   else:
     testRoundtrip(int.high): "9223372036854775807"
     testRoundtrip(uint.high): "18446744073709551615"
-  when not defined(js):
+  whenJsNoBigInt64: discard
+  do:
     testRoundtrip(int64.high): "9223372036854775807"
     testRoundtrip(uint64.high): "18446744073709551615"
 
@@ -345,3 +348,35 @@ block:
     doAssert c == "18446744073709552000"
   else:
     doAssert c == "18446744073709551615"
+
+block:
+  let a = """
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+    [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+"""
+
+  when not defined(js):
+    try:
+      discard parseJson(a)
+    except JsonParsingError:
+      doAssert getCurrentExceptionMsg().contains("] expected")

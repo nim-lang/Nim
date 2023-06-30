@@ -67,6 +67,9 @@
 
 import lexbase, streams
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 type
   CsvRow* = seq[string] ## A row in a CSV file.
   CsvParser* = object of BaseLexer ## The parser object.

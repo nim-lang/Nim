@@ -7,12 +7,17 @@
 #    distribution, for details about the copyright.
 #
 
-import hashes, tables, intsets, std/sha1
+import hashes, tables, intsets
 import packed_ast, bitabs, rodfiles
 import ".." / [ast, idents, lineinfos, msgs, ropes, options,
-  pathutils, condsyms]
+  pathutils, condsyms, packages, modulepaths]
 #import ".." / [renderer, astalgo]
 from os import removeFile, isAbsolute
+
+import ../../dist/checksums/src/checksums/sha1
+
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions, formatfloat]
 
 type
   PackedConfig* = object
@@ -40,11 +45,10 @@ type
     reexports*: seq[(LitId, PackedItemId)]
     compilerProcs*: seq[(LitId, int32)]
     converters*, methods*, trmacros*, pureEnums*: seq[int32]
-    macroUsages*: seq[(PackedItemId, PackedLineInfo)]
 
     typeInstCache*: seq[(PackedItemId, PackedItemId)]
     procInstCache*: seq[PackedInstantiation]
-    attachedOps*: seq[(TTypeAttachedOp, PackedItemId, PackedItemId)]
+    attachedOps*: seq[(PackedItemId, TTypeAttachedOp, PackedItemId)]
     methodsPerType*: seq[(PackedItemId, int, PackedItemId)]
     enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
 
@@ -352,7 +356,7 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
 
     var p = PackedType(kind: t.kind, flags: t.flags, callConv: t.callConv,
       size: t.size, align: t.align, nonUniqueId: t.itemId.item,
-      paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel)
+      paddingAtEnd: t.paddingAtEnd)
     storeNode(p, t, n)
     p.typeInst = t.typeInst.storeType(c, m)
     for kid in items t.sons:
@@ -370,7 +374,7 @@ proc toPackedLib(l: PLib; c: var PackedEncoder; m: var PackedModule): PackedLib 
   if l.isNil: return
   result.kind = l.kind
   result.generated = l.generated
-  result.isOverriden = l.isOverriden
+  result.isOverridden = l.isOverridden
   result.name = toLitId($l.name, m)
   storeNode(result, l, path)
 
@@ -388,7 +392,7 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
     assert sfForward notin s.flags
 
     var p = PackedSym(kind: s.kind, flags: s.flags, info: s.info.toPackedInfo(c, m), magic: s.magic,
-      position: s.position, offset: s.offset, options: s.options,
+      position: s.position, offset: s.offset, disamb: s.disamb, options: s.options,
       name: s.name.s.toLitId(m))
 
     storeNode(p, s, ast)
@@ -400,7 +404,7 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
       p.bitsize = s.bitsize
       p.alignment = s.alignment
 
-    p.externalName = toLitId(if s.loc.r.isNil: "" else: $s.loc.r, m)
+    p.externalName = toLitId(s.loc.r, m)
     p.locFlags = s.loc.flags
     c.addMissing s.typ
     p.typ = s.typ.storeType(c, m)
@@ -526,6 +530,15 @@ proc toPackedGeneratedProcDef*(s: PSym, encoder: var PackedEncoder; m: var Packe
   toPackedProcDef(s.ast, m.topLevel, encoder, m)
   #flush encoder, m
 
+proc storeAttachedProcDef*(t: PType; op: TTypeAttachedOp; s: PSym,
+                           encoder: var PackedEncoder; m: var PackedModule) =
+  assert s.kind in routineKinds
+  assert isActive(encoder)
+  let tid = storeTypeLater(t, encoder, m)
+  let sid = storeSymLater(s, encoder, m)
+  m.attachedOps.add (tid, op, sid)
+  toPackedGeneratedProcDef(s, encoder, m)
+
 proc storeInstantiation*(c: var PackedEncoder; m: var PackedModule; s: PSym; i: PInstantiation) =
   var t = newSeq[PackedItemId](i.concreteTypes.len)
   for j in 0..high(i.concreteTypes):
@@ -547,6 +560,10 @@ proc loadError(err: RodFileError; filename: AbsoluteFile; config: ConfigRef;) =
   else:
     rawMessage(config, warnCannotOpenFile, filename.string & " reason: " & $err)
     #echo "Error: ", $err, " loading file: ", filename.string
+
+proc toRodFile*(conf: ConfigRef; f: AbsoluteFile; ext = RodExt): AbsoluteFile =
+  result = changeFileExt(completeGeneratedFilePath(conf,
+    mangleModuleName(conf, f).AbsoluteFile), ext)
 
 proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef;
                   ignoreConfig = false): RodFileError =
@@ -590,7 +607,6 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection convertersSection, m.converters
   loadSeqSection methodsSection, m.methods
   loadSeqSection pureEnumsSection, m.pureEnums
-  loadSeqSection macroUsagesSection, m.macroUsages
 
   loadSeqSection toReplaySection, m.toReplay.nodes
   loadSeqSection topLevelSection, m.topLevel.nodes
@@ -654,7 +670,6 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection convertersSection, m.converters
   storeSeqSection methodsSection, m.methods
   storeSeqSection pureEnumsSection, m.pureEnums
-  storeSeqSection macroUsagesSection, m.macroUsages
 
   storeSeqSection toReplaySection, m.toReplay.nodes
   storeSeqSection topLevelSection, m.topLevel.nodes
@@ -817,6 +832,7 @@ proc symHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
     options: s.options,
     position: if s.kind in {skForVar, skVar, skLet, skTemp}: 0 else: s.position,
     offset: if s.kind in routineKinds: defaultOffset else: s.offset,
+    disamb: s.disamb,
     name: getIdent(c.cache, g[si].fromDisk.strings[s.name])
   )
 
@@ -834,7 +850,7 @@ proc loadLib(c: var PackedDecoder; g: var PackedModuleGraph;
   if l.name.int == 0:
     result = nil
   else:
-    result = PLib(generated: l.generated, isOverriden: l.isOverriden,
+    result = PLib(generated: l.generated, isOverridden: l.isOverridden,
                   kind: l.kind, name: rope g[si].fromDisk.strings[l.name])
     loadAstBody(l, path)
 
@@ -887,7 +903,7 @@ proc typeHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
                           t: PackedType; si, item: int32): PType =
   result = PType(itemId: ItemId(module: si, item: t.nonUniqueId), kind: t.kind,
                 flags: t.flags, size: t.size, align: t.align,
-                paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel,
+                paddingAtEnd: t.paddingAtEnd,
                 uniqueId: ItemId(module: si, item: item),
                 callConv: t.callConv)
 
@@ -927,17 +943,6 @@ proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; t
       result = g[si].types[t.item]
     assert result.itemId.item > 0
 
-proc newPackage(config: ConfigRef; cache: IdentCache; fileIdx: FileIndex): PSym =
-  let filename = AbsoluteFile toFullPath(config, fileIdx)
-  let name = getIdent(cache, splitFile(filename).name)
-  let info = newLineInfo(fileIdx, 1, 1)
-  let
-    pck = getPackageName(config, filename.string)
-    pck2 = if pck.len > 0: pck else: "unknown"
-    pack = getIdent(cache, pck2)
-  result = newSym(skPackage, getIdent(cache, pck2),
-    ItemId(module: PackageModuleId, item: int32(fileIdx)), nil, info)
-
 proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                        fileIdx: FileIndex; m: var LoadedModule) =
   m.iface = initTable[PIdent, seq[PackedItemId]]()
@@ -965,7 +970,7 @@ proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCa
                   name: getIdent(cache, splitFile(filename).name),
                   info: newLineInfo(fileIdx, 1, 1),
                   position: int(fileIdx))
-  m.module.owner = newPackage(conf, cache, fileIdx)
+  m.module.owner = getPackage(conf, cache, fileIdx)
   m.module.flags = m.fromDisk.moduleFlags
 
 proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
