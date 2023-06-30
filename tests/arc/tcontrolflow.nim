@@ -76,7 +76,7 @@ var c = Control(x: 7)
 
 run(c)
 
-proc sysFatal(exceptn: typedesc, message: string) {.inline, noreturn.} =
+proc sysFatal(exceptn: typedesc, message: string) {.inline.} =
   var buf = newStringOfCap(200)
   add(buf, "##")
   add(buf, message)
