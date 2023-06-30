@@ -102,8 +102,10 @@ block overload_precedence:
     true
 
   # 3 competing procs
-  proc a[T](x: ParameterizedType[T]) =
-    echo "x as ParameterizedType[T]"
+  
+  # issue #22142 makes this ambiguous
+  #proc a[T](x: ParameterizedType[T]) =
+  #  echo "x as ParameterizedType[T]"
 
   proc a(x: ParameterizedType) =
     echo "x as ParameterizedType"

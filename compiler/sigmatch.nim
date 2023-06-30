@@ -1004,7 +1004,7 @@ proc getObjectTypeOrNil(f: PType): PType =
     else:
       result = getObjectTypeOrNil(f[0])
   of tyGenericBody, tyGenericInst:
-    result = f.lastSon
+    result = getObjectTypeOrNil(f.lastSon)
   of tyUserTypeClass:
     if tfResolved in f.flags:
       result = f.base  # ?? idk if this is right
