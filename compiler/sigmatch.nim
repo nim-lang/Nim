@@ -2221,7 +2221,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isNone:
     # do not do this in ``typeRel`` as it then can't infer T in ``ref T``:
-    if a.kind in {tyProxy, tyUnknown}:
+    if false and a.kind in {tyProxy, tyUnknown}:
       if a.kind == tyUnknown and c.inGenericContext > 0:
         # don't bother with fauxMatch mechanism in generic type,
         # reject match, typechecking will be delayed to instantiation
