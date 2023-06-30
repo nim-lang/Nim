@@ -165,11 +165,11 @@ language, with the focus on Markdown development.
 
 ## C++ interop enhancements
 
-Nim 2.0 takes C++ interop to the next level. With the new virtual (link) pragma and the extended constructor pragma (link)
+Nim 2.0 takes C++ interop to the next level. With the new [virtual](https://nim-lang.github.io/Nim/manual_experimental.html#virtual-pragma) pragma and the extended [constructor](https://nim-lang.github.io/Nim/manual_experimental.html#constructor-pragma) pragma
 Now one can define constructors and virtual that maps to C++ constructors and virtual methods. Allowing one to further customize
-the interoperability. There is also extended support for the codeGenDecl (link) pragma, so it works on types.
+the interoperability. There is also extended support for the [codeGenDecl](https://nim-lang.org/docs/manual.html#implementation-specific-pragmas-codegendecl-pragma) pragma, so it works on types.
 
-It's a common partern in C++ to use inheritance to extend a library. Some even use multiple inheritance as a mechanism to make interfaces.
+It's a common pattern in C++ to use inheritance to extend a library. Some even use multiple inheritance as a mechanism to make interfaces.
 
 Consider the following example:
 
