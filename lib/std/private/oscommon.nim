@@ -7,7 +7,9 @@ when defined(nimPreviewSlimSystem):
 
 ## .. importdoc:: osdirs.nim, os.nim
 
-const weirdTarget* = defined(nimscript) or defined(js)
+const
+  weirdTarget* = defined(nimscript) or defined(js)
+  supportedOS = weirdTarget or defined(windows) or defined(posix)
 
 
 type
@@ -28,7 +30,7 @@ elif defined(posix):
   proc c_rename(oldname, newname: cstring): cint {.
     importc: "rename", header: "<stdio.h>".}
 else:
-  {.error: "OS module not ported to your operating system!".}
+  {.warning: "OS module not ported to your operating system!".}
 
 
 when weirdTarget:
@@ -45,6 +47,10 @@ elif defined(js):
 else:
   {.pragma: noNimJs.}
 
+when supportedOS:
+  {.pragma: noCTImpl.}
+else:
+  {.pragma: noCTImpl, error: "this proc is not available on your operating system".}
 
 when defined(windows) and not weirdTarget:
   template wrapUnary*(varname, winApiProc, arg: untyped) =
@@ -91,7 +97,7 @@ when defined(posix) and not weirdTarget:
       elif not S_ISREG(s.st_mode):
         result = (pcLinkToFile, true)
 
-proc tryMoveFSObject*(source, dest: string, isDir: bool): bool {.noWeirdTarget.} =
+proc tryMoveFSObject*(source, dest: string, isDir: bool): bool {.noWeirdTarget, noCTImpl.} =
   ## Moves a file (or directory if `isDir` is true) from `source` to `dest`.
   ##
   ## Returns false in case of `EXDEV` error or `AccessDeniedError` on Windows (if `isDir` is true).
@@ -131,7 +137,7 @@ proc fileExists*(filename: string): bool {.rtl, extern: "nos$1",
     wrapUnary(a, getFileAttributesW, filename)
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_DIRECTORY) == 0'i32
-  else:
+  elif defined(posix):
     var res: Stat
     return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
 
@@ -148,14 +154,14 @@ proc dirExists*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect]
     wrapUnary(a, getFileAttributesW, dir)
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_DIRECTORY) != 0'i32
-  else:
+  elif defined(posix):
     var res: Stat
     result = stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
 
 
 proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
                                           tags: [ReadDirEffect],
-                                          noWeirdTarget, sideEffect.} =
+                                          noWeirdTarget, sideEffect, noCTImpl.} =
   ## Returns true if the symlink `link` exists. Will return true
   ## regardless of whether the link points to a directory or file.
   ##
