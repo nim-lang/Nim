@@ -303,6 +303,9 @@
 
   This is necessary to pass when building Nim on kernel versions < 3.17 in particular to avoid an error of "SYS_getrandom undeclared" during the build process for the stdlib (sysrand in particular).
 
+- `osproc.execProcess` now raises `OSError`, which comes from inner usage of `orproc.startProcess` or 
+  when invoked process exited with non-zero exit code. -- issue[#21568](https://github.com/nim-lang/Nim/issues/21568)
+
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
   - Added `IsoWeekRange`, a range type for weeks in a week-based year.
