@@ -1010,7 +1010,7 @@ proc getObjectTypeOrNil(f: PType): PType =
       result = f.base  # ?? idk if this is right
     else:
       result = f.lastSon
-  of tyStatic, tyVar, tyLent, tySink:
+  of tyStatic, tyOwned, tyVar, tyLent, tySink:
     result = getObjectTypeOrNil(f.base)
   of tyInferred:
     # This is not true "After a candidate type is selected"
@@ -1393,7 +1393,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             result = isNone
 
   of tyPtr, tyRef:
-    skipOwned(a)
+    #skipOwned(a)
     let effectiveArgType = getObjectTypeOrNil(a)
     if effectiveArgType == nil: return isNone
     if effectiveArgType.kind == f.kind:
@@ -1815,12 +1815,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           a.sym.transitionGenericParamToType()
           a.flags.excl tfWildcard
         else:
-          var effectiveArg = a.skipTypesOrNil({tyGenericParam, tyGenericInvocation})
-          if effectiveArg == nil:
-            return isGeneric
-          concrete = concreteType(c, effectiveArg, f)
+          concrete = concreteType(c, a, f)
           if concrete == nil:
-            return isNone
+            concrete = a
         if doBindGP:
           put(c, f, concrete)
       elif result > isGeneric:

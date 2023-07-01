@@ -5510,14 +5510,6 @@ The following example shows how a generic binary tree can be modeled:
 The `T` is called a `generic type parameter`:idx: or
 a `type variable`:idx:.
 
-**Note**:
-Using generic syntax to specify a proc where the `type variables` are defined as concrete types
-is not a supported behavior as it is nonsensical. For example:
-```nim
-proc p[T:int](param: T)
-```
-This proc should not be defined as generic because `T` is concrete.
-
 
 Is operator
 -----------
