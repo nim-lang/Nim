@@ -44,10 +44,11 @@ static:
   doAssert checkOwner(poo, 2) == "nskProc"
   doAssert checkOwner(poo, 3) == "nskModule"
   doAssert isSameOwner(foo, poo)
-  # These procs are not properly controlled for a test:
-  #doAssert isSameOwner(foo, echo) == false
-  #doAssert isSameOwner(poo, len) == false
-
+  proc wrappedScope() =
+    proc dummyproc() = discard
+    doAssert isSameOwner(foo, dummyproc) == false
+    doAssert isSameOwner(poo, dummyproc) == false
+  wrappedScope()
 #---------------------------------------------------------------
 
 macro check_gen_proc(ex: typed): (bool, bool) =
