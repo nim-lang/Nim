@@ -364,6 +364,8 @@
 
 - Removed deprecated `posix.CLONE_STOPPED`.
 
+- `osproc.execProcess` now raises `OSError`, which comes from inner usage of `orproc.startProcess` or 
+  when invoked process exited with non-zero exit code. -- issue[#21568](https://github.com/nim-lang/Nim/issues/21568)
 
 ## Language changes
 

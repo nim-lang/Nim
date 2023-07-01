@@ -516,19 +516,36 @@ when not defined(useNimRtl):
           poEvalCommand}):
     string =
 
-    var p = startProcess(command, workingDir = workingDir, args = args,
-        env = env, options = options)
-    var outp = outputStream(p)
-    result = ""
-    var line = newStringOfCap(120)
-    # consider `p.lines(keepNewLines=true)` to circumvent `running` busy-wait
-    while true:
-      # FIXME: converts CR-LF to LF.
-      if outp.readLine(line):
-        result.add(line)
-        result.add("\n")
-      elif not running(p): break
-    close(p)
+    proc convertCRLF(s: var string): string {.inline.} =
+      s.replace("\r\n", "\n")
+
+    var 
+      p: Process
+      outp: Stream
+    try:
+      p = startProcess(command, workingDir = workingDir, args = args,
+          env = env, options = options)
+      outp = outputStream(p) # This stream will be closed when `p` is closed.
+      result = ""
+      var line = newStringOfCap(120)
+      # consider `p.lines(keepNewLines=true)` to circumvent `running` busy-wait
+      while true:
+        if outp.readLine(line):
+          result.add(convertCRLF(line))
+          result.add("\n")
+        elif not running(p): break
+      # Check exit code issue[#21568](https://github.com/nim-lang/Nim/issues/21568)
+      let
+        exitCode = p.exitStatus # As process has exited, using exitStatus is just fine.
+        pid = p.processID
+      if exitCode != 0: raise (
+        newException(OSError, "process " & $pid & " exit with error code: " & $exitCode)
+      )
+    except OSError as e:
+      raise e
+    finally:
+      # `p` will never be nil due to proc `startProcess`.
+      close(p)
 
 template streamAccess(p) =
   assert poParentStreams notin p.options, "API usage error: stream access not allowed when you use poParentStreams"
