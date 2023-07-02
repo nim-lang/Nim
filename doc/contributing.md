@@ -137,9 +137,9 @@ You can run the tests with
 which will run a good subset of tests. Some tests may fail. If you
 only want to see the output of failing tests, go for
 
-```cmd
+  ```cmd
   ./koch tests --failing all
-```
+  ```
 
 You can also run only a single category of tests. A category is a subdirectory
 in the ``tests/`` directory. There are a couple of special categories; for a
