@@ -238,7 +238,7 @@ proc sumGeneric(t: PType): int =
       inc isvar
     of tyTypeDesc:
       t = t.lastSon
-      if t.kind == tyEmpty: break
+      if t.kind in {tyEmpty, tyNone}: break
       inc result
     of tyGenericInvocation, tyTuple, tyProc, tyAnd:
       result += ord(t.kind in {tyGenericInvocation, tyAnd})

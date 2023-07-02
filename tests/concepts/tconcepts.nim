@@ -102,7 +102,6 @@ block overload_precedence:
     true
 
   # 3 competing procs
-  
   proc a[T](x: ParameterizedType[T]) =
     echo "x as ParameterizedType[T]"
 
@@ -118,7 +117,7 @@ block overload_precedence:
 
   proc b(x: CustomTypeClass) =
     echo "x as CustomTypeClass"
-  
+
   proc b[T](x: ParameterizedType[T]) =
     echo "x as ParameterizedType[T]"
 
@@ -128,7 +127,7 @@ block overload_precedence:
 
   proc c(x: ParameterizedType) =
     echo "x as ParameterizedType"
-  
+
   proc c[T](x: ParameterizedType[T]) =
     echo "x as ParameterizedType[T]"
 
