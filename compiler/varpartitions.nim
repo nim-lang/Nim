@@ -824,6 +824,10 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
       if vid >= 0:
         if n[1].kind == nkSym and (c.s[vid].reassignedTo == 0 or c.s[vid].reassignedTo == n[1].sym.id):
           c.s[vid].reassignedTo = n[1].sym.id
+          if c.inConditional > 0 and c.inLoop > 0:
+            # bug #22200: live ranges with loops and conditionals are too
+            # complex for our current analysis, so we prevent the cursorfication.
+            c.s[vid].flags.incl isConditionallyReassigned
         else:
           markAsReassigned(c, vid)
 
