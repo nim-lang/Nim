@@ -462,6 +462,44 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
       else: result = isIntConv
     else: result = isNone
 
+proc getObjectTypeOrNil(f: PType): PType =
+  #[
+    Returns a type that is f's effective typeclass. This is usually just one level deeper
+    in the hierarchy of generality for a type. `object`, `ref object`, `enum` and user defined
+    tyObjects are common return values.
+    this proc exists because skipTypes can gut out important information sometimes
+  ]#
+  if f == nil: return nil
+  case f.kind:
+  of tyGenericParam:
+    if f.len <= 0 or f.lastSon == nil:
+      result = nil
+    else:
+      result = getObjectTypeOrNil(f.lastSon)
+  of tyGenericInvocation, tyCompositeTypeClass, tyAlias:
+    if f.len <= 0 or f[0] == nil:
+      result = nil
+    else:
+      result = getObjectTypeOrNil(f[0])
+  of tyGenericBody, tyGenericInst:
+    result = getObjectTypeOrNil(f.lastSon)
+  of tyUserTypeClass:
+    if tfResolved in f.flags:
+      result = f.base  # ?? idk if this is right
+    else:
+      result = f.lastSon
+  of tyStatic, tyOwned, tyVar, tyLent, tySink:
+    result = getObjectTypeOrNil(f.base)
+  of tyInferred:
+    # This is not true "After a candidate type is selected"
+    result = getObjectTypeOrNil(f.base)
+  of tyTyped, tyUntyped, tyFromExpr:
+    result = nil
+  of tyRange:
+    result = f.lastSon
+  else:
+    result = f
+
 proc genericParamPut(c: var TCandidate; last, fGenericOrigin: PType) =
   if fGenericOrigin != nil and last.kind == tyGenericInst and
      last.len-1 == fGenericOrigin.len:
@@ -480,7 +518,7 @@ proc isObjectSubtype(c: var TCandidate; a, f, fGenericOrigin: PType): int =
     t = t[0]
     if t == nil: break
     last = t
-    t = skipTypes(t, skipPtrs)
+    t = skipTypes(t, skipPtrs).getObjectTypeOrNil()
     inc depth
   if t != nil:
     genericParamPut(c, last, fGenericOrigin)
@@ -985,43 +1023,6 @@ when false:
 template skipOwned(a) =
   if a.kind == tyOwned: a = a.skipTypes({tyOwned, tyGenericInst})
 
-proc getObjectTypeOrNil(f: PType): PType =
-  #[
-    Returns a type that is f's effective typeclass. This is usually just one level deeper
-    in the hierarchy of generality for a type. `object`, `ref object`, `enum` and user defined
-    tyObjects are common return values.
-    this proc exists because skipTypes can gut out important information sometimes
-  ]#
-  case f.kind:
-  of tyGenericParam:
-    if f.len <= 0 or f.lastSon == nil:
-      result = nil
-    else:
-      result = getObjectTypeOrNil(f.lastSon)
-  of tyGenericInvocation, tyCompositeTypeClass, tyAlias:
-    if f.len <= 0 or f[0] == nil:
-      result = nil
-    else:
-      result = getObjectTypeOrNil(f[0])
-  of tyGenericBody, tyGenericInst:
-    result = getObjectTypeOrNil(f.lastSon)
-  of tyUserTypeClass:
-    if tfResolved in f.flags:
-      result = f.base  # ?? idk if this is right
-    else:
-      result = f.lastSon
-  of tyStatic, tyOwned, tyVar, tyLent, tySink:
-    result = getObjectTypeOrNil(f.base)
-  of tyInferred:
-    # This is not true "After a candidate type is selected"
-    result = getObjectTypeOrNil(f.base)
-  of tyTyped, tyUntyped, tyFromExpr:
-    result = nil
-  of tyRange:
-    result = f.lastSon
-  else:
-    result = f
-
 proc typeRel(c: var TCandidate, f, aOrig: PType,
              flags: TTypeRelFlags = {}): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
@@ -1374,7 +1375,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if effectiveArgType == nil: return isNone
     if effectiveArgType.kind == tyObject:
       if sameObjectTypes(f, effectiveArgType):
-        result = if sameObjectTypes(a, effectiveArgType): isEqual else: isGeneric
+        if a.kind == tyObject and sameObjectTypes(a, effectiveArgType):
+          result = isEqual
+        else:
+          result = isGeneric
         # elif tfHasMeta in f.flags: result = recordRel(c, f, a)
       elif trIsOutParam notin flags:
         var depth = isObjectSubtype(c, effectiveArgType, f, nil)
