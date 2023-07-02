@@ -69,3 +69,30 @@ block error_hook:
 
   doAssertRaises(VMQuit):
     i.evalScript()
+
+block resetmacrocache:
+  let std = findNimStdLibCompileTime()
+  let intr = createInterpreter("script.nim", [std, std / "pure", std / "core"])
+  proc evalString(intr: Interpreter; code: string) =
+    let stream = llStreamOpen(code)
+    intr.evalScript(stream)
+    llStreamClose(stream)
+  let code = """
+import std/[macrocache, macros]
+static:
+  let counter = CacheCounter"valTest"
+  inc counter
+  assert counter.value == 1
+
+  const mySeq = CacheSeq"addTest"
+  mySeq.add(newLit(5))
+  mySeq.add(newLit("hello ic"))
+  assert mySeq.len == 2
+
+  const mcTable = CacheTable"subTest"
+  mcTable["toAdd"] = newStmtList() #would crash if not empty
+  assert mcTable.len == 1
+"""
+  intr.evalString(code)
+  intr.evalString(code)
+  destroyInterpreter(intr)
