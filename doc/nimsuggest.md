@@ -49,7 +49,7 @@ via sockets is more reasonable so that is the default. It listens to port 6000
 by default.
 
 Nimsuggest is basically a frontend for the nim compiler so `--path`:option: flags and
-[config files](https://nim-lang.org/docs/nimc.html#compiler-usage-configuration-files)
+[config files](nimc.html#compiler-usage-configuration-files)
 can be used to specify additional dependencies like 
 `nimsuggest --stdin --debug --path:"dependencies" myproject.nim`:cmd:.
 
