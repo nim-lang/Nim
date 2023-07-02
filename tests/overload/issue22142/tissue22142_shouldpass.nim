@@ -18,6 +18,10 @@ block:
   proc p[T:A[object]](param:T):bool = false
   proc p[T](param: A[T]):bool= true
   doAssert p(A[C]()) == false
+block:
+  proc test[H;T: A[H]](param: T): bool = false
+  proc test(param: A): bool = true
+  doAssert test(A[C]()) == false
 
 # change (previously ambiguous)
 block:

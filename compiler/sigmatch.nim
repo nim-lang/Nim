@@ -219,10 +219,12 @@ proc sumGeneric(t: PType): int =
   while true:
     case t.kind
     of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyUncheckedArray,
-        tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyGenericBody,
+        tyOpenArray, tyVarargs, tySet, tyRange, tySequence,
         tyLent, tyOwned:
       t = t.lastSon
       inc result
+    of tyGenericBody:
+      t = t.lastSon
     of tyOr:
       var maxBranch = 0
       for branch in t.sons:
@@ -239,7 +241,7 @@ proc sumGeneric(t: PType): int =
       if t.kind == tyEmpty: break
       inc result
     of tyGenericInvocation, tyTuple, tyProc, tyAnd:
-      result += ord(t.kind in {tyAnd})
+      result += ord(t.kind in {tyGenericInvocation, tyAnd})
       for i in 0..<t.len:
         if t[i] != nil:
           result += sumGeneric(t[i])
@@ -254,10 +256,8 @@ proc sumGeneric(t: PType): int =
     of tyAlias, tySink: t = t.lastSon
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
-        tyUInt..tyUInt64, tyCompositeTypeClass:
-      return isvar + 1  # the +1 is to differentiate object from specifics
-    of tyBuiltInTypeClass:  # e.g. `object` must be more specific then bare `T`
-      return result + 1
+        tyUInt..tyUInt64, tyCompositeTypeClass, tyBuiltInTypeClass:
+      return isvar + 1
     of tyTyped, tyUntyped:
       return 0
     else:
@@ -1368,6 +1368,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyTuple:
     if a.kind == tyTuple: result = recordRel(c, f, a)
   of tyObject:
+    if a.kind == tyAlias:
+      return isNone
     let effectiveArgType = getObjectTypeOrNil(a)
     if effectiveArgType == nil: return isNone
     if effectiveArgType.kind == tyObject:
@@ -1821,7 +1823,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         if tfWildcard in a.flags:
           a.sym.transitionGenericParamToType()
           a.flags.excl tfWildcard
-        elif doBindGP:
+        elif doBind:
           concrete = concreteType(c, a, f)
           if concrete == nil:
             return isNone

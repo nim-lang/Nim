@@ -14,9 +14,8 @@ type CustomTypeClass = concept c
 
 # 3 competing procs
 
-# issue #22142 makes this ambiguous
-#proc a[T](x: ParameterizedType[T]) =
-#  echo "x as ParameterizedType[T]"
+proc a[T](x: ParameterizedType[T]) =
+  echo "x as ParameterizedType[T]"
 
 proc a(x: ParameterizedType) =
   echo "x as ParameterizedType"
@@ -31,9 +30,8 @@ proc b(x: ParameterizedType) =
 proc b(x: CustomTypeClass) =
   echo "x as CustomTypeClass"
 
-# issue #22142 makes this ambiguous
-#proc b[T](x: ParameterizedType[T]) =
-#  echo "x as ParameterizedType[T]"
+proc b[T](x: ParameterizedType[T]) =
+  echo "x as ParameterizedType[T]"
 
 # and yet another order
 proc c(x: CustomTypeClass) =
@@ -42,9 +40,8 @@ proc c(x: CustomTypeClass) =
 proc c(x: ParameterizedType) =
   echo "x as ParameterizedType"
 
-# issue #22142 makes this ambiguous
-#proc c[T](x: ParameterizedType[T]) =
-#  echo "x as ParameterizedType[T]"
+proc c[T](x: ParameterizedType[T]) =
+  echo "x as ParameterizedType[T]"
 
 # remove the most specific one
 proc d(x: ParameterizedType) =
