@@ -119,9 +119,10 @@ block overload_precedence:
 
   proc b(x: CustomTypeClass) =
     echo "x as CustomTypeClass"
-
-  proc b[T](x: ParameterizedType[T]) =
-    echo "x as ParameterizedType[T]"
+  
+  # issue #22142 makes this ambiguous
+  #proc b[T](x: ParameterizedType[T]) =
+  #  echo "x as ParameterizedType[T]"
 
   # and yet another order
   proc c(x: CustomTypeClass) =
@@ -129,9 +130,10 @@ block overload_precedence:
 
   proc c(x: ParameterizedType) =
     echo "x as ParameterizedType"
-
-  proc c[T](x: ParameterizedType[T]) =
-    echo "x as ParameterizedType[T]"
+  
+  # issue #22142 makes this ambiguous
+  #proc c[T](x: ParameterizedType[T]) =
+  #  echo "x as ParameterizedType[T]"
 
   # remove the most specific one
   proc d(x: ParameterizedType) =
