@@ -1814,10 +1814,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         if tfWildcard in a.flags:
           a.sym.transitionGenericParamToType()
           a.flags.excl tfWildcard
-        else:
+        elif doBindGP:
           concrete = concreteType(c, a, f)
           if concrete == nil:
-            concrete = a
+            return isNone
         if doBindGP:
           put(c, f, concrete)
       elif result > isGeneric:
