@@ -527,10 +527,11 @@ proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef) =
   if conf.exc == excNone and conf.backend != backendCpp:
     conf.exc = excGoto
 
-proc unregisterArcOrc(conf: ConfigRef) =
+proc unregisterArcOrc*(conf: ConfigRef) =
   undefSymbol(conf.symbols, "gcdestructors")
   undefSymbol(conf.symbols, "gcarc")
   undefSymbol(conf.symbols, "gcorc")
+  undefSymbol(conf.symbols, "gcatomicarc")
   undefSymbol(conf.symbols, "nimSeqsV2")
   undefSymbol(conf.symbols, "nimV2")
   excl conf.globalOptions, optSeqDestructors
