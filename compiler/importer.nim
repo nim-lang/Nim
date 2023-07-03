@@ -250,7 +250,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool)
     result.options.incl optImportHidden
   c.unusedImports.add((result, n.info))
   c.importModuleMap[result.id] = realModule.id
-  c.importModuleLookup.mgetOrPut(realModule.name.id, @[]).addUnique realModule.id
+  c.importModuleLookup.mgetOrPut(result.name.id, @[]).addUnique realModule.id
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
   var ret: typeof(result)
