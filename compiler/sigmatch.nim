@@ -514,11 +514,12 @@ proc isObjectSubtype(c: var TCandidate; a, f, fGenericOrigin: PType): int =
   var depth = 0
   var last = a
   while t != nil and not sameObjectTypes(f, t):
-    assert t.kind == tyObject
+    if t.kind != tyObject:  # avoid entering generic params etc
+      return -1
     t = t[0]
     if t == nil: break
     last = t
-    t = skipTypes(t, skipPtrs).getObjectTypeOrNil()
+    t = skipTypes(t, skipPtrs)
     inc depth
   if t != nil:
     genericParamPut(c, last, fGenericOrigin)
@@ -1706,6 +1707,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let targetKind = target.kind
       var effectiveArgType = a.getObjectTypeOrNil()
       if effectiveArgType == nil: return isNone
+      effectiveArgType = effectiveArgType.skipTypes({tyBuiltInTypeClass})
       if targetKind == effectiveArgType.kind:
         if effectiveArgType.isEmptyContainer:
           return isNone
