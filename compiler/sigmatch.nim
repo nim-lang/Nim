@@ -1634,7 +1634,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         elif a.len > 0 and a.lastSon == f:
           # Needed for checking `Y` == `Addable` in the following
           #[
-            type 
+            type
               Addable = concept a, type A
                 a + a is A
               MyType[T: Addable; Y: static T] = object
@@ -1901,7 +1901,12 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
 
   if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
   result.add c.graph.emptyNode
-  result.add arg
+  if arg.typ != nil and arg.typ.kind == tyLent:
+    let a = newNodeIT(nkHiddenDeref, arg.info, arg.typ[0])
+    a.add arg
+    result.add a
+  else:
+    result.add arg
 
 proc isLValue(c: PContext; n: PNode): bool {.inline.} =
   let aa = isAssignable(nil, n)
