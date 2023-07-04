@@ -13,7 +13,6 @@ type CustomTypeClass = concept c
   true
 
 # 3 competing procs
-
 proc a[T](x: ParameterizedType[T]) =
   echo "x as ParameterizedType[T]"
 
