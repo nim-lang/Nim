@@ -1071,7 +1071,7 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
 
   if kind == attachedDestructor and typ.kind in {tyRef, tyString, tySequence} and g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
     if g.config.selectedGC == gcOrc and typ.kind == tySequence:
-      dest.typ = makeVarType(typ.owner, typ, idgen) # ORC bug
+      dest.typ = makeVarType(typ.owner, typ, idgen) # fixme bug
     else:
       dest.typ = typ
   else:
