@@ -1523,11 +1523,12 @@ proc makePtrType(baseType: PType; idgen: IdGenerator): PType =
 
 proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator; theProc: PSym): PSym =
+  # the warpper is roughly like:
+  # proc rttiDestroy(x: pointer) =
+  #   `=destroy`(cast[ptr T](x)[])
   let procname = getIdent(g.cache, "rttiDestroy")
   result = newSym(skProc, procname, idgen, owner, info)
   let dest = newSym(skParam, getIdent(g.cache, "dest"), idgen, result, info)
-  let src = newSym(skParam, getIdent(g.cache, if kind == attachedTrace: "env" else: "src"),
-                   idgen, result, info)
 
   dest.typ = getSysType(g, info, tyPointer)
 
