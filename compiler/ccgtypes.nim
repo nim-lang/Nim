@@ -1553,9 +1553,6 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
 
   incl result.flags, sfFromGeneric
   incl result.flags, sfGeneratedOp
-  if kind == attachedWasMoved:
-    incl result.flags, sfNoSideEffect
-    incl result.typ.flags, tfNoSideEffect
 
 proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result: var Rope) =
   let theProc = getAttachedOp(m.g.graph, t, op)
