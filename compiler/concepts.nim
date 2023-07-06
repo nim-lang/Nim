@@ -62,7 +62,7 @@ proc semConceptDecl(c: PContext; n: PNode): PNode =
       result[i] = n[i]
     result[^1] = semConceptDecl(c, n[^1])
   of nkCommentStmt:
-    discard
+    result = n
   else:
     localError(c.config, n.info, "unexpected construct in the new-styled concept: " & renderTree(n))
     result = n
@@ -286,8 +286,8 @@ proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool =
   ## can be matched with the current scope.
   case n.kind
   of nkStmtList, nkStmtListExpr:
-    for node in n:
-      if node != nil and not conceptMatchNode(c, node, m):
+    for i in 0..<n.len:
+      if not conceptMatchNode(c, n[i], m):
         return false
     return true
   of nkProcDef, nkFuncDef:
@@ -306,6 +306,8 @@ proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool =
     result = matchSyms(c, n, {skMethod}, m)
   of nkIteratorDef:
     result = matchSyms(c, n, {skIterator}, m)
+  of nkCommentStmt:
+    result = true
   else:
     # error was reported earlier.
     result = false

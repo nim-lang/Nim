@@ -447,5 +447,5 @@ block tcomment:
       proc bar(x: Self)
 
   proc bar(x: int) = echo x
-  proc foo(x: Foo) = x.foo
+  proc foo(x: Foo) = x.bar
   foo(9)
