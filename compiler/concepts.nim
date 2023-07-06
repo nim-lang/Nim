@@ -286,8 +286,8 @@ proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool =
   ## can be matched with the current scope.
   case n.kind
   of nkStmtList, nkStmtListExpr:
-    for i in 0..<n.len:
-      if not conceptMatchNode(c, n[i], m):
+    for node in n:
+      if node != nil and not conceptMatchNode(c, node, m):
         return false
     return true
   of nkProcDef, nkFuncDef:
