@@ -2258,8 +2258,12 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
     linefmt(p, cpsStmts, "}$n$1.len = $2.len; $1.p = $2.p;$n", [rdLoc(a), rdLoc(src)])
   else:
     if d.k == locNone: getTemp(p, n.typ, d)
-    genAssignment(p, d, a, {})
-    resetLoc(p, a)
+    if p.config.selectedGC in {gcArc, gcOrc}:
+      genAssignment(p, d, a, {})
+    else:
+      let flags = if not canMove(p, n[1], d): {needToCopy} else: {}
+      genAssignment(p, d, a, flags)
+      resetLoc(p, a)
 
 proc genDestroy(p: BProc; n: PNode) =
   if optSeqDestructors in p.config.globalOptions:
