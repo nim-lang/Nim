@@ -1541,13 +1541,21 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
   n[paramsPos] = result.typ.n
   let body = newNodeI(nkStmtList, info)
   let castType = makePtrType(typ, idgen)
-  body.add newTreeI(nkCall, info, newSymNode(theProc), newTreeIT(nkHiddenDeref,
-    info, typ,
-    newTreeIT(
-    nkCast, info, castType, newNodeIT(nkType, info, castType),
-    newSymNode(dest)
-  ))
-  )
+  if theProc.typ[1].kind != tyVar:
+    body.add newTreeI(nkCall, info, newSymNode(theProc), newTreeIT(nkHiddenDeref,
+      info, typ,
+      newTreeIT(
+      nkCast, info, castType, newNodeIT(nkType, info, castType),
+      newSymNode(dest)
+    ))
+    )
+  else:
+    body.add newTreeI(nkCall, info, newSymNode(theProc),
+      newTreeIT(
+      nkCast, info, castType, newNodeIT(nkType, info, castType),
+      newSymNode(dest)
+    )
+    )
   n[bodyPos] = body
   result.ast = n
 
@@ -1564,7 +1572,7 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result:
       localError(m.config, info,
         theProc.name.s & " needs to have the 'nimcall' calling convention")
 
-    if op == attachedDestructor and t.kind == tySequence:
+    if op == attachedDestructor:
       let wrapper = generateRttiDestructor(m.g.graph, t, theProc.owner, attachedDestructor,
                 theProc.info, m.idgen, theProc)
       genProc(m, wrapper)
