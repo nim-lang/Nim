@@ -2978,9 +2978,9 @@ ref or pointer type             nil
 procedural type                 nil
 sequence                        `@[]`
 string                          `""`
-`tuple[x: A, y: B, ...]`        (default(A), default(B), ...)
+`tuple[x: A, y: B, ...]`        (zeroDefault(A), zeroDefault(B), ...)
                                 (analogous for objects)
-`array[0..., T]`                `[default(T), ...]`
+`array[0..., T]`                `[zeroDefault(T), ...]`
 `range[T]`                      default(T); this may be out of the valid range
 T = enum                        `cast[T](0)`; this may be an invalid value
 ============================    ==============================================
@@ -8735,9 +8735,7 @@ model low level lockfree mechanisms:
 
 
 The `locks` pragma takes a list of lock expressions `locks: [a, b, ...]`
-in order to support *multi lock* statements. Why these are essential is
-explained in the [lock levels](manual_experimental.md#lock-levels) section
-of the experimental manual.
+in order to support *multi lock* statements.
 
 
 ### Protecting general locations

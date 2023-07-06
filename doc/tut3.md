@@ -366,7 +366,7 @@ recommended way. But still `strformat` is a good example for a
 practical use case for a macro that is slightly more complex than the
 `assert` macro.
 
-[Strformat](https://github.com/nim-lang/Nim/blob/5845716df8c96157a047c2bd6bcdd795a7a2b9b1/lib/pure/strformat.nim#L280)
+[Strformat](https://github.com/nim-lang/Nim/blob/devel/lib/pure/strformat.nim)
 
 Ast Pattern Matching
 --------------------
