@@ -1540,21 +1540,21 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
   n[namePos] = newSymNode(result)
   n[paramsPos] = result.typ.n
   let body = newNodeI(nkStmtList, info)
+  let castType = makePtrType(typ, idgen)
   if theProc.typ[1].kind != tyVar:
-    let castType = makePtrType(typ, idgen)
-    body.add newTreeI(nkCall, info, newSymNode(theProc), newTreeIT(nkHiddenDeref,
-      info, typ,
-      newTreeIT(
+    body.add newTreeI(nkCall, info, newSymNode(theProc), newDeref(newTreeIT(
       nkCast, info, castType, newNodeIT(nkType, info, castType),
       newSymNode(dest)
     ))
     )
   else:
-    body.add newTreeI(nkCall, info, newSymNode(theProc),
-      newTreeIT(
-      nkCast, info, theProc.typ[1], newNodeIT(nkType, info, theProc.typ[1]),
+    let addrOf = newNodeIT(nkAddr, info, theProc.typ[1])
+    addrOf.add newDeref(newTreeIT(
+      nkCast, info, castType, newNodeIT(nkType, info, castType),
       newSymNode(dest)
-    )
+    ))
+    body.add newTreeI(nkCall, info, newSymNode(theProc),
+      addrOf
     )
   n[bodyPos] = body
   result.ast = n
