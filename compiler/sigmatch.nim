@@ -293,7 +293,8 @@ proc writeMatches*(c: TCandidate) =
 proc cmpCandidates*(a, b: TCandidate): int =
   result = a.exactMatches - b.exactMatches
   if result != 0: return
-  result = a.genericMatches - b.genericMatches
+  let subtypeDiff = a.subtypeMatches - b.subtypeMatches
+  result = subtypeDiff + (a.genericMatches - b.genericMatches)
   if result != 0: return
   result = a.subtypeMatches - b.subtypeMatches
   if result != 0: return
@@ -301,9 +302,10 @@ proc cmpCandidates*(a, b: TCandidate): int =
   if result != 0: return
   result = a.convMatches - b.convMatches
   if result != 0: return
-  # the other way round because of other semantics:
-  result = b.inheritancePenalty - a.inheritancePenalty
-  if result != 0: return
+  if subtypeDiff == 0:
+    # the other way round because of other semantics:
+    result = b.inheritancePenalty - a.inheritancePenalty
+    if result != 0: return
   # check for generic subclass relation
   result = checkGeneric(a, b)
   if result != 0: return
