@@ -178,7 +178,7 @@ proc close*(s: Stream) =
       let strm = newStringStream("The first line\nthe second line\nthe third line")
       ## do something...
       strm.close()
-      
+
     block:
       let strm = newFileStream("amissingfile.txt")
       # deferring works even if newFileStream fails
@@ -249,6 +249,9 @@ proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
     doAssert strm.readDataStr(buffer, 0..3) == 4
     doAssert buffer == "abcd5"
     strm.close()
+
+  # https://github.com/nim-lang/Nim/issues/21354
+  assert slice.b > slice.a, "Invalid Slice[int] range"
 
   if s.readDataStrImpl != nil:
     result = s.readDataStrImpl(s, buffer, slice)
