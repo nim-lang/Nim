@@ -97,7 +97,7 @@
 import std/private/since
 
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[syncio, assertions]
   export FileMode
 
 proc newEIO(msg: string): owned(ref IOError) =
