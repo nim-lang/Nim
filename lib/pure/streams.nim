@@ -251,7 +251,7 @@ proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
     strm.close()
 
   # https://github.com/nim-lang/Nim/issues/21354
-  assert slice.b > slice.a, "Invalid Slice[int] range"
+  assert slice.b >= slice.a, "Invalid Slice[int] range"
 
   if s.readDataStrImpl != nil:
     result = s.readDataStrImpl(s, buffer, slice)
