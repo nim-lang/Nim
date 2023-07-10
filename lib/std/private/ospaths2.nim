@@ -606,7 +606,7 @@ proc searchExtPos*(path: string): int =
   for j in countdown(i - 1, stop - 1):
     if path[j] in {DirSep, AltSep}:
       return -1
-    elif not (path[j] == ExtSep):
+    elif path[j] != ExtSep:
       result = i
       break
 
