@@ -654,7 +654,7 @@ proc findWrongOwners(c: PTransf, n: PNode) =
   else:
     for i in 0..<n.safeLen: findWrongOwners(c, n[i])
 
-proc isSimpleIteratorVar(c: PTransf; iter: PSym): bool =
+proc isSimpleIteratorVar(c: PTransf; iter: PSym; call: PNode; owner: PSym): bool =
   proc rec(n: PNode; owner: PSym; dangerousYields: var int) =
     case n.kind
     of nkEmpty..nkNilLit: discard
@@ -666,9 +666,22 @@ proc isSimpleIteratorVar(c: PTransf; iter: PSym): bool =
     else:
       for c in n: rec(c, owner, dangerousYields)
 
+  proc recSym(n: PNode; owner: PSym; sameOwner: var bool) =
+    case n.kind
+    of {nkEmpty..nkNilLit} - {nkSym}: discard
+    of nkSym:
+      if n.sym.owner != owner:
+        sameOwner = false
+    else:
+      for c in n: recSym(c, owner, sameOwner)
+
   var dangerousYields = 0
   rec(getBody(c.graph, iter), iter, dangerousYields)
   result = dangerousYields == 0
+  # the parameters should be owned by the owner
+  # bug #22237
+  for i in 1..<call.len:
+    recSym(call[i], owner, result)
 
 template destructor(t: PType): PSym = getAttachedOp(c.graph, t, attachedDestructor)
 
@@ -712,7 +725,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       for j in 0..<n[i].len-1:
         addVar(v, copyTree(n[i][j])) # declare new vars
     else:
-      if n[i].kind == nkSym and isSimpleIteratorVar(c, iter):
+      if n[i].kind == nkSym and isSimpleIteratorVar(c, iter, call, n[i].sym.owner):
         incl n[i].sym.flags, sfCursor
       addVar(v, copyTree(n[i])) # declare new vars
   stmtList.add(v)
