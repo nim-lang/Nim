@@ -614,6 +614,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       var path = processPath(conf, arg, info, notRelativeToProj=true)
       let nimbleDir = AbsoluteDir getEnv("NIMBLE_DIR")
       if not nimbleDir.isEmpty and pass == passPP:
+        path = nimbleDir / RelativeDir"pkgs2"
+        nimblePath(conf, path, info)
         path = nimbleDir / RelativeDir"pkgs"
       nimblePath(conf, path, info)
   of "nonimblepath", "nobabelpath":
