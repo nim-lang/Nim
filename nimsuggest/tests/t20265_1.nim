@@ -1,8 +1,8 @@
 discard """
 $nimsuggest --tester $file
 >sug $1
-sug;;skField;;a;;int;;t20265_module.nim;;3;;2;;"";;100
-sug;;skField;;b;;int;;t20265_module.nim;;4;;2;;"";;100
+sug;;skField;;a;;int;;*module_20265.nim;;6;;10;;"";;100;;None
+sug;;skField;;b;;int;;*module_20265.nim;;6;;16;;"";;100;;None
 """
-import module
+import module_20265
 y.#[!]#

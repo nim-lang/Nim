@@ -441,7 +441,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
         t = skipTypes(t[0], skipPtrs)
     elif typ.kind == tyTuple and typ.n != nil:
       # All tuple fields are in scope
-      # So go through each field and add it to the suggestions
+      # So go through each field and add it to the suggestions (If it passes the filter)
       for node in typ.n:
         if node.kind == nkSym:
           let s = node.sym

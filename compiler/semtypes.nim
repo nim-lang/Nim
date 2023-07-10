@@ -459,8 +459,6 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       typ = errorType(c)
     for j in 0..<a.len - 2:
       var field = newSymG(skField, a[j], c)
-      # Tuple fields are never private
-      field.flags.incl sfExported
       field.typ = typ
       field.position = counter
       inc(counter)
