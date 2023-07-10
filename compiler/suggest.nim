@@ -440,7 +440,15 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
         if t[0] == nil: break
         t = skipTypes(t[0], skipPtrs)
     elif typ.kind == tyTuple and typ.n != nil:
-      suggestSymList(c, typ.n, field, n.info, outputs)
+      # All tuple fields are in scope
+      # So go through each field and add it to the suggestions (If it passes the filter)
+      for node in typ.n:
+        if node.kind == nkSym:
+          let s = node.sym
+          var pm: PrefixMatch
+          if filterSym(s, field, pm):
+            outputs.add(symToSuggest(c.graph, s, isLocal=true, ideSug, n.info,
+                                     s.getQuality, pm, c.inTypeContext > 0, 0))
 
     suggestOperations(c, n, field, orig, outputs)
     if typ != orig:
