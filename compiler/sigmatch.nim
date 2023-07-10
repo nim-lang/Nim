@@ -294,7 +294,8 @@ proc cmpCandidates*(a, b: TCandidate): int =
   result = a.exactMatches - b.exactMatches
   if result != 0: return
   let subtypeDiff = a.subtypeMatches - b.subtypeMatches
-  result = (a.genericMatches - b.genericMatches) + subtypeDiff
+  let genericDiff = a.genericMatches - b.genericMatches
+  result = genericDiff + subtypeDiff
   if result != 0: return
   result = a.intConvMatches - b.intConvMatches
   if result != 0: return
@@ -307,6 +308,8 @@ proc cmpCandidates*(a, b: TCandidate): int =
   # check for generic subclass relation
   result = checkGeneric(a, b)
   if result != 0: return
+  if subtypeDiff != 0:
+    return genericDiff
   # prefer more specialized generic over more general generic:
   result = complexDisambiguation(a.callee, b.callee)
   # only as a last resort, consider scoping:
