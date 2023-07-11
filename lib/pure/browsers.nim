@@ -81,8 +81,7 @@ proc openDefaultBrowser*(url: string) =
   openDefaultBrowserImpl(url)
 
 proc openDefaultBrowser*() {.since: (1, 1).} =
-  ## Opens the user's default browser without any `url` (blank page). This does not block.
-  ## Implements IETF RFC-6694 Section 3, "about:blank" must be reserved for a blank page.
+  ## Opens the user's default browser without any `url` (default page). This does not block.
   ##
   ## Under Windows, `ShellExecute` is used. Under Mac OS X the `open`
   ## command is used. Under Unix, it is checked if `xdg-open` exists and
@@ -94,8 +93,4 @@ proc openDefaultBrowser*() {.since: (1, 1).} =
   ##   ```nim
   ##   block: openDefaultBrowser()
   ##   ```
-  ##
-  ## **See also:**
-  ##
-  ## * https://tools.ietf.org/html/rfc6694#section-3
-  openDefaultBrowserImplPrep("about:blank")  # See IETF RFC-6694 Section 3.
+  openDefaultBrowserImplPrep("http://")
