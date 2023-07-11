@@ -5413,49 +5413,6 @@ Generics are Nim's means to parametrize procs, iterators or types with
 `type parameters`:idx:. Depending on the context, the brackets are used either to
 introduce type parameters or to instantiate a generic proc, iterator, or type.
 
-
-Generic Procs
----------------
-
-Let's consider the anatomy of a generic `proc` to agree on defined terminology.
-
-```nim
-p[T: t](arg1: f): y
-```
-
-- `p`: Callee symbol
-- `[...]`: Generic parameters
-- `T: t`: Generic constraint
-- `T`: Type variable
-- `[T: t](arg1: f): y`: Formal signature
-- `arg1: f`: Formal parameter
-- `f`: Formal parameter type
-- `y`: Formal return type
-
-The use of the word "formal" here is to denote the symbols as they are defined by the programmer, 
-not as they may be at compile time contextually. Since generics may be instantiated and
-types bound, we have more than one entity to think about when generics are involved.
-
-The usage of a generic will resolve the formally defined expression into an instance of that
-expression bound to only concrete types. This process is called "instantiation".
-
-Brackets at the sight of a generic's formal definition specify the "constraints" as in:
-
-```nim
-type Foo[T] = object
-proc p[H;T: Foo[H]](param: T): H
-```
-
-A constraint definition may have more than one symbol defined by seperating each definition by 
-a `;`. Notice how `T` is composed of `H` and the return  type of `p` is defined as `H`. When this 
-generic proc is instantiated `H` will be bound to a concrete type, thus making `T` concrete and 
-the return type of `p` will be bound to the same concrete type used to define `H`.
-
-Brackets at the sight of usage can be used to supply concrete types to instantiate the generic in the same
-order that the symbols are defined in the constraint. Alternatively, type bindings may be inferred by the compiler
-in some situations, allowing for cleaner code.
-
-
 The following example shows how a generic binary tree can be modeled:
 
   ```nim  test = "nim c $1"
@@ -5516,6 +5473,49 @@ The following example shows how a generic binary tree can be modeled:
 
 The `T` is called a `generic type parameter`:idx: or
 a `type variable`:idx:.
+
+
+Generic Procs
+---------------
+
+Let's consider the anatomy of a generic `proc` to agree on defined terminology.
+
+```nim
+p[T: t](arg1: f): y
+```
+
+- `p`: Callee symbol
+- `[...]`: Generic parameters
+- `T: t`: Generic constraint
+- `T`: Type variable
+- `[T: t](arg1: f): y`: Formal signature
+- `arg1: f`: Formal parameter
+- `f`: Formal parameter type
+- `y`: Formal return type
+
+The use of the word "formal" here is to denote the symbols as they are defined by the programmer, 
+not as they may be at compile time contextually. Since generics may be instantiated and
+types bound, we have more than one entity to think about when generics are involved.
+
+The usage of a generic will resolve the formally defined expression into an instance of that
+expression bound to only concrete types. This process is called "instantiation".
+
+Brackets at the sight of a generic's formal definition specify the "constraints" as in:
+
+```nim
+type Foo[T] = object
+proc p[H;T: Foo[H]](param: T): H
+```
+
+A constraint definition may have more than one symbol defined by seperating each definition by 
+a `;`. Notice how `T` is composed of `H` and the return  type of `p` is defined as `H`. When this 
+generic proc is instantiated `H` will be bound to a concrete type, thus making `T` concrete and 
+the return type of `p` will be bound to the same concrete type used to define `H`.
+
+Brackets at the sight of usage can be used to supply concrete types to instantiate the generic in the same
+order that the symbols are defined in the constraint. Alternatively, type bindings may be inferred by the compiler
+in some situations, allowing for cleaner code.
+
 
 Is operator
 -----------
