@@ -244,9 +244,9 @@ proc asyncSingleProc(prc: NimNode): NimNode =
   # don't do anything with forward bodies (empty)
   if procBody.kind != nnkEmpty:
     # fix #13899, defer should not escape its original scope
-    let resultIdent = ident"result"
     let blockStmt = newStmtList(newTree(nnkBlockStmt, newEmptyNode(), procBody))
     procBody = newStmtList()
+    let resultIdent = ident"result"
     procBody.add quote do:
       # Check whether there is an implicit return
       when typeof(`blockStmt`) is void:
