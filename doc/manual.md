@@ -2652,16 +2652,33 @@ to think of the below as a comparison between two candidates because of this alg
 
 
 There are two major methods of selecting the best matching candidate, namely 
-counting and type comparison. Counting takes precedence to type comparison since
+counting and disambiguation. Counting takes precedence to disambiguation since
 it is simpler, more efficient and necessary in some situations. In counting,
 each parameter is given a category and the number of parameters in each category is counted.
 The categories are listed above and are in order of precedence. For example, if
 a candidate with one exact match is compared to a candidate with multiple generic matches 
 and zero exact matches, the candidate with an exact match will win.
 
+In the following, `count(p, m)` counts the number of matches of the matching category `m`
+for the routine `p`.
 
-When counting is not enough to select an overload, type comparison begins. Parameters are iterated 
-by position (or index) and these parameter pairs are compared for their type relation. The general goal
+A routine `p` matches better than a routine `q` if the following
+algorithm returns true:
+
+  ```nim
+  for each matching category m in ["exact match", "literal match",
+                                  "generic match", "subtype match",
+                                  "integral match", "conversion match"]:
+    if count(p, m) > count(q, m): return true
+    elif count(p, m) == count(q, m):
+      discard "continue with next category m"
+    else:
+      return false
+  return "ambiguous"
+  ```
+
+When counting is ambiguous, disambiguation begins. Parameters are iterated 
+by position and these parameter pairs are compared for their type relation. The general goal
 of this comparison is to determine which parameter is more specific. The "rules" for this comparison are
 not meant to be be completely exhaustive. It is crucial to understand that the parameters are not 
 compared with the types of inputs from the callsite, but with the parameters of competing candidates.
