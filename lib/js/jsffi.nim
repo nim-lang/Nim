@@ -212,7 +212,7 @@ proc `[]`*[V](obj: JsAssoc[cstring, V], field: string): V =
 proc `[]=`*[V](obj: JsAssoc[cstring, V], field: string, val: V) =
   obj[cstring(field)] = val
 
-proc `==`*(x, y: JsRoot): bool {.importjs: "(# === #)".}
+proc `===`*(x, y: JsRoot): bool {.importjs: "(# === #)".}
   ## Compares two JsObjects or JsAssocs. Be careful though, as this is comparison
   ## like in JavaScript, so if your JsObjects are in fact JavaScript Objects,
   ## and not strings or numbers, this is a *comparison of references*.

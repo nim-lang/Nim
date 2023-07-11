@@ -226,8 +226,7 @@ block:
     console.log jsarguments[0]
 
 block:
-  # This is wrong. `undefined === null` is false
-  #doAssert jsUndefined == jsNull
+  doAssert jsUndefined == jsNull
   doAssert jsUndefined == nil
   doAssert jsNull == nil
   doAssert jsUndefined.isNil
