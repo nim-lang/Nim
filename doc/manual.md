@@ -5500,7 +5500,7 @@ types bound, we have more than one entity to think about when generics are invol
 The usage of a generic will resolve the formally defined expression into an instance of that
 expression bound to only concrete types. This process is called "instantiation".
 
-Brackets at the sight of a generic's formal definition specify the "constraints" as in:
+Brackets at the site of a generic's formal definition specify the "constraints" as in:
 
 ```nim
 type Foo[T] = object
@@ -5512,7 +5512,7 @@ a `;`. Notice how `T` is composed of `H` and the return  type of `p` is defined 
 generic proc is instantiated `H` will be bound to a concrete type, thus making `T` concrete and 
 the return type of `p` will be bound to the same concrete type used to define `H`.
 
-Brackets at the sight of usage can be used to supply concrete types to instantiate the generic in the same
+Brackets at the site of usage can be used to supply concrete types to instantiate the generic in the same
 order that the symbols are defined in the constraint. Alternatively, type bindings may be inferred by the compiler
 in some situations, allowing for cleaner code.
 
