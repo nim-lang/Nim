@@ -1517,6 +1517,51 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
 
 proc isTrivialProc(g: ModuleGraph; s: PSym): bool {.inline.} = getBody(g, s).len == 0
 
+proc makePtrType(baseType: PType; idgen: IdGenerator): PType =
+  result = newType(tyPtr, nextTypeId idgen, baseType.owner)
+  addSonSkipIntLit(result, baseType, idgen)
+
+proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
+              info: TLineInfo; idgen: IdGenerator; theProc: PSym): PSym =
+  # the wrapper is roughly like:
+  # proc rttiDestroy(x: pointer) =
+  #   `=destroy`(cast[ptr T](x)[])
+  let procname = getIdent(g.cache, "rttiDestroy")
+  result = newSym(skProc, procname, idgen, owner, info)
+  let dest = newSym(skParam, getIdent(g.cache, "dest"), idgen, result, info)
+
+  dest.typ = getSysType(g, info, tyPointer)
+
+  result.typ = newProcType(info, nextTypeId(idgen), owner)
+  result.typ.addParam dest
+
+  var n = newNodeI(nkProcDef, info, bodyPos+1)
+  for i in 0..<n.len: n[i] = newNodeI(nkEmpty, info)
+  n[namePos] = newSymNode(result)
+  n[paramsPos] = result.typ.n
+  let body = newNodeI(nkStmtList, info)
+  let castType = makePtrType(typ, idgen)
+  if theProc.typ[1].kind != tyVar:
+    body.add newTreeI(nkCall, info, newSymNode(theProc), newDeref(newTreeIT(
+      nkCast, info, castType, newNodeIT(nkType, info, castType),
+      newSymNode(dest)
+    ))
+    )
+  else:
+    let addrOf = newNodeIT(nkAddr, info, theProc.typ[1])
+    addrOf.add newDeref(newTreeIT(
+      nkCast, info, castType, newNodeIT(nkType, info, castType),
+      newSymNode(dest)
+    ))
+    body.add newTreeI(nkCall, info, newSymNode(theProc),
+      addrOf
+    )
+  n[bodyPos] = body
+  result.ast = n
+
+  incl result.flags, sfFromGeneric
+  incl result.flags, sfGeneratedOp
+
 proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result: var Rope) =
   let theProc = getAttachedOp(m.g.graph, t, op)
   if theProc != nil and not isTrivialProc(m.g.graph, theProc):
@@ -1527,8 +1572,14 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result:
       localError(m.config, info,
         theProc.name.s & " needs to have the 'nimcall' calling convention")
 
-    genProc(m, theProc)
-    result.add theProc.loc.r
+    if op == attachedDestructor:
+      let wrapper = generateRttiDestructor(m.g.graph, t, theProc.owner, attachedDestructor,
+                theProc.info, m.idgen, theProc)
+      genProc(m, wrapper)
+      result.add wrapper.loc.r
+    else:
+      genProc(m, theProc)
+      result.add theProc.loc.r
 
     when false:
       if not canFormAcycle(m.g.graph, t) and op == attachedTrace:

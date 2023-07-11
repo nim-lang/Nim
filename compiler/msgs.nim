@@ -511,7 +511,8 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
   conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
 
 proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
-               eh: TErrorHandling, info2: InstantiationInfo, isRaw = false) {.gcsafe, noinline.} =
+               eh: TErrorHandling, info2: InstantiationInfo, isRaw = false,
+               ignoreError = false) {.gcsafe, noinline.} =
   var
     title: string
     color: ForegroundColor
@@ -576,7 +577,8 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
             " compiler msg initiated here", KindColor,
             KindFormat % $hintMsgOrigin,
             resetStyle, conf.unitSep)
-  handleError(conf, msg, eh, s, ignoreMsg)
+  if not ignoreError:
+    handleError(conf, msg, eh, s, ignoreMsg)
   if msg in fatalMsgs:
     # most likely would have died here but just in case, we restore state
     conf.m.errorOutputs = errorOutputsOld

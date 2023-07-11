@@ -1919,10 +1919,6 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else: putIntoDest(p, d, e, rope(lengthOrd(p.config, typ)))
   else: internalError(p.config, e.info, "genArrayLen()")
 
-proc makePtrType(baseType: PType; idgen: IdGenerator): PType =
-  result = newType(tyPtr, nextTypeId idgen, baseType.owner)
-  addSonSkipIntLit(result, baseType, idgen)
-
 proc makeAddr(n: PNode; idgen: IdGenerator): PNode =
   if n.kind == nkHiddenAddr:
     result = n
@@ -2361,8 +2357,11 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
     linefmt(p, cpsStmts, "}$n$1.len = $2.len; $1.p = $2.p;$n", [rdLoc(a), rdLoc(src)])
   else:
     if d.k == locNone: getTemp(p, n.typ, d)
-    genAssignment(p, d, a, {})
-    if p.config.selectedGC notin {gcArc, gcAtomicArc, gcOrc}:
+    if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
+      genAssignment(p, d, a, {})
+    else:
+      let flags = if not canMove(p, n[1], d): {needToCopy} else: {}
+      genAssignment(p, d, a, flags)
       resetLoc(p, a)
 
 proc genDestroy(p: BProc; n: PNode) =

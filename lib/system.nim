@@ -25,7 +25,11 @@
 include "system/basic_types"
 
 func zeroDefault*[T](_: typedesc[T]): T {.magic: "ZeroDefault".} =
-  ## returns the default value of the type `T`.
+  ## Returns the binary zeros representation of the type `T`. It ignores
+  ## default fields of an object.
+  ##
+  ## See also:
+  ## * `default <#default,typedesc[T]>`_
 
 include "system/compilation"
 
@@ -916,22 +920,18 @@ proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEff
   ##   ```
 
 proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
-  ## returns the default value of the type `T`.
+  ## Returns the default value of the type `T`. Contrary to `zeroDefault`, it takes default fields
+  ## of an object into consideration.
+  ##
+  ## See also:
+  ## * `zeroDefault <#zeroDefault,typedesc[T]>`_
+  ##
   runnableExamples:
     assert (int, float).default == (0, 0.0)
-    # note: `var a = default(T)` is usually the same as `var a: T` and (currently) generates
-    # a value whose binary representation is all 0, regardless of whether this
-    # would violate type constraints such as `range`, `not nil`, etc. This
-    # property is required to implement certain algorithms efficiently which
-    # may require intermediate invalid states.
     type Foo = object
       a: range[2..6]
-    var a1: range[2..6] # currently, this compiles
-    # var a2: Foo # currently, this errors: Error: The Foo type doesn't have a default value.
-    # var a3 = Foo() # ditto
-    var a3 = Foo.default # this works, but generates a `UnsafeDefault` warning.
-  # note: the doc comment also explains why `default` can't be implemented
-  # via: `template default*[T](t: typedesc[T]): T = (var v: T; v)`
+    var x = Foo.default
+    assert x.a == 2
 
 
 proc reset*[T](obj: var T) {.noSideEffect.} =

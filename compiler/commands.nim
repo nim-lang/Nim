@@ -527,10 +527,11 @@ proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef) =
   if conf.exc == excNone and conf.backend != backendCpp:
     conf.exc = excGoto
 
-proc unregisterArcOrc(conf: ConfigRef) =
+proc unregisterArcOrc*(conf: ConfigRef) =
   undefSymbol(conf.symbols, "gcdestructors")
   undefSymbol(conf.symbols, "gcarc")
   undefSymbol(conf.symbols, "gcorc")
+  undefSymbol(conf.symbols, "gcatomicarc")
   undefSymbol(conf.symbols, "nimSeqsV2")
   undefSymbol(conf.symbols, "nimV2")
   excl conf.globalOptions, optSeqDestructors
@@ -613,6 +614,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       var path = processPath(conf, arg, info, notRelativeToProj=true)
       let nimbleDir = AbsoluteDir getEnv("NIMBLE_DIR")
       if not nimbleDir.isEmpty and pass == passPP:
+        path = nimbleDir / RelativeDir"pkgs2"
+        nimblePath(conf, path, info)
         path = nimbleDir / RelativeDir"pkgs"
       nimblePath(conf, path, info)
   of "nonimblepath", "nobabelpath":

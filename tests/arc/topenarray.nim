@@ -50,3 +50,21 @@ proc f(a: var string) =
 var a = "Hello"
 f(a)
 doAssert a == "Hallo"
+
+# bug #22132
+block:
+  func foo[T](arr: openArray[T], idx: int = arr.low): string =
+    doAssert idx == 0
+    return $arr
+
+  let bug = ["0", "c", "a"]
+
+  let str = foo(bug)
+
+  const expected = """["0", "c", "a"]"""
+  doAssert str == expected
+
+  const noBugConst = ["0", "c", "a"]
+  doAssert foo(noBugConst) == expected
+  let noBugSeq = @["0", "c", "a"]
+  doAssert foo(noBugSeq) == expected
