@@ -2642,25 +2642,30 @@ of the argument.
 6. Conversion match: `a` is convertible to `f`, possibly via a user
    defined `converter`.
 
-These matching categories have a priority: An exact match is better than a
-literal match and that is better than a generic match etc. In the following,
-`count(p, m)` counts the number of matches of the matching category `m`
-for the routine `p`.
+It is important to note that overload resolution concerns itself with the 
+Category of each parameter and not the category of callable.
 
-A routine `p` matches better than a routine `q` if the following
-algorithm returns true:
+Nim will compare two candidates at a time and pick the "best" candidate to 
+to continue through the resolution process, if at the end the best candidate is 
+is proven "better" then the rest, it is chosen as an unambiguous match. The explanation
+below is best though of as a comparison between two candidates because of this algorithm. 
 
-  ```nim
-  for each matching category m in ["exact match", "literal match",
-                                  "generic match", "subtype match",
-                                  "integral match", "conversion match"]:
-    if count(p, m) > count(q, m): return true
-    elif count(p, m) == count(q, m):
-      discard "continue with next category m"
-    else:
-      return false
-  return "ambiguous"
-  ```
+
+There are two major methods of selecting the best matching candidate, namely 
+counting and type comparison. Counting takes precedence to type comparison since
+it is simpler, more efficient and necessary in some situations. In counting,
+each parameter is given a category and the number of parameters in each category is counted.
+The categories are listed above and are roughly in order of precedence, except that generics and 
+subtypes are binned together such that they can compete equally. For example, if
+a candidate with one exact match is compared to a candidate with multiple generic matches 
+and zero exact matches, the candidate with an exact match will win.
+
+
+When counting is not enough to select an overload, type comparison begins. Parameters are iterated 
+by position (or index) and these parameter pairs are compared for their type relation. The general goal
+of this comparison is to determine which parameter is more specific. The "rules" for this comparison are
+not meant to be be completely exhaustive. It is crucial to understand that the parameters are not 
+compared with the types of inputs from the callsite, but with the parameters of competing candidates.
 
 
 Some examples:
