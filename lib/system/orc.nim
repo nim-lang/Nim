@@ -411,7 +411,7 @@ proc registerCycle(s: Cell; desc: PNimTypeV2) =
   if roots.d == nil: init(roots)
   add(roots, s, desc)
 
-  if roots.len >= rootsThreshold+defaultThreshold:
+  if roots.len - defaultThreshold >= rootsThreshold:
     collectCycles()
   when logOrc:
     writeCell("[added root]", s, desc)
