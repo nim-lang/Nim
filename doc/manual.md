@@ -2642,25 +2642,29 @@ of the argument.
 6. Conversion match: `a` is convertible to `f`, possibly via a user
    defined `converter`.
 
-These matching categories have a priority: An exact match is better than a
-literal match and that is better than a generic match etc. In the following,
-`count(p, m)` counts the number of matches of the matching category `m`
-for the routine `p`.
+It is important to note that overload resolution concerns itself with the 
+category of each parameter and not the category of callable.
 
-A routine `p` matches better than a routine `q` if the following
-algorithm returns true:
+Nim will compare two candidates at a time and pick the "best" candidate to 
+to continue through the resolution process, if at the end the best candidate is 
+is proven "better" then the rest, it is chosen as an unambiguous match. I may help 
+to think of the below as a comparison between two candidates because of this algorithm. 
 
-  ```nim
-  for each matching category m in ["exact match", "literal match",
-                                  "generic match", "subtype match",
-                                  "integral match", "conversion match"]:
-    if count(p, m) > count(q, m): return true
-    elif count(p, m) == count(q, m):
-      discard "continue with next category m"
-    else:
-      return false
-  return "ambiguous"
-  ```
+
+There are two major methods of selecting the best matching candidate, namely 
+counting and type comparison. Counting takes precedence to type comparison since
+it is simpler, more efficient and necessary in some situations. In counting,
+each parameter is given a category and the number of parameters in each category is counted.
+The categories are listed above and are in order of precedence. For example, if
+a candidate with one exact match is compared to a candidate with multiple generic matches 
+and zero exact matches, the candidate with an exact match will win.
+
+
+When counting is not enough to select an overload, type comparison begins. Parameters are iterated 
+by position (or index) and these parameter pairs are compared for their type relation. The general goal
+of this comparison is to determine which parameter is more specific. The "rules" for this comparison are
+not meant to be be completely exhaustive. It is crucial to understand that the parameters are not 
+compared with the types of inputs from the callsite, but with the parameters of competing candidates.
 
 
 Some examples:
@@ -5408,6 +5412,49 @@ Generics
 Generics are Nim's means to parametrize procs, iterators or types with
 `type parameters`:idx:. Depending on the context, the brackets are used either to
 introduce type parameters or to instantiate a generic proc, iterator, or type.
+
+
+Generic Procs
+---------------
+
+Let's consider the anatomy of a generic `proc` to agree on defined terminology.
+
+```nim
+p[T: t](arg1: f): y
+```
+
+- `p`: Callee symbol
+- `[...]`: Generic parameters
+- `T: t`: Generic constraint
+- `T`: Type variable
+- `[T: t](arg1: f): y`: Formal signature
+- `arg1: f`: Formal parameter
+- `f`: Formal parameter type
+- `y`: Formal return type
+
+The use of the word "formal" here is to denote the symbols as they are defined by the programmer, 
+not as they may be at compile time contextually. Since generics may be instantiated and
+types bound, we have more than one entity to think about when generics are involved.
+
+The usage of a generic will resolve the formally defined expression into an instance of that
+expression bound to only concrete types. This process is called "instantiation".
+
+Brackets at the sight of a generic's formal definition specify the "constraints" as in:
+
+```nim
+type Foo[T] = object
+proc p[H;T: Foo[H]](param: T): H
+```
+
+A constraint definition may have more than one symbol defined by seperating each definition by 
+a `;`. Notice how `T` is composed of `H` and the return  type of `p` is defined as `H`. When this 
+generic proc is instantiated `H` will be bound to a concrete type, thus making `T` concrete and 
+the return type of `p` will be bound to the same concrete type used to define `H`.
+
+Brackets at the sight of usage can be used to supply concrete types to instantiate the generic in the same
+order that the symbols are defined in the constraint. Alternatively, type bindings may be inferred by the compiler
+in some situations, allowing for cleaner code.
+
 
 The following example shows how a generic binary tree can be modeled:
 
