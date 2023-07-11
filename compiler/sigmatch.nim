@@ -456,6 +456,44 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
       else: result = isIntConv
     else: result = isNone
 
+proc getObjectTypeOrNil(f: PType): PType =
+  #[
+    Returns a type that is f's effective typeclass. This is usually just one level deeper
+    in the hierarchy of generality for a type. `object`, `ref object`, `enum` and user defined
+    tyObjects are common return values.
+    this proc exists because skipTypes can gut out important information sometimes
+  ]#
+  if f == nil: return nil
+  case f.kind:
+  #of tyGenericParam:
+  #  if f.len <= 0 or f.lastSon == nil:
+  #    result = nil
+  #  else:
+  #    result = getObjectTypeOrNil(f.lastSon)
+  of tyGenericInvocation, tyCompositeTypeClass, tyAlias:
+    if f.len <= 0 or f[0] == nil:
+      result = nil
+    else:
+      result = getObjectTypeOrNil(f[0])
+  of tyGenericBody, tyGenericInst:
+    result = getObjectTypeOrNil(f.lastSon)
+  of tyUserTypeClass:
+    if tfResolved in f.flags:
+      result = f.base  # ?? idk if this is right
+    else:
+      result = f.lastSon
+  of tyStatic, tyOwned, tyVar, tyLent, tySink:
+    result = getObjectTypeOrNil(f.base)
+  of tyInferred:
+    # This is not true "After a candidate type is selected"
+    result = getObjectTypeOrNil(f.base)
+  of tyTyped, tyUntyped, tyFromExpr:
+    result = nil
+  of tyRange:
+    result = f.lastSon
+  else:
+    result = f
+
 proc genericParamPut(c: var TCandidate; last, fGenericOrigin: PType) =
   if fGenericOrigin != nil and last.kind == tyGenericInst and
      last.len-1 == fGenericOrigin.len:
@@ -991,8 +1029,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   # of the designated type class.
   #
   # 3) When used with two type classes, it will check whether the types
-  # matching the first type class are a strict subset of the types matching
-  # the other. This allows us to compare the signatures of generic procs in
+  # matching the first type class (aOrig) are a strict subset of the types matching
+  # the other (f). This allows us to compare the signatures of generic procs in
   # order to give preferrence to the most specific one:
   #
   # seq[seq[any]] is a strict subset of seq[any] and hence more specific.
@@ -1148,7 +1186,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # being passed as parameters
       return isNone
   else: discard
-
+  
   case f.kind
   of tyEnum:
     if a.kind == f.kind and sameEnumTypes(f, a): result = isEqual
@@ -1236,6 +1274,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         return inferStaticsInRange(c, fRange, a)
       elif c.c.matchedConcept != nil and aRange.rangeHasUnresolvedStatic:
         return inferStaticsInRange(c, aRange, f)
+      elif result == isGeneric and concreteType(c, aa, ff) == nil:
+        return isNone
       else:
         if lengthOrd(c.c.config, fRange) != lengthOrd(c.c.config, aRange):
           result = isNone
@@ -1323,12 +1363,17 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyTuple:
     if a.kind == tyTuple: result = recordRel(c, f, a)
   of tyObject:
-    if a.kind == tyObject:
-      if sameObjectTypes(f, a):
-        result = isEqual
+    let effectiveArgType = if a.kind == tyAlias: a else: getObjectTypeOrNil(a)
+    if effectiveArgType == nil: return isNone
+    if effectiveArgType.kind == tyObject:
+      if sameObjectTypes(f, effectiveArgType):
+        if a.kind == tyObject and sameObjectTypes(a, effectiveArgType):
+          result = isEqual
+        else:
+          result = isGeneric
         # elif tfHasMeta in f.flags: result = recordRel(c, f, a)
       elif trIsOutParam notin flags:
-        var depth = isObjectSubtype(c, a, f, nil)
+        var depth = isObjectSubtype(c, effectiveArgType, f, nil)
         if depth > 0:
           inc(c.inheritancePenalty, depth)
           result = isSubtype
@@ -1353,18 +1398,20 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             result = isNone
 
   of tyPtr, tyRef:
-    skipOwned(a)
-    if a.kind == f.kind:
+    #skipOwned(a)
+    let effectiveArgType = getObjectTypeOrNil(a)
+    if effectiveArgType == nil: return isNone
+    if effectiveArgType.kind == f.kind:
       # ptr[R, T] can be passed to ptr[T], but not the other way round:
-      if a.len < f.len: return isNone
+      if effectiveArgType.len < f.len: return isNone
       for i in 0..<f.len-1:
-        if typeRel(c, f[i], a[i], flags) == isNone: return isNone
-      result = typeRel(c, f.lastSon, a.lastSon, flags + {trNoCovariance})
+        if typeRel(c, f[i], effectiveArgType[i], flags) == isNone: return isNone
+      result = typeRel(c, f.lastSon, effectiveArgType.lastSon, flags + {trNoCovariance})
       subtypeCheck()
       if result <= isIntConv: result = isNone
-      elif tfNotNil in f.flags and tfNotNil notin a.flags:
+      elif tfNotNil in f.flags and tfNotNil notin effectiveArgType.flags:
         result = isNilConversion
-    elif a.kind == tyNil: result = f.allowsNil
+    elif effectiveArgType.kind == tyNil: result = f.allowsNil
     else: discard
   of tyProc:
     skipOwned(a)
@@ -1520,6 +1567,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyGenericInvocation:
     var x = a.skipGenericAlias
+    if x.kind == tyGenericParam and x.len > 0:
+      x = x.lastSon
     let concpt = f[0].skipTypes({tyGenericBody})
     var preventHack = concpt.kind == tyConcept
     if x.kind == tyOwned and f[0].kind != tyOwned:
@@ -1530,7 +1579,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       c.calleeSym != nil and
       c.calleeSym.kind in {skProc, skFunc} and c.call != nil and not preventHack:
       let inst = prepareMetatypeForSigmatch(c.c, c.bindings, c.call.info, f)
-      #echo "inferred ", typeToString(inst), " for ", f
       return typeRel(c, inst, a, flags)
 
     if x.kind == tyGenericInvocation:
@@ -1557,9 +1605,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       var fskip = skippedNone
       let aobj = x.skipToObject(askip)
       let fobj = genericBody.lastSon.skipToObject(fskip)
-      var depth = -1
-      if fobj != nil and aobj != nil and askip == fskip:
-        depth = isObjectSubtype(c, aobj, fobj, f)
       result = typeRel(c, genericBody, x, flags)
       if result != isNone:
         # see tests/generics/tgeneric3.nim for an example that triggers this
@@ -1585,7 +1630,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
               put(c, key, x)
             elif typeRel(c, old, x, flags + {trDontBind}) == isNone:
               return isNone
-
+      var depth = -1
+      if fobj != nil and aobj != nil and askip == fskip:
+        depth = isObjectSubtype(c, aobj, fobj, f)
+      
       if result == isNone:
         # Here object inheriting from generic/specialized generic object
         # crossing path with metatypes/aliases, so we need to separate them
@@ -1647,8 +1695,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     considerPreviousT:
       let target = f[0]
       let targetKind = target.kind
-      let effectiveArgType = a.skipTypes({tyRange, tyGenericInst,
-                                          tyBuiltInTypeClass, tyAlias, tySink, tyOwned})
+      var effectiveArgType = a.getObjectTypeOrNil()
+      if effectiveArgType == nil: return isNone
+      effectiveArgType = effectiveArgType.skipTypes({tyBuiltInTypeClass})
       if targetKind == effectiveArgType.kind:
         if effectiveArgType.isEmptyContainer:
           return isNone
@@ -1770,7 +1819,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         if tfWildcard in a.flags:
           a.sym.transitionGenericParamToType()
           a.flags.excl tfWildcard
-        else:
+        elif doBind:
+          # This interference is barred when comparing sigs (by the falg) and below
+          # has happens to prevent illegal bindings. The 
+          # return value `isNone` isn't exactly correct, I think.
+          # it is not good that the return value of this proc has to change
+          # based on the flags here. Ideally, the illegal bindings
+          # should be handled somewhere else
           concrete = concreteType(c, a, f)
           if concrete == nil:
             return isNone
