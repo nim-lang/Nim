@@ -16,9 +16,6 @@ import std/private/since
 
 import strutils
 
-when defined(nimPreviewSlimSystem):
-  import std/assertions
-
 when defined(windows):
   import winlean
   when defined(nimPreviewSlimSystem):
@@ -40,8 +37,17 @@ proc prepare(s: string): string =
   else:
     result = "file://" & absolutePath(s)
 
-proc openDefaultBrowserImplPrep(url: string) =
-  ## note the url argument should be alreadly prepared, i.e. the url is passed "AS IS"
+proc openDefaultBrowserRaw(url: string) =
+  ## Opens `url` with the user's default browser. This does not block.
+  ## **NOTE**: the url argument is passed "AS IS", assuming it's a valid URL
+  ##
+  ## Under Windows, `ShellExecute` is used. Under Mac OS X the `open`
+  ## command is used. Under Unix, it is checked if `xdg-open` exists and
+  ## used if it does. Otherwise the environment variable `BROWSER` is
+  ## used to determine the default browser to use.
+  ##
+  ## This proc doesn't raise an exception on error, beware.
+  ##
 
   when defined(windows):
     var o = newWideCString(osOpenCmd)
@@ -60,12 +66,9 @@ proc openDefaultBrowserImplPrep(url: string) =
       except OSError:
         discard
 
-proc openDefaultBrowserImpl(url: string) =
-  openDefaultBrowserImplPrep(prepare url)
-
 proc openDefaultBrowser*(url: string) =
   ## Opens `url` with the user's default browser. This does not block.
-  ## The URL must not be empty string, to open on a page without url see `openDefaultBrowser()`.
+  ## if URL is an empty string, it'll call `openDefaultBrowser()` and open a default page.
   ##
   ## Under Windows, `ShellExecute` is used. Under Mac OS X the `open`
   ## command is used. Under Unix, it is checked if `xdg-open` exists and
@@ -75,10 +78,15 @@ proc openDefaultBrowser*(url: string) =
   ## This proc doesn't raise an exception on error, beware.
   ##
   ##   ```nim
-  ##   block: openDefaultBrowser("https://nim-lang.org")
+  ##   block: 
+  ##     # the following two are equivalent
+  ##     openDefaultBrowser("https://nim-lang.org")
+  ##     openDefaultBrowser("nim-lang.org")
   ##   ```
-  doAssert url.len > 0, "URL must not be empty string"
-  openDefaultBrowserImpl(url)
+  if url.len == 0:
+    openDefaultBrowser()
+  else: 
+    openDefaultBrowserRaw(prepare url)
 
 proc openDefaultBrowser*() {.since: (1, 1).} =
   ## Opens the user's default browser without any `url` (default page). This does not block.
@@ -93,4 +101,4 @@ proc openDefaultBrowser*() {.since: (1, 1).} =
   ##   ```nim
   ##   block: openDefaultBrowser()
   ##   ```
-  openDefaultBrowserImplPrep("http://")
+  openDefaultBrowserRaw("http://")
