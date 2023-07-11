@@ -2643,12 +2643,13 @@ of the argument.
    defined `converter`.
 
 It is important to note that overload resolution concerns itself with the 
-Category of each parameter and not the category of callable.
+category of each parameter and not the category of callable.
 
 Nim will compare two candidates at a time and pick the "best" candidate to 
 to continue through the resolution process, if at the end the best candidate is 
-is proven "better" then the rest, it is chosen as an unambiguous match. The explanation
-below is best though of as a comparison between two candidates because of this algorithm. 
+is proven "better" then the rest, it is chosen as an unambiguous match. It may 
+help to think of the below as a comparison between two candidates because of this 
+algorithm. 
 
 
 There are two major methods of selecting the best matching candidate, namely 
@@ -2662,7 +2663,7 @@ and zero exact matches, the candidate with an exact match will win.
 
 
 When counting is not enough to select an overload, type comparison begins. Parameters are iterated 
-by position (or index) and these parameter pairs are compared for their type relation. The general goal
+by position and these parameter pairs are compared for their type relation. The general goal
 of this comparison is to determine which parameter is more specific. The "rules" for this comparison are
 not meant to be be completely exhaustive. It is crucial to understand that the parameters are not 
 compared with the types of inputs from the callsite, but with the parameters of competing candidates.
