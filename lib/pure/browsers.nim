@@ -65,7 +65,7 @@ proc openDefaultBrowserImpl(url: string) =
 
 proc openDefaultBrowser*(url: string) =
   ## Opens `url` with the user's default browser. This does not block.
-  ## The URL must not be empty string, to open on a blank page see `openDefaultBrowser()`.
+  ## The URL must not be empty string, to open on a page without url see `openDefaultBrowser()`.
   ##
   ## Under Windows, `ShellExecute` is used. Under Mac OS X the `open`
   ## command is used. Under Unix, it is checked if `xdg-open` exists and
