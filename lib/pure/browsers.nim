@@ -48,7 +48,6 @@ proc openDefaultBrowserRaw(url: string) =
   ##
   ## This proc doesn't raise an exception on error, beware.
   ##
-
   when defined(windows):
     var o = newWideCString(osOpenCmd)
     var u = newWideCString(url)
@@ -65,6 +64,21 @@ proc openDefaultBrowserRaw(url: string) =
         return
       except OSError:
         discard
+
+proc openDefaultBrowser*() {.since: (1, 1).} =
+  ## Opens the user's default browser without any `url` (default page). This does not block.
+  ##
+  ## Under Windows, `ShellExecute` is used. Under Mac OS X the `open`
+  ## command is used. Under Unix, it is checked if `xdg-open` exists and
+  ## used if it does. Otherwise the environment variable `BROWSER` is
+  ## used to determine the default browser to use.
+  ##
+  ## This proc doesn't raise an exception on error, beware.
+  ##
+  ##   ```nim
+  ##   block: openDefaultBrowser()
+  ##   ```
+  openDefaultBrowserRaw("http://")
 
 proc openDefaultBrowser*(url: string) =
   ## Opens `url` with the user's default browser. This does not block.
@@ -88,17 +102,3 @@ proc openDefaultBrowser*(url: string) =
   else: 
     openDefaultBrowserRaw(prepare url)
 
-proc openDefaultBrowser*() {.since: (1, 1).} =
-  ## Opens the user's default browser without any `url` (default page). This does not block.
-  ##
-  ## Under Windows, `ShellExecute` is used. Under Mac OS X the `open`
-  ## command is used. Under Unix, it is checked if `xdg-open` exists and
-  ## used if it does. Otherwise the environment variable `BROWSER` is
-  ## used to determine the default browser to use.
-  ##
-  ## This proc doesn't raise an exception on error, beware.
-  ##
-  ##   ```nim
-  ##   block: openDefaultBrowser()
-  ##   ```
-  openDefaultBrowserRaw("http://")
