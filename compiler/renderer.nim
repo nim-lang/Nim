@@ -79,7 +79,7 @@ proc isKeyword*(i: PIdent): bool =
 
 proc isExported(n: PNode): bool =
   ## Checks if an ident is exported.
-  ## This is meant to be used with idents in nkIdentDefs
+  ## This is meant to be used with idents in nkIdentDefs.
   case n.kind
   of nkPostfix:
     n[0].ident.s == "*" and n[1].kind == nkIdent
@@ -1085,7 +1085,6 @@ proc isCustomLit(n: PNode): bool =
   if n.len == 2 and n[0].kind == nkRStrLit:
     let ident = n[1].getPIdent
     result = ident != nil and ident.s.startsWith('\'')
-import debugutils
 
 proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   if isNil(n): return
