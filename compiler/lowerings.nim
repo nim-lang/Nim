@@ -66,17 +66,8 @@ proc newFastMoveStmt*(g: ModuleGraph, le, ri: PNode): PNode =
   result = newNodeI(nkFastAsgn, le.info, 2)
   result[0] = le
   result[1] = newNodeIT(nkCall, ri.info, ri.typ)
-  if g.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
-    result[1].add newSymNode(getCompilerProc(g, "internalMove"))
-    result[1].add ri
-    result = newTreeI(nkStmtList, le.info, result,
-            newTree(nkCall, newSymNode(
-              getSysMagic(g, ri.info, "=wasMoved", mWasMoved)),
-              ri
-              ))
-  else:
-    result[1].add newSymNode(getSysMagic(g, ri.info, "move", mMove))
-    result[1].add ri
+  result[1].add newSymNode(getSysMagic(g, ri.info, "move", mMove))
+  result[1].add ri
 
 proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode =
   assert n.kind == nkVarTuple

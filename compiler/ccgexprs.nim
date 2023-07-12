@@ -2359,6 +2359,7 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
     if d.k == locNone: getTemp(p, n.typ, d)
     if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
       genAssignment(p, d, a, {})
+      resetLoc(p, a)
     else:
       let flags = if not canMove(p, n[1], d): {needToCopy} else: {}
       genAssignment(p, d, a, flags)
