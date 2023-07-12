@@ -2642,18 +2642,9 @@ of the argument.
 6. Conversion match: `a` is convertible to `f`, possibly via a user
    defined `converter`.
 
-It is important to note that overload resolution concerns itself with the 
-category of each parameter and not the category of callable.
-
-Nim will compare two candidates at a time and pick the "best" candidate to 
-to continue through the resolution process, if at the end the best candidate is 
-is proven "better" then the rest, it is chosen as an unambiguous match. I may help 
-to think of the below as a comparison between two candidates because of this algorithm. 
-
 
 There are two major methods of selecting the best matching candidate, namely 
-counting and disambiguation. Counting takes precedence to disambiguation since
-it is simpler, more efficient and necessary in some situations. In counting,
+counting and disambiguation. Counting takes precedence to disambiguation. In counting,
 each parameter is given a category and the number of parameters in each category is counted.
 The categories are listed above and are in order of precedence. For example, if
 a candidate with one exact match is compared to a candidate with multiple generic matches 
@@ -2679,9 +2670,8 @@ algorithm returns true:
 
 When counting is ambiguous, disambiguation begins. Parameters are iterated 
 by position and these parameter pairs are compared for their type relation. The general goal
-of this comparison is to determine which parameter is more specific. The "rules" for this comparison are
-not meant to be be completely exhaustive. It is crucial to understand that the parameters are not 
-compared with the types of inputs from the callsite, but with the parameters of competing candidates.
+of this comparison is to determine which parameter is more specific. The types considered are 
+not of the inputs from the callsite, but of the competing candidates' parameters.
 
 
 Some examples:
