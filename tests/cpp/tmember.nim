@@ -8,6 +8,7 @@ destructing
 destructing
 '''
 """
+proc print(s: cstring) {.importcpp:"printf(@)", header:"<stdio.h>".}
 
 type
   Foo  {.exportc.} = object
@@ -16,8 +17,8 @@ type
 proc memberProc(f: Foo) {.exportc, member.} = 
   echo $f.test
 
-proc destructor(f: Foo) {.member: "~'1()".} = 
-  echo "destructing"
+proc destructor(f: Foo) {.member: "~'1()", used.} = 
+  print "destructing\n"
 
 proc `==`(self, other: Foo): bool {.member:"operator==('2 const & #2) const -> '0"} = 
   self.test == other.test
