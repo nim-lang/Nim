@@ -1007,7 +1007,7 @@ proc accentedName(g: var TSrcGen, n: PNode) =
     gsub(g, n)
 
 proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
-  if i < 1 and i > 2: return
+  if i < 1 or i > 2: return
   var needsParenthesis = false
   let nNext = n[i].skipHiddenNodes
   if nNext.kind == nkInfix:
