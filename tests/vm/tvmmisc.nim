@@ -82,6 +82,8 @@ block:
 
     doAssert fileExists("MISSINGFILE") == false
     doAssert dirExists("MISSINGDIR") == false
+    doAssert fileExists(currentSourcePath())
+    doAssert dirExists(currentSourcePath().parentDir)
 
 # bug #7210
 block:
