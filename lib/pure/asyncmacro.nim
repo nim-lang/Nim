@@ -105,7 +105,7 @@ proc processBody(ctx: Context; node, needsCompletionSym, retFutureSym: NimNode, 
       for i in 1 ..< result.len:
         result[i] = processBody(ctx, result[i], needsCompletionSym, retFutureSym, futureVarIdents)
       if ctx.inTry == 0 and ctx.hasRet:
-        let finallyNode = newNimNode(nnkFinally)
+        let finallyNode = copyNimNode(result[^1])
         let stmtNode = newNimNode(nnkStmtList)
         for child in result[^1]:
           stmtNode.add child
