@@ -92,10 +92,7 @@ proc openDefaultBrowser*(url: string) =
   ## This proc doesn't raise an exception on error, beware.
   ##
   ##   ```nim
-  ##   block: 
-  ##     # the following two are equivalent
-  ##     openDefaultBrowser("https://nim-lang.org")
-  ##     openDefaultBrowser("nim-lang.org")
+  ##   block: openDefaultBrowser("https://nim-lang.org")
   ##   ```
   if url.len == 0:
     openDefaultBrowser()
