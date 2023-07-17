@@ -774,7 +774,7 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
     result = structOrUnion & " " & name
     result.add(getRecordDescAux(m, typ, name, baseType, check, hasField))
     let desc = getRecordFields(m, typ, check)
-    if not hasField:
+    if not hasField and typ.itemId notin m.g.graph.memberProcsPerType:
       if desc == "":
         result.add("\tchar dummy;\n")
       elif typ.len == 1 and typ.n[0].kind == nkSym:
