@@ -63,12 +63,16 @@ proc toNimblePath(s: string, isStdlib: bool): string =
       sub.add "/pkgs/"
     var start = s.find(sub)
     if start < 0:
-      result = s
-    else:
-      start += sub.len
-      start += skipUntil(s, '/', start)
-      start += 1
-      result = pkgPrefix & s[start..^1]
+      sub[^1] = '2'
+      sub.add '/'
+      start = s.find(sub) # /pkgs2
+      if start < 0:
+        return s
+
+    start += sub.len
+    start += skipUntil(s, '/', start)
+    start += 1
+    result = pkgPrefix & s[start..^1]
 
 proc addDependency(c: PPassContext, g: PGen, b: Backend, n: PNode) =
   doAssert n.kind == nkSym, $n.kind
