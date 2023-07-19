@@ -610,8 +610,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if op != nil:
       result[0] = newSymNode(op)
 
-      if op.typ != nil and op.typ.len == 2 and op.typ[1].kind != tyVar and
-          skipAddr(n[1]).typ.kind == tyDistinct:
+      if op.typ != nil and op.typ.len == 2 and op.typ[1].kind != tyVar:
         if n[1].kind == nkSym and n[1].sym.kind == skParam and
             n[1].typ.kind == tyVar:
           result[1] = genDeref(n[1])
