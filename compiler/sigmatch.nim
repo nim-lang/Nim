@@ -1451,7 +1451,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let rootf = f.skipGenericAlias
 
     if a.kind == tyGenericInst:
-      if roota.base == rootf.base:
+      if roota.base.itemId == rootf.base.itemId:
         let nextFlags = flags + {trNoCovariance}
         var hasCovariance = false
         # YYYY
