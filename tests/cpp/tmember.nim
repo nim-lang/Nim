@@ -4,6 +4,9 @@ discard """
   output: '''
 2
 false
+hello foo
+hello boo
+hello boo
 destructing
 destructing
 '''
@@ -11,18 +14,40 @@ destructing
 proc print(s: cstring) {.importcpp:"printf(@)", header:"<stdio.h>".}
 
 type
-  Foo  {.exportc.} = object
+  Doo  {.exportc.} = object
     test: int
 
-proc memberProc(f: Foo) {.exportc, member.} = 
+proc memberProc(f: Doo) {.exportc, member.} = 
   echo $f.test
 
-proc destructor(f: Foo) {.member: "~'1()", used.} = 
+proc destructor(f: Doo) {.member: "~'1()", used.} = 
   print "destructing\n"
 
-proc `==`(self, other: Foo): bool {.member:"operator==('2 const & #2) const -> '0"} = 
+proc `==`(self, other: Doo): bool {.member:"operator==('2 const & #2) const -> '0"} = 
   self.test == other.test
 
-let foo = Foo(test: 2)
-foo.memberProc()
-echo foo == Foo(test: 1)
+let doo = Doo(test: 2)
+doo.memberProc()
+echo doo == Doo(test: 1)
+
+#virtual
+proc newCpp*[T](): ptr T {.importcpp:"new '*0()".}
+type 
+  Foo = object of RootObj
+  FooPtr = ptr Foo
+  Boo = object of Foo
+  BooPtr = ptr Boo
+
+proc salute(self: FooPtr) {.member: "virtual $1()".} = 
+  echo "hello foo"
+
+proc salute(self: BooPtr) {.member: "virtual $1()".} =
+  echo "hello boo"
+
+let foo = newCpp[Foo]()
+let boo = newCpp[Boo]()
+let booAsFoo = cast[FooPtr](newCpp[Boo]())  
+
+foo.salute()
+boo.salute()
+booAsFoo.salute()
