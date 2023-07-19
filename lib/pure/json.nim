@@ -438,7 +438,7 @@ macro `%*`*(x: untyped): untyped =
   ## `%` for every element.
   result = toJsonImpl(x)
 
-proc `==`*(a, b: JsonNode): bool {.noSideEffect.} =
+proc `==`*(a, b: JsonNode): bool {.noSideEffect, raises: [].} =
   ## Check two nodes for equality
   if a.isNil:
     if b.isNil: return true
@@ -458,7 +458,8 @@ proc `==`*(a, b: JsonNode): bool {.noSideEffect.} =
     of JNull:
       result = true
     of JArray:
-      result = a.elems == b.elems
+      {.cast(raises: []).}: # bug #19303
+        result = a.elems == b.elems
     of JObject:
       # we cannot use OrderedTable's equality here as
       # the order does not matter for equality here.
