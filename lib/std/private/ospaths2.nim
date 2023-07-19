@@ -590,21 +590,18 @@ proc searchExtPos*(path: string): int =
 
   # Unless there is any char that is not `ExtSep` before last `ExtSep` in the file name,
   # it is not a file extension.
+  const DirSeps = when doslikeFileSystem: {DirSep, AltSep, ':'} else: {DirSep, AltSep}
   result = -1
-  let stop = when doslikeFileSystem:
-      splitDrive(path).drive.len + 1
-    else:
-      1
   var i = path.high
-  while i >= stop:
+  while i >= 1:
     if path[i] == ExtSep:
       break
-    elif path[i] in {DirSep, AltSep}:
+    elif path[i] in DirSeps:
       return -1 # do not skip over path
     dec i
 
-  for j in countdown(i - 1, stop - 1):
-    if path[j] in {DirSep, AltSep}:
+  for j in countdown(i - 1, 0):
+    if path[j] in DirSeps:
       return -1
     elif path[j] != ExtSep:
       result = i
