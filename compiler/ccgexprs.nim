@@ -2359,6 +2359,13 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
     if d.k == locNone: getTemp(p, n.typ, d)
     if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
       genAssignment(p, d, a, {})
+      var op = getAttachedOp(p.module.g.graph, n.typ, attachedWasMoved)
+      if op == nil:
+        resetLoc(p, a)
+      else:
+        let addrExp = makeAddr(n[1], p.module.idgen)
+        let wasMovedCall = newTreeI(nkCall, n.info, newSymNode(op), addrExp)
+        genCall(p, wasMovedCall, d)
     else:
       let flags = if not canMove(p, n[1], d): {needToCopy} else: {}
       genAssignment(p, d, a, flags)
