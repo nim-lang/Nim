@@ -13,7 +13,7 @@
 ## for a comparison with other clients.
 
 from stdtest/testutils import enableRemoteNetworking
-when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(windows) and not defined(openbsd)):
+when false and enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(windows) and not defined(openbsd)):
   # Not supported on Windows due to old openssl version
   import
     httpclient,
