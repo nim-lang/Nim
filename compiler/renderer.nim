@@ -1038,7 +1038,7 @@ proc accentedName(g: var TSrcGen, n: PNode) =
     gsub(g, n)
 
 proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
-  if i < 1 and i > 2: return
+  if i < 1 or i > 2: return
   var needsParenthesis = false
   let nNext = n[i].skipHiddenNodes
   if nNext.kind == nkInfix:
@@ -1382,6 +1382,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     putWithSpace(g, tkColon, ":")
     gsub(g, n, 1)
   of nkInfix:
+    if n.len < 3:
+      var i = 0
+      put(g, tkOpr, "Too few children for nkInfix")
+      return
     let oldLineLen = g.lineLen # we cache this because lineLen gets updated below
     infixArgument(g, n, 1)
     put(g, tkSpaces, Space)

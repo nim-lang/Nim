@@ -1145,13 +1145,16 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
   if k == skType and nameNode.kind == nkSym:
     d.types.strTableAdd nameNode.sym
 
-proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonItem =
+proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): JsonItem =
   if not isVisible(d, nameNode): return
   var
     name = getNameEsc(d, nameNode)
     comm = genRecComment(d, n)
     r: TSrcGen
-  initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments, renderExpandUsing})
+    renderFlags = {renderNoBody, renderNoComments, renderDocComments, renderExpandUsing}
+  if nonExports:
+    renderFlags.incl renderNonExportedFields
+  initTokRender(r, n, renderFlags)
   result.json = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                    "col": %n.info.col}
   if comm != nil:
@@ -1536,7 +1539,7 @@ proc finishGenerateDoc*(d: var PDoc) =
 proc add(d: PDoc; j: JsonItem) =
   if j.json != nil or j.rst != nil: d.jEntriesPre.add j
 
-proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
+proc generateJson*(d: PDoc, n: PNode, config: ConfigRef, includeComments: bool = true) =
   case n.kind
   of nkPragma:
     let doctypeNode = findPragma(n, wDoctype)
@@ -1568,14 +1571,14 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
       if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         d.add genJsonItem(d, n[i], n[i][0],
-                succ(skType, ord(n.kind)-ord(nkTypeSection)))
+                succ(skType, ord(n.kind)-ord(nkTypeSection)), optShowNonExportedFields in config.globalOptions)
   of nkStmtList:
     for i in 0..<n.len:
-      generateJson(d, n[i], includeComments)
+      generateJson(d, n[i], config, includeComments)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n[0][0]):
-      generateJson(d, lastSon(n[0]), includeComments)
+      generateJson(d, lastSon(n[0]), config, includeComments)
   else: discard
 
 proc genTagsItem(d: PDoc, n, nameNode: PNode, k: TSymKind): string =
@@ -1852,7 +1855,7 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
                           status: int; content: string) {.gcsafe.} =
     localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
                warnUser, "the ':test:' attribute is not supported by this backend")
-  generateJson(d, ast)
+  generateJson(d, ast, conf)
   finishGenerateDoc(d)
   let json = d.jEntriesFinal
   let content = pretty(json)

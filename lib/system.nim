@@ -151,26 +151,10 @@ proc wasMoved*[T](obj: var T) {.inline, noSideEffect.} =
   {.cast(raises: []), cast(tags: []).}:
     `=wasMoved`(obj)
 
-const notJSnotNims = not defined(js) and not defined(nimscript)
-const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
-
-when notJSnotNims and arcLikeMem:
-  proc internalMove[T](x: var T): T {.magic: "Move", noSideEffect, compilerproc.} =
-    result = x
-
-  proc move*[T](x: var T): T {.noSideEffect, nodestroy.} =
-    {.cast(noSideEffect).}:
-      when nimvm:
-        result = internalMove(x)
-      else:
-        result = internalMove(x)
-        {.cast(raises: []), cast(tags: []).}:
-          `=wasMoved`(x)
-else:
-  proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
-    result = x
-    {.cast(raises: []), cast(tags: []).}:
-      `=wasMoved`(x)
+proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+  result = x
+  {.cast(raises: []), cast(tags: []).}:
+    `=wasMoved`(x)
 
 type
   range*[T]{.magic: "Range".}         ## Generic type to construct range types.
@@ -369,6 +353,9 @@ proc arrGet[I: Ordinal;T](a: T; i: I): T {.
 proc arrPut[I: Ordinal;T,S](a: T; i: I;
   x: S) {.noSideEffect, magic: "ArrPut".}
 
+const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
+
+
 when defined(nimAllowNonVarDestructor) and arcLikeMem:
   proc `=destroy`*(x: string) {.inline, magic: "Destroy".} =
     discard
@@ -445,6 +432,7 @@ include "system/inclrtl"
 const NoFakeVars = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
+const notJSnotNims = not defined(js) and not defined(nimscript)
 
 when not defined(js) and not defined(nimSeqsV2):
   type

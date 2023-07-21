@@ -1223,6 +1223,7 @@ proc track(tracked: PEffects, n: PNode) =
   of nkTupleConstr:
     for i in 0..<n.len:
       track(tracked, n[i])
+      notNilCheck(tracked, n[i].skipColon, n[i].typ)
       if tracked.owner.kind != skMacro:
         if n[i].kind == nkExprColonExpr:
           createTypeBoundOps(tracked, n[i][0].typ, n.info)
