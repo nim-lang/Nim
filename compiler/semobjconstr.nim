@@ -342,6 +342,13 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
           # All bets are off. If any of the branches has a mandatory
           # fields we must produce an error:
           for i in 1..<n.len:
+            let branchNode = n[i]
+            if branchNode != nil:
+              let (_, defaults) = semConstructFields(c, branchNode[^1], constrCtx, flags)
+              if len(defaults) > 0:
+                localError(c.config, discriminatorVal.info, "branch initialization " &
+                            "with a runtime discriminator is not supported " &
+                            "for a branch whose fields have default values.")
             discard collectMissingCaseFields(c, n[i], constrCtx, @[])
   of nkSym:
     let field = n.sym
