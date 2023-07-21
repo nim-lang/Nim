@@ -1,6 +1,6 @@
 discard """
   cmd: "nim $target --hints:on --define:ssl $options $file"
-  disabled: true
+  disabled: osx
 """
 
 import asyncdispatch, asyncnet, net, strutils
