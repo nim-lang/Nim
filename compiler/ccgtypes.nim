@@ -486,6 +486,9 @@ proc multiFormat*(frmt: var string, chars : static openArray[char], args: openAr
 template cgDeclFrmt*(s: PSym): string =
   s.constraint.strVal
 
+proc isCgDeclParam*(s: PSym): bool = 
+  s.constraint != nil and s.constraint.kind == nkStrLit and "$#" in s.constraint.strVal
+
 proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var string,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false;) =
@@ -538,7 +541,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var 
     name = param.loc.r
     types.add typ
     names.add name
-    if param.constraint.isNil:
+    if not param.isCgDeclParam():
       args.add types[^1] & " " & names[^1]
     else:
       args.add runtimeFormat(param.cgDeclFrmt, [types[^1], names[^1]])
@@ -589,7 +592,7 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
     typ.add(" ")
     if sfNoalias in param.flags:
       typ.add("NIM_NOALIAS ")
-    if param.constraint.isNil:
+    if not param.isCgDeclParam():
       params.add(typ)
       params.add(param.loc.r)
     else:
