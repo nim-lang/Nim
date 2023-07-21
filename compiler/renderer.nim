@@ -31,10 +31,6 @@ type
     length*: int16
     sym*: PSym
 
-  Section = enum
-    GenericParams
-    ObjectDef
-
   TRenderTokSeq* = seq[TRenderTok]
   TSrcGen* = object
     indent*: int
@@ -49,7 +45,7 @@ type
     pendingWhitespace: int
     comStack*: seq[PNode]  # comment stack
     flags*: TRenderFlags
-    inside: set[Section] # Keeps track of contexts we are in
+    inGenericParams: bool
     checkAnon: bool        # we're in a context that can contain sfAnon
     inPragma: int
     when defined(nimpretty):
@@ -77,16 +73,6 @@ proc isKeyword*(i: PIdent): bool =
       (i.id <= ord(tokKeywordHigh) - ord(tkSymbol)):
     result = true
 
-proc isExported(n: PNode): bool =
-  ## Checks if an ident is exported.
-  ## This is meant to be used with idents in nkIdentDefs.
-  case n.kind
-  of nkPostfix:
-    n[0].ident.s == "*" and n[1].kind == nkIdent
-  of nkPragmaExpr:
-    n[0].isExported()
-  else: false
-
 proc renderDefinitionName*(s: PSym, noQuotes = false): string =
   ## Returns the definition name of the symbol.
   ##
@@ -98,25 +84,6 @@ proc renderDefinitionName*(s: PSym, noQuotes = false): string =
     result = x
   else:
     result = '`' & x & '`'
-
-template inside(g: var TSrcGen, section: Section, body: untyped) =
-  ## Runs `body` with `section` included in `g.inside`.
-  ## Removes it at the end of the body if `g` wasn't inside it
-  ## before the template.
-  let wasntInSection = section notin g.inside
-  g.inside.incl section
-  body
-  if wasntInSection:
-    g.inside.excl section
-
-template outside(g: var TSrcGen, section: Section, body: untyped) =
-  ## Temporarily removes `section` from `g.inside`. Adds it back
-  ## at the end of the body if `g` was inside it before the template
-  let wasInSection = section in g.inside
-  g.inside.excl section
-  body
-  if wasInSection:
-    g.inside.incl section
 
 const
   IndentWidth = 2
@@ -154,7 +121,7 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags; config: ConfigRef) =
   g.flags = renderFlags
   g.pendingNL = -1
   g.pendingWhitespace = -1
-  g.inside = {}
+  g.inGenericParams = false
   g.config = config
 
 proc addTok(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
@@ -864,12 +831,14 @@ proc gproc(g: var TSrcGen, n: PNode) =
 
   if n[patternPos].kind != nkEmpty:
     gpattern(g, n[patternPos])
-  g.inside(GenericParams):
-    if renderNoBody in g.flags and n[miscPos].kind != nkEmpty and
-        n[miscPos][1].kind != nkEmpty:
-      gsub(g, n[miscPos][1])
-    else:
-      gsub(g, n[genericParamsPos])
+  let oldInGenericParams = g.inGenericParams
+  g.inGenericParams = true
+  if renderNoBody in g.flags and n[miscPos].kind != nkEmpty and
+      n[miscPos][1].kind != nkEmpty:
+    gsub(g, n[miscPos][1])
+  else:
+    gsub(g, n[genericParamsPos])
+  g.inGenericParams = oldInGenericParams
   gsub(g, n[paramsPos])
   if renderNoPragmas notin g.flags:
     gsub(g, n[pragmasPos])
@@ -947,7 +916,7 @@ proc gasm(g: var TSrcGen, n: PNode) =
     gsub(g, n[1])
 
 proc gident(g: var TSrcGen, n: PNode) =
-  if GenericParams in g.inside and n.kind == nkSym:
+  if g.inGenericParams and n.kind == nkSym:
     if sfAnon in n.sym.flags or
       (n.typ != nil and tfImplicitTypeParam in n.typ.flags): return
 
@@ -1335,31 +1304,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     gsub(g, n, pragmasPos)
     put(g, tkColon, ":")
     gsub(g, n, bodyPos)
-  of nkIdentDefs:
-    # Skip if this is a property in a type and its not exported
-    # (While also not allowing rendering of non exported fields)
-    if ObjectDef in g.inside and (not n[0].isExported() and renderNonExportedFields notin g.flags):
-      return
-    # We render the identDef without being inside the section incase we render something like
-    # y: proc (x: string) # (We wouldn't want to check if x is exported)
-    g.outside(ObjectDef):
-      gcomma(g, n, 0, -3)
-      if n.len >= 2 and n[^2].kind != nkEmpty:
-        putWithSpace(g, tkColon, ":")
-        gsub(g, n[^2], c)
-      elif n.referencesUsing and renderExpandUsing in g.flags:
-        putWithSpace(g, tkColon, ":")
-        gsub(g, newSymNode(n.origUsingType), c)
-
-      if n.len >= 1 and n[^1].kind != nkEmpty:
-        put(g, tkSpaces, Space)
-        putWithSpace(g, tkEquals, "=")
-        gsub(g, n[^1], c)
-  of nkConstDef:
+  of nkConstDef, nkIdentDefs:
     gcomma(g, n, 0, -3)
     if n.len >= 2 and n[^2].kind != nkEmpty:
       putWithSpace(g, tkColon, ":")
       gsub(g, n[^2], c)
+    elif n.referencesUsing and renderExpandUsing in g.flags:
+      putWithSpace(g, tkColon, ":")
+      gsub(g, newSymNode(n.origUsingType), c)
 
     if n.len >= 1 and n[^1].kind != nkEmpty:
       put(g, tkSpaces, Space)
@@ -1520,19 +1472,20 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkObjectTy:
     if n.len > 0:
       putWithSpace(g, tkObject, "object")
-      g.inside(ObjectDef):
-        gsub(g, n[0])
-        gsub(g, n[1])
-        gcoms(g)
-        gsub(g, n[2])
+      gsub(g, n[0])
+      gsub(g, n[1])
+      gcoms(g)
+      gsub(g, n[2])
     else:
       put(g, tkObject, "object")
   of nkRecList:
     indentNL(g)
     for i in 0..<n.len:
-      optNL(g)
-      gsub(g, n[i], c)
-      gcoms(g)
+      if n[i].kind == nkIdentDefs and n[i][0].skipPragmaExpr.kind == nkPostfix or
+                        renderNonExportedFields in g.flags:
+        optNL(g)
+        gsub(g, n[i], c)
+        gcoms(g)
     dedent(g)
     putNL(g)
   of nkOfInherit:
