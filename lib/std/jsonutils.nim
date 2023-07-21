@@ -50,22 +50,30 @@ type
       ## If `true` Nim's object to which JSON is parsed is allowed to have
       ## fields without corresponding JSON keys.
     # in future work: a key rename could be added
+
   EnumMode* = enum
     joptEnumOrd
     joptEnumSymbol
     joptEnumString
+
   JsonNodeMode* = enum ## controls `toJson` for JsonNode types
     joptJsonNodeAsRef ## returns the ref as is
     joptJsonNodeAsCopy ## returns a deep copy of the JsonNode
     joptJsonNodeAsObject ## treats JsonNode as a regular ref object
+
+  EmptyStringMode = enum
+    joptEmptyStringAsNull
+    joptEmptyStringAsString
+
   ToJsonOptions* = object
     enumMode*: EnumMode
     jsonNodeMode*: JsonNodeMode
+    emptyStringMode*: EmptyStringMode
     # xxx charMode, etc
 
 proc initToJsonOptions*(): ToJsonOptions =
   ## initializes `ToJsonOptions` with sane options.
-  ToJsonOptions(enumMode: joptEnumOrd, jsonNodeMode: joptJsonNodeAsRef)
+  ToJsonOptions(enumMode: joptEnumOrd, jsonNodeMode: joptJsonNodeAsRef, emptyStringMode: joptEmptyStringAsString)
 
 proc distinctBase(T: typedesc, recursive: static bool = true): typedesc {.magic: "TypeTrait".}
 template distinctBase[T](a: T, recursive: static bool = true): untyped = distinctBase(typeof(a), recursive)(a)
@@ -299,7 +307,7 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   ## serializes `a` to json; uses `toJsonHook(a: T)` if it's in scope to
   ## customize serialization, see strtabs.toJsonHook for an example.
   ##
-  ## .. note:: With `-d:nimPreviewJsonutilsHoleyEnum`, `toJson` now can 
+  ## .. note:: With `-d:nimPreviewJsonutilsHoleyEnum`, `toJson` now can
   ##    serialize/deserialize holey enums as regular enums (via `ord`) instead of as strings.
   ##    It is expected that this behavior becomes the new default in upcoming versions.
   when compiles(toJsonHook(a, opt)): result = toJsonHook(a, opt)
@@ -343,6 +351,8 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
     of joptEnumString: toJson($a, opt)
   elif T is Ordinal: result = %(a.ord)
   elif T is cstring: (if a == nil: result = newJNull() else: result = % $a)
+  elif T is string:
+    if opt.emptyStringMode == joptEmptyStringAsNull: result = newJNull() else: result = %a
   else: result = %a
 
 proc fromJsonHook*[K: string|cstring, V](t: var (Table[K, V] | OrderedTable[K, V]),
