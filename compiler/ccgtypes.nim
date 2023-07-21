@@ -483,6 +483,9 @@ proc multiFormat*(frmt: var string, chars : static openArray[char], args: openAr
         res.add(substr(frmt, start, i - 1))
     frmt = res
 
+template cgDeclFrmt*(s: PSym): string =
+  s.constraint.strVal
+
 proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var string,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false;) =
@@ -535,7 +538,10 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var 
     name = param.loc.r
     types.add typ
     names.add name
-    args.add types[^1] & " " & names[^1]
+    if param.constraint.isNil:
+      args.add types[^1] & " " & names[^1]
+    else:
+      args.add runtimeFormat(param.cgDeclFrmt, [types[^1], names[^1]])
 
   multiFormat(params, @['\'', '#'], [types, names])
   multiFormat(superCall, @['\'', '#'], [types, names])
@@ -570,19 +576,24 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
     fillParamName(m, param)
     fillLoc(param.loc, locParam, t.n[i],
             param.paramStorageLoc)
+    var typ: Rope
     if ccgIntroducedPtr(m.config, param, t[0]) and descKind == dkParam:
-      params.add(getTypeDescWeak(m, param.typ, check, descKind))
-      params.add("*")
+      typ = (getTypeDescWeak(m, param.typ, check, descKind))
+      typ.add("*")
       incl(param.loc.flags, lfIndirect)
       param.loc.storage = OnUnknown
     elif weakDep:
-      params.add(getTypeDescWeak(m, param.typ, check, descKind))
+      typ = (getTypeDescWeak(m, param.typ, check, descKind))
     else:
-      params.add(getTypeDescAux(m, param.typ, check, descKind))
-    params.add(" ")
+      typ = (getTypeDescAux(m, param.typ, check, descKind))
+    typ.add(" ")
     if sfNoalias in param.flags:
-      params.add("NIM_NOALIAS ")
-    params.add(param.loc.r)
+      typ.add("NIM_NOALIAS ")
+    if param.constraint.isNil:
+      params.add(typ)
+      params.add(param.loc.r)
+    else:
+      params.add runtimeFormat(param.cgDeclFrmt, [typ, param.loc.r])
     # declare the len field for open arrays:
     var arr = param.typ.skipTypes({tyGenericInst})
     if arr.kind in {tyVar, tyLent, tySink}: arr = arr.lastSon
@@ -721,9 +732,6 @@ proc fillObjectFields*(m: BModule; typ: PType) =
   discard getRecordFields(m, typ, check)
 
 proc mangleDynLibProc(sym: PSym): Rope
-
-template cgDeclFrmt*(s: PSym): string =
-  s.constraint.strVal
   
 proc getRecordDescAux(m: BModule; typ: PType, name, baseType: Rope,
                    check: var IntSet, hasField:var bool): Rope =                 

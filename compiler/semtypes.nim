@@ -1356,7 +1356,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       let finalType = if lifted != nil: lifted else: typ.skipIntLit(c.idgen)
       arg.typ = finalType
       arg.position = counter
-      arg.constraint = constraint
+      if constraint != nil: 
+        #only replace the constraint when it has been set as arg could contain codegenDecl
+        arg.constraint = constraint
       inc(counter)
       if def != nil and def.kind != nkEmpty:
         arg.ast = copyTree(def)

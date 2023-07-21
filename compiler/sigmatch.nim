@@ -2432,7 +2432,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     return
 
   template checkConstraint(n: untyped) {.dirty.} =
-    if not formal.constraint.isNil:
+    if not formal.constraint.isNil and not (formal.constraint.kind == nkStrLit and "$#" in formal.constraint.strVal):
       if matchNodeKinds(formal.constraint, n):
         # better match over other routines with no such restriction:
         inc(m.genericMatches, 100)
