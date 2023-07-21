@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import std/private/bitops_utils
 import std/assertions
 

@@ -12,7 +12,7 @@
 from std/math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
   floor, ceil, `mod`, cbrt, arcsinh, arccosh, arctanh, erf, erfc, gamma,
-  lgamma
+  lgamma, divmod
 from std/sequtils import toSeq
 when declared(math.copySign):
   # pending bug #18762, avoid renaming math
@@ -38,7 +38,6 @@ when defined(nimPreviewSlimSystem):
 else:
   from std/formatfloat import addFloatRoundtrip, addFloatSprintf
 
-from std/strutils import formatBiggestFloat, FloatFormatMode
 
 # There are some useful procs in vmconv.
 import vmconv, vmmarshal
@@ -79,6 +78,11 @@ template wrap1fMath(op) {.dirty.} =
 template wrap2fMath(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getFloat(a, 0), getFloat(a, 1)))
+  mathop op
+
+template wrap2iMath(op) {.dirty.} =
+  proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+    setResult(a, op(getInt(a, 0), getInt(a, 1)))
   mathop op
 
 template wrap0(op, modop) {.dirty.} =
@@ -225,6 +229,7 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1fMath(erfc)
   wrap1fMath(gamma)
   wrap1fMath(lgamma)
+  wrap2iMath(divmod)
 
   when declared(copySign):
     wrap2fMath(copySign)

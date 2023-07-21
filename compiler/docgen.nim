@@ -259,7 +259,16 @@ template declareClosures(currentFilename: AbsoluteFile, destFile: string) =
     of mwUnusedImportdoc: k = warnRstUnusedImportdoc
     of mwRstStyle: k = warnRstStyle
     {.gcsafe.}:
-      globalError(conf, newLineInfo(conf, AbsoluteFile filename, line, col), k, arg)
+      let errorsAsWarnings = (roPreferMarkdown in d.sharedState.options) and
+          not d.standaloneDoc  # not tolerate errors in .rst/.md files
+      if whichMsgClass(msgKind) == mcError and errorsAsWarnings:
+        liMessage(conf, newLineInfo(conf, AbsoluteFile filename, line, col),
+                  k, arg, doNothing, instLoc(), ignoreError=true)
+        # when our Markdown parser fails, we currently can only terminate the
+        # parsing (and then we will return monospaced text instead of markup):
+        raiseRecoverableError("")
+      else:
+        globalError(conf, newLineInfo(conf, AbsoluteFile filename, line, col), k, arg)
 
   proc docgenFindFile(s: string): string {.gcsafe.} =
     result = options.findFile(conf, s).string
@@ -311,8 +320,9 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
                     standaloneDoc = false, preferMarkdown = true,
                     hasToc = true): PDoc =
   let destFile = getOutFile2(conf, presentationPath(conf, filename), outExt, false).string
-  declareClosures(currentFilename = filename, destFile = destFile)
   new(result)
+  let d = result  # pass `d` to `declareClosures`:
+  declareClosures(currentFilename = filename, destFile = destFile)
   result.module = module
   result.conf = conf
   result.cache = cache
@@ -418,10 +428,13 @@ proc getVarIdx(varnames: openArray[string], id: string): int =
 proc genComment(d: PDoc, n: PNode): PRstNode =
   if n.comment.len > 0:
     d.sharedState.currFileIdx = addRstFileIndex(d, n.info)
-    result = parseRst(n.comment,
-                      toLinenumber(n.info),
-                      toColumn(n.info) + DocColOffset,
-                      d.conf, d.sharedState)
+    try:
+      result = parseRst(n.comment,
+                        toLinenumber(n.info),
+                        toColumn(n.info) + DocColOffset,
+                        d.conf, d.sharedState)
+    except ERecoverableError:
+      result = newRstNode(rnLiteralBlock, @[newRstLeaf(n.comment)])
 
 proc genRecCommentAux(d: PDoc, n: PNode): PRstNode =
   if n == nil: return nil
@@ -565,10 +578,13 @@ proc runAllExamples(d: PDoc) =
     # most useful semantics is that `docCmd` comes after `rdoccmd`, so that we can (temporarily) override
     # via command line
     # D20210224T221756:here
-    let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off --path:$path --nimcache:$nimcache $rdoccmd $docCmd $file" % [
+    var pathArgs = "--path:$path" % [ "path", quoteShell(d.conf.projectPath) ]
+    for p in d.conf.searchPaths:
+      pathArgs = "$args --path:$path" % [ "args", pathArgs, "path", quoteShell(p) ]
+    let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off $pathArgs --nimcache:$nimcache $rdoccmd $docCmd $file" % [
       "nim", quoteShell(os.getAppFilename()),
       "backend", $d.conf.backend,
-      "path", quoteShell(d.conf.projectPath),
+      "pathArgs", pathArgs,
       "libpath", quoteShell(d.conf.libpath),
       "nimcache", quoteShell(outputDir),
       "file", quoteShell(outp),
@@ -603,7 +619,6 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   let useRenderModule = false
   let loc = d.conf.toFileLineCol(n.info)
   let code = extractRunnableExamplesSource(d.conf, n)
-  let codeIndent = extractRunnableExamplesSource(d.conf, n, indent = 2)
 
   if d.conf.errorCounter > 0:
     return (rdoccmd, code)
@@ -619,6 +634,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
     docComment.comment = comment
     var runnableExamples = newTree(nkStmtList,
         docComment,
+        newTree(nkImportStmt, newStrNode(nkStrLit, "std/assertions")),
         newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
     runnableExamples.info = n.info
     for a in n.lastSon: runnableExamples.add a
@@ -632,6 +648,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   else:
     var code2 = code
     if code.len > 0 and "codeReordering" notin code:
+      let codeIndent = extractRunnableExamplesSource(d.conf, n, indent = 2)
       # hacky but simplest solution, until we devise a way to make `{.line.}`
       # work without introducing a scope
       code2 = """
@@ -642,6 +659,7 @@ $#
 #[
 $#
 ]#
+import std/assertions
 import $#
 $#
 """ % [comment, d.filename.quoted, code2]
@@ -1127,13 +1145,16 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
   if k == skType and nameNode.kind == nkSym:
     d.types.strTableAdd nameNode.sym
 
-proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonItem =
+proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): JsonItem =
   if not isVisible(d, nameNode): return
   var
     name = getNameEsc(d, nameNode)
     comm = genRecComment(d, n)
     r: TSrcGen
-  initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments, renderExpandUsing})
+    renderFlags = {renderNoBody, renderNoComments, renderDocComments, renderExpandUsing}
+  if nonExports:
+    renderFlags.incl renderNonExportedFields
+  initTokRender(r, n, renderFlags)
   result.json = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                    "col": %n.info.col}
   if comm != nil:
@@ -1518,7 +1539,7 @@ proc finishGenerateDoc*(d: var PDoc) =
 proc add(d: PDoc; j: JsonItem) =
   if j.json != nil or j.rst != nil: d.jEntriesPre.add j
 
-proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
+proc generateJson*(d: PDoc, n: PNode, config: ConfigRef, includeComments: bool = true) =
   case n.kind
   of nkPragma:
     let doctypeNode = findPragma(n, wDoctype)
@@ -1550,14 +1571,14 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
       if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         d.add genJsonItem(d, n[i], n[i][0],
-                succ(skType, ord(n.kind)-ord(nkTypeSection)))
+                succ(skType, ord(n.kind)-ord(nkTypeSection)), optShowNonExportedFields in config.globalOptions)
   of nkStmtList:
     for i in 0..<n.len:
-      generateJson(d, n[i], includeComments)
+      generateJson(d, n[i], config, includeComments)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n[0][0]):
-      generateJson(d, lastSon(n[0]), includeComments)
+      generateJson(d, lastSon(n[0]), config, includeComments)
   else: discard
 
 proc genTagsItem(d: PDoc, n, nameNode: PNode, k: TSymKind): string =
@@ -1806,13 +1827,16 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen, cache, conf, outExt, standaloneDoc = true,
                         preferMarkdown = preferMarkdown, hasToc = false)
-  let rst = parseRst(readFile(filen.string),
-                     line=LineRstInit, column=ColRstInit,
-                     conf, d.sharedState)
-  d.modDescPre = @[ItemFragment(isRst: true, rst: rst)]
-  finishGenerateDoc(d)
-  writeOutput(d)
-  generateIndex(d)
+  try:
+    let rst = parseRst(readFile(filen.string),
+                      line=LineRstInit, column=ColRstInit,
+                      conf, d.sharedState)
+    d.modDescPre = @[ItemFragment(isRst: true, rst: rst)]
+    finishGenerateDoc(d)
+    writeOutput(d)
+    generateIndex(d)
+  except ERecoverableError:
+    discard "already reported the error"
 
 proc commandRst2Html*(cache: IdentCache, conf: ConfigRef,
                       preferMarkdown=false) =
@@ -1831,7 +1855,7 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
                           status: int; content: string) {.gcsafe.} =
     localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
                warnUser, "the ':test:' attribute is not supported by this backend")
-  generateJson(d, ast)
+  generateJson(d, ast, conf)
   finishGenerateDoc(d)
   let json = d.jEntriesFinal
   let content = pretty(json)

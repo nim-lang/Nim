@@ -13,12 +13,12 @@ Nim Destructors and Move Semantics
 About this document
 ===================
 
-This document describes the upcoming Nim runtime which does
+This document describes the ARC/ORC Nim runtime which does
 not use classical GC algorithms anymore but is based on destructors and
-move semantics. The new runtime's advantages are that Nim programs become
+move semantics. The advantages are that Nim programs become
 oblivious to the involved heap sizes and programs are easier to write to make
 effective use of multi-core machines. As a nice bonus, files and sockets and
-the like will not require manual `close` calls anymore.
+the like can be written not to require manual `close` calls anymore.
 
 This document aims to be a precise specification about how
 move semantics and destructors work in Nim.
@@ -36,7 +36,7 @@ written as:
       len, cap: int
       data: ptr UncheckedArray[T]
 
-  proc `=destroy`*[T](x: var myseq[T]) =
+  proc `=destroy`*[T](x: myseq[T]) =
     if x.data != nil:
       for i in 0..<x.len: `=destroy`(x.data[i])
       dealloc(x.data)
@@ -58,6 +58,16 @@ written as:
       a.data = cast[typeof(a.data)](alloc(a.cap * sizeof(T)))
       for i in 0..<a.len:
         a.data[i] = b.data[i]
+
+  proc `=dup`*[T](a: myseq[T]): myseq[T] {.nodestroy.} =
+    # an optimized version of `=wasMoved(tmp); `=copy(tmp, src)`
+    # usually present if a custom `=copy` hook is overridden
+    result.len = a.len
+    result.cap = a.cap
+    if a.data != nil:
+      result.data = cast[typeof(result.data)](alloc(result.cap * sizeof(T)))
+      for i in 0..<result.len:
+        result.data[i] = `=dup`(a.data[i])
 
   proc `=sink`*[T](a: var myseq[T]; b: myseq[T]) =
     # move assignment, optional.
@@ -101,7 +111,7 @@ well as other standard collections is performed via so-called
 "Lifetime-tracking hooks", which are particular [type bound operators](
 manual.html#procedures-type-bound-operators).
 
-There are 4 different hooks for each (generic or concrete) object type `T` (`T` can also be a
+There are 6 different hooks for each (generic or concrete) object type `T` (`T` can also be a
 `distinct` type) that are called implicitly by the compiler.
 
 (Note: The word "hook" here does not imply any kind of dynamic binding
@@ -117,20 +127,28 @@ other associated resources. Variables are destroyed via this hook when
 they go out of scope or when the routine they were declared in is about
 to return.
 
-The prototype of this hook for a type `T` needs to be:
+A `=destroy` hook is allowed to have a parameter of a `var T` or `T` type. Taking a `var T` type is deprecated. The prototype of this hook for a type `T` needs to be:
 
   ```nim
-  proc `=destroy`(x: var T)
+  proc `=destroy`(x: T)
   ```
 
 The general pattern in `=destroy` looks like:
 
   ```nim
-  proc `=destroy`(x: var T) =
+  proc `=destroy`(x: T) =
     # first check if 'x' was moved to somewhere else:
     if x.field != nil:
       freeResource(x.field)
   ```
+
+A `=destroy` is implicitly annotated with `.raises: []`; a destructor
+should not raise exceptions. For backwards compatibility the compiler
+produces a warning for a `=destroy` that does raise.
+
+A `=destroy` can explicitly list the exceptions it can raise, if any,
+but this of little utility as a raising destructor is implementation defined
+behavior. Later versions of the language specification might cover this case precisely.
 
 
 `=sink` hook
@@ -238,10 +256,10 @@ The general pattern in using `=destroy` with `=trace` looks like:
     Test[T](size: size, arr: cast[ptr UncheckedArray[T]](alloc0(sizeof(T) * size)))
 
 
-  proc `=destroy`[T](dest: var Test[T]) =
+  proc `=destroy`[T](dest: Test[T]) =
     if dest.arr != nil:
       for i in 0 ..< dest.size: dest.arr[i].`=destroy`
-      dest.arr.dealloc
+      dealloc dest.arr
 
   proc `=trace`[T](dest: var Test[T]; env: pointer) =
     if dest.arr != nil:
@@ -254,6 +272,41 @@ The general pattern in using `=destroy` with `=trace` looks like:
 **Note**: The `=trace` hooks (which are only used by `--mm:orc`) are currently more experimental and less refined
 than the other hooks.
 
+`=WasMoved` hook
+----------------
+
+A `wasMoved` hook resets the memory of an object to its initial (binary zero) value to signify it was "moved" and to signify its destructor should do nothing and ideally be optimized away.
+
+The prototype of this hook for a type `T` needs to be:
+
+  ```nim
+  proc `=wasMoved`(x: var T)
+  ```
+
+`=dup` hook
+-----------
+
+A `=dup` hook duplicates the memory of an object. `=dup(x)` can be regarded as an optimization replacing the `wasMoved(dest); =copy(dest, x)` operation.
+
+The prototype of this hook for a type `T` needs to be:
+
+  ```nim
+  proc `=dup`(x: T): T
+  ```
+
+The general pattern in implementing `=dup` looks like:
+
+  ```nim
+  type
+    Ref[T] = object
+      data: ptr T
+      rc: ptr int
+
+  proc `=dup`[T](x: Ref[T]): Ref[T] =
+    result = x
+    if x.rc != nil:
+      inc x.rc[]
+  ```
 
 Move semantics
 ==============
@@ -401,7 +454,7 @@ destroyed at the scope exit.
 
     f_sink(notLastReadOf y)
     --------------------------     (copy-to-sink)
-    (let tmp; `=copy`(tmp, y);
+    (let tmp = `=dup`(y);
     f_sink(tmp))
 
 
@@ -637,11 +690,11 @@ The ability to override a hook leads to a phase ordering problem:
     # error: destructor for 'f' called here before
     # it was seen in this module.
 
-  proc `=destroy`[T](f: var Foo[T]) =
+  proc `=destroy`[T](f: Foo[T]) =
     discard
   ```
 
-The solution is to define ``proc `=destroy`[T](f: var Foo[T])`` before
+The solution is to define ``proc `=destroy`[T](f: Foo[T])`` before
 it is used. The compiler generates implicit
 hooks for all types in *strategic places* so that an explicitly provided
 hook that comes too "late" can be detected reliably. These *strategic places*
@@ -670,7 +723,7 @@ used to specialize the object traversal in order to avoid deep recursions:
   type Tree = object
     root: Node
 
-  proc `=destroy`(t: var Tree) {.nodestroy.} =
+  proc `=destroy`(t: Tree) {.nodestroy.} =
     # use an explicit stack so that we do not get stack overflows:
     var s: seq[Node] = @[t.root]
     while s.len > 0:

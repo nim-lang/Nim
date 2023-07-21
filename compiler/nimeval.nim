@@ -12,7 +12,7 @@ import
   ast, modules, condsyms,
   options, llstream, lineinfos, vm,
   vmdef, modulegraphs, idents, os, pathutils,
-  scriptconfig, std/compilesettings
+  scriptconfig, std/[compilesettings, tables]
 
 import pipelines
 
@@ -78,6 +78,9 @@ proc evalScript*(i: Interpreter; scriptStream: PLLStream = nil) =
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
   initStrTables(i.graph, i.mainModule)
+  i.graph.cacheSeqs.clear()
+  i.graph.cacheCounters.clear()
+  i.graph.cacheTables.clear()
   i.mainModule.ast = nil
 
   let s = if scriptStream != nil: scriptStream

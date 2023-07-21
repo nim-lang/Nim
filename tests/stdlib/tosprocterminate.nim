@@ -1,7 +1,7 @@
 discard """
   cmd: "nim $target $options -r $file"
   targets: "c cpp"
-  matrix: "--threads:on; "
+  matrix: "--mm:refc; --mm:orc"
 """
 
 import os, osproc, times, std / monotimes

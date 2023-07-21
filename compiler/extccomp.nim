@@ -14,12 +14,14 @@
 
 import ropes, platform, condsyms, options, msgs, lineinfos, pathutils, modulepaths
 
-import std/[os, osproc, sha1, streams, sequtils, times, strtabs, json, jsonutils, sugar, parseutils]
+import std/[os, osproc, streams, sequtils, times, strtabs, json, jsonutils, sugar, parseutils]
 
 import std / strutils except addf
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
+
+import ../dist/checksums/src/checksums/sha1
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -578,7 +580,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
 
     compilePattern = joinPath(conf.cCompilerPath, exe)
   else:
-    compilePattern = getCompilerExe(conf, c, isCpp)
+    compilePattern = exe
 
   includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
 
@@ -832,7 +834,10 @@ proc linkViaResponseFile(conf: ConfigRef; cmd: string) =
   else:
     writeFile(linkerArgs, args)
   try:
-    execLinkCmd(conf, cmd.substr(0, last) & " @" & linkerArgs)
+    when defined(macosx):
+      execLinkCmd(conf, "xargs " & cmd.substr(0, last) & " < " & linkerArgs)
+    else:
+      execLinkCmd(conf, cmd.substr(0, last) & " @" & linkerArgs)
   finally:
     removeFile(linkerArgs)
 

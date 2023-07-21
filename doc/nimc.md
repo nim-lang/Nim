@@ -32,6 +32,17 @@ Compiler Usage
 
 Command-line switches
 ---------------------
+All options that take a `PATH` or `DIR` argument are subject to path substitution:
+
+- `$nim`: The global nim prefix path
+- `$lib`: The stdlib path
+- `$home` and `~`: The user's home path
+- `$config`: The directory of the module currently being compiled
+- `$projectname`: The project file's name without file extension
+- `$projectpath` and `$projectdir`: The project file's path
+- `$nimcache`: The nimcache path
+
+
 Basic command-line switches are:
 
 .. no syntax highlighting in the below included files at the moment
@@ -104,7 +115,6 @@ ExprAlwaysX
 ExtendedContext
 GCStats                          Dumps statistics about the Garbage Collector.
 GlobalVar                        Shows global variables declarations.
-LineTooLong                      Line exceeds the maximum length.
 Link                             Linking phase.
 Name
 Path                             Search paths modifications.
@@ -515,7 +525,7 @@ Define                   Effect
                          This only works with `--mm:none`:option:,
                          `--mm:arc`:option: and `--mm:orc`:option:.
 `useRealtimeGC`          Enables support of Nim's GC for *soft* realtime
-                         systems. See the documentation of the [mm](mm.html)
+                         systems. See the documentation of the [refc](refc.html)
                          for further information.
 `logGC`                  Enable GC logging to stdout.
 `nodejs`                 The JS target is actually ``node.js``.

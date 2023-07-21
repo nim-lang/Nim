@@ -53,18 +53,16 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc =
     else:
       ""
 
-  if not defined(windows) or not isOrc: # todo fix me on windows
-    var test1 = makeTest("lib/nimrtl.nim", options & " --outdir:tests/dll", cat)
-    test1.spec.action = actionCompile
-    testSpec c, test1
+  var test1 = makeTest("lib/nimrtl.nim", options & " --outdir:tests/dll", cat)
+  test1.spec.action = actionCompile
+  testSpec c, test1
   var test2 = makeTest("tests/dll/server.nim", options & " --threads:on" & rpath, cat)
   test2.spec.action = actionCompile
   testSpec c, test2
 
-  if not isOrc:
-    var test3 = makeTest("lib/nimhcr.nim", options & " --threads:off --outdir:tests/dll" & rpath, cat)
-    test3.spec.action = actionCompile
-    testSpec c, test3
+  var test3 = makeTest("lib/nimhcr.nim", options & " --threads:off --outdir:tests/dll" & rpath, cat)
+  test3.spec.action = actionCompile
+  testSpec c, test3
   var test4 = makeTest("tests/dll/visibility.nim", options & " --threads:off --app:lib" & rpath, cat)
   test4.spec.action = actionCompile
   testSpec c, test4
@@ -79,12 +77,15 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc =
     putEnv(libpathenv, "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
     defer: putEnv(libpathenv, libpath)
 
-  if not isOrc:
-    testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
-    testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
+  testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
+  testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
   testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
 
-  if "boehm" notin options:
+  if "boehm" notin options and not isOrc:
+    # hcr tests
+    
+    testSpec r, makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+
     # force build required - see the comments in the .nim file for more details
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",
                                    options & " --threads:off --forceBuild --hotCodeReloading:on" & rpath, cat)
@@ -214,9 +215,9 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
   for testfile in ["exception/texceptions", "exception/texcpt1",
                    "exception/texcsub", "exception/tfinally",
                    "exception/tfinally2", "exception/tfinally3",
-                   "actiontable/tactiontable", "method/tmultimjs",
+                   "collections/tactiontable", "method/tmultimjs",
                    "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
-                   "varres/tvartup", "misc/tints", "misc/tunsignedinc",
+                   "varres/tvartup", "int/tints", "int/tunsignedinc",
                    "async/tjsandnativeasync"]:
     test "tests/" & testfile & ".nim"
 
@@ -686,7 +687,7 @@ proc processCategory(r: var TResults, cat: Category,
       else:
         jsTests(r, cat, options)
     of "dll":
-      dllTests(r, cat, options)
+      dllTests(r, cat, options & " -d:nimDebugDlOpen")
     of "gc":
       gcTests(r, cat, options)
     of "debugger":

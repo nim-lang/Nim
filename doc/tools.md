@@ -7,6 +7,10 @@ Tools available with Nim
 
 The standard distribution ships with the following tools:
 
+- | [atlas](atlas.html)
+  | `atlas`:cmd: is a simple package cloner tool. It manages an isolated workspace that
+    contains projects and dependencies.
+
 - | [Hot code reloading](hcr.html)
   | The "Hot code reloading" feature is built into the compiler but has its own
     document explaining how it works.
@@ -33,10 +37,9 @@ The standard distribution ships with the following tools:
   | `nimpretty`:cmd: is a Nim source code beautifier,
     to format code according to the official style guide.
 
-- | [testament](https://nim-lang.github.io/Nim/testament.html)
+- | [testament](testament.html)
   | `testament`:cmd: is an advanced automatic *unittests runner* for Nim tests,
     is used for the development of Nim itself, offers process isolation for your tests,
     it can generate statistics about test cases, supports multiple targets (C, JS, etc),
-    [simulated Dry-Runs](https://en.wikipedia.org/wiki/Dry_run_(testing)),
     has logging, can generate HTML reports, skip tests from a file, and more,
     so can be useful to run your tests, even the most complex ones.

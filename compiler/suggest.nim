@@ -213,7 +213,7 @@ proc `$`*(suggest: Suggest): string =
     result.add(sep)
     when defined(nimsuggest) and not defined(noDocgen) and not defined(leanCompiler):
       result.add(suggest.doc.escape)
-    if suggest.version in {0, 3}:
+    if suggest.version == 0 or suggest.version == 3:
       result.add(sep)
       result.add($suggest.quality)
       if suggest.section == ideSug:
@@ -277,6 +277,7 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
       var symObj = f.owner
       if symObj.typ.skipTypes({tyGenericBody, tyGenericInst, tyGenericInvocation, tyAlias}).kind in {tyRef, tyPtr}:
         symObj = symObj.typ.toObjectFromRefPtrGeneric.sym
+        assert symObj != nil
       for scope in allScopes(c.currentScope):
         for sym in scope.allowPrivateAccess:
           if symObj.id == sym.id: return true
@@ -439,7 +440,15 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
         if t[0] == nil: break
         t = skipTypes(t[0], skipPtrs)
     elif typ.kind == tyTuple and typ.n != nil:
-      suggestSymList(c, typ.n, field, n.info, outputs)
+      # All tuple fields are in scope
+      # So go through each field and add it to the suggestions (If it passes the filter)
+      for node in typ.n:
+        if node.kind == nkSym:
+          let s = node.sym
+          var pm: PrefixMatch
+          if filterSym(s, field, pm):
+            outputs.add(symToSuggest(c.graph, s, isLocal=true, ideSug, n.info,
+                                     s.getQuality, pm, c.inTypeContext > 0, 0))
 
     suggestOperations(c, n, field, orig, outputs)
     if typ != orig:

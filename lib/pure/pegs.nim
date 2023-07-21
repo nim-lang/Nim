@@ -1042,7 +1042,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
       # by *mkHandlerTplts*.
       template mkDoEnter(hdPostf, s, pegNode, start) =
         when declared(`enter hdPostf`):
-          `enter hdPostf`(s, pegNode, start):
+          `enter hdPostf`(s, pegNode, start)
         else:
           discard
       let hdPostf = ident(substr(strVal(pegKind), 2))
@@ -1053,7 +1053,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
       # a grammar element of kind *pegKind*.
       template mkDoLeave(hdPostf, s, pegNode, start, length) =
         when declared(`leave hdPostf`):
-          `leave hdPostf`(s, pegNode, start, length):
+          `leave hdPostf`(s, pegNode, start, length)
         else:
           discard
       let hdPostf = ident(substr(strVal(pegKind), 2))

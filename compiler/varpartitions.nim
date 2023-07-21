@@ -98,6 +98,8 @@ type
 
   Partitions* = object
     abstractTime: AbstractTime
+    defers: seq[PNode]
+    processDefer: bool
     s: seq[VarIndex]
     graphs: seq[MutationInfo]
     goals: set[Goal]
@@ -781,6 +783,9 @@ proc traverse(c: var Partitions; n: PNode) =
       traverse(c, n[0])
       # variables in while condition has longer alive time than local variables
       # in the while loop body
+  of nkDefer:
+    if c.processDefer:
+      for child in n: traverse(c, child)
   else:
     for child in n: traverse(c, child)
 
@@ -819,6 +824,10 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
       if vid >= 0:
         if n[1].kind == nkSym and (c.s[vid].reassignedTo == 0 or c.s[vid].reassignedTo == n[1].sym.id):
           c.s[vid].reassignedTo = n[1].sym.id
+          if c.inConditional > 0 and c.inLoop > 0:
+            # bug #22200: live ranges with loops and conditionals are too
+            # complex for our current analysis, so we prevent the cursorfication.
+            c.s[vid].flags.incl isConditionallyReassigned
         else:
           markAsReassigned(c, vid)
 
@@ -877,6 +886,11 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     inc c.inConditional
     for child in n: computeLiveRanges(c, child)
     dec c.inConditional
+  of nkDefer:
+    if c.processDefer:
+      for child in n: computeLiveRanges(c, child)
+    else:
+      c.defers.add n
   else:
     for child in n: computeLiveRanges(c, child)
 
@@ -890,9 +904,17 @@ proc computeGraphPartitions*(s: PSym; n: PNode; g: ModuleGraph; goals: set[Goal]
       registerResult(result, s.ast[resultPos])
 
   computeLiveRanges(result, n)
+  result.processDefer = true
+  for i in countdown(len(result.defers)-1, 0):
+    computeLiveRanges(result, result.defers[i])
+  result.processDefer = false
   # restart the timer for the second pass:
   result.abstractTime = AbstractTime 0
   traverse(result, n)
+  result.processDefer = true
+  for i in countdown(len(result.defers)-1, 0):
+    traverse(result, result.defers[i])
+  result.processDefer = false
 
 proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
   #echo "range ", v.aliveStart, " .. ", v.aliveEnd, " ", v.sym

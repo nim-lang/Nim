@@ -12,10 +12,7 @@ import std/[os, strutils, parseopt]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-when defined(windows) and not defined(nimKochBootstrap):
-  # remove workaround pending bootstrap >= 1.5.1
-  # refs https://github.com/nim-lang/Nim/issues/18334#issuecomment-867114536
-  # alternative would be to prepend `currentSourcePath.parentDir.quoteShell`
+when defined(windows):
   when defined(gcc):
     when defined(x86):
       {.link: "../icons/nim.res".}

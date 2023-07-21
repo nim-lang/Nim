@@ -44,11 +44,10 @@ block t5648:
     g.bar = 3
 
   var
-    mainPtr1: pointer = main
-    mainPtr2 = pointer(main)
-    mainPtr3 = cast[pointer](main)
+    mainPtr = cast[pointer](main)
+    mainFromPtr = cast[typeof(main)](mainPtr)
 
-  doAssert mainPtr1 == mainPtr2 and mainPtr2 == mainPtr3
+  doAssert main == mainFromPtr
 
   main()
 

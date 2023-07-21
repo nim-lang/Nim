@@ -35,5 +35,14 @@ macro with*(arg: typed; calls: varargs[untyped]): untyped =
       -= 5
     doAssert a == 43
 
+    # Nesting works for object types too!
+    var foo = (bar: 1, qux: (baz: 2))
+    with foo:
+      bar = 2
+      with qux:
+        baz = 3
+    doAssert foo.bar == 2
+    doAssert foo.qux.baz == 3
+
   result = newNimNode(nnkStmtList, arg)
   underscoredCalls(result, calls, arg)

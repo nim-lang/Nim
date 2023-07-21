@@ -1,6 +1,7 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
-       packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg
+       packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg,
+       liftdestructors
 
 import pipelineutils
 
@@ -176,7 +177,16 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
   case graph.pipelinePass
   of CgenPass:
     if bModule != nil:
-      finalCodegenActions(graph, BModule(bModule), finalNode)
+      let disps = finalCodegenActions(graph, BModule(bModule), finalNode)
+      if disps != nil:
+        let ctx = preparePContext(graph, module, idgen)
+        for disp in disps:
+          let retTyp = disp.sym.typ[0]
+          if retTyp != nil:
+            # todo properly semcheck the code of dispatcher?
+            createTypeBoundOps(graph, ctx, retTyp, disp.info, idgen)
+          genProcAux(BModule(bModule), disp.sym)
+        discard closePContext(graph, ctx, nil)
   of JSgenPass:
     when not defined(leanCompiler):
       discard finalJSCodeGen(graph, bModule, finalNode)

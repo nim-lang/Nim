@@ -45,10 +45,8 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimNewTypedesc") # deadcode
   defineSymbol("nimrequiresnimframe") # deadcode
   defineSymbol("nimparsebiggestfloatmagic") # deadcode
-  defineSymbol("nimalias") # deadcode
   defineSymbol("nimlocks") # deadcode
-  defineSymbol("nimnode") # deadcode pending `nimnode` reference in opengl package
-    # refs https://github.com/nim-lang/opengl/pull/79
+  defineSymbol("nimnode") # deadcode
   defineSymbol("nimvarargstyped") # deadcode
   defineSymbol("nimtypedescfixed") # deadcode
   defineSymbol("nimKnowsNimvm") # deadcode
@@ -147,10 +145,14 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasCallsitePragma")
   defineSymbol("nimHasAmbiguousEnumHint")
 
-  defineSymbol("nimHasWarnCastSizes")
+  defineSymbol("nimHasWarnCastSizes") # deadcode
   defineSymbol("nimHasOutParams")
   defineSymbol("nimHasSystemRaisesDefect")
   defineSymbol("nimHasWarnUnnamedBreak")
   defineSymbol("nimHasGenericDefine")
   defineSymbol("nimHasDefineAliases")
   defineSymbol("nimHasWarnBareExcept")
+  defineSymbol("nimHasDup")
+  defineSymbol("nimHasChecksums")
+  defineSymbol("nimHasSendable")
+  defineSymbol("nimAllowNonVarDestructor")

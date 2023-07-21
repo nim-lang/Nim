@@ -45,7 +45,7 @@ type
   PackedLib* = object
     kind*: TLibKind
     generated*: bool
-    isOverriden*: bool
+    isOverridden*: bool
     name*: LitId
     path*: NodeId
 
@@ -63,7 +63,8 @@ type
     alignment*: int # for alignment
     options*: TOptions
     position*: int
-    offset*: int
+    offset*: int32
+    disamb*: int32
     externalName*: LitId # instead of TLoc
     locFlags*: TLocFlags
     annex*: PackedLib

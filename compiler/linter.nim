@@ -95,7 +95,7 @@ template styleCheckDef*(ctx: PContext; info: TLineInfo; sym: PSym; k: TSymKind) 
   if optStyleCheck in ctx.config.options and # ignore if styleChecks are off
      {optStyleHint, optStyleError} * ctx.config.globalOptions != {} and # check only if hint/error is enabled
      hintName in ctx.config.notes and # ignore if name checks are not requested
-     ctx.config.belongsToProjectPackage(ctx.module) and # ignore foreign packages
+     ctx.config.belongsToProjectPackage(sym) and # ignore foreign packages
      optStyleUsages notin ctx.config.globalOptions and # ignore if requested to only check name usage
      sym.kind != skResult and # ignore `result`
      sym.kind != skTemp and # ignore temporary variables created by the compiler
@@ -136,7 +136,7 @@ template styleCheckUse*(ctx: PContext; info: TLineInfo; sym: PSym) =
   ## Check symbol uses match their definition's style.
   if {optStyleHint, optStyleError} * ctx.config.globalOptions != {} and # ignore if styleChecks are off
      hintName in ctx.config.notes and # ignore if name checks are not requested
-     ctx.config.belongsToProjectPackage(ctx.module) and # ignore foreign packages
+     ctx.config.belongsToProjectPackage(sym) and # ignore foreign packages
      sym.kind != skTemp and # ignore temporary variables created by the compiler
      sym.name.s[0] in Letters and # ignore operators TODO: what about unicode symbols???
      sfAnon notin sym.flags: # ignore temporary variables created by the compiler
@@ -147,6 +147,10 @@ proc checkPragmaUseImpl(conf: ConfigRef; info: TLineInfo; w: TSpecialWord; pragm
   if pragmaName != wanted:
     lintReport(conf, info, wanted, pragmaName)
 
-template checkPragmaUse*(conf: ConfigRef; info: TLineInfo; w: TSpecialWord; pragmaName: string) =
-  if {optStyleHint, optStyleError} * conf.globalOptions != {}:
-    checkPragmaUseImpl(conf, info, w, pragmaName)
+template checkPragmaUse*(ctx: PContext; info: TLineInfo; w: TSpecialWord; pragmaName: string, sym: PSym) =
+  ## Check builtin pragma uses match their definition's style.
+  ## Note: This only applies to builtin pragmas, not user pragmas.
+  if {optStyleHint, optStyleError} * ctx.config.globalOptions != {} and # ignore if styleChecks are off
+     hintName in ctx.config.notes and # ignore if name checks are not requested
+     (sym != nil and ctx.config.belongsToProjectPackage(sym)): # ignore foreign packages
+    checkPragmaUseImpl(ctx.config, info, w, pragmaName)

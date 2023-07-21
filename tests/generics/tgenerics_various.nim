@@ -127,42 +127,6 @@ block trefs:
 
 
 
-block tsharedcases:
-  proc typeNameLen(x: typedesc): int {.compileTime.} =
-    result = x.name.len
-  macro selectType(a, b: typedesc): typedesc =
-    result = a
-
-  type
-    Foo[T] = object
-      data1: array[T.high, int]
-      data2: array[typeNameLen(T), float]
-      data3: array[0..T.typeNameLen, selectType(float, int)]
-    MyEnum = enum A, B, C, D
-
-  var f1: Foo[MyEnum]
-  var f2: Foo[int8]
-
-  doAssert high(f1.data1) == 2 # (D = 3) - 1 == 2
-  doAssert high(f1.data2) == 5 # (MyEnum.len = 6) - 1 == 5
-
-  doAssert high(f2.data1) == 126 # 127 - 1 == 126
-  doAssert high(f2.data2) == 3 # int8.len - 1 == 3
-
-  static:
-    doAssert high(f1.data1) == ord(C)
-    doAssert high(f1.data2) == 5 # length of MyEnum minus one, because we used T.high
-
-    doAssert high(f2.data1) == 126
-    doAssert high(f2.data2) == 3
-
-    doAssert high(f1.data3) == 6 # length of MyEnum
-    doAssert high(f2.data3) == 4 # length of int8
-
-    doAssert f2.data3[0] is float
-
-
-
 block tmap_auto:
   let x = map(@[1, 2, 3], x => x+10)
   doAssert x == @[11, 12, 13]

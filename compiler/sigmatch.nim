@@ -215,7 +215,7 @@ proc sumGeneric(t: PType): int =
   # and Foo[T] has the value 2 so that we know Foo[Foo[T]] is more
   # specific than Foo[T].
   var t = t
-  var isvar = 1
+  var isvar = 0
   while true:
     case t.kind
     of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyUncheckedArray,
@@ -251,6 +251,8 @@ proc sumGeneric(t: PType): int =
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
         tyUInt..tyUInt64, tyCompositeTypeClass:
+      return isvar + 1
+    of tyBuiltInTypeClass:
       return isvar
     else:
       return 0
@@ -372,7 +374,7 @@ proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   of tyOwned:
     # bug #11257: the comparison system.`==`[T: proc](x, y: T) works
     # better without the 'owned' type:
-    if f != nil and f.len > 0 and f[0].skipTypes({tyBuiltInTypeClass}).kind == tyProc:
+    if f != nil and f.len > 0 and f[0].skipTypes({tyBuiltInTypeClass, tyOr}).kind == tyProc:
       result = t.lastSon
     else:
       result = t
@@ -625,6 +627,9 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     result = isEqual      # start with maximum; also correct for no
                           # params at all
 
+    if f.flags * {tfIterator} != a.flags * {tfIterator}:
+      return isNone
+
     template checkParam(f, a) =
       result = minRel(result, procParamTypeRel(c, f, a))
       if result == isNone: return
@@ -709,7 +714,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
       if alreadyBound != nil: typ = alreadyBound
 
       template paramSym(kind): untyped =
-        newSym(kind, typeParamName, nextSymId(c.idgen), typeClass.sym, typeClass.sym.info, {})
+        newSym(kind, typeParamName, c.idgen, typeClass.sym, typeClass.sym.info, {})
 
       block addTypeParam:
         for prev in typeParams:
@@ -1135,6 +1140,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let x = typeRel(c, a, f, flags + {trDontBind})
       if x >= isGeneric:
         return isGeneric
+
+  of tyFromExpr:
+    if c.c.inGenericContext > 0:
+      # generic type bodies can sometimes compile call expressions
+      # prevent expressions with unresolved types from
+      # being passed as parameters
+      return isNone
   else: discard
 
   case f.kind
@@ -1290,12 +1302,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             result = isSubtype
           else:
             result = isNone
-        elif tfNotNil in f.flags and tfNotNil notin a.flags:
-          result = isNilConversion
     of tyNil: result = isNone
     else: discard
   of tyOrdinal:
-    if isOrdinalType(a, allowEnumWithHoles = optNimV1Emulation in c.c.config.globalOptions):
+    if isOrdinalType(a):
       var x = if a.kind == tyOrdinal: a[0] else: a
       if f[0].kind == tyNone:
         result = isGeneric
@@ -1377,7 +1387,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         result = isEqual
     of tyNil: result = f.allowsNil
     of tyProc:
-      if a.callConv != ccClosure: result = isConvertible
+      if isDefined(c.c.config, "nimPreviewProcConversion"):
+        result = isNone
+      else:
+        if a.callConv != ccClosure: result = isConvertible
     of tyPtr:
       # 'pointer' is NOT compatible to regionized pointers
       # so 'dealloc(regionPtr)' fails:
@@ -1386,11 +1399,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     else: discard
   of tyString:
     case a.kind
-    of tyString:
-      if tfNotNil in f.flags and tfNotNil notin a.flags:
-        result = isNilConversion
-      else:
-        result = isEqual
+    of tyString: result = isEqual
     of tyNil: result = isNone
     else: discard
   of tyCstring:
@@ -1636,13 +1645,19 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyBuiltInTypeClass:
     considerPreviousT:
-      let targetKind = f[0].kind
+      let target = f[0]
+      let targetKind = target.kind
       let effectiveArgType = a.skipTypes({tyRange, tyGenericInst,
                                           tyBuiltInTypeClass, tyAlias, tySink, tyOwned})
-      let typeClassMatches = targetKind == effectiveArgType.kind and
-                             not effectiveArgType.isEmptyContainer
-      if typeClassMatches or
-        (targetKind in {tyProc, tyPointer} and effectiveArgType.kind == tyNil):
+      if targetKind == effectiveArgType.kind:
+        if effectiveArgType.isEmptyContainer:
+          return isNone
+        if targetKind == tyProc:
+          if target.flags * {tfIterator} != effectiveArgType.flags * {tfIterator}:
+            return isNone
+          if tfExplicitCallConv in target.flags and
+              target.callConv != effectiveArgType.callConv:
+            return isNone
         put(c, f, a)
         return isGeneric
       else:
@@ -1831,7 +1846,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # proc foo(T: typedesc, x: T)
       # when `f` is an unresolved typedesc, `a` could be any
       # type, so we should not perform this check earlier
-      if a.kind != tyTypeDesc:
+      if c.c.inGenericContext > 0 and
+          a.skipTypes({tyTypeDesc}).kind == tyGenericParam:
+        # generic type bodies can sometimes compile call expressions
+        # prevent unresolved generic parameters from being passed to procs as
+        # typedesc parameters
+        result = isNone
+      elif a.kind != tyTypeDesc:
         if a.kind == tyGenericParam and tfWildcard in a.flags:
           # TODO: prevent `a` from matching as a wildcard again
           result = isGeneric
@@ -1840,9 +1861,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       elif f.base.kind == tyNone:
         result = isGeneric
       else:
-        let r = typeRel(c, f.base, a.base, flags)
-        if r >= isIntConv:
-          result = r
+        result = typeRel(c, f.base, a.base, flags)
 
       if result != isNone:
         put(c, f, a)
@@ -1850,9 +1869,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if tfUnresolved in f.flags:
         result = typeRel(c, prev.base, a, flags)
       elif a.kind == tyTypeDesc:
-        let r = typeRel(c, prev.base, a.base, flags)
-        if r >= isIntConv:
-          result = r
+        result = typeRel(c, prev.base, a.base, flags)
       else:
         result = isNone
 
@@ -1924,10 +1941,21 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
     else:
       result.typ = errorType(c)
   else:
-    result.typ = f.skipTypes({tySink, tyVar})
+    result.typ = f.skipTypes({tySink})
+  # keep varness
+  if arg.typ != nil and arg.typ.kind == tyVar:
+    result.typ = toVar(result.typ, tyVar, c.idgen)
+  else:
+    result.typ = result.typ.skipTypes({tyVar})
+
   if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
   result.add c.graph.emptyNode
-  result.add arg
+  if arg.typ != nil and arg.typ.kind == tyLent:
+    let a = newNodeIT(nkHiddenDeref, arg.info, arg.typ[0])
+    a.add arg
+    result.add a
+  else:
+    result.add arg
 
 proc isLValue(c: PContext; n: PNode, isOutParam = false): bool {.inline.} =
   let aa = isAssignable(nil, n)
@@ -2199,6 +2227,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isNone:
     # do not do this in ``typeRel`` as it then can't infer T in ``ref T``:
     if a.kind in {tyProxy, tyUnknown}:
+      if a.kind == tyUnknown and c.inGenericContext > 0:
+        # don't bother with fauxMatch mechanism in generic type,
+        # reject match, typechecking will be delayed to instantiation
+        return nil
       inc(m.genericMatches)
       m.fauxMatch = a.kind
       return arg
@@ -2384,7 +2416,9 @@ proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
     # checking `nfBlockArg in n[a2].flags` wouldn't work inside templates
     if n[a2].kind != nkStmtList: break
     let formalLast = m.callee.n[m.callee.n.len - (n.len - a2)]
-    if formalLast.kind == nkSym and formalLast.sym.ast == nil:
+    # parameter has to occupy space (no default value, not void or varargs)
+    if formalLast.kind == nkSym and formalLast.sym.ast == nil and
+        formalLast.sym.typ.kind notin {tyVoid, tyVarargs}:
       result = a2
     else: break
 

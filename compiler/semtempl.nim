@@ -70,6 +70,9 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
       onUse(info, s)
     else:
       result = n
+  elif i == 0:
+    # forced open but symbol not in scope, retain information
+    result = n
   else:
     # semantic checking requires a type; ``fitNode`` deals with it
     # appropriately
@@ -110,14 +113,10 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
 
 proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
   result = copyNode(n)
-  var count = 0
   for i in 0..<n.len:
     toMixin.incl(considerQuotedIdent(c, n[i]).id)
     let x = symChoice(c, n[i], nil, scForceOpen)
-    inc count, x.len
     result.add x
-  if count == 0:
-    result = newNodeI(nkEmpty, n.info)
 
 proc replaceIdentBySym(c: PContext; n: var PNode, s: PNode) =
   case n.kind
@@ -182,16 +181,17 @@ proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
       result[i] = onlyReplaceParams(c, n[i])
 
 proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
-  result = newSym(kind, considerQuotedIdent(c.c, n), nextSymId c.c.idgen, c.owner, n.info)
+  result = newSym(kind, considerQuotedIdent(c.c, n), c.c.idgen, c.owner, n.info)
   incl(result.flags, sfGenSym)
   incl(result.flags, sfShadowed)
 
 proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
-  # locals default to 'gensym':
-  if n.kind == nkPragmaExpr and symBinding(n[1]) == spInject:
+  # locals default to 'gensym', fields default to 'inject':
+  if (n.kind == nkPragmaExpr and symBinding(n[1]) == spInject) or
+      k == skField:
     # even if injected, don't produce a sym choice here:
     #n = semTemplBody(c, n)
-    var x = n[0]
+    var x = n
     while true:
       case x.kind
       of nkPostfix: x = x[1]
@@ -206,7 +206,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
         illFormedAst(x, c.c.config)
     let ident = getIdentNode(c, x)
     if not isTemplParam(c, ident):
-      c.toInject.incl(x.ident.id)
+      if k != skField: c.toInject.incl(x.ident.id)
     else:
       replaceIdentBySym(c.c, n, ident)
   else:
@@ -227,7 +227,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
           closeScope(c)
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
-      if n.kind != nkSym and not (n.kind == nkIdent and n.ident.s == "_"):
+      if n.kind != nkSym and not (n.kind == nkIdent and n.ident.id == ord(wUnderscore)):
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
         styleCheckDef(c.c, n.info, local)
@@ -327,21 +327,24 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   # close scope for parameters
   closeScope(c)
 
+proc semTemplIdentDef(c: var TemplCtx, a: PNode, symKind: TSymKind) =
+  checkMinSonsLen(a, 3, c.c.config)
+  when defined(nimsuggest):
+    inc c.c.inTypeContext
+  a[^2] = semTemplBody(c, a[^2])
+  when defined(nimsuggest):
+    dec c.c.inTypeContext
+  a[^1] = semTemplBody(c, a[^1])
+  for j in 0..<a.len-2:
+    addLocalDecl(c, a[j], symKind)
+
 proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start = 0) =
   for i in start..<n.len:
     var a = n[i]
     case a.kind:
     of nkCommentStmt: continue
     of nkIdentDefs, nkVarTuple, nkConstDef:
-      checkMinSonsLen(a, 3, c.c.config)
-      when defined(nimsuggest):
-        inc c.c.inTypeContext
-      a[^2] = semTemplBody(c, a[^2])
-      when defined(nimsuggest):
-        dec c.c.inTypeContext
-      a[^1] = semTemplBody(c, a[^1])
-      for j in 0..<a.len-2:
-        addLocalDecl(c, a[j], symKind)
+      semTemplIdentDef(c, a, symKind)
     else:
       illFormedAst(a, c.c.config)
 
@@ -481,6 +484,25 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         closeScope(c)
       else:
         a[2] = semTemplBody(c, a[2])
+  of nkObjectTy:
+    openScope(c)
+    result = semTemplBodySons(c, n)
+    closeScope(c)
+  of nkRecList:
+    for i in 0..<n.len:
+      var a = n[i]
+      case a.kind:
+      of nkCommentStmt, nkNilLit, nkSym, nkEmpty: continue
+      of nkIdentDefs:
+        semTemplIdentDef(c, a, skField)
+      of nkRecCase, nkRecWhen:
+        n[i] = semTemplBody(c, a)
+      else:
+        illFormedAst(a, c.c.config)
+  of nkRecCase:
+    semTemplIdentDef(c, n[0], skField)
+    for i in 1..<n.len:
+      n[i] = semTemplBody(c, n[i])
   of nkProcDef, nkLambdaKinds:
     result = semRoutineInTemplBody(c, n, skProc)
   of nkFuncDef:
@@ -562,6 +584,14 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       inc c.noGenSym
       result[1] = semTemplBody(c, n[1])
       dec c.noGenSym
+      if result[1].kind == nkSym and result[1].sym.kind in routineKinds:
+        # prevent `dotTransformation` from rewriting this node to `nkIdent`
+        # by making it a symchoice
+        # in generics this becomes `nkClosedSymChoice` but this breaks code
+        # as the old behavior here was that this became `nkIdent`
+        var choice = newNodeIT(nkOpenSymChoice, n[1].info, newTypeS(tyNone, c.c))
+        choice.add result[1]
+        result[1] = choice
     else:
       result = semTemplBodySons(c, n)
   of nkExprColonExpr, nkExprEqExpr:
@@ -626,6 +656,8 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   onDef(n[namePos].info, s)
   # check parameter list:
   #s.scope = c.currentScope
+  # push noalias flag at first to prevent unwanted recursive calls:
+  incl(s.flags, sfNoalias)
   pushOwner(c, s)
   openScope(c)
   n[namePos] = newSymNode(s)
@@ -635,6 +667,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   setGenericParamsMisc(c, n)
   # process parameters:
   var allUntyped = true
+  var nullary = true
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], n[genericParamsPos], s)
     # a template's parameters are not gensym'ed even if that was originally the
@@ -642,10 +675,12 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     # body by the absence of the sfGenSym flag:
     for i in 1..<s.typ.n.len:
       let param = s.typ.n[i].sym
-      if param.name.s != "_":
+      if param.name.id != ord(wUnderscore):
         param.flags.incl sfTemplateParam
         param.flags.excl sfGenSym
       if param.typ.kind != tyUntyped: allUntyped = false
+      # no default value, parameters required in call
+      if param.ast == nil: nullary = false
   else:
     s.typ = newTypeS(tyProc, c)
     # XXX why do we need tyTyped as a return type again?
@@ -657,6 +692,11 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     n[genericParamsPos] = n[miscPos][1]
     n[miscPos] = c.graph.emptyNode
   if allUntyped: incl(s.flags, sfAllUntyped)
+  if nullary and
+      n[genericParamsPos].kind == nkEmpty and
+      n[bodyPos].kind != nkEmpty:
+    # template can be called with alias syntax, remove pushed noalias flag
+    excl(s.flags, sfNoalias)
 
   if n[patternPos].kind != nkEmpty:
     n[patternPos] = semPattern(c, n[patternPos], s)

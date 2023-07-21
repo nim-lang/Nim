@@ -11,7 +11,7 @@
 
 import
   intsets, options, ast, msgs, idents, renderer, types, magicsys,
-  sempass2, modulegraphs, lineinfos, liftdestructors
+  sempass2, modulegraphs, lineinfos
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -113,7 +113,7 @@ proc attachDispatcher(s: PSym, dispatcher: PNode) =
     s.ast[dispatcherPos] = dispatcher
 
 proc createDispatcher(s: PSym; g: ModuleGraph; idgen: IdGenerator): PSym =
-  var disp = copySym(s, nextSymId(idgen))
+  var disp = copySym(s, idgen)
   incl(disp.flags, sfDispatcher)
   excl(disp.flags, sfExported)
   let old = disp.typ
@@ -127,7 +127,7 @@ proc createDispatcher(s: PSym; g: ModuleGraph; idgen: IdGenerator): PSym =
   disp.loc.r = ""
   if s.typ[0] != nil:
     if disp.ast.len > resultPos:
-      disp.ast[resultPos].sym = copySym(s.ast[resultPos].sym, nextSymId(idgen))
+      disp.ast[resultPos].sym = copySym(s.ast[resultPos].sym, idgen)
     else:
       # We've encountered a method prototype without a filled-in
       # resultPos slot. We put a placeholder in there that will
@@ -254,10 +254,6 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; idg
                            curr.typ[col], false, g.config)
     var ret: PNode
     if retTyp != nil:
-      createTypeBoundOps(g, nil, retTyp, base.info, idgen)
-      if tfHasAsgn in result.typ.flags or optSeqDestructors in g.config.globalOptions:
-        base.flags.incl sfInjectDestructors
-
       var a = newNodeI(nkFastAsgn, base.info)
       a.add newSymNode(base.ast[resultPos].sym)
       a.add call

@@ -102,13 +102,11 @@ type                          # please make sure we have under 32 options
     optBenchmarkVM            # Enables cpuTime() in the VM
     optProduceAsm             # produce assembler code
     optPanics                 # turn panics (sysFatal) into a process termination
-    optNimV1Emulation         # emulate Nim v1.0
-    optNimV12Emulation        # emulate Nim v1.2
-    optNimV16Emulation        # emulate Nim v1.6
     optSourcemap
     optProfileVM              # enable VM profiler
     optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.
     optShowNonExportedFields  # for documentation: show fields that are not exported
+    optJsBigInt64             # use bigints for 64-bit integers in JS
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -168,7 +166,6 @@ type
     cmdInteractive # start interactive session
     cmdNop
     cmdJsonscript # compile a .json build file
-    cmdNimfix
     # old unused: cmdInterpret, cmdDef: def feature (find definition for IDEs)
 
 const
@@ -186,6 +183,7 @@ type
     gcRegions = "regions"
     gcArc = "arc"
     gcOrc = "orc"
+    gcAtomicArc = "atomicArc"
     gcMarkAndSweep = "markAndSweep"
     gcHooks = "hooks"
     gcRefc = "refc"
@@ -335,6 +333,7 @@ type
 
     cppDefines*: HashSet[string] # (*)
     headerFile*: string
+    nimbasePattern*: string # pattern to find nimbase.h
     features*: set[Feature]
     legacyFeatures*: set[LegacyFeature]
     arguments*: string ## the arguments to be passed to the program that
@@ -417,6 +416,7 @@ type
     expandNodeResult*: string
     expandPosition*: TLineInfo
 
+
 proc parseNimVersion*(a: string): NimVer =
   # could be moved somewhere reusable
   if a.len > 0:
@@ -479,7 +479,8 @@ const
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
     optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
     optTrMacros, optStyleCheck, optCursorInference}
-  DefaultGlobalOptions* = {optThreadAnalysis, optExcessiveStackTrace}
+  DefaultGlobalOptions* = {optThreadAnalysis, optExcessiveStackTrace,
+    optJsBigInt64}
 
 proc getSrcTimestamp(): DateTime =
   try:
@@ -866,14 +867,6 @@ template patchModule(conf: ConfigRef) {.dirty.} =
       let ov = conf.moduleOverrides[key]
       if ov.len > 0: result = AbsoluteFile(ov)
 
-when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
-  proc isRelativeTo(path, base: string): bool =
-    # pending #13212 use os.isRelativeTo
-    let path = path.normalizedPath
-    let base = base.normalizedPath
-    let ret = relativePath(path, base)
-    result = path.len > 0 and not ret.startsWith ".."
-
 const stdlibDirs* = [
   "pure", "core", "arch",
   "pure/collections",
@@ -918,6 +911,7 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile
 proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFile =
   # returns path to module
   var m = addFileExt(modulename, NimExt)
+  var hasRelativeDot = false
   if m.startsWith(pkgPrefix):
     result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
   else:
@@ -931,7 +925,11 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
     else: # If prefixed with std/ why would we add the current module path!
       let currentPath = currentModule.splitFile.dir
       result = AbsoluteFile currentPath / m
-    if not fileExists(result):
+      if m.startsWith('.') and not fileExists(result):
+        result = AbsoluteFile ""
+        hasRelativeDot = true
+
+    if not fileExists(result) and not hasRelativeDot:
       result = findFile(conf, m)
   patchModule(conf)
 

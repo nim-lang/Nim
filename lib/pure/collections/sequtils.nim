@@ -248,6 +248,15 @@ func maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   for i in 1..high(s):
     if s[i] > s[result]: result = i
 
+func minmax*[T](x: openArray[T]): (T, T) =
+  ## The minimum and maximum values of `x`. `T` needs to have a `<` operator.
+  var l = x[0]
+  var h = x[0]
+  for i in 1..high(x):
+    if x[i] < l: l = x[i]
+    if h < x[i]: h = x[i]
+  result = (l, h)
+
 
 template zipImpl(s1, s2, retType: untyped): untyped =
   proc zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =

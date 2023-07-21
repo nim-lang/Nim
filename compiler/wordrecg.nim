@@ -32,11 +32,12 @@ type
 
     wColon = ":", wColonColon = "::", wEquals = "=", wDot = ".", wDotDot = "..",
     wStar = "*", wMinus = "-",
+    wUnderscore = "_",
     wMagic = "magic", wThread = "thread", wFinal = "final", wProfiler = "profiler",
     wMemTracker = "memtracker", wObjChecks = "objchecks",
     wIntDefine = "intdefine", wStrDefine = "strdefine", wBoolDefine = "booldefine",
     wCursor = "cursor", wNoalias = "noalias", wEffectsOf = "effectsOf",
-    wUncheckedAssign = "uncheckedAssign",
+    wUncheckedAssign = "uncheckedAssign", wRunnableExamples = "runnableExamples",
 
     wImmediate = "immediate", wConstructor = "constructor", wDestructor = "destructor",
     wDelegator = "delegator", wOverride = "override", wImportCpp = "importcpp",
@@ -112,6 +113,7 @@ type
 
     wInOut = "inout", wByCopy = "bycopy", wByRef = "byref", wOneWay = "oneway",
     wBitsize = "bitsize", wImportHidden = "all",
+    wSendable = "sendable"
 
   TSpecialWords* = set[TSpecialWord]
 

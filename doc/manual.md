@@ -2642,9 +2642,15 @@ of the argument.
 6. Conversion match: `a` is convertible to `f`, possibly via a user
    defined `converter`.
 
-These matching categories have a priority: An exact match is better than a
-literal match and that is better than a generic match etc. In the following,
-`count(p, m)` counts the number of matches of the matching category `m`
+
+There are two major methods of selecting the best matching candidate, namely 
+counting and disambiguation. Counting takes precedence to disambiguation. In counting,
+each parameter is given a category and the number of parameters in each category is counted.
+The categories are listed above and are in order of precedence. For example, if
+a candidate with one exact match is compared to a candidate with multiple generic matches 
+and zero exact matches, the candidate with an exact match will win.
+
+In the following, `count(p, m)` counts the number of matches of the matching category `m`
 for the routine `p`.
 
 A routine `p` matches better than a routine `q` if the following
@@ -2661,6 +2667,11 @@ algorithm returns true:
       return false
   return "ambiguous"
   ```
+
+When counting is ambiguous, disambiguation begins. Parameters are iterated 
+by position and these parameter pairs are compared for their type relation. The general goal
+of this comparison is to determine which parameter is more specific. The types considered are 
+not of the inputs from the callsite, but of the competing candidates' parameters.
 
 
 Some examples:
@@ -2978,9 +2989,9 @@ ref or pointer type             nil
 procedural type                 nil
 sequence                        `@[]`
 string                          `""`
-`tuple[x: A, y: B, ...]`        (default(A), default(B), ...)
+`tuple[x: A, y: B, ...]`        (zeroDefault(A), zeroDefault(B), ...)
                                 (analogous for objects)
-`array[0..., T]`                `[default(T), ...]`
+`array[0..., T]`                `[zeroDefault(T), ...]`
 `range[T]`                      default(T); this may be out of the valid range
 T = enum                        `cast[T](0)`; this may be an invalid value
 ============================    ==============================================
@@ -3816,15 +3827,6 @@ every time the function is called.
   proc foo(a: int, b: int = 47): int
   ```
 
-Just as the comma propagates the types from right to left until the
-first parameter or until a semicolon is hit, it also propagates the
-default value starting from the parameter declared with it.
-
-  ```nim
-  # Both a and b are optional with 47 as their default values.
-  proc foo(a, b: int = 47): int
-  ```
-
 Parameters can be declared mutable and so allow the proc to modify those
 arguments, by using the type modifier `var`.
 
@@ -4164,7 +4166,7 @@ the operator is in scope (including if it is private).
   ```
 
 Type bound operators are:
-`=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`, `=wasMoved`.
+`=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`, `=wasMoved`, `=dup`.
 
 These operations can be *overridden* instead of *overloaded*. This means that
 the implementation is automatically lifted to structured types. For instance,
@@ -5022,6 +5024,38 @@ exceptions inherit from `Defect`.
 Exceptions that indicate any other runtime error that can be caught inherit from
 `system.CatchableError` (which is a subtype of `Exception`).
 
+```
+Exception
+|-- CatchableError
+|   |-- IOError
+|   |   `-- EOFError
+|   |-- OSError
+|   |-- ResourceExhaustedError
+|   `-- ValueError
+|       `-- KeyError
+`-- Defect
+    |-- AccessViolationDefect
+    |-- ArithmeticDefect
+    |   |-- DivByZeroDefect
+    |   `-- OverflowDefect
+    |-- AssertionDefect
+    |-- DeadThreadDefect
+    |-- FieldDefect
+    |-- FloatingPointDefect
+    |   |-- FloatDivByZeroDefect
+    |   |-- FloatInvalidOpDefect
+    |   |-- FloatOverflowDefect
+    |   |-- FloatUnderflowDefect
+    |   `-- InexactDefect
+    |-- IndexDefect
+    |-- NilAccessDefect
+    |-- ObjectAssignmentDefect
+    |-- ObjectConversionDefect
+    |-- OutOfMemoryDefect
+    |-- RangeDefect
+    |-- ReraiseDefect
+    `-- StackOverflowDefect
+```
 
 Imported exceptions
 -------------------
@@ -5447,6 +5481,49 @@ The following example shows how a generic binary tree can be modeled:
 The `T` is called a `generic type parameter`:idx: or
 a `type variable`:idx:.
 
+
+Generic Procs
+---------------
+
+Let's consider the anatomy of a generic `proc` to agree on defined terminology.
+
+```nim
+p[T: t](arg1: f): y
+```
+
+- `p`: Callee symbol
+- `[...]`: Generic parameters
+- `T: t`: Generic constraint
+- `T`: Type variable
+- `[T: t](arg1: f): y`: Formal signature
+- `arg1: f`: Formal parameter
+- `f`: Formal parameter type
+- `y`: Formal return type
+
+The use of the word "formal" here is to denote the symbols as they are defined by the programmer, 
+not as they may be at compile time contextually. Since generics may be instantiated and
+types bound, we have more than one entity to think about when generics are involved.
+
+The usage of a generic will resolve the formally defined expression into an instance of that
+expression bound to only concrete types. This process is called "instantiation".
+
+Brackets at the site of a generic's formal definition specify the "constraints" as in:
+
+```nim
+type Foo[T] = object
+proc p[H;T: Foo[H]](param: T): H
+```
+
+A constraint definition may have more than one symbol defined by seperating each definition by 
+a `;`. Notice how `T` is composed of `H` and the return  type of `p` is defined as `H`. When this 
+generic proc is instantiated `H` will be bound to a concrete type, thus making `T` concrete and 
+the return type of `p` will be bound to the same concrete type used to define `H`.
+
+Brackets at the site of usage can be used to supply concrete types to instantiate the generic in the same
+order that the symbols are defined in the constraint. Alternatively, type bindings may be inferred by the compiler
+in some situations, allowing for cleaner code.
+
+
 Is operator
 -----------
 
@@ -5476,9 +5553,9 @@ type class           matches
 ==================   ===================================================
 `object`             any object type
 `tuple`              any tuple type
-
 `enum`               any enumeration
 `proc`               any proc type
+`iterator`           any iterator type
 `ref`                any `ref` type
 `ptr`                any `ptr` type
 `var`                any `var` type
@@ -5536,6 +5613,17 @@ as `type constraints`:idx: of the generic type parameter:
   onlyIntOrString(450, 616) # valid
   onlyIntOrString(5.0, 0.0) # type mismatch
   onlyIntOrString("xy", 50) # invalid as 'T' cannot be both at the same time
+  ```
+
+`proc` and `iterator` type classes also accept a calling convention pragma
+to restrict the calling convention of the matching `proc` or `iterator` type.
+
+  ```nim
+  proc onlyClosure[T: proc {.closure.}](x: T) = discard
+
+  onlyClosure(proc() = echo "hello") # valid
+  proc foo() {.nimcall.} = discard
+  onlyClosure(foo) # type mismatch
   ```
 
 
@@ -6674,6 +6762,8 @@ even when one version does not export some of these identifiers.
 
 The `import` statement is only allowed at the top level.
 
+String literals can be used for import/include statements.
+The compiler performs [path substitution](nimc.html#compiler-usage-commandminusline-switches) when used.
 
 Include statement
 -----------------
@@ -6885,6 +6975,35 @@ iterator in which case the overloading resolution takes place:
   var x = 4
   write(stdout, x) # not ambiguous: uses the module C's x
   ```
+Modules can share their name, however, when trying to qualify an identifier with the module name the compiler will fail with ambiguous identifier error. One can qualify the identifier by aliasing the module.
+
+
+```nim
+# Module A/C
+proc fb* = echo "fizz"
+```
+
+
+```nim
+# Module B/C
+proc fb* = echo "buzz"
+```
+
+
+```nim
+import A/C
+import B/C
+
+C.fb() # Error: ambiguous identifier: 'fb'
+```
+
+
+```nim
+import A/C as fizz
+import B/C
+
+fizz.fb() # Works
+```
 
 
 Packages
@@ -7220,7 +7339,7 @@ echo foo() # 2
 template foo: int = 3
 ```
 
-This is mostly intended for macro generated code. 
+This is mostly intended for macro generated code.
 
 compilation option pragmas
 --------------------------
@@ -7290,7 +7409,7 @@ but are used to override the settings temporarily. Example:
   template example(): string = "https://nim-lang.org"
   {.pop.}
 
-  {.push deprecated, hint[LineTooLong]: off, used, stackTrace: off.}
+  {.push deprecated, used, stackTrace: off.}
   proc sample(): bool = true
   {.pop.}
   ```
@@ -7329,14 +7448,14 @@ and before any variable in a module that imports it.
 
 Disabling certain messages
 --------------------------
-Nim generates some warnings and hints ("line too long") that may annoy the
+Nim generates some warnings and hints that may annoy the
 user. A mechanism for disabling certain messages is provided: Each hint
 and warning message is associated with a symbol. This is the message's
 identifier, which can be used to enable or disable the message by putting it
 in brackets following the pragma:
 
   ```Nim
-  {.hint[LineTooLong]: off.} # turn off the hint about too long lines
+  {.hint[XDeclaredButNotUsed]: off.} # Turn off the hint about declared but not used symbols.
   ```
 
 This is often better than disabling all warnings at once.
@@ -7452,6 +7571,37 @@ generates:
   ```
 
 
+size pragma
+-----------
+Nim automatically determines the size of an enum.
+But when wrapping a C enum type, it needs to be of a specific size.
+The `size pragma` allows specifying the size of the enum type.
+
+  ```Nim
+  type
+    EventType* {.size: sizeof(uint32).} = enum
+      QuitEvent,
+      AppTerminating,
+      AppLowMemory
+
+  doAssert sizeof(EventType) == sizeof(uint32)
+  ```
+
+The `size pragma` can also specify the size of an `importc` incomplete object type
+so that one can get the size of it at compile time even if it was declared without fields.
+
+  ```Nim
+    type
+      AtomicFlag* {.importc: "atomic_flag", header: "<stdatomic.h>", size: 1.} = object
+
+    static:
+      # if AtomicFlag didn't have the size pragma, this code would result in a compile time error.
+      echo sizeof(AtomicFlag)
+  ```
+
+The `size pragma` accepts only the values 1, 2, 4 or 8.
+
+
 Align pragma
 ------------
 
@@ -7564,8 +7714,14 @@ Compile pragma
 The `compile` pragma can be used to compile and link a C/C++ source file
 with the project:
 
+This pragma can take three forms. The first is a simple file input:
   ```Nim
   {.compile: "myfile.cpp".}
+  ```
+
+The second form is a tuple where the second arg is the output name strutils formatter:
+  ```Nim
+  {.compile: ("file.c", "$1.o").}
   ```
 
 **Note**: Nim computes a SHA1 checksum and only recompiles the file if it
@@ -8002,8 +8158,8 @@ CodegenDecl pragma
 ------------------
 
 The `codegenDecl` pragma can be used to directly influence Nim's code
-generator. It receives a format string that determines how the variable
-or proc is declared in the generated code.
+generator. It receives a format string that determines how the variable,
+proc or object type is declared in the generated code.
 
 For variables, $1 in the format string represents the type of the variable,
 $2 is the name of the variable, and each appearance of $# represents $1/$2
@@ -8039,6 +8195,29 @@ will generate this code:
   __interrupt void myinterrupt()
   ```
 
+For object types, the $1 represents the name of the object type, $2 is the list of
+fields and $3 is the base type.
+
+```nim
+
+const strTemplate = """
+  struct $1 {
+    $2
+  };
+"""
+type Foo {.codegenDecl:strTemplate.} = object
+  a, b: int
+```
+
+will generate this code:
+
+
+```c
+struct Foo {
+  NI a;
+  NI b;
+};
+```
 
 `cppNonPod` pragma
 ------------------
@@ -8103,7 +8282,7 @@ define names.
 
 This helps disambiguate define names in different packages.
 
-See also the [generic `define` pragma](manual_experimental.html#generic-define-pragma)
+See also the [generic `define` pragma](manual_experimental.html#generic-nimdefine-pragma)
 for a version of these pragmas that detects the type of the define based on
 the constant value.
 
@@ -8351,8 +8530,7 @@ is available and a literal dollar sign must be written as ``$$``.
 Bycopy pragma
 -------------
 
-The `bycopy` pragma can be applied to an object or tuple type and
-instructs the compiler to pass the type by value to procs:
+The `bycopy` pragma can be applied to an object or tuple type or a proc param. It instructs the compiler to pass the type by value to procs:
 
   ```nim
   type
@@ -8360,14 +8538,19 @@ instructs the compiler to pass the type by value to procs:
       x, y, z: float
   ```
 
-The Nim compiler automatically determines whether a parameter is passed by value or by reference based on the parameter type's size. If a parameter must be passed by value or by reference, (such as when interfacing with a C library) use the bycopy or byref pragmas.
+The Nim compiler automatically determines whether a parameter is passed by value or 
+by reference based on the parameter type's size. If a parameter must be passed by value 
+or by reference, (such as when interfacing with a C library) use the bycopy or byref pragmas. 
+Notice params marked as `byref` takes precedence over types marked as `bycopy`.
 
 Byref pragma
 ------------
 
-The `byref` pragma can be applied to an object or tuple type and instructs
-the compiler to pass the type by reference (hidden pointer) to procs.
-
+The `byref` pragma can be applied to an object or tuple type or a proc param.
+When applied to a type it instructs the compiler to pass the type by reference 
+(hidden pointer) to procs. When applied to a param it will take precedence, even 
+if the the type was marked as `bycopy`. When using the Cpp backend, params marked 
+as byref will translate to cpp references `&`.
 
 Varargs pragma
 --------------
@@ -8488,10 +8671,8 @@ Threads
 The `--threads:on`:option: command-line switch is enabled by default. The [typedthreads module](typedthreads.html) module then contains several threading primitives. See [spawn](manual_experimental.html#parallel-amp-spawn) for
 further details.
 
-The only way to create a thread is via `spawn` or
-`createThread`. The invoked proc must not use `var` parameters nor must
-any of its parameters contain a `ref` or `closure` type. This enforces
-the *no heap sharing restriction*.
+The only ways to create a thread is via `spawn` or `createThread`.
+
 
 Thread pragma
 -------------
@@ -8608,9 +8789,7 @@ model low level lockfree mechanisms:
 
 
 The `locks` pragma takes a list of lock expressions `locks: [a, b, ...]`
-in order to support *multi lock* statements. Why these are essential is
-explained in the [lock levels](manual_experimental.md#lock-levels) section
-of experimental manual.
+in order to support *multi lock* statements.
 
 
 ### Protecting general locations
