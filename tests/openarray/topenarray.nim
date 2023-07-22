@@ -11,6 +11,16 @@ proc fn2[T](a: var openArray[T]): seq[T] =
 proc fn3[T](a: var openArray[T]) =
   for i, ai in mpairs(a): ai = i * 10
 
+proc bug20865 =
+  var ok = false
+  try:
+    var x: array[0, int]
+    var p: pointer = addr x
+    echo toOpenArray(cast[ptr array[0, int]](p)[], 0, 1)[0]
+  except IndexDefect:
+    ok = true
+  doAssert ok, "bug 20865"
+
 proc main =
   var a = [1,2,3,4,5]
 
@@ -49,5 +59,7 @@ proc main =
       doAssert testing(mySeq[2..^2]) == mySeq[2..^2]
 
 
+when not defined(js):
+  bug20865()
 main()
 static: main()
