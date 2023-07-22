@@ -852,7 +852,9 @@ proc transformReturnsInTry(ctx: var Ctx, n: PNode): PNode =
   case n.kind
   of nkReturnStmt:
     # We're somewhere in try, transform to finally unrolling
-    assert(ctx.nearestFinally != 0)
+    if ctx.nearestFinally == 0:
+      # return is within the finally
+      return
 
     result = newNodeI(nkStmtList, n.info)
 
