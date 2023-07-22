@@ -563,7 +563,8 @@ proc getCallLineInfo(n: PNode): TLineInfo =
   result = n.info
 
 proc semResolvedCall(c: PContext, x: TCandidate,
-                     n: PNode, flags: TExprFlags): PNode =
+                     n: PNode, flags: TExprFlags;
+                     expectedType: PType = nil): PNode =
   assert x.state == csMatch
   var finalCallee = x.calleeSym
   let info = getCallLineInfo(n)
@@ -583,7 +584,15 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       if x.calleeSym.magic in {mArrGet, mArrPut}:
         finalCallee = x.calleeSym
       else:
-        finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
+        var bindings = x.bindings
+        if expectedType != nil:
+          let y = x.calleeSym.ast[genericParamsPos]
+          for i in 1 ..< expectedType.len-ord(expectedType.kind != tyGenericInvocation):
+            let j = i - 1
+            if bindings.idTableGet(y[j].typ) != nil:
+              break
+            bindings.idTablePut(y[j].typ, expectedType[i])
+        finalCallee = generateInstance(c, x.calleeSym, bindings, n.info)
     else:
       # For macros and templates, the resolved generic params
       # are added as normal params.
@@ -615,7 +624,8 @@ proc tryDeref(n: PNode): PNode =
   result.add n
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
-                       filter: TSymKinds, flags: TExprFlags): PNode =
+                       filter: TSymKinds, flags: TExprFlags;
+                       expectedType: PType = nil): PNode =
   var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
   if r.state == csMatch:
@@ -625,7 +635,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       message(c.config, n.info, hintUserRaw,
               "Non-matching candidates for " & renderTree(n) & "\n" &
               candidates)
-    result = semResolvedCall(c, r, n, flags)
+    result = semResolvedCall(c, r, n, flags, expectedType)
   else:
     if efDetermineType in flags and c.inGenericContext > 0 and c.matchedConcept == nil:
       result = semGenericStmt(c, n)
