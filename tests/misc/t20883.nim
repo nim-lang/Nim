@@ -2,7 +2,7 @@ discard """
   action: reject
   errormsg: "type mismatch: got <float64> but expected 'typeof(U(0.000001))'"
   line: 8
-  col: 22
+  column: 22
 """
 
 proc foo*[U](x: U = U(1e-6)) =
