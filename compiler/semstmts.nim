@@ -235,8 +235,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
   var typ = commonTypeBegin
   var expectedType = expectedType
   n[0] = semExprBranchScope(c, n[0], expectedType)
-  typ = commonType(c, typ, n[0].typ)
   if not endsInNoReturn(n[0]):
+    typ = commonType(c, typ, n[0].typ)
     expectedType = typ
 
   var last = n.len - 1
@@ -312,7 +312,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
       result.typ = c.enforceVoidContext
   else:
     if n.lastSon.kind == nkFinally: discardCheck(c, n.lastSon.lastSon, flags)
-    n[0] = fitNode(c, typ, n[0], n[0].info)
+    if not endsInNoReturn(n[0]):
+      n[0] = fitNode(c, typ, n[0], n[0].info)
     for i in 1..last:
       var it = n[i]
       let j = it.len-1
