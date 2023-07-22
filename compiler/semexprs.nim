@@ -3282,7 +3282,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkDefer:
     if c.currentScope == c.topLevelScope:
       localError(c.config, n.info, "defer statement not supported at top level")
+    openScope(c)
     n[0] = semExpr(c, n[0])
+    closeScope(c)
     if not n[0].typ.isEmptyType and not implicitlyDiscardable(n[0]):
       localError(c.config, n.info, "'defer' takes a 'void' expression")
     #localError(c.config, n.info, errGenerated, "'defer' not allowed in this context")
