@@ -1,6 +1,7 @@
 discard """
   targets: "c cpp"
   joinable: false
+  disabled: osx
 """
 
 #[
