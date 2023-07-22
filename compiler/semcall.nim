@@ -578,8 +578,8 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       result.typ = newTypeS(x.fauxMatch, c)
       if result.typ.kind == tyError: incl result.typ.flags, tfCheckedForDestructor
     return
-  let gp = finalCallee.ast[genericParamsPos]
-  if gp.isGenericParams:
+
+  template buildBindings(x: TCandidate): TIdTable =
     var bindings = x.bindings
     if expectedType != nil:
       let y = x.calleeSym.ast[genericParamsPos]
@@ -588,15 +588,19 @@ proc semResolvedCall(c: PContext, x: TCandidate,
         if bindings.idTableGet(y[j].typ) != nil:
           break
         bindings.idTablePut(y[j].typ, expectedType[i])
+    bindings
+
+  let gp = finalCallee.ast[genericParamsPos]
+  if gp.isGenericParams:
     if x.calleeSym.kind notin {skMacro, skTemplate}:
       if x.calleeSym.magic in {mArrGet, mArrPut}:
         finalCallee = x.calleeSym
       else:
-        finalCallee = generateInstance(c, x.calleeSym, bindings, n.info)
+        finalCallee = generateInstance(c, x.calleeSym, x.buildBindings, n.info)
     else:
       # For macros and templates, the resolved generic params
       # are added as normal params.
-      for s in instantiateGenericParamList(c, gp, bindings):
+      for s in instantiateGenericParamList(c, gp, x.buildBindings):
         case s.kind
         of skConst:
           if not s.astdef.isNil:
