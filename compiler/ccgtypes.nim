@@ -486,9 +486,6 @@ proc multiFormat*(frmt: var string, chars : static openArray[char], args: openAr
 template cgDeclFrmt*(s: PSym): string =
   s.constraint.strVal
 
-proc isCgDeclParam*(s: PSym): bool = 
-  s.constraint != nil and s.constraint.kind == nkStrLit and "$#" in s.constraint.strVal
-
 proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var string,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false;) =
@@ -541,7 +538,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var 
     name = param.loc.r
     types.add typ
     names.add name
-    if not param.isCgDeclParam():
+    if sfCodegenDecl notin param.flags:
       args.add types[^1] & " " & names[^1]
     else:
       args.add runtimeFormat(param.cgDeclFrmt, [types[^1], names[^1]])
@@ -592,7 +589,7 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
     typ.add(" ")
     if sfNoalias in param.flags:
       typ.add("NIM_NOALIAS ")
-    if not param.isCgDeclParam():
+    if sfCodegenDecl notin param.flags:
       params.add(typ)
       params.add(param.loc.r)
     else:
@@ -781,7 +778,7 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
   var baseType: string 
   if typ[0] != nil: 
     baseType = getTypeDescAux(m, typ[0].skipTypes(skipPtrs), check, dkField)
-  if typ.sym == nil or typ.sym.constraint == nil:
+  if typ.sym == nil or sfCodegenDecl notin typ.sym.flags:
     result = structOrUnion & " " & name
     result.add(getRecordDescAux(m, typ, name, baseType, check, hasField))
     let desc = getRecordFields(m, typ, check)
@@ -1209,7 +1206,7 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false)
     name.add("_actual")
   # careful here! don't access ``prc.ast`` as that could reload large parts of
   # the object graph!
-  if prc.constraint.isNil:
+  if sfCodegenDecl notin prc.flags:
     if lfExportLib in prc.loc.flags:
       if isHeaderFile in m.flags:
         result.add "N_LIB_IMPORT "
