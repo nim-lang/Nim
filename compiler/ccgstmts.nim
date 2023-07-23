@@ -315,7 +315,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
   var targetProc = p
   var valueAsRope = ""
   potentialValueInit(p, v, value, valueAsRope)
-  if sfGlobal in v.flags:  
+  if sfGlobal in v.flags:
     if v.flags * {sfImportc, sfExportc} == {sfImportc} and
         value.kind == nkEmpty and
         v.loc.flags * {lfHeader, lfNoDecl} != {}:
@@ -1050,7 +1050,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     expr(p, t[0], d)
     endBlock(p)
 
-  # First pass: handle Nim based exceptions:  
+  # First pass: handle Nim based exceptions:
   lineCg(p, cpsStmts, "catch (#Exception* T$1_) {$n", [etmp+1])
   genRestoreFrameAfterException(p)
   # an unhandled exception happened!
@@ -1308,7 +1308,8 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
         let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
         if optTinyRtti in p.config.globalOptions:
           let checkFor = $getObjDepth(t[i][j].typ)
-          appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor,  $genDisplayElem(MD5Digest(hashType(t[i][j].typ, p.config)))])
+          appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)",
+            [memberName, checkFor, $genDisplayElem(MD5Digest(hashType(t[i][j].typ, p.config)))])
         else:
           let checkFor = genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
           appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
