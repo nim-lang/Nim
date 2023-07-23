@@ -2009,6 +2009,65 @@ The field is within a `case` section of an `object`.
 is solid and it is expected that eventually this mode becomes the default in later versions.
 
 
+Quirky routines
+===============
+
+The default code generation strategy of exceptions under the ARC/ORC model is the so called
+`--exceptions:goto` implementation. This implementation inserts a check after every call that
+can potentially raise an exception. A typical instruction sequence for this on
+for a x86 64 bit machine looks like:
+
+  ```
+  cmp DWORD PTR [rbx], 0
+  je  .L1
+  ```
+
+This is a memory fetch followed by jump. (An ideal implementation would
+use the carry flag and a single instruction like ``jc .L1``.)
+
+This overhead might not be desired and depending on the sematics of the routine may not be required
+either.
+So it can be disabled via a `.quirky` annotation:
+
+  ```nim
+  proc wontRaise(x: int) {.quirky.} =
+    if x != 0:
+      # because of `quirky` this will continue even if `write` raised an IO exception:
+      write x
+      wontRaise(x-1)
+
+  wontRaise 10
+
+  ```
+
+If the used exception model is not `--exceptions:goto` then the `quirky` pragma has no effect and is
+ignored.
+
+The `quirky` pragma can also be be pushed in order to affect a group of routines and whether
+the compiler supports the pragma can be checked with `defined(nimHasQuirky)`:
+
+  ```nim
+  when defined(nimHasQuirky):
+    {.push quirky: on.}
+
+  proc doRaise() = raise newException(ValueError, "")
+
+  proc f(): string = "abc"
+
+  proc q(cond: bool) =
+    if cond:
+      doRaise()
+    echo f()
+
+  q(true)
+
+  when defined(nimHasQuirky):
+    {.pop.}
+  ```
+
+**Warning**: The `quirky` pragma only affects code generation, no check for validity is performed!
+
+
 Threading under ARC/ORC
 =======================
 
@@ -2141,13 +2200,13 @@ Here's an example of how to use the virtual pragma:
 ```nim
 
 proc newCpp*[T](): ptr T {.importcpp: "new '*0()".}
-type 
+type
   Foo = object of RootObj
   FooPtr = ptr Foo
   Boo = object of Foo
   BooPtr = ptr Boo
 
-proc salute(self: FooPtr) {.virtual.} = 
+proc salute(self: FooPtr) {.virtual.} =
   echo "hello foo"
 
 proc salute(self: BooPtr) {.virtual.} =
@@ -2177,13 +2236,13 @@ The return type can be referred to as `-> '0`, but this is optional and often no
 #include <iostream>
   class CppPrinter {
   public:
-    
+
     virtual void printConst(char* message) const {
         std::cout << "Const Message: " << message << std::endl;
     }
     virtual void printConstRef(char* message, const int& flag) const {
         std::cout << "Const Ref Message: " << message << std::endl;
-    }  
+    }
 };
 """.}
 
@@ -2194,7 +2253,7 @@ type
 proc printConst(self: CppPrinter; message:cstring) {.importcpp.}
 CppPrinter().printConst(message)
 
-# override is optional. 
+# override is optional.
 proc printConst(self: NimPrinter; message: cstring) {.virtual: "$1('2 #2) const override".} =
   echo "NimPrinter: " & $message
 
@@ -2224,10 +2283,10 @@ proc makeFoo(x: int32): Foo {.constructor.} =
 
 ```
 
-It forward declares the constructor in the type definition. When the constructor has parameters, it also generates a default constructor. 
+It forward declares the constructor in the type definition. When the constructor has parameters, it also generates a default constructor.
 Notice, inside the body of the constructor one has access to `this` which is of the type `ptr Foo`. No `result` variable is available.
 
-Like `virtual`, `constructor` also supports a syntax that allows to express C++ constraints. 
+Like `virtual`, `constructor` also supports a syntax that allows to express C++ constraints.
 
 For example:
 
@@ -2242,11 +2301,11 @@ struct CppClass {
     this->x = inX;
     this->y = inY;
   }
-  //CppClass() = default; 
+  //CppClass() = default;
 };
 """.}
 
-type 
+type
   CppClass* {.importcpp, inheritable.} = object
     x: int32
     y: int32
@@ -2256,11 +2315,11 @@ proc makeNimClass(x: int32): NimClass {.constructor:"NimClass('1 #1) : CppClass(
   this.x = x
 
 # Optional: define the default constructor explicitly
-proc makeCppClass(): NimClass {.constructor: "NimClass() : CppClass(0, 0)".} = 
+proc makeCppClass(): NimClass {.constructor: "NimClass() : CppClass(0, 0)".} =
   this.x = 1
 
 ```
 
-In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropiate constructor. 
+In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropiate constructor.
 
 Notice when calling a constructor in the section of a global variable initialization, it will be called before `NimMain` meaning Nim is not fully initialized.
