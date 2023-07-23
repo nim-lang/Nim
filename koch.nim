@@ -621,7 +621,7 @@ proc runCI(cmd: string) =
         const nimFFI = "bin/nim.ctffi"
         # no need to bootstrap with koch boot (would be slower)
         let backend = if doUseCpp(): "cpp" else: "c"
-        execFold("build with -d:nimHasLibFFI", "nim $1 -d:release --noNimblePath -d:nimHasLibFFI -o:$2 compiler/nim.nim" % [backend, nimFFI])
+        execFold("build with -d:nimHasLibFFI", "nim $1 -d:release --noNimblePath -d:nimHasLibFFI --path:./dist -o:$2 compiler/nim.nim" % [backend, nimFFI])
         execFold("test with -d:nimHasLibFFI", "$1 $2 -r testament/testament --nim:$1 r tests/misc/trunner.nim -d:nimTrunnerFfi" % [nimFFI, backend])
 
     execFold("Run nimdoc tests", "nim r nimdoc/tester")
