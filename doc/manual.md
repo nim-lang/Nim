@@ -5796,7 +5796,7 @@ is unable to be inferred and has to be specified:
 the return type of a procedure. All this does is map one generic instance to another,
 it does not try to resolve `T` to `int` because you wrote a proc like this:
 
-  ``````nim  test = "nim c $1"  status = 1
+  ```nim  test = "nim c $1"  status = 1
   proc a: int = 0
   proc a: float = 1.0 # Fails! You can't and shouldn't do this.
   ```
