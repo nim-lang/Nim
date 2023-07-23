@@ -458,6 +458,9 @@
 
 - `=wasMoved` can now be overridden by users.
 
+- There is a new pragma called [quirky](https://nim-lang.github.io/Nim/manual_experimental.html#quirky-routines) that can be used to affect the code
+  generation of goto based exception handling. It can improve the produced code size but its effects can be subtle so use it with care.
+
 - Tuple unpacking for variables is now treated as syntax sugar that directly
   expands into multiple assignments. Along with this, tuple unpacking for
   variables can now be nested.
