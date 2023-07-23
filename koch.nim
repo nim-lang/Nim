@@ -357,6 +357,9 @@ proc boot(args: string, skipIntegrityCheck: bool) =
     if i == 0:
       nimi = nimStart
       extraOption.add " --skipUserCfg --skipParentCfg -d:nimKochBootstrap"
+
+      # --noNimblePath precludes nimble packages as dependencies to the compiler,
+      # so libffi is not "installed as a nimble package"
       if usingLibFFI: extraOption.add " --path:./dist"
         # The configs are skipped for bootstrap
         # (1st iteration) to prevent newer flags from breaking bootstrap phase.
@@ -369,8 +372,6 @@ proc boot(args: string, skipIntegrityCheck: bool) =
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.
     # jsonbuild then uses the $project.json file to build the Nim binary.
-
-    # --noNimblePath precludes nimble packages as dependencies to the compiler
     exec "$# $# $# --nimcache:$# $# --noNimblePath --compileOnly compiler" / "nim.nim" %
       [nimi, bootOptions, extraOption, smartNimcache, args]
     exec "$# jsonscript --noNimblePath --nimcache:$# $# compiler" / "nim.nim" %
