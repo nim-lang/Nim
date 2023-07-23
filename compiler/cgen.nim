@@ -590,7 +590,7 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
   genCLineDir(result, p, n.info, p.config)
 
   result.add getTypeDesc(p.module, s.typ, dkVar)
-  if s.constraint.isNil:
+  if sfCodegenDecl notin s.flags:
     if sfRegister in s.flags: result.add(" register")
     #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
     #  decl.add(" GC_GUARD")
@@ -621,7 +621,7 @@ proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
 
 proc genGlobalVarDecl(p: BProc, n: PNode; td, value: Rope; decl: var Rope) =
   let s = n.sym
-  if s.constraint.isNil:
+  if sfCodegenDecl notin s.flags:
     if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
       decl.addf "NIM_ALIGN($1) ", [rope(s.alignment)]
     if p.hcrOn: decl.add("static ")
