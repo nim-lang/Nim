@@ -562,6 +562,19 @@ proc getCallLineInfo(n: PNode): TLineInfo =
     discard
   result = n.info
 
+proc inheritBindings(x: TCandidate, expectedType: PType): TIdTable =
+  ## helper proc to inherit bound generic parameters from expectedType into a new TIdTable
+  result = x.bindings
+  if expectedType != nil and expectedType.sons.len() > 0 and expectedType.sons[0] != nil:
+    let y = x.calleeSym.ast[genericParamsPos]
+    # concrete types give us just the list of generic params
+    let startIdx = if expectedType.kind in ConcreteTypes: 0 else: 1
+    for i in startIdx ..< expectedType.len-startIdx:
+      let j = i - startIdx # idx of unbound param in callee
+      if result.idTableGet(y[j].typ) != nil:
+        break # let's not overwrite existing ones
+      result.idTablePut(y[j].typ, expectedType[i])
+
 proc semResolvedCall(c: PContext, x: TCandidate,
                      n: PNode, flags: TExprFlags;
                      expectedType: PType = nil): PNode =
@@ -578,32 +591,17 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       result.typ = newTypeS(x.fauxMatch, c)
       if result.typ.kind == tyError: incl result.typ.flags, tfCheckedForDestructor
     return
-
-  template buildBindings(x: TCandidate, expectedType: PType): TIdTable =
-    ## helper template to pass along bound generic parameters from expectedType
-    var bindings = x.bindings
-    if expectedType != nil and expectedType.sons.len() > 0 and expectedType.sons[0] != nil:
-      let y = x.calleeSym.ast[genericParamsPos]
-      # concrete types give us just the list of generic params
-      let startIdx = if expectedType.kind in ConcreteTypes: 0 else: 1
-      for i in startIdx ..< expectedType.len-startIdx:
-        let j = i - startIdx # idx of unbound param in callee
-        if bindings.idTableGet(y[j].typ) != nil:
-          break # let's not overwrite existing ones
-        bindings.idTablePut(y[j].typ, expectedType[i])
-    bindings
-
   let gp = finalCallee.ast[genericParamsPos]
   if gp.isGenericParams:
     if x.calleeSym.kind notin {skMacro, skTemplate}:
       if x.calleeSym.magic in {mArrGet, mArrPut}:
         finalCallee = x.calleeSym
       else:
-        finalCallee = generateInstance(c, x.calleeSym, x.buildBindings(expectedType), n.info)
+        finalCallee = generateInstance(c, x.calleeSym, x.inheritBindings(expectedType), n.info)
     else:
       # For macros and templates, the resolved generic params
       # are added as normal params.
-      for s in instantiateGenericParamList(c, gp, x.buildBindings(expectedType)):
+      for s in instantiateGenericParamList(c, gp, x.inheritBindings(expectedType)):
         case s.kind
         of skConst:
           if not s.astdef.isNil:
