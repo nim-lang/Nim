@@ -245,7 +245,7 @@ proc buildTools(args: string = "") =
   # pre-packages a debug version of nim which can help in many cases investigate issuses
   # withouth having to rebuild compiler.
   # `-d:nimDebugUtils` only makes sense when temporarily editing/debugging compiler
-  # `-d:debug` should be changed to a flag that doesn't require re-chompiling nim
+  # `-d:debug` should be changed to a flag that doesn't require re-compiling nim
   # `--opt:speed` is a sensible default even for a debug build, it doesn't affect nim stacktraces
   nimCompileFold("Compile nim_dbg", "compiler/nim.nim", options =
       "--opt:speed --stacktrace -d:debug --stacktraceMsgs -d:nimCompilerStacktraceHints " & args,
