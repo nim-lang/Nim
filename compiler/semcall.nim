@@ -579,7 +579,7 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       if result.typ.kind == tyError: incl result.typ.flags, tfCheckedForDestructor
     return
 
-  template buildBindings(x: TCandidate): TIdTable =
+  template buildBindings(x: TCandidate, expectedType: PType): TIdTable =
     ## helper template to pass along bound generic parameters from expectedType
     var bindings = x.bindings
     if expectedType != nil and expectedType.sons.len() > 0 and expectedType.sons[0] != nil:
@@ -599,11 +599,11 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       if x.calleeSym.magic in {mArrGet, mArrPut}:
         finalCallee = x.calleeSym
       else:
-        finalCallee = generateInstance(c, x.calleeSym, x.buildBindings, n.info)
+        finalCallee = generateInstance(c, x.calleeSym, x.buildBindings(expectedType), n.info)
     else:
       # For macros and templates, the resolved generic params
       # are added as normal params.
-      for s in instantiateGenericParamList(c, gp, x.buildBindings):
+      for s in instantiateGenericParamList(c, gp, x.buildBindings(expectedType)):
         case s.kind
         of skConst:
           if not s.astdef.isNil:
