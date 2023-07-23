@@ -60,3 +60,11 @@ block:
   doAssert y is seq[MyType[int, float]]
   doAssert y.len() == 2
 
+  let z = MyType[seq[float], string](
+    x : newSeq(3),
+    y : "test"
+  )
+  doAssert z.x is seq[float]
+  doAssert z.x.len() == 3
+  doAssert z.y is string
+  doAssert z.y == "test"
