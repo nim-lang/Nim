@@ -44,3 +44,19 @@ block:
   let r = testproc()
   doAssert r.kind == ResultKind.Err
   doAssert r.errmsg == "Inferred error!"
+
+# Builtin seq
+block:
+  let x: seq[int] = newSeq(1)
+  doAssert x is seq[int]
+  doAssert x.len() == 1
+
+  type
+    MyType[T, Z] = object
+      x: T
+      y: Z
+
+  let y: seq[MyType[int, float]] = newSeq(2)
+  doAssert y is seq[MyType[int, float]]
+  doAssert y.len() == 2
+

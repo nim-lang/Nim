@@ -580,13 +580,16 @@ proc semResolvedCall(c: PContext, x: TCandidate,
     return
 
   template buildBindings(x: TCandidate): TIdTable =
+    ## helper template to pass along bound generic parameters from expectedType
     var bindings = x.bindings
-    if expectedType != nil:
+    if expectedType != nil and expectedType.sons.len() > 0 and expectedType.sons[0] != nil:
       let y = x.calleeSym.ast[genericParamsPos]
-      for i in 1 ..< expectedType.len-ord(expectedType.kind != tyGenericInvocation):
-        let j = i - 1
+      # concrete types give us just the list of generic params
+      let startIdx = if expectedType.kind in ConcreteTypes: 0 else: 1
+      for i in startIdx ..< expectedType.len-startIdx:
+        let j = i - startIdx # idx of unbound param in callee
         if bindings.idTableGet(y[j].typ) != nil:
-          break
+          break # let's not overwrite existing ones
         bindings.idTablePut(y[j].typ, expectedType[i])
     bindings
 
