@@ -68,3 +68,11 @@ block:
   doAssert z.x.len() == 3
   doAssert z.y is string
   doAssert z.y == "test"
+
+# array
+block:
+  proc giveArray[N, T](): array[N, T] =
+    for i in 0 .. N.high:
+      result[i] = i
+  var x: array[2, int] = giveArray()
+  doAssert x == [0, 1]
