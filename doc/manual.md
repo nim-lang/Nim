@@ -5745,6 +5745,63 @@ of "typedesc"-ness is stripped off:
   ```
 
 
+Inferred generic parameters
+---------------------------
+
+In expressions making use of generic procs or templates, the compiler is
+often able to help you out by inferring which generic instance you want
+based on context.
+
+  ```nim  test = "nim c $1"
+  import std/options
+
+  var x = newSeq[int](1)
+  # Do some stuff with x...
+
+  # Works!
+  # The compiler knows that 'x' is 'seq[int]' so it also knows we want 'newSeq[int]'
+  x = newSeq(10)
+
+  # Works!
+  # The compiler knows that you want to bind 'T' of 'noneProducer' to the 'T' of 'none'
+  proc noneProducer[T](): Option[T] = none()
+  let myNone = noneProducer[int]()
+
+  # Also works
+  # 'myOtherNone' tells us that 'noneProducer' should bind 'T' to 'float'
+  # After this the logic from above is applied
+  let myOtherNone: Option[float] = noneProducer()
+
+  let myOtherOtherNone: Option[int] = none() # of course also works
+  ```
+
+The mechanism behind this works by simply checking if there is a generic mapping that
+would be expected at that location.
+If that is the case, the unmapped generic parameters are mapped to the expected ones.
+
+A limitation of this approach is that an expression as part of a function call
+is unable to be inferred and has to be specified:
+
+  ```nim  test = "nim c $1"  status = 1
+  proc myProc[T](a, b: T) = discard
+
+  # Fails! Unable to infer that we want 'T' to be 'int'
+  myProc(newSeq[int](), newSeq(1))
+
+  # Works! You have to specify it manually
+  myProc(newSeq[int](), newSeq[int](1))
+  ```
+
+**Note**: This type of inference does not allow you to create overrides based on
+the return type of a procedure. All this does is map one generic instance to another,
+it does not try to resolve `T` to `int` because you wrote a proc like this:
+
+  ``````nim  test = "nim c $1"  status = 1
+  proc a: int = 0
+  proc a: float = 1.0 # Fails! You can't and shouldn't do this.
+  ```
+
+
 Generic inference restrictions
 ------------------------------
 
