@@ -566,7 +566,8 @@ proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable 
   ## Helper proc to inherit bound generic parameters from expectedType into a new TIdTable.
   ## Returns existing bindings if 'inferGenericTypes' isn't in c.features
   result = x.bindings
-  if inferGenericTypes notin c.features: return
+  # TODO: Reenable
+  #if inferGenericTypes notin c.features: return
   if expectedType == nil: return
 
   let
