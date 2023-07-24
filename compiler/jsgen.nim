@@ -2733,20 +2733,13 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
   elif toUint and src.kind in {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
     r.res = "Number(BigInt.asUintN($1, $2))" % [$(dest.size * 8), r.res]
   elif toInt:
-    if fromInt:
-      return
-    elif fromUint:
-      if src.size == 4 and dest.size == 4:
-        # XXX prevent multi evaluations
-        r.res = "($1 | 0)" % [r.res]
+    if fromInt or fromUint:
+      if dest.size == 4:
+        r.res = "(($1) | 0)" % [r.res]
       else:
         let trimmer = unsignedTrimmer(dest.size)
-        let minuend = case dest.size
-          of 1: "0xfe"
-          of 2: "0xfffe"
-          of 4: "0xfffffffe"
-          else: ""
-        r.res = "($1 - ($2 $3))" % [rope minuend, r.res, trimmer]
+        # sign extension is done by shifting to the left and then shifting back to the right
+        r.res = "(($1 $2) << $3 >> $3)" % [r.res, trimmer, $(32 - (dest.size * 8))]
     elif src.kind in {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
       r.res = "Number(BigInt.asIntN($1, $2))" % [$(dest.size * 8), r.res]
   elif dest.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
