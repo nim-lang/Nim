@@ -543,4 +543,3 @@
   `--filename` and `--notFilename` respectively.
   Also the semantics become consistent for such positive/negative filters.
 - koch now supports the `--skipIntegrityCheck` option. The command `koch --skipIntegrityCheck boot -d:release` always builds the compiler twice.
-- koch now allows bootstrapping with `-d:nimHasLibFFI`, replacing the older option of building the compiler directly w/ the `libffi` nimble package in tow.
