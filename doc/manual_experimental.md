@@ -182,15 +182,6 @@ to a function/template call:
   myProc(newSeq[int](), newSeq[int](1))
   ```
 
-Another type of expression that currently cannot be inferred is any expression that
-makes use of tuples like:
-
-  ```nim  test = "nim c $1"  status = 1
-  {.experimental: "inferGenericTypes".}
-  proc giveTuple[T, Z]: (T, Z) = discard
-  let x: (int, float) = giveTuple() # Fails here
-  ```
-
 **Note**: The described inference does not permit the creation of overrides based on
 the return type of a procedure. It is a mapping mechanism that does not attempt to 
 perform deeper inference, nor does it modify what is a valid override.
