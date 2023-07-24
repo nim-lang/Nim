@@ -1,6 +1,7 @@
 
 {.experimental: "inferGenericTypes".}
 
+import std/tables
 
 block:
   type
@@ -125,3 +126,9 @@ block:
   let z = MyType[MyType[float]](x : giveValue())
   doAssert z.x is MyType[float]
   doAssert z.x.x == 0.0
+
+  type Foo = object
+    x : Table[int, float]
+
+  let a = Foo(x: initTable())
+  doAssert a.x is Table[int, float]

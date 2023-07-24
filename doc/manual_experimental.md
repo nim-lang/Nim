@@ -167,7 +167,7 @@ If that is the case, the unmapped generic parameters are mapped to the expected 
 
 If bindings *cannot be inferred*, compilation will fail and manual specification is required.
 
-An example for failing inference can be found when passing a generic expression
+An example for *failing inference* can be found when passing a generic expression
 to a function/template call:
 
   ```nim  test = "nim c $1"  status = 1
@@ -180,6 +180,15 @@ to a function/template call:
 
   # Works! Manual specification of 'T' as 'int' necessary
   myProc(newSeq[int](), newSeq[int](1))
+  ```
+
+Another type of expression that currently cannot be inferred is any expression that
+makes use of tuples like:
+
+  ```nim  test = "nim c $1"  status = 1
+  {.experimental: "inferGenericTypes".}
+  proc giveTuple[T, Z]: (T, Z) = discard
+  let x: (int, float) = giveTuple() # Fails here
   ```
 
 **Note**: The described inference does not permit the creation of overrides based on

@@ -579,6 +579,7 @@ proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable 
     let startIdx = if expectedType.kind in ConcreteTypes: 0 else: 1
     for i in startIdx ..< expectedType.len-startIdx:
       let j = i - startIdx # idx of unbound param in callee
+      if expectedType[i] == nil: break
       if expectedType[i].kind == tyTuple: break # Can't handle tuples yet
       if result.idTableGet(y[j].typ) != nil:
         break # don't overwrite existing ones
