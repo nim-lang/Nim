@@ -1,4 +1,7 @@
 
+{.experimental: "inferGenericTypes".}
+
+
 block:
   type
     MyOption[T, Z] = object
@@ -76,3 +79,24 @@ block:
       result[i] = i
   var x: array[2, int] = giveArray()
   doAssert x == [0, 1]
+
+
+# basic constructors
+block:
+  type MyType[T] = object
+    x: T
+
+  proc giveValue[T](): T =
+    when T is int:
+      12
+    else:
+      default(T)
+
+  let x = MyType[int](x : giveValue())
+  doAssert x.x is int
+  doAssert x.x == 12
+
+  let y = MyType[MyType[float]](x : MyType[float](x : giveValue()))
+  doAssert y.x is MyType[float]
+  doAssert y.x.x is float
+  doAssert y.x.x == 0.0

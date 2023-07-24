@@ -5749,7 +5749,7 @@ Inferred generic parameters
 ---------------------------
 
 In expressions making use of generic procs or templates, the expected
-(unbound) types are often able to be inferred based on context.
+(unbound) types are often able to be inferred based on context:
 
   ```nim  test = "nim c $1"
   import std/options
@@ -5782,10 +5782,10 @@ that would be necessary at the given location.
 
 If that is the case, the unmapped generic parameters are mapped to the expected ones.
 
-If bindings cannot be inferred, compilation will fail and manual specification is required.
+If bindings *cannot be inferred*, compilation will fail and manual specification is required.
 
-A limitation of this approach is that an expression as part of a function call
-is unable to be inferred and has to be specified:
+An example for failing inference can be found when passing a generic expression
+to a function/template call:
 
   ```nim  test = "nim c $1"  status = 1
   proc myProc[T](a, b: T) = discard

@@ -219,7 +219,8 @@ type
     unicodeOperators, # deadcode
     flexibleOptionalParams,
     strictDefs,
-    strictCaseObjects
+    strictCaseObjects,
+    inferGenericTypes
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
