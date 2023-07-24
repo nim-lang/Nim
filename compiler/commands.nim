@@ -802,7 +802,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "consoleapp")
     of "lib":
       incl(conf.globalOptions, optGenDynLib)
-      incl(conf.globalOptions, optNoMain)
       excl(conf.globalOptions, optGenGuiApp)
       defineSymbol(conf.symbols, "library")
       defineSymbol(conf.symbols, "dll")
