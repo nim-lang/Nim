@@ -569,18 +569,24 @@ proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable 
   if inferGenericTypes notin c.features: return
   if expectedType == nil: return
 
-  let y = x.calleeSym.ast[genericParamsPos]
-  if expectedType.sons.len() > 0 and expectedType.sons[0] != nil:
-    # concrete types provide just the list of generic params
+  let
+    y = x.calleeSym.ast[genericParamsPos]
+    resNode = x.calleeSym.ast[paramsPos][^1]
+  if resNode.kind in {nkIdentDefs, nkBracketExpr}:
+    # This branch maps generic parameters like 'MyType[T]'
+    #  it binds the 'T' in 'MyType[T]' to the 'Z' in 'MyType[Z]'
+    # Concrete types provide just the list of generic params
     let startIdx = if expectedType.kind in ConcreteTypes: 0 else: 1
     for i in startIdx ..< expectedType.len-startIdx:
       let j = i - startIdx # idx of unbound param in callee
       if result.idTableGet(y[j].typ) != nil:
         break # don't overwrite existing ones
       result.idTablePut(y[j].typ, expectedType[i])
-  elif expectedType.sons.len() == 0 and y.len() == 1:
-    # Already a base type, just pass it along
+  elif resNode.kind == nkIdent:
+    # This branch maps generic parameters like 'T'
+    #  it binds 'T' to 'MyType[T]' or T
     if result.idTableGet(y[0].typ) == nil:
+      # pass it along directly
       result.idTablePut(y[0].typ, expectedType)
 
 proc semResolvedCall(c: PContext, x: TCandidate,
