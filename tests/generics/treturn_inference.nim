@@ -81,24 +81,23 @@ block:
   var x: array[2, int] = giveArray()
   doAssert x == [0, 1]
 
-# Tuples are quite tough and don't work
-#[
 # tuples
 block:
   proc giveTuple[T, Z]: (T, Z, T) = discard
   let x: (int, float, int) = giveTuple()
-  doAssert x is (int, float)
-  doAssert x[0] == 0 and x[1] == 0.0
+  doAssert x is (int, float, int)
+  doAssert x == (0, 0.0, 0)
 
   proc giveNamedTuple[T, Z]: tuple[a: T, b: Z] = discard
-  let y: tuple[a: int, b: float] = giveTuple()
+  let y: tuple[a: int, b: float] = giveNamedTuple()
   doAssert y is (int, float)
   doAssert y is tuple[a: int, b: float]
-  doAssert y.a == 0 and y.b == 0.0
+  doAssert y == (0, 0.0)
 
   proc giveNestedTuple[T, Z]: ((T, Z), Z) = discard
   let z: ((int, float), float) = giveNestedTuple()
-]#
+  doAssert z is ((int, float), float)
+  doAssert z == ((0, 0.0), 0.0)
 
 
 # basic constructors
