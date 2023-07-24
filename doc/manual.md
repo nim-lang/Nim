@@ -5748,36 +5748,41 @@ of "typedesc"-ness is stripped off:
 Inferred generic parameters
 ---------------------------
 
-In expressions making use of generic procs or templates, the compiler is
-often able to help you out by inferring which generic instance you want
-based on context.
+In expressions making use of generic procs or templates, the expected
+(unbound) types are often able to be inferred based on context.
 
   ```nim  test = "nim c $1"
   import std/options
 
   var x = newSeq[int](1)
-  # Do some stuff with x...
+  # Do some work on 'x'...
 
   # Works!
-  # The compiler knows that 'x' is 'seq[int]' so it also knows we want 'newSeq[int]'
+  # 'x' is 'seq[int]' so 'newSeq[int]' is implied
   x = newSeq(10)
 
   # Works!
-  # The compiler knows that you want to bind 'T' of 'noneProducer' to the 'T' of 'none'
+  # 'T' of 'none' is bound to the 'T' of 'noneProducer', passing it along.
+  # Effectively 'none.T = noneProducer.T'
   proc noneProducer[T](): Option[T] = none()
   let myNone = noneProducer[int]()
 
   # Also works
-  # 'myOtherNone' tells us that 'noneProducer' should bind 'T' to 'float'
-  # After this the logic from above is applied
+  # 'myOtherNone' binds its 'T' to 'float' and 'noneProducer' inherits it
+  # noneProducer.T = myOtherNone.T
   let myOtherNone: Option[float] = noneProducer()
 
-  let myOtherOtherNone: Option[int] = none() # of course also works
+  # Works as well
+  # none.T = myOtherOtherNone.T
+  let myOtherOtherNone: Option[int] = none()
   ```
 
-The mechanism behind this works by simply checking if there is a generic mapping that
-would be expected at that location.
+This is achieved by performing a simple check to see if there is a generic binding
+that would be necessary at the given location.
+
 If that is the case, the unmapped generic parameters are mapped to the expected ones.
+
+If bindings cannot be inferred, compilation will fail and manual specification is required.
 
 A limitation of this approach is that an expression as part of a function call
 is unable to be inferred and has to be specified:
@@ -5785,20 +5790,20 @@ is unable to be inferred and has to be specified:
   ```nim  test = "nim c $1"  status = 1
   proc myProc[T](a, b: T) = discard
 
-  # Fails! Unable to infer that we want 'T' to be 'int'
+  # Fails! Unable to infer that 'T' is supposed to be 'int'
   myProc(newSeq[int](), newSeq(1))
 
-  # Works! You have to specify it manually
+  # Works! Manual specification of 'T' as 'int' necessary
   myProc(newSeq[int](), newSeq[int](1))
   ```
 
-**Note**: This type of inference does not allow you to create overrides based on
-the return type of a procedure. All this does is map one generic instance to another,
-it does not try to resolve `T` to `int` because you wrote a proc like this:
+**Note**: The described inference does not permit the creation of overrides based on
+the return type of a procedure. It is a mapping mechanism that does not attempt to 
+perform deeper inference, nor does it modify what is a valid override.
 
   ```nim  test = "nim c $1"  status = 1
   proc a: int = 0
-  proc a: float = 1.0 # Fails! You can't and shouldn't do this.
+  proc a: float = 1.0 # Fails! Invalid code and not recommended
   ```
 
 
