@@ -345,9 +345,10 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
           for i in 1..<n.len:
             let branchNode = n[i]
             if branchNode != nil:
+              let oldCheckDefault = constrCtx.checkDefault
               constrCtx.checkDefault = true
               let (_, defaults) = semConstructFields(c, branchNode[^1], constrCtx, flags)
-              constrCtx.checkDefault = false
+              constrCtx.checkDefault = oldCheckDefault
               if len(defaults) > 0:
                 localError(c.config, discriminatorVal.info, "branch initialization " &
                             "with a runtime discriminator is not supported " &
