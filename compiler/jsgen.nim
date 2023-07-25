@@ -2727,26 +2727,14 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
   let fromInt = (src.kind in tyInt..tyInt32)
   let fromUint = (src.kind in tyUInt..tyUInt32)
 
-  if toUint and (fromInt or fromUint):
-    let trimmer = unsignedTrimmer(dest.size)
-    r.res = "($1 $2)" % [r.res, trimmer]
-  elif toUint and src.kind in {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
-    r.res = "Number(BigInt.asUintN($1, $2))" % [$(dest.size * 8), r.res]
+  if toUint:
+    if fromInt or fromUint:
+      r.res = "Number(BigInt.asUintN($1, BigInt($2)))" % [$(dest.size * 8), r.res]
+    elif src.kind in {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
+      r.res = "Number(BigInt.asUintN($1, $2))" % [$(dest.size * 8), r.res]
   elif toInt:
-    if fromInt:
-      return
-    elif fromUint:
-      if src.size == 4 and dest.size == 4:
-        # XXX prevent multi evaluations
-        r.res = "($1 | 0)" % [r.res]
-      else:
-        let trimmer = unsignedTrimmer(dest.size)
-        let minuend = case dest.size
-          of 1: "0xfe"
-          of 2: "0xfffe"
-          of 4: "0xfffffffe"
-          else: ""
-        r.res = "($1 - ($2 $3))" % [rope minuend, r.res, trimmer]
+    if fromInt or fromUint:
+      r.res = "Number(BigInt.asIntN($1, BigInt($2)))" % [$(dest.size * 8), r.res]
     elif src.kind in {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
       r.res = "Number(BigInt.asIntN($1, $2))" % [$(dest.size * 8), r.res]
   elif dest.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
