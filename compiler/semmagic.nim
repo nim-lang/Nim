@@ -21,7 +21,7 @@ proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
     asgnExpr.typ = typ
     var t = typ.skipTypes({tyGenericInst, tyAlias, tySink})[0]
     while true:
-      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n)
+      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, false)
       let base = t[0]
       if base == nil:
         break
@@ -647,7 +647,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mDefault:
     result = checkDefault(c, n)
     let typ = result[^1].typ.skipTypes({tyTypeDesc})
-    let defaultExpr = defaultNodeField(c, result[^1], typ)
+    let defaultExpr = defaultNodeField(c, result[^1], typ, false)
     if defaultExpr != nil:
       result = defaultExpr
   of mZeroDefault:
