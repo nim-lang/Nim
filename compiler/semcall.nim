@@ -608,8 +608,10 @@ proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable 
       if t notin flatUnbound:
         flatUnbound.add(t)
         flatBound.add(u)
-    of tyGenericBody, tyUntyped, tyTypeDesc, tyOr:
+    of tyUntyped, tyTypeDesc, tyOr:
       # TODO: They might want some special handling 
+      discard
+    of tyGenericBody, tyGenericInst:
       discard
     else:
       # TODO: Remove/replace
