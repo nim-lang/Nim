@@ -21,7 +21,7 @@ proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
     asgnExpr.typ = typ
     var t = typ.skipTypes({tyGenericInst, tyAlias, tySink})[0]
     while true:
-      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n)
+      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, false)
       let base = t[0]
       if base == nil:
         break
@@ -609,6 +609,13 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     let op = getAttachedOp(c.graph, t, attachedDestructor)
     if op != nil:
       result[0] = newSymNode(op)
+
+      if op.typ != nil and op.typ.len == 2 and op.typ[1].kind != tyVar:
+        if n[1].kind == nkSym and n[1].sym.kind == skParam and
+            n[1].typ.kind == tyVar:
+          result[1] = genDeref(n[1])
+        else:
+          result[1] = skipAddr(n[1])
   of mTrace:
     result = n
     let t = n[1].typ.skipTypes(abstractVar)
@@ -640,7 +647,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mDefault:
     result = checkDefault(c, n)
     let typ = result[^1].typ.skipTypes({tyTypeDesc})
-    let defaultExpr = defaultNodeField(c, result[^1], typ)
+    let defaultExpr = defaultNodeField(c, result[^1], typ, false)
     if defaultExpr != nil:
       result = defaultExpr
   of mZeroDefault:

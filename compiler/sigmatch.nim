@@ -1140,7 +1140,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let x = typeRel(c, a, f, flags + {trDontBind})
       if x >= isGeneric:
         return isGeneric
-  
+
   of tyFromExpr:
     if c.c.inGenericContext > 0:
       # generic type bodies can sometimes compile call expressions
@@ -1950,7 +1950,12 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
 
   if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
   result.add c.graph.emptyNode
-  result.add arg
+  if arg.typ != nil and arg.typ.kind == tyLent:
+    let a = newNodeIT(nkHiddenDeref, arg.info, arg.typ[0])
+    a.add arg
+    result.add a
+  else:
+    result.add arg
 
 proc isLValue(c: PContext; n: PNode, isOutParam = false): bool {.inline.} =
   let aa = isAssignable(nil, n)
@@ -2427,7 +2432,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     return
 
   template checkConstraint(n: untyped) {.dirty.} =
-    if not formal.constraint.isNil:
+    if not formal.constraint.isNil and sfCodegenDecl notin formal.flags:
       if matchNodeKinds(formal.constraint, n):
         # better match over other routines with no such restriction:
         inc(m.genericMatches, 100)

@@ -855,7 +855,9 @@ proc transformReturnsInTry(ctx: var Ctx, n: PNode): PNode =
   case n.kind
   of nkReturnStmt:
     # We're somewhere in try, transform to finally unrolling
-    assert(ctx.nearestFinally != 0)
+    if ctx.nearestFinally == 0:
+      # return is within the finally
+      return
 
     result = newNodeI(nkStmtList, n.info)
 
@@ -1389,7 +1391,7 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
       discard c.finallys.pop()
 
   of nkWhileStmt, nkBlockStmt:
-    if n.hasYields == false: return n
+    if not n.hasYields: return n
     c.blocks.add((n, c.finallys.len))
     for i in 0 ..< n.len:
       result[i] = preprocess(c, n[i])
@@ -1466,9 +1468,10 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
   result = ctx.transformStateAssignments(result)
   result = ctx.wrapIntoStateLoop(result)
 
-  # echo "TRANSFORM TO STATES: "
-  # echo renderTree(result)
+  when false:
+    echo "TRANSFORM TO STATES: "
+    echo renderTree(result)
 
-  # echo "exception table:"
-  # for i, e in ctx.exceptionTable:
-  #   echo i, " -> ", e
+    echo "exception table:"
+    for i, e in ctx.exceptionTable:
+      echo i, " -> ", e

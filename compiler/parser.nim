@@ -310,7 +310,7 @@ proc checkBinary(p: Parser) {.inline.} =
     if p.tok.spacing == {tsTrailing}:
       parMessage(p, warnInconsistentSpacing, prettyTok(p.tok))
 
-#| module = stmt ^* (';' / IND{=})
+#| module = complexOrSimpleStmt ^* (';' / IND{=})
 #|
 #| comma = ',' COMMENT?
 #| semicolon = ';' COMMENT?

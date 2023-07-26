@@ -25,7 +25,11 @@
 include "system/basic_types"
 
 func zeroDefault*[T](_: typedesc[T]): T {.magic: "ZeroDefault".} =
-  ## returns the default value of the type `T`.
+  ## Returns the binary zeros representation of the type `T`. It ignores
+  ## default fields of an object.
+  ##
+  ## See also:
+  ## * `default <#default,typedesc[T]>`_
 
 include "system/compilation"
 
@@ -147,26 +151,10 @@ proc wasMoved*[T](obj: var T) {.inline, noSideEffect.} =
   {.cast(raises: []), cast(tags: []).}:
     `=wasMoved`(obj)
 
-const notJSnotNims = not defined(js) and not defined(nimscript)
-const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
-
-when notJSnotNims and arcLikeMem:
-  proc internalMove[T](x: var T): T {.magic: "Move", noSideEffect, compilerproc.} =
-    result = x
-
-  proc move*[T](x: var T): T {.noSideEffect, nodestroy.} =
-    {.cast(noSideEffect).}:
-      when nimvm:
-        result = internalMove(x)
-      else:
-        result = internalMove(x)
-        {.cast(raises: []), cast(tags: []).}:
-          `=wasMoved`(x)
-else:
-  proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
-    result = x
-    {.cast(raises: []), cast(tags: []).}:
-      `=wasMoved`(x)
+proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+  result = x
+  {.cast(raises: []), cast(tags: []).}:
+    `=wasMoved`(x)
 
 type
   range*[T]{.magic: "Range".}         ## Generic type to construct range types.
@@ -365,6 +353,9 @@ proc arrGet[I: Ordinal;T](a: T; i: I): T {.
 proc arrPut[I: Ordinal;T,S](a: T; i: I;
   x: S) {.noSideEffect, magic: "ArrPut".}
 
+const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
+
+
 when defined(nimAllowNonVarDestructor) and arcLikeMem:
   proc `=destroy`*(x: string) {.inline, magic: "Destroy".} =
     discard
@@ -441,6 +432,7 @@ include "system/inclrtl"
 const NoFakeVars = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
+const notJSnotNims = not defined(js) and not defined(nimscript)
 
 when not defined(js) and not defined(nimSeqsV2):
   type
@@ -916,22 +908,18 @@ proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEff
   ##   ```
 
 proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
-  ## returns the default value of the type `T`.
-  runnableExamples:
+  ## Returns the default value of the type `T`. Contrary to `zeroDefault`, it takes default fields
+  ## of an object into consideration.
+  ##
+  ## See also:
+  ## * `zeroDefault <#zeroDefault,typedesc[T]>`_
+  ##
+  runnableExamples("-d:nimPreviewRangeDefault"):
     assert (int, float).default == (0, 0.0)
-    # note: `var a = default(T)` is usually the same as `var a: T` and (currently) generates
-    # a value whose binary representation is all 0, regardless of whether this
-    # would violate type constraints such as `range`, `not nil`, etc. This
-    # property is required to implement certain algorithms efficiently which
-    # may require intermediate invalid states.
     type Foo = object
       a: range[2..6]
-    var a1: range[2..6] # currently, this compiles
-    # var a2: Foo # currently, this errors: Error: The Foo type doesn't have a default value.
-    # var a3 = Foo() # ditto
-    var a3 = Foo.default # this works, but generates a `UnsafeDefault` warning.
-  # note: the doc comment also explains why `default` can't be implemented
-  # via: `template default*[T](t: typedesc[T]): T = (var v: T; v)`
+    var x = Foo.default
+    assert x.a == 2
 
 
 proc reset*[T](obj: var T) {.noSideEffect.} =
@@ -1621,7 +1609,7 @@ when not defined(js) and defined(nimV2):
       align: int16
       depth: int16
       display: ptr UncheckedArray[uint32] # classToken
-      when defined(nimTypeNames):
+      when defined(nimTypeNames) or defined(nimArcIds):
         name: cstring
       traceImpl: pointer
       typeInfoV1: pointer # for backwards compat, usually nil

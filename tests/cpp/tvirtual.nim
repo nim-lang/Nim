@@ -74,4 +74,8 @@ var val : int32 = 10
 NimPrinter().printConstRef(message, val)
 NimPrinter().printConstRef2(message, val)
 
+#bug 22269
+type Doo = object
+proc naiveMember(x: Doo): int {. virtual .} = 2
+discard naiveMember(Doo())
 
