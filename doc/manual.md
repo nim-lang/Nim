@@ -8162,7 +8162,7 @@ CodegenDecl pragma
 
 The `codegenDecl` pragma can be used to directly influence Nim's code
 generator. It receives a format string that determines how the variable,
-proc or object type is declared in the generated code.
+proc, proc param, or object type is declared in the generated code.
 
 For variables, $1 in the format string represents the type of the variable,
 $2 is the name of the variable, and each appearance of $# represents $1/$2
@@ -8178,7 +8178,7 @@ The following Nim code:
 will generate this C code:
 
   ```c
-  int progmem a
+  NI progmem a
   ```
 
 For procedures, $1 is the return type of the procedure, $2 is the name of
@@ -8197,6 +8197,25 @@ will generate this code:
   ```c
   __interrupt void myinterrupt()
   ```
+
+For params it works like for variables.
+
+The following nim code:
+
+
+```nim
+
+proc add(a {.codegenDecl:"const $#& $#".} : int) 
+
+```
+
+will generate this code:
+
+```c++
+
+void add( const NI& a)
+
+```
 
 For object types, the $1 represents the name of the object type, $2 is the list of
 fields and $3 is the base type.
