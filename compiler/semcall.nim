@@ -570,59 +570,35 @@ proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable 
   #if inferGenericTypes notin c.features: return
   if expectedType == nil: return
 
-  let
-    y = x.calleeSym.ast[genericParamsPos]
-    resNode = x.calleeSym.ast[paramsPos][^1]
-  if resNode.kind in {nkIdentDefs, nkBracketExpr}:
-    # This branch maps generic parameters like 'MyType[T]'
-    #  it binds the 'T' in 'MyType[T]' to the 'Z' in 'MyType[Z]'
-    # Concrete types provide just the list of generic params
-    let startIdx = if expectedType.kind in ConcreteTypes: 0 else: 1
-    for i in startIdx ..< expectedType.len-startIdx:
-      let j = i - startIdx # idx of unbound param in callee
-      if expectedType[i] == nil: break
-      if expectedType[i].kind == tyTuple: break # Can't handle tuples yet
-      if result.idTableGet(y[j].typ) != nil:
-        break # don't overwrite existing ones
-      result.idTablePut(y[j].typ, expectedType[i])
-  elif resNode.kind == nkIdent:
-    # This branch maps generic parameters like 'T'
-    #  it binds 'T' to 'MyType[T]' or T
-    if result.idTableGet(y[0].typ) == nil:
-      # pass it along directly
-      result.idTablePut(y[0].typ, expectedType)
-  elif resNode.kind in {nkTupleConstr, nkTupleTy}:
-    var
-      flatSyms: seq[PSym]
-      flatBinds: seq[PType]
-    var typeStack = @[(resNode.typ, expectedType)]
-    # TODO: Use this type reduction for the entire inheritance structure instead of just tuples
-    #  Probably put into a proc
-    block outer:
-      while typeStack.len() > 0:
-        let (t, u) = typeStack.pop()
-        case t.kind
-        of tyTuple, tyGenericInvocation:
-          # nested, add all the types to stack
-          for i in countdown(t.sons.len() - 1, 0):
-            if i >= t.sons.len() or i >= u.sons.len():
-              break outer
-            typeStack.add((t.sons[i], u.sons[i]))
-        of tyGenericParam:
-          # fully reduced generic param
-          if t.sym notin flatSyms:
-            flatSyms.add(t.sym)
-            flatBinds.add(u)
-        of tyGenericBody:
-          discard # TODO: Combine into else later?
-        else:
-          # TODO: Remove/replace
-          doAssert false # for debugging
-      for i in 0 ..< flatSyms.len():
-        result.idTablePut(flatSyms[i].typ, flatBinds[i])
-  else:
-    # TODO: Remove/replace
-    doAssert false # for debugging
+  var
+    flatUnbound: seq[PType]
+    flatBound: seq[PType]
+  # seq[(result type, expected type)]
+  var typeStack = @[(x.callee[0], expectedType)]
+
+  while typeStack.len() > 0:
+    let (t, u) = typeStack.pop()
+    if t == u or t == nil or u == nil:
+      continue
+    case t.kind
+    of ConcreteTypes, tyGenericInvocation:
+      # nested, add all the types to stack
+      # early exit with current impl
+      if t.sons.len() > u.sons.len(): return
+      for i in 0 ..< t.sons.len():
+        typeStack.add((t[i], u[i]))
+    of tyGenericParam:
+      # fully reduced generic param, bind it
+      if t notin flatUnbound:
+        flatUnbound.add(t)
+        flatBound.add(u)
+    of tyGenericBody:
+      discard # TODO: Combine into else later?
+    else:
+      # TODO: Remove/replace
+      doAssert false # for debugging
+  for i in 0 ..< flatUnbound.len():
+    result.idTablePut(flatUnbound[i], flatBound[i])
 
 proc semResolvedCall(c: PContext, x: TCandidate,
                      n: PNode, flags: TExprFlags;
