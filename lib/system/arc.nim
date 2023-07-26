@@ -80,13 +80,13 @@ proc nimNewObj(size, alignment: int): pointer {.compilerRtl.} =
   else:
     result = alignedAlloc0(s, alignment) +! hdrSize
   when defined(nimArcDebug) or defined(nimArcIds):
-    head(result).refId = gRefId
     atomicInc gRefId
+    head(result).refId = gRefId
     if head(result).refId == traceId:
       writeStackTrace()
       cfprintf(cstderr, "[nimNewObj] %p %ld\n", result, head(result).count)
   when traceCollector:
-    cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
+    cprintf("[Allocated] %p result: %p %ld\n", result -! sizeof(RefHeader), result, head(result).refId)
 
 proc nimNewObjUninit(size, alignment: int): pointer {.compilerRtl.} =
   # Same as 'newNewObj' but do not initialize the memory to zero.
@@ -101,14 +101,17 @@ proc nimNewObjUninit(size, alignment: int): pointer {.compilerRtl.} =
   when defined(gcOrc):
     head(result).rootIdx = 0
   when defined(nimArcDebug):
-    head(result).refId = gRefId
     atomicInc gRefId
+    head(result).refId = gRefId
     if head(result).refId == traceId:
       writeStackTrace()
       cfprintf(cstderr, "[nimNewObjUninit] %p %ld\n", result, head(result).count)
 
   when traceCollector:
     cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
+
+proc echoRef*[T](x: ref T) =
+  cprintf("[EchoRef] %p result: %p %ld\n", cast[pointer](x) -! sizeof(RefHeader), x, head(cast[pointer](x)).refId)
 
 proc nimDecWeakRef(p: pointer) {.compilerRtl, inl.} =
   decrement head(p)
@@ -133,7 +136,7 @@ proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
 
   increment head(p)
   when traceCollector:
-    cprintf("[INCREF] %p\n", head(p))
+    cprintf("[INCREF] %p %ld\n", head(p), head(p).refId)
 
 when not defined(gcOrc) or defined(nimThinout):
   proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
@@ -157,7 +160,7 @@ when not defined(nimscript) and defined(nimArcDebug):
 proc nimRawDispose(p: pointer, alignment: int) {.compilerRtl.} =
   when not defined(nimscript):
     when traceCollector:
-      cprintf("[Freed] %p\n", p -! sizeof(RefHeader))
+      cprintf("[Freed] %p %ld\n", p -! sizeof(RefHeader), head(p).refId)
     when defined(nimOwnedEnabled):
       if head(p).rc >= rcIncrement:
         cstderr.rawWrite "[FATAL] dangling references exist\n"
@@ -205,12 +208,12 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
     if cell.count == 0:
       result = true
       when traceCollector:
-        cprintf("[ABOUT TO DESTROY] %p\n", cell)
+        cprintf("[ABOUT TO DESTROY] %p %ld\n", cell, cell.refId)
     else:
       decrement cell
       # According to Lins it's correct to do nothing else here.
       when traceCollector:
-        cprintf("[DECREF] %p\n", cell)
+        cprintf("[DECREF] %p %ld\n", cell, cell.refId)
 
 proc GC_unref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
