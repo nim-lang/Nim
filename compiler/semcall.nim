@@ -574,26 +574,43 @@ proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable 
     flatUnbound: seq[PType]
     flatBound: seq[PType]
   # seq[(result type, expected type)]
-  var typeStack = @[(x.callee[0], expectedType)]
+  if x.callee[0] == nil: return
+  var typeStack = newSeq[(PType, PType)]()
+
+  template stackPut(a, b) =
+    ## skips types and puts the skipped version on stack
+    const toSkip = { tyVar, tyLent }
+    let
+      x = a.skipTypes(toSkip)
+      y = if a.kind notin toSkip: b
+          else: b.skipTypes(toSkip)
+    typeStack.add((x, y))
+
+  stackPut(x.callee[0], expectedType)
 
   while typeStack.len() > 0:
     let (t, u) = typeStack.pop()
-    if t == u or t == nil or u == nil:
+    if t == u or t == nil or u == nil or t.kind == tyAnything or u.kind == tyAnything:
       continue
     case t.kind
     of ConcreteTypes, tyGenericInvocation:
       # nested, add all the types to stack
-      # early exit with current impl
-      if t.sons.len() > u.sons.len(): return
-      for i in 0 ..< t.sons.len():
-        typeStack.add((t[i], u[i]))
+      let
+        startIdx = if u.kind in ConcreteTypes: 0 else: 1
+        endIdx = min(u.sons.len() - startIdx, t.sons.len())
+
+      for i in startIdx ..< endIdx:
+        # early exit with current impl
+        if t[i] == nil or u[i] == nil: return
+        stackPut(t[i], u[i])
     of tyGenericParam:
       # fully reduced generic param, bind it
       if t notin flatUnbound:
         flatUnbound.add(t)
         flatBound.add(u)
-    of tyGenericBody:
-      discard # TODO: Combine into else later?
+    of tyGenericBody, tyUntyped, tyTypeDesc, tyOr:
+      # TODO: They might want some special handling 
+      discard
     else:
       # TODO: Remove/replace
       doAssert false # for debugging
