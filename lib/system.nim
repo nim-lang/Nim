@@ -917,7 +917,7 @@ proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
   ## See also:
   ## * `zeroDefault <#zeroDefault,typedesc[T]>`_
   ##
-  runnableExamples:
+  runnableExamples("-d:nimPreviewRangeDefault"):
     assert (int, float).default == (0, 0.0)
     type Foo = object
       a: range[2..6]
