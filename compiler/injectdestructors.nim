@@ -85,7 +85,7 @@ type
   MoveOrCopyFlag = enum
     IsDecl, IsExplicitSink
 
-proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; flags: set[MoveOrCopyFlag] = {}; isEnsureMove: bool): PNode
+proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; flags: set[MoveOrCopyFlag] = {}): PNode
 
 when false:
   var
@@ -332,8 +332,8 @@ proc genCopyNoCheck(c: var Con; dest, ri: PNode; a: TTypeAttachedOp): PNode =
   result = c.genOp(t, a, dest, ri)
   assert ri.typ != nil
 
-proc genCopy(c: var Con; dest, ri: PNode; flags: set[MoveOrCopyFlag], isEnsureMove: bool): PNode =
-  if isEnsureMove:
+proc genCopy(c: var Con; dest, ri: PNode; flags: set[MoveOrCopyFlag]): PNode =
+  if c.inEnsureMove > 0:
     localError(c.graph.config, ri.info, errFailedMove, $ri)
   let t = dest.typ
   if tfHasOwned in t.flags and ri.kind != nkNilLit:
@@ -457,7 +457,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
       )
     else:
       result.add c.genWasMoved(tmp)
-      var m = c.genCopy(tmp, n, {}, false)
+      var m = c.genCopy(tmp, n, {})
       m.add p(n, c, s, normal)
       c.finishCopy(m, n, isFromSink = true)
       result.add m
@@ -587,7 +587,7 @@ template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: unt
   tmp.sym.flags = tmpFlags
   let cpy = if hasDestructor(c, ret.typ):
               s.parent[].final.add c.genDestroy(tmp)
-              moveOrCopy(tmp, ret, c, s, {IsDecl}, false)
+              moveOrCopy(tmp, ret, c, s, {IsDecl})
             else:
               newTree(nkFastAsgn, tmp, p(ret, c, s, normal))
 
@@ -913,12 +913,12 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
               s.locals.add v.sym
               pVarTopLevel(v, c, s, result)
             if ri.kind != nkEmpty:
-              result.add moveOrCopy(v, ri, c, s, if v.kind == nkSym: {IsDecl} else: {}, false)
+              result.add moveOrCopy(v, ri, c, s, if v.kind == nkSym: {IsDecl} else: {})
             elif ri.kind == nkEmpty and c.inLoop > 0:
               let skipInit = v.kind == nkDotExpr and # Closure var
                              sfNoInit in v[1].sym.flags
               if not skipInit:
-                result.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, if v.kind == nkSym: {IsDecl} else: {}, false)
+                result.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, if v.kind == nkSym: {IsDecl} else: {})
         else: # keep the var but transform 'ri':
           var v = copyNode(n)
           var itCopy = copyNode(it)
@@ -937,7 +937,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
           cycleCheck(n, c)
         assert n[1].kind notin {nkAsgn, nkFastAsgn, nkSinkAsgn}
         let flags = if n.kind == nkSinkAsgn: {IsExplicitSink} else: {}
-        result = moveOrCopy(p(n[0], c, s, mode), n[1], c, s, flags, false)
+        result = moveOrCopy(p(n[0], c, s, mode), n[1], c, s, flags)
       elif isDiscriminantField(n[0]):
         result = c.genDiscriminantAsgn(s, n)
       else:
@@ -1082,12 +1082,12 @@ proc genFieldAccessSideEffects(c: var Con; s: var Scope; dest, ri: PNode; flags:
   var snk = c.genSink(s, dest, newAccess, flags)
   result = newTree(nkStmtList, v, snk, c.genWasMoved(newAccess))
 
-proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopyFlag] = {}, isEnsureMove: bool): PNode =
+proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopyFlag] = {}): PNode =
   var ri = ri
-  var isEnsureMove = isEnsureMove
+  var isEnsureMove = 0
   if ri.kind in nkCallKinds and ri[0].kind == nkSym and ri[0].sym.magic == mEnsureMove:
     ri = ri[1]
-    isEnsureMove = true
+    isEnsureMove = 1
   if sameLocation(dest, ri):
     # rule (self-assignment-removal):
     result = newNodeI(nkEmpty, dest.info)
@@ -1097,11 +1097,11 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
     # bug #22132
     case ri.kind:
     of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt:
-      template process(child, s): untyped = moveOrCopy(dest, child, c, s, flags, isEnsureMove)
+      template process(child, s): untyped = moveOrCopy(dest, child, c, s, flags)
       # We know the result will be a stmt so we use that fact to optimize
       handleNestedTempl(ri, process, willProduceStmt = true)
     else:
-      if isEnsureMove:
+      if isEnsureMove > 0:
         localError(c.graph.config, ri.info, errFailedMove,
           $ri)
       result = newTree(nkFastAsgn, dest, p(ri, c, s, normal))
@@ -1125,13 +1125,17 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
         else:
           result = c.genSink(s, dest, destructiveMoveVar(ri, c, s), flags)
       else:
-        result = c.genCopy(dest, ri, flags, isEnsureMove)
+        inc c.inEnsureMove, isEnsureMove
+        result = c.genCopy(dest, ri, flags)
+        dec c.inEnsureMove, isEnsureMove
         result.add p(ri, c, s, consumed)
         c.finishCopy(result, dest, isFromSink = false)
     of nkBracket:
       # array constructor
       if ri.len > 0 and isDangerousSeq(ri.typ):
-        result = c.genCopy(dest, ri, flags, isEnsureMove)
+        inc c.inEnsureMove, isEnsureMove
+        result = c.genCopy(dest, ri, flags)
+        dec c.inEnsureMove, isEnsureMove
         result.add p(ri, c, s, consumed)
         c.finishCopy(result, dest, isFromSink = false)
       else:
@@ -1149,13 +1153,15 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
         let snk = c.genSink(s, dest, ri, flags)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
       else:
-        result = c.genCopy(dest, ri, flags, isEnsureMove)
+        inc c.inEnsureMove, isEnsureMove
+        result = c.genCopy(dest, ri, flags)
+        dec c.inEnsureMove, isEnsureMove
         result.add p(ri, c, s, consumed)
         c.finishCopy(result, dest, isFromSink = false)
     of nkHiddenSubConv, nkHiddenStdConv, nkConv, nkObjDownConv, nkObjUpConv, nkCast:
       result = c.genSink(s, dest, p(ri, c, s, sinkArg), flags)
     of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt:
-      template process(child, s): untyped = moveOrCopy(dest, child, c, s, flags, isEnsureMove)
+      template process(child, s): untyped = moveOrCopy(dest, child, c, s, flags)
       # We know the result will be a stmt so we use that fact to optimize
       handleNestedTempl(ri, process, willProduceStmt = true)
     of nkRaiseStmt:
@@ -1167,7 +1173,9 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
         let snk = c.genSink(s, dest, ri, flags)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
       else:
-        result = c.genCopy(dest, ri, flags, isEnsureMove)
+        inc c.inEnsureMove, isEnsureMove
+        result = c.genCopy(dest, ri, flags)
+        dec c.inEnsureMove, isEnsureMove
         result.add p(ri, c, s, consumed)
         c.finishCopy(result, dest, isFromSink = false)
 
