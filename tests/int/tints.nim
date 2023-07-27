@@ -95,8 +95,9 @@ let val = c > 0
 doAssert val
 
 block: # bug #6752
-  let x = 711127'i64
-  doAssert x * 86400'i64 == 61441372800'i64
+  when not defined(js) or (defined(js) and compileOption("jsbigint64")):
+    let x = 711127'i64
+    doAssert x * 86400'i64 == 61441372800'i64
 
 block: # bug #17604
   let a = 2147483648'u
@@ -112,24 +113,32 @@ block: # bitwise not
   doAssert (not z8) == uint8.high
   doAssert (not z16) == uint16.high
   doAssert (not z32) == uint32.high
-  doAssert (not z64) == uint64.high
+  when not defined(js) or (defined(js) and compileOption("jsbigint64")):
+    doAssert (not z64) == uint64.high
 
 block: # shl
   let i8 = int8.high
   let i16 = int16.high
   let i32 = int32.high
+  let i64 = int64.high
   doAssert i8 shl 1 == -2
   doAssert i8 shl 2 == -4
   doAssert i16 shl 1 == -2
   doAssert i16 shl 2 == -4
   doAssert i32 shl 1 == -2
   doAssert i32 shl 2 == -4
+  when not defined(js) or (defined(js) and compileOption("jsbigint64")):
+    doAssert i64 shl 1 == -2
+    doAssert i64 shl 2 == -4
 
   let u8 = uint8.high
   let u16 = uint16.high
   let u32 = uint32.high
+  let u64 = uint64.high
   doAssert u8 shl 1 == u8 - 1
   doAssert u16 shl 1 == u16 - 1
   doAssert u32 shl 1 == u32 - 1
+  when not defined(js) or (defined(js) and compileOption("jsbigint64")):
+    doAssert u64 shl 1 == u64 - 1
 
 echo("Success") #OUT Success
