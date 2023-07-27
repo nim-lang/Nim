@@ -111,7 +111,6 @@ proc intSetPut[A](t: var PackedSet[A], key: int): Trunk =
   t.data[h] = result
 
 proc bitincl[A](s: var PackedSet[A], key: int) {.inline.} =
-  var ret: Trunk
   var t = intSetPut(s, key shr TrunkShift)
   var u = key and TrunkMask
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or
