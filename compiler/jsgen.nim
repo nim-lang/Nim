@@ -556,16 +556,16 @@ template binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string,
   r.res = frmt % [a, b, tmp, tmp2]
   r.kind = resExpr
 
-proc unsignedTrimmerJS(size: BiggestInt): Rope =
+proc unsignedTrimmer(size: BiggestInt): string =
   case size
-  of 1: rope"& 0xff"
-  of 2: rope"& 0xffff"
-  of 4: rope">>> 0"
-  else: rope""
+  of 1: "& 0xff"
+  of 2: "& 0xffff"
+  of 4: ">>> 0"
+  else: ""
 
-
-template unsignedTrimmer(size: BiggestInt): Rope =
-  size.unsignedTrimmerJS
+proc signedTrimmer(size: BiggestInt): string =
+  # sign extension is done by shifting to the left and then back to the right
+  "<< $1 >> $1" % [$(32 - size * 8)]
 
 proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string,
                     reassign: static[bool] = false) =
@@ -626,6 +626,13 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   template applyFormat(frmtA, frmtB) =
     if i == 0: applyFormat(frmtA) else: applyFormat(frmtB)
 
+  template bitwiseExpr(op: string) =
+    let typ = n[1].typ.skipTypes(abstractVarRange)
+    if typ.kind in {tyUInt, tyUInt32}:
+      r.res = "(($1 $2 $3) >>> 0)" % [xLoc, op, yLoc]
+    else:
+      r.res = "($1 $2 $3)" % [xLoc, op, yLoc]
+
   case op
   of mAddI:
     if i == 0:
@@ -672,7 +679,19 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mSubF64: applyFormat("($1 - $2)", "($1 - $2)")
   of mMulF64: applyFormat("($1 * $2)", "($1 * $2)")
   of mDivF64: applyFormat("($1 / $2)", "($1 / $2)")
-  of mShrI: applyFormat("", "")
+  of mShrI:
+    let typ = n[1].typ.skipTypes(abstractVarRange)
+    if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
+      applyFormat("BigInt.asIntN(64, BigInt.asUintN(64, $1) >> BigInt($2))")
+    elif typ.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
+      applyFormat("($1 >> BigInt($2))")
+    else:
+      if typ.kind in {tyInt..tyInt32}:
+        let trimmerU = unsignedTrimmer(typ.size)
+        let trimmerS = signedTrimmer(typ.size)
+        r.res = "((($1 $2) >>> $3) $4)" % [xLoc, trimmerU, yLoc, trimmerS]
+      else:
+        applyFormat("($1 >>> $2)")
   of mShlI:
     let typ = n[1].typ.skipTypes(abstractVarRange)
     if typ.size == 8:
@@ -683,21 +702,27 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
       else:
         applyFormat("($1 * Math.pow(2, $2))")
     else:
-      applyFormat("($1 << $2)", "($1 << $2)")
+      if typ.kind in {tyUInt..tyUInt32}:
+        let trimmer = unsignedTrimmer(typ.size)
+        r.res = "(($1 << $2) $3)" % [xLoc, yLoc, trimmer]
+      else:
+        let trimmer = signedTrimmer(typ.size)
+        r.res = "(($1 << $2) $3)" % [xLoc, yLoc, trimmer]
   of mAshrI:
     let typ = n[1].typ.skipTypes(abstractVarRange)
     if typ.size == 8:
-      if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
-        applyFormat("BigInt.asIntN(64, $1 >> BigInt($2))")
-      elif typ.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
-        applyFormat("BigInt.asUintN(64, $1 >> BigInt($2))")
+      if optJsBigInt64 in p.config.globalOptions:
+        applyFormat("($1 >> BigInt($2))")
       else:
         applyFormat("Math.floor($1 / Math.pow(2, $2))")
     else:
-      applyFormat("($1 >> $2)", "($1 >> $2)")
-  of mBitandI: applyFormat("($1 & $2)", "($1 & $2)")
-  of mBitorI: applyFormat("($1 | $2)", "($1 | $2)")
-  of mBitxorI: applyFormat("($1 ^ $2)", "($1 ^ $2)")
+      if typ.kind in {tyUInt..tyUInt32}:
+        applyFormat("($1 >>> $2)")
+      else:
+        applyFormat("($1 >> $2)")
+  of mBitandI: bitwiseExpr("&")
+  of mBitorI: bitwiseExpr("|")
+  of mBitxorI: bitwiseExpr("^")
   of mMinI: applyFormat("nimMin($1, $2)", "nimMin($1, $2)")
   of mMaxI: applyFormat("nimMax($1, $2)", "nimMax($1, $2)")
   of mAddU: applyFormat("", "")
@@ -733,7 +758,16 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mAbsI: applyFormat("absInt($1)", "Math.abs($1)")
   of mNot: applyFormat("!($1)", "!($1)")
   of mUnaryPlusI: applyFormat("+($1)", "+($1)")
-  of mBitnotI: applyFormat("~($1)", "~($1)")
+  of mBitnotI:
+    let typ = n[1].typ.skipTypes(abstractVarRange)
+    if typ.kind in {tyUInt..tyUInt64}:
+      if typ.size == 8 and optJsBigInt64 in p.config.globalOptions:
+        applyFormat("BigInt.asUintN(64, ~($1))")
+      else:
+        let trimmer = unsignedTrimmer(typ.size)
+        r.res = "(~($1) $2)" % [xLoc, trimmer]
+    else:
+      applyFormat("~($1)")
   of mUnaryPlusF64: applyFormat("+($1)", "+($1)")
   of mUnaryMinusF64: applyFormat("-($1)", "-($1)")
   of mCharToStr: applyFormat("nimCharToStr($1)", "nimCharToStr($1)")
@@ -760,17 +794,6 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     arithAux(p, n, r, op)
   of mModI:
     arithAux(p, n, r, op)
-  of mShrI:
-    var x, y: TCompRes
-    gen(p, n[1], x)
-    gen(p, n[2], y)
-    let typ = n[1].typ.skipTypes(abstractVarRange)
-    if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
-      r.res = "BigInt.asIntN(64, BigInt.asUintN(64, $1) >> BigInt($2))" % [x.rdLoc, y.rdLoc]
-    elif typ.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
-      r.res = "($1 >> BigInt($2))" % [x.rdLoc, y.rdLoc]
-    else:
-      r.res = "($1 >>> $2)" % [x.rdLoc, y.rdLoc]
   of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mCStrToStr, mStrToStr, mEnumToStr:
     arithAux(p, n, r, op)
   of mEqRef:
