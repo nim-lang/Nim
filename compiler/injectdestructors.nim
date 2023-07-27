@@ -36,6 +36,7 @@ type
     body: PNode
     otherUsage: TLineInfo
     inUncheckedAssignSection: int
+    inEnsureMove: int
 
   Scope = object # we do scope-based memory management.
     # a scope is comparable to an nkStmtListExpr like
@@ -82,7 +83,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
 
 type
   MoveOrCopyFlag = enum
-    IsDecl, IsExplicitSink
+    IsDecl, IsExplicitSink, IsEnsureMove
 
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; flags: set[MoveOrCopyFlag] = {}): PNode
 
@@ -332,6 +333,8 @@ proc genCopyNoCheck(c: var Con; dest, ri: PNode; a: TTypeAttachedOp): PNode =
   assert ri.typ != nil
 
 proc genCopy(c: var Con; dest, ri: PNode; flags: set[MoveOrCopyFlag]): PNode =
+  if IsEnsureMove in flags:
+    localError(c.graph.config, ri.info, errFailedMove, $ri)
   let t = dest.typ
   if tfHasOwned in t.flags and ri.kind != nkNilLit:
     # try to improve the error message here:
@@ -462,6 +465,9 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
         "if possible, rearrange your program's control flow to prevent it") % $n)
+    if c.inEnsureMove > 0:
+      localError(c.graph.config, n.info, errFailedMove,
+        $n)
   else:
     if c.graph.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
       assert(not containsManagedMemory(n.typ))
@@ -765,7 +771,15 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       result = passCopyToSink(n, c, s)
     elif n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkNilLit} +
          nkCallKinds + nkLiterals:
-      result = p(n, c, s, consumed)
+      if n.kind in nkCallKinds and n[0].kind == nkSym:
+        if n[0].sym.magic == mEnsureMove:
+          inc c.inEnsureMove
+          result = p(n[1], c, s, sinkArg)
+          dec c.inEnsureMove
+        else:
+          result = p(n, c, s, consumed)
+      else:
+        result = p(n, c, s, consumed)
     elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and
         isLastRead(n, c, s) and not (n.kind == nkSym and isCursor(n)):
       # Sinked params can be consumed only once. We need to reset the memory
@@ -1069,6 +1083,11 @@ proc genFieldAccessSideEffects(c: var Con; s: var Scope; dest, ri: PNode; flags:
   result = newTree(nkStmtList, v, snk, c.genWasMoved(newAccess))
 
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopyFlag] = {}): PNode =
+  var ri = ri
+  var flags = flags
+  if ri.kind in nkCallKinds and ri[0].kind == nkSym and ri[0].sym.magic == mEnsureMove:
+    ri = ri[1]
+    flags.incl IsEnsureMove
   if sameLocation(dest, ri):
     # rule (self-assignment-removal):
     result = newNodeI(nkEmpty, dest.info)
@@ -1082,6 +1101,9 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
       # We know the result will be a stmt so we use that fact to optimize
       handleNestedTempl(ri, process, willProduceStmt = true)
     else:
+      if IsEnsureMove in flags:
+        localError(c.graph.config, ri.info, errFailedMove,
+          $ri)
       result = newTree(nkFastAsgn, dest, p(ri, c, s, normal))
   else:
     let ri2 = if ri.kind == nkWhen: ri[1][0] else: ri

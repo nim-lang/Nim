@@ -156,6 +156,9 @@ proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
   {.cast(raises: []), cast(tags: []).}:
     `=wasMoved`(x)
 
+proc ensureMove*[T](x: T): T {.magic: "EnsureMove", noSideEffect.} =
+  discard "implemented in injectdestructors"
+
 type
   range*[T]{.magic: "Range".}         ## Generic type to construct range types.
   array*[I, T]{.magic: "Array".}      ## Generic type to construct
