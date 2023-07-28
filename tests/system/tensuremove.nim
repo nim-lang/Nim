@@ -20,7 +20,7 @@ block:
     discard x.s
 
   proc main =
-    var x = X(s: ensureMove "abcdefg")
+    var x = X(s: "abcdefg")
     consume(ensureMove x)
 
   static: main()

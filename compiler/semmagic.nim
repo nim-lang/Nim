@@ -668,8 +668,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result.typ = expectedType # type inference for empty sequence # bug #21377
   of mEnsureMove:
     result = n
-    if n[1].kind in {nkStmtListExpr, nkBlockExpr,
-          nkIfExpr, nkCaseStmt, nkTryStmt}:
-      localError(c.config, n.info, "Nested expressions cannot be moved: '" & $n[1] & "'")
+    if isAssignable(c, n[1]) notin {arLValue, arLocalLValue}:
+      localError(c.config, n.info, "'" & $n[1] & "'" & " is not a mutable location; it cannot be moved")
   else:
     result = n
