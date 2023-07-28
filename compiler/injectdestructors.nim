@@ -334,7 +334,8 @@ proc genCopyNoCheck(c: var Con; dest, ri: PNode; a: TTypeAttachedOp): PNode =
 
 proc genCopy(c: var Con; dest, ri: PNode; flags: set[MoveOrCopyFlag]): PNode =
   if c.inEnsureMove > 0:
-    localError(c.graph.config, ri.info, errFailedMove, $ri)
+    localError(c.graph.config, ri.info, errFailedMove, "cannot move '" & $ri &
+                                                      "', which introduces an implicit copy")
   let t = dest.typ
   if tfHasOwned in t.flags and ri.kind != nkNilLit:
     # try to improve the error message here:
@@ -467,7 +468,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
         "if possible, rearrange your program's control flow to prevent it") % $n)
     if c.inEnsureMove > 0:
       localError(c.graph.config, n.info, errFailedMove,
-        $n)
+        ("cannot move '$1', passing '$1' to a sink parameter introduces an implicit copy") % $n)
   else:
     if c.graph.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
       assert(not containsManagedMemory(n.typ))
@@ -1097,7 +1098,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
   if sameLocation(dest, ri):
     # rule (self-assignment-removal):
     result = newNodeI(nkEmpty, dest.info)
-  elif isCursor(dest) or dest.typ.kind in {tyOpenArray, tyVarargs}:
+  elif (isCursor(dest) or dest.typ.kind in {tyOpenArray, tyVarargs}) and isEnsureMove == 0:
     # hoisted openArray parameters might end up here
     # openArray types don't have a lifted assignment operation (it's empty)
     # bug #22132
@@ -1107,9 +1108,6 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
       # We know the result will be a stmt so we use that fact to optimize
       handleNestedTempl(ri, process, willProduceStmt = true)
     else:
-      if isEnsureMove > 0:
-        localError(c.graph.config, ri.info, errFailedMove,
-          $ri)
       result = newTree(nkFastAsgn, dest, p(ri, c, s, normal))
   else:
     let ri2 = if ri.kind == nkWhen: ri[1][0] else: ri
