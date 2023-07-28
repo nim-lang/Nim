@@ -666,5 +666,10 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = n
     if result.typ != nil and expectedType != nil and result.typ.kind == tySequence and expectedType.kind == tySequence and result.typ[0].kind == tyEmpty:
       result.typ = expectedType # type inference for empty sequence # bug #21377
+  of mEnsureMove:
+    result = n
+    if n[1].kind in {nkStmtListExpr, nkBlockExpr,
+          nkIfExpr, nkCaseStmt, nkTryStmt}:
+      localError(c.config, n.info, "Nested expressions cannot be moved: '" & $n[1] & "'")
   else:
     result = n
