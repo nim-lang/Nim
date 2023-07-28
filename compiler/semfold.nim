@@ -120,21 +120,6 @@ proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
   else:
     result = $x
 
-proc isFloatRange(t: PType): bool {.inline.} =
-  result = t.kind == tyRange and t[0].kind in {tyFloat..tyFloat128}
-
-proc isIntRange(t: PType): bool {.inline.} =
-  result = t.kind == tyRange and t[0].kind in {
-      tyInt..tyInt64, tyUInt8..tyUInt32}
-
-proc pickIntRange(a, b: PType): PType =
-  if isIntRange(a): result = a
-  elif isIntRange(b): result = b
-  else: result = a
-
-proc isIntRangeOrLit(t: PType): bool =
-  result = isIntRange(t) or isIntLit(t)
-
 proc evalOp(m: TMagic, n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   # b and c may be nil
   result = nil
