@@ -479,12 +479,6 @@ proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
     destMightOwn(c, dest, n[0])
 
   of nkCallKinds:
-    if n[0].kind == nkSym and n[0].sym.magic == mEnsureMove:
-      # we know that it must be moved so it cannot be a cursor
-      if n[1].kind == nkSym:
-        let vid = variableId(c, n[1].sym)
-        if vid >= 0:
-          c.s[vid].flags.incl preventCursor
     if n.typ != nil:
       if hasDestructor(n.typ):
         # calls do construct, what we construct must be destroyed,
@@ -712,6 +706,10 @@ proc traverse(c: var Partitions; n: PNode) =
     let parameters = n[0].typ
     let L = if parameters != nil: parameters.len else: 0
     let m = getMagic(n)
+
+    if m == mEnsureMove and n[1].kind == nkSym:
+      # we know that it must be moved so it cannot be a cursor
+      noCursor(c, n[1].sym)
 
     for i in 1..<n.len:
       let it = n[i]

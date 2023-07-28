@@ -50,3 +50,30 @@ block:
     doAssert m.id == "1"
 
   hello()
+
+block:
+  type
+    String = object
+      id: string
+
+  proc hello =
+    var n = "1"
+    var s = [ensureMove n]
+    var m = ensureMove s
+    doAssert m[0] == "1"
+
+  hello()
+
+block:
+  type
+    String = object
+      id: string
+
+  proc hello =
+    var n = "1"
+    var s = @[ensureMove n]
+    var m = ensureMove s
+    doAssert m[0] == "1"
+
+  hello()
+
