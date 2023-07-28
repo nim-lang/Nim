@@ -1,5 +1,5 @@
 discard """
-  target: "c js"
+  errormsg: "cannot move 'x', passing 'x' to a sink parameter introduces an implicit copy"
   matrix: "--cursorinference:on; --cursorinference:off"
 """
 
@@ -22,31 +22,6 @@ block:
   proc main =
     var x = X(s: ensureMove "abcdefg")
     consume(ensureMove x)
+    discard x
 
-  static: main()
   main()
-
-block:
-  type
-    String = object
-      id: string
-
-  proc hello =
-    var s = String(id: "1")
-    var m = ensureMove s
-    doAssert m.id == "1"
-
-  hello()
-
-block:
-  type
-    String = object
-      id: string
-
-  proc hello =
-    var n = "1"
-    var s = String(id: ensureMove n)
-    var m = ensureMove s
-    doAssert m.id == "1"
-
-  hello()
