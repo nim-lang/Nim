@@ -77,3 +77,51 @@ block:
 
   hello()
 
+block:
+  type
+    String = object
+      id: string
+
+  proc hello =
+    var s = String(id: "1")
+    var m = ensureMove s.id
+    doAssert m == "1"
+
+  hello()
+
+block:
+  proc foo =
+    var x = 1
+    let y = ensureMove x # move
+    doAssert (y, x) == (1, 0) # (1, 0)
+  foo()
+
+block:
+  proc foo =
+    var x = 1
+    let y = ensureMove x # move
+    doAssert y == 1
+  foo()
+
+block:
+  proc foo =
+    var x = @[1, 2, 3]
+    let y = ensureMove x[0] # move
+    doAssert y == 1
+    doAssert x == @[0, 2, 3]
+  foo()
+
+block:
+  proc foo =
+    var x = [1, 2, 3]
+    let y = ensureMove x[0] # move
+    doAssert y == 1
+    doAssert x == @[0, 2, 3]
+  foo()
+
+block:
+  proc foo =
+    var x = @["1", "2", "3"]
+    let y = ensureMove x[0] # move
+    doAssert y == "1"
+  foo()
