@@ -156,8 +156,15 @@ proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
   {.cast(raises: []), cast(tags: []).}:
     `=wasMoved`(x)
 
-proc ensureMove*[T](x: T): T {.magic: "EnsureMove", noSideEffect.} =
-  discard "implemented in injectdestructors"
+when defined(nimHasEnsureMove):
+  proc ensureMove*[T](x: T): T {.magic: "EnsureMove", noSideEffect.} =
+    ## Ensures that `x` is moved to the new location, otherwise it gives
+    ## an error at the compile time.
+    runnableExamples:
+      let x = 12
+      let y = ensureMove(x)
+      doAssert y == 12
+    discard "implemented in injectdestructors"
 
 type
   range*[T]{.magic: "Range".}         ## Generic type to construct range types.
