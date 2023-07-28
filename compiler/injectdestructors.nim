@@ -851,6 +851,12 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       if mode == normal and isRefConstr:
         result = ensureDestruction(result, n, c, s)
     of nkCallKinds:
+      if n[0].kind == nkSym and n[0].sym.magic == mEnsureMove:
+        inc c.inEnsureMove
+        result = p(n[1], c, s, sinkArg)
+        dec c.inEnsureMove
+        return
+
       let inSpawn = c.inSpawn
       if n[0].kind == nkSym and n[0].sym.magic == mSpawn:
         c.inSpawn.inc
