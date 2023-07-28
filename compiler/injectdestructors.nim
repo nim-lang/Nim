@@ -1098,7 +1098,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
   if sameLocation(dest, ri):
     # rule (self-assignment-removal):
     result = newNodeI(nkEmpty, dest.info)
-  elif (isCursor(dest) or dest.typ.kind in {tyOpenArray, tyVarargs}) and isEnsureMove == 0:
+  elif isCursor(dest) or dest.typ.kind in {tyOpenArray, tyVarargs}:
     # hoisted openArray parameters might end up here
     # openArray types don't have a lifted assignment operation (it's empty)
     # bug #22132
