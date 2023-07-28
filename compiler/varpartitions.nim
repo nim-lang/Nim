@@ -479,6 +479,12 @@ proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
     destMightOwn(c, dest, n[0])
 
   of nkCallKinds:
+    if n[0].kind == nkSym and n[0].sym.magic == mEnsureMove:
+      # we know that it must be moved so it cannot be a cursor
+      if n[1].kind == nkSym:
+        let vid = variableId(c, n[1].sym)
+        if vid >= 0:
+          c.s[vid].flags.incl preventCursor
     if n.typ != nil:
       if hasDestructor(n.typ):
         # calls do construct, what we construct must be destroyed,

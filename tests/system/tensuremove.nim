@@ -37,16 +37,15 @@ block:
 
   hello()
 
-when false:
-  block:
-    type
-      String = object
-        id: string
+block:
+  type
+    String = object
+      id: string
 
-    proc hello =
-      var n = "1"
-      var s = String(id: ensureMove n)
-      var m = ensureMove s
-      doAssert m.id == "1"
+  proc hello =
+    var n = "1"
+    var s = String(id: ensureMove n)
+    var m = ensureMove s
+    doAssert m.id == "1"
 
-    hello()
+  hello()
