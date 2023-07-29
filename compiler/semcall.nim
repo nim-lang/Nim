@@ -568,13 +568,12 @@ proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable 
   result = x.bindings
   # TODO: Reenable
   #if inferGenericTypes notin c.features: return
-  if expectedType == nil: return
+  if expectedType == nil or x.callee[0] == nil: return
 
   var
     flatUnbound: seq[PType]
     flatBound: seq[PType]
   # seq[(result type, expected type)]
-  if x.callee[0] == nil: return
   var typeStack = newSeq[(PType, PType)]()
 
   template stackPut(a, b) =
@@ -593,7 +592,7 @@ proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable 
     if t == u or t == nil or u == nil or t.kind == tyAnything or u.kind == tyAnything:
       continue
     case t.kind
-    of ConcreteTypes, tyGenericInvocation:
+    of ConcreteTypes, tyGenericInvocation, tyUncheckedArray:
       # nested, add all the types to stack
       let
         startIdx = if u.kind in ConcreteTypes: 0 else: 1
