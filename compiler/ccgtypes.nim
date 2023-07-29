@@ -1094,8 +1094,6 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
     result = ""
   # fixes bug #145:
   excl(check, t.id)
-  if kind == dkRefGenericParam:
-    result.add "&"
   
   
 proc getTypeDesc(m: BModule; typ: PType; kind = dkParam): Rope =
