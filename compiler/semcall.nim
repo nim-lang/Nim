@@ -604,6 +604,10 @@ proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable 
         if t[i] == nil or u[i] == nil: return
         stackPut(t[i], u[i])
     of tyGenericParam:
+      # This check could be done earlier (on generic params of sym alone).
+      #  Might save time because it skips expansion
+      if result.idTableGet(t) != nil: return
+
       # fully reduced generic param, bind it
       if t notin flatUnbound:
         flatUnbound.add(t)

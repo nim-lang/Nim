@@ -99,6 +99,12 @@ block:
   doAssert z is ((int, float), float)
   doAssert z == ((0, 0.0), 0.0)
 
+  # nesting inside a generic type
+  type MyType[T] = object
+    x: T
+  let a = MyType[(int, MyType[float])](x : giveNamedTuple())
+  doAssert a.x is (int, MyType[float])
+
 
 # basic constructors
 block:
