@@ -18,6 +18,7 @@ type
   TypeDescKind = enum
     dkParam #skParam
     dkRefParam #param passed by ref when {.byref.} is used. Cpp only. C goes straight to dkParam and is handled as a regular pointer
+    dkRefGenericParam #param passed by ref when {.byref.} is used that is also a generic. Cpp only. C goes straight to dkParam and is handled as a regular pointer
     dkVar #skVar
     dkField #skField
     dkResult #skResult
@@ -519,7 +520,10 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var 
     var param = t.n[i].sym
     var descKind = dkParam
     if optByRef in param.options:
-      descKind = dkRefParam
+      if param.typ.kind == tyGenericInst:
+        descKind = dkRefGenericParam
+      else:
+        descKind = dkRefParam
     var typ, name : string
     fillParamName(m, param)
     fillLoc(param.loc, locParam, t.n[i],
@@ -570,7 +574,10 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
     var param = t.n[i].sym
     var descKind = dkParam
     if m.config.backend == backendCpp and optByRef in param.options:
-      descKind = dkRefParam
+      if param.typ.kind == tyGenericInst:
+        descKind = dkRefGenericParam
+      else:
+        descKind = dkRefParam
     if isCompileTimeOnly(param.typ): continue
     if params != "(": params.add(", ")
     fillParamName(m, param)
@@ -873,7 +880,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
   result = getTypePre(m, t, sig)
   if result != "" and t.kind != tyOpenArray:
     excl(check, t.id)
-    if kind == dkRefParam:
+    if kind == dkRefParam or kind == dkRefGenericParam and origTyp.kind == tyGenericInst:
       result.add("&")
     return
   case t.kind
