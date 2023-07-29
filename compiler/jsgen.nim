@@ -2405,6 +2405,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     genMove(p, n, r)
   of mDup:
     genDup(p, n, r)
+  of mEnsureMove:
+    gen(p, n[1], r)
   else:
     genCall(p, n, r)
     #else internalError(p.config, e.info, 'genMagic: ' + magicToStr[op]);

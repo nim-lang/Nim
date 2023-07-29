@@ -1390,6 +1390,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
   of mDestroy, mTrace: discard "ignore calls to the default destructor"
+  of mEnsureMove:
+    gen(c, n[1], dest)
   of mMove:
     let arg = n[1]
     let a = c.genx(arg)

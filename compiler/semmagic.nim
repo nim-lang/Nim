@@ -666,5 +666,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = n
     if result.typ != nil and expectedType != nil and result.typ.kind == tySequence and expectedType.kind == tySequence and result.typ[0].kind == tyEmpty:
       result.typ = expectedType # type inference for empty sequence # bug #21377
+  of mEnsureMove:
+    result = n
+    if isAssignable(c, n[1]) notin {arLValue, arLocalLValue}:
+      localError(c.config, n.info, "'" & $n[1] & "'" & " is not a mutable location; it cannot be moved")
   else:
     result = n
