@@ -1596,9 +1596,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
       if depth >= 0:
         c.inheritancePenalty += depth
-        # bug #4863: We still need to bind generic alias crap, so
-        # we cannot return immediately:
-        result = if depth == 0: isGeneric else: isSubtype
   of tyAnd:
     considerPreviousT:
       result = isEqual
