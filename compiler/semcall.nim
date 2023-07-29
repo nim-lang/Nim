@@ -566,9 +566,8 @@ proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable 
   ## Helper proc to inherit bound generic parameters from expectedType into a new TIdTable.
   ## Returns existing bindings if 'inferGenericTypes' isn't in c.features
   result = x.bindings
-  # TODO: Reenable
-  #if inferGenericTypes notin c.features: return
-  if expectedType == nil or x.callee[0] == nil: return
+  if inferGenericTypes notin c.features: return
+  if expectedType == nil or x.callee[0] == nil: return # required for inference
 
   var
     flatUnbound: seq[PType]
@@ -605,22 +604,14 @@ proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable 
         if t[i] == nil or u[i] == nil: return
         stackPut(t[i], u[i])
     of tyGenericParam:
-      # This check could be done earlier (on generic params of sym alone).
-      #  Might save time because it skips expansion
       if result.idTableGet(t) != nil: return
 
       # fully reduced generic param, bind it
       if t notin flatUnbound:
         flatUnbound.add(t)
         flatBound.add(u)
-    of tyUntyped, tyTypeDesc, tyOr:
-      # TODO: They might want some special handling 
-      discard
-    of tyGenericBody, tyGenericInst, tyFromExpr:
-      discard
     else:
-      # TODO: Remove/replace
-      doAssert false # for debugging
+      discard
   for i in 0 ..< flatUnbound.len():
     result.idTablePut(flatUnbound[i], flatBound[i])
 

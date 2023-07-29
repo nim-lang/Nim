@@ -160,10 +160,11 @@ This feature has to be enabled via `{.experimental: "inferGenericTypes".}`
   let myOtherOtherNone: Option[int] = none()
   ```
 
-This is achieved by performing a simple check to see if there is a generic binding
-that would be necessary at the given location.
+This is achieved by reducing the types on the lhs and rhs until the *lhs* is left with only types such as `T`.
+While lhs and rhs are reduced together, this does *not* mean that the *rhs* will also only be left
+with a flat type `Z`, it may be of the form `MyType[Z]`.
 
-If that is the case, the unmapped generic parameters are mapped to the expected ones.
+After the types have been reduced, the types `T` are bound to the types that are left on the rhs.
 
 If bindings *cannot be inferred*, compilation will fail and manual specification is required.
 
@@ -180,6 +181,15 @@ to a function/template call:
 
   # Works! Manual specification of 'T' as 'int' necessary
   myProc(newSeq[int](), newSeq[int](1))
+  ```
+
+Combination of generic inference with the `auto` type is also unsupported:
+
+  ```nim  test = "nim c $1"  status = 1
+  {.experimental: "inferGenericTypes".}
+
+  proc produceValue[T]: auto = default(T)
+  let a: int = produceValue() # 'auto' cannot be inferred here
   ```
 
 **Note**: The described inference does not permit the creation of overrides based on
