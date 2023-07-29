@@ -578,7 +578,9 @@ proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable 
 
   template stackPut(a, b) =
     ## skips types and puts the skipped version on stack
-    const toSkip = { tyVar, tyLent }
+    # It might make sense to skip here one by one. It's not part of the main
+    #  type reduction because the right side normally won't be skipped
+    const toSkip = { tyVar, tyLent, tyStatic, tyCompositeTypeClass }
     let
       x = a.skipTypes(toSkip)
       y = if a.kind notin toSkip: b
@@ -614,7 +616,7 @@ proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable 
     of tyUntyped, tyTypeDesc, tyOr:
       # TODO: They might want some special handling 
       discard
-    of tyGenericBody, tyGenericInst:
+    of tyGenericBody, tyGenericInst, tyFromExpr:
       discard
     else:
       # TODO: Remove/replace
