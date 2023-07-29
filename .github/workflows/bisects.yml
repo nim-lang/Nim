@@ -15,6 +15,9 @@ jobs:
       with:
         nim-version: 'devel'
 
+    - name: Install Dependencies
+      run: sudo apt-get install --no-install-recommends -yq valgrind
+
     - uses: juancarlospaco/nimrun-action@nim
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
