@@ -49,6 +49,7 @@ type                          # please make sure we have under 32 options
     optSinkInference          # 'sink T' inference
     optCursorInference
     optImportHidden
+    optQuirky
 
   TOptions* = set[TOption]
   TGlobalOption* = enum

@@ -156,6 +156,16 @@ proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
   {.cast(raises: []), cast(tags: []).}:
     `=wasMoved`(x)
 
+when defined(nimHasEnsureMove):
+  proc ensureMove*[T](x: T): T {.magic: "EnsureMove", noSideEffect.} =
+    ## Ensures that `x` is moved to the new location, otherwise it gives
+    ## an error at the compile time.
+    runnableExamples:
+      var x = "Hello"
+      let y = ensureMove(x)
+      doAssert y == "Hello"
+    discard "implemented in injectdestructors"
+
 type
   range*[T]{.magic: "Range".}         ## Generic type to construct range types.
   array*[I, T]{.magic: "Array".}      ## Generic type to construct
@@ -914,7 +924,7 @@ proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
   ## See also:
   ## * `zeroDefault <#zeroDefault,typedesc[T]>`_
   ##
-  runnableExamples:
+  runnableExamples("-d:nimPreviewRangeDefault"):
     assert (int, float).default == (0, 0.0)
     type Foo = object
       a: range[2..6]

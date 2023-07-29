@@ -707,6 +707,10 @@ proc traverse(c: var Partitions; n: PNode) =
     let L = if parameters != nil: parameters.len else: 0
     let m = getMagic(n)
 
+    if m == mEnsureMove and n[1].kind == nkSym:
+      # we know that it must be moved so it cannot be a cursor
+      noCursor(c, n[1].sym)
+
     for i in 1..<n.len:
       let it = n[i]
       if i < L:

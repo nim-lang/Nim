@@ -440,7 +440,7 @@ proc genRecCommentAux(d: PDoc, n: PNode): PRstNode =
   if n == nil: return nil
   result = genComment(d, n)
   if result == nil:
-    if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef,
+    if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef, nkTypeClassTy,
                   nkObjectTy, nkRefTy, nkPtrTy, nkAsgn, nkFastAsgn, nkSinkAsgn, nkHiddenStdConv}:
       # notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
       for i in 0..<n.len:

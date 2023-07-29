@@ -44,6 +44,7 @@ type
     errRstSandboxedDirective,
     errProveInit, # deadcode
     errGenerated,
+    errFailedMove,
     errUser,
     # warnings
     warnCannotOpenFile = "CannotOpenFile", warnOctalEscape = "OctalEscape",
@@ -128,6 +129,7 @@ const
     errRstSandboxedDirective: "disabled directive: '$1'",
     errProveInit: "Cannot prove that '$1' is initialized.",  # deadcode
     errGenerated: "$1",
+    errFailedMove: "$1",
     errUser: "$1",
     warnCannotOpenFile: "cannot open '$1'",
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
