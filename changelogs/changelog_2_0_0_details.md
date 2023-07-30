@@ -344,6 +344,7 @@
   + Added `toDateString`, `toISOString`, `toJSON`, `toTimeString`, `toUTCString` converters for `DateTime`.
 - Added `BackwardsIndex` overload for `CacheSeq`.
 - Added support for nested `with` blocks in `std/with`.
+- Added `ensureMove` to the system module. It ensures that the parameter is moved, otherwise an error is given at the compile time.
 
 
 [//]: # "Deprecations:"
