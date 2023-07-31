@@ -30,7 +30,7 @@ Motivating example
 With the language mechanisms described here, a custom seq could be
 written as:
 
-  ```nim
+  ```nim test
   type
     myseq*[T] = object
       len, cap: int
@@ -570,7 +570,7 @@ that the pointer does not outlive its origin. No destructor call is injected
 for expressions of type `lent T` or of type `var T`.
 
 
-  ```nim
+  ```nim test
   type
     Tree = object
       kids: seq[Tree]
@@ -584,7 +584,7 @@ for expressions of type `lent T` or of type `var T`.
   proc `[]`*(x: Tree; i: int): lent Tree =
     result = x.kids[i]
     # borrows from 'x', this is transformed into:
-    result = addr x.kids[i]
+    # result = addr x.kids[i]
     # This means 'lent' is like 'var T' a hidden pointer.
     # Unlike 'var' this hidden pointer cannot be used to mutate the object.
 
@@ -715,7 +715,7 @@ The experimental `nodestroy`:idx: pragma inhibits hook injections. This can be
 used to specialize the object traversal in order to avoid deep recursions:
 
 
-  ```nim
+  ```nim test
   type Node = ref object
     x, y: int32
     left, right: Node
@@ -731,7 +731,7 @@ used to specialize the object traversal in order to avoid deep recursions:
       if x.left != nil: s.add(x.left)
       if x.right != nil: s.add(x.right)
       # free the memory explicit:
-      dispose(x)
+      `=dispose`(x)
     # notice how even the destructor for 's' is not called implicitly
     # anymore thanks to .nodestroy, so we have to call it on our own:
     `=destroy`(s)
