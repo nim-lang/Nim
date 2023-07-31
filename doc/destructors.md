@@ -730,7 +730,7 @@ used to specialize the object traversal in order to avoid deep recursions:
       let x = s.pop
       if x.left != nil: s.add(x.left)
       if x.right != nil: s.add(x.right)
-      # free the memory explicit:
+      # free the memory explicitly:
       `=dispose`(x)
     # notice how even the destructor for 's' is not called implicitly
     # anymore thanks to .nodestroy, so we have to call it on our own:
