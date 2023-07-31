@@ -971,11 +971,8 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
         hasDefault = true
       exprBlock(p, branch.lastSon, d)
       lineF(p, cpsStmts, "break;$n", [])
-    if not hasDefault:
-      if hasBuiltinUnreachable in CC[p.config.cCompiler].props:
-        lineF(p, cpsStmts, "default: __builtin_unreachable();$n", [])
-      elif hasAssume in CC[p.config.cCompiler].props:
-        lineF(p, cpsStmts, "default: __assume(0);$n", [])
+    if (hasAssume in CC[p.config.cCompiler].props) and not hasDefault:
+      lineF(p, cpsStmts, "default: __assume(0);$n", [])
     lineF(p, cpsStmts, "}$n", [])
   if lend != "": fixLabel(p, lend)
 
