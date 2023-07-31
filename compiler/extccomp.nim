@@ -33,7 +33,7 @@ type
     hasGnuAsm,                # CC's asm uses the absurd GNU assembler syntax
     hasDeclspec,              # CC has __declspec(X)
     hasAttribute,             # CC has __attribute__((X))
-    hasBuiltinUnreachable    # CC has __builtin_unreachable
+    hasBuiltinUnreachable     # CC has __builtin_unreachable
   TInfoCCProps* = set[TInfoCCProp]
   TInfoCC* = tuple[
     name: string,        # the short name of the compiler
