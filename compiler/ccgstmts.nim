@@ -974,7 +974,7 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
     if not hasDefault:
       if hasBuiltinUnreachable in CC[p.config.cCompiler].props:
         lineF(p, cpsStmts, "default: __builtin_unreachable();$n", [])
-      if hasAssume in CC[p.config.cCompiler].props:
+      elif hasAssume in CC[p.config.cCompiler].props:
         lineF(p, cpsStmts, "default: __assume(0);$n", [])
     lineF(p, cpsStmts, "}$n", [])
   if lend != "": fixLabel(p, lend)
