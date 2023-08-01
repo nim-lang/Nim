@@ -1,16 +1,16 @@
 const
-  NimMajor* {.intdefine.}: int = 1
+  NimMajor* {.intdefine.}: int = 2
     ## is the major number of Nim's version. Example:
     ##   ```
     ##   when (NimMajor, NimMinor, NimPatch) >= (1, 3, 1): discard
     ##   ```
     # see also std/private/since
 
-  NimMinor* {.intdefine.}: int = 9
+  NimMinor* {.intdefine.}: int = 1
     ## is the minor number of Nim's version.
     ## Odd for devel, even for releases.
 
-  NimPatch* {.intdefine.}: int = 5
+  NimPatch* {.intdefine.}: int = 1
     ## is the patch number of Nim's version.
     ## Odd for devel, even for releases.
 
