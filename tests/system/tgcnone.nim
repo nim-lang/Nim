@@ -1,5 +1,5 @@
 discard """
-  matrix: "--gc:none -d:useMalloc --threads:off"
+  matrix: "--gc:none -d:useMalloc"
 """
 # bug #15617
 let x = 4
