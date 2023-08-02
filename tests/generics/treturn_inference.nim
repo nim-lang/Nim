@@ -133,7 +133,7 @@ block:
   doAssert z.x.x == 0.0
 
   type Foo = object
-    x : Table[int, float]
+    x: Table[int, float]
 
   let a = Foo(x: initTable())
   doAssert a.x is Table[int, float]
