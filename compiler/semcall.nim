@@ -565,8 +565,7 @@ proc getCallLineInfo(n: PNode): TLineInfo =
 proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
   ## Helper proc to inherit bound generic parameters from expectedType into x.
   ## Does nothing if 'inferGenericTypes' isn't in c.features
-  # TODO: Enable
-  #if inferGenericTypes notin c.features: return
+  if inferGenericTypes notin c.features: return
   if expectedType == nil or x.callee[0] == nil: return # required for inference
 
   var
