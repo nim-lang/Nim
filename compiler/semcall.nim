@@ -562,11 +562,11 @@ proc getCallLineInfo(n: PNode): TLineInfo =
     discard
   result = n.info
 
-proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable =
-  ## Helper proc to inherit bound generic parameters from expectedType into a new TIdTable.
-  ## Returns existing bindings if 'inferGenericTypes' isn't in c.features
-  result = x.bindings
-  if inferGenericTypes notin c.features: return
+proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
+  ## Helper proc to inherit bound generic parameters from expectedType into x.
+  ## Does nothing if 'inferGenericTypes' isn't in c.features
+  # TODO: Enable
+  #if inferGenericTypes notin c.features: return
   if expectedType == nil or x.callee[0] == nil: return # required for inference
 
   var
@@ -604,7 +604,7 @@ proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable 
         if t[i] == nil or u[i] == nil: return
         stackPut(t[i], u[i])
     of tyGenericParam:
-      if result.idTableGet(t) != nil: return
+      if x.bindings.idTableGet(t) != nil: return
 
       # fully reduced generic param, bind it
       if t notin flatUnbound:
@@ -613,9 +613,9 @@ proc inheritBindings(c: PContext, x: TCandidate, expectedType: PType): TIdTable 
     else:
       discard
   for i in 0 ..< flatUnbound.len():
-    result.idTablePut(flatUnbound[i], flatBound[i])
+    x.bindings.idTablePut(flatUnbound[i], flatBound[i])
 
-proc semResolvedCall(c: PContext, x: TCandidate,
+proc semResolvedCall(c: PContext, x: var TCandidate,
                      n: PNode, flags: TExprFlags;
                      expectedType: PType = nil): PNode =
   assert x.state == csMatch
@@ -637,11 +637,13 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       if x.calleeSym.magic in {mArrGet, mArrPut}:
         finalCallee = x.calleeSym
       else:
-        finalCallee = generateInstance(c, x.calleeSym, c.inheritBindings(x, expectedType), n.info)
+        c.inheritBindings(x, expectedType)
+        finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
     else:
       # For macros and templates, the resolved generic params
       # are added as normal params.
-      for s in instantiateGenericParamList(c, gp, c.inheritBindings(x, expectedType)):
+      c.inheritBindings(x, expectedType)
+      for s in instantiateGenericParamList(c, gp, x.bindings):
         case s.kind
         of skConst:
           if not s.astdef.isNil:
