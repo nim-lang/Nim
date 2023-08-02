@@ -1,3 +1,7 @@
+discard """
+  targets: "c js"
+"""
+
 # test the new pragmas
 
 {.push warnings: off, hints: off.}
@@ -25,3 +29,12 @@ proc foo(x: string, y: int, res: int) =
 
 foo("", 0, 48)
 foo("abc", 40, 51)
+
+# bug #22362
+{.push staticBoundChecks: on.}
+proc main(): void =
+  {.pop.}
+  discard
+  {.push staticBoundChecks: on.}
+
+main()
