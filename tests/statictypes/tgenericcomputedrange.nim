@@ -95,3 +95,23 @@ block:
     x[2] = 3
     doAssert x == [0: 1, 1: 2, 2: 3]
     doAssert x is array[0 .. 2, int]
+
+block:
+  type Foo[T; U: static T] = array[T(0) .. (U * 2) + 1, int]
+
+  block:
+    var x: Foo[int, 1]
+    x[0] = 1
+    x[1] = 2
+    x[2] = 3
+    x[3] = 4
+    doAssert x == [0: 1, 1: 2, 2: 3, 3: 4]
+    doAssert x is array[0 .. 3, int]
+
+block: # issue #22187
+  template m(T: type, s: int64): int64 = s
+  func p(n: int64): int = int(n)
+  type F[T; s: static int64] = object
+    k: array[p(m(T, s)), int64]
+  var x: F[int, 3]
+  doAssert x.k is array[3, int64]

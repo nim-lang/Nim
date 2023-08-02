@@ -38,7 +38,7 @@ instead entire subgraphs are *moved* between threads. The Nim compiler also aggr
 optimizes away RC ops and exploits [move semantics](destructors.html#move-semantics).
 
 Nim performs a fair share of optimizations for ARC/ORC; you can inspect what it did
-to your time critical function via `--expandArc:functionName`.
+to your time critical function via `--expandArc:functionName`. Likewise, you can inspect the whole module via `--expandArc:fileName`.
 
 `--mm:arc` uses the same mechanism as `--mm:orc`, but it leaves out the cycle collector.
 Both ARC and ORC offer deterministic performance for `hard realtime`:idx: systems, but

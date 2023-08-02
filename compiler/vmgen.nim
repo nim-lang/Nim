@@ -1390,6 +1390,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
   of mDestroy, mTrace: discard "ignore calls to the default destructor"
+  of mEnsureMove:
+    gen(c, n[1], dest)
   of mMove:
     let arg = n[1]
     let a = c.genx(arg)
@@ -1911,6 +1913,8 @@ proc genVarSection(c: PCtx; n: PNode) =
       let s = a[0].sym
       checkCanEval(c, a[0])
       if s.isGlobal:
+        let runtimeAccessToCompileTime = c.mode == emRepl and
+              sfCompileTime in s.flags and s.position > 0
         if s.position == 0:
           if importcCond(c, s): c.importcSym(a.info, s)
           else:
@@ -1920,7 +1924,9 @@ proc genVarSection(c: PCtx; n: PNode) =
             assert sa.kind != nkCall
             c.globals.add(sa)
             s.position = c.globals.len
-        if a[2].kind != nkEmpty:
+        if runtimeAccessToCompileTime:
+          discard
+        elif a[2].kind != nkEmpty:
           let tmp = c.genx(a[0], {gfNodeAddr})
           let val = c.genx(a[2])
           c.genAdditionalCopy(a[2], opcWrDeref, tmp, 0, val)

@@ -352,7 +352,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
 
   openScope(c)
   let gp = n[genericParamsPos]
-  internalAssert c.config, gp.kind == nkGenericParams
+  if gp.kind != nkGenericParams:
+    # bug #22137
+    globalError(c.config, info, "generic instantiation too nested")
   n[namePos] = newSymNode(result)
   pushInfoContext(c.config, info, fn.detailedInfo)
   var entry = TInstantiation.new

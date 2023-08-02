@@ -342,12 +342,15 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
         linefmt(p, cpsStmts, "$1 = #copyString($2);$n", [dest.rdLoc, src.rdLoc])
       elif dest.storage == OnHeap:
-        # we use a temporary to care for the dreaded self assignment:
-        var tmp: TLoc
-        getTemp(p, ty, tmp)
-        linefmt(p, cpsStmts, "$3 = $1; $1 = #copyStringRC1($2);$n",
-                [dest.rdLoc, src.rdLoc, tmp.rdLoc])
-        linefmt(p, cpsStmts, "if ($1) #nimGCunrefNoCycle($1);$n", [tmp.rdLoc])
+        if dest.lode.typ.kind == tySink:
+          genRefAssign(p, dest, src)
+        else:
+          # we use a temporary to care for the dreaded self assignment:
+          var tmp: TLoc
+          getTemp(p, ty, tmp)
+          linefmt(p, cpsStmts, "$3 = $1; $1 = #copyStringRC1($2);$n",
+                  [dest.rdLoc, src.rdLoc, tmp.rdLoc])
+          linefmt(p, cpsStmts, "if ($1) #nimGCunrefNoCycle($1);$n", [tmp.rdLoc])
       else:
         linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, #copyString($2));$n",
                [addrLoc(p.config, dest), rdLoc(src)])
@@ -1919,10 +1922,6 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else: putIntoDest(p, d, e, rope(lengthOrd(p.config, typ)))
   else: internalError(p.config, e.info, "genArrayLen()")
 
-proc makePtrType(baseType: PType; idgen: IdGenerator): PType =
-  result = newType(tyPtr, nextTypeId idgen, baseType.owner)
-  addSonSkipIntLit(result, baseType, idgen)
-
 proc makeAddr(n: PNode; idgen: IdGenerator): PNode =
   if n.kind == nkHiddenAddr:
     result = n
@@ -2205,8 +2204,15 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
     var lbl = p.labels.rope
     var tmp: TLoc
     tmp.r = "LOC$1.source" % [lbl]
-    linefmt(p, cpsLocals, "union { $1 source; $2 dest; } LOC$3;$n",
-      [getTypeDesc(p.module, e[1].typ), getTypeDesc(p.module, e.typ), lbl])
+    let destsize = getSize(p.config, destt)
+    let srcsize = getSize(p.config, srct)
+
+    if destsize > srcsize:
+      linefmt(p, cpsLocals, "union { $1 dest; $2 source; } LOC$3;$n #nimZeroMem(&LOC$3, sizeof(LOC$3));$n",
+        [getTypeDesc(p.module, e.typ), getTypeDesc(p.module, e[1].typ), lbl])
+    else:
+      linefmt(p, cpsLocals, "union { $1 source; $2 dest; } LOC$3;$n",
+        [getTypeDesc(p.module, e[1].typ), getTypeDesc(p.module, e.typ), lbl])
     tmp.k = locExpr
     tmp.lode = lodeTyp srct
     tmp.storage = OnStack
@@ -2354,8 +2360,18 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
     linefmt(p, cpsStmts, "}$n$1.len = $2.len; $1.p = $2.p;$n", [rdLoc(a), rdLoc(src)])
   else:
     if d.k == locNone: getTemp(p, n.typ, d)
-    genAssignment(p, d, a, {})
-    if p.config.selectedGC notin {gcArc, gcAtomicArc, gcOrc}:
+    if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
+      genAssignment(p, d, a, {})
+      var op = getAttachedOp(p.module.g.graph, n.typ, attachedWasMoved)
+      if op == nil:
+        resetLoc(p, a)
+      else:
+        let addrExp = makeAddr(n[1], p.module.idgen)
+        let wasMovedCall = newTreeI(nkCall, n.info, newSymNode(op), addrExp)
+        genCall(p, wasMovedCall, d)
+    else:
+      let flags = if not canMove(p, n[1], d): {needToCopy} else: {}
+      genAssignment(p, d, a, flags)
       resetLoc(p, a)
 
 proc genDestroy(p: BProc; n: PNode) =
@@ -2609,6 +2625,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mAccessTypeField: genAccessTypeField(p, e, d)
   of mSlice: genSlice(p, e, d)
   of mTrace: discard "no code to generate"
+  of mEnsureMove:
+    expr(p, e[1], d)
   else:
     when defined(debugMagics):
       echo p.prc.name.s, " ", p.prc.id, " ", p.prc.flags, " ", p.prc.ast[genericParamsPos].kind

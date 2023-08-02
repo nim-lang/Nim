@@ -31,6 +31,7 @@ e
 20
 10
 5
+9
 '''
 """
 
@@ -438,3 +439,13 @@ import mvarconcept
 block tvar:
   # bug #2346, bug #2404
   echo randomInt(5)
+
+block tcomment:
+  type
+    Foo = concept
+      ## Some comment
+      proc bar(x: Self)
+
+  proc bar(x: int) = echo x
+  proc foo(x: Foo) = x.bar
+  foo(9)

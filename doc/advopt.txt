@@ -48,7 +48,7 @@ Advanced options:
   --unitsep:on|off          use the ASCII unit separator (31) between error
                             messages, useful for IDE-like tooling
   --declaredLocs:on|off     show declaration locations in messages
-  --spellSuggest|:num       show at most `num >= 0` spelling suggestions on typos.
+  --spellSuggest:num        show at most `num >= 0` spelling suggestions on typos.
                             if `num` is not specified (or `auto`), return
                             an implementation defined set of suggestions.
   --hints:on|off|list.      `on|off` enables or disables hints.
@@ -175,3 +175,5 @@ Advanced options:
   --deepcopy:on|off         enable 'system.deepCopy' for ``--mm:arc|orc``
   --jsbigint64:on|off       toggle the use of BigInt for 64-bit integers for
                             the JavaScript backend (default: on)
+  --nimBasePattern:nimbase.h
+                            allows to specify a custom pattern for `nimbase.h`
