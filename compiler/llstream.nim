@@ -85,6 +85,7 @@ when not declared(readLineFromStdin):
       quit(0)
 
 proc endsWith*(x: string, s: set[char]): bool =
+  result = false
   var i = x.len-1
   while i >= 0 and x[i] == ' ': dec(i)
   if i >= 0 and x[i] in s:
@@ -104,6 +105,7 @@ proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
         line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs))
 
 proc countTriples(s: string): int =
+  result = 0
   var i = 0
   while i+2 < s.len:
     if s[i] == '"' and s[i+1] == '"' and s[i+2] == '"':

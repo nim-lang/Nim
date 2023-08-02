@@ -45,6 +45,7 @@ when not declared(signbit):
 import std/formatfloat
 
 proc toStrMaxPrecision*(f: BiggestFloat | float32): string =
+  result = ""
   const literalPostfix = when f is float32: "f" else: ""
   case classify(f)
   of fcNan:

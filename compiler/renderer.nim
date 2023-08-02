@@ -73,6 +73,7 @@ proc disamb(g: var TSrcGen; s: PSym): int =
   g.mangler.add s
 
 proc isKeyword*(i: PIdent): bool =
+  result = false
   if (i.id >= ord(tokKeywordLow) - ord(tkSymbol)) and
       (i.id <= ord(tokKeywordHigh) - ord(tkSymbol)):
     result = true
@@ -274,6 +275,7 @@ proc putComment(g: var TSrcGen, s: string) =
   optNL(g)
 
 proc maxLineLength(s: string): int =
+  result = 0
   if s.len == 0: return 0
   var i = 0
   let hi = s.len - 1
@@ -371,6 +373,7 @@ proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
                           tyLent, tyDistinct, tyOrdinal, tyAlias, tySink}:
       result = lastSon(result)
 
+  result = ""
   let typ = n.typ.skip
   if typ != nil and typ.kind in {tyBool, tyEnum}:
     if sfPure in typ.sym.flags:
@@ -488,6 +491,7 @@ proc referencesUsing(n: PNode): bool =
 
 proc lsub(g: TSrcGen; n: PNode): int =
   # computes the length of a tree
+  result = 0
   if isNil(n): return 0
   if shouldRenderComment(g, n): return MaxLineLen + 1
   case n.kind
@@ -631,7 +635,7 @@ proc initContext(c: var TContext) =
 
 proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false)
 proc gsub(g: var TSrcGen, n: PNode, fromStmtList = false) =
-  var c: TContext
+  var c: TContext = default(TContext)
   initContext(c)
   gsub(g, n, c, fromStmtList = fromStmtList)
 
@@ -762,7 +766,7 @@ proc gcond(g: var TSrcGen, n: PNode) =
     put(g, tkParRi, ")")
 
 proc gif(g: var TSrcGen, n: PNode) =
-  var c: TContext
+  var c: TContext = default(TContext)
   gcond(g, n[0][0])
   initContext(c)
   putWithSpace(g, tkColon, ":")
@@ -775,7 +779,7 @@ proc gif(g: var TSrcGen, n: PNode) =
     gsub(g, n[i], c)
 
 proc gwhile(g: var TSrcGen, n: PNode) =
-  var c: TContext
+  var c: TContext = default(TContext)
   putWithSpace(g, tkWhile, "while")
   gcond(g, n[0])
   putWithSpace(g, tkColon, ":")
@@ -786,7 +790,7 @@ proc gwhile(g: var TSrcGen, n: PNode) =
   gstmts(g, n[1], c)
 
 proc gpattern(g: var TSrcGen, n: PNode) =
-  var c: TContext
+  var c: TContext = default(TContext)
   put(g, tkCurlyLe, "{")
   initContext(c)
   if longMode(g, n) or (lsub(g, n[0]) + g.lineLen > MaxLineLen):
@@ -796,7 +800,7 @@ proc gpattern(g: var TSrcGen, n: PNode) =
   put(g, tkCurlyRi, "}")
 
 proc gpragmaBlock(g: var TSrcGen, n: PNode) =
-  var c: TContext
+  var c: TContext = default(TContext)
   gsub(g, n[0])
   putWithSpace(g, tkColon, ":")
   initContext(c)
@@ -806,7 +810,7 @@ proc gpragmaBlock(g: var TSrcGen, n: PNode) =
   gstmts(g, n[1], c)
 
 proc gtry(g: var TSrcGen, n: PNode) =
-  var c: TContext
+  var c: TContext = default(TContext)
   put(g, tkTry, "try")
   putWithSpace(g, tkColon, ":")
   initContext(c)
@@ -817,7 +821,7 @@ proc gtry(g: var TSrcGen, n: PNode) =
   gsons(g, n, c, 1)
 
 proc gfor(g: var TSrcGen, n: PNode) =
-  var c: TContext
+  var c: TContext = default(TContext)
   putWithSpace(g, tkFor, "for")
   initContext(c)
   if longMode(g, n) or
@@ -832,7 +836,7 @@ proc gfor(g: var TSrcGen, n: PNode) =
   gstmts(g, n[^1], c)
 
 proc gcase(g: var TSrcGen, n: PNode) =
-  var c: TContext
+  var c: TContext = default(TContext)
   initContext(c)
   if n.len == 0: return
   var last = if n[^1].kind == nkElse: -2 else: -1
@@ -853,7 +857,7 @@ proc genSymSuffix(result: var string, s: PSym) {.inline.} =
     result.addInt s.id
 
 proc gproc(g: var TSrcGen, n: PNode) =
-  var c: TContext
+  var c: TContext = default(TContext)
   if n[namePos].kind == nkSym:
     let s = n[namePos].sym
     var ret = renderDefinitionName(s)
@@ -889,7 +893,7 @@ proc gproc(g: var TSrcGen, n: PNode) =
       dedent(g)
 
 proc gTypeClassTy(g: var TSrcGen, n: PNode) =
-  var c: TContext
+  var c: TContext = default(TContext)
   initContext(c)
   putWithSpace(g, tkConcept, "concept")
   gsons(g, n[0], c) # arglist
@@ -909,7 +913,7 @@ proc gblock(g: var TSrcGen, n: PNode) =
   if n.len == 0:
     return
 
-  var c: TContext
+  var c: TContext = default(TContext)
   initContext(c)
 
   if n[0].kind != nkEmpty:
@@ -930,7 +934,7 @@ proc gblock(g: var TSrcGen, n: PNode) =
   gstmts(g, n[1], c)
 
 proc gstaticStmt(g: var TSrcGen, n: PNode) =
-  var c: TContext
+  var c: TContext = default(TContext)
   putWithSpace(g, tkStatic, "static")
   putWithSpace(g, tkColon, ":")
   initContext(c)
@@ -1001,6 +1005,7 @@ type
     bkNone, bkBracket, bkBracketAsgn, bkCurly, bkCurlyAsgn
 
 proc bracketKind*(g: TSrcGen, n: PNode): BracketKind =
+  result = default(BracketKind)
   if renderIds notin g.flags:
     case n.kind
     of nkClosedSymChoice, nkOpenSymChoice:
@@ -1082,6 +1087,7 @@ proc postStatements(g: var TSrcGen, n: PNode, i: int, fromStmtList: bool) =
     gsub(g, n, j)
 
 proc isCustomLit(n: PNode): bool =
+  result = false
   if n.len == 2 and n[0].kind == nkRStrLit:
     let ident = n[1].getPIdent
     result = ident != nil and ident.s.startsWith('\'')
@@ -1089,7 +1095,7 @@ proc isCustomLit(n: PNode): bool =
 proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   if isNil(n): return
   var
-    a: TContext
+    a: TContext = default(TContext)
   if shouldRenderComment(g, n): pushCom(g, n)
   case n.kind                 # atoms:
   of nkTripleStrLit: put(g, tkTripleStrLit, atom(g, n))
@@ -1434,6 +1440,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     put(g, tkAccent, "`")
     for i in 0..<n.len:
       proc isAlpha(n: PNode): bool =
+        result = false
         if n.kind in {nkIdent, nkSym}:
           let tmp = n.getPIdent.s
           result = tmp.len > 0 and tmp[0] in {'a'..'z', 'A'..'Z'}
@@ -1787,12 +1794,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     gsub(g, n, 0)
     put(g, tkParRi, ")")
   of nkGotoState:
-    var c: TContext
+    var c: TContext = default(TContext)
     initContext c
     putWithSpace g, tkSymbol, "goto"
     gsons(g, n, c)
   of nkState:
-    var c: TContext
+    var c: TContext = default(TContext)
     initContext c
     putWithSpace g, tkSymbol, "state"
     gsub(g, n[0], c)
@@ -1817,7 +1824,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
 
 proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
   if n == nil: return "<nil tree>"
-  var g: TSrcGen
+  var g: TSrcGen = default(TSrcGen)
   initSrcGen(g, renderFlags, newPartialConfigRef())
   # do not indent the initial statement list so that
   # writeFile("file.nim", repr n)
@@ -1835,7 +1842,7 @@ proc renderModule*(n: PNode, outfile: string,
                    fid = FileIndex(-1);
                    conf: ConfigRef = nil) =
   var
-    f: File
+    f: File = default(File)
     g: TSrcGen
   initSrcGen(g, renderFlags, conf)
   g.fid = fid

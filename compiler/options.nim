@@ -420,6 +420,7 @@ type
 
 proc parseNimVersion*(a: string): NimVer =
   # could be moved somewhere reusable
+  result = default(NimVer)
   if a.len > 0:
     let b = a.split(".")
     assert b.len == 3, a
@@ -607,6 +608,7 @@ proc getStdlibVersion*(conf: ConfigRef): NimVer =
   result = conf.nimStdlibVersion
 
 proc isDefined*(conf: ConfigRef; symbol: string): bool =
+  result = false
   if conf.symbols.hasKey(symbol):
     result = true
   elif cmpIgnoreStyle(symbol, CPU[conf.target.targetCPU].name) == 0:
@@ -882,6 +884,7 @@ const
   stdPrefix = "std/"
 
 proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle = false): RelativeFile =
+  result = RelativeFile("")
   let f = $f
   if isTitle:
     for dir in stdlibDirs:
@@ -911,6 +914,7 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile
 
 proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFile =
   # returns path to module
+  result = AbsoluteFile("")
   var m = addFileExt(modulename, NimExt)
   var hasRelativeDot = false
   if m.startsWith(pkgPrefix):

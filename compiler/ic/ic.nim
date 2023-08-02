@@ -813,6 +813,7 @@ proc loadProcHeader(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: 
 
 proc loadProcBody(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
                   tree: PackedTree; n: NodePos): PNode =
+  result = nil
   var i = 0
   for n0 in sonsReadonly(tree, n):
     if i == bodyPos:

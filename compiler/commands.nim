@@ -184,7 +184,7 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string; conf: ConfigRef) =
   var id = ""  # arg = key or [key] or key:val or [key]:val;  with val=on|off
   var i = 0
-  var notes: set[TMsgKind]
+  var notes: set[TMsgKind] = {}
   var isBracket = false
   if i < arg.len and arg[i] == '[':
     isBracket = true
@@ -250,6 +250,7 @@ template deprecatedAlias(oldName, newName: string) =
   warningDeprecated(conf, info, "'$#' is a deprecated alias for '$#'" % [oldName, newName])
 
 proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo): bool =
+  result = false
   case switch.normalize
   of "gc", "mm":
     case arg.normalize
@@ -292,6 +293,7 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool =
+  result = false
   case switch.normalize
   of "debuginfo": result = contains(conf.globalOptions, optCDebug)
   of "compileonly", "c": result = contains(conf.globalOptions, optCompileOnly)
@@ -380,7 +382,8 @@ proc makeAbsolute(s: string): AbsoluteFile =
 proc setTrackingInfo(conf: ConfigRef; dirty, file, line, column: string,
                      info: TLineInfo) =
   ## set tracking info, common code for track, trackDirty, & ideTrack
-  var ln, col: int
+  var ln: int = 0
+  var col: int = 0
   if parseUtils.parseInt(line, ln) <= 0:
     localError(conf, info, errInvalidNumber % line)
   if parseUtils.parseInt(column, col) <= 0:
@@ -591,8 +594,8 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
-  var
-    key, val: string
+  var key = ""
+  var val = ""
   case switch.normalize
   of "eval":
     expectArg(conf, switch, arg, pass, info)
@@ -1109,7 +1112,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else: invalidCmdLineOption(conf, pass, switch, info)
 
 proc processCommand*(switch: string, pass: TCmdLinePass; config: ConfigRef) =
-  var cmd, arg: string
+  var cmd = ""
+  var arg = ""
   splitSwitch(config, switch, cmd, arg, pass, gCmdLineInfo)
   processSwitch(cmd, arg, pass, gCmdLineInfo, config)
 
@@ -1126,6 +1130,7 @@ proc processSwitch*(pass: TCmdLinePass; p: OptParser; config: ConfigRef) =
 
 proc processArgument*(pass: TCmdLinePass; p: OptParser;
                       argsCount: var int; config: ConfigRef): bool =
+  result = false
   if argsCount == 0 and config.implicitCmd:
     argsCount.inc
   if argsCount == 0:

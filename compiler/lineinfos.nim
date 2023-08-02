@@ -310,7 +310,7 @@ proc `==`*(a, b: FileIndex): bool {.borrow.}
 proc hash*(i: TLineInfo): Hash =
   hash (i.line.int, i.col.int, i.fileIndex.int)
 
-proc raiseRecoverableError*(msg: string) {.noinline.} =
+proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
   raise newException(ERecoverableError, msg)
 
 const

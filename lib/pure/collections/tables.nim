@@ -418,7 +418,7 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A): B =
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a.getOrDefault('a') == 5
     doAssert a.getOrDefault('z') == 0
-
+  result = default(B)
   getOrDefaultImpl(t, key)
 
 proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
@@ -436,7 +436,7 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
-
+  result = default(B)
   getOrDefaultImpl(t, key, default)
 
 proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
@@ -1463,7 +1463,7 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a.getOrDefault('a') == 5
     doAssert a.getOrDefault('z') == 0
-
+  result = default(B)
   getOrDefaultImpl(t, key)
 
 proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
@@ -1481,7 +1481,7 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
-
+  result = default(B)
   getOrDefaultImpl(t, key, default)
 
 proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =

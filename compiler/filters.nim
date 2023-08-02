@@ -29,18 +29,21 @@ proc getArg(conf: ConfigRef; n: PNode, name: string, pos: int): PNode =
       return n[i]
 
 proc charArg*(conf: ConfigRef; n: PNode, name: string, pos: int, default: char): char =
+  result = default(char)
   var x = getArg(conf, n, name, pos)
   if x == nil: result = default
   elif x.kind == nkCharLit: result = chr(int(x.intVal))
   else: invalidPragma(conf, n)
 
 proc strArg*(conf: ConfigRef; n: PNode, name: string, pos: int, default: string): string =
+  result = ""
   var x = getArg(conf, n, name, pos)
   if x == nil: result = default
   elif x.kind in {nkStrLit..nkTripleStrLit}: result = x.strVal
   else: invalidPragma(conf, n)
 
 proc boolArg*(conf: ConfigRef; n: PNode, name: string, pos: int, default: bool): bool =
+  result = false
   var x = getArg(conf, n, name, pos)
   if x == nil: result = default
   elif x.kind == nkIdent and cmpIgnoreStyle(x.ident.s, "true") == 0: result = true

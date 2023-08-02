@@ -197,6 +197,7 @@ proc contains*[A](s: PackedSet[A], key: A): bool =
     assert C in letters
     assert B notin letters
 
+  result = false
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
       if s.a[i] == ord(key): return true

@@ -197,6 +197,7 @@ proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym =
   result = nil
 
 proc sameIgnoreBacktickGensymInfo(a, b: string): bool =
+  result = false
   if a[0] != b[0]: return false
   var alen = a.len - 1
   while alen > 0 and a[alen] != '`': dec(alen)
@@ -230,6 +231,7 @@ proc getNamedParamFromList*(list: PNode, ident: PIdent): PSym =
   ##   result.add newIdentNode(getIdent(c.ic, x.name.s & "\`gensym" & $x.id),
   ##            if c.instLines: actual.info else: templ.info)
   ##   ```
+  result = nil
   for i in 1..<list.len:
     let it = list[i].sym
     if it.name.id == ident.id or
@@ -325,6 +327,7 @@ proc symToYamlAux(conf: ConfigRef; n: PSym, marker: var IntSet, indent: int,
 
 proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
                    maxRecDepth: int): Rope =
+  result = ""
   var sonsRope: Rope
   if n == nil:
     sonsRope = rope("null")
@@ -1063,6 +1066,7 @@ proc isAddrNode*(n: PNode): bool =
     else: false
 
 proc listSymbolNames*(symbols: openArray[PSym]): string =
+  result = ""
   for sym in symbols:
     if result.len > 0:
       result.add ", "

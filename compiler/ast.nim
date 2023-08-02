@@ -1033,6 +1033,7 @@ var gconfig {.threadvar.}: Gconfig
 proc setUseIc*(useIc: bool) = gconfig.useIc = useIc
 
 proc comment*(n: PNode): string =
+  result = ""
   if nfHasComment in n.flags and not gconfig.useIc:
     # IC doesn't track comments, see `packed_ast`, so this could fail
     result = gconfig.comments[n.nodeId]
@@ -1217,6 +1218,7 @@ template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
 template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
 
 proc getDeclPragma*(n: PNode): PNode =
+  result = nil
   ## return the `nkPragma` node for declaration `n`, or `nil` if no pragma was found.
   ## Currently only supports routineDefs + {nkTypeDef}.
   case n.kind
@@ -1248,6 +1250,7 @@ proc getDeclPragma*(n: PNode): PNode =
     assert result.kind == nkPragma, $(result.kind, n.kind)
 
 proc extractPragma*(s: PSym): PNode =
+  result = nil
   ## gets the pragma node of routine/type/var/let/const symbol `s`
   if s.kind in routineKinds:
     result = s.ast[pragmasPos]
@@ -1602,6 +1605,7 @@ proc initStrTable*(x: var TStrTable) =
   newSeq(x.data, StartSize)
 
 proc newStrTable*: TStrTable =
+  result = default(TStrTable)
   initStrTable(result)
 
 proc initIdTable*(x: var TIdTable) =
@@ -1609,6 +1613,7 @@ proc initIdTable*(x: var TIdTable) =
   newSeq(x.data, StartSize)
 
 proc newIdTable*: TIdTable =
+  result = default(TIdTable)
   initIdTable(result)
 
 proc resetIdTable*(x: var TIdTable) =
@@ -1811,6 +1816,7 @@ proc hasNilSon*(n: PNode): bool =
   result = false
 
 proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
+  result = false
   if n == nil: return
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind in kinds
@@ -2003,6 +2009,7 @@ proc toObjectFromRefPtrGeneric*(typ: PType): PType =
   # result does not have to be object type
 
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
+  result = false
   assert t != nil
 
   if conf.exc != excCpp:

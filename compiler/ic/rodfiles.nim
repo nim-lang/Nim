@@ -215,7 +215,7 @@ proc storeHeader*(f: var RodFile) =
 proc loadHeader*(f: var RodFile) =
   ## Loads the header which is described by `cookie`.
   if f.err != ok: return
-  var thisCookie: array[cookie.len, byte]
+  var thisCookie: array[cookie.len, byte] = default(array[cookie.len, byte])
   if f.f.readBytes(thisCookie, 0, thisCookie.len) != thisCookie.len:
     setError f, ioFailure
   elif thisCookie != cookie:
@@ -231,13 +231,14 @@ proc storeSection*(f: var RodFile; s: RodSection) =
 proc loadSection*(f: var RodFile; expected: RodSection) =
   ## read the bytes value of s, sets and error if the section is incorrect.
   if f.err != ok: return
-  var s: RodSection
+  var s: RodSection = default(RodSection)
   loadPrim(f, s)
   if expected != s and f.err == ok:
     setError f, wrongSection
 
 proc create*(filename: string): RodFile =
   ## create the file and open it for writing
+  result = default(RodFile)
   if not open(result.f, filename, fmWrite):
     setError result, cannotOpen
 
@@ -245,5 +246,6 @@ proc close*(f: var RodFile) = close(f.f)
 
 proc open*(filename: string): RodFile =
   ## open the file for reading
+  result = default(RodFile)
   if not open(result.f, filename, fmRead):
     setError result, cannotOpen

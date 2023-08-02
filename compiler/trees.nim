@@ -13,6 +13,7 @@ import
   ast, wordrecg, idents
 
 proc cyclicTreeAux(n: PNode, visited: var seq[PNode]): bool =
+  result = false
   if n == nil: return
   for v in visited:
     if v == n: return true
@@ -31,6 +32,7 @@ proc sameFloatIgnoreNan(a, b: BiggestFloat): bool {.inline.} =
   cast[uint64](a) == cast[uint64](b) or a == b
 
 proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
+  result = false
   if a == b:
     result = true
   elif (a != nil) and (b != nil) and (a.kind == b.kind):
@@ -55,6 +57,7 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
         result = true
 
 proc sameTree*(a, b: PNode): bool =
+  result = false
   if a == b:
     result = true
   elif a != nil and b != nil and a.kind == b.kind:
@@ -91,11 +94,13 @@ proc isConstExpr*(n: PNode): bool =
   n.kind in atomKinds or nfAllConst in n.flags
 
 proc isCaseObj*(n: PNode): bool =
+  result = false
   if n.kind == nkRecCase: return true
   for i in 0..<n.safeLen:
     if n[i].isCaseObj: return true
 
 proc isDeepConstExpr*(n: PNode; preventInheritance = false): bool =
+  result = false
   case n.kind
   of nkCharLit..nkNilLit:
     result = true
@@ -120,6 +125,7 @@ proc isDeepConstExpr*(n: PNode; preventInheritance = false): bool =
   else: discard
 
 proc isRange*(n: PNode): bool {.inline.} =
+  result = false
   if n.kind in nkCallKinds:
     let callee = n[0]
     if (callee.kind == nkIdent and callee.ident.id == ord(wDotDot)) or
@@ -145,12 +151,14 @@ proc isNoSideEffectPragma*(n: PNode): bool =
   result = k == wNoSideEffect
 
 proc findPragma*(n: PNode, which: TSpecialWord): PNode =
+  result = nil
   if n.kind == nkPragma:
     for son in n:
       if whichPragma(son) == which:
         return son
 
 proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
+  result = nil
   for i in 0..<n.len:
     var it = n[i]
     if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
@@ -161,6 +169,7 @@ proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
       return
 
 proc propSpec*(n: PNode, effectType: TSpecialWord): PNode =
+  result = nil
   for i in 0..<n.len:
     var it = n[i]
     if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
@@ -190,6 +199,7 @@ proc getRoot*(n: PNode): PSym =
   ## ``getRoot`` takes a *path* ``n``. A path is an lvalue expression
   ## like ``obj.x[i].y``. The *root* of a path is the symbol that can be
   ## determined as the owner; ``obj`` in the example.
+  result = nil
   case n.kind
   of nkSym:
     if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
