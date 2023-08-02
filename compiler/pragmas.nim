@@ -34,7 +34,7 @@ const
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wEffectsOf, wTags, wForbids, wLocks, wDelegator, wGcSafe,
     wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy,
-    wRequires, wEnsures, wEnforceNoRaises, wSystemRaisesDefect, wVirtual}
+    wRequires, wEnsures, wEnforceNoRaises, wSystemRaisesDefect, wVirtual, wQuirky}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
@@ -84,7 +84,7 @@ const
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wDefine,
     wCompilerProc, wCore}
-  paramPragmas* = {wNoalias, wInject, wGensym, wByRef, wByCopy}
+  paramPragmas* = {wNoalias, wInject, wGensym, wByRef, wByCopy, wCodegenDecl}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
                       wThread, wRaises, wEffectsOf, wLocks, wTags, wForbids, wGcSafe,
@@ -253,6 +253,7 @@ proc processVirtual(c: PContext, n: PNode, s: PSym) =
 
 proc processCodegenDecl(c: PContext, n: PNode, sym: PSym) =
   sym.constraint = getStrLitNode(c, n)
+  sym.flags.incl sfCodegenDecl
 
 proc processMagic(c: PContext, n: PNode, s: PSym) =
   #if sfSystemModule notin c.module.flags:
@@ -405,6 +406,7 @@ proc pragmaToOptions*(w: TSpecialWord): TOptions {.inline.} =
   of wImplicitStatic: {optImplicitStatic}
   of wPatterns, wTrMacros: {optTrMacros}
   of wSinkInference: {optSinkInference}
+  of wQuirky: {optQuirky}
   else: {}
 
 proc processExperimental(c: PContext; n: PNode) =
@@ -1273,12 +1275,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         pragmaProposition(c, it)
       of wEnsures:
         pragmaEnsures(c, it)
-      of wEnforceNoRaises:
+      of wEnforceNoRaises, wQuirky:
         sym.flags.incl sfNeverRaises
       of wSystemRaisesDefect:
         sym.flags.incl sfSystemRaisesDefect
       of wVirtual:
-          processVirtual(c, it, sym)
+        processVirtual(c, it, sym)
 
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:

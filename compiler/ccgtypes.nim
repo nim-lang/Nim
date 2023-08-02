@@ -18,6 +18,7 @@ type
   TypeDescKind = enum
     dkParam #skParam
     dkRefParam #param passed by ref when {.byref.} is used. Cpp only. C goes straight to dkParam and is handled as a regular pointer
+    dkRefGenericParam #param passed by ref when {.byref.} is used that is also a generic. Cpp only. C goes straight to dkParam and is handled as a regular pointer
     dkVar #skVar
     dkField #skField
     dkResult #skResult
@@ -483,6 +484,9 @@ proc multiFormat*(frmt: var string, chars : static openArray[char], args: openAr
         res.add(substr(frmt, start, i - 1))
     frmt = res
 
+template cgDeclFrmt*(s: PSym): string =
+  s.constraint.strVal
+
 proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var string,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false;) =
@@ -516,7 +520,10 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var 
     var param = t.n[i].sym
     var descKind = dkParam
     if optByRef in param.options:
-      descKind = dkRefParam
+      if param.typ.kind == tyGenericInst:
+        descKind = dkRefGenericParam
+      else:
+        descKind = dkRefParam
     var typ, name : string
     fillParamName(m, param)
     fillLoc(param.loc, locParam, t.n[i],
@@ -535,7 +542,10 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var 
     name = param.loc.r
     types.add typ
     names.add name
-    args.add types[^1] & " " & names[^1]
+    if sfCodegenDecl notin param.flags:
+      args.add types[^1] & " " & names[^1]
+    else:
+      args.add runtimeFormat(param.cgDeclFrmt, [types[^1], names[^1]])
 
   multiFormat(params, @['\'', '#'], [types, names])
   multiFormat(superCall, @['\'', '#'], [types, names])
@@ -564,25 +574,33 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
     var param = t.n[i].sym
     var descKind = dkParam
     if m.config.backend == backendCpp and optByRef in param.options:
-      descKind = dkRefParam
+      if param.typ.kind == tyGenericInst:
+        descKind = dkRefGenericParam
+      else:
+        descKind = dkRefParam
     if isCompileTimeOnly(param.typ): continue
     if params != "(": params.add(", ")
     fillParamName(m, param)
     fillLoc(param.loc, locParam, t.n[i],
             param.paramStorageLoc)
+    var typ: Rope
     if ccgIntroducedPtr(m.config, param, t[0]) and descKind == dkParam:
-      params.add(getTypeDescWeak(m, param.typ, check, descKind))
-      params.add("*")
+      typ = (getTypeDescWeak(m, param.typ, check, descKind))
+      typ.add("*")
       incl(param.loc.flags, lfIndirect)
       param.loc.storage = OnUnknown
     elif weakDep:
-      params.add(getTypeDescWeak(m, param.typ, check, descKind))
+      typ = (getTypeDescWeak(m, param.typ, check, descKind))
     else:
-      params.add(getTypeDescAux(m, param.typ, check, descKind))
-    params.add(" ")
+      typ = (getTypeDescAux(m, param.typ, check, descKind))
+    typ.add(" ")
     if sfNoalias in param.flags:
-      params.add("NIM_NOALIAS ")
-    params.add(param.loc.r)
+      typ.add("NIM_NOALIAS ")
+    if sfCodegenDecl notin param.flags:
+      params.add(typ)
+      params.add(param.loc.r)
+    else:
+      params.add runtimeFormat(param.cgDeclFrmt, [typ, param.loc.r])
     # declare the len field for open arrays:
     var arr = param.typ.skipTypes({tyGenericInst})
     if arr.kind in {tyVar, tyLent, tySink}: arr = arr.lastSon
@@ -721,9 +739,6 @@ proc fillObjectFields*(m: BModule; typ: PType) =
   discard getRecordFields(m, typ, check)
 
 proc mangleDynLibProc(sym: PSym): Rope
-
-template cgDeclFrmt*(s: PSym): string =
-  s.constraint.strVal
   
 proc getRecordDescAux(m: BModule; typ: PType, name, baseType: Rope,
                    check: var IntSet, hasField:var bool): Rope =                 
@@ -770,7 +785,7 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
   var baseType: string 
   if typ[0] != nil: 
     baseType = getTypeDescAux(m, typ[0].skipTypes(skipPtrs), check, dkField)
-  if typ.sym == nil or typ.sym.constraint == nil:
+  if typ.sym == nil or sfCodegenDecl notin typ.sym.flags:
     result = structOrUnion & " " & name
     result.add(getRecordDescAux(m, typ, name, baseType, check, hasField))
     let desc = getRecordFields(m, typ, check)
@@ -865,7 +880,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
   result = getTypePre(m, t, sig)
   if result != "" and t.kind != tyOpenArray:
     excl(check, t.id)
-    if kind == dkRefParam:
+    if kind == dkRefParam or kind == dkRefGenericParam and origTyp.kind == tyGenericInst:
       result.add("&")
     return
   case t.kind
@@ -1198,7 +1213,7 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false)
     name.add("_actual")
   # careful here! don't access ``prc.ast`` as that could reload large parts of
   # the object graph!
-  if prc.constraint.isNil:
+  if sfCodegenDecl notin prc.flags:
     if lfExportLib in prc.loc.flags:
       if isHeaderFile in m.flags:
         result.add "N_LIB_IMPORT "

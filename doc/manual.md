@@ -2643,11 +2643,11 @@ of the argument.
    defined `converter`.
 
 
-There are two major methods of selecting the best matching candidate, namely 
+There are two major methods of selecting the best matching candidate, namely
 counting and disambiguation. Counting takes precedence to disambiguation. In counting,
 each parameter is given a category and the number of parameters in each category is counted.
 The categories are listed above and are in order of precedence. For example, if
-a candidate with one exact match is compared to a candidate with multiple generic matches 
+a candidate with one exact match is compared to a candidate with multiple generic matches
 and zero exact matches, the candidate with an exact match will win.
 
 In the following, `count(p, m)` counts the number of matches of the matching category `m`
@@ -2668,9 +2668,9 @@ algorithm returns true:
   return "ambiguous"
   ```
 
-When counting is ambiguous, disambiguation begins. Parameters are iterated 
+When counting is ambiguous, disambiguation begins. Parameters are iterated
 by position and these parameter pairs are compared for their type relation. The general goal
-of this comparison is to determine which parameter is more specific. The types considered are 
+of this comparison is to determine which parameter is more specific. The types considered are
 not of the inputs from the callsite, but of the competing candidates' parameters.
 
 
@@ -3759,6 +3759,9 @@ prior section. Unlike type conversions, a type cast cannot change the underlying
 bit pattern of the data being cast (aside from that the size of the target type
 may differ from the source type). Casting resembles *type punning* in other
 languages or C++'s `reinterpret_cast`:cpp: and `bit_cast`:cpp: features.
+
+If the size of the target type is larger than the size of the source type,
+the remaining memory is zeroed.
 
 The addr operator
 -----------------
@@ -5500,7 +5503,7 @@ p[T: t](arg1: f): y
 - `f`: Formal parameter type
 - `y`: Formal return type
 
-The use of the word "formal" here is to denote the symbols as they are defined by the programmer, 
+The use of the word "formal" here is to denote the symbols as they are defined by the programmer,
 not as they may be at compile time contextually. Since generics may be instantiated and
 types bound, we have more than one entity to think about when generics are involved.
 
@@ -5514,9 +5517,9 @@ type Foo[T] = object
 proc p[H;T: Foo[H]](param: T): H
 ```
 
-A constraint definition may have more than one symbol defined by seperating each definition by 
-a `;`. Notice how `T` is composed of `H` and the return  type of `p` is defined as `H`. When this 
-generic proc is instantiated `H` will be bound to a concrete type, thus making `T` concrete and 
+A constraint definition may have more than one symbol defined by seperating each definition by
+a `;`. Notice how `T` is composed of `H` and the return  type of `p` is defined as `H`. When this
+generic proc is instantiated `H` will be bound to a concrete type, thus making `T` concrete and
 the return type of `p` will be bound to the same concrete type used to define `H`.
 
 Brackets at the site of usage can be used to supply concrete types to instantiate the generic in the same
@@ -8538,18 +8541,18 @@ The `bycopy` pragma can be applied to an object or tuple type or a proc param. I
       x, y, z: float
   ```
 
-The Nim compiler automatically determines whether a parameter is passed by value or 
-by reference based on the parameter type's size. If a parameter must be passed by value 
-or by reference, (such as when interfacing with a C library) use the bycopy or byref pragmas. 
+The Nim compiler automatically determines whether a parameter is passed by value or
+by reference based on the parameter type's size. If a parameter must be passed by value
+or by reference, (such as when interfacing with a C library) use the bycopy or byref pragmas.
 Notice params marked as `byref` takes precedence over types marked as `bycopy`.
 
 Byref pragma
 ------------
 
 The `byref` pragma can be applied to an object or tuple type or a proc param.
-When applied to a type it instructs the compiler to pass the type by reference 
-(hidden pointer) to procs. When applied to a param it will take precedence, even 
-if the the type was marked as `bycopy`. When using the Cpp backend, params marked 
+When applied to a type it instructs the compiler to pass the type by reference
+(hidden pointer) to procs. When applied to a param it will take precedence, even
+if the the type was marked as `bycopy`. When using the Cpp backend, params marked
 as byref will translate to cpp references `&`.
 
 Varargs pragma

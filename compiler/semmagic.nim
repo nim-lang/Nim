@@ -21,7 +21,7 @@ proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
     asgnExpr.typ = typ
     var t = typ.skipTypes({tyGenericInst, tyAlias, tySink})[0]
     while true:
-      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n)
+      asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, false)
       let base = t[0]
       if base == nil:
         break
@@ -647,7 +647,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mDefault:
     result = checkDefault(c, n)
     let typ = result[^1].typ.skipTypes({tyTypeDesc})
-    let defaultExpr = defaultNodeField(c, result[^1], typ)
+    let defaultExpr = defaultNodeField(c, result[^1], typ, false)
     if defaultExpr != nil:
       result = defaultExpr
   of mZeroDefault:
@@ -666,5 +666,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = n
     if result.typ != nil and expectedType != nil and result.typ.kind == tySequence and expectedType.kind == tySequence and result.typ[0].kind == tyEmpty:
       result.typ = expectedType # type inference for empty sequence # bug #21377
+  of mEnsureMove:
+    result = n
+    if isAssignable(c, n[1]) notin {arLValue, arLocalLValue}:
+      localError(c.config, n.info, "'" & $n[1] & "'" & " is not a mutable location; it cannot be moved")
   else:
     result = n
