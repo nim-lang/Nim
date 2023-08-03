@@ -343,7 +343,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
         linefmt(p, cpsStmts, "$1 = #copyString($2);$n", [dest.rdLoc, src.rdLoc])
       elif dest.storage == OnHeap:
         if dest.lode.typ.kind == tySink:
-          genRefAssign(p, dest, src)
+          linefmt(p, cpsStmts,"$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
         else:
           # we use a temporary to care for the dreaded self assignment:
           var tmp: TLoc
