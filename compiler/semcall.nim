@@ -565,7 +565,7 @@ proc getCallLineInfo(n: PNode): TLineInfo =
 proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
   ## Helper proc to inherit bound generic parameters from expectedType into x.
   ## Does nothing if 'inferGenericTypes' isn't in c.features
-  if inferGenericTypes notin c.features: return
+  #if inferGenericTypes notin c.features: return
   if expectedType == nil or x.callee[0] == nil: return # required for inference
 
   var
@@ -603,7 +603,13 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
         if t[i] == nil or u[i] == nil: return
         stackPut(t[i], u[i])
     of tyGenericParam:
-      if x.bindings.idTableGet(t) != nil: return
+      let prebound = x.bindings.idTableGet(t).PType
+      if prebound != nil:
+        # The generic parameter is already bound.
+        # If it's not compatible it's a mismatch and we return
+        let tm = typeRel(x, u, prebound)
+        if tm != isConvertible:
+          return
 
       # fully reduced generic param, bind it
       if t notin flatUnbound:
