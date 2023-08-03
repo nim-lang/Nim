@@ -85,6 +85,9 @@ Boot options:
   -d:leanCompiler          produce a compiler without JS codegen or
                            documentation generator in order to use less RAM
                            for bootstrapping
+  -d:nimHasLibFFI          adds FFI support for allowing compile-time VM to
+                           interface with native functions (experimental,
+                           requires prior `koch installdeps libffi`)
 
 Commands for core developers:
   runCI                    runs continuous integration (CI), e.g. from Github Actions
@@ -278,6 +281,22 @@ proc install(args: string) =
   geninstall()
   exec("sh ./install.sh $#" % args)
 
+proc installDeps(dep: string, commit = "") =
+  # the hashes/urls are version controlled here, so can be changed seamlessly
+  # and tied to a nim release (mimicking git submodules)
+  var commit = commit
+  case dep
+  of "tinyc":
+    if commit.len == 0: commit = "916cc2f94818a8a382dd8d4b8420978816c1dfb3"
+    cloneDependency(distDir, "https://github.com/timotheecour/nim-tinyc-archive", commit)
+  of "libffi":
+    # technically a nimble package, however to play nicely with --noNimblePath,
+    # let's just clone it wholesale:
+    if commit.len == 0: commit = "bb2bdaf1a29a4bff6fbd8ae4695877cbb3ec783e"
+    cloneDependency(distDir, "https://github.com/Araq/libffi", commit)
+  else: doAssert false, "unsupported: " & dep
+  # xxx: also add linenoise, niminst etc, refs https://github.com/nim-lang/RFCs/issues/206
+
 # -------------- boot ---------------------------------------------------------
 
 proc findStartNim: string =
@@ -323,6 +342,10 @@ proc boot(args: string, skipIntegrityCheck: bool) =
   if not dirExists("dist/checksums"):
     bundleChecksums(false)
 
+  let usingLibFFI = "nimHasLibFFI" in args
+  if usingLibFFI and not dirExists("dist/libffi"):
+    installDeps("libffi")
+
   let nimStart = findStartNim().quoteShell()
   let times = 2 - ord(skipIntegrityCheck)
   for i in 0..times:
@@ -334,6 +357,10 @@ proc boot(args: string, skipIntegrityCheck: bool) =
     if i == 0:
       nimi = nimStart
       extraOption.add " --skipUserCfg --skipParentCfg -d:nimKochBootstrap"
+
+      # --noNimblePath precludes nimble packages as dependencies to the compiler,
+      # so libffi is not "installed as a nimble package"
+      if usingLibFFI: extraOption.add " --path:./dist"
         # The configs are skipped for bootstrap
         # (1st iteration) to prevent newer flags from breaking bootstrap phase.
       let ret = execCmdEx(nimStart & " --version")
@@ -548,17 +575,6 @@ proc hostInfo(): string =
   "hostOS: $1, hostCPU: $2, int: $3, float: $4, cpuEndian: $5, cwd: $6" %
     [hostOS, hostCPU, $int.sizeof, $float.sizeof, $cpuEndian, getCurrentDir()]
 
-proc installDeps(dep: string, commit = "") =
-  # the hashes/urls are version controlled here, so can be changed seamlessly
-  # and tied to a nim release (mimicking git submodules)
-  var commit = commit
-  case dep
-  of "tinyc":
-    if commit.len == 0: commit = "916cc2f94818a8a382dd8d4b8420978816c1dfb3"
-    cloneDependency(distDir, "https://github.com/timotheecour/nim-tinyc-archive", commit)
-  else: doAssert false, "unsupported: " & dep
-  # xxx: also add linenoise, niminst etc, refs https://github.com/nim-lang/RFCs/issues/206
-
 proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
   echo "runCI: ", cmd
@@ -602,11 +618,11 @@ proc runCI(cmd: string) =
 
     block: # nimHasLibFFI:
       when defined(posix): # windows can be handled in future PR's
-        execFold("nimble install -y libffi", "nimble install -y libffi")
+        installDeps("libffi")
         const nimFFI = "bin/nim.ctffi"
         # no need to bootstrap with koch boot (would be slower)
         let backend = if doUseCpp(): "cpp" else: "c"
-        execFold("build with -d:nimHasLibFFI", "nim $1 -d:release -d:nimHasLibFFI -o:$2 compiler/nim.nim" % [backend, nimFFI])
+        execFold("build with -d:nimHasLibFFI", "nim $1 -d:release --noNimblePath -d:nimHasLibFFI --path:./dist -o:$2 compiler/nim.nim" % [backend, nimFFI])
         execFold("test with -d:nimHasLibFFI", "$1 $2 -r testament/testament --nim:$1 r tests/misc/trunner.nim -d:nimTrunnerFfi" % [nimFFI, backend])
 
     execFold("Run nimdoc tests", "nim r nimdoc/tester")
