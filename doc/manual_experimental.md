@@ -124,6 +124,87 @@ would not match the type of the variable, and an error would be given.
 
 The extent of this varies, but there are some notable special cases.
 
+
+Inferred generic parameters
+---------------------------
+
+In expressions making use of generic procs or templates, the expected
+(unbound) types are often able to be inferred based on context.
+This feature has to be enabled via `{.experimental: "inferGenericTypes".}`
+
+  ```nim  test = "nim c $1"
+  {.experimental: "inferGenericTypes".}
+
+  import std/options
+
+  var x = newSeq[int](1)
+  # Do some work on 'x'...
+
+  # Works!
+  # 'x' is 'seq[int]' so 'newSeq[int]' is implied
+  x = newSeq(10)
+
+  # Works!
+  # 'T' of 'none' is bound to the 'T' of 'noneProducer', passing it along.
+  # Effectively 'none.T = noneProducer.T'
+  proc noneProducer[T](): Option[T] = none()
+  let myNone = noneProducer[int]()
+
+  # Also works
+  # 'myOtherNone' binds its 'T' to 'float' and 'noneProducer' inherits it
+  # noneProducer.T = myOtherNone.T
+  let myOtherNone: Option[float] = noneProducer()
+
+  # Works as well
+  # none.T = myOtherOtherNone.T
+  let myOtherOtherNone: Option[int] = none()
+  ```
+
+This is achieved by reducing the types on the lhs and rhs until the *lhs* is left with only types such as `T`.
+While lhs and rhs are reduced together, this does *not* mean that the *rhs* will also only be left
+with a flat type `Z`, it may be of the form `MyType[Z]`.
+
+After the types have been reduced, the types `T` are bound to the types that are left on the rhs.
+
+If bindings *cannot be inferred*, compilation will fail and manual specification is required.
+
+An example for *failing inference* can be found when passing a generic expression
+to a function/template call:
+
+  ```nim  test = "nim c $1"  status = 1
+  {.experimental: "inferGenericTypes".}
+
+  proc myProc[T](a, b: T) = discard
+
+  # Fails! Unable to infer that 'T' is supposed to be 'int'
+  myProc(newSeq[int](), newSeq(1))
+
+  # Works! Manual specification of 'T' as 'int' necessary
+  myProc(newSeq[int](), newSeq[int](1))
+  ```
+
+Combination of generic inference with the `auto` type is also unsupported:
+
+  ```nim  test = "nim c $1"  status = 1
+  {.experimental: "inferGenericTypes".}
+
+  proc produceValue[T]: auto = default(T)
+  let a: int = produceValue() # 'auto' cannot be inferred here
+  ```
+
+**Note**: The described inference does not permit the creation of overrides based on
+the return type of a procedure. It is a mapping mechanism that does not attempt to 
+perform deeper inference, nor does it modify what is a valid override.
+
+  ```nim  test = "nim c $1"  status = 1
+  # Doesn't affect the following code, it is invalid either way
+  {.experimental: "inferGenericTypes".}
+
+  proc a: int = 0
+  proc a: float = 1.0 # Fails! Invalid code and not recommended
+  ```
+
+
 Sequence literals
 -----------------
 
