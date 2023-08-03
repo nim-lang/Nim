@@ -1,4 +1,4 @@
-# v2.0.0 - 2023-07-dd
+# v2.0.0 - 2023-08-01
 
 Version 2.0 is a big milestone with too many changes to list them all here.
 
