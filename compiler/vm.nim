@@ -381,6 +381,7 @@ proc cleanUpOnReturn(c: PCtx; f: PStackFrame): int =
       return pc + 1
 
 proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
+  result = false
   if desttyp.kind == tyString:
     dest.ensureKind(rkNode)
     dest.node = newNode(nkStrLit)
@@ -548,11 +549,12 @@ proc takeCharAddress(c: PCtx, src: PNode, index: BiggestInt, pc: int): TFullReg 
 
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
+  result = TFullReg(kind: rkNone)
   var pc = start
   var tos = tos
   # Used to keep track of where the execution is resumed.
   var savedPC = -1
-  var savedFrame: PStackFrame
+  var savedFrame: PStackFrame = nil
   when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
     template updateRegsAlias = discard
     template regs: untyped = tos.slots
@@ -1903,7 +1905,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         message(c.config, info, hintUser, a.strVal)
     of opcParseExprToAst:
       decodeBC(rkNode)
-      var error: string
+      var error: string = ""
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
                             regs[rc].node.strVal, 0,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
@@ -1918,7 +1920,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node = ast[0]
     of opcParseStmtToAst:
       decodeBC(rkNode)
-      var error: string
+      var error: string = ""
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
                             regs[rc].node.strVal, 0,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
@@ -2265,6 +2267,7 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
   c.loopIterations = c.config.maxLoopIterationsVM
   if sym.kind in routineKinds:
     if sym.typ.len-1 != args.len:
+      result = nil
       localError(c.config, sym.info,
         "NimScript: expected $# arguments, but got $#" % [
         $(sym.typ.len-1), $args.len])
@@ -2284,6 +2287,7 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
 
       result = rawExecute(c, start, tos).regToNode
   else:
+    result = nil
     localError(c.config, sym.info,
       "NimScript: attempt to call non-routine: " & sym.name.s)
 
@@ -2405,6 +2409,7 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
   case typ.kind
   of tyStatic:
     putIntoReg(result, prepareVMValue(x))
+    result = TFullReg(kind: rkNone)
   else:
     var n = x
     if n.kind in {nkHiddenSubConv, nkHiddenStdConv}: n = n[1]

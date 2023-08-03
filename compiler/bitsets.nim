@@ -87,5 +87,6 @@ const populationCount: array[uint8, uint8] = block:
     arr
 
 proc bitSetCard*(x: TBitSet): BiggestInt =
+  result = default(BiggestInt)
   for it in x:
     result.inc int(populationCount[it])

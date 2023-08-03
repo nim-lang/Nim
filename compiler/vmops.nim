@@ -174,6 +174,7 @@ proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
   template copySeq(field: untyped): untyped =
     for i in field: result.add i.string
 
+  result = @[]
   case MultipleValueSetting(switch)
   of nimblePaths: copySeq(conf.nimblePaths)
   of searchPaths: copySeq(conf.searchPaths)
@@ -406,6 +407,6 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.marshal.loadVM", proc(a: VmArgs) =
     let typ = a.getNode(0).typ
     let p = a.getReg(1)
-    var res: string
+    var res: string = ""
     storeAny(res, typ, regToNode(p[]), c.config)
     setResult(a, res)

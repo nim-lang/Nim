@@ -170,9 +170,11 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
 
 proc newCandidate*(ctx: PContext, callee: PSym,
                    binding: PNode, calleeScope = -1): TCandidate =
+  result = default(TCandidate)
   initCandidate(ctx, result, callee, binding, calleeScope)
 
 proc newCandidate*(ctx: PContext, callee: PType): TCandidate =
+  result = default(TCandidate)
   initCandidate(ctx, result, callee)
 
 proc copyCandidate(a: var TCandidate, b: TCandidate) =
@@ -214,6 +216,7 @@ proc sumGeneric(t: PType): int =
   # count the "genericness" so that Foo[Foo[T]] has the value 3
   # and Foo[T] has the value 2 so that we know Foo[Foo[T]] is more
   # specific than Foo[T].
+  result = 0
   var t = t
   var isvar = 0
   while true:
@@ -344,6 +347,7 @@ template describeArgImpl(c: PContext, n: PNode, i: int, startIdx = 1; prefer = p
   result.add argTypeToString(arg, prefer)
 
 proc describeArg*(c: PContext, n: PNode, i: int, startIdx = 1; prefer = preferName): string =
+  result = ""
   describeArgImpl(c, n, i, startIdx, prefer)
 
 proc describeArgs*(c: PContext, n: PNode, startIdx = 1; prefer = preferName): string =
@@ -440,6 +444,8 @@ proc isConvertibleToRange(c: PContext, f, a: PType): bool =
     # `isIntLit` is correct and should be used above as well, see PR:
     # https://github.com/nim-lang/Nim/pull/11197
     result = isIntLit(a) or a.kind in {tyFloat..tyFloat128}
+  else:
+    result = false
 
 proc handleFloatRange(f, a: PType): TTypeRelation =
   if a.kind == f.kind:
@@ -506,6 +512,7 @@ proc skipToObject(t: PType; skipped: var SkippedPtr): PType =
     else:
       break
   if r.kind == tyObject and ptrs <= 1: result = r
+  else: result = nil
 
 proc isGenericSubtype(c: var TCandidate; a, f: PType, d: var int, fGenericOrigin: PType): bool =
   assert f.kind in {tyGenericInst, tyGenericInvocation, tyGenericBody}
@@ -528,6 +535,8 @@ proc isGenericSubtype(c: var TCandidate; a, f: PType, d: var int, fGenericOrigin
     genericParamPut(c, last, fGenericOrigin)
     d = depth
     result = true
+  else:
+    result = false
 
 proc minRel(a, b: TTypeRelation): TTypeRelation =
   if a <= b: result = a

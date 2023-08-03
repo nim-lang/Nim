@@ -1148,6 +1148,8 @@ proc initRodIter*(it: var RodIter; config: ConfigRef, cache: IdentCache;
   if it.i < it.values.len:
     result = loadSym(it.decoder, g, int(module), it.values[it.i])
     inc it.i
+  else:
+    result = nil
 
 proc initRodIterAllSyms*(it: var RodIter; config: ConfigRef, cache: IdentCache;
                          g: var PackedModuleGraph; module: FileIndex, importHidden: bool): PSym =
@@ -1165,11 +1167,15 @@ proc initRodIterAllSyms*(it: var RodIter; config: ConfigRef, cache: IdentCache;
   if it.i < it.values.len:
     result = loadSym(it.decoder, g, int(module), it.values[it.i])
     inc it.i
+  else:
+    result = nil
 
 proc nextRodIter*(it: var RodIter; g: var PackedModuleGraph): PSym =
   if it.i < it.values.len:
     result = loadSym(it.decoder, g, it.module, it.values[it.i])
     inc it.i
+  else:
+    result = nil
 
 iterator interfaceSymbols*(config: ConfigRef, cache: IdentCache;
                            g: var PackedModuleGraph; module: FileIndex;
@@ -1202,7 +1208,7 @@ proc searchForCompilerproc*(m: LoadedModule; name: string): int32 =
 # ------------------------- .rod file viewer ---------------------------------
 
 proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
-  var m: PackedModule
+  var m: PackedModule = PackedModule()
   let err = loadRodFile(rodfile, m, config, ignoreConfig=true)
   if err != ok:
     config.quitOrRaise "Error: could not load: " & $rodfile.string & " reason: " & $err

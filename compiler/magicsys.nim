@@ -30,6 +30,7 @@ proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
     result.typ = newType(tyError, nextTypeId(g.idgen), g.systemModule)
 
 proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSym =
+  result = nil
   let id = getIdent(g.cache, name)
   for r in systemModuleSyms(g, id):
     if r.magic == m:
@@ -145,6 +146,7 @@ proc getMagicEqSymForType*(g: ModuleGraph; t: PType; info: TLineInfo): PSym =
   of tyProc:
     result = getSysMagic(g, info, "==", mEqProc)
   else:
+    result = nil
     globalError(g.config, info,
       "can't find magic equals operator for type kind " & $t.kind)
 

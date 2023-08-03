@@ -187,6 +187,8 @@ proc getEnvParam*(routine: PSym): PSym =
   if hidden.kind == nkSym and hidden.sym.name.s == paramName:
     result = hidden.sym
     assert sfFromGeneric in result.flags
+  else:
+    result = nil
 
 proc interestingVar(s: PSym): bool {.inline.} =
   result = s.kind in {skVar, skLet, skTemp, skForVar, skParam, skResult} and
@@ -199,6 +201,8 @@ proc illegalCapture(s: PSym): bool {.inline.} =
 proc isInnerProc(s: PSym): bool =
   if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator} and s.magic == mNone:
     result = s.skipGenericOwner.kind in routineKinds
+  else:
+    result = false
 
 proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
   # Bugfix: unfortunately we cannot use 'nkFastAsgn' here as that would
@@ -711,6 +715,7 @@ proc symToClosure(n: PNode; owner: PSym; d: var DetectionPass;
     # direct dependency, so use the outer's env variable:
     result = makeClosure(d.graph, d.idgen, s, setupEnvVar(owner, d, c, n.info), n.info)
   else:
+    result = nil
     let available = getHiddenParam(d.graph, owner)
     let wanted = getHiddenParam(d.graph, s).typ
     # ugh: call through some other inner proc;
@@ -936,7 +941,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym):
   result = newNodeI(nkStmtList, body.info)
 
   # static binding?
-  var env: PSym
+  var env: PSym = nil
   let op = call[0]
   if op.kind == nkSym and op.sym.isIterator:
     # createClosure()
