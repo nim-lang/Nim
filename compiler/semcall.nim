@@ -571,8 +571,8 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
   if expectedType == nil or x.callee[0] == nil: return # required for inference
 
   var
-    flatUnbound: seq[PType]
-    flatBound: seq[PType]
+    flatUnbound: seq[PType] = @[]
+    flatBound: seq[PType] = @[]
   # seq[(result type, expected type)]
   var typeStack = newSeq[(PType, PType)]()
 
