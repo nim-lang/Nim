@@ -580,7 +580,7 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType): bool 
     ## skips types and puts the skipped version on stack
     # It might make sense to skip here one by one. It's not part of the main
     #  type reduction because the right side normally won't be skipped
-    const toSkip = { tyVar, tyLent, tyStatic, tyCompositeTypeClass }
+    const toSkip = { tyVar, tyLent, tyStatic, tyCompositeTypeClass, tySink }
     let
       x = a.skipTypes(toSkip)
       y = if a.kind notin toSkip: b
