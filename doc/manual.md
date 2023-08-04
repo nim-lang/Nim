@@ -5517,7 +5517,7 @@ type Foo[T] = object
 proc p[H;T: Foo[H]](param: T): H
 ```
 
-A constraint definition may have more than one symbol defined by seperating each definition by
+A constraint definition may have more than one symbol defined by separating each definition by
 a `;`. Notice how `T` is composed of `H` and the return  type of `p` is defined as `H`. When this
 generic proc is instantiated `H` will be bound to a concrete type, thus making `T` concrete and
 the return type of `p` will be bound to the same concrete type used to define `H`.
