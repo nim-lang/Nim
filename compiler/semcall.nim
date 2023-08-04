@@ -562,10 +562,6 @@ proc getCallLineInfo(n: PNode): TLineInfo =
     discard
   result = n.info
 
-proc semOverloadedCall(c: PContext, n, nOrig: PNode,
-                       filter: TSymKinds, flags: TExprFlags;
-                       expectedType: PType = nil): PNode
-
 proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType): bool =
   ## Helper proc to inherit bound generic parameters from expectedType into x.
   ## Does nothing if 'inferGenericTypes' isn't in c.features.
@@ -611,7 +607,7 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType): bool 
         stackPut(t[i], u[i])
     of tyGenericParam:
       var prebound = x.bindings.idTableGet(t).PType
-      if prebound != nil:
+      if prebound != nil and prebound != u:
         # The generic parameter is already bound.
         # If it's not compatible it's a mismatch and we return
         let tm = typeRel(x, u, prebound)
