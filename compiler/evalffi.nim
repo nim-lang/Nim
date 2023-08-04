@@ -11,7 +11,7 @@
 
 import ast, types, options, tables, dynlib, msgs, lineinfos
 from os import getAppFilename
-import pkg/libffi
+import libffi/libffi
 
 when defined(windows):
   const libcDll = "msvcrt.dll"

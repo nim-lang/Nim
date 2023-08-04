@@ -564,8 +564,61 @@ proc getCallLineInfo(n: PNode): TLineInfo =
     discard
   result = n.info
 
-proc semResolvedCall(c: PContext, x: TCandidate,
-                     n: PNode, flags: TExprFlags): PNode =
+proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
+  ## Helper proc to inherit bound generic parameters from expectedType into x.
+  ## Does nothing if 'inferGenericTypes' isn't in c.features
+  if inferGenericTypes notin c.features: return
+  if expectedType == nil or x.callee[0] == nil: return # required for inference
+
+  var
+    flatUnbound: seq[PType]
+    flatBound: seq[PType]
+  # seq[(result type, expected type)]
+  var typeStack = newSeq[(PType, PType)]()
+
+  template stackPut(a, b) =
+    ## skips types and puts the skipped version on stack
+    # It might make sense to skip here one by one. It's not part of the main
+    #  type reduction because the right side normally won't be skipped
+    const toSkip = { tyVar, tyLent, tyStatic, tyCompositeTypeClass }
+    let
+      x = a.skipTypes(toSkip)
+      y = if a.kind notin toSkip: b
+          else: b.skipTypes(toSkip)
+    typeStack.add((x, y))
+
+  stackPut(x.callee[0], expectedType)
+
+  while typeStack.len() > 0:
+    let (t, u) = typeStack.pop()
+    if t == u or t == nil or u == nil or t.kind == tyAnything or u.kind == tyAnything:
+      continue
+    case t.kind
+    of ConcreteTypes, tyGenericInvocation, tyUncheckedArray:
+      # nested, add all the types to stack
+      let
+        startIdx = if u.kind in ConcreteTypes: 0 else: 1
+        endIdx = min(u.sons.len() - startIdx, t.sons.len())
+
+      for i in startIdx ..< endIdx:
+        # early exit with current impl
+        if t[i] == nil or u[i] == nil: return
+        stackPut(t[i], u[i])
+    of tyGenericParam:
+      if x.bindings.idTableGet(t) != nil: return
+
+      # fully reduced generic param, bind it
+      if t notin flatUnbound:
+        flatUnbound.add(t)
+        flatBound.add(u)
+    else:
+      discard
+  for i in 0 ..< flatUnbound.len():
+    x.bindings.idTablePut(flatUnbound[i], flatBound[i])
+
+proc semResolvedCall(c: PContext, x: var TCandidate,
+                     n: PNode, flags: TExprFlags;
+                     expectedType: PType = nil): PNode =
   assert x.state == csMatch
   var finalCallee = x.calleeSym
   let info = getCallLineInfo(n)
@@ -585,10 +638,12 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       if x.calleeSym.magic in {mArrGet, mArrPut}:
         finalCallee = x.calleeSym
       else:
+        c.inheritBindings(x, expectedType)
         finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
     else:
       # For macros and templates, the resolved generic params
       # are added as normal params.
+      c.inheritBindings(x, expectedType)
       for s in instantiateGenericParamList(c, gp, x.bindings):
         case s.kind
         of skConst:
@@ -617,7 +672,8 @@ proc tryDeref(n: PNode): PNode =
   result.add n
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
-                       filter: TSymKinds, flags: TExprFlags): PNode =
+                       filter: TSymKinds, flags: TExprFlags;
+                       expectedType: PType = nil): PNode =
   var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
   if r.state == csMatch:
@@ -627,7 +683,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       message(c.config, n.info, hintUserRaw,
               "Non-matching candidates for " & renderTree(n) & "\n" &
               candidates)
-    result = semResolvedCall(c, r, n, flags)
+    result = semResolvedCall(c, r, n, flags, expectedType)
   else:
     if efDetermineType in flags and c.inGenericContext > 0 and c.matchedConcept == nil:
       result = semGenericStmt(c, n)
