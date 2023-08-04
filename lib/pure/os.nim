@@ -3145,14 +3145,14 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
   when defined(windows):
     var bufsize = int32(MAX_PATH)
     when useWinUnicode:
-      var buf = newWideCString("", bufsize)
+      var buf = newWideCString(bufsize)
       while true:
         var L = getModuleFileNameW(0, buf, bufsize)
         if L == 0'i32:
           result = "" # error!
           break
         elif L > bufsize:
-          buf = newWideCString("", L)
+          buf = newWideCString(L)
           bufsize = L
         else:
           result = buf$L
