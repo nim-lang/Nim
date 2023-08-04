@@ -562,9 +562,15 @@ proc getCallLineInfo(n: PNode): TLineInfo =
     discard
   result = n.info
 
-proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
+proc semOverloadedCall(c: PContext, n, nOrig: PNode,
+                       filter: TSymKinds, flags: TExprFlags;
+                       expectedType: PType = nil): PNode
+
+proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType): bool =
   ## Helper proc to inherit bound generic parameters from expectedType into x.
-  ## Does nothing if 'inferGenericTypes' isn't in c.features
+  ## Does nothing if 'inferGenericTypes' isn't in c.features.
+  ## Temporary: return value of true means call params must be converted
+  # TODO: Better solution than temporary return
   #if inferGenericTypes notin c.features: return
   if expectedType == nil or x.callee[0] == nil: return # required for inference
 
@@ -587,6 +593,7 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
 
   stackPut(x.callee[0], expectedType)
 
+  var requireConversion = false
   while typeStack.len() > 0:
     let (t, u) = typeStack.pop()
     if t == u or t == nil or u == nil or t.kind == tyAnything or u.kind == tyAnything:
@@ -603,13 +610,15 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
         if t[i] == nil or u[i] == nil: return
         stackPut(t[i], u[i])
     of tyGenericParam:
-      let prebound = x.bindings.idTableGet(t).PType
+      var prebound = x.bindings.idTableGet(t).PType
       if prebound != nil:
         # The generic parameter is already bound.
         # If it's not compatible it's a mismatch and we return
         let tm = typeRel(x, u, prebound)
         if tm != isConvertible:
           return
+        # It's compatible so u is bound, but the type must be fixed later
+        requireConversion = true
 
       # fully reduced generic param, bind it
       if t notin flatUnbound:
@@ -617,8 +626,10 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
         flatBound.add(u)
     else:
       discard
+  # update bindings
   for i in 0 ..< flatUnbound.len():
     x.bindings.idTablePut(flatUnbound[i], flatBound[i])
+  result = requireConversion # only set it if there hasn't been an early return
 
 proc semResolvedCall(c: PContext, x: var TCandidate,
                      n: PNode, flags: TExprFlags;
@@ -642,12 +653,15 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
       if x.calleeSym.magic in {mArrGet, mArrPut}:
         finalCallee = x.calleeSym
       else:
-        c.inheritBindings(x, expectedType)
+        let fixupParamTypes = c.inheritBindings(x, expectedType)
         finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
+        if fixupParamTypes:
+          for i in 1 ..< x.call.sons.len():
+            x.call.sons[i].typ = finalCallee.typ.sons[i]
     else:
       # For macros and templates, the resolved generic params
       # are added as normal params.
-      c.inheritBindings(x, expectedType)
+      discard c.inheritBindings(x, expectedType)
       for s in instantiateGenericParamList(c, gp, x.bindings):
         case s.kind
         of skConst:
