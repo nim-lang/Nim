@@ -137,3 +137,25 @@ block:
 
   let a = Foo(x: initTable())
   doAssert a.x is Table[int, float]
+
+# partial binding and conversion
+block:
+  type
+    ResultKind = enum
+      Ok, Error
+
+    Result[T, E] = object
+      case kind: ResultKind
+      of Ok:
+        okVal: T
+      of Error:
+        errVal: E
+
+  proc err[T, E](myParam: E): Result[T, E] =
+    Result[T, E](kind : Error, errVal : myParam)
+
+  proc doStuff(): Result[int, cstring] = 
+    # string is compatible with cstring, so it can be inferred with conversion
+    err("Error")
+
+  discard doStuff()
