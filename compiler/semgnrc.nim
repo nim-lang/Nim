@@ -59,6 +59,7 @@ template isMixedIn(sym): bool =
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; flags: TSemGenericFlags,
                           fromDotExpr=false): PNode =
+  result = nil
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
   incl(s.flags, sfUsed)
   template maybeDotChoice(c: PContext, n: PNode, s: PSym, fromDotExpr: bool) =
@@ -439,7 +440,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       if n[0].kind != nkEmpty:
         n[0] = semGenericStmt(c, n[0], flags+{withinTypeDesc}, ctx)
       for i in 1..<n.len:
-        var a: PNode
+        var a: PNode = nil
         case n[i].kind
         of nkEnumFieldDef: a = n[i][0]
         of nkIdent: a = n[i]

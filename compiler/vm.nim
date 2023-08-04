@@ -2408,8 +2408,8 @@ proc prepareVMValue(arg: PNode): PNode =
 proc setupMacroParam(x: PNode, typ: PType): TFullReg =
   case typ.kind
   of tyStatic:
-    putIntoReg(result, prepareVMValue(x))
     result = TFullReg(kind: rkNone)
+    putIntoReg(result, prepareVMValue(x))
   else:
     var n = x
     if n.kind in {nkHiddenSubConv, nkHiddenStdConv}: n = n[1]

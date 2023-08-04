@@ -42,6 +42,7 @@ proc toNimblePath(s: string, isStdlib: bool): string =
     let sub = "lib/"
     var start = s.find(sub)
     if start < 0:
+      result = ""
       doAssert false
     else:
       start += sub.len

@@ -92,7 +92,9 @@ proc expectIntLit(c: PContext, n: PNode): int =
   let x = c.semConstExpr(c, n)
   case x.kind
   of nkIntLit..nkInt64Lit: result = int(x.intVal)
-  else: localError(c.config, n.info, errIntLiteralExpected)
+  else:
+    result = 0
+    localError(c.config, n.info, errIntLiteralExpected)
 
 proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   result = newNodeIT(nkTupleConstr, n.info, n.typ)
@@ -287,6 +289,7 @@ proc opBindSym(c: PContext, scope: PScope, n: PNode, isMixin: int, info: PNode):
     # we need to mark all symbols:
     result = symChoice(c, id, s, TSymChoiceRule(isMixin))
   else:
+    result = nil
     errorUndeclaredIdentifier(c, info.info, if n.kind == nkIdent: n.ident.s
       else: n.strVal)
   c.currentScope = tmpScope
