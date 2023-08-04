@@ -499,12 +499,13 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
   result = conf.m.fileInfos[i.fileIndex.int32].lines[i.line.int-1]
 
 proc getSurroundingSrc(conf: ConfigRef; info: TLineInfo): string =
-  result = ""
   if conf.hasHint(hintSource) and info != unknownLineInfo:
     const indent = "  "
     result = "\n" & indent & $sourceLine(conf, info)
     if info.col >= 0:
       result.add "\n" & indent & spaces(info.col) & '^'
+  else:
+    result = ""
 
 proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg

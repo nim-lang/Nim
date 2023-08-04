@@ -250,7 +250,6 @@ template deprecatedAlias(oldName, newName: string) =
   warningDeprecated(conf, info, "'$#' is a deprecated alias for '$#'" % [oldName, newName])
 
 proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo): bool =
-  result = false
   case switch.normalize
   of "gc", "mm":
     case arg.normalize
@@ -264,13 +263,17 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "none": result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
     of "atomicarc": result = conf.selectedGC == gcAtomicArc
-    else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
+    else:
+      result = false
+      localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "opt":
     case arg.normalize
     of "speed": result = contains(conf.options, optOptimizeSpeed)
     of "size": result = contains(conf.options, optOptimizeSize)
     of "none": result = conf.options * {optOptimizeSpeed, optOptimizeSize} == {}
-    else: localError(conf, info, errNoneSpeedOrSizeExpectedButXFound % arg)
+    else:
+      result = false
+      localError(conf, info, errNoneSpeedOrSizeExpectedButXFound % arg)
   of "verbosity": result = $conf.verbosity == arg
   of "app":
     case arg.normalize
@@ -280,7 +283,9 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
                       not contains(conf.globalOptions, optGenGuiApp)
     of "staticlib": result = contains(conf.globalOptions, optGenStaticLib) and
                       not contains(conf.globalOptions, optGenGuiApp)
-    else: localError(conf, info, errGuiConsoleOrLibExpectedButXFound % arg)
+    else:
+      result = false
+      localError(conf, info, errGuiConsoleOrLibExpectedButXFound % arg)
   of "dynliboverride":
     result = isDynlibOverride(conf, arg)
   of "exceptions":
@@ -289,11 +294,14 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "setjmp": result = conf.exc == excSetjmp
     of "quirky": result = conf.exc == excQuirky
     of "goto": result = conf.exc == excGoto
-    else: localError(conf, info, errInvalidExceptionSystem % arg)
-  else: invalidCmdLineOption(conf, passCmd1, switch, info)
+    else:
+      result = false
+      localError(conf, info, errInvalidExceptionSystem % arg)
+  else:
+    result = false
+    invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool =
-  result = false
   case switch.normalize
   of "debuginfo": result = contains(conf.globalOptions, optCDebug)
   of "compileonly", "c": result = contains(conf.globalOptions, optCompileOnly)
@@ -337,10 +345,14 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
     if switch.normalize == "patterns": deprecatedAlias(switch, "trmacros")
     result = contains(conf.options, optTrMacros)
   of "excessivestacktrace": result = contains(conf.globalOptions, optExcessiveStackTrace)
-  of "nilseqs", "nilchecks", "taintmode": warningOptionNoop(switch)
+  of "nilseqs", "nilchecks", "taintmode":
+    warningOptionNoop(switch)
+    result = false
   of "panics": result = contains(conf.globalOptions, optPanics)
   of "jsbigint64": result = contains(conf.globalOptions, optJsBigInt64)
-  else: invalidCmdLineOption(conf, passCmd1, switch, info)
+  else:
+    result = false
+    invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
                  notRelativeToProj = false): AbsoluteDir =
@@ -1130,7 +1142,6 @@ proc processSwitch*(pass: TCmdLinePass; p: OptParser; config: ConfigRef) =
 
 proc processArgument*(pass: TCmdLinePass; p: OptParser;
                       argsCount: var int; config: ConfigRef): bool =
-  result = false
   if argsCount == 0 and config.implicitCmd:
     argsCount.inc
   if argsCount == 0:
@@ -1141,7 +1152,10 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
       config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)
       result = true
-    elif pass != passCmd2: setCommandEarly(config, p.key)
+    elif pass != passCmd2:
+      setCommandEarly(config, p.key)
+      result = false
+    else: result = false
   else:
     if pass == passCmd1: config.commandArgs.add p.key
     if argsCount == 1:
@@ -1152,4 +1166,6 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
         config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)
       result = true
+    else:
+      result = false
   inc argsCount

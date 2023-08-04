@@ -143,15 +143,16 @@ proc isKeyword*(kind: TokType): bool =
 template ones(n): untyped = ((1 shl n)-1) # for utf-8 conversion
 
 proc isNimIdentifier*(s: string): bool =
-  result = false
   let sLen = s.len
   if sLen > 0 and s[0] in SymStartChars:
     var i = 1
     while i < sLen:
       if s[i] == '_': inc(i)
-      if i < sLen and s[i] notin SymChars: return
+      if i < sLen and s[i] notin SymChars: return false
       inc(i)
     result = true
+  else:
+    result = false
 
 proc `$`*(tok: Token): string =
   case tok.tokType

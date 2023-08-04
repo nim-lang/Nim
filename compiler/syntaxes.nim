@@ -32,11 +32,12 @@ proc utf8Bom(s: string): int =
     0
 
 proc containsShebang(s: string, i: int): bool =
-  result = false
   if i+1 < s.len and s[i] == '#' and s[i+1] == '!':
     var j = i + 2
     while j < s.len and s[j] in Whitespace: inc(j)
     result = s[j] == '/'
+  else:
+    result = false
 
 proc parsePipe(filename: AbsoluteFile, inputStream: PLLStream; cache: IdentCache;
                config: ConfigRef): PNode =
@@ -65,7 +66,7 @@ proc parsePipe(filename: AbsoluteFile, inputStream: PLLStream; cache: IdentCache
     llStreamClose(s)
 
 proc getFilter(ident: PIdent): FilterKind =
-  result = default(FilterKind)
+  result = filtNone
   for i in FilterKind:
     if cmpIgnoreStyle(ident.s, $i) == 0:
       return i
@@ -135,8 +136,9 @@ proc setupParser*(p: var Parser; fileIdx: FileIndex; cache: IdentCache;
   result = true
 
 proc parseFile*(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode =
-  result = nil
   var p: Parser = default(Parser)
   if setupParser(p, fileIdx, cache, config):
     result = parseAll(p)
     closeParser(p)
+  else:
+    result = nil

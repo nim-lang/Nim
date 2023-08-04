@@ -478,7 +478,6 @@ proc getCompileOptions(conf: ConfigRef): string =
 proc vccplatform(conf: ConfigRef): string =
   # VCC specific but preferable over the config hacks people
   # had to do before, see #11306
-  result = ""
   if conf.cCompiler == ccVcc:
     let exe = getConfigVar(conf, conf.cCompiler, ".exe")
     if "vccexe.exe" == extractFilename(exe):
@@ -487,6 +486,10 @@ proc vccplatform(conf: ConfigRef): string =
         of cpuArm: " --platform:arm"
         of cpuAmd64: " --platform:amd64"
         else: ""
+    else:
+      result = ""
+  else:
+    result = ""
 
 proc getLinkOptions(conf: ConfigRef): string =
   result = conf.linkOptions & " " & conf.linkOptionsCmd & " "

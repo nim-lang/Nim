@@ -1033,10 +1033,11 @@ var gconfig {.threadvar.}: Gconfig
 proc setUseIc*(useIc: bool) = gconfig.useIc = useIc
 
 proc comment*(n: PNode): string =
-  result = ""
   if nfHasComment in n.flags and not gconfig.useIc:
     # IC doesn't track comments, see `packed_ast`, so this could fail
     result = gconfig.comments[n.nodeId]
+  else:
+    result = ""
 
 proc `comment=`*(n: PNode, a: string) =
   let id = n.nodeId
@@ -1218,12 +1219,12 @@ template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
 template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
 
 proc getDeclPragma*(n: PNode): PNode =
-  result = nil
   ## return the `nkPragma` node for declaration `n`, or `nil` if no pragma was found.
   ## Currently only supports routineDefs + {nkTypeDef}.
   case n.kind
   of routineDefs:
     if n[pragmasPos].kind != nkEmpty: result = n[pragmasPos]
+    else: result = nil
   of nkTypeDef:
     #[
     type F3*{.deprecated: "x3".} = int
@@ -1243,6 +1244,8 @@ proc getDeclPragma*(n: PNode): PNode =
     ]#
     if n[0].kind == nkPragmaExpr:
       result = n[0][1]
+    else:
+      result = nil
   else:
     # support as needed for `nkIdentDefs` etc.
     result = nil
@@ -1250,7 +1253,6 @@ proc getDeclPragma*(n: PNode): PNode =
     assert result.kind == nkPragma, $(result.kind, n.kind)
 
 proc extractPragma*(s: PSym): PNode =
-  result = nil
   ## gets the pragma node of routine/type/var/let/const symbol `s`
   if s.kind in routineKinds:
     result = s.ast[pragmasPos]
@@ -1259,6 +1261,12 @@ proc extractPragma*(s: PSym): PNode =
       if s.ast[0].kind == nkPragmaExpr and s.ast[0].len > 1:
         # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
         result = s.ast[0][1]
+      else:
+        result = nil
+    else:
+      result = nil
+  else:
+    result = nil
   assert result == nil or result.kind == nkPragma
 
 proc skipPragmaExpr*(n: PNode): PNode =
@@ -2009,7 +2017,6 @@ proc toObjectFromRefPtrGeneric*(typ: PType): PType =
   # result does not have to be object type
 
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
-  result = false
   assert t != nil
 
   if conf.exc != excCpp:
@@ -2019,6 +2026,8 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
 
   if base.sym != nil and {sfCompileToCpp, sfImportc} * base.sym.flags != {}:
     result = true
+  else:
+    result = false
 
 proc isInfixAs*(n: PNode): bool =
   return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "as"

@@ -88,10 +88,12 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
 proc getNimRunExe(conf: ConfigRef): string =
   # xxx consider defining `conf.getConfigVar("nimrun.exe")` to allow users to
   # customize the binary to run the command with, e.g. for custom `nodejs` or `wine`.
-  result = ""
   if conf.isDefined("mingw"):
     if conf.isDefined("i386"): result = "wine"
     elif conf.isDefined("amd64"): result = "wine64"
+    else: result = ""
+  else:
+    result = ""
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(

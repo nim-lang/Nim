@@ -327,11 +327,12 @@ proc symToYamlAux(conf: ConfigRef; n: PSym, marker: var IntSet, indent: int,
 
 proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
                    maxRecDepth: int): Rope =
-  result = ""
   var sonsRope: Rope
   if n == nil:
+    result = ""
     sonsRope = rope("null")
   elif containsOrIncl(marker, n.id):
+    result = ""
     sonsRope = "\"$1 @$2\"" % [rope($n.kind), rope(
         strutils.toHex(cast[int](n), sizeof(n) * 2))]
   else:

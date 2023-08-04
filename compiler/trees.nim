@@ -32,7 +32,6 @@ proc sameFloatIgnoreNan(a, b: BiggestFloat): bool {.inline.} =
   cast[uint64](a) == cast[uint64](b) or a == b
 
 proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
-  result = false
   if a == b:
     result = true
   elif (a != nil) and (b != nil) and (a.kind == b.kind):
@@ -55,6 +54,10 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
           if not exprStructuralEquivalent(a[i], b[i],
                                           strictSymEquality): return
         result = true
+      else:
+        result = false
+  else:
+    result = false
 
 proc sameTree*(a, b: PNode): bool =
   result = false
@@ -100,7 +103,6 @@ proc isCaseObj*(n: PNode): bool =
     if n[i].isCaseObj: return true
 
 proc isDeepConstExpr*(n: PNode; preventInheritance = false): bool =
-  result = false
   case n.kind
   of nkCharLit..nkNilLit:
     result = true
@@ -122,10 +124,9 @@ proc isDeepConstExpr*(n: PNode; preventInheritance = false): bool =
           result = true
       else:
         result = true
-  else: discard
+  else: result = false
 
 proc isRange*(n: PNode): bool {.inline.} =
-  result = false
   if n.kind in nkCallKinds:
     let callee = n[0]
     if (callee.kind == nkIdent and callee.ident.id == ord(wDotDot)) or
@@ -133,6 +134,10 @@ proc isRange*(n: PNode): bool {.inline.} =
        (callee.kind in {nkClosedSymChoice, nkOpenSymChoice} and
         callee[1].sym.name.id == ord(wDotDot)):
       result = true
+    else:
+      result = false
+  else:
+    result = false
 
 proc whichPragma*(n: PNode): TSpecialWord =
   let key = if n.kind in nkPragmaCallKinds and n.len > 0: n[0] else: n
@@ -199,11 +204,12 @@ proc getRoot*(n: PNode): PSym =
   ## ``getRoot`` takes a *path* ``n``. A path is an lvalue expression
   ## like ``obj.x[i].y``. The *root* of a path is the symbol that can be
   ## determined as the owner; ``obj`` in the example.
-  result = nil
   case n.kind
   of nkSym:
     if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
       result = n.sym
+    else:
+      result = nil
   of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
       nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr, nkHiddenAddr, nkAddr:
     result = getRoot(n[0])
@@ -211,7 +217,8 @@ proc getRoot*(n: PNode): PSym =
     result = getRoot(n[1])
   of nkCallKinds:
     if getMagic(n) == mSlice: result = getRoot(n[1])
-  else: discard
+    else: result = nil
+  else: result = nil
 
 proc stupidStmtListExpr*(n: PNode): bool =
   for i in 0..<n.len-1:

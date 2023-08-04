@@ -609,7 +609,6 @@ proc getStdlibVersion*(conf: ConfigRef): NimVer =
   result = conf.nimStdlibVersion
 
 proc isDefined*(conf: ConfigRef; symbol: string): bool =
-  result = false
   if conf.symbols.hasKey(symbol):
     result = true
   elif cmpIgnoreStyle(symbol, CPU[conf.target.targetCPU].name) == 0:
@@ -659,7 +658,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "nimrawsetjmp":
       result = conf.target.targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
                             osDragonfly, osMacosx}
-    else: discard
+    else: result = false
 
 template quitOrRaise*(conf: ConfigRef, msg = "") =
   # xxx in future work, consider whether to also intercept `msgQuit` calls
@@ -915,13 +914,13 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile
 
 proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFile =
   # returns path to module
-  result = AbsoluteFile("")
   var m = addFileExt(modulename, NimExt)
   var hasRelativeDot = false
   if m.startsWith(pkgPrefix):
     result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
   else:
     if m.startsWith(stdPrefix):
+      result = AbsoluteFile("")
       let stripped = m.substr(stdPrefix.len)
       for candidate in stdlibDirs:
         let path = (conf.libpath.string / candidate / stripped)

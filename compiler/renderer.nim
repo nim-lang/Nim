@@ -73,10 +73,11 @@ proc disamb(g: var TSrcGen; s: PSym): int =
   g.mangler.add s
 
 proc isKeyword*(i: PIdent): bool =
-  result = false
   if (i.id >= ord(tokKeywordLow) - ord(tkSymbol)) and
       (i.id <= ord(tokKeywordHigh) - ord(tkSymbol)):
     result = true
+  else:
+    result = false
 
 proc isExported(n: PNode): bool =
   ## Checks if an ident is exported.
@@ -1005,11 +1006,11 @@ type
     bkNone, bkBracket, bkBracketAsgn, bkCurly, bkCurlyAsgn
 
 proc bracketKind*(g: TSrcGen, n: PNode): BracketKind =
-  result = default(BracketKind)
   if renderIds notin g.flags:
     case n.kind
     of nkClosedSymChoice, nkOpenSymChoice:
       if n.len > 0: result = bracketKind(g, n[0])
+      else: result = bkNone
     of nkSym:
       result = case n.sym.name.s
         of "[]": bkBracket
@@ -1018,6 +1019,8 @@ proc bracketKind*(g: TSrcGen, n: PNode): BracketKind =
         of "{}=": bkCurlyAsgn
         else: bkNone
     else: result = bkNone
+  else:
+    result = bkNone
 
 proc skipHiddenNodes(n: PNode): PNode =
   result = n
@@ -1087,10 +1090,11 @@ proc postStatements(g: var TSrcGen, n: PNode, i: int, fromStmtList: bool) =
     gsub(g, n, j)
 
 proc isCustomLit(n: PNode): bool =
-  result = false
   if n.len == 2 and n[0].kind == nkRStrLit:
     let ident = n[1].getPIdent
     result = ident != nil and ident.s.startsWith('\'')
+  else:
+    result = false
 
 proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   if isNil(n): return
@@ -1440,10 +1444,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     put(g, tkAccent, "`")
     for i in 0..<n.len:
       proc isAlpha(n: PNode): bool =
-        result = false
         if n.kind in {nkIdent, nkSym}:
           let tmp = n.getPIdent.s
           result = tmp.len > 0 and tmp[0] in {'a'..'z', 'A'..'Z'}
+        else:
+          result = false
       var useSpace = false
       if i == 1 and n[0].kind == nkIdent and n[0].ident.s in ["=", "'"]:
         if not n[1].isAlpha: # handle `=destroy`, `'big'

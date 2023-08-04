@@ -172,9 +172,9 @@ proc querySettingImpl(conf: ConfigRef, switch: BiggestInt): string =
 
 proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
   template copySeq(field: untyped): untyped =
+    result = @[]
     for i in field: result.add i.string
 
-  result = @[]
   case MultipleValueSetting(switch)
   of nimblePaths: copySeq(conf.nimblePaths)
   of searchPaths: copySeq(conf.searchPaths)
