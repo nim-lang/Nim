@@ -819,6 +819,8 @@ proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
   # This proc is used to evaluate such static expressions.
   let instantiated = replaceTypesInBody(c.c, c.bindings, n, nil,
                                         allowMetaTypes = allowUnresolved)
+  if instantiated.kind in nkCallKinds:
+    return nil
   result = c.c.semExpr(c.c, instantiated)
 
 proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
@@ -1887,6 +1889,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     # fix the expression, so it contains the already instantiated types
     if f.n == nil or f.n.kind == nkEmpty: return isGeneric
     let reevaluated = tryResolvingStaticExpr(c, f.n)
+    if reevaluated == nil:
+      result = isNone
+      return 
     case reevaluated.typ.kind
     of tyTypeDesc:
       result = typeRel(c, a, reevaluated.typ.base, flags)
