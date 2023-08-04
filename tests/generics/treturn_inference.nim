@@ -158,4 +158,6 @@ block:
     # string is compatible with cstring, so it can be inferred with conversion
     err("Error")
 
-  discard doStuff()
+  let res = doStuff()
+  doAssert res.kind == Error
+  doAssert res.errVal == "Error"
