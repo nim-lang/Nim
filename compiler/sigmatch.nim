@@ -1187,7 +1187,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # being passed as parameters
       return isNone
   else: discard
-  
   case f.kind
   of tyEnum:
     if a.kind == f.kind and sameEnumTypes(f, a): result = isEqual
