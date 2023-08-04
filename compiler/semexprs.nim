@@ -238,6 +238,9 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
         result = convNotInRange
   else:
     # we use d, s here to speed up that operation a bit:
+    if d.kind == tyFromExpr:
+      result = convNotLegal
+      return
     case cmpTypes(c, d, s)
     of isNone, isGeneric:
       if not compareTypes(targetTyp.skipTypes(abstractVar), srcTyp.skipTypes({tyOwned}), dcEqIgnoreDistinct):
