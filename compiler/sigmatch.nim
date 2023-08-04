@@ -1536,6 +1536,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if x.kind == tyGenericInvocation:
       if f[0] == x[0]:
         for i in 1..<f.len:
+          # Handle when checking against a generic that isn't fully instantiated
+          if i >= x.len: return
           let tr = typeRel(c, f[i], x[i], flags)
           if tr <= isSubtype: return
         result = isGeneric
