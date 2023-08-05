@@ -1154,7 +1154,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
       elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
           isLastRead(ri, c, s) and canBeMoved(c, dest.typ) and not isCursor(ri) and
-          {sfGlobal, sfPure} * ri.sym.flags == {}:
+          {sfGlobal, sfPure} <= ri.sym.flags == false:
         # Rule 3: `=sink`(x, z); wasMoved(z)
         let snk = c.genSink(s, dest, ri, flags)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
