@@ -607,8 +607,8 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType): bool 
         stackPut(t[i], u[i])
     of tyGenericParam:
       let prebound = x.bindings.idTableGet(t).PType
+      var usePrebound = false
       if prebound != nil and prebound != u:
-        if prebound.kind == tyProc: return # Don't attempt proc conversions
         # The generic parameter is already bound.
         # If it's not compatible it's a mismatch and we return
         let tm = typeRel(x, u, prebound)
@@ -616,11 +616,12 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType): bool 
           return
         # It's compatible so u is bound, but the type must be fixed later
         requireConversion = true
+        usePrebound = prebound.kind == tyProc
 
       # fully reduced generic param, bind it
       if t notin flatUnbound:
         flatUnbound.add(t)
-        flatBound.add(u)
+        flatBound.add(if usePrebound: prebound else: u)
     else:
       discard
   # update bindings
@@ -654,7 +655,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
         finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
         if fixupParamTypes:
           for i in 1 ..< x.call.sons.len():
-            x.call.sons[i].typ = finalCallee.typ.sons[i]
+            changeType(c, x.call.sons[i], finalCallee.typ.sons[i], true)
     else:
       # For macros and templates, the resolved generic params
       # are added as normal params.
