@@ -605,11 +605,7 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
         stackPut(t[i], u[i])
     of tyGenericParam:
       let prebound = x.bindings.idTableGet(t).PType
-      if prebound != nil and prebound != u:
-        # The generic parameter is already bound.
-        # If it's not compatible it's a mismatch and we return
-        let tm = typeRel(x, u, prebound)
-        if tm != isConvertible: return
+      if prebound != nil:
         continue # Skip param, already bound
 
       # fully reduced generic param, bind it
