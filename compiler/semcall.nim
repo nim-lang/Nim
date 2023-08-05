@@ -606,8 +606,9 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType): bool 
         if t[i] == nil or u[i] == nil: return
         stackPut(t[i], u[i])
     of tyGenericParam:
-      var prebound = x.bindings.idTableGet(t).PType
+      let prebound = x.bindings.idTableGet(t).PType
       if prebound != nil and prebound != u:
+        if prebound.kind == tyProc: return # Don't attempt proc conversions
         # The generic parameter is already bound.
         # If it's not compatible it's a mismatch and we return
         let tm = typeRel(x, u, prebound)
