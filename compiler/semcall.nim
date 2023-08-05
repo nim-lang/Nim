@@ -562,11 +562,9 @@ proc getCallLineInfo(n: PNode): TLineInfo =
     discard
   result = n.info
 
-proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType): bool =
+proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
   ## Helper proc to inherit bound generic parameters from expectedType into x.
   ## Does nothing if 'inferGenericTypes' isn't in c.features.
-  ## Temporary: return value of true means call params must be converted
-  # TODO: Better solution than temporary return
   #if inferGenericTypes notin c.features: return
   if expectedType == nil or x.callee[0] == nil: return # required for inference
 
@@ -607,27 +605,22 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType): bool 
         stackPut(t[i], u[i])
     of tyGenericParam:
       let prebound = x.bindings.idTableGet(t).PType
-      var usePrebound = false
       if prebound != nil and prebound != u:
         # The generic parameter is already bound.
         # If it's not compatible it's a mismatch and we return
         let tm = typeRel(x, u, prebound)
-        if tm != isConvertible:
-          return
-        # It's compatible so u is bound, but the type must be fixed later
-        requireConversion = true
-        usePrebound = prebound.kind == tyProc
+        if tm != isConvertible: return
+        continue # Skip param, already bound
 
       # fully reduced generic param, bind it
       if t notin flatUnbound:
         flatUnbound.add(t)
-        flatBound.add(if usePrebound: prebound else: u)
+        flatBound.add(u)
     else:
       discard
   # update bindings
   for i in 0 ..< flatUnbound.len():
     x.bindings.idTablePut(flatUnbound[i], flatBound[i])
-  result = requireConversion # only set it if there hasn't been an early return
 
 proc semResolvedCall(c: PContext, x: var TCandidate,
                      n: PNode, flags: TExprFlags;
@@ -651,15 +644,12 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
       if x.calleeSym.magic in {mArrGet, mArrPut}:
         finalCallee = x.calleeSym
       else:
-        let fixupParamTypes = c.inheritBindings(x, expectedType)
+        c.inheritBindings(x, expectedType)
         finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
-        if fixupParamTypes:
-          for i in 1 ..< x.call.sons.len():
-            changeType(c, x.call.sons[i], finalCallee.typ.sons[i], true)
     else:
       # For macros and templates, the resolved generic params
       # are added as normal params.
-      discard c.inheritBindings(x, expectedType)
+      c.inheritBindings(x, expectedType)
       for s in instantiateGenericParamList(c, gp, x.bindings):
         case s.kind
         of skConst:
