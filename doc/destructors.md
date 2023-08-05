@@ -41,6 +41,9 @@ written as:
       for i in 0..<x.len: `=destroy`(x.data[i])
       dealloc(x.data)
 
+  proc `=wasMoved`*[T](x: var myseq[T]) =
+    x.data = nil
+
   proc `=trace`[T](x: var myseq[T]; env: pointer) =
     # `=trace` allows the cycle collector `--mm:orc`
     # to understand how to trace the object graph.
@@ -51,7 +54,7 @@ written as:
     # do nothing for self-assignments:
     if a.data == b.data: return
     `=destroy`(a)
-    wasMoved(a)
+    `=wasMoved`(a)
     a.len = b.len
     a.cap = b.cap
     if b.data != nil:
@@ -62,8 +65,7 @@ written as:
   proc `=dup`*[T](a: myseq[T]): myseq[T] {.nodestroy.} =
     # an optimized version of `=wasMoved(tmp); `=copy(tmp, src)`
     # usually present if a custom `=copy` hook is overridden
-    result.len = a.len
-    result.cap = a.cap
+    result = myseq[T](len: a.len, cap: a.cap, data: nil)
     if a.data != nil:
       result.data = cast[typeof(result.data)](alloc(result.cap * sizeof(T)))
       for i in 0..<result.len:
@@ -73,7 +75,6 @@ written as:
     # move assignment, optional.
     # Compiler is using `=destroy` and `copyMem` when not provided
     `=destroy`(a)
-    wasMoved(a)
     a.len = b.len
     a.cap = b.cap
     a.data = b.data
@@ -94,9 +95,10 @@ written as:
     x.data[i] = y
 
   proc createSeq*[T](elems: varargs[T]): myseq[T] =
-    result.cap = elems.len
-    result.len = elems.len
-    result.data = cast[typeof(result.data)](alloc(result.cap * sizeof(T)))
+    result = myseq[T](
+      len: elems.len,
+      cap: elems.len,
+      data: cast[typeof(result.data)](alloc(result.cap * sizeof(T))))
     for i in 0..<result.len: result.data[i] = elems[i]
 
   proc len*[T](x: myseq[T]): int {.inline.} = x.len
@@ -149,6 +151,25 @@ produces a warning for a `=destroy` that does raise.
 A `=destroy` can explicitly list the exceptions it can raise, if any,
 but this of little utility as a raising destructor is implementation defined
 behavior. Later versions of the language specification might cover this case precisely.
+
+
+`=wasMoved` hook
+----------------
+
+A `=wasMoved` hook sets the object to a state that signifies to the destructor there is nothing to destroy.
+
+The prototype of this hook for a type `T` needs to be:
+
+  ```nim
+  proc `=wasMoved`(x: var T)
+  ```
+
+Usually some pointer field inside the object is set to `nil`:
+
+  ```nim
+  proc `=wasMoved`(x: var T) =
+    x.field = nil
+  ```
 
 
 `=sink` hook
@@ -272,21 +293,11 @@ The general pattern in using `=destroy` with `=trace` looks like:
 **Note**: The `=trace` hooks (which are only used by `--mm:orc`) are currently more experimental and less refined
 than the other hooks.
 
-`=WasMoved` hook
-----------------
-
-A `wasMoved` hook resets the memory of an object to its initial (binary zero) value to signify it was "moved" and to signify its destructor should do nothing and ideally be optimized away.
-
-The prototype of this hook for a type `T` needs to be:
-
-  ```nim
-  proc `=wasMoved`(x: var T)
-  ```
 
 `=dup` hook
 -----------
 
-A `=dup` hook duplicates the memory of an object. `=dup(x)` can be regarded as an optimization replacing the `wasMoved(dest); =copy(dest, x)` operation.
+A `=dup` hook duplicates an object. `=dup(x)` can be regarded as an optimization replacing a `wasMoved(dest); =copy(dest, x)` operation.
 
 The prototype of this hook for a type `T` needs to be:
 
@@ -316,6 +327,24 @@ copy operation is not used afterward, the copy can be replaced by a move. This
 document uses the notation `lastReadOf(x)` to describe that `x` is not
 used afterward. This property is computed by a static control flow analysis
 but can also be enforced by using `system.move` explicitly.
+
+One can query if the analysis is able to perform a move with `system.ensureMove`.
+`move` enforces a move operation and calls `=wasMoved` whereas `ensureMove` is
+an annotation that implies no runtime operation. An `ensureMove` annotation leads to a static error
+if the compiler cannot prove that a move would be safe.
+
+For example:
+
+  ```nim
+  proc main(normalParam: string; sinkParam: sink string) =
+    var x = "abc"
+    # valid:
+    let valid = ensureMove x
+    # invalid:
+    let invalid = ensureMove normalParam
+    # valid:
+    let alsoValid = ensureMove sinkParam
+  ```
 
 
 Swap
@@ -434,7 +463,7 @@ destroyed at the scope exit.
     x = lastReadOf z
     ------------------          (move-optimization)
     `=sink`(x, z)
-    wasMoved(z)
+    `=wasMoved`(z)
 
 
     v = v
@@ -461,7 +490,7 @@ destroyed at the scope exit.
     f_sink(lastReadOf y)
     -----------------------     (move-to-sink)
     f_sink(y)
-    wasMoved(y)
+    `=wasMoved`(y)
 
 
 Object and array construction
@@ -474,7 +503,7 @@ function has `sink` parameters.
 Destructor removal
 ==================
 
-`wasMoved(x);` followed by a `=destroy(x)` operation cancel each other
+`=wasMoved(x)` followed by a `=destroy(x)` operation cancel each other
 out. An implementation is encouraged to exploit this in order to improve
 efficiency and code sizes. The current implementation does perform this
 optimization.
@@ -483,11 +512,11 @@ optimization.
 Self assignments
 ================
 
-`=sink` in combination with `wasMoved` can handle self-assignments but
+`=sink` in combination with `=wasMoved` can handle self-assignments but
 it's subtle.
 
 The simple case of `x = x` cannot be turned
-into `=sink(x, x); wasMoved(x)` because that would lose `x`'s value.
+into `=sink(x, x); =wasMoved(x)` because that would lose `x`'s value.
 The solution is that simple self-assignments that consist of
 
 - Symbols: `x = x`
@@ -522,10 +551,10 @@ Is transformed into:
     try:
       if cond:
         `=sink`(result, a)
-        wasMoved(a)
+        `=wasMoved`(a)
       else:
         `=sink`(result, b)
-        wasMoved(b)
+        `=wasMoved`(b)
     finally:
       `=destroy`(b)
       `=destroy`(a)
@@ -539,10 +568,10 @@ Is transformed into:
       `=sink`(y, "xyz")
       `=sink`(x, select(true,
         let blitTmp = x
-        wasMoved(x)
+        `=wasMoved`(x)
         blitTmp,
         let blitTmp = y
-        wasMoved(y)
+        `=wasMoved`(y)
         blitTmp))
       echo [x]
     finally:
@@ -578,7 +607,7 @@ for expressions of type `lent T` or of type `var T`.
   proc construct(kids: sink seq[Tree]): Tree =
     result = Tree(kids: kids)
     # converted into:
-    `=sink`(result.kids, kids); wasMoved(kids)
+    `=sink`(result.kids, kids); `=wasMoved`(kids)
     `=destroy`(kids)
 
   proc `[]`*(x: Tree; i: int): lent Tree =
