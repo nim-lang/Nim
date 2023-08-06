@@ -1976,11 +1976,9 @@ With `experimental: "strictDefs"`, `let` statements are allowed to not have an i
 An `out` parameter is like a `var` parameter but it must be written to before it can be used:
 
   ```nim
-
   proc myopen(f: out File; name: string): bool =
     f = default(File)
     result = open(f, name)
-
   ```
 
 While it is usually the better style to use the return type in order to return results API and ABI
@@ -1988,9 +1986,7 @@ considerations might make this infeasible. Like for `var T` Nim maps `out T` to 
 For example POSIX's `stat` routine can be wrapped as:
 
   ```nim
-
   proc stat*(a1: cstring, a2: out Stat): cint {.importc, header: "<sys/stat.h>".}
-
   ```
 
 When the implementation of a routine with output parameters is analysed, the compiler
@@ -1998,13 +1994,11 @@ checks that every path before the (implicit or explicit) return does set every o
 parameter:
 
   ```nim
-
   proc p(x: out int; y: out string; cond: bool) =
     x = 4
     if cond:
       y = "abc"
     # error: not every path initializes 'y'
-
   ```
 
 
@@ -2014,11 +2008,9 @@ Out parameters and exception handling
 The analysis should take exceptions into account (but currently does not):
 
   ```nim
-
   proc p(x: out int; y: out string; cond: bool) =
     x = canRaise(45)
     y = "abc" # <-- error: not every path initializes 'y'
-
   ```
 
 Once the implementation takes exceptions into account it is easy enough to
@@ -2030,7 +2022,6 @@ Out parameters and inheritance
 It is not valid to pass an lvalue of a supertype to an `out T` parameter:
 
   ```nim
-
   type
     Superclass = object of RootObj
       a: int
@@ -2043,7 +2034,6 @@ It is not valid to pass an lvalue of a supertype to an `out T` parameter:
   var v: Subclass
   init v
   use v.s # the 's' field was never initialized!
-
   ```
 
 However, in the future this could be allowed and provide a better way to write object
@@ -2167,14 +2157,12 @@ inside `Isolated[T]`. It is what a channel implementation should use in order to
 the freedom of data races:
 
   ```nim
-
   proc send*[T](c: var Channel[T]; msg: sink Isolated[T])
   proc recv*[T](c: var Channel[T]): T
     ## Note: Returns T, not Isolated[T] for convenience.
 
   proc recvIso*[T](c: var Channel[T]): Isolated[T]
     ## remembers the data is Isolated[T].
-
   ```
 
 In order to create an `Isolated` graph one has to use either `isolate` or `unsafeIsolate`.
@@ -2187,9 +2175,7 @@ is free of external aliases into it. `isolate` ensures this invariant. It is
 inspired by Pony's `recover` construct:
 
   ```nim
-
   func isolate(x: sink T): Isolated[T] {.magic: "Isolate".}
-
   ```
 
 
@@ -2251,7 +2237,6 @@ encapsulates a `ref` type effectively so that a variable of this container type
 can be used in an `isolate` context:
 
   ```nim
-
   type
     Isolated*[T] {.sendable.} = object ## Isolated data can only be moved, not copied.
       value: T
@@ -2265,7 +2250,6 @@ can be used in an `isolate` context:
   proc `=destroy`*[T](dest: var Isolated[T]) {.inline.} =
     # delegate to value's destroy operation
     `=destroy`(dest.value)
-
   ```
 
 The `.sendable` pragma itself is an experimenal, unchecked, unsafe annotation. It is
@@ -2279,7 +2263,6 @@ Virtual pragma
 Here's an example of how to use the virtual pragma:
 
 ```nim
-
 proc newCpp*[T](): ptr T {.importcpp: "new '*0()".}
 type
   Foo = object of RootObj
@@ -2300,7 +2283,6 @@ let booAsFoo = cast[FooPtr](newCpp[Boo]())
 foo.salute() # prints hello foo
 boo.salute() # prints hello boo
 booAsFoo.salute() # prints hello boo
-
 ```
 In this example, the `salute` function is virtual in both Foo and Boo types. This allows for polymorphism.
 
@@ -2355,13 +2337,11 @@ The `constructor` pragma can be used in two ways: in conjunction with `importcpp
 Consider:
 
 ```nim
-
 type Foo* = object
   x: int32
 
 proc makeFoo(x: int32): Foo {.constructor.} =
   this.x = x
-
 ```
 
 It forward declares the constructor in the type definition. When the constructor has parameters, it also generates a default constructor.
@@ -2372,8 +2352,6 @@ Like `virtual`, `constructor` also supports a syntax that allows to express C++ 
 For example:
 
 ```nim
-
-
 {.emit:"""/*TYPESECTION*/
 struct CppClass {
   int x;
@@ -2398,7 +2376,6 @@ proc makeNimClass(x: int32): NimClass {.constructor:"NimClass('1 #1) : CppClass(
 # Optional: define the default constructor explicitly
 proc makeCppClass(): NimClass {.constructor: "NimClass() : CppClass(0, 0)".} =
   this.x = 1
-
 ```
 
 In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropiate constructor.
