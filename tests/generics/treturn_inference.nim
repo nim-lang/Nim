@@ -137,3 +137,26 @@ block:
 
   let a = Foo(x: initTable())
   doAssert a.x is Table[int, float]
+
+# partial binding
+block:
+  type
+    ResultKind = enum
+      Ok, Error
+
+    Result[T, E] = object
+      case kind: ResultKind
+      of Ok:
+        okVal: T
+      of Error:
+        errVal: E
+
+  proc err[T, E](myParam: E): Result[T, E] =
+    Result[T, E](kind : Error, errVal : myParam)
+
+  proc doStuff(): Result[int, string] = 
+    err("Error")
+
+  let res = doStuff()
+  doAssert res.kind == Error
+  doAssert res.errVal == "Error"

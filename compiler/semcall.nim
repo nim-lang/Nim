@@ -564,7 +564,7 @@ proc getCallLineInfo(n: PNode): TLineInfo =
 
 proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
   ## Helper proc to inherit bound generic parameters from expectedType into x.
-  ## Does nothing if 'inferGenericTypes' isn't in c.features
+  ## Does nothing if 'inferGenericTypes' isn't in c.features.
   if inferGenericTypes notin c.features: return
   if expectedType == nil or x.callee[0] == nil: return # required for inference
 
@@ -578,7 +578,7 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
     ## skips types and puts the skipped version on stack
     # It might make sense to skip here one by one. It's not part of the main
     #  type reduction because the right side normally won't be skipped
-    const toSkip = { tyVar, tyLent, tyStatic, tyCompositeTypeClass }
+    const toSkip = { tyVar, tyLent, tyStatic, tyCompositeTypeClass, tySink }
     let
       x = a.skipTypes(toSkip)
       y = if a.kind notin toSkip: b
@@ -603,7 +603,9 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
         if t[i] == nil or u[i] == nil: return
         stackPut(t[i], u[i])
     of tyGenericParam:
-      if x.bindings.idTableGet(t) != nil: return
+      let prebound = x.bindings.idTableGet(t).PType
+      if prebound != nil:
+        continue # Skip param, already bound
 
       # fully reduced generic param, bind it
       if t notin flatUnbound:
@@ -611,6 +613,7 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
         flatBound.add(u)
     else:
       discard
+  # update bindings
   for i in 0 ..< flatUnbound.len():
     x.bindings.idTablePut(flatUnbound[i], flatBound[i])
 
