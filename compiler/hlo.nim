@@ -73,7 +73,7 @@ proc hlo(c: PContext, n: PNode): PNode =
   else:
     if n.kind in {nkFastAsgn, nkAsgn, nkSinkAsgn, nkIdentDefs, nkVarTuple} and
         n[0].kind == nkSym and
-        {sfGlobal, sfPure} * n[0].sym.flags == {sfGlobal, sfPure}:
+        {sfGlobal, sfPure} <= n[0].sym.flags:
       # do not optimize 'var g {.global} = re(...)' again!
       return n
     result = applyPatterns(c, n)
