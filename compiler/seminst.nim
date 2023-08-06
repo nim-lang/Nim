@@ -76,9 +76,12 @@ proc sameInstantiation(a, b: TInstantiation): bool =
                                    ExactGcSafety,
                                    PickyCAliases}): return
     result = true
+  else:
+    result = false
 
 proc genericCacheGet(g: ModuleGraph; genericSym: PSym, entry: TInstantiation;
                      id: CompilesId): PSym =
+  result = nil
   for inst in procInstCacheItems(g, genericSym):
     if (inst.compilesId == 0 or inst.compilesId == id) and sameInstantiation(entry, inst[]):
       return inst.sym
@@ -171,7 +174,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   internalAssert c.config, header.kind == tyGenericInvocation
 
   var
-    cl: TReplTypeVars
+    cl: TReplTypeVars = default(TReplTypeVars)
 
   initIdTable(cl.symMap)
   initIdTable(cl.localCache)

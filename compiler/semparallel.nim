@@ -184,7 +184,10 @@ proc stride(c: AnalysisCtx; n: PNode): BiggestInt =
     let s = c.lookupSlot(n.sym)
     if s >= 0 and c.locals[s].stride != nil:
       result = c.locals[s].stride.intVal
+    else:
+      result = 0
   else:
+    result = 0
     for i in 0..<n.safeLen: result += stride(c, n[i])
 
 proc subStride(c: AnalysisCtx; n: PNode): PNode =

@@ -40,10 +40,14 @@ proc isExportedToC(c: var AliveContext; g: PackedModuleGraph; symId: int32): boo
     if ({sfExportc, sfCompilerProc} * flags != {}) or
         (symPtr.kind == skMethod):
       result = true
+    else:
+      result = false
       # XXX: This used to be a condition to:
       #  (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
     if sfCompilerProc in flags:
       c.compilerProcs[g[c.thisModule].fromDisk.strings[symPtr.name]] = (c.thisModule, symId)
+  else:
+    result = false
 
 template isNotGeneric(n: NodePos): bool = ithSon(tree, n, genericParamsPos).kind == nkEmpty
 

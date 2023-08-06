@@ -115,6 +115,7 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
     for i in 0..<n.safeLen: deps(n[i])
 
 proc hasIncludes(n:PNode): bool =
+  result = false
   for a in n:
     if a.kind == nkIncludeStmt:
       return true
@@ -268,6 +269,7 @@ proc hasCommand(n: DepN): bool =
   result = bool(n.hCmd)
 
 proc hasAccQuoted(n: PNode): bool =
+  result = false
   if n.kind == nkAccQuoted:
     return true
   for a in n:
@@ -283,6 +285,7 @@ proc hasAccQuotedDef(n: PNode): bool =
   of extendedProcDefs:
     result = n[0].hasAccQuoted
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
+    result = false
     for a in n:
       if hasAccQuotedDef(a):
         return true
@@ -303,6 +306,7 @@ proc hasBody(n: PNode): bool =
   of extendedProcDefs:
     result = n[^1].kind == nkStmtList
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
+    result = false
     for a in n:
       if a.hasBody:
         return true
@@ -315,6 +319,7 @@ proc hasBody(n: DepN): bool =
   result = bool(n.hB)
 
 proc intersects(s1, s2: IntSet): bool =
+  result = false
   for a in s1:
     if s2.contains(a):
       return true
@@ -393,6 +398,7 @@ proc strongConnect(v: var DepN, idx: var int, s: var seq[DepN],
 proc getStrongComponents(g: var DepG): seq[seq[DepN]] =
   ## Tarjan's algorithm. Performs a topological sort
   ## and detects strongly connected components.
+  result = @[]
   var s: seq[DepN]
   var idx = 0
   for v in g.mitems:
@@ -402,6 +408,7 @@ proc getStrongComponents(g: var DepG): seq[seq[DepN]] =
 proc hasForbiddenPragma(n: PNode): bool =
   # Checks if the tree node has some pragmas that do not
   # play well with reordering, like the push/pop pragma
+  result = false
   for a in n:
     if a.kind == nkPragma and a[0].kind == nkIdent and
         a[0].ident.s == "push":

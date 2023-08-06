@@ -421,6 +421,7 @@ type
 
 proc parseNimVersion*(a: string): NimVer =
   # could be moved somewhere reusable
+  result = default(NimVer)
   if a.len > 0:
     let b = a.split(".")
     assert b.len == 3, a
@@ -657,7 +658,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "nimrawsetjmp":
       result = conf.target.targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
                             osDragonfly, osMacosx}
-    else: discard
+    else: result = false
 
 template quitOrRaise*(conf: ConfigRef, msg = "") =
   # xxx in future work, consider whether to also intercept `msgQuit` calls
@@ -883,6 +884,7 @@ const
   stdPrefix = "std/"
 
 proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle = false): RelativeFile =
+  result = RelativeFile("")
   let f = $f
   if isTitle:
     for dir in stdlibDirs:
@@ -918,6 +920,7 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
     result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
   else:
     if m.startsWith(stdPrefix):
+      result = AbsoluteFile("")
       let stripped = m.substr(stdPrefix.len)
       for candidate in stdlibDirs:
         let path = (conf.libpath.string / candidate / stripped)

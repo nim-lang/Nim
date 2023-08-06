@@ -170,9 +170,11 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
 
 proc newCandidate*(ctx: PContext, callee: PSym,
                    binding: PNode, calleeScope = -1): TCandidate =
+  result = default(TCandidate)
   initCandidate(ctx, result, callee, binding, calleeScope)
 
 proc newCandidate*(ctx: PContext, callee: PType): TCandidate =
+  result = default(TCandidate)
   initCandidate(ctx, result, callee)
 
 proc copyCandidate(a: var TCandidate, b: TCandidate) =
@@ -214,6 +216,7 @@ proc sumGeneric(t: PType): int =
   # count the "genericness" so that Foo[Foo[T]] has the value 3
   # and Foo[T] has the value 2 so that we know Foo[Foo[T]] is more
   # specific than Foo[T].
+  result = 0
   var t = t
   var isvar = 0
   while true:
@@ -344,6 +347,7 @@ template describeArgImpl(c: PContext, n: PNode, i: int, startIdx = 1; prefer = p
   result.add argTypeToString(arg, prefer)
 
 proc describeArg*(c: PContext, n: PNode, i: int, startIdx = 1; prefer = preferName): string =
+  result = ""
   describeArgImpl(c, n, i, startIdx, prefer)
 
 proc describeArgs*(c: PContext, n: PNode, startIdx = 1; prefer = preferName): string =
@@ -440,6 +444,8 @@ proc isConvertibleToRange(c: PContext, f, a: PType): bool =
     # `isIntLit` is correct and should be used above as well, see PR:
     # https://github.com/nim-lang/Nim/pull/11197
     result = isIntLit(a) or a.kind in {tyFloat..tyFloat128}
+  else:
+    result = false
 
 proc handleFloatRange(f, a: PType): TTypeRelation =
   if a.kind == f.kind:
@@ -506,6 +512,7 @@ proc skipToObject(t: PType; skipped: var SkippedPtr): PType =
     else:
       break
   if r.kind == tyObject and ptrs <= 1: result = r
+  else: result = nil
 
 proc isGenericSubtype(c: var TCandidate; a, f: PType, d: var int, fGenericOrigin: PType): bool =
   assert f.kind in {tyGenericInst, tyGenericInvocation, tyGenericBody}
@@ -528,6 +535,8 @@ proc isGenericSubtype(c: var TCandidate; a, f: PType, d: var int, fGenericOrigin
     genericParamPut(c, last, fGenericOrigin)
     d = depth
     result = true
+  else:
+    result = false
 
 proc minRel(a, b: TTypeRelation): TTypeRelation =
   if a <= b: result = a
@@ -609,6 +618,8 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     if reverseRel >= isGeneric:
       result = isInferred
       #inc c.genericMatches
+    else:
+      result = isNone
   else:
     # Note that this typeRel call will save f's resolved type into c.bindings
     # if f is metatype.
@@ -656,7 +667,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 
   of tyNil:
     result = f.allowsNil
-  else: discard
+  else: result = isNone
 
 proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
   template checkRange[T](a0, a1, f0, f1: T): TTypeRelation =
@@ -701,14 +712,14 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
     typeClass[0][0] = prevCandidateType
     closeScope(c)
 
-  var typeParams: seq[(PSym, PType)]
+  var typeParams: seq[(PSym, PType)] = @[]
 
   if ff.kind == tyUserTypeClassInst:
     for i in 1..<(ff.len - 1):
       var
         typeParamName = ff.base[i-1].sym.name
         typ = ff[i]
-        param: PSym
+        param: PSym = nil
         alreadyBound = PType(idTableGet(m.bindings, typ))
 
       if alreadyBound != nil: typ = alreadyBound
@@ -748,8 +759,8 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
       addDecl(c, param)
 
   var
-    oldWriteHook: typeof(m.c.config.writelnHook)
-    diagnostics: seq[string]
+    oldWriteHook = default typeof(m.c.config.writelnHook)
+    diagnostics: seq[string] = @[]
     errorPrefix: string
     flags: TExprFlags = {}
     collectDiagnostics = m.diagnosticsEnabled or
@@ -923,6 +934,7 @@ proc inferStaticsInRange(c: var TCandidate,
     else:
       failureToInferStaticParam(c.c.config, exp)
 
+  result = isNone
   if lowerBound.kind == nkIntLit:
     if upperBound.kind == nkIntLit:
       if lengthOrd(c.c.config, concrete) == upperBound.intVal - lowerBound.intVal + 1:
@@ -2465,7 +2477,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     a = 1 # iterates over the actual given arguments
     f = if m.callee.kind != tyGenericBody: 1
         else: 0 # iterates over formal parameters
-    arg: PNode # current prepared argument
+    arg: PNode = nil # current prepared argument
     formalLen = m.callee.n.len
     formal = if formalLen > 1: m.callee.n[1].sym else: nil # current routine parameter
     container: PNode = nil # constructed container
@@ -2726,6 +2738,7 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
   else:
     if f.kind in {tyVar}: f = f.lastSon
   if typeRel(m, f, t) == isNone:
+    result = nil
     localError(c.config, info, "cannot instantiate: '" & dc.name.s & "'")
   else:
     result = c.semGenerateInstance(c, dc, m.bindings, info)

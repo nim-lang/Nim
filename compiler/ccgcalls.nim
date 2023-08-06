@@ -46,6 +46,7 @@ proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
         # cannot analyse the location; assume the worst
         return true
 
+  result = false
   if le != nil:
     for i in 1..<ri.len:
       let r = ri[i]
@@ -95,7 +96,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         pl.add(");\n")
         line(p, cpsStmts, pl)
       else:
-        var tmp: TLoc
+        var tmp: TLoc = default(TLoc)
         getTemp(p, typ[0], tmp, needsInit=true)
         pl.add(addrLoc(p.config, tmp))
         pl.add(");\n")
@@ -132,9 +133,9 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         genAssignment(p, d, list, {}) # no need for deep copying
         if canRaise: raiseExit(p)
       else:
-        var tmp: TLoc
+        var tmp: TLoc = default(TLoc)
         getTemp(p, typ[0], tmp, needsInit=true)
-        var list: TLoc
+        var list: TLoc = default(TLoc)
         initLoc(list, locCall, d.lode, OnUnknown)
         list.r = pl
         genAssignment(p, tmp, list, {}) # no need for deep copying
@@ -157,7 +158,7 @@ proc reifiedOpenArray(n: PNode): bool {.inline.} =
     result = true
 
 proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareForMutation = false): (Rope, Rope) =
-  var a, b, c: TLoc
+  var a, b, c: TLoc = default(TLoc)
   initLocExpr(p, q[1], a)
   initLocExpr(p, q[2], b)
   initLocExpr(p, q[3], c)
@@ -205,6 +206,7 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareF
                   [rdLoc(a), rdLoc(b), dataField(p), dest, dataFieldAccessor(p, rdLoc(a))],
                 lengthExpr)
   else:
+    result = ("", "")
     internalError(p.config, "openArrayLoc: " & typeToString(a.t))
 
 proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
@@ -224,7 +226,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
     let (x, y) = genOpenArraySlice(p, q, formalType, n.typ[0])
     result.add x & ", " & y
   else:
-    var a: TLoc
+    var a: TLoc = default(TLoc)
     initLocExpr(p, if n.kind == nkHiddenStdConv: n[1] else: n, a)
     case skipTypes(a.t, abstractVar+{tyStatic}).kind
     of tyOpenArray, tyVarargs:
@@ -271,22 +273,24 @@ proc withTmpIfNeeded(p: BProc, a: TLoc, needsTmp: bool): TLoc =
   # Also don't regress for non ARC-builds, too risky.
   if needsTmp and a.lode.typ != nil and p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and
       getSize(p.config, a.lode.typ) < 1024:
+    result = default(TLoc)
     getTemp(p, a.lode.typ, result, needsInit=false)
     genAssignment(p, result, a, {})
   else:
     result = a
 
 proc literalsNeedsTmp(p: BProc, a: TLoc): TLoc =
+  result = default(TLoc)
   getTemp(p, a.lode.typ, result, needsInit=false)
   genAssignment(p, result, a, {})
 
 proc genArgStringToCString(p: BProc, n: PNode; result: var Rope; needsTmp: bool) {.inline.} =
-  var a: TLoc
+  var a: TLoc = default(TLoc)
   initLocExpr(p, n[0], a)
   appcg(p.module, result, "#nimToCStringConv($1)", [withTmpIfNeeded(p, a, needsTmp).rdLoc])
 
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; needsTmp = false) =
-  var a: TLoc
+  var a: TLoc = default(TLoc)
   if n.kind == nkStringToCString:
     genArgStringToCString(p, n, result, needsTmp)
   elif skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
@@ -317,7 +321,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
   #assert result != nil
 
 proc genArgNoParam(p: BProc, n: PNode; result: var Rope; needsTmp = false) =
-  var a: TLoc
+  var a: TLoc = default(TLoc)
   if n.kind == nkStringToCString:
     genArgStringToCString(p, n, result, needsTmp)
   else:
@@ -327,6 +331,7 @@ proc genArgNoParam(p: BProc, n: PNode; result: var Rope; needsTmp = false) =
 import aliasanalysis
 
 proc potentialAlias(n: PNode, potentialWrites: seq[PNode]): bool =
+  result = false
   for p in potentialWrites:
     if p.aliases(n) != no or n.aliases(p) != no:
       return true
@@ -382,13 +387,13 @@ proc genParams(p: BProc, ri: PNode, typ: PType; result: var Rope) =
   # We must generate temporaries in cases like #14396
   # to keep the strict Left-To-Right evaluation
   var needTmp = newSeq[bool](ri.len - 1)
-  var potentialWrites: seq[PNode]
+  var potentialWrites: seq[PNode] = @[]
   for i in countdown(ri.len - 1, 1):
     if ri[i].skipTrivialIndirections.kind == nkSym:
       needTmp[i - 1] = potentialAlias(ri[i], potentialWrites)
     else:
       #if not ri[i].typ.isCompileTimeOnly:
-      var potentialReads: seq[PNode]
+      var potentialReads: seq[PNode] = @[]
       getPotentialReads(ri[i], potentialReads)
       for n in potentialReads:
         if not needTmp[i - 1]:
@@ -420,7 +425,7 @@ proc addActualSuffixForHCR(res: var Rope, module: PSym, sym: PSym) =
     res = res & "_actual".rope
 
 proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
-  var op: TLoc
+  var op: TLoc = default(TLoc)
   # this is a hotspot in the compiler
   initLocExpr(p, ri[0], op)
   # getUniqueType() is too expensive here:
@@ -444,7 +449,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   const PatProc = "$1.ClE_0? $1.ClP_0($3$1.ClE_0):(($4)($1.ClP_0))($2)"
   const PatIter = "$1.ClP_0($3$1.ClE_0)" # we know the env exists
 
-  var op: TLoc
+  var op: TLoc = default(TLoc)
   initLocExpr(p, ri[0], op)
 
   # getUniqueType() is too expensive here:
@@ -478,7 +483,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
         genCallPattern()
         if canRaise: raiseExit(p)
       else:
-        var tmp: TLoc
+        var tmp: TLoc = default(TLoc)
         getTemp(p, typ[0], tmp, needsInit=true)
         pl.add(addrLoc(p.config, tmp))
         genCallPattern()
@@ -487,7 +492,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     elif isHarmlessStore(p, canRaise, d):
       if d.k == locNone: getTemp(p, typ[0], d)
       assert(d.t != nil)        # generate an assignment to d:
-      var list: TLoc
+      var list: TLoc = default(TLoc)
       initLoc(list, locCall, d.lode, OnUnknown)
       if tfIterator in typ.flags:
         list.r = PatIter % [rdLoc(op), pl, pl.addComma, rawProc]
@@ -496,10 +501,10 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       genAssignment(p, d, list, {}) # no need for deep copying
       if canRaise: raiseExit(p)
     else:
-      var tmp: TLoc
+      var tmp: TLoc = default(TLoc)
       getTemp(p, typ[0], tmp)
       assert(d.t != nil)        # generate an assignment to d:
-      var list: TLoc
+      var list: TLoc = default(TLoc)
       initLoc(list, locCall, d.lode, OnUnknown)
       if tfIterator in typ.flags:
         list.r = PatIter % [rdLoc(op), pl, pl.addComma, rawProc]
@@ -668,7 +673,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Ro
       inc j
       inc i
     of '\'':
-      var idx, stars: int
+      var idx, stars: int = 0
       if scanCppGenericSlot(pat, i, idx, stars):
         var t = resolveStarsInCppType(typ, idx, stars)
         if t == nil: result.add("void")
@@ -682,7 +687,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Ro
         result.add(substr(pat, start, i - 1))
 
 proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
-  var op: TLoc
+  var op: TLoc = default(TLoc)
   initLocExpr(p, ri[0], op)
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInst)
@@ -728,7 +733,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
 proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   # generates a crappy ObjC call
-  var op: TLoc
+  var op: TLoc = default(TLoc)
   initLocExpr(p, ri[0], op)
   var pl = "["
   # getUniqueType() is too expensive here:
@@ -777,7 +782,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
         pl.add("];\n")
         line(p, cpsStmts, pl)
       else:
-        var tmp: TLoc
+        var tmp: TLoc = default(TLoc)
         getTemp(p, typ[0], tmp, needsInit=true)
         pl.add(addrLoc(p.config, tmp))
         pl.add("];\n")
@@ -787,7 +792,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       pl.add("]")
       if d.k == locNone: getTemp(p, typ[0], d)
       assert(d.t != nil)        # generate an assignment to d:
-      var list: TLoc
+      var list: TLoc = default(TLoc)
       initLoc(list, locCall, ri, OnUnknown)
       list.r = pl
       genAssignment(p, d, list, {}) # no need for deep copying

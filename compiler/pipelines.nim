@@ -25,6 +25,8 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
   of JSgenPass:
     when not defined(leanCompiler):
       result = processJSCodeGen(bModule, semNode)
+    else:
+      result = nil
   of GenDependPass:
     result = addDotDependency(bModule, semNode)
   of SemPass:
@@ -32,12 +34,17 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
   of Docgen2Pass, Docgen2TexPass:
     when not defined(leanCompiler):
       result = processNode(bModule, semNode)
+    else:
+      result = nil
   of Docgen2JsonPass:
     when not defined(leanCompiler):
       result = processNodeJson(bModule, semNode)
+    else:
+      result = nil
   of EvalPass, InterpreterPass:
     result = interpreterCode(bModule, semNode)
   of NonePass:
+    result = nil
     doAssert false, "use setPipeLinePass to set a proper PipelinePass"
 
 proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
@@ -217,13 +224,13 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
 
   template processModuleAux(moduleStatus) =
     onProcessing(graph, fileIdx, moduleStatus, fromModule = fromModule)
-    var s: PLLStream
+    var s: PLLStream = nil
     if sfMainModule in flags:
       if graph.config.projectIsStdin: s = stdin.llStreamOpen
       elif graph.config.projectIsCmd: s = llStreamOpen(graph.config.cmdInput)
     discard processPipelineModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
-    var cachedModules: seq[FileIndex]
+    var cachedModules: seq[FileIndex] = @[]
     result = moduleFromRodFile(graph, fileIdx, cachedModules)
     let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
     if result == nil:

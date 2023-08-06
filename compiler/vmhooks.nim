@@ -69,7 +69,9 @@ proc getVar*(a: VmArgs; i: Natural): PNode =
   case p.kind
   of rkRegisterAddr: result = p.regAddr.node
   of rkNodeAddr: result = p.nodeAddr[]
-  else: doAssert false, $p.kind
+  else:
+    result = nil
+    doAssert false, $p.kind
 
 proc getNodeAddr*(a: VmArgs; i: Natural): PNode =
   let nodeAddr = getX(rkNodeAddr, nodeAddr)

@@ -20,9 +20,11 @@ proc evalPattern(c: PContext, n, orig: PNode): PNode =
   # we need to ensure that the resulting AST is semchecked. However, it's
   # awful to semcheck before macro invocation, so we don't and treat
   # templates and macros as immediate in this context.
-  var rule: string
-  if c.config.hasHint(hintPattern):
-    rule = renderTree(n, {renderNoComments})
+  var rule: string =
+    if c.config.hasHint(hintPattern):
+      renderTree(n, {renderNoComments})
+    else:
+      ""
   let s = n[0].sym
   case s.kind
   of skMacro:

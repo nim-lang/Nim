@@ -34,6 +34,7 @@ type
     spNone, spGenSym, spInject
 
 proc symBinding(n: PNode): TSymBinding =
+  result = spNone
   for i in 0..<n.len:
     var it = n[i]
     var key = if it.kind == nkExprColonExpr: it[0] else: it

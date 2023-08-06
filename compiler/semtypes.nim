@@ -57,10 +57,10 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     # don't create an empty tyEnum; fixes #3052
     return errorType(c)
   var
-    counter, x: BiggestInt
-    e: PSym
-    base: PType
-    identToReplace: ptr PNode
+    counter, x: BiggestInt = 0
+    e: PSym = nil
+    base: PType = nil
+    identToReplace: ptr PNode = nil
   counter = 0
   base = nil
   result = newOrPrevType(tyEnum, prev, c)
@@ -276,7 +276,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   range[0] = semExprWithType(c, n[1], {efDetermineType})
   range[1] = semExprWithType(c, n[2], {efDetermineType})
 
-  var rangeT: array[2, PType]
+  var rangeT: array[2, PType] = default(array[2, PType])
   for i in 0..1:
     rangeT[i] = range[i].typ.skipTypes({tyStatic}).skipIntLit(c.idgen)
 
@@ -494,6 +494,7 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
         else:
           localError(c.config, n[0].info, errInvalidVisibilityX % renderTree(n[0]))
     else:
+      result = nil
       illFormedAst(n, c.config)
   else:
     result = newSymG(kind, n, c)
@@ -881,6 +882,7 @@ proc tryAddInheritedFields(c: PContext, check: var IntSet, pos: var int,
     result = true
 
 proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType =
+  result = nil
   if n.len == 0:
     return newConstraint(c, tyObject)
   var check = initIntSet()
@@ -1000,6 +1002,7 @@ proc findEnforcedStaticType(t: PType): PType =
   # This handles types such as `static[T] and Foo`,
   # which are subset of `static[T]`, hence they could
   # be treated in the same way
+  result = nil
   if t == nil: return nil
   if t.kind == tyStatic: return t
   if t.kind == tyAnd:
@@ -1099,13 +1102,16 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       let t = c.newTypeWithSons(tyTypeDesc, @[paramType.base])
       incl t.flags, tfCheckedForDestructor
       result = addImplicitGeneric(c, t, paramTypId, info, genericParams, paramName)
-
+    else:
+      result = nil
   of tyDistinct:
     if paramType.len == 1:
       # disable the bindOnce behavior for the type class
       result = recurse(paramType.base, true)
-
+    else:
+      result = nil
   of tyTuple:
+    result = nil
     for i in 0..<paramType.len:
       let t = recurse(paramType[i])
       if t != nil:
@@ -1128,6 +1134,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                                   @[newTypeS(paramType.kind, c)])
       result = addImplicitGeneric(c, typ, paramTypId, info, genericParams, paramName)
     else:
+      result = nil
       for i in 0..<paramType.len:
         if paramType[i] == paramType:
           globalError(c.config, info, errIllegalRecursionInTypeX % typeToString(paramType))
@@ -1161,6 +1168,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result = addImplicitGeneric(c, result, paramTypId, info, genericParams, paramName)
 
   of tyGenericInst:
+    result = nil
     if paramType.lastSon.kind == tyUserTypeClass:
       var cp = copyType(paramType, nextTypeId c.idgen, getCurrOwner(c))
       copyTypeProps(c.graph, c.idgen.module, cp, paramType)
@@ -1182,6 +1190,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       #result.shouldHaveMeta
 
   of tyGenericInvocation:
+    result = nil
     for i in 1..<paramType.len:
       #if paramType[i].kind != tyTypeDesc:
       let lifted = recurse(paramType[i])
@@ -1205,13 +1214,14 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
         info, genericParams, paramName)
 
   of tyGenericParam:
+    result = nil
     markUsed(c, paramType.sym.info, paramType.sym)
     onUse(paramType.sym.info, paramType.sym)
     if tfWildcard in paramType.flags:
       paramType.flags.excl tfWildcard
       paramType.sym.transitionGenericParamToType()
 
-  else: discard
+  else: result = nil
 
 proc semParamType(c: PContext, n: PNode, constraint: var PNode): PType =
   ## Semchecks the type of parameters.
@@ -1369,9 +1379,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       onDef(a[j].info, arg)
       a[j] = newSymNode(arg)
 
-  var r: PType
-  if n[0].kind != nkEmpty:
-    r = semTypeNode(c, n[0], nil)
+  var r: PType = 
+    if n[0].kind != nkEmpty:
+      semTypeNode(c, n[0], nil)
+    else:
+      nil
 
   if r != nil and kind in {skMacro, skTemplate} and r.kind == tyTyped:
     # XXX: To implement the proposed change in the warning, just
@@ -1568,6 +1580,8 @@ proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
     result.sym = prev.sym
     if prev.kind != tyGenericBody:
       assignType(prev, result)
+  else:
+    result = nil
 
 proc fixupTypeOf(c: PContext, prev: PType, typExpr: PNode) =
   if prev != nil:
@@ -1677,6 +1691,7 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
   closeScope(c)
 
 proc applyTypeSectionPragmas(c: PContext; pragmas, operand: PNode): PNode =
+  result = nil
   for p in pragmas:
     let key = if p.kind in nkPragmaCallKinds and p.len >= 1: p[0] else: p
 
@@ -2251,7 +2266,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
     of nkIdentDefs:
       var def = a[^1]
       let constraint = a[^2]
-      var typ: PType
+      var typ: PType = nil
 
       if constraint.kind != nkEmpty:
         typ = semTypeNode(c, constraint, nil)

@@ -96,6 +96,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     result.typ = formal
   elif arg.kind in nkSymChoices and formal.skipTypes(abstractInst).kind == tyEnum:
     # Pick the right 'sym' from the sym choice by looking at 'formal' type:
+    result = nil
     for ch in arg:
       if sameType(ch.typ, formal):
         return getConstExpr(c.module, ch, c.idgen, c.graph)
@@ -149,7 +150,7 @@ proc commonType*(c: PContext; x, y: PType): PType =
     let idx = ord(b.kind == tyArray)
     if a[idx].kind == tyEmpty: return y
   elif a.kind == tyTuple and b.kind == tyTuple and a.len == b.len:
-    var nt: PType
+    var nt: PType = nil
     for i in 0..<a.len:
       let aEmpty = isEmptyContainer(a[i])
       let bEmpty = isEmptyContainer(b[i])
@@ -305,6 +306,7 @@ when false:
       result = isOpImpl(c, n)
 
 proc hasCycle(n: PNode): bool =
+  result = false
   incl n.flags, nfNone
   for i in 0..<n.safeLen:
     if nfNone in n[i].flags or hasCycle(n[i]):
@@ -539,6 +541,7 @@ proc setGenericParamsMisc(c: PContext; n: PNode) =
     n[miscPos][1] = orig
 
 proc caseBranchMatchesExpr(branch, matched: PNode): bool =
+  result = false
   for i in 0 ..< branch.len-1:
     if branch[i].kind == nkRange:
       if overlap(branch[i], matched): return true
@@ -546,6 +549,7 @@ proc caseBranchMatchesExpr(branch, matched: PNode): bool =
       return true
 
 proc pickCaseBranchIndex(caseExpr, matched: PNode): int =
+  result = 0
   let endsWithElse = caseExpr[^1].kind == nkElse
   for i in 1..<caseExpr.len - endsWithElse.int:
     if caseExpr[i].caseBranchMatchesExpr(matched):
@@ -560,6 +564,7 @@ proc defaultNodeField(c: PContext, a: PNode, checkDefault: bool): PNode
 const defaultFieldsSkipTypes = {tyGenericInst, tyAlias, tySink}
 
 proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool, checkDefault: bool): seq[PNode] =
+  result = @[]
   case recNode.kind
   of nkRecList:
     for field in recNode:
@@ -592,6 +597,7 @@ proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool, ch
     doAssert false
 
 proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, checkDefault: bool): seq[PNode] =
+  result = @[]
   case recNode.kind
   of nkRecList:
     for field in recNode:
@@ -635,6 +641,8 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
       asgnExpr.typ = aTyp
       asgnExpr.sons.add child
       result = semExpr(c, asgnExpr)
+    else:
+      result = nil
   elif aTypSkip.kind == tyArray:
     let child = defaultNodeField(c, a, aTypSkip[1], checkDefault)
 
@@ -646,6 +654,8 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
               node
                 ))
       result.typ = aTyp
+    else:
+      result = nil
   elif aTypSkip.kind == tyTuple:
     var hasDefault = false
     if aTypSkip.n != nil:
@@ -655,6 +665,12 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
         result.typ = aTyp
         result.sons.add children
         result = semExpr(c, result)
+      else:
+        result = nil
+    else:
+      result = nil
+  else:
+    result = nil
 
 proc defaultNodeField(c: PContext, a: PNode, checkDefault: bool): PNode =
   result = defaultNodeField(c, a, a.typ, checkDefault)
@@ -714,17 +730,19 @@ proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
         break
   case n.kind
   of nkImportStmt:
+    result = false
     for x in n:
       if x.kind == nkIdent:
         let f = checkModuleName(g.config, x, false)
         if f == g.systemModule.info.fileIndex:
           return true
   of nkImportExceptStmt, nkFromStmt:
+    result = false
     if n[0].kind == nkIdent:
       let f = checkModuleName(g.config, n[0], false)
       if f == g.systemModule.info.fileIndex:
         return true
-  else: discard
+  else: result = false
 
 proc isEmptyTree(n: PNode): bool =
   case n.kind

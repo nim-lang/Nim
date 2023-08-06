@@ -36,6 +36,7 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
         localError(info, errInheritanceOnlyWithNonFinalObjects)
 
 proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
+  result = nil
   let genericTyp = key[0]
   if not (genericTyp.kind == tyGenericBody and
       genericTyp.sym != nil): return
@@ -100,6 +101,7 @@ proc newTypeMapLayer*(cl: var TReplTypeVars): LayeredIdTable =
   initIdTable(result.topLayer)
 
 proc lookup(typeMap: LayeredIdTable, key: PType): PType =
+  result = nil
   var tm = typeMap
   while tm != nil:
     result = PType(idTableGet(tm.topLayer, key))
@@ -683,6 +685,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
 proc initTypeVars*(p: PContext, typeMap: LayeredIdTable, info: TLineInfo;
                    owner: PSym): TReplTypeVars =
+  result = default(TReplTypeVars)
   initIdTable(result.symMap)
   initIdTable(result.localCache)
   result.typeMap = typeMap

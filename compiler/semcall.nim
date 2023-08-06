@@ -82,7 +82,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
 
   # starts at 1 because 0 is already done with setup, only needs checking
   var nextSymIndex = 1
-  var z: TCandidate # current candidate
+  var z: TCandidate = default(TCandidate) # current candidate
   while true:
     determineType(c, sym)
     initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
@@ -215,7 +215,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
 
   var maybeWrongSpace = false
 
-  var candidatesAll: seq[string]
+  var candidatesAll: seq[string] = @[]
   var candidates = ""
   var skipped = 0
   for err in errors:
@@ -370,6 +370,7 @@ proc bracketNotFoundError(c: PContext; n: PNode) =
     notFoundError(c, n, errors)
 
 proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
+  result = ""
   if c.compilesContextId > 0:
     # we avoid running more diagnostic when inside a `compiles(expr)`, to
     # errors while running diagnostic (see test D20180828T234921), and
@@ -405,8 +406,9 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds, flags: TExprFlags,
                       errors: var CandidateErrors,
                       errorsEnabled: bool): TCandidate =
+  result = default(TCandidate)
   var initialBinding: PNode
-  var alt: TCandidate
+  var alt: TCandidate = default(TCandidate)
   var f = n[0]
   if f.kind == nkBracketExpr:
     # fill in the bindings:
@@ -569,8 +571,8 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
   if expectedType == nil or x.callee[0] == nil: return # required for inference
 
   var
-    flatUnbound: seq[PType]
-    flatBound: seq[PType]
+    flatUnbound: seq[PType] = @[]
+    flatBound: seq[PType] = @[]
   # seq[(result type, expected type)]
   var typeStack = newSeq[(PType, PType)]()
 
@@ -694,7 +696,10 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       # this time enabling all the diagnostic output (this should fail again)
       result = semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
     elif efNoUndeclared notin flags:
+      result = nil
       notFoundError(c, n, errors)
+    else:
+      result = nil
 
 proc explicitGenericInstError(c: PContext; n: PNode): PNode =
   localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n))
@@ -771,6 +776,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   # for borrowing the sym in the symbol table is returned, else nil.
   # New approach: generate fn(x, y, z) where x, y, z have the proper types
   # and use the overloading resolution mechanism:
+  result = nil
   var call = newNodeI(nkCall, fn.info)
   var hasDistinct = false
   call.add(newIdentNode(fn.name, fn.info))
