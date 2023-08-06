@@ -212,7 +212,7 @@ when defined(nimIntHash1):
 else:
   proc hash*[T: Ordinal|enum](x: T): Hash {.inline.} =
     ## Efficient hashing of integers.
-    hashWangYi1(uint64(ord(x)))
+    hashWangYi1(cast[uint64](ord(x)))
 
 when defined(js):
   var objectID = 0
