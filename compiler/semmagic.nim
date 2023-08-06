@@ -656,10 +656,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if not checkIsolate(n[1]):
       localError(c.config, n.info, "expression cannot be isolated: " & $n[1])
     result = n
-  of mPred:
-    if n[1].typ.skipTypes(abstractInst).kind in {tyUInt..tyUInt64}:
-      n[0].sym.magic = mSubU
-    result = n
   of mPrivateAccess:
     result = semPrivateAccess(c, n)
   of mArrToSeq:

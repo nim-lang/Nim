@@ -676,8 +676,38 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
       applyFormat("modInt64($1, $2)", "$1 % $2")
     else:
       applyFormat("modInt($1, $2)", "Math.trunc($1 % $2)")
-  of mSucc: applyFormat("addInt($1, $2)", "($1 + $2)")
-  of mPred: applyFormat("subInt($1, $2)", "($1 - $2)")
+  of mSucc:
+    let typ = n[1].typ.skipTypes(abstractVarRange)
+    case typ.kind
+    of tyUInt..tyUInt32:
+      binaryUintExpr(p, n, r, "+")
+    of tyUInt64:
+      if optJsBigInt64 in p.config.globalOptions:
+        applyFormat("BigInt.asUintN(64, $1 + BigInt($2))")
+      else: binaryUintExpr(p, n, r, "+")
+    elif typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
+      if optOverflowCheck notin p.options:
+        applyFormat("BigInt.asIntN(64, $1 + BigInt($2))")
+      else: binaryExpr(p, n, r, "addInt64", "addInt64($1, BigInt($2))")
+    else:
+      if optOverflowCheck notin p.options: applyFormat("$1 + $2")
+      else: binaryExpr(p, n, r, "addInt", "addInt($1, $2)")
+  of mPred:
+    let typ = n[1].typ.skipTypes(abstractVarRange)
+    case typ.kind
+    of tyUInt..tyUInt32:
+      binaryUintExpr(p, n, r, "-")
+    of tyUInt64:
+      if optJsBigInt64 in p.config.globalOptions:
+        applyFormat("BigInt.asUintN(64, $1 - BigInt($2))")
+      else: binaryUintExpr(p, n, r, "-")
+    elif typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
+      if optOverflowCheck notin p.options:
+        applyFormat("BigInt.asIntN(64, $1 - BigInt($2))")
+      else: binaryExpr(p, n, r, "subInt64", "subInt64($1, BigInt($2))")
+    else:
+      if optOverflowCheck notin p.options: applyFormat("$1 - $2")
+      else: binaryExpr(p, n, r, "subInt", "subInt($1, $2)")
   of mAddF64: applyFormat("($1 + $2)", "($1 + $2)")
   of mSubF64: applyFormat("($1 - $2)", "($1 - $2)")
   of mMulF64: applyFormat("($1 * $2)", "($1 * $2)")
@@ -2346,7 +2376,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     of tyUInt64:
       if optJsBigInt64 in p.config.globalOptions:
         binaryExpr(p, n, r, "", "$1 = BigInt.asUintN(64, $3 - BigInt($2))", true)
-      else: binaryUintExpr(p, n, r, "+", true)
+      else: binaryUintExpr(p, n, r, "-", true)
     elif typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
       if optOverflowCheck notin p.options:
         binaryExpr(p, n, r, "", "$1 = BigInt.asIntN(64, $3 - BigInt($2))", true)
@@ -2564,12 +2594,19 @@ proc genRangeChck(p: PProc, n: PNode, r: var TCompRes, magic: string) =
   gen(p, n[0], r)
   let src = skipTypes(n[0].typ, abstractVarRange)
   let dest = skipTypes(n.typ, abstractVarRange)
-  if src.kind in {tyInt64, tyUInt64} and dest.kind notin {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
-    r.res = "Number($1)" % [r.res]
-  if optRangeCheck notin p.options or (dest.kind in {tyUInt..tyUInt64} and
-      checkUnsignedConversions notin p.config.legacyFeatures):
-    discard "XXX maybe emit masking instructions here"
+  if optRangeCheck notin p.options:
+    return
+  elif dest.kind in {tyUInt..tyUInt64} and checkUnsignedConversions notin p.config.legacyFeatures:
+    if src.kind in {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
+      r.res = "BigInt.asUintN($1, $2)" % [$(dest.size * 8), r.res]
+    else:
+      r.res = "BigInt.asUintN($1, BigInt($2))" % [$(dest.size * 8), r.res]
+    if not (dest.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions):
+      r.res = "Number($1)" % [r.res]
   else:
+    if src.kind in {tyInt64, tyUInt64} and dest.kind notin {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
+      # we do a range check anyway, so it's ok if the number gets rounded
+      r.res = "Number($1)" % [r.res]
     gen(p, n[1], a)
     gen(p, n[2], b)
     useMagic(p, "chckRange")
