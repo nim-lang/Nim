@@ -1355,17 +1355,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rc = instr.regC
       var raNode = regs[ra].regToNode
       if instr.opcode in {opcRangeChckU, opcURangeChckU}:
-        echo "making raNode unsigned"
         raNode.kind = nkUIntLit
-      echo "raNode: ", raNode
       var rbNode = regs[rb].regToNode
       var rcNode = regs[rc].regToNode
+      echo rcNode.kind, " ", rcNode.intVal
       if instr.opcode in {opcURangeChck, opcURangeChckU}:
-        echo "making range unsigned"
         rbNode.kind = nkUIntLit
-        rcNode.kind = nkUIntLit
-      echo "rbNode: ", rbNode
-      echo "rcNode: ", rcNode
+        rcNode.kind = nkUIntLit # TODO: somehow this converts -1 to 0?
+      echo rcNode.kind, " ", rcNode.intVal
       if not (leValueConv(rbNode, raNode) and
               leValueConv(raNode, rcNode)):
         stackTrace(c, tos, pc,
