@@ -1150,7 +1150,7 @@ proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 
 proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride, isMemberVirtual: var bool; isCtor: bool) =
-  var afterParams: string
+  var afterParams: string = ""
   if scanf(val, "$*($*)$s$*", name, params, afterParams):
     isFnConst = afterParams.find("const") > -1
     isOverride = afterParams.find("override") > -1
@@ -1181,12 +1181,12 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
     memberOp = "#->"
   var typDesc = getTypeDescWeak(m, typ, check, dkParam)
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
-  var name, params, rettype, superCall: string
-  var isFnConst, isOverride, isMemberVirtual: bool
+  var name, params, rettype, superCall: string = ""
+  var isFnConst, isOverride, isMemberVirtual: bool = false
   parseVFunctionDecl(prc.constraint.strVal, name, params, rettype, superCall, isFnConst, isOverride, isMemberVirtual, isCtor)
   genMemberProcParams(m, prc, superCall, rettype, name, params, check, true, false) 
   let isVirtual = sfVirtual in prc.flags or isMemberVirtual
-  var fnConst, override: string
+  var fnConst, override: string = ""
   if isCtor:
     name = typDesc
   if isFnConst:
