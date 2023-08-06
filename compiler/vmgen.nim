@@ -2207,7 +2207,20 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       tmp0 = c.genx(n[0])
       tmp1 = c.genx(n[1])
       tmp2 = c.genx(n[2])
-    c.gABC(n, opcRangeChck, tmp0, tmp1, tmp2)
+    let srcUnsigned = skipTypes(n[0].typ, abstractVarRange).kind in {tyUInt..tyUInt64}
+    let destUnsigned = skipTypes(n.typ, abstractVarRange).kind in {tyUInt..tyUInt64}
+    let opcode =
+      if destUnsigned:
+        if srcUnsigned:
+          opcURangeChckU
+        else:
+          opcURangeChck
+      else:
+        if srcUnsigned:
+          opcRangeChckU
+        else:
+          opcRangeChck
+    c.gABC(n, opcode, tmp0, tmp1, tmp2)
     c.freeTemp(tmp1)
     c.freeTemp(tmp2)
     if dest >= 0:

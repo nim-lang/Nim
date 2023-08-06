@@ -1349,14 +1349,22 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         regs[ra].intVal = parseBiggestFloat(regs[ra].node.strVal, rcAddr.floatVal)
 
-    of opcRangeChck:
+    of opcRangeChck, opcURangeChck, opcRangeChckU, opcURangeChckU:
       let rb = instr.regB
       let rc = instr.regC
-      if not (leValueConv(regs[rb].regToNode, regs[ra].regToNode) and
-              leValueConv(regs[ra].regToNode, regs[rc].regToNode)):
+      var raNode = regs[ra].regToNode
+      if instr.opcode in {opcRangeChckU, opcURangeChckU}:
+        raNode.kind = nkUIntLit
+      var rbNode = regs[rb].regToNode
+      var rcNode = regs[rc].regToNode
+      if instr.opcode in {opcURangeChck, opcURangeChckU}:
+        rbNode.kind = nkUIntLit
+        rcNode.kind = nkUIntLit
+      if not (leValueConv(rbNode, raNode) and
+              leValueConv(raNode, rcNode)):
         stackTrace(c, tos, pc,
           errIllegalConvFromXtoY % [
-             $regs[ra].regToNode, "[" & $regs[rb].regToNode & ".." & $regs[rc].regToNode & "]"])
+             $raNode, "[" & $rbNode & ".." & $rcNode & "]"])
     of opcIndCall, opcIndCallAsgn:
       # dest = call regStart, n; where regStart = fn, arg1, ...
       let rb = instr.regB
