@@ -1350,14 +1350,20 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].intVal = parseBiggestFloat(regs[ra].node.strVal, rcAddr.floatVal)
 
     of opcRangeChck, opcURangeChck, opcRangeChckU, opcURangeChckU:
+      echo "executing VM range check (", instr.opcode, ")"
       let rb = instr.regB
       let rc = instr.regC
       var raNode = regs[ra].regToNode
+      echo "raNode: ", raNode
       if instr.opcode in {opcRangeChckU, opcURangeChckU}:
+        echo "making raNode unsigned"
         raNode.kind = nkUIntLit
       var rbNode = regs[rb].regToNode
       var rcNode = regs[rc].regToNode
+      echo "rbNode: ", rbNode
+      echo "rcNode: ", rcNode
       if instr.opcode in {opcURangeChck, opcURangeChckU}:
+        echo "making range unsigned"
         rbNode.kind = nkUIntLit
         rcNode.kind = nkUIntLit
       if not (leValueConv(rbNode, raNode) and
