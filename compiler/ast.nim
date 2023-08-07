@@ -314,6 +314,7 @@ type
                       # an infinite loop, this flag is used as a sentinel to stop it.
     sfVirtual         # proc is a C++ virtual function
     sfByCopy          # param is marked as pass bycopy
+    sfMember          # proc is a C++ member of a type
     sfCodegenDecl     # type, proc, global or proc param is marked as codegenDecl
 
   TSymFlags* = set[TSymFlag]
@@ -347,6 +348,7 @@ const
   sfBase* = sfDiscriminant
   sfCustomPragma* = sfRegister        # symbol is custom pragma template
   sfTemplateRedefinition* = sfExportc # symbol is a redefinition of an earlier template
+  sfCppMember* = { sfVirtual, sfMember, sfConstructor } # proc is a C++ member, meaning it will be attached to the type definition
 
 const
   # getting ready for the future expr/stmt merge

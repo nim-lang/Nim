@@ -34,7 +34,7 @@ const
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wEffectsOf, wTags, wForbids, wLocks, wDelegator, wGcSafe,
     wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy,
-    wRequires, wEnsures, wEnforceNoRaises, wSystemRaisesDefect, wVirtual, wQuirky}
+    wRequires, wEnsures, wEnforceNoRaises, wSystemRaisesDefect, wVirtual, wQuirky, wMember}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
@@ -245,10 +245,10 @@ proc getOptionalStr(c: PContext, n: PNode, defaultStr: string): string =
   if n.kind in nkPragmaCallKinds: result = expectStrLit(c, n)
   else: result = defaultStr
 
-proc processVirtual(c: PContext, n: PNode, s: PSym) =
+proc processVirtual(c: PContext, n: PNode, s: PSym, flag: TSymFlag) =
   s.constraint = newEmptyStrNode(c, n, getOptionalStr(c, n, "$1"))
   s.constraint.strVal = s.constraint.strVal % s.name.s
-  s.flags.incl {sfVirtual, sfInfixCall, sfExportc, sfMangleCpp}
+  s.flags.incl {flag, sfInfixCall, sfExportc, sfMangleCpp}
 
   s.typ.callConv = ccNoConvention
   incl c.config.globalOptions, optMixedMode
@@ -1284,7 +1284,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wSystemRaisesDefect:
         sym.flags.incl sfSystemRaisesDefect
       of wVirtual:
-        processVirtual(c, it, sym)
+        processVirtual(c, it, sym, sfVirtual)
+      of wMember:
+        processVirtual(c, it, sym, sfMember)
 
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:

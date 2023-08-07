@@ -493,12 +493,12 @@ proc multiFormat*(frmt: var string, chars : static openArray[char], args: openAr
 template cgDeclFrmt*(s: PSym): string =
   s.constraint.strVal
 
-proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var string,
+proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params: var string,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false;) =
   let t = prc.typ
   let isCtor = sfConstructor in prc.flags
-  if isCtor:
+  if isCtor or (name[0] == '~' and sfMember in prc.flags): #destructors cant have void
     rettype = ""
   elif t[0] == nil or isInvalidReturnType(m.config, t):
     rettype = "void"
@@ -555,6 +555,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var 
 
   multiFormat(params, @['\'', '#'], [types, names])
   multiFormat(superCall, @['\'', '#'], [types, names])
+  multiFormat(name, @['\'', '#'], [types, names]) #so we can ~'1 on members
   if params == "()":
     if types.len == 0:
       params = "(void)"
@@ -1148,11 +1149,14 @@ proc isReloadable(m: BModule; prc: PSym): bool =
 proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 
-proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride: var bool; isCtor: bool) =
+proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride, isMemberVirtual: var bool; isCtor: bool) =
   var afterParams: string = ""
   if scanf(val, "$*($*)$s$*", name, params, afterParams):
     isFnConst = afterParams.find("const") > -1
     isOverride = afterParams.find("override") > -1
+    isMemberVirtual = name.find("virtual ") > -1
+    if isMemberVirtual:
+      name = name.replace("virtual ", "")
     if isCtor:
       discard scanf(afterParams, ":$s$*", superCall)
     else:
@@ -1161,9 +1165,8 @@ proc parseVFunctionDecl(val: string; name, params, retType, superCall: var strin
   params = "(" & params & ")"
 
 proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl : bool = false) =
-  assert {sfVirtual, sfConstructor} * prc.flags != {}
+  assert sfCppMember * prc.flags != {}
   let isCtor = sfConstructor in prc.flags
-  let isVirtual = not isCtor
   var check = initIntSet()
   fillBackendName(m, prc)
   fillLoc(prc.loc, locProc, prc.ast[namePos], OnUnknown)
@@ -1179,9 +1182,10 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
   var typDesc = getTypeDescWeak(m, typ, check, dkParam)
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
   var name, params, rettype, superCall: string = ""
-  var isFnConst, isOverride: bool = false
-  parseVFunctionDecl(prc.constraint.strVal, name, params, rettype, superCall, isFnConst, isOverride, isCtor)
-  genMemberProcParams(m, prc, superCall, rettype, params, check, true, false) 
+  var isFnConst, isOverride, isMemberVirtual: bool = false
+  parseVFunctionDecl(prc.constraint.strVal, name, params, rettype, superCall, isFnConst, isOverride, isMemberVirtual, isCtor)
+  genMemberProcParams(m, prc, superCall, rettype, name, params, check, true, false) 
+  let isVirtual = sfVirtual in prc.flags or isMemberVirtual
   var fnConst, override: string = ""
   if isCtor:
     name = typDesc
@@ -1194,7 +1198,7 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
         override = " override"
     superCall = ""
   else:
-    if isVirtual:
+    if not isCtor:
       prc.loc.r = "$1$2(@)" % [memberOp, name]
     elif superCall != "":
       superCall = " : " & superCall

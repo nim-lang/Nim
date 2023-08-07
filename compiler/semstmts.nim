@@ -2269,26 +2269,27 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if sfBorrow in s.flags and c.config.cmd notin cmdDocLike:
     result[bodyPos] = c.graph.emptyNode
 
-  if {sfVirtual, sfConstructor} * s.flags != {} and sfImportc notin s.flags:
+  if sfCppMember * s.flags != {} and sfImportc notin s.flags:
     let isVirtual = sfVirtual in s.flags
-    let pragmaName = if isVirtual: "virtual" else: "constructor"
+    let isCtor = sfConstructor in s.flags
+    let pragmaName = if isVirtual: "virtual" elif isCtor: "constructor" else: "member"
     if c.config.backend == backendCpp:
-      if s.typ.sons.len < 2 and isVirtual:
-        localError(c.config, n.info, "virtual must have at least one parameter")
+      if s.typ.sons.len < 2 and not isCtor:
+        localError(c.config, n.info, pragmaName & " must have at least one parameter")
       for son in s.typ.sons:
         if son!=nil and son.isMetaType:
           localError(c.config, n.info, pragmaName & " unsupported for generic routine")
       var typ: PType
-      if sfConstructor in s.flags:
+      if isCtor:
         typ = s.typ.sons[0]
         if typ == nil or typ.kind != tyObject:
           localError(c.config, n.info, "constructor must return an object")
       else:
         typ = s.typ.sons[1]
-      if typ.kind == tyPtr and isVirtual:
+      if typ.kind == tyPtr and not isCtor:
         typ = typ[0]
       if typ.kind != tyObject:
-        localError(c.config, n.info, "virtual must be either ptr to object or object type.")
+        localError(c.config, n.info, pragmaName & " must be either ptr to object or object type.")
       if typ.owner.id == s.owner.id and c.module.id == s.owner.id:
         c.graph.memberProcsPerType.mgetOrPut(typ.itemId, @[]).add s
       else:
