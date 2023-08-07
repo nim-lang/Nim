@@ -1611,7 +1611,8 @@ when false:
     expr(p, call, d)
 
 proc asgnFieldDiscriminant(p: BProc, e: PNode) =
-  var a, tmp: TLoc = default(TLoc)
+  var a = default(TLoc)
+  var tmp: TLoc
   var dotExpr = e[0]
   if dotExpr.kind == nkCheckedFieldExpr: dotExpr = dotExpr[0]
   initLocExpr(p, e[0], a)
