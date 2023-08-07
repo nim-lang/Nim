@@ -108,6 +108,7 @@ block:
   doAssert a.uint32 == uint32.high
   doAssert a.uint16 == uint16.high
   doAssert a.uint8 == uint8.high
+  doAssert a.uint == uint.high
 
   doAssert b.uint64 == b
   doAssert b.uint32 == b
