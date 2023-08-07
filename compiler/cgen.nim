@@ -754,8 +754,7 @@ proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
 
 include ccgcalls, "ccgstmts.nim"
 
-proc initFrame(p: BProc, procname, filename: Rope): Rope =
-  const frameDefines = """
+const frameDefines = """
 $1define nimfr_(proc, file) \
   TFrame FR_; \
   FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = 0; #nimFrame(&FR_);
@@ -771,6 +770,9 @@ $1define nimfr_(proc, file) \
     FR_.line = n; FR_.filename = file;
 
 """
+
+proc initFrame(p: BProc, procname, filename: Rope): Rope =
+
   if p.module.s[cfsFrameDefines].len == 0:
     appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, ["#"])
 
@@ -1845,6 +1847,8 @@ proc genInitCode(m: BModule) =
   if m.preInitProc.s(cpsInit).len > 0 or m.preInitProc.s(cpsStmts).len > 0:
     # Give this small function its own scope
     prc.addf("{$N", [])
+    if optStackTrace in m.preInitProc.options:
+      prc.add(m.ropecg(frameDefines, ["#"]))
     # Keep a bogus frame in case the code needs one
     prc.add("\tTFrame FR_; FR_.len = 0;\n")
 
