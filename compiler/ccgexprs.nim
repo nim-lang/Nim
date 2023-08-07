@@ -348,7 +348,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
         linefmt(p, cpsStmts, "$1 = #copyString($2);$n", [dest.rdLoc, src.rdLoc])
       elif dest.storage == OnHeap:
         # we use a temporary to care for the dreaded self assignment:
-        var tmp: TLoc = default(TLoc)
+        var tmp: TLoc
         getTemp(p, ty, tmp)
         linefmt(p, cpsStmts, "$3 = $1; $1 = #copyStringRC1($2);$n",
                 [dest.rdLoc, src.rdLoc, tmp.rdLoc])
@@ -431,7 +431,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
 proc genDeepCopy(p: BProc; dest, src: TLoc) =
   template addrLocOrTemp(a: TLoc): Rope =
     if a.k == locExpr:
-      var tmp: TLoc = default(TLoc)
+      var tmp: TLoc
       getTemp(p, a.t, tmp)
       genAssignment(p, tmp, a, {})
       addrLoc(p.config, tmp)
@@ -1197,7 +1197,7 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   else:
     var
       L: TLabel
-      tmp: TLoc = default(TLoc)
+      tmp: TLoc
     getTemp(p, e.typ, tmp)      # force it into a temp!
     inc p.splitDecls
     expr(p, e[1], tmp)
@@ -1276,7 +1276,8 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   #    appendChar(tmp0, 'z');
   #    asgn(s, tmp0);
   #  }
-  var a, tmp: TLoc = default(TLoc)
+  var a = default(TLoc)
+  var tmp: TLoc
   getTemp(p, e.typ, tmp)
   var L = 0
   var appends: Rope = ""
@@ -1556,7 +1557,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
         (d.k notin {locTemp,locLocalVar,locGlobalVar,locParam,locField}) or
         (isPartOf(d.lode, e) != arNo)
 
-  var tmp: TLoc = default(TLoc)
+  var tmp: TLoc = TLoc()
   var r: Rope
   if useTemp:
     getTemp(p, t, tmp)
@@ -1604,7 +1605,8 @@ proc lhsDoesAlias(a, b: PNode): bool =
     if isPartOf(a, y) != arNo: return true
 
 proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
-  var arr, tmp: TLoc = default(TLoc)
+  var arr = default(TLoc)
+  var tmp: TLoc = default(TLoc)
   # bug #668
   let doesAlias = lhsDoesAlias(d.lode, n)
   let dest = if doesAlias: addr(tmp) else: addr(d)
@@ -1669,7 +1671,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
       arr.r = ropecg(p.module, "$1[$2]", [rdLoc(a), lit])
       genAssignment(p, elem, arr, {needToCopy})
   else:
-    var i: TLoc = default(TLoc)
+    var i: TLoc
     getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i)
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",  [i.r, L])
     initLoc(elem, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), OnHeap)
@@ -1986,7 +1988,8 @@ proc genSwap(p: BProc, e: PNode, d: var TLoc) =
   # b = temp
   cowBracket(p, e[1])
   cowBracket(p, e[2])
-  var a, b, tmp: TLoc = default(TLoc)
+  var a, b = default(TLoc)
+  var tmp: TLoc
   getTemp(p, skipTypes(e[1].typ, abstractVar), tmp)
   initLocExpr(p, e[1], a) # eval a
   initLocExpr(p, e[2], b) # eval b
@@ -2090,7 +2093,8 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "&",
       "|",
       "& ~"]
-  var a, b, i: TLoc = default(TLoc)
+  var a, b = default(TLoc)
+  var i: TLoc
   var setType = skipTypes(e[1].typ, abstractVar)
   var size = int(getSize(p.config, setType))
   case size
@@ -2645,7 +2649,8 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
   # nimZeroMem(tmp, sizeof(tmp)); inclRange(tmp, a, b); incl(tmp, c);
   # incl(tmp, d); incl(tmp, e); inclRange(tmp, f, g);
   var
-    a, b, idx: TLoc = default(TLoc)
+    a, b = default(TLoc)
+  var idx: TLoc
   if nfAllConst in e.flags:
     var elem = newRopeAppender()
     genSetNode(p, e, elem)
@@ -2744,7 +2749,8 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
     p.module.s[cfsData].add data
     putIntoDest(p, d, n, tmp, OnStatic)
   else:
-    var tmp, a, b: TLoc = default(TLoc)
+    var tmp: TLoc
+    var a, b = default(TLoc)
     initLocExpr(p, n[0], a)
     initLocExpr(p, n[1], b)
     if n[0].skipConv.kind == nkClosure:

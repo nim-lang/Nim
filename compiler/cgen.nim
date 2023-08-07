@@ -541,17 +541,14 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
     if not immediateAsgn:
       constructLoc(p, v.loc)
 
-proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
+proc getTemp(p: BProc, t: PType, result: out TLoc; needsInit=false) =
   inc(p.labels)
-  result.r = "T" & rope(p.labels) & "_"
+  result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
+                storage: OnStack, flags: {})
   if p.module.compileToCpp and isOrHasImportedCppType(t):
     linefmt(p, cpsLocals, "$1 $2{};$n", [getTypeDesc(p.module, t, dkVar), result.r])
   else:
     linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t, dkVar), result.r])
-  result.k = locTemp
-  result.lode = lodeTyp t
-  result.storage = OnStack
-  result.flags = {}
   constructLoc(p, result, not needsInit)
   when false:
     # XXX Introduce a compiler switch in order to detect these easily.
@@ -562,23 +559,18 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
         echo "ENORMOUS TEMPORARY! ", p.config $ p.lastLineInfo
       writeStackTrace()
 
-proc getTempCpp(p: BProc, t: PType, result: var TLoc; value: Rope) =
+proc getTempCpp(p: BProc, t: PType, result: out TLoc; value: Rope) =
   inc(p.labels)
-  result.r = "T" & rope(p.labels) & "_"
+  result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
+                storage: OnStack, flags: {})
   linefmt(p, cpsStmts, "$1 $2 = $3;$n", [getTypeDesc(p.module, t, dkVar), result.r, value])
-  result.k = locTemp
-  result.lode = lodeTyp t
-  result.storage = OnStack
-  result.flags = {}
 
-proc getIntTemp(p: BProc, result: var TLoc) =
+proc getIntTemp(p: BProc, result: out TLoc) =
   inc(p.labels)
-  result.r = "T" & rope(p.labels) & "_"
+  result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp,
+                storage: OnStack, lode: lodeTyp getSysType(p.module.g.graph, unknownLineInfo, tyInt),
+                flags: {})
   linefmt(p, cpsLocals, "NI $1;$n", [result.r])
-  result.k = locTemp
-  result.storage = OnStack
-  result.lode = lodeTyp getSysType(p.module.g.graph, unknownLineInfo, tyInt)
-  result.flags = {}
 
 proc localVarDecl(p: BProc; n: PNode): Rope =
   result = ""

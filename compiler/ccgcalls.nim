@@ -96,7 +96,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         pl.add(");\n")
         line(p, cpsStmts, pl)
       else:
-        var tmp: TLoc = default(TLoc)
+        var tmp: TLoc
         getTemp(p, typ[0], tmp, needsInit=true)
         pl.add(addrLoc(p.config, tmp))
         pl.add(");\n")
@@ -133,7 +133,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         genAssignment(p, d, list, {}) # no need for deep copying
         if canRaise: raiseExit(p)
       else:
-        var tmp: TLoc = default(TLoc)
+        var tmp: TLoc
         getTemp(p, typ[0], tmp, needsInit=true)
         var list: TLoc = default(TLoc)
         initLoc(list, locCall, d.lode, OnUnknown)
@@ -273,14 +273,12 @@ proc withTmpIfNeeded(p: BProc, a: TLoc, needsTmp: bool): TLoc =
   # Also don't regress for non ARC-builds, too risky.
   if needsTmp and a.lode.typ != nil and p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and
       getSize(p.config, a.lode.typ) < 1024:
-    result = default(TLoc)
     getTemp(p, a.lode.typ, result, needsInit=false)
     genAssignment(p, result, a, {})
   else:
     result = a
 
 proc literalsNeedsTmp(p: BProc, a: TLoc): TLoc =
-  result = default(TLoc)
   getTemp(p, a.lode.typ, result, needsInit=false)
   genAssignment(p, result, a, {})
 
@@ -483,7 +481,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
         genCallPattern()
         if canRaise: raiseExit(p)
       else:
-        var tmp: TLoc = default(TLoc)
+        var tmp: TLoc
         getTemp(p, typ[0], tmp, needsInit=true)
         pl.add(addrLoc(p.config, tmp))
         genCallPattern()
@@ -501,7 +499,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       genAssignment(p, d, list, {}) # no need for deep copying
       if canRaise: raiseExit(p)
     else:
-      var tmp: TLoc = default(TLoc)
+      var tmp: TLoc
       getTemp(p, typ[0], tmp)
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc = default(TLoc)
@@ -782,7 +780,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
         pl.add("];\n")
         line(p, cpsStmts, pl)
       else:
-        var tmp: TLoc = default(TLoc)
+        var tmp: TLoc
         getTemp(p, typ[0], tmp, needsInit=true)
         pl.add(addrLoc(p.config, tmp))
         pl.add("];\n")
