@@ -106,11 +106,7 @@ proc generateDot*(graph: ModuleGraph; project: AbsoluteFile) =
             changeFileExt(project, "dot"))
 
 proc setupDependPass*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
-  var g: PGen
-  new(g)
-  g.module = module
-  g.config = graph.config
-  g.graph = graph
+  let g = PGen(module: module, config: graph.config, graph: graph)
   if graph.backend == nil:
     graph.backend = Backend(dotGraph: "")
   result = g
