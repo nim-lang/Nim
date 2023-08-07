@@ -2203,7 +2203,6 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     #discard genProc(c, s)
     genLit(c, newSymNode(n[namePos].sym), dest)
   of nkChckRangeF, nkChckRange64, nkChckRange:
-    echo "generating VM range check for ", n
     let
       tmp0 = c.genx(n[0])
       tmp1 = c.genx(n[1])
@@ -2221,7 +2220,6 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
           opcRangeChckU
         else:
           opcRangeChck
-    echo "opcode: ", opcode
     c.gABC(n, opcode, tmp0, tmp1, tmp2)
     c.freeTemp(tmp1)
     c.freeTemp(tmp2)
