@@ -333,10 +333,10 @@ proc murmurHash(x: openArray[byte]): Hash =
     when nimvm:
       impl()
     else:
-      when defined(js) or defined(sparc) or defined(sparc64):
-        impl()
-      else:
+      when declared(copyMem):
         copyMem(addr k1, addr x[i], 4)
+      else:
+        impl()
     inc i, stepSize
 
     k1 = imul(k1, c1)
