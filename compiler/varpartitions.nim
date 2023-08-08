@@ -984,9 +984,9 @@ proc computeCursors*(s: PSym; n: PNode; g: ModuleGraph) =
         v.sym.flags * {sfThread, sfGlobal} == {} and hasDestructor(v.sym.typ) and
         v.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned:
       let rid = root(par, i)
-      if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
+      if preventCursor in par.s[rid].flags or par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
         discard "cannot cursor into a graph that is mutated"
       else:
         v.sym.flags.incl sfCursor
         when false:
-          echo "this is now a cursor ", v.sym, " ", par.s[rid].flags, " ", g.config $ v.sym.info
+          echo "this is now a cursor ", v.sym, " ", v.sym.typ, " ", par.s[rid].flags, " ", g.config $ v.sym.info
