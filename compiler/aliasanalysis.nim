@@ -63,6 +63,8 @@ proc aliases*(obj, field: PNode): AliasKind =
   # x.f -> x: false
   # x.f -> x.f: true
   # x.f -> x.v: false
+  # x -> x[]: true
+  # x[] -> x: false
   # x -> x[0]: true
   # x[0] -> x: false
   # x[0] -> x[0]: true
@@ -72,15 +74,15 @@ proc aliases*(obj, field: PNode): AliasKind =
   # x[i] -> x[i]: maybe; Further analysis could make this return true when i is a runtime-constant
   # x[i] -> x[j]: maybe; also returns maybe if only one of i or j is a compiletime-constant
   template collectImportantNodes(result, n) =
-    var result: seq[PNode]
+    var result: seq[PNode] = @[]
     var n = n
     while true:
       case n.kind
-      of PathKinds0 - {nkDotExpr, nkBracketExpr}:
+      of PathKinds0 - {nkDotExpr, nkBracketExpr, nkDerefExpr, nkHiddenDeref}:
         n = n[0]
       of PathKinds1:
         n = n[1]
-      of nkDotExpr, nkBracketExpr:
+      of nkDotExpr, nkBracketExpr, nkDerefExpr, nkHiddenDeref:
         result.add n
         n = n[0]
       of nkSym:
@@ -114,6 +116,8 @@ proc aliases*(obj, field: PNode): AliasKind =
       if currFieldPath.sym != currObjPath.sym: return no
     of nkDotExpr:
       if currFieldPath[1].sym != currObjPath[1].sym: return no
+    of nkDerefExpr, nkHiddenDeref:
+      discard
     of nkBracketExpr:
       if currFieldPath[1].kind in nkLiterals and currObjPath[1].kind in nkLiterals:
         if currFieldPath[1].intVal != currObjPath[1].intVal:

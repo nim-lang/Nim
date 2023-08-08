@@ -27,7 +27,7 @@ const
 proc declareSelf(c: PContext; info: TLineInfo) =
   ## Adds the magical 'Self' symbols to the current scope.
   let ow = getCurrOwner(c)
-  let s = newSym(skType, getIdent(c.cache, "Self"), nextSymId(c.idgen), ow, info)
+  let s = newSym(skType, getIdent(c.cache, "Self"), c.idgen, ow, info)
   s.typ = newType(tyTypeDesc, nextTypeId(c.idgen), ow)
   s.typ.flags.incl {tfUnresolved, tfPacked}
   s.typ.add newType(tyEmpty, nextTypeId(c.idgen), ow)
@@ -62,7 +62,7 @@ proc semConceptDecl(c: PContext; n: PNode): PNode =
       result[i] = n[i]
     result[^1] = semConceptDecl(c, n[^1])
   of nkCommentStmt:
-    discard
+    result = n
   else:
     localError(c.config, n.info, "unexpected construct in the new-styled concept: " & renderTree(n))
     result = n
@@ -121,8 +121,11 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
         for i in 0..<a.len:
           if not matchType(c, f[i], a[i], m): return false
         return true
+      else:
+        result = false
 
   of tyGenericInvocation:
+    result = false
     if a.kind == tyGenericInst and a[0].kind == tyGenericBody:
       if sameType(f[0], a[0]) and f.len == a.len-1:
         for i in 1 ..< f.len:
@@ -156,6 +159,8 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
         result = matchType(c, old, ak, m)
         if m.magic == mArrPut and ak.kind == tyGenericParam:
           result = true
+      else:
+        result = false
     #echo "B for ", result, " to ", typeToString(a), " to ", typeToString(m.potentialImplementation)
 
   of tyVar, tySink, tyLent, tyOwned:
@@ -185,6 +190,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
       m.inferred.setLen oldLen
   of tyArray, tyTuple, tyVarargs, tyOpenArray, tyRange, tySequence, tyRef, tyPtr,
      tyGenericInst:
+    result = false
     let ak = a.skipTypes(ignorableForArgType - {f.kind})
     if ak.kind == f.kind and f.len == ak.len:
       for i in 0..<ak.len:
@@ -209,6 +215,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
       if not result:
         m.inferred.setLen oldLen
     else:
+      result = false
       for i in 0..<f.len:
         result = matchType(c, f[i], a, m)
         if result: break # and remember the binding!
@@ -274,7 +281,7 @@ proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
 proc matchSyms(c: PContext, n: PNode; kinds: set[TSymKind]; m: var MatchCon): bool =
   ## Walk the current scope, extract candidates which the same name as 'n[namePos]',
   ## 'n' is the nkProcDef or similar from the concept that we try to match.
-  let candidates = searchInScopesFilterBy(c, n[namePos].sym.name, kinds)
+  let candidates = searchInScopesAllCandidatesFilterBy(c, n[namePos].sym.name, kinds)
   for candidate in candidates:
     #echo "considering ", typeToString(candidate.typ), " ", candidate.magic
     m.magic = candidate.magic
@@ -306,6 +313,8 @@ proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool =
     result = matchSyms(c, n, {skMethod}, m)
   of nkIteratorDef:
     result = matchSyms(c, n, {skIterator}, m)
+  of nkCommentStmt:
+    result = true
   else:
     # error was reported earlier.
     result = false

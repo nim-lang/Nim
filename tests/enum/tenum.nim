@@ -174,4 +174,13 @@ block: # bug #12589
     proc typ(): OGRwkbGeometryType =
       return wkbPoint25D
 
-    doAssert $typ() == "wkbPoint25D"
+    when not defined(gcRefc):
+      doAssert $typ() == "wkbPoint25D"
+
+    block: # bug #21280
+      type
+        Test = enum
+          B = 19
+          A = int64.high()
+
+      doAssert ord(A) == int64.high()

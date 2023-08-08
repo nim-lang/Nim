@@ -1,13 +1,13 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import std/[os, strutils, osproc, sets, pathnorm, sequtils]
+import std/[os, strutils, osproc, sets, pathnorm, sequtils, pegs]
+
+import officialpackages
+export exec
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-# XXX: Remove this feature check once the csources supports it.
-when defined(nimHasCastPragmaBlocks):
-  import std/pegs
 from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
 import "../compiler/nimpaths"
 
@@ -48,38 +48,19 @@ proc findNimImpl*(): tuple[path: string, ok: bool] =
 
 proc findNim*(): string = findNimImpl().path
 
-proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
-  let prevPath = getEnv("PATH")
-  if additionalPath.len > 0:
-    var absolute = additionalPath
-    if not absolute.isAbsolute:
-      absolute = getCurrentDir() / absolute
-    echo("Adding to $PATH: ", absolute)
-    putEnv("PATH", (if prevPath.len > 0: prevPath & PathSep else: "") & absolute)
-  echo(cmd)
-  if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
-  putEnv("PATH", prevPath)
-
 template inFold*(desc, body) =
-  if existsEnv("TRAVIS"):
-    echo "travis_fold:start:" & desc.replace(" ", "_")
-  elif existsEnv("GITHUB_ACTIONS"):
+  if existsEnv("GITHUB_ACTIONS"):
     echo "::group::" & desc
   elif existsEnv("TF_BUILD"):
     echo "##[group]" & desc
-
   body
-
-  if existsEnv("TRAVIS"):
-    echo "travis_fold:end:" & desc.replace(" ", "_")
-  elif existsEnv("GITHUB_ACTIONS"):
+  if existsEnv("GITHUB_ACTIONS"):
     echo "::endgroup::"
   elif existsEnv("TF_BUILD"):
     echo "##[endgroup]"
 
 proc execFold*(desc, cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   ## Execute shell command. Add log folding for various CI services.
-  # https://github.com/travis-ci/travis-ci/issues/2285#issuecomment-42724719
   let desc = if desc.len == 0: cmd else: desc
   inFold(desc):
     exec(cmd, errorcode, additionalPath)
@@ -112,17 +93,22 @@ proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options
   let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   execFold(desc, cmd)
 
+const officialPackagesMarkdown = """
+pkgs/atlas/doc/atlas.md
+""".splitWhitespace()
+
 proc getMd2html(): seq[string] =
   for a in walkDirRecFilter("doc"):
     let path = a.path
     if a.kind == pcFile and path.splitFile.ext == ".md" and path.lastPathPart notin
-        ["docs.md", "nimfix.md",
+        ["docs.md",
          "docstyle.md" # docstyle.md shouldn't be converted to html separately;
                        # it's included in contributing.md.
         ]:
-          # maybe we should still show nimfix, could help reviving it
           # `docs` is redundant with `overview`, might as well remove that file?
       result.add path
+  for md in officialPackagesMarkdown:
+    result.add md
   doAssert "doc/manual/var_t_return.md".unixToNativePath in result # sanity check
 
 const
@@ -138,11 +124,7 @@ mm.md
 """.splitWhitespace().mapIt("doc" / it)
 
   withoutIndex = """
-lib/wrappers/mysql.nim
-lib/wrappers/sqlite3.nim
-lib/wrappers/postgres.nim
 lib/wrappers/tinyc.nim
-lib/wrappers/odbcsql.nim
 lib/wrappers/pcre.nim
 lib/wrappers/openssl.nim
 lib/posix/posix.nim
@@ -170,6 +152,29 @@ lib/posix/posix_other_consts.nim
 lib/posix/posix_freertos_consts.nim
 lib/posix/posix_openbsd_amd64.nim
 lib/posix/posix_haiku.nim
+lib/pure/md5.nim
+lib/std/sha1.nim
+""".splitWhitespace()
+
+  officialPackagesList = """
+pkgs/asyncftpclient/src/asyncftpclient.nim
+pkgs/smtp/src/smtp.nim
+pkgs/punycode/src/punycode.nim
+pkgs/db_connector/src/db_connector/db_common.nim
+pkgs/db_connector/src/db_connector/db_mysql.nim
+pkgs/db_connector/src/db_connector/db_odbc.nim
+pkgs/db_connector/src/db_connector/db_postgres.nim
+pkgs/db_connector/src/db_connector/db_sqlite.nim
+pkgs/checksums/src/checksums/md5.nim
+pkgs/checksums/src/checksums/sha1.nim
+""".splitWhitespace()
+
+  officialPackagesListWithoutIndex = """
+pkgs/db_connector/src/db_connector/mysql.nim
+pkgs/db_connector/src/db_connector/sqlite3.nim
+pkgs/db_connector/src/db_connector/postgres.nim
+pkgs/db_connector/src/db_connector/odbcsql.nim
+pkgs/db_connector/src/db_connector/private/dbutils.nim
 """.splitWhitespace()
 
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
@@ -231,44 +236,48 @@ proc buildDocSamples(nimArgs, destPath: string) =
   exec(findNim().quoteShell() & " doc $# -o:$# $#" %
     [nimArgs, destPath / "docgen_sample.html", "doc" / "docgen_sample.nim"])
 
-proc buildDocPackages(nimArgs, destPath: string) =
+proc buildDocPackages(nimArgs, destPath: string, indexOnly: bool) =
   # compiler docs; later, other packages (perhaps tools, testament etc)
   let nim = findNim().quoteShell()
     # to avoid broken links to manual from compiler dir, but a multi-package
     # structure could be supported later
 
   proc docProject(outdir, options, mainproj: string) =
-    exec("$nim doc --project --outdir:$outdir $nimArgs --git.url:$gitUrl $options $mainproj" % [
+    exec("$nim doc --project --outdir:$outdir $nimArgs --git.url:$gitUrl $index $options $mainproj" % [
       "nim", nim,
       "outdir", outdir,
       "nimArgs", nimArgs,
       "gitUrl", gitUrl,
       "options", options,
       "mainproj", mainproj,
+      "index", if indexOnly: "--index:only" else: ""
       ])
   let extra = "-u:boot"
   # xxx keep in sync with what's in $nim_prs_D/config/nimdoc.cfg, or, rather,
   # start using nims instead of nimdoc.cfg
   docProject(destPath/"compiler", extra, "compiler/index.nim")
 
-proc buildDoc(nimArgs, destPath: string) =
+proc buildDoc(nimArgs, destPath: string, indexOnly: bool) =
   # call nim for the documentation:
   let rst2html = getMd2html()
   var
-    commands = newSeq[string](rst2html.len + len(doc) + withoutIndex.len)
+    commands = newSeq[string](rst2html.len + len(doc) + withoutIndex.len +
+              officialPackagesList.len + officialPackagesListWithoutIndex.len)
     i = 0
   let nim = findNim().quoteShell()
+
+  let index = if indexOnly: "--index:only" else: ""
   for d in items(rst2html):
-    commands[i] = nim & " md2html $# --git.url:$# -o:$# --index:on $#" %
+    commands[i] = nim & " md2html $# --git.url:$# -o:$# $# $#" %
       [nimArgs, gitUrl,
-      destPath / changeFileExt(splitFile(d).name, "html"), d]
+      destPath / changeFileExt(splitFile(d).name, "html"), index, d]
     i.inc
   for d in items(doc):
     let extra = if isJsOnly(d): "--backend:js" else: ""
     var nimArgs2 = nimArgs
     if d.isRelativeTo("compiler"): doAssert false
-    commands[i] = nim & " doc $# $# --git.url:$# --outdir:$# --index:on $#" %
-      [extra, nimArgs2, gitUrl, destPath, d]
+    commands[i] = nim & " doc $# $# --git.url:$# --outdir:$# $# $#" %
+      [extra, nimArgs2, gitUrl, destPath, index, d]
     i.inc
   for d in items(withoutIndex):
     commands[i] = nim & " doc $# --git.url:$# -o:$# $#" %
@@ -276,13 +285,20 @@ proc buildDoc(nimArgs, destPath: string) =
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
 
+
+  for d in items(officialPackagesList):
+    var nimArgs2 = nimArgs
+    if d.isRelativeTo("compiler"): doAssert false
+    commands[i] = nim & " doc $# --outdir:$# --index:on $#" %
+      [nimArgs2, destPath, d]
+    i.inc
+  for d in items(officialPackagesListWithoutIndex):
+    commands[i] = nim & " doc $# -o:$# $#" %
+      [nimArgs,
+      destPath / changeFileExt(splitFile(d).name, "html"), d]
+    i.inc
+
   mexec(commands)
-  exec(nim & " buildIndex -o:$1/theindex.html $1" % [destPath])
-    # caveat: this works so long it's called before `buildDocPackages` which
-    # populates `compiler/` with unrelated idx files that shouldn't be in index,
-    # so should work in CI but you may need to remove your generated html files
-    # locally after calling `./koch docs`. The clean fix would be for `idx` files
-    # to be transient with `--project` (eg all in memory).
 
 proc nim2pdf(src: string, dst: string, nimArgs: string) =
   # xxx expose as a `nim` command or in some other reusable way.
@@ -325,11 +341,26 @@ proc buildJS(): string =
 proc buildDocsDir*(args: string, dir: string) =
   let args = nimArgs & " " & args
   let docHackJsSource = buildJS()
+  gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector", "checksums", "atlas"])
   createDir(dir)
   buildDocSamples(args, dir)
-  buildDoc(args, dir) # bottleneck
+
+  # generate `.idx` files and top-level `theindex.html`:
+  buildDoc(args, dir, indexOnly=true) # bottleneck
+  let nim = findNim().quoteShell()
+  exec(nim & " buildIndex -o:$1/theindex.html $1" % [dir])
+    # caveat: this works so long it's called before `buildDocPackages` which
+    # populates `compiler/` with unrelated idx files that shouldn't be in index,
+    # so should work in CI but you may need to remove your generated html files
+    # locally after calling `./koch docs`. The clean fix would be for `idx` files
+    # to be transient with `--project` (eg all in memory).
+  buildDocPackages(args, dir, indexOnly=true)
+
+  # generate HTML and package-level `theindex.html`:
+  buildDoc(args, dir, indexOnly=false) # bottleneck
+  buildDocPackages(args, dir, indexOnly=false)
+
   copyFile(dir / "overview.html", dir / "index.html")
-  buildDocPackages(args, dir)
   copyFile(docHackJsSource, dir / docHackJsSource.lastPathPart)
 
 proc buildDocs*(args: string, localOnly = false, localOutDir = "") =
@@ -344,9 +375,7 @@ proc buildDocs*(args: string, localOnly = false, localOutDir = "") =
   if not localOnly:
     buildDocsDir(args, webUploadOutput / NimVersion)
 
-    # XXX: Remove this feature check once the csources supports it.
-    when defined(nimHasCastPragmaBlocks):
-      let gaFilter = peg"@( y'--doc.googleAnalytics:' @(\s / $) )"
-      args = args.replace(gaFilter)
+    let gaFilter = peg"@( y'--doc.googleAnalytics:' @(\s / $) )"
+    args = args.replace(gaFilter)
 
   buildDocsDir(args, localOutDir)

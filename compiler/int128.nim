@@ -33,26 +33,27 @@ template high*(t: typedesc[Int128]): Int128 = Max
 proc `$`*(a: Int128): string
 
 proc toInt128*[T: SomeInteger | bool](arg: T): Int128 =
-  when T is bool: result.sdata(0) = int32(arg)
-  elif T is SomeUnsignedInt:
-    when sizeof(arg) <= 4:
-      result.udata[0] = uint32(arg)
+  {.noSideEffect.}:
+    when T is bool: result.sdata(0) = int32(arg)
+    elif T is SomeUnsignedInt:
+      when sizeof(arg) <= 4:
+        result.udata[0] = uint32(arg)
+      else:
+        result.udata[0] = uint32(arg and T(0xffffffff))
+        result.udata[1] = uint32(arg shr 32)
+    elif sizeof(arg) <= 4:
+      result.sdata(0) = int32(arg)
+      if arg < 0: # sign extend
+        result.sdata(1) = -1
+        result.sdata(2) = -1
+        result.sdata(3) = -1
     else:
-      result.udata[0] = uint32(arg and T(0xffffffff))
-      result.udata[1] = uint32(arg shr 32)
-  elif sizeof(arg) <= 4:
-    result.sdata(0) = int32(arg)
-    if arg < 0: # sign extend
-      result.sdata(1) = -1
-      result.sdata(2) = -1
-      result.sdata(3) = -1
-  else:
-    let tmp = int64(arg)
-    result.udata[0] = uint32(tmp and 0xffffffff)
-    result.sdata(1) = int32(tmp shr 32)
-    if arg < 0: # sign extend
-      result.sdata(2) = -1
-      result.sdata(3) = -1
+      let tmp = int64(arg)
+      result.udata[0] = uint32(tmp and 0xffffffff)
+      result.sdata(1) = int32(tmp shr 32)
+      if arg < 0: # sign extend
+        result.sdata(2) = -1
+        result.sdata(3) = -1
 
 template isNegative(arg: Int128): bool =
   arg.sdata(3) < 0
@@ -170,6 +171,7 @@ proc addToHex*(result: var string; arg: Int128) =
     i -= 1
 
 proc toHex*(arg: Int128): string =
+  result = ""
   result.addToHex(arg)
 
 proc inc*(a: var Int128, y: uint32 = 1) =
@@ -329,8 +331,8 @@ proc `*`*(a: Int128, b: int32): Int128 =
   if b < 0:
     result = -result
 
-proc `*=`*(a: var Int128, b: int32): Int128 =
-  result = result * b
+proc `*=`(a: var Int128, b: int32) =
+  a = a * b
 
 proc makeInt128(high, low: uint64): Int128 =
   result.udata[0] = cast[uint32](low)
@@ -359,6 +361,7 @@ proc `*=`*(a: var Int128, b: Int128) =
 import bitops
 
 proc fastLog2*(a: Int128): int =
+  result = 0
   if a.udata[3] != 0:
     return 96 + fastLog2(a.udata[3])
   if a.udata[2] != 0:

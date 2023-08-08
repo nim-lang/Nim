@@ -1,6 +1,7 @@
+import ../../../dist/checksums/src/checksums/md5
 
 import
-  sockets, streams, tables, times, math, strutils, json, os, md5,
+  sockets, streams, tables, times, math, strutils, json, os,
   sfml, sfml_vector, sfml_colors,
   streams_enh, input_helpers, zlib_helpers, client_helpers, sg_packets, sg_assets, sg_gui
 type

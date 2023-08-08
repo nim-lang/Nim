@@ -267,7 +267,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     if not em.endsInWhite: wr(" ")
     wr(tok.ident.s)
     template isUnary(tok): bool =
-      tok.strongSpaceB == tsNone and tok.strongSpaceA
+      tok.spacing == {tsLeading}
 
     if not isUnary(tok) or em.lastTok in {tkOpr, tkDotDot}:
       wr(" ")

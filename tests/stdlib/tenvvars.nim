@@ -1,5 +1,5 @@
 discard """
-  matrix: "--threads:on"
+  matrix: "--mm:refc; --mm:orc"
   joinable: false
   targets: "c js cpp"
 """
@@ -10,7 +10,7 @@ import stdtest/testutils
 import std/[assertions]
 
 when not defined(js):
-  import std/threads
+  import std/typedthreads
 
 # "LATIN CAPITAL LETTER AE" in UTF-8 (0xc386)
 const unicodeUtf8 = "\xc3\x86"

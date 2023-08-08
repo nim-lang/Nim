@@ -23,7 +23,6 @@ when defined(nimPreviewSlimSystem):
   import std/[assertions, formatfloat]
 
 const
-  MaxLineLength* = 80         # lines longer than this lead to a warning
   numChars*: set[char] = {'0'..'9', 'a'..'z', 'A'..'Z'}
   SymChars*: set[char] = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
   SymStartChars*: set[char] = {'a'..'z', 'A'..'Z', '\x80'..'\xFF'}
@@ -94,19 +93,18 @@ type
     base2, base8, base16
 
   TokenSpacing* = enum
-    tsNone, tsTrailing, tsEof
+    tsLeading, tsTrailing, tsEof
 
   Token* = object                # a Nim token
     tokType*: TokType            # the type of the token
+    base*: NumericalBase         # the numerical base; only valid for int
+                                 # or float literals
+    spacing*: set[TokenSpacing]  # spaces around token
     indent*: int                 # the indentation; != -1 if the token has been
                                  # preceded with indentation
     ident*: PIdent               # the parsed identifier
     iNumber*: BiggestInt         # the parsed integer literal
     fNumber*: BiggestFloat       # the parsed floating point literal
-    base*: NumericalBase         # the numerical base; only valid for int
-                                 # or float literals
-    strongSpaceA*: bool          # leading spaces of an operator
-    strongSpaceB*: TokenSpacing  # trailing spaces of an operator
     literal*: string             # the parsed (string) literal; and
                                  # documentation comments are here too
     line*, col*: int
@@ -127,6 +125,8 @@ type
     cache*: IdentCache
     when defined(nimsuggest):
       previousToken: TLineInfo
+      tokenEnd*: TLineInfo
+      previousTokenEnd*: TLineInfo
     config*: ConfigRef
 
 proc getLineInfo*(L: Lexer, tok: Token): TLineInfo {.inline.} =
@@ -148,9 +148,11 @@ proc isNimIdentifier*(s: string): bool =
     var i = 1
     while i < sLen:
       if s[i] == '_': inc(i)
-      if i < sLen and s[i] notin SymChars: return
+      if i < sLen and s[i] notin SymChars: return false
       inc(i)
     result = true
+  else:
+    result = false
 
 proc `$`*(tok: Token): string =
   case tok.tokType
@@ -176,7 +178,7 @@ proc initToken*(L: var Token) =
   L.tokType = tkInvalid
   L.iNumber = 0
   L.indent = 0
-  L.strongSpaceA = false
+  L.spacing = {}
   L.literal = ""
   L.fNumber = 0.0
   L.base = base10
@@ -189,7 +191,7 @@ proc fillToken(L: var Token) =
   L.tokType = tkInvalid
   L.iNumber = 0
   L.indent = 0
-  L.strongSpaceA = false
+  L.spacing = {}
   setLen(L.literal, 0)
   L.fNumber = 0.0
   L.base = base10
@@ -537,8 +539,8 @@ proc getNumber(L: var Lexer, result: var Token) =
         of floatTypes:
           result.fNumber = parseFloat(result.literal)
         of tkUInt64Lit, tkUIntLit:
-          var iNumber: uint64
-          var len: int
+          var iNumber: uint64 = uint64(0)
+          var len: int = 0
           try:
             len = parseBiggestUInt(result.literal, iNumber)
           except ValueError:
@@ -547,8 +549,8 @@ proc getNumber(L: var Lexer, result: var Token) =
             raise newException(ValueError, "invalid integer: " & result.literal)
           result.iNumber = cast[int64](iNumber)
         else:
-          var iNumber: int64
-          var len: int
+          var iNumber: int64 = int64(0)
+          var len: int = 0
           try:
             len = parseBiggestInt(result.literal, iNumber)
           except ValueError:
@@ -735,10 +737,6 @@ proc handleCRLF(L: var Lexer, pos: int): int =
   template registerLine =
     let col = L.getColNumber(pos)
 
-    when not defined(nimpretty):
-      if col > MaxLineLength:
-        lexMessagePos(L, hintLineTooLong, pos)
-
   case L.buf[pos]
   of CR:
     registerLine()
@@ -918,7 +916,7 @@ proc getSymbol(L: var Lexer, tok: var Token) =
     else: break
   tokenEnd(tok, pos-1)
   h = !$h
-  tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
+  tok.ident = L.cache.getIdent(cast[cstring](addr(L.buf[L.bufpos])), pos - L.bufpos, h)
   if (tok.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
       (tok.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
     tok.tokType = tkSymbol
@@ -932,7 +930,7 @@ proc getSymbol(L: var Lexer, tok: var Token) =
 proc endOperator(L: var Lexer, tok: var Token, pos: int,
                  hash: Hash) {.inline.} =
   var h = !$hash
-  tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
+  tok.ident = L.cache.getIdent(cast[cstring](addr(L.buf[L.bufpos])), pos - L.bufpos, h)
   if (tok.ident.id < oprLow) or (tok.ident.id > oprHigh): tok.tokType = tkOpr
   else: tok.tokType = TokType(tok.ident.id - oprLow + ord(tkColon))
   L.bufpos = pos
@@ -958,13 +956,15 @@ proc getOperator(L: var Lexer, tok: var Token) =
   tokenEnd(tok, pos-1)
   # advance pos but don't store it in L.bufpos so the next token (which might
   # be an operator too) gets the preceding spaces:
-  tok.strongSpaceB = tsNone
+  tok.spacing = tok.spacing - {tsTrailing, tsEof}
+  var trailing = false
   while L.buf[pos] == ' ':
     inc pos
-    if tok.strongSpaceB != tsTrailing:
-      tok.strongSpaceB = tsTrailing
+    trailing = true
   if L.buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
-    tok.strongSpaceB = tsEof
+    tok.spacing.incl(tsEof)
+  elif trailing:
+    tok.spacing.incl(tsTrailing)
 
 proc getPrecedence*(tok: Token): int =
   ## Calculates the precedence of the given token.
@@ -1009,6 +1009,7 @@ proc getPrecedence*(tok: Token): int =
   else: return -10
 
 proc newlineFollows*(L: Lexer): bool =
+  result = false
   var pos = L.bufpos
   while true:
     case L.buf[pos]
@@ -1075,7 +1076,6 @@ proc skipMultiLineComment(L: var Lexer; tok: var Token; start: int;
       when defined(nimpretty): tok.literal.add "\L"
       if isDoc:
         when not defined(nimpretty): tok.literal.add "\n"
-        inc tok.iNumber
         var c = toStrip
         while L.buf[pos] == ' ' and c > 0:
           inc pos
@@ -1094,8 +1094,6 @@ proc skipMultiLineComment(L: var Lexer; tok: var Token; start: int;
 proc scanComment(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
   tok.tokType = tkComment
-  # iNumber contains the number of '\n' in the token
-  tok.iNumber = 0
   assert L.buf[pos+1] == '#'
   when defined(nimpretty):
     tok.commentOffsetA = L.offsetBase + pos
@@ -1138,7 +1136,6 @@ proc scanComment(L: var Lexer, tok: var Token) =
         while L.buf[pos] == ' ' and c > 0:
           inc pos
           dec c
-        inc tok.iNumber
     else:
       if L.buf[pos] > ' ':
         L.indentAhead = indent
@@ -1151,7 +1148,7 @@ proc scanComment(L: var Lexer, tok: var Token) =
 proc skip(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
   tokenBegin(tok, pos)
-  tok.strongSpaceA = false
+  tok.spacing.excl(tsLeading)
   when defined(nimpretty):
     var hasComment = false
     var commentIndent = L.currLineIndent
@@ -1162,8 +1159,7 @@ proc skip(L: var Lexer, tok: var Token) =
     case L.buf[pos]
     of ' ':
       inc(pos)
-      if not tok.strongSpaceA:
-        tok.strongSpaceA = true
+      tok.spacing.incl(tsLeading)
     of '\t':
       if not L.allowTabs: lexMessagePos(L, errGenerated, pos, "tabs are not allowed, use spaces instead")
       inc(pos)
@@ -1185,7 +1181,7 @@ proc skip(L: var Lexer, tok: var Token) =
           pos = L.bufpos
         else:
           break
-      tok.strongSpaceA = false
+      tok.spacing.excl(tsLeading)
       when defined(nimpretty):
         if L.buf[pos] == '#' and tok.line < 0: commentIndent = indent
       if L.buf[pos] > ' ' and (L.buf[pos] != '#' or L.buf[pos+1] == '#'):
@@ -1224,6 +1220,10 @@ proc skip(L: var Lexer, tok: var Token) =
 proc rawGetTok*(L: var Lexer, tok: var Token) =
   template atTokenEnd() {.dirty.} =
     when defined(nimsuggest):
+      L.previousTokenEnd.line = L.tokenEnd.line
+      L.previousTokenEnd.col = L.tokenEnd.col
+      L.tokenEnd.line = tok.line.uint16
+      L.tokenEnd.col = getColNumber(L, L.bufpos).int16
       # we attach the cursor to the last *strong* token
       if tok.tokType notin weakTokens:
         L.previousToken.line = tok.line.uint16
@@ -1397,8 +1397,9 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
 
 proc getIndentWidth*(fileIdx: FileIndex, inputstream: PLLStream;
                      cache: IdentCache; config: ConfigRef): int =
-  var lex: Lexer
-  var tok: Token
+  result = 0
+  var lex: Lexer = default(Lexer)
+  var tok: Token = default(Token)
   initToken(tok)
   openLexer(lex, fileIdx, inputstream, cache, config)
   var prevToken = tkEof

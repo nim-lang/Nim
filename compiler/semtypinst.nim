@@ -36,6 +36,7 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
         localError(info, errInheritanceOnlyWithNonFinalObjects)
 
 proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
+  result = nil
   let genericTyp = key[0]
   if not (genericTyp.kind == tyGenericBody and
       genericTyp.sym != nil): return
@@ -100,6 +101,7 @@ proc newTypeMapLayer*(cl: var TReplTypeVars): LayeredIdTable =
   initIdTable(result.topLayer)
 
 proc lookup(typeMap: LayeredIdTable, key: PType): PType =
+  result = nil
   var tm = typeMap
   while tm != nil:
     result = PType(idTableGet(tm.topLayer, key))
@@ -141,27 +143,28 @@ proc isTypeParam(n: PNode): bool =
          (n.sym.kind == skGenericParam or
            (n.sym.kind == skType and sfFromGeneric in n.sym.flags))
 
-proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
-  # This is needed for tgenericshardcases
-  # It's possible that a generic param will be used in a proc call to a
-  # typedesc accepting proc. After generic param substitution, such procs
-  # should be optionally instantiated with the correct type. In order to
-  # perform this instantiation, we need to re-run the generateInstance path
-  # in the compiler, but it's quite complicated to do so at the moment so we
-  # resort to a mild hack; the head symbol of the call is temporary reset and
-  # overload resolution is executed again (which may trigger generateInstance).
-  if n.kind in nkCallKinds and sfFromGeneric in n[0].sym.flags:
-    var needsFixing = false
-    for i in 1..<n.safeLen:
-      if isTypeParam(n[i]): needsFixing = true
-    if needsFixing:
-      n[0] = newSymNode(n[0].sym.owner)
-      return cl.c.semOverloadedCall(cl.c, n, n, {skProc, skFunc}, {})
+when false: # old workaround
+  proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
+    # This is needed for tuninstantiatedgenericcalls
+    # It's possible that a generic param will be used in a proc call to a
+    # typedesc accepting proc. After generic param substitution, such procs
+    # should be optionally instantiated with the correct type. In order to
+    # perform this instantiation, we need to re-run the generateInstance path
+    # in the compiler, but it's quite complicated to do so at the moment so we
+    # resort to a mild hack; the head symbol of the call is temporary reset and
+    # overload resolution is executed again (which may trigger generateInstance).
+    if n.kind in nkCallKinds and sfFromGeneric in n[0].sym.flags:
+      var needsFixing = false
+      for i in 1..<n.safeLen:
+        if isTypeParam(n[i]): needsFixing = true
+      if needsFixing:
+        n[0] = newSymNode(n[0].sym.owner)
+        return cl.c.semOverloadedCall(cl.c, n, n, {skProc, skFunc}, {})
 
-  for i in 0..<n.safeLen:
-    n[i] = reResolveCallsWithTypedescParams(cl, n[i])
+    for i in 0..<n.safeLen:
+      n[i] = reResolveCallsWithTypedescParams(cl, n[i])
 
-  return n
+    return n
 
 proc replaceObjBranches(cl: TReplTypeVars, n: PNode): PNode =
   result = n
@@ -193,6 +196,24 @@ proc replaceObjBranches(cl: TReplTypeVars, n: PNode): PNode =
     for i in 0..<n.len:
       n[i] = replaceObjBranches(cl, n[i])
 
+proc hasValuelessStatics(n: PNode): bool =
+  # We should only attempt to call an expression that has no tyStatics
+  # As those are unresolved generic parameters, which means in the following
+  # The compiler attempts to do `T == 300` which errors since the typeclass `MyThing` lacks a parameter
+  #[
+    type MyThing[T: static int] = object
+      when T == 300:
+        a
+    proc doThing(_: MyThing)
+  ]#
+  if n.safeLen == 0:
+    n.typ == nil or n.typ.kind == tyStatic
+  else:
+    for x in n:
+      if hasValuelessStatics(x):
+        return true
+    false
+
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
   if n == nil: return
   result = copyNode(n)
@@ -217,10 +238,11 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       of nkElifBranch:
         checkSonsLen(it, 2, cl.c.config)
         var cond = prepareNode(cl, it[0])
-        var e = cl.c.semConstExpr(cl.c, cond)
-        if e.kind != nkIntLit:
-          internalError(cl.c.config, e.info, "ReplaceTypeVarsN: when condition not a bool")
-        if e.intVal != 0 and branch == nil: branch = it[1]
+        if not cond.hasValuelessStatics:
+          var e = cl.c.semConstExpr(cl.c, cond)
+          if e.kind != nkIntLit:
+            internalError(cl.c.config, e.info, "ReplaceTypeVarsN: when condition not a bool")
+          if e.intVal != 0 and branch == nil: branch = it[1]
       of nkElse:
         checkSonsLen(it, 1, cl.c.config)
         if branch == nil: branch = it[0]
@@ -231,7 +253,8 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       result = newNodeI(nkRecList, n.info)
   of nkStaticExpr:
     var n = prepareNode(cl, n)
-    n = reResolveCallsWithTypedescParams(cl, n)
+    when false:
+      n = reResolveCallsWithTypedescParams(cl, n)
     result = if cl.allowMetaTypes: n
              else: cl.c.semExpr(cl.c, n)
     if not cl.allowMetaTypes:
@@ -281,7 +304,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
       var g: G[string]
 
   ]#
-  result = copySym(s, nextSymId cl.c.idgen)
+  result = copySym(s, cl.c.idgen)
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner
@@ -499,10 +522,20 @@ proc propagateFieldFlags(t: PType, n: PNode) =
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   template bailout =
-    if t.sym != nil and sfGeneratedType in t.sym.flags:
-      # Only consider the recursion limit if the symbol is a type with generic
-      # parameters that have not been explicitly supplied, typechecking should
-      # terminate when generic parameters are explicitly supplied.
+    if (t.sym == nil) or (t.sym != nil and sfGeneratedType in t.sym.flags):
+      # In the first case 't.sym' can be 'nil' if the type is a ref/ptr, see
+      # issue https://github.com/nim-lang/Nim/issues/20416 for more details.
+      # Fortunately for us this works for now because partial ref/ptr types are
+      # not allowed in object construction, eg.
+      #   type
+      #     Container[T] = ...
+      #     O = object
+      #      val: ref Container
+      #
+      # In the second case only consider the recursion limit if the symbol is a
+      # type with generic parameters that have not been explicitly supplied,
+      # typechecking should terminate when generic parameters are explicitly
+      # supplied.
       if cl.recursionLimit > 100:
         # bail out, see bug #2509. But note this caching is in general wrong,
         # look at this example where TwoVectors should not share the generic
@@ -652,6 +685,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
 proc initTypeVars*(p: PContext, typeMap: LayeredIdTable, info: TLineInfo;
                    owner: PSym): TReplTypeVars =
+  result = default(TReplTypeVars)
   initIdTable(result.symMap)
   initIdTable(result.localCache)
   result.typeMap = typeMap

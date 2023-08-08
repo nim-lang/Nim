@@ -6,7 +6,7 @@ exec "gcc -v"
 --define:release
 
 --forceBuild
---path: "../friends"
+--path: "../generics"
 
 warning("uninit", off)
 

@@ -15,8 +15,9 @@ var
 
 if fileExists(fn): removeFile(fn)
 
-# Create a new file, data all zeros
-mm = memfiles.open(fn, mode = fmReadWrite, newFileSize = 20)
+# Create a new file, data all zeros, starting at size 10
+mm = memfiles.open(fn, mode = fmReadWrite, newFileSize = 10, allowRemap=true)
+mm.resize 20  # resize up to 20
 mm.close()
 
 # read, change

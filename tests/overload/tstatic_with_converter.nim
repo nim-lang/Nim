@@ -1,7 +1,6 @@
 discard """
 output: '''
 9.0
-
 '''
 """
 
@@ -39,12 +38,11 @@ proc `^`(x: vfloat, exp: static[float]): vfloat =
   when exp == 0.5:
     sqrt(x)
   else:
-   pow(x, exp)
+    pow(x, exp)
  
 proc `$`(x: vfloat): string =
   let y = cast[ptr float](addr x)
-  # xxx not sure if intentional in this issue, but this returns ""
-  echo y[]
+  result = $y[]
  
 let x = set1(9.0)
 echo x^0.5

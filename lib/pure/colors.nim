@@ -200,8 +200,8 @@ const
   colGoldenRod* = Color(0xDAA520)
   colGray* = Color(0x808080)
   colGreen* = Color(0x008000)
-  colGrey* = Color(0x808080)
   colGreenYellow* = Color(0xADFF2F)
+  colGrey* = Color(0x808080)
   colHoneyDew* = Color(0xF0FFF0)
   colHotPink* = Color(0xFF69B4)
   colIndianRed* = Color(0xCD5C5C)
@@ -350,8 +350,8 @@ const
     "goldenrod": colGoldenRod,
     "gray": colGray,
     "green": colGreen,
-    "grey": colGrey,
     "greenyellow": colGreenYellow,
+    "grey": colGrey,
     "honeydew": colHoneyDew,
     "hotpink": colHotPink,
     "indianred": colIndianRed,

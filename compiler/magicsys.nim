@@ -26,11 +26,11 @@ proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
   result = systemModuleSym(g, getIdent(g.cache, name))
   if result == nil:
     localError(g.config, info, "system module needs: " & name)
-    result = newSym(skError, getIdent(g.cache, name), nextSymId(g.idgen), g.systemModule, g.systemModule.info, {})
+    result = newSym(skError, getIdent(g.cache, name), g.idgen, g.systemModule, g.systemModule.info, {})
     result.typ = newType(tyError, nextTypeId(g.idgen), g.systemModule)
-  if result.kind == skAlias: result = result.owner
 
 proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSym =
+  result = nil
   let id = getIdent(g.cache, name)
   for r in systemModuleSyms(g, id):
     if r.magic == m:
@@ -39,7 +39,7 @@ proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSy
       result = r
   if result != nil: return result
   localError(g.config, info, "system module needs: " & name)
-  result = newSym(skError, id, nextSymId(g.idgen), g.systemModule, g.systemModule.info, {})
+  result = newSym(skError, id, g.idgen, g.systemModule, g.systemModule.info, {})
   result.typ = newType(tyError, nextTypeId(g.idgen), g.systemModule)
 
 proc sysTypeFromName*(g: ModuleGraph; info: TLineInfo; name: string): PType =
@@ -146,6 +146,7 @@ proc getMagicEqSymForType*(g: ModuleGraph; t: PType; info: TLineInfo): PSym =
   of tyProc:
     result = getSysMagic(g, info, "==", mEqProc)
   else:
+    result = nil
     globalError(g.config, info,
       "can't find magic equals operator for type kind " & $t.kind)
 

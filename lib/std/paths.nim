@@ -1,3 +1,8 @@
+## This module implements path handling.
+##
+## **See also:**
+## * `files module <files.html>`_ for file access
+
 import std/private/osseps
 export osseps
 

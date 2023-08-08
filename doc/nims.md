@@ -76,11 +76,10 @@ At least the following standard library modules are available:
 * [htmlgen](htmlgen.html)
 * [httpcore](httpcore.html)
 * [lenientops](lenientops.html)
-* [mersenne](mersenne.html)
 * [options](options.html)
 * [parseutils](parseutils.html)
 * [punycode](punycode.html)
-* [random](punycode.html)
+* [random](random.html)
 * [stats](stats.html)
 * [strformat](strformat.html)
 * [strmisc](strmisc.html)
@@ -89,7 +88,6 @@ At least the following standard library modules are available:
 * [uri](uri.html)
 * [std/editdistance](editdistance.html)
 * [std/wordwrap](wordwrap.html)
-* [std/sums](sums.html)
 * [parsecsv](parsecsv.html)
 * [parsecfg](parsecfg.html)
 * [parsesql](parsesql.html)
@@ -213,7 +211,7 @@ ends with ``.nims``:
   echo "hello world"
   ```
 
-Use `#!/usr/bin/env -S nim --hints:off` to disable hints.
+Use `#!/usr/bin/env -S nim e --hints:off` to disable hints and relax the file extension constraint.
 
 
 Benefits
@@ -331,7 +329,7 @@ Evolving Scripting language
 
 NimScript evolves together with Nim,
 [occasionally new features might become available on NimScript](
-https://github.com/nim-lang/Nim/pulls?utf8=%E2%9C%93&q=nimscript),
+https://github.com/nim-lang/Nim/pulls?q=nimscript+is%3Amerged),
 adapted from compiled Nim or added as new features on both.
 
 Scripting Language with a Package Manager

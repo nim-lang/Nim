@@ -9,7 +9,7 @@
 
 # This module implements a dependency file generator.
 
-import options, ast, ropes, passes, pathutils, msgs, lineinfos
+import options, ast, ropes, pathutils, msgs, lineinfos
 
 import modulegraphs
 
@@ -42,6 +42,7 @@ proc toNimblePath(s: string, isStdlib: bool): string =
     let sub = "lib/"
     var start = s.find(sub)
     if start < 0:
+      result = ""
       doAssert false
     else:
       start += sub.len
@@ -63,12 +64,16 @@ proc toNimblePath(s: string, isStdlib: bool): string =
       sub.add "/pkgs/"
     var start = s.find(sub)
     if start < 0:
-      result = s
-    else:
-      start += sub.len
-      start += skipUntil(s, '/', start)
-      start += 1
-      result = pkgPrefix & s[start..^1]
+      sub[^1] = '2'
+      sub.add '/'
+      start = s.find(sub) # /pkgs2
+      if start < 0:
+        return s
+
+    start += sub.len
+    start += skipUntil(s, '/', start)
+    start += 1
+    result = pkgPrefix & s[start..^1]
 
 proc addDependency(c: PPassContext, g: PGen, b: Backend, n: PNode) =
   doAssert n.kind == nkSym, $n.kind
@@ -79,7 +84,7 @@ proc addDependency(c: PPassContext, g: PGen, b: Backend, n: PNode) =
   let child = nativeToUnixPath(path.dir / path.name).toNimblePath(belongsToStdlib(g.graph, n.sym))
   addDependencyAux(b, parent, child)
 
-proc addDotDependency(c: PPassContext, n: PNode): PNode =
+proc addDotDependency*(c: PPassContext, n: PNode): PNode =
   result = n
   let g = PGen(c)
   let b = Backend(g.graph.backend)
@@ -100,18 +105,7 @@ proc generateDot*(graph: ModuleGraph; project: AbsoluteFile) =
       rope(project.splitFile.name), b.dotGraph],
             changeFileExt(project, "dot"))
 
-when not defined(nimHasSinkInference):
-  {.pragma: nosinks.}
-
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
-  var g: PGen
-  new(g)
-  g.module = module
-  g.config = graph.config
-  g.graph = graph
+proc setupDependPass*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
+  result = PGen(module: module, config: graph.config, graph: graph)
   if graph.backend == nil:
     graph.backend = Backend(dotGraph: "")
-  result = g
-
-const gendependPass* = makePass(open = myOpen, process = addDotDependency)
-

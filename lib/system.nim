@@ -25,7 +25,11 @@
 include "system/basic_types"
 
 func zeroDefault*[T](_: typedesc[T]): T {.magic: "ZeroDefault".} =
-  ## returns the default value of the type `T`.
+  ## Returns the binary zeros representation of the type `T`. It ignores
+  ## default fields of an object.
+  ##
+  ## See also:
+  ## * `default <#default,typedesc[T]>`_
 
 include "system/compilation"
 
@@ -62,11 +66,11 @@ proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
     doAssert type(myFoo()) is string
     doAssert typeof(myFoo()) is string
     doAssert typeof(myFoo(), typeOfIter) is string
-    doAssert typeof(myFoo3) is "iterator"
+    doAssert typeof(myFoo3) is iterator
 
     doAssert typeof(myFoo(), typeOfProc) is float
     doAssert typeof(0.0, typeOfProc) is float
-    doAssert typeof(myFoo3, typeOfProc) is "iterator"
+    doAssert typeof(myFoo3, typeOfProc) is iterator
     doAssert not compiles(typeof(myFoo2(), typeOfProc))
       # this would give: Error: attempting to call routine: 'myFoo2'
       # since `typeOfProc` expects a typed expression and `myFoo2()` can
@@ -85,17 +89,12 @@ when defined(nimHasIterable):
   type
     iterable*[T] {.magic: IterableType.}  ## Represents an expression that yields `T`
 
-when defined(nimHashOrdinalFixed):
-  type
-    Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
-                                   ## bool, character, and enumeration types
-                                   ## as well as their subtypes. See also
-                                   ## `SomeOrdinal`.
-else:
-  # bootstrap < 1.2.0
-  type
-    OrdinalImpl[T] {.magic: Ordinal.}
-    Ordinal* = OrdinalImpl | uint | uint64
+type
+  Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
+                                  ## bool, character, and enumeration types
+                                  ## as well as their subtypes. See also
+                                  ## `SomeOrdinal`.
+
 
 proc `addr`*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory location.
@@ -142,15 +141,30 @@ proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
   ## **Note**: The `finalizer` refers to the type `T`, not to the object!
   ## This means that for each object of type `T` the finalizer will be called!
 
-proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
+proc `=wasMoved`*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
+  ## Generic `wasMoved`:idx: implementation that can be overridden.
+
+proc wasMoved*[T](obj: var T) {.inline, noSideEffect.} =
   ## Resets an object `obj` to its initial (binary zero) value to signify
   ## it was "moved" and to signify its destructor should do nothing and
   ## ideally be optimized away.
-  discard
+  {.cast(raises: []), cast(tags: []).}:
+    `=wasMoved`(obj)
 
 proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
   result = x
-  wasMoved(x)
+  {.cast(raises: []), cast(tags: []).}:
+    `=wasMoved`(x)
+
+when defined(nimHasEnsureMove):
+  proc ensureMove*[T](x: T): T {.magic: "EnsureMove", noSideEffect.} =
+    ## Ensures that `x` is moved to the new location, otherwise it gives
+    ## an error at the compile time.
+    runnableExamples:
+      var x = "Hello"
+      let y = ensureMove(x)
+      doAssert y == "Hello"
+    discard "implemented in injectdestructors"
 
 type
   range*[T]{.magic: "Range".}         ## Generic type to construct range types.
@@ -325,7 +339,7 @@ proc low*(x: string): int {.magic: "Low", noSideEffect.}
   ## See also:
   ## * `high(string) <#high,string>`_
 
-when not defined(gcArc) and not defined(gcOrc):
+when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc):
   proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
     ## Use this instead of `=` for a `shallow copy`:idx:.
     ##
@@ -349,12 +363,31 @@ proc arrGet[I: Ordinal;T](a: T; i: I): T {.
 proc arrPut[I: Ordinal;T,S](a: T; i: I;
   x: S) {.noSideEffect, magic: "ArrPut".}
 
+const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
+
+
+when defined(nimAllowNonVarDestructor) and arcLikeMem:
+  proc `=destroy`*(x: string) {.inline, magic: "Destroy".} =
+    discard
+
+  proc `=destroy`*[T](x: seq[T]) {.inline, magic: "Destroy".} =
+    discard
+
+  proc `=destroy`*[T](x: ref T) {.inline, magic: "Destroy".} =
+    discard
+
 proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
   ## Generic `destructor`:idx: implementation that can be overridden.
   discard
+
+when defined(nimHasDup):
+  proc `=dup`*[T](x: T): T {.inline, magic: "Dup".} =
+    ## Generic `dup`:idx: implementation that can be overridden.
+    discard
+
 proc `=sink`*[T](x: var T; y: T) {.inline, nodestroy, magic: "Asgn".} =
   ## Generic `sink`:idx: implementation that can be overridden.
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
     x = y
   else:
     shallowCopy(x, y)
@@ -451,9 +484,7 @@ type
            ## However, objects that have no ancestor are also allowed.
   RootRef* = ref RootObj ## Reference to `RootObj`.
 
-const NimStackTraceMsgs =
-  when defined(nimHasStacktraceMsgs): compileOption("stacktraceMsgs")
-  else: false
+const NimStackTraceMsgs = compileOption("stacktraceMsgs")
 
 type
   RootEffect* {.compilerproc.} = object of RootObj ## \
@@ -887,27 +918,31 @@ proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEff
   ##   ```
 
 proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
-  ## returns the default value of the type `T`.
-  runnableExamples:
+  ## Returns the default value of the type `T`. Contrary to `zeroDefault`, it takes default fields
+  ## of an object into consideration.
+  ##
+  ## See also:
+  ## * `zeroDefault <#zeroDefault,typedesc[T]>`_
+  ##
+  runnableExamples("-d:nimPreviewRangeDefault"):
     assert (int, float).default == (0, 0.0)
-    # note: `var a = default(T)` is usually the same as `var a: T` and (currently) generates
-    # a value whose binary representation is all 0, regardless of whether this
-    # would violate type constraints such as `range`, `not nil`, etc. This
-    # property is required to implement certain algorithms efficiently which
-    # may require intermediate invalid states.
     type Foo = object
       a: range[2..6]
-    var a1: range[2..6] # currently, this compiles
-    # var a2: Foo # currently, this errors: Error: The Foo type doesn't have a default value.
-    # var a3 = Foo() # ditto
-    var a3 = Foo.default # this works, but generates a `UnsafeDefault` warning.
-  # note: the doc comment also explains why `default` can't be implemented
-  # via: `template default*[T](t: typedesc[T]): T = (var v: T; v)`
+    var x = Foo.default
+    assert x.a == 2
 
 
 proc reset*[T](obj: var T) {.noSideEffect.} =
   ## Resets an object `obj` to its default value.
-  obj = default(typeof(obj))
+  when nimvm:
+    obj = default(typeof(obj))
+  else:
+    when defined(gcDestructors):
+      {.cast(noSideEffect), cast(raises: []), cast(tags: []).}:
+        `=destroy`(obj)
+        `=wasMoved`(obj)
+    else:
+      obj = default(typeof(obj))
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.
   magic: "SetLengthSeq", noSideEffect.}
@@ -1088,31 +1123,9 @@ proc align(address, alignment: int): int =
   else:
     result = (address + (alignment - 1)) and not (alignment - 1)
 
-when defined(nimNoQuit):
-  proc rawQuit(errorcode: int = QuitSuccess) = discard "ignoring quit"
-
-elif defined(genode):
-  import genode/env
-
-  var systemEnv {.exportc: runtimeEnvSym.}: GenodeEnvPtr
-
-  type GenodeEnv* = GenodeEnvPtr
-    ## Opaque type representing Genode environment.
-
-  proc rawQuit(env: GenodeEnv; errorcode: int) {.magic: "Exit", noreturn,
-    importcpp: "#->parent().exit(@); Genode::sleep_forever()", header: "<base/sleep.h>".}
-
-  proc rawQuit(errorcode: int = QuitSuccess) {.inline, noreturn.} =
-    systemEnv.rawQuit(errorcode)
-
-
-elif defined(js) and defined(nodejs) and not defined(nimscript):
-  proc rawQuit(errorcode: int = QuitSuccess) {.magic: "Exit",
-    importc: "process.exit", noreturn.}
-
-else:
-  proc rawQuit(errorcode: cint) {.
-    magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
+include system/rawquits
+when defined(genode):
+  export GenodeEnv
 
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
@@ -1137,6 +1150,11 @@ when defined(nimscript) or not defined(nimSeqsV2):
     ## containers should also call their adding proc `add` for consistency.
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
+    ##   ```
+    ##   var s: seq[string] = @["test2","test2"]
+    ##   s.add("test")
+    ##   assert s == @["test2", "test2", "test"]
+    ##   ```
 
 when false: # defined(gcDestructors):
   proc add*[T](x: var seq[T], y: sink openArray[T]) {.noSideEffect.} =
@@ -1171,13 +1189,17 @@ else:
     ## containers should also call their adding proc `add` for consistency.
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
-    ##   ```
-    ##   var s: seq[string] = @["test2","test2"]
-    ##   s.add("test") # s <- @[test2, test2, test]
-    ##   ```
     ##
     ## See also:
     ## * `& proc <#&,seq[T],seq[T]>`_
+    runnableExamples:
+      var a = @["a1", "a2"]
+      a.add(["b1", "b2"])
+      assert a == @["a1", "a2", "b1", "b2"]
+      var c = @["c0", "c1", "c2", "c3"]
+      a.add(c.toOpenArray(1, 2))
+      assert a == @["a1", "a2", "b1", "b2", "c1", "c2"]
+
     {.noSideEffect.}:
       let xl = x.len
       setLen(x, xl + y.len)
@@ -1394,13 +1416,15 @@ when not defined(js) and not defined(booting) and defined(nimTrMacros):
     swap(cast[ptr pointer](addr arr[a])[], cast[ptr pointer](addr arr[b])[])
 
 when not defined(nimscript):
-  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
-                                                     discardable, raises: [], tags: [], benign.}
-  ## Atomic increment of `memLoc`. Returns the value after the operation.
+  {.push stackTrace: off, profiler: off.}
 
-  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline,
-                                                     discardable, raises: [], tags: [], benign.}
-  ## Atomic decrement of `memLoc`. Returns the value after the operation.
+  when not defined(nimPreviewSlimSystem):
+    import std/sysatomics
+    export sysatomics
+  else:
+    import std/sysatomics
+
+  {.pop.}
 
 include "system/memalloc"
 
@@ -1423,7 +1447,7 @@ proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
-proc isNil*[T: proc](x: T): bool {.noSideEffect, magic: "IsNil".}
+proc isNil*[T: proc | iterator {.closure.}](x: T): bool {.noSideEffect, magic: "IsNil".}
   ## Fast check whether `x` is nil. This is sometimes more efficient than
   ## `== nil`.
 
@@ -1595,7 +1619,7 @@ when not defined(js) and defined(nimV2):
       align: int16
       depth: int16
       display: ptr UncheckedArray[uint32] # classToken
-      when defined(nimTypeNames):
+      when defined(nimTypeNames) or defined(nimArcIds):
         name: cstring
       traceImpl: pointer
       typeInfoV1: pointer # for backwards compat, usually nil
@@ -1617,13 +1641,6 @@ when not defined(nimscript):
 when not declared(sysFatal):
   include "system/fatal"
 
-when not defined(nimscript):
-  {.push stackTrace: off, profiler: off.}
-
-  include "system/atomics"
-
-  {.pop.}
-
 
 when defined(nimV2):
   include system/arc
@@ -1635,7 +1652,6 @@ template newException*(exceptn: typedesc, message: string;
   (ref exceptn)(msg: message, parent: parentException)
 
 when not defined(nimPreviewSlimSystem):
-  {.deprecated: "assertions is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/assertions`".}
   import std/assertions
   export assertions
 
@@ -1669,6 +1685,8 @@ proc contains*[T](a: openArray[T], item: T): bool {.inline.}=
 proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
   ## Returns the last item of `s` and decreases `s.len` by one. This treats
   ## `s` as a stack and implements the common *pop* operation.
+  ##
+  ## Raises `IndexDefect` if `s` is empty.
   runnableExamples:
     var a = @[1, 3, 5, 7]
     let b = pop(a)
@@ -1683,7 +1701,7 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
     result = s[L]
     setLen(s, L)
 
-func `==`*[T: tuple|object](x, y: T): bool =
+proc `==`*[T: tuple|object](x, y: T): bool =
   ## Generic `==` operator for tuples that is lifted from the components.
   ## of `x` and `y`.
   for a, b in fields(x, y):
@@ -1844,7 +1862,7 @@ proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
     if s == nil or s.len == 0: result = cstring""
-    else: result = cstring(addr s.data)
+    else: result = cast[cstring](addr s.data)
 
 proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## Get type information for `x`.
@@ -2006,7 +2024,7 @@ when notJSnotNims:
   proc equalMem(a, b: pointer, size: Natural): bool =
     nimCmpMem(a, b, size) == 0
   proc cmpMem(a, b: pointer, size: Natural): int =
-    nimCmpMem(a, b, size)
+    nimCmpMem(a, b, size).int
 
 when not defined(js):
   proc cmp(x, y: string): int =
@@ -2071,9 +2089,8 @@ when not defined(js):
     when hostOS != "standalone":
       include system/threadimpl
       when not defined(nimPreviewSlimSystem):
-        {.deprecated: "threads is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/threads`".}
-        import std/threads
-        export threads
+        import std/typedthreads
+        export typedthreads
 
   elif not defined(nogc) and not defined(nimscript):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
@@ -2118,10 +2135,7 @@ when notJSnotNims:
 
   # we cannot compile this with stack tracing on
   # as it would recurse endlessly!
-  when defined(nimNewIntegerOps):
-    include "system/integerops"
-  else:
-    include "system/arithm"
+  include "system/integerops"
   {.pop.}
 
 
@@ -2216,39 +2230,30 @@ when notJSnotNims:
     include "system/profiler"
   {.pop.}
 
-  proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
+  proc rawProc*[T: proc {.closure.} | iterator {.closure.}](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw proc pointer of the closure `x`. This is
     ## useful for interfacing closures with C/C++, hash compuations, etc.
-    when T is "closure":
-      #[
-      The conversion from function pointer to `void*` is a tricky topic, but this
-      should work at least for c++ >= c++11, e.g. for `dlsym` support.
-      refs: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57869,
-      https://stackoverflow.com/questions/14125474/casts-between-pointer-to-function-and-pointer-to-object-in-c-and-c
-      ]#
-      {.emit: """
-      `result` = (void*)`x`.ClP_0;
-      """.}
-    else:
-      {.error: "Only closure function and iterator are allowed!".}
+    #[
+    The conversion from function pointer to `void*` is a tricky topic, but this
+    should work at least for c++ >= c++11, e.g. for `dlsym` support.
+    refs: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57869,
+    https://stackoverflow.com/questions/14125474/casts-between-pointer-to-function-and-pointer-to-object-in-c-and-c
+    ]#
+    {.emit: """
+    `result` = (void*)`x`.ClP_0;
+    """.}
 
-  proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
+  proc rawEnv*[T: proc {.closure.} | iterator {.closure.}](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw environment pointer of the closure `x`. See also `rawProc`.
-    when T is "closure":
-      {.emit: """
-      `result` = `x`.ClE_0;
-      """.}
-    else:
-      {.error: "Only closure function and iterator are allowed!".}
+    {.emit: """
+    `result` = `x`.ClE_0;
+    """.}
 
-  proc finished*[T: proc](x: T): bool {.noSideEffect, inline, magic: "Finished".} =
+  proc finished*[T: iterator {.closure.}](x: T): bool {.noSideEffect, inline, magic: "Finished".} =
     ## It can be used to determine if a first class iterator has finished.
-    when T is "iterator":
-      {.emit: """
-      `result` = ((NI*) `x`.ClE_0)[1] < 0;
-      """.}
-    else:
-      {.error: "Only closure iterator is allowed!".}
+    {.emit: """
+    `result` = ((NI*) `x`.ClE_0)[1] < 0;
+    """.}
 
 from std/private/digitsutils import addInt
 export addInt
@@ -2305,11 +2310,13 @@ else:
       type ExitCodeRange = int8
     else: # win32 uses low 32 bits
       type ExitCodeRange = cint
-
-    if errorcode < low(ExitCodeRange):
-      rawQuit(low(ExitCodeRange).cint)
-    elif errorcode > high(ExitCodeRange):
-      rawQuit(high(ExitCodeRange).cint)
+    when sizeof(errorcode) > sizeof(ExitCodeRange):
+      if errorcode < low(ExitCodeRange):
+        rawQuit(low(ExitCodeRange).cint)
+      elif errorcode > high(ExitCodeRange):
+        rawQuit(high(ExitCodeRange).cint)
+      else:
+        rawQuit(errorcode.cint)
     else:
       rawQuit(errorcode.cint)
 
@@ -2352,7 +2359,7 @@ when compileOption("rangechecks"):
 else:
   template rangeCheck*(cond) = discard
 
-when not defined(gcArc) and not defined(gcOrc):
+when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc):
   proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
     ## Marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
     ## perform deep copies of `s`.
@@ -2361,7 +2368,8 @@ when not defined(gcArc) and not defined(gcOrc):
     if s.len == 0: return
     when not defined(js) and not defined(nimscript) and not defined(nimSeqsV2):
       var s = cast[PGenericSeq](s)
-      s.reserved = s.reserved or seqShallowFlag
+      {.noSideEffect.}:
+        s.reserved = s.reserved or seqShallowFlag
 
   proc shallow*(s: var string) {.noSideEffect, inline.} =
     ## Marks a string `s` as `shallow`:idx:. Subsequent assignments will not
@@ -2374,7 +2382,8 @@ when not defined(gcArc) and not defined(gcOrc):
         s = cast[PGenericSeq](newString(0))
       # string literals cannot become 'shallow':
       if (s.reserved and strlitFlag) == 0:
-        s.reserved = s.reserved or seqShallowFlag
+        {.noSideEffect.}:
+          s.reserved = s.reserved or seqShallowFlag
 
 type
   NimNodeObj = object
@@ -2396,6 +2405,16 @@ when defined(nimV2):
   import system/repr_v2
   export repr_v2
 
+proc repr*[T, U](x: HSlice[T, U]): string =
+  ## Generic `repr` operator for slices that is lifted from the components
+  ## of `x`. Example:
+  ##
+  ## .. code-block:: Nim
+  ##  $(1 .. 5) == "1 .. 5"
+  result = repr(x.a)
+  result.add(" .. ")
+  result.add(repr(x.b))
+
 when hasAlloc or defined(nimscript):
   proc insert*(x: var string, item: string, i = 0.Natural) {.noSideEffect.} =
     ## Inserts `item` into `x` at position `i`.
@@ -2407,7 +2426,7 @@ when hasAlloc or defined(nimscript):
     setLen(x, xl+item.len)
     var j = xl-1
     while j >= i:
-      when defined(gcArc) or defined(gcOrc):
+      when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
         x[j+item.len] = move x[j]
       else:
         shallowCopy(x[j+item.len], x[j])
@@ -2661,11 +2680,10 @@ when defined(nimconfig):
 when not defined(js):
   proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
-  when defined(nimToOpenArrayCString):
-    proc toOpenArray*(x: cstring; first, last: int): openArray[char] {.
-      magic: "Slice".}
-    proc toOpenArrayByte*(x: cstring; first, last: int): openArray[byte] {.
-      magic: "Slice".}
+  proc toOpenArray*(x: cstring; first, last: int): openArray[char] {.
+    magic: "Slice".}
+  proc toOpenArrayByte*(x: cstring; first, last: int): openArray[byte] {.
+    magic: "Slice".}
 
 proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
   magic: "Slice".}
@@ -2716,11 +2734,13 @@ when notJSnotNims:
     initSysLock echoLock
     addSysExitProc(proc() {.noconv.} = deinitSys(echoLock))
 
-  const stdOutLock = not defined(windows) and
+  const stdOutLock = compileOption("threads") and
+                    not defined(windows) and
                     not defined(android) and
                     not defined(nintendoswitch) and
                     not defined(freertos) and
                     not defined(zephyr) and
+                    not defined(nuttx) and
                     hostOS != "any"
 
   proc raiseEIO(msg: string) {.noinline, noreturn.} =
@@ -2780,7 +2800,6 @@ when notJSnotNims:
         releaseSys echoLock
 
 when not defined(nimPreviewSlimSystem):
-  {.deprecated: "io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`".}
   import std/syncio
   export syncio
 
@@ -2800,7 +2819,10 @@ when notJSnotNims and not defined(nimSeqsV2):
       assert y == "abcgh"
     discard
 
-proc arrayWith*[T](y: T, size: static int): array[size, T] {.noinit.} = # ? exempt from default value for result
+proc arrayWith*[T](y: T, size: static int): array[size, T] {.raises: [].} =
   ## Creates a new array filled with `y`.
   for i in 0..size-1:
-    result[i] = y
+    when nimvm:
+      result[i] = y
+    else:
+      result[i] = `=dup`(y)

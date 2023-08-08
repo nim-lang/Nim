@@ -222,9 +222,9 @@ proc stackSize(stack: ptr GcStack): int {.noinline.} =
 
   if pos != nil:
     when stackIncreases:
-      result = cast[ByteAddress](pos) -% cast[ByteAddress](stack.bottom)
+      result = cast[int](pos) -% cast[int](stack.bottom)
     else:
-      result = cast[ByteAddress](stack.bottom) -% cast[ByteAddress](pos)
+      result = cast[int](stack.bottom) -% cast[int](pos)
   else:
     result = 0
 
@@ -295,8 +295,8 @@ when not defined(useNimRtl):
       # the first init must be the one that defines the stack bottom:
       gch.stack.bottom = theStackBottom
     elif theStackBottom != gch.stack.bottom:
-      var a = cast[ByteAddress](theStackBottom) # and not PageMask - PageSize*2
-      var b = cast[ByteAddress](gch.stack.bottom)
+      var a = cast[int](theStackBottom) # and not PageMask - PageSize*2
+      var b = cast[int](gch.stack.bottom)
       #c_fprintf(stdout, "old: %p new: %p;\n",gch.stack.bottom,theStackBottom)
       when stackIncreases:
         gch.stack.bottom = cast[pointer](min(a, b))
@@ -312,11 +312,11 @@ when not defined(useNimRtl):
 proc isOnStack(p: pointer): bool =
   var stackTop {.volatile, noinit.}: pointer
   stackTop = addr(stackTop)
-  var a = cast[ByteAddress](gch.getActiveStack().bottom)
-  var b = cast[ByteAddress](stackTop)
+  var a = cast[int](gch.getActiveStack().bottom)
+  var b = cast[int](stackTop)
   when not stackIncreases:
     swap(a, b)
-  var x = cast[ByteAddress](p)
+  var x = cast[int](p)
   result = a <=% x and x <=% b
 
 when defined(sparc): # For SPARC architecture.
@@ -337,7 +337,7 @@ when defined(sparc): # For SPARC architecture.
     # Addresses decrease as the stack grows.
     while sp <= max:
       gcMark(gch, sp[])
-      sp = cast[PPointer](cast[ByteAddress](sp) +% sizeof(pointer))
+      sp = cast[PPointer](cast[int](sp) +% sizeof(pointer))
 
 elif defined(ELATE):
   {.error: "stack marking code is to be written for this architecture".}
@@ -354,8 +354,8 @@ elif stackIncreases:
 
   template forEachStackSlotAux(gch, gcMark: untyped) {.dirty.} =
     for stack in gch.stack.items():
-      var max = cast[ByteAddress](gch.stack.bottom)
-      var sp = cast[ByteAddress](addr(registers)) -% sizeof(pointer)
+      var max = cast[int](gch.stack.bottom)
+      var sp = cast[int](addr(registers)) -% sizeof(pointer)
       while sp >=% max:
         gcMark(gch, cast[PPointer](sp)[])
         sp = sp -% sizeof(pointer)
@@ -383,15 +383,14 @@ else:
     gch.getActiveStack().setPosition(addr(registers))
     if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
       for stack in gch.stack.items():
-        var max = cast[ByteAddress](stack.bottom)
-        var sp = cast[ByteAddress](addr(registers))
+        var max = cast[int](stack.bottom)
+        var sp = cast[int](addr(registers))
         when defined(amd64):
           if stack.isActiveStack():
             # words within the jmp_buf structure may not be properly aligned.
             let regEnd = sp +% sizeof(registers)
             while sp <% regEnd:
               gcMark(gch, cast[PPointer](sp)[])
-              gcMark(gch, cast[PPointer](sp +% sizeof(pointer) div 2)[])
               sp = sp +% sizeof(pointer)
         # Make sure sp is word-aligned
         sp = sp and not (sizeof(pointer) - 1)

@@ -2,7 +2,7 @@
 ## (c) 2021 Andreas Rumpf
 
 import std / strutils
-import ".." / compiler / [ast, idents, msgs, syntaxes, options, pathutils]
+import ".." / ".." / compiler / [ast, idents, msgs, syntaxes, options, pathutils]
 
 type
   NimbleFileInfo* = object

@@ -134,17 +134,14 @@ template main =
 
   block: # bug 1 from https://github.com/nim-lang/Nim/pull/17020#issuecomment-803193947
     macro deb1(a): untyped = newLit a.repr
-    macro deb2(a): untyped = newLit a.lispRepr
+    macro deb2(a): untyped =
+      a[1] = ident($a[1])
+      newLit a.lispRepr
     doAssert deb1(-12'wrap) == "-12'wrap"
     doAssert deb1(-12'nonexistent) == "-12'nonexistent"
     doAssert deb2(-12'nonexistent) == """(DotExpr (RStrLit "-12") (Ident "\'nonexistent"))"""
-    when false: # xxx bug:
-      # this holds:
-      doAssert deb2(-12.wrap2) == """(DotExpr (IntLit -12) (Sym "wrap2"))"""
-      doAssert deb2(-12'wrap) == """(DotExpr (RStrLit "-12") (Sym "\'wrap"))"""
-      # but instead this should hold:
-      doAssert deb2(-12.wrap2) == """(DotExpr (IntLit -12) (Ident "wrap2"))"""
-      doAssert deb2(-12'wrap) == """(DotExpr (RStrLit "-12") (Ident "\'wrap"))"""
+    doAssert deb2(-12.wrap2) == """(DotExpr (IntLit -12) (Ident "wrap2"))"""
+    doAssert deb2(-12'wrap) == """(DotExpr (RStrLit "-12") (Ident "\'wrap"))"""
 
   block: # bug 2 from https://github.com/nim-lang/Nim/pull/17020#issuecomment-803193947
     template toSuf(`'suf`): untyped =
@@ -165,21 +162,16 @@ template main =
     doAssert fn2() == "[[-12]]"
     doAssert fn3() == "[[-12]]"
 
-    when false: # xxx this fails; bug 9 from https://github.com/nim-lang/Nim/pull/17020#issuecomment-803193947
-      #[
-      possible workaround: use `genAst` (https://github.com/nim-lang/Nim/pull/17426) and this:
-      let a3 = `'wrap3`("-128")
-      ]#
-      block:
-        macro metawrap(): untyped =
-          func wrap1(a: string): string = "{" & a & "}"
-          func `'wrap3`(a: string): string = "{" & a & "}"
-          result = quote do:
-            let a1 = wrap1"-128"
-            let a2 = -128'wrap3
-        metawrap()
-        doAssert a1 == "{-128}"
-        doAssert a2 == "{-128}"
+    block: # bug 9 from https://github.com/nim-lang/Nim/pull/17020#issuecomment-803193947
+      macro metawrap(): untyped =
+        func wrap1(a: string): string = "{" & a & "}"
+        func `'wrap3`(a: string): string = "{" & a & "}"
+        result = quote do:
+          let a1 {.inject.} = wrap1"-128"
+          let a2 {.inject.} = -128'wrap3
+      metawrap()
+      doAssert a1 == "{-128}"
+      doAssert a2 == "{-128}"
 
 static: main()
 main()

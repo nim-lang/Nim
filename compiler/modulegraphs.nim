@@ -11,7 +11,8 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import intsets, tables, hashes, md5_old
+import intsets, tables, hashes
+import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
 import ic / [packed_ast, ic]
 
@@ -57,6 +58,18 @@ type
     sym*: PSym
     info*: TLineInfo
 
+  PipelinePass* = enum
+    NonePass
+    SemPass
+    JSgenPass
+    CgenPass
+    EvalPass
+    InterpreterPass
+    GenDependPass
+    Docgen2TexPass
+    Docgen2JsonPass
+    Docgen2Pass
+
   ModuleGraph* {.acyclic.} = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packed*: PackedModuleGraph
@@ -66,6 +79,7 @@ type
     procInstCache*: Table[ItemId, seq[LazyInstantiation]] # A symbol's ItemId.
     attachedOps*: array[TTypeAttachedOp, Table[ItemId, LazySym]] # Type ID, destructors, etc.
     methodsPerType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
+    memberProcsPerType*: Table[ItemId, seq[PSym]] # Type ID, attached member procs (only c++, virtual and ctor so far)
     enumToStringProcs*: Table[ItemId, LazySym]
     emittedTypeInfo*: Table[string, FileIndex]
 
@@ -104,6 +118,7 @@ type
     cacheCounters*: Table[string, BiggestInt] # IC: implemented
     cacheTables*: Table[string, BTree[string, PNode]] # IC: implemented
     passes*: seq[TPass]
+    pipelinePass*: PipelinePass
     onDefinition*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     onDefinitionResolveForward*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     onUsage*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
@@ -353,6 +368,7 @@ proc copyTypeProps*(g: ModuleGraph; module: int; dest, src: PType) =
       setAttachedOp(g, module, dest, k, op)
 
 proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
+  result = nil
   if g.config.symbolFiles == disabledSf: return nil
 
   # slow, linear search, but the results are cached:
@@ -398,7 +414,7 @@ proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
 
 proc createMagic*(g: ModuleGraph; idgen: IdGenerator; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(g.cache, name), nextSymId(idgen), nil, unknownLineInfo, {})
+  result = newSym(skProc, getIdent(g.cache, name), idgen, nil, unknownLineInfo, {})
   result.magic = m
   result.flags = {sfNeverRaises}
 
@@ -485,6 +501,7 @@ proc resetAllModules*(g: ModuleGraph) =
   initModuleGraphFields(g)
 
 proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
+  result = nil
   if fileIdx.int32 >= 0:
     if isCachedModule(g, fileIdx.int32):
       result = g.packed[fileIdx.int32].module
@@ -590,6 +607,7 @@ proc markClientsDirty*(g: ModuleGraph; fileIdx: FileIndex) =
 
 proc needsCompilation*(g: ModuleGraph): bool =
   # every module that *depends* on this file is also dirty:
+  result = false
   for i in 0i32..<g.ifaces.len.int32:
     let m = g.ifaces[i].module
     if m != nil:
@@ -597,6 +615,7 @@ proc needsCompilation*(g: ModuleGraph): bool =
         return true
 
 proc needsCompilation*(g: ModuleGraph, fileIdx: FileIndex): bool =
+  result = false
   let module = g.getModule(fileIdx)
   if module != nil and g.isDirty(module):
     return true
@@ -618,6 +637,8 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
   ## Returns 'nil' if the module needs to be recompiled.
   if g.config.symbolFiles in {readOnlySf, v2Sf, stressTest}:
     result = moduleFromRodFile(g.packed, g.config, g.cache, fileIdx, cachedModules)
+  else:
+    result = nil
 
 proc configComplete*(g: ModuleGraph) =
   rememberStartupConfig(g.startupPackedConfig, g.config)

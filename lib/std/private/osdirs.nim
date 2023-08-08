@@ -1,3 +1,5 @@
+## .. importdoc:: osfiles.nim, appdirs.nim, paths.nim
+
 include system/inclrtl
 import std/oserrors
 
@@ -231,7 +233,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false,
         while true:
           var x = readdir(d)
           if x == nil: break
-          var y = $cstring(addr x.d_name)
+          var y = $cast[cstring](addr x.d_name)
           if y != "." and y != "..":
             var s: Stat
             let path = dir / y
@@ -326,10 +328,7 @@ iterator walkDirRec*(dir: string,
 
 proc rawRemoveDir(dir: string) {.noWeirdTarget.} =
   when defined(windows):
-    when useWinUnicode:
-      wrapUnary(res, removeDirectoryW, dir)
-    else:
-      var res = removeDirectoryA(dir)
+    wrapUnary(res, removeDirectoryW, dir)
     let lastError = osLastError()
     if res == 0'i32 and lastError.int32 != 3'i32 and
         lastError.int32 != 18'i32 and lastError.int32 != 2'i32:
@@ -394,10 +393,7 @@ proc rawCreateDir(dir: string): bool {.noWeirdTarget.} =
       #echo res
       raiseOSError(osLastError(), dir)
   else:
-    when useWinUnicode:
-      wrapUnary(res, createDirectoryW, dir)
-    else:
-      let res = createDirectoryA(dir)
+    wrapUnary(res, createDirectoryW, dir)
 
     if res != 0'i32:
       result = true
@@ -559,10 +555,7 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [], noWeirdTarget.} =
   ## * `getTempDir proc`_
   ## * `getCurrentDir proc`_
   when defined(windows):
-    when useWinUnicode:
-      if setCurrentDirectoryW(newWideCString(newDir)) == 0'i32:
-        raiseOSError(osLastError(), newDir)
-    else:
-      if setCurrentDirectoryA(newDir) == 0'i32: raiseOSError(osLastError(), newDir)
+    if setCurrentDirectoryW(newWideCString(newDir)) == 0'i32:
+      raiseOSError(osLastError(), newDir)
   else:
     if chdir(newDir) != 0'i32: raiseOSError(osLastError(), newDir)

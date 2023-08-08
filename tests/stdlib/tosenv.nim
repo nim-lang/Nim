@@ -1,5 +1,5 @@
 discard """
-  matrix: "--threads"
+  matrix: "--mm:refc; --mm:arc"
   joinable: false
   targets: "c js cpp"
 """
@@ -58,7 +58,7 @@ proc c_getenv(env: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
 
 when not defined(js) and not defined(nimscript):
   when defined(nimPreviewSlimSystem):
-    import std/threads
+    import std/typedthreads
   block: # bug #18533
     var thr: Thread[void]
     proc threadFunc {.thread.} = putEnv("foo", "fooVal2")

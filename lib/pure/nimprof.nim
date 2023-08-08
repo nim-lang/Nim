@@ -15,8 +15,7 @@
 when not defined(profiler) and not defined(memProfiler):
   {.error: "Profiling support is turned off! Enable profiling by passing `--profiler:on --stackTrace:on` to the compiler (see the Nim Compiler User Guide for more options).".}
 
-when defined(nimHasUsed):
-  {.used.}
+{.used.}
 
 # We don't want to profile the profiling code ...
 {.push profiler: off.}
@@ -24,7 +23,7 @@ when defined(nimHasUsed):
 import hashes, algorithm, strutils, tables, sets
 
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[syncio, sysatomics]
 
 when not defined(memProfiler):
   include "system/timers"

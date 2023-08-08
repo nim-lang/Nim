@@ -7,6 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
+when not defined(nimPreviewSlimSystem) and not declared(sysFatal):
+  include "system/rawquits"
+  include "system/fatal"
+
 ## This module implements assertion handling.
 
 import std/private/miscdollars
@@ -23,22 +27,18 @@ proc `$`(info: InstantiationInfo): string =
 
 # ---------------------------------------------------------------------------
 
-when not defined(nimHasSinkInference):
-  {.pragma: nosinks.}
 
 proc raiseAssert*(msg: string) {.noinline, noreturn, nosinks.} =
   ## Raises an `AssertionDefect` with `msg`.
-  raise newException(AssertionDefect, msg)
+  when defined(nimPreviewSlimSystem):
+    raise newException(AssertionDefect, msg)
+  else:
+    sysFatal(AssertionDefect, msg)
 
 proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   ## Raises an `AssertionDefect` with `msg`, but this is hidden
   ## from the effect system. Called when an assertion failed.
-  # trick the compiler to not list `AssertionDefect` when called
-  # by `assert`.
-  # xxx simplify this pending bootstrap >= 1.4.0, after which cast not needed
-  # anymore since `Defect` can't be raised.
-  type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect, tags: [].}
-  cast[Hide](raiseAssert)(msg)
+  raiseAssert(msg)
 
 template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]) =
   when enabled:
@@ -98,6 +98,7 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
   const begin = "expected raising '" & astToStr(exception) & "', instead"
   const msgEnd = " by: " & astToStr(code)
   template raisedForeign {.gensym.} = raiseAssert(begin & " raised foreign exception" & msgEnd)
+  {.push warning[BareExcept]:off.}
   when Exception is exception:
     try:
       if true:
@@ -116,5 +117,6 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
       mixin `$` # alternatively, we could define $cstring in this module
       raiseAssert(begin & " raised '" & $e.name & "'" & msgEnd)
     except: raisedForeign()
+  {.pop.}
   if wrong:
     raiseAssert(begin & " nothing was raised" & msgEnd)

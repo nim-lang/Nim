@@ -1,7 +1,7 @@
 discard """
   exitcode: 0
   output: ""
-  matrix: "; -d:nimInheritHandles"
+  matrix: "; -d:nimInheritHandles; --mm:refc"
   joinable: false
 """
 

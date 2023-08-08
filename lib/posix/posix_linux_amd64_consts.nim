@@ -453,6 +453,7 @@ const MAP_POPULATE* = cint(32768)
 
 # <sys/resource.h>
 const RLIMIT_NOFILE* = cint(7)
+const RLIMIT_STACK* = cint(3)
 
 # <sys/select.h>
 const FD_SETSIZE* = cint(1024)

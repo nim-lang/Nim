@@ -70,9 +70,8 @@ template initImpl(result: typed, initialSize: int) =
   newSeq(result.data, correctSize)
 
 template checkIfInitialized(deq: typed) =
-  when compiles(defaultInitialSize):
-    if deq.mask == 0:
-      initImpl(deq, defaultInitialSize)
+  if deq.mask == 0:
+    initImpl(deq, defaultInitialSize)
 
 proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
   ## Creates a new empty deque.
@@ -440,7 +439,7 @@ proc shrink*[T](deq: var Deque[T], fromFirst = 0, fromLast = 0) =
     deq.head = (deq.head + 1) and deq.mask
 
   for i in 0 ..< fromLast:
-    destroy(deq.data[deq.tail])
+    destroy(deq.data[(deq.tail - 1) and deq.mask])
     deq.tail = (deq.tail - 1) and deq.mask
 
   dec deq.count, fromFirst + fromLast

@@ -147,6 +147,15 @@ body {
   box-sizing: border-box;
   margin-left: 1%; }
 
+@media print {
+  #global-links, .link-seesrc, .theme-switch-wrapper, #searchInputDiv, .search-groupby {
+    display:none;
+  }
+  .columns {
+    width:100% !important;
+  }
+}
+
 .column:first-child, .columns:first-child {
   margin-left: 0; }
 
@@ -760,7 +769,13 @@ div.search_results {
   background-color: var(--third-background);
   margin: 3em;
   padding: 1em;
-  border: 1px solid #4d4d4d; }
+  border: 1px solid #4d4d4d;
+  position: sticky;
+  top: 0;
+  isolation: isolate;
+  z-index: 1;
+  max-height: 100vh;
+  overflow-y: scroll; }
 
 div#global-links ul {
   margin-left: 0;

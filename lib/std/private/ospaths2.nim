@@ -10,6 +10,8 @@ export ReadDirEffect, WriteDirEffect
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
 
+## .. importdoc:: osappdirs.nim, osdirs.nim, osseps.nim, os.nim
+
 const weirdTarget = defined(nimscript) or defined(js)
 
 when weirdTarget:
@@ -569,7 +571,7 @@ proc normExt(ext: string): string =
 
 proc searchExtPos*(path: string): int =
   ## Returns index of the `'.'` char in `path` if it signifies the beginning
-  ## of extension. Returns -1 otherwise.
+  ## of the file extension. Returns -1 otherwise.
   ##
   ## See also:
   ## * `splitFile proc`_
@@ -582,15 +584,28 @@ proc searchExtPos*(path: string): int =
     assert searchExtPos("c.nim") == 1
     assert searchExtPos("a/b/c.nim") == 5
     assert searchExtPos("a.b.c.nim") == 5
+    assert searchExtPos(".nim") == -1
+    assert searchExtPos("..nim") == -1
+    assert searchExtPos("a..nim") == 2
 
-  # BUGFIX: do not search until 0! .DS_Store is no file extension!
+  # Unless there is any char that is not `ExtSep` before last `ExtSep` in the file name,
+  # it is not a file extension.
+  const DirSeps = when doslikeFileSystem: {DirSep, AltSep, ':'} else: {DirSep, AltSep}
   result = -1
-  for i in countdown(len(path)-1, 1):
+  var i = path.high
+  while i >= 1:
     if path[i] == ExtSep:
+      break
+    elif path[i] in DirSeps:
+      return -1 # do not skip over path
+    dec i
+
+  for j in countdown(i - 1, 0):
+    if path[j] in DirSeps:
+      return -1
+    elif path[j] != ExtSep:
       result = i
       break
-    elif path[i] in {DirSep, AltSep}:
-      break # do not skip over path
 
 proc splitFile*(path: string): tuple[dir, name, ext: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -847,30 +862,17 @@ when not defined(nimscript):
       doAssert false, "use -d:nodejs to have `getCurrentDir` defined"
     elif defined(windows):
       var bufsize = MAX_PATH.int32
-      when useWinUnicode:
-        var res = newWideCString("", bufsize)
-        while true:
-          var L = getCurrentDirectoryW(bufsize, res)
-          if L == 0'i32:
-            raiseOSError(osLastError())
-          elif L > bufsize:
-            res = newWideCString("", L)
-            bufsize = L
-          else:
-            result = res$L
-            break
-      else:
-        result = newString(bufsize)
-        while true:
-          var L = getCurrentDirectoryA(bufsize, result)
-          if L == 0'i32:
-            raiseOSError(osLastError())
-          elif L > bufsize:
-            result = newString(L)
-            bufsize = L
-          else:
-            setLen(result, L)
-            break
+      var res = newWideCString("", bufsize)
+      while true:
+        var L = getCurrentDirectoryW(bufsize, res)
+        if L == 0'i32:
+          raiseOSError(osLastError())
+        elif L > bufsize:
+          res = newWideCString("", L)
+          bufsize = L
+        else:
+          result = res$L
+          break
     else:
       var bufsize = 1024 # should be enough
       result = newString(bufsize)

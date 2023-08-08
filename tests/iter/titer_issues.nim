@@ -369,9 +369,9 @@ block:
 
 # bug #18824
 iterator poc_iterator: int {.closure.}  =
-  block:
+  block bug18824:
     try:
-      break
+      break bug18824
     finally:
       echo "In defer"
 

@@ -50,7 +50,10 @@ proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule; alive: var Alive
     let n = unpackTree(g, m.module.position, m.fromDisk.topLevel, p)
     cgen.genTopLevelStmt(bmod, n)
 
-  finalCodegenActions(g, bmod, newNodeI(nkStmtList, m.module.info))
+  let disps = finalCodegenActions(g, bmod, newNodeI(nkStmtList, m.module.info))
+  if disps != nil:
+    for disp in disps:
+      genProcAux(bmod, disp.sym)
   m.fromDisk.backendFlags = cgen.whichInitProcs(bmod)
 
 proc replayTypeInfo(g: ModuleGraph; m: var LoadedModule; origin: FileIndex) =
@@ -98,7 +101,7 @@ proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool 
   var f2 = rodfiles.open(asymFile.string)
   f2.loadHeader()
   f2.loadSection aliveSymsSection
-  var oldData: seq[int32]
+  var oldData: seq[int32] = @[]
   f2.loadSeq(oldData)
   f2.close
   if f2.err == ok and oldData == s:

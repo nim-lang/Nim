@@ -60,6 +60,7 @@ type
 proc codeListing(c: ControlFlowGraph, start = 0; last = -1): string =
   # for debugging purposes
   # first iteration: compute all necessary labels:
+  result = ""
   var jumpTargets = initIntSet()
   let last = if last < 0: c.len-1 else: min(last, c.len-1)
   for i in start..last:
@@ -111,7 +112,7 @@ proc patch(c: var Con, p: TPosition) =
 proc gen(c: var Con; n: PNode)
 
 proc popBlock(c: var Con; oldLen: int) =
-  var exits: seq[TPosition]
+  var exits: seq[TPosition] = @[]
   exits.add c.gotoI()
   for f in c.blocks[oldLen].breakFixups:
     c.patch(f[0])
@@ -263,8 +264,9 @@ proc genBreakOrRaiseAux(c: var Con, i: int, n: PNode) =
   if c.blocks[i].isTryBlock:
     c.blocks[i].raiseFixups.add lab1
   else:
-    var trailingFinales: seq[PNode]
-    if c.inTryStmt > 0: #Ok, we are in a try, lets see which (if any) try's we break out from:
+    var trailingFinales: seq[PNode] = @[]
+    if c.inTryStmt > 0:
+      # Ok, we are in a try, lets see which (if any) try's we break out from:
       for b in countdown(c.blocks.high, i):
         if c.blocks[b].isTryBlock:
           trailingFinales.add c.blocks[b].finale
@@ -385,7 +387,8 @@ proc genCall(c: var Con; n: PNode) =
       # Pass by 'out' is a 'must def'. Good enough for a move optimizer.
       genDef(c, n[i])
   # every call can potentially raise:
-  if false: # c.inTryStmt > 0 and canRaiseConservative(n[0]):
+  if c.inTryStmt > 0 and canRaiseConservative(n[0]):
+    inc c.interestingInstructions
     # we generate the instruction sequence:
     # fork lab1
     # goto exceptionHandler (except or finally)
@@ -493,7 +496,7 @@ proc constructCfg*(s: PSym; body: PNode; root: PSym): ControlFlowGraph =
     gen(c, body)
     if root.kind == skResult:
       genImplicitReturn(c)
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
     result = c.code # will move
   else:
     shallowCopy(result, c.code)

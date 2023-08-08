@@ -34,7 +34,11 @@ proc isTracked(current, trackPos: PackedLineInfo, tokenLen: int): bool =
   if current.file == trackPos.file and current.line == trackPos.line:
     let col = trackPos.col
     if col >= current.col and col < current.col+tokenLen:
-      return true
+      result = true
+    else:
+      result = false
+  else:
+    result = false
 
 proc searchLocalSym(c: var NavContext; s: PackedSym; info: PackedLineInfo): bool =
   result = s.name != LitId(0) and

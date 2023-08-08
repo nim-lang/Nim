@@ -128,6 +128,13 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
   var dummy: bool
   result = fileInfoIdx(conf, filename, dummy)
 
+proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile; isKnownFile: var bool): FileIndex =
+  fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), isKnownFile)
+
+proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile): FileIndex =
+  var dummy: bool
+  fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), dummy)
+
 proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
   result.fileIndex = fileInfoIdx
   if line < int high(uint16):
@@ -219,7 +226,7 @@ proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: AbsoluteFile) 
 
 proc setHash*(conf: ConfigRef; fileIdx: FileIndex; hash: string) =
   assert fileIdx.int32 >= 0
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
     conf.m.fileInfos[fileIdx.int32].hash = hash
   else:
     shallowCopy(conf.m.fileInfos[fileIdx.int32].hash, hash)
@@ -227,7 +234,7 @@ proc setHash*(conf: ConfigRef; fileIdx: FileIndex; hash: string) =
 
 proc getHash*(conf: ConfigRef; fileIdx: FileIndex): string =
   assert fileIdx.int32 >= 0
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
     result = conf.m.fileInfos[fileIdx.int32].hash
   else:
     shallowCopy(result, conf.m.fileInfos[fileIdx.int32].hash)
@@ -287,9 +294,11 @@ proc toColumn*(info: TLineInfo): int {.inline.} =
   result = info.col
 
 proc toFileLineCol(info: InstantiationInfo): string {.inline.} =
+  result = ""
   result.toLocation(info.filename, info.line, info.column + ColOffset)
 
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
+  result = ""
   result.toLocation(toMsgFilename(conf, info), info.line.int, info.col.int + ColOffset)
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
@@ -401,7 +410,7 @@ proc getMessageStr(msg: TMsgKind, arg: string): string = msgKindToString(msg) % 
 type TErrorHandling* = enum doNothing, doAbort, doRaise
 
 proc log*(s: string) =
-  var f: File
+  var f: File = default(File)
   if open(f, getHomeDir() / "nimsuggest.log", fmAppend):
     f.writeLine(s)
     close(f)
@@ -495,6 +504,8 @@ proc getSurroundingSrc(conf: ConfigRef; info: TLineInfo): string =
     result = "\n" & indent & $sourceLine(conf, info)
     if info.col >= 0:
       result.add "\n" & indent & spaces(info.col) & '^'
+  else:
+    result = ""
 
 proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg
@@ -504,7 +515,8 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
   conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
 
 proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
-               eh: TErrorHandling, info2: InstantiationInfo, isRaw = false) {.gcsafe, noinline.} =
+               eh: TErrorHandling, info2: InstantiationInfo, isRaw = false,
+               ignoreError = false) {.gcsafe, noinline.} =
   var
     title: string
     color: ForegroundColor
@@ -534,10 +546,11 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     ignoreMsg = not conf.hasWarn(msg)
     if not ignoreMsg and msg in conf.warningAsErrors:
       title = ErrorTitle
+      color = ErrorColor
     else:
       title = WarningTitle
+      color = WarningColor
     if not ignoreMsg: writeContext(conf, info)
-    color = WarningColor
     inc(conf.warnCounter)
   of hintMin..hintMax:
     sev = Severity.Hint
@@ -568,7 +581,8 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
             " compiler msg initiated here", KindColor,
             KindFormat % $hintMsgOrigin,
             resetStyle, conf.unitSep)
-  handleError(conf, msg, eh, s, ignoreMsg)
+  if not ignoreError:
+    handleError(conf, msg, eh, s, ignoreMsg)
   if msg in fatalMsgs:
     # most likely would have died here but just in case, we restore state
     conf.m.errorOutputs = errorOutputsOld

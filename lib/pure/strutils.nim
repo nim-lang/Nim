@@ -79,7 +79,7 @@ from unicode import toLower, toUpper
 export toLower, toUpper
 
 include "system/inclrtl"
-import std/private/since
+import std/private/[since, jsutils]
 from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl,
     startsWithImpl, endsWithImpl
 
@@ -366,11 +366,14 @@ func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
 # --------- Private templates for different split separators -----------
 
 func substrEq(s: string, pos: int, substr: string): bool =
-  var i = 0
+  # Always returns false for empty `substr`
   var length = substr.len
-  while i < length and pos+i < s.len and s[pos+i] == substr[i]:
-    inc i
-  return i == length
+  if length > 0:
+    var i = 0
+    while i < length and pos+i < s.len and s[pos+i] == substr[i]:
+      inc i
+    i == length
+  else: false
 
 template stringHasSep(s: string, index: int, seps: set[char]): bool =
   s[index] in seps
@@ -488,6 +491,9 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   ##   "08"
   ##   "08.398990"
   ##
+  ##  .. note:: Empty separator set results in returning an original string,
+  ##   following the interpretation "split by no element".
+  ##
   ## See also:
   ## * `rsplit iterator<#rsplit.i,string,set[char],int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
@@ -512,12 +518,17 @@ iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   ##   "is"
   ##   "corrupted"
   ##
+  ##  .. note:: Empty separator string results in returning an original string,
+  ##   following the interpretation "split by no element".
+  ##
   ## See also:
   ## * `rsplit iterator<#rsplit.i,string,string,int,bool>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
   ## * `split func<#split,string,string,int>`_
-  splitCommon(s, sep, maxsplit, sep.len)
+  let sepLen = if sep.len == 0: 1 # prevents infinite loop
+    else: sep.len
+  splitCommon(s, sep, maxsplit, sepLen)
 
 
 template rsplitCommon(s, sep, maxsplit, sepLen) =
@@ -587,6 +598,9 @@ iterator rsplit*(s: string, seps: set[char] = Whitespace,
   ##
   ## Substrings are separated from the right by the set of chars `seps`
   ##
+  ##  .. note:: Empty separator set results in returning an original string,
+  ##   following the interpretation "split by no element".
+  ##
   ## See also:
   ## * `split iterator<#split.i,string,set[char],int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
@@ -612,19 +626,24 @@ iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
   ##
   ## Substrings are separated from the right by the string `sep`
   ##
+  ##  .. note:: Empty separator string results in returning an original string,
+  ##   following the interpretation "split by no element".
+  ##
   ## See also:
   ## * `split iterator<#split.i,string,string,int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
   ## * `rsplit func<#rsplit,string,string,int>`_
-  rsplitCommon(s, sep, maxsplit, sep.len)
+  let sepLen = if sep.len == 0: 1 # prevents infinite loop
+    else: sep.len
+  rsplitCommon(s, sep, maxsplit, sepLen)
 
 iterator splitLines*(s: string, keepEol = false): string =
   ## Splits the string `s` into its containing lines.
   ##
   ## Every `character literal <manual.html#lexical-analysis-character-literals>`_
   ## newline combination (CR, LF, CR-LF) is supported. The result strings
-  ## contain no trailing end of line characters unless parameter `keepEol`
+  ## contain no trailing end of line characters unless the parameter `keepEol`
   ## is set to `true`.
   ##
   ## Example:
@@ -728,6 +747,9 @@ func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
   ## The same as the `split iterator <#split.i,string,set[char],int>`_ (see its
   ## documentation), but is a func that returns a sequence of substrings.
   ##
+  ##  .. note:: Empty separator set results in returning an original string,
+  ##   following the interpretation "split by no element".
+  ##
   ## See also:
   ## * `split iterator <#split.i,string,set[char],int>`_
   ## * `rsplit func<#rsplit,string,set[char],int>`_
@@ -736,6 +758,7 @@ func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
   runnableExamples:
     doAssert "a,b;c".split({',', ';'}) == @["a", "b", "c"]
     doAssert "".split({' '}) == @[""]
+    doAssert "empty seps return unsplit s".split({}) == @["empty seps return unsplit s"]
   accResult(split(s, seps, maxsplit))
 
 func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
@@ -744,6 +767,9 @@ func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
   ##
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string,int>`_.
+  ##
+  ##  .. note:: Empty separator string results in returning an original string,
+  ##   following the interpretation "split by no element".
   ##
   ## See also:
   ## * `split iterator <#split.i,string,string,int>`_
@@ -757,8 +783,7 @@ func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
     doAssert "a  largely    spaced sentence".split(" ") == @["a", "", "largely",
         "", "", "", "spaced", "sentence"]
     doAssert "a  largely    spaced sentence".split(" ", maxsplit = 1) == @["a", " largely    spaced sentence"]
-  doAssert(sep.len > 0)
-
+    doAssert "empty sep returns unsplit s".split("") == @["empty sep returns unsplit s"]
   accResult(split(s, sep, maxsplit))
 
 func rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
@@ -808,6 +833,9 @@ func rsplit*(s: string, seps: set[char] = Whitespace,
   ## .. code-block:: nim
   ##   @["Root#Object#Method", "Index"]
   ##
+  ##  .. note:: Empty separator set results in returning an original string,
+  ##   following the interpretation "split by no element".
+  ##
   ## See also:
   ## * `rsplit iterator <#rsplit.i,string,set[char],int>`_
   ## * `split func<#split,string,set[char],int>`_
@@ -835,6 +863,9 @@ func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
   ## .. code-block:: nim
   ##   @["Root#Object#Method", "Index"]
   ##
+  ##  .. note:: Empty separator string results in returning an original string,
+  ##   following the interpretation "split by no element".
+  ##
   ## See also:
   ## * `rsplit iterator <#rsplit.i,string,string,int,bool>`_
   ## * `split func<#split,string,string,int>`_
@@ -849,6 +880,7 @@ func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
     doAssert "".rsplit("Elon Musk") == @[""]
     doAssert "a  largely    spaced sentence".rsplit(" ") == @["a", "",
         "largely", "", "", "", "spaced", "sentence"]
+    doAssert "empty sep returns unsplit s".rsplit("") == @["empty sep returns unsplit s"]
   accResult(rsplit(s, sep, maxsplit))
   result.reverse()
 
@@ -944,14 +976,26 @@ func toHex*[T: SomeInteger](x: T, len: Positive): string =
     doAssert b.toHex(4) == "1001"
     doAssert toHex(62, 3) == "03E"
     doAssert toHex(-8, 6) == "FFFFF8"
-  toHexImpl(cast[BiggestUInt](x), len, x < 0)
+  whenJsNoBigInt64:
+    toHexImpl(cast[BiggestUInt](x), len, x < 0)
+  do:
+    when T is SomeSignedInt:
+      toHexImpl(cast[BiggestUInt](BiggestInt(x)), len, x < 0)
+    else:
+      toHexImpl(BiggestUInt(x), len, x < 0)
 
 func toHex*[T: SomeInteger](x: T): string =
   ## Shortcut for `toHex(x, T.sizeof * 2)`
   runnableExamples:
     doAssert toHex(1984'i64) == "00000000000007C0"
     doAssert toHex(1984'i16) == "07C0"
-  toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
+  whenJsNoBigInt64:
+    toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
+  do:
+    when T is SomeSignedInt:
+      toHexImpl(cast[BiggestUInt](BiggestInt(x)), 2*sizeof(T), x < 0)
+    else:
+      toHexImpl(BiggestUInt(x), 2*sizeof(T), x < 0)
 
 func toHex*(s: string): string {.rtl.} =
   ## Converts a bytes string to its hexadecimal representation.
@@ -1914,7 +1958,7 @@ func find*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
       if length > 0:
         let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](length))
         if not found.isNil:
-          return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+          return cast[int](found) -% cast[int](s.cstring)
     else:
       findImpl()
 
@@ -1970,7 +2014,7 @@ func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
       if last < 0 and start < s.len and subLen != 0:
         let found = memmem(s[start].unsafeAddr, csize_t(s.len - start), sub.cstring, csize_t(subLen))
         result = if not found.isNil:
-            cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+            cast[int](found) -% cast[int](s.cstring)
           else:
             -1
       else:
@@ -2401,60 +2445,63 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
     doAssert x.formatBiggestFloat() == "123.4560000000000"
     doAssert x.formatBiggestFloat(ffDecimal, 4) == "123.4560"
     doAssert x.formatBiggestFloat(ffScientific, 2) == "1.23e+02"
-  when defined(js):
-    var precision = precision
-    if precision == -1:
-      # use the same default precision as c_sprintf
-      precision = 6
-    var res: cstring
-    case format
-    of ffDefault:
-      {.emit: "`res` = `f`.toString();".}
-    of ffDecimal:
-      {.emit: "`res` = `f`.toFixed(`precision`);".}
-    of ffScientific:
-      {.emit: "`res` = `f`.toExponential(`precision`);".}
-    result = $res
-    if 1.0 / f == -Inf:
-      # JavaScript removes the "-" from negative Zero, add it back here
-      result = "-" & $res
-    for i in 0 ..< result.len:
-      # Depending on the locale either dot or comma is produced,
-      # but nothing else is possible:
-      if result[i] in {'.', ','}: result[i] = decimalSep
+  when nimvm:
+    discard "implemented in the vmops"
   else:
-    const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
-    var
-      frmtstr {.noinit.}: array[0..5, char]
-      buf {.noinit.}: array[0..2500, char]
-      L: cint
-    frmtstr[0] = '%'
-    if precision >= 0:
-      frmtstr[1] = '#'
-      frmtstr[2] = '.'
-      frmtstr[3] = '*'
-      frmtstr[4] = floatFormatToChar[format]
-      frmtstr[5] = '\0'
-      L = c_sprintf(addr buf, addr frmtstr, precision, f)
+    when defined(js):
+      var precision = precision
+      if precision == -1:
+        # use the same default precision as c_sprintf
+        precision = 6
+      var res: cstring
+      case format
+      of ffDefault:
+        {.emit: "`res` = `f`.toString();".}
+      of ffDecimal:
+        {.emit: "`res` = `f`.toFixed(`precision`);".}
+      of ffScientific:
+        {.emit: "`res` = `f`.toExponential(`precision`);".}
+      result = $res
+      if 1.0 / f == -Inf:
+        # JavaScript removes the "-" from negative Zero, add it back here
+        result = "-" & $res
+      for i in 0 ..< result.len:
+        # Depending on the locale either dot or comma is produced,
+        # but nothing else is possible:
+        if result[i] in {'.', ','}: result[i] = decimalSep
     else:
-      frmtstr[1] = floatFormatToChar[format]
-      frmtstr[2] = '\0'
-      L = c_sprintf(addr buf, addr frmtstr, f)
-    result = newString(L)
-    for i in 0 ..< L:
-      # Depending on the locale either dot or comma is produced,
-      # but nothing else is possible:
-      if buf[i] in {'.', ','}: result[i] = decimalSep
-      else: result[i] = buf[i]
-    when defined(windows):
-      # VS pre 2015 violates the C standard: "The exponent always contains at
-      # least two digits, and only as many more digits as necessary to
-      # represent the exponent." [C11 §7.21.6.1]
-      # The following post-processing fixes this behavior.
-      if result.len > 4 and result[^4] == '+' and result[^3] == '0':
-        result[^3] = result[^2]
-        result[^2] = result[^1]
-        result.setLen(result.len - 1)
+      const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
+      var
+        frmtstr {.noinit.}: array[0..5, char]
+        buf {.noinit.}: array[0..2500, char]
+        L: cint
+      frmtstr[0] = '%'
+      if precision >= 0:
+        frmtstr[1] = '#'
+        frmtstr[2] = '.'
+        frmtstr[3] = '*'
+        frmtstr[4] = floatFormatToChar[format]
+        frmtstr[5] = '\0'
+        L = c_sprintf(cast[cstring](addr buf), cast[cstring](addr frmtstr), precision, f)
+      else:
+        frmtstr[1] = floatFormatToChar[format]
+        frmtstr[2] = '\0'
+        L = c_sprintf(cast[cstring](addr buf), cast[cstring](addr frmtstr), f)
+      result = newString(L)
+      for i in 0 ..< L:
+        # Depending on the locale either dot or comma is produced,
+        # but nothing else is possible:
+        if buf[i] in {'.', ','}: result[i] = decimalSep
+        else: result[i] = buf[i]
+      when defined(windows):
+        # VS pre 2015 violates the C standard: "The exponent always contains at
+        # least two digits, and only as many more digits as necessary to
+        # represent the exponent." [C11 §7.21.6.1]
+        # The following post-processing fixes this behavior.
+        if result.len > 4 and result[^4] == '+' and result[^3] == '0':
+          result[^3] = result[^2]
+          result[^2] = result[^1]
+          result.setLen(result.len - 1)
 
 func formatFloat*(f: float, format: FloatFormatMode = ffDefault,
                   precision: range[-1..32] = 16; decimalSep = '.'): string {.

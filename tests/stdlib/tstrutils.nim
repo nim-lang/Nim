@@ -1,10 +1,11 @@
 discard """
-  targets: "c cpp js"
+  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
 """
 
 import std/strutils
 from stdtest/testutils import disableVm
 import std/assertions
+import std/private/jsutils
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
 
 template rejectParse(e) =
@@ -52,6 +53,15 @@ template main() =
     doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
     doAssert s.split(' ', maxsplit = 1) == @["", "this is an example  "]
     doAssert s.split(" ", maxsplit = 4) == @["", "this", "is", "an", "example  "]
+    # Empty string:
+    doAssert "".split() == @[""]
+    doAssert "".split(" ") == @[""]
+    doAssert "".split({' '}) == @[""]
+    # Empty separators:
+    doAssert "".split({}) == @[""]
+    doAssert "".split("") == @[""]
+    doAssert s.split({}) == @[s]
+    doAssert s.split("") == @[s]
 
   block: # splitLines
     let fixture = "a\nb\rc\r\nd"
@@ -62,12 +72,21 @@ template main() =
   block: # rsplit
     doAssert rsplit("foo bar", seps = Whitespace) == @["foo", "bar"]
     doAssert rsplit(" foo bar", seps = Whitespace, maxsplit = 1) == @[" foo", "bar"]
-    doAssert rsplit(" foo bar ", seps = Whitespace, maxsplit = 1) == @[
-        " foo bar", ""]
+    doAssert rsplit(" foo bar ", seps = Whitespace, maxsplit = 1) == @[" foo bar", ""]
     doAssert rsplit(":foo:bar", sep = ':') == @["", "foo", "bar"]
     doAssert rsplit(":foo:bar", sep = ':', maxsplit = 2) == @["", "foo", "bar"]
     doAssert rsplit(":foo:bar", sep = ':', maxsplit = 3) == @["", "foo", "bar"]
     doAssert rsplit("foothebar", sep = "the") == @["foo", "bar"]
+    # Empty string:
+    doAssert "".rsplit() == @[""]
+    doAssert "".rsplit(" ") == @[""]
+    doAssert "".rsplit({' '}) == @[""]
+    # Empty separators:
+    let s = " this is an example  "
+    doAssert "".rsplit({}) == @[""]
+    doAssert "".rsplit("") == @[""]
+    doAssert s.rsplit({}) == @[s]
+    doAssert s.rsplit("") == @[s]
 
   block: # splitWhitespace
     let s = " this is an example  "
@@ -509,7 +528,8 @@ template main() =
   block: # toHex
     doAssert(toHex(100i16, 32) == "00000000000000000000000000000064")
     doAssert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
-    when not defined js:
+    whenJsNoBigInt64: discard
+    do:
       doAssert(toHex(high(uint64)) == "FFFFFFFFFFFFFFFF")
       doAssert(toHex(high(uint64), 16) == "FFFFFFFFFFFFFFFF")
       doAssert(toHex(high(uint64), 32) == "0000000000000000FFFFFFFFFFFFFFFF")
@@ -530,11 +550,12 @@ template main() =
     doAssert(spaces(0) == "")
 
   block: # toBin, toOct
-    block:# bug #11369
+    whenJsNoBigInt64: # bug #11369
+      discard
+    do:
       var num: int64 = -1
-      when not defined js:
-        doAssert num.toBin(64) == "1111111111111111111111111111111111111111111111111111111111111111"
-        doAssert num.toOct(24) == "001777777777777777777777"
+      doAssert num.toBin(64) == "1111111111111111111111111111111111111111111111111111111111111111"
+      doAssert num.toOct(24) == "001777777777777777777777"
 
   block: # replace
     doAssert "oo".replace("", "abc") == "oo"
@@ -741,7 +762,8 @@ bar
 
   block: # formatSize
     disableVm:
-      when not defined(js):
+      whenJsNoBigInt64: discard
+      do:
         doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB" # <=== bug #8231
       doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
       doAssert formatSize(4096) == "4KiB"

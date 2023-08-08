@@ -577,7 +577,8 @@ template formatValue(result: var string; value: char; specifier: string) =
 template formatValue(result: var string; value: cstring; specifier: string) =
   result.add value
 
-proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
+proc strformatImpl(f: string; openChar, closeChar: char,
+                   lineInfoNode: NimNode = nil): NimNode =
   template missingCloseChar =
     error("invalid format string: missing closing character '" & closeChar & "'")
 
@@ -585,7 +586,7 @@ proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
     error "openChar and closeChar must not be ':'"
   var i = 0
   let res = genSym(nskVar, "fmtRes")
-  result = newNimNode(nnkStmtListExpr)
+  result = newNimNode(nnkStmtListExpr, lineInfoNode)
   # XXX: https://github.com/nim-lang/Nim/issues/8405
   # When compiling with -d:useNimRtl, certain procs such as `count` from the strutils
   # module are not accessible at compile-time:
@@ -644,6 +645,7 @@ proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
           x = parseExpr(subexpr)
         except ValueError as e:
           error("could not parse `$#` in `$#`.\n$#" % [subexpr, f, e.msg])
+        x.copyLineInfo(lineInfoNode)
         let formatSym = bindSym("formatValue", brOpen)
         var options = ""
         if f[i] == ':':
@@ -669,10 +671,22 @@ proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
   if strlit.len > 0:
     result.add newCall(bindSym"add", res, newLit(strlit))
   result.add res
+  # workaround for #20381
+  var blockExpr = newNimNode(nnkBlockExpr, lineInfoNode)
+  blockExpr.add(newEmptyNode())
+  blockExpr.add(result)
+  result = blockExpr
   when defined(debugFmtDsl):
     echo repr result
 
-macro fmt*(pattern: static string; openChar: static char, closeChar: static char): string =
+macro fmt(pattern: static string; openChar: static char, closeChar: static char, lineInfoNode: untyped): string =
+  ## version of `fmt` with dummy untyped param for line info
+  strformatImpl(pattern, openChar, closeChar, lineInfoNode)
+
+when not defined(nimHasCallsitePragma):
+  {.pragma: callsite.}
+
+template fmt*(pattern: static string; openChar: static char, closeChar: static char): string {.callsite.} =
   ## Interpolates `pattern` using symbols in scope.
   runnableExamples:
     let x = 7
@@ -689,13 +703,13 @@ macro fmt*(pattern: static string; openChar: static char, closeChar: static char
     assert "<x>".fmt('<', '>') == "7"
     assert "<<<x>>>".fmt('<', '>') == "<7>"
     assert "`x`".fmt('`', '`') == "7"
-  strformatImpl(pattern, openChar, closeChar)
+  fmt(pattern, openChar, closeChar, dummyForLineInfo)
 
-template fmt*(pattern: static string): untyped =
+template fmt*(pattern: static string): untyped {.callsite.} =
   ## Alias for `fmt(pattern, '{', '}')`.
-  fmt(pattern, '{', '}')
+  fmt(pattern, '{', '}', dummyForLineInfo)
 
-macro `&`*(pattern: string{lit}): string =
+template `&`*(pattern: string{lit}): string {.callsite.} =
   ## `&pattern` is the same as `pattern.fmt`.
   ## For a specification of the `&` macro, see the module level documentation.
   # pending bug #18275, bug #18278, use `pattern: static string`
@@ -707,4 +721,4 @@ macro `&`*(pattern: string{lit}): string =
     assert &"{x}\n" == "7\n" # regular string literal
     assert &"{x}\n" == "{x}\n".fmt # `fmt` can be used instead
     assert &"{x}\n" != fmt"{x}\n" # see `fmt` docs, this would use a raw string literal
-  strformatImpl(pattern.strVal, '{', '}')
+  fmt(pattern, '{', '}', dummyForLineInfo)
