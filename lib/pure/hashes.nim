@@ -315,16 +315,24 @@ proc murmurHash(x: openArray[byte]): Hash =
     h1: uint32
     i = 0
 
+
+  template impl =
+    var j = stepSize
+    while j > 0:
+      dec j
+      k1 = (k1 shl 8) or (ord(x[i+j])).uint32
+
   # body
   while i < n * stepSize:
     var k1: uint32
-    when defined(js) or defined(sparc) or defined(sparc64):
-      var j = stepSize
-      while j > 0:
-        dec j
-        k1 = (k1 shl 8) or (ord(x[i+j])).uint32
+
+    when nimvm:
+      impl()
     else:
-      k1 = cast[ptr uint32](unsafeAddr x[i])[]
+      when declared(copyMem):
+        copyMem(addr k1, addr x[i], 4)
+      else:
+        impl()
     inc i, stepSize
 
     k1 = imul(k1, c1)
