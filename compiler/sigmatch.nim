@@ -1168,10 +1168,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if result notin {isNone, isGeneric}:
         # resolve any late-bound static expressions
         # that may appear in the range:
-        let expectedType = skipTypes(f, {tyRange})
+        let expectedType = base(f)
         for i in 0..1:
           if f.n[i].kind == nkStaticExpr:
-            f.n[i] = tryResolvingStaticExpr(c, f.n[i], expectedType = expectedType)
+            let r = tryResolvingStaticExpr(c, f.n[i], expectedType = expectedType)
+            if r != nil:
+              f.n[i] = r
         result = typeRangeRel(f, a)
     else:
       let f = skipTypes(f, {tyRange})
