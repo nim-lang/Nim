@@ -2612,7 +2612,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mDeepCopy:
     if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and optEnableDeepCopy notin p.config.globalOptions:
       localError(p.config, e.info,
-        "for --gc:arc|orc 'deepcopy' support has to be enabled with --deepcopy:on")
+        "for --mm:arc|atomicArc|orc 'deepcopy' support has to be enabled with --deepcopy:on")
 
     var a, b: TLoc
     let x = if e[1].kind in {nkAddr, nkHiddenAddr}: e[1][0] else: e[1]
