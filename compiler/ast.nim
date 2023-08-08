@@ -2025,12 +2025,9 @@ proc findUnresolvedStatic*(n: PNode): PNode =
   if n.kind == nkSym and n.typ != nil and n.typ.kind == tyStatic and n.typ.n == nil:
     return n
   if n.typ != nil and n.typ.kind == tyTypeDesc:
-    if n.typ.size <= 0:
+    let t = skipTypes(n.typ, {tyTypeDesc})
+    if t.kind == tyGenericParam and t.len == 0:
       return n
-    when false:
-      let t = skipTypes(n.typ, {tyTypeDesc})
-      if t.kind == tyGenericParam and t.len == 0:
-        return n
   for son in n:
     let n = son.findUnresolvedStatic
     if n != nil: return n
