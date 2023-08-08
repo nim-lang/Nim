@@ -151,26 +151,20 @@ proc wasMoved*[T](obj: var T) {.inline, noSideEffect.} =
   {.cast(raises: []), cast(tags: []).}:
     `=wasMoved`(obj)
 
-const notJSnotNims = not defined(js) and not defined(nimscript)
-const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
+proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+  result = x
+  {.cast(raises: []), cast(tags: []).}:
+    `=wasMoved`(x)
 
-when notJSnotNims and arcLikeMem:
-  proc internalMove[T](x: var T): T {.magic: "Move", noSideEffect, compilerproc.} =
-    result = x
-
-  proc move*[T](x: var T): T {.noSideEffect, nodestroy.} =
-    {.cast(noSideEffect).}:
-      when nimvm:
-        result = internalMove(x)
-      else:
-        result = internalMove(x)
-        {.cast(raises: []), cast(tags: []).}:
-          `=wasMoved`(x)
-else:
-  proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
-    result = x
-    {.cast(raises: []), cast(tags: []).}:
-      `=wasMoved`(x)
+when defined(nimHasEnsureMove):
+  proc ensureMove*[T](x: T): T {.magic: "EnsureMove", noSideEffect.} =
+    ## Ensures that `x` is moved to the new location, otherwise it gives
+    ## an error at the compile time.
+    runnableExamples:
+      var x = "Hello"
+      let y = ensureMove(x)
+      doAssert y == "Hello"
+    discard "implemented in injectdestructors"
 
 type
   range*[T]{.magic: "Range".}         ## Generic type to construct range types.
@@ -369,6 +363,9 @@ proc arrGet[I: Ordinal;T](a: T; i: I): T {.
 proc arrPut[I: Ordinal;T,S](a: T; i: I;
   x: S) {.noSideEffect, magic: "ArrPut".}
 
+const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
+
+
 when defined(nimAllowNonVarDestructor) and arcLikeMem:
   proc `=destroy`*(x: string) {.inline, magic: "Destroy".} =
     discard
@@ -445,6 +442,7 @@ include "system/inclrtl"
 const NoFakeVars = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
+const notJSnotNims = not defined(js) and not defined(nimscript)
 
 when not defined(js) and not defined(nimSeqsV2):
   type
@@ -926,7 +924,7 @@ proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
   ## See also:
   ## * `zeroDefault <#zeroDefault,typedesc[T]>`_
   ##
-  runnableExamples:
+  runnableExamples("-d:nimPreviewRangeDefault"):
     assert (int, float).default == (0, 0.0)
     type Foo = object
       a: range[2..6]
@@ -1621,7 +1619,7 @@ when not defined(js) and defined(nimV2):
       align: int16
       depth: int16
       display: ptr UncheckedArray[uint32] # classToken
-      when defined(nimTypeNames):
+      when defined(nimTypeNames) or defined(nimArcIds):
         name: cstring
       traceImpl: pointer
       typeInfoV1: pointer # for backwards compat, usually nil
@@ -2406,6 +2404,16 @@ macro varargsLen*(x: varargs[untyped]): int {.since: (1, 1).} =
 when defined(nimV2):
   import system/repr_v2
   export repr_v2
+
+proc repr*[T, U](x: HSlice[T, U]): string =
+  ## Generic `repr` operator for slices that is lifted from the components
+  ## of `x`. Example:
+  ##
+  ## .. code-block:: Nim
+  ##  $(1 .. 5) == "1 .. 5"
+  result = repr(x.a)
+  result.add(" .. ")
+  result.add(repr(x.b))
 
 when hasAlloc or defined(nimscript):
   proc insert*(x: var string, item: string, i = 0.Natural) {.noSideEffect.} =

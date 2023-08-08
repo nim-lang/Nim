@@ -47,6 +47,8 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
           let it = n[i]
           result = typeAllowedNode(marker, it, kind, c, flags)
           if result != nil: break
+  else:
+    result = nil
 
 proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
                     c: PContext; flags: TTypeAllowedFlags = {}): PType =

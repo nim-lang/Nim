@@ -314,6 +314,8 @@ type
                       # an infinite loop, this flag is used as a sentinel to stop it.
     sfVirtual         # proc is a C++ virtual function
     sfByCopy          # param is marked as pass bycopy
+    sfMember          # proc is a C++ member of a type
+    sfCodegenDecl     # type, proc, global or proc param is marked as codegenDecl
 
   TSymFlags* = set[TSymFlag]
 
@@ -346,6 +348,7 @@ const
   sfBase* = sfDiscriminant
   sfCustomPragma* = sfRegister        # symbol is custom pragma template
   sfTemplateRedefinition* = sfExportc # symbol is a redefinition of an earlier template
+  sfCppMember* = { sfVirtual, sfMember, sfConstructor } # proc is a C++ member, meaning it will be attached to the type definition
 
 const
   # getting ready for the future expr/stmt merge
@@ -689,7 +692,7 @@ type
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mOpenArrayToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
-    mMove, mWasMoved, mDup, mDestroy, mTrace,
+    mMove, mEnsureMove, mWasMoved, mDup, mDestroy, mTrace,
     mDefault, mUnown, mFinished, mIsolate, mAccessEnv, mAccessTypeField, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
@@ -1035,6 +1038,8 @@ proc comment*(n: PNode): string =
   if nfHasComment in n.flags and not gconfig.useIc:
     # IC doesn't track comments, see `packed_ast`, so this could fail
     result = gconfig.comments[n.nodeId]
+  else:
+    result = ""
 
 proc `comment=`*(n: PNode, a: string) =
   let id = n.nodeId
@@ -1221,6 +1226,7 @@ proc getDeclPragma*(n: PNode): PNode =
   case n.kind
   of routineDefs:
     if n[pragmasPos].kind != nkEmpty: result = n[pragmasPos]
+    else: result = nil
   of nkTypeDef:
     #[
     type F3*{.deprecated: "x3".} = int
@@ -1240,6 +1246,8 @@ proc getDeclPragma*(n: PNode): PNode =
     ]#
     if n[0].kind == nkPragmaExpr:
       result = n[0][1]
+    else:
+      result = nil
   else:
     # support as needed for `nkIdentDefs` etc.
     result = nil
@@ -1255,6 +1263,12 @@ proc extractPragma*(s: PSym): PNode =
       if s.ast[0].kind == nkPragmaExpr and s.ast[0].len > 1:
         # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
         result = s.ast[0][1]
+      else:
+        result = nil
+    else:
+      result = nil
+  else:
+    result = nil
   assert result == nil or result.kind == nkPragma
 
 proc skipPragmaExpr*(n: PNode): PNode =
@@ -1601,6 +1615,7 @@ proc initStrTable*(x: var TStrTable) =
   newSeq(x.data, StartSize)
 
 proc newStrTable*: TStrTable =
+  result = default(TStrTable)
   initStrTable(result)
 
 proc initIdTable*(x: var TIdTable) =
@@ -1608,6 +1623,7 @@ proc initIdTable*(x: var TIdTable) =
   newSeq(x.data, StartSize)
 
 proc newIdTable*: TIdTable =
+  result = default(TIdTable)
   initIdTable(result)
 
 proc resetIdTable*(x: var TIdTable) =
@@ -1810,6 +1826,7 @@ proc hasNilSon*(n: PNode): bool =
   result = false
 
 proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
+  result = false
   if n == nil: return
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind in kinds
@@ -2011,6 +2028,8 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
 
   if base.sym != nil and {sfCompileToCpp, sfImportc} * base.sym.flags != {}:
     result = true
+  else:
+    result = false
 
 proc isInfixAs*(n: PNode): bool =
   return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "as"

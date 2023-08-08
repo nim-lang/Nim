@@ -44,6 +44,7 @@ type
     errRstSandboxedDirective,
     errProveInit, # deadcode
     errGenerated,
+    errFailedMove,
     errUser,
     # warnings
     warnCannotOpenFile = "CannotOpenFile", warnOctalEscape = "OctalEscape",
@@ -128,6 +129,7 @@ const
     errRstSandboxedDirective: "disabled directive: '$1'",
     errProveInit: "Cannot prove that '$1' is initialized.",  # deadcode
     errGenerated: "$1",
+    errFailedMove: "$1",
     errUser: "$1",
     warnCannotOpenFile: "cannot open '$1'",
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
@@ -308,7 +310,7 @@ proc `==`*(a, b: FileIndex): bool {.borrow.}
 proc hash*(i: TLineInfo): Hash =
   hash (i.line.int, i.col.int, i.fileIndex.int)
 
-proc raiseRecoverableError*(msg: string) {.noinline.} =
+proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
   raise newException(ERecoverableError, msg)
 
 const

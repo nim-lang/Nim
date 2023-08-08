@@ -170,6 +170,7 @@ proc cmpDecimalsIgnoreCase(a, b: string): int =
 
 proc prettyString(a: object): string =
   # xxx pending std/prettyprint refs https://github.com/nim-lang/RFCs/issues/203#issuecomment-602534906
+  result = ""
   for k, v in fieldPairs(a):
     result.add k & ": " & $v & "\n"
 
@@ -215,12 +216,16 @@ proc whichType(d: PDoc; n: PNode): PSym =
   if n.kind == nkSym:
     if d.types.strTableContains(n.sym):
       result = n.sym
+    else:
+      result = nil
   else:
+    result = nil
     for i in 0..<n.safeLen:
       let x = whichType(d, n[i])
       if x != nil: return x
 
 proc attachToType(d: PDoc; p: PSym): PSym =
+  result = nil
   let params = p.ast[paramsPos]
   template check(i) =
     result = whichType(d, params[i])
@@ -259,7 +264,16 @@ template declareClosures(currentFilename: AbsoluteFile, destFile: string) =
     of mwUnusedImportdoc: k = warnRstUnusedImportdoc
     of mwRstStyle: k = warnRstStyle
     {.gcsafe.}:
-      globalError(conf, newLineInfo(conf, AbsoluteFile filename, line, col), k, arg)
+      let errorsAsWarnings = (roPreferMarkdown in d.sharedState.options) and
+          not d.standaloneDoc  # not tolerate errors in .rst/.md files
+      if whichMsgClass(msgKind) == mcError and errorsAsWarnings:
+        liMessage(conf, newLineInfo(conf, AbsoluteFile filename, line, col),
+                  k, arg, doNothing, instLoc(), ignoreError=true)
+        # when our Markdown parser fails, we currently can only terminate the
+        # parsing (and then we will return monospaced text instead of markup):
+        raiseRecoverableError("")
+      else:
+        globalError(conf, newLineInfo(conf, AbsoluteFile filename, line, col), k, arg)
 
   proc docgenFindFile(s: string): string {.gcsafe.} =
     result = options.findFile(conf, s).string
@@ -311,8 +325,9 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
                     standaloneDoc = false, preferMarkdown = true,
                     hasToc = true): PDoc =
   let destFile = getOutFile2(conf, presentationPath(conf, filename), outExt, false).string
-  declareClosures(currentFilename = filename, destFile = destFile)
   new(result)
+  let d = result  # pass `d` to `declareClosures`:
+  declareClosures(currentFilename = filename, destFile = destFile)
   result.module = module
   result.conf = conf
   result.cache = cache
@@ -424,13 +439,15 @@ proc genComment(d: PDoc, n: PNode): PRstNode =
                         toColumn(n.info) + DocColOffset,
                         d.conf, d.sharedState)
     except ERecoverableError:
-      result = nil
+      result = newRstNode(rnLiteralBlock, @[newRstLeaf(n.comment)])
+  else:
+    result = nil
 
 proc genRecCommentAux(d: PDoc, n: PNode): PRstNode =
   if n == nil: return nil
   result = genComment(d, n)
   if result == nil:
-    if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef,
+    if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef, nkTypeClassTy,
                   nkObjectTy, nkRefTy, nkPtrTy, nkAsgn, nkFastAsgn, nkSinkAsgn, nkHiddenStdConv}:
       # notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
       for i in 0..<n.len:
@@ -459,6 +476,7 @@ proc getPlainDocstring(n: PNode): string =
   elif startsWith(n.comment, "##"):
     result = n.comment
   else:
+    result = ""
     for i in 0..<n.safeLen:
       result = getPlainDocstring(n[i])
       if result.len > 0: return
@@ -474,7 +492,7 @@ proc externalDep(d: PDoc; module: PSym): string =
 proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var string;
                            renderFlags: TRenderFlags = {};
                            procLink: string) =
-  var r: TSrcGen
+  var r: TSrcGen = TSrcGen()
   var literal = ""
   initTokRender(r, n, renderFlags)
   var kind = tkEof
@@ -590,7 +608,9 @@ proc runAllExamples(d: PDoc) =
       rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
       # removeFile(outp.changeFileExt(ExeExt)) # it's in nimcache, no need to remove
 
-proc quoted(a: string): string = result.addQuoted(a)
+proc quoted(a: string): string =
+  result = ""
+  result.addQuoted(a)
 
 proc toInstantiationInfo(conf: ConfigRef, info: TLineInfo): (string, int, int) =
   # xxx expose in compiler/lineinfos.nim
@@ -716,7 +736,7 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var ItemPre,
         let (rdoccmd, code) = prepareExample(d, n, topLevel)
         var msg = "Example:"
         if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
-        var s: string
+        var s: string = ""
         dispA(d.conf, s, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
             "\n\n\\textbf{$1}\n", [msg])
         dest.add s
@@ -932,7 +952,10 @@ proc genDeprecationMsg(d: PDoc, n: PNode): string =
     if n[1].kind in {nkStrLit..nkTripleStrLit}:
       result = getConfigVar(d.conf, "doc.deprecationmsg") % [
           "label", "Deprecated:", "message", xmltree.escape(n[1].strVal)]
+    else:
+      result = ""
   else:
+    result = ""
     doAssert false
 
 type DocFlags = enum
@@ -940,6 +963,7 @@ type DocFlags = enum
   kForceExport
 
 proc genSeeSrc(d: PDoc, path: string, line: int): string =
+  result = ""
   let docItemSeeSrc = getConfigVar(d.conf, "doc.item.seesrc")
   if docItemSeeSrc.len > 0:
     let path = relativeTo(AbsoluteFile path, AbsoluteDir getCurrentDir(), '/')
@@ -981,7 +1005,7 @@ proc toLangSymbol(k: TSymKind, n: PNode, baseName: string): LangSymbol =
   result.symKind = k.toHumanStr
   if k in routineKinds:
     var
-      paramTypes: seq[string]
+      paramTypes: seq[string] = @[]
     renderParamTypes(paramTypes, n[paramsPos], toNormalize=true)
     let paramNames = renderParamNames(n[paramsPos], toNormalize=true)
     # In some rare cases (system.typeof) parameter type is not set for default:
@@ -1028,7 +1052,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
   var result = ""
   var literal, plainName = ""
   var kind = tkEof
-  var comm: ItemPre
+  var comm: ItemPre = default(ItemPre)
   if n.kind in routineDefs:
     getAllRunnableExamples(d, n, comm)
   else:
@@ -1135,13 +1159,16 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
   if k == skType and nameNode.kind == nkSym:
     d.types.strTableAdd nameNode.sym
 
-proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonItem =
+proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): JsonItem =
   if not isVisible(d, nameNode): return
   var
     name = getNameEsc(d, nameNode)
     comm = genRecComment(d, n)
-    r: TSrcGen
-  initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments, renderExpandUsing})
+    r: TSrcGen = default(TSrcGen)
+    renderFlags = {renderNoBody, renderNoComments, renderDocComments, renderExpandUsing}
+  if nonExports:
+    renderFlags.incl renderNonExportedFields
+  initTokRender(r, n, renderFlags)
   result.json = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                    "col": %n.info.col}
   if comm != nil:
@@ -1270,6 +1297,8 @@ proc documentNewEffect(cache: IdentCache; n: PNode): PNode =
   let s = n[namePos].sym
   if tfReturnsNew in s.typ.flags:
     result = newIdentNode(getIdent(cache, "new"), n.info)
+  else:
+    result = nil
 
 proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, idx: int): PNode =
   let spec = effectSpec(x, effectType)
@@ -1292,6 +1321,8 @@ proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, id
 
     result = newTreeI(nkExprColonExpr, n.info,
       newIdentNode(getIdent(cache, $effectType), n.info), effects)
+  else:
+    result = nil
 
 proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName: string): PNode =
   let s = n[namePos].sym
@@ -1305,6 +1336,8 @@ proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName
   if effects.len > 0:
     result = newTreeI(nkExprColonExpr, n.info,
       newIdentNode(getIdent(cache, pragmaName), n.info), effects)
+  else:
+    result = nil
 
 proc documentRaises*(cache: IdentCache; n: PNode) =
   if n[namePos].kind != nkSym: return
@@ -1378,7 +1411,7 @@ proc generateDoc*(d: PDoc, n, orig: PNode, config: ConfigRef, docFlags: DocFlags
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
   of nkCallKinds:
-    var comm: ItemPre
+    var comm: ItemPre = default(ItemPre)
     getAllRunnableExamples(d, n, comm)
     if comm.len != 0: d.modDescPre.add(comm)
   else: discard
@@ -1487,7 +1520,7 @@ proc finishGenerateDoc*(d: var PDoc) =
       overloadChoices.sort(cmp)
       var nameContent = ""
       for item in overloadChoices:
-        var itemDesc: string
+        var itemDesc: string = ""
         renderItemPre(d, item.descRst, itemDesc)
         nameContent.add(
           getConfigVar(d.conf, "doc.item") % (
@@ -1513,7 +1546,7 @@ proc finishGenerateDoc*(d: var PDoc) =
   for i, entry in d.jEntriesPre:
     if entry.rst != nil:
       let resolved = resolveSubs(d.sharedState, entry.rst)
-      var str: string
+      var str: string = ""
       renderRstToOut(d[], resolved, str)
       entry.json[entry.rstField] = %str
       d.jEntriesPre[i].rst = nil
@@ -1526,7 +1559,7 @@ proc finishGenerateDoc*(d: var PDoc) =
 proc add(d: PDoc; j: JsonItem) =
   if j.json != nil or j.rst != nil: d.jEntriesPre.add j
 
-proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
+proc generateJson*(d: PDoc, n: PNode, config: ConfigRef, includeComments: bool = true) =
   case n.kind
   of nkPragma:
     let doctypeNode = findPragma(n, wDoctype)
@@ -1558,14 +1591,14 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
       if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         d.add genJsonItem(d, n[i], n[i][0],
-                succ(skType, ord(n.kind)-ord(nkTypeSection)))
+                succ(skType, ord(n.kind)-ord(nkTypeSection)), optShowNonExportedFields in config.globalOptions)
   of nkStmtList:
     for i in 0..<n.len:
-      generateJson(d, n[i], includeComments)
+      generateJson(d, n[i], config, includeComments)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n[0][0]):
-      generateJson(d, lastSon(n[0]), includeComments)
+      generateJson(d, lastSon(n[0]), config, includeComments)
   else: discard
 
 proc genTagsItem(d: PDoc, n, nameNode: PNode, k: TSymKind): string =
@@ -1628,7 +1661,7 @@ proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
     for plainName in overloadableNames.sorted(cmpDecimalsIgnoreCase):
       var overloadChoices = d.tocTable[kind][plainName]
       overloadChoices.sort(cmp)
-      var content: string
+      var content: string = ""
       for item in overloadChoices:
         content.add item.content
       d.toc2[kind].add getConfigVar(d.conf, "doc.section.toc2") % [
@@ -1659,7 +1692,7 @@ proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile):
 
 proc genOutFile(d: PDoc, groupedToc = false): string =
   var
-    code, content: string
+    code, content: string = ""
     title = ""
   var j = 0
   var toc = ""
@@ -1710,7 +1743,7 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
         "moduledesc", d.modDescFinal, "date", getDateStr(), "time", getClockStr(),
         "content", content, "author", d.meta[metaAuthor],
         "version", esc(d.target, d.meta[metaVersion]), "analytics", d.analytics,
-        "deprecationMsg", d.modDeprecationMsg]
+        "deprecationMsg", d.modDeprecationMsg, "nimVersion", $NimMajor & "." & $NimMinor & "." & $NimPatch]
   else:
     code = content
   result = code
@@ -1768,7 +1801,7 @@ proc writeOutput*(d: PDoc, useWarning = false, groupedToc = false) =
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
   runAllExamples(d)
-  var modDesc: string
+  var modDesc: string = ""
   for desc in d.modDescFinal:
     modDesc &= desc
   let content = %*{"orig": d.filename,
@@ -1780,7 +1813,7 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
   else:
     let dir = d.destFile.splitFile.dir
     createDir(dir)
-    var f: File
+    var f: File = default(File)
     if open(f, d.destFile, fmWrite):
       write(f, $content)
       close(f)
@@ -1842,7 +1875,7 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
                           status: int; content: string) {.gcsafe.} =
     localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
                warnUser, "the ':test:' attribute is not supported by this backend")
-  generateJson(d, ast)
+  generateJson(d, ast, conf)
   finishGenerateDoc(d)
   let json = d.jEntriesFinal
   let content = pretty(json)
@@ -1894,7 +1927,7 @@ proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") 
       "title", "Index",
       "subtitle", "", "tableofcontents", "", "moduledesc", "",
       "date", getDateStr(), "time", getClockStr(),
-      "content", content, "author", "", "version", "", "analytics", ""]
+      "content", content, "author", "", "version", "", "analytics", "", "nimVersion", $NimMajor & "." & $NimMinor & "." & $NimPatch]
   # no analytics because context is not available
 
   try:

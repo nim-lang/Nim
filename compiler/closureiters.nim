@@ -258,8 +258,9 @@ proc hasYields(n: PNode): bool =
   of nkYieldStmt:
     result = true
   of nkSkip:
-    discard
+    result = false
   else:
+    result = false
     for c in n:
       if c.hasYields:
         result = true
@@ -325,7 +326,7 @@ proc collectExceptState(ctx: var Ctx, n: PNode): PNode {.inline.} =
       var ifBranch: PNode
 
       if c.len > 1:
-        var cond: PNode
+        var cond: PNode = nil
         for i in 0..<c.len - 1:
           assert(c[i].kind == nkType)
           let nextCond = newTree(nkCall,
@@ -388,19 +389,22 @@ proc getFinallyNode(ctx: var Ctx, n: PNode): PNode =
 proc hasYieldsInExpressions(n: PNode): bool =
   case n.kind
   of nkSkip:
-    discard
+    result = false
   of nkStmtListExpr:
     if isEmptyType(n.typ):
+      result = false
       for c in n:
         if c.hasYieldsInExpressions:
           return true
     else:
       result = n.hasYields
   of nkCast:
+    result = false
     for i in 1..<n.len:
       if n[i].hasYieldsInExpressions:
         return true
   else:
+    result = false
     for c in n:
       if c.hasYieldsInExpressions:
         return true
@@ -495,7 +499,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
 
     if ns:
       needsSplit = true
-      var tmp: PSym
+      var tmp: PSym = nil
       let isExpr = not isEmptyType(n.typ)
       if isExpr:
         tmp = ctx.newTempVar(n.typ)
@@ -855,7 +859,9 @@ proc transformReturnsInTry(ctx: var Ctx, n: PNode): PNode =
   case n.kind
   of nkReturnStmt:
     # We're somewhere in try, transform to finally unrolling
-    assert(ctx.nearestFinally != 0)
+    if ctx.nearestFinally == 0:
+      # return is within the finally
+      return
 
     result = newNodeI(nkStmtList, n.info)
 
@@ -1359,6 +1365,7 @@ proc freshVars(n: PNode; c: var FreshVarsContext): PNode =
       else:
         result.add it
   of nkRaiseStmt:
+    result = nil
     localError(c.config, c.info, "unsupported control flow: 'finally: ... raise' duplicated because of 'break'")
   else:
     result = n
@@ -1389,7 +1396,7 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
       discard c.finallys.pop()
 
   of nkWhileStmt, nkBlockStmt:
-    if n.hasYields == false: return n
+    if not n.hasYields: return n
     c.blocks.add((n, c.finallys.len))
     for i in 0 ..< n.len:
       result[i] = preprocess(c, n[i])
@@ -1466,9 +1473,10 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
   result = ctx.transformStateAssignments(result)
   result = ctx.wrapIntoStateLoop(result)
 
-  # echo "TRANSFORM TO STATES: "
-  # echo renderTree(result)
+  when false:
+    echo "TRANSFORM TO STATES: "
+    echo renderTree(result)
 
-  # echo "exception table:"
-  # for i, e in ctx.exceptionTable:
-  #   echo i, " -> ", e
+    echo "exception table:"
+    for i, e in ctx.exceptionTable:
+      echo i, " -> ", e

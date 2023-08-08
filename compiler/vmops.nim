@@ -172,6 +172,7 @@ proc querySettingImpl(conf: ConfigRef, switch: BiggestInt): string =
 
 proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
   template copySeq(field: untyped): untyped =
+    result = @[]
     for i in field: result.add i.string
 
   case MultipleValueSetting(switch)
@@ -406,6 +407,6 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.marshal.loadVM", proc(a: VmArgs) =
     let typ = a.getNode(0).typ
     let p = a.getReg(1)
-    var res: string
+    var res: string = ""
     storeAny(res, typ, regToNode(p[]), c.config)
     setResult(a, res)

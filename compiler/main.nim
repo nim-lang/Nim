@@ -56,7 +56,7 @@ proc writeCMakeDepsFile(conf: ConfigRef) =
   for it in conf.toCompile: cfiles.add(it.cname.string)
   let fileset = cfiles.toCountTable()
   # read old cfiles list
-  var fl: File
+  var fl: File = default(File)
   var prevset = initCountTable[string]()
   if open(fl, fname.string, fmRead):
     for line in fl.lines: prevset.inc(line)
@@ -196,7 +196,7 @@ proc commandScan(cache: IdentCache, config: ConfigRef) =
   if stream != nil:
     var
       L: Lexer
-      tok: Token
+      tok: Token = default(Token)
     initToken(tok)
     openLexer(L, f, stream, cache, config)
     while true:

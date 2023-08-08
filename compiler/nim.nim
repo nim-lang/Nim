@@ -91,6 +91,9 @@ proc getNimRunExe(conf: ConfigRef): string =
   if conf.isDefined("mingw"):
     if conf.isDefined("i386"): result = "wine"
     elif conf.isDefined("amd64"): result = "wine64"
+    else: result = ""
+  else:
+    result = ""
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(

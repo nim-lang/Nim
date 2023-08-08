@@ -712,3 +712,24 @@ block:
     var y = "356"
     merge(x, y)
     doAssert x == "3bc"
+
+block: # bug #22190
+  type
+    EVMFork = enum
+      Berlin
+      Istanbul
+      Shanghai
+
+  const
+    Vm2OpAllForks =
+      {EVMFork.low .. EVMFork.high}
+
+    vm2OpExecBlockData = [(forks: Vm2OpAllForks)]
+
+  proc mkOpTable(selected: EVMFork): bool =
+    selected notin vm2OpExecBlockData[0].forks
+
+  const
+    tab = mkOpTable(Berlin)
+
+  doAssert not tab

@@ -44,8 +44,11 @@ proc hasEmpty(typ: PType): bool =
   if typ.kind in {tySequence, tyArray, tySet}:
     result = typ.lastSon.kind == tyEmpty
   elif typ.kind == tyTuple:
+    result = false
     for s in typ.sons:
       result = result or hasEmpty(s)
+  else:
+    result = false
 
 proc semDiscard(c: PContext, n: PNode): PNode =
   result = n
@@ -67,7 +70,7 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1, c.config)
   if n[0].kind != nkEmpty:
     if n.kind != nkContinueStmt:
-      var s: PSym
+      var s: PSym = nil
       case n[0].kind
       of nkIdent: s = lookUp(c, n[0])
       of nkSym: s = n[0].sym
@@ -235,8 +238,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
   var typ = commonTypeBegin
   var expectedType = expectedType
   n[0] = semExprBranchScope(c, n[0], expectedType)
-  typ = commonType(c, typ, n[0].typ)
   if not endsInNoReturn(n[0]):
+    typ = commonType(c, typ, n[0].typ)
     expectedType = typ
 
   var last = n.len - 1
@@ -273,7 +276,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
           # if ``except: body`` already encountered,
           # cannot be followed by a ``except KeyError, ... : body`` block
           inc catchAllExcepts
-        var isNative, isImported: bool
+        var isNative, isImported: bool = false
         for j in 0..<a.len-1:
           let tmp = semExceptBranchType(a[j])
           if tmp: isImported = true
@@ -312,7 +315,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
       result.typ = c.enforceVoidContext
   else:
     if n.lastSon.kind == nkFinally: discardCheck(c, n.lastSon.lastSon, flags)
-    n[0] = fitNode(c, typ, n[0], n[0].info)
+    if not endsInNoReturn(n[0]):
+      n[0] = fitNode(c, typ, n[0], n[0].info)
     for i in 1..last:
       var it = n[i]
       let j = it.len-1
@@ -337,6 +341,7 @@ proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
     changeType(c, result, typ, check=false)
 
 proc findShadowedVar(c: PContext, v: PSym): PSym =
+  result = nil
   for scope in localScopesFrom(c, c.currentScope.parent):
     let shadowed = strTableGet(scope.symbols, v.name)
     if shadowed != nil and shadowed.kind in skLocalVars:
@@ -400,6 +405,8 @@ proc isDiscardUnderscore(v: PSym): bool =
   if v.name.id == ord(wUnderscore):
     v.flags.incl(sfGenSym)
     result = true
+  else:
+    result = false
 
 proc semUsing(c: PContext; n: PNode): PNode =
   result = c.graph.emptyNode
@@ -578,6 +585,7 @@ template isLocalVarSym(n: PNode): bool =
   n.kind == nkSym and isLocalSym(n.sym)
 
 proc usesLocalVar(n: PNode): bool =
+  result = false
   for z in 1 ..< n.len:
     if n[z].isLocalVarSym:
       return true
@@ -596,7 +604,7 @@ proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSy
   elif a.len-2 != typ.len:
     localError(c.config, a.info, errWrongNumberOfVariables)
   var
-    tmpTuple: PSym
+    tmpTuple: PSym = nil
     lastDef: PNode
   let defkind = if symkind == skConst: nkConstDef else: nkIdentDefs
   # temporary not needed if not const and RHS is tuple literal
@@ -659,7 +667,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
 
-    var typFlags: TTypeAllowedFlags
+    var typFlags: TTypeAllowedFlags = {}
 
     var def: PNode = c.graph.emptyNode
     if a[^1].kind != nkEmpty:
@@ -806,7 +814,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     if a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
 
-    var typFlags: TTypeAllowedFlags
+    var typFlags: TTypeAllowedFlags = {}
 
     # don't evaluate here since the type compatibility check below may add a converter
     var def = semExprWithType(c, a[^1], {efTypeAllowed}, typ)
@@ -1028,6 +1036,8 @@ proc handleStmtMacro(c: PContext; n, selector: PNode; magicType: string;
     of skMacro: result = semMacroExpr(c, callExpr, callExpr, match, flags)
     of skTemplate: result = semTemplateExpr(c, callExpr, match, flags)
     else: result = nil
+  else:
+    result = nil
 
 proc handleForLoopMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
   result = handleStmtMacro(c, n, n[^2], "ForLoopStmt", flags)
@@ -1056,6 +1066,8 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
     of skTemplate: result = semTemplateExpr(c, toExpand, match, flags)
     else: result = errorNode(c, n[0])
   elif r.state == csNoMatch:
+    result = errorNode(c, n[0])
+  else:
     result = errorNode(c, n[0])
   if result.kind == nkEmpty:
     localError(c.config, n[0].info, errSelectorMustBeOfCertainTypes)
@@ -1230,7 +1242,7 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
   let typeDef = typeSection[i]
   checkSonsLen(typeDef, 3, c.config)
   var name = typeDef[0]
-  var s: PSym
+  var s: PSym = nil
   if name.kind == nkDotExpr and typeDef[2].kind == nkObjectTy:
     let pkgName = considerQuotedIdent(c, name[0])
     let typName = considerQuotedIdent(c, name[1])
@@ -1704,6 +1716,7 @@ proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
 proc semProcAnnotation(c: PContext, prc: PNode;
                        validPragmas: TSpecialWords): PNode =
   # Mirrored with semVarMacroPragma
+  result = nil
   var n = prc[pragmasPos]
   if n == nil or n.kind == nkEmpty: return
   for i in 0..<n.len:
@@ -2017,6 +2030,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
                  "'destroy' or 'deepCopy' expected for 'override'")
 
 proc cursorInProcAux(conf: ConfigRef; n: PNode): bool =
+  result = false
   if inCheckpoint(n.info, conf.m.trackPos) != cpNone: return true
   for i in 0..<n.safeLen:
     if cursorInProcAux(conf, n[i]): return true
@@ -2024,8 +2038,11 @@ proc cursorInProcAux(conf: ConfigRef; n: PNode): bool =
 proc cursorInProc(conf: ConfigRef; n: PNode): bool =
   if n.info.fileIndex == conf.m.trackPos.fileIndex:
     result = cursorInProcAux(conf, n)
+  else:
+    result = false
 
 proc hasObjParam(s: PSym): bool =
+  result = false
   var t = s.typ
   for col in 1..<t.len:
     if skipTypes(t[col], skipPtrs).kind == tyObject:
@@ -2252,26 +2269,27 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if sfBorrow in s.flags and c.config.cmd notin cmdDocLike:
     result[bodyPos] = c.graph.emptyNode
 
-  if {sfVirtual, sfConstructor} * s.flags != {} and sfImportc notin s.flags:
+  if sfCppMember * s.flags != {} and sfImportc notin s.flags:
     let isVirtual = sfVirtual in s.flags
-    let pragmaName = if isVirtual: "virtual" else: "constructor"
+    let isCtor = sfConstructor in s.flags
+    let pragmaName = if isVirtual: "virtual" elif isCtor: "constructor" else: "member"
     if c.config.backend == backendCpp:
-      if s.typ.sons.len < 2 and isVirtual:
-        localError(c.config, n.info, "virtual must have at least one parameter")
+      if s.typ.sons.len < 2 and not isCtor:
+        localError(c.config, n.info, pragmaName & " must have at least one parameter")
       for son in s.typ.sons:
         if son!=nil and son.isMetaType:
           localError(c.config, n.info, pragmaName & " unsupported for generic routine")
       var typ: PType
-      if sfConstructor in s.flags:
+      if isCtor:
         typ = s.typ.sons[0]
         if typ == nil or typ.kind != tyObject:
           localError(c.config, n.info, "constructor must return an object")
       else:
         typ = s.typ.sons[1]
-      if typ.kind == tyPtr and isVirtual:
+      if typ.kind == tyPtr and not isCtor:
         typ = typ[0]
       if typ.kind != tyObject:
-        localError(c.config, n.info, "virtual must be either ptr to object or object type.")
+        localError(c.config, n.info, pragmaName & " must be either ptr to object or object type.")
       if typ.owner.id == s.owner.id and c.module.id == s.owner.id:
         c.graph.memberProcsPerType.mgetOrPut(typ.itemId, @[]).add s
       else:
@@ -2552,8 +2570,11 @@ proc usesResult(n: PNode): bool =
     elif n.kind == nkReturnStmt:
       result = true
     else:
+      result = false
       for c in n:
         if usesResult(c): return true
+  else:
+    result = false
 
 proc inferConceptStaticParam(c: PContext, inferred, n: PNode) =
   var typ = inferred.typ

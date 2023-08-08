@@ -367,6 +367,8 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
       op = produceSym(c.g, c.c, t, c.kind, c.info, c.idgen)
       body.add newHookCall(c, op, x, y)
       result = true
+    else:
+      result = false
   elif tfHasAsgn in t.flags:
     var op: PSym
     if sameType(t, c.asgnForType):
@@ -396,6 +398,8 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
     assert op.ast[genericParamsPos].kind == nkEmpty
     body.add newHookCall(c, op, x, y)
     result = true
+  else:
+    result = false
 
 proc addDestructorCall(c: var TLiftCtx; orig: PType; body, x: PNode) =
   let t = orig.skipTypes(abstractInst - {tyDistinct})
@@ -435,6 +439,8 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       onUse(c.info, op)
       body.add destructorCall(c, op, x)
       result = true
+    else:
+      result = false
     #result = addDestructorCall(c, t, body, x)
   of attachedAsgn, attachedSink, attachedTrace:
     var op = getAttachedOp(c.g, t, c.kind)
@@ -455,6 +461,8 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       onUse(c.info, op)
       body.add newDeepCopyCall(c, op, x, y)
       result = true
+    else:
+      result = false
 
   of attachedWasMoved:
     var op = getAttachedOp(c.g, t, attachedWasMoved)
@@ -469,6 +477,8 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       onUse(c.info, op)
       body.add genWasMovedCall(c, op, x)
       result = true
+    else:
+      result = false
 
   of attachedDup:
     var op = getAttachedOp(c.g, t, attachedDup)
@@ -483,6 +493,8 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       onUse(c.info, op)
       body.add newDupCall(c, op, x, y)
       result = true
+    else:
+      result = false
 
 proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
   var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.idgen, c.fn, c.info)
@@ -556,7 +568,7 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add setLenSeqCall(c, t, x, y)
     forallElements(c, t, body, x, y)
   of attachedSink:
-    let moveCall = genBuiltin(c, mMove, "internalMove", x)
+    let moveCall = genBuiltin(c, mMove, "move", x)
     moveCall.add y
     doAssert t.destructor != nil
     moveCall.add destructorCall(c, t.destructor, x)
@@ -589,7 +601,7 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add newHookCall(c, t.assignment, x, y)
   of attachedSink:
     # we always inline the move for better performance:
-    let moveCall = genBuiltin(c, mMove, "internalMove", x)
+    let moveCall = genBuiltin(c, mMove, "move", x)
     moveCall.add y
     doAssert t.destructor != nil
     moveCall.add destructorCall(c, t.destructor, x)
@@ -620,7 +632,7 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedAsgn, attachedDeepCopy, attachedDup:
     body.add callCodegenProc(c.g, "nimAsgnStrV2", c.info, genAddr(c, x), y)
   of attachedSink:
-    let moveCall = genBuiltin(c, mMove, "internalMove", x)
+    let moveCall = genBuiltin(c, mMove, "move", x)
     moveCall.add y
     doAssert t.destructor != nil
     moveCall.add destructorCall(c, t.destructor, x)
@@ -1249,7 +1261,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   # bug #15122: We need to produce all prototypes before entering the
   # mind boggling recursion. Hacks like these imply we should rewrite
   # this module.
-  var generics: array[attachedWasMoved..attachedTrace, bool]
+  var generics: array[attachedWasMoved..attachedTrace, bool] = default(array[attachedWasMoved..attachedTrace, bool])
   for k in attachedWasMoved..lastAttached:
     generics[k] = getAttachedOp(g, canon, k) != nil
     if not generics[k]:

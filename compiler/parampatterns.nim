@@ -184,6 +184,7 @@ type
     arStrange                 # it is a strange beast like 'typedesc[var T]'
 
 proc exprRoot*(n: PNode; allowCalls = true): PSym =
+  result = nil
   var it = n
   while true:
     case it.kind

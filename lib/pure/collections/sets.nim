@@ -128,7 +128,7 @@ proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
     var a = initHashSet[int]()
     a.incl(3)
     assert len(a) == 1
-
+  result = default(HashSet[A])
   result.init(initialSize)
 
 proc `[]`*[A](s: var HashSet[A], key: A): var A =
