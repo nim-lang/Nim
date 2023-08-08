@@ -2565,7 +2565,7 @@ when hasAlloc and notJSnotNims:
     ## This is also used by the code generator
     ## for the implementation of `spawn`.
     ##
-    ## For `--gc:arc` or `--gc:orc` deepcopy support has to be enabled
+    ## For `--mm:arc` or `--mm:orc` deepcopy support has to be enabled
     ## via `--deepcopy:on`.
     discard
 
@@ -2811,7 +2811,7 @@ when notJSnotNims and not defined(nimSeqsV2):
     ## String literals (e.g. "abc", etc) in the ARC/ORC mode are "copy on write",
     ## therefore you should call `prepareMutation` before modifying the strings
     ## via `addr`.
-    runnableExamples("--gc:arc"):
+    runnableExamples:
       var x = "abc"
       var y = "defgh"
       prepareMutation(y) # without this, you may get a `SIGBUS` or `SIGSEGV`
