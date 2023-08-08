@@ -2023,10 +2023,12 @@ proc skipColon*(n: PNode): PNode =
     result = n[1]
 
 proc findUnresolvedStatic*(n: PNode): PNode =
-  # n.typ == nil: see issue #14802
   if n.kind == nkSym and n.typ != nil and n.typ.kind == tyStatic and n.typ.n == nil:
     return n
-
+  if n.typ != nil and n.typ.kind == tyTypeDesc:
+    let t = skipTypes(n.typ, {tyTypeDesc})
+    if t.kind == tyGenericParam and t.len == 0:
+      return n
   for son in n:
     let n = son.findUnresolvedStatic
     if n != nil: return n
