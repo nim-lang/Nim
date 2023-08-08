@@ -301,6 +301,7 @@ proc genCLineDir(r: var Rope, p: BProc, info: TLineInfo; conf: ConfigRef) =
       genCLineDir(r, toFullPath(conf, info), info.safeLineNm, p, info, lastFileIndex)
 
 proc genLineDir(p: BProc, t: PNode) =
+  if p == p.module.preInitProc: return
   let line = t.info.safeLineNm
 
   if optEmbedOrigSrc in p.config.globalOptions:
