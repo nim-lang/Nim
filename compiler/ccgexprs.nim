@@ -1152,10 +1152,7 @@ proc isSimpleExpr(n: PNode): bool =
       if n[i].kind notin {nkCommentStmt, nkEmpty}: return false
     result = isSimpleExpr(n.lastSon)
   else:
-    if n.isAtom:
-      result = true
-    else:
-      result = false
+    result = n.isAtom
 
 proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   # how to generate code?

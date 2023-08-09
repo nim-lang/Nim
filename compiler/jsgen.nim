@@ -348,10 +348,7 @@ proc isSimpleExpr(p: PProc; n: PNode): bool =
       if n[i].kind notin {nkCommentStmt, nkEmpty}: return false
     result = isSimpleExpr(p, n.lastSon)
   else:
-    if n.isAtom:
-      result = true
-    else:
-      result = false
+    result = n.isAtom
 
 proc getTemp(p: PProc, defineInLocals: bool = true): Rope =
   inc(p.unique)
