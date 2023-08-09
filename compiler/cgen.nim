@@ -1142,7 +1142,8 @@ proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
 proc genProcAux*(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = newRopeAppender()
-  if m.config.backend == backendCpp and sfCppMember * prc.flags != {}:
+  let isCppMember = m.config.backend == backendCpp and sfCppMember * prc.flags != {}
+  if isCppMember:
     genMemberProcHeader(m, prc, header)
   else:
     genProcHeader(m, prc, header)
@@ -1205,10 +1206,10 @@ proc genProcAux*(m: BModule, prc: PSym) =
   var generatedProc: Rope = ""
   generatedProc.genCLineDir prc.info, m.config
   if isNoReturn(p.module, prc):
-    if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
+    if hasDeclspec in extccomp.CC[p.config.cCompiler].props and not isCppMember:
       header = "__declspec(noreturn) " & header
   if sfPure in prc.flags:
-    if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
+    if hasDeclspec in extccomp.CC[p.config.cCompiler].props and not isCppMember:
       header = "__declspec(naked) " & header
     generatedProc.add ropecg(p.module, "$1 {$n$2$3$4}$N$N",
                          [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)])
