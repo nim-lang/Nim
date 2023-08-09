@@ -328,6 +328,8 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
       conv.add(evaluated)
       result.add(conv)
       result.add(newNodeIT(nkNilLit, eOrig.info, getSysType(c.graph, eOrig.info, tyNil)))
+      result.typ = exactReplica evaluated.typ
+      result.typ.callConv = ccClosure
     else:
       result = evaluated
       let expectedType = eOrig.typ.skipTypes({tyStatic})

@@ -933,7 +933,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
         else: result = fixupTypeAfterEval(c, result, n)
       else:
         let noneCtProc = sfCompileTime notin n[0].typ.owner.flags
-        if callee.kind == skConst and (n.typ == nil and noneCtProc):
+        if callee.kind == skConst and noneCtProc:
           return n
         result = evalConstExpr(c.module, c.idgen, c.graph, call)
         if result.isNil: result = n
