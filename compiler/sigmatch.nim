@@ -1207,7 +1207,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyArray:
       var fRange = f[0]
       var aRange = a[0]
-      if fRange.kind == tyGenericParam:
+      if fRange.kind in {tyGenericParam, tyAnything}:
         var prev = PType(idTableGet(c.bindings, fRange))
         if prev == nil:
           put(c, fRange, a[0])
