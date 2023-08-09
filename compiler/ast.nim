@@ -591,6 +591,7 @@ type
     tfEffectSystemWorkaround
     tfIsOutParam
     tfSendable
+    tfImplicitStatic
 
   TTypeFlags* = set[TTypeFlag]
 
