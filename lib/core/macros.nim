@@ -244,6 +244,8 @@ proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
 proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
 proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
   ## Returns a copy of the declaration of a symbol or `nil`.
+  ## **Note**: When used on generic types with `when` the returned branches will not be flattened.
+
 proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
   ## Returns the string value of an identifier, symbol, comment, or string literal.
   ##

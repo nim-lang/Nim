@@ -547,6 +547,23 @@ proc takeCharAddress(c: PCtx, src: PNode, index: BiggestInt, pc: int): TFullReg 
   node.flags.incl nfIsPtr
   TFullReg(kind: rkNode, node: node)
 
+proc generateGenericAst(baseTyp: PNode): PNode =
+  ## Due to how generics work there is no existent AST, we need to generate it.
+  ## We can create approximate AST by replacing all generic parameter `ident`s with
+  ## the given type we have.
+  ## This does mean that generics with `when` inside do not appear properly from here.
+  result = copyTree(baseTyp[0].sym.ast)
+  proc replaceInBody(node, name, with: PNode) =
+    for i, x in node:
+      if x.kind == nkIdent and x.ident == name.sym.name:
+        node[i] = with
+      else:
+        replaceInBody(x, name, with)
+
+  for i, x in result[1]: # Iterate generic parameters replacing them in the ast
+    replaceInBody(result[^1], x, baseTyp[i + 1])
+    result[1][i] = baseTyp[i + 1]
+  result.flags.incl nfIsRef
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   result = TFullReg(kind: rkNone)
@@ -1268,8 +1285,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcGetImpl:
       decodeB(rkNode)
       var a = regs[rb].node
-      if a.kind == nkVarTy: a = a[0]
-      if a.kind == nkSym:
+      if a.kind == nkBracketExpr and a.typ.kind in {tyGenericInst, tyTypeDesc}:
+        regs[ra].node = a.generateGenericAst()
+
+      elif a.kind == nkVarTy: a = a[0]
+      elif a.kind == nkSym:
         regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
                         else: copyTree(a.sym.ast)
         regs[ra].node.flags.incl nfIsRef

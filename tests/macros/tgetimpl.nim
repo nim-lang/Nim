@@ -98,3 +98,36 @@ check(typeof(z2[]))
 var z3: TireRef2
 check(typeof(z3[]))
 check(TireRef3)
+
+
+# get ast of generic instantiations
+block:
+  template jsonName(s: string) {.pragma.}
+
+
+  type 
+    MyType[T] = object
+      a {.jsonName: "hello".}: T
+    MyOtherType = object
+      b {.jsonName: "hmm".}: int
+
+  macro dumpType(typ: typed): untyped =
+    discard typ.getTypeInst().getImpl()
+
+  macro dumpType2(typ: typedesc): untyped =
+    discard typ.getImpl()
+
+  var 
+    a = MyType[int]()
+    b = MyOtherType()
+
+  dumpType(a)
+  dumpType(b)
+  static:
+    assert a.a.hasCustomPragma(jsonName)
+    assert b.b.hasCustomPragma(jsonName)
+    assert MyType[float]().a.hasCustomPragma(jsonName)
+
+  dumpType2(MyType[int])
+  dumpType2(MyType[float])
+  dumpType2(MyOtherType)
