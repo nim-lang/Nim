@@ -64,7 +64,7 @@ block:
     var x {.align: 16.}: uint8
     var y {.align: 16.}: ValidatorPubKey
     let value = cast[uint64](addr y)
-    doAssert value mod 8 == 0
+    doAssert value mod 16 == 0
 
   proc e() =
     var x: uint8
