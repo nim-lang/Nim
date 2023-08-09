@@ -275,6 +275,10 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
     # call head symbol, because this leads to infinite recursion.
     if oldParam.ast != nil:
       var def = oldParam.ast.copyTree
+      if def.kind in nkCallKinds:
+        for i in 1..<def.len:
+          def[i] = replaceTypeVarsN(cl, def[i])
+
       def = semExprWithType(c, def)
       if def.referencesAnotherParam(getCurrOwner(c)):
         def.flags.incl nfDefaultRefsParam

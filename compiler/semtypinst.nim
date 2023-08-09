@@ -265,6 +265,9 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
       if start > 0:
         result[0] = n[0]
       for i in start..<n.len:
+        if n[i].typ != nil and n[i].typ.kind == tyTypeDesc:
+          result[i] = n[i]
+          continue
         result[i] = replaceTypeVarsN(cl, n[i])
 
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
