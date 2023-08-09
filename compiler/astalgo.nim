@@ -109,7 +109,7 @@ type
     data*: TIIPairSeq
 
 
-proc initIiTable*(x: var TIITable)
+proc initIITable*(x: var TIITable)
 proc iiTableGet*(t: TIITable, key: int): int
 proc iiTablePut*(t: var TIITable, key, val: int)
 
