@@ -51,3 +51,26 @@ type Bug[T] = object
 
 var bug: Bug[int]
 doAssert sizeof(bug) == 128, "Oops my size is " & $sizeof(bug) # 16
+
+
+import std/asyncdispatch
+
+block:
+  type
+    ValidatorPubKey = object
+      blob: array[96, byte]
+
+  proc f() {.async.} =
+    var x {.align: 16.}: uint8
+    var y {.align: 16.}: ValidatorPubKey
+    let value = cast[uint64](unsafeAddr y)
+    doAssert value mod 8 == 0
+
+  proc e() =
+    var x: uint8
+    var y: ValidatorPubKey
+    let value = cast[uint64](unsafeAddr y)
+    doAssert value mod 8 == 0
+
+  waitFor f()
+  e()

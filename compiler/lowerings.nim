@@ -237,6 +237,9 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym
   field.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
   let t = skipIntLit(s.typ, idgen)
   field.typ = t
+  if s.kind in {skLet, skVar, skField, skForVar}:
+    #field.bitsize = s.bitsize
+    field.alignment = s.alignment
   assert t.kind != tyTyped
   propagateToOwner(obj, t)
   field.position = obj.n.len
