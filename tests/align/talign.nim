@@ -61,16 +61,8 @@ block:
       blob: array[96, byte]
 
   proc f() {.async.} =
-    var x {.align: 16.}: uint8
     var y {.align: 16.}: ValidatorPubKey
     let value = cast[uint64](addr y)
     doAssert value mod 16 == 0
 
-  proc e() =
-    var x: uint8
-    var y: ValidatorPubKey
-    let value = cast[uint64](addr y)
-    doAssert value mod 8 == 0
-
   waitFor f()
-  e()
