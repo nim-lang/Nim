@@ -63,13 +63,13 @@ block:
   proc f() {.async.} =
     var x {.align: 16.}: uint8
     var y {.align: 16.}: ValidatorPubKey
-    let value = cast[uint64](unsafeAddr y)
+    let value = cast[uint64](addr y)
     doAssert value mod 8 == 0
 
   proc e() =
     var x: uint8
     var y: ValidatorPubKey
-    let value = cast[uint64](unsafeAddr y)
+    let value = cast[uint64](addr y)
     doAssert value mod 8 == 0
 
   waitFor f()
