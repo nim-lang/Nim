@@ -168,6 +168,17 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
       elif s.isMixedIn:
         result = newDot(result, symChoice(c, n, s, scForceOpen))
       else:
+        if s.kind == skType and candidates.len > 1:
+          var ambig = false
+          let s2 = searchInScopes(c, ident, ambig) 
+          if ambig:
+            # this is a type conversion like a.T where T is ambiguous with
+            # other types or routines
+            # in regular code, this never considers a type conversion and
+            # skips to routine overloading
+            # so symchoices are used which behave similarly with type symbols
+            result = newDot(result, symChoice(c, n, s, scForceOpen))
+            return
         let syms = semGenericStmtSymbol(c, n, s, ctx, flags, fromDotExpr=true)
         result = newDot(result, syms)
 
