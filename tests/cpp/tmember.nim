@@ -7,6 +7,7 @@ false
 hello foo
 hello boo
 hello boo
+FunctorSupport!
 destructing
 destructing
 '''
@@ -51,3 +52,13 @@ let booAsFoo = cast[FooPtr](newCpp[Boo]())
 foo.salute()
 boo.salute()
 booAsFoo.salute()
+
+type
+  NimFunctor = object
+    discard
+proc invoke(f: NimFunctor, n:int) {.member:"operator ()('2 #2)" .} = 
+  echo "FunctorSupport!"
+
+{.experimental: "callOperator".}
+proc `()`(f: NimFunctor, n:int) {.importcpp:"#(@)" .} 
+NimFunctor()(1)

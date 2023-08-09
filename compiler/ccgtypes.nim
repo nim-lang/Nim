@@ -1151,12 +1151,21 @@ proc isNonReloadable(m: BModule; prc: PSym): bool =
 
 proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride, isMemberVirtual: var bool; isCtor: bool) =
   var afterParams: string = ""
+  var isFunctor: bool = false
+  var val = val
+  if val.replace(" ", "").contains("operator()"):
+    isFunctor = true
+    var ignore = ""
+    discard scanf(val, "$*($*)$*", ignore, ignore, val)
+
   if scanf(val, "$*($*)$s$*", name, params, afterParams):
     isFnConst = afterParams.find("const") > -1
     isOverride = afterParams.find("override") > -1
     isMemberVirtual = name.find("virtual ") > -1
     if isMemberVirtual:
       name = name.replace("virtual ", "")
+    if isFunctor:
+      name = "operator ()"
     if isCtor:
       discard scanf(afterParams, ":$s$*", superCall)
     else:
