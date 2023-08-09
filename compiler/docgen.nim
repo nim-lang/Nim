@@ -492,9 +492,8 @@ proc externalDep(d: PDoc; module: PSym): string =
 proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var string;
                            renderFlags: TRenderFlags = {};
                            procLink: string) =
-  var r: TSrcGen = TSrcGen()
+  var r: TSrcGen = initTokRender(n, renderFlags)
   var literal = ""
-  initTokRender(r, n, renderFlags)
   var kind = tkEof
   var tokenPos = 0
   var procTokenPos = 0
@@ -1030,8 +1029,7 @@ proc toLangSymbol(k: TSymKind, n: PNode, baseName: string): LangSymbol =
         genNode = n[miscPos][1]   # FIXME: what is index 1?
     if genNode != nil:
       var literal = ""
-      var r: TSrcGen
-      initTokRender(r, genNode, {renderNoBody, renderNoComments,
+      var r: TSrcGen = initTokRender(genNode, {renderNoBody, renderNoComments,
         renderNoPragmas, renderNoProcDefs, renderExpandUsing})
       var kind = tkEof
       while true:
@@ -1058,9 +1056,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
   else:
     comm.add genRecComment(d, n)
 
-  var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
-  initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
+  var r: TSrcGen = initTokRender(n, {renderNoBody, renderNoComments, renderDocComments,
     renderNoPragmas, renderNoProcDefs, renderExpandUsing})
   while true:
     getNextTok(r, kind, literal)
@@ -1164,11 +1161,11 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): 
   var
     name = getNameEsc(d, nameNode)
     comm = genRecComment(d, n)
-    r: TSrcGen = default(TSrcGen)
+    r: TSrcGen
     renderFlags = {renderNoBody, renderNoComments, renderDocComments, renderExpandUsing}
   if nonExports:
     renderFlags.incl renderNonExportedFields
-  initTokRender(r, n, renderFlags)
+  r = initTokRender(n, renderFlags)
   result.json = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                    "col": %n.info.col}
   if comm != nil:
