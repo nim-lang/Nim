@@ -1149,14 +1149,19 @@ proc isReloadable(m: BModule; prc: PSym): bool =
 proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 
-proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride, isMemberVirtual: var bool; isCtor: bool) =
+proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride, isMemberVirtual: var bool; isCtor: bool, isFunctor=false) =
   var afterParams: string = ""
   if scanf(val, "$*($*)$s$*", name, params, afterParams):
+    if name.strip() == "operator" and params == "": #isFunctor?
+      parseVFunctionDecl(afterParams, name, params, retType, superCall, isFnConst, isOverride, isMemberVirtual, isCtor, true)
+      return
     isFnConst = afterParams.find("const") > -1
     isOverride = afterParams.find("override") > -1
     isMemberVirtual = name.find("virtual ") > -1
     if isMemberVirtual:
       name = name.replace("virtual ", "")
+    if isFunctor:
+      name = "operator ()"
     if isCtor:
       discard scanf(afterParams, ":$s$*", superCall)
     else:
