@@ -442,7 +442,7 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
     a: TLoc
     lelse: TLabel
   if not isEmptyType(n.typ) and d.k == locNone:
-    getTemp(p, n.typ, d)
+    d = getTemp(p, n.typ)
   genLineDir(p, n)
   let lend = getLabel(p)
   for it in n.sons:
@@ -637,7 +637,7 @@ proc genBlock(p: BProc, n: PNode, d: var TLoc) =
     # bug #4505: allocate the temp in the outer scope
     # so that it can escape the generated {}:
     if d.k == locNone:
-      getTemp(p, n.typ, d)
+      d = getTemp(p, n.typ)
     d.flags.incl(lfEnforceDeref)
   preserveBreakIdx:
     p.breakIdx = startBlock(p)
@@ -971,7 +971,7 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
 proc genCase(p: BProc, t: PNode, d: var TLoc) =
   genLineDir(p, t)
   if not isEmptyType(t.typ) and d.k == locNone:
-    getTemp(p, t.typ, d)
+    d = getTemp(p, t.typ)
   case skipTypes(t[0].typ, abstractVarRange).kind
   of tyString:
     genStringCase(p, t, tyString, d)
@@ -1022,7 +1022,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   p.module.includeHeader("<exception>")
 
   if not isEmptyType(t.typ) and d.k == locNone:
-    getTemp(p, t.typ, d)
+    d = getTemp(p, t.typ)
   genLineDir(p, t)
 
   inc(p.labels, 2)
@@ -1187,7 +1187,7 @@ proc genTryCppOld(p: BProc, t: PNode, d: var TLoc) =
     expr(p, body, d)
 
   if not isEmptyType(t.typ) and d.k == locNone:
-    getTemp(p, t.typ, d)
+    d = getTemp(p, t.typ)
   genLineDir(p, t)
   cgsym(p.module, "popCurrentExceptionEx")
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
@@ -1265,7 +1265,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   p.flags.incl nimErrorFlagAccessed
 
   if not isEmptyType(t.typ) and d.k == locNone:
-    getTemp(p, t.typ, d)
+    d = getTemp(p, t.typ)
 
   expr(p, t[0], d)
 
@@ -1372,7 +1372,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
   #    propagateCurrentException();
   #
   if not isEmptyType(t.typ) and d.k == locNone:
-    getTemp(p, t.typ, d)
+    d = getTemp(p, t.typ)
   let quirkyExceptions = p.config.exc == excQuirky or
       (t.kind == nkHiddenTryStmt and sfSystemModule in p.module.module.flags)
   if not quirkyExceptions:
@@ -1598,11 +1598,10 @@ when false:
     expr(p, call, d)
 
 proc asgnFieldDiscriminant(p: BProc, e: PNode) =
-  var tmp: TLoc
   var dotExpr = e[0]
   if dotExpr.kind == nkCheckedFieldExpr: dotExpr = dotExpr[0]
   var a = initLocExpr(p, e[0])
-  getTemp(p, a.t, tmp)
+  var tmp: TLoc = getTemp(p, a.t)
   expr(p, e[1], tmp)
   if p.inUncheckedAssignSection == 0:
     let field = dotExpr[1].sym

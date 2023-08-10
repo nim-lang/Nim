@@ -88,7 +88,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
       # beware of 'result = p(result)'. We may need to allocate a temporary:
       if d.k in {locTemp, locNone} or not preventNrvo(p, d.lode, le, ri):
         # Great, we can use 'd':
-        if d.k == locNone: getTemp(p, typ[0], d, needsInit=true)
+        if d.k == locNone: d = getTemp(p, typ[0], needsInit=true)
         elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
           discard "resetLoc(p, d)"
@@ -96,8 +96,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         pl.add(");\n")
         line(p, cpsStmts, pl)
       else:
-        var tmp: TLoc
-        getTemp(p, typ[0], tmp, needsInit=true)
+        var tmp: TLoc = getTemp(p, typ[0], needsInit=true)
         pl.add(addrLoc(p.config, tmp))
         pl.add(");\n")
         line(p, cpsStmts, pl)
@@ -115,24 +114,23 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
           excl d.flags, lfSingleUse
         else:
           if d.k == locNone and p.splitDecls == 0:
-            getTempCpp(p, typ[0], d, pl)
+            d = getTempCpp(p, typ[0], pl)
           else:
-            if d.k == locNone: getTemp(p, typ[0], d)
+            if d.k == locNone: d = getTemp(p, typ[0])
             var list = initLoc(locCall, d.lode, OnUnknown)
             list.r = pl
             genAssignment(p, d, list, {}) # no need for deep copying
             if canRaise: raiseExit(p)
 
       elif isHarmlessStore(p, canRaise, d):
-        if d.k == locNone: getTemp(p, typ[0], d)
+        if d.k == locNone: d = getTemp(p, typ[0])
         assert(d.t != nil)        # generate an assignment to d:
         var list = initLoc(locCall, d.lode, OnUnknown)
         list.r = pl
         genAssignment(p, d, list, {}) # no need for deep copying
         if canRaise: raiseExit(p)
       else:
-        var tmp: TLoc
-        getTemp(p, typ[0], tmp, needsInit=true)
+        var tmp: TLoc = getTemp(p, typ[0], needsInit=true)
         var list = initLoc(locCall, d.lode, OnUnknown)
         list.r = pl
         genAssignment(p, tmp, list, {}) # no need for deep copying
@@ -268,13 +266,13 @@ proc withTmpIfNeeded(p: BProc, a: TLoc, needsTmp: bool): TLoc =
   # Also don't regress for non ARC-builds, too risky.
   if needsTmp and a.lode.typ != nil and p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and
       getSize(p.config, a.lode.typ) < 1024:
-    getTemp(p, a.lode.typ, result, needsInit=false)
+    result = getTemp(p, a.lode.typ, needsInit=false)
     genAssignment(p, result, a, {})
   else:
     result = a
 
 proc literalsNeedsTmp(p: BProc, a: TLoc): TLoc =
-  getTemp(p, a.lode.typ, result, needsInit=false)
+  result = getTemp(p, a.lode.typ, needsInit=false)
   genAssignment(p, result, a, {})
 
 proc genArgStringToCString(p: BProc, n: PNode; result: var Rope; needsTmp: bool) {.inline.} =
@@ -465,7 +463,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       if d.k in {locTemp, locNone} or not preventNrvo(p, d.lode, le, ri):
         # Great, we can use 'd':
         if d.k == locNone:
-          getTemp(p, typ[0], d, needsInit=true)
+          d = getTemp(p, typ[0], needsInit=true)
         elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
           discard "resetLoc(p, d)"
@@ -473,14 +471,13 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
         genCallPattern()
         if canRaise: raiseExit(p)
       else:
-        var tmp: TLoc
-        getTemp(p, typ[0], tmp, needsInit=true)
+        var tmp: TLoc = getTemp(p, typ[0], needsInit=true)
         pl.add(addrLoc(p.config, tmp))
         genCallPattern()
         if canRaise: raiseExit(p)
         genAssignment(p, d, tmp, {}) # no need for deep copying
     elif isHarmlessStore(p, canRaise, d):
-      if d.k == locNone: getTemp(p, typ[0], d)
+      if d.k == locNone: d = getTemp(p, typ[0])
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc = initLoc(locCall, d.lode, OnUnknown)
       if tfIterator in typ.flags:
@@ -490,8 +487,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       genAssignment(p, d, list, {}) # no need for deep copying
       if canRaise: raiseExit(p)
     else:
-      var tmp: TLoc
-      getTemp(p, typ[0], tmp)
+      var tmp: TLoc = getTemp(p, typ[0])
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc = initLoc(locCall, d.lode, OnUnknown)
       if tfIterator in typ.flags:
@@ -697,7 +693,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
         d.r = pl
         excl d.flags, lfSingleUse
       else:
-        if d.k == locNone: getTemp(p, typ[0], d)
+        if d.k == locNone: d = getTemp(p, typ[0])
         assert(d.t != nil)        # generate an assignment to d:
         var list: TLoc = initLoc(locCall, d.lode, OnUnknown)
         list.r = pl
@@ -761,21 +757,20 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       # beware of 'result = p(result)'. We always allocate a temporary:
       if d.k in {locTemp, locNone}:
         # We already got a temp. Great, special case it:
-        if d.k == locNone: getTemp(p, typ[0], d, needsInit=true)
+        if d.k == locNone: d = getTemp(p, typ[0], needsInit=true)
         pl.add("Result: ")
         pl.add(addrLoc(p.config, d))
         pl.add("];\n")
         line(p, cpsStmts, pl)
       else:
-        var tmp: TLoc
-        getTemp(p, typ[0], tmp, needsInit=true)
+        var tmp: TLoc = getTemp(p, typ[0], needsInit=true)
         pl.add(addrLoc(p.config, tmp))
         pl.add("];\n")
         line(p, cpsStmts, pl)
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
       pl.add("]")
-      if d.k == locNone: getTemp(p, typ[0], d)
+      if d.k == locNone: d = getTemp(p, typ[0])
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc = initLoc(locCall, ri, OnUnknown)
       list.r = pl
