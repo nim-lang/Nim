@@ -2368,9 +2368,22 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
       if op == nil:
         resetLoc(p, a)
       else:
-        let addrExp = makeAddr(n[1], p.module.idgen)
-        let wasMovedCall = newTreeI(nkCall, n.info, newSymNode(op), addrExp)
-        genCall(p, wasMovedCall, d)
+        var b: TLoc
+        initLocExpr(p, newSymNode(op), b)
+        case skipTypes(a.t, abstractVar+{tyStatic}).kind
+        of tyOpenArray, tyVarargs: # todo fixme generated `wasMoved` hooks for
+                                   # openarrays, but it probably shouldn't?
+          var s: string
+          if reifiedOpenArray(a.lode):
+            if a.t.kind in {tyVar, tyLent}:
+              s = "$1->Field0, $1->Field1" % [rdLoc(a)]
+            else:
+              s = "$1.Field0, $1.Field1" % [rdLoc(a)]
+          else:
+            s = "$1, $1Len_0" % [rdLoc(a)]
+          linefmt(p, cpsStmts, "$1($2);$n", [rdLoc(b), s])
+        else:
+          linefmt(p, cpsStmts, "$1($2);$n", [rdLoc(b), byRefLoc(p, a)])
     else:
       let flags = if not canMove(p, n[1], d): {needToCopy} else: {}
       genAssignment(p, d, a, flags)
