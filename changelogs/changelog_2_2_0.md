@@ -1,4 +1,4 @@
-# v2.2.1 - 2023-mm-dd
+# v2.2.0 - 2023-mm-dd
 
 ## Changes affecting backward compatibility
 
