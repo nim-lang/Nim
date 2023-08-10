@@ -1499,7 +1499,7 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
     result = newNode(nkIntLit)
   of tyStatic: # that's a pre-existing bug, will fix in another PR
     result = newNode(nkIntLit)
-  else: doAssert false, $kind
+  else: raiseAssert $kind
   result.intVal = intVal
   result.typ = typ
 

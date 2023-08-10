@@ -366,7 +366,7 @@ proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
                                   slotTempFloat,
                                   slotTempStr,
                                   slotTempComplex}:
-          doAssert false, "leaking temporary " & $i & " " & $c.prc.regInfo[i].kind
+          raiseAssert "leaking temporary " & $i & " " & $c.prc.regInfo[i].kind
       c.prc.regInfo[i] = (inUse: false, kind: slotEmpty)
 
   c.clearDest(n, dest)
@@ -1073,7 +1073,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     case n[1].typ.skipTypes(abstractVarRange).kind
     of tyString: genUnaryABI(c, n, dest, opcLenStr)
     of tyCstring: genUnaryABI(c, n, dest, opcLenCstring)
-    else: doAssert false, $n[1].typ.kind
+    else: raiseAssert $n[1].typ.kind
   of mSlice:
     var
       d = c.genx(n[1])

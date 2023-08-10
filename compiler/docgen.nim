@@ -348,7 +348,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
 
   if conf.configVars.hasKey("doc.googleAnalytics") and
       conf.configVars.hasKey("doc.plausibleAnalytics"):
-    doAssert false, "Either use googleAnalytics or plausibleAnalytics"
+    raiseAssert "Either use googleAnalytics or plausibleAnalytics"
 
   if conf.configVars.hasKey("doc.googleAnalytics"):
     result.analytics = """
@@ -954,8 +954,7 @@ proc genDeprecationMsg(d: PDoc, n: PNode): string =
     else:
       result = ""
   else:
-    result = ""
-    doAssert false
+    raiseAssert "unreachable"
 
 type DocFlags = enum
   kDefault

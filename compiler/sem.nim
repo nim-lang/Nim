@@ -594,7 +594,7 @@ proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool, ch
       asgnExpr.typ = recNode.typ
       result.add newTree(nkExprColonExpr, recNode, asgnExpr)
   else:
-    doAssert false
+    raiseAssert "unreachable"
 
 proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, checkDefault: bool): seq[PNode] =
   result = @[]
@@ -630,7 +630,7 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, checkDefault:
         asgnExpr.flags.incl nfSkipFieldChecking
         result.add newTree(nkExprColonExpr, recNode, asgnExpr)
   else:
-    doAssert false
+    raiseAssert "unreachable"
 
 proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): PNode =
   let aTypSkip = aTyp.skipTypes(defaultFieldsSkipTypes)
