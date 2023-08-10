@@ -57,8 +57,7 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
     specializeResetT(p, accessor, lastSon(typ))
   of tyArray:
     let arraySize = lengthOrd(p.config, typ[0])
-    var i: TLoc
-    getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i)
+    var i: TLoc = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt))
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
             [i.r, arraySize])
     specializeResetT(p, ropecg(p.module, "$1[$2]", [accessor, i.r]), typ[1])

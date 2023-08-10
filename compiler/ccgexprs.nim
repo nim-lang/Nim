@@ -348,8 +348,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
         linefmt(p, cpsStmts, "$1 = #copyString($2);$n", [dest.rdLoc, src.rdLoc])
       elif dest.storage == OnHeap:
         # we use a temporary to care for the dreaded self assignment:
-        var tmp: TLoc
-        getTemp(p, ty, tmp)
+        var tmp: TLoc = getTemp(p, ty)
         linefmt(p, cpsStmts, "$3 = $1; $1 = #copyStringRC1($2);$n",
                 [dest.rdLoc, src.rdLoc, tmp.rdLoc])
         linefmt(p, cpsStmts, "if ($1) #nimGCunrefNoCycle($1);$n", [tmp.rdLoc])
@@ -431,8 +430,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
 proc genDeepCopy(p: BProc; dest, src: TLoc) =
   template addrLocOrTemp(a: TLoc): Rope =
     if a.k == locExpr:
-      var tmp: TLoc
-      getTemp(p, a.t, tmp)
+      var tmp: TLoc = getTemp(p, a.t)
       genAssignment(p, tmp, a, {})
       addrLoc(p.config, tmp)
     else:
@@ -1169,8 +1167,7 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   else:
     var
       L: TLabel
-      tmp: TLoc
-    getTemp(p, e.typ, tmp)      # force it into a temp!
+    var tmp: TLoc = getTemp(p, e.typ)      # force it into a temp!
     inc p.splitDecls
     expr(p, e[1], tmp)
     L = getLabel(p)
@@ -1248,8 +1245,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   #    asgn(s, tmp0);
   #  }
   var a: TLoc
-  var tmp: TLoc
-  getTemp(p, e.typ, tmp)
+  var tmp: TLoc = getTemp(p, e.typ)
   var L = 0
   var appends: Rope = ""
   var lens: Rope = ""
@@ -1321,7 +1317,6 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   # seq &= x  -->
   #    seq = (typeof seq) incrSeq(&seq->Sup, sizeof(x));
   #    seq->data[seq->len-1] = x;
-  var tmpL: TLoc = default(TLoc)
   var a = initLocExpr(p, e[1])
   var b = initLocExpr(p, e[2])
   let seqType = skipTypes(e[1].typ, {tyVar})
@@ -1342,7 +1337,7 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   #if bt != b.t:
   #  echo "YES ", e.info, " new: ", typeToString(bt), " old: ", typeToString(b.t)
   var dest = initLoc(locExpr, e[2], OnHeap)
-  getIntTemp(p, tmpL)
+  var tmpL = getIntTemp(p)
   lineCg(p, cpsStmts, "$1 = $2->$3++;$n", [tmpL.r, rdLoc(a), lenField(p)])
   dest.r = ropecg(p.module, "$1$3[$2]", [rdLoc(a), tmpL.r, dataField(p)])
   genAssignment(p, dest, b, {needToCopy})
@@ -1357,7 +1352,7 @@ proc genReset(p: BProc, n: PNode) =
             genTypeInfoV1(p.module, skipTypes(a.t, {tyVar}), n.info)])
 
 proc genDefault(p: BProc; n: PNode; d: var TLoc) =
-  if d.k == locNone: getTemp(p, n.typ, d, needsInit=true)
+  if d.k == locNone: d = getTemp(p, n.typ, needsInit=true)
   else: resetLoc(p, d)
 
 proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope; needsInit: bool) =
@@ -1467,7 +1462,7 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
   let seqtype = skipTypes(e.typ, abstractVarRange)
   var a: TLoc = initLocExpr(p, e[1])
   if optSeqDestructors in p.config.globalOptions:
-    if d.k == locNone: getTemp(p, e.typ, d, needsInit=false)
+    if d.k == locNone: d = getTemp(p, e.typ, needsInit=false)
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = ($4*) #newSeqPayload($2, sizeof($3), NIM_ALIGNOF($3));$n",
       [d.rdLoc, a.rdLoc, getTypeDesc(p.module, seqtype.lastSon),
       getSeqPayloadType(p.module, seqtype),
@@ -1520,10 +1515,10 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
         (d.k notin {locTemp,locLocalVar,locGlobalVar,locParam,locField}) or
         (isPartOf(d.lode, e) != arNo)
 
-  var tmp: TLoc = TLoc()
+  var tmp: TLoc = default(TLoc)
   var r: Rope
   if useTemp:
-    getTemp(p, t, tmp)
+    tmp = getTemp(p, t)
     r = rdLoc(tmp)
     if isRef:
       rawGenNew(p, tmp, "", needsInit = nfAllFieldsSet notin e.flags)
@@ -1574,9 +1569,9 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
   let doesAlias = lhsDoesAlias(d.lode, n)
   let dest = if doesAlias: addr(tmp) else: addr(d)
   if doesAlias:
-    getTemp(p, n.typ, tmp)
+    tmp = getTemp(p, n.typ)
   elif d.k == locNone:
-    getTemp(p, n.typ, d)
+    d = getTemp(p, n.typ)
 
   var lit = newRopeAppender()
   intLiteral(n.len, lit)
@@ -1609,7 +1604,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
     genSeqConstr(p, n[1], d)
     return
   if d.k == locNone:
-    getTemp(p, n.typ, d)
+    d = getTemp(p, n.typ)
   var a = initLocExpr(p, n[1])
   # generate call to newSeq before adding the elements per hand:
   let L = toInt(lengthOrd(p.config, n[1].typ))
@@ -1634,8 +1629,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
       arr.r = ropecg(p.module, "$1[$2]", [rdLoc(a), lit])
       genAssignment(p, elem, arr, {needToCopy})
   else:
-    var i: TLoc
-    getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i)
+    var i: TLoc = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt))
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",  [i.r, L])
     elem = initLoc(locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), OnHeap)
     elem.r = ropecg(p.module, "$1$3[$2]", [rdLoc(d), rdLoc(i), dataField(p)])
@@ -1824,7 +1818,7 @@ template genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
   var a: TLoc = initLocExpr(p, n[1])
   a.r = ropecg(p.module, frmt, [rdLoc(a)])
   a.flags.excl lfIndirect # this flag should not be propagated here (not just for HCR)
-  if d.k == locNone: getTemp(p, n.typ, d)
+  if d.k == locNone: d = getTemp(p, n.typ)
   genAssignment(p, d, a, {})
   gcUsage(p.config, n)
 
@@ -1872,9 +1866,8 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     putIntoDest(p, d, e, x)
   of tySequence:
     # we go through a temporary here because people write bullshit code.
-    var tmp: TLoc = default(TLoc)
+    var tmp: TLoc = getIntTemp(p)
     var a = initLocExpr(p, e[1])
-    getIntTemp(p, tmp)
     var x = lenExpr(p, a)
     if op == mHigh: x = "($1-1)" % [x]
     lineCg(p, cpsStmts, "$1 = $2;$n", [tmp.r, x])
@@ -1941,8 +1934,7 @@ proc genSwap(p: BProc, e: PNode, d: var TLoc) =
   # b = temp
   cowBracket(p, e[1])
   cowBracket(p, e[2])
-  var tmp: TLoc
-  getTemp(p, skipTypes(e[1].typ, abstractVar), tmp)
+  var tmp: TLoc = getTemp(p, skipTypes(e[1].typ, abstractVar))
   var a = initLocExpr(p, e[1]) # eval a
   var b = initLocExpr(p, e[2]) # eval b
   genAssignment(p, tmp, a, {})
@@ -2085,10 +2077,10 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       var a: TLoc = initLocExpr(p, e[1])
       putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [addrLoc(p.config, a), size]))
     of mLtSet, mLeSet:
-      getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i) # our counter
+      i = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt)) # our counter
       a = initLocExpr(p, e[1])
       b = initLocExpr(p, e[2])
-      if d.k == locNone: getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyBool), d)
+      if d.k == locNone: d = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyBool))
       if op == mLtSet:
         linefmt(p, cpsStmts, lookupOpr[mLtSet],
            [rdLoc(i), size, rdLoc(d), rdLoc(a), rdLoc(b)])
@@ -2103,10 +2095,10 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       putIntoDest(p, d, e, ropecg(p.module, "(#nimCmpMem($1, $2, $3)==0)", [a.rdCharLoc, b.rdCharLoc, size]))
     of mMulSet, mPlusSet, mMinusSet:
       # we inline the simple for loop for better code generation:
-      getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i) # our counter
+      i = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt)) # our counter
       a = initLocExpr(p, e[1])
       b = initLocExpr(p, e[2])
-      if d.k == locNone: getTemp(p, setType, d)
+      if d.k == locNone: d = getTemp(p, setType)
       lineF(p, cpsStmts,
            "for ($1 = 0; $1 < $2; $1++) $n" &
            "  $3[$1] = $4[$1] $6 $5[$1];$n", [
@@ -2311,7 +2303,7 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
     genStmts(p, n[3])
     linefmt(p, cpsStmts, "}$n$1.len = $2.len; $1.p = $2.p;$n", [rdLoc(a), rdLoc(src)])
   else:
-    if d.k == locNone: getTemp(p, n.typ, d)
+    if d.k == locNone: d = getTemp(p, n.typ)
     if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
       genAssignment(p, d, a, {})
       var op = getAttachedOp(p.module.g.graph, n.typ, attachedWasMoved)
@@ -2376,7 +2368,7 @@ proc genSlice(p: BProc; e: PNode; d: var TLoc) =
     prepareForMutation = e[1].kind == nkHiddenDeref and
                          e[1].typ.skipTypes(abstractInst).kind == tyString and
                          p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc})
-  if d.k == locNone: getTemp(p, e.typ, d)
+  if d.k == locNone: d = getTemp(p, e.typ)
   linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $3;$n", [rdLoc(d), x, y])
   when false:
     localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
@@ -2591,14 +2583,14 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
     genSetNode(p, e, elem)
     putIntoDest(p, d, e, elem)
   else:
-    if d.k == locNone: getTemp(p, e.typ, d)
+    if d.k == locNone: d = getTemp(p, e.typ)
     if getSize(p.config, e.typ) > 8:
       # big set:
       linefmt(p, cpsStmts, "#nimZeroMem($1, sizeof($2));$n",
           [rdLoc(d), getTypeDesc(p.module, e.typ)])
       for it in e.sons:
         if it.kind == nkRange:
-          getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), idx) # our counter
+          idx = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt)) # our counter
           a = initLocExpr(p, it[0])
           b = initLocExpr(p, it[1])
           var aa = newRopeAppender()
@@ -2620,7 +2612,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
       lineF(p, cpsStmts, "$1 = 0;$n", [rdLoc(d)])
       for it in e.sons:
         if it.kind == nkRange:
-          getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), idx) # our counter
+          idx = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt)) # our counter
           a = initLocExpr(p, it[0])
           b = initLocExpr(p, it[1])
           var aa = newRopeAppender()
@@ -2650,9 +2642,9 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
     let doesAlias = lhsDoesAlias(d.lode, n)
     let dest = if doesAlias: addr(tmp) else: addr(d)
     if doesAlias:
-      getTemp(p, n.typ, tmp)
+      tmp = getTemp(p, n.typ)
     elif d.k == locNone:
-      getTemp(p, n.typ, d)
+      d = getTemp(p, n.typ)
 
     for i in 0..<n.len:
       var it = n[i]
@@ -2695,7 +2687,7 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
         linefmt(p, cpsStmts, "$1.ClP_0 = $2; $1.ClE_0 = $3;$n",
                 [d.rdLoc, a.rdLoc, b.rdLoc])
     else:
-      getTemp(p, n.typ, tmp)
+      tmp = getTemp(p, n.typ)
       linefmt(p, cpsStmts, "$1.ClP_0 = $2; $1.ClE_0 = $3;$n",
               [tmp.rdLoc, a.rdLoc, b.rdLoc])
       putLocIntoDest(p, d, tmp)
@@ -2703,7 +2695,7 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
 proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   if not handleConstExpr(p, n, d):
-    if d.k == locNone: getTemp(p, n.typ, d)
+    if d.k == locNone: d = getTemp(p, n.typ)
     for i in 0..<n.len:
       arr = initLoc(locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), d.storage)
       var lit = newRopeAppender()

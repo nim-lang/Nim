@@ -538,7 +538,7 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
     if not immediateAsgn:
       constructLoc(p, v.loc)
 
-proc getTemp(p: BProc, t: PType, result: out TLoc; needsInit=false) =
+proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
   inc(p.labels)
   result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
@@ -556,13 +556,13 @@ proc getTemp(p: BProc, t: PType, result: out TLoc; needsInit=false) =
         echo "ENORMOUS TEMPORARY! ", p.config $ p.lastLineInfo
       writeStackTrace()
 
-proc getTempCpp(p: BProc, t: PType, result: out TLoc; value: Rope) =
+proc getTempCpp(p: BProc, t: PType, value: Rope): TLoc =
   inc(p.labels)
   result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
   linefmt(p, cpsStmts, "$1 $2 = $3;$n", [getTypeDesc(p.module, t, dkVar), result.r, value])
 
-proc getIntTemp(p: BProc, result: out TLoc) =
+proc getIntTemp(p: BProc): TLoc =
   inc(p.labels)
   result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp,
                 storage: OnStack, lode: lodeTyp getSysType(p.module.g.graph, unknownLineInfo, tyInt),
