@@ -337,9 +337,8 @@ proc elemText*(n: XmlNode, separator = ""): string {.inline.} =
   proc worker(res: var string, n: seq[XmlNode], i: int = 0) =
     if i < n.len:
       if n[i].k == xnText:
+        if res.len > 0: res.add(separator)
         res.add(n[i].fText)
-        if i < n.len - 1:
-          res.add(separator)
       
       worker(res, n, i + 1)
 
