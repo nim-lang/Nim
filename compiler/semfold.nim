@@ -408,8 +408,7 @@ proc foldConv(n, a: PNode; idgen: IdGenerator; g: ModuleGraph; check = false): P
       result = a
       result.typ = n.typ
     else:
-      result = nil
-      doAssert false, $srcTyp.kind
+      raiseAssert $srcTyp.kind
   of tyInt..tyInt64, tyUInt..tyUInt64:
     case srcTyp.kind
     of tyFloat..tyFloat64:

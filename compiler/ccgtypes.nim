@@ -477,11 +477,11 @@ proc multiFormat*(frmt: var string, chars : static openArray[char], args: openAr
             if i >= frmt.len or frmt[i] notin {'0'..'9'}: break
           num = j
           if j > high(arg) + 1:
-            doAssert false, "invalid format string: " & frmt
+            raiseAssert "invalid format string: " & frmt
           else:
             res.add(arg[j-1])
         else:
-          doAssert false, "invalid format string: " & frmt
+          raiseAssert "invalid format string: " & frmt
       var start = i
       while i < frmt.len:
         if frmt[i] != c: inc(i)
@@ -847,7 +847,7 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
   # Make sure the index refers to one of the generic params of the type.
   # XXX: we should catch this earlier and report it as a semantic error.
   if idx >= typ.len:
-    doAssert false, "invalid apostrophe type parameter index"
+    raiseAssert "invalid apostrophe type parameter index"
 
   result = typ[idx]
   for i in 1..stars:
