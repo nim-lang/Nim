@@ -1656,18 +1656,27 @@ proc addParams(c: PContext, n: PNode, kind: TSymKind) =
 
 proc semBorrow(c: PContext, n: PNode, s: PSym) =
   # search for the correct alias:
-  var b = searchForBorrowProc(c, c.currentScope.parent, s)
-  if b != nil:
-    # store the alias:
-    n[bodyPos] = newSymNode(b)
-    # Carry over the original symbol magic, this is necessary in order to ensure
-    # the semantic pass is correct
-    s.magic = b.magic
-    if b.typ != nil and b.typ.len > 0:
-      s.typ.n[0] = b.typ.n[0]
-    s.typ.flags = b.typ.flags
-  else:
-    localError(c.config, n.info, errNoSymbolToBorrowFromFound)
+  var (b, state) = searchForBorrowProc(c, c.currentScope.parent, s)
+  case state
+    of bsMatch:
+      # store the alias:
+      n[bodyPos] = newSymNode(b)
+      # Carry over the original symbol magic, this is necessary in order to ensure
+      # the semantic pass is correct
+      s.magic = b.magic
+      if b.typ != nil and b.typ.len > 0:
+        s.typ.n[0] = b.typ.n[0]
+      s.typ.flags = b.typ.flags
+    of bsNoDistinct:
+      localError(c.config, n.info, "borrow proc without distinct type parameter is meaningless")
+    of bsReturnNotMatch:
+      localError(c.config, n.info, "borrow from proc return type mismatch: '$1'" % typeToString(b.typ[0]))
+    of bsGeneric:
+      localError(c.config, n.info, "borrow with generic parameter is not supported")
+    of bsNotSupported:
+      localError(c.config, n.info, "borrow from '$1' is not supported" % $b.name.s)
+    else:
+      localError(c.config, n.info, errNoSymbolToBorrowFromFound)
 
 proc swapResult(n: PNode, sRes: PSym, dNode: PNode) =
   ## Swap nodes that are (skResult) symbols to d(estination)Node.
