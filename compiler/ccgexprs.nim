@@ -2318,9 +2318,8 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
       if op == nil:
         resetLoc(p, a)
       else:
-        let addrExp = makeAddr(n[1], p.module.idgen)
-        let wasMovedCall = newTreeI(nkCall, n.info, newSymNode(op), addrExp)
-        genCall(p, wasMovedCall, d)
+        var b = initLocExpr(p, newSymNode(op))
+        linefmt(p, cpsStmts, "$1($2);$n", [rdLoc(b), byRefLoc(p, a)])
     else:
       let flags = if not canMove(p, n[1], d): {needToCopy} else: {}
       genAssignment(p, d, a, flags)
