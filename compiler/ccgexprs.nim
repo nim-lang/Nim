@@ -2320,8 +2320,8 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
       else:
         var b = initLocExpr(p, newSymNode(op))
         case skipTypes(a.t, abstractVar+{tyStatic}).kind
-        of tyOpenArray, tyVarargs: # fixme generated `wasMoved` hooks for
-                                   # openarrays, but probably shouldn't?
+        of tyOpenArray, tyVarargs: # todo fixme generated `wasMoved` hooks for
+                                   # openarrays, but it probably shouldn't?
           var s: string
           if reifiedOpenArray(a.lode):
             if a.t.kind in {tyVar, tyLent}:
