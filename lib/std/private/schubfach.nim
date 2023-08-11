@@ -244,12 +244,12 @@ proc toDecimal32(ieeeSignificand: uint32; ieeeExponent: uint32): FloatingDecimal
 ##  ToChars
 ## ==================================================================================================
 
-proc printDecimalDigitsBackwards[T: Ordinal](buf: var openArray[char]; pos: T; output: uint32): int {.inline.} =
+proc printDecimalDigitsBackwards[T: Ordinal](buf: var openArray[char]; pos: T; output: uint32): int32 {.inline.} =
   var output = output
   var pos = pos
-  var tz = 0
+  var tz: int32 = 0
   ##  number of trailing zeros removed.
-  var nd = 0
+  var nd: int32 = 0
   ##  number of decimal digits processed.
   ##  At most 9 digits remaining
   if output >= 10000:
@@ -355,7 +355,7 @@ proc formatDigits[T: Ordinal](buffer: var openArray[char]; pos: T; digits: uint3
     ##  dE+123 or d.igitsE+123
     decimalDigitsPosition = 1
   var digitsEnd = pos + decimalDigitsPosition + numDigits
-  let tz = printDecimalDigitsBackwards(buffer, digitsEnd, digits)
+  let tz: int32 = printDecimalDigitsBackwards(buffer, digitsEnd, digits)
   dec(digitsEnd, tz)
   dec(numDigits, tz)
   ##   decimal_exponent += tz; // => decimal_point unchanged.
