@@ -1537,10 +1537,10 @@ proc `$`*(s: PSym): string =
     result = "<nil>"
 
 iterator items*(t: PType): PType =
-  for i in 0..<t.sons.len: yield t[i]
+  for i in 0..<t.sons.len: yield t.sons[i]
 
 iterator pairs*(n: PType): tuple[i: int, n: PType] =
-  for i in 0..<n.sons.len: yield (i, n[i])
+  for i in 0..<n.sons.len: yield (i, n.sons[i])
 
 proc newType*(kind: TTypeKind, id: ItemId; owner: PSym, sons: seq[PType] = @[]): PType =
   result = PType(kind: kind, owner: owner, size: defaultSize,
@@ -1551,10 +1551,8 @@ proc newType*(kind: TTypeKind, id: ItemId; owner: PSym, sons: seq[PType] = @[]):
       echo "KNID ", kind
       writeStackTrace()
 
-proc newType*(kind: TTypeKind, id: ItemId; owner: PSym, parent: PType): PType =
-  result = PType(kind: kind, owner: owner, size: defaultSize,
-                 align: defaultAlignment, itemId: id,
-                 uniqueId: id, sons: parent.sons)
+template newType*(kind: TTypeKind, id: ItemId; owner: PSym, parent: PType): PType =
+  newType(kind, id, owner, parent.sons)
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(typeof(a.k)): a.k = b.k
