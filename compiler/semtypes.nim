@@ -42,7 +42,7 @@ proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext, sons: seq[PType] =
   if prev == nil or prev.kind == tyGenericBody:
     result = newTypeS(kind, c, sons = sons)
   else:
-    result = prev
+    result = newType(prev, sons)
     if result.kind == tyForward: result.kind = kind
   #if kind == tyError: result.flags.incl tfCheckedForDestructor
 

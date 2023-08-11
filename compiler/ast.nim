@@ -1554,6 +1554,10 @@ proc newType*(kind: TTypeKind, id: ItemId; owner: PSym, sons: seq[PType] = @[]):
 template newType*(kind: TTypeKind, id: ItemId; owner: PSym, parent: PType): PType =
   newType(kind, id, owner, parent.sons)
 
+proc newType*(prev: PType, sons: seq[PType]): PType =
+  result = prev
+  result.sons = sons
+
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(typeof(a.k)): a.k = b.k
   if a.storage == low(typeof(a.storage)): a.storage = b.storage
