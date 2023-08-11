@@ -96,9 +96,7 @@ proc initLayeredTypeMap*(pt: TIdTable): LayeredIdTable =
   copyIdTable(result.topLayer, pt)
 
 proc newTypeMapLayer*(cl: var TReplTypeVars): LayeredIdTable =
-  result = LayeredIdTable()
-  result.nextLayer = cl.typeMap
-  result.topLayer = initIdTable()
+  result = LayeredIdTable(nextLayer: cl.typeMap, topLayer: initIdTable())
 
 proc lookup(typeMap: LayeredIdTable, key: PType): PType =
   result = nil
@@ -685,13 +683,9 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
 proc initTypeVars*(p: PContext, typeMap: LayeredIdTable, info: TLineInfo;
                    owner: PSym): TReplTypeVars =
-  result = default(TReplTypeVars)
-  result.symMap = initIdTable()
-  result.localCache = initIdTable()
-  result.typeMap = typeMap
-  result.info = info
-  result.c = p
-  result.owner = owner
+  result = TReplTypeVars(symMap: initIdTable(),
+            localCache: initIdTable(), typeMap: typeMap,
+            info: info, c: p, owner: owner)
 
 proc replaceTypesInBody*(p: PContext, pt: TIdTable, n: PNode;
                          owner: PSym, allowMetaTypes = false,
