@@ -38,13 +38,20 @@ const
   errNoGenericParamsAllowedForX = "no generic parameters allowed for $1"
   errInOutFlagNotExtern = "the '$1' modifier can be used only with imported types"
 
-proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext, sons: seq[PType] = @[]): PType =
+proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext, sons: seq[PType]): PType =
   if prev == nil or prev.kind == tyGenericBody:
     result = newTypeS(kind, c, sons = sons)
   else:
     result = newType(prev, sons)
     if result.kind == tyForward: result.kind = kind
   #if kind == tyError: result.flags.incl tfCheckedForDestructor
+
+proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType =
+  if prev == nil or prev.kind == tyGenericBody:
+    result = newTypeS(kind, c)
+  else:
+    result = prev
+    if result.kind == tyForward: result.kind = kind
 
 proc newConstraint(c: PContext, k: TTypeKind): PType =
   result = newTypeS(tyBuiltInTypeClass, c)
