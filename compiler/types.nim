@@ -566,7 +566,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         if t.kind == tyGenericParam and t.len > 0:
           result.add ": "
           var first = true
-          for son in t.sons:
+          for son in t:
             if not first: result.add " or "
             result.add son.typeToString
             first = false
@@ -637,14 +637,14 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result.add(typeToString(t[i]))
       result.add "]"
     of tyAnd:
-      for i, son in t.sons:
+      for i, son in t:
         result.add(typeToString(son))
-        if i < t.sons.high:
+        if i < t.len - 1:
           result.add(" and ")
     of tyOr:
-      for i, son in t.sons:
+      for i, son in t:
         result.add(typeToString(son))
-        if i < t.sons.high:
+        if i < t.len - 1:
           result.add(" or ")
     of tyNot:
       result = "not " & typeToString(t[0])

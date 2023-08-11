@@ -957,7 +957,7 @@ type
     kind*: TTypeKind          # kind of type
     callConv*: TCallingConvention # for procs
     flags*: TTypeFlags        # flags of the type
-    sons*: TTypeSeq           # base types, etc.
+    sons: TTypeSeq           # base types, etc.
     n*: PNode                 # node for types:
                               # for range types a nkRange node
                               # for record types a nkRecord node
@@ -1536,15 +1536,25 @@ proc `$`*(s: PSym): string =
   else:
     result = "<nil>"
 
-proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
+iterator items*(t: PType): PType =
+  for i in 0..<t.sons.len: yield t[i]
+
+iterator pairs*(n: PType): tuple[i: int, n: PType] =
+  for i in 0..<n.sons.len: yield (i, n[i])
+
+proc newType*(kind: TTypeKind, id: ItemId; owner: PSym, sons: seq[PType] = @[]): PType =
   result = PType(kind: kind, owner: owner, size: defaultSize,
                  align: defaultAlignment, itemId: id,
-                 uniqueId: id)
+                 uniqueId: id, sons: sons)
   when false:
     if result.itemId.module == 55 and result.itemId.item == 2:
       echo "KNID ", kind
       writeStackTrace()
 
+proc newType*(kind: TTypeKind, id: ItemId; owner: PSym, parent: PType): PType =
+  result = PType(kind: kind, owner: owner, size: defaultSize,
+                 align: defaultAlignment, itemId: id,
+                 uniqueId: id, sons: parent.sons)
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(typeof(a.k)): a.k = b.k

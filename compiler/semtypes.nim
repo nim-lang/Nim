@@ -38,9 +38,9 @@ const
   errNoGenericParamsAllowedForX = "no generic parameters allowed for $1"
   errInOutFlagNotExtern = "the '$1' modifier can be used only with imported types"
 
-proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType =
+proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext, sons: seq[PType] = @[]): PType =
   if prev == nil or prev.kind == tyGenericBody:
-    result = newTypeS(kind, c)
+    result = newTypeS(kind, c, sons = sons)
   else:
     result = prev
     if result.kind == tyForward: result.kind = kind
@@ -246,7 +246,7 @@ proc isRecursiveType*(t: PType): bool =
 
 proc addSonSkipIntLitChecked(c: PContext; father, son: PType; it: PNode, id: IdGenerator) =
   let s = son.skipIntLit(id)
-  father.sons.add(s)
+  father.add(s)
   if isRecursiveType(s):
     localError(c.config, it.info, "illegal recursion in type '" & typeToString(s) & "'")
   else:
@@ -1006,7 +1006,7 @@ proc findEnforcedStaticType(t: PType): PType =
   if t == nil: return nil
   if t.kind == tyStatic: return t
   if t.kind == tyAnd:
-    for s in t.sons:
+    for s in t:
       let t = findEnforcedStaticType(s)
       if t != nil: return t
 
@@ -1644,11 +1644,10 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
     pragmas = n[1]
     inherited = n[2]
 
-  result = newOrPrevType(tyUserTypeClass, prev, c)
-  result.flags.incl tfCheckedForDestructor
   var owner = getCurrOwner(c)
   var candidateTypeSlot = newTypeWithSons(owner, tyAlias, @[c.errorType], c.idgen)
-  result.sons = @[candidateTypeSlot]
+  result = newOrPrevType(tyUserTypeClass, prev, c, sons =  @[candidateTypeSlot])
+  result.flags.incl tfCheckedForDestructor
   result.n = n
 
   if inherited.kind != nkEmpty:

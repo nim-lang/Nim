@@ -100,7 +100,7 @@ proc skipIntLit*(t: PType; id: IdGenerator): PType {.inline.} =
 
 proc addSonSkipIntLit*(father, son: PType; id: IdGenerator) =
   let s = son.skipIntLit(id)
-  father.sons.add(s)
+  father.add(s)
   propagateToOwner(father, s)
 
 proc getCompilerProc*(g: ModuleGraph; name: string): PSym =

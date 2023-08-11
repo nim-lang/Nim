@@ -3256,9 +3256,9 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Rope) =
     result.add "}"
   of tyArray:
     result.add "{"
-    for i in 0..<toInt(lengthOrd(p.config, t.sons[0])):
+    for i in 0..<toInt(lengthOrd(p.config, t[0])):
       if i > 0: result.add ", "
-      getDefaultValue(p, t.sons[1], info, result)
+      getDefaultValue(p, t[1], info, result)
     result.add "}"
     #result = rope"{}"
   of tyOpenArray, tyVarargs:

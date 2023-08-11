@@ -52,7 +52,7 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
       continue
 
     block matchType:
-      for j in 1..high(key.sons):
+      for j in 1..<len(key):
         # XXX sameType is not really correct for nested generics?
         if not compareTypes(inst[j], key[j],
                             flags = {ExactGenericParams, PickyCAliases}):
@@ -386,10 +386,9 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     header = instCopyType(cl, t)
 
-  result = newType(tyGenericInst, nextTypeId(cl.c.idgen), t[0].owner)
+  result = newType(tyGenericInst, nextTypeId(cl.c.idgen), t[0].owner, sons = @[header[0]])
   result.flags = header.flags
   # be careful not to propagate unnecessary flags here (don't use rawAddSon)
-  result.sons = @[header[0]]
   # ugh need another pass for deeply recursive generic types (e.g. PActor)
   # we need to add the candidate here, before it's fully instantiated for
   # recursive instantions:
@@ -488,7 +487,7 @@ proc eraseVoidParams*(t: PType) =
           t[pos] = t[j]
           t.n[pos] = t.n[j]
           inc pos
-      setLen t.sons, pos
+      newSons t, pos
       setLen t.n.sons, pos
       break
 
@@ -592,8 +591,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         # return tyStatic values to let anyone make
         # use of this knowledge. The patching here
         # won't be necessary then.
-        result = newTypeS(tyStatic, cl.c)
-        result.sons = @[n.typ]
+        result = newTypeS(tyStatic, cl.c, sons = @[n.typ])
         result.n = n
       else:
         result = n.typ

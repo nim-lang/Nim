@@ -1173,9 +1173,9 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
   var memberOp = "#." #only virtual
   var typ: PType
   if isCtor:
-    typ = prc.typ.sons[0]
+    typ = prc.typ[0]
   else:
-    typ = prc.typ.sons[1]
+    typ = prc.typ[1]
   if typ.kind == tyPtr:
     typ = typ[0]
     memberOp = "#->"
