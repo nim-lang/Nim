@@ -2385,7 +2385,8 @@ Notice when calling a constructor in the section of a global variable initializa
 Member pragma
 =============
 
-In the same vein as the `constructor` and `virtual` pragmas, the `member` pragma can be used to attatch a proc to a type in C++. It's more flexible than `virtual` in the sense that it accepts not only names but also operators or destructors.
+Similar to the `constructor` and `virtual` pragmas, the `member` pragma can be used to attach a `proc` or `func` to a type in C++. 
+It is more flexible than `virtual` in the sense that it accepts not only names but also operators or destructors.
 
 For example:
 
@@ -2422,9 +2423,9 @@ destructing
 Notice how the C++ destructor is called automatically. Also notice the double implementation of `==` as an operator in Nim but also in C++. This is useful if you need the type to match some C++ `concept` or `trait` when interoping. 
 
 A side effect of being able to declare C++ operators, is that you can now also create a
-C++ functor to have seamless interop with C++ lambdas (sysntactic sugar for functors).
+C++ functor to have seamless interop with C++ lambdas (syntactic sugar for functors).
 
-For example,
+For example:
 
 ```nim
 type
@@ -2437,4 +2438,5 @@ proc invoke(f: NimFunctor, n:int) {.member:"operator ()('2 #2)" .} =
 proc `()`(f: NimFunctor, n:int) {.importcpp:"#(@)" .} 
 NimFunctor()(1)
 ```
-Notice we are also using the overload of `()` to have the same semantincs in Nim, but on the `importcpp` we are importing the functor as a function. This allows to easy interop with functions that accepts for example a `const` operator in its signature. 
+Notice we are also using the overload of `()` to have the same semantics in Nim, but on the `importcpp` we are importing the functor as a function. 
+This allows to easy interop with functions that accepts for example a `const` operator in its signature. 
