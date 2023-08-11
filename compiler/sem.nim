@@ -462,7 +462,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
         # e.g. template foo(T: typedesc): seq[T]
         # We will instantiate the return type here, because
         # we now know the supplied arguments
-        var paramTypes = newIdTable()
+        var paramTypes = initIdTable()
         for param, value in genericParamsInMacroCall(s, call):
           idTablePut(paramTypes, param.typ, value.typ)
 

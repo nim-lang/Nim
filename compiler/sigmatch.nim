@@ -118,7 +118,7 @@ proc initCandidateAux(ctx: PContext,
 proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PType) =
   initCandidateAux(ctx, c, callee)
   c.calleeSym = nil
-  initIdTable(c.bindings)
+  c.bindings = initIdTable()
 
 proc put(c: var TCandidate, key, val: PType) {.inline.} =
   ## Given: proc foo[T](x: T); foo(4)
@@ -154,7 +154,7 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
   c.diagnostics = @[] # if diagnosticsEnabled: @[] else: nil
   c.diagnosticsEnabled = diagnosticsEnabled
   c.magic = c.calleeSym.magic
-  initIdTable(c.bindings)
+  c.bindings = initIdTable()
   if binding != nil and callee.kind in routineKinds:
     var typeParams = callee.ast[genericParamsPos]
     for i in 1..min(typeParams.len, binding.len-1):
