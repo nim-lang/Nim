@@ -1270,7 +1270,6 @@ proc extractPragma*(s: PSym): PNode =
       result = nil
   else:
     result = nil
-  assert result == nil or result.kind == nkPragma
 
 proc skipPragmaExpr*(n: PNode): PNode =
   ## if pragma expr, give the node the pragmas are applied to,

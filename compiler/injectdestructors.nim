@@ -187,6 +187,18 @@ template isUnpackedTuple(n: PNode): bool =
   ## hence unpacked tuples themselves don't need to be destroyed
   (n.kind == nkSym and n.sym.kind == skTemp and n.sym.typ.kind == tyTuple)
 
+proc checkOpError(c: Con; n: PNode; op: TTypeAttachedOp) =
+  let op = getAttachedOp(c.graph, n.typ, op)
+  let pragmaNode = extractPragma(op)
+  var prefix = ""
+  for it in pragmaNode:
+    if whichPragma(it) == wError and it.safeLen == 2 and
+        it[1].kind in {nkStrLit..nkTripleStrLit}:
+      prefix.add it[1].strVal & "; "
+  if sfError in op.flags:
+    localError(c.graph.config, n.info, "$1usage of '$2' is an {.error.} defined at $3" %
+    [prefix, op.name.s, toFileLineCol(c.graph.config, op.ast.info)])
+
 proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string; inferredFromCopy = false) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
   if inferredFromCopy:
@@ -1113,6 +1125,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
       # We know the result will be a stmt so we use that fact to optimize
       handleNestedTempl(ri, process, willProduceStmt = true)
     else:
+      c.checkOpError(ri, attachedAsgn)
       result = newTree(nkFastAsgn, dest, p(ri, c, s, normal))
   else:
     let ri2 = if ri.kind == nkWhen: ri[1][0] else: ri
