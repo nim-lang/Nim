@@ -1558,6 +1558,10 @@ proc newType*(prev: PType, sons: seq[PType]): PType =
   result = prev
   result.sons = sons
 
+proc addSon*(father, son: PType) =
+  # todo fixme: in IC, `son` might be nil
+  father.sons.add(son)
+
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(typeof(a.k)): a.k = b.k
   if a.storage == low(typeof(a.storage)): a.storage = b.storage
