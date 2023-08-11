@@ -1611,21 +1611,13 @@ proc createModuleAlias*(s: PSym, idgen: IdGenerator, newIdent: PIdent, info: TLi
   result.loc = s.loc
   result.annex = s.annex
 
-proc initStrTable*(x: var TStrTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
+proc initStrTable*(): TStrTable =
+  result = TStrTable(counter: 0)
+  newSeq(result.data, StartSize)
 
-proc newStrTable*: TStrTable =
-  result = default(TStrTable)
-  initStrTable(result)
-
-proc initIdTable*(x: var TIdTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
-
-proc newIdTable*: TIdTable =
-  result = default(TIdTable)
-  initIdTable(result)
+proc initIdTable*(): TIdTable =
+  result = TIdTable(counter: 0)
+  newSeq(result.data, StartSize)
 
 proc resetIdTable*(x: var TIdTable) =
   x.counter = 0
@@ -1633,17 +1625,17 @@ proc resetIdTable*(x: var TIdTable) =
   setLen(x.data, 0)
   setLen(x.data, StartSize)
 
-proc initObjectSet*(x: var TObjectSet) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
+proc initObjectSet*(): TObjectSet =
+  result = TObjectSet(counter: 0)
+  newSeq(result.data, StartSize)
 
-proc initIdNodeTable*(x: var TIdNodeTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
+proc initIdNodeTable*(): TIdNodeTable =
+  result = TIdNodeTable(counter: 0)
+  newSeq(result.data, StartSize)
 
-proc initNodeTable*(x: var TNodeTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
+proc initNodeTable*(): TNodeTable =
+  result = TNodeTable(counter: 0)
+  newSeq(result.data, StartSize)
 
 proc skipTypes*(t: PType, kinds: TTypeKinds; maxIters: int): PType =
   result = t

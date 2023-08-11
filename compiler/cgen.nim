@@ -1981,7 +1981,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   result.preInitProc = newProc(nil, result)
   result.preInitProc.flags.incl nimErrorFlagDisabled
   result.preInitProc.labels = 100_000 # little hack so that unique temporaries are generated
-  initNodeTable(result.dataCache)
+  result.dataCache = initNodeTable()
   result.typeStack = @[]
   result.typeNodesName = getTempName(result)
   result.nimTypesName = getTempName(result)

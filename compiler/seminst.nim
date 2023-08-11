@@ -122,8 +122,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     inc c.inGenericInst
     # add it here, so that recursive generic procs are possible:
     var b = n[bodyPos]
-    var symMap: TIdTable
-    initIdTable symMap
+    var symMap: TIdTable = initIdTable()
     if params != nil:
       for i in 1..<params.len:
         let param = params[i].sym
@@ -176,10 +175,10 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   var
     cl: TReplTypeVars = default(TReplTypeVars)
 
-  initIdTable(cl.symMap)
-  initIdTable(cl.localCache)
+  cl.symMap = initIdTable()
+  cl.localCache = initIdTable()
   cl.typeMap = LayeredIdTable()
-  initIdTable(cl.typeMap.topLayer)
+  cl.typeMap.topLayer = initIdTable()
 
   cl.info = info
   cl.c = c

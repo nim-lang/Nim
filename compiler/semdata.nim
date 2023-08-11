@@ -251,7 +251,7 @@ proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
 proc put*(p: PProcCon; key, val: PSym) =
   if not p.mappingExists:
-    initIdTable(p.mapping)
+    p.mapping = initIdTable()
     p.mappingExists = true
   #echo "put into table ", key.info
   p.mapping.idTablePut(key, val)
@@ -317,13 +317,13 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.converters = @[]
   result.patterns = @[]
   result.includedFiles = initIntSet()
-  initStrTable(result.pureEnumFields)
-  initStrTable(result.userPragmas)
+  result.pureEnumFields = initStrTable()
+  result.userPragmas = initStrTable()
   result.generics = @[]
   result.unknownIdents = initIntSet()
   result.cache = graph.cache
   result.graph = graph
-  initStrTable(result.signatures)
+  result.signatures = initStrTable()
   result.features = graph.config.features
   if graph.config.symbolFiles != disabledSf:
     let id = module.position
@@ -388,7 +388,7 @@ proc reexportSym*(c: PContext; s: PSym) =
 
 proc newLib*(kind: TLibKind): PLib =
   new(result)
-  result.kind = kind          #initObjectSet(result.syms)
+  result.kind = kind          #result.syms = initObjectSet()
 
 proc addToLib*(lib: PLib, sym: PSym) =
   #if sym.annex != nil and not isGenericRoutine(sym):

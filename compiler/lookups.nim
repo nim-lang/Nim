@@ -72,7 +72,7 @@ proc addUniqueSym*(scope: PScope, s: PSym): PSym =
 
 proc openScope*(c: PContext): PScope {.discardable.} =
   result = PScope(parent: c.currentScope,
-                  symbols: newStrTable(),
+                  symbols: initStrTable(),
                   depthLevel: c.scopeDepth + 1)
   c.currentScope = result
 
@@ -404,7 +404,7 @@ proc openShadowScope*(c: PContext) =
   ## opens a shadow scope, just like any other scope except the depth is the
   ## same as the parent -- see `isShadowScope`.
   c.currentScope = PScope(parent: c.currentScope,
-                          symbols: newStrTable(),
+                          symbols: initStrTable(),
                           depthLevel: c.scopeDepth)
 
 proc closeShadowScope*(c: PContext) =

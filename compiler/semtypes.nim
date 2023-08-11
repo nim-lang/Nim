@@ -73,8 +73,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     counter = toInt64(lastOrd(c.config, base)) + 1
   rawAddSon(result, base)
   let isPure = result.sym != nil and sfPure in result.sym.flags
-  var symbols: TStrTable
-  initStrTable(symbols)
+  var symbols: TStrTable = initStrTable()
   var hasNull = false
   for i in 1..<n.len:
     if n[i].kind == nkEmpty: continue

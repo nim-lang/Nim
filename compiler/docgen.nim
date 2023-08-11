@@ -373,7 +373,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
   result.seenSymbols = newStringTable(modeCaseInsensitive)
   result.id = 100
   result.jEntriesFinal = newJArray()
-  initStrTable result.types
+  result.types = initStrTable()
   result.onTestSnippet =
     proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) {.gcsafe.} =
       if conf.docCmd == docCmdSkip: return

@@ -74,9 +74,7 @@ proc newTransNode(kind: TNodeKind, n: PNode,
 
 proc newTransCon(owner: PSym): PTransCon =
   assert owner != nil
-  new(result)
-  initIdNodeTable(result.mapping)
-  result.owner = owner
+  result = PTransCon(mapping: initIdNodeTable(), owner: owner)
 
 proc pushTransCon(c: PTransf, t: PTransCon) =
   t.next = c.transCon

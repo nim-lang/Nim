@@ -98,7 +98,7 @@ proc initLayeredTypeMap*(pt: TIdTable): LayeredIdTable =
 proc newTypeMapLayer*(cl: var TReplTypeVars): LayeredIdTable =
   result = LayeredIdTable()
   result.nextLayer = cl.typeMap
-  initIdTable(result.topLayer)
+  result.topLayer = initIdTable()
 
 proc lookup(typeMap: LayeredIdTable, key: PType): PType =
   result = nil
@@ -686,8 +686,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 proc initTypeVars*(p: PContext, typeMap: LayeredIdTable, info: TLineInfo;
                    owner: PSym): TReplTypeVars =
   result = default(TReplTypeVars)
-  initIdTable(result.symMap)
-  initIdTable(result.localCache)
+  result.symMap = initIdTable()
+  result.localCache = initIdTable()
   result.typeMap = typeMap
   result.info = info
   result.c = p
