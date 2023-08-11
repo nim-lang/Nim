@@ -618,6 +618,8 @@ proc toCover(c: PContext, t: PType): Int128 =
   let t2 = skipTypes(t, abstractVarRange-{tyTypeDesc})
   if t2.kind == tyEnum and enumHasHoles(t2):
     result = toInt128(t2.n.len)
+  elif isIntLit(t2):
+    result = toInt128(t2.n.intVal)
   else:
     # <----
     let t = skipTypes(t, abstractVar-{tyTypeDesc})
