@@ -45,7 +45,7 @@ proc hasEmpty(typ: PType): bool =
     result = typ.lastSon.kind == tyEmpty
   elif typ.kind == tyTuple:
     result = false
-    for s in typ.sons:
+    for s in typ:
       result = result or hasEmpty(s)
   else:
     result = false
@@ -1344,7 +1344,7 @@ proc checkCovariantParamsUsages(c: PContext; genericType: PType) =
     of tyArray:
       return traverseSubTypes(c, t[1])
     of tyProc:
-      for subType in t.sons:
+      for subType in t:
         if subType != nil:
           subresult traverseSubTypes(c, subType)
       if result:
@@ -1377,7 +1377,7 @@ proc checkCovariantParamsUsages(c: PContext; genericType: PType) =
     of tyUserTypeClass, tyUserTypeClassInst:
       error("non-invariant type parameters are not supported in concepts")
     of tyTuple:
-      for fieldType in t.sons:
+      for fieldType in t:
         subresult traverseSubTypes(c, fieldType)
     of tyPtr, tyRef, tyVar, tyLent:
       if t.base.kind == tyGenericParam: return true
@@ -2283,18 +2283,18 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     let isCtor = sfConstructor in s.flags
     let pragmaName = if isVirtual: "virtual" elif isCtor: "constructor" else: "member"
     if c.config.backend == backendCpp:
-      if s.typ.sons.len < 2 and not isCtor:
+      if s.typ.len < 2 and not isCtor:
         localError(c.config, n.info, pragmaName & " must have at least one parameter")
-      for son in s.typ.sons:
+      for son in s.typ:
         if son!=nil and son.isMetaType:
           localError(c.config, n.info, pragmaName & " unsupported for generic routine")
       var typ: PType
       if isCtor:
-        typ = s.typ.sons[0]
+        typ = s.typ[0]
         if typ == nil or typ.kind != tyObject:
           localError(c.config, n.info, "constructor must return an object")
       else:
-        typ = s.typ.sons[1]
+        typ = s.typ[1]
       if typ.kind == tyPtr and not isCtor:
         typ = typ[0]
       if typ.kind != tyObject:

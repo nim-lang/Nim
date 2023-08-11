@@ -598,7 +598,7 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
       # nested, add all the types to stack
       let
         startIdx = if u.kind in ConcreteTypes: 0 else: 1
-        endIdx = min(u.sons.len() - startIdx, t.sons.len())
+        endIdx = min(u.len() - startIdx, t.len())
 
       for i in startIdx ..< endIdx:
         # early exit with current impl
@@ -717,8 +717,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
     if formal.kind == tyStatic and arg.kind != tyStatic:
       let evaluated = c.semTryConstExpr(c, n[i])
       if evaluated != nil:
-        arg = newTypeS(tyStatic, c)
-        arg.sons = @[evaluated.typ]
+        arg = newTypeS(tyStatic, c, sons = @[evaluated.typ])
         arg.n = evaluated
     let tm = typeRel(m, formal, arg)
     if tm in {isNone, isConvertible}: return nil

@@ -187,7 +187,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
       hashType c, t[0], flags, conf
   of tyRef, tyPtr, tyGenericBody, tyVar:
     c &= char(t.kind)
-    if t.sons.len > 0:
+    if t.len > 0:
       c.hashType t.lastSon, flags, conf
     if tfVarIsPtr in t.flags: c &= ".varisptr"
   of tyFromExpr:
