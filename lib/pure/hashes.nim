@@ -330,7 +330,7 @@ proc murmurHash(x: openArray[byte]): Hash =
       impl()
     else:
       when declared(copyMem):
-        copyMem(addr k1, addr x[i], 4)
+        copyMem(unsafeAddr k1, unsafeAddr x[i], 4)
       else:
         impl()
     inc i, stepSize
