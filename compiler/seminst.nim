@@ -351,7 +351,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     globalError(c.config, info, "generic instantiation too nested")
   n[namePos] = newSymNode(result)
   pushInfoContext(c.config, info, fn.detailedInfo)
-  var entry = TInstantiation(sym: result)
+  var entry = TInstantiation.new
+  entry.sym = result
   # we need to compare both the generic types and the concrete types:
   # generic[void](), generic[int]()
   # see ttypeor.nim test.
