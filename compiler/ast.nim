@@ -1478,7 +1478,8 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## last child nodes of a type tree need to be searched. This is a really hot
   ## path within the compiler!
   result = t
-  while result.kind in kinds: result = lastSon(result)
+  while result.kind in kinds and lastSon(result) != nil:
+    result = lastSon(result)
 
 proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   let kind = skipTypes(typ, abstractVarRange).kind
