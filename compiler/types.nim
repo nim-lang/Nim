@@ -1173,7 +1173,8 @@ proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
     if not result: return
 
 proc isGenericAlias*(t: PType): bool =
-  return t.kind == tyGenericInst and t.lastSon.kind == tyGenericInst
+  return t.kind == tyGenericInst and t.lastSon.kind == tyGenericInst and
+    t.len() <= t.lastSon.len()
 
 proc skipGenericAlias*(t: PType): PType =
   return if t.isGenericAlias: t.lastSon else: t
