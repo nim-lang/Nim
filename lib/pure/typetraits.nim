@@ -225,7 +225,7 @@ macro genericParamsImpl(T: typedesc): untyped =
         case ai.typeKind
         of ntyTypeDesc:
           ret = ai
-        of ntyStatic: doAssert false
+        of ntyStatic: raiseAssert "unreachable"
         else:
           # getType from a resolved symbol might return a typedesc symbol.
           # If so, use it directly instead of wrapping it in StaticParam.

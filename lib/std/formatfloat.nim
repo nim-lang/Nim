@@ -86,7 +86,7 @@ proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat | float32
 
 proc addFloatRoundtrip*(result: var string; x: float | float32) =
   when nimvm:
-    doAssert false
+    raiseAssert "unreachable"
   else:
     var buffer {.noinit.}: array[65, char]
     let n = writeFloatToBufferRoundtrip(buffer, x)
@@ -94,7 +94,7 @@ proc addFloatRoundtrip*(result: var string; x: float | float32) =
 
 proc addFloatSprintf*(result: var string; x: float) =
   when nimvm:
-    doAssert false
+    raiseAssert "unreachable"
   else:
     var buffer {.noinit.}: array[65, char]
     let n = writeFloatToBufferSprintf(buffer, x)
