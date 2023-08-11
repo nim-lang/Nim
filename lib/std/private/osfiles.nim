@@ -396,7 +396,7 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
 
   if not tryMoveFSObject(source, dest, isDir = false):
     when defined(windows):
-      doAssert false
+      raiseAssert "unreachable"
     else:
       # Fallback to copy & del
       copyFile(source, dest, {cfSymlinkAsIs})

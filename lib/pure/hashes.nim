@@ -368,16 +368,16 @@ proc murmurHash(x: openArray[byte]): Hash =
   return cast[Hash](h1)
 
 proc hashVmImpl(x: cstring, sPos, ePos: int): Hash =
-  doAssert false, "implementation override in compiler/vmops.nim"
+  raiseAssert "implementation override in compiler/vmops.nim"
 
 proc hashVmImpl(x: string, sPos, ePos: int): Hash =
-  doAssert false, "implementation override in compiler/vmops.nim"
+  raiseAssert "implementation override in compiler/vmops.nim"
 
 proc hashVmImplChar(x: openArray[char], sPos, ePos: int): Hash =
-  doAssert false, "implementation override in compiler/vmops.nim"
+  raiseAssert "implementation override in compiler/vmops.nim"
 
 proc hashVmImplByte(x: openArray[byte], sPos, ePos: int): Hash =
-  doAssert false, "implementation override in compiler/vmops.nim"
+  raiseAssert "implementation override in compiler/vmops.nim"
 
 proc hash*(x: string): Hash =
   ## Efficient hashing of strings.
