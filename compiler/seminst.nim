@@ -29,8 +29,7 @@ proc addObjFieldsToLocalScope(c: PContext; n: PNode) =
   else: discard
 
 proc pushProcCon*(c: PContext; owner: PSym) =
-  let x: PProcCon = PProcCon(owner: owner, next: c.p)
-  c.p = x
+  c.p = PProcCon(owner: owner, next: c.p)
 
 const
   errCannotInstantiateX = "cannot instantiate: '$1'"
