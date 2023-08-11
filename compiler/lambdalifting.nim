@@ -320,12 +320,10 @@ type
     idgen: IdGenerator
 
 proc initDetectionPass(g: ModuleGraph; fn: PSym; idgen: IdGenerator): DetectionPass =
-  result.processed = initIntSet()
-  result.capturedVars = initIntSet()
-  result.ownerToType = initTable[int, PType]()
-  result.processed.incl(fn.id)
-  result.graph = g
-  result.idgen = idgen
+  result = DetectionPass(processed: toIntSet([fn.id]),
+    capturedVars: initIntSet(), ownerToType: initTable[int, PType](),
+    graph: g, idgen: idgen
+  )
 
 discard """
 proc outer =
@@ -530,9 +528,8 @@ type
     unownedEnvVars: Table[int, PNode] # only required for --newruntime
 
 proc initLiftingPass(fn: PSym): LiftingPass =
-  result.processed = initIntSet()
-  result.processed.incl(fn.id)
-  result.envVars = initTable[int, PNode]()
+  result = LiftingPass(processed: toIntSet([fn.id]),
+                envVars: initTable[int, PNode]())
 
 proc accessViaEnvParam(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   let s = n.sym
