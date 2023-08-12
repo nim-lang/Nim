@@ -2385,7 +2385,7 @@ Notice when calling a constructor in the section of a global variable initializa
 Member pragma
 =============
 
-In the same vein as the `constructor` and `virtual` pragmas, the `member` pragma can be used to attatch a proc to a type in C++. It's more flexible than `virtual` in the sense that it accepts not only names but also operators or destructors.
+Like the `constructor` and `virtual` pragmas, the `member` pragma can be used to attach a procedure to a C++ type. It's more flexible than the `virtual` pragma in the sense that it accepts not only names but also operators and destructors.
 
 For example:
 
