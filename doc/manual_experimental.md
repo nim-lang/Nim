@@ -2391,7 +2391,7 @@ It is more flexible than `virtual` in the sense that it accepts not only names b
 For example:
 
 ```nim
-proc print(s: cstring) {.importcpp:"printf(@)", header:"<stdio.h>".}
+proc print(s: cstring) {.importcpp: "printf(@)", header: "<stdio.h>".}
 
 type
   Doo  {.exportc.} = object
