@@ -2431,7 +2431,7 @@ For example:
 type
   NimFunctor = object
     discard
-proc invoke(f: NimFunctor, n:int) {.member:"operator ()('2 #2)" .} = 
+proc invoke(f: NimFunctor; n: int) {.member: "operator ()('2 #2)".} = 
   echo "FunctorSupport!"
 
 {.experimental: "callOperator".}
