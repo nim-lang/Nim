@@ -165,7 +165,7 @@ proc newSinglyLinkedNode*[T](value: T): SinglyLinkedNode[T] =
   new(result)
   result.value = value
 
-func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
+proc toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
   ## Creates a new `SinglyLinkedList` from the members of `elems`.
   runnableExamples:
     from std/sequtils import toSeq
@@ -176,7 +176,7 @@ func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (
   for elem in elems.items:
     result.add(elem)
 
-func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
+proc toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
   ## Creates a new `DoublyLinkedList` from the members of `elems`.
   runnableExamples:
     from std/sequtils import toSeq
@@ -483,7 +483,7 @@ proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
 
   prepend(L, newSinglyLinkedNode(value))
 
-func copy*[T](a: SinglyLinkedList[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
+proc copy*[T](a: SinglyLinkedList[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
   ## Creates a shallow copy of `a`.
   runnableExamples:
     from std/sequtils import toSeq
@@ -626,7 +626,7 @@ proc prepend*[T](L: var DoublyLinkedList[T], value: T) =
 
   prepend(L, newDoublyLinkedNode(value))
 
-func copy*[T](a: DoublyLinkedList[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
+proc copy*[T](a: DoublyLinkedList[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
   ## Creates a shallow copy of `a`.
   runnableExamples:
     from std/sequtils import toSeq
