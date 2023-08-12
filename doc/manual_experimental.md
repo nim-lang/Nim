@@ -2435,7 +2435,7 @@ proc invoke(f: NimFunctor; n: int) {.member: "operator ()('2 #2)".} =
   echo "FunctorSupport!"
 
 {.experimental: "callOperator".}
-proc `()`(f: NimFunctor, n:int) {.importcpp:"#(@)" .} 
+proc `()`(f: NimFunctor; n:int) {.importcpp: "#(@)" .} 
 NimFunctor()(1)
 ```
 Notice we are also using the overload of `()` to have the same semantics in Nim, but on the `importcpp` we are importing the functor as a function. 
