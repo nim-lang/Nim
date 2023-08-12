@@ -2403,7 +2403,7 @@ proc memberProc(f: Doo) {.member.} =
 proc destructor(f: Doo) {.member: "~'1()", used.} = 
   print "destructing\n"
 
-proc `==`(self, other: Doo): bool {.member:"operator==('2 const & #2) const -> '0"} = 
+proc `==`(self, other: Doo): bool {.member: "operator==('2 const & #2) const -> '0".} = 
   self.test == other.test
 
 let doo = Doo(test: 2)
