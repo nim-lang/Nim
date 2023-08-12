@@ -2394,7 +2394,7 @@ For example:
 proc print(s: cstring) {.importcpp: "printf(@)", header: "<stdio.h>".}
 
 type
-  Doo  {.exportc.} = object
+  Doo {.exportc.} = object
     test: int
 
 proc memberProc(f: Doo) {.member.} = 
