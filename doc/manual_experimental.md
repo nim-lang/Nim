@@ -2438,5 +2438,5 @@ proc invoke(f: NimFunctor; n: int) {.member: "operator ()('2 #2)".} =
 proc `()`(f: NimFunctor; n:int) {.importcpp: "#(@)" .} 
 NimFunctor()(1)
 ```
-Notice we are also using the overload of `()` to have the same semantics in Nim, but on the `importcpp` we are importing the functor as a function. 
+Notice we use the overload of `()` to have the same semantics in Nim, but on the `importcpp` we import the functor as a function. 
 This allows to easy interop with functions that accepts for example a `const` operator in its signature. 
