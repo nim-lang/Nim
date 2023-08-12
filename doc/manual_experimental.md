@@ -2381,3 +2381,62 @@ proc makeCppClass(): NimClass {.constructor: "NimClass() : CppClass(0, 0)".} =
 In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropiate constructor.
 
 Notice when calling a constructor in the section of a global variable initialization, it will be called before `NimMain` meaning Nim is not fully initialized.
+
+Member pragma
+=============
+
+Similar to the `constructor` and `virtual` pragmas, the `member` pragma can be used to attach a `proc` or `func` to a type in C++. 
+It is more flexible than `virtual` in the sense that it accepts not only names but also operators or destructors.
+
+For example:
+
+```nim
+proc print(s: cstring) {.importcpp: "printf(@)", header: "<stdio.h>".}
+
+type
+  Doo {.exportc.} = object
+    test: int
+
+proc memberProc(f: Doo) {.member.} = 
+  echo $f.test
+
+proc destructor(f: Doo) {.member: "~'1()", used.} = 
+  print "destructing\n"
+
+proc `==`(self, other: Doo): bool {.member: "operator==('2 const & #2) const -> '0".} = 
+  self.test == other.test
+
+let doo = Doo(test: 2)
+doo.memberProc()
+echo doo == Doo(test: 1)
+
+```
+
+Will print:
+```
+2
+false
+destructing
+destructing
+```
+
+Notice how the C++ destructor is called automatically. Also notice the double implementation of `==` as an operator in Nim but also in C++. This is useful if you need the type to match some C++ `concept` or `trait` when interoping. 
+
+A side effect of being able to declare C++ operators, is that you can now also create a
+C++ functor to have seamless interop with C++ lambdas (syntactic sugar for functors).
+
+For example:
+
+```nim
+type
+  NimFunctor = object
+    discard
+proc invoke(f: NimFunctor; n: int) {.member: "operator ()('2 #2)".} = 
+  echo "FunctorSupport!"
+
+{.experimental: "callOperator".}
+proc `()`(f: NimFunctor; n:int) {.importcpp: "#(@)" .} 
+NimFunctor()(1)
+```
+Notice we use the overload of `()` to have the same semantics in Nim, but on the `importcpp` we import the functor as a function. 
+This allows to easy interop with functions that accepts for example a `const` operator in its signature. 
