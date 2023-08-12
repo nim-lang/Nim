@@ -1348,7 +1348,7 @@ elif not defined(useNimRtl):
             p.exitStatus = status
             break
           else:
-            doAssert false, "unreachable!"
+            raiseAssert "unreachable!"
 
       result = exitStatusLikeShell(p.exitStatus)
 

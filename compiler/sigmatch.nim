@@ -228,7 +228,7 @@ proc sumGeneric(t: PType): int =
       inc result
     of tyOr:
       var maxBranch = 0
-      for branch in t.sons:
+      for branch in t:
         let branchSum = sumGeneric(branch)
         if branchSum > maxBranch: maxBranch = branchSum
       inc result, maxBranch
@@ -904,7 +904,7 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
     else: discard
 
   elif lhs.kind == nkSym and lhs.typ.kind == tyStatic and lhs.typ.n == nil:
-    var inferred = newTypeWithSons(c.c, tyStatic, lhs.typ.sons)
+    var inferred = newTypeWithSons(c.c, tyStatic, lhs.typ)
     inferred.n = newIntNode(nkIntLit, rhs)
     put(c, lhs.typ, inferred)
     if c.c.matchedConcept != nil:
@@ -1109,7 +1109,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     # both int and string must match against number
     # but ensure that '[T: A|A]' matches as good as '[T: A]' (bug #2219):
     result = isGeneric
-    for branch in a.sons:
+    for branch in a:
       let x = typeRel(c, f, branch, flags + {trDontBind})
       if x == isNone: return isNone
       if x < result: result = x
@@ -1120,7 +1120,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     c.typedescMatched = true
     # seq[Sortable and Iterable] vs seq[Sortable]
     # only one match is enough
-    for branch in a.sons:
+    for branch in a:
       let x = typeRel(c, f, branch, flags + {trDontBind})
       if x != isNone:
         return if x >= isGeneric: isGeneric else: x
@@ -1622,7 +1622,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyAnd:
     considerPreviousT:
       result = isEqual
-      for branch in f.sons:
+      for branch in f:
         let x = typeRel(c, branch, aOrig, flags)
         if x < isSubtype: return isNone
         # 'and' implies minimum matching result:
@@ -1635,7 +1635,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       result = isNone
       let oldInheritancePenalty = c.inheritancePenalty
       var maxInheritance = 0
-      for branch in f.sons:
+      for branch in f:
         c.inheritancePenalty = 0
         let x = typeRel(c, branch, aOrig, flags)
         maxInheritance = max(maxInheritance, c.inheritancePenalty)
@@ -1650,7 +1650,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyNot:
     considerPreviousT:
-      for branch in f.sons:
+      for branch in f:
         if typeRel(c, branch, aOrig, flags) != isNone:
           return isNone
 
@@ -2121,8 +2121,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       if evaluated != nil:
         # Don't build the type in-place because `evaluated` and `arg` may point
         # to the same object and we'd end up creating recursive types (#9255)
-        let typ = newTypeS(tyStatic, c)
-        typ.sons = @[evaluated.typ]
+        let typ = newTypeS(tyStatic, c, sons = @[evaluated.typ])
         typ.n = evaluated
         arg = copyTree(arg) # fix #12864
         arg.typ = typ
@@ -2714,7 +2713,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   # forget all inferred types if the overload matching failed
   if m.state == csNoMatch:
     for t in m.inferredTypes:
-      if t.len > 1: t.sons.setLen 1
+      if t.len > 1: t.newSons 1
 
 proc argtypeMatches*(c: PContext, f, a: PType, fromHlo = false): bool =
   var m = newCandidate(c, f)

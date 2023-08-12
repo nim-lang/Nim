@@ -1327,7 +1327,7 @@ proc track(tracked: PEffects, n: PNode) =
 
 proc subtypeRelation(g: ModuleGraph; spec, real: PNode): bool =
   if spec.typ.kind == tyOr:
-    for t in spec.typ.sons:
+    for t in spec.typ:
       if safeInheritanceDiff(g.excType(real), t) <= 0:
         return true
   else:

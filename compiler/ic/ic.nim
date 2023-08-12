@@ -359,7 +359,7 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
       paddingAtEnd: t.paddingAtEnd)
     storeNode(p, t, n)
     p.typeInst = t.typeInst.storeType(c, m)
-    for kid in items t.sons:
+    for kid in items t:
       p.types.add kid.storeType(c, m)
     c.addMissing t.sym
     p.sym = t.sym.safeItemId(c, m)
@@ -917,7 +917,7 @@ proc typeBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
       result.attachedOps[op] = loadSym(c, g, si, item)
   result.typeInst = loadType(c, g, si, t.typeInst)
   for son in items t.types:
-    result.sons.add loadType(c, g, si, son)
+    result.addSon loadType(c, g, si, son)
   loadAstBody(t, n)
   when false:
     for gen, id in items t.methods:

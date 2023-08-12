@@ -224,7 +224,7 @@ proc switchTo(current, to: CoroutinePtr) =
         elif to.state == CORO_CREATED:
           # Coroutine is started.
           coroExecWithStack(runCurrentTask, to.stack.bottom)
-          #doAssert false
+          #raiseAssert "unreachable"
     else:
       {.error: "Invalid coroutine backend set.".}
   # Execution was just resumed. Restore frame information and set active stack.
@@ -266,7 +266,7 @@ proc runCurrentTask() =
     current.state = CORO_FINISHED
   nimGC_setStackBottom(ctx.ncbottom)
   suspend(0) # Exit coroutine without returning from coroExecWithStack()
-  doAssert false
+  raiseAssert "unreachable"
 
 proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discardable.} =
   ## Schedule coroutine for execution. It does not run immediately.

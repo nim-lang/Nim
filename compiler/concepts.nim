@@ -167,9 +167,9 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
     # modifiers in the concept must be there in the actual implementation
     # too but not vice versa.
     if a.kind == f.kind:
-      result = matchType(c, f.sons[0], a.sons[0], m)
+      result = matchType(c, f[0], a[0], m)
     elif m.magic == mArrPut:
-      result = matchType(c, f.sons[0], a, m)
+      result = matchType(c, f[0], a, m)
     else:
       result = false
   of tyEnum, tyObject, tyDistinct:
@@ -264,7 +264,7 @@ proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
       m.inferred.setLen oldLen
       return false
 
-  if not matchReturnType(c, n[0].sym.typ.sons[0], candidate.typ.sons[0], m):
+  if not matchReturnType(c, n[0].sym.typ[0], candidate.typ[0], m):
     m.inferred.setLen oldLen
     return false
 

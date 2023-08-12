@@ -29,11 +29,7 @@ proc addObjFieldsToLocalScope(c: PContext; n: PNode) =
   else: discard
 
 proc pushProcCon*(c: PContext; owner: PSym) =
-  var x: PProcCon
-  new(x)
-  x.owner = owner
-  x.next = c.p
-  c.p = x
+  c.p = PProcCon(owner: owner, next: c.p)
 
 const
   errCannotInstantiateX = "cannot instantiate: '$1'"
@@ -172,17 +168,12 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
                           allowMetaTypes = false): PType =
   internalAssert c.config, header.kind == tyGenericInvocation
 
-  var
-    cl: TReplTypeVars = default(TReplTypeVars)
+  var cl: TReplTypeVars = TReplTypeVars(symMap: initIdTable(),
+        localCache: initIdTable(), typeMap: LayeredIdTable(),
+        info: info, c: c, allowMetaTypes: allowMetaTypes
+      )
 
-  cl.symMap = initIdTable()
-  cl.localCache = initIdTable()
-  cl.typeMap = LayeredIdTable()
   cl.typeMap.topLayer = initIdTable()
-
-  cl.info = info
-  cl.c = c
-  cl.allowMetaTypes = allowMetaTypes
 
   # We must add all generic params in scope, because the generic body
   # may include tyFromExpr nodes depending on these generic params.
