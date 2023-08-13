@@ -13,6 +13,7 @@ import
   ast, wordrecg, idents
 
 proc cyclicTreeAux(n: PNode, visited: var seq[PNode]): bool =
+  result = false
   if n == nil: return
   for v in visited:
     if v == n: return true
@@ -53,8 +54,13 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
           if not exprStructuralEquivalent(a[i], b[i],
                                           strictSymEquality): return
         result = true
+      else:
+        result = false
+  else:
+    result = false
 
 proc sameTree*(a, b: PNode): bool =
+  result = false
   if a == b:
     result = true
   elif a != nil and b != nil and a.kind == b.kind:
@@ -91,6 +97,7 @@ proc isConstExpr*(n: PNode): bool =
   n.kind in atomKinds or nfAllConst in n.flags
 
 proc isCaseObj*(n: PNode): bool =
+  result = false
   if n.kind == nkRecCase: return true
   for i in 0..<n.safeLen:
     if n[i].isCaseObj: return true
@@ -117,7 +124,7 @@ proc isDeepConstExpr*(n: PNode; preventInheritance = false): bool =
           result = true
       else:
         result = true
-  else: discard
+  else: result = false
 
 proc isRange*(n: PNode): bool {.inline.} =
   if n.kind in nkCallKinds:
@@ -127,6 +134,10 @@ proc isRange*(n: PNode): bool {.inline.} =
        (callee.kind in {nkClosedSymChoice, nkOpenSymChoice} and
         callee[1].sym.name.id == ord(wDotDot)):
       result = true
+    else:
+      result = false
+  else:
+    result = false
 
 proc whichPragma*(n: PNode): TSpecialWord =
   let key = if n.kind in nkPragmaCallKinds and n.len > 0: n[0] else: n
@@ -145,12 +156,14 @@ proc isNoSideEffectPragma*(n: PNode): bool =
   result = k == wNoSideEffect
 
 proc findPragma*(n: PNode, which: TSpecialWord): PNode =
+  result = nil
   if n.kind == nkPragma:
     for son in n:
       if whichPragma(son) == which:
         return son
 
 proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
+  result = nil
   for i in 0..<n.len:
     var it = n[i]
     if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
@@ -161,6 +174,7 @@ proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
       return
 
 proc propSpec*(n: PNode, effectType: TSpecialWord): PNode =
+  result = nil
   for i in 0..<n.len:
     var it = n[i]
     if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
@@ -194,6 +208,8 @@ proc getRoot*(n: PNode): PSym =
   of nkSym:
     if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
       result = n.sym
+    else:
+      result = nil
   of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
       nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr, nkHiddenAddr, nkAddr:
     result = getRoot(n[0])
@@ -201,7 +217,8 @@ proc getRoot*(n: PNode): PSym =
     result = getRoot(n[1])
   of nkCallKinds:
     if getMagic(n) == mSlice: result = getRoot(n[1])
-  else: discard
+    else: result = nil
+  else: result = nil
 
 proc stupidStmtListExpr*(n: PNode): bool =
   for i in 0..<n.len-1:

@@ -37,11 +37,16 @@ proc isSpecial(ver: Version): bool =
 
 proc isValidVersion(v: string): bool =
   if v.len > 0:
-    if v[0] in {'#'} + Digits: return true
+    if v[0] in {'#'} + Digits:
+      result = true
+    else:
+      result = false
+  else:
+    result = false
 
 proc `<`*(ver: Version, ver2: Version): bool =
   ## This is synced from Nimble's version module.
-
+  result = false
   # Handling for special versions such as "#head" or "#branch".
   if ver.isSpecial or ver2.isSpecial:
     if ver2.isSpecial and ($ver2).normalize == "#head":
@@ -145,7 +150,7 @@ proc addNimblePath(conf: ConfigRef; p: string, info: TLineInfo) =
     conf.lazyPaths.insert(AbsoluteDir path, 0)
 
 proc addPathRec(conf: ConfigRef; dir: string, info: TLineInfo) =
-  var packages: PackageInfo
+  var packages: PackageInfo = initTable[string, tuple[version, checksum: string]]()
   var pos = dir.len-1
   if dir[pos] in {DirSep, AltSep}: inc(pos)
   for k,p in os.walkDir(dir):

@@ -214,7 +214,7 @@ proc parseAssignment(L: var Lexer, tok: var Token;
 proc readConfigFile*(filename: AbsoluteFile; cache: IdentCache;
                     config: ConfigRef): bool =
   var
-    L: Lexer
+    L: Lexer = default(Lexer)
     tok: Token
     stream: PLLStream
   stream = llStreamOpen(filename, fmRead)
@@ -228,6 +228,8 @@ proc readConfigFile*(filename: AbsoluteFile; cache: IdentCache;
     if condStack.len > 0: lexMessage(L, errGenerated, "expected @end")
     closeLexer(L)
     return true
+  else:
+    result = false
 
 proc getUserConfigPath*(filename: RelativeFile): AbsoluteFile =
   result = getConfigDir().AbsoluteDir / RelativeDir"nim" / filename
@@ -250,7 +252,7 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
 
   template runNimScriptIfExists(path: AbsoluteFile, isMain = false) =
     let p = path # eval once
-    var s: PLLStream
+    var s: PLLStream = nil
     if isMain and optWasNimscript in conf.globalOptions:
       if conf.projectIsStdin: s = stdin.llStreamOpen
       elif conf.projectIsCmd: s = llStreamOpen(conf.cmdInput)

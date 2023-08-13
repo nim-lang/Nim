@@ -1,5 +1,5 @@
 discard """
-  errormsg: "'if true: s else: String()' is not a mutable location; it cannot be moved"
+  errormsg: "Nested expressions cannot be moved: 'if true: s else: String()'"
 """
 
 type

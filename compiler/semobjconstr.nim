@@ -62,6 +62,7 @@ proc invalidObjConstr(c: PContext, n: PNode) =
 
 proc locateFieldInInitExpr(c: PContext, field: PSym, initExpr: PNode): PNode =
   # Returns the assignment nkExprColonExpr node or nil
+  result = nil
   let fieldId = field.name.id
   for i in 1..<initExpr.len:
     let assignment = initExpr[i]
@@ -74,6 +75,7 @@ proc locateFieldInInitExpr(c: PContext, field: PSym, initExpr: PNode): PNode =
 
 proc semConstrField(c: PContext, flags: TExprFlags,
                     field: PSym, initExpr: PNode): PNode =
+  result = nil
   let assignment = locateFieldInInitExpr(c, field, initExpr)
   if assignment != nil:
     if nfSem in assignment.flags: return assignment[1]
@@ -106,6 +108,7 @@ proc branchVals(c: PContext, caseNode: PNode, caseIdx: int,
         result.excl(val)
 
 proc findUsefulCaseContext(c: PContext, discrimator: PNode): (PNode, int) =
+  result = (nil, 0)
   for i in countdown(c.p.caseContext.high, 0):
     let
       (caseNode, index) = c.p.caseContext[i]
@@ -122,6 +125,8 @@ proc pickCaseBranch(caseExpr, matched: PNode): PNode =
 
   if endsWithElse:
     return caseExpr[^1]
+  else:
+    result = nil
 
 iterator directFieldsInRecList(recList: PNode): PNode =
   # XXX: We can remove this case by making all nkOfBranch nodes
@@ -153,21 +158,24 @@ proc locateFieldInDefaults(sym: PSym, defaults: seq[PNode]): bool =
 proc collectMissingFields(c: PContext, fieldsRecList: PNode,
                           constrCtx: var ObjConstrContext, defaults: seq[PNode]
                           ): seq[PSym] =
-    for r in directFieldsInRecList(fieldsRecList):
-      let assignment = locateFieldInInitExpr(c, r.sym, constrCtx.initExpr)
-      if assignment == nil and not locateFieldInDefaults(r.sym, defaults):
-        if constrCtx.needsFullInit or
-          sfRequiresInit in r.sym.flags or
-            r.sym.typ.requiresInit:
-          constrCtx.missingFields.add r.sym
-        else:
-          result.add r.sym
+  result = @[]
+  for r in directFieldsInRecList(fieldsRecList):
+    let assignment = locateFieldInInitExpr(c, r.sym, constrCtx.initExpr)
+    if assignment == nil and not locateFieldInDefaults(r.sym, defaults):
+      if constrCtx.needsFullInit or
+        sfRequiresInit in r.sym.flags or
+          r.sym.typ.requiresInit:
+        constrCtx.missingFields.add r.sym
+      else:
+        result.add r.sym
 
 proc collectMissingCaseFields(c: PContext, branchNode: PNode,
                           constrCtx: var ObjConstrContext, defaults: seq[PNode]): seq[PSym] =
   if branchNode != nil:
     let fieldsRecList = branchNode[^1]
     result = collectMissingFields(c, fieldsRecList, constrCtx, defaults)
+  else:
+    result = @[]
 
 proc collectOrAddMissingCaseFields(c: PContext, branchNode: PNode,
                           constrCtx: var ObjConstrContext, defaults: var seq[PNode]) =
@@ -186,6 +194,7 @@ proc collectOrAddMissingCaseFields(c: PContext, branchNode: PNode,
 
 proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
                         flags: TExprFlags): tuple[status: InitStatus, defaults: seq[PNode]] =
+  result = (initUnknown, @[])
   case n.kind
   of nkRecList:
     for field in n:
