@@ -482,6 +482,7 @@ var MSG_EOR* {.importc: "MSG_EOR", header: "<sys/socket.h>".}: cint
 var MSG_OOB* {.importc: "MSG_OOB", header: "<sys/socket.h>".}: cint
 var SCM_RIGHTS* {.importc: "SCM_RIGHTS", header: "<sys/socket.h>".}: cint
 var SO_ACCEPTCONN* {.importc: "SO_ACCEPTCONN", header: "<sys/socket.h>".}: cint
+var SO_BINDTODEVICE* {.importc: "SO_BINDTODEVICE", header: "<sys/socket.h>".}: cint
 var SO_BROADCAST* {.importc: "SO_BROADCAST", header: "<sys/socket.h>".}: cint
 var SO_DEBUG* {.importc: "SO_DEBUG", header: "<sys/socket.h>".}: cint
 var SO_DONTROUTE* {.importc: "SO_DONTROUTE", header: "<sys/socket.h>".}: cint
