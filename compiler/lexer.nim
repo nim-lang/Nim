@@ -148,9 +148,11 @@ proc isNimIdentifier*(s: string): bool =
     var i = 1
     while i < sLen:
       if s[i] == '_': inc(i)
-      if i < sLen and s[i] notin SymChars: return
+      if i < sLen and s[i] notin SymChars: return false
       inc(i)
     result = true
+  else:
+    result = false
 
 proc `$`*(tok: Token): string =
   case tok.tokType
@@ -537,8 +539,8 @@ proc getNumber(L: var Lexer, result: var Token) =
         of floatTypes:
           result.fNumber = parseFloat(result.literal)
         of tkUInt64Lit, tkUIntLit:
-          var iNumber: uint64
-          var len: int
+          var iNumber: uint64 = uint64(0)
+          var len: int = 0
           try:
             len = parseBiggestUInt(result.literal, iNumber)
           except ValueError:
@@ -547,8 +549,8 @@ proc getNumber(L: var Lexer, result: var Token) =
             raise newException(ValueError, "invalid integer: " & result.literal)
           result.iNumber = cast[int64](iNumber)
         else:
-          var iNumber: int64
-          var len: int
+          var iNumber: int64 = int64(0)
+          var len: int = 0
           try:
             len = parseBiggestInt(result.literal, iNumber)
           except ValueError:
@@ -1007,6 +1009,7 @@ proc getPrecedence*(tok: Token): int =
   else: return -10
 
 proc newlineFollows*(L: Lexer): bool =
+  result = false
   var pos = L.bufpos
   while true:
     case L.buf[pos]
@@ -1394,8 +1397,9 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
 
 proc getIndentWidth*(fileIdx: FileIndex, inputstream: PLLStream;
                      cache: IdentCache; config: ConfigRef): int =
-  var lex: Lexer
-  var tok: Token
+  result = 0
+  var lex: Lexer = default(Lexer)
+  var tok: Token = default(Token)
   initToken(tok)
   openLexer(lex, fileIdx, inputstream, cache, config)
   var prevToken = tkEof

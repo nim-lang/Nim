@@ -74,9 +74,7 @@ proc newTransNode(kind: TNodeKind, n: PNode,
 
 proc newTransCon(owner: PSym): PTransCon =
   assert owner != nil
-  new(result)
-  initIdNodeTable(result.mapping)
-  result.owner = owner
+  result = PTransCon(mapping: initIdNodeTable(), owner: owner)
 
 proc pushTransCon(c: PTransf, t: PTransCon) =
   t.next = c.transCon
@@ -242,9 +240,10 @@ proc transformConstSection(c: PTransf, v: PNode): PNode =
 
 proc hasContinue(n: PNode): bool =
   case n.kind
-  of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt: discard
+  of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt: result = false
   of nkContinueStmt: result = true
   else:
+    result = false
     for i in 0..<n.len:
       if hasContinue(n[i]): return true
 
@@ -381,6 +380,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     of nkDotExpr:
       result = newAsgnStmt(c, nkAsgn, lhs, rhs, false)
     else:
+      result = nil
       internalAssert c.graph.config, false
   result = newTransNode(nkStmtList, n.info, 0)
   var e = n[0]
@@ -832,7 +832,9 @@ proc getMergeOp(n: PNode): PSym =
      nkCallStrLit:
     if n[0].kind == nkSym and n[0].sym.magic == mConStrStr:
       result = n[0].sym
-  else: discard
+    else:
+      result = nil
+  else: result = nil
 
 proc flattenTreeAux(d, a: PNode, op: PSym) =
   ## Optimizes away the `&` calls in the children nodes and

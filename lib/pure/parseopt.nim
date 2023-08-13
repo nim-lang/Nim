@@ -251,7 +251,7 @@ proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
     else:
       # we cannot provide this for NimRtl creation on Posix, because we can't
       # access the command line arguments then!
-      doAssert false, "empty command line given but" &
+      raiseAssert "empty command line given but" &
         " real command line is not accessible"
   result.kind = cmdEnd
   result.key = ""

@@ -36,6 +36,7 @@ type
     body: PNode
     otherUsage: TLineInfo
     inUncheckedAssignSection: int
+    inEnsureMove: int
 
   Scope = object # we do scope-based memory management.
     # a scope is comparable to an nkStmtListExpr like
@@ -332,6 +333,9 @@ proc genCopyNoCheck(c: var Con; dest, ri: PNode; a: TTypeAttachedOp): PNode =
   assert ri.typ != nil
 
 proc genCopy(c: var Con; dest, ri: PNode; flags: set[MoveOrCopyFlag]): PNode =
+  if c.inEnsureMove > 0:
+    localError(c.graph.config, ri.info, errFailedMove, "cannot move '" & $ri &
+                                                      "', which introduces an implicit copy")
   let t = dest.typ
   if tfHasOwned in t.flags and ri.kind != nkNilLit:
     # try to improve the error message here:
@@ -400,7 +404,7 @@ proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
 
 proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
   # generate: (let tmp = v; reset(v); tmp)
-  if not hasDestructor(c, n.typ):
+  if (not hasDestructor(c, n.typ)) and c.inEnsureMove == 0:
     assert n.kind != nkSym or not hasDestructor(c, n.sym.typ)
     result = copyTree(n)
   else:
@@ -419,7 +423,8 @@ proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
 
     result.add v
     let nn = skipConv(n)
-    c.genMarkCyclic(result, nn)
+    if hasDestructor(c, n.typ):
+      c.genMarkCyclic(result, nn)
     let wasMovedCall = c.genWasMoved(nn)
     result.add wasMovedCall
     result.add tempAsNode
@@ -427,6 +432,7 @@ proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
 proc isCapturedVar(n: PNode): bool =
   let root = getRoot(n)
   if root != nil: result = root.name.s[0] == ':'
+  else: result = false
 
 proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
@@ -462,6 +468,9 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
         "if possible, rearrange your program's control flow to prevent it") % $n)
+    if c.inEnsureMove > 0:
+      localError(c.graph.config, n.info, errFailedMove,
+        ("cannot move '$1', passing '$1' to a sink parameter introduces an implicit copy") % $n)
   else:
     if c.graph.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
       assert(not containsManagedMemory(n.typ))
@@ -725,7 +734,9 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
     result[^1] = maybeVoid(n[^1], s)
     dec c.inUncheckedAssignSection, inUncheckedAssignSection
 
-  else: assert(false)
+  else:
+    result = nil
+    assert(false)
 
 proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
   if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
@@ -765,7 +776,15 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       result = passCopyToSink(n, c, s)
     elif n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkNilLit} +
          nkCallKinds + nkLiterals:
-      result = p(n, c, s, consumed)
+      if n.kind in nkCallKinds and n[0].kind == nkSym:
+        if n[0].sym.magic == mEnsureMove:
+          inc c.inEnsureMove
+          result = p(n[1], c, s, sinkArg)
+          dec c.inEnsureMove
+        else:
+          result = p(n, c, s, consumed)
+      else:
+        result = p(n, c, s, consumed)
     elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and
         isLastRead(n, c, s) and not (n.kind == nkSym and isCursor(n)):
       # Sinked params can be consumed only once. We need to reset the memory
@@ -837,6 +856,12 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       if mode == normal and isRefConstr:
         result = ensureDestruction(result, n, c, s)
     of nkCallKinds:
+      if n[0].kind == nkSym and n[0].sym.magic == mEnsureMove:
+        inc c.inEnsureMove
+        result = p(n[1], c, s, sinkArg)
+        dec c.inEnsureMove
+        return
+
       let inSpawn = c.inSpawn
       if n[0].kind == nkSym and n[0].sym.magic == mSpawn:
         c.inSpawn.inc
@@ -1020,6 +1045,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
     of nkGotoState, nkState, nkAsmStmt:
       result = n
     else:
+      result = nil
       internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
 
 proc sameLocation*(a, b: PNode): bool =
@@ -1069,6 +1095,11 @@ proc genFieldAccessSideEffects(c: var Con; s: var Scope; dest, ri: PNode; flags:
   result = newTree(nkStmtList, v, snk, c.genWasMoved(newAccess))
 
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopyFlag] = {}): PNode =
+  var ri = ri
+  var isEnsureMove = 0
+  if ri.kind in nkCallKinds and ri[0].kind == nkSym and ri[0].sym.magic == mEnsureMove:
+    ri = ri[1]
+    isEnsureMove = 1
   if sameLocation(dest, ri):
     # rule (self-assignment-removal):
     result = newNodeI(nkEmpty, dest.info)
@@ -1103,13 +1134,17 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
         else:
           result = c.genSink(s, dest, destructiveMoveVar(ri, c, s), flags)
       else:
+        inc c.inEnsureMove, isEnsureMove
         result = c.genCopy(dest, ri, flags)
+        dec c.inEnsureMove, isEnsureMove
         result.add p(ri, c, s, consumed)
         c.finishCopy(result, dest, isFromSink = false)
     of nkBracket:
       # array constructor
       if ri.len > 0 and isDangerousSeq(ri.typ):
+        inc c.inEnsureMove, isEnsureMove
         result = c.genCopy(dest, ri, flags)
+        dec c.inEnsureMove, isEnsureMove
         result.add p(ri, c, s, consumed)
         c.finishCopy(result, dest, isFromSink = false)
       else:
@@ -1122,12 +1157,15 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
         let snk = c.genSink(s, dest, ri, flags)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
       elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
-          isLastRead(ri, c, s) and canBeMoved(c, dest.typ) and not isCursor(ri):
+          isLastRead(ri, c, s) and canBeMoved(c, dest.typ) and not isCursor(ri) and
+          not ({sfGlobal, sfPure} <= ri.sym.flags):
         # Rule 3: `=sink`(x, z); wasMoved(z)
         let snk = c.genSink(s, dest, ri, flags)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
       else:
+        inc c.inEnsureMove, isEnsureMove
         result = c.genCopy(dest, ri, flags)
+        dec c.inEnsureMove, isEnsureMove
         result.add p(ri, c, s, consumed)
         c.finishCopy(result, dest, isFromSink = false)
     of nkHiddenSubConv, nkHiddenStdConv, nkConv, nkObjDownConv, nkObjUpConv, nkCast:
@@ -1145,7 +1183,9 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
         let snk = c.genSink(s, dest, ri, flags)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
       else:
+        inc c.inEnsureMove, isEnsureMove
         result = c.genCopy(dest, ri, flags)
+        dec c.inEnsureMove, isEnsureMove
         result.add p(ri, c, s, consumed)
         c.finishCopy(result, dest, isFromSink = false)
 

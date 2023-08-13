@@ -830,3 +830,35 @@ block:  # isValidFilename
   doAssert isValidFilename("ux.bat")
   doAssert isValidFilename("nim.nim")
   doAssert isValidFilename("foo.log")
+
+block: # searchExtPos
+  doAssert "foo.nim".searchExtPos == 3
+  doAssert "/foo.nim".searchExtPos == 4
+  doAssert "".searchExtPos == -1
+  doAssert "/".searchExtPos == -1
+  doAssert "a.b/foo".searchExtPos == -1
+  doAssert ".".searchExtPos == -1
+  doAssert "foo.".searchExtPos == 3
+  doAssert "foo..".searchExtPos == 4
+  doAssert "..".searchExtPos == -1
+  doAssert "...".searchExtPos == -1
+  doAssert "./".searchExtPos == -1
+  doAssert "../".searchExtPos == -1
+  doAssert "/.".searchExtPos == -1
+  doAssert "/..".searchExtPos == -1
+  doAssert ".b".searchExtPos == -1
+  doAssert "..b".searchExtPos == -1
+  doAssert "/.b".searchExtPos == -1
+  doAssert "a/.b".searchExtPos == -1
+  doAssert ".a.b".searchExtPos == 2
+  doAssert "a/.b.c".searchExtPos == 4
+  doAssert "a/..b".searchExtPos == -1
+  doAssert "a/b..c".searchExtPos == 4
+
+  when doslikeFileSystem:
+    doAssert "c:a.b".searchExtPos == 3
+    doAssert "c:.a".searchExtPos == -1
+    doAssert r"c:\.a".searchExtPos == -1
+    doAssert "c:..a".searchExtPos == -1
+    doAssert r"c:\..a".searchExtPos == -1
+    doAssert "c:.a.b".searchExtPos == 4

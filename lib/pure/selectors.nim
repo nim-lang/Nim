@@ -344,7 +344,18 @@ else:
           res = int(fdLim.rlim_cur) - 1
         res
 
-  when defined(linux) and not defined(emscripten):
+  when defined(nimIoselector):
+    when nimIoselector == "epoll":
+      include ioselects/ioselectors_epoll
+    elif nimIoselector == "kqueue":
+      include ioselects/ioselectors_kqueue
+    elif nimIoselector == "poll":
+      include ioselects/ioselectors_poll
+    elif nimIoselector == "select":
+      include ioselects/ioselectors_select
+    else:
+      {.fatal: "Unknown nimIoselector specified by define.".}
+  elif defined(linux) and not defined(emscripten):
     include ioselects/ioselectors_epoll
   elif bsdPlatform:
     include ioselects/ioselectors_kqueue

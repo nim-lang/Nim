@@ -235,7 +235,7 @@ proc colorOutput(): bool =
     else: result = false
   of "on": result = true
   of "off": result = false
-  else: doAssert false, $color
+  else: raiseAssert $color
 
   when declared(stdout):
     if existsEnv("NIMTEST_COLOR"):

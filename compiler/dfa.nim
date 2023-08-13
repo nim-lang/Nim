@@ -60,6 +60,7 @@ type
 proc codeListing(c: ControlFlowGraph, start = 0; last = -1): string =
   # for debugging purposes
   # first iteration: compute all necessary labels:
+  result = ""
   var jumpTargets = initIntSet()
   let last = if last < 0: c.len-1 else: min(last, c.len-1)
   for i in start..last:
@@ -111,7 +112,7 @@ proc patch(c: var Con, p: TPosition) =
 proc gen(c: var Con; n: PNode)
 
 proc popBlock(c: var Con; oldLen: int) =
-  var exits: seq[TPosition]
+  var exits: seq[TPosition] = @[]
   exits.add c.gotoI()
   for f in c.blocks[oldLen].breakFixups:
     c.patch(f[0])
@@ -263,7 +264,7 @@ proc genBreakOrRaiseAux(c: var Con, i: int, n: PNode) =
   if c.blocks[i].isTryBlock:
     c.blocks[i].raiseFixups.add lab1
   else:
-    var trailingFinales: seq[PNode]
+    var trailingFinales: seq[PNode] = @[]
     if c.inTryStmt > 0:
       # Ok, we are in a try, lets see which (if any) try's we break out from:
       for b in countdown(c.blocks.high, i):
@@ -469,7 +470,7 @@ proc gen(c: var Con; n: PNode) =
   of nkConv, nkExprColonExpr, nkExprEqExpr, nkCast, PathKinds1:
     gen(c, n[1])
   of nkVarSection, nkLetSection: genVarSection(c, n)
-  of nkDefer: doAssert false, "dfa construction pass requires the elimination of 'defer'"
+  of nkDefer: raiseAssert "dfa construction pass requires the elimination of 'defer'"
   else: discard
 
 when false:

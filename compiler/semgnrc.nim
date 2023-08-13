@@ -59,6 +59,7 @@ template isMixedIn(sym): bool =
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; flags: TSemGenericFlags,
                           fromDotExpr=false): PNode =
+  result = nil
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
   incl(s.flags, sfUsed)
   template maybeDotChoice(c: PContext, n: PNode, s: PSym, fromDotExpr: bool) =
@@ -167,6 +168,17 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
       elif s.isMixedIn:
         result = newDot(result, symChoice(c, n, s, scForceOpen))
       else:
+        if s.kind == skType and candidates.len > 1:
+          var ambig = false
+          let s2 = searchInScopes(c, ident, ambig) 
+          if ambig:
+            # this is a type conversion like a.T where T is ambiguous with
+            # other types or routines
+            # in regular code, this never considers a type conversion and
+            # skips to routine overloading
+            # so symchoices are used which behave similarly with type symbols
+            result = newDot(result, symChoice(c, n, s, scForceOpen))
+            return
         let syms = semGenericStmtSymbol(c, n, s, ctx, flags, fromDotExpr=true)
         result = newDot(result, syms)
 
@@ -439,7 +451,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       if n[0].kind != nkEmpty:
         n[0] = semGenericStmt(c, n[0], flags+{withinTypeDesc}, ctx)
       for i in 1..<n.len:
-        var a: PNode
+        var a: PNode = nil
         case n[i].kind
         of nkEnumFieldDef: a = n[i][0]
         of nkIdent: a = n[i]

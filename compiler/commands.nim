@@ -184,7 +184,7 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string; conf: ConfigRef) =
   var id = ""  # arg = key or [key] or key:val or [key]:val;  with val=on|off
   var i = 0
-  var notes: set[TMsgKind]
+  var notes: set[TMsgKind] = {}
   var isBracket = false
   if i < arg.len and arg[i] == '[':
     isBracket = true
@@ -263,13 +263,17 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "none": result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
     of "atomicarc": result = conf.selectedGC == gcAtomicArc
-    else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
+    else:
+      result = false
+      localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "opt":
     case arg.normalize
     of "speed": result = contains(conf.options, optOptimizeSpeed)
     of "size": result = contains(conf.options, optOptimizeSize)
     of "none": result = conf.options * {optOptimizeSpeed, optOptimizeSize} == {}
-    else: localError(conf, info, errNoneSpeedOrSizeExpectedButXFound % arg)
+    else:
+      result = false
+      localError(conf, info, errNoneSpeedOrSizeExpectedButXFound % arg)
   of "verbosity": result = $conf.verbosity == arg
   of "app":
     case arg.normalize
@@ -279,7 +283,9 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
                       not contains(conf.globalOptions, optGenGuiApp)
     of "staticlib": result = contains(conf.globalOptions, optGenStaticLib) and
                       not contains(conf.globalOptions, optGenGuiApp)
-    else: localError(conf, info, errGuiConsoleOrLibExpectedButXFound % arg)
+    else:
+      result = false
+      localError(conf, info, errGuiConsoleOrLibExpectedButXFound % arg)
   of "dynliboverride":
     result = isDynlibOverride(conf, arg)
   of "exceptions":
@@ -288,8 +294,12 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "setjmp": result = conf.exc == excSetjmp
     of "quirky": result = conf.exc == excQuirky
     of "goto": result = conf.exc == excGoto
-    else: localError(conf, info, errInvalidExceptionSystem % arg)
-  else: invalidCmdLineOption(conf, passCmd1, switch, info)
+    else:
+      result = false
+      localError(conf, info, errInvalidExceptionSystem % arg)
+  else:
+    result = false
+    invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool =
   case switch.normalize
@@ -335,10 +345,14 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
     if switch.normalize == "patterns": deprecatedAlias(switch, "trmacros")
     result = contains(conf.options, optTrMacros)
   of "excessivestacktrace": result = contains(conf.globalOptions, optExcessiveStackTrace)
-  of "nilseqs", "nilchecks", "taintmode": warningOptionNoop(switch)
+  of "nilseqs", "nilchecks", "taintmode":
+    warningOptionNoop(switch)
+    result = false
   of "panics": result = contains(conf.globalOptions, optPanics)
   of "jsbigint64": result = contains(conf.globalOptions, optJsBigInt64)
-  else: invalidCmdLineOption(conf, passCmd1, switch, info)
+  else:
+    result = false
+    invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
                  notRelativeToProj = false): AbsoluteDir =
@@ -380,7 +394,8 @@ proc makeAbsolute(s: string): AbsoluteFile =
 proc setTrackingInfo(conf: ConfigRef; dirty, file, line, column: string,
                      info: TLineInfo) =
   ## set tracking info, common code for track, trackDirty, & ideTrack
-  var ln, col: int
+  var ln: int = 0
+  var col: int = 0
   if parseUtils.parseInt(line, ln) <= 0:
     localError(conf, info, errInvalidNumber % line)
   if parseUtils.parseInt(column, col) <= 0:
@@ -591,8 +606,8 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
-  var
-    key, val: string
+  var key = ""
+  var val = ""
   case switch.normalize
   of "eval":
     expectArg(conf, switch, arg, pass, info)
@@ -802,7 +817,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "consoleapp")
     of "lib":
       incl(conf.globalOptions, optGenDynLib)
-      incl(conf.globalOptions, optNoMain)
       excl(conf.globalOptions, optGenGuiApp)
       defineSymbol(conf.symbols, "library")
       defineSymbol(conf.symbols, "dll")
@@ -1110,7 +1124,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else: invalidCmdLineOption(conf, pass, switch, info)
 
 proc processCommand*(switch: string, pass: TCmdLinePass; config: ConfigRef) =
-  var cmd, arg: string
+  var cmd = ""
+  var arg = ""
   splitSwitch(config, switch, cmd, arg, pass, gCmdLineInfo)
   processSwitch(cmd, arg, pass, gCmdLineInfo, config)
 
@@ -1137,7 +1152,10 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
       config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)
       result = true
-    elif pass != passCmd2: setCommandEarly(config, p.key)
+    elif pass != passCmd2:
+      setCommandEarly(config, p.key)
+      result = false
+    else: result = false
   else:
     if pass == passCmd1: config.commandArgs.add p.key
     if argsCount == 1:
@@ -1148,4 +1166,6 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
         config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)
       result = true
+    else:
+      result = false
   inc argsCount

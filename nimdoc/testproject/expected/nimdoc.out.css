@@ -769,7 +769,13 @@ div.search_results {
   background-color: var(--third-background);
   margin: 3em;
   padding: 1em;
-  border: 1px solid #4d4d4d; }
+  border: 1px solid #4d4d4d;
+  position: sticky;
+  top: 0;
+  isolation: isolate;
+  z-index: 1;
+  max-height: 100vh;
+  overflow-y: scroll; }
 
 div#global-links ul {
   margin-left: 0;

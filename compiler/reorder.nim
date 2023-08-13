@@ -25,17 +25,11 @@ when defined(nimDebugReorder):
   var idNames = newTable[int, string]()
 
 proc newDepN(id: int, pnode: PNode): DepN =
-  new(result)
-  result.id = id
-  result.pnode = pnode
-  result.idx = -1
-  result.lowLink = -1
-  result.onStack = false
-  result.kids = @[]
-  result.hAQ = -1
-  result.hIS = -1
-  result.hB = -1
-  result.hCmd = -1
+  result = DepN(id: id, pnode: pnode, idx: -1,
+                lowLink: -1, onStack: false,
+                kids: @[], hAQ: -1, hIS: -1,
+                hB: -1, hCmd: -1
+  )
   when defined(nimDebugReorder):
     result.expls = @[]
 
@@ -114,7 +108,8 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
     # XXX: for callables, this technically adds the return type dep before args
     for i in 0..<n.safeLen: deps(n[i])
 
-proc hasIncludes(n:PNode): bool =
+proc hasIncludes(n: PNode): bool =
+  result = false
   for a in n:
     if a.kind == nkIncludeStmt:
       return true
@@ -234,8 +229,9 @@ proc hasImportStmt(n: PNode): bool =
   # i it contains one
   case n.kind
   of nkImportStmt, nkFromStmt, nkImportExceptStmt:
-    return true
+    result = true
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
+    result = false
     for a in n:
       if a.hasImportStmt:
         return true
@@ -268,6 +264,7 @@ proc hasCommand(n: DepN): bool =
   result = bool(n.hCmd)
 
 proc hasAccQuoted(n: PNode): bool =
+  result = false
   if n.kind == nkAccQuoted:
     return true
   for a in n:
@@ -283,6 +280,7 @@ proc hasAccQuotedDef(n: PNode): bool =
   of extendedProcDefs:
     result = n[0].hasAccQuoted
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
+    result = false
     for a in n:
       if hasAccQuotedDef(a):
         return true
@@ -303,6 +301,7 @@ proc hasBody(n: PNode): bool =
   of extendedProcDefs:
     result = n[^1].kind == nkStmtList
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
+    result = false
     for a in n:
       if a.hasBody:
         return true
@@ -315,6 +314,7 @@ proc hasBody(n: DepN): bool =
   result = bool(n.hB)
 
 proc intersects(s1, s2: IntSet): bool =
+  result = false
   for a in s1:
     if s2.contains(a):
       return true
@@ -393,6 +393,7 @@ proc strongConnect(v: var DepN, idx: var int, s: var seq[DepN],
 proc getStrongComponents(g: var DepG): seq[seq[DepN]] =
   ## Tarjan's algorithm. Performs a topological sort
   ## and detects strongly connected components.
+  result = @[]
   var s: seq[DepN]
   var idx = 0
   for v in g.mitems:
@@ -402,6 +403,7 @@ proc getStrongComponents(g: var DepG): seq[seq[DepN]] =
 proc hasForbiddenPragma(n: PNode): bool =
   # Checks if the tree node has some pragmas that do not
   # play well with reordering, like the push/pop pragma
+  result = false
   for a in n:
     if a.kind == nkPragma and a[0].kind == nkIdent and
         a[0].ident.s == "push":

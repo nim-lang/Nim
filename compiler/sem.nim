@@ -96,6 +96,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     result.typ = formal
   elif arg.kind in nkSymChoices and formal.skipTypes(abstractInst).kind == tyEnum:
     # Pick the right 'sym' from the sym choice by looking at 'formal' type:
+    result = nil
     for ch in arg:
       if sameType(ch.typ, formal):
         return getConstExpr(c.module, ch, c.idgen, c.graph)
@@ -149,7 +150,7 @@ proc commonType*(c: PContext; x, y: PType): PType =
     let idx = ord(b.kind == tyArray)
     if a[idx].kind == tyEmpty: return y
   elif a.kind == tyTuple and b.kind == tyTuple and a.len == b.len:
-    var nt: PType
+    var nt: PType = nil
     for i in 0..<a.len:
       let aEmpty = isEmptyContainer(a[i])
       let bEmpty = isEmptyContainer(b[i])
@@ -305,6 +306,7 @@ when false:
       result = isOpImpl(c, n)
 
 proc hasCycle(n: PNode): bool =
+  result = false
   incl n.flags, nfNone
   for i in 0..<n.safeLen:
     if nfNone in n[i].flags or hasCycle(n[i]):
@@ -351,6 +353,11 @@ proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   c.config.m.errorOutputs = {}
   c.config.errorMax = high(int) # `setErrorMaxHighMaybe` not appropriate here
 
+  when defined(nimsuggest):
+    # Remove the error hook so nimsuggest doesn't report errors there
+    let tempHook = c.graph.config.structuredErrorHook
+    c.graph.config.structuredErrorHook = nil
+
   try:
     result = evalConstExpr(c.module, c.idgen, c.graph, e)
     if result == nil or result.kind == nkEmpty:
@@ -360,6 +367,10 @@ proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
 
   except ERecoverableError:
     result = nil
+
+  when defined(nimsuggest):
+    # Restore the error hook
+    c.graph.config.structuredErrorHook = tempHook
 
   c.config.errorCounter = oldErrorCount
   c.config.errorMax = oldErrorMax
@@ -460,7 +471,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
         # e.g. template foo(T: typedesc): seq[T]
         # We will instantiate the return type here, because
         # we now know the supplied arguments
-        var paramTypes = newIdTable()
+        var paramTypes = initIdTable()
         for param, value in genericParamsInMacroCall(s, call):
           idTablePut(paramTypes, param.typ, value.typ)
 
@@ -539,6 +550,7 @@ proc setGenericParamsMisc(c: PContext; n: PNode) =
     n[miscPos][1] = orig
 
 proc caseBranchMatchesExpr(branch, matched: PNode): bool =
+  result = false
   for i in 0 ..< branch.len-1:
     if branch[i].kind == nkRange:
       if overlap(branch[i], matched): return true
@@ -546,6 +558,7 @@ proc caseBranchMatchesExpr(branch, matched: PNode): bool =
       return true
 
 proc pickCaseBranchIndex(caseExpr, matched: PNode): int =
+  result = 0
   let endsWithElse = caseExpr[^1].kind == nkElse
   for i in 1..<caseExpr.len - endsWithElse.int:
     if caseExpr[i].caseBranchMatchesExpr(matched):
@@ -553,17 +566,18 @@ proc pickCaseBranchIndex(caseExpr, matched: PNode): int =
   if endsWithElse:
     return caseExpr.len - 1
 
-proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode]
-proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode
-proc defaultNodeField(c: PContext, a: PNode): PNode
+proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, checkDefault: bool): seq[PNode]
+proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): PNode
+proc defaultNodeField(c: PContext, a: PNode, checkDefault: bool): PNode
 
 const defaultFieldsSkipTypes = {tyGenericInst, tyAlias, tySink}
 
-proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool): seq[PNode] =
+proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool, checkDefault: bool): seq[PNode] =
+  result = @[]
   case recNode.kind
   of nkRecList:
     for field in recNode:
-      result.add defaultFieldsForTuple(c, field, hasDefault)
+      result.add defaultFieldsForTuple(c, field, hasDefault, checkDefault)
   of nkSym:
     let field = recNode.sym
     let recType = recNode.typ.skipTypes(defaultFieldsSkipTypes)
@@ -572,7 +586,7 @@ proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool): s
       result.add newTree(nkExprColonExpr, recNode, field.ast)
     else:
       if recType.kind in {tyObject, tyArray, tyTuple}:
-        let asgnExpr = defaultNodeField(c, recNode, recNode.typ)
+        let asgnExpr = defaultNodeField(c, recNode, recNode.typ, checkDefault)
         if asgnExpr != nil:
           hasDefault = true
           asgnExpr.flags.incl nfSkipFieldChecking
@@ -589,13 +603,14 @@ proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool): s
       asgnExpr.typ = recNode.typ
       result.add newTree(nkExprColonExpr, recNode, asgnExpr)
   else:
-    doAssert false
+    raiseAssert "unreachable"
 
-proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
+proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, checkDefault: bool): seq[PNode] =
+  result = @[]
   case recNode.kind
   of nkRecList:
     for field in recNode:
-      result.add defaultFieldsForTheUninitialized(c, field)
+      result.add defaultFieldsForTheUninitialized(c, field, checkDefault)
   of nkRecCase:
     let discriminator = recNode[0]
     var selectedBranch: int
@@ -604,37 +619,41 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode): seq[PNode] =
       # None of the branches were explicitly selected by the user and no value
       # was given to the discrimator. We can assume that it will be initialized
       # to zero and this will select a particular branch as a result:
+      if checkDefault: # don't add defaults when checking whether a case branch has default fields
+        return
       defaultValue = newIntNode(nkIntLit#[c.graph]#, 0)
       defaultValue.typ = discriminator.typ
     selectedBranch = recNode.pickCaseBranchIndex defaultValue
     defaultValue.flags.incl nfSkipFieldChecking
     result.add newTree(nkExprColonExpr, discriminator, defaultValue)
-    result.add defaultFieldsForTheUninitialized(c, recNode[selectedBranch][^1])
+    result.add defaultFieldsForTheUninitialized(c, recNode[selectedBranch][^1], checkDefault)
   of nkSym:
     let field = recNode.sym
     let recType = recNode.typ.skipTypes(defaultFieldsSkipTypes)
     if field.ast != nil: #Try to use default value
       result.add newTree(nkExprColonExpr, recNode, field.ast)
     elif recType.kind in {tyObject, tyArray, tyTuple}:
-      let asgnExpr = defaultNodeField(c, recNode, recNode.typ)
+      let asgnExpr = defaultNodeField(c, recNode, recNode.typ, checkDefault)
       if asgnExpr != nil:
         asgnExpr.typ = recNode.typ
         asgnExpr.flags.incl nfSkipFieldChecking
         result.add newTree(nkExprColonExpr, recNode, asgnExpr)
   else:
-    doAssert false
+    raiseAssert "unreachable"
 
-proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
+proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): PNode =
   let aTypSkip = aTyp.skipTypes(defaultFieldsSkipTypes)
   if aTypSkip.kind == tyObject:
-    let child = defaultFieldsForTheUninitialized(c, aTypSkip.n)
+    let child = defaultFieldsForTheUninitialized(c, aTypSkip.n, checkDefault)
     if child.len > 0:
       var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTyp))
       asgnExpr.typ = aTyp
       asgnExpr.sons.add child
       result = semExpr(c, asgnExpr)
+    else:
+      result = nil
   elif aTypSkip.kind == tyArray:
-    let child = defaultNodeField(c, a, aTypSkip[1])
+    let child = defaultNodeField(c, a, aTypSkip[1], checkDefault)
 
     if child != nil:
       let node = newNode(nkIntLit)
@@ -644,18 +663,26 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType): PNode =
               node
                 ))
       result.typ = aTyp
+    else:
+      result = nil
   elif aTypSkip.kind == tyTuple:
     var hasDefault = false
     if aTypSkip.n != nil:
-      let children = defaultFieldsForTuple(c, aTypSkip.n, hasDefault)
+      let children = defaultFieldsForTuple(c, aTypSkip.n, hasDefault, checkDefault)
       if hasDefault and children.len > 0:
         result = newNodeI(nkTupleConstr, a.info)
         result.typ = aTyp
         result.sons.add children
         result = semExpr(c, result)
+      else:
+        result = nil
+    else:
+      result = nil
+  else:
+    result = nil
 
-proc defaultNodeField(c: PContext, a: PNode): PNode =
-  result = defaultNodeField(c, a, a.typ)
+proc defaultNodeField(c: PContext, a: PNode, checkDefault: bool): PNode =
+  result = defaultNodeField(c, a, a.typ, checkDefault)
 
 include semtempl, semgnrc, semstmts, semexprs
 
@@ -712,17 +739,19 @@ proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
         break
   case n.kind
   of nkImportStmt:
+    result = false
     for x in n:
       if x.kind == nkIdent:
         let f = checkModuleName(g.config, x, false)
         if f == g.systemModule.info.fileIndex:
           return true
   of nkImportExceptStmt, nkFromStmt:
+    result = false
     if n[0].kind == nkIdent:
       let f = checkModuleName(g.config, n[0], false)
       if f == g.systemModule.info.fileIndex:
         return true
-  else: discard
+  else: result = false
 
 proc isEmptyTree(n: PNode): bool =
   case n.kind

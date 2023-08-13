@@ -192,7 +192,7 @@ elif defined(linux) and not defined(nimNoGetRandom) and not defined(emscripten):
     while result < size:
       let readBytes = syscall(SYS_getrandom, addr dest[result], cint(size - result), 0).int
       if readBytes == 0:
-        doAssert false
+        raiseAssert "unreachable"
       elif readBytes > 0:
         inc(result, readBytes)
       else:

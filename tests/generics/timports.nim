@@ -46,6 +46,11 @@ block tdotlookup:
     x.set("hello", "world")
     result = x
   doAssert abc(5) == 10
+  block: # ensure normal call is consistent with dot call 
+    proc T(x: int): float = x.float
+    proc foo[T](x: int) =
+      doAssert typeof(T(x)) is typeof(x.T)
+    foo[uint](123)
 
 block tmodule_same_as_proc:
   # bug #1965

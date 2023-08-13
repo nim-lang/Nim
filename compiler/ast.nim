@@ -314,6 +314,8 @@ type
                       # an infinite loop, this flag is used as a sentinel to stop it.
     sfVirtual         # proc is a C++ virtual function
     sfByCopy          # param is marked as pass bycopy
+    sfMember          # proc is a C++ member of a type
+    sfCodegenDecl     # type, proc, global or proc param is marked as codegenDecl
 
   TSymFlags* = set[TSymFlag]
 
@@ -346,6 +348,7 @@ const
   sfBase* = sfDiscriminant
   sfCustomPragma* = sfRegister        # symbol is custom pragma template
   sfTemplateRedefinition* = sfExportc # symbol is a redefinition of an earlier template
+  sfCppMember* = { sfVirtual, sfMember, sfConstructor } # proc is a C++ member, meaning it will be attached to the type definition
 
 const
   # getting ready for the future expr/stmt merge
@@ -588,6 +591,7 @@ type
     tfEffectSystemWorkaround
     tfIsOutParam
     tfSendable
+    tfImplicitStatic
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -689,7 +693,7 @@ type
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mOpenArrayToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
-    mMove, mWasMoved, mDup, mDestroy, mTrace,
+    mMove, mEnsureMove, mWasMoved, mDup, mDestroy, mTrace,
     mDefault, mUnown, mFinished, mIsolate, mAccessEnv, mAccessTypeField, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
@@ -954,7 +958,7 @@ type
     kind*: TTypeKind          # kind of type
     callConv*: TCallingConvention # for procs
     flags*: TTypeFlags        # flags of the type
-    sons*: TTypeSeq           # base types, etc.
+    sons: TTypeSeq           # base types, etc.
     n*: PNode                 # node for types:
                               # for range types a nkRange node
                               # for record types a nkRecord node
@@ -1035,6 +1039,8 @@ proc comment*(n: PNode): string =
   if nfHasComment in n.flags and not gconfig.useIc:
     # IC doesn't track comments, see `packed_ast`, so this could fail
     result = gconfig.comments[n.nodeId]
+  else:
+    result = ""
 
 proc `comment=`*(n: PNode, a: string) =
   let id = n.nodeId
@@ -1221,6 +1227,7 @@ proc getDeclPragma*(n: PNode): PNode =
   case n.kind
   of routineDefs:
     if n[pragmasPos].kind != nkEmpty: result = n[pragmasPos]
+    else: result = nil
   of nkTypeDef:
     #[
     type F3*{.deprecated: "x3".} = int
@@ -1240,6 +1247,8 @@ proc getDeclPragma*(n: PNode): PNode =
     ]#
     if n[0].kind == nkPragmaExpr:
       result = n[0][1]
+    else:
+      result = nil
   else:
     # support as needed for `nkIdentDefs` etc.
     result = nil
@@ -1255,6 +1264,12 @@ proc extractPragma*(s: PSym): PNode =
       if s.ast[0].kind == nkPragmaExpr and s.ast[0].len > 1:
         # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
         result = s.ast[0][1]
+      else:
+        result = nil
+    else:
+      result = nil
+  else:
+    result = nil
   assert result == nil or result.kind == nkPragma
 
 proc skipPragmaExpr*(n: PNode): PNode =
@@ -1484,7 +1499,7 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
     result = newNode(nkIntLit)
   of tyStatic: # that's a pre-existing bug, will fix in another PR
     result = newNode(nkIntLit)
-  else: doAssert false, $kind
+  else: raiseAssert $kind
   result.intVal = intVal
   result.typ = typ
 
@@ -1522,15 +1537,31 @@ proc `$`*(s: PSym): string =
   else:
     result = "<nil>"
 
-proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
+iterator items*(t: PType): PType =
+  for i in 0..<t.sons.len: yield t.sons[i]
+
+iterator pairs*(n: PType): tuple[i: int, n: PType] =
+  for i in 0..<n.sons.len: yield (i, n.sons[i])
+
+proc newType*(kind: TTypeKind, id: ItemId; owner: PSym, sons: seq[PType] = @[]): PType =
   result = PType(kind: kind, owner: owner, size: defaultSize,
                  align: defaultAlignment, itemId: id,
-                 uniqueId: id)
+                 uniqueId: id, sons: sons)
   when false:
     if result.itemId.module == 55 and result.itemId.item == 2:
       echo "KNID ", kind
       writeStackTrace()
 
+template newType*(kind: TTypeKind, id: ItemId; owner: PSym, parent: PType): PType =
+  newType(kind, id, owner, parent.sons)
+
+proc newType*(prev: PType, sons: seq[PType]): PType =
+  result = prev
+  result.sons = sons
+
+proc addSon*(father, son: PType) =
+  # todo fixme: in IC, `son` might be nil
+  father.sons.add(son)
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(typeof(a.k)): a.k = b.k
@@ -1596,19 +1627,13 @@ proc createModuleAlias*(s: PSym, idgen: IdGenerator, newIdent: PIdent, info: TLi
   result.loc = s.loc
   result.annex = s.annex
 
-proc initStrTable*(x: var TStrTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
+proc initStrTable*(): TStrTable =
+  result = TStrTable(counter: 0)
+  newSeq(result.data, StartSize)
 
-proc newStrTable*: TStrTable =
-  initStrTable(result)
-
-proc initIdTable*(x: var TIdTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
-
-proc newIdTable*: TIdTable =
-  initIdTable(result)
+proc initIdTable*(): TIdTable =
+  result = TIdTable(counter: 0)
+  newSeq(result.data, StartSize)
 
 proc resetIdTable*(x: var TIdTable) =
   x.counter = 0
@@ -1616,17 +1641,17 @@ proc resetIdTable*(x: var TIdTable) =
   setLen(x.data, 0)
   setLen(x.data, StartSize)
 
-proc initObjectSet*(x: var TObjectSet) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
+proc initObjectSet*(): TObjectSet =
+  result = TObjectSet(counter: 0)
+  newSeq(result.data, StartSize)
 
-proc initIdNodeTable*(x: var TIdNodeTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
+proc initIdNodeTable*(): TIdNodeTable =
+  result = TIdNodeTable(counter: 0)
+  newSeq(result.data, StartSize)
 
-proc initNodeTable*(x: var TNodeTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
+proc initNodeTable*(): TNodeTable =
+  result = TNodeTable(counter: 0)
+  newSeq(result.data, StartSize)
 
 proc skipTypes*(t: PType, kinds: TTypeKinds; maxIters: int): PType =
   result = t
@@ -1810,6 +1835,7 @@ proc hasNilSon*(n: PNode): bool =
   result = false
 
 proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
+  result = false
   if n == nil: return
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind in kinds
@@ -2011,6 +2037,8 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
 
   if base.sym != nil and {sfCompileToCpp, sfImportc} * base.sym.flags != {}:
     result = true
+  else:
+    result = false
 
 proc isInfixAs*(n: PNode): bool =
   return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "as"
@@ -2021,10 +2049,12 @@ proc skipColon*(n: PNode): PNode =
     result = n[1]
 
 proc findUnresolvedStatic*(n: PNode): PNode =
-  # n.typ == nil: see issue #14802
   if n.kind == nkSym and n.typ != nil and n.typ.kind == tyStatic and n.typ.n == nil:
     return n
-
+  if n.typ != nil and n.typ.kind == tyTypeDesc:
+    let t = skipTypes(n.typ, {tyTypeDesc})
+    if t.kind == tyGenericParam and t.len == 0:
+      return n
   for son in n:
     let n = son.findUnresolvedStatic
     if n != nil: return n
@@ -2061,6 +2091,12 @@ proc isClosureIterator*(typ: PType): bool {.inline.} =
 
 proc isClosure*(typ: PType): bool {.inline.} =
   typ.kind == tyProc and typ.callConv == ccClosure
+
+proc isNimcall*(s: PSym): bool {.inline.} =
+  s.typ.callConv == ccNimCall
+
+proc isExplicitCallConv*(s: PSym): bool {.inline.} =
+  tfExplicitCallConv in s.typ.flags
 
 proc isSinkParam*(s: PSym): bool {.inline.} =
   s.kind == skParam and (s.typ.kind == tySink or tfHasOwned in s.typ.flags)

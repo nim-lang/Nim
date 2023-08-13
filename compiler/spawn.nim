@@ -114,7 +114,7 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
                        idgen: IdGenerator;
                        spawnKind: TSpawnResult, result: PSym) =
   var body = newNodeI(nkStmtList, f.info)
-  var threadLocalBarrier: PSym
+  var threadLocalBarrier: PSym = nil
   if barrier != nil:
     var varSection2 = newNodeI(nkVarSection, barrier.info)
     threadLocalBarrier = addLocalVar(g, varSection2, nil, idgen, result,
@@ -122,7 +122,7 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
     body.add varSection2
     body.add callCodegenProc(g, "barrierEnter", threadLocalBarrier.info,
       threadLocalBarrier.newSymNode)
-  var threadLocalProm: PSym
+  var threadLocalProm: PSym = nil
   if spawnKind == srByVar:
     threadLocalProm = addLocalVar(g, varSection, nil, idgen, result, fv.typ, fv)
   elif fv != nil:
