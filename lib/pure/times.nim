@@ -20,7 +20,7 @@
   Examples
   ========
 
-  .. code-block:: nim
+    ```nim
     import std/[times, os]
     # Simple benchmarking
     let time = cpuTime()
@@ -37,6 +37,7 @@
     # Arithmetic using TimeInterval
     echo "One year from now      : ", now() + 1.years
     echo "One month from now     : ", now() + 1.months
+    ```
 
   Parsing and Formatting Dates
   ============================
@@ -44,10 +45,10 @@
   The `DateTime` type can be parsed and formatted using the different
   `parse` and `format` procedures.
 
-  .. code-block:: nim
-
+    ```nim
     let dt = parse("2000-01-01", "yyyy-MM-dd")
     echo dt.format("yyyy-MM-dd")
+    ```
 
   The different format patterns that are supported are documented below.
 
@@ -652,11 +653,10 @@ template eqImpl(a: Duration|Time, b: Duration|Time): bool =
 
 const DurationZero* = Duration() ## \
   ## Zero value for durations. Useful for comparisons.
-  ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   doAssert initDuration(seconds = 1) > DurationZero
   ##   doAssert initDuration(seconds = 0) == DurationZero
+  ##   ```
 
 proc initDuration*(nanoseconds, microseconds, milliseconds,
                    seconds, minutes, hours, days, weeks: int64 = 0): Duration =

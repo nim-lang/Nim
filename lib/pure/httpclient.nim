@@ -18,18 +18,19 @@
 ## This example uses HTTP GET to retrieve
 ## `http://google.com`:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/httpclient
 ##   var client = newHttpClient()
 ##   try:
 ##     echo client.getContent("http://google.com")
 ##   finally:
 ##     client.close()
+##   ```
 ##
 ## The same action can also be performed asynchronously, simply use the
 ## `AsyncHttpClient`:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/[asyncdispatch, httpclient]
 ##
 ##   proc asyncProc(): Future[string] {.async.} =
@@ -40,6 +41,7 @@
 ##       client.close()
 ##
 ##   echo waitFor asyncProc()
+##   ```
 ##
 ## The functionality implemented by `HttpClient` and `AsyncHttpClient`
 ## is the same, so you can use whichever one suits you best in the examples
@@ -59,7 +61,7 @@
 ## uses `multipart/form-data` as the `Content-Type` to send the HTML to be
 ## validated to the server.
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   var client = newHttpClient()
 ##   var data = newMultipartData()
 ##   data["output"] = "soap12"
@@ -69,13 +71,14 @@
 ##     echo client.postContent("http://validator.w3.org/check", multipart=data)
 ##   finally:
 ##     client.close()
+##   ```
 ##
 ## To stream files from disk when performing the request, use `addFiles`.
 ##
 ## **Note:** This will allocate a new `Mimetypes` database every time you call
 ## it, you can pass your own via the `mimeDb` parameter to avoid this.
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   let mimes = newMimetypes()
 ##   var client = newHttpClient()
 ##   var data = newMultipartData()
@@ -84,12 +87,13 @@
 ##     echo client.postContent("http://validator.w3.org/check", multipart=data)
 ##   finally:
 ##     client.close()
+##   ```
 ##
 ## You can also make post requests with custom headers.
 ## This example sets `Content-Type` to `application/json`
 ## and uses a json object for the body
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/[httpclient, json]
 ##
 ##   let client = newHttpClient()
@@ -102,6 +106,7 @@
 ##     echo response.status
 ##   finally:
 ##     client.close()
+##   ```
 ##
 ## Progress reporting
 ## ==================
@@ -110,27 +115,29 @@
 ## This callback will be executed every second with information about the
 ## progress of the HTTP request.
 ##
-## .. code-block:: Nim
-##    import std/[asyncdispatch, httpclient]
+##   ```Nim
+##   import std/[asyncdispatch, httpclient]
 ##
-##    proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
-##      echo("Downloaded ", progress, " of ", total)
-##      echo("Current rate: ", speed div 1000, "kb/s")
+##   proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
+##     echo("Downloaded ", progress, " of ", total)
+##     echo("Current rate: ", speed div 1000, "kb/s")
 ##
-##    proc asyncProc() {.async.} =
-##      var client = newAsyncHttpClient()
-##      client.onProgressChanged = onProgressChanged
-##      try:
-##        discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
-##      finally:
-##        client.close()
+##   proc asyncProc() {.async.} =
+##     var client = newAsyncHttpClient()
+##     client.onProgressChanged = onProgressChanged
+##     try:
+##       discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+##     finally:
+##       client.close()
 ##
-##    waitFor asyncProc()
+##   waitFor asyncProc()
+##   ```
 ##
 ## If you would like to remove the callback simply set it to `nil`.
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   client.onProgressChanged = nil
+##   ```
 ##
 ## .. warning:: The `total` reported by httpclient may be 0 in some cases.
 ##
@@ -152,9 +159,10 @@
 ##
 ## Example of setting SSL verification parameters in a new client:
 ##
-## .. code-block:: Nim
-##    import httpclient
-##    var client = newHttpClient(sslContext=newContext(verifyMode=CVerifyPeer))
+##   ```Nim
+##   import httpclient
+##   var client = newHttpClient(sslContext=newContext(verifyMode=CVerifyPeer))
+##   ```
 ##
 ## There are three options for verify mode:
 ##
@@ -183,10 +191,11 @@
 ##
 ## Here is how to set a timeout when creating an `HttpClient` instance:
 ##
-## .. code-block:: Nim
-##    import std/httpclient
+##   ```Nim
+##   import std/httpclient
 ##
-##    let client = newHttpClient(timeout = 42)
+##   let client = newHttpClient(timeout = 42)
+##   ```
 ##
 ## Proxy
 ## =====
@@ -197,36 +206,39 @@
 ##
 ## Some examples on how to configure a Proxy for `HttpClient`:
 ##
-## .. code-block:: Nim
-##    import std/httpclient
+##   ```Nim
+##   import std/httpclient
 ##
-##    let myProxy = newProxy("http://myproxy.network")
-##    let client = newHttpClient(proxy = myProxy)
+##   let myProxy = newProxy("http://myproxy.network")
+##   let client = newHttpClient(proxy = myProxy)
+##   ```
 ##
 ## Use proxies with basic authentication:
 ##
-## .. code-block:: Nim
-##    import std/httpclient
-##    
-##    let myProxy = newProxy("http://myproxy.network", auth="user:password")
-##    let client = newHttpClient(proxy = myProxy)
+##   ```Nim
+##   import std/httpclient
+##
+##   let myProxy = newProxy("http://myproxy.network", auth="user:password")
+##   let client = newHttpClient(proxy = myProxy)
+##   ```
 ##
 ## Get Proxy URL from environment variables:
 ##
-## .. code-block:: Nim
-##    import std/httpclient
+##   ```Nim
+##   import std/httpclient
 ##
-##    var url = ""
-##    try:
-##      if existsEnv("http_proxy"):
-##        url = getEnv("http_proxy")
-##      elif existsEnv("https_proxy"):
-##        url = getEnv("https_proxy")
-##    except ValueError:
-##      echo "Unable to parse proxy from environment variables."
+##   var url = ""
+##   try:
+##     if existsEnv("http_proxy"):
+##       url = getEnv("http_proxy")
+##     elif existsEnv("https_proxy"):
+##       url = getEnv("https_proxy")
+##   except ValueError:
+##     echo "Unable to parse proxy from environment variables."
 ##
-##    let myProxy = newProxy(url = url)
-##    let client = newHttpClient(proxy = myProxy)
+##   let myProxy = newProxy(url = url)
+##   let client = newHttpClient(proxy = myProxy)
+##   ```
 ##
 ## Redirects
 ## =========
@@ -237,10 +249,11 @@
 ##
 ## Here you can see an example about how to set the `maxRedirects` of `HttpClient`:
 ##
-## .. code-block:: Nim
-##    import std/httpclient
+##   ```Nim
+##   import std/httpclient
 ##
-##    let client = newHttpClient(maxRedirects = 0)
+##   let client = newHttpClient(maxRedirects = 0)
+##   ```
 ##
 
 import std/private/since
@@ -429,8 +442,9 @@ proc add*(p: MultipartData, xs: MultipartEntries): MultipartData
   ## Add a list of multipart entries to the multipart data `p`. All values are
   ## added without a filename and without a content type.
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   data.add({"action": "login", "format": "json"})
+  ##   ```
   for name, content in xs.items:
     p.add(name, content)
   result = p
@@ -439,8 +453,9 @@ proc newMultipartData*(xs: MultipartEntries): MultipartData =
   ## Create a new multipart data object and fill it with the entries `xs`
   ## directly.
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   var data = newMultipartData({"action": "login", "format": "json"})
+  ##   ```
   result = MultipartData()
   for entry in xs:
     result.add(entry.name, entry.content)
@@ -455,8 +470,9 @@ proc addFiles*(p: MultipartData, xs: openArray[tuple[name, file: string]],
   ## Raises an `IOError` if the file cannot be opened or reading fails. To
   ## manually specify file content, filename and MIME type, use `[]=` instead.
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   data.addFiles({"uploaded_file": "public/test.html"})
+  ##   ```
   for name, file in xs.items:
     var contentType: string
     let (_, fName, ext) = splitFile(file)
@@ -470,8 +486,9 @@ proc `[]=`*(p: MultipartData, name, content: string) {.inline.} =
   ## Add a multipart entry to the multipart data `p`. The value is added
   ## without a filename and without a content type.
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   data["username"] = "NimUser"
+  ##   ```
   p.add(name, content)
 
 proc `[]=`*(p: MultipartData, name: string,
@@ -479,9 +496,10 @@ proc `[]=`*(p: MultipartData, name: string,
   ## Add a file to the multipart data `p`, specifying filename, contentType
   ## and content manually.
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   data["uploaded_file"] = ("test.html", "text/html",
   ##     "<html><head></head><body><p>test</p></body></html>")
+  ##   ```
   p.add(name, file.content, file.name, file.contentType, useStream = false)
 
 proc getBoundary(p: MultipartData): string =
@@ -688,15 +706,15 @@ proc close*(client: HttpClient | AsyncHttpClient) =
     client.connected = false
 
 proc getSocket*(client: HttpClient): Socket {.inline.} =
-  ## Get network socket, useful if you want to find out more details about the connection
+  ## Get network socket, useful if you want to find out more details about the connection.
   ##
-  ## this example shows info about local and remote endpoints
+  ## This example shows info about local and remote endpoints:
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   if client.connected:
   ##     echo client.getSocket.getLocalAddr
   ##     echo client.getSocket.getPeerAddr
-  ##
+  ##   ```
   return client.socket
 
 proc getSocket*(client: AsyncHttpClient): AsyncSocket {.inline.} =

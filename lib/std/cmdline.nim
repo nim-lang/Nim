@@ -163,11 +163,12 @@ when defined(nimdoc):
     ##
     ## **Examples:**
     ##
-    ## .. code-block:: nim
+    ##   ```nim
     ##   when declared(paramCount):
     ##     # Use paramCount() here
     ##   else:
     ##     # Do something else!
+    ##   ```
 
   proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     ## Returns the `i`-th `command line argument`:idx: given to the application.
@@ -195,11 +196,12 @@ when defined(nimdoc):
     ##
     ## **Examples:**
     ##
-    ## .. code-block:: nim
+    ##   ```nim
     ##   when declared(paramStr):
     ##     # Use paramStr() here
     ##   else:
     ##     # Do something else!
+    ##   ```
 
 elif defined(nimscript): discard
 elif defined(nodejs):
@@ -296,11 +298,12 @@ when declared(paramCount) or defined(nimdoc):
     ##
     ## **Examples:**
     ##
-    ## .. code-block:: nim
+    ##   ```nim
     ##   when declared(commandLineParams):
     ##     # Use commandLineParams() here
     ##   else:
     ##     # Do something else!
+    ##   ```
     result = @[]
     for i in 1..paramCount():
       result.add(paramStr(i))

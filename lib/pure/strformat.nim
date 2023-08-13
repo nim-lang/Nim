@@ -133,13 +133,14 @@ runnableExamples:
 
 An expression like `&"{key} is {value:arg} {{z}}"` is transformed into:
 
-.. code-block:: nim
+  ```nim
   var temp = newStringOfCap(educatedCapGuess)
   temp.formatValue(key, "")
   temp.add(" is ")
   temp.formatValue(value, arg)
   temp.add(" {z}")
   temp
+  ```
 
 Parts of the string that are enclosed in the curly braces are interpreted
 as Nim code. To escape a `{` or `}`, double it.
@@ -272,13 +273,14 @@ The available floating point presentation types are:
 Because of the well defined order how templates and macros are
 expanded, strformat cannot expand template arguments:
 
-.. code-block:: nim
+  ```nim
   template myTemplate(arg: untyped): untyped =
     echo "arg is: ", arg
     echo &"--- {arg} ---"
 
   let x = "abc"
   myTemplate(x)
+  ```
 
 First the template `myTemplate` is expanded, where every identifier
 `arg` is substituted with its argument. The `arg` inside the
@@ -289,12 +291,13 @@ identifier that cannot be resolved anymore.
 
 The workaround for this is to bind the template argument to a new local variable.
 
-.. code-block:: nim
+  ```nim
   template myTemplate(arg: untyped): untyped =
     block:
       let arg1 {.inject.} = arg
       echo "arg is: ", arg1
       echo &"--- {arg1} ---"
+  ```
 
 The use of `{.inject.}` here is necessary again because of template
 expansion order and hygienic templates. But since we generally want to
