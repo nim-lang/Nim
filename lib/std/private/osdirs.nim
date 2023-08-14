@@ -515,7 +515,7 @@ proc copyDirWithPermissions*(source, dest: string,
     try:
       setFilePermissions(dest, getFilePermissions(source), followSymlinks =
                          false)
-    except OSError:
+    except:
       if not ignorePermissionErrors:
         raise
   for kind, path in walkDir(source):
