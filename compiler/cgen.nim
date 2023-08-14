@@ -61,12 +61,10 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
     var ms = getModule(s)
     result = m.g.modules[ms.position]
 
-proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}) =
-  result.k = k
-  result.storage = s
-  result.lode = lode
-  result.r = ""
-  result.flags = flags
+proc initLoc(k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}): TLoc =
+  result = TLoc(k: k, storage: s, lode: lode,
+               r: "", flags: flags
+  )
 
 proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc) {.inline.} =
   # fills the loc if it is not already initialized
@@ -483,8 +481,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
     if containsGcRef:
-      var nilLoc: TLoc
-      initLoc(nilLoc, locTemp, loc.lode, OnStack)
+      var nilLoc: TLoc = initLoc(locTemp, loc.lode, OnStack)
       nilLoc.r = rope("NIM_NIL")
       genRefAssign(p, loc, nilLoc)
     else:
@@ -514,8 +511,7 @@ proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
     if containsGarbageCollectedRef(loc.t):
-      var nilLoc: TLoc
-      initLoc(nilLoc, locTemp, loc.lode, OnStack)
+      var nilLoc: TLoc = initLoc(locTemp, loc.lode, OnStack)
       nilLoc.r = rope("NIM_NIL")
       genRefAssign(p, loc, nilLoc)
     else:
@@ -542,7 +538,7 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
     if not immediateAsgn:
       constructLoc(p, v.loc)
 
-proc getTemp(p: BProc, t: PType, result: out TLoc; needsInit=false) =
+proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
   inc(p.labels)
   result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
@@ -560,13 +556,13 @@ proc getTemp(p: BProc, t: PType, result: out TLoc; needsInit=false) =
         echo "ENORMOUS TEMPORARY! ", p.config $ p.lastLineInfo
       writeStackTrace()
 
-proc getTempCpp(p: BProc, t: PType, result: out TLoc; value: Rope) =
+proc getTempCpp(p: BProc, t: PType, value: Rope): TLoc =
   inc(p.labels)
   result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
   linefmt(p, cpsStmts, "$1 $2 = $3;$n", [getTypeDesc(p.module, t, dkVar), result.r, value])
 
-proc getIntTemp(p: BProc, result: out TLoc) =
+proc getIntTemp(p: BProc): TLoc =
   inc(p.labels)
   result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp,
                 storage: OnStack, lode: lodeTyp getSysType(p.module.g.graph, unknownLineInfo, tyInt),
@@ -731,12 +727,12 @@ proc genLiteral(p: BProc, n: PNode; result: var Rope)
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Rope; argsCounter: var int)
 proc raiseExit(p: BProc)
 
-proc initLocExpr(p: BProc, e: PNode, result: var TLoc, flags: TLocFlags = {}) =
-  initLoc(result, locNone, e, OnUnknown, flags)
+proc initLocExpr(p: BProc, e: PNode, flags: TLocFlags = {}): TLoc =
+  result = initLoc(locNone, e, OnUnknown, flags)
   expr(p, e, result)
 
-proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
-  initLoc(result, locNone, e, OnUnknown)
+proc initLocExprSingleUse(p: BProc, e: PNode): TLoc =
+  result = initLoc(locNone, e, OnUnknown)
   if e.kind in nkCallKinds and (e[0].kind != nkSym or e[0].sym.magic == mNone):
     # We cannot check for tfNoSideEffect here because of mutable parameters.
     discard "bug #8202; enforce evaluation order for nested calls for C++ too"
@@ -827,8 +823,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
       var p = newProc(nil, m)
       p.options.excl optStackTrace
       p.flags.incl nimErrorFlagDisabled
-      var dest: TLoc
-      initLoc(dest, locTemp, lib.path, OnStack)
+      var dest: TLoc = initLoc(locTemp, lib.path, OnStack)
       dest.r = getTempName(m)
       appcg(m, m.s[cfsDynLibInit],"$1 $2;$n",
            [getTypeDesc(m, lib.path.typ, dkVar), rdLoc(dest)])
@@ -863,11 +858,10 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
   inc(m.labels, 2)
   if isCall:
     let n = lib.path
-    var a: TLoc = default(TLoc)
-    initLocExpr(m.initProc, n[0], a)
+    var a: TLoc = initLocExpr(m.initProc, n[0])
     var params = rdLoc(a) & "("
     for i in 1..<n.len-1:
-      initLocExpr(m.initProc, n[i], a)
+      a = initLocExpr(m.initProc, n[i])
       params.add(rdLoc(a))
       params.add(", ")
     let load = "\t$1 = ($2) ($3$4));$n" %
@@ -1142,7 +1136,8 @@ proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
 proc genProcAux*(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = newRopeAppender()
-  if m.config.backend == backendCpp and sfCppMember * prc.flags != {}:
+  let isCppMember = m.config.backend == backendCpp and sfCppMember * prc.flags != {}
+  if isCppMember:
     genMemberProcHeader(m, prc, header)
   else:
     genProcHeader(m, prc, header)
@@ -1165,8 +1160,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
       if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
       if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(procBody); val != nil):
         var decl = localVarDecl(p, resNode)
-        var a: TLoc = default(TLoc)
-        initLocExprSingleUse(p, val, a)
+        var a: TLoc = initLocExprSingleUse(p, val)
         linefmt(p, cpsStmts, "$1 = $2;$n", [decl, rdLoc(a)])
       else:
         # declare the result symbol:
@@ -1205,10 +1199,10 @@ proc genProcAux*(m: BModule, prc: PSym) =
   var generatedProc: Rope = ""
   generatedProc.genCLineDir prc.info, m.config
   if isNoReturn(p.module, prc):
-    if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
+    if hasDeclspec in extccomp.CC[p.config.cCompiler].props and not isCppMember:
       header = "__declspec(noreturn) " & header
   if sfPure in prc.flags:
-    if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
+    if hasDeclspec in extccomp.CC[p.config.cCompiler].props and not isCppMember:
       header = "__declspec(naked) " & header
     generatedProc.add ropecg(p.module, "$1 {$n$2$3$4}$N$N",
                          [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)])
@@ -1987,7 +1981,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   result.preInitProc = newProc(nil, result)
   result.preInitProc.flags.incl nimErrorFlagDisabled
   result.preInitProc.labels = 100_000 # little hack so that unique temporaries are generated
-  initNodeTable(result.dataCache)
+  result.dataCache = initNodeTable()
   result.typeStack = @[]
   result.typeNodesName = getTempName(result)
   result.nimTypesName = getTempName(result)

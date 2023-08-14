@@ -470,7 +470,7 @@ proc gen(c: var Con; n: PNode) =
   of nkConv, nkExprColonExpr, nkExprEqExpr, nkCast, PathKinds1:
     gen(c, n[1])
   of nkVarSection, nkLetSection: genVarSection(c, n)
-  of nkDefer: doAssert false, "dfa construction pass requires the elimination of 'defer'"
+  of nkDefer: raiseAssert "dfa construction pass requires the elimination of 'defer'"
   else: discard
 
 when false:

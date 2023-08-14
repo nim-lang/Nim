@@ -38,13 +38,20 @@ const
   errNoGenericParamsAllowedForX = "no generic parameters allowed for $1"
   errInOutFlagNotExtern = "the '$1' modifier can be used only with imported types"
 
+proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext, sons: seq[PType]): PType =
+  if prev == nil or prev.kind == tyGenericBody:
+    result = newTypeS(kind, c, sons = sons)
+  else:
+    result = newType(prev, sons)
+    if result.kind == tyForward: result.kind = kind
+  #if kind == tyError: result.flags.incl tfCheckedForDestructor
+
 proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType =
   if prev == nil or prev.kind == tyGenericBody:
     result = newTypeS(kind, c)
   else:
     result = prev
     if result.kind == tyForward: result.kind = kind
-  #if kind == tyError: result.flags.incl tfCheckedForDestructor
 
 proc newConstraint(c: PContext, k: TTypeKind): PType =
   result = newTypeS(tyBuiltInTypeClass, c)
@@ -73,8 +80,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     counter = toInt64(lastOrd(c.config, base)) + 1
   rawAddSon(result, base)
   let isPure = result.sym != nil and sfPure in result.sym.flags
-  var symbols: TStrTable
-  initStrTable(symbols)
+  var symbols: TStrTable = initStrTable()
   var hasNull = false
   for i in 1..<n.len:
     if n[i].kind == nkEmpty: continue
@@ -246,7 +252,7 @@ proc isRecursiveType*(t: PType): bool =
 
 proc addSonSkipIntLitChecked(c: PContext; father, son: PType; it: PNode, id: IdGenerator) =
   let s = son.skipIntLit(id)
-  father.sons.add(s)
+  father.add(s)
   if isRecursiveType(s):
     localError(c.config, it.info, "illegal recursion in type '" & typeToString(s) & "'")
   else:
@@ -335,6 +341,14 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, errXExpectsOneTypeParam % "range")
     result = newOrPrevType(tyError, prev, c)
 
+proc semArrayIndexConst(c: PContext, e: PNode, info: TLineInfo): PType =
+  let x = semConstExpr(c, e)
+  if x.kind in {nkIntLit..nkUInt64Lit}:
+    result = makeRangeType(c, 0, x.intVal-1, info,
+                        x.typ.skipTypes({tyTypeDesc}))
+  else:
+    result = x.typ.skipTypes({tyTypeDesc})
+
 proc semArrayIndex(c: PContext, n: PNode): PType =
   if isRange(n):
     result = semRangeAux(c, n, nil)
@@ -351,14 +365,18 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
         localError(c.config, n.info,
           "Array length can't be negative, but was " & $e.intVal)
       result = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
-    elif e.kind == nkSym and e.typ.kind == tyStatic:
-      if e.sym.ast != nil:
-        return semArrayIndex(c, e.sym.ast)
-      if e.typ.lastSon.kind != tyGenericParam and not isOrdinalType(e.typ.lastSon):
-        let info = if n.safeLen > 1: n[1].info else: n.info
-        localError(c.config, info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
-      result = makeRangeWithStaticExpr(c, e)
-      if c.inGenericContext > 0: result.flags.incl tfUnresolved
+    elif e.kind == nkSym and (e.typ.kind == tyStatic or e.typ.kind == tyTypeDesc) :
+      if e.typ.kind == tyStatic:
+        if e.sym.ast != nil:
+          return semArrayIndex(c, e.sym.ast)
+        if e.typ.lastSon.kind != tyGenericParam and not isOrdinalType(e.typ.lastSon):
+          let info = if n.safeLen > 1: n[1].info else: n.info
+          localError(c.config, info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
+        result = makeRangeWithStaticExpr(c, e)
+        if c.inGenericContext > 0: result.flags.incl tfUnresolved
+      else:
+        result = e.typ.skipTypes({tyTypeDesc})
+        result.flags.incl tfImplicitStatic
     elif e.kind in (nkCallKinds + {nkBracketExpr}) and hasUnresolvedArgs(c, e):
       if not isOrdinalType(e.typ.skipTypes({tyStatic, tyAlias, tyGenericInst, tySink})):
         localError(c.config, n[1].info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
@@ -371,12 +389,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
     elif e.kind == nkIdent:
       result = e.typ.skipTypes({tyTypeDesc})
     else:
-      let x = semConstExpr(c, e)
-      if x.kind in {nkIntLit..nkUInt64Lit}:
-        result = makeRangeType(c, 0, x.intVal-1, n.info,
-                             x.typ.skipTypes({tyTypeDesc}))
-      else:
-        result = x.typ.skipTypes({tyTypeDesc})
+      result = semArrayIndexConst(c, e, n.info)
         #localError(c.config, n[1].info, errConstExprExpected)
 
 proc semArray(c: PContext, n: PNode, prev: PType): PType =
@@ -1006,7 +1019,7 @@ proc findEnforcedStaticType(t: PType): PType =
   if t == nil: return nil
   if t.kind == tyStatic: return t
   if t.kind == tyAnd:
-    for s in t.sons:
+    for s in t:
       let t = findEnforcedStaticType(s)
       if t != nil: return t
 
@@ -1504,20 +1517,24 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   var t = s.typ.skipTypes({tyAlias})
   if t.kind == tyCompositeTypeClass and t.base.kind == tyGenericBody:
     t = t.base
-
   result = newOrPrevType(tyGenericInvocation, prev, c)
   addSonSkipIntLit(result, t, c.idgen)
 
-  template addToResult(typ) =
+  template addToResult(typ, skip) =
+    
     if typ.isNil:
       internalAssert c.config, false
       rawAddSon(result, typ)
-    else: addSonSkipIntLit(result, typ, c.idgen)
+    else:
+      if skip:
+        addSonSkipIntLit(result, typ, c.idgen)
+      else:
+        rawAddSon(result, makeRangeWithStaticExpr(c, typ.n))
 
   if t.kind == tyForward:
     for i in 1..<n.len:
       var elem = semGenericParamInInvocation(c, n[i])
-      addToResult(elem)
+      addToResult(elem, true)
     return
   elif t.kind != tyGenericBody:
     # we likely got code of the form TypeA[TypeB] where TypeA is
@@ -1537,7 +1554,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       return newOrPrevType(tyError, prev, c)
 
     var isConcrete = true
-
+    let rType = m.call[0].typ
+    let mIndex = if rType != nil: rType.len - 1 else: -1
     for i in 1..<m.call.len:
       var typ = m.call[i].typ
       # is this a 'typedesc' *parameter*? If so, use the typedesc type,
@@ -1545,11 +1563,14 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       if m.call[i].kind == nkSym and m.call[i].sym.kind == skParam and
           typ.kind == tyTypeDesc and containsGenericType(typ):
         isConcrete = false
-        addToResult(typ)
+        addToResult(typ, true)
       else:
         typ = typ.skipTypes({tyTypeDesc})
         if containsGenericType(typ): isConcrete = false
-        addToResult(typ)
+        var skip = true
+        if mIndex >= i - 1 and tfImplicitStatic in rType[i - 1].flags and isIntLit(typ):
+          skip = false
+        addToResult(typ, skip)
 
     if isConcrete:
       if s.ast == nil and s.typ.kind != tyCompositeTypeClass:
@@ -1644,11 +1665,10 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
     pragmas = n[1]
     inherited = n[2]
 
-  result = newOrPrevType(tyUserTypeClass, prev, c)
-  result.flags.incl tfCheckedForDestructor
   var owner = getCurrOwner(c)
   var candidateTypeSlot = newTypeWithSons(owner, tyAlias, @[c.errorType], c.idgen)
-  result.sons = @[candidateTypeSlot]
+  result = newOrPrevType(tyUserTypeClass, prev, c, sons =  @[candidateTypeSlot])
+  result.flags.incl tfCheckedForDestructor
   result.n = n
 
   if inherited.kind != nkEmpty:

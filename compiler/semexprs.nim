@@ -1422,7 +1422,7 @@ proc tryReadingTypeField(c: PContext, n: PNode, i: PIdent, ty: PType): PNode =
     while ty != nil:
       f = getSymFromList(ty.n, i)
       if f != nil: break
-      ty = ty.sons[0]         # enum inheritance
+      ty = ty[0]         # enum inheritance
     if f != nil:
       result = newSymNode(f)
       result.info = n.info
@@ -2361,8 +2361,7 @@ proc instantiateCreateFlowVarCall(c: PContext; t: PType;
   let sym = magicsys.getCompilerProc(c.graph, "nimCreateFlowVar")
   if sym == nil:
     localError(c.config, info, "system needs: nimCreateFlowVar")
-  var bindings: TIdTable = default(TIdTable)
-  initIdTable(bindings)
+  var bindings: TIdTable = initIdTable()
   bindings.idTablePut(sym.ast[genericParamsPos][0].typ, t)
   result = c.semGenerateInstance(c, sym, bindings, info)
   # since it's an instantiation, we unmark it as a compilerproc. Otherwise

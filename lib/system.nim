@@ -2289,7 +2289,7 @@ elif defined(nimdoc):
     ##    `quit(int(0x100000000))` is equal to `quit(127)` on Linux.
     ##
     ## .. danger:: In almost all cases, in particular in library code, prefer
-    ##   alternatives, e.g. `doAssert false` or raise a `Defect`.
+    ##   alternatives, e.g. `raiseAssert` or raise a `Defect`.
     ##   `quit` bypasses regular control flow in particular `defer`,
     ##   `try`, `catch`, `finally` and `destructors`, and exceptions that may have been
     ##   raised by an `addExitProc` proc, as well as cleanup code in other threads.

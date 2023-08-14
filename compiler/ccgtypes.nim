@@ -477,11 +477,11 @@ proc multiFormat*(frmt: var string, chars : static openArray[char], args: openAr
             if i >= frmt.len or frmt[i] notin {'0'..'9'}: break
           num = j
           if j > high(arg) + 1:
-            doAssert false, "invalid format string: " & frmt
+            raiseAssert "invalid format string: " & frmt
           else:
             res.add(arg[j-1])
         else:
-          doAssert false, "invalid format string: " & frmt
+          raiseAssert "invalid format string: " & frmt
       var start = i
       while i < frmt.len:
         if frmt[i] != c: inc(i)
@@ -847,7 +847,7 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
   # Make sure the index refers to one of the generic params of the type.
   # XXX: we should catch this earlier and report it as a semantic error.
   if idx >= typ.len:
-    doAssert false, "invalid apostrophe type parameter index"
+    raiseAssert "invalid apostrophe type parameter index"
 
   result = typ[idx]
   for i in 1..stars:
@@ -1149,14 +1149,19 @@ proc isReloadable(m: BModule; prc: PSym): bool =
 proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 
-proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride, isMemberVirtual: var bool; isCtor: bool) =
+proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride, isMemberVirtual: var bool; isCtor: bool, isFunctor=false) =
   var afterParams: string = ""
   if scanf(val, "$*($*)$s$*", name, params, afterParams):
+    if name.strip() == "operator" and params == "": #isFunctor?
+      parseVFunctionDecl(afterParams, name, params, retType, superCall, isFnConst, isOverride, isMemberVirtual, isCtor, true)
+      return
     isFnConst = afterParams.find("const") > -1
     isOverride = afterParams.find("override") > -1
     isMemberVirtual = name.find("virtual ") > -1
     if isMemberVirtual:
       name = name.replace("virtual ", "")
+    if isFunctor:
+      name = "operator ()"
     if isCtor:
       discard scanf(afterParams, ":$s$*", superCall)
     else:
@@ -1173,9 +1178,9 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
   var memberOp = "#." #only virtual
   var typ: PType
   if isCtor:
-    typ = prc.typ.sons[0]
+    typ = prc.typ[0]
   else:
-    typ = prc.typ.sons[1]
+    typ = prc.typ[1]
   if typ.kind == tyPtr:
     typ = typ[0]
     memberOp = "#->"

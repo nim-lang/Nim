@@ -199,7 +199,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       # only named tuples have a node, unnamed tuples don't
       if t.n.isNil:
         result = newNodeX(nkTupleConstr)
-        for subType in t.sons:
+        for subType in t:
           result.add mapTypeToAst(subType, info)
       else:
         result = newNodeX(nkTupleTy)

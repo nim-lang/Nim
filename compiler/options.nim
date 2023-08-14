@@ -663,7 +663,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
 template quitOrRaise*(conf: ConfigRef, msg = "") =
   # xxx in future work, consider whether to also intercept `msgQuit` calls
   if conf.isDefined("nimDebug"):
-    doAssert false, msg
+    raiseAssert msg
   else:
     quit(msg) # quits with QuitFailure
 

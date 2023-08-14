@@ -243,7 +243,7 @@ proc registerAdditionalOps*(c: PCtx) =
     case n
     of 1: setResult(a, round(getFloat(a, 0)))
     of 2: setResult(a, round(getFloat(a, 0), getInt(a, 1).int))
-    else: doAssert false, $n
+    else: raiseAssert $n
 
   proc `mod Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, `mod`(getFloat(a, 0), getFloat(a, 1)))

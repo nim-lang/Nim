@@ -145,19 +145,13 @@ const
   MaxLineLen = 80
   LineCommentColumn = 30
 
-proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags; config: ConfigRef) =
-  g.comStack = @[]
-  g.tokens = @[]
-  g.indent = 0
-  g.lineLen = 0
-  g.pos = 0
-  g.idx = 0
-  g.buf = ""
-  g.flags = renderFlags
-  g.pendingNL = -1
-  g.pendingWhitespace = -1
-  g.inside = {}
-  g.config = config
+proc initSrcGen(renderFlags: TRenderFlags; config: ConfigRef): TSrcGen =
+  result = TSrcGen(comStack: @[], tokens: @[], indent: 0,
+                   lineLen: 0, pos: 0, idx: 0, buf: "",
+                   flags: renderFlags, pendingNL: -1,
+                   pendingWhitespace: -1, inside: {},
+                   config: config
+                   )
 
 proc addTok(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
   g.tokens.add TRenderTok(kind: kind, length: int16(s.len), sym: sym)
@@ -630,14 +624,12 @@ type
 const
   emptyContext: TContext = (spacing: 0, flags: {})
 
-proc initContext(c: var TContext) =
-  c.spacing = 0
-  c.flags = {}
+proc initContext(): TContext =
+  result = (spacing: 0, flags: {})
 
 proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false)
 proc gsub(g: var TSrcGen, n: PNode, fromStmtList = false) =
-  var c: TContext = default(TContext)
-  initContext(c)
+  var c: TContext = initContext()
   gsub(g, n, c, fromStmtList = fromStmtList)
 
 proc hasCom(n: PNode): bool =
@@ -767,9 +759,8 @@ proc gcond(g: var TSrcGen, n: PNode) =
     put(g, tkParRi, ")")
 
 proc gif(g: var TSrcGen, n: PNode) =
-  var c: TContext = default(TContext)
+  var c: TContext = initContext()
   gcond(g, n[0][0])
-  initContext(c)
   putWithSpace(g, tkColon, ":")
   if longMode(g, n) or (lsub(g, n[0][1]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
@@ -780,20 +771,18 @@ proc gif(g: var TSrcGen, n: PNode) =
     gsub(g, n[i], c)
 
 proc gwhile(g: var TSrcGen, n: PNode) =
-  var c: TContext = default(TContext)
+  var c: TContext = initContext()
   putWithSpace(g, tkWhile, "while")
   gcond(g, n[0])
   putWithSpace(g, tkColon, ":")
-  initContext(c)
   if longMode(g, n) or (lsub(g, n[1]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
   gstmts(g, n[1], c)
 
 proc gpattern(g: var TSrcGen, n: PNode) =
-  var c: TContext = default(TContext)
+  var c: TContext = initContext()
   put(g, tkCurlyLe, "{")
-  initContext(c)
   if longMode(g, n) or (lsub(g, n[0]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
@@ -801,20 +790,18 @@ proc gpattern(g: var TSrcGen, n: PNode) =
   put(g, tkCurlyRi, "}")
 
 proc gpragmaBlock(g: var TSrcGen, n: PNode) =
-  var c: TContext = default(TContext)
+  var c: TContext = initContext()
   gsub(g, n[0])
   putWithSpace(g, tkColon, ":")
-  initContext(c)
   if longMode(g, n) or (lsub(g, n[1]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
   gstmts(g, n[1], c)
 
 proc gtry(g: var TSrcGen, n: PNode) =
-  var c: TContext = default(TContext)
+  var c: TContext = initContext()
   put(g, tkTry, "try")
   putWithSpace(g, tkColon, ":")
-  initContext(c)
   if longMode(g, n) or (lsub(g, n[0]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
@@ -822,9 +809,8 @@ proc gtry(g: var TSrcGen, n: PNode) =
   gsons(g, n, c, 1)
 
 proc gfor(g: var TSrcGen, n: PNode) =
-  var c: TContext = default(TContext)
+  var c: TContext = initContext()
   putWithSpace(g, tkFor, "for")
-  initContext(c)
   if longMode(g, n) or
       (lsub(g, n[^1]) + lsub(g, n[^2]) + 6 + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
@@ -837,8 +823,7 @@ proc gfor(g: var TSrcGen, n: PNode) =
   gstmts(g, n[^1], c)
 
 proc gcase(g: var TSrcGen, n: PNode) =
-  var c: TContext = default(TContext)
-  initContext(c)
+  var c: TContext = initContext()
   if n.len == 0: return
   var last = if n[^1].kind == nkElse: -2 else: -1
   if longMode(g, n, 0, last): incl(c.flags, rfLongMode)
@@ -848,7 +833,7 @@ proc gcase(g: var TSrcGen, n: PNode) =
   optNL(g)
   gsons(g, n, c, 1, last)
   if last == - 2:
-    initContext(c)
+    c = initContext()
     if longMode(g, n[^1]): incl(c.flags, rfLongMode)
     gsub(g, n[^1], c)
 
@@ -858,7 +843,7 @@ proc genSymSuffix(result: var string, s: PSym) {.inline.} =
     result.addInt s.id
 
 proc gproc(g: var TSrcGen, n: PNode) =
-  var c: TContext = default(TContext)
+  var c: TContext = initContext()
   if n[namePos].kind == nkSym:
     let s = n[namePos].sym
     var ret = renderDefinitionName(s)
@@ -885,7 +870,7 @@ proc gproc(g: var TSrcGen, n: PNode) =
       indentNL(g)
       gcoms(g)
       dedent(g)
-      initContext(c)
+      c = initContext()
       gstmts(g, n[bodyPos], c)
       putNL(g)
     else:
@@ -894,8 +879,7 @@ proc gproc(g: var TSrcGen, n: PNode) =
       dedent(g)
 
 proc gTypeClassTy(g: var TSrcGen, n: PNode) =
-  var c: TContext = default(TContext)
-  initContext(c)
+  var c: TContext = initContext()
   putWithSpace(g, tkConcept, "concept")
   gsons(g, n[0], c) # arglist
   gsub(g, n[1]) # pragmas
@@ -914,8 +898,7 @@ proc gblock(g: var TSrcGen, n: PNode) =
   if n.len == 0:
     return
 
-  var c: TContext = default(TContext)
-  initContext(c)
+  var c: TContext = initContext()
 
   if n[0].kind != nkEmpty:
     putWithSpace(g, tkBlock, "block")
@@ -935,10 +918,9 @@ proc gblock(g: var TSrcGen, n: PNode) =
   gstmts(g, n[1], c)
 
 proc gstaticStmt(g: var TSrcGen, n: PNode) =
-  var c: TContext = default(TContext)
+  var c: TContext = initContext()
   putWithSpace(g, tkStatic, "static")
   putWithSpace(g, tkColon, ":")
-  initContext(c)
   if longMode(g, n) or (lsub(g, n[0]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
@@ -1631,7 +1613,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkTypeSection:
     gsection(g, n, emptyContext, tkType, "type")
   of nkConstSection:
-    initContext(a)
+    a = initContext()
     incl(a.flags, rfInConstExpr)
     gsection(g, n, a, tkConst, "const")
   of nkVarSection, nkLetSection, nkUsingStmt:
@@ -1799,13 +1781,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     gsub(g, n, 0)
     put(g, tkParRi, ")")
   of nkGotoState:
-    var c: TContext = default(TContext)
-    initContext c
+    var c: TContext = initContext()
     putWithSpace g, tkSymbol, "goto"
     gsons(g, n, c)
   of nkState:
-    var c: TContext = default(TContext)
-    initContext c
+    var c: TContext = initContext()
     putWithSpace g, tkSymbol, "state"
     gsub(g, n[0], c)
     putWithSpace(g, tkColon, ":")
@@ -1829,8 +1809,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
 
 proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
   if n == nil: return "<nil tree>"
-  var g: TSrcGen = default(TSrcGen)
-  initSrcGen(g, renderFlags, newPartialConfigRef())
+  var g: TSrcGen = initSrcGen(renderFlags, newPartialConfigRef())
   # do not indent the initial statement list so that
   # writeFile("file.nim", repr n)
   # produces working Nim code:
@@ -1848,8 +1827,7 @@ proc renderModule*(n: PNode, outfile: string,
                    conf: ConfigRef = nil) =
   var
     f: File = default(File)
-    g: TSrcGen
-  initSrcGen(g, renderFlags, conf)
+    g: TSrcGen = initSrcGen(renderFlags, conf)
   g.fid = fid
   for i in 0..<n.len:
     gsub(g, n[i])
@@ -1865,9 +1843,9 @@ proc renderModule*(n: PNode, outfile: string,
   else:
     rawMessage(g.config, errGenerated, "cannot open file: " & outfile)
 
-proc initTokRender*(r: var TSrcGen, n: PNode, renderFlags: TRenderFlags = {}) =
-  initSrcGen(r, renderFlags, newPartialConfigRef())
-  gsub(r, n)
+proc initTokRender*(n: PNode, renderFlags: TRenderFlags = {}): TSrcGen =
+  result = initSrcGen(renderFlags, newPartialConfigRef())
+  gsub(result, n)
 
 proc getNextTok*(r: var TSrcGen, kind: var TokType, literal: var string) =
   if r.idx < r.tokens.len:
