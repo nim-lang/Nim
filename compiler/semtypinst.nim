@@ -204,7 +204,7 @@ proc hasValuelessStatics(n: PNode): bool =
         a
     proc doThing(_: MyThing)
   ]#
-  if n.safeLen == 0:
+  if n.safeLen == 0 and n.kind != nkEmpty: # Some empty nodes can get in here
     n.typ == nil or n.typ.kind == tyStatic
   else:
     for x in n:
