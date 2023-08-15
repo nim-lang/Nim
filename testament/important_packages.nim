@@ -46,7 +46,7 @@ pkg "BipBuffer"
 pkg "blscurve", allowFailure = true
 pkg "bncurve"
 pkg "brainfuck", "nim c -d:release -r tests/compile.nim"
-pkg "bump", "nim c --gc:arc --path:. -r tests/tbump.nim", "https://github.com/disruptek/bump", allowFailure = true
+pkg "bump", "nim c --mm:arc --path:. -r tests/tbump.nim", "https://github.com/disruptek/bump", allowFailure = true
 pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "cello", url = "https://github.com/nim-lang/cello", useHead = true
@@ -55,7 +55,7 @@ pkg "chroma"
 pkg "chronicles", "nim c -o:chr -r chronicles.nim"
 pkg "chronos", "nim c -r -d:release tests/testall"
 pkg "cligen", "nim c --path:. -r cligen.nim"
-pkg "combparser", "nimble test --gc:orc"
+pkg "combparser", "nimble test --mm:orc"
 pkg "compactdict"
 pkg "comprehension", "nimble test", "https://github.com/alehander92/comprehension"
 pkg "cowstrings"
@@ -75,7 +75,7 @@ pkg "glob"
 pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"
 pkg "gittyup", "nimble test", "https://github.com/disruptek/gittyup", allowFailure = true
 pkg "gnuplot", "nim c gnuplot.nim"
-# pkg "gram", "nim c -r --gc:arc --define:danger tests/test.nim", "https://github.com/disruptek/gram"
+# pkg "gram", "nim c -r --mm:arc --define:danger tests/test.nim", "https://github.com/disruptek/gram"
   # pending https://github.com/nim-lang/Nim/issues/16509
 pkg "hts", "nim c -o:htss src/hts.nim"
 pkg "httpauth"
@@ -91,7 +91,7 @@ pkg "lockfreequeues"
 pkg "macroutils"
 pkg "manu"
 pkg "markdown"
-pkg "measuremancer", "nimble install -y unchained@#HEAD; nimble -y test"
+pkg "measuremancer", "nimble testDeps; nimble -y test"
 # when unchained is version 0.3.7 or higher, use `nimble testDeps;`
 pkg "memo"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
@@ -121,7 +121,7 @@ pkg "nimsl"
 pkg "nimsvg"
 pkg "nimterop", "nimble minitest", url = "https://github.com/nim-lang/nimterop"
 pkg "nimwc", "nim c nimwc.nim", allowFailure = true
-pkg "nimx", "nim c --threads:on test/main.nim", allowFailure = true
+pkg "nimx", "nim c test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
 pkg "norm", "testament r tests/common/tmodel.nim"
 pkg "npeg", "nimble testarc"
@@ -145,7 +145,7 @@ pkg "RollingHash", "nim c -r tests/test_cyclichash.nim"
 pkg "rosencrantz", "nim c -o:rsncntz -r rosencrantz.nim"
 pkg "sdl1", "nim c -r src/sdl.nim"
 pkg "sdl2_nim", "nim c -r sdl2/sdl.nim"
-pkg "sigv4", "nim c --gc:arc -r sigv4.nim", "https://github.com/disruptek/sigv4"
+pkg "sigv4", "nim c --mm:arc -r sigv4.nim", "https://github.com/disruptek/sigv4"
 pkg "sim"
 pkg "smtp", "nimble compileExample"
 pkg "snip", "nimble test", "https://github.com/genotrance/snip"
