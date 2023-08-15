@@ -13,7 +13,7 @@
 proc cardSetImpl(s: ptr UncheckedArray[uint8], len: int): int {.inline.} =
   var i = 0
   result = 0
-  var num = uint64(0)
+  var num = 0'u64
   when defined(x86) or defined(amd64):
     while i < len - 8:
       copyMem(addr num, addr s[i], 8)
