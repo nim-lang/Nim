@@ -392,8 +392,13 @@ type
 
   SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
               pure, final.} = object ## struct sockaddr
+    when defined(macosx):
+      sa_len*: cuint
     sa_family*: TSa_Family         ## Address family.
-    sa_data*: array[0..255, char] ## Socket address (variable-length data).
+    when defined(macosx):
+      sa_data*: array[14, char]
+    else:
+      sa_data*: array[0..255, char] ## Socket address (variable-length data).
 
   Sockaddr_un* {.importc: "struct sockaddr_un", header: "<sys/un.h>",
               pure, final.} = object ## struct sockaddr_un
@@ -519,8 +524,12 @@ type
     ai_socktype*: cint      ## Socket type.
     ai_protocol*: cint      ## Protocol of socket.
     ai_addrlen*: SockLen   ## Length of socket address.
-    ai_addr*: ptr SockAddr ## Socket address of socket.
-    ai_canonname*: cstring  ## Canonical name of service location.
+    when defined(macosx):
+      ai_canonname*: cstring  ## Canonical name of service location.
+      ai_addr*: ptr SockAddr ## Socket address of socket.
+    else:
+      ai_addr*: ptr SockAddr
+      ai_canonname*: cstring
     ai_next*: ptr AddrInfo ## Pointer to next in list.
 
   TPollfd* {.importc: "struct pollfd", pure, final,
