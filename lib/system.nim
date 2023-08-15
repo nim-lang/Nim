@@ -2408,9 +2408,9 @@ when defined(nimV2):
 proc repr*[T, U](x: HSlice[T, U]): string =
   ## Generic `repr` operator for slices that is lifted from the components
   ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
-  ##  $(1 .. 5) == "1 .. 5"
+  ##   ```Nim
+  ##   $(1 .. 5) == "1 .. 5"
+  ##   ```
   result = repr(x.a)
   result.add(" .. ")
   result.add(repr(x.b))
