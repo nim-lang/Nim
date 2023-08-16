@@ -185,7 +185,9 @@ proc isCursor(n: PNode): bool =
 template isUnpackedTuple(n: PNode): bool =
   ## we move out all elements of unpacked tuples,
   ## hence unpacked tuples themselves don't need to be destroyed
-  (n.kind == nkSym and n.sym.kind == skTemp and n.sym.typ.kind == tyTuple)
+  ## except it's already a cursor
+  (n.kind == nkSym and n.sym.kind == skTemp and
+   n.sym.typ.kind == tyTuple and sfCursor notin n.sym.flags)
 
 proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string; inferredFromCopy = false) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
