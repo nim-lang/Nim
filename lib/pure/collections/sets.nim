@@ -25,7 +25,9 @@
 ##   `difference <#difference,HashSet[A],HashSet[A]>`_, and
 ##   `symmetric difference <#symmetricDifference,HashSet[A],HashSet[A]>`_
 ##
-## .. code-block::
+## **Examples:**
+##
+##   ```Nim
 ##   echo toHashSet([9, 5, 1])     # {9, 1, 5}
 ##   echo toOrderedSet([9, 5, 1])  # {9, 5, 1}
 ##
@@ -37,7 +39,7 @@
 ##   echo s1 - s2    # {1, 9}
 ##   echo s1 * s2    # {5}
 ##   echo s1 -+- s2  # {9, 1, 3, 7}
-##
+##   ```
 ##
 ## Note: The data types declared here have *value semantics*: This means
 ## that `=` performs a copy of the set.
@@ -249,7 +251,7 @@ iterator items*[A](s: HashSet[A]): A =
   ## If you need a sequence with the elements you can use `sequtils.toSeq
   ## template <sequtils.html#toSeq.t,untyped>`_.
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   type
   ##     pair = tuple[a, b: int]
   ##   var
@@ -262,6 +264,7 @@ iterator items*[A](s: HashSet[A]): A =
   ##   assert a.len == 2
   ##   echo b
   ##   # --> {(a: 1, b: 3), (a: 0, b: 4)}
+  ##   ```
   let length = s.len
   for h in 0 .. high(s.data):
     if isFilled(s.data[h].hcode):
@@ -586,12 +589,12 @@ proc `$`*[A](s: HashSet[A]): string =
   ## any moment and values are not escaped.
   ##
   ## **Examples:**
-  ##
-  ## .. code-block::
+  ##   ```Nim
   ##   echo toHashSet([2, 4, 5])
   ##   # --> {2, 4, 5}
   ##   echo toHashSet(["no", "esc'aping", "is \" provided"])
   ##   # --> {no, esc'aping, is " provided}
+  ##   ```
   dollarImpl()
 
 
@@ -874,12 +877,12 @@ proc `$`*[A](s: OrderedSet[A]): string =
   ## any moment and values are not escaped.
   ##
   ## **Examples:**
-  ##
-  ## .. code-block::
+  ##   ```Nim
   ##   echo toOrderedSet([2, 4, 5])
   ##   # --> {2, 4, 5}
   ##   echo toOrderedSet(["no", "esc'aping", "is \" provided"])
   ##   # --> {no, esc'aping, is " provided}
+  ##   ```
   dollarImpl()
 
 
@@ -890,7 +893,7 @@ iterator items*[A](s: OrderedSet[A]): A =
   ## If you need a sequence with the elements you can use `sequtils.toSeq
   ## template <sequtils.html#toSeq.t,untyped>`_.
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var a = initOrderedSet[int]()
   ##   for value in [9, 2, 1, 5, 1, 8, 4, 2]:
   ##     a.incl(value)
@@ -902,6 +905,7 @@ iterator items*[A](s: OrderedSet[A]): A =
   ##   # --> Got 5
   ##   # --> Got 8
   ##   # --> Got 4
+  ##   ```
   let length = s.len
   forAllOrderedPairs:
     yield s.data[h].key

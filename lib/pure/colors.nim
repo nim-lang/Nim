@@ -18,13 +18,14 @@ type
 proc `==`*(a, b: Color): bool {.borrow.}
   ## Compares two colors.
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var
   ##     a = Color(0xff_00_ff)
   ##     b = colFuchsia
   ##     c = Color(0x00_ff_cc)
   ##   assert a == b
   ##   assert not (a == c)
+  ##   ```
 
 template extract(a: Color, r, g, b: untyped) =
   var r = a.int shr 16 and 0xff

@@ -411,9 +411,9 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## <osproc.html#execProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_.
   ##
   ## **Examples:**
-  ##
-  ## .. code-block::
+  ##   ```Nim
   ##   discard execShellCmd("ls -la")
+  ##   ```
   result = exitStatusLikeShell(c_system(command))
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
@@ -482,18 +482,18 @@ proc inclFilePermissions*(filename: string,
                           permissions: set[FilePermission]) {.
   rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect], noWeirdTarget.} =
   ## A convenience proc for:
-  ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   setFilePermissions(filename, getFilePermissions(filename)+permissions)
+  ##   ```
   setFilePermissions(filename, getFilePermissions(filename)+permissions)
 
 proc exclFilePermissions*(filename: string,
                           permissions: set[FilePermission]) {.
   rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect], noWeirdTarget.} =
   ## A convenience proc for:
-  ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   setFilePermissions(filename, getFilePermissions(filename)-permissions)
+  ##   ```
   setFilePermissions(filename, getFilePermissions(filename)-permissions)
 
 when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netbsd)):
