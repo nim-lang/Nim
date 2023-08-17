@@ -157,7 +157,7 @@ proc newSeq[T](s: var seq[T], len: Natural) =
 
 
 template capacityImpl(sek: NimSeqV2): int =
-  if sek.p != nil: (xu.p.cap and not strlitFlag) else: 0
+  if sek.p != nil: (sek.p.cap and not strlitFlag) else: 0
 
 func capacity*[T](self: seq[T]): int {.inline.} =
   ## Returns the current capacity of the seq.
@@ -169,7 +169,7 @@ func capacity*[T](self: seq[T]): int {.inline.} =
 
   {.cast(noSideEffect).}:
     let sek = unsafeAddr self
-    result = capacityImpl(cast[ptr NimSeqV2](sek)[])
+    result = capacityImpl(cast[ptr NimSeqV2[T]](sek)[])
 
 
 {.pop.}  # See https://github.com/nim-lang/Nim/issues/21401
