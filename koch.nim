@@ -13,7 +13,7 @@ const
   # examples of possible values for repos: Head, ea82b54
   NimbleStableCommit = "168416290e49023894fc26106799d6f1fc964a2d" # master
   AtlasStableCommit = "7b780811a168f3f32bff4822369dda46a7f87f9a"
-  ChecksumsStableCommit = "b4c73320253f78e3a265aec6d9e8feb83f97c77b"
+  ChecksumsStableCommit = "025bcca3915a1b9f19878cea12ad68f9884648fc"
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
