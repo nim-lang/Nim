@@ -319,7 +319,7 @@ proc upperBound*[T](a: openArray[T], key: T): int = upperBound(a, key, cmp[T])
 template `<-`(a, b) =
   when defined(gcDestructors):
     a = move b
-  elif defined(js) or defined(nimscript):
+  elif defined(js) or defined(nimscript) or defined(booting):
     shallowCopy(a, b)
   else:
     copyMem(addr(a), addr(b), sizeof(T))
@@ -334,7 +334,7 @@ proc mergeAlt[T](a, b: var openArray[T], lo, m, hi: int,
   var j = lo
   # copy a[j..m] into b:
   assert j <= m
-  when defined(js) or defined(nimscript):
+  when defined(js) or defined(nimscript) or defined(booting):
     var bb = 0
     while j <= m:
       b[bb] <- a[j]
@@ -355,7 +355,7 @@ proc mergeAlt[T](a, b: var openArray[T], lo, m, hi: int,
       inc(j)
     inc(k)
   # copy rest of b:
-  when defined(js) or defined(nimscript):
+  when defined(js) or defined(nimscript) or defined(booting):
     while k < j:
       a[k] <- b[i]
       inc(k)
