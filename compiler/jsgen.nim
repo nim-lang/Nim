@@ -32,7 +32,7 @@ import
   ast, trees, magicsys, options,
   nversion, msgs, idents, types,
   ropes, ccgutils, wordrecg, renderer,
-  cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
+  cgmeth, lowerings, sighashes, modulegraphs, lineinfos,
   transf, injectdestructors, sourcemap, astmsgs, backendpragmas
 
 import pipelineutils
@@ -43,6 +43,7 @@ import strutils except addf
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]
 
+import std/formatfloat
 
 type
   TJSGen = object of PPassContext
@@ -2900,7 +2901,11 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       r.res = rope"Infinity"
     of fcNegInf:
       r.res = rope"-Infinity"
-    else: r.res = rope(f.toStrMaxPrecision)
+    else:
+      if n.typ.skipTypes(abstractVarRange).kind == tyFloat32:
+        r.res.addFloatRoundtrip(f.float32)
+      else:
+        r.res.addFloatRoundtrip(f)
     r.kind = resExpr
   of nkCallKinds:
     if isEmptyType(n.typ):
