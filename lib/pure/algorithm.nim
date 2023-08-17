@@ -215,8 +215,6 @@ proc binarySearch*[T](a: openArray[T], key: T): int =
     assert binarySearch([0, 1, 2, 3, 4], 2) == 2
   binarySearch(a, key, cmp[T])
 
-const
-  onlySafeCode = true
 
 proc lowerBound*[T, K](a: openArray[T], key: K,
                        cmp: proc(x: T, k: K): int {.closure.}): int {.effectsOf: cmp.} =
@@ -321,7 +319,7 @@ proc upperBound*[T](a: openArray[T], key: T): int = upperBound(a, key, cmp[T])
 template `<-`(a, b) =
   when defined(gcDestructors):
     a = move b
-  elif onlySafeCode:
+  elif defined(js) or defined(nimscript):
     shallowCopy(a, b)
   else:
     copyMem(addr(a), addr(b), sizeof(T))
@@ -336,7 +334,7 @@ proc mergeAlt[T](a, b: var openArray[T], lo, m, hi: int,
   var j = lo
   # copy a[j..m] into b:
   assert j <= m
-  when onlySafeCode:
+  when defined(js) or defined(nimscript):
     var bb = 0
     while j <= m:
       b[bb] <- a[j]
@@ -357,7 +355,7 @@ proc mergeAlt[T](a, b: var openArray[T], lo, m, hi: int,
       inc(j)
     inc(k)
   # copy rest of b:
-  when onlySafeCode:
+  when defined(js) or defined(nimscript):
     while k < j:
       a[k] <- b[i]
       inc(k)
