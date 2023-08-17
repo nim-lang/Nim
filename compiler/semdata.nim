@@ -395,8 +395,8 @@ proc addToLib*(lib: PLib, sym: PSym) =
   #  LocalError(sym.info, errInvalidPragma)
   sym.annex = lib
 
-proc newTypeS*(kind: TTypeKind, c: PContext): PType =
-  result = newType(kind, nextTypeId(c.idgen), getCurrOwner(c))
+proc newTypeS*(kind: TTypeKind, c: PContext, sons: seq[PType] = @[]): PType =
+  result = newType(kind, nextTypeId(c.idgen), getCurrOwner(c), sons = sons)
 
 proc makePtrType*(owner: PSym, baseType: PType; idgen: IdGenerator): PType =
   result = newType(tyPtr, nextTypeId(idgen), owner)
@@ -446,13 +446,15 @@ proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
 
 proc newTypeWithSons*(owner: PSym, kind: TTypeKind, sons: seq[PType];
                       idgen: IdGenerator): PType =
-  result = newType(kind, nextTypeId(idgen), owner)
-  result.sons = sons
+  result = newType(kind, nextTypeId(idgen), owner, sons = sons)
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,
                       sons: seq[PType]): PType =
-  result = newType(kind, nextTypeId(c.idgen), getCurrOwner(c))
-  result.sons = sons
+  result = newType(kind, nextTypeId(c.idgen), getCurrOwner(c), sons = sons)
+
+proc newTypeWithSons*(c: PContext, kind: TTypeKind,
+                      parent: PType): PType =
+  result = newType(kind, nextTypeId(c.idgen), getCurrOwner(c), parent = parent)
 
 proc makeStaticExpr*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStaticExpr, n.info)
@@ -461,21 +463,21 @@ proc makeStaticExpr*(c: PContext, n: PNode): PNode =
                else: newTypeWithSons(c, tyStatic, @[n.typ])
 
 proc makeAndType*(c: PContext, t1, t2: PType): PType =
-  result = newTypeS(tyAnd, c)
-  result.sons = @[t1, t2]
+  result = newTypeS(tyAnd, c, sons = @[t1, t2])
   propagateToOwner(result, t1)
   propagateToOwner(result, t2)
   result.flags.incl((t1.flags + t2.flags) * {tfHasStatic})
   result.flags.incl tfHasMeta
 
 proc makeOrType*(c: PContext, t1, t2: PType): PType =
-  result = newTypeS(tyOr, c)
+  
   if t1.kind != tyOr and t2.kind != tyOr:
-    result.sons = @[t1, t2]
+    result = newTypeS(tyOr, c, sons = @[t1, t2])
   else:
+    result = newTypeS(tyOr, c)
     template addOr(t1) =
       if t1.kind == tyOr:
-        for x in t1.sons: result.rawAddSon x
+        for x in t1: result.rawAddSon x
       else:
         result.rawAddSon t1
     addOr(t1)
@@ -486,8 +488,7 @@ proc makeOrType*(c: PContext, t1, t2: PType): PType =
   result.flags.incl tfHasMeta
 
 proc makeNotType*(c: PContext, t1: PType): PType =
-  result = newTypeS(tyNot, c)
-  result.sons = @[t1]
+  result = newTypeS(tyNot, c, sons = @[t1])
   propagateToOwner(result, t1)
   result.flags.incl(t1.flags * {tfHasStatic})
   result.flags.incl tfHasMeta
@@ -498,8 +499,7 @@ proc nMinusOne(c: PContext; n: PNode): PNode =
 # Remember to fix the procs below this one when you make changes!
 proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
   let intType = getSysType(c.graph, n.info, tyInt)
-  result = newTypeS(tyRange, c)
-  result.sons = @[intType]
+  result = newTypeS(tyRange, c, sons = @[intType])
   if n.typ != nil and n.typ.n == nil:
     result.flags.incl tfUnresolved
   result.n = newTreeI(nkRange, n.info, newIntTypeNode(0, intType),

@@ -2289,7 +2289,7 @@ elif defined(nimdoc):
     ##    `quit(int(0x100000000))` is equal to `quit(127)` on Linux.
     ##
     ## .. danger:: In almost all cases, in particular in library code, prefer
-    ##   alternatives, e.g. `doAssert false` or raise a `Defect`.
+    ##   alternatives, e.g. `raiseAssert` or raise a `Defect`.
     ##   `quit` bypasses regular control flow in particular `defer`,
     ##   `try`, `catch`, `finally` and `destructors`, and exceptions that may have been
     ##   raised by an `addExitProc` proc, as well as cleanup code in other threads.
@@ -2408,9 +2408,9 @@ when defined(nimV2):
 proc repr*[T, U](x: HSlice[T, U]): string =
   ## Generic `repr` operator for slices that is lifted from the components
   ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
-  ##  $(1 .. 5) == "1 .. 5"
+  ##   ```Nim
+  ##   $(1 .. 5) == "1 .. 5"
+  ##   ```
   result = repr(x.a)
   result.add(" .. ")
   result.add(repr(x.b))

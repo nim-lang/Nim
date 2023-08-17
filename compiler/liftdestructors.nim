@@ -302,7 +302,7 @@ proc newHookCall(c: var TLiftCtx; op: PSym; x, y: PNode): PNode =
   result.add newSymNode(op)
   if sfNeverRaises notin op.flags:
     c.canRaise = true
-  if op.typ.sons[1].kind == tyVar:
+  if op.typ[1].kind == tyVar:
     result.add genAddr(c, x)
   else:
     result.add x

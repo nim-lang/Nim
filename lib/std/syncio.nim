@@ -38,8 +38,8 @@ type
                          ## at the end. If the file does not exist, it
                          ## will be created.
 
-  FileHandle* = cint ## type that represents an OS file handle; this is
-                      ## useful for low-level file access
+  FileHandle* = cint ## The type that represents an OS file handle; this is
+                      ## useful for low-level file access.
 
   FileSeekPos* = enum ## Position relative to which seek should happen.
                       # The values are ordered so that they match with stdio
