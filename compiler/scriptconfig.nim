@@ -240,7 +240,7 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
     of gcAtomicArc:
       defineSymbol(conf.symbols, "gcatomicarc")
     else:
-      doAssert false, "unreachable"
+      raiseAssert "unreachable"
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetSystemArtifacts(graph)

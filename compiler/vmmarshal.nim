@@ -21,6 +21,7 @@ proc ptrToInt(x: PNode): int {.inline.} =
 proc getField(n: PNode; position: int): PSym =
   case n.kind
   of nkRecList:
+    result = nil
     for i in 0..<n.len:
       result = getField(n[i], position)
       if result != nil: return
@@ -35,7 +36,8 @@ proc getField(n: PNode; position: int): PSym =
       else: discard
   of nkSym:
     if n.sym.position == position: result = n.sym
-  else: discard
+    else: result = nil
+  else: result = nil
 
 proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet; conf: ConfigRef)
 
@@ -143,7 +145,9 @@ proc loadAny(p: var JsonParser, t: PType,
              conf: ConfigRef;
              idgen: IdGenerator): PNode =
   case t.kind
-  of tyNone: assert false
+  of tyNone:
+    result = nil
+    assert false
   of tyBool:
     case p.kind
     of jsonFalse: result = newIntNode(nkIntLit, 0)
@@ -153,6 +157,7 @@ proc loadAny(p: var JsonParser, t: PType,
   of tyChar:
     if p.kind == jsonString:
       var x = p.str
+      result = nil
       if x.len == 1:
         result = newIntNode(nkIntLit, ord(x[0]))
         next(p)
@@ -161,8 +166,11 @@ proc loadAny(p: var JsonParser, t: PType,
       result = newIntNode(nkIntLit, getInt(p))
       next(p)
       return
+    else:
+      result = nil
     raiseParseErr(p, "string of length 1 expected for a char")
   of tyEnum:
+    result = nil
     if p.kind == jsonString:
       for e in items(t.n):
         if e.sym.name.s == p.str:
@@ -191,6 +199,7 @@ proc loadAny(p: var JsonParser, t: PType,
       if p.kind == jsonArrayEnd: next(p)
       else: raiseParseErr(p, "")
     else:
+      result = nil
       raiseParseErr(p, "'[' expected for a seq")
   of tyTuple:
     if p.kind != jsonObjectStart: raiseParseErr(p, "'{' expected for an object")
@@ -248,6 +257,7 @@ proc loadAny(p: var JsonParser, t: PType,
         raiseParseErr(p, "cannot load object with address " & $p.getInt)
       next(p)
     of jsonArrayStart:
+      result = nil
       next(p)
       if p.kind == jsonInt:
         let idx = p.getInt
@@ -257,7 +267,9 @@ proc loadAny(p: var JsonParser, t: PType,
       else: raiseParseErr(p, "index for ref type expected")
       if p.kind == jsonArrayEnd: next(p)
       else: raiseParseErr(p, "']' end of ref-address pair expected")
-    else: raiseParseErr(p, "int for pointer type expected")
+    else:
+      result = nil
+      raiseParseErr(p, "int for pointer type expected")
   of tyString, tyCstring:
     case p.kind
     of jsonNull:
@@ -266,22 +278,29 @@ proc loadAny(p: var JsonParser, t: PType,
     of jsonString:
       result = newStrNode(nkStrLit, p.str)
       next(p)
-    else: raiseParseErr(p, "string expected")
+    else:
+      result = nil
+      raiseParseErr(p, "string expected")
   of tyInt..tyInt64, tyUInt..tyUInt64:
     if p.kind == jsonInt:
       result = newIntNode(nkIntLit, getInt(p))
       next(p)
       return
+    else:
+      result = nil
     raiseParseErr(p, "int expected")
   of tyFloat..tyFloat128:
     if p.kind == jsonFloat:
       result = newFloatNode(nkFloatLit, getFloat(p))
       next(p)
       return
+    else:
+      result = nil
     raiseParseErr(p, "float expected")
   of tyRange, tyGenericInst, tyAlias, tySink:
     result = loadAny(p, t.lastSon, tab, cache, conf, idgen)
   else:
+    result = nil
     internalError conf, "cannot marshal at compile-time " & t.typeToString
 
 proc loadAny*(s: string; t: PType; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator): PNode =

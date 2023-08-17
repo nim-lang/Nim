@@ -142,7 +142,7 @@ type
                  isFrontend: bool]
 
 proc resetForBackend*(g: ModuleGraph) =
-  initStrTable(g.compilerprocs)
+  g.compilerprocs = initStrTable()
   g.typeInstCache.clear()
   g.procInstCache.clear()
   for a in mitems(g.attachedOps):
@@ -196,8 +196,8 @@ template semtabAll*(g: ModuleGraph, m: PSym): TStrTable =
   g.ifaces[m.position].interfHidden
 
 proc initStrTables*(g: ModuleGraph, m: PSym) =
-  initStrTable(semtab(g, m))
-  initStrTable(semtabAll(g, m))
+  semtab(g, m) = initStrTable()
+  semtabAll(g, m) = initStrTable()
 
 proc strTableAdds*(g: ModuleGraph, m: PSym, s: PSym) =
   strTableAdd(semtab(g, m), s)
@@ -368,6 +368,7 @@ proc copyTypeProps*(g: ModuleGraph; module: int; dest, src: PType) =
       setAttachedOp(g, module, dest, k, op)
 
 proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
+  result = nil
   if g.config.symbolFiles == disabledSf: return nil
 
   # slow, linear search, but the results are cached:
@@ -458,7 +459,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   # A module ID of -1 means that the symbol is not attached to a module at all,
   # but to the module graph:
   result.idgen = IdGenerator(module: -1'i32, symId: 0'i32, typeId: 0'i32)
-  initStrTable(result.packageSyms)
+  result.packageSyms = initStrTable()
   result.deps = initIntSet()
   result.importDeps = initTable[FileIndex, seq[FileIndex]]()
   result.ifaces = @[]
@@ -468,9 +469,9 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.suggestSymbols = initTable[FileIndex, seq[SymInfoPair]]()
   result.suggestErrors = initTable[FileIndex, seq[Suggest]]()
   result.methods = @[]
-  initStrTable(result.compilerprocs)
-  initStrTable(result.exposed)
-  initStrTable(result.packageTypes)
+  result.compilerprocs = initStrTable()
+  result.exposed = initStrTable()
+  result.packageTypes = initStrTable()
   result.emptyNode = newNode(nkEmpty)
   result.cacheSeqs = initTable[string, PNode]()
   result.cacheCounters = initTable[string, BiggestInt]()
@@ -487,7 +488,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   initModuleGraphFields(result)
 
 proc resetAllModules*(g: ModuleGraph) =
-  initStrTable(g.packageSyms)
+  g.packageSyms = initStrTable()
   g.deps = initIntSet()
   g.ifaces = @[]
   g.importStack = @[]
@@ -495,11 +496,12 @@ proc resetAllModules*(g: ModuleGraph) =
   g.usageSym = nil
   g.owners = @[]
   g.methods = @[]
-  initStrTable(g.compilerprocs)
-  initStrTable(g.exposed)
+  g.compilerprocs = initStrTable()
+  g.exposed = initStrTable()
   initModuleGraphFields(g)
 
 proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
+  result = nil
   if fileIdx.int32 >= 0:
     if isCachedModule(g, fileIdx.int32):
       result = g.packed[fileIdx.int32].module
@@ -605,6 +607,7 @@ proc markClientsDirty*(g: ModuleGraph; fileIdx: FileIndex) =
 
 proc needsCompilation*(g: ModuleGraph): bool =
   # every module that *depends* on this file is also dirty:
+  result = false
   for i in 0i32..<g.ifaces.len.int32:
     let m = g.ifaces[i].module
     if m != nil:
@@ -612,6 +615,7 @@ proc needsCompilation*(g: ModuleGraph): bool =
         return true
 
 proc needsCompilation*(g: ModuleGraph, fileIdx: FileIndex): bool =
+  result = false
   let module = g.getModule(fileIdx)
   if module != nil and g.isDirty(module):
     return true
@@ -633,6 +637,8 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
   ## Returns 'nil' if the module needs to be recompiled.
   if g.config.symbolFiles in {readOnlySf, v2Sf, stressTest}:
     result = moduleFromRodFile(g.packed, g.config, g.cache, fileIdx, cachedModules)
+  else:
+    result = nil
 
 proc configComplete*(g: ModuleGraph) =
   rememberStartupConfig(g.startupPackedConfig, g.config)

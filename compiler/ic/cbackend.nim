@@ -101,7 +101,7 @@ proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool 
   var f2 = rodfiles.open(asymFile.string)
   f2.loadHeader()
   f2.loadSection aliveSymsSection
-  var oldData: seq[int32]
+  var oldData: seq[int32] = @[]
   f2.loadSeq(oldData)
   f2.close
   if f2.err == ok and oldData == s:

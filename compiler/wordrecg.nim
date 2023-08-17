@@ -103,7 +103,7 @@ type
     wSwitch = "switch", wThis = "this", wThrow = "throw", wTrue = "true", wTypedef = "typedef",
     wTypeid = "typeid", wTypeof = "typeof",  wTypename = "typename",
     wUnion = "union", wPacked = "packed", wUnsigned = "unsigned", wVirtual = "virtual",
-    wVoid = "void", wVolatile = "volatile", wWchar = "wchar_t",
+    wVoid = "void", wVolatile = "volatile", wWchar = "wchar_t", wMember = "member",
 
     wAlignas = "alignas", wAlignof = "alignof", wConstexpr = "constexpr", wDecltype = "decltype",
     wNullptr = "nullptr", wNoexcept = "noexcept",

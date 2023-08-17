@@ -56,7 +56,7 @@ proc writeCMakeDepsFile(conf: ConfigRef) =
   for it in conf.toCompile: cfiles.add(it.cname.string)
   let fileset = cfiles.toCountTable()
   # read old cfiles list
-  var fl: File
+  var fl: File = default(File)
   var prevset = initCountTable[string]()
   if open(fl, fname.string, fmRead):
     for line in fl.lines: prevset.inc(line)
@@ -115,7 +115,7 @@ when not defined(leanCompiler):
       setPipeLinePass(graph, Docgen2JsonPass)
     of HtmlExt:
       setPipeLinePass(graph, Docgen2Pass)
-    else: doAssert false, $ext
+    else: raiseAssert $ext
     compilePipelineProject(graph)
 
 proc commandCompileToC(graph: ModuleGraph) =
@@ -196,7 +196,7 @@ proc commandScan(cache: IdentCache, config: ConfigRef) =
   if stream != nil:
     var
       L: Lexer
-      tok: Token
+      tok: Token = default(Token)
     initToken(tok)
     openLexer(L, f, stream, cache, config)
     while true:
@@ -267,7 +267,7 @@ proc mainCommand*(graph: ModuleGraph) =
         # and it has added this define implictly, so we must undo that here.
         # A better solution might be to fix system.nim
         undefSymbol(conf.symbols, "useNimRtl")
-    of backendInvalid: doAssert false
+    of backendInvalid: raiseAssert "unreachable"
 
   proc compileToBackend() =
     customizeForBackend(conf.backend)
@@ -277,7 +277,7 @@ proc mainCommand*(graph: ModuleGraph) =
     of backendCpp: commandCompileToC(graph)
     of backendObjc: commandCompileToC(graph)
     of backendJs: commandCompileToJS(graph)
-    of backendInvalid: doAssert false
+    of backendInvalid: raiseAssert "unreachable"
 
   template docLikeCmd(body) =
     when defined(leanCompiler):

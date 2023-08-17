@@ -294,9 +294,11 @@ proc toColumn*(info: TLineInfo): int {.inline.} =
   result = info.col
 
 proc toFileLineCol(info: InstantiationInfo): string {.inline.} =
+  result = ""
   result.toLocation(info.filename, info.line, info.column + ColOffset)
 
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
+  result = ""
   result.toLocation(toMsgFilename(conf, info), info.line.int, info.col.int + ColOffset)
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
@@ -408,7 +410,7 @@ proc getMessageStr(msg: TMsgKind, arg: string): string = msgKindToString(msg) % 
 type TErrorHandling* = enum doNothing, doAbort, doRaise
 
 proc log*(s: string) =
-  var f: File
+  var f: File = default(File)
   if open(f, getHomeDir() / "nimsuggest.log", fmAppend):
     f.writeLine(s)
     close(f)
@@ -502,6 +504,8 @@ proc getSurroundingSrc(conf: ConfigRef; info: TLineInfo): string =
     result = "\n" & indent & $sourceLine(conf, info)
     if info.col >= 0:
       result.add "\n" & indent & spaces(info.col) & '^'
+  else:
+    result = ""
 
 proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg

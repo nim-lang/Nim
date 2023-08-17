@@ -21,7 +21,7 @@ const
 
 proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType)
 proc genCaseRange(p: BProc, branch: PNode)
-proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false)
+proc getTemp(p: BProc, t: PType, needsInit=false): TLoc
 
 proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
                      typ: PType) =
@@ -74,8 +74,7 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
     genTraverseProc(c, accessor, lastSon(typ))
   of tyArray:
     let arraySize = lengthOrd(c.p.config, typ[0])
-    var i: TLoc
-    getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt), i)
+    var i: TLoc = getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt))
     var oldCode = p.s(cpsStmts)
     freeze oldCode
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
@@ -119,12 +118,10 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
 proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
   var p = c.p
   assert typ.kind == tySequence
-  var i: TLoc
-  getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt), i)
+  var i: TLoc = getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt))
   var oldCode = p.s(cpsStmts)
   freeze oldCode
-  var a: TLoc
-  a.r = accessor
+  var a: TLoc = TLoc(r: accessor)
 
   lineF(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
       [i.r, lenExpr(c.p, a)])

@@ -39,10 +39,12 @@ template closeImpl(body: untyped) {.dirty.} =
       discard
 
 proc closeDoc*(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
+  result = nil
   closeImpl:
     writeOutput(g.doc, useWarning, groupedToc)
 
 proc closeJson*(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
+  result = nil
   closeImpl:
     writeOutputJson(g.doc, useWarning)
 

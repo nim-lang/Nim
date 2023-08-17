@@ -279,7 +279,7 @@ proc optimize*(n: PNode): PNode =
 
     Now assume 'use' raises, then we shouldn't do the 'wasMoved(s)'
   ]#
-  var c: Con
+  var c: Con = Con()
   var b: BasicBlock
   analyse(c, b, n)
   if c.somethingTodo:

@@ -17,10 +17,11 @@
 ##
 ## To get started, first create a logger:
 ##
-## .. code-block::
+##   ```Nim
 ##   import std/logging
 ##
 ##   var logger = newConsoleLogger()
+##   ```
 ##
 ## The logger that was created above logs to the console, but this module
 ## also provides loggers that log to files, such as the
@@ -30,9 +31,10 @@
 ## Once a logger has been created, call its `log proc
 ## <#log.e,ConsoleLogger,Level,varargs[string,]>`_ to log a message:
 ##
-## .. code-block::
+##   ```Nim
 ##   logger.log(lvlInfo, "a log message")
 ##   # Output: INFO a log message
+##   ```
 ##
 ## The ``INFO`` within the output is the result of a format string being
 ## prepended to the message, and it will differ depending on the message's
@@ -58,7 +60,7 @@
 ## used with the `addHandler proc<#addHandler,Logger>`_, which is demonstrated
 ## in the following example:
 ##
-## .. code-block::
+##   ```Nim
 ##   import std/logging
 ##
 ##   var consoleLog = newConsoleLogger()
@@ -68,17 +70,19 @@
 ##   addHandler(consoleLog)
 ##   addHandler(fileLog)
 ##   addHandler(rollingLog)
+##   ```
 ##
 ## After doing this, use either the `log template
 ## <#log.t,Level,varargs[string,]>`_ or one of the level-specific templates,
 ## such as the `error template<#error.t,varargs[string,]>`_, to log messages
 ## to all registered handlers at once.
 ##
-## .. code-block::
+##   ```Nim
 ##   # This example uses the loggers created above
 ##   log(lvlError, "an error occurred")
 ##   error("an error occurred")  # Equivalent to the above line
 ##   info("something normal happened")  # Will not be written to errors.log
+##   ```
 ##
 ## Note that a message's level is still checked against each handler's
 ## ``levelThreshold`` and the global log filter.
@@ -116,12 +120,13 @@
 ##
 ## The following example illustrates how to use format strings:
 ##
-## .. code-block::
+##   ```Nim
 ##   import std/logging
 ##
 ##   var logger = newConsoleLogger(fmtStr="[$time] - $levelname: ")
 ##   logger.log(lvlInfo, "this is a message")
 ##   # Output: [19:50:13] - INFO: this is a message
+##   ```
 ##
 ## Notes when using multiple threads
 ## ---------------------------------
@@ -372,10 +377,11 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var consoleLog = newConsoleLogger()
   ##   consoleLog.log(lvlInfo, "this is a message")
   ##   consoleLog.log(lvlError, "error code is: ", 404)
+  ##   ```
   if level >= logging.level and level >= logger.levelThreshold:
     let ln = substituteLog(logger.fmtStr, level, args)
     when defined(js):
@@ -414,10 +420,11 @@ proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr,
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var normalLog = newConsoleLogger()
   ##   var formatLog = newConsoleLogger(fmtStr=verboseFmtStr)
   ##   var errorLog = newConsoleLogger(levelThreshold=lvlError, useStderr=true)
+  ##   ```
   new result
   result.fmtStr = fmtStr
   result.levelThreshold = levelThreshold
@@ -450,10 +457,11 @@ when not defined(js):
     ##
     ## **Examples:**
     ##
-    ## .. code-block::
+    ##   ```Nim
     ##   var fileLog = newFileLogger("messages.log")
     ##   fileLog.log(lvlInfo, "this is a message")
     ##   fileLog.log(lvlError, "error code is: ", 404)
+    ##   ```
     if level >= logging.level and level >= logger.levelThreshold:
       writeLine(logger.file, substituteLog(logger.fmtStr, level, args))
       if level >= logger.flushThreshold: flushFile(logger.file)
@@ -481,7 +489,7 @@ when not defined(js):
     ##
     ## **Examples:**
     ##
-    ## .. code-block::
+    ##   ```Nim
     ##   var messages = open("messages.log", fmWrite)
     ##   var formatted = open("formatted.log", fmWrite)
     ##   var errors = open("errors.log", fmWrite)
@@ -489,6 +497,7 @@ when not defined(js):
     ##   var normalLog = newFileLogger(messages)
     ##   var formatLog = newFileLogger(formatted, fmtStr=verboseFmtStr)
     ##   var errorLog = newFileLogger(errors, levelThreshold=lvlError)
+    ##   ```
     new(result)
     result.file = file
     result.levelThreshold = levelThreshold
@@ -519,10 +528,11 @@ when not defined(js):
     ##
     ## **Examples:**
     ##
-    ## .. code-block::
+    ##   ```Nim
     ##   var normalLog = newFileLogger("messages.log")
     ##   var formatLog = newFileLogger("formatted.log", fmtStr=verboseFmtStr)
     ##   var errorLog = newFileLogger("errors.log", levelThreshold=lvlError)
+    ##   ```
     let file = open(filename, mode, bufSize = bufSize)
     newFileLogger(file, levelThreshold, fmtStr, flushThreshold)
 
@@ -579,11 +589,12 @@ when not defined(js):
     ##
     ## **Examples:**
     ##
-    ## .. code-block::
+    ##   ```Nim
     ##   var normalLog = newRollingFileLogger("messages.log")
     ##   var formatLog = newRollingFileLogger("formatted.log", fmtStr=verboseFmtStr)
     ##   var shortLog = newRollingFileLogger("short.log", maxLines=200)
     ##   var errorLog = newRollingFileLogger("errors.log", levelThreshold=lvlError)
+    ##   ```
     new(result)
     result.levelThreshold = levelThreshold
     result.fmtStr = fmtStr
@@ -633,10 +644,11 @@ when not defined(js):
     ##
     ## **Examples:**
     ##
-    ## .. code-block::
+    ##   ```Nim
     ##   var rollingLog = newRollingFileLogger("messages.log")
     ##   rollingLog.log(lvlInfo, "this is a message")
     ##   rollingLog.log(lvlError, "error code is: ", 404)
+    ##   ```
     if level >= logging.level and level >= logger.levelThreshold:
       if logger.curLine >= logger.maxLines:
         logger.file.close()
@@ -666,11 +678,12 @@ template log*(level: Level, args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
   ##   log(lvlInfo, "This is an example.")
+  ##   ```
   ##
   ## See also:
   ## * `debug template<#debug.t,varargs[string,]>`_
@@ -695,11 +708,12 @@ template debug*(args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
   ##   debug("myProc called with arguments: foo, 5")
+  ##   ```
   ##
   ## See also:
   ## * `log template<#log.t,Level,varargs[string,]>`_
@@ -716,11 +730,12 @@ template info*(args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
   ##   info("Application started successfully.")
+  ##   ```
   ##
   ## See also:
   ## * `log template<#log.t,Level,varargs[string,]>`_
@@ -737,11 +752,12 @@ template notice*(args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
   ##   notice("An important operation has completed.")
+  ##   ```
   ##
   ## See also:
   ## * `log template<#log.t,Level,varargs[string,]>`_
@@ -757,11 +773,12 @@ template warn*(args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
   ##   warn("The previous operation took too long to process.")
+  ##   ```
   ##
   ## See also:
   ## * `log template<#log.t,Level,varargs[string,]>`_
@@ -779,11 +796,12 @@ template error*(args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
   ##   error("An exception occurred while processing the form.")
+  ##   ```
   ##
   ## See also:
   ## * `log template<#log.t,Level,varargs[string,]>`_
@@ -800,11 +818,12 @@ template fatal*(args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
   ##   fatal("Can't open database -- exiting.")
+  ##   ```
   ##
   ## See also:
   ## * `log template<#log.t,Level,varargs[string,]>`_
