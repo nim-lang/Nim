@@ -672,8 +672,9 @@ proc pragmaLine(c: PContext, n: PNode) =
       elif y.kind != nkIntLit:
         localError(c.config, n.info, errIntLiteralExpected)
       else:
-        n.info.fileIndex = fileInfoIdx(c.config, AbsoluteFile(x.strVal))
-        n.info.line = uint16(y.intVal)
+        if x.strVal.isAbsolute:
+          n.info.fileIndex = fileInfoIdx(c.config, AbsoluteFile(x.strVal))
+          n.info.line = uint16(y.intVal)
     else:
       localError(c.config, n.info, "tuple expected")
   else:
