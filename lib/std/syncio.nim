@@ -359,12 +359,12 @@ proc getOsFileHandle*(f: File): FileHandle =
 
 when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(windows):
   proc setInheritable*(f: FileHandle, inheritable: bool): bool =
-    ## control whether a file handle can be inherited by child processes. Returns
+    ## Controls whether a file handle can be inherited by child processes. Returns
     ## `true` on success. This requires the OS file handle, which can be
     ## retrieved via `getOsFileHandle <#getOsFileHandle,File>`_.
     ##
     ## This procedure is not guaranteed to be available for all platforms. Test for
-    ## availability with `declared() <system.html#declared,untyped>`.
+    ## availability with `declared() <system.html#declared,untyped>`_.
     when SupportIoctlInheritCtl:
       result = c_ioctl(f, if inheritable: FIONCLEX else: FIOCLEX) != -1
     elif defined(freertos) or defined(zephyr):
