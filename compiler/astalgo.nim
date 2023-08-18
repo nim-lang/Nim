@@ -227,7 +227,7 @@ proc getNamedParamFromList*(list: PNode, ident: PIdent): PSym =
   ## Named parameters are special because a named parameter can be
   ## gensym'ed and then they have '\`<number>' suffix that we need to
   ## ignore, see compiler / evaltempl.nim, snippet:
-  ##   ```
+  ##   ```nim
   ##   result.add newIdentNode(getIdent(c.ic, x.name.s & "\`gensym" & $x.id),
   ##            if c.instLines: actual.info else: templ.info)
   ##   ```
