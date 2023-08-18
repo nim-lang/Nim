@@ -54,6 +54,13 @@ proc inExceptBlockLen(p: BProc): int =
   for x in p.nestedTryStmts:
     if x.inExcept: result.inc
 
+
+proc inGotoExceptBlockLen(p: BProc): int =
+  result = 0
+  for i in countdown(p.nestedTryStmts.len-1, 0):
+    if p.nestedTryStmts[i].inExcept: result.inc
+    else: break
+
 proc startBlockInternal(p: BProc): int {.discardable.} =
   inc(p.labels)
   result = p.blocks.len
@@ -755,7 +762,13 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     var e = rdLoc(a)
     discard getTypeDesc(p.module, t[0].typ)
     var typ = skipTypes(t[0].typ, abstractPtrs)
-    blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
+    case p.config.exc
+    of excCpp:
+      blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
+    of excGoto:
+      blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inGotoExceptBlockLen)
+    else:
+      discard # todo do something for setjmp"
     genLineDir(p, t)
     if isImportedException(typ, p.config):
       lineF(p, cpsStmts, "throw $1;$n", [e])
