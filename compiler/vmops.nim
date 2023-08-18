@@ -264,6 +264,10 @@ proc registerAdditionalOps*(c: PCtx) =
     systemop getCurrentException
     registerCallback c, "stdlib.osdirs.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
+    registerCallback c, "stdlib.staticos.staticDirExists", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, dirExists(getString(a, 0)))
+    registerCallback c, "stdlib.staticos.staticFileExists", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, fileExists(getString(a, 0)))
     registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) =
       setResult(a, querySettingImpl(c.config, getInt(a, 0)))
     registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) =
