@@ -755,10 +755,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     var e = rdLoc(a)
     discard getTypeDesc(p.module, t[0].typ)
     var typ = skipTypes(t[0].typ, abstractPtrs)
-    # XXX For reasons that currently escape me, this is only required by the new
-    # C++ based exception handling:
-    if p.config.exc == excCpp:
-      blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
+    blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
     genLineDir(p, t)
     if isImportedException(typ, p.config):
       lineF(p, cpsStmts, "throw $1;$n", [e])
