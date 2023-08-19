@@ -174,6 +174,9 @@ Example "template" **to edit** and write a Testament unittest:
     #   "leaks": run the test with Valgrind, but do not check for memory leaks
     valgrind: false   # Can use Valgrind to check for memory leaks, or not (Linux 64Bit only).
 
+    # Checks that the specified piece of C-code is within the generated C-code.
+    ccodecheck: "'Assert error message'"
+
     # Command the test should use to run. If left out or an empty string is
     # provided, the command is taken to be:
     # "nim $target --hints:on -d:testing --nimblePath:build/deps/pkgs $options $file"
@@ -316,6 +319,18 @@ macro justDo*(procDef: typed): untyped =
   error("I break")
   return procDef
 ```
+
+Expecting generated C to contain a given piece of code:
+
+  ```nim
+  discard """
+    # Checks that the string "Assert error message" is in the generated 
+    # C code.
+    ccodecheck: "'Assert error message'"
+  """
+  assert 42 == 42, "Assert error message"
+  ```
+
 
 Non-Zero exit code:
 
