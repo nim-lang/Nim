@@ -53,7 +53,6 @@ type
     normal
     consumed
     sinkArg
-    inReturn
 
 const toDebug {.strdefine.} = ""
 when toDebug.len > 0:
@@ -80,7 +79,7 @@ proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
 proc nestedScope(parent: var Scope; body: PNode): Scope =
   Scope(vars: @[], locals: @[], wasMoved: @[], final: @[], body: body, needsTry: false, parent: addr(parent))
 
-proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSingleUsedTemp}): PNode
+proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSingleUsedTemp}; inReturn = false): PNode
 
 type
   MoveOrCopyFlag = enum
@@ -766,7 +765,7 @@ proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
       result.add copyNode(n[0])
   s.needsTry = true
 
-proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSingleUsedTemp}): PNode =
+proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSingleUsedTemp}, inReturn = false): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt, nkPragmaBlock}:
     template process(child, s): untyped = p(child, c, s, mode)
@@ -951,7 +950,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
           cycleCheck(n, c)
         assert n[1].kind notin {nkAsgn, nkFastAsgn, nkSinkAsgn}
         var flags = if n.kind == nkSinkAsgn: {IsExplicitSink} else: {}
-        if mode == inReturn:
+        if inReturn:
           flags.incl(IsReturn)
         result = moveOrCopy(p(n[0], c, s, mode), n[1], c, s, flags)
       elif isDiscriminantField(n[0]):
@@ -1036,7 +1035,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
     of nkReturnStmt:
       result = shallowCopy(n)
       for i in 0..<n.len:
-        result[i] = p(n[i], c, s, inReturn)
+        result[i] = p(n[i], c, s, mode, inReturn=true)
       s.needsTry = true
     of nkCast:
       result = shallowCopy(n)
