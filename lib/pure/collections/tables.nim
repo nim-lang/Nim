@@ -136,14 +136,11 @@ runnableExamples:
 ## a more complex object as a key you will be greeted by a strange compiler
 ## error:
 ##
-## .. code::
-##
-##   Error: type mismatch: got (Person)
-##   but expected one of:
-##   hashes.hash(x: openArray[A]): Hash
-##   hashes.hash(x: int): Hash
-##   hashes.hash(x: float): Hash
-##   …
+##     Error: type mismatch: got (Person)
+##     but expected one of:
+##     hashes.hash(x: openArray[A]): Hash
+##     hashes.hash(x: int): Hash
+##     hashes.hash(x: float): Hash
 ##
 ## What is happening here is that the types used for table keys require to have
 ## a `hash()` proc which will convert them to a `Hash <hashes.html#Hash>`_
@@ -678,7 +675,7 @@ iterator pairs*[A, B](t: Table[A, B]): (A, B) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   let a = {
   ##     'o': [1, 5, 7, 9],
   ##     'e': [2, 4, 6, 8]
@@ -692,6 +689,7 @@ iterator pairs*[A, B](t: Table[A, B]): (A, B) =
   ##   # value: [2, 4, 6, 8]
   ##   # key: o
   ##   # value: [1, 5, 7, 9]
+  ##   ```
   let L = len(t)
   for h in 0 .. high(t.data):
     if isFilled(t.data[h].hcode):
@@ -1127,7 +1125,7 @@ iterator pairs*[A, B](t: TableRef[A, B]): (A, B) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   let a = {
   ##     'o': [1, 5, 7, 9],
   ##     'e': [2, 4, 6, 8]
@@ -1141,6 +1139,7 @@ iterator pairs*[A, B](t: TableRef[A, B]): (A, B) =
   ##   # value: [2, 4, 6, 8]
   ##   # key: o
   ##   # value: [1, 5, 7, 9]
+  ##   ```
   let L = len(t)
   for h in 0 .. high(t.data):
     if isFilled(t.data[h].hcode):
@@ -1703,7 +1702,7 @@ iterator pairs*[A, B](t: OrderedTable[A, B]): (A, B) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   let a = {
   ##     'o': [1, 5, 7, 9],
   ##     'e': [2, 4, 6, 8]
@@ -1717,6 +1716,7 @@ iterator pairs*[A, B](t: OrderedTable[A, B]): (A, B) =
   ##   # value: [1, 5, 7, 9]
   ##   # key: e
   ##   # value: [2, 4, 6, 8]
+  ##   ```
 
   let L = len(t)
   forAllOrderedPairs:
@@ -2113,7 +2113,7 @@ iterator pairs*[A, B](t: OrderedTableRef[A, B]): (A, B) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   let a = {
   ##     'o': [1, 5, 7, 9],
   ##     'e': [2, 4, 6, 8]
@@ -2127,6 +2127,7 @@ iterator pairs*[A, B](t: OrderedTableRef[A, B]): (A, B) =
   ##   # value: [1, 5, 7, 9]
   ##   # key: e
   ##   # value: [2, 4, 6, 8]
+  ##   ```
 
   let L = len(t)
   forAllOrderedPairs:
@@ -2526,7 +2527,7 @@ iterator pairs*[A](t: CountTable[A]): (A, int) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   let a = toCountTable("abracadabra")
   ##
   ##   for k, v in pairs(a):
@@ -2543,6 +2544,7 @@ iterator pairs*[A](t: CountTable[A]): (A, int) =
   ##   # value: 1
   ##   # key: r
   ##   # value: 2
+  ##   ```
   let L = len(t)
   for h in 0 .. high(t.data):
     if t.data[h].val != 0:
@@ -2806,7 +2808,7 @@ iterator pairs*[A](t: CountTableRef[A]): (A, int) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   let a = newCountTable("abracadabra")
   ##
   ##   for k, v in pairs(a):
@@ -2823,6 +2825,7 @@ iterator pairs*[A](t: CountTableRef[A]): (A, int) =
   ##   # value: 1
   ##   # key: r
   ##   # value: 2
+  ##   ```
   let L = len(t)
   for h in 0 .. high(t.data):
     if t.data[h].val != 0:

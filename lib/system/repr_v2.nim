@@ -38,8 +38,9 @@ proc repr*(x: char): string {.noSideEffect, raises: [].} =
   ## repr for a character argument. Returns `x`
   ## converted to an escaped string.
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   assert repr('c') == "'c'"
+  ##   ```
   result.add '\''
   # Elides string creations if not needed
   if x in {'\\', '\0'..'\31', '\127'..'\255'}:
@@ -132,11 +133,11 @@ proc reprObject[T: tuple|object](res: var string, x: T) {.noSideEffect, raises: 
 proc repr*[T: tuple|object](x: T): string {.noSideEffect, raises: [].} =
   ## Generic `repr` operator for tuples that is lifted from the components
   ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   $(23, 45) == "(23, 45)"
   ##   $(a: 23, b: 45) == "(a: 23, b: 45)"
   ##   $() == "()"
+  ##   ```
   when T is object:
     result = $typeof(x)
   reprObject(result, x)
@@ -164,17 +165,17 @@ proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string {.noSi
 proc repr*[T](x: set[T]): string =
   ## Generic `repr` operator for sets that is lifted from the components
   ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   ${23, 45} == "{23, 45}"
+  ##   ```
   collectionToRepr(x, "{", ", ", "}")
 
 proc repr*[T](x: seq[T]): string =
   ## Generic `repr` operator for seqs that is lifted from the components
   ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   $(@[23, 45]) == "@[23, 45]"
+  ##   ```
   collectionToRepr(x, "@[", ", ", "]")
 
 proc repr*[T, IDX](x: array[IDX, T]): string =
@@ -184,9 +185,9 @@ proc repr*[T, IDX](x: array[IDX, T]): string =
 proc repr*[T](x: openArray[T]): string =
   ## Generic `repr` operator for openarrays that is lifted from the components
   ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   $(@[23, 45].toOpenArray(0, 1)) == "[23, 45]"
+  ##   ```
   collectionToRepr(x, "[", ", ", "]")
 
 proc repr*[T](x: UncheckedArray[T]): string =

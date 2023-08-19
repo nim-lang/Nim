@@ -312,10 +312,10 @@ proc genLineDir(p: BProc, t: PNode) =
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
       if freshLine:
         if lastFileIndex == t.info.fileIndex:
-          linefmt(p, cpsStmts, "nimln_($1);\n",
+          linefmt(p, cpsStmts, "nimln_($1);",
               [line])
         else:
-          linefmt(p, cpsStmts, "nimlf_($1, $2);\n",
+          linefmt(p, cpsStmts, "nimlf_($1, $2);",
               [line, quotedFilename(p.config, t.info)])
 
 proc accessThreadLocalVar(p: BProc, s: PSym)
@@ -1875,13 +1875,13 @@ proc genInitCode(m: BModule) =
     if beforeRetNeeded in m.initProc.flags:
       prc.add("\tBeforeRet_: ;\n")
 
-    if sfMainModule in m.module.flags and m.config.exc == excGoto:
+    if m.config.exc == excGoto:
       if getCompilerProc(m.g.graph, "nimTestErrorFlag") != nil:
         m.appcg(prc, "\t#nimTestErrorFlag();$n", [])
 
     if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
       prc.add(deinitFrame(m.initProc))
-  elif sfMainModule in m.module.flags and m.config.exc == excGoto:
+  elif m.config.exc == excGoto:
     if getCompilerProc(m.g.graph, "nimTestErrorFlag") != nil:
       m.appcg(prc, "\t#nimTestErrorFlag();$n", [])
 
