@@ -767,15 +767,15 @@ div.topic {
 
 div.search_results {
   background-color: var(--third-background);
-  margin: 3em;
+  margin: 5vw;
   padding: 1em;
-  border: 1px solid #4d4d4d; 
-  position: sticky;
-  top: 2vh;
+  border: 1px solid #4d4d4d;
+  position: fixed;
+  top: 0;
   isolation: isolate;
-  pointer-events: bounding-box;
-  z-index: 3;
-  max-height: 90vh;
+  max-width: calc(100vw - 6em);
+  z-index: 1;
+  max-height: calc(100vh - 4em);
   overflow-y: scroll;}
 
 div#global-links ul {
