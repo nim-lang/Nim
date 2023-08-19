@@ -53,6 +53,7 @@ type
     normal
     consumed
     sinkArg
+    inReturn
 
 const toDebug {.strdefine.} = ""
 when toDebug.len > 0:
@@ -83,7 +84,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
 
 type
   MoveOrCopyFlag = enum
-    IsDecl, IsExplicitSink
+    IsDecl, IsExplicitSink, IsReturn
 
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; flags: set[MoveOrCopyFlag] = {}): PNode
 
@@ -272,7 +273,7 @@ proc deepAliases(dest, ri: PNode): bool =
 proc genSink(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFlag] = {}): PNode =
   if (c.inLoopCond == 0 and (isUnpackedTuple(dest) or IsDecl in flags or
       (isAnalysableFieldAccess(dest, c.owner) and isFirstWrite(dest, c)))) or
-      isNoInit(dest):
+      isNoInit(dest) or IsReturn in flags:
     # optimize sink call into a bitwise memcopy
     result = newTree(nkFastAsgn, dest, ri)
   else:
@@ -949,7 +950,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         if n[0].kind in {nkDotExpr, nkCheckedFieldExpr}:
           cycleCheck(n, c)
         assert n[1].kind notin {nkAsgn, nkFastAsgn, nkSinkAsgn}
-        let flags = if n.kind == nkSinkAsgn: {IsExplicitSink} else: {}
+        var flags = if n.kind == nkSinkAsgn: {IsExplicitSink} else: {}
+        if mode == inReturn:
+          flags.incl(IsReturn)
         result = moveOrCopy(p(n[0], c, s, mode), n[1], c, s, flags)
       elif isDiscriminantField(n[0]):
         result = c.genDiscriminantAsgn(s, n)
@@ -1033,7 +1036,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
     of nkReturnStmt:
       result = shallowCopy(n)
       for i in 0..<n.len:
-        result[i] = p(n[i], c, s, mode)
+        result[i] = p(n[i], c, s, inReturn)
       s.needsTry = true
     of nkCast:
       result = shallowCopy(n)
