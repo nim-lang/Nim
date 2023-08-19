@@ -140,13 +140,14 @@ Example "template" **to edit** and write a Testament unittest:
     output: ""
     outputsub: ""
 
-    # Whether to sort the output lines before comparing them to the desired
-    # output.
+    # Whether to sort the compiler output lines before comparing them to the 
+    # expected output.
     sortoutput: true
 
-    # Each line in the string given here appears in the same order in the
-    # compiler output, but there may be more lines that appear before, after, or
-    # in between them.
+    # Provide a `nimout` string to assert that the compiler during compilation
+    # prints the defined lines to the standard out.
+    # The lines must match in order, but there may be more lines that appear 
+    # before, after, or in between them. 
     nimout: '''
   a very long,
   multi-line
