@@ -83,7 +83,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
 
 type
   MoveOrCopyFlag = enum
-    IsDecl, IsExplicitSink
+    IsDecl, IsExplicitSink, IsReturn
 
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; flags: set[MoveOrCopyFlag] = {}): PNode
 
