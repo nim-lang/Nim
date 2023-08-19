@@ -112,8 +112,21 @@ Example "template" **to edit** and write a Testament unittest:
     #   "run": expect successful compilation and execution
     #   "reject": expect failed compilation. The "reject" action can catch
     #             {.error.} pragmas but not {.fatal.} pragmas because
+    #             {.error.} calls are expected to originate from the test-file, 
+    #             and can explicitly be specified using the "file", "line" and
+    #             "column" options.
     #             {.fatal.} pragmas guarantee that compilation will be aborted.
     action: "run"
+    
+    # For testing failed compilations you can specify the expected origin of the 
+    # compilation error.
+    # With the "file", "line" and "column" options you can define the file, 
+    # line and column that a compilation-error should have originated from.
+    # Use only with action: "reject" as it expects a failed compilation.
+    # Requires errormsg or msg to be defined.
+    # file: ""
+    # line: ""
+    # column: ""
 
     # The exit code that the test is expected to return. Typically, the default
     # value of 0 is fine. Note that if the test will be run by valgrind, then
