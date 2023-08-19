@@ -335,7 +335,12 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
   result = copySym(fn, c.idgen)
   incl(result.flags, sfFromGeneric)
-  result.owner = fn
+  result.instantiatedFrom = fn
+  if sfGlobal in result.flags and 
+    (c.config.symbolFiles != disabledSf or "nimInstantiatedFromUsage" in c.config.symbols):
+    result.owner = c.module 
+  else:
+    result.owner = fn
   result.ast = n
   pushOwner(c, result)
 

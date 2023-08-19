@@ -936,6 +936,7 @@ type
                               # it won't cause problems
                               # for skModule the string literal to output for
                               # deprecated modules.
+    instantiatedFrom*: PSym   # for instances, the generic symbol where it came from.                
     when defined(nimsuggest):
       allUsages*: seq[TLineInfo]
 
@@ -1936,7 +1937,7 @@ proc skipGenericOwner*(s: PSym): PSym =
   ## Generic instantiations are owned by their originating generic
   ## symbol. This proc skips such owners and goes straight to the owner
   ## of the generic itself (the module or the enclosing proc).
-  result = if s.kind in skProcKinds and sfFromGeneric in s.flags:
+  result = if s.kind in skProcKinds and sfFromGeneric in s.flags and s.owner.kind != skModule:
              s.owner.owner
            else:
              s.owner

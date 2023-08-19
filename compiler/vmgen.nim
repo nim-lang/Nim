@@ -2067,7 +2067,7 @@ proc toKey(s: PSym): string =
     result.add s.name.s
     if s.owner != nil:
       if sfFromGeneric in s.flags:
-        s = s.owner.owner
+        s = s.instantiatedFrom.owner
       else:
         s = s.owner
       result.add "."
