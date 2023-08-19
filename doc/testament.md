@@ -297,6 +297,26 @@ Expected to fail:
   assert not_defined == "not_defined", "not_defined is not defined"
   ```
 
+Expected to fail with error thrown from another file:
+```nim
+# test.nim
+discard """
+  action: "reject"
+  errorMsg: "I break"
+  file: "breakPragma.nim"
+"""
+import ./breakPragma
+
+proc x() {.justDo.} = discard
+
+# breakPragma.nim
+import std/macros
+
+macro justDo*(procDef: typed): untyped =
+  error("I break")
+  return procDef
+```
+
 Non-Zero exit code:
 
   ```nim
