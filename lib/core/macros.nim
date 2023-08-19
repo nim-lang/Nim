@@ -1055,7 +1055,7 @@ macro dumpTree*(s: untyped): untyped = echo s.treeRepr
   ##   ```
   ##
   ## Outputs:
-  ##   ```nim
+  ##   ```
   ##   StmtList
   ##     Command
   ##       Ident "echo"
@@ -1079,7 +1079,7 @@ macro dumpLisp*(s: untyped): untyped = echo s.lispRepr(indented = true)
   ##   ```
   ##
   ## Outputs:
-  ##   ```nim
+  ##   ```
   ##   (StmtList
   ##    (Command
   ##     (Ident "echo")
@@ -1102,7 +1102,7 @@ macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
   ##   ```
   ##
   ## Outputs:
-  ##   ```nim
+  ##   ```
   ##   nnkStmtList.newTree(
   ##     nnkCommand.newTree(
   ##       newIdentNode("echo"),
