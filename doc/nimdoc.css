@@ -772,9 +772,7 @@ div.search_results {
   border: 1px solid #4d4d4d;
   top: 0;
   isolation: isolate;
-  z-index: 1;
-  max-height: 100vh;
-  overflow-y: scroll; }
+  z-index: 1; }
 
 div#global-links ul {
   margin-left: 0;
