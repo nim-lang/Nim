@@ -576,7 +576,7 @@ proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
-  ##   ```
+  ##   ```nim
   ##   proc myMap[T,S](sIn: seq[T], f: proc(x: T): S): seq[S] = ...
   ##   proc innerProc[Q,W](q: Q): W = ...
   ##   ```
