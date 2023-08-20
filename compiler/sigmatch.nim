@@ -467,15 +467,9 @@ proc getObjectTypeOrNil(f: PType): PType =
     Returns a type that is f's effective typeclass. This is usually just one level deeper
     in the hierarchy of generality for a type. `object`, `ref object`, `enum` and user defined
     tyObjects are common return values.
-    this proc exists because skipTypes can gut out important information sometimes
   ]#
   if f == nil: return nil
   case f.kind:
-  #of tyGenericParam:
-  #  if f.len <= 0 or f.lastSon == nil:
-  #    result = nil
-  #  else:
-  #    result = getObjectTypeOrNil(f.lastSon)
   of tyGenericInvocation, tyCompositeTypeClass, tyAlias:
     if f.len <= 0 or f[0] == nil:
       result = nil
@@ -484,7 +478,7 @@ proc getObjectTypeOrNil(f: PType): PType =
   of tyGenericBody, tyGenericInst:
     result = getObjectTypeOrNil(f.lastSon)
   of tyUserTypeClass:
-    if tfResolved in f.flags:
+    if f.isResolvedUserTypeClass:
       result = f.base  # ?? idk if this is right
     else:
       result = f.lastSon
@@ -1840,12 +1834,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           a.sym.transitionGenericParamToType()
           a.flags.excl tfWildcard
         elif doBind:
-          # This interference is barred when comparing sigs (by the falg) and below
-          # has happens to prevent illegal bindings. The 
-          # return value `isNone` isn't exactly correct, I think.
-          # it is not good that the return value of this proc has to change
-          # based on the flags here. Ideally, the illegal bindings
-          # should be handled somewhere else
+          # The mechanics of `doBind` being a flag that also denotes sig cmp via
+          # negation is potentially problematic. `IsNone` is appropriate for
+          # preventing illegal bindings, but it is not necessarily appropriate
+          # before the bindings have been finalized.
           concrete = concreteType(c, a, f)
           if concrete == nil:
             return isNone
