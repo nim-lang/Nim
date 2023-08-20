@@ -2787,27 +2787,28 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
   ##
   ## .. warning:: Unsuitable for benchmarking (but still better than `now`),
   ##    use `monotimes.getMonoTime` or `cpuTime` instead, depending on the use case.
-  when defined(macosx):
-    var a {.noinit.}: Timeval
-    gettimeofday(a)
-    result = toBiggestFloat(a.tv_sec.int64) + toBiggestFloat(
-        a.tv_usec)*0.00_0001
-  elif defined(posix):
-    var ts {.noinit.}: Timespec
-    discard clock_gettime(CLOCK_REALTIME, ts)
-    result = toBiggestFloat(ts.tv_sec.int64) +
-      toBiggestFloat(ts.tv_nsec.int64) / 1_000_000_000
-  elif defined(windows):
-    var f {.noinit.}: winlean.FILETIME
-    getSystemTimeAsFileTime(f)
-    var i64 = rdFileTime(f) - epochDiff
-    var secs = i64 div rateDiff
-    var subsecs = i64 mod rateDiff
-    result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
-  elif defined(js):
-    result = newDate().getTime() / 1000
+  when not defined(js):
+    when defined(macosx):
+      var a {.noinit.}: Timeval
+      gettimeofday(a)
+      result = toBiggestFloat(a.tv_sec.int64) + toBiggestFloat(
+          a.tv_usec)*0.00_0001
+    elif defined(posix):
+      var ts {.noinit.}: Timespec
+      discard clock_gettime(CLOCK_REALTIME, ts)
+      result = toBiggestFloat(ts.tv_sec.int64) +
+        toBiggestFloat(ts.tv_nsec.int64) / 1_000_000_000
+    elif defined(windows):
+      var f {.noinit.}: winlean.FILETIME
+      getSystemTimeAsFileTime(f)
+      var i64 = rdFileTime(f) - epochDiff
+      var secs = i64 div rateDiff
+      var subsecs = i64 mod rateDiff
+      result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
+    else:
+      {.error: "unknown OS".}
   else:
-    {.error: "unknown OS".}
+    result = newDate().getTime() / 1000
 
 when not defined(js):
   type
