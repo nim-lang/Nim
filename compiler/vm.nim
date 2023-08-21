@@ -1018,7 +1018,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBImm(rkInt)
       assert regs[rb].kind == rkNode
       if regs[rb].node.kind == nkNilLit:
-        regs[ra].intVal = 0
+        regs[ra].intVal = -imm
       else:
         regs[ra].intVal = regs[rb].node.strVal.cstring.len - imm
     of opcIncl:
