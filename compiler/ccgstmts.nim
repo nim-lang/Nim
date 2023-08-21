@@ -55,11 +55,6 @@ proc inExceptBlockLen(p: BProc): int =
     if x.inExcept: result.inc
 
 
-proc inDirectExceptBlockLen(p: BProc): int =
-  result = 0
-  for i in countdown(p.nestedTryStmts.len-1, 0):
-    if p.nestedTryStmts[i].inExcept: result.inc
-    else: break
 
 proc startBlockInternal(p: BProc): int {.discardable.} =
   inc(p.labels)
@@ -765,10 +760,9 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     case p.config.exc
     of excCpp:
       blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
-    of excGoto:
-      blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inDirectExceptBlockLen)
-    of excSetjmp:
-      blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inDirectExceptBlockLen)
+    of excGoto, excSetjmp:
+      if p.inExceptBlockLen > 0:
+        linefmt(p, cpsStmts, "#popCurrentException();$n", [])
     else:
       discard
     genLineDir(p, t)
