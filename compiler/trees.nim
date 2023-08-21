@@ -144,10 +144,12 @@ proc whichPragma*(n: PNode): TSpecialWord =
   case key.kind
   of nkIdent: result = whichKeyword(key.ident)
   of nkSym: result = whichKeyword(key.sym.name)
-  of nkCast: result = wCast
+  of nkCast: return wCast
   of nkClosedSymChoice, nkOpenSymChoice:
-    result = whichPragma(key[0])
-  else: result = wInvalid
+    return whichPragma(key[0])
+  else: return wInvalid
+  if result in nonPragmaWordsLow..nonPragmaWordsHigh:
+    result = wInvalid
 
 proc isNoSideEffectPragma*(n: PNode): bool =
   var k = whichPragma(n)
