@@ -1215,6 +1215,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcEqStr:
       decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].node.strVal == regs[rc].node.strVal)
+    of opcEqCString:
+      decodeBC(rkInt)
+      let bNil = regs[rb].node.kind == nkNilLit
+      let cNil = regs[rc].node.kind == nkNilLit
+      regs[ra].intVal = ord((bNil and cNil) or
+        (not bNil and not cNil and regs[rb].node.strVal == regs[rc].node.strVal))
     of opcLeStr:
       decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].node.strVal <= regs[rc].node.strVal)
@@ -1498,7 +1504,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].node
       c.currentExceptionA = raised
       # Set the `name` field of the exception
-      c.currentExceptionA[2].skipColon.strVal = c.currentExceptionA.typ.sym.name.s
+      var exceptionNameNode = newStrNode(nkStrLit, c.currentExceptionA.typ.sym.name.s)
+      if c.currentExceptionA[2].kind == nkExprColonExpr:
+        exceptionNameNode.typ = c.currentExceptionA[2][1].typ
+        c.currentExceptionA[2][1] = exceptionNameNode
+      else:
+        exceptionNameNode.typ = c.currentExceptionA[2].typ
+        c.currentExceptionA[2] = exceptionNameNode
       c.exceptionInstr = pc
 
       var frame = tos

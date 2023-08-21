@@ -747,3 +747,11 @@ block: # issue #22524
   static:
     var x: cstring
     doAssert x.isNil
+
+block: # issue #15730
+  const s: cstring = ""
+  doAssert s != nil
+
+  static:
+    const s: cstring = ""
+    doAssert s != nil
