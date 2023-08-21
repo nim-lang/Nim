@@ -55,7 +55,7 @@ proc inExceptBlockLen(p: BProc): int =
     if x.inExcept: result.inc
 
 
-proc inGotoExceptBlockLen(p: BProc): int =
+proc inDirectExceptBlockLen(p: BProc): int =
   result = 0
   for i in countdown(p.nestedTryStmts.len-1, 0):
     if p.nestedTryStmts[i].inExcept: result.inc
@@ -766,9 +766,11 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     of excCpp:
       blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
     of excGoto:
-      blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inGotoExceptBlockLen)
+      blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inDirectExceptBlockLen)
+    of excSetjmp:
+      blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inDirectExceptBlockLen)
     else:
-      discard # todo do something for setjmp"
+      discard
     genLineDir(p, t)
     if isImportedException(typ, p.config):
       lineF(p, cpsStmts, "throw $1;$n", [e])
