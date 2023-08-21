@@ -735,3 +735,15 @@ block: # bug #22190
     tab = mkOpTable(Berlin)
 
   doAssert not tab
+
+block: # issue #22524
+  const cnst = cstring(nil)
+  let b = cnst
+  doAssert b.isNil
+
+  let a = static: cstring(nil)
+  doAssert a.isNil
+
+  static:
+    var x: cstring
+    doAssert x.isNil
