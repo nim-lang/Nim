@@ -738,8 +738,11 @@ block: # bug #22190
 
 block: # issue #22524
   const cnst = cstring(nil)
+  doAssert cnst.isNil
+  doAssert cnst == nil
   let b = cnst
   doAssert b.isNil
+  doAssert b == nil
 
   let a = static: cstring(nil)
   doAssert a.isNil
@@ -747,11 +750,19 @@ block: # issue #22524
   static:
     var x: cstring
     doAssert x.isNil
+    doAssert x == nil
+    doAssert x != ""
 
 block: # issue #15730
   const s: cstring = ""
   doAssert s != nil
 
   static:
-    const s: cstring = ""
+    let s: cstring = ""
+    doAssert not s.isNil
     doAssert s != nil
+    doAssert s == ""
+
+static: # more nil cstring issues
+  let x = cstring(nil)
+  doAssert x.len == 0

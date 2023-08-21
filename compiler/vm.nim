@@ -1017,7 +1017,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLenCstring:
       decodeBImm(rkInt)
       assert regs[rb].kind == rkNode
-      regs[ra].intVal = regs[rb].node.strVal.cstring.len - imm
+      if regs[rb].node.kind == nkNilLit:
+        regs[ra].intVal = 0
+      else:
+        regs[ra].intVal = regs[rb].node.strVal.cstring.len - imm
     of opcIncl:
       decodeB(rkNode)
       let b = regs[rb].regToNode
