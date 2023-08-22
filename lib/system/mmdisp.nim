@@ -13,6 +13,19 @@
 #{.push checks:on, assertions:on.}
 {.push checks:off.}
 
+type EOutOfMemory* = object of Defect
+var gOutOfMem*: ref EOutOfMemory
+new(gOutOfMem)
+gOutOfMem.msg = "Memory allocation error"
+
+when defined(handleOOM):
+  
+  proc handleOOM*(): void {.nimcall, gcsafe.} = 
+      {.gcsafe.}:
+        raise gOutOfMem
+
+  system.outOfMemHook = handleOOM
+
 const
   debugGC = false # we wish to debug the GC...
   logGC = false
@@ -43,10 +56,12 @@ when declared(IntsPerTrunk):
 else:
   include bitmasks
 
-proc raiseOutOfMem() {.noinline.} =
-  if outOfMemHook != nil: outOfMemHook()
-  cstderr.rawWrite("out of memory\n")
-  rawQuit(1)
+proc raiseOutOfMem*() {.noinline.} =
+  when defined(handleOOM):
+    handleOOM()
+  else:
+    cstderr.rawWrite("out of memory\n")
+    rawQuit(1)
 
 when defined(boehmgc):
   include system / mm / boehm
