@@ -1,0 +1,230 @@
+PEG syntax and semantics
+========================
+
+A PEG (Parsing expression grammar) is a simple deterministic grammar, that can
+be directly used for parsing. The current implementation has been designed as
+a more powerful replacement for regular expressions. UTF-8 is supported.
+
+The notation used for a PEG is similar to that of EBNF:
+
+===============    ============================================================
+notation           meaning
+===============    ============================================================
+``A / ... / Z``    Ordered choice: Apply expressions `A`, ..., `Z`, in this
+                   order, to the text ahead, until one of them succeeds and
+                   possibly consumes some text. Indicate success if one of
+                   expressions succeeded. Otherwise, do not consume any text
+                   and indicate failure.
+``A ... Z``        Sequence: Apply expressions `A`, ..., `Z`, in this order,
+                   to consume consecutive portions of the text ahead, as long
+                   as they succeed. Indicate success if all succeeded.
+                   Otherwise, do not consume any text and indicate failure.
+                   The sequence's precedence is higher than that of ordered
+                   choice: ``A B / C`` means ``(A B) / Z`` and
+                   not ``A (B / Z)``.
+``(E)``            Grouping: Parenthesis can be used to change
+                   operator priority.
+``{E}``            Capture: Apply expression `E` and store the substring
+                   that matched `E` into a *capture* that can be accessed
+                   after the matching process.
+``{}``             Empty capture: Delete the last capture. No character
+                   is consumed.
+``$i``             Back reference to the ``i``th capture. ``i`` counts forwards
+                   from 1 or backwards (last capture to first) from ^1.
+``$``              Anchor: Matches at the end of the input. No character
+                   is consumed. Same as ``!.``.
+``^``              Anchor: Matches at the start of the input. No character
+                   is consumed.
+``&E``             And predicate: Indicate success if expression `E` matches
+                   the text ahead; otherwise indicate failure. Do not consume
+                   any text.
+``!E``             Not predicate: Indicate failure if expression E matches the
+                   text ahead; otherwise indicate success. Do not consume any
+                   text.
+``E+``             One or more: Apply expression `E` repeatedly to match
+                   the text ahead, as long as it succeeds. Consume the matched
+                   text (if any) and indicate success if there was at least
+                   one match. Otherwise, indicate failure.
+``E*``             Zero or more: Apply expression `E` repeatedly to match
+                   the text ahead, as long as it succeeds. Consume the matched
+                   text (if any). Always indicate success.
+``E?``             Zero or one: If expression `E` matches the text ahead,
+                   consume it. Always indicate success.
+``[s]``            Character class: If the character ahead appears in the
+                   string `s`, consume it and indicate success. Otherwise,
+                   indicate failure.
+``[a-b]``          Character range: If the character ahead is one from the
+                   range `a` through `b`, consume it and indicate success.
+                   Otherwise, indicate failure.
+``'s'``            String: If the text ahead is the string `s`, consume it
+                   and indicate success. Otherwise, indicate failure.
+``i's'``           String match ignoring case.
+``y's'``           String match ignoring style.
+``v's'``           Verbatim string match: Use this to override a global
+                   ``\i`` or ``\y`` modifier.
+``i$j``            String match ignoring case for back reference.
+``y$j``            String match ignoring style for back reference.
+``v$j``            Verbatim string match for back reference.
+``.``              Any character: If there is a character ahead, consume it
+                   and indicate success. Otherwise, (that is, at the end of
+                   input) indicate failure.
+``_``              Any Unicode character: If there is a UTF-8 character
+                   ahead, consume it and indicate success. Otherwise, indicate
+                   failure.
+``@E``             Search: Shorthand for ``(!E .)* E``. (Search loop for the
+                   pattern `E`.)
+``{@} E``          Captured Search: Shorthand for ``{(!E .)*} E``. (Search
+                   loop for the pattern `E`.) Everything until and excluding
+                   `E` is captured.
+``@@ E``           Same as ``{@} E``.
+``A <- E``         Rule: Bind the expression `E` to the *nonterminal symbol*
+                   `A`. **Left recursive rules are not possible and crash the
+                   matching engine.**
+``\identifier``    Built-in macro for a longer expression.
+``\ddd``           Character with decimal code *ddd*.
+``\"``, etc.       Literal ``"``, etc.
+===============    ============================================================
+
+
+Built-in macros
+---------------
+
+==============     ============================================================
+macro              meaning
+==============     ============================================================
+``\d``             any decimal digit: ``[0-9]``
+``\D``             any character that is not a decimal digit: ``[^0-9]``
+``\s``             any whitespace character: ``[ \9-\13]``
+``\S``             any character that is not a whitespace character:
+                   ``[^ \9-\13]``
+``\w``             any "word" character: ``[a-zA-Z0-9_]``
+``\W``             any "non-word" character: ``[^a-zA-Z0-9_]``
+``\a``             same as ``[a-zA-Z]``
+``\A``             same as ``[^a-zA-Z]``
+``\n``             any newline combination: ``\10 / \13\10 / \13``
+``\i``             ignore case for matching; use this at the start of the PEG
+``\y``             ignore style for matching; use this at the start of the PEG
+``\skip`` pat      skip pattern *pat* before trying to match other tokens;
+                   this is useful for whitespace skipping, for example:
+                   ``\skip(\s*) {\ident} ':' {\ident}`` matches key value
+                   pairs ignoring whitespace around the ``':'``.
+``\ident``         a standard ASCII identifier: ``[a-zA-Z_][a-zA-Z_0-9]*``
+``\letter``        any Unicode letter
+``\upper``         any Unicode uppercase letter
+``\lower``         any Unicode lowercase letter
+``\title``         any Unicode title letter
+``\white``         any Unicode whitespace character
+==============     ============================================================
+
+A backslash followed by a letter is a built-in macro, otherwise it
+is used for ordinary escaping:
+
+==============     ============================================================
+notation           meaning
+==============     ============================================================
+``\\``             a single backslash
+``\*``             same as ``'*'``
+``\t``             not a tabulator, but an (unknown) built-in
+==============     ============================================================
+
+
+Supported PEG grammar
+---------------------
+
+The PEG parser implements this grammar (written in PEG syntax):
+
+    # Example grammar of PEG in PEG syntax.
+    # Comments start with '#'.
+    # First symbol is the start symbol.
+
+    grammar <- rule* / expr
+
+    identifier <- [A-Za-z][A-Za-z0-9_]*
+    charsetchar <- "\\" . / [^\]]
+    charset <- "[" "^"? (charsetchar ("-" charsetchar)?)+ "]"
+    stringlit <- identifier? ("\"" ("\\" . / [^"])* "\"" /
+                              "'" ("\\" . / [^'])* "'")
+    builtin <- "\\" identifier / [^\13\10]
+
+    comment <- '#' @ \n
+    ig <- (\s / comment)* # things to ignore
+
+    rule <- identifier \s* "<-" expr ig
+    identNoArrow <- identifier !(\s* "<-")
+    prefixOpr <- ig '&' / ig '!' / ig '@' / ig '{@}' / ig '@@'
+    literal <- ig identifier? '$' '^'? [0-9]+ / '$' / '^' /
+               ig identNoArrow /
+               ig charset /
+               ig stringlit /
+               ig builtin /
+               ig '.' /
+               ig '_' /
+               (ig "(" expr ig ")") /
+               (ig "{" expr? ig "}")
+    postfixOpr <- ig '?' / ig '*' / ig '+'
+    primary <- prefixOpr* (literal postfixOpr*)
+
+    # Concatenation has higher priority than choice:
+    # ``a b / c`` means ``(a b) / c``
+
+    seqExpr <- primary+
+    expr <- seqExpr (ig "/" expr)*
+
+
+**Note**: As a special syntactic extension if the whole PEG is only a single
+expression, identifiers are not interpreted as non-terminals, but are
+interpreted as verbatim string:
+
+  ```nim
+  abc =~ peg"abc" # is true
+  ```
+
+So it is not necessary to write ``peg" 'abc' "`` in the above example.
+
+
+Examples
+--------
+
+Check if `s` matches Nim's "while" keyword:
+
+  ```nim
+  s =~ peg" y'while'"
+  ```
+
+Exchange (key, val)-pairs:
+
+  ```nim
+  "key: val; key2: val2".replacef(peg"{\ident} \s* ':' \s* {\ident}", "$2: $1")
+  ```
+
+Determine the ``#include``'ed files of a C file:
+
+  ```nim
+  for line in lines("myfile.c"):
+    if line =~ peg"""s <- ws '#include' ws '"' {[^"]+} '"' ws
+                     comment <- '/*' @ '*/' / '//' .*
+                     ws <- (comment / \s+)* """:
+      echo matches[0]
+  ```
+
+PEG vs regular expression
+-------------------------
+As a regular expression ``\[.*\]`` matches the longest possible text between
+``'['`` and ``']'``. As a PEG it never matches anything, because a PEG is
+deterministic: ``.*`` consumes the rest of the input, so ``\]`` never matches.
+As a PEG this needs to be written as: ``\[ ( !\] . )* \]`` (or ``\[ @ \]``).
+
+Note that the regular expression does not behave as intended either: in the
+example ``*`` should not be greedy, so ``\[.*?\]`` should be used instead.
+
+
+PEG construction
+----------------
+There are two ways to construct a PEG in Nim code:
+(1) Parsing a string into an AST which consists of `Peg` nodes with the
+    `peg` proc.
+(2) Constructing the AST directly with proc calls. This method does not
+    support constructing rules, only simple expressions and is not as
+    convenient. Its only advantage is that it does not pull in the whole PEG
+    parser into your executable.
+

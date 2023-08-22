@@ -1,0 +1,1 @@
+proc pkgCTest*(): int64 = 0xDEADBEEF

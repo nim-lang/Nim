@@ -1,0 +1,52 @@
+Short description of Nim's modules
+-------------------------------------
+
+==============  ==========================================================
+Module          Description
+==============  ==========================================================
+nim             main module: parses the command line and calls
+                `main.MainCommand`
+main            implements the top-level command dispatching
+nimconf         implements the config file reader
+syntaxes        dispatcher for the different parsers and filters
+filter_tmpl     standard template filter (``#? stdtempl``)
+lexbase         buffer handling of the lexical analyser
+lexer           lexical analyser
+parser          Nim's parser
+renderer        Nim code renderer (AST back to its textual form)
+options         contains global and local compiler options
+ast             type definitions of the abstract syntax tree (AST) and
+                node constructors
+astalgo         algorithms for containers of AST nodes; converting the
+                AST to YAML; the symbol table
+passes          implement the passes manager for passes over the AST
+trees           some algorithms for nodes; this module is less important
+types           module for traversing type graphs; also contain several
+                helpers for dealing with types
+
+sigmatch        contains the matching algorithm that is used for proc
+                calls
+semexprs        contains the semantic checking phase for expressions
+semstmts        contains the semantic checking phase for statements
+semtypes        contains the semantic checking phase for types
+seminst         instantiation of generic procs and types
+semfold         contains code to deal with constant folding
+sempass2        Second semantic checking pass over the AST
+vm              contains an AST interpreter for compile time evaluation
+pragmas         semantic checking of pragmas
+
+idents          implements a general mapping from identifiers to an internal
+                representation (`PIdent`) that is used so that a simple
+                id-comparison suffices to establish whether two Nim
+                identifiers are equivalent
+
+transf          transformations on the AST that need to be done before
+                code generation
+cgen            main file of the C code generator
+ccgutils        contains helpers for the C code generator
+ccgtypes        the generator for C types
+ccgstmts        the generator for statements
+ccgexprs        the generator for expressions
+extccomp        this module calls the C compiler and linker; interesting
+                if you want to add support for a new C compiler
+==============  ==========================================================

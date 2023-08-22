@@ -1,0 +1,18 @@
+[
+  {
+    "name": "packagea",
+    "url": "https://github.com/nimble-test/packagea.git",
+    "method": "git",
+    "tags": [ "test" ], 
+    "description": "A test package.",
+    "license": "MIT"
+  },
+  {
+    "name": "packageb",
+    "url": "https://github.com/nimble-test/packageb.git",
+    "method": "git",
+    "tags": [ "test" ],
+    "description": "A test package.",
+    "license": "MIT"
+  }
+]

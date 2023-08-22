@@ -1,0 +1,26 @@
+// Simple JSON test file
+// (c) 2011 Andreas Rumpf
+
+/* a long comment */
+
+{
+  "key1": null,
+  "obj": {"1": 2, "5": 4},
+  
+  "key2": [
+    {},
+    {   },
+    [],
+    
+    [ // empty array
+    ],
+    
+    -1e10 // another comment
+    
+  
+  ]        ,
+  "keyÄÖöoß\u00DF": false
+}
+
+// [{}, {899: 12, "x": "y"}, [], 123, 89, 89, "xyz", null, [], [], [1, 2, 3]]
+

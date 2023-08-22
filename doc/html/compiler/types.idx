@@ -1,0 +1,159 @@
+nimTitle	types	types.html	module types		0
+nim	preferName	types.html#preferName	TPreferedDesc.preferName		20
+nim	preferDesc	types.html#preferDesc	TPreferedDesc.preferDesc		20
+nim	preferExported	types.html#preferExported	TPreferedDesc.preferExported		20
+nim	preferModuleInfo	types.html#preferModuleInfo	TPreferedDesc.preferModuleInfo		20
+nim	preferGenericArg	types.html#preferGenericArg	TPreferedDesc.preferGenericArg		20
+nim	preferTypeName	types.html#preferTypeName	TPreferedDesc.preferTypeName		20
+nim	preferResolved	types.html#preferResolved	TPreferedDesc.preferResolved		20
+nim	preferMixed	types.html#preferMixed	TPreferedDesc.preferMixed		20
+nim	TPreferedDesc	types.html#TPreferedDesc	enum TPreferedDesc		20
+nim	isNone	types.html#isNone	TTypeRelation.isNone		32
+nim	isConvertible	types.html#isConvertible	TTypeRelation.isConvertible		32
+nim	isIntConv	types.html#isIntConv	TTypeRelation.isIntConv		32
+nim	isSubtype	types.html#isSubtype	TTypeRelation.isSubtype		32
+nim	isSubrange	types.html#isSubrange	TTypeRelation.isSubrange		32
+nim	isBothMetaConvertible	types.html#isBothMetaConvertible	TTypeRelation.isBothMetaConvertible		32
+nim	isInferred	types.html#isInferred	TTypeRelation.isInferred		32
+nim	isInferredConvertible	types.html#isInferredConvertible	TTypeRelation.isInferredConvertible		32
+nim	isGeneric	types.html#isGeneric	TTypeRelation.isGeneric		32
+nim	isFromIntLit	types.html#isFromIntLit	TTypeRelation.isFromIntLit		32
+nim	isEqual	types.html#isEqual	TTypeRelation.isEqual		32
+nim	TTypeRelation	types.html#TTypeRelation	enum TTypeRelation		32
+nim	pcmNoSideEffect	types.html#pcmNoSideEffect	ProcConvMismatch.pcmNoSideEffect		48
+nim	pcmNotGcSafe	types.html#pcmNotGcSafe	ProcConvMismatch.pcmNotGcSafe		48
+nim	pcmNotIterator	types.html#pcmNotIterator	ProcConvMismatch.pcmNotIterator		48
+nim	pcmDifferentCallConv	types.html#pcmDifferentCallConv	ProcConvMismatch.pcmDifferentCallConv		48
+nim	ProcConvMismatch	types.html#ProcConvMismatch	enum ProcConvMismatch		48
+nim	typeToString	types.html#typeToString,PType,TPreferedDesc	proc typeToString(typ: PType; prefer: TPreferedDesc = preferName): string		54
+nim	addTypeDeclVerboseMaybe	types.html#addTypeDeclVerboseMaybe,string,ConfigRef,PType	proc addTypeDeclVerboseMaybe(result: var string; conf: ConfigRef; typ: PType)		56
+nim	`$`	types.html#$.t,PType	template `$`(typ: PType): string		63
+nim	base	types.html#base,PType	proc base(t: PType): PType		65
+nim	TTypeIter	types.html#TTypeIter	type TTypeIter		70
+nim	TTypeMutator	types.html#TTypeMutator	type TTypeMutator		71
+nim	TTypePredicate	types.html#TTypePredicate	type TTypePredicate		72
+nim	iterOverType	types.html#iterOverType,PType,TTypeIter,RootRef	proc iterOverType(t: PType; iter: TTypeIter; closure: RootRef): bool		74
+nim	mutateType	types.html#mutateType,PType,TTypeMutator,RootRef	proc mutateType(t: PType; iter: TTypeMutator; closure: RootRef): PType		76
+nim	paramsNotEqual	types.html#paramsNotEqual	TParamsEquality.paramsNotEqual		80
+nim	paramsEqual	types.html#paramsEqual	TParamsEquality.paramsEqual		80
+nim	paramsIncompatible	types.html#paramsIncompatible	TParamsEquality.paramsIncompatible		80
+nim	TParamsEquality	types.html#TParamsEquality	enum TParamsEquality		80
+nim	equalParams	types.html#equalParams,PNode,PNode	proc equalParams(a, b: PNode): TParamsEquality		89
+nim	abstractPtrs	types.html#abstractPtrs	const abstractPtrs		95
+nim	abstractVar	types.html#abstractVar	const abstractVar		97
+nim	abstractRange	types.html#abstractRange	const abstractRange		99
+nim	abstractInstOwned	types.html#abstractInstOwned	const abstractInstOwned		101
+nim	skipPtrs	types.html#skipPtrs	const skipPtrs		102
+nim	typedescPtrs	types.html#typedescPtrs	const typedescPtrs		105
+nim	typedescInst	types.html#typedescInst	const typedescInst		106
+nim	invalidGenericInst	types.html#invalidGenericInst,PType	proc invalidGenericInst(f: PType): bool		108
+nim	isPureObject	types.html#isPureObject,PType	proc isPureObject(typ: PType): bool		111
+nim	isUnsigned	types.html#isUnsigned,PType	proc isUnsigned(t: PType): bool		117
+nim	getOrdValue	types.html#getOrdValue,PNode	proc getOrdValue(n: PNode; onError = high(Int128)): Int128		120
+nim	getFloatValue	types.html#getFloatValue,PNode	proc getFloatValue(n: PNode): BiggestFloat		144
+nim	isIntLit	types.html#isIntLit,PType	proc isIntLit(t: PType): bool		150
+nim	isFloatLit	types.html#isFloatLit,PType	proc isFloatLit(t: PType): bool		153
+nim	addTypeHeader	types.html#addTypeHeader,string,ConfigRef,PType,TPreferedDesc	proc addTypeHeader(result: var string; conf: ConfigRef; typ: PType;\n              prefer: TPreferedDesc = preferMixed; getDeclarationPath = true)		156
+nim	getProcHeader	types.html#getProcHeader,ConfigRef,PSym,TPreferedDesc	proc getProcHeader(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName;\n              getDeclarationPath = true): string		160
+nim	elemType	types.html#elemType,PType	proc elemType(t: PType): PType		181
+nim	enumHasHoles	types.html#enumHasHoles,PType	proc enumHasHoles(t: PType): bool		190
+nim	isOrdinalType	types.html#isOrdinalType,PType,bool	proc isOrdinalType(t: PType; allowEnumWithHoles: bool = false): bool		194
+nim	searchTypeFor	types.html#searchTypeFor,PType,TTypePredicate	proc searchTypeFor(t: PType; predicate: TTypePredicate): bool		287
+nim	containsObject	types.html#containsObject,PType	proc containsObject(t: PType): bool		294
+nim	frNone	types.html#frNone	TTypeFieldResult.frNone		303
+nim	frHeader	types.html#frHeader	TTypeFieldResult.frHeader		303
+nim	frEmbedded	types.html#frEmbedded	TTypeFieldResult.frEmbedded		303
+nim	TTypeFieldResult	types.html#TTypeFieldResult	enum TTypeFieldResult		303
+nim	analyseObjectWithTypeField	types.html#analyseObjectWithTypeField,PType	proc analyseObjectWithTypeField(t: PType): TTypeFieldResult		337
+nim	containsGarbageCollectedRef	types.html#containsGarbageCollectedRef,PType	proc containsGarbageCollectedRef(typ: PType): bool		350
+nim	containsManagedMemory	types.html#containsManagedMemory,PType	proc containsManagedMemory(typ: PType): bool		359
+nim	containsTyRef	types.html#containsTyRef,PType	proc containsTyRef(typ: PType): bool		365
+nim	containsHiddenPointer	types.html#containsHiddenPointer,PType	proc containsHiddenPointer(typ: PType): bool		372
+nim	sameBackendType	types.html#sameBackendType,PType,PType	proc sameBackendType(x, y: PType): bool		395
+nim	isFinal	types.html#isFinal,PType	proc isFinal(t: PType): bool		439
+nim	canFormAcycle	types.html#canFormAcycle,ModuleGraph,PType	proc canFormAcycle(g: ModuleGraph; typ: PType): bool		443
+nim	bindConcreteTypeToUserTypeClass	types.html#bindConcreteTypeToUserTypeClass.t,PType,PType	template bindConcreteTypeToUserTypeClass(tc, concrete: PType)		515
+nim	isResolvedUserTypeClass	types.html#isResolvedUserTypeClass.t,PType	template isResolvedUserTypeClass(t: PType): bool		525
+nim	firstOrd	types.html#firstOrd,ConfigRef,PType	proc firstOrd(conf: ConfigRef; t: PType): Int128		774
+nim	firstFloat	types.html#firstFloat,PType	proc firstFloat(t: PType): BiggestFloat		823
+nim	targetSizeSignedToKind	types.html#targetSizeSignedToKind,ConfigRef	proc targetSizeSignedToKind(conf: ConfigRef): TTypeKind		838
+nim	targetSizeUnsignedToKind	types.html#targetSizeUnsignedToKind,ConfigRef	proc targetSizeUnsignedToKind(conf: ConfigRef): TTypeKind		845
+nim	normalizeKind	types.html#normalizeKind,ConfigRef,TTypeKind	proc normalizeKind(conf: ConfigRef; k: TTypeKind): TTypeKind		852
+nim	lastOrd	types.html#lastOrd,ConfigRef,PType	proc lastOrd(conf: ConfigRef; t: PType): Int128		861
+nim	lastFloat	types.html#lastFloat,PType	proc lastFloat(t: PType): BiggestFloat		915
+nim	floatRangeCheck	types.html#floatRangeCheck,BiggestFloat,PType	proc floatRangeCheck(x: BiggestFloat; t: PType): bool		930
+nim	lengthOrd	types.html#lengthOrd,ConfigRef,PType	proc lengthOrd(conf: ConfigRef; t: PType): Int128		947
+nim	dcEq	types.html#dcEq	TDistinctCompare.dcEq		958
+nim	dcEqIgnoreDistinct	types.html#dcEqIgnoreDistinct	TDistinctCompare.dcEqIgnoreDistinct		958
+nim	dcEqOrDistinctOf	types.html#dcEqOrDistinctOf	TDistinctCompare.dcEqOrDistinctOf		958
+nim	TDistinctCompare	types.html#TDistinctCompare	enum TDistinctCompare		958
+nim	IgnoreTupleFields	types.html#IgnoreTupleFields	TTypeCmpFlag.IgnoreTupleFields		964
+nim	IgnoreCC	types.html#IgnoreCC	TTypeCmpFlag.IgnoreCC		964
+nim	ExactTypeDescValues	types.html#ExactTypeDescValues	TTypeCmpFlag.ExactTypeDescValues		964
+nim	ExactGenericParams	types.html#ExactGenericParams	TTypeCmpFlag.ExactGenericParams		964
+nim	ExactConstraints	types.html#ExactConstraints	TTypeCmpFlag.ExactConstraints		964
+nim	ExactGcSafety	types.html#ExactGcSafety	TTypeCmpFlag.ExactGcSafety		964
+nim	AllowCommonBase	types.html#AllowCommonBase	TTypeCmpFlag.AllowCommonBase		964
+nim	PickyCAliases	types.html#PickyCAliases	TTypeCmpFlag.PickyCAliases		964
+nim	TTypeCmpFlag	types.html#TTypeCmpFlag	enum TTypeCmpFlag		964
+nim	TTypeCmpFlags	types.html#TTypeCmpFlags	type TTypeCmpFlags		974
+nim	sameType	types.html#sameType,PType,PType,TTypeCmpFlags	proc sameType(a, b: PType; flags: TTypeCmpFlags = {}): bool		1000
+nim	sameTypeOrNil	types.html#sameTypeOrNil,PType,PType,TTypeCmpFlags	proc sameTypeOrNil(a, b: PType; flags: TTypeCmpFlags = {}): bool		1005
+nim	sameObjectTypes	types.html#sameObjectTypes,PType,PType	proc sameObjectTypes(a, b: PType): bool		1117
+nim	sameDistinctTypes	types.html#sameDistinctTypes,PType,PType	proc sameDistinctTypes(a, b: PType): bool		1123
+nim	sameEnumTypes	types.html#sameEnumTypes,PType,PType	proc sameEnumTypes(a, b: PType): bool		1126
+nim	isGenericAlias	types.html#isGenericAlias,PType	proc isGenericAlias(t: PType): bool		1175
+nim	skipGenericAlias	types.html#skipGenericAlias,PType	proc skipGenericAlias(t: PType): PType		1178
+nim	sameFlags	types.html#sameFlags,PType,PType	proc sameFlags(a, b: PType): bool		1181
+nim	compareTypes	types.html#compareTypes,PType,PType,TDistinctCompare,TTypeCmpFlags	proc compareTypes(x, y: PType; cmp: TDistinctCompare = dcEq;\n             flags: TTypeCmpFlags = {}): bool		1328
+nim	inheritanceDiff	types.html#inheritanceDiff,PType,PType	proc inheritanceDiff(a, b: PType): int		1339
+nim	commonSuperclass	types.html#commonSuperclass,PType,PType	proc commonSuperclass(a, b: PType): PType		1363
+nim	matchType	types.html#matchType,PType,openArray[tuple[TTypeKind,int]],TTypeKind	proc matchType(a: PType; pattern: openArray[tuple[k: TTypeKind, i: int]];\n          last: TTypeKind): bool		1388
+nim	szUnknownSize	types.html#szUnknownSize	const szUnknownSize		21
+nim	szIllegalRecursion	types.html#szIllegalRecursion	const szIllegalRecursion		22
+nim	szUncomputedSize	types.html#szUncomputedSize	const szUncomputedSize		23
+nim	szTooBigSize	types.html#szTooBigSize	const szTooBigSize		24
+nim	foldSizeOf	types.html#foldSizeOf.t,ConfigRef,PNode,PNode	template foldSizeOf(conf: ConfigRef; n: PNode; fallback: PNode): PNode		466
+nim	foldAlignOf	types.html#foldAlignOf.t,ConfigRef,PNode,PNode	template foldAlignOf(conf: ConfigRef; n: PNode; fallback: PNode): PNode		480
+nim	foldOffsetOf	types.html#foldOffsetOf.t,ConfigRef,PNode,PNode	template foldOffsetOf(conf: ConfigRef; n: PNode; fallback: PNode): PNode		494
+nim	computeSize	types.html#computeSize,ConfigRef,PType	proc computeSize(conf: ConfigRef; typ: PType): BiggestInt		1400
+nim	getReturnType	types.html#getReturnType,PSym	proc getReturnType(s: PSym): PType		1404
+nim	getAlign	types.html#getAlign,ConfigRef,PType	proc getAlign(conf: ConfigRef; typ: PType): BiggestInt		1409
+nim	getSize	types.html#getSize,ConfigRef,PType	proc getSize(conf: ConfigRef; typ: PType): BiggestInt		1413
+nim	containsGenericType	types.html#containsGenericType,PType	proc containsGenericType(t: PType): bool		1430
+nim	baseOfDistinct	types.html#baseOfDistinct,PType,ModuleGraph,IdGenerator	proc baseOfDistinct(t: PType; g: ModuleGraph; idgen: IdGenerator): PType		1433
+nim	safeInheritanceDiff	types.html#safeInheritanceDiff,PType,PType	proc safeInheritanceDiff(a, b: PType): int		1447
+nim	isDefectException	types.html#isDefectException,PType	proc isDefectException(t: PType): bool		1464
+nim	efCompat	types.html#efCompat	EffectsCompat.efCompat		1486
+nim	efRaisesDiffer	types.html#efRaisesDiffer	EffectsCompat.efRaisesDiffer		1486
+nim	efRaisesUnknown	types.html#efRaisesUnknown	EffectsCompat.efRaisesUnknown		1486
+nim	efTagsDiffer	types.html#efTagsDiffer	EffectsCompat.efTagsDiffer		1486
+nim	efTagsUnknown	types.html#efTagsUnknown	EffectsCompat.efTagsUnknown		1486
+nim	efEffectsDelayed	types.html#efEffectsDelayed	EffectsCompat.efEffectsDelayed		1486
+nim	efTagsIllegal	types.html#efTagsIllegal	EffectsCompat.efTagsIllegal		1486
+nim	EffectsCompat	types.html#EffectsCompat	enum EffectsCompat		1486
+nim	compatibleEffects	types.html#compatibleEffects,PType,PType	proc compatibleEffects(formal, actual: PType): EffectsCompat		1495
+nim	isCompileTimeOnly	types.html#isCompileTimeOnly,PType	proc isCompileTimeOnly(t: PType): bool		1543
+nim	containsCompileTimeOnly	types.html#containsCompileTimeOnly,PType	proc containsCompileTimeOnly(t: PType): bool		1546
+nim	safeSkipTypes	types.html#safeSkipTypes,PType,TTypeKinds	proc safeSkipTypes(t: PType; kinds: TTypeKinds): PType		1553
+nim	NoneLike	types.html#NoneLike	OrdinalType.NoneLike		1561
+nim	IntLike	types.html#IntLike	OrdinalType.IntLike		1561
+nim	FloatLike	types.html#FloatLike	OrdinalType.FloatLike		1561
+nim	OrdinalType	types.html#OrdinalType	enum OrdinalType		1561
+nim	classify	types.html#classify,PType	proc classify(t: PType): OrdinalType		1564
+nim	skipConv	types.html#skipConv,PNode	proc skipConv(n: PNode): PNode		1575
+nim	skipHidden	types.html#skipHidden,PNode	proc skipHidden(n: PNode): PNode		1588
+nim	skipConvTakeType	types.html#skipConvTakeType,PNode	proc skipConvTakeType(n: PNode): PNode		1600
+nim	isEmptyContainer	types.html#isEmptyContainer,PType	proc isEmptyContainer(t: PType): bool		1604
+nim	takeType	types.html#takeType,PType,PType,ModuleGraph,IdGenerator	proc takeType(formal, arg: PType; g: ModuleGraph; idgen: IdGenerator): PType		1613
+nim	skipHiddenSubConv	types.html#skipHiddenSubConv,PNode,ModuleGraph,IdGenerator	proc skipHiddenSubConv(n: PNode; g: ModuleGraph; idgen: IdGenerator): PNode		1630
+nim	getProcConvMismatch	types.html#getProcConvMismatch,ConfigRef,PType,PType	proc getProcConvMismatch(c: ConfigRef; f, a: PType; rel = isNone): (\n    set[ProcConvMismatch], TTypeRelation)		1647
+nim	addPragmaAndCallConvMismatch	types.html#addPragmaAndCallConvMismatch,string,PType,PType,ConfigRef	proc addPragmaAndCallConvMismatch(message: var string; formal, actual: PType;\n                             conf: ConfigRef)		1678
+nim	typeMismatch	types.html#typeMismatch,ConfigRef,TLineInfo,PType,PType,PNode	proc typeMismatch(conf: ConfigRef; info: TLineInfo; formal, actual: PType; n: PNode)		1717
+nim	isTupleRecursive	types.html#isTupleRecursive,PType	proc isTupleRecursive(t: PType): bool		1767
+nim	isException	types.html#isException,PType	proc isException(t: PType): bool		1771
+nim	isDefectOrCatchableError	types.html#isDefectOrCatchableError,PType	proc isDefectOrCatchableError(t: PType): bool		1793
+nim	isSinkTypeForParam	types.html#isSinkTypeForParam,PType	proc isSinkTypeForParam(t: PType): bool		1805
+nim	lookupFieldAgain	types.html#lookupFieldAgain,PType,PSym	proc lookupFieldAgain(ty: PType; field: PSym): PSym		1816
+nim	isCharArrayPtr	types.html#isCharArrayPtr,PType,bool	proc isCharArrayPtr(t: PType; allowPointerToChar: bool): bool		1827
+nim	lacksMTypeField	types.html#lacksMTypeField,PType	proc lacksMTypeField(typ: PType): bool		1844

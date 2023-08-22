@@ -1,0 +1,12 @@
+nimcache/
+nimblecache/
+htmldocs/
+bin/
+*.exe
+src/atlas.exe
+src/*
+!src/*.*
+tests/*
+!tests/*.*
+atlas
+deps.png

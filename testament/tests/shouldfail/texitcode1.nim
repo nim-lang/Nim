@@ -1,0 +1,3 @@
+discard """
+  exitcode: 1
+"""

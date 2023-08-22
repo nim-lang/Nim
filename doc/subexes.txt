@@ -1,0 +1,60 @@
+Substitution Expressions (subex)
+================================
+
+A *subex* (*Substitution Expression*) represents an advanced string
+substitution. In contrast to a `regex`:idx: which deals with string analysis, a
+*subex* deals with string synthesis.
+
+Thanks to its conditional construct ``$[0|1|2|else]`` it supports
+`internationalization`:idx: of format string literals quite well.
+
+
+=====================   =====================================================
+Notation                meaning
+=====================   =====================================================
+``$#``                  use first or next argument
+``$name``               use named argument, you can wrap the named argument
+                        in curly braces (e.g. ``${name}``) to separate it from
+                        the next characters.
+``$$``                  produces a single ``$``
+``$1``                  use first argument
+``$-1``                 use last argument
+``${1..3}``             use arguments 1 to 3
+``${..}``               use all arguments
+``$*``                  use all arguments (same as ``${..}``)
+``${#..}``              use all remaining arguments
+``${..-2}``             use all arguments except the last argument
+``${$1}``               use argument X where ``X = parseInt(arg[1])``
+``${$1..$2}``           use arguments X to Y where ``X = parseInt(arg[1])``
+                        and ``Y = parseInt(arg[2])``
+``$','{1..3}``          use arguments 1 to 3 and join them with ','
+``$','80c'\n'{..}``     use all arguments, join them with ','. Insert '\\n'
+                        before the resulting string exceeds 80 chars.
+``$','8i'\n'{..}``      use all arguments, join them with ','. Insert '\\n'
+                        after every 8th item.
+``$' '~{1..3}``         use arguments 1 to 3 with a leading space if the
+                        concatenation of ``1..3`` is not the empty string
+``$[zero|one|def]1``    use ``X = parseInt(arg[1])`` to determine which
+                        branch to use. If ``X == 0`` the 'zero' branch is
+                        selected, if ``X == 1`` the 'one' branch is
+                        selected, etc. Otherwise the 'def' branch is
+                        selected. ``$x`` is interpreted in branches too.
+                        If a branch needs to contain ``|``, ``]`` put
+                        them in single quotes. To produce a verbatim single
+                        quote, use ``''``.
+=====================   =====================================================
+
+Examples
+========
+
+  ```nim
+  subex"$1($', '{2..})" % ["f", "a", "b", "c"] == "f(a, b, c)"
+
+  subex"$1 $[files|file|files]{1} copied" % ["1"] == "1 file copied"
+
+  subex"$['''|'|''''|']']#" % "0" == "'|"
+
+  subex("type\n  TEnum = enum\n    $', '40c'\n    '{..}") % [
+    "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"]
+  ```
+

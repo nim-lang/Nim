@@ -1,0 +1,102 @@
+The set type models the mathematical notion of a set. The set's basetype can
+only be an ordinal type of a certain size, namely:
+
+* `int8`-`int16`
+* `uint8`/`byte`-`uint16`
+* `char`
+* `enum`
+* Ordinal subrange types, i.e. `range[-10..10]`
+
+or equivalent. When constructing a set with signed integer literals, the set's
+base type is defined to be in the range `0 .. DefaultSetElements-1` where
+`DefaultSetElements` is currently always 2^8. The maximum range length for the
+base type of a set is `MaxSetElements` which is currently always 2^16. Types
+with a bigger range length are coerced into the range `0 .. MaxSetElements-1`.
+
+The reason is that sets are implemented as high performance bit vectors.
+Attempting to declare a set with a larger type will result in an error:
+
+```nim
+  var s: set[int64] # Error: set is too large; use `std/sets` for ordinal types
+                    # with more than 2^16 elements
+```
+
+
+**Note:** Nim also offers [hash sets](sets.html) (which you need to import
+with `import std/sets`), which have no such restrictions.
+
+Sets can be constructed via the set constructor: `{}` is the empty set. The
+empty set is type compatible with any concrete set type. The constructor
+can also be used to include elements (and ranges of elements):
+
+  ```nim
+  type
+    CharSet = set[char]
+  var
+    x: CharSet
+  x = {'a'..'z', '0'..'9'} # This constructs a set that contains the
+                           # letters from 'a' to 'z' and the digits
+                           # from '0' to '9'
+  ```
+
+The module [`std/setutils`](setutils.html) provides a way to initialize a set from an iterable:
+
+```nim
+import std/setutils
+
+let uniqueChars = myString.toSet
+```
+
+These operations are supported by sets:
+
+==================    ========================================================
+operation             meaning
+==================    ========================================================
+`A + B`               union of two sets
+`A * B`               intersection of two sets
+`A - B`               difference of two sets (A without B's elements)
+`A == B`              set equality
+`A <= B`              subset relation (A is subset of B or equal to B)
+`A < B`               strict subset relation (A is a proper subset of B)
+`e in A`              set membership (A contains element e)
+`e notin A`           A does not contain element e
+`contains(A, e)`      A contains element e
+`card(A)`             the cardinality of A (number of elements in A)
+`incl(A, elem)`       same as `A = A + {elem}`
+`excl(A, elem)`       same as `A = A - {elem}`
+==================    ========================================================
+
+### Bit fields
+
+Sets are often used to define a type for the *flags* of a procedure.
+This is a cleaner (and type safe) solution than defining integer
+constants that have to be `or`'ed together.
+
+Enum, sets and casting can be used together as in:
+
+  ```nim
+  type
+    MyFlag* {.size: sizeof(cint).} = enum
+      A
+      B
+      C
+      D
+    MyFlags = set[MyFlag]
+
+  proc toNum(f: MyFlags): int = cast[cint](f)
+  proc toFlags(v: int): MyFlags = cast[MyFlags](v)
+
+  assert toNum({}) == 0
+  assert toNum({A}) == 1
+  assert toNum({D}) == 8
+  assert toNum({A, C}) == 5
+  assert toFlags(0) == {}
+  assert toFlags(7) == {A, B, C}
+  ```
+
+Note how the set turns enum values into powers of 2.
+
+If using enums and sets with C, use distinct cint.
+
+For interoperability with C see also the
+[bitsize pragma](manual.html#implementation-specific-pragmas-bitsize-pragma).

@@ -1,0 +1,40 @@
+
+    nim command [options] [projectfile] [arguments]
+
+Command:
+  //compile, c              compile project with default code generator (C)
+  //r                       compile to $nimcache/projname, run with `arguments`
+                            using backend specified by `--backend` (default: c)
+  //doc                     generate the documentation for inputfile for
+                            backend specified by `--backend` (default: c)
+
+Arguments:
+  arguments are passed to the program being run (if --run option is selected)
+
+Options:
+  -p, --path:PATH           add path to search paths
+  -d, --define:SYMBOL(:VAL)
+                            define a conditional symbol
+                            (Optionally: Define the value for that symbol,
+                            see: "compile time define pragmas")
+  -u, --undef:SYMBOL        undefine a conditional symbol
+  -f, --forceBuild:on|off   force rebuilding of all modules
+  --stackTrace:on|off       turn stack tracing on|off
+  --lineTrace:on|off        turn line tracing on|off
+  --threads:on|off          turn support for multi-threading on|off
+  -x, --checks:on|off       turn all runtime checks on|off
+  -a, --assertions:on|off   turn assertions on|off
+  --opt:none|speed|size     optimize not at all or for speed|size
+                            Note: use -d:release for a release build!
+  --debugger:native         use native debugger (gdb)
+  --app:console|gui|lib|staticlib
+                            generate a console app|GUI app|DLL|static library
+  -r, --run                 run the compiled program with given arguments
+  --eval:cmd                evaluate nim code directly; e.g.: `nim --eval:"echo 1"`
+                            defaults to `e` (nimscript) but customizable:
+                            `nim r --eval:'for a in stdin.lines: echo a'`
+  --fullhelp                show all command line switches
+  -h, --help                show this help
+  -v, --version             show detailed version information
+
+Note, single letter options that take an argument require a colon. E.g. -p:PATH.

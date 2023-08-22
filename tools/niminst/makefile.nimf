@@ -1,0 +1,218 @@
+#? stdtmpl(subsChar='?') | standard
+#proc generateMakefile(c: ConfigData): string =
+#  result = "# Generated from niminst\n" &
+#           "# Template is in tools/niminst/makefile.nimf\n" &
+#           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
+
+CC ??= gcc
+CFLAGS += -Ic_code ?{c.ccompiler.flags}
+LDFLAGS += ?{c.linker.flags}
+binDir = ?{firstBinPath(c).toUnix}
+
+koch := $(shell sh -c 'test -s ../koch.nim && echo "yes"')
+ifeq ($(koch),yes)
+  binDir = ../bin
+endif
+
+target := ?{"$(binDir)/" & toLowerAscii(c.name)}
+
+
+ucpu := $(shell sh -c 'uname -m | tr "[:upper:]" "[:lower:]"')
+ifeq ($(OS),Windows_NT)
+  uos := windows
+else
+  uos := $(shell sh -c 'uname | tr "[:upper:]" "[:lower:]"')
+endif
+
+ifeq ($(uos),linux)
+  myos = linux
+  ## add -lrt to avoid "undefined reference to `clock_gettime'" with glibc<2.17
+  LDFLAGS += -ldl -lm -lrt
+endif
+ifeq ($(uos),dragonfly)
+  myos = freebsd
+  LDFLAGS += -lm
+endif
+ifeq ($(uos),freebsd)
+  myos= freebsd
+  CC = clang
+  LDFLAGS += -lm
+endif
+ifeq ($(uos),openbsd)
+  myos = openbsd
+  LDFLAGS += -lm
+endif
+ifeq ($(uos),netbsd)
+  myos = netbsd
+  LDFLAGS += -lm
+endif
+ifeq ($(uos),darwin)
+  myos = macosx
+  CC = clang
+  LDFLAGS += -ldl -lm
+  ifeq ($(HOSTTYPE),x86_64)
+    ucpu = amd64
+  endif
+endif
+ifeq ($(uos),aix)
+  myos = aix
+  LDFLAGS += -dl -lm
+endif
+ifeq ($(uos),solaris)
+  myos = solaris
+  LDFLAGS += -ldl -lm -lsocket -lnsl
+endif
+ifeq ($(uos),sun)
+  myos = solaris
+  LDFLAGS += -ldl -lm -lsocket -lnsl
+endif
+ifeq ($(uos),haiku)
+  myos = haiku
+endif
+ifeq ($(uos),windows)
+  myos = windows
+  target := $(target).exe
+endif
+ifndef myos
+  $(error unknown operating system: $(uos))
+endif
+
+ifeq ($(ucpu),i386)
+  mycpu = i386
+endif
+ifeq ($(ucpu),i486)
+  mycpu = i386
+endif
+ifeq ($(ucpu),i586)
+  mycpu = i386
+endif
+ifeq ($(ucpu),i686)
+  mycpu = i386
+endif
+ifeq ($(ucpu),bepc)
+  mycpu = i386
+endif
+ifeq ($(ucpu),i86pc)
+  mycpu = i386
+endif
+ifeq ($(ucpu),amd64)
+  mycpu = amd64
+endif
+ifeq ($(ucpu),x86-64)
+  mycpu = amd64
+endif
+ifeq ($(ucpu),x86_64)
+  mycpu = amd64
+endif
+ifeq ($(ucpu),parisc64)
+  mycpu = hppa
+endif
+ifeq ($(ucpu),s390x)
+  mycpu = s390x
+endif
+ifeq ($(ucpu),sparc)
+  mycpu = sparc
+endif
+ifeq ($(ucpu),sparc64)
+  mycpu = sparc64
+endif
+ifeq ($(ucpu),sun)
+  mycpu = sparc
+endif
+ifeq ($(ucpu),ppc64le)
+  mycpu = powerpc64el
+endif
+ifeq ($(ucpu),ppc64)
+  mycpu = powerpc64
+  ifeq ($(myos),linux)
+    CFLAGS += -m64
+    LDFLAGS += -m64
+  endif
+endif
+ifeq ($(ucpu),powerpc)
+  mycpu = powerpc
+  ifeq ($(myos),freebsd)
+    mycpu = $(shell sh -c 'uname -p | tr "[:upper:]" "[:lower:]"')
+    CFLAGS += -m64
+    LDFLAGS += -m64
+    ifeq ($(mycpu),powerpc64le)
+      mycpu = powerpc64el
+    endif
+  endif
+endif
+ifeq ($(ucpu),ppc)
+   mycpu = powerpc
+endif
+ifneq (,$(filter $(ucpu), mips mips64))
+  mycpu = $(shell /bin/sh -c '"$(CC)" -dumpmachine | sed "s/-.*//"')
+  ifeq (,$(filter $(mycpu), mips mipsel mips64 mips64el))
+    $(error unknown MIPS target: $(mycpu))
+  endif
+endif
+ifeq ($(ucpu),arm)
+  mycpu = arm
+endif
+ifeq ($(ucpu),armeb)
+  mycpu = arm
+endif
+ifeq ($(ucpu),armel)
+  mycpu = arm
+endif
+ifeq ($(ucpu),armv6l)
+  mycpu = arm
+endif
+ifeq ($(ucpu),armv7l)
+  mycpu = arm
+endif
+ifeq ($(ucpu),armv7hl)
+  mycpu = arm
+endif
+ifeq ($(ucpu),armv8l)
+  mycpu = arm
+endif
+ifeq ($(ucpu),aarch64)
+  mycpu = arm64
+endif
+ifeq ($(ucpu),arm64)
+  mycpu = arm64
+endif
+ifeq ($(ucpu),riscv64)
+  mycpu = riscv64
+endif
+ifeq ($(ucpu),e2k)
+  mycpu = e2k
+endif
+ifeq ($(ucpu),loongarch64)
+  mycpu = loongarch64
+endif
+ifndef mycpu
+  $(error unknown CPU architecture: $(ucpu) See makefile.nimf)
+endif
+
+# for osA in 1..c.oses.len:
+ifeq ($(myos),?{c.oses[osA-1]})
+#   for cpuA in 1..c.cpus.len:
+  ifeq ($(mycpu),?{c.cpus[cpuA-1]})
+#     var oFiles = ""
+#     for ff in c.cfiles[osA][cpuA].items:
+#       oFiles.add(" " & changeFileExt(ff.toUnix, "o"))
+#     end for
+    oFiles =?oFiles
+  endif
+#   end for
+endif
+# end for
+
+ifeq ($(strip $(oFiles)),)
+  $(error no C code generated for: [$(myos): $(mycpu)])
+endif
+
+$(target): $(oFiles)
+	@mkdir -p $(binDir)
+	$(CC) -o $@ $^ $(LDFLAGS)
+	@echo "SUCCESS"
+
+.PHONY: clean
+
+clean:
+	rm -f $(oFiles) ?{"$(binDir)/" & toLowerAscii(c.name)}

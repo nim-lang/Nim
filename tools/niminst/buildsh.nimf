@@ -1,0 +1,286 @@
+﻿#? stdtmpl(subsChar='?') | standard
+#proc generateBuildShellScript(c: ConfigData): string =
+#  result = "#!/bin/sh\n# Generated from niminst\n" &
+#           "# Template is in tools/niminst/buildsh.nimf\n" &
+#           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
+
+set -e
+
+while :
+do
+  case "$1" in
+    --os)
+      optos=$2
+      shift 2
+      ;;
+    --cpu)
+      optcpu=$2
+      shift 2
+      ;;
+    --osname)
+      optosname=$2
+      shift 2
+      ;;
+    --parallel)
+      parallel=$2
+      shift 2
+      ;;
+    --extraBuildArgs)
+      extraBuildArgs=" $2"
+      shift 2
+      ;;
+    -h | --help)
+      echo "Options:"
+      echo "  --os <OS>"
+      echo "  --cpu <CPU architecture>"
+      echo "  --osname <name>           Additional OS specification (used for Android)"
+      echo "  --extraBuildArgs <args>   Additional arguments passed to the compiler"
+      echo "  --parallel <number>       Multiprocess build. Requires GNU parallel"
+      exit 0
+      ;;
+    --) # End of all options
+      shift
+      break;
+      ;;
+    -*)
+      echo 2>&1 "Error: Unknown option: $1" >&2
+      exit 1
+      ;;
+    *)  # No more options
+      break
+      ;;
+  esac
+done
+
+parallel="${parallel:-0}"
+CC="${CC:-gcc}"
+if [ "$parallel" -gt 1 ]; then
+  if ! command -v sem > /dev/null; then
+    echo "Error: GNU parallel is required to use --parallel"
+    exit 1
+  fi
+  CC="sem -j $parallel --id $$ ${CC}"
+fi
+COMP_FLAGS="${CPPFLAGS:-} ${CFLAGS:-} ?{c.ccompiler.flags}$extraBuildArgs"
+LINK_FLAGS="${LDFLAGS:-} ?{c.linker.flags}"
+PS4=""
+#  add(result, "# platform detection\n")
+ucpu=`uname -m`
+uos=`uname`
+uosname=
+#  add(result, "# bin dir detection\n")
+binDir=?{firstBinPath(c).toUnix}
+
+if [ -s ../koch.nim ]; then
+  binDir="../bin"
+fi
+
+if [ ! -d $binDir ]; then
+  mkdir $binDir
+fi
+
+#  add(result, "# override OS, CPU and OS Name with command-line arguments\n")
+if [ -n "$optos" ]; then
+  uos="$optos"
+fi
+if [ -n "$optcpu" ]; then
+  ucpu="$optcpu"
+fi
+if [ -n "$optcpu" ]; then
+  uosname="$optosname"
+fi
+
+#  add(result, "# convert to lower case:\n")
+ucpu=`echo $ucpu | tr "[:upper:]" "[:lower:]"`
+uos=`echo $uos | tr "[:upper:]" "[:lower:]"`
+uosname=`echo $uosname | tr "[:upper:]" "[:lower:]"`
+
+case $uos in
+  *linux* )
+    myos="linux"
+    LINK_FLAGS="$LINK_FLAGS -ldl -lm -lrt"
+    ;;
+  *dragonfly* )
+    myos="dragonfly"
+    LINK_FLAGS="$LINK_FLAGS -lm"
+    ;;
+  *freebsd* )
+    myos="freebsd"
+    CC="clang"
+    LINK_FLAGS="$LINK_FLAGS -lm"
+    ;;
+  *crossos* )
+    myos="crossos"
+    CC="clang"
+    LINK_FLAGS="$LINK_FLAGS -lm"
+    ;;
+  *openbsd* )
+    myos="openbsd"
+    CC="clang"
+    LINK_FLAGS="$LINK_FLAGS -lm"
+    ;;
+  *netbsd* )
+    myos="netbsd"
+    LINK_FLAGS="$LINK_FLAGS -lm"
+    ;;
+  *darwin* )
+    myos="macosx"
+    CC="clang"
+    LINK_FLAGS="$LINK_FLAGS -ldl -lm"
+    if [ "$HOSTTYPE" = "x86_64" ] ; then
+      ucpu="amd64"
+    fi
+    ;;
+  *aix* )
+    myos="aix"
+    LINK_FLAGS="$LINK_FLAGS -ldl -lm"
+    ;;
+  *solaris* | *sun* )
+    myos="solaris"
+    LINK_FLAGS="$LINK_FLAGS -ldl -lm -lsocket -lnsl"
+    ;;
+  *SunOS* )
+    myos="solaris"
+    LINK_FLAGS="$LINK_FLAGS -ldl -lm -lsocket -lnsl"
+    isOpenIndiana="yes"
+    ;;
+  *haiku* )
+    myos="haiku"
+    LINK_FLAGS="$LINK_FLAGS -lroot -lnetwork"
+    ;;
+  *mingw* | *msys* )
+    myos="windows"
+    ;;
+  *android* )
+    myos="android"
+    LINK_FLAGS="$LINK_FLAGS -ldl -lm -lrt"
+    LINK_FLAGS="$LINK_FLAGS -landroid-glob"
+    ;;
+  *)
+    echo 2>&1 "Error: unknown operating system: $uos"
+    exit 1
+    ;;
+esac
+
+case $ucpu in
+  *i386* | *i486* | *i586* | *i686* | *bepc* | *i86pc* )
+    if [ "$isOpenIndiana" = "yes" ] || [ `uname -o` == "illumos" ] ; then
+      mycpu="amd64"
+    else
+      mycpu="i386"
+    fi
+    ;;
+  *amd*64* | *x86-64* | *x86_64* )
+    mycpu="amd64" ;;
+  *sparc*|*sun* )
+    mycpu="sparc"
+    if [ "$myos" = "linux" ] ; then
+      if [ "$(getconf LONG_BIT)" = "64" ]; then
+        mycpu="sparc64"
+      elif [ "$(isainfo -b)" = "64" ]; then
+        mycpu="sparc64"
+      fi
+    fi
+    ;;
+  *ppc64le* )
+    mycpu="powerpc64el" ;;
+  *ppc64* )
+    if [ "$myos" = "linux" ] ; then
+      COMP_FLAGS="$COMP_FLAGS -m64"
+      LINK_FLAGS="$LINK_FLAGS -m64"
+    fi
+    mycpu="powerpc64" ;;
+  *power*|*ppc* )
+    if [ "$myos" = "freebsd" ] ; then
+      if [ "$ucpu" != "powerpc" ] ; then
+        COMP_FLAGS="$COMP_FLAGS -m64"
+        LINK_FLAGS="$LINK_FLAGS -m64"
+      fi
+      mycpu=`uname -p`
+      case $mycpu in
+        powerpc64le)
+        mycpu="powerpc64el"
+      esac
+    else
+      mycpu="powerpc"
+    fi
+    ;;
+  *hppa*)
+    mycpu="hppa" ;;
+  *ia64*)
+    mycpu="ia64" ;;
+  *m68k*)
+    mycpu="m68k" ;;
+  *mips* )
+    mycpu="$("$CC" -dumpmachine | sed 's/-.*//')"
+    case $mycpu in
+      mips|mipsel|mips64|mips64el)
+        ;;
+      *)
+        echo 2>&1 "Error: unknown MIPS target: $mycpu"
+        exit 1
+    esac
+    ;;
+  *alpha* )
+    mycpu="alpha" ;;
+  *aarch64*|*arm64* )
+    mycpu="arm64" ;;
+  *arm*|*armv6l*|*armv7l*|*armv8l* )
+    mycpu="arm" ;;
+  *riscv64|riscv* )
+    mycpu="riscv64" ;;
+  *e2k* )
+    mycpu="e2k" ;;
+  *loongarch64* )
+    mycpu="loongarch64" ;;
+  *)
+    echo 2>&1 "Error: unknown processor: $ucpu"
+    exit 1
+    ;;
+esac
+
+case $uosname in
+  *android* )
+    LINK_FLAGS="$LINK_FLAGS -landroid-glob"
+    myosname="android"
+    myos="android"
+    ;;
+esac
+
+#  add(result, "# call the compiler:\n")
+echo \# OS:  $myos
+echo \# CPU: $mycpu
+
+case $myos in
+#  for osA in 1..c.oses.len:
+?{c.oses[osA-1]})
+  case $mycpu in
+#    for cpuA in 1..c.cpus.len:
+  ?{c.cpus[cpuA-1]})
+    set -x
+#      var linkCmd = ""
+#      for ff in items(c.cfiles[osA][cpuA]):
+#        let f = ff.toUnix
+    $CC $COMP_FLAGS -Ic_code -c ?{f} -o ?{changeFileExt(f, "o")}
+#        add(linkCmd, " \\\n" & changeFileExt(f, "o"))
+#      end for
+    if [ "$parallel" -gt 0 ]; then
+      sem --wait --id $$
+    fi
+    $CC -o ?{"$binDir/" & toLowerAscii(c.name)} ?linkCmd $LINK_FLAGS
+    ;;
+#    end for
+  *)
+    echo 2>&1 "Error: no C code generated for: [$myos: $mycpu]"
+    exit 1
+    ;;
+  esac
+  ;;
+#  end for
+*)
+  echo 2>&1 "Error: no C code generated for: [$myos: $mycpu]"
+  exit 1
+  ;;
+esac
+
+: SUCCESS

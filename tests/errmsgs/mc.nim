@@ -1,0 +1,3 @@
+
+type
+  typ* = distinct int

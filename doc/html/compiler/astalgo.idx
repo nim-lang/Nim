@@ -1,0 +1,66 @@
+nimTitle	astalgo	astalgo.html	module astalgo		0
+nim	hashNode	astalgo.html#hashNode,RootRef	proc hashNode(p: RootRef): Hash		23
+nim	treeToYaml	astalgo.html#treeToYaml,ConfigRef,PNode,int,int	proc treeToYaml(conf: ConfigRef; n: PNode; indent: int = 0; maxRecDepth: int = -1): Rope		24
+nim	typeToYaml	astalgo.html#typeToYaml,ConfigRef,PType,int,int	proc typeToYaml(conf: ConfigRef; n: PType; indent: int = 0; maxRecDepth: int = -1): Rope		28
+nim	symToYaml	astalgo.html#symToYaml,ConfigRef,PSym,int,int	proc symToYaml(conf: ConfigRef; n: PSym; indent: int = 0; maxRecDepth: int = -1): Rope		29
+nim	lineInfoToStr	astalgo.html#lineInfoToStr,ConfigRef,TLineInfo	proc lineInfoToStr(conf: ConfigRef; info: TLineInfo): Rope		30
+nim	debug	astalgo.html#debug,PSym,ConfigRef	proc debug(n: PSym; conf: ConfigRef = nil)		35
+nim	debug	astalgo.html#debug,PType,ConfigRef	proc debug(n: PType; conf: ConfigRef = nil)		36
+nim	debug	astalgo.html#debug,PNode,ConfigRef	proc debug(n: PNode; conf: ConfigRef = nil)		37
+nim	typekinds	astalgo.html#typekinds,PType	proc typekinds(t: PType)		39
+nim	debug	astalgo.html#debug.t	template debug(x: PSym | PType | PNode)		48
+nim	debug	astalgo.html#debug.t,auto	template debug(x: auto)		56
+nim	mdbg	astalgo.html#mdbg.t	template mdbg(): bool		59
+nim	idTableGet	astalgo.html#idTableGet,TIdTable,PIdObj	proc idTableGet(t: TIdTable; key: PIdObj): RootRef		83
+nim	idTableGet	astalgo.html#idTableGet,TIdTable,int	proc idTableGet(t: TIdTable; key: int): RootRef		84
+nim	idTablePut	astalgo.html#idTablePut,TIdTable,PIdObj,RootRef	proc idTablePut(t: var TIdTable; key: PIdObj; val: RootRef)		85
+nim	idTableHasObjectAsKey	astalgo.html#idTableHasObjectAsKey,TIdTable,PIdObj	proc idTableHasObjectAsKey(t: TIdTable; key: PIdObj): bool		86
+nim	idNodeTableGet	astalgo.html#idNodeTableGet,TIdNodeTable,PIdObj	proc idNodeTableGet(t: TIdNodeTable; key: PIdObj): PNode		89
+nim	idNodeTablePut	astalgo.html#idNodeTablePut,TIdNodeTable,PIdObj,PNode	proc idNodeTablePut(t: var TIdNodeTable; key: PIdObj; val: PNode)		90
+nim	lookupInRecord	astalgo.html#lookupInRecord,PNode,PIdent	proc lookupInRecord(n: PNode; field: PIdent): PSym		94
+nim	mustRehash	astalgo.html#mustRehash,int,int	proc mustRehash(length, counter: int): bool		95
+nim	nextTry	astalgo.html#nextTry,Hash,Hash	proc nextTry(h, maxHash: Hash): Hash		96
+nim	InvalidKey	astalgo.html#InvalidKey	const InvalidKey		100
+nim	TIIPair	astalgo.html#TIIPair	object TIIPair		103
+nim	TIIPairSeq	astalgo.html#TIIPairSeq	type TIIPairSeq		106
+nim	TIITable	astalgo.html#TIITable	object TIITable		107
+nim	initIITable	astalgo.html#initIITable,TIITable	proc initIITable(x: var TIITable)		112
+nim	iiTableGet	astalgo.html#iiTableGet,TIITable,int	proc iiTableGet(t: TIITable; key: int): int		113
+nim	iiTablePut	astalgo.html#iiTablePut,TIITable,int,int	proc iiTablePut(t: var TIITable; key, val: int)		114
+nim	skipConvCastAndClosure	astalgo.html#skipConvCastAndClosure,PNode	proc skipConvCastAndClosure(n: PNode): PNode		118
+nim	sameValue	astalgo.html#sameValue,PNode,PNode	proc sameValue(a, b: PNode): bool		129
+nim	leValue	astalgo.html#leValue,PNode,PNode	proc leValue(a, b: PNode): bool		143
+nim	weakLeValue	astalgo.html#weakLeValue,PNode,PNode	proc weakLeValue(a, b: PNode): TImplication		158
+nim	getModule	astalgo.html#getModule,PSym	proc getModule(s: PSym): PSym		185
+nim	fromSystem	astalgo.html#fromSystem,PSym	proc fromSystem(op: PSym): bool		190
+nim	getSymFromList	astalgo.html#getSymFromList,PNode,PIdent,int	proc getSymFromList(list: PNode; ident: PIdent; start: int = 0): PSym		191
+nim	getNamedParamFromList	astalgo.html#getNamedParamFromList,PNode,PIdent	proc getNamedParamFromList(list: PNode; ident: PIdent): PSym		226
+nim	makeYamlString	astalgo.html#makeYamlString,string	proc makeYamlString(s: string): Rope		257
+nim	objectSetContains	astalgo.html#objectSetContains,TObjectSet,RootRef	proc objectSetContains(t: TObjectSet; obj: RootRef): bool		680
+nim	objectSetIncl	astalgo.html#objectSetIncl,TObjectSet,RootRef	proc objectSetIncl(t: var TObjectSet; obj: RootRef)		704
+nim	objectSetContainsOrIncl	astalgo.html#objectSetContainsOrIncl,TObjectSet,RootRef	proc objectSetContainsOrIncl(t: var TObjectSet; obj: RootRef): bool		709
+nim	strTableContains	astalgo.html#strTableContains,TStrTable,PSym	proc strTableContains(t: TStrTable; n: PSym): bool		727
+nim	symTabReplace	astalgo.html#symTabReplace,TStrTable,PSym,PSym	proc symTabReplace(t: var TStrTable; prevSym: PSym; newSym: PSym)		756
+nim	strTableAdd	astalgo.html#strTableAdd,TStrTable,PSym	proc strTableAdd(t: var TStrTable; n: PSym)		766
+nim	strTableInclReportConflict	astalgo.html#strTableInclReportConflict,TStrTable,PSym	proc strTableInclReportConflict(t: var TStrTable; n: PSym; onConflictKeepOld = false): PSym		771
+nim	strTableIncl	astalgo.html#strTableIncl,TStrTable,PSym	proc strTableIncl(t: var TStrTable; n: PSym; onConflictKeepOld = false): bool		804
+nim	strTableGet	astalgo.html#strTableGet,TStrTable,PIdent	proc strTableGet(t: TStrTable; name: PIdent): PSym		808
+nim	TIdentIter	astalgo.html#TIdentIter	object TIdentIter		818
+nim	nextIdentIter	astalgo.html#nextIdentIter,TIdentIter,TStrTable	proc nextIdentIter(ti: var TIdentIter; tab: TStrTable): PSym		822
+nim	initIdentIter	astalgo.html#initIdentIter,TIdentIter,TStrTable,PIdent	proc initIdentIter(ti: var TIdentIter; tab: TStrTable; s: PIdent): PSym		840
+nim	nextIdentExcluding	astalgo.html#nextIdentExcluding,TIdentIter,TStrTable,IntSet	proc nextIdentExcluding(ti: var TIdentIter; tab: TStrTable; excluding: IntSet): PSym		846
+nim	firstIdentExcluding	astalgo.html#firstIdentExcluding,TIdentIter,TStrTable,PIdent,IntSet	proc firstIdentExcluding(ti: var TIdentIter; tab: TStrTable; s: PIdent;\n                    excluding: IntSet): PSym		862
+nim	TTabIter	astalgo.html#TTabIter	object TTabIter		870
+nim	nextIter	astalgo.html#nextIter,TTabIter,TStrTable	proc nextIter(ti: var TTabIter; tab: TStrTable): PSym		873
+nim	initTabIter	astalgo.html#initTabIter,TTabIter,TStrTable	proc initTabIter(ti: var TTabIter; tab: TStrTable): PSym		889
+nim	items	astalgo.html#items.i,TStrTable	iterator items(tab: TStrTable): PSym		896
+nim	pairs	astalgo.html#pairs.i,TIdTable	iterator pairs(t: TIdTable): tuple[key: int, value: RootRef]		933
+nim	idTablePairs	astalgo.html#idTablePairs.i,TIdTable	iterator idTablePairs(t: TIdTable): tuple[key: PIdObj, val: RootRef]		967
+nim	pairs	astalgo.html#pairs.i,TIdNodeTable	iterator pairs(t: TIdNodeTable): tuple[key: PIdObj, val: PNode]		1012
+nim	isAddrNode	astalgo.html#isAddrNode,PNode	proc isAddrNode(n: PNode): bool		1061
+nim	listSymbolNames	astalgo.html#listSymbolNames,openArray[PSym]	proc listSymbolNames(symbols: openArray[PSym]): string		1069
+nim	isDiscriminantField	astalgo.html#isDiscriminantField,PNode	proc isDiscriminantField(n: PNode): bool		1076
+nimgrp	debug	astalgo.html#debug-procs-all	proc		35
+nimgrp	idtableget	astalgo.html#idTableGet-procs-all	proc		83
+nimgrp	pairs	astalgo.html#pairs-iterators-all	iterator		933
+nimgrp	debug	astalgo.html#debug-templates-all	template		48

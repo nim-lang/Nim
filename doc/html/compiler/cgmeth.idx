@@ -1,0 +1,5 @@
+nimTitle	cgmeth	cgmeth.html	module cgmeth		0
+nim	getDispatcher	cgmeth.html#getDispatcher,PSym	proc getDispatcher(s: PSym): PSym		42
+nim	methodCall	cgmeth.html#methodCall,PNode,ConfigRef	proc methodCall(n: PNode; conf: ConfigRef): PNode		50
+nim	methodDef	cgmeth.html#methodDef,ModuleGraph,IdGenerator,PSym	proc methodDef(g: ModuleGraph; idgen: IdGenerator; s: PSym)		154
+nim	generateMethodDispatchers	cgmeth.html#generateMethodDispatchers,ModuleGraph,IdGenerator	proc generateMethodDispatchers(g: ModuleGraph; idgen: IdGenerator): PNode		280

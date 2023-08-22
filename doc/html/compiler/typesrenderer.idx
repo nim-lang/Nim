@@ -1,0 +1,8 @@
+nimTitle	typesrenderer	typesrenderer.html	module typesrenderer		0
+nim	defaultParamSeparator	typesrenderer.html#defaultParamSeparator	const defaultParamSeparator		16
+nim	renderPlainSymbolName	typesrenderer.html#renderPlainSymbolName,PNode	proc renderPlainSymbolName(n: PNode): string		24
+nim	renderParamNames	typesrenderer.html#renderParamNames,PNode	proc renderParamNames(n: PNode; toNormalize = false): seq[string]		100
+nim	renderParamTypes	typesrenderer.html#renderParamTypes,seq[string],PNode	proc renderParamTypes(found: var seq[string]; n: PNode; toNormalize = false)		118
+nim	renderParamTypes	typesrenderer.html#renderParamTypes,PNode	proc renderParamTypes(n: PNode; sep = defaultParamSeparator; toNormalize = false): string		143
+nim	renderOutType	typesrenderer.html#renderOutType,PNode	proc renderOutType(n: PNode; toNormalize = false): string		157
+nimgrp	renderparamtypes	typesrenderer.html#renderParamTypes-procs-all	proc		118

@@ -1,0 +1,2 @@
+nimTitle	active	plugins/active.html	module plugins/active		0
+nim	getPlugin	plugins/active.html#getPlugin,IdentCache,PSym	proc getPlugin(ic: IdentCache; fn: PSym): Transformation		21

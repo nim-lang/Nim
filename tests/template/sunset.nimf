@@ -1,0 +1,68 @@
+#? stdtmpl
+#proc sunsetTemplate*(current, ticker, content: string,
+#                     tabs: openArray[array[0..1, string]]): string = 
+#  result = ""
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+
+<head>
+  <title>Nimrod Programming System</title>
+  <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+  <link rel="stylesheet" type="text/css" href="style/style.css" />
+</head>
+
+<body>
+  <div id="main">
+    <div id="links">
+      <!-- **** INSERT LINKS HERE **** -->
+    </div>
+    <div id="logo"><h1>Nimrod Programming System</h1></div>
+    <div id="content">
+      <div id="menu">
+        <ul>
+  #for item in items(tabs):
+    #var name = item[0]
+    #var t = item[1]
+    #if t == current:
+          <li><a id="selected" href="${t}.html" title = "Nimrod - $name">$name</a></li>
+    #else:
+          <li><a               href="${t}.html" title = "Nimrod - $name">$name</a></li>
+    #end if
+  #end for
+        </ul>
+      </div>
+      <div id="column1">
+        <div class="sidebaritem">
+          <div class="sbihead">
+            <h1>latest news</h1>
+          </div>
+          <div class="sbicontent">
+            $ticker
+          </div>
+        </div>
+        <div class="sidebaritem">
+          <div class="sbihead">
+            <h1>additional links</h1>
+          </div>
+          <div class="sbilinks">
+            <!-- **** INSERT ADDITIONAL LINKS HERE **** -->
+            <ul>
+              <li><a class="reference" href="http://llvm.org">LLVM</a></li>
+              <li><a class="reference" href="http://gcc.gnu.org">GCC</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div id="column2">
+      $content
+      </div>
+    </div>
+    <div id="footer">
+      copyright &copy; 2008 Andreas Rumpf | Last update: ${getDateStr()}
+      | <a class="reference" href="http://validator.w3.org/check?uri=referer">XHTML 1.1</a>
+      | <a class="reference" href="http://jigsaw.w3.org/css-validator/check/referer">CSS</a>
+      | <a class="reference" href="http://www.dcarter.co.uk">design by dcarter</a>
+    </div>
+  </div>
+</body>
+</html>

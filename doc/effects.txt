@@ -1,0 +1,42 @@
+=====================================================================
+               Side effects in Nim
+=====================================================================
+
+Note: Side effects are implicit produced values! Maybe they should be
+explicit like in Haskell?
+
+
+The idea is that side effects and partial evaluation belong together:
+Iff a proc is side effect free and all its argument are evaluable at
+compile time, it can be evaluated by the compiler. However, really
+difficult is the ``newString`` proc: If it is simply wrapped, it
+should not be evaluated at compile time! On other occasions it can
+and should be evaluated:
+
+  ```nim
+  proc toUpper(s: string): string =
+    result = newString(len(s))
+    for i in 0..len(s) - 1:
+      result[i] = toUpper(s[i])
+  ```
+
+No, it really can always be evaluated. The code generator should transform
+``s = "\0\0\0..."`` back into ``s = newString(...)``.
+
+
+``new`` cannot be evaluated at compile time either.
+
+
+Raise statement
+===============
+
+It is impractical to consider ``raise`` as a statement with side effects.
+
+
+Solution
+========
+
+Being side effect free does not suffice for compile time evaluation. However,
+the evaluator can attempt to evaluate at compile time.
+
+

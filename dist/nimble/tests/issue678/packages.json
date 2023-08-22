@@ -1,0 +1,19 @@
+[
+  {
+    "name": "issue678_dependency_1",
+    "url": "https://github.com/nimble-test/issue678?subdir=dependency_1",
+    "method": "git",
+    "tags": [ "test" ], 
+    "description":
+      "Both first and second level dependency of the issue678 package.",
+    "license": "MIT"
+  },
+  {
+    "name": "issue678_dependency_2",
+    "url": "https://github.com/nimble-test/issue678?subdir=dependency_2",
+    "method": "git",
+    "tags": [ "test" ],
+    "description": "First level dependency of the issue678 package.",
+    "license": "MIT"
+  }
+]

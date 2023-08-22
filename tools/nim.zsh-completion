@@ -1,0 +1,120 @@
+#compdef nim
+
+# Installation note:
+# Please name this file as _nim (with underscore!) and copy it to a
+# completions directory, either:
+# - system wide one, like /usr/share/zsh/functions/Completion/Unix/ on Linux
+# - or to a user directory like ~/scripts. Then you also need to add
+#   that directory in your ~/.zshrc to `fpath` array like so:
+#     fpath=( ~/scripts "${fpath[@]}" )
+
+_nim() {
+  local -a nimCommands=(
+    {compile,c}:'compile project with default code generator C'
+    {compileToC,cc}:'compile project with C code generator'
+    {compileToCpp,cpp}:'compile project to C++ code'
+    {compileToOC,objc}:'compile project to Objective C code'
+    'js:compile project to Javascript'
+    'e:run a Nimscript file'
+    'doc:generate the HTML documentation for inputfile'
+    'rst2html:convert a reStructuredText file to HTML'
+    'doc2tex:generate the documentation for inputfile to LaTeX'
+    'rst2tex:convert a reStructuredText file to TeX'
+    'jsondoc:extract the documentation to a json file'
+    'buildIndex:build an index for the whole documentation'
+    'genDepend:generate a DOT file containing the module dependency graph'
+    'dump:dump all defined conditionals and search paths'
+    'check:checks the project for syntax and semantic'
+    {--help,-h}:'basic help'
+    '--fullhelp:show all switches'
+    {-v,--version}:'show version'
+  )
+
+  _arguments '*:: :->anyState' && return 0
+
+  if (( CURRENT == 1 )); then
+    _describe -t commands "Nim commands" nimCommands -V1
+    return
+  fi
+
+  local -a conditionalSymbols=(
+    release danger mingw androidNDK useNimRtl useMalloc noSignalHandler ssl
+    debug leanCompiler gcDestructors)
+  local -a sharedOpts=(
+    {--define\\:-,-d\\:-}'[define a conditional symbol]:x:($conditionalSymbols)'
+    {--undef\\:-,-u\\:-}'[undefine a conditional symbol]:x:($conditionalSymbols)'
+    {--path\\:-,-p\\:-}'[add path to search paths]:x:_files'
+    '--verbosity\:-[set verbosity level (default\: 1)]:x:(0 1 2 3)'
+    '--hints\:-[print compilation hints? (or `list`)]:x:(on off list)'
+  )
+  local runOpts=(
+    {--run,-r}'[run the application]'
+  )
+  local docOpts=(
+    '--index\:-[enable index .idx files?]:x:(on off)'
+    '--project\:-[output any dependency for doc?]:x:(on off)'
+    '--docInternal\:-[generate module-private documentation?]:x:(on off)'
+  )
+  local -a codeOpts=(
+    {--forceBuild,-f}'[force rebuilding of all modules]'
+    '--stackTrace\:-[enable stack tracing?]:x:(on off)'
+    '--lineTrace\:-[enable line tracing?]:x:(on off)'
+    '--threads\:-[enable support for multi-threading?]:x:(on off)'
+    {--checks\\:-,-x\\:-}'[enable/disable all runtime checks?]:x:(on off)'
+    '--objChecks\:-[enable obj conversion checks]:x:(on off)'
+    '--fieldChecks\:-[enable case variant field checks?]:x:(on off)'
+    '--rangeChecks\:-[enable range checks?]:x:(on off)'
+    '--boundChecks\:-[enable bound checks?]:x:(on off)'
+    '--overflowChecks\:-[enable integer over-/underflow checks?]:x:(on off)'
+    {--assertions\\:-,-a\\:-}'[enable assertions?]:x:(on off)'
+    '--floatChecks\:-[enable floating point (NaN/Inf) checks?]:x:(on off)'
+    '--nanChecks\:-[enable NaN checks?]:x:(on off)'
+    '--infChecks\:-[enable Inf checks?]:x:(on off)'
+    '--nilChecks\:-[enable nil checks?]:x:(on off)'
+    '--expandArc\:-[show how given proc looks before final backend pass]'
+    '--expandMacro\:-[dump every generated AST from given macro]'
+  )
+  local -a nativeOpts=(
+    '--opt\:-[optimization mode]:x:(none speed size)'
+    '--debugger\:native[use native debugger (gdb)]'
+    '--app\:-[generate this type of app (lib=dynamic)]:x:(console gui lib staticlib)'
+    '--cpu\:-[target architecture]:x:(alpha amd64 arm arm64 avr e2k esp hppa i386 ia64 js loongarch64 m68k mips mipsel mips64 mips64el msp430 nimvm powerpc powerpc64 powerpc64el riscv32 riscv64 sparc sparc64 vm wasm32)'
+    '--gc\:-[memory management algorithm to use (default\: refc)]:x:(refc arc orc markAndSweep boehm go regions none)'
+    '--os\:-[operating system to compile for]:x:(AIX Amiga Android Any Atari DOS DragonFly FreeBSD FreeRTOS Genode Haiku iOS Irix JS Linux MacOS MacOSX MorphOS NetBSD Netware NimVM NintendoSwitch OS2 OpenBSD PalmOS Standalone QNX SkyOS Solaris VxWorks Windows)'
+    '--panics\:-[turn panics into process termination (default\: off)]:x:(off on)'
+  )
+
+  case "$words[1]" in
+    compile|c|compileToC|cpp|compileToCpp|compileToOC|objc)
+      _arguments $codeOpts $runOpts $sharedOpts $nativeOpts \
+          '*:filename:_files -g"*.nim"'
+    ;;
+    js)
+      _arguments $codeOpts $runOpts $sharedOpts \
+          '*:filename:_files -g"*.nim"'
+    ;;
+    e)
+      _arguments $codeOpts $runOpts $sharedOpts \
+          '*:filename:_files -g"*.nims"'
+    ;;
+    doc|doc2tex|jsondoc)
+      _arguments $runOpts $sharedOpts '*:filename:_files -g"*.nim"'
+    ;;
+    rst2html|rst2tex)
+      _arguments $runOpts $sharedOpts $docOpts '*:filename:_files -g"*.rst"'
+    ;;
+    buildIndex|genDepend|check)
+      _arguments $sharedOpts '*:filename:_files -g"*.nim"'
+    ;;
+    dump)
+      _arguments $sharedOpts
+    ;;
+    *)
+      _arguments '*:filename:_files -g"*"'
+    ;;
+  esac
+
+  return 1
+}
+
+_nim "$@"

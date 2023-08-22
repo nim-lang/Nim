@@ -1,0 +1,80 @@
+{
+  "after": "b85008345e2faa23024b222e2e6b17f7ef8b6270", 
+  "before": "f469a6fba9a81ac06d813761e346673fbc8a6ef6", 
+  "commits": [
+    {
+      "added": [], 
+      "author": {
+        "email": "dominikpicheta@googlemail.com", 
+        "name": "dom96", 
+        "username": "dom96"
+      }, 
+      "id": "9e887b88a633c432d8e6859d7fab5429128aea7e", 
+      "message": "Added getPort and fixed a problem with the Disconnect event.", 
+      "modified": [
+        "Network\/SimpleIRC\/Core.hs"
+      ], 
+      "removed": [], 
+      "timestamp": "2010-10-24T03:16:30-07:00", 
+      "url": "https:\/\/github.com\/dom96\/SimpleIRC\/commit\/9e887b88a633c432d8e6859d7fab5429128aea7e"
+    }, 
+    {
+      "added": [
+        "tests\/channelNickTracking.hs"
+      ], 
+      "author": {
+        "email": "dominikpicheta@googlemail.com", 
+        "name": "dom96", 
+        "username": "dom96"
+      }, 
+      "id": "001c4a1834a95fa3cb4c6fefc3df9508c6e6b58a", 
+      "message": "Channel and nick tracking fully work now.", 
+      "modified": [
+        "Network\/SimpleIRC\/Core.hs", 
+        "Network\/SimpleIRC\/Messages.hs"
+      ], 
+      "removed": [], 
+      "timestamp": "2010-10-24T04:01:28-07:00", 
+      "url": "https:\/\/github.com\/dom96\/SimpleIRC\/commit\/001c4a1834a95fa3cb4c6fefc3df9508c6e6b58a"
+    }, 
+    {
+      "added": [], 
+      "author": {
+        "email": "dominikpicheta@googlemail.com", 
+        "name": "dom96", 
+        "username": "dom96"
+      }, 
+      "id": "b85008345e2faa23024b222e2e6b17f7ef8b6270", 
+      "message": "Forgot to export getPort.", 
+      "modified": [
+        "Network\/SimpleIRC\/Core.hs"
+      ], 
+      "removed": [], 
+      "timestamp": "2010-10-24T04:18:38-07:00", 
+      "url": "https:\/\/github.com\/dom96\/SimpleIRC\/commit\/b85008345e2faa23024b222e2e6b17f7ef8b6270"
+    }
+  ], 
+  "compare": "https:\/\/github.com\/dom96\/SimpleIRC\/compare\/f469a6f...b850083", 
+  "forced": false, 
+  "ref": "refs\/heads\/master", 
+  "repository": {
+    "created_at": "2010\/08\/13 10:24:57 -0700", 
+    "description": "IRC Library for Haskell", 
+    "fork": false, 
+    "forks": 1, 
+    "has_downloads": true, 
+    "has_issues": true, 
+    "has_wiki": true, 
+    "homepage": "http:\/\/hackage.haskell.org\/package\/simpleirc", 
+    "name": "SimpleIRC", 
+    "open_issues": 1, 
+    "owner": {
+      "email": "dominikpicheta@googlemail.com", 
+      "name": "dom96"
+    }, 
+    "private": false, 
+    "pushed_at": "2010\/10\/24 04:18:48 -0700", 
+    "url": "https:\/\/github.com\/dom96\/SimpleIRC", 
+    "watchers": 7
+  }
+}

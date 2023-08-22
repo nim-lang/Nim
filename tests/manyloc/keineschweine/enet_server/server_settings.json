@@ -1,0 +1,8 @@
+{
+ "name": "Alpha Zone",
+ "desc": "Beta Testing",
+ "host": "localhost",
+ "port": 8024,
+ "settings": "alphazone.json",
+ "dirserver":["localhost",2049,"alphazone","skittles"]
+}

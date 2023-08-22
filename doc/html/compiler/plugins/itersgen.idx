@@ -1,0 +1,2 @@
+nimTitle	itersgen	plugins/itersgen.html	module plugins/itersgen		0
+nim	iterToProcImpl	plugins/itersgen.html#iterToProcImpl,PContext,PNode	proc iterToProcImpl(c: PContext; n: PNode): PNode		14

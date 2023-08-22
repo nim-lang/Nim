@@ -1,0 +1,129 @@
+name: Checksums CI
+on: [push, pull_request]
+
+jobs:
+  build:
+    if: |
+      !contains(format('{0} {1}', github.event.head_commit.message, github.event.pull_request.title), '[skip ci]')
+
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: [devel]
+        target:
+          - os: linux
+            cpu: amd64
+          - os: linux
+            cpu: i386
+          - os: macos
+            cpu: amd64
+          - os: windows
+            cpu: i386
+          - os: windows
+            cpu: amd64
+        include:
+          - target:
+              os: linux
+            builder: ubuntu-20.04
+          - target:
+              os: macos
+            builder: macos-10.15
+          - target:
+              os: windows
+            builder: windows-2019
+    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }} (${{ matrix.branch }})'
+    runs-on: ${{ matrix.builder }}
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: checksums
+
+    steps:
+      - uses: actions/setup-node@v2
+      - name: Checkout checksums
+        uses: actions/checkout@v2
+        with:
+          path: checksums
+
+      # - name: Install dependencies (Linux amd64)
+      #   if: runner.os == 'Linux' && matrix.target.cpu == 'amd64'
+      #   run: |
+      #     sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
+      #       --no-install-recommends -yq <packages here>
+
+      - name: Install dependencies (Linux i386)
+        if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
+        working-directory: ${{ github.workspace }}
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-fast update -qq
+          sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
+            --no-install-recommends -yq gcc-multilib g++-multilib \
+            libssl-dev:i386
+
+          mkdir -p external/bin
+          cat << EOF > external/bin/gcc
+          #!/bin/bash
+
+          exec $(which gcc) -m32 "\$@"
+          EOF
+
+          cat << EOF > external/bin/g++
+          #!/bin/bash
+
+          exec $(which g++) -m32 "\$@"
+          EOF
+
+          chmod 755 external/bin/gcc external/bin/g++
+
+          echo "$PWD/external/bin" >> "${GITHUB_PATH}"
+
+      # - name: Install dependencies (macOS)
+      #   if: runner.os == 'macOS'
+      #   run: brew install <packages here>
+
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir external
+          if [[ '${{ matrix.target.cpu }}' == 'amd64' ]]; then
+            arch=64
+          else
+            arch=32
+          fi
+          curl -L "https://nim-lang.org/download/mingw$arch.7z" -o "external/mingw$arch.7z"
+          7z x "external/mingw$arch.7z" -oexternal/
+
+          cygpath -aw "external/mingw$arch/bin" >> "${GITHUB_PATH}"
+
+      - name: Setup Nim
+        uses: alaviss/setup-nim@0.1.1
+        with:
+          path: nim
+          version: ${{ matrix.branch }}
+          architecture: ${{ matrix.target.cpu }}
+
+      - name: Run tests
+        shell: bash
+        run: testament all
+
+      - name: Build docs
+        if: matrix.branch == 'devel'
+        run: nimble docs
+
+      - name: Deploy docs
+        # to view docs on your own fork: push a gh-pages branch on your fork,
+        # enable gh-pages in your fork
+        # and remove `github.ref == 'refs/heads/master'` below
+        if: |
+          github.event_name == 'push' && github.ref == 'refs/heads/master' &&
+          matrix.target.os == 'linux' && matrix.target.cpu == 'amd64' &&
+          matrix.branch == 'devel'
+        uses: crazy-max/ghaction-github-pages@v2
+        with:
+          build_dir: checksums/htmldocs
+          target_branch: gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

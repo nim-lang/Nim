@@ -1,0 +1,3 @@
+nimTitle	backendpragmas	backendpragmas.html	module backendpragmas		0
+nim	processPushBackendOption	backendpragmas.html#processPushBackendOption,seq[TOptions],TOptions,PNode,int	proc processPushBackendOption(optionsStack: var seq[TOptions]; options: var TOptions;\n                         n: PNode; start: int)		10
+nim	processPopBackendOption	backendpragmas.html#processPopBackendOption.t,seq[TOptions],TOptions	template processPopBackendOption(optionsStack: var seq[TOptions]; options: var TOptions)		24
