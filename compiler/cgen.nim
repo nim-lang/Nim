@@ -311,10 +311,10 @@ proc genLineDir(p: BProc, t: PNode) =
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
       if freshLine:
         if lastFileIndex == t.info.fileIndex:
-          linefmt(p, cpsStmts, "nimln_($1);\n",
+          linefmt(p, cpsStmts, "nimln_($1);",
               [line])
         else:
-          linefmt(p, cpsStmts, "nimlf_($1, $2);\n",
+          linefmt(p, cpsStmts, "nimlf_($1, $2);",
               [line, quotedFilename(p.config, t.info)])
 
 proc accessThreadLocalVar(p: BProc, s: PSym)
