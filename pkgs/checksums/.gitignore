@@ -1,0 +1,6 @@
+nimcache
+*.exe
+megatest.nim
+outputGotten.txt
+*.js
+htmldocs

@@ -1,0 +1,10 @@
+nimTitle	semfold	semfold.html	module semfold		0
+nim	errorType	semfold.html#errorType,ModuleGraph	proc errorType(g: ModuleGraph): PType		23
+nim	newIntNodeT	semfold.html#newIntNodeT,Int128,PNode,IdGenerator,ModuleGraph	proc newIntNodeT(intVal: Int128; n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode		34
+nim	newFloatNodeT	semfold.html#newFloatNodeT,BiggestFloat,PNode,ModuleGraph	proc newFloatNodeT(floatVal: BiggestFloat; n: PNode; g: ModuleGraph): PNode		43
+nim	newStrNodeT	semfold.html#newStrNodeT,string,PNode,ModuleGraph	proc newStrNodeT(strVal: string; n: PNode; g: ModuleGraph): PNode		51
+nim	getConstExpr	semfold.html#getConstExpr,PSym,PNode,IdGenerator,ModuleGraph	proc getConstExpr(m: PSym; n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode		56
+nim	evalOp	semfold.html#evalOp,TMagic,PNode,PNode,PNode,PNode,IdGenerator,ModuleGraph	proc evalOp(m: TMagic; n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): PNode		59
+nim	ordinalValToString	semfold.html#ordinalValToString,PNode,ModuleGraph	proc ordinalValToString(a: PNode; g: ModuleGraph): string		97
+nim	leValueConv	semfold.html#leValueConv,PNode,PNode	proc leValueConv(a, b: PNode): bool		340
+nim	newSymNodeTypeDesc	semfold.html#newSymNodeTypeDesc,PSym,IdGenerator,TLineInfo	proc newSymNodeTypeDesc(s: PSym; idgen: IdGenerator; info: TLineInfo): PNode		506

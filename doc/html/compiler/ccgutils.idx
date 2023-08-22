@@ -1,0 +1,8 @@
+nimTitle	ccgutils	ccgutils.html	module ccgutils		0
+nim	getPragmaStmt	ccgutils.html#getPragmaStmt,PNode,TSpecialWord	proc getPragmaStmt(n: PNode; w: TSpecialWord): PNode		19
+nim	stmtsContainPragma	ccgutils.html#stmtsContainPragma,PNode,TSpecialWord	proc stmtsContainPragma(n: PNode; w: TSpecialWord): bool		33
+nim	hashString	ccgutils.html#hashString,ConfigRef,string	proc hashString(conf: ConfigRef; s: string): BiggestInt		36
+nim	getUniqueType	ccgutils.html#getUniqueType.t,PType	template getUniqueType(key: PType): PType		61
+nim	makeSingleLineCString	ccgutils.html#makeSingleLineCString,string	proc makeSingleLineCString(s: string): string		63
+nim	mangle	ccgutils.html#mangle,string	proc mangle(name: string): string		69
+nim	ccgIntroducedPtr	ccgutils.html#ccgIntroducedPtr,ConfigRef,PSym,PType	proc ccgIntroducedPtr(conf: ConfigRef; s: PSym; retType: PType): bool		124

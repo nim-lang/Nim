@@ -1,0 +1,134 @@
+name: atlas ci
+on:
+  push:
+    branches:
+    - '**'
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        branch: [master]
+        target:
+          - os: linux
+            cpu: amd64
+            nim_branch: devel
+          # - os: linux
+          #   cpu: i386
+          #   nim_branch: devel
+          - os: macos
+            cpu: amd64
+            nim_branch: devel
+          - os: windows
+            cpu: amd64
+            nim_branch: devel
+          - os: windows
+            cpu: i386
+            nim_branch: devel
+        include:
+          - target:
+              os: linux
+            builder: ubuntu-latest
+          - target:
+              os: macos
+            builder: macos-latest
+          - target:
+              os: windows
+            builder: windows-latest
+
+    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-nim-${{ matrix.target.nim_branch }} (${{ matrix.branch }})'
+    runs-on: ${{ matrix.builder }}
+    env:
+      NIM_DIR: nim-${{ matrix.target.nim_branch }}-${{ matrix.target.cpu }}
+      NIM_BRANCH: ${{ matrix.target.nim_branch }}
+      NIM_ARCH: ${{ matrix.target.cpu }}
+    steps:
+      - name: set `core.autocrlf` to false
+        run: |
+          git config --global core.autocrlf false
+          git config --global init.defaultBranch master
+          git config --global user.email "atlasbot@nimlang.com"
+          git config --global user.name "atlasbot"
+
+      - name: Checkout atlas
+        uses: actions/checkout@v3
+        with:
+          path: atlas
+          submodules: false
+
+      - name: Restore MinGW-W64 (Windows) from cache
+        if: runner.os == 'Windows'
+        id: windows-mingw-cache
+        uses: actions/cache@v3
+        with:
+          path: external/mingw-${{ matrix.target.cpu }}
+          key: 'mingw-${{ matrix.target.cpu }}'
+
+      - name: Restore Nim DLLs dependencies (Windows) from cache
+        if: runner.os == 'Windows'
+        id: windows-dlls-cache
+        uses: actions/cache@v3
+        with:
+          path: external/dlls-${{ matrix.target.cpu }}
+          key: 'dlls-${{ matrix.target.cpu }}'
+
+      - name: Install MinGW64 dependency (Windows)
+        if: >
+          steps.windows-mingw-cache.outputs.cache-hit != 'true' &&
+          runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p external
+          if [[ '${{ matrix.target.cpu }}' == 'amd64' ]]; then
+            MINGW_URL="https://github.com/brechtsanders/winlibs_mingw/releases/download/11.1.0-12.0.0-9.0.0-r2/winlibs-x86_64-posix-seh-gcc-11.1.0-mingw-w64-9.0.0-r2.7z"
+            ARCH=64
+          else
+            MINGW_URL="https://github.com/brechtsanders/winlibs_mingw/releases/download/11.1.0-12.0.0-9.0.0-r2/winlibs-i686-posix-dwarf-gcc-11.1.0-mingw-w64-9.0.0-r2.7z"
+            ARCH=32
+          fi
+          curl -L "$MINGW_URL" -o "external/mingw-${{ matrix.target.cpu }}.7z"
+          7z x -y "external/mingw-${{ matrix.target.cpu }}.7z" -oexternal/
+          mv external/mingw$ARCH external/mingw-${{ matrix.target.cpu }}
+
+      - name: Install DLLs dependencies (Windows)
+        if: >
+          steps.windows-dlls-cache.outputs.cache-hit != 'true' &&
+          runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p external
+          curl -L "https://nim-lang.org/download/windeps.zip" -o external/windeps.zip
+          7z x -y external/windeps.zip -oexternal/dlls-${{ matrix.target.cpu }}
+
+      - name: Path to cached dependencies (Windows)
+        if: >
+          runner.os == 'Windows'
+        shell: bash
+        run: |
+          echo '${{ github.workspace }}'"/external/mingw-${{ matrix.target.cpu }}/bin" >> $GITHUB_PATH
+          echo '${{ github.workspace }}'"/external/dlls-${{ matrix.target.cpu }}" >> $GITHUB_PATH
+
+      # - name: Restore Nim from cache
+      #   if: >
+      #     steps.nim-compiler-cache.outputs.cache-hit != 'true' &&
+      #     matrix.target.nim_branch != 'devel'
+      #   id: nim-compiler-cache
+      #   uses: actions/cache@v2
+      #   with:
+      #     path: '${{ github.workspace }}/nim-${{ matrix.target.nim_branch }}-${{ matrix.target.cpu }}'
+      #     key: 'nim-${{ matrix.target.cpu }}-${{ matrix.target.nim_branch }}'
+
+      - name: Setup Nim
+        uses: alaviss/setup-nim@0.1.1
+        with:
+          path: 'nim'
+          version: ${{ matrix.target.nim_branch }}
+          architecture: ${{ matrix.target.cpu }}
+
+      - name: Run tests
+        run: |
+          cd atlas
+          nim c -r tests/tester.nim

@@ -1,0 +1,9 @@
+nimTitle	nimblecmd	nimblecmd.html	module nimblecmd		0
+nim	addPath	nimblecmd.html#addPath,ConfigRef,AbsoluteDir,TLineInfo	proc addPath(conf: ConfigRef; path: AbsoluteDir; info: TLineInfo)		20
+nim	Version	nimblecmd.html#Version	type Version		25
+nim	`$`	nimblecmd.html#$,Version	proc `$`(ver: Version): string		28
+nim	newVersion	nimblecmd.html#newVersion,string	proc newVersion(ver: string): Version		30
+nim	`<`	nimblecmd.html#<,Version,Version	proc `<`(ver: Version; ver2: Version): bool		47
+nim	getPathVersionChecksum	nimblecmd.html#getPathVersionChecksum,string	proc getPathVersionChecksum(p: string): tuple[name, version, checksum: string]		76
+nim	addPackage	nimblecmd.html#addPackage,ConfigRef,PackageInfo,string,TLineInfo	proc addPackage(conf: ConfigRef; packages: var PackageInfo; p: string;\n           info: TLineInfo)		111
+nim	nimblePath	nimblecmd.html#nimblePath,ConfigRef,AbsoluteDir,TLineInfo	proc nimblePath(conf: ConfigRef; path: AbsoluteDir; info: TLineInfo)		162

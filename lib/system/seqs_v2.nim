@@ -69,14 +69,26 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): poin
       if (p.cap and strlitFlag) == strlitFlag:
         var q = cast[ptr NimSeqPayloadBase](alignedAlloc0(headerSize + elemSize * newCap, elemAlign))
         copyMem(q +! headerSize, p +! headerSize, len * elemSize)
+<<<<<<< HEAD
         q.cap = newCap
+=======
+        q.cap = newCap 
+>>>>>>> origin/master
         result = q
       else:
         let oldSize = headerSize + elemSize * oldCap
         let newSize = headerSize + elemSize * newCap
         var q = cast[ptr NimSeqPayloadBase](alignedRealloc0(p, oldSize, newSize, elemAlign))
+<<<<<<< HEAD
         q.cap = newCap
         result = q
+=======
+        if q != nil:
+          q.cap = newCap
+          result = q
+        else:
+          result = nil
+>>>>>>> origin/master
 
 proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [].} =
   when nimvm:
@@ -114,12 +126,22 @@ proc add*[T](x: var seq[T]; y: sink T) {.magic: "AppendSeqElem", noSideEffect, n
     var xu = cast[ptr NimSeqV2[T]](addr x)
     if xu.p == nil or (xu.p.cap and not strlitFlag) < oldLen+1:
       xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T), alignof(T)))
+<<<<<<< HEAD
     xu.len = oldLen+1
     # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
     # copyMem(). This is fine as know by construction that
     # in `xu.p.data[oldLen]` there is nothing to destroy.
     # We also save the `wasMoved + destroy` pair for the sink parameter.
     xu.p.data[oldLen] = y
+=======
+    if xu.p != nil:
+      xu.len = oldLen+1
+      # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
+      # copyMem(). This is fine as know by construction that
+      # in `xu.p.data[oldLen]` there is nothing to destroy.
+      # We also save the `wasMoved + destroy` pair for the sink parameter.
+      xu.p.data[oldLen] = y
+>>>>>>> origin/master
 
 proc setLen[T](s: var seq[T], newlen: Natural) =
   {.noSideEffect.}:

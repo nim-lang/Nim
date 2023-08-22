@@ -1,0 +1,194 @@
+nimTitle	tables	tables.html	module std/tables		0
+nim	Table	tables.html#Table	object Table		206
+nim	TableRef	tables.html#TableRef	type TableRef		215
+nim	defaultInitialSize	tables.html#defaultInitialSize	const defaultInitialSize		15
+nim	initTable	tables.html#initTable	proc initTable[A, B](initialSize = defaultInitialSize): Table[A, B]		268
+nim	`[]=`	tables.html#[]=,Table[A,B],A,sinkB	proc `[]=`[A, B](t: var Table[A, B]; key: A; val: sink B)		283
+nim	toTable	tables.html#toTable,openArray[]	proc toTable[A, B](pairs: openArray[(A, B)]): Table[A, B]		299
+nim	`[]`	tables.html#[],Table[A,B],A	proc `[]`[A, B](t: Table[A, B]; key: A): B		315
+nim	`[]`	tables.html#[],Table[A,B],A_2	proc `[]`[A, B](t: var Table[A, B]; key: A): var B		338
+nim	hasKey	tables.html#hasKey,Table[A,B],A	proc hasKey[A, B](t: Table[A, B]; key: A): bool		354
+nim	contains	tables.html#contains,Table[A,B],A	proc contains[A, B](t: Table[A, B]; key: A): bool		372
+nim	hasKeyOrPut	tables.html#hasKeyOrPut,Table[A,B],A,B	proc hasKeyOrPut[A, B](t: var Table[A, B]; key: A; val: B): bool		382
+nim	getOrDefault	tables.html#getOrDefault,Table[A,B],A	proc getOrDefault[A, B](t: Table[A, B]; key: A): B		402
+nim	getOrDefault	tables.html#getOrDefault,Table[A,B],A,B	proc getOrDefault[A, B](t: Table[A, B]; key: A; default: B): B		421
+nim	mgetOrPut	tables.html#mgetOrPut,Table[A,B],A,B	proc mgetOrPut[A, B](t: var Table[A, B]; key: A; val: B): var B		439
+nim	len	tables.html#len,Table[A,B]	proc len[A, B](t: Table[A, B]): int		477
+nim	add	tables.html#add,Table[A,B],A,sinkB	proc add[A, B](t: var Table[A, B]; key: A; val: sink B)		485
+nim	del	tables.html#del,Table[A,B],A	proc del[A, B](t: var Table[A, B]; key: A)		499
+nim	pop	tables.html#pop,Table[A,B],A,B	proc pop[A, B](t: var Table[A, B]; key: A; val: var B): bool		517
+nim	take	tables.html#take,Table[A,B],A,B	proc take[A, B](t: var Table[A, B]; key: A; val: var B): bool		548
+nim	clear	tables.html#clear,Table[A,B]	proc clear[A, B](t: var Table[A, B])		553
+nim	`$`	tables.html#$,Table[A,B]	proc `$`[A, B](t: Table[A, B]): string		567
+nim	`==`	tables.html#==,Table[A,B],Table[A,B]	proc `==`[A, B](s, t: Table[A, B]): bool		572
+nim	indexBy	tables.html#indexBy,A,proc(B)	proc indexBy[A, B, C](collection: A; index: proc (x: B): C): Table[C, B]		583
+nim	withValue	tables.html#withValue.t,Table[A,B],A,untyped,untyped	template withValue[A, B](t: var Table[A, B]; key: A; value, body: untyped)		592
+nim	withValue	tables.html#withValue.t,Table[A,B],A,untyped,untyped,untyped	template withValue[A, B](t: var Table[A, B]; key: A; value, body1, body2: untyped)		626
+nim	pairs	tables.html#pairs.i,Table[A,B]	iterator pairs[A, B](t: Table[A, B]): (A, B)		668
+nim	mpairs	tables.html#mpairs.i,Table[A,B]	iterator mpairs[A, B](t: var Table[A, B]): (A, var B)		699
+nim	keys	tables.html#keys.i,Table[A,B]	iterator keys[A, B](t: Table[A, B]): lent A		721
+nim	values	tables.html#values.i,Table[A,B]	iterator values[A, B](t: Table[A, B]): lent B		742
+nim	mvalues	tables.html#mvalues.i,Table[A,B]	iterator mvalues[A, B](t: var Table[A, B]): var B		763
+nim	allValues	tables.html#allValues.i,Table[A,B],A	iterator allValues[A, B](t: Table[A, B]; key: A): B		785
+nim	newTable	tables.html#newTable	proc newTable[A, B](initialSize = defaultInitialSize): TableRef[A, B]		814
+nim	newTable	tables.html#newTable,openArray[]	proc newTable[A, B](pairs: openArray[(A, B)]): TableRef[A, B]		830
+nim	newTableFrom	tables.html#newTableFrom,A,proc(B)	proc newTableFrom[A, B, C](collection: A; index: proc (x: B): C): TableRef[C, B]		847
+nim	`[]`	tables.html#[],TableRef[A,B],A	proc `[]`[A, B](t: TableRef[A, B]; key: A): var B		855
+nim	`[]=`	tables.html#[]=,TableRef[A,B],A,sinkB	proc `[]=`[A, B](t: TableRef[A, B]; key: A; val: sink B)		879
+nim	hasKey	tables.html#hasKey,TableRef[A,B],A	proc hasKey[A, B](t: TableRef[A, B]; key: A): bool		895
+nim	contains	tables.html#contains,TableRef[A,B],A	proc contains[A, B](t: TableRef[A, B]; key: A): bool		913
+nim	hasKeyOrPut	tables.html#hasKeyOrPut,TableRef[A,B],A,B	proc hasKeyOrPut[A, B](t: TableRef[A, B]; key: A; val: B): bool		923
+nim	getOrDefault	tables.html#getOrDefault,TableRef[A,B],A	proc getOrDefault[A, B](t: TableRef[A, B]; key: A): B		943
+nim	getOrDefault	tables.html#getOrDefault,TableRef[A,B],A,B	proc getOrDefault[A, B](t: TableRef[A, B]; key: A; default: B): B		962
+nim	mgetOrPut	tables.html#mgetOrPut,TableRef[A,B],A,B	proc mgetOrPut[A, B](t: TableRef[A, B]; key: A; val: B): var B		980
+nim	len	tables.html#len,TableRef[A,B]	proc len[A, B](t: TableRef[A, B]): int		1016
+nim	add	tables.html#add,TableRef[A,B],A,sinkB	proc add[A, B](t: TableRef[A, B]; key: A; val: sink B)		1024
+nim	del	tables.html#del,TableRef[A,B],A	proc del[A, B](t: TableRef[A, B]; key: A)		1034
+nim	pop	tables.html#pop,TableRef[A,B],A,B	proc pop[A, B](t: TableRef[A, B]; key: A; val: var B): bool		1052
+nim	take	tables.html#take,TableRef[A,B],A,B	proc take[A, B](t: TableRef[A, B]; key: A; val: var B): bool		1078
+nim	clear	tables.html#clear,TableRef[A,B]	proc clear[A, B](t: TableRef[A, B])		1083
+nim	`$`	tables.html#$,TableRef[A,B]	proc `$`[A, B](t: TableRef[A, B]): string		1097
+nim	`==`	tables.html#==,TableRef[A,B],TableRef[A,B]	proc `==`[A, B](s, t: TableRef[A, B]): bool		1102
+nim	pairs	tables.html#pairs.i,TableRef[A,B]	iterator pairs[A, B](t: TableRef[A, B]): (A, B)		1118
+nim	mpairs	tables.html#mpairs.i,TableRef[A,B]	iterator mpairs[A, B](t: TableRef[A, B]): (A, var B)		1149
+nim	keys	tables.html#keys.i,TableRef[A,B]	iterator keys[A, B](t: TableRef[A, B]): lent A		1171
+nim	values	tables.html#values.i,TableRef[A,B]	iterator values[A, B](t: TableRef[A, B]): lent B		1192
+nim	mvalues	tables.html#mvalues.i,TableRef[A,B]	iterator mvalues[A, B](t: TableRef[A, B]): var B		1213
+nim	OrderedTable	tables.html#OrderedTable	object OrderedTable		1249
+nim	OrderedTableRef	tables.html#OrderedTableRef	type OrderedTableRef		1256
+nim	initOrderedTable	tables.html#initOrderedTable	proc initOrderedTable[A, B](initialSize = defaultInitialSize): OrderedTable[A, B]		1311
+nim	`[]=`	tables.html#[]=,OrderedTable[A,B],A,sinkB	proc `[]=`[A, B](t: var OrderedTable[A, B]; key: A; val: sink B)		1327
+nim	toOrderedTable	tables.html#toOrderedTable,openArray[]	proc toOrderedTable[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B]		1343
+nim	`[]`	tables.html#[],OrderedTable[A,B],A	proc `[]`[A, B](t: OrderedTable[A, B]; key: A): B		1360
+nim	`[]`	tables.html#[],OrderedTable[A,B],A_2	proc `[]`[A, B](t: var OrderedTable[A, B]; key: A): var B		1384
+nim	hasKey	tables.html#hasKey,OrderedTable[A,B],A	proc hasKey[A, B](t: OrderedTable[A, B]; key: A): bool		1400
+nim	contains	tables.html#contains,OrderedTable[A,B],A	proc contains[A, B](t: OrderedTable[A, B]; key: A): bool		1419
+nim	hasKeyOrPut	tables.html#hasKeyOrPut,OrderedTable[A,B],A,B	proc hasKeyOrPut[A, B](t: var OrderedTable[A, B]; key: A; val: B): bool		1429
+nim	getOrDefault	tables.html#getOrDefault,OrderedTable[A,B],A	proc getOrDefault[A, B](t: OrderedTable[A, B]; key: A): B		1449
+nim	getOrDefault	tables.html#getOrDefault,OrderedTable[A,B],A,B	proc getOrDefault[A, B](t: OrderedTable[A, B]; key: A; default: B): B		1468
+nim	mgetOrPut	tables.html#mgetOrPut,OrderedTable[A,B],A,B	proc mgetOrPut[A, B](t: var OrderedTable[A, B]; key: A; val: B): var B		1486
+nim	len	tables.html#len,OrderedTable[A,B]	proc len[A, B](t: OrderedTable[A, B]): int		1506
+nim	add	tables.html#add,OrderedTable[A,B],A,sinkB	proc add[A, B](t: var OrderedTable[A, B]; key: A; val: sink B)		1514
+nim	del	tables.html#del,OrderedTable[A,B],A	proc del[A, B](t: var OrderedTable[A, B]; key: A)		1524
+nim	pop	tables.html#pop,OrderedTable[A,B],A,B	proc pop[A, B](t: var OrderedTable[A, B]; key: A; val: var B): bool		1557
+nim	clear	tables.html#clear,OrderedTable[A,B]	proc clear[A, B](t: var OrderedTable[A, B])		1587
+nim	sort	tables.html#sort,OrderedTable[A,B],proc(,)	proc sort[A, B](t: var OrderedTable[A, B]; cmp: proc (x, y: (A, B)): int;\n           order = SortOrder.Ascending)		1603
+nim	`$`	tables.html#$,OrderedTable[A,B]	proc `$`[A, B](t: OrderedTable[A, B]): string		1662
+nim	`==`	tables.html#==,OrderedTable[A,B],OrderedTable[A,B]	proc `==`[A, B](s, t: OrderedTable[A, B]): bool		1667
+nim	pairs	tables.html#pairs.i,OrderedTable[A,B]	iterator pairs[A, B](t: OrderedTable[A, B]): (A, B)		1694
+nim	mpairs	tables.html#mpairs.i,OrderedTable[A,B]	iterator mpairs[A, B](t: var OrderedTable[A, B]): (A, var B)		1726
+nim	keys	tables.html#keys.i,OrderedTable[A,B]	iterator keys[A, B](t: OrderedTable[A, B]): lent A		1748
+nim	values	tables.html#values.i,OrderedTable[A,B]	iterator values[A, B](t: OrderedTable[A, B]): lent B		1769
+nim	mvalues	tables.html#mvalues.i,OrderedTable[A,B]	iterator mvalues[A, B](t: var OrderedTable[A, B]): var B		1789
+nim	newOrderedTable	tables.html#newOrderedTable	proc newOrderedTable[A, B](initialSize = defaultInitialSize): OrderedTableRef[A, B]		1816
+nim	newOrderedTable	tables.html#newOrderedTable,openArray[]	proc newOrderedTable[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B]		1832
+nim	`[]`	tables.html#[],OrderedTableRef[A,B],A	proc `[]`[A, B](t: OrderedTableRef[A, B]; key: A): var B		1851
+nim	`[]=`	tables.html#[]=,OrderedTableRef[A,B],A,sinkB	proc `[]=`[A, B](t: OrderedTableRef[A, B]; key: A; val: sink B)		1874
+nim	hasKey	tables.html#hasKey,OrderedTableRef[A,B],A	proc hasKey[A, B](t: OrderedTableRef[A, B]; key: A): bool		1890
+nim	contains	tables.html#contains,OrderedTableRef[A,B],A	proc contains[A, B](t: OrderedTableRef[A, B]; key: A): bool		1908
+nim	hasKeyOrPut	tables.html#hasKeyOrPut,OrderedTableRef[A,B],A,B	proc hasKeyOrPut[A, B](t: OrderedTableRef[A, B]; key: A; val: B): bool		1918
+nim	getOrDefault	tables.html#getOrDefault,OrderedTableRef[A,B],A	proc getOrDefault[A, B](t: OrderedTableRef[A, B]; key: A): B		1938
+nim	getOrDefault	tables.html#getOrDefault,OrderedTableRef[A,B],A,B	proc getOrDefault[A, B](t: OrderedTableRef[A, B]; key: A; default: B): B		1957
+nim	mgetOrPut	tables.html#mgetOrPut,OrderedTableRef[A,B],A,B	proc mgetOrPut[A, B](t: OrderedTableRef[A, B]; key: A; val: B): var B		1975
+nim	len	tables.html#len,OrderedTableRef[A,B]	proc len[A, B](t: OrderedTableRef[A, B]): int		1995
+nim	add	tables.html#add,OrderedTableRef[A,B],A,sinkB	proc add[A, B](t: OrderedTableRef[A, B]; key: A; val: sink B)		2003
+nim	del	tables.html#del,OrderedTableRef[A,B],A	proc del[A, B](t: OrderedTableRef[A, B]; key: A)		2013
+nim	pop	tables.html#pop,OrderedTableRef[A,B],A,B	proc pop[A, B](t: OrderedTableRef[A, B]; key: A; val: var B): bool		2027
+nim	clear	tables.html#clear,OrderedTableRef[A,B]	proc clear[A, B](t: OrderedTableRef[A, B])		2050
+nim	sort	tables.html#sort,OrderedTableRef[A,B],proc(,)	proc sort[A, B](t: OrderedTableRef[A, B]; cmp: proc (x, y: (A, B)): int;\n           order = SortOrder.Ascending)		2063
+nim	`$`	tables.html#$,OrderedTableRef[A,B]	proc `$`[A, B](t: OrderedTableRef[A, B]): string		2084
+nim	`==`	tables.html#==,OrderedTableRef[A,B],OrderedTableRef[A,B]	proc `==`[A, B](s, t: OrderedTableRef[A, B]): bool		2089
+nim	pairs	tables.html#pairs.i,OrderedTableRef[A,B]	iterator pairs[A, B](t: OrderedTableRef[A, B]): (A, B)		2105
+nim	mpairs	tables.html#mpairs.i,OrderedTableRef[A,B]	iterator mpairs[A, B](t: OrderedTableRef[A, B]): (A, var B)		2137
+nim	keys	tables.html#keys.i,OrderedTableRef[A,B]	iterator keys[A, B](t: OrderedTableRef[A, B]): lent A		2159
+nim	values	tables.html#values.i,OrderedTableRef[A,B]	iterator values[A, B](t: OrderedTableRef[A, B]): lent B		2180
+nim	mvalues	tables.html#mvalues.i,OrderedTableRef[A,B]	iterator mvalues[A, B](t: OrderedTableRef[A, B]): var B		2200
+nim	CountTable	tables.html#CountTable	object CountTable		2233
+nim	CountTableRef	tables.html#CountTableRef	type CountTableRef		2241
+nim	inc	tables.html#inc,CountTable[A],A,int	proc inc[A](t: var CountTable[A]; key: A; val = 1)		2277
+nim	initCountTable	tables.html#initCountTable	proc initCountTable[A](initialSize = defaultInitialSize): CountTable[A]		2281
+nim	toCountTable	tables.html#toCountTable,openArray[A]	proc toCountTable[A](keys: openArray[A]): CountTable[A]		2293
+nim	`[]`	tables.html#[],CountTable[A],A	proc `[]`[A](t: CountTable[A]; key: A): int		2299
+nim	`[]=`	tables.html#[]=,CountTable[A],A,int	proc `[]=`[A](t: var CountTable[A]; key: A; val: int)		2317
+nim	len	tables.html#len,CountTable[A]	proc len[A](t: CountTable[A]): int		2353
+nim	smallest	tables.html#smallest,CountTable[A]	proc smallest[A](t: CountTable[A]): tuple[key: A, val: int]		2357
+nim	largest	tables.html#largest,CountTable[A]	proc largest[A](t: CountTable[A]): tuple[key: A, val: int]		2370
+nim	hasKey	tables.html#hasKey,CountTable[A],A	proc hasKey[A](t: CountTable[A]; key: A): bool		2382
+nim	contains	tables.html#contains,CountTable[A],A	proc contains[A](t: CountTable[A]; key: A): bool		2394
+nim	getOrDefault	tables.html#getOrDefault,CountTable[A],A,int	proc getOrDefault[A](t: CountTable[A]; key: A; default: int = 0): int		2399
+nim	del	tables.html#del,CountTable[A],A	proc del[A](t: var CountTable[A]; key: A)		2409
+nim	pop	tables.html#pop,CountTable[A],A,int	proc pop[A](t: var CountTable[A]; key: A; val: var int): bool		2426
+nim	clear	tables.html#clear,CountTable[A]	proc clear[A](t: var CountTable[A])		2450
+nim	sort	tables.html#sort,CountTable[A]	proc sort[A](t: var CountTable[A]; order = SortOrder.Descending)		2462
+nim	merge	tables.html#merge,CountTable[A],CountTable[A]	proc merge[A](s: var CountTable[A]; t: CountTable[A])		2483
+nim	`$`	tables.html#$,CountTable[A]	proc `$`[A](t: CountTable[A]): string		2509
+nim	`==`	tables.html#==,CountTable[A],CountTable[A]	proc `==`[A](s, t: CountTable[A]): bool		2514
+nim	pairs	tables.html#pairs.i,CountTable[A]	iterator pairs[A](t: CountTable[A]): (A, int)		2520
+nim	mpairs	tables.html#mpairs.i,CountTable[A]	iterator mpairs[A](t: var CountTable[A]): (A, var int)		2554
+nim	keys	tables.html#keys.i,CountTable[A]	iterator keys[A](t: CountTable[A]): lent A		2573
+nim	values	tables.html#values.i,CountTable[A]	iterator values[A](t: CountTable[A]): int		2591
+nim	mvalues	tables.html#mvalues.i,CountTable[A]	iterator mvalues[A](t: var CountTable[A]): var int		2609
+nim	inc	tables.html#inc,CountTableRef[A],A,int	proc inc[A](t: CountTableRef[A]; key: A; val = 1)		2638
+nim	newCountTable	tables.html#newCountTable	proc newCountTable[A](initialSize = defaultInitialSize): CountTableRef[A]		2640
+nim	newCountTable	tables.html#newCountTable,openArray[A]	proc newCountTable[A](keys: openArray[A]): CountTableRef[A]		2652
+nim	`[]`	tables.html#[],CountTableRef[A],A	proc `[]`[A](t: CountTableRef[A]; key: A): int		2659
+nim	`[]=`	tables.html#[]=,CountTableRef[A],A,int	proc `[]=`[A](t: CountTableRef[A]; key: A; val: int)		2673
+nim	smallest	tables.html#smallest,CountTableRef[A]	proc smallest[A](t: CountTableRef[A]): tuple[key: A, val: int]		2694
+nim	largest	tables.html#largest,CountTableRef[A]	proc largest[A](t: CountTableRef[A]): tuple[key: A, val: int]		2701
+nim	hasKey	tables.html#hasKey,CountTableRef[A],A	proc hasKey[A](t: CountTableRef[A]; key: A): bool		2708
+nim	contains	tables.html#contains,CountTableRef[A],A	proc contains[A](t: CountTableRef[A]; key: A): bool		2719
+nim	getOrDefault	tables.html#getOrDefault,CountTableRef[A],A,int	proc getOrDefault[A](t: CountTableRef[A]; key: A; default: int): int		2724
+nim	len	tables.html#len,CountTableRef[A]	proc len[A](t: CountTableRef[A]): int		2734
+nim	del	tables.html#del,CountTableRef[A],A	proc del[A](t: CountTableRef[A]; key: A)		2738
+nim	pop	tables.html#pop,CountTableRef[A],A,int	proc pop[A](t: CountTableRef[A]; key: A; val: var int): bool		2746
+nim	clear	tables.html#clear,CountTableRef[A]	proc clear[A](t: CountTableRef[A])		2757
+nim	sort	tables.html#sort,CountTableRef[A]	proc sort[A](t: CountTableRef[A]; order = SortOrder.Descending)		2765
+nim	merge	tables.html#merge,CountTableRef[A],CountTableRef[A]	proc merge[A](s, t: CountTableRef[A])		2776
+nim	`$`	tables.html#$,CountTableRef[A]	proc `$`[A](t: CountTableRef[A]): string		2787
+nim	`==`	tables.html#==,CountTableRef[A],CountTableRef[A]	proc `==`[A](s, t: CountTableRef[A]): bool		2792
+nim	pairs	tables.html#pairs.i,CountTableRef[A]	iterator pairs[A](t: CountTableRef[A]): (A, int)		2801
+nim	mpairs	tables.html#mpairs.i,CountTableRef[A]	iterator mpairs[A](t: CountTableRef[A]): (A, var int)		2835
+nim	keys	tables.html#keys.i,CountTableRef[A]	iterator keys[A](t: CountTableRef[A]): A		2854
+nim	values	tables.html#values.i,CountTableRef[A]	iterator values[A](t: CountTableRef[A]): int		2872
+nim	mvalues	tables.html#mvalues.i,CountTableRef[A]	iterator mvalues[A](t: CountTableRef[A]): var int		2890
+nim	hash	tables.html#hash,Table[K,V]	proc hash[K, V](s: Table[K, V]): Hash		2908
+nim	hash	tables.html#hash,OrderedTable[K,V]	proc hash[K, V](s: OrderedTable[K, V]): Hash		2913
+nim	hash	tables.html#hash,CountTable[V]	proc hash[V](s: CountTable[V]): Hash		2918
+idx	hash table	tables.html#hash-table_1	Module tables		0
+idx	dictionary	tables.html#dictionary_1	Module tables		0
+heading	Basic usage	tables.html#basic-usage	 Basic usage		0
+heading	Table	tables.html#basic-usage-table	  Table		0
+heading	OrderedTable	tables.html#basic-usage-orderedtable	  OrderedTable		0
+heading	CountTable	tables.html#basic-usage-counttable	  CountTable		0
+heading	Hashing	tables.html#basic-usage-hashing	  Hashing		0
+heading	See also	tables.html#see-also	 See also		0
+nimgrp	contains	tables.html#contains-procs-all	proc		372
+nimgrp	newcounttable	tables.html#newCountTable-procs-all	proc		2640
+nimgrp	hash	tables.html#hash-procs-all	proc		2908
+nimgrp	$	tables.html#$-procs-all	proc		567
+nimgrp	neworderedtable	tables.html#newOrderedTable-procs-all	proc		1816
+nimgrp	del	tables.html#del-procs-all	proc		499
+nimgrp	[]=	tables.html#[]=-procs-all	proc		283
+nimgrp	getordefault	tables.html#getOrDefault-procs-all	proc		402
+nimgrp	len	tables.html#len-procs-all	proc		477
+nimgrp	newtable	tables.html#newTable-procs-all	proc		814
+nimgrp	smallest	tables.html#smallest-procs-all	proc		2357
+nimgrp	add	tables.html#add-procs-all	proc		485
+nimgrp	haskey	tables.html#hasKey-procs-all	proc		354
+nimgrp	haskeyorput	tables.html#hasKeyOrPut-procs-all	proc		382
+nimgrp	largest	tables.html#largest-procs-all	proc		2370
+nimgrp	inc	tables.html#inc-procs-all	proc		2277
+nimgrp	merge	tables.html#merge-procs-all	proc		2483
+nimgrp	clear	tables.html#clear-procs-all	proc		553
+nimgrp	sort	tables.html#sort-procs-all	proc		1603
+nimgrp	take	tables.html#take-procs-all	proc		548
+nimgrp	mgetorput	tables.html#mgetOrPut-procs-all	proc		439
+nimgrp	[]	tables.html#[]-procs-all	proc		315
+nimgrp	==	tables.html#==-procs-all	proc		572
+nimgrp	pop	tables.html#pop-procs-all	proc		517
+nimgrp	values	tables.html#values-iterators-all	iterator		742
+nimgrp	mpairs	tables.html#mpairs-iterators-all	iterator		699
+nimgrp	pairs	tables.html#pairs-iterators-all	iterator		668
+nimgrp	mvalues	tables.html#mvalues-iterators-all	iterator		763
+nimgrp	keys	tables.html#keys-iterators-all	iterator		721
+nimgrp	withvalue	tables.html#withValue-templates-all	template		592

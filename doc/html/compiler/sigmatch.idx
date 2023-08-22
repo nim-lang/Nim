@@ -1,0 +1,65 @@
+nimTitle	sigmatch	sigmatch.html	module sigmatch		0
+nim	kUnknown	sigmatch.html#kUnknown	MismatchKind.kUnknown		22
+nim	kAlreadyGiven	sigmatch.html#kAlreadyGiven	MismatchKind.kAlreadyGiven		22
+nim	kUnknownNamedParam	sigmatch.html#kUnknownNamedParam	MismatchKind.kUnknownNamedParam		22
+nim	kTypeMismatch	sigmatch.html#kTypeMismatch	MismatchKind.kTypeMismatch		22
+nim	kVarNeeded	sigmatch.html#kVarNeeded	MismatchKind.kVarNeeded		22
+nim	kMissingParam	sigmatch.html#kMissingParam	MismatchKind.kMissingParam		22
+nim	kExtraArg	sigmatch.html#kExtraArg	MismatchKind.kExtraArg		22
+nim	kPositionalAlreadyGiven	sigmatch.html#kPositionalAlreadyGiven	MismatchKind.kPositionalAlreadyGiven		22
+nim	MismatchKind	sigmatch.html#MismatchKind	enum MismatchKind		22
+nim	MismatchInfo	sigmatch.html#MismatchInfo	object MismatchInfo		26
+nim	csEmpty	sigmatch.html#csEmpty	TCandidateState.csEmpty		32
+nim	csMatch	sigmatch.html#csMatch	TCandidateState.csMatch		32
+nim	csNoMatch	sigmatch.html#csNoMatch	TCandidateState.csNoMatch		32
+nim	TCandidateState	sigmatch.html#TCandidateState	enum TCandidateState		32
+nim	CandidateError	sigmatch.html#CandidateError	object CandidateError		35
+nim	CandidateErrors	sigmatch.html#CandidateErrors	type CandidateErrors		41
+nim	TCandidate	sigmatch.html#TCandidate	object TCandidate		43
+nim	trDontBind	sigmatch.html#trDontBind	TTypeRelFlag.trDontBind		85
+nim	trNoCovariance	sigmatch.html#trNoCovariance	TTypeRelFlag.trNoCovariance		85
+nim	trBindGenericParam	sigmatch.html#trBindGenericParam	TTypeRelFlag.trBindGenericParam		85
+nim	trIsOutParam	sigmatch.html#trIsOutParam	TTypeRelFlag.trIsOutParam		85
+nim	TTypeRelFlag	sigmatch.html#TTypeRelFlag	enum TTypeRelFlag		85
+nim	TTypeRelFlags	sigmatch.html#TTypeRelFlags	type TTypeRelFlags		91
+nim	markUsed	sigmatch.html#markUsed,PContext,TLineInfo,PSym	proc markUsed(c: PContext; info: TLineInfo; s: PSym)		97
+nim	markOwnerModuleAsUsed	sigmatch.html#markOwnerModuleAsUsed,PContext,PSym	proc markOwnerModuleAsUsed(c: PContext; s: PSym)		98
+nim	hasFauxMatch	sigmatch.html#hasFauxMatch.t,TCandidate	template hasFauxMatch(c: TCandidate): bool		100
+nim	initCandidate	sigmatch.html#initCandidate,PContext,TCandidate,PType	proc initCandidate(ctx: PContext; c: var TCandidate; callee: PType)		118
+nim	initCandidate	sigmatch.html#initCandidate,PContext,TCandidate,PSym,PNode,int	proc initCandidate(ctx: PContext; c: var TCandidate; callee: PSym; binding: PNode;\n              calleeScope = -1; diagnosticsEnabled = false)		137
+nim	newCandidate	sigmatch.html#newCandidate,PContext,PSym,PNode,int	proc newCandidate(ctx: PContext; callee: PSym; binding: PNode; calleeScope = -1): TCandidate		171
+nim	newCandidate	sigmatch.html#newCandidate,PContext,PType	proc newCandidate(ctx: PContext; callee: PType): TCandidate		176
+nim	typeRel	sigmatch.html#typeRel,TCandidate,PType,PType,TTypeRelFlags	proc typeRel(c: var TCandidate; f, aOrig: PType; flags: TTypeRelFlags = {}): TTypeRelation		194
+nim	writeMatches	sigmatch.html#writeMatches,TCandidate	proc writeMatches(c: TCandidate)		287
+nim	cmpCandidates	sigmatch.html#cmpCandidates,TCandidate,TCandidate	proc cmpCandidates(a, b: TCandidate): int		296
+nim	describeArg	sigmatch.html#describeArg,PContext,PNode,int,int	proc describeArg(c: PContext; n: PNode; i: int; startIdx = 1; prefer = preferName): string		349
+nim	describeArgs	sigmatch.html#describeArgs,PContext,PNode,int	proc describeArgs(c: PContext; n: PNode; startIdx = 1; prefer = preferName): string		353
+nim	matchUserTypeClass	sigmatch.html#matchUserTypeClass,TCandidate,PType,PType	proc matchUserTypeClass(m: var TCandidate; ff, a: PType): PType		690
+nim	inferStaticParam	sigmatch.html#inferStaticParam,TCandidate,PNode,BiggestInt	proc inferStaticParam(c: var TCandidate; lhs: PNode; rhs: BiggestInt): bool		838
+nim	cmpTypes	sigmatch.html#cmpTypes,PContext,PType,PType	proc cmpTypes(c: PContext; f, a: PType): TTypeRelation		1945
+nim	paramTypesMatch	sigmatch.html#paramTypesMatch,TCandidate,PType,PType,PNode,PNode	proc paramTypesMatch(m: var TCandidate; f, a: PType; arg, argOrig: PNode): PNode		2306
+nim	semFinishOperands	sigmatch.html#semFinishOperands,PContext,PNode	proc semFinishOperands(c: PContext; n: PNode)		2648
+nim	partialMatch	sigmatch.html#partialMatch,PContext,PNode,PNode,TCandidate	proc partialMatch(c: PContext; n, nOrig: PNode; m: var TCandidate)		2654
+nim	matches	sigmatch.html#matches,PContext,PNode,PNode,TCandidate	proc matches(c: PContext; n, nOrig: PNode; m: var TCandidate)		2659
+nim	argtypeMatches	sigmatch.html#argtypeMatches,PContext,PType,PType	proc argtypeMatches(c: PContext; f, a: PType; fromHlo = false): bool		2718
+nim	instTypeBoundOp	sigmatch.html#instTypeBoundOp,PContext,PSym,PType,TLineInfo,TTypeAttachedOp,int	proc instTypeBoundOp(c: PContext; dc: PSym; t: PType; info: TLineInfo;\n                op: TTypeAttachedOp; col: int): PSym		2731
+nim	symToSuggest	sigmatch.html#symToSuggest,ModuleGraph,PSym,bool,IdeCmd,TLineInfo,range[],PrefixMatch,bool,int,uint16,int	proc symToSuggest(g: ModuleGraph; s: PSym; isLocal: bool; section: IdeCmd;\n             info: TLineInfo; quality: range[0 .. 100]; prefix: PrefixMatch;\n             inTypeContext: bool; scope: int; useSuppliedInfo = false;\n             endLine: uint16 = 0; endCol = 0): Suggest		122
+nim	`$`	sigmatch.html#$,Suggest	proc `$`(suggest: Suggest): string		186
+nim	suggestResult	sigmatch.html#suggestResult,ConfigRef,Suggest	proc suggestResult(conf: ConfigRef; s: Suggest)		231
+nim	fieldVisible	sigmatch.html#fieldVisible,PContext,PSym	proc fieldVisible(c: PContext; f: PSym): bool		275
+nim	cpNone	sigmatch.html#cpNone	TCheckPointResult.cpNone		466
+nim	cpFuzzy	sigmatch.html#cpFuzzy	TCheckPointResult.cpFuzzy		466
+nim	cpExact	sigmatch.html#cpExact	TCheckPointResult.cpExact		466
+nim	TCheckPointResult	sigmatch.html#TCheckPointResult	enum TCheckPointResult		466
+nim	inCheckpoint	sigmatch.html#inCheckpoint,TLineInfo,TLineInfo	proc inCheckpoint(current, trackPos: TLineInfo): TCheckPointResult		469
+nim	isTracked	sigmatch.html#isTracked,TLineInfo,TLineInfo,int	proc isTracked(current, trackPos: TLineInfo; tokenLen: int): bool		480
+nim	suggestSym	sigmatch.html#suggestSym,ModuleGraph,TLineInfo,PSym,PSym	proc suggestSym(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym;\n           isDecl = true)		536
+nim	safeSemExpr	sigmatch.html#safeSemExpr,PContext,PNode	proc safeSemExpr(c: PContext; n: PNode): PNode		634
+nim	suggestExprNoCheck	sigmatch.html#suggestExprNoCheck,PContext,PNode	proc suggestExprNoCheck(c: PContext; n: PNode)		663
+nim	suggestExpr	sigmatch.html#suggestExpr,PContext,PNode	proc suggestExpr(c: PContext; n: PNode)		692
+nim	suggestDecl	sigmatch.html#suggestDecl,PContext,PNode,PSym	proc suggestDecl(c: PContext; n: PNode; s: PSym)		695
+nim	suggestStmt	sigmatch.html#suggestStmt,PContext,PNode	proc suggestStmt(c: PContext; n: PNode)		702
+nim	suggestEnum	sigmatch.html#suggestEnum,PContext,PNode,PType	proc suggestEnum(c: PContext; n: PNode; t: PType)		705
+nim	suggestSentinel	sigmatch.html#suggestSentinel,PContext	proc suggestSentinel(c: PContext)		711
+nimgrp	newcandidate	sigmatch.html#newCandidate-procs-all	proc		171
+nimgrp	initcandidate	sigmatch.html#initCandidate-procs-all	proc		118

@@ -1,0 +1,95 @@
+nimTitle	modulegraphs	modulegraphs.html	module modulegraphs		0
+nim	SigHash	modulegraphs.html#SigHash	type SigHash		23
+nim	LazySym	modulegraphs.html#LazySym	object LazySym		25
+nim	Iface	modulegraphs.html#Iface	object Iface		29
+nim	Operators	modulegraphs.html#Operators	object Operators		39
+nim	FullId	modulegraphs.html#FullId	object FullId		43
+nim	LazyType	modulegraphs.html#LazyType	object LazyType		47
+nim	LazyInstantiation	modulegraphs.html#LazyInstantiation	object LazyInstantiation		51
+nim	SymInfoPair	modulegraphs.html#SymInfoPair	object SymInfoPair		57
+nim	NonePass	modulegraphs.html#NonePass	PipelinePass.NonePass		61
+nim	SemPass	modulegraphs.html#SemPass	PipelinePass.SemPass		61
+nim	JSgenPass	modulegraphs.html#JSgenPass	PipelinePass.JSgenPass		61
+nim	CgenPass	modulegraphs.html#CgenPass	PipelinePass.CgenPass		61
+nim	EvalPass	modulegraphs.html#EvalPass	PipelinePass.EvalPass		61
+nim	InterpreterPass	modulegraphs.html#InterpreterPass	PipelinePass.InterpreterPass		61
+nim	GenDependPass	modulegraphs.html#GenDependPass	PipelinePass.GenDependPass		61
+nim	Docgen2TexPass	modulegraphs.html#Docgen2TexPass	PipelinePass.Docgen2TexPass		61
+nim	Docgen2JsonPass	modulegraphs.html#Docgen2JsonPass	PipelinePass.Docgen2JsonPass		61
+nim	Docgen2Pass	modulegraphs.html#Docgen2Pass	PipelinePass.Docgen2Pass		61
+nim	PipelinePass	modulegraphs.html#PipelinePass	enum PipelinePass		61
+nim	ModuleGraph	modulegraphs.html#ModuleGraph	type ModuleGraph		73
+nim	TPassContext	modulegraphs.html#TPassContext	object TPassContext		131
+nim	PPassContext	modulegraphs.html#PPassContext	type PPassContext		133
+nim	TPassOpen	modulegraphs.html#TPassOpen	type TPassOpen		135
+nim	TPassClose	modulegraphs.html#TPassClose	type TPassClose		136
+nim	TPassProcess	modulegraphs.html#TPassProcess	type TPassProcess		137
+nim	TPass	modulegraphs.html#TPass	tuple TPass		139
+nim	resetForBackend	modulegraphs.html#resetForBackend,ModuleGraph	proc resetForBackend(g: ModuleGraph)		144
+nim	semtabAll	modulegraphs.html#semtabAll.t,ModuleGraph,PSym	template semtabAll(g: ModuleGraph; m: PSym): TStrTable		195
+nim	initStrTables	modulegraphs.html#initStrTables,ModuleGraph,PSym	proc initStrTables(g: ModuleGraph; m: PSym)		198
+nim	strTableAdds	modulegraphs.html#strTableAdds,ModuleGraph,PSym,PSym	proc strTableAdds(g: ModuleGraph; m: PSym; s: PSym)		202
+nim	simulateCachedModule	modulegraphs.html#simulateCachedModule,ModuleGraph,PSym,PackedModule	proc simulateCachedModule(g: ModuleGraph; moduleSym: PSym; m: PackedModule)		212
+nim	initEncoder	modulegraphs.html#initEncoder,ModuleGraph,PSym	proc initEncoder(g: ModuleGraph; module: PSym)		217
+nim	ModuleIter	modulegraphs.html#ModuleIter	object ModuleIter		225
+nim	initModuleIter	modulegraphs.html#initModuleIter,ModuleIter,ModuleGraph,PSym,PIdent	proc initModuleIter(mi: var ModuleIter; g: ModuleGraph; m: PSym; name: PIdent): PSym		232
+nim	nextModuleIter	modulegraphs.html#nextModuleIter,ModuleIter,ModuleGraph	proc nextModuleIter(mi: var ModuleIter; g: ModuleGraph): PSym		242
+nim	allSyms	modulegraphs.html#allSyms.i,ModuleGraph,PSym	iterator allSyms(g: ModuleGraph; m: PSym): PSym		248
+nim	someSym	modulegraphs.html#someSym,ModuleGraph,PSym,PIdent	proc someSym(g: ModuleGraph; m: PSym; name: PIdent): PSym		261
+nim	systemModuleSym	modulegraphs.html#systemModuleSym,ModuleGraph,PIdent	proc systemModuleSym(g: ModuleGraph; name: PIdent): PSym		268
+nim	systemModuleSyms	modulegraphs.html#systemModuleSyms.i,ModuleGraph,PIdent	iterator systemModuleSyms(g: ModuleGraph; name: PIdent): PSym		271
+nim	typeInstCacheItems	modulegraphs.html#typeInstCacheItems.i,ModuleGraph,PSym	iterator typeInstCacheItems(g: ModuleGraph; s: PSym): PType		310
+nim	procInstCacheItems	modulegraphs.html#procInstCacheItems.i,ModuleGraph,PSym	iterator procInstCacheItems(g: ModuleGraph; s: PSym): PInstantiation		316
+nim	getAttachedOp	modulegraphs.html#getAttachedOp,ModuleGraph,PType,TTypeAttachedOp	proc getAttachedOp(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym		322
+nim	setAttachedOp	modulegraphs.html#setAttachedOp,ModuleGraph,int,PType,TTypeAttachedOp,PSym	proc setAttachedOp(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp;\n              value: PSym)		330
+nim	setAttachedOpPartial	modulegraphs.html#setAttachedOpPartial,ModuleGraph,int,PType,TTypeAttachedOp,PSym	proc setAttachedOpPartial(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp;\n                     value: PSym)		334
+nim	completePartialOp	modulegraphs.html#completePartialOp,ModuleGraph,int,PType,TTypeAttachedOp,PSym	proc completePartialOp(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp;\n                  value: PSym)		338
+nim	getToStringProc	modulegraphs.html#getToStringProc,ModuleGraph,PType	proc getToStringProc(g: ModuleGraph; t: PType): PSym		345
+nim	setToStringProc	modulegraphs.html#setToStringProc,ModuleGraph,PType,PSym	proc setToStringProc(g: ModuleGraph; t: PType; value: PSym)		349
+nim	methodsForGeneric	modulegraphs.html#methodsForGeneric.i,ModuleGraph,PType	iterator methodsForGeneric(g: ModuleGraph; t: PType): (int, PSym)		352
+nim	addMethodToGeneric	modulegraphs.html#addMethodToGeneric,ModuleGraph,int,PType,int,PSym	proc addMethodToGeneric(g: ModuleGraph; module: int; t: PType; col: int; m: PSym)		357
+nim	hasDisabledAsgn	modulegraphs.html#hasDisabledAsgn,ModuleGraph,PType	proc hasDisabledAsgn(g: ModuleGraph; t: PType): bool		360
+nim	copyTypeProps	modulegraphs.html#copyTypeProps,ModuleGraph,int,PType,PType	proc copyTypeProps(g: ModuleGraph; module: int; dest, src: PType)		364
+nim	loadCompilerProc	modulegraphs.html#loadCompilerProc,ModuleGraph,string	proc loadCompilerProc(g: ModuleGraph; name: string): PSym		370
+nim	loadPackedSym	modulegraphs.html#loadPackedSym,ModuleGraph,LazySym	proc loadPackedSym(g: ModuleGraph; s: var LazySym)		384
+nim	`$`	modulegraphs.html#$,SigHash	proc `$`(u: SigHash): string		388
+nim	`==`	modulegraphs.html#==,SigHash,SigHash	proc `==`(a, b: SigHash): bool		391
+nim	hash	modulegraphs.html#hash,SigHash	proc hash(u: SigHash): Hash		394
+nim	hash	modulegraphs.html#hash,FileIndex	proc hash(x: FileIndex): Hash		399
+nim	onUse	modulegraphs.html#onUse.t,TLineInfo,PSym	template onUse(info: TLineInfo; s: PSym)		409
+nim	onDef	modulegraphs.html#onDef.t,TLineInfo,PSym	template onDef(info: TLineInfo; s: PSym)		410
+nim	onDefResolveForward	modulegraphs.html#onDefResolveForward.t,TLineInfo,PSym	template onDefResolveForward(info: TLineInfo; s: PSym)		411
+nim	stopCompile	modulegraphs.html#stopCompile,ModuleGraph	proc stopCompile(g: ModuleGraph): bool		413
+nim	createMagic	modulegraphs.html#createMagic,ModuleGraph,IdGenerator,string,TMagic	proc createMagic(g: ModuleGraph; idgen: IdGenerator; name: string; m: TMagic): PSym		416
+nim	registerModule	modulegraphs.html#registerModule,ModuleGraph,PSym	proc registerModule(g: ModuleGraph; m: PSym)		424
+nim	registerModuleById	modulegraphs.html#registerModuleById,ModuleGraph,FileIndex	proc registerModuleById(g: ModuleGraph; m: FileIndex)		438
+nim	initOperators	modulegraphs.html#initOperators,ModuleGraph	proc initOperators(g: ModuleGraph): Operators		441
+nim	newModuleGraph	modulegraphs.html#newModuleGraph,IdentCache,ConfigRef	proc newModuleGraph(cache: IdentCache; config: ConfigRef): ModuleGraph		484
+nim	resetAllModules	modulegraphs.html#resetAllModules,ModuleGraph	proc resetAllModules(g: ModuleGraph)		490
+nim	getModule	modulegraphs.html#getModule,ModuleGraph,FileIndex	proc getModule(g: ModuleGraph; fileIdx: FileIndex): PSym		503
+nim	moduleOpenForCodegen	modulegraphs.html#moduleOpenForCodegen,ModuleGraph,FileIndex	proc moduleOpenForCodegen(g: ModuleGraph; m: FileIndex): bool		511
+nim	rememberEmittedTypeInfo	modulegraphs.html#rememberEmittedTypeInfo,ModuleGraph,FileIndex,string	proc rememberEmittedTypeInfo(g: ModuleGraph; m: FileIndex; ti: string)		517
+nim	rememberFlag	modulegraphs.html#rememberFlag,ModuleGraph,PSym,ModuleBackendFlag	proc rememberFlag(g: ModuleGraph; m: PSym; flag: ModuleBackendFlag)		525
+nim	closeRodFile	modulegraphs.html#closeRodFile,ModuleGraph,PSym	proc closeRodFile(g: ModuleGraph; m: PSym)		531
+nim	addDep	modulegraphs.html#addDep,ModuleGraph,PSym,FileIndex	proc addDep(g: ModuleGraph; m: PSym; dep: FileIndex)		550
+nim	addIncludeDep	modulegraphs.html#addIncludeDep,ModuleGraph,FileIndex,FileIndex	proc addIncludeDep(g: ModuleGraph; module, includeFile: FileIndex)		558
+nim	parentModule	modulegraphs.html#parentModule,ModuleGraph,FileIndex	proc parentModule(g: ModuleGraph; fileIdx: FileIndex): FileIndex		561
+nim	markDirty	modulegraphs.html#markDirty,ModuleGraph,FileIndex	proc markDirty(g: ModuleGraph; fileIdx: FileIndex)		579
+nim	unmarkAllDirty	modulegraphs.html#unmarkAllDirty,ModuleGraph	proc unmarkAllDirty(g: ModuleGraph)		586
+nim	isDirty	modulegraphs.html#isDirty,ModuleGraph,PSym	proc isDirty(g: ModuleGraph; m: PSym): bool		592
+nim	markClientsDirty	modulegraphs.html#markClientsDirty,ModuleGraph,FileIndex	proc markClientsDirty(g: ModuleGraph; fileIdx: FileIndex)		595
+nim	needsCompilation	modulegraphs.html#needsCompilation,ModuleGraph	proc needsCompilation(g: ModuleGraph): bool		608
+nim	needsCompilation	modulegraphs.html#needsCompilation,ModuleGraph,FileIndex	proc needsCompilation(g: ModuleGraph; fileIdx: FileIndex): bool		617
+nim	getBody	modulegraphs.html#getBody,ModuleGraph,PSym	proc getBody(g: ModuleGraph; s: PSym): PNode		628
+nim	moduleFromRodFile	modulegraphs.html#moduleFromRodFile,ModuleGraph,FileIndex,seq[FileIndex]	proc moduleFromRodFile(g: ModuleGraph; fileIdx: FileIndex;\n                  cachedModules: var seq[FileIndex]): PSym		635
+nim	configComplete	modulegraphs.html#configComplete,ModuleGraph	proc configComplete(g: ModuleGraph)		643
+nim	onProcessing	modulegraphs.html#onProcessing,ModuleGraph,FileIndex,string,PSym	proc onProcessing(graph: ModuleGraph; fileIdx: FileIndex; moduleStatus: string;\n             fromModule: PSym)		648
+nim	getPackage	modulegraphs.html#getPackage,ModuleGraph,FileIndex	proc getPackage(graph: ModuleGraph; fileIdx: FileIndex): PSym		658
+nim	belongsToStdlib	modulegraphs.html#belongsToStdlib,ModuleGraph,PSym	proc belongsToStdlib(graph: ModuleGraph; sym: PSym): bool		669
+nim	`==`	modulegraphs.html#==,SymInfoPair,SymInfoPair	proc `==`(a, b: SymInfoPair): bool		673
+nim	fileSymbols	modulegraphs.html#fileSymbols,ModuleGraph,FileIndex	proc fileSymbols(graph: ModuleGraph; fileIdx: FileIndex): seq[SymInfoPair]		676
+nim	suggestSymbolsIter	modulegraphs.html#suggestSymbolsIter.i,ModuleGraph	iterator suggestSymbolsIter(g: ModuleGraph): SymInfoPair		679
+nim	suggestErrorsIter	modulegraphs.html#suggestErrorsIter.i,ModuleGraph	iterator suggestErrorsIter(g: ModuleGraph): Suggest		684
+nimgrp	needscompilation	modulegraphs.html#needsCompilation-procs-all	proc		608
+nimgrp	==	modulegraphs.html#==-procs-all	proc		391
+nimgrp	hash	modulegraphs.html#hash-procs-all	proc		394

@@ -1,0 +1,34 @@
+nimTitle	pragmas	pragmas.html	module pragmas		0
+nim	FirstCallConv	pragmas.html#FirstCallConv	const FirstCallConv		23
+nim	LastCallConv	pragmas.html#LastCallConv	const LastCallConv		24
+nim	procPragmas	pragmas.html#procPragmas	const procPragmas		30
+nim	converterPragmas	pragmas.html#converterPragmas	const converterPragmas		38
+nim	methodPragmas	pragmas.html#methodPragmas	const methodPragmas		39
+nim	templatePragmas	pragmas.html#templatePragmas	const templatePragmas		40
+nim	macroPragmas	pragmas.html#macroPragmas	const macroPragmas		42
+nim	iteratorPragmas	pragmas.html#iteratorPragmas	const iteratorPragmas		45
+nim	exprPragmas	pragmas.html#exprPragmas	const exprPragmas		49
+nim	stmtPragmas	pragmas.html#stmtPragmas	const stmtPragmas		50
+nim	stmtPragmasTopLevel	pragmas.html#stmtPragmasTopLevel	const stmtPragmasTopLevel		59
+nim	lambdaPragmas	pragmas.html#lambdaPragmas	const lambdaPragmas		65
+nim	typePragmas	pragmas.html#typePragmas	const typePragmas		70
+nim	fieldPragmas	pragmas.html#fieldPragmas	const fieldPragmas		76
+nim	varPragmas	pragmas.html#varPragmas	const varPragmas		78
+nim	constPragmas	pragmas.html#constPragmas	const constPragmas		83
+nim	paramPragmas	pragmas.html#paramPragmas	const paramPragmas		87
+nim	letPragmas	pragmas.html#letPragmas	const letPragmas		88
+nim	procTypePragmas	pragmas.html#procTypePragmas	const procTypePragmas		89
+nim	forVarPragmas	pragmas.html#forVarPragmas	const forVarPragmas		92
+nim	allRoutinePragmas	pragmas.html#allRoutinePragmas	const allRoutinePragmas		93
+nim	enumFieldPragmas	pragmas.html#enumFieldPragmas	const enumFieldPragmas		94
+nim	getPragmaVal	pragmas.html#getPragmaVal,PNode,TSpecialWord	proc getPragmaVal(procAst: PNode; name: TSpecialWord): PNode		96
+nim	pragma	pragmas.html#pragma,PContext,PSym,PNode,TSpecialWords,bool	proc pragma(c: PContext; sym: PSym; n: PNode; validPragmas: TSpecialWords;\n       isStatement: bool = false)		105
+nim	invalidPragma	pragmas.html#invalidPragma,PContext,PNode	proc invalidPragma(c: PContext; n: PNode)		118
+nim	illegalCustomPragma	pragmas.html#illegalCustomPragma,PContext,PNode,PSym	proc illegalCustomPragma(c: PContext; n: PNode; s: PSym)		120
+nim	pragmaAsm	pragmas.html#pragmaAsm,PContext,PNode	proc pragmaAsm(c: PContext; n: PNode): char		151
+nim	pragmaNoForward	pragmas.html#pragmaNoForward,PContext,PNode	proc pragmaNoForward(c: PContext; n: PNode; flag = sfNoForward)		292
+nim	pragmaToOptions	pragmas.html#pragmaToOptions,TSpecialWord	proc pragmaToOptions(w: TSpecialWord): TOptions		386
+nim	semAsmOrEmit	pragmas.html#semAsmOrEmit,PContext,PNode,char	proc semAsmOrEmit(con: PContext; n: PNode; marker: char): PNode		593
+nim	implicitPragmas	pragmas.html#implicitPragmas,PContext,PSym,TLineInfo,TSpecialWords	proc implicitPragmas(c: PContext; sym: PSym; info: TLineInfo;\n                validPragmas: TSpecialWords)		1311
+nim	hasPragma	pragmas.html#hasPragma,PNode,TSpecialWord	proc hasPragma(n: PNode; pragma: TSpecialWord): bool		1335
+nim	pragmaCallable	pragmas.html#pragmaCallable,PContext,PSym,PNode,TSpecialWords,bool	proc pragmaCallable(c: PContext; sym: PSym; n: PNode; validPragmas: TSpecialWords;\n               isStatement: bool = false)		1360

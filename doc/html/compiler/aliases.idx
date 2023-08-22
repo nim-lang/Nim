@@ -1,0 +1,6 @@
+nimTitle	aliases	aliases.html	module aliases		0
+nim	arNo	aliases.html#arNo	TAnalysisResult.arNo		19
+nim	arMaybe	aliases.html#arMaybe	TAnalysisResult.arMaybe		19
+nim	arYes	aliases.html#arYes	TAnalysisResult.arYes		19
+nim	TAnalysisResult	aliases.html#TAnalysisResult	enum TAnalysisResult		19
+nim	isPartOf	aliases.html#isPartOf,PNode,PNode	proc isPartOf(a, b: PNode): TAnalysisResult		69

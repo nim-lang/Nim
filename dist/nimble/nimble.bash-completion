@@ -1,0 +1,46 @@
+# vim: filetype=sh
+
+_nimble()
+{
+    local cur=${COMP_WORDS[COMP_CWORD]}
+    local prev=${COMP_WORDS[COMP_CWORD-1]}
+    COMPREPLY=()
+
+    if declare -F _init_completions >/dev/null 2>&1; then
+        _init_completion || return
+    fi
+
+    case "$prev" in
+    init|update|refresh|publish|search|build)
+        # no needed or available completion
+        ;;
+    c|cc|js)
+        _filedir '@(nim)'
+        ;;
+    install)
+        COMPREPLY=( $( nimble list 2> /dev/null | grep "^$cur" | grep -v '^ ' | tr -d ':') )
+        ;;
+    path)
+        COMPREPLY=( $( nimble list -i 2> /dev/null | cut -d' ' -f1 | grep "^$cur" ) )
+        ;;
+    uninstall)
+        COMPREPLY=( $( nimble list -i 2> /dev/null | awk -F'( |\\[|\\])' '{ f=4; while($f) { l=length($f); if(substr($f, l, l)==",") { $f=substr($f, 0, l-1) }; print $1 "@" $f; f++; }}' | sort -f | grep "^$cur" ) )
+            ;;
+    list)
+        COMPREPLY=( $( compgen -W '--ver -i --installed' -- $cur ) )
+        ;;
+    *)
+        # no $prev: suggest commands or flags
+        if [[ "$cur" == -* ]]; then
+            kw="-h -v -y -n --reject --version --accept --ver --help"
+        else
+            kw="install init publish uninstall build c cc js refresh search list path"
+        fi
+        COMPREPLY=( $( compgen -W "${kw}" -- $cur ) )
+        ;;
+    esac;
+
+    return 0
+}
+
+complete -F _nimble nimble

@@ -1,0 +1,14 @@
+[
+  {
+    "name": "discordnim",
+    "url": "https://github.com/Krognol/discordnim",
+    "method": "git",
+    "tags": [
+      "library",
+      "discord"
+    ],
+    "description": "Discord library for Nim",
+    "license": "MIT",
+    "web": "https://github.com/Krognol/discordnim"
+  }
+]

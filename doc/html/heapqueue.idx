@@ -1,0 +1,16 @@
+nimTitle	heapqueue	heapqueue.html	module std/heapqueue		0
+nim	HeapQueue	heapqueue.html#HeapQueue	object HeapQueue		50
+nim	initHeapQueue	heapqueue.html#initHeapQueue	proc initHeapQueue[T](): HeapQueue[T]		54
+nim	len	heapqueue.html#len,HeapQueue[T]	proc len[T](heap: HeapQueue[T]): int		64
+nim	`[]`	heapqueue.html#[],HeapQueue[T],Natural	proc `[]`[T](heap: HeapQueue[T]; i: Natural): lent T		72
+nim	push	heapqueue.html#push,HeapQueue[T],sinkT	proc push[T](heap: var HeapQueue[T]; item: sink T)		134
+nim	toHeapQueue	heapqueue.html#toHeapQueue,openArray[T]	proc toHeapQueue[T](x: openArray[T]): HeapQueue[T]		139
+nim	pop	heapqueue.html#pop,HeapQueue[T]	proc pop[T](heap: var HeapQueue[T]): T		154
+nim	find	heapqueue.html#find,HeapQueue[T],T	proc find[T](heap: HeapQueue[T]; x: T): int		169
+nim	del	heapqueue.html#del,HeapQueue[T],Natural	proc del[T](heap: var HeapQueue[T]; index: Natural)		181
+nim	replace	heapqueue.html#replace,HeapQueue[T],sinkT	proc replace[T](heap: var HeapQueue[T]; item: sink T): T		195
+nim	pushpop	heapqueue.html#pushpop,HeapQueue[T],sinkT	proc pushpop[T](heap: var HeapQueue[T]; item: sink T): T		215
+nim	clear	heapqueue.html#clear,HeapQueue[T]	proc clear[T](heap: var HeapQueue[T])		232
+nim	`$`	heapqueue.html#$,HeapQueue[T]	proc `$`[T](heap: HeapQueue[T]): string		241
+heading	Basic usage	heapqueue.html#basic-usage	 Basic usage		0
+heading	Usage with custom objects	heapqueue.html#usage-with-custom-objects	 Usage with custom objects		0

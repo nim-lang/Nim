@@ -1,0 +1,23 @@
+name: asyncftpclient
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+  workflow_dispatch:
+
+jobs:
+  compile_example:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: jiro4989/setup-nim-action@v1
+
+      - name: install package
+        run: nimble install -y
+
+      - name: compile example
+        run: nimble compileExample

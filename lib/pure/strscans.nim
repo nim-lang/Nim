@@ -172,7 +172,11 @@ The parsing is performed with the help of 3 helper templates that that can be
 implemented for a custom type.
 
 These templates need to be named ``atom`` and ``nxt``. ``atom`` should be
+<<<<<<< HEAD
 overloaded to handle both `char` and `set[char]`.
+=======
+overloaded to handle both single characters and sets of character.
+>>>>>>> origin/master
 
   ```nim
   import std/streams
@@ -472,7 +476,11 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
 
 macro scanTuple*(input: untyped; pattern: static[string]; matcherTypes: varargs[untyped]): untyped {.since: (1, 5).}=
   ## Works identically as scanf, but instead of predeclaring variables it returns a tuple.
+<<<<<<< HEAD
   ## Tuple is started with a bool which indicates if the scan was successful
+=======
+  ## Tuple is started with a bool which indicates if the scan was successful 
+>>>>>>> origin/master
   ## followed by the requested data.
   ## If using a user defined matcher, provide the types in order they appear after pattern:
   ## `line.scanTuple("${yourMatcher()}", int)`

@@ -767,6 +767,7 @@ div.topic {
 
 div.search_results {
   background-color: var(--third-background);
+<<<<<<< HEAD
   margin: 3vh 5vw;
   padding: 1em;
   border: 1px solid #4d4d4d;
@@ -777,6 +778,17 @@ div.search_results {
   z-index: 1;
   max-height: calc(100vh - 6em);
   overflow-y: scroll;}
+=======
+  margin: 3em;
+  padding: 1em;
+  border: 1px solid #4d4d4d;
+  position: sticky;
+  top: 0;
+  isolation: isolate;
+  z-index: 1;
+  max-height: 100vh;
+  overflow-y: scroll; }
+>>>>>>> origin/master
 
 div#global-links ul {
   margin-left: 0;

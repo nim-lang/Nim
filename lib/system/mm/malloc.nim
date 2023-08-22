@@ -3,18 +3,27 @@
 
 proc allocImpl(size: Natural): pointer =
   result = c_malloc(size.csize_t)
+<<<<<<< HEAD
   when defined(zephyr):
+=======
+  when defined(zephyr) or defined(handleOOM):
+>>>>>>> origin/master
     if result == nil:
       raiseOutOfMem()
 
 proc alloc0Impl(size: Natural): pointer =
   result = c_calloc(size.csize_t, 1)
+<<<<<<< HEAD
   when defined(zephyr):
+=======
+  when defined(zephyr) or defined(handleOOM):
+>>>>>>> origin/master
     if result == nil:
       raiseOutOfMem()
 
 proc reallocImpl(p: pointer, newSize: Natural): pointer =
   result = c_realloc(p, newSize.csize_t)
+<<<<<<< HEAD
   when defined(zephyr):
     if result == nil:
       raiseOutOfMem()
@@ -23,6 +32,43 @@ proc realloc0Impl(p: pointer, oldsize, newSize: Natural): pointer =
   result = realloc(p, newSize.csize_t)
   if newSize > oldSize:
     zeroMem(cast[pointer](cast[uint](result) + uint(oldSize)), newSize - oldSize)
+=======
+  when defined(zephyr) or defined(handleOOM):
+    if result == nil:
+      raiseOutOfMem()
+
+when defined(handleOOM):
+  proc nRealloc*(p: pointer, oldsize: csize_t, newsize: csize_t): pointer {.inline.} =
+    result = c_calloc(newSize.csize_t, sizeof(cchar).csize_t)
+    if result == nil:
+      raiseOutOfMem()
+    if result != nil:
+      if p != nil and newsize != 0 and newsize >= 0:
+        for i in 0..(newsize - 1):
+          if i <= oldSize:
+            cast[ptr UncheckedArray[cchar]](result)[i] = cast[ptr UncheckedArray[cchar]](p)[i]
+          else:
+            cast[ptr UncheckedArray[cchar]](result)[i] = '\0'
+        c_free(p)
+    else:
+      raiseOutOfMem()
+
+
+
+proc realloc0Impl(p: pointer, oldsize, newSize: Natural): pointer =
+  when defined(handleOOM):
+    result = nRealloc(p, oldsize.csize_t, newSize.csize_t)
+  else:
+    result = realloc(p, newSize.csize_t)
+  when defined(handleOOM):
+    if newSize > oldSize and result != nil:
+      zeroMem(cast[pointer](cast[uint](result) + uint(oldSize)), newSize - oldSize)
+    else:
+      raiseOutOfMem()
+  else:
+    if newSize > oldSize:
+      zeroMem(cast[pointer](cast[uint](result) + uint(oldSize)), newSize - oldSize)
+>>>>>>> origin/master
 
 proc deallocImpl(p: pointer) =
   c_free(p)

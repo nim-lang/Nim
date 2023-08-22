@@ -1,0 +1,7 @@
+nimTitle	concepts	concepts.html	module concepts		0
+nim	isSelf	concepts.html#isSelf,PType	proc isSelf(t: PType): bool		36
+nim	makeTypeDesc	concepts.html#makeTypeDesc,PContext,PType	proc makeTypeDesc(c: PContext; typ: PType): PType		40
+nim	semConceptDeclaration	concepts.html#semConceptDeclaration,PContext,PNode	proc semConceptDeclaration(c: PContext; n: PNode): PNode		70
+nim	conceptMatch	concepts.html#conceptMatch,PContext,PType,PType,TIdTable,PType	proc conceptMatch(c: PContext; concpt, arg: PType; bindings: var TIdTable;\n             invocation: PType): bool		322
+heading	Code dealing with Concept declarations	concepts.html#code-dealing-with-concept-declarations	 Code dealing with Concept declarations		0
+heading	Concept matching	concepts.html#concept-matching	 Concept matching		0

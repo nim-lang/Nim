@@ -1,0 +1,103 @@
+name: tagging release
+
+on:
+  push:
+    tags:
+    - '*'
+    workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - os: linux
+            triple: x86_64-linux-gnu
+            name: linux_x86_64
+          ## these triples don't actually work (yet) 
+          ## TODO: add cross compilation for arm targets
+          # - os: linux
+          #   triple: i686-linux-musl
+          #   name: linux_i686
+          # - os: linux
+          #   triple: i686-linux-musl
+          #   name: linux_i386
+          # - os: linux
+          #   triple: aarch64-linux-musl
+          #   name: linux_arm64
+          # - os: linux
+          #   triple: armv7l-linux-musleabihf
+          #   name: linux_arm
+          - os: macosx
+            triple: x86_64-apple-darwin14
+            name: apple_x86_64
+          - os: windows
+            triple: x86_64-w64-mingw32
+            name: windows_x86_64
+          # - os: windows
+          #   triple: i686-w64-mingw32
+          #   name: windows_i686
+          # - os: windows
+          #   triple: i686-w64-mingw32
+          #   name: windows_i386
+        include:
+          - target:
+              os: linux
+            builder: ubuntu-20.04
+          - target:
+              os: macosx
+            builder: macos-11
+          - target:
+              os: windows
+            builder: windows-2019
+    defaults:
+      run:
+        shell: bash
+
+    name: '${{ matrix.target.triple }}'
+    runs-on: ${{ matrix.builder }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - uses: jiro4989/setup-nim-action@v1.4.3
+        with:
+          nim-version: "stable"
+
+      - name: build
+        run: |
+          nim release
+
+      - name: Compress the Nim Language Server binaries
+        run: |
+          tar -c -z -v -f atlas-${{ matrix.target.name }}.tar.gz `ls atlas{,.exe} 2>/dev/null || true`
+
+      - name: Upload the Nim Language Server Binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: atlas-${{ matrix.target.name }}.tar.gz
+          path: atlas-${{ matrix.target.name }}.tar.gz
+
+  create-github-release:
+    name: Create Github Release
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artefacts
+        uses: actions/download-artifact@v2
+
+      - uses: ncipollo/release-action@v1
+        with:
+          name: Latest Binaries
+          artifacts: "*/*"
+          allowUpdates: true
+          makeLatest: true
+
+      - name: Delete artefacts
+        uses: geekyeggo/delete-artifact@v1
+        with:
+          failOnError: false
+          name: "atlas-*"

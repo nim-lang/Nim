@@ -1,0 +1,2 @@
+import os
+echo(getCurrentDir())

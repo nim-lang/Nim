@@ -1,0 +1,60 @@
+nimTitle	lookups	lookups.html	module lookups		0
+nim	considerQuotedIdent	lookups.html#considerQuotedIdent,PContext,PNode,PNode	proc considerQuotedIdent(c: PContext; n: PNode; origin: PNode = nil): PIdent		29
+nim	addSym	lookups.html#addSym.t,PScope,PSym	template addSym(scope: PScope; s: PSym)		67
+nim	addUniqueSym	lookups.html#addUniqueSym,PScope,PSym	proc addUniqueSym(scope: PScope; s: PSym): PSym		70
+nim	openScope	lookups.html#openScope,PContext	proc openScope(c: PContext): PScope		73
+nim	rawCloseScope	lookups.html#rawCloseScope,PContext	proc rawCloseScope(c: PContext)		79
+nim	closeScope	lookups.html#closeScope,PContext	proc closeScope(c: PContext)		82
+nim	allScopes	lookups.html#allScopes.i,PScope	iterator allScopes(scope: PScope): PScope		86
+nim	localScopesFrom	lookups.html#localScopesFrom.i,PContext,PScope	iterator localScopesFrom(c: PContext; scope: PScope): PScope		92
+nim	isShadowScope	lookups.html#isShadowScope,PScope	proc isShadowScope(s: PScope): bool		97
+nim	localSearchInScope	lookups.html#localSearchInScope,PContext,PIdent	proc localSearchInScope(c: PContext; s: PIdent): PSym		100
+nim	importedItems	lookups.html#importedItems.i,PContext,PIdent	iterator importedItems(c: PContext; name: PIdent): PSym		144
+nim	allSyms	lookups.html#allSyms.i,PContext	iterator allSyms(c: PContext): (PSym, int, bool)		158
+nim	uniqueSyms	lookups.html#uniqueSyms.i,PContext	iterator uniqueSyms(c: PContext): (PSym, int, bool)		177
+nim	someSymFromImportTable	lookups.html#someSymFromImportTable,PContext,PIdent,bool	proc someSymFromImportTable(c: PContext; name: PIdent; ambiguous: var bool): PSym		188
+nim	searchInScopes	lookups.html#searchInScopes,PContext,PIdent,bool	proc searchInScopes(c: PContext; s: PIdent; ambiguous: var bool): PSym		201
+nim	debugScopes	lookups.html#debugScopes,PContext,int	proc debugScopes(c: PContext; limit = 0; max = int.high)		207
+nim	searchInScopesAllCandidatesFilterBy	lookups.html#searchInScopesAllCandidatesFilterBy,PContext,PIdent,TSymKinds	proc searchInScopesAllCandidatesFilterBy(c: PContext; s: PIdent; filter: TSymKinds): seq[\n    PSym]		220
+nim	searchInScopesFilterBy	lookups.html#searchInScopesFilterBy,PContext,PIdent,TSymKinds	proc searchInScopesFilterBy(c: PContext; s: PIdent; filter: TSymKinds): seq[PSym]		237
+nim	errorSym	lookups.html#errorSym,PContext,PNode	proc errorSym(c: PContext; n: PNode): PSym		257
+nim	oimDone	lookups.html#oimDone	TOverloadIterMode.oimDone		274
+nim	oimNoQualifier	lookups.html#oimNoQualifier	TOverloadIterMode.oimNoQualifier		274
+nim	oimSelfModule	lookups.html#oimSelfModule	TOverloadIterMode.oimSelfModule		274
+nim	oimOtherModule	lookups.html#oimOtherModule	TOverloadIterMode.oimOtherModule		274
+nim	oimSymChoice	lookups.html#oimSymChoice	TOverloadIterMode.oimSymChoice		274
+nim	oimSymChoiceLocalLookup	lookups.html#oimSymChoiceLocalLookup	TOverloadIterMode.oimSymChoiceLocalLookup		274
+nim	TOverloadIterMode	lookups.html#TOverloadIterMode	enum TOverloadIterMode		274
+nim	TOverloadIter	lookups.html#TOverloadIter	object TOverloadIter		277
+nim	getSymRepr	lookups.html#getSymRepr,ConfigRef,PSym	proc getSymRepr(conf: ConfigRef; s: PSym; getDeclarationPath = true): string		287
+nim	wrongRedefinition	lookups.html#wrongRedefinition,PContext,TLineInfo,string,TLineInfo	proc wrongRedefinition(c: PContext; info: TLineInfo; s: string;\n                  conflictsWith: TLineInfo; note = errGenerated)		321
+nim	addDeclAt	lookups.html#addDeclAt,PContext,PScope,PSym,TLineInfo	proc addDeclAt(c: PContext; scope: PScope; sym: PSym; info: TLineInfo)		331
+nim	addDeclAt	lookups.html#addDeclAt,PContext,PScope,PSym	proc addDeclAt(c: PContext; scope: PScope; sym: PSym)		347
+nim	addDecl	lookups.html#addDecl,PContext,PSym,TLineInfo	proc addDecl(c: PContext; sym: PSym; info: TLineInfo)		350
+nim	addDecl	lookups.html#addDecl,PContext,PSym	proc addDecl(c: PContext; sym: PSym)		353
+nim	addPrelimDecl	lookups.html#addPrelimDecl,PContext,PSym	proc addPrelimDecl(c: PContext; sym: PSym)		356
+nim	addInterfaceDeclAt	lookups.html#addInterfaceDeclAt,PContext,PScope,PSym	proc addInterfaceDeclAt(c: PContext; scope: PScope; sym: PSym)		372
+nim	addInterfaceDecl	lookups.html#addInterfaceDecl,PContext,PSym	proc addInterfaceDecl(c: PContext; sym: PSym)		379
+nim	addOverloadableSymAt	lookups.html#addOverloadableSymAt,PContext,PScope,PSym	proc addOverloadableSymAt(c: PContext; scope: PScope; fn: PSym)		383
+nim	addInterfaceOverloadableSymAt	lookups.html#addInterfaceOverloadableSymAt,PContext,PScope,PSym	proc addInterfaceOverloadableSymAt(c: PContext; scope: PScope; sym: PSym)		396
+nim	openShadowScope	lookups.html#openShadowScope,PContext	proc openShadowScope(c: PContext)		403
+nim	closeShadowScope	lookups.html#closeShadowScope,PContext	proc closeShadowScope(c: PContext)		410
+nim	mergeShadowScope	lookups.html#mergeShadowScope,PContext	proc mergeShadowScope(c: PContext)		416
+nim	errorUseQualifier	lookups.html#errorUseQualifier,PContext,TLineInfo,PSym	proc errorUseQualifier(c: PContext; info: TLineInfo; s: PSym)		508
+nim	errorUseQualifier	lookups.html#errorUseQualifier,PContext,TLineInfo,PNode	proc errorUseQualifier(c: PContext; info: TLineInfo; choices: PNode)		523
+nim	errorUndeclaredIdentifier	lookups.html#errorUndeclaredIdentifier,PContext,TLineInfo,string,string	proc errorUndeclaredIdentifier(c: PContext; info: TLineInfo; name: string; extra = "")		530
+nim	errorUndeclaredIdentifierHint	lookups.html#errorUndeclaredIdentifierHint,PContext,PNode,PIdent	proc errorUndeclaredIdentifierHint(c: PContext; n: PNode; ident: PIdent): PSym		543
+nim	lookUp	lookups.html#lookUp,PContext,PNode	proc lookUp(c: PContext; n: PNode): PSym		549
+nim	checkAmbiguity	lookups.html#checkAmbiguity	TLookupFlag.checkAmbiguity		572
+nim	checkUndeclared	lookups.html#checkUndeclared	TLookupFlag.checkUndeclared		572
+nim	checkModule	lookups.html#checkModule	TLookupFlag.checkModule		572
+nim	checkPureEnumFields	lookups.html#checkPureEnumFields	TLookupFlag.checkPureEnumFields		572
+nim	TLookupFlag	lookups.html#TLookupFlag	enum TLookupFlag		572
+nim	qualifiedLookUp	lookups.html#qualifiedLookUp,PContext,PNode,set[TLookupFlag]	proc qualifiedLookUp(c: PContext; n: PNode; flags: set[TLookupFlag]): PSym		575
+nim	initOverloadIter	lookups.html#initOverloadIter,TOverloadIter,PContext,PNode	proc initOverloadIter(o: var TOverloadIter; c: PContext; n: PNode): PSym		642
+nim	lastOverloadScope	lookups.html#lastOverloadScope,TOverloadIter	proc lastOverloadScope(o: TOverloadIter): int		705
+nim	nextOverloadIter	lookups.html#nextOverloadIter,TOverloadIter,PContext,PNode	proc nextOverloadIter(o: var TOverloadIter; c: PContext; n: PNode): PSym		740
+nim	pickSym	lookups.html#pickSym,PContext,PNode,set[TSymKind],TSymFlags	proc pickSym(c: PContext; n: PNode; kinds: set[TSymKind]; flags: TSymFlags = {}): PSym		823
+nimgrp	adddecl	lookups.html#addDecl-procs-all	proc		350
+nimgrp	errorusequalifier	lookups.html#errorUseQualifier-procs-all	proc		508
+nimgrp	adddeclat	lookups.html#addDeclAt-procs-all	proc		331

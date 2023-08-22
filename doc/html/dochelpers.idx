@@ -1,0 +1,7 @@
+nimTitle	dochelpers	dochelpers.html	module packages/docutils/dochelpers		0
+nim	LangSymbol	dochelpers.html#LangSymbol	object LangSymbol		23
+nim	`$`	dochelpers.html#$,LangSymbol	proc `$`(s: LangSymbol): string		38
+nim	nimIdentBackticksNormalize	dochelpers.html#nimIdentBackticksNormalize,string	proc nimIdentBackticksNormalize(s: string): string		44
+nim	langSymbolGroup	dochelpers.html#langSymbolGroup,string,string	proc langSymbolGroup(kind: string; name: string): LangSymbol		80
+nim	toLangSymbol	dochelpers.html#toLangSymbol,PRstNode	proc toLangSymbol(linkText: PRstNode): LangSymbol		86
+nim	match	dochelpers.html#match,LangSymbol,LangSymbol	proc match(generated: LangSymbol; docLink: LangSymbol): bool		256

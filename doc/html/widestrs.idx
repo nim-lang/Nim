@@ -1,0 +1,14 @@
+nimTitle	widestrs	widestrs.html	module std/widestrs		0
+nim	Utf16Char	widestrs.html#Utf16Char	type Utf16Char		16
+nim	WideCString	widestrs.html#WideCString	type WideCString		68
+nim	WideCStringObj	widestrs.html#WideCStringObj	type WideCStringObj		69
+nim	len	widestrs.html#len,WideCString	proc len(w: WideCString): int		76
+nim	newWideCString	widestrs.html#newWideCString,int	proc newWideCString(size: int): WideCStringObj		153
+nim	newWideCString	widestrs.html#newWideCString,cstring,int	proc newWideCString(source: cstring; L: int): WideCStringObj		156
+nim	newWideCString	widestrs.html#newWideCString,cstring	proc newWideCString(s: cstring): WideCStringObj		176
+nim	newWideCString	widestrs.html#newWideCString,string	proc newWideCString(s: string): WideCStringObj		181
+nim	`$`	widestrs.html#$,WideCString,int,int	proc `$`(w: WideCString; estimate: int; replacement: int = 0x0000FFFD): string		184
+nim	`$`	widestrs.html#$,WideCString	proc `$`(s: WideCString): string		226
+idx	wide strings	widestrs.html#wide-strings_1	Module widestrs		0
+nimgrp	newwidecstring	widestrs.html#newWideCString-procs-all	proc		153
+nimgrp	$	widestrs.html#$-procs-all	proc		184
