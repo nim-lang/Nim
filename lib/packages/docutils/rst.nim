@@ -350,7 +350,7 @@ type
     footnoteAnchor = "footnote anchor",
     headlineAnchor = "implicitly-generated headline anchor"
   AnchorSubst = object
-    info: TLineInfo         # where the anchor was defined
+    info: TLineInfo         # the file where the anchor was defined
     priority: int
     case kind: range[arInternalRst .. arNim]
     of arInternalRst:
@@ -360,6 +360,7 @@ type
       anchorTypeExt: RstAnchorKind
       refnameExt: string
     of arNim:
+      module: FileIndex     # anchor's module (generally not the same as file)
       tooltip: string       # displayed tooltip for Nim-generated anchors
       langSym: LangSymbol
       refname: string     # A reference name that will be inserted directly
@@ -520,6 +521,9 @@ proc getFilename(filenames: RstFileTable, fid: FileIndex): string =
 proc getFilename(s: PRstSharedState, subst: AnchorSubst): string =
   getFilename(s.filenames, subst.info.fileIndex)
 
+proc getModule(s: PRstSharedState, subst: AnchorSubst): string =
+  result = getFilename(s.filenames, subst.module)
+
 proc currFilename(s: PRstSharedState): string =
   getFilename(s.filenames, s.currFileIdx)
 
@@ -580,6 +584,29 @@ proc rstMessage(p: RstParser, msgKind: MsgKind) =
   p.s.msgHandler(p.s.currFilename, curLine(p),
                              p.col + currentTok(p).col, msgKind,
                              currentTok(p).symbol)
+
+# Functions `isPureRst` & `stopOrWarn` address differences between
+# Markdown and RST:
+# * Markdown always tries to continue working. If it is really impossible
+#   to parse a markup element, its proc just returns `nil` and parsing
+#   continues for it as for normal text paragraph.
+#   The downside is that real mistakes/typos are often silently ignored.
+#   The same applies to legacy `RstMarkdown` mode for nimforum.
+# * RST really signals errors. The downside is that it's more intrusive -
+#   the user must escape special syntax with \ explicitly.
+#
+# TODO: we need to apply this strategy to all markup elements eventually.
+
+func isPureRst(p: RstParser): bool =
+  roSupportMarkdown notin p.s.options
+
+proc stopOrWarn(p: RstParser, errorType: MsgKind, arg: string) =
+  let realMsgKind = if isPureRst(p): errorType else: mwRstStyle
+  rstMessage(p, realMsgKind, arg)
+
+proc stopOrWarn(p: RstParser, errorType: MsgKind, arg: string, line, col: int) =
+  let realMsgKind = if isPureRst(p): errorType else: mwRstStyle
+  rstMessage(p, realMsgKind, arg, line, col)
 
 proc currInd(p: RstParser): int =
   result = p.indentStack[high(p.indentStack)]
@@ -830,7 +857,7 @@ proc addAnchorExtRst(s: var PRstSharedState, key: string, refn: string,
 
 proc addAnchorNim*(s: var PRstSharedState, external: bool, refn: string, tooltip: string,
                    langSym: LangSymbol, priority: int,
-                   info: TLineInfo) =
+                   info: TLineInfo, module: FileIndex) =
   ## Adds an anchor `refn`, which follows
   ## the rule `arNim` (i.e. a symbol in ``*.nim`` file)
   s.anchors.mgetOrPut(langSym.name, newSeq[AnchorSubst]()).add(
@@ -859,7 +886,7 @@ proc findMainAnchorNim(s: PRstSharedState, signature: PRstNode,
   for subst in substitutions:
     if subst.kind == arNim:
       if match(subst.langSym, langSym):
-        let key: GroupKey = (subst.langSym.symKind, getFilename(s, subst))
+        let key: GroupKey = (subst.langSym.symKind, getModule(s, subst))
         found.mgetOrPut(key, newSeq[AnchorSubst]()).add subst
   for key, sList in found:
     if sList.len == 1:
@@ -880,7 +907,7 @@ proc findMainAnchorNim(s: PRstSharedState, signature: PRstNode,
             break
         doAssert(foundGroup,
                  "docgen has not generated the group for $1 (file $2)" % [
-                 langSym.name, getFilename(s, sList[0]) ])
+                 langSym.name, getModule(s, sList[0]) ])
 
 proc findMainAnchorRst(s: PRstSharedState, linkText: string, info: TLineInfo):
                       seq[AnchorSubst] =
@@ -2120,17 +2147,20 @@ proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
     while p.tok[i].kind notin {tkEof, tkIndent}:
       headlineLen += p.tok[i].symbol.len
       inc i
-    result = p.tok[adornmentIdx].symbol.len >= headlineLen and
-         headlineLen != 0
-    if result:
-      result = result and p.tok[i].kind == tkIndent and
-         p.tok[i+1].kind == tkAdornment and
-         p.tok[i+1].symbol == p.tok[adornmentIdx].symbol
-      if not result:
-        failure = "(underline '" & p.tok[i+1].symbol & "' does not match " &
-            "overline '" & p.tok[adornmentIdx].symbol & "')"
-    else:
-      failure = "(overline '" & p.tok[adornmentIdx].symbol & "' is too short)"
+    if p.tok[i].kind == tkIndent and
+       p.tok[i+1].kind == tkAdornment and
+       p.tok[i+1].symbol[0] == p.tok[adornmentIdx].symbol[0]:
+      result = p.tok[adornmentIdx].symbol.len >= headlineLen and
+           headlineLen != 0
+      if result:
+        result = p.tok[i+1].symbol == p.tok[adornmentIdx].symbol
+        if not result:
+          failure = "(underline '" & p.tok[i+1].symbol & "' does not match " &
+              "overline '" & p.tok[adornmentIdx].symbol & "')"
+      else:
+        failure = "(overline '" & p.tok[adornmentIdx].symbol & "' is too short)"
+    else:  # it's not overline/underline section, not reporting error
+      return false
   if not result:
     rstMessage(p, meNewSectionExpected, failure)
 
@@ -2257,10 +2287,11 @@ proc whichSection(p: RstParser): RstNodeKind =
       result = rnLineBlock
     elif roSupportMarkdown in p.s.options and isMarkdownBlockQuote(p):
       result = rnMarkdownBlockQuote
-    elif match(p, p.idx + 1, "i") and isAdornmentHeadline(p, p.idx):
+    elif (match(p, p.idx + 1, "i") and not match(p, p.idx + 2, "I")) and
+         isAdornmentHeadline(p, p.idx):
       result = rnOverline
     else:
-      result = rnLeaf
+      result = rnParagraph
   of tkPunct:
     if isMarkdownHeadline(p):
       result = rnMarkdownHeadline
@@ -2443,7 +2474,9 @@ proc parseParagraph(p: var RstParser, result: PRstNode) =
           result.addIfNotNil(parseLineBlock(p))
         of rnMarkdownBlockQuote:
           result.addIfNotNil(parseMarkdownBlockQuote(p))
-        else: break
+        else:
+          dec p.idx  # allow subsequent block to be parsed as another section
+          break
       else:
         break
     of tkPunct:
@@ -2586,11 +2619,11 @@ proc getColumns(p: RstParser, cols: var RstCols, startIdx: int): int =
 proc checkColumns(p: RstParser, cols: RstCols) =
   var i = p.idx
   if p.tok[i].symbol[0] != '=':
-    rstMessage(p, mwRstStyle,
+    stopOrWarn(p, meIllformedTable,
                "only tables with `=` columns specification are allowed")
   for col in 0 ..< cols.len:
     if tokEnd(p, i) != cols[col].stop:
-      rstMessage(p, meIllformedTable,
+      stopOrWarn(p, meIllformedTable,
                  "end of table column #$1 should end at position $2" % [
                    $(col+1), $(cols[col].stop+ColRstOffset)],
                  p.tok[i].line, tokEnd(p, i))
@@ -2599,12 +2632,12 @@ proc checkColumns(p: RstParser, cols: RstCols) =
       if p.tok[i].kind == tkWhite:
         inc i
       if p.tok[i].kind notin {tkIndent, tkEof}:
-        rstMessage(p, meIllformedTable, "extraneous column specification")
+        stopOrWarn(p, meIllformedTable, "extraneous column specification")
     elif p.tok[i].kind == tkWhite:
       inc i
     else:
-      rstMessage(p, meIllformedTable, "no enough table columns",
-                 p.tok[i].line, p.tok[i].col)
+      stopOrWarn(p, meIllformedTable,
+                 "no enough table columns", p.tok[i].line, p.tok[i].col)
 
 proc getSpans(p: RstParser, nextLine: int,
               cols: RstCols, unitedCols: RstCols): seq[int] =
@@ -2659,17 +2692,18 @@ proc parseSimpleTableRow(p: var RstParser, cols: RstCols, colChar: char): PRstNo
       if tokEnd(p) <= colEnd(nCell):
         if tokStart(p) < colStart(nCell):
           if currentTok(p).kind != tkWhite:
-            rstMessage(p, meIllformedTable,
+            stopOrWarn(p, meIllformedTable,
                        "this word crosses table column from the left")
-          else:
-            inc p.idx
+            row[nCell].add(currentTok(p).symbol)
         else:
           row[nCell].add(currentTok(p).symbol)
-          inc p.idx
+        inc p.idx
       else:
         if tokStart(p) < colEnd(nCell) and currentTok(p).kind != tkWhite:
-          rstMessage(p, meIllformedTable,
+          stopOrWarn(p, meIllformedTable,
                      "this word crosses table column from the right")
+          row[nCell].add(currentTok(p).symbol)
+          inc p.idx
         inc nCell
     if currentTok(p).kind == tkIndent: inc p.idx
     if tokEnd(p) <= colEnd(0): break
@@ -3552,7 +3586,7 @@ proc loadIdxFile(s: var PRstSharedState, origFilename: string) =
         langSym = langSymbolGroup(kind=entry.linkTitle, name=entry.keyword)
       addAnchorNim(s, external = true, refn = refn, tooltip = entry.linkDesc,
                    langSym = langSym, priority = -4, # lowest
-                   info=info)
+                   info = info, module = info.fileIndex)
   doAssert s.idxImports[origFilename].title != ""
 
 proc preparePass2*(s: var PRstSharedState, mainNode: PRstNode, importdoc = true) =

@@ -127,6 +127,19 @@ proc `[]`*(s: CacheSeq; i: int): NimNode {.magic: "NcsAt".} =
       mySeq.add(newLit(42))
       assert mySeq[0].intVal == 42
 
+proc `[]`*(s: CacheSeq; i: BackwardsIndex): NimNode =
+  ## Returns the `i`th last value from `s`.
+  runnableExamples:
+    import std/macros
+
+    const mySeq = CacheSeq"backTest"
+    static:
+      mySeq &= newLit(42)
+      mySeq &= newLit(7)
+      assert mySeq[^1].intVal == 7  # Last item
+      assert mySeq[^2].intVal == 42 # Second last item
+  s[s.len - int(i)]
+
 iterator items*(s: CacheSeq): NimNode =
   ## Iterates over each item in `s`.
   runnableExamples:

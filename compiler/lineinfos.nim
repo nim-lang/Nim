@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## This module contains the ``TMsgKind`` enum as well as the
-## ``TLineInfo`` object.
+## This module contains the `TMsgKind` enum as well as the
+## `TLineInfo` object.
 
 import ropes, tables, pathutils, hashes
 
@@ -44,6 +44,7 @@ type
     errRstSandboxedDirective,
     errProveInit, # deadcode
     errGenerated,
+    errFailedMove,
     errUser,
     # warnings
     warnCannotOpenFile = "CannotOpenFile", warnOctalEscape = "OctalEscape",
@@ -83,16 +84,17 @@ type
     warnCstringConv = "CStringConv",
     warnPtrToCstringConv = "PtrToCstringConv",
     warnEffect = "Effect",
-    warnCastSizes = "CastSizes"
+    warnCastSizes = "CastSizes", # deadcode
+    warnAboveMaxSizeSet = "AboveMaxSizeSet",
     warnImplicitTemplateRedefinition = "ImplicitTemplateRedefinition",
     warnUnnamedBreak = "UnnamedBreak",
     warnStmtListLambda = "StmtListLambda",
     warnBareExcept = "BareExcept",
+    warnImplicitDefaultValue = "ImplicitDefaultValue",
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
     hintCC = "CC",
-    hintLineTooLong = "LineTooLong",
     hintXDeclaredButNotUsed = "XDeclaredButNotUsed", hintDuplicateModuleImport = "DuplicateModuleImport",
     hintXCannotRaiseY = "XCannotRaiseY", hintConvToBaseNotNeeded = "ConvToBaseNotNeeded",
     hintConvFromXtoItselfNotNeeded = "ConvFromXtoItselfNotNeeded", hintExprAlwaysX = "ExprAlwaysX",
@@ -127,6 +129,7 @@ const
     errRstSandboxedDirective: "disabled directive: '$1'",
     errProveInit: "Cannot prove that '$1' is initialized.",  # deadcode
     errGenerated: "$1",
+    errFailedMove: "$1",
     errUser: "$1",
     warnCannotOpenFile: "cannot open '$1'",
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
@@ -184,17 +187,18 @@ const
     warnCstringConv: "$1",
     warnPtrToCstringConv: "unsafe conversion to 'cstring' from '$1'; this will become a compile time error in the future",
     warnEffect: "$1",
-    warnCastSizes: "$1",
+    warnCastSizes: "$1", # deadcode
+    warnAboveMaxSizeSet: "$1",
     warnImplicitTemplateRedefinition: "template '$1' is implicitly redefined; this is deprecated, add an explicit .redefine pragma",
     warnUnnamedBreak: "Using an unnamed break in a block is deprecated; Use a named block with a named break instead",
     warnStmtListLambda: "statement list expression assumed to be anonymous proc; this is deprecated, use `do (): ...` or `proc () = ...` instead",
     warnBareExcept: "$1",
+    warnImplicitDefaultValue: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "$build\n$loc lines; ${sec}s; $mem; proj: $project; out: $output",
     hintCC: "CC: $1",
-    hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
     hintDuplicateModuleImport: "$1",
     hintXCannotRaiseY: "$1",
@@ -244,7 +248,8 @@ type
   TNoteKinds* = set[TNoteKind]
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
-  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv}
+  result = default(array[0..3, TNoteKinds])
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept}
   result[2] = result[3] - {hintStackTrace, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
@@ -275,7 +280,7 @@ type
                                # and parsed; usually "" but is used
                                # for 'nimsuggest'
     hash*: string              # the checksum of the file
-    dirty*: bool               # for 'nimfix' / 'nimpretty' like tooling
+    dirty*: bool               # for 'nimpretty' like tooling
     when defined(nimpretty):
       fullContent*: string
   FileIndex* = distinct int32
@@ -306,7 +311,7 @@ proc `==`*(a, b: FileIndex): bool {.borrow.}
 proc hash*(i: TLineInfo): Hash =
   hash (i.line.int, i.col.int, i.fileIndex.int)
 
-proc raiseRecoverableError*(msg: string) {.noinline.} =
+proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
   raise newException(ERecoverableError, msg)
 
 const
@@ -337,9 +342,8 @@ type
 
 
 proc initMsgConfig*(): MsgConfig =
-  result.msgContext = @[]
-  result.lastError = unknownLineInfo
-  result.filenameToIndexTbl = initTable[string, FileIndex]()
-  result.fileInfos = @[]
-  result.errorOutputs = {eStdOut, eStdErr}
+  result = MsgConfig(msgContext: @[], lastError: unknownLineInfo,
+                     filenameToIndexTbl: initTable[string, FileIndex](),
+                     fileInfos: @[], errorOutputs: {eStdOut, eStdErr}
+  )
   result.filenameToIndexTbl["???"] = FileIndex(-1)

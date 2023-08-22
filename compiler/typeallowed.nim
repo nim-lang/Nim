@@ -25,6 +25,7 @@ type
     taNoUntyped
     taIsTemplateOrMacro
     taProcContextIsNotMacro
+    taIsCastable
 
   TTypeAllowedFlags* = set[TTypeAllowedFlag]
 
@@ -46,6 +47,8 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
           let it = n[i]
           result = typeAllowedNode(marker, it, kind, c, flags)
           if result != nil: break
+  else:
+    result = nil
 
 proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
                     c: PContext; flags: TTypeAllowedFlags = {}): PType =
@@ -63,7 +66,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     elif taIsOpenArray in flags:
       result = t
     elif t.kind == tyLent and ((kind != skResult and views notin c.features) or
-                              kind == skParam): # lent can't be used as parameters.
+      (kind == skParam and {taIsCastable, taField} * flags == {})): # lent cannot be used as parameters.
+                                                       # except in the cast environment and as the field of an object
       result = t
     elif isOutParam(t) and kind != skParam:
       result = t

@@ -1,4 +1,5 @@
 discard """
+matrix: "--mm:refc; --mm:orc"
 output: '''
 02
 1

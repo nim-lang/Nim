@@ -62,6 +62,7 @@ template containsOrInclImpl() {.dirty.} =
   if index >= 0:
     result = true
   else:
+    result = false
     if mustRehash(s):
       enlarge(s)
       index = rawGetKnownHC(s, key, hc)

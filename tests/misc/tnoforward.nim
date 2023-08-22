@@ -1,5 +1,4 @@
 discard """
-  matrix: "--experimental:codeReordering"
   output: "10"
 """
 

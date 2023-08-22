@@ -60,7 +60,7 @@ proc nativeToUnixPath*(path: string): string =
       result[0] = '/'
       result[1] = path[0]
       if path.len > 2 and path[2] != '\\':
-        doAssert false, "paths like `C:foo` are currently unsupported, path: " & path
+        raiseAssert "paths like `C:foo` are currently unsupported, path: " & path
   when DirSep == '\\':
     result = replace(result, '\\', '/')
 

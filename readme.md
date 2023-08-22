@@ -130,8 +130,7 @@ standard library are welcomed and appreciated. Before you start contributing,
 you should familiarize yourself with the following repository structure:
 
 * ``bin/``, ``build/`` - these directories are empty, but are used when Nim is built.
-* ``compiler/`` - the compiler source code. Also includes nimfix, and plugins within
-  ``compiler/nimfix`` and ``compiler/plugins`` respectively.
+* ``compiler/`` - the compiler source code. Also includes plugins within ``compiler/plugins``.
 * ``nimsuggest`` - the nimsuggest tool that previously lived in the [``nim-lang/nimsuggest``][nimsuggest-repo] repository.
 * ``config/`` - the configuration for the compiler and documentation generator.
 * ``doc/`` - the documentation files in reStructuredText format.

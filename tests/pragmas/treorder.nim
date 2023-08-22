@@ -1,5 +1,4 @@
 discard """
-matrix: "--experimental:codeReordering"
 output:'''0
 1
 2

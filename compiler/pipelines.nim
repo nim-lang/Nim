@@ -1,13 +1,14 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
-       packages, syntaxes, depends, vm
+       packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg,
+       liftdestructors
 
 import pipelineutils
 
 when not defined(leanCompiler):
   import jsgen, docgen2
 
-import std/[syncio, objectdollar, assertions, tables]
+import std/[syncio, objectdollar, assertions, tables, strutils]
 import renderer
 import ic/replayer
 
@@ -24,6 +25,8 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
   of JSgenPass:
     when not defined(leanCompiler):
       result = processJSCodeGen(bModule, semNode)
+    else:
+      result = nil
   of GenDependPass:
     result = addDotDependency(bModule, semNode)
   of SemPass:
@@ -31,13 +34,17 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
   of Docgen2Pass, Docgen2TexPass:
     when not defined(leanCompiler):
       result = processNode(bModule, semNode)
+    else:
+      result = nil
   of Docgen2JsonPass:
     when not defined(leanCompiler):
       result = processNodeJson(bModule, semNode)
+    else:
+      result = nil
   of EvalPass, InterpreterPass:
     result = interpreterCode(bModule, semNode)
   of NonePass:
-    doAssert false, "use setPipeLinePass to set a proper PipelinePass"
+    raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
 proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
                       m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator,
@@ -55,6 +62,34 @@ proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind
       let semNode = semWithPContext(ctx, importStmt)
       if semNode == nil or processPipeline(graph, semNode, bModule) == nil:
         break
+
+proc prePass(c: PContext; n: PNode) =
+  for son in n:
+    if son.kind == nkPragma:
+      for s in son:
+        var key = if s.kind in nkPragmaCallKinds and s.len > 1: s[0] else: s
+        if key.kind in {nkBracketExpr, nkCast} or key.kind notin nkIdentKinds:
+          continue
+        let ident = whichKeyword(considerQuotedIdent(c, key))
+        case ident
+        of wReorder:
+          pragmaNoForward(c, s, flag = sfReorder)
+        of wExperimental:
+          if isTopLevel(c) and s.kind in nkPragmaCallKinds and s.len == 2:
+            let name = c.semConstExpr(c, s[1])
+            case name.kind
+            of nkStrLit, nkRStrLit, nkTripleStrLit:
+              try:
+                let feature = parseEnum[Feature](name.strVal)
+                if feature == codeReordering:
+                  c.features.incl feature
+                  c.module.flags.incl sfReorder
+              except ValueError:
+                discard
+            else:
+              discard
+        else:
+          discard
 
 proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
                     stream: PLLStream): bool =
@@ -97,8 +132,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     of SemPass:
       nil
     of NonePass:
-      doAssert false, "use setPipeLinePass to set a proper PipelinePass"
-      nil
+      raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
   if stream == nil:
     let filename = toFullPathConsiderDirty(graph.config, fileIdx)
@@ -133,6 +167,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         var n = parseTopLevelStmt(p)
         if n.kind == nkEmpty: break
         sl.add n
+
+      prePass(ctx, sl)
       if sfReorder in module.flags or codeReordering in graph.config.features:
         sl = reorder(graph, sl, module)
       if graph.pipelinePass != EvalPass:
@@ -146,7 +182,16 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
   case graph.pipelinePass
   of CgenPass:
     if bModule != nil:
-      finalCodegenActions(graph, BModule(bModule), finalNode)
+      let disps = finalCodegenActions(graph, BModule(bModule), finalNode)
+      if disps != nil:
+        let ctx = preparePContext(graph, module, idgen)
+        for disp in disps:
+          let retTyp = disp.sym.typ[0]
+          if retTyp != nil:
+            # todo properly semcheck the code of dispatcher?
+            createTypeBoundOps(graph, ctx, retTyp, disp.info, idgen)
+          genProcAux(BModule(bModule), disp.sym)
+        discard closePContext(graph, ctx, nil)
   of JSgenPass:
     when not defined(leanCompiler):
       discard finalJSCodeGen(graph, bModule, finalNode)
@@ -161,7 +206,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     when not defined(leanCompiler):
       discard closeJson(graph, bModule, finalNode)
   of NonePass:
-    doAssert false, "use setPipeLinePass to set a proper PipelinePass"
+    raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
   if graph.config.backend notin {backendC, backendCpp, backendObjc}:
     # We only write rod files here if no C-like backend is active.
@@ -177,13 +222,13 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
 
   template processModuleAux(moduleStatus) =
     onProcessing(graph, fileIdx, moduleStatus, fromModule = fromModule)
-    var s: PLLStream
+    var s: PLLStream = nil
     if sfMainModule in flags:
       if graph.config.projectIsStdin: s = stdin.llStreamOpen
       elif graph.config.projectIsCmd: s = llStreamOpen(graph.config.cmdInput)
     discard processPipelineModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
-    var cachedModules: seq[FileIndex]
+    var cachedModules: seq[FileIndex] = @[]
     result = moduleFromRodFile(graph, fileIdx, cachedModules)
     let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
     if result == nil:

@@ -91,12 +91,12 @@ proc execProcess*(command: string, workingDir: string = "",
   ## * `execCmd proc <#execCmd,string>`_
   ##
   ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##  let outp = execProcess("nim", args=["c", "-r", "mytestfile.nim"], options={poUsePath})
-  ##  let outp_shell = execProcess("nim c -r mytestfile.nim")
-  ##  # Note: outp may have an interleave of text from the nim compile
-  ##  # and any output from mytestfile when it runs
+  ##   ```Nim
+  ##   let outp = execProcess("nim", args=["c", "-r", "mytestfile.nim"], options={poUsePath})
+  ##   let outp_shell = execProcess("nim c -r mytestfile.nim")
+  ##   # Note: outp may have an interleave of text from the nim compile
+  ##   # and any output from mytestfile when it runs
+  ##   ```
 
 proc execCmd*(command: string): int {.rtl, extern: "nosp$1",
     tags: [ExecIOEffect, ReadIOEffect, RootEffect].}
@@ -113,9 +113,9 @@ proc execCmd*(command: string): int {.rtl, extern: "nosp$1",
   ##   <#execProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
   ##
   ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##  let errC = execCmd("nim c -r mytestfile.nim")
+  ##   ```Nim
+  ##   let errC = execCmd("nim c -r mytestfile.nim")
+  ##   ```
 
 proc startProcess*(command: string, workingDir: string = "",
     args: openArray[string] = [], env: StringTableRef = nil,
@@ -465,8 +465,7 @@ iterator lines*(p: Process, keepNewLines = false): string {.since: (1, 3), raise
   ## * `readLines proc <#readLines,Process>`_
   ##
   ## Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   const opts = {poUsePath, poDaemon, poStdErrToStdOut}
   ##   var ps: seq[Process]
   ##   for prog in ["a", "b"]: # run 2 progs in parallel
@@ -478,6 +477,7 @@ iterator lines*(p: Process, keepNewLines = false): string {.since: (1, 3), raise
   ##       i.inc
   ##       if i > 100: break
   ##     p.close
+  ##   ```
   var outp = p.outputStream
   var line = newStringOfCap(120)
   while outp.readLine(line):
@@ -495,8 +495,7 @@ proc readLines*(p: Process): (seq[string], int) {.since: (1, 3),
   ## * `lines iterator <#lines.i,Process>`_
   ##
   ## Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   const opts = {poUsePath, poDaemon, poStdErrToStdOut}
   ##   var ps: seq[Process]
   ##   for prog in ["a", "b"]: # run 2 progs in parallel
@@ -506,6 +505,7 @@ proc readLines*(p: Process): (seq[string], int) {.since: (1, 3),
   ##     if exCode != 0:
   ##       for line in lines: echo line
   ##     p.close
+  ##   ```
   for line in p.lines: result[0].add(line)
   result[1] = p.peekExitCode
 
@@ -1053,13 +1053,15 @@ elif not defined(useNimRtl):
       var mask: Sigset
       chck sigemptyset(mask)
       chck posix_spawnattr_setsigmask(attr, mask)
-      if poDaemon in data.options:
-        chck posix_spawnattr_setpgroup(attr, 0'i32)
+      when not defined(nuttx):
+        if poDaemon in data.options:
+          chck posix_spawnattr_setpgroup(attr, 0'i32)
 
       var flags = POSIX_SPAWN_USEVFORK or
                   POSIX_SPAWN_SETSIGMASK
-      if poDaemon in data.options:
-        flags = flags or POSIX_SPAWN_SETPGROUP
+      when not defined(nuttx):
+        if poDaemon in data.options:
+          flags = flags or POSIX_SPAWN_SETPGROUP
       chck posix_spawnattr_setflags(attr, flags)
 
       if not (poParentStreams in data.options):
@@ -1346,7 +1348,7 @@ elif not defined(useNimRtl):
             p.exitStatus = status
             break
           else:
-            doAssert false, "unreachable!"
+            raiseAssert "unreachable!"
 
       result = exitStatusLikeShell(p.exitStatus)
 
@@ -1585,8 +1587,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ##   <#execProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
   ##
   ## Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
   ##   import std/[strutils, strtabs]
   ##   stripLineEnd(result[0]) ## portable way to remove trailing newline, if any
@@ -1595,6 +1596,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ##   when defined(posix):
   ##     assert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
   ##     assert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)
+  ##   ```
 
   when (NimMajor, NimMinor, NimPatch) < (1, 3, 5):
     doAssert input.len == 0

@@ -1,1 +1,1 @@
-proc fb* = echo "fizz!"
+proc fb*: string = "fizz!"

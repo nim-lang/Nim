@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import std/[importutils, assertions]
 import stdtest/testutils
 import mimportutils
