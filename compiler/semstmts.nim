@@ -403,7 +403,7 @@ proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
 
 proc isDiscardUnderscore(v: PSym): bool =
   if v.name.id == ord(wUnderscore):
-    v.flags.incl(sfGenSym)
+    #v.flags.incl(sfGenSym)
     result = true
   else:
     result = false

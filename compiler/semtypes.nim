@@ -1360,7 +1360,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     for j in 0..<a.len-2:
       var arg = newSymG(skParam, if a[j].kind == nkPragmaExpr: a[j][0] else: a[j], c)
       if arg.name.id == ord(wUnderscore):
-        arg.flags.incl(sfGenSym)
+        discard # ignore name check
       elif containsOrIncl(check, arg.name.id):
         localError(c.config, a[j].info, "attempt to redefine: '" & arg.name.s & "'")
       if a[j].kind == nkPragmaExpr:
