@@ -2473,6 +2473,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
 
   m.state = csMatch # until proven otherwise
   m.firstMismatch = MismatchInfo()
+  doAssert m.callee != nil
   m.call = newNodeIT(n.kind, n.info, m.callee.base)
   m.call.add n[0]
 

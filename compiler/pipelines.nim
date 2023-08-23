@@ -81,9 +81,9 @@ proc prePass(c: PContext; n: PNode) =
             of nkStrLit, nkRStrLit, nkTripleStrLit:
               try:
                 let feature = parseEnum[Feature](name.strVal)
-                if feature == codeReordering:
-                  c.features.incl feature
-                  c.module.flags.incl sfReorder
+                # if feature == codeReordering:
+                c.features.incl feature
+                c.module.flags.incl sfReorder
               except ValueError:
                 discard
             else:

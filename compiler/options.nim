@@ -222,6 +222,7 @@ type
     strictDefs,
     strictCaseObjects,
     inferGenericTypes
+    noforwardDecl
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,

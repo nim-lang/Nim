@@ -762,6 +762,58 @@ proc isEmptyTree(n: PNode): bool =
   of nkEmpty, nkCommentStmt: result = true
   else: result = false
 
+proc decl(c: PContext, n: PNode, kind: TSymKind): PNode =
+  if n[0].kind == nkIdent:
+    var s = newSym(kind, n[0].ident, c.idgen, getCurrOwner(c), n.info)
+    s.flags.incl sfToplevelDecl
+    # pragmaCallable(c, s, n, allRoutinePragmas)
+
+    result = n
+    if n[^1].kind != nkEmpty:
+      if s.kind in OverloadableSyms:
+        addInterfaceOverloadableSymAt(c, c.currentScope, s)
+      else:
+        addInterfaceDeclAt(c, c.currentScope, s)
+
+    result[0] = newSymNode(s)
+  else:
+    result = n
+
+import reorder
+
+proc semSignature(c: PContext, n: PNode): PNode =
+  case n.kind
+  of nkProcDef:
+    result = decl(c, n, skProc)
+  of nkMethodDef:
+    result = decl(c, n, skMethod)
+  of nkConverterDef:
+    result = decl(c, n, skConverter)
+  of nkMacroDef:
+    result = decl(c, n, skMacro)
+  of nkTemplateDef:
+    result = decl(c, n, skTemplate)
+  of nkIteratorDef:
+    result = decl(c, n, skIterator)
+  of nkIncludeStmt:
+    result = n
+    for i in 0..<n.len:
+      var f = checkModuleName(c.config, n[i])
+      if f != InvalidFileIdx:
+        if containsOrIncl(c.includedFiles, f.int):
+          localError(c.config, n[i].info, "recursive dependency: '$1'" %
+            toMsgFilename(c.config, f))
+        else:
+          let nn = includeModule(c.graph, c.module, f)
+          result = semSignature(c, nn)
+          excl(c.includedFiles, f.int)
+  of nkStmtList:
+    result = copyNode(n)
+    for i in 0..<n.len:
+      result.add semSignature(c, n[i])
+  else:
+    result = n
+
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
     if sfSystemModule notin c.module.flags and not isEmptyTree(n):
@@ -775,6 +827,9 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
     result = semAllTypeSections(c, n)
   else:
     result = n
+  # if noforwardDecl in c.features:
+  #   debug result
+  result = semSignature(c, result)
   result = semStmt(c, result, {})
   when false:
     # Code generators are lazy now and can deal with undeclared procs, so these

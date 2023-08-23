@@ -1726,6 +1726,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
                        validPragmas: TSpecialWords): PNode =
   # Mirrored with semVarMacroPragma
   result = nil
+  doAssert prc != nil
   var n = prc[pragmasPos]
   if n == nil or n.kind == nkEmpty: return
   for i in 0..<n.len:
@@ -2175,6 +2176,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   var (proto, comesFromShadowScope) =
       if isAnon: (nil, false)
       else: searchForProc(c, declarationScope, s)
+
+  # if sfToplevelDecl in s.flags and proto != nil:
+  #   # symTabRemove(declarationScope.symbols, proto)
+  #   s.flags.incl proto.flags # copy flags of forward decls
+  #   proto = nil
+
   if proto == nil and sfForward in s.flags and n[bodyPos].kind != nkEmpty:
     ## In cases such as a macro generating a proc with a gensymmed name we
     ## know `searchForProc` will not find it and sfForward will be set. In
@@ -2204,11 +2211,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       # pragma analysis further down.
       s.typ.callConv = lastOptionEntry(c).defaultCC
 
-  if not hasProto and sfGenSym notin s.flags: #and not isAnon:
-    if s.kind in OverloadableSyms:
-      addInterfaceOverloadableSymAt(c, declarationScope, s)
-    else:
-      addInterfaceDeclAt(c, declarationScope, s)
 
   pragmaCallable(c, s, n, validPragmas)
   if not hasProto:
@@ -2217,6 +2219,18 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if n[pragmasPos].kind != nkEmpty and sfBorrow notin s.flags:
     setEffectsForProcType(c.graph, s.typ, n[pragmasPos], s)
   s.typ.flags.incl tfEffectSystemWorkaround
+
+  let isForwards = n[bodyPos].kind == nkEmpty and {sfImportc, sfBorrow, sfError} * s.flags == {} and s.magic == mNone
+  # delay 
+  if ((sfToplevelDecl notin s.flags or
+        {sfImportc, sfBorrow, sfError} * s.flags != {} or
+        s.magic != mNone
+        ) and
+          not hasProto and sfGenSym notin s.flags): #and not isAnon:
+    if s.kind in OverloadableSyms:
+      addInterfaceOverloadableSymAt(c, declarationScope, s)
+    else:
+      addInterfaceDeclAt(c, declarationScope, s)
 
   # To ease macro generation that produce forwarded .async procs we now
   # allow a bit redundancy in the pragma declarations. The rule is
@@ -2240,7 +2254,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     onDef(n[namePos].info, s)
 
   if hasProto:
-    if sfForward notin proto.flags and proto.magic == mNone:
+    if sfForward notin proto.flags and sfToplevelDecl notin proto.flags and proto.magic == mNone:
       wrongRedefinition(c, n.info, proto.name.s, proto.info)
     if not comesFromShadowScope:
       excl(proto.flags, sfForward)
@@ -2389,7 +2403,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 proc determineType(c: PContext, s: PSym) =
   if s.typ != nil: return
   #if s.magic != mNone: return
-  #if s.ast.isNil: return
+  # if s.ast.isNil: return
+  if s.ast == nil:
+    debug s
   discard semProcAux(c, s.ast, s.kind, {})
 
 proc semIterator(c: PContext, n: PNode): PNode =
