@@ -16,7 +16,7 @@ proc fromLit*(a: PNode, T: typedesc): auto =
     for ai in a:
       result.incl Ti(ai.intVal)
   else:
-    static: doAssert false, "not yet supported: " & $T # add as needed
+    static: raiseAssert "not yet supported: " & $T # add as needed
 
 proc toLit*[T](a: T): PNode =
   ## generic type => PNode
@@ -43,7 +43,7 @@ proc toLit*[T](a: T): PNode =
       reti.add ai.toLit
       result.add reti
   else:
-    static: doAssert false, "not yet supported: " & $T # add as needed
+    static: raiseAssert "not yet supported: " & $T # add as needed
 
 proc toTimeLit*(a: Time, c: PCtx, obj: PNode, info: TLineInfo): PNode =
   # probably refactor it into `toLit` in the future

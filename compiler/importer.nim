@@ -113,6 +113,7 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
 
 proc splitPragmas(c: PContext, n: PNode): (PNode, seq[TSpecialWord]) =
   template bail = globalError(c.config, n.info, "invalid pragma")
+  result = (nil, @[])
   if n.kind == nkPragmaExpr:
     if n.len == 2 and n[1].kind == nkPragma:
       result[0] = n[0]
@@ -250,7 +251,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool)
     result.options.incl optImportHidden
   c.unusedImports.add((result, n.info))
   c.importModuleMap[result.id] = realModule.id
-  c.importModuleLookup.mgetOrPut(realModule.name.id, @[]).addUnique realModule.id
+  c.importModuleLookup.mgetOrPut(result.name.id, @[]).addUnique realModule.id
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
   var ret: typeof(result)
@@ -307,6 +308,8 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
     suggestSym(c.graph, n.info, result, c.graph.usageSym, false)
     importStmtResult.add newSymNode(result, n.info)
     #newStrNode(toFullPath(c.config, f), n.info)
+  else:
+    result = nil
 
 proc afterImport(c: PContext, m: PSym) =
   # fixes bug #17510, for re-exported symbols

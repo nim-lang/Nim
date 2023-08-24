@@ -201,17 +201,15 @@ proc parseLine(p: var TTmplParser) =
 
 proc filterTmpl*(conf: ConfigRef, stdin: PLLStream, filename: AbsoluteFile,
                  call: PNode): PLLStream =
-  var p: TTmplParser
-  p.config = conf
-  p.info = newLineInfo(conf, filename, 0, 0)
-  p.outp = llStreamOpen("")
-  p.inp = stdin
-  p.subsChar = charArg(conf, call, "subschar", 1, '$')
-  p.nimDirective = charArg(conf, call, "metachar", 2, '#')
-  p.emit = strArg(conf, call, "emit", 3, "result.add")
-  p.conc = strArg(conf, call, "conc", 4, " & ")
-  p.toStr = strArg(conf, call, "tostring", 5, "$")
-  p.x = newStringOfCap(120)
+  var p = TTmplParser(config: conf, info: newLineInfo(conf, filename, 0, 0),
+                outp: llStreamOpen(""), inp: stdin,
+                subsChar: charArg(conf, call, "subschar", 1, '$'),
+                nimDirective: charArg(conf, call, "metachar", 2, '#'),
+                emit: strArg(conf, call, "emit", 3, "result.add"),
+                conc: strArg(conf, call, "conc", 4, " & "),
+                toStr: strArg(conf, call, "tostring", 5, "$"),
+                x: newStringOfCap(120)
+                )
   # do not process the first line which contains the directive:
   if llStreamReadLine(p.inp, p.x):
     inc p.info.line

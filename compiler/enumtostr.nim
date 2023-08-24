@@ -56,6 +56,7 @@ proc searchObjCaseImpl(obj: PNode; field: PSym): PNode =
     if obj.kind == nkRecCase and obj[0].kind == nkSym and obj[0].sym == field:
       result = obj
     else:
+      result = nil
       for x in obj:
         result = searchObjCaseImpl(x, field)
         if result != nil: break

@@ -91,6 +91,9 @@ proc getNimRunExe(conf: ConfigRef): string =
   if conf.isDefined("mingw"):
     if conf.isDefined("i386"): result = "wine"
     elif conf.isDefined("amd64"): result = "wine64"
+    else: result = ""
+  else:
+    result = ""
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(
@@ -137,7 +140,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
         # tasyncjs_fail` would fail, refs https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
         if cmdPrefix.len == 0: cmdPrefix = findNodeJs().quoteShell
         cmdPrefix.add " --unhandled-rejections=strict"
-      else: doAssert false, $conf.backend
+      else: raiseAssert $conf.backend
       if cmdPrefix.len > 0: cmdPrefix.add " "
         # without the `cmdPrefix.len > 0` check, on windows you'd get a cryptic:
         # `The parameter is incorrect`

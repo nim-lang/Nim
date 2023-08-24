@@ -1,0 +1,23 @@
+# See https://github.com/juancarlospaco/nimrun-action/issues/3#issuecomment-1607344901
+name: issue comments bisects
+on:
+  issue_comment:
+    types: created
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    # nimrun-action requires Nim installed.
+    - uses: jiro4989/setup-nim-action@v1
+      with:
+        nim-version: 'devel'
+
+    - name: Install Dependencies
+      run: sudo apt-get install --no-install-recommends -yq valgrind
+
+    - uses: juancarlospaco/nimrun-action@nim
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}

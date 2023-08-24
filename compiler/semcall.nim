@@ -82,7 +82,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
 
   # starts at 1 because 0 is already done with setup, only needs checking
   var nextSymIndex = 1
-  var z: TCandidate # current candidate
+  var z: TCandidate = default(TCandidate) # current candidate
   while true:
     determineType(c, sym)
     initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
@@ -215,7 +215,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
 
   var maybeWrongSpace = false
 
-  var candidatesAll: seq[string]
+  var candidatesAll: seq[string] = @[]
   var candidates = ""
   var skipped = 0
   for err in errors:
@@ -370,6 +370,7 @@ proc bracketNotFoundError(c: PContext; n: PNode) =
     notFoundError(c, n, errors)
 
 proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
+  result = ""
   if c.compilesContextId > 0:
     # we avoid running more diagnostic when inside a `compiles(expr)`, to
     # errors while running diagnostic (see test D20180828T234921), and
@@ -405,8 +406,9 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds, flags: TExprFlags,
                       errors: var CandidateErrors,
                       errorsEnabled: bool): TCandidate =
+  result = default(TCandidate)
   var initialBinding: PNode
-  var alt: TCandidate
+  var alt: TCandidate = default(TCandidate)
   var f = n[0]
   if f.kind == nkBracketExpr:
     # fill in the bindings:
@@ -562,8 +564,64 @@ proc getCallLineInfo(n: PNode): TLineInfo =
     discard
   result = n.info
 
-proc semResolvedCall(c: PContext, x: TCandidate,
-                     n: PNode, flags: TExprFlags): PNode =
+proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
+  ## Helper proc to inherit bound generic parameters from expectedType into x.
+  ## Does nothing if 'inferGenericTypes' isn't in c.features.
+  if inferGenericTypes notin c.features: return
+  if expectedType == nil or x.callee[0] == nil: return # required for inference
+
+  var
+    flatUnbound: seq[PType] = @[]
+    flatBound: seq[PType] = @[]
+  # seq[(result type, expected type)]
+  var typeStack = newSeq[(PType, PType)]()
+
+  template stackPut(a, b) =
+    ## skips types and puts the skipped version on stack
+    # It might make sense to skip here one by one. It's not part of the main
+    #  type reduction because the right side normally won't be skipped
+    const toSkip = { tyVar, tyLent, tyStatic, tyCompositeTypeClass, tySink }
+    let
+      x = a.skipTypes(toSkip)
+      y = if a.kind notin toSkip: b
+          else: b.skipTypes(toSkip)
+    typeStack.add((x, y))
+
+  stackPut(x.callee[0], expectedType)
+
+  while typeStack.len() > 0:
+    let (t, u) = typeStack.pop()
+    if t == u or t == nil or u == nil or t.kind == tyAnything or u.kind == tyAnything:
+      continue
+    case t.kind
+    of ConcreteTypes, tyGenericInvocation, tyUncheckedArray:
+      # nested, add all the types to stack
+      let
+        startIdx = if u.kind in ConcreteTypes: 0 else: 1
+        endIdx = min(u.len() - startIdx, t.len())
+
+      for i in startIdx ..< endIdx:
+        # early exit with current impl
+        if t[i] == nil or u[i] == nil: return
+        stackPut(t[i], u[i])
+    of tyGenericParam:
+      let prebound = x.bindings.idTableGet(t).PType
+      if prebound != nil:
+        continue # Skip param, already bound
+
+      # fully reduced generic param, bind it
+      if t notin flatUnbound:
+        flatUnbound.add(t)
+        flatBound.add(u)
+    else:
+      discard
+  # update bindings
+  for i in 0 ..< flatUnbound.len():
+    x.bindings.idTablePut(flatUnbound[i], flatBound[i])
+
+proc semResolvedCall(c: PContext, x: var TCandidate,
+                     n: PNode, flags: TExprFlags;
+                     expectedType: PType = nil): PNode =
   assert x.state == csMatch
   var finalCallee = x.calleeSym
   let info = getCallLineInfo(n)
@@ -583,10 +641,12 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       if x.calleeSym.magic in {mArrGet, mArrPut}:
         finalCallee = x.calleeSym
       else:
+        c.inheritBindings(x, expectedType)
         finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
     else:
       # For macros and templates, the resolved generic params
       # are added as normal params.
+      c.inheritBindings(x, expectedType)
       for s in instantiateGenericParamList(c, gp, x.bindings):
         case s.kind
         of skConst:
@@ -615,7 +675,8 @@ proc tryDeref(n: PNode): PNode =
   result.add n
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
-                       filter: TSymKinds, flags: TExprFlags): PNode =
+                       filter: TSymKinds, flags: TExprFlags;
+                       expectedType: PType = nil): PNode =
   var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
   if r.state == csMatch:
@@ -625,7 +686,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       message(c.config, n.info, hintUserRaw,
               "Non-matching candidates for " & renderTree(n) & "\n" &
               candidates)
-    result = semResolvedCall(c, r, n, flags)
+    result = semResolvedCall(c, r, n, flags, expectedType)
   else:
     if efDetermineType in flags and c.inGenericContext > 0 and c.matchedConcept == nil:
       result = semGenericStmt(c, n)
@@ -635,7 +696,10 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       # this time enabling all the diagnostic output (this should fail again)
       result = semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
     elif efNoUndeclared notin flags:
+      result = nil
       notFoundError(c, n, errors)
+    else:
+      result = nil
 
 proc explicitGenericInstError(c: PContext; n: PNode): PNode =
   localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n))
@@ -653,8 +717,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
     if formal.kind == tyStatic and arg.kind != tyStatic:
       let evaluated = c.semTryConstExpr(c, n[i])
       if evaluated != nil:
-        arg = newTypeS(tyStatic, c)
-        arg.sons = @[evaluated.typ]
+        arg = newTypeS(tyStatic, c, sons = @[evaluated.typ])
         arg.n = evaluated
     let tm = typeRel(m, formal, arg)
     if tm in {isNone, isConvertible}: return nil
@@ -707,17 +770,25 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   else:
     result = explicitGenericInstError(c, n)
 
-proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
+proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PSym, state: TBorrowState] =
   # Searches for the fn in the symbol table. If the parameter lists are suitable
   # for borrowing the sym in the symbol table is returned, else nil.
   # New approach: generate fn(x, y, z) where x, y, z have the proper types
   # and use the overloading resolution mechanism:
+  const desiredTypes = abstractVar + {tyCompositeTypeClass} - {tyTypeDesc, tyDistinct}
+
+  template getType(isDistinct: bool; t: PType):untyped =
+    if isDistinct: t.baseOfDistinct(c.graph, c.idgen) else: t
+
+  result = default(tuple[s: PSym, state: TBorrowState])
   var call = newNodeI(nkCall, fn.info)
   var hasDistinct = false
+  var isDistinct: bool
+  var x: PType
+  var t: PType
   call.add(newIdentNode(fn.name, fn.info))
   for i in 1..<fn.typ.n.len:
     let param = fn.typ.n[i]
-    const desiredTypes = abstractVar + {tyCompositeTypeClass} - {tyTypeDesc, tyDistinct}
     #[.
       # We only want the type not any modifiers such as `ptr`, `var`, `ref` ...
       # tyCompositeTypeClass is here for
@@ -726,22 +797,31 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
       proc `$`(f: Foo): string {.borrow.}
       # We want to skip the `Foo` to get `int`
     ]#
-    let t = skipTypes(param.typ, desiredTypes)
-    if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true
-    var x: PType
+    t = skipTypes(param.typ, desiredTypes)
+    isDistinct = t.kind == tyDistinct or param.typ.kind == tyDistinct
+    if t.kind == tyGenericInvocation and t[0].lastSon.kind == tyDistinct:
+      result.state = bsGeneric
+      return
+    if isDistinct: hasDistinct = true
     if param.typ.kind == tyVar:
       x = newTypeS(param.typ.kind, c)
-      x.addSonSkipIntLit(t.baseOfDistinct(c.graph, c.idgen), c.idgen)
+      x.addSonSkipIntLit(getType(isDistinct, t), c.idgen)
     else:
-      x = t.baseOfDistinct(c.graph, c.idgen)
-    call.add(newNodeIT(nkEmpty, fn.info, x))
+      x = getType(isDistinct, t)
+    var s = copySym(param.sym, c.idgen)
+    s.typ = x
+    s.info = param.info
+    call.add(newSymNode(s))
   if hasDistinct:
     let filter = if fn.kind in {skProc, skFunc}: {skProc, skFunc} else: {fn.kind}
     var resolved = semOverloadedCall(c, call, call, filter, {})
     if resolved != nil:
-      result = resolved[0].sym
-      if not compareTypes(result.typ[0], fn.typ[0], dcEqIgnoreDistinct):
-        result = nil
-      elif result.magic in {mArrPut, mArrGet}:
+      result.s = resolved[0].sym
+      result.state = bsMatch
+      if not compareTypes(result.s.typ[0], fn.typ[0], dcEqIgnoreDistinct):
+        result.state = bsReturnNotMatch
+      elif result.s.magic in {mArrPut, mArrGet}:
         # cannot borrow these magics for now
-        result = nil
+        result.state = bsNotSupported
+  else:
+    result.state = bsNoDistinct

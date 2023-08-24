@@ -208,7 +208,7 @@ template `or`*(x, y: NimNode): NimNode =
   ## Evaluate `x` and when it is not an empty node, return
   ## it. Otherwise evaluate to `y`. Can be used to chain several
   ## expressions to get the first expression that is not empty.
-  ##   ```
+  ##   ```nim
   ##   let node = mightBeEmpty() or mightAlsoBeEmpty() or fallbackNode
   ##   ```
 
@@ -590,7 +590,7 @@ proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEf
   ## Obtains the AST nodes returned from a macro or template invocation.
   ## See also `genasts.genAst`.
   ## Example:
-  ##   ```
+  ##   ```nim
   ##   macro FooMacro() =
   ##     var ast = getAst(BarTemplate())
   ##   ```
@@ -1049,7 +1049,7 @@ macro dumpTree*(s: untyped): untyped = echo s.treeRepr
   ## a certain expression/statement.
   ##
   ## For example:
-  ##   ```
+  ##   ```nim
   ##   dumpTree:
   ##     echo "Hello, World!"
   ##   ```
@@ -1073,7 +1073,7 @@ macro dumpLisp*(s: untyped): untyped = echo s.lispRepr(indented = true)
   ## a certain expression/statement.
   ##
   ## For example:
-  ##   ```
+  ##   ```nim
   ##   dumpLisp:
   ##     echo "Hello, World!"
   ##   ```
@@ -1096,7 +1096,7 @@ macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
   ## outputs and then copying the snippets into the macro for modification.
   ##
   ## For example:
-  ##   ```
+  ##   ```nim
   ##   dumpAstGen:
   ##     echo "Hello, World!"
   ##   ```
@@ -1179,7 +1179,7 @@ proc newIdentDefs*(name, kind: NimNode;
   ## `let` or `var` blocks may have an empty `kind` node if the
   ## identifier is being assigned a value. Example:
   ##
-  ##   ```
+  ##   ```nim
   ##   var varSection = newNimNode(nnkVarSection).add(
   ##     newIdentDefs(ident("a"), ident("string")),
   ##     newIdentDefs(ident("b"), newEmptyNode(), newLit(3)))
@@ -1190,7 +1190,7 @@ proc newIdentDefs*(name, kind: NimNode;
   ##
   ## If you need to create multiple identifiers you need to use the lower level
   ## `newNimNode`:
-  ##   ```
+  ##   ```nim
   ##   result = newNimNode(nnkIdentDefs).add(
   ##     ident("a"), ident("b"), ident("c"), ident("string"),
   ##       newStrLitNode("Hello"))
@@ -1241,7 +1241,7 @@ proc newProc*(name = newEmptyNode();
 
 proc newIfStmt*(branches: varargs[tuple[cond, body: NimNode]]): NimNode =
   ## Constructor for `if` statements.
-  ##   ```
+  ##   ```nim
   ##   newIfStmt(
   ##     (Ident, StmtList),
   ##     ...
@@ -1258,7 +1258,7 @@ proc newEnum*(name: NimNode, fields: openArray[NimNode],
 
   ## Creates a new enum. `name` must be an ident. Fields are allowed to be
   ## either idents or EnumFieldDef:
-  ##   ```
+  ##   ```nim
   ##   newEnum(
   ##     name    = ident("Colors"),
   ##     fields  = [ident("Blue"), ident("Red")],
@@ -1429,7 +1429,7 @@ iterator children*(n: NimNode): NimNode {.inline.} =
 
 template findChild*(n: NimNode; cond: untyped): NimNode {.dirty.} =
   ## Find the first child node matching condition (or nil).
-  ##   ```
+  ##   ```nim
   ##   var res = findChild(n, it.kind == nnkPostfix and
   ##                          it.basename.ident == ident"foo")
   ##   ```
@@ -1536,7 +1536,7 @@ macro expandMacros*(body: typed): untyped =
   ##
   ## For instance,
   ##
-  ##   ```
+  ##   ```nim
   ##   import std/[sugar, macros]
   ##
   ##   let
@@ -1652,7 +1652,7 @@ macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
   ##
   ## See also `getCustomPragmaVal`_.
   ##
-  ##   ```
+  ##   ```nim
   ##   template myAttr() {.pragma.}
   ##   type
   ##     MyObj = object
@@ -1677,7 +1677,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ##
   ## See also `hasCustomPragma`_.
   ##
-  ##   ```
+  ##   ```nim
   ##   template serializationKey(key: string) {.pragma.}
   ##   type
   ##     MyObj {.serializationKey: "mo".} = object
@@ -1773,7 +1773,7 @@ proc extractDocCommentsAndRunnables*(n: NimNode): NimNode =
   ## runnableExamples in `a`, stopping at the first child that is neither.
   ## Example:
   ##
-  ##   ```
+  ##   ```nim
   ##   import std/macros
   ##   macro transf(a): untyped =
   ##     result = quote do:

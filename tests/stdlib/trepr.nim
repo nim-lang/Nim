@@ -40,7 +40,7 @@ template main() =
   #[
   BUG:
   --gc:arc returns `"abc"`
-  regular gc returns with address, e.g. 0x1068aae60"abc", but only 
+  regular gc returns with address, e.g. 0x1068aae60"abc", but only
   for c,cpp backends (not js, vm)
   ]#
   block:
@@ -293,7 +293,7 @@ func fn2(): int =
 
       *a: b
       do: c
-    
+
     doAssert a == """foo(a, b, (c, d)):
   e
   f
@@ -321,6 +321,8 @@ else:
   b
 do:
   c"""
+
+  doAssert repr(1..2) == "1 .. 2"
 
 static: main()
 main()

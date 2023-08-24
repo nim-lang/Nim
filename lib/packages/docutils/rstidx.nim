@@ -121,7 +121,7 @@ proc parseIdxFile*(path: string):
     result.fileEntries[f].linkDesc = cols[4].unquoteIndexColumn
     result.fileEntries[f].line = parseInt(cols[5])
 
-    if result.fileEntries[f].kind in {ieNimTitle, ieMarkupTitle, ieIdxRole}:
+    if result.fileEntries[f].kind in {ieNimTitle, ieMarkupTitle}:
       result.title = result.fileEntries[f]
     inc f
 

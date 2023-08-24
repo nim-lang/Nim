@@ -34,6 +34,7 @@ type
     spNone, spGenSym, spInject
 
 proc symBinding(n: PNode): TSymBinding =
+  result = spNone
   for i in 0..<n.len:
     var it = n[i]
     var key = if it.kind == nkExprColonExpr: it[0] else: it
@@ -673,6 +674,9 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     # a template's parameters are not gensym'ed even if that was originally the
     # case as we determine whether it's a template parameter in the template
     # body by the absence of the sfGenSym flag:
+    let retType = s.typ[0]
+    if retType != nil and retType.kind != tyUntyped:
+      allUntyped = false
     for i in 1..<s.typ.n.len:
       let param = s.typ.n[i].sym
       if param.name.id != ord(wUnderscore):

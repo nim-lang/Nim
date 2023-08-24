@@ -214,6 +214,8 @@ proc iterOverNode(marker: var IntSet, n: PNode, iter: TTypeIter,
       for i in 0..<n.len:
         result = iterOverNode(marker, n[i], iter, closure)
         if result: return
+  else:
+    result = false
 
 proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
                      closure: RootRef): bool =
@@ -564,7 +566,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         if t.kind == tyGenericParam and t.len > 0:
           result.add ": "
           var first = true
-          for son in t.sons:
+          for son in t:
             if not first: result.add " or "
             result.add son.typeToString
             first = false
@@ -635,14 +637,14 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result.add(typeToString(t[i]))
       result.add "]"
     of tyAnd:
-      for i, son in t.sons:
+      for i, son in t:
         result.add(typeToString(son))
-        if i < t.sons.high:
+        if i < t.len - 1:
           result.add(" and ")
     of tyOr:
-      for i, son in t.sons:
+      for i, son in t:
         result.add(typeToString(son))
-        if i < t.sons.high:
+        if i < t.len - 1:
           result.add(" or ")
     of tyNot:
       result = "not " & typeToString(t[0])
@@ -786,7 +788,7 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
       of 4: result = toInt128(-2147483648)
       of 2: result = toInt128(-32768)
       of 1: result = toInt128(-128)
-      else: discard
+      else: result = Zero
     else:
       result = toInt128(0x8000000000000000'i64)
   of tyInt8: result =  toInt128(-128)
@@ -802,17 +804,21 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
       if t.n.len > 0:
         assert(t.n[0].kind == nkSym)
         result = toInt128(t.n[0].sym.position)
+      else:
+        result = Zero
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
      tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = firstOrd(conf, lastSon(t))
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
-    else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
+    else:
+      result = Zero
+      internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
   of tyUncheckedArray, tyCstring:
     result = Zero
   else:
-    internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
     result = Zero
+    internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
 
 proc firstFloat*(t: PType): BiggestFloat =
   case t.kind
@@ -834,14 +840,14 @@ proc targetSizeSignedToKind*(conf: ConfigRef): TTypeKind =
   of 8: result = tyInt64
   of 4: result = tyInt32
   of 2: result = tyInt16
-  else: discard
+  else: result = tyNone
 
 proc targetSizeUnsignedToKind*(conf: ConfigRef): TTypeKind =
   case conf.target.intSize
   of 8: result = tyUInt64
   of 4: result = tyUInt32
   of 2: result = tyUInt16
-  else: discard
+  else: result = tyNone
 
 proc normalizeKind*(conf: ConfigRef, k: TTypeKind): TTypeKind =
   case k
@@ -869,7 +875,7 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
       of 4: result = toInt128(0x7FFFFFFF)
       of 2: result = toInt128(0x00007FFF)
       of 1: result = toInt128(0x0000007F)
-      else: discard
+      else: result = Zero
     else: result = toInt128(0x7FFFFFFFFFFFFFFF'u64)
   of tyInt8: result = toInt128(0x0000007F)
   of tyInt16: result = toInt128(0x00007FFF)
@@ -889,18 +895,22 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
     if t.n.len > 0:
       assert(t.n[^1].kind == nkSym)
       result = toInt128(t.n[^1].sym.position)
+    else:
+      result = Zero
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
      tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = lastOrd(conf, lastSon(t))
   of tyProxy: result = Zero
   of tyOrdinal:
     if t.len > 0: result = lastOrd(conf, lastSon(t))
-    else: internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
+    else:
+      result = Zero
+      internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
   of tyUncheckedArray:
     result = Zero
   else:
-    internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
     result = Zero
+    internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
 
 proc lastFloat*(t: PType): BiggestFloat =
   case t.kind
@@ -972,7 +982,7 @@ type
 
 proc initSameTypeClosure: TSameTypeClosure =
   # we do the initialization lazily for performance (avoids memory allocations)
-  discard
+  result = TSameTypeClosure()
 
 proc containsOrIncl(c: var TSameTypeClosure, a, b: PType): bool =
   result = c.s.len > 0 and c.s.contains((a.id, b.id))
@@ -1011,6 +1021,8 @@ proc equalParam(a, b: PSym): TParamsEquality =
       result = paramsEqual
     elif b.ast != nil:
       result = paramsIncompatible
+    else:
+      result = paramsNotEqual
   else:
     result = paramsNotEqual
 
@@ -1078,6 +1090,8 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
           return false
     elif a.n != b.n and (a.n == nil or b.n == nil) and IgnoreTupleFields notin c.flags:
       result = false
+  else:
+    result = false
 
 template ifFastObjectTypeCheckFailed(a, b: PType, body: untyped) =
   if tfFromGeneric notin a.flags + b.flags:
@@ -1097,6 +1111,8 @@ template ifFastObjectTypeCheckFailed(a, b: PType, body: untyped) =
     if tfFromGeneric in a.flags * b.flags and a.sym.id == b.sym.id:
       # ok, we need the expensive structural check
       body
+    else:
+      result = false
 
 proc sameObjectTypes*(a, b: PType): bool =
   # specialized for efficiency (sigmatch uses it)
@@ -1134,6 +1150,12 @@ proc sameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
           for i in 0..<a.len:
             if not sameObjectTree(a[i], b[i], c): return
           result = true
+        else:
+          result = false
+    else:
+      result = false
+  else:
+    result = false
 
 proc sameObjectStructures(a, b: PType, c: var TSameTypeClosure): bool =
   # check base types:
@@ -1160,6 +1182,7 @@ proc sameFlags*(a, b: PType): bool {.inline.} =
   result = eqTypeFlags*a.flags == eqTypeFlags*b.flags
 
 proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
+  result = false
   template cycleCheck() =
     # believe it or not, the direct check for ``containsOrIncl(c, a, b)``
     # increases bootstrapping time from 2.4s to 3.3s on my laptop! So we cheat
@@ -1338,6 +1361,7 @@ proc inheritanceDiff*(a, b: PType): int =
   result = high(int)
 
 proc commonSuperclass*(a, b: PType): PType =
+  result = nil
   # quick check: are they the same?
   if sameObjectTypes(a, b): return a
 
@@ -1451,6 +1475,7 @@ proc compatibleExceptions(se, re: PNode): bool =
   result = true
 
 proc hasIncompatibleEffect(se, re: PNode): bool =
+  result = false
   if re.isNil: return false
   for r in items(re):
     for s in items(se):
@@ -1789,6 +1814,7 @@ proc isSinkTypeForParam*(t: PType): bool =
         result = true
 
 proc lookupFieldAgain*(ty: PType; field: PSym): PSym =
+  result = nil
   var ty = ty
   while ty != nil:
     ty = ty.skipTypes(skipPtrs)
@@ -1811,7 +1837,9 @@ proc isCharArrayPtr*(t: PType; allowPointerToChar: bool): bool =
     of tyChar:
       result = allowPointerToChar
     else:
-      discard
+      result = false
+  else:
+    result = false
 
 proc lacksMTypeField*(typ: PType): bool {.inline.} =
   (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags
