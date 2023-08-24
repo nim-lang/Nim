@@ -64,7 +64,7 @@ block: # complex cases of above with imports
       doAssert tested["abc"] == "int"
       template `{}`[V](t:Table[string,V],key:string):untyped =
         ($V, tables.`[]`(t, key))
-      doAssert (try: tested{"abc"} except: ("not there", 123)) == ("not there", 123)
+      doAssert (try: tested{"abc"} except KeyError: ("not there", 123)) == ("not there", 123)
       tables.`[]=`(tested, "abc", 456)
       doAssert tested["abc"] == "int"
       doAssert tested{"abc"} == ("int", 456)
