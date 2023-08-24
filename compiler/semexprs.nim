@@ -2139,6 +2139,7 @@ proc expectString(c: PContext, n: PNode): string =
   if n.kind in nkStrKinds:
     return n.strVal
   else:
+    result = ""
     localError(c.config, n.info, errStringLiteralExpected)
 
 proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo): PSym =

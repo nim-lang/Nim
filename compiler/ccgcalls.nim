@@ -24,6 +24,7 @@ proc canRaiseDisp(p: BProc; n: PNode): bool =
 
 proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
   proc locationEscapes(p: BProc; le: PNode; inTryStmt: bool): bool =
+    result = false
     var n = le
     while true:
       # do NOT follow nkHiddenDeref here!
