@@ -681,7 +681,6 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
 
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
-
       result = try: getApplHeuristic() except OSError: ""
 
 proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
