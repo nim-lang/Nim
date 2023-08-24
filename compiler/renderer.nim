@@ -14,7 +14,7 @@
 {.used.}
 
 import
-  lexer, options, idents, strutils, ast, msgs, lineinfos
+  lexer, options, idents, strutils, ast, msgs, lineinfos, wordrecg
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, formatfloat]
@@ -838,7 +838,7 @@ proc gcase(g: var TSrcGen, n: PNode) =
     gsub(g, n[^1], c)
 
 proc genSymSuffix(result: var string, s: PSym) {.inline.} =
-  if sfGenSym in s.flags:
+  if sfGenSym in s.flags and s.name.id != ord(wUnderscore):
     result.add '_'
     result.addInt s.id
 
@@ -958,7 +958,9 @@ proc gident(g: var TSrcGen, n: PNode) =
       s.addInt localId
     if sfCursor in n.sym.flags:
       s.add "_cursor"
-  elif n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags or n.sym.kind == skTemp):
+  elif n.kind == nkSym and (renderIds in g.flags or
+      (sfGenSym in n.sym.flags and n.sym.name.id != ord(wUnderscore)) or
+      n.sym.kind == skTemp):
     s.add '_'
     s.addInt n.sym.id
     when defined(debugMagics):
