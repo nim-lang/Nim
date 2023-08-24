@@ -39,13 +39,13 @@ var
   lresult
   lvalue
   lnext
-  _
+  tmpTupleAsgn
 lresult = @[123]
-_ = (
+tmpTupleAsgn = (
   let blitTmp = lresult
   blitTmp, ";")
-lvalue = _[0]
-lnext = _[1]
+lvalue = tmpTupleAsgn[0]
+lnext = tmpTupleAsgn[1]
 `=sink`(result.value, move lvalue)
 `=destroy`(lnext)
 `=destroy_1`(lvalue)

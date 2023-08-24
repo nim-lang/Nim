@@ -592,12 +592,14 @@ proc globalVarInitCheck(c: PContext, n: PNode) =
 
 proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSymKind, origResult: var PNode): PNode =
   ## expand tuple unpacking assignments into new var/let/const section
+  ## 
+  ## mirrored with semexprs.makeTupleAssignments
   if typ.kind != tyTuple:
     localError(c.config, a.info, errXExpected, "tuple")
   elif a.len-2 != typ.len:
     localError(c.config, a.info, errWrongNumberOfVariables)
   var
-    tmpTuple: PSym
+    tempNode: PNode = nil
     lastDef: PNode
   let defkind = if symkind == skConst: nkConstDef else: nkIdentDefs
   # temporary not needed if not const and RHS is tuple literal
@@ -605,17 +607,18 @@ proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSy
   let useTemp = def.kind notin {nkPar, nkTupleConstr} or symkind == skConst
   if useTemp:
     # use same symkind for compatibility with original section
-    tmpTuple = newSym(symkind, getIdent(c.cache, "tmpTuple"), c.idgen, getCurrOwner(c), n.info)
-    tmpTuple.typ = typ
-    tmpTuple.flags.incl(sfGenSym)
+    let temp = newSym(symkind, getIdent(c.cache, "tmpTuple"), c.idgen, getCurrOwner(c), n.info)
+    temp.typ = typ
+    temp.flags.incl(sfGenSym)
     lastDef = newNodeI(defkind, a.info)
     newSons(lastDef, 3)
-    lastDef[0] = newSymNode(tmpTuple)
+    lastDef[0] = newSymNode(temp)
     # NOTE: at the moment this is always ast.emptyNode, see parser.nim
     lastDef[1] = a[^2]
     lastDef[2] = def
-    tmpTuple.ast = lastDef
+    temp.ast = lastDef
     addToVarSection(c, origResult, n, lastDef)
+    tempNode = newSymNode(temp)
   result = newNodeI(n.kind, a.info)
   for j in 0..<a.len-2:
     let name = a[j]
@@ -634,7 +637,7 @@ proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSy
       lastDef[0] = name
     lastDef[^2] = c.graph.emptyNode
     if useTemp:
-      lastDef[^1] = newTreeIT(nkBracketExpr, name.info, typ[j], newSymNode(tmpTuple), newIntNode(nkIntLit, j))
+      lastDef[^1] = newTupleAccessRaw(tempNode, j)
     else:
       var val = def[j]
       if val.kind == nkExprColonExpr: val = val[1]
