@@ -1855,7 +1855,7 @@ proc makeTupleAssignments(c: PContext; n: PNode): PNode =
   for i in 0..<lhs.len:
     if lhs[i].kind == nkIdent and lhs[i].ident.id == ord(wUnderscore):
       # skip _ assignments if we are using a temp as they are already evaluated
-      continue
+      discard
     else:
       result.add newAsgnStmt(lhs[i], newTupleAccessRaw(tempNode, i))
 
