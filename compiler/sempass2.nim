@@ -356,12 +356,13 @@ proc useVar(a: PEffects, n: PNode) =
 type
   TIntersection = seq[tuple[id, count: int]] # a simple count table
 
-proc addToIntersection(inter: var TIntersection, s: int, zeroInit: bool) =
+proc addToIntersection(inter: var TIntersection, s: int, initOnly: bool) =
   for j in 0..<inter.len:
     if s == inter[j].id:
-      inc inter[j].count
+      if not initOnly:
+        inc inter[j].count
       return
-  if zeroInit:
+  if initOnly:
     inter.add((id: s, count: 0))
   else:
     inter.add((id: s, count: 1))
