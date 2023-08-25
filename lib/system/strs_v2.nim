@@ -68,7 +68,7 @@ proc prepareAdd(s: var NimStringV2; addLen: int) {.compilerRtl.} =
   if isLiteral(s):
     let oldP = s.p
     # can't mutate a literal, so we need a fresh copy here:
-    s.p = allocPayload0(newLen)
+    s.p = allocPayload(newLen)
     s.p.cap = newLen
     if s.len > 0:
       # we are about to append, so there is no need to copy the \0 terminator:
@@ -77,7 +77,7 @@ proc prepareAdd(s: var NimStringV2; addLen: int) {.compilerRtl.} =
     let oldCap = s.p.cap and not strlitFlag
     if newLen > oldCap:
       let newCap = max(newLen, resize(oldCap))
-      s.p = reallocPayload0(s.p, oldCap, newCap)
+      s.p = reallocPayload(s.p, newCap)
       s.p.cap = newCap
 
 proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl, inl.} =
@@ -135,8 +135,19 @@ proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
   if newLen == 0:
     discard "do not free the buffer here, pattern 's.setLen 0' is common for avoiding allocations"
   else:
-    if newLen > s.len or isLiteral(s):
-      prepareAdd(s, newLen - s.len)
+    if isLiteral(s):
+      let oldP = s.p
+      s.p = allocPayload0(newLen)
+      s.p.cap = newLen
+      if s.len > 0:
+        copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], min(s.len, newLen))
+    elif newLen > s.len:
+      let oldCap = s.p.cap and not strlitFlag
+      if newLen > oldCap:
+        let newCap = max(newLen, resize(oldCap))
+        s.p = reallocPayload0(s.p, oldCap, newCap)
+        s.p.cap = newCap
+
     s.p.data[newLen] = '\0'
   s.len = newLen
 
