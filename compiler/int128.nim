@@ -573,4 +573,4 @@ proc maskBytes*(arg: Int128, numbytes: int): Int128 {.noinit.} =
   of 8:
     return maskUInt64(arg)
   else:
-    assert(false, "masking only implemented for 1, 2, 4 and 8 bytes")
+    raiseAssert "masking only implemented for 1, 2, 4 and 8 bytes"
