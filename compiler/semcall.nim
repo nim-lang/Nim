@@ -572,7 +572,12 @@ proc semResolvedCall(c: PContext, x: TCandidate,
           else:
             x.call.add c.graph.emptyNode
         of skType:
-          x.call.add newSymNode(s, n.info)
+          var tn = newSymNode(s, n.info)
+          # this node will be used in template substitution,
+          # pretend this is an untyped node and let regular sem handle the type
+          # to prevent problems where a generic parameter is treated as a value
+          tn.typ = nil
+          x.call.add tn
         else:
           internalAssert c.config, false
 
