@@ -84,18 +84,16 @@ proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl, inl.} =
   #if (s.p == nil) or (s.len+1 > s.p.cap and not strlitFlag):
   prepareAdd(s, 1)
   s.p.data[s.len] = c
-  s.p.data[s.len+1] = '\0'
   inc s.len
+  s.p.data[s.len] = '\0'
 
 proc toNimStr(str: cstring, len: int): NimStringV2 {.compilerproc.} =
   if len <= 0:
     result = NimStringV2(len: 0, p: nil)
   else:
-    var p = allocPayload0(len)
+    var p = allocPayload(len)
     p.cap = len
-    if len > 0:
-      # we are about to append, so there is no need to copy the \0 terminator:
-      copyMem(unsafeAddr p.data[0], str, len)
+    copyMem(unsafeAddr p.data[0], str, len+1)
     result = NimStringV2(len: len, p: p)
 
 proc cstrToNimstr(str: cstring): NimStringV2 {.compilerRtl.} =
@@ -114,8 +112,8 @@ proc appendString(dest: var NimStringV2; src: NimStringV2) {.compilerproc, inlin
 
 proc appendChar(dest: var NimStringV2; c: char) {.compilerproc, inline.} =
   dest.p.data[dest.len] = c
-  dest.p.data[dest.len+1] = '\0'
   inc dest.len
+  dest.p.data[dest.len] = '\0'
 
 template rawNewStringImpl(space: int) =
   # this is also 'system.newStringOfCap'.
@@ -155,7 +153,7 @@ proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
       # 'let y = newStringOfCap(); var x = y'
       # on the other hand... These get turned into moves now.
       frees(a)
-      a.p = allocPayload0(b.len)
+      a.p = allocPayload(b.len)
       a.p.cap = b.len
     a.len = b.len
     copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
@@ -163,7 +161,7 @@ proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
 proc nimPrepareStrMutationImpl(s: var NimStringV2) =
   let oldP = s.p
   # can't mutate a literal, so we need a fresh copy here:
-  s.p = allocPayload0(s.len)
+  s.p = allocPayload(s.len)
   s.p.cap = s.len
   copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len+1)
 
