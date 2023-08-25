@@ -1375,7 +1375,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyTuple:
     if a.kind == tyTuple: result = recordRel(c, f, a)
   of tyObject:
-    let effectiveArgType = if a.kind == tyAlias: a else: getObjectTypeOrNil(a)
+    if aOrig.kind == tyVar:
+      return isNone
+    let effectiveArgType = getObjectTypeOrNil(a)
     if effectiveArgType == nil: return isNone
     if effectiveArgType.kind == tyObject:
       if sameObjectTypes(f, effectiveArgType):
