@@ -417,6 +417,15 @@ Consider:
 
 """
 
+proc containsCallKinds(n: PNode): bool =
+  result = false
+  if n.isCallExpr:
+    return true
+  if n.safeLen > 0:
+    for nn in n:
+      if containsCallKinds(nn):
+        return true
+
 proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
   var cp = getEnvParam(fn)
   let owner = if fn.kind == skIterator: fn else: fn.skipGenericOwner
@@ -516,6 +525,12 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       detectCapturedVars(n[namePos], owner, c)
   of nkReturnStmt:
     detectCapturedVars(n[0], owner, c)
+  of nkIdentDefs:
+    if not containsCallKinds(n[1]):
+      detectCapturedVars(n[^1], owner, c)
+    else:
+      for i in 0..<n.len:
+        detectCapturedVars(n[i], owner, c)
   else:
     for i in 0..<n.len:
       detectCapturedVars(n[i], owner, c)
