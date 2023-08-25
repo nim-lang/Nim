@@ -511,7 +511,13 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
         # we now know the supplied arguments
         var paramTypes = newIdTable()
         for param, value in genericParamsInMacroCall(s, call):
-          idTablePut(paramTypes, param.typ, value.typ)
+          var givenType = value.typ
+          # the sym nodes used for the supplied generic arguments for
+          # templates and macros leave type nil so regular sem can handle it
+          # in this case, get the type directly from the sym
+          if givenType == nil and value.kind == nkSym and value.sym.typ != nil:
+            givenType = value.sym.typ
+          idTablePut(paramTypes, param.typ, givenType)
 
         retType = generateTypeInstance(c, paramTypes,
                                        macroResult.info, retType)
