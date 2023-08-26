@@ -99,6 +99,9 @@ proc fileInfoKnown*(conf: ConfigRef; filename: AbsoluteFile): bool =
   result = conf.m.filenameToIndexTbl.hasKey(canon.string)
 
 proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool): FileIndex =
+  result = conf.fileIdxTbl.getOrDefault(filename.string, InvalidFileIdx)
+  if result != InvalidFileIdx:
+    return
   var
     canon: AbsoluteFile
     pseudoPath = false
@@ -123,6 +126,7 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
     conf.m.fileInfos.add(newFileInfo(canon, if pseudoPath: RelativeFile filename
                                             else: relativeTo(canon, conf.projectPath)))
     conf.m.filenameToIndexTbl[canon2] = result
+  conf.fileIdxTbl[filename.string] = result
 
 proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
   var dummy: bool

@@ -107,7 +107,7 @@ since (1, 5):
     const
       loc = instantiationInfo(fullPaths = compileOption("excessiveStackTrace"))
       msg = getMsg(loc, astToStr(assertion)).cstring
-    {.line: loc.}:
+    {.line: instantiationInfo(fullPaths = true).}:
       {.emit: ["console.assert(", assertion, ", ", msg, ");"].}
 
   func dir*(console: Console; obj: auto) {.importcpp.}

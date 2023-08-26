@@ -417,6 +417,7 @@ type
     expandLevels*: int
     expandNodeResult*: string
     expandPosition*: TLineInfo
+    fileIdxTbl*: Table[string, FileIndex]
 
 
 proc parseNimVersion*(a: string): NimVer =
@@ -582,6 +583,7 @@ proc newConfigRef*(): ConfigRef =
     maxLoopIterationsVM: 10_000_000,
     vmProfileData: newProfileData(),
     spellSuggestMax: spellSuggestSecretSauce,
+    fileIdxTbl: initTable[string, FileIndex](),
   )
   initConfigRefCommon(result)
   setTargetFromSystem(result.target)
