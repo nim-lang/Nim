@@ -418,15 +418,6 @@ Consider:
 
 """
 
-proc containsCallKinds(n: PNode): bool =
-  result = false
-  if n.isCallExpr:
-    return true
-  if n.safeLen > 0:
-    for nn in n:
-      if containsCallKinds(nn):
-        return true
-
 proc isTypeOf(ident: PIdent; cache: IdentCache): bool =
   ident == getIdent(cache, "typeof") or ident == getIdent(cache, "type")
 
