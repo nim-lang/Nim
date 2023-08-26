@@ -136,6 +136,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
           result.typ[0]
         else:
           nil
+      #b = semProcBody(c, b.copyNode, resultType)
       b = semProcBody(c, b, resultType)
     result.ast[bodyPos] = hloBody(c, b)
     excl(result.flags, sfForward)
