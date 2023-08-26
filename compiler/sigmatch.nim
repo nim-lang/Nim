@@ -1382,10 +1382,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if effectiveArgType == nil: return isNone
     if effectiveArgType.kind == tyObject:
       if sameObjectTypes(f, effectiveArgType):
-        if a.kind == tyObject and sameObjectTypes(a, effectiveArgType):
-          result = isEqual
-        else:
-          result = isGeneric
+        result = isEqual
         # elif tfHasMeta in f.flags: result = recordRel(c, f, a)
       elif trIsOutParam notin flags:
         var depth = isObjectSubtype(c, effectiveArgType, f, nil)
