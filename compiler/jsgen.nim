@@ -2118,7 +2118,7 @@ proc genNewSeq(p: PProc, n: PNode) =
   gen(p, n[1], x)
   gen(p, n[2], y)
   let t = skipTypes(n[1].typ, abstractVar)[0]
-  lineF(p, "$1 = new Array($2); for (let _ = 0 ; _ < $2 ; ++_) { $1[_] = $3; }", [
+  lineF(p, "$1 = new Array($2); for (let i = 0 ; i < $2 ; ++i) { $1[i] = $3; }", [
     x.rdLoc, y.rdLoc, createVar(p, t, false)])
 
 proc genOrd(p: PProc, n: PNode, r: var TCompRes) =
