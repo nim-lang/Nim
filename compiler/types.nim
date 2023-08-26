@@ -1753,6 +1753,7 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
     return true
   case t.kind
   of tyTuple:
+    result = false
     var cycleDetectorCopy: IntSet
     for i in 0..<t.len:
       cycleDetectorCopy = cycleDetector

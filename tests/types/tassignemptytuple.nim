@@ -1,5 +1,5 @@
 discard """
-  errormsg: "invalid type: 'empty' in this context: '(seq[empty], (seq[empty], set[empty]))' for let"
+  errormsg: "cannot infer the type of the tuple"
   file: "tassignemptytuple.nim"
   line: 11
 """
