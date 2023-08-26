@@ -521,7 +521,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
           markAsClosure(c.graph, w, n)
           addClosureParam(c, w, n.info) # , ow
           createUpField(c, w, up, n.info)
-          w = up   
+          w = up
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
      nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef,
      nkConverterDef, nkMacroDef, nkFuncDef, nkCommentStmt,
