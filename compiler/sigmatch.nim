@@ -1375,7 +1375,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyTuple:
     if a.kind == tyTuple: result = recordRel(c, f, a)
   of tyObject:
-    let effectiveArgType = if trNoCovariance notin flags and useTypeLoweringRuleInTypeClass:
+    let effectiveArgType = if useTypeLoweringRuleInTypeClass:
         a
       else:
         getObjectTypeOrNil(a)
