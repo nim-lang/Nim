@@ -2118,7 +2118,7 @@ proc genNewSeq(p: PProc, n: PNode) =
   gen(p, n[1], x)
   gen(p, n[2], y)
   let t = skipTypes(n[1].typ, abstractVar)[0]
-  lineF(p, "$1 = new Array($2); for (var i = 0 ; i < $2 ; ++i) { $1[i] = $3; }", [
+  lineF(p, "$1 = new Array($2); for (let _ = 0 ; _ < $2 ; ++_) { $1[_] = $3; }", [
     x.rdLoc, y.rdLoc, createVar(p, t, false)])
 
 proc genOrd(p: PProc, n: PNode, r: var TCompRes) =
@@ -2390,7 +2390,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       else: binaryExpr(p, n, r, "subInt", "$1 = subInt($3, $2)", true)
   of mSetLengthStr:
     binaryExpr(p, n, r, "mnewString",
-      """if ($1.length < $2) { for (var i = $3.length; i < $4; ++i) $3.push(0); }
+      """if ($1.length < $2) { for (let _ = $3.length; _ < $4; ++_) $3.push(0); }
          else {$3.length = $4; }""")
   of mSetLengthSeq:
     var x, y: TCompRes = default(TCompRes)
@@ -2399,7 +2399,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     let t = skipTypes(n[1].typ, abstractVar)[0]
     let (a, tmp) = maybeMakeTemp(p, n[1], x)
     let (b, tmp2) = maybeMakeTemp(p, n[2], y)
-    r.res = """if ($1.length < $2) { for (var i = $4.length ; i < $5 ; ++i) $4.push($3); }
+    r.res = """if ($1.length < $2) { for (let _ = $4.length ; _ < $5 ; ++_) $4.push($3); }
                else { $4.length = $5; }""" % [a, b, createVar(p, t, false), tmp, tmp2]
     r.kind = resExpr
   of mCard: unaryExpr(p, n, r, "SetCard", "SetCard($1)")
