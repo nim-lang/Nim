@@ -178,10 +178,10 @@ proc raiseFieldError2(f: string, discVal: string) {.compilerproc, noreturn.} =
 proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
   asm """
     var result = {};
-    for (var i = 0; i < arguments.length; ++i) {
+    for (let i = 0; i < arguments.length; ++i) {
       var x = arguments[i];
       if (typeof(x) == "object") {
-        for (var j = x[0]; j <= x[1]; ++j) {
+        for (let j = x[0]; j <= x[1]; ++j) {
           result[j] = true;
         }
       } else {
@@ -194,7 +194,7 @@ proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
 proc makeNimstrLit(c: cstring): string {.asmNoStackFrame, compilerproc.} =
   {.emit: """
   var result = [];
-  for (var i = 0; i < `c`.length; ++i) {
+  for (let i = 0; i < `c`.length; ++i) {
     result[i] = `c`.charCodeAt(i);
   }
   return result;
@@ -205,7 +205,7 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
   var ln = `c`.length;
   var result = new Array(ln);
   var r = 0;
-  for (var i = 0; i < ln; ++i) {
+  for (let i = 0; i < ln; ++i) {
     var ch = `c`.charCodeAt(i);
 
     if (ch < 128) {
@@ -285,20 +285,20 @@ proc SetCard(a: int): int {.compilerproc, asmNoStackFrame.} =
   # argument type is a fake
   asm """
     var result = 0;
-    for (var elem in `a`) { ++result; }
+    for (let _ in `a`) { ++result; }
     return result;
   """
 
 proc SetEq(a, b: int): bool {.compilerproc, asmNoStackFrame.} =
   asm """
-    for (var elem in `a`) { if (!`b`[elem]) return false; }
-    for (var elem in `b`) { if (!`a`[elem]) return false; }
+    for (let i in `a`) { if (!`b`[i]) return false; }
+    for (let i in `b`) { if (!`a`[i]) return false; }
     return true;
   """
 
 proc SetLe(a, b: int): bool {.compilerproc, asmNoStackFrame.} =
   asm """
-    for (var elem in `a`) { if (!`b`[elem]) return false; }
+    for (let i in `a`) { if (!`b`[i]) return false; }
     return true;
   """
 
@@ -308,8 +308,8 @@ proc SetLt(a, b: int): bool {.compilerproc.} =
 proc SetMul(a, b: int): int {.compilerproc, asmNoStackFrame.} =
   asm """
     var result = {};
-    for (var elem in `a`) {
-      if (`b`[elem]) { result[elem] = true; }
+    for (let i in `a`) {
+      if (`b`[i]) { result[i] = true; }
     }
     return result;
   """
@@ -317,16 +317,16 @@ proc SetMul(a, b: int): int {.compilerproc, asmNoStackFrame.} =
 proc SetPlus(a, b: int): int {.compilerproc, asmNoStackFrame.} =
   asm """
     var result = {};
-    for (var elem in `a`) { result[elem] = true; }
-    for (var elem in `b`) { result[elem] = true; }
+    for (let i in `a`) { result[i] = true; }
+    for (let i in `b`) { result[i] = true; }
     return result;
   """
 
 proc SetMinus(a, b: int): int {.compilerproc, asmNoStackFrame.} =
   asm """
     var result = {};
-    for (var elem in `a`) {
-      if (!`b`[elem]) { result[elem] = true; }
+    for (let i in `a`) {
+      if (!`b`[i]) { result[i] = true; }
     }
     return result;
   """
@@ -336,7 +336,7 @@ proc cmpStrings(a, b: string): int {.asmNoStackFrame, compilerproc.} =
     if (`a` == `b`) return 0;
     if (!`a`) return -1;
     if (!`b`) return 1;
-    for (var i = 0; i < `a`.length && i < `b`.length; i++) {
+    for (let i = 0; i < `a`.length && i < `b`.length; i++) {
       var result = `a`[i] - `b`[i];
       if (result != 0) return result;
     }
@@ -359,7 +359,7 @@ proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerproc.} =
     if ((!`a`) || (!`b`)) return false;
     var alen = `a`.length;
     if (alen != `b`.length) return false;
-    for (var i = 0; i < alen; ++i)
+    for (let i = 0; i < alen; ++i)
       if (`a`[i] != `b`[i]) return false;
     return true;
   """
@@ -368,7 +368,7 @@ when defined(kwin):
   proc rawEcho {.compilerproc, asmNoStackFrame.} =
     asm """
       var buf = "";
-      for (var i = 0; i < arguments.length; ++i) {
+      for (let i = 0; i < arguments.length; ++i) {
         buf += `toJSStr`(arguments[i]);
       }
       print(buf);
@@ -380,7 +380,7 @@ elif not defined(nimOldEcho):
   proc rawEcho {.compilerproc, asmNoStackFrame.} =
     asm """
       var buf = "";
-      for (var i = 0; i < arguments.length; ++i) {
+      for (let i = 0; i < arguments.length; ++i) {
         buf += `toJSStr`(arguments[i]);
       }
       console.log(buf);
@@ -403,7 +403,7 @@ else:
     if node.isNil:
       raise newException(IOError, "<body> element does not exist yet!")
     {.emit: """
-    for (var i = 0; i < arguments.length; ++i) {
+    for (let i = 0; i < arguments.length; ++i) {
       var x = `toJSStr`(arguments[i]);
       `node`.appendChild(document.createTextNode(x));
     }
@@ -529,14 +529,14 @@ proc nimCopyAux(dest, src: JSRef, n: ptr TNimNode) {.compilerproc.} =
     """
   of nkList:
     asm """
-    for (var i = 0; i < `n`.sons.length; i++) {
+    for (let i = 0; i < `n`.sons.length; i++) {
       nimCopyAux(`dest`, `src`, `n`.sons[i]);
     }
     """
   of nkCase:
     asm """
       `dest`[`n`.offset] = nimCopy(`dest`[`n`.offset], `src`[`n`.offset], `n`.typ);
-      for (var i = 0; i < `n`.sons.length; ++i) {
+      for (let i = 0; i < `n`.sons.length; ++i) {
         nimCopyAux(`dest`, `src`, `n`.sons[i][1]);
       }
     """
@@ -554,9 +554,9 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
         `dest` = {};
       }
       else {
-        for (var key in `dest`) { delete `dest`[key]; }
+        for (let key in `dest`) { delete `dest`[key]; }
       }
-      for (var key in `src`) { `dest`[key] = `src`[key]; }
+      for (let key in `src`) { `dest`[key] = `src`[key]; }
       `result` = `dest`;
     """
   of tyTuple, tyObject:
@@ -570,7 +570,7 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
     # In order to prevent a type change (TypedArray -> Array) and to have better copying performance,
     # arrays constructors are considered separately
     asm """
-      if(ArrayBuffer.isView(`src`)) { 
+      if(ArrayBuffer.isView(`src`)) {
         if(`dest` === null || `dest` === undefined || `dest`.length != `src`.length) {
           `dest` = new `src`.constructor(`src`);
         } else {
@@ -586,7 +586,7 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
             `dest` = new Array(`src`.length);
           }
           `result` = `dest`;
-          for (var i = 0; i < `src`.length; ++i) {
+          for (let i = 0; i < `src`.length; ++i) {
             `result`[i] = nimCopy(`result`[i], `src`[i], `ti`.base);
           }
         }
@@ -602,7 +602,7 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
           `dest` = new Array(`src`.length);
         }
         `result` = `dest`;
-        for (var i = 0; i < `src`.length; ++i) {
+        for (let i = 0; i < `src`.length; ++i) {
           `result`[i] = nimCopy(`result`[i], `src`[i], `ti`.base);
         }
       }
@@ -640,7 +640,7 @@ proc genericReset(x: JSRef, ti: PNimType): JSRef {.compilerproc.} =
   of tyArrayConstr, tyArray:
     asm """
       `result` = new Array(`x`.length);
-      for (var i = 0; i < `x`.length; ++i) {
+      for (let i = 0; i < `x`.length; ++i) {
         `result`[i] = genericReset(`x`[i], `ti`.base);
       }
     """
@@ -652,7 +652,7 @@ proc arrayConstr(len: int, value: JSRef, typ: PNimType): JSRef {.
   # types are fake
   asm """
     var result = new Array(`len`);
-    for (var i = 0; i < `len`; ++i) result[i] = nimCopy(null, `value`, `typ`);
+    for (let i = 0; i < `len`; ++i) result[i] = nimCopy(null, `value`, `typ`);
     return result;
   """
 
