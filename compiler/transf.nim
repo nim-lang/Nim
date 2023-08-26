@@ -96,7 +96,8 @@ proc newTemp(c: PTransf, typ: PType, info: TLineInfo, isCursor = false): PNode =
   if owner.isIterator and not c.tooEarly:
     result = freshVarForClosureIter(c.graph, r, c.idgen, owner)
   else:
-    r.flags.incl sfCursor
+    if isCursor:
+      r.flags.incl sfCursor
     result = newSymNode(r)
 
 proc transform(c: PTransf, n: PNode): PNode
