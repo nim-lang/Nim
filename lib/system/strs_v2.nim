@@ -74,9 +74,9 @@ proc toNimStr(str: cstring, len: int): NimStringV2 {.compilerproc.} =
     result = NimStringV2(len: 0, p: nil)
   else:
     when compileOption("threads"):
-      var p = cast[ptr NimStrPayload](allocShared0(contentSize(len)))
+      var p = cast[ptr NimStrPayload](allocShared(contentSize(len)))
     else:
-      var p = cast[ptr NimStrPayload](alloc0(contentSize(len)))
+      var p = cast[ptr NimStrPayload](alloc(contentSize(len)))
     p.cap = len
     if len > 0:
       # we are about to append, so there is no need to copy the \0 terminator:
