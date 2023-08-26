@@ -22,7 +22,7 @@ import
   options, ast, astalgo, trees, msgs,
   idents, renderer, types, semfold, magicsys, cgmeth,
   lowerings, liftlocals,
-  modulegraphs, lineinfos
+  modulegraphs, lineinfos, aliasanalysis
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -656,6 +656,31 @@ proc findWrongOwners(c: PTransf, n: PNode) =
   else:
     for i in 0..<n.safeLen: findWrongOwners(c, n[i])
 
+proc recSym(n: PNode; owner: PSym): bool =
+  case n.kind
+  of {nkEmpty..nkNilLit} - {nkSym}: result = true
+  of nkSym:
+    if n.sym.owner != owner:
+      result = false
+    else:
+      result = true
+  of PathKinds0:
+    result = recSym(n[0], owner)
+  of PathKinds1:
+    result = recSym(n[1], owner)
+  of nkCallKinds:
+    result = true
+    for i in 1..<n.len:
+      if not recSym(n[i], owner):
+        result = false
+        break
+  else:
+    result = true
+    for c in n:
+      if not recSym(c, owner):
+        result = false
+        break
+
 proc isSimpleIteratorVar(c: PTransf; iter: PSym; call: PNode; owner: PSym): bool =
   proc rec(n: PNode; owner: PSym; dangerousYields: var int) =
     case n.kind
@@ -668,14 +693,6 @@ proc isSimpleIteratorVar(c: PTransf; iter: PSym; call: PNode; owner: PSym): bool
     else:
       for c in n: rec(c, owner, dangerousYields)
 
-  proc recSym(n: PNode; owner: PSym; sameOwner: var bool) =
-    case n.kind
-    of {nkEmpty..nkNilLit} - {nkSym}: discard
-    of nkSym:
-      if n.sym.owner != owner:
-        sameOwner = false
-    else:
-      for c in n: recSym(c, owner, sameOwner)
 
   var dangerousYields = 0
   rec(getBody(c.graph, iter), iter, dangerousYields)
@@ -683,7 +700,8 @@ proc isSimpleIteratorVar(c: PTransf; iter: PSym; call: PNode; owner: PSym): bool
   # the parameters should be owned by the owner
   # bug #22237
   for i in 1..<call.len:
-    recSym(call[i], owner, result)
+    if not recSym(call[i], owner):
+      result = false
 
 template destructor(t: PType): PSym = getAttachedOp(c.graph, t, attachedDestructor)
 
@@ -761,7 +779,8 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       elif t.destructor == nil and arg.typ.destructor != nil:
         t = arg.typ
       # generate a temporary and produce an assignment statement:
-      var temp = newTemp(c, t, formal.info, isCursor = true)
+      let isCursor = recSym(arg, getCurrOwner(c))
+      var temp = newTemp(c, t, formal.info, isCursor = isCursor)
       addVar(v, temp)
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
       idNodeTablePut(newC.mapping, formal, temp)
