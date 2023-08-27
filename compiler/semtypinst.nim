@@ -47,7 +47,8 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
       # XXX: This happens for prematurely cached
       # types such as Channel[empty]. Why?
       # See the notes for PActor in handleGenericInvocation
-      return
+      # if this is return the same type gets cached more than it needs to
+      continue
     if not sameFlags(inst, key):
       continue
 
@@ -386,6 +387,14 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
 
   result = newType(tyGenericInst, nextTypeId(cl.c.idgen), t[0].owner, sons = @[header[0]])
   result.flags = header.flags
+  # be careful not to propagate unnecessary flags here (don't use rawAddSon)
+  # ugh need another pass for deeply recursive generic types (e.g. PActor)
+  # we need to add the candidate here, before it's fully instantiated for
+  # recursive instantions:
+  if not cl.allowMetaTypes:
+    cacheTypeInst(cl.c, result)
+  else:
+    idTablePut(cl.localCache, t, result)
 
   let oldSkipTypedesc = cl.skipTypedesc
   cl.skipTypedesc = true
@@ -402,16 +411,6 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     header[i] = x
     propagateToOwner(header, x)
     cl.typeMap.put(body[i-1], x)
-
-  # be careful not to propagate unnecessary flags here (don't use rawAddSon)
-  # ugh need another pass for deeply recursive generic types (e.g. PActor)
-  # we need to add the candidate here, before it's fully instantiated for
-  # recursive instantions:
-  # caching earlier leads to bad lookup
-  if not cl.allowMetaTypes:
-    cacheTypeInst(cl.c, result)
-  else:
-    idTablePut(cl.localCache, t, result)
 
   for i in 1..<t.len:
     # if one of the params is not concrete, we cannot do anything
