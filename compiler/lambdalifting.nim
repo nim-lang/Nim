@@ -418,8 +418,8 @@ Consider:
 
 """
 
-proc isTypeOf(ident: PIdent; cache: IdentCache): bool =
-  ident == getIdent(cache, "typeof") or ident == getIdent(cache, "type")
+proc isTypeOf(n: PNode): bool =
+  n.kind == nkSym and n.sym.magic in {mTypeOf, mType}
 
 proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
   var cp = getEnvParam(fn)
@@ -526,11 +526,8 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   of nkIdentDefs:
     detectCapturedVars(n[^1], owner, c)
   else:
-    if n.isCallExpr:
-      if n[0].kind == nkSym and n[0].sym.name.isTypeOf(c.graph.cache):
-        c.inTypeOf = true
-      elif n[0].kind == nkIdent and n[0].ident.isTypeOf(c.graph.cache):
-        c.inTypeOf = true
+    if n.isCallExpr and n[0].isTypeOf:
+      c.inTypeOf = true
     for i in 0..<n.len:
       detectCapturedVars(n[i], owner, c)
     c.inTypeOf = false
@@ -813,11 +810,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
   of nkTypeOfExpr:
     result = n
   else:
-    if n.isCallExpr:
-      if n[0].kind == nkSym and n[0].sym.name.isTypeOf(d.graph.cache):
-        return
-      elif n[0].kind == nkIdent and n[0].ident.isTypeOf(d.graph.cache):
-        return
+    if n.isCallExpr and n[0].isTypeOf:
+      return
     if owner.isIterator:
       if nfLL in n.flags:
         # special case 'when nimVm' due to bug #3636:
