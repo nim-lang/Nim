@@ -1,8 +1,8 @@
-type List[O] = ref object
-  next: List[O]
+type List[O] = object
+  next: ptr List[O]
 
-proc initList[O](l: List[O]) =
-  l.next = l
+proc initList[O](l: ptr List[O]) =
+  l[].next = l
 
 type
   PolytopeVertex[R] = object
@@ -16,5 +16,5 @@ type
     edges: List[PolytopeEdge[R]]
 
 var pt: Polytope[float]
-initList(pt.vertices)
-initList(pt.edges)
+initList(addr pt.vertices)
+initList(addr pt.edges)
