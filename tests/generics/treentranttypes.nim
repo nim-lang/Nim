@@ -101,3 +101,14 @@ echo @(b.arr[0].arr), @(b.arr[1].arr)
 let y = b
 echo @(y.arr[0].arr), @(y.arr[1].arr)
 
+import macros
+
+block: # issue #5121
+  type
+    A = object
+    AConst[X] = A
+
+  macro dumpType(t: typedesc): untyped =
+    result = newTree(nnkTupleConstr, newLit $t.getType[1].typeKind, newLit t.getType[1].treeRepr)
+
+  doAssert dumpType(A) == ("ntyObject", "Sym \"A\"")
