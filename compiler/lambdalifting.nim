@@ -312,6 +312,7 @@ type
     processed, capturedVars: IntSet
     ownerToType: Table[int, PType]
     somethingToDo: bool
+    inTypeOf: bool
     graph: ModuleGraph
     idgen: IdGenerator
 
@@ -415,6 +416,9 @@ Consider:
 
 """
 
+proc isTypeOf(n: PNode): bool =
+  n.kind == nkSym and n.sym.magic in {mTypeOf, mType}
+
 proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
   var cp = getEnvParam(fn)
   let owner = if fn.kind == skIterator: fn else: fn.skipGenericOwner
@@ -453,7 +457,8 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
         c.somethingToDo = true
         addClosureParam(c, owner, n.info)
         if interestingIterVar(s):
-          if not c.capturedVars.containsOrIncl(s.id):
+          if not c.capturedVars.contains(s.id):
+            if not c.inTypeOf: c.capturedVars.incl(s.id)
             let obj = getHiddenParam(c.graph, owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
             #let obj = c.getEnvTypeForOwner(s.owner).skipTypes({tyOwned, tyRef, tyPtr})
 
@@ -479,10 +484,12 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       addClosureParam(c, owner, n.info)
       #echo "capturing ", n.info
       # variable 's' is actually captured:
-      if interestingVar(s) and not c.capturedVars.containsOrIncl(s.id):
-        let obj = c.getEnvTypeForOwner(ow, n.info).skipTypes({tyOwned, tyRef, tyPtr})
-        #getHiddenParam(owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
-        discard addField(obj, s, c.graph.cache, c.idgen)
+      if interestingVar(s):
+        if not c.capturedVars.contains(s.id):
+          if not c.inTypeOf: c.capturedVars.incl(s.id)
+          let obj = c.getEnvTypeForOwner(ow, n.info).skipTypes({tyOwned, tyRef, tyPtr})
+          #getHiddenParam(owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
+          discard addField(obj, s, c.graph.cache, c.idgen)
       # create required upFields:
       var w = owner.skipGenericOwner
       if isInnerProc(w) or owner.isIterator:
@@ -514,9 +521,14 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       detectCapturedVars(n[namePos], owner, c)
   of nkReturnStmt:
     detectCapturedVars(n[0], owner, c)
+  of nkIdentDefs:
+    detectCapturedVars(n[^1], owner, c)
   else:
+    if n.isCallExpr and n[0].isTypeOf:
+      c.inTypeOf = true
     for i in 0..<n.len:
       detectCapturedVars(n[i], owner, c)
+    c.inTypeOf = false
 
 type
   LiftingPass = object
@@ -796,6 +808,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
   of nkTypeOfExpr:
     result = n
   else:
+    if n.isCallExpr and n[0].isTypeOf:
+      return
     if owner.isIterator:
       if nfLL in n.flags:
         # special case 'when nimVm' due to bug #3636:
