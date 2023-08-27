@@ -364,12 +364,12 @@ block: # issue #2465
   doAssert not compiles(declX("a string"))
 
   template t2() =
-    template foo() {.gensym.} =
+    template fooGensym() {.gensym.} =
       echo 42
 
   t2()
-  doAssert not declared(foo)
-  doAssert not compiles(foo())
+  doAssert not declared(fooGensym)
+  doAssert not compiles(fooGensym())
 
 
 block identifier_construction_with_overridden_symbol:
