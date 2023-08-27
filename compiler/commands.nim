@@ -891,15 +891,19 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "nodejs")
   of "maxloopiterationsvm":
     expectArg(conf, switch, arg, pass, info)
-    conf.maxLoopIterationsVM = parseInt(arg)
+    var value: int = 10_000_000
+    discard parseSaturatedNatural(arg, value)
+    if not value > 0: localError(conf, info, "maxLoopIterationsVM must be a positive integer greater than zero")
+    conf.maxLoopIterationsVM = value
   of "errormax":
     expectArg(conf, switch, arg, pass, info)
     # Note: `nim check` (etc) can overwrite this.
     # `0` is meaningless, give it a useful meaning as in clang's -ferror-limit
     # If user doesn't set this flag and the code doesn't either, it'd
     # have the same effect as errorMax = 1
-    let ret = parseInt(arg)
-    conf.errorMax = if ret == 0: high(int) else: ret
+    var value: int = 0
+    discard parseSaturatedNatural(arg, value)
+    conf.errorMax = if value == 0: high(int) else: value
   of "verbosity":
     expectArg(conf, switch, arg, pass, info)
     let verbosity = parseInt(arg)
@@ -913,7 +917,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.mainPackageNotes = conf.notes
   of "parallelbuild":
     expectArg(conf, switch, arg, pass, info)
-    conf.numberOfProcessors = parseInt(arg)
+    var value: int = 0
+    discard parseSaturatedNatural(arg, value)
+    conf.numberOfProcessors = value
   of "version", "v":
     expectNoArg(conf, switch, arg, pass, info)
     writeVersionInfo(conf, pass)
