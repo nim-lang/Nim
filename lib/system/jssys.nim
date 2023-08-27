@@ -291,14 +291,14 @@ proc SetCard(a: int): int {.compilerproc, asmNoStackFrame.} =
 
 proc SetEq(a, b: int): bool {.compilerproc, asmNoStackFrame.} =
   asm """
-    for (let i in `a`) { if (!`b`[i]) return false; }
-    for (let i in `b`) { if (!`a`[i]) return false; }
+    for (let elem in `a`) { if (!`b`[elem]) return false; }
+    for (let elem in `b`) { if (!`a`[elem]) return false; }
     return true;
   """
 
 proc SetLe(a, b: int): bool {.compilerproc, asmNoStackFrame.} =
   asm """
-    for (let i in `a`) { if (!`b`[i]) return false; }
+    for (let elem in `a`) { if (!`b`[elem]) return false; }
     return true;
   """
 
@@ -308,8 +308,8 @@ proc SetLt(a, b: int): bool {.compilerproc.} =
 proc SetMul(a, b: int): int {.compilerproc, asmNoStackFrame.} =
   asm """
     var result = {};
-    for (let i in `a`) {
-      if (`b`[i]) { result[i] = true; }
+    for (let elem in `a`) {
+      if (`b`[elem]) { result[elem] = true; }
     }
     return result;
   """
@@ -317,16 +317,16 @@ proc SetMul(a, b: int): int {.compilerproc, asmNoStackFrame.} =
 proc SetPlus(a, b: int): int {.compilerproc, asmNoStackFrame.} =
   asm """
     var result = {};
-    for (let i in `a`) { result[i] = true; }
-    for (let i in `b`) { result[i] = true; }
+    for (let elem in `a`) { result[elem] = true; }
+    for (let elem in `b`) { result[elem] = true; }
     return result;
   """
 
 proc SetMinus(a, b: int): int {.compilerproc, asmNoStackFrame.} =
   asm """
     var result = {};
-    for (let i in `a`) {
-      if (!`b`[i]) { result[i] = true; }
+    for (let elem in `a`) {
+      if (!`b`[elem]) { result[elem] = true; }
     }
     return result;
   """
