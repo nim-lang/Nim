@@ -16,5 +16,10 @@ type
     edges: List[PolytopeEdge[R]]
 
 var pt: Polytope[float]
+
+static:
+  doAssert pt.vertices.next is (ptr List[PolytopeVertex[float]])
+  doAssert pt.edges.next is (ptr List[PolytopeEdge[float]])
+
 initList(addr pt.vertices)
 initList(addr pt.edges)
