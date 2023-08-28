@@ -66,9 +66,14 @@ proc rawNewString(space: int): NimString {.compilerproc.} =
     result.elemSize = 1
 
 proc mnewString(len: int): NimString {.compilerproc.} =
+  # newstring
   result = rawNewStringNoInit(len)
   result.len = len
   result.data[len] = '\0'
+
+proc mnewStringWithDefault(len: int): NimString {.compilerproc.} =
+  result = rawNewString(len)
+  result.len = len
 
 proc copyStrLast(s: NimString, start, last: int): NimString {.compilerproc.} =
   # This is not used by most recent versions of the compiler anymore, but
@@ -228,7 +233,7 @@ proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
 proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
   let n = max(newLen, 0)
   if s == nil:
-    result = mnewString(newLen)
+    result = mnewStringWithDefault(newLen)
   elif n <= s.space:
     result = s
   else:
