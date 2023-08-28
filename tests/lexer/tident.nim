@@ -22,7 +22,8 @@ type
     s*: string
 
 proc myNewString(L: int): string {.inline.} =
-  result = newString(L)
+  result = newString(0)
+  setLen(result, L)
   if result.len == L: echo("Length correct")
   else: echo("bug")
   for i in 0..L-1:
