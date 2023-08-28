@@ -1630,7 +1630,7 @@ when not defined(js):
       var s = cast[PGenericSeq](result)
       s.len = len
 
-  func newStringUninitialized*(len: Natural): string =
+  proc newStringUninitialized*(len: Natural): string =
     ## Returns a new string of length `len` but with uninitialized
     ## content. One needs to fill the string character after character
     ## with the index operator `s[i]`.
