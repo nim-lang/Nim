@@ -108,10 +108,11 @@ proc rawNewString(space: int): NimStringV2 {.compilerproc.} =
     result = NimStringV2(len: 0, p: nil)
   else:
     when compileOption("threads"):
-      var p = cast[ptr NimStrPayload](allocShared0(contentSize(space)))
+      var p = cast[ptr NimStrPayload](allocShared(contentSize(space)))
     else:
-      var p = cast[ptr NimStrPayload](alloc0(contentSize(space)))
+      var p = cast[ptr NimStrPayload](alloc(contentSize(space)))
     p.cap = space
+    p.data[0] = '\0'
     result = NimStringV2(len: 0, p: p)
 
 proc mnewString(len: int): NimStringV2 {.compilerproc.} =
