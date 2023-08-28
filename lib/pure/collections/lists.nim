@@ -165,28 +165,6 @@ proc newSinglyLinkedNode*[T](value: T): SinglyLinkedNode[T] =
   new(result)
   result.value = value
 
-func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
-  ## Creates a new `SinglyLinkedList` from the members of `elems`.
-  runnableExamples:
-    from std/sequtils import toSeq
-    let a = [1, 2, 3, 4, 5].toSinglyLinkedList
-    assert a.toSeq == [1, 2, 3, 4, 5]
-
-  result = initSinglyLinkedList[T]()
-  for elem in elems.items:
-    result.add(elem)
-
-func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
-  ## Creates a new `DoublyLinkedList` from the members of `elems`.
-  runnableExamples:
-    from std/sequtils import toSeq
-    let a = [1, 2, 3, 4, 5].toDoublyLinkedList
-    assert a.toSeq == [1, 2, 3, 4, 5]
-
-  result = initDoublyLinkedList[T]()
-  for elem in elems.items:
-    result.add(elem)
-
 template itemsListImpl() {.dirty.} =
   var it {.cursor.} = L.head
   while it != nil:
@@ -993,3 +971,25 @@ proc appendMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
   ## * `addMoved proc <#addMoved,SinglyLinkedList[T],SinglyLinkedList[T]>`_
   ## * `addMoved proc <#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
   a.addMoved(b)
+
+func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
+  ## Creates a new `SinglyLinkedList` from the members of `elems`.
+  runnableExamples:
+    from std/sequtils import toSeq
+    let a = [1, 2, 3, 4, 5].toSinglyLinkedList
+    assert a.toSeq == [1, 2, 3, 4, 5]
+
+  result = initSinglyLinkedList[T]()
+  for elem in elems.items:
+    result.add(elem)
+
+func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
+  ## Creates a new `DoublyLinkedList` from the members of `elems`.
+  runnableExamples:
+    from std/sequtils import toSeq
+    let a = [1, 2, 3, 4, 5].toDoublyLinkedList
+    assert a.toSeq == [1, 2, 3, 4, 5]
+
+  result = initDoublyLinkedList[T]()
+  for elem in elems.items:
+    result.add(elem)
