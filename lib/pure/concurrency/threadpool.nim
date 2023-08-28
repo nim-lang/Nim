@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+{.deprecated: "use the nimble package `malebolgia` instead".}
+
 ## Implements Nim's `parallel & spawn statements <manual_experimental.html#parallel-amp-spawn>`_.
 ##
 ## Unstable API.
