@@ -1,3 +1,5 @@
+import std/compilesettings
+
 doAssert "@[23, 45]" == $(@[23, 45])
 doAssert "[32, 45]" == $([32, 45])
 doAssert """@["", "foo", "bar"]""" == $(@["", "foo", "bar"])
@@ -90,7 +92,7 @@ proc stringCompare() =
   doAssert "" == ""
 
   g.setLen(10)
-  doAssert g == "\0\0\0\0\0\0\0\0\0\0"
+  doAssert g == "\0\0\0\0\0\0\0\0\0\0", g.repr & ": " & $querySetting(mm)
   doAssert "" != "\0\0\0\0\0\0\0\0\0\0"
 
   var nilstring: string
