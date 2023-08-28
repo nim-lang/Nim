@@ -24,7 +24,7 @@ when defined(handleOOM):
     result = c_calloc(newSize.csize_t, sizeof(cchar).csize_t)
     if result == nil:
       raiseOutOfMem()
-    if result != nil:
+    else:
       if p != nil and newsize != 0 and newsize >= 0:
         for i in 0..(newsize - 1):
           if i <= oldSize:
