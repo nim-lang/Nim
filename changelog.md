@@ -11,6 +11,8 @@
 
 [//]: # "Additions:"
 
+- Adds `newStringUninitialized` to system, which creates a new string of length `len` like `newString` but with uninitialized content.
+
 [//]: # "Deprecations:"
 
 
