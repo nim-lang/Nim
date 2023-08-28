@@ -115,7 +115,7 @@ proc appendChar(dest: var NimStringV2; c: char) {.compilerproc, inline.} =
   inc dest.len
   dest.p.data[dest.len] = '\0'
 
-template rawNewString(space: int): NimStringV2 {.compilerproc.} =
+proc rawNewString(space: int): NimStringV2 {.compilerproc.} =
   # this is also 'system.newStringOfCap'.
   if space <= 0:
     result = NimStringV2(len: 0, p: nil)
