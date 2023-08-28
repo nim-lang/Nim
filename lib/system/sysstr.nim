@@ -68,6 +68,7 @@ proc rawNewString(space: int): NimString {.compilerproc.} =
 proc mnewString(len: int): NimString {.compilerproc.} =
   result = rawNewStringNoInit(len)
   result.len = len
+  result.data[len] = '\0'
 
 proc copyStrLast(s: NimString, start, last: int): NimString {.compilerproc.} =
   # This is not used by most recent versions of the compiler anymore, but
