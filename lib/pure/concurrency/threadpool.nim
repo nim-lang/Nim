@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-{.deprecated: "use the nimble package `malebolgia`, `taskpools` or `weave` instead".}
+{.deprecated: "use the nimble packages `malebolgia`, `taskpools` or `weave` instead".}
 
 ## Implements Nim's `parallel & spawn statements <manual_experimental.html#parallel-amp-spawn>`_.
 ##
