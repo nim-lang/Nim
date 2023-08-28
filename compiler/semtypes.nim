@@ -1578,6 +1578,13 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         localError(c.config, n.info, errCannotInstantiateX % s.name.s)
         result = newOrPrevType(tyError, prev, c)
       else:
+        if n notin c.skipTypes:          
+          if n[0].sym.ast[2].kind == nkObjectTy:
+            for p in n[0].sym.ast[2][^1]:
+              if p.kind == nkIdentDefs and  p[1].typ != nil and p[1].typ.kind == tyGenericInvocation and
+               p[1][0].kind == nkSym and p[1][0].typ.kind == tyForward:                
+                c.skipTypes.add n
+                return
         result = instGenericContainer(c, n.info, result,
                                       allowMetaTypes = false)
 
