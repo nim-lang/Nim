@@ -79,6 +79,8 @@ proc prepareAdd(s: var NimStringV2; addLen: int) {.compilerRtl.} =
       let newCap = max(newLen, resize(oldCap))
       s.p = reallocPayload(s.p, newCap)
       s.p.cap = newCap
+      if newLen < newCap:
+        zeroMem(cast[pointer](addr s.p.data[newLen+1]), newCap - newLen)
 
 proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl, inl.} =
   #if (s.p == nil) or (s.len+1 > s.p.cap and not strlitFlag):
@@ -105,10 +107,9 @@ proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, in
   else: result = cast[cstring](unsafeAddr s.p.data)
 
 proc appendString(dest: var NimStringV2; src: NimStringV2) {.compilerproc, inline.} =
-  if src.len > 0:
-    # also copy the \0 terminator:
-    copyMem(unsafeAddr dest.p.data[dest.len], unsafeAddr src.p.data[0], src.len+1)
-    inc dest.len, src.len
+  # also copy the \0 terminator:
+  copyMem(unsafeAddr dest.p.data[dest.len], unsafeAddr src.p.data[0], src.len+1)
+  inc dest.len, src.len
 
 proc appendChar(dest: var NimStringV2; c: char) {.compilerproc, inline.} =
   dest.p.data[dest.len] = c
