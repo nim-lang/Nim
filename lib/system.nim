@@ -1625,6 +1625,7 @@ when not defined(js):
       x[0] = 10
 
       # be cautious to use it with types with managed memory or destructors
+      # and `{.nodestroy.}` can be handy in these cases
       proc initStringSeq(x: Natural): seq[string] {.nodestroy.} =
         result = newSeqUninit[string](x)
         for i in 0..<x: result[i] = "abc"
