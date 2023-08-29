@@ -74,7 +74,7 @@ proc aliases*(obj, field: PNode): AliasKind =
   # x[i] -> x[i]: maybe; Further analysis could make this return true when i is a runtime-constant
   # x[i] -> x[j]: maybe; also returns maybe if only one of i or j is a compiletime-constant
   template collectImportantNodes(result, n) =
-    var result: seq[PNode]
+    var result: seq[PNode] = @[]
     var n = n
     while true:
       case n.kind

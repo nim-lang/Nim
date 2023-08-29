@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## This module contains the ``TMsgKind`` enum as well as the
-## ``TLineInfo`` object.
+## This module contains the `TMsgKind` enum as well as the
+## `TLineInfo` object.
 
 import ropes, tables, pathutils, hashes
 
@@ -44,6 +44,7 @@ type
     errRstSandboxedDirective,
     errProveInit, # deadcode
     errGenerated,
+    errFailedMove,
     errUser,
     # warnings
     warnCannotOpenFile = "CannotOpenFile", warnOctalEscape = "OctalEscape",
@@ -128,6 +129,7 @@ const
     errRstSandboxedDirective: "disabled directive: '$1'",
     errProveInit: "Cannot prove that '$1' is initialized.",  # deadcode
     errGenerated: "$1",
+    errFailedMove: "$1",
     errUser: "$1",
     warnCannotOpenFile: "cannot open '$1'",
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
@@ -246,6 +248,7 @@ type
   TNoteKinds* = set[TNoteKind]
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
+  result = default(array[0..3, TNoteKinds])
   result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept}
   result[2] = result[3] - {hintStackTrace, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
   result[1] = result[2] - {warnProveField, warnProveIndex,
@@ -308,7 +311,7 @@ proc `==`*(a, b: FileIndex): bool {.borrow.}
 proc hash*(i: TLineInfo): Hash =
   hash (i.line.int, i.col.int, i.fileIndex.int)
 
-proc raiseRecoverableError*(msg: string) {.noinline.} =
+proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
   raise newException(ERecoverableError, msg)
 
 const
@@ -339,9 +342,8 @@ type
 
 
 proc initMsgConfig*(): MsgConfig =
-  result.msgContext = @[]
-  result.lastError = unknownLineInfo
-  result.filenameToIndexTbl = initTable[string, FileIndex]()
-  result.fileInfos = @[]
-  result.errorOutputs = {eStdOut, eStdErr}
+  result = MsgConfig(msgContext: @[], lastError: unknownLineInfo,
+                     filenameToIndexTbl: initTable[string, FileIndex](),
+                     fileInfos: @[], errorOutputs: {eStdOut, eStdErr}
+  )
   result.filenameToIndexTbl["???"] = FileIndex(-1)

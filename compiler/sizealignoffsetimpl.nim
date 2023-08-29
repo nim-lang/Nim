@@ -503,6 +503,7 @@ template foldOffsetOf*(conf: ConfigRef; n: PNode; fallback: PNode): PNode =
     elif node[1].kind == nkCheckedFieldExpr:
       dotExpr = node[1][0]
     else:
+      dotExpr = nil
       localError(config, node.info, "can't compute offsetof on this ast")
 
   assert dotExpr != nil

@@ -92,7 +92,9 @@ proc expectIntLit(c: PContext, n: PNode): int =
   let x = c.semConstExpr(c, n)
   case x.kind
   of nkIntLit..nkInt64Lit: result = int(x.intVal)
-  else: localError(c.config, n.info, errIntLiteralExpected)
+  else:
+    result = 0
+    localError(c.config, n.info, errIntLiteralExpected)
 
 proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   result = newNodeIT(nkTupleConstr, n.info, n.typ)
@@ -287,6 +289,7 @@ proc opBindSym(c: PContext, scope: PScope, n: PNode, isMixin: int, info: PNode):
     # we need to mark all symbols:
     result = symChoice(c, id, s, TSymChoiceRule(isMixin))
   else:
+    result = nil
     errorUndeclaredIdentifier(c, info.info, if n.kind == nkIdent: n.ident.s
       else: n.strVal)
   c.currentScope = tmpScope
@@ -656,15 +659,16 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if not checkIsolate(n[1]):
       localError(c.config, n.info, "expression cannot be isolated: " & $n[1])
     result = n
-  of mPred:
-    if n[1].typ.skipTypes(abstractInst).kind in {tyUInt..tyUInt64}:
-      n[0].sym.magic = mSubU
-    result = n
   of mPrivateAccess:
     result = semPrivateAccess(c, n)
   of mArrToSeq:
     result = n
     if result.typ != nil and expectedType != nil and result.typ.kind == tySequence and expectedType.kind == tySequence and result.typ[0].kind == tyEmpty:
       result.typ = expectedType # type inference for empty sequence # bug #21377
+  of mEnsureMove:
+    result = n
+    if n[1].kind in {nkStmtListExpr, nkBlockExpr,
+              nkIfExpr, nkCaseStmt, nkTryStmt}:
+      localError(c.config, n.info, "Nested expressions cannot be moved: '" & $n[1] & "'")
   else:
     result = n

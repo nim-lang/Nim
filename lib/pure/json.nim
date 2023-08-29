@@ -41,13 +41,14 @@
 ## For a `JsonNode` who's kind is `JObject`, you can access its fields using
 ## the `[]` operator. The following example shows how to do this:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/json
 ##
 ##   let jsonNode = parseJson("""{"key": 3.14}""")
 ##
 ##   doAssert jsonNode.kind == JObject
 ##   doAssert jsonNode["key"].kind == JFloat
+##   ```
 ##
 ## Reading values
 ## --------------
@@ -62,12 +63,13 @@
 ##
 ## To retrieve the value of `"key"` you can do the following:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/json
 ##
 ##   let jsonNode = parseJson("""{"key": 3.14}""")
 ##
 ##   doAssert jsonNode["key"].getFloat() == 3.14
+##   ```
 ##
 ## **Important:** The `[]` operator will raise an exception when the
 ## specified field does not exist.
@@ -79,7 +81,7 @@
 ## when the field is not found. The `get`-family of procedures will return a
 ## type's default value when called on `nil`.
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/json
 ##
 ##   let jsonNode = parseJson("{}")
@@ -88,6 +90,7 @@
 ##   doAssert jsonNode{"nope"}.getFloat() == 0
 ##   doAssert jsonNode{"nope"}.getStr() == ""
 ##   doAssert jsonNode{"nope"}.getBool() == false
+##   ```
 ##
 ## Using default values
 ## --------------------
@@ -95,7 +98,7 @@
 ## The `get`-family helpers also accept an additional parameter which allow
 ## you to fallback to a default value should the key's values be `null`:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/json
 ##
 ##   let jsonNode = parseJson("""{"key": 3.14, "key2": null}""")
@@ -103,6 +106,7 @@
 ##   doAssert jsonNode["key"].getFloat(6.28) == 3.14
 ##   doAssert jsonNode["key2"].getFloat(3.14) == 3.14
 ##   doAssert jsonNode{"nope"}.getFloat(3.14) == 3.14 # note the {}
+##   ```
 ##
 ## Unmarshalling
 ## -------------
@@ -113,7 +117,7 @@
 ## Note: Use `Option <options.html#Option>`_ for keys sometimes missing in json
 ## responses, and backticks around keys with a reserved keyword as name.
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/json
 ##   import std/options
 ##
@@ -127,6 +131,7 @@
 ##   let user = to(userJson, User)
 ##   if user.`type`.isSome():
 ##     assert user.`type`.get() != "robot"
+##   ```
 ##
 ## Creating JSON
 ## =============
@@ -134,7 +139,7 @@
 ## This module can also be used to comfortably create JSON using the `%*`
 ## operator:
 ##
-## .. code-block:: nim
+##   ```nim
 ##   import std/json
 ##
 ##   var hisName = "John"
@@ -148,6 +153,7 @@
 ##   var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
 ##   j2["details"] = %* {"age":35, "pi":3.1415}
 ##   echo j2
+##   ```
 ##
 ## See also: std/jsonutils for hookable json serialization/deserialization
 ## of arbitrary types.

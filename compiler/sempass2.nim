@@ -356,12 +356,16 @@ proc useVar(a: PEffects, n: PNode) =
 type
   TIntersection = seq[tuple[id, count: int]] # a simple count table
 
-proc addToIntersection(inter: var TIntersection, s: int) =
+proc addToIntersection(inter: var TIntersection, s: int, initOnly: bool) =
   for j in 0..<inter.len:
     if s == inter[j].id:
-      inc inter[j].count
+      if not initOnly:
+        inc inter[j].count
       return
-  inter.add((id: s, count: 1))
+  if initOnly:
+    inter.add((id: s, count: 0))
+  else:
+    inter.add((id: s, count: 1))
 
 proc throws(tracked, n, orig: PNode) =
   if n.typ == nil or n.typ.kind != tyError:
@@ -465,7 +469,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
   track(tracked, n[0])
   dec tracked.inTryStmt
   for i in oldState..<tracked.init.len:
-    addToIntersection(inter, tracked.init[i])
+    addToIntersection(inter, tracked.init[i], false)
 
   var branches = 1
   var hasFinally = false
@@ -500,7 +504,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
           tracked.init.add b[j][2].sym.id
       track(tracked, b[^1])
       for i in oldState..<tracked.init.len:
-        addToIntersection(inter, tracked.init[i])
+        addToIntersection(inter, tracked.init[i], false)
     else:
       setLen(tracked.init, oldState)
       track(tracked, b[^1])
@@ -529,6 +533,8 @@ proc isIndirectCall(tracked: PEffects; n: PNode): bool =
       result = tracked.owner != n.sym.owner or tracked.owner == nil
   elif n.sym.kind notin routineKinds:
     result = true
+  else:
+    result = false
 
 proc isForwardedProc(n: PNode): bool =
   result = n.kind == nkSym and sfForward in n.sym.flags
@@ -696,9 +702,11 @@ proc trackCase(tracked: PEffects, n: PNode) =
       addCaseBranchFacts(tracked.guards, n, i)
     for i in 0..<branch.len:
       track(tracked, branch[i])
-    if not breaksBlock(branch.lastSon): inc toCover
+    let hasBreaksBlock = breaksBlock(branch.lastSon)
+    if not hasBreaksBlock:
+      inc toCover
     for i in oldState..<tracked.init.len:
-      addToIntersection(inter, tracked.init[i])
+      addToIntersection(inter, tracked.init[i], hasBreaksBlock)
 
   setLen(tracked.init, oldState)
   if not stringCase or lastSon(n).kind == nkElse:
@@ -718,9 +726,11 @@ proc trackIf(tracked: PEffects, n: PNode) =
   var inter: TIntersection = @[]
   var toCover = 0
   track(tracked, n[0][1])
-  if not breaksBlock(n[0][1]): inc toCover
+  let hasBreaksBlock = breaksBlock(n[0][1])
+  if not hasBreaksBlock:
+    inc toCover
   for i in oldState..<tracked.init.len:
-    addToIntersection(inter, tracked.init[i])
+    addToIntersection(inter, tracked.init[i], hasBreaksBlock)
 
   for i in 1..<n.len:
     let branch = n[i]
@@ -732,9 +742,12 @@ proc trackIf(tracked: PEffects, n: PNode) =
     setLen(tracked.init, oldState)
     for i in 0..<branch.len:
       track(tracked, branch[i])
-    if not breaksBlock(branch.lastSon): inc toCover
+    let hasBreaksBlock = breaksBlock(branch.lastSon)
+    if not hasBreaksBlock:
+      inc toCover
     for i in oldState..<tracked.init.len:
-      addToIntersection(inter, tracked.init[i])
+      addToIntersection(inter, tracked.init[i], hasBreaksBlock)
+
   setLen(tracked.init, oldState)
   if lastSon(n).len == 1:
     for id, count in items(inter):
@@ -844,7 +857,9 @@ proc trackCall(tracked: PEffects; n: PNode) =
   if n.typ != nil:
     if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
       createTypeBoundOps(tracked, n.typ, n.info)
-  if getConstExpr(tracked.ownerModule, n, tracked.c.idgen, tracked.graph) == nil:
+
+  let notConstExpr = getConstExpr(tracked.ownerModule, n, tracked.c.idgen, tracked.graph) == nil
+  if notConstExpr:
     if a.kind == nkCast and a[1].typ.kind == tyProc:
       a = a[1]
     # XXX: in rare situations, templates and macros will reach here after
@@ -903,9 +918,6 @@ proc trackCall(tracked: PEffects; n: PNode) =
         optStaticBoundsCheck in tracked.currOptions:
       checkBounds(tracked, n[1], n[2])
 
-    if a.kind != nkSym or a.sym.magic notin {mRunnableExamples, mNBindSym, mExpandToAst, mQuoteAst}:
-      for i in 0..<n.safeLen:
-        track(tracked, n[i])
 
   if a.kind == nkSym and a.sym.name.s.len > 0 and a.sym.name.s[0] == '=' and
         tracked.owner.kind != skMacro:
@@ -940,6 +952,13 @@ proc trackCall(tracked: PEffects; n: PNode) =
               "cannot pass $1 to `var T` parameter within a strict func" % renderTree(n[i]))
           tracked.hasSideEffect = true
       else: discard
+
+  if notConstExpr and (a.kind != nkSym or
+      a.sym.magic notin {mRunnableExamples, mNBindSym, mExpandToAst, mQuoteAst}
+  ):
+    # tracked after out analysis
+    for i in 0..<n.safeLen:
+      track(tracked, n[i])
 
 type
   PragmaBlockContext = object
@@ -1319,7 +1338,8 @@ proc track(tracked: PEffects, n: PNode) =
 
 proc subtypeRelation(g: ModuleGraph; spec, real: PNode): bool =
   if spec.typ.kind == tyOr:
-    for t in spec.typ.sons:
+    result = false
+    for t in spec.typ:
       if safeInheritanceDiff(g.excType(real), t) <= 0:
         return true
   else:
@@ -1425,27 +1445,21 @@ proc rawInitEffects(g: ModuleGraph; effects: PNode) =
   effects[ensuresEffects] = g.emptyNode
   effects[pragmasEffects] = g.emptyNode
 
-proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects; c: PContext) =
+proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; c: PContext): TEffects =
   rawInitEffects(g, effects)
 
-  t.exc = effects[exceptionEffects]
-  t.tags = effects[tagEffects]
-  t.forbids = effects[forbiddenEffects]
-  t.owner = s
-  t.ownerModule = s.getModule
-  t.init = @[]
-  t.guards.s = @[]
-  t.guards.g = g
+  result = TEffects(exc: effects[exceptionEffects], tags: effects[tagEffects],
+            forbids: effects[forbiddenEffects], owner: s, ownerModule: s.getModule,
+            init: @[], locked: @[], graph: g, config: g.config, c: c,
+            currentBlock: 1
+  )
+  result.guards.s = @[]
+  result.guards.g = g
   when defined(drnim):
-    t.currOptions = g.config.options + s.options - {optStaticBoundsCheck}
+    result.currOptions = g.config.options + s.options - {optStaticBoundsCheck}
   else:
-    t.currOptions = g.config.options + s.options
-  t.guards.beSmart = optStaticBoundsCheck in t.currOptions
-  t.locked = @[]
-  t.graph = g
-  t.config = g.config
-  t.c = c
-  t.currentBlock = 1
+    result.currOptions = g.config.options + s.options
+  result.guards.beSmart = optStaticBoundsCheck in result.currOptions
 
 proc hasRealBody(s: PSym): bool =
   ## also handles importc procs with runnableExamples, which requires `=`,
@@ -1466,8 +1480,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
 
   var inferredEffects = newNodeI(nkEffectList, s.info)
 
-  var t: TEffects
-  initEffects(g, inferredEffects, s, t, c)
+  var t: TEffects = initEffects(g, inferredEffects, s, c)
   rawInitEffects g, effects
 
   if not isEmptyType(s.typ[0]) and
@@ -1578,8 +1591,7 @@ proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
     return
   let g = c.graph
   var effects = newNodeI(nkEffectList, n.info)
-  var t: TEffects
-  initEffects(g, effects, module, t, c)
+  var t: TEffects = initEffects(g, effects, module, c)
   t.isTopLevel = isTopLevel
   track(t, n)
   when defined(drnim):

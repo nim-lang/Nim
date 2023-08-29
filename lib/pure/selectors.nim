@@ -205,12 +205,11 @@ when defined(nimdoc):
     ## to `value`. This `value` can be modified in the scope of
     ## the `withData` call.
     ##
-    ## .. code-block:: nim
-    ##
+    ##   ```nim
     ##   s.withData(fd, value) do:
     ##     # block is executed only if `fd` registered in selector `s`
     ##     value.uid = 1000
-    ##
+    ##   ```
 
   template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
                         body1, body2: untyped) =
@@ -218,15 +217,14 @@ when defined(nimdoc):
     ## to `value`. This `value` can be modified in the scope of
     ## the `withData` call.
     ##
-    ## .. code-block:: nim
-    ##
+    ##   ```nim
     ##   s.withData(fd, value) do:
     ##     # block is executed only if `fd` registered in selector `s`.
     ##     value.uid = 1000
     ##   do:
     ##     # block is executed if `fd` not registered in selector `s`.
     ##     raise
-    ##
+    ##   ```
 
   proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
     ## Determines whether selector contains a file descriptor.
@@ -344,7 +342,18 @@ else:
           res = int(fdLim.rlim_cur) - 1
         res
 
-  when defined(linux) and not defined(emscripten):
+  when defined(nimIoselector):
+    when nimIoselector == "epoll":
+      include ioselects/ioselectors_epoll
+    elif nimIoselector == "kqueue":
+      include ioselects/ioselectors_kqueue
+    elif nimIoselector == "poll":
+      include ioselects/ioselectors_poll
+    elif nimIoselector == "select":
+      include ioselects/ioselectors_select
+    else:
+      {.fatal: "Unknown nimIoselector specified by define.".}
+  elif defined(linux) and not defined(emscripten):
     include ioselects/ioselectors_epoll
   elif bsdPlatform:
     include ioselects/ioselectors_kqueue

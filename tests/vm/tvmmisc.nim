@@ -82,6 +82,8 @@ block:
 
     doAssert fileExists("MISSINGFILE") == false
     doAssert dirExists("MISSINGDIR") == false
+    doAssert fileExists(currentSourcePath())
+    doAssert dirExists(currentSourcePath().parentDir)
 
 # bug #7210
 block:
@@ -733,3 +735,34 @@ block: # bug #22190
     tab = mkOpTable(Berlin)
 
   doAssert not tab
+
+block: # issue #22524
+  const cnst = cstring(nil)
+  doAssert cnst.isNil
+  doAssert cnst == nil
+  let b = cnst
+  doAssert b.isNil
+  doAssert b == nil
+
+  let a = static: cstring(nil)
+  doAssert a.isNil
+
+  static:
+    var x: cstring
+    doAssert x.isNil
+    doAssert x == nil
+    doAssert x != ""
+
+block: # issue #15730
+  const s: cstring = ""
+  doAssert s != nil
+
+  static:
+    let s: cstring = ""
+    doAssert not s.isNil
+    doAssert s != nil
+    doAssert s == ""
+
+static: # more nil cstring issues
+  let x = cstring(nil)
+  doAssert x.len == 0

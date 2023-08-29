@@ -143,27 +143,26 @@ proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var T
   ##
   ## Can parse a single message for a line:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   proc generic_proc*[T] {.no_destroy, userPragma.} = #[tt.Error
   ##        ^ 'generic_proc' should be: 'genericProc' [Name] ]#
+  ##   ```
   ##
   ## Can parse multiple messages for a line when they are separated by ';':
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   proc generic_proc*[T] {.no_destroy, userPragma.} = #[tt.Error
   ##        ^ 'generic_proc' should be: 'genericProc' [Name]; tt.Error
   ##                           ^ 'no_destroy' should be: 'nodestroy' [Name]; tt.Error
   ##                                       ^ 'userPragma' should be: 'user_pragma' [template declared in mstyleCheck.nim(10, 9)] [Name] ]#
+  ##   ```
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   proc generic_proc*[T] {.no_destroy, userPragma.} = #[tt.Error
   ##        ^ 'generic_proc' should be: 'genericProc' [Name];
   ##     tt.Error              ^ 'no_destroy' should be: 'nodestroy' [Name];
   ##     tt.Error                          ^ 'userPragma' should be: 'user_pragma' [template declared in mstyleCheck.nim(10, 9)] [Name] ]#
-  ##
+  ##   ```
   result = i + len(inlineErrorMarker)
   inc col, len(inlineErrorMarker)
   let msgLine = line

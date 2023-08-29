@@ -62,7 +62,9 @@ proc someInSet*(s: PNode, a, b: PNode): bool =
   result = false
 
 proc toBitSet*(conf: ConfigRef; s: PNode): TBitSet =
-  var first, j: Int128
+  result = @[]
+  var first: Int128 = Zero
+  var j: Int128 = Zero
   first = firstOrd(conf, s.typ[0])
   bitSetInit(result, int(getSize(conf, s.typ)))
   for i in 0..<s.len:

@@ -18,6 +18,7 @@ type
   TypeDescKind = enum
     dkParam #skParam
     dkRefParam #param passed by ref when {.byref.} is used. Cpp only. C goes straight to dkParam and is handled as a regular pointer
+    dkRefGenericParam #param passed by ref when {.byref.} is used that is also a generic. Cpp only. C goes straight to dkParam and is handled as a regular pointer
     dkVar #skVar
     dkField #skField
     dkResult #skResult
@@ -205,8 +206,12 @@ proc mapType(conf: ConfigRef; typ: PType; isParam: bool): TCTypeKind =
     result = TCTypeKind(ord(typ.kind) - ord(tyInt) + ord(ctInt))
   of tyStatic:
     if typ.n != nil: result = mapType(conf, lastSon typ, isParam)
-    else: doAssert(false, "mapType: " & $typ.kind)
-  else: doAssert(false, "mapType: " & $typ.kind)
+    else:
+      result = ctVoid
+      doAssert(false, "mapType: " & $typ.kind)
+  else:
+    result = ctVoid
+    doAssert(false, "mapType: " & $typ.kind)
 
 
 proc mapReturnType(conf: ConfigRef; typ: PType): TCTypeKind =
@@ -321,7 +326,9 @@ proc getSimpleTypeDesc(m: BModule; typ: PType): Rope =
   of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ[0])
   of tyStatic:
     if typ.n != nil: result = getSimpleTypeDesc(m, lastSon typ)
-    else: internalError(m.config, "tyStatic for getSimpleTypeDesc")
+    else:
+      result = ""
+      internalError(m.config, "tyStatic for getSimpleTypeDesc")
   of tyGenericInst, tyAlias, tySink, tyOwned:
     result = getSimpleTypeDesc(m, lastSon typ)
   else: result = ""
@@ -470,11 +477,11 @@ proc multiFormat*(frmt: var string, chars : static openArray[char], args: openAr
             if i >= frmt.len or frmt[i] notin {'0'..'9'}: break
           num = j
           if j > high(arg) + 1:
-            doAssert false, "invalid format string: " & frmt
+            raiseAssert "invalid format string: " & frmt
           else:
             res.add(arg[j-1])
         else:
-          doAssert false, "invalid format string: " & frmt
+          raiseAssert "invalid format string: " & frmt
       var start = i
       while i < frmt.len:
         if frmt[i] != c: inc(i)
@@ -486,12 +493,12 @@ proc multiFormat*(frmt: var string, chars : static openArray[char], args: openAr
 template cgDeclFrmt*(s: PSym): string =
   s.constraint.strVal
 
-proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var string,
+proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params: var string,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false;) =
   let t = prc.typ
   let isCtor = sfConstructor in prc.flags
-  if isCtor:
+  if isCtor or (name[0] == '~' and sfMember in prc.flags): #destructors cant have void
     rettype = ""
   elif t[0] == nil or isInvalidReturnType(m.config, t):
     rettype = "void"
@@ -500,8 +507,8 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var 
       rettype = getTypeDescAux(m, t[0], check, dkResult)
     else:
       rettype = runtimeFormat(rettype.replace("'0", "$1"), [getTypeDescAux(m, t[0], check, dkResult)])
-  var types, names, args: seq[string]
-  if not isCtor:    
+  var types, names, args: seq[string] = @[]
+  if not isCtor:
     var this = t.n[1].sym
     fillParamName(m, this)
     fillLoc(this.loc, locParam, t.n[1],
@@ -519,7 +526,10 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var 
     var param = t.n[i].sym
     var descKind = dkParam
     if optByRef in param.options:
-      descKind = dkRefParam
+      if param.typ.kind == tyGenericInst:
+        descKind = dkRefGenericParam
+      else:
+        descKind = dkRefParam
     var typ, name : string
     fillParamName(m, param)
     fillLoc(param.loc, locParam, t.n[i],
@@ -545,6 +555,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, params: var 
 
   multiFormat(params, @['\'', '#'], [types, names])
   multiFormat(superCall, @['\'', '#'], [types, names])
+  multiFormat(name, @['\'', '#'], [types, names]) #so we can ~'1 on members
   if params == "()":
     if types.len == 0:
       params = "(void)"
@@ -570,7 +581,10 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
     var param = t.n[i].sym
     var descKind = dkParam
     if m.config.backend == backendCpp and optByRef in param.options:
-      descKind = dkRefParam
+      if param.typ.kind == tyGenericInst:
+        descKind = dkRefGenericParam
+      else:
+        descKind = dkRefParam
     if isCompileTimeOnly(param.typ): continue
     if params != "(": params.add(", ")
     fillParamName(m, param)
@@ -712,9 +726,9 @@ proc getRecordFields(m: BModule; typ: PType, check: var IntSet): Rope =
   genRecordFieldsAux(m, typ.n, typ, check, result)
   if typ.itemId in m.g.graph.memberProcsPerType:
     let procs = m.g.graph.memberProcsPerType[typ.itemId]
-    var isDefaultCtorGen, isCtorGen: bool
+    var isDefaultCtorGen, isCtorGen: bool = false
     for prc in procs:
-      var header: Rope
+      var header: Rope = ""
       if sfConstructor in prc.flags:
         isCtorGen = true
         if prc.typ.n.len == 1:
@@ -734,7 +748,8 @@ proc fillObjectFields*(m: BModule; typ: PType) =
 proc mangleDynLibProc(sym: PSym): Rope
   
 proc getRecordDescAux(m: BModule; typ: PType, name, baseType: Rope,
-                   check: var IntSet, hasField:var bool): Rope =                 
+                   check: var IntSet, hasField:var bool): Rope =
+  result = ""
   if typ.kind == tyObject:
     if typ[0] == nil:
       if lacksMTypeField(typ):
@@ -775,7 +790,7 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
         structOrUnion = "#pragma pack(push, 1)\L" & structOrUnion(typ)
   else:
     structOrUnion = structOrUnion(typ)
-  var baseType: string 
+  var baseType: string = ""
   if typ[0] != nil: 
     baseType = getTypeDescAux(m, typ[0].skipTypes(skipPtrs), check, dkField)
   if typ.sym == nil or sfCodegenDecl notin typ.sym.flags:
@@ -832,7 +847,7 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
   # Make sure the index refers to one of the generic params of the type.
   # XXX: we should catch this earlier and report it as a semantic error.
   if idx >= typ.len:
-    doAssert false, "invalid apostrophe type parameter index"
+    raiseAssert "invalid apostrophe type parameter index"
 
   result = typ[idx]
   for i in 1..stars:
@@ -866,6 +881,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
   if t != origTyp and origTyp.sym != nil: useHeader(m, origTyp.sym)
   let sig = hashType(origTyp, m.config)
 
+  result = "" # todo move `result = getTypePre(m, t, sig)` here ?
   defer: # defer is the simplest in this case
     if isImportedType(t) and not m.typeABICache.containsOrIncl(sig):
       addAbiCheck(m, t, result)
@@ -873,7 +889,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
   result = getTypePre(m, t, sig)
   if result != "" and t.kind != tyOpenArray:
     excl(check, t.id)
-    if kind == dkRefParam:
+    if kind == dkRefParam or kind == dkRefGenericParam and origTyp.kind == tyGenericInst:
       result.add("&")
     return
   case t.kind
@@ -946,7 +962,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
   of tyProc:
     result = getTypeName(m, origTyp, sig)
     m.typeCache[sig] = result
-    var rettype, desc: Rope
+    var rettype, desc: Rope = ""
     genProcParams(m, t, rettype, desc, check, true, true)
     if not isImportedType(t):
       if t.callConv != ccClosure: # procedure vars may need a closure!
@@ -1023,7 +1039,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
       while i < cppName.len:
         if cppName[i] == '\'':
           var chunkEnd = i-1
-          var idx, stars: int
+          var idx, stars: int = 0
           if scanCppGenericSlot(cppName, i, idx, stars):
             result.add cppName.substr(chunkStart, chunkEnd)
             chunkStart = i
@@ -1103,7 +1119,7 @@ proc getClosureType(m: BModule; t: PType, kind: TClosureTypeKind): Rope =
   assert t.kind == tyProc
   var check = initIntSet()
   result = getTempName(m)
-  var rettype, desc: Rope
+  var rettype, desc: Rope = ""
   genProcParams(m, t, rettype, desc, check, declareEnvironment=kind != clHalf)
   if not isImportedType(t):
     if t.callConv != ccClosure or kind != clFull:
@@ -1133,11 +1149,19 @@ proc isReloadable(m: BModule; prc: PSym): bool =
 proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 
-proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride: var bool; isCtor: bool) =
-  var afterParams: string
+proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride, isMemberVirtual: var bool; isCtor: bool, isFunctor=false) =
+  var afterParams: string = ""
   if scanf(val, "$*($*)$s$*", name, params, afterParams):
+    if name.strip() == "operator" and params == "": #isFunctor?
+      parseVFunctionDecl(afterParams, name, params, retType, superCall, isFnConst, isOverride, isMemberVirtual, isCtor, true)
+      return
     isFnConst = afterParams.find("const") > -1
     isOverride = afterParams.find("override") > -1
+    isMemberVirtual = name.find("virtual ") > -1
+    if isMemberVirtual:
+      name = name.replace("virtual ", "")
+    if isFunctor:
+      name = "operator ()"
     if isCtor:
       discard scanf(afterParams, ":$s$*", superCall)
     else:
@@ -1146,28 +1170,28 @@ proc parseVFunctionDecl(val: string; name, params, retType, superCall: var strin
   params = "(" & params & ")"
 
 proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl : bool = false) =
-  assert {sfVirtual, sfConstructor} * prc.flags != {}
+  assert sfCppMember * prc.flags != {}
   let isCtor = sfConstructor in prc.flags
-  let isVirtual = not isCtor
   var check = initIntSet()
   fillBackendName(m, prc)
   fillLoc(prc.loc, locProc, prc.ast[namePos], OnUnknown)
   var memberOp = "#." #only virtual
   var typ: PType
   if isCtor:
-    typ = prc.typ.sons[0]
+    typ = prc.typ[0]
   else:
-    typ = prc.typ.sons[1]
+    typ = prc.typ[1]
   if typ.kind == tyPtr:
     typ = typ[0]
     memberOp = "#->"
   var typDesc = getTypeDescWeak(m, typ, check, dkParam)
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
-  var name, params, rettype, superCall: string
-  var isFnConst, isOverride: bool
-  parseVFunctionDecl(prc.constraint.strVal, name, params, rettype, superCall, isFnConst, isOverride, isCtor)
-  genMemberProcParams(m, prc, superCall, rettype, params, check, true, false) 
-  var fnConst, override: string
+  var name, params, rettype, superCall: string = ""
+  var isFnConst, isOverride, isMemberVirtual: bool = false
+  parseVFunctionDecl(prc.constraint.strVal, name, params, rettype, superCall, isFnConst, isOverride, isMemberVirtual, isCtor)
+  genMemberProcParams(m, prc, superCall, rettype, name, params, check, true, false) 
+  let isVirtual = sfVirtual in prc.flags or isMemberVirtual
+  var fnConst, override: string = ""
   if isCtor:
     name = typDesc
   if isFnConst:
@@ -1179,7 +1203,7 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
         override = " override"
     superCall = ""
   else:
-    if isVirtual:
+    if not isCtor:
       prc.loc.r = "$1$2(@)" % [memberOp, name]
     elif superCall != "":
       superCall = " : " & superCall
@@ -1196,7 +1220,7 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false)
   var check = initIntSet()
   fillBackendName(m, prc)
   fillLoc(prc.loc, locProc, prc.ast[namePos], OnUnknown)
-  var rettype, params: Rope
+  var rettype, params: Rope = ""
   genProcParams(m, prc.typ, rettype, params, check, true, false)
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with "_actual" postfix
@@ -1436,7 +1460,7 @@ proc genEnumInfo(m: BModule; typ: PType, name: Rope; info: TLineInfo) =
   genTypeInfoAux(m, typ, typ, name, info)
   var nodePtrs = getTempName(m) & "_" & $typ.n.len
   genTNimNodeArray(m, nodePtrs, rope(typ.n.len))
-  var enumNames, specialCases: Rope
+  var enumNames, specialCases: Rope = ""
   var firstNimNode = m.typeNodes
   var hasHoles = false
   for i in 0..<typ.n.len:
@@ -1515,6 +1539,7 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
       result = it.sym.name.s
     else:
       var p = m.owner
+      result = ""
       if p != nil and p.kind == skPackage:
         result.add p.name.s & "."
       result.add m.name.s & "."
@@ -1747,7 +1772,7 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
     return prefixTI.rope & result & ")".rope
 
   m.g.typeInfoMarkerV2[sig] = (str: result, owner: owner)
-  if m.compileToCpp:
+  if m.compileToCpp or m.hcrOn:
     genTypeInfoV2OldImpl(m, t, origType, result, info)
   else:
     genTypeInfoV2Impl(m, t, origType, result, info)

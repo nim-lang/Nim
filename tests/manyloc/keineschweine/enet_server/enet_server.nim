@@ -113,7 +113,7 @@ when true:
 
   block:
     var zoneCfgFile = "./server_settings.json"
-    for kind, key, val in getOpt():
+    for kind, key, val in getopt():
       case kind
       of cmdShortOption, cmdLongOption:
         case key
