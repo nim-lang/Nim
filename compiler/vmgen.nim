@@ -882,6 +882,8 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
   let dst = n[0].typ.skipTypes(abstractRange)#.kind
   let srcSize = getSize(c.config, src)
   let dstSize = getSize(c.config, dst)
+  const unsupportedCastDifferentSize =
+    "VM does not support 'cast' from $1 with size $2 to $3 with size $4 due to different sizes"
   if src.kind in allowedIntegers and dst.kind in allowedIntegers:
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
@@ -898,8 +900,11 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
           # is smaller than source.
           c.gABC(n, opcNarrowU, dest, TRegister(dstSize*8))
     c.freeTemp(tmp)
-  elif srcSize == dstSize and src.kind in allowedIntegers and
-                           dst.kind in {tyFloat, tyFloat32, tyFloat64}:
+  elif src.kind in allowedIntegers and
+      dst.kind in {tyFloat, tyFloat32, tyFloat64}:
+    if srcSize != dstSize:
+      globalError(c.config, n.info, unsupportedCastDifferentSize %
+        [$src.kind, $srcSize, $dst.kind, $dstSize])
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
     if dst.kind == tyFloat32:
@@ -908,8 +913,11 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
       c.gABC(n, opcCastIntToFloat64, dest, tmp)
     c.freeTemp(tmp)
 
-  elif srcSize == dstSize and src.kind in {tyFloat, tyFloat32, tyFloat64} and
+  elif src.kind in {tyFloat, tyFloat32, tyFloat64} and
                            dst.kind in allowedIntegers:
+    if srcSize != dstSize:
+      globalError(c.config, n.info, unsupportedCastDifferentSize %
+        [$src.kind, $srcSize, $dst.kind, $dstSize])
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
     if src.kind == tyFloat32:
