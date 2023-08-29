@@ -675,7 +675,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
     elif defined(haiku):
       result = getApplHaiku()
     elif defined(openbsd):
-      result = getApplOpenBsd()
+      result = try: getApplOpenBsd() except OSError: ""
     elif defined(nintendoswitch):
       result = ""
 
