@@ -8,7 +8,7 @@
 #
 
 ## This module contains basic operating system facilities like
-## retrieving environment variables, working with directories, 
+## retrieving environment variables, working with directories,
 ## running shell commands, etc.
 
 ## .. importdoc:: symlinks.nim, appdirs.nim, dirs.nim, ospaths2.nim
@@ -22,6 +22,7 @@ runnableExamples:
   assert myFile.changeFileExt("c") == "/path/to/my/file.c"
 
 ## **See also:**
+## * `paths <paths.html>`_ and `files <files.html>`_ modules for high-level file manipulation
 ## * `osproc module <osproc.html>`_ for process communication beyond
 ##   `execShellCmd proc`_
 ## * `uri module <uri.html>`_
@@ -254,7 +255,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
     for ext in extensions:
       var x = addFileExt(x, ext)
       if fileExists(x):
-        when not defined(windows):
+        when not (defined(windows) or defined(nintendoswitch)):
           while followSymlinks: # doubles as if here
             if x.symlinkExists:
               var r = newString(maxSymlinkLen)
@@ -410,9 +411,9 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## <osproc.html#execProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_.
   ##
   ## **Examples:**
-  ##
-  ## .. code-block::
+  ##   ```Nim
   ##   discard execShellCmd("ls -la")
+  ##   ```
   result = exitStatusLikeShell(c_system(command))
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
@@ -422,32 +423,18 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   ## Raises `OSError` in case of an error. Follows symlinks.
   when defined(windows):
     var bufsize = MAX_PATH.int32
-    when useWinUnicode:
-      var unused: WideCString = nil
-      var res = newWideCString("", bufsize)
-      while true:
-        var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
-        if L == 0'i32:
-          raiseOSError(osLastError(), filename)
-        elif L > bufsize:
-          res = newWideCString("", L)
-          bufsize = L
-        else:
-          result = res$L
-          break
-    else:
-      var unused: cstring = nil
-      result = newString(bufsize)
-      while true:
-        var L = getFullPathNameA(filename, bufsize, result, unused)
-        if L == 0'i32:
-          raiseOSError(osLastError(), filename)
-        elif L > bufsize:
-          result = newString(L)
-          bufsize = L
-        else:
-          setLen(result, L)
-          break
+    var unused: WideCString = nil
+    var res = newWideCString("", bufsize)
+    while true:
+      var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
+      if L == 0'i32:
+        raiseOSError(osLastError(), filename)
+      elif L > bufsize:
+        res = newWideCString("", L)
+        bufsize = L
+      else:
+        result = res$L
+        break
     # getFullPathName doesn't do case corrections, so we have to use this convoluted
     # way of retrieving the true filename
     for x in walkFiles(result):
@@ -483,14 +470,10 @@ proc createHardlink*(src, dest: string) {.noWeirdTarget.} =
   ## See also:
   ## * `createSymlink proc`_
   when defined(windows):
-    when useWinUnicode:
-      var wSrc = newWideCString(src)
-      var wDst = newWideCString(dest)
-      if createHardLinkW(wDst, wSrc, nil) == 0:
-        raiseOSError(osLastError(), $(src, dest))
-    else:
-      if createHardLinkA(dest, src, nil) == 0:
-        raiseOSError(osLastError(), $(src, dest))
+    var wSrc = newWideCString(src)
+    var wDst = newWideCString(dest)
+    if createHardLinkW(wDst, wSrc, nil) == 0:
+      raiseOSError(osLastError(), $(src, dest))
   else:
     if link(src, dest) != 0:
       raiseOSError(osLastError(), $(src, dest))
@@ -499,18 +482,18 @@ proc inclFilePermissions*(filename: string,
                           permissions: set[FilePermission]) {.
   rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect], noWeirdTarget.} =
   ## A convenience proc for:
-  ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   setFilePermissions(filename, getFilePermissions(filename)+permissions)
+  ##   ```
   setFilePermissions(filename, getFilePermissions(filename)+permissions)
 
 proc exclFilePermissions*(filename: string,
                           permissions: set[FilePermission]) {.
   rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect], noWeirdTarget.} =
   ## A convenience proc for:
-  ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   setFilePermissions(filename, getFilePermissions(filename)-permissions)
+  ##   ```
   setFilePermissions(filename, getFilePermissions(filename)-permissions)
 
 when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netbsd)):
@@ -641,9 +624,11 @@ when defined(haiku):
     else:
       result = ""
 
-proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
+proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget, raises: [].} =
   ## Returns the filename of the application's executable.
   ## This proc will resolve symlinks.
+  ##
+  ## Returns empty string when name is unavailable
   ##
   ## See also:
   ## * `getAppDir proc`_
@@ -655,32 +640,18 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
   # /proc/<pid>/path/a.out (complete pathname)
   when defined(windows):
     var bufsize = int32(MAX_PATH)
-    when useWinUnicode:
-      var buf = newWideCString("", bufsize)
-      while true:
-        var L = getModuleFileNameW(0, buf, bufsize)
-        if L == 0'i32:
-          result = "" # error!
-          break
-        elif L > bufsize:
-          buf = newWideCString("", L)
-          bufsize = L
-        else:
-          result = buf$L
-          break
-    else:
-      result = newString(bufsize)
-      while true:
-        var L = getModuleFileNameA(0, result, bufsize)
-        if L == 0'i32:
-          result = "" # error!
-          break
-        elif L > bufsize:
-          result = newString(L)
-          bufsize = L
-        else:
-          setLen(result, L)
-          break
+    var buf = newWideCString(bufsize)
+    while true:
+      var L = getModuleFileNameW(0, buf, bufsize)
+      if L == 0'i32:
+        result = "" # error!
+        break
+      elif L > bufsize:
+        buf = newWideCString(L)
+        bufsize = L
+      else:
+        result = buf$L
+        break
   elif defined(macosx):
     var size = cuint32(0)
     getExecPath1(nil, size)
@@ -688,24 +659,29 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
     if getExecPath2(result.cstring, size):
       result = "" # error!
     if result.len > 0:
-      result = result.expandFilename
+      try:
+        result = result.expandFilename
+      except OSError:
+        result = ""
   else:
     when defined(linux) or defined(aix):
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
     elif defined(genode):
-      raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
+      result = "" # Not supported
     elif defined(freebsd) or defined(dragonfly) or defined(netbsd):
       result = getApplFreebsd()
     elif defined(haiku):
       result = getApplHaiku()
     elif defined(openbsd):
-      result = getApplOpenBsd()
+      result = try: getApplOpenBsd() except OSError: ""
+    elif defined(nintendoswitch):
+      result = ""
 
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
-      result = getApplHeuristic()
+      result = try: getApplHeuristic() except OSError: ""
 
 proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
   ## Returns the directory of the application's executable.
@@ -975,10 +951,7 @@ proc isHidden*(path: string): bool {.noWeirdTarget.} =
       assert ".foo/".isHidden
 
   when defined(windows):
-    when useWinUnicode:
-      wrapUnary(attributes, getFileAttributesW, path)
-    else:
-      var attributes = getFileAttributesA(path)
+    wrapUnary(attributes, getFileAttributesW, path)
     if attributes != -1'i32:
       result = (attributes and FILE_ATTRIBUTE_HIDDEN) != 0'i32
   else:
@@ -1049,10 +1022,8 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
 
 
 # deprecated declarations
-when not defined(nimscript):
-  when not defined(js): # `noNimJs` doesn't work with templates, this should improve.
-    template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
-      fileExists(args)
-    template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
-      dirExists(args)
-  # {.deprecated: [existsFile: fileExists].} # pending bug #14819; this would avoid above mentioned issue
+when not weirdTarget:
+  template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
+    fileExists(args)
+  template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
+    dirExists(args)

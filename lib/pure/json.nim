@@ -41,13 +41,14 @@
 ## For a `JsonNode` who's kind is `JObject`, you can access its fields using
 ## the `[]` operator. The following example shows how to do this:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/json
 ##
 ##   let jsonNode = parseJson("""{"key": 3.14}""")
 ##
 ##   doAssert jsonNode.kind == JObject
 ##   doAssert jsonNode["key"].kind == JFloat
+##   ```
 ##
 ## Reading values
 ## --------------
@@ -62,12 +63,13 @@
 ##
 ## To retrieve the value of `"key"` you can do the following:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/json
 ##
 ##   let jsonNode = parseJson("""{"key": 3.14}""")
 ##
 ##   doAssert jsonNode["key"].getFloat() == 3.14
+##   ```
 ##
 ## **Important:** The `[]` operator will raise an exception when the
 ## specified field does not exist.
@@ -79,7 +81,7 @@
 ## when the field is not found. The `get`-family of procedures will return a
 ## type's default value when called on `nil`.
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/json
 ##
 ##   let jsonNode = parseJson("{}")
@@ -88,6 +90,7 @@
 ##   doAssert jsonNode{"nope"}.getFloat() == 0
 ##   doAssert jsonNode{"nope"}.getStr() == ""
 ##   doAssert jsonNode{"nope"}.getBool() == false
+##   ```
 ##
 ## Using default values
 ## --------------------
@@ -95,7 +98,7 @@
 ## The `get`-family helpers also accept an additional parameter which allow
 ## you to fallback to a default value should the key's values be `null`:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/json
 ##
 ##   let jsonNode = parseJson("""{"key": 3.14, "key2": null}""")
@@ -103,6 +106,7 @@
 ##   doAssert jsonNode["key"].getFloat(6.28) == 3.14
 ##   doAssert jsonNode["key2"].getFloat(3.14) == 3.14
 ##   doAssert jsonNode{"nope"}.getFloat(3.14) == 3.14 # note the {}
+##   ```
 ##
 ## Unmarshalling
 ## -------------
@@ -113,7 +117,7 @@
 ## Note: Use `Option <options.html#Option>`_ for keys sometimes missing in json
 ## responses, and backticks around keys with a reserved keyword as name.
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/json
 ##   import std/options
 ##
@@ -127,6 +131,7 @@
 ##   let user = to(userJson, User)
 ##   if user.`type`.isSome():
 ##     assert user.`type`.get() != "robot"
+##   ```
 ##
 ## Creating JSON
 ## =============
@@ -134,7 +139,7 @@
 ## This module can also be used to comfortably create JSON using the `%*`
 ## operator:
 ##
-## .. code-block:: nim
+##   ```nim
 ##   import std/json
 ##
 ##   var hisName = "John"
@@ -148,6 +153,7 @@
 ##   var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
 ##   j2["details"] = %* {"age":35, "pi":3.1415}
 ##   echo j2
+##   ```
 ##
 ## See also: std/jsonutils for hookable json serialization/deserialization
 ## of arbitrary types.
@@ -438,7 +444,7 @@ macro `%*`*(x: untyped): untyped =
   ## `%` for every element.
   result = toJsonImpl(x)
 
-proc `==`*(a, b: JsonNode): bool {.noSideEffect.} =
+proc `==`*(a, b: JsonNode): bool {.noSideEffect, raises: [].} =
   ## Check two nodes for equality
   if a.isNil:
     if b.isNil: return true
@@ -458,18 +464,20 @@ proc `==`*(a, b: JsonNode): bool {.noSideEffect.} =
     of JNull:
       result = true
     of JArray:
-      result = a.elems == b.elems
+      {.cast(raises: []).}: # bug #19303
+        result = a.elems == b.elems
     of JObject:
       # we cannot use OrderedTable's equality here as
       # the order does not matter for equality here.
       if a.fields.len != b.fields.len: return false
       for key, val in a.fields:
         if not b.fields.hasKey(key): return false
-        when defined(nimHasEffectsOf):
-          {.noSideEffect.}:
+        {.cast(raises: []).}:
+          when defined(nimHasEffectsOf):
+            {.noSideEffect.}:
+              if b.fields[key] != val: return false
+          else:
             if b.fields[key] != val: return false
-        else:
-          if b.fields[key] != val: return false
       result = true
 
 proc hash*(n: OrderedTable[string, JsonNode]): Hash {.noSideEffect.}
@@ -855,7 +863,7 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool, depth = 0): Json
   case p.tok
   of tkString:
     # we capture 'p.a' here, so we need to give it a fresh buffer afterwards:
-    when defined(gcArc) or defined(gcOrc):
+    when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
       result = JsonNode(kind: JString, str: move p.a)
     else:
       result = JsonNode(kind: JString)
@@ -1109,7 +1117,7 @@ proc initFromJson(dst: var JsonNode; jsonNode: JsonNode; jsonPath: var string) =
   dst = jsonNode.copy
 
 proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
-  when T is uint|uint64 or (not defined(js) and int.sizeof == 4):
+  when T is uint|uint64 or int.sizeof == 4:
     verifyJsonKind(jsonNode, {JInt, JString}, jsonPath)
     case jsonNode.kind
     of JString:
@@ -1122,6 +1130,7 @@ proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var 
     dst = cast[T](jsonNode.num)
 
 proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
+  verifyJsonKind(jsonNode, {JInt, JFloat, JString}, jsonPath)
   if jsonNode.kind == JString:
     case jsonNode.str
     of "nan":
@@ -1137,7 +1146,6 @@ proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var st
       dst = T(b)
     else: raise newException(JsonKindError, "expected 'nan|inf|-inf', got " & jsonNode.str)
   else:
-    verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)
     if jsonNode.kind == JFloat:
       dst = T(jsonNode.fnum)
     else:
@@ -1210,13 +1218,7 @@ macro assignDistinctImpl[T: distinct](dst: var T;jsonNode: JsonNode; jsonPath: v
   let baseTyp = typImpl[0]
 
   result = quote do:
-    when nimvm:
-      # workaround #12282
-      var tmp: `baseTyp`
-      initFromJson( tmp, `jsonNode`, `jsonPath`)
-      `dst` = `typInst`(tmp)
-    else:
-      initFromJson( `baseTyp`(`dst`), `jsonNode`, `jsonPath`)
+    initFromJson(`baseTyp`(`dst`), `jsonNode`, `jsonPath`)
 
 proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
   assignDistinctImpl(dst, jsonNode, jsonPath)
@@ -1360,6 +1362,7 @@ proc to*[T](node: JsonNode, t: typedesc[T]): T =
     doAssert data.list == @[1, 2, 3, 4]
 
   var jsonPath = ""
+  result = default(T)
   initFromJson(result, node, jsonPath)
 
 when false:

@@ -45,9 +45,7 @@ runnableExamples("-r:off"):
 ## Configuration file example
 ]##
 
-##
-## .. code-block:: nim
-##
+##     ```none
 ##     charset = "utf-8"
 ##     [Package]
 ##     name = "hello"
@@ -55,6 +53,7 @@ runnableExamples("-r:off"):
 ##     [Author]
 ##     name = "nim-lang"
 ##     website = "nim-lang.org"
+##     ```
 
 ##[
 ## Creating a configuration file

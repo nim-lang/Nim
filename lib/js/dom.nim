@@ -1423,7 +1423,7 @@ when defined(nodejs):
         parent.childNodes[i] = newNode
         return
       inc i
-    doAssert false, "old node not in node list"
+    raiseAssert "old node not in node list"
 
   proc removeChild*(parent, child: Node) =
     child.parentNode = nil
@@ -1433,7 +1433,7 @@ when defined(nodejs):
         parent.childNodes.delete(i)
         return
       inc i
-    doAssert false, "old node not in node list"
+    raiseAssert "old node not in node list"
 
   proc insertBefore*(parent, newNode, before: Node) =
     appendChild(parent, newNode)
@@ -1445,7 +1445,7 @@ when defined(nodejs):
         parent.childNodes[i-1] = newNode
         return
       inc i
-    #doAssert false, "before not in node list"
+    #raiseAssert "before not in node list"
 
   proc createElement*(d: Document, identifier: cstring): Element =
     new(result)
@@ -1503,7 +1503,7 @@ proc confirm*(w: Window, msg: cstring): bool
 proc disableExternalCapture*(w: Window)
 proc enableExternalCapture*(w: Window)
 proc find*(w: Window, text: cstring, caseSensitive = false,
-           backwards = false)
+           backwards = false): bool
 proc focus*(w: Window)
 proc forward*(w: Window)
 proc getComputedStyle*(w: Window, e: Node, pe: Node = nil): Style

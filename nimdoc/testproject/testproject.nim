@@ -388,3 +388,23 @@ when true: # issue #15184
     ##
     ##  There is no block quote after blank lines at the beginning.
   discard
+
+type T19396* = object # bug #19396
+   a*: int
+   b: float
+
+template somePragma*() {.pragma.}
+  ## Just some annotation
+
+type # bug #21483
+   MyObject* = object
+      someString*: string ## This is a string
+      annotated* {.somePragma.}: string ## This is an annotated string
+
+type
+  AnotherObject* = object
+    case x*: bool
+    of true:
+      y*: proc (x: string)
+    of false:
+      hidden: string

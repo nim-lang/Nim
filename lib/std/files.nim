@@ -1,4 +1,7 @@
 ## This module implements file handling.
+##
+## **See also:**
+## * `paths module <paths.html>`_ for path manipulation
 
 from paths import Path, ReadDirEffect, WriteDirEffect
 
@@ -6,7 +9,7 @@ from std/private/osfiles import fileExists, removeFile,
                                 moveFile
 
 
-proc fileExists*(filename: Path): bool {.inline, tags: [ReadDirEffect].} =
+proc fileExists*(filename: Path): bool {.inline, tags: [ReadDirEffect], sideEffect.} =
   ## Returns true if `filename` exists and is a regular file or symlink.
   ##
   ## Directories, device files, named pipes and sockets return false.

@@ -14,12 +14,14 @@
 
 import ropes, platform, condsyms, options, msgs, lineinfos, pathutils, modulepaths
 
-import std/[os, osproc, sha1, streams, sequtils, times, strtabs, json, jsonutils, sugar, parseutils]
+import std/[os, osproc, streams, sequtils, times, strtabs, json, jsonutils, sugar, parseutils]
 
 import std / strutils except addf
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
+
+import ../dist/checksums/src/checksums/sha1
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -328,7 +330,9 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
                      platform.OS[conf.target.targetOS].name & '.' &
                      CC[c].name & fullSuffix
     result = getConfigVar(conf, fullCCname)
-    if result.len == 0:
+    if existsConfigVar(conf, fullCCname):
+      result = getConfigVar(conf, fullCCname)
+    else:
       # not overridden for this cross compilation setting?
       result = getConfigVar(conf, CC[c].name & fullSuffix)
   else:
@@ -482,6 +486,10 @@ proc vccplatform(conf: ConfigRef): string =
         of cpuArm: " --platform:arm"
         of cpuAmd64: " --platform:amd64"
         else: ""
+    else:
+      result = ""
+  else:
+    result = ""
 
 proc getLinkOptions(conf: ConfigRef): string =
   result = conf.linkOptions & " " & conf.linkOptionsCmd & " "
@@ -530,7 +538,7 @@ proc ccHasSaneOverflow*(conf: ConfigRef): bool =
     # NOTE: should we need the full version, use -dumpfullversion
     let (s, exitCode) = try: execCmdEx(exe & " -dumpversion") except IOError, OSError, ValueError: ("", 1)
     if exitCode == 0:
-      var major: int
+      var major: int = 0
       discard parseInt(s, major)
       result = major >= 5
   else:
@@ -576,7 +584,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
 
     compilePattern = joinPath(conf.cCompilerPath, exe)
   else:
-    compilePattern = getCompilerExe(conf, c, isCpp)
+    compilePattern = exe
 
   includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
 
@@ -640,7 +648,7 @@ proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
 
   let hashFile = toGeneratedFile(conf, conf.mangleModuleName(cfile.cname).AbsoluteFile, "sha1")
   let currentHash = footprint(conf, cfile)
-  var f: File
+  var f: File = default(File)
   if open(f, hashFile.string, fmRead):
     let oldHash = parseSecureHash(f.readLine())
     close(f)
@@ -775,6 +783,7 @@ template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body
     raise
 
 proc getExtraCmds(conf: ConfigRef; output: AbsoluteFile): seq[string] =
+  result = @[]
   when defined(macosx):
     if optCDebug in conf.globalOptions and optGenStaticLib notin conf.globalOptions:
       # if needed, add an option to skip or override location
@@ -830,9 +839,21 @@ proc linkViaResponseFile(conf: ConfigRef; cmd: string) =
   else:
     writeFile(linkerArgs, args)
   try:
-    execLinkCmd(conf, cmd.substr(0, last) & " @" & linkerArgs)
+    when defined(macosx):
+      execLinkCmd(conf, "xargs " & cmd.substr(0, last) & " < " & linkerArgs)
+    else:
+      execLinkCmd(conf, cmd.substr(0, last) & " @" & linkerArgs)
   finally:
     removeFile(linkerArgs)
+
+proc linkViaShellScript(conf: ConfigRef; cmd: string) =
+  let linkerScript = conf.projectName & "_" & "linkerScript.sh"
+  writeFile(linkerScript, cmd)
+  let shell = getEnv("SHELL")
+  try:
+    execLinkCmd(conf, shell & " " & linkerScript)
+  finally:
+    removeFile(linkerScript)
 
 proc getObjFilePath(conf: ConfigRef, f: Cfile): string =
   if noAbsolutePaths(conf): f.obj.extractFilename
@@ -845,6 +866,7 @@ proc hcrLinkTargetName(conf: ConfigRef, objFile: string, isMain = false): Absolu
   result = conf.getNimcacheDir / RelativeFile(targetName)
 
 proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
+  result = ""
   if conf.hasHint(hintCC):
     if optListCmd in conf.globalOptions or conf.verbosity > 1:
       result = MsgKindToStr[hintCC] % (demangleModuleName(path.splitFile.name) & ": " & compileCmd)
@@ -856,23 +878,26 @@ proc preventLinkCmdMaxCmdLen(conf: ConfigRef, linkCmd: string) =
   # Windows's command line limit is about 8K (8191 characters) so C compilers on
   # Windows support a feature where the command line can be passed via ``@linkcmd``
   # to them.
-  const MaxCmdLen = when defined(windows): 8_000 else: 32_000
+  const MaxCmdLen = when defined(windows): 8_000 elif defined(macosx): 260_000 else: 32_000
   if linkCmd.len > MaxCmdLen:
-    linkViaResponseFile(conf, linkCmd)
+    when defined(macosx):
+      linkViaShellScript(conf, linkCmd)
+    else:
+      linkViaResponseFile(conf, linkCmd)
   else:
     execLinkCmd(conf, linkCmd)
 
 proc callCCompiler*(conf: ConfigRef) =
   var
-    linkCmd: string
+    linkCmd: string = ""
     extraCmds: seq[string]
   if conf.globalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}:
     return # speed up that call if only compiling and no script shall be
            # generated
   #var c = cCompiler
   var script: Rope = ""
-  var cmds: TStringSeq
-  var prettyCmds: TStringSeq
+  var cmds: TStringSeq = default(TStringSeq)
+  var prettyCmds: TStringSeq = default(TStringSeq)
   let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
 
   for idx, it in conf.toCompile:
@@ -1003,8 +1028,9 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
   conf.jsonBuildFile.string.writeFile(bcache.toJson.pretty)
 
 proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile): bool =
+  result = false
   if not fileExists(jsonFile) or not fileExists(conf.absOutFile): return true
-  var bcache: BuildCache
+  var bcache: BuildCache = default(BuildCache)
   try: bcache.fromJson(jsonFile.string.parseFile)
   except IOError, OSError, ValueError:
     stderr.write "Warning: JSON processing failed for: $#\n" % jsonFile.string
@@ -1020,7 +1046,7 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: Absolute
     if $secureHashFile(file) != hash: return true
 
 proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
-  var bcache: BuildCache
+  var bcache: BuildCache = default(BuildCache)
   try: bcache.fromJson(jsonFile.string.parseFile)
   except ValueError, KeyError, JsonKindError:
     let e = getCurrentException()
@@ -1033,7 +1059,8 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
     globalError(conf, gCmdLineInfo,
       "jsonscript command outputFile '$1' must match '$2' which was specified during --compileOnly, see \"outputFile\" entry in '$3' " %
       [outputCurrent, output, jsonFile.string])
-  var cmds, prettyCmds: TStringSeq
+  var cmds: TStringSeq = default(TStringSeq)
+  var prettyCmds: TStringSeq= default(TStringSeq)
   let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
   for (name, cmd) in bcache.compile:
     cmds.add cmd
@@ -1043,6 +1070,7 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
   for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
 
 proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
+  result = ""
   for it in list:
     result.addf("--file:r\"$1\"$N", [rope(it.cname.string)])
 

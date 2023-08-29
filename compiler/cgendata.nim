@@ -86,6 +86,7 @@ type
     options*: TOptions        # options that should be used for code
                               # generation; this is the same as prc.options
                               # unless prc == nil
+    optionsStack*: seq[TOptions]
     module*: BModule          # used to prevent excessive parameter passing
     withinLoop*: int          # > 0 if we are within a loop
     splitDecls*: int          # > 0 if we are in some context for C++ that
@@ -192,15 +193,17 @@ proc initBlock*(): TBlock =
     result.sections[i] = newRopeAppender()
 
 proc newProc*(prc: PSym, module: BModule): BProc =
-  new(result)
-  result.prc = prc
-  result.module = module
-  result.options = if prc != nil: prc.options
-                   else: module.config.options
-  result.blocks = @[initBlock()]
-  result.nestedTryStmts = @[]
-  result.finallySafePoints = @[]
-  result.sigConflicts = initCountTable[string]()
+  result = BProc(
+    prc: prc,
+    module: module,
+    optionsStack: if module.initProc != nil: module.initProc.optionsStack
+                  else: @[],
+    options: if prc != nil: prc.options
+             else: module.config.options,
+    blocks: @[initBlock()],
+    sigConflicts: initCountTable[string]())
+  if optQuirky in result.options:
+    result.flags = {nimErrorFlagDisabled}
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
   BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: int32]](),

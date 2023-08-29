@@ -38,8 +38,8 @@ type
                          ## at the end. If the file does not exist, it
                          ## will be created.
 
-  FileHandle* = cint ## type that represents an OS file handle; this is
-                      ## useful for low-level file access
+  FileHandle* = cint ## The type that represents an OS file handle; this is
+                      ## useful for low-level file access.
 
   FileSeekPos* = enum ## Position relative to which seek should happen.
                       # The values are ordered so that they match with stdio
@@ -359,12 +359,12 @@ proc getOsFileHandle*(f: File): FileHandle =
 
 when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(windows):
   proc setInheritable*(f: FileHandle, inheritable: bool): bool =
-    ## control whether a file handle can be inherited by child processes. Returns
+    ## Controls whether a file handle can be inherited by child processes. Returns
     ## `true` on success. This requires the OS file handle, which can be
     ## retrieved via `getOsFileHandle <#getOsFileHandle,File>`_.
     ##
     ## This procedure is not guaranteed to be available for all platforms. Test for
-    ## availability with `declared() <system.html#declared,untyped>`.
+    ## availability with `declared() <system.html#declared,untyped>`_.
     when SupportIoctlInheritCtl:
       result = c_ioctl(f, if inheritable: FIONCLEX else: FIOCLEX) != -1
     elif defined(freertos) or defined(zephyr):
@@ -390,7 +390,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
   proc c_memchr(s: pointer, c: cint, n: csize_t): pointer {.
     importc: "memchr", header: "<string.h>".}
 
-  when defined(windows) and not defined(useWinAnsi):
+  when defined(windows):
     proc readConsole(hConsoleInput: FileHandle, lpBuffer: pointer,
                      nNumberOfCharsToRead: int32,
                      lpNumberOfCharsRead: ptr int32,
@@ -484,11 +484,12 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
       if last > 0 and line[last-1] == '\c':
         line.setLen(last-1)
         return last > 1 or fgetsSuccess
-        # We have to distinguish between two possible cases:
+      elif last > 0 and line[last-1] == '\0':
+        # We have to distinguish among three possible cases:
         # \0\l\0 => line ending in a null character.
         # \0\l\l => last line without newline, null was put there by fgets.
-      elif last > 0 and line[last-1] == '\0':
-        if last < pos + sp - 1 and line[last+1] != '\0':
+        #   \0\l => last line without newline, null was put there by fgets.
+        if last >= pos + sp - 1 or line[last+1] != '\0': # bug #21273
           dec last
       line.setLen(last)
       return last > 0 or fgetsSuccess
@@ -611,7 +612,7 @@ proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
 
 # interface to the C procs:
 
-when defined(windows) and not defined(useWinAnsi):
+when defined(windows):
   when defined(cpp):
     proc wfopen(filename, mode: WideCString): pointer {.
       importcpp: "_wfopen((const wchar_t*)#, (const wchar_t*)#)", nodecl.}

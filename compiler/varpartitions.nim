@@ -98,6 +98,8 @@ type
 
   Partitions* = object
     abstractTime: AbstractTime
+    defers: seq[PNode]
+    processDefer: bool
     s: seq[VarIndex]
     graphs: seq[MutationInfo]
     goals: set[Goal]
@@ -286,7 +288,9 @@ proc borrowFromConstExpr(n: PNode): bool =
       result = true
       for i in 1..<n.len:
         if not borrowFromConstExpr(n[i]): return false
-  else: discard
+    else:
+      result = false
+  else: result = false
 
 proc pathExpr(node: PNode; owner: PSym): PNode =
   #[ From the spec:
@@ -403,8 +407,8 @@ proc allRoots(n: PNode; result: var seq[(PSym, int)]; level: int) =
           if typ != nil and i < typ.len:
             assert(typ.n[i].kind == nkSym)
             let paramType = typ.n[i].typ
-            if not paramType.isCompileTimeOnly and not typ.sons[0].isEmptyType and
-                canAlias(paramType, typ.sons[0]):
+            if not paramType.isCompileTimeOnly and not typ[0].isEmptyType and
+                canAlias(paramType, typ[0]):
               allRoots(it, result, RootEscapes)
           else:
             allRoots(it, result, RootEscapes)
@@ -484,7 +488,7 @@ proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
         dest.flags.incl ownsData
       elif n.typ.kind in {tyLent, tyVar} and n.len > 1:
         # we know the result is derived from the first argument:
-        var roots: seq[(PSym, int)]
+        var roots: seq[(PSym, int)] = @[]
         allRoots(n[1], roots, RootEscapes)
         for r in roots:
           connect(c, dest.sym, r[0], n[1].info)
@@ -616,7 +620,8 @@ proc deps(c: var Partitions; dest, src: PNode) =
   if borrowChecking in c.goals:
     borrowingAsgn(c, dest, src)
 
-  var targets, sources: seq[(PSym, int)]
+  var targets: seq[(PSym, int)] = @[]
+  var sources: seq[(PSym, int)] = @[]
   allRoots(dest, targets, 0)
   allRoots(src, sources, 0)
 
@@ -666,7 +671,7 @@ proc potentialMutationViaArg(c: var Partitions; n: PNode; callee: PType) =
   if constParameters in c.goals and tfNoSideEffect in callee.flags:
     discard "we know there are no hidden mutations through an immutable parameter"
   elif c.inNoSideEffectSection == 0 and containsPointer(n.typ):
-    var roots: seq[(PSym, int)]
+    var roots: seq[(PSym, int)] = @[]
     allRoots(n, roots, RootEscapes)
     for r in roots: potentialMutation(c, r[0], r[1], n.info)
 
@@ -705,12 +710,16 @@ proc traverse(c: var Partitions; n: PNode) =
     let L = if parameters != nil: parameters.len else: 0
     let m = getMagic(n)
 
+    if m == mEnsureMove and n[1].kind == nkSym:
+      # we know that it must be moved so it cannot be a cursor
+      noCursor(c, n[1].sym)
+
     for i in 1..<n.len:
       let it = n[i]
       if i < L:
         let paramType = parameters[i].skipTypes({tyGenericInst, tyAlias})
         if not paramType.isCompileTimeOnly and paramType.kind in {tyVar, tySink, tyOwned}:
-          var roots: seq[(PSym, int)]
+          var roots: seq[(PSym, int)] = @[]
           allRoots(it, roots, RootEscapes)
           if paramType.kind == tyVar:
             if c.inNoSideEffectSection == 0:
@@ -781,6 +790,9 @@ proc traverse(c: var Partitions; n: PNode) =
       traverse(c, n[0])
       # variables in while condition has longer alive time than local variables
       # in the while loop body
+  of nkDefer:
+    if c.processDefer:
+      for child in n: traverse(c, child)
   else:
     for child in n: traverse(c, child)
 
@@ -819,6 +831,10 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
       if vid >= 0:
         if n[1].kind == nkSym and (c.s[vid].reassignedTo == 0 or c.s[vid].reassignedTo == n[1].sym.id):
           c.s[vid].reassignedTo = n[1].sym.id
+          if c.inConditional > 0 and c.inLoop > 0:
+            # bug #22200: live ranges with loops and conditionals are too
+            # complex for our current analysis, so we prevent the cursorfication.
+            c.s[vid].flags.incl isConditionallyReassigned
         else:
           markAsReassigned(c, vid)
 
@@ -877,6 +893,11 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     inc c.inConditional
     for child in n: computeLiveRanges(c, child)
     dec c.inConditional
+  of nkDefer:
+    if c.processDefer:
+      for child in n: computeLiveRanges(c, child)
+    else:
+      c.defers.add n
   else:
     for child in n: computeLiveRanges(c, child)
 
@@ -890,9 +911,17 @@ proc computeGraphPartitions*(s: PSym; n: PNode; g: ModuleGraph; goals: set[Goal]
       registerResult(result, s.ast[resultPos])
 
   computeLiveRanges(result, n)
+  result.processDefer = true
+  for i in countdown(len(result.defers)-1, 0):
+    computeLiveRanges(result, result.defers[i])
+  result.processDefer = false
   # restart the timer for the second pass:
   result.abstractTime = AbstractTime 0
   traverse(result, n)
+  result.processDefer = true
+  for i in countdown(len(result.defers)-1, 0):
+    traverse(result, result.defers[i])
+  result.processDefer = false
 
 proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
   #echo "range ", v.aliveStart, " .. ", v.aliveEnd, " ", v.sym

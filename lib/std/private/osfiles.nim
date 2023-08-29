@@ -84,10 +84,7 @@ proc getFilePermissions*(filename: string): set[FilePermission] {.
     if (a.st_mode and S_IWOTH.Mode) != 0.Mode: result.incl(fpOthersWrite)
     if (a.st_mode and S_IXOTH.Mode) != 0.Mode: result.incl(fpOthersExec)
   else:
-    when useWinUnicode:
-      wrapUnary(res, getFileAttributesW, filename)
-    else:
-      var res = getFileAttributesA(filename)
+    wrapUnary(res, getFileAttributesW, filename)
     if res == -1'i32: raiseOSError(osLastError(), filename)
     if (res and FILE_ATTRIBUTE_READONLY) != 0'i32:
       result = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead,
@@ -136,19 +133,13 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission],
       if chmod(filename, cast[Mode](p)) != 0:
         raiseOSError(osLastError(), $(filename, permissions))
   else:
-    when useWinUnicode:
-      wrapUnary(res, getFileAttributesW, filename)
-    else:
-      var res = getFileAttributesA(filename)
+    wrapUnary(res, getFileAttributesW, filename)
     if res == -1'i32: raiseOSError(osLastError(), filename)
     if fpUserWrite in permissions:
       res = res and not FILE_ATTRIBUTE_READONLY
     else:
       res = res or FILE_ATTRIBUTE_READONLY
-    when useWinUnicode:
-      wrapBinary(res2, setFileAttributesW, filename, res)
-    else:
-      var res2 = setFileAttributesA(filename, res)
+    wrapBinary(res2, setFileAttributesW, filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
 
@@ -164,10 +155,14 @@ when hasCCopyfile:
   proc copyfile_state_alloc(): copyfile_state_t
   proc copyfile_state_free(state: copyfile_state_t): cint
   proc c_copyfile(src, dst: cstring,  state: copyfile_state_t, flags: copyfile_flags_t): cint {.importc: "copyfile".}
-  # replace with `let` pending bootstrap >= 1.4.0
-  var
-    COPYFILE_DATA {.nodecl.}: copyfile_flags_t
-    COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
+  when (NimMajor, NimMinor) >= (1, 4):
+    let
+      COPYFILE_DATA {.nodecl.}: copyfile_flags_t
+      COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
+  else:
+    var
+      COPYFILE_DATA {.nodecl.}: copyfile_flags_t
+      COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
   {.pop.}
 
 type
@@ -221,14 +216,10 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   if isSymlink and (cfSymlinkIgnore in options or defined(windows)):
     return
   when defined(windows):
-    when useWinUnicode:
-      let s = newWideCString(source)
-      let d = newWideCString(dest)
-      if copyFileW(s, d, 0'i32) == 0'i32:
-        raiseOSError(osLastError(), $(source, dest))
-    else:
-      if copyFileA(source, dest, 0'i32) == 0'i32:
-        raiseOSError(osLastError(), $(source, dest))
+    let s = newWideCString(source)
+    let d = newWideCString(dest)
+    if copyFileW(s, d, 0'i32) == 0'i32:
+      raiseOSError(osLastError(), $(source, dest))
   else:
     if isSymlink and cfSymlinkAsIs in options:
       createSymlink(expandSymlink(source), dest)
@@ -334,14 +325,9 @@ when not declared(ENOENT) and not defined(windows):
     var ENOENT {.importc, header: "<errno.h>".}: cint
 
 when defined(windows) and not weirdTarget:
-  when useWinUnicode:
-    template deleteFile(file: untyped): untyped  = deleteFileW(file)
-    template setFileAttributes(file, attrs: untyped): untyped =
-      setFileAttributesW(file, attrs)
-  else:
-    template deleteFile(file: untyped): untyped = deleteFileA(file)
-    template setFileAttributes(file, attrs: untyped): untyped =
-      setFileAttributesA(file, attrs)
+  template deleteFile(file: untyped): untyped  = deleteFileW(file)
+  template setFileAttributes(file, attrs: untyped): untyped =
+    setFileAttributesW(file, attrs)
 
 proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirEffect], noWeirdTarget.} =
   ## Removes the `file`.
@@ -358,10 +344,7 @@ proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirE
   ## * `moveFile proc`_
   result = true
   when defined(windows):
-    when useWinUnicode:
-      let f = newWideCString(file)
-    else:
-      let f = file
+    let f = newWideCString(file)
     if deleteFile(f) == 0:
       result = false
       let err = getLastError()
@@ -413,7 +396,7 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
 
   if not tryMoveFSObject(source, dest, isDir = false):
     when defined(windows):
-      doAssert false
+      raiseAssert "unreachable"
     else:
       # Fallback to copy & del
       copyFile(source, dest, {cfSymlinkAsIs})

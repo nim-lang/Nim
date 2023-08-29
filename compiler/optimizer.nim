@@ -16,6 +16,8 @@ import
 
 from trees import exprStructuralEquivalent
 
+import std/strutils
+
 const
   nfMarkForDeletion = nfNone # faster than a lookup table
 
@@ -110,16 +112,17 @@ proc analyse(c: var Con; b: var BasicBlock; n: PNode) =
     var reverse = false
     if n[0].kind == nkSym:
       let s = n[0].sym
-      if s.magic == mWasMoved:
+      let name = s.name.s.normalize
+      if name == "=wasmoved":
         b.wasMovedLocs.add n
         special = true
-      elif s.name.s == "=destroy":
+      elif name == "=destroy":
         if c.inFinally > 0 and (b.hasReturn or b.hasBreak):
           discard "cannot optimize away the destructor"
         else:
           c.wasMovedDestroyPair b, n
         special = true
-      elif s.name.s == "=sink":
+      elif name == "=sink":
         reverse = true
 
     if not special:
@@ -276,7 +279,7 @@ proc optimize*(n: PNode): PNode =
 
     Now assume 'use' raises, then we shouldn't do the 'wasMoved(s)'
   ]#
-  var c: Con
+  var c: Con = Con()
   var b: BasicBlock
   analyse(c, b, n)
   if c.somethingTodo:

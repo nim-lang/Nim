@@ -12,27 +12,29 @@
 ## Examples
 ## ========
 ##
-## .. code-block:: Nim
+##   ```Nim
+##   import std/locks
 ##
-##  import std/locks
+##   var
+##     thr: array[0..4, Thread[tuple[a,b: int]]]
+##     L: Lock
 ##
-##  var
-##    thr: array[0..4, Thread[tuple[a,b: int]]]
-##    L: Lock
+##   proc threadFunc(interval: tuple[a,b: int]) {.thread.} =
+##     for i in interval.a..interval.b:
+##       acquire(L) # lock stdout
+##       echo i
+##       release(L)
 ##
-##  proc threadFunc(interval: tuple[a,b: int]) {.thread.} =
-##    for i in interval.a..interval.b:
-##      acquire(L) # lock stdout
-##      echo i
-##      release(L)
+##   initLock(L)
 ##
-##  initLock(L)
+##   for i in 0..high(thr):
+##     createThread(thr[i], threadFunc, (i*10, i*10+5))
+##   joinThreads(thr)
 ##
-##  for i in 0..high(thr):
-##    createThread(thr[i], threadFunc, (i*10, i*10+5))
-##  joinThreads(thr)
-##
-##  deinitLock(L)
+##   deinitLock(L)
+##   ```
+
+
 
 import std/private/[threadtypes]
 export Thread
@@ -45,8 +47,11 @@ when defined(nimPreviewSlimSystem):
 when defined(genode):
   import genode/env
 
+when hostOS == "any":
+  {.error: "Threads not implemented for os:any. Please compile with --threads:off.".}
 
-when hasAllocStack or defined(zephyr) or defined(freertos) or defined(cpu16) or defined(cpu8):
+when hasAllocStack or defined(zephyr) or defined(freertos) or defined(nuttx) or
+    defined(cpu16) or defined(cpu8):
   const
     nimThreadStackSize {.intdefine.} = 8192
     nimThreadStackGuard {.intdefine.} = 128

@@ -12,7 +12,7 @@
 from std/math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
   floor, ceil, `mod`, cbrt, arcsinh, arccosh, arctanh, erf, erfc, gamma,
-  lgamma
+  lgamma, divmod
 from std/sequtils import toSeq
 when declared(math.copySign):
   # pending bug #18762, avoid renaming math
@@ -36,7 +36,8 @@ from std/osproc import nil
 when defined(nimPreviewSlimSystem):
   import std/syncio
 else:
-  from std/formatfloat import addFloatRoundtrip, addFloatSprintf 
+  from std/formatfloat import addFloatRoundtrip, addFloatSprintf
+
 
 # There are some useful procs in vmconv.
 import vmconv, vmmarshal
@@ -77,6 +78,11 @@ template wrap1fMath(op) {.dirty.} =
 template wrap2fMath(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getFloat(a, 0), getFloat(a, 1)))
+  mathop op
+
+template wrap2iMath(op) {.dirty.} =
+  proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+    setResult(a, op(getInt(a, 0), getInt(a, 1)))
   mathop op
 
 template wrap0(op, modop) {.dirty.} =
@@ -166,6 +172,7 @@ proc querySettingImpl(conf: ConfigRef, switch: BiggestInt): string =
 
 proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
   template copySeq(field: untyped): untyped =
+    result = @[]
     for i in field: result.add i.string
 
   case MultipleValueSetting(switch)
@@ -223,6 +230,7 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1fMath(erfc)
   wrap1fMath(gamma)
   wrap1fMath(lgamma)
+  wrap2iMath(divmod)
 
   when declared(copySign):
     wrap2fMath(copySign)
@@ -235,7 +243,7 @@ proc registerAdditionalOps*(c: PCtx) =
     case n
     of 1: setResult(a, round(getFloat(a, 0)))
     of 2: setResult(a, round(getFloat(a, 0), getInt(a, 1).int))
-    else: doAssert false, $n
+    else: raiseAssert $n
 
   proc `mod Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, `mod`(getFloat(a, 0), getFloat(a, 1)))
@@ -254,8 +262,12 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2si(readLines, ioop)
     systemop getCurrentExceptionMsg
     systemop getCurrentException
-    registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
+    registerCallback c, "stdlib.osdirs.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
+    registerCallback c, "stdlib.staticos.staticDirExists", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, dirExists(getString(a, 0)))
+    registerCallback c, "stdlib.staticos.staticFileExists", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, fileExists(getString(a, 0)))
     registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) =
       setResult(a, querySettingImpl(c.config, getInt(a, 0)))
     registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) =
@@ -281,6 +293,12 @@ proc registerAdditionalOps*(c: PCtx) =
     if n.kind != nkSym:
       stackTrace2(c, "isExported() requires a symbol. '$#' is of kind '$#'" % [$n, $n.kind], n)
     setResult(a, sfExported in n.sym.flags)
+
+  registerCallback c, "stdlib.macrocache.hasKey", proc (a: VmArgs) =
+    let
+      table = getString(a, 0)
+      key = getString(a, 1)
+    setResult(a, table in c.graph.cacheTables and key in c.graph.cacheTables[table])
 
   registerCallback c, "stdlib.vmutils.vmTrace", proc (a: VmArgs) =
     c.config.isVmTrace = getBool(a, 0)
@@ -374,6 +392,10 @@ proc registerAdditionalOps*(c: PCtx) =
     let x = a.getFloat(1)
     addFloatSprintf(p.strVal, x)
 
+  registerCallback c, "stdlib.strutils.formatBiggestFloat", proc(a: VmArgs) =
+    setResult(a, formatBiggestFloat(a.getFloat(0), FloatFormatMode(a.getInt(1)),
+                                    a.getInt(2), chr(a.getInt(3))))
+
   wrapIterator("stdlib.envvars.envPairsImplSeq"): envPairs()
 
   registerCallback c, "stdlib.marshal.toVM", proc(a: VmArgs) =
@@ -389,6 +411,6 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.marshal.loadVM", proc(a: VmArgs) =
     let typ = a.getNode(0).typ
     let p = a.getReg(1)
-    var res: string
+    var res: string = ""
     storeAny(res, typ, regToNode(p[]), c.config)
     setResult(a, res)

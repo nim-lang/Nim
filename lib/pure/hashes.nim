@@ -62,7 +62,7 @@ runnableExamples:
 ## ========
 ## * `md5 module <md5.html>`_ for the MD5 checksum algorithm
 ## * `base64 module <base64.html>`_ for a Base64 encoder and decoder
-## * `std/sha1 module <sha1.html>`_ for the SHA-1 checksum algorithm
+## * `sha1 module <sha1.html>`_ for the SHA-1 checksum algorithm
 ## * `tables module <tables.html>`_ for hash tables
 
 import std/private/since
@@ -247,7 +247,7 @@ proc hash*[T](x: ptr[T]): Hash {.inline.} =
 when defined(nimPreviewHashRef) or defined(nimdoc):
   proc hash*[T](x: ref[T]): Hash {.inline.} =
     ## Efficient `hash` overload.
-    ## 
+    ##
     ## .. important:: Use `-d:nimPreviewHashRef` to
     ##    enable hashing `ref`s. It is expected that this behavior
     ##    becomes the new default in upcoming versions.
@@ -319,16 +319,24 @@ proc murmurHash(x: openArray[byte]): Hash =
     h1: uint32
     i = 0
 
+
+  template impl =
+    var j = stepSize
+    while j > 0:
+      dec j
+      k1 = (k1 shl 8) or (ord(x[i+j])).uint32
+
   # body
   while i < n * stepSize:
     var k1: uint32
-    when defined(js) or defined(sparc) or defined(sparc64):
-      var j = stepSize
-      while j > 0:
-        dec j
-        k1 = (k1 shl 8) or (ord(x[i+j])).uint32
+
+    when nimvm:
+      impl()
     else:
-      k1 = cast[ptr uint32](unsafeAddr x[i])[]
+      when declared(copyMem):
+        copyMem(addr k1, addr x[i], 4)
+      else:
+        impl()
     inc i, stepSize
 
     k1 = imul(k1, c1)
@@ -360,16 +368,16 @@ proc murmurHash(x: openArray[byte]): Hash =
   return cast[Hash](h1)
 
 proc hashVmImpl(x: cstring, sPos, ePos: int): Hash =
-  doAssert false, "implementation override in compiler/vmops.nim"
+  raiseAssert "implementation override in compiler/vmops.nim"
 
 proc hashVmImpl(x: string, sPos, ePos: int): Hash =
-  doAssert false, "implementation override in compiler/vmops.nim"
+  raiseAssert "implementation override in compiler/vmops.nim"
 
 proc hashVmImplChar(x: openArray[char], sPos, ePos: int): Hash =
-  doAssert false, "implementation override in compiler/vmops.nim"
+  raiseAssert "implementation override in compiler/vmops.nim"
 
 proc hashVmImplByte(x: openArray[byte], sPos, ePos: int): Hash =
-  doAssert false, "implementation override in compiler/vmops.nim"
+  raiseAssert "implementation override in compiler/vmops.nim"
 
 proc hash*(x: string): Hash =
   ## Efficient hashing of strings.
@@ -501,7 +509,7 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
     h = h !& ord(c)
   result = !$h
 
-proc hash*[T: tuple | object | proc](x: T): Hash =
+proc hash*[T: tuple | object | proc | iterator {.closure.}](x: T): Hash =
   ## Efficient `hash` overload.
   runnableExamples:
     # for `tuple|object`, `hash` must be defined for each component of `x`.
@@ -534,8 +542,9 @@ proc hash*[T: tuple | object | proc](x: T): Hash =
   when T is "closure":
     result = hash((rawProc(x), rawEnv(x)))
   elif T is (proc):
-    result = hash(pointer(x))
+    result = hash(cast[pointer](x))
   else:
+    result = 0
     for f in fields(x):
       result = result !& hash(f)
     result = !$result
@@ -551,6 +560,7 @@ proc hash*[A](x: openArray[A]): Hash =
     else:
       result = murmurHash(toOpenArrayByte(x, 0, x.high))
   else:
+    result = 0
     for a in x:
       result = result !& hash(a)
     result = !$result
@@ -583,6 +593,7 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
 proc hash*[A](x: set[A]): Hash =
   ## Efficient hashing of sets.
   ## There must be a `hash` proc defined for the element type `A`.
+  result = 0
   for it in items(x):
     result = result !& hash(it)
   result = !$result

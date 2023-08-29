@@ -10,20 +10,21 @@
 ## OpenSSL wrapper. Supports OpenSSL >= 1.1.0 dynamically (as default) or statically linked
 ## using `--dynlibOverride:ssl`.
 ##
-## `-d:sslVersion=1.2.3` can be used to force an SSL version. 
+## `-d:sslVersion=1.2.3` can be used to force an SSL version.
 ## This version must be included in the library name.
 ## `-d:useOpenssl3` may be set for OpenSSL 3 instead.
-## 
+##
 ## There is also limited support for OpenSSL 1.0.x which may require `-d:openssl10`.
 ##
 ## Build and test examples:
 ##
-## .. code-block::
+##   ```cmd
 ##   ./bin/nim c -d:ssl -p:. -r tests/stdlib/tssl.nim
 ##   ./bin/nim c -d:ssl --threads:on -p:. -r tests/stdlib/thttpclient_ssl.nim
 ##   ./bin/nim c -d:ssl -p:. -r tests/untestable/tssl.nim
 ##   ./bin/nim c -d:ssl -p:. --dynlibOverride:ssl --passl:-lcrypto --passl:-lssl -r tests/untestable/tssl.nim
 ##   ./bin/nim r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:ssl -p:testament/lib --threads:on tests/untestable/thttpclient_ssl_remotenetwork.nim
+##   ```
 
 # https://www.feistyduck.com/library/openssl-cookbook/online/ch-testing-with-openssl.html
 #
@@ -467,10 +468,10 @@ else:
       raiseInvalidLibrary MainProc
 
   proc SSL_CTX_set_ciphersuites*(ctx: SslCtx, str: cstring): cint =
-    var theProc {.global.}: proc(ctx: SslCtx, str: cstring) {.cdecl, gcsafe.}
+    var theProc {.global.}: proc(ctx: SslCtx, str: cstring): cint {.cdecl, gcsafe.}
     if theProc.isNil:
       theProc = cast[typeof(theProc)](sslSymThrows("SSL_CTX_set_ciphersuites"))
-    theProc(ctx, str)
+    result = theProc(ctx, str)
 
 proc SSL_new*(context: SslCtx): SslPtr{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_free*(ssl: SslPtr){.cdecl, dynlib: DLLSSLName, importc.}
@@ -529,11 +530,8 @@ proc BIO_do_handshake*(bio: BIO): int =
 proc BIO_do_connect*(bio: BIO): int =
   return BIO_do_handshake(bio)
 
-when not defined(nimfix):
-  proc BIO_read*(b: BIO, data: cstring, length: cint): cint{.cdecl,
-      dynlib: DLLUtilName, importc.}
-  proc BIO_write*(b: BIO, data: cstring, length: cint): cint{.cdecl,
-      dynlib: DLLUtilName, importc.}
+proc BIO_read*(b: BIO, data: cstring, length: cint): cint{.cdecl, dynlib: DLLUtilName, importc.}
+proc BIO_write*(b: BIO, data: cstring, length: cint): cint{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc BIO_free*(b: BIO): cint{.cdecl, dynlib: DLLUtilName, importc.}
 
@@ -589,7 +587,7 @@ when not useWinVersion and not defined(macosx) and not defined(android) and useN
     if p != nil: deallocShared(p)
 
   proc CRYPTO_malloc_init*() =
-    CRYPTO_set_mem_functions(allocWrapper, reallocWrapper, deallocWrapper)
+    CRYPTO_set_mem_functions(cast[pointer](allocWrapper), cast[pointer](reallocWrapper), cast[pointer](deallocWrapper))
 else:
   proc CRYPTO_malloc_init*() =
     discard

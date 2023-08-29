@@ -100,9 +100,17 @@ proc isFutureVoid(node: NimNode): bool =
            node[1].kind == nnkIdent and $node[1] == "void"
 
 proc generateJsasync(arg: NimNode): NimNode =
-  if arg.kind notin {nnkProcDef, nnkLambda, nnkMethodDef, nnkDo}:
+  if arg.kind notin {nnkProcDef, nnkLambda, nnkMethodDef, nnkDo, nnkProcTy}:
       error("Cannot transform this node kind into an async proc." &
             " proc/method definition or lambda node expected.")
+
+  # Transform type X = proc (): something {.async.}
+  # into      type X = proc (): Future[something]
+  if arg.kind == nnkProcTy:
+    result = arg
+    if arg[0][0].kind == nnkEmpty:
+      result[0][0] = quote do: Future[void]
+    return result
 
   result = arg
   var isVoid = false

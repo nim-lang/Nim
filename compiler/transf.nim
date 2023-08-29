@@ -31,7 +31,7 @@ type
   TransformBodyFlag* = enum
     dontUseCache, useCache
 
-proc transformBody*(g: ModuleGraph; idgen: IdGenerator, prc: PSym, flag: TransformBodyFlag): PNode
+proc transformBody*(g: ModuleGraph; idgen: IdGenerator, prc: PSym, flag: TransformBodyFlag, force = false): PNode
 
 import closureiters, lambdalifting
 
@@ -50,6 +50,7 @@ type
     module: PSym
     transCon: PTransCon      # top of a TransCon stack
     inlining: int            # > 0 if we are in inlining context (copy vars)
+    isIntroducingNewLocalVars: bool  # true if we are in `introducingNewLocalVars` (don't transform yields)
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
     deferDetected, tooEarly: bool
     graph: ModuleGraph
@@ -73,9 +74,7 @@ proc newTransNode(kind: TNodeKind, n: PNode,
 
 proc newTransCon(owner: PSym): PTransCon =
   assert owner != nil
-  new(result)
-  initIdNodeTable(result.mapping)
-  result.owner = owner
+  result = PTransCon(mapping: initIdNodeTable(), owner: owner)
 
 proc pushTransCon(c: PTransf, t: PTransCon) =
   t.next = c.transCon
@@ -90,7 +89,7 @@ proc getCurrOwner(c: PTransf): PSym =
   else: result = c.module
 
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
-  let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), nextSymId(c.idgen), getCurrOwner(c), info)
+  let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), c.idgen, getCurrOwner(c), info)
   r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flags, sfFromGeneric)
   let owner = getCurrOwner(c)
@@ -176,7 +175,7 @@ proc freshVar(c: PTransf; v: PSym): PNode =
   if owner.isIterator and not c.tooEarly:
     result = freshVarForClosureIter(c.graph, v, c.idgen, owner)
   else:
-    var newVar = copySym(v, nextSymId(c.idgen))
+    var newVar = copySym(v, c.idgen)
     incl(newVar.flags, sfFromGeneric)
     newVar.owner = owner
     result = newSymNode(newVar)
@@ -241,15 +240,15 @@ proc transformConstSection(c: PTransf, v: PNode): PNode =
 
 proc hasContinue(n: PNode): bool =
   case n.kind
-  of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt: discard
+  of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt: result = false
   of nkContinueStmt: result = true
   else:
+    result = false
     for i in 0..<n.len:
       if hasContinue(n[i]): return true
 
 proc newLabel(c: PTransf, n: PNode): PSym =
-  result = newSym(skLabel, nil, nextSymId(c.idgen), getCurrOwner(c), n.info)
-  result.name = getIdent(c.graph.cache, genPrefix)
+  result = newSym(skLabel, getIdent(c.graph.cache, genPrefix), c.idgen, getCurrOwner(c), n.info)
 
 proc transformBlock(c: PTransf, n: PNode): PNode =
   var labl: PSym
@@ -324,6 +323,14 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     if a.kind == nkSym:
       n[1] = transformSymAux(c, a)
     return n
+  of nkProcDef: # todo optimize nosideeffects?
+    result = newTransNode(n)
+    let x = newSymNode(copySym(n[namePos].sym, c.idgen))
+    idNodeTablePut(c.transCon.mapping, n[namePos].sym, x)
+    result[namePos] = x # we have to copy proc definitions for iters
+    for i in 1..<n.len:
+      result[i] = introduceNewLocalVars(c, n[i])
+    result[namePos].sym.ast = result
   else:
     result = newTransNode(n)
     for i in 0..<n.len:
@@ -373,6 +380,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     of nkDotExpr:
       result = newAsgnStmt(c, nkAsgn, lhs, rhs, false)
     else:
+      result = nil
       internalAssert c.graph.config, false
   result = newTransNode(nkStmtList, n.info, 0)
   var e = n[0]
@@ -450,7 +458,9 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     result.add(c.transCon.forLoopBody)
   else:
     # we need to introduce new local variables:
+    c.isIntroducingNewLocalVars = true # don't transform yields when introducing new local vars
     result.add(introduceNewLocalVars(c, c.transCon.forLoopBody))
+    c.isIntroducingNewLocalVars = false
 
   for idx in 0 ..< result.len:
     var changeNode = result[idx]
@@ -644,7 +654,7 @@ proc findWrongOwners(c: PTransf, n: PNode) =
   else:
     for i in 0..<n.safeLen: findWrongOwners(c, n[i])
 
-proc isSimpleIteratorVar(c: PTransf; iter: PSym): bool =
+proc isSimpleIteratorVar(c: PTransf; iter: PSym; call: PNode; owner: PSym): bool =
   proc rec(n: PNode; owner: PSym; dangerousYields: var int) =
     case n.kind
     of nkEmpty..nkNilLit: discard
@@ -656,9 +666,22 @@ proc isSimpleIteratorVar(c: PTransf; iter: PSym): bool =
     else:
       for c in n: rec(c, owner, dangerousYields)
 
+  proc recSym(n: PNode; owner: PSym; sameOwner: var bool) =
+    case n.kind
+    of {nkEmpty..nkNilLit} - {nkSym}: discard
+    of nkSym:
+      if n.sym.owner != owner:
+        sameOwner = false
+    else:
+      for c in n: recSym(c, owner, sameOwner)
+
   var dangerousYields = 0
   rec(getBody(c.graph, iter), iter, dangerousYields)
   result = dangerousYields == 0
+  # the parameters should be owned by the owner
+  # bug #22237
+  for i in 1..<call.len:
+    recSym(call[i], owner, result)
 
 template destructor(t: PType): PSym = getAttachedOp(c.graph, t, attachedDestructor)
 
@@ -702,7 +725,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       for j in 0..<n[i].len-1:
         addVar(v, copyTree(n[i][j])) # declare new vars
     else:
-      if n[i].kind == nkSym and isSimpleIteratorVar(c, iter):
+      if n[i].kind == nkSym and isSimpleIteratorVar(c, iter, call, n[i].sym.owner):
         incl n[i].sym.flags, sfCursor
       addVar(v, copyTree(n[i])) # declare new vars
   stmtList.add(v)
@@ -809,7 +832,9 @@ proc getMergeOp(n: PNode): PSym =
      nkCallStrLit:
     if n[0].kind == nkSym and n[0].sym.magic == mConStrStr:
       result = n[0].sym
-  else: discard
+    else:
+      result = nil
+  else: result = nil
 
 proc flattenTreeAux(d, a: PNode, op: PSym) =
   ## Optimizes away the `&` calls in the children nodes and
@@ -938,6 +963,15 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
     else:
       result = n
 
+proc transformDerefBlock(c: PTransf, n: PNode): PNode =
+  # We transform (block: x)[] to (block: x[])
+  let e0 = n[0]
+  result = shallowCopy(e0)
+  result.typ = n.typ
+  for i in 0 ..< e0.len - 1:
+    result[i] = e0[i]
+  result[e0.len-1] = newTreeIT(nkHiddenDeref, n.info, n.typ, e0[e0.len-1])
+
 proc transform(c: PTransf, n: PNode): PNode =
   when false:
     var oldDeferAnchor: PNode
@@ -1008,8 +1042,15 @@ proc transform(c: PTransf, n: PNode): PNode =
     result = transformAddrDeref(c, n, {nkHiddenDeref})
   of nkAddr:
     result = transformAddrDeref(c, n, {nkDerefExpr, nkHiddenDeref})
-  of nkDerefExpr, nkHiddenDeref:
+  of nkDerefExpr:
     result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
+  of nkHiddenDeref:
+    if n[0].kind in {nkBlockExpr, nkBlockStmt}:
+      # bug #20107 bug #21540. Watch out to not deref the pointer too late.
+      let e = transformDerefBlock(c, n)
+      result = transformBlock(c, e)
+    else:
+      result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = transformConv(c, n)
   of nkDiscardStmt:
@@ -1036,7 +1077,7 @@ proc transform(c: PTransf, n: PNode): PNode =
     else:
       result = transformSons(c, n)
   of nkYieldStmt:
-    if c.inlining > 0:
+    if c.inlining > 0 and not c.isIntroducingNewLocalVars:
       result = transformYield(c, n)
     else:
       result = transformSons(c, n)
@@ -1145,7 +1186,7 @@ template liftDefer(c, root) =
   if c.deferDetected:
     liftDeferAux(root)
 
-proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: TransformBodyFlag): PNode =
+proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: TransformBodyFlag, force = false): PNode =
   assert prc.kind in routineKinds
 
   if prc.transformedBody != nil:
@@ -1155,7 +1196,7 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: Transfo
   else:
     prc.transformedBody = newNode(nkEmpty) # protects from recursion
     var c = openTransf(g, prc.getModule, "", idgen)
-    result = liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen)
+    result = liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen, force)
     result = processTransf(c, result, prc)
     liftDefer(c, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config, c.idgen)

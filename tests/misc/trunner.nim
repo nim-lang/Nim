@@ -342,8 +342,8 @@ tests/newconfig/bar/mfoo.nims""".splitLines
         when not defined(windows):
           check3 lines.len == 5
           check3 lines[0].isDots
-          check3 lines[1].dup(removePrefix(">>> ")) == "3" # prompt depends on `nimUseLinenoise`
-          check3 lines[2].isDots
+          # check3 lines[1].isDots # todo nim secret might use parsing pipeline
+          check3 lines[2].dup(removePrefix(">>> ")) == "3" # prompt depends on `nimUseLinenoise`
           check3 lines[3] == "ab"
           check3 lines[4] == ""
         else:
@@ -404,7 +404,7 @@ running: v2
 
   block: # UnusedImport
     proc fn(opt: string, expected: string) =
-      let output = runNimCmdChk("pragmas/mused3.nim", fmt"--warning:all:off --warning:UnusedImport --hint:DuplicateModuleImport {opt}")
+      let output = runNimCmdChk("msgs/mused3.nim", fmt"--warning:all:off --warning:UnusedImport --hint:DuplicateModuleImport {opt}")
       doAssert output == expected, opt & "\noutput:\n" & output & "expected:\n" & expected
     fn("-d:case1"): """
 mused3.nim(13, 8) Warning: imported and not used: 'mused3b' [UnusedImport]
@@ -434,7 +434,6 @@ mused3.nim(75, 10) Hint: duplicate import of 'mused3a'; previous import here: mu
     fn("-d:case2 --gc:refc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
     fn("-d:case1 -b:js"): """mfield_defect.nim(25, 15) Error: field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
     fn("-d:case2 -b:js"): """field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
-    # 3 instead of k3, because of lack of RTTI
-    fn("-d:case2 --gc:arc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = 3'"""
+    fn("-d:case2 --gc:arc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
 else:
   discard # only during debugging, tests added here will run with `-d:nimTestsTrunnerDebugging` enabled

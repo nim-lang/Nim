@@ -32,6 +32,17 @@ Compiler Usage
 
 Command-line switches
 ---------------------
+All options that take a `PATH` or `DIR` argument are subject to path substitution:
+
+- `$nim`: The global nim prefix path
+- `$lib`: The stdlib path
+- `$home` and `~`: The user's home path
+- `$config`: The directory of the module currently being compiled
+- `$projectname`: The project file's name without file extension
+- `$projectpath` and `$projectdir`: The project file's path
+- `$nimcache`: The nimcache path
+
+
 Basic command-line switches are:
 
 .. no syntax highlighting in the below included files at the moment
@@ -104,7 +115,6 @@ ExprAlwaysX
 ExtendedContext
 GCStats                          Dumps statistics about the Garbage Collector.
 GlobalVar                        Shows global variables declarations.
-LineTooLong                      Line exceeds the maximum length.
 Link                             Linking phase.
 Name
 Path                             Search paths modifications.
@@ -316,14 +326,16 @@ Another way is to make Nim invoke a cross compiler toolchain:
   nim c --cpu:arm --os:linux myproject.nim
   ```
 
-For cross compilation, the compiler invokes a C compiler named
-like `$cpu.$os.$cc` (for example arm.linux.gcc) and the configuration
-system is used to provide meaningful defaults. For example for `ARM` your
+For cross compilation, the compiler invokes a C compiler named like
+`$cpu.$os.$cc` (for example `arm.linux.gcc`) with options defined in
+`$cpu.$os.$cc.options.always`. The configuration system is used to provide
+meaningful defaults. For example, for Linux on a 32-bit ARM CPU, your
 configuration file should contain something like:
 
     arm.linux.gcc.path = "/usr/bin"
     arm.linux.gcc.exe = "arm-linux-gcc"
     arm.linux.gcc.linkerexe = "arm-linux-gcc"
+    arm.linux.gcc.options.always = "-w -fmax-errors=3"
 
 Cross-compilation for Windows
 =============================
@@ -469,8 +481,12 @@ They are:
 5. nl_types. No headers for this.
 6. As mmap is not supported, the nimAllocPagesViaMalloc option has to be used.
 
+
 DLL generation
 ==============
+
+**Note**: The same rules apply to `lib*.so` shared object files on UNIX. For better
+readability only the DLL version is decribed here.
 
 Nim supports the generation of DLLs. However, there must be only one
 instance of the GC per process/address space. This instance is contained in
@@ -513,7 +529,7 @@ Define                   Effect
                          This only works with `--mm:none`:option:,
                          `--mm:arc`:option: and `--mm:orc`:option:.
 `useRealtimeGC`          Enables support of Nim's GC for *soft* realtime
-                         systems. See the documentation of the [mm](mm.html)
+                         systems. See the documentation of the [refc](refc.html)
                          for further information.
 `logGC`                  Enable GC logging to stdout.
 `nodejs`                 The JS target is actually ``node.js``.
@@ -713,7 +729,7 @@ Nim's thread API provides a simple wrapper around more advanced
 RTOS task features. Customizing the stack size and stack guard size can
 be done by setting `-d:nimThreadStackSize=16384` or `-d:nimThreadStackGuard=32`.
 
-Currently only Zephyr and FreeRTOS support these configurations.
+Currently only Zephyr, NuttX and FreeRTOS support these configurations.
 
 Nim for realtime systems
 ========================

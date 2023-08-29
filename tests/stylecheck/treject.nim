@@ -1,7 +1,7 @@
 discard """
   action: reject
   nimout: '''treject.nim(14, 13) Error: 'iD' should be: 'id' [field declared in treject.nim(9, 5)]'''
-  matrix: "--styleCheck:error --styleCheck:usages"
+  matrix: "--styleCheck:error --styleCheck:usages  --hint:Name:on"
 """
 
 type

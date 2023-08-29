@@ -505,3 +505,21 @@ block:
       b.invoke()
 
     doAssert called == 36
+
+  block:
+    proc returnsSomething(a, b: int): int = a + b
+
+    proc noArgsButReturnsSomething(): string = "abcdef"
+
+    proc testReturnValues() =
+      let t = toTask returnsSomething(2233, 11)
+      var res: int
+      t.invoke(addr res)
+      doAssert res == 2233+11
+
+      let tb = toTask noArgsButReturnsSomething()
+      var resB: string
+      tb.invoke(addr resB)
+      doAssert resB == "abcdef"
+
+    testReturnValues()

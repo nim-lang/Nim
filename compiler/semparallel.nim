@@ -184,7 +184,10 @@ proc stride(c: AnalysisCtx; n: PNode): BiggestInt =
     let s = c.lookupSlot(n.sym)
     if s >= 0 and c.locals[s].stride != nil:
       result = c.locals[s].stride.intVal
+    else:
+      result = 0
   else:
+    result = 0
     for i in 0..<n.safeLen: result += stride(c, n[i])
 
 proc subStride(c: AnalysisCtx; n: PNode): PNode =
@@ -486,7 +489,7 @@ proc liftParallel*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): P
   checkArgs(a, body)
 
   var varSection = newNodeI(nkVarSection, n.info)
-  var temp = newSym(skTemp, getIdent(g.cache, "barrier"), nextSymId idgen, owner, n.info)
+  var temp = newSym(skTemp, getIdent(g.cache, "barrier"), idgen, owner, n.info)
   temp.typ = magicsys.getCompilerProc(g, "Barrier").typ
   incl(temp.flags, sfFromGeneric)
   let tempNode = newSymNode(temp)
