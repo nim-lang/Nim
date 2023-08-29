@@ -107,9 +107,12 @@ proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, in
   else: result = cast[cstring](unsafeAddr s.p.data)
 
 proc appendString(dest: var NimStringV2; src: NimStringV2) {.compilerproc, inline.} =
-  # also copy the \0 terminator:
-  copyMem(unsafeAddr dest.p.data[dest.len], unsafeAddr src.p.data[0], src.len+1)
-  inc dest.len, src.len
+  if src.len > 0:
+    # also copy the \0 terminator:
+    copyMem(unsafeAddr dest.p.data[dest.len], unsafeAddr src.p.data[0], src.len+1)
+    inc dest.len, src.len
+  else:
+    dest.p.data[dest.len] = '\0'
 
 proc appendChar(dest: var NimStringV2; c: char) {.compilerproc, inline.} =
   dest.p.data[dest.len] = c
