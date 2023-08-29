@@ -8,7 +8,7 @@
 #
 
 ## This module contains basic operating system facilities like
-## retrieving environment variables, working with directories, 
+## retrieving environment variables, working with directories,
 ## running shell commands, etc.
 
 ## .. importdoc:: symlinks.nim, appdirs.nim, dirs.nim, ospaths2.nim
@@ -624,9 +624,11 @@ when defined(haiku):
     else:
       result = ""
 
-proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
+proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget, raises: [].} =
   ## Returns the filename of the application's executable.
   ## This proc will resolve symlinks.
+  ##
+  ## Returns empty string when name is unavailable
   ##
   ## See also:
   ## * `getAppDir proc`_
@@ -657,26 +659,29 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
     if getExecPath2(result.cstring, size):
       result = "" # error!
     if result.len > 0:
-      result = result.expandFilename
+      try:
+        result = result.expandFilename
+      except OSError:
+        result = ""
   else:
     when defined(linux) or defined(aix):
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
     elif defined(genode):
-      raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
+      result = "" # Not supported
     elif defined(freebsd) or defined(dragonfly) or defined(netbsd):
       result = getApplFreebsd()
     elif defined(haiku):
       result = getApplHaiku()
     elif defined(openbsd):
-      result = getApplOpenBsd()
+      result = try: getApplOpenBsd() except OSError: ""
     elif defined(nintendoswitch):
       result = ""
 
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
-      result = getApplHeuristic()
+      result = try: getApplHeuristic() except OSError: ""
 
 proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
   ## Returns the directory of the application's executable.

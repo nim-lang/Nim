@@ -252,6 +252,7 @@ proc hasCommand(n: PNode): bool =
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse,
       nkStaticStmt, nkLetSection, nkConstSection, nkVarSection,
       nkIdentDefs:
+    result = false
     for a in n:
       if a.hasCommand:
         return true
