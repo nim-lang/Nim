@@ -1481,7 +1481,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcExcept:
       # This opcode is never executed, it only holds information for the
       # exception handling routines.
-      doAssert(false)
+      raiseAssert "unreachable"
     of opcFinally:
       # Pop the last safepoint introduced by a opcTry. This opcode is only
       # executed _iff_ no exception was raised in the body of the `try`
