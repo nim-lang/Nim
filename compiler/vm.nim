@@ -1392,8 +1392,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           let prcValue = c.globals[prc.position-1]
           if prcValue.kind == nkEmpty:
             globalError(c.config, c.debug[pc], "cannot run " & prc.name.s)
-          var slots2: TNodeSeq = default(TNodeSeq)
-          slots2.setLen(tos.slots.len)
+          var slots2: TNodeSeq = newSeq[PNode](tos.slots.len)
           for i in 0..<tos.slots.len:
             slots2[i] = regToNode(tos.slots[i])
           let newValue = callForeignFunction(c.config, prcValue, prc.typ, slots2,
@@ -1482,7 +1481,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcExcept:
       # This opcode is never executed, it only holds information for the
       # exception handling routines.
-      doAssert(false)
+      raiseAssert "unreachable"
     of opcFinally:
       # Pop the last safepoint introduced by a opcTry. This opcode is only
       # executed _iff_ no exception was raised in the body of the `try`
