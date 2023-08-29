@@ -800,11 +800,6 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
     if not hasField and typ.itemId notin m.g.graph.memberProcsPerType:
       if desc == "":
         result.add("\tchar dummy;\n")
-      elif typ.len == 1 and typ.n[0].kind == nkSym:
-        let field = typ.n[0].sym
-        let fieldType = field.typ.skipTypes(abstractInst)
-        if fieldType.kind == tyUncheckedArray:
-          result.add("\tchar dummy;\n")
       result.add(desc)
     else:
       result.add(desc)

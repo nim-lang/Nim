@@ -467,7 +467,7 @@ typedef char* NCSTRING;
 #if defined(__cplusplus) && defined(__clang__)
 #  define SEQ_DECL_SIZE 1
 #elif defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
-#  define SEQ_DECL_SIZE /* empty is correct! */
+#  define SEQ_DECL_SIZE 1 /* see https://github.com/nim-lang/Nim/issues/22556 */
 #else
 #  define SEQ_DECL_SIZE 1000000
 #endif
