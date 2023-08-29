@@ -296,3 +296,13 @@ block: # bug #12595
     discard {i: ""}
 
   test()
+
+block: # bug #21920
+  template t[T](): T =
+    discard
+
+  t[void]() # Error: expression has no type: discard
+
+block: # issue #19865
+  template f() = discard default(system.int)
+  f()

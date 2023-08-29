@@ -12,7 +12,7 @@
 from std/math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
   floor, ceil, `mod`, cbrt, arcsinh, arccosh, arctanh, erf, erfc, gamma,
-  lgamma
+  lgamma, divmod
 from std/sequtils import toSeq
 when declared(math.copySign):
   # pending bug #18762, avoid renaming math
@@ -78,6 +78,11 @@ template wrap1fMath(op) {.dirty.} =
 template wrap2fMath(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getFloat(a, 0), getFloat(a, 1)))
+  mathop op
+
+template wrap2iMath(op) {.dirty.} =
+  proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+    setResult(a, op(getInt(a, 0), getInt(a, 1)))
   mathop op
 
 template wrap0(op, modop) {.dirty.} =
@@ -167,6 +172,7 @@ proc querySettingImpl(conf: ConfigRef, switch: BiggestInt): string =
 
 proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
   template copySeq(field: untyped): untyped =
+    result = @[]
     for i in field: result.add i.string
 
   case MultipleValueSetting(switch)
@@ -224,6 +230,7 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1fMath(erfc)
   wrap1fMath(gamma)
   wrap1fMath(lgamma)
+  wrap2iMath(divmod)
 
   when declared(copySign):
     wrap2fMath(copySign)
@@ -236,7 +243,7 @@ proc registerAdditionalOps*(c: PCtx) =
     case n
     of 1: setResult(a, round(getFloat(a, 0)))
     of 2: setResult(a, round(getFloat(a, 0), getInt(a, 1).int))
-    else: doAssert false, $n
+    else: raiseAssert $n
 
   proc `mod Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, `mod`(getFloat(a, 0), getFloat(a, 1)))
@@ -257,6 +264,10 @@ proc registerAdditionalOps*(c: PCtx) =
     systemop getCurrentException
     registerCallback c, "stdlib.osdirs.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
+    registerCallback c, "stdlib.staticos.staticDirExists", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, dirExists(getString(a, 0)))
+    registerCallback c, "stdlib.staticos.staticFileExists", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, fileExists(getString(a, 0)))
     registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) =
       setResult(a, querySettingImpl(c.config, getInt(a, 0)))
     registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) =
@@ -400,6 +411,6 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.marshal.loadVM", proc(a: VmArgs) =
     let typ = a.getNode(0).typ
     let p = a.getReg(1)
-    var res: string
+    var res: string = ""
     storeAny(res, typ, regToNode(p[]), c.config)
     setResult(a, res)

@@ -591,6 +591,7 @@ proc readIndexDir*(dir: string):
     if path.endsWith(IndexExt):
       var (fileEntries, title) = parseIdxFile(path)
       # Depending on type add this to the list of symbols or table of APIs.
+
       if title.kind == ieNimTitle:
         for i in 0 ..< fileEntries.len:
           if fileEntries[i].kind != ieNim:
@@ -611,6 +612,14 @@ proc readIndexDir*(dir: string):
         # Generate the symbolic anchor for index quickjumps.
         title.aux = "doc_toc_" & $result.docs.len
         result.docs[title] = fileEntries
+
+      for i in 0 ..< fileEntries.len:
+        if fileEntries[i].kind != ieIdxRole:
+          continue
+
+        setLen(result.symbols, L + 1)
+        result.symbols[L] = fileEntries[i]
+        inc L
 
 proc mergeIndexes*(dir: string): string =
   ## Merges all index files in `dir` and returns the generated index as HTML.
@@ -1166,7 +1175,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, "<div class=\"option-list-description\">$1</div>",
         " $1\n", result)
   of rnOption, rnOptionString, rnOptionArgument:
-    doAssert false, "renderRstToOut"
+    raiseAssert "renderRstToOut"
   of rnLiteralBlock:
     renderAux(d, n, "<pre$2>$1</pre>\n",
                     "\n\n$2\\begin{rstpre}\n$1\n\\end{rstpre}\n\n", result)

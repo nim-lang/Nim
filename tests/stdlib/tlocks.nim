@@ -1,6 +1,6 @@
 discard """
   targets: "c cpp js"
-  matrix: "--threads:on"
+  matrix: "--mm:refc; --mm:orc"
 """
 
 #bug #6049

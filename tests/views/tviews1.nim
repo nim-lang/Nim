@@ -93,3 +93,15 @@ block: # bug #21674
     foo(x)
 
   main()
+
+block: # bug #22117
+  proc main: int =
+    var a = 10
+    defer: discard a # extend a's lifetime
+
+    var aref: var int = a
+      #└──── 'aref' borrows from location 'a' which does not live long enough
+
+    result = aref
+
+  doAssert main() == 10

@@ -13,7 +13,7 @@
 ##
 ## See also
 ## ========
-## * `threads module <threads.html>`_ for basic thread support
+## * `threads module <typedthreads.html>`_ for basic thread support
 ## * `locks module <locks.html>`_ for locks and condition variables
 ## * `asyncdispatch module <asyncdispatch.html>`_ for asynchronous IO
 

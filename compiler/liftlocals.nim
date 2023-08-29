@@ -49,6 +49,7 @@ proc liftLocals(n: PNode; i: int; c: var Ctx) =
       liftLocals(it, i, c)
 
 proc lookupParam(params, dest: PNode): PSym =
+  result = nil
   if dest.kind != nkIdent: return nil
   for i in 1..<params.len:
     if params[i].kind == nkSym and params[i].sym.name.id == dest.ident.id:

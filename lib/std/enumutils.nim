@@ -21,11 +21,6 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
   # Generates a case stmt, which assigns the correct enum field given
   # a normalized string comparison to the `argSym` input.
   # string normalization is done using passed normalizer.
-  # NOTE: for an enum with fields Foo, Bar, ... we cannot generate
-  # `of "Foo".nimIdentNormalize: Foo`.
-  # This will fail, if the enum is not defined at top level (e.g. in a block).
-  # Thus we check for the field value of the (possible holed enum) and convert
-  # the integer value to the generic argument `typ`.
   let typ = typ.getTypeInst[1]
   let impl = typ.getImpl[2]
   expectKind impl, nnkEnumTy
@@ -34,19 +29,25 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
   result = nnkCaseStmt.newTree(newCall(normalizerNode, argSym))
   # stores all processed field strings to give error msg for ambiguous enums
   var foundFields: seq[string] = @[]
+  var fVal = ""
   var fStr = "" # string of current field
   var fNum = BiggestInt(0) # int value of current field
   for f in impl:
     case f.kind
     of nnkEmpty: continue # skip first node of `enumTy`
-    of nnkSym, nnkIdent: fStr = f.strVal
+    of nnkSym, nnkIdent:
+      fVal = f.strVal
+      fStr = fVal
     of nnkAccQuoted:
-      fStr = ""
+      fVal = ""
       for ch in f:
-        fStr.add ch.strVal
+        fVal.add ch.strVal
+      fStr = fVal
     of nnkEnumFieldDef:
+      fVal = f[0].strVal
       case f[1].kind
-      of nnkStrLit: fStr = f[1].strVal
+      of nnkStrLit:
+        fStr = f[1].strVal
       of nnkTupleConstr:
         fStr = f[1][1].strVal
         fNum = f[1][0].intVal
@@ -64,7 +65,7 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
     if fNum >= userMin and fNum <= userMax:
       fStr = normalizer(fStr)
       if fStr notin foundFields:
-        result.add nnkOfBranch.newTree(newLit fStr,  nnkCall.newTree(typ, newLit fNum))
+        result.add nnkOfBranch.newTree(newLit fStr, newDotExpr(typ, ident fVal))
         foundFields.add fStr
       else:
         error("Ambiguous enums cannot be parsed, field " & $fStr &

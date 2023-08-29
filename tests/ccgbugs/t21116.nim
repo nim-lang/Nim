@@ -1,5 +1,5 @@
 discard """
-  target: "c cpp"
+  targets: "c cpp"
   disabled: windows
 """
 # bug #21116

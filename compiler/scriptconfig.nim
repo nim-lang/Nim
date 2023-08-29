@@ -17,7 +17,7 @@ import
   pathutils, pipelines
 
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[syncio, assertions]
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains
@@ -207,8 +207,8 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
 
   let oldGlobalOptions = conf.globalOptions
   let oldSelectedGC = conf.selectedGC
-  undefSymbol(conf.symbols, "nimv2")
-  conf.globalOptions.excl {optTinyRtti, optOwnedRefs, optSeqDestructors}
+  unregisterArcOrc(conf)
+  conf.globalOptions.excl optOwnedRefs
   conf.selectedGC = gcUnselected
 
   var m = graph.makeModule(scriptName)
@@ -227,9 +227,20 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   if optOwnedRefs in oldGlobalOptions:
     conf.globalOptions.incl {optTinyRtti, optOwnedRefs, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
-  if conf.selectedGC in {gcArc, gcOrc}:
+  if conf.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
     conf.globalOptions.incl {optTinyRtti, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
+    defineSymbol(conf.symbols, "gcdestructors")
+    defineSymbol(conf.symbols, "nimSeqsV2")
+    case conf.selectedGC
+    of gcArc:
+      defineSymbol(conf.symbols, "gcarc")
+    of gcOrc:
+      defineSymbol(conf.symbols, "gcorc")
+    of gcAtomicArc:
+      defineSymbol(conf.symbols, "gcatomicarc")
+    else:
+      raiseAssert "unreachable"
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetSystemArtifacts(graph)

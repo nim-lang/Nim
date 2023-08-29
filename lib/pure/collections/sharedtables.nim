@@ -191,8 +191,7 @@ proc withKey*[A, B](t: var SharedTable[A, B], key: A,
   ##
   ## Example usage:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   # If value exists, decrement it.
   ##   # If it becomes zero or less, delete the key
   ##   t.withKey(1'i64) do (k: int64, v: var int, pairExists: var bool):
@@ -200,6 +199,7 @@ proc withKey*[A, B](t: var SharedTable[A, B], key: A,
   ##       dec v
   ##       if v <= 0:
   ##         pairExists = false
+  ##   ```
   withLock t:
     var hc: Hash
     var index = rawGet(t, key, hc)

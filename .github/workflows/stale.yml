@@ -1,0 +1,25 @@
+# https://github.com/actions/stale#usage
+name: Stale pull requests
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Midnight.
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v8
+        with:
+          days-before-pr-stale:    365
+          days-before-pr-close:    30
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
+          exempt-pr-labels:    "ARC,bounty,Codegen,Crash,Generics,High Priority,Macros,Next release,Showstopper,Static[T]"
+          exempt-issue-labels: "Showstopper,Severe,bounty,Compiler Crash,Medium Priority"
+          stale-pr-message: >
+            This pull request is stale because it has been open for 1 year with no activity.
+            Contribute more commits on the pull request and rebase it on the latest devel,
+            or it will be closed in 30 days. Thank you for your contributions.
+          close-pr-message: >
+            This pull request has been marked as stale and closed due to inactivity after 395 days.

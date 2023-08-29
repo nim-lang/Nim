@@ -290,3 +290,38 @@ block: # bug #21377
     {:}
 
   doAssert b(0) == {:}
+
+block: # bug #22180
+  type A = object
+  proc j() = discard
+
+  let x =
+    if false:
+      (ref A)(nil)
+    else:
+      if false:
+        quit 1
+      else:
+        if true:
+          j()
+          nil  # compiles with (ref A)(nil) here
+        else:
+          (ref A)(nil)
+  doAssert x.isNil
+  
+  let y =
+    case true
+    of false:
+      (ref A)(nil)
+    else:
+      case true
+      of false:
+        quit 1
+      else:
+        case true
+        of true:
+          j()
+          nil  # compiles with (ref A)(nil) here
+        else:
+          (ref A)(nil)
+  doAssert y.isNil

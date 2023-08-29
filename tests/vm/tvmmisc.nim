@@ -16,7 +16,7 @@ block:
   static:
     var x = default(type(0))
 
-# #6379
+# bug #6379
 import algorithm
 
 static:
@@ -28,7 +28,7 @@ static:
   str.sort(cmp)
   doAssert str == "abc"
 
-# #6086
+# bug #6086
 import math, sequtils, sugar
 
 block:
@@ -82,8 +82,10 @@ block:
 
     doAssert fileExists("MISSINGFILE") == false
     doAssert dirExists("MISSINGDIR") == false
+    doAssert fileExists(currentSourcePath())
+    doAssert dirExists(currentSourcePath().parentDir)
 
-# #7210
+# bug #7210
 block:
   static:
     proc f(size: int): int =
@@ -91,7 +93,7 @@ block:
       result = size
     doAssert f(4) == 4
 
-# #6689
+# bug #6689
 block:
   static:
     proc foo(): int = 0
@@ -106,7 +108,7 @@ block:
     new(x)
     doAssert(not x.isNil)
 
-# #7871
+# bug #7871
 static:
   type Obj = object
     field: int
@@ -116,11 +118,11 @@ static:
   o.field = 2
   doAssert s[0].field == 0
 
-# #8125
+# bug #8125
 static:
    let def_iter_var = ident("it")
 
-# #8142
+# bug #8142
 static:
   type Obj = object
     names: string
@@ -136,7 +138,7 @@ static:
   o.pushName()
   doAssert o.names == "FOOBARFOOBAR"
 
-# #8154
+# bug #8154
 import parseutils
 
 static:
@@ -149,7 +151,7 @@ static:
   static:
     doAssert foo().i == 1
 
-# #10333
+# bug #10333
 block:
   const
     encoding: auto = [
@@ -160,7 +162,7 @@ block:
     ]
   doAssert encoding.len == 4
 
-# #10886
+# bug #10886
 
 proc tor(): bool =
   result = true
@@ -291,7 +293,7 @@ block: # bug #10815
   const a = P()
   doAssert $a == ""
 
-when defined osx: # xxx bug https://github.com/nim-lang/Nim/issues/10815#issuecomment-476380734
+when defined osx: # xxx bug #13481
   block:
     type CharSet {.union.} = object
       cs: set[char]
@@ -656,3 +658,111 @@ proc macroGlobal =
 
 static: macroGlobal()
 macroGlobal()
+
+block: # bug #10108
+  template reject(x) =
+    static: doAssert(not compiles(x))
+
+  static:
+    let x: int = 2
+    proc deliver_x(): int = x
+    var y2 = deliver_x()
+    discard y2
+    reject:
+      const c5 = deliver_x()
+
+block: # bug #7590
+  proc doInit[T]():auto=
+    var a: T
+    return a
+
+  proc fun2[T](tup1:T)=
+    const tup0=doInit[T]()
+
+    # var tup=tup0 #ok
+    const tup=tup0 #causes bug
+
+    doAssert tup is tuple
+    doAssert tup[0] is tuple
+    for ai in tup.fields:
+      doAssert ai is tuple, "BUG2"
+
+  # const c=(foo:(bar1: 0.0))
+  const c=(foo:(bar1:"foo1"))
+  fun2(c)
+
+block: # bug #21708
+  type
+    Tup = tuple[name: string]
+
+  const X: array[2, Tup] = [(name: "foo",), (name: "bar",)]
+
+  static:
+    let s = X[0]
+    doAssert s[0] == "foo"
+
+block:
+  proc swap[T](x: var T): T =
+    result = x
+    x = default(T)
+
+  proc merge[T](a, b: var openArray[T]) =
+    a[0] = swap b[0]
+
+  static:
+    var x = "abc"
+    var y = "356"
+    merge(x, y)
+    doAssert x == "3bc"
+
+block: # bug #22190
+  type
+    EVMFork = enum
+      Berlin
+      Istanbul
+      Shanghai
+
+  const
+    Vm2OpAllForks =
+      {EVMFork.low .. EVMFork.high}
+
+    vm2OpExecBlockData = [(forks: Vm2OpAllForks)]
+
+  proc mkOpTable(selected: EVMFork): bool =
+    selected notin vm2OpExecBlockData[0].forks
+
+  const
+    tab = mkOpTable(Berlin)
+
+  doAssert not tab
+
+block: # issue #22524
+  const cnst = cstring(nil)
+  doAssert cnst.isNil
+  doAssert cnst == nil
+  let b = cnst
+  doAssert b.isNil
+  doAssert b == nil
+
+  let a = static: cstring(nil)
+  doAssert a.isNil
+
+  static:
+    var x: cstring
+    doAssert x.isNil
+    doAssert x == nil
+    doAssert x != ""
+
+block: # issue #15730
+  const s: cstring = ""
+  doAssert s != nil
+
+  static:
+    let s: cstring = ""
+    doAssert not s.isNil
+    doAssert s != nil
+    doAssert s == ""
+
+static: # more nil cstring issues
+  let x = cstring(nil)
+  doAssert x.len == 0
