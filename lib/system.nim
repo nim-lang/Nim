@@ -631,7 +631,7 @@ proc newSeq*[T](len = 0.Natural): seq[T] =
   ##
   ## See also:
   ## * `newSeqOfCap <#newSeqOfCap,Natural>`_
-  ## * `newSeqUninitialized <#newSeqUninitialized,Natural>`_
+  ## * `newSeqUninit <#newSeqUninit,Natural>`_
   newSeq(result, len)
 
 proc newSeqOfCap*[T](cap: Natural): seq[T] {.
@@ -1611,7 +1611,36 @@ when notJSnotNims and defined(nimSeqsV2):
   include "system/seqs_v2"
 
 when not defined(js):
-  proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
+  proc newSeqUninit*[T](len: Natural): seq[T] =
+    ## Creates a new sequence of type `seq[T]` with length `len`.
+    ##
+    ## Note that the sequence will be
+    ## uninitialized. After the creation of the sequence you should assign
+    ## entries to the sequence instead of adding them.
+    runnableExamples:
+      # newSeqUninit can be safely used for types, which don't contain
+      # managed memory or have destructors
+      var x = newSeqUninit[int](3)
+      assert len(x) == 3
+      x[0] = 10
+
+      # be cautious to use it with types with managed memory or destructors
+      proc initStringSeq(x: Natural): seq[string] {.nodestroy.} =
+        result = newSeqUninit[string](x)
+        for i in 0..<x: result[i] = "abc"
+
+      let s = initStringSeq(10)
+      assert len(s) == 10
+      assert s[0] == "abc"
+
+    result = newSeqOfCap[T](len)
+    when defined(nimSeqsV2):
+      cast[ptr int](addr result)[] = len
+    else:
+      var s = cast[PGenericSeq](result)
+      s.len = len
+
+  proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] {.deprecated: "Use newSeqUninit instead", inline.} =
     ## Creates a new sequence of type `seq[T]` with length `len`.
     ##
     ## Only available for numbers types. Note that the sequence will be
@@ -1623,12 +1652,7 @@ when not defined(js):
     ##   assert len(x) == 3
     ##   x[0] = 10
     ##   ```
-    result = newSeqOfCap[T](len)
-    when defined(nimSeqsV2):
-      cast[ptr int](addr result)[] = len
-    else:
-      var s = cast[PGenericSeq](result)
-      s.len = len
+    result = newSeqUninit[T](len)
 
   proc newStringUninit*(len: Natural): string =
     ## Returns a new string of length `len` but with uninitialized
