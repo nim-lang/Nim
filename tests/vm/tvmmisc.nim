@@ -1,10 +1,11 @@
-# bug #4462
 import macros
 import os
 
+# bug #4462
 block:
   proc foo(t: typedesc) {.compileTime.} =
-    assert sameType(getType(t), getType(int))
+    assert sameType(getType(t), getType(typedesc[int]))
+    assert sameType(getType(t), getType(type int))
 
   static:
     foo(int)
