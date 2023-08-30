@@ -697,7 +697,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       result = semGenericStmt(c, n)
       result.typ = makeTypeFromExpr(c, result.copyTree)
     elif efExplain notin flags:
-      if n[1].kind == nkLambda: #attempts to infer void from auto
+      if n.len > 1 and n[1].kind == nkLambda: #attempts to infer void from auto
         let s = n[1][0].sym
         if s.typ != nil and s.typ.len > 0 and s.typ[0] != nil and s.typ[0].kind == tyAnything: 
           let res = tryExpr(c, n[1][bodyPos], flags = {efPreferNilResult, efDetermineType, efPreferStatic})
