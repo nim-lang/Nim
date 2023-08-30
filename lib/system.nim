@@ -632,6 +632,7 @@ proc newSeq*[T](len = 0.Natural): seq[T] =
   ## See also:
   ## * `newSeqOfCap <#newSeqOfCap,Natural>`_
   ## * `newSeqUninit <unsafeseqs.html#newSeqUninit,Natural>`_
+  ## * `newSeqUnsafe <unsafeseqs.html#newSeqUnsafe,Natural>`_
   newSeq(result, len)
 
 proc newSeqOfCap*[T](cap: Natural): seq[T] {.
