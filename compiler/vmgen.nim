@@ -1549,6 +1549,7 @@ proc checkCanEval(c: PCtx; n: PNode) =
     # little hack ahead for bug #12612: assume gensym'ed variables
     # are in the right scope:
     if sfGenSym in s.flags and c.prc.sym == nil: discard
+    elif s.kind == skParam and s.typ.kind == tyTypeDesc: discard
     else: cannotEval(c, n)
   elif s.kind in {skProc, skFunc, skConverter, skMethod,
                   skIterator} and sfForward in s.flags:
@@ -2093,8 +2094,13 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     let s = n.sym
     checkCanEval(c, n)
     case s.kind
-    of skVar, skForVar, skTemp, skLet, skParam, skResult:
+    of skVar, skForVar, skTemp, skLet, skResult:
       genRdVar(c, n, dest, flags)
+    of skParam:
+      if s.typ.kind == tyTypeDesc:
+        genTypeLit(c, s.typ, dest)
+      else:
+        genRdVar(c, n, dest, flags)
     of skProc, skFunc, skConverter, skMacro, skTemplate, skMethod, skIterator:
       # 'skTemplate' is only allowed for 'getAst' support:
       if s.kind == skIterator and s.typ.callConv == TCallingConvention.ccClosure:
