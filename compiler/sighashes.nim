@@ -115,15 +115,15 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     else:
       c.hashSym(t.sym)
   of tyGenericInst:
-    if sfInfixCall in t.base.sym.flags:
-      # This is an imported C++ generic type.
-      # We cannot trust the `lastSon` to hold a properly populated and unique
-      # value for each instantiation, so we hash the generic parameters here:
-      let normalizedType = t.skipGenericAlias
-      for i in 0..<normalizedType.len - 1:
-        c.hashType t[i], flags, conf
+    let normalizedType = t.skipGenericAlias
+    if normalizedType.lastSon.skipTypes(skipPtrs-{tyGenericInst}).kind in {tyObject, tyDistinct}:
+      # This is an imported C++ generic type or a direct generic nominal type.
+      # For nominal types, each generic parameter is relevant in their
+      # compatibility, even if not used in the type body.
+      for i in 0..<normalizedType.len:
+        c.hashType normalizedType[i], flags, conf
     else:
-      c.hashType t.lastSon, flags, conf
+      c.hashType normalizedType.lastSon, flags, conf
   of tyAlias, tySink, tyUserTypeClasses, tyInferred:
     c.hashType t.lastSon, flags, conf
   of tyOwned:

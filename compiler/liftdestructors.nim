@@ -1237,7 +1237,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
   incl orig.flags, tfCheckedForDestructor
 
-  let skipped = orig.skipTypes({tyGenericInst, tyAlias, tySink})
+  let skipped = orig.skipTypes({tyAlias, tySink})
   if isEmptyContainer(skipped) or skipped.kind == tyStatic: return
 
   let h = sighashes.hashType(skipped, g.config, {CoType, CoConsiderOwned, CoDistinct})
