@@ -145,10 +145,16 @@ proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
   else:
     if isLiteral(s):
       let oldP = s.p
-      s.p = allocPayload0(newLen)
+      s.p = allocPayload(newLen)
       s.p.cap = newLen
       if s.len > 0:
         copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], min(s.len, newLen))
+        if newLen > s.len:
+          zeroMem(cast[pointer](addr s.p.data[s.len]), newLen - s.len + 1)
+        else:
+          s.p.data[newLen] = '\0'
+      else:
+        zeroMem(cast[pointer](addr s.p.data[0]), newLen + 1)
     elif newLen > s.len:
       let oldCap = s.p.cap and not strlitFlag
       if newLen > oldCap:
