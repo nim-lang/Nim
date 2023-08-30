@@ -74,6 +74,8 @@ proc prepareAdd(s: var NimStringV2; addLen: int) {.compilerRtl.} =
       # we are about to append, so there is no need to copy the \0 terminator:
       copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], min(s.len, newLen))
     elif oldP == nil:
+      # In the case of `newString(0) & ""`, since `src.len == 0`, `appendString`
+      # will not set the `\0` terminator, so we set it here.
       s.p.data[0] = '\0'
   else:
     let oldCap = s.p.cap and not strlitFlag
