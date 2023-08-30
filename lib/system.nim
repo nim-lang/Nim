@@ -646,26 +646,6 @@ proc newSeqOfCap*[T](cap: Natural): seq[T] {.
   ##   ```
   discard
 
-when not defined(js):
-  proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
-    ## Creates a new sequence of type `seq[T]` with length `len`.
-    ##
-    ## Only available for numbers types. Note that the sequence will be
-    ## uninitialized. After the creation of the sequence you should assign
-    ## entries to the sequence instead of adding them.
-    ## Example:
-    ##   ```nim
-    ##   var x = newSeqUninitialized[int](3)
-    ##   assert len(x) == 3
-    ##   x[0] = 10
-    ##   ```
-    result = newSeqOfCap[T](len)
-    when defined(nimSeqsV2):
-      cast[ptr int](addr result)[] = len
-    else:
-      var s = cast[PGenericSeq](result)
-      s.len = len
-
 func len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.magic: "LengthOpenArray".} =
   ## Returns the length of an openArray.
   runnableExamples:
@@ -973,8 +953,8 @@ proc setLen*(s: var string, newlen: Natural) {.
 
 proc newString*(len: Natural): string {.
   magic: "NewString", importc: "mnewString", noSideEffect.}
-  ## Returns a new string of length `len` but with uninitialized
-  ## content. One needs to fill the string character after character
+  ## Returns a new string of length `len`.
+  ## One needs to fill the string character after character
   ## with the index operator `s[i]`.
   ##
   ## This procedure exists only for optimization purposes;
@@ -1629,6 +1609,40 @@ when not defined(js) and defined(nimV2):
 when notJSnotNims and defined(nimSeqsV2):
   include "system/strs_v2"
   include "system/seqs_v2"
+
+when not defined(js):
+  proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
+    ## Creates a new sequence of type `seq[T]` with length `len`.
+    ##
+    ## Only available for numbers types. Note that the sequence will be
+    ## uninitialized. After the creation of the sequence you should assign
+    ## entries to the sequence instead of adding them.
+    ## Example:
+    ##   ```nim
+    ##   var x = newSeqUninitialized[int](3)
+    ##   assert len(x) == 3
+    ##   x[0] = 10
+    ##   ```
+    result = newSeqOfCap[T](len)
+    when defined(nimSeqsV2):
+      cast[ptr int](addr result)[] = len
+    else:
+      var s = cast[PGenericSeq](result)
+      s.len = len
+
+  proc newStringUninit*(len: Natural): string =
+    ## Returns a new string of length `len` but with uninitialized
+    ## content. One needs to fill the string character after character
+    ## with the index operator `s[i]`.
+    ##
+    ## This procedure exists only for optimization purposes;
+    ## the same effect can be achieved with the `&` operator or with `add`.
+    result = newStringOfCap(len)
+    when defined(nimSeqsV2):
+      cast[ptr int](addr result)[] = len
+    else:
+      var s = cast[PGenericSeq](result)
+      s.len = len
 
 {.pop.}
 

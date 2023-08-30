@@ -51,9 +51,9 @@ proc initCandidateSymbols(c: PContext, headSymbol: PNode,
       result.add((symx, o.lastOverloadScope))
     symx = nextOverloadIter(o, c, headSymbol)
   if result.len > 0:
-    initCandidate(c, best, result[0].s, initialBinding,
+    best = initCandidate(c, result[0].s, initialBinding,
                   result[0].scope, diagnostics)
-    initCandidate(c, alt, result[0].s, initialBinding,
+    alt = initCandidate(c, result[0].s, initialBinding,
                   result[0].scope, diagnostics)
     best.state = csNoMatch
 
@@ -82,10 +82,10 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
 
   # starts at 1 because 0 is already done with setup, only needs checking
   var nextSymIndex = 1
-  var z: TCandidate = default(TCandidate) # current candidate
+  var z: TCandidate # current candidate
   while true:
     determineType(c, sym)
-    initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
+    z = initCandidate(c, sym, initialBinding, scope, diagnosticsFlag)
 
     # this is kinda backwards as without a check here the described
     # problems in recalc would not happen, but instead it 100%

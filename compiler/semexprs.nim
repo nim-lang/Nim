@@ -992,8 +992,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
 
 proc resolveIndirectCall(c: PContext; n, nOrig: PNode;
                          t: PType): TCandidate =
-  result = default(TCandidate)
-  initCandidate(c, result, t)
+  result = initCandidate(c, t)
   matches(c, n, nOrig, result)
 
 proc bracketedMacro(n: PNode): PSym =
