@@ -99,7 +99,7 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [].} =
     {.noSideEffect.}:
       cast[ptr NimSeqV2[T]](addr x).len = newLen
 
-proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
+proc grow*[T](x: var seq[T]; newLen: Natural; value: T) {.nodestroy.} =
   let oldLen = x.len
   #sysAssert newLen >= x.len, "invalid newLen parameter for 'grow'"
   if newLen <= oldLen: return
