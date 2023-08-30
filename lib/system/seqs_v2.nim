@@ -11,11 +11,6 @@
 # import typetraits
 # strs already imported allocateds for us.
 
-when defined(nimHasDup):
-  {.pragma: myNoDestroy, nodestroy.}
-else:
-  {.pragma: myNoDestroy.}
-
 # Some optimizations here may be not to empty-seq-initialize some symbols, then StrictNotNil complains.
 {.push warning[StrictNotNil]: off.}  # See https://github.com/nim-lang/Nim/issues/21401
 
@@ -104,7 +99,7 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [].} =
     {.noSideEffect.}:
       cast[ptr NimSeqV2[T]](addr x).len = newLen
 
-proc grow*[T](x: var seq[T]; newLen: Natural; value: T) {.myNoDestroy.} =
+proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   let oldLen = x.len
   #sysAssert newLen >= x.len, "invalid newLen parameter for 'grow'"
   if newLen <= oldLen: return
@@ -113,10 +108,7 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) {.myNoDestroy.} =
     xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
   xu.len = newLen
   for i in oldLen .. newLen-1:
-    when defined(nimHasDup):
-      xu.p.data[i] = `=dup`(value)
-    else:
-      xu.p.data[i] = value
+    xu.p.data[i] = value
 
 proc add*[T](x: var seq[T]; y: sink T) {.magic: "AppendSeqElem", noSideEffect, nodestroy.} =
   ## Generic proc for adding a data item `y` to a container `x`.
