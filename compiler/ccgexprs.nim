@@ -2324,7 +2324,10 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
             s = "$1, $1Len_0" % [rdLoc(a)]
           linefmt(p, cpsStmts, "$1($2);$n", [rdLoc(b), s])
         else:
-          linefmt(p, cpsStmts, "$1($2);$n", [rdLoc(b), byRefLoc(p, a)])
+          if p.module.compileToCpp:
+            linefmt(p, cpsStmts, "$1($2);$n", [rdLoc(b), rdLoc(a)])
+          else:
+            linefmt(p, cpsStmts, "$1($2);$n", [rdLoc(b), byRefLoc(p, a)])
     else:
       let flags = if not canMove(p, n[1], d): {needToCopy} else: {}
       genAssignment(p, d, a, flags)
