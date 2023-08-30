@@ -11,11 +11,11 @@
 
 [//]: # "Additions:"
 
-- Adds `newStringUninit` to system, which creates a new string of length `len` like `newString` but with uninitialized content.
+- Adds a module `std/unsafeseqs`, which contains `newStringUninit` and `newSeqUnsafe` functions that create a new string of length `len` like `newString` but with uninitialized content.
 
 [//]: # "Deprecations:"
 
-- Deprecates `system.newSeqUninitialized`, which is replaced by `newSeqUninit`.
+- Deprecates `system.newSeqUninitialized`, which is replaced by `unsafeseqs.newSeqUninit`.
 
 [//]: # "Removals:"
 
