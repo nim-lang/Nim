@@ -92,7 +92,7 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType 
 
 proc ambiguousSymChoice(c: PContext, orig, n: PNode): PNode =
   let first = n[0].sym
-  if first.kind == skEnumField:
+  if first.kind == skEnumField and nfAmbiguousSymChoice notin n.flags:
     # choose the first resolved enum field, i.e. the latest in scope
     # to mirror behavior before overloadable enums
     if hintAmbiguousEnum in c.config.notes:
@@ -3033,6 +3033,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         if f.kind == nkSym and f.sym.name.id == nameId:
           s = f.sym
           break
+    c.isAmbiguous = false
     if s == nil:
       let checks = if efNoEvaluateGeneric in flags:
           {checkUndeclared, checkPureEnumFields}
@@ -3043,6 +3044,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       s = qualifiedLookUp(c, n, checks)
       if s == nil:
         return
+    let isAmbiguous = c.isAmbiguous
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
     of skProc, skFunc, skMethod, skConverter, skIterator:
@@ -3057,6 +3059,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         result.typ = makeVarType(c, result.typ, tyOwned)
     of skEnumField:
       result = enumFieldSymChoice(c, n, s)
+      if isAmbiguous or sfAmbiguousEnumField in s.flags:
+        result.flags.incl(nfAmbiguousSymChoice)
     else:
       result = semSym(c, n, s, flags)
     if expectedType != nil and isSymChoice(result):

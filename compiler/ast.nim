@@ -349,6 +349,8 @@ const
   sfCustomPragma* = sfRegister        # symbol is custom pragma template
   sfTemplateRedefinition* = sfExportc # symbol is a redefinition of an earlier template
   sfCppMember* = { sfVirtual, sfMember, sfConstructor } # proc is a C++ member, meaning it will be attached to the type definition
+  sfAmbiguousEnumField* = sfNoalias
+    # symbol is an enum field sharing a name with another enum field in the same scope
 
 const
   # getting ready for the future expr/stmt merge
@@ -518,6 +520,7 @@ type
     nfFirstWrite # this node is a first write
     nfHasComment # node has a comment
     nfSkipFieldChecking # node skips field visable checking
+    nfAmbiguousSymChoice # symchoice was ambiguous on creation, used for error reporting
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)

@@ -149,6 +149,9 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     onDef(e.info, e)
     if sfGenSym notin e.flags:
       if not isPure:
+        if (let conflict = strTableGet(c.currentScope.symbols, e.name); conflict != nil):
+          conflict.flags.incl(sfAmbiguousEnumField)
+          e.flags.incl(sfAmbiguousEnumField)
         addInterfaceOverloadableSymAt(c, c.currentScope, e)
       else:
         declarePureEnumField(c, e)
