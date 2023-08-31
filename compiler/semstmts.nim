@@ -178,11 +178,16 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
           s.add "; for a function call use ()"
         localError(c.config, n.info, s)
 
+proc propagateNoReturn(n: PNode; noReturn: bool) =
+  if noReturn:
+    incl(n.flags, nfEndBlock)
+
 proc semIf(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil): PNode =
   result = n
   var typ = commonTypeBegin
   var expectedType = expectedType
   var hasElse = false
+  var allNoReturn = true
   for i in 0..<n.len:
     var it = n[i]
     if it.len == 2:
@@ -191,6 +196,7 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil):
       it[1] = semExprBranch(c, it[1], flags, expectedType)
       typ = commonType(c, typ, it[1])
       if not endsInNoReturn(it[1]):
+        allNoReturn = false
         expectedType = typ
       closeScope(c)
     elif it.len == 1:
@@ -198,8 +204,12 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil):
       it[0] = semExprBranchScope(c, it[0], expectedType)
       typ = commonType(c, typ, it[0])
       if not endsInNoReturn(it[0]):
+        allNoReturn = false
         expectedType = typ
     else: illFormedAst(it, c.config)
+  
+  result.propagateNoReturn(allNoReturn)
+
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
       (not hasElse and efInTypeof notin flags):
     for it in n: discardCheck(c, it.lastSon, flags)
@@ -237,8 +247,10 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
 
   var typ = commonTypeBegin
   var expectedType = expectedType
+  var allNoReturn = true
   n[0] = semExprBranchScope(c, n[0], expectedType)
   if not endsInNoReturn(n[0]):
+    allNoReturn = false
     typ = commonType(c, typ, n[0].typ)
     expectedType = typ
 
@@ -302,11 +314,14 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
       a[^1] = semExprBranchScope(c, a[^1], expectedType)
       typ = commonType(c, typ, a[^1])
       if not endsInNoReturn(a[^1]):
+        allNoReturn = false
         expectedType = typ
     else:
       a[^1] = semExprBranchScope(c, a[^1])
       dec last
     closeScope(c)
+
+  result.propagateNoReturn(allNoReturn)
 
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped}:
     discardCheck(c, n[0], flags)
@@ -1132,6 +1147,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
   var typ = commonTypeBegin
   var expectedType = expectedType
   var hasElse = false
+  var allNoReturn = true
   let caseTyp = skipTypes(n[0].typ, abstractVar-{tyTypeDesc})
   const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt64, tyBool}
   case caseTyp.kind
@@ -1165,6 +1181,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
       x[last] = semExprBranchScope(c, x[last], expectedType)
       typ = commonType(c, typ, x[last])
       if not endsInNoReturn(x[last]):
+        allNoReturn = false
         expectedType = typ
     of nkElifBranch:
       if hasElse: invalidOrderOfBranches(x)
@@ -1175,6 +1192,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
       x[1] = semExprBranch(c, x[1], expectedType = expectedType)
       typ = commonType(c, typ, x[1])
       if not endsInNoReturn(x[1]):
+        allNoReturn = false
         expectedType = typ
       closeScope(c)
     of nkElse:
@@ -1182,6 +1200,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
       x[0] = semExprBranchScope(c, x[0], expectedType)
       typ = commonType(c, typ, x[0])
       if not endsInNoReturn(x[0]):
+        allNoReturn = false
         expectedType = typ
       if (chckCovered and covered == toCover(c, n[0].typ)) or hasElse:
         message(c.config, x.info, warnUnreachableElse)
@@ -1199,6 +1218,9 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
       localError(c.config, n.info, "not all cases are covered")
   popCaseContext(c)
   closeScope(c)
+
+  result.propagateNoReturn(allNoReturn)
+
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
       (not hasElse and efInTypeof notin flags):
     for i in 1..<n.len: discardCheck(c, n[i].lastSon, flags)

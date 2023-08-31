@@ -518,6 +518,7 @@ type
     nfFirstWrite # this node is a first write
     nfHasComment # node has a comment
     nfSkipFieldChecking # node skips field visable checking
+    nfEndBlock # node doesn't return, helps propagate sfNoReturn and nkLastBlockStmts
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
