@@ -208,7 +208,8 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil):
         expectedType = typ
     else: illFormedAst(it, c.config)
   
-  result.propagateEndBlock(allNoReturn)
+  # must be exhaustive
+  result.propagateEndBlock(allNoReturn and hasElse)
 
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
       (not hasElse and efInTypeof notin flags):

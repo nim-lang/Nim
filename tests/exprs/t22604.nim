@@ -1,6 +1,6 @@
 
-# propagation to case of
 for i in 0..<1:
+  # propagation to case of
   let x =
     case false
     of true:
@@ -11,9 +11,9 @@ for i in 0..<1:
       else:
         raiseAssert "Won't get here"
 
-# propagation to block
 for i in 0..<1:
-  let x =
+  # propagation to block
+  let y =
     case false
     of true:
       42
