@@ -100,25 +100,18 @@ proc markOwnerModuleAsUsed*(c: PContext; s: PSym)
 template hasFauxMatch*(c: TCandidate): bool = c.fauxMatch != tyNone
 
 proc initCandidateAux(ctx: PContext,
-                      c: var TCandidate, callee: PType) {.inline.} =
-  c.c = ctx
-  c.exactMatches = 0
-  c.subtypeMatches = 0
-  c.convMatches = 0
-  c.intConvMatches = 0
-  c.genericMatches = 0
-  c.state = csEmpty
-  c.firstMismatch = MismatchInfo()
-  c.callee = callee
-  c.call = nil
-  c.baseTypeMatch = false
-  c.genericConverter = false
-  c.inheritancePenalty = 0
+                      callee: PType): TCandidate {.inline.} =
+  result = TCandidate(c: ctx, exactMatches: 0, subtypeMatches: 0,
+                      convMatches: 0, intConvMatches: 0, genericMatches: 0,
+                      state: csEmpty, firstMismatch: MismatchInfo(),
+                      callee: callee, call: nil, baseTypeMatch: false,
+                      genericConverter: false, inheritancePenalty: 0
+  )
 
-proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PType) =
-  initCandidateAux(ctx, c, callee)
-  c.calleeSym = nil
-  c.bindings = initIdTable()
+proc initCandidate*(ctx: PContext, callee: PType): TCandidate =
+  result = initCandidateAux(ctx, callee)
+  result.calleeSym = nil
+  result.bindings = initIdTable()
 
 proc put(c: var TCandidate, key, val: PType) {.inline.} =
   ## Given: proc foo[T](x: T); foo(4)
@@ -134,27 +127,27 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
       echo "binding ", key, " -> ", val
   idTablePut(c.bindings, key, val.skipIntLit(c.c.idgen))
 
-proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
+proc initCandidate*(ctx: PContext, callee: PSym,
                     binding: PNode, calleeScope = -1,
-                    diagnosticsEnabled = false) =
-  initCandidateAux(ctx, c, callee.typ)
-  c.calleeSym = callee
+                    diagnosticsEnabled = false): TCandidate =
+  result = initCandidateAux(ctx, callee.typ)
+  result.calleeSym = callee
   if callee.kind in skProcKinds and calleeScope == -1:
     if callee.originatingModule == ctx.module:
-      c.calleeScope = 2
+      result.calleeScope = 2
       var owner = callee
       while true:
         owner = owner.skipGenericOwner
         if owner.kind == skModule: break
-        inc c.calleeScope
+        inc result.calleeScope
     else:
-      c.calleeScope = 1
+      result.calleeScope = 1
   else:
-    c.calleeScope = calleeScope
-  c.diagnostics = @[] # if diagnosticsEnabled: @[] else: nil
-  c.diagnosticsEnabled = diagnosticsEnabled
-  c.magic = c.calleeSym.magic
-  c.bindings = initIdTable()
+    result.calleeScope = calleeScope
+  result.diagnostics = @[] # if diagnosticsEnabled: @[] else: nil
+  result.diagnosticsEnabled = diagnosticsEnabled
+  result.magic = result.calleeSym.magic
+  result.bindings = initIdTable()
   if binding != nil and callee.kind in routineKinds:
     var typeParams = callee.ast[genericParamsPos]
     for i in 1..min(typeParams.len, binding.len-1):
@@ -166,16 +159,14 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
             bound = makeTypeDesc(ctx, bound)
         else:
           bound = bound.skipTypes({tyTypeDesc})
-        put(c, formalTypeParam, bound)
+        put(result, formalTypeParam, bound)
 
 proc newCandidate*(ctx: PContext, callee: PSym,
                    binding: PNode, calleeScope = -1): TCandidate =
-  result = default(TCandidate)
-  initCandidate(ctx, result, callee, binding, calleeScope)
+  result = initCandidate(ctx, callee, binding, calleeScope)
 
 proc newCandidate*(ctx: PContext, callee: PType): TCandidate =
-  result = default(TCandidate)
-  initCandidate(ctx, result, callee)
+  result = initCandidate(ctx, callee)
 
 proc copyCandidate(a: var TCandidate, b: TCandidate) =
   a.c = b.c
@@ -576,7 +567,7 @@ proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
-  ##   ```
+  ##   ```nim
   ##   proc myMap[T,S](sIn: seq[T], f: proc(x: T): S): seq[S] = ...
   ##   proc innerProc[Q,W](q: Q): W = ...
   ##   ```

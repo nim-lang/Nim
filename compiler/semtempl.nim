@@ -567,6 +567,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     # so we use the generic code for nkDotExpr too
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
+      # mirror the nkIdent case
       # do not symchoice a quoted template parameter (bug #2390):
       if s.owner == c.owner and s.kind == skParam and
           n.kind == nkAccQuoted and n.len == 1:
@@ -578,7 +579,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       elif contains(c.toMixin, s.name.id):
         return symChoice(c.c, n, s, scForceOpen, c.noGenSym > 0)
       else:
-        return symChoice(c.c, n, s, scOpen, c.noGenSym > 0)
+        if s.kind in {skType, skVar, skLet, skConst}:
+          discard qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
+        return semTemplSymbol(c.c, n, s, c.noGenSym > 0)
     if n.kind == nkDotExpr:
       result = n
       result[0] = semTemplBody(c, n[0])
@@ -674,6 +677,9 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     # a template's parameters are not gensym'ed even if that was originally the
     # case as we determine whether it's a template parameter in the template
     # body by the absence of the sfGenSym flag:
+    let retType = s.typ[0]
+    if retType != nil and retType.kind != tyUntyped:
+      allUntyped = false
     for i in 1..<s.typ.n.len:
       let param = s.typ.n[i].sym
       if param.name.id != ord(wUnderscore):

@@ -1017,7 +1017,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLenCstring:
       decodeBImm(rkInt)
       assert regs[rb].kind == rkNode
-      regs[ra].intVal = regs[rb].node.strVal.cstring.len - imm
+      if regs[rb].node.kind == nkNilLit:
+        regs[ra].intVal = -imm
+      else:
+        regs[ra].intVal = regs[rb].node.strVal.cstring.len - imm
     of opcIncl:
       decodeB(rkNode)
       let b = regs[rb].regToNode
@@ -1215,6 +1218,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcEqStr:
       decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].node.strVal == regs[rc].node.strVal)
+    of opcEqCString:
+      decodeBC(rkInt)
+      let bNil = regs[rb].node.kind == nkNilLit
+      let cNil = regs[rc].node.kind == nkNilLit
+      regs[ra].intVal = ord((bNil and cNil) or
+        (not bNil and not cNil and regs[rb].node.strVal == regs[rc].node.strVal))
     of opcLeStr:
       decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].node.strVal <= regs[rc].node.strVal)
@@ -1383,8 +1392,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           let prcValue = c.globals[prc.position-1]
           if prcValue.kind == nkEmpty:
             globalError(c.config, c.debug[pc], "cannot run " & prc.name.s)
-          var slots2: TNodeSeq = default(TNodeSeq)
-          slots2.setLen(tos.slots.len)
+          var slots2: TNodeSeq = newSeq[PNode](tos.slots.len)
           for i in 0..<tos.slots.len:
             slots2[i] = regToNode(tos.slots[i])
           let newValue = callForeignFunction(c.config, prcValue, prc.typ, slots2,
@@ -1473,7 +1481,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcExcept:
       # This opcode is never executed, it only holds information for the
       # exception handling routines.
-      doAssert(false)
+      raiseAssert "unreachable"
     of opcFinally:
       # Pop the last safepoint introduced by a opcTry. This opcode is only
       # executed _iff_ no exception was raised in the body of the `try`
@@ -1498,7 +1506,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].node
       c.currentExceptionA = raised
       # Set the `name` field of the exception
-      c.currentExceptionA[2].skipColon.strVal = c.currentExceptionA.typ.sym.name.s
+      var exceptionNameNode = newStrNode(nkStrLit, c.currentExceptionA.typ.sym.name.s)
+      if c.currentExceptionA[2].kind == nkExprColonExpr:
+        exceptionNameNode.typ = c.currentExceptionA[2][1].typ
+        c.currentExceptionA[2][1] = exceptionNameNode
+      else:
+        exceptionNameNode.typ = c.currentExceptionA[2].typ
+        c.currentExceptionA[2] = exceptionNameNode
       c.exceptionInstr = pc
 
       var frame = tos
