@@ -285,7 +285,7 @@ proc isAmbiguous*(c: PContext, s: PIdent, filter: TSymKinds, sym: var PSym): boo
           # 2 candidates among imports, ambiguous
           return true
         else:
-          importsHaveCandidate = false
+          importsHaveCandidate = true
 
 proc errorSym*(c: PContext, n: PNode): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
