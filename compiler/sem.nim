@@ -208,9 +208,13 @@ proc commonType*(c: PContext; x, y: PType): PType =
         result.addSonSkipIntLit(r, c.idgen)
 
 proc endsInNoReturn(n: PNode): bool =
-  ## check if expr ends the block like
-  ## raise exceptions or call of noreturn procs do
+  ## check if expr ends the block like raising or call of noreturn procs do
   result = false # assume it does return
+
+  template checkBranch(branch) =
+    if not endsInNoReturn(branch):
+      # proved a branch returns
+      return false
 
   var it = n
   # skip these beforehand, no special handling needed
@@ -221,7 +225,7 @@ proc endsInNoReturn(n: PNode): bool =
   of nkIfStmt:
     var hasElse = false
     for branch in it:
-      let body =
+      checkBranch:
         if branch.len() == 2:
           branch[1]
         elif branch.len == 1:
@@ -229,15 +233,12 @@ proc endsInNoReturn(n: PNode): bool =
           branch[0]
         else:
           raiseAssert "Malformed `if` statement during endsInNoReturn"
-      if not endsInNoReturn(body):
-        # proved that it can return, stop searching
-        break
     # none of the branches returned
     result = hasElse # Only truly a no-return when it's exhaustive
   of nkCaseStmt:
     for i in 1 ..< it.len:
       let branch = it[i]
-      let body =
+      checkBranch:
         case branch.kind
         of nkOfBranch:
           branch[^1]
@@ -247,9 +248,13 @@ proc endsInNoReturn(n: PNode): bool =
           branch[0]
         else:
           raiseAssert "Malformed `case` statement in endsInNoReturn"
-      if not endsInNoReturn(body):
-        # proved that one of the cases returns
-        return false
+    # none of the branches returned
+    result = true
+  of nkTryStmt:
+    checkBranch(it[0])
+    for i in 1 ..< it.len:
+      let branch = it[i]
+      checkBranch(branch[^1])
     # none of the branches returned
     result = true
   else:
