@@ -108,7 +108,8 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) {.nodestroy.} =
     xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
   xu.len = newLen
   for i in oldLen .. newLen-1:
-    xu.p.data[i] = value
+    wasMoved(xu.p.data[i])
+    `=copy`(xu.p.data[i], value)
 
 proc add*[T](x: var seq[T]; y: sink T) {.magic: "AppendSeqElem", noSideEffect, nodestroy.} =
   ## Generic proc for adding a data item `y` to a container `x`.
