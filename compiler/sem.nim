@@ -218,7 +218,7 @@ proc endsInNoReturn(n: PNode): bool =
 
   var it = n
   # skip these beforehand, no special handling needed
-  while it.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt}:
+  while it.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt} and it.len > 0:
     it = it.lastSon
 
   case it.kind
