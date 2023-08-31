@@ -226,7 +226,7 @@ proc endsInNoReturn(n: PNode): bool =
     var hasElse = false
     for branch in it:
       checkBranch:
-        if branch.len() == 2:
+        if branch.len == 2:
           branch[1]
         elif branch.len == 1:
           hasElse = true
