@@ -257,11 +257,7 @@ proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSy
 proc isAmbiguous*(c: PContext, s: PIdent, filter: TSymKinds, sym: var PSym): bool =
   result = false
   block outer:
-    var lastScopeHadCandidate = false
     for scope in allScopes(c.currentScope):
-      if lastScopeHadCandidate:
-        # last scope had a candidate but wasn't ambiguous
-        return false
       var ti: TIdentIter
       var candidate = initIdentIter(ti, scope.symbols, s)
       var scopeHasCandidate = false
@@ -272,9 +268,11 @@ proc isAmbiguous*(c: PContext, s: PIdent, filter: TSymKinds, sym: var PSym): boo
             return true
           else:
             scopeHasCandidate = true
-            lastScopeHadCandidate = true
             sym = candidate
         candidate = nextIdentIter(ti, scope.symbols)
+      if scopeHasCandidate:
+        # scope had a candidate but wasn't ambiguous
+        return false
 
   var importsHaveCandidate = false
   var marked = initIntSet()
@@ -286,6 +284,10 @@ proc isAmbiguous*(c: PContext, s: PIdent, filter: TSymKinds, sym: var PSym): boo
           return true
         else:
           importsHaveCandidate = true
+          sym = s
+  if importsHaveCandidate:
+    # imports had a candidate but wasn't ambiguous
+    return false
 
 proc errorSym*(c: PContext, n: PNode): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
