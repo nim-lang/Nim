@@ -93,9 +93,9 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType 
 proc ambiguousSymChoice(c: PContext, orig, n: PNode): PNode =
   let first = n[0].sym
   var foundSym: PSym = nil
-  if first.kind == skEnumField and not (
-      isAmbiguous(c, first.name, {skEnumField}, foundSym) and
-        foundSym == first):
+  if first.kind == skEnumField and
+      not isAmbiguous(c, first.name, {skEnumField}, foundSym) and
+      foundSym == first:
     # choose the first resolved enum field, i.e. the latest in scope
     # to mirror behavior before overloadable enums
     if hintAmbiguousEnum in c.config.notes:
