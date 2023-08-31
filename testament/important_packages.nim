@@ -174,6 +174,6 @@ pkg "websocket", "nim c websocket.nim"
 pkg "winim", "nim c winim.nim"
 pkg "with"
 pkg "ws", allowFailure = true
-pkg "yaml", "nim c -r test/tserialization.nim"
+pkg "yaml"
 pkg "zero_functional", "nim c -r test.nim"
 pkg "zippy"
