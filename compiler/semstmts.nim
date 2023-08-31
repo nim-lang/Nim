@@ -2668,7 +2668,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType =
     var m = n[i]
     while m.kind in {nkStmtListExpr, nkStmtList} and m.len > 0: # from templates
       m = m.lastSon
-    if m.kind in nkLastBlockStmts or
+    if m.kind in nkLastBlockStmts or nfEndBlock in m.flags or
         m.kind in nkCallKinds and m[0].kind == nkSym and
         sfNoReturn in m[0].sym.flags:
       for j in i + 1..<n.len:
