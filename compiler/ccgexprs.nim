@@ -1501,6 +1501,7 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
       getSeqPayloadType(p.module, seqtype),
     ])
   else:
+    if d.k == locNone: getTemp(p, e.typ, d, needsInit=false) # bug #22560
     putIntoDest(p, d, e, ropecg(p.module,
                 "($1)#nimNewSeqOfCap($2, $3)", [
                 getTypeDesc(p.module, seqtype),
