@@ -10,6 +10,7 @@
 # This module implements the semantic checking pass.
 
 import tables
+import std/assertions
 
 import
   ast, strutils, options, astalgo, trees,
@@ -207,12 +208,53 @@ proc commonType*(c: PContext; x, y: PType): PType =
         result.addSonSkipIntLit(r, c.idgen)
 
 proc endsInNoReturn(n: PNode): bool =
-  # check if expr ends in raise exception or call of noreturn proc
+  ## check if expr ends the block like
+  ## raise exceptions or call of noreturn procs do
+  result = false # assume it does return
+
   var it = n
-  while it.kind in {nkStmtList, nkStmtListExpr} and it.len > 0:
+  # skip these beforehand, no special handling needed
+  while it.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt}:
     it = it.lastSon
-  result = it.kind in nkLastBlockStmts or
-    it.kind in nkCallKinds and it[0].kind == nkSym and sfNoReturn in it[0].sym.flags
+
+  case it.kind
+  of nkIfStmt:
+    var hasElse = false
+    for branch in it:
+      let body =
+        if branch.len() == 2:
+          branch[1]
+        elif branch.len == 1:
+          hasElse = true
+          branch[0]
+        else:
+          raiseAssert "Malformed `if` statement during endsInNoReturn"
+      if not endsInNoReturn(body):
+        # proved that it can return, stop searching
+        break
+    # none of the branches returned
+    result = hasElse # Only truly a no-return when it's exhaustive
+  of nkCaseStmt:
+    for i in 1 ..< it.len:
+      let branch = it[i]
+      let body =
+        case branch.kind
+        of nkOfBranch:
+          branch[^1]
+        of nkElifBranch:
+          branch[1]
+        of nkElse:
+          branch[0]
+        else:
+          raiseAssert "Malformed `case` statement in endsInNoReturn"
+      if not endsInNoReturn(body):
+        # proved that one of the cases returns
+        return false
+    # none of the branches returned
+    result = true
+  else:
+    result = it.kind in nkLastBlockStmts or
+      it.kind in nkCallKinds and it[0].kind == nkSym and sfNoReturn in it[0].sym.flags
 
 proc commonType*(c: PContext; x: PType, y: PNode): PType =
   # ignore exception raising branches in case/if expressions
