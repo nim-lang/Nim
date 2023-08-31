@@ -178,7 +178,7 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
           s.add "; for a function call use ()"
         localError(c.config, n.info, s)
 
-proc propagateNoReturn(n: PNode; noReturn: bool) =
+proc propagateEndBlock(n: PNode; noReturn: bool) =
   if noReturn:
     incl(n.flags, nfEndBlock)
 
@@ -208,7 +208,7 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil):
         expectedType = typ
     else: illFormedAst(it, c.config)
   
-  result.propagateNoReturn(allNoReturn)
+  result.propagateEndBlock(allNoReturn)
 
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
       (not hasElse and efInTypeof notin flags):
@@ -321,7 +321,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
       dec last
     closeScope(c)
 
-  result.propagateNoReturn(allNoReturn)
+  result.propagateEndBlock(allNoReturn)
 
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped}:
     discardCheck(c, n[0], flags)
@@ -1219,7 +1219,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
   popCaseContext(c)
   closeScope(c)
 
-  result.propagateNoReturn(allNoReturn)
+  result.propagateEndBlock(allNoReturn)
 
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
       (not hasElse and efInTypeof notin flags):

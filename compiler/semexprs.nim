@@ -2793,6 +2793,7 @@ proc semBlock(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = ni
     onDef(n[0].info, labl)
   n[1] = semExpr(c, n[1], flags, expectedType)
   n.typ = n[1].typ
+  result.propagateEndBlock(nfEndBlock in n[1].flags)
   if isEmptyType(n.typ): n.transitionSonsKind(nkBlockStmt)
   else: n.transitionSonsKind(nkBlockExpr)
   closeScope(c)
