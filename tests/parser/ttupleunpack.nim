@@ -90,5 +90,5 @@ block: # type annotations
     let (a, (b, c)): (int, (int, int)) = (1, (2, 3))
     doAssert (a, b, c) == (1, 2, 3)
   block: # nested type inference
-    let (a, (b, c)): (byte, (float, cstring)) = (1, 2, "abc")
+    let (a, (b, c)): (byte, (float, cstring)) = (1, (2, "abc"))
     doAssert (a, b, c) == (1.byte, 2.0, cstring"abc")
