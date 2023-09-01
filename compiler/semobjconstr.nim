@@ -351,7 +351,7 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
         if discriminator.sym.ast != nil:
           # branch is selected by the default field value of discriminator
           let discriminatorDefaultVal = discriminator.sym.ast
-          result.status = initPartial
+          result.status = initUnknown
           result.defaults.add newTree(nkExprColonExpr, n[0], discriminatorDefaultVal)
           if discriminatorDefaultVal.kind == nkIntLit:
             let matchedBranch = n.pickCaseBranch discriminatorDefaultVal
