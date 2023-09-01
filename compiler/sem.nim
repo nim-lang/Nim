@@ -10,7 +10,6 @@
 # This module implements the semantic checking pass.
 
 import tables
-import std/assertions
 
 import
   ast, strutils, options, astalgo, trees,
@@ -27,7 +26,10 @@ when not defined(leanCompiler):
   import spawn
 
 when defined(nimPreviewSlimSystem):
-  import std/formatfloat
+  import std/[
+    formatfloat,
+    assertions,
+  ]
 
 # implementation
 
