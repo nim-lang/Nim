@@ -703,5 +703,20 @@ template main {.dirty.} =
     var foo = new Container
     doAssert int(foo.thing[0].x) == 1
 
+  block: # bug #22613
+    type
+      K = enum
+        A = "a"
+        B = "b"
+      T = object
+        case kind: K = B
+        of A:
+          a: int
+        of B:
+          b: float
+
+    doAssert T().kind == B
+
+
 static: main()
 main()
