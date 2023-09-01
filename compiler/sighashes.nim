@@ -110,6 +110,14 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
       if t.sym != nil: c.hashSym(t.sym)
       if t.sym == nil or tfFromGeneric in t.flags:
         c.hashType t.lastSon, flags, conf
+      if t.typeInst != nil:
+        # prevent against infinite recursions here, see bug #8883:
+        let inst = t.typeInst
+        t.typeInst = nil
+        assert inst.kind == tyGenericInst
+        for i in 0..<inst.len - 1:
+          c.hashType inst[i], flags, conf
+        t.typeInst = inst
     elif CoType in flags or t.sym == nil:
       c.hashType t.lastSon, flags, conf
     else:

@@ -87,7 +87,7 @@ type
     owner*: PSym              # where this instantiation comes from
     recursionLimit: int
 
-proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType
+proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, doCopyType = false): PType
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym
 proc replaceTypeVarsN*(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode
 
@@ -117,8 +117,8 @@ template checkMetaInvariants(cl: TReplTypeVars, t: PType) = # noop code
       debug t
       writeStackTrace()
 
-proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
-  result = replaceTypeVarsTAux(cl, t)
+proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType, doCopyType = false): PType =
+  result = replaceTypeVarsTAux(cl, t, doCopyType)
   checkMetaInvariants(cl, result)
 
 proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
@@ -420,7 +420,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     return
 
   let bbody = lastSon body
-  var newbody = replaceTypeVarsT(cl, bbody)
+  var newbody = replaceTypeVarsT(cl, bbody, doCopyType = bbody.kind in {tyObject, tyDistinct})
   cl.skipTypedesc = oldSkipTypedesc
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
   result.flags = result.flags + newbody.flags - tfInstClearedFlags
@@ -517,7 +517,7 @@ proc propagateFieldFlags(t: PType, n: PNode) =
       propagateFieldFlags(t, son)
   else: discard
 
-proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
+proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, doCopyType = false): PType =
   template bailout =
     if (t.sym == nil) or (t.sym != nil and sfGeneratedType in t.sym.flags):
       # In the first case 't.sym' can be 'nil' if the type is a ref/ptr, see
@@ -620,7 +620,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     propagateToOwner(result, result.lastSon)
 
   else:
-    if containsGenericType(t):
+    if doCopyType or containsGenericType(t):
       #if not cl.allowMetaTypes:
       bailout()
       result = instCopyType(cl, t)
