@@ -524,6 +524,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   of nkReturnStmt:
     detectCapturedVars(n[0], owner, c)
   of nkIdentDefs:
+    detectCapturedVars(n[0], owner, c)
     detectCapturedVars(n[^1], owner, c)
   else:
     if n.isCallExpr and n[0].isTypeOf:
