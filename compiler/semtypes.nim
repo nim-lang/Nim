@@ -1508,6 +1508,14 @@ proc trySemObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType): b
   var newf = newNodeI(nkRecList, n.info)
   semRecordNodeAux(c, t.n, check, pos, newf, t)
 
+proc containsGenericInvocationWithForward(n: PNode): bool = 
+  if n.kind == nkSym and n.sym.ast != nil and n.sym.ast.len > 1 and n.sym.ast[2].kind == nkObjectTy:
+    for p in n.sym.ast[2][^1]:
+      if p.kind == nkIdentDefs and p[1].typ != nil and p[1].typ.kind == tyGenericInvocation and
+        p[1][0].kind == nkSym and p[1][0].typ.kind == tyForward:
+          return true
+  return false
+
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if s.typ == nil:
     localError(c.config, n.info, "cannot instantiate the '$1' $2" %
@@ -1577,14 +1585,9 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         # XXX: What kind of error is this? is it still relevant?
         localError(c.config, n.info, errCannotInstantiateX % s.name.s)
         result = newOrPrevType(tyError, prev, c)
+      elif containsGenericInvocationWithForward(n[0]):
+        c.skipTypes.add n #fixes 1500
       else:
-        #fixes 1500
-        if n[0].kind == nkSym and n[0].sym.ast != nil and n[0].sym.ast.len > 1 and n[0].sym.ast[2].kind == nkObjectTy:
-          for p in n[0].sym.ast[2][^1]:
-            if p.kind == nkIdentDefs and p[1].typ != nil and p[1].typ.kind == tyGenericInvocation and
-              p[1][0].kind == nkSym and p[1][0].typ.kind == tyForward:                
-              c.skipTypes.add n
-              return
         result = instGenericContainer(c, n.info, result,
                                       allowMetaTypes = false)
 
