@@ -590,14 +590,20 @@ proc globalVarInitCheck(c: PContext, n: PNode) =
   if n.isLocalVarSym or n.kind in nkCallKinds and usesLocalVar(n):
     localError(c.config, n.info, errCannotAssignToGlobal)
 
+const
+  errTupleUnpackingTupleExpected = "tuple expected for tuple unpacking, but got '$1'"
+  errTupleUnpackingDifferentLengths = "tuple with $1 elements expected, but got '$2' with $3 elements"
+
 proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSymKind, origResult: var PNode): PNode =
   ## expand tuple unpacking assignments into new var/let/const section
   ## 
   ## mirrored with semexprs.makeTupleAssignments
   if typ.kind != tyTuple:
-    localError(c.config, a.info, errXExpected, "tuple")
+    localError(c.config, a.info, errTupleUnpackingTupleExpected %
+      [typeToString(typ, preferDesc)])
   elif a.len-2 != typ.len:
-    localError(c.config, a.info, errWrongNumberOfVariables)
+    localError(c.config, a.info, errTupleUnpackingDifferentLengths %
+      [$(a.len-2), typeToString(typ, preferDesc), $typ.len])
   var
     tempNode: PNode = nil
     lastDef: PNode

@@ -2286,7 +2286,7 @@ proc parseTypeDef(p: var Parser): PNode =
   setEndInfo()
 
 proc parseVarTuple(p: var Parser): PNode =
-  #| varTupleLhs = '(' optInd (identWithPragma / varTupleLhs) ^+ comma optPar ')'
+  #| varTupleLhs = '(' optInd (identWithPragma / varTupleLhs) ^+ comma optPar ')' (':' optInd typeDescExpr)?
   #| varTuple = varTupleLhs '=' optInd expr
   result = newNodeP(nkVarTuple, p)
   getTok(p)                   # skip '('
@@ -2303,9 +2303,14 @@ proc parseVarTuple(p: var Parser): PNode =
     if p.tok.tokType != tkComma: break
     getTok(p)
     skipComment(p, a)
-  result.add(p.emptyNode)         # no type desc
   optPar(p)
   eat(p, tkParRi)
+  if p.tok.tokType == tkColon:
+    getTok(p)
+    optInd(p, result)
+    result.add(parseTypeDesc(p, fullExpr = true))
+  else:
+    result.add(p.emptyNode)         # no type desc
   setEndInfo()
 
 proc parseVariable(p: var Parser): PNode =

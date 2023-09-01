@@ -1824,9 +1824,11 @@ proc makeTupleAssignments(c: PContext; n: PNode): PNode =
   let lhs = n[0]
   let value = semExprWithType(c, n[1], {efTypeAllowed})
   if value.typ.kind != tyTuple:
-    localError(c.config, n[1].info, errXExpected, "tuple")
+    localError(c.config, n[1].info, errTupleUnpackingTupleExpected %
+      [typeToString(value.typ, preferDesc)])
   elif lhs.len != value.typ.len:
-    localError(c.config, n.info, errWrongNumberOfVariables)
+    localError(c.config, n.info, errTupleUnpackingDifferentLengths %
+      [$lhs.len, typeToString(value.typ, preferDesc), $value.typ.len])
   result = newNodeI(nkStmtList, n.info)
 
   let temp = newSym(skTemp, getIdent(c.cache, "tmpTupleAsgn"), c.idgen, getCurrOwner(c), n.info)
