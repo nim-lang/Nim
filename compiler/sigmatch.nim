@@ -2477,6 +2477,14 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     container: PNode = nil # constructed container
   let firstArgBlock = findFirstArgBlock(m, n)
   while a < n.len:
+    #infers void from auto
+    if a == n.len - 1 and n[a].kind == nkLambda and n[a][0].kind == nkSym:
+      let s = n[a][0].sym
+      if s.typ != nil and s.typ.len > 0 and s.typ[0] != nil and s.typ[0].kind == tyAnything: 
+        let res = c.semExpr(c, n[^1][bodyPos], flags = {efPreferNilResult, efDetermineType, efPreferStatic})
+        if res != nil:
+          s.typ[0] = res.typ
+
     c.openShadowScope
 
     if a >= formalLen-1 and f < formalLen and m.callee.n[f].typ.isVarargsUntyped:
