@@ -1003,10 +1003,6 @@ proc bracketedMacro(n: PNode): PSym =
   else:
     result = nil
 
-proc setGenericParams(c: PContext, n: PNode) =
-  for i in 1..<n.len:
-    n[i].typ = semTypeNode(c, n[i], nil)
-
 proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   if efNoSemCheck notin flags and n.typ != nil and n.typ.kind == tyError:
     return errorNode(c, n)
@@ -1113,7 +1109,6 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
           msg.addDeclaredLocMaybe(c.config, typ)
           localError(c.config, n.info, msg)
         return errorNode(c, n)
-      result = nil
     else:
       result = m.call
       instGenericConvertersSons(c, result, m)
@@ -1834,9 +1829,11 @@ proc makeTupleAssignments(c: PContext; n: PNode): PNode =
   let lhs = n[0]
   let value = semExprWithType(c, n[1], {efTypeAllowed})
   if value.typ.kind != tyTuple:
-    localError(c.config, n[1].info, errXExpected, "tuple")
+    localError(c.config, n[1].info, errTupleUnpackingTupleExpected %
+      [typeToString(value.typ, preferDesc)])
   elif lhs.len != value.typ.len:
-    localError(c.config, n.info, errWrongNumberOfVariables)
+    localError(c.config, n.info, errTupleUnpackingDifferentLengths %
+      [$lhs.len, typeToString(value.typ, preferDesc), $value.typ.len])
   result = newNodeI(nkStmtList, n.info)
 
   let temp = newSym(skTemp, getIdent(c.cache, "tmpTupleAsgn"), c.idgen, getCurrOwner(c), n.info)
