@@ -193,6 +193,23 @@ proc collectOrAddMissingCaseFields(c: PContext, branchNode: PNode,
     asgnExpr.typ = recTyp
     defaults.add newTree(nkExprColonExpr, newSymNode(sym), asgnExpr)
 
+proc collectBranchFields(c: PContext, n: PNode, discriminatorVal: PNode,
+                          constrCtx: var ObjConstrContext, flags: TExprFlags) =
+  # All bets are off. If any of the branches has a mandatory
+  # fields we must produce an error:
+  for i in 1..<n.len:
+    let branchNode = n[i]
+    if branchNode != nil:
+      let oldCheckDefault = constrCtx.checkDefault
+      constrCtx.checkDefault = true
+      let (_, defaults) = semConstructFields(c, branchNode[^1], constrCtx, flags)
+      constrCtx.checkDefault = oldCheckDefault
+      if len(defaults) > 0:
+        localError(c.config, discriminatorVal.info, "branch initialization " &
+                    "with a runtime discriminator is not supported " &
+                    "for a branch whose fields have default values.")
+    discard collectMissingCaseFields(c, n[i], constrCtx, @[])
+
 proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
                         flags: TExprFlags): tuple[status: InitStatus, defaults: seq[PNode]] =
   result = (initUnknown, @[])
@@ -327,22 +344,6 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
       if result.status == initPartial:
         collectOrAddMissingCaseFields(c, branchNode, constrCtx, result.defaults)
     else:
-      template collectBranchFields() =
-        # All bets are off. If any of the branches has a mandatory
-        # fields we must produce an error:
-        for i in 1..<n.len:
-          let branchNode = n[i]
-          if branchNode != nil:
-            let oldCheckDefault = constrCtx.checkDefault
-            constrCtx.checkDefault = true
-            let (_, defaults) = semConstructFields(c, branchNode[^1], constrCtx, flags)
-            constrCtx.checkDefault = oldCheckDefault
-            if len(defaults) > 0:
-              localError(c.config, discriminatorVal.info, "branch initialization " &
-                          "with a runtime discriminator is not supported " &
-                          "for a branch whose fields have default values.")
-          discard collectMissingCaseFields(c, n[i], constrCtx, @[])
-
       result.status = initNone
       let discriminatorVal = semConstrField(c, flags + {efPreferStatic},
                                             discriminator.sym,
@@ -360,7 +361,7 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
               result.defaults.add defaults
               collectOrAddMissingCaseFields(c, matchedBranch, constrCtx, result.defaults)
           else:
-            collectBranchFields()
+            collectBranchFields(c, n, discriminatorDefaultVal, constrCtx, flags)
         else:
           # None of the branches were explicitly selected by the user and no
           # value was given to the discrimator. We can assume that it will be
@@ -380,7 +381,7 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
             result.defaults.add defaults
             collectOrAddMissingCaseFields(c, matchedBranch, constrCtx, result.defaults)
         else:
-          collectBranchFields()
+          collectBranchFields(c, n, discriminatorVal, constrCtx, flags)
 
   of nkSym:
     let field = n.sym
