@@ -347,27 +347,28 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
       let discriminatorVal = semConstrField(c, flags + {efPreferStatic},
                                             discriminator.sym,
                                             constrCtx.initExpr)
-      if discriminatorVal == nil and discriminator.sym.ast != nil:
-        # branch is selected by the default field value of discriminator
-        let discriminatorDefaultVal = discriminator.sym.ast
-        result.status = initPartial
-        result.defaults.add newTree(nkExprColonExpr, n[0], discriminatorDefaultVal)
-        if discriminatorDefaultVal.kind == nkIntLit:
-          let matchedBranch = n.pickCaseBranch discriminatorDefaultVal
-          if matchedBranch != nil:
-            let (_, defaults) = semConstructFields(c, matchedBranch[^1], constrCtx, flags)
-            result.defaults.add defaults
-            collectOrAddMissingCaseFields(c, matchedBranch, constrCtx, result.defaults)
+      if discriminatorVal == nil:
+        if discriminator.sym.ast != nil:
+          # branch is selected by the default field value of discriminator
+          let discriminatorDefaultVal = discriminator.sym.ast
+          result.status = initPartial
+          result.defaults.add newTree(nkExprColonExpr, n[0], discriminatorDefaultVal)
+          if discriminatorDefaultVal.kind == nkIntLit:
+            let matchedBranch = n.pickCaseBranch discriminatorDefaultVal
+            if matchedBranch != nil:
+              let (_, defaults) = semConstructFields(c, matchedBranch[^1], constrCtx, flags)
+              result.defaults.add defaults
+              collectOrAddMissingCaseFields(c, matchedBranch, constrCtx, result.defaults)
+          else:
+            collectBranchFields()
         else:
-          collectBranchFields()
-      elif discriminatorVal == nil:
-        # None of the branches were explicitly selected by the user and no
-        # value was given to the discrimator. We can assume that it will be
-        # initialized to zero and this will select a particular branch as
-        # a result:
-        let defaultValue = newIntLit(c.graph, constrCtx.initExpr.info, 0)
-        let matchedBranch = n.pickCaseBranch defaultValue
-        discard collectMissingCaseFields(c, matchedBranch, constrCtx, @[])
+          # None of the branches were explicitly selected by the user and no
+          # value was given to the discrimator. We can assume that it will be
+          # initialized to zero and this will select a particular branch as
+          # a result:
+          let defaultValue = newIntLit(c.graph, constrCtx.initExpr.info, 0)
+          let matchedBranch = n.pickCaseBranch defaultValue
+          discard collectMissingCaseFields(c, matchedBranch, constrCtx, @[])
       else:
         result.status = initPartial
         if discriminatorVal.kind == nkIntLit:
