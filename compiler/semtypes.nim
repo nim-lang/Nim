@@ -1976,6 +1976,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semTypeExpr(c, n[1], prev)
       else:
         if c.inGenericContext > 0 and n.kind == nkCall:
+          let n = semGenericStmt(c, n)
           result = makeTypeFromExpr(c, n.copyTree)
         else:
           result = semTypeExpr(c, n, prev)
