@@ -406,13 +406,19 @@ proc genIf(c: PCtx, n: PNode; dest: var TDest) =
           c.gen(it[0], tmp)
           elsePos = c.xjmp(it[0], opcFJmp, tmp) # if false
       c.clearDest(n, dest)
-      c.gen(it[1], dest) # then part
+      if isEmptyType(it[1].typ): # maybe noreturn call, don't touch `dest`
+        c.gen(it[1])
+      else:
+        c.gen(it[1], dest) # then part
       if i < n.len-1:
         endings.add(c.xjmp(it[1], opcJmp, 0))
       c.patch(elsePos)
     else:
       c.clearDest(n, dest)
-      c.gen(it[0], dest)
+      if isEmptyType(it[0].typ): # maybe noreturn call, don't touch `dest`
+        c.gen(it[0])
+      else:
+        c.gen(it[0], dest)
   for endPos in endings: c.patch(endPos)
   c.clearDest(n, dest)
 
@@ -506,17 +512,25 @@ proc genCase(c: PCtx; n: PNode; dest: var TDest) =
       let it = n[i]
       if it.len == 1:
         # else stmt:
-        if it[0].kind != nkNilLit or it[0].typ != nil:
+        let body = it[0]
+        if body.kind != nkNilLit or body.typ != nil:
           # an nkNilLit with nil for typ implies there is no else branch, this
           # avoids unused related errors as we've already consumed the dest
-          c.gen(it[0], dest)
+          if isEmptyType(body.typ): # maybe noreturn call, don't touch `dest`
+            c.gen(body)
+          else:
+            c.gen(body, dest)
       else:
         let b = rawGenLiteral(c, it)
         c.gABx(it, opcBranch, tmp, b)
-        let elsePos = c.xjmp(it.lastSon, opcFJmp, tmp)
-        c.gen(it.lastSon, dest)
+        let body = it.lastSon
+        let elsePos = c.xjmp(body, opcFJmp, tmp)
+        if isEmptyType(body.typ): # maybe noreturn call, don't touch `dest`
+          c.gen(body)
+        else:
+          c.gen(body, dest)
         if i < n.len-1:
-          endings.add(c.xjmp(it.lastSon, opcJmp, 0))
+          endings.add(c.xjmp(body, opcJmp, 0))
         c.patch(elsePos)
       c.clearDest(n, dest)
   for endPos in endings: c.patch(endPos)
@@ -532,7 +546,10 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   if dest < 0 and not isEmptyType(n.typ): dest = getTemp(c, n.typ)
   var endings: seq[TPosition] = @[]
   let ehPos = c.xjmp(n, opcTry, 0)
-  c.gen(n[0], dest)
+  if isEmptyType(n[0].typ): # maybe noreturn call, don't touch `dest`
+    c.gen(n[0])
+  else:
+    c.gen(n[0], dest)
   c.clearDest(n, dest)
   # Add a jump past the exception handling code
   let jumpToFinally = c.xjmp(n, opcJmp, 0)
@@ -550,7 +567,11 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
       if it.len == 1:
         # general except section:
         c.gABx(it, opcExcept, 0, 0)
-      c.gen(it.lastSon, dest)
+      let body = it.lastSon
+      if isEmptyType(body.typ): # maybe noreturn call, don't touch `dest`
+        c.gen(body)
+      else:
+        c.gen(body, dest)
       c.clearDest(n, dest)
       if i < n.len:
         endings.add(c.xjmp(it, opcJmp, 0))
