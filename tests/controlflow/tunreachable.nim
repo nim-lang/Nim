@@ -2,8 +2,9 @@ discard """
   cmd: "nim check --warningAsError:UnreachableCode $file"
   action: "reject"
   nimout: '''
-tunreachable.nim(23, 3) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
-tunreachable.nim(30, 3) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
+tunreachable.nim(24, 3) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
+tunreachable.nim(31, 3) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
+tunreachable.nim(40, 3) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
 '''
 """
   
@@ -30,3 +31,12 @@ proc main2() =
   echo "after"
 
 main2()
+
+proc main3() =
+  if true:
+    return
+  else:
+    return
+  echo "after"
+
+main3()
