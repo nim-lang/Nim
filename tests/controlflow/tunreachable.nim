@@ -2,11 +2,12 @@ discard """
   cmd: "nim check --hints:off --warningAsError:UnreachableCode $file"
   action: "reject"
   nimout: '''
-tunreachable.nim(23, 8) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
-tunreachable.nim(30, 8) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
+tunreachable.nim(24, 8) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
+tunreachable.nim(31, 8) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
+tunreachable.nim(40, 8) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
 '''
 """
-  
+
 # bug #9839
 template myquit1():untyped=
   ## foo
@@ -30,3 +31,12 @@ proc main2() =
   echo "after"
 
 main2()
+
+proc main3() =
+  if true:
+    return
+  else:
+    return
+  echo "after"
+
+main3()
