@@ -868,9 +868,13 @@ proc semConst(c: PContext, n: PNode): PNode =
         styleCheckDef(c, v)
         onDef(a[j].info, v)
 
-        setVarType(c, v, typ)
-        when false:
-          v.ast = def               # no need to copy
+        var fillSymbol = true
+        if v.typ != nil:
+          # symbol already has type and probably value
+          # don't mutate
+          fillSymbol = false
+        else:
+          setVarType(c, v, typ)
         b = newNodeI(nkConstDef, a.info)
         if importantComments(c.config): b.comment = a.comment
         # postfix not generated here (to generate, get rid of it in transf)
@@ -883,8 +887,9 @@ proc semConst(c: PContext, n: PNode): PNode =
           b.add newSymNode(v)
         b.add a[1]
         b.add copyTree(def)
-        v.ast = b
-      addToVarSection(c, result, n, b)
+        if fillSymbol:
+          v.ast = b
+        addToVarSection(c, result, n, b)
   dec c.inStaticContext
 
 include semfields
