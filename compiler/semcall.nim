@@ -660,14 +660,18 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   onUse(info, s)
   result = newSymNode(newInst, info)
 
-proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
-  assert n.kind == nkBracketExpr
+proc setGenericParams(c: PContext, n: PNode) =
+  ## sems generic params in subscript expression
   for i in 1..<n.len:
     let e = semExprWithType(c, n[i])
     if e.typ == nil:
       n[i].typ = errorType(c)
     else:
       n[i].typ = e.typ.skipTypes({tyTypeDesc})
+
+proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
+  assert n.kind == nkBracketExpr
+  setGenericParams(c, n)
   var s = s
   var a = n[0]
   if a.kind == nkSym:

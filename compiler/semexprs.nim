@@ -946,10 +946,6 @@ proc bracketedMacro(n: PNode): PSym =
     if result.kind notin {skMacro, skTemplate}:
       result = nil
 
-proc setGenericParams(c: PContext, n: PNode) =
-  for i in 1..<n.len:
-    n[i].typ = semTypeNode(c, n[i], nil)
-
 proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   if efNoSemCheck notin flags and n.typ != nil and n.typ.kind == tyError:
     return errorNode(c, n)
