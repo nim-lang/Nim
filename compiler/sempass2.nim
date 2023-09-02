@@ -16,7 +16,7 @@ import
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-import std/options
+import std/options as opt
 
 when defined(useDfa):
   import dfa
