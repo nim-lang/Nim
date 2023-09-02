@@ -152,7 +152,7 @@ proc none*(T: typedesc): Option[T] {.inline.} =
     assert none(int).isNone
 
   # the default is the none type
-  discard
+  result = Option[T]()
 
 proc none*[T]: Option[T] {.inline.} =
   ## Alias for `none(T) <#none,typedesc>`_.
