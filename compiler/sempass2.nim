@@ -72,7 +72,7 @@ type
     owner: PSym
     ownerModule: PSym
     init: seq[int] # list of initialized variables
-    initializedSym: PSym # exists if the result symbok has been initialized
+    initializedSym: PSym # exists if the result symbol has been initialized
     scopes: Table[int, int] # maps var-id to its scope (see also `currentBlock`).
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
@@ -720,6 +720,10 @@ proc addIdToIntersection(tracked: PEffects, inter: var TIntersection, resCounter
     for i in oldState..<tracked.init.len:
       addToIntersection(inter, tracked.init[i], hasBreaksBlock)
 
+template hasResultSym(s: PSym): bool =
+  s != nil and s.kind in {skProc, skFunc, skConverter, skMethod} and
+    not isEmptyType(s.typ[0])
+
 proc trackCase(tracked: PEffects, n: PNode) =
   track(tracked, n[0])
   inc tracked.inIfStmt
@@ -731,8 +735,7 @@ proc trackCase(tracked: PEffects, n: PNode) =
         (tracked.config.hasWarn(warnProveField) or strictCaseObjects in tracked.c.features)
   var inter: TIntersection = @[]
   var toCover = 0
-  let hasResult = not isEmptyType(tracked.owner.typ[0]) and
-     tracked.owner.kind in {skProc, skFunc, skConverter, skMethod}
+  let hasResult = hasResultSym(tracked.owner)
   let resSym = if hasResult: tracked.owner.ast[resultPos].sym else: nil
   var resCounter = 0
 
@@ -769,8 +772,7 @@ proc trackIf(tracked: PEffects, n: PNode) =
   addFact(tracked.guards, n[0][0])
   let oldState = tracked.init.len
 
-  let hasResult = not isEmptyType(tracked.owner.typ[0]) and
-     tracked.owner.kind in {skProc, skFunc, skConverter, skMethod}
+  let hasResult = hasResultSym(tracked.owner)
   let resSym = if hasResult: tracked.owner.ast[resultPos].sym else: nil
   var resCounter = 0
 
