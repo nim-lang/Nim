@@ -74,7 +74,7 @@ type
     owner: PSym
     ownerModule: PSym
     init: seq[int] # list of initialized variables
-    resultId: Option[int] # the id of rersult if it exists
+    initialisedSym: PSym
     scopes: Table[int, int] # maps var-id to its scope (see also `currentBlock`).
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
@@ -342,7 +342,8 @@ proc useVar(a: PEffects, n: PNode) =
     if sfNoInit in s.flags:
       # If the variable is explicitly marked as .noinit. do not emit any error
       a.init.add s.id
-    elif s.id notin a.init:
+    elif s.id notin a.init and not
+          (a.initialisedSym != nil and a.initialisedSym.id == s.id):
       if s.typ.requiresInit:
         message(a.config, n.info, warnProveInit, s.name.s)
       elif a.leftPartOfAsgn <= 0:
@@ -703,7 +704,7 @@ proc breaksBlock(n: PNode): BreakState =
     result = bsNone
 
 proc addIdToIntersection(tracked: PEffects, inter: var TIntersection, resCounter: var int,
-            hasBreaksBlock: BreakState, oldState: int, resId: int, hasResult: bool) =
+            hasBreaksBlock: BreakState, oldState: int, resSym: PSym, hasResult: bool) =
   if hasResult:
     var alreadySatisfy = false
 
@@ -712,7 +713,7 @@ proc addIdToIntersection(tracked: PEffects, inter: var TIntersection, resCounter
       inc resCounter
 
     for i in oldState..<tracked.init.len:
-      if not alreadySatisfy and tracked.init[i] == resId:
+      if not alreadySatisfy and tracked.init[i] == resSym.id:
         inc resCounter
         alreadySatisfy = true
       else:
@@ -732,8 +733,9 @@ proc trackCase(tracked: PEffects, n: PNode) =
         (tracked.config.hasWarn(warnProveField) or strictCaseObjects in tracked.c.features)
   var inter: TIntersection = @[]
   var toCover = 0
-  let hasResult = isSome(tracked.resultId)
-  let resId = if hasResult: tracked.resultId.unsafeGet else: -1
+  let hasResult = not isEmptyType(tracked.owner.typ[0]) and
+     tracked.owner.kind in {skProc, skFunc, skConverter, skMethod}
+  let resSym = if hasResult: tracked.owner.ast[resultPos].sym else: nil
   var resCounter = 0
 
   for i in 1..<n.len:
@@ -747,12 +749,15 @@ proc trackCase(tracked: PEffects, n: PNode) =
     let hasBreaksBlock = breaksBlock(branch.lastSon)
     if hasBreaksBlock == bsNone:
       inc toCover
-    addIdToIntersection(tracked, inter, resCounter, hasBreaksBlock, oldState, resId, hasResult)
+    addIdToIntersection(tracked, inter, resCounter, hasBreaksBlock, oldState, resSym, hasResult)
 
   setLen(tracked.init, oldState)
   if not stringCase or lastSon(n).kind == nkElse:
-    if hasResult and resCounter == n.len-1:
-      tracked.init.add resId
+    if hasResult:
+      if resCounter == n.len-1:
+        tracked.init.add resSym.id
+      elif resCounter >= toCover:
+        tracked.initialisedSym = resSym
     for id, count in items(inter):
       if count >= toCover: tracked.init.add id
     # else we can't merge
@@ -766,8 +771,9 @@ proc trackIf(tracked: PEffects, n: PNode) =
   addFact(tracked.guards, n[0][0])
   let oldState = tracked.init.len
 
-  let hasResult = isSome(tracked.resultId)
-  let resId = if hasResult: tracked.resultId.unsafeGet else: -1
+  let hasResult = not isEmptyType(tracked.owner.typ[0]) and
+     tracked.owner.kind in {skProc, skFunc, skConverter, skMethod}
+  let resSym = if hasResult: tracked.owner.ast[resultPos].sym else: nil
   var resCounter = 0
 
   var inter: TIntersection = @[]
@@ -776,7 +782,7 @@ proc trackIf(tracked: PEffects, n: PNode) =
   let hasBreaksBlock = breaksBlock(n[0][1])
   if hasBreaksBlock == bsNone:
     inc toCover
-  addIdToIntersection(tracked, inter, resCounter, hasBreaksBlock, oldState, resId, hasResult)
+  addIdToIntersection(tracked, inter, resCounter, hasBreaksBlock, oldState, resSym, hasResult)
 
   for i in 1..<n.len:
     let branch = n[i]
@@ -791,12 +797,15 @@ proc trackIf(tracked: PEffects, n: PNode) =
     let hasBreaksBlock = breaksBlock(branch.lastSon)
     if hasBreaksBlock == bsNone:
       inc toCover
-    addIdToIntersection(tracked, inter, resCounter, hasBreaksBlock, oldState, resId, hasResult)
+    addIdToIntersection(tracked, inter, resCounter, hasBreaksBlock, oldState, resSym, hasResult)
 
   setLen(tracked.init, oldState)
   if lastSon(n).len == 1:
-    if hasResult and resCounter == n.len:
-      tracked.init.add resId
+    if hasResult:
+      if resCounter == n.len:
+        tracked.init.add resSym.id
+      elif resCounter >= toCover:
+        tracked.initialisedSym = resSym
     for id, count in items(inter):
       if count >= toCover: tracked.init.add id
     # else we can't merge as it is not exhaustive
@@ -1497,7 +1506,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; c: PContext): TEffects
 
   result = TEffects(exc: effects[exceptionEffects], tags: effects[tagEffects],
             forbids: effects[forbiddenEffects], owner: s, ownerModule: s.getModule,
-            init: @[], resultId: none(int), locked: @[], graph: g, config: g.config, c: c,
+            init: @[], locked: @[], initialisedSym: nil, graph: g, config: g.config, c: c,
             currentBlock: 1
   )
   result.guards.s = @[]
@@ -1535,7 +1544,6 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     var res = s.ast[resultPos].sym # get result symbol
     let resId = res.id
     t.scopes[resId] = t.currentBlock
-    t.resultId = some(resId)
 
   track(t, body)
 
