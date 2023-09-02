@@ -72,7 +72,6 @@ type
     owner: PSym
     ownerModule: PSym
     init: seq[int] # list of initialized variables
-    initializedSym: PSym # exists if the result symbol has been initialized
     scopes: Table[int, int] # maps var-id to its scope (see also `currentBlock`).
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
@@ -1502,7 +1501,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; c: PContext): TEffects
 
   result = TEffects(exc: effects[exceptionEffects], tags: effects[tagEffects],
             forbids: effects[forbiddenEffects], owner: s, ownerModule: s.getModule,
-            init: @[], locked: @[], initializedSym: nil, graph: g, config: g.config, c: c,
+            init: @[], locked: @[], graph: g, config: g.config, c: c,
             currentBlock: 1
   )
   result.guards.s = @[]
