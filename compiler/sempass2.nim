@@ -340,8 +340,7 @@ proc useVar(a: PEffects, n: PNode) =
     if sfNoInit in s.flags:
       # If the variable is explicitly marked as .noinit. do not emit any error
       a.init.add s.id
-    elif s.id notin a.init and not
-          (a.initializedSym != nil and a.initializedSym.id == s.id):
+    elif s.id notin a.init:
       if s.typ.requiresInit:
         message(a.config, n.info, warnProveInit, s.name.s)
       elif a.leftPartOfAsgn <= 0:
@@ -711,9 +710,10 @@ proc addIdToIntersection(tracked: PEffects, inter: var TIntersection, resCounter
       inc resCounter
 
     for i in oldState..<tracked.init.len:
-      if not alreadySatisfy and tracked.init[i] == resSym.id:
-        inc resCounter
-        alreadySatisfy = true
+      if tracked.init[i] == resSym.id:
+        if not alreadySatisfy:
+          inc resCounter
+          alreadySatisfy = true
       else:
         addToIntersection(inter, tracked.init[i], hasBreaksBlock)
   else:
@@ -757,8 +757,6 @@ proc trackCase(tracked: PEffects, n: PNode) =
     if hasResult:
       if resCounter == n.len-1:
         tracked.init.add resSym.id
-      elif resCounter >= toCover:
-        tracked.initializedSym = resSym
     for id, count in items(inter):
       if count >= toCover: tracked.init.add id
     # else we can't merge
@@ -804,8 +802,6 @@ proc trackIf(tracked: PEffects, n: PNode) =
     if hasResult:
       if resCounter == n.len:
         tracked.init.add resSym.id
-      elif resCounter >= toCover:
-        tracked.initializedSym = resSym
     for id, count in items(inter):
       if count >= toCover: tracked.init.add id
     # else we can't merge as it is not exhaustive
