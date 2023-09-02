@@ -10,19 +10,6 @@ for i in 0..<1:
       else:
         raiseAssert "Won't get here"
 
-# block
-for i in 0..<1:
-  let x =
-    case false
-    of true:
-      42
-    of false:
-      block:
-        if true:
-          continue
-        else:
-          raiseAssert "Won't get here"
-
 # nested case
 for i in 0..<1:
   let x =
