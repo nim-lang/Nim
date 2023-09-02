@@ -74,7 +74,7 @@ type
     owner: PSym
     ownerModule: PSym
     init: seq[int] # list of initialized variables
-    initialisedSym: PSym
+    initializedSym: PSym # exists if the result symbok has been initialized
     scopes: Table[int, int] # maps var-id to its scope (see also `currentBlock`).
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
@@ -343,7 +343,7 @@ proc useVar(a: PEffects, n: PNode) =
       # If the variable is explicitly marked as .noinit. do not emit any error
       a.init.add s.id
     elif s.id notin a.init and not
-          (a.initialisedSym != nil and a.initialisedSym.id == s.id):
+          (a.initializedSym != nil and a.initializedSym.id == s.id):
       if s.typ.requiresInit:
         message(a.config, n.info, warnProveInit, s.name.s)
       elif a.leftPartOfAsgn <= 0:
@@ -757,7 +757,7 @@ proc trackCase(tracked: PEffects, n: PNode) =
       if resCounter == n.len-1:
         tracked.init.add resSym.id
       elif resCounter >= toCover:
-        tracked.initialisedSym = resSym
+        tracked.initializedSym = resSym
     for id, count in items(inter):
       if count >= toCover: tracked.init.add id
     # else we can't merge
@@ -805,7 +805,7 @@ proc trackIf(tracked: PEffects, n: PNode) =
       if resCounter == n.len:
         tracked.init.add resSym.id
       elif resCounter >= toCover:
-        tracked.initialisedSym = resSym
+        tracked.initializedSym = resSym
     for id, count in items(inter):
       if count >= toCover: tracked.init.add id
     # else we can't merge as it is not exhaustive
@@ -1506,7 +1506,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; c: PContext): TEffects
 
   result = TEffects(exc: effects[exceptionEffects], tags: effects[tagEffects],
             forbids: effects[forbiddenEffects], owner: s, ownerModule: s.getModule,
-            init: @[], locked: @[], initialisedSym: nil, graph: g, config: g.config, c: c,
+            init: @[], locked: @[], initializedSym: nil, graph: g, config: g.config, c: c,
             currentBlock: 1
   )
   result.guards.s = @[]
