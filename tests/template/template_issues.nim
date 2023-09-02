@@ -13,6 +13,8 @@ foo
 foo
 false
 true
+seq[int]
+@[5, 6]
 '''
 """
 
@@ -306,3 +308,13 @@ block: # bug #21920
 block: # issue #19865
   template f() = discard default(system.int)
   f()
+
+block: # issue #14917
+  proc passSeq2[T](a : static seq[T]) =
+    echo a
+
+  template passSeq1[T](a : static seq[T]) =
+    echo type(a)
+    passSeq2(a)
+
+  passSeq1(@[5, 6])
