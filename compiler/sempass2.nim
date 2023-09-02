@@ -74,7 +74,7 @@ type
     owner: PSym
     ownerModule: PSym
     init: seq[int] # list of initialized variables
-    resultId: Option[int] # the id of rersult if it exists
+    resultId: Option[int] # the id of result if it exists
     scopes: Table[int, int] # maps var-id to its scope (see also `currentBlock`).
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
