@@ -229,6 +229,14 @@ block: # bug #15595
   static: main()
   main()
 
+block: # issue #20543
+  type F = proc()
+  const myArray = block:
+    var r: array[1, F]
+    r[0] = nil
+    r
+  doAssert isNil(myArray[0])
+
 # bug #15363
 import sequtils
 

@@ -230,7 +230,13 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): P
   of mMulF64: result = newFloatNodeT(getFloat(a) * getFloat(b), n, g)
   of mDivF64:
     result = newFloatNodeT(getFloat(a) / getFloat(b), n, g)
-  of mIsNil: result = newIntNodeT(toInt128(ord(a.kind == nkNilLit)), n, idgen, g)
+  of mIsNil:
+    let val = a.kind == nkNilLit or
+      # nil closures have the value (nil, nil)
+      (a.typ != nil and skipTypes(a.typ, abstractRange).kind == tyProc and
+        a.kind == nkTupleConstr and a.len == 2 and
+        a[0].kind == nkNilLit and a[1].kind == nkNilLit)
+    result = newIntNodeT(toInt128(ord(val)), n, idgen, g)
   of mLtI, mLtB, mLtEnum, mLtCh:
     result = newIntNodeT(toInt128(ord(getOrdValue(a) < getOrdValue(b))), n, idgen, g)
   of mLeI, mLeB, mLeEnum, mLeCh:
