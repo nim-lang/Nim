@@ -411,3 +411,28 @@ block: # Ensure static descriminated objects compile
   discard instance
   discard MyObject[KindC]()
 
+block: # bug #22600
+  proc f(n: static int): int = n * 2 # same for template
+
+  type
+    a[N: static int] = object
+      field : array[N, uint8]
+
+    b[N: static int] = object
+      field : a[N]
+
+    c[N: static int] = object
+      f0    : a[N     ]         # works
+      f1    : a[N + 1 ]         # asserts
+      f2    : a[f(N)  ]         # asserts
+
+      f3    : b[N     ]         # works
+      f4    : b[N + 1 ]         # asserts
+      f5    : b[f(N)  ]         # asserts
+
+  proc init[N: static int](x : var a[N]) = discard
+  proc init[N: static int](x : var b[N]) = discard
+  proc init[N: static int](x : var c[N]) = x.f1.init() # this is needed
+
+  var x: c[2]
+  x.init()
