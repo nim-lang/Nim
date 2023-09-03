@@ -16,8 +16,6 @@ block:
     else:
       foo()
 
-  discard test(true)
-
 block:
   proc test(x: bool): Test =
     if x:
