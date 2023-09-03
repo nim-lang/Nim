@@ -753,8 +753,7 @@ proc trackCase(tracked: PEffects, n: PNode) =
 
   setLen(tracked.init, oldState)
   if not stringCase or lastSon(n).kind == nkElse:
-    if hasResult:
-      if resCounter == n.len-1:
+    if hasResult and resCounter == n.len-1:
         tracked.init.add resSym.id
     for id, count in items(inter):
       if count >= toCover: tracked.init.add id
@@ -798,8 +797,7 @@ proc trackIf(tracked: PEffects, n: PNode) =
 
   setLen(tracked.init, oldState)
   if lastSon(n).len == 1:
-    if hasResult:
-      if resCounter == n.len:
+    if hasResult and resCounter == n.len:
         tracked.init.add resSym.id
     for id, count in items(inter):
       if count >= toCover: tracked.init.add id
@@ -1537,8 +1535,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   if not isEmptyType(s.typ[0]) and
      s.kind in {skProc, skFunc, skConverter, skMethod}:
     var res = s.ast[resultPos].sym # get result symbol
-    let resId = res.id
-    t.scopes[resId] = t.currentBlock
+    t.scopes[res.id] = t.currentBlock
 
   track(t, body)
 
