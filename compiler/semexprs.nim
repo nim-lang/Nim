@@ -643,15 +643,6 @@ proc arrayConstrType(c: PContext, n: PNode): PType =
   result = typ
 
 proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
-  if n.typ != nil and n.typ.kind == tySequence:
-    if n.len == 0: return n
-    let arrToSeqSym = getSysMagic(c.graph, n.info, "@", mArrToSeq)
-    let arr = newNodeI(nkBracket, n.info)
-    for c in n:
-      arr.add c
-    let seqConstr = newTreeI(nkCall, n.info, newSymNode(arrToSeqSym, n.info), arr)
-    return semExprWithType(c, seqConstr, flags, expectedType)
-
   result = newNodeI(nkBracket, n.info)
   result.typ = newTypeS(tyArray, c)
   var expectedElementType, expectedIndexType: PType = nil
@@ -723,6 +714,8 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
       result[i] = fitNode(c, typ, result[i], result[i].info)
   result.typ[0] = makeRangeType(c, toInt64(firstIndex), toInt64(lastIndex), n.info,
                                      indexType)
+  if n.typ != nil and n.typ.kind == tySequence:
+    result.typ = n.typ
 
 proc fixAbstractType(c: PContext, n: PNode) =
   for i in 1..<n.len:
