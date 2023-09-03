@@ -197,6 +197,9 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     let complexObj = containsGarbageCollectedRef(t) or
                      hasDestructor(t)
     result = newIntNodeT(toInt128(ord(not complexObj)), traitCall, c.idgen, c.graph)
+  of "hasDefault":
+    let hasDefault = operand.base.requiresInit
+    result = newIntNodeT(toInt128(ord(hasDefault)), traitCall, c.idgen, c.graph)
   of "isNamedTuple":
     var operand = operand.skipTypes({tyGenericInst})
     let cond = operand.kind == tyTuple and operand.n != nil
