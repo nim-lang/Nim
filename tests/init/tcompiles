@@ -1,0 +1,18 @@
+discard """
+  matrix: "--warningAsError:ProveInit --warningAsError:Uninit"
+"""
+
+{.experimental: "strictdefs".}
+
+type Test = object
+  id: int
+
+proc foo {.noreturn.} = discard
+
+proc test9(x: bool): Test =
+  if x:
+    foo()
+  else:
+    foo()
+
+discard test9(true)
