@@ -505,6 +505,14 @@ proc skipToObject(t: PType; skipped: var SkippedPtr): PType =
   if r.kind == tyObject and ptrs <= 1: result = r
   else: result = nil
 
+proc getObjectSym(t: PType, skip: var SkippedPtr): PSym =
+  if tfFromGeneric in t.flags and t.typeInst.kind == tyGenericInst:
+    let oldSkip = skip
+    result = t.typeInst[0].skipToObject(skip).sym
+    assert skip == oldSkip
+  else:
+    result = t.sym
+
 proc isGenericSubtype(c: var TCandidate; a, f: PType, d: var int, fGenericOrigin: PType): bool =
   assert f.kind in {tyGenericInst, tyGenericInvocation, tyGenericBody}
   var askip = skippedNone
@@ -512,11 +520,12 @@ proc isGenericSubtype(c: var TCandidate; a, f: PType, d: var int, fGenericOrigin
   var t = a.skipToObject(askip)
   let r = f.skipToObject(fskip)
   if r == nil: return false
+  let rSym = getObjectSym(r, fskip)
   var depth = 0
   var last = a
   # XXX sameObjectType can return false here. Need to investigate
   # why that is but sameObjectType does way too much work here anyway.
-  while t != nil and r.sym != t.sym and askip == fskip:
+  while t != nil and rSym != getObjectSym(t, askip) and askip == fskip:
     t = t[0]
     if t == nil: break
     last = t
@@ -1602,7 +1611,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         # crossing path with metatypes/aliases, so we need to separate them
         # by checking sym.id
         let genericSubtype = isGenericSubtype(c, x, f, depth, f)
-        if not (genericSubtype and aobj.sym.id != fobj.sym.id) and aOrig.kind != tyGenericBody:
+        if not (genericSubtype and getObjectSym(aobj, askip).id != getObjectSym(fobj, fskip).id) and aOrig.kind != tyGenericBody:
           depth = -1
 
       if depth >= 0:

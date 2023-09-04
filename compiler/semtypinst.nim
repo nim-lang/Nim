@@ -443,7 +443,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     newbody.sym.typ = newbody
     # unfortunately calling `replaceTypeVarsN` causes recursion, so this AST
     # is the original generic body AST
-    newbody.sym.ast = origSym.ast
+    newbody.sym.ast = copyTree(origSym.ast)
 
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.c.config, cl.info, newbody)
