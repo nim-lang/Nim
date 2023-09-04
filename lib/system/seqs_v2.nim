@@ -67,7 +67,7 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): poin
     if addlen <= 0:
       result = p
     elif p == nil:
-      result = newSeqPayload(len+addlen, elemSize, elemAlign)
+      result = newSeqPayloadUninitialized(len+addlen, elemSize, elemAlign)
     else:
       # Note: this means we cannot support things that have internal pointers as
       # they get reallocated here. This needs to be documented clearly.
@@ -75,14 +75,14 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): poin
       let oldCap = p.cap and not strlitFlag
       let newCap = max(resize(oldCap), len+addlen)
       if (p.cap and strlitFlag) == strlitFlag:
-        var q = cast[ptr NimSeqPayloadBase](alignedAlloc0(headerSize + elemSize * newCap, elemAlign))
+        var q = cast[ptr NimSeqPayloadBase](alignedAlloc(headerSize + elemSize * newCap, elemAlign))
         copyMem(q +! headerSize, p +! headerSize, len * elemSize)
         q.cap = newCap
         result = q
       else:
         let oldSize = headerSize + elemSize * oldCap
         let newSize = headerSize + elemSize * newCap
-        var q = cast[ptr NimSeqPayloadBase](alignedRealloc0(p, oldSize, newSize, elemAlign))
+        var q = cast[ptr NimSeqPayloadBase](alignedRealloc(p, oldSize, newSize, elemAlign))
         q.cap = newCap
         result = q
 
