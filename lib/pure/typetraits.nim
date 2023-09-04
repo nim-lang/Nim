@@ -98,7 +98,8 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
 
 proc hasDefault*(t: typedesc): bool {.magic: "TypeTrait".} =
   ## Returns true if `t` has a valid default value.
-  runnableExamples("--experimental:strictNotNil"):
+  runnableExamples:
+    {.experimental: "strictNotNil".}
     type
       NilableObject = ref object
         a: int
