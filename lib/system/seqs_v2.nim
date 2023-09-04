@@ -135,7 +135,14 @@ proc setLen[T](s: var seq[T], newlen: Natural) =
     if newlen < s.len:
       shrink(s, newlen)
     else:
-      grow(s, newlen, default(T))
+      let oldLen = s.len
+      if newlen <= oldLen: return
+      var xu = cast[ptr NimSeqV2[T]](addr s)
+      if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
+        xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
+      xu.len = newlen
+      for i in oldLen..<newlen:
+        xu.p.data[i] = default(T)
 
 proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
