@@ -507,7 +507,8 @@ proc skipToObject(t: PType; skipped: var SkippedPtr): PType =
 
 proc getObjectSym(t: PType): PSym =
   if tfFromGeneric in t.flags and t.typeInst.kind == tyGenericInst:
-    result = t.typeInst[0].skipTypes(skipPtrs).sym
+    var dummy: SkippedPtr
+    result = t.typeInst[0].skipToObject(dummy).sym
   else:
     result = t.sym
 
