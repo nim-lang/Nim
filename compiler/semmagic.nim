@@ -502,7 +502,6 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
       else:
         if fin.instantiatedFrom != nil and fin.instantiatedFrom != fin.owner: #undo move
           fin.owner = fin.instantiatedFrom
-          pushOwner(c, fin)
         let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), c.idgen, fin.owner, fin.info)
         let selfSymNode = newSymNode(copySym(fin.ast[paramsPos][1][0].sym, c.idgen))
         selfSymNode.typ = fin.typ[1]
