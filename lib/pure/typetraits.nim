@@ -98,16 +98,19 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
 
 proc hasDefault*(t: typedesc): bool {.magic: "TypeTrait".} =
   ## Returns true if `t` has a valid default value.
-  runnableExamples:
+  runnableExamples("--experimental:strictNotNil"):
     type
       NilableObject = ref object
         a: int
       Object = NilableObject not nil
+      RequiresInit[T] = object
+        a {.requiresInit.}: T
 
     assert hasDefault(NilableObject)
     assert not hasDefault(Object)
     assert hasDefault(string)
     assert not hasDefault(var string)
+    assert not hasDefault(RequiresInit[int])
 
 proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".} =
   ## Returns true for named tuples, false for any other type.
