@@ -96,7 +96,7 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
   ##
   ## Other languages name a type like these `blob`:idx:.
 
-proc hasDefault*(t: typedesc): bool {.magic: "TypeTrait".} =
+proc hasDefaultValue*(t: typedesc): bool {.magic: "TypeTrait".} =
   ## Returns true if `t` has a valid default value.
   runnableExamples:
     {.experimental: "strictNotNil".}
@@ -107,11 +107,11 @@ proc hasDefault*(t: typedesc): bool {.magic: "TypeTrait".} =
       RequiresInit[T] = object
         a {.requiresInit.}: T
 
-    assert hasDefault(NilableObject)
-    assert not hasDefault(Object)
-    assert hasDefault(string)
-    assert not hasDefault(var string)
-    assert not hasDefault(RequiresInit[int])
+    assert hasDefaultValue(NilableObject)
+    assert not hasDefaultValue(Object)
+    assert hasDefaultValue(string)
+    assert not hasDefaultValue(var string)
+    assert not hasDefaultValue(RequiresInit[int])
 
 proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".} =
   ## Returns true for named tuples, false for any other type.
