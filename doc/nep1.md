@@ -24,9 +24,9 @@ contexts. Furthermore, just as
 [Python's style guide](http://legacy.python.org/dev/peps/pep-0008/) changes
 over time, this style guide will too.
 
-These rules will only be enforced for contributions to the Nim
-codebase and official projects, such as the Nim compiler, the standard library,
-and the various official tools such as C2Nim.
+These rules will only be enforced for contributions to the Nim code base and
+official projects, such as the Nim compiler, the standard library, and the
+various official tools such as C2Nim.
 
 ----------------
 Style Guidelines
@@ -256,13 +256,15 @@ Coding Conventions
 Conventions for multi-line statements and expressions
 -----------------------------------------------------
 
-- Tuples which are longer than one line should indent their parameters to
-  align with the parameters above it.
+- Tuples which are longer than one line should split their parameters across multiple lines, so that the definition resembles a standard "object" type definition.
 
     ```nim
     type
-      LongTupleA = tuple[wordyTupleMemberOne: int, wordyTupleMemberTwo: string,
-                         wordyTupleMemberThree: float]
+      LongTupleA = tuple[
+        wordyTupleMemberOne: int,
+        wordyTupleMemberTwo: string,
+        wordyTupleMemberThree: float
+      ]
     ```
 
 - Similarly, any procedure and procedure type declarations that are longer
@@ -270,20 +272,34 @@ Conventions for multi-line statements and expressions
 
     ```nim
     type
-      EventCallback = proc (timeReceived: Time, errorCode: int, event: Event,
-                            output: var string)
+      EventCallback = proc (
+        timeReceived: Time,
+        errorCode: int,
+        event: Event,
+        output: var string
+      )
 
-    proc lotsOfArguments(argOne: string, argTwo: int, argThree: float,
-                         argFour: proc(), argFive: bool): int
-                        {.heyLookALongPragma.} =
+    proc lotsOfArguments(
+      argOne: string,
+      argTwo: int,
+      argThree: float,
+      argFour: proc(),
+      argFive: bool
+    ): int 
+      {.heyLookALongPragma.} =
     ```
 
 - Multi-line procedure calls should continue on the same column as the opening
   parenthesis (like multi-line procedure declarations).
 
     ```nim
-    startProcess(nimExecutable, currentDirectory, compilerArguments
-                 environment, processOptions)
+    startProcess(
+      nimExecutable,
+      currentDirectory,
+      compilerArguments
+      environment,
+      processOptions
+    )
     ```
 
 Miscellaneous
