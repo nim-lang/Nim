@@ -596,7 +596,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     if result == nil: result = errorUndeclaredIdentifierHint(c, n, ident)
   else:
     internalError(c.config, n.info, "lookUp")
-    return
+    return nil
   if amb:
     #contains(c.ambiguousSymbols, result.id):
     result = errorUseQualifier(c, n.info, result, amb)
