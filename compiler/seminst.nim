@@ -336,8 +336,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   result = copySym(fn, c.idgen)
   incl(result.flags, sfFromGeneric)
   result.instantiatedFrom = fn
-  if sfGlobal in result.flags and 
-    (c.config.symbolFiles != disabledSf or "nimInstantiatedFromUsage" in c.config.symbols):
+  if sfGlobal in result.flags and emitGenerics notin c.config.legacyFeatures:
     result.owner = c.module 
   else:
     result.owner = fn
