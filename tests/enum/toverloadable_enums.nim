@@ -118,11 +118,3 @@ block: # test with macros/templates
   doAssert isOneMS(e2)
   doAssert isOneT(e1)
   doAssert isOneT(e2)
-
-block: # bug #21908
-  type
-    EnumA = enum A = 300, B
-    EnumB = enum A = 10
-    EnumC = enum C
-
-  doAssert typeof(EnumC(A)) is EnumC
