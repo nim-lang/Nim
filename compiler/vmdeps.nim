@@ -89,8 +89,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     id
   template newIdentDefs(s): untyped = newIdentDefs(s, s.typ)
 
-  if inst and not allowRecursion and t.sym != nil and
-      tfFromGeneric notin t.flags:
+  if inst and not allowRecursion and t.sym != nil:
     # getTypeInst behavior: return symbol
     return atomicType(t.sym)
 
@@ -156,40 +155,37 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       result = newNodeX(nkDistinctTy)
       result.add mapTypeToAst(t[0], info)
     else:
-      if allowRecursion or t.sym == nil or tfFromGeneric in t.flags:
+      if allowRecursion or t.sym == nil:
         result = mapTypeToBracket("distinct", mDistinct, t, info)
       else:
         result = atomicType(t.sym)
   of tyGenericParam, tyForward:
     result = atomicType(t.sym)
   of tyObject:
-    if inst:
+    if inst or allowRecursion or t.sym == nil or tfFromGeneric in t.flags:
       result = newNodeX(nkObjectTy)
-      var objectDef = t.sym.ast[2]
-      if objectDef.kind == nkRefTy:
-        objectDef = objectDef[0]
-      result.add objectDef[0].copyTree  # copy object pragmas
+      if t.sym == nil:
+        result.add newNodeI(nkEmpty, info)
+      else:  # copy object pragmas
+        var objectDef = t.sym.ast[2]
+        if objectDef.kind == nkRefTy:
+          objectDef = objectDef[0]
+        result.add objectDef[0].copyTree
       if t[0] == nil:
         result.add newNodeI(nkEmpty, info)
       else:  # handle parent object
         var nn = newNodeX(nkOfInherit)
         nn.add mapTypeToAst(t[0], info)
         result.add nn
-      if t.n.len > 0:
-        result.add objectNode(cache, t.n, idgen)
-      else:
-        result.add newNodeI(nkEmpty, info)
-    else:
-      if allowRecursion or t.sym == nil or tfFromGeneric in t.flags:
-        result = newNodeIT(nkObjectTy, if t.n.isNil: info else: t.n.info, t)
-        result.add newNodeI(nkEmpty, info)
-        if t[0] == nil:
-          result.add newNodeI(nkEmpty, info)
+      if inst:
+        if t.n.len > 0:
+          result.add objectNode(cache, t.n, idgen)
         else:
-          result.add mapTypeToAst(t[0], info)
-        result.add copyTree(t.n)
+          result.add newNodeI(nkEmpty, info)
       else:
-        result = atomicType(t.sym)
+        result.add copyTree(t.n)
+    else:
+      result = atomicType(t.sym)
   of tyEnum:
     result = newNodeIT(nkEnumTy, if t.n.isNil: info else: t.n.info, t)
     result.add newNodeI(nkEmpty, info)  # pragma node, currently always empty for enum
