@@ -11,6 +11,9 @@
 
 [//]: # "Additions:"
 
+- Added `newStringUninit` to system, which creates a new string of length `len` like `newString` but with uninitialized content.
+- Added `hasDefaultValue` to `std/typetraits` to check if a type has a valid default value.
+
 [//]: # "Deprecations:"
 
 

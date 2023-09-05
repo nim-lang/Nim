@@ -51,9 +51,9 @@ proc initCandidateSymbols(c: PContext, headSymbol: PNode,
       result.add((symx, o.lastOverloadScope))
     symx = nextOverloadIter(o, c, headSymbol)
   if result.len > 0:
-    initCandidate(c, best, result[0].s, initialBinding,
+    best = initCandidate(c, result[0].s, initialBinding,
                   result[0].scope, diagnostics)
-    initCandidate(c, alt, result[0].s, initialBinding,
+    alt = initCandidate(c, result[0].s, initialBinding,
                   result[0].scope, diagnostics)
     best.state = csNoMatch
 
@@ -82,10 +82,10 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
 
   # starts at 1 because 0 is already done with setup, only needs checking
   var nextSymIndex = 1
-  var z: TCandidate = default(TCandidate) # current candidate
+  var z: TCandidate # current candidate
   while true:
     determineType(c, sym)
-    initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
+    z = initCandidate(c, sym, initialBinding, scope, diagnosticsFlag)
 
     # this is kinda backwards as without a check here the described
     # problems in recalc would not happen, but instead it 100%
@@ -655,7 +655,12 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
           else:
             x.call.add c.graph.emptyNode
         of skType:
-          x.call.add newSymNode(s, n.info)
+          var tn = newSymNode(s, n.info)
+          # this node will be used in template substitution,
+          # pretend this is an untyped node and let regular sem handle the type
+          # to prevent problems where a generic parameter is treated as a value
+          tn.typ = nil
+          x.call.add tn
         else:
           internalAssert c.config, false
 
@@ -728,14 +733,18 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   onUse(info, s)
   result = newSymNode(newInst, info)
 
-proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
-  assert n.kind == nkBracketExpr
+proc setGenericParams(c: PContext, n: PNode) =
+  ## sems generic params in subscript expression
   for i in 1..<n.len:
     let e = semExprWithType(c, n[i])
     if e.typ == nil:
       n[i].typ = errorType(c)
     else:
       n[i].typ = e.typ.skipTypes({tyTypeDesc})
+
+proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
+  assert n.kind == nkBracketExpr
+  setGenericParams(c, n)
   var s = s
   var a = n[0]
   if a.kind == nkSym:

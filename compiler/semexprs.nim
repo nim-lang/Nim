@@ -92,7 +92,10 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType 
 
 proc ambiguousSymChoice(c: PContext, orig, n: PNode): PNode =
   let first = n[0].sym
-  if first.kind == skEnumField:
+  var foundSym: PSym = nil
+  if first.kind == skEnumField and
+      not isAmbiguous(c, first.name, {skEnumField}, foundSym) and
+      foundSym == first:
     # choose the first resolved enum field, i.e. the latest in scope
     # to mirror behavior before overloadable enums
     if hintAmbiguousEnum in c.config.notes:
@@ -992,8 +995,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
 
 proc resolveIndirectCall(c: PContext; n, nOrig: PNode;
                          t: PType): TCandidate =
-  result = default(TCandidate)
-  initCandidate(c, result, t)
+  result = initCandidate(c, t)
   matches(c, n, nOrig, result)
 
 proc bracketedMacro(n: PNode): PSym =
@@ -1003,10 +1005,6 @@ proc bracketedMacro(n: PNode): PSym =
       result = nil
   else:
     result = nil
-
-proc setGenericParams(c: PContext, n: PNode) =
-  for i in 1..<n.len:
-    n[i].typ = semTypeNode(c, n[i], nil)
 
 proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   if efNoSemCheck notin flags and n.typ != nil and n.typ.kind == tyError:
@@ -1114,7 +1112,6 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
           msg.addDeclaredLocMaybe(c.config, typ)
           localError(c.config, n.info, msg)
         return errorNode(c, n)
-      result = nil
     else:
       result = m.call
       instGenericConvertersSons(c, result, m)
@@ -1835,9 +1832,11 @@ proc makeTupleAssignments(c: PContext; n: PNode): PNode =
   let lhs = n[0]
   let value = semExprWithType(c, n[1], {efTypeAllowed})
   if value.typ.kind != tyTuple:
-    localError(c.config, n[1].info, errXExpected, "tuple")
+    localError(c.config, n[1].info, errTupleUnpackingTupleExpected %
+      [typeToString(value.typ, preferDesc)])
   elif lhs.len != value.typ.len:
-    localError(c.config, n.info, errWrongNumberOfVariables)
+    localError(c.config, n.info, errTupleUnpackingDifferentLengths %
+      [$lhs.len, typeToString(value.typ, preferDesc), $value.typ.len])
   result = newNodeI(nkStmtList, n.info)
 
   let temp = newSym(skTemp, getIdent(c.cache, "tmpTupleAsgn"), c.idgen, getCurrOwner(c), n.info)

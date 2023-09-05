@@ -408,13 +408,19 @@ proc genIf(c: PCtx, n: PNode; dest: var TDest) =
           c.gen(it[0], tmp)
           elsePos = c.xjmp(it[0], opcFJmp, tmp) # if false
       c.clearDest(n, dest)
-      c.gen(it[1], dest) # then part
+      if isEmptyType(it[1].typ): # maybe noreturn call, don't touch `dest`
+        c.gen(it[1])
+      else:
+        c.gen(it[1], dest) # then part
       if i < n.len-1:
         endings.add(c.xjmp(it[1], opcJmp, 0))
       c.patch(elsePos)
     else:
       c.clearDest(n, dest)
-      c.gen(it[0], dest)
+      if isEmptyType(it[0].typ): # maybe noreturn call, don't touch `dest`
+        c.gen(it[0])
+      else:
+        c.gen(it[0], dest)
   for endPos in endings: c.patch(endPos)
   c.clearDest(n, dest)
 
@@ -508,17 +514,25 @@ proc genCase(c: PCtx; n: PNode; dest: var TDest) =
       let it = n[i]
       if it.len == 1:
         # else stmt:
-        if it[0].kind != nkNilLit or it[0].typ != nil:
+        let body = it[0]
+        if body.kind != nkNilLit or body.typ != nil:
           # an nkNilLit with nil for typ implies there is no else branch, this
           # avoids unused related errors as we've already consumed the dest
-          c.gen(it[0], dest)
+          if isEmptyType(body.typ): # maybe noreturn call, don't touch `dest`
+            c.gen(body)
+          else:
+            c.gen(body, dest)
       else:
         let b = rawGenLiteral(c, it)
         c.gABx(it, opcBranch, tmp, b)
-        let elsePos = c.xjmp(it.lastSon, opcFJmp, tmp)
-        c.gen(it.lastSon, dest)
+        let body = it.lastSon
+        let elsePos = c.xjmp(body, opcFJmp, tmp)
+        if isEmptyType(body.typ): # maybe noreturn call, don't touch `dest`
+          c.gen(body)
+        else:
+          c.gen(body, dest)
         if i < n.len-1:
-          endings.add(c.xjmp(it.lastSon, opcJmp, 0))
+          endings.add(c.xjmp(body, opcJmp, 0))
         c.patch(elsePos)
       c.clearDest(n, dest)
   for endPos in endings: c.patch(endPos)
@@ -534,7 +548,10 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   if dest < 0 and not isEmptyType(n.typ): dest = getTemp(c, n.typ)
   var endings: seq[TPosition] = @[]
   let ehPos = c.xjmp(n, opcTry, 0)
-  c.gen(n[0], dest)
+  if isEmptyType(n[0].typ): # maybe noreturn call, don't touch `dest`
+    c.gen(n[0])
+  else:
+    c.gen(n[0], dest)
   c.clearDest(n, dest)
   # Add a jump past the exception handling code
   let jumpToFinally = c.xjmp(n, opcJmp, 0)
@@ -552,7 +569,11 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
       if it.len == 1:
         # general except section:
         c.gABx(it, opcExcept, 0, 0)
-      c.gen(it.lastSon, dest)
+      let body = it.lastSon
+      if isEmptyType(body.typ): # maybe noreturn call, don't touch `dest`
+        c.gen(body)
+      else:
+        c.gen(body, dest)
       c.clearDest(n, dest)
       if i < n.len:
         endings.add(c.xjmp(it, opcJmp, 0))
@@ -890,6 +911,8 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
   let dst = n[0].typ.skipTypes(abstractRange)#.kind
   let srcSize = getSize(c.config, src)
   let dstSize = getSize(c.config, dst)
+  const unsupportedCastDifferentSize =
+    "VM does not support 'cast' from $1 with size $2 to $3 with size $4 due to different sizes"
   if src.kind in allowedIntegers and dst.kind in allowedIntegers:
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
@@ -906,8 +929,11 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
           # is smaller than source.
           c.gABC(n, opcNarrowU, dest, TRegister(dstSize*8))
     c.freeTemp(tmp)
-  elif srcSize == dstSize and src.kind in allowedIntegers and
-                           dst.kind in {tyFloat, tyFloat32, tyFloat64}:
+  elif src.kind in allowedIntegers and
+      dst.kind in {tyFloat, tyFloat32, tyFloat64}:
+    if srcSize != dstSize:
+      globalError(c.config, n.info, unsupportedCastDifferentSize %
+        [$src.kind, $srcSize, $dst.kind, $dstSize])
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
     if dst.kind == tyFloat32:
@@ -916,8 +942,11 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
       c.gABC(n, opcCastIntToFloat64, dest, tmp)
     c.freeTemp(tmp)
 
-  elif srcSize == dstSize and src.kind in {tyFloat, tyFloat32, tyFloat64} and
+  elif src.kind in {tyFloat, tyFloat32, tyFloat64} and
                            dst.kind in allowedIntegers:
+    if srcSize != dstSize:
+      globalError(c.config, n.info, unsupportedCastDifferentSize %
+        [$src.kind, $srcSize, $dst.kind, $dstSize])
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
     if src.kind == tyFloat32:
@@ -1538,6 +1567,7 @@ proc checkCanEval(c: PCtx; n: PNode) =
     # little hack ahead for bug #12612: assume gensym'ed variables
     # are in the right scope:
     if sfGenSym in s.flags and c.prc.sym == nil: discard
+    elif s.kind == skParam and s.typ.kind == tyTypeDesc: discard
     else: cannotEval(c, n)
   elif s.kind in {skProc, skFunc, skConverter, skMethod,
                   skIterator} and sfForward in s.flags:
@@ -2094,8 +2124,13 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     let s = n.sym
     checkCanEval(c, n)
     case s.kind
-    of skVar, skForVar, skTemp, skLet, skParam, skResult:
+    of skVar, skForVar, skTemp, skLet, skResult:
       genRdVar(c, n, dest, flags)
+    of skParam:
+      if s.typ.kind == tyTypeDesc:
+        genTypeLit(c, s.typ, dest)
+      else:
+        genRdVar(c, n, dest, flags)
     of skProc, skFunc, skConverter, skMacro, skTemplate, skMethod, skIterator:
       # 'skTemplate' is only allowed for 'getAst' support:
       if s.kind == skIterator and s.typ.callConv == TCallingConvention.ccClosure:

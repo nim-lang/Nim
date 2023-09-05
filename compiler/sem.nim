@@ -26,7 +26,10 @@ when not defined(leanCompiler):
   import spawn
 
 when defined(nimPreviewSlimSystem):
-  import std/formatfloat
+  import std/[
+    formatfloat,
+    assertions,
+  ]
 
 # implementation
 
@@ -207,12 +210,58 @@ proc commonType*(c: PContext; x, y: PType): PType =
         result.addSonSkipIntLit(r, c.idgen)
 
 proc endsInNoReturn(n: PNode): bool =
-  # check if expr ends in raise exception or call of noreturn proc
+  ## check if expr ends the block like raising or call of noreturn procs do
+  result = false # assume it does return
+
+  template checkBranch(branch) =
+    if not endsInNoReturn(branch):
+      # proved a branch returns
+      return false
+
   var it = n
+  # skip these beforehand, no special handling needed
   while it.kind in {nkStmtList, nkStmtListExpr} and it.len > 0:
     it = it.lastSon
-  result = it.kind in nkLastBlockStmts or
-    it.kind in nkCallKinds and it[0].kind == nkSym and sfNoReturn in it[0].sym.flags
+
+  case it.kind
+  of nkIfStmt:
+    var hasElse = false
+    for branch in it:
+      checkBranch:
+        if branch.len == 2:
+          branch[1]
+        elif branch.len == 1:
+          hasElse = true
+          branch[0]
+        else:
+          raiseAssert "Malformed `if` statement during endsInNoReturn"
+    # none of the branches returned
+    result = hasElse # Only truly a no-return when it's exhaustive
+  of nkCaseStmt:
+    for i in 1 ..< it.len:
+      let branch = it[i]
+      checkBranch:
+        case branch.kind
+        of nkOfBranch:
+          branch[^1]
+        of nkElifBranch:
+          branch[1]
+        of nkElse:
+          branch[0]
+        else:
+          raiseAssert "Malformed `case` statement in endsInNoReturn"
+    # none of the branches returned
+    result = true
+  of nkTryStmt:
+    checkBranch(it[0])
+    for i in 1 ..< it.len:
+      let branch = it[i]
+      checkBranch(branch[^1])
+    # none of the branches returned
+    result = true
+  else:
+    result = it.kind in nkLastBlockStmts or
+      it.kind in nkCallKinds and it[0].kind == nkSym and sfNoReturn in it[0].sym.flags
 
 proc commonType*(c: PContext; x: PType, y: PNode): PType =
   # ignore exception raising branches in case/if expressions
@@ -473,7 +522,13 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
         # we now know the supplied arguments
         var paramTypes = initIdTable()
         for param, value in genericParamsInMacroCall(s, call):
-          idTablePut(paramTypes, param.typ, value.typ)
+          var givenType = value.typ
+          # the sym nodes used for the supplied generic arguments for
+          # templates and macros leave type nil so regular sem can handle it
+          # in this case, get the type directly from the sym
+          if givenType == nil and value.kind == nkSym and value.sym.typ != nil:
+            givenType = value.sym.typ
+          idTablePut(paramTypes, param.typ, givenType)
 
         retType = generateTypeInstance(c, paramTypes,
                                        macroResult.info, retType)

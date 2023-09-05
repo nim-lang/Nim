@@ -597,14 +597,20 @@ proc globalVarInitCheck(c: PContext, n: PNode) =
   if n.isLocalVarSym or n.kind in nkCallKinds and usesLocalVar(n):
     localError(c.config, n.info, errCannotAssignToGlobal)
 
+const
+  errTupleUnpackingTupleExpected = "tuple expected for tuple unpacking, but got '$1'"
+  errTupleUnpackingDifferentLengths = "tuple with $1 elements expected, but got '$2' with $3 elements"
+
 proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSymKind, origResult: var PNode): PNode =
   ## expand tuple unpacking assignments into new var/let/const section
   ## 
   ## mirrored with semexprs.makeTupleAssignments
   if typ.kind != tyTuple:
-    localError(c.config, a.info, errXExpected, "tuple")
+    localError(c.config, a.info, errTupleUnpackingTupleExpected %
+      [typeToString(typ, preferDesc)])
   elif a.len-2 != typ.len:
-    localError(c.config, a.info, errWrongNumberOfVariables)
+    localError(c.config, a.info, errTupleUnpackingDifferentLengths %
+      [$(a.len-2), typeToString(typ, preferDesc), $typ.len])
   var
     tempNode: PNode = nil
     lastDef: PNode
@@ -861,9 +867,13 @@ proc semConst(c: PContext, n: PNode): PNode =
         styleCheckDef(c, v)
         onDef(a[j].info, v)
 
-        setVarType(c, v, typ)
-        when false:
-          v.ast = def               # no need to copy
+        var fillSymbol = true
+        if v.typ != nil:
+          # symbol already has type and probably value
+          # don't mutate
+          fillSymbol = false
+        else:
+          setVarType(c, v, typ)
         b = newNodeI(nkConstDef, a.info)
         if importantComments(c.config): b.comment = a.comment
         # postfix not generated here (to generate, get rid of it in transf)
@@ -876,8 +886,9 @@ proc semConst(c: PContext, n: PNode): PNode =
           b.add newSymNode(v)
         b.add a[1]
         b.add copyTree(def)
-        v.ast = b
-      addToVarSection(c, result, n, b)
+        if fillSymbol:
+          v.ast = b
+        addToVarSection(c, result, n, b)
   dec c.inStaticContext
 
 include semfields
@@ -2645,9 +2656,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType =
     var m = n[i]
     while m.kind in {nkStmtListExpr, nkStmtList} and m.len > 0: # from templates
       m = m.lastSon
-    if m.kind in nkLastBlockStmts or
-        m.kind in nkCallKinds and m[0].kind == nkSym and
-        sfNoReturn in m[0].sym.flags:
+    if endsInNoReturn(m):
       for j in i + 1..<n.len:
         case n[j].kind
         of nkPragma, nkCommentStmt, nkNilLit, nkEmpty, nkState: discard

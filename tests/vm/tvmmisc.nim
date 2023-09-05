@@ -1,10 +1,11 @@
-# bug #4462
 import macros
 import os
 
+# bug #4462
 block:
   proc foo(t: typedesc) {.compileTime.} =
-    assert sameType(getType(t), getType(int))
+    assert sameType(getType(t), getType(typedesc[int]))
+    assert sameType(getType(t), getType(type int))
 
   static:
     foo(int)
@@ -230,6 +231,14 @@ block: # bug #15595
     doAssert a3 == a4 # bugfix
   static: main()
   main()
+
+block: # issue #20543
+  type F = proc()
+  const myArray = block:
+    var r: array[1, F]
+    r[0] = nil
+    r
+  doAssert isNil(myArray[0])
 
 # bug #15363
 import sequtils

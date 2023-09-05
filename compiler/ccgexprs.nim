@@ -1468,6 +1468,7 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
       getSeqPayloadType(p.module, seqtype),
     ])
   else:
+    if d.k == locNone: d = getTemp(p, e.typ, needsInit=false) # bug #22560
     putIntoDest(p, d, e, ropecg(p.module,
                 "($1)#nimNewSeqOfCap($2, $3)", [
                 getTypeDesc(p.module, seqtype),
@@ -2324,7 +2325,10 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
             s = "$1, $1Len_0" % [rdLoc(a)]
           linefmt(p, cpsStmts, "$1($2);$n", [rdLoc(b), s])
         else:
-          linefmt(p, cpsStmts, "$1($2);$n", [rdLoc(b), byRefLoc(p, a)])
+          if p.module.compileToCpp:
+            linefmt(p, cpsStmts, "$1($2);$n", [rdLoc(b), rdLoc(a)])
+          else:
+            linefmt(p, cpsStmts, "$1($2);$n", [rdLoc(b), byRefLoc(p, a)])
     else:
       let flags = if not canMove(p, n[1], d): {needToCopy} else: {}
       genAssignment(p, d, a, flags)
