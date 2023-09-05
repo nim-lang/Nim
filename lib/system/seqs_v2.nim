@@ -141,12 +141,12 @@ proc growD[T](x: var seq[T]; newLen: Natural; value: T) {.nodestroy.} =
   for i in oldLen..<newLen:
     xu.p.data[i] = value
 
-proc setLen[T](s: var seq[T], newLen: Natural) =
+proc setLen[T](s: var seq[T], newlen: Natural) =
   {.noSideEffect.}:
     if newlen < s.len:
-      shrink(s, newLen)
+      shrink(s, newlen)
     else:
-      growD(s, newLen, default(T))
+      growD(s, newlen, default(T))
 
 proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
