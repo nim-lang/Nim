@@ -674,6 +674,7 @@ proc isSimpleIteratorVar(c: PTransf; iter: PSym; call: PNode; owner: PSym): bool
         sameOwner = false
     else:
       for c in n: recSym(c, owner, sameOwner)
+
   var dangerousYields = 0
   rec(getBody(c.graph, iter), iter, dangerousYields)
   result = dangerousYields == 0
