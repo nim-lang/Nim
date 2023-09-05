@@ -11,6 +11,7 @@
 # import typetraits
 # strs already imported allocateds for us.
 
+
 # Some optimizations here may be not to empty-seq-initialize some symbols, then StrictNotNil complains.
 {.push warning[StrictNotNil]: off.}  # See https://github.com/nim-lang/Nim/issues/21401
 
@@ -45,7 +46,7 @@ proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises
   else:
     result = nil
 
-proc newSeqPayloadUninitialized(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises: [].} =
+proc newSeqPayloadUninit(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises: [].} =
   # Used in `newSeqOfCap()`.
   if cap > 0:
     var p = cast[ptr NimSeqPayloadBase](alignedAlloc(align(sizeof(NimSeqPayloadBase), elemAlign) + cap * elemSize, elemAlign))
@@ -67,7 +68,7 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): poin
     if addlen <= 0:
       result = p
     elif p == nil:
-      result = newSeqPayloadUninitialized(len+addlen, elemSize, elemAlign)
+      result = newSeqPayloadUninit(len+addlen, elemSize, elemAlign)
     else:
       # Note: this means we cannot support things that have internal pointers as
       # they get reallocated here. This needs to be documented clearly.
