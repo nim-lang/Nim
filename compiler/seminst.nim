@@ -313,6 +313,14 @@ proc fillMixinScope(c: PContext) =
         addSym(c.currentScope, n.sym)
     p = p.next
 
+proc getLocalPassC(s: PSym): string = 
+  if s.ast == nil: return "" 
+  #it is set via appendToModule in pragmas, fast access: 
+  if s.ast[0].kind == nkPragma and s.ast[0][0][0].ident.s == "localPassc":
+    return s.ast[0][0][1].strVal
+  result = ""
+  assert false #should we attempt to find the localPassC iterating? or just fail?
+  
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
   ## Generates a new instance of a generic procedure.
@@ -328,13 +336,17 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   var n = copyTree(fn.ast)
   # NOTE: for access of private fields within generics from a different module
   # we set the friend module:
-  c.friendModules.add(getModule(fn))
+  let producer = getModule(fn)
+  c.friendModules.add(producer)
   let oldMatchedConcept = c.matchedConcept
   c.matchedConcept = nil
   let oldScope = c.currentScope
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
   result = copySym(fn, c.idgen)
   incl(result.flags, sfFromGeneric)
+  let passC = producer.getLocalPassC()
+  if passC != "": #pass the local compiler options to the consumer module too
+    extccomp.addLocalCompileOption(c.config, passC, toFullPathConsiderDirty(c.config, c.module.info.fileIndex))
   result.instantiatedFrom = fn
   if sfGlobal in result.flags and emitGenerics notin c.config.legacyFeatures:
     result.owner = c.module 
