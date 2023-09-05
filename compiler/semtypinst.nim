@@ -12,8 +12,6 @@
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
   lineinfos, modulegraphs
 
-from concepts import makeTypeDesc
-
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
