@@ -162,30 +162,33 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyGenericParam, tyForward:
     result = atomicType(t.sym)
   of tyObject:
-    if inst or allowRecursion or t.sym == nil or tfFromGeneric in t.flags:
+    if inst:
       result = newNodeX(nkObjectTy)
-      if t.sym == nil:
-        result.add newNodeI(nkEmpty, info)
-      else:  # copy object pragmas
-        var objectDef = t.sym.ast[2]
-        if objectDef.kind == nkRefTy:
-          objectDef = objectDef[0]
-        result.add objectDef[0].copyTree
+      var objectDef = t.sym.ast[2]
+      if objectDef.kind == nkRefTy:
+        objectDef = objectDef[0]
+      result.add objectDef[0].copyTree  # copy object pragmas
       if t[0] == nil:
         result.add newNodeI(nkEmpty, info)
       else:  # handle parent object
         var nn = newNodeX(nkOfInherit)
         nn.add mapTypeToAst(t[0], info)
         result.add nn
-      if inst:
-        if t.n.len > 0:
-          result.add objectNode(cache, t.n, idgen)
-        else:
-          result.add newNodeI(nkEmpty, info)
+      if t.n.len > 0:
+        result.add objectNode(cache, t.n, idgen)
       else:
-        result.add copyTree(t.n)
+        result.add newNodeI(nkEmpty, info)
     else:
-      result = atomicType(t.sym)
+      if allowRecursion or t.sym == nil or tfFromGeneric in t.flags:
+        result = newNodeIT(nkObjectTy, if t.n.isNil: info else: t.n.info, t)
+        result.add newNodeI(nkEmpty, info)
+        if t[0] == nil:
+          result.add newNodeI(nkEmpty, info)
+        else:
+          result.add mapTypeToAst(t[0], info)
+        result.add copyTree(t.n)
+      else:
+        result = atomicType(t.sym)
   of tyEnum:
     result = newNodeIT(nkEnumTy, if t.n.isNil: info else: t.n.info, t)
     result.add newNodeI(nkEmpty, info)  # pragma node, currently always empty for enum
