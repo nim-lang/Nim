@@ -315,11 +315,14 @@ proc fillMixinScope(c: PContext) =
 
 proc getLocalPassC(s: PSym): string = 
   if s.ast == nil: return "" 
-  #it is set via appendToModule in pragmas, fast access: 
-  if s.ast[0].kind == nkPragma and s.ast[0][0][0].ident.s == "localPassc":
-    return s.ast[0][0][1].strVal
   result = ""
-  assert false #should we attempt to find the localPassC iterating? or just fail?
+  template extractPassc(p: PNode) =
+    if p.kind == nkPragma and p[0][0].ident.s == "localPassc":
+      return p[0][1].strVal
+  extractPassc(s.ast[0]) #it is set via appendToModule in pragmas, fast access: 
+  for n in s.ast:
+    for p in n:
+      extractPassc(p)
   
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
@@ -344,9 +347,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
   result = copySym(fn, c.idgen)
   incl(result.flags, sfFromGeneric)
-  let passC = producer.getLocalPassC()
-  if passC != "": #pass the local compiler options to the consumer module too
-    extccomp.addLocalCompileOption(c.config, passC, toFullPathConsiderDirty(c.config, c.module.info.fileIndex))
+  let passc = producer.getLocalPassC()
+  if passc != "": #pass the local compiler options to the consumer module too
+    extccomp.addLocalCompileOption(c.config, passc, toFullPathConsiderDirty(c.config, c.module.info.fileIndex))
   result.instantiatedFrom = fn
   if sfGlobal in result.flags and emitGenerics notin c.config.legacyFeatures:
     result.owner = c.module 
