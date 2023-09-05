@@ -314,12 +314,12 @@ proc fillMixinScope(c: PContext) =
     p = p.next
 
 proc getLocalPassC(s: PSym): string = 
-  if s.ast == nil: return "" 
+  if s.ast == nil or s.ast.len == 0: return "" 
   result = ""
   template extractPassc(p: PNode) =
     if p.kind == nkPragma and p[0][0].ident.s.toLower == "localpassc":
       return p[0][1].strVal
-  extractPassc(s.ast[0]) #it is set via appendToModule in pragmas, fast access: 
+  extractPassc(s.ast[0]) #it is set via appendToModule in pragmas (fast access)
   for n in s.ast:
     for p in n:
       extractPassc(p)
