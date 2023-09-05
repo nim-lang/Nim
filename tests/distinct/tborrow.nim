@@ -99,7 +99,7 @@ block: # issue #22069
   var x: MuscleCar
   doAssert x.color is array[128, int]
 
-block: # issue #22647
+block: # issue #22646
   type
     Vec[N : static[int], T: SomeNumber] = object
       arr: array[N, T]
