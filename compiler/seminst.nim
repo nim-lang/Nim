@@ -347,11 +347,11 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
   result = copySym(fn, c.idgen)
   incl(result.flags, sfFromGeneric)
-  let passc = producer.getLocalPassC()
-  if passc != "": #pass the local compiler options to the consumer module too
-    extccomp.addLocalCompileOption(c.config, passc, toFullPathConsiderDirty(c.config, c.module.info.fileIndex))
   result.instantiatedFrom = fn
-  if sfGlobal in result.flags and emitGenerics notin c.config.legacyFeatures:
+  if sfGlobal in result.flags and c.config.symbolFiles != disabledSf:
+    let passc = producer.getLocalPassC()
+    if passc != "": #pass the local compiler options to the consumer module too
+      extccomp.addLocalCompileOption(c.config, passc, toFullPathConsiderDirty(c.config, c.module.info.fileIndex))
     result.owner = c.module 
   else:
     result.owner = fn
