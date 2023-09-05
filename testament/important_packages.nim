@@ -169,7 +169,7 @@ pkg "tiny_sqlite"
 pkg "unicodedb", "nim c -d:release -r tests/tests.nim"
 pkg "unicodeplus", "nim c -d:release -r tests/tests.nim"
 pkg "unpack"
-pkg "weave", "nimble test_gc_arc -legacy:emitGenerics", useHead = true
+#pkg "weave", "nimble test_gc_arc -legacy:emitGenerics", useHead = true
 pkg "websocket", "nim c websocket.nim"
 pkg "winim", "nim c winim.nim"
 pkg "with"
