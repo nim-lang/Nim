@@ -147,7 +147,7 @@ proc setLen[T](s: var seq[T], newlen: Natural) =
     if newlen < s.len:
       shrink(s, newlen)
     else:
-      growD(s, newLen, default(T))
+      growD(s, newlen, default(T))
 
 proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
