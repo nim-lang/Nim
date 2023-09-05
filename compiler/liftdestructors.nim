@@ -162,8 +162,7 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
     if c.filterDiscriminator != nil: return
     let f = n.sym
     let b = if c.kind == attachedTrace: y else: y.dotField(f)
-    if (sfCursor in f.flags and f.typ.skipTypes(abstractInst).kind in {tyRef, tyProc} and
-        c.g.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcHooks}) or
+    if (sfCursor in f.flags and c.g.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcHooks}) or
         enforceDefaultOp:
       defaultOp(c, f.typ, body, x.dotField(f), b)
     else:
