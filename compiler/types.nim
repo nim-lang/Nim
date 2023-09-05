@@ -1093,6 +1093,13 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
   else:
     result = false
 
+proc originalSymFromInst(t: PType): PSym {.inline.} =
+  # tfFromGeneric is known
+  if t.typeInst.kind == tyGenericInst:
+    result = t.typeInst[0].sym
+  else:
+    result = t.sym
+
 template ifFastObjectTypeCheckFailed(a, b: PType, body: untyped) =
   if tfFromGeneric notin a.flags + b.flags:
     # fast case: id comparison suffices:
@@ -1108,7 +1115,8 @@ template ifFastObjectTypeCheckFailed(a, b: PType, body: untyped) =
     #   TA[T] = object
     #   TB[T] = object
     # --> TA[int] != TB[int]
-    if tfFromGeneric in a.flags * b.flags and a.sym.id == b.sym.id:
+    if tfFromGeneric in a.flags * b.flags and
+        originalSymFromInst(a).id == originalSymFromInst(b).id:
       # ok, we need the expensive structural check
       body
     else:
