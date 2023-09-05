@@ -1,6 +1,6 @@
 # bug #22619
 
-when false: todo fixme
+when false: # todo fixme
   block:
     type
       Resource = object
