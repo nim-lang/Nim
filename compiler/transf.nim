@@ -88,7 +88,7 @@ proc getCurrOwner(c: PTransf): PSym =
   if c.transCon != nil: result = c.transCon.owner
   else: result = c.module
 
-proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
+proc newTemp(c: PTransf, typ: PType, info: TLineInfo, isCursor = false): PNode =
   let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), c.idgen, getCurrOwner(c), info)
   r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flags, sfFromGeneric)
@@ -96,6 +96,8 @@ proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
   if owner.isIterator and not c.tooEarly:
     result = freshVarForClosureIter(c.graph, r, c.idgen, owner)
   else:
+    if isCursor:
+      r.flags.incl sfCursor
     result = newSymNode(r)
 
 proc transform(c: PTransf, n: PNode): PNode
@@ -746,7 +748,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       elif t.destructor == nil and arg.typ.destructor != nil:
         t = arg.typ
       # generate a temporary and produce an assignment statement:
-      var temp = newTemp(c, t, formal.info)
+      var temp = newTemp(c, t, formal.info, isCursor = true)
       addVar(v, temp)
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
       idNodeTablePut(newC.mapping, formal, temp)
