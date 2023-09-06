@@ -21,9 +21,12 @@ proc `$`(a: m256d): string =
   result = $(cast[ptr float](a.addr)[])
 
 
+echo "sizeof(m256d): ", sizeof(m256d)
+echo "alignof(m256d): ", alignof(m256d)
 var res: seq[seq[m256d]]
 
-for _ in 1..1000:
+for i in 1..1000:
+  echo i
   var x = newSeq[m256d](1)
   x[0] = set1(1.0) # test if operation causes segfault
   isAlignedCheck(x[0].addr, alignof(m256d))
