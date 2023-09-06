@@ -96,8 +96,7 @@ pkg "measuremancer", "nimble testDeps; nimble -y test"
 pkg "memo"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
 pkg "nake", "nim c nakefile.nim"
-pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim", "https://github.com/metagn/neo"
-# remove custom url when https://github.com/andreaferretti/neo/pull/53 is merged
+pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim"
 pkg "nesm", "nimble tests", "https://github.com/nim-lang/NESM", useHead = true
 pkg "netty"
 pkg "nico", allowFailure = true
@@ -168,6 +167,7 @@ pkg "timezones"
 pkg "tiny_sqlite"
 pkg "unicodedb", "nim c -d:release -r tests/tests.nim"
 pkg "unicodeplus", "nim c -d:release -r tests/tests.nim"
+pkg "union", "nim c -r tests/treadme.nim", url = "https://github.com/alaviss/union"
 pkg "unpack"
 pkg "weave", "nimble test_gc_arc", useHead = true
 pkg "websocket", "nim c websocket.nim"
