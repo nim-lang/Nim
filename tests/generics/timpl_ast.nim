@@ -47,3 +47,38 @@ block: # issues #9899, ##14708
     macro parse(s: static string) =
       result = parseStmt(s)
     parse("type " & implRepr(Option))
+
+block: # issue #22639
+  type
+    Spectrum[N: static int] = object
+      data: array[N, float]
+    AngleInterpolator = object
+      data: seq[Spectrum[60]]
+  proc initInterpolator(num: int): AngleInterpolator =
+    result = AngleInterpolator()
+    for i in 0 ..< num:
+      result.data.add Spectrum[60]()
+  macro genCompatibleTuple(t: typed): untyped =
+    let typ = t.getType[1].getTypeImpl[2]
+    result = nnkTupleTy.newTree()
+    for i, ch in typ: # is `nnkObjectTy`
+      result.add nnkIdentDefs.newTree(ident(ch[0].strVal), # ch is `nnkIdentDefs`
+                                      ch[1],
+                                      newEmptyNode())
+  proc fullSize[T: object | tuple](x: T): int =
+    var tmp: genCompatibleTuple(T)
+    result = 0
+    for field, val in fieldPairs(x):
+      result += sizeof(val)
+    doAssert result == sizeof(tmp)
+
+  let reflectivity = initInterpolator(1)
+  for el in reflectivity.data:
+    doAssert fullSize(el) == sizeof(el)
+  doAssert fullSize(reflectivity.data[0]) == sizeof(reflectivity.data[0])
+  doAssert genCompatibleTuple(Spectrum[60]) is tuple[data: array[60, float]]
+  doAssert genCompatibleTuple(Spectrum[120]) is tuple[data: array[120, float]]
+  type Foo[T] = object
+    data: T
+  doAssert genCompatibleTuple(Foo[int]) is tuple[data: int]
+  doAssert genCompatibleTuple(Foo[float]) is tuple[data: float]
