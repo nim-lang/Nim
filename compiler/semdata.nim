@@ -551,6 +551,28 @@ proc makeRangeType*(c: PContext; first, last: BiggestInt;
   result.n = n
   addSonSkipIntLit(result, intType, c.idgen) # basetype of range
 
+proc isSelf*(t: PType): bool {.inline.} =
+  ## Is this the magical 'Self' type from concepts?
+  t.kind == tyTypeDesc and tfPacked in t.flags
+
+proc makeTypeDesc*(c: PContext, typ: PType): PType =
+  if typ.kind == tyTypeDesc and not isSelf(typ):
+    result = typ
+  else:
+    result = newTypeS(tyTypeDesc, c)
+    incl result.flags, tfCheckedForDestructor
+    result.addSonSkipIntLit(typ, c.idgen)
+
+proc symFromType*(c: PContext; t: PType, info: TLineInfo): PSym =
+  if t.sym != nil: return t.sym
+  result = newSym(skType, getIdent(c.cache, "AnonType"), c.idgen, t.owner, info)
+  result.flags.incl sfAnon
+  result.typ = t
+
+proc symNodeFromType*(c: PContext, t: PType, info: TLineInfo): PNode =
+  result = newSymNode(symFromType(c, t, info), info)
+  result.typ = makeTypeDesc(c, t)
+
 proc markIndirect*(c: PContext, s: PSym) {.inline.} =
   if s.kind in {skProc, skFunc, skConverter, skMethod, skIterator}:
     incl(s.flags, sfAddrTaken)
