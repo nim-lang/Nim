@@ -1183,7 +1183,6 @@ proc genericAliasDepth*(t: PType): int =
     inc result
 
 proc skipGenericAlias*(t: PType): PType =
-  # TODO: Calc alias depth
   return if t.isGenericAlias: t.lastSon else: t
 
 proc sameFlags*(a, b: PType): bool {.inline.} =
