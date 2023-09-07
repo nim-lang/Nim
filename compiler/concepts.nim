@@ -13,8 +13,6 @@
 
 import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer, types, intsets
 
-from magicsys import addSonSkipIntLit
-
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -32,18 +30,6 @@ proc declareSelf(c: PContext; info: TLineInfo) =
   s.typ.flags.incl {tfUnresolved, tfPacked}
   s.typ.add newType(tyEmpty, nextTypeId(c.idgen), ow)
   addDecl(c, s, info)
-
-proc isSelf*(t: PType): bool {.inline.} =
-  ## Is this the magical 'Self' type?
-  t.kind == tyTypeDesc and tfPacked in t.flags
-
-proc makeTypeDesc*(c: PContext, typ: PType): PType =
-  if typ.kind == tyTypeDesc and not isSelf(typ):
-    result = typ
-  else:
-    result = newTypeS(tyTypeDesc, c)
-    incl result.flags, tfCheckedForDestructor
-    result.addSonSkipIntLit(typ, c.idgen)
 
 proc semConceptDecl(c: PContext; n: PNode): PNode =
   ## Recursive helper for semantic checking for the concept declaration.
