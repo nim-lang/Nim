@@ -43,7 +43,8 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
       # XXX: This happens for prematurely cached
       # types such as Channel[empty]. Why?
       # See the notes for PActor in handleGenericInvocation
-      return
+      # if this is return the same type gets cached more than it needs to
+      continue
     if not sameFlags(inst, key):
       continue
 
