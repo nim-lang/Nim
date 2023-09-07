@@ -1455,11 +1455,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     var prev = PType(idTableGet(c.bindings, f))
     let origF = f
     var f = if prev == nil: f else: prev
+
+    let deptha = a.genericAliasDepth()
+    let depthf = f.genericAliasDepth()
+    let skipBoth = deptha == depthf and (a.len > 0 and f.len > 0 and a.base != f.base)
+
+    let roota = if skipBoth or deptha > depthf: a.skipGenericAlias else: a
+    let rootf = if skipBoth or depthf > deptha: f.skipGenericAlias else: f
+
     if a.kind == tyGenericInst:
-      # If they are lined up skipping could lead to losing generic parameters
-      let shouldSkip = a.base != f.base
-      let roota = if shouldSkip: a.skipGenericAlias else: a
-      let rootf = if shouldSkip: f.skipGenericAlias else: f
       if roota.base == rootf.base:
         let nextFlags = flags + {trNoCovariance}
         var hasCovariance = false
