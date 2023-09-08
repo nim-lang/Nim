@@ -1456,8 +1456,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let origF = f
     var f = if prev == nil: f else: prev
 
-    let roota = a.skipGenericAlias
-    let rootf = f.skipGenericAlias
+    let deptha = a.genericAliasDepth()
+    let depthf = f.genericAliasDepth()
+    let skipBoth = deptha == depthf and (a.len > 0 and f.len > 0 and a.base != f.base)
+
+    let roota = if skipBoth or deptha > depthf: a.skipGenericAlias else: a
+    let rootf = if skipBoth or depthf > deptha: f.skipGenericAlias else: f
 
     if a.kind == tyGenericInst:
       if roota.base == rootf.base:

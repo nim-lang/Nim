@@ -2,8 +2,7 @@ name: Nim Docs CI
 on:
   push:
     paths:
-      - 'compiler/docgen.nim'
-      - 'compiler/renderverbatim.nim'
+      - 'compiler/**.nim'
       - 'config/nimdoc.cfg'
       - 'doc/**.rst'
       - 'doc/**.md'
@@ -18,8 +17,7 @@ on:
   pull_request:
     # Run only on changes on these files.
     paths:
-      - 'compiler/docgen.nim'
-      - 'compiler/renderverbatim.nim'
+      - 'compiler/**.nim'
       - 'config/nimdoc.cfg'
       - 'doc/**.rst'
       - 'doc/**.md'
