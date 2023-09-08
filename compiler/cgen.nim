@@ -981,6 +981,10 @@ proc containsResult(n: PNode): bool =
   case n.kind
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkFormalParams:
     discard
+  of nkReturnStmt:
+    for i in 0..<n.len:
+      if containsResult(n[i]): return true
+    result = n.len > 0 and n[0].kind == nkEmpty
   of nkSym:
     if n.sym.kind == skResult:
       result = true
