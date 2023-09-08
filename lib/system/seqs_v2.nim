@@ -143,7 +143,7 @@ proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
   setLen(s, len)
 
-proc sameSeqPayload(x: pointer, y: pointer): bool {.compilerRtl, inline.} =
+proc sameSeqPayload(x: pointer, y: pointer): bool {.compilerproc, inline.} =
   result = cast[ptr NimRawSeq](x)[].p == cast[ptr NimRawSeq](y)[].p
 
 template capacityImpl(sek: NimSeqV2): int =
