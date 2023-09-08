@@ -135,23 +135,19 @@ proc add*[T](x: var seq[T]; y: sink T) {.magic: "AppendSeqElem", noSideEffect, n
     # We also save the `wasMoved + destroy` pair for the sink parameter.
     xu.p.data[oldLen] = y
 
-proc growD[T](x: var seq[T]; newLen: Natural; value: T) {.nodestroy.} =
-  let oldLen = x.len
-  #sysAssert newLen >= x.len, "invalid newLen parameter for 'grow'"
-  if newLen <= oldLen: return
-  var xu = cast[ptr NimSeqV2[T]](addr x)
-  if xu.p == nil or (xu.p.cap and not strlitFlag) < newLen:
-    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
-  xu.len = newLen
-  for i in oldLen..<newLen:
-    xu.p.data[i] = value
-
-proc setLen[T](s: var seq[T], newlen: Natural) =
+proc setLen[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
   {.noSideEffect.}:
     if newlen < s.len:
       shrink(s, newlen)
     else:
-      growD(s, newlen, default(T))
+      let oldLen = s.len
+      if newlen <= oldLen: return
+      var xu = cast[ptr NimSeqV2[T]](addr s)
+      if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
+        xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
+      xu.len = newlen
+      for i in oldLen..<newlen:
+        xu.p.data[i] = default(T)
 
 proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
