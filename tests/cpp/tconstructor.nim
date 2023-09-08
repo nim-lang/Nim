@@ -10,9 +10,11 @@ discard """
 ___
 0
 777
+10
 123
 0
 777
+10
 123
 '''
 """
@@ -87,6 +89,10 @@ type
   NimClassWithDefault = object
     x: int
     y = 777
+    case kind: bool = true
+    of true:
+      z: int = 10
+    else: discard
 
 proc makeNimClassWithDefault(): NimClassWithDefault {.constructor.} =
   discard
@@ -96,6 +102,7 @@ proc init =
     var n = makeNimClassWithDefault()
     echo n.x
     echo n.y
+    echo n.z
     n.x = 123
     echo n.x
 
