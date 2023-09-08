@@ -32,6 +32,10 @@ type
     len: int
     p: ptr NimSeqPayload[T]
 
+  NimRawSeq = object
+    len: int
+    p: pointer
+
 const nimSeqVersion {.core.} = 2
 
 # XXX make code memory safe for overflows in '*'
@@ -139,6 +143,8 @@ proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
   setLen(s, len)
 
+proc sameSeqPayload(x: pointer, y: pointer): bool {.compilerproc, inline.} =
+  result = cast[ptr NimRawSeq](x)[].p == cast[ptr NimRawSeq](y)[].p
 
 
 func capacity*[T](self: seq[T]): int {.inline.} =

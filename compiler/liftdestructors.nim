@@ -541,6 +541,14 @@ proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   else:
     body.sons.setLen counterIdx
 
+proc checkSelfAssignment(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  var cond = callCodegenProc(c.g, "sameSeqPayload", c.info,
+      newTreeIT(nkAddr, c.info, makePtrType(c.fn, x.typ, c.idgen), x),
+      newTreeIT(nkAddr, c.info, makePtrType(c.fn, y.typ, c.idgen), y)
+      )
+  cond.typ = getSysType(c.g, c.info, tyBool)
+  body.add genIf(c, cond, newTreeI(nkReturnStmt, c.info, newNodeI(nkEmpty, c.info)))
+
 proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
   of attachedDup:
@@ -548,10 +556,13 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     forallElements(c, t, body, x, y)
   of attachedAsgn, attachedDeepCopy:
     # we generate:
+    # if x.p == y.p:
+    #   return
     # setLen(dest, y.len)
     # var i = 0
     # while i < y.len: dest[i] = y[i]; inc(i)
     # This is usually more efficient than a destroy/create pair.
+    checkSelfAssignment(c, t, body, x, y)
     body.add setLenSeqCall(c, t, x, y)
     forallElements(c, t, body, x, y)
   of attachedSink:

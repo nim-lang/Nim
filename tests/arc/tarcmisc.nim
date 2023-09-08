@@ -614,3 +614,24 @@ method process*(self: App): Option[Event] {.base.} =
 type Test2 = ref object of RootObj
 
 method bug(t: Test2): seq[float] {.base.} = discard
+
+block: # bug #22664
+  type
+    ElementKind = enum String, Number
+    Element = object
+      case kind: ElementKind
+      of String:
+        str: string
+      of Number:
+        num: float
+    Calc = ref object
+      stack: seq[Element]
+
+  var calc = new Calc
+
+  calc.stack.add Element(kind: Number, num: 200.0)
+  doAssert $calc.stack == "@[(kind: Number, num: 200.0)]"
+  let calc2 = calc
+  calc2.stack = calc.stack # This nulls out the object in the stack
+  doAssert $calc.stack == "@[(kind: Number, num: 200.0)]"
+  doAssert $calc2.stack == "@[(kind: Number, num: 200.0)]"
