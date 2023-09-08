@@ -1458,6 +1458,13 @@ proc genNewSeq(p: BProc, e: PNode) =
     genNewSeqAux(p, a, b.rdLoc, lenIsZero)
     gcUsage(p.config, e)
 
+proc genSameSeqPayload(p: BProc; e: PNode; d: var TLoc) =
+  var a = initLocExpr(p, e[1])
+  var b = initLocExpr(p, e[2])
+  putIntoDest(p, d, e, "($1.p == $2.p)" % [
+      rdLoc(a), rdLoc(b)]
+    )
+
 proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
   let seqtype = skipTypes(e.typ, abstractVarRange)
   var a: TLoc = initLocExpr(p, e[1])
@@ -2545,6 +2552,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
              [mangleDynLibProc(prc), getTypeDesc(p.module, prc.loc.t), getModuleDllPath(p.module, prc)])
     genCall(p, e, d)
   of mDefault, mZeroDefault: genDefault(p, e, d)
+  of mSameSeqPayload: genSameSeqPayload(p, e, d)
   of mReset: genReset(p, e)
   of mEcho: genEcho(p, e[1].skipConv)
   of mArrToSeq: genArrToSeq(p, e, d)

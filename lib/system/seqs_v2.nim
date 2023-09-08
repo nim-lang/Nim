@@ -139,6 +139,8 @@ proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
   setLen(s, len)
 
+proc sameSeqPayload*[T](x: seq[T], y: seq[T]): bool {.magic: "SameSeqPayload", inline.} =
+  result = cast[NimSeqV2[T]](x).p == cast[NimSeqV2[T]](y).p
 
 template capacityImpl(sek: NimSeqV2): int =
   if sek.p != nil: (sek.p.cap and not strlitFlag) else: 0
