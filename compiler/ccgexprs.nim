@@ -1518,6 +1518,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
 
   var tmp: TLoc = default(TLoc)
   var r: Rope
+  let needsZeroMem = p.config.selectedGC notin {gcArc, gcAtomicArc, gcOrc} or nfAllFieldsSet notin e.flags
   if useTemp:
     tmp = getTemp(p, t)
     r = rdLoc(tmp)
@@ -1526,10 +1527,10 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
       t = t.lastSon.skipTypes(abstractInstOwned)
       r = "(*$1)" % [r]
       gcUsage(p.config, e)
-    else:
+    elif needsZeroMem:
       constructLoc(p, tmp)
   else:
-    resetLoc(p, d)
+    if needsZeroMem: resetLoc(p, d)
     r = rdLoc(d)
   discard getTypeDesc(p.module, t)
   let ty = getUniqueType(t)

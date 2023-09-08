@@ -1166,7 +1166,13 @@ proc genProcAux*(m: BModule, prc: PSym) =
         # declare the result symbol:
         assignLocalVar(p, resNode)
         assert(res.loc.r != "")
-        initLocalVar(p, res, immediateAsgn=false)
+        if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and
+            allPathsAsgnResult(procBody) == InitSkippable:
+          # In an ideal world the codegen could rely on injectdestructors doing its job properly
+          # and then the analysis step would not be required.
+          discard "result init optimized out"
+        else:
+          initLocalVar(p, res, immediateAsgn=false)
       returnStmt = ropecg(p.module, "\treturn $1;$n", [rdLoc(res.loc)])
     elif sfConstructor in prc.flags:
       fillLoc(resNode.sym.loc, locParam, resNode, "this", OnHeap)
