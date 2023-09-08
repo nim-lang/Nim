@@ -925,7 +925,7 @@ proc reset*[T](obj: var T) {.noSideEffect.} =
       obj = default(typeof(obj))
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.
-  magic: "SetLengthSeq", noSideEffect.}
+  magic: "SetLengthSeq", noSideEffect, nodestroy.}
   ## Sets the length of seq `s` to `newlen`. `T` may be any sequence type.
   ##
   ## If the current length is greater than the new length,
