@@ -1170,6 +1170,12 @@ proc genProcAux*(m: BModule, prc: PSym) =
       returnStmt = ropecg(p.module, "\treturn $1;$n", [rdLoc(res.loc)])
     elif sfConstructor in prc.flags:
       fillLoc(resNode.sym.loc, locParam, resNode, "this", OnHeap)
+      let ty = resNode.sym.typ[0]
+      for n in ty.n: #Inits default Nim fields
+        let val = n.sym.ast
+        if val.isNil: continue
+        genFieldObjConstr(p, ty, useTemp = false, isRef = false, 
+          n, val, check = nil, resNode.sym.loc, tmp = default(TLoc), "this->", tmpInfo)
     else:
       fillResult(p.config, resNode, prc.typ)
       assignParam(p, res, prc.typ[0])
