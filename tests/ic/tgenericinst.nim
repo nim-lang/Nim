@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim cpp $file"
+  cmd: "nim cpp --incremental:on $file"
 """
 
 {.emit:"""/*TYPESECTION*/
