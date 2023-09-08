@@ -660,6 +660,13 @@ proc mangleRecFieldName(m: BModule; field: PSym): Rope =
     result = rope(mangleField(m, field.name))
   if result == "": internalError(m.config, field.info, "mangleRecFieldName")
 
+proc hasCppCtor(m: BModule; typ: PType): bool = 
+  result = false
+  if m.compileToCpp and typ != nil and typ.itemId in m.g.graph.memberProcsPerType:
+    for prc in m.g.graph.memberProcsPerType[typ.itemId]:
+      if sfConstructor in prc.flags:
+        return true
+
 proc genRecordFieldsAux(m: BModule; n: PNode,
                         rectype: PType,
                         check: var IntSet; result: var Rope; unionPrefix = "") =
@@ -724,7 +731,7 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
       else:
         # don't use fieldType here because we need the
         # tyGenericInst for C++ template support
-        if fieldType.isOrHasImportedCppType():
+        if fieldType.isOrHasImportedCppType() or hasCppCtor(m, field.owner.typ):
           result.addf("\t$1$3 $2{};$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias])
         else:
           result.addf("\t$1$3 $2;$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias])
