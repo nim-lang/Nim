@@ -563,8 +563,6 @@ proc checkSelfAssignment(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
   of attachedDup:
-    # similar as attachedAsgn
-    checkSelfAssignment(c, t, body, x, y)
     body.add setLenSeqCall(c, t, x, y)
     forallElements(c, t, body, x, y)
   of attachedAsgn, attachedDeepCopy:
