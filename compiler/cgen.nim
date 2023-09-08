@@ -1175,7 +1175,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
         let val = n.sym.ast
         if val.isNil: continue
         genFieldObjConstr(p, ty, useTemp = false, isRef = false, 
-          n, val, check = nil, resNode.sym.loc, tmp = default(TLoc), "this->", tmpInfo)
+          n, val, check = nil, resNode.sym.loc, "(*this)", tmpInfo)
     else:
       fillResult(p.config, resNode, prc.typ)
       assignParam(p, res, prc.typ[0])
