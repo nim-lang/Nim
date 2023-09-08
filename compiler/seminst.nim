@@ -313,11 +313,11 @@ proc fillMixinScope(c: PContext) =
         addSym(c.currentScope, n.sym)
     p = p.next
 
-proc getLocalPassC(s: PSym): string = 
+proc getLocalPassC(c: PContext, s: PSym): string = 
   if s.ast == nil or s.ast.len == 0: return "" 
   result = ""
   template extractPassc(p: PNode) =
-    if p.kind == nkPragma and p[0][0].ident == getIdent"localpassc":
+    if p.kind == nkPragma and p[0][0].ident == c.cache.getIdent"localpassc":
       return p[0][1].strVal
   extractPassc(s.ast[0]) #it is set via appendToModule in pragmas (fast access)
   for n in s.ast:
@@ -349,7 +349,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   incl(result.flags, sfFromGeneric)
   result.instantiatedFrom = fn
   if sfGlobal in result.flags and c.config.symbolFiles != disabledSf:
-    let passc = producer.getLocalPassC()
+    let passc = getLocalPassC(c, producer)
     if passc != "": #pass the local compiler options to the consumer module too
       extccomp.addLocalCompileOption(c.config, passc, toFullPathConsiderDirty(c.config, c.module.info.fileIndex))
     result.owner = c.module 
