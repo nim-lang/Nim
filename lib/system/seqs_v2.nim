@@ -79,17 +79,18 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): poin
       var p = cast[ptr NimSeqPayloadBase](p)
       let oldCap = p.cap and not strlitFlag
       let newCap = max(resize(oldCap), len+addlen)
+      var q: ptr NimSeqPayloadBase
       if (p.cap and strlitFlag) == strlitFlag:
-        var q = cast[ptr NimSeqPayloadBase](alignedAlloc0(headerSize + elemSize * newCap, elemAlign))
+        q = cast[ptr NimSeqPayloadBase](alignedAlloc(headerSize + elemSize * newCap, elemAlign))
         copyMem(q +! headerSize, p +! headerSize, len * elemSize)
-        q.cap = newCap
-        result = q
       else:
         let oldSize = headerSize + elemSize * oldCap
         let newSize = headerSize + elemSize * newCap
-        var q = cast[ptr NimSeqPayloadBase](alignedRealloc0(p, oldSize, newSize, elemAlign))
-        q.cap = newCap
-        result = q
+        q = cast[ptr NimSeqPayloadBase](alignedRealloc(p, oldSize, newSize, elemAlign))
+
+      zeroMem(q +! headerSize +! len * elemSize, addlen * elemSize)
+      q.cap = newCap
+      result = q
 
 proc prepareSeqAddUninit(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
     noSideEffect, tags: [], raises: [], compilerRtl.} =
