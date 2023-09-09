@@ -50,6 +50,15 @@ proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises
   else:
     result = nil
 
+proc newSeqPayloadUninit(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises: [].} =
+  # Used in `newSeqOfCap()`.
+  if cap > 0:
+    var p = cast[ptr NimSeqPayloadBase](alignedAlloc(align(sizeof(NimSeqPayloadBase), elemAlign) + cap * elemSize, elemAlign))
+    p.cap = cap
+    result = p
+  else:
+    result = nil
+
 template `+!`(p: pointer, s: int): pointer =
   cast[pointer](cast[int](p) +% s)
 
@@ -125,7 +134,7 @@ proc add*[T](x: var seq[T]; y: sink T) {.magic: "AppendSeqElem", noSideEffect, n
     # We also save the `wasMoved + destroy` pair for the sink parameter.
     xu.p.data[oldLen] = y
 
-proc setLen[T](s: var seq[T], newlen: Natural) =
+proc setLen[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
   {.noSideEffect.}:
     if newlen < s.len:
       shrink(s, newlen)
