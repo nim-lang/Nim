@@ -235,6 +235,9 @@ type
     laxEffects
       ## Lax effects system prior to Nim 2.0.
     verboseTypeMismatch
+    emitGenerics 
+      ## generics are emitted in the module that contains them. 
+      ## Useful for libraries that rely on local passC 
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest

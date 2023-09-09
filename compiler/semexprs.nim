@@ -2543,7 +2543,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags; expectedType: P
       if n[0].kind == nkSym and sfFromGeneric in n[0].sym.flags:
         # may have been resolved to `@`[empty] at some point,
         # reset to `@` to deal with this
-        n[0] = newSymNode(n[0].sym.owner, n[0].info)
+        n[0] = newSymNode(n[0].sym.instantiatedFrom, n[0].info)
       n[1] = semExpr(c, n[1], flags, arrayType)
     result = semDirectOp(c, n, flags, expectedType)
   else:
