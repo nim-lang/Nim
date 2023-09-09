@@ -71,6 +71,7 @@ type
     when hasFFI:
       cname*: LitId
     constraint*: NodeId
+    instantiatedFrom*: PackedItemId
 
   PackedType* = object
     kind*: TTypeKind

@@ -1129,6 +1129,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wLocalPassc:
         assert sym != nil and sym.kind == skModule
         let s = expectStrLit(c, it)
+        appendToModule(sym, n)
         extccomp.addLocalCompileOption(c.config, s, toFullPathConsiderDirty(c.config, sym.info.fileIndex))
         recordPragma(c, it, "localpassl", s)
       of wPush:
