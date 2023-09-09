@@ -1135,9 +1135,6 @@ proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
   sfNoReturn in s.flags and m.config.exc != excGoto
 
 proc genProcAux*(m: BModule, prc: PSym) =
-  let isInitHasCpp =  prc.name.s == "initHasCpp"
-  if isInitHasCpp:
-    echo renderTree(prc.ast)
   var p = newProc(prc, m)
   var header = newRopeAppender()
   let isCppMember = m.config.backend == backendCpp and sfCppMember * prc.flags != {}
