@@ -72,6 +72,32 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): poin
     if addlen <= 0:
       result = p
     elif p == nil:
+      result = newSeqPayload(len+addlen, elemSize, elemAlign)
+    else:
+      # Note: this means we cannot support things that have internal pointers as
+      # they get reallocated here. This needs to be documented clearly.
+      var p = cast[ptr NimSeqPayloadBase](p)
+      let oldCap = p.cap and not strlitFlag
+      let newCap = max(resize(oldCap), len+addlen)
+      if (p.cap and strlitFlag) == strlitFlag:
+        var q = cast[ptr NimSeqPayloadBase](alignedAlloc0(headerSize + elemSize * newCap, elemAlign))
+        copyMem(q +! headerSize, p +! headerSize, len * elemSize)
+        q.cap = newCap
+        result = q
+      else:
+        let oldSize = headerSize + elemSize * oldCap
+        let newSize = headerSize + elemSize * newCap
+        var q = cast[ptr NimSeqPayloadBase](alignedRealloc0(p, oldSize, newSize, elemAlign))
+        q.cap = newCap
+        result = q
+
+proc prepareSeqAddUninit(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
+    noSideEffect, tags: [], raises: [], compilerRtl.} =
+  {.noSideEffect.}:
+    let headerSize = align(sizeof(NimSeqPayloadBase), elemAlign)
+    if addlen <= 0:
+      result = p
+    elif p == nil:
       result = newSeqPayloadUninit(len+addlen, elemSize, elemAlign)
     else:
       # Note: this means we cannot support things that have internal pointers as
@@ -110,7 +136,7 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) {.nodestroy.} =
   if newLen <= oldLen: return
   var xu = cast[ptr NimSeqV2[T]](addr x)
   if xu.p == nil or (xu.p.cap and not strlitFlag) < newLen:
-    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
+    xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
   xu.len = newLen
   for i in oldLen .. newLen-1:
     wasMoved(xu.p.data[i])
@@ -127,7 +153,7 @@ proc add*[T](x: var seq[T]; y: sink T) {.magic: "AppendSeqElem", noSideEffect, n
     let oldLen = x.len
     var xu = cast[ptr NimSeqV2[T]](addr x)
     if xu.p == nil or (xu.p.cap and not strlitFlag) < oldLen+1:
-      xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T), alignof(T)))
+      xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, 1, sizeof(T), alignof(T)))
     xu.len = oldLen+1
     # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
     # copyMem(). This is fine as know by construction that
@@ -144,7 +170,7 @@ proc setLen[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
       if newlen <= oldLen: return
       var xu = cast[ptr NimSeqV2[T]](addr s)
       if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
-        xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
+        xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
       xu.len = newlen
       for i in oldLen..<newlen:
         xu.p.data[i] = default(T)
