@@ -499,7 +499,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       # array passed as argument decayed into pointer, bug #7332
       # so we use getTypeDesc here rather than rdLoc(loc)
       let tyDesc = getTypeDesc(p.module, loc.t, descKindFromSymKind mapTypeChooser(loc))
-      if isOrHasImportedCppType(typ): 
+      if p.module.compileToCpp and isOrHasImportedCppType(typ): 
         if lfIndirect in loc.flags: 
           #C++ cant be just zeroed. We need to call the ctors
           var tmp = getTemp(p, loc.t)
