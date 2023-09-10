@@ -498,9 +498,10 @@ proc resetLoc(p: BProc, loc: var TLoc) =
     else:
       # array passed as argument decayed into pointer, bug #7332
       # so we use getTypeDesc here rather than rdLoc(loc)
-      linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
-              [addrLoc(p.config, loc),
-              getTypeDesc(p.module, loc.t, descKindFromSymKind mapTypeChooser(loc))])
+      if not isOrHasImportedCppType(typ): #bug 22679
+        linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
+                [addrLoc(p.config, loc),
+                getTypeDesc(p.module, loc.t, descKindFromSymKind mapTypeChooser(loc))])
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
