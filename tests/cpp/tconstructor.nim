@@ -7,6 +7,15 @@ discard """
 123
 0
 123
+___
+0
+777
+10
+123
+0
+777
+10
+123
 '''
 """
 
@@ -74,3 +83,27 @@ proc main =
     echo n.x
 
 main()
+#bug:
+echo "___"
+type
+  NimClassWithDefault = object
+    x: int
+    y = 777
+    case kind: bool = true
+    of true:
+      z: int = 10
+    else: discard
+
+proc makeNimClassWithDefault(): NimClassWithDefault {.constructor.} =
+  discard
+
+proc init =
+  for i in 0 .. 1:
+    var n = makeNimClassWithDefault()
+    echo n.x
+    echo n.y
+    echo n.z
+    n.x = 123
+    echo n.x
+
+init()
