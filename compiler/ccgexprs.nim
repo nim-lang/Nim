@@ -1529,8 +1529,11 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
       gcUsage(p.config, e)
     elif needsZeroMem:
       constructLoc(p, tmp)
+    else:
+      genObjectInit(p, cpsStmts, t, tmp, constructObj)
   else:
     if needsZeroMem: resetLoc(p, d)
+    else: genObjectInit(p, cpsStmts, d.t, d, if isRef: constructRefObj else: constructObj)
     r = rdLoc(d)
   discard getTypeDesc(p.module, t)
   let ty = getUniqueType(t)
