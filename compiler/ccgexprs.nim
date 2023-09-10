@@ -1494,8 +1494,27 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
   else:
     result = false
 
+
+proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField, val, check: PNode; d: var TLoc; r: Rope; info: TLineInfo) =
+  var tmp2: TLoc = default(TLoc)
+  tmp2.r = r
+  let field = lookupFieldAgain(p, ty, nField.sym, tmp2.r)
+  if field.loc.r == "": fillObjectFields(p.module, ty)
+  if field.loc.r == "": internalError(p.config, info, "genFieldObjConstr")
+  if check != nil and optFieldCheck in p.options:
+    genFieldCheck(p, check, r, field)
+  tmp2.r.add(".")
+  tmp2.r.add(field.loc.r)
+  if useTemp:
+    tmp2.k = locTemp
+    tmp2.storage = if isRef: OnHeap else: OnStack
+  else:
+    tmp2.k = d.k
+    tmp2.storage = if isRef: OnHeap else: d.storage
+  tmp2.lode = val
+  expr(p, val, tmp2)
+
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
-  #echo renderTree e, " ", e.isDeepConstExpr
   # inheritance in C++ does not allow struct initialization so
   # we skip this step here:
   if not p.module.compileToCpp and optSeqDestructors notin p.config.globalOptions:
@@ -1534,24 +1553,11 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   discard getTypeDesc(p.module, t)
   let ty = getUniqueType(t)
   for i in 1..<e.len:
-    let it = e[i]
-    var tmp2: TLoc = default(TLoc)
-    tmp2.r = r
-    let field = lookupFieldAgain(p, ty, it[0].sym, tmp2.r)
-    if field.loc.r == "": fillObjectFields(p.module, ty)
-    if field.loc.r == "": internalError(p.config, e.info, "genObjConstr")
-    if it.len == 3 and optFieldCheck in p.options:
-      genFieldCheck(p, it[2], r, field)
-    tmp2.r.add(".")
-    tmp2.r.add(field.loc.r)
-    if useTemp:
-      tmp2.k = locTemp
-      tmp2.storage = if isRef: OnHeap else: OnStack
-    else:
-      tmp2.k = d.k
-      tmp2.storage = if isRef: OnHeap else: d.storage
-    tmp2.lode = it[1]
-    expr(p, it[1], tmp2)
+    var check: PNode = nil
+    if e[i].len == 3 and optFieldCheck in p.options:
+      check = e[i][2]
+    genFieldObjConstr(p, ty, useTemp, isRef, e[i][0], e[i][1], check, d, r, e.info)
+  
   if useTemp:
     if d.k == locNone:
       d = tmp
