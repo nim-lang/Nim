@@ -984,21 +984,25 @@ proc closureSetup(p: BProc, prc: PSym) =
     linefmt(p, cpsStmts, "$1 = ($2) ClE_0;$n",
             [rdLoc(env.loc), getTypeDesc(p.module, env.typ)])
 
+const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt, nkTemplateDef,
+                  nkMacroDef, nkMixinStmt, nkBindStmt, nkFormalParams} +
+                  declarativeDefs
+
 proc containsResult(n: PNode): bool =
   result = false
   case n.kind
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkFormalParams:
+  of succ(nkEmpty)..pred(nkSym), succ(nkSym)..nkNilLit, harmless:
     discard
+  of nkReturnStmt:
+    for i in 0..<n.len:
+      if containsResult(n[i]): return true
+    result = n.len > 0 and n[0].kind == nkEmpty
   of nkSym:
     if n.sym.kind == skResult:
       result = true
   else:
     for i in 0..<n.len:
       if containsResult(n[i]): return true
-
-const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt, nkTemplateDef,
-                  nkMacroDef, nkMixinStmt, nkBindStmt, nkFormalParams} +
-                  declarativeDefs
 
 proc easyResultAsgn(n: PNode): PNode =
   result = nil
@@ -1174,7 +1178,13 @@ proc genProcAux*(m: BModule, prc: PSym) =
         # declare the result symbol:
         assignLocalVar(p, resNode)
         assert(res.loc.r != "")
-        initLocalVar(p, res, immediateAsgn=false)
+        if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and
+            allPathsAsgnResult(procBody) == InitSkippable:
+          # In an ideal world the codegen could rely on injectdestructors doing its job properly
+          # and then the analysis step would not be required.
+          discard "result init optimized out"
+        else:
+          initLocalVar(p, res, immediateAsgn=false)
       returnStmt = ropecg(p.module, "\treturn $1;$n", [rdLoc(res.loc)])
     elif sfConstructor in prc.flags:
       fillLoc(resNode.sym.loc, locParam, resNode, "this", OnHeap)
