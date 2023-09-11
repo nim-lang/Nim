@@ -200,7 +200,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
         var found = false
         if ni.kind == nkIdent:
           for a in templatePragmas:
-            if ni.ident == getIdent(c.c.cache, $a):
+            if ni.ident.id == ord(a):
               found = true
               break
         if not found:
@@ -263,19 +263,13 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
     # routines default to 'inject':
     let (ident, hasParam) = getIdentReplaceParams(c, n[namePos])
     if not hasParam:
-      case symBinding(n[pragmasPos])
-      of spGenSym:
+      if symBinding(n[pragmasPos]) == spGenSym:
         var s = newGenSym(k, ident, c)
         s.ast = n
         addPrelimDecl(c.c, s)
         styleCheckDef(c.c, n.info, s)
         onDef(n.info, s)
         n[namePos] = newSymNode(s, n[namePos].info)
-      of spInject:
-        c.toInject.incl(considerQuotedIdent(c.c, ident).id)
-      of spNone:
-        # default
-        discard
   # open scope for parameters
   openScope(c)
   for i in patternPos..paramsPos-1:
