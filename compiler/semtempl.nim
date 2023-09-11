@@ -256,41 +256,26 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     if not isField:
       styleCheckUse(c, n.info, s)
 
-proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
-  result = n
-  if n.kind == nkIdent:
-    let s = qualifiedLookUp(c.c, n, {})
-    if s != nil:
-      if s.owner == c.owner and (s.kind == skParam or sfGenSym in s.flags):
-        incl(s.flags, sfUsed)
-        result = newSymNode(s, n.info)
-        onUse(n.info, s)
-  else:
-    for i in 0..<n.safeLen:
-      result[i] = semRoutineInTemplName(c, n[i])
-
 proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   result = n
   checkSonsLen(n, bodyPos + 1, c.c.config)
-  # routines default to 'inject':
-  var binding = spNone
   if n.kind notin nkLambdaKinds:
-    binding = symBinding(n[pragmasPos])
-  if binding == spGenSym:
+    # routines default to 'inject':
     let (ident, hasParam) = getIdentReplaceParams(c, n[namePos])
     if not hasParam:
-      var s = newGenSym(k, ident, c)
-      s.ast = n
-      addPrelimDecl(c.c, s)
-      styleCheckDef(c.c, n.info, s)
-      onDef(n.info, s)
-      n[namePos] = newSymNode(s, n[namePos].info)
-  else:
-    n[namePos] = semRoutineInTemplName(c, n[namePos])
-    if binding == spInject:
-      let (ident, hasParam) = getIdentReplaceParams(c, n[namePos])
-      if not hasParam:
+      case symBinding(n[pragmasPos])
+      of spGenSym:
+        var s = newGenSym(k, ident, c)
+        s.ast = n
+        addPrelimDecl(c.c, s)
+        styleCheckDef(c.c, n.info, s)
+        onDef(n.info, s)
+        n[namePos] = newSymNode(s, n[namePos].info)
+      of spInject:
         c.toInject.incl(considerQuotedIdent(c.c, ident).id)
+      of spNone:
+        # default
+        discard
   # open scope for parameters
   openScope(c)
   for i in patternPos..paramsPos-1:
