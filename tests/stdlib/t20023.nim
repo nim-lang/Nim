@@ -1,4 +1,4 @@
-import std/[tables, hashes, assertions]
+import std/[tables, hashes]
 
 
 let t = ()
