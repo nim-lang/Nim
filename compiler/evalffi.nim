@@ -163,7 +163,7 @@ proc getField(conf: ConfigRef, n: PNode; position: int): PSym =
   else: result = nil
 
 proc packObject(conf: ConfigRef, x: PNode, typ: PType, res: pointer) =
-  internalAssert conf, x.kind in {nkObjConstr, nkPar, nkTupleConstr}
+  internalAssert conf, x.kind in {nkObjConstr, nkTupleConstr}
   # compute the field's offsets:
   discard getSize(conf, typ)
   for i in ord(x.kind == nkObjConstr)..<x.len:
@@ -270,7 +270,7 @@ proc unpackObject(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
   discard getSize(conf, typ)
 
   # iterate over any actual field of 'n' ... if n is nil we need to create
-  # the nkPar node:
+  # the nkTupleConstr node:
   if n.isNil:
     result = newNode(nkTupleConstr)
     result.typ = typ
@@ -279,7 +279,7 @@ proc unpackObject(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
     unpackObjectAdd(conf, x, typ.n, result)
   else:
     result = n
-    if result.kind notin {nkObjConstr, nkPar, nkTupleConstr}:
+    if result.kind notin {nkObjConstr, nkTupleConstr}:
       globalError(conf, n.info, "cannot map value from FFI")
     if typ.n.isNil:
       globalError(conf, n.info, "cannot unpack unnamed tuple")

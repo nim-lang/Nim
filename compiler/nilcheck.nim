@@ -1218,7 +1218,7 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
      nkCast:
     result = check(n.sons[1], ctx, map)
   of nkStmtList, nkStmtListExpr, nkChckRangeF, nkChckRange64, nkChckRange,
-     nkBracket, nkCurly, nkPar, nkTupleConstr, nkClosure, nkObjConstr, nkElse:
+     nkBracket, nkCurly, nkTupleConstr, nkClosure, nkObjConstr, nkElse:
     result.map = map
     if n.kind in {nkObjConstr, nkTupleConstr}:
       # TODO deeper nested elements?

@@ -85,7 +85,7 @@ type
                           # either typeDesc or expr may be nil; used in
                           # formal parameters, var statements, etc.
     nkVarTuple,           # a ``var (a, b) = expr`` construct
-    nkPar,                # syntactic (); may be a tuple constructor
+    nkPar,                # syntactic ()
     nkObjConstr,          # object constructor: T(a: 1, b: 2)
     nkCurly,              # syntactic {}
     nkCurlyExpr,          # an expression like a{i}

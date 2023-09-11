@@ -108,7 +108,7 @@ proc isDeepConstExpr*(n: PNode; preventInheritance = false): bool =
     result = true
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
     result = isDeepConstExpr(n[1], preventInheritance)
-  of nkCurly, nkBracket, nkPar, nkTupleConstr, nkObjConstr, nkClosure, nkRange:
+  of nkCurly, nkBracket, nkTupleConstr, nkObjConstr, nkClosure, nkRange:
     for i in ord(n.kind == nkObjConstr)..<n.len:
       if not isDeepConstExpr(n[i], preventInheritance): return false
     if n.typ.isNil: result = true
@@ -231,7 +231,7 @@ proc dontInlineConstant*(orig, cnst: PNode): bool {.inline.} =
   # symbols that expand to a complex constant (array, etc.) should not be
   # inlined, unless it's the empty array:
   result = orig.kind != cnst.kind and
-           cnst.kind in {nkCurly, nkPar, nkTupleConstr, nkBracket, nkObjConstr} and
+           cnst.kind in {nkCurly, nkTupleConstr, nkBracket, nkObjConstr} and
            cnst.len > ord(cnst.kind == nkObjConstr)
 
 proc isRunnableExamples*(n: PNode): bool =

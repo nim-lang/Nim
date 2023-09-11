@@ -2239,7 +2239,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of nkBracket: genArrayConstr(c, n, dest)
   of nkCurly: genSetConstr(c, n, dest)
   of nkObjConstr: genObjConstr(c, n, dest)
-  of nkPar, nkClosure, nkTupleConstr: genTupleConstr(c, n, dest)
+  of nkClosure, nkTupleConstr: genTupleConstr(c, n, dest)
   of nkCast:
     if allowCast in c.features:
       genConv(c, n, n[1], dest, opcCast)

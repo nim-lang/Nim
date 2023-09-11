@@ -1143,7 +1143,7 @@ proc track(tracked: PEffects, n: PNode) =
           varDecl(tracked, child[i])
           if last.kind != nkEmpty:
             initVar(tracked, child[i], volatileCheck=false)
-          if last.kind in {nkPar, nkTupleConstr}:
+          if last.kind == nkTupleConstr:
             addAsgnFact(tracked.guards, child[i], last[i])
             notNilCheck(tracked, last[i], child[i].typ)
       # since 'var (a, b): T = ()' is not even allowed, there is always type

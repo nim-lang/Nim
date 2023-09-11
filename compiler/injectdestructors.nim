@@ -497,7 +497,7 @@ proc containsConstSeq(n: PNode): bool =
   of nkObjConstr, nkClosure:
     for i in 1..<n.len:
       if containsConstSeq(n[i]): return true
-  of nkCurly, nkBracket, nkPar, nkTupleConstr:
+  of nkCurly, nkBracket, nkTupleConstr:
     for son in n:
       if containsConstSeq(son): return true
   else: discard

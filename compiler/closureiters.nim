@@ -466,7 +466,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
 
     needsSplit = true
 
-  of nkPar, nkObjConstr, nkTupleConstr, nkBracket:
+  of nkObjConstr, nkTupleConstr, nkBracket:
     var ns = false
     for i in 0..<n.len:
       n[i] = ctx.lowerStmtListExprs(n[i], ns)

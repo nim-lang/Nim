@@ -634,7 +634,7 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
       if putArgInto(arg[i], formal) != paDirectMapping:
         return paFastAsgn
     result = paDirectMapping
-  of nkPar, nkTupleConstr, nkObjConstr:
+  of nkTupleConstr, nkObjConstr:
     for i in 0..<arg.len:
       let a = if arg[i].kind == nkExprColonExpr: arg[i][1]
               else: arg[0]

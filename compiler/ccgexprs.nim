@@ -1115,7 +1115,7 @@ proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
 proc isSimpleExpr(n: PNode): bool =
   # calls all the way down --> can stay expression based
   case n.kind
-  of nkCallKinds, nkDotExpr, nkPar, nkTupleConstr,
+  of nkCallKinds, nkDotExpr, nkTupleConstr,
       nkObjConstr, nkBracket, nkCurly, nkHiddenDeref, nkDerefExpr, nkHiddenAddr,
       nkHiddenStdConv, nkHiddenSubConv, nkConv, nkAddr:
     for c in n:
@@ -2681,7 +2681,7 @@ proc isConstClosure(n: PNode): bool {.inline.} =
       n[1].kind == nkNilLit
 
 proc genClosure(p: BProc, n: PNode, d: var TLoc) =
-  assert n.kind in {nkPar, nkTupleConstr, nkClosure}
+  assert n.kind in {nkTupleConstr, nkClosure}
 
   if isConstClosure(n):
     inc(p.module.labels)
@@ -3029,7 +3029,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       genSeqConstr(p, n, d)
     else:
       genArrayConstr(p, n, d)
-  of nkPar, nkTupleConstr:
+  of nkTupleConstr:
     if n.typ != nil and n.typ.kind == tyProc and n.len == 2:
       genClosure(p, n, d)
     elif isDeepConstExpr(n) and n.len != 0:
@@ -3413,7 +3413,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; resul
         # this hack fixes issue that nkNilLit is expanded to {NIM_NIL,NIM_NIL}
         # this behaviour is needed since closure_var = nil must be
         # expanded to {NIM_NIL,NIM_NIL}
-        # in VM closures are initialized with nkPar(nkNilLit, nkNilLit)
+        # in VM closures are initialized with nkTupleConstr(nkNilLit, nkNilLit)
         # leading to duplicate code like this:
         # "{NIM_NIL,NIM_NIL}, {NIM_NIL,NIM_NIL}"
         if n[0].kind == nkNilLit:
