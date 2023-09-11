@@ -499,8 +499,8 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       # array passed as argument decayed into pointer, bug #7332
       # so we use getTypeDesc here rather than rdLoc(loc)
       let tyDesc = getTypeDesc(p.module, loc.t, descKindFromSymKind mapTypeChooser(loc))
-      if p.module.compileToCpp and isOrHasImportedCppType(typ): 
-        if lfIndirect in loc.flags: 
+      if p.module.compileToCpp and isOrHasImportedCppType(typ):
+        if lfIndirect in loc.flags:
           #C++ cant be just zeroed. We need to call the ctors
           var tmp = getTemp(p, loc.t)
           linefmt(p, cpsStmts,"#nimCopyMem((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
@@ -508,7 +508,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       else:
         linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
                 [addrLoc(p.config, loc), tyDesc])
-      
+
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
@@ -1143,7 +1143,7 @@ proc genProcBody(p: BProc; procBody: PNode) =
     p.blocks[0].sections[cpsInit].add(ropecg(p.module, "nimErr_ = #nimErrorFlag();$n", []))
 
 proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
-  sfNoReturn in s.flags and m.config.exc != excGoto
+  sfNoReturn in s.flags and m.config.exc notin {excGoto, excQuirky}
 
 proc genProcAux*(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
@@ -1191,7 +1191,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
       let ty = resNode.sym.typ[0] #generate nim's ctor
       for i in 1..<resNode.sym.ast.len:
         let field = resNode.sym.ast[i]
-        genFieldObjConstr(p, ty, useTemp = false, isRef = false, 
+        genFieldObjConstr(p, ty, useTemp = false, isRef = false,
           field[0], field[1], check = nil, resNode.sym.loc, "(*this)", tmpInfo)
     else:
       fillResult(p.config, resNode, prc.typ)

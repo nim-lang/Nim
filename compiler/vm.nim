@@ -493,6 +493,7 @@ template handleJmpBack() {.dirty.} =
       msgWriteln(c.config, "stack trace: (most recent call last)", {msgNoUnitSep})
       stackTraceAux(c, tos, pc)
       globalError(c.config, c.debug[pc], errTooManyIterations % $c.config.maxLoopIterationsVM)
+      return
   dec(c.loopIterations)
 
 proc recSetFlagIsRef(arg: PNode) =

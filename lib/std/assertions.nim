@@ -31,7 +31,10 @@ proc `$`(info: InstantiationInfo): string =
 proc raiseAssert*(msg: string) {.noinline, noreturn, nosinks.} =
   ## Raises an `AssertionDefect` with `msg`.
   when defined(nimPreviewSlimSystem):
-    raise newException(AssertionDefect, msg)
+    when defined(nimQuirky):
+      quit "[AssertionError] " & msg
+    else:
+      raise newException(AssertionDefect, msg)
   else:
     sysFatal(AssertionDefect, msg)
 
