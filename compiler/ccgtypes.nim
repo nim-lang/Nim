@@ -656,6 +656,21 @@ proc hasCppCtor(m: BModule; typ: PType): bool =
       if sfConstructor in prc.flags:
         return true
 
+proc genCppParamsForCtor(p: BProc; call: PNode): string
+
+proc genCppInitializer(m: BModule, prc: BProc; typ: PType): string =
+  #To avoid creating a BProc per test when called inside a struct nil BProc is allowed
+  result = "{}"
+  if typ.itemId in m.g.graph.initializersPerType:
+    let call = m.g.graph.initializersPerType[typ.itemId]
+    if call != nil: 
+      var p = prc
+      if p == nil:
+        p = BProc(module: m)
+      result = "{" & genCppParamsForCtor(p, call) & "}"
+      if prc == nil:
+        assert p.blocks.len == 0, "BProc belongs to a struct doesnt have blocks" 
+
 proc genRecordFieldsAux(m: BModule; n: PNode,
                         rectype: PType,
                         check: var IntSet; result: var Rope; unionPrefix = "") =
@@ -721,7 +736,8 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
         # don't use fieldType here because we need the
         # tyGenericInst for C++ template support
         if fieldType.isOrHasImportedCppType() or hasCppCtor(m, field.owner.typ):
-          result.addf("\t$1$3 $2{};$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias])
+          var initializer = genCppInitializer(m, nil, fieldType)
+          result.addf("\t$1$3 $2$4;$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias, initializer])
         else:
           result.addf("\t$1$3 $2;$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias])
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
