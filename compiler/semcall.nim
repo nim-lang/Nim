@@ -321,7 +321,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # only in case of an error).
   if c.config.m.errorOutputs == {}:
     # fail fast:
-    globalError(c.config, n.info, "type mismatch")
+    localError(c.config, n.info, "type mismatch")
     return
   # see getMsgDiagnostic:
   if nfExplicitCall notin n.flags and {nfDotField, nfDotSetter} * n.flags != {}:
@@ -483,7 +483,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     #writeMatches(alt)
     if c.config.m.errorOutputs == {}:
       # quick error message for performance of 'compiles' built-in:
-      globalError(c.config, n.info, errGenerated, "ambiguous call")
+      localError(c.config, n.info, errGenerated, "ambiguous call")
     elif c.config.errorCounter == 0:
       # don't cascade errors
       var args = "("

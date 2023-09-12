@@ -2274,11 +2274,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     inc pc
 
 proc execute(c: PCtx, start: int): PNode =
+  if c.couldNotEval:
+    c.couldNotEval = false
+    return nil
   var tos = PStackFrame(prc: nil, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.regInfo.len)
   result = rawExecute(c, start, tos).regToNode
 
 proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
+  if c.couldNotEval:
+    c.couldNotEval = false
+    return nil
   c.loopIterations = c.config.maxLoopIterationsVM
   if sym.kind in routineKinds:
     if sym.typ.len-1 != args.len:
@@ -2309,6 +2315,10 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
 proc evalStmt*(c: PCtx, n: PNode) =
   let n = transformExpr(c.graph, c.idgen, c.module, n)
   let start = genStmt(c, n)
+  if c.couldNotEval:
+    c.couldNotEval = false
+    return
+
   # execute new instructions; this redundant opcEof check saves us lots
   # of allocations in 'execute':
   if c.code[start].opcode != opcEof:
@@ -2318,6 +2328,9 @@ proc evalExpr*(c: PCtx, n: PNode): PNode =
   # deadcode
   # `nim --eval:"expr"` might've used it at some point for idetools; could
   # be revived for nimsuggest
+  if c.couldNotEval:
+    c.couldNotEval = false
+    return nil
   let n = transformExpr(c.graph, c.idgen, c.module, n)
   let start = genExpr(c, n)
   assert c.code[start].opcode != opcEof
@@ -2373,6 +2386,10 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
   let oldMode = c.mode
   c.mode = mode
   let start = genExpr(c, n, requiresValue = mode!=emStaticStmt)
+  if c.couldNotEval:
+    c.couldNotEval = false
+    return nil
+
   if c.code[start].opcode == opcEof: return newNodeI(nkEmpty, n.info)
   assert c.code[start].opcode != opcEof
   when debugEchoCode: c.echoCode start

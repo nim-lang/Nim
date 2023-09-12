@@ -257,6 +257,7 @@ type
     mode*: TEvalMode
     features*: TSandboxFlags
     traceActive*: bool
+    couldNotEval*: bool
     loopIterations*: int
     comesFromHeuristic*: TLineInfo # Heuristic for better macro stack traces
     callbacks*: seq[VmCallback]
