@@ -183,8 +183,6 @@ proc newSeq[T](s: var seq[T], len: Natural) =
 proc sameSeqPayload(x: pointer, y: pointer): bool {.compilerproc, inline.} =
   result = cast[ptr NimRawSeq](x)[].p == cast[ptr NimRawSeq](y)[].p
 
-template capacityImpl(sek: NimSeqV2): int =
-  if sek.p != nil: (sek.p.cap and not strlitFlag) else: 0
 
 func capacity*[T](self: seq[T]): int {.inline.} =
   ## Returns the current capacity of the seq.
@@ -194,9 +192,8 @@ func capacity*[T](self: seq[T]): int {.inline.} =
     lst.add "Nim"
     assert lst.capacity == 42
 
-  {.cast(noSideEffect).}:
-    let sek = unsafeAddr self
-    result = capacityImpl(cast[ptr NimSeqV2[T]](sek)[])
+  let sek = cast[ptr NimSeqV2[T]](unsafeAddr self)
+  result = if sek.p != nil: (sek.p.cap and not strlitFlag) else: 0
 
 
 {.pop.}  # See https://github.com/nim-lang/Nim/issues/21401
