@@ -61,6 +61,7 @@ proc toStrMaxPrecision*(f: BiggestFloat | float32): string =
   of fcNegInf:
     result = "-INF"
   else:
+    result = ""
     result.addFloatRoundtrip(f)
     result.add literalPostfix
 

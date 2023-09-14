@@ -48,7 +48,7 @@ Advanced options:
   --unitsep:on|off          use the ASCII unit separator (31) between error
                             messages, useful for IDE-like tooling
   --declaredLocs:on|off     show declaration locations in messages
-  --spellSuggest|:num       show at most `num >= 0` spelling suggestions on typos.
+  --spellSuggest:num        show at most `num >= 0` spelling suggestions on typos.
                             if `num` is not specified (or `auto`), return
                             an implementation defined set of suggestions.
   --hints:on|off|list.      `on|off` enables or disables hints.

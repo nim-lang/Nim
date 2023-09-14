@@ -99,6 +99,7 @@ proc renderType(n: PNode, toNormalize: bool): string =
 
 proc renderParamNames*(n: PNode, toNormalize=false): seq[string] =
   ## Returns parameter names of routine `n`.
+  result = @[]
   doAssert n.kind == nkFormalParams
   case n.kind
   of nkFormalParams:

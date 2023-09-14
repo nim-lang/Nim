@@ -310,7 +310,7 @@ proc checkBinary(p: Parser) {.inline.} =
     if p.tok.spacing == {tsTrailing}:
       parMessage(p, warnInconsistentSpacing, prettyTok(p.tok))
 
-#| module = stmt ^* (';' / IND{=})
+#| module = complexOrSimpleStmt ^* (';' / IND{=})
 #|
 #| comma = ',' COMMENT?
 #| semicolon = ';' COMMENT?
@@ -1177,6 +1177,7 @@ proc optPragmas(p: var Parser): PNode =
 
 proc parseDoBlock(p: var Parser; info: TLineInfo): PNode =
   #| doBlock = 'do' paramListArrow pragma? colcom stmt
+  result = nil
   var params = parseParamList(p, retColon=false)
   let pragmas = optPragmas(p)
   colcom(p, result)
@@ -1430,6 +1431,7 @@ proc parseTypeDesc(p: var Parser, fullExpr = false): PNode =
       result = newNodeP(nkObjectTy, p)
       getTok(p)
     of tkConcept:
+      result = nil
       parMessage(p, "the 'concept' keyword is only valid in 'type' sections")
     of tkVar: result = parseTypeDescKAux(p, nkVarTy, pmTypeDesc)
     of tkOut: result = parseTypeDescKAux(p, nkOutTy, pmTypeDesc)
@@ -2285,7 +2287,7 @@ proc parseTypeDef(p: var Parser): PNode =
   setEndInfo()
 
 proc parseVarTuple(p: var Parser): PNode =
-  #| varTupleLhs = '(' optInd (identWithPragma / varTupleLhs) ^+ comma optPar ')'
+  #| varTupleLhs = '(' optInd (identWithPragma / varTupleLhs) ^+ comma optPar ')' (':' optInd typeDescExpr)?
   #| varTuple = varTupleLhs '=' optInd expr
   result = newNodeP(nkVarTuple, p)
   getTok(p)                   # skip '('
@@ -2302,9 +2304,14 @@ proc parseVarTuple(p: var Parser): PNode =
     if p.tok.tokType != tkComma: break
     getTok(p)
     skipComment(p, a)
-  result.add(p.emptyNode)         # no type desc
   optPar(p)
   eat(p, tkParRi)
+  if p.tok.tokType == tkColon:
+    getTok(p)
+    optInd(p, result)
+    result.add(parseTypeDesc(p, fullExpr = true))
+  else:
+    result.add(p.emptyNode)         # no type desc
   setEndInfo()
 
 proc parseVariable(p: var Parser): PNode =

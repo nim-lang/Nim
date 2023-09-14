@@ -55,6 +55,8 @@ proc findDocComment(n: PNode): PNode =
       result = findDocComment(n[1])
   elif n.kind in {nkAsgn, nkFastAsgn, nkSinkAsgn} and n.len == 2:
     result = findDocComment(n[1])
+  else:
+    result = nil
 
 proc extractDocComment(g: ModuleGraph; s: PSym): string =
   var n = findDocComment(s.ast)
@@ -106,7 +108,7 @@ proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int
     if cmpIgnoreStyle(line[column..column + result - 1], ident) != 0:
       result = 0
   else:
-    var sourceIdent: string
+    var sourceIdent: string = ""
     result = parseWhile(line, sourceIdent,
                         OpChars + {'[', '(', '{', ']', ')', '}'}, column)
     if ident[^1] == '=' and ident[0] in linter.Letters:
@@ -254,13 +256,17 @@ proc filterSym(s: PSym; prefix: PNode; res: var PrefixMatch): bool {.inline.} =
     of nkOpenSymChoice, nkClosedSymChoice, nkAccQuoted:
       if n.len > 0:
         result = prefixMatch(s, n[0])
-    else: discard
+      else:
+        result = default(PrefixMatch)
+    else: result = default(PrefixMatch)
   if s.kind != skModule:
     if prefix != nil:
       res = prefixMatch(s, prefix)
       result = res != PrefixMatch.None
     else:
       result = true
+  else:
+    result = false
 
 proc filterSymNoOpr(s: PSym; prefix: PNode; res: var PrefixMatch): bool {.inline.} =
   result = filterSym(s, prefix, res) and s.name.s[0] in lexer.SymChars and
@@ -274,10 +280,8 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
     for module in c.friendModules:
       if fmoduleId == module.id: return true
     if f.kind == skField:
-      var symObj = f.owner
-      if symObj.typ.skipTypes({tyGenericBody, tyGenericInst, tyGenericInvocation, tyAlias}).kind in {tyRef, tyPtr}:
-        symObj = symObj.typ.toObjectFromRefPtrGeneric.sym
-        assert symObj != nil
+      var symObj = f.owner.typ.toObjectFromRefPtrGeneric.sym
+      assert symObj != nil
       for scope in allScopes(c.currentScope):
         for sym in scope.allowPrivateAccess:
           if symObj.id == sym.id: return true
@@ -294,7 +298,7 @@ proc getQuality(s: PSym): range[0..100] =
     result = result - 5
 
 proc suggestField(c: PContext, s: PSym; f: PNode; info: TLineInfo; outputs: var Suggestions) =
-  var pm: PrefixMatch
+  var pm: PrefixMatch = default(PrefixMatch)
   if filterSym(s, f, pm) and fieldVisible(c, s):
     outputs.add(symToSuggest(c.graph, s, isLocal=true, ideSug, info,
                               s.getQuality, pm, c.inTypeContext > 0, 0))
@@ -302,7 +306,7 @@ proc suggestField(c: PContext, s: PSym; f: PNode; info: TLineInfo; outputs: var 
 template wholeSymTab(cond, section: untyped) {.dirty.} =
   for (item, scopeN, isLocal) in uniqueSyms(c):
     let it = item
-    var pm: PrefixMatch
+    var pm: PrefixMatch = default(PrefixMatch)
     if cond:
       outputs.add(symToSuggest(c.graph, it, isLocal = isLocal, section, info, getQuality(it),
                                 pm, c.inTypeContext > 0, scopeN))
@@ -365,6 +369,8 @@ proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
       if exp.kind == tyVarargs: exp = elemType(exp)
       if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: return
     result = sigmatch.argtypeMatches(c, s.typ[1], firstArg)
+  else:
+    result = false
 
 proc suggestOperations(c: PContext, n, f: PNode, typ: PType, outputs: var Suggestions) =
   assert typ != nil
@@ -374,7 +380,7 @@ proc suggestOperations(c: PContext, n, f: PNode, typ: PType, outputs: var Sugges
 proc suggestEverything(c: PContext, n, f: PNode, outputs: var Suggestions) =
   # do not produce too many symbols:
   for (it, scopeN, isLocal) in uniqueSyms(c):
-    var pm: PrefixMatch
+    var pm: PrefixMatch = default(PrefixMatch)
     if filterSym(it, f, pm):
       outputs.add(symToSuggest(c.graph, it, isLocal = isLocal, ideSug, n.info,
                                it.getQuality, pm, c.inTypeContext > 0, scopeN))
@@ -383,7 +389,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
   # special code that deals with ``myObj.``. `n` is NOT the nkDotExpr-node, but
   # ``myObj``.
   var typ = n.typ
-  var pm: PrefixMatch
+  var pm: PrefixMatch = default(PrefixMatch)
   when defined(nimsuggest):
     if n.kind == nkSym and n.sym.kind == skError and c.config.suggestVersion == 0:
       # consider 'foo.|' where 'foo' is some not imported module.
@@ -440,7 +446,15 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
         if t[0] == nil: break
         t = skipTypes(t[0], skipPtrs)
     elif typ.kind == tyTuple and typ.n != nil:
-      suggestSymList(c, typ.n, field, n.info, outputs)
+      # All tuple fields are in scope
+      # So go through each field and add it to the suggestions (If it passes the filter)
+      for node in typ.n:
+        if node.kind == nkSym:
+          let s = node.sym
+          var pm: PrefixMatch = default(PrefixMatch)
+          if filterSym(s, field, pm):
+            outputs.add(symToSuggest(c.graph, s, isLocal=true, ideSug, n.info,
+                                     s.getQuality, pm, c.inTypeContext > 0, 0))
 
     suggestOperations(c, n, field, orig, outputs)
     if typ != orig:
@@ -452,17 +466,24 @@ type
 
 proc inCheckpoint*(current, trackPos: TLineInfo): TCheckPointResult =
   if current.fileIndex == trackPos.fileIndex:
+    result = cpNone
     if current.line == trackPos.line and
         abs(current.col-trackPos.col) < 4:
       return cpExact
     if current.line >= trackPos.line:
       return cpFuzzy
+  else:
+    result = cpNone
 
 proc isTracked*(current, trackPos: TLineInfo, tokenLen: int): bool =
   if current.fileIndex==trackPos.fileIndex and current.line==trackPos.line:
     let col = trackPos.col
     if col >= current.col and col <= current.col+tokenLen-1:
-      return true
+      result = true
+    else:
+      result = false
+  else:
+    result = false
 
 when defined(nimsuggest):
   # Since TLineInfo defined a == operator that doesn't include the column,
@@ -692,7 +713,7 @@ proc suggestSentinel*(c: PContext) =
   var outputs: Suggestions = @[]
   # suggest everything:
   for (it, scopeN, isLocal) in uniqueSyms(c):
-    var pm: PrefixMatch
+    var pm: PrefixMatch = default(PrefixMatch)
     if filterSymNoOpr(it, nil, pm):
       outputs.add(symToSuggest(c.graph, it, isLocal = isLocal, ideSug,
           newLineInfo(c.config.m.trackPos.fileIndex, 0, -1), it.getQuality,

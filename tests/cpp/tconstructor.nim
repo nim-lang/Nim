@@ -3,6 +3,19 @@ discard """
   cmd: "nim cpp $file"
   output: '''
 1
+0
+123
+0
+123
+___
+0
+777
+10
+123
+0
+777
+10
+123
 '''
 """
 
@@ -53,3 +66,44 @@ proc makeCppClass(): NimClass {. constructor: "NimClass() : CppClass(0, 0) ".} =
 
 let nimClass = makeNimClass(1)
 var nimClassDef {.used.}: NimClass  #since we explictly defined the default constructor we can declare the obj
+
+#bug: 22662
+type
+  BugClass* = object
+    x: int          # Not initialized
+
+proc makeBugClass(): BugClass {.constructor.} =
+  discard
+
+proc main =
+  for i in 0 .. 1:
+    var n = makeBugClass()
+    echo n.x
+    n.x = 123
+    echo n.x
+
+main()
+#bug:
+echo "___"
+type
+  NimClassWithDefault = object
+    x: int
+    y = 777
+    case kind: bool = true
+    of true:
+      z: int = 10
+    else: discard
+
+proc makeNimClassWithDefault(): NimClassWithDefault {.constructor.} =
+  discard
+
+proc init =
+  for i in 0 .. 1:
+    var n = makeNimClassWithDefault()
+    echo n.x
+    echo n.y
+    echo n.z
+    n.x = 123
+    echo n.x
+
+init()

@@ -48,3 +48,35 @@ template publicTemplateObjSyntax*(o: var ObjA, arg: Natural, doStuff: untyped) =
   o.foo2()
   doStuff
   o.bar2(arg)
+
+# issue #15246
+import os
+
+template sourceBaseName*(): string =
+  bind splitFile
+  instantiationInfo().filename.splitFile().name
+
+# issue #12683
+
+import unicode
+template toRune(s: string): Rune = s.runeAt(0)
+proc heh*[T](x: Slice[T], chars: string) = discard chars.toRune
+
+# issue #7889
+
+from streams import newStringStream, readData, writeData
+
+template bindmeTemplate*(): untyped =
+  var tst = "sometext"
+  var ss = newStringStream("anothertext")
+  ss.writeData(tst[0].addr, 2)
+  discard ss.readData(tst[0].addr, 2) # <= comment this out to make compilation successful
+
+from macros import quote, newIdentNode
+
+macro bindmeQuote*(): untyped =
+  quote do:
+    var tst = "sometext"
+    var ss = newStringStream("anothertext")
+    ss.writeData(tst[0].addr, 2)
+    discard ss.readData(tst[0].addr, 2) # <= comment this out to make compilation successful

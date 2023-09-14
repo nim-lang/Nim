@@ -19,13 +19,16 @@ when defined(nimPreviewSlimSystem):
 proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
   case n.kind
   of nkStmtList:
+    result = nil
     for i in 0..<n.len:
       result = getPragmaStmt(n[i], w)
       if result != nil: break
   of nkPragma:
+    result = nil
     for i in 0..<n.len:
       if whichPragma(n[i]) == w: return n[i]
-  else: discard
+  else:
+    result = nil
 
 proc stmtsContainPragma*(n: PNode, w: TSpecialWord): bool =
   result = getPragmaStmt(n, w) != nil

@@ -111,7 +111,7 @@ template addAllNode(assignParam: NimNode, procParam: NimNode) =
 
 macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkCallStrLit}): Task =
   ## Converts the call and its arguments to `Task`.
-  runnableExamples("--gc:orc"):
+  runnableExamples:
     proc hello(a: int) = echo a
 
     let b = toTask hello(13)
@@ -173,7 +173,7 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
         # passing by static parameters
         # so we pass them directly instead of passing by scratchObj
         callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
-      of nnkSym, nnkPtrTy:
+      of nnkSym, nnkPtrTy, nnkProcTy, nnkTupleConstr:
         addAllNode(param, e[i])
       of nnkCharLit..nnkNilLit:
         callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
@@ -259,7 +259,7 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
   when defined(nimTasksDebug):
     echo result.repr
 
-runnableExamples("--gc:orc"):
+runnableExamples:
   block:
     var num = 0
     proc hello(a: int) = inc num, a

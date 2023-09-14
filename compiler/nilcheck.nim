@@ -309,6 +309,7 @@ proc symbol(n: PNode): Symbol =
   # echo "symbol ", n, " ", n.kind, " ", result.int
 
 func `$`(map: NilMap): string =
+  result = ""
   var now = map
   var stack: seq[NilMap] = @[]
   while not now.isNil:
@@ -416,7 +417,7 @@ proc moveOut(ctx: NilCheckerContext, map: NilMap, target: PNode) =
   if targetSetIndex != noSetIndex:
     var targetSet = map.sets[targetSetIndex]
     if targetSet.len > 1:
-      var other: ExprIndex
+      var other: ExprIndex = default(ExprIndex)
 
       for element in targetSet:
         if element.ExprIndex != targetIndex:
@@ -561,7 +562,7 @@ proc derefWarning(n, ctx, map; kind: Nilability) =
   if n.info in ctx.warningLocations:
     return
   ctx.warningLocations.incl(n.info)
-  var a: seq[History]
+  var a: seq[History] = @[]
   if n.kind == nkSym:
     a = history(map, ctx.index(n))
   var res = ""
@@ -765,7 +766,7 @@ proc checkIf(n, ctx, map): Check =
   # the state of the conditions: negating conditions before the current one
   var layerHistory = newNilMap(mapIf)
   # the state after branch effects
-  var afterLayer: NilMap
+  var afterLayer: NilMap = nil
   # the result nilability for expressions
   var nilability = Safe
 
@@ -862,9 +863,10 @@ proc checkInfix(n, ctx, map): Check =
   ##   a or b : map is an union of a and b's
   ##   a == b : use checkCondition
   ##   else: no change, just check args
+  result = default(Check)
   if n[0].kind == nkSym:
-    var mapL: NilMap
-    var mapR: NilMap
+    var mapL: NilMap = nil
+    var mapR: NilMap = nil
     if n[0].sym.magic notin {mAnd, mEqRef}:
       mapL = checkCondition(n[1], ctx, map, false, false)
       mapR = checkCondition(n[2], ctx, map, false, false)
@@ -947,7 +949,7 @@ proc checkCase(n, ctx, map): Check =
   let base = n[0]
   result.map = map.copyMap()
   result.nilability = Safe
-  var a: PNode
+  var a: PNode = nil
   for child in n:
     case child.kind:
     of nkOfBranch:
@@ -1222,7 +1224,7 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
       # TODO deeper nested elements?
       # A(field: B()) #
       # field: Safe ->
-      var elements: seq[(PNode, Nilability)]
+      var elements: seq[(PNode, Nilability)] = @[]
       for i, child in n:
         result = check(child, ctx, result.map)
         if i > 0:
@@ -1333,7 +1335,7 @@ proc preVisit(ctx: NilCheckerContext, s: PSym, body: PNode, conf: ConfigRef) =
   ctx.symbolIndices = {resultId: resultExprIndex}.toTable()
   var cache = newIdentCache()
   ctx.expressions = SeqOfDistinct[ExprIndex, PNode](@[newIdentNode(cache.getIdent("result"), s.ast.info)])
-  var emptySet: IntSet # set[ExprIndex]
+  var emptySet: IntSet = initIntSet() # set[ExprIndex]
   ctx.dependants = SeqOfDistinct[ExprIndex, IntSet](@[emptySet])
   for i, arg in s.typ.n.sons:
     if i > 0:

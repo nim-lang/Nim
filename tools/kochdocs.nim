@@ -167,6 +167,9 @@ pkgs/db_connector/src/db_connector/db_postgres.nim
 pkgs/db_connector/src/db_connector/db_sqlite.nim
 pkgs/checksums/src/checksums/md5.nim
 pkgs/checksums/src/checksums/sha1.nim
+pkgs/checksums/src/checksums/sha2.nim
+pkgs/checksums/src/checksums/sha3.nim
+pkgs/checksums/src/checksums/bcrypt.nim
 """.splitWhitespace()
 
   officialPackagesListWithoutIndex = """

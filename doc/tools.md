@@ -37,7 +37,7 @@ The standard distribution ships with the following tools:
   | `nimpretty`:cmd: is a Nim source code beautifier,
     to format code according to the official style guide.
 
-- | [testament](https://nim-lang.github.io/Nim/testament.html)
+- | [testament](testament.html)
   | `testament`:cmd: is an advanced automatic *unittests runner* for Nim tests,
     is used for the development of Nim itself, offers process isolation for your tests,
     it can generate statistics about test cases, supports multiple targets (C, JS, etc),

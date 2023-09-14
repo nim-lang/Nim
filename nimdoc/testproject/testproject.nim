@@ -400,3 +400,11 @@ type # bug #21483
    MyObject* = object
       someString*: string ## This is a string
       annotated* {.somePragma.}: string ## This is an annotated string
+
+type
+  AnotherObject* = object
+    case x*: bool
+    of true:
+      y*: proc (x: string)
+    of false:
+      hidden: string
