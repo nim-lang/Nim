@@ -323,7 +323,8 @@ when defined(windows) or defined(nimdoc):
 
     CustomRef* = ref CustomObj
 
-    AsyncFD* = distinct int ## AsyncFileDescriptor which enables dealing with the file behind the descriptor in an asynchronous manner.
+    AsyncFD* = distinct int
+      ## A file descriptor which supports asynchronous operations.
 
     PostCallbackData = object
       ioPort: Handle
