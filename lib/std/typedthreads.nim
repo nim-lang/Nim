@@ -164,6 +164,11 @@ when false:
       deallocThreadStorage(t.core)
       t.core = nil
 
+# Forward declar to ensure consistent raises across platforms
+proc createThreadImpl[TArg](t: var Thread[TArg],
+                            tp: proc (arg: TArg) {.thread, nimcall, gcsafe.},
+                            param: TArg) {.raises: [ResourceExhaustedError].}
+
 when hostOS == "windows":
   proc createThreadImpl[TArg](t: var Thread[TArg],
                               tp: proc (arg: TArg) {.thread, nimcall, gcsafe.},
@@ -259,29 +264,28 @@ else:
 proc checkRaises(tp: proc() {.raises: [].}) = discard
 proc checkRaises[TArg](tp: proc(arg: TArg) {.raises: [].}) = discard
 
-proc startThread*[TArg](t: var Thread[TArg],
-                        tp: proc (arg: TArg) {.thread, nimcall, gcsafe, raises: [].},
-                        param: TArg) =
-  createThreadImpl(t, tp, param)
-
-proc startThread*(t: var Thread[void], tp: proc () {.thread, nimcall, gcsafe, raises: [].}) =
-  createThreadImpl[void](t, tp)
-
 template createThread*[TArg](t: var Thread[TArg],
                          tp: proc (arg: TArg) {.thread, nimcall, gcsafe.},
-                         param: TArg) {.deprecated: "startThread".} =
-  ## Uncaught exceptions will cause the application to crash - to avoid this,
-  ## port your code to `startThread` by enveloping it in:
-  ## `try: ... except CatchableError as exc: handleError()` handling the
-  ## exceptions as appropriate.
+                         param: TArg) =
+  ## Creates and starts running `tp` in a separate thread of execution, passing
+  ## to it the given `param`.
+  ##
+  ## Unhandled exceptions raised from the thread procedure will cause the
+  ## application to terminate - annotate it with `{.raises: [].}` to discover
+  ## potential sources of exceptions at compile time
   when not compiles(checkRaises(tp)):
-    {.warning: "Thread procedure may raise exceptions causing the application to crash - annotate with {.raises: [].} to see details".}
+    {.warning: "Given thread procedure may raise exceptions causing the application to terminate if unhandled - annotate `t` with {.raises: [].} to see details".}
 
   createThreadImpl(t, tp, param)
 
-template createThread*(t: var Thread[void], tp: proc () {.thread, nimcall, gcsafe.}) {.deprecated: "startThread".} =
+template createThread*(t: var Thread[void], tp: proc () {.thread, nimcall, gcsafe.}) =
+  ## Creates and starts running `tp` in a separate thread of execution.
+  ##
+  ## Unhandled exceptions raised from the thread procedure will cause the
+  ## application to terminate - annotate it with `{.raises: [].}` to discover
+  ## potential sources of exceptions at compile time
   when not compiles(checkRaises(tp)):
-    {.warning: "Thread procedure may raise exceptions causing the application to crash - annotate with {.raises: [].} to see details".}
+    {.warning: "Given thread procedure may raise exceptions causing the application to terminate if unhandled - annotate with {.raises: [].} to see details".}
 
   createThreadImpl[void](t, tp)
 
