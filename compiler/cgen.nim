@@ -551,7 +551,8 @@ proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
   result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
   if p.module.compileToCpp and isOrHasImportedCppType(t):
-    linefmt(p, cpsLocals, "$1 $2{};$n", [getTypeDesc(p.module, t, dkVar), result.r])
+    linefmt(p, cpsLocals, "$1 $2$3;$n", [getTypeDesc(p.module, t, dkVar), result.r, 
+      genCppInitializer(p.module, p, t)])
   else:
     linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t, dkVar), result.r])
   constructLoc(p, result, not needsInit)
@@ -606,7 +607,10 @@ proc assignLocalVar(p: BProc, n: PNode) =
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
   let nl = if optLineDir in p.config.options: "" else: "\n"
-  let decl = localVarDecl(p, n) & (if p.module.compileToCpp and isOrHasImportedCppType(n.typ): "{};" else: ";") & nl
+  var decl = localVarDecl(p, n) 
+  if p.module.compileToCpp and isOrHasImportedCppType(n.typ): 
+    decl.add genCppInitializer(p.module, p, n.typ)
+  decl.add ";" & nl
   line(p, cpsLocals, decl)
 
 include ccgthreadvars
@@ -640,7 +644,7 @@ proc genGlobalVarDecl(p: BProc, n: PNode; td, value: Rope; decl: var Rope) =
     else:
       decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
 
-proc genCppVarForCtor(p: BProc, v: PSym; vn, value: PNode; decl: var Rope)
+proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope)
 
 proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode) =
   let s = vn.sym
@@ -650,7 +654,7 @@ proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode) =
   let td = getTypeDesc(p.module, vn.sym.typ, dkVar)
   genGlobalVarDecl(p, vn, td, "", decl)
   decl.add " " & $s.loc.r
-  genCppVarForCtor(p, v, vn, value, decl)
+  genCppVarForCtor(p, value, decl)
   p.module.s[cfsVars].add decl
 
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =

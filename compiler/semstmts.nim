@@ -2077,6 +2077,53 @@ proc finishMethod(c: PContext, s: PSym) =
   if hasObjParam(s):
     methodDef(c.graph, c.idgen, s)
 
+proc semCppMember(c: PContext; s: PSym; n: PNode) = 
+  if sfImportc notin s.flags:
+    let isVirtual = sfVirtual in s.flags
+    let isCtor = sfConstructor in s.flags
+    let pragmaName = if isVirtual: "virtual" elif isCtor: "constructor" else: "member"
+    if c.config.backend == backendCpp:
+      if s.typ.len < 2 and not isCtor:
+        localError(c.config, n.info, pragmaName & " must have at least one parameter")
+      for son in s.typ:
+        if son!=nil and son.isMetaType:
+          localError(c.config, n.info, pragmaName & " unsupported for generic routine")
+      var typ: PType
+      if isCtor:
+        typ = s.typ[0]
+        if typ == nil or typ.kind != tyObject:
+          localError(c.config, n.info, "constructor must return an object")
+      else:
+        typ = s.typ[1]
+      if typ.kind == tyPtr and not isCtor:
+        typ = typ[0]
+      if typ.kind != tyObject:
+        localError(c.config, n.info, pragmaName & " must be either ptr to object or object type.")
+      if typ.owner.id == s.owner.id and c.module.id == s.owner.id:
+        c.graph.memberProcsPerType.mgetOrPut(typ.itemId, @[]).add s
+      else:
+        localError(c.config, n.info,
+          pragmaName & " procs must be defined in the same scope as the type they are virtual for and it must be a top level scope")
+    else:
+      localError(c.config, n.info, pragmaName & " procs are only supported in C++")
+  else: 
+    var typ = s.typ[0]
+    if typ != nil and typ.kind == tyObject and typ.itemId notin c.graph.initializersPerType:
+      var initializerCall = newTree(nkCall, newSymNode(s))
+      var isInitializer = n[paramsPos].len > 1
+      for i in  1..<n[paramsPos].len:
+        let p = n[paramsPos][i]
+        let val = p[^1]
+        if val.kind == nkEmpty:
+          isInitializer = false
+          break
+        var j = 0
+        while p[j].sym.kind == skParam:
+          initializerCall.add val
+          inc j
+      if isInitializer:
+        c.graph.initializersPerType[typ.itemId] = initializerCall
+
 proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
   if s.isGenericRoutine:
     let tt = s.typ
@@ -2294,35 +2341,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if sfBorrow in s.flags and c.config.cmd notin cmdDocLike:
     result[bodyPos] = c.graph.emptyNode
 
-  if sfCppMember * s.flags != {} and sfImportc notin s.flags:
-    let isVirtual = sfVirtual in s.flags
-    let isCtor = sfConstructor in s.flags
-    let pragmaName = if isVirtual: "virtual" elif isCtor: "constructor" else: "member"
-    if c.config.backend == backendCpp:
-      if s.typ.len < 2 and not isCtor:
-        localError(c.config, n.info, pragmaName & " must have at least one parameter")
-      for son in s.typ:
-        if son!=nil and son.isMetaType:
-          localError(c.config, n.info, pragmaName & " unsupported for generic routine")
-      var typ: PType
-      if isCtor:
-        typ = s.typ[0]
-        if typ == nil or typ.kind != tyObject:
-          localError(c.config, n.info, "constructor must return an object")
-      else:
-        typ = s.typ[1]
-      if typ.kind == tyPtr and not isCtor:
-        typ = typ[0]
-      if typ.kind != tyObject:
-        localError(c.config, n.info, pragmaName & " must be either ptr to object or object type.")
-      if typ.owner.id == s.owner.id and c.module.id == s.owner.id:
-        c.graph.memberProcsPerType.mgetOrPut(typ.itemId, @[]).add s
-      else:
-        localError(c.config, n.info,
-          pragmaName & " procs must be defined in the same scope as the type they are virtual for and it must be a top level scope")
-    else:
-      localError(c.config, n.info, pragmaName & " procs are only supported in C++")
-
+  if sfCppMember * s.flags != {}:
+    semCppMember(c, s, n)
+          
   if n[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation we allow sfImportc to have a body, for use in VM
     if c.config.ideCmd in {ideSug, ideCon} and s.kind notin {skMacro, skTemplate} and not
