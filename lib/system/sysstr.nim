@@ -333,3 +333,25 @@ proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
       result = s
       zeroMem(dataPointer(result, elemAlign, elemSize, result.len), (newLen-%result.len) *% elemSize)
     result.len = newLen
+
+func capacity*(self: string): int {.inline.} =
+  ## Returns the current capacity of the string.
+  # See https://github.com/nim-lang/RFCs/issues/460
+  runnableExamples:
+    var str = newStringOfCap(cap = 42)
+    str.add "Nim"
+    assert str.capacity == 42
+
+  let str = cast[NimString](self)
+  result = if str != nil: str.reserved else: 0
+
+func capacity*[T](self: seq[T]): int {.inline.} =
+  ## Returns the current capacity of the seq.
+  # See https://github.com/nim-lang/RFCs/issues/460
+  runnableExamples:
+    var lst = newSeqOfCap[string](cap = 42)
+    lst.add "Nim"
+    assert lst.capacity == 42
+
+  let sek = cast[PGenericSeq](self)
+  result = if sek != nil: (sek.reserved and not strlitFlag) else: 0

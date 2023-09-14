@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, hashes, options, ropes, idents, int128, tables
+  lineinfos, hashes, options, ropes, idents, int128, tables, wordrecg
 from strutils import toLowerAscii
 
 when defined(nimPreviewSlimSystem):
@@ -2042,7 +2042,7 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
     result = false
 
 proc isInfixAs*(n: PNode): bool =
-  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "as"
+  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.id == ord(wAs)
 
 proc skipColon*(n: PNode): PNode =
   result = n
