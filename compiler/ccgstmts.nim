@@ -290,14 +290,13 @@ proc potentialValueInit(p: BProc; v: PSym; value: PNode; result: var Rope) =
     genBracedInit(p, value, isConst = false, v.typ, result)
 
 proc genCppParamsForCtor(p: BProc; call: PNode): string = 
-  var params = newRopeAppender()
+  result = ""
   var argsCounter = 0
   let typ = skipTypes(call[0].typ, abstractInst)
   assert(typ.kind == tyProc)
   for i in 1..<call.len:
     assert(typ.len == typ.n.len)
-    genOtherArg(p, call, i, typ, params, argsCounter)
-  params
+    genOtherArg(p, call, i, typ, result, argsCounter)
 
 proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope) =
   let params = genCppParamsForCtor(p, call)
