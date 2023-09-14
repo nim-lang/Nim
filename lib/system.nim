@@ -1044,11 +1044,6 @@ const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
 
-when notJSnotNims and not defined(nimSeqsV2):
-  template space(s: PGenericSeq): int {.dirty.} =
-    bind seqShallowFlag, strlitFlag
-    s.reserved and not (seqShallowFlag or strlitFlag)
-
 when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
   # tcc doesn't support TLS
   {.error: "`--tlsEmulation:on` must be used when using threads with tcc backend".}

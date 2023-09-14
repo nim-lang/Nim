@@ -15,6 +15,8 @@
 # we don't use refcounts because that's a behaviour
 # the programmer may not want
 
+template space(s: PGenericSeq): int =
+  s.reserved and not (seqShallowFlag or strlitFlag)
 
 proc dataPointer(a: PGenericSeq, elemAlign: int): pointer =
   cast[pointer](cast[int](a) +% align(GenericSeqSize, elemAlign))
