@@ -30,7 +30,7 @@
 import tables
 
 import
-  strutils, ast, types, msgs, renderer, vmdef, trees,
+  strutils, ast, types, msgs, renderer, vmdef,
   intsets, magicsys, options, lowerings, lineinfos, transf, astmsgs
 
 from modulegraphs import getBody
@@ -2131,10 +2131,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       genLit(c, n, dest)
     of skConst:
       let constVal = if s.ast != nil: s.ast else: s.typ.n
-      if dontInlineConstant(n, constVal):
-        genLit(c, constVal, dest)
-      else:
-        gen(c, constVal, dest)
+      gen(c, constVal, dest)
     of skEnumField:
       # we never reach this case - as of the time of this comment,
       # skEnumField is folded to an int in semfold.nim, but this code
