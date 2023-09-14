@@ -2405,7 +2405,7 @@ type
 proc makeCppStruct(a:cint = 5, b:cstring = "hello"): CppStruct {.importcpp: "CppStruct(@)", constructor.}
 
 (proc (s:CppStruct) = echo "hello")(makeCppStruct()) 
-#if you remove a default value from the constructor and pass it to the call. The C++ compiler #will complain.
+#if one remove a default value from the constructor and pass it to the call. The C++ compiler will complain.
 
 ```
 
