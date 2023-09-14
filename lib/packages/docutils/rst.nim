@@ -585,6 +585,29 @@ proc rstMessage(p: RstParser, msgKind: MsgKind) =
                              p.col + currentTok(p).col, msgKind,
                              currentTok(p).symbol)
 
+# Functions `isPureRst` & `stopOrWarn` address differences between
+# Markdown and RST:
+# * Markdown always tries to continue working. If it is really impossible
+#   to parse a markup element, its proc just returns `nil` and parsing
+#   continues for it as for normal text paragraph.
+#   The downside is that real mistakes/typos are often silently ignored.
+#   The same applies to legacy `RstMarkdown` mode for nimforum.
+# * RST really signals errors. The downside is that it's more intrusive -
+#   the user must escape special syntax with \ explicitly.
+#
+# TODO: we need to apply this strategy to all markup elements eventually.
+
+func isPureRst(p: RstParser): bool =
+  roSupportMarkdown notin p.s.options
+
+proc stopOrWarn(p: RstParser, errorType: MsgKind, arg: string) =
+  let realMsgKind = if isPureRst(p): errorType else: mwRstStyle
+  rstMessage(p, realMsgKind, arg)
+
+proc stopOrWarn(p: RstParser, errorType: MsgKind, arg: string, line, col: int) =
+  let realMsgKind = if isPureRst(p): errorType else: mwRstStyle
+  rstMessage(p, realMsgKind, arg, line, col)
+
 proc currInd(p: RstParser): int =
   result = p.indentStack[high(p.indentStack)]
 
@@ -2596,11 +2619,11 @@ proc getColumns(p: RstParser, cols: var RstCols, startIdx: int): int =
 proc checkColumns(p: RstParser, cols: RstCols) =
   var i = p.idx
   if p.tok[i].symbol[0] != '=':
-    rstMessage(p, mwRstStyle,
+    stopOrWarn(p, meIllformedTable,
                "only tables with `=` columns specification are allowed")
   for col in 0 ..< cols.len:
     if tokEnd(p, i) != cols[col].stop:
-      rstMessage(p, meIllformedTable,
+      stopOrWarn(p, meIllformedTable,
                  "end of table column #$1 should end at position $2" % [
                    $(col+1), $(cols[col].stop+ColRstOffset)],
                  p.tok[i].line, tokEnd(p, i))
@@ -2609,12 +2632,12 @@ proc checkColumns(p: RstParser, cols: RstCols) =
       if p.tok[i].kind == tkWhite:
         inc i
       if p.tok[i].kind notin {tkIndent, tkEof}:
-        rstMessage(p, meIllformedTable, "extraneous column specification")
+        stopOrWarn(p, meIllformedTable, "extraneous column specification")
     elif p.tok[i].kind == tkWhite:
       inc i
     else:
-      rstMessage(p, meIllformedTable, "no enough table columns",
-                 p.tok[i].line, p.tok[i].col)
+      stopOrWarn(p, meIllformedTable,
+                 "no enough table columns", p.tok[i].line, p.tok[i].col)
 
 proc getSpans(p: RstParser, nextLine: int,
               cols: RstCols, unitedCols: RstCols): seq[int] =
@@ -2669,17 +2692,18 @@ proc parseSimpleTableRow(p: var RstParser, cols: RstCols, colChar: char): PRstNo
       if tokEnd(p) <= colEnd(nCell):
         if tokStart(p) < colStart(nCell):
           if currentTok(p).kind != tkWhite:
-            rstMessage(p, meIllformedTable,
+            stopOrWarn(p, meIllformedTable,
                        "this word crosses table column from the left")
-          else:
-            inc p.idx
+            row[nCell].add(currentTok(p).symbol)
         else:
           row[nCell].add(currentTok(p).symbol)
-          inc p.idx
+        inc p.idx
       else:
         if tokStart(p) < colEnd(nCell) and currentTok(p).kind != tkWhite:
-          rstMessage(p, meIllformedTable,
+          stopOrWarn(p, meIllformedTable,
                      "this word crosses table column from the right")
+          row[nCell].add(currentTok(p).symbol)
+          inc p.idx
         inc nCell
     if currentTok(p).kind == tkIndent: inc p.idx
     if tokEnd(p) <= colEnd(0): break
