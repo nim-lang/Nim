@@ -274,7 +274,7 @@ template createThread*[TArg](t: var Thread[TArg],
   ## application to terminate - annotate it with `{.raises: [].}` to discover
   ## potential sources of exceptions at compile time
   when not compiles(checkRaises(tp)):
-    {.warning: "Given thread procedure may raise exceptions causing the application to terminate if unhandled - annotate `t` with {.raises: [].} to see details".}
+    {.warning: "Given thread procedure may raise exceptions causing the application to terminate if unhandled - annotate `tp` with {.raises: [].} to see details".}
 
   createThreadImpl(t, tp, param)
 
@@ -285,7 +285,7 @@ template createThread*(t: var Thread[void], tp: proc () {.thread, nimcall, gcsaf
   ## application to terminate - annotate it with `{.raises: [].}` to discover
   ## potential sources of exceptions at compile time
   when not compiles(checkRaises(tp)):
-    {.warning: "Given thread procedure may raise exceptions causing the application to terminate if unhandled - annotate with {.raises: [].} to see details".}
+    {.warning: "Given thread procedure may raise exceptions causing the application to terminate if unhandled - annotate `tp` with {.raises: [].} to see details".}
 
   createThreadImpl[void](t, tp)
 
