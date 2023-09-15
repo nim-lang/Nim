@@ -2382,6 +2382,33 @@ In the example above `CppClass` has a deleted default constructor. Notice how by
 
 Notice when calling a constructor in the section of a global variable initialization, it will be called before `NimMain` meaning Nim is not fully initialized.
 
+Constructor Initializer
+=======================
+
+By default Nim initializes `importcpp` types with `{}`. This can be problematic when importing
+types with a deleted default constructor. In order to avoid this, one can specify default values for a constructor by specifying default values for the proc params in the `constructor` proc.
+
+For example:
+
+```nim
+
+{.emit: """/*TYPESECTION*/
+struct CppStruct {
+  CppStruct(int x, char* y): x(x), y(y){}
+  int x;
+  char* y;
+};
+""".}
+type
+  CppStruct {.importcpp, inheritable.} = object
+
+proc makeCppStruct(a: cint = 5, b:cstring = "hello"): CppStruct {.importcpp: "CppStruct(@)", constructor.}
+
+(proc (s: CppStruct) = echo "hello")(makeCppStruct()) 
+# If one removes a default value from the constructor and passes it to the call explicitly, the C++ compiler will complain.
+
+```
+
 Member pragma
 =============
 
