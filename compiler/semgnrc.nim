@@ -456,8 +456,47 @@ proc semGenericStmt(c: PContext, n: PNode,
         of nkIdent: a = n[i]
         else: illFormedAst(n, c.config)
         addDecl(c, newSymS(skUnknown, getIdentNode(c, a), c))
-  of nkObjectTy, nkTupleTy, nkTupleClassTy:
-    discard
+  of nkTupleTy:
+    for i in 0..<n.len:
+      var a = n[i]
+      case a.kind:
+      of nkCommentStmt, nkNilLit, nkSym, nkEmpty: continue
+      of nkIdentDefs:
+        checkMinSonsLen(a, 3, c.config)
+        a[^2] = semGenericStmt(c, a[^2], flags+{withinTypeDesc}, ctx)
+        a[^1] = semGenericStmt(c, a[^1], flags, ctx)
+        for j in 0..<a.len-2:
+          addTempDecl(c, getIdentNode(c, a[j]), skField)
+      else:
+        illFormedAst(a, c.config)
+  of nkObjectTy:
+    if n.len > 0:
+      openScope(c)
+      for i in 0..<n.len:
+        result[i] = semGenericStmt(c, n[i], flags, ctx)
+      closeScope(c)
+  of nkRecList:
+    for i in 0..<n.len:
+      var a = n[i]
+      case a.kind:
+      of nkCommentStmt, nkNilLit, nkSym, nkEmpty: continue
+      of nkIdentDefs:
+        checkMinSonsLen(a, 3, c.config)
+        a[^2] = semGenericStmt(c, a[^2], flags+{withinTypeDesc}, ctx)
+        a[^1] = semGenericStmt(c, a[^1], flags, ctx)
+        for j in 0..<a.len-2:
+          addTempDecl(c, getIdentNode(c, a[j]), skField)
+      of nkRecCase, nkRecWhen:
+        n[i] = semGenericStmt(c, a, flags, ctx)
+      else:
+        illFormedAst(a, c.config)
+  of nkRecCase:
+    checkSonsLen(n[0], 3, c.config)
+    n[0][^2] = semGenericStmt(c, n[0][^2], flags+{withinTypeDesc}, ctx)
+    n[0][^1] = semGenericStmt(c, n[0][^1], flags, ctx)
+    addTempDecl(c, getIdentNode(c, n[0][0]), skField)
+    for i in 1..<n.len:
+      n[i] = semGenericStmt(c, n[i], flags, ctx)
   of nkFormalParams:
     checkMinSonsLen(n, 1, c.config)
     for i in 1..<n.len:
