@@ -2247,18 +2247,50 @@ when notJSnotNims:
   proc rawProc*[T: proc {.closure.} | iterator {.closure.}](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw proc pointer of the closure `x`. This is
     ## useful for interfacing closures with C/C++, hash compuations, etc.
+    ## If `rawEnv(x)` returns `nil`, the proc which the result points to
+    ## takes as many parameters as `x`, but with `{.nimcall.}` as its calling
+    ## convention instead of `{.closure.}`, otherwise it takes one more parameter
+    ## which is a `pointer`, and it still has `{.nimcall.}` as its calling convention.
+    ## To invoke the resulted proc, what this returns has to be casted into a `proc`,
+    ## not a `ptr proc`, and, in a case where `rawEnv(x)` returns non-`nil`,
+    ## the last and additional argument has to be the result of `rawEnv(x)`.
+    ## This is not available for the JS target.
     #[
     The conversion from function pointer to `void*` is a tricky topic, but this
     should work at least for c++ >= c++11, e.g. for `dlsym` support.
     refs: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57869,
     https://stackoverflow.com/questions/14125474/casts-between-pointer-to-function-and-pointer-to-object-in-c-and-c
     ]#
+    runnableExamples:
+      import std/sugar
+
+      proc makeClosure(x: int): (int -> int) =
+        var n = x
+        result = (
+          proc(y: int): int =
+            n += y
+            return n
+        )
+
+      var
+        c1 = makeClosure(10)
+        e = c1.rawEnv()
+        p = c1.rawProc()
+
+      if e.isNil():
+        let c2 = cast[proc(y: int): int {.nimcall.}](p)
+        echo c2(2)
+      else:
+        let c3 = cast[proc(y: int; env: pointer): int {.nimcall.}](p)
+        echo c3(3, e)
+
     {.emit: """
     `result` = (void*)`x`.ClP_0;
     """.}
 
   proc rawEnv*[T: proc {.closure.} | iterator {.closure.}](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw environment pointer of the closure `x`. See also `rawProc`.
+    ## This is not available for the JS target.
     {.emit: """
     `result` = `x`.ClE_0;
     """.}
