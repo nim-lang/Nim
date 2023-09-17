@@ -137,7 +137,7 @@ proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: P
     result = fitNode(c, expectedType, result, n.info)
     if result.kind == nkSym:
       result = semSym(c, result, result.sym, flags)
-  if isSymChoice(result) and efAllowSymChoice notin flags:
+  if isSymChoice(result) and {efAllowSymChoice, efDetermineType} * flags == {}:
     # some contexts might want sym choices preserved for later disambiguation
     # in general though they are ambiguous
     let first = n[0].sym
@@ -1462,7 +1462,7 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
     onUse(n[1].info, s)
     return
 
-  n[0] = semExprWithType(c, n[0], flags+{efDetermineType, efWantIterable})
+  n[0] = semExprWithType(c, n[0], flags+{efDetermineType, efWantIterable, efAllowSymChoice})
   #restoreOldStyleType(n[0])
   var i = considerQuotedIdent(c, n[1], n)
   var ty = n[0].typ
