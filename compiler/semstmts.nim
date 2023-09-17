@@ -2371,7 +2371,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # used for overload resolution (there is no instantiation of the symbol)
         if s.kind notin {skMacro, skTemplate} and s.magic == mNone: paramsTypeCheck(c, s.typ)
         var resultType: PType
-        if sfConstructor in s.flags:
+        if {sfConstructor, sfImportc} * s.flags == { sfConstructor }:
           resultType = makePtrType(c, s.typ[0])
           addThis(c, n, resultType, skProc)
         else:
