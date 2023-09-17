@@ -137,7 +137,7 @@ proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: P
     result = fitNode(c, expectedType, result, n.info)
     if result.kind == nkSym:
       result = semSym(c, result, result.sym, flags)
-  if isSymChoice(result) and {efAllowSymChoice, efDetermineType} * flags == {}:
+  if isSymChoice(result) and efAllowSymChoice notin flags:
     # some contexts might want sym choices preserved for later disambiguation
     # in general though they are ambiguous
     let first = n[0].sym
@@ -1462,6 +1462,7 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
     onUse(n[1].info, s)
     return
 
+  # extra flags since LHS may become a call operand:
   n[0] = semExprWithType(c, n[0], flags+{efDetermineType, efWantIterable, efAllowSymChoice})
   #restoreOldStyleType(n[0])
   var i = considerQuotedIdent(c, n[1], n)
@@ -1716,7 +1717,7 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
   # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
   # nodes?
   let aOrig = nOrig[0]
-  result = newTreeI(nkCall, n.info, setterId, a[0], semExprWithType(c, n[1]))
+  result = newTreeI(nkCall, n.info, setterId, a[0], n[1])
   result.flags.incl nfDotSetter
   let orig = newTreeI(nkCall, n.info, setterId, aOrig[0], nOrig[1])
   result = semOverloadedCallAnalyseEffects(c, result, orig, {})
