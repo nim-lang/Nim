@@ -1712,7 +1712,10 @@ proc addThis(c: PContext, n: PNode, t: PType, owner: TSymKind) =
   n.add newSymNode(c.p.resultSym)
   addParamOrResult(c, c.p.resultSym, owner)
   #resolves nim's obj ctor inside cpp ctors see #22669
-  s.ast = c.semExpr(c, newTree(nkCall, t[0].sym.ast[0]))
+  var typAst = t[0].sym.ast[0]
+  if typAst.kind == nkPragmaExpr:
+    typAst = typAst[0]
+  s.ast = c.semExpr(c, newTree(nkCall, typAst))
 
 proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
   template genResSym(s) =
