@@ -2093,6 +2093,8 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
         typ = s.typ[0]
         if typ == nil or typ.kind != tyObject:
           localError(c.config, n.info, "constructor must return an object")
+        if sfImportc in typ.sym.flags:
+          localError(c.config, n.info, "constructor in an imported type needs importcpp pragma")
       else:
         typ = s.typ[1]
       if typ.kind == tyPtr and not isCtor:
