@@ -1329,7 +1329,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
             def.typ = makeTypeFromExpr(c, def.copyTree)
             break determineType
 
-        def = semExprWithType(c, def, {efDetermineType}, defTyp)
+        def = semExprWithType(c, def, {efDetermineType, efAllowSymChoice}, defTyp)
         if def.referencesAnotherParam(getCurrOwner(c)):
           def.flags.incl nfDefaultRefsParam
 
