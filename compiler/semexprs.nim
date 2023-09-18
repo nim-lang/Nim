@@ -135,8 +135,6 @@ proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: P
   result = n
   if expectedType != nil:
     result = fitNode(c, expectedType, result, n.info)
-    if result.kind == nkSym:
-      result = semSym(c, result, result.sym, flags)
   if isSymChoice(result) and efAllowSymChoice notin flags:
     # some contexts might want sym choices preserved for later disambiguation
     # in general though they are ambiguous
@@ -158,6 +156,8 @@ proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: P
       localError(c.config, n.info, err)
       n.typ = errorType(c)
       result = n
+  if result.kind == nkSym:
+    result = semSym(c, result, result.sym, flags)
 
 proc inlineConst(c: PContext, n: PNode, s: PSym): PNode {.inline.} =
   result = copyTree(s.astdef)
@@ -3060,12 +3060,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       result = semSym(c, n, s, flags)
     if isSymChoice(result):
       result = semSymChoice(c, result, flags, expectedType)
+  of nkClosedSymChoice, nkOpenSymChoice:
+    result = semSymChoice(c, result, flags, expectedType)
   of nkSym:
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, n.sym, flags)
-  of nkClosedSymChoice, nkOpenSymChoice:
-    result = semSymChoice(c, result, flags, expectedType)
   of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:
