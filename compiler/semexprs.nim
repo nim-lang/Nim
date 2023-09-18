@@ -52,7 +52,7 @@ template rejectEmptyNode(n: PNode) =
 proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   rejectEmptyNode(n)
   # same as 'semExprWithType' but doesn't check for proc vars
-  result = semExpr(c, n, flags + {efOperand})
+  result = semExpr(c, n, flags + {efOperand, efAllowSymChoice})
   if result.typ != nil:
     # XXX tyGenericInst here?
     if result.typ.kind == tyProc and hasUnresolvedParams(result, {efOperand}):
@@ -90,42 +90,10 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType 
     # do not produce another redundant error message:
     result = errorNode(c, n)
 
-proc ambiguousSymChoice(c: PContext, orig, n: PNode): PNode =
-  let first = n[0].sym
-  var foundSym: PSym = nil
-  if first.kind == skEnumField and
-      not isAmbiguous(c, first.name, {skEnumField}, foundSym) and
-      foundSym == first:
-    # choose the first resolved enum field, i.e. the latest in scope
-    # to mirror behavior before overloadable enums
-    if hintAmbiguousEnum in c.config.notes:
-      var err = "ambiguous enum field '" & first.name.s &
-        "' assumed to be of type " & typeToString(first.typ) &
-        " -- use one of the following:\n"
-      for child in n:
-        let candidate = child.sym
-        err.add "  " & candidate.owner.name.s & "." & candidate.name.s & "\n"
-      message(c.config, orig.info, hintAmbiguousEnum, err)
-    result = n[0]
-  else:
-    var err = "ambiguous identifier '" & first.name.s &
-      "' -- use one of the following:\n"
-    for child in n:
-      let candidate = child.sym
-      err.add "  " & candidate.owner.name.s & "." & candidate.name.s
-      err.add ": " & typeToString(candidate.typ) & "\n"
-    localError(c.config, orig.info, err)
-    n.typ = errorType(c)
-    result = n
-
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
   result = semExprCheck(c, n, flags-{efTypeAllowed}, expectedType)
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
-  elif (result.typ == nil or result.typ.kind == tyNone) and
-      efTypeAllowed in flags and
-      result.kind == nkClosedSymChoice and result.len > 0:
-    result = ambiguousSymChoice(c, n, result)
   elif result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
@@ -157,6 +125,39 @@ proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
 
 proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   result = symChoice(c, n, s, scClosed)
+
+proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode
+
+proc isSymChoice(n: PNode): bool {.inline.} =
+  result = n.kind in nkSymChoices
+
+proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
+  result = n
+  if expectedType != nil:
+    result = fitNode(c, expectedType, result, n.info)
+  if isSymChoice(result) and efAllowSymChoice notin flags:
+    # some contexts might want sym choices preserved for later disambiguation
+    # in general though they are ambiguous
+    let first = n[0].sym
+    var foundSym: PSym = nil
+    if first.kind == skEnumField and
+        not isAmbiguous(c, first.name, {skEnumField}, foundSym) and
+        foundSym == first:
+      # choose the first resolved enum field, i.e. the latest in scope
+      # to mirror behavior before overloadable enums
+      result = n[0]
+    else:
+      var err = "ambiguous identifier '" & first.name.s &
+        "' -- use one of the following:\n"
+      for child in n:
+        let candidate = child.sym
+        err.add "  " & candidate.owner.name.s & "." & candidate.name.s
+        err.add ": " & typeToString(candidate.typ) & "\n"
+      localError(c.config, n.info, err)
+      n.typ = errorType(c)
+      result = n
+  if result.kind == nkSym:
+    result = semSym(c, result, result.sym, flags)
 
 proc inlineConst(c: PContext, n: PNode, s: PSym): PNode {.inline.} =
   result = copyTree(s.astdef)
@@ -297,9 +298,6 @@ proc isCastable(c: PContext; dst, src: PType, info: TLineInfo): bool =
   if result and src.kind == tyNil:
     return dst.size <= conf.target.ptrSize
 
-proc isSymChoice(n: PNode): bool {.inline.} =
-  result = n.kind in nkSymChoices
-
 proc maybeLiftType(t: var PType, c: PContext, info: TLineInfo) =
   # XXX: liftParamType started to perform addDecl
   # we could do that instead in semTypeNode by snooping for added
@@ -361,10 +359,10 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
   if n[1].kind == nkExprEqExpr and
       targetType.skipTypes(abstractPtrs).kind == tyObject:
     localError(c.config, n.info, "object construction uses ':', not '='")
-  var op = semExprWithType(c, n[1], flags * {efDetermineType})
-  if op.kind == nkClosedSymChoice and op.len > 0 and
-      op[0].sym.kind == skEnumField: # resolves overloadedable enums
-    op = ambiguousSymChoice(c, n, op)
+  var op = semExprWithType(c, n[1], flags * {efDetermineType} + {efAllowSymChoice})
+  if isSymChoice(op) and op[0].sym.kind notin routineKinds:
+    # T(foo) disambiguation syntax only allowed for routines
+    op = semSymChoice(c, op)
   if targetType.kind != tyGenericParam and targetType.isMetaType:
     let final = inferWithMetatype(c, targetType, op, true)
     result.add final
@@ -1057,7 +1055,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     else:
       n[0] = n0
   else:
-    n[0] = semExpr(c, n[0], {efInCall})
+    n[0] = semExpr(c, n[0], {efInCall, efAllowSymChoice})
     let t = n[0].typ
     if t != nil and t.kind in {tyVar, tyLent}:
       n[0] = newDeref(n[0])
@@ -1464,7 +1462,8 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
     onUse(n[1].info, s)
     return
 
-  n[0] = semExprWithType(c, n[0], flags+{efDetermineType, efWantIterable})
+  # extra flags since LHS may become a call operand:
+  n[0] = semExprWithType(c, n[0], flags+{efDetermineType, efWantIterable, efAllowSymChoice})
   #restoreOldStyleType(n[0])
   var i = considerQuotedIdent(c, n[1], n)
   var ty = n[0].typ
@@ -1619,7 +1618,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     return
   checkMinSonsLen(n, 2, c.config)
   # signal that generic parameters may be applied after
-  n[0] = semExprWithType(c, n[0], {efNoEvaluateGeneric})
+  n[0] = semExprWithType(c, n[0], {efNoEvaluateGeneric, efAllowSymChoice})
   var arr = skipTypes(n[0].typ, {tyGenericInst, tyUserTypeClassInst, tyOwned,
                                       tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
   if arr.kind == tyStatic:
@@ -1718,7 +1717,7 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
   # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
   # nodes?
   let aOrig = nOrig[0]
-  result = newTreeI(nkCall, n.info, setterId, a[0], semExprWithType(c, n[1]))
+  result = newTreeI(nkCall, n.info, setterId, a[0], n[1])
   result.flags.incl nfDotSetter
   let orig = newTreeI(nkCall, n.info, setterId, aOrig[0], nOrig[1])
   result = semOverloadedCallAnalyseEffects(c, result, orig, {})
@@ -3059,10 +3058,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       result = enumFieldSymChoice(c, n, s)
     else:
       result = semSym(c, n, s, flags)
-    if expectedType != nil and isSymChoice(result):
-      result = fitNode(c, expectedType, result, n.info)
-      if result.kind == nkSym:
-        result = semSym(c, result, result.sym, flags)
+    if isSymChoice(result):
+      result = semSymChoice(c, result, flags, expectedType)
+  of nkClosedSymChoice, nkOpenSymChoice:
+    result = semSymChoice(c, result, flags, expectedType)
   of nkSym:
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
@@ -3263,10 +3262,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     considerGenSyms(c, n)
   of nkTableConstr:
     result = semTableConstr(c, n, expectedType)
-  of nkClosedSymChoice, nkOpenSymChoice:
-    # handling of sym choices is context dependent
-    # the node is left intact for now
-    discard
   of nkStaticExpr: result = semStaticExpr(c, n[0], expectedType)
   of nkAsgn, nkFastAsgn: result = semAsgn(c, n)
   of nkBlockStmt, nkBlockExpr: result = semBlock(c, n, flags, expectedType)
