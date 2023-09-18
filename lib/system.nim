@@ -2246,7 +2246,7 @@ when notJSnotNims:
 
   proc rawProc*[T: proc {.closure.} | iterator {.closure.}](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw proc pointer of the closure `x`. This is
-    ## useful for interfacing closures with C/C++, hash compuations, etc.
+    ## useful for interfacing closures with C/C++, hash computations, etc.
     ## If `rawEnv(x)` returns `nil`, the proc which the result points to
     ## takes as many parameters as `x`, but with `{.nimcall.}` as its calling
     ## convention instead of `{.closure.}`, otherwise it takes one more parameter
