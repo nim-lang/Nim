@@ -211,4 +211,4 @@ func capacity*(self: string): int {.inline.} =
     assert str.capacity == 42
 
   let str = cast[ptr NimStringV2](unsafeAddr self)
-  result = if str.p != nil: str.p.cap else: 0
+  result = if str.p != nil: str.p.cap and not strlitFlag else: 0

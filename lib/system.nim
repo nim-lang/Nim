@@ -457,10 +457,6 @@ when not defined(js) and not defined(nimSeqsV2):
       data: UncheckedArray[char]
     NimString = ptr NimStringDesc
 
-when notJSnotNims and not defined(nimSeqsV2):
-  template space(s: PGenericSeq): int {.dirty.} =
-    s.reserved and not (seqShallowFlag or strlitFlag)
-
 when notJSnotNims:
   include "system/hti"
 
@@ -1067,6 +1063,10 @@ const
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
+
+when notJSnotNims and not defined(nimSeqsV2):
+  template space(s: PGenericSeq): int =
+    s.reserved and not (seqShallowFlag or strlitFlag)
 
 when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
   # tcc doesn't support TLS
