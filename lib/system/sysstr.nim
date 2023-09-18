@@ -343,7 +343,7 @@ func capacity*(self: string): int {.inline.} =
     assert str.capacity == 42
 
   let str = cast[NimString](self)
-  result = if str != nil: str.reserved else: 0
+  result = if str != nil: str.space else: 0
 
 func capacity*[T](self: seq[T]): int {.inline.} =
   ## Returns the current capacity of the seq.
@@ -354,4 +354,4 @@ func capacity*[T](self: seq[T]): int {.inline.} =
     assert lst.capacity == 42
 
   let sek = cast[PGenericSeq](self)
-  result = if sek != nil: (sek.reserved and not strlitFlag) else: 0
+  result = if sek != nil: sek.space else: 0
