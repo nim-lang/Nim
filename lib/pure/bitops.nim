@@ -65,7 +65,7 @@ type BitsRange*[T] = range[0..sizeof(T)*8-1]
 
 template typeMasked[T: SomeInteger](x: T): T =
   when defined(js):
-    x and ((0xffffffff_ffffffff'u shr (64 - sizeof(T) * 8)))
+    T(x and ((0xffffffff_ffffffff'u shr (64 - sizeof(T) * 8))))
   else:
     x
 
