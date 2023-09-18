@@ -2262,9 +2262,7 @@ when notJSnotNims:
     https://stackoverflow.com/questions/14125474/casts-between-pointer-to-function-and-pointer-to-object-in-c-and-c
     ]#
     runnableExamples:
-      import std/sugar
-
-      proc makeClosure(x: int): (int -> int) =
+      proc makeClosure(x: int): (proc(y: int): int) =
         var n = x
         result = (
           proc(y: int): int =
