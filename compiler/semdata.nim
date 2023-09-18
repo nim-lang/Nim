@@ -76,6 +76,7 @@ type
     efNoDiagnostics,
     efTypeAllowed # typeAllowed will be called after
     efWantNoDefaults
+    efAllowSymChoice # symchoice node should not be resolved
 
   TExprFlags* = set[TExprFlag]
 

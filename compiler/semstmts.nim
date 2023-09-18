@@ -1712,7 +1712,10 @@ proc addThis(c: PContext, n: PNode, t: PType, owner: TSymKind) =
   n.add newSymNode(c.p.resultSym)
   addParamOrResult(c, c.p.resultSym, owner)
   #resolves nim's obj ctor inside cpp ctors see #22669
-  s.ast = c.semExpr(c, newTree(nkCall, t[0].sym.ast[0]))
+  var typAst = t[0].sym.ast[0]
+  if typAst.kind == nkPragmaExpr:
+    typAst = typAst[0]
+  s.ast = c.semExpr(c, newTree(nkCall, typAst))
 
 proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
   template genResSym(s) =
@@ -2093,6 +2096,8 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
         typ = s.typ[0]
         if typ == nil or typ.kind != tyObject:
           localError(c.config, n.info, "constructor must return an object")
+        if sfImportc in typ.sym.flags:
+          localError(c.config, n.info, "constructor in an imported type needs importcpp pragma")
       else:
         typ = s.typ[1]
       if typ.kind == tyPtr and not isCtor:
@@ -2369,7 +2374,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # used for overload resolution (there is no instantiation of the symbol)
         if s.kind notin {skMacro, skTemplate} and s.magic == mNone: paramsTypeCheck(c, s.typ)
         var resultType: PType
-        if sfConstructor in s.flags:
+        if {sfConstructor, sfImportc} * s.flags == {sfConstructor}:
           resultType = makePtrType(c, s.typ[0])
           addThis(c, n, resultType, skProc)
         else:
