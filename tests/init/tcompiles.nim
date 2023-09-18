@@ -62,3 +62,30 @@ block:
       raise newException(ValueError, "unreachable")
 
   discard test(true)
+
+# bug #21615
+# bug #16735
+
+block:
+  type Test {.requiresInit.} = object
+    id: int
+
+  proc bar(): int =
+    raise newException(CatchableError, "error")
+
+  proc test(): Test =
+    raise newException(CatchableError, "")
+
+  template catchError(body) =
+    var done = false
+    try:
+      body
+    except CatchableError:
+      done = true
+    doAssert done
+
+  catchError:
+    echo test()
+
+  catchError:
+    echo bar()
