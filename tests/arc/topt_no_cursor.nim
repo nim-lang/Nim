@@ -113,7 +113,9 @@ block :tmp:
       addInterfaceDecl(c):
         :tmpD = `=dup`(sym)
         :tmpD
+      {.push, overflowChecks: false.}
       inc(i, 1)
+      {.pop.}
 `=destroy`(shadowScope)
 -- end of expandArc ------------------------
 --expandArc: check
