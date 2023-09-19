@@ -411,6 +411,27 @@ block: # Ensure static descriminated objects compile
   discard instance
   discard MyObject[KindC]()
 
+block: # more cases of above, issue #8446
+  type
+    Color = enum
+      red, green, blue
+    Blah[color: static[Color]] = object
+      when color == red:
+        a: string
+      else:
+        b: int
+
+  proc foo(blah: Blah) = discard
+  foo(Blah[red](a: "abc"))
+
+  type
+    Mytype[K: static[int]] = object
+      when K < 16:
+        data: uint8
+      else:
+        data: uint64
+  proc usingMyt(k: Mytype) = discard  # triggers Error: cannot generate code for: K
+
 block: # bug #22600
   proc f(n: static int): int = n * 2 # same for template
 
