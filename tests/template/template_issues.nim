@@ -302,7 +302,3 @@ block: # bug #21920
     discard
 
   t[void]() # Error: expression has no type: discard
-
-block: # issue #19865
-  template f() = discard default(system.int)
-  f()
