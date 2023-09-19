@@ -679,11 +679,22 @@ template main() =
       doAssert b == f2
       doAssert c == f3
 
-  block: # parseEnum TODO: merge above
-    type MyEnum = enum enA, enB, enC, enuD, enE
-    doAssert parseEnum[MyEnum]("enu_D") == enuD
+    block:
+      type MyEnum = enum enA, enB, enC, enuD, enE
+      doAssert parseEnum[MyEnum]("enu_D") == enuD
 
-    doAssert parseEnum("invalid enum value", enC) == enC
+      doAssert parseEnum("invalid enum value", enC) == enC
+    
+    block: # issue #22726
+      type SomeEnum = enum A, B, C
+
+      proc assignEnum(dest: var enum, s: string) =
+        type ty = typeof(dest)
+        dest = parseEnum[ty](s)
+      
+      var v: SomeEnum
+      v.assignEnum("A")
+      doAssert v == A
 
   block: # indentation
     doAssert 0 == indentation """
