@@ -1702,21 +1702,6 @@ proc swapResult(n: PNode, sRes: PSym, dNode: PNode) =
         n[i] = dNode
     swapResult(n[i], sRes, dNode)
 
-
-proc addThis(c: PContext, n: PNode, t: PType, owner: TSymKind) =
-  var s = newSym(skResult, getIdent(c.cache, "this"), c.idgen,
-              getCurrOwner(c), n.info)
-  s.typ = t
-  incl(s.flags, sfUsed)
-  c.p.resultSym = s
-  n.add newSymNode(c.p.resultSym)
-  addParamOrResult(c, c.p.resultSym, owner)
-  #resolves nim's obj ctor inside cpp ctors see #22669
-  var typAst = t[0].sym.ast[0]
-  if typAst.kind == nkPragmaExpr:
-    typAst = typAst[0]
-  s.ast = c.semExpr(c, newTree(nkCall, typAst))
-
 proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
   template genResSym(s) =
     var s = newSym(skResult, getIdent(c.cache, "result"), c.idgen,
@@ -2373,19 +2358,14 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # Macros and Templates can have generic parameters, but they are only
         # used for overload resolution (there is no instantiation of the symbol)
         if s.kind notin {skMacro, skTemplate} and s.magic == mNone: paramsTypeCheck(c, s.typ)
-        var resultType: PType
-        if {sfConstructor, sfImportc} * s.flags == {sfConstructor}:
-          resultType = makePtrType(c, s.typ[0])
-          addThis(c, n, resultType, skProc)
-        else:
-          maybeAddResult(c, s, n)
-          resultType =
-            if s.kind == skMacro:
-              sysTypeFromName(c.graph, n.info, "NimNode")
-            elif not isInlineIterator(s.typ):
-              s.typ[0]
-            else:
-              nil
+        maybeAddResult(c, s, n)
+        let resultType =
+          if s.kind == skMacro:
+            sysTypeFromName(c.graph, n.info, "NimNode")
+          elif not isInlineIterator(s.typ):
+            s.typ[0]
+          else:
+            nil
         # semantic checking also needed with importc in case used in VM
         s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], resultType))
         # unfortunately we cannot skip this step when in 'system.compiles'

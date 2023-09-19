@@ -46,7 +46,7 @@ type NimClassNoNarent* = object
   x: int32
 
 proc makeNimClassNoParent(x:int32): NimClassNoNarent {. constructor.} =
-  this.x = x
+  result.x = x
   discard
 
 let nimClassNoParent = makeNimClassNoParent(1)
@@ -58,11 +58,11 @@ var nimClassNoParentDef {.used.}: NimClassNoNarent  #test has a default construc
 type NimClass* = object of CppClass
 
 proc makeNimClass(x:int32): NimClass {. constructor:"NimClass('1 #1) : CppClass(0, #1) ".} =
-  this.x = x
+  result.x = x
 
 #optinially define the default constructor so we get rid of the cpp warn and we can declare the obj (note: default constructor of 'tyObject_NimClass__apRyyO8cfRsZtsldq1rjKA' is implicitly deleted because base class 'CppClass' has no default constructor)
 proc makeCppClass(): NimClass {. constructor: "NimClass() : CppClass(0, 0) ".} = 
-  this.x = 1
+  result.x = 1
 
 let nimClass = makeNimClass(1)
 var nimClassDef {.used.}: NimClass  #since we explictly defined the default constructor we can declare the obj
@@ -95,7 +95,7 @@ type
     else: discard
 
 proc makeNimClassWithDefault(): NimClassWithDefault {.constructor.} =
-  discard
+  result = NimClassWithDefault()
 
 proc init =
   for i in 0 .. 1:
