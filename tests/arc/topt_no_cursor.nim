@@ -113,7 +113,7 @@ block :tmp:
       addInterfaceDecl(c):
         :tmpD = `=dup`(sym)
         :tmpD
-      inc(i, 1)
+      uncheckedInc(i, 1)
 `=destroy`(shadowScope)
 -- end of expandArc ------------------------
 --expandArc: check
