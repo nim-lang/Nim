@@ -161,4 +161,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimUseStrictDefs")
   defineSymbol("nimHasNolineTooLong")
 
-  defineSymbol("nimHasUnCheckedInc")
+  defineSymbol("nimHasUncheckedInc")
