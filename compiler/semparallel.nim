@@ -278,7 +278,7 @@ proc analyseCall(c: var AnalysisCtx; n: PNode; op: PSym) =
     pushSpawnId(c):
       gatherArgs(c, n[1])
       analyseSons(c, n)
-  elif op.magic == mInc or (op.name.s == "+=" and op.fromSystem):
+  elif op.magic in {mInc, mUncheckedInc} or (op.name.s == "+=" and op.fromSystem):
     if n[1].isLocal:
       let incr = n[2].skipConv
       if incr.kind in {nkCharLit..nkUInt32Lit} and incr.intVal > 0:

@@ -2356,8 +2356,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     else:
       r.res = "($1).length - 1" % [x.rdLoc]
     r.kind = resExpr
-  of mInc:
+  of mInc, mUncheckedInc:
     let typ = n[1].typ.skipTypes(abstractVarRange)
+    let isUnchecked = op == mUncheckedInc
     case typ.kind
     of tyUInt..tyUInt32:
       binaryUintExpr(p, n, r, "+", true)
@@ -2366,11 +2367,11 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
         binaryExpr(p, n, r, "", "$1 = BigInt.asUintN(64, $3 + BigInt($2))", true)
       else: binaryUintExpr(p, n, r, "+", true)
     elif typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
-      if optOverflowCheck notin p.options:
+      if optOverflowCheck notin p.options or isUnchecked:
         binaryExpr(p, n, r, "", "$1 = BigInt.asIntN(64, $3 + BigInt($2))", true)
       else: binaryExpr(p, n, r, "addInt64", "$1 = addInt64($3, BigInt($2))", true)
     else:
-      if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 += $2")
+      if optOverflowCheck notin p.options or isUnchecked: binaryExpr(p, n, r, "", "$1 += $2")
       else: binaryExpr(p, n, r, "addInt", "$1 = addInt($3, $2)", true)
   of ast.mDec:
     let typ = n[1].typ.skipTypes(abstractVarRange)

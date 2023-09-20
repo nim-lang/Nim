@@ -847,7 +847,7 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
   #
   if lhs.kind in nkCallKinds and lhs[0].kind == nkSym:
     case lhs[0].sym.magic
-    of mAddI, mAddU, mInc, mSucc:
+    of mAddI, mAddU, mInc, mSucc, mUncheckedInc:
       if lhs[1].kind == nkIntLit:
         return inferStaticParam(c, lhs[2], rhs - lhs[1].intVal)
       elif lhs[2].kind == nkIntLit:

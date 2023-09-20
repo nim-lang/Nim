@@ -722,13 +722,15 @@ type
     mInstantiationInfo, mGetTypeInfo, mGetTypeInfoV2,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mGenericDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf, mNodeId, mPrivateAccess, mZeroDefault
+    mSymIsInstantiationOf, mNodeId, mPrivateAccess, mZeroDefault,
+
+    mUncheckedInc
 
 
 const
   # things that we can evaluate safely at compile time, even if not asked for it:
   ctfeWhitelist* = {mNone, mSucc,
-    mPred, mInc, mDec, mOrd, mLengthOpenArray,
+    mPred, mInc, mDec, mUncheckedInc, mOrd, mLengthOpenArray,
     mLengthStr, mLengthArray, mLengthSeq,
     mArrGet, mArrPut, mAsgn, mDestroy,
     mIncl, mExcl, mCard, mChr,

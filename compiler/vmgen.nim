@@ -1056,15 +1056,16 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.genAddSubInt(n, dest, opcSubInt)
   of mSucc, mAddI:
     c.genAddSubInt(n, dest, opcAddInt)
-  of mInc, mDec:
+  of mInc, mDec, mUncheckedInc:
     unused(c, n, dest)
     let isUnsigned = n[1].typ.skipTypes(abstractVarRange).kind in {tyUInt..tyUInt64}
-    let opc = if not isUnsigned:
+    let isUnchecked = isUnsigned or m == mUncheckedInc
+    let opc = if not isUnchecked:
                 if m == mInc: opcAddInt else: opcSubInt
               else:
-                if m == mInc: opcAddu else: opcSubu
+                if m in {mInc, mUncheckedInc}: opcAddu else: opcSubu
     let d = c.genx(n[1])
-    if n[2].isInt8Lit and not isUnsigned:
+    if n[2].isInt8Lit and not isUnchecked:
       c.gABI(n, succ(opc), d, d, n[2].intVal)
     else:
       let tmp = c.genx(n[2])

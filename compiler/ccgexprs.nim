@@ -2440,7 +2440,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
 
       putIntoDest(p, a, e[1], "($#)($#)" % [
         getTypeDesc(p.module, ranged), res])
-
+  of mUncheckedInc:
+    binaryStmt(p, e, d, "+=")
   of mConStrStr: genStrConcat(p, e, d)
   of mAppendStrCh:
     if optSeqDestructors in p.config.globalOptions:

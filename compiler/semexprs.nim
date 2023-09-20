@@ -814,7 +814,7 @@ proc analyseIfAddressTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
 proc analyseIfAddressTakenInCall(c: PContext, n: PNode, isConverter = false) =
   checkMinSonsLen(n, 1, c.config)
   const
-    FakeVarParams = {mNew, mNewFinalize, mInc, ast.mDec, mIncl, mExcl,
+    FakeVarParams = {mNew, mNewFinalize, mInc, ast.mDec, mUncheckedInc, mIncl, mExcl,
       mSetLengthStr, mSetLengthSeq, mAppendStrCh, mAppendStrStr, mSwap,
       mAppendSeqElem, mNewSeq, mReset, mShallowCopy, mDeepCopy, mMove,
       mWasMoved}
