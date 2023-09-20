@@ -1489,7 +1489,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
     if sfExportc in s.flags:
       if s.typ.kind == tyAlias:
         localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
-      if s.typ.kind == tyGenericBody:
+      elif s.typ.kind == tyGenericBody:
         localError(c.config, name.info, "{.exportc.} not allowed for generic types")
     
     if tfBorrowDot in s.typ.flags:
