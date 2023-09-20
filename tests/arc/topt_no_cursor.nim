@@ -91,7 +91,7 @@ try:
             `=copy`(lan_ip, splitted[1])
           echo [lan_ip]
           echo [splitted[1]]
-          inc(i, 1)
+          uncheckedInc(i, 1)
         finally:
           `=destroy`(splitted)
 finally:
