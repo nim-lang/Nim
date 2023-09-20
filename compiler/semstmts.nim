@@ -1486,9 +1486,12 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # final pass
       if a[2].kind in nkCallKinds:
         incl a[2].flags, nfSem # bug #10548
-    if sfExportc in s.flags and s.typ.kind == tyAlias:
-      localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
-
+    if sfExportc in s.flags:
+      if s.typ.kind == tyAlias:
+        localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
+      elif s.typ.kind == tyGenericBody:
+        localError(c.config, name.info, "{.exportc.} not allowed for generic types")
+    
     if tfBorrowDot in s.typ.flags:
       let body = s.typ.skipTypes({tyGenericBody})
       if body.kind != tyDistinct:
