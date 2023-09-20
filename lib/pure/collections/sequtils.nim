@@ -154,7 +154,7 @@ func addUnique*[T](s: var seq[T], x: sink T) =
   s.add move(x)
 
 func addUnique*[T](s: var seq[T], xs: sink seq[T]) =
-  ## Adds any items from `x` to the container `s` that are not already present.
+  ## Adds any items from `xs` to the container `s` that are not already present.
   ## Uses `==` to check if the item is already present.
   runnableExamples:
     var a = @[1, 2, 3]
