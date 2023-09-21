@@ -16,7 +16,9 @@ jobs:
         nim-version: 'devel'
 
     - name: Install Dependencies
-      run: sudo apt-get install --no-install-recommends -yq valgrind
+      run: |
+        sudo apt-get -yq update
+        sudo apt-get install --no-install-recommends -yq valgrind
 
     - uses: juancarlospaco/nimrun-action@nim
       with:

@@ -783,7 +783,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if conf.backend == backendJs or conf.cmd == cmdNimscript: discard
     else: processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
     #if optThreads in conf.globalOptions: conf.setNote(warnGcUnsafe)
-  of "tlsemulation": processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
+  of "tlsemulation": 
+    processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
+    if optTlsEmulation in conf.globalOptions:
+      conf.legacyFeatures.incl emitGenerics
   of "implicitstatic":
     processOnOffSwitch(conf, {optImplicitStatic}, arg, pass, info)
   of "patterns", "trmacros":

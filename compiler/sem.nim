@@ -19,7 +19,8 @@ import
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, strtabs, int128,
-  isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs
+  isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs,
+  extccomp
 
 
 when not defined(leanCompiler):
@@ -328,16 +329,6 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}; expectedType: PType = nil): PNode
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}; expectedType: PType = nil): PNode
-
-proc symFromType(c: PContext; t: PType, info: TLineInfo): PSym =
-  if t.sym != nil: return t.sym
-  result = newSym(skType, getIdent(c.cache, "AnonType"), c.idgen, t.owner, info)
-  result.flags.incl sfAnon
-  result.typ = t
-
-proc symNodeFromType(c: PContext, t: PType, info: TLineInfo): PNode =
-  result = newSymNode(symFromType(c, t, info), info)
-  result.typ = makeTypeDesc(c, t)
 
 when false:
   proc createEvalContext(c: PContext, mode: TEvalMode): PEvalContext =

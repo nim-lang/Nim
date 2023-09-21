@@ -1556,7 +1556,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
        strictDefs in c.features) and
      s.kind in {skProc, skFunc, skConverter, skMethod} and s.magic == mNone:
     var res = s.ast[resultPos].sym # get result symbol
-    if res.id notin t.init:
+    if res.id notin t.init and breaksBlock(body) != bsNoReturn:
       if tfRequiresInit in s.typ[0].flags:
         localError(g.config, body.info, "'$1' requires explicit initialization" % "result")
       else:

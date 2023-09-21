@@ -79,7 +79,8 @@ type
     procInstCache*: Table[ItemId, seq[LazyInstantiation]] # A symbol's ItemId.
     attachedOps*: array[TTypeAttachedOp, Table[ItemId, LazySym]] # Type ID, destructors, etc.
     methodsPerType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
-    memberProcsPerType*: Table[ItemId, seq[PSym]] # Type ID, attached member procs (only c++, virtual and ctor so far)
+    memberProcsPerType*: Table[ItemId, seq[PSym]] # Type ID, attached member procs (only c++, virtual,member and ctor so far).
+    initializersPerType*: Table[ItemId, PNode] # Type ID, AST call to the default ctor (c++ only)
     enumToStringProcs*: Table[ItemId, LazySym]
     emittedTypeInfo*: Table[string, FileIndex]
 

@@ -289,14 +289,17 @@ proc potentialValueInit(p: BProc; v: PSym; value: PNode; result: var Rope) =
     #echo "New code produced for ", v.name.s, " ", p.config $ value.info
     genBracedInit(p, value, isConst = false, v.typ, result)
 
-proc genCppVarForCtor(p: BProc, v: PSym; vn, value: PNode; decl: var Rope) =
-  var params = newRopeAppender()
+proc genCppParamsForCtor(p: BProc; call: PNode): string = 
+  result = ""
   var argsCounter = 0
-  let typ = skipTypes(value[0].typ, abstractInst)
+  let typ = skipTypes(call[0].typ, abstractInst)
   assert(typ.kind == tyProc)
-  for i in 1..<value.len:
+  for i in 1..<call.len:
     assert(typ.len == typ.n.len)
-    genOtherArg(p, value, i, typ, params, argsCounter)
+    genOtherArg(p, call, i, typ, result, argsCounter)
+
+proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope) =
+  let params = genCppParamsForCtor(p, call)
   if params.len == 0:
     decl = runtimeFormat("$#;\n", [decl])
   else:
@@ -358,7 +361,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
       var decl = localVarDecl(p, vn)
       var tmp: TLoc
       if isCppCtorCall:
-        genCppVarForCtor(p, v, vn, value, decl)
+        genCppVarForCtor(p, value, decl)
         line(p, cpsStmts, decl)
       else:
         tmp = initLocExprSingleUse(p, value)

@@ -1313,7 +1313,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if a.kind == nkSym and a.sym.kind in skProcKinds and
          b.kind == nkSym and b.sym.kind in skProcKinds:
         regs[ra].intVal =
-          if sfFromGeneric in a.sym.flags and a.sym.owner == b.sym: 1
+          if sfFromGeneric in a.sym.flags and a.sym.instantiatedFrom == b.sym: 1
           else: 0
       else:
         stackTrace(c, tos, pc, "node is not a proc symbol")
