@@ -151,7 +151,7 @@ func addUnique*[T](s: var seq[T], x: sink T) =
 
   for i in 0..high(s):
     if s[i] == x: return
-  s.add move(x)
+  s.add ensureMove(x)
 
 func addUnique*[T](s: var seq[T], xs: sink seq[T]) =
   ## Adds any items from `xs` to the container `s` that are not already present.
