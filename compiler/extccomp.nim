@@ -33,6 +33,7 @@ type
     hasGnuAsm,                # CC's asm uses the absurd GNU assembler syntax
     hasDeclspec,              # CC has __declspec(X)
     hasAttribute,             # CC has __attribute__((X))
+    hasBuiltinUnreachable     # CC has __builtin_unreachable
   TInfoCCProps* = set[TInfoCCProp]
   TInfoCC* = tuple[
     name: string,        # the short name of the compiler
@@ -95,7 +96,7 @@ compiler gcc:
     produceAsm: gnuAsmListing,
     cppXsupport: "-std=gnu++17 -funsigned-char",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
-            hasAttribute})
+            hasAttribute, hasBuiltinUnreachable})
 
 # GNU C and C++ Compiler
 compiler nintendoSwitchGCC:
@@ -122,7 +123,7 @@ compiler nintendoSwitchGCC:
     produceAsm: gnuAsmListing,
     cppXsupport: "-std=gnu++17 -funsigned-char",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
-            hasAttribute})
+            hasAttribute, hasBuiltinUnreachable})
 
 # LLVM Frontend for GCC/G++
 compiler llvmGcc:
