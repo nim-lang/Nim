@@ -627,7 +627,7 @@ proc newSeq*[T](len = 0.Natural): seq[T] =
   ##
   ## See also:
   ## * `newSeqOfCap <#newSeqOfCap,Natural>`_
-  ## * `newSeqUninitialized <#newSeqUninitialized,Natural>`_
+  ## * `newSeqUninit <#newSeqUninit,Natural>`_
   newSeq(result, len)
 
 proc newSeqOfCap*[T](cap: Natural): seq[T] {.
@@ -1606,12 +1606,22 @@ when not defined(js) and defined(nimV2):
       flags: int
     PNimTypeV2 = ptr TNimTypeV2
 
+proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
+
 when notJSnotNims and defined(nimSeqsV2):
   include "system/strs_v2"
   include "system/seqs_v2"
 
 when not defined(js):
-  proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
+  template newSeqImpl(T, len) =
+    result = newSeqOfCap[T](len)
+    when defined(nimSeqsV2):
+      cast[ptr int](addr result)[] = len
+    else:
+      var s = cast[PGenericSeq](result)
+      s.len = len
+
+  proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] {.deprecated: "Use `newSeqUninit` instead".} =
     ## Creates a new sequence of type `seq[T]` with length `len`.
     ##
     ## Only available for numbers types. Note that the sequence will be
@@ -1629,6 +1639,23 @@ when not defined(js):
     else:
       var s = cast[PGenericSeq](result)
       s.len = len
+
+  proc newSeqUninit*[T](len: Natural): seq[T] =
+    ## Creates a new sequence of type `seq[T]` with length `len`.
+    ##
+    ## Only available for types, which don't contain
+    ## managed memory or have destructors.
+    ## Note that the sequence will be uninitialized.
+    ## After the creation of the sequence you should assign
+    ## entries to the sequence instead of adding them.
+    runnableExamples:
+      var x = newSeqUninit[int](3)
+      assert len(x) == 3
+      x[0] = 10
+    when supportsCopyMem(T):
+      newSeqImpl(T, len)
+    else:
+      {.error: "The type T cannot contain managed memory or have destructors".}
 
   proc newStringUninit*(len: Natural): string =
     ## Returns a new string of length `len` but with uninitialized

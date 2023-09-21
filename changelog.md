@@ -16,6 +16,7 @@
 
 [//]: # "Deprecations:"
 
+- Deprecates `system.newSeqUninitialized`, which is replaced by `newSeqUninit`.
 
 [//]: # "Removals:"
 
