@@ -1841,6 +1841,9 @@ when defined(js) or defined(nimdoc):
         tmp.add(cstring("cd"))
         doAssert tmp == cstring("abcd")
 
+  proc newStringUninit*(len: Natural): string {.
+    magic: "NewString", importc: "mnewString", noSideEffect.}
+
 elif hasAlloc:
   {.push stackTrace: off, profiler: off.}
   proc add*(x: var string, y: cstring) =
