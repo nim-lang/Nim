@@ -1643,6 +1643,9 @@ when not defined(js):
     else:
       var s = cast[PGenericSeq](result)
       s.len = len
+else:
+  proc newStringUninit*(len: Natural): string {.
+    magic: "NewString", importc: "mnewString", noSideEffect.}
 
 {.pop.}
 
@@ -1840,9 +1843,6 @@ when defined(js) or defined(nimdoc):
         tmp.add(cstring("ab"))
         tmp.add(cstring("cd"))
         doAssert tmp == cstring("abcd")
-
-  proc newStringUninit*(len: Natural): string {.
-    magic: "NewString", importc: "mnewString", noSideEffect.}
 
 elif hasAlloc:
   {.push stackTrace: off, profiler: off.}
