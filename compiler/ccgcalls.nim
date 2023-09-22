@@ -135,8 +135,8 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         var list = initLoc(locCall, d.lode, OnUnknown)
         list.r = pl
         genAssignment(p, tmp, list, {}) # no need for deep copying
-        if canRaise: raiseExit(p)
         genAssignment(p, d, tmp, {})
+        if canRaise: raiseExit(p)
   else:
     pl.add(");\n")
     line(p, cpsStmts, pl)
