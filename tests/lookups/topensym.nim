@@ -16,7 +16,7 @@ block: # issue #22605, normal call syntax
 
   doAssert g(int) == "good"
 
-block: # issu #22605, method call syntax
+block: # issue #22605, method call syntax
   const error = "bad"
 
   template valueOr(self: int, def: untyped): untyped =
@@ -33,19 +33,6 @@ block: # issu #22605, method call syntax
     "ok"
 
   doAssert g(int) == "good"
-
-block: # issue #22605, template case
-  template valueOr(self, def: untyped): untyped =
-    block:
-      template error: untyped {.used, inject.} = "good"
-      def
-
-  const error = "bad"
-  template g: untyped =
-    let x = 123.valueOr:
-      $error
-    x
-  doAssert g == "good"
 
 block: # issue #22605, original complex example
   type Xxx = enum

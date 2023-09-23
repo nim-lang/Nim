@@ -140,7 +140,7 @@ proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: P
     # some contexts might want sym choices preserved for later disambiguation
     # in general though they are ambiguous
     let first = n[0]
-    if nfPreferredSym in first.flags:
+    if result.len == 1 or nfPreferredSym in first.flags:
       result = first
     else:
       var err = "ambiguous identifier '" & first.sym.name.s &

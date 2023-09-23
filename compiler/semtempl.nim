@@ -76,11 +76,9 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
         markUsed(c, info, s)
         onUse(info, s)
       else:
-        if s.kind in routineKinds:
-          result.flags.incl nfPreferredSym
-        else:
-          result.flags.incl nfOpenSym
-          result.typ = nil
+        # could maybe instead generate a open symchoice with a preferred sym,
+        # which the logic for is in the top else branch
+        result.flags.incl nfPreferredSym
         incl(s.flags, sfUsed)
         markOwnerModuleAsUsed(c, s)
     else:
@@ -256,24 +254,15 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
       result.typ = nil
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
-    else:
-      result = newSymNodeTypeDesc(s, c.idgen, n.info)
-      result.flags.incl nfOpenSym
-      result.typ = nil
+    else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   of skParam:
     result = n
   of skType:
     if isField and sfGenSym in s.flags: result = n
-    else:
-      result = newSymNodeTypeDesc(s, c.idgen, n.info)
-      result.flags.incl nfOpenSym
-      result.typ = nil
+    else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   else:
     if isField and sfGenSym in s.flags: result = n
-    else:
-      result = newSymNode(s, n.info)
-      result.flags.incl nfOpenSym
-      result.typ = nil
+    else: result = newSymNode(s, n.info)
     # Issue #12832
     when defined(nimsuggest):
       suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
