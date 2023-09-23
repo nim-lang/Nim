@@ -1637,16 +1637,19 @@ when not defined(js):
     ##
     ## This procedure exists only for optimization purposes;
     ## the same effect can be achieved with the `&` operator or with `add`.
-    result = newStringOfCap(len)
-    when defined(nimSeqsV2):
-      let s = cast[ptr NimStringV2](addr result)
-      if len > 0:
-        s.len = len
-        s.p.data[len] = '\0'
+    when nimvm:
+      result = newString(len)
     else:
-      let s = cast[NimString](result)
-      s.len = len
-      s.data[len] = '\0'
+      result = newStringOfCap(len)
+      when defined(nimSeqsV2):
+        let s = cast[ptr NimStringV2](addr result)
+        if len > 0:
+          s.len = len
+          s.p.data[len] = '\0'
+      else:
+        let s = cast[NimString](result)
+        s.len = len
+        s.data[len] = '\0'
 else:
   proc newStringUninit*(len: Natural): string {.
     magic: "NewString", importc: "mnewString", noSideEffect.}
