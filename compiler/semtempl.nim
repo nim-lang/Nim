@@ -52,13 +52,17 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
                isField = false): PNode =
   var
     a: PSym
-    o: TOverloadIter
+    o: TOverloadIter = default(TOverloadIter)
+    firstPreferred = true
   var i = 0
   a = initOverloadIter(o, c, n)
+  let firstScope = lastOverloadScope(o)
   while a != nil:
     if a.kind != skModule:
       inc(i)
-      if i > 1: break
+      if i > 1:
+        firstPreferred = firstScope > lastOverloadScope(o)
+        break
     a = nextOverloadIter(o, c, n)
   let info = getCallLineInfo(n)
   if i <= 1 and r != scForceOpen:
@@ -67,11 +71,18 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     if not isField or sfGenSym notin s.flags:
       result = newSymNode(s, info)
-      if r in {scOpen, scForceOpen}:
-        result.flags.incl nfOpenSym
-        result.typ = nil
-      markUsed(c, info, s)
-      onUse(info, s)
+      if r == scClosed or n.kind == nkDotExpr or
+          (s.magic != mNone and s.kind in routineKinds):
+        markUsed(c, info, s)
+        onUse(info, s)
+      else:
+        if s.kind in routineKinds:
+          result.flags.incl nfPreferredSym
+        else:
+          result.flags.incl nfOpenSym
+          result.typ = nil
+        incl(s.flags, sfUsed)
+        markOwnerModuleAsUsed(c, s)
     else:
       result = n
   elif i == 0:
@@ -91,6 +102,8 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
         result.add newSymNode(a, info)
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
+    if firstPreferred:
+      result[0].flags.incl nfPreferredSym
 
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
   result = copyNode(n)
@@ -574,15 +587,6 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       inc c.noGenSym
       result[1] = semTemplBody(c, n[1])
       dec c.noGenSym
-      if false and result[1].kind == nkSym and result[1].sym.kind in routineKinds and
-          nfOpenSym notin result[1].flags:
-        # prevent `dotTransformation` from rewriting this node to `nkIdent`
-        # by making it a symchoice
-        # in generics this becomes `nkClosedSymChoice` but this breaks code
-        # as the old behavior here was that this became `nkIdent`
-        var choice = newNodeIT(nkOpenSymChoice, n[1].info, newTypeS(tyNone, c.c))
-        choice.add result[1]
-        result[1] = choice
     else:
       result = semTemplBodySons(c, n)
   of nkExprColonExpr, nkExprEqExpr:

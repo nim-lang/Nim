@@ -55,16 +55,16 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags + {efOperand, efAllowSymChoice})
   if result.typ != nil:
     # XXX tyGenericInst here?
-    #if result.typ.kind == tyProc and hasUnresolvedParams(result, {efOperand}):
-    #  #and tfUnresolved in result.typ.flags:
-    #  let owner = result.typ.owner
-    #  let err =
-    #    # consistent error message with evaltempl/semMacroExpr
-    #    if owner != nil and owner.kind in {skTemplate, skMacro}:
-    #      errMissingGenericParamsForTemplate % n.renderTree
-    #    else:
-    #      errProcHasNoConcreteType % n.renderTree
-    #  localError(c.config, n.info, err)
+    if result.typ.kind == tyProc and hasUnresolvedParams(result, {efOperand}):
+      #and tfUnresolved in result.typ.flags:
+      let owner = result.typ.owner
+      let err =
+        # consistent error message with evaltempl/semMacroExpr
+        if owner != nil and owner.kind in {skTemplate, skMacro}:
+          errMissingGenericParamsForTemplate % n.renderTree
+        else:
+          errProcHasNoConcreteType % n.renderTree
+      localError(c.config, n.info, err)
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
   elif {efWantStmt, efAllowStmt} * flags != {}:
     result.typ = newTypeS(tyVoid, c)
@@ -139,16 +139,11 @@ proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: P
   if isSymChoice(result) and efAllowSymChoice notin flags:
     # some contexts might want sym choices preserved for later disambiguation
     # in general though they are ambiguous
-    let first = n[0].sym
-    var foundSym: PSym = nil
-    if first.kind == skEnumField and
-        not isAmbiguous(c, first.name, {skEnumField}, foundSym) and
-        foundSym == first:
-      # choose the first resolved enum field, i.e. the latest in scope
-      # to mirror behavior before overloadable enums
-      result = n[0]
+    let first = n[0]
+    if nfPreferredSym in first.flags:
+      result = first
     else:
-      var err = "ambiguous identifier '" & first.name.s &
+      var err = "ambiguous identifier '" & first.sym.name.s &
         "' -- use one of the following:\n"
       for child in n:
         let candidate = child.sym
@@ -1026,7 +1021,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
   of skMacro: result = semMacroExpr(c, result, orig, callee, flags, expectedType)
   of skTemplate: result = semTemplateExpr(c, result, callee, flags, expectedType)
   else:
-    if callee.magic == mNone:
+    if callee.magic notin {mArrGet, mArrPut, mNBindSym}:
       semFinishOperands(c, result)
     activate(c, result)
     fixAbstractType(c, result)
@@ -1287,12 +1282,6 @@ proc readTypeParameter(c: PContext, typ: PType,
 proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   result = nil
   assert n.kind in nkIdentKinds + {nkDotExpr}
-  if n.kind == nkSym and nfOpenSym in n.flags:
-    let id = newIdentNode(n.sym.name, n.info)
-    c.isAmbiguous = false
-    let s2 = qualifiedLookUp(c, id, {})
-    if s2 != nil and s2 != sym and not c.isAmbiguous:
-      return semSym(c, id, s2, flags)
   let s = getGenSym(c, sym)
   case s.kind
   of skConst:
@@ -2961,13 +2950,17 @@ proc getNilType(c: PContext): PType =
     c.nilTypeCache = result
 
 proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
-  var o: TOverloadIter
+  var o: TOverloadIter = default(TOverloadIter)
+  var firstPreferred = true
   var i = 0
   var a = initOverloadIter(o, c, n)
+  let firstScope = lastOverloadScope(o)
   while a != nil:
     if a.kind == skEnumField:
       inc(i)
-      if i > 1: break
+      if i > 1:
+        firstPreferred = firstScope > lastOverloadScope(o)
+        break
     a = nextOverloadIter(o, c, n)
   let info = getCallLineInfo(n)
   if i <= 1:
@@ -2987,6 +2980,8 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
         result.add newSymNode(a, info)
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
+    if firstPreferred:
+      result[0].flags.incl nfPreferredSym
 
 proc semPragmaStmt(c: PContext; n: PNode) =
   if c.p.owner.kind == skModule:
@@ -3071,9 +3066,17 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkClosedSymChoice, nkOpenSymChoice:
     result = semSymChoice(c, result, flags, expectedType)
   of nkSym:
+    let s = n.sym
+    if nfOpenSym in n.flags:
+      let id = newIdentNode(s.name, n.info)
+      c.isAmbiguous = false
+      let s2 = qualifiedLookUp(c, id, {})
+      if s2 != nil and s2 != s and not c.isAmbiguous:
+        result = semExpr(c, id, flags, expectedType)
+        return
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
-    result = semSym(c, n, n.sym, flags)
+    result = semSym(c, n, s, flags)
   of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:

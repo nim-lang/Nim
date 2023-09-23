@@ -21,3 +21,8 @@ proc foo2(arg: string): string =
 
 template myTemplate2*(): string =
   foo2(bar)
+
+proc overloadToPrefer(x: int): int = x + 1
+
+template singleOverload*: untyped =
+  (overloadToPrefer(123), overloadToPrefer("abc"))

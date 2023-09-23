@@ -244,7 +244,6 @@ template get(t, key): untyped =
     raiseKeyError(key)
 
 proc enlarge[A, B](t: var Table[A, B]) =
-  bind nextTry
   var n: KeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   swap(t.data, n)
@@ -797,7 +796,6 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B {.deprecated:
     for i in 1..3: a.add('z', 10*i)
     doAssert toSeq(a.pairs).sorted == @[('a', 3), ('b', 5), ('z', 10), ('z', 20), ('z', 30)]
     doAssert sorted(toSeq(a.allValues('z'))) == @[10, 20, 30]
-  bind nextTry
   var h: Hash = genHash(key) and high(t.data)
   let L = len(t)
   while isFilled(t.data[h].hcode):
@@ -1283,7 +1281,6 @@ proc rawInsert[A, B](t: var OrderedTable[A, B],
   t.last = h
 
 proc enlarge[A, B](t: var OrderedTable[A, B]) =
-  bind nextTry
   var n: OrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   var h = t.first
@@ -2252,7 +2249,6 @@ type
 
 proc ctRawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
                   key: A, val: int) =
-  bind nextTry
   var h: Hash = hash(key) and high(data)
   while data[h].val != 0: h = nextTry(h, high(data))
   data[h].key = key
@@ -2266,7 +2262,6 @@ proc enlarge[A](t: var CountTable[A]) =
   swap(t.data, n)
 
 proc rawGet[A](t: CountTable[A], key: A): int =
-  bind nextTry
   if t.data.len == 0:
     return -1
   var h: Hash = hash(key) and high(t.data) # start with real hash value

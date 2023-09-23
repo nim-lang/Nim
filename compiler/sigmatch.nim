@@ -2351,6 +2351,10 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       # See tsymchoice_for_expr as an example. 'f.kind == tyUntyped' should match
       # anyway:
       if f.kind in {tyUntyped, tyTyped}: result = arg
+      elif nfPreferredSym in arg[0].flags:
+        markUsed(m.c, arg.info, arg[0].sym)
+        onUse(arg.info, arg[0].sym)
+        result = paramTypesMatchAux(m, f, arg[0].typ, arg[0], argOrig)
       else: result = nil
     else:
       # only one valid interpretation found:

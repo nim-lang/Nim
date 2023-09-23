@@ -65,14 +65,8 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   template maybeDotChoice(c: PContext, n: PNode, s: PSym, fromDotExpr: bool) =
     if fromDotExpr:
       result = symChoice(c, n, s, scForceOpen)
-      if result.kind == nkOpenSymChoice and result.len == 1:
-        result = result[0]
-        result.flags.incl nfOpenSym
-        result.typ = nil
     else:
       result = symChoice(c, n, s, scOpen)
-      #if result.kind == nkSym:
-      #  result.flags.excl nfOpenSym
   case s.kind
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
@@ -100,6 +94,9 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         result = n
     else:
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
+      if withinMixin in flags:
+        result.flags.incl nfOpenSym
+        result.typ = nil
     onUse(n.info, s)
   of skParam:
     result = n
@@ -108,15 +105,18 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     if (s.typ != nil) and
        (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
+      if withinMixin in flags:
+        result.flags.incl nfOpenSym
+        result.typ = nil
     else:
       result = n
     onUse(n.info, s)
   else:
     result = newSymNode(s, n.info)
     onUse(n.info, s)
-  if withinMixin in flags and result.kind == nkSym:
-    result.flags.incl nfOpenSym
-    result.typ = nil
+    if withinMixin in flags:
+      result.flags.incl nfOpenSym
+      result.typ = nil
 
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
             ctx: var GenericCtx): PNode =
