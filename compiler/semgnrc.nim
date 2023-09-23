@@ -71,6 +71,8 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         result.typ = nil
     else:
       result = symChoice(c, n, s, scOpen)
+      #if result.kind == nkSym:
+      #  result.flags.excl nfOpenSym
   case s.kind
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.

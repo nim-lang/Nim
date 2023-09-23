@@ -1026,7 +1026,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
   of skMacro: result = semMacroExpr(c, result, orig, callee, flags, expectedType)
   of skTemplate: result = semTemplateExpr(c, result, callee, flags, expectedType)
   else:
-    if callee.magic != mArrGet:
+    if callee.magic == mNone:
       semFinishOperands(c, result)
     activate(c, result)
     fixAbstractType(c, result)
