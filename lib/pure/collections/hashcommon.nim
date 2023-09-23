@@ -39,7 +39,6 @@ proc slotsNeeded(count: Natural): int {.inline.} =
   result = nextPowerOfTwo(count * 3 div 2 + 4)
 
 template rawGetKnownHCImpl() =
-  bind nextTry
   if t.dataLen == 0:
     return -1
   var h {.inject.}: Hash = hc and maxHash(t) # start with real hash value
