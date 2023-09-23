@@ -102,7 +102,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
         result.add newSymNode(a, info)
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
-    if firstPreferred:
+    if r != scForceOpen and firstPreferred:
       result[0].flags.incl nfPreferredSym
 
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
@@ -256,24 +256,30 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
       result.typ = nil
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
-    else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
+    else:
+      result = newSymNodeTypeDesc(s, c.idgen, n.info)
+      result.flags.incl nfOpenSym
+      result.typ = nil
   of skParam:
     result = n
   of skType:
     if isField and sfGenSym in s.flags: result = n
-    else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
+    else:
+      result = newSymNodeTypeDesc(s, c.idgen, n.info)
+      result.flags.incl nfOpenSym
+      result.typ = nil
   else:
     if isField and sfGenSym in s.flags: result = n
-    else: result = newSymNode(s, n.info)
+    else:
+      result = newSymNode(s, n.info)
+      result.flags.incl nfOpenSym
+      result.typ = nil
     # Issue #12832
     when defined(nimsuggest):
       suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
     # field access (dot expr) will be handled by builtinFieldAccess
     if not isField:
       styleCheckUse(c, n.info, s)
-  if result.kind == nkSym:
-    result.flags.incl nfOpenSym
-    result.typ = nil
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
   result = n

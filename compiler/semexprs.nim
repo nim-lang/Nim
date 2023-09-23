@@ -103,7 +103,7 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
     result.typ = errorType(c)
   elif {efTypeAllowed, efOperand} * flags != {} and
       result.typ.kind == tyProc and
-      containsGenericType(result.typ):
+      hasUnresolvedParams(result, {}):
     # mirrored with semOperand but only on efTypeAllowed
     let owner = result.typ.owner
     let err =
