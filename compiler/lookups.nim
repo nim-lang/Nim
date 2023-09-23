@@ -315,6 +315,7 @@ type
     m*: PSym
     mode*: TOverloadIterMode
     symChoiceIndex*: int
+    fallback: PSym
     currentScope: PScope
     importIdx: int
     marked: IntSet
@@ -590,6 +591,10 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     if result == nil: result = errorUndeclaredIdentifierHint(c, n, n.ident)
   of nkSym:
     result = n.sym
+    if nfOpenSym in n.flags:
+      let alt = searchInScopes(c, result.name, amb)
+      if alt != nil and alt != result and not amb:
+        result = alt
   of nkAccQuoted:
     var ident = considerQuotedIdent(c, n)
     result = searchInScopes(c, ident, amb)
@@ -639,6 +644,11 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
     c.isAmbiguous = amb
   of nkSym:
     result = n.sym
+    if nfOpenSym in n.flags:
+      var amb = false
+      let alt = searchInScopes(c, result.name, amb)
+      if alt != nil and alt != result and not amb:
+        result = alt
   of nkDotExpr:
     result = nil
     var m = qualifiedLookUp(c, n[0], (flags * {checkUndeclared}) + {checkModule})
@@ -700,8 +710,16 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
           return nil
 
   of nkSym:
-    result = n.sym
-    o.mode = oimDone
+    if nfOpenSym notin n.flags:
+      result = n.sym
+      o.mode = oimDone
+    else:
+      result = initOverloadIter(o, c, newIdentNode(n.sym.name, n.info))
+      if result == nil:
+        result = n.sym
+        o.mode = oimDone
+      elif n.sym != result:
+        o.fallback = n.sym
   of nkDotExpr:
     result = nil
     o.mode = oimOtherModule
@@ -798,6 +816,9 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         result = nextOverloadIterImports(o, c, n)
     else:
       result = nil
+    if result == nil and o.fallback != nil and o.fallback.id notin o.marked:
+      result = o.fallback
+      o.fallback = nil
   of oimSelfModule:
     result = nextIdentIter(o.it, c.topLevelScope.symbols)
   of oimOtherModule:

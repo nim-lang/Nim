@@ -66,7 +66,9 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     if fromDotExpr:
       result = symChoice(c, n, s, scForceOpen)
       if result.kind == nkOpenSymChoice and result.len == 1:
-        result.transitionSonsKind(nkClosedSymChoice)
+        result = result[0]
+        result.flags.incl nfOpenSym
+        result.typ = nil
     else:
       result = symChoice(c, n, s, scOpen)
   case s.kind
@@ -110,6 +112,9 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   else:
     result = newSymNode(s, n.info)
     onUse(n.info, s)
+  if withinMixin in flags and result.kind == nkSym:
+    result.flags.incl nfOpenSym
+    result.typ = nil
 
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
             ctx: var GenericCtx): PNode =
@@ -148,6 +153,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
 
   var s = qualifiedLookUp(c, n, luf)
   if s != nil:
+    isMacro = s.kind in {skTemplate, skMacro}
     result = semGenericStmtSymbol(c, n, s, ctx, flags)
   else:
     n[0] = semGenericStmt(c, n[0], flags, ctx)

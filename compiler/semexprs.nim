@@ -55,16 +55,16 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags + {efOperand, efAllowSymChoice})
   if result.typ != nil:
     # XXX tyGenericInst here?
-    if result.typ.kind == tyProc and hasUnresolvedParams(result, {efOperand}):
-      #and tfUnresolved in result.typ.flags:
-      let owner = result.typ.owner
-      let err =
-        # consistent error message with evaltempl/semMacroExpr
-        if owner != nil and owner.kind in {skTemplate, skMacro}:
-          errMissingGenericParamsForTemplate % n.renderTree
-        else:
-          errProcHasNoConcreteType % n.renderTree
-      localError(c.config, n.info, err)
+    #if result.typ.kind == tyProc and hasUnresolvedParams(result, {efOperand}):
+    #  #and tfUnresolved in result.typ.flags:
+    #  let owner = result.typ.owner
+    #  let err =
+    #    # consistent error message with evaltempl/semMacroExpr
+    #    if owner != nil and owner.kind in {skTemplate, skMacro}:
+    #      errMissingGenericParamsForTemplate % n.renderTree
+    #    else:
+    #      errProcHasNoConcreteType % n.renderTree
+    #  localError(c.config, n.info, err)
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
   elif {efWantStmt, efAllowStmt} * flags != {}:
     result.typ = newTypeS(tyVoid, c)
@@ -101,8 +101,9 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
   elif result.typ.kind == tyError:
     # associates the type error to the current owner
     result.typ = errorType(c)
-  elif efTypeAllowed in flags and result.typ.kind == tyProc and
-      hasUnresolvedParams(result, {}):
+  elif {efTypeAllowed, efOperand} * flags != {} and
+      result.typ.kind == tyProc and
+      containsGenericType(result.typ):
     # mirrored with semOperand but only on efTypeAllowed
     let owner = result.typ.owner
     let err =
@@ -1025,7 +1026,8 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
   of skMacro: result = semMacroExpr(c, result, orig, callee, flags, expectedType)
   of skTemplate: result = semTemplateExpr(c, result, callee, flags, expectedType)
   else:
-    semFinishOperands(c, result)
+    if callee.magic != mArrGet:
+      semFinishOperands(c, result)
     activate(c, result)
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
@@ -1285,6 +1287,12 @@ proc readTypeParameter(c: PContext, typ: PType,
 proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   result = nil
   assert n.kind in nkIdentKinds + {nkDotExpr}
+  if n.kind == nkSym and nfOpenSym in n.flags:
+    let id = newIdentNode(n.sym.name, n.info)
+    c.isAmbiguous = false
+    let s2 = qualifiedLookUp(c, id, {})
+    if s2 != nil and s2 != sym and not c.isAmbiguous:
+      return semSym(c, id, s2, flags)
   let s = getGenSym(c, sym)
   case s.kind
   of skConst:
@@ -1543,8 +1551,7 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
   if isSymChoice(n[1]) or
-      # generics usually leave field names as symchoices, but not types
-      (n[1].kind == nkSym and n[1].sym.kind == skType):
+      (n[1].kind == nkSym and n[1].sym.kind in routineKinds + {skType}):
     result = newNodeI(nkDotCall, n.info)
     result.add n[1]
     result.add copyTree(n[0])

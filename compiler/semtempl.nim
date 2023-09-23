@@ -67,6 +67,9 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     if not isField or sfGenSym notin s.flags:
       result = newSymNode(s, info)
+      if r in {scOpen, scForceOpen}:
+        result.flags.incl nfOpenSym
+        result.typ = nil
       markUsed(c, info, s)
       onUse(info, s)
     else:
@@ -255,6 +258,9 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     # field access (dot expr) will be handled by builtinFieldAccess
     if not isField:
       styleCheckUse(c, n.info, s)
+  if result.kind == nkSym:
+    result.flags.incl nfOpenSym
+    result.typ = nil
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
   result = n
@@ -568,7 +574,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       inc c.noGenSym
       result[1] = semTemplBody(c, n[1])
       dec c.noGenSym
-      if result[1].kind == nkSym and result[1].sym.kind in routineKinds:
+      if false and result[1].kind == nkSym and result[1].sym.kind in routineKinds and
+          nfOpenSym notin result[1].flags:
         # prevent `dotTransformation` from rewriting this node to `nkIdent`
         # by making it a symchoice
         # in generics this becomes `nkClosedSymChoice` but this breaks code
