@@ -1643,6 +1643,9 @@ when not defined(js):
     else:
       var s = cast[PGenericSeq](result)
       s.len = len
+else:
+  proc newStringUninit*(len: Natural): string {.
+    magic: "NewString", importc: "mnewString", noSideEffect.}
 
 {.pop.}
 
