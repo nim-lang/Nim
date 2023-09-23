@@ -1341,14 +1341,27 @@ func parseEnum*[T: enum](s: string, default: T): T =
 
   genEnumCaseStmt(T, s, default, ord(low(T)), ord(high(T)), nimIdentNormalize)
 
+
+when not (defined(js) or defined(nimdoc) or defined(nimscript)):
+  func c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
+                importc: "memchr", header: "<string.h>".}
+  func c_memset(p: pointer, value: cint, size: csize_t): pointer {.
+    importc: "memset", header: "<string.h>", discardable.}
+  const hasCStringBuiltin = true
+else:
+  const hasCStringBuiltin = false
+
 func repeat*(c: char, count: Natural): string {.rtl, extern: "nsuRepeatChar".} =
   ## Returns a string of length `count` consisting only of
   ## the character `c`.
   runnableExamples:
     let a = 'z'
     doAssert a.repeat(5) == "zzzzz"
-  result = newString(count)
-  for i in 0..count-1: result[i] = c
+  result = newStringUninit(count)
+  when hasCstringBuiltin:
+    c_memset(result.cstring, c.cint, count.csize_t)
+  else:
+    for i in 0..<count: result[i] = c
 
 func repeat*(s: string, n: Natural): string {.rtl, extern: "nsuRepeatStr".} =
   ## Returns string `s` concatenated `n` times.
@@ -1945,13 +1958,6 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = -1): int {.
         return skip
       dec i
     inc skip, a[s[skip + subLast]]
-
-when not (defined(js) or defined(nimdoc) or defined(nimscript)):
-  func c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
-                importc: "memchr", header: "<string.h>".}
-  const hasCStringBuiltin = true
-else:
-  const hasCStringBuiltin = false
 
 func find*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuFindChar".} =
