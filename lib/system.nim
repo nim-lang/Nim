@@ -2752,6 +2752,9 @@ proc toOpenArrayByte*(x: openArray[char]; first, last: int): openArray[byte] {.
 proc toOpenArrayByte*(x: seq[char]; first, last: int): openArray[byte] {.
   magic: "Slice".}
 
+proc toOpenArrayChar*(x: openArray[byte]; first, last: int): openArray[char] {.
+  magic: "Slice".}
+
 when defined(genode):
   var componentConstructHook*: proc (env: GenodeEnv) {.nimcall.}
     ## Hook into the Genode component bootstrap process.
