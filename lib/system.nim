@@ -1639,10 +1639,17 @@ when not defined(js):
     ## the same effect can be achieved with the `&` operator or with `add`.
     result = newStringOfCap(len)
     when defined(nimSeqsV2):
-      cast[ptr int](addr result)[] = len
+      let s = cast[ptr NimStringV2](addr result)
+      if len > 0:
+        s.len = len
+        s.p.data[len] = '\0'
     else:
-      var s = cast[PGenericSeq](result)
+      let s = cast[NimString](result)
       s.len = len
+      s.data[len] = '\0'
+else:
+  proc newStringUninit*(len: Natural): string {.
+    magic: "NewString", importc: "mnewString", noSideEffect.}
 
 {.pop.}
 
