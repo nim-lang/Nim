@@ -16,4 +16,4 @@ block:
 
 block:
   let x = `+` #[tt.Error
-          ^ ambiguous identifier '+' -- use one of the following:]#
+           ^ ambiguous identifier '+' -- use one of the following:]#

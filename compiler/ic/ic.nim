@@ -413,6 +413,7 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
     p.annex = toPackedLib(s.annex, c, m)
     when hasFFI:
       p.cname = toLitId(s.cname, m)
+    p.instantiatedFrom = s.instantiatedFrom.safeItemId(c, m)
 
     # fill the reserved slot, nothing else:
     m.syms[s.itemId.item] = p
@@ -876,6 +877,7 @@ proc symBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
   if externalName != "":
     result.loc.r = rope externalName
   result.loc.flags = s.locFlags
+  result.instantiatedFrom = loadSym(c, g, si, s.instantiatedFrom)
 
 proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s: PackedItemId): PSym =
   if s == nilItemId:

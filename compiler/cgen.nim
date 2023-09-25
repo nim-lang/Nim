@@ -498,9 +498,17 @@ proc resetLoc(p: BProc, loc: var TLoc) =
     else:
       # array passed as argument decayed into pointer, bug #7332
       # so we use getTypeDesc here rather than rdLoc(loc)
-      linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
-              [addrLoc(p.config, loc),
-              getTypeDesc(p.module, loc.t, descKindFromSymKind mapTypeChooser(loc))])
+      let tyDesc = getTypeDesc(p.module, loc.t, descKindFromSymKind mapTypeChooser(loc))
+      if p.module.compileToCpp and isOrHasImportedCppType(typ): 
+        if lfIndirect in loc.flags: 
+          #C++ cant be just zeroed. We need to call the ctors
+          var tmp = getTemp(p, loc.t)
+          linefmt(p, cpsStmts,"#nimCopyMem((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
+                  [addrLoc(p.config, loc), addrLoc(p.config, tmp), tyDesc])
+      else:
+        linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
+                [addrLoc(p.config, loc), tyDesc])
+      
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
@@ -543,7 +551,8 @@ proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
   result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
   if p.module.compileToCpp and isOrHasImportedCppType(t):
-    linefmt(p, cpsLocals, "$1 $2{};$n", [getTypeDesc(p.module, t, dkVar), result.r])
+    linefmt(p, cpsLocals, "$1 $2$3;$n", [getTypeDesc(p.module, t, dkVar), result.r, 
+      genCppInitializer(p.module, p, t)])
   else:
     linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t, dkVar), result.r])
   constructLoc(p, result, not needsInit)
@@ -598,7 +607,10 @@ proc assignLocalVar(p: BProc, n: PNode) =
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
   let nl = if optLineDir in p.config.options: "" else: "\n"
-  let decl = localVarDecl(p, n) & (if p.module.compileToCpp and isOrHasImportedCppType(n.typ): "{};" else: ";") & nl
+  var decl = localVarDecl(p, n) 
+  if p.module.compileToCpp and isOrHasImportedCppType(n.typ): 
+    decl.add genCppInitializer(p.module, p, n.typ)
+  decl.add ";" & nl
   line(p, cpsLocals, decl)
 
 include ccgthreadvars
@@ -632,7 +644,7 @@ proc genGlobalVarDecl(p: BProc, n: PNode; td, value: Rope; decl: var Rope) =
     else:
       decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
 
-proc genCppVarForCtor(p: BProc, v: PSym; vn, value: PNode; decl: var Rope)
+proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope)
 
 proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode) =
   let s = vn.sym
@@ -642,7 +654,7 @@ proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode) =
   let td = getTypeDesc(p.module, vn.sym.typ, dkVar)
   genGlobalVarDecl(p, vn, td, "", decl)
   decl.add " " & $s.loc.r
-  genCppVarForCtor(p, v, vn, value, decl)
+  genCppVarForCtor(p, value, decl)
   p.module.s[cfsVars].add decl
 
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
@@ -976,21 +988,25 @@ proc closureSetup(p: BProc, prc: PSym) =
     linefmt(p, cpsStmts, "$1 = ($2) ClE_0;$n",
             [rdLoc(env.loc), getTypeDesc(p.module, env.typ)])
 
+const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt, nkTemplateDef,
+                  nkMacroDef, nkMixinStmt, nkBindStmt, nkFormalParams} +
+                  declarativeDefs
+
 proc containsResult(n: PNode): bool =
   result = false
   case n.kind
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkFormalParams:
+  of succ(nkEmpty)..pred(nkSym), succ(nkSym)..nkNilLit, harmless:
     discard
+  of nkReturnStmt:
+    for i in 0..<n.len:
+      if containsResult(n[i]): return true
+    result = n.len > 0 and n[0].kind == nkEmpty
   of nkSym:
     if n.sym.kind == skResult:
       result = true
   else:
     for i in 0..<n.len:
       if containsResult(n[i]): return true
-
-const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt, nkTemplateDef,
-                  nkMacroDef, nkMixinStmt, nkBindStmt, nkFormalParams} +
-                  declarativeDefs
 
 proc easyResultAsgn(n: PNode): PNode =
   result = nil
@@ -1166,9 +1182,16 @@ proc genProcAux*(m: BModule, prc: PSym) =
         # declare the result symbol:
         assignLocalVar(p, resNode)
         assert(res.loc.r != "")
-        initLocalVar(p, res, immediateAsgn=false)
+        if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and
+            allPathsAsgnResult(procBody) == InitSkippable:
+          # In an ideal world the codegen could rely on injectdestructors doing its job properly
+          # and then the analysis step would not be required.
+          discard "result init optimized out"
+        else:
+          initLocalVar(p, res, immediateAsgn=false)
       returnStmt = ropecg(p.module, "\treturn $1;$n", [rdLoc(res.loc)])
     elif sfConstructor in prc.flags:
+      resNode.sym.loc.flags.incl lfIndirect
       fillLoc(resNode.sym.loc, locParam, resNode, "this", OnHeap)
     else:
       fillResult(p.config, resNode, prc.typ)

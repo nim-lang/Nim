@@ -399,7 +399,7 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
       raiseAssert "unreachable"
     else:
       # Fallback to copy & del
-      copyFile(source, dest, {cfSymlinkAsIs})
+      copyFileWithPermissions(source, dest, options={cfSymlinkAsIs})
       try:
         removeFile(source)
       except:

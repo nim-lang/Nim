@@ -36,7 +36,7 @@ block: # basic template generic parameter substitution
     template run[T](): T = default(T)
     doAssert run[int]() == 0
 
-import options, tables
+import options, tables, typetraits
 
 block: # complex cases of above with imports
   block: # issue #19576, complex case
@@ -78,3 +78,16 @@ block: # complex cases of above with imports
         else:
           Foo.init(A,"hi")
       let op = fromOption(some(5))
+  block: # issue #7461
+    template p[T](): untyped = none(T)
+    doAssert p[int]() == none(int)
+  block: # issue #7995
+    var res: string
+    template copyRange[T](dest: seq[T], destOffset: int) =
+      when supportsCopyMem(T):
+        res = "A"
+      else:    
+        res = "B"
+    var a = @[1, 2, 3]
+    copyRange(a, 0)
+    doAssert res == "A"

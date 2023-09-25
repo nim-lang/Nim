@@ -140,6 +140,34 @@ func concat*[T](seqs: varargs[seq[T]]): seq[T] =
       result[i] = itm
       inc(i)
 
+func addUnique*[T](s: var seq[T], x: sink T) =
+  ## Adds `x` to the container `s` if it is not already present. 
+  ## Uses `==` to check if the item is already present.
+  runnableExamples:
+    var a = @[1, 2, 3]
+    a.addUnique(4)
+    a.addUnique(4)
+    assert a == @[1, 2, 3, 4]
+
+  for i in 0..high(s):
+    if s[i] == x: return
+  when declared(ensureMove):
+    s.add ensureMove(x)
+  else:
+    s.add x
+
+func addUnique*[T](s: var seq[T], xs: sink seq[T]) =
+  ## Adds any items from `xs` to the container `s` that are not already present.
+  ## Uses `==` to check if the item is already present.
+  runnableExamples:
+    var a = @[1, 2, 3]
+    a.addUnique(@[3, 4])
+    a.addUnique(@[4, 5])
+    assert a == @[1, 2, 3, 4, 5]
+
+  for i in 0..high(xs):
+    addUnique(s, move(xs[i]))
+    
 func count*[T](s: openArray[T], x: T): int =
   ## Returns the number of occurrences of the item `x` in the container `s`.
   ##

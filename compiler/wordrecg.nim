@@ -49,7 +49,7 @@ type
     wCompleteStruct = "completeStruct", wRequiresInit = "requiresInit", wAlign = "align",
     wNodecl = "nodecl", wPure = "pure", wSideEffect = "sideEffect", wHeader = "header",
     wNoSideEffect = "noSideEffect", wGcSafe = "gcsafe", wNoreturn = "noreturn",
-    wNosinks = "nosinks", wMerge = "merge", wLib = "lib", wDynlib = "dynlib",
+    wNosinks = "nosinks", wLib = "lib", wDynlib = "dynlib",
     wCompilerProc = "compilerproc", wCore = "core", wProcVar = "procvar",
     wBase = "base", wUsed = "used", wFatal = "fatal", wError = "error", wWarning = "warning",
     wHint = "hint",
