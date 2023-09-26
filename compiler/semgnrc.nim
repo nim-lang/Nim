@@ -188,6 +188,13 @@ proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
   styleCheckDef(c, n.info, s, kind)
   onDef(n.info, s)
 
+proc addTempDeclToIdents(c: PContext; n: PNode; kind: TSymKind) =
+  if n.kind == nkIdent:
+    addTempDecl(c, n, kind)
+  else:
+    for s in n:
+      addTempDeclToIdents(c, s, kind)
+
 proc semGenericStmt(c: PContext, n: PNode,
                     flags: TSemGenericFlags, ctx: var GenericCtx): PNode =
   result = n
@@ -361,7 +368,9 @@ proc semGenericStmt(c: PContext, n: PNode,
       checkMinSonsLen(a, 1, c.config)
       for j in 0..<a.len-1:
         a[j] = semGenericStmt(c, a[j], flags + {withinMixin}, ctx)
-      a[^1] = semGenericStmtScope(c, a[^1], flags + {withinMixin}, ctx)
+        addTempDeclToIdents(c, a[j], skVar)
+              
+      a[^1] = semGenericStmtScope(c, a[^1], flags, ctx)
     closeScope(c)
   of nkForStmt, nkParForStmt:
     openScope(c)
