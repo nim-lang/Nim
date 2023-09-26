@@ -302,8 +302,7 @@ else:
           raise newException(ValueError, "Got unterminated character position message from terminal")
         if ch == ';':
           readX = true
-          continue
-        if ch in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']:
+        elif ch in {'0'..'9'}:
           if readX:
             xStr.add(ch)
           else:
