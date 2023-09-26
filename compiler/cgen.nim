@@ -1191,12 +1191,8 @@ proc genProcAux*(m: BModule, prc: PSym) =
           initLocalVar(p, res, immediateAsgn=false)
       returnStmt = ropecg(p.module, "\treturn $1;$n", [rdLoc(res.loc)])
     elif sfConstructor in prc.flags:
+      resNode.sym.loc.flags.incl lfIndirect
       fillLoc(resNode.sym.loc, locParam, resNode, "this", OnHeap)
-      let ty = resNode.sym.typ[0] #generate nim's ctor
-      for i in 1..<resNode.sym.ast.len:
-        let field = resNode.sym.ast[i]
-        genFieldObjConstr(p, ty, useTemp = false, isRef = false, 
-          field[0], field[1], check = nil, resNode.sym.loc, "(*this)", tmpInfo)
     else:
       fillResult(p.config, resNode, prc.typ)
       assignParam(p, res, prc.typ[0])

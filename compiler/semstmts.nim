@@ -1486,9 +1486,12 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # final pass
       if a[2].kind in nkCallKinds:
         incl a[2].flags, nfSem # bug #10548
-    if sfExportc in s.flags and s.typ.kind == tyAlias:
-      localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
-
+    if sfExportc in s.flags:
+      if s.typ.kind == tyAlias:
+        localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
+      elif s.typ.kind == tyGenericBody:
+        localError(c.config, name.info, "{.exportc.} not allowed for generic types")
+    
     if tfBorrowDot in s.typ.flags:
       let body = s.typ.skipTypes({tyGenericBody})
       if body.kind != tyDistinct:
@@ -1701,21 +1704,6 @@ proc swapResult(n: PNode, sRes: PSym, dNode: PNode) =
     if n[i].kind == nkSym and n[i].sym == sRes:
         n[i] = dNode
     swapResult(n[i], sRes, dNode)
-
-
-proc addThis(c: PContext, n: PNode, t: PType, owner: TSymKind) =
-  var s = newSym(skResult, getIdent(c.cache, "this"), c.idgen,
-              getCurrOwner(c), n.info)
-  s.typ = t
-  incl(s.flags, sfUsed)
-  c.p.resultSym = s
-  n.add newSymNode(c.p.resultSym)
-  addParamOrResult(c, c.p.resultSym, owner)
-  #resolves nim's obj ctor inside cpp ctors see #22669
-  var typAst = t[0].sym.ast[0]
-  if typAst.kind == nkPragmaExpr:
-    typAst = typAst[0]
-  s.ast = c.semExpr(c, newTree(nkCall, typAst))
 
 proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
   template genResSym(s) =
@@ -2373,19 +2361,14 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # Macros and Templates can have generic parameters, but they are only
         # used for overload resolution (there is no instantiation of the symbol)
         if s.kind notin {skMacro, skTemplate} and s.magic == mNone: paramsTypeCheck(c, s.typ)
-        var resultType: PType
-        if {sfConstructor, sfImportc} * s.flags == {sfConstructor}:
-          resultType = makePtrType(c, s.typ[0])
-          addThis(c, n, resultType, skProc)
-        else:
-          maybeAddResult(c, s, n)
-          resultType =
-            if s.kind == skMacro:
-              sysTypeFromName(c.graph, n.info, "NimNode")
-            elif not isInlineIterator(s.typ):
-              s.typ[0]
-            else:
-              nil
+        maybeAddResult(c, s, n)
+        let resultType =
+          if s.kind == skMacro:
+            sysTypeFromName(c.graph, n.info, "NimNode")
+          elif not isInlineIterator(s.typ):
+            s.typ[0]
+          else:
+            nil
         # semantic checking also needed with importc in case used in VM
         s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], resultType))
         # unfortunately we cannot skip this step when in 'system.compiles'
