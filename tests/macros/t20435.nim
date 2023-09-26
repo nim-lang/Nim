@@ -16,8 +16,7 @@ import macros
 
 type Foo = object
 
-macro `case`(obj: Foo) = quote do: echo "abc"
-macro match(obj: Foo) = quote do: echo "def"
+macro `case`(obj: Foo) = quote do: discard
 
 proc notGeneric() =
   case Foo()
@@ -25,7 +24,7 @@ proc notGeneric() =
 
 proc generic[T]() =
   case Foo()
-  of a b c d: discard # error
+  of a b c d: discard
 
 notGeneric()
 generic[int]()
