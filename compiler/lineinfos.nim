@@ -107,6 +107,7 @@ type
     hintUser = "User", hintUserRaw = "UserRaw", hintExtendedContext = "ExtendedContext",
     hintMsgOrigin = "MsgOrigin", # since 1.3.5
     hintDeclaredLoc = "DeclaredLoc", # since 1.5.1
+    hintUnknownHint = "UnknownHint"
 
 const
   MsgKindToStr*: array[TMsgKind, string] = [
@@ -229,6 +230,7 @@ const
     hintExtendedContext: "$1",
     hintMsgOrigin: "$1",
     hintDeclaredLoc: "$1",
+    hintUnknownHint: "unknown hint: $1"
   ]
 
 const

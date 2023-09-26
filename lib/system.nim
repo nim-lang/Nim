@@ -1637,16 +1637,19 @@ when not defined(js):
     ##
     ## This procedure exists only for optimization purposes;
     ## the same effect can be achieved with the `&` operator or with `add`.
-    result = newStringOfCap(len)
-    when defined(nimSeqsV2):
-      let s = cast[ptr NimStringV2](addr result)
-      if len > 0:
-        s.len = len
-        s.p.data[len] = '\0'
+    when nimvm:
+      result = newString(len)
     else:
-      let s = cast[NimString](result)
-      s.len = len
-      s.data[len] = '\0'
+      result = newStringOfCap(len)
+      when defined(nimSeqsV2):
+        let s = cast[ptr NimStringV2](addr result)
+        if len > 0:
+          s.len = len
+          s.p.data[len] = '\0'
+      else:
+        let s = cast[NimString](result)
+        s.len = len
+        s.data[len] = '\0'
 else:
   proc newStringUninit*(len: Natural): string {.
     magic: "NewString", importc: "mnewString", noSideEffect.}
@@ -2750,6 +2753,9 @@ proc toOpenArrayByte*(x: string; first, last: int): openArray[byte] {.
 proc toOpenArrayByte*(x: openArray[char]; first, last: int): openArray[byte] {.
   magic: "Slice".}
 proc toOpenArrayByte*(x: seq[char]; first, last: int): openArray[byte] {.
+  magic: "Slice".}
+
+proc toOpenArrayChar*(x: openArray[byte]; first, last: int): openArray[char] {.
   magic: "Slice".}
 
 when defined(genode):
