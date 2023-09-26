@@ -1,4 +1,4 @@
-## - Viewport API for the JavaScript target: https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport
+## - Viewport API for the JavaScript targets: https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport
 when not defined(js):
   {.fatal: "Module is designed to be used with the JavaScript backend.".}
 
