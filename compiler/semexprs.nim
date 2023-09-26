@@ -392,7 +392,8 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
       elif op.kind in {nkPar, nkTupleConstr} and targetType.kind == tyTuple:
         op = fitNode(c, targetType, op, result.info)
     of convNotNeedeed:
-      message(c.config, n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
+      if efNoSem2Check notin flags:
+        message(c.config, n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
     of convNotLegal:
       result = fitNode(c, result.typ, result[1], result.info)
       if result == nil:
