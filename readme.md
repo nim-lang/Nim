@@ -47,7 +47,7 @@ Compiling the Nim compiler is quite straightforward if you follow these steps:
 First, the C source of an older version of the Nim compiler is needed to
 bootstrap the latest version because the Nim compiler itself is written in the
 Nim programming language. Those C sources are available within the
-[``nim-lang/csources_v1``][csources-v1-repo] repository.
+[``nim-lang/csources_v2``][csources-v2-repo] repository.
 
 Next, to build from source you will need:
 
@@ -130,8 +130,7 @@ standard library are welcomed and appreciated. Before you start contributing,
 you should familiarize yourself with the following repository structure:
 
 * ``bin/``, ``build/`` - these directories are empty, but are used when Nim is built.
-* ``compiler/`` - the compiler source code. Also includes nimfix, and plugins within
-  ``compiler/nimfix`` and ``compiler/plugins`` respectively.
+* ``compiler/`` - the compiler source code. Also includes plugins within ``compiler/plugins``.
 * ``nimsuggest`` - the nimsuggest tool that previously lived in the [``nim-lang/nimsuggest``][nimsuggest-repo] repository.
 * ``config/`` - the configuration for the compiler and documentation generator.
 * ``doc/`` - the documentation files in reStructuredText format.
@@ -141,7 +140,7 @@ you should familiarize yourself with the following repository structure:
     dependencies written in other languages.
     * ``wrappers/`` - modules that wrap dependencies written in other languages.
 * ``tests/`` - contains categorized tests for the compiler and standard library.
-* ``tools/`` - the tools including ``niminst`` and ``nimweb`` (mostly invoked via
+* ``tools/`` - the tools including ``niminst`` (mostly invoked via
   ``koch``).
 * ``koch.nim`` - the tool used to bootstrap Nim, generate C sources, build the website,
   and generate the documentation.
@@ -203,7 +202,7 @@ Nim. You are explicitly permitted to develop commercial applications using Nim.
 
 Please read the [copying.txt](copying.txt) file for more details.
 
-Copyright © 2006-2022 Andreas Rumpf, all rights reserved.
+Copyright © 2006-2023 Andreas Rumpf, all rights reserved.
 
 [nim-site]: https://nim-lang.org
 [nim-forum]: https://forum.nim-lang.org
@@ -223,7 +222,7 @@ Copyright © 2006-2022 Andreas Rumpf, all rights reserved.
 [nimble-repo]: https://github.com/nim-lang/nimble
 [nimsuggest-repo]: https://github.com/nim-lang/nimsuggest
 [csources-repo-deprecated]: https://github.com/nim-lang/csources
-[csources-v1-repo]: https://github.com/nim-lang/csources_v1
+[csources-v2-repo]: https://github.com/nim-lang/csources_v2
 [badge-nim-irc]: https://img.shields.io/badge/chat-on_irc-blue.svg?style=flat-square
 [badge-nim-discord]: https://img.shields.io/discord/371759389889003530?color=blue&label=discord&logo=discord&logoColor=gold&style=flat-square
 [badge-nim-gitter]: https://img.shields.io/badge/chat-on_gitter-blue.svg?style=flat-square

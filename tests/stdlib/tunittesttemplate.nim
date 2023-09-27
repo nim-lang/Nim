@@ -8,9 +8,9 @@ discard """
 """
 
 
-# bug #6736
 
-import unittest
+# bug #6736
+import std/unittest
 
 type
   A = object

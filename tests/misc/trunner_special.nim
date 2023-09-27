@@ -1,6 +1,7 @@
 discard """
   targets: "c cpp"
   joinable: false
+  disabled: osx
 """
 
 #[
@@ -26,6 +27,6 @@ proc main =
   block: # SSL nimDisableCertificateValidation integration tests
     runCmd fmt"{nim} r {options} -d:nimDisableCertificateValidation -d:ssl {testsDir}/untestable/thttpclient_ssl_disabled.nim"
   block: # SSL certificate check integration tests
-    runCmd fmt"{nim} r {options} -d:ssl --threads:on {testsDir}/untestable/thttpclient_ssl_remotenetwork.nim"
+    runCmd fmt"{nim} r {options} -d:ssl --threads:on --mm:refc {testsDir}/untestable/thttpclient_ssl_remotenetwork.nim"
 
 main()

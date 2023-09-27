@@ -15,7 +15,7 @@ when not defined(genode):
   {.error: "Genode only module".}
 
 when not declared(GenodeEnv):
-  include genode/env
+  import genode/env
 
 type RamDataspaceCapability {.
   importcpp: "Genode::Ram_dataspace_capability", pure.} = object
@@ -111,7 +111,7 @@ proc osDeallocPages(p: pointer; size: int) =
       if m.attachment == p:
         if m.size != size:
           echo "cannot partially detach dataspace"
-          quit -1
+          rawQuit -1
         runtimeEnv.detachAddress m.attachment
         runtimeEnv.freeDataspace m.ds
         m[] = Map()

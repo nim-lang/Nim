@@ -11,7 +11,9 @@
 ## A `Task` should be only owned by a single Thread, it cannot be shared by threads.
 
 import std/[macros, isolation, typetraits]
-import system/ansi_c
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 export isolation
 
@@ -59,24 +61,32 @@ when compileOption("threads"):
 
 type
   Task* = object ## `Task` contains the callback and its arguments.
-    callback: proc (args: pointer) {.nimcall, gcsafe.}
+    callback: proc (args, res: pointer) {.nimcall, gcsafe.}
     args: pointer
     destroy: proc (args: pointer) {.nimcall, gcsafe.}
 
 
 proc `=copy`*(x: var Task, y: Task) {.error.}
 
-proc `=destroy`*(t: var Task) {.inline, gcsafe.} =
-  ## Frees the resources allocated for a `Task`.
-  if t.args != nil:
-    if t.destroy != nil:
-      t.destroy(t.args)
-    c_free(t.args)
+when defined(nimAllowNonVarDestructor):
+  proc `=destroy`*(t: Task) {.inline, gcsafe.} =
+    ## Frees the resources allocated for a `Task`.
+    if t.args != nil:
+      if t.destroy != nil:
+        t.destroy(t.args)
+      deallocShared(t.args)
+else:
+  proc `=destroy`*(t: var Task) {.inline, gcsafe.} =
+    ## Frees the resources allocated for a `Task`.
+    if t.args != nil:
+      if t.destroy != nil:
+        t.destroy(t.args)
+      deallocShared(t.args)
 
-proc invoke*(task: Task) {.inline, gcsafe.} =
+proc invoke*(task: Task; res: pointer = nil) {.inline, gcsafe.} =
   ## Invokes the `task`.
   assert task.callback != nil
-  task.callback(task.args)
+  task.callback(task.args, res)
 
 template checkIsolate(scratchAssignList: seq[NimNode], procParam, scratchDotExpr: NimNode) =
   # block:
@@ -101,13 +111,14 @@ template addAllNode(assignParam: NimNode, procParam: NimNode) =
 
 macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkCallStrLit}): Task =
   ## Converts the call and its arguments to `Task`.
-  runnableExamples("--gc:orc"):
+  runnableExamples:
     proc hello(a: int) = echo a
 
     let b = toTask hello(13)
     assert b is Task
 
-  doAssert getTypeInst(e).typeKind == ntyVoid
+  let retType = getTypeInst(e)
+  let returnsVoid = retType.typeKind == ntyVoid
 
   when compileOption("threads"):
     if not isGcSafe(e[0]):
@@ -162,7 +173,7 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
         # passing by static parameters
         # so we pass them directly instead of passing by scratchObj
         callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
-      of nnkSym, nnkPtrTy:
+      of nnkSym, nnkPtrTy, nnkProcTy, nnkTupleConstr:
         addAllNode(param, e[i])
       of nnkCharLit..nnkNilLit:
         callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
@@ -184,27 +195,18 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
 
 
     let scratchObjPtrType = quote do:
-      cast[ptr `scratchObjType`](c_calloc(csize_t 1, csize_t sizeof(`scratchObjType`)))
+      cast[ptr `scratchObjType`](allocShared0(sizeof(`scratchObjType`)))
 
-    let scratchLetSection = newLetStmt(
-      scratchIdent,
-      scratchObjPtrType
-    )
-
-    let scratchCheck = quote do:
-      if `scratchIdent`.isNil:
-        raise newException(OutOfMemDefect, "Could not allocate memory")
+    let scratchLetSection = newLetStmt(scratchIdent, scratchObjPtrType)
 
     var stmtList = newStmtList()
     stmtList.add(scratchObj)
     stmtList.add(scratchLetSection)
-    stmtList.add(scratchCheck)
     stmtList.add(nnkBlockStmt.newTree(newEmptyNode(), newStmtList(scratchAssignList)))
 
     var functionStmtList = newStmtList()
     let funcCall = newCall(e[0], callNode)
     functionStmtList.add tempAssignList
-    functionStmtList.add funcCall
 
     let funcName = genSym(nskProc, e[0].strVal)
     let destroyName = genSym(nskProc, "destroyScratch")
@@ -212,12 +214,24 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
     let tempNode = quote("@") do:
         `=destroy`(@objTemp2[])
 
+    var funcDecl: NimNode
+    if returnsVoid:
+      funcDecl = quote do:
+        proc `funcName`(args, res: pointer) {.gcsafe, nimcall.} =
+          let `objTemp` = cast[ptr `scratchObjType`](args)
+          `functionStmtList`
+          `funcCall`
+    else:
+      funcDecl = quote do:
+        proc `funcName`(args, res: pointer) {.gcsafe, nimcall.} =
+          let `objTemp` = cast[ptr `scratchObjType`](args)
+          `functionStmtList`
+          cast[ptr `retType`](res)[] = `funcCall`
+
     result = quote do:
       `stmtList`
 
-      proc `funcName`(args: pointer) {.gcsafe, nimcall.} =
-        let `objTemp` = cast[ptr `scratchObjType`](args)
-        `functionStmtList`
+      `funcDecl`
 
       proc `destroyName`(args: pointer) {.gcsafe, nimcall.} =
         let `objTemp2` = cast[ptr `scratchObjType`](args)
@@ -228,16 +242,24 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
     let funcCall = newCall(e[0])
     let funcName = genSym(nskProc, e[0].strVal)
 
-    result = quote do:
-      proc `funcName`(args: pointer) {.gcsafe, nimcall.} =
-        `funcCall`
+    if returnsVoid:
+      result = quote do:
+        proc `funcName`(args, res: pointer) {.gcsafe, nimcall.} =
+          `funcCall`
 
-      Task(callback: `funcName`, args: nil)
+        Task(callback: `funcName`, args: nil)
+    else:
+      result = quote do:
+        proc `funcName`(args, res: pointer) {.gcsafe, nimcall.} =
+          cast[ptr `retType`](res)[] = `funcCall`
+
+        Task(callback: `funcName`, args: nil)
+
 
   when defined(nimTasksDebug):
     echo result.repr
 
-runnableExamples("--gc:orc"):
+runnableExamples:
   block:
     var num = 0
     proc hello(a: int) = inc num, a

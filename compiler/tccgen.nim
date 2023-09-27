@@ -14,7 +14,7 @@ const tinyPrefix = "dist/nim-tinyc-archive".unixToNativePath
 const nimRoot = currentSourcePath.parentDir.parentDir
 const tinycRoot = nimRoot / tinyPrefix
 when not dirExists(tinycRoot):
-  static: doAssert false, $(tinycRoot, "requires: ./koch installdeps tinyc")
+  static: raiseAssert $(tinycRoot, "requires: ./koch installdeps tinyc")
 {.compile: tinycRoot / "tinyc/libtcc.c".}
 
 var

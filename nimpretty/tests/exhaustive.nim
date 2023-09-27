@@ -267,7 +267,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     if not em.endsInWhite: wr(" ")
     wr(tok.ident.s)
     template isUnary(tok): bool =
-      tok.strongSpaceB == 0 and tok.strongSpaceA > 0
+      tok.spacing == {tsLeading}
 
     if not isUnary(tok) or em.lastTok in {tkOpr, tkDotDot}:
       wr(" ")
@@ -693,11 +693,11 @@ proc newRecordGen(ctx: Context; typ: TypRef): PNode =
 String `interpolation`:idx: / `format`:idx: inspired by
 Python's ``f``-strings.
 
-.. code-block:: nim
-
-    import strformat
-    let msg = "hello"
-    doAssert fmt"{msg}\n" == "hello\\n"
+  ```nim
+  import strformat
+  let msg = "hello"
+  doAssert fmt"{msg}\n" == "hello\\n"
+  ```
 
 Because the literal is a raw string literal, the ``\n`` is not interpreted as
 an escape sequence.

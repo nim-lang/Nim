@@ -1,8 +1,8 @@
 discard """
-  output: ""
+  matrix: "--mm:refc; --mm:orc"
 """
 
-import strscans, strutils
+import std/[strscans, strutils, assertions]
 
 block ParsePasswd:
   proc parsePasswd(content: string): seq[string] =

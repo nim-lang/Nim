@@ -1,7 +1,8 @@
 trigger:
   branches:
     include:
-    - '*'
+    - 'devel'
+    - 'version-*'
 pr:
   branches:
     include:
@@ -22,11 +23,11 @@ jobs:
         vmImage: 'ubuntu-20.04'
         CPU: amd64
       # regularly breaks, refs bug #17325
-      Linux_i386:
-        # on 'ubuntu-16.04' (not supported anymore anyways) it errored with:
-        # g++-multilib : Depends: gcc-multilib (>= 4:5.3.1-1ubuntu1) but it is not going to be installed
-        vmImage: 'ubuntu-18.04'
-        CPU: i386
+#       Linux_i386:
+#         # on 'ubuntu-16.04' (not supported anymore anyways) it errored with:
+#         # g++-multilib : Depends: gcc-multilib (>= 4:5.3.1-1ubuntu1) but it is not going to be installed
+#         vmImage: 'ubuntu-18.04'
+#         CPU: i386
       OSX_amd64:
         vmImage: 'macOS-11'
         CPU: amd64
@@ -128,13 +129,6 @@ jobs:
 
     - bash: brew install boehmgc make sfml
       displayName: 'Install dependencies (OSX)'
-      condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Darwin'))
-
-    - bash: |
-        brew install openssl@1.1
-        ln -s $(brew --prefix)/opt/openssl/lib/libcrypto.1.1.dylib /usr/local/lib
-        ln -s $(brew --prefix)/opt/openssl/lib/libssl.1.1.dylib /usr/local/lib/
-      displayName: 'Install OpenSSL (OSX)'
       condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Darwin'))
 
     - bash: |

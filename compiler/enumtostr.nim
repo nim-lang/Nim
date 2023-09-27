@@ -6,12 +6,12 @@ when defined(nimPreviewSlimSystem):
 
 
 proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph; idgen: IdGenerator): PSym =
-  result = newSym(skProc, getIdent(g.cache, "$"), nextSymId idgen, t.owner, info)
+  result = newSym(skProc, getIdent(g.cache, "$"), idgen, t.owner, info)
 
-  let dest = newSym(skParam, getIdent(g.cache, "e"), nextSymId idgen, result, info)
+  let dest = newSym(skParam, getIdent(g.cache, "e"), idgen, result, info)
   dest.typ = t
 
-  let res = newSym(skResult, getIdent(g.cache, "result"), nextSymId idgen, result, info)
+  let res = newSym(skResult, getIdent(g.cache, "result"), idgen, result, info)
   res.typ = getSysType(g, info, tyString)
 
   result.typ = newType(tyProc, nextTypeId idgen, t.owner)
@@ -30,7 +30,7 @@ proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph; idgen: IdGener
     assert(t.n[i].kind == nkSym)
     var field = t.n[i].sym
     let val = if field.ast == nil: field.name.s else: field.ast.strVal
-    caseStmt.add newTree(nkOfBranch, newSymNode(field),
+    caseStmt.add newTree(nkOfBranch, newIntTypeNode(field.position, t),
       newTree(nkStmtList, newTree(nkFastAsgn, newSymNode(res), newStrNode(val, info))))
     #newIntTypeNode(nkIntLit, field.position, t)
 
@@ -56,6 +56,7 @@ proc searchObjCaseImpl(obj: PNode; field: PSym): PNode =
     if obj.kind == nkRecCase and obj[0].kind == nkSym and obj[0].sym == field:
       result = obj
     else:
+      result = nil
       for x in obj:
         result = searchObjCaseImpl(x, field)
         if result != nil: break
@@ -67,12 +68,12 @@ proc searchObjCase(t: PType; field: PSym): PNode =
   doAssert result != nil
 
 proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGraph; idgen: IdGenerator): PSym =
-  result = newSym(skProc, getIdent(g.cache, "objDiscMapping"), nextSymId idgen, t.owner, info)
+  result = newSym(skProc, getIdent(g.cache, "objDiscMapping"), idgen, t.owner, info)
 
-  let dest = newSym(skParam, getIdent(g.cache, "e"), nextSymId idgen, result, info)
+  let dest = newSym(skParam, getIdent(g.cache, "e"), idgen, result, info)
   dest.typ = field.typ
 
-  let res = newSym(skResult, getIdent(g.cache, "result"), nextSymId idgen, result, info)
+  let res = newSym(skResult, getIdent(g.cache, "result"), idgen, result, info)
   res.typ = getSysType(g, info, tyUInt8)
 
   result.typ = newType(tyProc, nextTypeId idgen, t.owner)

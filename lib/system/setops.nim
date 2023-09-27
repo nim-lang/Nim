@@ -9,7 +9,10 @@ func incl*[T](x: var set[T], y: T) {.magic: "Incl".} =
     a.incl(4)
     assert a == {1, 2, 3, 4, 5}
 
-template incl*[T](x: var set[T], y: set[T]) =
+when not defined(nimHasCallsitePragma):
+  {.pragma: callsite.}
+
+template incl*[T](x: var set[T], y: set[T]) {.callsite.} =
   ## Includes the set `y` in the set `x`.
   runnableExamples:
     var a = {1, 3, 5, 7}
@@ -23,11 +26,11 @@ func excl*[T](x: var set[T], y: T) {.magic: "Excl".} =
   ##
   ## This is the same as `x = x - {y}`, but it might be more efficient.
   runnableExamples:
-    var b = {2, 3, 5, 6, 12, 545}
+    var b = {2, 3, 5, 6, 12, 54}
     b.excl(5)
-    assert b == {2, 3, 6, 12, 545}
+    assert b == {2, 3, 6, 12, 54}
 
-template excl*[T](x: var set[T], y: set[T]) =
+template excl*[T](x: var set[T], y: set[T]) {.callsite.} =
   ## Excludes the set `y` from the set `x`.
   runnableExamples:
     var a = {1, 3, 5, 7}

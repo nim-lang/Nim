@@ -3,6 +3,7 @@ discard """
 """
 
 import std/marshal
+import std/[assertions, objectdollar]
 
 # TODO: add static tests
 

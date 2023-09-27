@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------------------------------
 ##  This file contains an implementation of the Schubfach algorithm as described in
 ##
-##  [1] Raffaello Giulietti, "The Schubfach way to render doubles",
+##  \[1] Raffaello Giulietti, "The Schubfach way to render doubles",
 ##      https://drive.google.com/open?id=1luHhyQF9zKlM8yJ1nebU0OgVYhfC6CBN
 # --------------------------------------------------------------------------------------------------
 
@@ -39,10 +39,10 @@ const
   exponentMask: BitsType = maxIeeeExponent shl (significandSize - 1)
   signMask: BitsType = not (not BitsType(0) shr 1)
 
-proc constructSingle(bits: BitsType): Single {.constructor.} =
+proc constructSingle(bits: BitsType): Single  =
   result.bits = bits
 
-proc constructSingle(value: ValueType): Single {.constructor.} =
+proc constructSingle(value: ValueType): Single  =
   result.bits = cast[typeof(result.bits)](value)
 
 proc physicalSignificand(this: Single): BitsType {.noSideEffect.} =
@@ -78,19 +78,23 @@ proc floorDivPow2(x: int32; n: int32): int32 {.inline.} =
   return x shr n
 
 ##  Returns floor(log_10(2^e))
+##  ```c
 ##  static inline int32_t FloorLog10Pow2(int32_t e)
 ##  {
 ##      SF_ASSERT(e >= -1500);
 ##      SF_ASSERT(e <=  1500);
 ##      return FloorDivPow2(e * 1262611, 22);
 ##  }
+##  ```
 ##  Returns floor(log_10(3/4 2^e))
+##  ```c
 ##  static inline int32_t FloorLog10ThreeQuartersPow2(int32_t e)
 ##  {
 ##      SF_ASSERT(e >= -1500);
 ##      SF_ASSERT(e <=  1500);
 ##      return FloorDivPow2(e * 1262611 - 524031, 22);
 ##  }
+##  ```
 ##  Returns floor(log_2(10^e))
 
 proc floorLog2Pow10(e: int32): int32 {.inline.} =
@@ -240,12 +244,12 @@ proc toDecimal32(ieeeSignificand: uint32; ieeeExponent: uint32): FloatingDecimal
 ##  ToChars
 ## ==================================================================================================
 
-proc printDecimalDigitsBackwards(buf: var openArray[char]; pos: int; output: uint32): int32 {.inline.} =
+proc printDecimalDigitsBackwards[T: Ordinal](buf: var openArray[char]; pos: T; output: uint32): int {.inline.} =
   var output = output
   var pos = pos
-  var tz: int32 = 0
+  var tz = 0
   ##  number of trailing zeros removed.
-  var nd: int32 = 0
+  var nd = 0
   ##  number of decimal digits processed.
   ##  At most 9 digits remaining
   if output >= 10000:
@@ -296,7 +300,7 @@ proc printDecimalDigitsBackwards(buf: var openArray[char]; pos: int; output: uin
     buf[pos] = chr(uint32('0') + q)
   return tz
 
-proc decimalLength(v: uint32): int32 {.inline.} =
+proc decimalLength(v: uint32): int {.inline.} =
   sf_Assert(v >= 1)
   sf_Assert(v <= 999999999'u)
   if v >= 100000000'u:
@@ -317,7 +321,7 @@ proc decimalLength(v: uint32): int32 {.inline.} =
     return 2
   return 1
 
-proc formatDigits(buffer: var openArray[char]; pos: int; digits: uint32; decimalExponent: int32;
+proc formatDigits[T: Ordinal](buffer: var openArray[char]; pos: T; digits: uint32; decimalExponent: int;
                   forceTrailingDotZero: bool = false): int {.inline.} =
   const
     minFixedDecimalPoint: int32 = -4
@@ -329,8 +333,8 @@ proc formatDigits(buffer: var openArray[char]; pos: int; digits: uint32; decimal
   sf_Assert(digits <= 999999999'u)
   sf_Assert(decimalExponent >= -99)
   sf_Assert(decimalExponent <= 99)
-  var numDigits: int32 = decimalLength(digits)
-  let decimalPoint: int32 = numDigits + decimalExponent
+  var numDigits = decimalLength(digits)
+  let decimalPoint = numDigits + decimalExponent
   let useFixed: bool = minFixedDecimalPoint <= decimalPoint and
       decimalPoint <= maxFixedDecimalPoint
   ##  Prepare the buffer.
@@ -338,7 +342,7 @@ proc formatDigits(buffer: var openArray[char]; pos: int; digits: uint32; decimal
   for i in 0..<32: buffer[pos+i] = '0'
   assert(minFixedDecimalPoint >= -30, "internal error")
   assert(maxFixedDecimalPoint <= 32, "internal error")
-  var decimalDigitsPosition: int32
+  var decimalDigitsPosition: int
   if useFixed:
     if decimalPoint <= 0:
       ##  0.[000]digits
@@ -351,7 +355,7 @@ proc formatDigits(buffer: var openArray[char]; pos: int; digits: uint32; decimal
     ##  dE+123 or d.igitsE+123
     decimalDigitsPosition = 1
   var digitsEnd = pos + decimalDigitsPosition + numDigits
-  let tz: int32 = printDecimalDigitsBackwards(buffer, digitsEnd, digits)
+  let tz = printDecimalDigitsBackwards(buffer, digitsEnd, digits)
   dec(digitsEnd, tz)
   dec(numDigits, tz)
   ##   decimal_exponent += tz; // => decimal_point unchanged.
@@ -382,7 +386,7 @@ proc formatDigits(buffer: var openArray[char]; pos: int; digits: uint32; decimal
       ##  d.igitsE+123
       buffer[pos+1] = '.'
       pos = digitsEnd
-    let scientificExponent: int32 = decimalPoint - 1
+    let scientificExponent = decimalPoint - 1
     ##       SF_ASSERT(scientific_exponent != 0);
     buffer[pos] = 'e'
     buffer[pos+1] = if scientificExponent < 0: '-' else: '+'
@@ -408,7 +412,7 @@ proc float32ToChars*(buffer: var openArray[char]; v: float32; forceTrailingDotZe
     if exponent != 0 or significand != 0:
       ##  != 0
       let dec: auto = toDecimal32(significand, exponent)
-      return formatDigits(buffer, pos, dec.digits, dec.exponent, forceTrailingDotZero)
+      return formatDigits(buffer, pos, dec.digits, dec.exponent.int, forceTrailingDotZero)
     else:
       buffer[pos] = '0'
       buffer[pos+1] = '.'

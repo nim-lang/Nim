@@ -1,7 +1,9 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c cpp"
 """
 import std/atomics
+import std/assertions
 
 block testSize: # issue 12726
   type

@@ -1,6 +1,9 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c cpp js"
 """
+
+import std/assertions
 
 # bug #20227
 type

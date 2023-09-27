@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim check $file"
+  cmd: "nim check --hints:off $file"
   errormsg: ""
   nimout: '''
 tillegalreturntype.nim(11, 11) Error: return type 'typed' is only valid for macros and templates

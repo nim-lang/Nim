@@ -1,5 +1,5 @@
 discard """
-  matrix: "--threads"
+  matrix: "--mm:refc; --mm:arc"
   joinable: false
   targets: "c js cpp"
 """
@@ -7,6 +7,9 @@ discard """
 import std/os
 from std/sequtils import toSeq
 import stdtest/testutils
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions]
 
 # "LATIN CAPITAL LETTER AE" in UTF-8 (0xc386)
 const unicodeUtf8 = "\xc3\x86"
@@ -49,10 +52,13 @@ static: main()
 main()
 
 when defined(windows):
+  import std/widestrs
   proc c_wgetenv(env: WideCString): WideCString {.importc: "_wgetenv", header: "<stdlib.h>".}
 proc c_getenv(env: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
 
 when not defined(js) and not defined(nimscript):
+  when defined(nimPreviewSlimSystem):
+    import std/typedthreads
   block: # bug #18533
     var thr: Thread[void]
     proc threadFunc {.thread.} = putEnv("foo", "fooVal2")

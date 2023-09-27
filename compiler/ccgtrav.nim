@@ -21,7 +21,7 @@ const
 
 proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType)
 proc genCaseRange(p: BProc, branch: PNode)
-proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false)
+proc getTemp(p: BProc, t: PType, needsInit=false): TLoc
 
 proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
                      typ: PType) =
@@ -34,7 +34,7 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
     if (n[0].kind != nkSym): internalError(c.p.config, n.info, "genTraverseProc")
     var p = c.p
     let disc = n[0].sym
-    if disc.loc.r == nil: fillObjectFields(c.p.module, typ)
+    if disc.loc.r == "": fillObjectFields(c.p.module, typ)
     if disc.loc.t == nil:
       internalError(c.p.config, n.info, "genTraverseProc()")
     lineF(p, cpsStmts, "switch ($1.$2) {$n", [accessor, disc.loc.r])
@@ -51,7 +51,7 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
   of nkSym:
     let field = n.sym
     if field.typ.kind == tyVoid: return
-    if field.loc.r == nil: fillObjectFields(c.p.module, typ)
+    if field.loc.r == "": fillObjectFields(c.p.module, typ)
     if field.loc.t == nil:
       internalError(c.p.config, n.info, "genTraverseProc()")
     genTraverseProc(c, "$1.$2" % [accessor, field.loc.r], field.loc.t)
@@ -74,9 +74,9 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
     genTraverseProc(c, accessor, lastSon(typ))
   of tyArray:
     let arraySize = lengthOrd(c.p.config, typ[0])
-    var i: TLoc
-    getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt), i)
-    let oldCode = p.s(cpsStmts)
+    var i: TLoc = getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt))
+    var oldCode = p.s(cpsStmts)
+    freeze oldCode
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
             [i.r, arraySize])
     let oldLen = p.s(cpsStmts).len
@@ -118,11 +118,10 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
 proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
   var p = c.p
   assert typ.kind == tySequence
-  var i: TLoc
-  getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt), i)
-  let oldCode = p.s(cpsStmts)
-  var a: TLoc
-  a.r = accessor
+  var i: TLoc = getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt))
+  var oldCode = p.s(cpsStmts)
+  freeze oldCode
+  var a: TLoc = TLoc(r: accessor)
 
   lineF(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
       [i.r, lenExpr(c.p, a)])

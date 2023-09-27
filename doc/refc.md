@@ -121,7 +121,7 @@ Keeping track of memory
 If you need to pass around memory allocated by Nim to C, you can use the
 procs `GC_ref` and `GC_unref` to mark objects as referenced to avoid them
 being freed by the garbage collector.
-Other useful procs from `system <system.html>`_ you can use to keep track of memory are:
+Other useful procs from [system](system.html) you can use to keep track of memory are:
 
 * `getTotalMem()` Returns the amount of total memory managed by the garbage collector.
 * `getOccupiedMem()` Bytes reserved by the garbage collector and used by objects.
@@ -136,6 +136,7 @@ allocating memory with procs like `alloc`, `alloc0`, `allocShared`, `allocShared
 The garbage collector won't try to free them, you need to call their respective *dealloc* pairs
 (`dealloc`, `deallocShared`, `deallocCStringArray`, etc)
 when you are done with them or they will leak.
+
 
 
 Heap dump

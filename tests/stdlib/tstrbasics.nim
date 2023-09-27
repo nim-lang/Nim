@@ -1,9 +1,9 @@
 discard """
   targets: "c cpp js"
-  matrix: "--gc:refc; --gc:arc"
+  matrix: "--mm:refc; --mm:orc"
 """
 
-import std/[strbasics, sugar]
+import std/[strbasics, sugar, assertions]
 
 template strip2(input: string, args: varargs[untyped]): untyped =
   var a = input

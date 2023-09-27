@@ -1,61 +1,13 @@
-const NimStackTraceMsgs =
-  when defined(nimHasStacktraceMsgs): compileOption("stacktraceMsgs")
-  else: false
+## Exception and effect types used in Nim code.
 
 type
-  RootEffect* {.compilerproc.} = object of RootObj ## \
-    ## Base effect class.
-    ##
-    ## Each effect should inherit from `RootEffect` unless you know what
-    ## you're doing.
   TimeEffect* = object of RootEffect   ## Time effect.
   IOEffect* = object of RootEffect     ## IO effect.
   ReadIOEffect* = object of IOEffect   ## Effect describing a read IO operation.
   WriteIOEffect* = object of IOEffect  ## Effect describing a write IO operation.
   ExecIOEffect* = object of IOEffect   ## Effect describing an executing IO operation.
 
-  StackTraceEntry* = object ## In debug mode exceptions store the stack trace that led
-                            ## to them. A `StackTraceEntry` is a single entry of the
-                            ## stack trace.
-    procname*: cstring      ## Name of the proc that is currently executing.
-    line*: int              ## Line number of the proc that is currently executing.
-    filename*: cstring      ## Filename of the proc that is currently executing.
-    when NimStackTraceMsgs:
-      frameMsg*: string     ## When a stacktrace is generated in a given frame and
-                            ## rendered at a later time, we should ensure the stacktrace
-                            ## data isn't invalidated; any pointer into PFrame is
-                            ## subject to being invalidated so shouldn't be stored.
-    when defined(nimStackTraceOverride):
-      programCounter*: uint ## Program counter - will be used to get the rest of the info,
-                            ## when `$` is called on this type. We can't use
-                            ## "cuintptr_t" in here.
-      procnameStr*, filenameStr*: string ## GC-ed alternatives to "procname" and "filename"
-
-  Exception* {.compilerproc, magic: "Exception".} = object of RootObj ## \
-    ## Base exception class.
-    ##
-    ## Each exception has to inherit from `Exception`. See the full `exception
-    ## hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-    parent*: ref Exception ## Parent exception (can be used as a stack).
-    name*: cstring         ## The exception's name is its Nim identifier.
-                           ## This field is filled automatically in the
-                           ## `raise` statement.
-    msg* {.exportc: "message".}: string ## The exception's message. Not
-                                        ## providing an exception message
-                                        ## is bad style.
-    when defined(js):
-      trace: string
-    else:
-      trace: seq[StackTraceEntry]
-    up: ref Exception # used for stacking exceptions. Not exported!
-
-  Defect* = object of Exception ## \
-    ## Abstract base class for all exceptions that Nim's runtime raises
-    ## but that are strictly uncatchable as they can also be mapped to
-    ## a `quit` / `trap` / `exit` operation.
-
-  CatchableError* = object of Exception ## \
-    ## Abstract class for all exceptions that are catchable.
+type
   IOError* = object of CatchableError ## \
     ## Raised if an IO error occurred.
   EOFError* = object of IOError ## \
@@ -144,25 +96,27 @@ type
     ##
     ## This is only raised if the `segfaults module <segfaults.html>`_ was imported!
 
-  ArithmeticError* {.deprecated: "See corresponding Defect".} = ArithmeticDefect
-  DivByZeroError* {.deprecated: "See corresponding Defect".} = DivByZeroDefect
-  OverflowError* {.deprecated: "See corresponding Defect".} = OverflowDefect
-  AccessViolationError* {.deprecated: "See corresponding Defect".} = AccessViolationDefect
-  AssertionError* {.deprecated: "See corresponding Defect".} = AssertionDefect
-  OutOfMemError* {.deprecated: "See corresponding Defect".} = OutOfMemDefect
-  IndexError* {.deprecated: "See corresponding Defect".} = IndexDefect
+when not defined(nimPreviewSlimSystem):
+  type
+    ArithmeticError* {.deprecated: "See corresponding Defect".} = ArithmeticDefect
+    DivByZeroError* {.deprecated: "See corresponding Defect".} = DivByZeroDefect
+    OverflowError* {.deprecated: "See corresponding Defect".} = OverflowDefect
+    AccessViolationError* {.deprecated: "See corresponding Defect".} = AccessViolationDefect
+    AssertionError* {.deprecated: "See corresponding Defect".} = AssertionDefect
+    OutOfMemError* {.deprecated: "See corresponding Defect".} = OutOfMemDefect
+    IndexError* {.deprecated: "See corresponding Defect".} = IndexDefect
 
-  FieldError* {.deprecated: "See corresponding Defect".} = FieldDefect
-  RangeError* {.deprecated: "See corresponding Defect".} = RangeDefect
-  StackOverflowError* {.deprecated: "See corresponding Defect".} = StackOverflowDefect
-  ReraiseError* {.deprecated: "See corresponding Defect".} = ReraiseDefect
-  ObjectAssignmentError* {.deprecated: "See corresponding Defect".} = ObjectAssignmentDefect
-  ObjectConversionError* {.deprecated: "See corresponding Defect".} = ObjectConversionDefect
-  FloatingPointError* {.deprecated: "See corresponding Defect".} = FloatingPointDefect
-  FloatInvalidOpError* {.deprecated: "See corresponding Defect".} = FloatInvalidOpDefect
-  FloatDivByZeroError* {.deprecated: "See corresponding Defect".} = FloatDivByZeroDefect
-  FloatOverflowError* {.deprecated: "See corresponding Defect".} = FloatOverflowDefect
-  FloatUnderflowError* {.deprecated: "See corresponding Defect".} = FloatUnderflowDefect
-  FloatInexactError* {.deprecated: "See corresponding Defect".} = FloatInexactDefect
-  DeadThreadError* {.deprecated: "See corresponding Defect".} = DeadThreadDefect
-  NilAccessError* {.deprecated: "See corresponding Defect".} = NilAccessDefect
+    FieldError* {.deprecated: "See corresponding Defect".} = FieldDefect
+    RangeError* {.deprecated: "See corresponding Defect".} = RangeDefect
+    StackOverflowError* {.deprecated: "See corresponding Defect".} = StackOverflowDefect
+    ReraiseError* {.deprecated: "See corresponding Defect".} = ReraiseDefect
+    ObjectAssignmentError* {.deprecated: "See corresponding Defect".} = ObjectAssignmentDefect
+    ObjectConversionError* {.deprecated: "See corresponding Defect".} = ObjectConversionDefect
+    FloatingPointError* {.deprecated: "See corresponding Defect".} = FloatingPointDefect
+    FloatInvalidOpError* {.deprecated: "See corresponding Defect".} = FloatInvalidOpDefect
+    FloatDivByZeroError* {.deprecated: "See corresponding Defect".} = FloatDivByZeroDefect
+    FloatOverflowError* {.deprecated: "See corresponding Defect".} = FloatOverflowDefect
+    FloatUnderflowError* {.deprecated: "See corresponding Defect".} = FloatUnderflowDefect
+    FloatInexactError* {.deprecated: "See corresponding Defect".} = FloatInexactDefect
+    DeadThreadError* {.deprecated: "See corresponding Defect".} = DeadThreadDefect
+    NilAccessError* {.deprecated: "See corresponding Defect".} = NilAccessDefect

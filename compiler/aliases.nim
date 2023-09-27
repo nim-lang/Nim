@@ -77,24 +77,29 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
   ## cases:
   ##
   ## YES-cases:
+  ##  ```
   ##  x    <| x   # for general trees
   ##  x[]  <| x
   ##  x[i] <| x
   ##  x.f  <| x
+  ##  ```
   ##
   ## NO-cases:
+  ## ```
   ## x           !<| y    # depending on type and symbol kind
   ## x[constA]   !<| x[constB]
   ## x.f         !<| x.g
   ## x.f         !<| y.f  iff x !<= y
+  ## ```
   ##
   ## MAYBE-cases:
   ##
+  ##  ```
   ##  x[] ?<| y[]   iff compatible type
   ##
   ##
   ##  x[]  ?<| y  depending on type
-  ##
+  ##  ```
   if a.kind == b.kind:
     case a.kind
     of nkSym:
@@ -109,6 +114,8 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
         # use expensive type check:
         if isPartOf(a.sym.typ, b.sym.typ) != arNo:
           result = arMaybe
+        else:
+          result = arNo
     of nkBracketExpr:
       result = isPartOf(a[0], b[0])
       if a.len >= 2 and b.len >= 2:
@@ -144,7 +151,7 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
       result = isPartOf(a[1], b[1])
     of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
       result = isPartOf(a[0], b[0])
-    else: discard
+    else: result = arNo
     # Calls return a new location, so a default of ``arNo`` is fine.
   else:
     # go down recursively; this is quite demanding:
@@ -160,6 +167,7 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
 
     of DerefKinds:
       # a* !<| b[] iff
+      result = arNo
       if isPartOf(a.typ, b.typ) != arNo:
         result = isPartOf(a, b[0])
         if result == arNo: result = arMaybe
@@ -181,7 +189,9 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
         if isPartOf(a.typ, b.typ) != arNo:
           result = isPartOf(a[0], b)
           if result == arNo: result = arMaybe
-      else: discard
+        else:
+          result = arNo
+      else: result = arNo
     of nkObjConstr:
       result = arNo
       for i in 1..<b.len:
@@ -199,4 +209,6 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
     of nkBracket:
       if b.len > 0:
         result = isPartOf(a, b[0])
-    else: discard
+      else:
+        result = arNo
+    else: result = arNo

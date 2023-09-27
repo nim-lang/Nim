@@ -9,21 +9,20 @@
 
 ## This module implements the basics for Linux distribution ("distro")
 ## detection and the OS's native package manager. Its primary purpose is to
-## produce output for Nimble packages, like::
+## produce output for Nimble packages, like:
 ##
-##   To complete the installation, run:
+##     To complete the installation, run:
 ##
-##   sudo apt-get install libblas-dev
-##   sudo apt-get install libvoodoo
+##     sudo apt-get install libblas-dev
+##     sudo apt-get install libvoodoo
 ##
 ## The above output could be the result of a code snippet like:
 ##
-## .. code-block:: nim
-##
+##   ```nim
 ##   if detectOs(Ubuntu):
 ##     foreignDep "lbiblas-dev"
 ##     foreignDep "libvoodoo"
-##
+##   ```
 ##
 ## See `packaging <packaging.html>`_ for hints on distributing Nim using OS packages.
 
@@ -31,7 +30,7 @@ from std/strutils import contains, toLowerAscii
 
 when not defined(nimscript):
   from std/osproc import execProcess
-  from std/os import existsEnv
+  from std/envvars import existsEnv
 
 type
   Distribution* {.pure.} = enum ## the list of known distributions

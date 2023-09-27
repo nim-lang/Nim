@@ -227,36 +227,40 @@ macro `.`*(obj: JsObject, field: untyped): JsObject =
     assert obj.a.to(int) == 20
   if validJsName($field):
     let importString = "#." & $field
+    let helperName = genSym(nskProc, "helper")
     result = quote do:
-      proc helper(o: JsObject): JsObject
-        {.importjs: `importString`, gensym.}
-      helper(`obj`)
+      proc `helperName`(o: JsObject): JsObject
+        {.importjs: `importString`.}
+      `helperName`(`obj`)
   else:
     if not mangledNames.hasKey($field):
       mangledNames[$field] = mangleJsName($field)
     let importString = "#." & mangledNames[$field]
+    let helperName = genSym(nskProc, "helper")
     result = quote do:
-      proc helper(o: JsObject): JsObject
-        {.importjs: `importString`, gensym.}
-      helper(`obj`)
+      proc `helperName`(o: JsObject): JsObject
+        {.importjs: `importString`.}
+      `helperName`(`obj`)
 
 macro `.=`*(obj: JsObject, field, value: untyped): untyped =
   ## Experimental dot accessor (set) for type JsObject.
   ## Sets the value of a property of name `field` in a JsObject `x` to `value`.
   if validJsName($field):
     let importString = "#." & $field & " = #"
+    let helperName = genSym(nskProc, "helper")
     result = quote do:
-      proc helper(o: JsObject, v: auto)
-        {.importjs: `importString`, gensym.}
-      helper(`obj`, `value`)
+      proc `helperName`(o: JsObject, v: auto)
+        {.importjs: `importString`.}
+      `helperName`(`obj`, `value`)
   else:
     if not mangledNames.hasKey($field):
       mangledNames[$field] = mangleJsName($field)
     let importString = "#." & mangledNames[$field] & " = #"
+    let helperName = genSym(nskProc, "helper")
     result = quote do:
-      proc helper(o: JsObject, v: auto)
-        {.importjs: `importString`, gensym.}
-      helper(`obj`, `value`)
+      proc `helperName`(o: JsObject, v: auto)
+        {.importjs: `importString`.}
+      `helperName`(`obj`, `value`)
 
 macro `.()`*(obj: JsObject,
              field: untyped,
@@ -268,15 +272,14 @@ macro `.()`*(obj: JsObject,
   ## so be careful when using this.)
   ##
   ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  # Let's get back to the console example:
-  ##  var console {.importc, nodecl.}: JsObject
-  ##  let res = console.log("I return undefined!")
-  ##  console.log(res) # This prints undefined, as console.log always returns
-  ##                   # undefined. Thus one has to be careful, when using
-  ##                   # JsObject calls.
+  ##   ```nim
+  ##   # Let's get back to the console example:
+  ##   var console {.importc, nodecl.}: JsObject
+  ##   let res = console.log("I return undefined!")
+  ##   console.log(res) # This prints undefined, as console.log always returns
+  ##                    # undefined. Thus one has to be careful, when using
+  ##                    # JsObject calls.
+  ##   ```
   var importString: string
   if validJsName($field):
     importString = "#." & $field & "(@)"
@@ -284,10 +287,11 @@ macro `.()`*(obj: JsObject,
     if not mangledNames.hasKey($field):
       mangledNames[$field] = mangleJsName($field)
     importString = "#." & mangledNames[$field] & "(@)"
-  result = quote:
-    proc helper(o: JsObject): JsObject
-      {.importjs: `importString`, gensym, discardable.}
-    helper(`obj`)
+  let helperName = genSym(nskProc, "helper")
+  result = quote do:
+    proc `helperName`(o: JsObject): JsObject
+      {.importjs: `importString`, discardable.}
+    `helperName`(`obj`)
   for idx in 0 ..< args.len:
     let paramName = newIdentNode("param" & $idx)
     result[0][3].add newIdentDefs(paramName, newIdentNode("JsObject"))
@@ -304,10 +308,11 @@ macro `.`*[K: cstring, V](obj: JsAssoc[K, V],
     if not mangledNames.hasKey($field):
       mangledNames[$field] = mangleJsName($field)
     importString = "#." & mangledNames[$field]
+  let helperName = genSym(nskProc, "helper")
   result = quote do:
-    proc helper(o: type(`obj`)): `obj`.V
-      {.importjs: `importString`, gensym.}
-    helper(`obj`)
+    proc `helperName`(o: type(`obj`)): `obj`.V
+      {.importjs: `importString`.}
+    `helperName`(`obj`)
 
 macro `.=`*[K: cstring, V](obj: JsAssoc[K, V],
                                     field: untyped,
@@ -321,10 +326,11 @@ macro `.=`*[K: cstring, V](obj: JsAssoc[K, V],
     if not mangledNames.hasKey($field):
       mangledNames[$field] = mangleJsName($field)
     importString = "#." & mangledNames[$field] & " = #"
+  let helperName = genSym(nskProc, "helper")
   result = quote do:
-    proc helper(o: type(`obj`), v: `obj`.V)
-      {.importjs: `importString`, gensym.}
-    helper(`obj`, `value`)
+    proc `helperName`(o: type(`obj`), v: `obj`.V)
+      {.importjs: `importString`.}
+    `helperName`(`obj`, `value`)
 
 macro `.()`*[K: cstring, V: proc](obj: JsAssoc[K, V],
                                            field: untyped,
@@ -407,21 +413,20 @@ macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
   ##
   ## Example:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
+  ##   # Let's say we have a type with a ton of fields, where some fields do not
+  ##   # need to be set, and we do not want those fields to be set to `nil`:
+  ##   type
+  ##     ExtremelyHugeType = ref object
+  ##       a, b, c, d, e, f, g: int
+  ##       h, i, j, k, l: cstring
+  ##       # And even more fields ...
   ##
-  ##  # Let's say we have a type with a ton of fields, where some fields do not
-  ##  # need to be set, and we do not want those fields to be set to `nil`:
-  ##  type
-  ##    ExtremelyHugeType = ref object
-  ##      a, b, c, d, e, f, g: int
-  ##      h, i, j, k, l: cstring
-  ##      # And even more fields ...
+  ##   let obj = ExtremelyHugeType{ a: 1, k: "foo".cstring, d: 42 }
   ##
-  ##  let obj = ExtremelyHugeType{ a: 1, k: "foo".cstring, d: 42 }
-  ##
-  ##  # This generates roughly the same JavaScript as:
-  ##  {.emit: "var obj = {a: 1, k: "foo", d: 42};".}
-  ##
+  ##   # This generates roughly the same JavaScript as:
+  ##   {.emit: "var obj = {a: 1, k: "foo", d: 42};".}
+  ##   ```
   let a = ident"a"
   var body = quote do:
     var `a` {.noinit.}: `typ`
@@ -471,24 +476,25 @@ macro bindMethod*(procedure: typed): auto =
   ## Example:
   ##
   ## We want to generate roughly this JavaScript:
-  ##
-  ## .. code-block:: js
-  ##  var obj = {a: 10};
-  ##  obj.someMethod = function() {
-  ##    return this.a + 42;
-  ##  };
+  ##   ```js
+  ##   var obj = {a: 10};
+  ##   obj.someMethod = function() {
+  ##     return this.a + 42;
+  ##   };
+  ##   ```
   ##
   ## We can achieve this using the `bindMethod` macro:
   ##
-  ## .. code-block:: nim
-  ##  let obj = JsObject{ a: 10 }
-  ##  proc someMethodImpl(that: JsObject): int =
-  ##    that.a.to(int) + 42
-  ##  obj.someMethod = bindMethod someMethodImpl
+  ##   ```nim
+  ##   let obj = JsObject{ a: 10 }
+  ##   proc someMethodImpl(that: JsObject): int =
+  ##     that.a.to(int) + 42
+  ##   obj.someMethod = bindMethod someMethodImpl
   ##
-  ##  # Alternatively:
-  ##  obj.someMethod = bindMethod
-  ##    proc(that: JsObject): int = that.a.to(int) + 42
+  ##   # Alternatively:
+  ##   obj.someMethod = bindMethod
+  ##     proc(that: JsObject): int = that.a.to(int) + 42
+  ##   ```
   if not (procedure.kind == nnkSym or procedure.kind == nnkLambda):
     error("Argument has to be a proc or a symbol corresponding to a proc.")
   var

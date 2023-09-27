@@ -11,6 +11,9 @@
 
 import strtabs, times, options
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 type
   SameSite* {.pure.} = enum ## The SameSite cookie attribute.

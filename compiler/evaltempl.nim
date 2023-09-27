@@ -10,7 +10,7 @@
 ## Template evaluation engine. Now hygienic.
 
 import
-  strutils, options, ast, astalgo, msgs, renderer, lineinfos, idents
+  strutils, options, ast, astalgo, msgs, renderer, lineinfos, idents, trees
 
 type
   TemplCtx = object
@@ -26,7 +26,7 @@ type
 
 proc copyNode(ctx: TemplCtx, a, b: PNode): PNode =
   result = copyNode(a)
-  if ctx.instLines: result.info = b.info
+  if ctx.instLines: setInfoRecursive(result, b.info)
 
 proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
   template handleParam(param) =
@@ -49,7 +49,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
         internalAssert c.config, sfGenSym in s.flags or s.kind == skType
         var x = PSym(idTableGet(c.mapping, s))
         if x == nil:
-          x = copySym(s, nextSymId(c.idgen))
+          x = copySym(s, c.idgen)
           # sem'check needs to set the owner properly later, see bug #9476
           x.owner = nil # c.genSymOwner
           #if x.kind == skParam and x.owner.kind == skModule:
@@ -187,7 +187,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   ctx.genSymOwner = genSymOwner
   ctx.config = conf
   ctx.ic = ic
-  initIdTable(ctx.mapping)
+  ctx.mapping = initIdTable()
   ctx.instID = instID[]
   ctx.idgen = idgen
 
@@ -204,7 +204,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
     result = copyNode(body)
     ctx.instLines = sfCallsite in tmpl.flags
     if ctx.instLines:
-      result.info = n.info
+      setInfoRecursive(result, n.info)
     for i in 0..<body.safeLen:
       evalTemplateAux(body[i], args, ctx, result)
   result.flags.incl nfFromTemplate

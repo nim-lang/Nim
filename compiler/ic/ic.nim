@@ -7,12 +7,14 @@
 #    distribution, for details about the copyright.
 #
 
-import hashes, tables, intsets, std/sha1
+import hashes, tables, intsets
 import packed_ast, bitabs, rodfiles
 import ".." / [ast, idents, lineinfos, msgs, ropes, options,
   pathutils, condsyms, packages, modulepaths]
 #import ".." / [renderer, astalgo]
 from os import removeFile, isAbsolute
+
+import ../../dist/checksums/src/checksums/sha1
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, formatfloat]
@@ -43,11 +45,10 @@ type
     reexports*: seq[(LitId, PackedItemId)]
     compilerProcs*: seq[(LitId, int32)]
     converters*, methods*, trmacros*, pureEnums*: seq[int32]
-    macroUsages*: seq[(PackedItemId, PackedLineInfo)]
 
     typeInstCache*: seq[(PackedItemId, PackedItemId)]
     procInstCache*: seq[PackedInstantiation]
-    attachedOps*: seq[(TTypeAttachedOp, PackedItemId, PackedItemId)]
+    attachedOps*: seq[(PackedItemId, TTypeAttachedOp, PackedItemId)]
     methodsPerType*: seq[(PackedItemId, int, PackedItemId)]
     enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
 
@@ -355,10 +356,10 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
 
     var p = PackedType(kind: t.kind, flags: t.flags, callConv: t.callConv,
       size: t.size, align: t.align, nonUniqueId: t.itemId.item,
-      paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel)
+      paddingAtEnd: t.paddingAtEnd)
     storeNode(p, t, n)
     p.typeInst = t.typeInst.storeType(c, m)
-    for kid in items t.sons:
+    for kid in items t:
       p.types.add kid.storeType(c, m)
     c.addMissing t.sym
     p.sym = t.sym.safeItemId(c, m)
@@ -373,7 +374,7 @@ proc toPackedLib(l: PLib; c: var PackedEncoder; m: var PackedModule): PackedLib 
   if l.isNil: return
   result.kind = l.kind
   result.generated = l.generated
-  result.isOverriden = l.isOverriden
+  result.isOverridden = l.isOverridden
   result.name = toLitId($l.name, m)
   storeNode(result, l, path)
 
@@ -391,7 +392,7 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
     assert sfForward notin s.flags
 
     var p = PackedSym(kind: s.kind, flags: s.flags, info: s.info.toPackedInfo(c, m), magic: s.magic,
-      position: s.position, offset: s.offset, options: s.options,
+      position: s.position, offset: s.offset, disamb: s.disamb, options: s.options,
       name: s.name.s.toLitId(m))
 
     storeNode(p, s, ast)
@@ -403,7 +404,7 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
       p.bitsize = s.bitsize
       p.alignment = s.alignment
 
-    p.externalName = toLitId(if s.loc.r.isNil: "" else: $s.loc.r, m)
+    p.externalName = toLitId(s.loc.r, m)
     p.locFlags = s.loc.flags
     c.addMissing s.typ
     p.typ = s.typ.storeType(c, m)
@@ -412,6 +413,7 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
     p.annex = toPackedLib(s.annex, c, m)
     when hasFFI:
       p.cname = toLitId(s.cname, m)
+    p.instantiatedFrom = s.instantiatedFrom.safeItemId(c, m)
 
     # fill the reserved slot, nothing else:
     m.syms[s.itemId.item] = p
@@ -529,6 +531,15 @@ proc toPackedGeneratedProcDef*(s: PSym, encoder: var PackedEncoder; m: var Packe
   toPackedProcDef(s.ast, m.topLevel, encoder, m)
   #flush encoder, m
 
+proc storeAttachedProcDef*(t: PType; op: TTypeAttachedOp; s: PSym,
+                           encoder: var PackedEncoder; m: var PackedModule) =
+  assert s.kind in routineKinds
+  assert isActive(encoder)
+  let tid = storeTypeLater(t, encoder, m)
+  let sid = storeSymLater(s, encoder, m)
+  m.attachedOps.add (tid, op, sid)
+  toPackedGeneratedProcDef(s, encoder, m)
+
 proc storeInstantiation*(c: var PackedEncoder; m: var PackedModule; s: PSym; i: PInstantiation) =
   var t = newSeq[PackedItemId](i.concreteTypes.len)
   for j in 0..high(i.concreteTypes):
@@ -597,7 +608,6 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection convertersSection, m.converters
   loadSeqSection methodsSection, m.methods
   loadSeqSection pureEnumsSection, m.pureEnums
-  loadSeqSection macroUsagesSection, m.macroUsages
 
   loadSeqSection toReplaySection, m.toReplay.nodes
   loadSeqSection topLevelSection, m.topLevel.nodes
@@ -661,7 +671,6 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection convertersSection, m.converters
   storeSeqSection methodsSection, m.methods
   storeSeqSection pureEnumsSection, m.pureEnums
-  storeSeqSection macroUsagesSection, m.macroUsages
 
   storeSeqSection toReplaySection, m.toReplay.nodes
   storeSeqSection topLevelSection, m.topLevel.nodes
@@ -805,6 +814,7 @@ proc loadProcHeader(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: 
 
 proc loadProcBody(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
                   tree: PackedTree; n: NodePos): PNode =
+  result = nil
   var i = 0
   for n0 in sonsReadonly(tree, n):
     if i == bodyPos:
@@ -824,6 +834,7 @@ proc symHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
     options: s.options,
     position: if s.kind in {skForVar, skVar, skLet, skTemp}: 0 else: s.position,
     offset: if s.kind in routineKinds: defaultOffset else: s.offset,
+    disamb: s.disamb,
     name: getIdent(c.cache, g[si].fromDisk.strings[s.name])
   )
 
@@ -841,7 +852,7 @@ proc loadLib(c: var PackedDecoder; g: var PackedModuleGraph;
   if l.name.int == 0:
     result = nil
   else:
-    result = PLib(generated: l.generated, isOverriden: l.isOverriden,
+    result = PLib(generated: l.generated, isOverridden: l.isOverridden,
                   kind: l.kind, name: rope g[si].fromDisk.strings[l.name])
     loadAstBody(l, path)
 
@@ -866,6 +877,7 @@ proc symBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
   if externalName != "":
     result.loc.r = rope externalName
   result.loc.flags = s.locFlags
+  result.instantiatedFrom = loadSym(c, g, si, s.instantiatedFrom)
 
 proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s: PackedItemId): PSym =
   if s == nilItemId:
@@ -894,7 +906,7 @@ proc typeHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
                           t: PackedType; si, item: int32): PType =
   result = PType(itemId: ItemId(module: si, item: t.nonUniqueId), kind: t.kind,
                 flags: t.flags, size: t.size, align: t.align,
-                paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel,
+                paddingAtEnd: t.paddingAtEnd,
                 uniqueId: ItemId(module: si, item: item),
                 callConv: t.callConv)
 
@@ -907,7 +919,7 @@ proc typeBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
       result.attachedOps[op] = loadSym(c, g, si, item)
   result.typeInst = loadType(c, g, si, t.typeInst)
   for son in items t.types:
-    result.sons.add loadType(c, g, si, son)
+    result.addSon loadType(c, g, si, son)
   loadAstBody(t, n)
   when false:
     for gen, id in items t.methods:
@@ -1138,6 +1150,8 @@ proc initRodIter*(it: var RodIter; config: ConfigRef, cache: IdentCache;
   if it.i < it.values.len:
     result = loadSym(it.decoder, g, int(module), it.values[it.i])
     inc it.i
+  else:
+    result = nil
 
 proc initRodIterAllSyms*(it: var RodIter; config: ConfigRef, cache: IdentCache;
                          g: var PackedModuleGraph; module: FileIndex, importHidden: bool): PSym =
@@ -1155,11 +1169,15 @@ proc initRodIterAllSyms*(it: var RodIter; config: ConfigRef, cache: IdentCache;
   if it.i < it.values.len:
     result = loadSym(it.decoder, g, int(module), it.values[it.i])
     inc it.i
+  else:
+    result = nil
 
 proc nextRodIter*(it: var RodIter; g: var PackedModuleGraph): PSym =
   if it.i < it.values.len:
     result = loadSym(it.decoder, g, it.module, it.values[it.i])
     inc it.i
+  else:
+    result = nil
 
 iterator interfaceSymbols*(config: ConfigRef, cache: IdentCache;
                            g: var PackedModuleGraph; module: FileIndex;
@@ -1192,7 +1210,7 @@ proc searchForCompilerproc*(m: LoadedModule; name: string): int32 =
 # ------------------------- .rod file viewer ---------------------------------
 
 proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
-  var m: PackedModule
+  var m: PackedModule = PackedModule()
   let err = loadRodFile(rodfile, m, config, ignoreConfig=true)
   if err != ok:
     config.quitOrRaise "Error: could not load: " & $rodfile.string & " reason: " & $err

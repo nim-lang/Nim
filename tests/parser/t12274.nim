@@ -1,3 +1,7 @@
+discard """
+  joinable: false
+"""
+
 var s: seq[int]
 s.add block:
   let i = 1

@@ -12,19 +12,19 @@
 
 > "yes, I'm the creator" -- Araq, 2013-07-26 19:28:32.
 
-Note: this is mostly outdated, see instead `nimsuggest <nimsuggest.html>`_
+Note: this is mostly outdated, see instead [nimsuggest](nimsuggest.html)
 
 Nim differs from many other compilers in that it is really fast,
 and being so fast makes it suited to provide external queries for
 text editors about the source code being written. Through the
-`idetools` command of `the compiler <nimc.html>`_, any IDE
+`idetools` command of [the compiler](nimc.html), any IDE
 can query a `.nim` source file and obtain useful information like
 definition of symbols or suggestions for completion.
 
 This document will guide you through the available options. If you
 want to look at practical examples of idetools support you can look
-at the test files found in the `Test suite`_ or `various editor
-integrations <https://github.com/Araq/Nim/wiki/Editor-Support>`_
+at the test files found in the [Test suite] or [various editor
+integrations](https://github.com/Araq/Nim/wiki/Editor-Support)
 already available.
 
 
@@ -36,39 +36,43 @@ Specifying the location of the query
 
 All of the available idetools commands require you to specify a
 query location through the `--track` or `--trackDirty` switches.
-The general idetools invocations are::
+The general idetools invocations are:
 
-    nim idetools --track:FILE,LINE,COL <switches> proj.nim
+  ```cmd
+  nim idetools --track:FILE,LINE,COL <switches> proj.nim
+  ```
 
-Or::
+Or:
 
-    nim idetools --trackDirty:DIRTY_FILE,FILE,LINE,COL <switches> proj.nim
+  ```cmd
+  nim idetools --trackDirty:DIRTY_FILE,FILE,LINE,COL <switches> proj.nim
+  ```
 
 `proj.nim`
-    This is the main *project* filename. Most of the time you will
+:   This is the main *project* filename. Most of the time you will
     pass in the same as **FILE**, but for bigger projects this is
     the file which is used as main entry point for the program, the
     one which users compile to generate a final binary.
 
 `<switches>`
-    This would be any of the other idetools available options, like
+:   This would be any of the other idetools available options, like
     `--def` or `--suggest` explained in the following sections.
 
 `COL`
-    An integer with the column you are going to query. For the
+:   An integer with the column you are going to query. For the
     compiler columns start at zero, so the first column will be
     **0** and the last in an 80 column terminal will be **79**.
 
 `LINE`
-    An integer with the line you are going to query. For the compiler
+:   An integer with the line you are going to query. For the compiler
     lines start at **1**.
 
 `FILE`
-    The file you want to perform the query on. Usually you will
+:   The file you want to perform the query on. Usually you will
     pass in the same value as **proj.nim**.
 
 `DIRTY_FILE`
-    The **FILE** parameter is enough for static analysis, but IDEs
+:   The **FILE** parameter is enough for static analysis, but IDEs
     tend to have *unsaved buffers* where the user may still be in
     the middle of typing a line. In such situations the IDE can
     save the current contents to a temporary file and then use the
@@ -124,8 +128,8 @@ to the case insensitiveness of the language (plus underscores as
 separators!).
 
 The typical usage scenario for this option is to call it after the
-user has typed the dot character for `the object oriented call
-syntax <tut2.html#object-oriented-programming-method-call-syntax>`_.
+user has typed the dot character for [the object oriented call
+syntax](tut2.html#object-oriented-programming-method-call-syntax).
 Idetools will try to return the suggestions sorted first by scope
 (from innermost to outermost) and then by item name.
 
@@ -178,14 +182,18 @@ results of the compilation, and subsequent queries should be fast
 in the millisecond range, thus being responsive enough for IDEs.
 
 If you want to start the server using stdin/stdout as communication
-you need to type::
+you need to type:
 
-    nim serve --server.type:stdin proj.nim
+  ```cmd
+  nim serve --server.type:stdin proj.nim
+  ```
 
-If you want to start the server using tcp and a port, you need to type::
+If you want to start the server using tcp and a port, you need to type:
 
-    nim serve --server.type:tcp --server.port:6000 \
+  ```cmd
+  nim serve --server.type:tcp --server.port:6000 \
       --server.address:hostname proj.nim
+  ```
 
 In both cases the server will start up and await further commands.
 The syntax of the commands you can now send to the server is
@@ -196,7 +204,7 @@ of text it thinks necessary plus an empty line to indicate the end
 of the answer.
 
 You can find examples of client/server communication in the idetools
-tests found in the `Test suite`_.
+tests found in the [Test suite].
 
 
 Parsing idetools output
@@ -239,7 +247,7 @@ symbol for which idetools returns valid output.
 skConst
 -------
 
-| **Third column**: module + [n scope nesting] + const name.
+| **Third column**: module + \[n scope nesting] + const name.
 | **Fourth column**: the type of the const value.
 | **Docstring**: always the empty string.
 
@@ -254,7 +262,7 @@ skConst
 skEnumField
 -----------
 
-| **Third column**: module + [n scope nesting] + enum type + enum field name.
+| **Third column**: module + \[n scope nesting] + enum type + enum field name.
 | **Fourth column**: enum type grouping other enum fields.
 | **Docstring**: always the empty string.
 
@@ -269,7 +277,7 @@ skEnumField
 skForVar
 --------
 
-| **Third column**: module + [n scope nesting] + var name.
+| **Third column**: module + \[n scope nesting] + var name.
 | **Fourth column**: type of the var.
 | **Docstring**: always the empty string.
 
@@ -291,7 +299,7 @@ defined, since at that point in the file the parser hasn't processed
 the full line yet. The signature will be returned complete in
 posterior instances of the iterator.
 
-| **Third column**: module + [n scope nesting] + iterator name.
+| **Third column**: module + \[n scope nesting] + iterator name.
 | **Fourth column**: signature of the iterator including return type.
 | **Docstring**: docstring if available.
 
@@ -308,7 +316,7 @@ posterior instances of the iterator.
 skLabel
 -------
 
-| **Third column**: module + [n scope nesting] + name.
+| **Third column**: module + \[n scope nesting] + name.
 | **Fourth column**: always the empty string.
 | **Docstring**: always the empty string.
 
@@ -325,7 +333,7 @@ skLabel
 skLet
 -----
 
-| **Third column**: module + [n scope nesting] + let name.
+| **Third column**: module + \[n scope nesting] + let name.
 | **Fourth column**: the type of the let variable.
 | **Docstring**: always the empty string.
 
@@ -346,7 +354,7 @@ defined, since at that point in the file the parser hasn't processed
 the full line yet. The signature will be returned complete in
 posterior instances of the macro.
 
-| **Third column**: module + [n scope nesting] + macro name.
+| **Third column**: module + \[n scope nesting] + macro name.
 | **Fourth column**: signature of the macro including return type.
 | **Docstring**: docstring if available.
 
@@ -367,8 +375,8 @@ defined, since at that point in the file the parser hasn't processed
 the full line yet. The signature will be returned complete in
 posterior instances of the method.
 
-Methods imply `dynamic dispatch
-<tut2.html#object-oriented-programming-dynamic-dispatch>`_ and
+Methods imply [dynamic dispatch](
+tut2.html#object-oriented-programming-dynamic-dispatch) and
 idetools performs a static analysis on the code. For this reason
 idetools may not return the definition of the correct method you
 are querying because it may be impossible to know until the code
@@ -384,7 +392,7 @@ Note that at the moment the word `proc` is returned for the
 signature of the found method instead of the expected `method`.
 This may change in the future.
 
-| **Third column**: module + [n scope nesting] + method name.
+| **Third column**: module + \[n scope nesting] + method name.
 | **Fourth column**: signature of the method including return type.
 | **Docstring**: docstring if available.
 
@@ -402,7 +410,7 @@ This may change in the future.
 skParam
 -------
 
-| **Third column**: module + [n scope nesting] + param name.
+| **Third column**: module + \[n scope nesting] + param name.
 | **Fourth column**: the type of the parameter.
 | **Docstring**: always the empty string.
 
@@ -427,7 +435,7 @@ While at the language level a proc is differentiated from others
 by the parameters and return value, the signature of the proc
 returned by idetools returns also the pragmas for the proc.
 
-| **Third column**: module + [n scope nesting] + proc name.
+| **Third column**: module + \[n scope nesting] + proc name.
 | **Fourth column**: signature of the proc including return type.
 | **Docstring**: docstring if available.
 
@@ -446,7 +454,7 @@ returned by idetools returns also the pragmas for the proc.
 skResult
 --------
 
-| **Third column**: module + [n scope nesting] + result.
+| **Third column**: module + \[n scope nesting] + result.
 | **Fourth column**: the type of the result.
 | **Docstring**: always the empty string.
 
@@ -467,7 +475,7 @@ defined, since at that point in the file the parser hasn't processed
 the full line yet. The signature will be returned complete in
 posterior instances of the template.
 
-| **Third column**: module + [n scope nesting] + template name.
+| **Third column**: module + \[n scope nesting] + template name.
 | **Fourth column**: signature of the template including return type.
 | **Docstring**: docstring if available.
 
@@ -496,7 +504,7 @@ posterior instances of the template.
 skType
 ------
 
-| **Third column**: module + [n scope nesting] + type name.
+| **Third column**: module + \[n scope nesting] + type name.
 | **Fourth column**: the type.
 | **Docstring**: always the empty string.
 
@@ -512,7 +520,7 @@ skType
 skVar
 -----
 
-| **Third column**: module + [n scope nesting] + var name.
+| **Third column**: module + \[n scope nesting] + var name.
 | **Fourth column**: the type of the var.
 | **Docstring**: always the empty string.
 
@@ -542,10 +550,12 @@ Running the test suite
 
 At the moment idetools support is still in development so the test
 suite is not integrated with the main test suite and you have to
-run it manually. First you have to compile the tester::
+run it manually. First you have to compile the tester:
 
-	$ cd my/nim/checkout/tests
-	$ nim c testament/caasdriver.nim
+  ```cmd
+  $ cd my/nim/checkout/tests
+  $ nim c testament/caasdriver.nim
+  ```
 
 Running the `caasdriver` without parameters will attempt to process
 all the test cases in all three operation modes. If a test succeeds
@@ -567,9 +577,11 @@ If you don't want to run all the test case files you can pass any
 substring as a parameter to `caasdriver`. Only files matching the
 passed substring will be run. The filtering doesn't use any globbing
 metacharacters, it's a plain match. For example, to run only
-`*-compile*.txt` tests in verbose mode::
+`*-compile*.txt` tests in verbose mode:
 
-	./caasdriver verbose -compile
+  ```cmd
+  ./caasdriver verbose -compile
+  ```
 
 
 Test case file format
@@ -590,7 +602,7 @@ All the `tests/caas/*.txt` files encode a session with the compiler:
   modes, you can prefix a line with the mode and the line will be
   processed only in that mode.
 
-* The rest of the line is treated as a `regular expression <re.html>`_,
+* The rest of the line is treated as a [regular expression](re.html),
   so be careful escaping metacharacters like parenthesis.
 
 Before the line is processed as a regular expression, some basic

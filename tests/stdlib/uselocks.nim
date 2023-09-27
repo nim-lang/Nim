@@ -1,4 +1,5 @@
 import locks
+import std/assertions
 
 type MyType* [T] = object
   lock: Lock

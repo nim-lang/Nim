@@ -56,6 +56,9 @@ Please contribute a new implementation.""".}
 
 import streams, typeinfo, json, intsets, tables, unicode
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, formatfloat]
+
 proc ptrToInt(x: pointer): int {.inline.} =
   result = cast[int](x) # don't skip alignment
 
@@ -301,7 +304,7 @@ proc store*[T](s: Stream, data: sink T) =
 
   var stored = initIntSet()
   var d: T
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc)or defined(gcAtomicArc):
     d = data
   else:
     shallowCopy(d, data)
@@ -330,7 +333,7 @@ proc `$$`*[T](x: sink T): string =
   else:
     var stored = initIntSet()
     var d: T
-    when defined(gcArc) or defined(gcOrc):
+    when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
       d = x
     else:
       shallowCopy(d, x)

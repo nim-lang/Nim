@@ -9,26 +9,32 @@
 .. include:: rstcommon.rst
 .. contents::
 
+.. importdoc:: markdown_rst.md, compiler/docgen.nim
 
 Introduction
 ============
 
 This document describes the `documentation generation tools`:idx: built into
-the `Nim compiler <nimc.html>`_, which can generate HTML, Latex and JSON output
-from input ``.nim`` files and projects, as well as HTML and LaTeX from input RST
-(reStructuredText) files. The output documentation will include the module
+the [Nim compiler](nimc.html), which can generate HTML, Latex and JSON output
+from input ``.nim`` files and projects.
+The output documentation will include the module
 dependencies (`import`), any top-level documentation comments (`##`), and
 exported symbols (`*`), including procedures, types, and variables.
 
-===================   ======================   ============   ==============
-command               runs on...               input format   output format
-===================   ======================   ============   ==============
-`nim doc`:cmd:        documentation comments   ``.nim``       ``.html`` HTML
-`nim doc2tex`:cmd:    ″                        ″              ``.tex`` LaTeX
-`nim jsondoc`:cmd:    ″                        ″              ``.json`` JSON
-`nim rst2html`:cmd:   standalone rst files     ``.rst``       ``.html`` HTML
-`nim rst2tex`:cmd:    ″                        ″              ``.tex`` LaTeX
-===================   ======================   ============   ==============
+===================   ==============
+command               output format
+===================   ==============
+`nim doc`:cmd:        ``.html`` HTML
+`nim doc2tex`:cmd:    ``.tex`` LaTeX
+`nim jsondoc`:cmd:    ``.json`` JSON
+===================   ==============
+
+Nim can generate HTML and LaTeX from input Markdown and
+RST (reStructuredText) files as well, which is intended for writing
+standalone documents like user's guides and technical specifications.
+See [Nim-flavored Markdown and reStructuredText] document for the description
+of this feature and particularly section [Command line usage] for the full
+list of supported commands.
 
 Quick start
 -----------
@@ -53,14 +59,15 @@ Generate HTML documentation for a whole project:
   # or `$nimcache/htmldocs` with `--usenimcache` which avoids clobbering your sources;
   # and likewise without `--project`.
   # Adding `-r` will open in a browser directly.
+  # Use `--showNonExports` to show non-exported fields of an exported type.
   ```
 
 Documentation Comments
 ----------------------
 
 Any comments which are preceded by a double-hash (`##`), are interpreted as
-documentation.  Comments are parsed as RST (see `reference
-<http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_), providing
+documentation.  Comments are parsed as RST (see [reference](
+http://docutils.sourceforge.net/docs/user/rst/quickref.html)), providing
 Nim module authors the ability to easily generate richly formatted
 documentation with only their well-documented code!
 Basic Markdown syntax is also supported inside the doc comments.
@@ -74,10 +81,11 @@ Example:
     age: int
   ```
 
-Outputs::
-  Person* = object
-    name: string
-    age: int
+Outputs:
+
+    Person* = object
+      name: string
+      age: int
 
   This type contains a description of a person
 
@@ -112,6 +120,64 @@ won't influence RST formatting.
      ## Paragraph.
      ```
 
+Structuring output directories
+------------------------------
+
+Basic directory for output is set by `--outdir:OUTDIR`:option: switch,
+by default `OUTDIR` is ``htmldocs`` sub-directory in the directory of
+the processed file.
+
+There are 2 basic options as to how generated HTML output files are stored:
+
+1) complex hierarchy when docgen-compiling with `--project`:option:,
+   which follows directory structure of the project itself.
+   So `nim doc`:cmd: replicates project's directory structure
+   inside `--outdir:OUTDIR`:option: directory.
+   `--project`:option: is well suited for projects that have 1 main module.
+   File name clashes are impossible in this case.
+
+2) flattened structure, where user-provided script goes through all
+   needed input files and calls commands like `nim doc`:cmd:
+   with `--outdir:OUTDIR`:option: switch, thus putting all HTML (and
+   ``.idx``) files into 1 directory.
+
+   .. Important:: Make sure that you don't have files with same base name
+     like ``x.nim`` and ``x.md`` in the same package, otherwise you'll
+     have name conflict for ``x.html``.
+
+   .. Tip:: To structure your output directories and avoid file name
+     clashes you can split your project into
+     different *packages* -- parts of your repository that are
+     docgen-compiled with different `--outdir:OUTDIR`:option: options.
+
+     An example of such strategy is Nim repository itself which has:
+
+     * its stdlib ``.nim`` files from different directories and ``.md``
+       documentation from ``doc/`` directory are all docgen-compiled
+       into `--outdir:web/upload/<version>/`:option: directory
+     * its ``.nim`` files from ``compiler/`` directory are docgen-compiled
+       into `--outdir:web/upload/<version>/compiler/`:option: directory.
+       Interestingly, it's compiled with complex hierarchy using
+       `--project`:option: switch.
+
+     Contents of ``web/upload/<version>`` are then deployed into Nim's
+     Web server.
+
+     This output directory structure allows to work correctly with files like
+     ``compiler/docgen.nim`` (implementation) and ``doc/docgen.md`` (user
+     documentation) in 1 repository.
+
+
+Index files
+-----------
+
+Index (``.idx``) files are used for 2 different purposes:
+
+1. easy cross-referencing between different ``.nim`` and/or ``.md`` / ``.rst``
+   files described in [Nim external referencing]
+2. creating a whole-project index for searching of symbols and keywords,
+   see [Buildindex command].
+
 
 Document Types
 ==============
@@ -143,12 +209,13 @@ The `doc`:option: command:
   nim doc docgen_sample.nim
   ```
 
-Partial Output::
-  ...
-  proc helloWorld(times: int) {.raises: [], tags: [].}
-  ...
+Partial Output:
 
-The full output can be seen here: `docgen_sample.html <docgen_sample.html>`_.
+    ...
+    proc helloWorld(times: int) {.raises: [], tags: [].}
+    ...
+
+The full output can be seen here: [docgen_sample.html](docgen_sample.html).
 It runs after semantic checking and includes pragmas attached implicitly by the
 compiler.
 
@@ -189,22 +256,23 @@ The `jsondoc`:option: command:
   nim jsondoc docgen_sample.nim
   ```
 
-Output::
-  {
-    "orig": "docgen_sample.nim",
-    "nimble": "",
-    "moduleDescription": "This module is a sample",
-    "entries": [
-      {
-        "name": "helloWorld",
-        "type": "skProc",
-        "line": 5,
-        "col": 0,
-        "description": "Takes an integer and outputs as many &quot;hello world!&quot;s",
-        "code": "proc helloWorld(times: int) {.raises: [], tags: [].}"
-      }
-    ]
-  }
+Output:
+
+    {
+      "orig": "docgen_sample.nim",
+      "nimble": "",
+      "moduleDescription": "This module is a sample",
+      "entries": [
+        {
+          "name": "helloWorld",
+          "type": "skProc",
+          "line": 5,
+          "col": 0,
+          "description": "Takes an integer and outputs as many &quot;hello world!&quot;s",
+          "code": "proc helloWorld(times: int) {.raises: [], tags: [].}"
+        }
+      ]
+    }
 
 Similarly to the old `doc`:option: command, the old `jsondoc`:option: command has been
 renamed to `jsondoc0`:option:.
@@ -215,39 +283,80 @@ The `jsondoc0`:option: command:
   nim jsondoc0 docgen_sample.nim
   ```
 
-Output::
-  [
-    {
-      "comment": "This module is a sample."
-    },
-    {
-      "name": "helloWorld",
-      "type": "skProc",
-      "description": "Takes an integer and outputs as many &quot;hello world!&quot;s",
-      "code": "proc helloWorld*(times: int)"
-    }
-  ]
+Output:
+
+    [
+      {
+        "comment": "This module is a sample."
+      },
+      {
+        "name": "helloWorld",
+        "type": "skProc",
+        "description": "Takes an integer and outputs as many &quot;hello world!&quot;s",
+        "code": "proc helloWorld*(times: int)"
+      }
+    ]
 
 Note that the `jsondoc`:option: command outputs its JSON without pretty-printing it,
 while `jsondoc0`:option: outputs pretty-printed JSON.
 
 
-Referencing Nim symbols: simple documentation links
-===================================================
+Simple documentation links
+==========================
 
-You can reference Nim identifiers from Nim documentation comments, currently
-only inside their ``.nim`` file (or inside a ``.rst`` file included from
-a ``.nim``). The point is that such links will be resolved automatically
-by `nim doc`:cmd: (or `nim jsondoc`:cmd: or `nim doc2tex`:cmd:).
+It's possible to use normal Markdown/RST syntax to *manually*
+reference Nim symbols using HTML anchors, however Nim has an *automatic*
+facility that makes referencing inside ``.nim`` and ``.md/.rst`` files and
+between them easy and seamless.
+The point is that such links will be resolved automatically
+by `nim doc`:cmd: (or `md2html`:option:, or `jsondoc`:option:,
+or `doc2tex`:option:, ...). And, unlike manual links, such automatic
+links **check** that their target exists -- a warning is emitted for
+any broken link, so you avoid broken links in your project.
+
+Nim treats both ``.md/.rst`` files and ``.nim`` modules (their doc comment
+part) as *documents* uniformly.
+Hence all directions of referencing are equally possible having the same syntax:
+
+1. ``.md/rst`` -> itself (internal). See [Markup local referencing].
+2. ``.md/rst`` -> external ``.md/rst``. See [Markup external referencing].
+   To summarize, referencing in `.md`/`.rst` files was already described in
+   [Nim-flavored Markdown and reStructuredText]
+   (particularly it described usage of index files for referencing),
+   while in this document we focus on Nim-specific details.
+3. ``.md/rst`` -> external ``.nim``. See [Nim external referencing].
+4. ``.nim`` -> itself (internal). See [Nim local referencing].
+5. ``.nim`` -> external ``.md/rst``. See [Markup external referencing].
+6. ``.nim`` -> external ``.nim``. See [Nim external referencing].
+
+To put it shortly, local referencing always works out of the box,
+external referencing requires to use ``.. importdoc:: <file>``
+directive to import `file` and to ensure that the corresponding
+``.idx`` file was generated.
+
+Syntax for referencing is basically the same as for normal markup.
+Recall from [Referencing] that our parser supports two equivalent syntaxes
+for referencing, Markdown and RST one.
+So to reference ``proc f`` one should use something like that,
+depending on markup type:
+
+    Markdown                    RST
+
+    Ref. [proc f] or [f]        Ref. `proc f`_ or just f_ for a one-word case
+
+Nim local referencing
+---------------------
+
+You can reference Nim identifiers from Nim documentation comments
+inside their ``.nim`` file (or inside a ``.rst`` file included from
+a ``.nim``).
 This pertains to any exported symbol like `proc`, `const`, `iterator`, etc.
-Syntax for referencing is basically a normal RST one: addition of
-underscore `_` to a *link text*.
-Link text is either one word or a group of words enclosed by backticks `\``
-(for a one word case backticks are usually omitted).
+Link text is either one word or a group of words enclosed by delimiters
+(brackets ``[...]`` for Markdown or backticks `\`...\`_` for RST).
 Link text will be displayed *as is* while *link target* will be set to
-the anchor [*]_ of Nim symbol that corresponds to link text.
+the anchor [^1] of Nim symbol that corresponds to link text.
 
-.. [*] anchors' format is described in `HTML anchor generation`_ section below.
+[^1] anchors' format is described in [HTML anchor generation] section below.
 
 If you have a constant:
 
@@ -257,10 +366,13 @@ If you have a constant:
 
 then it should be referenced in one of the 2 forms:
 
-A. non-qualified (no symbol kind specification)::
-     pi_
-B. qualified (with symbol kind specification)::
-     `const pi`_
+A. non-qualified (no symbol kind specification):
+
+       pi_
+
+B. qualified (with symbol kind specification):
+
+       `const pi`_
 
 For routine kinds there are more options. Consider this definition:
 
@@ -272,52 +384,52 @@ Generally following syntax is allowed for referencing `foo`:
 
 *  short (without parameters):
 
-   A. non-qualified::
+   A. non-qualified:
 
-        foo_
+          foo_
 
-   B. qualified::
+   B. qualified:
 
-        `proc foo`_
+          `proc foo`_
 
 *  longer variants (with parameters):
 
    A. non-qualified:
 
-      1) specifying parameters names::
+      1) specifying parameters names:
 
-          `foo(a, b)`_
+             `foo(a, b)`_
 
-      2) specifying parameters types::
+      2) specifying parameters types:
 
-          `foo(int, float)`_
+             `foo(int, float)`_
 
-      3) specifying both names and types::
+      3) specifying both names and types:
 
-          `foo(a: int, b: float)`_
+             `foo(a: int, b: float)`_
 
-      4) output parameter can also be specified if you wish::
+      4) output parameter can also be specified if you wish:
 
-          `foo(a: int, b: float): string`_
+             `foo(a: int, b: float): string`_
 
    B. qualified: all 4 options above are valid.
-      Particularly you can use the full format::
+      Particularly you can use the full format:
 
-        `proc foo(a: int, b: float): string`_
+          `proc foo(a: int, b: float): string`_
 
 .. Tip:: Avoid cluttering your text with extraneous information by using
-   one of shorter forms::
+   one of shorter forms:
 
-     binarySearch_
-     `binarySearch(a, key, cmp)`_
+       binarySearch_
+       `binarySearch(a, key, cmp)`_
 
    Brevity is better for reading! If you use a short form and have an
    ambiguity problem (see below) then just add some additional info.
 
-Symbol kind like `proc` can also be specified in the postfix form::
+Symbol kind like `proc` can also be specified in the postfix form:
 
-  `foo proc`_
-  `walkDir(d: string) iterator`_
+    `foo proc`_
+    `walkDir(d: string) iterator`_
 
 .. Warning:: An ambiguity in resolving documentation links may arise because of:
 
@@ -330,9 +442,9 @@ Symbol kind like `proc` can also be specified in the postfix form::
         `proc` and `template`. In this case they are split between their
         corresponding sections in output file. Qualified references are
         useful in this case -- just disambiguate by referring to these
-        sections explicitly::
+        sections explicitly:
 
-          See `foo proc`_ and `foo template`_.
+            See `foo proc`_ and `foo template`_.
 
       * because in Nim `proc` and `iterator` belong to different namespaces,
         so there can be a collision even if parameters are the same.
@@ -344,9 +456,9 @@ Symbol kind like `proc` can also be specified in the postfix form::
    (while procs have higher priority than other Nim symbol kinds).
 
 Generic parameters can also be used. All in all, this long form will be
-recognized fine::
+recognized fine:
 
-  `proc binarySearch*[T; K](a: openArray[T], key: K, cmp: proc(T, K)): int`_
+    `proc binarySearch*[T; K](a: openArray[T], key: K, cmp: proc(T, K)): int`_
 
 **Limitations**:
 
@@ -361,16 +473,16 @@ recognized fine::
       ```
 
    you cannot use names underlined by `~~` so it must be referenced with
-   ``cmp: proc(T, K)``. Hence these forms are valid::
+   ``cmp: proc(T, K)``. Hence these forms are valid:
 
-     `binarySearch(a: openArray[T], key: K, cmp: proc(T, K))`_
-     `binarySearch(openArray[T], K, proc(T, K))`_
-     `binarySearch(a, key, cmp)`_
+       `binarySearch(a: openArray[T], key: K, cmp: proc(T, K))`_
+       `binarySearch(openArray[T], K, proc(T, K))`_
+       `binarySearch(a, key, cmp)`_
 2. Default values in routine parameters are not recognized, one needs to
    specify the type and/or name instead. E.g. for referencing `proc f(x = 7)`
-   use one of the mentioned forms::
+   use one of the mentioned forms:
 
-     `f(int)`_ or `f(x)`_ or `f(x: int)`_.
+       `f(int)`_ or `f(x)`_ or `f(x: int)`_.
 3. Generic parameters must be given the same way as in the
    definition of referenced symbol.
 
@@ -386,27 +498,164 @@ recognized fine::
       func `[]`*[T](x: openArray[T]): T
       ```
 
-   A short form works without additional backticks::
+   A short form works without additional backticks:
 
-     `$`_
-     `[]`_
+       `$`_
+       `[]`_
 
    However for fully-qualified reference copy-pasting backticks (`) into other
    backticks will not work in our RST parser (because we use Markdown-like
    inline markup rules). You need either to delete backticks or keep
-   them and escape with backslash \\::
+   them and escape with backslash \\:
 
-      no backticks: `func $`_
-      escaped:  `func \`$\``_
-      no backticks: `func [][T](x: openArray[T]): T`_
-      escaped:  `func \`[]\`[T](x: openArray[T]): T`_
+       no backticks: `func $`_
+       escaped:  `func \`$\``_
+       no backticks: `func [][T](x: openArray[T]): T`_
+       escaped:  `func \`[]\`[T](x: openArray[T]): T`_
 
 .. Note:: Types that defined as `enum`, or `object`, or `tuple` can also be
-   referenced with those names directly (instead of `type`)::
+   referenced with those names directly (instead of `type`):
 
-     type CopyFlag = enum
+       type CopyFlag = enum
+         ...
+       ## Ref. `CopyFlag enum`_
+
+Nim external referencing
+------------------------
+
+Just like for [Markup external referencing], which saves markup anchors,
+the Nim symbols are also saved in ``.idx`` files, so one needs
+to generate them beforehand, and they should be loaded by
+an ``.. importdoc::`` directive. Arguments to ``.. importdoc::`` is a
+comma-separated list of Nim modules or Markdown/RST documents.
+
+`--index:only`:option: tells Nim to only generate ``.idx`` file and
+do **not** attempt to generate HTML/LaTeX output.
+For ``.nim`` modules there are 2 alternatives to work with ``.idx`` files:
+
+1. using [Project switch] implies generation of ``.idx`` files,
+   however, if ``importdoc`` is called on upper modules as its arguments,
+   their ``.idx`` are not yet created. Thus one should generate **all**
+   required ``.idx`` first:
+     ```cmd
+     nim doc --project --index:only <main>.nim
+     nim doc --project <main>.nim
+     ```
+2. or run `nim doc --index:only <module.nim>`:cmd: command for **all** (used)
+   Nim modules in your project. Then run `nim doc <module.nim>` on them for
+   output HTML generation.
+
+   .. Warning:: A mere `nim doc --index:on`:cmd: may fail on an attempt to do
+      ``importdoc`` from another module (for which ``.idx`` was not yet
+      generated), that's why `--index:only`:option: shall be used instead.
+
+   For ``.md``/``.rst`` markup documents point 2 is the only option.
+
+Then, you can freely use something like this in ``your_module.nim``:
+
+  ```nim
+  ## .. importdoc::  user_manual.md, another_module.nim
+
+  ...
+  ## Ref. [some section from User Manual].
+
+  ...
+  ## Ref. [proc f]
+  ## (assuming you have a proc `f` in ``another_module``).
+  ```
+
+and compile it by `nim doc`:cmd:. Note that link text will
+be automatically prefixed by the module name of symbol,
+so you will see something like "Ref. [another_module: proc f](#)"
+in the generated output.
+
+It's also possible to reference a whole module by prefixing or
+suffixing full canonical module name with "module":
+
+    Ref. [module subdir/name] or [subdir/name module].
+
+Markup documents as a whole can be referenced just by their title
+(or by their file name if the title was not set) without any prefix.
+
+.. Tip:: During development process the stage of ``.idx`` files generation
+  can be done only *once*, after that you use already generated ``.idx``
+  files while working with a document *being developed* (unless you do
+  incompatible changes to *referenced* documents).
+
+.. Hint:: After changing a *referenced* document file one may need
+  to regenerate its corresponding ``.idx`` file to get correct results.
+  Of course, when referencing *internally* inside any given ``.nim`` file,
+  it's not needed, one can even immediately use any freshly added anchor
+  (a document's own ``.idx`` file is not used for resolving its internal links).
+
+If an ``importdoc`` directive fails to find a ``.idx``, then an error
+is emitted.
+
+In case of such compilation failures please note that:
+
+* **all** relative paths, given to ``importdoc``, relate to insides of
+  ``OUTDIR``, and **not** project's directory structure.
+
+* ``importdoc`` searches for ``.idx`` in `--outdir:OUTDIR`:option: directory
+  (``htmldocs`` by default) and **not** around original modules, so:
+
+  .. Tip:: look into ``OUTDIR`` to understand what's going on.
+
+* also keep in mind that ``.html`` and ``.idx`` files should always be
+  output to the same directory, so check this and, if it's not true, check
+  that both runs *with* and *without* `--index:only`:option: have all
+  other options the same.
+
+To summarize, for 2 basic options of [Structuring output directories]
+compilation options are different:
+
+1) complex hierarchy with `--project`:option: switch.
+
+   As the **original** project's directory structure is replicated in
+   `OUTDIR`, all passed paths are related to this structure also.
+
+   E.g. if a module ``path1/module.nim`` does
+   ``.. importdoc:: path2/another.nim`` then docgen tries to load file
+   ``OUTDIR/path1/path2/another.idx``.
+
+   .. Note:: markup documents are just placed into the specified directory
+     `OUTDIR`:option: by default (i.e. they are **not** affected by
+     `--project`:option:), so if you have ``PROJECT/doc/manual.md``
+     document and want to use complex hirearchy (with ``doc/``),
+     compile it with `--docroot`:option:\:
+       ```cmd
+       # 1st stage
+       nim md2html --outdir:OUTDIR --docroot:/absolute/path/to/PROJECT \
+            --index:only PROJECT/doc/manual.md
        ...
-     ## Ref. `CopyFlag enum`_
+       # 2nd stage
+       nim md2html --outdir:OUTDIR --docroot:/absolute/path/to/PROJECT \
+                         PROJECT/doc/manual.md
+       ```
+
+     Then the output file will be placed as ``OUTDIR/doc/manual.idx``.
+     So if you have ``PROJECT/path1/module.nim``, then ``manual.md`` can
+     be referenced as ``../doc/manual.md``.
+
+2) flattened structure.
+
+   E.g. if a module ``path1/module.nim`` does
+   ``.. importdoc:: path2/another.nim`` then docgen tries to load
+   ``OUTDIR/path2/another.idx``, so the path ``path1``
+   does not matter and providing ``path2`` can be useful only
+   in the case it contains another package that was placed there
+   using `--outdir:OUTDIR/path2`:option:.
+
+   The links' text will be prefixed as ``another: ...`` in both cases.
+
+   .. Warning:: Again, the same `--outdir:OUTDIR`:option: option should
+     be provided to both `doc --index:only`:option: /
+     `md2html --index:only`:option: and final generation by
+     `doc`:option:/`md2html`:option: inside 1 package.
+
+To temporarily disable ``importdoc``, e.g. if you don't need
+correct link resolution at the moment, use a `--noImportdoc`:option: switch
+(only warnings about unresolved links will be generated for external references).
 
 Related Options
 ===============
@@ -435,12 +684,23 @@ This will generate an index of all the exported symbols in the input Nim
 module, and put it into a neighboring file with the extension of ``.idx``. The
 index file is line-oriented (newlines have to be escaped). Each line
 represents a tab-separated record of several columns, the first two mandatory,
-the rest optional. See the `Index (idx) file format`_ section for details.
+the rest optional. See the [Index (idx) file format] section for details.
+
+.. Note:: `--index`:option: switch only affects creation of ``.idx``
+  index files, while user-searchable Index HTML file is created by
+  `buildIndex`:option: commmand.
+
+Buildindex command
+------------------
 
 Once index files have been generated for one or more modules, the Nim
-compiler command `buildIndex directory` can be run to go over all the index
-files in the specified directory to generate a `theindex.html <theindex.html>`_
-file.
+compiler command `nim buildIndex directory`:cmd: can be run to go over all the index
+files in the specified directory to generate a [theindex.html](theindex.html)
+file:
+
+  ```cmd
+  nim buildIndex -o:path/to/htmldocs/theindex.html path/to/htmldocs
+  ```
 
 See source switch
 -----------------
@@ -473,11 +733,7 @@ You can edit ``config/nimdoc.cfg`` and modify the ``doc.item.seesrc`` value
 with a hyperlink to your own code repository.
 
 In the case of Nim's own documentation, the `commit` value is just a commit
-hash to append to a formatted URL to https://github.com/nim-lang/Nim. The
-``tools/nimweb.nim`` helper queries the current git commit hash during the doc
-generation, but since you might be working on an unpublished repository, it
-also allows specifying a `githash` value in ``web/website.ini`` to force a
-specific commit in the output.
+hash to append to a formatted URL to https://github.com/nim-lang/Nim.
 
 
 Other Input Formats
@@ -488,20 +744,10 @@ the `rst2html`:option: and `rst2tex`:option: commands. Documents like this one a
 initially written in a dialect of RST which adds support for Nim source code
 highlighting with the ``.. code-block:: nim`` prefix. ``code-block`` also
 supports highlighting of a few other languages supported by the
-`packages/docutils/highlite module <highlite.html>`_.
+[packages/docutils/highlite module](highlite.html).
 
-Usage:
-
-  ```cmd
-  nim rst2html docgen.rst
-  ```
-
-Output::
-  You're reading it!
-
-The `rst2tex`:option: command is invoked identically to `rst2html`:option:,
-but outputs a ``.tex`` file instead of ``.html``.
-
+See [Markdown and RST markup languages](markdown_rst.html) for
+usage of those commands.
 
 HTML anchor generation
 ======================
@@ -550,45 +796,57 @@ Callable type    Suffix
 
 The relationship of type to suffix is made by the proc `complexName` in the
 ``compiler/docgen.nim`` file. Here are some examples of complex names for
-symbols in the `system module <system.html>`_.
+symbols in the [system module](system.html).
 
 * `type SomeSignedInt = int | int8 | int16 | int32 | int64` **=>**
-  `#SomeSignedInt <system.html#SomeSignedInt>`_
+  [#SomeSignedInt](system.html#SomeSignedInt)
 * `var globalRaiseHook: proc (e: ref E_Base): bool {.nimcall.}` **=>**
-  `#globalRaiseHook <system.html#globalRaiseHook>`_
+  [#globalRaiseHook](system.html#globalRaiseHook)
 * `const NimVersion = "0.0.0"` **=>**
-  `#NimVersion <system.html#NimVersion>`_
+  [#NimVersion](system.html#NimVersion)
 * `proc getTotalMem(): int {.rtl, raises: [], tags: [].}` **=>**
-  `#getTotalMem, <system.html#getTotalMem>`_
+  [#getTotalMem](system.html#getTotalMem)
 * `proc len[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}` **=>**
-  `#len,seq[T] <system.html#len,seq[T]>`_
+  [#len,seq[T]](system.html#len,seq[T])
 * `iterator pairs[T](a: seq[T]): tuple[key: int, val: T] {.inline.}` **=>**
-  `#pairs.i,seq[T] <iterators.html#pairs.i,seq[T]>`_
+  [#pairs.i,seq[T]](iterators.html#pairs.i,seq[T])
 * `template newException[](exceptn: typedesc; message: string;
     parentException: ref Exception = nil): untyped` **=>**
-  `#newException.t,typedesc,string,ref.Exception
-  <system.html#newException.t,typedesc,string,ref.Exception>`_
+  [#newException.t,typedesc,string,ref.Exception](
+  system.html#newException.t,typedesc,string,ref.Exception)
 
 
 Index (idx) file format
 =======================
 
-Files with the ``.idx`` extension are generated when you use the `Index
-switch <#related-options-index-switch>`_ along with commands to generate
+Files with the ``.idx`` extension are generated when you use the [Index
+switch] along with commands to generate
 documentation from source or text files. You can programmatically generate
-indices with the `setIndexTerm()
-<rstgen.html#setIndexTerm,RstGenerator,string,string,string,string,string>`_
+indices with the [setIndexTerm()](
+rstgen.html#setIndexTerm,RstGenerator,string,string,string,string,string)
 and `writeIndexFile() <rstgen.html#writeIndexFile,RstGenerator,string>`_ procs.
 The purpose of `idx` files is to hold the interesting symbols and their HTML
 references so they can be later concatenated into a big index file with
-`mergeIndexes() <rstgen.html#mergeIndexes,string>`_.  This section documents
+[mergeIndexes()](rstgen.html#mergeIndexes,string).  This section documents
 the file format in detail.
 
 Index files are line-oriented and tab-separated (newline and tab characters
-have to be escaped). Each line represents a record with at least two fields
-but can have up to four (additional columns are ignored). The content of these
-columns is:
+have to be escaped). Each line represents a record with 6 fields.
+The content of these columns is:
 
+0. Discriminator tag denoting type of the index entry, allowed values are:
+   `markupTitle`
+   : a title for ``.md``/``.rst`` document
+   `nimTitle`
+   : a title of ``.nim`` module
+   `heading`
+   : heading of sections, can be both in Nim and markup files
+   `idx`
+   : terms marked with :idx: role
+   `nim`
+   : a Nim symbol
+   `nimgrp`
+   : a Nim group for overloadable symbols like `proc`s
 1. Mandatory term being indexed. Terms can include quoting according to
    Nim's rules (e.g. \`^\`).
 2. Base filename plus anchor hyperlink (e.g. ``algorithm.html#*,int,SortOrder``).
@@ -598,44 +856,36 @@ columns is:
    not for an API symbol but for a TOC entry.
 4. Optional title or description of the hyperlink. Browsers usually display
    this as a tooltip after hovering a moment over the hyperlink.
+5. A line number of file where the entry was defined.
 
-The index generation tools try to differentiate between documentation
-generated from ``.nim`` files and documentation generated from ``.txt`` or
-``.rst`` files. The former are always closely related to source code and
-consist mainly of API entries. The latter are generic documents meant for
-human reading.
+The index generation tools differentiate between documentation
+generated from ``.nim`` files and documentation generated from ``.md`` or
+``.rst`` files by tag `nimTitle` or `markupTitle` in the 1st line of
+the ``.idx`` file.
 
-To differentiate both types (documents and APIs), the index generator will add
-to the index of documents an entry with the title of the document. Since the
-title is the topmost element, it will be added with a second field containing
-just the filename without any HTML anchor.  By convention, this entry without
-anchor is the *title entry*, and since entries in the index file are added as
-they are scanned, the title entry will be the first line. The title for APIs
-is not present because it can be generated concatenating the name of the file
-to the word **Module**.
-
-Normal symbols are added to the index with surrounding whitespaces removed. An
-exception to this are the table of content (TOC) entries. TOC entries are added to
-the index file with their third column having as much prefix spaces as their
-level is in the TOC (at least 1 character). The prefix whitespace helps to
-filter TOC entries from API or text symbols. This is important because the
-amount of spaces is used to replicate the hierarchy for document TOCs in the
-final index, and TOC entries found in ``.nim`` files are discarded.
+.. TODO Normal symbols are added to the index with surrounding whitespaces removed. An
+  exception to this are the table of content (TOC) entries. TOC entries are added to
+  the index file with their third column having as much prefix spaces as their
+  level is in the TOC (at least 1 character). The prefix whitespace helps to
+  filter TOC entries from API or text symbols. This is important because the
+  amount of spaces is used to replicate the hierarchy for document TOCs in the
+  final index, and TOC entries found in ``.nim`` files are discarded.
 
 
 Additional resources
 ====================
 
-* `Nim Compiler User Guide <nimc.html#compiler-usage-commandminusline-switches>`_
+* [Nim Compiler User Guide](nimc.html#compiler-usage-commandminusline-switches)
 
-* Documentation for `rst module <rst.html>`_ -- Nim RST/Markdown parser.
+* already mentioned documentation for
+  [Markdown and RST markup languages](markdown_rst.html), which also
+  contains the list of implemented features of these markup languages.
 
-* `RST Quick Reference
-  <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_
+* the implementation is in [module compiler/docgen].
 
 The output for HTML and LaTeX comes from the ``config/nimdoc.cfg`` and
 ``config/nimdoc.tex.cfg`` configuration files. You can add and modify these
 files to your project to change the look of the docgen output.
 
-You can import the `packages/docutils/rstgen module <rstgen.html>`_ in your
+You can import the [packages/docutils/rstgen module](rstgen.html) in your
 programs if you want to reuse the compiler's documentation generation procs.

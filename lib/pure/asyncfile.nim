@@ -9,20 +9,26 @@
 
 ## This module implements asynchronous file reading and writing.
 ##
-## .. code-block:: Nim
-##    import std/[asyncfile, asyncdispatch, os]
+##   ```Nim
+##   import std/[asyncfile, asyncdispatch, os]
 ##
-##    proc main() {.async.} =
-##      var file = openAsync(getTempDir() / "foobar.txt", fmReadWrite)
-##      await file.write("test")
-##      file.setFilePos(0)
-##      let data = await file.readAll()
-##      doAssert data == "test"
-##      file.close()
+##   proc main() {.async.} =
+##     var file = openAsync(getTempDir() / "foobar.txt", fmReadWrite)
+##     await file.write("test")
+##     file.setFilePos(0)
+##     let data = await file.readAll()
+##     doAssert data == "test"
+##     file.close()
 ##
-##    waitFor main()
+##   waitFor main()
+##   ```
 
 import asyncdispatch, os
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+  when defined(windows) or defined(nimdoc):
+    import std/widestrs
 
 # TODO: Fix duplication introduced by PR #4683.
 
@@ -96,14 +102,9 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
     let flags = FILE_FLAG_OVERLAPPED or FILE_ATTRIBUTE_NORMAL
     let desiredAccess = getDesiredAccess(mode)
     let creationDisposition = getCreationDisposition(mode, filename)
-    when useWinUnicode:
-      let fd = createFileW(newWideCString(filename), desiredAccess,
-          FILE_SHARE_READ,
-          nil, creationDisposition, flags, 0)
-    else:
-      let fd = createFileA(filename, desiredAccess,
-          FILE_SHARE_READ,
-          nil, creationDisposition, flags, 0)
+    let fd = createFileW(newWideCString(filename), desiredAccess,
+        FILE_SHARE_READ,
+        nil, creationDisposition, flags, 0)
 
     if fd == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())

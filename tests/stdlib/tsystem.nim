@@ -1,8 +1,10 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c cpp js"
 """
 
 import stdtest/testutils
+import std/assertions
 
 # TODO: in future work move existing `system` tests here, where they belong
 
@@ -90,6 +92,66 @@ block:
 
 block:
   type
+    X = object
+      a: string
+      b: int
+
+  var y = X(b: 1314)
+
+  reset(y)
+
+  doAssert y.b == 0
+
+block:
+  type
+    X = object
+      a: string
+      b: float
+
+  var y = X(b: 1314.521)
+
+  reset(y)
+
+  doAssert y.b == 0.0
+
+block:
+  type
+    X = object
+      a: string
+      b: string
+
+  var y = X(b: "1314")
+
+  reset(y)
+
+  doAssert y.b == ""
+
+block:
+  type
+    X = object
+      a: string
+      b: seq[int]
+
+  var y = X(b: @[1, 3])
+
+  reset(y)
+
+  doAssert y.b == @[]
+
+block:
+  type
+    X = object
+      a: string
+      b: tuple[a: int, b: string]
+
+  var y = X(b: (1, "cc"))
+
+  reset(y)
+
+  doAssert y.b == (0, "")
+
+block:
+  type
     Color = enum
       Red, Blue, Yellow
     X = object
@@ -101,3 +163,10 @@ block:
   reset(y)
   doAssert y.b == {}
 
+block: # bug #20516
+  type Foo = object
+    x {.bitsize:4.}: uint
+    y {.bitsize:4.}: uint
+
+  when not defined(js):
+    let a = create(Foo)

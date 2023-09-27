@@ -13,6 +13,8 @@ import compiler/nimpaths
 ]#
 
 import os
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 # Note: all the const paths defined here are known at compile time and valid
 # so long Nim repo isn't relocated after compilation.
@@ -46,7 +48,7 @@ proc splitTestFile*(file: string): tuple[cat: string, path: string] =
       else:
         result.path = file
       return result
-  doAssert false, "file must match this pattern: '/pathto/tests/dir/**/tfile.nim', got: '" & file & "'"
+  raiseAssert "file must match this pattern: '/pathto/tests/dir/**/tfile.nim', got: '" & file & "'"
 
 static:
   # sanity check

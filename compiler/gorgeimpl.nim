@@ -9,11 +9,13 @@
 
 ## Module that implements ``gorge`` for the compiler.
 
-import msgs, std / sha1, os, osproc, streams, options,
+import msgs, os, osproc, streams, options,
   lineinfos, pathutils
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
+
+import ../dist/checksums/src/checksums/sha1
 
 proc readOutput(p: Process): (string, int) =
   result[0] = ""
@@ -27,10 +29,11 @@ proc readOutput(p: Process): (string, int) =
 
 proc opGorge*(cmd, input, cache: string, info: TLineInfo; conf: ConfigRef): (string, int) =
   let workingDir = parentDir(toFullPath(conf, info))
+  result = ("", 0)
   if cache.len > 0:
     let h = secureHash(cmd & "\t" & input & "\t" & cache)
     let filename = toGeneratedFile(conf, AbsoluteFile("gorge_" & $h), "txt").string
-    var f: File
+    var f: File = default(File)
     if optForceFullMake notin conf.globalOptions and open(f, filename):
       result = (f.readAll, 0)
       f.close
@@ -49,7 +52,11 @@ proc opGorge*(cmd, input, cache: string, info: TLineInfo; conf: ConfigRef): (str
       if result[1] == 0:
         writeFile(filename, result[0])
     except IOError, OSError:
-      if not readSuccessful: result = ("", -1)
+      if not readSuccessful:
+        when defined(nimLegacyGorgeErrors):
+          result = ("", -1)
+        else:
+          result = ("Error running startProcess: " & getCurrentExceptionMsg(), -1)
   else:
     try:
       var p = startProcess(cmd, workingDir,
@@ -60,4 +67,7 @@ proc opGorge*(cmd, input, cache: string, info: TLineInfo; conf: ConfigRef): (str
       result = p.readOutput
       p.close()
     except IOError, OSError:
-      result = ("", -1)
+      when defined(nimLegacyGorgeErrors):
+        result = ("", -1)
+      else:
+        result = ("Error running startProcess: " & getCurrentExceptionMsg(), -1)

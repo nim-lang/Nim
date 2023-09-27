@@ -17,7 +17,7 @@ type
   TSlotEnum = enum seEmpty, seFilled, seDeleted
   TKeyValuePair[A, B] = tuple[slot: TSlotEnum, key: A, val: B]
   TKeyValuePairSeq[A, B] = seq[TKeyValuePair[A, B]]
-  TTable* {.final.}[A, B] = object
+  TTable*[A, B] {.final.} = object
     data: TKeyValuePairSeq[A, B]
     counter: int
 

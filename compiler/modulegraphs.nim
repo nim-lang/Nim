@@ -11,7 +11,8 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import intsets, tables, hashes, md5_old, sequtils
+import intsets, tables, hashes
+import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
 import ic / [packed_ast, ic]
 
@@ -53,6 +54,22 @@ type
     concreteTypes*: seq[FullId]
     inst*: PInstantiation
 
+  SymInfoPair* = object
+    sym*: PSym
+    info*: TLineInfo
+
+  PipelinePass* = enum
+    NonePass
+    SemPass
+    JSgenPass
+    CgenPass
+    EvalPass
+    InterpreterPass
+    GenDependPass
+    Docgen2TexPass
+    Docgen2JsonPass
+    Docgen2Pass
+
   ModuleGraph* {.acyclic.} = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packed*: PackedModuleGraph
@@ -60,8 +77,10 @@ type
 
     typeInstCache*: Table[ItemId, seq[LazyType]] # A symbol's ItemId.
     procInstCache*: Table[ItemId, seq[LazyInstantiation]] # A symbol's ItemId.
-    attachedOps*: array[TTypeAttachedOp, Table[ItemId, PSym]] # Type ID, destructors, etc.
+    attachedOps*: array[TTypeAttachedOp, Table[ItemId, LazySym]] # Type ID, destructors, etc.
     methodsPerType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
+    memberProcsPerType*: Table[ItemId, seq[PSym]] # Type ID, attached member procs (only c++, virtual,member and ctor so far).
+    initializersPerType*: Table[ItemId, PNode] # Type ID, AST call to the default ctor (c++ only)
     enumToStringProcs*: Table[ItemId, LazySym]
     emittedTypeInfo*: Table[string, FileIndex]
 
@@ -83,7 +102,7 @@ type
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
-    suggestSymbols*: Table[FileIndex, seq[tuple[sym: PSym, info: TLineInfo]]]
+    suggestSymbols*: Table[FileIndex, seq[SymInfoPair]]
     suggestErrors*: Table[FileIndex, seq[Suggest]]
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     systemModule*: PSym
@@ -100,6 +119,7 @@ type
     cacheCounters*: Table[string, BiggestInt] # IC: implemented
     cacheTables*: Table[string, BTree[string, PNode]] # IC: implemented
     passes*: seq[TPass]
+    pipelinePass*: PipelinePass
     onDefinition*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     onDefinitionResolveForward*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     onUsage*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
@@ -123,7 +143,7 @@ type
                  isFrontend: bool]
 
 proc resetForBackend*(g: ModuleGraph) =
-  initStrTable(g.compilerprocs)
+  g.compilerprocs = initStrTable()
   g.typeInstCache.clear()
   g.procInstCache.clear()
   for a in mitems(g.attachedOps):
@@ -177,8 +197,8 @@ template semtabAll*(g: ModuleGraph, m: PSym): TStrTable =
   g.ifaces[m.position].interfHidden
 
 proc initStrTables*(g: ModuleGraph, m: PSym) =
-  initStrTable(semtab(g, m))
-  initStrTable(semtabAll(g, m))
+  semtab(g, m) = initStrTable()
+  semtabAll(g, m) = initStrTable()
 
 proc strTableAdds*(g: ModuleGraph, m: PSym, s: PSym) =
   strTableAdd(semtab(g, m), s)
@@ -281,6 +301,13 @@ proc resolveInst(g: ModuleGraph; t: var LazyInstantiation): PInstantiation =
     t.inst = result
   assert result != nil
 
+proc resolveAttachedOp(g: ModuleGraph; t: var LazySym): PSym =
+  result = t.sym
+  if result == nil:
+    result = loadSymFromId(g.config, g.cache, g.packed, t.id.module, t.id.packed)
+    t.sym = result
+  assert result != nil
+
 iterator typeInstCacheItems*(g: ModuleGraph; s: PSym): PType =
   if g.typeInstCache.contains(s.itemId):
     let x = addr(g.typeInstCache[s.itemId])
@@ -296,22 +323,25 @@ iterator procInstCacheItems*(g: ModuleGraph; s: PSym): PInstantiation =
 proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   ## returns the requested attached operation for type `t`. Can return nil
   ## if no such operation exists.
-  result = g.attachedOps[op].getOrDefault(t.itemId)
+  if g.attachedOps[op].contains(t.itemId):
+    result = resolveAttachedOp(g, g.attachedOps[op][t.itemId])
+  else:
+    result = nil
 
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
-  g.attachedOps[op][t.itemId] = value
+  g.attachedOps[op][t.itemId] = LazySym(sym: value)
 
 proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
-  g.attachedOps[op][t.itemId] = value
-  # XXX Also add to the packed module!
+  g.attachedOps[op][t.itemId] = LazySym(sym: value)
 
 proc completePartialOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   if g.config.symbolFiles != disabledSf:
     assert module < g.encoders.len
     assert isActive(g.encoders[module])
     toPackedGeneratedProcDef(value, g.encoders[module], g.packed[module].fromDisk)
+    #storeAttachedProcDef(t, op, value, g.encoders[module], g.packed[module].fromDisk)
 
 proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
   result = resolveSym(g, g.enumToStringProcs[t.itemId])
@@ -339,6 +369,7 @@ proc copyTypeProps*(g: ModuleGraph; module: int; dest, src: PType) =
       setAttachedOp(g, module, dest, k, op)
 
 proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
+  result = nil
   if g.config.symbolFiles == disabledSf: return nil
 
   # slow, linear search, but the results are cached:
@@ -374,12 +405,6 @@ template getPContext(): untyped =
 
 when defined(nimsuggest):
   template onUse*(info: TLineInfo; s: PSym) = discard
-
-  template onDef*(info: TLineInfo; s: PSym) =
-    let c = getPContext()
-    if c.graph.config.suggestVersion == 3:
-      suggestSym(c.graph, info, s, c.graph.usageSym)
-
   template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
 else:
   template onUse*(info: TLineInfo; s: PSym) = discard
@@ -390,7 +415,7 @@ proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
 
 proc createMagic*(g: ModuleGraph; idgen: IdGenerator; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(g.cache, name), nextSymId(idgen), nil, unknownLineInfo, {})
+  result = newSym(skProc, getIdent(g.cache, name), idgen, nil, unknownLineInfo, {})
   result.magic = m
   result.flags = {sfNeverRaises}
 
@@ -435,19 +460,19 @@ proc initModuleGraphFields(result: ModuleGraph) =
   # A module ID of -1 means that the symbol is not attached to a module at all,
   # but to the module graph:
   result.idgen = IdGenerator(module: -1'i32, symId: 0'i32, typeId: 0'i32)
-  initStrTable(result.packageSyms)
+  result.packageSyms = initStrTable()
   result.deps = initIntSet()
   result.importDeps = initTable[FileIndex, seq[FileIndex]]()
   result.ifaces = @[]
   result.importStack = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
   result.owners = @[]
-  result.suggestSymbols = initTable[FileIndex, seq[tuple[sym: PSym, info: TLineInfo]]]()
+  result.suggestSymbols = initTable[FileIndex, seq[SymInfoPair]]()
   result.suggestErrors = initTable[FileIndex, seq[Suggest]]()
   result.methods = @[]
-  initStrTable(result.compilerprocs)
-  initStrTable(result.exposed)
-  initStrTable(result.packageTypes)
+  result.compilerprocs = initStrTable()
+  result.exposed = initStrTable()
+  result.packageTypes = initStrTable()
   result.emptyNode = newNode(nkEmpty)
   result.cacheSeqs = initTable[string, PNode]()
   result.cacheCounters = initTable[string, BiggestInt]()
@@ -464,7 +489,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   initModuleGraphFields(result)
 
 proc resetAllModules*(g: ModuleGraph) =
-  initStrTable(g.packageSyms)
+  g.packageSyms = initStrTable()
   g.deps = initIntSet()
   g.ifaces = @[]
   g.importStack = @[]
@@ -472,11 +497,12 @@ proc resetAllModules*(g: ModuleGraph) =
   g.usageSym = nil
   g.owners = @[]
   g.methods = @[]
-  initStrTable(g.compilerprocs)
-  initStrTable(g.exposed)
+  g.compilerprocs = initStrTable()
+  g.exposed = initStrTable()
   initModuleGraphFields(g)
 
 proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
+  result = nil
   if fileIdx.int32 >= 0:
     if isCachedModule(g, fileIdx.int32):
       result = g.packed[fileIdx.int32].module
@@ -582,6 +608,7 @@ proc markClientsDirty*(g: ModuleGraph; fileIdx: FileIndex) =
 
 proc needsCompilation*(g: ModuleGraph): bool =
   # every module that *depends* on this file is also dirty:
+  result = false
   for i in 0i32..<g.ifaces.len.int32:
     let m = g.ifaces[i].module
     if m != nil:
@@ -589,6 +616,7 @@ proc needsCompilation*(g: ModuleGraph): bool =
         return true
 
 proc needsCompilation*(g: ModuleGraph, fileIdx: FileIndex): bool =
+  result = false
   let module = g.getModule(fileIdx)
   if module != nil and g.isDirty(module):
     return true
@@ -610,6 +638,8 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
   ## Returns 'nil' if the module needs to be recompiled.
   if g.config.symbolFiles in {readOnlySf, v2Sf, stressTest}:
     result = moduleFromRodFile(g.packed, g.config, g.cache, fileIdx, cachedModules)
+  else:
+    result = nil
 
 proc configComplete*(g: ModuleGraph) =
   rememberStartupConfig(g.startupPackedConfig, g.config)
@@ -641,9 +671,15 @@ func belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
   ## Check if symbol belongs to the 'stdlib' package.
   sym.getPackageSymbol.getPackageId == graph.systemModule.getPackageId
 
-iterator suggestSymbolsIter*(g: ModuleGraph): tuple[sym: PSym, info: TLineInfo] =
+proc `==`*(a, b: SymInfoPair): bool =
+  result = a.sym == b.sym and a.info.exactEquals(b.info)
+
+proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): seq[SymInfoPair] =
+  result = graph.suggestSymbols.getOrDefault(fileIdx, @[])
+
+iterator suggestSymbolsIter*(g: ModuleGraph): SymInfoPair =
   for xs in g.suggestSymbols.values:
-    for x in xs.deduplicate:
+    for x in xs:
       yield x
 
 iterator suggestErrorsIter*(g: ModuleGraph): Suggest =

@@ -91,7 +91,7 @@ block tlexerex:
 
 
 
-block tlineinfo:
+block tcopylineinfo:
   # issue #5617, feature request
   type Test = object
 
@@ -102,6 +102,27 @@ block tlineinfo:
 
   var z = mixer(Test)
   doAssert z
+
+block tsetgetlineinfo:
+  # issue #21098, feature request
+  type Test = object
+
+  macro mixer1(n: typed): untyped =
+    let x = newIdentNode("echo")
+    var lineInfo = n.lineInfoObj
+    x.setLineInfo lineInfo
+    result = newLit(x.lineInfo == n.lineInfo)
+
+  macro mixer2(n: typed): untyped =
+    let x = newIdentNode("echo")
+    var lineInfo = n.lineInfoObj
+    lineInfo.line += 1
+    x.setLineInfo lineInfo
+    result = newLit(x.lineInfo != n.lineInfo)
+
+  doAssert mixer1(Test)
+
+  doAssert mixer2(Test)
 
 
 
@@ -247,6 +268,37 @@ xbenchmark:
     discard inputtest
   fastSHA("hey")
 
+block: # issue #4547
+  macro lazy(stmtList : typed) : untyped =
+    let decl = stmtList[0]
+    decl.expectKind nnkLetSection
+    let name = decl[0][0].strVal
+    let call = decl[0][2].copy
+    call.expectKind nnkCall
+    let ident = newIdentNode("get" & name)
+    result = quote do:
+      var value : type(`call`)
+      proc `ident`() : type(`call`) =
+        if value.isNil:
+          value = `call`
+        value
+  type MyObject = object
+    a,b: int    
+  # this part, the macro call and it's result (written in the comment below) is important
+  lazy:
+    let y = new(MyObject)
+  #[
+    var value: type(new(MyObject))
+    proc gety(): type(new(MyObject)) =
+      if value.isNil:
+        value = new(MyObject)
+      value    
+  ]#
+  doAssert gety().a == 0  # works and should work
+  doAssert gety().b == 0  # works and should work
+  doAssert not declared(y)
+  doAssert not compiles(y.a)       # identifier y should not exist anymore
+  doAssert not compiles(y.b)       # identifier y should not exist anymore
 
 block: # bug #13511
   type
@@ -330,3 +382,10 @@ block: # bug #15118
 
   block:
     flop("b")
+
+static:
+  block:
+    const containsTable = CacheTable"containsTable"
+    doAssert "foo" notin containsTable
+    containsTable["foo"] = newLit 42
+    doAssert "foo" in containsTable

@@ -193,3 +193,135 @@ block: # templates
   doAssert a == float(1)
   doAssert b == byte(2)
   doAssert c == cstring("abc")
+
+
+proc foo(): set[char] = # bug #11259
+  discard "a"
+  {}
+
+discard foo()
+
+block: # bug #11085
+  const ok1: set[char] = {}
+  var ok1b: set[char] = {}
+
+  const ok2: set[char] = block:
+    {}
+
+  const ok3: set[char] = block:
+    var x: set[char] = {}
+    x
+  var ok3b: set[char] = block:
+    var x: set[char] = {}
+    x
+
+  var bad: set[char] = block:
+    {}
+
+# bug #6213
+block:
+  block:
+    type MyEnum = enum a, b
+    type MyTuple = tuple[x: set[MyEnum]]
+
+    var myVar: seq[MyTuple] = @[ (x: {}) ]
+    doAssert myVar.len == 1
+
+  block:
+    type
+      Foo = tuple
+        f: seq[string]
+        s: string
+
+    proc e(): seq[Foo] =
+      return @[
+        (@[], "asd")
+      ]
+
+    doAssert e()[0].f == @[]
+
+block: # bug #11777
+  type S = set[0..5]
+  var s: S = {1, 2}
+  doAssert 1 in s
+
+block: # bug #20807
+  var s: seq[string]
+  template fail =
+    s = @[]
+  template test(body: untyped) =
+    body
+  proc test(a: string) = discard
+  test: fail()
+  doAssert not (compiles do:
+    let x: seq[int] = `@`[string]([]))
+
+block: # bug #21377
+  proc b[T](v: T): seq[int] =
+    let x = 0
+    @[]
+
+  doAssert b(0) == @[]
+
+block: # bug #21377
+  proc b[T](v: T): seq[T] =
+    let x = 0
+    @[]
+
+  doAssert b(0) == @[]
+
+block: # bug #21377
+  proc b[T](v: T): set[bool] =
+    let x = 0
+    {}
+
+  doAssert b(0) == {}
+
+block: # bug #21377
+  proc b[T](v: T): array[0, int] =
+    let x = 0
+    []
+
+  doAssert b(0) == []
+
+block: # bug #21377
+  proc b[T](v: T): array[0, (string, string)] =
+    let x = 0
+    {:}
+
+  doAssert b(0) == {:}
+
+block: # bug #22180
+  type A = object
+  proc j() = discard
+
+  let x =
+    if false:
+      (ref A)(nil)
+    else:
+      if false:
+        quit 1
+      else:
+        if true:
+          j()
+          nil  # compiles with (ref A)(nil) here
+        else:
+          (ref A)(nil)
+  doAssert x.isNil
+  
+  let y =
+    case true
+    of false:
+      (ref A)(nil)
+    else:
+      case true
+      of false:
+        quit 1
+      else:
+        case true
+        of true:
+          j()
+          nil  # compiles with (ref A)(nil) here
+        else:
+          (ref A)(nil)
+  doAssert y.isNil

@@ -12,7 +12,7 @@ tdiagnostic_messages.nim(36, 6) Error: 'a' can have side effects
 >>> tdiagnostic_messages.nim(32, 33) Hint: 'callWithSideEffects' calls `.sideEffect` 'indirectCallViaPointer'
 >>>> tdiagnostic_messages.nim(27, 6) Hint: 'indirectCallViaPointer' called by 'callWithSideEffects'
 >>>>> tdiagnostic_messages.nim(28, 32) Hint: 'indirectCallViaPointer' calls routine via pointer indirection
->>> tdiagnostic_messages.nim(33, 10) Hint: 'callWithSideEffects' calls `.sideEffect` 'myEcho'
+>>> tdiagnostic_messages.nim(33, 3) Hint: 'callWithSideEffects' calls `.sideEffect` 'myEcho'
 >>>> tdiagnostic_messages.nim(24, 6) Hint: 'myEcho' called by 'callWithSideEffects'
 >>> tdiagnostic_messages.nim(34, 3) Hint: 'callWithSideEffects' accesses global state 'globalVar'
 >>>> tdiagnostic_messages.nim(23, 5) Hint: 'globalVar' accessed by 'callWithSideEffects'

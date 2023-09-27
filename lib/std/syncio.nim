@@ -12,6 +12,8 @@
 include system/inclrtl
 import std/private/since
 import std/formatfloat
+when defined(windows):
+  import std/widestrs
 
 # ----------------- IO Part ------------------------------------------------
 type
@@ -36,8 +38,15 @@ type
                          ## at the end. If the file does not exist, it
                          ## will be created.
 
-  FileHandle* = cint ## type that represents an OS file handle; this is
-                      ## useful for low-level file access
+  FileHandle* = cint ## The type that represents an OS file handle; this is
+                      ## useful for low-level file access.
+
+  FileSeekPos* = enum ## Position relative to which seek should happen.
+                      # The values are ordered so that they match with stdio
+                      # SEEK_SET, SEEK_CUR and SEEK_END respectively.
+    fspSet            ## Seek to absolute value
+    fspCur            ## Seek relative to current position
+    fspEnd            ## Seek relative to end
 
 # text file handling:
 when not defined(nimscript) and not defined(js):
@@ -96,7 +105,7 @@ proc c_feof(f: File): cint {.
   importc: "feof", header: "<stdio.h>".}
 
 when not declared(c_fwrite):
-  proc c_fwrite(buf: pointer, size, n: csize_t, f: File): cint {.
+  proc c_fwrite(buf: pointer, size, n: csize_t, f: File): csize_t {.
     importc: "fwrite", header: "<stdio.h>".}
 
 # C routine that is used here:
@@ -141,13 +150,6 @@ proc c_fprintf(f: File, frmt: cstring): cint {.
   importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
 proc c_fputc(c: char, f: File): cint {.
   importc: "fputc", header: "<stdio.h>".}
-
-# When running nim in android app, stdout goes nowhere, so echo gets ignored
-# To redirect echo to the android logcat, use -d:androidNDK
-when defined(androidNDK):
-  const ANDROID_LOG_VERBOSE = 2.cint
-  proc android_log_print(prio: cint, tag: cstring, fmt: cstring): cint
-    {.importc: "__android_log_print", header: "<android/log.h>", varargs, discardable.}
 
 template sysFatal(exc, msg) =
   raise newException(exc, msg)
@@ -244,7 +246,7 @@ when defined(windows):
     # machine. We also enable `setConsoleOutputCP(65001)` now by default.
     # But we cannot call printf directly as the string might contain \0.
     # So we have to loop over all the sections separated by potential \0s.
-    var i = c_fprintf(f, "%s", s)
+    var i = int c_fprintf(f, "%s", s)
     while i < s.len:
       if s[i] == '\0':
         let w = c_fputc('\0', f)
@@ -357,12 +359,12 @@ proc getOsFileHandle*(f: File): FileHandle =
 
 when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(windows):
   proc setInheritable*(f: FileHandle, inheritable: bool): bool =
-    ## control whether a file handle can be inherited by child processes. Returns
+    ## Controls whether a file handle can be inherited by child processes. Returns
     ## `true` on success. This requires the OS file handle, which can be
     ## retrieved via `getOsFileHandle <#getOsFileHandle,File>`_.
     ##
     ## This procedure is not guaranteed to be available for all platforms. Test for
-    ## availability with `declared() <system.html#declared,untyped>`.
+    ## availability with `declared() <system.html#declared,untyped>`_.
     when SupportIoctlInheritCtl:
       result = c_ioctl(f, if inheritable: FIONCLEX else: FIOCLEX) != -1
     elif defined(freertos) or defined(zephyr):
@@ -388,7 +390,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
   proc c_memchr(s: pointer, c: cint, n: csize_t): pointer {.
     importc: "memchr", header: "<string.h>".}
 
-  when defined(windows) and not defined(useWinAnsi):
+  when defined(windows):
     proc readConsole(hConsoleInput: FileHandle, lpBuffer: pointer,
                      nNumberOfCharsToRead: int32,
                      lpNumberOfCharsRead: ptr int32,
@@ -465,7 +467,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     while true:
       # fixes #9634; this pattern may need to be abstracted as a template if reused;
       # likely other io procs need this for correctness.
-      fgetsSuccess = c_fgets(addr line[pos], sp.cint, f) != nil
+      fgetsSuccess = c_fgets(cast[cstring](addr line[pos]), sp.cint, f) != nil
       if fgetsSuccess: break
       when not defined(nimscript):
         if errno == EINTR:
@@ -478,15 +480,16 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     let m = c_memchr(addr line[pos], '\L'.ord, cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
-      var last = cast[ByteAddress](m) - cast[ByteAddress](addr line[0])
+      var last = cast[int](m) - cast[int](addr line[0])
       if last > 0 and line[last-1] == '\c':
         line.setLen(last-1)
         return last > 1 or fgetsSuccess
-        # We have to distinguish between two possible cases:
+      elif last > 0 and line[last-1] == '\0':
+        # We have to distinguish among three possible cases:
         # \0\l\0 => line ending in a null character.
         # \0\l\l => last line without newline, null was put there by fgets.
-      elif last > 0 and line[last-1] == '\0':
-        if last < pos + sp - 1 and line[last+1] != '\0':
+        #   \0\l => last line without newline, null was put there by fgets.
+        if last >= pos + sp - 1 or line[last+1] != '\0': # bug #21273
           dec last
       line.setLen(last)
       return last > 0 or fgetsSuccess
@@ -571,7 +574,7 @@ proc readAllFile(file: File, len: int64): string =
   result = newString(len)
   let bytes = readBuffer(file, addr(result[0]), len)
   if endOfFile(file):
-    if bytes < len:
+    if bytes.int64 < len:
       result.setLen(bytes)
   else:
     # We read all the bytes but did not reach the EOF
@@ -609,7 +612,7 @@ proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
 
 # interface to the C procs:
 
-when defined(windows) and not defined(useWinAnsi):
+when defined(windows):
   when defined(cpp):
     proc wfopen(filename, mode: WideCString): pointer {.
       importcpp: "_wfopen((const wchar_t*)#, (const wchar_t*)#)", nodecl.}
@@ -715,7 +718,7 @@ proc open*(f: var File, filename: string,
 
     result = true
     f = cast[File](p)
-    if bufSize > 0 and bufSize <= high(cint).int:
+    if bufSize > 0 and bufSize.uint <= high(uint):
       discard c_setvbuf(f, nil, IOFBF, cast[csize_t](bufSize))
     elif bufSize == 0:
       discard c_setvbuf(f, nil, IONBF, 0)
@@ -791,52 +794,6 @@ proc setStdIoUnbuffered*() {.tags: [], benign.} =
   when declared(stdin):
     discard c_setvbuf(stdin, nil, IONBF, 0)
 
-when declared(stdout):
-  when defined(windows) and compileOption("threads"):
-    proc addSysExitProc(quitProc: proc() {.noconv.}) {.importc: "atexit", header: "<stdlib.h>".}
-
-    const insideRLocksModule = false
-    include "system/syslocks"
-
-
-    var echoLock: SysLock
-    initSysLock echoLock
-    addSysExitProc(proc() {.noconv.} = deinitSys(echoLock))
-
-  const stdOutLock = not defined(windows) and
-                     not defined(android) and
-                     not defined(nintendoswitch) and
-                     not defined(freertos) and
-                     not defined(zephyr) and
-                     hostOS != "any"
-
-  proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
-    when defined(androidNDK):
-      var s = ""
-      for arg in args:
-        s.add arg
-      android_log_print(ANDROID_LOG_VERBOSE, "nim", s)
-    else:
-      # flockfile deadlocks some versions of Android 5.x.x
-      when stdOutLock:
-        proc flockfile(f: File) {.importc, nodecl.}
-        proc funlockfile(f: File) {.importc, nodecl.}
-        flockfile(stdout)
-      when defined(windows) and compileOption("threads"):
-        acquireSys echoLock
-      for s in args:
-        when defined(windows):
-          writeWindows(stdout, s)
-        else:
-          discard c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout)
-      const linefeed = "\n"
-      discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
-      discard c_fflush(stdout)
-      when stdOutLock:
-        funlockfile(stdout)
-      when defined(windows) and compileOption("threads"):
-        releaseSys echoLock
-
 
 when defined(windows) and not defined(nimscript) and not defined(js):
   # work-around C's sucking abstraction:
@@ -854,14 +811,33 @@ when defined(windows) and not defined(nimscript) and not defined(js):
 
 when defined(windows) and appType == "console" and
     not defined(nimDontSetUtf8CodePage) and not defined(nimscript):
+  import std/exitprocs
+
   proc setConsoleOutputCP(codepage: cuint): int32 {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleOutputCP".}
   proc setConsoleCP(wCodePageID: cuint): int32 {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleCP".}
+  proc getConsoleOutputCP(): cuint {.stdcall, dynlib: "kernel32",
+    importc: "GetConsoleOutputCP".}
+  proc getConsoleCP(): cuint {.stdcall, dynlib: "kernel32",
+    importc: "GetConsoleCP".}
 
-  const Utf8codepage = 65001
-  discard setConsoleOutputCP(Utf8codepage)
-  discard setConsoleCP(Utf8codepage)
+  const Utf8codepage = 65001'u32
+
+  let
+    consoleOutputCP = getConsoleOutputCP()
+    consoleCP = getConsoleCP()
+
+  proc restoreConsoleOutputCP() = discard setConsoleOutputCP(consoleOutputCP)
+  proc restoreConsoleCP() = discard setConsoleCP(consoleCP)
+
+  if consoleOutputCP != Utf8codepage:
+    discard setConsoleOutputCP(Utf8codepage)
+    addExitProc(restoreConsoleOutputCP)
+
+  if consoleCP != Utf8codepage:
+    discard setConsoleCP(Utf8codepage)
+    addExitProc(restoreConsoleCP)
 
 proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.} =
   ## Opens a file named `filename` for reading, calls `readAll
@@ -960,3 +936,7 @@ iterator lines*(f: File): string {.tags: [ReadIOEffect].} =
         result.lines += 1
   var res = newStringOfCap(80)
   while f.readLine(res): yield res
+
+template `&=`*(f: File, x: typed) =
+  ## An alias for `write`.
+  write(f, x)

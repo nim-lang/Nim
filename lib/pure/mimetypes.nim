@@ -29,6 +29,10 @@ runnableExamples:
 import tables
 from strutils import startsWith, toLowerAscii, strip
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   MimeDB* = object
     mimes: OrderedTable[string, string]

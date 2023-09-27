@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   joinable: false
   nimout: '''
 0
@@ -19,7 +20,6 @@ tvmutils.nim(29, 14) [opcIndCall]       vmTrace(false)
 """
 # line 20 (only showing a subset of nimout to avoid making the test rigid)
 import std/vmutils
-
 proc main() =
   for i in 0..<7:
     echo i

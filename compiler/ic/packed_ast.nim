@@ -45,7 +45,7 @@ type
   PackedLib* = object
     kind*: TLibKind
     generated*: bool
-    isOverriden*: bool
+    isOverridden*: bool
     name*: LitId
     path*: NodeId
 
@@ -63,13 +63,15 @@ type
     alignment*: int # for alignment
     options*: TOptions
     position*: int
-    offset*: int
+    offset*: int32
+    disamb*: int32
     externalName*: LitId # instead of TLoc
     locFlags*: TLocFlags
     annex*: PackedLib
     when hasFFI:
       cname*: LitId
     constraint*: NodeId
+    instantiatedFrom*: PackedItemId
 
   PackedType* = object
     kind*: TTypeKind
@@ -84,7 +86,6 @@ type
     size*: BiggestInt
     align*: int16
     paddingAtEnd*: int16
-    lockLevel*: TLockLevel # lock level as required for deadlock checking
     # not serialized: loc*: TLoc because it is backend-specific
     typeInst*: PackedItemId
     nonUniqueId*: int32
@@ -305,6 +306,7 @@ proc sons3*(tree: PackedTree; n: NodePos): (NodePos, NodePos, NodePos) =
   result = (NodePos a, NodePos b, NodePos c)
 
 proc ithSon*(tree: PackedTree; n: NodePos; i: int): NodePos =
+  result = default(NodePos)
   if tree.nodes[n.int].kind > nkNilLit:
     var count = 0
     for child in sonsReadonly(tree, n):

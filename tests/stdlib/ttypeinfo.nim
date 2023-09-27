@@ -1,4 +1,9 @@
-import typeinfo
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
+import std/typeinfo
+import std/assertions
 
 type
   TE = enum
