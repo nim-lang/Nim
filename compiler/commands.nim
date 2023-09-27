@@ -653,7 +653,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     # refs bug #18674, otherwise `--os:windows` messes up with `--nimcache` set
     # in config nims files, e.g. via: `import os; switch("nimcache", "/tmp/somedir")`
     if conf.target.targetOS == osWindows and DirSep == '/': arg = arg.replace('\\', '/')
-    conf.nimcacheDir = processPath(conf, arg, info, notRelativeToProj=true)
+    if pass == passPP:
+      let path = conf.currentConfigDir / arg
+      conf.nimcacheDir = processPath(conf, path, info, notRelativeToProj=false)
+    else:
+      conf.nimcacheDir = processPath(conf, arg, info, notRelativeToProj=true)
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
     let f = splitFile(processPath(conf, arg, info, notRelativeToProj=true).string)
