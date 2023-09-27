@@ -367,9 +367,9 @@ proc semGenericStmt(c: PContext, n: PNode,
       var a = n[i]
       checkMinSonsLen(a, 1, c.config)
       for j in 0..<a.len-1:
+        a[j] = semGenericStmt(c, a[j], flags+{withinMixin}, ctx)
         addTempDeclToIdents(c, a[j], skVar)
-        a[j] = semGenericStmt(c, a[j], flags, ctx)
-              
+
       a[^1] = semGenericStmtScope(c, a[^1], flags, ctx)
     closeScope(c)
   of nkForStmt, nkParForStmt:
