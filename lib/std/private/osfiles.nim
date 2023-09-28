@@ -175,51 +175,46 @@ const copyFlagSymlink = {cfSymlinkAsIs, cfSymlinkFollow, cfSymlinkIgnore}
 
 
 template copyFileImpl(source, dest: string; options: set[CopyFlag]; bufferSize: static[int]) =
-  if isSymlink and (cfSymlinkIgnore in options or defined(windows)):
-    return
   when defined(windows):
     let s = newWideCString(source)
     let d = newWideCString(dest)
     if copyFileW(s, d, 0'i32) == 0'i32:
       raiseOSError(osLastError(), $(source, dest))
   else:
-    if isSymlink and cfSymlinkAsIs in options:
-      createSymlink(expandSymlink(source), dest)
+    when hasCCopyfile:
+      let state = copyfile_state_alloc()
+      # xxx `COPYFILE_STAT` could be used for one-shot
+      # `copyFileWithPermissions`.
+      let status = c_copyfile(source.cstring, dest.cstring, state,
+                              COPYFILE_DATA)
+      if status != 0:
+        let err = osLastError()
+        discard copyfile_state_free(state)
+        raiseOSError(err, $(source, dest))
+      let status2 = copyfile_state_free(state)
+      if status2 != 0: raiseOSError(osLastError(), $(source, dest))
     else:
-      when hasCCopyfile:
-        let state = copyfile_state_alloc()
-        # xxx `COPYFILE_STAT` could be used for one-shot
-        # `copyFileWithPermissions`.
-        let status = c_copyfile(source.cstring, dest.cstring, state,
-                                COPYFILE_DATA)
-        if status != 0:
-          let err = osLastError()
-          discard copyfile_state_free(state)
-          raiseOSError(err, $(source, dest))
-        let status2 = copyfile_state_free(state)
-        if status2 != 0: raiseOSError(osLastError(), $(source, dest))
-      else:
-        # generic version of copyFile which works for any platform:
-        var d, s: File
-        if not open(s, source):raiseOSError(osLastError(), source)
-        if not open(d, dest, fmWrite):
-          close(s)
-          raiseOSError(osLastError(), dest)
-        var buf = alloc(bufferSize)
-        while true:
-          var bytesread = readBuffer(s, buf, bufferSize)
-          if bytesread > 0:
-            var byteswritten = writeBuffer(d, buf, bytesread)
-            if bytesread != byteswritten:
-              dealloc(buf)
-              close(s)
-              close(d)
-              raiseOSError(osLastError(), dest)
-          if bytesread != bufferSize: break
-        dealloc(buf)
+      # generic version of copyFile which works for any platform:
+      var d, s: File
+      if not open(s, source):raiseOSError(osLastError(), source)
+      if not open(d, dest, fmWrite):
         close(s)
-        flushFile(d)
-        close(d)
+        raiseOSError(osLastError(), dest)
+      var buf = alloc(bufferSize)
+      while true:
+        var bytesread = readBuffer(s, buf, bufferSize)
+        if bytesread > 0:
+          var byteswritten = writeBuffer(d, buf, bytesread)
+          if bytesread != byteswritten:
+            dealloc(buf)
+            close(s)
+            close(d)
+            raiseOSError(osLastError(), dest)
+        if bytesread != bufferSize: break
+      dealloc(buf)
+      close(s)
+      flushFile(d)
+      close(d)
 
 
 proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
@@ -259,18 +254,25 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   ## * `removeFile proc`_
   ## * `moveFile proc`_
   doAssert card(copyFlagSymlink * options) == 1, "There should be exactly one cfSymlink* in options"
-  bind createSymlink
-  bind expandSymlink
-  let isSymlink = source.symlinkExists
-  copyFileImpl(source, dest, options, bufferSize = 8192)
+  let isSymlink: bool = source.symlinkExists
+  if isSymlink and (cfSymlinkIgnore in options or defined(windows)): return
+  when not defined(windows):
+    if isSymlink and cfSymlinkAsIs in options:
+      createSymlink(expandSymlink(source), dest)
+    else: copyFileImpl(source, dest, options, bufferSize = 8192)
+  else: copyFileImpl(source, dest, options, bufferSize = 8192)
 
 
-proc copyFile*(source, dest: string; bufferSize: static[int]; options = cfSymlinkFollow) {.rtl, tags: [ReadDirEffect, ReadIOEffect, WriteIOEffect], noWeirdTarget, since: (2, 1).} =
+proc copyFile*(source, dest: string; bufferSize: static[int]; options = {cfSymlinkFollow}) {.rtl, tags: [ReadDirEffect, ReadIOEffect, WriteIOEffect], noWeirdTarget, since: (2, 1).} =
   ## Same as `copyFile` but allows to specify `bufferSize`.
-  bind createSymlink
-  bind expandSymlink
-  let isSymlink = source.symlinkExists
-  copyFileImpl(source, dest, {options}, bufferSize)
+  doAssert card(copyFlagSymlink * options) == 1, "There should be exactly one cfSymlink* in options"
+  let isSymlink: bool = source.symlinkExists
+  if isSymlink and (cfSymlinkIgnore in options or defined(windows)): return
+  when not defined(windows):
+    if isSymlink and cfSymlinkAsIs in options:
+      createSymlink(expandSymlink(source), dest)
+    else: copyFileImpl(source, dest, options, bufferSize)
+  else: copyFileImpl(source, dest, options, bufferSize)
 
 
 proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow})
