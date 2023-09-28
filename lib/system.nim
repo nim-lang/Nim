@@ -1610,6 +1610,22 @@ when notJSnotNims and defined(nimSeqsV2):
   include "system/strs_v2"
   include "system/seqs_v2"
 
+  proc setLenUninit*[T](s: var seq[T], newlen: Natural) {.noSideEffect, nodestroy.} =
+    ## Sets the length of seq `s` to `newlen`. `T` may be any sequence type.
+    ## New slots will not be initialized.
+    ##
+    ## If the current length is greater than the new length,
+    ## `s` will be truncated.
+    ##   ```nim
+    ##   var x = @[10, 20]
+    ##   x.setLenUninit(5)
+    ##   x[4] = 50
+    ##   assert x[4] == 50
+    ##   x.setLenUninit(1)
+    ##   assert x == @[10]
+    ##   ```
+    setLenImpl[T](s, newlen, false)
+
 when not defined(js):
   proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
     ## Creates a new sequence of type `seq[T]` with length `len`.

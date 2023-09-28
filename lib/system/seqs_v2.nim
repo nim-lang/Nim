@@ -162,7 +162,7 @@ proc add*[T](x: var seq[T]; y: sink T) {.magic: "AppendSeqElem", noSideEffect, n
     # We also save the `wasMoved + destroy` pair for the sink parameter.
     xu.p.data[oldLen] = y
 
-proc setLen[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
+template setLenImpl[T](s: var seq[T], newlen: Natural, init: static bool) =
   {.noSideEffect.}:
     if newlen < s.len:
       shrink(s, newlen)
@@ -173,8 +173,12 @@ proc setLen[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
       if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
         xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
       xu.len = newlen
-      for i in oldLen..<newlen:
-        xu.p.data[i] = default(T)
+      when init:
+        for i in oldLen..<newlen:
+          xu.p.data[i] = default(T)
+
+proc setLen[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
+  setLenImpl[T](s, newlen, true)
 
 proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
