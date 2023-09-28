@@ -29,6 +29,7 @@ slots when enlarging a sequence.
 
 ## Compiler changes
 
+- `--nimcache` using a relative path as the argument in a config file is now relative to the config file instead of the current directory.
 
 ## Tool changes
 
