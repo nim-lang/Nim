@@ -160,6 +160,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf getCommand:
     setResult(a, conf.command)
   cbconf switch:
+    conf.currentConfigDir = vthisDir
     processSwitch(a.getString 0, a.getString 1, passPP, module.info, conf)
   cbconf hintImpl:
     processSpecificNote(a.getString 0, wHint, passPP, module.info,

@@ -608,6 +608,13 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       defineSymbol(conf.symbols, "gcregions")
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
 
+proc pathRelativeToConfig(arg: string, pass: TCmdLinePass, conf: ConfigRef): string =
+  if pass == passPP and not isAbsolute(arg):
+    assert isAbsolute(conf.currentConfigDir), "something is wrong with currentConfigDir"
+    result = conf.currentConfigDir / arg
+  else:
+    result = arg
+
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var key = ""
@@ -653,7 +660,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     # refs bug #18674, otherwise `--os:windows` messes up with `--nimcache` set
     # in config nims files, e.g. via: `import os; switch("nimcache", "/tmp/somedir")`
     if conf.target.targetOS == osWindows and DirSep == '/': arg = arg.replace('\\', '/')
-    conf.nimcacheDir = processPath(conf, arg, info, notRelativeToProj=true)
+    conf.nimcacheDir = processPath(conf, pathRelativeToConfig(arg, pass, conf), info, notRelativeToProj=true)
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
     let f = splitFile(processPath(conf, arg, info, notRelativeToProj=true).string)
