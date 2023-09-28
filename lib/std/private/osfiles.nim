@@ -175,8 +175,6 @@ const copyFlagSymlink = {cfSymlinkAsIs, cfSymlinkFollow, cfSymlinkIgnore}
 
 
 template copyFileImpl(source, dest: string; options: set[CopyFlag]; bufferSize: static[int]) =
-  bind createSymlink
-  bind expandSymlink
   if isSymlink and (cfSymlinkIgnore in options or defined(windows)):
     return
   when defined(windows):
@@ -261,12 +259,16 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   ## * `removeFile proc`_
   ## * `moveFile proc`_
   doAssert card(copyFlagSymlink * options) == 1, "There should be exactly one cfSymlink* in options"
+  bind createSymlink
+  bind expandSymlink
   let isSymlink = source.symlinkExists
   copyFileImpl(source, dest, options, bufferSize = 8192)
 
 
 proc copyFile*(source, dest: string; bufferSize: static[int]; options = cfSymlinkFollow) {.rtl, tags: [ReadDirEffect, ReadIOEffect, WriteIOEffect], noWeirdTarget, since: (2, 1).} =
   ## Same as `copyFile` but allows to specify `bufferSize`.
+  bind createSymlink
+  bind expandSymlink
   let isSymlink = source.symlinkExists
   copyFileImpl(source, dest, {options}, bufferSize)
 
