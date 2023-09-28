@@ -256,10 +256,8 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   doAssert card(copyFlagSymlink * options) == 1, "There should be exactly one cfSymlink* in options"
   let isSymlink: bool = source.symlinkExists
   if isSymlink and (cfSymlinkIgnore in options or defined(windows)): return
-  when not defined(windows):
-    if isSymlink and cfSymlinkAsIs in options:
-      createSymlink(expandSymlink(source), dest)
-    else: copyFileImpl(source, dest, options, bufferSize = 8192)
+  if not defined(windows) and isSymlink and cfSymlinkAsIs in options:
+    createSymlink(expandSymlink(source), dest)
   else: copyFileImpl(source, dest, options, bufferSize = 8192)
 
 
@@ -268,10 +266,8 @@ proc copyFile*(source, dest: string; bufferSize: static[int]; options = {cfSymli
   doAssert card(copyFlagSymlink * options) == 1, "There should be exactly one cfSymlink* in options"
   let isSymlink: bool = source.symlinkExists
   if isSymlink and (cfSymlinkIgnore in options or defined(windows)): return
-  when not defined(windows):
-    if isSymlink and cfSymlinkAsIs in options:
-      createSymlink(expandSymlink(source), dest)
-    else: copyFileImpl(source, dest, options, bufferSize)
+  if not defined(windows) and isSymlink and cfSymlinkAsIs in options:
+    createSymlink(expandSymlink(source), dest)
   else: copyFileImpl(source, dest, options, bufferSize)
 
 
