@@ -1682,7 +1682,6 @@ proc `$`*(s: Selection): string = $(s.toString())
 # Storage "methods"
 proc getItem*(s: Storage, key: cstring): cstring
 proc setItem*(s: Storage, key, value: cstring)
-proc hasItem*(s: Storage, key: cstring): bool
 proc clear*(s: Storage)
 proc removeItem*(s: Storage, key: cstring)
 
