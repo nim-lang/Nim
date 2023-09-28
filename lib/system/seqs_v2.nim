@@ -195,5 +195,29 @@ func capacity*[T](self: seq[T]): int {.inline.} =
   let sek = cast[ptr NimSeqV2[T]](unsafeAddr self)
   result = if sek.p != nil: sek.p.cap and not strlitFlag else: 0
 
+func setLenUninit*[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
+  ## Sets the length of seq `s` to `newlen`. `T` may be any sequence type.
+  ## New slots will not be initialized.
+  ##
+  ## If the current length is greater than the new length,
+  ## `s` will be truncated.
+  ##   ```nim
+  ##   var x = @[10, 20]
+  ##   x.setLenUninit(5)
+  ##   x[4] = 50
+  ##   assert x[4] == 50
+  ##   x.setLenUninit(1)
+  ##   assert x == @[10]
+  ##   ```
+  {.noSideEffect.}:
+    if newlen < s.len:
+      shrink(s, newlen)
+    else:
+      let oldLen = s.len
+      if newlen <= oldLen: return
+      var xu = cast[ptr NimSeqV2[T]](addr s)
+      if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
+        xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
+      xu.len = newlen
 
 {.pop.}  # See https://github.com/nim-lang/Nim/issues/21401
