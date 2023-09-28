@@ -175,6 +175,8 @@ const copyFlagSymlink = {cfSymlinkAsIs, cfSymlinkFollow, cfSymlinkIgnore}
 
 
 template copyFileImpl(source, dest: string; options: set[CopyFlag]; bufferSize: static[int]) =
+  bind createSymlink
+  bind expandSymlink
   if isSymlink and (cfSymlinkIgnore in options or defined(windows)):
     return
   when defined(windows):
