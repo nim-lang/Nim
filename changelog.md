@@ -16,6 +16,7 @@
 slots when enlarging a sequence.
 - Added `hasDefaultValue` to `std/typetraits` to check if a type has a valid default value.
 - Added Viewport API for the JavaScript targets in the `dom` module.
+- Added `std/osfiles.copyFile` that allows to specify `bufferSize` instead of a hardcoded one.
 
 [//]: # "Deprecations:"
 
