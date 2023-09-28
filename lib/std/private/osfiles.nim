@@ -174,8 +174,7 @@ type
 const copyFlagSymlink = {cfSymlinkAsIs, cfSymlinkFollow, cfSymlinkIgnore}
 
 
-template copyFileImpl(source, dest: string; options: set[CopyFlag]; bufSize: static[int]) =
-  let isSymlink = source.symlinkExists
+template copyFileImpl(source, dest: string; options: set[CopyFlag]; bufferSize: static[int]) =
   if isSymlink and (cfSymlinkIgnore in options or defined(windows)):
     return
   when defined(windows):
@@ -206,9 +205,9 @@ template copyFileImpl(source, dest: string; options: set[CopyFlag]; bufSize: sta
         if not open(d, dest, fmWrite):
           close(s)
           raiseOSError(osLastError(), dest)
-        var buf = alloc(bufSize)
+        var buf = alloc(bufferSize)
         while true:
-          var bytesread = readBuffer(s, buf, bufSize)
+          var bytesread = readBuffer(s, buf, bufferSize)
           if bytesread > 0:
             var byteswritten = writeBuffer(d, buf, bytesread)
             if bytesread != byteswritten:
@@ -216,7 +215,7 @@ template copyFileImpl(source, dest: string; options: set[CopyFlag]; bufSize: sta
               close(s)
               close(d)
               raiseOSError(osLastError(), dest)
-          if bytesread != bufSize: break
+          if bytesread != bufferSize: break
         dealloc(buf)
         close(s)
         flushFile(d)
@@ -260,11 +259,13 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   ## * `removeFile proc`_
   ## * `moveFile proc`_
   doAssert card(copyFlagSymlink * options) == 1, "There should be exactly one cfSymlink* in options"
-  copyFileImpl(source, dest, options, bufSize = 8192)
+  let isSymlink = source.symlinkExists
+  copyFileImpl(source, dest, options, bufferSize = 8192)
 
 
 proc copyFile*(source, dest: string; bufferSize: static[int]; options = cfSymlinkFollow) {.rtl, tags: [ReadDirEffect, ReadIOEffect, WriteIOEffect], noWeirdTarget, since: (2, 1).} =
   ## Same as `copyFile` but allows to specify `bufferSize`.
+  let isSymlink = source.symlinkExists
   copyFileImpl(source, dest, {options}, bufferSize)
 
 
