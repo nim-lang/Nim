@@ -1,5 +1,5 @@
 discard """
-  targets: "cpp"
+  cmd: "nim cpp $file"
 """
 
 {.emit:"""/*TYPESECTION*/
@@ -31,3 +31,30 @@ proc main =
   discard initChildStruct() #generates ChildStruct temp ({}) bypassed with makeChildStruct
   (proc (s:CppStruct) = discard)(CppStruct()) #CppStruct temp ({10})
 main()
+
+
+#Should handle ObjectCalls
+{.emit:"""/*TYPESECTION*/
+struct Foo {
+};
+struct Boo {
+  Boo(int x, char* y, Foo f): x(x), y(y), foo(f){}
+  int x;
+  char* y;
+  Foo foo;
+};
+""".}
+type
+  Foo {.importcpp, inheritable, bycopy.} = object
+  Boo {.importcpp, inheritable.} = object
+    x: int32
+    y: cstring
+    foo: Foo
+
+proc makeBoo(a:cint = 10, b:cstring = "hello", foo: Foo = Foo()): Boo {.importcpp, constructor.}
+
+proc main2() = 
+  let cppStruct = makeBoo()
+  (proc (s:Boo) = discard)(Boo()) 
+
+main2()

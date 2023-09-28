@@ -296,7 +296,12 @@ proc genCppParamsForCtor(p: BProc; call: PNode): string =
   assert(typ.kind == tyProc)
   for i in 1..<call.len:
     assert(typ.len == typ.n.len)
-    genOtherArg(p, call, i, typ, result, argsCounter)
+    #if it's a type we can just generate here another initializer as we are in an initializer context
+    if call[i].kind == nkCall and call[i][0].kind == nkSym and call[i][0].sym.kind == skType:
+      if argsCounter > 0: result.add ","
+      result.add genCppInitializer(p.module, p, call[i][0].sym.typ)
+    else:
+      genOtherArg(p, call, i, typ, result, argsCounter)
 
 proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope) =
   let params = genCppParamsForCtor(p, call)
