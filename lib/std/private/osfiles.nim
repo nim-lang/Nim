@@ -282,7 +282,7 @@ proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow}; bufferSize
 
 proc copyFileWithPermissions*(source, dest: string,
                               ignorePermissionErrors = true,
-                              options = {cfSymlinkFollow}; bufferSize = 16_384) {.noWeirdTarget.} =
+                              options = {cfSymlinkFollow}) {.noWeirdTarget.} =
   ## Copies a file from `source` to `dest` preserving file permissions.
   ##
   ## On non-Windows OSes, `options` specify the way file is copied; by default,
@@ -302,8 +302,6 @@ proc copyFileWithPermissions*(source, dest: string,
   ## reading/setting file attributes will be ignored, otherwise will raise
   ## `OSError`.
   ##
-  ## `copyFileWithPermissions` allows to specify `bufferSize` to improve I/O performance.
-  ##
   ## See also:
   ## * `CopyFlag enum`_
   ## * `copyFile proc`_
@@ -312,7 +310,7 @@ proc copyFileWithPermissions*(source, dest: string,
   ## * `removeFile proc`_
   ## * `moveFile proc`_
   ## * `copyDirWithPermissions proc`_
-  copyFile(source, dest, options, bufferSize)
+  copyFile(source, dest, options)
   when not defined(windows):
     try:
       setFilePermissions(dest, getFilePermissions(source), followSymlinks =
