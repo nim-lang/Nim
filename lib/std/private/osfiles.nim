@@ -262,7 +262,7 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}; bufferSize: st
         flushFile(d)
         close(d)
 
-proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow}; bufferSize: static[int] = 16_384)
+proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow})
   {.noWeirdTarget, since: (1,3,7).} =
   ## Copies a file `source` into directory `dir`, which must exist.
   ##
@@ -277,12 +277,12 @@ proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow}; bufferSize
   ## * `copyFile proc`_
   if dir.len == 0: # treating "" as "." is error prone
     raise newException(ValueError, "dest is empty")
-  copyFile(source, dir / source.lastPathPart, options, bufferSize)
+  copyFile(source, dir / source.lastPathPart, options)
 
 
 proc copyFileWithPermissions*(source, dest: string,
                               ignorePermissionErrors = true,
-                              options = {cfSymlinkFollow}; bufferSize: static[int] = 16_384) {.noWeirdTarget.} =
+                              options = {cfSymlinkFollow}) {.noWeirdTarget.} =
   ## Copies a file from `source` to `dest` preserving file permissions.
   ##
   ## On non-Windows OSes, `options` specify the way file is copied; by default,
@@ -312,7 +312,7 @@ proc copyFileWithPermissions*(source, dest: string,
   ## * `removeFile proc`_
   ## * `moveFile proc`_
   ## * `copyDirWithPermissions proc`_
-  copyFile(source, dest, options, bufferSize)
+  copyFile(source, dest, options)
   when not defined(windows):
     try:
       setFilePermissions(dest, getFilePermissions(source), followSymlinks =
