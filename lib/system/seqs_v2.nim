@@ -16,8 +16,6 @@
 {.push warning[StrictNotNil]: off.}  # See https://github.com/nim-lang/Nim/issues/21401
 
 
-proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
-
 ## Default seq implementation used by Nim's core.
 type
   NimSeqPayloadBase = object

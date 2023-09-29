@@ -19,6 +19,7 @@ slots when enlarging a sequence.
 
 [//]: # "Deprecations:"
 
+- Deprecates `system.newSeqUninitialized`, which is replaced by `newSeqUninit`.
 
 [//]: # "Removals:"
 
