@@ -262,7 +262,7 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}; bufferSize: st
         flushFile(d)
         close(d)
 
-proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow})
+proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow}; bufferSize: static[int] = 16_384)
   {.noWeirdTarget, since: (1,3,7).} =
   ## Copies a file `source` into directory `dir`, which must exist.
   ##
@@ -270,17 +270,19 @@ proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow})
   ## if `source` is a symlink, copies the file symlink points to. `options` is
   ## ignored on Windows: symlinks are skipped.
   ##
+  ## `copyFileToDir` allows to specify `bufferSize` to improve I/O performance.
+  ##
   ## See also:
   ## * `CopyFlag enum`_
   ## * `copyFile proc`_
   if dir.len == 0: # treating "" as "." is error prone
     raise newException(ValueError, "dest is empty")
-  copyFile(source, dir / source.lastPathPart, options)
+  copyFile(source, dir / source.lastPathPart, options, bufferSize)
 
 
 proc copyFileWithPermissions*(source, dest: string,
                               ignorePermissionErrors = true,
-                              options = {cfSymlinkFollow}) {.noWeirdTarget.} =
+                              options = {cfSymlinkFollow}; bufferSize: static[int] = 16_384) {.noWeirdTarget.} =
   ## Copies a file from `source` to `dest` preserving file permissions.
   ##
   ## On non-Windows OSes, `options` specify the way file is copied; by default,
@@ -300,6 +302,8 @@ proc copyFileWithPermissions*(source, dest: string,
   ## reading/setting file attributes will be ignored, otherwise will raise
   ## `OSError`.
   ##
+  ## `copyFileWithPermissions` allows to specify `bufferSize` to improve I/O performance.
+  ##
   ## See also:
   ## * `CopyFlag enum`_
   ## * `copyFile proc`_
@@ -308,7 +312,7 @@ proc copyFileWithPermissions*(source, dest: string,
   ## * `removeFile proc`_
   ## * `moveFile proc`_
   ## * `copyDirWithPermissions proc`_
-  copyFile(source, dest, options)
+  copyFile(source, dest, options, bufferSize)
   when not defined(windows):
     try:
       setFilePermissions(dest, getFilePermissions(source), followSymlinks =
