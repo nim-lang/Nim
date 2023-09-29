@@ -262,7 +262,7 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}; bufferSize: st
         flushFile(d)
         close(d)
 
-proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow})
+proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow}; bufferSize: static[int] = 16_384)
   {.noWeirdTarget, since: (1,3,7).} =
   ## Copies a file `source` into directory `dir`, which must exist.
   ##
@@ -277,7 +277,7 @@ proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow})
   ## * `copyFile proc`_
   if dir.len == 0: # treating "" as "." is error prone
     raise newException(ValueError, "dest is empty")
-  copyFile(source, dir / source.lastPathPart, options)
+  copyFile(source, dir / source.lastPathPart, options, bufferSize)
 
 
 proc copyFileWithPermissions*(source, dest: string,
