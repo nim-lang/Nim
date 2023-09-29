@@ -173,7 +173,7 @@ type
 
 const copyFlagSymlink = {cfSymlinkAsIs, cfSymlinkFollow, cfSymlinkIgnore}
 
-proc copyFile*(source, dest: string, options = {cfSymlinkFollow}; bufferSize: static[int] = 16_384) {.rtl,
+proc copyFile*(source, dest: string, options = {cfSymlinkFollow}; bufferSize = 16_384) {.rtl,
   extern: "nos$1", tags: [ReadDirEffect, ReadIOEffect, WriteIOEffect],
   noWeirdTarget.} =
   ## Copies a file from `source` to `dest`, where `dest.parentDir` must exist.
@@ -262,7 +262,7 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}; bufferSize: st
         flushFile(d)
         close(d)
 
-proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow}; bufferSize: static[int] = 16_384)
+proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow}; bufferSize = 16_384)
   {.noWeirdTarget, since: (1,3,7).} =
   ## Copies a file `source` into directory `dir`, which must exist.
   ##
