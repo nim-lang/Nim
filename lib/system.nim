@@ -1640,7 +1640,7 @@ when not defined(js):
       var s = cast[PGenericSeq](result)
       s.len = len
 
-  proc newSeqUninit*[T](len: Natural): seq[T] =
+  func newSeqUninit*[T](len: Natural): seq[T] =
     ## Creates a new sequence of type `seq[T]` with length `len`.
     ##
     ## Only available for types, which don't contain
