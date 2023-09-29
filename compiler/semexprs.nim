@@ -3071,7 +3071,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       let id = newIdentNode(s.name, n.info)
       c.isAmbiguous = false
       let s2 = qualifiedLookUp(c, id, {})
-      if s2 != nil and s2 != s and not c.isAmbiguous:
+      if s2 != nil and s2 != s and not c.isAmbiguous and s2.owner == c.p.owner:
         result = semExpr(c, id, flags, expectedType)
         return
     # because of the changed symbol binding, this does not mean that we

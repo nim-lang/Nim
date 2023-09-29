@@ -592,9 +592,9 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     if result == nil: result = errorUndeclaredIdentifierHint(c, n, n.ident)
   of nkSym:
     result = n.sym
-    if nfOpenSym in n.flags:
+    if false and nfOpenSym in n.flags:
       let alt = searchInScopes(c, result.name, amb)
-      if alt != nil and alt != result and not amb:
+      if alt != nil and alt != result and not amb and alt.owner == c.p.owner:
         result = alt
   of nkAccQuoted:
     var ident = considerQuotedIdent(c, n)
@@ -650,10 +650,10 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
     c.isAmbiguous = amb
   of nkSym:
     result = n.sym
-    if nfOpenSym in n.flags:
+    if false and nfOpenSym in n.flags:
       var amb = false
       let alt = searchInScopes(c, result.name, amb)
-      if alt != nil and alt != result and not amb:
+      if alt != nil and alt != result and not amb and alt.owner == c.p.owner:
         result = alt
   of nkDotExpr:
     result = nil
@@ -721,7 +721,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
           return nil
 
   of nkSym:
-    if nfOpenSym notin n.flags:
+    if true or nfOpenSym notin n.flags:
       result = n.sym
       if nfPreferredSym in n.flags:
         o.mode = oimSymChoiceLocalLookup

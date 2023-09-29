@@ -582,6 +582,14 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       inc c.noGenSym
       result[1] = semTemplBody(c, n[1])
       dec c.noGenSym
+      if result[1].kind == nkSym and result[1].sym.kind in routineKinds:
+        # prevent `dotTransformation` from rewriting this node to `nkIdent`
+        # by making it a symchoice
+        # in generics this becomes `nkClosedSymChoice` but this breaks code
+        # as the old behavior here was that this became `nkIdent`
+        var choice = newNodeIT(nkOpenSymChoice, n[1].info, newTypeS(tyNone, c.c))
+        choice.add result[1]
+        result[1] = choice
     else:
       result = semTemplBodySons(c, n)
   of nkExprColonExpr, nkExprEqExpr:
