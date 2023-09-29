@@ -1117,7 +1117,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
     assert seqRand[0] != seqRand[1]
   type T = typeof(init)
   let newLen = len
-  when supportsCopyMem(T):
+  when supportsCopyMem(T) and declared(newSeqUninit):
     var result = newSeqUninit[T](newLen)
   else: # TODO: use `newSeqUnsafe` when that's available
     var result = newSeq[T](newLen)
