@@ -35,7 +35,7 @@ proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true, allowFailu
 
 pkg "alea"
 pkg "argparse"
-pkg "arraymancer", "nim c tests/tests_cpu.nim"
+pkg "arraymancer", "nim c tests/tests_cpu.nim", url = "https://github.com/nim-lang/Arraymancer"
 pkg "ast_pattern_matching", "nim c -r tests/test1.nim"
 pkg "asyncftpclient", "nimble compileExample"
 pkg "asyncthreadpool", "nimble test --mm:refc"
@@ -96,7 +96,7 @@ pkg "measuremancer", "nimble testDeps; nimble -y test"
 pkg "memo"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
 pkg "nake", "nim c nakefile.nim"
-pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim"
+pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim", url = "https://github.com/nim-lang/neo"
 pkg "nesm", "nimble tests", "https://github.com/nim-lang/NESM", useHead = true
 pkg "netty"
 pkg "nico", allowFailure = true
