@@ -222,7 +222,7 @@ when defined(windows):
     return (int(c.dwCursorPosition.x), int(c.dwCursorPosition.y))
 
     # TODO: test this
-  proc getCursorPos*(): tuple [x, y: int] =
+  proc getCursorPos*(): tuple [x, y: int] {.raises: [ValueError, IOError].} =
     return getCursorPos(getCurrentProcess())
 
   proc setCursorPos(h: Handle, x, y: int) =
