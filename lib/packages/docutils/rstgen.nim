@@ -64,7 +64,7 @@ type
 
   EscapeMode* = enum  # in Latex text inside options [] and URLs is
                       # escaped slightly differently than in normal text
-    emText, emOption, emUrl  # emText is currently used for code also
+    emText, emOption, emUrl, emMath  # emText is currently used for code also
 
   RstGenerator* = object of RootObj
     target*: OutputTarget
@@ -206,6 +206,9 @@ proc addTexChar(dest: var string, c: char, escMode: EscapeMode) =
   ## TODO: @ is always a normal symbol (besides the header), am I wrong?
   ## All escapes that need to work in text and code blocks (`emText` mode)
   ## should start from \ (to be compatible with fancyvrb/fvextra).
+  if escMode == emMath:
+    add(dest, c)
+    return
   case c
   of '_', '&', '#', '%': add(dest, "\\" & c)
   # commands \label and \pageref don't accept \$ by some reason but OK with $:
@@ -1105,6 +1108,21 @@ proc renderHyperlink(d: PDoc, text, link: PRstNode, result: var string,
       "\\hyperlink{$2}{$1} (p.~\\pageref{$2})",
       [textStr, linkStr, nimDocStr, tooltipStr])
 
+proc renderMath(d: PDoc, n: PRstNode, result: var string, inline: bool) =
+  let saveEscMode = d.escMode
+  d.escMode = emMath  # treat \ literally in Latex
+  if inline:
+    renderAux(d, n,
+      """<span class="math inline">$1</span>""",
+      "$$$1$$",
+      result)
+  else:
+    renderAux(d, n.sons[2],
+      """<span class="math display">$1</span>""",
+      "\n\\[$1\\]\n",
+      result)
+  d.escMode = saveEscMode
+
 proc traverseForIndex*(d: PDoc, n: PRstNode) =
   ## A version of [renderRstToOut] that only fills entries for ``.idx`` files.
   var discarded: string
@@ -1322,6 +1340,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
 
   of rnImage, rnFigure: renderImage(d, n, result)
   of rnCodeBlock, rnInlineCode: renderCode(d, n, result)
+  of rnMath: renderMath(d, n, result, inline=false)
+  of rnInlineMath: renderMath(d, n, result, inline=true)
   of rnContainer: renderContainer(d, n, result)
   of rnSubstitutionReferences, rnSubstitutionDef:
     renderAux(d, n, "|$1|", "|$1|", result)

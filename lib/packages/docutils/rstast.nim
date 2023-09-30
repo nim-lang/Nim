@@ -58,6 +58,7 @@ type
     rnDirArg,                 # a directive argument (for some directives).
                               # here are directives that are not rnDirective:
     rnRaw, rnTitle, rnContents, rnImage, rnFigure, rnCodeBlock, rnAdmonition,
+    rnMath,
     rnRawHtml, rnRawLatex,
     rnContainer,              # ``container`` directive
     rnIndex,                  # index directve:
@@ -70,6 +71,7 @@ type
     rnInlineCode,             # interpreted text with code in a known language
     rnCodeFragment,           # inline code for highlighting with the specified
                               # class (which cannot be inferred from context)
+    rnInlineMath,
     rnUnknownRole,            # interpreted text with an unknown role
     rnSub, rnSup, rnIdx,
     rnEmphasis,               # "*"
