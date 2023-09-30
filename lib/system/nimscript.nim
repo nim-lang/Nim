@@ -161,6 +161,7 @@ template `--`*(key, val: untyped) =
   ##   ```nim
   ##   --path:somePath # same as switch("path", "somePath")
   ##   --path:"someOtherPath" # same as switch("path", "someOtherPath")
+  ##   --hint:"[Conf]:off" # same as switch("hint", "[Conf]:off")
   ##   ```
   switch(strip(astToStr(key)), strip(astToStr(val)))
 
