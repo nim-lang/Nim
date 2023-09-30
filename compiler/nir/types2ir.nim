@@ -17,6 +17,10 @@ type
     g: TypeGraph
     conf: ConfigRef
 
+proc mangle(t: PType): string =
+  # XXX Improve!
+  result = $t
+
 template cached(c: var Context; t: PType; body: untyped) =
   result = c.processed.getOrDefault(t.itemId)
   if result.int == 0:
@@ -74,8 +78,8 @@ proc objectToIr(c: var Context; t: PType): TypeId =
   var fieldTypes: seq[TypeId] = @[]
   collectFieldTypes c, t.n, fieldTypes
   let obj = openType(c.g, ObjectDecl)
-  # XXX Proper name mangling here!
-  c.g.addName t.sym.name.s
+  # XXX Inheritance?!
+  c.g.addName mangle t
   objectToIr c, t.n, fieldTypes, unionId
   result = sealType(c.g, obj)
 
@@ -84,8 +88,7 @@ proc tupleToIr(c: var Context; t: PType): TypeId =
   for i in 0..<t.len:
     fieldTypes[i] = typeToIr(c, t[i])
   let obj = openType(c.g, ObjectDecl)
-  # XXX Proper name mangling here!
-  c.g.addName "tupleX"
+  c.g.addName mangle t
   for i in 0..<t.len:
     c.g.addField "f_" & $i, fieldTypes[i]
   result = sealType(c.g, obj)
@@ -99,6 +102,120 @@ proc procToIr(c: var Context; t: PType): TypeId =
   for i in 0..<t.len:
     c.g.addType fieldTypes[i]
   result = sealType(c.g, obj)
+
+proc nativeInt(c: Context): TypeId =
+  case c.conf.target.intSize
+  of 2: result = Int16Id
+  of 4: result = Int32Id
+  else: result = Int64Id
+
+proc openArrayToIr(c: var Context; t: PType): TypeId =
+  # object (a: ArrayPtr[T], len: int)
+  let e = lastSon(t)
+  let mangledBase = mangle(e)
+  let typeName = "NimOpenArray" & mangledBase
+
+  let elementType = typeToIr(c, e)
+
+  let p = openType(c.g, ObjectDecl)
+  c.g.addName typeName
+
+  let f = c.g.openType FieldDecl
+  let arr = c.g.openType AArrayPtrTy
+  c.g.addType elementType
+  discard sealType(c.g, arr) # LastArrayTy
+  c.g.addName "data"
+  discard sealType(c.g, f) # FieldDecl
+
+  c.g.addField "len", c.nativeInt
+
+  result = sealType(c.g, p) # ObjectDecl
+
+
+proc stringToIr(c: var Context; t: PType): TypeId =
+  #[
+
+    NimStrPayload = object
+      cap: int
+      data: UncheckedArray[char]
+
+    NimStringV2 = object
+      len: int
+      p: ptr NimStrPayload
+
+  ]#
+  let p = openType(c.g, ObjectDecl)
+  c.g.addName "NimStrPayload"
+  c.g.addField "cap", c.nativeInt
+
+  let f = c.g.openType FieldDecl
+  let arr = c.g.openType LastArrayTy
+  c.g.addBuiltinType Char8Id
+  discard sealType(c.g, arr) # LastArrayTy
+  c.g.addName "data"
+  discard sealType(c.g, f) # FieldDecl
+
+  let payload = sealType(c.g, p)
+
+  let str = openType(c.g, ObjectDecl)
+  c.g.addName "NimStringV2"
+  c.g.addField "len", c.nativeInt
+
+  let fp = c.g.openType FieldDecl
+  let ffp = c.g.openType APtrTy
+  c.g.addNominalType ObjectTy, "NimStrPayload"
+  discard sealType(c.g, ffp) # APtrTy
+  c.g.addName "p"
+  discard sealType(c.g, fp) # FieldDecl
+
+  result = sealType(c.g, str) # ObjectDecl
+
+proc seqToIr(c: var Context; t: PType): TypeId =
+  #[
+    NimSeqPayload[T] = object
+      cap: int
+      data: UncheckedArray[T]
+
+    NimSeqV2*[T] = object
+      len: int
+      p: ptr NimSeqPayload[T]
+
+  ]#
+  let e = lastSon(t)
+  let mangledBase = mangle(e)
+  let payloadName = "NimSeqPayload" & mangledBase
+
+  let elementType = typeToIr(c, e)
+
+  let p = openType(c.g, ObjectDecl)
+  c.g.addName payloadName
+  c.g.addField "cap", c.nativeInt
+
+  let f = c.g.openType FieldDecl
+  let arr = c.g.openType LastArrayTy
+  c.g.addType elementType
+  discard sealType(c.g, arr) # LastArrayTy
+  c.g.addName "data"
+  discard sealType(c.g, f) # FieldDecl
+
+  let payload = sealType(c.g, p)
+
+  let sq = openType(c.g, ObjectDecl)
+  c.g.addName "NimSeqV2" & mangledBase
+  c.g.addField "len", c.nativeInt
+
+  let fp = c.g.openType FieldDecl
+  let ffp = c.g.openType APtrTy
+  c.g.addNominalType ObjectTy, "NimSeqPayload" & mangledBase
+  discard sealType(c.g, ffp) # APtrTy
+  c.g.addName "p"
+  discard sealType(c.g, fp) # FieldDecl
+
+  result = sealType(c.g, sq) # ObjectDecl
+
+
+proc closureToIr(c: var Context; t: PType): TypeId =
+  result = TypeId(-1)
 
 proc typeToIr*(c: var Context; t: PType): TypeId =
   case t.kind
@@ -206,18 +323,19 @@ proc typeToIr*(c: var Context; t: PType): TypeId =
       result = tupleToIr(c, t)
   of tyProc:
     cached(c, t):
-      result = procToIr(c, t)
+      if t.callConv == ccClosure:
+        result = closureToIr(c, t)
+      else:
+        result = procToIr(c, t)
   of tyVarargs, tyOpenArray:
     cached(c, t):
-      # object (a: ArrayPtr[T], len: int)
-      result = TypeId(-1)
+      result = openArrayToIr(c, t)
   of tyString:
     cached(c, t):
-      # a string a pair of `len, p` with convoluted `p`:
-      result = TypeId(-1)
+      result = stringToIr(c, t)
   of tySequence:
     cached(c, t):
-      result = TypeId(-1)
+      result = seqToIr(c, t)
   of tyCstring:
     cached(c, t):
       let a = openType(c.g, AArrayPtrTy)
