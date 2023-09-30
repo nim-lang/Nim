@@ -1615,11 +1615,12 @@ when notJSnotNims and defined(nimSeqsV2):
 when not defined(js):
   template newSeqImpl(T, len) =
     result = newSeqOfCap[T](len)
-    when defined(nimSeqsV2):
-      cast[ptr int](addr result)[] = len
-    else:
-      var s = cast[PGenericSeq](result)
-      s.len = len
+    {.cast(noSideEffect).}:
+      when defined(nimSeqsV2):
+        cast[ptr int](addr result)[] = len
+      else:
+        var s = cast[PGenericSeq](result)
+        s.len = len
 
   proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] {.deprecated: "Use `newSeqUninit` instead".} =
     ## Creates a new sequence of type `seq[T]` with length `len`.
