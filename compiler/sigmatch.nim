@@ -454,38 +454,59 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
       else: result = isIntConv
     else: result = isNone
 
-proc getObjectTypeOrNil(f: PType): PType =
+proc skipTypeContainer(f: PType): PType=
+  #[
+    Skips types that are structural containers and/or,
+    are subordinate to complete type definition.
+    Do not cross over a complete type definition boundy.
+    
+    ex.
+    A[object]        ... [object] -> object
+    A[T]=ref object  ... A -> ref object
+    B=object; A=B    ... A -> B
+    A[T: static int] ... T -> static int
+    
+    Use this when it is assumed that the effective root type node is a child of
+    the container
+  ]#
+  case f.kind:
+  of tyGenericParam:
+    if f.len <= 0 or f.lastSon == nil:
+      result = f
+    else:
+      result = skipTypeContainer(f.lastSon)
+  of tyGenericInvocation, tyAlias:
+    if f.len <= 0 or f[0] == nil:
+      result = f
+    else:
+      result = skipTypeContainer(f[0])
+  of tyGenericBody, tyGenericInst, tyCompositeTypeClass:
+    result = skipTypeContainer(f.lastSon)
+  of tyStatic, tyOwned, tyVar, tyLent, tySink:
+    result = skipTypeContainer(f.base)
+  of tyInferred:
+    # This is not true "After a candidate type is selected"
+    result = skipTypeContainer(f.base)
+  else:
+    result = f
+
+proc getObjectTypeOrNil(t: PType): PType =
   #[
     Returns a type that is f's effective typeclass. This is usually just one level deeper
     in the hierarchy of generality for a type. `object`, `ref object`, `enum` and user defined
     tyObjects are common return values.
   ]#
-  if f == nil: return nil
+  if t == nil: return nil
+  let f = skipTypeContainer(t)
   case f.kind:
-  of tyGenericParam:
-    if f.len <= 0 or f.lastSon == nil:
+  of tyGenericParam, tyGenericInvocation, tyAlias, # handled in skipTypeContainer
+     tyTyped, tyUntyped, tyFromExpr:
       result = nil
-    else:
-      result = getObjectTypeOrNil(f.lastSon)
-  of tyGenericInvocation, tyCompositeTypeClass, tyAlias:
-    if f.len <= 0 or f[0] == nil:
-      result = nil
-    else:
-      result = getObjectTypeOrNil(f[0])
-  of tyGenericBody, tyGenericInst:
-    result = getObjectTypeOrNil(f.lastSon)
   of tyUserTypeClass:
     if f.isResolvedUserTypeClass:
       result = f.base  # ?? idk if this is right
     else:
       result = f.lastSon
-  of tyStatic, tyOwned, tyVar, tyLent, tySink:
-    result = getObjectTypeOrNil(f.base)
-  of tyInferred:
-    # This is not true "After a candidate type is selected"
-    result = getObjectTypeOrNil(f.base)
-  of tyTyped, tyUntyped, tyFromExpr:
-    result = nil
   of tyRange:
     result = f.lastSon
   else:
@@ -1407,7 +1428,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             result = isNone
 
   of tyPtr, tyRef:
-    skipOwned(a)
+    a = skipTypeContainer(a)  # for tyCompositeTypeClass and other containers
     if a.kind == f.kind:
       # ptr[R, T] can be passed to ptr[T], but not the other way round:
       if a.len < f.len: return isNone
