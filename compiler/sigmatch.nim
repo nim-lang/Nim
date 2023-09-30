@@ -593,7 +593,7 @@ proc minRel(a, b: TTypeRelation): TTypeRelation =
   if a <= b: result = a
   else: result = b
 
-proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
+proc recordRel(c: var TCandidate, f, a: PType, flags: TTypeRelFlags): TTypeRelation =
   result = isNone
   if sameType(f, a):
     result = isEqual
@@ -602,7 +602,7 @@ proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
     let firstField = if f.kind == tyTuple: 0
                      else: 1
     for i in firstField..<f.len:
-      var m = typeRel(c, f[i], a[i])
+      var m = typeRel(c, f[i], a[i], flags)
       if m < isSubtype: return isNone
       result = minRel(result, m)
     if f.n != nil and a.n != nil:
@@ -613,7 +613,7 @@ proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
         else:
           var x = f.n[i].sym
           var y = a.n[i].sym
-          if f.kind == tyObject and typeRel(c, x.typ, y.typ) < isSubtype:
+          if f.kind == tyObject and typeRel(c, x.typ, y.typ, flags) < isSubtype:
             return isNone
           if x.name.id != y.name.id: return isNone
 
@@ -1391,7 +1391,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     skipOwned(a)
     if a.kind == f.kind: result = isEqual
   of tyTuple:
-    if a.kind == tyTuple: result = recordRel(c, f, a)
+    if a.kind == tyTuple: result = recordRel(c, f, a, flags)
   of tyObject:
     let effectiveArgType = if useTypeLoweringRuleInTypeClass:
         a
@@ -1854,10 +1854,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           a.sym.transitionGenericParamToType()
           a.flags.excl tfWildcard
         elif doBind:
-          # The mechanics of `doBind` being a flag that also denotes sig cmp via
-          # negation is potentially problematic. `IsNone` is appropriate for
-          # preventing illegal bindings, but it is not necessarily appropriate
-          # before the bindings have been finalized.
+          # The mechanics of `doBind` denoting sig cmp via
+          # negation is problematic. `checkGeneric` sets `trDontDont` but it is
+          # NOT respected throughout the call graphs. I'm sure that the below 
+          # using `isNone` to validate a binding is not ideal. It makes the type relations
+          # defined by this proc not static (in fairness due to lack of information maybe?)
+          # and it's probably better to ensure bindings in a different proc. This example 
+          # demonstrates a conflict between these two responsibilities. We must know if we are
+          # doing bind validation (through the entire call graph) and/or simply comparing a 
+          # type (like a signature). The flag could work but its flimsy
           concrete = concreteType(c, a, f)
           if concrete == nil:
             return isNone
