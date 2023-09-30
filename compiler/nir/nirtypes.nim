@@ -180,6 +180,9 @@ proc addNominalType*(tree: var TypeGraph; kind: NirTypeKind; name: string) =
   assert kind in {ObjectTy, UnionTy}
   tree.nodes.add TypeNode(x: toX(kind, tree.names.getOrIncl(name)))
 
+proc addVarargs*(tree: var TypeGraph) =
+  tree.nodes.add TypeNode(x: toX(VarargsTy, 0'u32))
+
 proc getFloat128Type*(tree: var TypeGraph): TypeId =
   result = TypeId tree.nodes.len
   tree.nodes.add TypeNode(x: toX(FloatTy, 128'u32))

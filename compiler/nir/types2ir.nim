@@ -101,6 +101,8 @@ proc procToIr(c: var Context; t: PType): TypeId =
   # XXX Add Calling convention here!
   for i in 0..<t.len:
     c.g.addType fieldTypes[i]
+  if tfVarargs in t.flags:
+    c.g.addVarargs()
   result = sealType(c.g, obj)
 
 proc nativeInt(c: Context): TypeId =
