@@ -93,7 +93,7 @@ proc tupleToIr(c: var Context; t: PType): TypeId =
     c.g.addField "f_" & $i, fieldTypes[i]
   result = sealType(c.g, obj)
 
-proc procToIr(c: var Context; t: PType): TypeId =
+proc procToIr(c: var Context; t: PType; addEnv = false): TypeId =
   var fieldTypes = newSeq[TypeId](t.len)
   for i in 0..<t.len:
     fieldTypes[i] = typeToIr(c, t[i])
@@ -101,6 +101,12 @@ proc procToIr(c: var Context; t: PType): TypeId =
   # XXX Add Calling convention here!
   for i in 0..<t.len:
     c.g.addType fieldTypes[i]
+
+  if addEnv:
+    let a = openType(c.g, APtrTy)
+    c.g.addBuiltinType(VoidId)
+    discard sealType(c.g, a)
+
   if tfVarargs in t.flags:
     c.g.addVarargs()
   result = sealType(c.g, obj)
@@ -217,7 +223,32 @@ proc seqToIr(c: var Context; t: PType): TypeId =
 
 
 proc closureToIr(c: var Context; t: PType): TypeId =
-  result = TypeId(-1)
+  # struct {fn(args, void* env), env}
+  # typedef struct {$n" &
+  #        "N_NIMCALL_PTR($2, ClP_0) $3;$n" &
+  #        "void* ClE_0;$n} $1;$n"
+  let mangledBase = mangle(t)
+  let typeName = "NimClosure" & mangledBase
+
+  let procType = procToIr(c, t, addEnv=true)
+
+  let p = openType(c.g, ObjectDecl)
+  c.g.addName typeName
+
+  let f = c.g.openType FieldDecl
+  c.g.addType procType
+  c.g.addName "ClP_0"
+  discard sealType(c.g, f) # FieldDecl
+
+  let f2 = c.g.openType FieldDecl
+  let voidPtr = openType(c.g, APtrTy)
+  c.g.addBuiltinType(VoidId)
+  discard sealType(c.g, voidPtr)
+
+  c.g.addName "ClE_0"
+  discard sealType(c.g, f2) # FieldDecl
+
+  result = sealType(c.g, p) # ObjectDecl
 
 proc typeToIr*(c: var Context; t: PType): TypeId =
   case t.kind
