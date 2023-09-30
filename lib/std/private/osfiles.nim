@@ -202,11 +202,8 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}; bufferSize = 1
   ## On OSX, `copyfile` C api will be used (available since OSX 10.5) unless
   ## `-d:nimLegacyCopyFile` is used.
   ##
-  ## `copyFile` allows to specify `bufferSize` to improve I/O performance,
-  ## for ideas and scripts about how to set the ideal `bufferSize` see:
-  ## * https://git.savannah.gnu.org/cgit/coreutils.git/tree/src/ioblksize.h?id=a2434d3e58e8ead6c4c92fd989da32fe648e1545#n28
-  ##
   ## `copyFile` allows to specify `bufferSize` to improve I/O performance.
+  ##
   ## See also:
   ## * `CopyFlag enum`_
   ## * `copyDir proc`_
