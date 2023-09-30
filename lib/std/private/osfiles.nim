@@ -247,6 +247,13 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}; bufferSize = 1
         if not open(d, dest, fmWrite):
           close(s)
           raiseOSError(osLastError(), dest)
+
+        # Hints for kernel-level aggressive sequential low-fragmentation read-aheads:
+        # https://pubs.opengroup.org/onlinepubs/9699919799/functions/posix_fadvise.html
+        when defined(posix) and not defined(windows):
+          discard posix_fadvise(getFileHandle(d), 0.cint, 0.cint, POSIX_FADV_SEQUENTIAL)
+          discard posix_fadvise(getFileHandle(s), 0.cint, 0.cint, POSIX_FADV_SEQUENTIAL)
+
         var buf = alloc(bufferSize)
         while true:
           var bytesread = readBuffer(s, buf, bufferSize)
