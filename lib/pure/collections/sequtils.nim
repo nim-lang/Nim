@@ -83,6 +83,7 @@ runnableExamples:
 import std/private/since
 
 import macros
+from typetraits import supportsCopyMem
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -1114,8 +1115,12 @@ template newSeqWith*(len: int, init: untyped): untyped =
     import std/random
     var seqRand = newSeqWith(20, rand(1.0))
     assert seqRand[0] != seqRand[1]
+  type T = typeof(init)
   let newLen = len
-  var result = newSeq[typeof(init)](newLen)
+  when supportsCopyMem(T) and declared(newSeqUninit):
+    var result = newSeqUninit[T](newLen)
+  else: # TODO: use `newSeqUnsafe` when that's available
+    var result = newSeq[T](newLen)
   for i in 0 ..< newLen:
     result[i] = init
   move(result) # refs bug #7295
