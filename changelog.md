@@ -8,6 +8,7 @@
 
 [//]: # "Changes:"
 
+- Changed `std/osfiles.copyFile` to allow to specify `bufferSize` instead of a hardcoded one.
 
 [//]: # "Additions:"
 
@@ -19,6 +20,7 @@ slots when enlarging a sequence.
 
 [//]: # "Deprecations:"
 
+- Deprecates `system.newSeqUninitialized`, which is replaced by `newSeqUninit`.
 
 [//]: # "Removals:"
 
