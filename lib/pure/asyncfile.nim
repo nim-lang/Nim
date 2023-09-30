@@ -301,6 +301,8 @@ proc readLine*(f: AsyncFile): Future[string] {.async.} =
   result = ""
   while true:
     var c = await read(f, 1)
+    if c.len == 0:
+      break
     if c[0] == '\c':
       c = await read(f, 1)
       break
