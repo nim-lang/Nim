@@ -8,6 +8,7 @@
 
 [//]: # "Changes:"
 
+- Changed `std/osfiles.copyFile` to allow to specify `bufferSize` instead of a hardcoded one.
 
 [//]: # "Additions:"
 
