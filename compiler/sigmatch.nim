@@ -216,7 +216,7 @@ proc sumGeneric(t: PType): int =
         tyLent, tyOwned:
       t = t.lastSon
       inc result
-    of tyGenericBody:
+    of tyGenericBody, tyNot:
       t = t.lastSon
     of tyOr:
       var maxBranch = 0
@@ -244,7 +244,7 @@ proc sumGeneric(t: PType): int =
         inc result
         break
     of tyAlias, tySink: t = t.lastSon
-    of tyBool, tyChar, tyEnum, tyObject, tyPointer,
+    of tyBool, tyChar, tyEnum, tyObject, tyPointer, tyVoid,
         tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
         tyUInt..tyUInt64, tyCompositeTypeClass, tyBuiltInTypeClass:
       inc result
