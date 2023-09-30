@@ -213,12 +213,10 @@ proc sumGeneric(t: PType): int =
   while true:
     case t.kind
     of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyUncheckedArray,
-        tyOpenArray, tyVarargs, tySet, tyRange, tySequence,
+        tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyGenericBody,
         tyLent, tyOwned:
       t = t.lastSon
       inc result
-    of tyGenericBody:
-      t = t.lastSon
     of tyOr:
       var maxBranch = 0
       for branch in t:
@@ -232,7 +230,7 @@ proc sumGeneric(t: PType): int =
       inc isvar
     of tyTypeDesc:
       t = t.lastSon
-      if t.kind in {tyEmpty, tyNone}: break
+      if t.kind == tyEmpty: break
       inc result
     of tyGenericInvocation, tyTuple, tyProc, tyAnd:
       result += ord(t.kind in {tyGenericInvocation, tyAnd})
@@ -243,17 +241,19 @@ proc sumGeneric(t: PType): int =
     of tyStatic:
       return sumGeneric(t[0]) + 1
     of tyGenericParam:
-      if t.sons.len > 0:
+      if t.len > 0:
+        when defined(debug):
+          echo "Generic thing"
         t = t.lastSon
       else:
         break
     of tyAlias, tySink: t = t.lastSon
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
-        tyUInt..tyUInt64, tyCompositeTypeClass, tyBuiltInTypeClass:
+        tyUInt..tyUInt64, tyCompositeTypeClass:
       return isvar + 1
-    of tyTyped, tyUntyped:
-      return 0
+    of tyBuiltInTypeClass:
+      return isvar
     else:
       break
 
@@ -467,6 +467,11 @@ proc getObjectTypeOrNil(f: PType): PType =
   ]#
   if f == nil: return nil
   case f.kind:
+  of tyGenericParam:
+    if f.len <= 0 or f.lastSon == nil:
+      result = nil
+    else:
+      result = getObjectTypeOrNil(f.lastSon)
   of tyGenericInvocation, tyCompositeTypeClass, tyAlias:
     if f.len <= 0 or f[0] == nil:
       result = nil

@@ -5442,26 +5442,6 @@ Generics are Nim's means to parametrize procs, iterators or types with
 `type parameters`:idx:. Depending on the context, the brackets are used either to
 introduce type parameters or to instantiate a generic proc, iterator, or type.
 
-Generics as they appear in source-code are said to be a formal definition.
-The usage of a generic will resolve the formally defined expression into an instance of that
-expression bound to only concrete types. This process is called "instantiation".
-
-Brackets at the sight of a generic's formal definition specify the "constraints" as in:
-```nim
-type Foo[T] = object
-proc p[H;T: Foo[H]](param: T): H
-```
-
-The expression `[H; T:Typ[H]]` is the proc's constraint. A constraint definition may have more than
-one symbol defined by seperating each definition by a `;`. In this example both `H` and `T` are 
-defined symbols, as `type varaibles`, but only `T` has a defined type. Notice how `T` is composed of `H` and the return 
-type of `p` is defined as `H`. When this generic proc is instantiated `H` will be bound to a concrete type,
-thus making `T` concrete and the return type of `p` will be bound to the same concrete type used to define
-`H`.
-
-Brackets at the sight of usage can be used to supply concrete types to instantiate the generic in the same
-order that the symbols are defined in the constraint. Alternatively, type bindings may be inferred by the compiler
-in some situations, allowing for cleaner code.
 
 The following example shows how a generic binary tree can be modeled:
 
