@@ -1852,7 +1852,7 @@ func join*(a: openArray[string], sep: string = ""): string {.rtl,
   else:
     result = ""
 
-func join*[T: not string](a: openArray[T], sep: string = ""): string =
+proc join*[T: not string](a: openArray[T], sep: string = ""): string =
   ## Converts all elements in the container `a` to strings using `$`,
   ## and concatenates them with `sep`.
   runnableExamples:
