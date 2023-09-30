@@ -18,12 +18,13 @@
 ##
 ## Build and test examples:
 ##
-## .. code-block::
+##   ```cmd
 ##   ./bin/nim c -d:ssl -p:. -r tests/stdlib/tssl.nim
 ##   ./bin/nim c -d:ssl --threads:on -p:. -r tests/stdlib/thttpclient_ssl.nim
 ##   ./bin/nim c -d:ssl -p:. -r tests/untestable/tssl.nim
 ##   ./bin/nim c -d:ssl -p:. --dynlibOverride:ssl --passl:-lcrypto --passl:-lssl -r tests/untestable/tssl.nim
 ##   ./bin/nim r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:ssl -p:testament/lib --threads:on tests/untestable/thttpclient_ssl_remotenetwork.nim
+##   ```
 
 # https://www.feistyduck.com/library/openssl-cookbook/online/ch-testing-with-openssl.html
 #

@@ -699,11 +699,11 @@ proc newRecordGen(ctx: Context; typ: TypRef): PNode =
 String `interpolation`:idx: / `format`:idx: inspired by
 Python's ``f``-strings.
 
-.. code-block:: nim
-
-    import strformat
-    let msg = "hello"
-    doAssert fmt"{msg}\n" == "hello\\n"
+  ```nim
+  import strformat
+  let msg = "hello"
+  doAssert fmt"{msg}\n" == "hello\\n"
+  ```
 
 Because the literal is a raw string literal, the ``\n`` is not interpreted as
 an escape sequence.

@@ -81,8 +81,8 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
 
 proc resetSysTypes*(g: ModuleGraph) =
   g.systemModule = nil
-  initStrTable(g.compilerprocs)
-  initStrTable(g.exposed)
+  g.compilerprocs = initStrTable()
+  g.exposed = initStrTable()
   for i in low(g.sysTypes)..high(g.sysTypes):
     g.sysTypes[i] = nil
 
@@ -100,7 +100,7 @@ proc skipIntLit*(t: PType; id: IdGenerator): PType {.inline.} =
 
 proc addSonSkipIntLit*(father, son: PType; id: IdGenerator) =
   let s = son.skipIntLit(id)
-  father.sons.add(s)
+  father.add(s)
   propagateToOwner(father, s)
 
 proc getCompilerProc*(g: ModuleGraph; name: string): PSym =
@@ -124,7 +124,7 @@ proc registerNimScriptSymbol*(g: ModuleGraph; s: PSym) =
 proc getNimScriptSymbol*(g: ModuleGraph; name: string): PSym =
   strTableGet(g.exposed, getIdent(g.cache, name))
 
-proc resetNimScriptSymbols*(g: ModuleGraph) = initStrTable(g.exposed)
+proc resetNimScriptSymbols*(g: ModuleGraph) = g.exposed = initStrTable()
 
 proc getMagicEqSymForType*(g: ModuleGraph; t: PType; info: TLineInfo): PSym =
   case t.kind

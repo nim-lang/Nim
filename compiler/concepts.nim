@@ -13,8 +13,6 @@
 
 import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer, types, intsets
 
-from magicsys import addSonSkipIntLit
-
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -32,18 +30,6 @@ proc declareSelf(c: PContext; info: TLineInfo) =
   s.typ.flags.incl {tfUnresolved, tfPacked}
   s.typ.add newType(tyEmpty, nextTypeId(c.idgen), ow)
   addDecl(c, s, info)
-
-proc isSelf*(t: PType): bool {.inline.} =
-  ## Is this the magical 'Self' type?
-  t.kind == tyTypeDesc and tfPacked in t.flags
-
-proc makeTypeDesc*(c: PContext, typ: PType): PType =
-  if typ.kind == tyTypeDesc and not isSelf(typ):
-    result = typ
-  else:
-    result = newTypeS(tyTypeDesc, c)
-    incl result.flags, tfCheckedForDestructor
-    result.addSonSkipIntLit(typ, c.idgen)
 
 proc semConceptDecl(c: PContext; n: PNode): PNode =
   ## Recursive helper for semantic checking for the concept declaration.
@@ -167,9 +153,9 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
     # modifiers in the concept must be there in the actual implementation
     # too but not vice versa.
     if a.kind == f.kind:
-      result = matchType(c, f.sons[0], a.sons[0], m)
+      result = matchType(c, f[0], a[0], m)
     elif m.magic == mArrPut:
-      result = matchType(c, f.sons[0], a, m)
+      result = matchType(c, f[0], a, m)
     else:
       result = false
   of tyEnum, tyObject, tyDistinct:
@@ -264,7 +250,7 @@ proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
       m.inferred.setLen oldLen
       return false
 
-  if not matchReturnType(c, n[0].sym.typ.sons[0], candidate.typ.sons[0], m):
+  if not matchReturnType(c, n[0].sym.typ[0], candidate.typ[0], m):
     m.inferred.setLen oldLen
     return false
 

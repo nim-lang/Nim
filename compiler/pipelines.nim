@@ -44,8 +44,7 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
   of EvalPass, InterpreterPass:
     result = interpreterCode(bModule, semNode)
   of NonePass:
-    result = nil
-    doAssert false, "use setPipeLinePass to set a proper PipelinePass"
+    raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
 proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
                       m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator,
@@ -133,8 +132,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     of SemPass:
       nil
     of NonePass:
-      doAssert false, "use setPipeLinePass to set a proper PipelinePass"
-      nil
+      raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
   if stream == nil:
     let filename = toFullPathConsiderDirty(graph.config, fileIdx)
@@ -208,7 +206,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     when not defined(leanCompiler):
       discard closeJson(graph, bModule, finalNode)
   of NonePass:
-    doAssert false, "use setPipeLinePass to set a proper PipelinePass"
+    raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
   if graph.config.backend notin {backendC, backendCpp, backendObjc}:
     # We only write rod files here if no C-like backend is active.

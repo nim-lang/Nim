@@ -115,3 +115,11 @@ block: # issue #22187
     k: array[p(m(T, s)), int64]
   var x: F[int, 3]
   doAssert x.k is array[3, int64]
+
+block: # issue #22490
+  proc log2trunc(x: uint64): int =
+    if x == 0: int(0) else: int(0)
+  template maxChunkIdx(T: typedesc): int64 = 0'i64
+  template layer(vIdx: int64): int = log2trunc(0'u64)
+  type HashList[T] = object
+    indices: array[int(layer(maxChunkIdx(T))), int]

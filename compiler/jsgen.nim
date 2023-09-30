@@ -32,7 +32,7 @@ import
   ast, trees, magicsys, options,
   nversion, msgs, idents, types,
   ropes, ccgutils, wordrecg, renderer,
-  cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
+  cgmeth, lowerings, sighashes, modulegraphs, lineinfos,
   transf, injectdestructors, sourcemap, astmsgs, backendpragmas
 
 import pipelineutils
@@ -43,6 +43,7 @@ import strutils except addf
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]
 
+import std/formatfloat
 
 type
   TJSGen = object of PPassContext
@@ -137,17 +138,15 @@ template nested(p, body) =
   dec p.extraIndent
 
 proc newGlobals(): PGlobals =
-  new(result)
-  result.forwarded = @[]
-  result.generatedSyms = initIntSet()
-  result.typeInfoGenerated = initIntSet()
+  result = PGlobals(forwarded: @[],
+        generatedSyms: initIntSet(),
+        typeInfoGenerated: initIntSet()
+        )
 
-proc initCompRes(r: var TCompRes) =
-  r.address = ""
-  r.res = ""
-  r.tmpLoc = ""
-  r.typ = etyNone
-  r.kind = resNone
+proc initCompRes(): TCompRes =
+  result = TCompRes(address: "", res: "",
+    tmpLoc: "", typ: etyNone, kind: resNone
+  )
 
 proc rdLoc(a: TCompRes): Rope {.inline.} =
   if a.typ != etyBaseIndex:
@@ -220,8 +219,7 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyProc: result = etyProc
   of tyCstring: result = etyString
   of tyConcept, tyIterable:
-    result = etyNone
-    doAssert false
+    raiseAssert "unreachable"
 
 proc mapType(p: PProc; typ: PType): TJSTypeKind =
   result = mapType(typ)
@@ -350,9 +348,7 @@ proc isSimpleExpr(p: PProc; n: PNode): bool =
       if n[i].kind notin {nkCommentStmt, nkEmpty}: return false
     result = isSimpleExpr(p, n.lastSon)
   else:
-    result = false
-    if n.isAtom:
-      result = true
+    result = n.isAtom
 
 proc getTemp(p: PProc, defineInLocals: bool = true): Rope =
   inc(p.unique)
@@ -2905,7 +2901,11 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       r.res = rope"Infinity"
     of fcNegInf:
       r.res = rope"-Infinity"
-    else: r.res = rope(f.toStrMaxPrecision)
+    else:
+      if n.typ.skipTypes(abstractVarRange).kind == tyFloat32:
+        r.res.addFloatRoundtrip(f.float32)
+      else:
+        r.res.addFloatRoundtrip(f)
     r.kind = resExpr
   of nkCallKinds:
     if isEmptyType(n.typ):
@@ -3006,13 +3006,11 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
 
 proc newModule(g: ModuleGraph; module: PSym): BModule =
   ## Create a new JS backend module node.
-  new(result)
-  result.module = module
-  result.sigConflicts = initCountTable[SigHash]()
   if g.backend == nil:
     g.backend = newGlobals()
-  result.graph = g
-  result.config = g.config
+  result = BModule(module: module, sigConflicts: initCountTable[SigHash](),
+                   graph: g, config: g.config
+  )
   if sfSystemModule in module.flags:
     PGlobals(g.backend).inSystem = true
 

@@ -76,7 +76,7 @@ proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
           if i >= frmt.len or frmt[i] notin {'0'..'9'}: break
         num = j
         if j > high(args) + 1:
-          doAssert false, "invalid format string: " & frmt
+          raiseAssert "invalid format string: " & frmt
         else:
           result.add(args[j-1])
       of '{':
@@ -88,10 +88,10 @@ proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
         num = j
         if frmt[i] == '}': inc(i)
         else:
-          doAssert false, "invalid format string: " & frmt
+          raiseAssert "invalid format string: " & frmt
 
         if j > high(args) + 1:
-          doAssert false, "invalid format string: " & frmt
+          raiseAssert "invalid format string: " & frmt
         else:
           result.add(args[j-1])
       of 'n':
@@ -101,7 +101,7 @@ proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
         result.add("\n")
         inc(i)
       else:
-        doAssert false, "invalid format string: " & frmt
+        raiseAssert "invalid format string: " & frmt
     else:
       result.add(frmt[i])
       inc(i)

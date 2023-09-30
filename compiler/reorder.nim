@@ -25,17 +25,11 @@ when defined(nimDebugReorder):
   var idNames = newTable[int, string]()
 
 proc newDepN(id: int, pnode: PNode): DepN =
-  new(result)
-  result.id = id
-  result.pnode = pnode
-  result.idx = -1
-  result.lowLink = -1
-  result.onStack = false
-  result.kids = @[]
-  result.hAQ = -1
-  result.hIS = -1
-  result.hB = -1
-  result.hCmd = -1
+  result = DepN(id: id, pnode: pnode, idx: -1,
+                lowLink: -1, onStack: false,
+                kids: @[], hAQ: -1, hIS: -1,
+                hB: -1, hCmd: -1
+  )
   when defined(nimDebugReorder):
     result.expls = @[]
 
@@ -114,7 +108,7 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
     # XXX: for callables, this technically adds the return type dep before args
     for i in 0..<n.safeLen: deps(n[i])
 
-proc hasIncludes(n:PNode): bool =
+proc hasIncludes(n: PNode): bool =
   result = false
   for a in n:
     if a.kind == nkIncludeStmt:
@@ -235,8 +229,9 @@ proc hasImportStmt(n: PNode): bool =
   # i it contains one
   case n.kind
   of nkImportStmt, nkFromStmt, nkImportExceptStmt:
-    return true
+    result = true
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
+    result = false
     for a in n:
       if a.hasImportStmt:
         return true
@@ -257,6 +252,7 @@ proc hasCommand(n: PNode): bool =
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse,
       nkStaticStmt, nkLetSection, nkConstSection, nkVarSection,
       nkIdentDefs:
+    result = false
     for a in n:
       if a.hasCommand:
         return true

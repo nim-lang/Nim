@@ -72,7 +72,7 @@ proc addUniqueSym*(scope: PScope, s: PSym): PSym =
 
 proc openScope*(c: PContext): PScope {.discardable.} =
   result = PScope(parent: c.currentScope,
-                  symbols: newStrTable(),
+                  symbols: initStrTable(),
                   depthLevel: c.scopeDepth + 1)
   c.currentScope = result
 
@@ -254,6 +254,41 @@ proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSy
         if s.kind in filter:
           result.add s
 
+proc isAmbiguous*(c: PContext, s: PIdent, filter: TSymKinds, sym: var PSym): bool =
+  result = false
+  block outer:
+    for scope in allScopes(c.currentScope):
+      var ti: TIdentIter
+      var candidate = initIdentIter(ti, scope.symbols, s)
+      var scopeHasCandidate = false
+      while candidate != nil:
+        if candidate.kind in filter:
+          if scopeHasCandidate:
+            # 2 candidates in same scope, ambiguous
+            return true
+          else:
+            scopeHasCandidate = true
+            sym = candidate
+        candidate = nextIdentIter(ti, scope.symbols)
+      if scopeHasCandidate:
+        # scope had a candidate but wasn't ambiguous
+        return false
+
+  var importsHaveCandidate = false
+  var marked = initIntSet()
+  for im in c.imports.mitems:
+    for s in symbols(im, marked, s, c.graph):
+      if s.kind in filter:
+        if importsHaveCandidate:
+          # 2 candidates among imports, ambiguous
+          return true
+        else:
+          importsHaveCandidate = true
+          sym = s
+  if importsHaveCandidate:
+    # imports had a candidate but wasn't ambiguous
+    return false
+
 proc errorSym*(c: PContext, n: PNode): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
   var m = n
@@ -404,7 +439,7 @@ proc openShadowScope*(c: PContext) =
   ## opens a shadow scope, just like any other scope except the depth is the
   ## same as the parent -- see `isShadowScope`.
   c.currentScope = PScope(parent: c.currentScope,
-                          symbols: newStrTable(),
+                          symbols: initStrTable(),
                           depthLevel: c.scopeDepth)
 
 proc closeShadowScope*(c: PContext) =
@@ -561,7 +596,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     if result == nil: result = errorUndeclaredIdentifierHint(c, n, ident)
   else:
     internalError(c.config, n.info, "lookUp")
-    return
+    return nil
   if amb:
     #contains(c.ambiguousSymbols, result.id):
     result = errorUseQualifier(c, n.info, result, amb)

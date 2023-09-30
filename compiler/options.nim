@@ -235,6 +235,9 @@ type
     laxEffects
       ## Lax effects system prior to Nim 2.0.
     verboseTypeMismatch
+    emitGenerics 
+      ## generics are emitted in the module that contains them. 
+      ## Useful for libraries that rely on local passC 
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
@@ -418,6 +421,8 @@ type
     expandNodeResult*: string
     expandPosition*: TLineInfo
 
+    currentConfigDir*: string # used for passPP only; absolute dir
+
 
 proc parseNimVersion*(a: string): NimVer =
   # could be moved somewhere reusable
@@ -582,6 +587,7 @@ proc newConfigRef*(): ConfigRef =
     maxLoopIterationsVM: 10_000_000,
     vmProfileData: newProfileData(),
     spellSuggestMax: spellSuggestSecretSauce,
+    currentConfigDir: ""
   )
   initConfigRefCommon(result)
   setTargetFromSystem(result.target)
@@ -663,7 +669,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
 template quitOrRaise*(conf: ConfigRef, msg = "") =
   # xxx in future work, consider whether to also intercept `msgQuit` calls
   if conf.isDefined("nimDebug"):
-    doAssert false, msg
+    raiseAssert msg
   else:
     quit(msg) # quits with QuitFailure
 

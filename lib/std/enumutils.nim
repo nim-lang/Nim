@@ -22,7 +22,8 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
   # a normalized string comparison to the `argSym` input.
   # string normalization is done using passed normalizer.
   let typ = typ.getTypeInst[1]
-  let impl = typ.getImpl[2]
+  let typSym = typ.getTypeImpl.getTypeInst # skip aliases etc to get type sym
+  let impl = typSym.getImpl[2]
   expectKind impl, nnkEnumTy
   let normalizerNode = quote: `normalizer`
   expectKind normalizerNode, nnkSym

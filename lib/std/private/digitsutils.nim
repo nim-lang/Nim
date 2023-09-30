@@ -19,7 +19,7 @@ const
 
 # Inspired by https://engineering.fb.com/2013/03/15/developer-tools/three-optimization-tips-for-c
 # Generates:
-# .. code-block:: nim
+#   ```nim
 #   var res = ""
 #   for i in 0 .. 99:
 #     if i < 10:
@@ -27,6 +27,7 @@ const
 #     else:
 #       res.add $i
 #   doAssert res == digits100
+#   ```
 
 proc utoa2Digits*(buf: var openArray[char]; pos: int; digits: uint32) {.inline.} =
   buf[pos] = digits100[2 * digits]

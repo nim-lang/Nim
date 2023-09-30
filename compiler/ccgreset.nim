@@ -57,8 +57,7 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
     specializeResetT(p, accessor, lastSon(typ))
   of tyArray:
     let arraySize = lengthOrd(p.config, typ[0])
-    var i: TLoc
-    getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i)
+    var i: TLoc = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt))
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
             [i.r, arraySize])
     specializeResetT(p, ropecg(p.module, "$1[$2]", [accessor, i.r]), typ[1])
@@ -95,7 +94,7 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
     of ctInt8, ctInt16, ctInt32, ctInt64:
       lineCg(p, cpsStmts, "$1 = 0;$n", [accessor])
     else:
-      doAssert false, "unexpected set type kind"
+      raiseAssert "unexpected set type kind"
   of {tyNone, tyEmpty, tyNil, tyUntyped, tyTyped, tyGenericInvocation,
       tyGenericParam, tyOrdinal, tyRange, tyOpenArray, tyForward, tyVarargs,
       tyUncheckedArray, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,

@@ -566,7 +566,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         if t.kind == tyGenericParam and t.len > 0:
           result.add ": "
           var first = true
-          for son in t.sons:
+          for son in t:
             if not first: result.add " or "
             result.add son.typeToString
             first = false
@@ -637,14 +637,14 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result.add(typeToString(t[i]))
       result.add "]"
     of tyAnd:
-      for i, son in t.sons:
+      for i, son in t:
         result.add(typeToString(son))
-        if i < t.sons.high:
+        if i < t.len - 1:
           result.add(" and ")
     of tyOr:
-      for i, son in t.sons:
+      for i, son in t:
         result.add(typeToString(son))
-        if i < t.sons.high:
+        if i < t.len - 1:
           result.add(" or ")
     of tyNot:
       result = "not " & typeToString(t[0])
@@ -1174,6 +1174,13 @@ proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
 
 proc isGenericAlias*(t: PType): bool =
   return t.kind == tyGenericInst and t.lastSon.kind == tyGenericInst
+
+proc genericAliasDepth*(t: PType): int =
+  result = 0
+  var it = t
+  while it.isGenericAlias:
+    it = it.lastSon
+    inc result
 
 proc skipGenericAlias*(t: PType): PType =
   return if t.isGenericAlias: t.lastSon else: t
@@ -1753,6 +1760,7 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
     return true
   case t.kind
   of tyTuple:
+    result = false
     var cycleDetectorCopy: IntSet
     for i in 0..<t.len:
       cycleDetectorCopy = cycleDetector

@@ -359,7 +359,7 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
       paddingAtEnd: t.paddingAtEnd)
     storeNode(p, t, n)
     p.typeInst = t.typeInst.storeType(c, m)
-    for kid in items t.sons:
+    for kid in items t:
       p.types.add kid.storeType(c, m)
     c.addMissing t.sym
     p.sym = t.sym.safeItemId(c, m)
@@ -413,6 +413,7 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
     p.annex = toPackedLib(s.annex, c, m)
     when hasFFI:
       p.cname = toLitId(s.cname, m)
+    p.instantiatedFrom = s.instantiatedFrom.safeItemId(c, m)
 
     # fill the reserved slot, nothing else:
     m.syms[s.itemId.item] = p
@@ -876,6 +877,7 @@ proc symBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
   if externalName != "":
     result.loc.r = rope externalName
   result.loc.flags = s.locFlags
+  result.instantiatedFrom = loadSym(c, g, si, s.instantiatedFrom)
 
 proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s: PackedItemId): PSym =
   if s == nilItemId:
@@ -917,7 +919,7 @@ proc typeBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
       result.attachedOps[op] = loadSym(c, g, si, item)
   result.typeInst = loadType(c, g, si, t.typeInst)
   for son in items t.types:
-    result.sons.add loadType(c, g, si, son)
+    result.addSon loadType(c, g, si, son)
   loadAstBody(t, n)
   when false:
     for gen, id in items t.methods:

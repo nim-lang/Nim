@@ -39,13 +39,13 @@ var
   lresult
   lvalue
   lnext
-  _
+  tmpTupleAsgn
 lresult = @[123]
-_ = (
+tmpTupleAsgn = (
   let blitTmp = lresult
   blitTmp, ";")
-lvalue = _[0]
-lnext = _[1]
+lvalue = tmpTupleAsgn[0]
+lnext = tmpTupleAsgn[1]
 `=sink`(result.value, move lvalue)
 `=destroy`(lnext)
 `=destroy_1`(lvalue)
@@ -91,7 +91,9 @@ try:
             `=copy`(lan_ip, splitted[1])
           echo [lan_ip]
           echo [splitted[1]]
+          {.push, overflowChecks: false.}
           inc(i, 1)
+          {.pop.}
         finally:
           `=destroy`(splitted)
 finally:
@@ -113,7 +115,9 @@ block :tmp:
       addInterfaceDecl(c):
         :tmpD = `=dup`(sym)
         :tmpD
+      {.push, overflowChecks: false.}
       inc(i, 1)
+      {.pop.}
 `=destroy`(shadowScope)
 -- end of expandArc ------------------------
 --expandArc: check

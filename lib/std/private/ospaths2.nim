@@ -259,7 +259,7 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raise
     # This works around the problem for posix, but Windows is still broken with nim js -d:nodejs
     result = path[0] == '/'
   else:
-    doAssert false # if ever hits here, adapt as needed
+    raiseAssert "unreachable" # if ever hits here, adapt as needed
 
 when FileSystemCaseSensitive:
   template `!=?`(a, b: char): bool = a != b
@@ -859,7 +859,7 @@ when not defined(nimscript):
       {.emit: "`ret` = process.cwd();".}
       return $ret
     elif defined(js):
-      doAssert false, "use -d:nodejs to have `getCurrentDir` defined"
+      raiseAssert "use -d:nodejs to have `getCurrentDir` defined"
     elif defined(windows):
       var bufsize = MAX_PATH.int32
       var res = newWideCString("", bufsize)

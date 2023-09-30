@@ -1175,7 +1175,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, "<div class=\"option-list-description\">$1</div>",
         " $1\n", result)
   of rnOption, rnOptionString, rnOptionArgument:
-    doAssert false, "renderRstToOut"
+    raiseAssert "renderRstToOut"
   of rnLiteralBlock:
     renderAux(d, n, "<pre$2>$1</pre>\n",
                     "\n\n$2\\begin{rstpre}\n$1\n\\end{rstpre}\n\n", result)
