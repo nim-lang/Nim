@@ -209,14 +209,15 @@ proc sumGeneric(t: PType): int =
   # specific than Foo[T].
   result = 0
   var t = t
-  var isvar = 0
   while true:
     case t.kind
     of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyUncheckedArray,
-        tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyGenericBody,
+        tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyVar,
         tyLent, tyOwned:
       t = t.lastSon
       inc result
+    of tyGenericBody:
+      t = t.lastSon
     of tyOr:
       var maxBranch = 0
       for branch in t:
@@ -224,16 +225,12 @@ proc sumGeneric(t: PType): int =
         if branchSum > maxBranch: maxBranch = branchSum
       inc result, maxBranch
       break
-    of tyVar:
-      t = t[0]
-      inc result
-      inc isvar
     of tyTypeDesc:
       t = t.lastSon
       if t.kind == tyEmpty: break
       inc result
     of tyGenericInvocation, tyTuple, tyProc, tyAnd:
-      result += ord(t.kind in {tyGenericInvocation, tyAnd})
+      result += ord(t.kind == tyAnd)
       for i in 0..<t.len:
         if t[i] != nil:
           result += sumGeneric(t[i])
@@ -244,14 +241,14 @@ proc sumGeneric(t: PType): int =
       if t.len > 0:
         t = t.lastSon
       else:
+        inc result
         break
     of tyAlias, tySink: t = t.lastSon
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
-        tyUInt..tyUInt64, tyCompositeTypeClass:
-      return isvar + 1
-    of tyBuiltInTypeClass:
-      return isvar
+        tyUInt..tyUInt64, tyCompositeTypeClass, tyBuiltInTypeClass:
+      inc result
+      break
     else:
       break
 
