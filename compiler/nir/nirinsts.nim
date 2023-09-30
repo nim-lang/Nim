@@ -68,6 +68,10 @@ type
     Eq,
     Le,
     Lt,
+    Cast,
+    NumberConv,
+    CheckedObjConv,
+    ObjConv,
     Emit,
     ProcDecl
 

@@ -176,6 +176,10 @@ proc nominalType*(tree: var TypeGraph; kind: NirTypeKind; name: string): TypeId 
   result = TypeId tree.nodes.len
   tree.nodes.add TypeNode(x: toX(kind, tree.names.getOrIncl(name)))
 
+proc getFloat128Type*(tree: var TypeGraph): TypeId =
+  result = TypeId tree.nodes.len
+  tree.nodes.add TypeNode(x: toX(FloatTy, 128'u32))
+
 proc addBuiltinType*(g: var TypeGraph; id: TypeId) =
   g.nodes.add g[id]
 
