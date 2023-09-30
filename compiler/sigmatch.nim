@@ -242,8 +242,6 @@ proc sumGeneric(t: PType): int =
       return sumGeneric(t[0]) + 1
     of tyGenericParam:
       if t.len > 0:
-        when defined(debug):
-          echo "Generic thing"
         t = t.lastSon
       else:
         break
@@ -1412,20 +1410,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             result = isNone
 
   of tyPtr, tyRef:
-    #skipOwned(a)
-    let effectiveArgType = getObjectTypeOrNil(a)
-    if effectiveArgType == nil: return isNone
-    if effectiveArgType.kind == f.kind:
+    skipOwned(a)
+    if a.kind == f.kind:
       # ptr[R, T] can be passed to ptr[T], but not the other way round:
-      if effectiveArgType.len < f.len: return isNone
+      if a.len < f.len: return isNone
       for i in 0..<f.len-1:
-        if typeRel(c, f[i], effectiveArgType[i], flags) == isNone: return isNone
-      result = typeRel(c, f.lastSon, effectiveArgType.lastSon, flags + {trNoCovariance})
+        if typeRel(c, f[i], a[i], flags) == isNone: return isNone
+      result = typeRel(c, f.lastSon, a.lastSon, flags + {trNoCovariance})
       subtypeCheck()
       if result <= isIntConv: result = isNone
-      elif tfNotNil in f.flags and tfNotNil notin effectiveArgType.flags:
+      elif tfNotNil in f.flags and tfNotNil notin a.flags:
         result = isNilConversion
-    elif effectiveArgType.kind == tyNil: result = f.allowsNil
+    elif a.kind == tyNil: result = f.allowsNil
     else: discard
   of tyProc:
     skipOwned(a)
