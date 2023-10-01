@@ -1271,6 +1271,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
     subtypeCheck()
   of tyArray:
+    a = skipTypeContainer(a)
     case a.kind
     of tyArray:
       var fRange = f[0]
