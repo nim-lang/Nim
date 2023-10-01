@@ -190,14 +190,25 @@ proc getFloat128Type*(tree: var TypeGraph): TypeId =
 proc addBuiltinType*(g: var TypeGraph; id: TypeId) =
   g.nodes.add g[id]
 
+template firstSon(n: TypeId): TypeId = TypeId(n.int+1)
+
 proc addType*(g: var TypeGraph; t: TypeId) =
-  let pos = t.int
-  let L = span(g, pos)
-  let d = g.nodes.len
-  g.nodes.setLen(d + L)
-  assert L > 0
-  for i in 0..<L:
-    g.nodes[d+i] = g.nodes[pos+i]
+  # We cannot simply copy `*Decl` nodes. We have to introduce `*Ty` nodes instead:
+  if g[t].kind in {ObjectDecl, UnionDecl}:
+    assert g[t.firstSon].kind == NameVal
+    let name = LitId g[t.firstSon].operand
+    if g[t].kind == ObjectDecl:
+      g.nodes.add TypeNode(x: toX(ObjectTy, name))
+    else:
+      g.nodes.add TypeNode(x: toX(UnionTy, name))
+  else:
+    let pos = t.int
+    let L = span(g, pos)
+    let d = g.nodes.len
+    g.nodes.setLen(d + L)
+    assert L > 0
+    for i in 0..<L:
+      g.nodes[d+i] = g.nodes[pos+i]
 
 proc addArrayLen*(g: var TypeGraph; len: uint64) =
   g.nodes.add TypeNode(x: toX(IntVal, g.numbers.getOrIncl(len)))
