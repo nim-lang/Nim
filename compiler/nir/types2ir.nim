@@ -7,19 +7,19 @@
 #    distribution, for details about the copyright.
 #
 
-import std / [assertions, tables]
-import ".." / [ast, types, options]
+import std / [assertions, tables, sets]
+import ".." / [ast, types, options, sighashes, modulegraphs]
 import nirtypes
 
 type
   Context = object
     processed: Table[ItemId, TypeId]
+    recursionCheck: HashSet[ItemId]
     g: TypeGraph
     conf: ConfigRef
 
-proc mangle(t: PType): string =
-  # XXX Improve!
-  result = $t
+proc mangle(c: var Context; t: PType): string =
+  result = $sighashes.hashType(t, c.conf)
 
 template cached(c: var Context; t: PType; body: untyped) =
   result = c.processed.getOrDefault(t.itemId)
@@ -79,16 +79,19 @@ proc objectToIr(c: var Context; t: PType): TypeId =
   collectFieldTypes c, t.n, fieldTypes
   let obj = openType(c.g, ObjectDecl)
   # XXX Inheritance?!
-  c.g.addName mangle t
+  c.g.addName mangle(c, t)
   objectToIr c, t.n, fieldTypes, unionId
   result = sealType(c.g, obj)
+
+proc objectHeaderToIr(c: var Context; t: PType): TypeId =
+  result = c.g.nominalType(ObjectTy, mangle(c, t))
 
 proc tupleToIr(c: var Context; t: PType): TypeId =
   var fieldTypes = newSeq[TypeId](t.len)
   for i in 0..<t.len:
     fieldTypes[i] = typeToIr(c, t[i])
   let obj = openType(c.g, ObjectDecl)
-  c.g.addName mangle t
+  c.g.addName mangle(c, t)
   for i in 0..<t.len:
     c.g.addField "f_" & $i, fieldTypes[i]
   result = sealType(c.g, obj)
@@ -120,7 +123,7 @@ proc nativeInt(c: Context): TypeId =
 proc openArrayToIr(c: var Context; t: PType): TypeId =
   # object (a: ArrayPtr[T], len: int)
   let e = lastSon(t)
-  let mangledBase = mangle(e)
+  let mangledBase = mangle(c, e)
   let typeName = "NimOpenArray" & mangledBase
 
   let elementType = typeToIr(c, e)
@@ -190,7 +193,7 @@ proc seqToIr(c: var Context; t: PType): TypeId =
 
   ]#
   let e = lastSon(t)
-  let mangledBase = mangle(e)
+  let mangledBase = mangle(c, e)
   let payloadName = "NimSeqPayload" & mangledBase
 
   let elementType = typeToIr(c, e)
@@ -227,7 +230,7 @@ proc closureToIr(c: var Context; t: PType): TypeId =
   # typedef struct {$n" &
   #        "N_NIMCALL_PTR($2, ClP_0) $3;$n" &
   #        "void* ClE_0;$n} $1;$n"
-  let mangledBase = mangle(t)
+  let mangledBase = mangle(c, t)
   let typeName = "NimClosure" & mangledBase
 
   let procType = procToIr(c, t, addEnv=true)
@@ -349,8 +352,14 @@ proc typeToIr*(c: var Context; t: PType): TypeId =
     c.g.addBuiltinType(VoidId)
     result = sealType(c.g, a)
   of tyObject:
+    # Objects are special as they can be recursive in Nim. This is easily solvable.
+    # We check if we are already "processing" t. If so, we produce `ObjectTy`
+    # instead of `ObjectDecl`.
     cached(c, t):
-      result = objectToIr(c, t)
+      if not c.recursionCheck.containsOrIncl(t.itemId):
+        result = objectToIr(c, t)
+      else:
+        result = objectHeaderToIr(c, t)
   of tyTuple:
     cached(c, t):
       result = tupleToIr(c, t)
