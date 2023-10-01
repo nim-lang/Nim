@@ -111,9 +111,10 @@ proc tupleToIr(c: var Context; t: PType): TypeId =
   result = sealType(c.g, obj)
 
 proc procToIr(c: var Context; t: PType; addEnv = false): TypeId =
-  var fieldTypes = newSeq[TypeId](t.len)
+  var fieldTypes = newSeq[TypeId](0)
   for i in 0..<t.len:
-    fieldTypes[i] = typeToIr(c, t[i])
+    if not isCompileTimeOnly(t[i]):
+      fieldTypes.add typeToIr(c, t[i])
   let obj = openType(c.g, ProcTy)
 
   case t.callConv
@@ -127,7 +128,7 @@ proc procToIr(c: var Context; t: PType; addEnv = false): TypeId =
   of ccThisCall: c.g.addAnnotation "__thiscall"
   of ccNoConvention: c.g.addAnnotation ""
 
-  for i in 0..<t.len:
+  for i in 0..<fieldTypes.len:
     c.g.addType fieldTypes[i]
 
   if addEnv:

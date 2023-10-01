@@ -20,8 +20,9 @@ type
     lastFileVal: LitId
     strings: BiTable[string]
     man: LineInfoManager
+    labelGen: int
 
-proc toLineInfo(i: TLineInfo; c: var Context): PackedLineInfo =
+proc toLineInfo(c: var Context; i: TLineInfo): PackedLineInfo =
   var val: LitId
   if c.lastFileKey == i.fileIndex:
     val = c.lastFileVal
@@ -32,6 +33,40 @@ proc toLineInfo(i: TLineInfo; c: var Context): PackedLineInfo =
     c.lastFileVal = val
   result = pack(c.man, val, int32 i.line, int32 i.col)
 
-proc astToIr*(n: PNode; dest: var Tree; c: var Context) =
-  let info = toLineInfo(n.info, c)
+proc gen*(c: var Context; dest: var Tree; n: PNode)
+proc genx*(c: var Context; dest: var Tree; n: PNode): Tree
 
+template withBlock(lab: LabelId; body: untyped) =
+  body
+  dest.addInstr(info, Label, lab)
+
+proc genWhile(c: var Context; dest: var Tree; n: PNode) =
+  # LoopLabel lab1:
+  #   cond, tmp
+  #   select cond
+  #   of false: goto lab2
+  #   body
+  #   GotoLoop lab1
+  # Label lab2:
+  let info = toLineInfo(c, n.info)
+  let loopLab = dest.addLabel(c.labelGen, info, LoopLabel)
+  let theEnd = newLabel(c.labelGen)
+  withBlock(theEnd):
+    if isTrue(n[0]):
+      c.gen(dest, n[1])
+      dest.gotoLabel info, GotoLoop, loopLab
+    else:
+      let x = c.genx(dest, n[0])
+      #dest.addSelect toLineInfo(c, n[0].kind), x
+      c.gen(dest, n[1])
+      dest.gotoLabel info, GotoLoop, loopLab
+
+proc genx*(c: var Context; dest: var Tree; n: PNode): Tree =
+  quit "too implement"
+
+proc gen*(c: var Context; dest: var Tree; n: PNode) =
+  case n.kind
+  of nkWhileStmt:
+    genWhile c, dest, n
+  else:
+    discard

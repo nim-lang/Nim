@@ -936,7 +936,7 @@ type
                               # it won't cause problems
                               # for skModule the string literal to output for
                               # deprecated modules.
-    instantiatedFrom*: PSym   # for instances, the generic symbol where it came from.                
+    instantiatedFrom*: PSym   # for instances, the generic symbol where it came from.
     when defined(nimsuggest):
       allUsages*: seq[TLineInfo]
 
@@ -2173,3 +2173,7 @@ const
     nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
     nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
     nkTypeOfExpr, nkMixinStmt, nkBindStmt}
+
+proc isTrue*(n: PNode): bool =
+  n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
+    n.kind == nkIntLit and n.intVal != 0

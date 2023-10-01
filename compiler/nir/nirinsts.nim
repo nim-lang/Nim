@@ -26,7 +26,8 @@ type
     ModuleSymUse, # `module.x`
     Label,
     Goto,
-    GotoBack,
+    LoopLabel,
+    GotoLoop,
     Typed,   # with type ID
     NilVal,  # last atom
 
@@ -149,4 +150,35 @@ iterator sons*(tree: Tree; n: NodePos): NodePos =
 
 template `[]`*(t: Tree; n: NodePos): Instr = t.nodes[n.int]
 
+proc span(tree: Tree; pos: int): int {.inline.} =
+  if tree.nodes[pos].kind <= LastAtomicValue: 1 else: int(tree.nodes[pos].operand)
 
+proc copyTree*(dest: var Tree; src: Tree) =
+  let pos = 0
+  let L = span(src, pos)
+  let d = dest.nodes.len
+  dest.nodes.setLen(d + L)
+  assert L > 0
+  for i in 0..<L:
+    dest.nodes[d+i] = src.nodes[pos+i]
+
+type
+  LabelId* = distinct int
+
+proc newLabel*(labelGen: var int): LabelId {.inline.} =
+  result = LabelId labelGen
+  inc labelGen
+
+proc addLabel*(t: var Tree; labelGen: var int; info: PackedLineInfo; k: InstKind): LabelId =
+  assert k in {Label, LoopLabel}
+  result = LabelId labelGen
+  t.nodes.add Instr(x: toX(k, uint32(result)), info: info)
+  inc labelGen
+
+proc gotoLabel*(t: var Tree; info: PackedLineInfo; k: InstKind; L: LabelId) =
+  assert k in {Goto, GotoLoop}
+  t.nodes.add Instr(x: toX(k, uint32(L)), info: info)
+
+proc addInstr*(t: var Tree; info: PackedLineInfo; k: InstKind; L: LabelId) {.inline.} =
+  assert k in {Label, LoopLabel, Goto, GotoLoop}
+  t.nodes.add Instr(x: toX(k, uint32(L)), info: info)

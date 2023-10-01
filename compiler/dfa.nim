@@ -129,10 +129,6 @@ template withBlock(labl: PSym; body: untyped) =
   body
   popBlock(c, oldLen)
 
-proc isTrue(n: PNode): bool =
-  n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
-    n.kind == nkIntLit and n.intVal != 0
-
 template forkT(body) =
   let lab1 = c.forkI()
   body
