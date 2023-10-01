@@ -15,6 +15,7 @@ import .. / ic / bitabs
 type
   NirTypeKind* = enum
     VoidTy, IntTy, UIntTy, FloatTy, BoolTy, CharTy, NameVal, IntVal,
+    AnnotationVal,
     VarargsTy, # the `...` in a C prototype; also the last "atom"
     APtrTy, # pointer to aliasable memory
     UPtrTy, # pointer to unique/unaliasable memory
@@ -216,6 +217,9 @@ proc addArrayLen*(g: var TypeGraph; len: uint64) =
 proc addName*(g: var TypeGraph; name: string) =
   g.nodes.add TypeNode(x: toX(NameVal, g.names.getOrIncl(name)))
 
+proc addAnnotation*(g: var TypeGraph; name: string) =
+  g.nodes.add TypeNode(x: toX(NameVal, g.names.getOrIncl(name)))
+
 proc addField*(g: var TypeGraph; name: string; typ: TypeId) =
   let f = g.openType FieldDecl
   g.addType typ
@@ -240,7 +244,7 @@ proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
   of CharTy:
     dest.add "c"
     dest.addInt g[i].operand
-  of NameVal:
+  of NameVal, AnnotationVal:
     dest.add g.names[LitId g[i].operand]
   of IntVal:
     dest.add $g.numbers[LitId g[i].operand]

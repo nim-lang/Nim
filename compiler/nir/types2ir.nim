@@ -29,7 +29,7 @@ template cached(c: var Context; t: PType; body: untyped) =
 
 proc typeToIr*(c: var Context; t: PType): TypeId
 
-proc collectFieldTypes(c: var Context; n: PNode; dest: var seq[TypeId]) =
+proc collectFieldTypes(c: var Context; n: PNode; dest: var Table[ItemId, TypeId]) =
   case n.kind
   of nkRecList:
     for i in 0..<n.len:
@@ -43,12 +43,11 @@ proc collectFieldTypes(c: var Context; n: PNode; dest: var seq[TypeId]) =
         collectFieldTypes c, lastSon(n[i]), dest
       else: discard
   of nkSym:
-    assert n.sym.position == dest.len
-    dest.add typeToIr(c, n.sym.typ)
+    dest[n.sym.itemId] = typeToIr(c, n.sym.typ)
   else:
     assert false, "unknown node kind: " & $n.kind
 
-proc objectToIr(c: var Context; n: PNode; fieldTypes: seq[TypeId]; unionId: var int) =
+proc objectToIr(c: var Context; n: PNode; fieldTypes: Table[ItemId, TypeId]; unionId: var int) =
   case n.kind
   of nkRecList:
     for i in 0..<n.len:
@@ -69,17 +68,32 @@ proc objectToIr(c: var Context; n: PNode; fieldTypes: seq[TypeId]; unionId: var 
       else: discard
     discard sealType(c.g, u)
   of nkSym:
-    c.g.addField n.sym.name.s & "_" & $n.sym.position, fieldTypes[n.sym.position]
+    c.g.addField n.sym.name.s & "_" & $n.sym.position, fieldTypes[n.sym.itemId]
   else:
     assert false, "unknown node kind: " & $n.kind
 
 proc objectToIr(c: var Context; t: PType): TypeId =
+  if t[0] != nil:
+    # ensure we emitted the base type:
+    discard typeToIr(c, t[0])
+
   var unionId = 0
-  var fieldTypes: seq[TypeId] = @[]
+  var fieldTypes = initTable[ItemId, TypeId]()
   collectFieldTypes c, t.n, fieldTypes
   let obj = openType(c.g, ObjectDecl)
-  # XXX Inheritance?!
   c.g.addName mangle(c, t)
+  if t[0] != nil:
+    c.g.addNominalType(ObjectTy, mangle(c, t[0]))
+  else:
+    c.g.addBuiltinType VoidId # object does not inherit
+    if not lacksMTypeField(t):
+      let f2 = c.g.openType FieldDecl
+      let voidPtr = openType(c.g, APtrTy)
+      c.g.addBuiltinType(VoidId)
+      discard sealType(c.g, voidPtr)
+      c.g.addName "m_type"
+      discard sealType(c.g, f2) # FieldDecl
+
   objectToIr c, t.n, fieldTypes, unionId
   result = sealType(c.g, obj)
 
@@ -101,7 +115,18 @@ proc procToIr(c: var Context; t: PType; addEnv = false): TypeId =
   for i in 0..<t.len:
     fieldTypes[i] = typeToIr(c, t[i])
   let obj = openType(c.g, ProcTy)
-  # XXX Add Calling convention here!
+
+  case t.callConv
+  of ccNimCall, ccFastCall, ccClosure: c.g.addAnnotation "__fastcall"
+  of ccStdCall: c.g.addAnnotation "__stdcall"
+  of ccCDecl: c.g.addAnnotation "__cdecl"
+  of ccSafeCall: c.g.addAnnotation "__safecall"
+  of ccSysCall: c.g.addAnnotation "__syscall"
+  of ccInline: c.g.addAnnotation "__inline"
+  of ccNoInline: c.g.addAnnotation "__noinline"
+  of ccThisCall: c.g.addAnnotation "__thiscall"
+  of ccNoConvention: c.g.addAnnotation ""
+
   for i in 0..<t.len:
     c.g.addType fieldTypes[i]
 
