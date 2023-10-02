@@ -9,6 +9,7 @@
 [//]: # "Changes:"
 
 - Changed `std/osfiles.copyFile` to allow to specify `bufferSize` instead of a hardcoded one.
+- Changed `std/osfiles.copyFile` to use `POSIX_FADV_SEQUENTIAL` hints for kernel-level aggressive sequential read-aheads.
 
 [//]: # "Additions:"
 
