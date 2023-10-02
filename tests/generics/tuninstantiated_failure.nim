@@ -11,6 +11,6 @@ func `[]`[T, K](x: var Test[T, K], idx: int): var Test[T, K] =
   x
 
 var b: Something
-# Should give a type-mismatch since Something isn't a valid Test
+# Should give an error since Something isn't a valid Test
 b[0].name = "Test" #[tt.Error
-            ^  type mismatch]#
+ ^  expression '' has no type (or is ambiguous)]#
