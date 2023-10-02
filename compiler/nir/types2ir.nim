@@ -12,24 +12,27 @@ import ".." / [ast, types, options, sighashes, modulegraphs]
 import nirtypes
 
 type
-  Context = object
+  TypesCon* = object
     processed: Table[ItemId, TypeId]
     recursionCheck: HashSet[ItemId]
     g: TypeGraph
     conf: ConfigRef
 
-proc mangle(c: var Context; t: PType): string =
+proc initTypesCon*(conf: ConfigRef): TypesCon =
+  TypesCon(g: initTypeGraph(), conf: conf)
+
+proc mangle(c: var TypesCon; t: PType): string =
   result = $sighashes.hashType(t, c.conf)
 
-template cached(c: var Context; t: PType; body: untyped) =
+template cached(c: var TypesCon; t: PType; body: untyped) =
   result = c.processed.getOrDefault(t.itemId)
   if result.int == 0:
     body
     c.processed[t.itemId] = result
 
-proc typeToIr*(c: var Context; t: PType): TypeId
+proc typeToIr*(c: var TypesCon; t: PType): TypeId
 
-proc collectFieldTypes(c: var Context; n: PNode; dest: var Table[ItemId, TypeId]) =
+proc collectFieldTypes(c: var TypesCon; n: PNode; dest: var Table[ItemId, TypeId]) =
   case n.kind
   of nkRecList:
     for i in 0..<n.len:
@@ -47,7 +50,7 @@ proc collectFieldTypes(c: var Context; n: PNode; dest: var Table[ItemId, TypeId]
   else:
     assert false, "unknown node kind: " & $n.kind
 
-proc objectToIr(c: var Context; n: PNode; fieldTypes: Table[ItemId, TypeId]; unionId: var int) =
+proc objectToIr(c: var TypesCon; n: PNode; fieldTypes: Table[ItemId, TypeId]; unionId: var int) =
   case n.kind
   of nkRecList:
     for i in 0..<n.len:
@@ -72,7 +75,7 @@ proc objectToIr(c: var Context; n: PNode; fieldTypes: Table[ItemId, TypeId]; uni
   else:
     assert false, "unknown node kind: " & $n.kind
 
-proc objectToIr(c: var Context; t: PType): TypeId =
+proc objectToIr(c: var TypesCon; t: PType): TypeId =
   if t[0] != nil:
     # ensure we emitted the base type:
     discard typeToIr(c, t[0])
@@ -97,10 +100,10 @@ proc objectToIr(c: var Context; t: PType): TypeId =
   objectToIr c, t.n, fieldTypes, unionId
   result = sealType(c.g, obj)
 
-proc objectHeaderToIr(c: var Context; t: PType): TypeId =
+proc objectHeaderToIr(c: var TypesCon; t: PType): TypeId =
   result = c.g.nominalType(ObjectTy, mangle(c, t))
 
-proc tupleToIr(c: var Context; t: PType): TypeId =
+proc tupleToIr(c: var TypesCon; t: PType): TypeId =
   var fieldTypes = newSeq[TypeId](t.len)
   for i in 0..<t.len:
     fieldTypes[i] = typeToIr(c, t[i])
@@ -110,7 +113,7 @@ proc tupleToIr(c: var Context; t: PType): TypeId =
     c.g.addField "f_" & $i, fieldTypes[i]
   result = sealType(c.g, obj)
 
-proc procToIr(c: var Context; t: PType; addEnv = false): TypeId =
+proc procToIr(c: var TypesCon; t: PType; addEnv = false): TypeId =
   var fieldTypes = newSeq[TypeId](0)
   for i in 0..<t.len:
     if not isCompileTimeOnly(t[i]):
@@ -140,13 +143,13 @@ proc procToIr(c: var Context; t: PType; addEnv = false): TypeId =
     c.g.addVarargs()
   result = sealType(c.g, obj)
 
-proc nativeInt(c: Context): TypeId =
+proc nativeInt(c: TypesCon): TypeId =
   case c.conf.target.intSize
   of 2: result = Int16Id
   of 4: result = Int32Id
   else: result = Int64Id
 
-proc openArrayToIr(c: var Context; t: PType): TypeId =
+proc openArrayToIr(c: var TypesCon; t: PType): TypeId =
   # object (a: ArrayPtr[T], len: int)
   let e = lastSon(t)
   let mangledBase = mangle(c, e)
@@ -169,7 +172,7 @@ proc openArrayToIr(c: var Context; t: PType): TypeId =
   result = sealType(c.g, p) # ObjectDecl
 
 
-proc stringToIr(c: var Context; t: PType): TypeId =
+proc stringToIr(c: var TypesCon; t: PType): TypeId =
   #[
 
     NimStrPayload = object
@@ -207,7 +210,7 @@ proc stringToIr(c: var Context; t: PType): TypeId =
 
   result = sealType(c.g, str) # ObjectDecl
 
-proc seqToIr(c: var Context; t: PType): TypeId =
+proc seqToIr(c: var TypesCon; t: PType): TypeId =
   #[
     NimSeqPayload[T] = object
       cap: int
@@ -251,7 +254,7 @@ proc seqToIr(c: var Context; t: PType): TypeId =
   result = sealType(c.g, sq) # ObjectDecl
 
 
-proc closureToIr(c: var Context; t: PType): TypeId =
+proc closureToIr(c: var TypesCon; t: PType): TypeId =
   # struct {fn(args, void* env), env}
   # typedef struct {$n" &
   #        "N_NIMCALL_PTR($2, ClP_0) $3;$n" &
@@ -279,7 +282,7 @@ proc closureToIr(c: var Context; t: PType): TypeId =
 
   result = sealType(c.g, p) # ObjectDecl
 
-proc typeToIr*(c: var Context; t: PType): TypeId =
+proc typeToIr*(c: var TypesCon; t: PType): TypeId =
   case t.kind
   of tyInt:
     case int(getSize(c.conf, t))

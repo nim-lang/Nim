@@ -9,27 +9,33 @@
 
 ## NIR instructions. Somewhat inspired by LLVM's instructions.
 
-import std / assertions
+import std / [assertions, hashes]
 import .. / ic / bitabs
-import nirlineinfos
+import nirlineinfos, nirtypes
 
 type
   SymId* = distinct int
-  InstKind* = enum
+
+proc `$`*(s: SymId): string {.borrow.}
+proc hash*(s: SymId): Hash {.borrow.}
+proc `==`*(a, b: SymId): bool {.borrow.}
+
+type
+  Opcode* = enum
     Nop,
     ImmediateVal,
     IntVal,
     StrVal,
     SymDef,
     SymUse,
-    ModuleId, # module ID
+    ModuleId,
     ModuleSymUse, # `module.x`
+    Typed,   # with type ID
+    NilVal,
     Label,
     Goto,
     LoopLabel,
-    GotoLoop,
-    Typed,   # with type ID
-    NilVal,  # last atom
+    GotoLoop,  # last atom
 
     ArrayConstr,
     ObjConstr,
@@ -41,10 +47,14 @@ type
     SummonThreadLocal,
     Summon, # x = Summon Typed <Type ID>; x begins to live
     Kill, # `Kill x`: scope end for `x`
-    Load,
-    Store,
+
+    AddrOf,
     ArrayAt, # addr(a[i])
     FieldAt, # addr(obj.field)
+
+    Load, # a[]
+    Store, # a[] = b
+    Asgn,  # a = b
 
     Call,
     IndirectCall,
@@ -77,24 +87,62 @@ type
     ProcDecl
 
 const
-  LastAtomicValue = NilVal
+  LastAtomicValue = GotoLoop
 
-  InstKindBits = 8'u32
-  InstKindMask = (1'u32 shl InstKindBits) - 1'u32
+  OpcodeBits = 8'u32
+  OpcodeMask = (1'u32 shl OpcodeBits) - 1'u32
+
+  ValueProducing* = {
+    ImmediateVal,
+    IntVal,
+    StrVal,
+    SymUse,
+    ModuleSymUse,
+    NilVal,
+    ArrayConstr,
+    ObjConstr,
+    CheckedAdd,
+    CheckedSub,
+    CheckedMul,
+    CheckedDiv,
+    CheckedMod,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    BitShl,
+    BitShr,
+    BitAnd,
+    BitOr,
+    BitXor,
+    BitNot,
+    Eq,
+    Le,
+    Lt,
+    Cast,
+    NumberConv,
+    CheckedObjConv,
+    ObjConv,
+    AddrOf,
+    Load,
+    ArrayAt,
+    FieldAt
+  }
 
 type
   Instr* = object     # 8 bytes
     x: uint32
     info: PackedLineInfo
 
-template kind*(n: Instr): InstKind = InstKind(n.x and InstKindMask)
-template operand(n: Instr): uint32 = (n.x shr InstKindBits)
+template kind*(n: Instr): Opcode = Opcode(n.x and OpcodeMask)
+template operand(n: Instr): uint32 = (n.x shr OpcodeBits)
 
-template toX(k: InstKind; operand: uint32): uint32 =
-  uint32(k) or (operand shl InstKindBits)
+template toX(k: Opcode; operand: uint32): uint32 =
+  uint32(k) or (operand shl OpcodeBits)
 
-template toX(k: InstKind; operand: LitId): uint32 =
-  uint32(k) or (operand.uint32 shl InstKindBits)
+template toX(k: Opcode; operand: LitId): uint32 =
+  uint32(k) or (operand.uint32 shl OpcodeBits)
 
 type
   Tree* = object
@@ -113,14 +161,14 @@ const
 
 proc isValid(p: PatchPos): bool {.inline.} = p.int != -1
 
-proc prepare(tree: var Tree; kind: InstKind): PatchPos =
+proc prepare*(tree: var Tree; info: PackedLineInfo; kind: Opcode): PatchPos =
   result = PatchPos tree.nodes.len
-  tree.nodes.add Instr(x: toX(kind, 1'u32))
+  tree.nodes.add Instr(x: toX(kind, 1'u32), info: info)
 
 proc isAtom(tree: Tree; pos: int): bool {.inline.} = tree.nodes[pos].kind <= LastAtomicValue
 proc isAtom(tree: Tree; pos: NodePos): bool {.inline.} = tree.nodes[pos.int].kind <= LastAtomicValue
 
-proc patch(tree: var Tree; pos: PatchPos) =
+proc patch*(tree: var Tree; pos: PatchPos) =
   let pos = pos.int
   let k = tree.nodes[pos].kind
   assert k > LastAtomicValue
@@ -169,16 +217,39 @@ proc newLabel*(labelGen: var int): LabelId {.inline.} =
   result = LabelId labelGen
   inc labelGen
 
-proc addLabel*(t: var Tree; labelGen: var int; info: PackedLineInfo; k: InstKind): LabelId =
+proc addLabel*(t: var Tree; labelGen: var int; info: PackedLineInfo; k: Opcode): LabelId =
   assert k in {Label, LoopLabel}
   result = LabelId labelGen
   t.nodes.add Instr(x: toX(k, uint32(result)), info: info)
   inc labelGen
 
-proc gotoLabel*(t: var Tree; info: PackedLineInfo; k: InstKind; L: LabelId) =
+proc gotoLabel*(t: var Tree; info: PackedLineInfo; k: Opcode; L: LabelId) =
   assert k in {Goto, GotoLoop}
   t.nodes.add Instr(x: toX(k, uint32(L)), info: info)
 
-proc addInstr*(t: var Tree; info: PackedLineInfo; k: InstKind; L: LabelId) {.inline.} =
+proc addInstr*(t: var Tree; info: PackedLineInfo; k: Opcode; L: LabelId) {.inline.} =
   assert k in {Label, LoopLabel, Goto, GotoLoop}
   t.nodes.add Instr(x: toX(k, uint32(L)), info: info)
+
+proc addSymUse*(t: var Tree; info: PackedLineInfo; s: SymId) {.inline.} =
+  t.nodes.add Instr(x: toX(SymUse, uint32(s)), info: info)
+
+proc addSummon*(t: var Tree; info: PackedLineInfo; s: SymId; typ: TypeId) {.inline.} =
+  let x = prepare(t, info, Summon)
+  t.nodes.add Instr(x: toX(SymDef, uint32(s)), info: info)
+  t.nodes.add Instr(x: toX(Typed, uint32(typ)), info: info)
+  patch t, x
+
+type
+  Value* = distinct Tree
+
+proc prepare*(dest: var Value; info: PackedLineInfo; k: Opcode): PatchPos {.inline.} =
+  assert k in ValueProducing
+  result = prepare(Tree(dest), info, k)
+
+proc patch*(dest: var Value; pos: PatchPos) {.inline.} =
+  patch(Tree(dest), pos)
+
+proc localToValue*(info: PackedLineInfo; s: SymId): Value =
+  result = Value(Tree())
+  Tree(result).addSymUse info, s

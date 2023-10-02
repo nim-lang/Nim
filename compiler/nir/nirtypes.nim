@@ -9,7 +9,7 @@
 
 ## Type system for NIR. Close to C's type system but without its quirks.
 
-import std / assertions
+import std / [assertions, hashes]
 import .. / ic / bitabs
 
 type
@@ -49,6 +49,11 @@ template toX(k: NirTypeKind; operand: LitId): uint32 =
 
 type
   TypeId* = distinct int
+
+proc `==`*(a, b: TypeId): bool {.borrow.}
+proc hash*(a: TypeId): Hash {.borrow.}
+
+type
   TypeGraph* = object
     nodes: seq[TypeNode]
     names: BiTable[string]

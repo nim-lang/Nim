@@ -10,13 +10,13 @@
 ## Nim Intermediate Representation, designed to capture all of Nim's semantics without losing too much
 ## precious information. Can easily be translated into C. And to JavaScript, hopefully.
 
-import nirtypes, nirinsts
+import nirtypes, nirinsts, ast2ir
 
-type
-  Module* = object
-    types: TypeGraph
-    data: seq[Tree]
-    init: seq[Tree]
-    procs: seq[Tree]
-
+when false:
+  type
+    Module* = object
+      types: TypeGraph
+      data: seq[Tree]
+      init: seq[Tree]
+      procs: seq[Tree]
 

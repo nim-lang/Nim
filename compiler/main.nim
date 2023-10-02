@@ -22,6 +22,8 @@ import
   modules,
   modulegraphs, lineinfos, pathutils, vmprofiler
 
+# ensure NIR compiles:
+import nir / nir
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
