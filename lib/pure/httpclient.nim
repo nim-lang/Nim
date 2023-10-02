@@ -305,7 +305,7 @@ proc contentLength*(response: Response | AsyncResponse): int =
   ##
   ## A `ValueError` exception will be raised if the value is not an integer.
   ## If the Content-Length header is not set in the response, ContentLength is set to the value -1.
-  var contentLengthHeader = response.headers.getOrDefault("Content-Length", @["-1"])
+  var contentLengthHeader = response.headers.getOrDefault("Content-Length", HttpHeaderValues(@["-1"]))
   result = contentLengthHeader.parseInt()
 
 proc lastModified*(response: Response | AsyncResponse): DateTime =
