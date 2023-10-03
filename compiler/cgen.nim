@@ -17,6 +17,8 @@ import
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
   injectdestructors, astmsgs, modulepaths, backendpragmas
 
+import nir/ast2ir
+
 import pipelineutils
 
 when defined(nimPreviewSlimSystem):
@@ -2108,6 +2110,11 @@ proc genTopLevelStmt*(m: BModule; n: PNode) =
   var transformedN = transformStmt(m.g.graph, m.idgen, m.module, n)
   if sfInjectDestructors in m.module.flags:
     transformedN = injectDestructorCalls(m.g.graph, m.idgen, m.module, transformedN)
+
+  if sfMainModule in m.module.flags:
+    let moduleCon = initModuleCon(m.config, m.module)
+    var procCon = initProcCon(moduleCon, nil)
+    genCode(procCon, transformedN)
 
   if m.hcrOn:
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)

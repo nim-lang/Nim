@@ -13,6 +13,8 @@ import .. / ic / bitabs
 
 import nirtypes, nirinsts, nirlineinfos, nirslots, types2ir
 
+import utils
+
 type
   ModuleCon = ref object
     strings: BiTable[string]
@@ -55,51 +57,51 @@ proc toLineInfo(c: var ProcCon; i: TLineInfo): PackedLineInfo =
     c.lastFileVal = val
   result = pack(c.m.man, val, int32 i.line, int32 i.col)
 
-when false:
-  proc gen*(c: var ProcCon; dest: var Tree; n: PNode)
-  proc genv*(c: var ProcCon; dest: var Tree; v: var Value; n: PNode)
+# when false:
+#   proc gen*(c: var ProcCon; dest: var Tree; n: PNode)
+#   proc genv*(c: var ProcCon; dest: var Tree; v: var Value; n: PNode)
 
-  proc genx*(c: var ProcCon; dest: var Tree; n: PNode): SymId =
-    let info = toLineInfo(c, n.info)
-    let t = typeToIr(c.m.types, n.typ)
-    result = allocTemp(c.sm, t)
-    addSummon dest, info, result, t
-    var ex = localToValue(info, result)
-    genv(c, dest, ex, n)
-  template withBlock(lab: LabelId; body: untyped) =
-    body
-    dest.addInstr(info, Label, lab)
+#   proc genx*(c: var ProcCon; dest: var Tree; n: PNode): SymId =
+#     let info = toLineInfo(c, n.info)
+#     let t = typeToIr(c.m.types, n.typ)
+#     result = allocTemp(c.sm, t)
+#     addSummon dest, info, result, t
+#     var ex = localToValue(info, result)
+#     genv(c, dest, ex, n)
+#   template withBlock(lab: LabelId; body: untyped) =
+#     body
+#     dest.addInstr(info, Label, lab)
 
-  proc genWhile(c: var ProcCon; dest: var Tree; n: PNode) =
-    # LoopLabel lab1:
-    #   cond, tmp
-    #   select cond
-    #   of false: goto lab2
-    #   body
-    #   GotoLoop lab1
-    # Label lab2:
-    let info = toLineInfo(c, n.info)
-    let loopLab = dest.addLabel(c.labelGen, info, LoopLabel)
-    let theEnd = newLabel(c.labelGen)
-    withBlock(theEnd):
-      if isTrue(n[0]):
-        c.gen(dest, n[1])
-        dest.gotoLabel info, GotoLoop, loopLab
-      else:
-        let x = c.genx(dest, n[0])
-        #dest.addSelect toLineInfo(c, n[0].kind), x
-        c.gen(dest, n[1])
-        dest.gotoLabel info, GotoLoop, loopLab
+#   proc genWhile(c: var ProcCon; dest: var Tree; n: PNode) =
+#     # LoopLabel lab1:
+#     #   cond, tmp
+#     #   select cond
+#     #   of false: goto lab2
+#     #   body
+#     #   GotoLoop lab1
+#     # Label lab2:
+#     let info = toLineInfo(c, n.info)
+#     let loopLab = dest.addLabel(c.labelGen, info, LoopLabel)
+#     let theEnd = newLabel(c.labelGen)
+#     withBlock(theEnd):
+#       if isTrue(n[0]):
+#         c.gen(dest, n[1])
+#         dest.gotoLabel info, GotoLoop, loopLab
+#       else:
+#         let x = c.genx(dest, n[0])
+#         #dest.addSelect toLineInfo(c, n[0].kind), x
+#         c.gen(dest, n[1])
+#         dest.gotoLabel info, GotoLoop, loopLab
 
-  proc genv*(c: var ProcCon; dest: var Tree; v: var Value; n: PNode) =
-    quit "too implement"
+#   proc genv*(c: var ProcCon; dest: var Tree; v: var Value; n: PNode) =
+#     quit "too implement"
 
-  proc gen*(c: var ProcCon; dest: var Tree; n: PNode) =
-    case n.kind
-    of nkWhileStmt:
-      genWhile c, dest, n
-    else:
-      discard
+#   proc gen*(c: var ProcCon; dest: var Tree; n: PNode) =
+#     case n.kind
+#     of nkWhileStmt:
+#       genWhile c, dest, n
+#     else:
+#       discard
 
 proc bestEffort(c: ProcCon): TLineInfo =
   if c.prc != nil:
@@ -189,33 +191,34 @@ proc xjmp(c: var ProcCon; n: PNode; jk: JmpKind; v: Value): LabelId =
 proc patch(c: var ProcCon; n: PNode; L: LabelId) =
   addLabel c.code, toLineInfo(c, n.info), Label, L
 
-proc genWhile(c: var ProcCon; n: PNode) =
-  # lab1:
-  #   cond, tmp
-  #   fjmp tmp, lab2
-  #   body
-  #   jmp lab1
-  # lab2:
-  let info = toLineInfo(c, n.info)
-  let lab1 = c.code.addNewLabel(c.labelGen, info, LoopLabel)
-  withBlock(nil, info, lab1):
-    if isTrue(n[0]):
-      c.gen(n[1])
-      c.jmpBack(n, lab1)
-    elif isNotOpr(n[0]):
-      var tmp = c.genx(n[0][1])
-      let lab2 = c.xjmp(n, opcTJmp, tmp)
-      c.freeTemp(tmp)
-      c.gen(n[1])
-      c.jmpBack(n, lab1)
-      c.patch(n, lab2)
-    else:
-      var tmp = c.genx(n[0])
-      let lab2 = c.xjmp(n, opcFJmp, tmp)
-      c.freeTemp(tmp)
-      c.gen(n[1])
-      c.jmpBack(n, lab1)
-      c.patch(n, lab2)
+when false:
+  proc genWhile(c: var ProcCon; n: PNode) =
+    # lab1:
+    #   cond, tmp
+    #   fjmp tmp, lab2
+    #   body
+    #   jmp lab1
+    # lab2:
+    let info = toLineInfo(c, n.info)
+    let lab1 = c.code.addNewLabel(c.labelGen, info, LoopLabel)
+    withBlock(nil, info, lab1):
+      if isTrue(n[0]):
+        c.gen(n[1])
+        c.jmpBack(n, lab1)
+      elif isNotOpr(n[0]):
+        var tmp = c.genx(n[0][1])
+        let lab2 = c.xjmp(n, opcTJmp, tmp)
+        c.freeTemp(tmp)
+        c.gen(n[1])
+        c.jmpBack(n, lab1)
+        c.patch(n, lab2)
+      else:
+        var tmp = c.genx(n[0])
+        let lab2 = c.xjmp(n, opcFJmp, tmp)
+        c.freeTemp(tmp)
+        c.gen(n[1])
+        c.jmpBack(n, lab1)
+        c.patch(n, lab2)
 
 proc genBlock(c: var ProcCon; n: PNode; dest: var Value) =
   openScope c.sm
@@ -2044,5 +2047,60 @@ proc genParams(c: var ProcCon; params: PNode) =
 
 ]#
 
+# template withBlock(lab: LabelId; body: untyped) =
+#   body
+#   dest.addInstr(info, Label, lab)
+
+proc genCode*(c: var ProcCon; n: PNode)
+
+# proc genWhile(c: var ProcCon; n: PNode) =
+#   # LoopLabel lab1:
+#   #   cond, tmp
+#   #   select cond
+#   #   of false: goto lab2
+#   #   body
+#   #   GotoLoop lab1
+#   # Label lab2:
+#   let info = toLineInfo(c, n.info)
+#   let loopLab = c.code.addNewLabel(c.labelGen, info, LoopLabel)
+#   let theEnd = newLabel(c.labelGen)
+#   withBlock(theEnd):
+#     if isTrue(n[0]):
+#       c.gen(dest, n[1])
+#       dest.gotoLabel info, GotoLoop, loopLab
+#     else:
+#       let x = c.genx(dest, n[0])
+#       #dest.addSelect toLineInfo(c, n[0].kind), x
+#       c.gen(dest, n[1])
+#       dest.gotoLabel info, GotoLoop, loopLab
+
 proc gen(c: var ProcCon; n: PNode; dest: var Value; flags: GenFlags = {}) =
-  discard
+  case n.kind
+  of nkBlockStmt:
+    genBlock(c, n, dest)
+  of nkWhileStmt:
+    discard
+    # genWhile c, n
+  of nkBreakStmt:
+    genBreak(c, n)
+  of nkStmtList, nkStmtListExpr:
+    for x in n:
+      gen(c, x, dest, flags)
+  else:
+    discard
+
+
+proc printRawCode(c: var ProcCon) =
+  echo "\n--------------------------------------"
+  debug c.code
+  echo "--------------------------------------"
+
+
+
+proc genCode(c: var ProcCon; n: PNode) =
+  var tmp = default(Value)
+  openScope c.sm
+  gen(c, n, tmp)
+  openScope c.sm
+  printRawCode(c)
+  freeTemp c, tmp

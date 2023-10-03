@@ -9,7 +9,7 @@
 
 ## NIR instructions. Somewhat inspired by LLVM's instructions.
 
-import std / [assertions, hashes]
+import std / [assertions, hashes, strformat]
 import .. / ic / bitabs
 import nirlineinfos, nirtypes
 
@@ -156,6 +156,10 @@ template toX(k: Opcode; operand: uint32): uint32 =
 template toX(k: Opcode; operand: LitId): uint32 =
   uint32(k) or (operand.uint32 shl OpcodeBits)
 
+proc `$`*(n: Instr): string =
+  result = fmt"{n.kind}: {n.operand}"
+
+
 type
   Tree* = object
     nodes: seq[Instr]
@@ -170,6 +174,10 @@ type
 
 const
   InvalidPatchPos* = PatchPos(-1)
+
+proc debug*(t: Tree) {.deprecated.} =
+  for i in t.nodes:
+    echo i
 
 proc isValid(p: PatchPos): bool {.inline.} = p.int != -1
 
