@@ -1521,7 +1521,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         frame = frame.next
         jumpTo = findExceptionHandler(c, frame, raised)
 
-      case jumpTo.why:
+      case jumpTo.why
       of ExceptionGotoHandler:
         # Jump to the handler, do nothing when the `finally` block ends.
         savedPC = -1

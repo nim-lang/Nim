@@ -29,13 +29,15 @@ type
     SymDef,
     SymUse,
     ModuleId,
-    ModuleSymUse, # `module.x`
     Typed,   # with type ID
     NilVal,
     Label,
     Goto,
+    CheckedGoto,
     LoopLabel,
     GotoLoop,  # last atom
+
+    ModuleSymUse, # `module.x`
 
     ArrayConstr,
     ObjConstr,
@@ -43,6 +45,10 @@ type
     Yld,
 
     Select,
+    SelectPair,  # ((values...), Label)
+    SelectList,  # (values...)
+    SelectValue, # (value)
+    SelectRange, # (valueA..valueB)
     SummonGlobal,
     SummonThreadLocal,
     Summon, # x = Summon Typed <Type ID>; x begins to live
@@ -55,6 +61,8 @@ type
     Load, # a[]
     Store, # a[] = b
     Asgn,  # a = b
+    SetExc,
+    TestExc,
 
     Call,
     IndirectCall,
@@ -83,6 +91,7 @@ type
     NumberConv,
     CheckedObjConv,
     ObjConv,
+    TestOf,
     Emit,
     ProcDecl
 
@@ -92,13 +101,15 @@ const
   OpcodeBits = 8'u32
   OpcodeMask = (1'u32 shl OpcodeBits) - 1'u32
 
+  ValueProducingAtoms = {ImmediateVal, IntVal, StrVal, SymUse, NilVal}
+
   ValueProducing* = {
     ImmediateVal,
     IntVal,
     StrVal,
     SymUse,
-    ModuleSymUse,
     NilVal,
+    ModuleSymUse,
     ArrayConstr,
     ObjConstr,
     CheckedAdd,
@@ -127,7 +138,8 @@ const
     AddrOf,
     Load,
     ArrayAt,
-    FieldAt
+    FieldAt,
+    TestOf
   }
 
 type
@@ -176,6 +188,11 @@ proc patch*(tree: var Tree; pos: PatchPos) =
   assert distance > 0
   tree.nodes[pos].x = toX(k, cast[uint32](distance))
 
+template build*(tree: var Tree; info: PackedLineInfo; kind: Opcode; body: untyped) =
+  let pos = prepare(tree, info, kind)
+  body
+  patch(tree, pos)
+
 proc len*(tree: Tree): int {.inline.} = tree.nodes.len
 
 template rawSpan(n: Instr): int = int(operand(n))
@@ -217,22 +234,28 @@ proc newLabel*(labelGen: var int): LabelId {.inline.} =
   result = LabelId labelGen
   inc labelGen
 
-proc addLabel*(t: var Tree; labelGen: var int; info: PackedLineInfo; k: Opcode): LabelId =
+proc addNewLabel*(t: var Tree; labelGen: var int; info: PackedLineInfo; k: Opcode): LabelId =
   assert k in {Label, LoopLabel}
   result = LabelId labelGen
   t.nodes.add Instr(x: toX(k, uint32(result)), info: info)
   inc labelGen
 
+proc boolVal*(t: var Tree; info: PackedLineInfo; b: bool) =
+  t.nodes.add Instr(x: toX(ImmediateVal, uint32(b)), info: info)
+
 proc gotoLabel*(t: var Tree; info: PackedLineInfo; k: Opcode; L: LabelId) =
-  assert k in {Goto, GotoLoop}
+  assert k in {Goto, GotoLoop, CheckedGoto}
   t.nodes.add Instr(x: toX(k, uint32(L)), info: info)
 
-proc addInstr*(t: var Tree; info: PackedLineInfo; k: Opcode; L: LabelId) {.inline.} =
-  assert k in {Label, LoopLabel, Goto, GotoLoop}
+proc addLabel*(t: var Tree; info: PackedLineInfo; k: Opcode; L: LabelId) {.inline.} =
+  assert k in {Label, LoopLabel, Goto, GotoLoop, CheckedGoto}
   t.nodes.add Instr(x: toX(k, uint32(L)), info: info)
 
 proc addSymUse*(t: var Tree; info: PackedLineInfo; s: SymId) {.inline.} =
   t.nodes.add Instr(x: toX(SymUse, uint32(s)), info: info)
+
+proc addTyped*(t: var Tree; info: PackedLineInfo; typ: TypeId) {.inline.} =
+  t.nodes.add Instr(x: toX(Typed, uint32(typ)), info: info)
 
 proc addSummon*(t: var Tree; info: PackedLineInfo; s: SymId; typ: TypeId) {.inline.} =
   let x = prepare(t, info, Summon)
@@ -244,7 +267,7 @@ type
   Value* = distinct Tree
 
 proc prepare*(dest: var Value; info: PackedLineInfo; k: Opcode): PatchPos {.inline.} =
-  assert k in ValueProducing
+  assert k in ValueProducing - ValueProducingAtoms
   result = prepare(Tree(dest), info, k)
 
 proc patch*(dest: var Value; pos: PatchPos) {.inline.} =
@@ -253,3 +276,27 @@ proc patch*(dest: var Value; pos: PatchPos) {.inline.} =
 proc localToValue*(info: PackedLineInfo; s: SymId): Value =
   result = Value(Tree())
   Tree(result).addSymUse info, s
+
+proc hasValue*(v: Value): bool {.inline.} = Tree(v).len > 0
+
+proc isEmpty*(v: Value): bool {.inline.} = Tree(v).len == 0
+
+proc extractTemp*(v: Value): SymId =
+  if hasValue(v) and Tree(v)[NodePos 0].kind == SymUse:
+    result = SymId(Tree(v)[NodePos 0].operand)
+  else:
+    result = SymId(-1)
+
+proc copyTree*(dest: var Tree; src: Value) = copyTree dest, Tree(src)
+
+proc addImmediateVal*(t: var Value; info: PackedLineInfo; x: int) =
+  assert x >= 0 and x < ((1 shl 32) - OpcodeBits.int)
+  Tree(t).nodes.add Instr(x: toX(ImmediateVal, uint32(x)), info: info)
+
+template build*(tree: var Value; info: PackedLineInfo; kind: Opcode; body: untyped) =
+  let pos = prepare(Tree(tree), info, kind)
+  body
+  patch(tree, pos)
+
+proc addTyped*(t: var Value; info: PackedLineInfo; typ: TypeId) {.inline.} =
+  addTyped(Tree(t), info, typ)

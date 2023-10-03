@@ -21,6 +21,7 @@ type
     live: Table[SymId, TypeId]
     dead: Table[TypeId, seq[SymId]]
     flags: set[SlotManagerFlag]
+    inScope: seq[SymId]
     locGen: ref int
 
 proc initSlotManager*(flags: set[SlotManagerFlag]; generator: ref int): SlotManager {.inline.} =
@@ -32,6 +33,7 @@ proc allocRaw(m: var SlotManager; t: TypeId; f: SlotManagerFlag): SymId {.inline
   else:
     result = SymId(m.locGen[])
     inc m.locGen[]
+    m.inScope.add result
   m.live[result] = t
 
 proc allocTemp*(m: var SlotManager; t: TypeId): SymId {.inline.} =
@@ -51,6 +53,17 @@ iterator stillAlive*(m: SlotManager): (SymId, TypeId) =
     yield (k, v)
 
 proc getType*(m: SlotManager; s: SymId): TypeId {.inline.} = m.live[s]
+
+proc openScope*(m: var SlotManager) =
+  m.inScope.add SymId(-1) # add marker
+
+proc closeScope*(m: var SlotManager) =
+  var i = m.inScope.len - 1
+  while i >= 0:
+    if m.inScope[i] == SymId(-1):
+      m.inScope.setLen i-1
+      break
+    dec i
 
 when isMainModule:
   var m = initSlotManager({ReuseTemps}, new(int))
