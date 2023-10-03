@@ -194,6 +194,10 @@ template benchmark(benchmarkName: untyped, code: untyped) =
     myLog "CPU Time [" & benchmarkName & "] " & elapsedStr & "s"
 
 proc clearInstCache(graph: ModuleGraph, projectFileIdx: FileIndex) =
+  if projectFileIdx == InvalidFileIdx:
+    graph.typeInstCache.clear()
+    graph.procInstCache.clear()
+    return
   var typeIdsToDelete = newSeq[ItemId]()
   for id in graph.typeInstCache.keys:
     if id.module == projectFileIdx.int:
