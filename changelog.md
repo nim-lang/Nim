@@ -10,6 +10,7 @@
 
 - Changed `std/osfiles.copyFile` to allow to specify `bufferSize` instead of a hardcoded one.
 - Changed `std/osfiles.copyFile` to use `POSIX_FADV_SEQUENTIAL` hints for kernel-level aggressive sequential read-aheads.
+- Changed `` std/uri.`?` `` to append parameters to any parameters already present instead of overwriting them ([#19782](https://github.com/nim-lang/Nim/issues/19782)).
 
 [//]: # "Additions:"
 

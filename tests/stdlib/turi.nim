@@ -289,6 +289,10 @@ template main() =
       var foo = parseUri("http://example.com") / "foo" ? {"do": "do", "bar": ""}
       var foo1 = parseUri("http://example.com/foo?do=do&bar")
       doAssert foo == foo1
+    block:
+      var foo = parseUri("http://example.com") / "foo" ? {"bar": "baz"} ? {"baz": "qux"}
+      var foo1 = parseUri("http://example.com/foo?bar=baz&baz=qux")
+      doAssert foo == foo1
 
   block: # getDataUri, dataUriBase64
     doAssert getDataUri("", "text/plain") == "data:text/plain;charset=utf-8;base64,"
