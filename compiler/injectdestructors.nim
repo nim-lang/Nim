@@ -913,12 +913,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       result = newNodeI(nkStmtList, n.info)
       for it in n:
         var ri = it[^1]
-        if it.kind == nkVarTuple and hasDestructor(c, ri.typ):
-          for i in 0..<it.len-2:
-            if it[i].kind == nkSym: s.locals.add it[i].sym
-          let x = lowerTupleUnpacking(c.graph, it, c.idgen, c.owner)
-          result.add p(x, c, s, consumed)
-        elif it.kind == nkIdentDefs and hasDestructor(c, skipPragmaExpr(it[0]).typ):
+        if it.kind == nkIdentDefs and hasDestructor(c, skipPragmaExpr(it[0]).typ):
           for j in 0..<it.len-2:
             let v = skipPragmaExpr(it[j])
             if v.kind == nkSym:

@@ -1947,13 +1947,7 @@ proc genVarSection(c: PCtx; n: PNode) =
   for a in n:
     if a.kind == nkCommentStmt: continue
     #assert(a[0].kind == nkSym) can happen for transformed vars
-    if a.kind == nkVarTuple:
-      for i in 0..<a.len-2:
-        if a[i].kind == nkSym:
-          if not a[i].sym.isGlobal: setSlot(c, a[i].sym)
-          checkCanEval(c, a[i])
-      c.gen(lowerTupleUnpacking(c.graph, a, c.idgen, c.getOwner))
-    elif a[0].kind == nkSym:
+    if a[0].kind == nkSym:
       let s = a[0].sym
       checkCanEval(c, a[0])
       if s.isGlobal:

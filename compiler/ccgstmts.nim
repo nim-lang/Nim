@@ -71,66 +71,6 @@ template startBlock(p: BProc, start: FormatStr = "{$n",
 
 proc endBlock(p: BProc)
 
-proc genVarTuple(p: BProc, n: PNode) =
-  if n.kind != nkVarTuple: internalError(p.config, n.info, "genVarTuple")
-
-  # if we have a something that's been captured, use the lowering instead:
-  for i in 0..<n.len-2:
-    if n[i].kind != nkSym:
-      genStmts(p, lowerTupleUnpacking(p.module.g.graph, n, p.module.idgen, p.prc))
-      return
-
-  # check only the first son
-  var forHcr = treatGlobalDifferentlyForHCR(p.module, n[0].sym)
-  let hcrCond = if forHcr: getTempName(p.module) else: ""
-  var hcrGlobals: seq[tuple[loc: TLoc, tp: Rope]] = @[]
-  # determine if the tuple is constructed at top-level scope or inside of a block (if/while/block)
-  let isGlobalInBlock = forHcr and p.blocks.len > 2
-  # do not close and reopen blocks if this is a 'global' but inside of a block (if/while/block)
-  forHcr = forHcr and not isGlobalInBlock
-
-  if forHcr:
-    # check with the boolean if the initializing code for the tuple should be ran
-    lineCg(p, cpsStmts, "if ($1)$n", [hcrCond])
-    startBlock(p)
-
-  genLineDir(p, n)
-  var tup = initLocExpr(p, n[^1])
-  var t = tup.t.skipTypes(abstractInst)
-  for i in 0..<n.len-2:
-    let vn = n[i]
-    let v = vn.sym
-    if sfCompileTime in v.flags: continue
-    if sfGlobal in v.flags:
-      assignGlobalVar(p, vn, "")
-      genObjectInit(p, cpsInit, v.typ, v.loc, constructObj)
-      registerTraverseProc(p, v)
-    else:
-      assignLocalVar(p, vn)
-      initLocalVar(p, v, immediateAsgn=isAssignedImmediately(p.config, n[^1]))
-    var field = initLoc(locExpr, vn, tup.storage)
-    if t.kind == tyTuple:
-      field.r = "$1.Field$2" % [rdLoc(tup), rope(i)]
-    else:
-      if t.n[i].kind != nkSym: internalError(p.config, n.info, "genVarTuple")
-      field.r = "$1.$2" % [rdLoc(tup), mangleRecFieldName(p.module, t.n[i].sym)]
-    putLocIntoDest(p, v.loc, field)
-    if forHcr or isGlobalInBlock:
-      hcrGlobals.add((loc: v.loc, tp: "NULL"))
-
-  if forHcr:
-    # end the block where the tuple gets initialized
-    endBlock(p)
-  if forHcr or isGlobalInBlock:
-    # insert the registration of the globals for the different parts of the tuple at the
-    # start of the current scope (after they have been iterated) and init a boolean to
-    # check if any of them is newly introduced and the initializing code has to be ran
-    lineCg(p, cpsLocals, "NIM_BOOL $1 = NIM_FALSE;$n", [hcrCond])
-    for curr in hcrGlobals:
-      lineCg(p, cpsLocals, "$1 |= hcrRegisterGlobal($4, \"$2\", sizeof($3), $5, (void**)&$2);$N",
-              [hcrCond, curr.loc.r, rdLoc(curr.loc), getModuleDllPath(p.module, n[0].sym), curr.tp])
-
-
 proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
   if ri.kind in nkCallKinds and (ri[0].kind != nkSym or
                                  ri[0].sym.magic == mNone):
@@ -425,14 +365,12 @@ proc genClosureVar(p: BProc, a: PNode) =
 proc genVarStmt(p: BProc, n: PNode) =
   for it in n.sons:
     if it.kind == nkCommentStmt: continue
-    if it.kind == nkIdentDefs:
-      # can be a lifted var nowadays ...
-      if it[0].kind == nkSym:
-        genSingleVar(p, it)
-      else:
-        genClosureVar(p, it)
+    assert it.kind == nkIdentDefs
+    # can be a lifted var nowadays ...
+    if it[0].kind == nkSym:
+      genSingleVar(p, it)
     else:
-      genVarTuple(p, it)
+      genClosureVar(p, it)
 
 proc genIf(p: BProc, n: PNode, d: var TLoc) =
   #

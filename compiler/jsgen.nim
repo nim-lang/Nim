@@ -32,7 +32,7 @@ import
   ast, trees, magicsys, options,
   nversion, msgs, idents, types,
   ropes, ccgutils, wordrecg, renderer,
-  cgmeth, lowerings, sighashes, modulegraphs, lineinfos,
+  cgmeth, sighashes, modulegraphs, lineinfos,
   transf, injectdestructors, sourcemap, astmsgs, backendpragmas
 
 import pipelineutils
@@ -2079,20 +2079,16 @@ proc genVarStmt(p: PProc, n: PNode) =
   for i in 0..<n.len:
     var a = n[i]
     if a.kind != nkCommentStmt:
-      if a.kind == nkVarTuple:
-        let unpacked = lowerTupleUnpacking(p.module.graph, a, p.module.idgen, p.prc)
-        genStmt(p, unpacked)
-      else:
-        assert(a.kind == nkIdentDefs)
-        assert(a[0].kind == nkSym)
-        var v = a[0].sym
-        if lfNoDecl notin v.loc.flags and sfImportc notin v.flags:
-          genLineDir(p, a)
-          if sfCompileTime notin v.flags:
-            genVarInit(p, v, a[2])
-          else:
-            # lazy emit, done when it's actually used.
-            if v.ast == nil: v.ast = a[2]
+      assert(a.kind == nkIdentDefs)
+      assert(a[0].kind == nkSym)
+      var v = a[0].sym
+      if lfNoDecl notin v.loc.flags and sfImportc notin v.flags:
+        genLineDir(p, a)
+        if sfCompileTime notin v.flags:
+          genVarInit(p, v, a[2])
+        else:
+          # lazy emit, done when it's actually used.
+          if v.ast == nil: v.ast = a[2]
 
 proc genConstant(p: PProc, c: PSym) =
   if lfNoDecl notin c.loc.flags and not p.g.generatedSyms.containsOrIncl(c.id):

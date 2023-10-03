@@ -69,32 +69,6 @@ proc newFastMoveStmt*(g: ModuleGraph, le, ri: PNode): PNode =
   result[1].add newSymNode(getSysMagic(g, ri.info, "move", mMove))
   result[1].add ri
 
-proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode =
-  assert n.kind == nkVarTuple
-  let value = n.lastSon
-  result = newNodeI(nkStmtList, n.info)
-
-  var tempAsNode: PNode
-  let avoidTemp = value.kind == nkSym
-  if avoidTemp:
-    tempAsNode = value
-  else:
-    var temp = newSym(skTemp, getIdent(g.cache, genPrefix), idgen,
-                  owner, value.info, g.config.options)
-    temp.typ = skipTypes(value.typ, abstractInst)
-    incl(temp.flags, sfFromGeneric)
-    tempAsNode = newSymNode(temp)
-
-  var v = newNodeI(nkVarSection, value.info)
-  if not avoidTemp:
-    v.addVar(tempAsNode, value)
-  result.add(v)
-
-  for i in 0..<n.len-2:
-    let val = newTupleAccess(g, tempAsNode, i)
-    if n[i].kind == nkSym: v.addVar(n[i], val)
-    else: result.add newAsgnStmt(n[i], val)
-
 proc evalOnce*(g: ModuleGraph; value: PNode; idgen: IdGenerator; owner: PSym): PNode =
   ## Turns (value) into (let tmp = value; tmp) so that 'value' can be re-used
   ## freely, multiple times. This is frequently required and such a builtin would also be
