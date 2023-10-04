@@ -271,6 +271,10 @@ proc addSummon*(t: var Tree; info: PackedLineInfo; s: SymId; typ: TypeId) {.inli
   t.nodes.add Instr(x: toX(Typed, uint32(typ)), info: info)
   patch t, x
 
+proc addImmediateVal*(t: var Tree; info: PackedLineInfo; x: int) =
+  assert x >= 0 and x < ((1 shl 32) - OpcodeBits.int)
+  t.nodes.add Instr(x: toX(ImmediateVal, uint32(x)), info: info)
+
 type
   Value* = distinct Tree
 

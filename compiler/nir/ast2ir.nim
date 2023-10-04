@@ -8,7 +8,8 @@
 #
 
 import std / [assertions, tables, sets]
-import ".." / [ast, astalgo, types, options, lineinfos, msgs]
+import ".." / [ast, astalgo, types, options, lineinfos, msgs, magicsys,
+  modulegraphs]
 import .. / ic / bitabs
 
 import nirtypes, nirinsts, nirlineinfos, nirslots, types2ir
@@ -22,6 +23,7 @@ type
     types: TypesCon
     slotGenerator: ref int
     module: PSym
+    graph: ModuleGraph
 
   LocInfo = object
     inUse: bool
@@ -40,8 +42,8 @@ type
     m: ModuleCon
     prc: PSym
 
-proc initModuleCon*(config: ConfigRef; module: PSym): ModuleCon =
-  ModuleCon(types: initTypesCon(config), slotGenerator: new(int), module: module)
+proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; module: PSym): ModuleCon =
+  ModuleCon(graph: graph, types: initTypesCon(config), slotGenerator: new(int), module: module)
 
 proc initProcCon*(m: ModuleCon; prc: PSym): ProcCon =
   ProcCon(m: m, sm: initSlotManager({}, m.slotGenerator), prc: prc)
@@ -515,17 +517,33 @@ proc genIndex(c: var ProcCon; n: PNode; arr: PType; dest: var Value) =
   else:
     c.gen(n, dest)
 
+proc rawNew(c: var ProcCon; n: PNode; needsInit: bool) =
+  # If in doubt, always follow the blueprint of the C code generator for `mm:orc`.
+  let refType = n[1].typ.skipTypes(abstractInstOwned)
+  assert refType.kind == tyRef
+  let baseType = refType.lastSon
+
+  let info = toLineInfo(c, n.info)
+  let codegenProc = magicsys.getCompilerProc(c.m.graph,
+    if needsInit: "nimNewObj" else: "nimNewObjUninit")
+  let x = genx(c, n[1])
+  let refTypeIr = typeToIr(c.m.types, refType)
+  build c.code, info, Asgn:
+    c.code.addTyped info, refTypeIr
+    copyTree c.code, x
+    build c.code, info, Cast:
+      c.code.addTyped info, refTypeIr
+      build c.code, info, Call:
+        c.code.addTyped info, VoidId # fixme, should be pointer to void
+        let theProc = c.genx newSymNode(codegenProc, n.info)
+        copyTree c.code, theProc
+        c.code.addImmediateVal info, int(getSize(c.config, baseType))
+        c.code.addImmediateVal info, int(getAlign(c.config, baseType))
+
+  freeTemp c, x
+
 #[
-
 proc genCheckedObjAccessAux(c: var ProcCon; n: PNode; dest: var Value; flags: GenFlags)
-
-proc genNew(c: var ProcCon; n: PNode) =
-  let dest = c.genx(n[1])
-  # we use the ref's base type here as the VM conflates 'ref object'
-  # and 'object' since internally we already have a pointer.
-  c.gABx(n, opcNew, dest,
-         c.genType(n[1].typ.skipTypes(abstractVar-{tyTypeDesc})[0]))
-  c.freeTemp(dest)
 
 proc genNewSeq(c: var ProcCon; n: PNode) =
   let t = n[1].typ
