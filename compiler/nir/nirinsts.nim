@@ -84,6 +84,7 @@ type
     BitOr,
     BitXor,
     BitNot,
+    BoolNot,
     Eq,
     Le,
     Lt,
@@ -128,6 +129,7 @@ const
     BitOr,
     BitXor,
     BitNot,
+    BoolNot,
     Eq,
     Le,
     Lt,
@@ -190,6 +192,12 @@ proc patch*(tree: var Tree; pos: PatchPos) =
 
 template build*(tree: var Tree; info: PackedLineInfo; kind: Opcode; body: untyped) =
   let pos = prepare(tree, info, kind)
+  body
+  patch(tree, pos)
+
+template buildTyped*(tree: var Tree; info: PackedLineInfo; kind: Opcode; typ: TypeId; body: untyped) =
+  let pos = prepare(tree, info, kind)
+  tree.addTyped info, typ
   body
   patch(tree, pos)
 
@@ -267,6 +275,10 @@ proc addImmediateVal*(t: var Tree; info: PackedLineInfo; x: int) =
   assert x >= 0 and x < ((1 shl 32) - OpcodeBits.int)
   t.nodes.add Instr(x: toX(ImmediateVal, uint32(x)), info: info)
 
+proc addIntVal*(t: var Tree; integers: var BiTable[int64]; info: PackedLineInfo; typ: TypeId; x: int64) =
+  buildTyped t, info, NumberConv, typ:
+    t.nodes.add Instr(x: toX(IntVal, uint32(integers.getOrIncl(x))), info: info)
+
 type
   Value* = distinct Tree
 
@@ -304,3 +316,9 @@ template build*(tree: var Value; info: PackedLineInfo; kind: Opcode; body: untyp
 
 proc addTyped*(t: var Value; info: PackedLineInfo; typ: TypeId) {.inline.} =
   addTyped(Tree(t), info, typ)
+
+template buildTyped*(tree: var Value; info: PackedLineInfo; kind: Opcode; typ: TypeId; body: untyped) =
+  let pos = prepare(tree, info, kind)
+  tree.addTyped info, typ
+  body
+  patch(tree, pos)

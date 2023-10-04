@@ -73,7 +73,8 @@ const
   UInt64Id* = TypeId 10
   Float32Id* = TypeId 11
   Float64Id* = TypeId 12
-  LastBuiltinId* = 12
+  VoidPtrId* = TypeId 13
+  LastBuiltinId* = 13
 
 proc initTypeGraph*(): TypeGraph =
   result = TypeGraph(nodes: @[
@@ -89,9 +90,11 @@ proc initTypeGraph*(): TypeGraph =
     TypeNode(x: toX(UIntTy, 32'u32)),
     TypeNode(x: toX(UIntTy, 64'u32)),
     TypeNode(x: toX(FloatTy, 32'u32)),
-    TypeNode(x: toX(FloatTy, 64'u32))
+    TypeNode(x: toX(FloatTy, 64'u32)),
+    TypeNode(x: toX(APtrTy, 2'u32)),
+    TypeNode(x: toX(VoidTy, 0'u32))
   ])
-  assert result.nodes.len == LastBuiltinId+1
+  assert result.nodes.len == LastBuiltinId+2
 
 type
   TypePatchPos* = distinct int

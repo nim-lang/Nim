@@ -1561,7 +1561,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     if e[i].len == 3 and optFieldCheck in p.options:
       check = e[i][2]
     genFieldObjConstr(p, ty, useTemp, isRef, e[i][0], e[i][1], check, d, r, e.info)
-  
+
   if useTemp:
     if d.k == locNone:
       d = tmp
@@ -1868,8 +1868,8 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
           else:
             unaryExpr(p, e, d, "$1.Field1")
   of tyCstring:
-    if op == mHigh: unaryExpr(p, e, d, "($1 ? (#nimCStrLen($1)-1) : -1)")
-    else: unaryExpr(p, e, d, "($1 ? #nimCStrLen($1) : 0)")
+    if op == mHigh: unaryExpr(p, e, d, "(#nimCStrLen($1)-1)")
+    else: unaryExpr(p, e, d, "#nimCStrLen($1)")
   of tyString:
     var a: TLoc = initLocExpr(p, e[1])
     var x = lenExpr(p, a)
@@ -1888,13 +1888,6 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     if op == mHigh: putIntoDest(p, d, e, rope(lastOrd(p.config, typ)))
     else: putIntoDest(p, d, e, rope(lengthOrd(p.config, typ)))
   else: internalError(p.config, e.info, "genArrayLen()")
-
-proc makeAddr(n: PNode; idgen: IdGenerator): PNode =
-  if n.kind == nkHiddenAddr:
-    result = n
-  else:
-    result = newTree(nkHiddenAddr, n)
-    result.typ = makePtrType(n.typ, idgen)
 
 proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   if optSeqDestructors in p.config.globalOptions:

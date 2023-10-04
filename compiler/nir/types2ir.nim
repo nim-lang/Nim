@@ -172,7 +172,7 @@ proc openArrayToIr(c: var TypesCon; t: PType): TypeId =
   result = sealType(c.g, p) # ObjectDecl
 
 
-proc stringToIr(c: var TypesCon; t: PType): TypeId =
+proc stringToIr(c: var TypesCon): TypeId =
   #[
 
     NimStrPayload = object
@@ -210,20 +210,15 @@ proc stringToIr(c: var TypesCon; t: PType): TypeId =
 
   result = sealType(c.g, str) # ObjectDecl
 
-proc seqToIr(c: var TypesCon; t: PType): TypeId =
+proc seqPayloadType(c: var TypesCon; t: PType): string =
   #[
     NimSeqPayload[T] = object
       cap: int
       data: UncheckedArray[T]
-
-    NimSeqV2*[T] = object
-      len: int
-      p: ptr NimSeqPayload[T]
-
   ]#
   let e = lastSon(t)
-  let mangledBase = mangle(c, e)
-  let payloadName = "NimSeqPayload" & mangledBase
+  result = mangle(c, e)
+  let payloadName = "NimSeqPayload" & result
 
   let elementType = typeToIr(c, e)
 
@@ -237,8 +232,21 @@ proc seqToIr(c: var TypesCon; t: PType): TypeId =
   discard sealType(c.g, arr) # LastArrayTy
   c.g.addName "data"
   discard sealType(c.g, f) # FieldDecl
+  discard sealType(c.g, p)
 
-  let payload = sealType(c.g, p)
+proc seqPayloadPtrType*(c: var TypesCon; t: PType): TypeId =
+  let mangledBase = seqPayloadType(c, t)
+  let ffp = c.g.openType APtrTy
+  c.g.addNominalType ObjectTy, "NimSeqPayload" & mangledBase
+  result = sealType(c.g, ffp) # APtrTy
+
+proc seqToIr(c: var TypesCon; t: PType): TypeId =
+  #[
+    NimSeqV2*[T] = object
+      len: int
+      p: ptr NimSeqPayload[T]
+  ]#
+  let mangledBase = seqPayloadType(c, t)
 
   let sq = openType(c.g, ObjectDecl)
   c.g.addName "NimSeqV2" & mangledBase
@@ -283,6 +291,7 @@ proc closureToIr(c: var TypesCon; t: PType): TypeId =
   result = sealType(c.g, p) # ObjectDecl
 
 proc typeToIr*(c: var TypesCon; t: PType): TypeId =
+  if t == nil: return VoidId
   case t.kind
   of tyInt:
     case int(getSize(c.conf, t))
@@ -403,7 +412,7 @@ proc typeToIr*(c: var TypesCon; t: PType): TypeId =
       result = openArrayToIr(c, t)
   of tyString:
     cached(c, t):
-      result = stringToIr(c, t)
+      result = stringToIr(c)
   of tySequence:
     cached(c, t):
       result = seqToIr(c, t)
