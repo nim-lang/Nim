@@ -59,51 +59,51 @@ proc toLineInfo(c: var ProcCon; i: TLineInfo): PackedLineInfo =
     c.lastFileVal = val
   result = pack(c.m.man, val, int32 i.line, int32 i.col)
 
-# when false:
-#   proc gen*(c: var ProcCon; dest: var Tree; n: PNode)
-#   proc genv*(c: var ProcCon; dest: var Tree; v: var Value; n: PNode)
+when false:
+  proc gen*(c: var ProcCon; dest: var Tree; n: PNode)
+  proc genv*(c: var ProcCon; dest: var Tree; v: var Value; n: PNode)
 
-#   proc genx*(c: var ProcCon; dest: var Tree; n: PNode): SymId =
-#     let info = toLineInfo(c, n.info)
-#     let t = typeToIr(c.m.types, n.typ)
-#     result = allocTemp(c.sm, t)
-#     addSummon dest, info, result, t
-#     var ex = localToValue(info, result)
-#     genv(c, dest, ex, n)
-#   template withBlock(lab: LabelId; body: untyped) =
-#     body
-#     dest.addInstr(info, Label, lab)
+  proc genx*(c: var ProcCon; dest: var Tree; n: PNode): SymId =
+    let info = toLineInfo(c, n.info)
+    let t = typeToIr(c.m.types, n.typ)
+    result = allocTemp(c.sm, t)
+    addSummon dest, info, result, t
+    var ex = localToValue(info, result)
+    genv(c, dest, ex, n)
+  template withBlock(lab: LabelId; body: untyped) =
+    body
+    dest.addInstr(info, Label, lab)
 
-#   proc genWhile(c: var ProcCon; dest: var Tree; n: PNode) =
-#     # LoopLabel lab1:
-#     #   cond, tmp
-#     #   select cond
-#     #   of false: goto lab2
-#     #   body
-#     #   GotoLoop lab1
-#     # Label lab2:
-#     let info = toLineInfo(c, n.info)
-#     let loopLab = dest.addLabel(c.labelGen, info, LoopLabel)
-#     let theEnd = newLabel(c.labelGen)
-#     withBlock(theEnd):
-#       if isTrue(n[0]):
-#         c.gen(dest, n[1])
-#         dest.gotoLabel info, GotoLoop, loopLab
-#       else:
-#         let x = c.genx(dest, n[0])
-#         #dest.addSelect toLineInfo(c, n[0].kind), x
-#         c.gen(dest, n[1])
-#         dest.gotoLabel info, GotoLoop, loopLab
+  proc genWhile(c: var ProcCon; dest: var Tree; n: PNode) =
+    # LoopLabel lab1:
+    #   cond, tmp
+    #   select cond
+    #   of false: goto lab2
+    #   body
+    #   GotoLoop lab1
+    # Label lab2:
+    let info = toLineInfo(c, n.info)
+    let loopLab = dest.addLabel(c.labelGen, info, LoopLabel)
+    let theEnd = newLabel(c.labelGen)
+    withBlock(theEnd):
+      if isTrue(n[0]):
+        c.gen(dest, n[1])
+        dest.gotoLabel info, GotoLoop, loopLab
+      else:
+        let x = c.genx(dest, n[0])
+        #dest.addSelect toLineInfo(c, n[0].kind), x
+        c.gen(dest, n[1])
+        dest.gotoLabel info, GotoLoop, loopLab
 
-#   proc genv*(c: var ProcCon; dest: var Tree; v: var Value; n: PNode) =
-#     quit "too implement"
+  proc genv*(c: var ProcCon; dest: var Tree; v: var Value; n: PNode) =
+    quit "too implement"
 
-#   proc gen*(c: var ProcCon; dest: var Tree; n: PNode) =
-#     case n.kind
-#     of nkWhileStmt:
-#       genWhile c, dest, n
-#     else:
-#       discard
+  proc gen*(c: var ProcCon; dest: var Tree; n: PNode) =
+    case n.kind
+    of nkWhileStmt:
+      genWhile c, dest, n
+    else:
+      discard
 
 proc bestEffort(c: ProcCon): TLineInfo =
   if c.prc != nil:
@@ -2070,27 +2070,6 @@ proc genParams(c: var ProcCon; params: PNode) =
 #   dest.addInstr(info, Label, lab)
 
 proc genCode*(c: var ProcCon; n: PNode)
-
-# proc genWhile(c: var ProcCon; n: PNode) =
-#   # LoopLabel lab1:
-#   #   cond, tmp
-#   #   select cond
-#   #   of false: goto lab2
-#   #   body
-#   #   GotoLoop lab1
-#   # Label lab2:
-#   let info = toLineInfo(c, n.info)
-#   let loopLab = c.code.addNewLabel(c.labelGen, info, LoopLabel)
-#   let theEnd = newLabel(c.labelGen)
-#   withBlock(theEnd):
-#     if isTrue(n[0]):
-#       c.gen(dest, n[1])
-#       dest.gotoLabel info, GotoLoop, loopLab
-#     else:
-#       let x = c.genx(dest, n[0])
-#       #dest.addSelect toLineInfo(c, n[0].kind), x
-#       c.gen(dest, n[1])
-#       dest.gotoLabel info, GotoLoop, loopLab
 
 proc gen(c: var ProcCon; n: PNode; dest: var Value; flags: GenFlags = {}) =
   case n.kind

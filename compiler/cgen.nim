@@ -2112,7 +2112,7 @@ proc genTopLevelStmt*(m: BModule; n: PNode) =
     transformedN = injectDestructorCalls(m.g.graph, m.idgen, m.module, transformedN)
 
   if sfMainModule in m.module.flags:
-    let moduleCon = initModuleCon(m.config, m.module)
+    let moduleCon = initModuleCon(m.g.graph, m.config, m.module)
     var procCon = initProcCon(moduleCon, nil)
     genCode(procCon, transformedN)
 
