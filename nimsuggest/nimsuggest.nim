@@ -589,6 +589,10 @@ proc mainCommand(graph: ModuleGraph) =
   registerPass graph, verbosePass
   registerPass graph, semPass
   conf.setCmd cmdIdeTools
+  if conf.backend == backendInvalid:
+    conf.backend = backendC
+  if conf.selectedGC == gcUnselected and conf.backend in {backendC, backendCpp, backendObjc}:
+    initOrcDefines(conf)
   defineSymbol(conf.symbols, $conf.backend)
   wantMainModule(conf)
 
@@ -1087,6 +1091,10 @@ else:
       retval = graph
       let conf = graph.config
       conf.setCmd cmdIdeTools
+      if conf.backend == backendInvalid:
+        conf.backend = backendC
+      if conf.selectedGC == gcUnselected and conf.backend in {backendC, backendCpp, backendObjc}:
+        initOrcDefines(conf)
       defineSymbol(conf.symbols, $conf.backend)
       clearPasses(graph)
       registerPass graph, verbosePass
