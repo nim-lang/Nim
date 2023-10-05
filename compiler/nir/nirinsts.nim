@@ -28,7 +28,6 @@ type
     StrVal,
     SymDef,
     SymUse,
-    ModuleId,
     Typed,   # with type ID
     NilVal,
     Label,
@@ -37,7 +36,7 @@ type
     LoopLabel,
     GotoLoop,  # last atom
 
-    ModuleSymUse, # `module.x`
+    ModuleSymUse, # `"module".x`
 
     ArrayConstr,
     ObjConstr,
@@ -52,6 +51,7 @@ type
     SummonGlobal,
     SummonThreadLocal,
     Summon, # x = Summon Typed <Type ID>; x begins to live
+    SummonConst,
     Kill, # `Kill x`: scope end for `x`
 
     AddrOf,
@@ -279,6 +279,13 @@ proc addIntVal*(t: var Tree; integers: var BiTable[int64]; info: PackedLineInfo;
   buildTyped t, info, NumberConv, typ:
     t.nodes.add Instr(x: toX(IntVal, uint32(integers.getOrIncl(x))), info: info)
 
+proc addStrVal*(t: var Tree; strings: var BiTable[string]; info: PackedLineInfo; s: string) =
+  t.nodes.add Instr(x: toX(StrVal, uint32(strings.getOrIncl(s))), info: info)
+
+proc addNilVal*(t: var Tree; info: PackedLineInfo; typ: TypeId) =
+  buildTyped t, info, NumberConv, typ:
+    t.nodes.add Instr(x: toX(NilVal, uint32(0)), info: info)
+
 type
   Value* = distinct Tree
 
@@ -322,3 +329,9 @@ template buildTyped*(tree: var Value; info: PackedLineInfo; kind: Opcode; typ: T
   tree.addTyped info, typ
   body
   patch(tree, pos)
+
+proc addStrVal*(t: var Value; strings: var BiTable[string]; info: PackedLineInfo; s: string) =
+  addStrVal(Tree(t), strings, info, s)
+
+proc addNilVal*(t: var Value; info: PackedLineInfo; typ: TypeId) =
+  addNilVal Tree(t), info, typ

@@ -17,8 +17,10 @@ type
   SlotManagerFlag* = enum
     ReuseTemps,
     ReuseVars
+  SlotKind* = enum
+    Temp, Perm
   SlotManager* = object # "register allocator"
-    live: Table[SymId, TypeId]
+    live: Table[SymId, (SlotKind, TypeId)]
     dead: Table[TypeId, seq[SymId]]
     flags: set[SlotManagerFlag]
     inScope: seq[SymId]
@@ -27,32 +29,39 @@ type
 proc initSlotManager*(flags: set[SlotManagerFlag]; generator: ref int): SlotManager {.inline.} =
   SlotManager(flags: flags, locGen: generator)
 
-proc allocRaw(m: var SlotManager; t: TypeId; f: SlotManagerFlag): SymId {.inline.} =
+proc allocRaw(m: var SlotManager; t: TypeId; f: SlotManagerFlag; k: SlotKind): SymId {.inline.} =
   if f in m.flags and m.dead.hasKey(t) and m.dead[t].len > 0:
     result = m.dead[t].pop()
   else:
     result = SymId(m.locGen[])
     inc m.locGen[]
     m.inScope.add result
-  m.live[result] = t
+  m.live[result] = (k, t)
 
 proc allocTemp*(m: var SlotManager; t: TypeId): SymId {.inline.} =
-  result = allocRaw(m, t, ReuseTemps)
+  result = allocRaw(m, t, ReuseTemps, Temp)
 
 proc allocVar*(m: var SlotManager; t: TypeId): SymId {.inline.} =
-  result = allocRaw(m, t, ReuseVars)
+  result = allocRaw(m, t, ReuseVars, Perm)
 
 proc freeLoc*(m: var SlotManager; s: SymId) =
   let t = m.live.getOrDefault(s)
-  assert t.int != 0
+  assert t[1].int != 0
   m.live.del s
-  m.dead.mgetOrPut(t, @[]).add s
+  m.dead.mgetOrPut(t[1], @[]).add s
+
+proc freeTemp*(m: var SlotManager; s: SymId) =
+  let t = m.live.getOrDefault(s)
+  assert t[1].int != 0
+  if t[0] == Temp:
+    m.live.del s
+    m.dead.mgetOrPut(t[1], @[]).add s
 
 iterator stillAlive*(m: SlotManager): (SymId, TypeId) =
   for k, v in pairs(m.live):
-    yield (k, v)
+    yield (k, v[1])
 
-proc getType*(m: SlotManager; s: SymId): TypeId {.inline.} = m.live[s]
+proc getType*(m: SlotManager; s: SymId): TypeId {.inline.} = m.live[s][1]
 
 proc openScope*(m: var SlotManager) =
   m.inScope.add SymId(-1) # add marker

@@ -2514,8 +2514,12 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
     genArrayLen(p, e, d, op)
-  of mGCref: unaryStmt(p, e, d, "if ($1) { #nimGCref($1); }$n")
-  of mGCunref: unaryStmt(p, e, d, "if ($1) { #nimGCunref($1); }$n")
+  of mGCref:
+    # only a magic for the old GCs
+    unaryStmt(p, e, d, "if ($1) { #nimGCref($1); }$n")
+  of mGCunref:
+    # only a magic for the old GCs
+    unaryStmt(p, e, d, "if ($1) { #nimGCunref($1); }$n")
   of mSetLengthStr: genSetLengthStr(p, e, d)
   of mSetLengthSeq: genSetLengthSeq(p, e, d)
   of mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet, mMinusSet,
