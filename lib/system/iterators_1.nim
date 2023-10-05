@@ -1,7 +1,7 @@
 when sizeof(int) <= 2:
-  type IntLikeForCount = int|int8|int16|char|bool|uint8|enum
+  type IntLikeForCount = int|int8|int16|char|bool|uint8
 else:
-  type IntLikeForCount = int|int8|int16|int32|char|bool|uint8|uint16|enum
+  type IntLikeForCount = int|int8|int16|int32|char|bool|uint8|uint16
 
 iterator countdown*[T](a, b: T, step: Positive = 1): T {.inline.} =
   ## Counts from ordinal value `a` down to `b` (inclusive) with the given
@@ -32,8 +32,14 @@ iterator countdown*[T](a, b: T, step: Positive = 1): T {.inline.} =
   elif T is IntLikeForCount and T is Ordinal:
     var res = int(a)
     while res >= int(b):
-      yield cast[T](res)
+      yield T(res)
       dec(res, step)
+  elif T is enum and T is Ordinal:
+    var res = 0
+    var distance = int(a) - int(b)
+    while res <= distance:
+      yield pred(a, res)
+      inc(res, step)
   else:
     var res = a
     while res >= b:
@@ -64,7 +70,13 @@ iterator countup*[T](a, b: T, step: Positive = 1): T {.inline.} =
   when T is IntLikeForCount and T is Ordinal:
     var res = int(a)
     while res <= int(b):
-      yield cast[T](res)
+      yield T(res)
+      inc(res, step)
+  elif T is enum and T is Ordinal:
+    var res = 0
+    var distance = int(b) - int(a)
+    while res <= distance:
+      yield succ(a, res)
       inc(res, step)
   else:
     var res = a
@@ -89,13 +101,14 @@ iterator `..`*[T](a, b: T): T {.inline.} =
   when T is IntLikeForCount and T is Ordinal:
     var res = int(a)
     while res <= int(b):
-      yield cast[T](res)
+      yield T(res)
       inc(res)
   else:
     var res = a
-    while res <= b:
+    while res < b:
       yield res
       inc(res)
+    yield res
 
 template dotdotImpl(t) {.dirty.} =
   iterator `..`*(a, b: t): t {.inline.} =
