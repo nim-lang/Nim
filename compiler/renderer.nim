@@ -586,7 +586,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
     if n.len > 1: result = MaxLineLen + 1
     else: result = lsons(g, n) + len("using_")
   of nkReturnStmt:
-    if n.len > 0 and n[0].kind == nkAsgn:
+    if n.len > 0 and n[0].kind == nkAsgn and renderIr notin g.flags:
       result = len("return_") + lsub(g, n[0][1])
     else:
       result = len("return_") + lsub(g, n[0])
@@ -1635,7 +1635,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
       gsub(g, n[0])
   of nkReturnStmt:
     putWithSpace(g, tkReturn, "return")
-    if n.len > 0 and n[0].kind == nkAsgn:
+    if n.len > 0 and n[0].kind == nkAsgn and renderIr notin g.flags:
       gsub(g, n[0], 1)
     else:
       gsub(g, n, 0)

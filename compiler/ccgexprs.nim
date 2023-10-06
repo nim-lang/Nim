@@ -1463,7 +1463,7 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
   var a: TLoc = initLocExpr(p, e[1])
   if optSeqDestructors in p.config.globalOptions:
     if d.k == locNone: d = getTemp(p, e.typ, needsInit=false)
-    linefmt(p, cpsStmts, "$1.len = 0; $1.p = ($4*) #newSeqPayload($2, sizeof($3), NIM_ALIGNOF($3));$n",
+    linefmt(p, cpsStmts, "$1.len = 0; $1.p = ($4*) #newSeqPayloadUninit($2, sizeof($3), NIM_ALIGNOF($3));$n",
       [d.rdLoc, a.rdLoc, getTypeDesc(p.module, seqtype.lastSon),
       getSeqPayloadType(p.module, seqtype),
     ])
@@ -1494,8 +1494,27 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
   else:
     result = false
 
+
+proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField, val, check: PNode; d: var TLoc; r: Rope; info: TLineInfo) =
+  var tmp2: TLoc = default(TLoc)
+  tmp2.r = r
+  let field = lookupFieldAgain(p, ty, nField.sym, tmp2.r)
+  if field.loc.r == "": fillObjectFields(p.module, ty)
+  if field.loc.r == "": internalError(p.config, info, "genFieldObjConstr")
+  if check != nil and optFieldCheck in p.options:
+    genFieldCheck(p, check, r, field)
+  tmp2.r.add(".")
+  tmp2.r.add(field.loc.r)
+  if useTemp:
+    tmp2.k = locTemp
+    tmp2.storage = if isRef: OnHeap else: OnStack
+  else:
+    tmp2.k = d.k
+    tmp2.storage = if isRef: OnHeap else: d.storage
+  tmp2.lode = val
+  expr(p, val, tmp2)
+
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
-  #echo renderTree e, " ", e.isDeepConstExpr
   # inheritance in C++ does not allow struct initialization so
   # we skip this step here:
   if not p.module.compileToCpp and optSeqDestructors notin p.config.globalOptions:
@@ -1518,6 +1537,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
 
   var tmp: TLoc = default(TLoc)
   var r: Rope
+  let needsZeroMem = p.config.selectedGC notin {gcArc, gcAtomicArc, gcOrc} or nfAllFieldsSet notin e.flags
   if useTemp:
     tmp = getTemp(p, t)
     r = rdLoc(tmp)
@@ -1526,32 +1546,22 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
       t = t.lastSon.skipTypes(abstractInstOwned)
       r = "(*$1)" % [r]
       gcUsage(p.config, e)
-    else:
+    elif needsZeroMem:
       constructLoc(p, tmp)
+    else:
+      genObjectInit(p, cpsStmts, t, tmp, constructObj)
   else:
-    resetLoc(p, d)
+    if needsZeroMem: resetLoc(p, d)
+    else: genObjectInit(p, cpsStmts, d.t, d, if isRef: constructRefObj else: constructObj)
     r = rdLoc(d)
   discard getTypeDesc(p.module, t)
   let ty = getUniqueType(t)
   for i in 1..<e.len:
-    let it = e[i]
-    var tmp2: TLoc = default(TLoc)
-    tmp2.r = r
-    let field = lookupFieldAgain(p, ty, it[0].sym, tmp2.r)
-    if field.loc.r == "": fillObjectFields(p.module, ty)
-    if field.loc.r == "": internalError(p.config, e.info, "genObjConstr")
-    if it.len == 3 and optFieldCheck in p.options:
-      genFieldCheck(p, it[2], r, field)
-    tmp2.r.add(".")
-    tmp2.r.add(field.loc.r)
-    if useTemp:
-      tmp2.k = locTemp
-      tmp2.storage = if isRef: OnHeap else: OnStack
-    else:
-      tmp2.k = d.k
-      tmp2.storage = if isRef: OnHeap else: d.storage
-    tmp2.lode = it[1]
-    expr(p, it[1], tmp2)
+    var check: PNode = nil
+    if e[i].len == 3 and optFieldCheck in p.options:
+      check = e[i][2]
+    genFieldObjConstr(p, ty, useTemp, isRef, e[i][0], e[i][1], check, d, r, e.info)
+  
   if useTemp:
     if d.k == locNone:
       d = tmp

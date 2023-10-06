@@ -265,6 +265,7 @@ else:
 
 
 proc atomicInc*(memLoc: var int, x: int = 1): int {.inline, discardable, raises: [], tags: [].} =
+  ## Atomically increments the integer by some `x`. It returns the new value.
   when someGcc and hasThreadSupport:
     result = atomicAddFetch(memLoc.addr, x, ATOMIC_SEQ_CST)
   elif someVcc and hasThreadSupport:
@@ -275,6 +276,7 @@ proc atomicInc*(memLoc: var int, x: int = 1): int {.inline, discardable, raises:
     result = memLoc
 
 proc atomicDec*(memLoc: var int, x: int = 1): int {.inline, discardable, raises: [], tags: [].} =
+  ## Atomically decrements the integer by some `x`. It returns the new value.
   when someGcc and hasThreadSupport:
     when declared(atomicSubFetch):
       result = atomicSubFetch(memLoc.addr, x, ATOMIC_SEQ_CST)

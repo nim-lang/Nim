@@ -12,8 +12,6 @@
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
   lineinfos, modulegraphs
 
-from concepts import makeTypeDesc
-
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -47,7 +45,8 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
       # XXX: This happens for prematurely cached
       # types such as Channel[empty]. Why?
       # See the notes for PActor in handleGenericInvocation
-      return
+      # if this is return the same type gets cached more than it needs to
+      continue
     if not sameFlags(inst, key):
       continue
 
@@ -433,17 +432,6 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # One step is enough, because the recursive nature of
   # handleGenericInvocation will handle the alias-to-alias-to-alias case
   if newbody.isGenericAlias: newbody = newbody.skipGenericAlias
-
-  let origSym = newbody.sym
-  if origSym != nil and sfFromGeneric notin origSym.flags:
-    # same as `replaceTypeVarsS` but directly set the type without recursion:
-    newbody.sym = copySym(origSym, cl.c.idgen)
-    incl(newbody.sym.flags, sfFromGeneric)
-    newbody.sym.owner = origSym.owner
-    newbody.sym.typ = newbody
-    # unfortunately calling `replaceTypeVarsN` causes recursion, so this AST
-    # is the original generic body AST
-    newbody.sym.ast = copyTree(origSym.ast)
 
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.c.config, cl.info, newbody)

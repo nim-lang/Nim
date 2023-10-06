@@ -919,6 +919,7 @@ The concept matches if:
 
 a) all expressions within the body can be compiled for the tested type
 b) all statically evaluable boolean expressions in the body are true
+c) all type modifiers specified match their respective definitions
 
 The identifiers following the `concept` keyword represent instances of the
 currently matched type. You can apply any of the standard type modifiers such
@@ -2341,11 +2342,10 @@ type Foo* = object
   x: int32
 
 proc makeFoo(x: int32): Foo {.constructor.} =
-  this.x = x
+  result.x = x
 ```
 
 It forward declares the constructor in the type definition. When the constructor has parameters, it also generates a default constructor.
-Notice, inside the body of the constructor one has access to `this` which is of the type `ptr Foo`. No `result` variable is available.
 
 Like `virtual`, `constructor` also supports a syntax that allows to express C++ constraints.
 
@@ -2371,16 +2371,43 @@ type
   NimClass* = object of CppClass
 
 proc makeNimClass(x: int32): NimClass {.constructor:"NimClass('1 #1) : CppClass(0, #1)".} =
-  this.x = x
+  result.x = x
 
 # Optional: define the default constructor explicitly
 proc makeCppClass(): NimClass {.constructor: "NimClass() : CppClass(0, 0)".} =
-  this.x = 1
+  result.x = 1
 ```
 
 In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropiate constructor.
 
 Notice when calling a constructor in the section of a global variable initialization, it will be called before `NimMain` meaning Nim is not fully initialized.
+
+Constructor Initializer
+=======================
+
+By default Nim initializes `importcpp` types with `{}`. This can be problematic when importing
+types with a deleted default constructor. In order to avoid this, one can specify default values for a constructor by specifying default values for the proc params in the `constructor` proc.
+
+For example:
+
+```nim
+
+{.emit: """/*TYPESECTION*/
+struct CppStruct {
+  CppStruct(int x, char* y): x(x), y(y){}
+  int x;
+  char* y;
+};
+""".}
+type
+  CppStruct {.importcpp, inheritable.} = object
+
+proc makeCppStruct(a: cint = 5, b:cstring = "hello"): CppStruct {.importcpp: "CppStruct(@)", constructor.}
+
+(proc (s: CppStruct) = echo "hello")(makeCppStruct()) 
+# If one removes a default value from the constructor and passes it to the call explicitly, the C++ compiler will complain.
+
+```
 
 Member pragma
 =============
