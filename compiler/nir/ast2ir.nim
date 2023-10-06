@@ -1148,7 +1148,7 @@ template valueIntoDest(c: var ProcCon; info: PackedLineInfo; d: var Value; typ: 
       copyTree c.code, d
       body(c.code)
 
-proc genAddr(c: var ProcCon; n: PNode, d: var Value, flags: GenFlags) =
+proc genAddr(c: var ProcCon; n: PNode; d: var Value, flags: GenFlags) =
   if (let m = canElimAddr(n, c.m.idgen); m != nil):
     gen(c, m, d, flags)
     return
@@ -1162,7 +1162,7 @@ proc genAddr(c: var ProcCon; n: PNode, d: var Value, flags: GenFlags) =
   valueIntoDest c, info, d, n.typ, body
   freeTemp c, tmp
 
-proc genDeref(c: var ProcCon; n: PNode, d: var Value, flags: GenFlags) =
+proc genDeref(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   let info = toLineInfo(c, n.info)
   let tmp = c.genx(n[0], flags)
   template body(target) =
@@ -1172,32 +1172,66 @@ proc genDeref(c: var ProcCon; n: PNode, d: var Value, flags: GenFlags) =
   valueIntoDest c, info, d, n.typ, body
   freeTemp c, tmp
 
-#[
-proc genCheckedObjAccessAux(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags)
+proc genConv(c: var ProcCon; n, arg: PNode; d: var Value; flags: GenFlags; opc: Opcode) =
+  let targetType = n.typ.skipTypes({tyDistinct})
+  let argType = arg.typ.skipTypes({tyDistinct})
 
-proc genConv(c: var ProcCon; n, arg: PNode; d: var Value; opc=opcConv) =
-  let t2 = n.typ.skipTypes({tyDistinct})
-  let targ2 = arg.typ.skipTypes({tyDistinct})
-
-  proc implicitConv(): bool =
-    if sameBackendType(t2, targ2): return true
-    # xxx consider whether to use t2 and targ2 here
-    if n.typ.kind == arg.typ.kind and arg.typ.kind == tyProc:
-      # don't do anything for lambda lifting conversions:
-      result = true
-    else:
-      result = false
-
-  if implicitConv():
-    gen(c, arg, d)
+  if sameBackendType(targetType, argType) or (
+      argType.kind == tyProc and targetType.kind == argType.kind):
+    # don't do anything for lambda lifting conversions:
+    gen c, arg, d
     return
 
-  let tmp = c.genx(arg)
-  if isEmpty(d): d = c.getTemp(n)
-  c.gABC(n, opc, d, tmp)
-  c.gABx(n, opc, 0, genType(c, n.typ.skipTypes({tyStatic})))
-  c.gABx(n, opc, 0, genType(c, arg.typ.skipTypes({tyStatic})))
-  c.freeTemp(tmp)
+  let info = toLineInfo(c, n.info)
+  let tmp = c.genx(n[0], flags)
+  template body(target) =
+    buildTyped target, info, opc, typeToIr(c.m.types, n.typ):
+      if opc == CheckedObjConv:
+        target.addLabel info, CheckedGoto, c.exitLabel
+      copyTree target, tmp
+
+  valueIntoDest c, info, d, n.typ, body
+  freeTemp c, tmp
+
+proc genObjOrTupleConstr(c: var ProcCon; n: PNode, d: var Value) =
+  # XXX x = (x.old, 22)  produces wrong code ... stupid self assignments
+  let info = toLineInfo(c, n.info)
+  template body(target) =
+    buildTyped target, info, ObjConstr, typeToIr(c.m.types, n.typ):
+      for i in 0..<n.len:
+        let it = n[i]
+        if it.kind == nkExprColonExpr:
+          genField(c, it[0], Value target)
+          let tmp = c.genx(it[1])
+          copyTree target, tmp
+          c.freeTemp(tmp)
+        else:
+          let tmp = c.genx(it)
+          target.addImmediateVal info, i
+          copyTree target, tmp
+          c.freeTemp(tmp)
+
+  valueIntoDest c, info, d, n.typ, body
+
+proc genArrayConstr(c: var ProcCon; n: PNode, d: var Value) =
+  let seqType = n.typ.skipTypes(abstractVar-{tyTypeDesc})
+  if seqType.kind == tySequence:
+    localError c.config, n.info, "sequence constructor not implemented"
+    return
+
+  let info = toLineInfo(c, n.info)
+  template body(target) =
+    buildTyped target, info, ArrayConstr, typeToIr(c.m.types, n.typ):
+      for i in 0..<n.len:
+        let tmp = c.genx(n[i])
+        copyTree target, tmp
+        c.freeTemp(tmp)
+
+  valueIntoDest c, info, d, n.typ, body
+
+
+#[
+proc genCheckedObjAccessAux(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags)
 
 proc genCard(c: var ProcCon; n: PNode; d: var Value) =
   let tmp = c.genx(n[1])
@@ -1700,29 +1734,6 @@ proc genVarSection(c: var ProcCon; n: PNode) =
       else:
         genAsgn(c, a[0], a[2], true)
 
-proc genArrayConstr(c: var ProcCon; n: PNode, d: var Value) =
-  if isEmpty(d): d = c.getTemp(n)
-  c.gABx(n, opcLdNull, d, c.genType(n.typ))
-
-  let intType = getSysType(c.graph, n.info, tyInt)
-  let seqType = n.typ.skipTypes(abstractVar-{tyTypeDesc})
-  if seqType.kind == tySequence:
-    var tmp = c.getTemp(intType)
-    c.gABx(n, opcLdImmInt, tmp, n.len)
-    c.gABx(n, opcNewSeq, d, c.genType(seqType))
-    c.gABx(n, opcNewSeq, tmp, 0)
-    c.freeTemp(tmp)
-
-  if n.len > 0:
-    var tmp = getTemp(c, intType)
-    c.gABx(n, opcLdNullReg, tmp, c.genType(intType))
-    for x in n:
-      let a = c.genx(x)
-      c.preventFalseAlias(n, opcWrArr, d, tmp, a)
-      c.gABI(n, opcAddImmInt, tmp, tmp, 1)
-      c.freeTemp(a)
-    c.freeTemp(tmp)
-
 proc genSetConstr(c: var ProcCon; n: PNode, d: var Value) =
   if isEmpty(d): d = c.getTemp(n)
   c.gABx(n, opcLdNull, d, c.genType(n.typ))
@@ -1737,42 +1748,6 @@ proc genSetConstr(c: var ProcCon; n: PNode, d: var Value) =
       let a = c.genx(x)
       c.gABC(n, opcIncl, d, a)
       c.freeTemp(a)
-
-proc genObjConstr(c: var ProcCon; n: PNode, d: var Value) =
-  if isEmpty(d): d = c.getTemp(n)
-  let t = n.typ.skipTypes(abstractRange+{tyOwned}-{tyTypeDesc})
-  if t.kind == tyRef:
-    c.gABx(n, opcNew, d, c.genType(t[0]))
-  else:
-    c.gABx(n, opcLdNull, d, c.genType(n.typ))
-  for i in 1..<n.len:
-    let it = n[i]
-    if it.kind == nkExprColonExpr and it[0].kind == nkSym:
-      let idx = genField(c, it[0])
-      let tmp = c.genx(it[1])
-      c.preventFalseAlias(it[1], opcWrObj,
-                          d, idx, tmp)
-      c.freeTemp(tmp)
-    else:
-      globalError(c.config, n.info, "invalid object constructor")
-
-proc genTupleConstr(c: var ProcCon; n: PNode, d: var Value) =
-  if isEmpty(d): d = c.getTemp(n)
-  if n.typ.kind != tyTypeDesc:
-    c.gABx(n, opcLdNull, d, c.genType(n.typ))
-    # XXX x = (x.old, 22)  produces wrong code ... stupid self assignments
-    for i in 0..<n.len:
-      let it = n[i]
-      if it.kind == nkExprColonExpr:
-        let idx = genField(c, it[0])
-        let tmp = c.genx(it[1])
-        c.preventFalseAlias(it[1], opcWrObj,
-                            d, idx, tmp)
-        c.freeTemp(tmp)
-      else:
-        let tmp = c.genx(it)
-        c.preventFalseAlias(it, opcWrObj, d, i.TRegister, tmp)
-        c.freeTemp(tmp)
 
 proc genProc*(c: var ProcCon; s: PSym): int
 
@@ -1934,14 +1909,11 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
     unused(c, n, d)
     gen(c, n[0], d)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    #genConv(c, n, n[1], d)
-    discard "XXX"
+    genConv(c, n, n[1], d, flags, NumberConv) # misnomer?
   of nkObjDownConv:
-    #genConv(c, n, n[0], d)
-    discard "XXX"
+    genConv(c, n, n[0], d, flags, ObjConv)
   of nkObjUpConv:
-    #genConv(c, n, n[0], d)
-    discard "XXX"
+    genConv(c, n, n[0], d, flags, CheckedObjConv)
   of nkVarSection, nkLetSection:
     unused(c, n, d)
     #genVarSection(c, n)
@@ -1959,20 +1931,14 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   of nkStringToCString: convStrToCStr(c, n, d)
   of nkCStringToString: convCStrToStr(c, n, d)
   of nkBracket:
-    #genArrayConstr(c, n, d)
-    discard "XXX"
+    genArrayConstr(c, n, d)
   of nkCurly:
     #genSetConstr(c, n, d)
     discard "XXX"
-  of nkObjConstr:
-    #genObjConstr(c, n, d)
-    discard "XXX"
-  of nkPar, nkClosure, nkTupleConstr:
-    #genTupleConstr(c, n, d)
-    discard "XXX"
+  of nkObjConstr, nkPar, nkClosure, nkTupleConstr:
+    genObjOrTupleConstr(c, n, d)
   of nkCast:
-    #genCast(c, n, d)
-    discard "XXX"
+    genConv(c, n, n[0], d, flags, Cast)
   of nkComesFrom:
     discard "XXX to implement for better stack traces"
   else:
