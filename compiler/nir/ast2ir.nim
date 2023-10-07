@@ -761,6 +761,9 @@ proc genEnumToStr(c: var ProcCon; n: PNode; d: var Value) =
   nb[0] = newSymNode(toStrProc)
   gen(c, nb, d)
 
+proc genOf(c: var ProcCon; n: PNode; d: var Value) =
+  genUnaryOp c, n, d, TestOf
+
 template sizeOfLikeMsg(name): string =
   "'" & name & "' requires '.importc' types to be '.completeStruct'"
 
@@ -895,6 +898,17 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
   of mDestroy, mTrace: discard "ignore calls to the default destructor"
+  of mOf: genOf(c, n, d)
+  of mAppendStrStr:
+    unused(c, n, d)
+    let nb = copyTree(n)
+    nb[1] = makeAddr(nb[1], c.m.idgen)
+    genBinaryCp(c, nb, d, "nimAddStrV1")
+  of mAppendSeqElem:
+    unused(c, n, d)
+    let nb = copyTree(n)
+    nb[1] = makeAddr(nb[1], c.m.idgen)
+    genCall(c, nb, d)
   else:
     # mGCref, mGCunref,
     globalError(c.config, n.info, "cannot generate code for: " & $m)
@@ -911,23 +925,6 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   of mDefault, mZeroDefault:
     if isEmpty(d): d = c.getTemp(n)
     c.gABx(n, ldNullOpcode(n.typ), d, c.genType(n.typ))
-  of mOf:
-    if isEmpty(d): d = c.getTemp(n)
-    var tmp = c.genx(n[1])
-    var idx = c.getTemp(getSysType(c.graph, n.info, tyInt))
-    var typ = n[2].typ
-    if m == mOf: typ = typ.skipTypes(abstractPtrs)
-    c.gABx(n, opcLdImmInt, idx, c.genType(typ))
-    c.gABC(n, opcOf, d, tmp, idx)
-    c.freeTemp(tmp)
-    c.freeTemp(idx)
-
-  of mAppendStrStr:
-    unused(c, n, d)
-    genBinaryStmtVar(c, n, opcAddStrStr)
-  of mAppendSeqElem:
-    unused(c, n, d)
-    genBinaryStmtVar(c, n, opcAddSeqElem)
 
   of mCard: genCard(c, n, d)
   of mEqSet: genBinarySet(c, n, d, opcEqSet)
@@ -973,6 +970,7 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
     if isEmpty(d): d = c.getTemp(arg)
     gABC(c, arg, whichAsgnOpc(arg, requiresCopy=false), d, a)
     c.freeTemp(a)
+
   of mNodeId:
     c.genUnaryABC(n, d, opcNodeId)
 
@@ -1622,6 +1620,7 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     localError c.config, n.info, "invalid type for nkBracketExpr: " & $arrayKind
 
 proc genObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
+  let info = toLineInfo(c, n.info)
   let a = genx(c, n[0], flags)
 
   template body(target) =
@@ -1629,7 +1628,6 @@ proc genObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
       copyTree target, a
       genField c, n[1], Value(target)
 
-      copyTree target, b
   valueIntoDest c, info, d, n.typ, body
   freeTemp c, a
 

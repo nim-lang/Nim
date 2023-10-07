@@ -201,6 +201,10 @@ proc prepareMutation*(s: var string) {.inline.} =
     let s = unsafeAddr s
     nimPrepareStrMutationV2(cast[ptr NimStringV2](s)[])
 
+proc nimAddStrV1(s: var NimStringV2; src: NimStringV2) {.compilerRtl, inl.} =
+  #if (s.p == nil) or (s.len+1 > s.p.cap and not strlitFlag):
+  prepareAdd(s, src.len)
+  appendString s, src
 
 template capacityImpl(str: NimStringV2): int =
   if str.p != nil: str.p.cap else: 0
