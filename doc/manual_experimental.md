@@ -2411,7 +2411,7 @@ proc makeCppStruct(a: cint = 5, b:cstring = "hello"): CppStruct {.importcpp: "Cp
 Skip initializers in fields members
 ===================================
 
-By using `noInit` in a type or field declaration, the compiler will skip the initializer. By doing so one can expcitally initialize those values in the constructor of the type owner.
+By using `noInit` in a type or field declaration, the compiler will skip the initializer. By doing so one can explicitly initialize those values in the constructor of the type owner.
 
 For example:
 
