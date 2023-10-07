@@ -2428,8 +2428,8 @@ For example:
   """.}
 
 type 
-  Foo {.importcpp .} = object
-  Boo {.importcpp, noInit .} = object
+  Foo {.importcpp.} = object
+  Boo {.importcpp, noInit.} = object
   Test {.exportc.} = object
     foo {.noInit.}: Foo
     boo: Boo
