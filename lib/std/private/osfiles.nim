@@ -396,7 +396,8 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   ##
   ## Can be used to `rename files`:idx:.
   ##
-  ## In Linux, if `dest` already exists, it will be atomically swapped.
+  ## In Linux, if `dest` already exists, it will be atomically swapped,
+  ## therefore it is possible to "prepare" an empty file to speed up I/O performance for moving huge files.
   ##
   ## See also:
   ## * `moveDir proc`_
