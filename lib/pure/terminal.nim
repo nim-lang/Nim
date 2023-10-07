@@ -221,9 +221,8 @@ when defined(windows):
       raiseOSError(osLastError())
     return (int(c.dwCursorPosition.x), int(c.dwCursorPosition.y))
 
-    # TODO: test this
-  proc getCursorPos*(): tuple [x, y: int] {.raises: [ValueError, IOError].} =
-    return getCursorPos(getCurrentProcess())
+  proc getCursorPos*(): tuple [x, y: int] {.raises: [ValueError, IOError, OSError].} =
+    return getCursorPos(getStdHandle(STD_OUTPUT_HANDLE))
 
   proc setCursorPos(h: Handle, x, y: int) =
     var c: COORD
