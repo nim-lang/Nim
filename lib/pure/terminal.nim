@@ -273,6 +273,7 @@ else:
 
   proc getCursorPos*(): tuple [x, y: int] {.raises: [ValueError, IOError].} =
     ## Returns cursor position (x, y)
+    ## writes to stdout and expects the terminal to respond via stdin
     var
       xStr = ""
       yStr = ""
