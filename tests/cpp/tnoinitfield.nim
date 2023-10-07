@@ -1,4 +1,5 @@
 discard """
+  targets: "cpp"
   cmd: "nim cpp $file"
   output: '''
 '''
@@ -6,17 +7,21 @@ discard """
 {.emit: """/*TYPESECTION*/
   struct Foo {
     Foo(int a){};
-
+  };
+  struct Boo {
+    Boo(int a){};
   };
 
   """.}
 
 type 
-  Foo {.importcpp.} = object
+  Foo {.importcpp .} = object
+  Boo {.importcpp, noInit .} = object
   Test {.exportc.} = object
-    foo {.noInit.} : Foo
+    foo {.noInit.}: Foo
+    boo: Boo
 
-proc makeTest(): Test {.constructor: "Test() : foo(10)".} = 
+proc makeTest(): Test {.constructor: "Test() : foo(10), boo(1)".} = 
   discard
 
 proc main() = 
