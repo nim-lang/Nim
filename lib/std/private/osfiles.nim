@@ -396,7 +396,7 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   ##
   ## Can be used to `rename files`:idx:.
   ##
-  ## In Posix, if `dest` already exists, it will be atomically swapped.
+  ## In Linux, if `dest` already exists, it will be atomically swapped.
   ##
   ## See also:
   ## * `moveDir proc`_
