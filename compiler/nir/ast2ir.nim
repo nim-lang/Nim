@@ -10,7 +10,7 @@
 import std / [assertions, tables, sets]
 import ".." / [ast, astalgo, types, options, lineinfos, msgs, magicsys,
   modulegraphs, guards, renderer]
-from ".." / lowerings import lowerSwap
+from ".." / lowerings import lowerSwap, lowerTupleUnpacking
 from ".." / pathutils import customPath
 import .. / ic / bitabs
 
@@ -1229,6 +1229,33 @@ proc genArrayConstr(c: var ProcCon; n: PNode, d: var Value) =
 
   valueIntoDest c, info, d, n.typ, body
 
+proc genAsgn2(c: var ProcCon; a, b: PNode) =
+  var d = c.genx(a)
+  c.gen b, d
+
+proc genVarSection(c: var ProcCon; n: PNode) =
+  for a in n:
+    if a.kind == nkCommentStmt: continue
+    #assert(a[0].kind == nkSym) can happen for transformed vars
+    if a.kind == nkVarTuple:
+      c.gen(lowerTupleUnpacking(c.m.graph, a, c.m.idgen, c.prc))
+    elif a[0].kind == nkSym:
+      let s = a[0].sym
+      var opc: Opcode
+      if sfThread in s.flags:
+        opc = SummonThreadLocal
+      elif sfGlobal in s.flags:
+        opc = SummonGlobal
+      else:
+        opc = Summon
+      c.code.addSummon toLineInfo(c, a.info), SymId(s.itemId.item), typeToIr(c.m.types, s.typ), opc
+      if a[2].kind != nkEmpty:
+        genAsgn2(c, a[0], a[2])
+    else:
+      if a[2].kind == nkEmpty:
+        discard "XXX assign default value to location here"
+      else:
+        genAsgn2(c, a[0], a[2])
 
 #[
 proc genCheckedObjAccessAux(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags)
@@ -1342,27 +1369,6 @@ proc importcCondVar*(s: PSym): bool {.inline.} =
     result = s.kind in {skVar, skLet, skConst}
   else:
     result = false
-
-template needsAdditionalCopy(n): untyped =
-  not c.isTemp(d) and not fitsRegister(n.typ)
-
-proc genAdditionalCopy(c: var ProcCon; n: PNode; opc: Opcode;
-                       d, idx, value: TRegister) =
-  var cc = c.getTemp(n)
-  c.gABC(n, whichAsgnOpc(n), cc, value)
-  c.gABC(n, opc, d, idx, cc)
-  c.freeTemp(cc)
-
-proc preventFalseAlias(c: var ProcCon; n: PNode; opc: Opcode;
-                       d, idx, value: TRegister) =
-  # opcLdObj et al really means "load address". We sometimes have to create a
-  # copy in order to not introduce false aliasing:
-  # mylocal = a.b  # needs a copy of the data!
-  assert n.typ != nil
-  if needsAdditionalCopy(n):
-    genAdditionalCopy(c, n, opc, d, idx, value)
-  else:
-    c.gABC(n, opc, d, idx, value)
 
 proc genAsgn(c: var ProcCon; le, ri: PNode; requiresCopy: bool) =
   case le.kind
@@ -1584,20 +1590,6 @@ proc genCheckedObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags
 
   c.freeTemp(objR)
 
-proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
-  let arrayType = n[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
-  case arrayType
-  of tyString, tyCstring:
-    let opc = if gfNodeAddr in flags: opcLdStrIdxAddr else: opcLdStrIdx
-    genArrAccessOpcode(c, n, d, opc, flags)
-  of tyTuple:
-    c.genObjAccessAux(n, c.genx(n[0], flags), int n[1].intVal, d, flags)
-  of tyTypeDesc:
-    c.genTypeLit(n.typ, d)
-  else:
-    let opc = if gfNodeAddr in flags: opcLdArrAddr else: opcLdArr
-    genArrAccessOpcode(c, n, d, opc, flags)
-
 proc getNullValueAux(t: PType; obj: PNode, result: PNode; config: ConfigRef; currPosition: var int) =
   if t != nil and t.len > 0 and t[0] != nil:
     let b = skipTypes(t[0], skipPtrs)
@@ -1663,76 +1655,6 @@ proc getNullValue(typ: PType, info: TLineInfo; config: ConfigRef): PNode =
   else:
     globalError(config, info, "cannot create null element for: " & $t.kind)
     result = newNodeI(nkEmpty, info)
-
-proc genVarSection(c: var ProcCon; n: PNode) =
-  for a in n:
-    if a.kind == nkCommentStmt: continue
-    #assert(a[0].kind == nkSym) can happen for transformed vars
-    if a.kind == nkVarTuple:
-      for i in 0..<a.len-2:
-        if a[i].kind == nkSym:
-          if not a[i].sym.isGlobal: setSlot(c, a[i].sym)
-      c.gen(lowerTupleUnpacking(c.graph, a, c.idgen, c.getOwner))
-    elif a[0].kind == nkSym:
-      let s = a[0].sym
-      if s.isGlobal:
-        let runtimeAccessToCompileTime = c.mode == emRepl and
-              sfCompileTime in s.flags and s.position > 0
-        if s.position == 0:
-          if importcCond(c, s): c.importcSym(a.info, s)
-          else:
-            let sa = getNullValue(s.typ, a.info, c.config)
-            #if s.ast.isNil: getNullValue(s.typ, a.info)
-            #else: s.ast
-            assert sa.kind != nkCall
-            c.globals.add(sa)
-            s.position = c.globals.len
-        if runtimeAccessToCompileTime:
-          discard
-        elif a[2].kind != nkEmpty:
-          let tmp = c.genx(a[0], {gfNodeAddr})
-          let val = c.genx(a[2])
-          c.genAdditionalCopy(a[2], opcWrDeref, tmp, 0, val)
-          c.freeTemp(val)
-          c.freeTemp(tmp)
-        elif not importcCondVar(s) and not (s.typ.kind == tyProc and s.typ.callConv == ccClosure) and
-                sfPure notin s.flags: # fixes #10938
-          # there is a pre-existing issue with closure types in VM
-          # if `(var s: proc () = default(proc ()); doAssert s == nil)` works for you;
-          # you might remove the second condition.
-          # the problem is that closure types are tuples in VM, but the types of its children
-          # shouldn't have the same type as closure types.
-          let tmp = c.genx(a[0], {gfNodeAddr})
-          let sa = getNullValue(s.typ, a.info, c.config)
-          let val = c.genx(sa)
-          c.genAdditionalCopy(sa, opcWrDeref, tmp, 0, val)
-          c.freeTemp(val)
-          c.freeTemp(tmp)
-      else:
-        setSlot(c, s)
-        if a[2].kind == nkEmpty:
-          c.gABx(a, ldNullOpcode(s.typ), s.position, c.genType(s.typ))
-        else:
-          assert s.typ != nil
-          if not fitsRegister(s.typ):
-            c.gABx(a, ldNullOpcode(s.typ), s.position, c.genType(s.typ))
-          let le = a[0]
-          assert le.typ != nil
-          if not fitsRegister(le.typ) and s.kind in {skResult, skVar, skParam}:
-            var cc = c.getTemp(le)
-            gen(c, a[2], cc)
-            c.gABC(le, whichAsgnOpc(le), s.position.TRegister, cc)
-            c.freeTemp(cc)
-          else:
-            gen(c, a[2], s.position.TRegister)
-    else:
-      # assign to a[0]; happens for closures
-      if a[2].kind == nkEmpty:
-        let tmp = genx(c, a[0])
-        c.gABx(a, ldNullOpcode(a[0].typ), tmp, c.genType(a[0].typ))
-        c.freeTemp(tmp)
-      else:
-        genAsgn(c, a[0], a[2], true)
 
 proc genSetConstr(c: var ProcCon; n: PNode, d: var Value) =
   if isEmpty(d): d = c.getTemp(n)
@@ -1843,6 +1765,90 @@ proc genRangeCheck(c: var ProcCon; n: PNode; d: var Value) =
   # XXX to implement properly
   gen c, n[0], d
 
+proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
+  let arrayKind = n[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
+  let info = toLineInfo(c, n.info)
+  case arrayKind
+  of tyString:
+    # XXX implement range check
+    let a = genx(c, n[0], flags)
+    let b = genx(c, n[1])
+    let t = typeToIr(c.m.types, n.typ)
+    template body(target) =
+      buildTyped target, info, ArrayAt, t:
+        buildTyped target, info, FieldAt, strPayloadPtrType(c.m.types):
+          copyTree target, a
+          target.addImmediateVal info, 1 # (len, p)-pair
+        copyTree target, b
+    intoDest d, info, t, body
+    freeTemp c, b
+    freeTemp c, a
+
+  of tyCstring, tyPtr:
+    let a = genx(c, n[0], flags)
+    let b = genx(c, n[1])
+    template body(target) =
+      buildTyped target, info, ArrayAt, typeToIr(c.m.types, n.typ):
+        copyTree target, a
+        copyTree target, b
+    valueIntoDest c, info, d, n.typ, body
+
+    freeTemp c, b
+    freeTemp c, a
+  of tyTuple:
+    let a = genx(c, n[0], flags)
+    let b = int n[1].intVal
+    template body(target) =
+      buildTyped target, info, FieldAt, typeToIr(c.m.types, n.typ):
+        copyTree target, a
+        target.addImmediateVal info, b
+    valueIntoDest c, info, d, n.typ, body
+
+    freeTemp c, a
+  of tyOpenArray, tyVarargs:
+    # XXX implement range check
+    let a = genx(c, n[0], flags)
+    let b = genx(c, n[1])
+    let t = typeToIr(c.m.types, n.typ)
+    template body(target) =
+      buildTyped target, info, ArrayAt, t:
+        buildTyped target, info, FieldAt, openArrayPayloadType(c.m.types, n[0].typ):
+          copyTree target, a
+          target.addImmediateVal info, 0 # (p, len)-pair
+        copyTree target, b
+    intoDest d, info, t, body
+
+    freeTemp c, b
+    freeTemp c, a
+  of tyArray:
+    # XXX implement range check
+    let a = genx(c, n[0], flags)
+    var b = default(Value)
+    genIndex(c, n[1], n[0].typ, b)
+
+    template body(target) =
+      buildTyped target, info, ArrayAt, typeToIr(c.m.types, n.typ):
+        copyTree target, a
+        copyTree target, b
+    valueIntoDest c, info, d, n.typ, body
+    freeTemp c, b
+    freeTemp c, a
+  of tySequence:
+    let a = genx(c, n[0], flags)
+    let b = genx(c, n[1])
+    let t = typeToIr(c.m.types, n.typ)
+    template body(target) =
+      buildTyped target, info, ArrayAt, t:
+        buildTyped target, info, FieldAt, seqPayloadPtrType(c.m.types, n[0].typ):
+          copyTree target, a
+          target.addImmediateVal info, 1 # (len, p)-pair
+        copyTree target, b
+    intoDest d, info, t, body
+    freeTemp c, b
+    freeTemp c, a
+  else:
+    localError c.config, n.info, "invalid type for nkBracketExpr: " & $arrayKind
+
 proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind & " " & $flags
@@ -1916,8 +1922,7 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
     genConv(c, n, n[0], d, flags, CheckedObjConv)
   of nkVarSection, nkLetSection:
     unused(c, n, d)
-    #genVarSection(c, n)
-    discard "XXX"
+    genVarSection(c, n)
   of nkLambdaKinds:
     #let s = n[namePos].sym
     #discard genProc(c, s)

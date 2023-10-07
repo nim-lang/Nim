@@ -265,10 +265,11 @@ proc addSymUse*(t: var Tree; info: PackedLineInfo; s: SymId) {.inline.} =
 proc addTyped*(t: var Tree; info: PackedLineInfo; typ: TypeId) {.inline.} =
   t.nodes.add Instr(x: toX(Typed, uint32(typ)), info: info)
 
-proc addSummon*(t: var Tree; info: PackedLineInfo; s: SymId; typ: TypeId) {.inline.} =
-  let x = prepare(t, info, Summon)
-  t.nodes.add Instr(x: toX(SymDef, uint32(s)), info: info)
+proc addSummon*(t: var Tree; info: PackedLineInfo; s: SymId; typ: TypeId; opc = Summon) {.inline.} =
+  assert opc in {Summon, SummonConst, SummonGlobal, SummonThreadLocal}
+  let x = prepare(t, info, opc)
   t.nodes.add Instr(x: toX(Typed, uint32(typ)), info: info)
+  t.nodes.add Instr(x: toX(SymDef, uint32(s)), info: info)
   patch t, x
 
 proc addImmediateVal*(t: var Tree; info: PackedLineInfo; x: int) =

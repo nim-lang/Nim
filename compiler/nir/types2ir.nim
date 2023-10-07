@@ -149,6 +149,13 @@ proc nativeInt(c: TypesCon): TypeId =
   of 4: result = Int32Id
   else: result = Int64Id
 
+proc openArrayPayloadType*(c: var TypesCon; t: PType): TypeId =
+  let e = lastSon(t)
+  let elementType = typeToIr(c, e)
+  let arr = c.g.openType AArrayPtrTy
+  c.g.addType elementType
+  result = sealType(c.g, arr) # LastArrayTy
+
 proc openArrayToIr(c: var TypesCon; t: PType): TypeId =
   # object (a: ArrayPtr[T], len: int)
   let e = lastSon(t)
@@ -171,6 +178,26 @@ proc openArrayToIr(c: var TypesCon; t: PType): TypeId =
 
   result = sealType(c.g, p) # ObjectDecl
 
+proc strPayloadType(c: var TypesCon): string =
+  result = "NimStrPayload"
+  let p = openType(c.g, ObjectDecl)
+  c.g.addName result
+  c.g.addField "cap", c.nativeInt
+
+  let f = c.g.openType FieldDecl
+  let arr = c.g.openType LastArrayTy
+  c.g.addBuiltinType Char8Id
+  discard sealType(c.g, arr) # LastArrayTy
+  c.g.addName "data"
+  discard sealType(c.g, f) # FieldDecl
+
+  discard sealType(c.g, p)
+
+proc strPayloadPtrType*(c: var TypesCon): TypeId =
+  let mangled = strPayloadType(c)
+  let ffp = c.g.openType APtrTy
+  c.g.addNominalType ObjectTy, mangled
+  result = sealType(c.g, ffp) # APtrTy
 
 proc stringToIr(c: var TypesCon): TypeId =
   #[
@@ -184,18 +211,7 @@ proc stringToIr(c: var TypesCon): TypeId =
       p: ptr NimStrPayload
 
   ]#
-  let p = openType(c.g, ObjectDecl)
-  c.g.addName "NimStrPayload"
-  c.g.addField "cap", c.nativeInt
-
-  let f = c.g.openType FieldDecl
-  let arr = c.g.openType LastArrayTy
-  c.g.addBuiltinType Char8Id
-  discard sealType(c.g, arr) # LastArrayTy
-  c.g.addName "data"
-  discard sealType(c.g, f) # FieldDecl
-
-  let payload = sealType(c.g, p)
+  let payload = strPayloadType(c)
 
   let str = openType(c.g, ObjectDecl)
   c.g.addName "NimStringV2"
