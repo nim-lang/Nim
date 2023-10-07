@@ -1363,168 +1363,6 @@ proc getOwner(c: ProcCon): PSym =
   result = c.prc.sym
   if result.isNil: result = c.module
 
-proc importcCondVar*(s: PSym): bool {.inline.} =
-  # see also importcCond
-  if sfImportc in s.flags:
-    result = s.kind in {skVar, skLet, skConst}
-  else:
-    result = false
-
-proc genAsgn(c: var ProcCon; le, ri: PNode; requiresCopy: bool) =
-  case le.kind
-  of nkBracketExpr:
-    let
-      d = c.genx(le[0], {gfNode})
-      idx = c.genIndex(le[1], le[0].typ)
-      tmp = c.genx(ri)
-      collTyp = le[0].typ.skipTypes(abstractVarRange-{tyTypeDesc})
-    case collTyp.kind
-    of tyString, tyCstring:
-      c.preventFalseAlias(le, opcWrStrIdx, d, idx, tmp)
-    of tyTuple:
-      c.preventFalseAlias(le, opcWrObj, d, int le[1].intVal, tmp)
-    else:
-      c.preventFalseAlias(le, opcWrArr, d, idx, tmp)
-    c.freeTemp(tmp)
-    c.freeTemp(idx)
-    c.freeTemp(d)
-  of nkCheckedFieldExpr:
-    var objR: Value = -1
-    genCheckedObjAccessAux(c, le, objR, {gfNode})
-    let idx = genField(c, le[0][1])
-    let tmp = c.genx(ri)
-    c.preventFalseAlias(le[0], opcWrObj, objR, idx, tmp)
-    c.freeTemp(tmp)
-    # c.freeTemp(idx) # BUGFIX, see nkDotExpr
-    c.freeTemp(objR)
-  of nkDotExpr:
-    let d = c.genx(le[0], {gfNode})
-    let idx = genField(c, le[1])
-    let tmp = c.genx(ri)
-    c.preventFalseAlias(le, opcWrObj, d, idx, tmp)
-    # c.freeTemp(idx) # BUGFIX: idx is an immediate (field position), not a register
-    c.freeTemp(tmp)
-    c.freeTemp(d)
-  of nkDerefExpr, nkHiddenDeref:
-    let d = c.genx(le[0], {gfNode})
-    let tmp = c.genx(ri)
-    c.preventFalseAlias(le, opcWrDeref, d, 0, tmp)
-    c.freeTemp(d)
-    c.freeTemp(tmp)
-  of nkSym:
-    let s = le.sym
-    if s.isGlobal:
-      withTemp(tmp, le.typ):
-        c.gen(le, tmp, {gfNodeAddr})
-        let val = c.genx(ri)
-        c.preventFalseAlias(le, opcWrDeref, tmp, 0, val)
-        c.freeTemp(val)
-    else:
-      if s.kind == skForVar: c.setSlot s
-      internalAssert c.config, s.position > 0 or (s.position == 0 and
-                                        s.kind in {skParam, skResult})
-      var d: TRegister = s.position + ord(s.kind == skParam)
-      assert le.typ != nil
-      if needsAdditionalCopy(le) and s.kind in {skResult, skVar, skParam}:
-        var cc = c.getTemp(le)
-        gen(c, ri, cc)
-        c.gABC(le, whichAsgnOpc(le), d, cc)
-        c.freeTemp(cc)
-      else:
-        gen(c, ri, d)
-  else:
-    let d = c.genx(le, {gfNodeAddr})
-    genAsgn(c, d, ri, requiresCopy)
-    c.freeTemp(d)
-
-proc genTypeLit(c: var ProcCon; t: PType; d: var Value) =
-  var n = newNode(nkType)
-  n.typ = t
-  genLit(c, n, d)
-
-proc isEmptyBody(n: PNode): bool =
-  case n.kind
-  of nkStmtList:
-    for i in 0..<n.len:
-      if not isEmptyBody(n[i]): return false
-    result = true
-  else:
-    result = n.kind in {nkCommentStmt, nkEmpty}
-
-proc importcCond*(c: var ProcCon; s: PSym): bool {.inline.} =
-  ## return true to importc `s`, false to execute its body instead (refs #8405)
-  result = false
-  if sfImportc in s.flags:
-    if s.kind in routineKinds:
-      return isEmptyBody(getBody(c.graph, s))
-
-proc importcSym(c: var ProcCon; info: TLineInfo; s: PSym) =
-  when hasFFI:
-    if compiletimeFFI in c.config.features:
-      c.globals.add(importcSymbol(c.config, s))
-      s.position = c.globals.len
-    else:
-      localError(c.config, info,
-        "VM is not allowed to 'importc' without --experimental:compiletimeFFI")
-  else:
-    localError(c.config, info,
-               "cannot 'importc' variable at compile time; " & s.name.s)
-
-proc getNullValue*(typ: PType, info: TLineInfo; config: ConfigRef): PNode
-
-proc genGlobalInit(c: var ProcCon; n: PNode; s: PSym) =
-  c.globals.add(getNullValue(s.typ, n.info, c.config))
-  s.position = c.globals.len
-  # This is rather hard to support, due to the laziness of the VM code
-  # generator. See tests/compile/tmacro2 for why this is necessary:
-  #   var decls{.compileTime.}: seq[NimNode] = @[]
-  let d = c.getTemp(s)
-  c.gABx(n, opcLdGlobal, d, s.position)
-  if s.astdef != nil:
-    let tmp = c.genx(s.astdef)
-    c.genAdditionalCopy(n, opcWrDeref, d, 0, tmp)
-    c.freeTemp(d)
-    c.freeTemp(tmp)
-
-template needsRegLoad(): untyped =
-  {gfNode, gfNodeAddr} * flags == {} and
-    fitsRegister(n.typ.skipTypes({tyVar, tyLent, tyStatic}))
-
-proc genArrAccessOpcode(c: var ProcCon; n: PNode; d: var Value; opc: Opcode;
-                        flags: GenFlags) =
-  let a = c.genx(n[0], flags)
-  let b = c.genIndex(n[1], n[0].typ)
-  if isEmpty(d): d = c.getTemp(n)
-  if opc in {opcLdArrAddr, opcLdStrIdxAddr} and gfNodeAddr in flags:
-    c.gABC(n, opc, d, a, b)
-  elif needsRegLoad():
-    var cc = c.getTemp(n)
-    c.gABC(n, opc, cc, a, b)
-    c.gABC(n, opcNodeToReg, d, cc)
-    c.freeTemp(cc)
-  else:
-    #message(c.config, n.info, warnUser, "argh")
-    #echo "FLAGS ", flags, " ", fitsRegister(n.typ), " ", typeToString(n.typ)
-    c.gABC(n, opc, d, a, b)
-  c.freeTemp(a)
-  c.freeTemp(b)
-
-proc genObjAccessAux(c: var ProcCon; n: PNode; a, b: int, d: var Value; flags: GenFlags) =
-  if isEmpty(d): d = c.getTemp(n)
-  if {gfNodeAddr} * flags != {}:
-    c.gABC(n, opcLdObjAddr, d, a, b)
-  elif needsRegLoad():
-    var cc = c.getTemp(n)
-    c.gABC(n, opcLdObj, cc, a, b)
-    c.gABC(n, opcNodeToReg, d, cc)
-    c.freeTemp(cc)
-  else:
-    c.gABC(n, opcLdObj, d, a, b)
-  c.freeTemp(a)
-
-proc genObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
-  genObjAccessAux(c, n, c.genx(n[0], flags), genField(c, n[1]), d, flags)
-
 proc genCheckedObjAccessAux(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   internalAssert c.config, n.kind == nkCheckedFieldExpr
   # nkDotExpr to access the requested field
@@ -1589,72 +1427,6 @@ proc genCheckedObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags
     c.gABC(n, opcLdObj, d, objR, fieldPos)
 
   c.freeTemp(objR)
-
-proc getNullValueAux(t: PType; obj: PNode, result: PNode; config: ConfigRef; currPosition: var int) =
-  if t != nil and t.len > 0 and t[0] != nil:
-    let b = skipTypes(t[0], skipPtrs)
-    getNullValueAux(b, b.n, result, config, currPosition)
-  case obj.kind
-  of nkRecList:
-    for i in 0..<obj.len: getNullValueAux(nil, obj[i], result, config, currPosition)
-  of nkRecCase:
-    getNullValueAux(nil, obj[0], result, config, currPosition)
-    for i in 1..<obj.len:
-      getNullValueAux(nil, lastSon(obj[i]), result, config, currPosition)
-  of nkSym:
-    let field = newNodeI(nkExprColonExpr, result.info)
-    field.add(obj)
-    let value = getNullValue(obj.sym.typ, result.info, config)
-    value.flags.incl nfSkipFieldChecking
-    field.add(value)
-    result.add field
-    doAssert obj.sym.position == currPosition
-    inc currPosition
-  else: globalError(config, result.info, "cannot create null element for: " & $obj)
-
-proc getNullValue(typ: PType, info: TLineInfo; config: ConfigRef): PNode =
-  var t = skipTypes(typ, abstractRange+{tyStatic, tyOwned}-{tyTypeDesc})
-  case t.kind
-  of tyBool, tyEnum, tyChar, tyInt..tyInt64:
-    result = newNodeIT(nkIntLit, info, t)
-  of tyUInt..tyUInt64:
-    result = newNodeIT(nkUIntLit, info, t)
-  of tyFloat..tyFloat128:
-    result = newNodeIT(nkFloatLit, info, t)
-  of tyString:
-    result = newNodeIT(nkStrLit, info, t)
-    result.strVal = ""
-  of tyCstring, tyVar, tyLent, tyPointer, tyPtr, tyUntyped,
-     tyTyped, tyTypeDesc, tyRef, tyNil:
-    result = newNodeIT(nkNilLit, info, t)
-  of tyProc:
-    if t.callConv != ccClosure:
-      result = newNodeIT(nkNilLit, info, t)
-    else:
-      result = newNodeIT(nkTupleConstr, info, t)
-      result.add(newNodeIT(nkNilLit, info, t))
-      result.add(newNodeIT(nkNilLit, info, t))
-  of tyObject:
-    result = newNodeIT(nkObjConstr, info, t)
-    result.add(newNodeIT(nkEmpty, info, t))
-    # initialize inherited fields, and all in the correct order:
-    var currPosition = 0
-    getNullValueAux(t, t.n, result, config, currPosition)
-  of tyArray:
-    result = newNodeIT(nkBracket, info, t)
-    for i in 0..<toInt(lengthOrd(config, t)):
-      result.add getNullValue(elemType(t), info, config)
-  of tyTuple:
-    result = newNodeIT(nkTupleConstr, info, t)
-    for i in 0..<t.len:
-      result.add getNullValue(t[i], info, config)
-  of tySet:
-    result = newNodeIT(nkCurly, info, t)
-  of tySequence, tyOpenArray:
-    result = newNodeIT(nkBracket, info, t)
-  else:
-    globalError(config, info, "cannot create null element for: " & $t.kind)
-    result = newNodeI(nkEmpty, info)
 
 proc genSetConstr(c: var ProcCon; n: PNode, d: var Value) =
   if isEmpty(d): d = c.getTemp(n)
@@ -1849,6 +1621,18 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   else:
     localError c.config, n.info, "invalid type for nkBracketExpr: " & $arrayKind
 
+proc genObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
+  let a = genx(c, n[0], flags)
+
+  template body(target) =
+    buildTyped target, info, FieldAt, typeToIr(c.m.types, n.typ):
+      copyTree target, a
+      genField c, n[1], Value(target)
+
+      copyTree target, b
+  valueIntoDest c, info, d, n.typ, body
+  freeTemp c, a
+
 proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind & " " & $flags
@@ -1878,15 +1662,11 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     unused(c, n, d)
     genAsgn(c, n)
-  of nkDotExpr:
-    #genObjAccess(c, n, d, flags)
-    discard "XXX"
+  of nkDotExpr: genObjAccess(c, n, d, flags)
   of nkCheckedFieldExpr:
     #genCheckedObjAccess(c, n, d, flags)
     discard "XXX"
-  of nkBracketExpr:
-    #genArrAccess(c, n, d, flags)
-    discard "XXX"
+  of nkBracketExpr: genArrAccess(c, n, d, flags)
   of nkDerefExpr, nkHiddenDeref: genDeref(c, n, d, flags)
   of nkAddr, nkHiddenAddr: genAddr(c, n, d, flags)
   of nkIfStmt, nkIfExpr: genIf(c, n, d)
