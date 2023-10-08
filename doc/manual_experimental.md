@@ -2456,7 +2456,7 @@ struct Test {
 
 ```
 
-Notice without without `noInit` it would produce `Foo foo {}` and `Boo boo {}`
+Notice that without `noInit` it would produce `Foo foo {}` and `Boo boo {}`
 
 
 Member pragma
