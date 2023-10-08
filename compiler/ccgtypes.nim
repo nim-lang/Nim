@@ -735,7 +735,8 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
       else:
         # don't use fieldType here because we need the
         # tyGenericInst for C++ template support
-        if fieldType.isOrHasImportedCppType() or hasCppCtor(m, field.owner.typ):
+        let noInit = sfNoInit in field.flags or (field.typ.sym != nil and sfNoInit in field.typ.sym.flags)
+        if not noInit and (fieldType.isOrHasImportedCppType() or hasCppCtor(m, field.owner.typ)):
           var initializer = genCppInitializer(m, nil, fieldType)
           result.addf("\t$1$3 $2$4;$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias, initializer])
         else:
