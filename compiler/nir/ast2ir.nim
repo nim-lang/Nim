@@ -1192,7 +1192,7 @@ proc genObjOrTupleConstr(c: var ProcCon; n: PNode, d: var Value) =
   let info = toLineInfo(c, n.info)
   template body(target) =
     buildTyped target, info, ObjConstr, typeToIr(c.m.types, n.typ):
-      for i in 0..<n.len:
+      for i in ord(n.kind == nkObjConstr)..<n.len:
         let it = n[i]
         if it.kind == nkExprColonExpr:
           genField(c, it[0], Value target)
