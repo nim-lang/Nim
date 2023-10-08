@@ -2408,6 +2408,56 @@ proc makeCppStruct(a: cint = 5, b:cstring = "hello"): CppStruct {.importcpp: "Cp
 # If one removes a default value from the constructor and passes it to the call explicitly, the C++ compiler will complain.
 
 ```
+Skip initializers in fields members
+===================================
+
+By using `noInit` in a type or field declaration, the compiler will skip the initializer. By doing so one can explicitly initialize those values in the constructor of the type owner.
+
+For example:
+
+```nim
+
+{.emit: """/*TYPESECTION*/
+  struct Foo {
+    Foo(int a){};
+  };
+  struct Boo {
+    Boo(int a){};
+  };
+
+  """.}
+
+type 
+  Foo {.importcpp.} = object
+  Boo {.importcpp, noInit.} = object
+  Test {.exportc.} = object
+    foo {.noInit.}: Foo
+    boo: Boo
+
+proc makeTest(): Test {.constructor: "Test() : foo(10), boo(1)".} = 
+  discard
+
+proc main() = 
+  var t = makeTest()
+
+main()
+
+```
+
+Will produce: 
+
+```c++
+
+struct Test {
+	Foo foo; 
+	Boo boo;
+  N_LIB_PRIVATE N_NOCONV(, Test)(void);
+};
+
+```
+
+Notice that without `noInit` it would produce `Foo foo {}` and `Boo boo {}`
+
 
 Member pragma
 =============
