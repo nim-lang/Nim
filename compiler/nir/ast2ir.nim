@@ -386,11 +386,11 @@ proc rawCall(c: var ProcCon; info: PackedLineInfo; opc: Opcode; t: TypeId; args:
       c.code.copyTree a
       freeTemp c, a
 
-proc canRaiseDisp(p: ProcCon; n: PNode): bool =
+proc canRaiseDisp(c: ProcCon; n: PNode): bool =
   # we assume things like sysFatal cannot raise themselves
   if n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
     result = false
-  elif optPanics in p.config.globalOptions or
+  elif optPanics in c.config.globalOptions or
       (n.kind == nkSym and sfSystemModule in getModule(n.sym).flags and
        sfSystemRaisesDefect notin n.sym.flags):
     # we know we can be strict:
@@ -1631,6 +1631,14 @@ proc genObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   valueIntoDest c, info, d, n.typ, body
   freeTemp c, a
 
+proc genSetConstr(c: var ProcCon; n: PNode; d: var Value) =
+  # example: { a..b, c, d, e, f..g }
+  # we have to emit an expression of the form:
+  # nimZeroMem(tmp, sizeof(tmp)); inclRange(tmp, a, b); incl(tmp, c);
+  # incl(tmp, d); incl(tmp, e); inclRange(tmp, f, g);
+  let t = typeToIr(c.m.types, n.typ)
+  discard "XXX"
+
 proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind & " " & $flags
@@ -1713,11 +1721,8 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
     unused(c, n, d)
   of nkStringToCString: convStrToCStr(c, n, d)
   of nkCStringToString: convCStrToStr(c, n, d)
-  of nkBracket:
-    genArrayConstr(c, n, d)
-  of nkCurly:
-    #genSetConstr(c, n, d)
-    discard "XXX"
+  of nkBracket: genArrayConstr(c, n, d)
+  of nkCurly: genSetConstr(c, n, d)
   of nkObjConstr, nkPar, nkClosure, nkTupleConstr:
     genObjOrTupleConstr(c, n, d)
   of nkCast:

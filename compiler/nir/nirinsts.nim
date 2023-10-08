@@ -287,6 +287,66 @@ proc addNilVal*(t: var Tree; info: PackedLineInfo; typ: TypeId) =
   buildTyped t, info, NumberConv, typ:
     t.nodes.add Instr(x: toX(NilVal, uint32(0)), info: info)
 
+proc escapeToNimLit(s: string; result: var string) =
+  result.add '"'
+  for c in items s:
+    if c < ' ' or int(c) >= 128:
+      result.add '\\'
+      result.addInt int(c)
+    elif c == '\\':
+      result.add r"\\"
+    elif c == '\n':
+      result.add r"\n"
+    elif c == '\r':
+      result.add r"\r"
+    elif c == '\t':
+      result.add r"\t"
+    else:
+      result.add c
+  result.add '"'
+
+proc toString(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTable[int64];
+              r: var string; nesting = 0) =
+  if r.len > 0 and r[r.len-1] notin {' ', '\n', '(', '[', '{'}:
+    r.add ' '
+
+  case t[pos].kind
+  of Nop: r.add "Nop"
+  of ImmediateVal:
+    r.add $t[pos].operand
+  of IntVal:
+    r.add "IntVal "
+    r.add $integers[LitId t[pos].operand]
+  of StrVal:
+    escapeToNimLit(strings[LitId t[pos].operand], r)
+  of SymDef:
+    r.add "SymDef "
+    r.add $t[pos].operand
+  of SymUse:
+    r.add "SymUse "
+    r.add $t[pos].operand
+  of Typed:
+    r.add "Typed "
+    r.add $t[pos].operand
+  of NilVal:
+    r.add "NilVal"
+  of Label:
+    r.add "L"
+    r.add $t[pos].operand
+  of Goto, CheckedGoto, LoopLabel, GotoLoop:
+    r.add $t[pos].kind
+    r.add ' '
+    r.add $t[pos].operand
+  else:
+    r.add $t[pos].kind
+    r.add "{\n"
+    for i in 0..<(nesting+1)*2: r.add ' '
+    for p in sons(t, pos):
+      toString t, p, strings, integers, r, nesting+1
+    r.add "\n"
+    for i in 0..<nesting*2: r.add ' '
+    r.add "}"
+
 type
   Value* = distinct Tree
 
