@@ -10,6 +10,7 @@
 ## Nim Intermediate Representation, designed to capture all of Nim's semantics without losing too much
 ## precious information. Can easily be translated into C. And to JavaScript, hopefully.
 
+import ".." / [ast, modulegraphs, renderer]
 import nirtypes, nirinsts, ast2ir
 
 type
@@ -20,11 +21,11 @@ type
 
 proc newCtx*(module: PSym; g: ModuleGraph; idgen: IdGenerator): PCtx =
   let m = initModuleCon(g, g.config, idgen, module)
-  PCtx(m: m, c: initProcCon(m, nil))
+  PCtx(m: m, c: initProcCon(m, nil, g.config))
 
 proc refresh*(c: PCtx; module: PSym; idgen: IdGenerator) =
   c.m = initModuleCon(c.m.graph, c.m.graph.config, idgen, module)
-  c.c = initProcCon(c.m, nil)
+  c.c = initProcCon(c.m, nil, c.m.graph.config)
 
 proc setupGlobalCtx*(module: PSym; graph: ModuleGraph; idgen: IdGenerator) =
   if graph.repl.isNil:
@@ -33,11 +34,22 @@ proc setupGlobalCtx*(module: PSym; graph: ModuleGraph; idgen: IdGenerator) =
   else:
     refresh(PCtx graph.repl, module, idgen)
 
-proc setupEvalGen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
+proc setupNirReplGen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   setupGlobalCtx(module, graph, idgen)
   result = PCtx graph.repl
 
-proc interpreterCode*(c: PPassContext; n: PNode): PNode =
+proc evalStmt(c: PCtx; n: PNode) =
+  let pc = genStmt(c.c, n)
+
+  var res = ""
+  if c.c.code.len > 0:
+    toString c.c.code, NodePos(pc), c.m.strings, c.m.integers, res
+  #res.add "\n"
+  #toString res, c.m.types.g
+  echo res
+
+
+proc runCode*(c: PPassContext; n: PNode): PNode =
   let c = PCtx(c)
   # don't eval errornous code:
   if c.oldErrorCount == c.m.graph.config.errorCounter:
@@ -45,7 +57,7 @@ proc interpreterCode*(c: PPassContext; n: PNode): PNode =
     result = newNodeI(nkEmpty, n.info)
   else:
     result = n
-  c.oldErrorCount = c.config.errorCounter
+  c.oldErrorCount = c.m.graph.config.errorCounter
 
 when false:
   type

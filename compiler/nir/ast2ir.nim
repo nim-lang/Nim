@@ -17,29 +17,25 @@ import .. / ic / bitabs
 import nirtypes, nirinsts, nirlineinfos, nirslots, types2ir
 
 type
-  ModuleCon = ref object
-    strings: BiTable[string]
-    integers: BiTable[int64]
-    man: LineInfoManager
-    types: TypesCon
+  ModuleCon* = ref object
+    strings*: BiTable[string]
+    integers*: BiTable[int64]
+    man*: LineInfoManager
+    types*: TypesCon
     slotGenerator: ref int
     module: PSym
-    graph: ModuleGraph
+    graph*: ModuleGraph
     nativeIntId: TypeId
     idgen: IdGenerator
     pendingProcs: Table[ItemId, PSym] # procs we still need to generate code for
 
-  LocInfo = object
-    inUse: bool
-    typ: TypeId
-
-  ProcCon = object
+  ProcCon* = object
     config: ConfigRef
     lastFileKey: FileIndex
     lastFileVal: LitId
     labelGen: int
     exitLabel: LabelId
-    code: Tree
+    code*: Tree
     blocks: seq[(PSym, LabelId)]
     sm: SlotManager
     locGen: int
@@ -54,8 +50,8 @@ proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; m
   of 4: result.nativeIntId = Int32Id
   else: result.nativeIntId = Int64Id
 
-proc initProcCon*(m: ModuleCon; prc: PSym): ProcCon =
-  ProcCon(m: m, sm: initSlotManager({}, m.slotGenerator), prc: prc)
+proc initProcCon*(m: ModuleCon; prc: PSym; config: ConfigRef): ProcCon =
+  ProcCon(m: m, sm: initSlotManager({}, m.slotGenerator), prc: prc, config: config)
 
 proc toLineInfo(c: var ProcCon; i: TLineInfo): PackedLineInfo =
   var val: LitId
@@ -1228,6 +1224,8 @@ proc genArrayConstr(c: var ProcCon; n: PNode, d: var Value) =
   valueIntoDest c, info, d, n.typ, body
 
 proc genAsgn2(c: var ProcCon; a, b: PNode) =
+  assert a != nil
+  assert b != nil
   var d = c.genx(a)
   c.gen b, d
 

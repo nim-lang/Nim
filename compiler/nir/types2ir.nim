@@ -15,7 +15,7 @@ type
   TypesCon* = object
     processed: Table[ItemId, TypeId]
     recursionCheck: HashSet[ItemId]
-    g: TypeGraph
+    g*: TypeGraph
     conf: ConfigRef
 
 proc initTypesCon*(conf: ConfigRef): TypesCon =
@@ -116,7 +116,7 @@ proc tupleToIr(c: var TypesCon; t: PType): TypeId =
 proc procToIr(c: var TypesCon; t: PType; addEnv = false): TypeId =
   var fieldTypes = newSeq[TypeId](0)
   for i in 0..<t.len:
-    if not isCompileTimeOnly(t[i]):
+    if t[i] == nil or not isCompileTimeOnly(t[i]):
       fieldTypes.add typeToIr(c, t[i])
   let obj = openType(c.g, ProcTy)
 

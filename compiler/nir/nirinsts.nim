@@ -305,8 +305,8 @@ proc escapeToNimLit(s: string; result: var string) =
       result.add c
   result.add '"'
 
-proc toString(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTable[int64];
-              r: var string; nesting = 0) =
+proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTable[int64];
+               r: var string; nesting = 0) =
   if r.len > 0 and r[r.len-1] notin {' ', '\n', '(', '[', '{'}:
     r.add ' '
 
