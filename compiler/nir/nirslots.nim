@@ -52,8 +52,7 @@ proc freeLoc*(m: var SlotManager; s: SymId) =
 
 proc freeTemp*(m: var SlotManager; s: SymId) =
   let t = m.live.getOrDefault(s)
-  assert t[1].int != 0
-  if t[0] == Temp:
+  if t[1].int != 0 and t[0] == Temp:
     m.live.del s
     m.dead.mgetOrPut(t[1], @[]).add s
 

@@ -29,6 +29,7 @@ type
     SymDef,
     SymUse,
     Typed,   # with type ID
+    PragmaId, # with Pragma ID, possible values: see PragmaKey enum
     NilVal,
     Label,
     Goto,
@@ -51,6 +52,7 @@ type
     SummonGlobal,
     SummonThreadLocal,
     Summon, # x = Summon Typed <Type ID>; x begins to live
+    SummonParam,
     SummonConst,
     Kill, # `Kill x`: scope end for `x`
 
@@ -94,7 +96,17 @@ type
     ObjConv,
     TestOf,
     Emit,
-    ProcDecl
+    ProcDecl,
+    PragmaPair
+
+type
+  PragmaKey* = enum
+    FastCall, StdCall, CDeclCall, SafeCall, SysCall, InlineCall, NoinlineCall, ThisCall, NoCall,
+    ExternName,
+    HeaderImport,
+    DllImport,
+    DllExport,
+    ObjExport
 
 const
   LastAtomicValue = GotoLoop
@@ -262,11 +274,14 @@ proc addLabel*(t: var Tree; info: PackedLineInfo; k: Opcode; L: LabelId) {.inlin
 proc addSymUse*(t: var Tree; info: PackedLineInfo; s: SymId) {.inline.} =
   t.nodes.add Instr(x: toX(SymUse, uint32(s)), info: info)
 
+proc addSymDef*(t: var Tree; info: PackedLineInfo; s: SymId) {.inline.} =
+  t.nodes.add Instr(x: toX(SymDef, uint32(s)), info: info)
+
 proc addTyped*(t: var Tree; info: PackedLineInfo; typ: TypeId) {.inline.} =
   t.nodes.add Instr(x: toX(Typed, uint32(typ)), info: info)
 
 proc addSummon*(t: var Tree; info: PackedLineInfo; s: SymId; typ: TypeId; opc = Summon) {.inline.} =
-  assert opc in {Summon, SummonConst, SummonGlobal, SummonThreadLocal}
+  assert opc in {Summon, SummonConst, SummonGlobal, SummonThreadLocal, SummonParam}
   let x = prepare(t, info, opc)
   t.nodes.add Instr(x: toX(Typed, uint32(typ)), info: info)
   t.nodes.add Instr(x: toX(SymDef, uint32(s)), info: info)
@@ -275,6 +290,9 @@ proc addSummon*(t: var Tree; info: PackedLineInfo; s: SymId; typ: TypeId; opc = 
 proc addImmediateVal*(t: var Tree; info: PackedLineInfo; x: int) =
   assert x >= 0 and x < ((1 shl 32) - OpcodeBits.int)
   t.nodes.add Instr(x: toX(ImmediateVal, uint32(x)), info: info)
+
+proc addPragmaId*(t: var Tree; info: PackedLineInfo; x: PragmaKey) =
+  t.nodes.add Instr(x: toX(PragmaId, uint32(x)), info: info)
 
 proc addIntVal*(t: var Tree; integers: var BiTable[int64]; info: PackedLineInfo; typ: TypeId; x: int64) =
   buildTyped t, info, NumberConv, typ:
@@ -325,6 +343,8 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
   of SymUse:
     r.add "SymUse "
     r.add $t[pos].operand
+  of PragmaId:
+    r.add $cast[PragmaKey](t[pos].operand)
   of Typed:
     r.add "Typed "
     r.add $t[pos].operand
