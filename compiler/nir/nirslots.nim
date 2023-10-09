@@ -69,7 +69,7 @@ proc closeScope*(m: var SlotManager) =
   var i = m.inScope.len - 1
   while i >= 0:
     if m.inScope[i] == SymId(-1):
-      m.inScope.setLen i-1
+      m.inScope.setLen i
       break
     dec i
 
