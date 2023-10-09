@@ -681,6 +681,7 @@ proc genBinaryCp(c: var ProcCon; n: PNode; d: var Value; compilerProc: string) =
   template body(target) =
     buildTyped target, info, Call, t:
       let codegenProc = magicsys.getCompilerProc(c.m.graph, compilerProc)
+      #assert codegenProc != nil, $n & " " & (c.m.graph.config $ n.info)
       let theProc = c.genx newSymNode(codegenProc, n.info)
       copyTree target, theProc
       copyTree target, xa

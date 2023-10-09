@@ -1420,12 +1420,12 @@ proc len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.}
   ##   ```
   result = max(0, ord(x.b) - ord(x.a) + 1)
 
-template isNil*[T](x: ref T): bool = cast[pointer](x) == nil
+template isNil*[T](x: ref T): bool = system.`==`(x, nil)
 
-template isNil*[T](x: ptr T): bool = pointer(x) == nil
-template isNil*(x: pointer): bool = pointer(x) == nil
-template isNil*(x: cstring): bool = pointer(x) == nil
-template isNil*[T: proc | iterator {.closure.}](x: T): bool = x == nil
+template isNil*[T](x: ptr T): bool = system.`==`(x, nil)
+template isNil*(x: pointer): bool = system.`==`(x, nil)
+template isNil*(x: cstring): bool = system.`==`(x, nil)
+template isNil*[T: proc | iterator {.closure.}](x: T): bool = system.`==`(x, nil)
   ## Sugar for `x == nil`.
 
 
