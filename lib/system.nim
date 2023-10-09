@@ -1420,14 +1420,14 @@ proc len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.}
   ##   ```
   result = max(0, ord(x.b) - ord(x.a) + 1)
 
-template isNil*[T](x: ref T): bool = system.`==`(x, nil)
+proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
 
-template isNil*[T](x: ptr T): bool = system.`==`(x, nil)
-template isNil*(x: pointer): bool = system.`==`(x, nil)
-template isNil*(x: cstring): bool = system.`==`(x, nil)
-template isNil*[T: proc | iterator {.closure.}](x: T): bool = system.`==`(x, nil)
-  ## Sugar for `x == nil`.
-
+proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
+proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
+proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
+proc isNil*[T: proc | iterator {.closure.}](x: T): bool {.noSideEffect, magic: "IsNil".}
+  ## Fast check whether `x` is nil. This is sometimes more efficient than
+  ## `== nil`.
 
 when defined(nimHasTopDownInference):
   # magic used for seq type inference
