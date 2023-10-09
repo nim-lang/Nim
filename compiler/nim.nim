@@ -116,7 +116,8 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     conf.backend = backendC
 
   if conf.selectedGC == gcUnselected:
-    if conf.backend in {backendC, backendCpp, backendObjc}:
+    if conf.backend in {backendC, backendCpp, backendObjc} or
+        (conf.cmd == cmdInteractive and isDefined(conf, "nir")):
       initOrcDefines(conf)
 
   mainCommand(graph)

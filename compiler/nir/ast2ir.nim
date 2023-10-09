@@ -721,6 +721,17 @@ proc genOf(c: var ProcCon; n: PNode; d: var Value) =
 template sizeOfLikeMsg(name): string =
   "'" & name & "' requires '.importc' types to be '.completeStruct'"
 
+proc genIsNil(c: var ProcCon; n: PNode; d: var Value) =
+  let info = toLineInfo(c, n.info)
+  let tmp = c.genx(n[1])
+  let t = typeToIr(c.m.types, n.typ)
+  template body(target) =
+    buildTyped target, info, Eq, t:
+      copyTree target, tmp
+      addNilVal target, info, typeToIr(c.m.types, n[1].typ)
+  intoDest d, info, t, body
+  c.freeTemp(tmp)
+
 proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, d)
@@ -863,6 +874,7 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
     let nb = copyTree(n)
     nb[1] = makeAddr(nb[1], c.m.idgen)
     genCall(c, nb, d)
+  of mIsNil: genIsNil(c, n, d)
   else:
     # mGCref, mGCunref,
     globalError(c.config, n.info, "cannot generate code for: " & $m)
@@ -1527,12 +1539,12 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
     gen(c, newSymNode(n[namePos].sym), d)
   of nkChckRangeF, nkChckRange64, nkChckRange:
     genRangeCheck(c, n, d)
-  of declarativeDefs:
+  of declarativeDefs - {nkIteratorDef}:
     unused(c, n, d)
     genProc(c, n)
   of nkEmpty, nkCommentStmt, nkTypeSection, nkPragma,
      nkTemplateDef, nkIncludeStmt, nkImportStmt, nkFromStmt, nkExportStmt,
-     nkMixinStmt, nkBindStmt, nkMacroDef:
+     nkMixinStmt, nkBindStmt, nkMacroDef, nkIteratorDef:
     unused(c, n, d)
   of nkStringToCString: convStrToCStr(c, n, d)
   of nkCStringToString: convCStrToStr(c, n, d)
