@@ -610,6 +610,7 @@ proc genIncDec(c: var ProcCon; n: PNode; opc: Opcode) =
   c.freeTemp(d)
 
 proc genArrayLen(c: var ProcCon; n: PNode; d: var Value) =
+  #echo c.m.graph.config $ n.info, " ", n
   let info = toLineInfo(c, n.info)
   var a = n[1]
   #if a.kind == nkHiddenAddr: a = a[0]
