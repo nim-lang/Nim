@@ -122,6 +122,7 @@ proc genScope(c: var ProcCon; n: PNode; flags: GenFlags = {}) =
 proc genx(c: var ProcCon; n: PNode; flags: GenFlags = {}): Value =
   result = default(Value)
   gen(c, n, result, flags)
+  assert Tree(result).len > 0, $n.kind
 
 proc clearDest(c: var ProcCon; n: PNode; d: var Value) {.inline.} =
   when false:
@@ -627,6 +628,7 @@ proc genArrayLen(c: var ProcCon; n: PNode; d: var Value) =
     if isEmpty(d): d = getTemp(c, n)
     buildTyped c.code, info, Call, c.m.nativeIntId:
       let codegenProc = magicsys.getCompilerProc(c.m.graph, "nimCStrLen")
+      assert codegenProc != nil
       let theProc = c.genx newSymNode(codegenProc, n.info)
       copyTree c.code, theProc
       copyTree c.code, xa
@@ -1131,7 +1133,7 @@ proc genConv(c: var ProcCon; n, arg: PNode; d: var Value; flags: GenFlags; opc: 
     return
 
   let info = toLineInfo(c, n.info)
-  let tmp = c.genx(n[0], flags)
+  let tmp = c.genx(arg, flags)
   template body(target) =
     buildTyped target, info, opc, typeToIr(c.m.types, n.typ):
       if opc == CheckedObjConv:
@@ -1537,7 +1539,7 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   of nkObjConstr, nkPar, nkClosure, nkTupleConstr:
     genObjOrTupleConstr(c, n, d)
   of nkCast:
-    genConv(c, n, n[0], d, flags, Cast)
+    genConv(c, n, n[1], d, flags, Cast)
   of nkComesFrom:
     discard "XXX to implement for better stack traces"
   else:
