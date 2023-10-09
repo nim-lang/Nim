@@ -10,7 +10,7 @@
 ## Nim Intermediate Representation, designed to capture all of Nim's semantics without losing too much
 ## precious information. Can easily be translated into C. And to JavaScript, hopefully.
 
-import ".." / [ast, modulegraphs, renderer]
+import ".." / [ast, modulegraphs, renderer, transf]
 import nirtypes, nirinsts, ast2ir
 
 type
@@ -21,11 +21,12 @@ type
 
 proc newCtx*(module: PSym; g: ModuleGraph; idgen: IdGenerator): PCtx =
   let m = initModuleCon(g, g.config, idgen, module)
-  PCtx(m: m, c: initProcCon(m, nil, g.config))
+  PCtx(m: m, c: initProcCon(m, nil, g.config), idgen: idgen)
 
 proc refresh*(c: PCtx; module: PSym; idgen: IdGenerator) =
   c.m = initModuleCon(c.m.graph, c.m.graph.config, idgen, module)
   c.c = initProcCon(c.m, nil, c.m.graph.config)
+  c.idgen = idgen
 
 proc setupGlobalCtx*(module: PSym; graph: ModuleGraph; idgen: IdGenerator) =
   if graph.repl.isNil:
@@ -39,10 +40,11 @@ proc setupNirReplGen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPa
   result = PCtx graph.repl
 
 proc evalStmt(c: PCtx; n: PNode) =
+  let n = transformExpr(c.m.graph, c.idgen, c.m.module, n)
   let pc = genStmt(c.c, n)
 
   var res = ""
-  if c.c.code.len > 0:
+  if pc < c.c.code.len:
     toString c.c.code, NodePos(pc), c.m.strings, c.m.integers, res
   #res.add "\n"
   #toString res, c.m.types.g

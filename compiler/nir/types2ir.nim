@@ -383,10 +383,15 @@ proc typeToIr*(c: var TypesCon; t: PType): TypeId =
         result = sealType(c.g, a)
   of tyVar, tyLent:
     cached(c, t):
-      let elemType = typeToIr(c, t.lastSon)
-      let a = openType(c.g, APtrTy)
-      c.g.addType(elemType)
-      result = sealType(c.g, a)
+      let e = t.lastSon
+      if e.skipTypes(abstractInst).kind in {tyOpenArray, tyVarargs}:
+        # skip the modifier, `var openArray` is a (ptr, len) pair too:
+        result = typeToIr(c, e)
+      else:
+        let elemType = typeToIr(c, e)
+        let a = openType(c.g, APtrTy)
+        c.g.addType(elemType)
+        result = sealType(c.g, a)
   of tySet:
     let s = int(getSize(c.conf, t))
     case s

@@ -23,7 +23,7 @@ type
     man*: LineInfoManager
     types*: TypesCon
     slotGenerator: ref int
-    module: PSym
+    module*: PSym
     graph*: ModuleGraph
     nativeIntId: TypeId
     idgen: IdGenerator
@@ -1508,6 +1508,11 @@ proc genSym(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
       if not c.m.pendingProcs.hasKey(s.itemId):
         c.m.pendingProcs[s.itemId] = s
     genRdVar(c, n, d, flags)
+  of skEnumField:
+    let info = toLineInfo(c, n.info)
+    template body(target) =
+      target.addIntVal c.m.integers, info, typeToIr(c.m.types, n.typ), s.position
+    valueIntoDest c, info, d, n.typ, body
   else:
     localError(c.config, n.info, "cannot generate code for: " & s.name.s)
 
