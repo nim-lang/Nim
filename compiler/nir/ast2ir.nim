@@ -589,6 +589,19 @@ proc genBinaryOp(c: var ProcCon; n: PNode; d: var Value; opc: Opcode) =
   c.freeTemp(tmp)
   c.freeTemp(tmp2)
 
+proc genCmpOp(c: var ProcCon; n: PNode; d: var Value; opc: Opcode) =
+  let info = toLineInfo(c, n.info)
+  let tmp = c.genx(n[1])
+  let tmp2 = c.genx(n[2])
+  let t = typeToIr(c.m.types, n[1].typ)
+  template body(target) =
+    buildTyped target, info, opc, t:
+      copyTree target, tmp
+      copyTree target, tmp2
+  intoDest d, info, Bool8Id, body
+  c.freeTemp(tmp)
+  c.freeTemp(tmp2)
+
 proc genUnaryOp(c: var ProcCon; n: PNode; d: var Value; opc: Opcode) =
   let info = toLineInfo(c, n.info)
   let tmp = c.genx(n[1])
@@ -730,12 +743,12 @@ template sizeOfLikeMsg(name): string =
 proc genIsNil(c: var ProcCon; n: PNode; d: var Value) =
   let info = toLineInfo(c, n.info)
   let tmp = c.genx(n[1])
-  let t = typeToIr(c.m.types, n.typ)
+  let t = typeToIr(c.m.types, n[1].typ)
   template body(target) =
     buildTyped target, info, Eq, t:
       copyTree target, tmp
-      addNilVal target, info, typeToIr(c.m.types, n[1].typ)
-  intoDest d, info, t, body
+      addNilVal target, info, t
+  intoDest d, info, Bool8Id, body
   c.freeTemp(tmp)
 
 proc fewCmps(conf: ConfigRef; s: PNode): bool =
@@ -769,7 +782,7 @@ proc genInBitset(c: var ProcCon; n: PNode; d: var Value) =
 
   template body(target) =
     buildTyped target, info, BoolNot, Bool8Id:
-      buildTyped target, info, Eq, Bool8Id:
+      buildTyped target, info, Eq, t:
         buildTyped target, info, BitAnd, t:
           if c.m.types.g[setType].kind != ArrayTy:
             copyTree target, a
@@ -813,6 +826,7 @@ proc genInSet(c: var ProcCon; n: PNode; d: var Value) =
         )
       else:
         test = newTree(nkCall, g.operators.opEq.newSymNode, elem, it)
+      test.typ = getSysType(g, it.info, tyBool)
 
       if ex == nil: ex = test
       else: ex = newTree(nkCall, g.operators.opOr.newSymNode, ex, test)
@@ -881,10 +895,12 @@ proc genSetOp(c: var ProcCon; n: PNode; d: var Value; op: TMagic) =
       "for ($1 = 0; $1 < $2; $1++) { $n" &
       "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" &
       "  if (!$3) break;}$n",
+
       "for ($1 = 0; $1 < $2; $1++) { $n" &
       "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" &
       "  if (!$3) break;}$n" &
       "if ($3) $3 = (#nimCmpMem($4, $5, $2) != 0);$n",
+
       "&",
       "|",
       "& ~"]
@@ -967,7 +983,6 @@ proc genCard(c: var ProcCon; n: PNode; d: var Value) =
   buildTyped c.code, info, Asgn, t:
     copyTree c.code, d
     buildTyped c.code, info, Call, t:
-      var codegenProc: PSym
       if c.m.types.g[setType].kind == ArrayTy:
         let codegenProc = magicsys.getCompilerProc(c.m.graph, "cardSet")
         let theProc = c.genx newSymNode(codegenProc, n.info)
@@ -988,8 +1003,70 @@ proc genCard(c: var ProcCon; n: PNode; d: var Value) =
           copyTree c.code, a
   freeTemp c, a
 
-proc genEqSet(c: var ProcCon; n: PNode; d: var Value) = discard
-proc genLeSet(c: var ProcCon; n: PNode; d: var Value) = discard
+proc genEqSet(c: var ProcCon; n: PNode; d: var Value) =
+  let info = toLineInfo(c, n.info)
+  let a = c.genx(n[1])
+  let b = c.genx(n[2])
+  let t = typeToIr(c.m.types, n.typ)
+
+  let setType = typeToIr(c.m.types, n[1].typ)
+
+  if c.m.types.g[setType].kind == ArrayTy:
+    if isEmpty(d): d = getTemp(c, n)
+
+    buildTyped c.code, info, Asgn, t:
+      copyTree c.code, d
+      buildTyped c.code, info, Eq, t:
+        buildTyped c.code, info, Call, t:
+          let codegenProc = magicsys.getCompilerProc(c.m.graph, "nimCmpMem")
+          let theProc = c.genx newSymNode(codegenProc, n.info)
+          copyTree c.code, theProc
+          buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.types.g, setType):
+            copyTree c.code, a
+          buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.types.g, setType):
+            copyTree c.code, b
+          c.code.addImmediateVal info, int(getSize(c.config, n[1].typ))
+        c.code.addIntVal c.m.integers, info, c.m.nativeIntId, 0
+
+  else:
+    template body(target) =
+      buildTyped target, info, Eq, setType:
+        copyTree target, a
+        copyTree target, b
+    intoDest d, info, Bool8Id, body
+
+  freeTemp c, b
+  freeTemp c, a
+
+proc genLeSet(c: var ProcCon; n: PNode; d: var Value) =
+  let info = toLineInfo(c, n.info)
+  let a = c.genx(n[1])
+  let b = c.genx(n[2])
+  let t = typeToIr(c.m.types, n.typ)
+
+  let setType = typeToIr(c.m.types, n[1].typ)
+
+  if c.m.types.g[setType].kind == ArrayTy:
+    if isEmpty(d): d = getTemp(c, n)
+    #    "for ($1 = 0; $1 < $2; $1++):"
+    #    "  $3 = (($4[$1] & ~ $5[$1]) == 0)"
+    #    "  if (!$3) break;"
+    discard "XXX to implement"
+  else:
+    # "(($1 & ~ $2)==0)"
+    template body(target) =
+      buildTyped target, info, Eq, setType:
+        buildTyped target, info, BitAnd, setType:
+          copyTree target, a
+          buildTyped target, info, BitNot, setType:
+            copyTree target, b
+        target.addIntVal c.m.integers, info, setType, 0
+
+    intoDest d, info, Bool8Id, body
+
+  freeTemp c, b
+  freeTemp c, a
+
 proc genLtSet(c: var ProcCon; n: PNode; d: var Value) = discard
 proc genBinarySet(c: var ProcCon; n: PNode; d: var Value; m: TMagic) = discard
 proc genInclExcl(c: var ProcCon; n: PNode; m: TMagic) = discard
@@ -1039,18 +1116,18 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   of mDivU: genBinaryOp(c, n, d, Div)
   of mModU: genBinaryOp(c, n, d, Mod)
   of mEqI, mEqB, mEqEnum, mEqCh:
-    genBinaryOp(c, n, d, Eq)
+    genCmpOp(c, n, d, Eq)
   of mLeI, mLeEnum, mLeCh, mLeB:
-    genBinaryOp(c, n, d, Le)
+    genCmpOp(c, n, d, Le)
   of mLtI, mLtEnum, mLtCh, mLtB:
-    genBinaryOp(c, n, d, Lt)
-  of mEqF64: genBinaryOp(c, n, d, Eq)
-  of mLeF64: genBinaryOp(c, n, d, Le)
-  of mLtF64: genBinaryOp(c, n, d, Lt)
-  of mLePtr, mLeU: genBinaryOp(c, n, d, Le)
-  of mLtPtr, mLtU: genBinaryOp(c, n, d, Lt)
+    genCmpOp(c, n, d, Lt)
+  of mEqF64: genCmpOp(c, n, d, Eq)
+  of mLeF64: genCmpOp(c, n, d, Le)
+  of mLtF64: genCmpOp(c, n, d, Lt)
+  of mLePtr, mLeU: genCmpOp(c, n, d, Le)
+  of mLtPtr, mLtU: genCmpOp(c, n, d, Lt)
   of mEqProc, mEqRef:
-    genBinaryOp(c, n, d, Eq)
+    genCmpOp(c, n, d, Eq)
   of mXor: genBinaryOp(c, n, d, BitXor)
   of mNot: genUnaryOp(c, n, d, BoolNot)
   of mUnaryMinusI, mUnaryMinusI64:
