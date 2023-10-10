@@ -306,6 +306,15 @@ proc closureToIr(c: var TypesCon; t: PType): TypeId =
 
   result = sealType(c.g, p) # ObjectDecl
 
+proc bitsetBasetype*(c: var TypesCon; t: PType): TypeId =
+  let s = int(getSize(c.conf, t))
+  case s
+  of 1: result = UInt8Id
+  of 2: result = UInt16Id
+  of 4: result = UInt32Id
+  of 8: result = UInt64Id
+  else: result = UInt8Id
+
 proc typeToIr*(c: var TypesCon; t: PType): TypeId =
   if t == nil: return VoidId
   case t.kind

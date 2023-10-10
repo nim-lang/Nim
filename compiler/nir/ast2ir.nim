@@ -25,7 +25,7 @@ type
     slotGenerator: ref int
     module*: PSym
     graph*: ModuleGraph
-    nativeIntId: TypeId
+    nativeIntId, nativeUIntId: TypeId
     idgen: IdGenerator
     pendingProcs: Table[ItemId, PSym] # procs we still need to generate code for
 
@@ -46,9 +46,15 @@ proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; m
   result = ModuleCon(graph: graph, types: initTypesCon(config), slotGenerator: new(int),
     idgen: idgen, module: module)
   case config.target.intSize
-  of 2: result.nativeIntId = Int16Id
-  of 4: result.nativeIntId = Int32Id
-  else: result.nativeIntId = Int64Id
+  of 2:
+    result.nativeIntId = Int16Id
+    result.nativeUIntId = UInt16Id
+  of 4:
+    result.nativeIntId = Int32Id
+    result.nativeUIntId = UInt16Id
+  else:
+    result.nativeIntId = Int64Id
+    result.nativeUIntId = UInt16Id
 
 proc initProcCon*(m: ModuleCon; prc: PSym; config: ConfigRef): ProcCon =
   ProcCon(m: m, sm: initSlotManager({}, m.slotGenerator), prc: prc, config: config)
@@ -732,6 +738,262 @@ proc genIsNil(c: var ProcCon; n: PNode; d: var Value) =
   intoDest d, info, t, body
   c.freeTemp(tmp)
 
+proc fewCmps(conf: ConfigRef; s: PNode): bool =
+  # this function estimates whether it is better to emit code
+  # for constructing the set or generating a bunch of comparisons directly
+  if s.kind != nkCurly:
+    result = false
+  elif (getSize(conf, s.typ) <= conf.target.intSize) and (nfAllConst in s.flags):
+    result = false            # it is better to emit the set generation code
+  elif elemType(s.typ).kind in {tyInt, tyInt16..tyInt64}:
+    result = true             # better not emit the set if int is basetype!
+  else:
+    result = s.len <= 8  # 8 seems to be a good value
+
+proc genInBitset(c: var ProcCon; n: PNode; d: var Value) =
+  let info = toLineInfo(c, n.info)
+  let a = c.genx(n[1])
+  let b = c.genx(n[2])
+
+  let t = bitsetBasetype(c.m.types, n[1].typ)
+  let setType = typeToIr(c.m.types, n[1].typ)
+  let mask =
+    case t
+    of UInt8Id: 7
+    of UInt16Id: 15
+    of UInt32Id: 31
+    else: 63
+  let expansion = if t == UInt64Id: UInt64Id else: c.m.nativeUIntId
+    # "(($1              &(1U<<((NU)($2)&7U)))!=0)"  - or -
+    # "(($1[(NU)($2)>>3] &(1U<<((NU)($2)&7U)))!=0)"
+
+  template body(target) =
+    buildTyped target, info, BoolNot, Bool8Id:
+      buildTyped target, info, Eq, Bool8Id:
+        buildTyped target, info, BitAnd, t:
+          if c.m.types.g[setType].kind != ArrayTy:
+            copyTree target, a
+          else:
+            buildTyped target, info, ArrayAt, t:
+              copyTree target, a
+              buildTyped target, info, BitShr, t:
+                buildTyped target, info, Cast, expansion:
+                  copyTree target, b
+                addIntVal target, c.m.integers, info, expansion, 3
+
+          buildTyped target, info, BitShl, t:
+            addIntVal target, c.m.integers, info, t, 1
+            buildTyped target, info, BitAnd, t:
+              buildTyped target, info, Cast, expansion:
+                copyTree target, b
+              addIntVal target, c.m.integers, info, expansion, mask
+        addIntVal target, c.m.integers, info, t, 0
+  intoDest d, info, t, body
+
+  c.freeTemp(b)
+  c.freeTemp(a)
+
+proc genInSet(c: var ProcCon; n: PNode; d: var Value) =
+  let g {.cursor.} = c.m.graph
+  if n[1].kind == nkCurly and fewCmps(g.config, n[1]):
+    # a set constructor but not a constant set:
+    # do not emit the set, but generate a bunch of comparisons; and if we do
+    # so, we skip the unnecessary range check: This is a semantical extension
+    # that code now relies on. :-/ XXX
+    let elem = if n[2].kind in {nkChckRange, nkChckRange64}: n[2][0]
+               else: n[2]
+    let curly = n[1]
+    var ex: PNode = nil
+    for it in curly:
+      var test: PNode
+      if it.kind == nkRange:
+        test = newTree(nkCall, g.operators.opAnd.newSymNode,
+          newTree(nkCall, g.operators.opLe.newSymNode, it[0], elem), # a <= elem
+          newTree(nkCall, g.operators.opLe.newSymNode, elem, it[1])
+        )
+      else:
+        test = newTree(nkCall, g.operators.opEq.newSymNode, elem, it)
+
+      if ex == nil: ex = test
+      else: ex = newTree(nkCall, g.operators.opOr.newSymNode, ex, test)
+
+    if ex == nil:
+      let info = toLineInfo(c, n.info)
+      template body(target) =
+        boolVal target, info, false
+      intoDest d, info, Bool8Id, body
+    else:
+      gen c, ex, d
+  else:
+    genInBitset c, n, d
+
+#[
+
+template binaryStmtInExcl(c: var ProcCon; n: PNode; d: var Value; frmt: string) =
+  assert(d.k == locNone)
+  var a = initLocExpr(p, e[1])
+  var b = initLocExpr(p, e[2])
+  var elem = newRopeAppender()
+  rdSetElemLoc(p.config, b, a.t, elem)
+  lineF(p, cpsStmts, frmt, [rdLoc(a), elem])
+
+proc genInOp(c: var ProcCon; n: PNode; d: var TLoc) =
+  var a, b, x, y: TLoc
+  if (e[1].kind == nkCurly) and fewCmps(p.config, e[1]):
+    # a set constructor but not a constant set:
+    # do not emit the set, but generate a bunch of comparisons; and if we do
+    # so, we skip the unnecessary range check: This is a semantical extension
+    # that code now relies on. :-/ XXX
+    let ea = if e[2].kind in {nkChckRange, nkChckRange64}:
+               e[2][0]
+             else:
+               e[2]
+    a = initLocExpr(p, ea)
+    b = initLoc(locExpr, e, OnUnknown)
+    if e[1].len > 0:
+      b.r = rope("(")
+      for i in 0..<e[1].len:
+        let it = e[1][i]
+        if it.kind == nkRange:
+          x = initLocExpr(p, it[0])
+          y = initLocExpr(p, it[1])
+          b.r.addf("$1 >= $2 && $1 <= $3",
+               [rdCharLoc(a), rdCharLoc(x), rdCharLoc(y)])
+        else:
+          x = initLocExpr(p, it)
+          b.r.addf("$1 == $2", [rdCharLoc(a), rdCharLoc(x)])
+        if i < e[1].len - 1: b.r.add(" || ")
+      b.r.add(")")
+    else:
+      # handle the case of an empty set
+      b.r = rope("0")
+    putIntoDest(p, d, e, b.r)
+  else:
+    assert(e[1].typ != nil)
+    assert(e[2].typ != nil)
+    a = initLocExpr(p, e[1])
+    b = initLocExpr(p, e[2])
+    genInExprAux(p, e, a, b, d)
+
+proc genSetOp(c: var ProcCon; n: PNode; d: var Value; op: TMagic) =
+  const
+    lookupOpr: array[mLeSet..mMinusSet, string] = [
+      "for ($1 = 0; $1 < $2; $1++) { $n" &
+      "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" &
+      "  if (!$3) break;}$n",
+      "for ($1 = 0; $1 < $2; $1++) { $n" &
+      "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" &
+      "  if (!$3) break;}$n" &
+      "if ($3) $3 = (#nimCmpMem($4, $5, $2) != 0);$n",
+      "&",
+      "|",
+      "& ~"]
+  var a, b: TLoc
+  var i: TLoc
+  var setType = skipTypes(e[1].typ, abstractVar)
+  var size = int(getSize(p.config, setType))
+  case size
+  of 1, 2, 4, 8:
+    case op
+    of mIncl:
+      case size
+      of 1: binaryStmtInExcl(p, e, d, "$1 |= ((NU8)1)<<(($2) & 7);$n")
+      of 2: binaryStmtInExcl(p, e, d, "$1 |= ((NU16)1)<<(($2) & 15);$n")
+      of 4: binaryStmtInExcl(p, e, d, "$1 |= ((NU32)1)<<(($2) & 31);$n")
+      of 8: binaryStmtInExcl(p, e, d, "$1 |= ((NU64)1)<<(($2) & 63);$n")
+      else: assert(false, $size)
+    of mExcl:
+      case size
+      of 1: binaryStmtInExcl(p, e, d, "$1 &= ~(((NU8)1) << (($2) & 7));$n")
+      of 2: binaryStmtInExcl(p, e, d, "$1 &= ~(((NU16)1) << (($2) & 15));$n")
+      of 4: binaryStmtInExcl(p, e, d, "$1 &= ~(((NU32)1) << (($2) & 31));$n")
+      of 8: binaryStmtInExcl(p, e, d, "$1 &= ~(((NU64)1) << (($2) & 63));$n")
+      else: assert(false, $size)
+    of mCard:
+    of mLtSet: binaryExprChar(p, e, d, "((($1 & ~ $2)==0)&&($1 != $2))")
+    of mLeSet: binaryExprChar(p, e, d, "(($1 & ~ $2)==0)")
+    of mEqSet: binaryExpr(p, e, d, "($1 == $2)")
+    of mMulSet: binaryExpr(p, e, d, "($1 & $2)")
+    of mPlusSet: binaryExpr(p, e, d, "($1 | $2)")
+    of mMinusSet: binaryExpr(p, e, d, "($1 & ~ $2)")
+    of mInSet:
+      genInOp(p, e, d)
+    else: internalError(p.config, e.info, "genSetOp()")
+  else:
+    case op
+    of mIncl: binaryStmtInExcl(p, e, d, "$1[(NU)($2)>>3] |=(1U<<($2&7U));$n")
+    of mExcl: binaryStmtInExcl(p, e, d, "$1[(NU)($2)>>3] &= ~(1U<<($2&7U));$n")
+    of mCard:
+    of mLtSet, mLeSet:
+      i = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt)) # our counter
+      a = initLocExpr(p, e[1])
+      b = initLocExpr(p, e[2])
+      if d.k == locNone: d = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyBool))
+      if op == mLtSet:
+        linefmt(p, cpsStmts, lookupOpr[mLtSet],
+           [rdLoc(i), size, rdLoc(d), rdLoc(a), rdLoc(b)])
+      else:
+        linefmt(p, cpsStmts, lookupOpr[mLeSet],
+           [rdLoc(i), size, rdLoc(d), rdLoc(a), rdLoc(b)])
+    of mEqSet:
+      assert(e[1].typ != nil)
+      assert(e[2].typ != nil)
+      var a = initLocExpr(p, e[1])
+      var b = initLocExpr(p, e[2])
+      putIntoDest(p, d, e, ropecg(p.module, "(#nimCmpMem($1, $2, $3)==0)", [a.rdCharLoc, b.rdCharLoc, size]))
+    of mMulSet, mPlusSet, mMinusSet:
+      # we inline the simple for loop for better code generation:
+      i = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt)) # our counter
+      a = initLocExpr(p, e[1])
+      b = initLocExpr(p, e[2])
+      if d.k == locNone: d = getTemp(p, setType)
+      lineF(p, cpsStmts,
+           "for ($1 = 0; $1 < $2; $1++) $n" &
+           "  $3[$1] = $4[$1] $6 $5[$1];$n", [
+          rdLoc(i), rope(size), rdLoc(d), rdLoc(a), rdLoc(b),
+          rope(lookupOpr[op])])
+    of mInSet: genInOp(p, e, d)
+    else: internalError(p.config, e.info, "genSetOp")
+]#
+
+proc genCard(c: var ProcCon; n: PNode; d: var Value) =
+  let info = toLineInfo(c, n.info)
+  let a = c.genx(n[1])
+  let t = typeToIr(c.m.types, n.typ)
+
+  let setType = typeToIr(c.m.types, n[1].typ)
+  if isEmpty(d): d = getTemp(c, n)
+
+  buildTyped c.code, info, Asgn, t:
+    copyTree c.code, d
+    buildTyped c.code, info, Call, t:
+      var codegenProc: PSym
+      if c.m.types.g[setType].kind == ArrayTy:
+        let codegenProc = magicsys.getCompilerProc(c.m.graph, "cardSet")
+        let theProc = c.genx newSymNode(codegenProc, n.info)
+        copyTree c.code, theProc
+        buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.types.g, setType):
+          copyTree c.code, a
+        c.code.addImmediateVal info, int(getSize(c.config, n[1].typ))
+      elif t == UInt64Id:
+        let codegenProc = magicsys.getCompilerProc(c.m.graph, "countBits64")
+        let theProc = c.genx newSymNode(codegenProc, n.info)
+        copyTree c.code, theProc
+        copyTree c.code, a
+      else:
+        let codegenProc = magicsys.getCompilerProc(c.m.graph, "countBits32")
+        let theProc = c.genx newSymNode(codegenProc, n.info)
+        copyTree c.code, theProc
+        buildTyped c.code, info, Cast, UInt32Id:
+          copyTree c.code, a
+  freeTemp c, a
+
+proc genEqSet(c: var ProcCon; n: PNode; d: var Value) = discard
+proc genLeSet(c: var ProcCon; n: PNode; d: var Value) = discard
+proc genLtSet(c: var ProcCon; n: PNode; d: var Value) = discard
+proc genBinarySet(c: var ProcCon; n: PNode; d: var Value; m: TMagic) = discard
+proc genInclExcl(c: var ProcCon; n: PNode; m: TMagic) = discard
+
 proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, d)
@@ -875,13 +1137,23 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
     nb[1] = makeAddr(nb[1], c.m.idgen)
     genCall(c, nb, d)
   of mIsNil: genIsNil(c, n, d)
+  of mInSet: genInSet(c, n, d)
+  of mCard: genCard(c, n, d)
+  of mEqSet: genEqSet(c, n, d)
+  of mLeSet: genLeSet(c, n, d)
+  of mLtSet: genLtSet(c, n, d)
+  of mMulSet: genBinarySet(c, n, d, m)
+  of mPlusSet: genBinarySet(c, n, d, m)
+  of mMinusSet: genBinarySet(c, n, d, m)
+  of mIncl, mExcl:
+    unused(c, n, d)
+    genInclExcl(c, n, m)
   else:
     # mGCref, mGCunref,
     globalError(c.config, n.info, "cannot generate code for: " & $m)
 
 #[
 
-  of mIsNil: genUnaryABC(c, n, d, opcIsNil)
   of mReset:
     unused(c, n, d)
     var d = c.genx(n[1])
@@ -892,15 +1164,7 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
     if isEmpty(d): d = c.getTemp(n)
     c.gABx(n, ldNullOpcode(n.typ), d, c.genType(n.typ))
 
-  of mCard: genCard(c, n, d)
-  of mEqSet: genBinarySet(c, n, d, opcEqSet)
-  of mLeSet: genBinarySet(c, n, d, opcLeSet)
-  of mLtSet: genBinarySet(c, n, d, opcLtSet)
-  of mMulSet: genBinarySet(c, n, d, opcMulSet)
-  of mPlusSet: genBinarySet(c, n, d, opcPlusSet)
-  of mMinusSet: genBinarySet(c, n, d, opcMinusSet)
   of mConStrStr: genVarargsABC(c, n, d, opcConcatStr)
-  of mInSet: genBinarySet(c, n, d, opcContainsSet)
 
   of mRepr: genUnaryABC(c, n, d, opcRepr)
 
@@ -916,14 +1180,6 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
     c.freeTemp(right)
     c.freeTemp(d)
 
-  of mIncl, mExcl:
-    unused(c, n, d)
-    var d = c.genx(n[1])
-    var tmp = c.genx(n[2])
-    c.genSetType(n[1], d)
-    c.gABC(n, if m == mIncl: opcIncl else: opcExcl, d, tmp)
-    c.freeTemp(d)
-    c.freeTemp(tmp)
   of mMove:
     let arg = n[1]
     let a = c.genx(arg)
@@ -1316,7 +1572,7 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     freeTemp c, b
     freeTemp c, a
 
-  of tyCstring, tyPtr:
+  of tyCstring, tyPtr, tyUncheckedArray:
     let a = genx(c, n[0], flags)
     let b = genx(c, n[1])
     template body(target) =
