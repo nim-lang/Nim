@@ -149,8 +149,7 @@ type
 proc xjmp(c: var ProcCon; n: PNode; jk: JmpKind; v: Value): LabelId =
   result = newLabel(c.labelGen)
   let info = toLineInfo(c, n.info)
-  build c.code, info, Select:
-    c.code.addTyped info, Bool8Id
+  buildTyped c.code, info, Select, Bool8Id:
     c.code.copyTree Tree(v)
     build c.code, info, SelectPair:
       build c.code, info, SelectValue:
@@ -843,71 +842,7 @@ proc genInSet(c: var ProcCon; n: PNode; d: var Value) =
 
 #[
 
-template binaryStmtInExcl(c: var ProcCon; n: PNode; d: var Value; frmt: string) =
-  assert(d.k == locNone)
-  var a = initLocExpr(p, e[1])
-  var b = initLocExpr(p, e[2])
-  var elem = newRopeAppender()
-  rdSetElemLoc(p.config, b, a.t, elem)
-  lineF(p, cpsStmts, frmt, [rdLoc(a), elem])
-
-proc genInOp(c: var ProcCon; n: PNode; d: var TLoc) =
-  var a, b, x, y: TLoc
-  if (e[1].kind == nkCurly) and fewCmps(p.config, e[1]):
-    # a set constructor but not a constant set:
-    # do not emit the set, but generate a bunch of comparisons; and if we do
-    # so, we skip the unnecessary range check: This is a semantical extension
-    # that code now relies on. :-/ XXX
-    let ea = if e[2].kind in {nkChckRange, nkChckRange64}:
-               e[2][0]
-             else:
-               e[2]
-    a = initLocExpr(p, ea)
-    b = initLoc(locExpr, e, OnUnknown)
-    if e[1].len > 0:
-      b.r = rope("(")
-      for i in 0..<e[1].len:
-        let it = e[1][i]
-        if it.kind == nkRange:
-          x = initLocExpr(p, it[0])
-          y = initLocExpr(p, it[1])
-          b.r.addf("$1 >= $2 && $1 <= $3",
-               [rdCharLoc(a), rdCharLoc(x), rdCharLoc(y)])
-        else:
-          x = initLocExpr(p, it)
-          b.r.addf("$1 == $2", [rdCharLoc(a), rdCharLoc(x)])
-        if i < e[1].len - 1: b.r.add(" || ")
-      b.r.add(")")
-    else:
-      # handle the case of an empty set
-      b.r = rope("0")
-    putIntoDest(p, d, e, b.r)
-  else:
-    assert(e[1].typ != nil)
-    assert(e[2].typ != nil)
-    a = initLocExpr(p, e[1])
-    b = initLocExpr(p, e[2])
-    genInExprAux(p, e, a, b, d)
-
 proc genSetOp(c: var ProcCon; n: PNode; d: var Value; op: TMagic) =
-  const
-    lookupOpr: array[mLeSet..mMinusSet, string] = [
-      "for ($1 = 0; $1 < $2; $1++) { $n" &
-      "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" &
-      "  if (!$3) break;}$n",
-
-      "for ($1 = 0; $1 < $2; $1++) { $n" &
-      "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" &
-      "  if (!$3) break;}$n" &
-      "if ($3) $3 = (#nimCmpMem($4, $5, $2) != 0);$n",
-
-      "&",
-      "|",
-      "& ~"]
-  var a, b: TLoc
-  var i: TLoc
-  var setType = skipTypes(e[1].typ, abstractVar)
-  var size = int(getSize(p.config, setType))
   case size
   of 1, 2, 4, 8:
     case op
@@ -925,51 +860,10 @@ proc genSetOp(c: var ProcCon; n: PNode; d: var Value; op: TMagic) =
       of 4: binaryStmtInExcl(p, e, d, "$1 &= ~(((NU32)1) << (($2) & 31));$n")
       of 8: binaryStmtInExcl(p, e, d, "$1 &= ~(((NU64)1) << (($2) & 63));$n")
       else: assert(false, $size)
-    of mCard:
-    of mLtSet: binaryExprChar(p, e, d, "((($1 & ~ $2)==0)&&($1 != $2))")
-    of mLeSet: binaryExprChar(p, e, d, "(($1 & ~ $2)==0)")
-    of mEqSet: binaryExpr(p, e, d, "($1 == $2)")
-    of mMulSet: binaryExpr(p, e, d, "($1 & $2)")
-    of mPlusSet: binaryExpr(p, e, d, "($1 | $2)")
-    of mMinusSet: binaryExpr(p, e, d, "($1 & ~ $2)")
-    of mInSet:
-      genInOp(p, e, d)
-    else: internalError(p.config, e.info, "genSetOp()")
   else:
     case op
     of mIncl: binaryStmtInExcl(p, e, d, "$1[(NU)($2)>>3] |=(1U<<($2&7U));$n")
     of mExcl: binaryStmtInExcl(p, e, d, "$1[(NU)($2)>>3] &= ~(1U<<($2&7U));$n")
-    of mCard:
-    of mLtSet, mLeSet:
-      i = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt)) # our counter
-      a = initLocExpr(p, e[1])
-      b = initLocExpr(p, e[2])
-      if d.k == locNone: d = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyBool))
-      if op == mLtSet:
-        linefmt(p, cpsStmts, lookupOpr[mLtSet],
-           [rdLoc(i), size, rdLoc(d), rdLoc(a), rdLoc(b)])
-      else:
-        linefmt(p, cpsStmts, lookupOpr[mLeSet],
-           [rdLoc(i), size, rdLoc(d), rdLoc(a), rdLoc(b)])
-    of mEqSet:
-      assert(e[1].typ != nil)
-      assert(e[2].typ != nil)
-      var a = initLocExpr(p, e[1])
-      var b = initLocExpr(p, e[2])
-      putIntoDest(p, d, e, ropecg(p.module, "(#nimCmpMem($1, $2, $3)==0)", [a.rdCharLoc, b.rdCharLoc, size]))
-    of mMulSet, mPlusSet, mMinusSet:
-      # we inline the simple for loop for better code generation:
-      i = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt)) # our counter
-      a = initLocExpr(p, e[1])
-      b = initLocExpr(p, e[2])
-      if d.k == locNone: d = getTemp(p, setType)
-      lineF(p, cpsStmts,
-           "for ($1 = 0; $1 < $2; $1++) $n" &
-           "  $3[$1] = $4[$1] $6 $5[$1];$n", [
-          rdLoc(i), rope(size), rdLoc(d), rdLoc(a), rdLoc(b),
-          rope(lookupOpr[op])])
-    of mInSet: genInOp(p, e, d)
-    else: internalError(p.config, e.info, "genSetOp")
 ]#
 
 proc genCard(c: var ProcCon; n: PNode; d: var Value) =
@@ -1038,6 +932,34 @@ proc genEqSet(c: var ProcCon; n: PNode; d: var Value) =
   freeTemp c, b
   freeTemp c, a
 
+proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: int): (SymId, LabelId, LabelId) =
+  let tmp = allocTemp(c.sm, c.m.nativeIntId)
+  c.code.addSummon info, tmp, c.m.nativeIntId
+  buildTyped c.code, info, Asgn, c.m.nativeIntId:
+    c.code.addSymUse info, tmp
+    c.code.addIntVal c.m.integers, info, c.m.nativeIntId, first
+  let lab1 = c.code.addNewLabel(c.labelGen, info, LoopLabel)
+  result = (tmp, lab1, newLabel(c.labelGen))
+
+  buildTyped c.code, info, Select, Bool8Id:
+    buildTyped c.code, info, Lt, c.m.nativeIntId:
+      c.code.addSymUse info, tmp
+      c.code.addIntVal c.m.integers, info, c.m.nativeIntId, last
+    build c.code, info, SelectPair:
+      build c.code, info, SelectValue:
+        c.code.boolVal(info, false)
+      c.code.gotoLabel info, Goto, result[2]
+
+proc endLoop(c: var ProcCon; info: PackedLineInfo; s: SymId; back, exit: LabelId) =
+  buildTyped c.code, info, Asgn, c.m.nativeIntId:
+    c.code.addSymUse info, s
+    buildTyped c.code, info, Add, c.m.nativeIntId:
+      c.code.addSymUse info, s
+      c.code.addIntVal c.m.integers, info, c.m.nativeIntId, 1
+  c.code.addLabel info, GotoLoop, back
+  c.code.addLabel info, Label, exit
+  freeTemp(c.sm, s)
+
 proc genLeSet(c: var ProcCon; n: PNode; d: var Value) =
   let info = toLineInfo(c, n.info)
   let a = c.genx(n[1])
@@ -1047,11 +969,34 @@ proc genLeSet(c: var ProcCon; n: PNode; d: var Value) =
   let setType = typeToIr(c.m.types, n[1].typ)
 
   if c.m.types.g[setType].kind == ArrayTy:
+    let elemType = bitsetBasetype(c.m.types, n[1].typ)
     if isEmpty(d): d = getTemp(c, n)
     #    "for ($1 = 0; $1 < $2; $1++):"
     #    "  $3 = (($4[$1] & ~ $5[$1]) == 0)"
     #    "  if (!$3) break;"
-    discard "XXX to implement"
+    let (idx, backLabel, endLabel) = beginCountLoop(c, info, 0, int(getSize(c.config, n[1].typ)))
+    buildTyped c.code, info, Asgn, Bool8Id:
+      copyTree c.code, d
+      buildTyped c.code, info, Eq, elemType:
+        buildTyped c.code, info, BitAnd, elemType:
+          buildTyped c.code, info, ArrayAt, elemType:
+            copyTree c.code, a
+            c.code.addSymUse info, idx
+          buildTyped c.code, info, BitNot, elemType:
+            buildTyped c.code, info, ArrayAt, elemType:
+              copyTree c.code, b
+              c.code.addSymUse info, idx
+        c.code.addIntVal c.m.integers, info, elemType, 0
+
+    # if !$3: break
+    buildTyped c.code, info, Select, Bool8Id:
+      c.code.copyTree d
+      build c.code, info, SelectPair:
+        build c.code, info, SelectValue:
+          c.code.boolVal(info, false)
+        c.code.gotoLabel info, Goto, endLabel
+
+    endLoop(c, info, idx, backLabel, endLabel)
   else:
     # "(($1 & ~ $2)==0)"
     template body(target) =
@@ -1067,8 +1012,59 @@ proc genLeSet(c: var ProcCon; n: PNode; d: var Value) =
   freeTemp c, b
   freeTemp c, a
 
-proc genLtSet(c: var ProcCon; n: PNode; d: var Value) = discard
-proc genBinarySet(c: var ProcCon; n: PNode; d: var Value; m: TMagic) = discard
+proc genLtSet(c: var ProcCon; n: PNode; d: var Value) =
+  localError(c.m.graph.config, n.info, "`<` for sets not implemented")
+
+proc genBinarySet(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
+  let info = toLineInfo(c, n.info)
+  let a = c.genx(n[1])
+  let b = c.genx(n[2])
+  let t = typeToIr(c.m.types, n.typ)
+
+  let setType = typeToIr(c.m.types, n[1].typ)
+
+  if c.m.types.g[setType].kind == ArrayTy:
+    let elemType = bitsetBasetype(c.m.types, n[1].typ)
+    if isEmpty(d): d = getTemp(c, n)
+    #    "for ($1 = 0; $1 < $2; $1++):"
+    #    "  $3 = (($4[$1] & ~ $5[$1]) == 0)"
+    #    "  if (!$3) break;"
+    let (idx, backLabel, endLabel) = beginCountLoop(c, info, 0, int(getSize(c.config, n[1].typ)))
+    buildTyped c.code, info, Asgn, elemType:
+      buildTyped c.code, info, ArrayAt, elemType:
+        copyTree c.code, d
+        c.code.addSymUse info, idx
+      buildTyped c.code, info, (if m == mPlusSet: BitOr else: BitAnd), elemType:
+        buildTyped c.code, info, ArrayAt, elemType:
+          copyTree c.code, a
+          c.code.addSymUse info, idx
+        if m == mMinusSet:
+          buildTyped c.code, info, BitNot, elemType:
+            buildTyped c.code, info, ArrayAt, elemType:
+              copyTree c.code, b
+              c.code.addSymUse info, idx
+        else:
+          buildTyped c.code, info, ArrayAt, elemType:
+            copyTree c.code, b
+            c.code.addSymUse info, idx
+
+    endLoop(c, info, idx, backLabel, endLabel)
+  else:
+    # "(($1 & ~ $2)==0)"
+    template body(target) =
+      buildTyped target, info, (if m == mPlusSet: BitOr else: BitAnd), setType:
+        copyTree target, a
+        if m == mMinusSet:
+          buildTyped target, info, BitNot, setType:
+            copyTree target, b
+        else:
+          copyTree target, b
+
+    intoDest d, info, setType, body
+
+  freeTemp c, b
+  freeTemp c, a
+
 proc genInclExcl(c: var ProcCon; n: PNode; m: TMagic) = discard
 
 proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
