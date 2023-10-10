@@ -2345,7 +2345,7 @@ proc makeFoo(x: int32): Foo {.constructor.} =
   result.x = x
 ```
 
-It forward declares the constructor in the type definition. When the constructor has parameters, it also generates a default constructor.
+It forward declares the constructor in the type definition. When the constructor has parameters, it also generates a default constructor. One can avoid this behaviour by using `noDecl` in a default constructor.
 
 Like `virtual`, `constructor` also supports a syntax that allows to express C++ constraints.
 
