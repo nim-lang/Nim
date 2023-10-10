@@ -112,11 +112,6 @@ proc genLiteral(p: BProc, n: PNode, ty: PType; result: var Rope) =
 proc genLiteral(p: BProc, n: PNode; result: var Rope) =
   genLiteral(p, n, n.typ, result)
 
-proc bitSetToWord(s: TBitSet, size: int): BiggestUInt =
-  result = 0
-  for j in 0..<size:
-    if j < s.len: result = result or (BiggestUInt(s[j]) shl (j * 8))
-
 proc genRawSetData(cs: TBitSet, size: int; result: var Rope) =
   if size > 8:
     var res = "{\n"

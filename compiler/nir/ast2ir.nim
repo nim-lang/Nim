@@ -9,7 +9,7 @@
 
 import std / [assertions, tables, sets]
 import ".." / [ast, astalgo, types, options, lineinfos, msgs, magicsys,
-  modulegraphs, guards, renderer, transf]
+  modulegraphs, guards, renderer, transf, bitsets, trees, nimsets]
 from ".." / lowerings import lowerSwap, lowerTupleUnpacking
 from ".." / pathutils import customPath
 import .. / ic / bitabs
@@ -924,6 +924,24 @@ proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: int): (Sy
         c.code.boolVal(info, false)
       c.code.gotoLabel info, Goto, result[2]
 
+proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: Value): (SymId, LabelId, LabelId) =
+  let tmp = allocTemp(c.sm, c.m.nativeIntId)
+  c.code.addSummon info, tmp, c.m.nativeIntId
+  buildTyped c.code, info, Asgn, c.m.nativeIntId:
+    c.code.addSymUse info, tmp
+    copyTree c.code, first
+  let lab1 = c.code.addNewLabel(c.labelGen, info, LoopLabel)
+  result = (tmp, lab1, newLabel(c.labelGen))
+
+  buildTyped c.code, info, Select, Bool8Id:
+    buildTyped c.code, info, Le, c.m.nativeIntId:
+      c.code.addSymUse info, tmp
+      copyTree c.code, last
+    build c.code, info, SelectPair:
+      build c.code, info, SelectValue:
+        c.code.boolVal(info, false)
+      c.code.gotoLabel info, Goto, result[2]
+
 proc endLoop(c: var ProcCon; info: PackedLineInfo; s: SymId; back, exit: LabelId) =
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
     c.code.addSymUse info, s
@@ -1119,6 +1137,148 @@ proc genInclExcl(c: var ProcCon; n: PNode; m: TMagic) =
               buildTyped c.code, info, BitAnd, t:
                 copyTree c.code, b
                 c.code.addIntVal c.m.integers, info, t, mask
+  freeTemp c, b
+  freeTemp c, a
+
+proc genSetConstrDyn(c: var ProcCon; n: PNode; d: var Value) =
+  # example: { a..b, c, d, e, f..g }
+  # we have to emit an expression of the form:
+  # nimZeroMem(tmp, sizeof(tmp)); inclRange(tmp, a, b); incl(tmp, c);
+  # incl(tmp, d); incl(tmp, e); inclRange(tmp, f, g);
+  let info = toLineInfo(c, n.info)
+  let setType = typeToIr(c.m.types, n.typ)
+  let size = int(getSize(c.config, n.typ))
+  let t = bitsetBasetype(c.m.types, n.typ)
+  let mask =
+    case t
+    of UInt8Id: 7
+    of UInt16Id: 15
+    of UInt32Id: 31
+    else: 63
+
+  if isEmpty(d): d = getTemp(c, n)
+  if c.m.types.g[setType].kind != ArrayTy:
+    buildTyped c.code, info, Asgn, setType:
+      copyTree c.code, d
+      c.code.addIntVal c.m.integers, info, t, 0
+
+    for it in n:
+      if it.kind == nkRange:
+        let a = genx(c, it[0])
+        let b = genx(c, it[1])
+        let (idx, backLabel, endLabel) = beginCountLoop(c, info, a, b)
+        buildTyped c.code, info, Asgn, setType:
+          copyTree c.code, d
+          buildTyped c.code, info, BitAnd, setType:
+            copyTree c.code, d
+            buildTyped c.code, info, BitNot, t:
+              buildTyped c.code, info, BitShl, t:
+                c.code.addIntVal c.m.integers, info, t, 1
+                buildTyped c.code, info, BitAnd, t:
+                  c.code.addSymUse info, idx
+                  c.code.addIntVal c.m.integers, info, t, mask
+
+        endLoop(c, info, idx, backLabel, endLabel)
+        freeTemp c, b
+        freeTemp c, a
+
+      else:
+        let a = genx(c, it)
+        buildTyped c.code, info, Asgn, setType:
+          copyTree c.code, d
+          buildTyped c.code, info, BitAnd, setType:
+            copyTree c.code, d
+            buildTyped c.code, info, BitNot, t:
+              buildTyped c.code, info, BitShl, t:
+                c.code.addIntVal c.m.integers, info, t, 1
+                buildTyped c.code, info, BitAnd, t:
+                  copyTree c.code, a
+                  c.code.addIntVal c.m.integers, info, t, mask
+        freeTemp c, a
+
+  else:
+    # init loop:
+    let (idx, backLabel, endLabel) = beginCountLoop(c, info, 0, size)
+    buildTyped c.code, info, Asgn, t:
+      copyTree c.code, d
+      c.code.addIntVal c.m.integers, info, t, 0
+    endLoop(c, info, idx, backLabel, endLabel)
+
+    # incl elements:
+    for it in n:
+      if it.kind == nkRange:
+        let a = genx(c, it[0])
+        let b = genx(c, it[1])
+        let (idx, backLabel, endLabel) = beginCountLoop(c, info, a, b)
+
+        buildTyped c.code, info, Asgn, t:
+          buildTyped c.code, info, ArrayAt, t:
+            copyTree c.code, d
+            buildTyped c.code, info, BitShr, t:
+              buildTyped c.code, info, Cast, c.m.nativeUIntId:
+                c.code.addSymUse info, idx
+              addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+          buildTyped c.code, info, BitOr, t:
+            buildTyped c.code, info, ArrayAt, t:
+              copyTree c.code, d
+              buildTyped c.code, info, BitShr, t:
+                buildTyped c.code, info, Cast, c.m.nativeUIntId:
+                  c.code.addSymUse info, idx
+                addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+            buildTyped c.code, info, BitShl, t:
+              c.code.addIntVal c.m.integers, info, t, 1
+              buildTyped c.code, info, BitAnd, t:
+                c.code.addSymUse info, idx
+                c.code.addIntVal c.m.integers, info, t, 7
+
+        endLoop(c, info, idx, backLabel, endLabel)
+        freeTemp c, b
+        freeTemp c, a
+
+      else:
+        let a = genx(c, it)
+        # $1[(NU)($2)>>3] |=(1U<<($2&7U))
+        buildTyped c.code, info, Asgn, t:
+          buildTyped c.code, info, ArrayAt, t:
+            copyTree c.code, d
+            buildTyped c.code, info, BitShr, t:
+              buildTyped c.code, info, Cast, c.m.nativeUIntId:
+                copyTree c.code, a
+              addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+          buildTyped c.code, info, BitOr, t:
+            buildTyped c.code, info, ArrayAt, t:
+              copyTree c.code, d
+              buildTyped c.code, info, BitShr, t:
+                buildTyped c.code, info, Cast, c.m.nativeUIntId:
+                  copyTree c.code, a
+                addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+            buildTyped c.code, info, BitShl, t:
+              c.code.addIntVal c.m.integers, info, t, 1
+              buildTyped c.code, info, BitAnd, t:
+                copyTree c.code, a
+                c.code.addIntVal c.m.integers, info, t, 7
+        freeTemp c, a
+
+proc genSetConstr(c: var ProcCon; n: PNode; d: var Value) =
+  if isDeepConstExpr(n):
+    let info = toLineInfo(c, n.info)
+    let setType = typeToIr(c.m.types, n.typ)
+    let size = int(getSize(c.config, n.typ))
+    let cs = toBitSet(c.config, n)
+
+    if c.m.types.g[setType].kind != ArrayTy:
+      template body(target) =
+        target.addIntVal c.m.integers, info, setType, cast[BiggestInt](bitSetToWord(cs, size))
+      intoDest d, info, setType, body
+    else:
+      let t = bitsetBasetype(c.m.types, n.typ)
+      template body(target) =
+        buildTyped target, info, ArrayConstr, setType:
+          for i in 0..high(cs):
+            target.addIntVal c.m.integers, info, t, int64 cs[i]
+      intoDest d, info, setType, body
+  else:
+    genSetConstrDyn c, n, d
 
 proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   case m
@@ -1774,14 +1934,6 @@ proc genObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
 
   valueIntoDest c, info, d, n.typ, body
   freeTemp c, a
-
-proc genSetConstr(c: var ProcCon; n: PNode; d: var Value) =
-  # example: { a..b, c, d, e, f..g }
-  # we have to emit an expression of the form:
-  # nimZeroMem(tmp, sizeof(tmp)); inclRange(tmp, a, b); incl(tmp, c);
-  # incl(tmp, d); incl(tmp, e); inclRange(tmp, f, g);
-  let t = typeToIr(c.m.types, n.typ)
-  discard "XXX"
 
 proc genParams(c: var ProcCon; params: PNode) =
   for i in 1..<params.len:
