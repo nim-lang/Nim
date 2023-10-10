@@ -163,6 +163,7 @@ proc openArrayToIr(c: var TypesCon; t: PType): TypeId =
   let typeName = "NimOpenArray" & mangledBase
 
   let elementType = typeToIr(c, e)
+  #assert elementType.int >= 0, typeToString(t)
 
   let p = openType(c.g, ObjectDecl)
   c.g.addName typeName

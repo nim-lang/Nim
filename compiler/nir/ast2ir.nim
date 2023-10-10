@@ -1280,6 +1280,83 @@ proc genSetConstr(c: var ProcCon; n: PNode; d: var Value) =
   else:
     genSetConstrDyn c, n, d
 
+proc genStrConcat(c: var ProcCon; n: PNode; d: var Value) =
+  let info = toLineInfo(c, n.info)
+  #   <Nim code>
+  #   s = "Hello " & name & ", how do you feel?" & 'z'
+  #
+  #   <generated code>
+  #  {
+  #    string tmp0;
+  #    ...
+  #    tmp0 = rawNewString(6 + 17 + 1 + s2->len);
+  #    // we cannot generate s = rawNewString(...) here, because
+  #    // ``s`` may be used on the right side of the expression
+  #    appendString(tmp0, strlit_1);
+  #    appendString(tmp0, name);
+  #    appendString(tmp0, strlit_2);
+  #    appendChar(tmp0, 'z');
+  #    asgn(s, tmp0);
+  #  }
+  var args: seq[Value] = @[]
+  var precomputedLen = 0
+  for i in 1 ..< n.len:
+    let it = n[i]
+    if skipTypes(it.typ, abstractVarRange).kind == tyChar:
+      inc precomputedLen
+    elif it.kind in {nkStrLit..nkTripleStrLit}:
+      inc precomputedLen, it.strVal.len
+    args.add genx(c, it)
+
+  # generate length computation:
+  var tmpLen = allocTemp(c.sm, c.m.nativeIntId)
+  buildTyped c.code, info, Asgn, c.m.nativeIntId:
+    c.code.addSymUse info, tmpLen
+    c.code.addIntVal c.m.integers, info, c.m.nativeIntId, precomputedLen
+  for a in mitems(args):
+    buildTyped c.code, info, Asgn, c.m.nativeIntId:
+      c.code.addSymUse info, tmpLen
+      buildTyped c.code, info, CheckedAdd, c.m.nativeIntId:
+        c.code.addSymUse info, tmpLen
+        buildTyped c.code, info, FieldAt, c.m.nativeIntId:
+          copyTree c.code, a
+          c.code.addImmediateVal info, 0 # (len, p)-pair so len is at index 0
+
+  var tmpStr = getTemp(c, n)
+  #    ^ because of aliasing, we always go through a temporary
+  let t = typeToIr(c.m.types, n.typ)
+  buildTyped c.code, info, Asgn, t:
+    copyTree c.code, tmpStr
+    buildTyped c.code, info, Call, t:
+      let codegenProc = magicsys.getCompilerProc(c.m.graph, "rawNewString")
+      #assert codegenProc != nil, $n & " " & (c.m.graph.config $ n.info)
+      let theProc = c.genx newSymNode(codegenProc, n.info)
+      copyTree c.code, theProc
+      c.code.addSymUse info, tmpLen
+  freeTemp c.sm, tmpLen
+
+  for i in 1 ..< n.len:
+    let it = n[i]
+    let isChar = skipTypes(it.typ, abstractVarRange).kind == tyChar
+    buildTyped c.code, info, Call, VoidId:
+      let codegenProc = magicsys.getCompilerProc(c.m.graph,
+        (if isChar: "appendChar" else: "appendString"))
+      #assert codegenProc != nil, $n & " " & (c.m.graph.config $ n.info)
+      let theProc = c.genx newSymNode(codegenProc, n.info)
+      copyTree c.code, theProc
+      buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.types.g, t):
+        copyTree c.code, tmpStr
+      copyTree c.code, args[i-1]
+    freeTemp c, args[i-1]
+
+  if isEmpty(d):
+    d = tmpStr
+  else:
+    # XXX Test that this does not cause memory leaks!
+    buildTyped c.code, info, Asgn, t:
+      copyTree c.code, d
+      copyTree c.code, tmpStr
+
 proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, d)
@@ -1434,6 +1511,7 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   of mIncl, mExcl:
     unused(c, n, d)
     genInclExcl(c, n, m)
+  of mConStrStr: genStrConcat(c, n, d)
   else:
     # mGCref, mGCunref,
     globalError(c.config, n.info, "cannot generate code for: " & $m)
