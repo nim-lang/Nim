@@ -840,32 +840,6 @@ proc genInSet(c: var ProcCon; n: PNode; d: var Value) =
   else:
     genInBitset c, n, d
 
-#[
-
-proc genSetOp(c: var ProcCon; n: PNode; d: var Value; op: TMagic) =
-  case size
-  of 1, 2, 4, 8:
-    case op
-    of mIncl:
-      case size
-      of 1: binaryStmtInExcl(p, e, d, "$1 |= ((NU8)1)<<(($2) & 7);$n")
-      of 2: binaryStmtInExcl(p, e, d, "$1 |= ((NU16)1)<<(($2) & 15);$n")
-      of 4: binaryStmtInExcl(p, e, d, "$1 |= ((NU32)1)<<(($2) & 31);$n")
-      of 8: binaryStmtInExcl(p, e, d, "$1 |= ((NU64)1)<<(($2) & 63);$n")
-      else: assert(false, $size)
-    of mExcl:
-      case size
-      of 1: binaryStmtInExcl(p, e, d, "$1 &= ~(((NU8)1) << (($2) & 7));$n")
-      of 2: binaryStmtInExcl(p, e, d, "$1 &= ~(((NU16)1) << (($2) & 15));$n")
-      of 4: binaryStmtInExcl(p, e, d, "$1 &= ~(((NU32)1) << (($2) & 31));$n")
-      of 8: binaryStmtInExcl(p, e, d, "$1 &= ~(((NU64)1) << (($2) & 63));$n")
-      else: assert(false, $size)
-  else:
-    case op
-    of mIncl: binaryStmtInExcl(p, e, d, "$1[(NU)($2)>>3] |=(1U<<($2&7U));$n")
-    of mExcl: binaryStmtInExcl(p, e, d, "$1[(NU)($2)>>3] &= ~(1U<<($2&7U));$n")
-]#
-
 proc genCard(c: var ProcCon; n: PNode; d: var Value) =
   let info = toLineInfo(c, n.info)
   let a = c.genx(n[1])
@@ -1065,7 +1039,86 @@ proc genBinarySet(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   freeTemp c, b
   freeTemp c, a
 
-proc genInclExcl(c: var ProcCon; n: PNode; m: TMagic) = discard
+proc genInclExcl(c: var ProcCon; n: PNode; m: TMagic) =
+  let info = toLineInfo(c, n.info)
+  let a = c.genx(n[1])
+  let b = c.genx(n[2])
+
+  let setType = typeToIr(c.m.types, n[1].typ)
+
+  let t = bitsetBasetype(c.m.types, n[1].typ)
+  let mask =
+    case t
+    of UInt8Id: 7
+    of UInt16Id: 15
+    of UInt32Id: 31
+    else: 63
+
+  buildTyped c.code, info, Asgn, setType:
+    if c.m.types.g[setType].kind == ArrayTy:
+      if m == mIncl:
+        # $1[(NU)($2)>>3] |=(1U<<($2&7U))
+        buildTyped c.code, info, ArrayAt, t:
+          copyTree c.code, a
+          buildTyped c.code, info, BitShr, t:
+            buildTyped c.code, info, Cast, c.m.nativeUIntId:
+              copyTree c.code, b
+            addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+        buildTyped c.code, info, BitOr, t:
+          buildTyped c.code, info, ArrayAt, t:
+            copyTree c.code, a
+            buildTyped c.code, info, BitShr, t:
+              buildTyped c.code, info, Cast, c.m.nativeUIntId:
+                copyTree c.code, b
+              addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+          buildTyped c.code, info, BitShl, t:
+            c.code.addIntVal c.m.integers, info, t, 1
+            buildTyped c.code, info, BitAnd, t:
+              copyTree c.code, b
+              c.code.addIntVal c.m.integers, info, t, 7
+      else:
+        # $1[(NU)($2)>>3] &= ~(1U<<($2&7U))
+        buildTyped c.code, info, ArrayAt, t:
+          copyTree c.code, a
+          buildTyped c.code, info, BitShr, t:
+            buildTyped c.code, info, Cast, c.m.nativeUIntId:
+              copyTree c.code, b
+            addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+        buildTyped c.code, info, BitAnd, t:
+          buildTyped c.code, info, ArrayAt, t:
+            copyTree c.code, a
+            buildTyped c.code, info, BitShr, t:
+              buildTyped c.code, info, Cast, c.m.nativeUIntId:
+                copyTree c.code, b
+              addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+          buildTyped c.code, info, BitNot, t:
+            buildTyped c.code, info, BitShl, t:
+              c.code.addIntVal c.m.integers, info, t, 1
+              buildTyped c.code, info, BitAnd, t:
+                copyTree c.code, b
+                c.code.addIntVal c.m.integers, info, t, 7
+
+    else:
+      copyTree c.code, a
+      if m == mIncl:
+        # $1 |= ((NU8)1)<<(($2) & 7)
+        buildTyped c.code, info, BitOr, setType:
+          copyTree c.code, a
+          buildTyped c.code, info, BitShl, t:
+            c.code.addIntVal c.m.integers, info, t, 1
+            buildTyped c.code, info, BitAnd, t:
+              copyTree c.code, b
+              c.code.addIntVal c.m.integers, info, t, mask
+      else:
+        # $1 &= ~(((NU8)1) << (($2) & 7))
+        buildTyped c.code, info, BitAnd, setType:
+          copyTree c.code, a
+          buildTyped c.code, info, BitNot, t:
+            buildTyped c.code, info, BitShl, t:
+              c.code.addIntVal c.m.integers, info, t, 1
+              buildTyped c.code, info, BitAnd, t:
+                copyTree c.code, b
+                c.code.addIntVal c.m.integers, info, t, mask
 
 proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   case m
