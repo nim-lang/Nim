@@ -864,7 +864,7 @@ proc gproc(g: var TSrcGen, n: PNode) =
   if renderNoPragmas notin g.flags:
     gsub(g, n[pragmasPos])
   if renderNoBody notin g.flags:
-    if n[bodyPos].kind != nkEmpty:
+    if n.len > bodyPos and n[bodyPos].kind != nkEmpty:
       put(g, tkSpaces, Space)
       putWithSpace(g, tkEquals, "=")
       indentNL(g)
