@@ -68,9 +68,7 @@ proc locateFieldInInitExpr(c: PContext, field: PSym, initExpr: PNode): PNode =
     let assignment = initExpr[i]
     if assignment.kind != nkExprColonExpr:
       invalidObjConstr(c, assignment)
-      continue
-
-    if fieldId == considerQuotedIdent(c, assignment[0]).id:
+    elif fieldId == considerQuotedIdent(c, assignment[0]).id:
       return assignment
 
 proc semConstrField(c: PContext, flags: TExprFlags,
@@ -125,7 +123,7 @@ proc pickCaseBranch(caseExpr, matched: PNode): PNode =
       return caseExpr[i]
 
   if endsWithElse:
-    return caseExpr[^1]
+    result = caseExpr[^1]
   else:
     result = nil
 
@@ -138,8 +136,8 @@ iterator directFieldsInRecList(recList: PNode): PNode =
   else:
     doAssert recList.kind == nkRecList
     for field in recList:
-      if field.kind != nkSym: continue
-      yield field
+      if field.kind == nkSym:
+        yield field
 
 template quoteStr(s: string): string = "'" & s & "'"
 
@@ -416,8 +414,8 @@ proc semConstructTypeAux(c: PContext,
     if status in {initPartial, initNone, initUnknown}:
       discard collectMissingFields(c, t.n, constrCtx, result.defaults)
     let base = t[0]
-    if base == nil or base.id == t.id or 
-      base.kind in { tyRef, tyPtr } and base[0].id == t.id: 
+    if base == nil or base.id == t.id or
+      base.kind in {tyRef, tyPtr} and base[0].id == t.id:
         break
     t = skipTypes(base, skipPtrs)
     if t.kind != tyObject:
@@ -463,7 +461,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
 
   if t == nil:
     return localErrorNode(c, result, "object constructor needs an object type")
-  
+
   if t.skipTypes({tyGenericInst,
       tyAlias, tySink, tyOwned, tyRef}).kind != tyObject and
       expectedType != nil and expectedType.skipTypes({tyGenericInst,

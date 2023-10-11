@@ -3209,22 +3209,6 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Rope) =
   else:
     globalError(p.config, info, "cannot create null element for: " & $t.kind)
 
-proc caseObjDefaultBranch(obj: PNode; branch: Int128): int =
-  result = 0
-  for i in 1 ..< obj.len:
-    for j in 0 .. obj[i].len - 2:
-      if obj[i][j].kind == nkRange:
-        let x = getOrdValue(obj[i][j][0])
-        let y = getOrdValue(obj[i][j][1])
-        if branch >= x and branch <= y:
-          return i
-      elif getOrdValue(obj[i][j]) == branch:
-        return i
-    if obj[i].len == 1:
-      # else branch
-      return i
-  assert(false, "unreachable")
-
 proc isEmptyCaseObjectBranch(n: PNode): bool =
   for it in n:
     if it.kind == nkSym and not isEmptyType(it.sym.typ): return false

@@ -9,7 +9,8 @@
 
 import std / [assertions, tables, sets]
 import ".." / [ast, astalgo, types, options, lineinfos, msgs, magicsys,
-  modulegraphs, guards, renderer, transf, bitsets, trees, nimsets]
+  modulegraphs, guards, renderer, transf, bitsets, trees, nimsets,
+  expanddefaults]
 from ".." / lowerings import lowerSwap, lowerTupleUnpacking
 from ".." / pathutils import customPath
 import .. / ic / bitabs
@@ -1357,6 +1358,10 @@ proc genStrConcat(c: var ProcCon; n: PNode; d: var Value) =
       copyTree c.code, d
       copyTree c.code, tmpStr
 
+proc genDefault(c: var ProcCon; n: PNode; d: var Value) =
+  let m = expandDefault(n.typ, n.info)
+  gen c, m, d
+
 proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, d)
@@ -1512,6 +1517,8 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
     unused(c, n, d)
     genInclExcl(c, n, m)
   of mConStrStr: genStrConcat(c, n, d)
+  of mDefault, mZeroDefault:
+    genDefault c, n, d
   else:
     # mGCref, mGCunref,
     globalError(c.config, n.info, "cannot generate code for: " & $m)
@@ -1524,8 +1531,6 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
     # XXX use ldNullOpcode() here?
     c.gABx(n, opcLdNull, d, c.genType(n[1].typ))
     c.gABC(n, opcNodeToReg, d, d)
-  of mDefault, mZeroDefault:
-    if isEmpty(d): d = c.getTemp(n)
     c.gABx(n, ldNullOpcode(n.typ), d, c.genType(n.typ))
 
   of mConStrStr: genVarargsABC(c, n, d, opcConcatStr)
