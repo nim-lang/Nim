@@ -459,7 +459,11 @@ proc typeToIr*(c: var TypesCon; t: PType): TypeId =
       let a = openType(c.g, LastArrayTy)
       c.g.addType(elemType)
       result = sealType(c.g, a)
-  of tyNone, tyEmpty, tyUntyped, tyTyped, tyTypeDesc,
+  of tyUntyped, tyTyped:
+    # this avoids a special case for system.echo which is not a generic but
+    # uses `varargs[typed]`:
+    result = VoidId
+  of tyNone, tyEmpty, tyTypeDesc,
      tyNil, tyGenericInvocation, tyProxy, tyBuiltInTypeClass,
      tyUserTypeClass, tyUserTypeClassInst, tyCompositeTypeClass,
      tyAnd, tyOr, tyNot, tyAnything, tyConcept, tyIterable, tyForward:
