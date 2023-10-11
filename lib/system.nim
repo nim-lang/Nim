@@ -457,10 +457,6 @@ when not defined(js) and not defined(nimSeqsV2):
       data: UncheckedArray[char]
     NimString = ptr NimStringDesc
 
-when notJSnotNims and not defined(nimSeqsV2):
-  template space(s: PGenericSeq): int {.dirty.} =
-    s.reserved and not (seqShallowFlag or strlitFlag)
-
 when notJSnotNims:
   include "system/hti"
 
@@ -631,7 +627,7 @@ proc newSeq*[T](len = 0.Natural): seq[T] =
   ##
   ## See also:
   ## * `newSeqOfCap <#newSeqOfCap,Natural>`_
-  ## * `newSeqUninitialized <#newSeqUninitialized,Natural>`_
+  ## * `newSeqUninit <#newSeqUninit,Natural>`_
   newSeq(result, len)
 
 proc newSeqOfCap*[T](cap: Natural): seq[T] {.
@@ -1047,6 +1043,10 @@ const
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
+
+when notJSnotNims and not defined(nimSeqsV2):
+  template space(s: PGenericSeq): int =
+    s.reserved and not (seqShallowFlag or strlitFlag)
 
 when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
   # tcc doesn't support TLS
@@ -1603,12 +1603,23 @@ when not defined(js) and defined(nimV2):
       flags: int
     PNimTypeV2 = ptr TNimTypeV2
 
+proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
+
 when notJSnotNims and defined(nimSeqsV2):
   include "system/strs_v2"
   include "system/seqs_v2"
 
 when not defined(js):
-  proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
+  template newSeqImpl(T, len) =
+    result = newSeqOfCap[T](len)
+    {.cast(noSideEffect).}:
+      when defined(nimSeqsV2):
+        cast[ptr int](addr result)[] = len
+      else:
+        var s = cast[PGenericSeq](result)
+        s.len = len
+
+  proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] {.deprecated: "Use `newSeqUninit` instead".} =
     ## Creates a new sequence of type `seq[T]` with length `len`.
     ##
     ## Only available for numbers types. Note that the sequence will be
@@ -1627,6 +1638,23 @@ when not defined(js):
       var s = cast[PGenericSeq](result)
       s.len = len
 
+  func newSeqUninit*[T](len: Natural): seq[T] =
+    ## Creates a new sequence of type `seq[T]` with length `len`.
+    ##
+    ## Only available for types, which don't contain
+    ## managed memory or have destructors.
+    ## Note that the sequence will be uninitialized.
+    ## After the creation of the sequence you should assign
+    ## entries to the sequence instead of adding them.
+    runnableExamples:
+      var x = newSeqUninit[int](3)
+      assert len(x) == 3
+      x[0] = 10
+    when supportsCopyMem(T):
+      newSeqImpl(T, len)
+    else:
+      {.error: "The type T cannot contain managed memory or have destructors".}
+
   proc newStringUninit*(len: Natural): string =
     ## Returns a new string of length `len` but with uninitialized
     ## content. One needs to fill the string character after character
@@ -1634,12 +1662,22 @@ when not defined(js):
     ##
     ## This procedure exists only for optimization purposes;
     ## the same effect can be achieved with the `&` operator or with `add`.
-    result = newStringOfCap(len)
-    when defined(nimSeqsV2):
-      cast[ptr int](addr result)[] = len
+    when nimvm:
+      result = newString(len)
     else:
-      var s = cast[PGenericSeq](result)
-      s.len = len
+      result = newStringOfCap(len)
+      when defined(nimSeqsV2):
+        let s = cast[ptr NimStringV2](addr result)
+        if len > 0:
+          s.len = len
+          s.p.data[len] = '\0'
+      else:
+        let s = cast[NimString](result)
+        s.len = len
+        s.data[len] = '\0'
+else:
+  proc newStringUninit*(len: Natural): string {.
+    magic: "NewString", importc: "mnewString", noSideEffect.}
 
 {.pop.}
 
@@ -2253,19 +2291,49 @@ when notJSnotNims:
 
   proc rawProc*[T: proc {.closure.} | iterator {.closure.}](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw proc pointer of the closure `x`. This is
-    ## useful for interfacing closures with C/C++, hash compuations, etc.
+    ## useful for interfacing closures with C/C++, hash computations, etc.
+    ## If `rawEnv(x)` returns `nil`, the proc which the result points to
+    ## takes as many parameters as `x`, but with `{.nimcall.}` as its calling
+    ## convention instead of `{.closure.}`, otherwise it takes one more parameter
+    ## which is a `pointer`, and it still has `{.nimcall.}` as its calling convention.
+    ## To invoke the resulted proc, what this returns has to be casted into a `proc`,
+    ## not a `ptr proc`, and, in a case where `rawEnv(x)` returns non-`nil`,
+    ## the last and additional argument has to be the result of `rawEnv(x)`.
+    ## This is not available for the JS target.
     #[
     The conversion from function pointer to `void*` is a tricky topic, but this
     should work at least for c++ >= c++11, e.g. for `dlsym` support.
     refs: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57869,
     https://stackoverflow.com/questions/14125474/casts-between-pointer-to-function-and-pointer-to-object-in-c-and-c
     ]#
+    runnableExamples:
+      proc makeClosure(x: int): (proc(y: int): int) =
+        var n = x
+        result = (
+          proc(y: int): int =
+            n += y
+            return n
+        )
+
+      var
+        c1 = makeClosure(10)
+        e = c1.rawEnv()
+        p = c1.rawProc()
+
+      if e.isNil():
+        let c2 = cast[proc(y: int): int {.nimcall.}](p)
+        echo c2(2)
+      else:
+        let c3 = cast[proc(y: int; env: pointer): int {.nimcall.}](p)
+        echo c3(3, e)
+
     {.emit: """
     `result` = (void*)`x`.ClP_0;
     """.}
 
   proc rawEnv*[T: proc {.closure.} | iterator {.closure.}](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw environment pointer of the closure `x`. See also `rawProc`.
+    ## This is not available for the JS target.
     {.emit: """
     `result` = `x`.ClE_0;
     """.}
@@ -2722,6 +2790,9 @@ proc toOpenArrayByte*(x: openArray[char]; first, last: int): openArray[byte] {.
 proc toOpenArrayByte*(x: seq[char]; first, last: int): openArray[byte] {.
   magic: "Slice".}
 
+proc toOpenArrayChar*(x: openArray[byte]; first, last: int): openArray[char] {.
+  magic: "Slice".}
+
 when defined(genode):
   var componentConstructHook*: proc (env: GenodeEnv) {.nimcall.}
     ## Hook into the Genode component bootstrap process.
@@ -2795,7 +2866,7 @@ when notJSnotNims:
             # machine. We also enable `setConsoleOutputCP(65001)` now by default.
             # But we cannot call printf directly as the string might contain \0.
             # So we have to loop over all the sections separated by potential \0s.
-            var i = c_fprintf(f, "%s", s)
+            var i = int c_fprintf(f, "%s", s)
             while i < s.len:
               if s[i] == '\0':
                 let w = c_fputc('\0', f)

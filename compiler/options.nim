@@ -421,6 +421,8 @@ type
     expandNodeResult*: string
     expandPosition*: TLineInfo
 
+    currentConfigDir*: string # used for passPP only; absolute dir
+
 
 proc parseNimVersion*(a: string): NimVer =
   # could be moved somewhere reusable
@@ -585,6 +587,7 @@ proc newConfigRef*(): ConfigRef =
     maxLoopIterationsVM: 10_000_000,
     vmProfileData: newProfileData(),
     spellSuggestMax: spellSuggestSecretSauce,
+    currentConfigDir: ""
   )
   initConfigRefCommon(result)
   setTargetFromSystem(result.target)
