@@ -315,7 +315,7 @@ proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   result = initTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
-proc `[]`*[A, B](t: Table[A, B], key: A): B =
+proc `[]`*[A, B](t: Table[A, B], key: A): lent B =
   ## Retrieves the value at `t[key]`.
   ##
   ## If `key` is not in `t`, the `KeyError` exception is raised.
@@ -1358,7 +1358,7 @@ proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   result = initOrderedTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
-proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
+proc `[]`*[A, B](t: OrderedTable[A, B], key: A): lent B =
   ## Retrieves the value at `t[key]`.
   ##
   ## If `key` is not in `t`, the  `KeyError` exception is raised.
