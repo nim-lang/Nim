@@ -17,6 +17,9 @@ import .. / ic / bitabs
 
 import nirtypes, nirinsts, nirlineinfos, nirslots, types2ir
 
+when defined(nimCompilerStacktraceHints):
+  import std/stackframes
+
 type
   ModuleCon* = ref object
     strings*: BiTable[string]
