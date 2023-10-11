@@ -16,6 +16,7 @@ ___
 777
 10
 123
+()
 '''
 """
 
@@ -107,3 +108,11 @@ proc init =
     echo n.x
 
 init()
+
+#tests that the ctor is not declared with nodecl. 
+#nodelc also prevents the creation of a default one when another is created.
+type Foo {.exportc.} = object
+
+proc makeFoo(): Foo {.used, constructor, nodecl.} = discard
+
+echo $Foo()

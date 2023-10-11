@@ -757,6 +757,7 @@ proc getRecordFields(m: BModule; typ: PType, check: var IntSet): Rope =
         isCtorGen = true
         if prc.typ.n.len == 1:
           isDefaultCtorGen = true
+      if lfNoDecl in prc.loc.flags: continue
       genMemberProcHeader(m, prc, header, false, true)
       result.addf "$1;$n", [header]
     if isCtorGen and not isDefaultCtorGen:
