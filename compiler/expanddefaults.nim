@@ -102,7 +102,7 @@ proc expandDefault(t: PType; info: TLineInfo): PNode =
     for i in 0..<n:
       result.add expandDefault(t[1], info)
   of tyPtr, tyRef, tyProc, tyPointer, tyCstring:
-    result = newZero(t.lastSon, info, nkNilLit)
+    result = newZero(t, info, nkNilLit)
   of tyVar, tyLent:
     let e = t.lastSon
     if e.skipTypes(abstractInst).kind in {tyOpenArray, tyVarargs}:

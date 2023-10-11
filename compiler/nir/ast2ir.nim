@@ -129,7 +129,7 @@ proc genScope(c: var ProcCon; n: PNode; flags: GenFlags = {}) =
 proc genx(c: var ProcCon; n: PNode; flags: GenFlags = {}): Value =
   result = default(Value)
   gen(c, n, result, flags)
-  assert Tree(result).len > 0, $n.kind
+  assert Tree(result).len > 0, $n
 
 proc clearDest(c: var ProcCon; n: PNode; d: var Value) {.inline.} =
   when false:
@@ -2110,9 +2110,7 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
     unused(c, n, d)
     genAsgn(c, n)
   of nkDotExpr: genObjAccess(c, n, d, flags)
-  of nkCheckedFieldExpr:
-    #genCheckedObjAccess(c, n, d, flags)
-    discard "XXX"
+  of nkCheckedFieldExpr: genObjAccess(c, n[0], d, flags)
   of nkBracketExpr: genArrAccess(c, n, d, flags)
   of nkDerefExpr, nkHiddenDeref: genDeref(c, n, d, flags)
   of nkAddr, nkHiddenAddr: genAddr(c, n, d, flags)
