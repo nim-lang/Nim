@@ -519,7 +519,9 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
           selfPtr.add transFormedSym.ast[bodyPos][1]
           selfPtr.typ = selfSymbolType
           transFormedSym.ast[bodyPos][1] = c.semExpr(c, selfPtr)
-        bindTypeHook(c, transFormedSym, n, attachedDestructor)
+        # TODO: suppress var destructor warnings; if newFinalizer is not
+        # TODO: deprecated, try to implement plain T destructor
+        bindTypeHook(c, transFormedSym, n, attachedDestructor, suppressVarDestructorWarning = true)
   result = addDefaultFieldForNew(c, n)
 
 proc semPrivateAccess(c: PContext, n: PNode): PNode =
