@@ -13,6 +13,8 @@ type
     vals: seq[T] # indexed by LitId
     keys: seq[LitId]  # indexed by hash(val)
 
+proc initBiTable*[T](): BiTable[T] = BiTable[T](vals: @[], keys: @[])
+
 proc nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = (h + 1) and maxHash
 

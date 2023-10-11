@@ -224,7 +224,7 @@ proc rawWriteString*(f: CFilePtr, s: cstring, length: int) {.compilerproc, nonRe
 
 proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} =
   # we cannot throw an exception here!
-  discard c_fwrite(s, 1, cast[csize_t](s.len), f)
+  discard c_fwrite(s, 1, c_strlen(s), f)
   discard c_fflush(f)
 
 {.pop.}

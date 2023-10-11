@@ -17,6 +17,8 @@ import
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
   injectdestructors, astmsgs, modulepaths, backendpragmas
 
+from expanddefaults import caseObjDefaultBranch
+
 import pipelineutils
 
 when defined(nimPreviewSlimSystem):
@@ -499,8 +501,8 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       # array passed as argument decayed into pointer, bug #7332
       # so we use getTypeDesc here rather than rdLoc(loc)
       let tyDesc = getTypeDesc(p.module, loc.t, descKindFromSymKind mapTypeChooser(loc))
-      if p.module.compileToCpp and isOrHasImportedCppType(typ): 
-        if lfIndirect in loc.flags: 
+      if p.module.compileToCpp and isOrHasImportedCppType(typ):
+        if lfIndirect in loc.flags:
           #C++ cant be just zeroed. We need to call the ctors
           var tmp = getTemp(p, loc.t)
           linefmt(p, cpsStmts,"#nimCopyMem((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
@@ -508,7 +510,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       else:
         linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
                 [addrLoc(p.config, loc), tyDesc])
-      
+
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
@@ -551,7 +553,7 @@ proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
   result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
   if p.module.compileToCpp and isOrHasImportedCppType(t):
-    linefmt(p, cpsLocals, "$1 $2$3;$n", [getTypeDesc(p.module, t, dkVar), result.r, 
+    linefmt(p, cpsLocals, "$1 $2$3;$n", [getTypeDesc(p.module, t, dkVar), result.r,
       genCppInitializer(p.module, p, t)])
   else:
     linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t, dkVar), result.r])
@@ -607,8 +609,8 @@ proc assignLocalVar(p: BProc, n: PNode) =
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
   let nl = if optLineDir in p.config.options: "" else: "\n"
-  var decl = localVarDecl(p, n) 
-  if p.module.compileToCpp and isOrHasImportedCppType(n.typ): 
+  var decl = localVarDecl(p, n)
+  if p.module.compileToCpp and isOrHasImportedCppType(n.typ):
     decl.add genCppInitializer(p.module, p, n.typ)
   decl.add ";" & nl
   line(p, cpsLocals, decl)
