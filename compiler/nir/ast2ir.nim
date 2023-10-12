@@ -42,6 +42,7 @@ type
     locGen: int
     m: ModuleCon
     prc: PSym
+    options: TOptions
 
 proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; module: PSym): ModuleCon =
   result = ModuleCon(graph: graph, types: initTypesCon(config), slotGenerator: new(int),
@@ -58,7 +59,9 @@ proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; m
     result.nativeUIntId = UInt16Id
 
 proc initProcCon*(m: ModuleCon; prc: PSym; config: ConfigRef): ProcCon =
-  ProcCon(m: m, sm: initSlotManager({}, m.slotGenerator), prc: prc, config: config)
+  ProcCon(m: m, sm: initSlotManager({}, m.slotGenerator), prc: prc, config: config,
+    options: if prc != nil: prc.options
+             else: config.options)
 
 proc toLineInfo(c: var ProcCon; i: TLineInfo): PackedLineInfo =
   var val: LitId
@@ -473,14 +476,21 @@ proc genField(c: var ProcCon; n: PNode; d: var Value) =
   d.addImmediateVal toLineInfo(c, n.info), pos
 
 proc genIndex(c: var ProcCon; n: PNode; arr: PType; d: var Value) =
+  let info = toLineInfo(c, n.info)
   if arr.skipTypes(abstractInst).kind == tyArray and
       (let x = firstOrd(c.config, arr); x != Zero):
-    let info = toLineInfo(c, n.info)
     buildTyped d, info, Sub, c.m.nativeIntId:
       c.gen(n, d)
       d.addImmediateVal toLineInfo(c, n.info), toInt(x)
   else:
     c.gen(n, d)
+  if optBoundsCheck in c.options:
+    let idx = move d
+    build d, info, CheckedIndex:
+      copyTree d.Tree, idx
+      let x = toInt64 lengthOrd(c.config, arr)
+      d.Tree.addIntVal c.m.integers, info, c.m.nativeIntId, x
+      d.Tree.addLabel info, CheckedGoto, c.exitLabel
 
 proc genNew(c: var ProcCon; n: PNode; needsInit: bool) =
   # If in doubt, always follow the blueprint of the C code generator for `mm:orc`.
@@ -583,6 +593,8 @@ proc genBinaryOp(c: var ProcCon; n: PNode; d: var Value; opc: Opcode) =
   let t = typeToIr(c.m.types, n.typ)
   template body(target) =
     buildTyped target, info, opc, t:
+      if optOverflowCheck in c.options and opc in {CheckedAdd, CheckedSub, CheckedMul, CheckedDiv, CheckedMod}:
+        c.code.addLabel info, CheckedGoto, c.exitLabel
       copyTree target, tmp
       copyTree target, tmp2
   intoDest d, info, t, body
@@ -1469,9 +1481,9 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   of mNewString, mNewStringOfCap, mExit: c.genCall(n, d)
   of mLengthOpenArray, mLengthArray, mLengthSeq, mLengthStr:
     genArrayLen(c, n, d)
-  of mMulI: genBinaryOp(c, n, d, Mul)
-  of mDivI: genBinaryOp(c, n, d, Div)
-  of mModI: genBinaryOp(c, n, d, Mod)
+  of mMulI: genBinaryOp(c, n, d, CheckedMul)
+  of mDivI: genBinaryOp(c, n, d, CheckedDiv)
+  of mModI: genBinaryOp(c, n, d, CheckedMod)
   of mAddF64: genBinaryOp(c, n, d, Add)
   of mSubF64: genBinaryOp(c, n, d, Sub)
   of mMulF64: genBinaryOp(c, n, d, Mul)
@@ -1963,7 +1975,7 @@ proc genVarSection(c: var ProcCon; n: PNode) =
           genAsgn2(c, vn, a[2])
       else:
         if a[2].kind == nkEmpty:
-          discard "XXX assign default value to location here"
+          genAsgn2(c, vn, expandDefault(vn.typ, vn.info))
         else:
           genAsgn2(c, vn, a[2])
 
@@ -2035,17 +2047,56 @@ proc genNilLit(c: var ProcCon; n: PNode; d: var Value) =
   valueIntoDest c, info, d, n.typ, body
 
 proc genRangeCheck(c: var ProcCon; n: PNode; d: var Value) =
-  # XXX to implement properly
-  gen c, n[0], d
+  if optRangeCheck in c.options:
+    let info = toLineInfo(c, n.info)
+    let tmp = c.genx n[0]
+    let a = c.genx n[1]
+    let b = c.genx n[2]
+    template body(target) =
+      buildTyped target, info, CheckedRange, typeToIr(c.m.types, n.typ):
+        copyTree target, tmp
+        copyTree target, a
+        copyTree target, b
+        target.addLabel info, CheckedGoto, c.exitLabel
+    valueIntoDest c, info, d, n.typ, body
+    freeTemp c, tmp
+    freeTemp c, a
+    freeTemp c, b
+  else:
+    gen c, n[0], d
+
+type
+  IndexFor = enum
+    ForSeq, ForStr, ForOpenArray
+
+proc genIndexCheck(c: var ProcCon; n: PNode; a: Value; kind: IndexFor): Value =
+  if optBoundsCheck in c.options:
+    let info = toLineInfo(c, n.info)
+    result = default(Value)
+    let idx = genx(c, n)
+    build result, info, CheckedIndex:
+      copyTree result.Tree, idx
+      case kind
+      of ForSeq, ForStr:
+        buildTyped result, info, FieldAt, c.m.nativeIntId:
+          copyTree result.Tree, a
+          result.addImmediateVal info, 0 # (len, p)-pair
+      of ForOpenArray:
+        buildTyped result, info, FieldAt, c.m.nativeIntId:
+          copyTree result.Tree, a
+          result.addImmediateVal info, 1 # (p, len)-pair
+      result.Tree.addLabel info, CheckedGoto, c.exitLabel
+    freeTemp c, idx
+  else:
+    result = genx(c, n)
 
 proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   let arrayKind = n[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
   let info = toLineInfo(c, n.info)
   case arrayKind
   of tyString:
-    # XXX implement range check
     let a = genx(c, n[0], flags)
-    let b = genx(c, n[1])
+    let b = genIndexCheck(c, n[1], a, ForStr)
     let t = typeToIr(c.m.types, n.typ)
     template body(target) =
       buildTyped target, info, ArrayAt, t:
@@ -2079,9 +2130,8 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
 
     freeTemp c, a
   of tyOpenArray, tyVarargs:
-    # XXX implement range check
     let a = genx(c, n[0], flags)
-    let b = genx(c, n[1])
+    let b = genIndexCheck(c, n[1], a, ForOpenArray)
     let t = typeToIr(c.m.types, n.typ)
     template body(target) =
       buildTyped target, info, ArrayAt, t:
@@ -2094,7 +2144,6 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     freeTemp c, b
     freeTemp c, a
   of tyArray:
-    # XXX implement range check
     let a = genx(c, n[0], flags)
     var b = default(Value)
     genIndex(c, n[1], n[0].typ, b)
@@ -2108,7 +2157,7 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     freeTemp c, a
   of tySequence:
     let a = genx(c, n[0], flags)
-    let b = genx(c, n[1])
+    let b = genIndexCheck(c, n[1], a, ForSeq)
     let t = typeToIr(c.m.types, n.typ)
     template body(target) =
       buildTyped target, info, ArrayAt, t:
