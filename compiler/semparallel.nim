@@ -25,7 +25,7 @@ import
   ast, astalgo, idents, lowerings, magicsys, guards, msgs,
   renderer, types, modulegraphs, options, spawn, lineinfos
 
-from trees import getMagic, isTrue, getRoot
+from trees import getMagic, getRoot
 from strutils import `%`
 
 discard """

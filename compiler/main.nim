@@ -22,6 +22,8 @@ import
   modules,
   modulegraphs, lineinfos, pathutils, vmprofiler
 
+# ensure NIR compiles:
+import nir / nir
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
@@ -173,13 +175,14 @@ proc commandCompileToJS(graph: ModuleGraph) =
     if optGenScript in conf.globalOptions:
       writeDepsFile(graph)
 
-proc commandInteractive(graph: ModuleGraph) =
+proc commandInteractive(graph: ModuleGraph; useNir: bool) =
   graph.config.setErrorMaxHighMaybe
   initDefines(graph.config.symbols)
-  defineSymbol(graph.config.symbols, "nimscript")
+  if not useNir:
+    defineSymbol(graph.config.symbols, "nimscript")
   # note: seems redundant with -d:nimHasLibFFI
   when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
-  setPipeLinePass(graph, InterpreterPass)
+  setPipeLinePass(graph, if useNir: NirReplPass else: InterpreterPass)
   compilePipelineSystemModule(graph)
   if graph.config.commandArgs.len > 0:
     discard graph.compilePipelineModule(fileInfoIdx(graph.config, graph.config.projectFull), {})
@@ -407,7 +410,7 @@ proc mainCommand*(graph: ModuleGraph) =
     wantMainModule(conf)
     commandView(graph)
     #msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
-  of cmdInteractive: commandInteractive(graph)
+  of cmdInteractive: commandInteractive(graph, isDefined(conf, "nir"))
   of cmdNimscript:
     if conf.projectIsCmd or conf.projectIsStdin: discard
     elif not fileExists(conf.projectFull):

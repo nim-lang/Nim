@@ -321,10 +321,6 @@ proc isNotOpr(n: PNode): bool =
   n.kind in nkCallKinds and n[0].kind == nkSym and
     n[0].sym.magic == mNot
 
-proc isTrue(n: PNode): bool =
-  n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
-    n.kind == nkIntLit and n.intVal != 0
-
 proc genWhile(c: PCtx; n: PNode) =
   # lab1:
   #   cond, tmp
@@ -904,9 +900,9 @@ proc genCard(c: PCtx; n: PNode; dest: var TDest) =
   c.freeTemp(tmp)
 
 proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
-  const allowedIntegers = {tyInt..tyInt64, tyUInt..tyUInt64, tyChar}
+  const allowedIntegers = {tyInt..tyInt64, tyUInt..tyUInt64, tyChar, tyEnum, tyBool}
   var signedIntegers = {tyInt..tyInt64}
-  var unsignedIntegers = {tyUInt..tyUInt64, tyChar}
+  var unsignedIntegers = {tyUInt..tyUInt64, tyChar, tyEnum, tyBool}
   let src = n[1].typ.skipTypes(abstractRange)#.kind
   let dst = n[0].typ.skipTypes(abstractRange)#.kind
   let srcSize = getSize(c.config, src)
