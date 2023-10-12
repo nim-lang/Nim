@@ -2098,7 +2098,7 @@ proc genProc(cOuter: var ProcCon; n: PNode) =
   var c = initProcCon(cOuter.m, prc, cOuter.m.graph.config)
   genParams(c, prc.typ.n)
 
-  let body = transformBody(c.m.graph, c.m.idgen, prc, useCache)
+  let body = transformBody(c.m.graph, c.m.idgen, prc, {useCache, keepOpenArrayConversions})
 
   let info = toLineInfo(c, body.info)
   build c.code, info, ProcDecl:
