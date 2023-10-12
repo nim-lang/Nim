@@ -1815,6 +1815,63 @@ proc genDeref(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   valueIntoDest c, info, d, n.typ, body
   freeTemp c, tmp
 
+proc addAddrOfFirstElem(c: var ProcCon; target: var Tree; info: PackedLineInfo; tmp: Value; typ: PType) =
+  let arrType = typ.skipTypes(abstractVar)
+  let elemType = arrayPtrTypeOf(c.m.types.g, typeToIr(c.m.types, arrType.lastSon))
+  case arrType.kind
+  of tyString:
+    let t = typeToIr(c.m.types, typ.lastSon)
+    target.addImmediateVal info, 0
+    buildTyped target, info, AddrOf, elemType:
+      buildTyped target, info, ArrayAt, t:
+        buildTyped target, info, FieldAt, strPayloadPtrType(c.m.types):
+          copyTree target, tmp
+          target.addImmediateVal info, 1 # (len, p)-pair
+        target.addIntVal c.m.integers, info, c.m.nativeIntId, 0
+    # len:
+    target.addImmediateVal info, 1
+    buildTyped target, info, FieldAt, c.m.nativeIntId:
+      copyTree target, tmp
+      target.addImmediateVal info, 0 # (len, p)-pair so len is at index 0
+
+  of tySequence:
+    let t = typeToIr(c.m.types, typ.lastSon)
+    target.addImmediateVal info, 0
+    buildTyped target, info, AddrOf, elemType:
+      buildTyped target, info, ArrayAt, t:
+        buildTyped target, info, FieldAt, seqPayloadPtrType(c.m.types, typ):
+          copyTree target, tmp
+          target.addImmediateVal info, 1 # (len, p)-pair
+        target.addIntVal c.m.integers, info, c.m.nativeIntId, 0
+    # len:
+    target.addImmediateVal info, 1
+    buildTyped target, info, FieldAt, c.m.nativeIntId:
+      copyTree target, tmp
+      target.addImmediateVal info, 0 # (len, p)-pair so len is at index 0
+
+  of tyArray:
+    let t = typeToIr(c.m.types, typ.lastSon)
+    target.addImmediateVal info, 0
+    buildTyped target, info, AddrOf, elemType:
+      buildTyped target, info, ArrayAt, t:
+        copyTree target, tmp
+        target.addIntVal c.m.integers, info, c.m.nativeIntId, 0
+    target.addImmediateVal info, 1
+    target.addIntVal(c.m.integers, info, c.m.nativeIntId, toInt lengthOrd(c.config, typ))
+  else:
+    raiseAssert "addAddrOfFirstElem: " & typeToString(typ)
+
+proc genToOpenArrayConv(c: var ProcCon; arg: PNode; d: var Value; flags: GenFlags; destType: PType) =
+  let info = toLineInfo(c, arg.info)
+  let tmp = c.genx(arg, flags)
+  let arrType = destType.skipTypes(abstractVar)
+  template body(target) =
+    buildTyped target, info, ObjConstr, typeToIr(c.m.types, arrType):
+      c.addAddrOfFirstElem target, info, tmp, arg.typ
+
+  valueIntoDest c, info, d, arrType, body
+  freeTemp c, tmp
+
 proc genConv(c: var ProcCon; n, arg: PNode; d: var Value; flags: GenFlags; opc: Opcode) =
   let targetType = n.typ.skipTypes({tyDistinct})
   let argType = arg.typ.skipTypes({tyDistinct})
@@ -1823,6 +1880,11 @@ proc genConv(c: var ProcCon; n, arg: PNode; d: var Value; flags: GenFlags; opc: 
       argType.kind == tyProc and targetType.kind == argType.kind):
     # don't do anything for lambda lifting conversions:
     gen c, arg, d
+    return
+
+  if opc != Cast and targetType.skipTypes({tyVar, tyLent}).kind in {tyOpenArray, tyVarargs} and
+      argType.skipTypes({tyVar, tyLent}).kind notin {tyOpenArray, tyVarargs}:
+    genToOpenArrayConv c, arg, d, flags, n.typ
     return
 
   let info = toLineInfo(c, n.info)
