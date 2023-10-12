@@ -2939,7 +2939,7 @@ proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode)
 
       call[paramPos] = newSymNode(hoistedVarSym) # Refer the original arg to its hoisted sym
 
-    # arg we refer to is a sym, wether introduced by hoisting or not doesn't matter, we simply reuse it
+    # arg we refer to is a sym, whether introduced by hoisting or not doesn't matter, we simply reuse it
     defExpr = call[paramPos]
   else:
     for i in 0..<defExpr.safeLen:
