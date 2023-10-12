@@ -2927,7 +2927,7 @@ proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode)
   if defExpr.kind == nkSym and defExpr.sym.kind == skParam and defExpr.sym.owner == call[0].sym:
     let paramPos = defExpr.sym.position + 1
 
-    if call[paramPos].kind != nkSym:
+    if call[paramPos].skipAddr.kind != nkSym:
       let hoistedVarSym = newSym(skLet, getIdent(c.graph.cache, genPrefix), c.idgen,
                                  c.p.owner, letSection.info, c.p.owner.options)
       hoistedVarSym.typ = call[paramPos].typ
