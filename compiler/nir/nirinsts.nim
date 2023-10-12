@@ -66,6 +66,9 @@ type
     SetExc,
     TestExc,
 
+    CheckedRange,
+    CheckedIndex,
+
     Call,
     IndirectCall,
     CheckedCall, # call that can raise

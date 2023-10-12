@@ -2279,9 +2279,6 @@ proc binaryFloatArith(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   else:
     binaryArith(p, e, d, m)
 
-proc skipAddr(n: PNode): PNode =
-  result = if n.kind in {nkAddr, nkHiddenAddr}: n[0] else: n
-
 proc genWasMoved(p: BProc; n: PNode) =
   var a: TLoc
   let n1 = n[1].skipAddr

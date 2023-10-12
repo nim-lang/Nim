@@ -239,6 +239,11 @@ proc ptrTypeOf*(g: var TypeGraph; t: TypeId): TypeId =
   g.addType t
   result = sealType(g, f)
 
+proc arrayPtrTypeOf*(g: var TypeGraph; t: TypeId): TypeId =
+  let f = g.openType AArrayPtrTy
+  g.addType t
+  result = sealType(g, f)
+
 proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
   case g[i].kind
   of VoidTy: dest.add "void"
