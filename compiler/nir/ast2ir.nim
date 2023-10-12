@@ -685,10 +685,16 @@ proc genUnaryMinus(c: var ProcCon; n: PNode; d: var Value) =
   c.freeTemp(tmp)
 
 proc genHigh(c: var ProcCon; n: PNode; d: var Value) =
-  let subOpr = createMagic(c.m.graph, c.m.idgen, "-", mSubI)
-  let lenOpr = createMagic(c.m.graph, c.m.idgen, "len", mLengthOpenArray)
-  let asLenExpr = subOpr.buildCall(lenOpr.buildCall(n[1]), nkIntLit.newIntNode(1))
-  c.gen asLenExpr, d
+  let info = toLineInfo(c, n.info)
+  let t = typeToIr(c.m.types, n.typ)
+  var x = default(Value)
+  genArrayLen(c, n, x)
+  template body(target) =
+    buildTyped target, info, Sub, t:
+      copyTree target, x
+      target.addIntVal(c.m.integers, info, t, 1)
+  intoDest d, info, t, body
+  c.freeTemp x
 
 proc genBinaryCp(c: var ProcCon; n: PNode; d: var Value; compilerProc: string) =
   let info = toLineInfo(c, n.info)
