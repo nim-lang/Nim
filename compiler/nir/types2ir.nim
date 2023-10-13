@@ -71,11 +71,14 @@ proc objectToIr(c: var TypesCon; n: PNode; fieldTypes: Table[ItemId, TypeId]; un
       else: discard
     discard sealType(c.g, u)
   of nkSym:
-    c.g.addField n.sym.name.s & "_" & $n.sym.position, fieldTypes[n.sym.itemId]
+    c.g.addField n.sym.name.s & "_" & $n.sym.position, fieldTypes[n.sym.itemId], n.sym.offset
   else:
     assert false, "unknown node kind: " & $n.kind
 
 proc objectToIr(c: var TypesCon; t: PType): TypeId =
+  c.g.addSize c.conf.getSize(t)
+  c.g.addAlign c.conf.getAlign(t)
+
   if t[0] != nil:
     # ensure we emitted the base type:
     discard typeToIr(c, t[0])
@@ -94,6 +97,7 @@ proc objectToIr(c: var TypesCon; t: PType): TypeId =
       let voidPtr = openType(c.g, APtrTy)
       c.g.addBuiltinType(VoidId)
       discard sealType(c.g, voidPtr)
+      c.g.addOffset 0 # type field is always at offset 0
       c.g.addName "m_type"
       discard sealType(c.g, f2) # FieldDecl
 
@@ -110,7 +114,7 @@ proc tupleToIr(c: var TypesCon; t: PType): TypeId =
   let obj = openType(c.g, ObjectDecl)
   c.g.addName mangle(c, t)
   for i in 0..<t.len:
-    c.g.addField "f_" & $i, fieldTypes[i]
+    c.g.addField "f_" & $i, fieldTypes[i], 0 # XXX
   result = sealType(c.g, obj)
 
 proc procToIr(c: var TypesCon; t: PType; addEnv = false): TypeId =
@@ -172,10 +176,11 @@ proc openArrayToIr(c: var TypesCon; t: PType): TypeId =
   let arr = c.g.openType AArrayPtrTy
   c.g.addType elementType
   discard sealType(c.g, arr) # LastArrayTy
+  c.g.addOffset 0
   c.g.addName "data"
   discard sealType(c.g, f) # FieldDecl
 
-  c.g.addField "len", c.nativeInt
+  c.g.addField "len", c.nativeInt, c.conf.target.ptrSize
 
   result = sealType(c.g, p) # ObjectDecl
 
@@ -183,12 +188,13 @@ proc strPayloadType(c: var TypesCon): string =
   result = "NimStrPayload"
   let p = openType(c.g, ObjectDecl)
   c.g.addName result
-  c.g.addField "cap", c.nativeInt
+  c.g.addField "cap", c.nativeInt, 0
 
   let f = c.g.openType FieldDecl
   let arr = c.g.openType LastArrayTy
   c.g.addBuiltinType Char8Id
   discard sealType(c.g, arr) # LastArrayTy
+  c.g.addOffset c.conf.target.ptrSize # comes after the len field
   c.g.addName "data"
   discard sealType(c.g, f) # FieldDecl
 
@@ -216,12 +222,13 @@ proc stringToIr(c: var TypesCon): TypeId =
 
   let str = openType(c.g, ObjectDecl)
   c.g.addName "NimStringV2"
-  c.g.addField "len", c.nativeInt
+  c.g.addField "len", c.nativeInt, 0
 
   let fp = c.g.openType FieldDecl
   let ffp = c.g.openType APtrTy
   c.g.addNominalType ObjectTy, "NimStrPayload"
   discard sealType(c.g, ffp) # APtrTy
+  c.g.addOffset c.conf.target.ptrSize # comes after 'len' field
   c.g.addName "p"
   discard sealType(c.g, fp) # FieldDecl
 
@@ -241,12 +248,13 @@ proc seqPayloadType(c: var TypesCon; t: PType): string =
 
   let p = openType(c.g, ObjectDecl)
   c.g.addName payloadName
-  c.g.addField "cap", c.nativeInt
+  c.g.addField "cap", c.nativeInt, 0
 
   let f = c.g.openType FieldDecl
   let arr = c.g.openType LastArrayTy
   c.g.addType elementType
   discard sealType(c.g, arr) # LastArrayTy
+  c.g.addOffset c.conf.target.ptrSize
   c.g.addName "data"
   discard sealType(c.g, f) # FieldDecl
   discard sealType(c.g, p)
@@ -267,12 +275,13 @@ proc seqToIr(c: var TypesCon; t: PType): TypeId =
 
   let sq = openType(c.g, ObjectDecl)
   c.g.addName "NimSeqV2" & mangledBase
-  c.g.addField "len", c.nativeInt
+  c.g.addField "len", c.nativeInt, 0
 
   let fp = c.g.openType FieldDecl
   let ffp = c.g.openType APtrTy
   c.g.addNominalType ObjectTy, "NimSeqPayload" & mangledBase
   discard sealType(c.g, ffp) # APtrTy
+  c.g.addOffset c.conf.target.ptrSize
   c.g.addName "p"
   discard sealType(c.g, fp) # FieldDecl
 
@@ -294,6 +303,7 @@ proc closureToIr(c: var TypesCon; t: PType): TypeId =
 
   let f = c.g.openType FieldDecl
   c.g.addType procType
+  c.g.addOffset 0
   c.g.addName "ClP_0"
   discard sealType(c.g, f) # FieldDecl
 
@@ -302,6 +312,7 @@ proc closureToIr(c: var TypesCon; t: PType): TypeId =
   c.g.addBuiltinType(VoidId)
   discard sealType(c.g, voidPtr)
 
+  c.g.addOffset c.conf.target.ptrSize
   c.g.addName "ClE_0"
   discard sealType(c.g, f2) # FieldDecl
 
@@ -376,7 +387,7 @@ proc typeToIr*(c: var TypesCon; t: PType): TypeId =
       let elemType = typeToIr(c, t[1])
       let a = openType(c.g, ArrayTy)
       c.g.addType(elemType)
-      c.g.addArrayLen uint64(n)
+      c.g.addArrayLen n
       result = sealType(c.g, a)
   of tyPtr, tyRef:
     cached(c, t):
@@ -414,7 +425,7 @@ proc typeToIr*(c: var TypesCon; t: PType): TypeId =
       cached(c, t):
         let a = openType(c.g, ArrayTy)
         c.g.addType(UInt8Id)
-        c.g.addArrayLen uint64(s)
+        c.g.addArrayLen s
         result = sealType(c.g, a)
   of tyPointer:
     let a = openType(c.g, APtrTy)

@@ -924,7 +924,7 @@ type
                               # for variables a slot index for the evaluator
     offset*: int32            # offset of record field
     disamb*: int32            # disambiguation number; the basic idea is that
-                              # `<procname>__<module>_<disamb>`
+                              # `<procname>__<module>_<disamb>` is unique
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to save space)

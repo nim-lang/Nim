@@ -167,6 +167,8 @@ type
 template kind*(n: Instr): Opcode = Opcode(n.x and OpcodeMask)
 template operand(n: Instr): uint32 = (n.x shr OpcodeBits)
 
+template rawOperand*(n: Instr): uint32 = (n.x shr OpcodeBits)
+
 template toX(k: Opcode; operand: uint32): uint32 =
   uint32(k) or (operand shl OpcodeBits)
 

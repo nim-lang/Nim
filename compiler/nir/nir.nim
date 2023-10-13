@@ -60,12 +60,3 @@ proc runCode*(c: PPassContext; n: PNode): PNode =
   else:
     result = n
   c.oldErrorCount = c.m.graph.config.errorCounter
-
-when false:
-  type
-    Module* = object
-      types: TypeGraph
-      data: seq[Tree]
-      init: seq[Tree]
-      procs: seq[Tree]
-

@@ -14,7 +14,8 @@ import .. / ic / bitabs
 
 type
   NirTypeKind* = enum
-    VoidTy, IntTy, UIntTy, FloatTy, BoolTy, CharTy, NameVal, IntVal,
+    VoidTy, IntTy, UIntTy, FloatTy, BoolTy, CharTy, NameVal,
+    IntVal, SizeVal, AlignVal, OffsetVal,
     AnnotationVal,
     VarargsTy, # the `...` in a C prototype; also the last "atom"
     APtrTy, # pointer to aliasable memory
@@ -57,7 +58,7 @@ type
   TypeGraph* = object
     nodes: seq[TypeNode]
     names: BiTable[string]
-    numbers: BiTable[uint64]
+    numbers: BiTable[int64]
 
 const
   VoidId* = TypeId 0
@@ -164,7 +165,7 @@ proc sons3(tree: TypeGraph; n: TypeId): (TypeId, TypeId, TypeId) =
   let c = b + span(tree, b)
   result = (TypeId a, TypeId b, TypeId c)
 
-proc arrayLen*(tree: TypeGraph; n: TypeId): BiggestUInt =
+proc arrayLen*(tree: TypeGraph; n: TypeId): BiggestInt =
   assert tree[n].kind == ArrayTy
   result = tree.numbers[LitId tree[n].operand]
 
@@ -219,8 +220,17 @@ proc addType*(g: var TypeGraph; t: TypeId) =
     for i in 0..<L:
       g.nodes[d+i] = g.nodes[pos+i]
 
-proc addArrayLen*(g: var TypeGraph; len: uint64) =
+proc addArrayLen*(g: var TypeGraph; len: int64) =
   g.nodes.add TypeNode(x: toX(IntVal, g.numbers.getOrIncl(len)))
+
+proc addSize*(g: var TypeGraph; s: int64) =
+  g.nodes.add TypeNode(x: toX(SizeVal, g.numbers.getOrIncl(s)))
+
+proc addOffset*(g: var TypeGraph; offset: int64) =
+  g.nodes.add TypeNode(x: toX(OffsetVal, g.numbers.getOrIncl(offset)))
+
+proc addAlign*(g: var TypeGraph; a: int64) =
+  g.nodes.add TypeNode(x: toX(AlignVal, g.numbers.getOrIncl(a)))
 
 proc addName*(g: var TypeGraph; name: string) =
   g.nodes.add TypeNode(x: toX(NameVal, g.names.getOrIncl(name)))
@@ -228,9 +238,10 @@ proc addName*(g: var TypeGraph; name: string) =
 proc addAnnotation*(g: var TypeGraph; name: string) =
   g.nodes.add TypeNode(x: toX(NameVal, g.names.getOrIncl(name)))
 
-proc addField*(g: var TypeGraph; name: string; typ: TypeId) =
+proc addField*(g: var TypeGraph; name: string; typ: TypeId; offset: int64) =
   let f = g.openType FieldDecl
   g.addType typ
+  g.addOffset offset
   g.addName name
   discard sealType(g, f)
 
@@ -264,7 +275,9 @@ proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
     dest.addInt g[i].operand
   of NameVal, AnnotationVal:
     dest.add g.names[LitId g[i].operand]
-  of IntVal:
+  of IntVal, SizeVal, AlignVal, OffsetVal:
+    dest.add $g[i].kind
+    dest.add ' '
     dest.add $g.numbers[LitId g[i].operand]
   of VarargsTy:
     dest.add "..."
