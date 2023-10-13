@@ -175,11 +175,28 @@ proc openType*(tree: var TypeGraph; kind: NirTypeKind): TypePatchPos =
     FieldDecl}
   result = prepare(tree, kind)
 
-proc sealType*(tree: var TypeGraph; p: TypePatchPos): TypeId =
-  # TODO: Search for an existing instance of this type in
-  # order to reduce memory consumption.
-  result = TypeId(p)
+proc sealType*(tree: var TypeGraph; p: TypePatchPos) =
   patch tree, p
+
+proc finishType*(tree: var TypeGraph; p: TypePatchPos): TypeId =
+  # Search for an existing instance of this type in
+  # order to reduce memory consumption:
+  patch tree, p
+  let s = span(tree, p.int)
+  for i in 0..<p.int:
+    if tree.nodes[i].x == tree.nodes[p.int].x:
+      var isMatch = true
+      for j in 1..<s:
+        if tree.nodes[j+i].x == tree.nodes[j+p.int].x:
+          discard "still a match"
+        else:
+          isMatch = false
+          break
+      if isMatch:
+        if p.int+s > tree.len:
+          setLen tree.nodes, p.int
+        return TypeId(i)
+  result = TypeId(p)
 
 proc nominalType*(tree: var TypeGraph; kind: NirTypeKind; name: string): TypeId =
   assert kind in {ObjectTy, UnionTy}
@@ -243,17 +260,17 @@ proc addField*(g: var TypeGraph; name: string; typ: TypeId; offset: int64) =
   g.addType typ
   g.addOffset offset
   g.addName name
-  discard sealType(g, f)
+  sealType(g, f)
 
 proc ptrTypeOf*(g: var TypeGraph; t: TypeId): TypeId =
   let f = g.openType APtrTy
   g.addType t
-  result = sealType(g, f)
+  result = finishType(g, f)
 
 proc arrayPtrTypeOf*(g: var TypeGraph; t: TypeId): TypeId =
   let f = g.openType AArrayPtrTy
   g.addType t
-  result = sealType(g, f)
+  result = finishType(g, f)
 
 proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
   case g[i].kind
@@ -332,8 +349,10 @@ proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
       dest.add '\n'
     dest.add "]"
   of FieldDecl:
-    let (typ, name) = g.sons2(i)
+    let (typ, offset, name) = g.sons3(i)
     toString(dest, g, typ)
+    dest.add ' '
+    toString(dest, g, offset)
     dest.add ' '
     toString(dest, g, name)
 
@@ -353,13 +372,13 @@ when isMainModule:
 
   let a = g.openType ArrayTy
   g.addBuiltinType Int8Id
-  g.addArrayLen 5'u64
-  let finalArrayType = sealType(g, a)
+  g.addArrayLen 5
+  let finalArrayType = finishType(g, a)
 
   let obj = g.openType ObjectDecl
   g.nodes.add TypeNode(x: toX(NameVal, g.names.getOrIncl("MyType")))
 
-  g.addField "p", finalArrayType
-  discard sealType(g, obj)
+  g.addField "p", finalArrayType, 0
+  sealType(g, obj)
 
   echo g
