@@ -12,29 +12,28 @@
 ##
 ## To unpack raw bytes look at the `streams <streams.html>`_ module.
 ##
-## .. code-block:: nim
-##    :test:
+##   ```nim test
+##   let logs = @["2019-01-10: OK_", "2019-01-11: FAIL_", "2019-01: aaaa"]
+##   var outp: seq[string]
 ##
-##    let logs = @["2019-01-10: OK_", "2019-01-11: FAIL_", "2019-01: aaaa"]
-##    var outp: seq[string]
+##   for log in logs:
+##     var res: string
+##     if parseUntil(log, res, ':') == 10: # YYYY-MM-DD == 10
+##       outp.add(res & " - " & captureBetween(log, ' ', '_'))
+##   doAssert outp == @["2019-01-10 - OK", "2019-01-11 - FAIL"]
+##   ```
 ##
-##    for log in logs:
-##      var res: string
-##      if parseUntil(log, res, ':') == 10: # YYYY-MM-DD == 10
-##        outp.add(res & " - " & captureBetween(log, ' ', '_'))
-##    doAssert outp == @["2019-01-10 - OK", "2019-01-11 - FAIL"]
+##   ```nim test
+##   from std/strutils import Digits, parseInt
 ##
-## .. code-block:: nim
-##    :test:
-##    from std/strutils import Digits, parseInt
-##
-##    let
-##      input1 = "2019 school start"
-##      input2 = "3 years back"
-##      startYear = input1[0 .. skipWhile(input1, Digits)-1] # 2019
-##      yearsBack = input2[0 .. skipWhile(input2, Digits)-1] # 3
-##      examYear = parseInt(startYear) + parseInt(yearsBack)
-##    doAssert "Examination is in " & $examYear == "Examination is in 2022"
+##   let
+##     input1 = "2019 school start"
+##     input2 = "3 years back"
+##     startYear = input1[0 .. skipWhile(input1, Digits)-1] # 2019
+##     yearsBack = input2[0 .. skipWhile(input2, Digits)-1] # 3
+##     examYear = parseInt(startYear) + parseInt(yearsBack)
+##   doAssert "Examination is in " & $examYear == "Examination is in 2022"
+##   ```
 ##
 ## **See also:**
 ## * `strutils module<strutils.html>`_ for combined and identical parsing proc's

@@ -193,3 +193,28 @@ block:
 
   # bug #11705
   foo()
+
+block: # bug #22197
+  type
+    H5IdObj = object
+    H5Id = ref H5IdObj
+
+    FileID = distinct H5Id
+
+    H5GroupObj = object
+      file_id: FileID
+    H5Group = ref H5GroupObj
+
+  ## This would make it work!
+  #proc `=destroy`*(x: FileID) = `=destroy`(cast[H5Id](x))
+  ## If this does not exist, it also works!
+  proc newFileID(): FileID = FileID(H5Id())
+
+  proc `=destroy`(grp: var H5GroupObj) =
+    ## Closes the group and resets all references to nil.
+    if cast[pointer](grp.fileId) != nil:
+      `=destroy`(grp.file_id)
+
+  var grp = H5Group()
+  reset(grp.file_id)
+  reset(grp)

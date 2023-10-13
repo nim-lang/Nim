@@ -17,6 +17,7 @@ iterator myParentDirs(p: string): string =
 
 proc getNimbleFile*(conf: ConfigRef; path: string): string =
   ## returns absolute path to nimble file, e.g.: /pathto/cligen.nimble
+  result = ""
   var parents = 0
   block packageSearch:
     for d in myParentDirs(path):

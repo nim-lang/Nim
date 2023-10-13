@@ -11,7 +11,7 @@ when not defined(leanCompiler):
 import std/[syncio, objectdollar, assertions, tables, strutils]
 import renderer
 import ic/replayer
-
+import nir/nir
 
 proc setPipeLinePass*(graph: ModuleGraph; pass: PipelinePass) =
   graph.pipelinePass = pass
@@ -25,6 +25,8 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
   of JSgenPass:
     when not defined(leanCompiler):
       result = processJSCodeGen(bModule, semNode)
+    else:
+      result = nil
   of GenDependPass:
     result = addDotDependency(bModule, semNode)
   of SemPass:
@@ -32,13 +34,19 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
   of Docgen2Pass, Docgen2TexPass:
     when not defined(leanCompiler):
       result = processNode(bModule, semNode)
+    else:
+      result = nil
   of Docgen2JsonPass:
     when not defined(leanCompiler):
       result = processNodeJson(bModule, semNode)
+    else:
+      result = nil
   of EvalPass, InterpreterPass:
     result = interpreterCode(bModule, semNode)
+  of NirReplPass:
+    result = runCode(bModule, semNode)
   of NonePass:
-    doAssert false, "use setPipeLinePass to set a proper PipelinePass"
+    raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
 proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
                       m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator,
@@ -106,6 +114,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         nil
     of EvalPass, InterpreterPass:
       setupEvalGen(graph, module, idgen)
+    of NirReplPass:
+      setupNirReplGen(graph, module, idgen)
     of GenDependPass:
       setupDependPass(graph, module, idgen)
     of Docgen2Pass:
@@ -126,8 +136,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     of SemPass:
       nil
     of NonePass:
-      doAssert false, "use setPipeLinePass to set a proper PipelinePass"
-      nil
+      raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
   if stream == nil:
     let filename = toFullPathConsiderDirty(graph.config, fileIdx)
@@ -192,6 +201,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       discard finalJSCodeGen(graph, bModule, finalNode)
   of EvalPass, InterpreterPass:
     discard interpreterCode(bModule, finalNode)
+  of NirReplPass:
+    discard runCode(bModule, finalNode)
   of SemPass, GenDependPass:
     discard
   of Docgen2Pass, Docgen2TexPass:
@@ -201,7 +212,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     when not defined(leanCompiler):
       discard closeJson(graph, bModule, finalNode)
   of NonePass:
-    doAssert false, "use setPipeLinePass to set a proper PipelinePass"
+    raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
   if graph.config.backend notin {backendC, backendCpp, backendObjc}:
     # We only write rod files here if no C-like backend is active.
@@ -217,13 +228,13 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
 
   template processModuleAux(moduleStatus) =
     onProcessing(graph, fileIdx, moduleStatus, fromModule = fromModule)
-    var s: PLLStream
+    var s: PLLStream = nil
     if sfMainModule in flags:
       if graph.config.projectIsStdin: s = stdin.llStreamOpen
       elif graph.config.projectIsCmd: s = llStreamOpen(graph.config.cmdInput)
     discard processPipelineModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
-    var cachedModules: seq[FileIndex]
+    var cachedModules: seq[FileIndex] = @[]
     result = moduleFromRodFile(graph, fileIdx, cachedModules)
     let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
     if result == nil:

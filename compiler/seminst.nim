@@ -29,11 +29,7 @@ proc addObjFieldsToLocalScope(c: PContext; n: PNode) =
   else: discard
 
 proc pushProcCon*(c: PContext; owner: PSym) =
-  var x: PProcCon
-  new(x)
-  x.owner = owner
-  x.next = c.p
-  c.p = x
+  c.p = PProcCon(owner: owner, next: c.p)
 
 const
   errCannotInstantiateX = "cannot instantiate: '$1'"
@@ -76,9 +72,12 @@ proc sameInstantiation(a, b: TInstantiation): bool =
                                    ExactGcSafety,
                                    PickyCAliases}): return
     result = true
+  else:
+    result = false
 
 proc genericCacheGet(g: ModuleGraph; genericSym: PSym, entry: TInstantiation;
                      id: CompilesId): PSym =
+  result = nil
   for inst in procInstCacheItems(g, genericSym):
     if (inst.compilesId == 0 or inst.compilesId == id) and sameInstantiation(entry, inst[]):
       return inst.sym
@@ -119,8 +118,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     inc c.inGenericInst
     # add it here, so that recursive generic procs are possible:
     var b = n[bodyPos]
-    var symMap: TIdTable
-    initIdTable symMap
+    var symMap: TIdTable = initIdTable()
     if params != nil:
       for i in 1..<params.len:
         let param = params[i].sym
@@ -170,17 +168,12 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
                           allowMetaTypes = false): PType =
   internalAssert c.config, header.kind == tyGenericInvocation
 
-  var
-    cl: TReplTypeVars
+  var cl: TReplTypeVars = TReplTypeVars(symMap: initIdTable(),
+        localCache: initIdTable(), typeMap: LayeredIdTable(),
+        info: info, c: c, allowMetaTypes: allowMetaTypes
+      )
 
-  initIdTable(cl.symMap)
-  initIdTable(cl.localCache)
-  cl.typeMap = LayeredIdTable()
-  initIdTable(cl.typeMap.topLayer)
-
-  cl.info = info
-  cl.c = c
-  cl.allowMetaTypes = allowMetaTypes
+  cl.typeMap.topLayer = initIdTable()
 
   # We must add all generic params in scope, because the generic body
   # may include tyFromExpr nodes depending on these generic params.
@@ -272,11 +265,13 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
     # call head symbol, because this leads to infinite recursion.
     if oldParam.ast != nil:
       var def = oldParam.ast.copyTree
-      if def.kind == nkCall:
+      if def.kind in nkCallKinds:
         for i in 1..<def.len:
-          def[i] = replaceTypeVarsN(cl, def[i])
+          def[i] = replaceTypeVarsN(cl, def[i], 1)
 
-      def = semExprWithType(c, def)
+      # allow symchoice since node will be fit later
+      # although expectedType should cover it
+      def = semExprWithType(c, def, {efAllowSymChoice}, typeToFit)
       if def.referencesAnotherParam(getCurrOwner(c)):
         def.flags.incl nfDefaultRefsParam
 
@@ -320,6 +315,17 @@ proc fillMixinScope(c: PContext) =
         addSym(c.currentScope, n.sym)
     p = p.next
 
+proc getLocalPassC(c: PContext, s: PSym): string = 
+  if s.ast == nil or s.ast.len == 0: return "" 
+  result = ""
+  template extractPassc(p: PNode) =
+    if p.kind == nkPragma and p[0][0].ident == c.cache.getIdent"localpassc":
+      return p[0][1].strVal
+  extractPassc(s.ast[0]) #it is set via appendToModule in pragmas (fast access)
+  for n in s.ast:
+    for p in n:
+      extractPassc(p)
+  
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
   ## Generates a new instance of a generic procedure.
@@ -335,14 +341,22 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   var n = copyTree(fn.ast)
   # NOTE: for access of private fields within generics from a different module
   # we set the friend module:
-  c.friendModules.add(getModule(fn))
+  let producer = getModule(fn)
+  c.friendModules.add(producer)
   let oldMatchedConcept = c.matchedConcept
   c.matchedConcept = nil
   let oldScope = c.currentScope
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
   result = copySym(fn, c.idgen)
   incl(result.flags, sfFromGeneric)
-  result.owner = fn
+  result.instantiatedFrom = fn
+  if sfGlobal in result.flags and c.config.symbolFiles != disabledSf:
+    let passc = getLocalPassC(c, producer)
+    if passc != "": #pass the local compiler options to the consumer module too
+      extccomp.addLocalCompileOption(c.config, passc, toFullPathConsiderDirty(c.config, c.module.info.fileIndex))
+    result.owner = c.module 
+  else:
+    result.owner = fn
   result.ast = n
   pushOwner(c, result)
 
@@ -352,7 +366,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
 
   openScope(c)
   let gp = n[genericParamsPos]
-  internalAssert c.config, gp.kind == nkGenericParams
+  if gp.kind != nkGenericParams:
+    # bug #22137
+    globalError(c.config, info, "generic instantiation too nested")
   n[namePos] = newSymNode(result)
   pushInfoContext(c.config, info, fn.detailedInfo)
   var entry = TInstantiation.new

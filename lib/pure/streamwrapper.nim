@@ -91,14 +91,14 @@ proc newPipeOutStream*[T](s: sink (ref T)): owned PipeOutStream[T] =
   ## when setPosition/getPosition is called or write operation is performed.
   ##
   ## Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   import std/[osproc, streamwrapper]
   ##   var
   ##     p = startProcess(exePath)
   ##     outStream = p.outputStream().newPipeOutStream()
   ##   echo outStream.peekChar
   ##   p.close()
+  ##   ```
 
   assert s.readDataImpl != nil
 

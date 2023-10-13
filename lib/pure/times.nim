@@ -20,7 +20,7 @@
   Examples
   ========
 
-  .. code-block:: nim
+    ```nim
     import std/[times, os]
     # Simple benchmarking
     let time = cpuTime()
@@ -37,6 +37,7 @@
     # Arithmetic using TimeInterval
     echo "One year from now      : ", now() + 1.years
     echo "One month from now     : ", now() + 1.months
+    ```
 
   Parsing and Formatting Dates
   ============================
@@ -44,10 +45,10 @@
   The `DateTime` type can be parsed and formatted using the different
   `parse` and `format` procedures.
 
-  .. code-block:: nim
-
+    ```nim
     let dt = parse("2000-01-01", "yyyy-MM-dd")
     echo dt.format("yyyy-MM-dd")
+    ```
 
   The different format patterns that are supported are documented below.
 
@@ -652,11 +653,10 @@ template eqImpl(a: Duration|Time, b: Duration|Time): bool =
 
 const DurationZero* = Duration() ## \
   ## Zero value for durations. Useful for comparisons.
-  ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   doAssert initDuration(seconds = 1) > DurationZero
   ##   doAssert initDuration(seconds = 0) == DurationZero
+  ##   ```
 
 proc initDuration*(nanoseconds, microseconds, milliseconds,
                    seconds, minutes, hours, days, weeks: int64 = 0): Duration =
@@ -1529,11 +1529,11 @@ proc getClockStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].
 proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
                    nanosecond: NanosecondRange,
-                   zone: Timezone = local()): DateTime {.raises: [], tags: [], since: (1, 5).}
+                   zone: Timezone = local()): DateTime {.gcsafe, raises: [], tags: [], since: (1, 5).}
 
 proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
-                   zone: Timezone = local()): DateTime {.raises: [], tags: [], since: (1, 5).}
+                   zone: Timezone = local()): DateTime {.gcsafe, raises: [], tags: [], since: (1, 5).}
 
 #
 # TimeFormat
@@ -2089,7 +2089,7 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
       i.inc 2
     else:
       result = false
-  of Lit: doAssert false, "Can't happen"
+  of Lit: raiseAssert "Can't happen"
 
 proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
                 input: string): DateTime =
@@ -2787,7 +2787,9 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
   ##
   ## .. warning:: Unsuitable for benchmarking (but still better than `now`),
   ##    use `monotimes.getMonoTime` or `cpuTime` instead, depending on the use case.
-  when defined(macosx):
+  when defined(js):
+    result = newDate().getTime() / 1000
+  elif defined(macosx):
     var a {.noinit.}: Timeval
     gettimeofday(a)
     result = toBiggestFloat(a.tv_sec.int64) + toBiggestFloat(
@@ -2804,8 +2806,6 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
     var secs = i64 div rateDiff
     var subsecs = i64 mod rateDiff
     result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
-  elif defined(js):
-    result = newDate().getTime() / 1000
   else:
     {.error: "unknown OS".}
 

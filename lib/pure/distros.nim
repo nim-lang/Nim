@@ -18,12 +18,11 @@
 ##
 ## The above output could be the result of a code snippet like:
 ##
-## .. code-block:: nim
-##
+##   ```nim
 ##   if detectOs(Ubuntu):
 ##     foreignDep "lbiblas-dev"
 ##     foreignDep "libvoodoo"
-##
+##   ```
 ##
 ## See `packaging <packaging.html>`_ for hints on distributing Nim using OS packages.
 

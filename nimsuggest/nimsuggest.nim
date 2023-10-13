@@ -193,6 +193,24 @@ template benchmark(benchmarkName: untyped, code: untyped) =
     let elapsedStr = elapsed.formatFloat(format = ffDecimal, precision = 3)
     myLog "CPU Time [" & benchmarkName & "] " & elapsedStr & "s"
 
+proc clearInstCache(graph: ModuleGraph, projectFileIdx: FileIndex) =
+  if projectFileIdx == InvalidFileIdx:
+    graph.typeInstCache.clear()
+    graph.procInstCache.clear()
+    return
+  var typeIdsToDelete = newSeq[ItemId]()
+  for id in graph.typeInstCache.keys:
+    if id.module == projectFileIdx.int:
+      typeIdsToDelete.add id
+  for id in typeIdsToDelete:
+    graph.typeInstCache.del id
+  var procIdsToDelete = newSeq[ItemId]()
+  for id in graph.procInstCache.keys:
+    if id.module == projectFileIdx.int:
+      procIdsToDelete.add id
+  for id in procIdsToDelete:
+    graph.procInstCache.del id
+
 proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, tag: string,
              graph: ModuleGraph) =
   let conf = graph.config
@@ -221,6 +239,7 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
   if conf.suggestVersion == 1:
     graph.usageSym = nil
   if not isKnownFile:
+    graph.clearInstCache(dirtyIdx)
     graph.compileProject(dirtyIdx)
   if conf.suggestVersion == 0 and conf.ideCmd in {ideUse, ideDus} and
       dirtyfile.isEmpty:
@@ -231,6 +250,7 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
     graph.markClientsDirty dirtyIdx
     if conf.ideCmd != ideMod:
       if isKnownFile:
+        graph.clearInstCache(modIdx)
         graph.compileProject(modIdx)
   if conf.ideCmd in {ideUse, ideDus}:
     let u = if conf.suggestVersion != 1: graph.symFromInfo(conf.m.trackPos) else: graph.usageSym
@@ -716,9 +736,7 @@ proc recompilePartially(graph: ModuleGraph, projectFileIdx = InvalidFileIdx) =
 
   # inst caches are breaking incremental compilation when the cache caches stuff
   # from dirty buffer
-  # TODO: investigate more efficient way to achieve the same
-  # graph.typeInstCache.clear()
-  # graph.procInstCache.clear()
+  graph.clearInstCache(projectFileIdx)
 
   GC_fullCollect()
 

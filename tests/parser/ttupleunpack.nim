@@ -75,3 +75,20 @@ block: # unary assignment unpacking
   var a: int
   (a,) = (1,)
   doAssert a == 1
+
+block: # type annotations
+  block: # basic
+    let (a, b): (int, int) = (1, 2)
+    doAssert (a, b) == (1, 2)
+  block: # type inference
+    let (a, b): (byte, float) = (1, 2)
+    doAssert (a, b) == (1.byte, 2.0)
+  block: # type mismatch
+    doAssert not (compiles do:
+      let (a, b): (int, string) = (1, 2))
+  block: # nested
+    let (a, (b, c)): (int, (int, int)) = (1, (2, 3))
+    doAssert (a, b, c) == (1, 2, 3)
+  block: # nested type inference
+    let (a, (b, c)): (byte, (float, cstring)) = (1, (2, "abc"))
+    doAssert (a, b, c) == (1.byte, 2.0, cstring"abc")

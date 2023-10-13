@@ -29,6 +29,9 @@ block hashes:
     const wy123 = hashWangYi1(123)
     doAssert wy123 != 0
     doAssert hashWangYi1(123) == wy123
+    const wyNeg123 = hashWangYi1(-123)
+    doAssert wyNeg123 != 0
+    doAssert hashWangYi1(-123) == wyNeg123
 
 
   # "hashIdentity value incorrect at 456"

@@ -433,10 +433,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     typ.paddingAtEnd = typ.base.paddingAtEnd
 
   of tyForward:
-    # is this really illegal recursion, or maybe just unknown?
-    typ.size = szIllegalRecursion
-    typ.align = szIllegalRecursion
-    typ.paddingAtEnd = szIllegalRecursion
+    typ.size = szUnknownSize
+    typ.align = szUnknownSize
+    typ.paddingAtEnd = szUnknownSize
 
   of tyStatic:
     if typ.n != nil:
@@ -503,6 +502,7 @@ template foldOffsetOf*(conf: ConfigRef; n: PNode; fallback: PNode): PNode =
     elif node[1].kind == nkCheckedFieldExpr:
       dotExpr = node[1][0]
     else:
+      dotExpr = nil
       localError(config, node.info, "can't compute offsetof on this ast")
 
   assert dotExpr != nil

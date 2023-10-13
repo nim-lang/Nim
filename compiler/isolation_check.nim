@@ -21,6 +21,7 @@ proc canAlias(arg, ret: PType; marker: var IntSet): bool
 proc canAliasN(arg: PType; n: PNode; marker: var IntSet): bool =
   case n.kind
   of nkRecList:
+    result = false
     for i in 0..<n.len:
       result = canAliasN(arg, n[i], marker)
       if result: return
@@ -36,7 +37,7 @@ proc canAliasN(arg: PType; n: PNode; marker: var IntSet): bool =
       else: discard
   of nkSym:
     result = canAlias(arg, n.sym.typ, marker)
-  else: discard
+  else: result = false
 
 proc canAlias(arg, ret: PType; marker: var IntSet): bool =
   if containsOrIncl(marker, ret.id):
@@ -56,6 +57,7 @@ proc canAlias(arg, ret: PType; marker: var IntSet): bool =
     else:
       result = true
   of tyTuple:
+    result = false
     for i in 0..<ret.len:
       result = canAlias(arg, ret[i], marker)
       if result: break
@@ -184,10 +186,12 @@ proc checkIsolate*(n: PNode): bool =
               return false
       result = true
     of nkIfStmt, nkIfExpr:
+      result = false
       for it in n:
         result = checkIsolate(it.lastSon)
         if not result: break
     of nkCaseStmt:
+      result = false
       for i in 1..<n.len:
         result = checkIsolate(n[i].lastSon)
         if not result: break
@@ -197,6 +201,7 @@ proc checkIsolate*(n: PNode): bool =
         result = checkIsolate(n[i].lastSon)
         if not result: break
     of nkBracket, nkTupleConstr, nkPar:
+      result = false
       for it in n:
         result = checkIsolate(it)
         if not result: break

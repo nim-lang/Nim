@@ -89,10 +89,9 @@ proc patchFile*(package, filename, replacement: string) =
   ## The compiler also performs `path substitution <nimc.html#compiler-usage-commandminusline-switches>`_ on `replacement`.
   ##
   ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   patchFile("stdlib", "asyncdispatch", "patches/replacement")
+  ##   ```
   discard
 
 proc getCommand*(): string =
@@ -159,20 +158,19 @@ proc strip(s: string): string =
 template `--`*(key, val: untyped) =
   ## A shortcut for `switch <#switch,string,string>`_
   ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   --path:somePath # same as switch("path", "somePath")
   ##   --path:"someOtherPath" # same as switch("path", "someOtherPath")
+  ##   --hint:"[Conf]:off" # same as switch("hint", "[Conf]:off")
+  ##   ```
   switch(strip(astToStr(key)), strip(astToStr(val)))
 
 template `--`*(key: untyped) =
   ## A shortcut for `switch <#switch,string,string>`_
   ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   --listCmd # same as switch("listCmd")
+  ##   ```
   switch(strip(astToStr(key)))
 
 type
@@ -341,12 +339,12 @@ template withDir*(dir: string; body: untyped): untyped =
   ##
   ## If you need a permanent change, use the `cd() <#cd,string>`_ proc.
   ## Usage example:
-  ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   # inside /some/path/
   ##   withDir "foo":
   ##     # move to /some/path/foo/
   ##   # back in /some/path/
+  ##   ```
   let curDir = getCurrentDir()
   try:
     cd(dir)
@@ -391,10 +389,10 @@ when not defined(nimble):
     ## Defines a task. Hidden tasks are supported via an empty description.
     ##
     ## Example:
-    ##
-    ## .. code-block:: nim
-    ##  task build, "default build is via the C backend":
-    ##    setCommand "c"
+    ##   ```nim
+    ##   task build, "default build is via the C backend":
+    ##     setCommand "c"
+    ##   ```
     ##
     ## For a task named `foo`, this template generates a `proc` named
     ## `fooTask`.  This is useful if you need to call one task in
@@ -402,13 +400,14 @@ when not defined(nimble):
     ##
     ## Example:
     ##
-    ## .. code-block:: nim
-    ##  task foo, "foo":        # > nim foo
-    ##    echo "Running foo"    # Running foo
+    ##   ```nim
+    ##   task foo, "foo":        # > nim foo
+    ##     echo "Running foo"    # Running foo
     ##
-    ##  task bar, "bar":        # > nim bar
-    ##    echo "Running bar"    # Running bar
-    ##    fooTask()             # Running foo
+    ##   task bar, "bar":        # > nim bar
+    ##     echo "Running bar"    # Running bar
+    ##     fooTask()             # Running foo
+    ##   ```
     proc `name Task`*() =
       setCommand "nop"
       body

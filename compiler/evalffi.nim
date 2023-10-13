@@ -11,7 +11,7 @@
 
 import ast, types, options, tables, dynlib, msgs, lineinfos
 from os import getAppFilename
-import pkg/libffi
+import libffi/libffi
 
 when defined(windows):
   const libcDll = "msvcrt.dll"
@@ -37,9 +37,10 @@ else:
   var gExeHandle = loadLib()
 
 proc getDll(conf: ConfigRef, cache: var TDllCache; dll: string; info: TLineInfo): pointer =
+  result = nil
   if dll in cache:
     return cache[dll]
-  var libs: seq[string]
+  var libs: seq[string] = @[]
   libCandidates(dll, libs)
   for c in libs:
     result = loadLib(c)
@@ -61,7 +62,7 @@ proc importcSymbol*(conf: ConfigRef, sym: PSym): PNode =
     let lib = sym.annex
     if lib != nil and lib.path.kind notin {nkStrLit..nkTripleStrLit}:
       globalError(conf, sym.info, "dynlib needs to be a string lit")
-    var theAddr: pointer
+    var theAddr: pointer = nil
     if (lib.isNil or lib.kind == libHeader) and not gExeHandle.isNil:
       libPathMsg = "current exe: " & getAppFilename() & " nor libc: " & libcDll
       # first try this exe itself:
@@ -108,6 +109,7 @@ proc mapCallConv(conf: ConfigRef, cc: TCallingConvention, info: TLineInfo): TABI
   of ccStdCall: result = when defined(windows) and defined(x86): STDCALL else: DEFAULT_ABI
   of ccCDecl: result = DEFAULT_ABI
   else:
+    result = default(TABI)
     globalError(conf, info, "cannot map calling convention to FFI")
 
 template rd(typ, p: untyped): untyped = (cast[ptr typ](p))[]
@@ -132,6 +134,8 @@ proc packSize(conf: ConfigRef, v: PNode, typ: PType): int =
       result = sizeof(pointer)
     elif v.len != 0:
       result = v.len * packSize(conf, v[0], typ[1])
+    else:
+      result = 0
   else:
     result = getSize(conf, typ).int
 
@@ -140,6 +144,7 @@ proc pack(conf: ConfigRef, v: PNode, typ: PType, res: pointer)
 proc getField(conf: ConfigRef, n: PNode; position: int): PSym =
   case n.kind
   of nkRecList:
+    result = nil
     for i in 0..<n.len:
       result = getField(conf, n[i], position)
       if result != nil: return
@@ -154,7 +159,8 @@ proc getField(conf: ConfigRef, n: PNode; position: int): PSym =
       else: internalError(conf, n.info, "getField(record case branch)")
   of nkSym:
     if n.sym.position == position: result = n.sym
-  else: discard
+    else: result = nil
+  else: result = nil
 
 proc packObject(conf: ConfigRef, x: PNode, typ: PType, res: pointer) =
   internalAssert conf, x.kind in {nkObjConstr, nkPar, nkTupleConstr}
@@ -356,6 +362,7 @@ proc unpack(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
     of 4: awi(nkIntLit, rd(int32, x).BiggestInt)
     of 8: awi(nkIntLit, rd(int64, x).BiggestInt)
     else:
+      result = nil
       globalError(conf, n.info, "cannot map value from FFI (tyEnum, tySet)")
   of tyFloat: awf(nkFloatLit, rd(float, x))
   of tyFloat32: awf(nkFloat32Lit, rd(float32, x))
@@ -381,6 +388,7 @@ proc unpack(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
       n[0] = unpack(conf, p, typ.lastSon, n[0])
       result = n
     else:
+      result = nil
       globalError(conf, n.info, "cannot map value from FFI " & typeToString(typ))
   of tyObject, tyTuple:
     result = unpackObject(conf, x, typ, n)
@@ -398,6 +406,7 @@ proc unpack(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
     result = unpack(conf, x, typ.lastSon, n)
   else:
     # XXX what to do with 'array' here?
+    result = nil
     globalError(conf, n.info, "cannot map value from FFI " & typeToString(typ))
 
 proc fficast*(conf: ConfigRef, x: PNode, destTyp: PType): PNode =
@@ -424,7 +433,7 @@ proc callForeignFunction*(conf: ConfigRef, call: PNode): PNode =
   internalAssert conf, call[0].kind == nkPtrLit
 
   var cif: TCif
-  var sig: ParamList
+  var sig: ParamList = default(ParamList)
   # use the arguments' types for varargs support:
   for i in 1..<call.len:
     sig[i-1] = mapType(conf, call[i].typ)
@@ -436,7 +445,7 @@ proc callForeignFunction*(conf: ConfigRef, call: PNode): PNode =
               mapType(conf, typ[0]), sig) != OK:
     globalError(conf, call.info, "error in FFI call")
 
-  var args: ArgList
+  var args: ArgList = default(ArgList)
   let fn = cast[pointer](call[0].intVal)
   for i in 1..<call.len:
     var t = call[i].typ
@@ -464,7 +473,7 @@ proc callForeignFunction*(conf: ConfigRef, fn: PNode, fntyp: PType,
   internalAssert conf, fn.kind == nkPtrLit
 
   var cif: TCif
-  var sig: ParamList
+  var sig: ParamList = default(ParamList)
   for i in 0..len-1:
     var aTyp = args[i+start].typ
     if aTyp.isNil:
@@ -478,7 +487,7 @@ proc callForeignFunction*(conf: ConfigRef, fn: PNode, fntyp: PType,
               mapType(conf, fntyp[0]), sig) != OK:
     globalError(conf, info, "error in FFI call")
 
-  var cargs: ArgList
+  var cargs: ArgList = default(ArgList)
   let fn = cast[pointer](fn.intVal)
   for i in 0..len-1:
     let t = args[i+start].typ

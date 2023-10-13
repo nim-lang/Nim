@@ -72,7 +72,7 @@ proc addUniqueSym*(scope: PScope, s: PSym): PSym =
 
 proc openScope*(c: PContext): PScope {.discardable.} =
   result = PScope(parent: c.currentScope,
-                  symbols: newStrTable(),
+                  symbols: initStrTable(),
                   depthLevel: c.scopeDepth + 1)
   c.currentScope = result
 
@@ -254,6 +254,41 @@ proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSy
         if s.kind in filter:
           result.add s
 
+proc isAmbiguous*(c: PContext, s: PIdent, filter: TSymKinds, sym: var PSym): bool =
+  result = false
+  block outer:
+    for scope in allScopes(c.currentScope):
+      var ti: TIdentIter
+      var candidate = initIdentIter(ti, scope.symbols, s)
+      var scopeHasCandidate = false
+      while candidate != nil:
+        if candidate.kind in filter:
+          if scopeHasCandidate:
+            # 2 candidates in same scope, ambiguous
+            return true
+          else:
+            scopeHasCandidate = true
+            sym = candidate
+        candidate = nextIdentIter(ti, scope.symbols)
+      if scopeHasCandidate:
+        # scope had a candidate but wasn't ambiguous
+        return false
+
+  var importsHaveCandidate = false
+  var marked = initIntSet()
+  for im in c.imports.mitems:
+    for s in symbols(im, marked, s, c.graph):
+      if s.kind in filter:
+        if importsHaveCandidate:
+          # 2 candidates among imports, ambiguous
+          return true
+        else:
+          importsHaveCandidate = true
+          sym = s
+  if importsHaveCandidate:
+    # imports had a candidate but wasn't ambiguous
+    return false
+
 proc errorSym*(c: PContext, n: PNode): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
   var m = n
@@ -298,7 +333,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
   var it: TTabIter
   var s = initTabIter(it, scope.symbols)
   var missingImpls = 0
-  var unusedSyms: seq[tuple[sym: PSym, key: string]]
+  var unusedSyms: seq[tuple[sym: PSym, key: string]] = @[]
   while s != nil:
     if sfForward in s.flags and s.kind notin {skType, skModule}:
       # too many 'implementation of X' errors are annoying
@@ -404,7 +439,7 @@ proc openShadowScope*(c: PContext) =
   ## opens a shadow scope, just like any other scope except the depth is the
   ## same as the parent -- see `isShadowScope`.
   c.currentScope = PScope(parent: c.currentScope,
-                          symbols: newStrTable(),
+                          symbols: initStrTable(),
                           depthLevel: c.scopeDepth)
 
 proc closeShadowScope*(c: PContext) =
@@ -458,7 +493,7 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
   for (sym, depth, isLocal) in allSyms(c):
     let depth = -depth - 1
     let dist = editDistance(name0, sym.name.s.nimIdentNormalize)
-    var msg: string
+    var msg: string = ""
     msg.add "\n ($1, $2): '$3'" % [$dist, $depth, sym.name.s]
     list.push SpellCandidate(dist: dist, depth: depth, msg: msg, sym: sym)
 
@@ -488,6 +523,7 @@ proc errorUseQualifier(c: PContext; info: TLineInfo; s: PSym; amb: var bool): PS
   var err = "ambiguous identifier: '" & s.name.s & "'"
   var i = 0
   var ignoredModules = 0
+  result = nil
   for candidate in importedItems(c, s.name):
     if i == 0: err.add " -- use one of the following:\n"
     else: err.add "\n"
@@ -560,7 +596,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     if result == nil: result = errorUndeclaredIdentifierHint(c, n, ident)
   else:
     internalError(c.config, n.info, "lookUp")
-    return
+    return nil
   if amb:
     #contains(c.ambiguousSymbols, result.id):
     result = errorUseQualifier(c, n.info, result, amb)
@@ -586,6 +622,8 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         amb = candidates.len > 1
         if amb and checkAmbiguity in flags:
           errorUseQualifier(c, n.info, candidates)
+      else:
+        result = nil
     if result == nil:
       let candidates = allPureEnumFields(c, ident)
       if candidates.len > 0:
@@ -623,6 +661,9 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
           result = errorUndeclaredIdentifierHint(c, n[1], ident)
       elif n[1].kind == nkSym:
         result = n[1].sym
+        if result.owner != nil and result.owner != m and checkUndeclared in flags:
+          # dotExpr in templates can end up here
+          result = errorUndeclaredIdentifierHint(c, n[1], considerQuotedIdent(c, n[1]))
       elif checkUndeclared in flags and
            n[1].kind notin {nkOpenSymChoice, nkClosedSymChoice}:
         localError(c.config, n[1].info, "identifier expected, but got: " &
@@ -638,6 +679,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   o.marked = initIntSet()
   case n.kind
   of nkIdent, nkAccQuoted:
+    result = nil
     var ident = considerQuotedIdent(c, n)
     var scope = c.currentScope
     o.mode = oimNoQualifier
@@ -661,6 +703,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     result = n.sym
     o.mode = oimDone
   of nkDotExpr:
+    result = nil
     o.mode = oimOtherModule
     o.m = qualifiedLookUp(c, n[0], {checkUndeclared, checkModule})
     if o.m != nil and o.m.kind == skModule:
@@ -690,7 +733,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     o.symChoiceIndex = 1
     o.marked = initIntSet()
     incl(o.marked, result.id)
-  else: discard
+  else: result = nil
   when false:
     if result != nil and result.kind == skStub: loadStub(result)
 
@@ -705,6 +748,7 @@ proc lastOverloadScope*(o: TOverloadIter): int =
   else: result = -1
 
 proc nextOverloadIterImports(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+  result = nil
   assert o.currentScope == nil
   var idx = o.importIdx+1
   o.importIdx = c.imports.len # assume the other imported modules lack this symbol too
@@ -717,6 +761,7 @@ proc nextOverloadIterImports(o: var TOverloadIter, c: PContext, n: PNode): PSym 
     inc idx
 
 proc symChoiceExtension(o: var TOverloadIter; c: PContext; n: PNode): PSym =
+  result = nil
   assert o.currentScope == nil
   while o.importIdx < c.imports.len:
     result = initIdentIter(o.mit, o.marked, c.imports[o.importIdx], o.it.name, c.graph)
@@ -779,6 +824,8 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
           break
       if result != nil:
         incl o.marked, result.id
+    else:
+      result = nil
   of oimSymChoiceLocalLookup:
     if o.currentScope != nil:
       result = nextIdentExcluding(o.it, o.currentScope.symbols, o.marked)
@@ -802,13 +849,16 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       if result == nil:
         inc o.importIdx
         result = symChoiceExtension(o, c, n)
+    else:
+      result = nil
 
   when false:
     if result != nil and result.kind == skStub: loadStub(result)
 
 proc pickSym*(c: PContext, n: PNode; kinds: set[TSymKind];
               flags: TSymFlags = {}): PSym =
-  var o: TOverloadIter
+  result = nil
+  var o: TOverloadIter = default(TOverloadIter)
   var a = initOverloadIter(o, c, n)
   while a != nil:
     if a.kind in kinds and flags <= a.flags:
