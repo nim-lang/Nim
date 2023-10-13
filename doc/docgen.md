@@ -354,9 +354,9 @@ This pertains to any exported symbol like `proc`, `const`, `iterator`, etc.
 Link text is either one word or a group of words enclosed by delimiters
 (brackets ``[...]`` for Markdown or backticks `\`...\`_` for RST).
 Link text will be displayed *as is* while *link target* will be set to
-the anchor \[*] of Nim symbol that corresponds to link text.
+the anchor [^1] of Nim symbol that corresponds to link text.
 
-\[*] anchors' format is described in [HTML anchor generation] section below.
+[^1] anchors' format is described in [HTML anchor generation] section below.
 
 If you have a constant:
 

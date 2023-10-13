@@ -65,24 +65,34 @@ proc foldAdd(a, b: Int128, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
   let res = a + b
   if checkInRange(g.config, n, res):
     result = newIntNodeT(res, n, idgen, g)
+  else:
+    result = nil
 
 proc foldSub(a, b: Int128, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   let res = a - b
   if checkInRange(g.config, n, res):
     result = newIntNodeT(res, n, idgen, g)
+  else:
+    result = nil
 
 proc foldUnarySub(a: Int128, n: PNode; idgen: IdGenerator, g: ModuleGraph): PNode =
   if a != firstOrd(g.config, n.typ):
     result = newIntNodeT(-a, n, idgen, g)
+  else:
+    result = nil
 
 proc foldAbs(a: Int128, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   if a != firstOrd(g.config, n.typ):
     result = newIntNodeT(abs(a), n, idgen, g)
+  else:
+    result = nil
 
 proc foldMul(a, b: Int128, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   let res = a * b
   if checkInRange(g.config, n, res):
     return newIntNodeT(res, n, idgen, g)
+  else:
+    result = nil
 
 proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
   # because $ has the param ordinal[T], `a` is not necessarily an enum, but an
@@ -94,6 +104,7 @@ proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
   of tyChar:
     result = $chr(toInt64(x) and 0xff)
   of tyEnum:
+    result = ""
     var n = t.n
     for i in 0..<n.len:
       if n[i].kind != nkSym: internalError(g.config, a.info, "ordinalValToString")
@@ -230,7 +241,13 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): P
   of mMulF64: result = newFloatNodeT(getFloat(a) * getFloat(b), n, g)
   of mDivF64:
     result = newFloatNodeT(getFloat(a) / getFloat(b), n, g)
-  of mIsNil: result = newIntNodeT(toInt128(ord(a.kind == nkNilLit)), n, idgen, g)
+  of mIsNil:
+    let val = a.kind == nkNilLit or
+      # nil closures have the value (nil, nil)
+      (a.typ != nil and skipTypes(a.typ, abstractRange).kind == tyProc and
+        a.kind == nkTupleConstr and a.len == 2 and
+        a[0].kind == nkNilLit and a[1].kind == nkNilLit)
+    result = newIntNodeT(toInt128(ord(val)), n, idgen, g)
   of mLtI, mLtB, mLtEnum, mLtCh:
     result = newIntNodeT(toInt128(ord(getOrdValue(a) < getOrdValue(b))), n, idgen, g)
   of mLeI, mLeB, mLeEnum, mLeCh:
@@ -346,7 +363,7 @@ proc magicCall(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
 
   var s = n[0].sym
   var a = getConstExpr(m, n[1], idgen, g)
-  var b, c: PNode
+  var b, c: PNode = nil
   if a == nil: return
   if n.len > 2:
     b = getConstExpr(m, n[2], idgen, g)
@@ -396,7 +413,8 @@ proc foldConv(n, a: PNode; idgen: IdGenerator; g: ModuleGraph; check = false): P
     of tyBool, tyEnum: # xxx shouldn't we disallow `tyEnum`?
       result = a
       result.typ = n.typ
-    else: doAssert false, $srcTyp.kind
+    else:
+      raiseAssert $srcTyp.kind
   of tyInt..tyInt64, tyUInt..tyUInt64:
     case srcTyp.kind
     of tyFloat..tyFloat64:
@@ -420,7 +438,7 @@ proc foldConv(n, a: PNode; idgen: IdGenerator; g: ModuleGraph; check = false): P
       result = a
       result.typ = n.typ
   of tyOpenArray, tyVarargs, tyProc, tyPointer:
-    discard
+    result = nil
   else:
     result = a
     result.typ = n.typ
@@ -447,21 +465,25 @@ proc foldArrayAccess(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNo
       result = x.sons[idx]
       if result.kind == nkExprColonExpr: result = result[1]
     else:
+      result = nil
       localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)
   of nkBracket:
     idx -= toInt64(firstOrd(g.config, x.typ))
     if idx >= 0 and idx < x.len: result = x[int(idx)]
-    else: localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)
+    else:
+      result = nil
+      localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)
   of nkStrLit..nkTripleStrLit:
     result = newNodeIT(nkCharLit, x.info, n.typ)
     if idx >= 0 and idx < x.strVal.len:
       result.intVal = ord(x.strVal[int(idx)])
     else:
       localError(g.config, n.info, formatErrorIndexBound(idx, x.strVal.len-1) & $n)
-  else: discard
+  else: result = nil
 
 proc foldFieldAccess(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   # a real field access; proc calls have already been transformed
+  result = nil
   if n[1].kind != nkSym: return nil
   var x = getConstExpr(m, n[0], idgen, g)
   if x == nil or x.kind notin {nkObjConstr, nkPar, nkTupleConstr}: return
@@ -496,6 +518,7 @@ proc newSymNodeTypeDesc*(s: PSym; idgen: IdGenerator; info: TLineInfo): PNode =
     result.typ = s.typ
 
 proc foldDefine(m, s: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
+  result = nil
   var name = s.name.s
   let prag = extractPragma(s)
   if prag != nil:

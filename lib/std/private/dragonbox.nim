@@ -1052,7 +1052,7 @@ when false:
   proc memset(x: cstring; ch: char; L: int) {.importc, nodecl.}
   proc memmove(a, b: cstring; L: int) {.importc, nodecl.}
 
-proc utoa8DigitsSkipTrailingZeros*(buf: var openArray[char]; pos: int; digits: uint32): int32 {.inline.} =
+proc utoa8DigitsSkipTrailingZeros*(buf: var openArray[char]; pos: int; digits: uint32): int {.inline.} =
   dragonbox_Assert(digits >= 1)
   dragonbox_Assert(digits <= 99999999'u32)
   let q: uint32 = digits div 10000
@@ -1070,12 +1070,12 @@ proc utoa8DigitsSkipTrailingZeros*(buf: var openArray[char]; pos: int; digits: u
     utoa2Digits(buf, pos + 6, rL)
     return trailingZeros2Digits(if rL == 0: rH else: rL) + (if rL == 0: 2 else: 0)
 
-proc printDecimalDigitsBackwards*(buf: var openArray[char]; pos: int; output64: uint64): int32 {.inline.} =
+proc printDecimalDigitsBackwards*(buf: var openArray[char]; pos: int; output64: uint64): int {.inline.} =
   var pos = pos
   var output64 = output64
-  var tz: int32 = 0
+  var tz = 0
   ##  number of trailing zeros removed.
-  var nd: int32 = 0
+  var nd = 0
   ##  number of decimal digits processed.
   ##  At most 17 digits remaining
   if output64 >= 100000000'u64:
@@ -1220,7 +1220,7 @@ proc formatDigits*[T: Ordinal](buffer: var openArray[char]; pos: T; digits: uint
     ##  dE+123 or d.igitsE+123
     decimalDigitsPosition = 1
   var digitsEnd = pos + int(decimalDigitsPosition + numDigits)
-  let tz: int32 = printDecimalDigitsBackwards(buffer, digitsEnd, digits)
+  let tz = printDecimalDigitsBackwards(buffer, digitsEnd, digits)
   dec(digitsEnd, tz)
   dec(numDigits, tz)
   ##   decimal_exponent += tz; // => decimal_point unchanged.

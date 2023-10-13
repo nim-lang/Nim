@@ -187,7 +187,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   ctx.genSymOwner = genSymOwner
   ctx.config = conf
   ctx.ic = ic
-  initIdTable(ctx.mapping)
+  ctx.mapping = initIdTable()
   ctx.instID = instID[]
   ctx.idgen = idgen
 

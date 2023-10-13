@@ -460,7 +460,7 @@ template `=~` *(s: string, pattern: Regex): untyped =
       elif line =~ re"\s*(\#.*)": # matches a comment
         # note that the implicit `matches` array is different from 1st branch
         result = $(matches[0],)
-      else: doAssert false
+      else: raiseAssert "unreachable"
       doAssert not declared(matches)
     doAssert parse("NAME = LENA") == """("NAME", "LENA")"""
     doAssert parse("   # comment ... ") == """("# comment ... ",)"""

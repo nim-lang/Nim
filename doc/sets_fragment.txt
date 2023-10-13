@@ -17,15 +17,13 @@ The reason is that sets are implemented as high performance bit vectors.
 Attempting to declare a set with a larger type will result in an error:
 
 ```nim
-
   var s: set[int64] # Error: set is too large; use `std/sets` for ordinal types
                     # with more than 2^16 elements
-
 ```
 
 
 **Note:** Nim also offers [hash sets](sets.html) (which you need to import
-with `import sets`), which have no such restrictions.
+with `import std/sets`), which have no such restrictions.
 
 Sets can be constructed via the set constructor: `{}` is the empty set. The
 empty set is type compatible with any concrete set type. The constructor
@@ -41,7 +39,7 @@ can also be used to include elements (and ranges of elements):
                            # from '0' to '9'
   ```
 
-The module [`std/setutils`](https://nim-lang.org/docs/setutils.html) provides a way to initialize a set from an iterable:
+The module [`std/setutils`](setutils.html) provides a way to initialize a set from an iterable:
 
 ```nim
 import std/setutils

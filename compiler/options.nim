@@ -49,6 +49,7 @@ type                          # please make sure we have under 32 options
     optSinkInference          # 'sink T' inference
     optCursorInference
     optImportHidden
+    optQuirky
 
   TOptions* = set[TOption]
   TGlobalOption* = enum
@@ -208,7 +209,7 @@ type
     codeReordering,
     compiletimeFFI,
       ## This requires building nim with `-d:nimHasLibFFI`
-      ## which itself requires `nimble install libffi`, see #10150
+      ## which itself requires `koch installdeps libffi`, see #10150
       ## Note: this feature can't be localized with {.push.}
     vmopsDanger,
     strictFuncs,
@@ -219,7 +220,8 @@ type
     unicodeOperators, # deadcode
     flexibleOptionalParams,
     strictDefs,
-    strictCaseObjects
+    strictCaseObjects,
+    inferGenericTypes
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
@@ -233,6 +235,9 @@ type
     laxEffects
       ## Lax effects system prior to Nim 2.0.
     verboseTypeMismatch
+    emitGenerics 
+      ## generics are emitted in the module that contains them. 
+      ## Useful for libraries that rely on local passC 
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
@@ -416,9 +421,12 @@ type
     expandNodeResult*: string
     expandPosition*: TLineInfo
 
+    currentConfigDir*: string # used for passPP only; absolute dir
+
 
 proc parseNimVersion*(a: string): NimVer =
   # could be moved somewhere reusable
+  result = default(NimVer)
   if a.len > 0:
     let b = a.split(".")
     assert b.len == 3, a
@@ -579,6 +587,7 @@ proc newConfigRef*(): ConfigRef =
     maxLoopIterationsVM: 10_000_000,
     vmProfileData: newProfileData(),
     spellSuggestMax: spellSuggestSecretSauce,
+    currentConfigDir: ""
   )
   initConfigRefCommon(result)
   setTargetFromSystem(result.target)
@@ -655,12 +664,12 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "nimrawsetjmp":
       result = conf.target.targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
                             osDragonfly, osMacosx}
-    else: discard
+    else: result = false
 
 template quitOrRaise*(conf: ConfigRef, msg = "") =
   # xxx in future work, consider whether to also intercept `msgQuit` calls
   if conf.isDefined("nimDebug"):
-    doAssert false, msg
+    raiseAssert msg
   else:
     quit(msg) # quits with QuitFailure
 
@@ -881,6 +890,7 @@ const
   stdPrefix = "std/"
 
 proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle = false): RelativeFile =
+  result = RelativeFile("")
   let f = $f
   if isTitle:
     for dir in stdlibDirs:
@@ -916,6 +926,7 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
     result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
   else:
     if m.startsWith(stdPrefix):
+      result = AbsoluteFile("")
       let stripped = m.substr(stdPrefix.len)
       for candidate in stdlibDirs:
         let path = (conf.libpath.string / candidate / stripped)

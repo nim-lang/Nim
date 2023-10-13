@@ -481,8 +481,12 @@ They are:
 5. nl_types. No headers for this.
 6. As mmap is not supported, the nimAllocPagesViaMalloc option has to be used.
 
+
 DLL generation
 ==============
+
+**Note**: The same rules apply to `lib*.so` shared object files on UNIX. For better
+readability only the DLL version is decribed here.
 
 Nim supports the generation of DLLs. However, there must be only one
 instance of the GC per process/address space. This instance is contained in

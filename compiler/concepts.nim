@@ -13,8 +13,6 @@
 
 import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer, types, intsets
 
-from magicsys import addSonSkipIntLit
-
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -33,18 +31,6 @@ proc declareSelf(c: PContext; info: TLineInfo) =
   s.typ.add newType(tyEmpty, nextTypeId(c.idgen), ow)
   addDecl(c, s, info)
 
-proc isSelf*(t: PType): bool {.inline.} =
-  ## Is this the magical 'Self' type?
-  t.kind == tyTypeDesc and tfPacked in t.flags
-
-proc makeTypeDesc*(c: PContext, typ: PType): PType =
-  if typ.kind == tyTypeDesc and not isSelf(typ):
-    result = typ
-  else:
-    result = newTypeS(tyTypeDesc, c)
-    incl result.flags, tfCheckedForDestructor
-    result.addSonSkipIntLit(typ, c.idgen)
-
 proc semConceptDecl(c: PContext; n: PNode): PNode =
   ## Recursive helper for semantic checking for the concept declaration.
   ## Currently we only support (possibly empty) lists of statements
@@ -62,7 +48,7 @@ proc semConceptDecl(c: PContext; n: PNode): PNode =
       result[i] = n[i]
     result[^1] = semConceptDecl(c, n[^1])
   of nkCommentStmt:
-    discard
+    result = n
   else:
     localError(c.config, n.info, "unexpected construct in the new-styled concept: " & renderTree(n))
     result = n
@@ -121,8 +107,11 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
         for i in 0..<a.len:
           if not matchType(c, f[i], a[i], m): return false
         return true
+      else:
+        result = false
 
   of tyGenericInvocation:
+    result = false
     if a.kind == tyGenericInst and a[0].kind == tyGenericBody:
       if sameType(f[0], a[0]) and f.len == a.len-1:
         for i in 1 ..< f.len:
@@ -156,15 +145,17 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
         result = matchType(c, old, ak, m)
         if m.magic == mArrPut and ak.kind == tyGenericParam:
           result = true
+      else:
+        result = false
     #echo "B for ", result, " to ", typeToString(a), " to ", typeToString(m.potentialImplementation)
 
   of tyVar, tySink, tyLent, tyOwned:
     # modifiers in the concept must be there in the actual implementation
     # too but not vice versa.
     if a.kind == f.kind:
-      result = matchType(c, f.sons[0], a.sons[0], m)
+      result = matchType(c, f[0], a[0], m)
     elif m.magic == mArrPut:
-      result = matchType(c, f.sons[0], a, m)
+      result = matchType(c, f[0], a, m)
     else:
       result = false
   of tyEnum, tyObject, tyDistinct:
@@ -185,6 +176,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
       m.inferred.setLen oldLen
   of tyArray, tyTuple, tyVarargs, tyOpenArray, tyRange, tySequence, tyRef, tyPtr,
      tyGenericInst:
+    result = false
     let ak = a.skipTypes(ignorableForArgType - {f.kind})
     if ak.kind == f.kind and f.len == ak.len:
       for i in 0..<ak.len:
@@ -209,6 +201,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
       if not result:
         m.inferred.setLen oldLen
     else:
+      result = false
       for i in 0..<f.len:
         result = matchType(c, f[i], a, m)
         if result: break # and remember the binding!
@@ -257,7 +250,7 @@ proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
       m.inferred.setLen oldLen
       return false
 
-  if not matchReturnType(c, n[0].sym.typ.sons[0], candidate.typ.sons[0], m):
+  if not matchReturnType(c, n[0].sym.typ[0], candidate.typ[0], m):
     m.inferred.setLen oldLen
     return false
 
@@ -306,6 +299,8 @@ proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool =
     result = matchSyms(c, n, {skMethod}, m)
   of nkIteratorDef:
     result = matchSyms(c, n, {skIterator}, m)
+  of nkCommentStmt:
+    result = true
   else:
     # error was reported earlier.
     result = false

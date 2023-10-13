@@ -44,6 +44,8 @@ proc getDispatcher*(s: PSym): PSym =
   if dispatcherPos < s.ast.len:
     result = s.ast[dispatcherPos].sym
     doAssert sfDispatcher in result.flags
+  else:
+    result = nil
 
 proc methodCall*(n: PNode; conf: ConfigRef): PNode =
   result = n
@@ -62,6 +64,7 @@ type
   MethodResult = enum No, Invalid, Yes
 
 proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
+  result = No
   if a.name.id != b.name.id: return
   if a.typ.len != b.typ.len:
     return
@@ -149,7 +152,7 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
     disp.ast[resultPos] = copyTree(meth.ast[resultPos])
 
 proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
-  var witness: PSym
+  var witness: PSym = nil
   for i in 0..<g.methods.len:
     let disp = g.methods[i].dispatcher
     case sameMethodBucket(disp, s, multimethods = optMultiMethods in g.config.globalOptions)
@@ -178,6 +181,7 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
 
 proc relevantCol(methods: seq[PSym], col: int): bool =
   # returns true iff the position is relevant
+  result = false
   var t = methods[0].typ[col].skipTypes(skipPtrs)
   if t.kind == tyObject:
     for i in 1..high(methods):
@@ -186,6 +190,7 @@ proc relevantCol(methods: seq[PSym], col: int): bool =
         return true
 
 proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
+  result = 0
   for col in 1..<a.typ.len:
     if contains(relevantCols, col):
       var aa = skipTypes(a.typ[col], skipPtrs)

@@ -112,8 +112,21 @@ Example "template" **to edit** and write a Testament unittest:
     #   "run": expect successful compilation and execution
     #   "reject": expect failed compilation. The "reject" action can catch
     #             {.error.} pragmas but not {.fatal.} pragmas because
+    #             {.error.} calls are expected to originate from the test-file, 
+    #             and can explicitly be specified using the "file", "line" and
+    #             "column" options.
     #             {.fatal.} pragmas guarantee that compilation will be aborted.
     action: "run"
+    
+    # For testing failed compilations you can specify the expected origin of the 
+    # compilation error.
+    # With the "file", "line" and "column" options you can define the file, 
+    # line and column that a compilation-error should have originated from.
+    # Use only with action: "reject" as it expects a failed compilation.
+    # Requires errormsg or msg to be defined.
+    # file: ""
+    # line: ""
+    # column: ""
 
     # The exit code that the test is expected to return. Typically, the default
     # value of 0 is fine. Note that if the test will be run by valgrind, then
@@ -127,13 +140,14 @@ Example "template" **to edit** and write a Testament unittest:
     output: ""
     outputsub: ""
 
-    # Whether to sort the output lines before comparing them to the desired
-    # output.
+    # Whether to sort the compiler output lines before comparing them to the 
+    # expected output.
     sortoutput: true
 
-    # Each line in the string given here appears in the same order in the
-    # compiler output, but there may be more lines that appear before, after, or
-    # in between them.
+    # Provide a `nimout` string to assert that the compiler during compilation
+    # prints the defined lines to the standard out.
+    # The lines must match in order, but there may be more lines that appear 
+    # before, after, or in between them. 
     nimout: '''
   a very long,
   multi-line
@@ -159,6 +173,9 @@ Example "template" **to edit** and write a Testament unittest:
     #   false: run the without Valgrind
     #   "leaks": run the test with Valgrind, but do not check for memory leaks
     valgrind: false   # Can use Valgrind to check for memory leaks, or not (Linux 64Bit only).
+
+    # Checks that the specified piece of C-code is within the generated C-code.
+    ccodecheck: "'Assert error message'"
 
     # Command the test should use to run. If left out or an empty string is
     # provided, the command is taken to be:
@@ -196,7 +213,7 @@ Example "template" **to edit** and write a Testament unittest:
 * As you can see the "Spec" is just a `discard """ """`.
 * Spec has sane defaults, so you don't need to provide them all, any simple assert will work just fine.
 * This is not the full spec of Testament, check [the Testament Spec on GitHub,
-  see parseSpec()](https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L315).
+  see parseSpec()](https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L317).
 * Nim itself uses Testament, so [there are plenty of test examples](
   https://github.com/nim-lang/Nim/tree/devel/tests).
 * Has some built-in CI compatibility, like Azure Pipelines, etc.
@@ -282,6 +299,38 @@ Expected to fail:
   """
   assert not_defined == "not_defined", "not_defined is not defined"
   ```
+
+Expected to fail with error thrown from another file:
+```nim
+# test.nim
+discard """
+  action: "reject"
+  errorMsg: "I break"
+  file: "breakPragma.nim"
+"""
+import ./breakPragma
+
+proc x() {.justDo.} = discard
+
+# breakPragma.nim
+import std/macros
+
+macro justDo*(procDef: typed): untyped =
+  error("I break")
+  return procDef
+```
+
+Expecting generated C to contain a given piece of code:
+
+  ```nim
+  discard """
+    # Checks that the string "Assert error message" is in the generated 
+    # C code.
+    ccodecheck: "'Assert error message'"
+  """
+  assert 42 == 42, "Assert error message"
+  ```
+
 
 Non-Zero exit code:
 

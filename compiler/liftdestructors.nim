@@ -162,8 +162,7 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
     if c.filterDiscriminator != nil: return
     let f = n.sym
     let b = if c.kind == attachedTrace: y else: y.dotField(f)
-    if (sfCursor in f.flags and f.typ.skipTypes(abstractInst).kind in {tyRef, tyProc} and
-        c.g.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcHooks}) or
+    if (sfCursor in f.flags and c.g.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcHooks}) or
         enforceDefaultOp:
       defaultOp(c, f.typ, body, x.dotField(f), b)
     else:
@@ -302,7 +301,7 @@ proc newHookCall(c: var TLiftCtx; op: PSym; x, y: PNode): PNode =
   result.add newSymNode(op)
   if sfNeverRaises notin op.flags:
     c.canRaise = true
-  if op.typ.sons[1].kind == tyVar:
+  if op.typ[1].kind == tyVar:
     result.add genAddr(c, x)
   else:
     result.add x
@@ -367,6 +366,8 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
       op = produceSym(c.g, c.c, t, c.kind, c.info, c.idgen)
       body.add newHookCall(c, op, x, y)
       result = true
+    else:
+      result = false
   elif tfHasAsgn in t.flags:
     var op: PSym
     if sameType(t, c.asgnForType):
@@ -396,6 +397,8 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
     assert op.ast[genericParamsPos].kind == nkEmpty
     body.add newHookCall(c, op, x, y)
     result = true
+  else:
+    result = false
 
 proc addDestructorCall(c: var TLiftCtx; orig: PType; body, x: PNode) =
   let t = orig.skipTypes(abstractInst - {tyDistinct})
@@ -435,6 +438,8 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       onUse(c.info, op)
       body.add destructorCall(c, op, x)
       result = true
+    else:
+      result = false
     #result = addDestructorCall(c, t, body, x)
   of attachedAsgn, attachedSink, attachedTrace:
     var op = getAttachedOp(c.g, t, c.kind)
@@ -455,6 +460,8 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       onUse(c.info, op)
       body.add newDeepCopyCall(c, op, x, y)
       result = true
+    else:
+      result = false
 
   of attachedWasMoved:
     var op = getAttachedOp(c.g, t, attachedWasMoved)
@@ -469,6 +476,8 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       onUse(c.info, op)
       body.add genWasMovedCall(c, op, x)
       result = true
+    else:
+      result = false
 
   of attachedDup:
     var op = getAttachedOp(c.g, t, attachedDup)
@@ -483,6 +492,8 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       onUse(c.info, op)
       body.add newDupCall(c, op, x, y)
       result = true
+    else:
+      result = false
 
 proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
   var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.idgen, c.fn, c.info)
@@ -542,6 +553,14 @@ proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   else:
     body.sons.setLen counterIdx
 
+proc checkSelfAssignment(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  var cond = callCodegenProc(c.g, "sameSeqPayload", c.info,
+      newTreeIT(nkAddr, c.info, makePtrType(c.fn, x.typ, c.idgen), x),
+      newTreeIT(nkAddr, c.info, makePtrType(c.fn, y.typ, c.idgen), y)
+      )
+  cond.typ = getSysType(c.g, c.info, tyBool)
+  body.add genIf(c, cond, newTreeI(nkReturnStmt, c.info, newNodeI(nkEmpty, c.info)))
+
 proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
   of attachedDup:
@@ -549,14 +568,17 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     forallElements(c, t, body, x, y)
   of attachedAsgn, attachedDeepCopy:
     # we generate:
+    # if x.p == y.p:
+    #   return
     # setLen(dest, y.len)
     # var i = 0
     # while i < y.len: dest[i] = y[i]; inc(i)
     # This is usually more efficient than a destroy/create pair.
+    checkSelfAssignment(c, t, body, x, y)
     body.add setLenSeqCall(c, t, x, y)
     forallElements(c, t, body, x, y)
   of attachedSink:
-    let moveCall = genBuiltin(c, mMove, "internalMove", x)
+    let moveCall = genBuiltin(c, mMove, "move", x)
     moveCall.add y
     doAssert t.destructor != nil
     moveCall.add destructorCall(c, t.destructor, x)
@@ -589,7 +611,7 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add newHookCall(c, t.assignment, x, y)
   of attachedSink:
     # we always inline the move for better performance:
-    let moveCall = genBuiltin(c, mMove, "internalMove", x)
+    let moveCall = genBuiltin(c, mMove, "move", x)
     moveCall.add y
     doAssert t.destructor != nil
     moveCall.add destructorCall(c, t.destructor, x)
@@ -620,7 +642,7 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedAsgn, attachedDeepCopy, attachedDup:
     body.add callCodegenProc(c.g, "nimAsgnStrV2", c.info, genAddr(c, x), y)
   of attachedSink:
-    let moveCall = genBuiltin(c, mMove, "internalMove", x)
+    let moveCall = genBuiltin(c, mMove, "move", x)
     moveCall.add y
     doAssert t.destructor != nil
     moveCall.add destructorCall(c, t.destructor, x)
@@ -1012,7 +1034,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyAlias, tySink:
     fillBody(c, lastSon(t), body, x, y)
-  of tyConcept, tyIterable: doAssert false
+  of tyConcept, tyIterable: raiseAssert "unreachable"
 
 proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
                             kind: TTypeAttachedOp; info: TLineInfo;
@@ -1069,7 +1091,7 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   let src = newSym(skParam, getIdent(g.cache, if kind == attachedTrace: "env" else: "src"),
                    idgen, result, info)
 
-  if kind == attachedDestructor and typ.kind == tyRef:
+  if kind == attachedDestructor and typ.kind in {tyRef, tyString, tySequence} and g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
     dest.typ = typ
   else:
     dest.typ = makeVarType(typ.owner, typ, idgen)
@@ -1196,7 +1218,7 @@ proc patchBody(g: ModuleGraph; c: PContext; n: PNode; info: TLineInfo; idgen: Id
       if op != nil:
         if op.ast.isGenericRoutine:
           internalError(g.config, info, "resolved destructor is generic")
-        if op.magic == mDestroy:
+        if op.magic == mDestroy and t.kind != tyString:
           internalError(g.config, info, "patching mDestroy with mDestroy?")
         n[0] = newSymNode(op)
   for x in n: patchBody(g, c, x, info, idgen)
@@ -1249,7 +1271,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   # bug #15122: We need to produce all prototypes before entering the
   # mind boggling recursion. Hacks like these imply we should rewrite
   # this module.
-  var generics: array[attachedWasMoved..attachedTrace, bool]
+  var generics: array[attachedWasMoved..attachedTrace, bool] = default(array[attachedWasMoved..attachedTrace, bool])
   for k in attachedWasMoved..lastAttached:
     generics[k] = getAttachedOp(g, canon, k) != nil
     if not generics[k]:
