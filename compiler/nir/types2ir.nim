@@ -76,9 +76,6 @@ proc objectToIr(c: var TypesCon; n: PNode; fieldTypes: Table[ItemId, TypeId]; un
     assert false, "unknown node kind: " & $n.kind
 
 proc objectToIr(c: var TypesCon; t: PType): TypeId =
-  c.g.addSize c.conf.getSize(t)
-  c.g.addAlign c.conf.getAlign(t)
-
   if t[0] != nil:
     # ensure we emitted the base type:
     discard typeToIr(c, t[0])
@@ -88,6 +85,9 @@ proc objectToIr(c: var TypesCon; t: PType): TypeId =
   collectFieldTypes c, t.n, fieldTypes
   let obj = openType(c.g, ObjectDecl)
   c.g.addName mangle(c, t)
+  c.g.addSize c.conf.getSize(t)
+  c.g.addAlign c.conf.getAlign(t)
+
   if t[0] != nil:
     c.g.addNominalType(ObjectTy, mangle(c, t[0]))
   else:
@@ -113,8 +113,17 @@ proc tupleToIr(c: var TypesCon; t: PType): TypeId =
     fieldTypes[i] = typeToIr(c, t[i])
   let obj = openType(c.g, ObjectDecl)
   c.g.addName mangle(c, t)
+  c.g.addSize c.conf.getSize(t)
+  c.g.addAlign c.conf.getAlign(t)
+
+  var accum = OffsetAccum(maxAlign: 1)
   for i in 0..<t.len:
-    c.g.addField "f_" & $i, fieldTypes[i], 0 # XXX
+    let child = t[i]
+    c.g.addField "f_" & $i, fieldTypes[i], accum.offset
+
+    computeSizeAlign(c.conf, child)
+    accum.align(child.align)
+    accum.inc(int32(child.size))
   result = sealType(c.g, obj)
 
 proc procToIr(c: var TypesCon; t: PType; addEnv = false): TypeId =
@@ -171,6 +180,8 @@ proc openArrayToIr(c: var TypesCon; t: PType): TypeId =
 
   let p = openType(c.g, ObjectDecl)
   c.g.addName typeName
+  c.g.addSize c.conf.target.ptrSize*2
+  c.g.addAlign c.conf.target.ptrSize
 
   let f = c.g.openType FieldDecl
   let arr = c.g.openType AArrayPtrTy
@@ -188,6 +199,9 @@ proc strPayloadType(c: var TypesCon): string =
   result = "NimStrPayload"
   let p = openType(c.g, ObjectDecl)
   c.g.addName result
+  c.g.addSize c.conf.target.ptrSize*2
+  c.g.addAlign c.conf.target.ptrSize
+
   c.g.addField "cap", c.nativeInt, 0
 
   let f = c.g.openType FieldDecl
@@ -222,6 +236,9 @@ proc stringToIr(c: var TypesCon): TypeId =
 
   let str = openType(c.g, ObjectDecl)
   c.g.addName "NimStringV2"
+  c.g.addSize c.conf.target.ptrSize*2
+  c.g.addAlign c.conf.target.ptrSize
+
   c.g.addField "len", c.nativeInt, 0
 
   let fp = c.g.openType FieldDecl
@@ -248,6 +265,9 @@ proc seqPayloadType(c: var TypesCon; t: PType): string =
 
   let p = openType(c.g, ObjectDecl)
   c.g.addName payloadName
+  c.g.addSize c.conf.target.intSize
+  c.g.addAlign c.conf.target.intSize
+
   c.g.addField "cap", c.nativeInt, 0
 
   let f = c.g.openType FieldDecl
@@ -275,6 +295,9 @@ proc seqToIr(c: var TypesCon; t: PType): TypeId =
 
   let sq = openType(c.g, ObjectDecl)
   c.g.addName "NimSeqV2" & mangledBase
+  c.g.addSize c.conf.getSize(t)
+  c.g.addAlign c.conf.getAlign(t)
+
   c.g.addField "len", c.nativeInt, 0
 
   let fp = c.g.openType FieldDecl
@@ -300,6 +323,8 @@ proc closureToIr(c: var TypesCon; t: PType): TypeId =
 
   let p = openType(c.g, ObjectDecl)
   c.g.addName typeName
+  c.g.addSize c.conf.getSize(t)
+  c.g.addAlign c.conf.getAlign(t)
 
   let f = c.g.openType FieldDecl
   c.g.addType procType
