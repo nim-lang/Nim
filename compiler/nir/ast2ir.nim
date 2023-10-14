@@ -1441,6 +1441,76 @@ proc genMove(c: var ProcCon; n: PNode; d: var Value) =
         buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.types.g, typeToIr(c.m.types, n1.typ)):
           copyTree c.code, a
 
+template buildCond(useNegation: bool; cond: typed; body: untyped) =
+  let lab = newLabel(c.labelGen)
+  let info = toLineInfo(c, n.info)
+  buildTyped c.code, info, Select, Bool8Id:
+    c.code.copyTree cond
+    build c.code, info, SelectPair:
+      build c.code, info, SelectValue:
+        c.code.boolVal(info, useNegation)
+      c.code.gotoLabel info, Goto, lab
+
+  body
+  c.code.addLabel info, Label, lab
+
+template buildIf(cond: typed; body: untyped) =
+  buildCond false, cond, body
+
+template buildIfNot(cond: typed; body: untyped) =
+  buildCond true, cond, body
+
+template fieldAt(x: Value; i: int; t: TypeId): Tree =
+  var result = default(Tree)
+  buildTyped result, info, FieldAt, t:
+    copyTree result, x
+    result.addImmediateVal info, i
+  result
+
+template eqNil(x: Tree; t: TypeId): Tree =
+  var result = default(Tree)
+  buildTyped result, info, Eq, t:
+    copyTree result, x
+    result.addNilVal info, t
+  result
+
+template eqZero(x: Tree): Tree =
+  var result = default(Tree)
+  buildTyped result, info, Eq, c.m.nativeIntId:
+    copyTree result, x
+    result.addIntVal c.m.integers, info, c.m.nativeIntId, 0
+  result
+
+template bitOp(x: Tree; opc: Opcode; y: int): Tree =
+  var result = default(Tree)
+  buildTyped result, info, opc, c.m.nativeIntId:
+    copyTree result, x
+    result.addIntVal c.m.integers, info, c.m.nativeIntId, y
+  result
+
+proc genDestroySeq(c: var ProcCon; n: PNode; t: PType) =
+  let info = toLineInfo(c, n.info)
+  let strLitFlag = 1 shl (c.m.graph.config.target.intSize * 8 - 2) # see also NIM_STRLIT_FLAG
+
+  let x = c.genx(n[1])
+  let baseType = t.lastSon
+
+  let seqType = seqPayloadPtrType(c.m.types, t)
+  let p = fieldAt(x, 0, seqType)
+
+  # if $1.p != nil and ($1.p.cap and NIM_STRLIT_FLAG) == 0:
+  #   alignedDealloc($1.p, NIM_ALIGNOF($2))
+  buildIfNot p.eqNil(seqType):
+    buildIf fieldAt(Value(p), 0, c.m.nativeIntId).bitOp(BitAnd, 0).eqZero():
+      let codegenProc = getCompilerProc(c.m.graph, "alignedDealloc")
+      buildTyped c.code, info, Call, VoidId:
+        let theProc = c.genx newSymNode(codegenProc, n.info)
+        copyTree c.code, theProc
+        copyTree c.code, p
+        c.code.addImmediateVal info, int(getAlign(c.config, baseType))
+
+  freeTemp c, x
+
 proc genDestroy(c: var ProcCon; n: PNode) =
   let t = n[1].typ.skipTypes(abstractInst)
   case t.kind
@@ -1448,14 +1518,7 @@ proc genDestroy(c: var ProcCon; n: PNode) =
     var unused = default(Value)
     genUnaryCp(c, n, unused, "nimDestroyStrV1")
   of tySequence:
-    #[
-    var a = initLocExpr(c, arg)
-    linefmt(c, cpsStmts, "if ($1.p && ($1.p->cap & NIM_STRLIT_FLAG) == 0) {$n" &
-      " #alignedDealloc($1.p, NIM_ALIGNOF($2));$n" &
-      "}$n",
-      [rdLoc(a), getTypeDesc(c.module, t.lastSon)])
-    ]#
-    globalError(c.config, n.info, "not implemented: =destroy for seqs")
+    genDestroySeq(c, n, t)
   else: discard "nothing to do"
 
 proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
