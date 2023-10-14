@@ -10,7 +10,7 @@
 ## NIR instructions. Somewhat inspired by LLVM's instructions.
 
 import std / [assertions, hashes]
-import .. / ic / bitabs
+import .. / ic / [bitabs, rodfiles]
 import nirlineinfos, nirtypes
 
 type
@@ -311,6 +311,8 @@ proc addStrVal*(t: var Tree; strings: var BiTable[string]; info: PackedLineInfo;
 proc addNilVal*(t: var Tree; info: PackedLineInfo; typ: TypeId) =
   buildTyped t, info, NumberConv, typ:
     t.nodes.add Instr(x: toX(NilVal, uint32(0)), info: info)
+
+proc store*(r: var RodFile; t: Tree) = storeSeq r, t.nodes
 
 proc escapeToNimLit(s: string; result: var string) =
   result.add '"'

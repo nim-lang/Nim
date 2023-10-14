@@ -18,8 +18,8 @@ type
     g*: TypeGraph
     conf: ConfigRef
 
-proc initTypesCon*(conf: ConfigRef): TypesCon =
-  TypesCon(g: initTypeGraph(), conf: conf)
+proc initTypesCon*(conf: ConfigRef; lit: Literals): TypesCon =
+  TypesCon(g: initTypeGraph(lit), conf: conf)
 
 proc mangle(c: var TypesCon; t: PType): string =
   result = $sighashes.hashType(t, c.conf)

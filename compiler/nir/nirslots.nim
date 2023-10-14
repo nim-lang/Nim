@@ -76,7 +76,7 @@ proc closeScope*(m: var SlotManager) =
 when isMainModule:
   var m = initSlotManager({ReuseTemps}, new(int))
 
-  var g = initTypeGraph()
+  var g = initTypeGraph(Literals())
 
   let a = g.openType ArrayTy
   g.addBuiltinType Int8Id

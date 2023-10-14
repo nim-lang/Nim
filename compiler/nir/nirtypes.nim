@@ -10,7 +10,7 @@
 ## Type system for NIR. Close to C's type system but without its quirks.
 
 import std / [assertions, hashes]
-import .. / ic / bitabs
+import .. / ic / [bitabs, rodfiles]
 
 type
   NirTypeKind* = enum
@@ -55,10 +55,13 @@ proc `==`*(a, b: TypeId): bool {.borrow.}
 proc hash*(a: TypeId): Hash {.borrow.}
 
 type
+  Literals* = ref object
+    strings*: BiTable[string]
+    numbers*: BiTable[int64]
+
   TypeGraph* = object
     nodes: seq[TypeNode]
-    names: BiTable[string]
-    numbers: BiTable[int64]
+    lit: Literals
 
 const
   VoidId* = TypeId 0
@@ -77,7 +80,7 @@ const
   VoidPtrId* = TypeId 13
   LastBuiltinId* = 13
 
-proc initTypeGraph*(): TypeGraph =
+proc initTypeGraph*(lit: Literals): TypeGraph =
   result = TypeGraph(nodes: @[
     TypeNode(x: toX(VoidTy, 0'u32)),
     TypeNode(x: toX(BoolTy, 8'u32)),
@@ -94,7 +97,7 @@ proc initTypeGraph*(): TypeGraph =
     TypeNode(x: toX(FloatTy, 64'u32)),
     TypeNode(x: toX(APtrTy, 2'u32)),
     TypeNode(x: toX(VoidTy, 0'u32))
-  ])
+  ], lit: lit)
   assert result.nodes.len == LastBuiltinId+2
 
 type
@@ -167,7 +170,7 @@ proc sons3(tree: TypeGraph; n: TypeId): (TypeId, TypeId, TypeId) =
 
 proc arrayLen*(tree: TypeGraph; n: TypeId): BiggestInt =
   assert tree[n].kind == ArrayTy
-  result = tree.numbers[LitId tree[n].operand]
+  result = tree.lit.numbers[LitId tree[n].operand]
 
 proc openType*(tree: var TypeGraph; kind: NirTypeKind): TypePatchPos =
   assert kind in {APtrTy, UPtrTy, AArrayPtrTy, UArrayPtrTy,
@@ -213,7 +216,7 @@ proc finishType*(tree: var TypeGraph; p: TypePatchPos): TypeId =
 
 proc nominalType*(tree: var TypeGraph; kind: NirTypeKind; name: string): TypeId =
   assert kind in {ObjectTy, UnionTy}
-  let content = TypeNode(x: toX(kind, tree.names.getOrIncl(name)))
+  let content = TypeNode(x: toX(kind, tree.lit.strings.getOrIncl(name)))
   for i in 0..<tree.len:
     if tree.nodes[i].x == content.x:
       return TypeId(i)
@@ -222,7 +225,7 @@ proc nominalType*(tree: var TypeGraph; kind: NirTypeKind; name: string): TypeId 
 
 proc addNominalType*(tree: var TypeGraph; kind: NirTypeKind; name: string) =
   assert kind in {ObjectTy, UnionTy}
-  tree.nodes.add TypeNode(x: toX(kind, tree.names.getOrIncl(name)))
+  tree.nodes.add TypeNode(x: toX(kind, tree.lit.strings.getOrIncl(name)))
 
 proc addVarargs*(tree: var TypeGraph) =
   tree.nodes.add TypeNode(x: toX(VarargsTy, 0'u32))
@@ -255,22 +258,22 @@ proc addType*(g: var TypeGraph; t: TypeId) =
       g.nodes[d+i] = g.nodes[pos+i]
 
 proc addArrayLen*(g: var TypeGraph; len: int64) =
-  g.nodes.add TypeNode(x: toX(IntVal, g.numbers.getOrIncl(len)))
+  g.nodes.add TypeNode(x: toX(IntVal, g.lit.numbers.getOrIncl(len)))
 
 proc addSize*(g: var TypeGraph; s: int64) =
-  g.nodes.add TypeNode(x: toX(SizeVal, g.numbers.getOrIncl(s)))
+  g.nodes.add TypeNode(x: toX(SizeVal, g.lit.numbers.getOrIncl(s)))
 
 proc addOffset*(g: var TypeGraph; offset: int64) =
-  g.nodes.add TypeNode(x: toX(OffsetVal, g.numbers.getOrIncl(offset)))
+  g.nodes.add TypeNode(x: toX(OffsetVal, g.lit.numbers.getOrIncl(offset)))
 
 proc addAlign*(g: var TypeGraph; a: int64) =
-  g.nodes.add TypeNode(x: toX(AlignVal, g.numbers.getOrIncl(a)))
+  g.nodes.add TypeNode(x: toX(AlignVal, g.lit.numbers.getOrIncl(a)))
 
 proc addName*(g: var TypeGraph; name: string) =
-  g.nodes.add TypeNode(x: toX(NameVal, g.names.getOrIncl(name)))
+  g.nodes.add TypeNode(x: toX(NameVal, g.lit.strings.getOrIncl(name)))
 
 proc addAnnotation*(g: var TypeGraph; name: string) =
-  g.nodes.add TypeNode(x: toX(NameVal, g.names.getOrIncl(name)))
+  g.nodes.add TypeNode(x: toX(NameVal, g.lit.strings.getOrIncl(name)))
 
 proc addField*(g: var TypeGraph; name: string; typ: TypeId; offset: int64) =
   let f = g.openType FieldDecl
@@ -288,6 +291,9 @@ proc arrayPtrTypeOf*(g: var TypeGraph; t: TypeId): TypeId =
   let f = g.openType AArrayPtrTy
   g.addType t
   result = finishType(g, f)
+
+proc store*(r: var RodFile; g: TypeGraph) =
+  storeSeq r, g.nodes
 
 proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
   case g[i].kind
@@ -308,11 +314,11 @@ proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
     dest.add "c"
     dest.addInt g[i].operand
   of NameVal, AnnotationVal:
-    dest.add g.names[LitId g[i].operand]
+    dest.add g.lit.strings[LitId g[i].operand]
   of IntVal, SizeVal, AlignVal, OffsetVal:
     dest.add $g[i].kind
     dest.add ' '
-    dest.add $g.numbers[LitId g[i].operand]
+    dest.add $g.lit.numbers[LitId g[i].operand]
   of VarargsTy:
     dest.add "..."
   of APtrTy:
@@ -345,10 +351,10 @@ proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
     dest.add "]"
   of ObjectTy:
     dest.add "object "
-    dest.add g.names[LitId g[i].operand]
+    dest.add g.lit.strings[LitId g[i].operand]
   of UnionTy:
     dest.add "union "
-    dest.add g.names[LitId g[i].operand]
+    dest.add g.lit.strings[LitId g[i].operand]
   of ProcTy:
     dest.add "proc["
     for t in sons(g, i): toString(dest, g, t)
@@ -392,7 +398,7 @@ proc `$`(g: TypeGraph): string =
   toString(result, g)
 
 when isMainModule:
-  var g = initTypeGraph()
+  var g = initTypeGraph(Literals())
 
   let a = g.openType ArrayTy
   g.addBuiltinType Int8Id
@@ -400,7 +406,7 @@ when isMainModule:
   let finalArrayType = finishType(g, a)
 
   let obj = g.openType ObjectDecl
-  g.nodes.add TypeNode(x: toX(NameVal, g.names.getOrIncl("MyType")))
+  g.nodes.add TypeNode(x: toX(NameVal, g.lit.strings.getOrIncl("MyType")))
 
   g.addField "p", finalArrayType, 0
   sealType(g, obj)

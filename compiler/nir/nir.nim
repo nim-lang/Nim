@@ -10,8 +10,12 @@
 ## Nim Intermediate Representation, designed to capture all of Nim's semantics without losing too much
 ## precious information. Can easily be translated into C. And to JavaScript, hopefully.
 
-import ".." / [ast, modulegraphs, renderer, transf]
+from os import addFileExt, `/`
+
+import ".." / [ast, modulegraphs, renderer, transf, options, msgs, lineinfos]
 import nirtypes, nirinsts, ast2ir
+
+import ".." / ic / [rodfiles, bitabs]
 
 type
   PCtx* = ref object of TPassContext
@@ -45,7 +49,7 @@ proc evalStmt(c: PCtx; n: PNode) =
 
   var res = ""
   if pc < c.c.code.len:
-    toString c.c.code, NodePos(pc), c.m.strings, c.m.integers, res
+    toString c.c.code, NodePos(pc), c.m.lit.strings, c.m.lit.numbers, res
   #res.add "\n--------------------------\n"
   #toString res, c.m.types.g
   echo res
@@ -70,8 +74,42 @@ proc openNirBackend*(g: ModuleGraph; module: PSym; idgen: IdGenerator): PPassCon
   let m = initModuleCon(g, g.config, idgen, module)
   NirPassContext(m: m, c: initProcCon(m, nil, g.config), idgen: idgen)
 
+proc gen(c: NirPassContext; n: PNode) =
+  let n = transformExpr(c.m.graph, c.idgen, c.m.module, n)
+  let pc = genStmt(c.c, n)
+
 proc nirBackend*(c: PPassContext; n: PNode): PNode =
+  gen(NirPassContext(c), n)
   result = n
+
+const
+  NirVersion = 1
+  nirCookie = [byte(0), byte('N'), byte('I'), byte('R'),
+            byte(sizeof(int)*8), byte(system.cpuEndian), byte(0), byte(NirVersion)]
 
 proc closeNirBackend*(c: PPassContext; finalNode: PNode) =
   discard nirBackend(c, finalNode)
+
+  let c = NirPassContext(c)
+  let outp = getNimcacheDir(c.c.config).string / c.m.module.name.s.addFileExt("nir")
+  var r = rodfiles.create(outp)
+  try:
+    r.storeHeader(nirCookie)
+    r.storeSection stringsSection
+    r.store c.m.lit.strings
+
+    r.storeSection numbersSection
+    r.store c.m.lit.numbers
+
+    r.storeSection bodiesSection
+    r.store c.c.code
+
+    r.storeSection typesSection
+    r.store c.m.types.g
+
+  finally:
+    r.close()
+  if r.err != ok:
+    rawMessage(c.c.config, errFatal, "serialization failed: " & outp)
+  else:
+    echo "created: ", outp
