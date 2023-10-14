@@ -97,6 +97,7 @@ type
     typeInfoSection  # required by the backend
     backendFlagsSection
     aliveSymsSection # beware, this is stored in a `.alivesyms` file.
+    sideChannelSection
 
   RodFileError* = enum
     ok, tooBig, cannotOpen, ioFailure, wrongHeader, wrongSection, configMismatch,

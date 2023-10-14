@@ -67,6 +67,7 @@ proc getFileId*(m: LineInfoManager; i: PackedLineInfo): LitId =
   result = unpack(m, i)[0]
 
 proc store*(r: var RodFile; m: LineInfoManager) = storeSeq(r, m.aside)
+proc load*(r: var RodFile; m: var LineInfoManager) = loadSeq(r, m.aside)
 
 when isMainModule:
   var m = LineInfoManager(aside: @[])

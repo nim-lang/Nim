@@ -295,6 +295,9 @@ proc arrayPtrTypeOf*(g: var TypeGraph; t: TypeId): TypeId =
 proc store*(r: var RodFile; g: TypeGraph) =
   storeSeq r, g.nodes
 
+proc load*(r: var RodFile; g: var TypeGraph) =
+  loadSeq r, g.nodes
+
 proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
   case g[i].kind
   of VoidTy: dest.add "void"

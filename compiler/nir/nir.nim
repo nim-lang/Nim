@@ -13,7 +13,7 @@
 from os import addFileExt, `/`
 
 import ".." / [ast, modulegraphs, renderer, transf, options, msgs, lineinfos]
-import nirtypes, nirinsts, ast2ir
+import nirtypes, nirinsts, ast2ir, nirlineinfos
 
 import ".." / ic / [rodfiles, bitabs]
 
@@ -82,11 +82,6 @@ proc nirBackend*(c: PPassContext; n: PNode): PNode =
   gen(NirPassContext(c), n)
   result = n
 
-const
-  NirVersion = 1
-  nirCookie = [byte(0), byte('N'), byte('I'), byte('R'),
-            byte(sizeof(int)*8), byte(system.cpuEndian), byte(0), byte(NirVersion)]
-
 proc closeNirBackend*(c: PPassContext; finalNode: PNode) =
   discard nirBackend(c, finalNode)
 
@@ -106,6 +101,9 @@ proc closeNirBackend*(c: PPassContext; finalNode: PNode) =
 
     r.storeSection typesSection
     r.store c.m.types.g
+
+    r.storeSection sideChannelSection
+    r.store c.m.man
 
   finally:
     r.close()

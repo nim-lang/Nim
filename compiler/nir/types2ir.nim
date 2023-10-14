@@ -453,6 +453,7 @@ proc typeToIr*(c: var TypesCon; t: PType): TypeId =
         c.g.addArrayLen s
         result = finishType(c.g, a)
   of tyPointer, tyNil:
+    # tyNil can happen for code like: `const CRAP = nil` which we have in posix.nim
     let a = openType(c.g, APtrTy)
     c.g.addBuiltinType(VoidId)
     result = finishType(c.g, a)

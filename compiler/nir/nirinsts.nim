@@ -13,6 +13,11 @@ import std / [assertions, hashes]
 import .. / ic / [bitabs, rodfiles]
 import nirlineinfos, nirtypes
 
+const
+  NirVersion = 1
+  nirCookie* = [byte(0), byte('N'), byte('I'), byte('R'),
+            byte(sizeof(int)*8), byte(system.cpuEndian), byte(0), byte(NirVersion)]
+
 type
   SymId* = distinct int
 
@@ -313,6 +318,7 @@ proc addNilVal*(t: var Tree; info: PackedLineInfo; typ: TypeId) =
     t.nodes.add Instr(x: toX(NilVal, uint32(0)), info: info)
 
 proc store*(r: var RodFile; t: Tree) = storeSeq r, t.nodes
+proc load*(r: var RodFile; t: var Tree) = loadSeq r, t.nodes
 
 proc escapeToNimLit(s: string; result: var string) =
   result.add '"'
@@ -375,6 +381,14 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
     r.add "\n"
     for i in 0..<nesting*2: r.add ' '
     r.add "}"
+
+proc allTreesToString*(t: Tree; strings: BiTable[string]; integers: BiTable[int64];
+                       r: var string) =
+
+  var i = 0
+  while i < t.len:
+    toString t, NodePos(i), strings, integers, r
+    nextChild t, i
 
 type
   Value* = distinct Tree

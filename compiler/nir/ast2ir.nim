@@ -1649,7 +1649,7 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   of mDec:
     unused(c, n, d)
     c.genIncDec(n, CheckedSub)
-  of mOrd, mChr, mArrToSeq, mUnown:
+  of mOrd, mChr, mUnown:
     c.gen(n[1], d)
   of generatedMagics:
     genCall(c, n, d)
