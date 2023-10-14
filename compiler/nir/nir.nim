@@ -60,3 +60,18 @@ proc runCode*(c: PPassContext; n: PNode): PNode =
   else:
     result = n
   c.oldErrorCount = c.m.graph.config.errorCounter
+
+type
+  NirPassContext* = ref object of TPassContext
+    m: ModuleCon
+    c: ProcCon
+
+proc openNirBackend*(g: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
+  let m = initModuleCon(g, g.config, idgen, module)
+  NirPassContext(m: m, c: initProcCon(m, nil, g.config), idgen: idgen)
+
+proc nirBackend*(c: PPassContext; n: PNode): PNode =
+  result = n
+
+proc closeNirBackend*(c: PPassContext; finalNode: PNode) =
+  discard nirBackend(c, finalNode)

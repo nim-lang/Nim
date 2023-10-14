@@ -49,6 +49,9 @@ proc writeDepsFile(g: ModuleGraph) =
       f.writeLine(toFullPath(g.config, k))
   f.close()
 
+proc writeNinjaFile(g: ModuleGraph) =
+  discard "to implement"
+
 proc writeCMakeDepsFile(conf: ConfigRef) =
   ## write a list of C files for build systems like CMake.
   ## only updated when the C file list changes.
@@ -158,6 +161,26 @@ proc commandCompileToC(graph: ModuleGraph) =
       writeDepsFile(graph)
     if optGenCDeps in graph.config.globalOptions:
       writeCMakeDepsFile(conf)
+
+proc commandCompileToNir(graph: ModuleGraph) =
+  let conf = graph.config
+  extccomp.initVars(conf)
+  if conf.symbolFiles == disabledSf:
+    if {optRun, optForceFullMake} * conf.globalOptions == {optRun}:
+      if not changeDetectedViaJsonBuildInstructions(conf, conf.jsonBuildInstructionsFile):
+        # nothing changed
+        graph.config.notes = graph.config.mainPackageNotes
+        return
+
+  if not extccomp.ccHasSaneOverflow(conf):
+    conf.symbols.defineSymbol("nimEmulateOverflowChecks")
+
+  if conf.symbolFiles == disabledSf:
+    setPipeLinePass(graph, NirPass)
+  else:
+    setPipeLinePass(graph, SemPass)
+  compilePipelineProject(graph)
+  writeNinjaFile(graph)
 
 proc commandJsonScript(graph: ModuleGraph) =
   extccomp.runJsonBuildInstructions(graph.config, graph.config.jsonBuildInstructionsFile)
@@ -270,6 +293,8 @@ proc mainCommand*(graph: ModuleGraph) =
         # and it has added this define implictly, so we must undo that here.
         # A better solution might be to fix system.nim
         undefSymbol(conf.symbols, "useNimRtl")
+    of backendNir:
+      if conf.exc == excNone: conf.exc = excGoto
     of backendInvalid: raiseAssert "unreachable"
 
   proc compileToBackend() =
@@ -280,6 +305,7 @@ proc mainCommand*(graph: ModuleGraph) =
     of backendCpp: commandCompileToC(graph)
     of backendObjc: commandCompileToC(graph)
     of backendJs: commandCompileToJS(graph)
+    of backendNir: commandCompileToNir(graph)
     of backendInvalid: raiseAssert "unreachable"
 
   template docLikeCmd(body) =
