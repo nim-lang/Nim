@@ -17,6 +17,8 @@ type
     VoidTy, IntTy, UIntTy, FloatTy, BoolTy, CharTy, NameVal,
     IntVal, SizeVal, AlignVal, OffsetVal,
     AnnotationVal,
+    ObjectTy,
+    UnionTy,
     VarargsTy, # the `...` in a C prototype; also the last "atom"
     APtrTy, # pointer to aliasable memory
     UPtrTy, # pointer to unique/unaliasable memory
@@ -24,8 +26,6 @@ type
     UArrayPtrTy, # pointer to array of unique/unaliasable memory
     ArrayTy,
     LastArrayTy, # array of unspecified size as a last field inside an object
-    ObjectTy,
-    UnionTy,
     ProcTy,
     ObjectDecl,
     UnionDecl,
@@ -175,15 +175,27 @@ proc openType*(tree: var TypeGraph; kind: NirTypeKind): TypePatchPos =
     FieldDecl}
   result = prepare(tree, kind)
 
+template typeInvariant(p: TypePatchPos) =
+  when false:
+    if tree[TypeId(p)].kind == FieldDecl:
+      var k = 0
+      for ch in sons(tree, TypeId(p)):
+        inc k
+      assert k > 2, "damn! " & $k
+
 proc sealType*(tree: var TypeGraph; p: TypePatchPos) =
   patch tree, p
+  typeInvariant(p)
 
 proc finishType*(tree: var TypeGraph; p: TypePatchPos): TypeId =
   # Search for an existing instance of this type in
   # order to reduce memory consumption:
   patch tree, p
+  typeInvariant(p)
+
   let s = span(tree, p.int)
-  for i in 0..<p.int:
+  var i = 0
+  while i < p.int:
     if tree.nodes[i].x == tree.nodes[p.int].x:
       var isMatch = true
       for j in 1..<s:
@@ -193,15 +205,20 @@ proc finishType*(tree: var TypeGraph; p: TypePatchPos): TypeId =
           isMatch = false
           break
       if isMatch:
-        if p.int+s > tree.len:
+        if p.int+s-1 == tree.len:
           setLen tree.nodes, p.int
         return TypeId(i)
+    nextChild tree, i
   result = TypeId(p)
 
 proc nominalType*(tree: var TypeGraph; kind: NirTypeKind; name: string): TypeId =
   assert kind in {ObjectTy, UnionTy}
+  let content = TypeNode(x: toX(kind, tree.names.getOrIncl(name)))
+  for i in 0..<tree.len:
+    if tree.nodes[i].x == content.x:
+      return TypeId(i)
   result = TypeId tree.nodes.len
-  tree.nodes.add TypeNode(x: toX(kind, tree.names.getOrIncl(name)))
+  tree.nodes.add content
 
 proc addNominalType*(tree: var TypeGraph; kind: NirTypeKind; name: string) =
   assert kind in {ObjectTy, UnionTy}
@@ -349,12 +366,19 @@ proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
       dest.add '\n'
     dest.add "]"
   of FieldDecl:
-    let (typ, offset, name) = g.sons3(i)
-    toString(dest, g, typ)
-    dest.add ' '
-    toString(dest, g, offset)
-    dest.add ' '
-    toString(dest, g, name)
+    dest.add "field["
+    for t in sons(g, i):
+      toString(dest, g, t)
+      dest.add ' '
+    dest.add "]"
+
+    when false:
+      let (typ, offset, name) = g.sons3(i)
+      toString(dest, g, typ)
+      dest.add ' '
+      toString(dest, g, offset)
+      dest.add ' '
+      toString(dest, g, name)
 
 proc toString*(dest: var string; g: TypeGraph) =
   var i = 0

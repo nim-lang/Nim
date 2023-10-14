@@ -46,7 +46,7 @@ proc evalStmt(c: PCtx; n: PNode) =
   var res = ""
   if pc < c.c.code.len:
     toString c.c.code, NodePos(pc), c.m.strings, c.m.integers, res
-  #res.add "\n"
+  #res.add "\n--------------------------\n"
   #toString res, c.m.types.g
   echo res
 
