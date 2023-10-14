@@ -283,9 +283,11 @@ proc addSymDef*(t: var Tree; info: PackedLineInfo; s: SymId) {.inline.} =
   t.nodes.add Instr(x: toX(SymDef, uint32(s)), info: info)
 
 proc addTyped*(t: var Tree; info: PackedLineInfo; typ: TypeId) {.inline.} =
+  assert typ.int >= 0
   t.nodes.add Instr(x: toX(Typed, uint32(typ)), info: info)
 
 proc addSummon*(t: var Tree; info: PackedLineInfo; s: SymId; typ: TypeId; opc = Summon) {.inline.} =
+  assert typ.int >= 0
   assert opc in {Summon, SummonConst, SummonGlobal, SummonThreadLocal, SummonParam}
   let x = prepare(t, info, opc)
   t.nodes.add Instr(x: toX(Typed, uint32(typ)), info: info)

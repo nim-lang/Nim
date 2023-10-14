@@ -205,7 +205,7 @@ proc finishType*(tree: var TypeGraph; p: TypePatchPos): TypeId =
           isMatch = false
           break
       if isMatch:
-        if p.int+s-1 == tree.len:
+        if p.int+s == tree.len:
           setLen tree.nodes, p.int
         return TypeId(i)
     nextChild tree, i

@@ -2189,7 +2189,10 @@ proc genObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
 proc genParams(c: var ProcCon; params: PNode) =
   for i in 1..<params.len:
     let s = params[i].sym
-    c.code.addSummon toLineInfo(c, params[i].info), SymId(s.itemId.item), typeToIr(c.m.types, s.typ), SummonParam
+    if not isCompileTimeOnly(s.typ):
+      let t = typeToIr(c.m.types, s.typ)
+      assert t.int != -1, typeToString(s.typ)
+      c.code.addSummon toLineInfo(c, params[i].info), SymId(s.itemId.item), t, SummonParam
 
 proc addCallConv(c: var ProcCon; info: PackedLineInfo; callConv: TCallingConvention) =
   template ann(s: untyped) = c.code.addPragmaId info, s
