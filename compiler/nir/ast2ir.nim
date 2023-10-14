@@ -2241,7 +2241,6 @@ proc genProc(cOuter: var ProcCon; n: PNode) =
   if isGenericRoutineStrict(prc) or isCompileTimeProc(prc): return
 
   var c = initProcCon(cOuter.m, prc, cOuter.m.graph.config)
-  genParams(c, prc.typ.n)
 
   let body = transformBody(c.m.graph, c.m.idgen, prc, {useCache, keepOpenArrayConversions})
 
@@ -2272,6 +2271,7 @@ proc genProc(cOuter: var ProcCon; n: PNode) =
         else:
           c.code.addPragmaId info, ObjExport
 
+    genParams(c, prc.typ.n)
     gen(c, body)
     patch c, body, c.exitLabel
 
