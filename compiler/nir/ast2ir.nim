@@ -495,7 +495,7 @@ proc genIndex(c: var ProcCon; n: PNode; arr: PType; d: var Value) =
     build d, info, CheckedIndex:
       copyTree d.Tree, idx
       let x = toInt64 lengthOrd(c.config, arr)
-      d.Tree.addIntVal c.lit.numbers, info, c.m.nativeIntId, x
+      d.addIntVal c.lit.numbers, info, c.m.nativeIntId, x
       d.Tree.addLabel info, CheckedGoto, c.exitLabel
 
 proc genNew(c: var ProcCon; n: PNode; needsInit: bool) =
@@ -548,12 +548,10 @@ proc genNewSeqOfCap(c: var ProcCon; n: PNode; d: var Value) =
         c.code.addImmediateVal info, int(getAlign(c.config, baseType))
   freeTemp c, a
 
-proc genNewSeq(c: var ProcCon; n: PNode) =
-  let info = toLineInfo(c, n.info)
-  let seqtype = skipTypes(n[1].typ, abstractVarRange)
+proc genNewSeqPayload(c: var ProcCon; info: PackedLineInfo; d, b: Value; seqtype: PType) =
   let baseType = seqtype.lastSon
-  var d = c.genx(n[1])
-  var b = c.genx(n[2])
+  # $1.p = ($4*) #newSeqPayload($2, sizeof($3), NIM_ALIGNOF($3))
+  let payloadPtr = seqPayloadPtrType(c.m.types, seqtype)
 
   # $1.len = $2
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
@@ -561,10 +559,7 @@ proc genNewSeq(c: var ProcCon; n: PNode) =
       copyTree c.code, d
       c.code.addImmediateVal info, 0
     copyTree c.code, b
-    c.code.addImmediateVal info, 0
 
-  # $1.p = ($4*) #newSeqPayload($2, sizeof($3), NIM_ALIGNOF($3))
-  let payloadPtr = seqPayloadPtrType(c.m.types, seqtype)
   buildTyped c.code, info, Asgn, payloadPtr:
     # $1.p
     buildTyped c.code, info, FieldAt, payloadPtr:
@@ -574,11 +569,20 @@ proc genNewSeq(c: var ProcCon; n: PNode) =
     buildTyped c.code, info, Cast, payloadPtr:
       buildTyped c.code, info, Call, VoidPtrId:
         let codegenProc = magicsys.getCompilerProc(c.m.graph, "newSeqPayload")
-        let theProc = c.genx newSymNode(codegenProc, n.info)
+        let theProc = c.genx newSymNode(codegenProc)
         copyTree c.code, theProc
         copyTree c.code, b
         c.code.addImmediateVal info, int(getSize(c.config, baseType))
         c.code.addImmediateVal info, int(getAlign(c.config, baseType))
+
+proc genNewSeq(c: var ProcCon; n: PNode) =
+  let info = toLineInfo(c, n.info)
+  let seqtype = skipTypes(n[1].typ, abstractVarRange)
+  var d = c.genx(n[1])
+  var b = c.genx(n[2])
+
+  genNewSeqPayload(c, info, d, b, seqtype)
+
   freeTemp c, b
   freeTemp c, d
 
@@ -1554,7 +1558,7 @@ proc genIndexCheck(c: var ProcCon; n: PNode; a: Value; kind: IndexFor; arr: PTyp
           result.addImmediateVal info, 1 # (p, len)-pair
       of ForArray:
         let x = toInt64 lengthOrd(c.config, arr)
-        result.Tree.addIntVal c.lit.numbers, info, c.m.nativeIntId, x
+        result.addIntVal c.lit.numbers, info, c.m.nativeIntId, x
       result.Tree.addLabel info, CheckedGoto, c.exitLabel
     freeTemp c, idx
   else:
@@ -1958,10 +1962,32 @@ proc genObjOrTupleConstr(c: var ProcCon; n: PNode, d: var Value) =
 
   valueIntoDest c, info, d, n.typ, body
 
+proc genSeqConstr(c: var ProcCon; n: PNode; d: var Value) =
+  if isEmpty(d): d = getTemp(c, n)
+
+  let info = toLineInfo(c, n.info)
+  let seqtype = skipTypes(n.typ, abstractVarRange)
+  let baseType = seqtype.lastSon
+
+  var b = default(Value)
+  b.addIntVal c.lit.numbers, info, c.m.nativeIntId, n.len
+
+  genNewSeqPayload(c, info, d, b, seqtype)
+
+  for i in 0..<n.len:
+    var dd = default(Value)
+    buildTyped dd, info, ArrayAt, typeToIr(c.m.types, seqtype):
+      buildTyped dd, info, FieldAt, seqPayloadPtrType(c.m.types, seqtype):
+        copyTree Tree(dd), d
+        dd.addIntVal c.lit.numbers, info, c.m.nativeIntId, i
+    gen(c, n[i], dd)
+
+  freeTemp c, d
+
 proc genArrayConstr(c: var ProcCon; n: PNode, d: var Value) =
   let seqType = n.typ.skipTypes(abstractVar-{tyTypeDesc})
   if seqType.kind == tySequence:
-    localError c.config, n.info, "sequence constructor not implemented"
+    genSeqConstr(c, n, d)
     return
 
   let info = toLineInfo(c, n.info)
@@ -1998,7 +2024,9 @@ proc genVarSection(c: var ProcCon; n: PNode) =
           opc = SummonGlobal
         else:
           opc = Summon
-        c.code.addSummon toLineInfo(c, a.info), SymId(s.itemId.item), typeToIr(c.m.types, s.typ), opc
+        let t = typeToIr(c.m.types, s.typ)
+        #assert t.int >= 0, typeToString(s.typ) & (c.config $ n.info)
+        c.code.addSummon toLineInfo(c, a.info), SymId(s.itemId.item), t, opc
         if a[2].kind != nkEmpty:
           genAsgn2(c, vn, a[2])
       else:
@@ -2210,7 +2238,7 @@ proc addCallConv(c: var ProcCon; info: PackedLineInfo; callConv: TCallingConvent
 proc genProc(cOuter: var ProcCon; n: PNode) =
   if n.len == 0 or n[namePos].kind != nkSym: return
   let prc = n[namePos].sym
-  if isGenericRoutineStrict(prc): return
+  if isGenericRoutineStrict(prc) or isCompileTimeProc(prc): return
 
   var c = initProcCon(cOuter.m, prc, cOuter.m.graph.config)
   genParams(c, prc.typ.n)

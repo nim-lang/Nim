@@ -425,3 +425,6 @@ proc addStrVal*(t: var Value; strings: var BiTable[string]; info: PackedLineInfo
 
 proc addNilVal*(t: var Value; info: PackedLineInfo; typ: TypeId) =
   addNilVal Tree(t), info, typ
+
+proc addIntVal*(t: var Value; integers: var BiTable[int64]; info: PackedLineInfo; typ: TypeId; x: int64) =
+  addIntVal Tree(t), integers, info, typ, x

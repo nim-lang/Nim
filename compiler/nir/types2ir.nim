@@ -452,7 +452,7 @@ proc typeToIr*(c: var TypesCon; t: PType): TypeId =
         c.g.addType(UInt8Id)
         c.g.addArrayLen s
         result = finishType(c.g, a)
-  of tyPointer:
+  of tyPointer, tyNil:
     let a = openType(c.g, APtrTy)
     c.g.addBuiltinType(VoidId)
     result = finishType(c.g, a)
@@ -500,7 +500,7 @@ proc typeToIr*(c: var TypesCon; t: PType): TypeId =
     # uses `varargs[typed]`:
     result = VoidId
   of tyNone, tyEmpty, tyTypeDesc,
-     tyNil, tyGenericInvocation, tyProxy, tyBuiltInTypeClass,
+     tyGenericInvocation, tyProxy, tyBuiltInTypeClass,
      tyUserTypeClass, tyUserTypeClassInst, tyCompositeTypeClass,
      tyAnd, tyOr, tyNot, tyAnything, tyConcept, tyIterable, tyForward:
     result = TypeId(-1)
