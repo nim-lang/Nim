@@ -10,7 +10,7 @@
 ## Nim Intermediate Representation, designed to capture all of Nim's semantics without losing too much
 ## precious information. Can easily be translated into C. And to JavaScript, hopefully.
 
-from os import addFileExt, `/`
+from os import addFileExt, `/`, createDir
 
 import ".." / [ast, modulegraphs, renderer, transf, options, msgs, lineinfos]
 import nirtypes, nirinsts, ast2ir, nirlineinfos
@@ -86,7 +86,9 @@ proc closeNirBackend*(c: PPassContext; finalNode: PNode) =
   discard nirBackend(c, finalNode)
 
   let c = NirPassContext(c)
-  let outp = getNimcacheDir(c.c.config).string / c.m.module.name.s.addFileExt("nir")
+  let nimcache = getNimcacheDir(c.c.config).string
+  createDir nimcache
+  let outp = nimcache / c.m.module.name.s.addFileExt("nir")
   var r = rodfiles.create(outp)
   try:
     r.storeHeader(nirCookie)

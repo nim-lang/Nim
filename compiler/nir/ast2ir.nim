@@ -49,7 +49,9 @@ type
 
 proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; module: PSym): ModuleCon =
   let lit = Literals() # must be shared
-  result = ModuleCon(graph: graph, types: initTypesCon(config, lit), slotGenerator: new(int),
+  var g = new(int)
+  g[] = idgen.symId + 1
+  result = ModuleCon(graph: graph, types: initTypesCon(config, lit), slotGenerator: g,
     idgen: idgen, module: module, lit: lit)
   case config.target.intSize
   of 2:
@@ -115,6 +117,11 @@ proc freeTemp(c: var ProcCon; tmp: Value) =
 proc getTemp(c: var ProcCon; n: PNode): Value =
   let info = toLineInfo(c, n.info)
   let t = typeToIr(c.m.types, n.typ)
+  let tmp = allocTemp(c.sm, t)
+  c.code.addSummon info, tmp, t
+  result = localToValue(info, tmp)
+
+proc getTemp(c: var ProcCon; t: TypeId; info: PackedLineInfo): Value =
   let tmp = allocTemp(c.sm, t)
   c.code.addSummon info, tmp, t
   result = localToValue(info, tmp)
@@ -308,11 +315,58 @@ proc caseRange(c: var ProcCon; n: PNode) =
     freeTemp(c, y)
     freeTemp(c, x)
 
+proc addUseCodegenProc(c: var ProcCon; dest: var Tree; name: string; info: PackedLineInfo) =
+  let cp = getCompilerProc(c.m.graph, name)
+  let theProc = c.genx newSymNode(cp)
+  copyTree c.code, theProc
+
+template buildCond(useNegation: bool; cond: typed; body: untyped) =
+  let lab = newLabel(c.labelGen)
+  #let info = toLineInfo(c, n.info)
+  buildTyped c.code, info, Select, Bool8Id:
+    c.code.copyTree cond
+    build c.code, info, SelectPair:
+      build c.code, info, SelectValue:
+        c.code.boolVal(info, useNegation)
+      c.code.gotoLabel info, Goto, lab
+
+  body
+  c.code.addLabel info, Label, lab
+
+template buildIf(cond: typed; body: untyped) =
+  buildCond false, cond, body
+
+template buildIfNot(cond: typed; body: untyped) =
+  buildCond true, cond, body
+
+template buildIfThenElse(cond: typed; then, otherwise: untyped) =
+  let lelse = newLabel(c.labelGen)
+  let lend = newLabel(c.labelGen)
+  buildTyped c.code, info, Select, Bool8Id:
+    c.code.copyTree cond
+    build c.code, info, SelectPair:
+      build c.code, info, SelectValue:
+        c.code.boolVal(info, false)
+      c.code.gotoLabel info, Goto, lelse
+
+  then()
+  c.code.gotoLabel info, Goto, lend
+  c.code.addLabel info, Label, lelse
+  otherwise()
+  c.code.addLabel info, Label, lend
+
+include stringcases
+
 proc genCase(c: var ProcCon; n: PNode; d: var Value) =
   if not isEmptyType(n.typ):
     if isEmpty(d): d = getTemp(c, n)
   else:
     unused(c, n, d)
+
+  if n[0].typ.skipTypes(abstractInst).kind == tyString:
+    genStringCase(c, n, d)
+    return
+
   var sections = newSeqOfCap[LabelId](n.len-1)
   let ending = newLabel(c.labelGen)
   let info = toLineInfo(c, n.info)
@@ -1455,25 +1509,6 @@ proc genMove(c: var ProcCon; n: PNode; d: var Value) =
         copyTree c.code, opB
         buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.types.g, typeToIr(c.m.types, n1.typ)):
           copyTree c.code, a
-
-template buildCond(useNegation: bool; cond: typed; body: untyped) =
-  let lab = newLabel(c.labelGen)
-  let info = toLineInfo(c, n.info)
-  buildTyped c.code, info, Select, Bool8Id:
-    c.code.copyTree cond
-    build c.code, info, SelectPair:
-      build c.code, info, SelectValue:
-        c.code.boolVal(info, useNegation)
-      c.code.gotoLabel info, Goto, lab
-
-  body
-  c.code.addLabel info, Label, lab
-
-template buildIf(cond: typed; body: untyped) =
-  buildCond false, cond, body
-
-template buildIfNot(cond: typed; body: untyped) =
-  buildCond true, cond, body
 
 template fieldAt(x: Value; i: int; t: TypeId): Tree =
   var result = default(Tree)

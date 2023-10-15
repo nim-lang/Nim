@@ -264,6 +264,10 @@ proc newLabel*(labelGen: var int): LabelId {.inline.} =
   result = LabelId labelGen
   inc labelGen
 
+proc newLabels*(labelGen: var int; n: int): LabelId {.inline.} =
+  result = LabelId labelGen
+  inc labelGen, n
+
 proc addNewLabel*(t: var Tree; labelGen: var int; info: PackedLineInfo; k: Opcode): LabelId =
   assert k in {Label, LoopLabel}
   result = LabelId labelGen
@@ -312,6 +316,9 @@ proc addIntVal*(t: var Tree; integers: var BiTable[int64]; info: PackedLineInfo;
 
 proc addStrVal*(t: var Tree; strings: var BiTable[string]; info: PackedLineInfo; s: string) =
   t.nodes.add Instr(x: toX(StrVal, uint32(strings.getOrIncl(s))), info: info)
+
+proc addStrLit*(t: var Tree; info: PackedLineInfo; s: LitId) =
+  t.nodes.add Instr(x: toX(StrVal, uint32(s)), info: info)
 
 proc addNilVal*(t: var Tree; info: PackedLineInfo; typ: TypeId) =
   buildTyped t, info, NumberConv, typ:
