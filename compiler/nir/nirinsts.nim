@@ -10,8 +10,13 @@
 ## NIR instructions. Somewhat inspired by LLVM's instructions.
 
 import std / [assertions, hashes]
-import .. / ic / bitabs
+import .. / ic / [bitabs, rodfiles]
 import nirlineinfos, nirtypes
+
+const
+  NirVersion = 1
+  nirCookie* = [byte(0), byte('N'), byte('I'), byte('R'),
+            byte(sizeof(int)*8), byte(system.cpuEndian), byte(0), byte(NirVersion)]
 
 type
   SymId* = distinct int
@@ -167,6 +172,8 @@ type
 template kind*(n: Instr): Opcode = Opcode(n.x and OpcodeMask)
 template operand(n: Instr): uint32 = (n.x shr OpcodeBits)
 
+template rawOperand*(n: Instr): uint32 = (n.x shr OpcodeBits)
+
 template toX(k: Opcode; operand: uint32): uint32 =
   uint32(k) or (operand shl OpcodeBits)
 
@@ -257,6 +264,10 @@ proc newLabel*(labelGen: var int): LabelId {.inline.} =
   result = LabelId labelGen
   inc labelGen
 
+proc newLabels*(labelGen: var int; n: int): LabelId {.inline.} =
+  result = LabelId labelGen
+  inc labelGen, n
+
 proc addNewLabel*(t: var Tree; labelGen: var int; info: PackedLineInfo; k: Opcode): LabelId =
   assert k in {Label, LoopLabel}
   result = LabelId labelGen
@@ -281,9 +292,11 @@ proc addSymDef*(t: var Tree; info: PackedLineInfo; s: SymId) {.inline.} =
   t.nodes.add Instr(x: toX(SymDef, uint32(s)), info: info)
 
 proc addTyped*(t: var Tree; info: PackedLineInfo; typ: TypeId) {.inline.} =
+  assert typ.int >= 0
   t.nodes.add Instr(x: toX(Typed, uint32(typ)), info: info)
 
 proc addSummon*(t: var Tree; info: PackedLineInfo; s: SymId; typ: TypeId; opc = Summon) {.inline.} =
+  assert typ.int >= 0
   assert opc in {Summon, SummonConst, SummonGlobal, SummonThreadLocal, SummonParam}
   let x = prepare(t, info, opc)
   t.nodes.add Instr(x: toX(Typed, uint32(typ)), info: info)
@@ -304,9 +317,15 @@ proc addIntVal*(t: var Tree; integers: var BiTable[int64]; info: PackedLineInfo;
 proc addStrVal*(t: var Tree; strings: var BiTable[string]; info: PackedLineInfo; s: string) =
   t.nodes.add Instr(x: toX(StrVal, uint32(strings.getOrIncl(s))), info: info)
 
+proc addStrLit*(t: var Tree; info: PackedLineInfo; s: LitId) =
+  t.nodes.add Instr(x: toX(StrVal, uint32(s)), info: info)
+
 proc addNilVal*(t: var Tree; info: PackedLineInfo; typ: TypeId) =
   buildTyped t, info, NumberConv, typ:
     t.nodes.add Instr(x: toX(NilVal, uint32(0)), info: info)
+
+proc store*(r: var RodFile; t: Tree) = storeSeq r, t.nodes
+proc load*(r: var RodFile; t: var Tree) = loadSeq r, t.nodes
 
 proc escapeToNimLit(s: string; result: var string) =
   result.add '"'
@@ -370,6 +389,14 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
     for i in 0..<nesting*2: r.add ' '
     r.add "}"
 
+proc allTreesToString*(t: Tree; strings: BiTable[string]; integers: BiTable[int64];
+                       r: var string) =
+
+  var i = 0
+  while i < t.len:
+    toString t, NodePos(i), strings, integers, r
+    nextChild t, i
+
 type
   Value* = distinct Tree
 
@@ -419,3 +446,6 @@ proc addStrVal*(t: var Value; strings: var BiTable[string]; info: PackedLineInfo
 
 proc addNilVal*(t: var Value; info: PackedLineInfo; typ: TypeId) =
   addNilVal Tree(t), info, typ
+
+proc addIntVal*(t: var Value; integers: var BiTable[int64]; info: PackedLineInfo; typ: TypeId; x: int64) =
+  addIntVal Tree(t), integers, info, typ, x

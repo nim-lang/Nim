@@ -18,8 +18,8 @@ type
     g*: TypeGraph
     conf: ConfigRef
 
-proc initTypesCon*(conf: ConfigRef): TypesCon =
-  TypesCon(g: initTypeGraph(), conf: conf)
+proc initTypesCon*(conf: ConfigRef; lit: Literals): TypesCon =
+  TypesCon(g: initTypeGraph(lit), conf: conf)
 
 proc mangle(c: var TypesCon; t: PType): string =
   result = $sighashes.hashType(t, c.conf)
@@ -67,11 +67,11 @@ proc objectToIr(c: var TypesCon; n: PNode; fieldTypes: Table[ItemId, TypeId]; un
         let subObj = openType(c.g, ObjectDecl)
         c.g.addName "uo_" & $unionId & "_" & $i
         objectToIr c, lastSon(n[i]), fieldTypes, unionId
-        discard sealType(c.g, subObj)
+        sealType(c.g, subObj)
       else: discard
-    discard sealType(c.g, u)
+    sealType(c.g, u)
   of nkSym:
-    c.g.addField n.sym.name.s & "_" & $n.sym.position, fieldTypes[n.sym.itemId]
+    c.g.addField n.sym.name.s & "_" & $n.sym.position, fieldTypes[n.sym.itemId], n.sym.offset
   else:
     assert false, "unknown node kind: " & $n.kind
 
@@ -85,6 +85,9 @@ proc objectToIr(c: var TypesCon; t: PType): TypeId =
   collectFieldTypes c, t.n, fieldTypes
   let obj = openType(c.g, ObjectDecl)
   c.g.addName mangle(c, t)
+  c.g.addSize c.conf.getSize(t)
+  c.g.addAlign c.conf.getAlign(t)
+
   if t[0] != nil:
     c.g.addNominalType(ObjectTy, mangle(c, t[0]))
   else:
@@ -93,12 +96,13 @@ proc objectToIr(c: var TypesCon; t: PType): TypeId =
       let f2 = c.g.openType FieldDecl
       let voidPtr = openType(c.g, APtrTy)
       c.g.addBuiltinType(VoidId)
-      discard sealType(c.g, voidPtr)
+      sealType(c.g, voidPtr)
+      c.g.addOffset 0 # type field is always at offset 0
       c.g.addName "m_type"
-      discard sealType(c.g, f2) # FieldDecl
+      sealType(c.g, f2) # FieldDecl
 
   objectToIr c, t.n, fieldTypes, unionId
-  result = sealType(c.g, obj)
+  result = finishType(c.g, obj)
 
 proc objectHeaderToIr(c: var TypesCon; t: PType): TypeId =
   result = c.g.nominalType(ObjectTy, mangle(c, t))
@@ -109,9 +113,18 @@ proc tupleToIr(c: var TypesCon; t: PType): TypeId =
     fieldTypes[i] = typeToIr(c, t[i])
   let obj = openType(c.g, ObjectDecl)
   c.g.addName mangle(c, t)
+  c.g.addSize c.conf.getSize(t)
+  c.g.addAlign c.conf.getAlign(t)
+
+  var accum = OffsetAccum(maxAlign: 1)
   for i in 0..<t.len:
-    c.g.addField "f_" & $i, fieldTypes[i]
-  result = sealType(c.g, obj)
+    let child = t[i]
+    c.g.addField "f_" & $i, fieldTypes[i], accum.offset
+
+    computeSizeAlign(c.conf, child)
+    accum.align(child.align)
+    accum.inc(int32(child.size))
+  result = finishType(c.g, obj)
 
 proc procToIr(c: var TypesCon; t: PType; addEnv = false): TypeId =
   var fieldTypes = newSeq[TypeId](0)
@@ -137,11 +150,11 @@ proc procToIr(c: var TypesCon; t: PType; addEnv = false): TypeId =
   if addEnv:
     let a = openType(c.g, APtrTy)
     c.g.addBuiltinType(VoidId)
-    discard sealType(c.g, a)
+    sealType(c.g, a)
 
   if tfVarargs in t.flags:
     c.g.addVarargs()
-  result = sealType(c.g, obj)
+  result = finishType(c.g, obj)
 
 proc nativeInt(c: TypesCon): TypeId =
   case c.conf.target.intSize
@@ -154,7 +167,7 @@ proc openArrayPayloadType*(c: var TypesCon; t: PType): TypeId =
   let elementType = typeToIr(c, e)
   let arr = c.g.openType AArrayPtrTy
   c.g.addType elementType
-  result = sealType(c.g, arr) # LastArrayTy
+  result = finishType(c.g, arr) # LastArrayTy
 
 proc openArrayToIr(c: var TypesCon; t: PType): TypeId =
   # object (a: ArrayPtr[T], len: int)
@@ -167,38 +180,45 @@ proc openArrayToIr(c: var TypesCon; t: PType): TypeId =
 
   let p = openType(c.g, ObjectDecl)
   c.g.addName typeName
+  c.g.addSize c.conf.target.ptrSize*2
+  c.g.addAlign c.conf.target.ptrSize
 
   let f = c.g.openType FieldDecl
   let arr = c.g.openType AArrayPtrTy
   c.g.addType elementType
-  discard sealType(c.g, arr) # LastArrayTy
+  sealType(c.g, arr) # LastArrayTy
+  c.g.addOffset 0
   c.g.addName "data"
-  discard sealType(c.g, f) # FieldDecl
+  sealType(c.g, f) # FieldDecl
 
-  c.g.addField "len", c.nativeInt
+  c.g.addField "len", c.nativeInt, c.conf.target.ptrSize
 
-  result = sealType(c.g, p) # ObjectDecl
+  result = finishType(c.g, p) # ObjectDecl
 
 proc strPayloadType(c: var TypesCon): string =
   result = "NimStrPayload"
   let p = openType(c.g, ObjectDecl)
   c.g.addName result
-  c.g.addField "cap", c.nativeInt
+  c.g.addSize c.conf.target.ptrSize*2
+  c.g.addAlign c.conf.target.ptrSize
+
+  c.g.addField "cap", c.nativeInt, 0
 
   let f = c.g.openType FieldDecl
   let arr = c.g.openType LastArrayTy
   c.g.addBuiltinType Char8Id
-  discard sealType(c.g, arr) # LastArrayTy
+  sealType(c.g, arr) # LastArrayTy
+  c.g.addOffset c.conf.target.ptrSize # comes after the len field
   c.g.addName "data"
-  discard sealType(c.g, f) # FieldDecl
+  sealType(c.g, f) # FieldDecl
 
-  discard sealType(c.g, p)
+  sealType(c.g, p)
 
 proc strPayloadPtrType*(c: var TypesCon): TypeId =
   let mangled = strPayloadType(c)
   let ffp = c.g.openType APtrTy
   c.g.addNominalType ObjectTy, mangled
-  result = sealType(c.g, ffp) # APtrTy
+  result = finishType(c.g, ffp) # APtrTy
 
 proc stringToIr(c: var TypesCon): TypeId =
   #[
@@ -216,16 +236,20 @@ proc stringToIr(c: var TypesCon): TypeId =
 
   let str = openType(c.g, ObjectDecl)
   c.g.addName "NimStringV2"
-  c.g.addField "len", c.nativeInt
+  c.g.addSize c.conf.target.ptrSize*2
+  c.g.addAlign c.conf.target.ptrSize
+
+  c.g.addField "len", c.nativeInt, 0
 
   let fp = c.g.openType FieldDecl
   let ffp = c.g.openType APtrTy
   c.g.addNominalType ObjectTy, "NimStrPayload"
-  discard sealType(c.g, ffp) # APtrTy
+  sealType(c.g, ffp) # APtrTy
+  c.g.addOffset c.conf.target.ptrSize # comes after 'len' field
   c.g.addName "p"
-  discard sealType(c.g, fp) # FieldDecl
+  sealType(c.g, fp) # FieldDecl
 
-  result = sealType(c.g, str) # ObjectDecl
+  result = finishType(c.g, str) # ObjectDecl
 
 proc seqPayloadType(c: var TypesCon; t: PType): string =
   #[
@@ -241,21 +265,25 @@ proc seqPayloadType(c: var TypesCon; t: PType): string =
 
   let p = openType(c.g, ObjectDecl)
   c.g.addName payloadName
-  c.g.addField "cap", c.nativeInt
+  c.g.addSize c.conf.target.intSize
+  c.g.addAlign c.conf.target.intSize
+
+  c.g.addField "cap", c.nativeInt, 0
 
   let f = c.g.openType FieldDecl
   let arr = c.g.openType LastArrayTy
   c.g.addType elementType
-  discard sealType(c.g, arr) # LastArrayTy
+  sealType(c.g, arr) # LastArrayTy
+  c.g.addOffset c.conf.target.ptrSize
   c.g.addName "data"
-  discard sealType(c.g, f) # FieldDecl
-  discard sealType(c.g, p)
+  sealType(c.g, f) # FieldDecl
+  sealType(c.g, p)
 
 proc seqPayloadPtrType*(c: var TypesCon; t: PType): TypeId =
   let mangledBase = seqPayloadType(c, t)
   let ffp = c.g.openType APtrTy
   c.g.addNominalType ObjectTy, "NimSeqPayload" & mangledBase
-  result = sealType(c.g, ffp) # APtrTy
+  result = finishType(c.g, ffp) # APtrTy
 
 proc seqToIr(c: var TypesCon; t: PType): TypeId =
   #[
@@ -267,16 +295,20 @@ proc seqToIr(c: var TypesCon; t: PType): TypeId =
 
   let sq = openType(c.g, ObjectDecl)
   c.g.addName "NimSeqV2" & mangledBase
-  c.g.addField "len", c.nativeInt
+  c.g.addSize c.conf.getSize(t)
+  c.g.addAlign c.conf.getAlign(t)
+
+  c.g.addField "len", c.nativeInt, 0
 
   let fp = c.g.openType FieldDecl
   let ffp = c.g.openType APtrTy
   c.g.addNominalType ObjectTy, "NimSeqPayload" & mangledBase
-  discard sealType(c.g, ffp) # APtrTy
+  sealType(c.g, ffp) # APtrTy
+  c.g.addOffset c.conf.target.ptrSize
   c.g.addName "p"
-  discard sealType(c.g, fp) # FieldDecl
+  sealType(c.g, fp) # FieldDecl
 
-  result = sealType(c.g, sq) # ObjectDecl
+  result = finishType(c.g, sq) # ObjectDecl
 
 
 proc closureToIr(c: var TypesCon; t: PType): TypeId =
@@ -291,21 +323,25 @@ proc closureToIr(c: var TypesCon; t: PType): TypeId =
 
   let p = openType(c.g, ObjectDecl)
   c.g.addName typeName
+  c.g.addSize c.conf.getSize(t)
+  c.g.addAlign c.conf.getAlign(t)
 
   let f = c.g.openType FieldDecl
   c.g.addType procType
+  c.g.addOffset 0
   c.g.addName "ClP_0"
-  discard sealType(c.g, f) # FieldDecl
+  sealType(c.g, f) # FieldDecl
 
   let f2 = c.g.openType FieldDecl
   let voidPtr = openType(c.g, APtrTy)
   c.g.addBuiltinType(VoidId)
-  discard sealType(c.g, voidPtr)
+  sealType(c.g, voidPtr)
 
+  c.g.addOffset c.conf.target.ptrSize
   c.g.addName "ClE_0"
-  discard sealType(c.g, f2) # FieldDecl
+  sealType(c.g, f2) # FieldDecl
 
-  result = sealType(c.g, p) # ObjectDecl
+  result = finishType(c.g, p) # ObjectDecl
 
 proc bitsetBasetype*(c: var TypesCon; t: PType): TypeId =
   let s = int(getSize(c.conf, t))
@@ -376,8 +412,8 @@ proc typeToIr*(c: var TypesCon; t: PType): TypeId =
       let elemType = typeToIr(c, t[1])
       let a = openType(c.g, ArrayTy)
       c.g.addType(elemType)
-      c.g.addArrayLen uint64(n)
-      result = sealType(c.g, a)
+      c.g.addArrayLen n
+      result = finishType(c.g, a)
   of tyPtr, tyRef:
     cached(c, t):
       let e = t.lastSon
@@ -385,12 +421,12 @@ proc typeToIr*(c: var TypesCon; t: PType): TypeId =
         let elemType = typeToIr(c, e.lastSon)
         let a = openType(c.g, AArrayPtrTy)
         c.g.addType(elemType)
-        result = sealType(c.g, a)
+        result = finishType(c.g, a)
       else:
         let elemType = typeToIr(c, t.lastSon)
         let a = openType(c.g, APtrTy)
         c.g.addType(elemType)
-        result = sealType(c.g, a)
+        result = finishType(c.g, a)
   of tyVar, tyLent:
     cached(c, t):
       let e = t.lastSon
@@ -401,7 +437,7 @@ proc typeToIr*(c: var TypesCon; t: PType): TypeId =
         let elemType = typeToIr(c, e)
         let a = openType(c.g, APtrTy)
         c.g.addType(elemType)
-        result = sealType(c.g, a)
+        result = finishType(c.g, a)
   of tySet:
     let s = int(getSize(c.conf, t))
     case s
@@ -414,12 +450,13 @@ proc typeToIr*(c: var TypesCon; t: PType): TypeId =
       cached(c, t):
         let a = openType(c.g, ArrayTy)
         c.g.addType(UInt8Id)
-        c.g.addArrayLen uint64(s)
-        result = sealType(c.g, a)
-  of tyPointer:
+        c.g.addArrayLen s
+        result = finishType(c.g, a)
+  of tyPointer, tyNil:
+    # tyNil can happen for code like: `const CRAP = nil` which we have in posix.nim
     let a = openType(c.g, APtrTy)
     c.g.addBuiltinType(VoidId)
-    result = sealType(c.g, a)
+    result = finishType(c.g, a)
   of tyObject:
     # Objects are special as they can be recursive in Nim. This is easily solvable.
     # We check if we are already "processing" t. If so, we produce `ObjectTy`
@@ -451,20 +488,20 @@ proc typeToIr*(c: var TypesCon; t: PType): TypeId =
     cached(c, t):
       let a = openType(c.g, AArrayPtrTy)
       c.g.addBuiltinType Char8Id
-      result = sealType(c.g, a)
+      result = finishType(c.g, a)
   of tyUncheckedArray:
     # We already handled the `ptr UncheckedArray` in a special way.
     cached(c, t):
       let elemType = typeToIr(c, t.lastSon)
       let a = openType(c.g, LastArrayTy)
       c.g.addType(elemType)
-      result = sealType(c.g, a)
+      result = finishType(c.g, a)
   of tyUntyped, tyTyped:
     # this avoids a special case for system.echo which is not a generic but
     # uses `varargs[typed]`:
     result = VoidId
   of tyNone, tyEmpty, tyTypeDesc,
-     tyNil, tyGenericInvocation, tyProxy, tyBuiltInTypeClass,
+     tyGenericInvocation, tyProxy, tyBuiltInTypeClass,
      tyUserTypeClass, tyUserTypeClassInst, tyCompositeTypeClass,
      tyAnd, tyOr, tyNot, tyAnything, tyConcept, tyIterable, tyForward:
     result = TypeId(-1)

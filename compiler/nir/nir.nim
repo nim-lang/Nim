@@ -10,8 +10,12 @@
 ## Nim Intermediate Representation, designed to capture all of Nim's semantics without losing too much
 ## precious information. Can easily be translated into C. And to JavaScript, hopefully.
 
-import ".." / [ast, modulegraphs, renderer, transf]
-import nirtypes, nirinsts, ast2ir
+from os import addFileExt, `/`, createDir
+
+import ".." / [ast, modulegraphs, renderer, transf, options, msgs, lineinfos]
+import nirtypes, nirinsts, ast2ir, nirlineinfos
+
+import ".." / ic / [rodfiles, bitabs]
 
 type
   PCtx* = ref object of TPassContext
@@ -45,8 +49,8 @@ proc evalStmt(c: PCtx; n: PNode) =
 
   var res = ""
   if pc < c.c.code.len:
-    toString c.c.code, NodePos(pc), c.m.strings, c.m.integers, res
-  #res.add "\n"
+    toString c.c.code, NodePos(pc), c.m.lit.strings, c.m.lit.numbers, res
+  #res.add "\n--------------------------\n"
   #toString res, c.m.types.g
   echo res
 
@@ -61,11 +65,51 @@ proc runCode*(c: PPassContext; n: PNode): PNode =
     result = n
   c.oldErrorCount = c.m.graph.config.errorCounter
 
-when false:
-  type
-    Module* = object
-      types: TypeGraph
-      data: seq[Tree]
-      init: seq[Tree]
-      procs: seq[Tree]
+type
+  NirPassContext* = ref object of TPassContext
+    m: ModuleCon
+    c: ProcCon
 
+proc openNirBackend*(g: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
+  let m = initModuleCon(g, g.config, idgen, module)
+  NirPassContext(m: m, c: initProcCon(m, nil, g.config), idgen: idgen)
+
+proc gen(c: NirPassContext; n: PNode) =
+  let n = transformExpr(c.m.graph, c.idgen, c.m.module, n)
+  let pc = genStmt(c.c, n)
+
+proc nirBackend*(c: PPassContext; n: PNode): PNode =
+  gen(NirPassContext(c), n)
+  result = n
+
+proc closeNirBackend*(c: PPassContext; finalNode: PNode) =
+  discard nirBackend(c, finalNode)
+
+  let c = NirPassContext(c)
+  let nimcache = getNimcacheDir(c.c.config).string
+  createDir nimcache
+  let outp = nimcache / c.m.module.name.s.addFileExt("nir")
+  var r = rodfiles.create(outp)
+  try:
+    r.storeHeader(nirCookie)
+    r.storeSection stringsSection
+    r.store c.m.lit.strings
+
+    r.storeSection numbersSection
+    r.store c.m.lit.numbers
+
+    r.storeSection bodiesSection
+    r.store c.c.code
+
+    r.storeSection typesSection
+    r.store c.m.types.g
+
+    r.storeSection sideChannelSection
+    r.store c.m.man
+
+  finally:
+    r.close()
+  if r.err != ok:
+    rawMessage(c.c.config, errFatal, "serialization failed: " & outp)
+  else:
+    echo "created: ", outp
