@@ -463,7 +463,7 @@ elif useVCC_builtins:
       importc: "_BitScanForward64", header: "<intrin.h>".}
 
   template vcc_scan_impl(fnc: untyped; v: untyped): int =
-    var index: culong
+    var index {.inject.}: culong = 0
     discard fnc(index.addr, v)
     index.int
 
