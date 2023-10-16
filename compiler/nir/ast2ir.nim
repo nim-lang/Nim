@@ -29,7 +29,8 @@ type
     graph*: ModuleGraph
     nativeIntId, nativeUIntId: TypeId
     idgen: IdGenerator
-    pendingProcs: Table[ItemId, PSym] # procs we still need to generate code for
+    processedProcs: HashSet[ItemId]
+    pendingProcs: seq[PSym] # procs we still need to generate code for
 
   ProcCon* = object
     config*: ConfigRef
@@ -2104,8 +2105,8 @@ proc genSym(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
     if ast.originatingModule(s) == c.m.module:
       # anon and generic procs have no AST so we need to remember not to forget
       # to emit these:
-      if not c.m.pendingProcs.hasKey(s.itemId):
-        c.m.pendingProcs[s.itemId] = s
+      if not c.m.processedProcs.containsOrIncl(s.itemId):
+        c.m.pendingProcs.add s
     genRdVar(c, n, d, flags)
   of skEnumField:
     let info = toLineInfo(c, n.info)
@@ -2266,10 +2267,9 @@ proc addCallConv(c: var ProcCon; info: PackedLineInfo; callConv: TCallingConvent
   of ccThisCall: ann ThisCall
   of ccNoConvention: ann NoCall
 
-proc genProc(cOuter: var ProcCon; n: PNode) =
-  if n.len == 0 or n[namePos].kind != nkSym: return
-  let prc = n[namePos].sym
-  if isGenericRoutineStrict(prc) or isCompileTimeProc(prc): return
+proc genProc(cOuter: var ProcCon; prc: PSym) =
+  if cOuter.m.processedProcs.containsOrIncl(prc.itemId):
+    return
 
   var c = initProcCon(cOuter.m, prc, cOuter.m.graph.config)
 
@@ -2307,6 +2307,12 @@ proc genProc(cOuter: var ProcCon; n: PNode) =
     patch c, body, c.exitLabel
 
   copyTree cOuter.code, c.code
+
+proc genProc(cOuter: var ProcCon; n: PNode) =
+  if n.len == 0 or n[namePos].kind != nkSym: return
+  let prc = n[namePos].sym
+  if isGenericRoutineStrict(prc) or isCompileTimeProc(prc): return
+  genProc cOuter, prc
 
 proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   when defined(nimCompilerStacktraceHints):
@@ -2407,16 +2413,24 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   else:
     localError(c.config, n.info, "cannot generate IR code for " & $n)
 
+proc genPendingProcs(c: var ProcCon) =
+  while c.m.pendingProcs.len > 0:
+    let procs = move(c.m.pendingProcs)
+    for v in procs:
+      genProc(c, v)
+
 proc genStmt*(c: var ProcCon; n: PNode): int =
   result = c.code.len
   var d = default(Value)
   c.gen(n, d)
   unused c, n, d
+  genPendingProcs c
 
 proc genExpr*(c: var ProcCon; n: PNode, requiresValue = true): int =
   result = c.code.len
   var d = default(Value)
   c.gen(n, d)
+  genPendingProcs c
   if isEmpty d:
     if requiresValue:
       globalError(c.config, n.info, "VM problem: d register is not set")

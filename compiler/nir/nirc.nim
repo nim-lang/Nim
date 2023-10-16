@@ -41,6 +41,8 @@ proc view(filename: string) =
 
   var res = ""
   allTreesToString code, lit.strings, lit.numbers, res
+  res.add "\n# TYPES\n"
+  nirtypes.toString res, types
   echo res
 
 import std / os
