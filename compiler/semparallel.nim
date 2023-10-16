@@ -25,7 +25,7 @@ import
   ast, astalgo, idents, lowerings, magicsys, guards, msgs,
   renderer, types, modulegraphs, options, spawn, lineinfos
 
-from trees import getMagic, isTrue, getRoot
+from trees import getMagic, getRoot
 from strutils import `%`
 
 discard """
@@ -184,7 +184,10 @@ proc stride(c: AnalysisCtx; n: PNode): BiggestInt =
     let s = c.lookupSlot(n.sym)
     if s >= 0 and c.locals[s].stride != nil:
       result = c.locals[s].stride.intVal
+    else:
+      result = 0
   else:
+    result = 0
     for i in 0..<n.safeLen: result += stride(c, n[i])
 
 proc subStride(c: AnalysisCtx; n: PNode): PNode =
@@ -402,6 +405,9 @@ proc transformSlices(g: ModuleGraph; idgen: IdGenerator; n: PNode): PNode =
     let op = n[0].sym
     if op.name.s == "[]" and op.fromSystem:
       result = copyNode(n)
+      var typ = newType(tyOpenArray, nextTypeId(g.idgen), result.typ.owner)
+      typ.add result.typ[0]
+      result.typ = typ
       let opSlice = newSymNode(createMagic(g, idgen, "slice", mSlice))
       opSlice.typ = getSysType(g, n.info, tyInt)
       result.add opSlice
@@ -483,7 +489,7 @@ proc liftParallel*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): P
   checkArgs(a, body)
 
   var varSection = newNodeI(nkVarSection, n.info)
-  var temp = newSym(skTemp, getIdent(g.cache, "barrier"), nextSymId idgen, owner, n.info)
+  var temp = newSym(skTemp, getIdent(g.cache, "barrier"), idgen, owner, n.info)
   temp.typ = magicsys.getCompilerProc(g, "Barrier").typ
   incl(temp.flags, sfFromGeneric)
   let tempNode = newSymNode(temp)

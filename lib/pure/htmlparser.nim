@@ -12,10 +12,9 @@
 ##
 ## It can be used to parse a wild HTML document and output it as valid XHTML
 ## document (well, if you are lucky):
-##
-## .. code-block:: Nim
-##
+##   ```Nim
 ##   echo loadHtml("mydirty.html")
+##   ```
 ##
 ## Every tag in the resulting tree is in lower case.
 ##
@@ -29,9 +28,7 @@
 ## and write back the modified version. In this case we look for hyperlinks
 ## ending with the extension `.rst` and convert them to `.html`.
 ##
-## .. code-block:: Nim
-##     :test:
-##
+##   ```Nim test
 ##   import std/htmlparser
 ##   import std/xmltree  # To use '$' for XmlNode
 ##   import std/strtabs  # To access XmlAttributes
@@ -48,6 +45,7 @@
 ##           a.attrs["href"] = dir / filename & ".html"
 ##
 ##     writeFile("output.html", $html)
+##   ```
 
 import strutils, streams, parsexml, xmltree, unicode, strtabs
 
@@ -394,10 +392,10 @@ proc entityToRune*(entity: string): Rune =
     case entity[1]
     of '0'..'9':
       try: runeValue = parseInt(entity[1..^1])
-      except: discard
+      except ValueError: discard
     of 'x', 'X': # not case sensitive here
       try: runeValue = parseHexInt(entity[2..^1])
-      except: discard
+      except ValueError: discard
     else: discard # other entities are not defined with prefix `#`
     if runeValue notin 0..0x10FFFF: runeValue = 0 # only return legal values
     return Rune(runeValue)

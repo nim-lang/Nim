@@ -1,4 +1,6 @@
-import ast
+import ast, idents, lineinfos, astalgo
+import vmdef
+import std/times
 
 template elementType*(T: typedesc): typedesc =
   typeof(block:
@@ -14,7 +16,7 @@ proc fromLit*(a: PNode, T: typedesc): auto =
     for ai in a:
       result.incl Ti(ai.intVal)
   else:
-    static: doAssert false, "not yet supported: " & $T # add as needed
+    static: raiseAssert "not yet supported: " & $T # add as needed
 
 proc toLit*[T](a: T): PNode =
   ## generic type => PNode
@@ -41,5 +43,14 @@ proc toLit*[T](a: T): PNode =
       reti.add ai.toLit
       result.add reti
   else:
-    static: doAssert false, "not yet supported: " & $T # add as needed
+    static: raiseAssert "not yet supported: " & $T # add as needed
 
+proc toTimeLit*(a: Time, c: PCtx, obj: PNode, info: TLineInfo): PNode =
+  # probably refactor it into `toLit` in the future
+  result = newTree(nkObjConstr)
+  result.add(newNode(nkEmpty)) # can be changed to a symbol according to PType
+  for k, ai in fieldPairs(a):
+    let reti = newNode(nkExprColonExpr)
+    reti.add newSymNode(lookupInRecord(obj, getIdent(c.cache, k)), info)
+    reti.add ai.toLit
+    result.add reti

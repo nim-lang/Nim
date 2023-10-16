@@ -69,8 +69,11 @@ Hints on the build process:
 
 What to install:
 
-- The expected stdlib location is /usr/lib/nim
-- Global configuration files under /etc/nim
+- The expected stdlib location is `/usr/lib/nim/lib`, previously it was just `/usr/lib/nim`
+- `nimdoc.css` and `nimdoc.cls` from the `doc` folder should go into `/usr/lib/nim/doc/`
+- `tools/debug/nim-gdb.py` should go into `/usr/lib/nim/tools/`
+- `tools/dochack/dochack.js` should be installed to `/usr/lib/nim/tools/dochack/`
+- Global configuration files under `/etc/nim`
 - Optionally: manpages, documentation, shell completion
 - When installing documentation, .idx files are not required
 - The "compiler" directory contains compiler sources and should not be part of the compiler binary package

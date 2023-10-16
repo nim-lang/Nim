@@ -20,9 +20,6 @@ import strutils except addf
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-when not defined(nimHasCursor):
-  {.pragma: cursor.}
-
 proc hashNode*(p: RootRef): Hash
 proc treeToYaml*(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
   # Convert a tree into its YAML representation; this is used by the
@@ -112,7 +109,7 @@ type
     data*: TIIPairSeq
 
 
-proc initIiTable*(x: var TIITable)
+proc initIITable*(x: var TIITable)
 proc iiTableGet*(t: TIITable, key: int): int
 proc iiTablePut*(t: var TIITable, key, val: int)
 
@@ -200,6 +197,7 @@ proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym =
   result = nil
 
 proc sameIgnoreBacktickGensymInfo(a, b: string): bool =
+  result = false
   if a[0] != b[0]: return false
   var alen = a.len - 1
   while alen > 0 and a[alen] != '`': dec(alen)
@@ -229,10 +227,11 @@ proc getNamedParamFromList*(list: PNode, ident: PIdent): PSym =
   ## Named parameters are special because a named parameter can be
   ## gensym'ed and then they have '\`<number>' suffix that we need to
   ## ignore, see compiler / evaltempl.nim, snippet:
-  ##   ```
+  ##   ```nim
   ##   result.add newIdentNode(getIdent(c.ic, x.name.s & "\`gensym" & $x.id),
   ##            if c.instLines: actual.info else: templ.info)
   ##   ```
+  result = nil
   for i in 1..<list.len:
     let it = list[i].sym
     if it.name.id == ident.id or
@@ -330,10 +329,12 @@ proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
                    maxRecDepth: int): Rope =
   var sonsRope: Rope
   if n == nil:
+    result = ""
     sonsRope = rope("null")
   elif containsOrIncl(marker, n.id):
+    result = ""
     sonsRope = "\"$1 @$2\"" % [rope($n.kind), rope(
-        strutils.toHex(cast[ByteAddress](n), sizeof(n) * 2))]
+        strutils.toHex(cast[int](n), sizeof(n) * 2))]
   else:
     if n.len > 0:
       sonsRope = rope("[")
@@ -1066,6 +1067,7 @@ proc isAddrNode*(n: PNode): bool =
     else: false
 
 proc listSymbolNames*(symbols: openArray[PSym]): string =
+  result = ""
   for sym in symbols:
     if result.len > 0:
       result.add ", "

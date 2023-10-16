@@ -12,6 +12,7 @@ FilterIt: [1, 3, 7]
 Concat: [1, 3, 5, 7, 2, 4, 6]
 Deduplicate: [1, 2, 3, 4, 5, 7]
 @[()]
+Minmax: (1, 7)
 2345623456
 '''
 """
@@ -156,6 +157,13 @@ block tsequtils:
   let someObjSeq = aSeq.mapIt(it.field)
   echo someObjSeq
 
+  block minmax:
+    doAssert minmax(@[0]) == (0, 0)
+    doAssert minmax(@[0, 1]) == (0, 1)
+    doAssert minmax(@[1, 0]) == (0, 1)
+    doAssert minmax(@[8,2,1,7,3,9,4,0,5]) == (0, 9)
+    echo "Minmax: ", $(minmax(concat(seq1, seq2)))
+
 
 when not defined(nimseqsv2):
   block tshallowseq:
@@ -215,3 +223,20 @@ for i in 0..100:
   var test = newSeqOfCap[uint32](1)
   test.setLen(1)
   doAssert test[0] == 0, $(test[0], i)
+
+
+# bug #22560
+doAssert len(newSeqOfCap[int](42)) == 0
+
+block: # bug #17197
+  type Matrix = seq[seq[int]]
+
+  proc needlemanWunsch(sequence1: string, sequence2: string, gap_penal: int8, match: int8, indel_penal: int8): bool =
+    let seq2_len = sequence2.len
+
+    var grid: Matrix
+    for i in sequence1:
+      grid.add(newSeqOfCap[seq[int]](seq2_len))
+    result = true
+
+  doAssert needlemanWunsch("ABC", "DEFG", 1, 2, 3)

@@ -161,7 +161,7 @@ elif defined(windows) or defined(dos):
         dec(m)
         k = k div 10
         if k == 0: break
-      result = getProcAddress(cast[THINSTANCE](lib), addr decorated)
+      result = getProcAddress(cast[THINSTANCE](lib), cast[cstring](addr decorated))
       if result != nil: return
     procAddrError(name)
 
@@ -176,7 +176,7 @@ elif defined(genode):
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     raiseAssert("nimGetProcAddr not implemented")
 
-elif defined(nintendoswitch) or defined(freertos) or defined(zephyr):
+elif defined(nintendoswitch) or defined(freertos) or defined(zephyr) or defined(nuttx):
   proc nimUnloadLibrary(lib: LibHandle) =
     cstderr.rawWrite("nimUnLoadLibrary not implemented")
     cstderr.rawWrite("\n")

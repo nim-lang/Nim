@@ -99,6 +99,7 @@ Proc                                Usage
 ===============================     ======================================
 
 **See also:**
+* `setutils module <setutils.html>`_ for bit set convenience functions
 * `sets module <sets.html>`_ for hash sets
 * `intsets module <intsets.html>`_ for efficient int sets
 

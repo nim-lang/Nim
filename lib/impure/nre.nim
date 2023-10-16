@@ -20,15 +20,17 @@ when defined(js):
 ## search the internet for a wide variety of third-party documentation and
 ## tools.
 ##
-## **Note**: If you love `sequtils.toSeq` we have bad news for you. This
-## library doesn't work with it due to documented compiler limitations. As
-## a workaround, use this:
+## .. warning:: If you love `sequtils.toSeq` we have bad news for you. This
+##   library doesn't work with it due to documented compiler limitations. As
+##   a workaround, use this:
 runnableExamples:
   # either `import std/nre except toSeq` or fully qualify `sequtils.toSeq`:
   import std/sequtils
   iterator iota(n: int): int =
     for i in 0..<n: yield i
   assert sequtils.toSeq(iota(3)) == @[0, 1, 2]
+## .. note:: There are also alternative nimble packages such as [tinyre](https://github.com/khchen/tinyre)
+##   and [regex](https://github.com/nitely/nim-regex).
 ## Licencing
 ## ---------
 ##

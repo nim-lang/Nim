@@ -168,8 +168,9 @@ func charSet*(s: set[char]): Peg {.rtl, extern: "npegs$1".} =
   ## constructs a PEG from a character set `s`
   assert '\0' notin s
   result = Peg(kind: pkCharChoice)
-  new(result.charChoice)
-  result.charChoice[] = s
+  {.cast(noSideEffect).}:
+    new(result.charChoice)
+    result.charChoice[] = s
 
 func len(a: Peg): int {.inline.} = return a.sons.len
 func add(d: var Peg, s: Peg) {.inline.} = add(d.sons, s)
@@ -561,7 +562,7 @@ template matchOrParse(mopProc: untyped) =
   # procs. For the former, *enter* and *leave* event handler code generators
   # are provided which just return *discard*.
 
-  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int {.gcsafe.} =
+  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int {.gcsafe, raises: [].} =
     proc matchBackRef(s: string, p: Peg, start: int, c: var Captures): int =
       # Parse handler code must run in an *of* clause of its own for each
       # *PegKind*, so we encapsulate the identical clause body for
@@ -888,7 +889,7 @@ macro mkHandlerTplts(handlers: untyped): untyped =
   # Transforms the handler spec in *handlers* into handler templates.
   # The AST structure of *handlers[0]*:
   #
-  # .. code-block::
+  #   ```
   #   StmtList
   #     Call
   #       Ident "pkNonTerminal"
@@ -909,6 +910,7 @@ macro mkHandlerTplts(handlers: untyped): untyped =
   #           StmtList
   #             <handler code block>
   #     ...
+  #   ```
   func mkEnter(hdName, body: NimNode): NimNode =
     template helper(hdName, body) {.dirty.} =
       template hdName(s, p, start) =
@@ -958,60 +960,61 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## match, else the length of the total match. The following example code
   ## evaluates an arithmetic expression defined by a simple PEG:
   ##
-  ## .. code-block:: nim
-  ##  import std/[strutils, pegs]
+  ##   ```nim
+  ##   import std/[strutils, pegs]
   ##
-  ##  let
-  ##    pegAst = """
-  ##  Expr    <- Sum
-  ##  Sum     <- Product (('+' / '-')Product)*
-  ##  Product <- Value (('*' / '/')Value)*
-  ##  Value   <- [0-9]+ / '(' Expr ')'
-  ##    """.peg
-  ##    txt = "(5+3)/2-7*22"
+  ##   let
+  ##     pegAst = """
+  ##   Expr    <- Sum
+  ##   Sum     <- Product (('+' / '-')Product)*
+  ##   Product <- Value (('*' / '/')Value)*
+  ##   Value   <- [0-9]+ / '(' Expr ')'
+  ##     """.peg
+  ##     txt = "(5+3)/2-7*22"
   ##
-  ##  var
-  ##    pStack: seq[string] = @[]
-  ##    valStack: seq[float] = @[]
-  ##    opStack = ""
-  ##  let
-  ##    parseArithExpr = pegAst.eventParser:
-  ##      pkNonTerminal:
-  ##        enter:
-  ##          pStack.add p.nt.name
-  ##        leave:
-  ##          pStack.setLen pStack.high
-  ##          if length > 0:
-  ##            let matchStr = s.substr(start, start+length-1)
-  ##            case p.nt.name
-  ##            of "Value":
-  ##              try:
-  ##                valStack.add matchStr.parseFloat
-  ##                echo valStack
-  ##              except ValueError:
-  ##                discard
-  ##            of "Sum", "Product":
-  ##              try:
-  ##                let val = matchStr.parseFloat
-  ##              except ValueError:
-  ##                if valStack.len > 1 and opStack.len > 0:
-  ##                  valStack[^2] = case opStack[^1]
-  ##                  of '+': valStack[^2] + valStack[^1]
-  ##                  of '-': valStack[^2] - valStack[^1]
-  ##                  of '*': valStack[^2] * valStack[^1]
-  ##                  else: valStack[^2] / valStack[^1]
-  ##                  valStack.setLen valStack.high
-  ##                  echo valStack
-  ##                  opStack.setLen opStack.high
-  ##                  echo opStack
-  ##      pkChar:
-  ##        leave:
-  ##          if length == 1 and "Value" != pStack[^1]:
-  ##            let matchChar = s[start]
-  ##            opStack.add matchChar
-  ##            echo opStack
+  ##   var
+  ##     pStack: seq[string] = @[]
+  ##     valStack: seq[float] = @[]
+  ##     opStack = ""
+  ##   let
+  ##     parseArithExpr = pegAst.eventParser:
+  ##       pkNonTerminal:
+  ##         enter:
+  ##           pStack.add p.nt.name
+  ##         leave:
+  ##           pStack.setLen pStack.high
+  ##           if length > 0:
+  ##             let matchStr = s.substr(start, start+length-1)
+  ##             case p.nt.name
+  ##             of "Value":
+  ##               try:
+  ##                 valStack.add matchStr.parseFloat
+  ##                 echo valStack
+  ##               except ValueError:
+  ##                 discard
+  ##             of "Sum", "Product":
+  ##               try:
+  ##                 let val = matchStr.parseFloat
+  ##               except ValueError:
+  ##                 if valStack.len > 1 and opStack.len > 0:
+  ##                   valStack[^2] = case opStack[^1]
+  ##                   of '+': valStack[^2] + valStack[^1]
+  ##                   of '-': valStack[^2] - valStack[^1]
+  ##                   of '*': valStack[^2] * valStack[^1]
+  ##                   else: valStack[^2] / valStack[^1]
+  ##                   valStack.setLen valStack.high
+  ##                   echo valStack
+  ##                   opStack.setLen opStack.high
+  ##                   echo opStack
+  ##       pkChar:
+  ##         leave:
+  ##           if length == 1 and "Value" != pStack[^1]:
+  ##             let matchChar = s[start]
+  ##             opStack.add matchChar
+  ##             echo opStack
   ##
-  ##  let pLen = parseArithExpr(txt)
+  ##   let pLen = parseArithExpr(txt)
+  ##   ```
   ##
   ## The *handlers* parameter consists of code blocks for *PegKinds*,
   ## which define the grammar elements of interest. Each block can contain
@@ -1041,7 +1044,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
       # by *mkHandlerTplts*.
       template mkDoEnter(hdPostf, s, pegNode, start) =
         when declared(`enter hdPostf`):
-          `enter hdPostf`(s, pegNode, start):
+          `enter hdPostf`(s, pegNode, start)
         else:
           discard
       let hdPostf = ident(substr(strVal(pegKind), 2))
@@ -1052,7 +1055,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
       # a grammar element of kind *pegKind*.
       template mkDoLeave(hdPostf, s, pegNode, start, length) =
         when declared(`leave hdPostf`):
-          `leave hdPostf`(s, pegNode, start, length):
+          `leave hdPostf`(s, pegNode, start, length)
         else:
           discard
       let hdPostf = ident(substr(strVal(pegKind), 2))
@@ -1172,7 +1175,7 @@ iterator findAll*(s: string, pattern: Peg, start = 0): string =
 func findAll*(s: string, pattern: Peg, start = 0): seq[string] {.
   rtl, extern: "npegs$1".} =
   ## returns all matching *substrings* of `s` that match `pattern`.
-  ## If it does not match, @[] is returned.
+  ## If it does not match, `@[]` is returned.
   result = @[]
   for it in findAll(s, pattern, start): result.add it
 
@@ -1180,8 +1183,7 @@ template `=~`*(s: string, pattern: Peg): bool =
   ## This calls ``match`` with an implicit declared ``matches`` array that
   ## can be used in the scope of the ``=~`` call:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   if line =~ peg"\s* {\w+} \s* '=' \s* {\w+}":
   ##     # matches a key=value pair:
   ##     echo("Key: ", matches[0])
@@ -1193,7 +1195,7 @@ template `=~`*(s: string, pattern: Peg): bool =
   ##     echo("comment: ", matches[0])
   ##   else:
   ##     echo("syntax error")
-  ##
+  ##   ```
   bind MaxSubpatterns
   when not declaredInScope(matches):
     var matches {.inject.}: array[0..MaxSubpatterns-1, string]
@@ -1229,14 +1231,15 @@ func replacef*(s: string, sub: Peg, by: string): string {.
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   "var1=key; var2=key2".replacef(peg"{\ident}'='{\ident}", "$1<-$2$2")
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   "var1<-keykey; val2<-key2key2"
+  ##   ```
   result = ""
   var i = 0
   var caps: array[0..MaxSubpatterns-1, string]
@@ -1304,8 +1307,7 @@ func replace*(s: string, sub: Peg, cb: proc(
   ## The callback proc receives the index of the current match (starting with 0),
   ## the count of captures and an open array with the captures of each match. Examples:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   func handleMatches*(m: int, n: int, c: openArray[string]): string =
   ##     result = ""
   ##     if m > 0:
@@ -1317,12 +1319,13 @@ func replace*(s: string, sub: Peg, cb: proc(
   ##
   ##   let s = "Var1=key1;var2=Key2;   VAR3"
   ##   echo s.replace(peg"{\ident}('='{\ident})* ';'* \s*", handleMatches)
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   "var1: 'key1', var2: 'Key2', var3: ''"
+  ##   ```
   result = ""
   var i = 0
   var caps: array[0..MaxSubpatterns-1, string]
@@ -1360,18 +1363,19 @@ iterator split*(s: string, sep: Peg): string =
   ## Substrings are separated by the PEG `sep`.
   ## Examples:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   for word in split("00232this02939is39an22example111", peg"\d+"):
   ##     writeLine(stdout, word)
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   "this"
   ##   "is"
   ##   "an"
   ##   "example"
-  ##
+  ##   ```
   var c: Captures
   var
     first = 0
@@ -1823,9 +1827,7 @@ type
     skip: Peg
 
 func pegError(p: PegParser, msg: string, line = -1, col = -1) =
-  var e: ref EInvalidPeg
-  new(e)
-  e.msg = errorStr(p, msg, line, col)
+  var e = (ref EInvalidPeg)(msg: errorStr(p, msg, line, col))
   raise e
 
 func getTok(p: var PegParser) =
@@ -1909,7 +1911,8 @@ func primary(p: var PegParser): Peg =
       getTok(p)
     elif not arrowIsNextTok(p):
       var nt = getNonTerminal(p, p.tok.literal)
-      incl(nt.flags, ntUsed)
+      {.cast(noSideEffect).}:
+        incl(nt.flags, ntUsed)
       result = nonterminal(nt).token(p)
       getTok(p)
     else:
@@ -2002,12 +2005,14 @@ func parseRule(p: var PegParser): NonTerminal =
     result = getNonTerminal(p, p.tok.literal)
     if ntDeclared in result.flags:
       pegError(p, "attempt to redefine: " & result.name)
-    result.line = getLine(p)
-    result.col = getColumn(p)
+    {.cast(noSideEffect).}:
+      result.line = getLine(p)
+      result.col = getColumn(p)
     getTok(p)
     eat(p, tkArrow)
-    result.rule = parseExpr(p)
-    incl(result.flags, ntDeclared) # NOW inlining may be attempted
+    {.cast(noSideEffect).}:
+      result.rule = parseExpr(p)
+      incl(result.flags, ntDeclared) # NOW inlining may be attempted
   else:
     pegError(p, "rule expected, but found: " & p.tok.literal)
 

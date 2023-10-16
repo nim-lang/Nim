@@ -300,7 +300,7 @@ Instead of depending on the generation of the individual ``.c`` files you can
 also ask the Nim compiler to generate a statically linked library:
 
   ```cmd
-  nim c --app:staticLib --noMain fib.nim
+  nim c --app:staticLib fib.nim
   gcc -o m -Inimcache -Ipath/to/nim/lib maths.c libfib.nim.a
   ```
 

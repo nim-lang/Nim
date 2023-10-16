@@ -22,7 +22,7 @@ Multi-paradigm Memory Management Strategies
 Nim offers multiple different memory management strategies.
 To choose the memory management strategy use the `--mm:` switch.
 
-**The recommended switch for newly written Nim code is `--mm:orc`.**
+ .. hint:: **The recommended switch for newly written Nim code is `--mm:orc`.**
 
 
 ARC/ORC
@@ -38,7 +38,7 @@ instead entire subgraphs are *moved* between threads. The Nim compiler also aggr
 optimizes away RC ops and exploits [move semantics](destructors.html#move-semantics).
 
 Nim performs a fair share of optimizations for ARC/ORC; you can inspect what it did
-to your time critical function via `--expandArc:functionName`.
+to your time critical function via `--expandArc:functionName`. Likewise, you can inspect the whole module via `--expandArc:fileName`.
 
 `--mm:arc` uses the same mechanism as `--mm:orc`, but it leaves out the cycle collector.
 Both ARC and ORC offer deterministic performance for `hard realtime`:idx: systems, but
@@ -73,17 +73,18 @@ Other MM modes
 
 Here is a comparison of the different memory management modes:
 
-================== ======== ================= ============== ===================
-Memory Management  Heap     Reference Cycles  Stop-The-World Command line switch
-================== ======== ================= ============== ===================
-ORC                Shared   Cycle Collector   No             `--mm:orc`
-ARC                Shared   Leak              No             `--mm:arc`
-RefC               Local    Cycle Collector   No             `--mm:refc`
-Mark & Sweep       Local    Cycle Collector   No             `--mm:markAndSweep`
-Boehm              Shared   Cycle Collector   Yes            `--mm:boehm`
-Go                 Shared   Cycle Collector   Yes            `--mm:go`
-None               Manual   Manual            Manual         `--mm:none`
-================== ======== ================= ============== ===================
+================== ======== ================= ============== ====== =================== ===================
+Memory Management  Heap     Reference Cycles  Stop-The-World Atomic Valgrind compatible Command line switch
+================== ======== ================= ============== ====== =================== ===================
+ORC                Shared   Cycle Collector   No             No     Yes                 `--mm:orc`
+ARC                Shared   Leak              No             No     Yes                 `--mm:arc`
+Atomic ARC         Shared   Leak              No             Yes    Yes                 `--mm:atomicArc`
+RefC               Local    Cycle Collector   No             No     No                  `--mm:refc`
+Mark & Sweep       Local    Cycle Collector   No             No     No                  `--mm:markAndSweep`
+Boehm              Shared   Cycle Collector   Yes            No     No                  `--mm:boehm`
+Go                 Shared   Cycle Collector   Yes            No     No                  `--mm:go`
+None               Manual   Manual            Manual         Manual Manual              `--mm:none`
+================== ======== ================= ============== ====== =================== ===================
 
 .. default-role:: code
 .. include:: rstcommon.rst

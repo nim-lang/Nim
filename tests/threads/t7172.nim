@@ -1,4 +1,5 @@
 discard """
+  disabled: i386
   output: '''
 In doStuff()
 In initProcess()
@@ -10,7 +11,7 @@ Crashes before getting here!
 """
 
 import std/os
-import std/threads
+import std/typedthreads
 
 proc whatever() {.thread, nimcall.} =
   echo("TEST")

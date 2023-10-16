@@ -366,6 +366,18 @@ when hasSpawnH:
     Tposix_spawn_file_actions* {.importc: "posix_spawn_file_actions_t",
                                  header: "<spawn.h>", final, pure.} = object
 
+
+when not defined(macos) and not defined(macosx): # freebsd
+  type
+    Mqd* {.importc: "mqd_t", header: "<mqueue.h>", final, pure.} = object
+    MqAttr* {.importc: "struct mq_attr",
+              header: "<mqueue.h>",
+              final, pure.} = object ## message queue attribute
+      mq_flags*: int   ## Message queue flags.
+      mq_maxmsg*: int  ## Maximum number of messages.
+      mq_msgsize*: int ## Maximum message size.
+      mq_curmsgs*: int ## Number of messages currently queued.
+
 when defined(linux):
   # from sys/un.h
   const Sockaddr_un_path_length* = 108

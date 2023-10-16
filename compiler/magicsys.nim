@@ -26,11 +26,11 @@ proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
   result = systemModuleSym(g, getIdent(g.cache, name))
   if result == nil:
     localError(g.config, info, "system module needs: " & name)
-    result = newSym(skError, getIdent(g.cache, name), nextSymId(g.idgen), g.systemModule, g.systemModule.info, {})
+    result = newSym(skError, getIdent(g.cache, name), g.idgen, g.systemModule, g.systemModule.info, {})
     result.typ = newType(tyError, nextTypeId(g.idgen), g.systemModule)
-  if result.kind == skAlias: result = result.owner
 
 proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSym =
+  result = nil
   let id = getIdent(g.cache, name)
   for r in systemModuleSyms(g, id):
     if r.magic == m:
@@ -39,7 +39,7 @@ proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSy
       result = r
   if result != nil: return result
   localError(g.config, info, "system module needs: " & name)
-  result = newSym(skError, id, nextSymId(g.idgen), g.systemModule, g.systemModule.info, {})
+  result = newSym(skError, id, g.idgen, g.systemModule, g.systemModule.info, {})
   result.typ = newType(tyError, nextTypeId(g.idgen), g.systemModule)
 
 proc sysTypeFromName*(g: ModuleGraph; info: TLineInfo; name: string): PType =
@@ -81,8 +81,8 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
 
 proc resetSysTypes*(g: ModuleGraph) =
   g.systemModule = nil
-  initStrTable(g.compilerprocs)
-  initStrTable(g.exposed)
+  g.compilerprocs = initStrTable()
+  g.exposed = initStrTable()
   for i in low(g.sysTypes)..high(g.sysTypes):
     g.sysTypes[i] = nil
 
@@ -100,7 +100,7 @@ proc skipIntLit*(t: PType; id: IdGenerator): PType {.inline.} =
 
 proc addSonSkipIntLit*(father, son: PType; id: IdGenerator) =
   let s = son.skipIntLit(id)
-  father.sons.add(s)
+  father.add(s)
   propagateToOwner(father, s)
 
 proc getCompilerProc*(g: ModuleGraph; name: string): PSym =
@@ -124,7 +124,7 @@ proc registerNimScriptSymbol*(g: ModuleGraph; s: PSym) =
 proc getNimScriptSymbol*(g: ModuleGraph; name: string): PSym =
   strTableGet(g.exposed, getIdent(g.cache, name))
 
-proc resetNimScriptSymbols*(g: ModuleGraph) = initStrTable(g.exposed)
+proc resetNimScriptSymbols*(g: ModuleGraph) = g.exposed = initStrTable()
 
 proc getMagicEqSymForType*(g: ModuleGraph; t: PType; info: TLineInfo): PSym =
   case t.kind
@@ -146,7 +146,17 @@ proc getMagicEqSymForType*(g: ModuleGraph; t: PType; info: TLineInfo): PSym =
   of tyProc:
     result = getSysMagic(g, info, "==", mEqProc)
   else:
+    result = nil
     globalError(g.config, info,
       "can't find magic equals operator for type kind " & $t.kind)
 
+proc makePtrType*(baseType: PType; idgen: IdGenerator): PType =
+  result = newType(tyPtr, nextTypeId idgen, baseType.owner)
+  addSonSkipIntLit(result, baseType, idgen)
 
+proc makeAddr*(n: PNode; idgen: IdGenerator): PNode =
+  if n.kind == nkHiddenAddr:
+    result = n
+  else:
+    result = newTree(nkHiddenAddr, n)
+    result.typ = makePtrType(n.typ, idgen)

@@ -57,3 +57,27 @@ proc currentlyValid(x: out int; y: out string; cond: bool) =
   y = "abc" # <-- error: not every path initializes 'y'
 
 currentlyValid gl, gs, false
+
+block: # previously effects/toutparam
+  proc gah[T](x: out T) =
+    x = 3
+
+  proc arr1 =
+    var a: array[2, int]
+    var x: int
+    gah(x)
+    a[0] = 3
+    a[x] = 3
+    echo x
+
+  arr1()
+
+  proc arr2 =
+    var a: array[2, int]
+    var x: int
+    a[0] = 3
+    a[x] = 3 #[tt.Warning
+      ^ use explicit initialization of 'x' for clarity [Uninit] ]#
+    echo x
+
+  arr2()

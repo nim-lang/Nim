@@ -106,7 +106,8 @@ export SOBool
 # TODO: Remove duplication introduced by PR #4683.
 
 const defineSsl = defined(ssl) or defined(nimdoc)
-const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr)
+const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr) or
+    defined(nuttx)
 
 when defineSsl:
   import openssl
@@ -229,7 +230,7 @@ when defineSsl:
     let len = bioCtrlPending(socket.bioOut)
     if len > 0:
       var data = newString(len)
-      let read = bioRead(socket.bioOut, addr data[0], len)
+      let read = bioRead(socket.bioOut, cast[cstring](addr data[0]), len)
       assert read != 0
       if read < 0:
         raiseSSLError()
@@ -247,7 +248,7 @@ when defineSsl:
       var data = await recv(socket.fd.AsyncFD, BufferSize, flags)
       let length = len(data)
       if length > 0:
-        let ret = bioWrite(socket.bioIn, addr data[0], length.cint)
+        let ret = bioWrite(socket.bioIn, cast[cstring](addr data[0]), length.cint)
         if ret < 0:
           raiseSSLError()
       elif length == 0:
@@ -264,14 +265,17 @@ when defineSsl:
       ErrClearError()
       # Call the desired operation.
       opResult = op
-
+      let err =
+        if opResult < 0:
+          getSslError(socket, opResult.cint)
+        else:
+          SSL_ERROR_NONE
       # Send any remaining pending SSL data.
       await sendPendingSslData(socket, flags)
 
       # If the operation failed, try to see if SSL has some data to read
       # or write.
       if opResult < 0:
-        let err = getSslError(socket, opResult.cint)
         let fut = appeaseSsl(socket, flags, err.cint)
         yield fut
         if not fut.read():
@@ -459,7 +463,7 @@ proc send*(socket: AsyncSocket, data: string,
     when defineSsl:
       var copy = data
       sslLoop(socket, flags,
-        sslWrite(socket.sslHandle, addr copy[0], copy.len.cint))
+        sslWrite(socket.sslHandle, cast[cstring](addr copy[0]), copy.len.cint))
       await sendPendingSslData(socket, flags)
   else:
     await send(socket.fd.AsyncFD, data, flags)

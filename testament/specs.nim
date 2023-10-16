@@ -105,7 +105,7 @@ type
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:
-    result = compilerPrefix & " $target --hints:on -d:testing --nimblePath:build/deps/pkgs $options $file"
+    result = compilerPrefix & " $target --hints:on -d:testing --nimblePath:build/deps/pkgs2 $options $file"
   else:
     result = s.cmd
 
@@ -143,27 +143,26 @@ proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var T
   ##
   ## Can parse a single message for a line:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   proc generic_proc*[T] {.no_destroy, userPragma.} = #[tt.Error
   ##        ^ 'generic_proc' should be: 'genericProc' [Name] ]#
+  ##   ```
   ##
   ## Can parse multiple messages for a line when they are separated by ';':
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   proc generic_proc*[T] {.no_destroy, userPragma.} = #[tt.Error
   ##        ^ 'generic_proc' should be: 'genericProc' [Name]; tt.Error
   ##                           ^ 'no_destroy' should be: 'nodestroy' [Name]; tt.Error
   ##                                       ^ 'userPragma' should be: 'user_pragma' [template declared in mstyleCheck.nim(10, 9)] [Name] ]#
+  ##   ```
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   proc generic_proc*[T] {.no_destroy, userPragma.} = #[tt.Error
   ##        ^ 'generic_proc' should be: 'genericProc' [Name];
   ##     tt.Error              ^ 'no_destroy' should be: 'nodestroy' [Name];
   ##     tt.Error                          ^ 'userPragma' should be: 'user_pragma' [template declared in mstyleCheck.nim(10, 9)] [Name] ]#
-  ##
+  ##   ```
   result = i + len(inlineErrorMarker)
   inc col, len(inlineErrorMarker)
   let msgLine = line
@@ -222,7 +221,10 @@ proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var T
 
   while result < s.len-1:
     if s[result] == '\n':
-      msg.add '\n'
+      if result > 0 and s[result - 1] == '\r':
+        msg[^1] = '\n'
+      else:
+        msg.add '\n'
       inc result
       inc line
       col = 1

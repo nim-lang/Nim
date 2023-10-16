@@ -41,9 +41,9 @@ proc `$`*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
 proc `$`*(x: char): string {.magic: "CharToStr", noSideEffect.}
   ## The stringify operator for a character argument. Returns `x`
   ## converted to a string.
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   assert $'c' == "c"
+  ##   ```
 
 proc `$`*(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
   ## The stringify operator for a CString argument. Returns `x`
@@ -67,19 +67,20 @@ proc `$`*(t: typedesc): string {.magic: "TypeTrait".}
   ## For more procedures dealing with `typedesc`, see
   ## `typetraits module <typetraits.html>`_.
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   doAssert $(typeof(42)) == "int"
   ##   doAssert $(typeof("Foo")) == "string"
   ##   static: doAssert $(typeof(@['A', 'B'])) == "seq[char]"
+  ##   ```
 
 proc `$`*[T: tuple](x: T): string =
   ## Generic `$` operator for tuples that is lifted from the components
   ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   $(23, 45) == "(23, 45)"
   ##   $(a: 23, b: 45) == "(a: 23, b: 45)"
   ##   $() == "()"
+  ##   ```
   tupleObjectDollar(result, x)
 
 when not defined(nimPreviewSlimSystem):
@@ -108,25 +109,25 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
 proc `$`*[T](x: set[T]): string =
   ## Generic `$` operator for sets that is lifted from the components
   ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   ${23, 45} == "{23, 45}"
+  ##   ```
   collectionToString(x, "{", ", ", "}")
 
 proc `$`*[T](x: seq[T]): string =
   ## Generic `$` operator for seqs that is lifted from the components
   ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   $(@[23, 45]) == "@[23, 45]"
+  ##   ```
   collectionToString(x, "@[", ", ", "]")
 
 proc `$`*[T, U](x: HSlice[T, U]): string =
   ## Generic `$` operator for slices that is lifted from the components
   ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##  $(1 .. 5) == "1 .. 5"
+  ##  ```
   result = $x.a
   result.add(" .. ")
   result.add($x.b)
@@ -140,7 +141,7 @@ when not defined(nimNoArrayToString):
 proc `$`*[T](x: openArray[T]): string =
   ## Generic `$` operator for openarrays that is lifted from the components
   ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   $(@[23, 45].toOpenArray(0, 1)) == "[23, 45]"
+  ##   ```
   collectionToString(x, "[", ", ", "]")

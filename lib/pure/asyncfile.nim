@@ -102,14 +102,9 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
     let flags = FILE_FLAG_OVERLAPPED or FILE_ATTRIBUTE_NORMAL
     let desiredAccess = getDesiredAccess(mode)
     let creationDisposition = getCreationDisposition(mode, filename)
-    when useWinUnicode:
-      let fd = createFileW(newWideCString(filename), desiredAccess,
-          FILE_SHARE_READ,
-          nil, creationDisposition, flags, 0)
-    else:
-      let fd = createFileA(filename, desiredAccess,
-          FILE_SHARE_READ,
-          nil, creationDisposition, flags, 0)
+    let fd = createFileW(newWideCString(filename), desiredAccess,
+        FILE_SHARE_READ,
+        nil, creationDisposition, flags, 0)
 
     if fd == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
@@ -306,6 +301,8 @@ proc readLine*(f: AsyncFile): Future[string] {.async.} =
   result = ""
   while true:
     var c = await read(f, 1)
+    if c.len == 0:
+      break
     if c[0] == '\c':
       c = await read(f, 1)
       break
