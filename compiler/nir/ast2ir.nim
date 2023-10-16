@@ -25,12 +25,12 @@ type
     man*: LineInfoManager
     lit*: Literals
     types*: TypesCon
-    slotGenerator: ref int
     module*: PSym
     graph*: ModuleGraph
     nativeIntId, nativeUIntId: TypeId
     idgen: IdGenerator
-    pendingProcs: Table[ItemId, PSym] # procs we still need to generate code for
+    processedProcs: HashSet[ItemId]
+    pendingProcs: seq[PSym] # procs we still need to generate code for
 
   ProcCon* = object
     config*: ConfigRef
@@ -42,16 +42,14 @@ type
     code*: Tree
     blocks: seq[(PSym, LabelId)]
     sm: SlotManager
-    locGen: int
+    idgen: IdGenerator
     m: ModuleCon
     prc: PSym
     options: TOptions
 
 proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; module: PSym): ModuleCon =
   let lit = Literals() # must be shared
-  var g = new(int)
-  g[] = idgen.symId + 1
-  result = ModuleCon(graph: graph, types: initTypesCon(config, lit), slotGenerator: g,
+  result = ModuleCon(graph: graph, types: initTypesCon(config, lit),
     idgen: idgen, module: module, lit: lit)
   case config.target.intSize
   of 2:
@@ -65,8 +63,8 @@ proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; m
     result.nativeUIntId = UInt16Id
 
 proc initProcCon*(m: ModuleCon; prc: PSym; config: ConfigRef): ProcCon =
-  ProcCon(m: m, sm: initSlotManager({}, m.slotGenerator), prc: prc, config: config,
-    lit: m.lit,
+  ProcCon(m: m, sm: initSlotManager({}), prc: prc, config: config,
+    lit: m.lit, idgen: m.idgen,
     options: if prc != nil: prc.options
              else: config.options)
 
@@ -117,12 +115,12 @@ proc freeTemp(c: var ProcCon; tmp: Value) =
 proc getTemp(c: var ProcCon; n: PNode): Value =
   let info = toLineInfo(c, n.info)
   let t = typeToIr(c.m.types, n.typ)
-  let tmp = allocTemp(c.sm, t)
+  let tmp = allocTemp(c.sm, t, c.idgen.symId)
   c.code.addSummon info, tmp, t
   result = localToValue(info, tmp)
 
 proc getTemp(c: var ProcCon; t: TypeId; info: PackedLineInfo): Value =
-  let tmp = allocTemp(c.sm, t)
+  let tmp = allocTemp(c.sm, t, c.idgen.symId)
   c.code.addSummon info, tmp, t
   result = localToValue(info, tmp)
 
@@ -322,7 +320,6 @@ proc addUseCodegenProc(c: var ProcCon; dest: var Tree; name: string; info: Packe
 
 template buildCond(useNegation: bool; cond: typed; body: untyped) =
   let lab = newLabel(c.labelGen)
-  #let info = toLineInfo(c, n.info)
   buildTyped c.code, info, Select, Bool8Id:
     c.code.copyTree cond
     build c.code, info, SelectPair:
@@ -998,7 +995,7 @@ proc genEqSet(c: var ProcCon; n: PNode; d: var Value) =
   freeTemp c, a
 
 proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: int): (SymId, LabelId, LabelId) =
-  let tmp = allocTemp(c.sm, c.m.nativeIntId)
+  let tmp = allocTemp(c.sm, c.m.nativeIntId, c.idgen.symId)
   c.code.addSummon info, tmp, c.m.nativeIntId
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
     c.code.addSymUse info, tmp
@@ -1016,7 +1013,7 @@ proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: int): (Sy
       c.code.gotoLabel info, Goto, result[2]
 
 proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: Value): (SymId, LabelId, LabelId) =
-  let tmp = allocTemp(c.sm, c.m.nativeIntId)
+  let tmp = allocTemp(c.sm, c.m.nativeIntId, c.idgen.symId)
   c.code.addSummon info, tmp, c.m.nativeIntId
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
     c.code.addSymUse info, tmp
@@ -1400,7 +1397,7 @@ proc genStrConcat(c: var ProcCon; n: PNode; d: var Value) =
     args.add genx(c, it)
 
   # generate length computation:
-  var tmpLen = allocTemp(c.sm, c.m.nativeIntId)
+  var tmpLen = allocTemp(c.sm, c.m.nativeIntId, c.idgen.symId)
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
     c.code.addSymUse info, tmpLen
     c.code.addIntVal c.lit.numbers, info, c.m.nativeIntId, precomputedLen
@@ -2108,8 +2105,8 @@ proc genSym(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
     if ast.originatingModule(s) == c.m.module:
       # anon and generic procs have no AST so we need to remember not to forget
       # to emit these:
-      if not c.m.pendingProcs.hasKey(s.itemId):
-        c.m.pendingProcs[s.itemId] = s
+      if not c.m.processedProcs.containsOrIncl(s.itemId):
+        c.m.pendingProcs.add s
     genRdVar(c, n, d, flags)
   of skEnumField:
     let info = toLineInfo(c, n.info)
@@ -2270,10 +2267,9 @@ proc addCallConv(c: var ProcCon; info: PackedLineInfo; callConv: TCallingConvent
   of ccThisCall: ann ThisCall
   of ccNoConvention: ann NoCall
 
-proc genProc(cOuter: var ProcCon; n: PNode) =
-  if n.len == 0 or n[namePos].kind != nkSym: return
-  let prc = n[namePos].sym
-  if isGenericRoutineStrict(prc) or isCompileTimeProc(prc): return
+proc genProc(cOuter: var ProcCon; prc: PSym) =
+  if cOuter.m.processedProcs.containsOrIncl(prc.itemId):
+    return
 
   var c = initProcCon(cOuter.m, prc, cOuter.m.graph.config)
 
@@ -2311,6 +2307,12 @@ proc genProc(cOuter: var ProcCon; n: PNode) =
     patch c, body, c.exitLabel
 
   copyTree cOuter.code, c.code
+
+proc genProc(cOuter: var ProcCon; n: PNode) =
+  if n.len == 0 or n[namePos].kind != nkSym: return
+  let prc = n[namePos].sym
+  if isGenericRoutineStrict(prc) or isCompileTimeProc(prc): return
+  genProc cOuter, prc
 
 proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   when defined(nimCompilerStacktraceHints):
@@ -2405,19 +2407,30 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
     genConv(c, n, n[1], d, flags, Cast)
   of nkComesFrom:
     discard "XXX to implement for better stack traces"
+  #of nkState: genState(c, n)
+  #of nkGotoState: genGotoState(c, n)
+  #of nkBreakState: genBreakState(c, n, d)
   else:
     localError(c.config, n.info, "cannot generate IR code for " & $n)
+
+proc genPendingProcs(c: var ProcCon) =
+  while c.m.pendingProcs.len > 0:
+    let procs = move(c.m.pendingProcs)
+    for v in procs:
+      genProc(c, v)
 
 proc genStmt*(c: var ProcCon; n: PNode): int =
   result = c.code.len
   var d = default(Value)
   c.gen(n, d)
   unused c, n, d
+  genPendingProcs c
 
 proc genExpr*(c: var ProcCon; n: PNode, requiresValue = true): int =
   result = c.code.len
   var d = default(Value)
   c.gen(n, d)
+  genPendingProcs c
   if isEmpty d:
     if requiresValue:
       globalError(c.config, n.info, "VM problem: d register is not set")

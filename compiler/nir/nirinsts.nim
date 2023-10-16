@@ -368,8 +368,9 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
   of PragmaId:
     r.add $cast[PragmaKey](t[pos].operand)
   of Typed:
-    r.add "Typed "
+    r.add "T<"
     r.add $t[pos].operand
+    r.add ">"
   of NilVal:
     r.add "NilVal"
   of Label:
@@ -377,7 +378,7 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
     r.add $t[pos].operand
   of Goto, CheckedGoto, LoopLabel, GotoLoop:
     r.add $t[pos].kind
-    r.add ' '
+    r.add " L"
     r.add $t[pos].operand
   else:
     r.add $t[pos].kind
@@ -391,7 +392,6 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
 
 proc allTreesToString*(t: Tree; strings: BiTable[string]; integers: BiTable[int64];
                        r: var string) =
-
   var i = 0
   while i < t.len:
     toString t, NodePos(i), strings, integers, r

@@ -392,6 +392,9 @@ proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
 proc toString*(dest: var string; g: TypeGraph) =
   var i = 0
   while i < g.len:
+    dest.add "T<"
+    dest.addInt i
+    dest.add "> "
     toString(dest, g, TypeId i)
     dest.add '\n'
     nextChild g, i
