@@ -1,4 +1,5 @@
 discard """
+  targets: "c js"
   matrix: "--mm:refc; --mm:orc"
   output: '''
 x + y = 30
@@ -270,17 +271,16 @@ template main() =
         discard collect(newSeq, for i in 1..3: i)
       foo()
 
-proc mainProc() =
   block: # dump
     # symbols in templates are gensym'd
     let
-      x = 10
-      y = 20
+      x {.inject.} = 10
+      y {.inject.} = 20
     dump(x + y) # x + y = 30
 
   block: # dumpToString
     template square(x): untyped = x * x
-    let x = 10
+    let x {.inject.} = 10
     doAssert dumpToString(square(x)) == "square(x): x * x = 100"
     let s = dumpToString(doAssert 1+1 == 2)
     doAssert "failedAssertImpl" in s
@@ -299,8 +299,8 @@ proc mainProc() =
 
     test()
 
-static:
-  main()
-  mainProc()
+when not defined(js): # TODO fixme JS VM
+  static:
+    main()
+
 main()
-mainProc()
