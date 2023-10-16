@@ -25,7 +25,6 @@ type
     man*: LineInfoManager
     lit*: Literals
     types*: TypesCon
-    slotGenerator: ref int
     module*: PSym
     graph*: ModuleGraph
     nativeIntId, nativeUIntId: TypeId
@@ -42,16 +41,14 @@ type
     code*: Tree
     blocks: seq[(PSym, LabelId)]
     sm: SlotManager
-    locGen: int
+    idgen: IdGenerator
     m: ModuleCon
     prc: PSym
     options: TOptions
 
 proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; module: PSym): ModuleCon =
   let lit = Literals() # must be shared
-  var g = new(int)
-  g[] = idgen.symId + 1
-  result = ModuleCon(graph: graph, types: initTypesCon(config, lit), slotGenerator: g,
+  result = ModuleCon(graph: graph, types: initTypesCon(config, lit),
     idgen: idgen, module: module, lit: lit)
   case config.target.intSize
   of 2:
@@ -65,8 +62,8 @@ proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; m
     result.nativeUIntId = UInt16Id
 
 proc initProcCon*(m: ModuleCon; prc: PSym; config: ConfigRef): ProcCon =
-  ProcCon(m: m, sm: initSlotManager({}, m.slotGenerator), prc: prc, config: config,
-    lit: m.lit,
+  ProcCon(m: m, sm: initSlotManager({}), prc: prc, config: config,
+    lit: m.lit, idgen: m.idgen,
     options: if prc != nil: prc.options
              else: config.options)
 
@@ -117,12 +114,12 @@ proc freeTemp(c: var ProcCon; tmp: Value) =
 proc getTemp(c: var ProcCon; n: PNode): Value =
   let info = toLineInfo(c, n.info)
   let t = typeToIr(c.m.types, n.typ)
-  let tmp = allocTemp(c.sm, t)
+  let tmp = allocTemp(c.sm, t, c.idgen.symId)
   c.code.addSummon info, tmp, t
   result = localToValue(info, tmp)
 
 proc getTemp(c: var ProcCon; t: TypeId; info: PackedLineInfo): Value =
-  let tmp = allocTemp(c.sm, t)
+  let tmp = allocTemp(c.sm, t, c.idgen.symId)
   c.code.addSummon info, tmp, t
   result = localToValue(info, tmp)
 
@@ -322,7 +319,6 @@ proc addUseCodegenProc(c: var ProcCon; dest: var Tree; name: string; info: Packe
 
 template buildCond(useNegation: bool; cond: typed; body: untyped) =
   let lab = newLabel(c.labelGen)
-  #let info = toLineInfo(c, n.info)
   buildTyped c.code, info, Select, Bool8Id:
     c.code.copyTree cond
     build c.code, info, SelectPair:
@@ -998,7 +994,7 @@ proc genEqSet(c: var ProcCon; n: PNode; d: var Value) =
   freeTemp c, a
 
 proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: int): (SymId, LabelId, LabelId) =
-  let tmp = allocTemp(c.sm, c.m.nativeIntId)
+  let tmp = allocTemp(c.sm, c.m.nativeIntId, c.idgen.symId)
   c.code.addSummon info, tmp, c.m.nativeIntId
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
     c.code.addSymUse info, tmp
@@ -1016,7 +1012,7 @@ proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: int): (Sy
       c.code.gotoLabel info, Goto, result[2]
 
 proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: Value): (SymId, LabelId, LabelId) =
-  let tmp = allocTemp(c.sm, c.m.nativeIntId)
+  let tmp = allocTemp(c.sm, c.m.nativeIntId, c.idgen.symId)
   c.code.addSummon info, tmp, c.m.nativeIntId
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
     c.code.addSymUse info, tmp
@@ -1400,7 +1396,7 @@ proc genStrConcat(c: var ProcCon; n: PNode; d: var Value) =
     args.add genx(c, it)
 
   # generate length computation:
-  var tmpLen = allocTemp(c.sm, c.m.nativeIntId)
+  var tmpLen = allocTemp(c.sm, c.m.nativeIntId, c.idgen.symId)
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
     c.code.addSymUse info, tmpLen
     c.code.addIntVal c.lit.numbers, info, c.m.nativeIntId, precomputedLen
@@ -2405,6 +2401,9 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
     genConv(c, n, n[1], d, flags, Cast)
   of nkComesFrom:
     discard "XXX to implement for better stack traces"
+  #of nkState: genState(c, n)
+  #of nkGotoState: genGotoState(c, n)
+  #of nkBreakState: genBreakState(c, n, d)
   else:
     localError(c.config, n.info, "cannot generate IR code for " & $n)
 
