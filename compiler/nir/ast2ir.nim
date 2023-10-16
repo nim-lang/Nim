@@ -9,7 +9,7 @@
 
 import std / [assertions, tables, sets]
 import ".." / [ast, astalgo, types, options, lineinfos, msgs, magicsys,
-  modulegraphs, guards, renderer, transf, bitsets, trees, nimsets,
+  modulegraphs, renderer, transf, bitsets, trees, nimsets,
   expanddefaults]
 from ".." / lowerings import lowerSwap, lowerTupleUnpacking
 from ".." / pathutils import customPath
@@ -22,19 +22,19 @@ when defined(nimCompilerStacktraceHints):
 
 type
   ModuleCon* = ref object
-    strings*: BiTable[string]
-    integers*: BiTable[int64]
     man*: LineInfoManager
+    lit*: Literals
     types*: TypesCon
-    slotGenerator: ref int
     module*: PSym
     graph*: ModuleGraph
     nativeIntId, nativeUIntId: TypeId
     idgen: IdGenerator
-    pendingProcs: Table[ItemId, PSym] # procs we still need to generate code for
+    processedProcs: HashSet[ItemId]
+    pendingProcs: seq[PSym] # procs we still need to generate code for
 
   ProcCon* = object
-    config: ConfigRef
+    config*: ConfigRef
+    lit: Literals
     lastFileKey: FileIndex
     lastFileVal: LitId
     labelGen: int
@@ -42,13 +42,15 @@ type
     code*: Tree
     blocks: seq[(PSym, LabelId)]
     sm: SlotManager
-    locGen: int
+    idgen: IdGenerator
     m: ModuleCon
     prc: PSym
+    options: TOptions
 
 proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; module: PSym): ModuleCon =
-  result = ModuleCon(graph: graph, types: initTypesCon(config), slotGenerator: new(int),
-    idgen: idgen, module: module)
+  let lit = Literals() # must be shared
+  result = ModuleCon(graph: graph, types: initTypesCon(config, lit),
+    idgen: idgen, module: module, lit: lit)
   case config.target.intSize
   of 2:
     result.nativeIntId = Int16Id
@@ -61,14 +63,17 @@ proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; m
     result.nativeUIntId = UInt16Id
 
 proc initProcCon*(m: ModuleCon; prc: PSym; config: ConfigRef): ProcCon =
-  ProcCon(m: m, sm: initSlotManager({}, m.slotGenerator), prc: prc, config: config)
+  ProcCon(m: m, sm: initSlotManager({}), prc: prc, config: config,
+    lit: m.lit, idgen: m.idgen,
+    options: if prc != nil: prc.options
+             else: config.options)
 
 proc toLineInfo(c: var ProcCon; i: TLineInfo): PackedLineInfo =
   var val: LitId
   if c.lastFileKey == i.fileIndex:
     val = c.lastFileVal
   else:
-    val = c.m.strings.getOrIncl(toFullPath(c.config, i.fileIndex))
+    val = c.lit.strings.getOrIncl(toFullPath(c.config, i.fileIndex))
     # remember the entry:
     c.lastFileKey = i.fileIndex
     c.lastFileVal = val
@@ -110,7 +115,12 @@ proc freeTemp(c: var ProcCon; tmp: Value) =
 proc getTemp(c: var ProcCon; n: PNode): Value =
   let info = toLineInfo(c, n.info)
   let t = typeToIr(c.m.types, n.typ)
-  let tmp = allocTemp(c.sm, t)
+  let tmp = allocTemp(c.sm, t, c.idgen.symId)
+  c.code.addSummon info, tmp, t
+  result = localToValue(info, tmp)
+
+proc getTemp(c: var ProcCon; t: TypeId; info: PackedLineInfo): Value =
+  let tmp = allocTemp(c.sm, t, c.idgen.symId)
   c.code.addSummon info, tmp, t
   result = localToValue(info, tmp)
 
@@ -303,11 +313,57 @@ proc caseRange(c: var ProcCon; n: PNode) =
     freeTemp(c, y)
     freeTemp(c, x)
 
+proc addUseCodegenProc(c: var ProcCon; dest: var Tree; name: string; info: PackedLineInfo) =
+  let cp = getCompilerProc(c.m.graph, name)
+  let theProc = c.genx newSymNode(cp)
+  copyTree c.code, theProc
+
+template buildCond(useNegation: bool; cond: typed; body: untyped) =
+  let lab = newLabel(c.labelGen)
+  buildTyped c.code, info, Select, Bool8Id:
+    c.code.copyTree cond
+    build c.code, info, SelectPair:
+      build c.code, info, SelectValue:
+        c.code.boolVal(info, useNegation)
+      c.code.gotoLabel info, Goto, lab
+
+  body
+  c.code.addLabel info, Label, lab
+
+template buildIf(cond: typed; body: untyped) =
+  buildCond false, cond, body
+
+template buildIfNot(cond: typed; body: untyped) =
+  buildCond true, cond, body
+
+template buildIfThenElse(cond: typed; then, otherwise: untyped) =
+  let lelse = newLabel(c.labelGen)
+  let lend = newLabel(c.labelGen)
+  buildTyped c.code, info, Select, Bool8Id:
+    c.code.copyTree cond
+    build c.code, info, SelectPair:
+      build c.code, info, SelectValue:
+        c.code.boolVal(info, false)
+      c.code.gotoLabel info, Goto, lelse
+
+  then()
+  c.code.gotoLabel info, Goto, lend
+  c.code.addLabel info, Label, lelse
+  otherwise()
+  c.code.addLabel info, Label, lend
+
+include stringcases
+
 proc genCase(c: var ProcCon; n: PNode; d: var Value) =
   if not isEmptyType(n.typ):
     if isEmpty(d): d = getTemp(c, n)
   else:
     unused(c, n, d)
+
+  if n[0].typ.skipTypes(abstractInst).kind == tyString:
+    genStringCase(c, n, d)
+    return
+
   var sections = newSeqOfCap[LabelId](n.len-1)
   let ending = newLabel(c.labelGen)
   let info = toLineInfo(c, n.info)
@@ -476,14 +532,22 @@ proc genField(c: var ProcCon; n: PNode; d: var Value) =
   d.addImmediateVal toLineInfo(c, n.info), pos
 
 proc genIndex(c: var ProcCon; n: PNode; arr: PType; d: var Value) =
+  let info = toLineInfo(c, n.info)
   if arr.skipTypes(abstractInst).kind == tyArray and
-      (let x = firstOrd(c.config, arr); x != Zero):
-    let info = toLineInfo(c, n.info)
+      (let offset = firstOrd(c.config, arr); offset != Zero):
+    let x = c.genx(n)
     buildTyped d, info, Sub, c.m.nativeIntId:
-      c.gen(n, d)
-      d.addImmediateVal toLineInfo(c, n.info), toInt(x)
+      copyTree d.Tree, x
+      d.addImmediateVal toLineInfo(c, n.info), toInt(offset)
   else:
     c.gen(n, d)
+  if optBoundsCheck in c.options:
+    let idx = move d
+    build d, info, CheckedIndex:
+      copyTree d.Tree, idx
+      let x = toInt64 lengthOrd(c.config, arr)
+      d.addIntVal c.lit.numbers, info, c.m.nativeIntId, x
+      d.Tree.addLabel info, CheckedGoto, c.exitLabel
 
 proc genNew(c: var ProcCon; n: PNode; needsInit: bool) =
   # If in doubt, always follow the blueprint of the C code generator for `mm:orc`.
@@ -535,12 +599,10 @@ proc genNewSeqOfCap(c: var ProcCon; n: PNode; d: var Value) =
         c.code.addImmediateVal info, int(getAlign(c.config, baseType))
   freeTemp c, a
 
-proc genNewSeq(c: var ProcCon; n: PNode) =
-  let info = toLineInfo(c, n.info)
-  let seqtype = skipTypes(n[1].typ, abstractVarRange)
+proc genNewSeqPayload(c: var ProcCon; info: PackedLineInfo; d, b: Value; seqtype: PType) =
   let baseType = seqtype.lastSon
-  var d = c.genx(n[1])
-  var b = c.genx(n[2])
+  # $1.p = ($4*) #newSeqPayload($2, sizeof($3), NIM_ALIGNOF($3))
+  let payloadPtr = seqPayloadPtrType(c.m.types, seqtype)
 
   # $1.len = $2
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
@@ -548,10 +610,7 @@ proc genNewSeq(c: var ProcCon; n: PNode) =
       copyTree c.code, d
       c.code.addImmediateVal info, 0
     copyTree c.code, b
-    c.code.addImmediateVal info, 0
 
-  # $1.p = ($4*) #newSeqPayload($2, sizeof($3), NIM_ALIGNOF($3))
-  let payloadPtr = seqPayloadPtrType(c.m.types, seqtype)
   buildTyped c.code, info, Asgn, payloadPtr:
     # $1.p
     buildTyped c.code, info, FieldAt, payloadPtr:
@@ -561,11 +620,20 @@ proc genNewSeq(c: var ProcCon; n: PNode) =
     buildTyped c.code, info, Cast, payloadPtr:
       buildTyped c.code, info, Call, VoidPtrId:
         let codegenProc = magicsys.getCompilerProc(c.m.graph, "newSeqPayload")
-        let theProc = c.genx newSymNode(codegenProc, n.info)
+        let theProc = c.genx newSymNode(codegenProc)
         copyTree c.code, theProc
         copyTree c.code, b
         c.code.addImmediateVal info, int(getSize(c.config, baseType))
         c.code.addImmediateVal info, int(getAlign(c.config, baseType))
+
+proc genNewSeq(c: var ProcCon; n: PNode) =
+  let info = toLineInfo(c, n.info)
+  let seqtype = skipTypes(n[1].typ, abstractVarRange)
+  var d = c.genx(n[1])
+  var b = c.genx(n[2])
+
+  genNewSeqPayload(c, info, d, b, seqtype)
+
   freeTemp c, b
   freeTemp c, d
 
@@ -579,6 +647,14 @@ template intoDest*(d: var Value; info: PackedLineInfo; typ: TypeId; body: untype
       copyTree c.code, d
       body(c.code)
 
+template valueIntoDest(c: var ProcCon; info: PackedLineInfo; d: var Value; typ: PType; body: untyped) =
+  if isEmpty(d):
+    body(Tree d)
+  else:
+    buildTyped c.code, info, Asgn, typeToIr(c.m.types, typ):
+      copyTree c.code, d
+      body(c.code)
+
 proc genBinaryOp(c: var ProcCon; n: PNode; d: var Value; opc: Opcode) =
   let info = toLineInfo(c, n.info)
   let tmp = c.genx(n[1])
@@ -586,6 +662,8 @@ proc genBinaryOp(c: var ProcCon; n: PNode; d: var Value; opc: Opcode) =
   let t = typeToIr(c.m.types, n.typ)
   template body(target) =
     buildTyped target, info, opc, t:
+      if optOverflowCheck in c.options and opc in {CheckedAdd, CheckedSub, CheckedMul, CheckedDiv, CheckedMod}:
+        c.code.addLabel info, CheckedGoto, c.exitLabel
       copyTree target, tmp
       copyTree target, tmp2
   intoDest d, info, t, body
@@ -671,7 +749,7 @@ proc genArrayLen(c: var ProcCon; n: PNode; d: var Value) =
 
   of tyArray:
     template body(target) =
-      target.addIntVal(c.m.integers, info, c.m.nativeIntId, toInt lengthOrd(c.config, typ))
+      target.addIntVal(c.lit.numbers, info, c.m.nativeIntId, toInt lengthOrd(c.config, typ))
     intoDest d, info, c.m.nativeIntId, body
   else: internalError(c.config, n.info, "genArrayLen()")
 
@@ -682,16 +760,22 @@ proc genUnaryMinus(c: var ProcCon; n: PNode; d: var Value) =
   template body(target) =
     buildTyped target, info, Sub, t:
       # Little hack: This works because we know that `0.0` is all 0 bits:
-      target.addIntVal(c.m.integers, info, t, 0)
+      target.addIntVal(c.lit.numbers, info, t, 0)
       copyTree target, tmp
   intoDest d, info, t, body
   c.freeTemp(tmp)
 
 proc genHigh(c: var ProcCon; n: PNode; d: var Value) =
-  let subOpr = createMagic(c.m.graph, c.m.idgen, "-", mSubI)
-  let lenOpr = createMagic(c.m.graph, c.m.idgen, "len", mLengthOpenArray)
-  let asLenExpr = subOpr.buildCall(lenOpr.buildCall(n[1]), nkIntLit.newIntNode(1))
-  c.gen asLenExpr, d
+  let info = toLineInfo(c, n.info)
+  let t = typeToIr(c.m.types, n.typ)
+  var x = default(Value)
+  genArrayLen(c, n, x)
+  template body(target) =
+    buildTyped target, info, Sub, t:
+      copyTree target, x
+      target.addIntVal(c.lit.numbers, info, t, 1)
+  intoDest d, info, t, body
+  c.freeTemp x
 
 proc genBinaryCp(c: var ProcCon; n: PNode; d: var Value; compilerProc: string) =
   let info = toLineInfo(c, n.info)
@@ -795,15 +879,15 @@ proc genInBitset(c: var ProcCon; n: PNode; d: var Value) =
               buildTyped target, info, BitShr, t:
                 buildTyped target, info, Cast, expansion:
                   copyTree target, b
-                addIntVal target, c.m.integers, info, expansion, 3
+                addIntVal target, c.lit.numbers, info, expansion, 3
 
           buildTyped target, info, BitShl, t:
-            addIntVal target, c.m.integers, info, t, 1
+            addIntVal target, c.lit.numbers, info, t, 1
             buildTyped target, info, BitAnd, t:
               buildTyped target, info, Cast, expansion:
                 copyTree target, b
-              addIntVal target, c.m.integers, info, expansion, mask
-        addIntVal target, c.m.integers, info, t, 0
+              addIntVal target, c.lit.numbers, info, expansion, mask
+        addIntVal target, c.lit.numbers, info, t, 0
   intoDest d, info, t, body
 
   c.freeTemp(b)
@@ -898,7 +982,7 @@ proc genEqSet(c: var ProcCon; n: PNode; d: var Value) =
           buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.types.g, setType):
             copyTree c.code, b
           c.code.addImmediateVal info, int(getSize(c.config, n[1].typ))
-        c.code.addIntVal c.m.integers, info, c.m.nativeIntId, 0
+        c.code.addIntVal c.lit.numbers, info, c.m.nativeIntId, 0
 
   else:
     template body(target) =
@@ -911,25 +995,25 @@ proc genEqSet(c: var ProcCon; n: PNode; d: var Value) =
   freeTemp c, a
 
 proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: int): (SymId, LabelId, LabelId) =
-  let tmp = allocTemp(c.sm, c.m.nativeIntId)
+  let tmp = allocTemp(c.sm, c.m.nativeIntId, c.idgen.symId)
   c.code.addSummon info, tmp, c.m.nativeIntId
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
     c.code.addSymUse info, tmp
-    c.code.addIntVal c.m.integers, info, c.m.nativeIntId, first
+    c.code.addIntVal c.lit.numbers, info, c.m.nativeIntId, first
   let lab1 = c.code.addNewLabel(c.labelGen, info, LoopLabel)
   result = (tmp, lab1, newLabel(c.labelGen))
 
   buildTyped c.code, info, Select, Bool8Id:
     buildTyped c.code, info, Lt, c.m.nativeIntId:
       c.code.addSymUse info, tmp
-      c.code.addIntVal c.m.integers, info, c.m.nativeIntId, last
+      c.code.addIntVal c.lit.numbers, info, c.m.nativeIntId, last
     build c.code, info, SelectPair:
       build c.code, info, SelectValue:
         c.code.boolVal(info, false)
       c.code.gotoLabel info, Goto, result[2]
 
 proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: Value): (SymId, LabelId, LabelId) =
-  let tmp = allocTemp(c.sm, c.m.nativeIntId)
+  let tmp = allocTemp(c.sm, c.m.nativeIntId, c.idgen.symId)
   c.code.addSummon info, tmp, c.m.nativeIntId
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
     c.code.addSymUse info, tmp
@@ -951,7 +1035,7 @@ proc endLoop(c: var ProcCon; info: PackedLineInfo; s: SymId; back, exit: LabelId
     c.code.addSymUse info, s
     buildTyped c.code, info, Add, c.m.nativeIntId:
       c.code.addSymUse info, s
-      c.code.addIntVal c.m.integers, info, c.m.nativeIntId, 1
+      c.code.addIntVal c.lit.numbers, info, c.m.nativeIntId, 1
   c.code.addLabel info, GotoLoop, back
   c.code.addLabel info, Label, exit
   freeTemp(c.sm, s)
@@ -982,7 +1066,7 @@ proc genLeSet(c: var ProcCon; n: PNode; d: var Value) =
             buildTyped c.code, info, ArrayAt, elemType:
               copyTree c.code, b
               c.code.addSymUse info, idx
-        c.code.addIntVal c.m.integers, info, elemType, 0
+        c.code.addIntVal c.lit.numbers, info, elemType, 0
 
     # if !$3: break
     buildTyped c.code, info, Select, Bool8Id:
@@ -1001,7 +1085,7 @@ proc genLeSet(c: var ProcCon; n: PNode; d: var Value) =
           copyTree target, a
           buildTyped target, info, BitNot, setType:
             copyTree target, b
-        target.addIntVal c.m.integers, info, setType, 0
+        target.addIntVal c.lit.numbers, info, setType, 0
 
     intoDest d, info, Bool8Id, body
 
@@ -1085,19 +1169,19 @@ proc genInclExcl(c: var ProcCon; n: PNode; m: TMagic) =
           buildTyped c.code, info, BitShr, t:
             buildTyped c.code, info, Cast, c.m.nativeUIntId:
               copyTree c.code, b
-            addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+            addIntVal c.code, c.lit.numbers, info, c.m.nativeUIntId, 3
         buildTyped c.code, info, BitOr, t:
           buildTyped c.code, info, ArrayAt, t:
             copyTree c.code, a
             buildTyped c.code, info, BitShr, t:
               buildTyped c.code, info, Cast, c.m.nativeUIntId:
                 copyTree c.code, b
-              addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+              addIntVal c.code, c.lit.numbers, info, c.m.nativeUIntId, 3
           buildTyped c.code, info, BitShl, t:
-            c.code.addIntVal c.m.integers, info, t, 1
+            c.code.addIntVal c.lit.numbers, info, t, 1
             buildTyped c.code, info, BitAnd, t:
               copyTree c.code, b
-              c.code.addIntVal c.m.integers, info, t, 7
+              c.code.addIntVal c.lit.numbers, info, t, 7
       else:
         # $1[(NU)($2)>>3] &= ~(1U<<($2&7U))
         buildTyped c.code, info, ArrayAt, t:
@@ -1105,20 +1189,20 @@ proc genInclExcl(c: var ProcCon; n: PNode; m: TMagic) =
           buildTyped c.code, info, BitShr, t:
             buildTyped c.code, info, Cast, c.m.nativeUIntId:
               copyTree c.code, b
-            addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+            addIntVal c.code, c.lit.numbers, info, c.m.nativeUIntId, 3
         buildTyped c.code, info, BitAnd, t:
           buildTyped c.code, info, ArrayAt, t:
             copyTree c.code, a
             buildTyped c.code, info, BitShr, t:
               buildTyped c.code, info, Cast, c.m.nativeUIntId:
                 copyTree c.code, b
-              addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+              addIntVal c.code, c.lit.numbers, info, c.m.nativeUIntId, 3
           buildTyped c.code, info, BitNot, t:
             buildTyped c.code, info, BitShl, t:
-              c.code.addIntVal c.m.integers, info, t, 1
+              c.code.addIntVal c.lit.numbers, info, t, 1
               buildTyped c.code, info, BitAnd, t:
                 copyTree c.code, b
-                c.code.addIntVal c.m.integers, info, t, 7
+                c.code.addIntVal c.lit.numbers, info, t, 7
 
     else:
       copyTree c.code, a
@@ -1127,20 +1211,20 @@ proc genInclExcl(c: var ProcCon; n: PNode; m: TMagic) =
         buildTyped c.code, info, BitOr, setType:
           copyTree c.code, a
           buildTyped c.code, info, BitShl, t:
-            c.code.addIntVal c.m.integers, info, t, 1
+            c.code.addIntVal c.lit.numbers, info, t, 1
             buildTyped c.code, info, BitAnd, t:
               copyTree c.code, b
-              c.code.addIntVal c.m.integers, info, t, mask
+              c.code.addIntVal c.lit.numbers, info, t, mask
       else:
         # $1 &= ~(((NU8)1) << (($2) & 7))
         buildTyped c.code, info, BitAnd, setType:
           copyTree c.code, a
           buildTyped c.code, info, BitNot, t:
             buildTyped c.code, info, BitShl, t:
-              c.code.addIntVal c.m.integers, info, t, 1
+              c.code.addIntVal c.lit.numbers, info, t, 1
               buildTyped c.code, info, BitAnd, t:
                 copyTree c.code, b
-                c.code.addIntVal c.m.integers, info, t, mask
+                c.code.addIntVal c.lit.numbers, info, t, mask
   freeTemp c, b
   freeTemp c, a
 
@@ -1164,7 +1248,7 @@ proc genSetConstrDyn(c: var ProcCon; n: PNode; d: var Value) =
   if c.m.types.g[setType].kind != ArrayTy:
     buildTyped c.code, info, Asgn, setType:
       copyTree c.code, d
-      c.code.addIntVal c.m.integers, info, t, 0
+      c.code.addIntVal c.lit.numbers, info, t, 0
 
     for it in n:
       if it.kind == nkRange:
@@ -1177,10 +1261,10 @@ proc genSetConstrDyn(c: var ProcCon; n: PNode; d: var Value) =
             copyTree c.code, d
             buildTyped c.code, info, BitNot, t:
               buildTyped c.code, info, BitShl, t:
-                c.code.addIntVal c.m.integers, info, t, 1
+                c.code.addIntVal c.lit.numbers, info, t, 1
                 buildTyped c.code, info, BitAnd, t:
                   c.code.addSymUse info, idx
-                  c.code.addIntVal c.m.integers, info, t, mask
+                  c.code.addIntVal c.lit.numbers, info, t, mask
 
         endLoop(c, info, idx, backLabel, endLabel)
         freeTemp c, b
@@ -1194,10 +1278,10 @@ proc genSetConstrDyn(c: var ProcCon; n: PNode; d: var Value) =
             copyTree c.code, d
             buildTyped c.code, info, BitNot, t:
               buildTyped c.code, info, BitShl, t:
-                c.code.addIntVal c.m.integers, info, t, 1
+                c.code.addIntVal c.lit.numbers, info, t, 1
                 buildTyped c.code, info, BitAnd, t:
                   copyTree c.code, a
-                  c.code.addIntVal c.m.integers, info, t, mask
+                  c.code.addIntVal c.lit.numbers, info, t, mask
         freeTemp c, a
 
   else:
@@ -1205,7 +1289,7 @@ proc genSetConstrDyn(c: var ProcCon; n: PNode; d: var Value) =
     let (idx, backLabel, endLabel) = beginCountLoop(c, info, 0, size)
     buildTyped c.code, info, Asgn, t:
       copyTree c.code, d
-      c.code.addIntVal c.m.integers, info, t, 0
+      c.code.addIntVal c.lit.numbers, info, t, 0
     endLoop(c, info, idx, backLabel, endLabel)
 
     # incl elements:
@@ -1221,19 +1305,19 @@ proc genSetConstrDyn(c: var ProcCon; n: PNode; d: var Value) =
             buildTyped c.code, info, BitShr, t:
               buildTyped c.code, info, Cast, c.m.nativeUIntId:
                 c.code.addSymUse info, idx
-              addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+              addIntVal c.code, c.lit.numbers, info, c.m.nativeUIntId, 3
           buildTyped c.code, info, BitOr, t:
             buildTyped c.code, info, ArrayAt, t:
               copyTree c.code, d
               buildTyped c.code, info, BitShr, t:
                 buildTyped c.code, info, Cast, c.m.nativeUIntId:
                   c.code.addSymUse info, idx
-                addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+                addIntVal c.code, c.lit.numbers, info, c.m.nativeUIntId, 3
             buildTyped c.code, info, BitShl, t:
-              c.code.addIntVal c.m.integers, info, t, 1
+              c.code.addIntVal c.lit.numbers, info, t, 1
               buildTyped c.code, info, BitAnd, t:
                 c.code.addSymUse info, idx
-                c.code.addIntVal c.m.integers, info, t, 7
+                c.code.addIntVal c.lit.numbers, info, t, 7
 
         endLoop(c, info, idx, backLabel, endLabel)
         freeTemp c, b
@@ -1248,19 +1332,19 @@ proc genSetConstrDyn(c: var ProcCon; n: PNode; d: var Value) =
             buildTyped c.code, info, BitShr, t:
               buildTyped c.code, info, Cast, c.m.nativeUIntId:
                 copyTree c.code, a
-              addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+              addIntVal c.code, c.lit.numbers, info, c.m.nativeUIntId, 3
           buildTyped c.code, info, BitOr, t:
             buildTyped c.code, info, ArrayAt, t:
               copyTree c.code, d
               buildTyped c.code, info, BitShr, t:
                 buildTyped c.code, info, Cast, c.m.nativeUIntId:
                   copyTree c.code, a
-                addIntVal c.code, c.m.integers, info, c.m.nativeUIntId, 3
+                addIntVal c.code, c.lit.numbers, info, c.m.nativeUIntId, 3
             buildTyped c.code, info, BitShl, t:
-              c.code.addIntVal c.m.integers, info, t, 1
+              c.code.addIntVal c.lit.numbers, info, t, 1
               buildTyped c.code, info, BitAnd, t:
                 copyTree c.code, a
-                c.code.addIntVal c.m.integers, info, t, 7
+                c.code.addIntVal c.lit.numbers, info, t, 7
         freeTemp c, a
 
 proc genSetConstr(c: var ProcCon; n: PNode; d: var Value) =
@@ -1272,14 +1356,14 @@ proc genSetConstr(c: var ProcCon; n: PNode; d: var Value) =
 
     if c.m.types.g[setType].kind != ArrayTy:
       template body(target) =
-        target.addIntVal c.m.integers, info, setType, cast[BiggestInt](bitSetToWord(cs, size))
+        target.addIntVal c.lit.numbers, info, setType, cast[BiggestInt](bitSetToWord(cs, size))
       intoDest d, info, setType, body
     else:
       let t = bitsetBasetype(c.m.types, n.typ)
       template body(target) =
         buildTyped target, info, ArrayConstr, setType:
           for i in 0..high(cs):
-            target.addIntVal c.m.integers, info, t, int64 cs[i]
+            target.addIntVal c.lit.numbers, info, t, int64 cs[i]
       intoDest d, info, setType, body
   else:
     genSetConstrDyn c, n, d
@@ -1313,10 +1397,10 @@ proc genStrConcat(c: var ProcCon; n: PNode; d: var Value) =
     args.add genx(c, it)
 
   # generate length computation:
-  var tmpLen = allocTemp(c.sm, c.m.nativeIntId)
+  var tmpLen = allocTemp(c.sm, c.m.nativeIntId, c.idgen.symId)
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
     c.code.addSymUse info, tmpLen
-    c.code.addIntVal c.m.integers, info, c.m.nativeIntId, precomputedLen
+    c.code.addIntVal c.lit.numbers, info, c.m.nativeIntId, precomputedLen
   for a in mitems(args):
     buildTyped c.code, info, Asgn, c.m.nativeIntId:
       c.code.addSymUse info, tmpLen
@@ -1365,6 +1449,226 @@ proc genDefault(c: var ProcCon; n: PNode; d: var Value) =
   let m = expandDefault(n.typ, n.info)
   gen c, m, d
 
+proc genWasMoved(c: var ProcCon; n: PNode) =
+  let n1 = n[1].skipAddr
+  # XXX We need a way to replicate this logic or better yet a better
+  # solution for injectdestructors.nim:
+  #if c.withinBlockLeaveActions > 0 and notYetAlive(n1):
+  var d = c.genx(n1)
+  assert not isEmpty(d)
+  let m = expandDefault(n1.typ, n1.info)
+  gen c, m, d
+
+proc genMove(c: var ProcCon; n: PNode; d: var Value) =
+  let info = toLineInfo(c, n.info)
+  let n1 = n[1].skipAddr
+  var a = c.genx(n1)
+  if n.len == 4:
+    # generated by liftdestructors:
+    let src = c.genx(n[2])
+    # if ($1.p == $2.p) goto lab1
+    let lab1 = newLabel(c.labelGen)
+
+    let payloadType = seqPayloadPtrType(c.m.types, n1.typ)
+    buildTyped c.code, info, Select, Bool8Id:
+      buildTyped c.code, info, Eq, payloadType:
+        buildTyped c.code, info, FieldAt, payloadType:
+          copyTree c.code, a
+          c.code.addImmediateVal info, 1 # (len, p)-pair
+        buildTyped c.code, info, FieldAt, payloadType:
+          copyTree c.code, src
+          c.code.addImmediateVal info, 1 # (len, p)-pair
+
+      build c.code, info, SelectPair:
+        build c.code, info, SelectValue:
+          c.code.boolVal(info, true)
+        c.code.gotoLabel info, Goto, lab1
+
+    gen(c, n[3])
+    c.patch n, lab1
+
+    buildTyped c.code, info, Asgn, typeToIr(c.m.types, n1.typ):
+      copyTree c.code, a
+      copyTree c.code, src
+
+  else:
+    if isEmpty(d): d = getTemp(c, n)
+    buildTyped c.code, info, Asgn, typeToIr(c.m.types, n1.typ):
+      copyTree c.code, d
+      copyTree c.code, a
+    var op = getAttachedOp(c.m.graph, n.typ, attachedWasMoved)
+    if op == nil or skipTypes(n1.typ, abstractVar+{tyStatic}).kind in {tyOpenArray, tyVarargs}:
+      let m = expandDefault(n1.typ, n1.info)
+      gen c, m, a
+    else:
+      var opB = c.genx(newSymNode(op))
+      buildTyped c.code, info, Call, typeToIr(c.m.types, n.typ):
+        copyTree c.code, opB
+        buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.types.g, typeToIr(c.m.types, n1.typ)):
+          copyTree c.code, a
+
+template fieldAt(x: Value; i: int; t: TypeId): Tree =
+  var result = default(Tree)
+  buildTyped result, info, FieldAt, t:
+    copyTree result, x
+    result.addImmediateVal info, i
+  result
+
+template eqNil(x: Tree; t: TypeId): Tree =
+  var result = default(Tree)
+  buildTyped result, info, Eq, t:
+    copyTree result, x
+    result.addNilVal info, t
+  result
+
+template eqZero(x: Tree): Tree =
+  var result = default(Tree)
+  buildTyped result, info, Eq, c.m.nativeIntId:
+    copyTree result, x
+    result.addIntVal c.lit.numbers, info, c.m.nativeIntId, 0
+  result
+
+template bitOp(x: Tree; opc: Opcode; y: int): Tree =
+  var result = default(Tree)
+  buildTyped result, info, opc, c.m.nativeIntId:
+    copyTree result, x
+    result.addIntVal c.lit.numbers, info, c.m.nativeIntId, y
+  result
+
+proc genDestroySeq(c: var ProcCon; n: PNode; t: PType) =
+  let info = toLineInfo(c, n.info)
+  let strLitFlag = 1 shl (c.m.graph.config.target.intSize * 8 - 2) # see also NIM_STRLIT_FLAG
+
+  let x = c.genx(n[1])
+  let baseType = t.lastSon
+
+  let seqType = seqPayloadPtrType(c.m.types, t)
+  let p = fieldAt(x, 0, seqType)
+
+  # if $1.p != nil and ($1.p.cap and NIM_STRLIT_FLAG) == 0:
+  #   alignedDealloc($1.p, NIM_ALIGNOF($2))
+  buildIfNot p.eqNil(seqType):
+    buildIf fieldAt(Value(p), 0, c.m.nativeIntId).bitOp(BitAnd, 0).eqZero():
+      let codegenProc = getCompilerProc(c.m.graph, "alignedDealloc")
+      buildTyped c.code, info, Call, VoidId:
+        let theProc = c.genx newSymNode(codegenProc, n.info)
+        copyTree c.code, theProc
+        copyTree c.code, p
+        c.code.addImmediateVal info, int(getAlign(c.config, baseType))
+
+  freeTemp c, x
+
+proc genDestroy(c: var ProcCon; n: PNode) =
+  let t = n[1].typ.skipTypes(abstractInst)
+  case t.kind
+  of tyString:
+    var unused = default(Value)
+    genUnaryCp(c, n, unused, "nimDestroyStrV1")
+  of tySequence:
+    genDestroySeq(c, n, t)
+  else: discard "nothing to do"
+
+type
+  IndexFor = enum
+    ForSeq, ForStr, ForOpenArray, ForArray
+
+proc genIndexCheck(c: var ProcCon; n: PNode; a: Value; kind: IndexFor; arr: PType = nil): Value =
+  if optBoundsCheck in c.options:
+    let info = toLineInfo(c, n.info)
+    result = default(Value)
+    let idx = genx(c, n)
+    build result, info, CheckedIndex:
+      copyTree result.Tree, idx
+      case kind
+      of ForSeq, ForStr:
+        buildTyped result, info, FieldAt, c.m.nativeIntId:
+          copyTree result.Tree, a
+          result.addImmediateVal info, 0 # (len, p)-pair
+      of ForOpenArray:
+        buildTyped result, info, FieldAt, c.m.nativeIntId:
+          copyTree result.Tree, a
+          result.addImmediateVal info, 1 # (p, len)-pair
+      of ForArray:
+        let x = toInt64 lengthOrd(c.config, arr)
+        result.addIntVal c.lit.numbers, info, c.m.nativeIntId, x
+      result.Tree.addLabel info, CheckedGoto, c.exitLabel
+    freeTemp c, idx
+  else:
+    result = genx(c, n)
+
+proc addSliceFields(c: var ProcCon; target: var Tree; info: PackedLineInfo;
+                    x: Value; n: PNode; arrType: PType) =
+  let elemType = arrayPtrTypeOf(c.m.types.g, typeToIr(c.m.types, arrType.lastSon))
+  case arrType.kind
+  of tyString, tySequence:
+    let t = typeToIr(c.m.types, arrType.lastSon)
+    let checkKind = if arrType.kind == tyString: ForStr else: ForSeq
+    let pay = if checkKind == ForStr: strPayloadPtrType(c.m.types)
+              else: seqPayloadPtrType(c.m.types, arrType)
+
+    let y = genIndexCheck(c, n[2], x, checkKind)
+    let z = genIndexCheck(c, n[3], x, checkKind)
+
+    buildTyped target, info, ObjConstr, typeToIr(c.m.types, n.typ):
+      target.addImmediateVal info, 0
+      buildTyped target, info, AddrOf, elemType:
+        buildTyped target, info, ArrayAt, t:
+          buildTyped target, info, FieldAt, pay:
+            copyTree target, x
+            target.addImmediateVal info, 1 # (len, p)-pair
+          copyTree target, y
+
+      # len:
+      target.addImmediateVal info, 1
+      buildTyped target, info, Add, c.m.nativeIntId:
+        buildTyped target, info, Sub, c.m.nativeIntId:
+          copyTree target, z
+          copyTree target, y
+        target.addIntVal c.lit.numbers, info, c.m.nativeIntId, 1
+
+    freeTemp c, z
+    freeTemp c, y
+  of tyArray, tyOpenArray:
+    let t = typeToIr(c.m.types, arrType.lastSon)
+    # XXX This evaluates the index check for `y` twice.
+    # This check is also still insufficient for non-zero based arrays.
+    let checkKind = if arrType.kind == tyArray: ForArray else: ForOpenArray
+
+    let y = genIndexCheck(c, n[2], x, checkKind, arrType)
+    let z = genIndexCheck(c, n[3], x, checkKind, arrType)
+
+    buildTyped target, info, ObjConstr, typeToIr(c.m.types, n.typ):
+      target.addImmediateVal info, 0
+      buildTyped target, info, AddrOf, elemType:
+        buildTyped target, info, ArrayAt, t:
+          copyTree target, x
+          copyTree target, y
+
+      target.addImmediateVal info, 1
+      buildTyped target, info, Add, c.m.nativeIntId:
+        buildTyped target, info, Sub, c.m.nativeIntId:
+          copyTree target, z
+          copyTree target, y
+        target.addIntVal c.lit.numbers, info, c.m.nativeIntId, 1
+
+    freeTemp c, z
+    freeTemp c, y
+  else:
+    raiseAssert "addSliceFields: " & typeToString(arrType)
+
+proc genSlice(c: var ProcCon; n: PNode; d: var Value) =
+  let info = toLineInfo(c, n.info)
+
+  let x = c.genx(n[1])
+
+  let arrType = n[1].typ.skipTypes(abstractVar)
+
+  template body(target) =
+    c.addSliceFields target, info, x, n, arrType
+
+  valueIntoDest c, info, d, arrType, body
+  freeTemp c, x
+
 proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, d)
@@ -1377,7 +1681,7 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   of mDec:
     unused(c, n, d)
     c.genIncDec(n, CheckedSub)
-  of mOrd, mChr, mArrToSeq, mUnown:
+  of mOrd, mChr, mUnown:
     c.gen(n[1], d)
   of generatedMagics:
     genCall(c, n, d)
@@ -1391,9 +1695,9 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   of mNewString, mNewStringOfCap, mExit: c.genCall(n, d)
   of mLengthOpenArray, mLengthArray, mLengthSeq, mLengthStr:
     genArrayLen(c, n, d)
-  of mMulI: genBinaryOp(c, n, d, Mul)
-  of mDivI: genBinaryOp(c, n, d, Div)
-  of mModI: genBinaryOp(c, n, d, Mod)
+  of mMulI: genBinaryOp(c, n, d, CheckedMul)
+  of mDivI: genBinaryOp(c, n, d, CheckedDiv)
+  of mModI: genBinaryOp(c, n, d, CheckedMod)
   of mAddF64: genBinaryOp(c, n, d, Add)
   of mSubF64: genBinaryOp(c, n, d, Sub)
   of mMulF64: genBinaryOp(c, n, d, Mul)
@@ -1495,7 +1799,6 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
     localError(c.config, n.info, sizeOfLikeMsg("offsetof"))
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
-  of mDestroy, mTrace: discard "ignore calls to the default destructor"
   of mOf: genOf(c, n, d)
   of mAppendStrStr:
     unused(c, n, d)
@@ -1522,186 +1825,18 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   of mConStrStr: genStrConcat(c, n, d)
   of mDefault, mZeroDefault:
     genDefault c, n, d
+  of mMove: genMove(c, n, d)
+  of mWasMoved, mReset:
+    unused(c, n, d)
+    genWasMoved(c, n)
+  of mDestroy: genDestroy(c, n)
+  #of mAccessEnv: unaryExpr(d, n, d, "$1.ClE_0")
+  #of mAccessTypeField: genAccessTypeField(c, n, d)
+  of mSlice: genSlice(c, n, d)
+  of mTrace: discard "no code to generate"
   else:
-    # mGCref, mGCunref,
+    # mGCref, mGCunref: unused by ORC
     globalError(c.config, n.info, "cannot generate code for: " & $m)
-
-#[
-
-  of mReset:
-    unused(c, n, d)
-    var d = c.genx(n[1])
-    # XXX use ldNullOpcode() here?
-    c.gABx(n, opcLdNull, d, c.genType(n[1].typ))
-    c.gABC(n, opcNodeToReg, d, d)
-    c.gABx(n, ldNullOpcode(n.typ), d, c.genType(n.typ))
-
-  of mConStrStr: genVarargsABC(c, n, d, opcConcatStr)
-
-  of mRepr: genUnaryABC(c, n, d, opcRepr)
-
-  of mSlice:
-    var
-      d = c.genx(n[1])
-      left = c.genIndex(n[2], n[1].typ)
-      right = c.genIndex(n[3], n[1].typ)
-    if isEmpty(d): d = c.getTemp(n)
-    c.gABC(n, opcNodeToReg, d, d)
-    c.gABC(n, opcSlice, d, left, right)
-    c.freeTemp(left)
-    c.freeTemp(right)
-    c.freeTemp(d)
-
-  of mMove:
-    let arg = n[1]
-    let a = c.genx(arg)
-    if isEmpty(d): d = c.getTemp(arg)
-    gABC(c, arg, whichAsgnOpc(arg, requiresCopy=false), d, a)
-    c.freeTemp(a)
-  of mDup:
-    let arg = n[1]
-    let a = c.genx(arg)
-    if isEmpty(d): d = c.getTemp(arg)
-    gABC(c, arg, whichAsgnOpc(arg, requiresCopy=false), d, a)
-    c.freeTemp(a)
-
-  of mNodeId:
-    c.genUnaryABC(n, d, opcNodeId)
-
-  of mExpandToAst:
-    if n.len != 2:
-      globalError(c.config, n.info, "expandToAst requires 1 argument")
-    let arg = n[1]
-    if arg.kind in nkCallKinds:
-      #if arg[0].kind != nkSym or arg[0].sym.kind notin {skTemplate, skMacro}:
-      #      "ExpandToAst: expanded symbol is no macro or template"
-      if isEmpty(d): d = c.getTemp(n)
-      c.genCall(arg, d)
-      # do not call clearDest(n, d) here as getAst has a meta-type as such
-      # produces a value
-    else:
-      globalError(c.config, n.info, "expandToAst requires a call expression")
-  of mParseExprToAst:
-    genBinaryABC(c, n, d, opcParseExprToAst)
-  of mParseStmtToAst:
-    genBinaryABC(c, n, d, opcParseStmtToAst)
-  of mTypeTrait:
-    let tmp = c.genx(n[1])
-    if isEmpty(d): d = c.getTemp(n)
-    c.gABx(n, opcSetType, tmp, c.genType(n[1].typ))
-    c.gABC(n, opcTypeTrait, d, tmp)
-    c.freeTemp(tmp)
-  of mSlurp: genUnaryABC(c, n, d, opcSlurp)
-  of mNLen: genUnaryABI(c, n, d, opcLenSeq, nimNodeFlag)
-  of mGetImpl: genUnaryABC(c, n, d, opcGetImpl)
-  of mGetImplTransf: genUnaryABC(c, n, d, opcGetImplTransf)
-  of mSymOwner: genUnaryABC(c, n, d, opcSymOwner)
-  of mSymIsInstantiationOf: genBinaryABC(c, n, d, opcSymIsInstantiationOf)
-  of mNChild: genBinaryABC(c, n, d, opcNChild)
-  of mNAdd: genBinaryABC(c, n, d, opcNAdd)
-  of mNAddMultiple: genBinaryABC(c, n, d, opcNAddMultiple)
-  of mNKind: genUnaryABC(c, n, d, opcNKind)
-  of mNSymKind: genUnaryABC(c, n, d, opcNSymKind)
-
-  of mNccValue: genUnaryABC(c, n, d, opcNccValue)
-  of mNccInc: genBinaryABC(c, n, d, opcNccInc)
-  of mNcsAdd: genBinaryABC(c, n, d, opcNcsAdd)
-  of mNcsIncl: genBinaryABC(c, n, d, opcNcsIncl)
-  of mNcsLen: genUnaryABC(c, n, d, opcNcsLen)
-  of mNcsAt: genBinaryABC(c, n, d, opcNcsAt)
-  of mNctLen: genUnaryABC(c, n, d, opcNctLen)
-  of mNctGet: genBinaryABC(c, n, d, opcNctGet)
-  of mNctHasNext: genBinaryABC(c, n, d, opcNctHasNext)
-  of mNctNext: genBinaryABC(c, n, d, opcNctNext)
-
-  of mNIntVal: genUnaryABC(c, n, d, opcNIntVal)
-  of mNFloatVal: genUnaryABC(c, n, d, opcNFloatVal)
-  of mNSymbol: genUnaryABC(c, n, d, opcNSymbol)
-  of mNIdent: genUnaryABC(c, n, d, opcNIdent)
-  of mNGetType:
-    let tmp = c.genx(n[1])
-    if isEmpty(d): d = c.getTemp(n)
-    let rc = case n[0].sym.name.s:
-      of "getType": 0
-      of "typeKind": 1
-      of "getTypeInst": 2
-      else: 3  # "getTypeImpl"
-    c.gABC(n, opcNGetType, d, tmp, rc)
-    c.freeTemp(tmp)
-    #genUnaryABC(c, n, d, opcNGetType)
-  of mNSizeOf:
-    let imm = case n[0].sym.name.s:
-      of "getSize": 0
-      of "getAlign": 1
-      else: 2 # "getOffset"
-    c.genUnaryABI(n, d, opcNGetSize, imm)
-  of mNStrVal: genUnaryABC(c, n, d, opcNStrVal)
-  of mNSigHash: genUnaryABC(c, n , d, opcNSigHash)
-  of mNSetIntVal:
-    unused(c, n, d)
-    genBinaryStmt(c, n, opcNSetIntVal)
-  of mNSetFloatVal:
-    unused(c, n, d)
-    genBinaryStmt(c, n, opcNSetFloatVal)
-  of mNSetSymbol:
-    unused(c, n, d)
-    genBinaryStmt(c, n, opcNSetSymbol)
-  of mNSetIdent:
-    unused(c, n, d)
-    genBinaryStmt(c, n, opcNSetIdent)
-  of mNSetStrVal:
-    unused(c, n, d)
-    genBinaryStmt(c, n, opcNSetStrVal)
-  of mNNewNimNode: genBinaryABC(c, n, d, opcNNewNimNode)
-  of mNCopyNimNode: genUnaryABC(c, n, d, opcNCopyNimNode)
-  of mNCopyNimTree: genUnaryABC(c, n, d, opcNCopyNimTree)
-  of mNBindSym: genBindSym(c, n, d)
-  of mStrToIdent: genUnaryABC(c, n, d, opcStrToIdent)
-  of mEqIdent: genBinaryABC(c, n, d, opcEqIdent)
-  of mEqNimrodNode: genBinaryABC(c, n, d, opcEqNimNode)
-  of mSameNodeType: genBinaryABC(c, n, d, opcSameNodeType)
-  of mNLineInfo:
-    case n[0].sym.name.s
-    of "getFile": genUnaryABI(c, n, d, opcNGetLineInfo, 0)
-    of "getLine": genUnaryABI(c, n, d, opcNGetLineInfo, 1)
-    of "getColumn": genUnaryABI(c, n, d, opcNGetLineInfo, 2)
-    of "copyLineInfo":
-      internalAssert c.config, n.len == 3
-      unused(c, n, d)
-      genBinaryStmt(c, n, opcNCopyLineInfo)
-    of "setLine":
-      internalAssert c.config, n.len == 3
-      unused(c, n, d)
-      genBinaryStmt(c, n, opcNSetLineInfoLine)
-    of "setColumn":
-      internalAssert c.config, n.len == 3
-      unused(c, n, d)
-      genBinaryStmt(c, n, opcNSetLineInfoColumn)
-    of "setFile":
-      internalAssert c.config, n.len == 3
-      unused(c, n, d)
-      genBinaryStmt(c, n, opcNSetLineInfoFile)
-    else: internalAssert c.config, false
-  of mNHint:
-    unused(c, n, d)
-    genBinaryStmt(c, n, opcNHint)
-  of mNWarning:
-    unused(c, n, d)
-    genBinaryStmt(c, n, opcNWarning)
-  of mNError:
-    if n.len <= 1:
-      # query error condition:
-      c.gABC(n, opcQueryErrorFlag, d)
-    else:
-      # setter
-      unused(c, n, d)
-      genBinaryStmt(c, n, opcNError)
-  of mNCallSite:
-    if isEmpty(d): d = c.getTemp(n)
-    c.gABC(n, opcCallSite, d)
-  of mNGenSym: genBinaryABC(c, n, d, opcGenSym)
-
-]#
 
 proc canElimAddr(n: PNode; idgen: IdGenerator): PNode =
   result = nil
@@ -1732,14 +1867,6 @@ proc canElimAddr(n: PNode; idgen: IdGenerator): PNode =
       # addr ( deref ( x )) --> x
       result = n[0][0]
 
-template valueIntoDest(c: var ProcCon; info: PackedLineInfo; d: var Value; typ: PType; body: untyped) =
-  if isEmpty(d):
-    body(Tree d)
-  else:
-    buildTyped c.code, info, Asgn, typeToIr(c.m.types, typ):
-      copyTree c.code, d
-      body(c.code)
-
 proc genAddr(c: var ProcCon; n: PNode; d: var Value, flags: GenFlags) =
   if (let m = canElimAddr(n, c.m.idgen); m != nil):
     gen(c, m, d, flags)
@@ -1764,6 +1891,63 @@ proc genDeref(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   valueIntoDest c, info, d, n.typ, body
   freeTemp c, tmp
 
+proc addAddrOfFirstElem(c: var ProcCon; target: var Tree; info: PackedLineInfo; tmp: Value; typ: PType) =
+  let arrType = typ.skipTypes(abstractVar)
+  let elemType = arrayPtrTypeOf(c.m.types.g, typeToIr(c.m.types, arrType.lastSon))
+  case arrType.kind
+  of tyString:
+    let t = typeToIr(c.m.types, typ.lastSon)
+    target.addImmediateVal info, 0
+    buildTyped target, info, AddrOf, elemType:
+      buildTyped target, info, ArrayAt, t:
+        buildTyped target, info, FieldAt, strPayloadPtrType(c.m.types):
+          copyTree target, tmp
+          target.addImmediateVal info, 1 # (len, p)-pair
+        target.addIntVal c.lit.numbers, info, c.m.nativeIntId, 0
+    # len:
+    target.addImmediateVal info, 1
+    buildTyped target, info, FieldAt, c.m.nativeIntId:
+      copyTree target, tmp
+      target.addImmediateVal info, 0 # (len, p)-pair so len is at index 0
+
+  of tySequence:
+    let t = typeToIr(c.m.types, typ.lastSon)
+    target.addImmediateVal info, 0
+    buildTyped target, info, AddrOf, elemType:
+      buildTyped target, info, ArrayAt, t:
+        buildTyped target, info, FieldAt, seqPayloadPtrType(c.m.types, typ):
+          copyTree target, tmp
+          target.addImmediateVal info, 1 # (len, p)-pair
+        target.addIntVal c.lit.numbers, info, c.m.nativeIntId, 0
+    # len:
+    target.addImmediateVal info, 1
+    buildTyped target, info, FieldAt, c.m.nativeIntId:
+      copyTree target, tmp
+      target.addImmediateVal info, 0 # (len, p)-pair so len is at index 0
+
+  of tyArray:
+    let t = typeToIr(c.m.types, typ.lastSon)
+    target.addImmediateVal info, 0
+    buildTyped target, info, AddrOf, elemType:
+      buildTyped target, info, ArrayAt, t:
+        copyTree target, tmp
+        target.addIntVal c.lit.numbers, info, c.m.nativeIntId, 0
+    target.addImmediateVal info, 1
+    target.addIntVal(c.lit.numbers, info, c.m.nativeIntId, toInt lengthOrd(c.config, typ))
+  else:
+    raiseAssert "addAddrOfFirstElem: " & typeToString(typ)
+
+proc genToOpenArrayConv(c: var ProcCon; arg: PNode; d: var Value; flags: GenFlags; destType: PType) =
+  let info = toLineInfo(c, arg.info)
+  let tmp = c.genx(arg, flags)
+  let arrType = destType.skipTypes(abstractVar)
+  template body(target) =
+    buildTyped target, info, ObjConstr, typeToIr(c.m.types, arrType):
+      c.addAddrOfFirstElem target, info, tmp, arg.typ
+
+  valueIntoDest c, info, d, arrType, body
+  freeTemp c, tmp
+
 proc genConv(c: var ProcCon; n, arg: PNode; d: var Value; flags: GenFlags; opc: Opcode) =
   let targetType = n.typ.skipTypes({tyDistinct})
   let argType = arg.typ.skipTypes({tyDistinct})
@@ -1772,6 +1956,11 @@ proc genConv(c: var ProcCon; n, arg: PNode; d: var Value; flags: GenFlags; opc: 
       argType.kind == tyProc and targetType.kind == argType.kind):
     # don't do anything for lambda lifting conversions:
     gen c, arg, d
+    return
+
+  if opc != Cast and targetType.skipTypes({tyVar, tyLent}).kind in {tyOpenArray, tyVarargs} and
+      argType.skipTypes({tyVar, tyLent}).kind notin {tyOpenArray, tyVarargs}:
+    genToOpenArrayConv c, arg, d, flags, n.typ
     return
 
   let info = toLineInfo(c, n.info)
@@ -1805,10 +1994,32 @@ proc genObjOrTupleConstr(c: var ProcCon; n: PNode, d: var Value) =
 
   valueIntoDest c, info, d, n.typ, body
 
+proc genSeqConstr(c: var ProcCon; n: PNode; d: var Value) =
+  if isEmpty(d): d = getTemp(c, n)
+
+  let info = toLineInfo(c, n.info)
+  let seqtype = skipTypes(n.typ, abstractVarRange)
+  let baseType = seqtype.lastSon
+
+  var b = default(Value)
+  b.addIntVal c.lit.numbers, info, c.m.nativeIntId, n.len
+
+  genNewSeqPayload(c, info, d, b, seqtype)
+
+  for i in 0..<n.len:
+    var dd = default(Value)
+    buildTyped dd, info, ArrayAt, typeToIr(c.m.types, seqtype):
+      buildTyped dd, info, FieldAt, seqPayloadPtrType(c.m.types, seqtype):
+        copyTree Tree(dd), d
+        dd.addIntVal c.lit.numbers, info, c.m.nativeIntId, i
+    gen(c, n[i], dd)
+
+  freeTemp c, d
+
 proc genArrayConstr(c: var ProcCon; n: PNode, d: var Value) =
   let seqType = n.typ.skipTypes(abstractVar-{tyTypeDesc})
   if seqType.kind == tySequence:
-    localError c.config, n.info, "sequence constructor not implemented"
+    genSeqConstr(c, n, d)
     return
 
   let info = toLineInfo(c, n.info)
@@ -1845,12 +2056,14 @@ proc genVarSection(c: var ProcCon; n: PNode) =
           opc = SummonGlobal
         else:
           opc = Summon
-        c.code.addSummon toLineInfo(c, a.info), SymId(s.itemId.item), typeToIr(c.m.types, s.typ), opc
+        let t = typeToIr(c.m.types, s.typ)
+        #assert t.int >= 0, typeToString(s.typ) & (c.config $ n.info)
+        c.code.addSummon toLineInfo(c, a.info), SymId(s.itemId.item), t, opc
         if a[2].kind != nkEmpty:
           genAsgn2(c, vn, a[2])
       else:
         if a[2].kind == nkEmpty:
-          discard "XXX assign default value to location here"
+          genAsgn2(c, vn, expandDefault(vn.typ, vn.info))
         else:
           genAsgn2(c, vn, a[2])
 
@@ -1874,7 +2087,7 @@ proc genRdVar(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   if ast.originatingModule(s) != c.m.module:
     template body(target) =
       build target, info, ModuleSymUse:
-        target.addStrVal c.m.strings, info, irModule(c, ast.originatingModule(s))
+        target.addStrVal c.lit.strings, info, irModule(c, ast.originatingModule(s))
         target.addImmediateVal info, s.itemId.item.int
 
     valueIntoDest c, info, d, s.typ, body
@@ -1892,13 +2105,13 @@ proc genSym(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
     if ast.originatingModule(s) == c.m.module:
       # anon and generic procs have no AST so we need to remember not to forget
       # to emit these:
-      if not c.m.pendingProcs.hasKey(s.itemId):
-        c.m.pendingProcs[s.itemId] = s
+      if not c.m.processedProcs.containsOrIncl(s.itemId):
+        c.m.pendingProcs.add s
     genRdVar(c, n, d, flags)
   of skEnumField:
     let info = toLineInfo(c, n.info)
     template body(target) =
-      target.addIntVal c.m.integers, info, typeToIr(c.m.types, n.typ), s.position
+      target.addIntVal c.lit.numbers, info, typeToIr(c.m.types, n.typ), s.position
     valueIntoDest c, info, d, n.typ, body
   else:
     localError(c.config, n.info, "cannot generate code for: " & s.name.s)
@@ -1906,13 +2119,13 @@ proc genSym(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
 proc genNumericLit(c: var ProcCon; n: PNode; d: var Value; bits: int64) =
   let info = toLineInfo(c, n.info)
   template body(target) =
-    target.addIntVal c.m.integers, info, typeToIr(c.m.types, n.typ), bits
+    target.addIntVal c.lit.numbers, info, typeToIr(c.m.types, n.typ), bits
   valueIntoDest c, info, d, n.typ, body
 
 proc genStringLit(c: var ProcCon; n: PNode; d: var Value) =
   let info = toLineInfo(c, n.info)
   template body(target) =
-    target.addStrVal c.m.strings, info, n.strVal
+    target.addStrVal c.lit.strings, info, n.strVal
   valueIntoDest c, info, d, n.typ, body
 
 proc genNilLit(c: var ProcCon; n: PNode; d: var Value) =
@@ -1922,17 +2135,31 @@ proc genNilLit(c: var ProcCon; n: PNode; d: var Value) =
   valueIntoDest c, info, d, n.typ, body
 
 proc genRangeCheck(c: var ProcCon; n: PNode; d: var Value) =
-  # XXX to implement properly
-  gen c, n[0], d
+  if optRangeCheck in c.options:
+    let info = toLineInfo(c, n.info)
+    let tmp = c.genx n[0]
+    let a = c.genx n[1]
+    let b = c.genx n[2]
+    template body(target) =
+      buildTyped target, info, CheckedRange, typeToIr(c.m.types, n.typ):
+        copyTree target, tmp
+        copyTree target, a
+        copyTree target, b
+        target.addLabel info, CheckedGoto, c.exitLabel
+    valueIntoDest c, info, d, n.typ, body
+    freeTemp c, tmp
+    freeTemp c, a
+    freeTemp c, b
+  else:
+    gen c, n[0], d
 
 proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   let arrayKind = n[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
   let info = toLineInfo(c, n.info)
   case arrayKind
   of tyString:
-    # XXX implement range check
     let a = genx(c, n[0], flags)
-    let b = genx(c, n[1])
+    let b = genIndexCheck(c, n[1], a, ForStr)
     let t = typeToIr(c.m.types, n.typ)
     template body(target) =
       buildTyped target, info, ArrayAt, t:
@@ -1966,9 +2193,8 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
 
     freeTemp c, a
   of tyOpenArray, tyVarargs:
-    # XXX implement range check
     let a = genx(c, n[0], flags)
-    let b = genx(c, n[1])
+    let b = genIndexCheck(c, n[1], a, ForOpenArray)
     let t = typeToIr(c.m.types, n.typ)
     template body(target) =
       buildTyped target, info, ArrayAt, t:
@@ -1981,7 +2207,6 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     freeTemp c, b
     freeTemp c, a
   of tyArray:
-    # XXX implement range check
     let a = genx(c, n[0], flags)
     var b = default(Value)
     genIndex(c, n[1], n[0].typ, b)
@@ -1995,7 +2220,7 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     freeTemp c, a
   of tySequence:
     let a = genx(c, n[0], flags)
-    let b = genx(c, n[1])
+    let b = genIndexCheck(c, n[1], a, ForSeq)
     let t = typeToIr(c.m.types, n.typ)
     template body(target) =
       buildTyped target, info, ArrayAt, t:
@@ -2024,7 +2249,10 @@ proc genObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
 proc genParams(c: var ProcCon; params: PNode) =
   for i in 1..<params.len:
     let s = params[i].sym
-    c.code.addSummon toLineInfo(c, params[i].info), SymId(s.itemId.item), typeToIr(c.m.types, s.typ), SummonParam
+    if not isCompileTimeOnly(s.typ):
+      let t = typeToIr(c.m.types, s.typ)
+      assert t.int != -1, typeToString(s.typ)
+      c.code.addSummon toLineInfo(c, params[i].info), SymId(s.itemId.item), t, SummonParam
 
 proc addCallConv(c: var ProcCon; info: PackedLineInfo; callConv: TCallingConvention) =
   template ann(s: untyped) = c.code.addPragmaId info, s
@@ -2039,15 +2267,13 @@ proc addCallConv(c: var ProcCon; info: PackedLineInfo; callConv: TCallingConvent
   of ccThisCall: ann ThisCall
   of ccNoConvention: ann NoCall
 
-proc genProc(cOuter: var ProcCon; n: PNode) =
-  if n.len == 0 or n[namePos].kind != nkSym: return
-  let prc = n[namePos].sym
-  if isGenericRoutineStrict(prc): return
+proc genProc(cOuter: var ProcCon; prc: PSym) =
+  if cOuter.m.processedProcs.containsOrIncl(prc.itemId):
+    return
 
   var c = initProcCon(cOuter.m, prc, cOuter.m.graph.config)
-  genParams(c, prc.typ.n)
 
-  let body = transformBody(c.m.graph, c.m.idgen, prc, useCache)
+  let body = transformBody(c.m.graph, c.m.idgen, prc, {useCache, keepOpenArrayConversions})
 
   let info = toLineInfo(c, body.info)
   build c.code, info, ProcDecl:
@@ -2056,30 +2282,37 @@ proc genProc(cOuter: var ProcCon; n: PNode) =
     if {sfImportc, sfExportc} * prc.flags != {}:
       build c.code, info, PragmaPair:
         c.code.addPragmaId info, ExternName
-        c.code.addStrVal c.m.strings, info, prc.loc.r
+        c.code.addStrVal c.lit.strings, info, prc.loc.r
       if sfImportc in prc.flags:
         if lfHeader in prc. loc.flags:
           assert(prc. annex != nil)
           let str = getStr(prc. annex.path)
           build c.code, info, PragmaPair:
             c.code.addPragmaId info, HeaderImport
-            c.code.addStrVal c.m.strings, info, str
+            c.code.addStrVal c.lit.strings, info, str
         elif lfDynamicLib in prc. loc.flags:
           assert(prc. annex != nil)
           let str = getStr(prc. annex.path)
           build c.code, info, PragmaPair:
             c.code.addPragmaId info, DllImport
-            c.code.addStrVal c.m.strings, info, str
+            c.code.addStrVal c.lit.strings, info, str
       elif sfExportc in prc.flags:
         if lfDynamicLib in prc. loc.flags:
           c.code.addPragmaId info, DllExport
         else:
           c.code.addPragmaId info, ObjExport
 
+    genParams(c, prc.typ.n)
     gen(c, body)
     patch c, body, c.exitLabel
 
   copyTree cOuter.code, c.code
+
+proc genProc(cOuter: var ProcCon; n: PNode) =
+  if n.len == 0 or n[namePos].kind != nkSym: return
+  let prc = n[namePos].sym
+  if isGenericRoutineStrict(prc) or isCompileTimeProc(prc): return
+  genProc cOuter, prc
 
 proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   when defined(nimCompilerStacktraceHints):
@@ -2174,19 +2407,30 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
     genConv(c, n, n[1], d, flags, Cast)
   of nkComesFrom:
     discard "XXX to implement for better stack traces"
+  #of nkState: genState(c, n)
+  #of nkGotoState: genGotoState(c, n)
+  #of nkBreakState: genBreakState(c, n, d)
   else:
     localError(c.config, n.info, "cannot generate IR code for " & $n)
+
+proc genPendingProcs(c: var ProcCon) =
+  while c.m.pendingProcs.len > 0:
+    let procs = move(c.m.pendingProcs)
+    for v in procs:
+      genProc(c, v)
 
 proc genStmt*(c: var ProcCon; n: PNode): int =
   result = c.code.len
   var d = default(Value)
   c.gen(n, d)
   unused c, n, d
+  genPendingProcs c
 
 proc genExpr*(c: var ProcCon; n: PNode, requiresValue = true): int =
   result = c.code.len
   var d = default(Value)
   c.gen(n, d)
+  genPendingProcs c
   if isEmpty d:
     if requiresValue:
       globalError(c.config, n.info, "VM problem: d register is not set")

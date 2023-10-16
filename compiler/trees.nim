@@ -234,3 +234,6 @@ proc isRunnableExamples*(n: PNode): bool =
   # Templates and generics don't perform symbol lookups.
   result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
     n.kind == nkIdent and n.ident.id == ord(wRunnableExamples)
+
+proc skipAddr*(n: PNode): PNode {.inline.} =
+  result = if n.kind in {nkAddr, nkHiddenAddr}: n[0] else: n

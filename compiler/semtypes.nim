@@ -2161,6 +2161,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semProcTypeWithScope(c, n, prev, symKind)
       if n.kind == nkIteratorTy and result.kind == tyProc:
         result.flags.incl(tfIterator)
+      if result.callConv == ccClosure and c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
+        result.flags.incl tfHasAsgn
   of nkEnumTy: result = semEnum(c, n, prev)
   of nkType: result = n.typ
   of nkStmtListType: result = semStmtListType(c, n, prev)

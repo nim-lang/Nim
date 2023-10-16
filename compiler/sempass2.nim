@@ -993,9 +993,9 @@ proc trackCall(tracked: PEffects; n: PNode) =
           # consider this case: p(out x, x); we want to remark that 'x' is not
           # initialized until after the call. Since we do this after we analysed the
           # call, this is fine.
-          initVar(tracked, n[i].skipAddr, false)
+          initVar(tracked, n[i].skipHiddenAddr, false)
         if strictFuncs in tracked.c.features and not tracked.inEnforcedNoSideEffects and
-           isDangerousLocation(n[i].skipAddr, tracked.owner):
+           isDangerousLocation(n[i].skipHiddenAddr, tracked.owner):
           if sfNoSideEffect in tracked.owner.flags:
             localError(tracked.config, n[i].info,
               "cannot pass $1 to `var T` parameter within a strict func" % renderTree(n[i]))

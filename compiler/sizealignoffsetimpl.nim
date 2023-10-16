@@ -29,11 +29,11 @@ proc raiseIllegalTypeRecursion() =
   raise newException(IllegalTypeRecursionError, "illegal type recursion")
 
 type
-  OffsetAccum = object
-    maxAlign: int32
-    offset: int32
+  OffsetAccum* = object
+    maxAlign*: int32
+    offset*: int32
 
-proc inc(arg: var OffsetAccum; value: int32) =
+proc inc*(arg: var OffsetAccum; value: int32) =
   if unlikely(value == szIllegalRecursion): raiseIllegalTypeRecursion()
   if value == szUnknownSize or arg.offset == szUnknownSize:
     arg.offset = szUnknownSize
@@ -47,7 +47,7 @@ proc alignmentMax(a, b: int32): int32 =
   else:
     max(a, b)
 
-proc align(arg: var OffsetAccum; value: int32) =
+proc align*(arg: var OffsetAccum; value: int32) =
   if unlikely(value == szIllegalRecursion): raiseIllegalTypeRecursion()
   if value == szUnknownSize or arg.maxAlign == szUnknownSize or arg.offset == szUnknownSize:
     arg.maxAlign = szUnknownSize
@@ -73,7 +73,7 @@ proc finish(arg: var OffsetAccum): int32 =
     result = align(arg.offset, arg.maxAlign) - arg.offset
     arg.offset += result
 
-proc computeSizeAlign(conf: ConfigRef; typ: PType)
+proc computeSizeAlign*(conf: ConfigRef; typ: PType)
 
 proc computeSubObjectAlign(conf: ConfigRef; n: PNode): BiggestInt =
   ## returns object alignment

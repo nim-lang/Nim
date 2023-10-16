@@ -206,6 +206,12 @@ proc nimAddStrV1(s: var NimStringV2; src: NimStringV2) {.compilerRtl, inl.} =
   prepareAdd(s, src.len)
   appendString s, src
 
+proc nimDestroyStrV1(s: NimStringV2) {.compilerRtl, inl.} =
+  frees(s)
+
+proc nimStrAtLe(s: string; idx: int; ch: char): bool {.compilerRtl, inl.} =
+  result = idx < s.len and s[idx] <= ch
+
 func capacity*(self: string): int {.inline.} =
   ## Returns the current capacity of the string.
   # See https://github.com/nim-lang/RFCs/issues/460

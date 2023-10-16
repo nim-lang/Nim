@@ -34,13 +34,13 @@ const
 static:
   assert AsideBit + FileBits + LineBits + ColBits == 32
 
-import .. / ic / bitabs # for LitId
+import .. / ic / [bitabs, rodfiles] # for LitId
 
 type
   PackedLineInfo* = distinct uint32
 
   LineInfoManager* = object
-    aside*: seq[(LitId, int32, int32)]
+    aside: seq[(LitId, int32, int32)]
 
 proc pack*(m: var LineInfoManager; file: LitId; line, col: int32): PackedLineInfo =
   if file.uint32 <= FileMax.uint32 and line <= LineMax and col <= ColMax:
@@ -65,6 +65,9 @@ proc unpack*(m: LineInfoManager; i: PackedLineInfo): (LitId, int32, int32) =
 
 proc getFileId*(m: LineInfoManager; i: PackedLineInfo): LitId =
   result = unpack(m, i)[0]
+
+proc store*(r: var RodFile; m: LineInfoManager) = storeSeq(r, m.aside)
+proc load*(r: var RodFile; m: var LineInfoManager) = loadSeq(r, m.aside)
 
 when isMainModule:
   var m = LineInfoManager(aside: @[])
