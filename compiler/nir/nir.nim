@@ -13,7 +13,7 @@
 from os import addFileExt, `/`, createDir
 
 import ".." / [ast, modulegraphs, renderer, transf, options, msgs, lineinfos]
-import nirtypes, nirinsts, ast2ir, nirlineinfos
+import nirtypes, nirinsts, ast2ir, nirlineinfos, nirfiles
 
 import ".." / ic / [rodfiles, bitabs]
 
@@ -89,27 +89,10 @@ proc closeNirBackend*(c: PPassContext; finalNode: PNode) =
   let nimcache = getNimcacheDir(c.c.config).string
   createDir nimcache
   let outp = nimcache / c.m.module.name.s.addFileExt("nir")
-  var r = rodfiles.create(outp)
+
+  let m = NirModule(code: move(c.c.code), man: move(c.m.man), types: move(c.m.types.g), lit: move(c.m.lit))
   try:
-    r.storeHeader(nirCookie)
-    r.storeSection stringsSection
-    r.store c.m.lit.strings
-
-    r.storeSection numbersSection
-    r.store c.m.lit.numbers
-
-    r.storeSection bodiesSection
-    r.store c.c.code
-
-    r.storeSection typesSection
-    r.store c.m.types.g
-
-    r.storeSection sideChannelSection
-    r.store c.m.man
-
-  finally:
-    r.close()
-  if r.err != ok:
-    rawMessage(c.c.config, errFatal, "serialization failed: " & outp)
-  else:
+    store m, outp
     echo "created: ", outp
+  except IOError:
+    rawMessage(c.c.config, errFatal, "serialization failed: " & outp)
