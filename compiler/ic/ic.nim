@@ -49,7 +49,7 @@ type
     typeInstCache*: seq[(PackedItemId, PackedItemId)]
     procInstCache*: seq[PackedInstantiation]
     attachedOps*: seq[(PackedItemId, TTypeAttachedOp, PackedItemId)]
-    methodsPerType*: seq[(PackedItemId, int, PackedItemId)]
+    methodsPerGenericType*: seq[(PackedItemId, int, PackedItemId)]
     enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
 
     emittedTypeInfo*: seq[string]
@@ -618,7 +618,7 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection typeInstCacheSection, m.typeInstCache
   loadSeqSection procInstCacheSection, m.procInstCache
   loadSeqSection attachedOpsSection, m.attachedOps
-  loadSeqSection methodsPerTypeSection, m.methodsPerType
+  loadSeqSection methodsPerTypeSection, m.methodsPerGenericType
   loadSeqSection enumToStringProcsSection, m.enumToStringProcs
   loadSeqSection typeInfoSection, m.emittedTypeInfo
 
@@ -683,7 +683,7 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection typeInstCacheSection, m.typeInstCache
   storeSeqSection procInstCacheSection, m.procInstCache
   storeSeqSection attachedOpsSection, m.attachedOps
-  storeSeqSection methodsPerTypeSection, m.methodsPerType
+  storeSeqSection methodsPerTypeSection, m.methodsPerGenericType
   storeSeqSection enumToStringProcsSection, m.enumToStringProcs
   storeSeqSection typeInfoSection, m.emittedTypeInfo
 

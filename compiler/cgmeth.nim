@@ -16,6 +16,7 @@ import
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
+import std/[tables]
 
 proc genConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
   var dest = skipTypes(d, abstractPtrs)
@@ -171,6 +172,11 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
     of Invalid:
       if witness.isNil: witness = g.methods[i].methods[0]
   # create a new dispatcher:
+  # stores the id and the position
+  if s.typ[1].skipTypes(skipPtrs).itemId notin g.bucketTable:
+    g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId] = 1
+  else:
+    g.bucketTable.inc(s.typ[1].skipTypes(skipPtrs).itemId)
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
   #echo "adding ", s.info
   if witness != nil:
@@ -179,7 +185,7 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   elif sfBase notin s.flags:
     message(g.config, s.info, warnUseBase)
 
-proc relevantCol(methods: seq[PSym], col: int): bool =
+proc relevantCol*(methods: seq[PSym], col: int): bool =
   # returns true iff the position is relevant
   result = false
   var t = methods[0].typ[col].skipTypes(skipPtrs)
@@ -199,7 +205,7 @@ proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
       if (d != high(int)) and d != 0:
         return d
 
-proc sortBucket(a: var seq[PSym], relevantCols: IntSet) =
+proc sortBucket*(a: var seq[PSym], relevantCols: IntSet) =
   # we use shellsort here; fast and simple
   var n = a.len
   var h = 1
@@ -218,7 +224,7 @@ proc sortBucket(a: var seq[PSym], relevantCols: IntSet) =
       a[j] = v
     if h == 1: break
 
-proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; idgen: IdGenerator): PSym =
+proc genDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; idgen: IdGenerator): PSym =
   var base = methods[0].ast[dispatcherPos].sym
   result = base
   var paramLen = base.typ.len
@@ -277,8 +283,7 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; idg
   nilchecks.flags.incl nfTransf # should not be further transformed
   result.ast[bodyPos] = nilchecks
 
-proc generateMethodDispatchers*(g: ModuleGraph, idgen: IdGenerator): PNode =
-  result = newNode(nkStmtList)
+proc generateMethodDispatchers*(g: ModuleGraph, idgen: IdGenerator) =
   for bucket in 0..<g.methods.len:
     var relevantCols = initIntSet()
     for col in 1..<g.methods[bucket].methods[0].typ.len:
@@ -287,4 +292,4 @@ proc generateMethodDispatchers*(g: ModuleGraph, idgen: IdGenerator): PNode =
         # if multi-methods are not enabled, we are interested only in the first field
         break
     sortBucket(g.methods[bucket].methods, relevantCols)
-    result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols, idgen))
+    g.dispatchers.add LazySym(sym: genDispatcher(g, g.methods[bucket].methods, relevantCols, idgen))

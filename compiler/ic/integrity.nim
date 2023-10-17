@@ -134,7 +134,7 @@ proc checkModule(c: var CheckedContext; m: PackedModule) =
     typeInstCache*: seq[(PackedItemId, PackedItemId)]
     procInstCache*: seq[PackedInstantiation]
     attachedOps*: seq[(TTypeAttachedOp, PackedItemId, PackedItemId)]
-    methodsPerType*: seq[(PackedItemId, int, PackedItemId)]
+    methodsPerGenericType*: seq[(PackedItemId, int, PackedItemId)]
     enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
   ]#
 

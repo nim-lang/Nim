@@ -80,7 +80,7 @@ type
     typeInstCache*: Table[ItemId, seq[LazyType]] # A symbol's ItemId.
     procInstCache*: Table[ItemId, seq[LazyInstantiation]] # A symbol's ItemId.
     attachedOps*: array[TTypeAttachedOp, Table[ItemId, LazySym]] # Type ID, destructors, etc.
-    methodsPerType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
+    methodsPerGenericType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
     memberProcsPerType*: Table[ItemId, seq[PSym]] # Type ID, attached member procs (only c++, virtual,member and ctor so far).
     initializersPerType*: Table[ItemId, PNode] # Type ID, AST call to the default ctor (c++ only)
     enumToStringProcs*: Table[ItemId, LazySym]
@@ -108,6 +108,11 @@ type
     suggestSymbols*: Table[FileIndex, seq[SymInfoPair]]
     suggestErrors*: Table[FileIndex, seq[Suggest]]
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
+    bucketTable*: CountTable[ItemId]
+    objectTree*: Table[ItemId, seq[tuple[depth: int, value: PType]]]
+    methodsPerType*: seq[tuple[typ: PType, methods: seq[LazySym]]] # TODO: should ba LazySym
+    dispatchers*: seq[LazySym]
+
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
@@ -151,7 +156,7 @@ proc resetForBackend*(g: ModuleGraph) =
   g.procInstCache.clear()
   for a in mitems(g.attachedOps):
     a.clear()
-  g.methodsPerType.clear()
+  g.methodsPerGenericType.clear()
   g.enumToStringProcs.clear()
 
 const
@@ -354,12 +359,16 @@ proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
   g.enumToStringProcs[t.itemId] = LazySym(sym: value)
 
 iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
-  if g.methodsPerType.contains(t.itemId):
-    for it in mitems g.methodsPerType[t.itemId]:
+  if g.methodsPerGenericType.contains(t.itemId):
+    for it in mitems g.methodsPerGenericType[t.itemId]:
       yield (it[0], resolveSym(g, it[1]))
 
 proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSym) =
-  g.methodsPerType.mgetOrPut(t.itemId, @[]).add (col, LazySym(sym: m))
+  g.methodsPerGenericType.mgetOrPut(t.itemId, @[]).add (col, LazySym(sym: m))
+
+iterator resolveLazySymSeq*(g: ModuleGraph, list: var seq[LazySym]): PSym =
+  for it in list.mitems:
+    yield resolveSym(g, it)
 
 proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
   let op = getAttachedOp(g, t, attachedAsgn)

@@ -28,6 +28,7 @@ when not defined(leanCompiler):
   import spawn, semparallel
 
 import strutils except `%`, addf # collides with ropes.`%`
+import std/sequtils
 
 from ic / ic import ModuleBackendFlag
 import dynlib
@@ -2181,9 +2182,31 @@ proc updateCachedModule(m: BModule) =
   cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)
 
-proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode): PNode =
+proc genVTable(m: BModule, seqs: seq[PSym]): Rope =
+  result = Rope"{"
+  for i in 0..<seqs.len-1:
+    result.add "(void *) " & seqs[i].loc.r & ", "
+  result.add "(void *) " & seqs[^1].loc.r
+  result.add "}"
+
+proc initializeVTable*(m: BModule, typ: PType, dispatchMethods: var seq[LazySym]) =
+  let name = genTypeInfoV2(m, typ, unknownLineInfo)
+  var typeEntry = ""
+  let objVTable = getTempName(m)
+  let vTablePointerName = getTempName(m)
+  let patches = newNode(nkStmtList)
+  let dispatchMethods = toSeq(resolveLazySymSeq(m.g.graph, dispatchMethods))
+  for i in dispatchMethods:
+    let node = newNode(nkDiscardStmt)
+    node.add newSymNode(i)
+    patches.add node
+  genStmts(m.initProc, patches)
+  m.s[cfsVars].addf("static void* $1[$2] = $3;$n", [vTablePointerName, rope(dispatchMethods.len), genVTable(m, dispatchMethods)])
+  addf(typeEntry, "$1->vTable = $2;$n", [name, vTablePointerName])
+  m.s[cfsTypeInit3].add typeEntry
+
+proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   ## Also called from IC.
-  result = nil
   if sfMainModule in m.module.flags:
     # phase ordering problem here: We need to announce this
     # dependency to 'nimTestErrorFlag' before system.c has been written to disk.
@@ -2231,7 +2254,8 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode): PNode =
 
       if m.g.forwardedProcs.len == 0:
         incl m.flags, objHasKidsValid
-      result = generateMethodDispatchers(graph, m.idgen)
+      if false: # TODO: soon
+        generateMethodDispatchers(graph, m.idgen)
 
   let mm = m
   m.g.modulesClosed.add mm

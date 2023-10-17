@@ -127,12 +127,12 @@ proc replayGenericCacheInformation*(g: ModuleGraph; module: int) =
       module: module, sym: FullId(module: sym.module, packed: it.sym),
       concreteTypes: concreteTypes, inst: nil)
 
-  for it in mitems(g.packed[module].fromDisk.methodsPerType):
+  for it in mitems(g.packed[module].fromDisk.methodsPerGenericType):
     let key = translateId(it[0], g.packed, module, g.config)
     let col = it[1]
     let tmp = translateId(it[2], g.packed, module, g.config)
     let symId = FullId(module: tmp.module, packed: it[2])
-    g.methodsPerType.mgetOrPut(key, @[]).add (col, LazySym(id: symId, sym: nil))
+    g.methodsPerGenericType.mgetOrPut(key, @[]).add (col, LazySym(id: symId, sym: nil))
 
   replayBackendProcs(g, module)
 

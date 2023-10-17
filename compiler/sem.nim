@@ -22,6 +22,7 @@ import
   isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs,
   extccomp
 
+import vtables
 
 when not defined(leanCompiler):
   import spawn
@@ -840,6 +841,8 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if c.config.cmd == cmdIdeTools:
     appendToModule(c.module, result)
   trackStmt(c, c.module, result, isTopLevel = true)
+  if sfMainModule in c.module.flags:
+    collectVTableDispatchers(c.graph)
 
 proc recoverContext(c: PContext) =
   # clean up in case of a semantic error: We clean up the stacks, etc. This is
