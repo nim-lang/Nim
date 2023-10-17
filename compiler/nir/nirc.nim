@@ -19,7 +19,7 @@
 # - Port the few missing magics from the C codegen.
 
 import ".." / ic / [bitabs, rodfiles]
-import nirinsts, nirtypes, nirlineinfos, nirfiles
+import nirinsts, nirtypes, nirlineinfos, nirfiles, nir2gcc
 
 proc view(filename: string) =
   let m = load(filename)
@@ -30,8 +30,8 @@ proc view(filename: string) =
   echo res
 
 proc libgcc(filename: string) =
-  discard load(filename)
-
+  let m = load(filename)
+  gcc m, filename
 
 import std / [syncio, parseopt]
 

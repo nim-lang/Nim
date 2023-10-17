@@ -42,6 +42,11 @@ type
 template kind*(n: TypeNode): NirTypeKind = NirTypeKind(n.x and TypeKindMask)
 template operand(n: TypeNode): uint32 = (n.x shr TypeKindBits)
 
+proc integralBits*(n: TypeNode): int {.inline.} =
+  # Number of bits in the IntTy, etc. Only valid for integral types.
+  assert n.kind in {IntTy, UIntTy, FloatTy, BoolTy, CharTy}
+  result = int(n.operand)
+
 template toX(k: NirTypeKind; operand: uint32): uint32 =
   uint32(k) or (operand shl TypeKindBits)
 
@@ -170,7 +175,8 @@ proc sons3(tree: TypeGraph; n: TypeId): (TypeId, TypeId, TypeId) =
 
 proc arrayLen*(tree: TypeGraph; n: TypeId): BiggestInt =
   assert tree[n].kind == ArrayTy
-  result = tree.lit.numbers[LitId tree[n].operand]
+  let (_, b) = sons2(tree, n)
+  result = tree.lit.numbers[LitId tree[b].operand]
 
 proc openType*(tree: var TypeGraph; kind: NirTypeKind): TypePatchPos =
   assert kind in {APtrTy, UPtrTy, AArrayPtrTy, UArrayPtrTy,
@@ -226,6 +232,10 @@ proc nominalType*(tree: var TypeGraph; kind: NirTypeKind; name: string): TypeId 
 proc addNominalType*(tree: var TypeGraph; kind: NirTypeKind; name: string) =
   assert kind in {ObjectTy, UnionTy}
   tree.nodes.add TypeNode(x: toX(kind, tree.lit.strings.getOrIncl(name)))
+
+proc getTypeTag*(tree: TypeGraph; t: TypeId): string =
+  assert tree[t].kind in {ObjectTy, UnionTy}
+  result = tree.lit.strings[LitId tree[t].operand]
 
 proc addVarargs*(tree: var TypeGraph) =
   tree.nodes.add TypeNode(x: toX(VarargsTy, 0'u32))

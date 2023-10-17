@@ -41,16 +41,6 @@ const
 ## context; any in-memory results created from it are still usable, and
 ## should be cleaned up via gcc_jit_result_release.
 
-type
-  GContext* {.bycopy.} = object
-
-
-
-
-type
-  GResult* {.bycopy.} = object ## A gcc_jit_result encapsulates the result of an in-memory compilation.
-
-
 ## An object created within a context. Such objects are automatically
 ## cleaned up when the context is released.
 ##
@@ -73,136 +63,88 @@ type
 ##
 
 type
+  GContext* {.bycopy.} = object
+  GResult* {.bycopy.} = object ## A gcc_jit_result encapsulates the result of an in-memory compilation.
+
   GObject* {.bycopy.} = object
 
-
-## A gcc_jit_location encapsulates a source code location, so that
-## you can (optionally) associate locations in your language with
-## statements in the JIT-compiled code, allowing the debugger to
-## single-step through your language.
-##
-## Note that to do so, you also need to enable
-## GCC_JIT_BOOL_OPTION_DEBUGINFO
-## on the gcc_jit_context.
-##
-## gcc_jit_location instances are optional; you can always pass
-## NULL.
-
-type
-  GLocation* {.bycopy.} = object
-
-
-## A gcc_jit_type encapsulates a type e.g. "int" or a "struct foo*".
-
-type
-  GType* {.bycopy.} = object
-
-
-## A gcc_jit_field encapsulates a field within a struct; it is used
-## when creating a struct type (using gcc_jit_context_new_struct_type).
-## Fields cannot be shared between structs.
-
-type
-  Field* {.bycopy.} = object
-
-
-## A gcc_jit_struct encapsulates a struct type, either one that we have
-## the layout for, or an opaque type.
-
-type
-  Struct* {.bycopy.} = object
-
-
-## A gcc_jit_function_type encapsulates a function type.
-
-type
-  FunctionType* {.bycopy.} = object
-
-
-## A gcc_jit_vector_type encapsulates a vector type.
-
-type
-  VectorType* {.bycopy.} = object
-
-
-## A gcc_jit_function encapsulates a function: either one that you're
-## creating yourself, or a reference to one that you're dynamically
-## linking to within the rest of the process.
-
-type
-  Function* {.bycopy.} = object
-
-
-## A gcc_jit_block encapsulates a "basic block" of statements within a
-## function (i.e. with one entry point and one exit point).
-##
-## Every block within a function must be terminated with a conditional,
-## a branch, or a return.
-##
-## The blocks within a function form a directed graph.
-##
-## The entrypoint to the function is the first block created within
-## it.
-##
-## All of the blocks in a function must be reachable via some path from
-## the first block.
-##
-## It's OK to have more than one "return" from a function (i.e. multiple
-## blocks that terminate by returning).
-
-type
-  GBlock* {.bycopy.} = object
-
-
-## A gcc_jit_rvalue is an expression within your code, with some type.
-
-type
-  Rvalue* {.bycopy.} = object
-
-
-## A gcc_jit_lvalue is a storage location within your code (e.g. a
-## variable, a parameter, etc). It is also a gcc_jit_rvalue; use
-## gcc_jit_lvalue_as_rvalue to cast.
-
-type
-  Lvalue* {.bycopy.} = object
-
-
-## A gcc_jit_param is a function parameter, used when creating a
-## gcc_jit_function. It is also a gcc_jit_lvalue (and thus also an
-## rvalue); use gcc_jit_param_as_lvalue to convert.
-
-type
-  Param* {.bycopy.} = object
-
-
-## A gcc_jit_case is for use when building multiway branches via
-## gcc_jit_block_end_with_switch and represents a range of integer
-## values (or an individual integer value) together with an associated
-## destination block.
-
-type
-  GCase* {.bycopy.} = object
-
-
-## A gcc_jit_extended_asm represents an assembly language statement,
-## analogous to an extended "asm" statement in GCC's C front-end: a series
-## of low-level instructions inside a function that convert inputs to
-## outputs.
-
-type
-  ExtendedAsm* {.bycopy.} = object
-
-
-## Acquire a JIT-compilation context.
+  GLocation* {.bycopy.} = object ## \
+    ## A gcc_jit_location encapsulates a source code location, so that
+    ## you can (optionally) associate locations in your language with
+    ## statements in the JIT-compiled code, allowing the debugger to
+    ## single-step through your language.
+    ##
+    ## Note that to do so, you also need to enable
+    ## GCC_JIT_BOOL_OPTION_DEBUGINFO
+    ## on the gcc_jit_context.
+    ##
+    ## gcc_jit_location instances are optional; you can always pass
+    ## NULL.
+  GType* {.bycopy.} = object ## \
+    ## A gcc_jit_type encapsulates a type e.g. "int" or a "struct foo*".
+  Field* {.bycopy.} = object ## \
+    ## A gcc_jit_field encapsulates a field within a struct; it is used
+    ## when creating a struct type (using gcc_jit_context_new_struct_type).
+    ## Fields cannot be shared between structs.
+  Struct* {.bycopy.} = object ## \
+    ## A gcc_jit_struct encapsulates a struct type, either one that we have
+    ## the layout for, or an opaque type.
+  FunctionType* {.bycopy.} = object ## \
+    ## A gcc_jit_function_type encapsulates a function type.
+  VectorType* {.bycopy.} = object ## \
+    ## A gcc_jit_vector_type encapsulates a vector type.
+  Function* {.bycopy.} = object ## \
+    ## A gcc_jit_function encapsulates a function: either one that you're
+    ## creating yourself, or a reference to one that you're dynamically
+    ## linking to within the rest of the process.
+  GBlock* {.bycopy.} = object ## \
+    ## A gcc_jit_block encapsulates a "basic block" of statements within a
+    ## function (i.e. with one entry point and one exit point).
+    ##
+    ## Every block within a function must be terminated with a conditional,
+    ## a branch, or a return.
+    ##
+    ## The blocks within a function form a directed graph.
+    ##
+    ## The entrypoint to the function is the first block created within
+    ## it.
+    ##
+    ## All of the blocks in a function must be reachable via some path from
+    ## the first block.
+    ##
+    ## It's OK to have more than one "return" from a function (i.e. multiple
+    ## blocks that terminate by returning).
+  Rvalue* {.bycopy.} = object ## \
+    ## A gcc_jit_rvalue is an expression within your code, with some type.
+  Lvalue* {.bycopy.} = object ## \
+    ## A gcc_jit_lvalue is a storage location within your code (e.g. a
+    ## variable, a parameter, etc). It is also a gcc_jit_rvalue; use
+    ## gcc_jit_lvalue_as_rvalue to cast.
+  Param* {.bycopy.} = object ## \
+    ## A gcc_jit_param is a function parameter, used when creating a
+    ## gcc_jit_function. It is also a gcc_jit_lvalue (and thus also an
+    ## rvalue); use gcc_jit_param_as_lvalue to convert.
+  GCase* {.bycopy.} = object ## \
+    ## A gcc_jit_case is for use when building multiway branches via
+    ## gcc_jit_block_end_with_switch and represents a range of integer
+    ## values (or an individual integer value) together with an associated
+    ## destination block.
+  ExtendedAsm* {.bycopy.} = object ## \
+    ## A gcc_jit_extended_asm represents an assembly language statement,
+    ## analogous to an extended "asm" statement in GCC's C front-end: a series
+    ## of low-level instructions inside a function that convert inputs to
+    ## outputs.
 
 proc contextAcquire*(): ptr GContext {.cdecl, importc: "gcc_jit_context_acquire",
                                       dynlib: gccdll.}
-## Release the context. After this call, it's no longer valid to use
-## the ctxt.
+  ## Acquire a JIT-compilation context.
 
 proc contextRelease*(ctxt: ptr GContext) {.cdecl,
     importc: "gcc_jit_context_release", dynlib: gccdll.}
+  ## Release the context. After this call, it's no longer valid to use
+  ## the ctxt.
+
+
 ## Options present in the initial release of libgccjit.
 ## These were handled using enums.
 ## Options taking string values.
@@ -228,37 +170,37 @@ type
 ## These all default to "false".
 
 type
-  BoolOption* {.size: sizeof(cint).} = enum ## If true, gcc_jit_context_compile will attempt to do the right
+  BoolOption* {.size: sizeof(cint).} = enum  ## If true, gcc_jit_context_compile will attempt to do the right
                                              ## thing so that if you attach a debugger to the process, it will
                                              ## be able to inspect variables and step through your code.
                                              ##
                                              ## Note that you can't step through code unless you set up source
                                              ## location information for the code (by creating and passing in
                                              ## gcc_jit_location instances).
-    BOOL_OPTION_DEBUGINFO, ## If true, gcc_jit_context_compile will dump its initial "tree"
+    BOOL_OPTION_DEBUGINFO,  ## If true, gcc_jit_context_compile will dump its initial "tree"
                             ## representation of your code to stderr (before any
                             ## optimizations).
-    BOOL_OPTION_DUMP_INITIAL_TREE, ## If true, gcc_jit_context_compile will dump the "gimple"
+    BOOL_OPTION_DUMP_INITIAL_TREE,  ## If true, gcc_jit_context_compile will dump the "gimple"
                                     ## representation of your code to stderr, before any optimizations
                                     ## are performed. The dump resembles C code.
-    BOOL_OPTION_DUMP_INITIAL_GIMPLE, ## If true, gcc_jit_context_compile will dump the final
+    BOOL_OPTION_DUMP_INITIAL_GIMPLE,  ## If true, gcc_jit_context_compile will dump the final
                                       ## generated code to stderr, in the form of assembly language.
-    BOOL_OPTION_DUMP_GENERATED_CODE, ## If true, gcc_jit_context_compile will print information to stderr
+    BOOL_OPTION_DUMP_GENERATED_CODE,  ## If true, gcc_jit_context_compile will print information to stderr
                                       ## on the actions it is performing, followed by a profile showing
                                       ## the time taken and memory usage of each phase.
                                       ##
-    BOOL_OPTION_DUMP_SUMMARY, ## If true, gcc_jit_context_compile will dump copious
+    BOOL_OPTION_DUMP_SUMMARY,  ## If true, gcc_jit_context_compile will dump copious
                                ## amount of information on what it's doing to various
                                ## files within a temporary directory. Use
                                ## GCC_JIT_BOOL_OPTION_KEEP_INTERMEDIATES (see below) to
                                ## see the results. The files are intended to be human-readable,
                                ## but the exact files and their formats are subject to change.
                                ##
-    BOOL_OPTION_DUMP_EVERYTHING, ## If true, libgccjit will aggressively run its garbage collector, to
+    BOOL_OPTION_DUMP_EVERYTHING,  ## If true, libgccjit will aggressively run its garbage collector, to
                                   ## shake out bugs (greatly slowing down the compile). This is likely
                                   ## to only be of interest to developers *of* the library. It is
                                   ## used when running the selftest suite.
-    BOOL_OPTION_SELFCHECK_GC, ## If true, gcc_jit_context_release will not clean up
+    BOOL_OPTION_SELFCHECK_GC,  ## If true, gcc_jit_context_release will not clean up
                                ## intermediate files written to the filesystem, and will display
                                ## their location on stderr.
     BOOL_OPTION_KEEP_INTERMEDIATES, NUM_BOOL_OPTIONS
@@ -338,122 +280,116 @@ proc contextSetBoolPrintErrorsToStderr*(ctxt: ptr GContext; enabled: cint) {.
 proc contextSetBoolUseExternalDriver*(ctxt: ptr GContext; boolValue: cint) {.
     cdecl, importc: "gcc_jit_context_set_bool_use_external_driver",
     dynlib: gccdll.}
-## Pre-canned feature macro to indicate the presence of
-## gcc_jit_context_set_bool_use_external_driver. This can be
-## tested for with #ifdef.
-
-## Add an arbitrary gcc command-line option to the context.
-## The context takes a copy of the string, so the
-## (const char *) optname is not needed anymore after the call
-## returns.
-##
-## Note that only some options are likely to be meaningful; there is no
-## "frontend" within libgccjit, so typically only those affecting
-## optimization and code-generation are likely to be useful.
-##
-## This entrypoint was added in LIBGCCJIT_ABI_1; you can test for
-## its presence using
-## #ifdef LIBGCCJIT_HAVE_gcc_jit_context_add_command_line_option
-##
 
 proc contextAddCommandLineOption*(ctxt: ptr GContext; optname: cstring) {.cdecl,
     importc: "gcc_jit_context_add_command_line_option", dynlib: gccdll.}
-## Pre-canned feature-test macro for detecting the presence of
-## gcc_jit_context_add_command_line_option within libgccjit.h.
+  ## Add an arbitrary gcc command-line option to the context.
+  ## The context takes a copy of the string, so the
+  ## (const char *) optname is not needed anymore after the call
+  ## returns.
+  ##
+  ## Note that only some options are likely to be meaningful; there is no
+  ## "frontend" within libgccjit, so typically only those affecting
+  ## optimization and code-generation are likely to be useful.
+  ##
+  ## This entrypoint was added in LIBGCCJIT_ABI_1; you can test for
+  ## its presence using
+  ## #ifdef LIBGCCJIT_HAVE_gcc_jit_context_add_command_line_option
 
-## Add an arbitrary gcc driver option to the context.
-## The context takes a copy of the string, so the
-## (const char *) optname is not needed anymore after the call
-## returns.
-##
-## Note that only some options are likely to be meaningful; there is no
-## "frontend" within libgccjit, so typically only those affecting
-## assembler and linker are likely to be useful.
-##
-## This entrypoint was added in LIBGCCJIT_ABI_11; you can test for
-## its presence using
-## #ifdef LIBGCCJIT_HAVE_gcc_jit_context_add_driver_option
-##
 
 proc contextAddDriverOption*(ctxt: ptr GContext; optname: cstring) {.cdecl,
     importc: "gcc_jit_context_add_driver_option", dynlib: gccdll.}
-## Pre-canned feature-test macro for detecting the presence of
-## gcc_jit_context_add_driver_option within libgccjit.h.
+  ## Add an arbitrary gcc driver option to the context.
+  ## The context takes a copy of the string, so the
+  ## (const char *) optname is not needed anymore after the call
+  ## returns.
+  ##
+  ## Note that only some options are likely to be meaningful; there is no
+  ## "frontend" within libgccjit, so typically only those affecting
+  ## assembler and linker are likely to be useful.
+  ##
+  ## This entrypoint was added in LIBGCCJIT_ABI_11; you can test for
+  ## its presence using
+  ## #ifdef LIBGCCJIT_HAVE_gcc_jit_context_add_driver_option
 
-## Compile the context to in-memory machine code.
-##
-## This can be called more that once on a given context,
-## although any errors that occur will block further compilation.
 
 proc contextCompile*(ctxt: ptr GContext): ptr GResult {.cdecl,
     importc: "gcc_jit_context_compile", dynlib: gccdll.}
-## Kinds of ahead-of-time compilation, for use with
-## gcc_jit_context_compile_to_file.
+  ## Compile the context to in-memory machine code.
+  ##
+  ## This can be called more that once on a given context,
+  ## although any errors that occur will block further compilation.
 
 type
-  OutputKind* {.size: sizeof(cint).} = enum ## Compile the context to an assembler file.
-    OUTPUT_KIND_ASSEMBLER,  ## Compile the context to an object file.
-    OUTPUT_KIND_OBJECT_FILE, ## Compile the context to a dynamic library.
-    OUTPUT_KIND_DYNAMIC_LIBRARY, ## Compile the context to an executable.
-    OUTPUT_KIND_EXECUTABLE
-
-
-## Compile the context to a file of the given kind.
-##
-## This can be called more that once on a given context,
-## although any errors that occur will block further compilation.
+  OutputKind* {.size: sizeof(cint).} = enum ## Kinds of ahead-of-time compilation, for use with
+                                            ## gcc_jit_context_compile_to_file.
+    OUTPUT_KIND_ASSEMBLER, ## Compile the context to an assembler file.
+    OUTPUT_KIND_OBJECT_FILE, ## Compile the context to an object file.
+    OUTPUT_KIND_DYNAMIC_LIBRARY, ## Compile the context to a dynamic library.
+    OUTPUT_KIND_EXECUTABLE ## Compile the context to an executable.
 
 proc contextCompileToFile*(ctxt: ptr GContext; outputKind: OutputKind;
                            outputPath: cstring) {.cdecl,
     importc: "gcc_jit_context_compile_to_file", dynlib: gccdll.}
-## To help with debugging: dump a C-like representation to the given path,
-## describing what's been set up on the context.
-##
-## If "update_locations" is true, then also set up gcc_jit_location
-## information throughout the context, pointing at the dump file as if it
-## were a source file. This may be of use in conjunction with
-## GCC_JIT_BOOL_OPTION_DEBUGINFO to allow stepping through the code in a
-## debugger.
+  ## Compile the context to a file of the given kind.
+  ##
+  ## This can be called more that once on a given context,
+  ## although any errors that occur will block further compilation.
 
 proc contextDumpToFile*(ctxt: ptr GContext; path: cstring; updateLocations: cint) {.
     cdecl, importc: "gcc_jit_context_dump_to_file", dynlib: gccdll.}
-## To help with debugging; enable ongoing logging of the context's
-## activity to the given FILE *.
-##
-## The caller remains responsible for closing "logfile".
-##
-## Params "flags" and "verbosity" are reserved for future use, and
-## must both be 0 for now.
+  ## To help with debugging: dump a C-like representation to the given path,
+  ## describing what's been set up on the context.
+  ##
+  ## If "update_locations" is true, then also set up gcc_jit_location
+  ## information throughout the context, pointing at the dump file as if it
+  ## were a source file. This may be of use in conjunction with
+  ## GCC_JIT_BOOL_OPTION_DEBUGINFO to allow stepping through the code in a
+  ## debugger.
+
 
 proc contextSetLogfile*(ctxt: ptr GContext; logfile: ptr File; flags: cint;
                         verbosity: cint) {.cdecl,
     importc: "gcc_jit_context_set_logfile", dynlib: gccdll.}
-## To be called after any API call, this gives the first error message
-## that occurred on the context.
-##
-## The returned string is valid for the rest of the lifetime of the
-## context.
-##
-## If no errors occurred, this will be NULL.
+  ## To help with debugging; enable ongoing logging of the context's
+  ## activity to the given FILE *.
+  ##
+  ## The caller remains responsible for closing "logfile".
+  ##
+  ## Params "flags" and "verbosity" are reserved for future use, and
+  ## must both be 0 for now.
+
 
 proc contextGetFirstError*(ctxt: ptr GContext): cstring {.cdecl,
     importc: "gcc_jit_context_get_first_error", dynlib: gccdll.}
-## To be called after any API call, this gives the last error message
-## that occurred on the context.
-##
-## If no errors occurred, this will be NULL.
-##
-## If non-NULL, the returned string is only guaranteed to be valid until
-## the next call to libgccjit relating to this context.
+  ## To be called after any API call, this gives the first error message
+  ## that occurred on the context.
+  ##
+  ## The returned string is valid for the rest of the lifetime of the
+  ## context.
+  ##
+  ## If no errors occurred, this will be NULL.
+
 
 proc contextGetLastError*(ctxt: ptr GContext): cstring {.cdecl,
     importc: "gcc_jit_context_get_last_error", dynlib: gccdll.}
-## Locate a given function within the built machine code.
-## This will need to be cast to a function pointer of the
-## correct type before it can be called.
+  ## To be called after any API call, this gives the last error message
+  ## that occurred on the context.
+  ##
+  ## If no errors occurred, this will be NULL.
+  ##
+  ## If non-NULL, the returned string is only guaranteed to be valid until
+  ## the next call to libgccjit relating to this context.
+
+
 
 proc resultGetCode*(result: ptr GResult; funcname: cstring): pointer {.cdecl,
     importc: "gcc_jit_result_get_code", dynlib: gccdll.}
+  ## Locate a given function within the built machine code.
+  ## This will need to be cast to a function pointer of the
+  ## correct type before it can be called.
+
+
 ## Locate a given global within the built machine code.
 ## It must have been created using GCC_JIT_GLOBAL_EXPORTED.
 ## This is a ptr to the global, so e.g. for an int this is an int *.
@@ -514,7 +450,6 @@ proc locationAsObject*(loc: ptr GLocation): ptr GObject {.cdecl,
 
 proc typeAsObject*(`type`: ptr GType): ptr GObject {.cdecl,
     importc: "gcc_jit_type_as_object", dynlib: gccdll.}
-## Access to specific types.
 
 type
   Types* {.size: sizeof(cint).} = enum ## C's "void" type.
@@ -544,190 +479,195 @@ type
 
 proc contextGetType*(ctxt: ptr GContext; `type`: Types): ptr GType {.cdecl,
     importc: "gcc_jit_context_get_type", dynlib: gccdll.}
-## Get the integer type of the given size and signedness.
+  ## Access to specific types.
 
 proc contextGetIntType*(ctxt: ptr GContext; numBytes: cint; isSigned: cint): ptr GType {.
     cdecl, importc: "gcc_jit_context_get_int_type", dynlib: gccdll.}
-## Constructing new types.
-## Given type "T", get type "T*".
+  ## Get the integer type of the given size and signedness.
+
 
 proc typeGetPointer*(`type`: ptr GType): ptr GType {.cdecl,
     importc: "gcc_jit_type_get_pointer", dynlib: gccdll.}
-## Given type "T", get type "const T".
+  ## Constructing new types.
+  ## Given type "T", get type "T*".
 
 proc typeGetConst*(`type`: ptr GType): ptr GType {.cdecl,
     importc: "gcc_jit_type_get_const", dynlib: gccdll.}
-## Given type "T", get type "volatile T".
+  ## Given type "T", get type "const T".
 
 proc typeGetVolatile*(`type`: ptr GType): ptr GType {.cdecl,
     importc: "gcc_jit_type_get_volatile", dynlib: gccdll.}
-## Given types LTYPE and RTYPE, return non-zero if they are compatible.
-## This API entrypoint was added in LIBGCCJIT_ABI_20; you can test for its
-## presence using
-## #ifdef LIBGCCJIT_HAVE_SIZED_INTEGERS
+  ## Given type "T", get type "volatile T".
 
 proc compatibleTypes*(ltype: ptr GType; rtype: ptr GType): cint {.cdecl,
     importc: "gcc_jit_compatible_types", dynlib: gccdll.}
-## Given type "T", get its size.
-## This API entrypoint was added in LIBGCCJIT_ABI_20; you can test for its
-## presence using
-## #ifdef LIBGCCJIT_HAVE_SIZED_INTEGERS
+  ## Given types LTYPE and RTYPE, return non-zero if they are compatible.
+  ## This API entrypoint was added in LIBGCCJIT_ABI_20; you can test for its
+  ## presence using
+  ## #ifdef LIBGCCJIT_HAVE_SIZED_INTEGERS
 
 proc typeGetSize*(`type`: ptr GType): int {.cdecl,
     importc: "gcc_jit_type_get_size", dynlib: gccdll.}
-## Given type "T", get type "T[N]" (for a constant N).
+  ## Given type "T", get its size.
+  ## This API entrypoint was added in LIBGCCJIT_ABI_20; you can test for its
+  ## presence using
+  ## #ifdef LIBGCCJIT_HAVE_SIZED_INTEGERS
+
 
 proc contextNewArrayType*(ctxt: ptr GContext; loc: ptr GLocation;
                           elementType: ptr GType; numElements: cint): ptr GType {.
     cdecl, importc: "gcc_jit_context_new_array_type", dynlib: gccdll.}
-## Struct-handling.
-## Create a field, for use within a struct or union.
+  ## Given type "T", get type "T[N]" (for a constant N).
 
 proc contextNewField*(ctxt: ptr GContext; loc: ptr GLocation; `type`: ptr GType;
                       name: cstring): ptr Field {.cdecl,
     importc: "gcc_jit_context_new_field", dynlib: gccdll.}
-## Create a bit field, for use within a struct or union.
-##
-## This API entrypoint was added in LIBGCCJIT_ABI_12; you can test for its
-## presence using
-## #ifdef LIBGCCJIT_HAVE_gcc_jit_context_new_bitfield
-##
+  ## Struct-handling.
+  ## Create a field, for use within a struct or union.
 
 proc contextNewBitfield*(ctxt: ptr GContext; loc: ptr GLocation; `type`: ptr GType;
                          width: cint; name: cstring): ptr Field {.cdecl,
     importc: "gcc_jit_context_new_bitfield", dynlib: gccdll.}
-## Upcasting from field to object.
+  ## Create a bit field, for use within a struct or union.
+  ##
+  ## This API entrypoint was added in LIBGCCJIT_ABI_12; you can test for its
+  ## presence using
+  ## #ifdef LIBGCCJIT_HAVE_gcc_jit_context_new_bitfield
 
 proc fieldAsObject*(field: ptr Field): ptr GObject {.cdecl,
     importc: "gcc_jit_field_as_object", dynlib: gccdll.}
-## Create a struct type from an array of fields.
+  ## Upcasting from field to object.
 
 proc contextNewStructType*(ctxt: ptr GContext; loc: ptr GLocation; name: cstring;
                            numFields: cint; fields: ptr ptr Field): ptr Struct {.
     cdecl, importc: "gcc_jit_context_new_struct_type", dynlib: gccdll.}
-## Create an opaque struct type.
+  ## Create a struct type from an array of fields.
 
 proc contextNewOpaqueStruct*(ctxt: ptr GContext; loc: ptr GLocation; name: cstring): ptr Struct {.
     cdecl, importc: "gcc_jit_context_new_opaque_struct", dynlib: gccdll.}
-## Upcast a struct to a type.
+  ## Create an opaque struct type.
 
 proc structAsType*(structType: ptr Struct): ptr GType {.cdecl,
     importc: "gcc_jit_struct_as_type", dynlib: gccdll.}
-## Populating the fields of a formerly-opaque struct type.
-## This can only be called once on a given struct type.
+  ## Upcast a struct to a type.
+
 
 proc structSetFields*(structType: ptr Struct; loc: ptr GLocation;
                       numFields: cint; fields: ptr ptr Field) {.cdecl,
     importc: "gcc_jit_struct_set_fields", dynlib: gccdll.}
-## Get a field by index.
+  ## Populating the fields of a formerly-opaque struct type.
+  ## This can only be called once on a given struct type.
+
 
 proc structGetField*(structType: ptr Struct; index: csize_t): ptr Field {.cdecl,
     importc: "gcc_jit_struct_get_field", dynlib: gccdll.}
-## Get the number of fields.
+  ## Get a field by index.
+
 
 proc structGetFieldCount*(structType: ptr Struct): csize_t {.cdecl,
     importc: "gcc_jit_struct_get_field_count", dynlib: gccdll.}
-## Unions work similarly to structs.
+  ## Get the number of fields.
 
 proc contextNewUnionType*(ctxt: ptr GContext; loc: ptr GLocation; name: cstring;
                           numFields: cint; fields: ptr ptr Field): ptr GType {.
     cdecl, importc: "gcc_jit_context_new_union_type", dynlib: gccdll.}
-## Function pointers.
+  ## Unions work similarly to structs.
 
 proc contextNewFunctionPtrType*(ctxt: ptr GContext; loc: ptr GLocation;
                                 returnType: ptr GType; numParams: cint;
-                                paramTypes: ptr ptr GType; isVariadic: cint): ptr GType {.
+                                paramTypes: ptr UncheckedArry[ptr GType]; isVariadic: cint): ptr GType {.
     cdecl, importc: "gcc_jit_context_new_function_ptr_type", dynlib: gccdll.}
+  ## Function pointers.
+
+
 ## ********************************************************************
 ## Constructing functions.
 ## ********************************************************************
-## Create a function param.
 
 proc contextNewParam*(ctxt: ptr GContext; loc: ptr GLocation; `type`: ptr GType;
                       name: cstring): ptr Param {.cdecl,
     importc: "gcc_jit_context_new_param", dynlib: gccdll.}
-## Upcasting from param to object.
+  ## Create a function param.
 
 proc paramAsObject*(param: ptr Param): ptr GObject {.cdecl,
     importc: "gcc_jit_param_as_object", dynlib: gccdll.}
-## Upcasting from param to lvalue.
+  ## Upcasting from param to object.
+
 
 proc paramAsLvalue*(param: ptr Param): ptr Lvalue {.cdecl,
     importc: "gcc_jit_param_as_lvalue", dynlib: gccdll.}
-## Upcasting from param to rvalue.
+  ## Upcasting from param to lvalue.
+
 
 proc paramAsRvalue*(param: ptr Param): ptr Rvalue {.cdecl,
     importc: "gcc_jit_param_as_rvalue", dynlib: gccdll.}
-## Kinds of function.
+  ## Upcasting from param to rvalue.
 
 type
-  FunctionKind* {.size: sizeof(cint).} = enum ## Function is defined by the client code and visible
-                                               ## by name outside of the JIT.
-    FUNCTION_EXPORTED, ## Function is defined by the client code, but is invisible
+  FunctionKind* {.size: sizeof(cint).} = enum ## Kinds of function.
+    FUNCTION_EXPORTED,  ## Function is defined by the client code and visible
+                        ## by name outside of the JIT.
+    FUNCTION_INTERNAL,  ## Function is defined by the client code, but is invisible
                         ## outside of the JIT. Analogous to a "static" function.
-    FUNCTION_INTERNAL, ## Function is not defined by the client code; we're merely
+    FUNCTION_IMPORTED,  ## Function is not defined by the client code; we're merely
                         ## referring to it. Analogous to using an "extern" function from a
                         ## header file.
-    FUNCTION_IMPORTED, ## Function is only ever inlined into other functions, and is
-                        ## invisible outside of the JIT.
-                        ##
-                        ## Analogous to prefixing with "inline" and adding
-                        ## __attribute__((always_inline)).
-                        ##
-                        ## Inlining will only occur when the optimization level is
-                        ## above 0; when optimization is off, this is essentially the
-                        ## same as GCC_JIT_FUNCTION_INTERNAL.
-    FUNCTION_ALWAYS_INLINE
-
-
-## Thread local storage model.
+    FUNCTION_ALWAYS_INLINE ## Function is only ever inlined into other functions, and is
+                           ## invisible outside of the JIT.
+                           ##
+                           ## Analogous to prefixing with "inline" and adding
+                           ## __attribute__((always_inline)).
+                           ##
+                           ## Inlining will only occur when the optimization level is
+                           ## above 0; when optimization is off, this is essentially the
+                           ## same as GCC_JIT_FUNCTION_INTERNAL.
 
 type
-  TlsModel* {.size: sizeof(cint).} = enum
+  TlsModel* {.size: sizeof(cint).} = enum ## Thread local storage model.
     TLS_MODEL_NONE, TLS_MODEL_GLOBAL_DYNAMIC, TLS_MODEL_LOCAL_DYNAMIC,
     TLS_MODEL_INITIAL_EXEC, TLS_MODEL_LOCAL_EXEC
-
-
-## Create a function.
 
 proc contextNewFunction*(ctxt: ptr GContext; loc: ptr GLocation;
                          kind: FunctionKind; returnType: ptr GType;
                          name: cstring; numParams: cint; params: ptr ptr Param;
                          isVariadic: cint): ptr Function {.cdecl,
     importc: "gcc_jit_context_new_function", dynlib: gccdll.}
-## Create a reference to a builtin function (sometimes called
-## intrinsic functions).
+  ## Create a function.
 
 proc contextGetBuiltinFunction*(ctxt: ptr GContext; name: cstring): ptr Function {.
     cdecl, importc: "gcc_jit_context_get_builtin_function", dynlib: gccdll.}
-## Upcasting from function to object.
+  ## Create a reference to a builtin function (sometimes called
+  ## intrinsic functions).
 
 proc functionAsObject*(`func`: ptr Function): ptr GObject {.cdecl,
     importc: "gcc_jit_function_as_object", dynlib: gccdll.}
-## Get a specific param of a function by index.
+  ## Upcasting from function to object.
 
 proc functionGetParam*(`func`: ptr Function; index: cint): ptr Param {.cdecl,
     importc: "gcc_jit_function_get_param", dynlib: gccdll.}
-## Emit the function in graphviz format.
+  ## Get a specific param of a function by index.
 
 proc functionDumpToDot*(`func`: ptr Function; path: cstring) {.cdecl,
     importc: "gcc_jit_function_dump_to_dot", dynlib: gccdll.}
-## Create a block.
-##
-## The name can be NULL, or you can give it a meaningful name, which
-## may show up in dumps of the internal representation, and in error
-## messages.
+  ## Emit the function in graphviz format.
 
 proc functionNewBlock*(`func`: ptr Function; name: cstring): ptr GBlock {.cdecl,
     importc: "gcc_jit_function_new_block", dynlib: gccdll.}
-## Upcasting from block to object.
+  ## Create a block.
+  ##
+  ## The name can be NULL, or you can give it a meaningful name, which
+  ## may show up in dumps of the internal representation, and in error
+  ## messages.
+
 
 proc blockAsObject*(`block`: ptr GBlock): ptr GObject {.cdecl,
     importc: "gcc_jit_block_as_object", dynlib: gccdll.}
-## Which function is this block within?
+  ## Upcasting from block to object.
 
 proc blockGetFunction*(`block`: ptr GBlock): ptr Function {.cdecl,
     importc: "gcc_jit_block_get_function", dynlib: gccdll.}
+  ## Which function is this block within?
+
 ## ********************************************************************
 ## lvalues, rvalues and expressions.
 ## ********************************************************************
@@ -746,155 +686,159 @@ type
 proc contextNewGlobal*(ctxt: ptr GContext; loc: ptr GLocation; kind: GlobalKind;
                        `type`: ptr GType; name: cstring): ptr Lvalue {.cdecl,
     importc: "gcc_jit_context_new_global", dynlib: gccdll.}
-## Create a constructor for a struct as an rvalue.
-##
-## Returns NULL on error. The two parameter arrays are copied and
-## do not have to outlive the context.
-##
-## `type` specifies what the constructor will build and has to be
-## a struct.
-##
-## `num_values` specifies the number of elements in `values`.
-##
-## `fields` need to have the same length as `values`, or be NULL.
-##
-## If `fields` is null, the values are applied in definition order.
-##
-## Otherwise, each field in `fields` specifies which field in the struct to
-## set to the corresponding value in `values`. `fields` and `values`
-## are paired by index.
-##
-## Each value has to have the same unqualified type as the field
-## it is applied to.
-##
-## A NULL value element  in `values` is a shorthand for zero initialization
-## of the corresponding field.
-##
-## The fields in `fields` have to be in definition order, but there
-## can be gaps. Any field in the struct that is not specified in
-## `fields` will be zeroed.
-##
-## The fields in `fields` need to be the same objects that were used
-## to create the struct.
-##
-## If `num_values` is 0, the array parameters will be
-## ignored and zero initialization will be used.
-##
-## The constructor rvalue can be used for assignment to locals.
-## It can be used to initialize global variables with
-## gcc_jit_global_set_initializer_rvalue. It can also be used as a
-## temporary value for function calls and return values.
-##
-## The constructor can contain nested constructors.
-##
-## This entrypoint was added in LIBGCCJIT_ABI_19; you can test for its
-## presence using:
-## #ifdef LIBGCCJIT_HAVE_CTORS
-##
 
 proc contextNewStructConstructor*(ctxt: ptr GContext; loc: ptr GLocation;
                                   `type`: ptr GType; numValues: csize_t;
                                   fields: ptr ptr Field; values: ptr ptr Rvalue): ptr Rvalue {.
     cdecl, importc: "gcc_jit_context_new_struct_constructor", dynlib: gccdll.}
-## Create a constructor for a union as an rvalue.
-##
-## Returns NULL on error.
-##
-## `type` specifies what the constructor will build and has to be
-## an union.
-##
-## `field` specifies which field to set. If it is NULL, the first
-## field in the union will be set. `field` need to be the same
-## object that were used to create the union.
-##
-## `value` specifies what value to set the corresponding field to.
-## If `value` is NULL, zero initialization will be used.
-##
-## Each value has to have the same unqualified type as the field
-## it is applied to.
-##
-## `field` need to be the same objects that were used
-## to create the union.
-##
-## The constructor rvalue can be used for assignment to locals.
-## It can be used to initialize global variables with
-## gcc_jit_global_set_initializer_rvalue. It can also be used as a
-## temporary value for function calls and return values.
-##
-## The constructor can contain nested constructors.
-##
-## This entrypoint was added in LIBGCCJIT_ABI_19; you can test for its
-## presence using:
-## #ifdef LIBGCCJIT_HAVE_CTORS
-##
+  ## Create a constructor for a struct as an rvalue.
+  ##
+  ## Returns NULL on error. The two parameter arrays are copied and
+  ## do not have to outlive the context.
+  ##
+  ## `type` specifies what the constructor will build and has to be
+  ## a struct.
+  ##
+  ## `num_values` specifies the number of elements in `values`.
+  ##
+  ## `fields` need to have the same length as `values`, or be NULL.
+  ##
+  ## If `fields` is null, the values are applied in definition order.
+  ##
+  ## Otherwise, each field in `fields` specifies which field in the struct to
+  ## set to the corresponding value in `values`. `fields` and `values`
+  ## are paired by index.
+  ##
+  ## Each value has to have the same unqualified type as the field
+  ## it is applied to.
+  ##
+  ## A NULL value element  in `values` is a shorthand for zero initialization
+  ## of the corresponding field.
+  ##
+  ## The fields in `fields` have to be in definition order, but there
+  ## can be gaps. Any field in the struct that is not specified in
+  ## `fields` will be zeroed.
+  ##
+  ## The fields in `fields` need to be the same objects that were used
+  ## to create the struct.
+  ##
+  ## If `num_values` is 0, the array parameters will be
+  ## ignored and zero initialization will be used.
+  ##
+  ## The constructor rvalue can be used for assignment to locals.
+  ## It can be used to initialize global variables with
+  ## gcc_jit_global_set_initializer_rvalue. It can also be used as a
+  ## temporary value for function calls and return values.
+  ##
+  ## The constructor can contain nested constructors.
+  ##
+  ## This entrypoint was added in LIBGCCJIT_ABI_19; you can test for its
+  ## presence using:
+  ## #ifdef LIBGCCJIT_HAVE_CTORS
+  ##
+
 
 proc contextNewUnionConstructor*(ctxt: ptr GContext; loc: ptr GLocation;
                                  `type`: ptr GType; field: ptr Field;
                                  value: ptr Rvalue): ptr Rvalue {.cdecl,
     importc: "gcc_jit_context_new_union_constructor", dynlib: gccdll.}
-## Create a constructor for an array as an rvalue.
-##
-## Returns NULL on error. `values` are copied and
-## do not have to outlive the context.
-##
-## `type` specifies what the constructor will build and has to be
-## an array.
-##
-## `num_values` specifies the number of elements in `values` and
-## it can't have more elements than the array type.
-##
-## Each value in `values` sets the corresponding value in the array.
-## If the array type itself has more elements than `values`, the
-## left-over elements will be zeroed.
-##
-## Each value in `values` need to be the same unqualified type as the
-## array type's element type.
-##
-## If `num_values` is 0, the `values` parameter will be
-## ignored and zero initialization will be used.
-##
-## Note that a string literal rvalue can't be used to construct a char
-## array. It needs one rvalue for each char.
-##
-## This entrypoint was added in LIBGCCJIT_ABI_19; you can test for its
-## presence using:
-## #ifdef LIBGCCJIT_HAVE_CTORS
-##
+  ## Create a constructor for a union as an rvalue.
+  ##
+  ## Returns NULL on error.
+  ##
+  ## `type` specifies what the constructor will build and has to be
+  ## an union.
+  ##
+  ## `field` specifies which field to set. If it is NULL, the first
+  ## field in the union will be set. `field` need to be the same
+  ## object that were used to create the union.
+  ##
+  ## `value` specifies what value to set the corresponding field to.
+  ## If `value` is NULL, zero initialization will be used.
+  ##
+  ## Each value has to have the same unqualified type as the field
+  ## it is applied to.
+  ##
+  ## `field` need to be the same objects that were used
+  ## to create the union.
+  ##
+  ## The constructor rvalue can be used for assignment to locals.
+  ## It can be used to initialize global variables with
+  ## gcc_jit_global_set_initializer_rvalue. It can also be used as a
+  ## temporary value for function calls and return values.
+  ##
+  ## The constructor can contain nested constructors.
+  ##
+  ## This entrypoint was added in LIBGCCJIT_ABI_19; you can test for its
+  ## presence using:
+  ## #ifdef LIBGCCJIT_HAVE_CTORS
+  ##
 
 proc contextNewArrayConstructor*(ctxt: ptr GContext; loc: ptr GLocation;
                                  `type`: ptr GType; numValues: csize_t;
                                  values: ptr ptr Rvalue): ptr Rvalue {.cdecl,
     importc: "gcc_jit_context_new_array_constructor", dynlib: gccdll.}
-## Set the initial value of a global of any type with an rvalue.
-##
-## The rvalue needs to be a constant expression, e.g. no function calls.
-##
-## The global can't have the 'kind' GCC_JIT_GLOBAL_IMPORTED.
-##
-## Use together with gcc_jit_context_new_constructor () to
-## initialize structs, unions and arrays.
-##
-## On success, returns the 'global' parameter unchanged. Otherwise, NULL.
-##
-## 'values' is copied and does not have to outlive the context.
-##
-## This entrypoint was added in LIBGCCJIT_ABI_19; you can test for its
-## presence using:
-## #ifdef LIBGCCJIT_HAVE_CTORS
-##
+  ## Create a constructor for an array as an rvalue.
+  ##
+  ## Returns NULL on error. `values` are copied and
+  ## do not have to outlive the context.
+  ##
+  ## `type` specifies what the constructor will build and has to be
+  ## an array.
+  ##
+  ## `num_values` specifies the number of elements in `values` and
+  ## it can't have more elements than the array type.
+  ##
+  ## Each value in `values` sets the corresponding value in the array.
+  ## If the array type itself has more elements than `values`, the
+  ## left-over elements will be zeroed.
+  ##
+  ## Each value in `values` need to be the same unqualified type as the
+  ## array type's element type.
+  ##
+  ## If `num_values` is 0, the `values` parameter will be
+  ## ignored and zero initialization will be used.
+  ##
+  ## Note that a string literal rvalue can't be used to construct a char
+  ## array. It needs one rvalue for each char.
+  ##
+  ## This entrypoint was added in LIBGCCJIT_ABI_19; you can test for its
+  ## presence using:
+  ## #ifdef LIBGCCJIT_HAVE_CTORS
+  ##
+
 
 proc globalSetInitializerRvalue*(global: ptr Lvalue; initValue: ptr Rvalue): ptr Lvalue {.
     cdecl, importc: "gcc_jit_global_set_initializer_rvalue", dynlib: gccdll.}
-## Set an initial value for a global, which must be an array of
-## integral type. Return the global itself.
-##
-## This API entrypoint was added in LIBGCCJIT_ABI_14; you can test for its
-## presence using
-## #ifdef LIBGCCJIT_HAVE_gcc_jit_global_set_initializer
-##
+  ## Set the initial value of a global of any type with an rvalue.
+  ##
+  ## The rvalue needs to be a constant expression, e.g. no function calls.
+  ##
+  ## The global can't have the 'kind' GCC_JIT_GLOBAL_IMPORTED.
+  ##
+  ## Use together with gcc_jit_context_new_constructor () to
+  ## initialize structs, unions and arrays.
+  ##
+  ## On success, returns the 'global' parameter unchanged. Otherwise, NULL.
+  ##
+  ## 'values' is copied and does not have to outlive the context.
+  ##
+  ## This entrypoint was added in LIBGCCJIT_ABI_19; you can test for its
+  ## presence using:
+  ## #ifdef LIBGCCJIT_HAVE_CTORS
+  ##
+
+
 
 proc globalSetInitializer*(global: ptr Lvalue; blob: pointer; numBytes: csize_t): ptr Lvalue {.
     cdecl, importc: "gcc_jit_global_set_initializer", dynlib: gccdll.}
+  ## Set an initial value for a global, which must be an array of
+  ## integral type. Return the global itself.
+  ##
+  ## This API entrypoint was added in LIBGCCJIT_ABI_14; you can test for its
+  ## presence using
+  ## #ifdef LIBGCCJIT_HAVE_gcc_jit_global_set_initializer
+
 ## Upcasting.
 
 proc lvalueAsObject*(lvalue: ptr Lvalue): ptr GObject {.cdecl,
@@ -917,11 +861,15 @@ proc contextZero*(ctxt: ptr GContext; numericType: ptr GType): ptr Rvalue {.cdec
     importc: "gcc_jit_context_zero", dynlib: gccdll.}
 proc contextOne*(ctxt: ptr GContext; numericType: ptr GType): ptr Rvalue {.cdecl,
     importc: "gcc_jit_context_one", dynlib: gccdll.}
+
+
 ## Floating-point constants.
 
 proc contextNewRvalueFromDouble*(ctxt: ptr GContext; numericType: ptr GType;
                                  value: cdouble): ptr Rvalue {.cdecl,
     importc: "gcc_jit_context_new_rvalue_from_double", dynlib: gccdll.}
+
+
 ## Pointers.
 
 proc contextNewRvalueFromPtr*(ctxt: ptr GContext; pointerType: ptr GType;
@@ -954,6 +902,7 @@ type
 proc contextNewUnaryOp*(ctxt: ptr GContext; loc: ptr GLocation; op: UnaryOp;
                         resultType: ptr GType; rvalue: ptr Rvalue): ptr Rvalue {.
     cdecl, importc: "gcc_jit_context_new_unary_op", dynlib: gccdll.}
+
 type
   BinaryOp* {.size: sizeof(cint).} = enum ## Addition of arithmetic values; analogous to:
                                            ## (EXPR_A) + (EXPR_B)
@@ -1001,17 +950,18 @@ type
 proc contextNewBinaryOp*(ctxt: ptr GContext; loc: ptr GLocation; op: BinaryOp;
                          resultType: ptr GType; a: ptr Rvalue; b: ptr Rvalue): ptr Rvalue {.
     cdecl, importc: "gcc_jit_context_new_binary_op", dynlib: gccdll.}
-## (Comparisons are treated as separate from "binary_op" to save
-## you having to specify the result_type).
+
 
 type
-  Comparison* {.size: sizeof(cint).} = enum ## (EXPR_A) == (EXPR_B).
-    COMPARISON_EQ,          ## (EXPR_A) != (EXPR_B).
-    COMPARISON_NE,          ## (EXPR_A) < (EXPR_B).
-    COMPARISON_LT,          ## (EXPR_A) <=(EXPR_B).
-    COMPARISON_LE,          ## (EXPR_A) > (EXPR_B).
-    COMPARISON_GT,          ## (EXPR_A) >= (EXPR_B).
-    COMPARISON_GE
+  Comparison* {.size: sizeof(cint).} = enum ## \
+    ## (Comparisons are treated as separate from "binary_op" to save
+    ## you having to specify the result_type).
+    COMPARISON_EQ, ## (EXPR_A) == (EXPR_B).
+    COMPARISON_NE, ## (EXPR_A) != (EXPR_B).
+    COMPARISON_LT, ## (EXPR_A) < (EXPR_B).
+    COMPARISON_LE, ## (EXPR_A) <=(EXPR_B).
+    COMPARISON_GT, ## (EXPR_A) > (EXPR_B).
+    COMPARISON_GE  ## (EXPR_A) >= (EXPR_B).
 
 
 proc contextNewComparison*(ctxt: ptr GContext; loc: ptr GLocation; op: Comparison;
@@ -1029,6 +979,7 @@ proc contextNewCallThroughPtr*(ctxt: ptr GContext; loc: ptr GLocation;
                                fnPtr: ptr Rvalue; numargs: cint;
                                args: ptr ptr Rvalue): ptr Rvalue {.cdecl,
     importc: "gcc_jit_context_new_call_through_ptr", dynlib: gccdll.}
+
 ## GType-coercion.
 ##
 ## Currently only a limited set of conversions are possible:
@@ -1049,6 +1000,8 @@ proc contextNewCast*(ctxt: ptr GContext; loc: ptr GLocation; rvalue: ptr Rvalue;
 proc contextNewBitcast*(ctxt: ptr GContext; loc: ptr GLocation;
                         rvalue: ptr Rvalue; `type`: ptr GType): ptr Rvalue {.
     cdecl, importc: "gcc_jit_context_new_bitcast", dynlib: gccdll.}
+
+
 ## Set the alignment of a variable.
 ##
 ## This API entrypoint was added in LIBGCCJIT_ABI_24; you can test for its
@@ -1076,29 +1029,29 @@ proc contextNewArrayAccess*(ctxt: ptr GContext; loc: ptr GLocation;
 proc lvalueAccessField*(structOrUnion: ptr Lvalue; loc: ptr GLocation;
                         field: ptr Field): ptr Lvalue {.cdecl,
     importc: "gcc_jit_lvalue_access_field", dynlib: gccdll.}
-## Accessing a field of an rvalue of struct type, analogous to:
-## (EXPR).field
-## in C.
+  ## Accessing a field of an rvalue of struct type, analogous to:
+  ## (EXPR).field
+  ## in C.
 
 proc rvalueAccessField*(structOrUnion: ptr Rvalue; loc: ptr GLocation;
                         field: ptr Field): ptr Rvalue {.cdecl,
     importc: "gcc_jit_rvalue_access_field", dynlib: gccdll.}
-## Accessing a field of an rvalue of pointer type, analogous to:
-## (EXPR)->field
-## in C, itself equivalent to (*EXPR).FIELD
+  ## Accessing a field of an rvalue of pointer type, analogous to:
+  ## (EXPR)->field
+  ## in C, itself equivalent to (*EXPR).FIELD
 
 proc rvalueDereferenceField*(`ptr`: ptr Rvalue; loc: ptr GLocation;
                              field: ptr Field): ptr Lvalue {.cdecl,
     importc: "gcc_jit_rvalue_dereference_field", dynlib: gccdll.}
-## Dereferencing a pointer; analogous to:
-## (EXPR)
-##
+  ## Dereferencing a pointer; analogous to:
+  ## (EXPR)
+  ##
 
 proc rvalueDereference*(rvalue: ptr Rvalue; loc: ptr GLocation): ptr Lvalue {.
     cdecl, importc: "gcc_jit_rvalue_dereference", dynlib: gccdll.}
-## Taking the address of an lvalue; analogous to:
-## &(EXPR)
-## in C.
+  ## Taking the address of an lvalue; analogous to:
+  ## &(EXPR)
+  ## in C.
 
 proc lvalueGetAddress*(lvalue: ptr Lvalue; loc: ptr GLocation): ptr Rvalue {.
     cdecl, importc: "gcc_jit_lvalue_get_address", dynlib: gccdll.}
