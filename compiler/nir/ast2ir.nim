@@ -1993,6 +1993,10 @@ proc genObjOrTupleConstr(c: var ProcCon; n: PNode, d: var Value) =
           copyTree target, tmp
           c.freeTemp(tmp)
 
+      if isException(n.typ):
+        target.addImmediateVal info, 1 # "name" field is at position after the "parent". See system.nim
+        target.addStrVal c.lit.strings, info, n.typ.skipTypes(abstractInst).sym.name.s
+
   valueIntoDest c, info, d, n.typ, body
 
 proc genSeqConstr(c: var ProcCon; n: PNode; d: var Value) =
