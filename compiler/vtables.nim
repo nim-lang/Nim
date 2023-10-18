@@ -110,7 +110,7 @@ proc collectVTableDispatchers*(g: ModuleGraph) =
         itemTable[obj.itemId][mIndex] = LazySym(sym: g.methods[bucket].methods[idx])
       g.dispatchers.add LazySym(sym: genVTableDispatcher(g, g.methods[bucket].methods, mIndex))
     else: # if the base object doesn't have this method
-      g.dispatchers.add LazySym(sym: cgmeth.genDispatcher(g, g.methods[bucket].methods, relevantCols, g.idgen))
+      g.dispatchers.add LazySym(sym: genIfDispatcher(g, g.methods[bucket].methods, relevantCols, g.idgen))
 
   for baseType in rootTypeSeq:
     let root = baseType.itemId

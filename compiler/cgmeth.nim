@@ -224,7 +224,7 @@ proc sortBucket*(a: var seq[PSym], relevantCols: IntSet) =
       a[j] = v
     if h == 1: break
 
-proc genDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; idgen: IdGenerator): PSym =
+proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; idgen: IdGenerator): PSym =
   var base = methods[0].ast[dispatcherPos].sym
   result = base
   var paramLen = base.typ.len
@@ -283,7 +283,7 @@ proc genDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; id
   nilchecks.flags.incl nfTransf # should not be further transformed
   result.ast[bodyPos] = nilchecks
 
-proc generateMethodDispatchers*(g: ModuleGraph, idgen: IdGenerator) =
+proc generateIfMethodDispatchers*(g: ModuleGraph, idgen: IdGenerator) =
   for bucket in 0..<g.methods.len:
     var relevantCols = initIntSet()
     for col in 1..<g.methods[bucket].methods[0].typ.len:
@@ -292,4 +292,4 @@ proc generateMethodDispatchers*(g: ModuleGraph, idgen: IdGenerator) =
         # if multi-methods are not enabled, we are interested only in the first field
         break
     sortBucket(g.methods[bucket].methods, relevantCols)
-    g.dispatchers.add LazySym(sym: genDispatcher(g, g.methods[bucket].methods, relevantCols, idgen))
+    g.dispatchers.add LazySym(sym: genIfDispatcher(g, g.methods[bucket].methods, relevantCols, idgen))

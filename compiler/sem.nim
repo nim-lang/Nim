@@ -841,7 +841,9 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if c.config.cmd == cmdIdeTools:
     appendToModule(c.module, result)
   trackStmt(c, c.module, result, isTopLevel = true)
-  if sfMainModule in c.module.flags:
+  if sfMainModule in c.module.flags and
+      {optMultiMethods, optNoMain} * c.config.globalOptions == {} and
+      c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
     collectVTableDispatchers(c.graph)
 
 proc recoverContext(c: PContext) =

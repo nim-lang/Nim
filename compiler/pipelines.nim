@@ -194,8 +194,6 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       finalCodegenActions(graph, m, finalNode)
       if graph.dispatchers.len > 0:
         let ctx = preparePContext(graph, module, idgen)
-        for value in graph.methodsPerType.mitems:
-          initializeVTable(m, value.typ, value.methods)
         for disp in resolveLazySymSeq(graph, graph.dispatchers):
           let retTyp = disp.typ[0]
           if retTyp != nil:

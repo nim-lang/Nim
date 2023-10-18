@@ -2254,8 +2254,12 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
 
       if m.g.forwardedProcs.len == 0:
         incl m.flags, objHasKidsValid
-      if false: # TODO: soon
-        generateMethodDispatchers(graph, m.idgen)
+      if {optMultiMethods, optNoMain} * m.g.config.globalOptions != {} or m.g.config.selectedGC notin {gcArc, gcOrc, gcAtomicArc}:
+        generateIfMethodDispatchers(graph, m.idgen)
+      else:
+        for value in graph.methodsPerType.mitems:
+          initializeVTable(m, value.typ, value.methods)
+
 
   let mm = m
   m.g.modulesClosed.add mm

@@ -3097,7 +3097,7 @@ proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
       var p = newInitProc(globals, m)
       attachProc(p, prc)
 
-  generateMethodDispatchers(graph, m.idgen)
+  generateIfMethodDispatchers(graph, m.idgen)
   for prc in resolveLazySymSeq(graph, graph.dispatchers):
     if not globals.generatedSyms.containsOrIncl(prc.id):
       var p = newInitProc(globals, m)
