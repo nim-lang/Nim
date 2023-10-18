@@ -345,7 +345,32 @@ proc escapeToNimLit(s: string; result: var string) =
       result.add c
   result.add '"'
 
+type
+  SymNames* = object
+    s: seq[LitId]
+
+proc `[]=`*(t: var SymNames; key: SymId; val: LitId) =
+  let k = int(key)
+  if k >= t.s.len: t.s.setLen k+1
+  t.s[k] = val
+
+proc `[]`*(t: SymNames; key: SymId): LitId =
+  let k = int(key)
+  if k < t.s.len: result = t.s[k]
+  else: result = LitId(0)
+
+template localName(s: SymId): string =
+  let name = names[s]
+  if name != LitId(0):
+    strings[name]
+  else:
+    $s.int
+
+proc store*(r: var RodFile; t: SymNames) = storeSeq(r, t.s)
+proc load*(r: var RodFile; t: var SymNames) = loadSeq(r, t.s)
+
 proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTable[int64];
+               names: SymNames;
                r: var string; nesting = 0) =
   if r.len > 0 and r[r.len-1] notin {' ', '\n', '(', '[', '{'}:
     r.add ' '
@@ -361,10 +386,10 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
     escapeToNimLit(strings[LitId t[pos].operand], r)
   of SymDef:
     r.add "SymDef "
-    r.add $t[pos].operand
+    r.add localName(SymId t[pos].operand)
   of SymUse:
     r.add "SymUse "
-    r.add $t[pos].operand
+    r.add localName(SymId t[pos].operand)
   of PragmaId:
     r.add $cast[PragmaKey](t[pos].operand)
   of Typed:
@@ -389,16 +414,17 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
     r.add "{\n"
     for i in 0..<(nesting+1)*2: r.add ' '
     for p in sons(t, pos):
-      toString t, p, strings, integers, r, nesting+1
+      toString t, p, strings, integers, names, r, nesting+1
     r.add "\n"
     for i in 0..<nesting*2: r.add ' '
     r.add "}"
 
 proc allTreesToString*(t: Tree; strings: BiTable[string]; integers: BiTable[int64];
+                       names: SymNames;
                        r: var string) =
   var i = 0
   while i < t.len:
-    toString t, NodePos(i), strings, integers, r
+    toString t, NodePos(i), strings, integers, names, r
     nextChild t, i
 
 type

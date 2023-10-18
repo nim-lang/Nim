@@ -11,7 +11,6 @@
 
 # NIR TODO:
 # - Implement closure calls.
-# - Map identifiers to names for better debug information.
 # - Port block exiting logic from the C codegen.
 # - Port parameter passing and NRVO.
 # - Port 3 opcodes to enable closure iterators.
@@ -24,7 +23,7 @@ import nirinsts, nirtypes, nirlineinfos, nirfiles #, nir2gcc
 proc view(filename: string) =
   let m = load(filename)
   var res = ""
-  allTreesToString m.code, m.lit.strings, m.lit.numbers, res
+  allTreesToString m.code, m.lit.strings, m.lit.numbers, m.symnames, res
   res.add "\n# TYPES\n"
   nirtypes.toString res, m.types
   echo res

@@ -49,7 +49,7 @@ proc evalStmt(c: PCtx; n: PNode) =
 
   var res = ""
   if pc < c.c.code.len:
-    toString c.c.code, NodePos(pc), c.m.lit.strings, c.m.lit.numbers, res
+    toString c.c.code, NodePos(pc), c.m.lit.strings, c.m.lit.numbers, c.m.symnames, res
   #res.add "\n--------------------------\n"
   #toString res, c.m.types.g
   echo res
@@ -90,7 +90,8 @@ proc closeNirBackend*(c: PPassContext; finalNode: PNode) =
   createDir nimcache
   let outp = nimcache / c.m.module.name.s.addFileExt("nir")
 
-  let m = NirModule(code: move(c.c.code), man: move(c.m.man), types: move(c.m.types.g), lit: move(c.m.lit))
+  let m = NirModule(code: move(c.c.code), man: move(c.m.man), types: move(c.m.types.g),
+                    lit: move(c.m.lit), symnames: move(c.m.symnames))
   try:
     store m, outp
     echo "created: ", outp

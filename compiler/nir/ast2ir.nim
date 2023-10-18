@@ -27,6 +27,7 @@ type
     types*: TypesCon
     module*: PSym
     graph*: ModuleGraph
+    symnames*: SymNames
     nativeIntId, nativeUIntId: TypeId
     idgen: IdGenerator
     processedProcs: HashSet[ItemId]
@@ -2059,6 +2060,7 @@ proc genVarSection(c: var ProcCon; n: PNode) =
         let t = typeToIr(c.m.types, s.typ)
         #assert t.int >= 0, typeToString(s.typ) & (c.config $ n.info)
         c.code.addSummon toLineInfo(c, a.info), SymId(s.itemId.item), t, opc
+        c.m.symnames[SymId(s.itemId.item)] = c.m.lit.strings.getOrIncl(s.name.s)
         if a[2].kind != nkEmpty:
           genAsgn2(c, vn, a[2])
       else:
@@ -2253,6 +2255,7 @@ proc genParams(c: var ProcCon; params: PNode) =
       let t = typeToIr(c.m.types, s.typ)
       assert t.int != -1, typeToString(s.typ)
       c.code.addSummon toLineInfo(c, params[i].info), SymId(s.itemId.item), t, SummonParam
+      c.m.symnames[SymId(s.itemId.item)] = c.m.lit.strings.getOrIncl(s.name.s)
 
 proc addCallConv(c: var ProcCon; info: PackedLineInfo; callConv: TCallingConvention) =
   template ann(s: untyped) = c.code.addPragmaId info, s
@@ -2278,6 +2281,7 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
   let info = toLineInfo(c, body.info)
   build c.code, info, ProcDecl:
     addSymDef c.code, info, SymId(prc.itemId.item)
+    c.m.symnames[SymId prc.itemId.item] = c.m.lit.strings.getOrIncl(prc.name.s)
     addCallConv c, info, prc.typ.callConv
     if {sfImportc, sfExportc} * prc.flags != {}:
       build c.code, info, PragmaPair:

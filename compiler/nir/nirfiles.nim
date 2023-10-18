@@ -16,6 +16,7 @@ type
     man*: LineInfoManager
     types*: TypeGraph
     lit*: Literals
+    symnames*: SymNames
 
 proc load*(filename: string): NirModule =
   let lit = Literals()
@@ -38,6 +39,9 @@ proc load*(filename: string): NirModule =
     r.loadSection sideChannelSection
     r.load result.man
 
+    r.loadSection symnamesSection
+    r.load result.symnames
+
   finally:
     r.close()
 
@@ -59,6 +63,9 @@ proc store*(m: NirModule; outp: string) =
 
     r.storeSection sideChannelSection
     r.store m.man
+
+    r.storeSection symnamesSection
+    r.store m.symnames
 
   finally:
     r.close()
