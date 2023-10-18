@@ -65,6 +65,8 @@ type
     CgenPass
     EvalPass
     InterpreterPass
+    NirPass
+    NirReplPass
     GenDependPass
     Docgen2TexPass
     Docgen2JsonPass
@@ -99,6 +101,7 @@ type
     cache*: IdentCache
     vm*: RootRef # unfortunately the 'vm' state is shared project-wise, this will
                  # be clarified in later compiler implementations.
+    repl*: RootRef # REPL state is shared project-wise.
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
@@ -582,6 +585,7 @@ proc markDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   if m != nil:
     g.suggestSymbols.del(fileIdx)
     g.suggestErrors.del(fileIdx)
+    g.resetForBackend
     incl m.flags, sfDirty
 
 proc unmarkAllDirty*(g: ModuleGraph) =

@@ -157,18 +157,6 @@ func addUnique*[T](s: var seq[T], x: sink T) =
   else:
     s.add x
 
-func addUnique*[T](s: var seq[T], xs: sink seq[T]) =
-  ## Adds any items from `xs` to the container `s` that are not already present.
-  ## Uses `==` to check if the item is already present.
-  runnableExamples:
-    var a = @[1, 2, 3]
-    a.addUnique(@[3, 4])
-    a.addUnique(@[4, 5])
-    assert a == @[1, 2, 3, 4, 5]
-
-  for i in 0..high(xs):
-    addUnique(s, move(xs[i]))
-    
 func count*[T](s: openArray[T], x: T): int =
   ## Returns the number of occurrences of the item `x` in the container `s`.
   ##

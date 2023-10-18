@@ -823,6 +823,10 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
           registerVariable(c, child[i])
           #deps(c, child[i], last)
 
+        if c.inLoop > 0 and child[0].kind == nkSym: # bug #22787
+          let vid = variableId(c, child[0].sym)
+          if child[^1].kind != nkEmpty:
+            markAsReassigned(c, vid)
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     computeLiveRanges(c, n[0])
     computeLiveRanges(c, n[1])

@@ -28,7 +28,7 @@ slots when enlarging a sequence.
 
 ## Language changes
 
-
+- `noInit` can be used in types and fields to disable member initializers in the C++ backend. 
 
 ## Compiler changes
 

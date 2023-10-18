@@ -137,13 +137,15 @@ type
     backendCpp = "cpp"
     backendJs = "js"
     backendObjc = "objc"
+    backendNir = "nir"
     # backendNimscript = "nimscript" # this could actually work
     # backendLlvm = "llvm" # probably not well supported; was cmdCompileToLLVM
 
   Command* = enum  ## Nim's commands
     cmdNone # not yet processed command
     cmdUnknown # command unmapped
-    cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS
+    cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS,
+    cmdCompileToNir,
     cmdCrun # compile and run in nimache
     cmdTcc # run the project via TCC backend
     cmdCheck # semantic checking for whole project
@@ -170,7 +172,8 @@ type
     # old unused: cmdInterpret, cmdDef: def feature (find definition for IDEs)
 
 const
-  cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS, cmdCrun}
+  cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
+                  cmdCompileToJS, cmdCrun, cmdCompileToNir}
   cmdDocLike* = {cmdDoc0, cmdDoc, cmdDoc2tex, cmdJsondoc0, cmdJsondoc,
                  cmdCtags, cmdBuildindex}
 
@@ -235,9 +238,9 @@ type
     laxEffects
       ## Lax effects system prior to Nim 2.0.
     verboseTypeMismatch
-    emitGenerics 
-      ## generics are emitted in the module that contains them. 
-      ## Useful for libraries that rely on local passC 
+    emitGenerics
+      ## generics are emitted in the module that contains them.
+      ## Useful for libraries that rely on local passC
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
