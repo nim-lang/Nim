@@ -550,25 +550,29 @@ proc genIndex(c: var ProcCon; n: PNode; arr: PType; d: var Value) =
       d.addIntVal c.lit.numbers, info, c.m.nativeIntId, x
       d.Tree.addLabel info, CheckedGoto, c.exitLabel
 
-proc genNew(c: var ProcCon; n: PNode; needsInit: bool) =
-  # If in doubt, always follow the blueprint of the C code generator for `mm:orc`.
-  let refType = n[1].typ.skipTypes(abstractInstOwned)
+proc rawGenNew(c: var ProcCon; d: Value; refType: PType; ninfo: TLineInfo; needsInit: bool) =
   assert refType.kind == tyRef
   let baseType = refType.lastSon
 
-  let info = toLineInfo(c, n.info)
+  let info = toLineInfo(c, ninfo)
   let codegenProc = magicsys.getCompilerProc(c.m.graph,
     if needsInit: "nimNewObj" else: "nimNewObjUninit")
-  let x = genx(c, n[1])
   let refTypeIr = typeToIr(c.m.types, refType)
   buildTyped c.code, info, Asgn, refTypeIr:
-    copyTree c.code, x
+    copyTree c.code, d
     buildTyped c.code, info, Cast, refTypeIr:
       buildTyped c.code, info, Call, VoidPtrId:
-        let theProc = c.genx newSymNode(codegenProc, n.info)
+        let theProc = c.genx newSymNode(codegenProc, ninfo)
         copyTree c.code, theProc
         c.code.addImmediateVal info, int(getSize(c.config, baseType))
         c.code.addImmediateVal info, int(getAlign(c.config, baseType))
+
+proc genNew(c: var ProcCon; n: PNode; needsInit: bool) =
+  # If in doubt, always follow the blueprint of the C code generator for `mm:orc`.
+  let refType = n[1].typ.skipTypes(abstractInstOwned)
+  let d = genx(c, n[1])
+  rawGenNew c, d, refType, n.info, needsInit
+  freeTemp c, d
 
 proc genNewSeqOfCap(c: var ProcCon; n: PNode; d: var Value) =
   let info = toLineInfo(c, n.info)
@@ -1975,11 +1979,11 @@ proc genConv(c: var ProcCon; n, arg: PNode; d: var Value; flags: GenFlags; opc: 
   valueIntoDest c, info, d, n.typ, body
   freeTemp c, tmp
 
-proc genObjOrTupleConstr(c: var ProcCon; n: PNode, d: var Value) =
+proc genObjOrTupleConstr(c: var ProcCon; n: PNode; d: var Value; t: PType) =
   # XXX x = (x.old, 22)  produces wrong code ... stupid self assignments
   let info = toLineInfo(c, n.info)
   template body(target) =
-    buildTyped target, info, ObjConstr, typeToIr(c.m.types, n.typ):
+    buildTyped target, info, ObjConstr, typeToIr(c.m.types, t):
       for i in ord(n.kind == nkObjConstr)..<n.len:
         let it = n[i]
         if it.kind == nkExprColonExpr:
@@ -1993,11 +1997,23 @@ proc genObjOrTupleConstr(c: var ProcCon; n: PNode, d: var Value) =
           copyTree target, tmp
           c.freeTemp(tmp)
 
-      if isException(n.typ):
+      if isException(t):
         target.addImmediateVal info, 1 # "name" field is at position after the "parent". See system.nim
-        target.addStrVal c.lit.strings, info, n.typ.skipTypes(abstractInst).sym.name.s
+        target.addStrVal c.lit.strings, info, t.skipTypes(abstractInst).sym.name.s
 
-  valueIntoDest c, info, d, n.typ, body
+  valueIntoDest c, info, d, t, body
+
+proc genRefObjConstr(c: var ProcCon; n: PNode; d: var Value) =
+  if isEmpty(d): d = getTemp(c, n)
+  let info = toLineInfo(c, n.info)
+  let refType = n.typ.skipTypes(abstractInstOwned)
+  let objType = refType.lastSon
+
+  rawGenNew(c, d, refType, n.info, needsInit = nfAllFieldsSet notin n.flags)
+  var deref = default(Value)
+  deref.buildTyped info, Load, typeToIr(c.m.types, objType):
+    deref.Tree.copyTree d
+  genObjOrTupleConstr c, n, deref, objType
 
 proc genSeqConstr(c: var ProcCon; n: PNode; d: var Value) =
   if isEmpty(d): d = getTemp(c, n)
@@ -2409,8 +2425,13 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   of nkCStringToString: convCStrToStr(c, n, d)
   of nkBracket: genArrayConstr(c, n, d)
   of nkCurly: genSetConstr(c, n, d)
-  of nkObjConstr, nkPar, nkClosure, nkTupleConstr:
-    genObjOrTupleConstr(c, n, d)
+  of nkObjConstr:
+    if n.typ.skipTypes(abstractInstOwned).kind == tyRef:
+      genRefObjConstr(c, n, d)
+    else:
+      genObjOrTupleConstr(c, n, d, n.typ)
+  of nkPar, nkClosure, nkTupleConstr:
+    genObjOrTupleConstr(c, n, d, n.typ)
   of nkCast:
     genConv(c, n, n[1], d, flags, Cast)
   of nkComesFrom:
