@@ -110,7 +110,7 @@ type
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     bucketTable*: CountTable[ItemId]
     objectTree*: Table[ItemId, seq[tuple[depth: int, value: PType]]]
-    methodsPerType*: seq[tuple[typ: PType, methods: seq[LazySym]]] # TODO: should ba LazySym
+    methodsPerType*: Table[ItemId, tuple[typ: LazyType, methods: seq[LazySym]]]
     dispatchers*: seq[LazySym]
 
     systemModule*: PSym
@@ -284,7 +284,7 @@ iterator systemModuleSyms*(g: ModuleGraph; name: PIdent): PSym =
     yield r
     r = nextModuleIter(mi, g)
 
-proc resolveType(g: ModuleGraph; t: var LazyType): PType =
+proc resolveType*(g: ModuleGraph; t: var LazyType): PType =
   result = t.typ
   if result == nil and isCachedModule(g, t.id.module):
     result = loadTypeFromId(g.config, g.cache, g.packed, t.id.module, t.id.packed)
@@ -327,6 +327,12 @@ iterator procInstCacheItems*(g: ModuleGraph; s: PSym): PInstantiation =
     let x = addr(g.procInstCache[s.itemId])
     for t in mitems(x[]):
       yield resolveInst(g, t)
+
+
+# proc setMethodsPerType(g: ModuleGraph; typ: PType, methods: seq[LazySym]) =
+#   g.methodsPerType[typ.itemId] = (LazyType(typ: typ), methods)
+
+# iterator getMethodsPerType(g: ModuleGraph): (PType, seq[PSym])
 
 proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   ## returns the requested attached operation for type `t`. Can return nil

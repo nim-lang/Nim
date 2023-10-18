@@ -136,6 +136,8 @@ proc checkModule(c: var CheckedContext; m: PackedModule) =
     attachedOps*: seq[(TTypeAttachedOp, PackedItemId, PackedItemId)]
     methodsPerGenericType*: seq[(PackedItemId, int, PackedItemId)]
     enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
+    methodsPerType*: seq[(PackedItemId, PackedItemId)]
+    dispatchers*: seq[PackedItemId]
   ]#
 
 proc checkIntegrity*(g: ModuleGraph) =

@@ -114,7 +114,7 @@ proc collectVTableDispatchers*(g: ModuleGraph) =
 
   for baseType in rootTypeSeq:
     let root = baseType.itemId
-    g.methodsPerType.add (baseType, itemTable[baseType.itemId])
+    g.methodsPerType[root] = (LazyType(typ: baseType), itemTable[baseType.itemId])
     for item in g.objectTree[root]:
       let typ = item.value.skipTypes(skipPtrs)
       let idx = typ.itemId
@@ -122,4 +122,4 @@ proc collectVTableDispatchers*(g: ModuleGraph) =
         if itemTable[idx][mIndex].sym == nil:
           let parentIndex = typ[0].skipTypes(skipPtrs).itemId
           itemTable[idx][mIndex] = itemTable[parentIndex][mIndex]
-      g.methodsPerType.add (typ, itemTable[idx])
+      g.methodsPerType[idx] = (LazyType(typ: typ), itemTable[idx])
