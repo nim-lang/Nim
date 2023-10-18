@@ -247,7 +247,7 @@ proc getFloat128Type*(tree: var TypeGraph): TypeId =
 proc addBuiltinType*(g: var TypeGraph; id: TypeId) =
   g.nodes.add g[id]
 
-template firstSon(n: TypeId): TypeId = TypeId(n.int+1)
+template firstSon*(n: TypeId): TypeId = TypeId(n.int+1)
 
 proc addType*(g: var TypeGraph; t: TypeId) =
   # We cannot simply copy `*Decl` nodes. We have to introduce `*Ty` nodes instead:

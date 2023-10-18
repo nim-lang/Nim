@@ -16,12 +16,14 @@ type
     filename: string
     jittypes: Table[TypeId, ptr GType]
     namesToTypes: Table[string, ptr GType]
+    lit: Literals
+    types: TypeGraph
 
-proc createContext(filename: sink string): GenContext =
+proc createContext(filename: sink string; lit: sink Literals; types: sink TypeGraph): GenContext =
   let jit = contextAcquire()
   if jit == nil: raise newException(ValueError, "could not create GCC context")
   contextSetBoolAllowUnreachableBlocks jit, 1
-  GenContext(jit: jit, filename: filename)
+  GenContext(jit: jit, filename: filename, lit: lit, types: types)
 
 proc destroyContext(c: var GenContext) =
   contextCompileToFile c.jit, OUTPUT_KIND_OBJECT_FILE, c.filename.changeFileExt(".o")
@@ -31,6 +33,17 @@ template toUncheckedArray[T](s: seq[T]): ptr UncheckedArray[T] =
   cast[ptr UncheckedArray[T]](addr s[0])
 
 proc genType(c: var GenContext; t: TypeId): ptr GType
+
+proc mapObjectType(c: var GenContext; t: PTypeId): ptr GType =
+  # NameVal:
+  #  IntVal, SizeVal, AlignVal, OffsetVal,
+  #  AnnotationVal,
+  #  VarargsTy, # the `...` in a C prototype; also the last "atom"
+  #  FieldDecl
+  for x in sons(c.types, t):
+    case c.types[x].kind
+    of FieldDecl:
+
 
 proc genTypeRaw(c: var GenContext; t: TypeId): ptr GType =
   case c.types[t].kind
@@ -86,9 +99,14 @@ proc genTypeRaw(c: var GenContext; t: TypeId): ptr GType =
     result = namesToTypes.getOrDefault(tag)
     assert result != nil, "could not struct/union of name: " & tag
   of ObjectDecl:
-    discard
-  of UnionDecl:
-    result = contextNewUnionType(c.jit, )
+    assert g[t.firstSon].kind == NameVal
+    let name = g.lit.strings[LitId g[t.firstSon].operand]
+    result = namesToTypes.getOrDefault(name)
+    if result == nil:
+      result = mapObjectType(g, t)
+      namesToTypes[name] = result
+  #of UnionDecl:
+  #  result = contextNewUnionType(c.jit, )
   else: raiseAssert "unreachable"
   # NameVal:
   #  IntVal, SizeVal, AlignVal, OffsetVal,
@@ -102,10 +120,10 @@ proc genType(c: var GenContext; t: TypeId): ptr GType =
     result = genTypeRaw(c, t)
     c.jittypes[t] = result
 
-proc gcc*(m: NirModule; filename: sink string) =
-  var c = createContext()
-  genTypes(c, m.types)
-  genGlobals(c, m.tree)
-  genProcs(c, m.tree)
-  genInitStmts(c, m.tree)
+proc gcc*(m: sink NirModule; filename: sink string) =
+  var c = createContext(filename, move m.lit, move m.types)
+  #genTypes(c, m.types)
+  #genGlobals(c, m.tree)
+  #genProcs(c, m.tree)
+  #genInitStmts(c, m.tree)
   destroyContext c

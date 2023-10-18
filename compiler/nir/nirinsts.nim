@@ -374,7 +374,11 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
   of NilVal:
     r.add "NilVal"
   of Label:
-    r.add "L"
+    # undo the nesting:
+    var spaces = r.len-1
+    while spaces >= 0 and r[spaces] == ' ': dec spaces
+    r.setLen spaces+1
+    r.add "\n  L"
     r.add $t[pos].operand
   of Goto, CheckedGoto, LoopLabel, GotoLoop:
     r.add $t[pos].kind

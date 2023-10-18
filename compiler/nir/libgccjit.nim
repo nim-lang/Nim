@@ -539,7 +539,7 @@ proc fieldAsObject*(field: ptr Field): ptr GObject {.cdecl,
   ## Upcasting from field to object.
 
 proc contextNewStructType*(ctxt: ptr GContext; loc: ptr GLocation; name: cstring;
-                           numFields: cint; fields: ptr ptr Field): ptr Struct {.
+                           numFields: cint; fields: ptr UncheckedArray[ptr Field]): ptr Struct {.
     cdecl, importc: "gcc_jit_context_new_struct_type", dynlib: gccdll.}
   ## Create a struct type from an array of fields.
 
@@ -553,7 +553,7 @@ proc structAsType*(structType: ptr Struct): ptr GType {.cdecl,
 
 
 proc structSetFields*(structType: ptr Struct; loc: ptr GLocation;
-                      numFields: cint; fields: ptr ptr Field) {.cdecl,
+                      numFields: cint; fields: ptr UncheckedArray[ptr Field]) {.cdecl,
     importc: "gcc_jit_struct_set_fields", dynlib: gccdll.}
   ## Populating the fields of a formerly-opaque struct type.
   ## This can only be called once on a given struct type.
@@ -569,7 +569,7 @@ proc structGetFieldCount*(structType: ptr Struct): csize_t {.cdecl,
   ## Get the number of fields.
 
 proc contextNewUnionType*(ctxt: ptr GContext; loc: ptr GLocation; name: cstring;
-                          numFields: cint; fields: ptr ptr Field): ptr GType {.
+                          numFields: cint; fields: ptr UncheckedArray[ptr Field]): ptr GType {.
     cdecl, importc: "gcc_jit_context_new_union_type", dynlib: gccdll.}
   ## Unions work similarly to structs.
 
@@ -629,7 +629,7 @@ type
 
 proc contextNewFunction*(ctxt: ptr GContext; loc: ptr GLocation;
                          kind: FunctionKind; returnType: ptr GType;
-                         name: cstring; numParams: cint; params: ptr ptr Param;
+                         name: cstring; numParams: cint; params: ptr UncheckedArray[ptr Param];
                          isVariadic: cint): ptr Function {.cdecl,
     importc: "gcc_jit_context_new_function", dynlib: gccdll.}
   ## Create a function.
@@ -673,15 +673,14 @@ proc blockGetFunction*(`block`: ptr GBlock): ptr Function {.cdecl,
 ## ********************************************************************
 
 type
-  GlobalKind* {.size: sizeof(cint).} = enum ## Global is defined by the client code and visible
-                                             ## by name outside of this JIT context via gcc_jit_result_get_global.
-    GLOBAL_EXPORTED, ## Global is defined by the client code, but is invisible
+  GlobalKind* {.size: sizeof(cint).} = enum
+    GLOBAL_EXPORTED,  ## Global is defined by the client code and visible
+                      ## by name outside of this JIT context via gcc_jit_result_get_global.
+    GLOBAL_INTERNAL,  ## Global is defined by the client code, but is invisible
                       ## outside of this JIT context. Analogous to a "static" global.
-    GLOBAL_INTERNAL, ## Global is not defined by the client code; we're merely
+    GLOBAL_IMPORTED   ## Global is not defined by the client code; we're merely
                       ## referring to it. Analogous to using an "extern" global from a
                       ## header file.
-    GLOBAL_IMPORTED
-
 
 proc contextNewGlobal*(ctxt: ptr GContext; loc: ptr GLocation; kind: GlobalKind;
                        `type`: ptr GType; name: cstring): ptr Lvalue {.cdecl,
@@ -689,7 +688,7 @@ proc contextNewGlobal*(ctxt: ptr GContext; loc: ptr GLocation; kind: GlobalKind;
 
 proc contextNewStructConstructor*(ctxt: ptr GContext; loc: ptr GLocation;
                                   `type`: ptr GType; numValues: csize_t;
-                                  fields: ptr ptr Field; values: ptr ptr Rvalue): ptr Rvalue {.
+                                  fields: ptr UncheckedArray[ptr Field]; values: ptr UncheckedArray[ptr Rvalue]): ptr Rvalue {.
     cdecl, importc: "gcc_jit_context_new_struct_constructor", dynlib: gccdll.}
   ## Create a constructor for a struct as an rvalue.
   ##
@@ -776,7 +775,7 @@ proc contextNewUnionConstructor*(ctxt: ptr GContext; loc: ptr GLocation;
 
 proc contextNewArrayConstructor*(ctxt: ptr GContext; loc: ptr GLocation;
                                  `type`: ptr GType; numValues: csize_t;
-                                 values: ptr ptr Rvalue): ptr Rvalue {.cdecl,
+                                 values: ptr UncheckedArray[ptr Rvalue]): ptr Rvalue {.cdecl,
     importc: "gcc_jit_context_new_array_constructor", dynlib: gccdll.}
   ## Create a constructor for an array as an rvalue.
   ##
@@ -967,125 +966,105 @@ type
 proc contextNewComparison*(ctxt: ptr GContext; loc: ptr GLocation; op: Comparison;
                            a: ptr Rvalue; b: ptr Rvalue): ptr Rvalue {.cdecl,
     importc: "gcc_jit_context_new_comparison", dynlib: gccdll.}
+
 ## Function calls.
-## Call of a specific function.
 
 proc contextNewCall*(ctxt: ptr GContext; loc: ptr GLocation; `func`: ptr Function;
-                     numargs: cint; args: ptr ptr Rvalue): ptr Rvalue {.cdecl,
+                     numargs: cint; args: ptr UncheckedArray[ptr Rvalue]): ptr Rvalue {.cdecl,
     importc: "gcc_jit_context_new_call", dynlib: gccdll.}
-## Call through a function pointer.
+  ## Call of a specific function.
 
 proc contextNewCallThroughPtr*(ctxt: ptr GContext; loc: ptr GLocation;
                                fnPtr: ptr Rvalue; numargs: cint;
-                               args: ptr ptr Rvalue): ptr Rvalue {.cdecl,
+                               args: ptr UncheckedArray[ptr Rvalue]): ptr Rvalue {.cdecl,
     importc: "gcc_jit_context_new_call_through_ptr", dynlib: gccdll.}
+  ## Call through a function pointer.
 
-## GType-coercion.
-##
-## Currently only a limited set of conversions are possible:
-## int <-> float
-## int <-> bool
 
 proc contextNewCast*(ctxt: ptr GContext; loc: ptr GLocation; rvalue: ptr Rvalue;
                      `type`: ptr GType): ptr Rvalue {.cdecl,
     importc: "gcc_jit_context_new_cast", dynlib: gccdll.}
-## Reinterpret a value as another type.
-##
-## The types must be of the same size.
-##
-## This API entrypoint was added in LIBGCCJIT_ABI_21; you can test for its
-## presence using
-## #ifdef LIBGCCJIT_HAVE_gcc_jit_context_new_bitcast
+  ## GType-coercion.
+  ##
+  ## Currently only a limited set of conversions are possible:
+  ## int <-> float
+  ## int <-> bool
 
 proc contextNewBitcast*(ctxt: ptr GContext; loc: ptr GLocation;
                         rvalue: ptr Rvalue; `type`: ptr GType): ptr Rvalue {.
     cdecl, importc: "gcc_jit_context_new_bitcast", dynlib: gccdll.}
-
-
-## Set the alignment of a variable.
-##
-## This API entrypoint was added in LIBGCCJIT_ABI_24; you can test for its
-## presence using
-## #ifdef LIBGCCJIT_HAVE_ALIGNMENT
+  ## Reinterpret a value as another type.
+  ##
+  ## The types must be of the same size.
 
 proc lvalueSetAlignment*(lvalue: ptr Lvalue; bytes: cuint) {.cdecl,
     importc: "gcc_jit_lvalue_set_alignment", dynlib: gccdll.}
-## Get the alignment of a variable.
-##
-## This API entrypoint was added in LIBGCCJIT_ABI_24; you can test for its
-## presence using
-## #ifdef LIBGCCJIT_HAVE_ALIGNMENT
+  ## Set the alignment of a variable.
 
 proc lvalueGetAlignment*(lvalue: ptr Lvalue): cuint {.cdecl,
     importc: "gcc_jit_lvalue_get_alignment", dynlib: gccdll.}
+  ## Get the alignment of a variable.
+  ##
+  ## This API entrypoint was added in LIBGCCJIT_ABI_24; you can test for its
+  ## presence using
+  ## #ifdef LIBGCCJIT_HAVE_ALIGNMENT
+
 proc contextNewArrayAccess*(ctxt: ptr GContext; loc: ptr GLocation;
                             `ptr`: ptr Rvalue; index: ptr Rvalue): ptr Lvalue {.
     cdecl, importc: "gcc_jit_context_new_array_access", dynlib: gccdll.}
-## Field access is provided separately for both lvalues and rvalues.
-## Accessing a field of an lvalue of struct type, analogous to:
-## (EXPR).field = ...;
-## in C.
 
 proc lvalueAccessField*(structOrUnion: ptr Lvalue; loc: ptr GLocation;
                         field: ptr Field): ptr Lvalue {.cdecl,
     importc: "gcc_jit_lvalue_access_field", dynlib: gccdll.}
-  ## Accessing a field of an rvalue of struct type, analogous to:
-  ## (EXPR).field
+  ## Field access is provided separately for both lvalues and rvalues.
+  ## Accessing a field of an lvalue of struct type, analogous to:
+  ## (EXPR).field = ...;
   ## in C.
 
 proc rvalueAccessField*(structOrUnion: ptr Rvalue; loc: ptr GLocation;
                         field: ptr Field): ptr Rvalue {.cdecl,
     importc: "gcc_jit_rvalue_access_field", dynlib: gccdll.}
-  ## Accessing a field of an rvalue of pointer type, analogous to:
-  ## (EXPR)->field
-  ## in C, itself equivalent to (*EXPR).FIELD
+  ## Accessing a field of an rvalue of struct type, analogous to:
+  ## (EXPR).field
+  ## in C.
 
 proc rvalueDereferenceField*(`ptr`: ptr Rvalue; loc: ptr GLocation;
                              field: ptr Field): ptr Lvalue {.cdecl,
     importc: "gcc_jit_rvalue_dereference_field", dynlib: gccdll.}
-  ## Dereferencing a pointer; analogous to:
-  ## (EXPR)
-  ##
+  ## Accessing a field of an rvalue of pointer type, analogous to:
+  ## (EXPR)->field
+  ## in C, itself equivalent to (*EXPR).FIELD
+
 
 proc rvalueDereference*(rvalue: ptr Rvalue; loc: ptr GLocation): ptr Lvalue {.
     cdecl, importc: "gcc_jit_rvalue_dereference", dynlib: gccdll.}
+  ## Dereferencing a pointer; analogous to:
+  ## (EXPR)
+  ##
+proc lvalueGetAddress*(lvalue: ptr Lvalue; loc: ptr GLocation): ptr Rvalue {.
+    cdecl, importc: "gcc_jit_lvalue_get_address", dynlib: gccdll.}
   ## Taking the address of an lvalue; analogous to:
   ## &(EXPR)
   ## in C.
 
-proc lvalueGetAddress*(lvalue: ptr Lvalue; loc: ptr GLocation): ptr Rvalue {.
-    cdecl, importc: "gcc_jit_lvalue_get_address", dynlib: gccdll.}
-## Set the thread-local storage model of a global variable
-##
-## This API entrypoint was added in LIBGCCJIT_ABI_17; you can test for its
-## presence using
-## #ifdef LIBGCCJIT_HAVE_gcc_jit_lvalue_set_tls_model
-
 proc lvalueSetTlsModel*(lvalue: ptr Lvalue; model: TlsModel) {.cdecl,
     importc: "gcc_jit_lvalue_set_tls_model", dynlib: gccdll.}
-## Set the link section of a global variable; analogous to:
-## __attribute__((section(".section_name")))
-## in C.
-##
-## This API entrypoint was added in LIBGCCJIT_ABI_18; you can test for its
-## presence using
-## #ifdef LIBGCCJIT_HAVE_gcc_jit_lvalue_set_link_section
-##
+  ## Set the thread-local storage model of a global variable
 
 proc lvalueSetLinkSection*(lvalue: ptr Lvalue; sectionName: cstring) {.cdecl,
     importc: "gcc_jit_lvalue_set_link_section", dynlib: gccdll.}
-## Make this variable a register variable and set its register name.
-##
-## This API entrypoint was added in LIBGCCJIT_ABI_22; you can test for its
-## presence using
-## #ifdef LIBGCCJIT_HAVE_gcc_jit_lvalue_set_register_name
-##
+  ## Set the link section of a global variable; analogous to:
+  ## __attribute__((section(".section_name")))
+  ## in C.
 
 proc lvalueSetRegisterName*(lvalue: ptr Lvalue; regName: cstring) {.cdecl,
     importc: "gcc_jit_lvalue_set_register_name", dynlib: gccdll.}
+  ## Make this variable a register variable and set its register name.
+
 proc functionNewLocal*(`func`: ptr Function; loc: ptr GLocation;
                        `type`: ptr GType; name: cstring): ptr Lvalue {.cdecl,
     importc: "gcc_jit_function_new_local", dynlib: gccdll.}
+
 ## ********************************************************************
 ## Statement-creation.
 ## ********************************************************************
@@ -1099,26 +1078,26 @@ proc functionNewLocal*(`func`: ptr Function; loc: ptr GLocation;
 
 proc blockAddEval*(`block`: ptr GBlock; loc: ptr GLocation; rvalue: ptr Rvalue) {.
     cdecl, importc: "gcc_jit_block_add_eval", dynlib: gccdll.}
-## Add evaluation of an rvalue, assigning the result to the given
-## lvalue.
-##
-## This is roughly equivalent to this C code:
-##
-## lvalue = rvalue;
-##
+  ## Add evaluation of an rvalue, assigning the result to the given
+  ## lvalue.
+  ##
+  ## This is roughly equivalent to this C code:
+  ##
+  ## lvalue = rvalue;
+  ##
 
 proc blockAddAssignment*(`block`: ptr GBlock; loc: ptr GLocation;
                          lvalue: ptr Lvalue; rvalue: ptr Rvalue) {.cdecl,
     importc: "gcc_jit_block_add_assignment", dynlib: gccdll.}
-## Add evaluation of an rvalue, using the result to modify an
-## lvalue.
-##
-## This is analogous to "+=" and friends:
-##
-## lvalue += rvalue;
-## lvalue *= rvalue;
-## lvalue /= rvalue;
-## etc
+  ## Add evaluation of an rvalue, using the result to modify an
+  ## lvalue.
+  ##
+  ## This is analogous to "+=" and friends:
+  ##
+  ## lvalue += rvalue;
+  ## lvalue *= rvalue;
+  ## lvalue /= rvalue;
+  ## etc
 
 proc blockAddAssignmentOp*(`block`: ptr GBlock; loc: ptr GLocation;
                            lvalue: ptr Lvalue; op: BinaryOp; rvalue: ptr Rvalue) {.
@@ -1201,7 +1180,7 @@ proc caseAsObject*(`case`: ptr GCase): ptr GObject {.cdecl,
 
 proc blockEndWithSwitch*(`block`: ptr GBlock; loc: ptr GLocation;
                          expr: ptr Rvalue; defaultBlock: ptr GBlock;
-                         numCases: cint; cases: ptr ptr GCase) {.cdecl,
+                         numCases: cint; cases: ptr UncheckedArray[ptr GCase]) {.cdecl,
     importc: "gcc_jit_block_end_with_switch", dynlib: gccdll.}
   ## Terminate a block by adding evalation of an rvalue, then performing
   ## a multiway branch.
@@ -1325,80 +1304,39 @@ type
 ## ********************************************************************
 ## Timing support.
 ## ********************************************************************
-## The timing API was added in LIBGCCJIT_ABI_4; you can test for its
-## presence using
-## #ifdef LIBGCCJIT_HAVE_TIMING_API
 
 proc timerNew*(): ptr Timer {.cdecl, importc: "gcc_jit_timer_new",
                               dynlib: gccdll.}
   ## Create a gcc_jit_timer instance, and start timing.
-  ##
-  ## This API entrypoint was added in LIBGCCJIT_ABI_4; you can test for its
-  ## presence using
-  ## #ifdef LIBGCCJIT_HAVE_TIMING_API
 
 proc timerRelease*(timer: ptr Timer) {.cdecl, importc: "gcc_jit_timer_release",
                                        dynlib: gccdll.}
   ## Release a gcc_jit_timer instance.
-  ##
-  ## This API entrypoint was added in LIBGCCJIT_ABI_4; you can test for its
-  ## presence using
-  ## #ifdef LIBGCCJIT_HAVE_TIMING_API
 
 proc contextSetTimer*(ctxt: ptr GContext; timer: ptr Timer) {.cdecl,
     importc: "gcc_jit_context_set_timer", dynlib: gccdll.}
   ## Associate a gcc_jit_timer instance with a context.
-  ##
-  ## This API entrypoint was added in LIBGCCJIT_ABI_4; you can test for its
-  ## presence using
-  ## #ifdef LIBGCCJIT_HAVE_TIMING_API
 
 proc contextGetTimer*(ctxt: ptr GContext): ptr Timer {.cdecl,
     importc: "gcc_jit_context_get_timer", dynlib: gccdll.}
   ## Get the timer associated with a context (if any).
-  ##
-  ## This API entrypoint was added in LIBGCCJIT_ABI_4; you can test for its
-  ## presence using
-  ## #ifdef LIBGCCJIT_HAVE_TIMING_API
-  ##
-
 
 proc timerPush*(timer: ptr Timer; itemName: cstring) {.cdecl,
     importc: "gcc_jit_timer_push", dynlib: gccdll.}
   ## Push the given item onto the timing stack.
-  ##
-  ## This API entrypoint was added in LIBGCCJIT_ABI_4; you can test for its
-  ## presence using
-  ## #ifdef LIBGCCJIT_HAVE_TIMING_API
-  ##
 
 proc timerPop*(timer: ptr Timer; itemName: cstring) {.cdecl,
     importc: "gcc_jit_timer_pop", dynlib: gccdll.}
   ## Pop the top item from the timing stack.
-  ##
-  ## This API entrypoint was added in LIBGCCJIT_ABI_4; you can test for its
-  ## presence using
-  ## #ifdef LIBGCCJIT_HAVE_TIMING_API
-  ##
 
 proc timerPrint*(timer: ptr Timer; fOut: ptr File) {.cdecl,
     importc: "gcc_jit_timer_print", dynlib: gccdll.}
   ## Print timing information to the given stream about activity since
   ## the timer was started.
-  ##
-  ## This API entrypoint was added in LIBGCCJIT_ABI_4; you can test for its
-  ## presence using
-  ## #ifdef LIBGCCJIT_HAVE_TIMING_API
-  ##
 
 proc rvalueSetBoolRequireTailCall*(call: ptr Rvalue; requireTailCall: cint) {.
     cdecl, importc: "gcc_jit_rvalue_set_bool_require_tail_call", dynlib: gccdll.}
   ## Mark/clear a call as needing tail-call optimization.
-  ##
-  ## This API entrypoint was added in LIBGCCJIT_ABI_6; you can test for its
-  ## presence using
-  ## #ifdef LIBGCCJIT_HAVE_gcc_jit_rvalue_set_bool_require_tail_call
-  ##
 
 proc typeGetAligned*(`type`: ptr GType; alignmentInBytes: csize_t): ptr GType {.
     cdecl, importc: "gcc_jit_type_get_aligned", dynlib: gccdll.}
@@ -1407,12 +1345,6 @@ proc typeGetAligned*(`type`: ptr GType; alignmentInBytes: csize_t): ptr GType {.
   ## T __attribute__ ((aligned (ALIGNMENT_IN_BYTES)))
   ##
   ## The alignment must be a power of two.
-  ##
-  ## This API entrypoint was added in LIBGCCJIT_ABI_7; you can test for its
-  ## presence using
-  ## #ifdef LIBGCCJIT_HAVE_gcc_jit_type_get_aligned
-  ##
-
 
 proc typeGetVector*(`type`: ptr GType; numUnits: csize_t): ptr GType {.cdecl,
     importc: "gcc_jit_type_get_vector", dynlib: gccdll.}
@@ -1440,7 +1372,7 @@ proc functionGetAddress*(fn: ptr Function; loc: ptr GLocation): ptr Rvalue {.
 
 proc contextNewRvalueFromVector*(ctxt: ptr GContext; loc: ptr GLocation;
                                  vecType: ptr GType; numElements: csize_t;
-                                 elements: ptr ptr Rvalue): ptr Rvalue {.cdecl,
+                                 elements: ptr UncheckedArray[ptr Rvalue]): ptr Rvalue {.cdecl,
     importc: "gcc_jit_context_new_rvalue_from_vector", dynlib: gccdll.}
   ## Build a vector rvalue from an array of elements.
   ##
@@ -1489,7 +1421,7 @@ proc blockAddExtendedAsm*(`block`: ptr GBlock; loc: ptr GLocation;
 
 proc blockEndWithExtendedAsmGoto*(`block`: ptr GBlock; loc: ptr GLocation;
                                   asmTemplate: cstring; numGotoBlocks: cint;
-                                  gotoBlocks: ptr ptr GBlock;
+                                  gotoBlocks: ptr UncheckedArray[ptr GBlock];
                                   fallthroughBlock: ptr GBlock): ptr ExtendedAsm {.
     cdecl, importc: "gcc_jit_block_end_with_extended_asm_goto", dynlib: gccdll.}
   ## Create a gcc_jit_extended_asm for an extended asm statement
