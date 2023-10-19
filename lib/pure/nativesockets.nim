@@ -393,11 +393,11 @@ when not useNimNetLite:
       addrLen = 0
       family = 0
 
-    if addrInfo.ai_addr.sa_family == nativeAfInet:
+    if addrInfo.ai_addr.sa_family.cint == nativeAfInet:
       family = nativeAfInet
       myAddr = addr cast[ptr Sockaddr_in](addrInfo.ai_addr).sin_addr
       addrLen = 4
-    elif addrInfo.ai_addr.sa_family == nativeAfInet6:
+    elif addrInfo.ai_addr.sa_family.cint == nativeAfInet6:
       family = nativeAfInet6
       myAddr = addr cast[ptr Sockaddr_in6](addrInfo.ai_addr).sin6_addr
       addrLen = 16
