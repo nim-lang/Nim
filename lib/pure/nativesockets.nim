@@ -445,11 +445,12 @@ when not useNimNetLite:
       var i = 0
       while not isNil(s.h_addr_list[i]):
         var ipStr = newString(strAddrLen)
-        if inet_ntop(result.addrtype.cint, s.h_addr_list[i], cstring(ipStr),
-                     len(ipStr).int32) == nil:
+        echo result.addrtype.cint
+        if inet_ntop(nativeAfInet6, cast[pointer](s.h_addr_list[i]),
+                     cstring(ipStr), len(ipStr).int32) == nil:
           raiseOSError(osLastError())
         when not useWinVersion:
-          if posix.IN6_IS_ADDR_V4MAPPED(s.h_addr_list[i]) != 0:
+          if posix.IN6_IS_ADDR_V4MAPPED(cast[ptr In6Addr](s.h_addr_list[i])) != 0:
             ipStr.setSlice("::ffff:".len..<strAddrLen)
         setLen(ipStr, len(cstring(ipStr)))
         result.addrList.add(ipStr)
