@@ -51,7 +51,7 @@ proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule; alive: var Alive
     cgen.genTopLevelStmt(bmod, n)
 
   finalCodegenActions(g, bmod, newNodeI(nkStmtList, m.module.info))
-  for disp in resolveLazySymSeq(g, g.dispatchers):
+  for disp in getDispatchers(g):
     genProcAux(bmod, disp)
   m.fromDisk.backendFlags = cgen.whichInitProcs(bmod)
 

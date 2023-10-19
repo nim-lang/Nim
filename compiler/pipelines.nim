@@ -194,7 +194,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       finalCodegenActions(graph, m, finalNode)
       if graph.dispatchers.len > 0:
         let ctx = preparePContext(graph, module, idgen)
-        for disp in resolveLazySymSeq(graph, graph.dispatchers):
+        for disp in getDispatchers(graph):
           let retTyp = disp.typ[0]
           if retTyp != nil:
             # TODO: properly semcheck the code of dispatcher?

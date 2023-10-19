@@ -16,6 +16,8 @@ import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
 import ic / [packed_ast, ic]
 
+import std/sequtils
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -284,7 +286,7 @@ iterator systemModuleSyms*(g: ModuleGraph; name: PIdent): PSym =
     yield r
     r = nextModuleIter(mi, g)
 
-proc resolveType*(g: ModuleGraph; t: var LazyType): PType =
+proc resolveType(g: ModuleGraph; t: var LazyType): PType =
   result = t.typ
   if result == nil and isCachedModule(g, t.id.module):
     result = loadTypeFromId(g.config, g.cache, g.packed, t.id.module, t.id.packed)
@@ -329,11 +331,6 @@ iterator procInstCacheItems*(g: ModuleGraph; s: PSym): PInstantiation =
       yield resolveInst(g, t)
 
 
-# proc setMethodsPerType(g: ModuleGraph; typ: PType, methods: seq[LazySym]) =
-#   g.methodsPerType[typ.itemId] = (LazyType(typ: typ), methods)
-
-# iterator getMethodsPerType(g: ModuleGraph): (PType, seq[PSym])
-
 proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   ## returns the requested attached operation for type `t`. Can return nil
   ## if no such operation exists.
@@ -357,6 +354,26 @@ proc completePartialOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttached
     toPackedGeneratedProcDef(value, g.encoders[module], g.packed[module].fromDisk)
     #storeAttachedProcDef(t, op, value, g.encoders[module], g.packed[module].fromDisk)
 
+iterator getDispatchers*(g: ModuleGraph): PSym =
+  for i in g.dispatchers.mitems:
+    yield resolveSym(g, i)
+
+proc addDispatchers*(g: ModuleGraph, value: PSym) =
+  # TODO: add it for packed modules
+  g.dispatchers.add LazySym(sym: value)
+
+iterator resolveLazySymSeq(g: ModuleGraph, list: var seq[LazySym]): PSym =
+  for it in list.mitems:
+    yield resolveSym(g, it)
+
+proc setMethodsPerType*(g: ModuleGraph; typ: PType, methods: seq[LazySym]) =
+  # TODO: add it for packed modules
+  g.methodsPerType[typ.itemId] = (LazyType(typ: typ), methods)
+
+iterator getMethodsPerType*(g: ModuleGraph): (PType, seq[PSym]) =
+  for value in mvalues(g.methodsPerType):
+    yield (resolveType(g, value.typ), toSeq(resolveLazySymSeq(g, value.methods)))
+
 proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
   result = resolveSym(g, g.enumToStringProcs[t.itemId])
   assert result != nil
@@ -371,10 +388,6 @@ iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
 
 proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSym) =
   g.methodsPerGenericType.mgetOrPut(t.itemId, @[]).add (col, LazySym(sym: m))
-
-iterator resolveLazySymSeq*(g: ModuleGraph, list: var seq[LazySym]): PSym =
-  for it in list.mitems:
-    yield resolveSym(g, it)
 
 proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
   let op = getAttachedOp(g, t, attachedAsgn)

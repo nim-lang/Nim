@@ -108,13 +108,13 @@ proc collectVTableDispatchers*(g: ModuleGraph) =
       for idx in 0..<g.methods[bucket].methods.len:
         let obj = g.methods[bucket].methods[idx].typ[1].skipTypes(skipPtrs)
         itemTable[obj.itemId][mIndex] = LazySym(sym: g.methods[bucket].methods[idx])
-      g.dispatchers.add LazySym(sym: genVTableDispatcher(g, g.methods[bucket].methods, mIndex))
+      g.addDispatchers genVTableDispatcher(g, g.methods[bucket].methods, mIndex)
     else: # if the base object doesn't have this method
-      g.dispatchers.add LazySym(sym: genIfDispatcher(g, g.methods[bucket].methods, relevantCols, g.idgen))
+      g.addDispatchers genIfDispatcher(g, g.methods[bucket].methods, relevantCols, g.idgen)
 
   for baseType in rootTypeSeq:
     let root = baseType.itemId
-    g.methodsPerType[root] = (LazyType(typ: baseType), itemTable[baseType.itemId])
+    g.setMethodsPerType(baseType, itemTable[baseType.itemId])
     for item in g.objectTree[root]:
       let typ = item.value.skipTypes(skipPtrs)
       let idx = typ.itemId
@@ -122,4 +122,4 @@ proc collectVTableDispatchers*(g: ModuleGraph) =
         if itemTable[idx][mIndex].sym == nil:
           let parentIndex = typ[0].skipTypes(skipPtrs).itemId
           itemTable[idx][mIndex] = itemTable[parentIndex][mIndex]
-      g.methodsPerType[idx] = (LazyType(typ: typ), itemTable[idx])
+      g.setMethodsPerType(typ, itemTable[idx])

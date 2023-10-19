@@ -292,4 +292,4 @@ proc generateIfMethodDispatchers*(g: ModuleGraph, idgen: IdGenerator) =
         # if multi-methods are not enabled, we are interested only in the first field
         break
     sortBucket(g.methods[bucket].methods, relevantCols)
-    g.dispatchers.add LazySym(sym: genIfDispatcher(g, g.methods[bucket].methods, relevantCols, idgen))
+    g.addDispatchers genIfDispatcher(g, g.methods[bucket].methods, relevantCols, idgen)

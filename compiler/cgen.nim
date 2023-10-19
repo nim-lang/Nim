@@ -28,7 +28,6 @@ when not defined(leanCompiler):
   import spawn, semparallel
 
 import strutils except `%`, addf # collides with ropes.`%`
-import std/sequtils
 
 from ic / ic import ModuleBackendFlag
 import dynlib
@@ -2189,14 +2188,13 @@ proc genVTable(m: BModule, seqs: seq[PSym]): Rope =
   result.add "(void *) " & seqs[^1].loc.r
   result.add "}"
 
-proc initializeVTable*(m: BModule, typ: PType, dispatchMethods: var seq[LazySym]) =
+proc initializeVTable*(m: BModule, typ: PType, dispatchMethods: seq[PSym]) =
   let name = genTypeInfoV2(m, typ, unknownLineInfo)
   var typeEntry = ""
   let objVTable = getTempName(m)
   let vTablePointerName = getTempName(m)
   let patches = newNode(nkStmtList)
-  let dispatchMethods = toSeq(resolveLazySymSeq(m.g.graph, dispatchMethods))
-  for i in dispatchMethods:
+  for i in getDispatchers(m.g.graph):
     let node = newNode(nkDiscardStmt)
     node.add newSymNode(i)
     patches.add node
@@ -2257,8 +2255,8 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
       if {optMultiMethods, optNoMain} * m.g.config.globalOptions != {} or m.g.config.selectedGC notin {gcArc, gcOrc, gcAtomicArc}:
         generateIfMethodDispatchers(graph, m.idgen)
       else:
-        for value in graph.methodsPerType.mvalues:
-          initializeVTable(m, resolveType(graph, value.typ), value.methods)
+        for value in graph.getMethodsPerType:
+          initializeVTable(m, value[0], value[1])
 
 
   let mm = m
