@@ -2261,7 +2261,7 @@ proc genObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   let a = genx(c, n[0], flags)
 
   template body(target) =
-    buildTyped target, info, FieldAt, typeToIr(c.m.types, n.typ):
+    buildTyped target, info, FieldAt, typeToIr(c.m.types, n[0].typ):
       copyTree target, a
       genField c, n[1], Value(target)
 
@@ -2338,6 +2338,22 @@ proc genProc(cOuter: var ProcCon; n: PNode) =
   if isGenericRoutineStrict(prc) or isCompileTimeProc(prc): return
   genProc cOuter, prc
 
+proc genClosureCall(c: var ProcCon; n: PNode; d: var Value) =
+  let typ = skipTypes(n[0].typ, abstractInstOwned)
+  if tfIterator in typ.flags:
+    const PatIter = "$1.ClP_0($3, $1.ClE_0)" # we know the env exists
+
+  else:
+    const PatProc = "$1.ClE_0? $1.ClP_0($3, $1.ClE_0):(($4)($1.ClP_0))($2)"
+
+
+proc genComplexCall(c: var ProcCon; n: PNode; d: var Value) =
+  if n[0].typ != nil and n[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
+    # XXX genClosureCall p, n, d
+    genCall c, n, d
+  else:
+    genCall c, n, d
+
 proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind & " " & $flags
@@ -2352,11 +2368,9 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
         localError(c.config, n.info, "cannot call method " & s.name.s &
           " at compile time")
       else:
-        genCall(c, n, d)
-        clearDest(c, n, d)
+        genComplexCall(c, n, d)
     else:
-      genCall(c, n, d)
-      clearDest(c, n, d)
+      genComplexCall(c, n, d)
   of nkCharLit..nkInt64Lit, nkUIntLit..nkUInt64Lit:
     genNumericLit(c, n, d, n.intVal)
   of nkFloatLit..nkFloat128Lit:

@@ -13,7 +13,7 @@
 from os import addFileExt, `/`, createDir
 
 import ".." / [ast, modulegraphs, renderer, transf, options, msgs, lineinfos]
-import nirtypes, nirinsts, ast2ir, nirlineinfos, nirfiles
+import nirtypes, nirinsts, ast2ir, nirlineinfos, nirfiles, nirvm
 
 import ".." / ic / [rodfiles, bitabs]
 

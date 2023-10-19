@@ -9,14 +9,6 @@
 
 ## Nir Compiler. Currently only supports a "view" command.
 
-# NIR TODO:
-# - Implement closure calls.
-# - Port block exiting logic from the C codegen.
-# - Port parameter passing and NRVO.
-# - Port 3 opcodes to enable closure iterators.
-# - Port Runtime type information from the C codegen.
-# - Port the few missing magics from the C codegen.
-
 import ".." / ic / [bitabs, rodfiles]
 import nirinsts, nirtypes, nirlineinfos, nirfiles #, nir2gcc
 

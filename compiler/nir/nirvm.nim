@@ -15,9 +15,9 @@ We also split the instruction stream into separate (code, debug) seqs while
 we're at it.
 ]##
 
-import std / [tables, intsets]
+import std / [assertions, tables, intsets]
 import ".." / ic / bitabs
-import nirinsts, nirtypes
+import nirinsts, nirtypes, nirfiles, nirlineinfos
 
 type
   OpcodeM = enum
@@ -103,8 +103,8 @@ const
 type
   Instr = distinct uint32
 
-template kind(n: Instr): OpcodeM = OpcodeM(n and OpcodeMask)
-template operand(n: Instr): uint32 = (n shr OpcodeBits)
+template kind(n: Instr): OpcodeM = OpcodeM(n.uint32 and OpcodeMask)
+template operand(n: Instr): uint32 = (n.uint32 shr OpcodeBits)
 
 template toIns(k: OpcodeM; operand: uint32): Instr =
   Instr(uint32(k) or (operand shl OpcodeBits))
@@ -116,20 +116,60 @@ type
   PatchPos = distinct int
   CodePos = distinct int
 
-  Unit = ref object ## a NIR module
-    procs: Table[SymId, CodePos]
-    globals: Table[SymId, uint32]
-    integers: BiTable[int64]
-    strings: BiTable[string]
-    globalsGen: uint32
-
-  Universe* = object ## all units: For interpretation we need that
-    units: Table[string, Unit]
-
   Bytecode = object
     code: seq[Instr]
     debug: seq[PackedLineInfo]
-    u: Unit
+    m: NirModule
+    procs: Table[SymId, CodePos]
+    globals: Table[SymId, uint32]
+    globalsGen: uint32
+    typeImpls: Table[string, TypeId]
+    offsets: Table[TypeId, seq[int]]
+    sizes: Table[TypeId, (int, int)] # (size, alignment)
+
+  Universe* = object ## all units: For interpretation we need that
+    units: seq[Bytecode]
+    unitNames: Table[string, int]
+    current: int
+
+template `[]`(t: seq[Instr]; n: CodePos): Instr = t[n.int]
+
+proc traverseObject(b: var Bytecode; t, offsetKey: TypeId) =
+  var size = -1
+  var align = -1
+  for x in sons(b.m.types, t):
+    case b.m.types[x].kind
+    of FieldDecl:
+      var offset = -1
+      for y in sons(b.m.types, x):
+        if b.m.types[y].kind == OffsetVal:
+          offset = b.m.lit.numbers[b.m.types[y].litId]
+          break
+      b.offsets.mgetOrPut(offsetKey, @[]).add offset
+    of SizeVal:
+      size = b.m.lit.numbers[b.m.types[x].litId]
+    of AlignVal:
+      align = b.m.lit.numbers[b.m.types[x].litId]
+    of ObjectTy:
+      # inheritance
+      assert b.m.types[x.firstSon].kind == NameVal
+      let impl = b.typeImpls.getOrDefault(b.m.lit.strings[b.m.types[x.firstSon].litId])
+      assert impl.int > 0
+      traverseObject b, impl, offsetKey
+    else: discard
+  if t == offsetKey:
+    b.sizes[t] = (size, align)
+
+proc traverseTypes(b: var Bytecode) =
+  for t in allTypes(b.m.types):
+    if b.m.types[t].kind in {ObjectDecl, UnionDecl}:
+      assert b.m.types[t.firstSon].kind == NameVal
+      b.typeImpls[b.m.lit.strings[b.m.types[t.firstSon].litId]] = t
+
+  for t in allTypes(b.m.types):
+    if b.m.types[t].kind in {ObjectDecl, UnionDecl}:
+      assert b.m.types[t.firstSon].kind == NameVal
+      traverseObject b, t, t
 
 const
   InvalidPatchPos* = PatchPos(-1)
@@ -146,7 +186,7 @@ proc add(bc: var Bytecode; info: PackedLineInfo; kind: OpcodeM; raw: uint32) =
   bc.debug.add info
 
 proc add(bc: var Bytecode; info: PackedLineInfo; kind: OpcodeM; lit: LitId) =
-  add bc, info, kind, uint(lit)
+  add bc, info, kind, uint32(lit)
 
 proc isAtom(bc: Bytecode; pos: int): bool {.inline.} = bc.code[pos].kind <= LastAtomicValue
 proc isAtom(bc: Bytecode; pos: CodePos): bool {.inline.} = bc.code[pos.int].kind <= LastAtomicValue
@@ -191,77 +231,88 @@ proc span(bc: Bytecode; pos: int): int {.inline.} =
 
 type
   Preprocessing = object
+    u: ref Universe
     known: Table[LabelId, CodePos]
     toPatch: Table[LabelId, seq[CodePos]]
     locals: Table[SymId, uint32]
-    c: Bytecode # to be moved out
-    thisModule: LitId
+    thisModule: uint32
     markedWithLabel: IntSet
 
-proc genGoto(c: var Preprocessing; lab: LabelId; opc: OpcodeM) =
+proc genGoto(c: var Preprocessing; bc: var Bytecode; info: PackedLineInfo; lab: LabelId; opc: OpcodeM) =
   let dest = c.known.getOrDefault(lab, CodePos(-1))
   if dest.int >= 0:
-    c.bc.add info, opc, uint32 dest
+    bc.add info, opc, uint32 dest
   else:
-    let here = CodePos(c.bc.code.len)
+    let here = CodePos(bc.code.len)
     c.toPatch.mgetOrPut(lab, @[]).add here
-    c.bc.add info, opc, 1u32 # will be patched once we traversed the label
+    bc.add info, opc, 1u32 # will be patched once we traversed the label
 
-proc preprocess(c: var Preprocessing; u: var Universe; t: Tree; n: NodePos) =
+proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos) =
   let info = t[n].info
 
   template recurse(opc) =
-    build c.bc, info, opc:
-      for c in sons(t, n): preprocess(c, u, t, c)
+    build bc, info, opc:
+      for ch in sons(t, n): preprocess(c, bc, t, ch)
 
   case t[n].kind
   of Nop:
     discard "don't use Nop"
   of ImmediateVal:
-    c.bc.add info, ImmediateValM, t[n].rawOperand
+    bc.add info, ImmediateValM, t[n].rawOperand
   of IntVal:
-    c.bc.add info, IntValM, t[n].rawOperand
+    bc.add info, IntValM, t[n].rawOperand
   of StrVal:
-    c.bc.add info, StrValM, t[n].rawOperand
+    bc.add info, StrValM, t[n].rawOperand
   of SymDef:
     assert false, "SymDef outside of declaration context"
   of SymUse:
     let s = t[n].symId
     if c.locals.hasKey(s):
-      c.bc.add info, LoadLocalM, c.locals[s]
-    elif c.bc.u.procs.hasKey(s):
-      build c.bc, info, LoadProcM:
-        c.bc.add info, StrValM, thisModule
-        c.bc.add info, LoadLocalM, uint32 c.bc.u.procs[s]
-    elif c.bc.u.globals.hasKey(s):
-      build c.bc, info, LoadGlobalM:
-        c.bc.add info, StrValM, thisModule
-        c.bc.add info, LoadLocalM, uint32 s
+      bc.add info, LoadLocalM, c.locals[s]
+    elif bc.procs.hasKey(s):
+      build bc, info, LoadProcM:
+        bc.add info, ImmediateValM, c.thisModule
+        bc.add info, LoadLocalM, uint32 bc.procs[s]
+    elif bc.globals.hasKey(s):
+      build bc, info, LoadGlobalM:
+        bc.add info, ImmediateValM, c.thisModule
+        bc.add info, LoadLocalM, uint32 s
     else:
       assert false, "don't understand SymUse ID"
 
   of ModuleSymUse:
-    let moduleName {.cursor.} = c.bc.u.strings[t[n.firstSon].litId]
-    let unit = u.units.getOrDefault(moduleName)
+    let (x, y) = sons2(t, n)
+    let unit = c.u.unitNames.getOrDefault(bc.m.lit.strings[t[x].litId], -1)
+    let s = t[y].symId
+    if c.u.units[unit].procs.hasKey(s):
+      build bc, info, LoadProcM:
+        bc.add info, ImmediateValM, uint32 unit
+        bc.add info, LoadLocalM, uint32 c.u.units[unit].procs[s]
+    elif bc.globals.hasKey(s):
+      build bc, info, LoadGlobalM:
+        bc.add info, ImmediateValM, uint32 unit
+        bc.add info, LoadLocalM, uint32 s
+    else:
+      assert false, "don't understand ModuleSymUse ID"
 
   of Typed:
-    c.bc.add info, TypedM, t[n].rawOperand
+    bc.add info, TypedM, t[n].rawOperand
   of PragmaId:
-    c.bc.add info, TypedM, t[n].rawOperand
+    bc.add info, PragmaIdM, t[n].rawOperand
   of NilVal:
-    c.bc.add info, NilValM, t[n].rawOperand
+    bc.add info, NilValM, t[n].rawOperand
   of LoopLabel, Label:
     let lab = t[n].label
-    let here = CodePos(c.bc.code.len-1)
+    let here = CodePos(bc.code.len-1)
     c.known[lab] = here
-    var p: seq[CodePos]
+    var p: seq[CodePos] = @[]
     if c.toPatch.take(lab, p):
-      for x in p: c.bc.code[x] = toIns(c.bc.code[x].kind, here)
+      for x in p: (bc.code[x]) = toIns(bc.code[x].kind, uint32 here)
     c.markedWithLabel.incl here.int # for toString()
   of Goto, GotoLoop:
-    c.genGoto(t[n].label, GotoM)
+    c.genGoto(bc, info, t[n].label, GotoM)
   of CheckedGoto:
-    c.genGoto(t[n].label, CheckedGotoM)
+    c.genGoto(bc, info, t[n].label, CheckedGotoM)
   of ArrayConstr:
     recurse ArrayConstrM
   of ObjConstr:
@@ -293,7 +344,11 @@ proc preprocess(c: var Preprocessing; u: var Universe; t: Tree; n: NodePos) =
   of ArrayAt:
     recurse ArrayAtM
   of FieldAt:
-    recurse FieldAtM
+    let (typ, a, b) = sons3(t, n)
+    let offset = bc.offsets[t[typ].typeId][t[b].immediateVal]
+    build bc, info, FieldAtM:
+      preprocess(c, bc, t, a)
+      bc.add info, ImmediateValM, uint32(offset)
   of Load:
     recurse LoadM
   of Store:
@@ -390,8 +445,8 @@ proc newStackFrame(size: int; caller: StackFrame; returnAddr: CodePos): StackFra
     result.locals = alloc0(size)
 
 proc popStackFrame(s: StackFrame): StackFrame =
-  if result.locals != addr(result.payload):
-    dealloc result.locals
+  if s.locals != addr(s.payload):
+    dealloc s.locals
   result = s.caller
 
 template `+!`(p: pointer; diff: uint): pointer = cast[pointer](cast[uint](p) + diff)
@@ -421,7 +476,8 @@ proc eval(c: seq[Instr]; pc: CodePos; s: StackFrame; result: pointer) =
     eval c, pc+2, s, addr y
     cast[ptr int](res)[] = x + y
   of StrValM:
-    cast[ptr StringDesc](res)[] = addr(c.strings[c[pc].litId])
+    # binary compatible and no deep copy required:
+    copyMem(cast[ptr string](res), addr(c.strings[c[pc].litId]), sizeof(string))
   of ObjConstrM:
     for ch in sons(c, pc):
       let offset = c[ch]

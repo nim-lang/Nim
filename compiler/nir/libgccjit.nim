@@ -57,10 +57,9 @@ const
 ## 	 +- gcc_jit_block
 ## 	 +- gcc_jit_rvalue
 ## 	     +- gcc_jit_lvalue
-## 		 +- gcc_jit_param
+## 	   +- gcc_jit_param
 ## 	 +- gcc_jit_case
 ## 	 +- gcc_jit_extended_asm
-##
 
 type
   GContext* {.bycopy.} = object

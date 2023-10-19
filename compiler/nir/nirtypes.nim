@@ -155,6 +155,10 @@ proc elementType*(tree: TypeGraph; n: TypeId): TypeId {.inline.} =
   assert tree[n].kind in {APtrTy, UPtrTy, AArrayPtrTy, UArrayPtrTy, ArrayTy, LastArrayTy}
   result = TypeId(n.int+1)
 
+proc litId*(n: TypeNode): LitId {.inline.} =
+  assert n.kind in {NameVal, IntVal, SizeVal, AlignVal, OffsetVal, AnnotationVal}
+  result = LitId(n.operand)
+
 proc kind*(tree: TypeGraph; n: TypeId): NirTypeKind {.inline.} = tree[n].kind
 
 proc span(tree: TypeGraph; pos: int): int {.inline.} =
@@ -407,6 +411,12 @@ proc toString*(dest: var string; g: TypeGraph) =
     dest.add "> "
     toString(dest, g, TypeId i)
     dest.add '\n'
+    nextChild g, i
+
+iterator allTypes*(g: TypeGraph): TypeId =
+  var i = 0
+  while i < g.len:
+    yield TypeId i
     nextChild g, i
 
 proc `$`(g: TypeGraph): string =

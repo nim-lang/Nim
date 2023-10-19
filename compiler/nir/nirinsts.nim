@@ -167,7 +167,7 @@ const
 type
   Instr* = object     # 8 bytes
     x: uint32
-    info: PackedLineInfo
+    info*: PackedLineInfo
 
 template kind*(n: Instr): Opcode = Opcode(n.x and OpcodeMask)
 template operand(n: Instr): uint32 = (n.x shr OpcodeBits)
@@ -257,8 +257,45 @@ proc copyTree*(dest: var Tree; src: Tree) =
   for i in 0..<L:
     dest.nodes[d+i] = src.nodes[pos+i]
 
+proc sons2*(tree: Tree; n: NodePos): (NodePos, NodePos) =
+  assert(not isAtom(tree, n.int))
+  let a = n.int+1
+  let b = a + span(tree, a)
+  result = (NodePos a, NodePos b)
+
+proc sons3*(tree: Tree; n: NodePos): (NodePos, NodePos, NodePos) =
+  assert(not isAtom(tree, n.int))
+  let a = n.int+1
+  let b = a + span(tree, a)
+  let c = b + span(tree, b)
+  result = (NodePos a, NodePos b, NodePos c)
+
+proc typeId*(ins: Instr): TypeId {.inline.} =
+  assert ins.kind == Typed
+  result = TypeId(ins.operand)
+
+proc symId*(ins: Instr): SymId {.inline.} =
+  assert ins.kind == SymUse
+  result = SymId(ins.operand)
+
+proc immediateVal*(ins: Instr): int {.inline.} =
+  assert ins.kind == ImmediateVal
+  result = cast[int](ins.operand)
+
+proc litId*(ins: Instr): LitId {.inline.} =
+  assert ins.kind in {StrVal, IntVal}
+  result = LitId(ins.operand)
+
+
 type
   LabelId* = distinct int
+
+proc `==`*(a, b: LabelId): bool {.borrow.}
+proc hash*(a: LabelId): Hash {.borrow.}
+
+proc label*(ins: Instr): LabelId {.inline.} =
+  assert ins.kind in {Label, LoopLabel, Goto, GotoLoop, CheckedGoto}
+  result = LabelId(ins.operand)
 
 proc newLabel*(labelGen: var int): LabelId {.inline.} =
   result = LabelId labelGen
