@@ -445,7 +445,6 @@ when not useNimNetLite:
       var i = 0
       while not isNil(s.h_addr_list[i]):
         var ipStr = newString(strAddrLen)
-        echo result.addrtype.cint
         if inet_ntop(nativeAfInet6, cast[pointer](s.h_addr_list[i]),
                      cstring(ipStr), len(ipStr).int32) == nil:
           raiseOSError(osLastError())
