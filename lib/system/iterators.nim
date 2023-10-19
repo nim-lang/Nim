@@ -61,7 +61,7 @@ iterator items*[T](a: set[T]): T {.inline.} =
   ## able to hold).
   var i = low(T).int
   while i <= high(T).int:
-    when defined(nimHasCastExtendedVm) and T is enum::
+    when defined(nimHasCastExtendedVm) and T is enum:
       if cast[T](i) in a: yield cast[T](i)
     else:
       if T(i) in a: yield T(i)
