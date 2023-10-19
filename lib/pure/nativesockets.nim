@@ -440,7 +440,20 @@ when not useNimNetLite:
         result.addrList.add($inet_ntoa(inaddrPtr[]))
         inc(i)
     else:
-      result.addrList = cstringArrayToSeq(s.h_addr_list)
+      let strAddrLen = when not useWinVersion: posix.INET6_ADDRSTRLEN.int
+                       else: 46
+      var i = 0
+      while not isNil(s.h_addr_list[i]):
+        var ipStr = newString(strAddrLen)
+        if inet_ntop(result.addrtype.cint, s.h_addr_list[i], cstring(ipStr),
+                     len(ipStr).int32) == nil:
+          raiseOSError(osLastError())
+        when not useWinVersion:
+          if posix.IN6_IS_ADDR_V4MAPPED(s.h_addr_list[i]) != 0:
+            ipStr.setSlice("::ffff:".len..<strAddrLen)
+        setLen(ipStr, len(cstring(ipStr)))
+        result.addrList.add(ipStr)
+        inc(i)
     result.length = int(s.h_length)
 
   proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
