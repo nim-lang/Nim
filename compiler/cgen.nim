@@ -2194,7 +2194,7 @@ proc initializeVTable*(m: BModule, typ: PType, dispatchMethods: seq[PSym]) =
   let objVTable = getTempName(m)
   let vTablePointerName = getTempName(m)
   let patches = newNode(nkStmtList)
-  for i in getDispatchers(m.g.graph):
+  for i in dispatchMethods:
     let node = newNode(nkDiscardStmt)
     node.add newSymNode(i)
     patches.add node
