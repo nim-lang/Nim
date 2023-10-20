@@ -58,31 +58,32 @@ type
     tagUnknown,    ## unknown HTML element
     tagA,          ## the HTML `a` element
     tagAbbr,       ## the deprecated HTML `abbr` element
-    tagAcronym,    ## the HTML `acronym` element
+    tagAcronym,    ## the deprecated HTML `acronym` element. Use `abbr` instead
     tagAddress,    ## the HTML `address` element
-    tagApplet,     ## the deprecated HTML `applet` element
+    tagApplet,     ## the deprecated HTML `applet` element. Use `object` instead
     tagArea,       ## the HTML `area` element
     tagArticle,    ## the HTML `article` element
     tagAside,      ## the HTML `aside` element
     tagAudio,      ## the HTML `audio` element
     tagB,          ## the HTML `b` element
     tagBase,       ## the HTML `base` element
+    tagBasefont,   ## the deprecated HTML `basefont` element. Use CSS instead
     tagBdi,        ## the HTML `bdi` element
-    tagBdo,        ## the deprecated HTML `dbo` element
-    tagBasefont,   ## the deprecated HTML `basefont` element
-    tagBig,        ## the HTML `big` element
+    tagBdo,        ## the HTML `dbo` element
+    tagBig,        ## the deprecated HTML `big` element
     tagBlockquote, ## the HTML `blockquote` element
     tagBody,       ## the HTML `body` element
     tagBr,         ## the HTML `br` element
     tagButton,     ## the HTML `button` element
     tagCanvas,     ## the HTML `canvas` element
     tagCaption,    ## the HTML `caption` element
-    tagCenter,     ## the deprecated HTML `center` element
+    tagCenter,     ## the deprecated HTML `center` element. Use CSS instead
     tagCite,       ## the HTML `cite` element
     tagCode,       ## the HTML `code` element
     tagCol,        ## the HTML `col` element
     tagColgroup,   ## the HTML `colgroup` element
     tagCommand,    ## the HTML `command` element
+    tagData,       ## the HTML `data` element
     tagDatalist,   ## the HTML `datalist` element
     tagDd,         ## the HTML `dd` element
     tagDel,        ## the HTML `del` element
@@ -90,18 +91,18 @@ type
     tagDfn,        ## the HTML `dfn` element
     tagDialog,     ## the HTML `dialog` element
     tagDiv,        ## the HTML `div` element
-    tagDir,        ## the deprecated HTLM `dir` element
+    tagDir,        ## the deprecated HTML `dir` element. Use `ul` instead
     tagDl,         ## the HTML `dl` element
     tagDt,         ## the HTML `dt` element
     tagEm,         ## the HTML `em` element
-    tagEmbed,      ## the HTML `embed` element
+    tagEmbed,      ## the deprecated HTML `embed` element. Use `object` instead
     tagFieldset,   ## the HTML `fieldset` element
     tagFigcaption, ## the HTML `figcaption` element
     tagFigure,     ## the HTML `figure` element
-    tagFont,       ## the deprecated HTML `font` element
+    tagFont,       ## the deprecated HTML `font` element. Use CSS instead
     tagFooter,     ## the HTML `footer` element
     tagForm,       ## the HTML `form` element
-    tagFrame,      ## the HTML `frame` element
+    tagFrame,      ## the deprecated HTML `frame` element. Use `iframe` instead
     tagFrameset,   ## the deprecated HTML `frameset` element
     tagH1,         ## the HTML `h1` element
     tagH2,         ## the HTML `h2` element
@@ -115,20 +116,21 @@ type
     tagHtml,       ## the HTML `html` element
     tagHr,         ## the HTML `hr` element
     tagI,          ## the HTML `i` element
-    tagIframe,     ## the deprecated HTML `iframe` element
+    tagIframe,     ## the HTML `iframe` element
     tagImg,        ## the HTML `img` element
     tagInput,      ## the HTML `input` element
     tagIns,        ## the HTML `ins` element
-    tagIsindex,    ## the deprecated HTML `isindex` element
+    tagIsindex,    ## the deprecated HTML `isindex` element. Use `form` instead
     tagKbd,        ## the HTML `kbd` element
-    tagKeygen,     ## the HTML `keygen` element
+    tagKeygen,     ## the deprecated HTML `keygen` element. Use other methods, such as OAuth or OpenID.
     tagLabel,      ## the HTML `label` element
     tagLegend,     ## the HTML `legend` element
     tagLi,         ## the HTML `li` element
     tagLink,       ## the HTML `link` element
+    tagMain,       ## the HTML `main` element
     tagMap,        ## the HTML `map` element
     tagMark,       ## the HTML `mark` element
-    tagMenu,       ## the deprecated HTML `menu` element
+    tagMenu,       ## the deprecated HTML `menu` element. Use `ul` instead
     tagMeta,       ## the HTML `meta` element
     tagMeter,      ## the HTML `meter` element
     tagNav,        ## the HTML `nav` element
@@ -141,22 +143,24 @@ type
     tagOption,     ## the HTML `option` element
     tagOutput,     ## the HTML `output` element
     tagP,          ## the HTML `p` element
-    tagParam,      ## the HTML `param` element
+    tagParam,      ## the deprecated HTML `param` element
+    tagPicture,    ## the HTML `picture` element
     tagPre,        ## the HTML `pre` element
     tagProgress,   ## the HTML `progress` element
     tagQ,          ## the HTML `q` element
     tagRp,         ## the HTML `rp` element
     tagRt,         ## the HTML `rt` element
     tagRuby,       ## the HTML `ruby` element
-    tagS,          ## the deprecated HTML `s` element
+    tagS,          ## the deprecated HTML `s` element. Use `del` or CSS instead
     tagSamp,       ## the HTML `samp` element
     tagScript,     ## the HTML `script` element
     tagSection,    ## the HTML `section` element
     tagSelect,     ## the HTML `select` element
+    tagSlot,       ## the HTML `slot` element
     tagSmall,      ## the HTML `small` element
     tagSource,     ## the HTML `source` element
     tagSpan,       ## the HTML `span` element
-    tagStrike,     ## the deprecated HTML `strike` element
+    tagStrike,     ## the deprecated HTML `strike` element. Use `del` or CSS instead
     tagStrong,     ## the HTML `strong` element
     tagStyle,      ## the HTML `style` element
     tagSub,        ## the HTML `sub` element
@@ -165,6 +169,7 @@ type
     tagTable,      ## the HTML `table` element
     tagTbody,      ## the HTML `tbody` element
     tagTd,         ## the HTML `td` element
+    tagTemplate,   ## the HTML `template` element
     tagTextarea,   ## the HTML `textarea` element
     tagTfoot,      ## the HTML `tfoot` element
     tagTh,         ## the HTML `th` element
@@ -173,8 +178,8 @@ type
     tagTitle,      ## the HTML `title` element
     tagTr,         ## the HTML `tr` element
     tagTrack,      ## the HTML `track` element
-    tagTt,         ## the HTML `tt` element
-    tagU,          ## the deprecated HTML `u` element
+    tagTt,         ## the deprecated HTML `tt` element. Use `code` or CSS instead
+    tagU,          ## the deprecated HTML `u` element. Use CSS instead
     tagUl,         ## the HTML `ul` element
     tagVar,        ## the HTML `var` element
     tagVideo,      ## the HTML `video` element
@@ -187,36 +192,37 @@ const
     "b", "base", "basefont", "bdi", "bdo", "big", "blockquote", "body",
     "br", "button", "canvas", "caption", "center", "cite", "code",
     "col", "colgroup", "command",
-    "datalist", "dd", "del", "details", "dfn", "dialog", "div",
+    "data", "datalist", "dd", "del", "details", "dfn", "dialog", "div",
     "dir", "dl", "dt", "em", "embed", "fieldset",
     "figcaption", "figure", "font", "footer",
     "form", "frame", "frameset", "h1", "h2", "h3",
     "h4", "h5", "h6", "head", "header", "hgroup", "html", "hr",
     "i", "iframe", "img", "input", "ins", "isindex",
-    "kbd", "keygen", "label", "legend", "li", "link", "map", "mark",
+    "kbd", "keygen", "label", "legend", "li", "link", "main", "map", "mark",
     "menu", "meta", "meter", "nav", "nobr", "noframes", "noscript",
-    "object", "ol",
-    "optgroup", "option", "output", "p", "param", "pre", "progress", "q",
-    "rp", "rt", "ruby", "s", "samp", "script", "section", "select", "small",
-    "source", "span", "strike", "strong", "style",
+    "object", "ol", "optgroup", "option", "output",
+    "p", "param", "picture", "pre", "progress", "q",
+    "rp", "rt", "ruby", "s", "samp", "script", "search", "section", "select",
+    "slot", "small", "source", "span", "strike", "strong", "style",
     "sub", "summary", "sup", "table",
-    "tbody", "td", "textarea", "tfoot", "th", "thead", "time",
+    "tbody", "td", "template", "textarea", "tfoot", "th", "thead", "time",
     "title", "tr", "track", "tt", "u", "ul", "var", "video", "wbr"]
   InlineTags* = {tagA, tagAbbr, tagAcronym, tagApplet, tagB, tagBasefont,
     tagBdo, tagBig, tagBr, tagButton, tagCite, tagCode, tagDel, tagDfn,
     tagEm, tagFont, tagI, tagImg, tagIns, tagInput, tagIframe, tagKbd,
-    tagLabel, tagMap, tagObject, tagQ, tagSamp, tagScript, tagSelect,
-    tagSmall, tagSpan, tagStrong, tagSub, tagSup, tagTextarea, tagTt,
-    tagVar, tagApplet, tagBasefont, tagFont, tagIframe, tagU, tagS,
-    tagStrike, tagWbr}
-  BlockTags* = {tagAddress, tagBlockquote, tagCenter, tagDel, tagDir, tagDiv,
-    tagDl, tagFieldset, tagForm, tagH1, tagH2, tagH3, tagH4,
-    tagH5, tagH6, tagHr, tagIns, tagIsindex, tagMenu, tagNoframes, tagNoscript,
-    tagOl, tagP, tagPre, tagTable, tagUl, tagCenter, tagDir, tagIsindex,
-    tagMenu, tagNoframes}
+    tagLabel, tagMap, tagObject, tagOutput, tagQ, tagSamp, tagScript,
+    tagSelect, tagSlot, tagSmall, tagSpan, tagStrong, tagSub, tagSup,
+    tagTextarea, tagTt, tagVar, tagU, tagS, tagStrike, tagWbr}
+  BlockTags* = {tagAddress, tagArticle, tagAside, tagBlockquote, tagCanvas,
+    tagDd, tagDir, tagDiv, tagDl, tagDt, tagFieldset, tagFigcaption, tagFigure,
+    tagFooter, tagForm, tagH1, tagH2, tagH3, tagH4, tagH5, tagH6,
+    tagHeader, tagHr, tagLi, tagMain, tagMenu, tagNav, tagNoframes, tagNoscript,
+    tagOl, tagP, tagPre, tagSection, tagTable, tagTfoot, tagUl, tagVideo}
   SingleTags* = {tagArea, tagBase, tagBasefont,
-    tagBr, tagCol, tagFrame, tagHr, tagImg, tagIsindex,
-    tagLink, tagMeta, tagParam, tagWbr, tagSource}
+    tagBr, tagCol, tagCommand, tagEmbed, tagFrame,
+    tagHr, tagImg, tagIsindex, tagInput, tagKeygen,
+    tagLink, tagMeta, tagParam, tagSource, tagTrack,
+    tagWbr}
 
 proc allLower(s: string): bool =
   for c in s:
@@ -252,6 +258,7 @@ proc toHtmlTag(s: string): HtmlTag =
   of "col": tagCol
   of "colgroup": tagColgroup
   of "command": tagCommand
+  of "data": tagData
   of "datalist": tagDatalist
   of "dd": tagDd
   of "del": tagDel
@@ -295,6 +302,7 @@ proc toHtmlTag(s: string): HtmlTag =
   of "legend": tagLegend
   of "li": tagLi
   of "link": tagLink
+  of "main": tagMain
   of "map": tagMap
   of "mark": tagMark
   of "menu": tagMenu
@@ -311,6 +319,7 @@ proc toHtmlTag(s: string): HtmlTag =
   of "output": tagOutput
   of "p": tagP
   of "param": tagParam
+  of "picture": tagPicture
   of "pre": tagPre
   of "progress": tagProgress
   of "q": tagQ
@@ -335,6 +344,7 @@ proc toHtmlTag(s: string): HtmlTag =
   of "tbody": tagTbody
   of "td": tagTd
   of "textarea": tagTextarea
+  of "template": tagTemplate
   of "tfoot": tagTfoot
   of "th": tagTh
   of "thead": tagThead
