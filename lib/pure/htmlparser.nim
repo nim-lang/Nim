@@ -154,6 +154,7 @@ type
     tagS,          ## the deprecated HTML `s` element. Use `del` or CSS instead
     tagSamp,       ## the HTML `samp` element
     tagScript,     ## the HTML `script` element
+    tagSearch,     ## the HTML `search` element
     tagSection,    ## the HTML `section` element
     tagSelect,     ## the HTML `select` element
     tagSlot,       ## the HTML `slot` element
@@ -217,7 +218,7 @@ const
     tagDd, tagDir, tagDiv, tagDl, tagDt, tagFieldset, tagFigcaption, tagFigure,
     tagFooter, tagForm, tagH1, tagH2, tagH3, tagH4, tagH5, tagH6,
     tagHeader, tagHr, tagLi, tagMain, tagMenu, tagNav, tagNoframes, tagNoscript,
-    tagOl, tagP, tagPre, tagSection, tagTable, tagTfoot, tagUl, tagVideo}
+    tagOl, tagP, tagPre, tagSearch, tagSection, tagTable, tagTfoot, tagUl, tagVideo}
   SingleTags* = {tagArea, tagBase, tagBasefont,
     tagBr, tagCol, tagCommand, tagEmbed, tagFrame,
     tagHr, tagImg, tagIsindex, tagInput, tagKeygen,
@@ -329,6 +330,7 @@ proc toHtmlTag(s: string): HtmlTag =
   of "s": tagS
   of "samp": tagSamp
   of "script": tagScript
+  of "search": tagSearch
   of "section": tagSection
   of "select": tagSelect
   of "small": tagSmall
