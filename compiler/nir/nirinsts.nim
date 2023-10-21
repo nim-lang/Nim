@@ -234,6 +234,8 @@ proc nextChild(tree: Tree; pos: var int) {.inline.} =
   else:
     inc pos
 
+template firstSon*(n: NodePos): NodePos = NodePos(n.int+1)
+
 iterator sons*(tree: Tree; n: NodePos): NodePos =
   var pos = n.int
   assert tree.nodes[pos].kind > LastAtomicValue
