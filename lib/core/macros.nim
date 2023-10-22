@@ -1724,6 +1724,26 @@ macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
   for i in 0 ..< args.len:
     result.add args[i]
 
+macro unpackElse*(body: untyped): untyped =
+  ## Can be use to create a template that accept an `else`:
+  ##
+  ##   ```
+  ##   import std/macros
+  ##   template whenNil(val, body1, body2: untyped) =
+  ##     if val.isNil: body1
+  ##     else: unpackElse(body2)
+  ##
+  ##   type ExampleObj = ref object
+  ##   var ex: ExampleObj
+  ##   ex.whenNil:
+  ##     echo "I'm nil!"
+  ##   else: assert(false)
+  ##   ```
+  if body.kind == nnkElse:
+    body[0]
+  else:
+    body
+
 proc getProjectPath*(): string = discard
   ## Returns the path to the currently compiling project.
   ##
