@@ -244,7 +244,19 @@ iterator sons(bc: Bytecode; n: CodePos): CodePos =
     yield CodePos pos
     nextChild bc, pos
 
-template `[]`*(t: Bytecode; n: CodePos): Instr = t.code[n.int]
+iterator sonsFrom1(bc: Bytecode; n: CodePos): CodePos =
+  var pos = n.int
+  assert bc.code[pos].kind > LastAtomicValue
+  let last = pos + bc.code[pos].rawSpan
+  inc pos
+  nextChild bc, pos
+  while pos < last:
+    yield CodePos pos
+    nextChild bc, pos
+
+template firstSon(n: CodePos): CodePos = CodePos(n.int+1)
+
+template `[]`(t: Bytecode; n: CodePos): Instr = t.code[n.int]
 
 proc span(bc: Bytecode; pos: int): int {.inline.} =
   if bc.code[pos].kind <= LastAtomicValue: 1 else: int(bc.code[pos].operand)
@@ -348,11 +360,12 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos) =
     let typ = t[n.firstSon].typeId
     build bc, info, ObjConstrM:
       for ch in sons(t, n):
-        if (i mod 2) == 1:
-          let offset = bc.offsets[typ][t[ch].immediateVal]
-          bc.add info, ImmediateValM, uint32(offset)
-        else:
-          preprocess(c, bc, t, ch)
+        if i > 0:
+          if (i mod 2) == 1:
+            let offset = bc.offsets[typ][t[ch].immediateVal]
+            bc.add info, ImmediateValM, uint32(offset)
+          else:
+            preprocess(c, bc, t, ch)
         inc i
   of Ret:
     recurse RetM
@@ -516,6 +529,7 @@ type
     payload: array[PayloadSize, byte]
     caller: StackFrame
     returnAddr: CodePos
+    jumpTo: CodePos # exception handling
 
 proc newStackFrame(size: int; caller: StackFrame; returnAddr: CodePos): StackFrame =
   result = StackFrame(caller: caller, returnAddr: returnAddr)
@@ -549,19 +563,39 @@ proc sons3(tree: seq[Instr]; n: CodePos): (CodePos, CodePos, CodePos) =
   let c = b + span(tree, b)
   result = (CodePos a, CodePos b, CodePos c)
 
-proc eval(c: seq[Instr]; pc: CodePos; s: StackFrame; result: pointer)
+proc sons4(tree: seq[Instr]; n: CodePos): (CodePos, CodePos, CodePos, CodePos) =
+  assert(not isAtom(tree, n))
+  let a = n.int+1
+  let b = a + span(tree, a)
+  let c = b + span(tree, b)
+  let d = c + span(tree, c)
+  result = (CodePos a, CodePos b, CodePos c, CodePos d)
 
-proc evalAddr(c: seq[Instr]; pc: CodePos; s: StackFrame): pointer =
-  case c[pc].kind
+proc typeId*(ins: Instr): TypeId {.inline.} =
+  assert ins.kind == TypedM
+  result = TypeId(ins.operand)
+
+proc immediateVal*(ins: Instr): int {.inline.} =
+  assert ins.kind == ImmediateValM
+  result = cast[int](ins.operand)
+
+proc litId*(ins: Instr): LitId {.inline.} =
+  assert ins.kind in {StrValM, IntValM}
+  result = LitId(ins.operand)
+
+proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer)
+
+proc evalAddr(c: Bytecode; pc: CodePos; s: StackFrame): pointer =
+  case c.code[pc].kind
   of LoadLocalM:
-    result = s.locals +! c[pc].operand
+    result = s.locals +! c.code[pc].operand
   of FieldAtM:
-    let (x, offset) = sons2(c, pc)
+    let (x, offset) = sons2(c.code, pc)
     result = evalAddr(c, x, s)
-    result = result +! c[offset].operand
+    result = result +! c.code[offset].operand
   of ArrayAtM:
-    let (e, a, i) = sons3(c, pc)
-    let elemSize = c[e].operand
+    let (e, a, i) = sons3(c.code, pc)
+    let elemSize = c.code[e].operand
     result = evalAddr(c, a, s)
     var idx: int = 0
     eval(c, i, s, addr idx)
@@ -569,34 +603,146 @@ proc evalAddr(c: seq[Instr]; pc: CodePos; s: StackFrame): pointer =
   else:
     raiseAssert("unimplemented addressing mode")
 
-proc eval(c: seq[Instr]; pc: CodePos; s: StackFrame; result: pointer) =
-  discard
+proc `div`(x, y: float32): float32 {.inline.} = x / y
+proc `div`(x, y: float64): float64 {.inline.} = x / y
 
-#[
-proc eval(c: seq[Instr]; pc: CodePos; s: StackFrame; result: pointer) =
-  case c[pc].kind
-  of AddM:
-    # assume `int` here for now:
-    var x, y: int
-    eval c, pc+1, s, addr x
-    eval c, pc+2, s, addr y
-    cast[ptr int](res)[] = x + y
+from math import `mod`
+
+template binop(opr) {.dirty.} =
+  template impl(typ) {.dirty.} =
+    var x = default(typ)
+    var y = default(typ)
+    eval c, a, s, addr x
+    eval c, b, s, addr y
+    cast[ptr typ](result)[] = opr(x, y)
+
+  let (t, a, b) = sons3(c.code, pc)
+  let tid = TypeId c.code[t].operand
+  case tid
+  of Bool8Id, Char8Id, UInt8Id: impl uint8
+  of Int8Id: impl int8
+  of Int16Id: impl int16
+  of Int32Id: impl int32
+  of Int64Id: impl int64
+  of UInt16Id: impl uint16
+  of UInt32Id: impl uint32
+  of UInt64Id: impl uint64
+  of Float32Id: impl float32
+  of Float64Id: impl float64
+  else: discard
+
+template checkedBinop(opr) {.dirty.} =
+  template impl(typ) {.dirty.} =
+    var x = default(typ)
+    var y = default(typ)
+    eval c, a, s, addr x
+    eval c, b, s, addr y
+    try:
+      cast[ptr typ](result)[] = opr(x, y)
+    except OverflowDefect, DivByZeroDefect:
+      s.jumpTo = CodePos c.code[j].operand
+
+  let (t, j, a, b) = sons4(c.code, pc)
+  let tid = TypeId c.code[t].operand
+  case tid
+  of Bool8Id, Char8Id, UInt8Id: impl uint8
+  of Int8Id: impl int8
+  of Int16Id: impl int16
+  of Int32Id: impl int32
+  of Int64Id: impl int64
+  of UInt16Id: impl uint16
+  of UInt32Id: impl uint32
+  of UInt64Id: impl uint64
+  of Float32Id: impl float32
+  of Float64Id: impl float64
+  else: discard
+
+template bitop(opr) {.dirty.} =
+  template impl(typ) {.dirty.} =
+    var x = default(typ)
+    var y = default(typ)
+    eval c, a, s, addr x
+    eval c, b, s, addr y
+    cast[ptr typ](result)[] = opr(x, y)
+
+  let (t, a, b) = sons3(c.code, pc)
+  let tid = c.code[t].typeId
+  case tid
+  of Bool8Id, Char8Id, UInt8Id: impl uint8
+  of Int8Id: impl int8
+  of Int16Id: impl int16
+  of Int32Id: impl int32
+  of Int64Id: impl int64
+  of UInt16Id: impl uint16
+  of UInt32Id: impl uint32
+  of UInt64Id: impl uint64
+  else: discard
+
+template cmpop(opr) {.dirty.} =
+  template impl(typ) {.dirty.} =
+    var x = default(typ)
+    var y = default(typ)
+    eval c, a, s, addr x
+    eval c, b, s, addr y
+    cast[ptr bool](result)[] = opr(x, y)
+
+  let (t, a, b) = sons3(c.code, pc)
+  let tid = TypeId c.code[t].operand
+  case tid
+  of Bool8Id, Char8Id, UInt8Id: impl uint8
+  of Int8Id: impl int8
+  of Int16Id: impl int16
+  of Int32Id: impl int32
+  of Int64Id: impl int64
+  of UInt16Id: impl uint16
+  of UInt32Id: impl uint32
+  of UInt64Id: impl uint64
+  of Float32Id: impl float32
+  of Float64Id: impl float64
+  else: discard
+
+proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer) =
+  case c.code[pc].kind
+  of CheckedAddM: checkedBinop `+`
+  of CheckedSubM: checkedBinop `-`
+  of CheckedMulM: checkedBinop `*`
+  of CheckedDivM: checkedBinop `div`
+  of CheckedModM: checkedBinop `mod`
+  of AddM: binop `+`
+  of SubM: binop `-`
+  of MulM: binop `*`
+  of DivM: binop `div`
+  of ModM: binop `mod`
+  of BitShlM: bitop `shl`
+  of BitShrM: bitop `shr`
+  of BitAndM: bitop `and`
+  of BitOrM: bitop `or`
+  of BitXorM: bitop `xor`
+  of EqM: cmpop `==`
+  of LeM: cmpop `<=`
+  of LtM: cmpop `<`
+
   of StrValM:
     # binary compatible and no deep copy required:
-    copyMem(cast[ptr string](res), addr(c.strings[c[pc].litId]), sizeof(string))
+    copyMem(cast[ptr string](result), addr(c.m.lit.strings[c[pc].litId]), sizeof(string))
     # XXX not correct!
   of ObjConstrM:
+    var i = 0
+    var offset = 0'u32
     for ch in sons(c, pc):
-      let offset = c[ch]
-      eval c, ch+2, s, result+!offset
+      if (i mod 2) == 1: offset = c.code[ch].operand
+      else: eval c, ch, s, result+!offset
+      inc i
   of ArrayConstrM:
-    let elemSize = c[pc+1].operand
+    let elemSize = c.code[pc.firstSon].operand
     var r = result
-    for ch in sons(c, pc):
+    for ch in sonsFrom1(c, pc):
       eval c, ch, s, r
       r = r+!elemSize # can even do strength reduction here!
   else:
     assert false, "cannot happen"
+
+#[
 
 proc exec(c: seq[Instr]; pc: CodePos) =
   var pc = pc
