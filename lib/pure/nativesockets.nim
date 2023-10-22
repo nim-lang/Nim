@@ -392,6 +392,8 @@ when not useNimNetLite:
       myAddr: pointer
       addrLen = 0
       family = 0
+    
+    defer: freeAddrInfo(addrInfo)
 
     if addrInfo.ai_addr.sa_family.cint == nativeAfInet:
       family = nativeAfInet
@@ -403,8 +405,6 @@ when not useNimNetLite:
       addrLen = 16
     else:
       raise newException(IOError, "Unknown socket family in `getHostByAddr()`")
-
-    freeAddrInfo(addrInfo)
 
     when useWinVersion:
       var s = winlean.gethostbyaddr(cast[ptr InAddr](myAddr), addrLen.cuint,
