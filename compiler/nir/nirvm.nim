@@ -254,6 +254,17 @@ iterator sonsFrom1(bc: Bytecode; n: CodePos): CodePos =
     yield CodePos pos
     nextChild bc, pos
 
+iterator sonsFrom2(bc: Bytecode; n: CodePos): CodePos =
+  var pos = n.int
+  assert bc.code[pos].kind > LastAtomicValue
+  let last = pos + bc.code[pos].rawSpan
+  inc pos
+  nextChild bc, pos
+  nextChild bc, pos
+  while pos < last:
+    yield CodePos pos
+    nextChild bc, pos
+
 template firstSon(n: CodePos): CodePos = CodePos(n.int+1)
 
 template `[]`(t: Bytecode; n: CodePos): Instr = t.code[n.int]
@@ -687,7 +698,7 @@ template cmpop(opr) {.dirty.} =
     cast[ptr bool](result)[] = opr(x, y)
 
   let (t, a, b) = sons3(c.code, pc)
-  let tid = TypeId c.code[t].operand
+  let tid = c.code[t].typeId
   case tid
   of Bool8Id, Char8Id, UInt8Id: impl uint8
   of Int8Id: impl int8
@@ -700,6 +711,45 @@ template cmpop(opr) {.dirty.} =
   of Float32Id: impl float32
   of Float64Id: impl float64
   else: discard
+
+proc evalSelect(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
+  template impl(typ) {.dirty.} =
+    var selector = default(typ)
+    eval c, sel, s, addr selector
+    for pair in sonsFrom2(c, pc):
+      assert c.code[pair].kind == SelectPairM
+      let (values, action) = sons2(c.code, pair)
+      assert c.code[values].kind == SelectListM
+      for v in sons(c, values):
+        case c.code[v].kind
+        of SelectValueM:
+          var a = default(typ)
+          eval c, v.firstSon, s, addr a
+          if selector == a:
+            return CodePos c.code[action].operand
+        of SelectRangeM:
+          let (va, vb) = sons2(c.code, v)
+          var a = default(typ)
+          eval c, va, s, addr a
+          var b = default(typ)
+          eval c, vb, s, addr a
+          if a <= selector and selector <= b:
+            return CodePos c.code[action].operand
+        else: raiseAssert "unreachable"
+    result = CodePos(-1)
+
+  let (t, sel) = sons2(c.code, pc)
+  let tid = c.code[t].typeId
+  case tid
+  of Bool8Id, Char8Id, UInt8Id: impl uint8
+  of Int8Id: impl int8
+  of Int16Id: impl int16
+  of Int32Id: impl int32
+  of Int64Id: impl int64
+  of UInt16Id: impl uint16
+  of UInt32Id: impl uint32
+  of UInt64Id: impl uint64
+  else: raiseAssert "unreachable"
 
 proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer) =
   case c.code[pc].kind
@@ -739,39 +789,59 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer) =
     for ch in sonsFrom1(c, pc):
       eval c, ch, s, r
       r = r+!elemSize # can even do strength reduction here!
+  of NumberConvM:
+    let (t, x) = sons2(c.code, pc)
+    let word = c.m.lit.numbers[c[x].litId]
+
+    template impl(typ: typedesc) {.dirty.} =
+      cast[ptr typ](result)[] = cast[typ](word)
+
+    let tid = c.code[t].typeId
+    case tid
+    of Bool8Id, Char8Id, UInt8Id: impl uint8
+    of Int8Id: impl int8
+    of Int16Id: impl int16
+    of Int32Id: impl int32
+    of Int64Id: impl int64
+    of UInt16Id: impl uint16
+    of UInt32Id: impl uint32
+    of UInt64Id: impl uint64
+    else: raiseAssert "cannot happen"
   else:
-    assert false, "cannot happen"
+    raiseAssert "cannot happen"
 
-#[
-
-proc exec(c: seq[Instr]; pc: CodePos) =
+proc exec(c: Bytecode; pc: CodePos) =
   var pc = pc
-  var currentFrame: StackFrame = nil
-  while true:
-    case c[pc].kind
+  var s: StackFrame = nil
+  while pc.int < c.code.len:
+    case c.code[pc].kind
     of GotoM:
-      pc = CodePos(c[pc].operand)
-    of Asgn:
-      let (size, a, b) = sons3(c, pc)
+      pc = CodePos(c.code[pc].operand)
+    of AsgnM:
+      let (_, a, b) = sons3(c.code, pc)
       let dest = evalAddr(c, a, s)
       eval(c, b, s, dest)
+      nextChild c, int(pc)
     of CallM:
-      # No support for return values, these are mapped to `var T` parameters!
-      let prc = evalProc(c, pc+1)
-      # setup storage for the proc already:
-      let s2 = newStackFrame(prc.frameSize, currentFrame, pc)
-      var i = 0
-      for a in sons(c, pc):
-        eval(c, a, s2, paramAddr(s2, i))
-        inc i
-      currentFrame = s2
-      pc = pcOf(prc)
+      when false:
+        # No support for return values, these are mapped to `var T` parameters!
+        let prc = evalProc(c, pc.firstSon)
+        # setup storage for the proc already:
+        let s2 = newStackFrame(prc.frameSize, s, pc)
+        var i = 0
+        for a in sonsFrom1(c, pc):
+          eval(c, a, s2, paramAddr(s2, i))
+          inc i
+        s = s2
+        pc = pcOf(prc)
     of RetM:
-      pc = currentFrame.returnAddr
-      currentFrame = popStackFrame(currentFrame)
+      pc = s.returnAddr
+      s = popStackFrame(s)
     of SelectM:
-      var x: bool
-      eval(c, b, addr x)
-      # follow the selection instructions...
-      pc = activeBranch(c, b, x)
-]#
+      let pc2 = evalSelect(c, pc, s)
+      if pc2.int >= 0:
+        pc = pc2
+      else:
+        nextChild c, int(pc)
+    else:
+      raiseAssert "unreachable"
