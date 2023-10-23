@@ -1981,7 +1981,7 @@ when defined(nimAuditDelete):
 else:
   {.pragma: auditDelete.}
 
-proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, auditDelete.} =
+proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, systemRaisesDefect, auditDelete.} =
   ## Deletes the item at index `i` by moving all `x[i+1..^1]` items by one position.
   ##
   ## This is an `O(n)` operation.
