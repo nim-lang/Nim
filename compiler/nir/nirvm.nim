@@ -55,6 +55,7 @@ type
 
     LoadM, # a[]
     AsgnM,  # a = b
+    StoreM, # a[] = b
     SetExcM,
     TestExcM,
 
@@ -62,9 +63,7 @@ type
     CheckedIndexM,
 
     CallM,
-    IndirectCallM,
     CheckedCallM, # call that can raise
-    CheckedIndirectCallM, # call that can raise
     CheckedAddM, # with overflow checking etc.
     CheckedSubM,
     CheckedMulM,
@@ -279,8 +278,8 @@ type
     toPatch: Table[LabelId, seq[CodePos]]
     locals: Table[SymId, uint32]
     thisModule: uint32
-    markedWithLabel: IntSet
     localsAddr: uint32
+    markedWithLabel: IntSet
 
 proc align(address, alignment: uint32): uint32 =
   result = (address + (alignment - 1'u32)) and not (alignment - 1'u32)
@@ -294,12 +293,25 @@ proc genGoto(c: var Preprocessing; bc: var Bytecode; info: PackedLineInfo; lab: 
     c.toPatch.mgetOrPut(lab, @[]).add here
     bc.add info, opc, 1u32 # will be patched once we traversed the label
 
-proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos) =
+type
+  AddrMode = enum
+    InDotExpr, WantAddr
+
+template maybeDeref(doDeref: bool; body: untyped) =
+  var pos = PatchPos(-1)
+  if doDeref:
+    bc.add info, TypedM, 0'u32
+    pos = prepare(bc, info, LoadM)
+  body
+  if doDeref:
+    patch(bc, pos)
+
+proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; flags: set[AddrMode]) =
   let info = t[n].info
 
   template recurse(opc) =
     build bc, info, opc:
-      for ch in sons(t, n): preprocess(c, bc, t, ch)
+      for ch in sons(t, n): preprocess(c, bc, t, ch, {WantAddr})
 
   case t[n].kind
   of Nop:
@@ -315,15 +327,17 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos) =
   of SymUse:
     let s = t[n].symId
     if c.locals.hasKey(s):
-      bc.add info, LoadLocalM, c.locals[s]
+      maybeDeref(WantAddr notin flags):
+        bc.add info, LoadLocalM, c.locals[s]
     elif bc.procs.hasKey(s):
       build bc, info, LoadProcM:
         bc.add info, ImmediateValM, c.thisModule
         bc.add info, LoadLocalM, uint32 bc.procs[s]
     elif bc.globals.hasKey(s):
-      build bc, info, LoadGlobalM:
-        bc.add info, ImmediateValM, c.thisModule
-        bc.add info, LoadLocalM, uint32 s
+      maybeDeref(WantAddr notin flags):
+        build bc, info, LoadGlobalM:
+          bc.add info, ImmediateValM, c.thisModule
+          bc.add info, LoadLocalM, uint32 s
     else:
       assert false, "don't understand SymUse ID"
 
@@ -336,9 +350,10 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos) =
         bc.add info, ImmediateValM, uint32 unit
         bc.add info, LoadLocalM, uint32 c.u.units[unit].procs[s]
     elif bc.globals.hasKey(s):
-      build bc, info, LoadGlobalM:
-        bc.add info, ImmediateValM, uint32 unit
-        bc.add info, LoadLocalM, uint32 s
+      maybeDeref(WantAddr notin flags):
+        build bc, info, LoadGlobalM:
+          bc.add info, ImmediateValM, uint32 unit
+          bc.add info, LoadLocalM, uint32 s
     else:
       assert false, "don't understand ModuleSymUse ID"
 
@@ -365,7 +380,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos) =
     build bc, info, ArrayConstrM:
       bc.add info, ImmediateValM, uint32 computeSize(bc, typ)[0]
       for ch in sons(t, n):
-        preprocess(c, bc, t, ch)
+        preprocess(c, bc, t, ch, {WantAddr})
   of ObjConstr:
     var i = 0
     let typ = t[n.firstSon].typeId
@@ -376,7 +391,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos) =
             let offset = bc.offsets[typ][t[ch].immediateVal]
             bc.add info, ImmediateValM, uint32(offset)
           else:
-            preprocess(c, bc, t, ch)
+            preprocess(c, bc, t, ch, {WantAddr})
         inc i
   of Ret:
     recurse RetM
@@ -430,28 +445,77 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos) =
     discard "we don't care about Kill instructions"
   of AddrOf:
     let (_, arg) = sons2(t, n)
-    preprocess(c, bc, t, arg)
+    preprocess(c, bc, t, arg, {WantAddr})
     # the address of x is what the VM works with all the time so there is
     # nothing to compute.
   of ArrayAt:
     let (elemType, a, i) = sons3(t, n)
     let tid = t[elemType].typeId
-    build bc, info, ArrayAtM:
-      bc.add info, ImmediateValM, uint32 computeSize(bc, tid)[0]
-      preprocess(c, bc, t, a)
-      preprocess(c, bc, t, i)
+    let size = uint32 computeSize(bc, tid)[0]
+    if t[a].kind == Load:
+      let (_, arg) = sons2(t, a)
+      build bc, info, LoadM:
+        bc.add info, ImmediateValM, size
+        build bc, info, ArrayAtM:
+          bc.add info, ImmediateValM, size
+          preprocess(c, bc, t, arg, {WantAddr})
+          preprocess(c, bc, t, i, {WantAddr})
+    else:
+      build bc, info, ArrayAtM:
+        bc.add info, ImmediateValM, size
+        preprocess(c, bc, t, a, {WantAddr})
+        preprocess(c, bc, t, i, {WantAddr})
   of FieldAt:
+    # a[] conceptually loads a block of size of T. But when applied to an object selector
+    # only a subset of the data is really requested so `(a[] : T).field`
+    # becomes `(a+offset(field))[] : T_Field`
+    # And now if this is paired with `addr` the deref disappears, as usual: `addr x.field[]`
+    # is `(x+offset(field))`.
     let (typ, a, b) = sons3(t, n)
-    let offset = bc.offsets[t[typ].typeId][t[b].immediateVal]
-    build bc, info, FieldAtM:
-      preprocess(c, bc, t, a)
-      bc.add info, ImmediateValM, uint32(offset)
+    if t[a].kind == Load:
+      let (_, arg) = sons2(t, a)
+      build bc, info, LoadM:
+        bc.add info, ImmediateValM, uint32 computeSize(bc, t[typ].typeId)[0]
+        let offset = bc.offsets[t[typ].typeId][t[b].immediateVal]
+        build bc, info, FieldAtM:
+          preprocess(c, bc, t, arg, flags+{WantAddr})
+          bc.add info, ImmediateValM, uint32(offset)
+    else:
+      let offset = bc.offsets[t[typ].typeId][t[b].immediateVal]
+      build bc, info, FieldAtM:
+        preprocess(c, bc, t, a, flags+{WantAddr})
+        bc.add info, ImmediateValM, uint32(offset)
   of Load:
-    recurse LoadM
+    let (elemType, a) = sons2(t, n)
+    let tid = t[elemType].typeId
+    build bc, info, LoadM:
+      bc.add info, ImmediateValM, uint32 computeSize(bc, tid)[0]
+      preprocess(c, bc, t, a, {})
+
   of Store:
     raiseAssert "Assumption was that Store is unused!"
   of Asgn:
-    recurse AsgnM
+    let (elemType, dest, src) = sons3(t, n)
+    if t[src].kind in {Call, IndirectCall}:
+      # No support for return values, these are mapped to `var T` parameters!
+      build bc, info, CallM:
+        preprocess(c, bc, t, dest, {WantAddr})
+        for ch in sons(t, src): preprocess(c, bc, t, ch, {WantAddr})
+    elif t[src].kind in {CheckedCall, CheckedIndirectCall}:
+      build bc, info, CheckedCallM:
+        preprocess(c, bc, t, src.firstSon, {WantAddr})
+        preprocess(c, bc, t, dest, {WantAddr})
+        for ch in sonsFrom1(t, src): preprocess(c, bc, t, ch, {WantAddr})
+    elif t[dest].kind == Load:
+      let (typ, a) = sons2(t, dest)
+      build bc, info, StoreM:
+        #bc.add info, Typed, uint32 tid
+        preprocess(c, bc, t, a, {WantAddr})
+        preprocess(c, bc, t, src, {})
+    else:
+      build bc, info, AsgnM:
+        preprocess(c, bc, t, dest, {WantAddr})
+        preprocess(c, bc, t, src, {})
   of SetExc:
     recurse SetExcM
   of TestExc:
@@ -460,14 +524,10 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos) =
     recurse CheckedRangeM
   of CheckedIndex:
     recurse CheckedIndexM
-  of Call:
+  of Call, IndirectCall:
     recurse CallM
-  of IndirectCall:
-    recurse IndirectCallM
-  of CheckedCall:
+  of CheckedCall, CheckedIndirectCall:
     recurse CheckedCallM
-  of CheckedIndirectCall:
-    recurse CheckedIndirectCallM
   of CheckedAdd:
     recurse CheckedAddM
   of CheckedSub:
@@ -527,7 +587,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos) =
     build bc, info, ProcDeclM:
       let toPatch = bc.code.len
       bc.add info, AllocLocals, 0'u32
-      for ch in sons(t, n): preprocess(c2, bc, t, ch)
+      for ch in sons(t, n): preprocess(c2, bc, t, ch, {})
       bc.code[toPatch] = toIns(AllocLocals, c2.localsAddr)
   of PragmaPair:
     recurse PragmaPairM
@@ -541,9 +601,10 @@ type
     caller: StackFrame
     returnAddr: CodePos
     jumpTo: CodePos # exception handling
+    u: ref Universe
 
 proc newStackFrame(size: int; caller: StackFrame; returnAddr: CodePos): StackFrame =
-  result = StackFrame(caller: caller, returnAddr: returnAddr)
+  result = StackFrame(caller: caller, returnAddr: returnAddr, u: caller.u)
   if size <= PayloadSize:
     result.locals = addr(result.payload)
   else:
@@ -611,6 +672,10 @@ proc evalAddr(c: Bytecode; pc: CodePos; s: StackFrame): pointer =
     var idx: int = 0
     eval(c, i, s, addr idx)
     result = result +! (uint32(idx) * elemSize)
+  of LoadM:
+    let (_, arg) = sons2(c.code, pc)
+    let p = evalAddr(c, arg, s)
+    result = cast[ptr pointer](p)[]
   else:
     raiseAssert("unimplemented addressing mode")
 
@@ -810,22 +875,28 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer) =
   else:
     raiseAssert "cannot happen"
 
-proc exec(c: Bytecode; pc: CodePos) =
+proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
   var pc = pc
-  var s: StackFrame = nil
+  var s = StackFrame(u: u)
   while pc.int < c.code.len:
     case c.code[pc].kind
     of GotoM:
       pc = CodePos(c.code[pc].operand)
     of AsgnM:
-      let (_, a, b) = sons3(c.code, pc)
+      let (a, b) = sons2(c.code, pc)
       let dest = evalAddr(c, a, s)
+      eval(c, b, s, dest)
+      nextChild c, int(pc)
+    of StoreM:
+      let (a, b) = sons2(c.code, pc)
+      let destPtr = evalAddr(c, a, s)
+      let dest = cast[ptr pointer](destPtr)[]
       eval(c, b, s, dest)
       nextChild c, int(pc)
     of CallM:
       when false:
         # No support for return values, these are mapped to `var T` parameters!
-        let prc = evalProc(c, pc.firstSon)
+        let prc = evalProc(c, pc.firstSon, s)
         # setup storage for the proc already:
         let s2 = newStackFrame(prc.frameSize, s, pc)
         var i = 0

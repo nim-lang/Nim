@@ -245,6 +245,16 @@ iterator sons*(tree: Tree; n: NodePos): NodePos =
     yield NodePos pos
     nextChild tree, pos
 
+iterator sonsFrom1*(tree: Tree; n: NodePos): NodePos =
+  var pos = n.int
+  assert tree.nodes[pos].kind > LastAtomicValue
+  let last = pos + tree.nodes[pos].rawSpan
+  inc pos
+  nextChild tree, pos
+  while pos < last:
+    yield NodePos pos
+    nextChild tree, pos
+
 template `[]`*(t: Tree; n: NodePos): Instr = t.nodes[n.int]
 
 proc span(tree: Tree; pos: int): int {.inline.} =
