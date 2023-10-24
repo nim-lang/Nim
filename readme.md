@@ -14,7 +14,6 @@ the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](
 [![Join the Matrix room](https://img.shields.io/matrix/nim-lang:matrix.org?color=blue&style=flat&logo=matrix)](https://matrix.to/#/#nim-lang:matrix.org)
 [![Get help][badge-nim-forum-gethelp]][nim-forum]
 [![View Nim posts on Stack Overflow][badge-nim-stackoverflow]][nim-stackoverflow-newest]
-[![Follow @nim_lang on Twitter][badge-nim-twitter]][nim-twitter]
 
 * The [forum][nim-forum] - the best place to ask questions and to discuss Nim.
 * [#nim IRC Channel (Libera Chat)][nim-irc] - a place to discuss Nim in real-time.
