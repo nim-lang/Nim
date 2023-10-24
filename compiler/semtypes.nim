@@ -441,8 +441,6 @@ proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
     result = newOrPrevType(tyError, prev, c)
 
 proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
-  if n.len == 0:
-    localError(c.config, n.info, errTypeExpected)
   result = newOrPrevType(tyTuple, prev, c)
   for it in n:
     let t = semTypeNode(c, it, nil)
