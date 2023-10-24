@@ -1986,10 +1986,6 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, systemRaisesDefect, a
   ##
   ## This is an `O(n)` operation.
   ##
-  ## .. note:: With `-d:nimStrictDelete`, an index error is produced when the index passed
-  ##    to it was out of bounds. `-d:nimStrictDelete` will become the default
-  ##    in upcoming versions.
-  ##
   ## See also:
   ## * `del <#del,seq[T],Natural>`_ for O(1) operation
   ##
@@ -1998,7 +1994,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, systemRaisesDefect, a
     s.delete(2)
     doAssert s == @[1, 2, 4, 5]
 
-  when defined(nimStrictDelete):
+  when not defined(nimAuditDelete):
     if i > high(x):
       # xxx this should call `raiseIndexError2(i, high(x))` after some refactoring
       raise (ref IndexDefect)(msg: "index out of bounds: '" & $i & "' < '" & $x.len & "' failed")

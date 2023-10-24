@@ -3,6 +3,7 @@
 
 ## Changes affecting backward compatibility
 
+- `-d:nimStrictDelete` becomes the default. An index error is produced when the index passed to `system.delete` was out of bounds. Use `-d:nimAuditDelete` to mimic the old behavior for backwards compatibility.
 
 ## Standard library additions and changes
 
