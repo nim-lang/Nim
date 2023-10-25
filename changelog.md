@@ -11,6 +11,7 @@
 
 - Changed `std/osfiles.copyFile` to allow to specify `bufferSize` instead of a hardcoded one.
 - Changed `std/osfiles.copyFile` to use `POSIX_FADV_SEQUENTIAL` hints for kernel-level aggressive sequential read-aheads.
+- `std/htmlparser` have been moved to nimble packages, use `nimble` or `atlas` to install them.
 
 [//]: # "Additions:"
 
