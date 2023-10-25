@@ -57,6 +57,7 @@ type
     SummonGlobal,
     SummonThreadLocal,
     Summon, # x = Summon Typed <Type ID>; x begins to live
+    SummonResult,
     SummonParam,
     SummonConst,
     Kill, # `Kill x`: scope end for `x`

@@ -2268,7 +2268,14 @@ proc genObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   valueIntoDest c, info, d, n.typ, body
   freeTemp c, a
 
-proc genParams(c: var ProcCon; params: PNode) =
+proc genParams(c: var ProcCon; params: PNode; prc: PSym) =
+  if params.len > 0 and not isEmptyType(params[0].typ):
+    if resultPos < prc.ast.len:
+      let resNode = prc.ast[resultPos]
+      let res = resNode.sym # get result symbol
+      c.code.addSummon toLineInfo(c, res.info), SymId(res.itemId.item),
+        typeToIr(c.m.types, res.typ), SummonResult
+
   for i in 1..<params.len:
     let s = params[i].sym
     if not isCompileTimeOnly(s.typ):
@@ -2326,7 +2333,7 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
         else:
           c.code.addPragmaId info, ObjExport
 
-    genParams(c, prc.typ.n)
+    genParams(c, prc.typ.n, prc)
     gen(c, body)
     patch c, body, c.exitLabel
 

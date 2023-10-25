@@ -45,8 +45,6 @@ type
     SelectValueM, # (value)
     SelectRangeM, # (valueA..valueB)
     AllocLocals,
-    SummonGlobalM,
-    SummonThreadLocalM,
     SummonParamM,
 
     AddrOfM,
@@ -233,6 +231,8 @@ proc nextChild(bc: Bytecode; pos: var int) {.inline.} =
     inc pos, bc.code[pos].rawSpan
   else:
     inc pos
+
+proc next(bc: Bytecode; pos: var CodePos) {.inline.} = nextChild bc, int(pos)
 
 iterator sons(bc: Bytecode; n: CodePos): CodePos =
   var pos = n.int
@@ -430,7 +430,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     c.localsAddr += uint32 size
     # allocation is combined into the frame allocation so there is no
     # instruction to emit
-  of SummonParam:
+  of SummonParam, SummonResult:
     let (typ, sym) = sons2(t, n)
 
     let s = t[sym].symId
@@ -875,6 +875,13 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer) =
   else:
     raiseAssert "cannot happen"
 
+proc evalProc(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
+  assert c.code[pc].kind == LoadProcM
+  let (_, s) = sons2(c.code, pc)
+  #let module = c[m].operand
+  let procSym = c[s].operand
+  result = CodePos(procSym)
+
 proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
   var pc = pc
   var s = StackFrame(u: u)
@@ -886,25 +893,33 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
       let (a, b) = sons2(c.code, pc)
       let dest = evalAddr(c, a, s)
       eval(c, b, s, dest)
-      nextChild c, int(pc)
+      next c, pc
     of StoreM:
       let (a, b) = sons2(c.code, pc)
       let destPtr = evalAddr(c, a, s)
       let dest = cast[ptr pointer](destPtr)[]
       eval(c, b, s, dest)
-      nextChild c, int(pc)
+      next c, pc
     of CallM:
-      when false:
-        # No support for return values, these are mapped to `var T` parameters!
-        let prc = evalProc(c, pc.firstSon, s)
-        # setup storage for the proc already:
-        let s2 = newStackFrame(prc.frameSize, s, pc)
-        var i = 0
-        for a in sonsFrom1(c, pc):
-          eval(c, a, s2, paramAddr(s2, i))
-          inc i
-        s = s2
-        pc = pcOf(prc)
+      # No support for return values, these are mapped to `var T` parameters!
+      var prc = evalProc(c, pc.firstSon, s)
+      assert c.code[prc.firstSon].kind == AllocLocals
+      let frameSize = int c.code[prc.firstSon].operand
+      # skip stupid stuff:
+      prc = prc.firstSon
+      while c[prc].kind in {PragmaPairM, PragmaIdM}:
+        next c, prc
+      # setup storage for the proc already:
+      let callInstr = pc
+      next c, pc
+      let s2 = newStackFrame(frameSize, s, pc)
+      for a in sonsFrom1(c, callInstr):
+        assert c[prc].kind == SummonParamM
+        let paramAddr = c[prc].operand
+        eval(c, a, s2, s2.locals +! paramAddr)
+        next c, prc
+      s = s2
+      pc = prc
     of RetM:
       pc = s.returnAddr
       s = popStackFrame(s)
@@ -913,6 +928,8 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
       if pc2.int >= 0:
         pc = pc2
       else:
-        nextChild c, int(pc)
+        next c, pc
+    of ProcDeclM:
+      next c, pc
     else:
       raiseAssert "unreachable"
