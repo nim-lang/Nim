@@ -621,7 +621,7 @@ compilation options are different:
    .. Note:: markup documents are just placed into the specified directory
      `OUTDIR`:option: by default (i.e. they are **not** affected by
      `--project`:option:), so if you have ``PROJECT/doc/manual.md``
-     document and want to use complex hirearchy (with ``doc/``),
+     document and want to use complex hierarchy (with ``doc/``),
      compile it with `--docroot`:option:\:
        ```cmd
        # 1st stage
@@ -688,7 +688,7 @@ the rest optional. See the [Index (idx) file format] section for details.
 
 .. Note:: `--index`:option: switch only affects creation of ``.idx``
   index files, while user-searchable Index HTML file is created by
-  `buildIndex`:option: commmand.
+  `buildIndex`:option: command.
 
 Buildindex command
 ------------------

@@ -2378,7 +2378,7 @@ proc makeCppClass(): NimClass {.constructor: "NimClass() : CppClass(0, 0)".} =
   result.x = 1
 ```
 
-In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropiate constructor.
+In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropriate constructor.
 
 Notice when calling a constructor in the section of a global variable initialization, it will be called before `NimMain` meaning Nim is not fully initialized.
 
