@@ -890,7 +890,7 @@ const stdlibDirs* = [
 
 const
   pkgPrefix = "pkg/"
-  stdPrefix = "std/"
+  stdPrefix* = "std/"
 
 proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle = false): RelativeFile =
   result = RelativeFile("")
