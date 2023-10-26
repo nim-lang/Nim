@@ -11,7 +11,7 @@ when not defined(leanCompiler):
 import std/[syncio, objectdollar, assertions, tables, strutils]
 import renderer
 import ic/replayer
-
+import nir/nir
 
 proc setPipeLinePass*(graph: ModuleGraph; pass: PipelinePass) =
   graph.pipelinePass = pass
@@ -43,6 +43,10 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
       result = nil
   of EvalPass, InterpreterPass:
     result = interpreterCode(bModule, semNode)
+  of NirReplPass:
+    result = runCode(bModule, semNode)
+  of NirPass:
+    result = nirBackend(bModule, semNode)
   of NonePass:
     raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
@@ -105,6 +109,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     case graph.pipelinePass
     of CgenPass:
       setupCgen(graph, module, idgen)
+    of NirPass:
+      openNirBackend(graph, module, idgen)
     of JSgenPass:
       when not defined(leanCompiler):
         setupJSgen(graph, module, idgen)
@@ -112,6 +118,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         nil
     of EvalPass, InterpreterPass:
       setupEvalGen(graph, module, idgen)
+    of NirReplPass:
+      setupNirReplGen(graph, module, idgen)
     of GenDependPass:
       setupDependPass(graph, module, idgen)
     of Docgen2Pass:
@@ -197,6 +205,10 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       discard finalJSCodeGen(graph, bModule, finalNode)
   of EvalPass, InterpreterPass:
     discard interpreterCode(bModule, finalNode)
+  of NirReplPass:
+    discard runCode(bModule, finalNode)
+  of NirPass:
+    closeNirBackend(bModule, finalNode)
   of SemPass, GenDependPass:
     discard
   of Docgen2Pass, Docgen2TexPass:

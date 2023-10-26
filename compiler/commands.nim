@@ -460,6 +460,7 @@ proc handleCmdInput*(conf: ConfigRef) =
 proc parseCommand*(command: string): Command =
   case command.normalize
   of "c", "cc", "compile", "compiletoc": cmdCompileToC
+  of "nir": cmdCompileToNir
   of "cpp", "compiletocpp": cmdCompileToCpp
   of "objc", "compiletooc": cmdCompileToOC
   of "js", "compiletojs": cmdCompileToJS
@@ -496,6 +497,7 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
   of cmdCompileToCpp: conf.backend = backendCpp
   of cmdCompileToOC: conf.backend = backendObjc
   of cmdCompileToJS: conf.backend = backendJs
+  of cmdCompileToNir: conf.backend = backendNir
   else: discard
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
@@ -794,7 +796,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if conf.backend == backendJs or conf.cmd == cmdNimscript: discard
     else: processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
     #if optThreads in conf.globalOptions: conf.setNote(warnGcUnsafe)
-  of "tlsemulation": 
+  of "tlsemulation":
     processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
     if optTlsEmulation in conf.globalOptions:
       conf.legacyFeatures.incl emitGenerics

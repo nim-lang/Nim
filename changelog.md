@@ -3,12 +3,14 @@
 
 ## Changes affecting backward compatibility
 
+- `-d:nimStrictDelete` becomes the default. An index error is produced when the index passed to `system.delete` was out of bounds. Use `-d:nimAuditDelete` to mimic the old behavior for backwards compatibility.
 
 ## Standard library additions and changes
 
 [//]: # "Changes:"
 
 - Changed `std/osfiles.copyFile` to allow to specify `bufferSize` instead of a hardcoded one.
+- Changed `std/osfiles.copyFile` to use `POSIX_FADV_SEQUENTIAL` hints for kernel-level aggressive sequential read-aheads.
 
 [//]: # "Additions:"
 
@@ -27,7 +29,7 @@ slots when enlarging a sequence.
 
 ## Language changes
 
-
+- `noInit` can be used in types and fields to disable member initializers in the C++ backend. 
 
 ## Compiler changes
 

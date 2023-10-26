@@ -2345,7 +2345,7 @@ proc makeFoo(x: int32): Foo {.constructor.} =
   result.x = x
 ```
 
-It forward declares the constructor in the type definition. When the constructor has parameters, it also generates a default constructor.
+It forward declares the constructor in the type definition. When the constructor has parameters, it also generates a default constructor. One can avoid this behaviour by using `noDecl` in a default constructor.
 
 Like `virtual`, `constructor` also supports a syntax that allows to express C++ constraints.
 
@@ -2378,7 +2378,7 @@ proc makeCppClass(): NimClass {.constructor: "NimClass() : CppClass(0, 0)".} =
   result.x = 1
 ```
 
-In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropiate constructor.
+In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropriate constructor.
 
 Notice when calling a constructor in the section of a global variable initialization, it will be called before `NimMain` meaning Nim is not fully initialized.
 
@@ -2408,6 +2408,56 @@ proc makeCppStruct(a: cint = 5, b:cstring = "hello"): CppStruct {.importcpp: "Cp
 # If one removes a default value from the constructor and passes it to the call explicitly, the C++ compiler will complain.
 
 ```
+Skip initializers in fields members
+===================================
+
+By using `noInit` in a type or field declaration, the compiler will skip the initializer. By doing so one can explicitly initialize those values in the constructor of the type owner.
+
+For example:
+
+```nim
+
+{.emit: """/*TYPESECTION*/
+  struct Foo {
+    Foo(int a){};
+  };
+  struct Boo {
+    Boo(int a){};
+  };
+
+  """.}
+
+type 
+  Foo {.importcpp.} = object
+  Boo {.importcpp, noInit.} = object
+  Test {.exportc.} = object
+    foo {.noInit.}: Foo
+    boo: Boo
+
+proc makeTest(): Test {.constructor: "Test() : foo(10), boo(1)".} = 
+  discard
+
+proc main() = 
+  var t = makeTest()
+
+main()
+
+```
+
+Will produce: 
+
+```c++
+
+struct Test {
+	Foo foo; 
+	Boo boo;
+  N_LIB_PRIVATE N_NOCONV(, Test)(void);
+};
+
+```
+
+Notice that without `noInit` it would produce `Foo foo {}` and `Boo boo {}`
+
 
 Member pragma
 =============

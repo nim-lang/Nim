@@ -35,7 +35,7 @@ proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true, allowFailu
 
 pkg "alea"
 pkg "argparse"
-pkg "arraymancer", "nim c tests/tests_cpu.nim", url = "https://github.com/nim-lang/Arraymancer"
+pkg "arraymancer", "nim c tests/tests_cpu.nim"
 pkg "ast_pattern_matching", "nim c -r tests/test1.nim"
 pkg "asyncftpclient", "nimble compileExample"
 pkg "asyncthreadpool", "nimble test --mm:refc"

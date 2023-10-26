@@ -924,7 +924,7 @@ type
                               # for variables a slot index for the evaluator
     offset*: int32            # offset of record field
     disamb*: int32            # disambiguation number; the basic idea is that
-                              # `<procname>__<module>_<disamb>`
+                              # `<procname>__<module>_<disamb>` is unique
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to save space)
@@ -936,7 +936,7 @@ type
                               # it won't cause problems
                               # for skModule the string literal to output for
                               # deprecated modules.
-    instantiatedFrom*: PSym   # for instances, the generic symbol where it came from.                
+    instantiatedFrom*: PSym   # for instances, the generic symbol where it came from.
     when defined(nimsuggest):
       allUsages*: seq[TLineInfo]
 
@@ -2157,7 +2157,7 @@ proc toHumanStr*(kind: TTypeKind): string =
   ## strips leading `tk`
   result = toHumanStrImpl(kind, 2)
 
-proc skipAddr*(n: PNode): PNode {.inline.} =
+proc skipHiddenAddr*(n: PNode): PNode {.inline.} =
   (if n.kind == nkHiddenAddr: n[0] else: n)
 
 proc isNewStyleConcept*(n: PNode): bool {.inline.} =
@@ -2173,3 +2173,7 @@ const
     nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
     nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
     nkTypeOfExpr, nkMixinStmt, nkBindStmt}
+
+proc isTrue*(n: PNode): bool =
+  n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
+    n.kind == nkIntLit and n.intVal != 0

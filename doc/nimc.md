@@ -486,7 +486,7 @@ DLL generation
 ==============
 
 **Note**: The same rules apply to `lib*.so` shared object files on UNIX. For better
-readability only the DLL version is decribed here.
+readability only the DLL version is described here.
 
 Nim supports the generation of DLLs. However, there must be only one
 instance of the GC per process/address space. This instance is contained in
