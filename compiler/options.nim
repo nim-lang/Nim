@@ -198,7 +198,7 @@ type
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideChkFile, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg, ideProject, ideGlobalSymbols,
-    ideRecompile, ideChanged, ideType, ideDeclaration, ideExpand
+    ideRecompile, ideChanged, ideType, ideDeclaration, ideExpand, ideInlayHints
 
   Feature* = enum  ## experimental features; DO NOT RENAME THESE!
     dotOperators,
@@ -1070,6 +1070,7 @@ proc `$`*(c: IdeCmd): string =
   of ideRecompile: "recompile"
   of ideChanged: "changed"
   of ideType: "type"
+  of ideInlayHints: "inlayHints"
 
 proc floatInt64Align*(conf: ConfigRef): int16 =
   ## Returns either 4 or 8 depending on reasons.
