@@ -47,7 +47,7 @@
 ##     writeFile("output.html", $html)
 ##   ```
 
-{.deprecated: "use command `nimble install htmlparser` and import `pkg/htmlparser` instead".}
+{.deprecated: "use `nimble install htmlparser` and import `pkg/htmlparser` instead".}
 
 import strutils, streams, parsexml, xmltree, unicode, strtabs
 
