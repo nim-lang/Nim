@@ -1495,7 +1495,8 @@ it can be modified:
 
   ```nim
   var x = "123456"
-  var s: cstring = x
+  prepareMutation(x) # call `prepareMutation` before modifying the strings
+  var s: cstring = cstring(x)
   s[0] = 'u' # This is ok
   ```
 
