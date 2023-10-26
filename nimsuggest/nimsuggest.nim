@@ -1105,7 +1105,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     i += parseInt(tag, endCol, i)
     let s = graph.findSymDataInRange(file, line, col, endLine, endCol)
     for q in s:
-      if q.sym.kind in [skLet, skVar, skForVar]:
+      if q.sym.kind in [skLet, skVar, skForVar] and q.isDecl:
         # TODO: suggestInlayHint
         var li = q.info
         li.col += int16(len(q.sym.name.s))
