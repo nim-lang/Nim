@@ -13,7 +13,7 @@ import
   intsets, ast, astalgo, msgs, options, idents, lookups,
   semdata, modulepaths, sigmatch, lineinfos, sets,
   modulegraphs, wordrecg, tables
-from strutils import `%`
+from strutils import `%`, startsWith
 from sequtils import addUnique
 
 when defined(nimPreviewSlimSystem):
@@ -301,6 +301,8 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
       var prefix = ""
       if realModule.constraint != nil: prefix = realModule.constraint.strVal & "; "
       message(c.config, n.info, warnDeprecated, prefix & realModule.name.s & " is deprecated")
+    if belongsToStdlib(c.graph, result) and not startsWith(getModuleName(c.config, n), stdPrefix):
+      message(c.config, n.info, warnStdPrefix, realModule.name.s & " needs a `std` prefix")
     suggestSym(c.graph, n.info, result, c.graph.usageSym, false)
     importStmtResult.add newSymNode(result, n.info)
     #newStrNode(toFullPath(c.config, f), n.info)
