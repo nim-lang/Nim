@@ -120,7 +120,7 @@ type
     globals: Table[SymId, uint32]
     globalsAddr: uint32
     typeImpls: Table[string, TypeId]
-    offsets: Table[TypeId, seq[int]]
+    offsets: Table[TypeId, seq[(int, TypeId)]]
     sizes: Table[TypeId, (int, int)] # (size, alignment)
 
   Universe* = object ## all units: For interpretation we need that
@@ -141,7 +141,7 @@ proc traverseObject(b: var Bytecode; t, offsetKey: TypeId) =
         if b.m.types[y].kind == OffsetVal:
           offset = b.m.lit.numbers[b.m.types[y].litId]
           break
-      b.offsets.mgetOrPut(offsetKey, @[]).add offset
+      b.offsets.mgetOrPut(offsetKey, @[]).add (offset, x.firstSon)
     of SizeVal:
       size = b.m.lit.numbers[b.m.types[x].litId]
     of AlignVal:
@@ -271,6 +271,20 @@ template `[]`(t: Bytecode; n: CodePos): Instr = t.code[n.int]
 proc span(bc: Bytecode; pos: int): int {.inline.} =
   if bc.code[pos].kind <= LastAtomicValue: 1 else: int(bc.code[pos].operand)
 
+iterator triples*(bc: Bytecode; n: CodePos): (uint32, int, CodePos) =
+  var pos = n.int
+  assert bc.code[pos].kind > LastAtomicValue
+  let last = pos + bc.code[pos].rawSpan
+  inc pos
+  while pos < last:
+    let offset = bc.code[pos].operand
+    nextChild bc, pos
+    let size = bc.code[pos].operand.int
+    nextChild bc, pos
+    let val = CodePos pos
+    yield (offset, size, val)
+    nextChild bc, pos
+
 type
   Preprocessing = object
     u: ref Universe
@@ -388,8 +402,10 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       for ch in sons(t, n):
         if i > 0:
           if (i mod 2) == 1:
-            let offset = bc.offsets[typ][t[ch].immediateVal]
+            let (offset, typ) = bc.offsets[typ][t[ch].immediateVal]
+            let size = computeSize(bc, typ)[0]
             bc.add info, ImmediateValM, uint32(offset)
+            bc.add info, ImmediateValM, uint32(size)
           else:
             preprocess(c, bc, t, ch, {WantAddr})
         inc i
@@ -441,6 +457,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     c.locals[s] = local
     c.localsAddr += uint32 size
     bc.add info, SummonParamM, local
+    bc.add info, ImmediateValM, uint32 size
   of Kill:
     discard "we don't care about Kill instructions"
   of AddrOf:
@@ -476,12 +493,12 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       let (_, arg) = sons2(t, a)
       build bc, info, LoadM:
         bc.add info, ImmediateValM, uint32 computeSize(bc, t[typ].typeId)[0]
-        let offset = bc.offsets[t[typ].typeId][t[b].immediateVal]
+        let offset = bc.offsets[t[typ].typeId][t[b].immediateVal][0]
         build bc, info, FieldAtM:
           preprocess(c, bc, t, arg, flags+{WantAddr})
           bc.add info, ImmediateValM, uint32(offset)
     else:
-      let offset = bc.offsets[t[typ].typeId][t[b].immediateVal]
+      let offset = bc.offsets[t[typ].typeId][t[b].immediateVal][0]
       build bc, info, FieldAtM:
         preprocess(c, bc, t, a, flags+{WantAddr})
         bc.add info, ImmediateValM, uint32(offset)
@@ -496,6 +513,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     raiseAssert "Assumption was that Store is unused!"
   of Asgn:
     let (elemType, dest, src) = sons3(t, n)
+    let tid = t[elemType].typeId
     if t[src].kind in {Call, IndirectCall}:
       # No support for return values, these are mapped to `var T` parameters!
       build bc, info, CallM:
@@ -508,12 +526,15 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
         for ch in sonsFrom1(t, src): preprocess(c, bc, t, ch, {WantAddr})
     elif t[dest].kind == Load:
       let (typ, a) = sons2(t, dest)
+      let s = computeSize(bc, tid)[0]
       build bc, info, StoreM:
-        #bc.add info, Typed, uint32 tid
+        bc.add info, ImmediateValM, uint32 s
         preprocess(c, bc, t, a, {WantAddr})
         preprocess(c, bc, t, src, {})
     else:
+      let s = computeSize(bc, tid)[0]
       build bc, info, AsgnM:
+        bc.add info, ImmediateValM, uint32 s
         preprocess(c, bc, t, dest, {WantAddr})
         preprocess(c, bc, t, src, {})
   of SetExc:
@@ -655,7 +676,7 @@ proc litId*(ins: Instr): LitId {.inline.} =
   assert ins.kind in {StrValM, IntValM}
   result = LitId(ins.operand)
 
-proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer)
+proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int)
 
 proc evalAddr(c: Bytecode; pc: CodePos; s: StackFrame): pointer =
   case c.code[pc].kind
@@ -670,7 +691,7 @@ proc evalAddr(c: Bytecode; pc: CodePos; s: StackFrame): pointer =
     let elemSize = c.code[e].operand
     result = evalAddr(c, a, s)
     var idx: int = 0
-    eval(c, i, s, addr idx)
+    eval(c, i, s, addr idx, sizeof(int))
     result = result +! (uint32(idx) * elemSize)
   of LoadM:
     let (_, arg) = sons2(c.code, pc)
@@ -688,8 +709,8 @@ template binop(opr) {.dirty.} =
   template impl(typ) {.dirty.} =
     var x = default(typ)
     var y = default(typ)
-    eval c, a, s, addr x
-    eval c, b, s, addr y
+    eval c, a, s, addr x, sizeof(typ)
+    eval c, b, s, addr y, sizeof(typ)
     cast[ptr typ](result)[] = opr(x, y)
 
   let (t, a, b) = sons3(c.code, pc)
@@ -711,8 +732,8 @@ template checkedBinop(opr) {.dirty.} =
   template impl(typ) {.dirty.} =
     var x = default(typ)
     var y = default(typ)
-    eval c, a, s, addr x
-    eval c, b, s, addr y
+    eval c, a, s, addr x, sizeof(typ)
+    eval c, b, s, addr y, sizeof(typ)
     try:
       cast[ptr typ](result)[] = opr(x, y)
     except OverflowDefect, DivByZeroDefect:
@@ -737,8 +758,8 @@ template bitop(opr) {.dirty.} =
   template impl(typ) {.dirty.} =
     var x = default(typ)
     var y = default(typ)
-    eval c, a, s, addr x
-    eval c, b, s, addr y
+    eval c, a, s, addr x, sizeof(typ)
+    eval c, b, s, addr y, sizeof(typ)
     cast[ptr typ](result)[] = opr(x, y)
 
   let (t, a, b) = sons3(c.code, pc)
@@ -758,8 +779,8 @@ template cmpop(opr) {.dirty.} =
   template impl(typ) {.dirty.} =
     var x = default(typ)
     var y = default(typ)
-    eval c, a, s, addr x
-    eval c, b, s, addr y
+    eval c, a, s, addr x, sizeof(typ)
+    eval c, b, s, addr y, sizeof(typ)
     cast[ptr bool](result)[] = opr(x, y)
 
   let (t, a, b) = sons3(c.code, pc)
@@ -780,7 +801,7 @@ template cmpop(opr) {.dirty.} =
 proc evalSelect(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
   template impl(typ) {.dirty.} =
     var selector = default(typ)
-    eval c, sel, s, addr selector
+    eval c, sel, s, addr selector, sizeof(typ)
     for pair in sonsFrom2(c, pc):
       assert c.code[pair].kind == SelectPairM
       let (values, action) = sons2(c.code, pair)
@@ -789,15 +810,15 @@ proc evalSelect(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
         case c.code[v].kind
         of SelectValueM:
           var a = default(typ)
-          eval c, v.firstSon, s, addr a
+          eval c, v.firstSon, s, addr a, sizeof(typ)
           if selector == a:
             return CodePos c.code[action].operand
         of SelectRangeM:
           let (va, vb) = sons2(c.code, v)
           var a = default(typ)
-          eval c, va, s, addr a
+          eval c, va, s, addr a, sizeof(typ)
           var b = default(typ)
-          eval c, vb, s, addr a
+          eval c, vb, s, addr a, sizeof(typ)
           if a <= selector and selector <= b:
             return CodePos c.code[action].operand
         else: raiseAssert "unreachable"
@@ -816,8 +837,14 @@ proc evalSelect(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
   of UInt64Id: impl uint64
   else: raiseAssert "unreachable"
 
-proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer) =
+proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
   case c.code[pc].kind
+  of LoadLocalM:
+    let dest = s.locals +! c.code[pc].operand
+    copyMem dest, result, size
+  of FieldAtM, ArrayAtM, LoadM:
+    let dest = evalAddr(c, pc, s)
+    copyMem dest, result, size
   of CheckedAddM: checkedBinop `+`
   of CheckedSubM: checkedBinop `-`
   of CheckedMulM: checkedBinop `*`
@@ -842,17 +869,13 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer) =
     copyMem(cast[ptr string](result), addr(c.m.lit.strings[c[pc].litId]), sizeof(string))
     # XXX not correct!
   of ObjConstrM:
-    var i = 0
-    var offset = 0'u32
-    for ch in sons(c, pc):
-      if (i mod 2) == 1: offset = c.code[ch].operand
-      else: eval c, ch, s, result+!offset
-      inc i
+    for offset, size, val in triples(c, pc):
+      eval c, val, s, result+!offset, size
   of ArrayConstrM:
     let elemSize = c.code[pc.firstSon].operand
     var r = result
     for ch in sonsFrom1(c, pc):
-      eval c, ch, s, r
+      eval c, ch, s, r, elemSize.int
       r = r+!elemSize # can even do strength reduction here!
   of NumberConvM:
     let (t, x) = sons2(c.code, pc)
@@ -890,15 +913,15 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
     of GotoM:
       pc = CodePos(c.code[pc].operand)
     of AsgnM:
-      let (a, b) = sons2(c.code, pc)
+      let (sz, a, b) = sons3(c.code, pc)
       let dest = evalAddr(c, a, s)
-      eval(c, b, s, dest)
+      eval(c, b, s, dest, c.code[sz].operand.int)
       next c, pc
     of StoreM:
-      let (a, b) = sons2(c.code, pc)
+      let (sz, a, b) = sons3(c.code, pc)
       let destPtr = evalAddr(c, a, s)
       let dest = cast[ptr pointer](destPtr)[]
-      eval(c, b, s, dest)
+      eval(c, b, s, dest, c.code[sz].operand.int)
       next c, pc
     of CallM:
       # No support for return values, these are mapped to `var T` parameters!
@@ -916,7 +939,10 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
       for a in sonsFrom1(c, callInstr):
         assert c[prc].kind == SummonParamM
         let paramAddr = c[prc].operand
-        eval(c, a, s2, s2.locals +! paramAddr)
+        assert c[prc.firstSon].kind == ImmediateValM
+        let paramSize = c[prc.firstSon].operand.int
+        eval(c, a, s2, s2.locals +! paramAddr, paramSize)
+        next c, prc
         next c, prc
       s = s2
       pc = prc
