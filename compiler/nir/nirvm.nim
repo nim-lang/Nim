@@ -112,10 +112,10 @@ type
   PatchPos = distinct int
   CodePos = distinct int
 
-  Bytecode = object
+  Bytecode* = object
     code: seq[Instr]
     debug: seq[PackedLineInfo]
-    m: NirModule
+    m*: NirModule
     procs: Table[SymId, CodePos]
     globals: Table[SymId, uint32]
     globalsAddr: uint32
@@ -337,7 +337,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
   of StrVal:
     bc.add info, StrValM, t[n].rawOperand
   of SymDef:
-    assert false, "SymDef outside of declaration context"
+    raiseAssert "SymDef outside of declaration context"
   of SymUse:
     let s = t[n].symId
     if c.locals.hasKey(s):
@@ -353,24 +353,26 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
           bc.add info, ImmediateValM, c.thisModule
           bc.add info, LoadLocalM, uint32 s
     else:
-      assert false, "don't understand SymUse ID"
+      raiseAssert "don't understand SymUse ID"
 
   of ModuleSymUse:
-    let (x, y) = sons2(t, n)
-    let unit = c.u.unitNames.getOrDefault(bc.m.lit.strings[t[x].litId], -1)
-    let s = t[y].symId
-    if c.u.units[unit].procs.hasKey(s):
-      build bc, info, LoadProcM:
-        bc.add info, ImmediateValM, uint32 unit
-        bc.add info, LoadLocalM, uint32 c.u.units[unit].procs[s]
-    elif bc.globals.hasKey(s):
-      maybeDeref(WantAddr notin flags):
-        build bc, info, LoadGlobalM:
+    when false:
+      let (x, y) = sons2(t, n)
+      let unit = c.u.unitNames.getOrDefault(bc.m.lit.strings[t[x].litId], -1)
+      let s = t[y].symId
+      if c.u.units[unit].procs.hasKey(s):
+        build bc, info, LoadProcM:
           bc.add info, ImmediateValM, uint32 unit
-          bc.add info, LoadLocalM, uint32 s
-    else:
-      assert false, "don't understand ModuleSymUse ID"
+          bc.add info, LoadLocalM, uint32 c.u.units[unit].procs[s]
+      elif bc.globals.hasKey(s):
+        maybeDeref(WantAddr notin flags):
+          build bc, info, LoadGlobalM:
+            bc.add info, ImmediateValM, uint32 unit
+            bc.add info, LoadLocalM, uint32 s
+      else:
+        raiseAssert "don't understand ModuleSymUse ID"
 
+    raiseAssert "don't understand ModuleSymUse ID"
   of Typed:
     bc.add info, TypedM, t[n].rawOperand
   of PragmaId:
@@ -600,7 +602,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
   of TestOf:
     recurse TestOfM
   of Emit:
-    assert false, "cannot interpret: Emit"
+    raiseAssert "cannot interpret: Emit"
   of ProcDecl:
     var c2 = Preprocessing(u: c.u, thisModule: c.thisModule)
     let sym = t[n.firstSon].symId
@@ -991,3 +993,10 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
       next c, pc
     else:
       raiseAssert "unreachable"
+
+proc execCode*(bc: var Bytecode; t: Tree; n: NodePos) =
+  traverseTypes bc
+  var c = Preprocessing(u: nil, thisModule: 1'u32)
+  let start = CodePos(bc.code.len)
+  preprocess c, bc, t, n, {}
+  exec bc, start, nil
