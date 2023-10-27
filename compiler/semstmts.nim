@@ -1486,9 +1486,12 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # final pass
       if a[2].kind in nkCallKinds:
         incl a[2].flags, nfSem # bug #10548
-    if sfExportc in s.flags and s.typ.kind == tyAlias:
-      localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
-
+    if sfExportc in s.flags:
+      if s.typ.kind == tyAlias:
+        localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
+      elif s.typ.kind == tyGenericBody:
+        localError(c.config, name.info, "{.exportc.} not allowed for generic types")
+    
     if tfBorrowDot in s.typ.flags:
       let body = s.typ.skipTypes({tyGenericBody})
       if body.kind != tyDistinct:
@@ -1702,18 +1705,6 @@ proc swapResult(n: PNode, sRes: PSym, dNode: PNode) =
         n[i] = dNode
     swapResult(n[i], sRes, dNode)
 
-
-proc addThis(c: PContext, n: PNode, t: PType, owner: TSymKind) =
-  var s = newSym(skResult, getIdent(c.cache, "this"), c.idgen,
-              getCurrOwner(c), n.info)
-  s.typ = t
-  incl(s.flags, sfUsed)
-  c.p.resultSym = s
-  n.add newSymNode(c.p.resultSym)
-  addParamOrResult(c, c.p.resultSym, owner)
-  #resolves nim's obj ctor inside cpp ctors see #22669
-  s.ast = c.semExpr(c, newTree(nkCall, t[0].sym.ast[0]))
-
 proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
   template genResSym(s) =
     var s = newSym(skResult, getIdent(c.cache, "result"), c.idgen,
@@ -1913,7 +1904,7 @@ proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   incl(s.flags, sfUsed)
   incl(s.flags, sfOverridden)
 
-proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
+proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp; suppressVarDestructorWarning = false) =
   let t = s.typ
   var noError = false
   let cond = case op
@@ -1932,7 +1923,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
       elif obj.kind == tyGenericInvocation: obj = obj[0]
       else: break
     if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
-      if op == attachedDestructor and t[1].kind == tyVar:
+      if (not suppressVarDestructorWarning) and op == attachedDestructor and t[1].kind == tyVar:
         message(c.config, n.info, warnDeprecated, "A custom '=destroy' hook which takes a 'var T' parameter is deprecated; it should take a 'T' parameter")
       obj = canonType(c, obj)
       let ao = getAttachedOp(c.graph, obj, op)
@@ -2076,6 +2067,55 @@ proc hasObjParam(s: PSym): bool =
 proc finishMethod(c: PContext, s: PSym) =
   if hasObjParam(s):
     methodDef(c.graph, c.idgen, s)
+
+proc semCppMember(c: PContext; s: PSym; n: PNode) = 
+  if sfImportc notin s.flags:
+    let isVirtual = sfVirtual in s.flags
+    let isCtor = sfConstructor in s.flags
+    let pragmaName = if isVirtual: "virtual" elif isCtor: "constructor" else: "member"
+    if c.config.backend == backendCpp:
+      if s.typ.len < 2 and not isCtor:
+        localError(c.config, n.info, pragmaName & " must have at least one parameter")
+      for son in s.typ:
+        if son!=nil and son.isMetaType:
+          localError(c.config, n.info, pragmaName & " unsupported for generic routine")
+      var typ: PType
+      if isCtor:
+        typ = s.typ[0]
+        if typ == nil or typ.kind != tyObject:
+          localError(c.config, n.info, "constructor must return an object")
+        if sfImportc in typ.sym.flags:
+          localError(c.config, n.info, "constructor in an imported type needs importcpp pragma")
+      else:
+        typ = s.typ[1]
+      if typ.kind == tyPtr and not isCtor:
+        typ = typ[0]
+      if typ.kind != tyObject:
+        localError(c.config, n.info, pragmaName & " must be either ptr to object or object type.")
+      if typ.owner.id == s.owner.id and c.module.id == s.owner.id:
+        c.graph.memberProcsPerType.mgetOrPut(typ.itemId, @[]).add s
+      else:
+        localError(c.config, n.info,
+          pragmaName & " procs must be defined in the same scope as the type they are virtual for and it must be a top level scope")
+    else:
+      localError(c.config, n.info, pragmaName & " procs are only supported in C++")
+  else: 
+    var typ = s.typ[0]
+    if typ != nil and typ.kind == tyObject and typ.itemId notin c.graph.initializersPerType:
+      var initializerCall = newTree(nkCall, newSymNode(s))
+      var isInitializer = n[paramsPos].len > 1
+      for i in  1..<n[paramsPos].len:
+        let p = n[paramsPos][i]
+        let val = p[^1]
+        if val.kind == nkEmpty:
+          isInitializer = false
+          break
+        var j = 0
+        while p[j].sym.kind == skParam:
+          initializerCall.add val
+          inc j
+      if isInitializer:
+        c.graph.initializersPerType[typ.itemId] = initializerCall
 
 proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
   if s.isGenericRoutine:
@@ -2294,35 +2334,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if sfBorrow in s.flags and c.config.cmd notin cmdDocLike:
     result[bodyPos] = c.graph.emptyNode
 
-  if sfCppMember * s.flags != {} and sfImportc notin s.flags:
-    let isVirtual = sfVirtual in s.flags
-    let isCtor = sfConstructor in s.flags
-    let pragmaName = if isVirtual: "virtual" elif isCtor: "constructor" else: "member"
-    if c.config.backend == backendCpp:
-      if s.typ.len < 2 and not isCtor:
-        localError(c.config, n.info, pragmaName & " must have at least one parameter")
-      for son in s.typ:
-        if son!=nil and son.isMetaType:
-          localError(c.config, n.info, pragmaName & " unsupported for generic routine")
-      var typ: PType
-      if isCtor:
-        typ = s.typ[0]
-        if typ == nil or typ.kind != tyObject:
-          localError(c.config, n.info, "constructor must return an object")
-      else:
-        typ = s.typ[1]
-      if typ.kind == tyPtr and not isCtor:
-        typ = typ[0]
-      if typ.kind != tyObject:
-        localError(c.config, n.info, pragmaName & " must be either ptr to object or object type.")
-      if typ.owner.id == s.owner.id and c.module.id == s.owner.id:
-        c.graph.memberProcsPerType.mgetOrPut(typ.itemId, @[]).add s
-      else:
-        localError(c.config, n.info,
-          pragmaName & " procs must be defined in the same scope as the type they are virtual for and it must be a top level scope")
-    else:
-      localError(c.config, n.info, pragmaName & " procs are only supported in C++")
-
+  if sfCppMember * s.flags != {}:
+    semCppMember(c, s, n)
+          
   if n[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation we allow sfImportc to have a body, for use in VM
     if c.config.ideCmd in {ideSug, ideCon} and s.kind notin {skMacro, skTemplate} and not
@@ -2347,19 +2361,14 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # Macros and Templates can have generic parameters, but they are only
         # used for overload resolution (there is no instantiation of the symbol)
         if s.kind notin {skMacro, skTemplate} and s.magic == mNone: paramsTypeCheck(c, s.typ)
-        var resultType: PType
-        if sfConstructor in s.flags:
-          resultType = makePtrType(c, s.typ[0])
-          addThis(c, n, resultType, skProc)
-        else:
-          maybeAddResult(c, s, n)
-          resultType =
-            if s.kind == skMacro:
-              sysTypeFromName(c.graph, n.info, "NimNode")
-            elif not isInlineIterator(s.typ):
-              s.typ[0]
-            else:
-              nil
+        maybeAddResult(c, s, n)
+        let resultType =
+          if s.kind == skMacro:
+            sysTypeFromName(c.graph, n.info, "NimNode")
+          elif not isInlineIterator(s.typ):
+            s.typ[0]
+          else:
+            nil
         # semantic checking also needed with importc in case used in VM
         s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], resultType))
         # unfortunately we cannot skip this step when in 'system.compiles'

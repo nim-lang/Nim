@@ -65,7 +65,7 @@ type BitsRange*[T] = range[0..sizeof(T)*8-1]
 
 template typeMasked[T: SomeInteger](x: T): T =
   when defined(js):
-    x and ((0xffffffff_ffffffff'u shr (64 - sizeof(T) * 8)))
+    T(x and ((0xffffffff_ffffffff'u shr (64 - sizeof(T) * 8))))
   else:
     x
 
@@ -463,7 +463,7 @@ elif useVCC_builtins:
       importc: "_BitScanForward64", header: "<intrin.h>".}
 
   template vcc_scan_impl(fnc: untyped; v: untyped): int =
-    var index: culong
+    var index {.inject.}: culong = 0
     discard fnc(index.addr, v)
     index.int
 

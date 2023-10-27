@@ -143,7 +143,6 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasTemplateRedefinitionPragma")
   defineSymbol("nimHasCstringCase")
   defineSymbol("nimHasCallsitePragma")
-  defineSymbol("nimHasAmbiguousEnumHint")
 
   defineSymbol("nimHasWarnCastSizes") # deadcode
   defineSymbol("nimHasOutParams")
@@ -161,3 +160,5 @@ proc initDefines*(symbols: StringTableRef) =
 
   defineSymbol("nimUseStrictDefs")
   defineSymbol("nimHasNolineTooLong")
+
+  defineSymbol("nimHasCastExtendedVm")

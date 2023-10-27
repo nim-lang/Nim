@@ -24,7 +24,7 @@ type
     dkResult #skResult
     dkConst #skConst
     dkOther #skType, skTemp, skLet and skForVar so far
-   
+
 proc descKindFromSymKind(kind: TSymKind): TypeDescKind =
   case kind
   of skParam: dkParam
@@ -33,7 +33,7 @@ proc descKindFromSymKind(kind: TSymKind): TypeDescKind =
   of skResult: dkResult
   of skConst: dkConst
   else: dkOther
- 
+
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
   # it's more efficient to test the whole Nim keywords range
@@ -464,7 +464,7 @@ proc multiFormat*(frmt: var string, chars : static openArray[char], args: openAr
     var num = 0
     while i < frmt.len:
       if frmt[i] == c:
-        inc(i)                  
+        inc(i)
         case frmt[i]
         of c:
           res.add(c)
@@ -521,7 +521,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
     types.add getTypeDescWeak(m, this.typ, check, dkParam)
 
   let firstParam = if isCtor: 1 else: 2
-  for i in firstParam..<t.n.len: 
+  for i in firstParam..<t.n.len:
     if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genMemberProcParams")
     var param = t.n[i].sym
     var descKind = dkParam
@@ -649,12 +649,27 @@ proc mangleRecFieldName(m: BModule; field: PSym): Rope =
     result = rope(mangleField(m, field.name))
   if result == "": internalError(m.config, field.info, "mangleRecFieldName")
 
-proc hasCppCtor(m: BModule; typ: PType): bool = 
+proc hasCppCtor(m: BModule; typ: PType): bool =
   result = false
   if m.compileToCpp and typ != nil and typ.itemId in m.g.graph.memberProcsPerType:
     for prc in m.g.graph.memberProcsPerType[typ.itemId]:
       if sfConstructor in prc.flags:
         return true
+
+proc genCppParamsForCtor(p: BProc; call: PNode): string
+
+proc genCppInitializer(m: BModule, prc: BProc; typ: PType): string =
+  #To avoid creating a BProc per test when called inside a struct nil BProc is allowed
+  result = "{}"
+  if typ.itemId in m.g.graph.initializersPerType:
+    let call = m.g.graph.initializersPerType[typ.itemId]
+    if call != nil: 
+      var p = prc
+      if p == nil:
+        p = BProc(module: m)
+      result = "{" & genCppParamsForCtor(p, call) & "}"
+      if prc == nil:
+        assert p.blocks.len == 0, "BProc belongs to a struct doesnt have blocks" 
 
 proc genRecordFieldsAux(m: BModule; n: PNode,
                         rectype: PType,
@@ -720,8 +735,10 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
       else:
         # don't use fieldType here because we need the
         # tyGenericInst for C++ template support
-        if fieldType.isOrHasImportedCppType() or hasCppCtor(m, field.owner.typ):
-          result.addf("\t$1$3 $2{};$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias])
+        let noInit = sfNoInit in field.flags or (field.typ.sym != nil and sfNoInit in field.typ.sym.flags)
+        if not noInit and (fieldType.isOrHasImportedCppType() or hasCppCtor(m, field.owner.typ)):
+          var initializer = genCppInitializer(m, nil, fieldType)
+          result.addf("\t$1$3 $2$4;$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias, initializer])
         else:
           result.addf("\t$1$3 $2;$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias])
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
@@ -740,12 +757,13 @@ proc getRecordFields(m: BModule; typ: PType, check: var IntSet): Rope =
         isCtorGen = true
         if prc.typ.n.len == 1:
           isDefaultCtorGen = true
+      if lfNoDecl in prc.loc.flags: continue
       genMemberProcHeader(m, prc, header, false, true)
       result.addf "$1;$n", [header]
     if isCtorGen and not isDefaultCtorGen:
       var ch: IntSet
       result.addf "$1() = default;$n", [getTypeDescAux(m, typ, ch, dkOther)]
-    
+
 proc fillObjectFields*(m: BModule; typ: PType) =
   # sometimes generic objects are not consistently merged. We patch over
   # this fact here.
@@ -753,7 +771,7 @@ proc fillObjectFields*(m: BModule; typ: PType) =
   discard getRecordFields(m, typ, check)
 
 proc mangleDynLibProc(sym: PSym): Rope
-  
+
 proc getRecordDescAux(m: BModule; typ: PType, name, baseType: Rope,
                    check: var IntSet, hasField:var bool): Rope =
   result = ""
@@ -798,7 +816,7 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
   else:
     structOrUnion = structOrUnion(typ)
   var baseType: string = ""
-  if typ[0] != nil: 
+  if typ[0] != nil:
     baseType = getTypeDescAux(m, typ[0].skipTypes(skipPtrs), check, dkField)
   if typ.sym == nil or sfCodegenDecl notin typ.sym.flags:
     result = structOrUnion & " " & name
@@ -1110,8 +1128,8 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
     result = ""
   # fixes bug #145:
   excl(check, t.id)
-  
-  
+
+
 proc getTypeDesc(m: BModule; typ: PType; kind = dkParam): Rope =
   var check = initIntSet()
   result = getTypeDescAux(m, typ, check, kind)
@@ -1196,7 +1214,7 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
   var name, params, rettype, superCall: string = ""
   var isFnConst, isOverride, isMemberVirtual: bool = false
   parseVFunctionDecl(prc.constraint.strVal, name, params, rettype, superCall, isFnConst, isOverride, isMemberVirtual, isCtor)
-  genMemberProcParams(m, prc, superCall, rettype, name, params, check, true, false) 
+  genMemberProcParams(m, prc, superCall, rettype, name, params, check, true, false)
   let isVirtual = sfVirtual in prc.flags or isMemberVirtual
   var fnConst, override: string = ""
   if isCtor:
@@ -1206,7 +1224,7 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
   if isFwdDecl:
     if isVirtual:
       rettype = "virtual " & rettype
-      if isOverride: 
+      if isOverride:
         override = " override"
     superCall = ""
   else:
@@ -1214,14 +1232,14 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
       prc.loc.r = "$1$2(@)" % [memberOp, name]
     elif superCall != "":
       superCall = " : " & superCall
-    
+
     name = "$1::$2" % [typDesc, name]
 
   result.add "N_LIB_PRIVATE "
   result.addf("$1$2($3, $4)$5$6$7$8",
         [rope(CallingConvToStr[prc.typ.callConv]), asPtrStr, rettype, name,
         params, fnConst, override, superCall])
-  
+
 proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false) =
   # using static is needed for inline procs
   var check = initIntSet()
@@ -1556,10 +1574,6 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
   result = makeCString(result)
 
 proc isTrivialProc(g: ModuleGraph; s: PSym): bool {.inline.} = getBody(g, s).len == 0
-
-proc makePtrType(baseType: PType; idgen: IdGenerator): PType =
-  result = newType(tyPtr, nextTypeId idgen, baseType.owner)
-  addSonSkipIntLit(result, baseType, idgen)
 
 proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator; theProc: PSym): PSym =
@@ -1928,14 +1942,14 @@ proc genTypeInfo*(config: ConfigRef, m: BModule; t: PType; info: TLineInfo): Rop
   else:
     result = genTypeInfoV1(m, t, info)
 
-proc genTypeSection(m: BModule, n: PNode) = 
+proc genTypeSection(m: BModule, n: PNode) =
   var intSet = initIntSet()
   for i in 0..<n.len:
     if len(n[i]) == 0: continue
     if n[i][0].kind != nkPragmaExpr: continue
     for p in 0..<n[i][0].len:
       if (n[i][0][p].kind != nkSym): continue
-      if sfExportc in n[i][0][p].sym.flags:        
+      if sfExportc in n[i][0][p].sym.flags:
         discard getTypeDescAux(m, n[i][0][p].typ, intSet, descKindFromSymKind(n[i][0][p].sym.kind))
         if m.g.generatedHeader != nil:
           discard getTypeDescAux(m.g.generatedHeader, n[i][0][p].typ, intSet, descKindFromSymKind(n[i][0][p].sym.kind))

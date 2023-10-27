@@ -47,6 +47,8 @@
 ##     writeFile("output.html", $html)
 ##   ```
 
+{.deprecated: "use `nimble install htmlparser` and import `pkg/htmlparser` instead".}
+
 import strutils, streams, parsexml, xmltree, unicode, strtabs
 
 when defined(nimPreviewSlimSystem):

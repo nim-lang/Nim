@@ -1,5 +1,7 @@
 import std/[times, strformat]
 import std/assertions
 
-doAssert fmt"{getTime()}" == $getTime()
-doAssert fmt"{now()}" == $now()
+let aTime = getTime()
+doAssert fmt"{aTime}" == $aTime
+let aNow = now()
+doAssert fmt"{aNow}" == $aNow

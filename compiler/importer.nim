@@ -14,6 +14,7 @@ import
   semdata, modulepaths, sigmatch, lineinfos, sets,
   modulegraphs, wordrecg, tables
 from strutils import `%`
+from sequtils import addUnique
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -228,11 +229,6 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; im
   else:
     for i in 0..n.safeLen-1:
       importForwarded(c, n[i], exceptSet, fromMod, importSet)
-
-proc addUnique[T](x: var seq[T], y: sink T) {.noSideEffect.} =
-  for i in 0..high(x):
-    if x[i] == y: return
-  x.add y
     
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool): PSym =
   result = realModule

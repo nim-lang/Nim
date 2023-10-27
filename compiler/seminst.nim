@@ -269,7 +269,9 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
         for i in 1..<def.len:
           def[i] = replaceTypeVarsN(cl, def[i], 1)
 
-      def = semExprWithType(c, def)
+      # allow symchoice since node will be fit later
+      # although expectedType should cover it
+      def = semExprWithType(c, def, {efAllowSymChoice}, typeToFit)
       if def.referencesAnotherParam(getCurrOwner(c)):
         def.flags.incl nfDefaultRefsParam
 

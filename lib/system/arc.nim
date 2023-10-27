@@ -202,15 +202,22 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
         writeStackTrace()
         cfprintf(cstderr, "[DecRef] %p %ld\n", p, cell.count)
 
-    if cell.count == 0:
-      result = true
-      when traceCollector:
-        cprintf("[ABOUT TO DESTROY] %p\n", cell)
+    when defined(gcAtomicArc) and hasThreadSupport:
+      # `atomicDec` returns the new value
+      if atomicDec(cell.rc, rcIncrement) == -1:
+        result = true
+        when traceCollector:
+          cprintf("[ABOUT TO DESTROY] %p\n", cell)
     else:
-      decrement cell
-      # According to Lins it's correct to do nothing else here.
-      when traceCollector:
-        cprintf("[DECREF] %p\n", cell)
+      if cell.count == 0:
+        result = true
+        when traceCollector:
+          cprintf("[ABOUT TO DESTROY] %p\n", cell)
+      else:
+        decrement cell
+        # According to Lins it's correct to do nothing else here.
+        when traceCollector:
+          cprintf("[DECREF] %p\n", cell)
 
 proc GC_unref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.

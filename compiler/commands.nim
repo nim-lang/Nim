@@ -205,7 +205,11 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     # unfortunately, hintUser and warningUser clash, otherwise implementation would simplify a bit
     let x = findStr(noteMin, noteMax, id, errUnknown)
     if x != errUnknown: notes = {TNoteKind(x)}
-    else: localError(conf, info, "unknown $#: $#" % [name, id])
+    else:
+      if isSomeHint:
+        message(conf, info, hintUnknownHint, id)
+      else:
+        localError(conf, info, "unknown $#: $#" % [name, id])
   case id.normalize
   of "all": # other note groups would be easy to support via additional cases
     notes = if isSomeHint: {hintMin..hintMax} else: {warnMin..warnMax}
@@ -456,6 +460,7 @@ proc handleCmdInput*(conf: ConfigRef) =
 proc parseCommand*(command: string): Command =
   case command.normalize
   of "c", "cc", "compile", "compiletoc": cmdCompileToC
+  of "nir": cmdCompileToNir
   of "cpp", "compiletocpp": cmdCompileToCpp
   of "objc", "compiletooc": cmdCompileToOC
   of "js", "compiletojs": cmdCompileToJS
@@ -492,6 +497,7 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
   of cmdCompileToCpp: conf.backend = backendCpp
   of cmdCompileToOC: conf.backend = backendObjc
   of cmdCompileToJS: conf.backend = backendJs
+  of cmdCompileToNir: conf.backend = backendNir
   else: discard
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
@@ -604,6 +610,13 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       defineSymbol(conf.symbols, "gcregions")
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
 
+proc pathRelativeToConfig(arg: string, pass: TCmdLinePass, conf: ConfigRef): string =
+  if pass == passPP and not isAbsolute(arg):
+    assert isAbsolute(conf.currentConfigDir), "something is wrong with currentConfigDir"
+    result = conf.currentConfigDir / arg
+  else:
+    result = arg
+
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var key = ""
@@ -649,7 +662,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     # refs bug #18674, otherwise `--os:windows` messes up with `--nimcache` set
     # in config nims files, e.g. via: `import os; switch("nimcache", "/tmp/somedir")`
     if conf.target.targetOS == osWindows and DirSep == '/': arg = arg.replace('\\', '/')
-    conf.nimcacheDir = processPath(conf, arg, info, notRelativeToProj=true)
+    conf.nimcacheDir = processPath(conf, pathRelativeToConfig(arg, pass, conf), info, notRelativeToProj=true)
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
     let f = splitFile(processPath(conf, arg, info, notRelativeToProj=true).string)
@@ -783,7 +796,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if conf.backend == backendJs or conf.cmd == cmdNimscript: discard
     else: processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
     #if optThreads in conf.globalOptions: conf.setNote(warnGcUnsafe)
-  of "tlsemulation": 
+  of "tlsemulation":
     processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
     if optTlsEmulation in conf.globalOptions:
       conf.legacyFeatures.incl emitGenerics
