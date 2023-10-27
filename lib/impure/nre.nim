@@ -217,9 +217,11 @@ type
     ## code.
 
 proc destroyRegex(pattern: Regex) =
+  `=destroy`(pattern.pattern)
   pcre.free_substring(cast[cstring](pattern.pcreObj))
   if pattern.pcreExtra != nil:
     pcre.free_study(pattern.pcreExtra)
+  `=destroy`(pattern.captureNameToId)
 
 proc getinfo[T](pattern: Regex, opt: cint): T =
   let retcode = pcre.fullinfo(pattern.pcreObj, pattern.pcreExtra, opt, addr result)
