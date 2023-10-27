@@ -111,6 +111,7 @@ type
 type
   PragmaKey* = enum
     FastCall, StdCall, CDeclCall, SafeCall, SysCall, InlineCall, NoinlineCall, ThisCall, NoCall,
+    CoreName,
     ExternName,
     HeaderImport,
     DllImport,

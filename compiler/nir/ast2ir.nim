@@ -32,6 +32,7 @@ type
     idgen: IdGenerator
     processedProcs: HashSet[ItemId]
     pendingProcs: seq[PSym] # procs we still need to generate code for
+    noModularity*: bool
 
   ProcCon* = object
     config*: ConfigRef
@@ -2103,10 +2104,13 @@ proc irModule(c: var ProcCon; owner: PSym): string =
   #if owner == c.m.module: "" else:
   customPath(toFullPath(c.config, owner.info))
 
+proc fromForeignModule(c: ProcCon; s: PSym): bool {.inline.} =
+  result = ast.originatingModule(s) != c.m.module and not c.m.noModularity
+
 proc genRdVar(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   let info = toLineInfo(c, n.info)
   let s = n.sym
-  if ast.originatingModule(s) != c.m.module:
+  if fromForeignModule(c, s):
     template body(target) =
       build target, info, ModuleSymUse:
         target.addStrVal c.lit.strings, info, irModule(c, ast.originatingModule(s))
@@ -2124,7 +2128,7 @@ proc genSym(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   of skVar, skForVar, skTemp, skLet, skResult, skParam, skConst:
     genRdVar(c, n, d, flags)
   of skProc, skFunc, skConverter, skMethod, skIterator:
-    if ast.originatingModule(s) == c.m.module:
+    if not fromForeignModule(c, s):
       # anon and generic procs have no AST so we need to remember not to forget
       # to emit these:
       if not c.m.processedProcs.containsOrIncl(s.itemId):
@@ -2310,6 +2314,10 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
     addSymDef c.code, info, SymId(prc.itemId.item)
     c.m.symnames[SymId prc.itemId.item] = c.m.lit.strings.getOrIncl(prc.name.s)
     addCallConv c, info, prc.typ.callConv
+    if sfCompilerProc in prc.flags:
+      build c.code, info, PragmaPair:
+        c.code.addPragmaId info, CoreName
+        c.code.addStrVal c.lit.strings, info, prc.name.s
     if {sfImportc, sfExportc} * prc.flags != {}:
       build c.code, info, PragmaPair:
         c.code.addPragmaId info, ExternName

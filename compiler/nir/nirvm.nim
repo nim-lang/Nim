@@ -15,7 +15,7 @@ We also split the instruction stream into separate (code, debug) seqs while
 we're at it.
 ]##
 
-import std / [assertions, tables, intsets]
+import std / [syncio, assertions, tables, intsets]
 import ".." / ic / bitabs
 import nirinsts, nirtypes, nirfiles, nirlineinfos
 
@@ -905,6 +905,36 @@ proc evalProc(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
   let procSym = c[s].operand
   result = CodePos(procSym)
 
+proc echoImpl(c: Bytecode; pc: CodePos; s: StackFrame) =
+  type StringArray = object
+    len: int
+    data: ptr UncheckedArray[string]
+  var sa = default(StringArray)
+  for a in sonsFrom1(c, pc):
+    eval(c, a, s, addr(sa), sizeof(sa))
+  for i in 0..<sa.len:
+    stdout.write sa.data[i]
+  stdout.write "\n"
+  stdout.flushFile()
+
+proc evalBuiltin(c: Bytecode; pc: CodePos; s: StackFrame; prc: CodePos; didEval: var bool): CodePos =
+  var prc = prc
+  while true:
+    case c[prc].kind
+    of PragmaPairM:
+      let (x, y) = sons2(c.code, prc)
+      if cast[PragmaKey](c[x]) == CoreName:
+        let lit = c[y].litId
+        case c.m.lit.strings[lit]
+        of "echoBinSafe": echoImpl(c, pc, s)
+        else: discard
+        echo "running compilerproc: ", c.m.lit.strings[lit]
+        didEval = true
+    of PragmaIdM: discard
+    else: break
+    next c, prc
+  result = prc
+
 proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
   var pc = pc
   var s = StackFrame(u: u)
@@ -929,23 +959,25 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
       assert c.code[prc.firstSon].kind == AllocLocals
       let frameSize = int c.code[prc.firstSon].operand
       # skip stupid stuff:
-      prc = prc.firstSon
-      while c[prc].kind in {PragmaPairM, PragmaIdM}:
-        next c, prc
-      # setup storage for the proc already:
-      let callInstr = pc
-      next c, pc
-      let s2 = newStackFrame(frameSize, s, pc)
-      for a in sonsFrom1(c, callInstr):
-        assert c[prc].kind == SummonParamM
-        let paramAddr = c[prc].operand
-        assert c[prc.firstSon].kind == ImmediateValM
-        let paramSize = c[prc.firstSon].operand.int
-        eval(c, a, s2, s2.locals +! paramAddr, paramSize)
-        next c, prc
-        next c, prc
-      s = s2
-      pc = prc
+      var didEval = false
+      prc = evalBuiltin(c, pc, s, prc.firstSon, didEval)
+      if didEval:
+        next c, pc
+      else:
+        # setup storage for the proc already:
+        let callInstr = pc
+        next c, pc
+        let s2 = newStackFrame(frameSize, s, pc)
+        for a in sonsFrom1(c, callInstr):
+          assert c[prc].kind == SummonParamM
+          let paramAddr = c[prc].operand
+          assert c[prc.firstSon].kind == ImmediateValM
+          let paramSize = c[prc.firstSon].operand.int
+          eval(c, a, s2, s2.locals +! paramAddr, paramSize)
+          next c, prc
+          next c, prc
+        s = s2
+        pc = prc
     of RetM:
       pc = s.returnAddr
       s = popStackFrame(s)

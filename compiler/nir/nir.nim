@@ -24,7 +24,8 @@ type
     oldErrorCount: int
 
 proc newCtx*(module: PSym; g: ModuleGraph; idgen: IdGenerator): PCtx =
-  let m = initModuleCon(g, g.config, idgen, module)
+  var m = initModuleCon(g, g.config, idgen, module)
+  m.noModularity = true
   PCtx(m: m, c: initProcCon(m, nil, g.config), idgen: idgen)
 
 proc refresh*(c: PCtx; module: PSym; idgen: IdGenerator) =
