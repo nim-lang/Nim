@@ -162,3 +162,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasNolineTooLong")
 
   defineSymbol("nimHasCastExtendedVm")
+  defineSymbol("nimHasWarnStdPrefix")
