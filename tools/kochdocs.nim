@@ -190,6 +190,7 @@ when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
     result = path.len > 0 and not ret.startsWith ".."
 
 proc getDocList(): seq[string] =
+  ##
   var docIgnore: HashSet[string]
   for a in withoutIndex: docIgnore.incl a
   for a in ignoredModules: docIgnore.incl a
