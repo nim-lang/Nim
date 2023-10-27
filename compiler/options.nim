@@ -8,11 +8,12 @@
 #
 
 import
-  os, strutils, strtabs, sets, lineinfos, platform,
-  prefixmatches, pathutils, nimpaths, tables
+  lineinfos, platform,
+  prefixmatches, pathutils, nimpaths
 
-from terminal import isatty
-from times import utc, fromUnix, local, getTime, format, DateTime
+import std/[tables, os, strutils, strtabs, sets]
+from std/terminal import isatty
+from std/times import utc, fromUnix, local, getTime, format, DateTime
 from std/private/globs import nativeToUnixPath
 
 when defined(nimPreviewSlimSystem):

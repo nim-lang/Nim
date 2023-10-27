@@ -14,7 +14,7 @@ import options, ast, ropes, pathutils, msgs, lineinfos
 import modulegraphs
 
 import std/[os, parseutils]
-import strutils except addf
+import std/strutils except addf
 import std/private/globs
 
 when defined(nimPreviewSlimSystem):

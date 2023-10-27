@@ -7,12 +7,12 @@
 #    distribution, for details about the copyright.
 #
 
-import hashes, tables, intsets
+import std/[hashes, tables, intsets]
 import packed_ast, bitabs, rodfiles
 import ".." / [ast, idents, lineinfos, msgs, ropes, options,
   pathutils, condsyms, packages, modulepaths]
 #import ".." / [renderer, astalgo]
-from os import removeFile, isAbsolute
+from std/os import removeFile, isAbsolute
 
 import ../../dist/checksums/src/checksums/sha1
 

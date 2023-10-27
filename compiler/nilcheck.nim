@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, idents, treetab, hashes
-import sequtils, strutils, sets
+import ast, renderer, msgs, options, lineinfos, idents, treetab
+import std/[intsets, tables, sequtils, strutils, sets, strformat, hashes]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

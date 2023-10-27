@@ -12,7 +12,7 @@
 ## use this representation directly in all the transformations,
 ## it is superior.
 
-import hashes, tables, strtabs
+import std/[hashes, tables, strtabs]
 import bitabs
 import ".." / [ast, options]
 

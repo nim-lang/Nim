@@ -10,8 +10,10 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, hashes, options, ropes, idents, int128, tables, wordrecg
-from strutils import toLowerAscii
+  lineinfos, options, ropes, idents, int128, wordrecg
+
+import std/[tables, hashes]
+from std/strutils import toLowerAscii
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

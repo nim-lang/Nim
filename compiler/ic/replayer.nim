@@ -14,7 +14,7 @@
 import ".." / [ast, modulegraphs, trees, extccomp, btrees,
   msgs, lineinfos, pathutils, options, cgmeth]
 
-import tables
+import std/tables
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

@@ -10,8 +10,10 @@
 # this module contains routines for accessing and iterating over types
 
 import
-  intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
+  ast, astalgo, trees, msgs, platform, renderer, options,
   lineinfos, int128, modulegraphs, astmsgs
+
+import std/[intsets, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, formatfloat]

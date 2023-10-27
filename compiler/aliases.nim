@@ -10,7 +10,9 @@
 ## Simple alias analysis for the HLO and the code generators.
 
 import
-  ast, astalgo, types, trees, intsets
+  ast, astalgo, types, trees
+
+import std/intsets
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

@@ -9,8 +9,8 @@
 
 ## Template evaluation engine. Now hygienic.
 
-import
-  strutils, options, ast, astalgo, msgs, renderer, lineinfos, idents, trees
+import options, ast, astalgo, msgs, renderer, lineinfos, idents, trees
+import std/strutils
 
 type
   TemplCtx = object
