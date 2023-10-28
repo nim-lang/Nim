@@ -12,6 +12,7 @@
 
 from os import addFileExt, `/`, createDir
 
+import std / assertions
 import ".." / [ast, modulegraphs, renderer, transf, options, msgs, lineinfos]
 import nirtypes, nirinsts, ast2ir, nirlineinfos, nirfiles, nirvm
 
@@ -22,14 +23,17 @@ type
     m: ModuleCon
     c: ProcCon
     oldErrorCount: int
+    nirm: ref NirModule
 
 proc newCtx*(module: PSym; g: ModuleGraph; idgen: IdGenerator): PCtx =
-  var m = initModuleCon(g, g.config, idgen, module)
+  var lit = Literals()
+  var nirm = (ref NirModule)(types: initTypeGraph(lit), lit: lit)
+  var m = initModuleCon(g, g.config, idgen, module, nirm)
   m.noModularity = true
   PCtx(m: m, c: initProcCon(m, nil, g.config), idgen: idgen)
 
 proc refresh*(c: PCtx; module: PSym; idgen: IdGenerator) =
-  c.m = initModuleCon(c.m.graph, c.m.graph.config, idgen, module)
+  c.m = initModuleCon(c.m.graph, c.m.graph.config, idgen, module, c.nirm)
   c.c = initProcCon(c.m, nil, c.m.graph.config)
   c.idgen = idgen
 
@@ -50,7 +54,7 @@ proc evalStmt(c: PCtx; n: PNode) =
 
   var res = ""
   if pc < c.c.code.len:
-    toString c.c.code, NodePos(pc), c.m.lit.strings, c.m.lit.numbers, c.m.symnames, res
+    toString c.c.code, NodePos(pc), c.m.nirm.lit.strings, c.m.nirm.lit.numbers, c.m.symnames, res
   #res.add "\n--------------------------\n"
   #toString res, c.m.types.g
   echo res
@@ -72,7 +76,9 @@ type
     c: ProcCon
 
 proc openNirBackend*(g: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
-  let m = initModuleCon(g, g.config, idgen, module)
+  var lit = Literals()
+  var nirm = (ref NirModule)(types: initTypeGraph(lit), lit: lit)
+  let m = initModuleCon(g, g.config, idgen, module, nirm)
   NirPassContext(m: m, c: initProcCon(m, nil, g.config), idgen: idgen)
 
 proc gen(c: NirPassContext; n: PNode) =
@@ -90,11 +96,9 @@ proc closeNirBackend*(c: PPassContext; finalNode: PNode) =
   let nimcache = getNimcacheDir(c.c.config).string
   createDir nimcache
   let outp = nimcache / c.m.module.name.s.addFileExt("nir")
-
-  let m = NirModule(code: move(c.c.code), man: move(c.m.man), types: move(c.m.typeg),
-                    lit: move(c.m.lit), symnames: move(c.m.symnames))
+  c.m.nirm.code = move c.c.code
   try:
-    store m, outp
+    store c.m.nirm[], outp
     echo "created: ", outp
   except IOError:
     rawMessage(c.c.config, errFatal, "serialization failed: " & outp)

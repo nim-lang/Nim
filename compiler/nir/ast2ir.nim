@@ -15,17 +15,15 @@ from ".." / lowerings import lowerSwap, lowerTupleUnpacking
 from ".." / pathutils import customPath
 import .. / ic / bitabs
 
-import nirtypes, nirinsts, nirlineinfos, nirslots, types2ir
+import nirtypes, nirinsts, nirlineinfos, nirslots, types2ir, nirfiles
 
 when defined(nimCompilerStacktraceHints):
   import std/stackframes
 
 type
   ModuleCon* = ref object
-    man*: LineInfoManager
-    lit*: Literals
+    nirm*: ref NirModule
     types: TypesCon
-    typeg*: TypeGraph
     module*: PSym
     graph*: ModuleGraph
     symnames*: SymNames
@@ -50,10 +48,11 @@ type
     prc: PSym
     options: TOptions
 
-proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; module: PSym): ModuleCon =
-  let lit = Literals() # must be shared
-  result = ModuleCon(graph: graph, types: initTypesCon(config), typeg: initTypeGraph(lit),
-    idgen: idgen, module: module, lit: lit)
+proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; module: PSym;
+                    nirm: ref NirModule): ModuleCon =
+  #let lit = Literals() # must be shared
+  result = ModuleCon(graph: graph, types: initTypesCon(config), nirm: nirm,
+    idgen: idgen, module: module)
   case config.target.intSize
   of 2:
     result.nativeIntId = Int16Id
@@ -67,7 +66,7 @@ proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; m
 
 proc initProcCon*(m: ModuleCon; prc: PSym; config: ConfigRef): ProcCon =
   ProcCon(m: m, sm: initSlotManager({}), prc: prc, config: config,
-    lit: m.lit, idgen: m.idgen,
+    lit: m.nirm.lit, idgen: m.idgen,
     options: if prc != nil: prc.options
              else: config.options)
 
@@ -80,7 +79,7 @@ proc toLineInfo(c: var ProcCon; i: TLineInfo): PackedLineInfo =
     # remember the entry:
     c.lastFileKey = i.fileIndex
     c.lastFileVal = val
-  result = pack(c.m.man, val, int32 i.line, int32 i.col)
+  result = pack(c.m.nirm.man, val, int32 i.line, int32 i.col)
 
 proc bestEffort(c: ProcCon): TLineInfo =
   if c.prc != nil:
@@ -116,7 +115,7 @@ proc freeTemp(c: var ProcCon; tmp: Value) =
     freeTemp(c.sm, s)
 
 proc typeToIr(m: ModuleCon; t: PType): TypeId =
-  typeToIr(m.types, m.typeg, t)
+  typeToIr(m.types, m.nirm.types, t)
 
 proc getTemp(c: var ProcCon; n: PNode): Value =
   let info = toLineInfo(c, n.info)
@@ -592,7 +591,7 @@ proc genNewSeqOfCap(c: var ProcCon; n: PNode; d: var Value) =
       c.code.addImmediateVal info, 0
     c.code.addImmediateVal info, 0
   # $1.p = ($4*) #newSeqPayloadUninit($2, sizeof($3), NIM_ALIGNOF($3))
-  let payloadPtr = seqPayloadPtrType(c.m.types, c.m.typeg, seqtype)
+  let payloadPtr = seqPayloadPtrType(c.m.types, c.m.nirm.types, seqtype)
   buildTyped c.code, info, Asgn, payloadPtr:
     # $1.p
     buildTyped c.code, info, FieldAt, payloadPtr:
@@ -612,7 +611,7 @@ proc genNewSeqOfCap(c: var ProcCon; n: PNode; d: var Value) =
 proc genNewSeqPayload(c: var ProcCon; info: PackedLineInfo; d, b: Value; seqtype: PType) =
   let baseType = seqtype.lastSon
   # $1.p = ($4*) #newSeqPayload($2, sizeof($3), NIM_ALIGNOF($3))
-  let payloadPtr = seqPayloadPtrType(c.m.types, c.m.typeg, seqtype)
+  let payloadPtr = seqPayloadPtrType(c.m.types, c.m.nirm.types, seqtype)
 
   # $1.len = $2
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
@@ -865,7 +864,7 @@ proc genInBitset(c: var ProcCon; n: PNode; d: var Value) =
   let a = c.genx(n[1])
   let b = c.genx(n[2])
 
-  let t = bitsetBasetype(c.m.types, c.m.typeg, n[1].typ)
+  let t = bitsetBasetype(c.m.types, c.m.nirm.types, n[1].typ)
   let setType = typeToIr(c.m, n[1].typ)
   let mask =
     case t
@@ -881,7 +880,7 @@ proc genInBitset(c: var ProcCon; n: PNode; d: var Value) =
     buildTyped target, info, BoolNot, Bool8Id:
       buildTyped target, info, Eq, t:
         buildTyped target, info, BitAnd, t:
-          if c.m.typeg[setType].kind != ArrayTy:
+          if c.m.nirm.types[setType].kind != ArrayTy:
             copyTree target, a
           else:
             buildTyped target, info, ArrayAt, t:
@@ -949,11 +948,11 @@ proc genCard(c: var ProcCon; n: PNode; d: var Value) =
   buildTyped c.code, info, Asgn, t:
     copyTree c.code, d
     buildTyped c.code, info, Call, t:
-      if c.m.typeg[setType].kind == ArrayTy:
+      if c.m.nirm.types[setType].kind == ArrayTy:
         let codegenProc = magicsys.getCompilerProc(c.m.graph, "cardSet")
         let theProc = c.genx newSymNode(codegenProc, n.info)
         copyTree c.code, theProc
-        buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.typeg, setType):
+        buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.nirm.types, setType):
           copyTree c.code, a
         c.code.addImmediateVal info, int(getSize(c.config, n[1].typ))
       elif t == UInt64Id:
@@ -977,7 +976,7 @@ proc genEqSet(c: var ProcCon; n: PNode; d: var Value) =
 
   let setType = typeToIr(c.m, n[1].typ)
 
-  if c.m.typeg[setType].kind == ArrayTy:
+  if c.m.nirm.types[setType].kind == ArrayTy:
     if isEmpty(d): d = getTemp(c, n)
 
     buildTyped c.code, info, Asgn, t:
@@ -987,9 +986,9 @@ proc genEqSet(c: var ProcCon; n: PNode; d: var Value) =
           let codegenProc = magicsys.getCompilerProc(c.m.graph, "nimCmpMem")
           let theProc = c.genx newSymNode(codegenProc, n.info)
           copyTree c.code, theProc
-          buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.typeg, setType):
+          buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.nirm.types, setType):
             copyTree c.code, a
-          buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.typeg, setType):
+          buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.nirm.types, setType):
             copyTree c.code, b
           c.code.addImmediateVal info, int(getSize(c.config, n[1].typ))
         c.code.addIntVal c.lit.numbers, info, c.m.nativeIntId, 0
@@ -1058,8 +1057,8 @@ proc genLeSet(c: var ProcCon; n: PNode; d: var Value) =
 
   let setType = typeToIr(c.m, n[1].typ)
 
-  if c.m.typeg[setType].kind == ArrayTy:
-    let elemType = bitsetBasetype(c.m.types, c.m.typeg, n[1].typ)
+  if c.m.nirm.types[setType].kind == ArrayTy:
+    let elemType = bitsetBasetype(c.m.types, c.m.nirm.types, n[1].typ)
     if isEmpty(d): d = getTemp(c, n)
     #    "for ($1 = 0; $1 < $2; $1++):"
     #    "  $3 = (($4[$1] & ~ $5[$1]) == 0)"
@@ -1113,8 +1112,8 @@ proc genBinarySet(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
 
   let setType = typeToIr(c.m, n[1].typ)
 
-  if c.m.typeg[setType].kind == ArrayTy:
-    let elemType = bitsetBasetype(c.m.types, c.m.typeg, n[1].typ)
+  if c.m.nirm.types[setType].kind == ArrayTy:
+    let elemType = bitsetBasetype(c.m.types, c.m.nirm.types, n[1].typ)
     if isEmpty(d): d = getTemp(c, n)
     #    "for ($1 = 0; $1 < $2; $1++):"
     #    "  $3 = (($4[$1] & ~ $5[$1]) == 0)"
@@ -1162,7 +1161,7 @@ proc genInclExcl(c: var ProcCon; n: PNode; m: TMagic) =
 
   let setType = typeToIr(c.m, n[1].typ)
 
-  let t = bitsetBasetype(c.m.types, c.m.typeg, n[1].typ)
+  let t = bitsetBasetype(c.m.types, c.m.nirm.types, n[1].typ)
   let mask =
     case t
     of UInt8Id: 7
@@ -1171,7 +1170,7 @@ proc genInclExcl(c: var ProcCon; n: PNode; m: TMagic) =
     else: 63
 
   buildTyped c.code, info, Asgn, setType:
-    if c.m.typeg[setType].kind == ArrayTy:
+    if c.m.nirm.types[setType].kind == ArrayTy:
       if m == mIncl:
         # $1[(NU)($2)>>3] |=(1U<<($2&7U))
         buildTyped c.code, info, ArrayAt, t:
@@ -1246,7 +1245,7 @@ proc genSetConstrDyn(c: var ProcCon; n: PNode; d: var Value) =
   let info = toLineInfo(c, n.info)
   let setType = typeToIr(c.m, n.typ)
   let size = int(getSize(c.config, n.typ))
-  let t = bitsetBasetype(c.m.types, c.m.typeg, n.typ)
+  let t = bitsetBasetype(c.m.types, c.m.nirm.types, n.typ)
   let mask =
     case t
     of UInt8Id: 7
@@ -1255,7 +1254,7 @@ proc genSetConstrDyn(c: var ProcCon; n: PNode; d: var Value) =
     else: 63
 
   if isEmpty(d): d = getTemp(c, n)
-  if c.m.typeg[setType].kind != ArrayTy:
+  if c.m.nirm.types[setType].kind != ArrayTy:
     buildTyped c.code, info, Asgn, setType:
       copyTree c.code, d
       c.code.addIntVal c.lit.numbers, info, t, 0
@@ -1364,12 +1363,12 @@ proc genSetConstr(c: var ProcCon; n: PNode; d: var Value) =
     let size = int(getSize(c.config, n.typ))
     let cs = toBitSet(c.config, n)
 
-    if c.m.typeg[setType].kind != ArrayTy:
+    if c.m.nirm.types[setType].kind != ArrayTy:
       template body(target) =
         target.addIntVal c.lit.numbers, info, setType, cast[BiggestInt](bitSetToWord(cs, size))
       intoDest d, info, setType, body
     else:
-      let t = bitsetBasetype(c.m.types, c.m.typeg, n.typ)
+      let t = bitsetBasetype(c.m.types, c.m.nirm.types, n.typ)
       template body(target) =
         buildTyped target, info, ArrayConstr, setType:
           for i in 0..high(cs):
@@ -1442,7 +1441,7 @@ proc genStrConcat(c: var ProcCon; n: PNode; d: var Value) =
       #assert codegenProc != nil, $n & " " & (c.m.graph.config $ n.info)
       let theProc = c.genx newSymNode(codegenProc, n.info)
       copyTree c.code, theProc
-      buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.typeg, t):
+      buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.nirm.types, t):
         copyTree c.code, tmpStr
       copyTree c.code, args[i-1]
     freeTemp c, args[i-1]
@@ -1479,7 +1478,7 @@ proc genMove(c: var ProcCon; n: PNode; d: var Value) =
     # if ($1.p == $2.p) goto lab1
     let lab1 = newLabel(c.labelGen)
 
-    let payloadType = seqPayloadPtrType(c.m.types, c.m.typeg, n1.typ)
+    let payloadType = seqPayloadPtrType(c.m.types, c.m.nirm.types, n1.typ)
     buildTyped c.code, info, Select, Bool8Id:
       buildTyped c.code, info, Eq, payloadType:
         buildTyped c.code, info, FieldAt, payloadType:
@@ -1514,7 +1513,7 @@ proc genMove(c: var ProcCon; n: PNode; d: var Value) =
       var opB = c.genx(newSymNode(op))
       buildTyped c.code, info, Call, typeToIr(c.m, n.typ):
         copyTree c.code, opB
-        buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.typeg, typeToIr(c.m, n1.typ)):
+        buildTyped c.code, info, AddrOf, ptrTypeOf(c.m.nirm.types, typeToIr(c.m, n1.typ)):
           copyTree c.code, a
 
 template fieldAt(x: Value; i: int; t: TypeId): Tree =
@@ -1552,7 +1551,7 @@ proc genDestroySeq(c: var ProcCon; n: PNode; t: PType) =
   let x = c.genx(n[1])
   let baseType = t.lastSon
 
-  let seqType = seqPayloadPtrType(c.m.types, c.m.typeg, t)
+  let seqType = seqPayloadPtrType(c.m.types, c.m.nirm.types, t)
   let p = fieldAt(x, 0, seqType)
 
   # if $1.p != nil and ($1.p.cap and NIM_STRLIT_FLAG) == 0:
@@ -1608,13 +1607,13 @@ proc genIndexCheck(c: var ProcCon; n: PNode; a: Value; kind: IndexFor; arr: PTyp
 
 proc addSliceFields(c: var ProcCon; target: var Tree; info: PackedLineInfo;
                     x: Value; n: PNode; arrType: PType) =
-  let elemType = arrayPtrTypeOf(c.m.typeg, typeToIr(c.m, arrType.lastSon))
+  let elemType = arrayPtrTypeOf(c.m.nirm.types, typeToIr(c.m, arrType.lastSon))
   case arrType.kind
   of tyString, tySequence:
     let t = typeToIr(c.m, arrType.lastSon)
     let checkKind = if arrType.kind == tyString: ForStr else: ForSeq
-    let pay = if checkKind == ForStr: strPayloadPtrType(c.m.types, c.m.typeg)
-              else: seqPayloadPtrType(c.m.types, c.m.typeg, arrType)
+    let pay = if checkKind == ForStr: strPayloadPtrType(c.m.types, c.m.nirm.types)
+              else: seqPayloadPtrType(c.m.types, c.m.nirm.types, arrType)
 
     let y = genIndexCheck(c, n[2], x, checkKind)
     let z = genIndexCheck(c, n[3], x, checkKind)
@@ -1903,14 +1902,14 @@ proc genDeref(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
 
 proc addAddrOfFirstElem(c: var ProcCon; target: var Tree; info: PackedLineInfo; tmp: Value; typ: PType) =
   let arrType = typ.skipTypes(abstractVar)
-  let elemType = arrayPtrTypeOf(c.m.typeg, typeToIr(c.m, arrType.lastSon))
+  let elemType = arrayPtrTypeOf(c.m.nirm.types, typeToIr(c.m, arrType.lastSon))
   case arrType.kind
   of tyString:
     let t = typeToIr(c.m, typ.lastSon)
     target.addImmediateVal info, 0
     buildTyped target, info, AddrOf, elemType:
       buildTyped target, info, ArrayAt, t:
-        buildTyped target, info, FieldAt, strPayloadPtrType(c.m.types, c.m.typeg):
+        buildTyped target, info, FieldAt, strPayloadPtrType(c.m.types, c.m.nirm.types):
           copyTree target, tmp
           target.addImmediateVal info, 1 # (len, p)-pair
         target.addIntVal c.lit.numbers, info, c.m.nativeIntId, 0
@@ -1925,7 +1924,7 @@ proc addAddrOfFirstElem(c: var ProcCon; target: var Tree; info: PackedLineInfo; 
     target.addImmediateVal info, 0
     buildTyped target, info, AddrOf, elemType:
       buildTyped target, info, ArrayAt, t:
-        buildTyped target, info, FieldAt, seqPayloadPtrType(c.m.types, c.m.typeg, typ):
+        buildTyped target, info, FieldAt, seqPayloadPtrType(c.m.types, c.m.nirm.types, typ):
           copyTree target, tmp
           target.addImmediateVal info, 1 # (len, p)-pair
         target.addIntVal c.lit.numbers, info, c.m.nativeIntId, 0
@@ -2035,7 +2034,7 @@ proc genSeqConstr(c: var ProcCon; n: PNode; d: var Value) =
   for i in 0..<n.len:
     var dd = default(Value)
     buildTyped dd, info, ArrayAt, typeToIr(c.m, seqtype):
-      buildTyped dd, info, FieldAt, seqPayloadPtrType(c.m.types, c.m.typeg, seqtype):
+      buildTyped dd, info, FieldAt, seqPayloadPtrType(c.m.types, c.m.nirm.types, seqtype):
         copyTree Tree(dd), d
         dd.addIntVal c.lit.numbers, info, c.m.nativeIntId, i
     gen(c, n[i], dd)
@@ -2085,7 +2084,7 @@ proc genVarSection(c: var ProcCon; n: PNode) =
         let t = typeToIr(c.m, s.typ)
         #assert t.int >= 0, typeToString(s.typ) & (c.config $ n.info)
         c.code.addSummon toLineInfo(c, a.info), SymId(s.itemId.item), t, opc
-        c.m.symnames[SymId(s.itemId.item)] = c.m.lit.strings.getOrIncl(s.name.s)
+        c.m.symnames[SymId(s.itemId.item)] = c.lit.strings.getOrIncl(s.name.s)
         if a[2].kind != nkEmpty:
           genAsgn2(c, vn, a[2])
       else:
@@ -2193,7 +2192,7 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     let t = typeToIr(c.m, n.typ)
     template body(target) =
       buildTyped target, info, ArrayAt, t:
-        buildTyped target, info, FieldAt, strPayloadPtrType(c.m.types, c.m.typeg):
+        buildTyped target, info, FieldAt, strPayloadPtrType(c.m.types, c.m.nirm.types):
           copyTree target, a
           target.addImmediateVal info, 1 # (len, p)-pair
         copyTree target, b
@@ -2228,7 +2227,7 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     let t = typeToIr(c.m, n.typ)
     template body(target) =
       buildTyped target, info, ArrayAt, t:
-        buildTyped target, info, FieldAt, openArrayPayloadType(c.m.types, c.m.typeg, n[0].typ):
+        buildTyped target, info, FieldAt, openArrayPayloadType(c.m.types, c.m.nirm.types, n[0].typ):
           copyTree target, a
           target.addImmediateVal info, 0 # (p, len)-pair
         copyTree target, b
@@ -2254,7 +2253,7 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     let t = typeToIr(c.m, n.typ)
     template body(target) =
       buildTyped target, info, ArrayAt, t:
-        buildTyped target, info, FieldAt, seqPayloadPtrType(c.m.types, c.m.typeg, n[0].typ):
+        buildTyped target, info, FieldAt, seqPayloadPtrType(c.m.types, c.m.nirm.types, n[0].typ):
           copyTree target, a
           target.addImmediateVal info, 1 # (len, p)-pair
         copyTree target, b
@@ -2290,7 +2289,7 @@ proc genParams(c: var ProcCon; params: PNode; prc: PSym) =
       let t = typeToIr(c.m, s.typ)
       assert t.int != -1, typeToString(s.typ)
       c.code.addSummon toLineInfo(c, params[i].info), SymId(s.itemId.item), t, SummonParam
-      c.m.symnames[SymId(s.itemId.item)] = c.m.lit.strings.getOrIncl(s.name.s)
+      c.m.symnames[SymId(s.itemId.item)] = c.lit.strings.getOrIncl(s.name.s)
 
 proc addCallConv(c: var ProcCon; info: PackedLineInfo; callConv: TCallingConvention) =
   template ann(s: untyped) = c.code.addPragmaId info, s
@@ -2316,7 +2315,7 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
   let info = toLineInfo(c, body.info)
   build c.code, info, ProcDecl:
     addSymDef c.code, info, SymId(prc.itemId.item)
-    c.m.symnames[SymId prc.itemId.item] = c.m.lit.strings.getOrIncl(prc.name.s)
+    c.m.symnames[SymId prc.itemId.item] = c.lit.strings.getOrIncl(prc.name.s)
     addCallConv c, info, prc.typ.callConv
     if sfCompilerProc in prc.flags:
       build c.code, info, PragmaPair:
