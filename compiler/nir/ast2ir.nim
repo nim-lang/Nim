@@ -32,6 +32,7 @@ type
     processedProcs: HashSet[ItemId]
     pendingProcs: seq[PSym] # procs we still need to generate code for
     noModularity*: bool
+    inProc: int
 
   ProcCon* = object
     config*: ConfigRef
@@ -40,13 +41,15 @@ type
     lastFileVal: LitId
     labelGen: int
     exitLabel: LabelId
-    code*: Tree
+    #code*: Tree
     blocks: seq[(PSym, LabelId)]
     sm: SlotManager
     idgen: IdGenerator
     m: ModuleCon
     prc: PSym
     options: TOptions
+
+template code(c: ProcCon): Tree = c.m.nirm.code
 
 proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; module: PSym;
                     nirm: ref NirModule): ModuleCon =
@@ -2277,12 +2280,11 @@ proc genObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   freeTemp c, a
 
 proc genParams(c: var ProcCon; params: PNode; prc: PSym) =
-  if params.len > 0 and not isEmptyType(params[0].typ):
-    if resultPos < prc.ast.len:
-      let resNode = prc.ast[resultPos]
-      let res = resNode.sym # get result symbol
-      c.code.addSummon toLineInfo(c, res.info), SymId(res.itemId.item),
-        typeToIr(c.m, res.typ), SummonResult
+  if params.len > 0 and resultPos < prc.ast.len:
+    let resNode = prc.ast[resultPos]
+    let res = resNode.sym # get result symbol
+    c.code.addSummon toLineInfo(c, res.info), SymId(res.itemId.item),
+      typeToIr(c.m, res.typ), SummonResult
 
   for i in 1..<params.len:
     let s = params[i].sym
@@ -2308,6 +2310,11 @@ proc addCallConv(c: var ProcCon; info: PackedLineInfo; callConv: TCallingConvent
 proc genProc(cOuter: var ProcCon; prc: PSym) =
   if cOuter.m.processedProcs.containsOrIncl(prc.itemId):
     return
+  #assert cOuter.m.inProc == 0, " in nested proc! " & prc.name.s
+  if cOuter.m.inProc > 0:
+    cOuter.m.pendingProcs.add prc
+    return
+  inc cOuter.m.inProc
 
   var c = initProcCon(cOuter.m, prc, cOuter.m.graph.config)
 
@@ -2349,7 +2356,8 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
     gen(c, body)
     patch c, body, c.exitLabel
 
-  copyTree cOuter.code, c.code
+  #copyTree cOuter.code, c.code
+  dec cOuter.m.inProc
 
 proc genProc(cOuter: var ProcCon; n: PNode) =
   if n.len == 0 or n[namePos].kind != nkSym: return
