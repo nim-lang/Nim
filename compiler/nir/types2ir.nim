@@ -16,9 +16,10 @@ type
     processed: Table[ItemId, TypeId]
     recursionCheck: HashSet[ItemId]
     conf: ConfigRef
+    stringType: TypeId
 
 proc initTypesCon*(conf: ConfigRef): TypesCon =
-  TypesCon(conf: conf)
+  TypesCon(conf: conf, stringType: TypeId(-1))
 
 proc mangle(c: var TypesCon; t: PType): string =
   result = $sighashes.hashType(t, c.conf)
@@ -478,8 +479,11 @@ proc typeToIr*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
     cached(c, t):
       result = openArrayToIr(c, g, t)
   of tyString:
-    cached(c, t):
+    if c.stringType.int < 0:
       result = stringToIr(c, g)
+      c.stringType = result
+    else:
+      result = c.stringType
   of tySequence:
     cached(c, t):
       result = seqToIr(c, g, t)

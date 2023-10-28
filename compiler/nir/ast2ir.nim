@@ -27,7 +27,7 @@ type
     module*: PSym
     graph*: ModuleGraph
     symnames*: SymNames
-    nativeIntId, nativeUIntId: TypeId
+    nativeIntId, nativeUIntId, strPayloadId: TypeId
     idgen: IdGenerator
     processedProcs: HashSet[ItemId]
     pendingProcs: seq[PSym] # procs we still need to generate code for
@@ -63,6 +63,7 @@ proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; m
   else:
     result.nativeIntId = Int64Id
     result.nativeUIntId = UInt16Id
+  result.strPayloadId = strPayloadPtrType(result.types, result.nirm.types)
 
 proc initProcCon*(m: ModuleCon; prc: PSym; config: ConfigRef): ProcCon =
   ProcCon(m: m, sm: initSlotManager({}), prc: prc, config: config,
@@ -1612,7 +1613,7 @@ proc addSliceFields(c: var ProcCon; target: var Tree; info: PackedLineInfo;
   of tyString, tySequence:
     let t = typeToIr(c.m, arrType.lastSon)
     let checkKind = if arrType.kind == tyString: ForStr else: ForSeq
-    let pay = if checkKind == ForStr: strPayloadPtrType(c.m.types, c.m.nirm.types)
+    let pay = if checkKind == ForStr: c.m.strPayloadId
               else: seqPayloadPtrType(c.m.types, c.m.nirm.types, arrType)
 
     let y = genIndexCheck(c, n[2], x, checkKind)
@@ -1909,7 +1910,7 @@ proc addAddrOfFirstElem(c: var ProcCon; target: var Tree; info: PackedLineInfo; 
     target.addImmediateVal info, 0
     buildTyped target, info, AddrOf, elemType:
       buildTyped target, info, ArrayAt, t:
-        buildTyped target, info, FieldAt, strPayloadPtrType(c.m.types, c.m.nirm.types):
+        buildTyped target, info, FieldAt, c.m.strPayloadId:
           copyTree target, tmp
           target.addImmediateVal info, 1 # (len, p)-pair
         target.addIntVal c.lit.numbers, info, c.m.nativeIntId, 0
@@ -2192,7 +2193,7 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     let t = typeToIr(c.m, n.typ)
     template body(target) =
       buildTyped target, info, ArrayAt, t:
-        buildTyped target, info, FieldAt, strPayloadPtrType(c.m.types, c.m.nirm.types):
+        buildTyped target, info, FieldAt, c.m.strPayloadId:
           copyTree target, a
           target.addImmediateVal info, 1 # (len, p)-pair
         copyTree target, b
