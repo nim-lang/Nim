@@ -2489,8 +2489,8 @@ proc genPendingProcs(c: var ProcCon) =
     for v in procs:
       genProc(c, v)
 
-proc genStmt*(c: var ProcCon; n: PNode): int =
-  result = c.code.len
+proc genStmt*(c: var ProcCon; n: PNode): NodePos =
+  result = NodePos c.code.len
   var d = default(Value)
   c.gen(n, d)
   unused c, n, d

@@ -115,7 +115,7 @@ type
   Bytecode* = object
     code: seq[Instr]
     debug: seq[PackedLineInfo]
-    m*: ref NirModule
+    m: ref NirModule
     procs: Table[SymId, CodePos]
     globals: Table[SymId, uint32]
     globalsAddr: uint32
@@ -128,6 +128,8 @@ type
     units: seq[Bytecode]
     unitNames: Table[string, int]
     current: int
+
+proc initBytecode*(m: ref NirModule): Bytecode = Bytecode(m: m)
 
 template `[]`(t: seq[Instr]; n: CodePos): Instr = t[n.int]
 
@@ -149,8 +151,7 @@ proc traverseObject(b: var Bytecode; t, offsetKey: TypeId) =
       align = b.m.lit.numbers[b.m.types[x].litId]
     of ObjectTy:
       # inheritance
-      assert b.m.types[x.firstSon].kind == NameVal
-      let impl = b.typeImpls.getOrDefault(b.m.lit.strings[b.m.types[x.firstSon].litId])
+      let impl = b.typeImpls.getOrDefault(b.m.lit.strings[b.m.types[x].litId])
       assert impl.int > 0
       traverseObject b, impl, offsetKey
     else: discard
@@ -162,8 +163,7 @@ proc computeSize(b: var Bytecode; t: TypeId): (int, int) =
   of ObjectDecl, UnionDecl:
     result = b.sizes[t]
   of ObjectTy, UnionTy:
-    assert b.m.types[t.firstSon].kind == NameVal
-    let impl = b.typeImpls[b.m.lit.strings[b.m.types[t.firstSon].litId]]
+    let impl = b.typeImpls[b.m.lit.strings[b.m.types[t].litId]]
     result = computeSize(b, impl)
   of IntTy, UIntTy, FloatTy, BoolTy, CharTy:
     let s = b.m.types[t].integralBits div 8
@@ -339,7 +339,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
   of StrVal:
     bc.add info, StrValM, t[n].rawOperand
   of SymDef:
-    raiseAssert "SymDef outside of declaration context"
+    discard "happens for proc decls. Don't copy the node as we don't need it"
   of SymUse:
     let s = t[n].symId
     if c.locals.hasKey(s):

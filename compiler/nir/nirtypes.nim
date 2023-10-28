@@ -156,7 +156,7 @@ proc elementType*(tree: TypeGraph; n: TypeId): TypeId {.inline.} =
   result = TypeId(n.int+1)
 
 proc litId*(n: TypeNode): LitId {.inline.} =
-  assert n.kind in {NameVal, IntVal, SizeVal, AlignVal, OffsetVal, AnnotationVal}
+  assert n.kind in {NameVal, IntVal, SizeVal, AlignVal, OffsetVal, AnnotationVal, ObjectTy, UnionTy}
   result = LitId(n.operand)
 
 proc kind*(tree: TypeGraph; n: TypeId): NirTypeKind {.inline.} = tree[n].kind

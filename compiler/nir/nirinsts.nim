@@ -289,7 +289,7 @@ proc typeId*(ins: Instr): TypeId {.inline.} =
   result = TypeId(ins.operand)
 
 proc symId*(ins: Instr): SymId {.inline.} =
-  assert ins.kind == SymUse
+  assert ins.kind in {SymUse, SymDef}
   result = SymId(ins.operand)
 
 proc immediateVal*(ins: Instr): int {.inline.} =

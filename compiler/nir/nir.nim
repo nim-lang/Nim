@@ -23,17 +23,18 @@ type
     m: ModuleCon
     c: ProcCon
     oldErrorCount: int
-    nirm: ref NirModule
+    bytecode: Bytecode
 
 proc newCtx*(module: PSym; g: ModuleGraph; idgen: IdGenerator): PCtx =
   var lit = Literals()
   var nirm = (ref NirModule)(types: initTypeGraph(lit), lit: lit)
   var m = initModuleCon(g, g.config, idgen, module, nirm)
   m.noModularity = true
-  PCtx(m: m, c: initProcCon(m, nil, g.config), idgen: idgen)
+  PCtx(m: m, c: initProcCon(m, nil, g.config), idgen: idgen, bytecode: initBytecode(nirm))
 
 proc refresh*(c: PCtx; module: PSym; idgen: IdGenerator) =
-  c.m = initModuleCon(c.m.graph, c.m.graph.config, idgen, module, c.nirm)
+  c.m = initModuleCon(c.m.graph, c.m.graph.config, idgen, module, c.m.nirm)
+  c.m.noModularity = true
   c.c = initProcCon(c.m, nil, c.m.graph.config)
   c.idgen = idgen
 
@@ -51,14 +52,13 @@ proc setupNirReplGen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPa
 proc evalStmt(c: PCtx; n: PNode) =
   let n = transformExpr(c.m.graph, c.idgen, c.m.module, n)
   let pc = genStmt(c.c, n)
-
-  var res = ""
-  if pc < c.m.nirm.code.len:
-    toString c.m.nirm.code, NodePos(pc), c.m.nirm.lit.strings, c.m.nirm.lit.numbers, c.m.symnames, res
+  #var res = ""
+  #toString c.m.nirm.code, NodePos(pc), c.m.nirm.lit.strings, c.m.nirm.lit.numbers, c.m.symnames, res
   #res.add "\n--------------------------\n"
   #toString res, c.m.types.g
-  echo res
-
+  if pc.int < c.m.nirm.code.len:
+    execCode c.bytecode, c.m.nirm.code, pc
+  #echo res
 
 proc runCode*(c: PPassContext; n: PNode): PNode =
   let c = PCtx(c)
