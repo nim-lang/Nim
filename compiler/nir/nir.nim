@@ -91,7 +91,7 @@ proc closeNirBackend*(c: PPassContext; finalNode: PNode) =
   createDir nimcache
   let outp = nimcache / c.m.module.name.s.addFileExt("nir")
 
-  let m = NirModule(code: move(c.c.code), man: move(c.m.man), types: move(c.m.types.g),
+  let m = NirModule(code: move(c.c.code), man: move(c.m.man), types: move(c.m.typeg),
                     lit: move(c.m.lit), symnames: move(c.m.symnames))
   try:
     store m, outp

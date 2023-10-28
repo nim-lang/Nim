@@ -413,8 +413,8 @@ proc toString*(dest: var string; g: TypeGraph) =
     dest.add '\n'
     nextChild g, i
 
-iterator allTypes*(g: TypeGraph): TypeId =
-  var i = 0
+iterator allTypes*(g: TypeGraph; start = 0): TypeId =
+  var i = start
   while i < g.len:
     yield TypeId i
     nextChild g, i

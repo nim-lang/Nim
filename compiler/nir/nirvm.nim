@@ -115,13 +115,14 @@ type
   Bytecode* = object
     code: seq[Instr]
     debug: seq[PackedLineInfo]
-    m*: NirModule
+    m*: ref NirModule
     procs: Table[SymId, CodePos]
     globals: Table[SymId, uint32]
     globalsAddr: uint32
     typeImpls: Table[string, TypeId]
     offsets: Table[TypeId, seq[(int, TypeId)]]
     sizes: Table[TypeId, (int, int)] # (size, alignment)
+    oldTypeLen: int
 
   Universe* = object ## all units: For interpretation we need that
     units: seq[Bytecode]
@@ -178,15 +179,16 @@ proc computeSize(b: var Bytecode; t: TypeId): (int, int) =
     result = (0, 0)
 
 proc traverseTypes(b: var Bytecode) =
-  for t in allTypes(b.m.types):
+  for t in allTypes(b.m.types, b.oldTypeLen):
     if b.m.types[t].kind in {ObjectDecl, UnionDecl}:
       assert b.m.types[t.firstSon].kind == NameVal
       b.typeImpls[b.m.lit.strings[b.m.types[t.firstSon].litId]] = t
 
-  for t in allTypes(b.m.types):
+  for t in allTypes(b.m.types, b.oldTypeLen):
     if b.m.types[t].kind in {ObjectDecl, UnionDecl}:
       assert b.m.types[t.firstSon].kind == NameVal
       traverseObject b, t, t
+  b.oldTypeLen = b.m.types.len
 
 const
   InvalidPatchPos* = PatchPos(-1)
