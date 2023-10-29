@@ -30,7 +30,7 @@ type
     nativeIntId, nativeUIntId: TypeId
     strPayloadId: (TypeId, TypeId)
     idgen: IdGenerator
-    processedProcs: HashSet[ItemId]
+    processedProcs, pendingProcsAsSet: HashSet[ItemId]
     pendingProcs: seq[PSym] # procs we still need to generate code for
     noModularity*: bool
     inProc: int
@@ -141,7 +141,9 @@ proc toSymId(c: var ProcCon; s: PSym): SymId =
       result = SymId(c.m.symIdCounter)
       c.m.toSymId[s.itemId] = result
       when ListSymId != -1:
-        if result.int == ListSymId: echo ListSymId, " is ", s.name.s, " ", c.m.graph.config $ s.info, " ", s.flags
+        if result.int == ListSymId or s.name.s == "echoBinSafe":
+          echo result.int, " is ", s.name.s, " ", c.m.graph.config $ s.info, " ", s.flags
+          writeStackTrace()
   else:
     result = SymId(s.itemId.item)
 
@@ -2188,8 +2190,9 @@ proc genSym(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
     if not fromForeignModule(c, s):
       # anon and generic procs have no AST so we need to remember not to forget
       # to emit these:
-      if not c.m.processedProcs.containsOrIncl(s.itemId):
-        c.m.pendingProcs.add s
+      if not c.m.processedProcs.contains(s.itemId):
+        if not c.m.pendingProcsAsSet.containsOrIncl(s.itemId):
+          c.m.pendingProcs.add s
     genRdVar(c, n, d, flags)
   of skEnumField:
     let info = toLineInfo(c, n.info)
@@ -2364,7 +2367,8 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
     return
   #assert cOuter.m.inProc == 0, " in nested proc! " & prc.name.s
   if cOuter.m.inProc > 0:
-    cOuter.m.pendingProcs.add prc
+    if not cOuter.m.pendingProcsAsSet.containsOrIncl(prc.itemId):
+      cOuter.m.pendingProcs.add prc
     return
   inc cOuter.m.inProc
 
@@ -2415,7 +2419,7 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
 proc genProc(cOuter: var ProcCon; n: PNode) =
   if n.len == 0 or n[namePos].kind != nkSym: return
   let prc = n[namePos].sym
-  if isGenericRoutineStrict(prc) or isCompileTimeProc(prc): return
+  if isGenericRoutineStrict(prc) or isCompileTimeProc(prc) or sfForward in prc.flags: return
   genProc cOuter, prc
 
 proc genClosureCall(c: var ProcCon; n: PNode; d: var Value) =

@@ -329,6 +329,9 @@ template maybeDeref(doDeref: bool; body: untyped) =
   if doDeref:
     patch(bc, pos)
 
+const
+  ForwardedProc = 10_000_000'u32
+
 proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; flags: set[AddrMode]) =
   let info = t[n].info
 
@@ -361,7 +364,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
           bc.add info, LoadLocalM, uint32 s
     else:
       let here = CodePos(bc.code.len)
-      bc.add info, LoadProcM, 10_000_000'u32
+      bc.add info, LoadProcM, ForwardedProc + uint32(s)
       bc.procUsagesToPatch.mgetOrPut(s, @[]).add here
       #raiseAssert "don't understand SymUse ID " & $int(s)
 
@@ -561,9 +564,13 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
   of CheckedIndex:
     recurse CheckedIndexM
   of Call, IndirectCall:
-    recurse CallM
+    # avoid the Typed thing at position 0:
+    build bc, info, CallM:
+      for ch in sonsFrom1(t, n): preprocess(c, bc, t, ch, {WantAddr})
   of CheckedCall, CheckedIndirectCall:
-    recurse CheckedCallM
+    # avoid the Typed thing at position 0:
+    build bc, info, CheckedCallM:
+      for ch in sonsFrom1(t, n): preprocess(c, bc, t, ch, {WantAddr})
   of CheckedAdd:
     recurse CheckedAddM
   of CheckedSub:
@@ -920,6 +927,15 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
 proc evalProc(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
   assert c.code[pc].kind == LoadProcM
   let procSym = c[pc].operand
+  when false:
+    if procSym >= ForwardedProc:
+      for k, v in c.procUsagesToPatch:
+        if uint32(k) == procSym - ForwardedProc:
+          echo k.int, " ", v.len, " <-- this one"
+        else:
+          echo k.int, " ", v.len
+
+  assert procSym < ForwardedProc
   result = CodePos(procSym)
 
 proc echoImpl(c: Bytecode; pc: CodePos; s: StackFrame) =
@@ -1013,5 +1029,8 @@ proc execCode*(bc: var Bytecode; t: Tree; n: NodePos) =
   traverseTypes bc
   var c = Preprocessing(u: nil, thisModule: 1'u32)
   let start = CodePos(bc.code.len)
-  preprocess c, bc, t, n, {}
+  var pc = n
+  while pc.int < bc.code.len:
+    preprocess c, bc, t, pc, {}
+    next t, pc
   exec bc, start, nil

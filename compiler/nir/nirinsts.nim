@@ -236,6 +236,8 @@ proc nextChild(tree: Tree; pos: var int) {.inline.} =
   else:
     inc pos
 
+proc next*(tree: Tree; pos: var NodePos) {.inline.} = nextChild tree, int(pos)
+
 template firstSon*(n: NodePos): NodePos = NodePos(n.int+1)
 
 iterator sons*(tree: Tree; n: NodePos): NodePos =
