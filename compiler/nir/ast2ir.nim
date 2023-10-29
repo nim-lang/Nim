@@ -121,6 +121,9 @@ proc freeTemp(c: var ProcCon; tmp: Value) =
   if s != SymId(-1):
     freeTemp(c.sm, s)
 
+proc freeTemps(c: var ProcCon; tmps: openArray[Value]) =
+  for t in tmps: freeTemp(c, t)
+
 proc typeToIr(m: ModuleCon; t: PType): TypeId =
   typeToIr(m.types, m.nirm.types, t)
 
@@ -482,6 +485,7 @@ proc genCall(c: var ProcCon; n: PNode; d: var Value) =
       rawCall c, info, opc, tb, args
   else:
     rawCall c, info, opc, tb, args
+  freeTemps c, args
 
 proc genRaise(c: var ProcCon; n: PNode) =
   let info = toLineInfo(c, n.info)
@@ -693,6 +697,16 @@ template valueIntoDest(c: var ProcCon; info: PackedLineInfo; d: var Value; typ: 
     buildTyped c.code, info, Asgn, typeToIr(c.m, typ):
       copyTree c.code, d
       body(c.code)
+
+template constrIntoDest(c: var ProcCon; info: PackedLineInfo; d: var Value; typ: PType; body: untyped) =
+  var tmp = default(Value)
+  body(Tree tmp)
+  if isEmpty(d):
+    d = tmp
+  else:
+    buildTyped c.code, info, Asgn, typeToIr(c.m, typ):
+      copyTree c.code, d
+      copyTree c.code, tmp
 
 proc genBinaryOp(c: var ProcCon; n: PNode; d: var Value; opc: Opcode) =
   let info = toLineInfo(c, n.info)
@@ -2060,7 +2074,7 @@ proc genObjOrTupleConstr(c: var ProcCon; n: PNode; d: var Value; t: PType) =
         target.addImmediateVal info, 1 # "name" field is at position after the "parent". See system.nim
         target.addStrVal c.lit.strings, info, t.skipTypes(abstractInst).sym.name.s
 
-  valueIntoDest c, info, d, t, body
+  constrIntoDest c, info, d, t, body
 
 proc genRefObjConstr(c: var ProcCon; n: PNode; d: var Value) =
   if isEmpty(d): d = getTemp(c, n)
@@ -2110,7 +2124,7 @@ proc genArrayConstr(c: var ProcCon; n: PNode, d: var Value) =
         copyTree target, tmp
         c.freeTemp(tmp)
 
-  valueIntoDest c, info, d, n.typ, body
+  constrIntoDest c, info, d, n.typ, body
 
 proc genAsgn2(c: var ProcCon; a, b: PNode) =
   assert a != nil

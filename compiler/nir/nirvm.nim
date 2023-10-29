@@ -144,6 +144,11 @@ proc debug(bc: Bytecode; info: PackedLineInfo) =
   let (litId, line, col) = bc.m.man.unpack(info)
   echo bc.m.lit.strings[litId], ":", line, ":", col
 
+proc debug(bc: Bytecode; t: Tree; n: NodePos) =
+  var buf = ""
+  toString(t, n, bc.m.lit.strings, bc.m.lit.numbers, bc.m.symnames, buf)
+  echo buf
+
 template `[]`(t: seq[Instr]; n: CodePos): Instr = t[n.int]
 
 proc traverseObject(b: var Bytecode; t, offsetKey: TypeId) =
@@ -421,6 +426,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       for ch in sonsFrom1(t, n):
         preprocess(c, bc, t, ch, {WantAddr})
   of ObjConstr:
+    #debug bc, t, n
     var i = 0
     let typ = t[n.firstSon].typeId
     build bc, info, ObjConstrM:
