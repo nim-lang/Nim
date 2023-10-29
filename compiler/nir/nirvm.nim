@@ -25,13 +25,12 @@ type
     IntValM,
     StrValM,
     LoadLocalM, # with local ID
+    LoadProcM,
     TypedM,   # with type ID
     PragmaIdM, # with Pragma ID, possible values: see PragmaKey enum
     NilValM,
     GotoM,
     CheckedGotoM, # last atom
-
-    LoadProcM,
     LoadGlobalM, # `"module".x`
 
     ArrayConstrM,
@@ -123,6 +122,7 @@ type
     offsets: Table[TypeId, seq[(int, TypeId)]]
     sizes: Table[TypeId, (int, int)] # (size, alignment)
     oldTypeLen: int
+    procUsagesToPatch: Table[SymId, seq[CodePos]]
 
   Universe* = object ## all units: For interpretation we need that
     units: seq[Bytecode]
@@ -346,16 +346,17 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       maybeDeref(WantAddr notin flags):
         bc.add info, LoadLocalM, c.locals[s]
     elif bc.procs.hasKey(s):
-      build bc, info, LoadProcM:
-        bc.add info, ImmediateValM, c.thisModule
-        bc.add info, LoadLocalM, uint32 bc.procs[s]
+      bc.add info, LoadProcM, uint32 bc.procs[s]
     elif bc.globals.hasKey(s):
       maybeDeref(WantAddr notin flags):
         build bc, info, LoadGlobalM:
           bc.add info, ImmediateValM, c.thisModule
           bc.add info, LoadLocalM, uint32 s
     else:
-      raiseAssert "don't understand SymUse ID"
+      let here = CodePos(bc.code.len)
+      bc.add info, LoadProcM, 10_000_000'u32
+      bc.procUsagesToPatch.mgetOrPut(s, @[]).add here
+      #raiseAssert "don't understand SymUse ID " & $int(s)
 
   of ModuleSymUse:
     when false:
@@ -363,9 +364,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       let unit = c.u.unitNames.getOrDefault(bc.m.lit.strings[t[x].litId], -1)
       let s = t[y].symId
       if c.u.units[unit].procs.hasKey(s):
-        build bc, info, LoadProcM:
-          bc.add info, ImmediateValM, uint32 unit
-          bc.add info, LoadLocalM, uint32 c.u.units[unit].procs[s]
+        bc.add info, LoadProcM, uint32 c.u.units[unit].procs[s]
       elif bc.globals.hasKey(s):
         maybeDeref(WantAddr notin flags):
           build bc, info, LoadGlobalM:
@@ -608,7 +607,11 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
   of ProcDecl:
     var c2 = Preprocessing(u: c.u, thisModule: c.thisModule)
     let sym = t[n.firstSon].symId
-    bc.procs[sym] = CodePos(bc.len)
+    let here = CodePos(bc.len)
+    var p: seq[CodePos] = @[]
+    if bc.procUsagesToPatch.take(sym, p):
+      for x in p: (bc.code[x]) = toIns(bc.code[x].kind, uint32 here)
+    bc.procs[sym] = here
     build bc, info, ProcDeclM:
       let toPatch = bc.code.len
       bc.add info, AllocLocals, 0'u32
@@ -904,9 +907,7 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
 
 proc evalProc(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
   assert c.code[pc].kind == LoadProcM
-  let (_, s) = sons2(c.code, pc)
-  #let module = c[m].operand
-  let procSym = c[s].operand
+  let procSym = c[pc].operand
   result = CodePos(procSym)
 
 proc echoImpl(c: Bytecode; pc: CodePos; s: StackFrame) =

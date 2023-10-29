@@ -33,8 +33,8 @@ proc newCtx*(module: PSym; g: ModuleGraph; idgen: IdGenerator): PCtx =
   PCtx(m: m, c: initProcCon(m, nil, g.config), idgen: idgen, bytecode: initBytecode(nirm))
 
 proc refresh*(c: PCtx; module: PSym; idgen: IdGenerator) =
-  c.m = initModuleCon(c.m.graph, c.m.graph.config, idgen, module, c.m.nirm)
-  c.m.noModularity = true
+  #c.m = initModuleCon(c.m.graph, c.m.graph.config, idgen, module, c.m.nirm)
+  #c.m.noModularity = true
   c.c = initProcCon(c.m, nil, c.m.graph.config)
   c.idgen = idgen
 

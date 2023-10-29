@@ -33,6 +33,8 @@ type
     pendingProcs: seq[PSym] # procs we still need to generate code for
     noModularity*: bool
     inProc: int
+    toSymId: Table[ItemId, SymId]
+    symIdCounter: int32
 
   ProcCon* = object
     config*: ConfigRef
@@ -121,15 +123,36 @@ proc freeTemp(c: var ProcCon; tmp: Value) =
 proc typeToIr(m: ModuleCon; t: PType): TypeId =
   typeToIr(m.types, m.nirm.types, t)
 
+proc allocTemp(c: var ProcCon; t: TypeId): SymId =
+  if c.m.noModularity:
+    result = allocTemp(c.sm, t, c.m.symIdCounter)
+  else:
+    result = allocTemp(c.sm, t, c.idgen.symId)
+
+const
+  ListSymId = -1
+
+proc toSymId(c: var ProcCon; s: PSym): SymId =
+  if c.m.noModularity:
+    result = c.m.toSymId.getOrDefault(s.itemId, SymId(-1))
+    if result.int < 0:
+      inc c.m.symIdCounter
+      result = SymId(c.m.symIdCounter)
+      c.m.toSymId[s.itemId] = result
+      when ListSymId != -1:
+        if result.int == ListSymId: echo ListSymId, " is ", s.name.s, " ", c.m.graph.config $ s.info, " ", s.flags
+  else:
+    result = SymId(s.itemId.item)
+
 proc getTemp(c: var ProcCon; n: PNode): Value =
   let info = toLineInfo(c, n.info)
   let t = typeToIr(c.m, n.typ)
-  let tmp = allocTemp(c.sm, t, c.idgen.symId)
+  let tmp = allocTemp(c, t)
   c.code.addSummon info, tmp, t
   result = localToValue(info, tmp)
 
 proc getTemp(c: var ProcCon; t: TypeId; info: PackedLineInfo): Value =
-  let tmp = allocTemp(c.sm, t, c.idgen.symId)
+  let tmp = allocTemp(c, t)
   c.code.addSummon info, tmp, t
   result = localToValue(info, tmp)
 
@@ -1008,7 +1031,7 @@ proc genEqSet(c: var ProcCon; n: PNode; d: var Value) =
   freeTemp c, a
 
 proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: int): (SymId, LabelId, LabelId) =
-  let tmp = allocTemp(c.sm, c.m.nativeIntId, c.idgen.symId)
+  let tmp = allocTemp(c, c.m.nativeIntId)
   c.code.addSummon info, tmp, c.m.nativeIntId
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
     c.code.addSymUse info, tmp
@@ -1026,7 +1049,7 @@ proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: int): (Sy
       c.code.gotoLabel info, Goto, result[2]
 
 proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: Value): (SymId, LabelId, LabelId) =
-  let tmp = allocTemp(c.sm, c.m.nativeIntId, c.idgen.symId)
+  let tmp = allocTemp(c, c.m.nativeIntId)
   c.code.addSummon info, tmp, c.m.nativeIntId
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
     c.code.addSymUse info, tmp
@@ -1410,7 +1433,7 @@ proc genStrConcat(c: var ProcCon; n: PNode; d: var Value) =
     args.add genx(c, it)
 
   # generate length computation:
-  var tmpLen = allocTemp(c.sm, c.m.nativeIntId, c.idgen.symId)
+  var tmpLen = allocTemp(c, c.m.nativeIntId)
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
     c.code.addSymUse info, tmpLen
     c.code.addIntVal c.lit.numbers, info, c.m.nativeIntId, precomputedLen
@@ -2087,8 +2110,9 @@ proc genVarSection(c: var ProcCon; n: PNode) =
           opc = Summon
         let t = typeToIr(c.m, s.typ)
         #assert t.int >= 0, typeToString(s.typ) & (c.config $ n.info)
-        c.code.addSummon toLineInfo(c, a.info), SymId(s.itemId.item), t, opc
-        c.m.symnames[SymId(s.itemId.item)] = c.lit.strings.getOrIncl(s.name.s)
+        let symId = toSymId(c, s)
+        c.code.addSummon toLineInfo(c, a.info), symId, t, opc
+        c.m.symnames[symId] = c.lit.strings.getOrIncl(s.name.s)
         if a[2].kind != nkEmpty:
           genAsgn2(c, vn, a[2])
       else:
@@ -2126,7 +2150,7 @@ proc genRdVar(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     valueIntoDest c, info, d, s.typ, body
   else:
     template body(target) =
-      target.addSymUse info, SymId(s.itemId.item)
+      target.addSymUse info, toSymId(c, s)
     valueIntoDest c, info, d, s.typ, body
 
 proc genSym(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
@@ -2283,7 +2307,7 @@ proc genParams(c: var ProcCon; params: PNode; prc: PSym) =
   if params.len > 0 and resultPos < prc.ast.len:
     let resNode = prc.ast[resultPos]
     let res = resNode.sym # get result symbol
-    c.code.addSummon toLineInfo(c, res.info), SymId(res.itemId.item),
+    c.code.addSummon toLineInfo(c, res.info), toSymId(c, res),
       typeToIr(c.m, res.typ), SummonResult
 
   for i in 1..<params.len:
@@ -2291,8 +2315,9 @@ proc genParams(c: var ProcCon; params: PNode; prc: PSym) =
     if not isCompileTimeOnly(s.typ):
       let t = typeToIr(c.m, s.typ)
       assert t.int != -1, typeToString(s.typ)
-      c.code.addSummon toLineInfo(c, params[i].info), SymId(s.itemId.item), t, SummonParam
-      c.m.symnames[SymId(s.itemId.item)] = c.lit.strings.getOrIncl(s.name.s)
+      let symId = toSymId(c, s)
+      c.code.addSummon toLineInfo(c, params[i].info), symId, t, SummonParam
+      c.m.symnames[symId] = c.lit.strings.getOrIncl(s.name.s)
 
 proc addCallConv(c: var ProcCon; info: PackedLineInfo; callConv: TCallingConvention) =
   template ann(s: untyped) = c.code.addPragmaId info, s
@@ -2322,8 +2347,9 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
 
   let info = toLineInfo(c, body.info)
   build c.code, info, ProcDecl:
-    addSymDef c.code, info, SymId(prc.itemId.item)
-    c.m.symnames[SymId prc.itemId.item] = c.lit.strings.getOrIncl(prc.name.s)
+    let symId = toSymId(c, prc)
+    addSymDef c.code, info, symId
+    c.m.symnames[symId] = c.lit.strings.getOrIncl(prc.name.s)
     addCallConv c, info, prc.typ.callConv
     if sfCompilerProc in prc.flags:
       build c.code, info, PragmaPair:
