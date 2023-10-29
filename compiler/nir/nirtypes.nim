@@ -374,7 +374,9 @@ proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
     dest.add g.lit.strings[LitId g[i].operand]
   of ProcTy:
     dest.add "proc["
-    for t in sons(g, i): toString(dest, g, t)
+    for t in sons(g, i):
+      dest.add ' '
+      toString(dest, g, t)
     dest.add "]"
   of ObjectDecl:
     dest.add "object["

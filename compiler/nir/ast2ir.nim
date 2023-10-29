@@ -1990,14 +1990,14 @@ proc addAddrOfFirstElem(c: var ProcCon; target: var Tree; info: PackedLineInfo; 
       target.addImmediateVal info, 0 # (len, p)-pair so len is at index 0
 
   of tyArray:
-    let t = typeToIr(c.m, typ)
+    let t = typeToIr(c.m, arrType)
     target.addImmediateVal info, 0
     buildTyped target, info, AddrOf, elemType:
       buildTyped target, info, ArrayAt, t:
         copyTree target, tmp
         target.addIntVal c.lit.numbers, info, c.m.nativeIntId, 0
     target.addImmediateVal info, 1
-    target.addIntVal(c.lit.numbers, info, c.m.nativeIntId, toInt lengthOrd(c.config, typ))
+    target.addIntVal(c.lit.numbers, info, c.m.nativeIntId, toInt lengthOrd(c.config, arrType))
   else:
     raiseAssert "addAddrOfFirstElem: " & typeToString(typ)
 
@@ -2299,7 +2299,7 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     genIndex(c, n[1], n[0].typ, b)
 
     template body(target) =
-      buildTyped target, info, ArrayAt, typeToIr(c.m, n.typ):
+      buildTyped target, info, ArrayAt, typeToIr(c.m, arrayType):
         copyTree target, a
         copyTree target, b
     valueIntoDest c, info, d, n.typ, body

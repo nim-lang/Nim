@@ -135,6 +135,15 @@ type
 
 proc initBytecode*(m: ref NirModule): Bytecode = Bytecode(m: m, globalData: alloc0(GlobalsSize))
 
+proc debug(bc: Bytecode; t: TypeId) =
+  var buf = ""
+  toString buf, bc.m.types, t
+  echo buf
+
+proc debug(bc: Bytecode; info: PackedLineInfo) =
+  let (litId, line, col) = bc.m.man.unpack(info)
+  echo bc.m.lit.strings[litId], ":", line, ":", col
+
 template `[]`(t: seq[Instr]; n: CodePos): Instr = t[n.int]
 
 proc traverseObject(b: var Bytecode; t, offsetKey: TypeId) =
@@ -327,8 +336,8 @@ type
 template maybeDeref(doDeref: bool; body: untyped) =
   var pos = PatchPos(-1)
   if doDeref:
-    bc.add info, TypedM, 0'u32
     pos = prepare(bc, info, LoadM)
+    bc.add info, TypedM, 0'u32
   body
   if doDeref:
     patch(bc, pos)
@@ -409,7 +418,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     let s = computeElemSize(bc, typ)
     build bc, info, ArrayConstrM:
       bc.add info, ImmediateValM, uint32 s
-      for ch in sons(t, n):
+      for ch in sonsFrom1(t, n):
         preprocess(c, bc, t, ch, {WantAddr})
   of ObjConstr:
     var i = 0
@@ -483,8 +492,8 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     # the address of x is what the VM works with all the time so there is
     # nothing to compute.
   of ArrayAt:
-    let (elemType, a, i) = sons3(t, n)
-    let tid = t[elemType].typeId
+    let (arrayType, a, i) = sons3(t, n)
+    let tid = t[arrayType].typeId
     let size = uint32 computeElemSize(bc, tid)
     if t[a].kind == Load:
       let (_, arg) = sons2(t, a)
@@ -506,10 +515,6 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     # And now if this is paired with `addr` the deref disappears, as usual: `addr x.field[]`
     # is `(x+offset(field))`.
     let (typ, a, b) = sons3(t, n)
-    when false:
-      var buf = ""
-      toString buf, bc.m.types, t[typ].typeId
-      echo buf
     if t[a].kind == Load:
       let (_, arg) = sons2(t, a)
       build bc, info, LoadM:
@@ -729,7 +734,6 @@ proc evalAddr(c: Bytecode; pc: CodePos; s: StackFrame): pointer =
   of LoadGlobalM:
     result = c.globalData +! c.code[pc].operand
   else:
-    echo c.code[pc].kind
     raiseAssert("unimplemented addressing mode")
 
 proc `div`(x, y: float32): float32 {.inline.} = x / y
@@ -911,7 +915,7 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
       r = r+!elemSize # can even do strength reduction here!
   of NumberConvM:
     let (t, x) = sons2(c.code, pc)
-    let word = c.m.lit.numbers[c[x].litId]
+    let word = if c[x].kind == NilValM: 0'i64 else: c.m.lit.numbers[c[x].litId]
 
     template impl(typ: typedesc) {.dirty.} =
       cast[ptr typ](result)[] = cast[typ](word)
@@ -927,9 +931,15 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
     of UInt32Id: impl uint32
     of UInt64Id: impl uint64
     else:
-      raiseAssert "cannot happen"
+      case c.m.types[tid].kind
+      of ProcTy, UPtrTy, APtrTy, AArrayPtrTy, UArrayPtrTy:
+        # the VM always uses 64 bit pointers:
+        impl uint64
+      else:
+        raiseAssert "cannot happen"
   else:
-    raiseAssert "cannot happen"
+    #debug c, c.debug[pc.int]
+    raiseAssert "cannot happen: " & $c.code[pc].kind
 
 proc evalProc(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
   assert c.code[pc].kind == LoadProcM
