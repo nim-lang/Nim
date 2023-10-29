@@ -178,6 +178,13 @@ proc computeSize(b: var Bytecode; t: TypeId): (int, int) =
   else:
     result = (0, 0)
 
+proc computeElemSize(b: var Bytecode; t: TypeId): int =
+  case b.m.types[t].kind
+  of ArrayTy, APtrTy, UPtrTy, AArrayPtrTy, UArrayPtrTy, LastArrayTy:
+    result = computeSize(b, elementType(b.m.types, t))[0]
+  else:
+    raiseAssert "not an array type"
+
 proc traverseTypes(b: var Bytecode) =
   for t in allTypes(b.m.types, b.oldTypeLen):
     if b.m.types[t].kind in {ObjectDecl, UnionDecl}:
@@ -394,8 +401,9 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     c.genGoto(bc, info, t[n].label, CheckedGotoM)
   of ArrayConstr:
     let typ = t[n.firstSon].typeId
+    let s = computeElemSize(bc, typ)
     build bc, info, ArrayConstrM:
-      bc.add info, ImmediateValM, uint32 computeSize(bc, typ)[0]
+      bc.add info, ImmediateValM, uint32 s
       for ch in sons(t, n):
         preprocess(c, bc, t, ch, {WantAddr})
   of ObjConstr:
@@ -471,7 +479,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
   of ArrayAt:
     let (elemType, a, i) = sons3(t, n)
     let tid = t[elemType].typeId
-    let size = uint32 computeSize(bc, tid)[0]
+    let size = uint32 computeElemSize(bc, tid)
     if t[a].kind == Load:
       let (_, arg) = sons2(t, a)
       build bc, info, LoadM:

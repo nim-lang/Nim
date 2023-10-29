@@ -195,10 +195,10 @@ proc openArrayToIr(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
 
   result = finishType(g, p) # ObjectDecl
 
-proc strPayloadType(c: var TypesCon; g: var TypeGraph): string =
-  result = "NimStrPayload"
+proc strPayloadType(c: var TypesCon; g: var TypeGraph): (string, TypeId) =
+  result = ("NimStrPayload", TypeId(-1))
   let p = openType(g, ObjectDecl)
-  g.addName result
+  g.addName result[0]
   g.addSize c.conf.target.ptrSize*2
   g.addAlign c.conf.target.ptrSize
 
@@ -207,18 +207,18 @@ proc strPayloadType(c: var TypesCon; g: var TypeGraph): string =
   let f = g.openType FieldDecl
   let arr = g.openType LastArrayTy
   g.addBuiltinType Char8Id
-  sealType(g, arr) # LastArrayTy
+  result[1] = finishType(g, arr) # LastArrayTy
   g.addOffset c.conf.target.ptrSize # comes after the len field
   g.addName "data"
   sealType(g, f) # FieldDecl
 
   sealType(g, p)
 
-proc strPayloadPtrType*(c: var TypesCon; g: var TypeGraph): TypeId =
-  let mangled = strPayloadType(c, g)
+proc strPayloadPtrType*(c: var TypesCon; g: var TypeGraph): (TypeId, TypeId) =
+  let (mangled, arrayType) = strPayloadType(c, g)
   let ffp = g.openType APtrTy
   g.addNominalType ObjectTy, mangled
-  result = finishType(g, ffp) # APtrTy
+  result = (finishType(g, ffp), arrayType) # APtrTy
 
 proc stringToIr(c: var TypesCon; g: var TypeGraph): TypeId =
   #[
@@ -251,15 +251,15 @@ proc stringToIr(c: var TypesCon; g: var TypeGraph): TypeId =
 
   result = finishType(g, str) # ObjectDecl
 
-proc seqPayloadType(c: var TypesCon; g: var TypeGraph; t: PType): string =
+proc seqPayloadType(c: var TypesCon; g: var TypeGraph; t: PType): (string, TypeId) =
   #[
     NimSeqPayload[T] = object
       cap: int
       data: UncheckedArray[T]
   ]#
   let e = lastSon(t)
-  result = mangle(c, e)
-  let payloadName = "NimSeqPayload" & result
+  result = (mangle(c, e), TypeId(-1))
+  let payloadName = "NimSeqPayload" & result[0]
 
   let elementType = typeToIr(c, g, e)
 
@@ -273,17 +273,17 @@ proc seqPayloadType(c: var TypesCon; g: var TypeGraph; t: PType): string =
   let f = g.openType FieldDecl
   let arr = g.openType LastArrayTy
   g.addType elementType
-  sealType(g, arr) # LastArrayTy
+  result[1] = finishType(g, arr) # LastArrayTy
   g.addOffset c.conf.target.ptrSize
   g.addName "data"
   sealType(g, f) # FieldDecl
   sealType(g, p)
 
-proc seqPayloadPtrType*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
-  let mangledBase = seqPayloadType(c, g, t)
+proc seqPayloadPtrType*(c: var TypesCon; g: var TypeGraph; t: PType): (TypeId, TypeId) =
+  let (mangledBase, arrayType) = seqPayloadType(c, g, t)
   let ffp = g.openType APtrTy
   g.addNominalType ObjectTy, "NimSeqPayload" & mangledBase
-  result = finishType(g, ffp) # APtrTy
+  result = (finishType(g, ffp), arrayType) # APtrTy
 
 proc seqToIr(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
   #[
@@ -291,7 +291,7 @@ proc seqToIr(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
       len: int
       p: ptr NimSeqPayload[T]
   ]#
-  let mangledBase = seqPayloadType(c, g, t)
+  let (mangledBase, _) = seqPayloadType(c, g, t)
 
   let sq = openType(g, ObjectDecl)
   g.addName "NimSeqV2" & mangledBase

@@ -27,7 +27,8 @@ type
     module*: PSym
     graph*: ModuleGraph
     symnames*: SymNames
-    nativeIntId, nativeUIntId, strPayloadId: TypeId
+    nativeIntId, nativeUIntId: TypeId
+    strPayloadId: (TypeId, TypeId)
     idgen: IdGenerator
     processedProcs: HashSet[ItemId]
     pendingProcs: seq[PSym] # procs we still need to generate code for
@@ -618,7 +619,7 @@ proc genNewSeqOfCap(c: var ProcCon; n: PNode; d: var Value) =
       c.code.addImmediateVal info, 0
     c.code.addImmediateVal info, 0
   # $1.p = ($4*) #newSeqPayloadUninit($2, sizeof($3), NIM_ALIGNOF($3))
-  let payloadPtr = seqPayloadPtrType(c.m.types, c.m.nirm.types, seqtype)
+  let payloadPtr = seqPayloadPtrType(c.m.types, c.m.nirm.types, seqtype)[0]
   buildTyped c.code, info, Asgn, payloadPtr:
     # $1.p
     buildTyped c.code, info, FieldAt, typeToIr(c.m, seqtype):
@@ -638,7 +639,7 @@ proc genNewSeqOfCap(c: var ProcCon; n: PNode; d: var Value) =
 proc genNewSeqPayload(c: var ProcCon; info: PackedLineInfo; d, b: Value; seqtype: PType) =
   let baseType = seqtype.lastSon
   # $1.p = ($4*) #newSeqPayload($2, sizeof($3), NIM_ALIGNOF($3))
-  let payloadPtr = seqPayloadPtrType(c.m.types, c.m.nirm.types, seqtype)
+  let payloadPtr = seqPayloadPtrType(c.m.types, c.m.nirm.types, seqtype)[0]
 
   # $1.len = $2
   buildTyped c.code, info, Asgn, c.m.nativeIntId:
@@ -1510,7 +1511,7 @@ proc genMove(c: var ProcCon; n: PNode; d: var Value) =
     let lab1 = newLabel(c.labelGen)
 
     let n1t = typeToIr(c.m, n1.typ)
-    let payloadType = seqPayloadPtrType(c.m.types, c.m.nirm.types, n1.typ)
+    let payloadType = seqPayloadPtrType(c.m.types, c.m.nirm.types, n1.typ)[0]
     buildTyped c.code, info, Select, Bool8Id:
       buildTyped c.code, info, Eq, payloadType:
         buildTyped c.code, info, FieldAt, n1t:
@@ -1589,7 +1590,7 @@ proc genDestroySeq(c: var ProcCon; n: PNode; t: PType) =
   # if $1.p != nil and ($1.p.cap and NIM_STRLIT_FLAG) == 0:
   #   alignedDealloc($1.p, NIM_ALIGNOF($2))
   buildIfNot p.eqNil(seqType):
-    buildIf fieldAt(Value(p), 0, seqPayloadPtrType(c.m.types, c.m.nirm.types, t)).bitOp(BitAnd, 0).eqZero():
+    buildIf fieldAt(Value(p), 0, seqPayloadPtrType(c.m.types, c.m.nirm.types, t)[0]).bitOp(BitAnd, 0).eqZero():
       let codegenProc = getCompilerProc(c.m.graph, "alignedDealloc")
       buildTyped c.code, info, Call, VoidId:
         let theProc = c.genx newSymNode(codegenProc, n.info)
@@ -1652,7 +1653,7 @@ proc addSliceFields(c: var ProcCon; target: var Tree; info: PackedLineInfo;
     buildTyped target, info, ObjConstr, typeToIr(c.m, n.typ):
       target.addImmediateVal info, 0
       buildTyped target, info, AddrOf, elemType:
-        buildTyped target, info, ArrayAt, pay:
+        buildTyped target, info, ArrayAt, pay[1]:
           buildTyped target, info, FieldAt, typeToIr(c.m, arrType):
             copyTree target, x
             target.addImmediateVal info, 1 # (len, p)-pair
@@ -1960,7 +1961,7 @@ proc addAddrOfFirstElem(c: var ProcCon; target: var Tree; info: PackedLineInfo; 
     let t = typeToIr(c.m, typ)
     target.addImmediateVal info, 0
     buildTyped target, info, AddrOf, elemType:
-      buildTyped target, info, ArrayAt, t:
+      buildTyped target, info, ArrayAt, c.m.strPayloadId[1]:
         buildTyped target, info, FieldAt, typeToIr(c.m, arrType):
           copyTree target, tmp
           target.addImmediateVal info, 1 # (len, p)-pair
@@ -1975,7 +1976,7 @@ proc addAddrOfFirstElem(c: var ProcCon; target: var Tree; info: PackedLineInfo; 
     let t = typeToIr(c.m, typ)
     target.addImmediateVal info, 0
     buildTyped target, info, AddrOf, elemType:
-      buildTyped target, info, ArrayAt, t:
+      buildTyped target, info, ArrayAt, seqPayloadPtrType(c.m.types, c.m.nirm.types, typ)[1]:
         buildTyped target, info, FieldAt, typeToIr(c.m, arrType):
           copyTree target, tmp
           target.addImmediateVal info, 1 # (len, p)-pair
@@ -2085,7 +2086,7 @@ proc genSeqConstr(c: var ProcCon; n: PNode; d: var Value) =
 
   for i in 0..<n.len:
     var dd = default(Value)
-    buildTyped dd, info, ArrayAt, typeToIr(c.m, seqtype):
+    buildTyped dd, info, ArrayAt, seqPayloadPtrType(c.m.types, c.m.nirm.types, seqtype)[1]:
       buildTyped dd, info, FieldAt, typeToIr(c.m, seqtype):
         copyTree Tree(dd), d
         dd.addIntVal c.lit.numbers, info, c.m.nativeIntId, i
@@ -2245,7 +2246,7 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     let b = genIndexCheck(c, n[1], a, ForStr, arrayType)
     let t = typeToIr(c.m, n.typ)
     template body(target) =
-      buildTyped target, info, ArrayAt, t:
+      buildTyped target, info, ArrayAt, c.m.strPayloadId[1]:
         buildTyped target, info, FieldAt, typeToIr(c.m, arrayType):
           copyTree target, a
           target.addImmediateVal info, 1 # (len, p)-pair
@@ -2306,7 +2307,7 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     let b = genIndexCheck(c, n[1], a, ForSeq, arrayType)
     let t = typeToIr(c.m, n.typ)
     template body(target) =
-      buildTyped target, info, ArrayAt, seqPayloadPtrType(c.m.types, c.m.nirm.types, n[0].typ):
+      buildTyped target, info, ArrayAt, seqPayloadPtrType(c.m.types, c.m.nirm.types, n[0].typ)[1]:
         buildTyped target, info, FieldAt, t:
           copyTree target, a
           target.addImmediateVal info, 1 # (len, p)-pair
