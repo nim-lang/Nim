@@ -492,6 +492,10 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     # And now if this is paired with `addr` the deref disappears, as usual: `addr x.field[]`
     # is `(x+offset(field))`.
     let (typ, a, b) = sons3(t, n)
+    when false:
+      var buf = ""
+      toString buf, bc.m.types, t[typ].typeId
+      echo buf
     if t[a].kind == Load:
       let (_, arg) = sons2(t, a)
       build bc, info, LoadM:
