@@ -26,7 +26,6 @@ type
     types: TypesCon
     module*: PSym
     graph*: ModuleGraph
-    symnames*: SymNames
     nativeIntId, nativeUIntId: TypeId
     strPayloadId: (TypeId, TypeId)
     idgen: IdGenerator
@@ -72,10 +71,11 @@ proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; m
   result.strPayloadId = strPayloadPtrType(result.types, result.nirm.types)
 
 proc initProcCon*(m: ModuleCon; prc: PSym; config: ConfigRef): ProcCon =
-  ProcCon(m: m, sm: initSlotManager({}), prc: prc, config: config,
+  result = ProcCon(m: m, sm: initSlotManager({}), prc: prc, config: config,
     lit: m.nirm.lit, idgen: m.idgen,
     options: if prc != nil: prc.options
              else: config.options)
+  result.exitLabel = newLabel(result.labelGen)
 
 proc toLineInfo(c: var ProcCon; i: TLineInfo): PackedLineInfo =
   var val: LitId
@@ -120,6 +120,9 @@ proc freeTemp(c: var ProcCon; tmp: Value) =
   let s = extractTemp(tmp)
   if s != SymId(-1):
     freeTemp(c.sm, s)
+
+proc freeTemps(c: var ProcCon; tmps: openArray[Value]) =
+  for t in tmps: freeTemp(c, t)
 
 proc typeToIr(m: ModuleCon; t: PType): TypeId =
   typeToIr(m.types, m.nirm.types, t)
@@ -482,6 +485,7 @@ proc genCall(c: var ProcCon; n: PNode; d: var Value) =
       rawCall c, info, opc, tb, args
   else:
     rawCall c, info, opc, tb, args
+  freeTemps c, args
 
 proc genRaise(c: var ProcCon; n: PNode) =
   let info = toLineInfo(c, n.info)
@@ -694,6 +698,16 @@ template valueIntoDest(c: var ProcCon; info: PackedLineInfo; d: var Value; typ: 
       copyTree c.code, d
       body(c.code)
 
+template constrIntoDest(c: var ProcCon; info: PackedLineInfo; d: var Value; typ: PType; body: untyped) =
+  var tmp = default(Value)
+  body(Tree tmp)
+  if isEmpty(d):
+    d = tmp
+  else:
+    buildTyped c.code, info, Asgn, typeToIr(c.m, typ):
+      copyTree c.code, d
+      copyTree c.code, tmp
+
 proc genBinaryOp(c: var ProcCon; n: PNode; d: var Value; opc: Opcode) =
   let info = toLineInfo(c, n.info)
   let tmp = c.genx(n[1])
@@ -702,7 +716,7 @@ proc genBinaryOp(c: var ProcCon; n: PNode; d: var Value; opc: Opcode) =
   template body(target) =
     buildTyped target, info, opc, t:
       if optOverflowCheck in c.options and opc in {CheckedAdd, CheckedSub, CheckedMul, CheckedDiv, CheckedMod}:
-        c.code.addLabel info, CheckedGoto, c.exitLabel
+        target.addLabel info, CheckedGoto, c.exitLabel
       copyTree target, tmp
       copyTree target, tmp2
   intoDest d, info, t, body
@@ -2060,7 +2074,7 @@ proc genObjOrTupleConstr(c: var ProcCon; n: PNode; d: var Value; t: PType) =
         target.addImmediateVal info, 1 # "name" field is at position after the "parent". See system.nim
         target.addStrVal c.lit.strings, info, t.skipTypes(abstractInst).sym.name.s
 
-  valueIntoDest c, info, d, t, body
+  constrIntoDest c, info, d, t, body
 
 proc genRefObjConstr(c: var ProcCon; n: PNode; d: var Value) =
   if isEmpty(d): d = getTemp(c, n)
@@ -2110,7 +2124,7 @@ proc genArrayConstr(c: var ProcCon; n: PNode, d: var Value) =
         copyTree target, tmp
         c.freeTemp(tmp)
 
-  valueIntoDest c, info, d, n.typ, body
+  constrIntoDest c, info, d, n.typ, body
 
 proc genAsgn2(c: var ProcCon; a, b: PNode) =
   assert a != nil
@@ -2140,7 +2154,7 @@ proc genVarSection(c: var ProcCon; n: PNode) =
         #assert t.int >= 0, typeToString(s.typ) & (c.config $ n.info)
         let symId = toSymId(c, s)
         c.code.addSummon toLineInfo(c, a.info), symId, t, opc
-        c.m.symnames[symId] = c.lit.strings.getOrIncl(s.name.s)
+        c.m.nirm.symnames[symId] = c.lit.strings.getOrIncl(s.name.s)
         if a[2].kind != nkEmpty:
           genAsgn2(c, vn, a[2])
       else:
@@ -2347,7 +2361,7 @@ proc genParams(c: var ProcCon; params: PNode; prc: PSym) =
       assert t.int != -1, typeToString(s.typ)
       let symId = toSymId(c, s)
       c.code.addSummon toLineInfo(c, params[i].info), symId, t, SummonParam
-      c.m.symnames[symId] = c.lit.strings.getOrIncl(s.name.s)
+      c.m.nirm.symnames[symId] = c.lit.strings.getOrIncl(s.name.s)
 
 proc addCallConv(c: var ProcCon; info: PackedLineInfo; callConv: TCallingConvention) =
   template ann(s: untyped) = c.code.addPragmaId info, s
@@ -2380,7 +2394,7 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
   build c.code, info, ProcDecl:
     let symId = toSymId(c, prc)
     addSymDef c.code, info, symId
-    c.m.symnames[symId] = c.lit.strings.getOrIncl(prc.name.s)
+    c.m.nirm.symnames[symId] = c.lit.strings.getOrIncl(prc.name.s)
     addCallConv c, info, prc.typ.callConv
     if sfCompilerProc in prc.flags:
       build c.code, info, PragmaPair:
@@ -2412,6 +2426,8 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
     genParams(c, prc.typ.n, prc)
     gen(c, body)
     patch c, body, c.exitLabel
+    build c.code, info, Ret:
+      discard
 
   #copyTree cOuter.code, c.code
   dec cOuter.m.inProc

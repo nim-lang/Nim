@@ -30,6 +30,8 @@ type
     TypedM,   # with type ID
     PragmaIdM, # with Pragma ID, possible values: see PragmaKey enum
     NilValM,
+    AllocLocals,
+    SummonParamM,
     GotoM,
     CheckedGotoM, # last atom
 
@@ -43,8 +45,6 @@ type
     SelectListM,  # (values...)
     SelectValueM, # (value)
     SelectRangeM, # (valueA..valueB)
-    AllocLocals,
-    SummonParamM,
 
     AddrOfM,
     ArrayAtM, # (elemSize, addr(a), i)
@@ -143,6 +143,11 @@ proc debug(bc: Bytecode; t: TypeId) =
 proc debug(bc: Bytecode; info: PackedLineInfo) =
   let (litId, line, col) = bc.m.man.unpack(info)
   echo bc.m.lit.strings[litId], ":", line, ":", col
+
+proc debug(bc: Bytecode; t: Tree; n: NodePos) =
+  var buf = ""
+  toString(t, n, bc.m.lit.strings, bc.m.lit.numbers, bc.m.symnames, buf)
+  echo buf
 
 template `[]`(t: seq[Instr]; n: CodePos): Instr = t[n.int]
 
@@ -307,6 +312,50 @@ iterator triples*(bc: Bytecode; n: CodePos): (uint32, int, CodePos) =
     yield (offset, size, val)
     nextChild bc, pos
 
+proc toString*(t: Bytecode; pos: CodePos;
+               r: var string; nesting = 0) =
+  if r.len > 0 and r[r.len-1] notin {' ', '\n', '(', '[', '{'}:
+    r.add ' '
+
+  case t[pos].kind
+  of ImmediateValM:
+    r.add $t[pos].operand
+  of IntValM:
+    r.add "IntVal "
+    r.add $t.m.lit.numbers[LitId t[pos].operand]
+  of StrValM:
+    escapeToNimLit(t.m.lit.strings[LitId t[pos].operand], r)
+  of LoadLocalM, LoadGlobalM, LoadProcM, AllocLocals:
+    r.add $t[pos].kind
+    r.add ' '
+    r.add $t[pos].operand
+  of PragmaIdM:
+    r.add $cast[PragmaKey](t[pos].operand)
+  of TypedM:
+    r.add "T<"
+    r.add $t[pos].operand
+    r.add ">"
+  of NilValM:
+    r.add "NilVal"
+  of GotoM, CheckedGotoM:
+    r.add $t[pos].kind
+    r.add " L"
+    r.add $t[pos].operand
+  else:
+    r.add $t[pos].kind
+    r.add "{\n"
+    for i in 0..<(nesting+1)*2: r.add ' '
+    for p in sons(t, pos):
+      toString t, p, r, nesting+1
+    r.add "\n"
+    for i in 0..<nesting*2: r.add ' '
+    r.add "}"
+
+proc debug(b: Bytecode; pos: CodePos) =
+  var buf = ""
+  toString(b, pos, buf)
+  echo buf
+
 type
   Preprocessing = object
     u: ref Universe
@@ -421,6 +470,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       for ch in sonsFrom1(t, n):
         preprocess(c, bc, t, ch, {WantAddr})
   of ObjConstr:
+    #debug bc, t, n
     var i = 0
     let typ = t[n.firstSon].typeId
     build bc, info, ObjConstrM:
@@ -543,8 +593,9 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     if t[src].kind in {Call, IndirectCall}:
       # No support for return values, these are mapped to `var T` parameters!
       build bc, info, CallM:
+        preprocess(c, bc, t, src.firstSon, {WantAddr})
         preprocess(c, bc, t, dest, {WantAddr})
-        for ch in sons(t, src): preprocess(c, bc, t, ch, {WantAddr})
+        for ch in sonsFrom1(t, src): preprocess(c, bc, t, ch, {WantAddr})
     elif t[src].kind in {CheckedCall, CheckedIndirectCall}:
       build bc, info, CheckedCallM:
         preprocess(c, bc, t, src.firstSon, {WantAddr})
@@ -644,6 +695,11 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       bc.add info, AllocLocals, 0'u32
       for ch in sons(t, n): preprocess(c2, bc, t, ch, {})
       bc.code[toPatch] = toIns(AllocLocals, c2.localsAddr)
+    when false:
+      if here.int == 40192:
+        debug bc, t, n
+        debug bc, here
+
   of PragmaPair:
     recurse PragmaPairM
 
@@ -739,7 +795,7 @@ proc evalAddr(c: Bytecode; pc: CodePos; s: StackFrame): pointer =
 proc `div`(x, y: float32): float32 {.inline.} = x / y
 proc `div`(x, y: float64): float64 {.inline.} = x / y
 
-from math import `mod`
+from std / math import `mod`
 
 template binop(opr) {.dirty.} =
   template impl(typ) {.dirty.} =
@@ -930,13 +986,15 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
     of UInt16Id: impl uint16
     of UInt32Id: impl uint32
     of UInt64Id: impl uint64
+    of Float32Id: impl float32
+    of Float64Id: impl float64
     else:
       case c.m.types[tid].kind
       of ProcTy, UPtrTy, APtrTy, AArrayPtrTy, UArrayPtrTy:
         # the VM always uses 64 bit pointers:
         impl uint64
       else:
-        raiseAssert "cannot happen"
+        raiseAssert "cannot happen: " & $c.m.types[tid].kind
   else:
     #debug c, c.debug[pc.int]
     raiseAssert "cannot happen: " & $c.code[pc].kind
@@ -980,7 +1038,7 @@ proc evalBuiltin(c: Bytecode; pc: CodePos; s: StackFrame; prc: CodePos; didEval:
         else: discard
         echo "running compilerproc: ", c.m.lit.strings[lit]
         didEval = true
-    of PragmaIdM: discard
+    of PragmaIdM, AllocLocals: discard
     else: break
     next c, prc
   result = prc
@@ -1021,10 +1079,10 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
         for a in sonsFrom1(c, callInstr):
           assert c[prc].kind == SummonParamM
           let paramAddr = c[prc].operand
-          assert c[prc.firstSon].kind == ImmediateValM
-          let paramSize = c[prc.firstSon].operand.int
-          eval(c, a, s2, s2.locals +! paramAddr, paramSize)
           next c, prc
+          assert c[prc].kind == ImmediateValM
+          let paramSize = c[prc].operand.int
+          eval(c, a, s2, s2.locals +! paramAddr, paramSize)
           next c, prc
         s = s2
         pc = prc
@@ -1040,7 +1098,8 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
     of ProcDeclM:
       next c, pc
     else:
-      raiseAssert "unreachable"
+      #debug c, c.debug[pc.int]
+      raiseAssert "unreachable: " & $c.code[pc].kind
 
 proc execCode*(bc: var Bytecode; t: Tree; n: NodePos) =
   traverseTypes bc
@@ -1048,6 +1107,8 @@ proc execCode*(bc: var Bytecode; t: Tree; n: NodePos) =
   let start = CodePos(bc.code.len)
   var pc = n
   while pc.int < t.len:
+    #echo "RUnning: "
+    #debug bc, t, pc
     preprocess c, bc, t, pc, {}
     next t, pc
   exec bc, start, nil
