@@ -22,8 +22,9 @@
 ## "A Graph–Free Approach to Data–Flow Analysis" by Markus Mohnen.
 ## https://link.springer.com/content/pdf/10.1007/3-540-45937-5_6.pdf
 
-import ast, intsets, lineinfos, renderer, aliasanalysis
+import ast, lineinfos, renderer, aliasanalysis
 import std/private/asciitables
+import std/intsets
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

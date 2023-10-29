@@ -10,8 +10,10 @@
 # This module handles the reading of the config file.
 
 import
-  llstream, commands, os, strutils, msgs, lexer, ast,
-  options, idents, wordrecg, strtabs, lineinfos, pathutils, scriptconfig
+  llstream, commands, msgs, lexer, ast,
+  options, idents, wordrecg, lineinfos, pathutils, scriptconfig
+
+import std/[os, strutils, strtabs]
 
 when defined(nimPreviewSlimSystem):
   import std/syncio

@@ -10,7 +10,7 @@
 ## Nim Intermediate Representation, designed to capture all of Nim's semantics without losing too much
 ## precious information. Can easily be translated into C. And to JavaScript, hopefully.
 
-from os import addFileExt, `/`, createDir
+from std/os import addFileExt, `/`, createDir
 
 import std / assertions
 import ".." / [ast, modulegraphs, renderer, transf, options, msgs, lineinfos]

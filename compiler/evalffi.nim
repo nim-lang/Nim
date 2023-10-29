@@ -9,9 +9,11 @@
 
 ## This file implements the FFI part of the evaluator for Nim code.
 
-import ast, types, options, tables, dynlib, msgs, lineinfos
-from os import getAppFilename
+import ast, types, options, msgs, lineinfos
+from std/os import getAppFilename
 import libffi/libffi
+
+import std/[tables, dynlib]
 
 when defined(windows):
   const libcDll = "msvcrt.dll"

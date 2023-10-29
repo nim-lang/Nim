@@ -145,6 +145,6 @@ const
 
 
 from std/enumutils import genEnumCaseStmt
-from strutils import normalize
+from std/strutils import normalize
 proc findStr*[T: enum](a, b: static[T], s: string, default: T): T =
   genEnumCaseStmt(T, s, default, ord(a), ord(b), normalize)

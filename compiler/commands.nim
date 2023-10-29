@@ -27,7 +27,9 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 import std/[setutils, os, strutils, parseutils, parseopt, sequtils, strtabs]
 import
   msgs, options, nversion, condsyms, extccomp, platform,
-  wordrecg, nimblecmd, lineinfos, pathutils, pathnorm
+  wordrecg, nimblecmd, lineinfos, pathutils
+
+import std/pathnorm
 
 from ast import setUseIc, eqTypeFlags, tfGcSafe, tfNoSideEffect
 
