@@ -10,41 +10,46 @@
 ## Nir Compiler. Currently only supports a "view" command.
 
 import ".." / ic / [bitabs, rodfiles]
-import nirinsts, nirtypes, nirlineinfos
+import nirinsts, nirtypes, nirlineinfos, nirfiles #, nir2gcc
 
 proc view(filename: string) =
-  var lit = Literals()
-
-  var r = rodfiles.open(filename)
-  var code = default Tree
-  var man = default LineInfoManager
-  var types = initTypeGraph(lit)
-  try:
-    r.loadHeader(nirCookie)
-    r.loadSection stringsSection
-    r.load lit.strings
-
-    r.loadSection numbersSection
-    r.load lit.numbers
-
-    r.loadSection bodiesSection
-    r.load code
-
-    r.loadSection typesSection
-    r.load types
-
-    r.loadSection sideChannelSection
-    r.load man
-
-  finally:
-    r.close()
-
+  let m = load(filename)
   var res = ""
-  allTreesToString code, lit.strings, lit.numbers, res
+  allTreesToString m.code, m.lit.strings, m.lit.numbers, m.symnames, res
   res.add "\n# TYPES\n"
-  nirtypes.toString res, types
+  nirtypes.toString res, m.types
   echo res
 
-import std / os
+proc libgcc(filename: string) =
+  let m = load(filename)
+  #gcc m, filename
 
-view paramStr(1)
+import std / [syncio, parseopt]
+
+proc writeHelp =
+  echo """Usage: nirc view|gcc <file.nir>"""
+  quit 0
+
+proc main =
+  var inp = ""
+  var cmd = ""
+  for kind, key, val in getopt():
+    case kind
+    of cmdArgument:
+      if cmd.len == 0: cmd = key
+      elif inp.len == 0: inp = key
+      else: quit "Error: too many arguments"
+    of cmdLongOption, cmdShortOption:
+      case key
+      of "help", "h": writeHelp()
+      of "version", "v": stdout.write "1.0\n"
+    of cmdEnd: discard
+  if inp.len == 0:
+    quit "Error: no input file specified"
+  case cmd
+  of "", "view":
+    view inp
+  of "gcc":
+   libgcc inp
+
+main()
