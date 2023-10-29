@@ -359,7 +359,7 @@ type
                                         ## and `postContent` proc,
                                         ## when the server returns an error
 
-const defUserAgent* = "Nim httpclient/" & NimVersion
+const defUserAgent* = "Nim-httpclient/" & NimVersion
 
 proc httpError(msg: string) =
   var e: ref ProtocolError
