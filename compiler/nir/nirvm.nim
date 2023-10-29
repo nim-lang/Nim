@@ -1016,15 +1016,23 @@ proc evalProc(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
   assert procSym < ForwardedProc
   result = CodePos(procSym)
 
-proc echoImpl(c: Bytecode; pc: CodePos; s: StackFrame) =
-  type StringArray = object
+type
+  NimStrPayloadVM = object
+    cap: int
+    data: UncheckedArray[char]
+  NimStringVM = object
     len: int
-    data: ptr UncheckedArray[string]
-  var sa = default(StringArray)
+    p: ptr NimStrPayloadVM
+
+proc echoImpl(c: Bytecode; pc: CodePos; frame: StackFrame) =
+  var s = default(NimStringVM)
   for a in sonsFrom1(c, pc):
-    eval(c, a, s, addr(sa), sizeof(sa))
-  for i in 0..<sa.len:
-    stdout.write sa.data[i]
+    assert c[a].kind == ArrayConstrM
+    let elemSize = c.code[a.firstSon].operand.int
+    for ch in sonsFrom1(c, a):
+      eval c, ch, frame, addr s, elemSize
+      if s.len > 0:
+        discard stdout.writeBuffer(addr(s.p.data[0]), s.len)
   stdout.write "\n"
   stdout.flushFile()
 
@@ -1034,12 +1042,11 @@ proc evalBuiltin(c: Bytecode; pc: CodePos; s: StackFrame; prc: CodePos; didEval:
     case c[prc].kind
     of PragmaPairM:
       let (x, y) = sons2(c.code, prc)
-      if cast[PragmaKey](c[x]) == CoreName:
+      if cast[PragmaKey](c[x].operand) == CoreName:
         let lit = c[y].litId
         case c.m.lit.strings[lit]
         of "echoBinSafe": echoImpl(c, pc, s)
         else: discard
-        echo "running compilerproc: ", c.m.lit.strings[lit]
         didEval = true
     of PragmaIdM, AllocLocals: discard
     else: break
