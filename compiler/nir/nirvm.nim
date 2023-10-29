@@ -25,13 +25,13 @@ type
     IntValM,
     StrValM,
     LoadLocalM, # with local ID
+    LoadGlobalM,
     LoadProcM,
     TypedM,   # with type ID
     PragmaIdM, # with Pragma ID, possible values: see PragmaKey enum
     NilValM,
     GotoM,
     CheckedGotoM, # last atom
-    LoadGlobalM, # `"module".x`
 
     ArrayConstrM,
     ObjConstrM,
@@ -107,6 +107,9 @@ template toIns(k: OpcodeM; operand: uint32): Instr =
 template toIns(k: OpcodeM; operand: LitId): Instr =
   Instr(uint32(k) or (operand.uint32 shl OpcodeBits))
 
+const
+  GlobalsSize = 1024*24
+
 type
   PatchPos = distinct int
   CodePos = distinct int
@@ -117,6 +120,7 @@ type
     m: ref NirModule
     procs: Table[SymId, CodePos]
     globals: Table[SymId, uint32]
+    globalData: pointer
     globalsAddr: uint32
     typeImpls: Table[string, TypeId]
     offsets: Table[TypeId, seq[(int, TypeId)]]
@@ -129,7 +133,7 @@ type
     unitNames: Table[string, int]
     current: int
 
-proc initBytecode*(m: ref NirModule): Bytecode = Bytecode(m: m)
+proc initBytecode*(m: ref NirModule): Bytecode = Bytecode(m: m, globalData: alloc0(GlobalsSize))
 
 template `[]`(t: seq[Instr]; n: CodePos): Instr = t[n.int]
 
@@ -359,9 +363,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       bc.add info, LoadProcM, uint32 bc.procs[s]
     elif bc.globals.hasKey(s):
       maybeDeref(WantAddr notin flags):
-        build bc, info, LoadGlobalM:
-          bc.add info, ImmediateValM, c.thisModule
-          bc.add info, LoadLocalM, uint32 s
+        bc.add info, LoadGlobalM, uint32 s
     else:
       let here = CodePos(bc.code.len)
       bc.add info, LoadProcM, ForwardedProc + uint32(s)
@@ -447,6 +449,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     let global = align(bc.globalsAddr, uint32 alignment)
     bc.globals[s] = global
     bc.globalsAddr += uint32 size
+    assert bc.globalsAddr < GlobalsSize
 
   of Summon:
     let (typ, sym) = sons2(t, n)
@@ -723,7 +726,10 @@ proc evalAddr(c: Bytecode; pc: CodePos; s: StackFrame): pointer =
     let (_, arg) = sons2(c.code, pc)
     let p = evalAddr(c, arg, s)
     result = cast[ptr pointer](p)[]
+  of LoadGlobalM:
+    result = c.globalData +! c.code[pc].operand
   else:
+    echo c.code[pc].kind
     raiseAssert("unimplemented addressing mode")
 
 proc `div`(x, y: float32): float32 {.inline.} = x / y
@@ -920,7 +926,8 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
     of UInt16Id: impl uint16
     of UInt32Id: impl uint32
     of UInt64Id: impl uint64
-    else: raiseAssert "cannot happen"
+    else:
+      raiseAssert "cannot happen"
   else:
     raiseAssert "cannot happen"
 
@@ -1030,7 +1037,7 @@ proc execCode*(bc: var Bytecode; t: Tree; n: NodePos) =
   var c = Preprocessing(u: nil, thisModule: 1'u32)
   let start = CodePos(bc.code.len)
   var pc = n
-  while pc.int < bc.code.len:
+  while pc.int < t.len:
     preprocess c, bc, t, pc, {}
     next t, pc
   exec bc, start, nil
