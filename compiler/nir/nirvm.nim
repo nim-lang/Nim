@@ -936,13 +936,15 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
     of UInt16Id: impl uint16
     of UInt32Id: impl uint32
     of UInt64Id: impl uint64
+    of Float32Id: impl float32
+    of Float64Id: impl float64
     else:
       case c.m.types[tid].kind
       of ProcTy, UPtrTy, APtrTy, AArrayPtrTy, UArrayPtrTy:
         # the VM always uses 64 bit pointers:
         impl uint64
       else:
-        raiseAssert "cannot happen"
+        raiseAssert "cannot happen: " & $c.m.types[tid].kind
   else:
     #debug c, c.debug[pc.int]
     raiseAssert "cannot happen: " & $c.code[pc].kind
@@ -986,7 +988,7 @@ proc evalBuiltin(c: Bytecode; pc: CodePos; s: StackFrame; prc: CodePos; didEval:
         else: discard
         echo "running compilerproc: ", c.m.lit.strings[lit]
         didEval = true
-    of PragmaIdM: discard
+    of PragmaIdM, AllocLocals: discard
     else: break
     next c, prc
   result = prc
@@ -1027,10 +1029,10 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
         for a in sonsFrom1(c, callInstr):
           assert c[prc].kind == SummonParamM
           let paramAddr = c[prc].operand
-          assert c[prc.firstSon].kind == ImmediateValM
-          let paramSize = c[prc.firstSon].operand.int
-          eval(c, a, s2, s2.locals +! paramAddr, paramSize)
           next c, prc
+          assert c[prc].kind == ImmediateValM
+          let paramSize = c[prc].operand.int
+          eval(c, a, s2, s2.locals +! paramAddr, paramSize)
           next c, prc
         s = s2
         pc = prc
@@ -1046,7 +1048,8 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
     of ProcDeclM:
       next c, pc
     else:
-      raiseAssert "unreachable"
+      #debug c, c.debug[pc.int]
+      raiseAssert "unreachable: " & $c.code[pc].kind
 
 proc execCode*(bc: var Bytecode; t: Tree; n: NodePos) =
   traverseTypes bc
@@ -1054,6 +1057,8 @@ proc execCode*(bc: var Bytecode; t: Tree; n: NodePos) =
   let start = CodePos(bc.code.len)
   var pc = n
   while pc.int < t.len:
+    #echo "RUnning: "
+    #debug bc, t, pc
     preprocess c, bc, t, pc, {}
     next t, pc
   exec bc, start, nil
