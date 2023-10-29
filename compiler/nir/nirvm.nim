@@ -325,7 +325,7 @@ proc toString*(t: Bytecode; pos: CodePos;
     r.add $t.m.lit.numbers[LitId t[pos].operand]
   of StrValM:
     escapeToNimLit(t.m.lit.strings[LitId t[pos].operand], r)
-  of LoadLocalM, LoadGlobalM, LoadProcM, AllocLocals:
+  of LoadLocalM, LoadGlobalM, LoadProcM, AllocLocals, SummonParamM:
     r.add $t[pos].kind
     r.add ' '
     r.add $t[pos].operand
@@ -593,14 +593,14 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     if t[src].kind in {Call, IndirectCall}:
       # No support for return values, these are mapped to `var T` parameters!
       build bc, info, CallM:
-        preprocess(c, bc, t, src.firstSon, {WantAddr})
+        preprocess(c, bc, t, src.skipTyped, {WantAddr})
         preprocess(c, bc, t, dest, {WantAddr})
-        for ch in sonsFrom1(t, src): preprocess(c, bc, t, ch, {WantAddr})
+        for ch in sonsFrom2(t, src): preprocess(c, bc, t, ch, {WantAddr})
     elif t[src].kind in {CheckedCall, CheckedIndirectCall}:
       build bc, info, CheckedCallM:
-        preprocess(c, bc, t, src.firstSon, {WantAddr})
+        preprocess(c, bc, t, src.skipTyped, {WantAddr})
         preprocess(c, bc, t, dest, {WantAddr})
-        for ch in sonsFrom1(t, src): preprocess(c, bc, t, ch, {WantAddr})
+        for ch in sonsFrom2(t, src): preprocess(c, bc, t, ch, {WantAddr})
     elif t[dest].kind == Load:
       let (typ, a) = sons2(t, dest)
       let s = computeSize(bc, tid)[0]
@@ -696,7 +696,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       for ch in sons(t, n): preprocess(c2, bc, t, ch, {})
       bc.code[toPatch] = toIns(AllocLocals, c2.localsAddr)
     when false:
-      if here.int == 40192:
+      if here.int == 39850:
         debug bc, t, n
         debug bc, here
 
@@ -934,9 +934,12 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
   of LoadLocalM:
     let dest = s.locals +! c.code[pc].operand
     copyMem dest, result, size
-  of FieldAtM, ArrayAtM, LoadM:
+  of FieldAtM, ArrayAtM, LoadM, LoadGlobalM:
     let dest = evalAddr(c, pc, s)
     copyMem dest, result, size
+  of LoadProcM:
+    let procAddr = c.code[pc].operand
+    cast[ptr pointer](result)[] = cast[pointer](procAddr)
   of CheckedAddM: checkedBinop `+`
   of CheckedSubM: checkedBinop `-`
   of CheckedMulM: checkedBinop `*`
@@ -1082,8 +1085,8 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
           next c, prc
           assert c[prc].kind == ImmediateValM
           let paramSize = c[prc].operand.int
-          eval(c, a, s2, s2.locals +! paramAddr, paramSize)
           next c, prc
+          eval(c, a, s2, s2.locals +! paramAddr, paramSize)
         s = s2
         pc = prc
     of RetM:

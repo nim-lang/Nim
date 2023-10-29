@@ -240,6 +240,8 @@ proc next*(tree: Tree; pos: var NodePos) {.inline.} = nextChild tree, int(pos)
 
 template firstSon*(n: NodePos): NodePos = NodePos(n.int+1)
 
+template skipTyped*(n: NodePos): NodePos = NodePos(n.int+2)
+
 iterator sons*(tree: Tree; n: NodePos): NodePos =
   var pos = n.int
   assert tree.nodes[pos].kind > LastAtomicValue
@@ -254,6 +256,17 @@ iterator sonsFrom1*(tree: Tree; n: NodePos): NodePos =
   assert tree.nodes[pos].kind > LastAtomicValue
   let last = pos + tree.nodes[pos].rawSpan
   inc pos
+  nextChild tree, pos
+  while pos < last:
+    yield NodePos pos
+    nextChild tree, pos
+
+iterator sonsFrom2*(tree: Tree; n: NodePos): NodePos =
+  var pos = n.int
+  assert tree.nodes[pos].kind > LastAtomicValue
+  let last = pos + tree.nodes[pos].rawSpan
+  inc pos
+  nextChild tree, pos
   nextChild tree, pos
   while pos < last:
     yield NodePos pos

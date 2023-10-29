@@ -2353,6 +2353,11 @@ proc genParams(c: var ProcCon; params: PNode; prc: PSym) =
     let res = resNode.sym # get result symbol
     c.code.addSummon toLineInfo(c, res.info), toSymId(c, res),
       typeToIr(c.m, res.typ), SummonResult
+  elif prc.typ.len > 0 and not isEmptyType(prc.typ[0]) and not isCompileTimeOnly(prc.typ[0]):
+    # happens for procs without bodies:
+    let t = typeToIr(c.m, prc.typ[0])
+    let tmp = allocTemp(c, t)
+    c.code.addSummon toLineInfo(c, params.info), tmp, t, SummonResult
 
   for i in 1..<params.len:
     let s = params[i].sym
