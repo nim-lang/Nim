@@ -380,7 +380,7 @@ proc addNilVal*(t: var Tree; info: PackedLineInfo; typ: TypeId) =
 proc store*(r: var RodFile; t: Tree) = storeSeq r, t.nodes
 proc load*(r: var RodFile; t: var Tree) = loadSeq r, t.nodes
 
-proc escapeToNimLit(s: string; result: var string) =
+proc escapeToNimLit*(s: string; result: var string) =
   result.add '"'
   for c in items s:
     if c < ' ' or int(c) >= 128:
