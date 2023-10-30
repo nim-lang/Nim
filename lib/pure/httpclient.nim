@@ -911,7 +911,9 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
         if line.len == le: httpError("Invalid headers - no colon after header name")
         inc(linei, le) # Skip the parsed header name
         inc(linei) # Skip :
-        if linei == line.len: httpError("Invalid headers - no header value after colon")
+        # Here linei is smaller or equal to line.len, so the slice below should work fine
+        # If we want to enforce the HTTP spec later, do this:
+        #if linei == line.len: httpError("Invalid headers - no header value after colon")
         # Remember the header name for the possible multi-line header
         lastHeaderName = name
         result.headers.add(name, line[linei .. ^1].strip())
