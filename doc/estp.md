@@ -28,7 +28,7 @@ Otherwise your program is profiled.
 
 ```nim
 when compileOption("profiler"):
-  import nimprof
+  import std/nimprof
 ```
 
 After your program has finished the profiler will create a
