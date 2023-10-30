@@ -9,7 +9,7 @@
 
 # This module implements Linux epoll().
 
-import posix, times, epoll
+import std/[posix, times, epoll]
 
 # Maximum number of events that can be returned
 const MAX_EPOLL_EVENTS = 64

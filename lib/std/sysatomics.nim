@@ -363,7 +363,7 @@ elif someGcc or defined(tcc):
 elif defined(icl):
   proc cpuRelax* {.importc: "_mm_pause", header: "xmmintrin.h".}
 elif false:
-  from os import sleep
+  from std/os import sleep
 
   proc cpuRelax* {.inline.} = os.sleep(1)
 

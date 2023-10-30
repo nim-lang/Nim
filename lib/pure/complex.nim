@@ -36,7 +36,7 @@ runnableExamples:
 {.push checks: off, line_dir: off, stack_trace: off, debugger: off.}
 # the user does not want to trace a part of the standard library!
 
-import math
+import std/math
 
 type
   Complex*[T: SomeFloat] = object

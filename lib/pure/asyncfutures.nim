@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import os, tables, strutils, times, heapqueue, options, deques, cstrutils
+import std/[os, tables, strutils, times, heapqueue, options, deques, cstrutils]
 
 import system/stacktraces
 
@@ -51,7 +51,7 @@ const
   NimAsyncContinueSuffix* = "NimAsyncContinue" ## For internal usage. Do not use.
 
 when isFutureLoggingEnabled:
-  import hashes
+  import std/hashes
   type
     FutureInfo* = object
       stackTrace*: seq[StackTraceEntry]

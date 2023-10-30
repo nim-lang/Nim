@@ -60,7 +60,7 @@ when not defined(js):
   import std/oserrors
 
 when defined(posix):
-  import posix
+  import std/posix
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
