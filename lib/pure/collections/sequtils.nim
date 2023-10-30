@@ -82,8 +82,8 @@ runnableExamples:
 
 import std/private/since
 
-import macros
-from typetraits import supportsCopyMem
+import std/macros
+from std/typetraits import supportsCopyMem
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

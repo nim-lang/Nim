@@ -9,8 +9,8 @@
 ## This module implements color handling for Nim,
 ## namely color mixing and parsing the CSS color names.
 
-import strutils
-from algorithm import binarySearch
+import std/strutils
+from std/algorithm import binarySearch
 
 type
   Color* = distinct int ## A color stored as RGB, e.g. `0xff00cc`.

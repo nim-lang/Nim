@@ -655,7 +655,7 @@ string containing the literal. The callable identifier needs to be declared
 with a special ``'`` prefix:
 
   ```nim
-  import strutils
+  import std/strutils
   type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
   proc `'u4`(n: string): u4 =
     # The leading ' is required.
@@ -670,7 +670,7 @@ corresponds to this transformation. The transformation naturally handles
 the case that additional parameters are passed to the callee:
 
   ```nim
-  import strutils
+  import std/strutils
   type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
   proc `'u4`(n: string; moreData: int): u4 =
     result = (parseInt(n) and 0x0F).u4
@@ -5231,7 +5231,7 @@ conservative in its effect analysis:
   ```nim  test = "nim c $1"  status = 1
   {.push warningAsError[Effect]: on.}
 
-  import algorithm
+  import std/algorithm
 
   type
     MyInt = distinct int

@@ -61,12 +61,12 @@ runnableExamples:
   assert find("uxabc", re"(?<=x|y)ab", start = 1).get.captures[-1] == "ab"
   assert find("uxabc", re"ab", start = 3).isNone
 
-from pcre import nil
+from std/pcre import nil
 import nre/private/util
-import tables
-from strutils import `%`
-import options
-from unicode import runeLenAt
+import std/tables
+from std/strutils import `%`
+import std/options
+from std/unicode import runeLenAt
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

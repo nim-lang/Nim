@@ -28,7 +28,7 @@
 
 # https://www.feistyduck.com/library/openssl-cookbook/online/ch-testing-with-openssl.html
 #
-from strutils import startsWith
+from std/strutils import startsWith
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -51,17 +51,17 @@ when sslVersion != "":
     const
       DLLSSLName* = "libssl." & sslVersion & ".dylib"
       DLLUtilName* = "libcrypto." & sslVersion & ".dylib"
-    from posix import SocketHandle
+    from std/posix import SocketHandle
   elif defined(windows):
     const
       DLLSSLName* = "libssl-" & sslVersion & ".dll"
       DLLUtilName* =  "libcrypto-" & sslVersion & ".dll"
-    from winlean import SocketHandle
+    from std/winlean import SocketHandle
   else:
     const
       DLLSSLName* = "libssl.so." & sslVersion
       DLLUtilName* = "libcrypto.so." & sslVersion
-    from posix import SocketHandle
+    from std/posix import SocketHandle
 
 elif useWinVersion:
   when defined(openssl10) or defined(nimOldDlls):
@@ -82,7 +82,7 @@ elif useWinVersion:
       DLLSSLName* = "(libssl-1_1|ssleay32|libssl32).dll"
       DLLUtilName* = "(libcrypto-1_1|libeay32).dll"
 
-  from winlean import SocketHandle
+  from std/winlean import SocketHandle
 else:
   # same list of versions but ordered differently?
   when defined(osx):
@@ -102,9 +102,9 @@ else:
     const
       DLLSSLName* = "libssl.so" & versions
       DLLUtilName* = "libcrypto.so" & versions
-  from posix import SocketHandle
+  from std/posix import SocketHandle
 
-import dynlib
+import std/dynlib
 
 {.pragma: lcrypto, cdecl, dynlib: DLLUtilName, importc.}
 {.pragma: lssl, cdecl, dynlib: DLLSSLName, importc.}
@@ -779,7 +779,7 @@ proc md5*(d: ptr uint8; n: csize_t; md: ptr uint8): ptr uint8{.importc: "MD5".}
 proc md5_Transform*(c: var MD5_CTX; b: ptr uint8){.importc: "MD5_Transform".}
 {.pop.}
 
-from strutils import toHex, toLowerAscii
+from std/strutils import toHex, toLowerAscii
 
 proc hexStr(buf: cstring): string =
   # turn md5s output into a nice hex str

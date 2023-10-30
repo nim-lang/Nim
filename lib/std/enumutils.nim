@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-import macros
-from typetraits import OrdinalEnum, HoleyEnum
+import std/macros
+from std/typetraits import OrdinalEnum, HoleyEnum
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

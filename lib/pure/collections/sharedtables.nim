@@ -17,7 +17,7 @@
 {.deprecated.}
 
 import
-  hashes, math, locks
+  std/[hashes, math, locks]
 
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]

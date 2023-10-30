@@ -165,9 +165,9 @@ runnableExamples:
     a1, a2, a0, a3, a4: int
   doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
 
-import hashes, tables, strutils, lexbase, streams, macros, parsejson
+import std/[hashes, tables, strutils, lexbase, streams, macros, parsejson]
 
-import options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
+import std/options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
 import std/private/since
 
 when defined(nimPreviewSlimSystem):
@@ -549,7 +549,7 @@ proc `[]`*[U, V](a: JsonNode, x: HSlice[U, V]): JsonNode =
   ##
   ## Returns the inclusive range `[a[x.a], a[x.b]]`:
   runnableExamples:
-    import json
+    import std/json
     let arr = %[0,1,2,3,4,5]
     doAssert arr[2..4] == %[2,3,4]
     doAssert arr[2..^2] == %[2,3,4]
@@ -965,7 +965,7 @@ proc parseJson*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats
     p.close()
 
 when defined(js):
-  from math import `mod`
+  from std/math import `mod`
   from std/jsffi import JsObject, `[]`, to
   from std/private/jsutils import getProtoName, isInteger, isSafeInteger
 
@@ -1366,7 +1366,7 @@ proc to*[T](node: JsonNode, t: typedesc[T]): T =
   initFromJson(result, node, jsonPath)
 
 when false:
-  import os
+  import std/os
   var s = newFileStream(paramStr(1), fmRead)
   if s == nil: quit("cannot open the file" & paramStr(1))
   var x: JsonParser
