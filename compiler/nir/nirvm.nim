@@ -160,13 +160,13 @@ proc traverseObject(b: var Bytecode; t, offsetKey: TypeId) =
       var offset = -1
       for y in sons(b.m.types, x):
         if b.m.types[y].kind == OffsetVal:
-          offset = b.m.lit.numbers[b.m.types[y].litId]
+          offset = int(b.m.lit.numbers[b.m.types[y].litId])
           break
       b.offsets.mgetOrPut(offsetKey, @[]).add (offset, x.firstSon)
     of SizeVal:
-      size = b.m.lit.numbers[b.m.types[x].litId]
+      size = int(b.m.lit.numbers[b.m.types[x].litId])
     of AlignVal:
-      align = b.m.lit.numbers[b.m.types[x].litId]
+      align = int(b.m.lit.numbers[b.m.types[x].litId])
     of ObjectTy:
       # inheritance
       let impl = b.typeImpls.getOrDefault(b.m.lit.strings[b.m.types[x].litId])
