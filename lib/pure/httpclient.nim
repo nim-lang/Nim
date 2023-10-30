@@ -905,7 +905,7 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
         if line.len == le: httpError("Invalid header value - no colon after the header name")
         inc(linei, le) # Skip the parsed header name
         inc(linei) # Skip :
-        if linei >= line.len: httpError("Invalid header value - no header value after the colon")
+        if linei == line.len: httpError("Invalid header value - no header value after the colon")
         # Remember the header name for the possible multi-line header
         lastHeaderName = name
         result.headers.add(name, line[linei .. ^1].strip())
