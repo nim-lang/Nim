@@ -204,7 +204,7 @@ since (1, 3, 5):
 
     typeof(block: (for ai in a: ai))
 
-import macros
+import std/macros
 
 macro enumLen*(T: typedesc[enum]): int =
   ## Returns the number of items in the enum `T`.

@@ -10,8 +10,11 @@
 ## This module implements code generation for methods.
 
 import
-  intsets, options, ast, msgs, idents, renderer, types, magicsys,
+  options, ast, msgs, idents, renderer, types, magicsys,
   sempass2, modulegraphs, lineinfos
+
+
+import std/intsets
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

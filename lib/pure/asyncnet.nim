@@ -99,7 +99,7 @@ import std/private/since
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]
 
-import asyncdispatch, nativesockets, net, os
+import std/[asyncdispatch, nativesockets, net, os]
 
 export SOBool
 
@@ -110,7 +110,7 @@ const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr
     defined(nuttx)
 
 when defineSsl:
-  import openssl
+  import std/openssl
 
 type
   # TODO: I would prefer to just do:

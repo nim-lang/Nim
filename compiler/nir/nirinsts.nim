@@ -57,6 +57,7 @@ type
     SummonGlobal,
     SummonThreadLocal,
     Summon, # x = Summon Typed <Type ID>; x begins to live
+    SummonResult,
     SummonParam,
     SummonConst,
     Kill, # `Kill x`: scope end for `x`
@@ -110,6 +111,7 @@ type
 type
   PragmaKey* = enum
     FastCall, StdCall, CDeclCall, SafeCall, SysCall, InlineCall, NoinlineCall, ThisCall, NoCall,
+    CoreName,
     ExternName,
     HeaderImport,
     DllImport,
@@ -167,7 +169,7 @@ const
 type
   Instr* = object     # 8 bytes
     x: uint32
-    info: PackedLineInfo
+    info*: PackedLineInfo
 
 template kind*(n: Instr): Opcode = Opcode(n.x and OpcodeMask)
 template operand(n: Instr): uint32 = (n.x shr OpcodeBits)
@@ -234,11 +236,25 @@ proc nextChild(tree: Tree; pos: var int) {.inline.} =
   else:
     inc pos
 
+proc next*(tree: Tree; pos: var NodePos) {.inline.} = nextChild tree, int(pos)
+
+template firstSon*(n: NodePos): NodePos = NodePos(n.int+1)
+
 iterator sons*(tree: Tree; n: NodePos): NodePos =
   var pos = n.int
   assert tree.nodes[pos].kind > LastAtomicValue
   let last = pos + tree.nodes[pos].rawSpan
   inc pos
+  while pos < last:
+    yield NodePos pos
+    nextChild tree, pos
+
+iterator sonsFrom1*(tree: Tree; n: NodePos): NodePos =
+  var pos = n.int
+  assert tree.nodes[pos].kind > LastAtomicValue
+  let last = pos + tree.nodes[pos].rawSpan
+  inc pos
+  nextChild tree, pos
   while pos < last:
     yield NodePos pos
     nextChild tree, pos
@@ -257,8 +273,45 @@ proc copyTree*(dest: var Tree; src: Tree) =
   for i in 0..<L:
     dest.nodes[d+i] = src.nodes[pos+i]
 
+proc sons2*(tree: Tree; n: NodePos): (NodePos, NodePos) =
+  assert(not isAtom(tree, n.int))
+  let a = n.int+1
+  let b = a + span(tree, a)
+  result = (NodePos a, NodePos b)
+
+proc sons3*(tree: Tree; n: NodePos): (NodePos, NodePos, NodePos) =
+  assert(not isAtom(tree, n.int))
+  let a = n.int+1
+  let b = a + span(tree, a)
+  let c = b + span(tree, b)
+  result = (NodePos a, NodePos b, NodePos c)
+
+proc typeId*(ins: Instr): TypeId {.inline.} =
+  assert ins.kind == Typed
+  result = TypeId(ins.operand)
+
+proc symId*(ins: Instr): SymId {.inline.} =
+  assert ins.kind in {SymUse, SymDef}
+  result = SymId(ins.operand)
+
+proc immediateVal*(ins: Instr): int {.inline.} =
+  assert ins.kind == ImmediateVal
+  result = cast[int](ins.operand)
+
+proc litId*(ins: Instr): LitId {.inline.} =
+  assert ins.kind in {StrVal, IntVal}
+  result = LitId(ins.operand)
+
+
 type
   LabelId* = distinct int
+
+proc `==`*(a, b: LabelId): bool {.borrow.}
+proc hash*(a: LabelId): Hash {.borrow.}
+
+proc label*(ins: Instr): LabelId {.inline.} =
+  assert ins.kind in {Label, LoopLabel, Goto, GotoLoop, CheckedGoto}
+  result = LabelId(ins.operand)
 
 proc newLabel*(labelGen: var int): LabelId {.inline.} =
   result = LabelId labelGen
@@ -297,7 +350,7 @@ proc addTyped*(t: var Tree; info: PackedLineInfo; typ: TypeId) {.inline.} =
 
 proc addSummon*(t: var Tree; info: PackedLineInfo; s: SymId; typ: TypeId; opc = Summon) {.inline.} =
   assert typ.int >= 0
-  assert opc in {Summon, SummonConst, SummonGlobal, SummonThreadLocal, SummonParam}
+  assert opc in {Summon, SummonConst, SummonGlobal, SummonThreadLocal, SummonParam, SummonResult}
   let x = prepare(t, info, opc)
   t.nodes.add Instr(x: toX(Typed, uint32(typ)), info: info)
   t.nodes.add Instr(x: toX(SymDef, uint32(s)), info: info)
@@ -327,7 +380,7 @@ proc addNilVal*(t: var Tree; info: PackedLineInfo; typ: TypeId) =
 proc store*(r: var RodFile; t: Tree) = storeSeq r, t.nodes
 proc load*(r: var RodFile; t: var Tree) = loadSeq r, t.nodes
 
-proc escapeToNimLit(s: string; result: var string) =
+proc escapeToNimLit*(s: string; result: var string) =
   result.add '"'
   for c in items s:
     if c < ' ' or int(c) >= 128:
@@ -345,7 +398,32 @@ proc escapeToNimLit(s: string; result: var string) =
       result.add c
   result.add '"'
 
+type
+  SymNames* = object
+    s: seq[LitId]
+
+proc `[]=`*(t: var SymNames; key: SymId; val: LitId) =
+  let k = int(key)
+  if k >= t.s.len: t.s.setLen k+1
+  t.s[k] = val
+
+proc `[]`*(t: SymNames; key: SymId): LitId =
+  let k = int(key)
+  if k < t.s.len: result = t.s[k]
+  else: result = LitId(0)
+
+template localName(s: SymId): string =
+  let name = names[s]
+  if name != LitId(0):
+    strings[name]
+  else:
+    $s.int
+
+proc store*(r: var RodFile; t: SymNames) = storeSeq(r, t.s)
+proc load*(r: var RodFile; t: var SymNames) = loadSeq(r, t.s)
+
 proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTable[int64];
+               names: SymNames;
                r: var string; nesting = 0) =
   if r.len > 0 and r[r.len-1] notin {' ', '\n', '(', '[', '{'}:
     r.add ' '
@@ -361,10 +439,10 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
     escapeToNimLit(strings[LitId t[pos].operand], r)
   of SymDef:
     r.add "SymDef "
-    r.add $t[pos].operand
+    r.add localName(SymId t[pos].operand)
   of SymUse:
     r.add "SymUse "
-    r.add $t[pos].operand
+    r.add localName(SymId t[pos].operand)
   of PragmaId:
     r.add $cast[PragmaKey](t[pos].operand)
   of Typed:
@@ -374,7 +452,11 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
   of NilVal:
     r.add "NilVal"
   of Label:
-    r.add "L"
+    # undo the nesting:
+    var spaces = r.len-1
+    while spaces >= 0 and r[spaces] == ' ': dec spaces
+    r.setLen spaces+1
+    r.add "\n  L"
     r.add $t[pos].operand
   of Goto, CheckedGoto, LoopLabel, GotoLoop:
     r.add $t[pos].kind
@@ -385,16 +467,17 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
     r.add "{\n"
     for i in 0..<(nesting+1)*2: r.add ' '
     for p in sons(t, pos):
-      toString t, p, strings, integers, r, nesting+1
+      toString t, p, strings, integers, names, r, nesting+1
     r.add "\n"
     for i in 0..<nesting*2: r.add ' '
     r.add "}"
 
 proc allTreesToString*(t: Tree; strings: BiTable[string]; integers: BiTable[int64];
+                       names: SymNames;
                        r: var string) =
   var i = 0
   while i < t.len:
-    toString t, NodePos(i), strings, integers, r
+    toString t, NodePos(i), strings, integers, names, r
     nextChild t, i
 
 type

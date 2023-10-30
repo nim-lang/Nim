@@ -7,8 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, types, msgs, os, options, idents, lineinfos
+import ast, types, msgs, options, idents, lineinfos
 from pathutils import AbsoluteFile
+
+import std/os
 
 when defined(nimPreviewSlimSystem):
   import std/syncio

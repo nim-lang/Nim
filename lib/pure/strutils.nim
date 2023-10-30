@@ -70,12 +70,12 @@ runnableExamples:
 ##   easier substring extraction than regular expressions
 
 
-import parseutils
-from math import pow, floor, log10
-from algorithm import fill, reverse
+import std/parseutils
+from std/math import pow, floor, log10
+from std/algorithm import fill, reverse
 import std/enumutils
 
-from unicode import toLower, toUpper
+from std/unicode import toLower, toUpper
 export toLower, toUpper
 
 include "system/inclrtl"

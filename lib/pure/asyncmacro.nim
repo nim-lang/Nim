@@ -9,7 +9,7 @@
 
 ## Implements the `async` and `multisync` macros for `asyncdispatch`.
 
-import macros, strutils, asyncfutures
+import std/[macros, strutils, asyncfutures]
 
 type
   Context = ref object

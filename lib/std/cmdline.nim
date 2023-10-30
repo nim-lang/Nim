@@ -30,9 +30,9 @@ const weirdTarget = defined(nimscript) or defined(js)
 when weirdTarget:
   discard
 elif defined(windows):
-  import winlean
+  import std/winlean
 elif defined(posix):
-  import posix
+  import std/posix
 else:
   {.error: "The cmdline module has not been implemented for the target platform.".}
 

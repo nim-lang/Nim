@@ -32,11 +32,13 @@
 
 # included from sigmatch.nim
 
-import algorithm, sets, prefixmatches, parseutils, tables
+import prefixmatches
 from wordrecg import wDeprecated, wError, wAddr, wYield
 
+import std/[algorithm, sets, parseutils, tables]
+
 when defined(nimsuggest):
-  import tables, pathutils # importer
+  import std/tables, pathutils # importer
 
 const
   sep = '\t'

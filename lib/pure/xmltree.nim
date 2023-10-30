@@ -31,7 +31,7 @@ runnableExamples:
 ## * `htmlgen module <htmlgen.html>`_ for html code generator
 
 import std/private/since
-import macros, strtabs, strutils, sequtils
+import std/[macros, strtabs, strutils, sequtils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

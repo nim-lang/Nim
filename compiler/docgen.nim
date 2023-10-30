@@ -15,15 +15,16 @@
 ## For corresponding users' documentation see [Nim DocGen Tools Guide].
 
 import
-  ast, strutils, strtabs, algorithm, sequtils, options, msgs, os, idents,
+  ast, options, msgs, idents,
   wordrecg, syntaxes, renderer, lexer,
   packages/docutils/[rst, rstidx, rstgen, dochelpers],
-  json, xmltree, trees, types,
-  typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, tables, nimpaths, renderverbatim, osproc, packages
+  trees, types,
+  typesrenderer, astalgo, lineinfos,
+  pathutils, nimpaths, renderverbatim, packages
 import packages/docutils/rstast except FileIndex, TLineInfo
 
-from uri import encodeUrl
+import std/[os, strutils, strtabs, algorithm, json, osproc, tables, intsets, xmltree, sequtils]
+from std/uri import encodeUrl
 from nodejs import findNodeJs
 
 when defined(nimPreviewSlimSystem):

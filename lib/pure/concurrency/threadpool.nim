@@ -22,7 +22,7 @@
 when not compileOption("threads"):
   {.error: "Threadpool requires --threads:on option.".}
 
-import cpuinfo, cpuload, locks, os
+import std/[cpuinfo, cpuload, locks, os]
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, typedthreads, sysatomics]

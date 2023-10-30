@@ -50,7 +50,7 @@
 
 
 import
-  hashes, math
+  std/[hashes, math]
 
 when not defined(nimHasEffectsOf):
   {.pragma: effectsOf.}

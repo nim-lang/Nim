@@ -8,7 +8,7 @@
 #
 
 
-# import typetraits
+# import std/typetraits
 # strs already imported allocateds for us.
 
 

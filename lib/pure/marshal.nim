@@ -54,7 +54,7 @@ Please use alternative packages for serialization.
 It is possible to reimplement this module using generics and type traits.
 Please contribute a new implementation.""".}
 
-import streams, typeinfo, json, intsets, tables, unicode
+import std/[streams, typeinfo, json, intsets, tables, unicode]
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, formatfloat]
