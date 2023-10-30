@@ -897,15 +897,21 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
         # This works because a line with a header must start with the header name without any leading space
         # See https://datatracker.ietf.org/doc/html/rfc7230, section 3.2 and 3.2.4
         # Multiline headers are deprecated in the spec, but it's better to parse them than crash
-        result.headers.table[result.headers.toCaseInsensitive(lastHeaderName)][^1].add "\n" & line
+        if lastHeaderName == "":
+          # This should ideally throw an error, but old httpclient actually treated lines like this
+          # as a header with an empty name and didn't crash
+          #httpError("Invalid headers - received multiline header value without previous header")
+          discard
+        else:
+          result.headers.table[result.headers.toCaseInsensitive(lastHeaderName)][^1].add "\n" & line
       else:
         var name = ""
         var le = parseUntil(line, name, ':', linei)
-        if le <= 0: httpError("Invalid header value - empty line received")
-        if line.len == le: httpError("Invalid header value - no colon after the header name")
+        if le <= 0: httpError("Invalid headers - received empty header name")
+        if line.len == le: httpError("Invalid headers - no colon after header name")
         inc(linei, le) # Skip the parsed header name
         inc(linei) # Skip :
-        if linei == line.len: httpError("Invalid header value - no header value after the colon")
+        if linei == line.len: httpError("Invalid headers - no header value after colon")
         # Remember the header name for the possible multi-line header
         lastHeaderName = name
         result.headers.add(name, line[linei .. ^1].strip())
