@@ -814,10 +814,6 @@ proc evalAddr(c: Bytecode; pc: CodePos; s: StackFrame): pointer =
     var idx: int = 0
     eval(c, i, s, addr idx, sizeof(int))
     result = cast[ptr pointer](p)[] +! (uint32(idx) * elemSize)
-  of LoadM:
-    let (_, arg) = sons2(c.code, pc)
-    let p = evalAddr(c, arg, s)
-    result = cast[ptr pointer](p)[]
   of LoadGlobalM:
     result = c.globalData +! c.code[pc].operand
   else:
@@ -928,23 +924,29 @@ proc evalSelect(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
     for pair in sonsFrom2(c, pc):
       assert c.code[pair].kind == SelectPairM
       let (values, action) = sons2(c.code, pair)
-      assert c.code[values].kind == SelectListM
-      for v in sons(c, values):
-        case c.code[v].kind
-        of SelectValueM:
-          var a = default(typ)
-          eval c, v.firstSon, s, addr a, sizeof(typ)
-          if selector == a:
-            return CodePos c.code[action].operand
-        of SelectRangeM:
-          let (va, vb) = sons2(c.code, v)
-          var a = default(typ)
-          eval c, va, s, addr a, sizeof(typ)
-          var b = default(typ)
-          eval c, vb, s, addr a, sizeof(typ)
-          if a <= selector and selector <= b:
-            return CodePos c.code[action].operand
-        else: raiseAssert "unreachable"
+      if c.code[values].kind == SelectValueM:
+        var a = default(typ)
+        eval c, values.firstSon, s, addr a, sizeof(typ)
+        if selector == a:
+          return CodePos c.code[action].operand
+      else:
+        assert c.code[values].kind == SelectListM, $c.code[values].kind
+        for v in sons(c, values):
+          case c.code[v].kind
+          of SelectValueM:
+            var a = default(typ)
+            eval c, v.firstSon, s, addr a, sizeof(typ)
+            if selector == a:
+              return CodePos c.code[action].operand
+          of SelectRangeM:
+            let (va, vb) = sons2(c.code, v)
+            var a = default(typ)
+            eval c, va, s, addr a, sizeof(typ)
+            var b = default(typ)
+            eval c, vb, s, addr a, sizeof(typ)
+            if a <= selector and selector <= b:
+              return CodePos c.code[action].operand
+          else: raiseAssert "unreachable"
     result = CodePos(-1)
 
   let (t, sel) = sons2(c.code, pc)
@@ -965,12 +967,16 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
   of LoadLocalM:
     let src = s.locals +! c.code[pc].operand
     copyMem result, src, size
-  of FieldAtM, DerefFieldAtM, ArrayAtM, DerefArrayAtM, LoadM, LoadGlobalM:
+  of FieldAtM, DerefFieldAtM, ArrayAtM, DerefArrayAtM, LoadGlobalM:
     let src = evalAddr(c, pc, s)
     copyMem result, src, size
   of LoadProcM:
     let procAddr = c.code[pc].operand
     cast[ptr pointer](result)[] = cast[pointer](procAddr)
+  of LoadM:
+    let (_, arg) = sons2(c.code, pc)
+    let src = evalAddr(c, arg, s)
+    copyMem result, src, size
   of CheckedAddM: checkedBinop `+`
   of CheckedSubM: checkedBinop `-`
   of CheckedMulM: checkedBinop `*`
@@ -1090,6 +1096,10 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
   var pc = pc
   var frame = StackFrame(u: u)
   while pc.int < c.code.len:
+    when false: # c.interactive:
+      echo "running: "
+      debug c, pc
+
     case c.code[pc].kind
     of GotoM:
       pc = CodePos(c.code[pc].operand)

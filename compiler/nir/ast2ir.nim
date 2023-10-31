@@ -205,7 +205,7 @@ proc xjmp(c: var ProcCon; n: PNode; jk: JmpKind; v: Value): LabelId =
     c.code.copyTree Tree(v)
     build c.code, info, SelectPair:
       build c.code, info, SelectValue:
-        c.code.boolVal(info, jk == opcTJmp)
+        c.code.boolVal(c.lit.numbers, info, jk == opcTJmp)
       c.code.gotoLabel info, Goto, result
 
 proc patch(c: var ProcCon; n: PNode; L: LabelId) =
@@ -361,7 +361,7 @@ template buildCond(useNegation: bool; cond: typed; body: untyped) =
     c.code.copyTree cond
     build c.code, info, SelectPair:
       build c.code, info, SelectValue:
-        c.code.boolVal(info, useNegation)
+        c.code.boolVal(c.lit.numbers, info, useNegation)
       c.code.gotoLabel info, Goto, lab
 
   body
@@ -380,7 +380,7 @@ template buildIfThenElse(cond: typed; then, otherwise: untyped) =
     c.code.copyTree cond
     build c.code, info, SelectPair:
       build c.code, info, SelectValue:
-        c.code.boolVal(info, false)
+        c.code.boolVal(c.lit.numbers, info, false)
       c.code.gotoLabel info, Goto, lelse
 
   then()
@@ -969,7 +969,7 @@ proc genInSet(c: var ProcCon; n: PNode; d: var Value) =
     if ex == nil:
       let info = toLineInfo(c, n.info)
       template body(target) =
-        boolVal target, info, false
+        boolVal target, c.lit.numbers, info, false
       intoDest d, info, Bool8Id, body
     else:
       gen c, ex, d
@@ -1057,7 +1057,7 @@ proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: int): (Sy
       c.code.addIntVal c.lit.numbers, info, c.m.nativeIntId, last
     build c.code, info, SelectPair:
       build c.code, info, SelectValue:
-        c.code.boolVal(info, false)
+        c.code.boolVal(c.lit.numbers, info, false)
       c.code.gotoLabel info, Goto, result[2]
 
 proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: Value): (SymId, LabelId, LabelId) =
@@ -1075,7 +1075,7 @@ proc beginCountLoop(c: var ProcCon; info: PackedLineInfo; first, last: Value): (
       copyTree c.code, last
     build c.code, info, SelectPair:
       build c.code, info, SelectValue:
-        c.code.boolVal(info, false)
+        c.code.boolVal(c.lit.numbers, info, false)
       c.code.gotoLabel info, Goto, result[2]
 
 proc endLoop(c: var ProcCon; info: PackedLineInfo; s: SymId; back, exit: LabelId) =
@@ -1121,7 +1121,7 @@ proc genLeSet(c: var ProcCon; n: PNode; d: var Value) =
       c.code.copyTree d
       build c.code, info, SelectPair:
         build c.code, info, SelectValue:
-          c.code.boolVal(info, false)
+          c.code.boolVal(c.lit.numbers, info, false)
         c.code.gotoLabel info, Goto, endLabel
 
     endLoop(c, info, idx, backLabel, endLabel)
@@ -1534,7 +1534,7 @@ proc genMove(c: var ProcCon; n: PNode; d: var Value) =
 
       build c.code, info, SelectPair:
         build c.code, info, SelectValue:
-          c.code.boolVal(info, true)
+          c.code.boolVal(c.lit.numbers, info, true)
         c.code.gotoLabel info, Goto, lab1
 
     gen(c, n[3])

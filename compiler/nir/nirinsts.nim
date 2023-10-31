@@ -344,9 +344,6 @@ proc addNewLabel*(t: var Tree; labelGen: var int; info: PackedLineInfo; k: Opcod
   t.nodes.add Instr(x: toX(k, uint32(result)), info: info)
   inc labelGen
 
-proc boolVal*(t: var Tree; info: PackedLineInfo; b: bool) =
-  t.nodes.add Instr(x: toX(ImmediateVal, uint32(b)), info: info)
-
 proc gotoLabel*(t: var Tree; info: PackedLineInfo; k: Opcode; L: LabelId) =
   assert k in {Goto, GotoLoop, CheckedGoto}
   t.nodes.add Instr(x: toX(k, uint32(L)), info: info)
@@ -383,6 +380,10 @@ proc addPragmaId*(t: var Tree; info: PackedLineInfo; x: PragmaKey) =
 proc addIntVal*(t: var Tree; integers: var BiTable[int64]; info: PackedLineInfo; typ: TypeId; x: int64) =
   buildTyped t, info, NumberConv, typ:
     t.nodes.add Instr(x: toX(IntVal, uint32(integers.getOrIncl(x))), info: info)
+
+proc boolVal*(t: var Tree; integers: var BiTable[int64]; info: PackedLineInfo; b: bool) =
+  buildTyped t, info, NumberConv, Bool8Id:
+    t.nodes.add Instr(x: toX(IntVal, uint32(integers.getOrIncl(ord b))), info: info)
 
 proc addStrVal*(t: var Tree; strings: var BiTable[string]; info: PackedLineInfo; s: string) =
   t.nodes.add Instr(x: toX(StrVal, uint32(strings.getOrIncl(s))), info: info)
