@@ -109,6 +109,14 @@ template toIns(k: OpcodeM; operand: uint32): Instr =
 template toIns(k: OpcodeM; operand: LitId): Instr =
   Instr(uint32(k) or (operand.uint32 shl OpcodeBits))
 
+type
+  NimStrPayloadVM = object
+    cap: int
+    data: UncheckedArray[char]
+  NimStringVM = object
+    len: int
+    p: ptr NimStrPayloadVM
+
 const
   GlobalsSize = 1024*24
 
@@ -122,6 +130,7 @@ type
     m: ref NirModule
     procs: Table[SymId, CodePos]
     globals: Table[SymId, uint32]
+    strings: Table[LitId, NimStringVM]
     globalData: pointer
     globalsAddr: uint32
     typeImpls: Table[string, TypeId]
@@ -393,6 +402,14 @@ template maybeDeref(doDeref: bool; body: untyped) =
   if doDeref:
     patch(bc, pos)
 
+proc toReadonlyString(s: string): NimStringVM =
+  if s.len == 0:
+    result = NimStringVM(len: 0, p: nil)
+  else:
+    result = NimStringVM(len: s.len, p: cast[ptr NimStrPayloadVM](alloc(s.len+1+sizeof(int))))
+    copyMem(addr result.p.data[0], addr s[0], s.len+1)
+    result.p.cap = s.len or (1 shl (8 * 8 - 2)) # see also NIM_STRLIT_FLAG
+
 const
   ForwardedProc = 10_000_000'u32
 
@@ -411,6 +428,9 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
   of IntVal:
     bc.add info, IntValM, t[n].rawOperand
   of StrVal:
+    let litId = LitId t[n].rawOperand
+    if not bc.strings.hasKey(litId):
+      bc.strings[litId] = toReadonlyString(bc.m.lit.strings[litId])
     bc.add info, StrValM, t[n].rawOperand
   of SymDef:
     discard "happens for proc decls. Don't copy the node as we don't need it"
@@ -965,8 +985,7 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
 
   of StrValM:
     # binary compatible and no deep copy required:
-    copyMem(cast[ptr string](result), addr(c.m.lit.strings[c[pc].litId]), sizeof(string))
-    # XXX not correct!
+    copyMem(cast[ptr string](result), addr(c.strings[c[pc].litId]), sizeof(string))
   of ObjConstrM:
     for offset, size, val in triples(c, pc):
       eval c, val, s, result+!offset, size
@@ -1019,14 +1038,6 @@ proc evalProc(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
 
   assert procSym < ForwardedProc
   result = CodePos(procSym)
-
-type
-  NimStrPayloadVM = object
-    cap: int
-    data: UncheckedArray[char]
-  NimStringVM = object
-    len: int
-    p: ptr NimStrPayloadVM
 
 proc echoImpl(c: Bytecode; pc: CodePos; frame: StackFrame) =
   var s = default(NimStringVM)
