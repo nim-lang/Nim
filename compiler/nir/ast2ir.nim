@@ -578,10 +578,10 @@ proc genIndex(c: var ProcCon; n: PNode; arr: PType; d: var Value) =
   if optBoundsCheck in c.options:
     let idx = move d
     build d, info, CheckedIndex:
+      d.Tree.addLabel info, CheckedGoto, c.exitLabel
       copyTree d.Tree, idx
       let x = toInt64 lengthOrd(c.config, arr)
       d.addIntVal c.lit.numbers, info, c.m.nativeIntId, x
-      d.Tree.addLabel info, CheckedGoto, c.exitLabel
 
 proc rawGenNew(c: var ProcCon; d: Value; refType: PType; ninfo: TLineInfo; needsInit: bool) =
   assert refType.kind == tyRef
@@ -710,7 +710,7 @@ proc genBinaryOp(c: var ProcCon; n: PNode; d: var Value; opc: Opcode) =
   let t = typeToIr(c.m, n.typ)
   template body(target) =
     buildTyped target, info, opc, t:
-      if optOverflowCheck in c.options and opc in {CheckedAdd, CheckedSub, CheckedMul, CheckedDiv, CheckedMod}:
+      if opc in {CheckedAdd, CheckedSub, CheckedMul, CheckedDiv, CheckedMod}:
         target.addLabel info, CheckedGoto, c.exitLabel
       copyTree target, tmp
       copyTree target, tmp2
@@ -751,6 +751,8 @@ proc genIncDec(c: var ProcCon; n: PNode; opc: Opcode) =
   buildTyped c.code, info, Asgn, t:
     copyTree c.code, d
     buildTyped c.code, info, opc, t:
+      if opc in {CheckedAdd, CheckedSub}:
+        c.code.addLabel info, CheckedGoto, c.exitLabel
       copyTree c.code, d
       copyTree c.code, tmp
   c.freeTemp(tmp)
@@ -1457,6 +1459,7 @@ proc genStrConcat(c: var ProcCon; n: PNode; d: var Value) =
     buildTyped c.code, info, Asgn, c.m.nativeIntId:
       c.code.addSymUse info, tmpLen
       buildTyped c.code, info, CheckedAdd, c.m.nativeIntId:
+        c.code.addLabel info, CheckedGoto, c.exitLabel
         c.code.addSymUse info, tmpLen
         buildTyped c.code, info, FieldAt, typeToIr(c.m, n.typ):
           copyTree c.code, a
@@ -1631,6 +1634,7 @@ proc genIndexCheck(c: var ProcCon; n: PNode; a: Value; kind: IndexFor; arr: PTyp
     result = default(Value)
     let idx = genx(c, n)
     build result, info, CheckedIndex:
+      result.Tree.addLabel info, CheckedGoto, c.exitLabel
       copyTree result.Tree, idx
       case kind
       of ForSeq, ForStr:
@@ -1644,7 +1648,6 @@ proc genIndexCheck(c: var ProcCon; n: PNode; a: Value; kind: IndexFor; arr: PTyp
       of ForArray:
         let x = toInt64 lengthOrd(c.config, arr)
         result.addIntVal c.lit.numbers, info, c.m.nativeIntId, x
-      result.Tree.addLabel info, CheckedGoto, c.exitLabel
     freeTemp c, idx
   else:
     result = genx(c, n)
@@ -1746,14 +1749,14 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, d)
   of mOr: c.genAndOr(n, opcTJmp, d)
-  of mPred, mSubI: c.genBinaryOp(n, d, CheckedSub)
-  of mSucc, mAddI: c.genBinaryOp(n, d, CheckedAdd)
+  of mPred, mSubI: c.genBinaryOp(n, d, if optOverflowCheck in c.options: CheckedSub else: Sub)
+  of mSucc, mAddI: c.genBinaryOp(n, d, if optOverflowCheck in c.options: CheckedAdd else: Add)
   of mInc:
     unused(c, n, d)
-    c.genIncDec(n, CheckedAdd)
+    c.genIncDec(n, if optOverflowCheck in c.options: CheckedAdd else: Add)
   of mDec:
     unused(c, n, d)
-    c.genIncDec(n, CheckedSub)
+    c.genIncDec(n, if optOverflowCheck in c.options: CheckedSub else: Sub)
   of mOrd, mChr, mUnown:
     c.gen(n[1], d)
   of generatedMagics:
@@ -1768,9 +1771,9 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   of mNewString, mNewStringOfCap, mExit: c.genCall(n, d)
   of mLengthOpenArray, mLengthArray, mLengthSeq, mLengthStr:
     genArrayLen(c, n, d)
-  of mMulI: genBinaryOp(c, n, d, CheckedMul)
-  of mDivI: genBinaryOp(c, n, d, CheckedDiv)
-  of mModI: genBinaryOp(c, n, d, CheckedMod)
+  of mMulI: genBinaryOp(c, n, d, if optOverflowCheck in c.options: CheckedMul else: Mul)
+  of mDivI: genBinaryOp(c, n, d, if optOverflowCheck in c.options: CheckedDiv else: Div)
+  of mModI: genBinaryOp(c, n, d, if optOverflowCheck in c.options: CheckedMod else: Mod)
   of mAddF64: genBinaryOp(c, n, d, Add)
   of mSubF64: genBinaryOp(c, n, d, Sub)
   of mMulF64: genBinaryOp(c, n, d, Mul)
@@ -2238,10 +2241,10 @@ proc genRangeCheck(c: var ProcCon; n: PNode; d: var Value) =
     let b = c.genx n[2]
     template body(target) =
       buildTyped target, info, CheckedRange, typeToIr(c.m, n.typ):
+        target.addLabel info, CheckedGoto, c.exitLabel
         copyTree target, tmp
         copyTree target, a
         copyTree target, b
-        target.addLabel info, CheckedGoto, c.exitLabel
     valueIntoDest c, info, d, n.typ, body
     freeTemp c, tmp
     freeTemp c, a
