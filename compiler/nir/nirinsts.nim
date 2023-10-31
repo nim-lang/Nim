@@ -265,13 +265,13 @@ iterator sonsFrom1*(tree: Tree; n: NodePos): NodePos =
     yield NodePos pos
     nextChild tree, pos
 
-iterator sonsFrom2*(tree: Tree; n: NodePos): NodePos =
+iterator sonsFromN*(tree: Tree; n: NodePos; toSkip = 2): NodePos =
   var pos = n.int
   assert tree.nodes[pos].kind > LastAtomicValue
   let last = pos + tree.nodes[pos].rawSpan
   inc pos
-  nextChild tree, pos
-  nextChild tree, pos
+  for i in 1..toSkip:
+    nextChild tree, pos
   while pos < last:
     yield NodePos pos
     nextChild tree, pos

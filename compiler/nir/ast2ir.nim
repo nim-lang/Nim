@@ -311,8 +311,7 @@ proc tempToDest(c: var ProcCon; n: PNode; d: var Value; tmp: Value) =
     d = tmp
   else:
     let info = toLineInfo(c, n.info)
-    build c.code, info, Asgn:
-      c.code.addTyped info, typeToIr(c.m, n.typ)
+    buildTyped c.code, info, Asgn, typeToIr(c.m, n.typ):
       c.code.copyTree d
       c.code.copyTree tmp
     freeTemp(c, tmp)
@@ -406,8 +405,7 @@ proc genCase(c: var ProcCon; n: PNode; d: var Value) =
   let ending = newLabel(c.labelGen)
   let info = toLineInfo(c, n.info)
   withTemp(tmp, n[0]):
-    build c.code, info, Select:
-      c.code.addTyped info, typeToIr(c.m, n[0].typ)
+    buildTyped c.code, info, Select, typeToIr(c.m, n[0].typ):
       c.gen(n[0], tmp)
       for i in 1..<n.len:
         let section = newLabel(c.labelGen)
@@ -432,8 +430,7 @@ proc genCase(c: var ProcCon; n: PNode; d: var Value) =
   c.code.addLabel info, Label, ending
 
 proc rawCall(c: var ProcCon; info: PackedLineInfo; opc: Opcode; t: TypeId; args: var openArray[Value]) =
-  build c.code, info, opc:
-    c.code.addTyped info, t
+  buildTyped c.code, info, opc, t:
     if opc in {CheckedCall, CheckedIndirectCall}:
       c.code.addLabel info, CheckedGoto, c.exitLabel
     for a in mitems(args):
@@ -479,8 +476,7 @@ proc genCall(c: var ProcCon; n: PNode; d: var Value) =
   if not isEmptyType(n.typ):
     if isEmpty(d): d = getTemp(c, n)
     # XXX Handle problematic aliasing here: `a = f_canRaise(a)`.
-    build c.code, info, Asgn:
-      c.code.addTyped info, tb
+    buildTyped c.code, info, Asgn, tb:
       c.code.copyTree d
       rawCall c, info, opc, tb, args
   else:
@@ -492,8 +488,7 @@ proc genRaise(c: var ProcCon; n: PNode) =
   let tb = typeToIr(c.m, n[0].typ)
 
   let d = genx(c, n[0])
-  build c.code, info, SetExc:
-    c.code.addTyped info, tb
+  buildTyped c.code, info, SetExc, tb:
     c.code.copyTree d
   c.freeTemp(d)
   c.code.addLabel info, Goto, c.exitLabel

@@ -62,7 +62,6 @@ type
     CheckedIndexM,
 
     CallM,
-    CheckedCallM, # call that can raise
     CheckedAddM, # with overflow checking etc.
     CheckedSubM,
     CheckedMulM,
@@ -609,12 +608,14 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       build bc, info, CallM:
         preprocess(c, bc, t, src.skipTyped, {WantAddr})
         preprocess(c, bc, t, dest, {WantAddr})
-        for ch in sonsFrom2(t, src): preprocess(c, bc, t, ch, {WantAddr})
+        for ch in sonsFromN(t, src, 2): preprocess(c, bc, t, ch, {WantAddr})
     elif t[src].kind in {CheckedCall, CheckedIndirectCall}:
-      build bc, info, CheckedCallM:
-        preprocess(c, bc, t, src.skipTyped, {WantAddr})
+      let (_, gotoInstr, fn) = sons3(t, src)
+      build bc, info, CallM:
+        preprocess(c, bc, t, fn, {WantAddr})
         preprocess(c, bc, t, dest, {WantAddr})
-        for ch in sonsFrom2(t, src): preprocess(c, bc, t, ch, {WantAddr})
+        for ch in sonsFromN(t, src, 3): preprocess(c, bc, t, ch, {WantAddr})
+      preprocess c, bc, t, gotoInstr, {}
     elif t[dest].kind == Load:
       let (typ, a) = sons2(t, dest)
       let s = computeSize(bc, tid)[0]
@@ -642,8 +643,11 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       for ch in sonsFrom1(t, n): preprocess(c, bc, t, ch, {WantAddr})
   of CheckedCall, CheckedIndirectCall:
     # avoid the Typed thing at position 0:
-    build bc, info, CheckedCallM:
-      for ch in sonsFrom1(t, n): preprocess(c, bc, t, ch, {WantAddr})
+    let (_, gotoInstr, fn) = sons3(t, n)
+    build bc, info, CallM:
+      preprocess(c, bc, t, fn, {WantAddr})
+      for ch in sonsFromN(t, n, 3): preprocess(c, bc, t, ch, {WantAddr})
+    preprocess c, bc, t, gotoInstr, {WantAddr}
   of CheckedAdd:
     recurse CheckedAddM
   of CheckedSub:
@@ -1052,7 +1056,11 @@ proc echoImpl(c: Bytecode; pc: CodePos; frame: StackFrame) =
   stdout.write "\n"
   stdout.flushFile()
 
-proc evalBuiltin(c: Bytecode; pc: CodePos; s: StackFrame; prc: CodePos; didEval: var bool): CodePos =
+type
+  EvalBuiltinState = enum
+    DidNothing, DidEval, DidError
+
+proc evalBuiltin(c: Bytecode; pc: CodePos; s: StackFrame; prc: CodePos; state: var EvalBuiltinState): CodePos =
   var prc = prc
   while true:
     case c[prc].kind
@@ -1066,7 +1074,7 @@ proc evalBuiltin(c: Bytecode; pc: CodePos; s: StackFrame; prc: CodePos; didEval:
         of "echoBinSafe": echoImpl(c, pc, s)
         else:
           raiseAssert "cannot eval: " & c.m.lit.strings[lit]
-        didEval = true
+        state = DidEval
       of HeaderImport, DllImport:
         let lit = c[y].litId
         raiseAssert "cannot eval: " & c.m.lit.strings[lit]
@@ -1100,10 +1108,15 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
       assert c.code[prc.firstSon].kind == AllocLocals
       let frameSize = int c.code[prc.firstSon].operand
       # skip stupid stuff:
-      var didEval = false
-      prc = evalBuiltin(c, pc, frame, prc.firstSon, didEval)
-      if didEval:
+      var evalState = DidNothing
+      prc = evalBuiltin(c, pc, frame, prc.firstSon, evalState)
+      if evalState != DidNothing:
         next c, pc
+        if pc.int < c.code.len and c.code[pc].kind == CheckedGotoM:
+          if evalState == DidEval:
+            next c, pc
+          else:
+            pc = CodePos(c.code[pc].operand)
       else:
         # setup storage for the proc already:
         let callInstr = pc
@@ -1121,6 +1134,8 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
         pc = prc
     of RetM:
       pc = frame.returnAddr
+      if c.code[pc].kind == CheckedGotoM:
+        pc = frame.jumpTo
       frame = popStackFrame(frame)
     of SelectM:
       let pc2 = evalSelect(c, pc, frame)
@@ -1140,8 +1155,9 @@ proc execCode*(bc: var Bytecode; t: Tree; n: NodePos) =
   let start = CodePos(bc.code.len)
   var pc = n
   while pc.int < t.len:
-    #echo "RUnning: "
-    #debug bc, t, pc
+    #if bc.interactive:
+    #  echo "RUnning: "
+    #  debug bc, t, pc
     preprocess c, bc, t, pc, {}
     next t, pc
   exec bc, start, nil
