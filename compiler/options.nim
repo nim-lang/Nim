@@ -267,7 +267,9 @@ type
     customArgs*: string
   CfileList* = seq[Cfile]
 
-  Suggest* = ref object
+  Suggest* = ref object of RootObj
+
+  SuggestDef* = ref object of Suggest
     section*: IdeCmd
     qualifiedPath*: seq[string]
     name*: ptr string         # not used beyond sorting purposes; name is also
@@ -289,6 +291,18 @@ type
     endCol*: int
 
   Suggestions* = seq[Suggest]
+
+  SuggestInlayHintKind* = enum
+    sihkType = "Type",
+    sihkParameter = "Parameter"
+
+  SuggestInlayHint* = ref object of Suggest
+    kind*: SuggestInlayHintKind
+    line*: int                   # Starts at 1
+    column*: int                 # Starts at 0
+    label*: string
+    paddingLeft*: bool
+    paddingRight*: bool
 
   ProfileInfo* = object
     time*: float

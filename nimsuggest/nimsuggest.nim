@@ -98,13 +98,13 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
   graph: ModuleGraph);
 
 proc writelnToChannel(line: string) =
-  results.send(Suggest(section: ideMsg, doc: line))
+  results.send(SuggestDef(section: ideMsg, doc: line))
 
 proc sugResultHook(s: Suggest) =
   results.send(s)
 
 proc errorHook(conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
-  results.send(Suggest(section: ideChk, filePath: toFullPath(conf, info),
+  results.send(SuggestDef(section: ideChk, filePath: toFullPath(conf, info),
     line: toLinenumber(info), column: toColumn(info), doc: msg,
     forth: $sev))
 
@@ -129,7 +129,10 @@ proc parseQuoted(cmd: string; outp: var string; start: int): int =
 
 proc sexp(s: IdeCmd|TSymKind|PrefixMatch): SexpNode = sexp($s)
 
-proc sexp(s: Suggest): SexpNode =
+method sexp(s: Suggest): SexpNode {.base, gcsafe.} =
+  raiseAssert "internal error: unexpected conversion"
+
+method sexp(s: SuggestDef): SexpNode =
   # If you change the order here, make sure to change it over in
   # nim-mode.el too.
   let qp = if s.qualifiedPath.len == 0: @[] else: s.qualifiedPath
@@ -300,35 +303,47 @@ template checkSanity(client, sizeHex, size, messageBuffer: typed) =
 proc toStdout() {.gcsafe.} =
   while true:
     let res = results.recv()
-    case res.section
-    of ideNone: break
-    of ideMsg: echo res.doc
-    of ideKnown: echo res.quality == 1
-    of ideProject: echo res.filePath
-    else: echo res
+    if res of SuggestDef:
+      let resDef = SuggestDef(res)
+      case resDef.section
+      of ideNone: break
+      of ideMsg: echo resDef.doc
+      of ideKnown: echo resDef.quality == 1
+      of ideProject: echo resDef.filePath
+      else: echo resDef
+    else:
+      echo res
 
 proc toSocket(stdoutSocket: Socket) {.gcsafe.} =
   while true:
     let res = results.recv()
-    case res.section
-    of ideNone: break
-    of ideMsg: stdoutSocket.send(res.doc & "\c\L")
-    of ideKnown: stdoutSocket.send($(res.quality == 1) & "\c\L")
-    of ideProject: stdoutSocket.send(res.filePath & "\c\L")
-    else: stdoutSocket.send($res & "\c\L")
+    if res of SuggestDef:
+      let resDef = SuggestDef(res)
+      case resDef.section
+      of ideNone: break
+      of ideMsg: stdoutSocket.send(resDef.doc & "\c\L")
+      of ideKnown: stdoutSocket.send($(resDef.quality == 1) & "\c\L")
+      of ideProject: stdoutSocket.send(resDef.filePath & "\c\L")
+      else: stdoutSocket.send($resDef & "\c\L")
+    else:
+      stdoutSocket.send($res & "\c\L")
 
 proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
   var list = newSList()
   while true:
     let res = results.recv()
-    case res.section
-    of ideNone: break
-    of ideMsg:
-      list.add sexp(res.doc)
-    of ideKnown:
-      list.add sexp(res.quality == 1)
-    of ideProject:
-      list.add sexp(res.filePath)
+    if res of SuggestDef:
+      let resDef = SuggestDef(res)
+      case resDef.section
+      of ideNone: break
+      of ideMsg:
+        list.add sexp(resDef.doc)
+      of ideKnown:
+        list.add sexp(resDef.quality == 1)
+      of ideProject:
+        list.add sexp(resDef.filePath)
+      else:
+        list.add sexp(resDef)
     else:
       list.add sexp(res)
   returnEpc(client, uid, list)
@@ -465,7 +480,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
 
   template sentinel() =
     # send sentinel for the input reading thread:
-    results.send(Suggest(section: ideNone))
+    results.send(SuggestDef(section: ideNone))
 
   template toggle(sw) =
     if sw in conf.globalOptions:
@@ -526,9 +541,9 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   let tag = substr(cmd, i)
 
   if conf.ideCmd == ideKnown:
-    results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, AbsoluteFile orig))))
+    results.send(SuggestDef(section: ideKnown, quality: ord(fileInfoKnown(conf, AbsoluteFile orig))))
   elif conf.ideCmd == ideProject:
-    results.send(Suggest(section: ideProject, filePath: string conf.projectFull))
+    results.send(SuggestDef(section: ideProject, filePath: string conf.projectFull))
   else:
     if conf.ideCmd == ideChk:
       for cm in cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
@@ -604,7 +619,7 @@ proc mainCommand(graph: ModuleGraph) =
 
   if graph.config.suggestVersion == 3:
     graph.config.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
-      let suggest = Suggest(section: ideChk, filePath: toFullPath(conf, info),
+      let suggest = SuggestDef(section: ideChk, filePath: toFullPath(conf, info),
         line: toLinenumber(info), column: toColumn(info), doc: msg, forth: $sev)
       graph.suggestErrors.mgetOrPut(info.fileIndex, @[]).add suggest
 
@@ -826,9 +841,23 @@ proc suggestResult(graph: ModuleGraph, sym: PSym, info: TLineInfo,
                   ideDef
                 else:
                   ideUse
-  let suggest = symToSuggest(graph, sym, isLocal=false, section,
+  let suggest = symToSuggestDef(graph, sym, isLocal=false, section,
                              info, 100, PrefixMatch.None, false, 0,
                              endLine = endLine, endCol = endCol)
+  suggestResult(graph.config, suggest)
+
+proc suggestInlayHintResult(graph: ModuleGraph, sym: PSym, info: TLineInfo,
+                   defaultSection = ideNone, endLine: uint16 = 0, endCol = 0) =
+  let section = if defaultSection != ideNone:
+                  defaultSection
+                elif sym.info.exactEquals(info):
+                  ideDef
+                else:
+                  ideUse
+  let suggestDef = symToSuggestDef(graph, sym, isLocal=false, section,
+                                info, 100, PrefixMatch.None, false, 0,
+                                endLine = endLine, endCol = endCol)
+  let suggest = suggestDefToSuggestInlayHint(suggestDef)
   suggestResult(graph.config, suggest)
 
 const
@@ -913,7 +942,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
   conf.writelnHook = proc (s: string) = discard
   conf.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo;
                                    msg: string; sev: Severity) =
-    let suggest = Suggest(section: ideChk, filePath: toFullPath(conf, info),
+    let suggest = SuggestDef(section: ideChk, filePath: toFullPath(conf, info),
       line: toLinenumber(info), column: toColumn(info), doc: msg, forth: $sev)
     graph.suggestErrors.mgetOrPut(info.fileIndex, @[]).add suggest
 
@@ -1076,7 +1105,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     graph.markDirty fileIndex
     graph.markClientsDirty fileIndex
     graph.recompilePartially()
-    var suggest = Suggest()
+    var suggest = SuggestDef()
     suggest.section = ideExpand
     suggest.version = 3
     suggest.line = line
@@ -1106,12 +1135,9 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     let s = graph.findSymDataInRange(file, line, col, endLine, endCol)
     for q in s:
       if q.sym.kind in [skLet, skVar, skForVar] and q.isDecl and not q.sym.hasUserSpecifiedType:
-        # TODO: suggestInlayHint
         var li = q.info
         li.col += int16(len(q.sym.name.s))
-        graph.suggestResult(q.sym, li)
-        #if not s.isNil:
-        #  graph.suggestResult(s.sym, s.sym.info)
+        graph.suggestInlayHintResult(q.sym, li)
   else:
     myLog fmt "Discarding {cmd}"
 
