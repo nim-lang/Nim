@@ -12,7 +12,7 @@
 
 # TODO: Clean up the exports a bit and everything else in general.
 
-import os, options
+import std/[os, options]
 import std/private/since
 import std/strbasics
 
@@ -27,12 +27,12 @@ const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr
     defined(nuttx)
 
 when useWinVersion:
-  import winlean
+  import std/winlean
   export WSAEWOULDBLOCK, WSAECONNRESET, WSAECONNABORTED, WSAENETRESET,
          WSANOTINITIALISED, WSAENOTSOCK, WSAEINPROGRESS, WSAEINTR,
          WSAEDISCON, ERROR_NETNAME_DELETED
 else:
-  import posix
+  import std/posix
   export fcntl, F_GETFL, O_NONBLOCK, F_SETFL, EAGAIN, EWOULDBLOCK, MSG_NOSIGNAL,
     EINTR, EINPROGRESS, ECONNRESET, EPIPE, ENETRESET, EBADF
   export Sockaddr_storage, Sockaddr_un, Sockaddr_un_path_length

@@ -21,8 +21,10 @@
 ## turned on by passing ``options:`` [RstParseOptions] to [proc rstParse].
 
 import
-  os, strutils, rstast, dochelpers, std/enumutils, algorithm, lists, sequtils,
-  std/private/miscdollars, tables, strscans, rstidx
+  std/[os, strutils, enumutils, algorithm, lists, sequtils,
+  tables, strscans]
+import dochelpers, rstidx, rstast
+import std/private/miscdollars
 from highlite import SourceLanguage, getSourceLanguage
 
 when defined(nimPreviewSlimSystem):

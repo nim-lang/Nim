@@ -14,7 +14,7 @@
 ##
 ## **Since:** version 1.2.
 
-import macros, private / underscored_calls
+import std/[macros, private / underscored_calls]
 
 macro with*(arg: typed; calls: varargs[untyped]): untyped =
   ## This macro provides `chaining`:idx: of function calls.

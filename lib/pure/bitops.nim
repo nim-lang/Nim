@@ -25,7 +25,7 @@
 ## At this time only `fastLog2`, `firstSetBit`, `countLeadingZeroBits` and `countTrailingZeroBits`
 ## may return undefined and/or platform dependent values if given invalid input.
 
-import macros
+import std/macros
 import std/private/since
 from std/private/bitops_utils import forwardImpl, castToUnsigned
 

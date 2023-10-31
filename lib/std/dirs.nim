@@ -1,6 +1,6 @@
 ## This module implements directory handling.
 
-from paths import Path, ReadDirEffect, WriteDirEffect
+from std/paths import Path, ReadDirEffect, WriteDirEffect
 
 from std/private/osdirs import dirExists, createDir, existsOrCreateDir, removeDir,
                                moveDir, walkDir, setCurrentDir,

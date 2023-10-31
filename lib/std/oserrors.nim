@@ -15,7 +15,7 @@ type
 
 when not defined(nimscript):
   when defined(windows):
-    import winlean
+    import std/winlean
     when defined(nimPreviewSlimSystem):
       import std/widestrs
   else:

@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module is deprecated, `import os` instead.
-{.deprecated: "import os.nim instead".}
-import os
+## This module is deprecated, `import std/os` instead.
+{.deprecated: "import 'std/os' instead".}
+import std/os
 export PathComponent, walkDir, walkDirRec

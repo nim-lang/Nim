@@ -22,9 +22,9 @@ type
 when weirdTarget:
   discard
 elif defined(windows):
-  import winlean, times
+  import std/[winlean, times]
 elif defined(posix):
-  import posix
+  import std/posix
   proc c_rename(oldname, newname: cstring): cint {.
     importc: "rename", header: "<stdio.h>".}
 else:

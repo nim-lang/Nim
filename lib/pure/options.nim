@@ -74,7 +74,7 @@ when defined(nimHasEffectsOf):
 else:
   {.pragma: effectsOf.}
 
-import typetraits
+import std/typetraits
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
