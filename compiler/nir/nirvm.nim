@@ -138,6 +138,7 @@ type
     sizes: Table[TypeId, (int, int)] # (size, alignment)
     oldTypeLen: int
     procUsagesToPatch: Table[SymId, seq[CodePos]]
+    interactive*: bool
 
   Universe* = object ## all units: For interpretation we need that
     units: seq[Bytecode]
@@ -443,7 +444,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       bc.add info, LoadProcM, uint32 bc.procs[s]
     elif bc.globals.hasKey(s):
       maybeDeref(WantAddr notin flags):
-        bc.add info, LoadGlobalM, uint32 s
+        bc.add info, LoadGlobalM, bc.globals[s]
     else:
       let here = CodePos(bc.code.len)
       bc.add info, LoadProcM, ForwardedProc + uint32(s)
@@ -956,11 +957,11 @@ proc evalSelect(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
 proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
   case c.code[pc].kind
   of LoadLocalM:
-    let dest = s.locals +! c.code[pc].operand
-    copyMem dest, result, size
+    let src = s.locals +! c.code[pc].operand
+    copyMem result, src, size
   of FieldAtM, DerefFieldAtM, ArrayAtM, DerefArrayAtM, LoadM, LoadGlobalM:
-    let dest = evalAddr(c, pc, s)
-    copyMem dest, result, size
+    let src = evalAddr(c, pc, s)
+    copyMem result, src, size
   of LoadProcM:
     let procAddr = c.code[pc].operand
     cast[ptr pointer](result)[] = cast[pointer](procAddr)
@@ -1077,37 +1078,37 @@ proc evalBuiltin(c: Bytecode; pc: CodePos; s: StackFrame; prc: CodePos; didEval:
 
 proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
   var pc = pc
-  var s = StackFrame(u: u)
+  var frame = StackFrame(u: u)
   while pc.int < c.code.len:
     case c.code[pc].kind
     of GotoM:
       pc = CodePos(c.code[pc].operand)
     of AsgnM:
       let (sz, a, b) = sons3(c.code, pc)
-      let dest = evalAddr(c, a, s)
-      eval(c, b, s, dest, c.code[sz].operand.int)
+      let dest = evalAddr(c, a, frame)
+      eval(c, b, frame, dest, c.code[sz].operand.int)
       next c, pc
     of StoreM:
       let (sz, a, b) = sons3(c.code, pc)
-      let destPtr = evalAddr(c, a, s)
+      let destPtr = evalAddr(c, a, frame)
       let dest = cast[ptr pointer](destPtr)[]
-      eval(c, b, s, dest, c.code[sz].operand.int)
+      eval(c, b, frame, dest, c.code[sz].operand.int)
       next c, pc
     of CallM:
       # No support for return values, these are mapped to `var T` parameters!
-      var prc = evalProc(c, pc.firstSon, s)
+      var prc = evalProc(c, pc.firstSon, frame)
       assert c.code[prc.firstSon].kind == AllocLocals
       let frameSize = int c.code[prc.firstSon].operand
       # skip stupid stuff:
       var didEval = false
-      prc = evalBuiltin(c, pc, s, prc.firstSon, didEval)
+      prc = evalBuiltin(c, pc, frame, prc.firstSon, didEval)
       if didEval:
         next c, pc
       else:
         # setup storage for the proc already:
         let callInstr = pc
         next c, pc
-        let s2 = newStackFrame(frameSize, s, pc)
+        let s2 = newStackFrame(frameSize, frame, pc)
         for a in sonsFrom1(c, callInstr):
           assert c[prc].kind == SummonParamM
           let paramAddr = c[prc].operand
@@ -1116,13 +1117,13 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
           let paramSize = c[prc].operand.int
           next c, prc
           eval(c, a, s2, s2.locals +! paramAddr, paramSize)
-        s = s2
+        frame = s2
         pc = prc
     of RetM:
-      pc = s.returnAddr
-      s = popStackFrame(s)
+      pc = frame.returnAddr
+      frame = popStackFrame(frame)
     of SelectM:
-      let pc2 = evalSelect(c, pc, s)
+      let pc2 = evalSelect(c, pc, frame)
       if pc2.int >= 0:
         pc = pc2
       else:
