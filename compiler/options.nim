@@ -304,6 +304,7 @@ type
     paddingLeft*: bool
     paddingRight*: bool
     allowInsert*: bool
+    tooltip*: string
 
   ProfileInfo* = object
     time*: float

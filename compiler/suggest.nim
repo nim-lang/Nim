@@ -246,6 +246,7 @@ proc suggestDefToSuggestInlayHint*(sug: SuggestDef): SuggestInlayHint =
   result.paddingLeft = false
   result.paddingRight = false
   result.allowInsert = true
+  result.tooltip = ""
 
 method `$`*(suggest: SuggestInlayHint): string =
   result = $suggest.kind
@@ -261,6 +262,8 @@ method `$`*(suggest: SuggestInlayHint): string =
   result.add($suggest.paddingRight)
   result.add(sep)
   result.add($suggest.allowInsert)
+  result.add(sep)
+  result.add(suggest.tooltip)
 
 proc suggestResult*(conf: ConfigRef; s: Suggest) =
   if not isNil(conf.suggestionResultHook):
