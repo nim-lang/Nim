@@ -48,7 +48,9 @@ type
 
     AddrOfM,
     ArrayAtM, # (elemSize, addr(a), i)
+    DerefArrayAtM,
     FieldAtM, # addr(obj.field)
+    DerefFieldAtM,
 
     LoadM, # a[]
     AsgnM,  # a = b
@@ -60,7 +62,6 @@ type
     CheckedIndexM,
 
     CallM,
-    CheckedCallM, # call that can raise
     CheckedAddM, # with overflow checking etc.
     CheckedSubM,
     CheckedMulM,
@@ -107,6 +108,14 @@ template toIns(k: OpcodeM; operand: uint32): Instr =
 template toIns(k: OpcodeM; operand: LitId): Instr =
   Instr(uint32(k) or (operand.uint32 shl OpcodeBits))
 
+type
+  NimStrPayloadVM = object
+    cap: int
+    data: UncheckedArray[char]
+  NimStringVM = object
+    len: int
+    p: ptr NimStrPayloadVM
+
 const
   GlobalsSize = 1024*24
 
@@ -119,7 +128,8 @@ type
     debug: seq[PackedLineInfo]
     m: ref NirModule
     procs: Table[SymId, CodePos]
-    globals: Table[SymId, uint32]
+    globals: Table[SymId, (uint32, int)]
+    strings: Table[LitId, NimStringVM]
     globalData: pointer
     globalsAddr: uint32
     typeImpls: Table[string, TypeId]
@@ -127,6 +137,7 @@ type
     sizes: Table[TypeId, (int, int)] # (size, alignment)
     oldTypeLen: int
     procUsagesToPatch: Table[SymId, seq[CodePos]]
+    interactive*: bool
 
   Universe* = object ## all units: For interpretation we need that
     units: seq[Bytecode]
@@ -325,7 +336,7 @@ proc toString*(t: Bytecode; pos: CodePos;
     r.add $t.m.lit.numbers[LitId t[pos].operand]
   of StrValM:
     escapeToNimLit(t.m.lit.strings[LitId t[pos].operand], r)
-  of LoadLocalM, LoadGlobalM, LoadProcM, AllocLocals:
+  of LoadLocalM, LoadGlobalM, LoadProcM, AllocLocals, SummonParamM:
     r.add $t[pos].kind
     r.add ' '
     r.add $t[pos].operand
@@ -361,7 +372,7 @@ type
     u: ref Universe
     known: Table[LabelId, CodePos]
     toPatch: Table[LabelId, seq[CodePos]]
-    locals: Table[SymId, uint32]
+    locals: Table[SymId, (uint32, int)] # address, size
     thisModule: uint32
     localsAddr: uint32
     markedWithLabel: IntSet
@@ -382,14 +393,22 @@ type
   AddrMode = enum
     InDotExpr, WantAddr
 
-template maybeDeref(doDeref: bool; body: untyped) =
+template maybeDeref(doDeref: bool; size: int; body: untyped) =
   var pos = PatchPos(-1)
   if doDeref:
     pos = prepare(bc, info, LoadM)
-    bc.add info, TypedM, 0'u32
+    bc.add info, ImmediateValM, uint32 size
   body
   if doDeref:
     patch(bc, pos)
+
+proc toReadonlyString(s: string): NimStringVM =
+  if s.len == 0:
+    result = NimStringVM(len: 0, p: nil)
+  else:
+    result = NimStringVM(len: s.len, p: cast[ptr NimStrPayloadVM](alloc(s.len+1+sizeof(int))))
+    copyMem(addr result.p.data[0], addr s[0], s.len+1)
+    result.p.cap = s.len or (1 shl (8 * 8 - 2)) # see also NIM_STRLIT_FLAG
 
 const
   ForwardedProc = 10_000_000'u32
@@ -409,19 +428,24 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
   of IntVal:
     bc.add info, IntValM, t[n].rawOperand
   of StrVal:
+    let litId = LitId t[n].rawOperand
+    if not bc.strings.hasKey(litId):
+      bc.strings[litId] = toReadonlyString(bc.m.lit.strings[litId])
     bc.add info, StrValM, t[n].rawOperand
   of SymDef:
     discard "happens for proc decls. Don't copy the node as we don't need it"
   of SymUse:
     let s = t[n].symId
     if c.locals.hasKey(s):
-      maybeDeref(WantAddr notin flags):
-        bc.add info, LoadLocalM, c.locals[s]
+      let (address, size) = c.locals[s]
+      maybeDeref(WantAddr notin flags, size):
+        bc.add info, LoadLocalM, address
     elif bc.procs.hasKey(s):
       bc.add info, LoadProcM, uint32 bc.procs[s]
     elif bc.globals.hasKey(s):
-      maybeDeref(WantAddr notin flags):
-        bc.add info, LoadGlobalM, uint32 s
+      let (address, size) = bc.globals[s]
+      maybeDeref(WantAddr notin flags, size):
+        bc.add info, LoadGlobalM, address
     else:
       let here = CodePos(bc.code.len)
       bc.add info, LoadProcM, ForwardedProc + uint32(s)
@@ -452,7 +476,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     bc.add info, NilValM, t[n].rawOperand
   of LoopLabel, Label:
     let lab = t[n].label
-    let here = CodePos(bc.code.len-1)
+    let here = CodePos(bc.code.len)
     c.known[lab] = here
     var p: seq[CodePos] = @[]
     if c.toPatch.take(lab, p):
@@ -506,7 +530,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     let (size, alignment) = computeSize(bc, tid)
 
     let global = align(bc.globalsAddr, uint32 alignment)
-    bc.globals[s] = global
+    bc.globals[s] = (global, size)
     bc.globalsAddr += uint32 size
     assert bc.globalsAddr < GlobalsSize
 
@@ -518,7 +542,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     let (size, alignment) = computeSize(bc, tid)
 
     let local = align(c.localsAddr, uint32 alignment)
-    c.locals[s] = local
+    c.locals[s] = (local, size)
     c.localsAddr += uint32 size
     # allocation is combined into the frame allocation so there is no
     # instruction to emit
@@ -530,7 +554,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     let (size, alignment) = computeSize(bc, tid)
 
     let local = align(c.localsAddr, uint32 alignment)
-    c.locals[s] = local
+    c.locals[s] = (local, size)
     c.localsAddr += uint32 size
     bc.add info, SummonParamM, local
     bc.add info, ImmediateValM, uint32 size
@@ -545,39 +569,30 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     let (arrayType, a, i) = sons3(t, n)
     let tid = t[arrayType].typeId
     let size = uint32 computeElemSize(bc, tid)
-    if t[a].kind == Load:
-      let (_, arg) = sons2(t, a)
-      build bc, info, LoadM:
-        bc.add info, ImmediateValM, size
-        build bc, info, ArrayAtM:
-          bc.add info, ImmediateValM, size
-          preprocess(c, bc, t, arg, {WantAddr})
-          preprocess(c, bc, t, i, {WantAddr})
-    else:
-      build bc, info, ArrayAtM:
-        bc.add info, ImmediateValM, size
-        preprocess(c, bc, t, a, {WantAddr})
-        preprocess(c, bc, t, i, {WantAddr})
+    build bc, info, ArrayAtM:
+      bc.add info, ImmediateValM, size
+      preprocess(c, bc, t, a, {WantAddr})
+      preprocess(c, bc, t, i, {WantAddr})
+  of DerefArrayAt:
+    let (arrayType, a, i) = sons3(t, n)
+    let tid = t[arrayType].typeId
+    let size = uint32 computeElemSize(bc, tid)
+    build bc, info, DerefArrayAtM:
+      bc.add info, ImmediateValM, size
+      preprocess(c, bc, t, a, {WantAddr})
+      preprocess(c, bc, t, i, {WantAddr})
   of FieldAt:
-    # a[] conceptually loads a block of size of T. But when applied to an object selector
-    # only a subset of the data is really requested so `(a[] : T).field`
-    # becomes `(a+offset(field))[] : T_Field`
-    # And now if this is paired with `addr` the deref disappears, as usual: `addr x.field[]`
-    # is `(x+offset(field))`.
     let (typ, a, b) = sons3(t, n)
-    if t[a].kind == Load:
-      let (_, arg) = sons2(t, a)
-      build bc, info, LoadM:
-        bc.add info, ImmediateValM, uint32 computeSize(bc, t[typ].typeId)[0]
-        let offset = bc.offsets[t[typ].typeId][t[b].immediateVal][0]
-        build bc, info, FieldAtM:
-          preprocess(c, bc, t, arg, flags+{WantAddr})
-          bc.add info, ImmediateValM, uint32(offset)
-    else:
-      let offset = bc.offsets[t[typ].typeId][t[b].immediateVal][0]
-      build bc, info, FieldAtM:
-        preprocess(c, bc, t, a, flags+{WantAddr})
-        bc.add info, ImmediateValM, uint32(offset)
+    let offset = bc.offsets[t[typ].typeId][t[b].immediateVal][0]
+    build bc, info, FieldAtM:
+      preprocess(c, bc, t, a, flags+{WantAddr})
+      bc.add info, ImmediateValM, uint32(offset)
+  of DerefFieldAt:
+    let (typ, a, b) = sons3(t, n)
+    let offset = bc.offsets[t[typ].typeId][t[b].immediateVal][0]
+    build bc, info, DerefFieldAtM:
+      preprocess(c, bc, t, a, flags+{WantAddr})
+      bc.add info, ImmediateValM, uint32(offset)
   of Load:
     let (elemType, a) = sons2(t, n)
     let tid = t[elemType].typeId
@@ -593,14 +608,16 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     if t[src].kind in {Call, IndirectCall}:
       # No support for return values, these are mapped to `var T` parameters!
       build bc, info, CallM:
-        preprocess(c, bc, t, src.firstSon, {WantAddr})
+        preprocess(c, bc, t, src.skipTyped, {WantAddr})
         preprocess(c, bc, t, dest, {WantAddr})
-        for ch in sonsFrom1(t, src): preprocess(c, bc, t, ch, {WantAddr})
+        for ch in sonsFromN(t, src, 2): preprocess(c, bc, t, ch, {WantAddr})
     elif t[src].kind in {CheckedCall, CheckedIndirectCall}:
-      build bc, info, CheckedCallM:
-        preprocess(c, bc, t, src.firstSon, {WantAddr})
+      let (_, gotoInstr, fn) = sons3(t, src)
+      build bc, info, CallM:
+        preprocess(c, bc, t, fn, {WantAddr})
         preprocess(c, bc, t, dest, {WantAddr})
-        for ch in sonsFrom1(t, src): preprocess(c, bc, t, ch, {WantAddr})
+        for ch in sonsFromN(t, src, 3): preprocess(c, bc, t, ch, {WantAddr})
+      preprocess c, bc, t, gotoInstr, {}
     elif t[dest].kind == Load:
       let (typ, a) = sons2(t, dest)
       let s = computeSize(bc, tid)[0]
@@ -628,8 +645,11 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       for ch in sonsFrom1(t, n): preprocess(c, bc, t, ch, {WantAddr})
   of CheckedCall, CheckedIndirectCall:
     # avoid the Typed thing at position 0:
-    build bc, info, CheckedCallM:
-      for ch in sonsFrom1(t, n): preprocess(c, bc, t, ch, {WantAddr})
+    let (_, gotoInstr, fn) = sons3(t, n)
+    build bc, info, CallM:
+      preprocess(c, bc, t, fn, {WantAddr})
+      for ch in sonsFromN(t, n, 3): preprocess(c, bc, t, ch, {WantAddr})
+    preprocess c, bc, t, gotoInstr, {WantAddr}
   of CheckedAdd:
     recurse CheckedAddM
   of CheckedSub:
@@ -696,7 +716,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       for ch in sons(t, n): preprocess(c2, bc, t, ch, {})
       bc.code[toPatch] = toIns(AllocLocals, c2.localsAddr)
     when false:
-      if here.int == 40192:
+      if here.int == 39850:
         debug bc, t, n
         debug bc, here
 
@@ -776,6 +796,10 @@ proc evalAddr(c: Bytecode; pc: CodePos; s: StackFrame): pointer =
     let (x, offset) = sons2(c.code, pc)
     result = evalAddr(c, x, s)
     result = result +! c.code[offset].operand
+  of DerefFieldAtM:
+    let (x, offset) = sons2(c.code, pc)
+    let p = evalAddr(c, x, s)
+    result = cast[ptr pointer](p)[] +! c.code[offset].operand
   of ArrayAtM:
     let (e, a, i) = sons3(c.code, pc)
     let elemSize = c.code[e].operand
@@ -783,10 +807,13 @@ proc evalAddr(c: Bytecode; pc: CodePos; s: StackFrame): pointer =
     var idx: int = 0
     eval(c, i, s, addr idx, sizeof(int))
     result = result +! (uint32(idx) * elemSize)
-  of LoadM:
-    let (_, arg) = sons2(c.code, pc)
-    let p = evalAddr(c, arg, s)
-    result = cast[ptr pointer](p)[]
+  of DerefArrayAtM:
+    let (e, a, i) = sons3(c.code, pc)
+    let elemSize = c.code[e].operand
+    var p = evalAddr(c, a, s)
+    var idx: int = 0
+    eval(c, i, s, addr idx, sizeof(int))
+    result = cast[ptr pointer](p)[] +! (uint32(idx) * elemSize)
   of LoadGlobalM:
     result = c.globalData +! c.code[pc].operand
   else:
@@ -897,23 +924,29 @@ proc evalSelect(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
     for pair in sonsFrom2(c, pc):
       assert c.code[pair].kind == SelectPairM
       let (values, action) = sons2(c.code, pair)
-      assert c.code[values].kind == SelectListM
-      for v in sons(c, values):
-        case c.code[v].kind
-        of SelectValueM:
-          var a = default(typ)
-          eval c, v.firstSon, s, addr a, sizeof(typ)
-          if selector == a:
-            return CodePos c.code[action].operand
-        of SelectRangeM:
-          let (va, vb) = sons2(c.code, v)
-          var a = default(typ)
-          eval c, va, s, addr a, sizeof(typ)
-          var b = default(typ)
-          eval c, vb, s, addr a, sizeof(typ)
-          if a <= selector and selector <= b:
-            return CodePos c.code[action].operand
-        else: raiseAssert "unreachable"
+      if c.code[values].kind == SelectValueM:
+        var a = default(typ)
+        eval c, values.firstSon, s, addr a, sizeof(typ)
+        if selector == a:
+          return CodePos c.code[action].operand
+      else:
+        assert c.code[values].kind == SelectListM, $c.code[values].kind
+        for v in sons(c, values):
+          case c.code[v].kind
+          of SelectValueM:
+            var a = default(typ)
+            eval c, v.firstSon, s, addr a, sizeof(typ)
+            if selector == a:
+              return CodePos c.code[action].operand
+          of SelectRangeM:
+            let (va, vb) = sons2(c.code, v)
+            var a = default(typ)
+            eval c, va, s, addr a, sizeof(typ)
+            var b = default(typ)
+            eval c, vb, s, addr a, sizeof(typ)
+            if a <= selector and selector <= b:
+              return CodePos c.code[action].operand
+          else: raiseAssert "unreachable"
     result = CodePos(-1)
 
   let (t, sel) = sons2(c.code, pc)
@@ -932,11 +965,18 @@ proc evalSelect(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
 proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
   case c.code[pc].kind
   of LoadLocalM:
-    let dest = s.locals +! c.code[pc].operand
-    copyMem dest, result, size
-  of FieldAtM, ArrayAtM, LoadM:
-    let dest = evalAddr(c, pc, s)
-    copyMem dest, result, size
+    let src = s.locals +! c.code[pc].operand
+    copyMem result, src, size
+  of FieldAtM, DerefFieldAtM, ArrayAtM, DerefArrayAtM, LoadGlobalM:
+    let src = evalAddr(c, pc, s)
+    copyMem result, src, size
+  of LoadProcM:
+    let procAddr = c.code[pc].operand
+    cast[ptr pointer](result)[] = cast[pointer](procAddr)
+  of LoadM:
+    let (_, arg) = sons2(c.code, pc)
+    let src = evalAddr(c, arg, s)
+    copyMem result, src, size
   of CheckedAddM: checkedBinop `+`
   of CheckedSubM: checkedBinop `-`
   of CheckedMulM: checkedBinop `*`
@@ -958,8 +998,7 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
 
   of StrValM:
     # binary compatible and no deep copy required:
-    copyMem(cast[ptr string](result), addr(c.m.lit.strings[c[pc].litId]), sizeof(string))
-    # XXX not correct!
+    copyMem(cast[ptr string](result), addr(c.strings[c[pc].litId]), sizeof(string))
   of ObjConstrM:
     for offset, size, val in triples(c, pc):
       eval c, val, s, result+!offset, size
@@ -1013,31 +1052,41 @@ proc evalProc(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
   assert procSym < ForwardedProc
   result = CodePos(procSym)
 
-proc echoImpl(c: Bytecode; pc: CodePos; s: StackFrame) =
-  type StringArray = object
-    len: int
-    data: ptr UncheckedArray[string]
-  var sa = default(StringArray)
+proc echoImpl(c: Bytecode; pc: CodePos; frame: StackFrame) =
+  var s = default(NimStringVM)
   for a in sonsFrom1(c, pc):
-    eval(c, a, s, addr(sa), sizeof(sa))
-  for i in 0..<sa.len:
-    stdout.write sa.data[i]
+    assert c[a].kind == ArrayConstrM
+    let elemSize = c.code[a.firstSon].operand.int
+    for ch in sonsFrom1(c, a):
+      eval c, ch, frame, addr s, elemSize
+      if s.len > 0:
+        discard stdout.writeBuffer(addr(s.p.data[0]), s.len)
   stdout.write "\n"
   stdout.flushFile()
 
-proc evalBuiltin(c: Bytecode; pc: CodePos; s: StackFrame; prc: CodePos; didEval: var bool): CodePos =
+type
+  EvalBuiltinState = enum
+    DidNothing, DidEval, DidError
+
+proc evalBuiltin(c: Bytecode; pc: CodePos; s: StackFrame; prc: CodePos; state: var EvalBuiltinState): CodePos =
   var prc = prc
   while true:
     case c[prc].kind
     of PragmaPairM:
       let (x, y) = sons2(c.code, prc)
-      if cast[PragmaKey](c[x]) == CoreName:
+      let key = cast[PragmaKey](c[x].operand)
+      case key
+      of CoreName:
         let lit = c[y].litId
         case c.m.lit.strings[lit]
         of "echoBinSafe": echoImpl(c, pc, s)
-        else: discard
-        echo "running compilerproc: ", c.m.lit.strings[lit]
-        didEval = true
+        else:
+          raiseAssert "cannot eval: " & c.m.lit.strings[lit]
+        state = DidEval
+      of HeaderImport, DllImport:
+        let lit = c[y].litId
+        raiseAssert "cannot eval: " & c.m.lit.strings[lit]
+      else: discard
     of PragmaIdM, AllocLocals: discard
     else: break
     next c, prc
@@ -1045,52 +1094,63 @@ proc evalBuiltin(c: Bytecode; pc: CodePos; s: StackFrame; prc: CodePos; didEval:
 
 proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
   var pc = pc
-  var s = StackFrame(u: u)
+  var frame = StackFrame(u: u)
   while pc.int < c.code.len:
+    when false: # c.interactive:
+      echo "running: ", pc.int
+      debug c, pc
+
     case c.code[pc].kind
     of GotoM:
       pc = CodePos(c.code[pc].operand)
     of AsgnM:
       let (sz, a, b) = sons3(c.code, pc)
-      let dest = evalAddr(c, a, s)
-      eval(c, b, s, dest, c.code[sz].operand.int)
+      let dest = evalAddr(c, a, frame)
+      eval(c, b, frame, dest, c.code[sz].operand.int)
       next c, pc
     of StoreM:
       let (sz, a, b) = sons3(c.code, pc)
-      let destPtr = evalAddr(c, a, s)
+      let destPtr = evalAddr(c, a, frame)
       let dest = cast[ptr pointer](destPtr)[]
-      eval(c, b, s, dest, c.code[sz].operand.int)
+      eval(c, b, frame, dest, c.code[sz].operand.int)
       next c, pc
     of CallM:
       # No support for return values, these are mapped to `var T` parameters!
-      var prc = evalProc(c, pc.firstSon, s)
+      var prc = evalProc(c, pc.firstSon, frame)
       assert c.code[prc.firstSon].kind == AllocLocals
       let frameSize = int c.code[prc.firstSon].operand
       # skip stupid stuff:
-      var didEval = false
-      prc = evalBuiltin(c, pc, s, prc.firstSon, didEval)
-      if didEval:
+      var evalState = DidNothing
+      prc = evalBuiltin(c, pc, frame, prc.firstSon, evalState)
+      if evalState != DidNothing:
         next c, pc
+        if pc.int < c.code.len and c.code[pc].kind == CheckedGotoM:
+          if evalState == DidEval:
+            next c, pc
+          else:
+            pc = CodePos(c.code[pc].operand)
       else:
         # setup storage for the proc already:
         let callInstr = pc
         next c, pc
-        let s2 = newStackFrame(frameSize, s, pc)
+        let s2 = newStackFrame(frameSize, frame, pc)
         for a in sonsFrom1(c, callInstr):
           assert c[prc].kind == SummonParamM
           let paramAddr = c[prc].operand
           next c, prc
           assert c[prc].kind == ImmediateValM
           let paramSize = c[prc].operand.int
-          eval(c, a, s2, s2.locals +! paramAddr, paramSize)
           next c, prc
-        s = s2
+          eval(c, a, s2, s2.locals +! paramAddr, paramSize)
+        frame = s2
         pc = prc
     of RetM:
-      pc = s.returnAddr
-      s = popStackFrame(s)
+      pc = frame.returnAddr
+      if c.code[pc].kind == CheckedGotoM:
+        pc = frame.jumpTo
+      frame = popStackFrame(frame)
     of SelectM:
-      let pc2 = evalSelect(c, pc, s)
+      let pc2 = evalSelect(c, pc, frame)
       if pc2.int >= 0:
         pc = pc2
       else:
@@ -1107,8 +1167,9 @@ proc execCode*(bc: var Bytecode; t: Tree; n: NodePos) =
   let start = CodePos(bc.code.len)
   var pc = n
   while pc.int < t.len:
-    #echo "RUnning: "
-    #debug bc, t, pc
+    #if bc.interactive:
+    #  echo "RUnning: "
+    #  debug bc, t, pc
     preprocess c, bc, t, pc, {}
     next t, pc
   exec bc, start, nil

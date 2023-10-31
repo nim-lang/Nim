@@ -63,8 +63,10 @@ type
     Kill, # `Kill x`: scope end for `x`
 
     AddrOf,
-    ArrayAt, # addr(a[i])
-    FieldAt, # addr(obj.field)
+    ArrayAt, # a[i]
+    DerefArrayAt, # a[i] where `a` is a PtrArray; `a[][i]`
+    FieldAt, # obj.field
+    DerefFieldAt, # obj[].field
 
     Load, # a[]
     Store, # a[] = b
@@ -162,7 +164,9 @@ const
     AddrOf,
     Load,
     ArrayAt,
+    DerefArrayAt,
     FieldAt,
+    DerefFieldAt,
     TestOf
   }
 
@@ -240,6 +244,8 @@ proc next*(tree: Tree; pos: var NodePos) {.inline.} = nextChild tree, int(pos)
 
 template firstSon*(n: NodePos): NodePos = NodePos(n.int+1)
 
+template skipTyped*(n: NodePos): NodePos = NodePos(n.int+2)
+
 iterator sons*(tree: Tree; n: NodePos): NodePos =
   var pos = n.int
   assert tree.nodes[pos].kind > LastAtomicValue
@@ -255,6 +261,17 @@ iterator sonsFrom1*(tree: Tree; n: NodePos): NodePos =
   let last = pos + tree.nodes[pos].rawSpan
   inc pos
   nextChild tree, pos
+  while pos < last:
+    yield NodePos pos
+    nextChild tree, pos
+
+iterator sonsFromN*(tree: Tree; n: NodePos; toSkip = 2): NodePos =
+  var pos = n.int
+  assert tree.nodes[pos].kind > LastAtomicValue
+  let last = pos + tree.nodes[pos].rawSpan
+  inc pos
+  for i in 1..toSkip:
+    nextChild tree, pos
   while pos < last:
     yield NodePos pos
     nextChild tree, pos
@@ -327,9 +344,6 @@ proc addNewLabel*(t: var Tree; labelGen: var int; info: PackedLineInfo; k: Opcod
   t.nodes.add Instr(x: toX(k, uint32(result)), info: info)
   inc labelGen
 
-proc boolVal*(t: var Tree; info: PackedLineInfo; b: bool) =
-  t.nodes.add Instr(x: toX(ImmediateVal, uint32(b)), info: info)
-
 proc gotoLabel*(t: var Tree; info: PackedLineInfo; k: Opcode; L: LabelId) =
   assert k in {Goto, GotoLoop, CheckedGoto}
   t.nodes.add Instr(x: toX(k, uint32(L)), info: info)
@@ -366,6 +380,10 @@ proc addPragmaId*(t: var Tree; info: PackedLineInfo; x: PragmaKey) =
 proc addIntVal*(t: var Tree; integers: var BiTable[int64]; info: PackedLineInfo; typ: TypeId; x: int64) =
   buildTyped t, info, NumberConv, typ:
     t.nodes.add Instr(x: toX(IntVal, uint32(integers.getOrIncl(x))), info: info)
+
+proc boolVal*(t: var Tree; integers: var BiTable[int64]; info: PackedLineInfo; b: bool) =
+  buildTyped t, info, NumberConv, Bool8Id:
+    t.nodes.add Instr(x: toX(IntVal, uint32(integers.getOrIncl(ord b))), info: info)
 
 proc addStrVal*(t: var Tree; strings: var BiTable[string]; info: PackedLineInfo; s: string) =
   t.nodes.add Instr(x: toX(StrVal, uint32(strings.getOrIncl(s))), info: info)

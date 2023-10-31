@@ -57,6 +57,7 @@ proc evalStmt(c: PCtx; n: PNode) =
   #res.add "\n--------------------------\n"
   #toString res, c.m.types.g
   if pc.int < c.m.nirm.code.len:
+    c.bytecode.interactive = c.m.graph.interactive
     execCode c.bytecode, c.m.nirm.code, pc
   #echo res
 
