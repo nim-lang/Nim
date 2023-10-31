@@ -128,7 +128,7 @@ type
     debug: seq[PackedLineInfo]
     m: ref NirModule
     procs: Table[SymId, CodePos]
-    globals: Table[SymId, uint32]
+    globals: Table[SymId, (uint32, int)]
     strings: Table[LitId, NimStringVM]
     globalData: pointer
     globalsAddr: uint32
@@ -372,7 +372,7 @@ type
     u: ref Universe
     known: Table[LabelId, CodePos]
     toPatch: Table[LabelId, seq[CodePos]]
-    locals: Table[SymId, uint32]
+    locals: Table[SymId, (uint32, int)] # address, size
     thisModule: uint32
     localsAddr: uint32
     markedWithLabel: IntSet
@@ -393,11 +393,11 @@ type
   AddrMode = enum
     InDotExpr, WantAddr
 
-template maybeDeref(doDeref: bool; body: untyped) =
+template maybeDeref(doDeref: bool; size: int; body: untyped) =
   var pos = PatchPos(-1)
   if doDeref:
     pos = prepare(bc, info, LoadM)
-    bc.add info, TypedM, 0'u32
+    bc.add info, ImmediateValM, uint32 size
   body
   if doDeref:
     patch(bc, pos)
@@ -437,13 +437,15 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
   of SymUse:
     let s = t[n].symId
     if c.locals.hasKey(s):
-      maybeDeref(WantAddr notin flags):
-        bc.add info, LoadLocalM, c.locals[s]
+      let (address, size) = c.locals[s]
+      maybeDeref(WantAddr notin flags, size):
+        bc.add info, LoadLocalM, address
     elif bc.procs.hasKey(s):
       bc.add info, LoadProcM, uint32 bc.procs[s]
     elif bc.globals.hasKey(s):
-      maybeDeref(WantAddr notin flags):
-        bc.add info, LoadGlobalM, bc.globals[s]
+      let (address, size) = bc.globals[s]
+      maybeDeref(WantAddr notin flags, size):
+        bc.add info, LoadGlobalM, address
     else:
       let here = CodePos(bc.code.len)
       bc.add info, LoadProcM, ForwardedProc + uint32(s)
@@ -528,7 +530,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     let (size, alignment) = computeSize(bc, tid)
 
     let global = align(bc.globalsAddr, uint32 alignment)
-    bc.globals[s] = global
+    bc.globals[s] = (global, size)
     bc.globalsAddr += uint32 size
     assert bc.globalsAddr < GlobalsSize
 
@@ -540,7 +542,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     let (size, alignment) = computeSize(bc, tid)
 
     let local = align(c.localsAddr, uint32 alignment)
-    c.locals[s] = local
+    c.locals[s] = (local, size)
     c.localsAddr += uint32 size
     # allocation is combined into the frame allocation so there is no
     # instruction to emit
@@ -552,7 +554,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     let (size, alignment) = computeSize(bc, tid)
 
     let local = align(c.localsAddr, uint32 alignment)
-    c.locals[s] = local
+    c.locals[s] = (local, size)
     c.localsAddr += uint32 size
     bc.add info, SummonParamM, local
     bc.add info, ImmediateValM, uint32 size
