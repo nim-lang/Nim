@@ -898,9 +898,7 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
         # See https://datatracker.ietf.org/doc/html/rfc7230, section 3.2 and 3.2.4
         # Multiline headers are deprecated in the spec, but it's better to parse them than crash
         if lastHeaderName == "":
-          # This should ideally throw an error, but old httpclient actually treated lines like this
-          # as a header with an empty name and didn't crash
-          #httpError("Invalid headers - received multiline header value without previous header")
+          # Some extra unparsable lines in the HTTP output - we ignore them
           discard
         else:
           result.headers.table[result.headers.toCaseInsensitive(lastHeaderName)][^1].add "\n" & line
@@ -911,11 +909,8 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
         if line.len == le: httpError("Invalid headers - no colon after header name")
         inc(linei, le) # Skip the parsed header name
         inc(linei) # Skip :
-        # Here linei is smaller or equal to line.len, so the slice below should work fine
-        # If we want to enforce the HTTP spec later, do this:
-        #if linei == line.len: httpError("Invalid headers - no header value after colon")
-        # Remember the header name for the possible multi-line header
-        lastHeaderName = name
+        # If we want to be HTTP spec compliant later, error on linei == line.len (for empty header value)
+        lastHeaderName = name # Remember the header name for the possible multi-line header
         result.headers.add(name, line[linei .. ^1].strip())
         if result.headers.len > headerLimit:
           httpError("too many headers")
