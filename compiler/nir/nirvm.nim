@@ -476,7 +476,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     bc.add info, NilValM, t[n].rawOperand
   of LoopLabel, Label:
     let lab = t[n].label
-    let here = CodePos(bc.code.len-1)
+    let here = CodePos(bc.code.len)
     c.known[lab] = here
     var p: seq[CodePos] = @[]
     if c.toPatch.take(lab, p):
@@ -1097,7 +1097,7 @@ proc exec(c: Bytecode; pc: CodePos; u: ref Universe) =
   var frame = StackFrame(u: u)
   while pc.int < c.code.len:
     when false: # c.interactive:
-      echo "running: "
+      echo "running: ", pc.int
       debug c, pc
 
     case c.code[pc].kind
