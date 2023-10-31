@@ -48,7 +48,9 @@ type
 
     AddrOfM,
     ArrayAtM, # (elemSize, addr(a), i)
+    DerefArrayAtM,
     FieldAtM, # addr(obj.field)
+    DerefFieldAtM,
 
     LoadM, # a[]
     AsgnM,  # a = b
@@ -545,39 +547,30 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     let (arrayType, a, i) = sons3(t, n)
     let tid = t[arrayType].typeId
     let size = uint32 computeElemSize(bc, tid)
-    if t[a].kind == Load:
-      let (_, arg) = sons2(t, a)
-      build bc, info, LoadM:
-        bc.add info, ImmediateValM, size
-        build bc, info, ArrayAtM:
-          bc.add info, ImmediateValM, size
-          preprocess(c, bc, t, arg, {WantAddr})
-          preprocess(c, bc, t, i, {WantAddr})
-    else:
-      build bc, info, ArrayAtM:
-        bc.add info, ImmediateValM, size
-        preprocess(c, bc, t, a, {WantAddr})
-        preprocess(c, bc, t, i, {WantAddr})
+    build bc, info, ArrayAtM:
+      bc.add info, ImmediateValM, size
+      preprocess(c, bc, t, a, {WantAddr})
+      preprocess(c, bc, t, i, {WantAddr})
+  of DerefArrayAt:
+    let (arrayType, a, i) = sons3(t, n)
+    let tid = t[arrayType].typeId
+    let size = uint32 computeElemSize(bc, tid)
+    build bc, info, DerefArrayAtM:
+      bc.add info, ImmediateValM, size
+      preprocess(c, bc, t, a, {WantAddr})
+      preprocess(c, bc, t, i, {WantAddr})
   of FieldAt:
-    # a[] conceptually loads a block of size of T. But when applied to an object selector
-    # only a subset of the data is really requested so `(a[] : T).field`
-    # becomes `(a+offset(field))[] : T_Field`
-    # And now if this is paired with `addr` the deref disappears, as usual: `addr x.field[]`
-    # is `(x+offset(field))`.
     let (typ, a, b) = sons3(t, n)
-    if t[a].kind == Load:
-      let (_, arg) = sons2(t, a)
-      build bc, info, LoadM:
-        bc.add info, ImmediateValM, uint32 computeSize(bc, t[typ].typeId)[0]
-        let offset = bc.offsets[t[typ].typeId][t[b].immediateVal][0]
-        build bc, info, FieldAtM:
-          preprocess(c, bc, t, arg, flags+{WantAddr})
-          bc.add info, ImmediateValM, uint32(offset)
-    else:
-      let offset = bc.offsets[t[typ].typeId][t[b].immediateVal][0]
-      build bc, info, FieldAtM:
-        preprocess(c, bc, t, a, flags+{WantAddr})
-        bc.add info, ImmediateValM, uint32(offset)
+    let offset = bc.offsets[t[typ].typeId][t[b].immediateVal][0]
+    build bc, info, FieldAtM:
+      preprocess(c, bc, t, a, flags+{WantAddr})
+      bc.add info, ImmediateValM, uint32(offset)
+  of DerefFieldAt:
+    let (typ, a, b) = sons3(t, n)
+    let offset = bc.offsets[t[typ].typeId][t[b].immediateVal][0]
+    build bc, info, DerefFieldAtM:
+      preprocess(c, bc, t, a, flags+{WantAddr})
+      bc.add info, ImmediateValM, uint32(offset)
   of Load:
     let (elemType, a) = sons2(t, n)
     let tid = t[elemType].typeId
@@ -776,6 +769,10 @@ proc evalAddr(c: Bytecode; pc: CodePos; s: StackFrame): pointer =
     let (x, offset) = sons2(c.code, pc)
     result = evalAddr(c, x, s)
     result = result +! c.code[offset].operand
+  of DerefFieldAtM:
+    let (x, offset) = sons2(c.code, pc)
+    let p = evalAddr(c, x, s)
+    result = cast[ptr pointer](p)[] +! c.code[offset].operand
   of ArrayAtM:
     let (e, a, i) = sons3(c.code, pc)
     let elemSize = c.code[e].operand
@@ -783,6 +780,13 @@ proc evalAddr(c: Bytecode; pc: CodePos; s: StackFrame): pointer =
     var idx: int = 0
     eval(c, i, s, addr idx, sizeof(int))
     result = result +! (uint32(idx) * elemSize)
+  of DerefArrayAtM:
+    let (e, a, i) = sons3(c.code, pc)
+    let elemSize = c.code[e].operand
+    var p = evalAddr(c, a, s)
+    var idx: int = 0
+    eval(c, i, s, addr idx, sizeof(int))
+    result = cast[ptr pointer](p)[] +! (uint32(idx) * elemSize)
   of LoadM:
     let (_, arg) = sons2(c.code, pc)
     let p = evalAddr(c, arg, s)
@@ -934,7 +938,7 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
   of LoadLocalM:
     let dest = s.locals +! c.code[pc].operand
     copyMem dest, result, size
-  of FieldAtM, ArrayAtM, LoadM, LoadGlobalM:
+  of FieldAtM, DerefFieldAtM, ArrayAtM, DerefArrayAtM, LoadM, LoadGlobalM:
     let dest = evalAddr(c, pc, s)
     copyMem dest, result, size
   of LoadProcM:
@@ -1042,12 +1046,19 @@ proc evalBuiltin(c: Bytecode; pc: CodePos; s: StackFrame; prc: CodePos; didEval:
     case c[prc].kind
     of PragmaPairM:
       let (x, y) = sons2(c.code, prc)
-      if cast[PragmaKey](c[x].operand) == CoreName:
+      let key = cast[PragmaKey](c[x].operand)
+      case key
+      of CoreName:
         let lit = c[y].litId
         case c.m.lit.strings[lit]
         of "echoBinSafe": echoImpl(c, pc, s)
-        else: discard
+        else:
+          raiseAssert "cannot eval: " & c.m.lit.strings[lit]
         didEval = true
+      of HeaderImport, DllImport:
+        let lit = c[y].litId
+        raiseAssert "cannot eval: " & c.m.lit.strings[lit]
+      else: discard
     of PragmaIdM, AllocLocals: discard
     else: break
     next c, prc

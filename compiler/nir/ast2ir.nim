@@ -1669,7 +1669,7 @@ proc addSliceFields(c: var ProcCon; target: var Tree; info: PackedLineInfo;
     buildTyped target, info, ObjConstr, typeToIr(c.m, n.typ):
       target.addImmediateVal info, 0
       buildTyped target, info, AddrOf, elemType:
-        buildTyped target, info, ArrayAt, pay[1]:
+        buildTyped target, info, DerefArrayAt, pay[1]:
           buildTyped target, info, FieldAt, typeToIr(c.m, arrType):
             copyTree target, x
             target.addImmediateVal info, 1 # (len, p)-pair
@@ -1716,7 +1716,7 @@ proc addSliceFields(c: var ProcCon; target: var Tree; info: PackedLineInfo;
     buildTyped target, info, ObjConstr, typeToIr(c.m, n.typ):
       target.addImmediateVal info, 0
       buildTyped target, info, AddrOf, elemType:
-        buildTyped target, info, ArrayAt, pay:
+        buildTyped target, info, DerefArrayAt, pay:
           buildTyped target, info, FieldAt, typeToIr(c.m, arrType):
             copyTree target, x
             target.addImmediateVal info, 0 # (p, len)-pair
@@ -1977,7 +1977,7 @@ proc addAddrOfFirstElem(c: var ProcCon; target: var Tree; info: PackedLineInfo; 
     let t = typeToIr(c.m, typ)
     target.addImmediateVal info, 0
     buildTyped target, info, AddrOf, elemType:
-      buildTyped target, info, ArrayAt, c.m.strPayloadId[1]:
+      buildTyped target, info, DerefArrayAt, c.m.strPayloadId[1]:
         buildTyped target, info, FieldAt, typeToIr(c.m, arrType):
           copyTree target, tmp
           target.addImmediateVal info, 1 # (len, p)-pair
@@ -1992,7 +1992,7 @@ proc addAddrOfFirstElem(c: var ProcCon; target: var Tree; info: PackedLineInfo; 
     let t = typeToIr(c.m, typ)
     target.addImmediateVal info, 0
     buildTyped target, info, AddrOf, elemType:
-      buildTyped target, info, ArrayAt, seqPayloadPtrType(c.m.types, c.m.nirm.types, typ)[1]:
+      buildTyped target, info, DerefArrayAt, seqPayloadPtrType(c.m.types, c.m.nirm.types, typ)[1]:
         buildTyped target, info, FieldAt, typeToIr(c.m, arrType):
           copyTree target, tmp
           target.addImmediateVal info, 1 # (len, p)-pair
@@ -2102,10 +2102,11 @@ proc genSeqConstr(c: var ProcCon; n: PNode; d: var Value) =
 
   for i in 0..<n.len:
     var dd = default(Value)
-    buildTyped dd, info, ArrayAt, seqPayloadPtrType(c.m.types, c.m.nirm.types, seqtype)[1]:
+    buildTyped dd, info, DerefArrayAt, seqPayloadPtrType(c.m.types, c.m.nirm.types, seqtype)[1]:
       buildTyped dd, info, FieldAt, typeToIr(c.m, seqtype):
         copyTree Tree(dd), d
-        dd.addIntVal c.lit.numbers, info, c.m.nativeIntId, i
+        dd.addImmediateVal info, 1 # (len, p)-pair
+      dd.addIntVal c.lit.numbers, info, c.m.nativeIntId, i
     gen(c, n[i], dd)
 
   freeTemp c, d
@@ -2263,7 +2264,7 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     let b = genIndexCheck(c, n[1], a, ForStr, arrayType)
     let t = typeToIr(c.m, n.typ)
     template body(target) =
-      buildTyped target, info, ArrayAt, c.m.strPayloadId[1]:
+      buildTyped target, info, DerefArrayAt, c.m.strPayloadId[1]:
         buildTyped target, info, FieldAt, typeToIr(c.m, arrayType):
           copyTree target, a
           target.addImmediateVal info, 1 # (len, p)-pair
@@ -2276,7 +2277,7 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     let a = genx(c, n[0], flags)
     let b = genx(c, n[1])
     template body(target) =
-      buildTyped target, info, ArrayAt, typeToIr(c.m, arrayType):
+      buildTyped target, info, DerefArrayAt, typeToIr(c.m, arrayType):
         copyTree target, a
         copyTree target, b
     valueIntoDest c, info, d, n.typ, body
@@ -2298,7 +2299,7 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     let b = genIndexCheck(c, n[1], a, ForOpenArray, arrayType)
     let t = typeToIr(c.m, n.typ)
     template body(target) =
-      buildTyped target, info, ArrayAt, openArrayPayloadType(c.m.types, c.m.nirm.types, n[0].typ):
+      buildTyped target, info, DerefArrayAt, openArrayPayloadType(c.m.types, c.m.nirm.types, n[0].typ):
         buildTyped target, info, FieldAt, typeToIr(c.m, arrayType):
           copyTree target, a
           target.addImmediateVal info, 0 # (p, len)-pair
@@ -2324,7 +2325,7 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
     let b = genIndexCheck(c, n[1], a, ForSeq, arrayType)
     let t = typeToIr(c.m, n.typ)
     template body(target) =
-      buildTyped target, info, ArrayAt, seqPayloadPtrType(c.m.types, c.m.nirm.types, n[0].typ)[1]:
+      buildTyped target, info, DerefArrayAt, seqPayloadPtrType(c.m.types, c.m.nirm.types, n[0].typ)[1]:
         buildTyped target, info, FieldAt, t:
           copyTree target, a
           target.addImmediateVal info, 1 # (len, p)-pair
@@ -2337,10 +2338,18 @@ proc genArrAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
 
 proc genObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   let info = toLineInfo(c, n.info)
-  let a = genx(c, n[0], flags)
+
+  var n0 = n[0]
+  var opc = FieldAt
+  if n0.kind == nkDotExpr:
+    # obj[].a --> DerefFieldAt instead of FieldAt:
+    n0 = n[0]
+    opc = DerefFieldAt
+
+  let a = genx(c, n0, flags)
 
   template body(target) =
-    buildTyped target, info, FieldAt, typeToIr(c.m, n[0].typ):
+    buildTyped target, info, opc, typeToIr(c.m, n0.typ):
       copyTree target, a
       genField c, n[1], Value(target)
 

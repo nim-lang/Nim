@@ -63,8 +63,10 @@ type
     Kill, # `Kill x`: scope end for `x`
 
     AddrOf,
-    ArrayAt, # addr(a[i])
-    FieldAt, # addr(obj.field)
+    ArrayAt, # a[i]
+    DerefArrayAt, # a[i] where `a` is a PtrArray; `a[][i]`
+    FieldAt, # obj.field
+    DerefFieldAt, # obj[].field
 
     Load, # a[]
     Store, # a[] = b
@@ -162,7 +164,9 @@ const
     AddrOf,
     Load,
     ArrayAt,
+    DerefArrayAt,
     FieldAt,
+    DerefFieldAt,
     TestOf
   }
 
