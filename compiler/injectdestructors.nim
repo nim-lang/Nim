@@ -55,6 +55,7 @@ type
     normal
     consumed
     sinkArg
+    ephemeral
 
 const toDebug {.strdefine.} = ""
 when toDebug.len > 0:
@@ -827,7 +828,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       # don't destroy it"
       # but if C(x) is a ref it MUST own its data since we must destroy it
       # so then we have no choice but to use 'sinkArg'.
-      let m = if mode == normal: normal
+      let m = if mode in {normal, ephemeral}: normal
               else: sinkArg
 
       result = copyTree(n)
@@ -844,7 +845,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       let t = n.typ.skipTypes(abstractInst)
       let isRefConstr = t.kind == tyRef
       let m = if isRefConstr: sinkArg
-              elif mode == normal: normal
+              elif mode in {normal, ephemeral}: normal
               else: sinkArg
 
       result = copyTree(n)
@@ -857,7 +858,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
             result[i][1] = p(n[i][1], c, s, m)
         else:
           result[i] = p(n[i], c, s, m)
-      if mode == normal and isRefConstr:
+      if (mode == normal and isRefConstr) or mode == ephemeral:
         result = ensureDestruction(result, n, c, s)
     of nkCallKinds:
       if n[0].kind == nkSym and n[0].sym.magic == mEnsureMove:
@@ -888,7 +889,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         elif i < L and (isSinkTypeForParam(parameters[i]) or inSpawn > 0):
           result[i] = p(n[i], c, s, sinkArg)
         else:
-          result[i] = p(n[i], c, s, normal)
+          result[i] = p(n[i], c, s, ephemeral)
 
       when false:
         if isDangerous:
@@ -902,7 +903,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       else:
         result[0] = p(n[0], c, s, normal)
       if canRaise(n[0]): s.needsTry = true
-      if mode == normal:
+      if mode in {normal, ephemeral}:
         result = ensureDestruction(result, n, c, s)
     of nkDiscardStmt: # Small optimization
       result = shallowCopy(n)
@@ -978,7 +979,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       for i in 0 ..< n.len:
         result[i] = p(n[i], c, s, normal)
       if n.typ != nil and hasDestructor(c, n.typ):
-        if mode == normal:
+        if mode in {normal, ephemeral}:
           result = ensureDestruction(result, n, c, s)
 
     of nkHiddenSubConv, nkHiddenStdConv, nkConv:
