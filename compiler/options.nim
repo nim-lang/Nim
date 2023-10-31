@@ -303,6 +303,7 @@ type
     label*: string
     paddingLeft*: bool
     paddingRight*: bool
+    allowInsert*: bool
 
   ProfileInfo* = object
     time*: float

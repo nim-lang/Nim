@@ -245,6 +245,7 @@ proc suggestDefToSuggestInlayHint*(sug: SuggestDef): SuggestInlayHint =
   result.label = ": " & sug.forth
   result.paddingLeft = false
   result.paddingRight = false
+  result.allowInsert = true
 
 method `$`*(suggest: SuggestInlayHint): string =
   result = $suggest.kind
@@ -258,6 +259,8 @@ method `$`*(suggest: SuggestInlayHint): string =
   result.add($suggest.paddingLeft)
   result.add(sep)
   result.add($suggest.paddingRight)
+  result.add(sep)
+  result.add($suggest.allowInsert)
 
 proc suggestResult*(conf: ConfigRef; s: Suggest) =
   if not isNil(conf.suggestionResultHook):
