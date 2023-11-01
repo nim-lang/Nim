@@ -706,6 +706,11 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
   of nkWhen: # This should be a "when nimvm" node.
     result = copyTree(n)
     result[1][0] = processCall(n[1][0], s)
+  of nkPragmaBlock:
+    result = shallowCopy(n)
+    for i in 0 ..< n.len-1:
+      result[i] = p(n[i], c, s, normal)
+    result[^1] = maybeVoid(n[^1], s)
   else: assert(false)
 
 proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
@@ -735,7 +740,7 @@ proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
 
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
-                nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt}:
+                nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt, nkPragmaBlock}:
     template process(child, s): untyped = p(child, c, s, mode)
     handleNestedTempl(n, process)
   elif mode == sinkArg:
@@ -915,7 +920,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
        nkTypeOfExpr, nkMixinStmt, nkBindStmt:
       result = n
 
-    of nkStringToCString, nkCStringToString, nkChckRangeF, nkChckRange64, nkChckRange, nkPragmaBlock:
+    of nkStringToCString, nkCStringToString, nkChckRangeF, nkChckRange64, nkChckRange:
       result = shallowCopy(n)
       for i in 0 ..< n.len:
         result[i] = p(n[i], c, s, normal)
