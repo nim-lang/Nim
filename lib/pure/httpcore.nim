@@ -127,6 +127,7 @@ func toTitleCase(s: string): string =
     upper = s[i] == '-'
 
 func toCaseInsensitive*(headers: HttpHeaders, s: string): string {.inline.} =
+  ## For internal usage only. Do not use.
   return if headers.isTitleCase: toTitleCase(s) else: toLowerAscii(s)
 
 func newHttpHeaders*(titleCase=false): HttpHeaders =
