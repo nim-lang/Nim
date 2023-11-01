@@ -837,6 +837,8 @@ proc suggestInlayHintResult(graph: ModuleGraph, sym: PSym, info: TLineInfo,
                                 endLine = endLine, endCol = endCol)
   suggestDef.inlayHintInfo = suggestToSuggestInlayHint(suggestDef)
   suggestDef.section = ideInlayHints
+  if sym.kind == skForVar:
+    suggestDef.inlayHintInfo.allowInsert = false
   suggestResult(graph.config, suggestDef)
 
 const
