@@ -268,8 +268,6 @@ type
   CfileList* = seq[Cfile]
 
   Suggest* = ref object of RootObj
-
-  SuggestDef* = ref object of Suggest
     section*: IdeCmd
     qualifiedPath*: seq[string]
     name*: ptr string         # not used beyond sorting purposes; name is also
@@ -290,6 +288,8 @@ type
     endLine*: uint16
     endCol*: int
 
+  SuggestDef* = ref object of Suggest
+
   Suggestions* = seq[Suggest]
 
   SuggestInlayHintKind* = enum
@@ -298,8 +298,6 @@ type
 
   SuggestInlayHint* = ref object of Suggest
     kind*: SuggestInlayHintKind
-    line*: int                   # Starts at 1
-    column*: int                 # Starts at 0
     label*: string
     paddingLeft*: bool
     paddingRight*: bool
