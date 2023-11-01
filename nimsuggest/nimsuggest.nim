@@ -775,17 +775,10 @@ proc findSymData(graph: ModuleGraph, trackPos: TLineInfo):
       result[] = s
       break
 
-proc isInRange*(current, startPos, endPos: TLineInfo, tokenLen: int): bool =
-  if current.fileIndex==startPos.fileIndex and current.line>=startPos.line and current.line<=endPos.line:
-    # TODO: more precise tracking (check col)
-    result = true
-    #let col = trackPos.col
-    #if col >= current.col and col <= current.col+tokenLen-1:
-    #  result = true
-    #else:
-    #  result = false
-  else:
-    result = false
+func isInRange*(current, startPos, endPos: TLineInfo, tokenLen: int): bool =
+  result = current.fileIndex == startPos.fileIndex and
+    (current.line > startPos.line or (current.line == startPos.line and current.col>=startPos.col)) and
+    (current.line < endPos.line or (current.line == endPos.line and current.col <= endPos.col))
 
 proc findSymDataInRange(graph: ModuleGraph, startPos, endPos: TLineInfo):
     seq[SymInfoPair] =
