@@ -119,8 +119,8 @@ template delImplIdx(t, i, makeEmpty, cellEmpty, cellHash) =
         var j = i         # The correctness of this depends on (h+1) in nextTry
         var r = j         # though may be adaptable to other simple sequences.
         makeEmpty(i)                     # mark current EMPTY
-        t.data[i].key = default(typeof(t.data[i].key))
-        t.data[i].val = default(typeof(t.data[i].val))
+        reset(t.data[i].key)
+        reset(t.data[i].val)
         while true:
           i = (i + 1) and msk            # increment mod table size
           if cellEmpty(i):               # end of collision cluster; So all done
@@ -151,8 +151,8 @@ template clearImpl() {.dirty.} =
   for i in 0 ..< t.dataLen:
     when compiles(t.data[i].hcode): # CountTable records don't contain a hcode
       t.data[i].hcode = 0
-    t.data[i].key = default(typeof(t.data[i].key))
-    t.data[i].val = default(typeof(t.data[i].val))
+    reset(t.data[i].key)
+    reset(t.data[i].val)
   t.counter = 0
 
 template ctAnd(a, b): bool =
