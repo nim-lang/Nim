@@ -1,16 +1,19 @@
 discard """
-  cmd: '''nim c --gc:arc $file'''
-  output: '''2
-2'''
+  cmd: '''nim c --mm:arc $file'''
+  output: '''
+2
+2
+destroyed
+'''
 """
 
 type
   ObjWithDestructor = object
     a: int
-proc `=destroy`(self: var ObjWithDestructor) =
+proc `=destroy`(self: ObjWithDestructor) =
   echo "destroyed"
 
-proc `=`(self: var ObjWithDestructor, other: ObjWithDestructor) =
+proc `=copy`(self: var ObjWithDestructor, other: ObjWithDestructor) =
   echo "copied"
 
 proc test(a: range[0..1], arg: ObjWithDestructor) =
