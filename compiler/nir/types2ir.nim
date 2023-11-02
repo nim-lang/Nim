@@ -281,7 +281,10 @@ proc seqPayloadType(c: var TypesCon; g: var TypeGraph; t: PType): (string, TypeI
   let f = g.openType FieldDecl
   let arr = g.openType LastArrayTy
   g.addType elementType
-  result[1] = finishType(g, arr) # LastArrayTy
+  # DO NOT USE `finishType` here as it is an inner type. This is subtle and we
+  # probably need an even better API here.
+  sealType(g, arr)
+  result[1] = TypeId(arr)
 
   g.addOffset c.conf.target.ptrSize
   g.addName "data"
