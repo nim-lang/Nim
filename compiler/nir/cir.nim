@@ -61,6 +61,7 @@ proc fillTokenTable(tab: var BiTable[string]) =
 
 type
   GeneratedCode* = object
+    includes: seq[LitId]
     code: seq[LitId]
     tokens: BiTable[string]
 
@@ -148,11 +149,11 @@ proc recordDependency(types: TypeGraph; lit: Literals; c: var TypeOrder; parent,
   case types[ch].kind
   of ObjectTy, UnionTy:
     let obj = c.typeImpls.getOrDefault(lit.strings[types[ch].litId])
-    if not containsOrIncl(c.lookedAt, obj.int):
-      traverseObject(types, lit, c, obj)
     if viaPointer:
       c.forwardedDecls.add obj
     else:
+      if not containsOrIncl(c.lookedAt, obj.int):
+        traverseObject(types, lit, c, obj)
       c.ordered.add obj
   else:
     discard "uninteresting type as we only focus on the required struct declarations"
@@ -177,6 +178,7 @@ proc traverseTypes(types: TypeGraph; lit: Literals; c: var TypeOrder) =
     if types[t].kind in {ObjectDecl, UnionDecl}:
       assert types[t.firstSon].kind == NameVal
       traverseObject types, lit, c, t
+      c.ordered.add t
 
 proc genType(g: var GeneratedCode; types: TypeGraph; lit: Literals; t: TypeId) =
   case types[t].kind
@@ -212,7 +214,9 @@ proc genType(g: var GeneratedCode; types: TypeGraph; lit: Literals; t: TypeId) =
       inc i
     g.add ParRi
   of IntVal, SizeVal, AlignVal, OffsetVal, AnnotationVal, FieldDecl, ObjectDecl, UnionDecl:
-    raiseAssert "did not expect: " & $types[t].kind
+    #raiseAssert "did not expect: " & $types[t].kind
+    g.add "BUG "
+    g.add $types[t].kind
 
 proc generateTypes(g: var GeneratedCode; types: TypeGraph; lit: Literals; c: TypeOrder) =
   for t in c.forwardedDecls.s:
@@ -252,6 +256,7 @@ proc main(f: string) =
   generateTypes(g, m.types, m.lit, c)
 
   var f = CppFile(f: stdout)
+  writeTokenSeq f, g.includes, g
   writeTokenSeq f, g.code, g
 
 import std / os
