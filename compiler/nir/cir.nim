@@ -10,6 +10,7 @@
 # We produce C code as a list of tokens.
 
 import std / [assertions, syncio, tables, intsets]
+from std / strutils import toOctal
 import .. / ic / [bitabs, rodfiles]
 import nirtypes, nirinsts, nirfiles
 
@@ -61,12 +62,16 @@ proc fillTokenTable(tab: var BiTable[string]) =
 
 type
   GeneratedCode* = object
+    m: NirModule
     includes: seq[LitId]
+    data: seq[LitId]
+    protos: seq[LitId]
     code: seq[LitId]
     tokens: BiTable[string]
+    emittedStrings: IntSet
 
-proc initGeneratedCode*(): GeneratedCode =
-  result = GeneratedCode(code: @[], tokens: initBiTable[string]())
+proc initGeneratedCode*(m: sink NirModule): GeneratedCode =
+  result = GeneratedCode(m: m, code: @[], tokens: initBiTable[string]())
   fillTokenTable(result.tokens)
 
 proc add*(g: var GeneratedCode; t: PredefinedToken) {.inline.} =
@@ -247,17 +252,445 @@ proc generateTypes(g: var GeneratedCode; types: TypeGraph; lit: Literals; c: Typ
     g.add s
     g.add Semicolon
 
-proc main(f: string) =
-  let m = load(f)
-  var c = TypeOrder()
-  traverseTypes(m.types, m.lit, c)
+# Procs
 
-  var g = initGeneratedCode()
-  generateTypes(g, m.types, m.lit, c)
+proc toCChar*(c: char; result: var string) {.inline.} =
+  case c
+  of '\0'..'\x1F', '\x7F'..'\xFF':
+    result.add '\\'
+    result.add toOctal(c)
+  of '\'', '\"', '\\', '?':
+    result.add '\\'
+    result.add c
+  else:
+    result.add c
+
+proc makeCString(s: string): string =
+  result = newStringOfCap(s.len + 10)
+  result.add('"')
+  for c in s: toCChar(c, result)
+  result.add('"')
+
+template emitData(s: string) = c.data.add c.tokens.getOrIncl(s)
+template emitData(t: Token) = c.data.add t
+template emitData(t: PredefinedToken) = c.data.add Token(t)
+
+proc genStrLit(c: var GeneratedCode; lit: Literals; litId: LitId): Token =
+  result = Token(c.tokens.getOrIncl "QStr" & $litId)
+  if not containsOrIncl(c.emittedStrings, int(litId)):
+    let s {.cursor.} = lit.strings[litId]
+    emitData "static const struct "
+    emitData CurlyLe
+    emitData "  NI cap"
+    emitData Semicolon
+    emitData "NIM_CHAR data"
+    emitData BracketLe
+    emitData $s.len
+    emitData "+1"
+    emitData BracketRi
+    emitData Semicolon
+    emitData CurlyRi
+    emitData result
+    emitData AsgnOpr
+    emitData CurlyLe
+    emitData $s.len
+    emitData " | NIM_STRLIT_FLAG"
+    emitData Comma
+    emitData makeCString(s)
+    emitData CurlyRi
+    emitData Semicolon
+
+proc genIntLit(c: var GeneratedCode; lit: Literals; litId: LitId) =
+  let i = lit.numbers[litId]
+  if i > low(int32) and i <= high(int32):
+    c.add $i
+  elif i == low(int32):
+    # Nim has the same bug for the same reasons :-)
+    c.add "(-2147483647 -1)"
+  elif i > low(int64):
+    c.add "IL64("
+    c.add $i
+    c.add ")"
+  else:
+    c.add "(IL64(-9223372036854775807) - IL64(1))"
+
+proc gen(c: var GeneratedCode; t: Tree; n: NodePos)
+
+proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos) =
+  let signatureBegin = c.code.len
+  let name = n.firstSon
+
+  var prc = n.firstSon
+  #next t, prc
+
+  while true:
+    case t[prc].kind
+    of PragmaPair:
+      let (x, y) = sons2(t, prc)
+      let key = cast[PragmaKey](t[x].rawOperand)
+      case key
+      of HeaderImport, DllImport:
+        let lit = t[y].litId
+        raiseAssert "cannot eval: " & c.m.lit.strings[lit]
+      else: discard
+    of PragmaId: discard
+    else: break
+    next t, prc
+
+  if t[prc].kind == SummonResult:
+    gen c, t, prc.firstSon
+  else:
+    c.add "void "
+  gen c, t, name
+  c.add ParLe
+  var params = 0
+  while t[prc].kind == SummonParam:
+    if params > 0: c.add Comma
+    let (typ, sym) = sons2(t, prc)
+    gen c, t, typ
+    c.add Space
+    gen c, t, sym
+    next t, prc
+    inc params
+  if params == 0:
+    c.add "void"
+  c.add ParRi
+
+  let signatureEnd = c.code.len
+  c.add CurlyLe
+  gen c, t, prc
+  c.add CurlyRi
+
+  for i in signatureBegin ..< signatureEnd:
+    c.protos.add c.code[i]
+  c.protos.add Token Semicolon
+
+template triop(opr) =
+  let (typ, a, b) = sons3(t, n)
+  c.add ParLe
+  c.add ParLe
+  gen c, t, typ
+  c.add ParRi
+  gen c, t, a
+  c.add opr
+  gen c, t, b
+  c.add ParRi
+
+template cmpop(opr) =
+  let (_, a, b) = sons3(t, n)
+  c.add ParLe
+  gen c, t, a
+  c.add opr
+  gen c, t, b
+  c.add ParRi
+
+template binaryop(opr) =
+  let (typ, a) = sons2(t, n)
+  c.add ParLe
+  c.add ParLe
+  gen c, t, typ
+  c.add ParRi
+  c.add opr
+  gen c, t, a
+  c.add ParRi
+
+template checkedBinaryop(opr) =
+  let (typ, labIdx, a, b) = sons4(t, n)
+  let bits = integralBits(c.m.types[t[typ].typeId])
+  let lab = t[labIdx].label
+
+  c.add (opr & $bits)
+  c.add ParLe
+  c.gen t, a
+  c.add Comma
+  c.gen t, b
+  c.add Comma
+  c.add "L" & $lab.int
+  c.add ParRi
+
+template moveToDataSection(body: untyped) =
+  let oldLen = c.code.len
+  body
+  for i in oldLen ..< c.code.len:
+    c.data.add c.code[i]
+  setLen c.code, oldLen
+
+proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
+  case t[n].kind
+  of Nop:
+    discard "don't use Nop"
+  of ImmediateVal:
+    c.add "BUG: " & $t[n].kind
+  of IntVal:
+    genIntLit c, c.m.lit, t[n].litId
+  of StrVal:
+    c.code.add genStrLit(c, c.m.lit, t[n].litId)
+  of Typed:
+    genType c, c.m.types, c.m.lit, t[n].typeId
+  of SymDef, SymUse:
+    let s = t[n].symId
+    # XXX Use proper names here
+    c.add "Q"
+    c.add $s
+
+  of ModuleSymUse:
+    when false:
+      let (x, y) = sons2(t, n)
+      let unit = c.u.unitNames.getOrDefault(bc.m.lit.strings[t[x].litId], -1)
+      let s = t[y].symId
+      if c.u.units[unit].procs.hasKey(s):
+        bc.add info, LoadProcM, uint32 c.u.units[unit].procs[s]
+      elif bc.globals.hasKey(s):
+        maybeDeref(WantAddr notin flags):
+          build bc, info, LoadGlobalM:
+            bc.add info, ImmediateValM, uint32 unit
+            bc.add info, LoadLocalM, uint32 s
+      else:
+        raiseAssert "don't understand ModuleSymUse ID"
+
+    raiseAssert "don't understand ModuleSymUse ID"
+  of NilVal:
+    c.add "NIM_NIL"
+  of LoopLabel:
+    c.add WhileKeyword
+    c.add ParLe
+    c.add "1"
+    c.add ParRi
+    c.add CurlyLe
+  of GotoLoop:
+    c.add CurlyRi
+  of Label:
+    let lab = t[n].label
+    c.add "L"
+    c.add $lab.int
+    c.add Colon
+    c.add Semicolon
+  of Goto:
+    let lab = t[n].label
+    c.add "goto L"
+    c.add $lab.int
+    c.add Semicolon
+  of CheckedGoto:
+    discard "XXX todo"
+  of ArrayConstr:
+    c.add CurlyLe
+    var i = 0
+    for ch in sonsFrom1(t, n):
+      if i > 0: c.add Comma
+      c.gen t, ch
+      inc i
+    c.add CurlyRi
+  of ObjConstr:
+    c.add CurlyLe
+    var i = 0
+    for ch in sonsFrom1(t, n):
+      if i mod 2 == 0:
+        if i > 0: c.add Comma
+        c.add ".F" & $t[ch].immediateVal
+        c.add AsgnOpr
+      else:
+        c.gen t, ch
+      inc i
+    c.add CurlyRi
+  of Ret:
+    c.add ReturnKeyword
+    c.gen t, n.firstSon
+  of Select:
+    c.add SwitchKeyword
+    c.add ParLe
+    c.gen t, n.firstSon
+    c.add ParRi
+    c.add CurlyLe
+    for ch in sonsFrom1(t, n):
+      c.gen t, ch
+    c.add CurlyRi
+  of SelectPair:
+    let (le, ri) = sons2(t, n)
+    c.gen t, le
+    c.gen t, ri
+  of SelectList:
+    for ch in sons(t, n):
+      c.gen t, ch
+  of SelectValue:
+    c.add CaseKeyword
+    c.gen t, n.firstSon
+    c.add Colon
+  of SelectRange:
+    let (le, ri) = sons2(t, n)
+    c.add CaseKeyword
+    c.gen t, le
+    c.add " ... "
+    c.gen t, ri
+    c.add Colon
+  of SummonGlobal:
+    moveToDataSection:
+      let (typ, sym) = sons2(t, n)
+      c.gen t, typ
+      c.add Space
+      c.gen t, sym
+      c.add Semicolon
+  of SummonThreadLocal:
+    moveToDataSection:
+      let (typ, sym) = sons2(t, n)
+      c.add "__thread "
+      c.gen t, typ
+      c.add Space
+      c.gen t, sym
+      c.add Semicolon
+  of SummonConst:
+    moveToDataSection:
+      let (typ, sym) = sons2(t, n)
+      c.add ConstKeyword
+      c.gen t, typ
+      c.add Space
+      c.gen t, sym
+      c.add Semicolon
+  of Summon:
+    let (typ, sym) = sons2(t, n)
+    c.gen t, typ
+    c.add Space
+    c.gen t, sym
+    c.add Semicolon
+
+  of SummonParam, SummonResult:
+    raiseAssert "SummonParam, SummonResult should have been handled in genProc"
+  of Kill:
+    discard "we don't care about Kill instructions"
+  of AddrOf:
+    let (_, arg) = sons2(t, n)
+    c.add "&"
+    gen c, t, arg
+  of DerefArrayAt, ArrayAt:
+    let (_, a, i) = sons3(t, n)
+    gen c, t, a
+    c.add BracketLe
+    gen c, t, i
+    c.add BracketRi
+  of FieldAt:
+    let (_, a, b) = sons3(t, n)
+    gen c, t, a
+    let field = t[b].immediateVal
+    c.add Dot
+    c.add "F" & $field
+  of DerefFieldAt:
+    let (_, a, b) = sons3(t, n)
+    gen c, t, a
+    let field = t[b].immediateVal
+    c.add Arrow
+    c.add "F" & $field
+  of Load:
+    let (_, arg) = sons2(t, n)
+    c.add ParLe
+    c.add "*"
+    gen c, t, arg
+    c.add ParRi
+  of Store:
+    raiseAssert "Assumption was that Store is unused!"
+  of Asgn:
+    let (_, dest, src) = sons3(t, n)
+    gen c, t, dest
+    c.add AsgnOpr
+    gen c, t, src
+    c.add Semicolon
+  of CheckedRange:
+    c.add "nimCheckRange"
+    c.add ParLe
+    let (_, x, a, b) = sons4(t, n)
+    gen c, t, x
+    c.add Comma
+    gen c, t, a
+    c.add Comma
+    gen c, t, b
+    c.add ParRi
+  of CheckedIndex:
+    c.add "nimCheckIndex"
+    c.add ParLe
+    let (_, x, a) = sons3(t, n)
+    gen c, t, x
+    c.add Comma
+    gen c, t, a
+    c.add ParRi
+  of Call, IndirectCall:
+    let (typ, fn) = sons2(t, n)
+    gen c, t, fn
+    c.add ParLe
+    for ch in sonsFromN(t, n, 2): gen c, t, ch
+    c.add ParRi
+    if c.m.types[t[typ].typeId].kind == VoidTy:
+      c.add Semicolon
+  of CheckedCall, CheckedIndirectCall:
+    let (typ, gotoInstr, fn) = sons3(t, n)
+    gen c, t, fn
+    c.add ParLe
+    for ch in sonsFromN(t, n, 3): gen c, t, ch
+    c.add ParRi
+    if c.m.types[t[typ].typeId].kind == VoidTy:
+      c.add Semicolon
+
+  of CheckedAdd: checkedBinaryop "nimAddInt"
+  of CheckedSub: checkedBinaryop "nimSubInt"
+  of CheckedMul: checkedBinaryop "nimMulInt"
+  of CheckedDiv: checkedBinaryop "nimDivInt"
+  of CheckedMod: checkedBinaryop "nimModInt"
+  of Add: triop " + "
+  of Sub: triop " - "
+  of Mul: triop " * "
+  of Div: triop " / "
+  of Mod: triop " % "
+  of BitShl: triop " << "
+  of BitShr: triop " >> "
+  of BitAnd: triop " & "
+  of BitOr: triop " | "
+  of BitXor: triop " ^ "
+  of BitNot: binaryop " ~ "
+  of BoolNot: binaryop " !"
+  of Eq: cmpop " == "
+  of Le: cmpop " <= "
+  of Lt: cmpop " < "
+  of Cast: binaryop ""
+  of NumberConv: binaryop ""
+  of CheckedObjConv: binaryop ""
+  of ObjConv: binaryop ""
+  of Emit: raiseAssert "cannot interpret: Emit"
+  of ProcDecl: genProcDecl c, t, n
+  of PragmaPair, PragmaId, TestOf, Yld, SetExc, TestExc:
+    raiseAssert "cannot interpret: " & $t[n].kind
+
+const
+  Prelude = """
+/* GENERATED CODE. DO NOT EDIT. */
+
+#define nimAddInt64(a, b, L) ({long long int res; if(__builtin_saddll_overflow(a, b, &res)) goto L; res})
+#define nimSubInt64(a, b, L) ({long long int res; if(__builtin_ssubll_overflow(a, b, &res) goto L; res})
+#define nimMulInt64(a, b, L) ({long long int res; if(__builtin_smulll_overflow(a, b, &res) goto L; res})
+
+#define nimAddInt32(a, b, L) ({long int res; if(__builtin_sadd_overflow(a, b, &res) goto L; res})
+#define nimSubInt32(a, b, L) ({long int res; if(__builtin_ssub_overflow(a, b, &res) goto L; res})
+#define nimMulInt32(a, b, L) ({long int res; if(__builtin_smul_overflow(a, b, &res) goto L; res})
+
+#define nimCheckRange(x, a, b, L) ({if (x < a || x > b) goto L; x})
+#define nimCheckIndex(x, a, L) ({if (x >= a) goto L; x})
+
+"""
+
+proc main(f: string) =
+  var c = initGeneratedCode(load(f))
+
+  var co = TypeOrder()
+  traverseTypes(c.m.types, c.m.lit, co)
+
+  generateTypes(c, c.m.types, c.m.lit, co)
+
+  var i = NodePos(0)
+  while i.int < c.m.code.len:
+    gen c, c.m.code, NodePos(i)
+    next c.m.code, i
 
   var f = CppFile(f: stdout)
-  writeTokenSeq f, g.includes, g
-  writeTokenSeq f, g.code, g
+  writeTokenSeq f, c.includes, c
+  writeTokenSeq f, c.data, c
+  writeTokenSeq f, c.protos, c
+  writeTokenSeq f, c.code, c
 
 import std / os
 main paramStr(1)

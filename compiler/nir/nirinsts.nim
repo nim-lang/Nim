@@ -290,18 +290,26 @@ proc copyTree*(dest: var Tree; src: Tree) =
   for i in 0..<L:
     dest.nodes[d+i] = src.nodes[pos+i]
 
-proc sons2*(tree: Tree; n: NodePos): (NodePos, NodePos) =
+proc sons2*(tree: Tree; n: NodePos): (NodePos, NodePos) {.inline.} =
   assert(not isAtom(tree, n.int))
   let a = n.int+1
   let b = a + span(tree, a)
   result = (NodePos a, NodePos b)
 
-proc sons3*(tree: Tree; n: NodePos): (NodePos, NodePos, NodePos) =
+proc sons3*(tree: Tree; n: NodePos): (NodePos, NodePos, NodePos) {.inline.} =
   assert(not isAtom(tree, n.int))
   let a = n.int+1
   let b = a + span(tree, a)
   let c = b + span(tree, b)
   result = (NodePos a, NodePos b, NodePos c)
+
+proc sons4*(tree: Tree; n: NodePos): (NodePos, NodePos, NodePos, NodePos) {.inline.} =
+  assert(not isAtom(tree, n.int))
+  let a = n.int+1
+  let b = a + span(tree, a)
+  let c = b + span(tree, b)
+  let d = c + span(tree, c)
+  result = (NodePos a, NodePos b, NodePos c, NodePos d)
 
 proc typeId*(ins: Instr): TypeId {.inline.} =
   assert ins.kind == Typed
