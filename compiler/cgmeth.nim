@@ -13,6 +13,7 @@ import
   options, ast, msgs, idents, renderer, types, magicsys,
   sempass2, modulegraphs, lineinfos
 
+import typeallowed
 
 import std/intsets
 
