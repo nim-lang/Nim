@@ -105,7 +105,7 @@ proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int
       result = 0
   elif ident[0] in linter.Letters and ident[^1] != '=':
     result = identLen(line, column)
-    if cmpIgnoreStyle(line[column..column + result - 1], ident) != 0:
+    if cmpIgnoreStyle(line[column..column + result - 1], ident[0..result-1]) != 0:
       result = 0
   else:
     var sourceIdent: string = ""
@@ -175,7 +175,7 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
     result.filePath = toFullPath(g.config, infox)
     result.line = toLinenumber(infox)
     result.column = toColumn(infox)
-    result.tokenLen = if section != ideHighlight:
+    result.tokenLen = if not (section in {ideHighlight, ideInlayHints}):
                         s.name.s.len
                       else:
                         getTokenLenFromSource(g.config, s.name.s, infox)
@@ -252,7 +252,7 @@ proc suggestToSuggestInlayHint*(sug: Suggest): SuggestInlayHint =
   new(result)
   result.kind = sihkType
   result.line = sug.line
-  result.column = sug.column
+  result.column = sug.column + sug.tokenLen
   result.label = ": " & sug.forth
   result.paddingLeft = false
   result.paddingRight = false

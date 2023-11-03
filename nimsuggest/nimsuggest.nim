@@ -833,7 +833,7 @@ proc suggestInlayHintResult(graph: ModuleGraph, sym: PSym, info: TLineInfo,
                 else:
                   ideUse
   var suggestDef = symToSuggest(graph, sym, isLocal=false, section,
-                                info, 100, PrefixMatch.None, false, 0,
+                                info, 100, PrefixMatch.None, false, 0, true,
                                 endLine = endLine, endCol = endCol)
   suggestDef.inlayHintInfo = suggestToSuggestInlayHint(suggestDef)
   suggestDef.section = ideInlayHints
@@ -1116,9 +1116,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     let s = graph.findSymDataInRange(file, line, col, endLine, endCol)
     for q in s:
       if q.sym.kind in [skLet, skVar, skForVar] and q.isDecl and not q.sym.hasUserSpecifiedType:
-        var li = q.info
-        li.col += int16(len(q.sym.name.s))
-        graph.suggestInlayHintResult(q.sym, li)
+        graph.suggestInlayHintResult(q.sym, q.info, ideInlayHints)
   else:
     myLog fmt "Discarding {cmd}"
 
