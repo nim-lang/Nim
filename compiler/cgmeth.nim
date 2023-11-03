@@ -176,6 +176,12 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   # create a new dispatcher:
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
   #echo "adding ", s.info
+
+  if s.ast.len > resultPos and s.ast[resultPos] != nil:
+    let x = s.ast[resultPos]
+    if x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView:
+      x.typ.flags.incl tfVarIsPtr
+
   if witness != nil:
     localError(g.config, s.info, "invalid declaration order; cannot attach '" & s.name.s &
                        "' to method defined here: " & g.config$witness.info)
