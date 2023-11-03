@@ -30,7 +30,7 @@ type
     Semicolon = ";"
     Comma = ", "
     Space = " "
-    Colon = ":"
+    Colon = ": "
     Dot = "."
     Arrow = "->"
     Star = "*"
@@ -54,6 +54,7 @@ type
     IfNot = "if (!("
     ReturnKeyword = "return "
     TypedefStruct = "typedef struct "
+    IncludeKeyword = "#include "
 
 proc fillTokenTable(tab: var BiTable[string]) =
   for e in EmptyToken..high(PredefinedToken):
@@ -64,6 +65,7 @@ type
   GeneratedCode* = object
     m: NirModule
     includes: seq[LitId]
+    includedHeaders: IntSet
     data: seq[LitId]
     protos: seq[LitId]
     code: seq[LitId]
@@ -321,7 +323,7 @@ proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos) =
   let name = n.firstSon
 
   var prc = n.firstSon
-  #next t, prc
+  next t, prc
 
   while true:
     case t[prc].kind
@@ -329,7 +331,16 @@ proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos) =
       let (x, y) = sons2(t, prc)
       let key = cast[PragmaKey](t[x].rawOperand)
       case key
-      of HeaderImport, DllImport:
+      of HeaderImport:
+        let lit = t[y].litId
+        let header = c.tokens.getOrIncl(c.m.lit.strings[lit])
+        if not c.includedHeaders.containsOrIncl(int header):
+          c.includes.add Token(IncludeKeyword)
+          c.includes.add header
+          c.includes.add Token NewLine
+        # do not generate code for importc'ed procs:
+        return
+      of DllImport:
         let lit = t[y].litId
         raiseAssert "cannot eval: " & c.m.lit.strings[lit]
       else: discard
@@ -339,8 +350,10 @@ proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos) =
 
   if t[prc].kind == SummonResult:
     gen c, t, prc.firstSon
+    next t, prc
   else:
-    c.add "void "
+    c.add "void"
+  c.add Space
   gen c, t, name
   c.add ParLe
   var params = 0
@@ -356,14 +369,15 @@ proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos) =
     c.add "void"
   c.add ParRi
 
-  let signatureEnd = c.code.len
-  c.add CurlyLe
-  gen c, t, prc
-  c.add CurlyRi
-
-  for i in signatureBegin ..< signatureEnd:
+  for i in signatureBegin ..< c.code.len:
     c.protos.add c.code[i]
   c.protos.add Token Semicolon
+
+  c.add CurlyLe
+  for ch in sonsRest(t, n, prc):
+    assert t[ch].kind != ProcDecl
+    gen c, t, ch
+  c.add CurlyRi
 
 template triop(opr) =
   let (typ, a, b) = sons3(t, n)
@@ -448,7 +462,8 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
       else:
         raiseAssert "don't understand ModuleSymUse ID"
 
-    raiseAssert "don't understand ModuleSymUse ID"
+    #raiseAssert "don't understand ModuleSymUse ID"
+    c.add "NOT IMPLEMENTED YET"
   of NilVal:
     c.add "NIM_NIL"
   of LoopLabel:
@@ -494,14 +509,15 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
     c.add CurlyRi
   of Ret:
     c.add ReturnKeyword
-    c.gen t, n.firstSon
+    #c.gen t, n.firstSon
   of Select:
     c.add SwitchKeyword
     c.add ParLe
-    c.gen t, n.firstSon
+    let (_, selector) = sons2(t, n)
+    c.gen t, selector
     c.add ParRi
     c.add CurlyLe
-    for ch in sonsFrom1(t, n):
+    for ch in sonsFromN(t, n, 2):
       c.gen t, ch
     c.add CurlyRi
   of SelectPair:
@@ -654,7 +670,7 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   of Emit: raiseAssert "cannot interpret: Emit"
   of ProcDecl: genProcDecl c, t, n
   of PragmaPair, PragmaId, TestOf, Yld, SetExc, TestExc:
-    raiseAssert "cannot interpret: " & $t[n].kind
+    c.add "cannot interpret: " & $t[n].kind
 
 const
   Prelude = """

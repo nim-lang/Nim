@@ -278,6 +278,14 @@ iterator sonsFromN*(tree: Tree; n: NodePos; toSkip = 2): NodePos =
 
 template `[]`*(t: Tree; n: NodePos): Instr = t.nodes[n.int]
 
+iterator sonsRest*(tree: Tree; parent, n: NodePos): NodePos =
+  var pos = n.int
+  assert tree[parent].kind > LastAtomicValue
+  let last = parent.int + tree[parent].rawSpan
+  while pos < last:
+    yield NodePos pos
+    nextChild tree, pos
+
 proc span(tree: Tree; pos: int): int {.inline.} =
   if tree.nodes[pos].kind <= LastAtomicValue: 1 else: int(tree.nodes[pos].operand)
 
