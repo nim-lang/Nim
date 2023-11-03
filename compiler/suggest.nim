@@ -105,7 +105,7 @@ proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int
       result = 0
   elif ident[0] in linter.Letters and ident[^1] != '=':
     result = identLen(line, column)
-    if cmpIgnoreStyle(line[column..column + result - 1], ident[0..result-1]) != 0:
+    if cmpIgnoreStyle(line[column..column + result - 1], ident[0..min(result-1,len(ident)-1)]) != 0:
       result = 0
   else:
     var sourceIdent: string = ""
