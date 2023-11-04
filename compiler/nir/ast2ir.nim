@@ -2354,12 +2354,13 @@ proc genObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   valueIntoDest c, info, d, n.typ, body
   freeTemp c, a
 
-proc genParams(c: var ProcCon; params: PNode; prc: PSym) =
+proc genParams(c: var ProcCon; params: PNode; prc: PSym): PSym =
+  result = nil
   if params.len > 0 and resultPos < prc.ast.len:
     let resNode = prc.ast[resultPos]
-    let res = resNode.sym # get result symbol
-    c.code.addSummon toLineInfo(c, res.info), toSymId(c, res),
-      typeToIr(c.m, res.typ), SummonResult
+    result = resNode.sym # get result symbol
+    c.code.addSummon toLineInfo(c, result.info), toSymId(c, result),
+      typeToIr(c.m, result.typ), SummonResult
   elif prc.typ.len > 0 and not isEmptyType(prc.typ[0]) and not isCompileTimeOnly(prc.typ[0]):
     # happens for procs without bodies:
     let t = typeToIr(c.m, prc.typ[0])
@@ -2435,11 +2436,15 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
         else:
           c.code.addPragmaId info, ObjExport
 
-    genParams(c, prc.typ.n, prc)
+    let resultSym = genParams(c, prc.typ.n, prc)
     gen(c, body)
     patch c, body, c.exitLabel
-    build c.code, info, Ret:
-      discard
+    if resultSym != nil:
+      build c.code, info, Ret:
+        c.code.addSymUse info, toSymId(c, resultSym)
+    else:
+      build c.code, info, Ret:
+        c.code.addNop info
 
   #copyTree cOuter.code, c.code
   dec cOuter.m.inProc

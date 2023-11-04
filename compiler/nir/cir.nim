@@ -444,7 +444,7 @@ template moveToDataSection(body: untyped) =
 proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   case t[n].kind
   of Nop:
-    discard "don't use Nop"
+    discard "nothing to emit"
   of ImmediateVal:
     c.add "BUG: " & $t[n].kind
   of IntVal:
@@ -521,7 +521,8 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
     c.add CurlyRi
   of Ret:
     c.add ReturnKeyword
-    #c.gen t, n.firstSon
+    c.gen t, n.firstSon
+    c.add Semicolon
   of Select:
     c.add SwitchKeyword
     c.add ParLe
@@ -708,6 +709,7 @@ proc main(f: string) =
   traverseTypes(c.m.types, c.m.lit, co)
 
   generateTypes(c, c.m.types, c.m.lit, co)
+  let typeDecls = move c.code
 
   var i = NodePos(0)
   while i.int < c.m.code.len:
@@ -715,7 +717,9 @@ proc main(f: string) =
     next c.m.code, i
 
   var f = CppFile(f: stdout)
+  f.write Prelude
   writeTokenSeq f, c.includes, c
+  writeTokenSeq f, typeDecls, c
   writeTokenSeq f, c.data, c
   writeTokenSeq f, c.protos, c
   writeTokenSeq f, c.code, c
