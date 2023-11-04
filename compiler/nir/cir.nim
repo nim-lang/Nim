@@ -360,7 +360,9 @@ proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos) =
     else: break
     next t, prc
 
+  var resultDeclPos = NodePos(-1)
   if t[prc].kind == SummonResult:
+    resultDeclPos = prc
     gen c, t, prc.firstSon
     next t, prc
   else:
@@ -386,6 +388,8 @@ proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos) =
   c.protos.add Token Semicolon
 
   c.add CurlyLe
+  if resultDeclPos.int >= 0:
+    gen c, t, resultDeclPos
   for ch in sonsRest(t, n, prc):
     assert t[ch].kind != ProcDecl
     gen c, t, ch
@@ -574,15 +578,15 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
       c.add Space
       c.gen t, sym
       c.add Semicolon
-  of Summon:
+  of Summon, SummonResult:
     let (typ, sym) = sons2(t, n)
     c.gen t, typ
     c.add Space
     c.gen t, sym
     c.add Semicolon
 
-  of SummonParam, SummonResult:
-    raiseAssert "SummonParam, SummonResult should have been handled in genProc"
+  of SummonParam:
+    raiseAssert "SummonParam should have been handled in genProc"
   of Kill:
     discard "we don't care about Kill instructions"
   of AddrOf:
