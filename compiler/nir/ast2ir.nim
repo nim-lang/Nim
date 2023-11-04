@@ -405,8 +405,9 @@ proc genCase(c: var ProcCon; n: PNode; d: var Value) =
   let ending = newLabel(c.labelGen)
   let info = toLineInfo(c, n.info)
   withTemp(tmp, n[0]):
+    c.gen(n[0], tmp)
     buildTyped c.code, info, Select, typeToIr(c.m, n[0].typ):
-      c.gen(n[0], tmp)
+      c.code.copyTree tmp
       for i in 1..<n.len:
         let section = newLabel(c.labelGen)
         sections.add section
