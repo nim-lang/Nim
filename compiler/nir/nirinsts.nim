@@ -319,6 +319,15 @@ proc sons4*(tree: Tree; n: NodePos): (NodePos, NodePos, NodePos, NodePos) {.inli
   let d = c + span(tree, c)
   result = (NodePos a, NodePos b, NodePos c, NodePos d)
 
+proc sons5*(tree: Tree; n: NodePos): (NodePos, NodePos, NodePos, NodePos, NodePos) {.inline.} =
+  assert(not isAtom(tree, n.int))
+  let a = n.int+1
+  let b = a + span(tree, a)
+  let c = b + span(tree, b)
+  let d = c + span(tree, c)
+  let e = d + span(tree, d)
+  result = (NodePos a, NodePos b, NodePos c, NodePos d, NodePos e)
+
 proc typeId*(ins: Instr): TypeId {.inline.} =
   assert ins.kind == Typed
   result = TypeId(ins.operand)

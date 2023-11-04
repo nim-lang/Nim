@@ -628,20 +628,24 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   of CheckedRange:
     c.add "nimCheckRange"
     c.add ParLe
-    let (_, x, a, b) = sons4(t, n)
+    let (_, gotoInstr, x, a, b) = sons5(t, n)
     gen c, t, x
     c.add Comma
     gen c, t, a
     c.add Comma
     gen c, t, b
+    c.add Comma
+    c.add "L" & $t[gotoInstr].label.int
     c.add ParRi
   of CheckedIndex:
     c.add "nimCheckIndex"
     c.add ParLe
-    let (_, x, a) = sons3(t, n)
+    let (gotoInstr, x, a) = sons3(t, n)
     gen c, t, x
     c.add Comma
     gen c, t, a
+    c.add Comma
+    c.add "L" & $t[gotoInstr].label.int
     c.add ParRi
   of Call, IndirectCall:
     let (typ, fn) = sons2(t, n)
