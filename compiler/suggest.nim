@@ -249,15 +249,16 @@ proc `$`*(suggest: Suggest): string =
       result.add($suggest.endCol)
 
 proc suggestToSuggestInlayHint*(sug: Suggest): SuggestInlayHint =
-  new(result)
-  result.kind = sihkType
-  result.line = sug.line
-  result.column = sug.column + sug.tokenLen
-  result.label = ": " & sug.forth
-  result.paddingLeft = false
-  result.paddingRight = false
-  result.allowInsert = true
-  result.tooltip = ""
+  SuggestInlayHint(
+    kind: sihkType,
+    line: sug.line,
+    column: sug.column + sug.tokenLen,
+    label: ": " & sug.forth,
+    paddingLeft: false,
+    paddingRight: false,
+    allowInsert: true,
+    tooltip: ""
+  )
 
 proc suggestResult*(conf: ConfigRef; s: Suggest) =
   if not isNil(conf.suggestionResultHook):
