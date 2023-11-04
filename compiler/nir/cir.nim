@@ -647,7 +647,11 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
     let (typ, fn) = sons2(t, n)
     gen c, t, fn
     c.add ParLe
-    for ch in sonsFromN(t, n, 2): gen c, t, ch
+    var i = 0
+    for ch in sonsFromN(t, n, 2):
+      if i > 0: c.add Comma
+      gen c, t, ch
+      inc i
     c.add ParRi
     if c.m.types[t[typ].typeId].kind == VoidTy:
       c.add Semicolon
@@ -655,7 +659,11 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
     let (typ, gotoInstr, fn) = sons3(t, n)
     gen c, t, fn
     c.add ParLe
-    for ch in sonsFromN(t, n, 3): gen c, t, ch
+    var i = 0
+    for ch in sonsFromN(t, n, 3):
+      if i > 0: c.add Comma
+      gen c, t, ch
+      inc i
     c.add ParRi
     if c.m.types[t[typ].typeId].kind == VoidTy:
       c.add Semicolon
