@@ -178,7 +178,7 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
   #echo "adding ", s.info
 
-  if s.ast.len > resultPos and s.ast[resultPos] != nil:
+  if s.ast != nil and s.ast.len > resultPos and s.ast[resultPos] != nil:
     let x = s.ast[resultPos]
     if x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView:
       x.typ.flags.incl tfVarIsPtr
