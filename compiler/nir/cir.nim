@@ -43,10 +43,10 @@ type
     StrLitPrefix = "(NimChar*)"
     StrLitNamePrefix = "Qstr"
     LoopKeyword = "while (true) "
-    WhileKeyword = "while ("
+    WhileKeyword = "while "
     IfKeyword = "if ("
     ElseKeyword = "else "
-    SwitchKeyword = "switch ("
+    SwitchKeyword = "switch "
     CaseKeyword = "case "
     DefaultKeyword = "default:"
     BreakKeyword = "break"
@@ -187,6 +187,11 @@ proc traverseTypes(types: TypeGraph; lit: Literals; c: var TypeOrder) =
       traverseObject types, lit, c, t
       c.ordered.add t
 
+when false:
+  template emitType(s: string) = c.types.add c.tokens.getOrIncl(s)
+  template emitType(t: Token) = c.types.add t
+  template emitType(t: PredefinedToken) = c.types.add Token(t)
+
 proc genType(g: var GeneratedCode; types: TypeGraph; lit: Literals; t: TypeId) =
   case types[t].kind
   of VoidTy: g.add "void"
@@ -220,7 +225,9 @@ proc genType(g: var GeneratedCode; types: TypeGraph; lit: Literals; t: TypeId) =
       genType g, types, lit, ch
       inc i
     g.add ParRi
-  of IntVal, SizeVal, AlignVal, OffsetVal, AnnotationVal, FieldDecl, ObjectDecl, UnionDecl:
+  of ObjectDecl, UnionDecl:
+    g.add lit.strings[types[t.firstSon].litId]
+  of IntVal, SizeVal, AlignVal, OffsetVal, AnnotationVal, FieldDecl:
     #raiseAssert "did not expect: " & $types[t].kind
     g.add "BUG "
     g.add $types[t].kind
@@ -333,9 +340,14 @@ proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos) =
       case key
       of HeaderImport:
         let lit = t[y].litId
-        let header = c.tokens.getOrIncl(c.m.lit.strings[lit])
-        if not c.includedHeaders.containsOrIncl(int header):
-          c.includes.add Token(IncludeKeyword)
+        let headerAsStr {.cursor.} = c.m.lit.strings[lit]
+        let header = c.tokens.getOrIncl(headerAsStr)
+        # headerAsStr can be empty, this has the semantics of the `nodecl` pragma:
+        if headerAsStr.len > 0 and not c.includedHeaders.containsOrIncl(int header):
+          if headerAsStr[0] == '#':
+            discard "skip the #include"
+          else:
+            c.includes.add Token(IncludeKeyword)
           c.includes.add header
           c.includes.add Token NewLine
         # do not generate code for importc'ed procs:
@@ -465,7 +477,7 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
     #raiseAssert "don't understand ModuleSymUse ID"
     c.add "NOT IMPLEMENTED YET"
   of NilVal:
-    c.add "NIM_NIL"
+    c.add NullPtr
   of LoopLabel:
     c.add WhileKeyword
     c.add ParLe
