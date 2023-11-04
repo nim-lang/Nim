@@ -972,6 +972,7 @@ type
     ExactGcSafety
     AllowCommonBase
     PickyCAliases  # be picky about the distinction between 'cint' and 'int32'
+    IgnoreFlags          # used for borrowed functions; ignores the tfVarIsPtr flag
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
 
@@ -1306,7 +1307,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
     result = sameChildrenAux(a, b, c)
-    if result:
+    if result and IgnoreFlags notin c.flags:
       if IgnoreTupleFields in c.flags:
         result = a.flags * {tfVarIsPtr, tfIsOutParam} == b.flags * {tfVarIsPtr, tfIsOutParam}
       else:

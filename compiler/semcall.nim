@@ -827,7 +827,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
     if resolved != nil:
       result.s = resolved[0].sym
       result.state = bsMatch
-      if not compareTypes(result.s.typ[0], fn.typ[0], dcEqIgnoreDistinct):
+      if not compareTypes(result.s.typ[0], fn.typ[0], dcEqIgnoreDistinct, {IgnoreFlags}):
         result.state = bsReturnNotMatch
       elif result.s.magic in {mArrPut, mArrGet}:
         # cannot borrow these magics for now
