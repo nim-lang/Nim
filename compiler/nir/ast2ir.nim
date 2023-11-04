@@ -281,14 +281,15 @@ proc genIf(c: var ProcCon; n: PNode; d: var Value) =
     var it = n[i]
     if it.len == 2:
       let info = toLineInfo(c, it[0].info)
-      withTemp(tmp, it[0]):
-        var elsePos: LabelId
-        if isNotOpr(it[0]):
-          c.gen(it[0][1], tmp)
-          elsePos = c.xjmp(it[0][1], opcTJmp, tmp) # if true
-        else:
-          c.gen(it[0], tmp)
-          elsePos = c.xjmp(it[0], opcFJmp, tmp) # if false
+      var elsePos: LabelId
+      if isNotOpr(it[0]):
+        let tmp = c.genx(it[0][1])
+        elsePos = c.xjmp(it[0][1], opcTJmp, tmp) # if true
+        c.freeTemp tmp
+      else:
+        let tmp = c.genx(it[0])
+        elsePos = c.xjmp(it[0], opcFJmp, tmp) # if false
+        c.freeTemp tmp
       c.clearDest(n, d)
       if isEmptyType(it[1].typ): # maybe noreturn call, don't touch `d`
         c.genScope(it[1])
