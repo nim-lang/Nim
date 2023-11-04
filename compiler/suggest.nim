@@ -107,7 +107,7 @@ proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int
       result = 0
   elif ident[0] in linter.Letters and ident[^1] != '=':
     result = identLen(line, column)
-    if cmpIgnoreStyle(line[column..column + result - 1], ident) != 0:
+    if cmpIgnoreStyle(line[column..column + result - 1], ident[0..min(result-1,len(ident)-1)]) != 0:
       result = 0
   else:
     var sourceIdent: string = ""
@@ -177,7 +177,7 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
     result.filePath = toFullPath(g.config, infox)
     result.line = toLinenumber(infox)
     result.column = toColumn(infox)
-    result.tokenLen = if section != ideHighlight:
+    result.tokenLen = if section notin {ideHighlight, ideInlayHints}:
                         s.name.s.len
                       else:
                         getTokenLenFromSource(g.config, s.name.s, infox)
@@ -185,50 +185,82 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
   result.endLine = endLine
   result.endCol = endCol
 
-proc `$`*(suggest: Suggest): string =
-  result = $suggest.section
+proc `$`*(suggest: SuggestInlayHint): string =
+  result = $suggest.kind
   result.add(sep)
-  if suggest.section == ideHighlight:
-    if suggest.symkind.TSymKind == skVar and suggest.isGlobal:
-      result.add("skGlobalVar")
-    elif suggest.symkind.TSymKind == skLet and suggest.isGlobal:
-      result.add("skGlobalLet")
+  result.add($suggest.line)
+  result.add(sep)
+  result.add($suggest.column)
+  result.add(sep)
+  result.add(suggest.label)
+  result.add(sep)
+  result.add($suggest.paddingLeft)
+  result.add(sep)
+  result.add($suggest.paddingRight)
+  result.add(sep)
+  result.add($suggest.allowInsert)
+  result.add(sep)
+  result.add(suggest.tooltip)
+
+proc `$`*(suggest: Suggest): string =
+  if suggest.section == ideInlayHints:
+    result = $suggest.inlayHintInfo
+  else:
+    result = $suggest.section
+    result.add(sep)
+    if suggest.section == ideHighlight:
+      if suggest.symkind.TSymKind == skVar and suggest.isGlobal:
+        result.add("skGlobalVar")
+      elif suggest.symkind.TSymKind == skLet and suggest.isGlobal:
+        result.add("skGlobalLet")
+      else:
+        result.add($suggest.symkind.TSymKind)
+      result.add(sep)
+      result.add($suggest.line)
+      result.add(sep)
+      result.add($suggest.column)
+      result.add(sep)
+      result.add($suggest.tokenLen)
     else:
       result.add($suggest.symkind.TSymKind)
-    result.add(sep)
-    result.add($suggest.line)
-    result.add(sep)
-    result.add($suggest.column)
-    result.add(sep)
-    result.add($suggest.tokenLen)
-  else:
-    result.add($suggest.symkind.TSymKind)
-    result.add(sep)
-    if suggest.qualifiedPath.len != 0:
-      result.add(suggest.qualifiedPath.join("."))
-    result.add(sep)
-    result.add(suggest.forth)
-    result.add(sep)
-    result.add(suggest.filePath)
-    result.add(sep)
-    result.add($suggest.line)
-    result.add(sep)
-    result.add($suggest.column)
-    result.add(sep)
-    when defined(nimsuggest) and not defined(noDocgen) and not defined(leanCompiler):
-      result.add(suggest.doc.escape)
-    if suggest.version == 0 or suggest.version == 3:
       result.add(sep)
-      result.add($suggest.quality)
-      if suggest.section == ideSug:
+      if suggest.qualifiedPath.len != 0:
+        result.add(suggest.qualifiedPath.join("."))
+      result.add(sep)
+      result.add(suggest.forth)
+      result.add(sep)
+      result.add(suggest.filePath)
+      result.add(sep)
+      result.add($suggest.line)
+      result.add(sep)
+      result.add($suggest.column)
+      result.add(sep)
+      when defined(nimsuggest) and not defined(noDocgen) and not defined(leanCompiler):
+        result.add(suggest.doc.escape)
+      if suggest.version == 0 or suggest.version == 3:
         result.add(sep)
-        result.add($suggest.prefix)
+        result.add($suggest.quality)
+        if suggest.section == ideSug:
+          result.add(sep)
+          result.add($suggest.prefix)
 
-  if (suggest.version == 3 and suggest.section in {ideOutline, ideExpand}):
-    result.add(sep)
-    result.add($suggest.endLine)
-    result.add(sep)
-    result.add($suggest.endCol)
+    if (suggest.version == 3 and suggest.section in {ideOutline, ideExpand}):
+      result.add(sep)
+      result.add($suggest.endLine)
+      result.add(sep)
+      result.add($suggest.endCol)
+
+proc suggestToSuggestInlayHint*(sug: Suggest): SuggestInlayHint =
+  SuggestInlayHint(
+    kind: sihkType,
+    line: sug.line,
+    column: sug.column + sug.tokenLen,
+    label: ": " & sug.forth,
+    paddingLeft: false,
+    paddingRight: false,
+    allowInsert: true,
+    tooltip: ""
+  )
 
 proc suggestResult*(conf: ConfigRef; s: Suggest) =
   if not isNil(conf.suggestionResultHook):
@@ -537,7 +569,7 @@ proc suggestSym*(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym; i
   ## misnamed: should be 'symDeclared'
   let conf = g.config
   when defined(nimsuggest):
-    g.suggestSymbols.mgetOrPut(info.fileIndex, @[]).add SymInfoPair(sym: s, info: info)
+    g.suggestSymbols.mgetOrPut(info.fileIndex, @[]).add SymInfoPair(sym: s, info: info, isDecl: isDecl)
 
     if conf.suggestVersion == 0:
       if s.allUsages.len == 0:

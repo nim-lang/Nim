@@ -903,6 +903,7 @@ type
     info*: TLineInfo
     when defined(nimsuggest):
       endInfo*: TLineInfo
+      hasUserSpecifiedType*: bool  # used for determining whether to display inlay type hints
     owner*: PSym
     flags*: TSymFlags
     ast*: PNode               # syntax tree of proc, iterator, etc.:

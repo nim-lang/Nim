@@ -57,6 +57,7 @@ type
   SymInfoPair* = object
     sym*: PSym
     info*: TLineInfo
+    isDecl*: bool
 
   PipelinePass* = enum
     NonePass

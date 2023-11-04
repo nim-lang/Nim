@@ -199,7 +199,7 @@ type
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideChkFile, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg, ideProject, ideGlobalSymbols,
-    ideRecompile, ideChanged, ideType, ideDeclaration, ideExpand
+    ideRecompile, ideChanged, ideType, ideDeclaration, ideExpand, ideInlayHints
 
   Feature* = enum  ## experimental features; DO NOT RENAME THESE!
     dotOperators,
@@ -288,8 +288,23 @@ type
     version*: int
     endLine*: uint16
     endCol*: int
+    inlayHintInfo*: SuggestInlayHint
 
   Suggestions* = seq[Suggest]
+
+  SuggestInlayHintKind* = enum
+    sihkType = "Type",
+    sihkParameter = "Parameter"
+
+  SuggestInlayHint* = ref object
+    kind*: SuggestInlayHintKind
+    line*: int                   # Starts at 1
+    column*: int                 # Starts at 0
+    label*: string
+    paddingLeft*: bool
+    paddingRight*: bool
+    allowInsert*: bool
+    tooltip*: string
 
   ProfileInfo* = object
     time*: float
@@ -1071,6 +1086,7 @@ proc `$`*(c: IdeCmd): string =
   of ideRecompile: "recompile"
   of ideChanged: "changed"
   of ideType: "type"
+  of ideInlayHints: "inlayHints"
 
 proc floatInt64Align*(conf: ConfigRef): int16 =
   ## Returns either 4 or 8 depending on reasons.
