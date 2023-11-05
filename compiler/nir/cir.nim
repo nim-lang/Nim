@@ -888,7 +888,7 @@ typedef NU8 NU;
 #  endif
 #endif
 
-#define NIM_STRLIT_FLAG ((NU64)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
+#define NIM_STRLIT_FLAG ((NU)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
 
 #define nimAddInt64(a, b, L) ({long long int res; if(__builtin_saddll_overflow(a, b, &res)) goto L; res})
 #define nimSubInt64(a, b, L) ({long long int res; if(__builtin_ssubll_overflow(a, b, &res)) goto L; res})
