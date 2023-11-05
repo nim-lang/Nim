@@ -71,6 +71,7 @@ type
     tokens: BiTable[string]
     emittedStrings: IntSet
     needsPrefix: IntSet
+    generatedTypes: IntSet
     mangledModules: Table[LitId, LitId]
 
 proc initGeneratedCode*(m: sink NirModule): GeneratedCode =
@@ -254,8 +255,9 @@ proc genType(g: var GeneratedCode; types: TypeGraph; lit: Literals; t: TypeId; n
   of ProcTy:
     let (retType, callConv) = returnType(types, t)
     genType g, types, lit, retType
-    genType g, types, lit, callConv
+    g.add Space
     g.add ParLe
+    genType g, types, lit, callConv
     g.add Star # "(*fn)"
     maybeAddName()
     g.add ParRi
@@ -285,33 +287,32 @@ proc generateTypes(g: var GeneratedCode; types: TypeGraph; lit: Literals; c: Typ
 
   for (t, declKeyword) in c.ordered.s:
     let name = if types[t].kind == ArrayTy: arrayName(types, t) else: t.firstSon
-    let s {.cursor.} = lit.strings[types[name].litId]
-    g.add declKeyword
-    g.add CurlyLe
-    if types[t].kind == ArrayTy:
-      #let name = arrayName(types, t)
-
-      genType g, types, lit, elementType(types, t), "a"
-      g.add BracketLe
-      g.add $arrayLen(types, t)
-      g.add BracketRi
+    let litId = types[name].litId
+    if not g.generatedTypes.containsOrIncl(litId.int):
+      let s {.cursor.} = lit.strings[litId]
+      g.add declKeyword
+      g.add CurlyLe
+      if types[t].kind == ArrayTy:
+        genType g, types, lit, elementType(types, t), "a"
+        g.add BracketLe
+        g.add $arrayLen(types, t)
+        g.add BracketRi
+        g.add Semicolon
+      else:
+        var i = 0
+        for x in sons(types, t):
+          case types[x].kind
+          of FieldDecl:
+            genType g, types, lit, x.firstSon, "F" & $i
+            g.add Semicolon
+            inc i
+          of ObjectTy:
+            genType g, types, lit, x, "P"
+            g.add Semicolon
+          else: discard
+      g.add CurlyRi
+      g.add s
       g.add Semicolon
-    else:
-      var i = 0
-      for x in sons(types, t):
-        case types[x].kind
-        of FieldDecl:
-          genType g, types, lit, x.firstSon, "F" & $i
-          g.add Semicolon
-          inc i
-        of ObjectTy:
-          genType g, types, lit, x, "P"
-          g.add Semicolon
-        else: discard
-
-    g.add CurlyRi
-    g.add s
-    g.add Semicolon
 
 # Procs
 
@@ -342,7 +343,7 @@ proc genStrLit(c: var GeneratedCode; lit: Literals; litId: LitId): Token =
     let s {.cursor.} = lit.strings[litId]
     emitData "static const struct "
     emitData CurlyLe
-    emitData "  NI cap"
+    emitData "NI cap"
     emitData Semicolon
     emitData "NC8 data"
     emitData BracketLe
