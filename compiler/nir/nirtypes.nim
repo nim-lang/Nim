@@ -177,10 +177,34 @@ proc sons3(tree: TypeGraph; n: TypeId): (TypeId, TypeId, TypeId) =
   let c = b + span(tree, b)
   result = (TypeId a, TypeId b, TypeId c)
 
+proc arrayName*(tree: TypeGraph; n: TypeId): TypeId {.inline.} =
+  assert tree[n].kind == ArrayTy
+  let (_, _, c) = sons3(tree, n)
+  result = c
+
 proc arrayLen*(tree: TypeGraph; n: TypeId): BiggestInt =
   assert tree[n].kind == ArrayTy
   let (_, b) = sons2(tree, n)
   result = tree.lit.numbers[LitId tree[b].operand]
+
+proc returnType*(tree: TypeGraph; n: TypeId): (TypeId, TypeId) =
+  # Returns the positions of the return type + calling convention.
+  var pos = n.int
+  assert tree.nodes[pos].kind == ProcTy
+  let a = n.int+1
+  let b = a + span(tree, a)
+  result = (TypeId b, TypeId a) # not a typo, order is reversed
+
+iterator params*(tree: TypeGraph; n: TypeId): TypeId =
+  var pos = n.int
+  assert tree.nodes[pos].kind == ProcTy
+  let last = pos + tree.nodes[pos].rawSpan
+  inc pos
+  nextChild tree, pos
+  nextChild tree, pos
+  while pos < last:
+    yield TypeId pos
+    nextChild tree, pos
 
 proc openType*(tree: var TypeGraph; kind: NirTypeKind): TypePatchPos =
   assert kind in {APtrTy, UPtrTy, AArrayPtrTy, UArrayPtrTy,
@@ -356,10 +380,12 @@ proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
     dest.add "]"
   of ArrayTy:
     dest.add "Array["
-    let (elems, len) = g.sons2(i)
+    let (elems, len, name) = g.sons3(i)
     toString(dest, g, elems)
     dest.add ", "
     toString(dest, g, len)
+    dest.add ", "
+    toString(dest, g, name)
     dest.add "]"
   of LastArrayTy:
     # array of unspecified size as a last field inside an object
@@ -421,6 +447,12 @@ iterator allTypes*(g: TypeGraph; start = 0): TypeId =
     yield TypeId i
     nextChild g, i
 
+iterator allTypesIncludingInner*(g: TypeGraph; start = 0): TypeId =
+  var i = start
+  while i < g.len:
+    yield TypeId i
+    inc i
+
 proc `$`(g: TypeGraph): string =
   result = ""
   toString(result, g)
@@ -431,6 +463,7 @@ when isMainModule:
   let a = g.openType ArrayTy
   g.addBuiltinType Int8Id
   g.addArrayLen 5
+  g.addName "SomeArray"
   let finalArrayType = finishType(g, a)
 
   let obj = g.openType ObjectDecl

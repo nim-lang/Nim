@@ -54,6 +54,7 @@ type
     SelectList,  # (values...)
     SelectValue, # (value)
     SelectRange, # (valueA..valueB)
+    ForeignDecl, # Can wrap SummonGlobal, SummonThreadLocal, SummonConst
     SummonGlobal,
     SummonThreadLocal,
     Summon, # x = Summon Typed <Type ID>; x begins to live
@@ -108,6 +109,7 @@ type
     TestOf,
     Emit,
     ProcDecl,
+    ForeignProcDecl,
     PragmaPair
 
 type
@@ -278,6 +280,14 @@ iterator sonsFromN*(tree: Tree; n: NodePos; toSkip = 2): NodePos =
 
 template `[]`*(t: Tree; n: NodePos): Instr = t.nodes[n.int]
 
+iterator sonsRest*(tree: Tree; parent, n: NodePos): NodePos =
+  var pos = n.int
+  assert tree[parent].kind > LastAtomicValue
+  let last = parent.int + tree[parent].rawSpan
+  while pos < last:
+    yield NodePos pos
+    nextChild tree, pos
+
 proc span(tree: Tree; pos: int): int {.inline.} =
   if tree.nodes[pos].kind <= LastAtomicValue: 1 else: int(tree.nodes[pos].operand)
 
@@ -290,18 +300,35 @@ proc copyTree*(dest: var Tree; src: Tree) =
   for i in 0..<L:
     dest.nodes[d+i] = src.nodes[pos+i]
 
-proc sons2*(tree: Tree; n: NodePos): (NodePos, NodePos) =
+proc sons2*(tree: Tree; n: NodePos): (NodePos, NodePos) {.inline.} =
   assert(not isAtom(tree, n.int))
   let a = n.int+1
   let b = a + span(tree, a)
   result = (NodePos a, NodePos b)
 
-proc sons3*(tree: Tree; n: NodePos): (NodePos, NodePos, NodePos) =
+proc sons3*(tree: Tree; n: NodePos): (NodePos, NodePos, NodePos) {.inline.} =
   assert(not isAtom(tree, n.int))
   let a = n.int+1
   let b = a + span(tree, a)
   let c = b + span(tree, b)
   result = (NodePos a, NodePos b, NodePos c)
+
+proc sons4*(tree: Tree; n: NodePos): (NodePos, NodePos, NodePos, NodePos) {.inline.} =
+  assert(not isAtom(tree, n.int))
+  let a = n.int+1
+  let b = a + span(tree, a)
+  let c = b + span(tree, b)
+  let d = c + span(tree, c)
+  result = (NodePos a, NodePos b, NodePos c, NodePos d)
+
+proc sons5*(tree: Tree; n: NodePos): (NodePos, NodePos, NodePos, NodePos, NodePos) {.inline.} =
+  assert(not isAtom(tree, n.int))
+  let a = n.int+1
+  let b = a + span(tree, a)
+  let c = b + span(tree, b)
+  let d = c + span(tree, c)
+  let e = d + span(tree, d)
+  result = (NodePos a, NodePos b, NodePos c, NodePos d, NodePos e)
 
 proc typeId*(ins: Instr): TypeId {.inline.} =
   assert ins.kind == Typed
@@ -357,6 +384,9 @@ proc addSymUse*(t: var Tree; info: PackedLineInfo; s: SymId) {.inline.} =
 
 proc addSymDef*(t: var Tree; info: PackedLineInfo; s: SymId) {.inline.} =
   t.nodes.add Instr(x: toX(SymDef, uint32(s)), info: info)
+
+proc addNop*(t: var Tree; info: PackedLineInfo) {.inline.} =
+  t.nodes.add Instr(x: toX(Nop, 0'u32), info: info)
 
 proc addTyped*(t: var Tree; info: PackedLineInfo; typ: TypeId) {.inline.} =
   assert typ.int >= 0

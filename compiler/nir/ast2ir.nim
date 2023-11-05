@@ -31,6 +31,8 @@ type
     idgen: IdGenerator
     processedProcs, pendingProcsAsSet: HashSet[ItemId]
     pendingProcs: seq[PSym] # procs we still need to generate code for
+    pendingVarsAsSet: HashSet[ItemId]
+    pendingVars: seq[PSym]
     noModularity*: bool
     inProc: int
     toSymId: Table[ItemId, SymId]
@@ -69,6 +71,8 @@ proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; m
     result.nativeIntId = Int64Id
     result.nativeUIntId = UInt16Id
   result.strPayloadId = strPayloadPtrType(result.types, result.nirm.types)
+  nirm.namespace = nirm.lit.strings.getOrIncl(customPath(toFullPath(config, module.info)))
+  nirm.intbits = uint32(config.target.intSize * 8)
 
 proc initProcCon*(m: ModuleCon; prc: PSym; config: ConfigRef): ProcCon =
   result = ProcCon(m: m, sm: initSlotManager({}), prc: prc, config: config,
@@ -161,11 +165,6 @@ proc getTemp(c: var ProcCon; t: TypeId; info: PackedLineInfo): Value =
   let tmp = allocTemp(c, t)
   c.code.addSummon info, tmp, t
   result = localToValue(info, tmp)
-
-template withTemp(tmp, n, body: untyped) {.dirty.} =
-  var tmp = getTemp(c, n)
-  body
-  c.freeTemp(tmp)
 
 proc gen(c: var ProcCon; n: PNode; flags: GenFlags = {}) =
   var tmp = default(Value)
@@ -281,14 +280,15 @@ proc genIf(c: var ProcCon; n: PNode; d: var Value) =
     var it = n[i]
     if it.len == 2:
       let info = toLineInfo(c, it[0].info)
-      withTemp(tmp, it[0]):
-        var elsePos: LabelId
-        if isNotOpr(it[0]):
-          c.gen(it[0][1], tmp)
-          elsePos = c.xjmp(it[0][1], opcTJmp, tmp) # if true
-        else:
-          c.gen(it[0], tmp)
-          elsePos = c.xjmp(it[0], opcFJmp, tmp) # if false
+      var elsePos: LabelId
+      if isNotOpr(it[0]):
+        let tmp = c.genx(it[0][1])
+        elsePos = c.xjmp(it[0][1], opcTJmp, tmp) # if true
+        c.freeTemp tmp
+      else:
+        let tmp = c.genx(it[0])
+        elsePos = c.xjmp(it[0], opcFJmp, tmp) # if false
+        c.freeTemp tmp
       c.clearDest(n, d)
       if isEmptyType(it[1].typ): # maybe noreturn call, don't touch `d`
         c.genScope(it[1])
@@ -404,22 +404,23 @@ proc genCase(c: var ProcCon; n: PNode; d: var Value) =
   var sections = newSeqOfCap[LabelId](n.len-1)
   let ending = newLabel(c.labelGen)
   let info = toLineInfo(c, n.info)
-  withTemp(tmp, n[0]):
-    buildTyped c.code, info, Select, typeToIr(c.m, n[0].typ):
-      c.gen(n[0], tmp)
-      for i in 1..<n.len:
-        let section = newLabel(c.labelGen)
-        sections.add section
-        let it = n[i]
-        let itinfo = toLineInfo(c, it.info)
-        build c.code, itinfo, SelectPair:
-          build c.code, itinfo, SelectList:
-            for j in 0..<it.len-1:
-              if it[j].kind == nkRange:
-                caseRange c, it[j]
-              else:
-                caseValue c, it[j]
-          c.code.addLabel itinfo, Goto, section
+  let tmp = c.genx(n[0])
+  buildTyped c.code, info, Select, typeToIr(c.m, n[0].typ):
+    c.code.copyTree tmp
+    for i in 1..<n.len:
+      let section = newLabel(c.labelGen)
+      sections.add section
+      let it = n[i]
+      let itinfo = toLineInfo(c, it.info)
+      build c.code, itinfo, SelectPair:
+        build c.code, itinfo, SelectList:
+          for j in 0..<it.len-1:
+            if it[j].kind == nkRange:
+              caseRange c, it[j]
+            else:
+              caseValue c, it[j]
+        c.code.addLabel itinfo, Goto, section
+  c.freeTemp tmp
   for i in 1..<n.len:
     let it = n[i]
     let itinfo = toLineInfo(c, it.info)
@@ -2131,6 +2132,30 @@ proc genAsgn2(c: var ProcCon; a, b: PNode) =
   var d = c.genx(a)
   c.gen b, d
 
+proc irModule(c: var ProcCon; owner: PSym): string =
+  #if owner == c.m.module: "" else:
+  customPath(toFullPath(c.config, owner.info))
+
+proc fromForeignModule(c: ProcCon; s: PSym): bool {.inline.} =
+  result = ast.originatingModule(s) != c.m.module and not c.m.noModularity
+
+proc genForeignVar(c: var ProcCon; s: PSym) =
+  var opc: Opcode
+  if s.kind == skConst:
+    opc = SummonConst
+  elif sfThread in s.flags:
+    opc = SummonThreadLocal
+  else:
+    assert sfGlobal in s.flags
+    opc = SummonGlobal
+  let t = typeToIr(c.m, s.typ)
+  let info = toLineInfo(c, s.info)
+  build c.code, info, ForeignDecl:
+    buildTyped c.code, info, opc, t:
+      build c.code, info, ModuleSymUse:
+        c.code.addStrVal c.lit.strings, info, irModule(c, ast.originatingModule(s))
+        c.code.addImmediateVal info, s.itemId.item.int
+
 proc genVarSection(c: var ProcCon; n: PNode) =
   for a in n:
     if a.kind == nkCommentStmt: continue
@@ -2143,7 +2168,10 @@ proc genVarSection(c: var ProcCon; n: PNode) =
       if vn.kind == nkSym:
         let s = vn.sym
         var opc: Opcode
-        if sfThread in s.flags:
+        if s.kind == skConst:
+          opc = SummonConst
+          if dontInlineConstant(n, s.astdef): continue
+        elif sfThread in s.flags:
           opc = SummonThreadLocal
         elif sfGlobal in s.flags:
           opc = SummonGlobal
@@ -2172,17 +2200,13 @@ proc convStrToCStr(c: var ProcCon; n: PNode; d: var Value) =
 proc convCStrToStr(c: var ProcCon; n: PNode; d: var Value) =
   genUnaryCp(c, n, d, "cstrToNimstr", argAt = 0)
 
-proc irModule(c: var ProcCon; owner: PSym): string =
-  #if owner == c.m.module: "" else:
-  customPath(toFullPath(c.config, owner.info))
-
-proc fromForeignModule(c: ProcCon; s: PSym): bool {.inline.} =
-  result = ast.originatingModule(s) != c.m.module and not c.m.noModularity
-
 proc genRdVar(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   let info = toLineInfo(c, n.info)
   let s = n.sym
   if fromForeignModule(c, s):
+    if s.kind in {skVar, skConst, skLet} and not c.m.pendingVarsAsSet.containsOrIncl(s.itemId):
+      c.m.pendingVars.add s
+
     template body(target) =
       build target, info, ModuleSymUse:
         target.addStrVal c.lit.strings, info, irModule(c, ast.originatingModule(s))
@@ -2197,10 +2221,15 @@ proc genRdVar(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
 proc genSym(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   let s = n.sym
   case s.kind
-  of skVar, skForVar, skTemp, skLet, skResult, skParam, skConst:
+  of skConst:
+    if dontInlineConstant(n, s.astdef):
+      genRdVar(c, n, d, flags)
+    else:
+      gen(c, s.astdef, d, flags)
+  of skVar, skForVar, skTemp, skLet, skResult, skParam:
     genRdVar(c, n, d, flags)
   of skProc, skFunc, skConverter, skMethod, skIterator:
-    if not fromForeignModule(c, s):
+    if not c.m.noModularity:
       # anon and generic procs have no AST so we need to remember not to forget
       # to emit these:
       if not c.m.processedProcs.contains(s.itemId):
@@ -2354,12 +2383,13 @@ proc genObjAccess(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
   valueIntoDest c, info, d, n.typ, body
   freeTemp c, a
 
-proc genParams(c: var ProcCon; params: PNode; prc: PSym) =
+proc genParams(c: var ProcCon; params: PNode; prc: PSym): PSym =
+  result = nil
   if params.len > 0 and resultPos < prc.ast.len:
     let resNode = prc.ast[resultPos]
-    let res = resNode.sym # get result symbol
-    c.code.addSummon toLineInfo(c, res.info), toSymId(c, res),
-      typeToIr(c.m, res.typ), SummonResult
+    result = resNode.sym # get result symbol
+    c.code.addSummon toLineInfo(c, result.info), toSymId(c, result),
+      typeToIr(c.m, result.typ), SummonResult
   elif prc.typ.len > 0 and not isEmptyType(prc.typ[0]) and not isCompileTimeOnly(prc.typ[0]):
     # happens for procs without bodies:
     let t = typeToIr(c.m, prc.typ[0])
@@ -2389,6 +2419,7 @@ proc addCallConv(c: var ProcCon; info: PackedLineInfo; callConv: TCallingConvent
   of ccNoConvention: ann NoCall
 
 proc genProc(cOuter: var ProcCon; prc: PSym) =
+  if prc.magic notin generatedMagics: return
   if cOuter.m.processedProcs.containsOrIncl(prc.itemId):
     return
   #assert cOuter.m.inProc == 0, " in nested proc! " & prc.name.s
@@ -2399,14 +2430,22 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
   inc cOuter.m.inProc
 
   var c = initProcCon(cOuter.m, prc, cOuter.m.graph.config)
+  let body =
+    if not fromForeignModule(c, prc):
+      transformBody(c.m.graph, c.m.idgen, prc, {useCache, keepOpenArrayConversions})
+    else:
+      nil
 
-  let body = transformBody(c.m.graph, c.m.idgen, prc, {useCache, keepOpenArrayConversions})
-
-  let info = toLineInfo(c, body.info)
-  build c.code, info, ProcDecl:
-    let symId = toSymId(c, prc)
-    addSymDef c.code, info, symId
-    c.m.nirm.symnames[symId] = c.lit.strings.getOrIncl(prc.name.s)
+  let info = toLineInfo(c, prc.info)
+  build c.code, info, (if body != nil: ProcDecl else: ForeignProcDecl):
+    if body != nil:
+      let symId = toSymId(c, prc)
+      addSymDef c.code, info, symId
+      c.m.nirm.symnames[symId] = c.lit.strings.getOrIncl(prc.name.s)
+    else:
+      build c.code, info, ModuleSymUse:
+        c.code.addStrVal c.lit.strings, info, irModule(c, ast.originatingModule(prc))
+        c.code.addImmediateVal info, prc.itemId.item.int
     addCallConv c, info, prc.typ.callConv
     if sfCompilerProc in prc.flags:
       build c.code, info, PragmaPair:
@@ -2435,11 +2474,16 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
         else:
           c.code.addPragmaId info, ObjExport
 
-    genParams(c, prc.typ.n, prc)
-    gen(c, body)
-    patch c, body, c.exitLabel
-    build c.code, info, Ret:
-      discard
+    let resultSym = genParams(c, prc.typ.n, prc)
+    if body != nil:
+      gen(c, body)
+      patch c, body, c.exitLabel
+      if resultSym != nil:
+        build c.code, info, Ret:
+          c.code.addSymUse info, toSymId(c, resultSym)
+      else:
+        build c.code, info, Ret:
+          c.code.addNop info
 
   #copyTree cOuter.code, c.code
   dec cOuter.m.inProc
@@ -2569,10 +2613,13 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
     localError(c.config, n.info, "cannot generate IR code for " & $n)
 
 proc genPendingProcs(c: var ProcCon) =
-  while c.m.pendingProcs.len > 0:
+  while c.m.pendingProcs.len > 0 or c.m.pendingVars.len > 0:
     let procs = move(c.m.pendingProcs)
     for v in procs:
       genProc(c, v)
+    let vars = move(c.m.pendingVars)
+    for v in vars:
+      genForeignVar(c, v)
 
 proc genStmt*(c: var ProcCon; n: PNode): NodePos =
   result = NodePos c.code.len
