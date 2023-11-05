@@ -741,8 +741,8 @@ const
 
 """
 
-proc main(f: string) =
-  var c = initGeneratedCode(load(f))
+proc generateCode*(inp, outp: string) =
+  var c = initGeneratedCode(load(inp))
 
   var co = TypeOrder()
   traverseTypes(c.m.types, c.m.lit, co)
@@ -755,13 +755,11 @@ proc main(f: string) =
     gen c, c.m.code, NodePos(i)
     next c.m.code, i
 
-  var f = CppFile(f: stdout)
+  var f = CppFile(f: open(outp, fmWrite))
   f.write Prelude
   writeTokenSeq f, c.includes, c
   writeTokenSeq f, typeDecls, c
   writeTokenSeq f, c.data, c
   writeTokenSeq f, c.protos, c
   writeTokenSeq f, c.code, c
-
-import std / os
-main paramStr(1)
+  f.f.close
