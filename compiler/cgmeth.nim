@@ -180,7 +180,7 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
 
   if s.ast != nil and s.ast.len > resultPos and s.ast[resultPos] != nil:
     let x = s.ast[resultPos]
-    if x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView:
+    if x.typ != nil and (x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView):
       x.typ.flags.incl tfVarIsPtr
 
   if witness != nil:
