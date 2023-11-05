@@ -216,7 +216,7 @@ proc genType(g: var GeneratedCode; types: TypeGraph; lit: Literals; t: TypeId) =
   of FloatTy: g.add "NF" & $types[t].integralBits
   of BoolTy: g.add "NB" & $types[t].integralBits
   of CharTy: g.add "NC" & $types[t].integralBits
-  of ObjectTy, UnionTy, NameVal:
+  of ObjectTy, UnionTy, NameVal, AnnotationVal:
     g.add lit.strings[types[t].litId]
   of VarargsTy:
     g.add "..."
@@ -233,17 +233,24 @@ proc genType(g: var GeneratedCode; types: TypeGraph; lit: Literals; t: TypeId) =
     g.add BracketLe
     g.add BracketRi
   of ProcTy:
-    g.add "(*)"
-    g.add ParLe
     var i = 0
     for ch in sons(types, t):
-      if i > 0: g.add Comma
       genType g, types, lit, ch
+      g.add Space
+      inc i
+      if i >= 2: break
+    g.add "(*)"
+    g.add ParLe
+    i = 0
+    for ch in sons(types, t):
+      if i > 2:
+        if i > 3: g.add Comma
+        genType g, types, lit, ch
       inc i
     g.add ParRi
   of ObjectDecl, UnionDecl:
     g.add lit.strings[types[t.firstSon].litId]
-  of IntVal, SizeVal, AlignVal, OffsetVal, AnnotationVal, FieldDecl:
+  of IntVal, SizeVal, AlignVal, OffsetVal, FieldDecl:
     #raiseAssert "did not expect: " & $types[t].kind
     g.add "BUG "
     g.add $types[t].kind
@@ -620,9 +627,17 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
     let (_, arg) = sons2(t, n)
     c.add "&"
     gen c, t, arg
-  of DerefArrayAt, ArrayAt:
+  of DerefArrayAt:
     let (_, a, i) = sons3(t, n)
     gen c, t, a
+    c.add BracketLe
+    gen c, t, i
+    c.add BracketRi
+  of ArrayAt:
+    let (_, a, i) = sons3(t, n)
+    gen c, t, a
+    c.add Dot
+    c.add "a"
     c.add BracketLe
     gen c, t, i
     c.add BracketRi
@@ -733,6 +748,118 @@ const
   Prelude = """
 /* GENERATED CODE. DO NOT EDIT. */
 
+#ifdef __cplusplus
+#define NB8 bool
+#elif (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901)
+// see #13798: to avoid conflicts for code emitting `#include <stdbool.h>`
+#define NB8 _Bool
+#else
+typedef unsigned char NB8; // best effort
+#endif
+
+typedef unsigned char NC8;
+
+typedef float NF32;
+typedef double NF64;
+#if defined(__BORLANDC__) || defined(_MSC_VER)
+typedef signed char NI8;
+typedef signed short int NI16;
+typedef signed int NI32;
+typedef __int64 NI64;
+/* XXX: Float128? */
+typedef unsigned char NU8;
+typedef unsigned short int NU16;
+typedef unsigned int NU32;
+typedef unsigned __int64 NU64;
+#elif defined(HAVE_STDINT_H)
+#ifndef USE_NIM_NAMESPACE
+#  include <stdint.h>
+#endif
+typedef int8_t NI8;
+typedef int16_t NI16;
+typedef int32_t NI32;
+typedef int64_t NI64;
+typedef uint8_t NU8;
+typedef uint16_t NU16;
+typedef uint32_t NU32;
+typedef uint64_t NU64;
+#elif defined(HAVE_CSTDINT)
+#ifndef USE_NIM_NAMESPACE
+#  include <cstdint>
+#endif
+typedef std::int8_t NI8;
+typedef std::int16_t NI16;
+typedef std::int32_t NI32;
+typedef std::int64_t NI64;
+typedef std::uint8_t NU8;
+typedef std::uint16_t NU16;
+typedef std::uint32_t NU32;
+typedef std::uint64_t NU64;
+#else
+/* Unknown compiler/version, do our best */
+#ifdef __INT8_TYPE__
+typedef __INT8_TYPE__ NI8;
+#else
+typedef signed char NI8;
+#endif
+#ifdef __INT16_TYPE__
+typedef __INT16_TYPE__ NI16;
+#else
+typedef signed short int NI16;
+#endif
+#ifdef __INT32_TYPE__
+typedef __INT32_TYPE__ NI32;
+#else
+typedef signed int NI32;
+#endif
+#ifdef __INT64_TYPE__
+typedef __INT64_TYPE__ NI64;
+#else
+typedef long long int NI64;
+#endif
+/* XXX: Float128? */
+#ifdef __UINT8_TYPE__
+typedef __UINT8_TYPE__ NU8;
+#else
+typedef unsigned char NU8;
+#endif
+#ifdef __UINT16_TYPE__
+typedef __UINT16_TYPE__ NU16;
+#else
+typedef unsigned short int NU16;
+#endif
+#ifdef __UINT32_TYPE__
+typedef __UINT32_TYPE__ NU32;
+#else
+typedef unsigned int NU32;
+#endif
+#ifdef __UINT64_TYPE__
+typedef __UINT64_TYPE__ NU64;
+#else
+typedef unsigned long long int NU64;
+#endif
+#endif
+
+#ifdef NIM_INTBITS
+#  if NIM_INTBITS == 64
+typedef NI64 NI;
+typedef NU64 NU;
+#  elif NIM_INTBITS == 32
+typedef NI32 NI;
+typedef NU32 NU;
+#  elif NIM_INTBITS == 16
+typedef NI16 NI;
+typedef NU16 NU;
+#  elif NIM_INTBITS == 8
+typedef NI8 NI;
+typedef NU8 NU;
+#  else
+#    error "invalid bit width for int"
+#  endif
+#endif
+
+#define NIM_STRLIT_FLAG ((NU64)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
+
 #define nimAddInt64(a, b, L) ({long long int res; if(__builtin_saddll_overflow(a, b, &res)) goto L; res})
 #define nimSubInt64(a, b, L) ({long long int res; if(__builtin_ssubll_overflow(a, b, &res)) goto L; res})
 #define nimMulInt64(a, b, L) ({long long int res; if(__builtin_smulll_overflow(a, b, &res)) goto L; res})
@@ -761,6 +888,7 @@ proc generateCode*(inp, outp: string) =
     next c.m.code, i
 
   var f = CppFile(f: open(outp, fmWrite))
+  f.write "#define NIM_INTBITS " & $c.m.intbits & "\n"
   f.write Prelude
   writeTokenSeq f, c.includes, c
   writeTokenSeq f, typeDecls, c

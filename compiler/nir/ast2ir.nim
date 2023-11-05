@@ -72,6 +72,7 @@ proc initModuleCon*(graph: ModuleGraph; config: ConfigRef; idgen: IdGenerator; m
     result.nativeUIntId = UInt16Id
   result.strPayloadId = strPayloadPtrType(result.types, result.nirm.types)
   nirm.namespace = nirm.lit.strings.getOrIncl(customPath(toFullPath(config, module.info)))
+  nirm.intbits = uint32(config.target.intSize * 8)
 
 proc initProcCon*(m: ModuleCon; prc: PSym; config: ConfigRef): ProcCon =
   result = ProcCon(m: m, sm: initSlotManager({}), prc: prc, config: config,
