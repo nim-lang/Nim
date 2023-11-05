@@ -375,10 +375,12 @@ proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
     dest.add "]"
   of ArrayTy:
     dest.add "Array["
-    let (elems, len) = g.sons2(i)
+    let (elems, len, name) = g.sons3(i)
     toString(dest, g, elems)
     dest.add ", "
     toString(dest, g, len)
+    dest.add ", "
+    toString(dest, g, name)
     dest.add "]"
   of LastArrayTy:
     # array of unspecified size as a last field inside an object
@@ -450,6 +452,7 @@ when isMainModule:
   let a = g.openType ArrayTy
   g.addBuiltinType Int8Id
   g.addArrayLen 5
+  g.addName "SomeArray"
   let finalArrayType = finishType(g, a)
 
   let obj = g.openType ObjectDecl

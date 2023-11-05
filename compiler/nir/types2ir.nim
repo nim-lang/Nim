@@ -426,6 +426,7 @@ proc typeToIr*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
       let a = openType(g, ArrayTy)
       g.addType(elemType)
       g.addArrayLen n
+      g.addName mangle(c, t)
       result = finishType(g, a)
   of tyPtr, tyRef:
     cached(c, t):
@@ -464,6 +465,7 @@ proc typeToIr*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
         let a = openType(g, ArrayTy)
         g.addType(UInt8Id)
         g.addArrayLen s
+        g.addName mangle(c, t)
         result = finishType(g, a)
   of tyPointer, tyNil:
     # tyNil can happen for code like: `const CRAP = nil` which we have in posix.nim
