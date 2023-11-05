@@ -68,6 +68,7 @@ type
     data: seq[LitId]
     protos: seq[LitId]
     code: seq[LitId]
+    init: seq[LitId]
     tokens: BiTable[string]
     emittedStrings: IntSet
     needsPrefix: IntSet
@@ -641,8 +642,10 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
       c.add Semicolon
   of SummonConst:
     moveToDataSection:
-      let (typ, sym) = sons2(t, n)
+      let (typ, sym, val) = sons3(t, n)
       c.genGlobal t, sym, typ, "const "
+      c.add AsgnOpr
+      c.gen t, val
       c.add Semicolon
   of Summon, SummonResult:
     let (typ, sym) = sons2(t, n)
@@ -903,6 +906,22 @@ typedef NU8 NU;
 
 """
 
+proc traverseCode(c: var GeneratedCode) =
+  const AllowedInToplevelC = {SummonConst, SummonGlobal, SummonThreadLocal,
+                              ProcDecl, ForeignDecl, ForeignProcDecl}
+  var i = NodePos(0)
+  while i.int < c.m.code.len:
+    let oldLen = c.code.len
+    let moveToInitSection = c.m.code[NodePos(i)].kind notin AllowedInToplevelC
+
+    gen c, c.m.code, NodePos(i)
+    next c.m.code, i
+
+    if moveToInitSection:
+      for i in oldLen ..< c.code.len:
+        c.init.add c.code[i]
+      setLen c.code, oldLen
+
 proc generateCode*(inp, outp: string) =
   var c = initGeneratedCode(load(inp))
 
@@ -912,11 +931,7 @@ proc generateCode*(inp, outp: string) =
   generateTypes(c, c.m.types, c.m.lit, co)
   let typeDecls = move c.code
 
-  var i = NodePos(0)
-  while i.int < c.m.code.len:
-    gen c, c.m.code, NodePos(i)
-    next c.m.code, i
-
+  traverseCode c
   var f = CppFile(f: open(outp, fmWrite))
   f.write "#define NIM_INTBITS " & $c.m.intbits & "\n"
   f.write Prelude
@@ -925,4 +940,8 @@ proc generateCode*(inp, outp: string) =
   writeTokenSeq f, c.data, c
   writeTokenSeq f, c.protos, c
   writeTokenSeq f, c.code, c
+  if c.init.len > 0:
+    f.write "void __attribute__((constructor)) init(void) {"
+    writeTokenSeq f, c.init, c
+    f.write "}\n\n"
   f.f.close
