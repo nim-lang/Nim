@@ -41,9 +41,6 @@ type
     ConstKeyword = "const "
     StaticKeyword = "static "
     ExternKeyword = "extern "
-    StrLitPrefix = "(NimChar*)"
-    StrLitNamePrefix = "Qstr"
-    LoopKeyword = "while (true) "
     WhileKeyword = "while "
     IfKeyword = "if ("
     ElseKeyword = "else "
@@ -55,6 +52,7 @@ type
     IfNot = "if (!("
     ReturnKeyword = "return "
     TypedefStruct = "typedef struct "
+    TypedefUnion = "typedef union "
     IncludeKeyword = "#include "
 
 proc fillTokenTable(tab: var BiTable[string]) =
@@ -142,11 +140,11 @@ proc writeTokenSeq(f: var CppFile; s: seq[Token]; c: GeneratedCode) =
 type
   TypeList = object
     processed: IntSet
-    s: seq[TypeId]
+    s: seq[(TypeId, PredefinedToken)]
 
-proc add(dest: var TypeList; elem: TypeId) =
+proc add(dest: var TypeList; elem: TypeId; decl: PredefinedToken) =
   if not containsOrIncl(dest.processed, int(elem)):
-    dest.s.add elem
+    dest.s.add (elem, decl)
 
 type
   TypeOrder = object
@@ -171,13 +169,14 @@ proc recordDependency(types: TypeGraph; lit: Literals; c: var TypeOrder; parent,
 
   case types[ch].kind
   of ObjectTy, UnionTy:
+    let decl = if types[ch].kind == ObjectTy: TypedefStruct else: TypedefUnion
     let obj = c.typeImpls.getOrDefault(lit.strings[types[ch].litId])
     if viaPointer:
-      c.forwardedDecls.add obj
+      c.forwardedDecls.add obj, decl
     else:
       if not containsOrIncl(c.lookedAt, obj.int):
         traverseObject(types, lit, c, obj)
-      c.ordered.add obj
+      c.ordered.add obj, decl
   else:
     discard "uninteresting type as we only focus on the required struct declarations"
 
@@ -201,7 +200,8 @@ proc traverseTypes(types: TypeGraph; lit: Literals; c: var TypeOrder) =
     if types[t].kind in {ObjectDecl, UnionDecl}:
       assert types[t.firstSon].kind == NameVal
       traverseObject types, lit, c, t
-      c.ordered.add t
+      let decl = if types[t].kind == ObjectDecl: TypedefStruct else: TypedefUnion
+      c.ordered.add t, decl
 
 when false:
   template emitType(s: string) = c.types.add c.tokens.getOrIncl(s)
@@ -249,26 +249,31 @@ proc genType(g: var GeneratedCode; types: TypeGraph; lit: Literals; t: TypeId) =
     g.add $types[t].kind
 
 proc generateTypes(g: var GeneratedCode; types: TypeGraph; lit: Literals; c: TypeOrder) =
-  for t in c.forwardedDecls.s:
+  for (t, declKeyword) in c.forwardedDecls.s:
     let s {.cursor.} = lit.strings[types[t.firstSon].litId]
-    g.add TypedefStruct
+    g.add declKeyword
     g.add s
     g.add Space
     g.add s
     g.add Semicolon
 
-  for t in c.ordered.s:
+  for (t, declKeyword) in c.ordered.s:
     let s {.cursor.} = lit.strings[types[t.firstSon].litId]
-    g.add TypedefStruct
+    g.add declKeyword
     g.add CurlyLe
-
+    var i = 0
     for x in sons(types, t):
       case types[x].kind
       of FieldDecl:
         genType g, types, lit, x.firstSon
+        g.add Space
+        g.add "F" & $i
         g.add Semicolon
+        inc i
       of ObjectTy:
         genType g, types, lit, x
+        g.add Space
+        g.add "P"
         g.add Semicolon
       else: discard
 
