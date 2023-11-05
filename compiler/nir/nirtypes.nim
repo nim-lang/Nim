@@ -177,6 +177,11 @@ proc sons3(tree: TypeGraph; n: TypeId): (TypeId, TypeId, TypeId) =
   let c = b + span(tree, b)
   result = (TypeId a, TypeId b, TypeId c)
 
+proc arrayName*(tree: TypeGraph; n: TypeId): TypeId {.inline.} =
+  assert tree[n].kind == ArrayTy
+  let (_, _, c) = sons3(tree, n)
+  result = c
+
 proc arrayLen*(tree: TypeGraph; n: TypeId): BiggestInt =
   assert tree[n].kind == ArrayTy
   let (_, b) = sons2(tree, n)
@@ -441,6 +446,12 @@ iterator allTypes*(g: TypeGraph; start = 0): TypeId =
   while i < g.len:
     yield TypeId i
     nextChild g, i
+
+iterator allTypesIncludingInner*(g: TypeGraph; start = 0): TypeId =
+  var i = start
+  while i < g.len:
+    yield TypeId i
+    inc i
 
 proc `$`(g: TypeGraph): string =
   result = ""

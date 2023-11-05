@@ -162,7 +162,7 @@ proc recordDependency(types: TypeGraph; lit: Literals; c: var TypeOrder; parent,
     of APtrTy, UPtrTy, AArrayPtrTy, UArrayPtrTy:
       viaPointer = true
       ch = elementType(types, ch)
-    of ArrayTy, LastArrayTy:
+    of LastArrayTy:
       ch = elementType(types, ch)
     else:
       break
@@ -177,6 +177,13 @@ proc recordDependency(types: TypeGraph; lit: Literals; c: var TypeOrder; parent,
       if not containsOrIncl(c.lookedAt, obj.int):
         traverseObject(types, lit, c, obj)
       c.ordered.add obj, decl
+  of ArrayTy:
+    if viaPointer:
+      c.forwardedDecls.add ch, TypedefStruct
+    else:
+      if not containsOrIncl(c.lookedAt, ch.int):
+        traverseObject(types, lit, c, ch)
+      c.ordered.add ch, TypedefStruct
   else:
     discard "uninteresting type as we only focus on the required struct declarations"
 
@@ -196,12 +203,16 @@ proc traverseTypes(types: TypeGraph; lit: Literals; c: var TypeOrder) =
       assert types[t.firstSon].kind == NameVal
       c.typeImpls[lit.strings[types[t.firstSon].litId]] = t
 
-  for t in allTypes(types):
-    if types[t].kind in {ObjectDecl, UnionDecl}:
-      assert types[t.firstSon].kind == NameVal
+  for t in allTypesIncludingInner(types):
+    case types[t].kind
+    of ObjectDecl, UnionDecl:
       traverseObject types, lit, c, t
       let decl = if types[t].kind == ObjectDecl: TypedefStruct else: TypedefUnion
       c.ordered.add t, decl
+    of ArrayTy:
+      traverseObject types, lit, c, t
+      c.ordered.add t, TypedefStruct
+    else: discard
 
 when false:
   template emitType(s: string) = c.types.add c.tokens.getOrIncl(s)
@@ -233,11 +244,8 @@ proc genType(g: var GeneratedCode; types: TypeGraph; lit: Literals; t: TypeId; n
     g.add Star
     maybeAddName()
   of ArrayTy:
-    genType g, types, lit, elementType(types, t)
+    genType g, types, lit, arrayName(types, t)
     maybeAddName()
-    g.add BracketLe
-    g.add $arrayLen(types, t)
-    g.add BracketRi
   of LastArrayTy:
     genType g, types, lit, elementType(types, t)
     maybeAddName()
@@ -267,7 +275,8 @@ proc genType(g: var GeneratedCode; types: TypeGraph; lit: Literals; t: TypeId; n
 
 proc generateTypes(g: var GeneratedCode; types: TypeGraph; lit: Literals; c: TypeOrder) =
   for (t, declKeyword) in c.forwardedDecls.s:
-    let s {.cursor.} = lit.strings[types[t.firstSon].litId]
+    let name = if types[t].kind == ArrayTy: arrayName(types, t) else: t.firstSon
+    let s {.cursor.} = lit.strings[types[name].litId]
     g.add declKeyword
     g.add s
     g.add Space
@@ -275,23 +284,32 @@ proc generateTypes(g: var GeneratedCode; types: TypeGraph; lit: Literals; c: Typ
     g.add Semicolon
 
   for (t, declKeyword) in c.ordered.s:
-    let s {.cursor.} = lit.strings[types[t.firstSon].litId]
+    let name = if types[t].kind == ArrayTy: arrayName(types, t) else: t.firstSon
+    let s {.cursor.} = lit.strings[types[name].litId]
     g.add declKeyword
     g.add CurlyLe
-    var i = 0
-    for x in sons(types, t):
-      case types[x].kind
-      of FieldDecl:
-        genType g, types, lit, x.firstSon, "F" & $i
-        g.add Semicolon
-        inc i
-      of ObjectTy:
-        genType g, types, lit, x, "P"
-        g.add Semicolon
-      else: discard
+    if types[t].kind == ArrayTy:
+      #let name = arrayName(types, t)
+
+      genType g, types, lit, elementType(types, t), "a"
+      g.add BracketLe
+      g.add $arrayLen(types, t)
+      g.add BracketRi
+      g.add Semicolon
+    else:
+      var i = 0
+      for x in sons(types, t):
+        case types[x].kind
+        of FieldDecl:
+          genType g, types, lit, x.firstSon, "F" & $i
+          g.add Semicolon
+          inc i
+        of ObjectTy:
+          genType g, types, lit, x, "P"
+          g.add Semicolon
+        else: discard
 
     g.add CurlyRi
-    g.add Space
     g.add s
     g.add Semicolon
 
