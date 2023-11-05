@@ -2419,6 +2419,7 @@ proc addCallConv(c: var ProcCon; info: PackedLineInfo; callConv: TCallingConvent
   of ccNoConvention: ann NoCall
 
 proc genProc(cOuter: var ProcCon; prc: PSym) =
+  if prc.magic notin generatedMagics: return
   if cOuter.m.processedProcs.containsOrIncl(prc.itemId):
     return
   #assert cOuter.m.inProc == 0, " in nested proc! " & prc.name.s
