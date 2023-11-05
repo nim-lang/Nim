@@ -182,6 +182,25 @@ proc arrayLen*(tree: TypeGraph; n: TypeId): BiggestInt =
   let (_, b) = sons2(tree, n)
   result = tree.lit.numbers[LitId tree[b].operand]
 
+proc returnType*(tree: TypeGraph; n: TypeId): (TypeId, TypeId) =
+  # Returns the positions of the return type + calling convention.
+  var pos = n.int
+  assert tree.nodes[pos].kind == ProcTy
+  let a = n.int+1
+  let b = a + span(tree, a)
+  result = (TypeId b, TypeId a) # not a typo, order is reversed
+
+iterator params*(tree: TypeGraph; n: TypeId): TypeId =
+  var pos = n.int
+  assert tree.nodes[pos].kind == ProcTy
+  let last = pos + tree.nodes[pos].rawSpan
+  inc pos
+  nextChild tree, pos
+  nextChild tree, pos
+  while pos < last:
+    yield TypeId pos
+    nextChild tree, pos
+
 proc openType*(tree: var TypeGraph; kind: NirTypeKind): TypePatchPos =
   assert kind in {APtrTy, UPtrTy, AArrayPtrTy, UArrayPtrTy,
     ArrayTy, LastArrayTy, ProcTy, ObjectDecl, UnionDecl,

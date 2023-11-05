@@ -208,52 +208,62 @@ when false:
   template emitType(t: Token) = c.types.add t
   template emitType(t: PredefinedToken) = c.types.add Token(t)
 
-proc genType(g: var GeneratedCode; types: TypeGraph; lit: Literals; t: TypeId) =
+proc genType(g: var GeneratedCode; types: TypeGraph; lit: Literals; t: TypeId; name = "") =
+  template maybeAddName =
+    if name != "":
+      g.add Space
+      g.add name
+
+  template atom(s: string) =
+    g.add s
+    maybeAddName()
   case types[t].kind
-  of VoidTy: g.add "void"
-  of IntTy: g.add "NI" & $types[t].integralBits
-  of UIntTy: g.add "NU" & $types[t].integralBits
-  of FloatTy: g.add "NF" & $types[t].integralBits
-  of BoolTy: g.add "NB" & $types[t].integralBits
-  of CharTy: g.add "NC" & $types[t].integralBits
+  of VoidTy: atom "void"
+  of IntTy: atom "NI" & $types[t].integralBits
+  of UIntTy: atom "NU" & $types[t].integralBits
+  of FloatTy: atom "NF" & $types[t].integralBits
+  of BoolTy: atom "NB" & $types[t].integralBits
+  of CharTy: atom "NC" & $types[t].integralBits
   of ObjectTy, UnionTy, NameVal, AnnotationVal:
-    g.add lit.strings[types[t].litId]
+    atom lit.strings[types[t].litId]
   of VarargsTy:
     g.add "..."
   of APtrTy, UPtrTy, AArrayPtrTy, UArrayPtrTy:
     genType g, types, lit, elementType(types, t)
     g.add Star
+    maybeAddName()
   of ArrayTy:
     genType g, types, lit, elementType(types, t)
+    maybeAddName()
     g.add BracketLe
     g.add $arrayLen(types, t)
     g.add BracketRi
   of LastArrayTy:
     genType g, types, lit, elementType(types, t)
+    maybeAddName()
     g.add BracketLe
     g.add BracketRi
   of ProcTy:
-    var i = 0
-    for ch in sons(types, t):
-      genType g, types, lit, ch
-      g.add Space
-      inc i
-      if i >= 2: break
-    g.add "(*)"
+    let (retType, callConv) = returnType(types, t)
+    genType g, types, lit, retType
+    genType g, types, lit, callConv
     g.add ParLe
-    i = 0
-    for ch in sons(types, t):
-      if i > 2:
-        if i > 3: g.add Comma
-        genType g, types, lit, ch
+    g.add Star # "(*fn)"
+    maybeAddName()
+    g.add ParRi
+    g.add ParLe
+    var i = 0
+    for ch in params(types, t):
+      if i > 0: g.add Comma
+      genType g, types, lit, ch
       inc i
     g.add ParRi
   of ObjectDecl, UnionDecl:
-    g.add lit.strings[types[t.firstSon].litId]
+    atom lit.strings[types[t.firstSon].litId]
   of IntVal, SizeVal, AlignVal, OffsetVal, FieldDecl:
     #raiseAssert "did not expect: " & $types[t].kind
     g.add "BUG "
-    g.add $types[t].kind
+    atom $types[t].kind
 
 proc generateTypes(g: var GeneratedCode; types: TypeGraph; lit: Literals; c: TypeOrder) =
   for (t, declKeyword) in c.forwardedDecls.s:
@@ -272,15 +282,11 @@ proc generateTypes(g: var GeneratedCode; types: TypeGraph; lit: Literals; c: Typ
     for x in sons(types, t):
       case types[x].kind
       of FieldDecl:
-        genType g, types, lit, x.firstSon
-        g.add Space
-        g.add "F" & $i
+        genType g, types, lit, x.firstSon, "F" & $i
         g.add Semicolon
         inc i
       of ObjectTy:
-        genType g, types, lit, x
-        g.add Space
-        g.add "P"
+        genType g, types, lit, x, "P"
         g.add Semicolon
       else: discard
 
@@ -320,7 +326,7 @@ proc genStrLit(c: var GeneratedCode; lit: Literals; litId: LitId): Token =
     emitData CurlyLe
     emitData "  NI cap"
     emitData Semicolon
-    emitData "NIM_CHAR data"
+    emitData "NC8 data"
     emitData BracketLe
     emitData $s.len
     emitData "+1"
@@ -357,6 +363,23 @@ proc genSymDef(c: var GeneratedCode; t: Tree; n: NodePos) =
   if t[n].kind == SymDef:
     c.needsPrefix.incl t[n].symId.int
   gen c, t, n
+
+proc genGlobal(c: var GeneratedCode; t: Tree; name, typ: NodePos; annotation: string) =
+  c.add annotation
+  let m: string
+  if t[name].kind == SymDef:
+    m = c.tokens[mangleModuleName(c, c.m.namespace)] & "__" & $t[name].symId
+  else:
+    assert t[name].kind == ModuleSymUse
+    let (x, y) = sons2(t, name)
+    m = c.tokens[mangleModuleName(c, t[x].litId)] & "__" & $t[y].immediateVal
+  genType c, c.m.types, c.m.lit, t[typ].typeId, m
+
+proc genLocal(c: var GeneratedCode; t: Tree; name, typ: NodePos; annotation: string) =
+  assert t[name].kind == SymDef
+  c.add annotation
+  genType c, c.m.types, c.m.lit, t[typ].typeId, "q" & $t[name].symId
+  # XXX Use proper names here
 
 proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos; isExtern: bool) =
   let signatureBegin = c.code.len
@@ -407,9 +430,7 @@ proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos; isExtern: bool) =
   while t[prc].kind == SummonParam:
     if params > 0: c.add Comma
     let (typ, sym) = sons2(t, prc)
-    gen c, t, typ
-    c.add Space
-    gen c, t, sym
+    genLocal c, t, sym, typ, ""
     next t, prc
     inc params
   if params == 0:
@@ -592,31 +613,21 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   of SummonGlobal:
     moveToDataSection:
       let (typ, sym) = sons2(t, n)
-      c.gen t, typ
-      c.add Space
-      c.genSymDef t, sym
+      c.genGlobal t, sym, typ, ""
       c.add Semicolon
   of SummonThreadLocal:
     moveToDataSection:
       let (typ, sym) = sons2(t, n)
-      c.add "__thread "
-      c.gen t, typ
-      c.add Space
-      c.genSymDef t, sym
+      c.genGlobal t, sym, typ, "__thread "
       c.add Semicolon
   of SummonConst:
     moveToDataSection:
       let (typ, sym) = sons2(t, n)
-      c.add ConstKeyword
-      c.gen t, typ
-      c.add Space
-      c.genSymDef t, sym
+      c.genGlobal t, sym, typ, "const "
       c.add Semicolon
   of Summon, SummonResult:
     let (typ, sym) = sons2(t, n)
-    c.gen t, typ
-    c.add Space
-    c.gen t, sym
+    c.genLocal t, sym, typ, ""
     c.add Semicolon
 
   of SummonParam:
