@@ -16,6 +16,7 @@ type
     man*: LineInfoManager
     types*: TypeGraph
     lit*: Literals
+    namespace*: LitId
     symnames*: SymNames
 
 proc load*(filename: string): NirModule =
@@ -38,6 +39,9 @@ proc load*(filename: string): NirModule =
 
     r.loadSection sideChannelSection
     r.load result.man
+
+    r.loadSection namespaceSection
+    r.loadPrim result.namespace
 
     r.loadSection symnamesSection
     r.load result.symnames
@@ -63,6 +67,9 @@ proc store*(m: NirModule; outp: string) =
 
     r.storeSection sideChannelSection
     r.store m.man
+
+    r.storeSection namespaceSection
+    r.storePrim m.namespace
 
     r.storeSection symnamesSection
     r.store m.symnames

@@ -54,6 +54,7 @@ type
     SelectList,  # (values...)
     SelectValue, # (value)
     SelectRange, # (valueA..valueB)
+    ForeignDecl, # Can wrap SummonGlobal, SummonThreadLocal, SummonConst
     SummonGlobal,
     SummonThreadLocal,
     Summon, # x = Summon Typed <Type ID>; x begins to live
@@ -108,6 +109,7 @@ type
     TestOf,
     Emit,
     ProcDecl,
+    ForeignProcDecl,
     PragmaPair
 
 type

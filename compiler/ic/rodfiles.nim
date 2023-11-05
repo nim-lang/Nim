@@ -98,6 +98,7 @@ type
     backendFlagsSection
     aliveSymsSection # beware, this is stored in a `.alivesyms` file.
     sideChannelSection
+    namespaceSection
     symnamesSection
 
   RodFileError* = enum

@@ -13,6 +13,7 @@ import std / [assertions, syncio, tables, intsets]
 from std / strutils import toOctal
 import .. / ic / [bitabs, rodfiles]
 import nirtypes, nirinsts, nirfiles
+import ../../dist/checksums/src/checksums/md5
 
 type
   Token = LitId # indexing into the tokens BiTable[string]
@@ -39,7 +40,7 @@ type
     ScopeOpr = "::"
     ConstKeyword = "const "
     StaticKeyword = "static "
-    NimString = "NimString"
+    ExternKeyword = "extern "
     StrLitPrefix = "(NimChar*)"
     StrLitNamePrefix = "Qstr"
     LoopKeyword = "while (true) "
@@ -71,6 +72,8 @@ type
     code: seq[LitId]
     tokens: BiTable[string]
     emittedStrings: IntSet
+    needsPrefix: IntSet
+    mangledModules: Table[LitId, LitId]
 
 proc initGeneratedCode*(m: sink NirModule): GeneratedCode =
   result = GeneratedCode(m: m, code: @[], tokens: initBiTable[string]())
@@ -81,6 +84,19 @@ proc add*(g: var GeneratedCode; t: PredefinedToken) {.inline.} =
 
 proc add*(g: var GeneratedCode; s: string) {.inline.} =
   g.code.add g.tokens.getOrIncl(s)
+
+proc mangleModuleName(c: var GeneratedCode; key: LitId): LitId =
+  result = c.mangledModules.getOrDefault(key, LitId(0))
+  if result == LitId(0):
+    let u {.cursor.} = c.m.lit.strings[key]
+    var last = u.len - len(".nim") - 1
+    var start = last
+    while start >= 0 and u[start] != '/': dec start
+    var sum = getMD5(u)
+    sum.setLen(8)
+    let dest = u.substr(start+1, last) & sum
+    result = c.tokens.getOrIncl(dest)
+    c.mangledModules[key] = result
 
 type
   CppFile = object
@@ -325,7 +341,12 @@ proc genIntLit(c: var GeneratedCode; lit: Literals; litId: LitId) =
 
 proc gen(c: var GeneratedCode; t: Tree; n: NodePos)
 
-proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos) =
+proc genSymDef(c: var GeneratedCode; t: Tree; n: NodePos) =
+  if t[n].kind == SymDef:
+    c.needsPrefix.incl t[n].symId.int
+  gen c, t, n
+
+proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos; isExtern: bool) =
   let signatureBegin = c.code.len
   let name = n.firstSon
 
@@ -368,7 +389,7 @@ proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos) =
   else:
     c.add "void"
   c.add Space
-  gen c, t, name
+  genSymDef c, t, name
   c.add ParLe
   var params = 0
   while t[prc].kind == SummonParam:
@@ -387,13 +408,15 @@ proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos) =
     c.protos.add c.code[i]
   c.protos.add Token Semicolon
 
-  c.add CurlyLe
-  if resultDeclPos.int >= 0:
-    gen c, t, resultDeclPos
-  for ch in sonsRest(t, n, prc):
-    assert t[ch].kind != ProcDecl
-    gen c, t, ch
-  c.add CurlyRi
+  if isExtern:
+    c.code.setLen signatureBegin
+  else:
+    c.add CurlyLe
+    if resultDeclPos.int >= 0:
+      gen c, t, resultDeclPos
+    for ch in sonsRest(t, n, prc):
+      gen c, t, ch
+    c.add CurlyRi
 
 template triop(opr) =
   let (typ, a, b) = sons3(t, n)
@@ -459,27 +482,23 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
     genType c, c.m.types, c.m.lit, t[n].typeId
   of SymDef, SymUse:
     let s = t[n].symId
-    # XXX Use proper names here
-    c.add "Q"
-    c.add $s
+    if c.needsPrefix.contains(s.int):
+      c.code.add mangleModuleName(c, c.m.namespace)
+      c.add "__"
+      c.add $s
+    else:
+      # XXX Use proper names here
+      c.add "q"
+      c.add $s
 
   of ModuleSymUse:
-    when false:
-      let (x, y) = sons2(t, n)
-      let unit = c.u.unitNames.getOrDefault(bc.m.lit.strings[t[x].litId], -1)
-      let s = t[y].symId
-      if c.u.units[unit].procs.hasKey(s):
-        bc.add info, LoadProcM, uint32 c.u.units[unit].procs[s]
-      elif bc.globals.hasKey(s):
-        maybeDeref(WantAddr notin flags):
-          build bc, info, LoadGlobalM:
-            bc.add info, ImmediateValM, uint32 unit
-            bc.add info, LoadLocalM, uint32 s
-      else:
-        raiseAssert "don't understand ModuleSymUse ID"
+    let (x, y) = sons2(t, n)
+    let u = mangleModuleName(c, t[x].litId)
+    let s = t[y].immediateVal
+    c.code.add u
+    c.add "__"
+    c.add $s
 
-    #raiseAssert "don't understand ModuleSymUse ID"
-    c.add "NOT IMPLEMENTED YET"
   of NilVal:
     c.add NullPtr
   of LoopLabel:
@@ -555,12 +574,15 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
     c.add " ... "
     c.gen t, ri
     c.add Colon
+  of ForeignDecl:
+    c.data.add LitId(ExternKeyword)
+    c.gen t, n.firstSon
   of SummonGlobal:
     moveToDataSection:
       let (typ, sym) = sons2(t, n)
       c.gen t, typ
       c.add Space
-      c.gen t, sym
+      c.genSymDef t, sym
       c.add Semicolon
   of SummonThreadLocal:
     moveToDataSection:
@@ -568,7 +590,7 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
       c.add "__thread "
       c.gen t, typ
       c.add Space
-      c.gen t, sym
+      c.genSymDef t, sym
       c.add Semicolon
   of SummonConst:
     moveToDataSection:
@@ -576,7 +598,7 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
       c.add ConstKeyword
       c.gen t, typ
       c.add Space
-      c.gen t, sym
+      c.genSymDef t, sym
       c.add Semicolon
   of Summon, SummonResult:
     let (typ, sym) = sons2(t, n)
@@ -697,7 +719,8 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   of CheckedObjConv: binaryop ""
   of ObjConv: binaryop ""
   of Emit: raiseAssert "cannot interpret: Emit"
-  of ProcDecl: genProcDecl c, t, n
+  of ProcDecl: genProcDecl c, t, n, false
+  of ForeignProcDecl: genProcDecl c, t, n, true
   of PragmaPair, PragmaId, TestOf, Yld, SetExc, TestExc:
     c.add "cannot interpret: " & $t[n].kind
 
@@ -706,12 +729,12 @@ const
 /* GENERATED CODE. DO NOT EDIT. */
 
 #define nimAddInt64(a, b, L) ({long long int res; if(__builtin_saddll_overflow(a, b, &res)) goto L; res})
-#define nimSubInt64(a, b, L) ({long long int res; if(__builtin_ssubll_overflow(a, b, &res) goto L; res})
-#define nimMulInt64(a, b, L) ({long long int res; if(__builtin_smulll_overflow(a, b, &res) goto L; res})
+#define nimSubInt64(a, b, L) ({long long int res; if(__builtin_ssubll_overflow(a, b, &res)) goto L; res})
+#define nimMulInt64(a, b, L) ({long long int res; if(__builtin_smulll_overflow(a, b, &res)) goto L; res})
 
-#define nimAddInt32(a, b, L) ({long int res; if(__builtin_sadd_overflow(a, b, &res) goto L; res})
-#define nimSubInt32(a, b, L) ({long int res; if(__builtin_ssub_overflow(a, b, &res) goto L; res})
-#define nimMulInt32(a, b, L) ({long int res; if(__builtin_smul_overflow(a, b, &res) goto L; res})
+#define nimAddInt32(a, b, L) ({long int res; if(__builtin_sadd_overflow(a, b, &res)) goto L; res})
+#define nimSubInt32(a, b, L) ({long int res; if(__builtin_ssub_overflow(a, b, &res)) goto L; res})
+#define nimMulInt32(a, b, L) ({long int res; if(__builtin_smul_overflow(a, b, &res)) goto L; res})
 
 #define nimCheckRange(x, a, b, L) ({if (x < a || x > b) goto L; x})
 #define nimCheckIndex(x, a, L) ({if (x >= a) goto L; x})
