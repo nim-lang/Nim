@@ -80,7 +80,7 @@ proc checkNode(c: var CheckedContext; tree: PackedTree; n: NodePos) =
   of nkIdent:
     assert c.g.packed[c.thisModule].fromDisk.strings.hasLitId n.litId
   of nkSym:
-    checkLocalSym(c, tree[n].operand)
+    checkLocalSym(c, tree[n].soperand)
   of directIntLit:
     discard
   of externIntLit, nkFloatLit..nkFloat128Lit:
@@ -91,7 +91,7 @@ proc checkNode(c: var CheckedContext; tree: PackedTree; n: NodePos) =
     let (n1, n2) = sons2(tree, n)
     assert n1.kind == nkNone
     assert n2.kind == nkNone
-    checkForeignSym(c, PackedItemId(module: n1.litId, item: tree[n2].operand))
+    checkForeignSym(c, PackedItemId(module: n1.litId, item: tree[n2].soperand))
   else:
     for n0 in sonsReadonly(tree, n):
       checkNode(c, tree, n0)

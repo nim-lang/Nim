@@ -88,22 +88,22 @@ proc toString*(tree: PackedTree; pos: NodePos; m: PackedModule; nesting: int;
   of nkEmpty, nkNilLit, nkType: discard
   of nkIdent, nkStrLit..nkTripleStrLit:
     result.add " "
-    result.add m.strings[LitId tree[pos].operand]
+    result.add m.strings[LitId tree[pos].uoperand]
   of nkSym:
     result.add " "
-    result.add m.strings[m.syms[tree[pos].operand].name]
+    result.add m.strings[m.syms[tree[pos].soperand].name]
   of directIntLit:
     result.add " "
-    result.addInt tree[pos].operand
+    result.addInt tree[pos].soperand
   of externSIntLit:
     result.add " "
-    result.addInt m.numbers[LitId tree[pos].operand]
+    result.addInt m.numbers[LitId tree[pos].uoperand]
   of externUIntLit:
     result.add " "
-    result.addInt cast[uint64](m.numbers[LitId tree[pos].operand])
+    result.addInt cast[uint64](m.numbers[LitId tree[pos].uoperand])
   of nkFloatLit..nkFloat128Lit:
     result.add " "
-    result.addFloat cast[BiggestFloat](m.numbers[LitId tree[pos].operand])
+    result.addFloat cast[BiggestFloat](m.numbers[LitId tree[pos].uoperand])
   else:
     result.add "(\n"
     for i in 1..(nesting+1)*2: result.add ' '
@@ -769,14 +769,12 @@ proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
   result.flags = n.flags
 
   case k
-  of nkEmpty, nkNilLit, nkType:
+  of nkNone, nkEmpty, nkNilLit, nkType:
     discard
   of nkIdent:
     result.ident = getIdent(c.cache, g[thisModule].fromDisk.strings[n.litId])
   of nkSym:
-    result.sym = loadSym(c, g, thisModule, PackedItemId(module: LitId(0), item: tree[n].operand))
-  of directIntLit:
-    result.intVal = tree[n].operand
+    result.sym = loadSym(c, g, thisModule, PackedItemId(module: LitId(0), item: tree[n].soperand))
   of externIntLit:
     result.intVal = g[thisModule].fromDisk.numbers[n.litId]
   of nkStrLit..nkTripleStrLit:
@@ -788,7 +786,7 @@ proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
     assert n1.kind == nkNone
     assert n2.kind == nkNone
     transitionNoneToSym(result)
-    result.sym = loadSym(c, g, thisModule, PackedItemId(module: n1.litId, item: tree[n2].operand))
+    result.sym = loadSym(c, g, thisModule, PackedItemId(module: n1.litId, item: tree[n2].soperand))
   else:
     for n0 in sonsReadonly(tree, n):
       result.addAllowNil loadNodes(c, g, thisModule, tree, n0)
