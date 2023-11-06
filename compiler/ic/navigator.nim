@@ -103,15 +103,15 @@ proc list(c: var NavContext; tree: PackedTree; sym: ItemId) =
     of nkSym:
       let item = tree[i].operand
       if sym.item == item and sym.module == c.thisModule:
-        usage(c, tree[i].info, isDecl(tree, parent(NodePos i)))
+        usage(c, tree[i].info, isDecl(tree, parent(i)))
     of nkModuleRef:
-      let (n1, n2) = sons2(tree, NodePos i)
+      let (n1, n2) = sons2(tree, i)
       assert n1.kind == nkNone
       assert n2.kind == nkNone
       let pId = PackedItemId(module: n1.litId, item: tree[n2].operand)
       let itemId = translateId(pId, c.g.packed, c.thisModule, c.g.config)
       if itemId.item == sym.item and sym.module == itemId.module:
-        usage(c, tree[i].info, isDecl(tree, parent(NodePos i)))
+        usage(c, tree[i].info, isDecl(tree, parent(i)))
     else: discard
 
 proc searchForIncludeFile(g: ModuleGraph; fullPath: string): int =
