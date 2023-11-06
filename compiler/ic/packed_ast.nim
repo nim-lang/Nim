@@ -13,7 +13,7 @@
 ## it is superior.
 
 import std/[hashes, tables, strtabs]
-import bitabs
+import bitabs, rodfiles
 import ".." / [ast, options]
 
 import ".." / nir / nirlineinfos
@@ -98,7 +98,7 @@ type
     info*: PackedLineInfo
 
   PackedTree* = object ## usually represents a full Nim module
-    nodes*: seq[PackedNode]
+    nodes: seq[PackedNode]
     #nodesWithFlags*: seq[(int, TNodeFlags)]
     #nodesWithTypes*: seq[(int, PackedItemId)]
 
@@ -143,7 +143,7 @@ proc addSym*(tree: var PackedTree; s: int32; info: PackedLineInfo) =
   tree.nodes.add PackedNode(kind: nkSym, operand: s, info: info)
 
 proc addModuleId*(tree: var PackedTree; s: ModuleId; info: PackedLineInfo) =
-  tree.nodes.add PackedNode(kind: nkInt32Lit, operand: int32(s), info: info)
+  tree.nodes.add PackedNode(kind: nkNone, operand: int32(s), info: info)
 
 proc addSymDef*(tree: var PackedTree; s: SymId; info: PackedLineInfo) =
   tree.nodes.add PackedNode(kind: nkSym, operand: int32(s), info: info)
@@ -192,8 +192,8 @@ proc patch*(tree: var PackedTree; pos: PatchPos) =
 
 proc len*(tree: PackedTree): int {.inline.} = tree.nodes.len
 
-proc `[]`*(tree: PackedTree; i: int): lent PackedNode {.inline.} =
-  tree.nodes[i]
+proc `[]`*(tree: PackedTree; i: NodePos): lent PackedNode {.inline.} =
+  tree.nodes[i.int]
 
 proc nextChild(tree: PackedTree; pos: var int) {.inline.} =
   if tree.nodes[pos].kind > nkNilLit:
@@ -325,6 +325,12 @@ template symId*(n: NodePos): SymId = SymId tree.nodes[n.int].operand
 
 proc firstSon*(n: NodePos): NodePos {.inline.} = NodePos(n.int+1)
 
+proc addNode*(t: var PackedTree; kind: TNodeKind; operand: int32;
+              typeId: PackedItemId = nilItemId; info: PackedLineInfo;
+              flags: TNodeFlags = {}) =
+  t.nodes.add PackedNode(kind: kind, flags: flags, operand: operand,
+                         typeId: typeId, info: info)
+
 when false:
   # xxx `nkStrLit` or `nkStrLit..nkTripleStrLit:` below?
   proc strLit*(tree: PackedTree; n: NodePos): lent string =
@@ -420,3 +426,9 @@ iterator allNodes*(tree: PackedTree): NodePos =
 
 proc toPackedItemId*(item: int32): PackedItemId {.inline.} =
   PackedItemId(module: LitId(0), item: item)
+
+proc load*(f: var RodFile; t: var PackedTree) =
+  loadSeq f, t.nodes
+
+proc store*(f: var RodFile; t: PackedTree) =
+  storeSeq f, t.nodes

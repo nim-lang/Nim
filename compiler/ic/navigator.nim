@@ -59,21 +59,22 @@ const
 
 proc search(c: var NavContext; tree: PackedTree): ItemId =
   # We use the linear representation here directly:
-  for i in 0..high(tree.nodes):
-    case tree.nodes[i].kind
+  for i in 0..<len(tree):
+    let i = NodePos(i)
+    case tree[i].kind
     of nkSym:
-      let item = tree.nodes[i].operand
-      if searchLocalSym(c, c.g.packed[c.thisModule].fromDisk.syms[item], tree.nodes[i].info):
+      let item = tree[i].operand
+      if searchLocalSym(c, c.g.packed[c.thisModule].fromDisk.syms[item], tree[i].info):
         return ItemId(module: c.thisModule, item: item)
     of nkModuleRef:
-      let (currentFile, currentLine, currentCol) = c.g.packed[c.thisModule].fromDisk.man.unpack(tree.nodes[i].info)
+      let (currentFile, currentLine, currentCol) = c.g.packed[c.thisModule].fromDisk.man.unpack(tree[i].info)
       if currentLine == c.trackPos.line and currentFile == c.trackPos.file:
         let (n1, n2) = sons2(tree, NodePos i)
         assert n1.kind == nkInt32Lit
         assert n2.kind == nkInt32Lit
-        let pId = PackedItemId(module: n1.litId, item: tree.nodes[n2.int].operand)
+        let pId = PackedItemId(module: n1.litId, item: tree[n2].operand)
         let itemId = translateId(pId, c.g.packed, c.thisModule, c.g.config)
-        if searchForeignSym(c, itemId, tree.nodes[i].info):
+        if searchForeignSym(c, itemId, tree[i].info):
           return itemId
     else: discard
   return EmptyItemId
@@ -83,7 +84,7 @@ proc isDecl(tree: PackedTree; n: NodePos): bool =
   const declarativeNodes = procDefs + {nkMacroDef, nkTemplateDef,
     nkLetSection, nkVarSection, nkUsingStmt, nkConstSection, nkTypeSection,
     nkIdentDefs, nkEnumTy, nkVarTuple}
-  result = n.int >= 0 and tree[n.int].kind in declarativeNodes
+  result = n.int >= 0 and tree[n].kind in declarativeNodes
 
 proc usage(c: var NavContext; info: PackedLineInfo; isDecl: bool) =
   let (fileId, line, col) = unpack(c.g.packed[c.thisModule].fromDisk.man, info)
@@ -96,20 +97,21 @@ proc usage(c: var NavContext; info: PackedLineInfo; isDecl: bool) =
     msgWriteln c.g.config, (if isDecl: "def" else: "usage") & c.outputSep & m
 
 proc list(c: var NavContext; tree: PackedTree; sym: ItemId) =
-  for i in 0..high(tree.nodes):
-    case tree.nodes[i].kind
+  for i in 0..<len(tree):
+    let i = NodePos(i)
+    case tree[i].kind
     of nkSym:
-      let item = tree.nodes[i].operand
+      let item = tree[i].operand
       if sym.item == item and sym.module == c.thisModule:
-        usage(c, tree.nodes[i].info, isDecl(tree, parent(NodePos i)))
+        usage(c, tree[i].info, isDecl(tree, parent(NodePos i)))
     of nkModuleRef:
       let (n1, n2) = sons2(tree, NodePos i)
       assert n1.kind == nkNone
       assert n2.kind == nkNone
-      let pId = PackedItemId(module: n1.litId, item: tree.nodes[n2.int].operand)
+      let pId = PackedItemId(module: n1.litId, item: tree[n2].operand)
       let itemId = translateId(pId, c.g.packed, c.thisModule, c.g.config)
       if itemId.item == sym.item and sym.module == itemId.module:
-        usage(c, tree.nodes[i].info, isDecl(tree, parent(NodePos i)))
+        usage(c, tree[i].info, isDecl(tree, parent(NodePos i)))
     else: discard
 
 proc searchForIncludeFile(g: ModuleGraph; fullPath: string): int =
