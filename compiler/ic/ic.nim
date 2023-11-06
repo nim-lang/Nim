@@ -86,7 +86,7 @@ proc toString*(tree: PackedTree; n: NodePos; m: PackedModule; nesting: int;
 
   result.add $tree[pos].kind
   case tree.nodes[pos].kind
-  of nkNone, nkEmpty, nkNilLit, nkType: discard
+  of nkEmpty, nkNilLit, nkType: discard
   of nkIdent, nkStrLit..nkTripleStrLit:
     result.add " "
     result.add m.strings[LitId tree.nodes[pos].operand]
@@ -427,9 +427,9 @@ proc addModuleRef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pac
   let info = n.info.toPackedInfo(c, m)
   ir.nodes.add PackedNode(kind: nkModuleRef, operand: 3.int32, # spans 3 nodes in total
                           typeId: storeTypeLater(n.typ, c, m), info: info)
-  ir.nodes.add PackedNode(kind: nkInt32Lit, info: info,
+  ir.nodes.add PackedNode(kind: nkNone, info: info,
                           operand: toLitId(n.sym.itemId.module.FileIndex, c, m).int32)
-  ir.nodes.add PackedNode(kind: nkInt32Lit, info: info,
+  ir.nodes.add PackedNode(kind: nkNone, info: info,
                           operand: n.sym.itemId.item)
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
@@ -456,10 +456,6 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pa
     else:
       # store it as an external module reference:
       addModuleRef(n, ir, c, m)
-  of directIntLit:
-    ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
-                            operand: int32(n.intVal),
-                            typeId: storeTypeLater(n.typ, c, m), info: info)
   of externIntLit:
     ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
                             operand: int32 getOrIncl(m.numbers, n.intVal),
@@ -790,8 +786,8 @@ proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
     result.floatVal = cast[BiggestFloat](g[thisModule].fromDisk.numbers[n.litId])
   of nkModuleRef:
     let (n1, n2) = sons2(tree, n)
-    assert n1.kind == nkInt32Lit
-    assert n2.kind == nkInt32Lit
+    assert n1.kind == nkNone
+    assert n2.kind == nkNone
     transitionNoneToSym(result)
     result.sym = loadSym(c, g, thisModule, PackedItemId(module: n1.litId, item: tree.nodes[n2.int].operand))
   else:

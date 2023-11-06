@@ -104,8 +104,8 @@ proc list(c: var NavContext; tree: PackedTree; sym: ItemId) =
         usage(c, tree.nodes[i].info, isDecl(tree, parent(NodePos i)))
     of nkModuleRef:
       let (n1, n2) = sons2(tree, NodePos i)
-      assert n1.kind == nkInt32Lit
-      assert n2.kind == nkInt32Lit
+      assert n1.kind == nkNone
+      assert n2.kind == nkNone
       let pId = PackedItemId(module: n1.litId, item: tree.nodes[n2.int].operand)
       let itemId = translateId(pId, c.g.packed, c.thisModule, c.g.config)
       if itemId.item == sym.item and sym.module == itemId.module:

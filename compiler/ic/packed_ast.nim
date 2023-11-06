@@ -92,13 +92,15 @@ type
     flags*: TNodeFlags
     operand*: int32  # for kind in {nkSym, nkSymDef}: SymId
                      # for kind in {nkStrLit, nkIdent, nkNumberLit}: LitId
-                     # for kind in nkInt32Lit: direct value
+                     # for kind in nkNone: direct value
                      # for non-atom kinds: the number of nodes (for easy skipping)
     typeId*: PackedItemId
     info*: PackedLineInfo
 
   PackedTree* = object ## usually represents a full Nim module
     nodes*: seq[PackedNode]
+    #nodesWithFlags*: seq[(int, TNodeFlags)]
+    #nodesWithTypes*: seq[(int, PackedItemId)]
 
   PackedInstantiation* = object
     key*, sym*: PackedItemId
@@ -354,16 +356,17 @@ const
     nkIntLit,
     nkInt8Lit,
     nkInt16Lit,
+    nkInt32Lit,
     nkInt64Lit,
     nkUIntLit,
     nkUInt8Lit,
     nkUInt16Lit,
     nkUInt32Lit,
-    nkUInt64Lit} # nkInt32Lit is missing by design!
+    nkUInt64Lit}
 
-  externSIntLit* = {nkIntLit, nkInt8Lit, nkInt16Lit, nkInt64Lit}
+  externSIntLit* = {nkIntLit, nkInt8Lit, nkInt16Lit, nkInt32Lit, nkInt64Lit}
   externUIntLit* = {nkUIntLit, nkUInt8Lit, nkUInt16Lit, nkUInt32Lit, nkUInt64Lit}
-  directIntLit* = nkInt32Lit
+  directIntLit* = nkNone
 
 when false:
   proc identIdImpl(tree: PackedTree; n: NodePos): LitId =
