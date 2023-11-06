@@ -379,16 +379,27 @@ proc genIntLit(c: var GeneratedCode; lit: Literals; litId: LitId) =
 
 proc gen(c: var GeneratedCode; t: Tree; n: NodePos)
 
+proc genDisplayName(c: var GeneratedCode; symId: SymId) =
+  let displayName = c.m.symnames[symId]
+  if displayName != LitId(0):
+    c.add "/*"
+    c.add c.m.lit.strings[displayName]
+    c.add "*/"
+
 proc genSymDef(c: var GeneratedCode; t: Tree; n: NodePos) =
   if t[n].kind == SymDef:
-    c.needsPrefix.incl t[n].symId.int
+    let symId = t[n].symId
+    c.needsPrefix.incl symId.int
+    genDisplayName c, symId
   gen c, t, n
 
 proc genGlobal(c: var GeneratedCode; t: Tree; name, typ: NodePos; annotation: string) =
   c.add annotation
   let m: string
   if t[name].kind == SymDef:
-    m = c.tokens[mangleModuleName(c, c.m.namespace)] & "__" & $t[name].symId
+    let symId = t[name].symId
+    m = c.tokens[mangleModuleName(c, c.m.namespace)] & "__" & $symId
+    genDisplayName c, symId
   else:
     assert t[name].kind == ModuleSymUse
     let (x, y) = sons2(t, name)
@@ -398,8 +409,9 @@ proc genGlobal(c: var GeneratedCode; t: Tree; name, typ: NodePos; annotation: st
 proc genLocal(c: var GeneratedCode; t: Tree; name, typ: NodePos; annotation: string) =
   assert t[name].kind == SymDef
   c.add annotation
-  genType c, c.m.types, c.m.lit, t[typ].typeId, "q" & $t[name].symId
-  # XXX Use proper names here
+  let symId = t[name].symId
+  genType c, c.m.types, c.m.lit, t[typ].typeId, "q" & $symId
+  genDisplayName c, symId
 
 proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos; isExtern: bool) =
   let signatureBegin = c.code.len
@@ -577,11 +589,14 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
     discard "XXX todo"
   of ArrayConstr:
     c.add CurlyLe
+    c.add ".a = "
+    c.add CurlyLe
     var i = 0
     for ch in sonsFrom1(t, n):
       if i > 0: c.add Comma
       c.gen t, ch
       inc i
+    c.add CurlyRi
     c.add CurlyRi
   of ObjConstr:
     c.add CurlyLe
