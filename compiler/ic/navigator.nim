@@ -20,20 +20,25 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 import ".." / [ast, modulegraphs, msgs, options]
+import ".." / nir / nirlineinfos
 import packed_ast, bitabs, ic
 
 type
+  UnpackedLineInfo = object
+    file: LitId
+    line, col: int
   NavContext = object
     g: ModuleGraph
     thisModule: int32
-    trackPos: PackedLineInfo
+    trackPos: UnpackedLineInfo
     alreadyEmitted: HashSet[string]
     outputSep: char # for easier testing, use short filenames and spaces instead of tabs.
 
-proc isTracked(current, trackPos: PackedLineInfo, tokenLen: int): bool =
-  if current.file == trackPos.file and current.line == trackPos.line:
+proc isTracked(man: LineInfoManager; current: PackedLineInfo, trackPos: UnpackedLineInfo, tokenLen: int): bool =
+  let (currentFile, currentLine, currentCol) = man.unpack(current)
+  if currentFile == trackPos.file and currentLine == trackPos.line:
     let col = trackPos.col
-    if col >= current.col and col < current.col+tokenLen:
+    if col >= currentCol and col < currentCol+tokenLen:
       result = true
     else:
       result = false
@@ -42,12 +47,12 @@ proc isTracked(current, trackPos: PackedLineInfo, tokenLen: int): bool =
 
 proc searchLocalSym(c: var NavContext; s: PackedSym; info: PackedLineInfo): bool =
   result = s.name != LitId(0) and
-    isTracked(info, c.trackPos, c.g.packed[c.thisModule].fromDisk.strings[s.name].len)
+    isTracked(c.g.packed[c.thisModule].fromDisk.man, info, c.trackPos, c.g.packed[c.thisModule].fromDisk.strings[s.name].len)
 
 proc searchForeignSym(c: var NavContext; s: ItemId; info: PackedLineInfo): bool =
   let name = c.g.packed[s.module].fromDisk.syms[s.item].name
   result = name != LitId(0) and
-    isTracked(info, c.trackPos, c.g.packed[s.module].fromDisk.strings[name].len)
+    isTracked(c.g.packed[c.thisModule].fromDisk.man, info, c.trackPos, c.g.packed[s.module].fromDisk.strings[name].len)
 
 const
   EmptyItemId = ItemId(module: -1'i32, item: -1'i32)
@@ -61,7 +66,8 @@ proc search(c: var NavContext; tree: PackedTree): ItemId =
       if searchLocalSym(c, c.g.packed[c.thisModule].fromDisk.syms[item], tree.nodes[i].info):
         return ItemId(module: c.thisModule, item: item)
     of nkModuleRef:
-      if tree.nodes[i].info.line == c.trackPos.line and tree.nodes[i].info.file == c.trackPos.file:
+      let (currentFile, currentLine, currentCol) = c.g.packed[c.thisModule].fromDisk.man.unpack(tree.nodes[i].info)
+      if currentLine == c.trackPos.line and currentFile == c.trackPos.file:
         let (n1, n2) = sons2(tree, NodePos i)
         assert n1.kind == nkInt32Lit
         assert n2.kind == nkInt32Lit
@@ -80,11 +86,12 @@ proc isDecl(tree: PackedTree; n: NodePos): bool =
   result = n.int >= 0 and tree[n.int].kind in declarativeNodes
 
 proc usage(c: var NavContext; info: PackedLineInfo; isDecl: bool) =
+  let (fileId, line, col) = unpack(c.g.packed[c.thisModule].fromDisk.man, info)
   var m = ""
-  var file = c.g.packed[c.thisModule].fromDisk.strings[info.file]
+  var file = c.g.packed[c.thisModule].fromDisk.strings[fileId]
   if c.outputSep == ' ':
     file = os.extractFilename file
-  toLocation(m, file, info.line.int, info.col.int + ColOffset)
+  toLocation(m, file, line, col + ColOffset)
   if not c.alreadyEmitted.containsOrIncl(m):
     msgWriteln c.g.config, (if isDecl: "def" else: "usage") & c.outputSep & m
 
@@ -138,7 +145,7 @@ proc nav(g: ModuleGraph) =
   var c = NavContext(
     g: g,
     thisModule: int32 mid,
-    trackPos: PackedLineInfo(line: unpacked.line, col: unpacked.col, file: fileId),
+    trackPos: UnpackedLineInfo(line: unpacked.line.int, col: unpacked.col.int, file: fileId),
     outputSep: if isDefined(g.config, "nimIcNavigatorTests"): ' ' else: '\t'
   )
   var symId = search(c, g.packed[mid].fromDisk.topLevel)

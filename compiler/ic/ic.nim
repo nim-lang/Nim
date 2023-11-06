@@ -16,6 +16,8 @@ from std/os import removeFile, isAbsolute
 
 import ../../dist/checksums/src/checksums/sha1
 
+import ".." / nir / nirlineinfos
+
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, formatfloat]
 
@@ -60,6 +62,7 @@ type
     strings*: BiTable[string] # we could share these between modules.
     numbers*: BiTable[BiggestInt] # we also store floats in here so
                                   # that we can assure that every bit is kept
+    man*: LineInfoManager
 
     cfg: PackedConfig
 
@@ -284,7 +287,8 @@ proc toLitId(x: BiggestInt; m: var PackedModule): LitId =
   result = getOrIncl(m.numbers, x)
 
 proc toPackedInfo(x: TLineInfo; c: var PackedEncoder; m: var PackedModule): PackedLineInfo =
-  PackedLineInfo(line: x.line, col: x.col, file: toLitId(x.fileIndex, c, m))
+  pack(m.man, toLitId(x.fileIndex, c, m), x.line.int32, x.col.int32)
+  #PackedLineInfo(line: x.line, col: x.col, file: toLitId(x.fileIndex, c, m))
 
 proc safeItemId(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId {.inline.} =
   ## given a symbol, produce an ItemId with the correct properties
@@ -625,6 +629,9 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   f.loadSection backendFlagsSection
   f.loadPrim m.backendFlags
 
+  f.loadSection sideChannelSection
+  f.load m.man
+
   close(f)
   result = f.err
 
@@ -690,6 +697,9 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   f.storeSection backendFlagsSection
   f.storePrim m.backendFlags
 
+  f.storeSection sideChannelSection
+  f.store m.man
+
   close(f)
   encoder.disable()
   if f.err != ok:
@@ -748,8 +758,9 @@ proc toFileIndexCached*(c: var PackedDecoder; g: PackedModuleGraph; thisModule: 
 proc translateLineInfo(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
                        x: PackedLineInfo): TLineInfo =
   assert g[thisModule].status in {loaded, storing, stored}
-  result = TLineInfo(line: x.line, col: x.col,
-            fileIndex: toFileIndexCached(c, g, thisModule, x.file))
+  let (fileId, line, col) = unpack(g[thisModule].fromDisk.man, x)
+  result = TLineInfo(line: line.uint16, col: col.int16,
+            fileIndex: toFileIndexCached(c, g, thisModule, fileId))
 
 proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
                 tree: PackedTree; n: NodePos): PNode =

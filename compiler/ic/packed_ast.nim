@@ -16,6 +16,8 @@ import std/[hashes, tables, strtabs]
 import bitabs
 import ".." / [ast, options]
 
+import ".." / nir / nirlineinfos
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -37,11 +39,6 @@ const
   emptyNodeId* = NodeId(-1)
 
 type
-  PackedLineInfo* = object
-    line*: uint16
-    col*: int16
-    file*: LitId
-
   PackedLib* = object
     kind*: TLibKind
     generated*: bool

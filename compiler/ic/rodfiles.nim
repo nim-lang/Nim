@@ -112,7 +112,7 @@ type
                        # better than exceptions.
 
 const
-  RodVersion = 1
+  RodVersion = 2
   defaultCookie = [byte(0), byte('R'), byte('O'), byte('D'),
             byte(sizeof(int)*8), byte(system.cpuEndian), byte(0), byte(RodVersion)]
 
