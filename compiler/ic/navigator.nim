@@ -69,7 +69,7 @@ proc search(c: var NavContext; tree: PackedTree): ItemId =
     of nkModuleRef:
       let (currentFile, currentLine, currentCol) = c.g.packed[c.thisModule].fromDisk.man.unpack(tree[i].info)
       if currentLine == c.trackPos.line and currentFile == c.trackPos.file:
-        let (n1, n2) = sons2(tree, NodePos i)
+        let (n1, n2) = sons2(tree, i)
         assert n1.kind == nkInt32Lit
         assert n2.kind == nkInt32Lit
         let pId = PackedItemId(module: n1.litId, item: tree[n2].operand)

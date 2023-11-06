@@ -99,8 +99,8 @@ type
 
   PackedTree* = object ## usually represents a full Nim module
     nodes: seq[PackedNode]
-    #nodesWithFlags*: seq[(int, TNodeFlags)]
-    #nodesWithTypes*: seq[(int, PackedItemId)]
+    #withFlags: seq[(int, TNodeFlags)]
+    #withTypes: seq[(int, PackedItemId)]
 
   PackedInstantiation* = object
     key*, sym*: PackedItemId
@@ -117,25 +117,6 @@ proc newTreeFrom*(old: PackedTree): PackedTree =
   result.nodes = @[]
   when false: result.sh = old.sh
 
-when false:
-  proc declareSym*(tree: var PackedTree; kind: TSymKind;
-                  name: LitId; info: PackedLineInfo): SymId =
-    result = SymId(tree.sh.syms.len)
-    tree.sh.syms.add PackedSym(kind: kind, name: name, flags: {}, magic: mNone, info: info)
-
-  proc litIdFromName*(tree: PackedTree; name: string): LitId =
-    result = tree.sh.strings.getOrIncl(name)
-
-  proc add*(tree: var PackedTree; kind: TNodeKind; token: string; info: PackedLineInfo) =
-    tree.nodes.add PackedNode(kind: kind, info: info,
-                              operand: int32 getOrIncl(tree.sh.strings, token))
-
-  proc add*(tree: var PackedTree; kind: TNodeKind; info: PackedLineInfo) =
-    tree.nodes.add PackedNode(kind: kind, operand: 0, info: info)
-
-proc throwAwayLastNode*(tree: var PackedTree) =
-  tree.nodes.setLen(tree.nodes.len-1)
-
 proc addIdent*(tree: var PackedTree; s: LitId; info: PackedLineInfo) =
   tree.nodes.add PackedNode(kind: nkIdent, operand: int32(s), info: info)
 
@@ -150,35 +131,18 @@ proc addSymDef*(tree: var PackedTree; s: SymId; info: PackedLineInfo) =
 
 proc isAtom*(tree: PackedTree; pos: int): bool {.inline.} = tree.nodes[pos].kind <= nkNilLit
 
-proc copyTree*(dest: var PackedTree; tree: PackedTree; n: NodePos) =
-  # and this is why the IR is superior. We can copy subtrees
-  # via a linear scan.
-  let pos = n.int
-  let L = if isAtom(tree, pos): 1 else: tree.nodes[pos].operand
-  let d = dest.nodes.len
-  dest.nodes.setLen(d + L)
-  for i in 0..<L:
-    dest.nodes[d+i] = tree.nodes[pos+i]
-
-when false:
-  proc copySym*(dest: var PackedTree; tree: PackedTree; s: SymId): SymId =
-    result = SymId(dest.sh.syms.len)
-    assert int(s) < tree.sh.syms.len
-    let oldSym = tree.sh.syms[s.int]
-    dest.sh.syms.add oldSym
-
 type
   PatchPos = distinct int
 
-when false:
-  proc prepare*(tree: var PackedTree; kind: TNodeKind; info: PackedLineInfo): PatchPos =
-    result = PatchPos tree.nodes.len
-    tree.nodes.add PackedNode(kind: kind, operand: 0, info: info)
+proc addNode*(t: var PackedTree; kind: TNodeKind; operand: int32;
+              typeId: PackedItemId = nilItemId; info: PackedLineInfo;
+              flags: TNodeFlags = {}) =
+  t.nodes.add PackedNode(kind: kind, flags: flags, operand: operand,
+                         typeId: typeId, info: info)
 
 proc prepare*(tree: var PackedTree; kind: TNodeKind; flags: TNodeFlags; typeId: PackedItemId; info: PackedLineInfo): PatchPos =
   result = PatchPos tree.nodes.len
-  tree.nodes.add PackedNode(kind: kind, flags: flags, operand: 0, info: info,
-                            typeId: typeId)
+  tree.addNode(kind = kind, flags = flags, operand = 0, info = info, typeId = typeId)
 
 proc prepare*(dest: var PackedTree; source: PackedTree; sourcePos: NodePos): PatchPos =
   result = PatchPos dest.nodes.len
@@ -324,12 +288,6 @@ template litId*(n: NodePos): LitId = LitId tree.nodes[n.int].operand
 template symId*(n: NodePos): SymId = SymId tree.nodes[n.int].operand
 
 proc firstSon*(n: NodePos): NodePos {.inline.} = NodePos(n.int+1)
-
-proc addNode*(t: var PackedTree; kind: TNodeKind; operand: int32;
-              typeId: PackedItemId = nilItemId; info: PackedLineInfo;
-              flags: TNodeFlags = {}) =
-  t.nodes.add PackedNode(kind: kind, flags: flags, operand: operand,
-                         typeId: typeId, info: info)
 
 when false:
   # xxx `nkStrLit` or `nkStrLit..nkTripleStrLit:` below?
