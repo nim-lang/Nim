@@ -158,7 +158,10 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
       result.qualifiedPath.add(s.name.s)
 
     if s.typ != nil:
-      result.forth = typeToString(s.typ)
+      if section == ideInlayHints:
+        result.forth = typeToString(s.typ, preferInlayHint)
+      else:
+        result.forth = typeToString(s.typ)
     else:
       result.forth = ""
     when defined(nimsuggest) and not defined(noDocgen) and not defined(leanCompiler):
@@ -251,18 +254,11 @@ proc `$`*(suggest: Suggest): string =
       result.add($suggest.endCol)
 
 proc suggestToSuggestInlayHint*(sug: Suggest): SuggestInlayHint =
-
-  func convertTypeName2InlayHint(s: string): string =
-    if s.startsWith("int literal("):
-      "int"
-    else:
-      s
-
   SuggestInlayHint(
     kind: sihkType,
     line: sug.line,
     column: sug.column + sug.tokenLen,
-    label: ": " & convertTypeName2InlayHint(sug.forth),
+    label: ": " & sug.forth,
     paddingLeft: false,
     paddingRight: false,
     allowInsert: true,
