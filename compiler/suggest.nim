@@ -251,11 +251,18 @@ proc `$`*(suggest: Suggest): string =
       result.add($suggest.endCol)
 
 proc suggestToSuggestInlayHint*(sug: Suggest): SuggestInlayHint =
+
+  func convertTypeName2InlayHint(s: string): string =
+    if s.startsWith("int literal("):
+      "int"
+    else:
+      s
+
   SuggestInlayHint(
     kind: sihkType,
     line: sug.line,
     column: sug.column + sug.tokenLen,
-    label: ": " & sug.forth,
+    label: ": " & convertTypeName2InlayHint(sug.forth),
     paddingLeft: false,
     paddingRight: false,
     allowInsert: true,
