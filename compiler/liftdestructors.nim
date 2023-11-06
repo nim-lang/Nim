@@ -11,8 +11,9 @@
 ## (`=sink`, `=copy`, `=destroy`, `=deepCopy`, `=wasMoved`, `=dup`).
 
 import modulegraphs, lineinfos, idents, ast, renderer, semdata,
-  sighashes, lowerings, options, types, msgs, magicsys, tables, ccgutils
+  sighashes, lowerings, options, types, msgs, magicsys, ccgutils
 
+import std/tables
 from trees import isCaseObj
 
 when defined(nimPreviewSlimSystem):

@@ -11,7 +11,7 @@
 
 # Where possible, contribute OS-independent procs in `os <os.html>`_ instead.
 
-import posix, parsecfg, os
+import std/[posix, parsecfg, os]
 import std/private/since
 
 when defined(nimPreviewSlimSystem):

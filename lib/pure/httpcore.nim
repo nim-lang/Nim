@@ -12,7 +12,7 @@
 ##
 ## Unstable API.
 import std/private/since
-import tables, strutils, parseutils
+import std/[tables, strutils, parseutils]
 
 type
   HttpHeaders* = ref object
@@ -126,7 +126,8 @@ func toTitleCase(s: string): string =
     result[i] = if upper: toUpperAscii(s[i]) else: toLowerAscii(s[i])
     upper = s[i] == '-'
 
-func toCaseInsensitive(headers: HttpHeaders, s: string): string {.inline.} =
+func toCaseInsensitive*(headers: HttpHeaders, s: string): string {.inline.} =
+  ## For internal usage only. Do not use.
   return if headers.isTitleCase: toTitleCase(s) else: toLowerAscii(s)
 
 func newHttpHeaders*(titleCase=false): HttpHeaders =

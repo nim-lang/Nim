@@ -10,8 +10,10 @@
 ## This module contains the data structures for the C code generation phase.
 
 import
-  ast, ropes, options, intsets,
-  tables, ndi, lineinfos, pathutils, modulegraphs, sets
+  ast, ropes, options,
+  ndi, lineinfos, pathutils, modulegraphs
+
+import std/[intsets, tables, sets]
 
 type
   TLabel* = Rope              # for the C generator a label is just a rope

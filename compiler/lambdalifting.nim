@@ -10,9 +10,11 @@
 # This file implements lambda lifting for the transformator.
 
 import
-  intsets, strutils, options, ast, astalgo, msgs,
-  idents, renderer, types, magicsys, lowerings, tables, modulegraphs, lineinfos,
+  options, ast, astalgo, msgs,
+  idents, renderer, types, magicsys, lowerings, modulegraphs, lineinfos,
   transf, liftdestructors, typeallowed
+
+import std/[strutils, tables, intsets]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

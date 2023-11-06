@@ -11,10 +11,11 @@
 # and evaluation phase
 
 import
-  strutils, options, ast, trees, nimsets,
-  platform, math, msgs, idents, renderer, types,
-  commands, magicsys, modulegraphs, strtabs, lineinfos, wordrecg
+  options, ast, trees, nimsets,
+  platform, msgs, idents, renderer, types,
+  commands, magicsys, modulegraphs, lineinfos, wordrecg
 
+import std/[strutils, math, strtabs]
 from system/memory import nimCStrLen
 
 when defined(nimPreviewSlimSystem):

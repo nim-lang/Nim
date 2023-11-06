@@ -57,8 +57,8 @@
 ## as program output.
 
 import
-  strutils
-from algorithm import binarySearch
+  std/strutils
+from std/algorithm import binarySearch
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]

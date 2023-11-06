@@ -10,8 +10,13 @@
 ## NIR instructions. Somewhat inspired by LLVM's instructions.
 
 import std / [assertions, hashes]
-import .. / ic / bitabs
+import .. / ic / [bitabs, rodfiles]
 import nirlineinfos, nirtypes
+
+const
+  NirVersion = 1
+  nirCookie* = [byte(0), byte('N'), byte('I'), byte('R'),
+            byte(sizeof(int)*8), byte(system.cpuEndian), byte(0), byte(NirVersion)]
 
 type
   SymId* = distinct int
@@ -49,16 +54,20 @@ type
     SelectList,  # (values...)
     SelectValue, # (value)
     SelectRange, # (valueA..valueB)
+    ForeignDecl, # Can wrap SummonGlobal, SummonThreadLocal, SummonConst
     SummonGlobal,
     SummonThreadLocal,
     Summon, # x = Summon Typed <Type ID>; x begins to live
+    SummonResult,
     SummonParam,
     SummonConst,
     Kill, # `Kill x`: scope end for `x`
 
     AddrOf,
-    ArrayAt, # addr(a[i])
-    FieldAt, # addr(obj.field)
+    ArrayAt, # a[i]
+    DerefArrayAt, # a[i] where `a` is a PtrArray; `a[][i]`
+    FieldAt, # obj.field
+    DerefFieldAt, # obj[].field
 
     Load, # a[]
     Store, # a[] = b
@@ -100,11 +109,13 @@ type
     TestOf,
     Emit,
     ProcDecl,
+    ForeignProcDecl,
     PragmaPair
 
 type
   PragmaKey* = enum
     FastCall, StdCall, CDeclCall, SafeCall, SysCall, InlineCall, NoinlineCall, ThisCall, NoCall,
+    CoreName,
     ExternName,
     HeaderImport,
     DllImport,
@@ -155,17 +166,21 @@ const
     AddrOf,
     Load,
     ArrayAt,
+    DerefArrayAt,
     FieldAt,
+    DerefFieldAt,
     TestOf
   }
 
 type
   Instr* = object     # 8 bytes
     x: uint32
-    info: PackedLineInfo
+    info*: PackedLineInfo
 
 template kind*(n: Instr): Opcode = Opcode(n.x and OpcodeMask)
 template operand(n: Instr): uint32 = (n.x shr OpcodeBits)
+
+template rawOperand*(n: Instr): uint32 = (n.x shr OpcodeBits)
 
 template toX(k: Opcode; operand: uint32): uint32 =
   uint32(k) or (operand shl OpcodeBits)
@@ -227,6 +242,12 @@ proc nextChild(tree: Tree; pos: var int) {.inline.} =
   else:
     inc pos
 
+proc next*(tree: Tree; pos: var NodePos) {.inline.} = nextChild tree, int(pos)
+
+template firstSon*(n: NodePos): NodePos = NodePos(n.int+1)
+
+template skipTyped*(n: NodePos): NodePos = NodePos(n.int+2)
+
 iterator sons*(tree: Tree; n: NodePos): NodePos =
   var pos = n.int
   assert tree.nodes[pos].kind > LastAtomicValue
@@ -236,7 +257,36 @@ iterator sons*(tree: Tree; n: NodePos): NodePos =
     yield NodePos pos
     nextChild tree, pos
 
+iterator sonsFrom1*(tree: Tree; n: NodePos): NodePos =
+  var pos = n.int
+  assert tree.nodes[pos].kind > LastAtomicValue
+  let last = pos + tree.nodes[pos].rawSpan
+  inc pos
+  nextChild tree, pos
+  while pos < last:
+    yield NodePos pos
+    nextChild tree, pos
+
+iterator sonsFromN*(tree: Tree; n: NodePos; toSkip = 2): NodePos =
+  var pos = n.int
+  assert tree.nodes[pos].kind > LastAtomicValue
+  let last = pos + tree.nodes[pos].rawSpan
+  inc pos
+  for i in 1..toSkip:
+    nextChild tree, pos
+  while pos < last:
+    yield NodePos pos
+    nextChild tree, pos
+
 template `[]`*(t: Tree; n: NodePos): Instr = t.nodes[n.int]
+
+iterator sonsRest*(tree: Tree; parent, n: NodePos): NodePos =
+  var pos = n.int
+  assert tree[parent].kind > LastAtomicValue
+  let last = parent.int + tree[parent].rawSpan
+  while pos < last:
+    yield NodePos pos
+    nextChild tree, pos
 
 proc span(tree: Tree; pos: int): int {.inline.} =
   if tree.nodes[pos].kind <= LastAtomicValue: 1 else: int(tree.nodes[pos].operand)
@@ -250,21 +300,76 @@ proc copyTree*(dest: var Tree; src: Tree) =
   for i in 0..<L:
     dest.nodes[d+i] = src.nodes[pos+i]
 
+proc sons2*(tree: Tree; n: NodePos): (NodePos, NodePos) {.inline.} =
+  assert(not isAtom(tree, n.int))
+  let a = n.int+1
+  let b = a + span(tree, a)
+  result = (NodePos a, NodePos b)
+
+proc sons3*(tree: Tree; n: NodePos): (NodePos, NodePos, NodePos) {.inline.} =
+  assert(not isAtom(tree, n.int))
+  let a = n.int+1
+  let b = a + span(tree, a)
+  let c = b + span(tree, b)
+  result = (NodePos a, NodePos b, NodePos c)
+
+proc sons4*(tree: Tree; n: NodePos): (NodePos, NodePos, NodePos, NodePos) {.inline.} =
+  assert(not isAtom(tree, n.int))
+  let a = n.int+1
+  let b = a + span(tree, a)
+  let c = b + span(tree, b)
+  let d = c + span(tree, c)
+  result = (NodePos a, NodePos b, NodePos c, NodePos d)
+
+proc sons5*(tree: Tree; n: NodePos): (NodePos, NodePos, NodePos, NodePos, NodePos) {.inline.} =
+  assert(not isAtom(tree, n.int))
+  let a = n.int+1
+  let b = a + span(tree, a)
+  let c = b + span(tree, b)
+  let d = c + span(tree, c)
+  let e = d + span(tree, d)
+  result = (NodePos a, NodePos b, NodePos c, NodePos d, NodePos e)
+
+proc typeId*(ins: Instr): TypeId {.inline.} =
+  assert ins.kind == Typed
+  result = TypeId(ins.operand)
+
+proc symId*(ins: Instr): SymId {.inline.} =
+  assert ins.kind in {SymUse, SymDef}
+  result = SymId(ins.operand)
+
+proc immediateVal*(ins: Instr): int {.inline.} =
+  assert ins.kind == ImmediateVal
+  result = cast[int](ins.operand)
+
+proc litId*(ins: Instr): LitId {.inline.} =
+  assert ins.kind in {StrVal, IntVal}
+  result = LitId(ins.operand)
+
+
 type
   LabelId* = distinct int
+
+proc `==`*(a, b: LabelId): bool {.borrow.}
+proc hash*(a: LabelId): Hash {.borrow.}
+
+proc label*(ins: Instr): LabelId {.inline.} =
+  assert ins.kind in {Label, LoopLabel, Goto, GotoLoop, CheckedGoto}
+  result = LabelId(ins.operand)
 
 proc newLabel*(labelGen: var int): LabelId {.inline.} =
   result = LabelId labelGen
   inc labelGen
+
+proc newLabels*(labelGen: var int; n: int): LabelId {.inline.} =
+  result = LabelId labelGen
+  inc labelGen, n
 
 proc addNewLabel*(t: var Tree; labelGen: var int; info: PackedLineInfo; k: Opcode): LabelId =
   assert k in {Label, LoopLabel}
   result = LabelId labelGen
   t.nodes.add Instr(x: toX(k, uint32(result)), info: info)
   inc labelGen
-
-proc boolVal*(t: var Tree; info: PackedLineInfo; b: bool) =
-  t.nodes.add Instr(x: toX(ImmediateVal, uint32(b)), info: info)
 
 proc gotoLabel*(t: var Tree; info: PackedLineInfo; k: Opcode; L: LabelId) =
   assert k in {Goto, GotoLoop, CheckedGoto}
@@ -280,11 +385,16 @@ proc addSymUse*(t: var Tree; info: PackedLineInfo; s: SymId) {.inline.} =
 proc addSymDef*(t: var Tree; info: PackedLineInfo; s: SymId) {.inline.} =
   t.nodes.add Instr(x: toX(SymDef, uint32(s)), info: info)
 
+proc addNop*(t: var Tree; info: PackedLineInfo) {.inline.} =
+  t.nodes.add Instr(x: toX(Nop, 0'u32), info: info)
+
 proc addTyped*(t: var Tree; info: PackedLineInfo; typ: TypeId) {.inline.} =
+  assert typ.int >= 0
   t.nodes.add Instr(x: toX(Typed, uint32(typ)), info: info)
 
 proc addSummon*(t: var Tree; info: PackedLineInfo; s: SymId; typ: TypeId; opc = Summon) {.inline.} =
-  assert opc in {Summon, SummonConst, SummonGlobal, SummonThreadLocal, SummonParam}
+  assert typ.int >= 0
+  assert opc in {Summon, SummonConst, SummonGlobal, SummonThreadLocal, SummonParam, SummonResult}
   let x = prepare(t, info, opc)
   t.nodes.add Instr(x: toX(Typed, uint32(typ)), info: info)
   t.nodes.add Instr(x: toX(SymDef, uint32(s)), info: info)
@@ -301,14 +411,24 @@ proc addIntVal*(t: var Tree; integers: var BiTable[int64]; info: PackedLineInfo;
   buildTyped t, info, NumberConv, typ:
     t.nodes.add Instr(x: toX(IntVal, uint32(integers.getOrIncl(x))), info: info)
 
+proc boolVal*(t: var Tree; integers: var BiTable[int64]; info: PackedLineInfo; b: bool) =
+  buildTyped t, info, NumberConv, Bool8Id:
+    t.nodes.add Instr(x: toX(IntVal, uint32(integers.getOrIncl(ord b))), info: info)
+
 proc addStrVal*(t: var Tree; strings: var BiTable[string]; info: PackedLineInfo; s: string) =
   t.nodes.add Instr(x: toX(StrVal, uint32(strings.getOrIncl(s))), info: info)
+
+proc addStrLit*(t: var Tree; info: PackedLineInfo; s: LitId) =
+  t.nodes.add Instr(x: toX(StrVal, uint32(s)), info: info)
 
 proc addNilVal*(t: var Tree; info: PackedLineInfo; typ: TypeId) =
   buildTyped t, info, NumberConv, typ:
     t.nodes.add Instr(x: toX(NilVal, uint32(0)), info: info)
 
-proc escapeToNimLit(s: string; result: var string) =
+proc store*(r: var RodFile; t: Tree) = storeSeq r, t.nodes
+proc load*(r: var RodFile; t: var Tree) = loadSeq r, t.nodes
+
+proc escapeToNimLit*(s: string; result: var string) =
   result.add '"'
   for c in items s:
     if c < ' ' or int(c) >= 128:
@@ -326,7 +446,32 @@ proc escapeToNimLit(s: string; result: var string) =
       result.add c
   result.add '"'
 
+type
+  SymNames* = object
+    s: seq[LitId]
+
+proc `[]=`*(t: var SymNames; key: SymId; val: LitId) =
+  let k = int(key)
+  if k >= t.s.len: t.s.setLen k+1
+  t.s[k] = val
+
+proc `[]`*(t: SymNames; key: SymId): LitId =
+  let k = int(key)
+  if k < t.s.len: result = t.s[k]
+  else: result = LitId(0)
+
+template localName(s: SymId): string =
+  let name = names[s]
+  if name != LitId(0):
+    strings[name]
+  else:
+    $s.int
+
+proc store*(r: var RodFile; t: SymNames) = storeSeq(r, t.s)
+proc load*(r: var RodFile; t: var SymNames) = loadSeq(r, t.s)
+
 proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTable[int64];
+               names: SymNames;
                r: var string; nesting = 0) =
   if r.len > 0 and r[r.len-1] notin {' ', '\n', '(', '[', '{'}:
     r.add ' '
@@ -342,33 +487,46 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
     escapeToNimLit(strings[LitId t[pos].operand], r)
   of SymDef:
     r.add "SymDef "
-    r.add $t[pos].operand
+    r.add localName(SymId t[pos].operand)
   of SymUse:
     r.add "SymUse "
-    r.add $t[pos].operand
+    r.add localName(SymId t[pos].operand)
   of PragmaId:
     r.add $cast[PragmaKey](t[pos].operand)
   of Typed:
-    r.add "Typed "
+    r.add "T<"
     r.add $t[pos].operand
+    r.add ">"
   of NilVal:
     r.add "NilVal"
   of Label:
-    r.add "L"
+    # undo the nesting:
+    var spaces = r.len-1
+    while spaces >= 0 and r[spaces] == ' ': dec spaces
+    r.setLen spaces+1
+    r.add "\n  L"
     r.add $t[pos].operand
   of Goto, CheckedGoto, LoopLabel, GotoLoop:
     r.add $t[pos].kind
-    r.add ' '
+    r.add " L"
     r.add $t[pos].operand
   else:
     r.add $t[pos].kind
     r.add "{\n"
     for i in 0..<(nesting+1)*2: r.add ' '
     for p in sons(t, pos):
-      toString t, p, strings, integers, r, nesting+1
+      toString t, p, strings, integers, names, r, nesting+1
     r.add "\n"
     for i in 0..<nesting*2: r.add ' '
     r.add "}"
+
+proc allTreesToString*(t: Tree; strings: BiTable[string]; integers: BiTable[int64];
+                       names: SymNames;
+                       r: var string) =
+  var i = 0
+  while i < t.len:
+    toString t, NodePos(i), strings, integers, names, r
+    nextChild t, i
 
 type
   Value* = distinct Tree
@@ -419,3 +577,6 @@ proc addStrVal*(t: var Value; strings: var BiTable[string]; info: PackedLineInfo
 
 proc addNilVal*(t: var Value; info: PackedLineInfo; typ: TypeId) =
   addNilVal Tree(t), info, typ
+
+proc addIntVal*(t: var Value; integers: var BiTable[int64]; info: PackedLineInfo; typ: TypeId; x: int64) =
+  addIntVal Tree(t), integers, info, typ, x

@@ -8,7 +8,7 @@
 #
 
 ## Serialization utilities for the compiler.
-import strutils, math
+import std/[strutils, math]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

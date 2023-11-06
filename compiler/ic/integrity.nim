@@ -10,7 +10,7 @@
 ## Integrity checking for a set of .rod files.
 ## The set must cover a complete Nim project.
 
-import sets
+import std/sets
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

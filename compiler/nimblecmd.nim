@@ -9,8 +9,9 @@
 
 ## Implements some helper procs for Nimble (Nim's package manager) support.
 
-import parseutils, strutils, os, options, msgs, sequtils, lineinfos, pathutils,
-  tables
+import options, msgs, lineinfos, pathutils
+
+import std/[parseutils, strutils, os, tables, sequtils]
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]

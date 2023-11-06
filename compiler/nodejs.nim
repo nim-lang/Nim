@@ -1,4 +1,4 @@
-import os
+import std/os
 
 proc findNodeJs*(): string {.inline.} =
   ## Find NodeJS executable and return it as a string.
