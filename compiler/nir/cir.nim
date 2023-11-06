@@ -9,7 +9,7 @@
 
 # We produce C code as a list of tokens.
 
-import std / [assertions, syncio, tables, intsets]
+import std / [assertions, syncio, tables, intsets, formatfloat]
 from std / strutils import toOctal
 import .. / ic / [bitabs, rodfiles]
 import nirtypes, nirinsts, nirfiles
@@ -526,6 +526,27 @@ template checkedBinaryop(opr) =
   c.add "L" & $lab.int
   c.add ParRi
 
+proc genNumberConv(c: var GeneratedCode; t: Tree; n: NodePos) =
+  let (typ, arg) = sons2(t, n)
+  if t[arg].kind == IntVal:
+    let litId = t[arg].litId
+    c.add ParLe
+    c.add ParLe
+    gen c, t, typ
+    c.add ParRi
+    case c.m.types[t[typ].typeId].kind
+    of UIntTy:
+      let x = cast[uint64](c.m.lit.numbers[litId])
+      c.add $x
+    of FloatTy:
+      let x = cast[float64](c.m.lit.numbers[litId])
+      c.add $x
+    else:
+      gen c, t, arg
+    c.add ParRi
+  else:
+    binaryop ""
+
 template moveToDataSection(body: untyped) =
   let oldLen = c.code.len
   body
@@ -538,7 +559,7 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   of Nop:
     discard "nothing to emit"
   of ImmediateVal:
-    c.add "BUG: " & $t[n].kind
+    c.add $t[n].immediateVal
   of IntVal:
     genIntLit c, c.m.lit, t[n].litId
   of StrVal:
@@ -783,7 +804,7 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   of Le: cmpop " <= "
   of Lt: cmpop " < "
   of Cast: binaryop ""
-  of NumberConv: binaryop ""
+  of NumberConv: genNumberConv c, t, n
   of CheckedObjConv: binaryop ""
   of ObjConv: binaryop ""
   of Emit: raiseAssert "cannot interpret: Emit"
