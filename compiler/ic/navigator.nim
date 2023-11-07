@@ -63,7 +63,11 @@ proc search(c: var NavContext; tree: PackedTree): ItemId =
     let i = NodePos(i)
     case tree[i].kind
     of nkSym:
+<<<<<<< HEAD
       let item = tree[i].soperand
+=======
+      let item = tree[i].operand
+>>>>>>> devel
       if searchLocalSym(c, c.g.packed[c.thisModule].fromDisk.syms[item], tree[i].info):
         return ItemId(module: c.thisModule, item: item)
     of nkModuleRef:
@@ -72,7 +76,11 @@ proc search(c: var NavContext; tree: PackedTree): ItemId =
         let (n1, n2) = sons2(tree, i)
         assert n1.kind == nkInt32Lit
         assert n2.kind == nkInt32Lit
+<<<<<<< HEAD
         let pId = PackedItemId(module: n1.litId, item: tree[n2].soperand)
+=======
+        let pId = PackedItemId(module: n1.litId, item: tree[n2].operand)
+>>>>>>> devel
         let itemId = translateId(pId, c.g.packed, c.thisModule, c.g.config)
         if searchForeignSym(c, itemId, tree[i].info):
           return itemId
@@ -101,14 +109,22 @@ proc list(c: var NavContext; tree: PackedTree; sym: ItemId) =
     let i = NodePos(i)
     case tree[i].kind
     of nkSym:
+<<<<<<< HEAD
       let item = tree[i].soperand
+=======
+      let item = tree[i].operand
+>>>>>>> devel
       if sym.item == item and sym.module == c.thisModule:
         usage(c, tree[i].info, isDecl(tree, parent(i)))
     of nkModuleRef:
       let (n1, n2) = sons2(tree, i)
       assert n1.kind == nkNone
       assert n2.kind == nkNone
+<<<<<<< HEAD
       let pId = PackedItemId(module: n1.litId, item: tree[n2].soperand)
+=======
+      let pId = PackedItemId(module: n1.litId, item: tree[n2].operand)
+>>>>>>> devel
       let itemId = translateId(pId, c.g.packed, c.thisModule, c.g.config)
       if itemId.item == sym.item and sym.module == itemId.module:
         usage(c, tree[i].info, isDecl(tree, parent(i)))

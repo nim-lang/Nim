@@ -158,7 +158,10 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
       result.qualifiedPath.add(s.name.s)
 
     if s.typ != nil:
-      result.forth = typeToString(s.typ)
+      if section == ideInlayHints:
+        result.forth = typeToString(s.typ, preferInlayHint)
+      else:
+        result.forth = typeToString(s.typ)
     else:
       result.forth = ""
     when defined(nimsuggest) and not defined(noDocgen) and not defined(leanCompiler):

@@ -823,9 +823,11 @@ proc semConst(c: PContext, n: PNode): PNode =
       addToVarSection(c, result, b)
       continue
 
+    var hasUserSpecifiedType = false
     var typ: PType = nil
     if a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
+      hasUserSpecifiedType = true
 
     var typFlags: TTypeAllowedFlags = {}
 
@@ -866,6 +868,8 @@ proc semConst(c: PContext, n: PNode): PNode =
     else:
       for j in 0..<a.len-2:
         var v = semIdentDef(c, a[j], skConst)
+        when defined(nimsuggest):
+          v.hasUserSpecifiedType = hasUserSpecifiedType
         if sfGenSym notin v.flags: addInterfaceDecl(c, v)
         elif v.owner == nil: v.owner = getCurrOwner(c)
         styleCheckDef(c, v)
