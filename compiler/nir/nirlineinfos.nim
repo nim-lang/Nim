@@ -42,6 +42,9 @@ type
   LineInfoManager* = object
     aside: seq[(LitId, int32, int32)]
 
+const
+  NoLineInfo* = PackedLineInfo(0'u32)
+
 proc pack*(m: var LineInfoManager; file: LitId; line, col: int32): PackedLineInfo =
   if file.uint32 <= FileMax.uint32 and line <= LineMax and col <= ColMax:
     let col = if col < 0'i32: 0'u32 else: col.uint32
