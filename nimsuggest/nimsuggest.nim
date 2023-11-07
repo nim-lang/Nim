@@ -1115,7 +1115,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     i += parseInt(tag, endCol, i)
     let s = graph.findSymDataInRange(file, line, col, endLine, endCol)
     for q in s:
-      if q.sym.kind in {skLet, skVar, skForVar} and q.isDecl and not q.sym.hasUserSpecifiedType:
+      if q.sym.kind in {skLet, skVar, skForVar, skConst} and q.isDecl and not q.sym.hasUserSpecifiedType:
         graph.suggestInlayHintResult(q.sym, q.info, ideInlayHints)
   else:
     myLog fmt "Discarding {cmd}"

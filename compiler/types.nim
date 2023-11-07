@@ -30,6 +30,7 @@ type
     preferMixed,
       # most useful, shows: symbol + resolved symbols if it differs, e.g.:
       # tuple[a: MyInt{int}, b: float]
+    preferInlayHint,
 
   TTypeRelation* = enum      # order is important!
     isNone, isConvertible,
@@ -512,7 +513,7 @@ const
     "void", "iterable"]
 
 const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo,
-  preferGenericArg, preferResolved, preferMixed}
+  preferGenericArg, preferResolved, preferMixed, preferInlayHint}
 
 template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
   tc.add concrete
@@ -546,7 +547,10 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     if prefer in preferToResolveSymbols and t.sym != nil and
          sfAnon notin t.sym.flags and t.kind != tySequence:
       if t.kind == tyInt and isIntLit(t):
-        result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
+        if prefer == preferInlayHint:
+          result = t.sym.name.s
+        else:
+          result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
       elif t.kind == tyAlias and t[0].kind != tyAlias:
         result = typeToString(t[0])
       elif prefer in {preferResolved, preferMixed}:
@@ -562,7 +566,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           result = t.sym.name.s
         if prefer == preferMixed and result != t.sym.name.s:
           result = t.sym.name.s & "{" & result & "}"
-      elif prefer in {preferName, preferTypeName} or t.sym.owner.isNil:
+      elif prefer in {preferName, preferTypeName, preferInlayHint} or t.sym.owner.isNil:
         # note: should probably be: {preferName, preferTypeName, preferGenericArg}
         result = t.sym.name.s
         if t.kind == tyGenericParam and t.len > 0:
@@ -581,8 +585,11 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if not isIntLit(t) or prefer == preferExported:
         result = typeToStr[t.kind]
       else:
-        if prefer == preferGenericArg:
+        case prefer:
+        of preferGenericArg:
           result = $t.n.intVal
+        of preferInlayHint:
+          result = "int"
         else:
           result = "int literal(" & $t.n.intVal & ")"
     of tyGenericInst, tyGenericInvocation:
