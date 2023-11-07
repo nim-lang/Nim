@@ -569,9 +569,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a.kind notin {nkIdentDefs, nkVarTuple}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
 
+    var hasUserSpecifiedType = false
     var typ: PType = nil
     if a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
+      hasUserSpecifiedType = true
 
     var typFlags: TTypeAllowedFlags
 
@@ -644,6 +646,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         addToVarSection(c, result, n, a)
         continue
       var v = semIdentDef(c, a[j], symkind, false)
+      when defined(nimsuggest):
+        v.hasUserSpecifiedType = hasUserSpecifiedType
       styleCheckDef(c, v)
       onDef(a[j].info, v)
       if sfGenSym notin v.flags:
@@ -724,9 +728,11 @@ proc semConst(c: PContext, n: PNode): PNode =
     if a.kind notin {nkConstDef, nkVarTuple}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
 
+    var hasUserSpecifiedType = false
     var typ: PType = nil
     if a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
+      hasUserSpecifiedType = true
 
     var typFlags: TTypeAllowedFlags
 
@@ -771,6 +777,8 @@ proc semConst(c: PContext, n: PNode): PNode =
 
     for j in 0..<a.len-2:
       var v = semIdentDef(c, a[j], skConst)
+      when defined(nimsuggest):
+        v.hasUserSpecifiedType = hasUserSpecifiedType
       if sfGenSym notin v.flags: addInterfaceDecl(c, v)
       elif v.owner == nil: v.owner = getCurrOwner(c)
       styleCheckDef(c, v)

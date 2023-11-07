@@ -53,6 +53,7 @@ type
   SymInfoPair* = object
     sym*: PSym
     info*: TLineInfo
+    isDecl*: bool
 
   ModuleGraph* {.acyclic.} = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
