@@ -72,8 +72,9 @@ proc checkForeignSym(c: var CheckedContext; symId: PackedItemId) =
     c.thisModule = oldThisModule
 
 proc checkNode(c: var CheckedContext; tree: PackedTree; n: NodePos) =
-  if tree[n].typeId != nilItemId:
-    checkType(c, tree[n].typeId)
+  let t = findType(tree, n)
+  if t != nilItemId:
+    checkType(c, t)
   case n.kind
   of nkEmpty, nkNilLit, nkType, nkNilRodNode:
     discard

@@ -425,7 +425,7 @@ proc addModuleRef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pac
   ## add a remote symbol reference to the tree
   let info = n.info.toPackedInfo(c, m)
   ir.addNode(kind = nkModuleRef, operand = 3.int32, # spans 3 nodes in total
-             typeId = storeTypeLater(n.typ, c, m), info = info)
+             info = info)
   ir.addNode(kind = nkNone, info = info,
              operand = toLitId(n.sym.itemId.module.FileIndex, c, m).int32)
   ir.addNode(kind = nkNone, info = info,
@@ -451,7 +451,7 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pa
       # packing:
       let id = n.sym.storeSymLater(c, m).item
       ir.addNode(kind = nkSym, flags = n.flags, operand = id,
-                 typeId = storeTypeLater(n.typ, c, m), info = info)
+                 info = info)
     else:
       # store it as an external module reference:
       addModuleRef(n, ir, c, m)
@@ -775,6 +775,7 @@ proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
     result.ident = getIdent(c.cache, g[thisModule].fromDisk.strings[n.litId])
   of nkSym:
     result.sym = loadSym(c, g, thisModule, PackedItemId(module: LitId(0), item: tree[n].soperand))
+    if result.typ == nil: result.typ = result.sym.typ
   of externIntLit:
     result.intVal = g[thisModule].fromDisk.numbers[n.litId]
   of nkStrLit..nkTripleStrLit:
@@ -787,6 +788,7 @@ proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
     assert n2.kind == nkNone
     transitionNoneToSym(result)
     result.sym = loadSym(c, g, thisModule, PackedItemId(module: n1.litId, item: tree[n2].soperand))
+    if result.typ == nil: result.typ = result.sym.typ
   else:
     for n0 in sonsReadonly(tree, n):
       result.addAllowNil loadNodes(c, g, thisModule, tree, n0)
@@ -1219,7 +1221,7 @@ proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
   if err != ok:
     config.quitOrRaise "Error: could not load: " & $rodfile.string & " reason: " & $err
 
-  when true:
+  when false:
     echo "exports:"
     for ex in m.exports:
       echo "  ", m.strings[ex[0]], " local ID: ", ex[1]
@@ -1235,13 +1237,32 @@ proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
     for ex in m.hidden:
       echo "  ", m.strings[ex[0]], " local ID: ", ex[1]
 
-  echo "all symbols"
-  for i in 0..high(m.syms):
-    if m.syms[i].name != LitId(0):
-      echo "  ", m.strings[m.syms[i].name], " local ID: ", i, " kind ", m.syms[i].kind
-    else:
-      echo "  <anon symbol?> local ID: ", i, " kind ", m.syms[i].kind
+  when false:
+    echo "all symbols"
+    for i in 0..high(m.syms):
+      if m.syms[i].name != LitId(0):
+        echo "  ", m.strings[m.syms[i].name], " local ID: ", i, " kind ", m.syms[i].kind
+      else:
+        echo "  <anon symbol?> local ID: ", i, " kind ", m.syms[i].kind
 
   echo "symbols: ", m.syms.len, " types: ", m.types.len,
     " top level nodes: ", m.topLevel.len, " other nodes: ", m.bodies.len,
     " strings: ", m.strings.len, " numbers: ", m.numbers.len
+
+  echo "SIZES:"
+  echo "symbols: ", m.syms.len * sizeof(PackedSym), " types: ", m.types.len * sizeof(PackedType),
+    " top level nodes: ", m.topLevel.len * sizeof(PackedNode),
+    " other nodes: ", m.bodies.len * sizeof(PackedNode),
+    " strings: ", sizeOnDisc(m.strings)
+  when false:
+    var tt = 0
+    var fc = 0
+    for x in m.topLevel:
+      if x.kind == nkSym or x.typeId == nilItemId: inc tt
+      if x.flags == {}: inc fc
+    for x in m.bodies:
+      if x.kind == nkSym or x.typeId == nilItemId: inc tt
+      if x.flags == {}: inc fc
+    let total = float(m.topLevel.len + m.bodies.len)
+    echo "nodes with nil type: ", tt, " in % ", tt.float / total
+    echo "nodes with empty flags: ", fc.float / total

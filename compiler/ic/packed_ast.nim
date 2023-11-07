@@ -33,7 +33,7 @@ type
     item*: int32         # same as the in-memory representation
 
 const
-  nilItemId* = PackedItemId(module: LitId(0), item: -1.int32)
+  nilItemId* = PackedItemId(module: LitId(0), item: 0.int32)
 
 const
   emptyNodeId* = NodeId(-1)
@@ -90,13 +90,11 @@ type
   PackedNode* = object     # 8 bytes
     x: uint32
     info*: PackedLineInfo
-    flags: TNodeFlags
-    typ: PackedItemId
 
   PackedTree* = object ## usually represents a full Nim module
     nodes: seq[PackedNode]
-    #withFlags: seq[(int32, TNodeFlags)]
-    #withTypes: seq[(int32, PackedItemId)]
+    withFlags: seq[(int32, TNodeFlags)]
+    withTypes: seq[(int32, PackedItemId)]
 
   PackedInstantiation* = object
     key*, sym*: PackedItemId
@@ -146,8 +144,11 @@ type
 proc addNode*(t: var PackedTree; kind: TNodeKind; operand: int32;
               typeId: PackedItemId = nilItemId; info: PackedLineInfo;
               flags: TNodeFlags = {}) =
-  t.nodes.add PackedNode(x: toX(kind, cast[uint32](operand)), flags: flags,
-                         typ: typeId, info: info)
+  t.nodes.add PackedNode(x: toX(kind, cast[uint32](operand)), info: info)
+  if flags != {}:
+    t.withFlags.add (t.nodes.len.int32 - 1, flags)
+  if typeId != nilItemId:
+    t.withTypes.add (t.nodes.len.int32 - 1, typeId)
 
 proc prepare*(tree: var PackedTree; kind: TNodeKind; flags: TNodeFlags; typeId: PackedItemId; info: PackedLineInfo): PatchPos =
   result = PatchPos tree.nodes.len
@@ -257,10 +258,22 @@ proc litId*(tree: PackedTree; n: NodePos): LitId {.inline.} =
 proc info*(tree: PackedTree; n: NodePos): PackedLineInfo {.inline.} =
   tree.nodes[n.int].info
 
+proc findType*(tree: PackedTree; n: NodePos): PackedItemId =
+  for x in tree.withTypes:
+    if x[0] == int32(n): return x[1]
+    if x[0] > int32(n): return nilItemId
+  return nilItemId
+
+proc findFlags*(tree: PackedTree; n: NodePos): TNodeFlags =
+  for x in tree.withFlags:
+    if x[0] == int32(n): return x[1]
+    if x[0] > int32(n): return {}
+  return {}
+
 template typ*(n: NodePos): PackedItemId =
-  tree.nodes[n.int].typeId
+  tree.findType(n)
 template flags*(n: NodePos): TNodeFlags =
-  tree.nodes[n.int].flags
+  tree.findFlags(n)
 
 template uoperand*(n: NodePos): uint32 =
   tree.nodes[n.int].uoperand
@@ -343,6 +356,10 @@ proc toPackedItemId*(item: int32): PackedItemId {.inline.} =
 
 proc load*(f: var RodFile; t: var PackedTree) =
   loadSeq f, t.nodes
+  loadSeq f, t.withFlags
+  loadSeq f, t.withTypes
 
 proc store*(f: var RodFile; t: PackedTree) =
   storeSeq f, t.nodes
+  storeSeq f, t.withFlags
+  storeSeq f, t.withTypes
