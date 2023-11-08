@@ -316,7 +316,7 @@ help with readability, since there is only so much you can cram into
 single letter DSLs.
 ]##
 
-import std/[macros, parseutils, unicode]
+import std/[macros, parseutils, unicode, complex]
 import std/strutils except format
 
 when defined(nimPreviewSlimSystem):
@@ -552,6 +552,16 @@ proc formatValue*(result: var string; value: SomeFloat; specifier: string) =
     result.add toUpperAscii(res)
   else:
     result.add res
+
+proc formatValue*(result: var string; value: Complex; specifier: string) =
+  ## Standard format implementation for `Complex`. It makes little
+  ## sense to call this directly, but it is required to exist
+  ## by the `&` macro.
+  result.add "("
+  formatValue(result, value.re, specifier)
+  result.add ", "
+  formatValue(result, value.im, specifier)
+  result.add ")"
 
 proc formatValue*(result: var string; value: string; specifier: string) =
   ## Standard format implementation for `string`. It makes little
