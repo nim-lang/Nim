@@ -36,7 +36,7 @@ runnableExamples:
 {.push checks: off, line_dir: off, stack_trace: off, debugger: off.}
 # the user does not want to trace a part of the standard library!
 
-import std/math
+import std/[math, strformat]
 
 type
   Complex*[T: SomeFloat] = object
@@ -398,5 +398,15 @@ func `$`*(z: Complex): string =
     doAssert $complex(1.0, 2.0) == "(1.0, 2.0)"
 
   result = "(" & $z.re & ", " & $z.im & ")"
+
+proc formatValue*(result: var string; value: Complex; specifier: string) =
+  ## Standard format implementation for `Complex`. It makes little
+  ## sense to call this directly, but it is required to exist
+  ## by the `&` macro.
+  result.add "("
+  formatValue(result, value.re, specifier)
+  result.add ", "
+  formatValue(result, value.im, specifier)
+  result.add ")"
 
 {.pop.}
