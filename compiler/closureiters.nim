@@ -134,7 +134,9 @@
 import
   ast, msgs, idents,
   renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos,
-  tables, options
+  options
+
+import std/tables
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

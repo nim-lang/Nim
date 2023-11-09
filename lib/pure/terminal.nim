@@ -58,13 +58,13 @@ runnableExamples("-r:off"):
 
   stdout.styledWriteLine(fgRed, "red text ", styleBright, "bold red", fgDefault, " bold text")
 
-import macros
-import strformat
-from strutils import toLowerAscii, `%`, parseInt
-import colors
+import std/macros
+import std/strformat
+from std/strutils import toLowerAscii, `%`, parseInt
+import std/colors
 
 when defined(windows):
-  import winlean
+  import std/winlean
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
@@ -100,7 +100,7 @@ const
   stylePrefix = "\e["
 
 when defined(windows):
-  import winlean, os
+  import std/[winlean, os]
 
   const
     DUPLICATE_SAME_ACCESS = 2
@@ -257,7 +257,7 @@ when defined(windows):
     if f == stderr: term.hStderr else: term.hStdout
 
 else:
-  import termios, posix, os, parseutils
+  import std/[termios, posix, os, parseutils]
 
   proc setRaw(fd: FileHandle, time: cint = TCSAFLUSH) =
     var mode: Termios
@@ -922,7 +922,7 @@ when defined(windows):
     stdout.write "\n"
 
 else:
-  import termios
+  import std/termios
 
   proc readPasswordFromStdin*(prompt: string, password: var string):
                             bool {.tags: [ReadIOEffect, WriteIOEffect].} =
@@ -978,7 +978,7 @@ proc isTrueColorSupported*(): bool =
   return getTerminal().trueColorIsSupported
 
 when defined(windows):
-  import os
+  import std/os
 
 proc enableTrueColors*() =
   ## Enables true color.

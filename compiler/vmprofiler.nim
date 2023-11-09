@@ -1,7 +1,7 @@
 
-import
-  options, vmdef, times, lineinfos, strutils, tables,
-  msgs
+import options, vmdef, lineinfos, msgs
+
+import std/[times, strutils, tables]
 
 proc enter*(prof: var Profiler, c: PCtx, tos: PStackFrame) {.inline.} =
   if optProfileVM in c.config.globalOptions:

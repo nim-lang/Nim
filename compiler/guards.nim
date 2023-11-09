@@ -870,7 +870,7 @@ template isSub(x): untyped = x.getMagic in someSub
 template isVal(x): untyped = x.kind in {nkCharLit..nkUInt64Lit}
 template isIntVal(x, y): untyped = x.intVal == y
 
-import macros
+import std/macros
 
 macro `=~`(x: PNode, pat: untyped): bool =
   proc m(x, pat, conds: NimNode) =

@@ -10,11 +10,11 @@
 ## This module implements the C code generator.
 
 import
-  ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
+  ast, astalgo, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, bitsets, idents, types,
-  ccgutils, os, ropes, math, wordrecg, treetab, cgmeth,
+  ccgutils, ropes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, aliases,
-  lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
+  lowerings, ndi, lineinfos, pathutils, transf,
   injectdestructors, astmsgs, modulepaths, backendpragmas
 
 from expanddefaults import caseObjDefaultBranch
@@ -27,10 +27,10 @@ when defined(nimPreviewSlimSystem):
 when not defined(leanCompiler):
   import spawn, semparallel
 
-import strutils except `%`, addf # collides with ropes.`%`
+import std/strutils except `%`, addf # collides with ropes.`%`
 
 from ic / ic import ModuleBackendFlag
-import dynlib
+import std/[dynlib, math, tables, sets, os, intsets, hashes]
 
 when not declared(dynlib.libCandidates):
   proc libCandidates(s: string, dest: var seq[string]) =
@@ -121,7 +121,7 @@ proc getModuleDllPath(m: BModule, module: int): Rope =
 proc getModuleDllPath(m: BModule, s: PSym): Rope =
   result = getModuleDllPath(m.g.modules[s.itemId.module])
 
-import macros
+import std/macros
 
 proc cgFormatValue(result: var string; value: string) =
   result.add value

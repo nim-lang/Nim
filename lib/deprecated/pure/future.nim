@@ -2,5 +2,5 @@
 
 {.deprecated: "Use the new 'sugar' module instead".}
 
-import sugar
+import std/sugar
 export sugar

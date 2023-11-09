@@ -4,6 +4,7 @@
 ## Changes affecting backward compatibility
 
 - `-d:nimStrictDelete` becomes the default. An index error is produced when the index passed to `system.delete` was out of bounds. Use `-d:nimAuditDelete` to mimic the old behavior for backwards compatibility.
+- The default user-agent in `std/httpclient` has been changed to `Nim-httpclient/<version>` instead of `Nim httpclient/<version>` which was incorrect according to the HTTP spec.
 
 ## Standard library additions and changes
 
@@ -11,6 +12,7 @@
 
 - Changed `std/osfiles.copyFile` to allow to specify `bufferSize` instead of a hardcoded one.
 - Changed `std/osfiles.copyFile` to use `POSIX_FADV_SEQUENTIAL` hints for kernel-level aggressive sequential read-aheads.
+- `std/htmlparser` has been moved to a nimble package, use `nimble` or `atlas` to install it.
 
 [//]: # "Additions:"
 
@@ -30,6 +32,9 @@ slots when enlarging a sequence.
 ## Language changes
 
 - `noInit` can be used in types and fields to disable member initializers in the C++ backend. 
+- C++ custom constructors initializers see https://nim-lang.org/docs/manual_experimental.htm#constructor-initializer
+- `member` can be used to attach a procedure to a C++ type.
+- C++ `constructor` now reuses `result` instead creating `this`.
 
 ## Compiler changes
 

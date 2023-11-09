@@ -11,7 +11,7 @@
 
 # included from sem.nim
 
-from sugar import dup
+from std/sugar import dup
 
 type
   ObjConstrContext = object

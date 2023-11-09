@@ -148,9 +148,10 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     if s == nil:
       rawMessage(graph.config, errCannotOpenFile, filename.string)
       return false
+    graph.interactive = false
   else:
     s = stream
-
+    graph.interactive = stream.kind == llsStdIn
   while true:
     syntaxes.openParser(p, fileIdx, s, graph.cache, graph.config)
 

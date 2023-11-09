@@ -39,9 +39,9 @@ runnableExamples("-r:off"):
 
   waitFor main()
 
-import asyncnet, asyncdispatch, parseutils, uri, strutils
-import httpcore
-from nativesockets import getLocalAddr, Domain, AF_INET, AF_INET6
+import std/[asyncnet, asyncdispatch, parseutils, uri, strutils]
+import std/httpcore
+from std/nativesockets import getLocalAddr, Domain, AF_INET, AF_INET6
 import std/private/since
 
 when defined(nimPreviewSlimSystem):

@@ -11,9 +11,11 @@
 ## the call to overloaded procs, generic procs and operators.
 
 import
-  intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
-  magicsys, idents, lexer, options, parampatterns, strutils, trees,
+  ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
+  magicsys, idents, lexer, options, parampatterns, trees,
   linter, lineinfos, lowerings, modulegraphs, concepts
+
+import std/[intsets, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

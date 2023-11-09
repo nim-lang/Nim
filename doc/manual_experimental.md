@@ -1368,7 +1368,7 @@ to be computed dynamically.
   ```nim
   {.experimental: "dynamicBindSym".}
 
-  import macros
+  import std/macros
 
   macro callOp(opName, arg1, arg2): untyped =
     result = newCall(bindSym($opName), arg1, arg2)

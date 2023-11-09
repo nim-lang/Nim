@@ -1,7 +1,8 @@
 ## A BiTable is a table that can be seen as an optimized pair
 ## of `(Table[LitId, Val], Table[Val, LitId])`.
 
-import hashes, rodfiles
+import std/hashes
+import rodfiles
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -35,9 +36,7 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
 const
-  idStart = 256 ##
-  ## Ids do not start with 0 but with this value. The IR needs it.
-  ## TODO: explain why
+  idStart = 1
 
 template idToIdx(x: LitId): int = x.int - idStart
 

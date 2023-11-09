@@ -194,7 +194,7 @@ runnableExamples:
 
 
 import std/private/since
-import hashes, math, algorithm
+import std/[hashes, math, algorithm]
 
 
 when not defined(nimHasEffectsOf):

@@ -14,7 +14,7 @@
 ##     compiler works and less a storage format, you're probably looking for
 ##     the `ic` or `packed_ast` modules to understand the logical format.
 
-from typetraits import supportsCopyMem
+from std/typetraits import supportsCopyMem
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
@@ -98,6 +98,8 @@ type
     backendFlagsSection
     aliveSymsSection # beware, this is stored in a `.alivesyms` file.
     sideChannelSection
+    namespaceSection
+    symnamesSection
 
   RodFileError* = enum
     ok, tooBig, cannotOpen, ioFailure, wrongHeader, wrongSection, configMismatch,
@@ -110,7 +112,7 @@ type
                        # better than exceptions.
 
 const
-  RodVersion = 1
+  RodVersion = 2
   defaultCookie = [byte(0), byte('R'), byte('O'), byte('D'),
             byte(sizeof(int)*8), byte(system.cpuEndian), byte(0), byte(RodVersion)]
 

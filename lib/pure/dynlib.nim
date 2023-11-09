@@ -105,7 +105,7 @@ when defined(posix) and not defined(nintendoswitch):
   # as an emulation layer on top of native functions.
   # =========================================================================
   #
-  import posix
+  import std/posix
 
   proc loadLib(path: string, globalSymbols = false): LibHandle =
     let flags =

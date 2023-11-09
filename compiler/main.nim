@@ -201,7 +201,9 @@ proc commandCompileToJS(graph: ModuleGraph) =
 proc commandInteractive(graph: ModuleGraph; useNir: bool) =
   graph.config.setErrorMaxHighMaybe
   initDefines(graph.config.symbols)
-  if not useNir:
+  if useNir:
+    defineSymbol(graph.config.symbols, "noSignalHandler")
+  else:
     defineSymbol(graph.config.symbols, "nimscript")
   # note: seems redundant with -d:nimHasLibFFI
   when hasFFI: defineSymbol(graph.config.symbols, "nimffi")

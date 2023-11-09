@@ -16,8 +16,10 @@
 # DOS or Macintosh text files, even when it is not the native format.
 
 import
-  hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream,
-  wordrecg, lineinfos, pathutils, parseutils
+  options, msgs, platform, idents, nimlexbase, llstream,
+  wordrecg, lineinfos, pathutils
+
+import std/[hashes, parseutils, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, formatfloat]

@@ -49,7 +49,7 @@ afterCase: ...
 # Every string of length > position for which s[position] <= char is in one
 # set else it is in the other set.
 
-from sequtils import addUnique
+from std/sequtils import addUnique
 
 type
   Key = (LitId, LabelId)

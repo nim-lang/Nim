@@ -11,7 +11,7 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-import sighashes, modulegraphs, strscans
+import sighashes, modulegraphs, std/strscans
 import ../dist/checksums/src/checksums/md5
 
 type
