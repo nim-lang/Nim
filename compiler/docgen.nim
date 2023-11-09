@@ -1806,7 +1806,7 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
     "moduleDescription": modDesc,
     "entries": d.jEntriesFinal}
   if optStdout in d.conf.globalOptions:
-    write(stdout, $content)
+    writeLine(stdout, $content)
   else:
     let dir = d.destFile.splitFile.dir
     createDir(dir)

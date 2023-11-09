@@ -725,7 +725,7 @@ proc genSuccessX*(conf: ConfigRef) =
   elif conf.outFile.isEmpty and conf.cmd notin {cmdJsonscript} + cmdDocLike + cmdBackends:
     # for some cmd we expect a valid absOutFile
     output = "unknownOutput"
-  elif  optStdout in conf.globalOptions:
+  elif optStdout in conf.globalOptions:
     output = "stdout"
   else:
     output = $conf.absOutFile
