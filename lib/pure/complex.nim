@@ -36,7 +36,7 @@ runnableExamples:
 {.push checks: off, line_dir: off, stack_trace: off, debugger: off.}
 # the user does not want to trace a part of the standard library!
 
-import std/math
+import std/[math, strformat]
 
 type
   Complex*[T: SomeFloat] = object
@@ -398,5 +398,40 @@ func `$`*(z: Complex): string =
     doAssert $complex(1.0, 2.0) == "(1.0, 2.0)"
 
   result = "(" & $z.re & ", " & $z.im & ")"
+
+proc formatValueAsTuple(result: var string; value: Complex; specifier: string) =
+  ## Format implementation for `Complex` representing the value as a (real, imaginary) tuple.
+  result.add "("
+  formatValue(result, value.re, specifier)
+  result.add ", "
+  formatValue(result, value.im, specifier)
+  result.add ")"
+
+proc formatValueAsComplexNumber(result: var string; value: Complex; specifier: string) =
+  ## Format implementation for `Complex` representing the value as a (RE+IMj) number
+  result.add "("
+  formatValue(result, value.re, specifier)
+  if value.im >= 0 and not specifier.contains({'+', '-'}):
+    result.add "+"
+  formatValue(result, value.im, specifier)
+  result.add "j)"
+
+proc formatValue*(result: var string; value: Complex; specifier: string) =
+  ## Standard format implementation for `Complex`. It makes little
+  ## sense to call this directly, but it is required to exist
+  ## by the `&` macro.
+  ## For complex numbers, we add a specific 'j' specifier, which formats
+  ## the value as (A+Bj) like in mathematics.
+  if specifier.len == 0:
+    result.add $value
+  elif 'j' in specifier:
+    let specifier = if specifier.contains({'e', 'E', 'f', 'F', 'g', 'G'}):
+        specifier.replace("j")
+      else:
+        # 'The 'j' format defaults to 'g'
+        specifier.replace('j', 'g')
+    formatValueAsComplexNumber(result, value, specifier)
+  else:
+    formatValueAsTuple(result, value, specifier)
 
 {.pop.}
