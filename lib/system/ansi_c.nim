@@ -65,7 +65,7 @@ elif defined(macosx) or defined(linux) or defined(freebsd) or
     SIGSEGV* = cint(11)
     SIGTERM* = cint(15)
     SIGPIPE* = cint(13)
-    SIG_DFL* = cast[CSighandlerT](0)
+    SIG_DFL* = CSighandlerT(nil)
 elif defined(haiku):
   const
     SIGABRT* = cint(6)
@@ -75,7 +75,7 @@ elif defined(haiku):
     SIGSEGV* = cint(11)
     SIGTERM* = cint(15)
     SIGPIPE* = cint(7)
-    SIG_DFL* = cast[CSighandlerT](0)
+    SIG_DFL* = CSighandlerT(nil)
 else:
   when defined(nimscript):
     {.error: "SIGABRT not ported to your platform".}

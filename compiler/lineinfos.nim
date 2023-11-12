@@ -10,7 +10,8 @@
 ## This module contains the `TMsgKind` enum as well as the
 ## `TLineInfo` object.
 
-import ropes, tables, pathutils, hashes
+import ropes, pathutils
+import std/[hashes, tables]
 
 const
   explanationsBaseUrl* = "https://nim-lang.github.io/Nim"
@@ -91,6 +92,7 @@ type
     warnStmtListLambda = "StmtListLambda",
     warnBareExcept = "BareExcept",
     warnImplicitDefaultValue = "ImplicitDefaultValue",
+    warnStdPrefix = "StdPrefix"
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -194,6 +196,7 @@ const
     warnStmtListLambda: "statement list expression assumed to be anonymous proc; this is deprecated, use `do (): ...` or `proc () = ...` instead",
     warnBareExcept: "$1",
     warnImplicitDefaultValue: "$1",
+    warnStdPrefix: "$1 needs the 'std' prefix",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
@@ -249,7 +252,7 @@ type
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result = default(array[0..3, TNoteKinds])
-  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept}
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept, warnStdPrefix}
   result[2] = result[3] - {hintStackTrace, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,

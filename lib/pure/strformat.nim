@@ -316,8 +316,8 @@ help with readability, since there is only so much you can cram into
 single letter DSLs.
 ]##
 
-import macros, parseutils, unicode
-import strutils except format
+import std/[macros, parseutils, unicode]
+import std/strutils except format
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

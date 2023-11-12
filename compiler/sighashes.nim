@@ -9,8 +9,9 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, tables, ropes, modulegraphs, options, msgs, pathutils
-from hashes import Hash
+import ast, ropes, modulegraphs, options, msgs, pathutils
+from std/hashes import Hash
+import std/tables
 import types
 import ../dist/checksums/src/checksums/md5
 

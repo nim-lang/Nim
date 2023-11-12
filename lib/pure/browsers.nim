@@ -14,20 +14,20 @@
 
 import std/private/since
 
-import strutils
+import std/strutils
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
 when defined(windows):
-  import winlean
+  import std/winlean
   when defined(nimPreviewSlimSystem):
     import std/widestrs
-  from os import absolutePath
+  from std/os import absolutePath
 else:
-  import os
+  import std/os
   when not defined(osx):
-    import osproc
+    import std/osproc
 
 const osOpenCmd* =
   when defined(macos) or defined(macosx) or defined(windows): "open" else: "xdg-open" ## \

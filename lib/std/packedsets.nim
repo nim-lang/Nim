@@ -17,7 +17,7 @@
 ## * `sets module <sets.html>`_ for more general hash sets
 
 import std/private/since
-import hashes
+import std/hashes
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

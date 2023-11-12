@@ -10,8 +10,11 @@
 ## This module implements code generation for methods.
 
 import
-  intsets, options, ast, msgs, idents, renderer, types, magicsys,
+  options, ast, msgs, idents, renderer, types, magicsys,
   sempass2, modulegraphs, lineinfos
+
+
+import std/intsets
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -99,7 +102,8 @@ proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
       return No
   if result == Yes:
     # check for return type:
-    if not sameTypeOrNil(a.typ[0], b.typ[0]):
+    # ignore flags of return types; # bug #22673
+    if not sameTypeOrNil(a.typ[0], b.typ[0], {IgnoreFlags}):
       if b.typ[0] != nil and b.typ[0].kind == tyUntyped:
         # infer 'auto' from the base to make it consistent:
         b.typ[0] = a.typ[0]

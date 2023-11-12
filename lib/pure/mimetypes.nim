@@ -26,8 +26,8 @@ runnableExamples:
   doAssert m.getMimetype("fakext") == "text/fakelang"
   doAssert m.getMimetype("FaKeXT") == "text/fakelang"
 
-import tables
-from strutils import startsWith, toLowerAscii, strip
+import std/tables
+from std/strutils import startsWith, toLowerAscii, strip
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

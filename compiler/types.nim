@@ -10,8 +10,10 @@
 # this module contains routines for accessing and iterating over types
 
 import
-  intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
+  ast, astalgo, trees, msgs, platform, renderer, options,
   lineinfos, int128, modulegraphs, astmsgs
+
+import std/[intsets, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, formatfloat]
@@ -28,6 +30,7 @@ type
     preferMixed,
       # most useful, shows: symbol + resolved symbols if it differs, e.g.:
       # tuple[a: MyInt{int}, b: float]
+    preferInlayHint,
 
   TTypeRelation* = enum      # order is important!
     isNone, isConvertible,
@@ -510,7 +513,7 @@ const
     "void", "iterable"]
 
 const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo,
-  preferGenericArg, preferResolved, preferMixed}
+  preferGenericArg, preferResolved, preferMixed, preferInlayHint}
 
 template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
   tc.add concrete
@@ -544,7 +547,10 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     if prefer in preferToResolveSymbols and t.sym != nil and
          sfAnon notin t.sym.flags and t.kind != tySequence:
       if t.kind == tyInt and isIntLit(t):
-        result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
+        if prefer == preferInlayHint:
+          result = t.sym.name.s
+        else:
+          result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
       elif t.kind == tyAlias and t[0].kind != tyAlias:
         result = typeToString(t[0])
       elif prefer in {preferResolved, preferMixed}:
@@ -560,7 +566,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           result = t.sym.name.s
         if prefer == preferMixed and result != t.sym.name.s:
           result = t.sym.name.s & "{" & result & "}"
-      elif prefer in {preferName, preferTypeName} or t.sym.owner.isNil:
+      elif prefer in {preferName, preferTypeName, preferInlayHint} or t.sym.owner.isNil:
         # note: should probably be: {preferName, preferTypeName, preferGenericArg}
         result = t.sym.name.s
         if t.kind == tyGenericParam and t.len > 0:
@@ -579,8 +585,11 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if not isIntLit(t) or prefer == preferExported:
         result = typeToStr[t.kind]
       else:
-        if prefer == preferGenericArg:
+        case prefer:
+        of preferGenericArg:
           result = $t.n.intVal
+        of preferInlayHint:
+          result = "int"
         else:
           result = "int literal(" & $t.n.intVal & ")"
     of tyGenericInst, tyGenericInvocation:
@@ -970,6 +979,7 @@ type
     ExactGcSafety
     AllowCommonBase
     PickyCAliases  # be picky about the distinction between 'cint' and 'int32'
+    IgnoreFlags    # used for borrowed functions and methods; ignores the tfVarIsPtr flag
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
 
@@ -1202,12 +1212,12 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       if containsOrIncl(c, a, b): return true
 
   if x == y: return true
-  var a = skipTypes(x, {tyGenericInst, tyAlias})
+  var a = skipTypes(x, {tyAlias})
   while a.kind == tyUserTypeClass and tfResolved in a.flags:
-    a = skipTypes(a[^1], {tyGenericInst, tyAlias})
-  var b = skipTypes(y, {tyGenericInst, tyAlias})
+    a = skipTypes(a[^1], {tyAlias})
+  var b = skipTypes(y, {tyAlias})
   while b.kind == tyUserTypeClass and tfResolved in b.flags:
-    b = skipTypes(b[^1], {tyGenericInst, tyAlias})
+    b = skipTypes(b[^1], {tyAlias})
   assert(a != nil)
   assert(b != nil)
   if a.kind != b.kind:
@@ -1304,7 +1314,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
     result = sameChildrenAux(a, b, c)
-    if result:
+    if result and IgnoreFlags notin c.flags:
       if IgnoreTupleFields in c.flags:
         result = a.flags * {tfVarIsPtr, tfIsOutParam} == b.flags * {tfVarIsPtr, tfIsOutParam}
       else:

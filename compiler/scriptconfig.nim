@@ -13,14 +13,16 @@
 import
   ast, modules, idents, condsyms,
   options, llstream, vm, vmdef, commands,
-  os, times, osproc, wordrecg, strtabs, modulegraphs,
+  wordrecg, modulegraphs,
   pathutils, pipelines
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
 
+import std/[strtabs, os, times, osproc]
+
 # we support 'cmpIgnoreStyle' natively for efficiency:
-from strutils import cmpIgnoreStyle, contains
+from std/strutils import cmpIgnoreStyle, contains
 
 proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   let dir = getString(a, 0)

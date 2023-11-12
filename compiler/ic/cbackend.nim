@@ -18,7 +18,7 @@
 ## also doing cross-module dependency tracking and DCE that we don't need
 ## anymore. DCE is now done as prepass over the entire packed module graph.
 
-import std/packedsets, algorithm, tables
+import std/[packedsets, algorithm, tables]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

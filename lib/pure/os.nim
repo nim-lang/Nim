@@ -52,7 +52,7 @@ import std/private/since
 import std/cmdline
 export cmdline
 
-import strutils, pathnorm
+import std/[strutils, pathnorm]
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
@@ -76,9 +76,9 @@ since (1, 1):
 when weirdTarget:
   discard
 elif defined(windows):
-  import winlean, times
+  import std/[winlean, times]
 elif defined(posix):
-  import posix, times
+  import std/[posix, times]
 
   proc toTime(ts: Timespec): times.Time {.inline.} =
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)

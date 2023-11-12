@@ -394,7 +394,7 @@ proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
   q.ready = false
   if typ != q.elemType:
     releaseSys(q.lock)
-    sysFatal(ValueError, "cannot receive message of wrong type")
+    raise newException(ValueError, "cannot receive message of wrong type")
   rawRecv(q, res, typ)
   if q.maxItems > 0 and q.count == q.maxItems - 1:
     # Parent thread is awaiting in send. Wake it up.

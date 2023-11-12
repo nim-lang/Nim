@@ -221,7 +221,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
     let (x, y) = genOpenArraySlice(p, q, formalType, n.typ[0])
     result.add x & ", " & y
   else:
-    var a: TLoc = initLocExpr(p, if n.kind == nkHiddenStdConv: n[1] else: n)
+    var a = initLocExpr(p, if n.kind == nkHiddenStdConv: n[1] else: n)
     case skipTypes(a.t, abstractVar+{tyStatic}).kind
     of tyOpenArray, tyVarargs:
       if reifiedOpenArray(n):
@@ -277,7 +277,7 @@ proc literalsNeedsTmp(p: BProc, a: TLoc): TLoc =
   genAssignment(p, result, a, {})
 
 proc genArgStringToCString(p: BProc, n: PNode; result: var Rope; needsTmp: bool) {.inline.} =
-  var a: TLoc = initLocExpr(p, n[0])
+  var a = initLocExpr(p, n[0])
   appcg(p.module, result, "#nimToCStringConv($1)", [withTmpIfNeeded(p, a, needsTmp).rdLoc])
 
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; needsTmp = false) =
@@ -287,7 +287,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
   elif skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
     var n = if n.kind != nkHiddenAddr: n else: n[0]
     openArrayLoc(p, param.typ, n, result)
-  elif ccgIntroducedPtr(p.config, param, call[0].typ[0]) and 
+  elif ccgIntroducedPtr(p.config, param, call[0].typ[0]) and
     (optByRef notin param.options or not p.module.compileToCpp):
     a = initLocExpr(p, n)
     if n.kind in {nkCharLit..nkNilLit}:
@@ -417,7 +417,7 @@ proc addActualSuffixForHCR(res: var Rope, module: PSym, sym: PSym) =
 
 proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   # this is a hotspot in the compiler
-  var op: TLoc = initLocExpr(p, ri[0])
+  var op = initLocExpr(p, ri[0])
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInstOwned)
   assert(typ.kind == tyProc)
@@ -439,7 +439,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   const PatProc = "$1.ClE_0? $1.ClP_0($3$1.ClE_0):(($4)($1.ClP_0))($2)"
   const PatIter = "$1.ClP_0($3$1.ClE_0)" # we know the env exists
 
-  var op: TLoc = initLocExpr(p, ri[0])
+  var op = initLocExpr(p, ri[0])
 
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInstOwned)
@@ -672,7 +672,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Ro
         result.add(substr(pat, start, i - 1))
 
 proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
-  var op: TLoc = initLocExpr(p, ri[0])
+  var op = initLocExpr(p, ri[0])
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInst)
   assert(typ.kind == tyProc)
@@ -716,7 +716,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
 proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   # generates a crappy ObjC call
-  var op: TLoc = initLocExpr(p, ri[0])
+  var op = initLocExpr(p, ri[0])
   var pl = "["
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInst)

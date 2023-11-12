@@ -8,10 +8,12 @@
 #
 
 import
-  intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
-  modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling, tables,
+  ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
+  wordrecg, options, guards, lineinfos, semfold, semdata,
+  modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling,
   semstrictfuncs
+
+import std/[tables, intsets, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

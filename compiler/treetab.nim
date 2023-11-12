@@ -9,8 +9,9 @@
 
 # Implements a table from trees to trees. Does structural equivalence checking.
 
-import
-  hashes, ast, astalgo, types
+import ast, astalgo, types
+
+import std/hashes
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

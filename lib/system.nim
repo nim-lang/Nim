@@ -1982,14 +1982,10 @@ when defined(nimAuditDelete):
 else:
   {.pragma: auditDelete.}
 
-proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, auditDelete.} =
+proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, systemRaisesDefect, auditDelete.} =
   ## Deletes the item at index `i` by moving all `x[i+1..^1]` items by one position.
   ##
   ## This is an `O(n)` operation.
-  ##
-  ## .. note:: With `-d:nimStrictDelete`, an index error is produced when the index passed
-  ##    to it was out of bounds. `-d:nimStrictDelete` will become the default
-  ##    in upcoming versions.
   ##
   ## See also:
   ## * `del <#del,seq[T],Natural>`_ for O(1) operation
@@ -1999,7 +1995,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, auditDelete.} =
     s.delete(2)
     doAssert s == @[1, 2, 4, 5]
 
-  when defined(nimStrictDelete):
+  when not defined(nimAuditDelete):
     if i > high(x):
       # xxx this should call `raiseIndexError2(i, high(x))` after some refactoring
       raise (ref IndexDefect)(msg: "index out of bounds: '" & $i & "' < '" & $x.len & "' failed")
@@ -2837,7 +2833,7 @@ when notJSnotNims:
                     hostOS != "any"
 
   proc raiseEIO(msg: string) {.noinline, noreturn.} =
-    sysFatal(IOError, msg)
+    raise newException(IOError, msg)
 
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
     when defined(androidNDK):

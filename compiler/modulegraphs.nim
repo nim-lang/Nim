@@ -11,7 +11,7 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import intsets, tables, hashes
+import std/[intsets, tables, hashes]
 import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
 import ic / [packed_ast, ic]
@@ -59,6 +59,7 @@ type
   SymInfoPair* = object
     sym*: PSym
     info*: TLineInfo
+    isDecl*: bool
 
   PipelinePass* = enum
     NonePass
@@ -94,6 +95,7 @@ type
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
     suggestMode*: bool # whether we are in nimsuggest mode or not.
     invalidTransitiveClosure: bool
+    interactive*: bool
     inclToMod*: Table[FileIndex, FileIndex] # mapping of include file to the
                                             # first module that included it
     importStack*: seq[FileIndex]  # The current import stack. Used for detecting recursive

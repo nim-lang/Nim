@@ -14,7 +14,9 @@
 {.used.}
 
 import
-  lexer, options, idents, strutils, ast, msgs, lineinfos, wordrecg
+  lexer, options, idents, ast, msgs, lineinfos, wordrecg
+
+import std/[strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, formatfloat]

@@ -26,7 +26,7 @@ import
   renderer, types, modulegraphs, options, spawn, lineinfos
 
 from trees import getMagic, getRoot
-from strutils import `%`
+from std/strutils import `%`
 
 discard """
 
