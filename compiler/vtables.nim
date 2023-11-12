@@ -96,19 +96,8 @@ proc collectVTableDispatchers*(g: ModuleGraph) =
           )
 
         for item in g.objectTree[baseType.itemId]:
-          let depth = item.depth
-          var i = 0
-          var x = item.value
-          while x != nil:
-            x = skipTypes(x, skipPtrs)
-            if x.kind == tyGenericBody:
-              x = x.lastSon
-            x = skipTypes(x, skipPtrs)
-            if x.itemId notin itemTable:
-              itemTable[x.itemId] = newSeq[LazySym](methodIndexLen)
-            else:
-              break
-            x = x[0]
+          if item.value.itemId notin itemTable:
+            itemTable[item.value.itemId] = newSeq[LazySym](methodIndexLen)
 
       var mIndex = 0 # here is the correpsonding index
       if baseType.itemId notin rootItemIdCount:

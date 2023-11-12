@@ -101,32 +101,29 @@ proc getObjDepth(t: PType): Option[tuple[depth: int, root: ItemId]] =
   var stack = newSeq[ItemId]()
   while x != nil:
     x = skipTypes(x, skipPtrs)
-    if x.kind == tyGenericBody:
-      x = x.lastSon
-    x = skipTypes(x, skipPtrs)
     if x.kind != tyObject:
       return none(tuple[depth: int, root: ItemId])
     stack.add x.itemId
     x = x[0]
     inc(res.depth)
-  if stack.len > 1:
-    res.root = stack[^2]
-    result = some(res)
-  else:
-    result = none(tuple[depth: int, root: ItemId])
+  res.root = stack[^2]
+  result = some(res)
 
-proc collectObjectTypeTree(graph: ModuleGraph, typ: PType) =
-  if typ.len > 0 and typ[0] != nil:
-    let depthItem = getObjDepth(typ)
-    if isSome(depthItem):
-      let (depthLevel, root) = depthItem.unsafeGet
-      if root notin graph.objectTree:
-        if depthLevel == 1:
-          graph.objectTree[root] = @[]
-        else:
-          graph.objectTree[root] = @[(depthLevel, typ)]
-      else:
-        graph.objectTree[root].add (depthLevel, typ)
+proc collectObjectTree(graph: ModuleGraph, n: PNode) =
+  for section in n:
+    if section.kind == nkTypeDef and section[^1].kind in {nkObjectTy, nkRefTy, nkPtrTy}:
+      let typ = section[^1].typ.skipTypes(skipPtrs)
+      if typ.len > 0 and typ[0] != nil:
+        let depthItem = getObjDepth(typ)
+        if isSome(depthItem):
+          let (depthLevel, root) = depthItem.unsafeGet
+          if depthLevel == 1:
+            graph.objectTree[root] = @[]
+          else:
+            if root notin graph.objectTree:
+              graph.objectTree[root] = @[(depthLevel, typ)]
+            else:
+              graph.objectTree[root].add (depthLevel, typ)
 
 proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
   if typ == nil or sfGeneratedOp in tracked.owner.flags:
@@ -140,8 +137,6 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
       createTypeBoundOps(tracked.graph, tracked.c, realType.lastSon, info)
 
   createTypeBoundOps(tracked.graph, tracked.c, typ, info, tracked.c.idgen)
-  # TODO: cache types by means of canonTypes
-  collectObjectTypeTree(tracked.graph, typ)
   if (tfHasAsgn in typ.flags) or
       optSeqDestructors in tracked.config.globalOptions:
     tracked.owner.flags.incl sfInjectDestructors
@@ -1362,8 +1357,11 @@ proc track(tracked: PEffects, n: PNode) =
   of nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef, nkLambda, nkFuncDef, nkDo:
     if n[0].kind == nkSym and n[0].sym.ast != nil:
       trackInnerProc(tracked, getBody(tracked.graph, n[0].sym))
-  of nkMacroDef, nkTemplateDef, nkTypeSection:
+  of nkMacroDef, nkTemplateDef:
     discard
+  of nkTypeSection:
+    if tracked.isTopLevel:
+      collectObjectTree(tracked.graph, n)
   of nkCast:
     if n.len == 2:
       track(tracked, n[1])
@@ -1678,8 +1676,11 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
 proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
   case n.kind
   of {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,
-                nkConverterDef, nkMethodDef, nkIteratorDef, nkTypeSection}:
+                nkConverterDef, nkMethodDef, nkIteratorDef}:
     discard
+  of nkTypeSection:
+    if isTopLevel:
+      collectObjectTree(c.graph, n)
   else:
     let g = c.graph
     var effects = newNodeI(nkEffectList, n.info)
