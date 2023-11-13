@@ -842,7 +842,8 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   trackStmt(c, c.module, result, isTopLevel = true)
   if sfMainModule in c.module.flags and
       {optMultiMethods, optNoMain} * c.config.globalOptions == {} and
-      c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
+      c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+      c.config.isDefined("nimPreviewVtables"):
     collectVTableDispatchers(c.graph)
 
 proc recoverContext(c: PContext) =
