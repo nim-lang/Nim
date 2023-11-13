@@ -429,7 +429,7 @@ proc mainCommand*(graph: ModuleGraph) =
       msgWriteln(conf, "-- end of list --", {msgStdout, msgSkipHook})
 
       for it in conf.searchPaths: msgWriteln(conf, it.string)
-  of cmdCheck:
+  of cmdCheck, cmdM:
     commandCheck(graph)
   of cmdParse:
     wantMainModule(conf)
