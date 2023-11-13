@@ -74,6 +74,13 @@ proc dispatch(x: Base, params: ...) =
   body.flags.incl nfTransf # should not be further transformed
   result.ast[bodyPos] = body
 
+proc containGenerics(base: PType, s: seq[tuple[depth: int, value: PType]]): bool =
+  result = tfHasMeta in base.flags
+  for i in s:
+    if tfHasMeta in i.value.flags:
+      result = true
+      break
+
 proc collectVTableDispatchers*(g: ModuleGraph) =
   var itemTable = initTable[ItemId, seq[LazySym]]()
   var rootTypeSeq = newSeq[PType]()
@@ -84,7 +91,7 @@ proc collectVTableDispatchers*(g: ModuleGraph) =
     sortBucket(g.methods[bucket].methods, relevantCols)
     let base = g.methods[bucket].methods[^1]
     let baseType = base.typ[1].skipTypes(skipPtrs-{tyTypeDesc})
-    if baseType.itemId in g.objectTree and g.methods[bucket].methods.len > 1:
+    if baseType.itemId in g.objectTree and not containGenerics(baseType, g.objectTree[baseType.itemId]):
       let methodIndexLen = g.bucketTable[baseType.itemId]
       if baseType.itemId notin itemTable: # once is enough
         rootTypeSeq.add baseType
