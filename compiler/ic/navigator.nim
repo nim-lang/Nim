@@ -115,7 +115,7 @@ proc list(c: var NavContext; tree: PackedTree; sym: ItemId) =
     else: discard
 
 proc searchForIncludeFile(g: ModuleGraph; fullPath: string): int =
-  for i in 0..high(g.packed):
+  for i in 0..<len(g.packed):
     for k in 1..high(g.packed[i].fromDisk.includes):
       # we start from 1 because the first "include" file is
       # the module's filename.
@@ -158,7 +158,7 @@ proc nav(g: ModuleGraph) =
     localError(g.config, unpacked, "no symbol at this position")
     return
 
-  for i in 0..high(g.packed):
+  for i in 0..<len(g.packed):
     # case statement here to enforce exhaustive checks.
     case g.packed[i].status
     of undefined:
@@ -175,7 +175,7 @@ proc navUsages*(g: ModuleGraph) = nav(g)
 proc navDefusages*(g: ModuleGraph) = nav(g)
 
 proc writeRodFiles*(g: ModuleGraph) =
-  for i in 0..high(g.packed):
+  for i in 0..<len(g.packed):
     case g.packed[i].status
     of undefined, loading, stored, loaded:
       discard "nothing to do"

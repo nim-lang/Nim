@@ -141,7 +141,7 @@ proc checkModule(c: var CheckedContext; m: PackedModule) =
 
 proc checkIntegrity*(g: ModuleGraph) =
   var c = CheckedContext(g: g)
-  for i in 0..high(g.packed):
+  for i in 0..<len(g.packed):
     # case statement here to enforce exhaustive checks.
     case g.packed[i].status
     of undefined:
@@ -151,4 +151,3 @@ proc checkIntegrity*(g: ModuleGraph) =
     of stored, storing, outdated, loaded:
       c.thisModule = int32 i
       checkModule(c, g.packed[i].fromDisk)
-

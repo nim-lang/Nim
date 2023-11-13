@@ -153,7 +153,7 @@ proc computeAliveSyms*(g: PackedModuleGraph; conf: ConfigRef): AliveSyms =
   var c = AliveContext(stack: @[], decoder: PackedDecoder(config: conf),
                        thisModule: -1, alive: newSeq[IntSet](g.len),
                        options: conf.options)
-  for i in countdown(high(g), 0):
+  for i in countdown(len(g)-1, 0):
     if g[i].status != undefined:
       c.thisModule = i
       for p in allNodes(g[i].fromDisk.topLevel):

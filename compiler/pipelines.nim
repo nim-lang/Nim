@@ -255,7 +255,7 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
       partialInitModule(result, graph, fileIdx, filename)
     for m in cachedModules:
       registerModuleById(graph, m)
-      replayStateChanges(graph.packed[m.int].module, graph)
+      replayStateChanges(graph.packed.pm[m.int].module, graph)
       replayGenericCacheInformation(graph, m.int)
   elif graph.isDirty(result):
     result.flags.excl sfDirty

@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import std/[hashes, tables, intsets]
+import std/[hashes, tables, intsets, monotimes]
 import packed_ast, bitabs, rodfiles
 import ".." / [ast, idents, lineinfos, msgs, ropes, options,
   pathutils, condsyms, packages, modulepaths]
@@ -43,8 +43,8 @@ type
     bodies*: PackedTree # other trees. Referenced from typ.n and sym.ast by their position.
     #producedGenerics*: Table[GenericKey, SymId]
     exports*: seq[(LitId, int32)]
-    hidden*: seq[(LitId, int32)]
-    reexports*: seq[(LitId, PackedItemId)]
+    hidden: seq[(LitId, int32)]
+    reexports: seq[(LitId, PackedItemId)]
     compilerProcs*: seq[(LitId, int32)]
     converters*, methods*, trmacros*, pureEnums*: seq[int32]
 
@@ -233,10 +233,14 @@ proc addImportFileDep*(c: var PackedEncoder; m: var PackedModule; f: FileIndex) 
   m.imports.add toLitId(f, c, m)
 
 proc addHidden*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
+  assert s.kind != skUnknown
   let nameId = getOrIncl(m.strings, s.name.s)
   m.hidden.add((nameId, s.itemId.item))
+  assert s.itemId.module == c.thisModule
 
 proc addExported*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
+  assert s.kind != skUnknown
+  assert s.itemId.module == c.thisModule
   let nameId = getOrIncl(m.strings, s.name.s)
   m.exports.add((nameId, s.itemId.item))
 
@@ -255,6 +259,8 @@ proc addMethod*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
   m.methods.add s.itemId.item
 
 proc addReexport*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
+  assert s.kind != skUnknown
+  if s.kind == skModule: return
   let nameId = getOrIncl(m.strings, s.name.s)
   m.reexports.add((nameId, PackedItemId(module: toLitId(s.itemId.module.FileIndex, c, m),
                                         item: s.itemId.item)))
@@ -339,7 +345,7 @@ proc storeTypeLater(t: PType; c: var PackedEncoder; m: var PackedModule): Packed
 proc storeSymLater(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId =
   if s.isNil: return nilItemId
   assert s.itemId.module >= 0
-  assert s.itemId.module >= 0
+  assert s.itemId.item >= 0
   result = PackedItemId(module: toLitId(s.itemId.module.FileIndex, c, m), item: s.itemId.item)
   if s.itemId.module == c.thisModule:
     # the sym belongs to this module, so serialize it here, eventually.
@@ -565,6 +571,20 @@ proc toRodFile*(conf: ConfigRef; f: AbsoluteFile; ext = RodExt): AbsoluteFile =
   result = changeFileExt(completeGeneratedFilePath(conf,
     mangleModuleName(conf, f).AbsoluteFile), ext)
 
+const
+  BenchIC* = false
+
+when BenchIC:
+  var gloadBodies: MonoTime
+
+  template bench(x, body) =
+    let start = getMonoTime()
+    body
+    x = x + (getMonoTime() - start)
+
+else:
+  template bench(x, body) = body
+
 proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef;
                   ignoreConfig = false): RodFileError =
   var f = rodfiles.open(filename.string)
@@ -594,37 +614,40 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
 
   loadSeqSection depsSection, m.imports
 
-  loadTabSection numbersSection, m.numbers
+  bench gloadBodies:
 
-  loadSeqSection exportsSection, m.exports
-  loadSeqSection hiddenSection, m.hidden
-  loadSeqSection reexportsSection, m.reexports
+    loadTabSection numbersSection, m.numbers
 
-  loadSeqSection compilerProcsSection, m.compilerProcs
+    loadSeqSection exportsSection, m.exports
+    loadSeqSection hiddenSection, m.hidden
+    loadSeqSection reexportsSection, m.reexports
 
-  loadSeqSection trmacrosSection, m.trmacros
+    loadSeqSection compilerProcsSection, m.compilerProcs
 
-  loadSeqSection convertersSection, m.converters
-  loadSeqSection methodsSection, m.methods
-  loadSeqSection pureEnumsSection, m.pureEnums
+    loadSeqSection trmacrosSection, m.trmacros
 
-  loadTabSection toReplaySection, m.toReplay
-  loadTabSection topLevelSection, m.topLevel
-  loadTabSection bodiesSection, m.bodies
-  loadSeqSection symsSection, m.syms
-  loadSeqSection typesSection, m.types
+    loadSeqSection convertersSection, m.converters
+    loadSeqSection methodsSection, m.methods
+    loadSeqSection pureEnumsSection, m.pureEnums
 
-  loadSeqSection typeInstCacheSection, m.typeInstCache
-  loadSeqSection procInstCacheSection, m.procInstCache
-  loadSeqSection attachedOpsSection, m.attachedOps
-  loadSeqSection methodsPerTypeSection, m.methodsPerType
-  loadSeqSection enumToStringProcsSection, m.enumToStringProcs
-  loadSeqSection typeInfoSection, m.emittedTypeInfo
+    loadTabSection toReplaySection, m.toReplay
+    loadTabSection topLevelSection, m.topLevel
 
-  f.loadSection backendFlagsSection
-  f.loadPrim m.backendFlags
+    loadTabSection bodiesSection, m.bodies
+    loadSeqSection symsSection, m.syms
+    loadSeqSection typesSection, m.types
 
-  f.loadSection sideChannelSection
+    loadSeqSection typeInstCacheSection, m.typeInstCache
+    loadSeqSection procInstCacheSection, m.procInstCache
+    loadSeqSection attachedOpsSection, m.attachedOps
+    loadSeqSection methodsPerTypeSection, m.methodsPerType
+    loadSeqSection enumToStringProcsSection, m.enumToStringProcs
+    loadSeqSection typeInfoSection, m.emittedTypeInfo
+
+    f.loadSection backendFlagsSection
+    f.loadPrim m.backendFlags
+
+    f.loadSection sideChannelSection
   f.load m.man
 
   close(f)
@@ -736,13 +759,29 @@ type
       # PackedItemId so that it works with reexported symbols too
       # ifaceHidden includes private symbols
 
-  PackedModuleGraph* = seq[LoadedModule] # indexed by FileIndex
+type
+  PackedModuleGraph* = object
+    pm*: seq[LoadedModule] # indexed by FileIndex
+    when BenchIC:
+      depAnalysis: MonoTime
+      loadBody: MonoTime
+      loadSym, loadType, loadBodies: MonoTime
+
+when BenchIC:
+  proc echoTimes*(m: PackedModuleGraph) =
+    echo "analysis: ", m.depAnalysis, " loadBody: ", m.loadBody, " loadSym: ",
+      m.loadSym, " loadType: ", m.loadType, " all bodies: ", gloadBodies
+
+template `[]`*(m: PackedModuleGraph; i: int): LoadedModule = m.pm[i]
+template len*(m: PackedModuleGraph): int = m.pm.len
 
 proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; t: PackedItemId): PType
 proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s: PackedItemId): PSym
 
 proc toFileIndexCached*(c: var PackedDecoder; g: PackedModuleGraph; thisModule: int; f: LitId): FileIndex =
-  if c.lastLit == f and c.lastModule == thisModule:
+  if f == LitId(0):
+    result = InvalidFileIdx
+  elif c.lastLit == f and c.lastModule == thisModule:
     result = c.lastFile
   else:
     result = toFileIndex(f, g[thisModule].fromDisk, c.config)
@@ -1000,7 +1039,7 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
   # Does the file belong to the fileIdx need to be recompiled?
   let m = int(fileIdx)
   if m >= g.len:
-    g.setLen(m+1)
+    g.pm.setLen(m+1)
 
   case g[m].status
   of undefined:
@@ -1023,7 +1062,7 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
         cachedModules.add fileIdx
         g[m].status = loaded
       else:
-        g[m] = LoadedModule(status: outdated, module: g[m].module)
+        g.pm[m] = LoadedModule(status: outdated, module: g[m].module)
     else:
       loadError(err, rod, conf)
       g[m].status = outdated
@@ -1038,12 +1077,13 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
 proc moduleFromRodFile*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                         fileIdx: FileIndex; cachedModules: var seq[FileIndex]): PSym =
   ## Returns 'nil' if the module needs to be recompiled.
-  if needsRecompile(g, conf, cache, fileIdx, cachedModules):
-    result = nil
-  else:
-    result = g[int fileIdx].module
-    assert result != nil
-    assert result.position == int(fileIdx)
+  bench g.depAnalysis:
+    if needsRecompile(g, conf, cache, fileIdx, cachedModules):
+      result = nil
+    else:
+      result = g[int fileIdx].module
+      assert result != nil
+      assert result.position == int(fileIdx)
   for m in cachedModules:
     loadToReplayNodes(g, conf, cache, m, g[int m])
 
@@ -1057,46 +1097,49 @@ template setupDecoder() {.dirty.} =
 
 proc loadProcBody*(config: ConfigRef, cache: IdentCache;
                    g: var PackedModuleGraph; s: PSym): PNode =
-  let mId = s.itemId.module
-  var decoder = PackedDecoder(
-    lastModule: int32(-1),
-    lastLit: LitId(0),
-    lastFile: FileIndex(-1),
-    config: config,
-    cache: cache)
-  let pos = g[mId].fromDisk.syms[s.itemId.item].ast
-  assert pos != emptyNodeId
-  result = loadProcBody(decoder, g, mId, g[mId].fromDisk.bodies, NodePos pos)
+  bench g.loadBody:
+    let mId = s.itemId.module
+    var decoder = PackedDecoder(
+      lastModule: int32(-1),
+      lastLit: LitId(0),
+      lastFile: FileIndex(-1),
+      config: config,
+      cache: cache)
+    let pos = g[mId].fromDisk.syms[s.itemId.item].ast
+    assert pos != emptyNodeId
+    result = loadProcBody(decoder, g, mId, g[mId].fromDisk.bodies, NodePos pos)
 
 proc loadTypeFromId*(config: ConfigRef, cache: IdentCache;
                      g: var PackedModuleGraph; module: int; id: PackedItemId): PType =
-  if id.item < g[module].types.len:
-    result = g[module].types[id.item]
-  else:
-    result = nil
-  if result == nil:
-    var decoder = PackedDecoder(
-      lastModule: int32(-1),
-      lastLit: LitId(0),
-      lastFile: FileIndex(-1),
-      config: config,
-      cache: cache)
-    result = loadType(decoder, g, module, id)
+  bench g.loadType:
+    if id.item < g[module].types.len:
+      result = g[module].types[id.item]
+    else:
+      result = nil
+    if result == nil:
+      var decoder = PackedDecoder(
+        lastModule: int32(-1),
+        lastLit: LitId(0),
+        lastFile: FileIndex(-1),
+        config: config,
+        cache: cache)
+      result = loadType(decoder, g, module, id)
 
 proc loadSymFromId*(config: ConfigRef, cache: IdentCache;
                     g: var PackedModuleGraph; module: int; id: PackedItemId): PSym =
-  if id.item < g[module].syms.len:
-    result = g[module].syms[id.item]
-  else:
-    result = nil
-  if result == nil:
-    var decoder = PackedDecoder(
-      lastModule: int32(-1),
-      lastLit: LitId(0),
-      lastFile: FileIndex(-1),
-      config: config,
-      cache: cache)
-    result = loadSym(decoder, g, module, id)
+  bench g.loadSym:
+    if id.item < g[module].syms.len:
+      result = g[module].syms[id.item]
+    else:
+      result = nil
+    if result == nil:
+      var decoder = PackedDecoder(
+        lastModule: int32(-1),
+        lastLit: LitId(0),
+        lastFile: FileIndex(-1),
+        config: config,
+        cache: cache)
+      result = loadSym(decoder, g, module, id)
 
 proc translateId*(id: PackedItemId; g: PackedModuleGraph; thisModule: int; config: ConfigRef): ItemId =
   if id.module == LitId(0):

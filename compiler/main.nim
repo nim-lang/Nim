@@ -28,8 +28,7 @@ import nir / nir
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
 
-import ic / [cbackend, integrity, navigator]
-from ic / ic import rodViewer
+import ic / [cbackend, integrity, navigator, ic]
 
 import ../dist/checksums/src/checksums/sha1
 
@@ -335,7 +334,10 @@ proc mainCommand*(graph: ModuleGraph) =
 
   ## process all commands
   case conf.cmd
-  of cmdBackends: compileToBackend()
+  of cmdBackends:
+    compileToBackend()
+    when BenchIC:
+      echoTimes graph.packed
   of cmdTcc:
     when hasTinyCBackend:
       extccomp.setCC(conf, "tcc", unknownLineInfo)
