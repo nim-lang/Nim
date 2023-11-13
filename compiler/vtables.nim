@@ -84,7 +84,7 @@ proc collectVTableDispatchers*(g: ModuleGraph) =
     sortBucket(g.methods[bucket].methods, relevantCols)
     let base = g.methods[bucket].methods[^1]
     let baseType = base.typ[1].skipTypes(skipPtrs-{tyTypeDesc})
-    if baseType.itemId in g.objectTree:
+    if baseType.itemId in g.objectTree and g.methods[bucket].methods.len > 1:
       let methodIndexLen = g.bucketTable[baseType.itemId]
       if baseType.itemId notin itemTable: # once is enough
         rootTypeSeq.add baseType
