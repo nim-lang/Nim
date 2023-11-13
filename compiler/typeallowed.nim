@@ -10,8 +10,8 @@
 ## This module contains 'typeAllowed' and friends which check
 ## for invalid types like `openArray[var int]`.
 
-import
-  intsets, ast, renderer, options, semdata, types
+import ast, renderer, options, semdata, types
+import std/intsets
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

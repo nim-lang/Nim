@@ -851,6 +851,12 @@ proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope;
 
 proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
   var a: TLoc = default(TLoc)
+  if p.module.compileToCpp and e.kind == nkDotExpr and e[1].kind == nkSym and e[1].typ.kind == tyPtr:
+    # special case for C++: we need to pull the type of the field as member and friends require the complete type.
+    let typ = e[1].typ[0]
+    if typ.itemId in p.module.g.graph.memberProcsPerType:
+      discard getTypeDesc(p.module, typ)
+
   genRecordFieldAux(p, e, d, a)
   var r = rdLoc(a)
   var f = e[1].sym

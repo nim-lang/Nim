@@ -9,7 +9,7 @@
 
 ## This module allows adding hooks to program exit.
 
-import locks
+import std/locks
 when defined(js) and not defined(nodejs):
   import std/assertions
 

@@ -21,7 +21,7 @@ runnableExamples:
   doAssert r1 * r2 == -3 // 8
   doAssert r1 / r2 == -2 // 3
 
-import math, hashes
+import std/[math, hashes]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 

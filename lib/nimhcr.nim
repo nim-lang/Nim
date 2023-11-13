@@ -219,7 +219,7 @@ when defined(createNimHcr):
   when system.appType != "lib":
     {.error: "This file has to be compiled as a library!".}
 
-  import os, tables, sets, times, strutils, reservedmem, dynlib
+  import std/[os, tables, sets, times, strutils, reservedmem, dynlib]
 
   template trace(args: varargs[untyped]) =
     when defined(testNimHcr) or defined(traceHcr):

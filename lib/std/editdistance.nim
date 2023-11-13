@@ -10,7 +10,7 @@
 ## This module implements an algorithm to compute the
 ## `edit distance`:idx: between two Unicode strings.
 
-import unicode
+import std/unicode
 
 proc editDistance*(a, b: string): int {.noSideEffect.} =
   ## Returns the **unicode-rune** edit distance between `a` and `b`.

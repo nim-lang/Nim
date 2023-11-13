@@ -1,3 +1,5 @@
+import std/tables
+
 type
   Foo = distinct seq[int]
   Bar[N: static[int]] = distinct seq[int]
@@ -46,3 +48,9 @@ proc `==`*(x, y: Fine): bool {.borrow.} =
 var x = Fine("1234")
 var y = Fine("1234")
 doAssert x == y
+
+block: # bug #22902
+  type
+    DistinctTable = distinct Table[int, int]
+
+  proc `[]`(t: DistinctTable; key: int): lent int {.borrow.}

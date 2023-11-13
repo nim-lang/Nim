@@ -13,11 +13,11 @@
 ## Unstable API.
 
 when defined(windows):
-  import winlean, os, strutils, math
+  import std/[winlean, os, strutils, math]
 
   proc `-`(a, b: FILETIME): int64 = a.rdFileTime - b.rdFileTime
 elif defined(linux):
-  from cpuinfo import countProcessors
+  from std/cpuinfo import countProcessors
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -87,7 +87,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
   inc s.calls
 
 when not defined(testing) and isMainModule and not defined(nimdoc):
-  import random
+  import std/random
 
   proc busyLoop() =
     while true:

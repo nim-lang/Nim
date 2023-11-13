@@ -112,8 +112,8 @@ proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: N
     followLater(c, g, c.thisModule, n.operand)
   of nkModuleRef:
     let (n1, n2) = sons2(tree, n)
-    assert n1.kind == nkInt32Lit
-    assert n2.kind == nkInt32Lit
+    assert n1.kind == nkNone
+    assert n2.kind == nkNone
     let m = n1.litId
     let item = n2.operand
     let otherModule = toFileIndexCached(c.decoder, g, c.thisModule, m).int

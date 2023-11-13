@@ -11,7 +11,9 @@
 ## https://github.com/nim-lang/RFCs/issues/244 for more details.
 
 import
-  ast, types, renderer, intsets
+  ast, types, renderer
+
+import std/intsets
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

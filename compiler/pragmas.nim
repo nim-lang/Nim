@@ -10,9 +10,11 @@
 # This module implements semantic checking for pragmas
 
 import
-  os, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
-  wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
+  condsyms, ast, astalgo, idents, semdata, msgs, renderer,
+  wordrecg, ropes, options, extccomp, magicsys, trees,
   types, lookups, lineinfos, pathutils, linter, modulepaths
+
+import std/[os, math, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

@@ -9,19 +9,18 @@
 
 # This module implements the semantic checking pass.
 
-import tables
-
 import
-  ast, strutils, options, astalgo, trees,
-  wordrecg, ropes, msgs, idents, renderer, types, platform, math,
+  ast, options, astalgo, trees,
+  wordrecg, ropes, msgs, idents, renderer, types, platform,
   magicsys, nversion, nimsets, semfold, modulepaths, importer,
   procfind, lookups, pragmas, semdata, semtypinst, sigmatch,
-  intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
+  transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
-  lowerings, plugins/active, lineinfos, strtabs, int128,
+  lowerings, plugins/active, lineinfos, int128,
   isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs,
   extccomp
 
+import std/[strtabs, math, tables, intsets, strutils]
 
 when not defined(leanCompiler):
   import spawn

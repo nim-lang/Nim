@@ -49,8 +49,10 @@ when isMainModule or defined(nimTestGrammar):
     checkGrammarFile()
 
 import
-  llstream, lexer, idents, strutils, ast, msgs, options, lineinfos,
+  llstream, lexer, idents, ast, msgs, options, lineinfos,
   pathutils
+
+import std/strutils
 
 when defined(nimpretty):
   import layouter

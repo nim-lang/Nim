@@ -10,7 +10,8 @@
 ## This module contains support code for new-styled error
 ## handling via an `nkError` node kind.
 
-import ast, renderer, options, strutils, types
+import ast, renderer, options, types
+import std/strutils
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

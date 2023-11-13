@@ -42,6 +42,11 @@ type
 template kind*(n: TypeNode): NirTypeKind = NirTypeKind(n.x and TypeKindMask)
 template operand(n: TypeNode): uint32 = (n.x shr TypeKindBits)
 
+proc integralBits*(n: TypeNode): int {.inline.} =
+  # Number of bits in the IntTy, etc. Only valid for integral types.
+  assert n.kind in {IntTy, UIntTy, FloatTy, BoolTy, CharTy}
+  result = int(n.operand)
+
 template toX(k: NirTypeKind; operand: uint32): uint32 =
   uint32(k) or (operand shl TypeKindBits)
 
@@ -150,6 +155,10 @@ proc elementType*(tree: TypeGraph; n: TypeId): TypeId {.inline.} =
   assert tree[n].kind in {APtrTy, UPtrTy, AArrayPtrTy, UArrayPtrTy, ArrayTy, LastArrayTy}
   result = TypeId(n.int+1)
 
+proc litId*(n: TypeNode): LitId {.inline.} =
+  assert n.kind in {NameVal, IntVal, SizeVal, AlignVal, OffsetVal, AnnotationVal, ObjectTy, UnionTy}
+  result = LitId(n.operand)
+
 proc kind*(tree: TypeGraph; n: TypeId): NirTypeKind {.inline.} = tree[n].kind
 
 proc span(tree: TypeGraph; pos: int): int {.inline.} =
@@ -168,9 +177,34 @@ proc sons3(tree: TypeGraph; n: TypeId): (TypeId, TypeId, TypeId) =
   let c = b + span(tree, b)
   result = (TypeId a, TypeId b, TypeId c)
 
+proc arrayName*(tree: TypeGraph; n: TypeId): TypeId {.inline.} =
+  assert tree[n].kind == ArrayTy
+  let (_, _, c) = sons3(tree, n)
+  result = c
+
 proc arrayLen*(tree: TypeGraph; n: TypeId): BiggestInt =
   assert tree[n].kind == ArrayTy
-  result = tree.lit.numbers[LitId tree[n].operand]
+  let (_, b) = sons2(tree, n)
+  result = tree.lit.numbers[LitId tree[b].operand]
+
+proc returnType*(tree: TypeGraph; n: TypeId): (TypeId, TypeId) =
+  # Returns the positions of the return type + calling convention.
+  var pos = n.int
+  assert tree.nodes[pos].kind == ProcTy
+  let a = n.int+1
+  let b = a + span(tree, a)
+  result = (TypeId b, TypeId a) # not a typo, order is reversed
+
+iterator params*(tree: TypeGraph; n: TypeId): TypeId =
+  var pos = n.int
+  assert tree.nodes[pos].kind == ProcTy
+  let last = pos + tree.nodes[pos].rawSpan
+  inc pos
+  nextChild tree, pos
+  nextChild tree, pos
+  while pos < last:
+    yield TypeId pos
+    nextChild tree, pos
 
 proc openType*(tree: var TypeGraph; kind: NirTypeKind): TypePatchPos =
   assert kind in {APtrTy, UPtrTy, AArrayPtrTy, UArrayPtrTy,
@@ -227,6 +261,10 @@ proc addNominalType*(tree: var TypeGraph; kind: NirTypeKind; name: string) =
   assert kind in {ObjectTy, UnionTy}
   tree.nodes.add TypeNode(x: toX(kind, tree.lit.strings.getOrIncl(name)))
 
+proc getTypeTag*(tree: TypeGraph; t: TypeId): string =
+  assert tree[t].kind in {ObjectTy, UnionTy}
+  result = tree.lit.strings[LitId tree[t].operand]
+
 proc addVarargs*(tree: var TypeGraph) =
   tree.nodes.add TypeNode(x: toX(VarargsTy, 0'u32))
 
@@ -237,7 +275,7 @@ proc getFloat128Type*(tree: var TypeGraph): TypeId =
 proc addBuiltinType*(g: var TypeGraph; id: TypeId) =
   g.nodes.add g[id]
 
-template firstSon(n: TypeId): TypeId = TypeId(n.int+1)
+template firstSon*(n: TypeId): TypeId = TypeId(n.int+1)
 
 proc addType*(g: var TypeGraph; t: TypeId) =
   # We cannot simply copy `*Decl` nodes. We have to introduce `*Ty` nodes instead:
@@ -342,10 +380,12 @@ proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
     dest.add "]"
   of ArrayTy:
     dest.add "Array["
-    let (elems, len) = g.sons2(i)
+    let (elems, len, name) = g.sons3(i)
     toString(dest, g, elems)
     dest.add ", "
     toString(dest, g, len)
+    dest.add ", "
+    toString(dest, g, name)
     dest.add "]"
   of LastArrayTy:
     # array of unspecified size as a last field inside an object
@@ -360,7 +400,9 @@ proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
     dest.add g.lit.strings[LitId g[i].operand]
   of ProcTy:
     dest.add "proc["
-    for t in sons(g, i): toString(dest, g, t)
+    for t in sons(g, i):
+      dest.add ' '
+      toString(dest, g, t)
     dest.add "]"
   of ObjectDecl:
     dest.add "object["
@@ -392,9 +434,24 @@ proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
 proc toString*(dest: var string; g: TypeGraph) =
   var i = 0
   while i < g.len:
+    dest.add "T<"
+    dest.addInt i
+    dest.add "> "
     toString(dest, g, TypeId i)
     dest.add '\n'
     nextChild g, i
+
+iterator allTypes*(g: TypeGraph; start = 0): TypeId =
+  var i = start
+  while i < g.len:
+    yield TypeId i
+    nextChild g, i
+
+iterator allTypesIncludingInner*(g: TypeGraph; start = 0): TypeId =
+  var i = start
+  while i < g.len:
+    yield TypeId i
+    inc i
 
 proc `$`(g: TypeGraph): string =
   result = ""
@@ -406,6 +463,7 @@ when isMainModule:
   let a = g.openType ArrayTy
   g.addBuiltinType Int8Id
   g.addArrayLen 5
+  g.addName "SomeArray"
   let finalArrayType = finishType(g, a)
 
   let obj = g.openType ObjectDecl

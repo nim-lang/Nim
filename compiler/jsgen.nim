@@ -37,8 +37,8 @@ import
 
 import pipelineutils
 
-import json, sets, math, tables, intsets
-import strutils except addf
+import std/[json, sets, math, tables, intsets]
+import std/strutils except addf
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]
