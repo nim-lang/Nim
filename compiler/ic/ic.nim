@@ -609,7 +609,7 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadTabSection stringsSection, m.strings
 
   loadSeqSection checkSumsSection, m.includes
-  if not includesIdentical(m, config):
+  if config.cmd != cmdM and not includesIdentical(m, config):
     f.err = includeFileChanged
 
   loadSeqSection depsSection, m.imports
@@ -1047,7 +1047,12 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
     let fullpath = msgs.toFullPath(conf, fileIdx)
     let rod = toRodFile(conf, AbsoluteFile fullpath)
     let err = loadRodFile(rod, g[m].fromDisk, conf)
-    if err == ok:
+    if conf.cmd == cmdM:
+      setupLookupTables(g, conf, cache, fileIdx, g[m])
+      cachedModules.add fileIdx
+      g[m].status = loaded
+      result = false
+    elif err == ok:
       result = optForceFullMake in conf.globalOptions
       # check its dependencies:
       for dep in g[m].fromDisk.imports:

@@ -215,7 +215,7 @@ proc isCachedModule(g: ModuleGraph; module: int): bool {.inline.} =
 proc isCachedModule(g: ModuleGraph; m: PSym): bool {.inline.} =
   isCachedModule(g, m.position)
 
-proc simulateCachedModule*(g: ModuleGraph; moduleSym: PSym; m: PackedModule) =
+proc simulateCachedModule(g: ModuleGraph; moduleSym: PSym; m: PackedModule) =
   when false:
     echo "simulating ", moduleSym.name.s, " ", moduleSym.position
   simulateLoadedModule(g.packed, g.config, g.cache, moduleSym, m)

@@ -431,7 +431,10 @@ proc mainCommand*(graph: ModuleGraph) =
       msgWriteln(conf, "-- end of list --", {msgStdout, msgSkipHook})
 
       for it in conf.searchPaths: msgWriteln(conf, it.string)
-  of cmdCheck, cmdM:
+  of cmdCheck:
+    commandCheck(graph)
+  of cmdM:
+    graph.config.symbolFiles = v2Sf
     commandCheck(graph)
   of cmdParse:
     wantMainModule(conf)
