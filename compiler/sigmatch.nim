@@ -197,10 +197,10 @@ proc checkGeneric(a, b: TCandidate): int =
     let tra = typeRel(ma, bb[i], aa[i], {trDontBind})
     var mb = newCandidate(c, aa[i])
     let trb = typeRel(mb, aa[i], bb[i], {trDontBind})
-    if tra == isGeneric and trb == isNone:
+    if tra == isGeneric and trb in {isNone, isInferred, isInferredConvertible}:
       if winner == -1: return 0
       winner = 1
-    if trb == isGeneric and tra == isNone:
+    if trb == isGeneric and tra in {isNone, isInferred, isInferredConvertible}:
       if winner == 1: return 0
       winner = -1
   result = winner
