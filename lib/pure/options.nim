@@ -81,7 +81,7 @@ when defined(nimPreviewSlimSystem):
 
 when (NimMajor, NimMinor) >= (1, 1):
   type
-    SomePointer = ref | ptr | pointer | proc
+    SomePointer = ref | ptr | pointer | proc | iterator {.closure.}
 else:
   type
     SomePointer = ref | ptr | pointer
@@ -89,7 +89,7 @@ else:
 type
   Option*[T] = object
     ## An optional type that may or may not contain a value of type `T`.
-    ## When `T` is a a pointer type (`ptr`, `pointer`, `ref` or `proc`),
+    ## When `T` is a a pointer type (`ptr`, `pointer`, `ref`, `proc` or `iterator {.closure.}`),
     ## `none(T)` is represented as `nil`.
     when T is SomePointer:
       val: T
