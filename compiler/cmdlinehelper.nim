@@ -7,11 +7,13 @@
 #    distribution, for details about the copyright.
 #
 
-## Helpers for binaries that use compiler passes, e.g.: nim, nimsuggest, nimfix
+## Helpers for binaries that use compiler passes, e.g.: nim, nimsuggest
 
 import
   options, idents, nimconf, extccomp, commands, msgs,
-  lineinfos, modulegraphs, condsyms, os, pathutils, parseopt
+  lineinfos, modulegraphs, condsyms, pathutils
+
+import std/[os, parseopt]
 
 proc prependCurDir*(f: AbsoluteFile): AbsoluteFile =
   when defined(unix):

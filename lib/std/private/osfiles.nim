@@ -7,6 +7,7 @@ export fileExists
 
 import ospaths2, ossymlinks
 
+## .. importdoc:: osdirs.nim, os.nim
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
@@ -14,9 +15,9 @@ when defined(nimPreviewSlimSystem):
 when weirdTarget:
   discard
 elif defined(windows):
-  import winlean
+  import std/winlean
 elif defined(posix):
-  import posix, times
+  import std/[posix, times]
 
   proc toTime(ts: Timespec): times.Time {.inline.} =
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
@@ -83,10 +84,7 @@ proc getFilePermissions*(filename: string): set[FilePermission] {.
     if (a.st_mode and S_IWOTH.Mode) != 0.Mode: result.incl(fpOthersWrite)
     if (a.st_mode and S_IXOTH.Mode) != 0.Mode: result.incl(fpOthersExec)
   else:
-    when useWinUnicode:
-      wrapUnary(res, getFileAttributesW, filename)
-    else:
-      var res = getFileAttributesA(filename)
+    wrapUnary(res, getFileAttributesW, filename)
     if res == -1'i32: raiseOSError(osLastError(), filename)
     if (res and FILE_ATTRIBUTE_READONLY) != 0'i32:
       result = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead,
@@ -135,19 +133,13 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission],
       if chmod(filename, cast[Mode](p)) != 0:
         raiseOSError(osLastError(), $(filename, permissions))
   else:
-    when useWinUnicode:
-      wrapUnary(res, getFileAttributesW, filename)
-    else:
-      var res = getFileAttributesA(filename)
+    wrapUnary(res, getFileAttributesW, filename)
     if res == -1'i32: raiseOSError(osLastError(), filename)
     if fpUserWrite in permissions:
       res = res and not FILE_ATTRIBUTE_READONLY
     else:
       res = res or FILE_ATTRIBUTE_READONLY
-    when useWinUnicode:
-      wrapBinary(res2, setFileAttributesW, filename, res)
-    else:
-      var res2 = setFileAttributesA(filename, res)
+    wrapBinary(res2, setFileAttributesW, filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
 
@@ -163,10 +155,14 @@ when hasCCopyfile:
   proc copyfile_state_alloc(): copyfile_state_t
   proc copyfile_state_free(state: copyfile_state_t): cint
   proc c_copyfile(src, dst: cstring,  state: copyfile_state_t, flags: copyfile_flags_t): cint {.importc: "copyfile".}
-  # replace with `let` pending bootstrap >= 1.4.0
-  var
-    COPYFILE_DATA {.nodecl.}: copyfile_flags_t
-    COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
+  when (NimMajor, NimMinor) >= (1, 4):
+    let
+      COPYFILE_DATA {.nodecl.}: copyfile_flags_t
+      COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
+  else:
+    var
+      COPYFILE_DATA {.nodecl.}: copyfile_flags_t
+      COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
   {.pop.}
 
 type
@@ -177,7 +173,7 @@ type
 
 const copyFlagSymlink = {cfSymlinkAsIs, cfSymlinkFollow, cfSymlinkIgnore}
 
-proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
+proc copyFile*(source, dest: string, options = {cfSymlinkFollow}; bufferSize = 16_384) {.rtl,
   extern: "nos$1", tags: [ReadDirEffect, ReadIOEffect, WriteIOEffect],
   noWeirdTarget.} =
   ## Copies a file from `source` to `dest`, where `dest.parentDir` must exist.
@@ -206,6 +202,8 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   ## On OSX, `copyfile` C api will be used (available since OSX 10.5) unless
   ## `-d:nimLegacyCopyFile` is used.
   ##
+  ## `copyFile` allows to specify `bufferSize` to improve I/O performance.
+  ##
   ## See also:
   ## * `CopyFlag enum`_
   ## * `copyDir proc`_
@@ -214,20 +212,15 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   ## * `removeFile proc`_
   ## * `moveFile proc`_
 
-  doAssert card(copyFlagSymlink * options) == 1, "There should be exactly " &
-                                                 "one cfSymlink* in options"
+  doAssert card(copyFlagSymlink * options) == 1, "There should be exactly one cfSymlink* in options"
   let isSymlink = source.symlinkExists
   if isSymlink and (cfSymlinkIgnore in options or defined(windows)):
     return
   when defined(windows):
-    when useWinUnicode:
-      let s = newWideCString(source)
-      let d = newWideCString(dest)
-      if copyFileW(s, d, 0'i32) == 0'i32:
-        raiseOSError(osLastError(), $(source, dest))
-    else:
-      if copyFileA(source, dest, 0'i32) == 0'i32:
-        raiseOSError(osLastError(), $(source, dest))
+    let s = newWideCString(source)
+    let d = newWideCString(dest)
+    if copyFileW(s, d, 0'i32) == 0'i32:
+      raiseOSError(osLastError(), $(source, dest))
   else:
     if isSymlink and cfSymlinkAsIs in options:
       createSymlink(expandSymlink(source), dest)
@@ -246,15 +239,21 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
         if status2 != 0: raiseOSError(osLastError(), $(source, dest))
       else:
         # generic version of copyFile which works for any platform:
-        const bufSize = 8000 # better for memory manager
         var d, s: File
         if not open(s, source):raiseOSError(osLastError(), source)
         if not open(d, dest, fmWrite):
           close(s)
           raiseOSError(osLastError(), dest)
-        var buf = alloc(bufSize)
+
+        # Hints for kernel-level aggressive sequential low-fragmentation read-aheads:
+        # https://pubs.opengroup.org/onlinepubs/9699919799/functions/posix_fadvise.html
+        when defined(linux) or defined(osx):
+          discard posix_fadvise(getFileHandle(d), 0.cint, 0.cint, POSIX_FADV_SEQUENTIAL)
+          discard posix_fadvise(getFileHandle(s), 0.cint, 0.cint, POSIX_FADV_SEQUENTIAL)
+
+        var buf = alloc(bufferSize)
         while true:
-          var bytesread = readBuffer(s, buf, bufSize)
+          var bytesread = readBuffer(s, buf, bufferSize)
           if bytesread > 0:
             var byteswritten = writeBuffer(d, buf, bytesread)
             if bytesread != byteswritten:
@@ -262,13 +261,13 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
               close(s)
               close(d)
               raiseOSError(osLastError(), dest)
-          if bytesread != bufSize: break
+          if bytesread != bufferSize: break
         dealloc(buf)
         close(s)
         flushFile(d)
         close(d)
 
-proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow})
+proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow}; bufferSize = 16_384)
   {.noWeirdTarget, since: (1,3,7).} =
   ## Copies a file `source` into directory `dir`, which must exist.
   ##
@@ -276,12 +275,14 @@ proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow})
   ## if `source` is a symlink, copies the file symlink points to. `options` is
   ## ignored on Windows: symlinks are skipped.
   ##
+  ## `copyFileToDir` allows to specify `bufferSize` to improve I/O performance.
+  ##
   ## See also:
   ## * `CopyFlag enum`_
   ## * `copyFile proc`_
   if dir.len == 0: # treating "" as "." is error prone
     raise newException(ValueError, "dest is empty")
-  copyFile(source, dir / source.lastPathPart, options)
+  copyFile(source, dir / source.lastPathPart, options, bufferSize)
 
 
 proc copyFileWithPermissions*(source, dest: string,
@@ -333,14 +334,9 @@ when not declared(ENOENT) and not defined(windows):
     var ENOENT {.importc, header: "<errno.h>".}: cint
 
 when defined(windows) and not weirdTarget:
-  when useWinUnicode:
-    template deleteFile(file: untyped): untyped  = deleteFileW(file)
-    template setFileAttributes(file, attrs: untyped): untyped =
-      setFileAttributesW(file, attrs)
-  else:
-    template deleteFile(file: untyped): untyped = deleteFileA(file)
-    template setFileAttributes(file, attrs: untyped): untyped =
-      setFileAttributesA(file, attrs)
+  template deleteFile(file: untyped): untyped  = deleteFileW(file)
+  template setFileAttributes(file, attrs: untyped): untyped =
+    setFileAttributesW(file, attrs)
 
 proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirEffect], noWeirdTarget.} =
   ## Removes the `file`.
@@ -357,10 +353,7 @@ proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirE
   ## * `moveFile proc`_
   result = true
   when defined(windows):
-    when useWinUnicode:
-      let f = newWideCString(file)
-    else:
-      let f = file
+    let f = newWideCString(file)
     if deleteFile(f) == 0:
       result = false
       let err = getLastError()
@@ -412,10 +405,10 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
 
   if not tryMoveFSObject(source, dest, isDir = false):
     when defined(windows):
-      doAssert false
+      raiseAssert "unreachable"
     else:
       # Fallback to copy & del
-      copyFile(source, dest, {cfSymlinkAsIs})
+      copyFileWithPermissions(source, dest, options={cfSymlinkAsIs})
       try:
         removeFile(source)
       except:

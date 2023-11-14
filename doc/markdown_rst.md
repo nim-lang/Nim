@@ -9,6 +9,8 @@ Nim-flavored Markdown and reStructuredText
 .. include:: rstcommon.rst
 .. contents::
 
+.. importdoc:: docgen.md
+
 Both `Markdown`:idx: (md) and `reStructuredText`:idx: (RST) are markup
 languages whose goal is to typeset texts with complex structure,
 formatting and references using simple plaintext representation.
@@ -30,12 +32,12 @@ The `md2tex`:option: command is invoked identically to `md2html`:option:,
 but outputs a ``.tex`` file instead of ``.html``.
 
 These tools embedded into Nim compiler; the compiler can output
-the result to HTML \[#html] or Latex \[#latex].
+the result to HTML [^html] or Latex [^latex].
 
-\[#html] commands `nim doc`:cmd: for ``*.nim`` files and
+[^html]: commands `nim doc`:cmd: for ``*.nim`` files and
    `nim rst2html`:cmd: for ``*.rst`` files
 
-\[#latex] commands `nim doc2tex`:cmd: for ``*.nim`` and
+[^latex]: commands `nim doc2tex`:cmd: for ``*.nim`` and
    `nim rst2tex`:cmd: for ``*.rst``.
 
 Full list of supported commands:
@@ -70,7 +72,7 @@ Features
 A large subset is implemented with some [limitations] and
 [additional Nim-specific features].
 
-Supported standard RST features:
+Supported common RST/Markdown features:
 
 * body elements
   + sections
@@ -81,10 +83,8 @@ Supported standard RST features:
     characters:  1. ... 2. ... *or* a. ... b. ... *or* A. ... B. ...
   + footnotes (including manually numbered, auto-numbered, auto-numbered
     with label, and auto-symbol footnotes) and citations
-  + definition lists
   + field lists
   + option lists
-  + indented literal blocks
   + quoted literal blocks
   + line blocks
   + simple tables
@@ -107,11 +107,42 @@ Supported standard RST features:
     (see [RST roles list] for description).
   + inline internal targets
 
+RST mode only features
+----------------------
+
++ RST syntax for definition lists (that is additional indentation after
+  a definition line)
++ indented literal blocks starting from ``::``
+
+Markdown-specific features
+--------------------------
+
+* Markdown tables
+* Markdown code blocks. For them the same additional arguments as for RST
+  code blocks can be provided (e.g. `test` or `number-lines`) but with
+  a one-line syntax like this:
+
+      ```nim test number-lines=10
+      echo "ok"
+      ```
+* Markdown links ``[...](...)``
+* Pandoc syntax for automatic links ``[...]``, see [Referencing] for description
+* Pandoc syntax for footnotes, including ``[^10]`` (manually numbered)
+  and ``[^someName]`` (auto-numbered with a label)
+* Markdown literal blocks indented by 4 or more spaces
+* Markdown headlines
+* Markdown block quotes
+* Markdown syntax for definition lists
+* using ``1`` as auto-enumerator in enumerated lists like RST ``#``
+  (auto-enumerator ``1`` can not be used with ``#`` in the same list)
+
 Additional Nim-specific features
 --------------------------------
 
-* directives: ``code-block`` \[cmp:Sphinx], ``title``,
-  ``index`` \[cmp:Sphinx]
+* referencing to definitions in external files, see
+  [Markup external referencing] section
+* directives: ``code-block`` [^Sphinx], ``title``,
+  ``index`` [^Sphinx]
 * predefined roles
   - ``:nim:`` (default), ``:c:`` (C programming language),
     ``:python:``, ``:yaml:``, ``:java:``, ``:cpp:`` (C++), ``:csharp`` (C#).
@@ -125,9 +156,9 @@ Additional Nim-specific features
     - ``:cmd:`` for commands and common shells syntax
     - ``:console:`` the same  for interactive sessions
       (commands should be prepended by ``$``)
-    - ``:program:`` for executable names \[cmp:Sphinx]
+    - ``:program:`` for executable names [^Sphinx]
       (one can just use ``:cmd:`` on single word)
-    - ``:option:`` for command line options \[cmp:Sphinx]
+    - ``:option:`` for command line options [^Sphinx]
   - ``:tok:``, a role for highlighting of programming language tokens
 * ***triple emphasis*** (bold and italic) using \*\*\*
 * ``:idx:`` role for \`interpreted text\` to include the link to this
@@ -140,35 +171,96 @@ Additional Nim-specific features
 
   Here the dummy `//` will disappear, while options `compile`:option:
   and `doc`:option: will be left in the final document.
-
-\[cmp:Sphinx] similar but different from the directives of
-   Python [Sphinx directives] and [Sphinx roles] extensions
-
-Extra features
---------------
-
-Optional additional features, by default turned on:
-
 * emoji / smiley symbols
-* Markdown tables
-* Markdown code blocks. For them the same additional arguments as for RST
-  code blocks can be provided (e.g. `test` or `number-lines`) but with
-  a one-line syntax like this:
 
-      ```nim test number-lines=10
-      echo "ok"
-      ```
-* Markdown links
-* Markdown headlines
-* Markdown block quotes
-* using ``1`` as auto-enumerator in enumerated lists like RST ``#``
-  (auto-enumerator ``1`` can not be used with ``#`` in the same list)
+[^Sphinx]: similar but different from the directives of
+   Python [Sphinx directives] and [Sphinx roles] extensions
 
 .. Note:: By default Nim has ``roSupportMarkdown`` and
    ``roSupportRawDirective`` turned **on**.
 
-.. warning:: Using Nim-specific features can cause other RST implementations
-  to fail on your document.
+.. warning:: Using Nim-specific features can cause other Markdown and
+  RST implementations to fail on your document.
+
+Referencing
+===========
+
+To be able to copy and share links Nim generates anchors for all
+main document elements:
+
+* headlines (including document title)
+* footnotes
+* explicitly set anchors: RST internal cross-references and
+  inline internal targets
+* Nim symbols (external referencing), see [Nim DocGen Tools Guide] for details.
+
+But direct use of those anchors have 2 problems:
+
+1. the anchors are usually mangled (e.g. spaces substituted to minus
+   signs, etc).
+2. manual usage of anchors is not checked, so it's easy to get broken
+   links inside your project if e.g. spelling has changed for a heading
+   or you use a wrong relative path to your document.
+
+That's why Nim implementation has syntax for using
+*original* labels for referencing.
+Such referencing can be either local/internal or external:
+
+* Local referencing (inside any given file) is defined by
+  RST standard or Pandoc Markdown User guide.
+* External (cross-document) referencing is a Nim-specific feature,
+  though it's not really different from local referencing by its syntax.
+
+Markup local referencing
+------------------------
+
+There are 2 syntax option available for referencing to objects
+inside any given file, e.g. for headlines:
+
+    Markdown                  RST
+
+    Some headline             Some headline
+    =============             =============
+
+    Ref. [Some headline]      Ref. `Some headline`_
+
+
+Markup external referencing
+---------------------------
+
+The syntax is the same as for local referencing, but the anchors are
+saved in ``.idx`` files, so one needs to generate them beforehand,
+and they should be loaded by an `.. importdoc::` directive.
+E.g. if we want to reference section "Some headline" in ``file1.md``
+from ``file2.md``, then ``file2.md`` may look like:
+
+```
+.. importdoc:: file1.md
+
+Ref. [Some headline]
+```
+
+```cmd
+nim md2html --index:only file1.md  # creates ``htmldocs/file1.idx``
+nim md2html file2.md               # creates ``htmldocs/file2.html``
+```
+
+To allow cross-references between any files in any order (especially, if
+circular references are present), it's strongly recommended
+to make a run for creating all the indexes first:
+
+```cmd
+nim md2html --index:only file1.md  # creates ``htmldocs/file1.idx``
+nim md2html --index:only file2.md  # creates ``htmldocs/file2.idx``
+nim md2html file1.md               # creates ``htmldocs/file1.html``
+nim md2html file2.md               # creates ``htmldocs/file2.html``
+```
+
+and then one can freely reference any objects as if these 2 documents
+are actually 1 file.
+
+Other
+=====
 
 Idiosyncrasies
 --------------

@@ -9,8 +9,9 @@
 
 # Implements a table from trees to trees. Does structural equivalence checking.
 
-import
-  hashes, ast, astalgo, types
+import ast, astalgo, types
+
+import std/hashes
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -57,7 +58,11 @@ proc treesEquivalent(a, b: PNode): bool =
         for i in 0..<a.len:
           if not treesEquivalent(a[i], b[i]): return
         result = true
+      else:
+        result = false
     if result: result = sameTypeOrNil(a.typ, b.typ)
+  else:
+    result = false
 
 proc nodeTableRawGet(t: TNodeTable, k: Hash, key: PNode): int =
   var h: Hash = k and high(t.data)

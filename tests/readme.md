@@ -2,14 +2,14 @@ This directory contains the test cases.
 
 Each test must have a filename of the form: ``t*.nim``
 
-**Note:** Testament is only aware of tests under a directory (eg `tests/foo/`) and will ignore
+**Note:** [Testament](https://nim-lang.github.io/Nim/testament.html) is only aware of tests under a directory (eg `tests/foo/`) and will ignore
 top-level tests like `tests/tbar.nim`.
 
 # Specs
 
 Each test can contain a spec in a ``discard """ ... """`` block.
 
-**Check out the [``parseSpec`` procedure](https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L158) in the ``specs`` module for a full and reliable reference**
+**Check out the [``parseSpec`` procedure](https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L315) in the ``specs`` module for a full and reliable reference**
 
 ## action
 

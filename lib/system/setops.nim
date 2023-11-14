@@ -26,9 +26,9 @@ func excl*[T](x: var set[T], y: T) {.magic: "Excl".} =
   ##
   ## This is the same as `x = x - {y}`, but it might be more efficient.
   runnableExamples:
-    var b = {2, 3, 5, 6, 12, 545}
+    var b = {2, 3, 5, 6, 12, 54}
     b.excl(5)
-    assert b == {2, 3, 6, 12, 545}
+    assert b == {2, 3, 6, 12, 54}
 
 template excl*[T](x: var set[T], y: set[T]) {.callsite.} =
   ## Excludes the set `y` from the set `x`.

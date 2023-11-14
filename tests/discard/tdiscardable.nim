@@ -65,3 +65,48 @@ proc main2() =
 
 main1()
 main2()
+
+block: # bug #13583
+  block:
+    proc hello(): int {.discardable.} = 12
+
+    iterator test(): int {.closure.} =
+      while true:
+        hello()
+
+    let t = test
+
+  block:
+    proc hello(): int {.discardable.} = 12
+
+    iterator test(): int {.closure.} =
+      while true:
+        block:
+          yield 12
+          hello()
+
+    let t = test
+    doAssert t() == 12
+
+  block:
+    proc hello(): int {.discardable.} = 12
+
+    iterator test(): int {.closure.} =
+      while true:
+        yield 12
+        hello()
+
+    let t = test
+    doAssert t() == 12
+
+block:
+  proc bar(): string {.discardable.} =
+    "15"
+
+  proc foo(): int =
+    while true:
+      raise newException(ValueError, "check")
+    12
+
+  doAssertRaises(ValueError):
+    doAssert foo() == 12

@@ -16,7 +16,7 @@ runnableExamples:
 include "system/inclrtl"
 
 when defined(posix) and not (defined(macosx) or defined(bsd)):
-  import posix
+  import std/posix
 
 when defined(windows):
   import std/private/win_getsysteminfo
@@ -40,7 +40,7 @@ when defined(macosx) or defined(bsd):
               importc: "sysctl", nodecl.}
 
 when defined(genode):
-  include genode/env
+  import genode/env
 
   proc affinitySpaceTotal(env: GenodeEnvPtr): cuint {.
     importcpp: "@->cpu().affinity_space().total()".}

@@ -16,7 +16,7 @@
 {.push stackTrace: off.}
 
 import
-  locks
+  std/locks
 
 const
   ElemsPerNode = 100

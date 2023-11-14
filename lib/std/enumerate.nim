@@ -11,7 +11,7 @@
 ## macro system.
 
 import std/private/since
-import macros
+import std/macros
 
 
 macro enumerate*(x: ForLoopStmt): untyped {.since: (1, 3).} =
@@ -21,7 +21,7 @@ macro enumerate*(x: ForLoopStmt): untyped {.since: (1, 3).} =
   ## The default starting count `0` can be manually overridden if needed.
   runnableExamples:
     let a = [10, 20, 30]
-    var b: seq[(int, int)]
+    var b: seq[(int, int)] = @[]
     for i, x in enumerate(a):
       b.add((i, x))
     assert b == @[(0, 10), (1, 20), (2, 30)]

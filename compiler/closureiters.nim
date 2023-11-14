@@ -134,7 +134,9 @@
 import
   ast, msgs, idents,
   renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos,
-  tables, options
+  options
+
+import std/tables
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -183,7 +185,7 @@ proc newStateAssgn(ctx: var Ctx, stateNo: int = -2): PNode =
   ctx.newStateAssgn(newIntTypeNode(stateNo, ctx.g.getSysType(TLineInfo(), tyInt)))
 
 proc newEnvVar(ctx: var Ctx, name: string, typ: PType): PSym =
-  result = newSym(skVar, getIdent(ctx.g.cache, name), nextSymId(ctx.idgen), ctx.fn, ctx.fn.info)
+  result = newSym(skVar, getIdent(ctx.g.cache, name), ctx.idgen, ctx.fn, ctx.fn.info)
   result.typ = typ
   assert(not typ.isNil)
 
@@ -258,8 +260,9 @@ proc hasYields(n: PNode): bool =
   of nkYieldStmt:
     result = true
   of nkSkip:
-    discard
+    result = false
   else:
+    result = false
     for c in n:
       if c.hasYields:
         result = true
@@ -325,7 +328,7 @@ proc collectExceptState(ctx: var Ctx, n: PNode): PNode {.inline.} =
       var ifBranch: PNode
 
       if c.len > 1:
-        var cond: PNode
+        var cond: PNode = nil
         for i in 0..<c.len - 1:
           assert(c[i].kind == nkType)
           let nextCond = newTree(nkCall,
@@ -388,19 +391,22 @@ proc getFinallyNode(ctx: var Ctx, n: PNode): PNode =
 proc hasYieldsInExpressions(n: PNode): bool =
   case n.kind
   of nkSkip:
-    discard
+    result = false
   of nkStmtListExpr:
     if isEmptyType(n.typ):
+      result = false
       for c in n:
         if c.hasYieldsInExpressions:
           return true
     else:
       result = n.hasYields
   of nkCast:
+    result = false
     for i in 1..<n.len:
       if n[i].hasYieldsInExpressions:
         return true
   else:
+    result = false
     for c in n:
       if c.hasYieldsInExpressions:
         return true
@@ -495,7 +501,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
 
     if ns:
       needsSplit = true
-      var tmp: PSym
+      var tmp: PSym = nil
       let isExpr = not isEmptyType(n.typ)
       if isExpr:
         tmp = ctx.newTempVar(n.typ)
@@ -855,7 +861,9 @@ proc transformReturnsInTry(ctx: var Ctx, n: PNode): PNode =
   case n.kind
   of nkReturnStmt:
     # We're somewhere in try, transform to finally unrolling
-    assert(ctx.nearestFinally != 0)
+    if ctx.nearestFinally == 0:
+      # return is within the finally
+      return
 
     result = newNodeI(nkStmtList, n.info)
 
@@ -1155,7 +1163,7 @@ proc newArrayType(g: ModuleGraph; n: int, t: PType; idgen: IdGenerator; owner: P
   result = newType(tyArray, nextTypeId(idgen), owner)
 
   let rng = newType(tyRange, nextTypeId(idgen), owner)
-  rng.n = newTree(nkRange, g.newIntLit(owner.info, 0), g.newIntLit(owner.info, n))
+  rng.n = newTree(nkRange, g.newIntLit(owner.info, 0), g.newIntLit(owner.info, n - 1))
   rng.rawAddSon(t)
 
   result.rawAddSon(rng)
@@ -1348,7 +1356,7 @@ proc freshVars(n: PNode; c: var FreshVarsContext): PNode =
         let idefs = copyNode(it)
         for v in 0..it.len-3:
           if it[v].kind == nkSym:
-            let x = copySym(it[v].sym, nextSymId(c.idgen))
+            let x = copySym(it[v].sym, c.idgen)
             c.tab[it[v].sym.id] = x
             idefs.add newSymNode(x)
           else:
@@ -1359,6 +1367,7 @@ proc freshVars(n: PNode; c: var FreshVarsContext): PNode =
       else:
         result.add it
   of nkRaiseStmt:
+    result = nil
     localError(c.config, c.info, "unsupported control flow: 'finally: ... raise' duplicated because of 'break'")
   else:
     result = n
@@ -1372,6 +1381,7 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
   # detect: 'finally: raises X' which is currently not supported. We produce
   # an error for this case for now. All this will be done properly with Yuriy's
   # patch.
+
   result = n
   case n.kind
   of nkTryStmt:
@@ -1388,6 +1398,7 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
       discard c.finallys.pop()
 
   of nkWhileStmt, nkBlockStmt:
+    if not n.hasYields: return n
     c.blocks.add((n, c.finallys.len))
     for i in 0 ..< n.len:
       result[i] = preprocess(c, n[i])
@@ -1429,9 +1440,9 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
     # Lambda lifting was not done yet. Use temporary :state sym, which will
     # be handled specially by lambda lifting. Local temp vars (if needed)
     # should follow the same logic.
-    ctx.stateVarSym = newSym(skVar, getIdent(ctx.g.cache, ":state"), nextSymId(idgen), fn, fn.info)
+    ctx.stateVarSym = newSym(skVar, getIdent(ctx.g.cache, ":state"), idgen, fn, fn.info)
     ctx.stateVarSym.typ = g.createClosureIterStateType(fn, idgen)
-  ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), nextSymId(idgen), fn, fn.info)
+  ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), idgen, fn, fn.info)
   var pc = PreprocessContext(finallys: @[], config: g.config, idgen: idgen)
   var n = preprocess(pc, n.toStmtList)
   #echo "transformed into ", n
@@ -1464,9 +1475,10 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
   result = ctx.transformStateAssignments(result)
   result = ctx.wrapIntoStateLoop(result)
 
-  # echo "TRANSFORM TO STATES: "
-  # echo renderTree(result)
+  when false:
+    echo "TRANSFORM TO STATES: "
+    echo renderTree(result)
 
-  # echo "exception table:"
-  # for i, e in ctx.exceptionTable:
-  #   echo i, " -> ", e
+    echo "exception table:"
+    for i, e in ctx.exceptionTable:
+      echo i, " -> ", e

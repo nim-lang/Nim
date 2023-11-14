@@ -72,7 +72,7 @@ proc addEntry(entry: LogEntry) =
       cprintf("interesting %s:%ld %s\n", entry.file, entry.line, entry.op)
       let x = cast[proc() {.nimcall, tags: [], gcsafe, raises: [].}](writeStackTrace)
       x()
-      quit 1
+      rawQuit 1
       #if gLog.count > high(gLog.data):
       #  gLogger(gLog)
       #  gLog.count = 0

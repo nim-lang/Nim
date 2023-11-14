@@ -7,12 +7,16 @@
 #    distribution, for details about the copyright.
 #
 
-import hashes, tables, intsets, std/sha1
+import std/[hashes, tables, intsets]
 import packed_ast, bitabs, rodfiles
 import ".." / [ast, idents, lineinfos, msgs, ropes, options,
   pathutils, condsyms, packages, modulepaths]
 #import ".." / [renderer, astalgo]
-from os import removeFile, isAbsolute
+from std/os import removeFile, isAbsolute
+
+import ../../dist/checksums/src/checksums/sha1
+
+import ".." / nir / nirlineinfos
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, formatfloat]
@@ -58,6 +62,7 @@ type
     strings*: BiTable[string] # we could share these between modules.
     numbers*: BiTable[BiggestInt] # we also store floats in here so
                                   # that we can assure that every bit is kept
+    man*: LineInfoManager
 
     cfg: PackedConfig
 
@@ -73,37 +78,36 @@ type
     symMarker*: IntSet #Table[ItemId, SymId]    # ItemId.item -> SymId
     config*: ConfigRef
 
-proc toString*(tree: PackedTree; n: NodePos; m: PackedModule; nesting: int;
+proc toString*(tree: PackedTree; pos: NodePos; m: PackedModule; nesting: int;
                result: var string) =
-  let pos = n.int
   if result.len > 0 and result[^1] notin {' ', '\n'}:
     result.add ' '
 
   result.add $tree[pos].kind
-  case tree.nodes[pos].kind
-  of nkNone, nkEmpty, nkNilLit, nkType: discard
+  case tree[pos].kind
+  of nkEmpty, nkNilLit, nkType: discard
   of nkIdent, nkStrLit..nkTripleStrLit:
     result.add " "
-    result.add m.strings[LitId tree.nodes[pos].operand]
+    result.add m.strings[LitId tree[pos].operand]
   of nkSym:
     result.add " "
-    result.add m.strings[m.syms[tree.nodes[pos].operand].name]
+    result.add m.strings[m.syms[tree[pos].operand].name]
   of directIntLit:
     result.add " "
-    result.addInt tree.nodes[pos].operand
+    result.addInt tree[pos].operand
   of externSIntLit:
     result.add " "
-    result.addInt m.numbers[LitId tree.nodes[pos].operand]
+    result.addInt m.numbers[LitId tree[pos].operand]
   of externUIntLit:
     result.add " "
-    result.addInt cast[uint64](m.numbers[LitId tree.nodes[pos].operand])
+    result.addInt cast[uint64](m.numbers[LitId tree[pos].operand])
   of nkFloatLit..nkFloat128Lit:
     result.add " "
-    result.addFloat cast[BiggestFloat](m.numbers[LitId tree.nodes[pos].operand])
+    result.addFloat cast[BiggestFloat](m.numbers[LitId tree[pos].operand])
   else:
     result.add "(\n"
     for i in 1..(nesting+1)*2: result.add ' '
-    for child in sonsReadonly(tree, n):
+    for child in sonsReadonly(tree, pos):
       toString(tree, child, m, nesting + 1, result)
     result.add "\n"
     for i in 1..nesting*2: result.add ' '
@@ -282,7 +286,8 @@ proc toLitId(x: BiggestInt; m: var PackedModule): LitId =
   result = getOrIncl(m.numbers, x)
 
 proc toPackedInfo(x: TLineInfo; c: var PackedEncoder; m: var PackedModule): PackedLineInfo =
-  PackedLineInfo(line: x.line, col: x.col, file: toLitId(x.fileIndex, c, m))
+  pack(m.man, toLitId(x.fileIndex, c, m), x.line.int32, x.col.int32)
+  #PackedLineInfo(line: x.line, col: x.col, file: toLitId(x.fileIndex, c, m))
 
 proc safeItemId(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId {.inline.} =
   ## given a symbol, produce an ItemId with the correct properties
@@ -357,7 +362,7 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
       paddingAtEnd: t.paddingAtEnd)
     storeNode(p, t, n)
     p.typeInst = t.typeInst.storeType(c, m)
-    for kid in items t.sons:
+    for kid in items t:
       p.types.add kid.storeType(c, m)
     c.addMissing t.sym
     p.sym = t.sym.safeItemId(c, m)
@@ -372,7 +377,7 @@ proc toPackedLib(l: PLib; c: var PackedEncoder; m: var PackedModule): PackedLib 
   if l.isNil: return
   result.kind = l.kind
   result.generated = l.generated
-  result.isOverriden = l.isOverriden
+  result.isOverridden = l.isOverridden
   result.name = toLitId($l.name, m)
   storeNode(result, l, path)
 
@@ -390,7 +395,7 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
     assert sfForward notin s.flags
 
     var p = PackedSym(kind: s.kind, flags: s.flags, info: s.info.toPackedInfo(c, m), magic: s.magic,
-      position: s.position, offset: s.offset, options: s.options,
+      position: s.position, offset: s.offset, disamb: s.disamb, options: s.options,
       name: s.name.s.toLitId(m))
 
     storeNode(p, s, ast)
@@ -411,6 +416,7 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
     p.annex = toPackedLib(s.annex, c, m)
     when hasFFI:
       p.cname = toLitId(s.cname, m)
+    p.instantiatedFrom = s.instantiatedFrom.safeItemId(c, m)
 
     # fill the reserved slot, nothing else:
     m.syms[s.itemId.item] = p
@@ -418,53 +424,49 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
 proc addModuleRef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
   ## add a remote symbol reference to the tree
   let info = n.info.toPackedInfo(c, m)
-  ir.nodes.add PackedNode(kind: nkModuleRef, operand: 3.int32, # spans 3 nodes in total
-                          typeId: storeTypeLater(n.typ, c, m), info: info)
-  ir.nodes.add PackedNode(kind: nkInt32Lit, info: info,
-                          operand: toLitId(n.sym.itemId.module.FileIndex, c, m).int32)
-  ir.nodes.add PackedNode(kind: nkInt32Lit, info: info,
-                          operand: n.sym.itemId.item)
+  ir.addNode(kind = nkModuleRef, operand = 3.int32, # spans 3 nodes in total
+             typeId = storeTypeLater(n.typ, c, m), info = info)
+  ir.addNode(kind = nkNone, info = info,
+             operand = toLitId(n.sym.itemId.module.FileIndex, c, m).int32)
+  ir.addNode(kind = nkNone, info = info,
+             operand = n.sym.itemId.item)
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
   ## serialize a node into the tree
   if n == nil:
-    ir.nodes.add PackedNode(kind: nkNilRodNode, flags: {}, operand: 1)
+    ir.addNode(kind = nkNilRodNode, operand = 1, info = NoLineInfo)
     return
   let info = toPackedInfo(n.info, c, m)
   case n.kind
   of nkNone, nkEmpty, nkNilLit, nkType:
-    ir.nodes.add PackedNode(kind: n.kind, flags: n.flags, operand: 0,
-                            typeId: storeTypeLater(n.typ, c, m), info: info)
+    ir.addNode(kind = n.kind, flags = n.flags, operand = 0,
+               typeId = storeTypeLater(n.typ, c, m), info = info)
   of nkIdent:
-    ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
-                            operand: int32 getOrIncl(m.strings, n.ident.s),
-                            typeId: storeTypeLater(n.typ, c, m), info: info)
+    ir.addNode(kind = n.kind, flags = n.flags,
+                operand = int32 getOrIncl(m.strings, n.ident.s),
+                typeId = storeTypeLater(n.typ, c, m), info = info)
   of nkSym:
     if n.sym.itemId.module == c.thisModule:
       # it is a symbol that belongs to the module we're currently
       # packing:
       let id = n.sym.storeSymLater(c, m).item
-      ir.nodes.add PackedNode(kind: nkSym, flags: n.flags, operand: id,
-                              typeId: storeTypeLater(n.typ, c, m), info: info)
+      ir.addNode(kind = nkSym, flags = n.flags, operand = id,
+                 typeId = storeTypeLater(n.typ, c, m), info = info)
     else:
       # store it as an external module reference:
       addModuleRef(n, ir, c, m)
-  of directIntLit:
-    ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
-                            operand: int32(n.intVal),
-                            typeId: storeTypeLater(n.typ, c, m), info: info)
   of externIntLit:
-    ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
-                            operand: int32 getOrIncl(m.numbers, n.intVal),
-                            typeId: storeTypeLater(n.typ, c, m), info: info)
+    ir.addNode(kind = n.kind, flags = n.flags,
+               operand = int32 getOrIncl(m.numbers, n.intVal),
+               typeId = storeTypeLater(n.typ, c, m), info = info)
   of nkStrLit..nkTripleStrLit:
-    ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
-                            operand: int32 getOrIncl(m.strings, n.strVal),
-                            typeId: storeTypeLater(n.typ, c, m), info: info)
+    ir.addNode(kind = n.kind, flags = n.flags,
+               operand = int32 getOrIncl(m.strings, n.strVal),
+               typeId = storeTypeLater(n.typ, c, m), info = info)
   of nkFloatLit..nkFloat128Lit:
-    ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
-                            operand: int32 getOrIncl(m.numbers, cast[BiggestInt](n.floatVal)),
-                            typeId: storeTypeLater(n.typ, c, m), info: info)
+    ir.addNode(kind = n.kind, flags = n.flags,
+               operand = int32 getOrIncl(m.numbers, cast[BiggestInt](n.floatVal)),
+               typeId = storeTypeLater(n.typ, c, m), info = info)
   else:
     let patchPos = ir.prepare(n.kind, n.flags,
                               storeTypeLater(n.typ, c, m), info)
@@ -489,8 +491,8 @@ proc toPackedProcDef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var 
       # do not serialize the body of the proc, it's unnecessary since
       # n[0].sym.ast has the sem'checked variant of it which is what
       # everybody should use instead.
-      ir.nodes.add PackedNode(kind: nkEmpty, flags: {}, operand: 0,
-                              typeId: nilItemId, info: info)
+      ir.addNode(kind = nkEmpty, flags = {}, operand = 0,
+                 typeId = nilItemId, info = info)
   ir.patch patchPos
 
 proc toPackedNodeIgnoreProcDefs(n: PNode, encoder: var PackedEncoder; m: var PackedModule) =
@@ -606,9 +608,9 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection methodsSection, m.methods
   loadSeqSection pureEnumsSection, m.pureEnums
 
-  loadSeqSection toReplaySection, m.toReplay.nodes
-  loadSeqSection topLevelSection, m.topLevel.nodes
-  loadSeqSection bodiesSection, m.bodies.nodes
+  loadTabSection toReplaySection, m.toReplay
+  loadTabSection topLevelSection, m.topLevel
+  loadTabSection bodiesSection, m.bodies
   loadSeqSection symsSection, m.syms
   loadSeqSection typesSection, m.types
 
@@ -621,6 +623,9 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
 
   f.loadSection backendFlagsSection
   f.loadPrim m.backendFlags
+
+  f.loadSection sideChannelSection
+  f.load m.man
 
   close(f)
   result = f.err
@@ -669,10 +674,10 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection methodsSection, m.methods
   storeSeqSection pureEnumsSection, m.pureEnums
 
-  storeSeqSection toReplaySection, m.toReplay.nodes
-  storeSeqSection topLevelSection, m.topLevel.nodes
+  storeTabSection toReplaySection, m.toReplay
+  storeTabSection topLevelSection, m.topLevel
 
-  storeSeqSection bodiesSection, m.bodies.nodes
+  storeTabSection bodiesSection, m.bodies
   storeSeqSection symsSection, m.syms
 
   storeSeqSection typesSection, m.types
@@ -686,6 +691,9 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
 
   f.storeSection backendFlagsSection
   f.storePrim m.backendFlags
+
+  f.storeSection sideChannelSection
+  f.store m.man
 
   close(f)
   encoder.disable()
@@ -745,8 +753,9 @@ proc toFileIndexCached*(c: var PackedDecoder; g: PackedModuleGraph; thisModule: 
 proc translateLineInfo(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
                        x: PackedLineInfo): TLineInfo =
   assert g[thisModule].status in {loaded, storing, stored}
-  result = TLineInfo(line: x.line, col: x.col,
-            fileIndex: toFileIndexCached(c, g, thisModule, x.file))
+  let (fileId, line, col) = unpack(g[thisModule].fromDisk.man, x)
+  result = TLineInfo(line: line.uint16, col: col.int16,
+            fileIndex: toFileIndexCached(c, g, thisModule, fileId))
 
 proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
                 tree: PackedTree; n: NodePos): PNode =
@@ -765,9 +774,9 @@ proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
   of nkIdent:
     result.ident = getIdent(c.cache, g[thisModule].fromDisk.strings[n.litId])
   of nkSym:
-    result.sym = loadSym(c, g, thisModule, PackedItemId(module: LitId(0), item: tree.nodes[n.int].operand))
+    result.sym = loadSym(c, g, thisModule, PackedItemId(module: LitId(0), item: tree[n].operand))
   of directIntLit:
-    result.intVal = tree.nodes[n.int].operand
+    result.intVal = tree[n].operand
   of externIntLit:
     result.intVal = g[thisModule].fromDisk.numbers[n.litId]
   of nkStrLit..nkTripleStrLit:
@@ -776,10 +785,10 @@ proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
     result.floatVal = cast[BiggestFloat](g[thisModule].fromDisk.numbers[n.litId])
   of nkModuleRef:
     let (n1, n2) = sons2(tree, n)
-    assert n1.kind == nkInt32Lit
-    assert n2.kind == nkInt32Lit
+    assert n1.kind == nkNone
+    assert n2.kind == nkNone
     transitionNoneToSym(result)
-    result.sym = loadSym(c, g, thisModule, PackedItemId(module: n1.litId, item: tree.nodes[n2.int].operand))
+    result.sym = loadSym(c, g, thisModule, PackedItemId(module: n1.litId, item: tree[n2].operand))
   else:
     for n0 in sonsReadonly(tree, n):
       result.addAllowNil loadNodes(c, g, thisModule, tree, n0)
@@ -811,6 +820,7 @@ proc loadProcHeader(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: 
 
 proc loadProcBody(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
                   tree: PackedTree; n: NodePos): PNode =
+  result = nil
   var i = 0
   for n0 in sonsReadonly(tree, n):
     if i == bodyPos:
@@ -830,6 +840,7 @@ proc symHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
     options: s.options,
     position: if s.kind in {skForVar, skVar, skLet, skTemp}: 0 else: s.position,
     offset: if s.kind in routineKinds: defaultOffset else: s.offset,
+    disamb: s.disamb,
     name: getIdent(c.cache, g[si].fromDisk.strings[s.name])
   )
 
@@ -847,7 +858,7 @@ proc loadLib(c: var PackedDecoder; g: var PackedModuleGraph;
   if l.name.int == 0:
     result = nil
   else:
-    result = PLib(generated: l.generated, isOverriden: l.isOverriden,
+    result = PLib(generated: l.generated, isOverridden: l.isOverridden,
                   kind: l.kind, name: rope g[si].fromDisk.strings[l.name])
     loadAstBody(l, path)
 
@@ -872,6 +883,7 @@ proc symBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
   if externalName != "":
     result.loc.r = rope externalName
   result.loc.flags = s.locFlags
+  result.instantiatedFrom = loadSym(c, g, si, s.instantiatedFrom)
 
 proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s: PackedItemId): PSym =
   if s == nilItemId:
@@ -913,7 +925,7 @@ proc typeBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
       result.attachedOps[op] = loadSym(c, g, si, item)
   result.typeInst = loadType(c, g, si, t.typeInst)
   for son in items t.types:
-    result.sons.add loadType(c, g, si, son)
+    result.addSon loadType(c, g, si, son)
   loadAstBody(t, n)
   when false:
     for gen, id in items t.methods:
@@ -1144,6 +1156,8 @@ proc initRodIter*(it: var RodIter; config: ConfigRef, cache: IdentCache;
   if it.i < it.values.len:
     result = loadSym(it.decoder, g, int(module), it.values[it.i])
     inc it.i
+  else:
+    result = nil
 
 proc initRodIterAllSyms*(it: var RodIter; config: ConfigRef, cache: IdentCache;
                          g: var PackedModuleGraph; module: FileIndex, importHidden: bool): PSym =
@@ -1161,11 +1175,15 @@ proc initRodIterAllSyms*(it: var RodIter; config: ConfigRef, cache: IdentCache;
   if it.i < it.values.len:
     result = loadSym(it.decoder, g, int(module), it.values[it.i])
     inc it.i
+  else:
+    result = nil
 
 proc nextRodIter*(it: var RodIter; g: var PackedModuleGraph): PSym =
   if it.i < it.values.len:
     result = loadSym(it.decoder, g, it.module, it.values[it.i])
     inc it.i
+  else:
+    result = nil
 
 iterator interfaceSymbols*(config: ConfigRef, cache: IdentCache;
                            g: var PackedModuleGraph; module: FileIndex;
@@ -1198,7 +1216,7 @@ proc searchForCompilerproc*(m: LoadedModule; name: string): int32 =
 # ------------------------- .rod file viewer ---------------------------------
 
 proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
-  var m: PackedModule
+  var m: PackedModule = PackedModule()
   let err = loadRodFile(rodfile, m, config, ignoreConfig=true)
   if err != ok:
     config.quitOrRaise "Error: could not load: " & $rodfile.string & " reason: " & $err
@@ -1227,5 +1245,5 @@ proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
       echo "  <anon symbol?> local ID: ", i, " kind ", m.syms[i].kind
 
   echo "symbols: ", m.syms.len, " types: ", m.types.len,
-    " top level nodes: ", m.topLevel.nodes.len, " other nodes: ", m.bodies.nodes.len,
+    " top level nodes: ", m.topLevel.len, " other nodes: ", m.bodies.len,
     " strings: ", m.strings.len, " numbers: ", m.numbers.len

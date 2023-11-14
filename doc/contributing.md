@@ -11,7 +11,7 @@ Contributing
 Contributing happens via "Pull requests" (PR) on GitHub. Every PR needs to be
 reviewed before it can be merged and the Continuous Integration should be green.
 The title of a PR should contain a brief description. If it fixes an issue,
-in addition to the number of the issue, the title should also contain a description 
+in addition to the number of the issue, the title should also contain a description
 of the issue.
 
 The PR has to be approved by two core developers or by Araq.
@@ -137,9 +137,9 @@ You can run the tests with
 which will run a good subset of tests. Some tests may fail. If you
 only want to see the output of failing tests, go for
 
-```cmd
+  ```cmd
   ./koch tests --failing all
-```
+  ```
 
 You can also run only a single category of tests. A category is a subdirectory
 in the ``tests/`` directory. There are a couple of special categories; for a
@@ -198,7 +198,7 @@ tell you if any new tests passed/failed.
 Deprecation
 ===========
 
-Backwards compatibility is important. When renaming types, procedures, etc. the old name 
+Backwards compatibility is important. When renaming types, procedures, etc. the old name
 must be marked as deprecated using the `deprecated` pragma:
 
   ```nim
@@ -336,7 +336,7 @@ To avoid accidental highlighting follow this rule in ``*.nim`` files:
 
 .. Note:: ``*.rst`` files have ``:literal:`` as their default role.
   So for them the rule above is only applicable if the ``:nim:`` role
-  is set up manually as the default \[*]:
+  is set up manually as the default [^1]:
 
       .. role:: nim(code)
          :language: nim
@@ -345,7 +345,7 @@ To avoid accidental highlighting follow this rule in ``*.nim`` files:
   The first 2 lines are for other RST implementations,
   including Github one.
 
-  \[*] this is fulfilled when ``doc/rstcommon.rst`` is included.
+  [^1]: this is fulfilled when ``doc/rstcommon.rst`` is included.
 
 Best practices
 ==============
@@ -513,7 +513,7 @@ General commit rules
    https://github.com/nim-lang/Nim/pull/9356
 
 8. Do not mix pure formatting changes (e.g. whitespace changes, nimpretty) or
-   automated changes (e.g. nimfix) with other code changes: these should be in
+   automated changes with other code changes: these should be in
    separate commits (and the merge on GitHub should not squash these into 1).
 
 

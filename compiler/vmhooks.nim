@@ -39,6 +39,13 @@ proc setResult*(a: VmArgs; v: seq[string]) =
   for x in v: n.add newStrNode(nkStrLit, x)
   a.slots[a.ra].node = n
 
+proc setResult*(a: VmArgs; v: (BiggestInt, BiggestInt)) =
+  a.slots[a.ra].ensureKind(rkNode)
+  var tuplen = newNode(nkTupleConstr)
+  tuplen.add newIntNode(nkIntLit, v[0])
+  tuplen.add newIntNode(nkIntLit, v[1]) 
+  a.slots[a.ra].node = tuplen
+
 template getReg(a, i): untyped =
   doAssert i < a.rc-1
   a.slots[i+a.rb+1].unsafeAddr
@@ -62,7 +69,7 @@ proc getVar*(a: VmArgs; i: Natural): PNode =
   case p.kind
   of rkRegisterAddr: result = p.regAddr.node
   of rkNodeAddr: result = p.nodeAddr[]
-  else: doAssert false, $p.kind
+  else: raiseAssert $p.kind
 
 proc getNodeAddr*(a: VmArgs; i: Natural): PNode =
   let nodeAddr = getX(rkNodeAddr, nodeAddr)

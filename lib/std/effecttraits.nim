@@ -14,7 +14,7 @@
 ## One can test for the existence of this standard module
 ## via `defined(nimHasEffectTraitsModule)`.
 
-import macros
+import std/macros
 
 proc getRaisesListImpl(n: NimNode): NimNode = discard "see compiler/vmops.nim"
 proc getTagsListImpl(n: NimNode): NimNode = discard "see compiler/vmops.nim"

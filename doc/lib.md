@@ -37,15 +37,6 @@ Automatic imports
   implicitly by the compiler. Do not import it directly. It relies on compiler
   magic to work.
 
-* [threads](threads.html)
-  Basic Nim thread support. **Note:** This is part of the system module. Do not
-  import it explicitly. Enabled with `--threads:on`:option:.
-
-* [channels_builtin](channels_builtin.html)
-  Nim message passing support for threads. **Note:** This is part of the
-  system module. Do not import it explicitly. Enabled with `--threads:on`:option:.
-
-
 Core
 ----
 
@@ -55,14 +46,18 @@ Core
 * [bitops](bitops.html)
   Provides a series of low-level methods for bit manipulation.
 
+* [compilesettings](compilesettings.html)
+  Querying the compiler about diverse configuration settings from code.
+
 * [cpuinfo](cpuinfo.html)
-  This module implements procs to determine the number of CPUs / cores.
+  Procs to determine the number of CPUs / cores.
+
+* [effecttraits](effecttraits.html)
+  Access to the inferred .raises effects
+  for Nim's macro system.
 
 * [endians](endians.html)
-  This module contains helpers that deal with different byte orders.
-
-* [lenientops](lenientops.html)
-  Provides binary operators for mixed integer/float expressions for convenience.
+  Helpers that deal with different byte orders.
 
 * [locks](locks.html)
   Locks and condition variables for Nim.
@@ -80,10 +75,10 @@ Core
   Provides (unsafe) access to Nim's run-time type information.
 
 * [typetraits](typetraits.html)
-  This module defines compile-time reflection procs for working with types.
+  Compile-time reflection procs for working with types.
 
 * [volatile](volatile.html)
-  This module contains code for generating volatile loads and stores,
+  Code for generating volatile loads and stores,
   which are useful in embedded and systems programming.
 
 
@@ -91,24 +86,24 @@ Algorithms
 ----------
 
 * [algorithm](algorithm.html)
-  This module implements some common generic algorithms like sort or binary search.
+  Some common generic algorithms like sort or binary search.
 
 * [enumutils](enumutils.html)
-  This module adds functionality for the built-in `enum` type.
+  Additional functionality for the built-in `enum` type.
 
 * [sequtils](sequtils.html)
-  This module implements operations for the built-in `seq` type
+  Operations for the built-in `seq` type
   which were inspired by functional programming languages.
 
 * [setutils](setutils.html)
-  This module adds functionality for the built-in `set` type.
+  Additional functionality for the built-in `set` type.
 
 
 Collections
 -----------
 
 * [critbits](critbits.html)
-  This module implements a *crit bit tree* which is an efficient
+  A *crit bit tree* which is an efficient
   container for a sorted set of strings, or a sorted mapping of strings.
 
 * [deques](deques.html)
@@ -131,8 +126,18 @@ Collections
 * [packedsets](packedsets.html)
   Efficient implementation of a set of ordinals as a sparse bit set.
 
+* [ropes](ropes.html)
+  A *rope* data type.
+  Ropes can represent very long strings efficiently;
+  in particular, concatenation is done in O(1) instead of O(n).
+
 * [sets](sets.html)
   Nim hash set support.
+
+* [strtabs](strtabs.html)
+  The `strtabs` module implements an efficient hash table that is a mapping
+  from strings to strings. Supports a case-sensitive, case-insensitive and
+  style-insensitive modes.
 
 * [tables](tables.html)
   Nim hash table support. Contains tables, ordered tables, and count tables.
@@ -145,60 +150,55 @@ String handling
   Utilities for `cstring` handling.
 
 * [editdistance](editdistance.html)
-  This module contains an algorithm to compute the edit distance between two
+  An algorithm to compute the edit distance between two
   Unicode strings.
 
 * [encodings](encodings.html)
   Converts between different character encodings. On UNIX, this uses
   the `iconv` library, on Windows the Windows API.
 
-* [parseutils](parseutils.html)
-  This module contains helpers for parsing tokens, numbers, identifiers, etc.
+* [formatfloat](formatfloat.html)
+  Formatting floats as strings.
 
-* [pegs](pegs.html)
-  This module contains procedures and operators for handling PEGs.
+* [objectdollar](objectdollar.html)
+  A generic `$` operator to convert objects to strings.
 
 * [punycode](punycode.html)
   Implements a representation of Unicode with the limited ASCII character subset.
 
-* [ropes](ropes.html)
-  This module contains support for a *rope* data type.
-  Ropes can represent very long strings efficiently;
-  in particular, concatenation is done in O(1) instead of O(n).
-
 * [strbasics](strbasics.html)
-  This module provides some high performance string operations.
+  Some high performance string operations.
 
 * [strformat](strformat.html)
   Macro based standard string interpolation/formatting. Inspired by
-  Python's f-strings.
+  Python's f-strings.\
+  **Note:** if you need templating, consider using Nim
+  [Source Code Filters (SCF)](filters.html).
 
 * [strmisc](strmisc.html)
-  This module contains uncommon string handling operations that do not
-  fit with the commonly used operations in strutils.
+  Uncommon string handling operations that do not
+  fit with the commonly used operations in [strutils](strutils.html).
 
 * [strscans](strscans.html)
-  This module contains a `scanf` macro for convenient parsing of mini languages.
-
-* [strtabs](strtabs.html)
-  The `strtabs` module implements an efficient hash table that is a mapping
-  from strings to strings. Supports a case-sensitive, case-insensitive and
-  style-insensitive modes.
+  A `scanf` macro for convenient parsing of mini languages.
 
 * [strutils](strutils.html)
-  This module contains common string handling operations like changing
+  Common string handling operations like changing
   case of a string, splitting a string into substrings, searching for
   substrings, replacing substrings.
 
 * [unicode](unicode.html)
-  This module provides support to handle the Unicode UTF-8 encoding.
+  Support for handling the Unicode UTF-8 encoding.
 
 * [unidecode](unidecode.html)
   It provides a single proc that does Unicode to ASCII transliterations.
   Based on Python's Unidecode module.
 
+* [widestrs](widestrs.html)
+  Nim support for C/C++'s wide strings.
+
 * [wordwrap](wordwrap.html)
-  This module contains an algorithm to wordwrap a Unicode string.
+  An algorithm for word-wrapping Unicode strings.
 
 
 Time handling
@@ -214,8 +214,17 @@ Time handling
 Generic Operating System Services
 ---------------------------------
 
+* [appdirs](appdirs.html)
+  Helpers for determining special directories used by apps.
+
+* [cmdline](cmdline.html)
+  System facilities for reading command line parameters.
+
+* [dirs](dirs.html)
+  Directory handling.
+
 * [distros](distros.html)
-  This module implements the basics for OS distribution ("distro") detection
+  Basics for OS distribution ("distro") detection
   and the OS's native package manager.
   Its primary purpose is to produce output for Nimble packages,
   but it also contains the widely used **Distribution** enum
@@ -223,14 +232,19 @@ Generic Operating System Services
   See [packaging](packaging.html) for hints on distributing Nim using OS packages.
 
 * [dynlib](dynlib.html)
-  This module implements the ability to access symbols from shared libraries.
+  Accessing symbols from shared libraries.
 
-* [marshal](marshal.html)
-  Contains procs for serialization and deserialization of arbitrary Nim
-  data structures.
+* [envvars](envvars.html)
+  Environment variable handling.
+
+* [exitprocs](exitprocs.html)
+  Adding hooks to program exit.
+
+* [files](files.html)
+  File handling.
 
 * [memfiles](memfiles.html)
-  This module provides support for memory-mapped files (Posix's `mmap`)
+  Support for memory-mapped files (Posix's `mmap`)
   on the different operating systems.
 
 * [os](os.html)
@@ -238,34 +252,51 @@ Generic Operating System Services
   reading command line arguments, working with directories, running shell
   commands, etc.
 
+* [oserrors](oserrors.html)
+  OS error reporting.
+
 * [osproc](osproc.html)
   Module for process communication beyond `os.execShellCmd`.
 
+* [paths](paths.html)
+  Path handling.
+
+* [reservedmem](reservedmem.html)
+  Utilities for reserving portions of the
+  address space of a program without consuming physical memory.
+
 * [streams](streams.html)
-  This module provides a stream interface and two implementations thereof:
+  A stream interface and two implementations thereof:
   the `FileStream` and the `StringStream` which implement the stream
   interface for Nim file objects (`File`) and strings. Other modules
   may provide other implementations for this standard stream interface.
 
+* [symlinks](symlinks.html)
+  Symlink handling.
+
+* [syncio](syncio.html)
+  Various synchronized I/O operations.
+
 * [terminal](terminal.html)
-  This module contains a few procedures to control the *terminal*
-  (also called *console*). The implementation simply uses ANSI escape
-  sequences and does not depend on any other module.
+  A module to control the terminal output (also called *console*).
   
 * [tempfiles](tempfiles.html)
-  This module provides some utils to generate temporary path names and
-  create temporary files and directories.
+  Some utilities for generating temporary path names and
+  creating temporary files and directories.
 
 
 Math libraries
 --------------
 
 * [complex](complex.html)
-  This module implements complex numbers and relevant mathematical operations.
+  Complex numbers and relevant mathematical operations.
 
 * [fenv](fenv.html)
   Floating-point environment. Handling of floating-point rounding and
   exceptions (overflow, zero-divide, etc.).
+
+* [lenientops](lenientops.html)
+  Binary operators for mixed integer/float expressions for convenience.
 
 * [math](math.html)
   Mathematical operations like cosine, square root.
@@ -274,13 +305,10 @@ Math libraries
   Fast and tiny random number generator.
 
 * [rationals](rationals.html)
-  This module implements rational numbers and relevant mathematical operations.
+  Rational numbers and relevant mathematical operations.
 
 * [stats](stats.html)
   Statistical analysis.
-
-* [sums](sums.html)
-  Accurate summation functions.
 
 * [sysrand](sysrand.html)
   Cryptographically secure pseudorandom number generator.
@@ -289,80 +317,92 @@ Math libraries
 Internet Protocols and Support
 ------------------------------
 
+* [async](async.html)
+  Exports `asyncmacro` and `asyncfutures` for native backends, and `asyncjs` on the JS backend. 
+
 * [asyncdispatch](asyncdispatch.html)
-  This module implements an asynchronous dispatcher for IO operations.
+  An asynchronous dispatcher for IO operations.
 
 * [asyncfile](asyncfile.html)
-  This module implements asynchronous file reading and writing using
-  `asyncdispatch`.
+  An asynchronous file reading and writing using `asyncdispatch`.
 
-* `asyncftpclient](asyncftpclient.html)
-  [his module implements an asynchronous FTP client using the `asyncnet`
-  module.
+* [asyncftpclient](asyncftpclient.html)
+  An asynchronous FTP client using the `asyncnet` module.
 
-* `asynchttpserver](asynchttpserver.html)
-  [his module implements an asynchronous HTTP server using the `asyncnet`
-  module.
+* [asynchttpserver](asynchttpserver.html)
+  An asynchronous HTTP server using the `asyncnet` module.
+
+* [asyncmacro](asyncmacro.html)
+  `async` and `multisync` macros for `asyncdispatch`.
 
 * [asyncnet](asyncnet.html)
-  This module implements asynchronous sockets based on the `asyncdispatch`
-  module.
+  Asynchronous sockets based on the `asyncdispatch` module.
 
 * [asyncstreams](asyncstreams.html)
-  This module provides `FutureStream` - a future that acts as a queue.
+  `FutureStream` - a future that acts as a queue.
 
 * [cgi](cgi.html)
-  This module implements helpers for CGI applications.
+  Helpers for CGI applications.
 
 * [cookies](cookies.html)
-  This module contains helper procs for parsing and generating cookies.
+  Helper procs for parsing and generating cookies.
 
 * [httpclient](httpclient.html)
-  This module implements a simple HTTP client which supports both synchronous
+  A simple HTTP client with support for both synchronous
   and asynchronous retrieval of web pages.
 
 * [mimetypes](mimetypes.html)
-  This module implements a mimetypes database.
+  A mimetypes database.
 
 * [nativesockets](nativesockets.html)
-  This module implements a low-level sockets API.
+  A low-level sockets API.
 
 * [net](net.html)
-  This module implements a high-level sockets API. It replaces the
-  `sockets` module.
+  A high-level sockets API.
 
 * [selectors](selectors.html)
-  This module implements a selector API with backends specific to each OS.
-  Currently, epoll on Linux and select on other operating systems.
+  A selector API with backends specific to each OS.
+  Supported OS primitives: `epoll`, `kqueue`, `poll`, and `select` on Windows.
 
 * [smtp](smtp.html)
-  This module implements a simple SMTP client.
+  A simple SMTP client with support for both synchronous and asynchronous operation.
+
+* [socketstreams](socketstreams.html)
+  An implementation of the streams interface for sockets.
 
 * [uri](uri.html)
-  This module provides functions for working with URIs.
+  Functions for working with URIs and URLs.
 
 
 Threading
 ---------
 
+* [isolation](isolation.html)
+  The `Isolated[T]` type for
+  safe construction of isolated subgraphs that can be
+  passed efficiently to different channels and threads.
+
+* [tasks](tasks.html)
+  Basic primitives for creating parallel programs.
+
 * [threadpool](threadpool.html)
   Implements Nim's [spawn](manual_experimental.html#parallel-amp-spawn).
+
+* [typedthreads](typedthreads.html)
+  Basic Nim thread support.
 
 
 Parsers
 -------
 
 * [htmlparser](htmlparser.html)
-  This module parses an HTML document and creates its XML tree representation.
+  HTML document parser that creates a XML tree representation.
 
 * [json](json.html)
   High-performance JSON parser.
 
-* [jsonutils](jsonutils.html)
-  This module implements a hookable (de)serialization for arbitrary types.
-
 * [lexbase](lexbase.html)
-  This is a low-level module that implements an extremely efficient buffering
+  A low-level module that implements an extremely efficient buffering
   scheme for lexers and parsers. This is used by the diverse parsing modules.
 
 * [parsecfg](parsecfg.html)
@@ -376,7 +416,7 @@ Parsers
   The `parsecsv` module implements a simple high-performance CSV parser.
 
 * [parsejson](parsejson.html)
-  This module implements a JSON parser. It is used and exported by the [json](json.html) module, but can also be used in its own right.
+  A JSON parser. It is used and exported by the [json](json.html) module, but can also be used in its own right.
 
 * [parseopt](parseopt.html)
   The `parseopt` module implements a command line option parser.
@@ -384,11 +424,17 @@ Parsers
 * [parsesql](parsesql.html)
   The `parsesql` module implements a simple high-performance SQL parser.
 
+* [parseutils](parseutils.html)
+  Helpers for parsing tokens, numbers, identifiers, etc.
+
 * [parsexml](parsexml.html)
   The `parsexml` module implements a simple high performance XML/HTML parser.
   The only encoding that is supported is UTF-8. The parser has been designed
   to be somewhat error-correcting, so that even some "wild HTML" found on the
   web can be parsed with it.
+
+* [pegs](pegs.html)
+  Procedures and operators for handling PEGs.
 
 
 Docutils
@@ -400,14 +446,14 @@ Docutils
   The interface supports one language nested in another.
 
 * [packages/docutils/rst](rst.html)
-  This module implements a reStructuredText parser. A large subset
+  A reStructuredText parser. A large subset
   is implemented. Some features of the markdown wiki syntax are also supported.
 
 * [packages/docutils/rstast](rstast.html)
-  This module implements an AST for the reStructuredText parser.
+  An AST for the reStructuredText parser.
 
 * [packages/docutils/rstgen](rstgen.html)
-  This module implements a generator of HTML/Latex from reStructuredText.
+  A generator of HTML/Latex from reStructuredText.
 
 
 XML Processing
@@ -418,14 +464,17 @@ XML Processing
   contains a macro for XML/HTML code generation.
 
 * [xmlparser](xmlparser.html)
-  This module parses an XML document and creates its XML tree representation.
+  XML document parser that creates a XML tree representation.
 
 
 Generators
 ----------
 
+* [genasts](genasts.html)
+  AST generation using captured variables for macros.
+
 * [htmlgen](htmlgen.html)
-  This module implements a simple XML and HTML code
+  A simple XML and HTML code
   generator. Each commonly used HTML tag has a corresponding macro
   that generates a string with its HTML representation.
 
@@ -434,49 +483,68 @@ Hashing
 -------
 
 * [base64](base64.html)
-  This module implements a Base64 encoder and decoder.
+  A Base64 encoder and decoder.
 
 * [hashes](hashes.html)
-  This module implements efficient computations of hash values for diverse
-  Nim types.
+  Efficient computations of hash values for diverse Nim types.
 
 * [md5](md5.html)
-  This module implements the MD5 checksum algorithm.
+  The MD5 checksum algorithm.
 
 * [oids](oids.html)
   An OID is a global ID that consists of a timestamp,
   a unique counter, and a random value. This combination should suffice to
-  produce a globally distributed unique ID. This implementation was extracted
-  from the MongoDB interface and it thus binary compatible with a MongoDB OID.
+  produce a globally distributed unique ID.
 
 * [sha1](sha1.html)
-  This module implements the SHA-1 checksum algorithm.
+  The SHA-1 checksum algorithm.
+
+
+Serialization
+-------------
+
+* [jsonutils](jsonutils.html)
+  Hookable (de)serialization for arbitrary types
+  using JSON.
+
+* [marshal](marshal.html)
+  Contains procs for serialization and deserialization of arbitrary Nim
+  data structures.
 
 
 Miscellaneous
 -------------
 
+* [assertions](assertions.html)
+  Assertion handling.
+
 * [browsers](browsers.html)
-  This module implements procs for opening URLs with the user's default
+  Procs for opening URLs with the user's default
   browser.
 
 * [colors](colors.html)
-  This module implements color handling for Nim.
+  Color handling.
 
 * [coro](coro.html)
-  This module implements experimental coroutines in Nim.
+  Experimental coroutines in Nim.
+
+* [decls](decls.html)
+  Syntax sugar for some declarations.
 
 * [enumerate](enumerate.html)
-  This module implements `enumerate` syntactic sugar based on Nim's macro system.
+  `enumerate` syntactic sugar based on Nim's macro system.
+
+* [importutils](importutils.html)
+  Utilities related to import and symbol resolution.
 
 * [logging](logging.html)
-  This module implements a simple logger.
+  A simple logger.
 
 * [segfaults](segfaults.html)
   Turns access violations or segfaults into a `NilAccessDefect` exception.
 
 * [sugar](sugar.html)
-  This module implements nice syntactic sugar based on Nim's macro system.
+  Nice syntactic sugar based on Nim's macro system.
 
 * [unittest](unittest.html)
   Implements a Unit testing DSL.
@@ -485,11 +553,14 @@ Miscellaneous
   Decode variable-length integers that are compatible with SQLite.
 
 * [with](with.html)
-  This module implements the `with` macro for easy function chaining.
+  The `with` macro for easy function chaining.
+
+* [wrapnils](wrapnils.html)
+  Allows evaluating expressions safely against nil dereferences.
 
 
-Modules for the JS backend
---------------------------
+Modules for the JavaScript backend
+----------------------------------
 
 * [asyncjs](asyncjs.html)
   Types and macros for writing asynchronous procedures in JavaScript.
@@ -507,8 +578,14 @@ Modules for the JS backend
   The wrapper of core JavaScript functions. For most purposes, you should be using
   the `math`, `json`, and `times` stdlib modules instead of this module.
 
+* [jsfetch](jshttp.html)
+  Wrapper for `fetch`.
+
 * [jsffi](jsffi.html)
   Types and macros for easier interaction with JavaScript.
+
+* [jsre](jsre.html)
+  Regular Expressions for the JavaScript target.
 
 
 Impure libraries
@@ -518,19 +595,27 @@ Regular expressions
 -------------------
 
 * [re](re.html)
-  This module contains procedures and operators for handling regular
+  Procedures and operators for handling regular
   expressions. The current implementation uses PCRE.
 
+* [nre](nre.html)
+
+  Many help functions for handling regular expressions.
+  The current implementation uses PCRE.
 
 Database support
 ----------------
 
-* [db_postgres](db_postgres.html)
-  A higher level PostgreSQL database wrapper. The same interface is implemented
-  for other databases too.
-
 * [db_mysql](db_mysql.html)
   A higher level MySQL database wrapper. The same interface is implemented
+  for other databases too.
+
+* [db_odbc](db_odbc.html)
+  A higher level ODBC database wrapper. The same interface is implemented
+  for other databases too.
+
+* [db_postgres](db_postgres.html)
+  A higher level PostgreSQL database wrapper. The same interface is implemented
   for other databases too.
 
 * [db_sqlite](db_sqlite.html)
@@ -542,7 +627,7 @@ Generic Operating System Services
 ---------------------------------
 
 * [rdstdin](rdstdin.html)
-  This module contains code for reading from stdin.
+  Code for reading user input from stdin.
 
 
 Wrappers
@@ -556,7 +641,7 @@ Windows-specific
 ----------------
 
 * [winlean](winlean.html)
-  Contains a wrapper for a small subset of the Win32 API.
+  Wrapper for a small subset of the Win32 API.
 * [registry](registry.html)
   Windows registry support.
 
@@ -565,7 +650,7 @@ UNIX specific
 -------------
 
 * [posix](posix.html)
-  Contains a wrapper for the POSIX standard.
+  Wrapper for the POSIX standard.
 * [posix_utils](posix_utils.html)
   Contains helpers for the POSIX standard or specialized for Linux and BSDs.
 
@@ -580,14 +665,14 @@ Regular expressions
 Database support
 ----------------
 
-* [postgres](postgres.html)
-  Contains a wrapper for the PostgreSQL API.
 * [mysql](mysql.html)
-  Contains a wrapper for the mySQL API.
-* [sqlite3](sqlite3.html)
-  Contains a wrapper for the SQLite 3 API.
+  Wrapper for the mySQL API.
 * [odbcsql](odbcsql.html)
   interface to the ODBC driver.
+* [postgres](postgres.html)
+  Wrapper for the PostgreSQL API.
+* [sqlite3](sqlite3.html)
+  Wrapper for the SQLite 3 API.
 
 
 Network Programming and Internet Protocols

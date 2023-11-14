@@ -47,7 +47,7 @@ proc isTestFile*(file: string): bool =
 
 # --------------------- DLL generation tests ----------------------------------
 
-proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
+proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc = false) =
   const rpath = when defined(macosx):
       " --passL:-rpath --passL:@loader_path"
     else:
@@ -59,6 +59,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   var test2 = makeTest("tests/dll/server.nim", options & " --threads:on" & rpath, cat)
   test2.spec.action = actionCompile
   testSpec c, test2
+
   var test3 = makeTest("lib/nimhcr.nim", options & " --threads:off --outdir:tests/dll" & rpath, cat)
   test3.spec.action = actionCompile
   testSpec c, test3
@@ -81,6 +82,13 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
 
   if "boehm" notin options:
+    # hcr tests
+    
+    var basicHcrTest = makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    # test segfaults for now but compiles:
+    if isOrc: basicHcrTest.spec.action = actionCompile
+    testSpec r, basicHcrTest
+
     # force build required - see the comments in the .nim file for more details
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",
                                    options & " --threads:off --forceBuild --hotCodeReloading:on" & rpath, cat)
@@ -96,6 +104,8 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 
   runBasicDLLTest c, r, cat, options & " --mm:refc"
   runBasicDLLTest c, r, cat, options & " -d:release --mm:refc"
+  runBasicDLLTest c, r, cat, options, isOrc = true
+  runBasicDLLTest c, r, cat, options & " -d:release", isOrc = true
   when not defined(windows):
     # still cannot find a recent Windows version of boehm.dll:
     runBasicDLLTest c, r, cat, options & " --gc:boehm"
@@ -208,9 +218,9 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
   for testfile in ["exception/texceptions", "exception/texcpt1",
                    "exception/texcsub", "exception/tfinally",
                    "exception/tfinally2", "exception/tfinally3",
-                   "actiontable/tactiontable", "method/tmultimjs",
+                   "collections/tactiontable", "method/tmultimjs",
                    "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
-                   "varres/tvartup", "misc/tints", "misc/tunsignedinc",
+                   "varres/tvartup", "int/tints", "int/tunsignedinc",
                    "async/tjsandnativeasync"]:
     test "tests/" & testfile & ".nim"
 
@@ -680,7 +690,7 @@ proc processCategory(r: var TResults, cat: Category,
       else:
         jsTests(r, cat, options)
     of "dll":
-      dllTests(r, cat, options)
+      dllTests(r, cat, options & " -d:nimDebugDlOpen")
     of "gc":
       gcTests(r, cat, options)
     of "debugger":
@@ -718,6 +728,8 @@ proc processCategory(r: var TResults, cat: Category,
     case cat2
     of "megatest":
       runJoinedTest(r, cat, testsDir, options)
+      if isNimRepoTests():
+        runJoinedTest(r, cat, testsDir, options & " --mm:refc")
     else:
       var testsRun = 0
       var files: seq[string]

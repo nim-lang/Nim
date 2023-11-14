@@ -9,8 +9,8 @@
 
 ## Template evaluation engine. Now hygienic.
 
-import
-  strutils, options, ast, astalgo, msgs, renderer, lineinfos, idents
+import options, ast, astalgo, msgs, renderer, lineinfos, idents, trees
+import std/strutils
 
 type
   TemplCtx = object
@@ -49,7 +49,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
         internalAssert c.config, sfGenSym in s.flags or s.kind == skType
         var x = PSym(idTableGet(c.mapping, s))
         if x == nil:
-          x = copySym(s, nextSymId(c.idgen))
+          x = copySym(s, c.idgen)
           # sem'check needs to set the owner properly later, see bug #9476
           x.owner = nil # c.genSymOwner
           #if x.kind == skParam and x.owner.kind == skModule:
@@ -187,7 +187,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   ctx.genSymOwner = genSymOwner
   ctx.config = conf
   ctx.ic = ic
-  initIdTable(ctx.mapping)
+  ctx.mapping = initIdTable()
   ctx.instID = instID[]
   ctx.idgen = idgen
 

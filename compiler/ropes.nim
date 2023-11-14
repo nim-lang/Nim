@@ -21,8 +21,8 @@ type
                        # though it is not necessary)
   Rope* = string
 
-proc newRopeAppender*(): string {.inline.} =
-  result = newString(0)
+proc newRopeAppender*(cap = 80): string {.inline.} =
+  result = newStringOfCap(cap)
 
 proc freeze*(r: Rope) {.inline.} = discard
 
@@ -43,7 +43,7 @@ proc writeRope*(f: File, r: Rope) =
   write(f, r)
 
 proc writeRope*(head: Rope, filename: AbsoluteFile): bool =
-  var f: File
+  var f: File = default(File)
   if open(f, filename.string, fmWrite):
     writeRope(f, head)
     close(f)
@@ -76,7 +76,7 @@ proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
           if i >= frmt.len or frmt[i] notin {'0'..'9'}: break
         num = j
         if j > high(args) + 1:
-          doAssert false, "invalid format string: " & frmt
+          raiseAssert "invalid format string: " & frmt
         else:
           result.add(args[j-1])
       of '{':
@@ -88,10 +88,10 @@ proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
         num = j
         if frmt[i] == '}': inc(i)
         else:
-          doAssert false, "invalid format string: " & frmt
+          raiseAssert "invalid format string: " & frmt
 
         if j > high(args) + 1:
-          doAssert false, "invalid format string: " & frmt
+          raiseAssert "invalid format string: " & frmt
         else:
           result.add(args[j-1])
       of 'n':
@@ -101,13 +101,10 @@ proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
         result.add("\n")
         inc(i)
       else:
-        doAssert false, "invalid format string: " & frmt
-    var start = i
-    while i < frmt.len:
-      if frmt[i] != '$': inc(i)
-      else: break
-    if i - 1 >= start:
-      result.add(substr(frmt, start, i - 1))
+        raiseAssert "invalid format string: " & frmt
+    else:
+      result.add(frmt[i])
+      inc(i)
 
 proc `%`*(frmt: static[FormatStr], args: openArray[Rope]): Rope =
   runtimeFormat(frmt, args)
@@ -122,7 +119,7 @@ const
 proc equalsFile*(s: Rope, f: File): bool =
   ## returns true if the contents of the file `f` equal `r`.
   var
-    buf: array[bufSize, char]
+    buf: array[bufSize, char] = default(array[bufSize, char])
     bpos = buf.len
     blen = buf.len
     btotal = 0
@@ -154,7 +151,7 @@ proc equalsFile*(s: Rope, f: File): bool =
 proc equalsFile*(r: Rope, filename: AbsoluteFile): bool =
   ## returns true if the contents of the file `f` equal `r`. If `f` does not
   ## exist, false is returned.
-  var f: File
+  var f: File = default(File)
   result = open(f, filename.string)
   if result:
     result = equalsFile(r, f)

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'devel'
+      - 'version-2-0'
       - 'version-1-6'
       - 'version-1-2'
 
@@ -27,14 +28,14 @@ jobs:
       NIM_TESTAMENT_BATCH: ${{ matrix.batch }}
     steps:
       - name: 'Checkout'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
-      - name: 'Install node.js 16.x'
-        uses: actions/setup-node@v2
+      - name: 'Install node.js 20.x'
+        uses: actions/setup-node@v4
         with:
-          node-version: '16.x'
+          node-version: '20.x'
 
       - name: 'Install dependencies (Linux amd64)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
@@ -46,8 +47,7 @@ jobs:
               valgrind libc6-dbg libblas-dev xorg-dev
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
-        run: |
-          brew install boehmgc make sfml gtk+3
+        run: brew install boehmgc make sfml gtk+3
       - name: 'Install dependencies (Windows)'
         if: runner.os == 'Windows'
         shell: bash
@@ -71,5 +71,4 @@ jobs:
 
       - name: 'koch, Run CI'
         shell: bash
-        run: |
-          . ci/funs.sh && nimInternalBuildKochAndRunCI
+        run: . ci/funs.sh && nimInternalBuildKochAndRunCI

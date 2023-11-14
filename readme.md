@@ -35,9 +35,11 @@ the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](
 The compiler currently officially supports the following platform and
 architecture combinations:
 
-  * Windows (Windows XP or greater) - x86 and x86_64
-  * Linux (most, if not all, distributions) - x86, x86_64, ppc64 and armv6l
-  * Mac OS X (10.04 or greater) - x86, x86_64, ppc64 and Apple Silicon (based on the ARM64 architecture)
+| Operating System               | Architectures Supported                          |
+|--------------------------------|----------------------------------------|
+| Windows (Windows XP or greater) | x86 and x86_64                             |
+| Linux (most distributions)     | x86, x86_64, ppc64, and armv6l             |
+| Mac OS X (10.04 or greater)    | x86, x86_64, ppc64, and Apple Silicon (ARM64) |
 
 More platforms are supported, however, they are not tested regularly and they
 may not be as stable as the above-listed platforms.
@@ -47,7 +49,7 @@ Compiling the Nim compiler is quite straightforward if you follow these steps:
 First, the C source of an older version of the Nim compiler is needed to
 bootstrap the latest version because the Nim compiler itself is written in the
 Nim programming language. Those C sources are available within the
-[``nim-lang/csources_v1``][csources-v1-repo] repository.
+[``nim-lang/csources_v2``][csources-v2-repo] repository.
 
 Next, to build from source you will need:
 
@@ -130,8 +132,7 @@ standard library are welcomed and appreciated. Before you start contributing,
 you should familiarize yourself with the following repository structure:
 
 * ``bin/``, ``build/`` - these directories are empty, but are used when Nim is built.
-* ``compiler/`` - the compiler source code. Also includes nimfix, and plugins within
-  ``compiler/nimfix`` and ``compiler/plugins`` respectively.
+* ``compiler/`` - the compiler source code. Also includes plugins within ``compiler/plugins``.
 * ``nimsuggest`` - the nimsuggest tool that previously lived in the [``nim-lang/nimsuggest``][nimsuggest-repo] repository.
 * ``config/`` - the configuration for the compiler and documentation generator.
 * ``doc/`` - the documentation files in reStructuredText format.
@@ -203,7 +204,7 @@ Nim. You are explicitly permitted to develop commercial applications using Nim.
 
 Please read the [copying.txt](copying.txt) file for more details.
 
-Copyright © 2006-2022 Andreas Rumpf, all rights reserved.
+Copyright © 2006-2023 Andreas Rumpf, all rights reserved.
 
 [nim-site]: https://nim-lang.org
 [nim-forum]: https://forum.nim-lang.org
@@ -223,7 +224,7 @@ Copyright © 2006-2022 Andreas Rumpf, all rights reserved.
 [nimble-repo]: https://github.com/nim-lang/nimble
 [nimsuggest-repo]: https://github.com/nim-lang/nimsuggest
 [csources-repo-deprecated]: https://github.com/nim-lang/csources
-[csources-v1-repo]: https://github.com/nim-lang/csources_v1
+[csources-v2-repo]: https://github.com/nim-lang/csources_v2
 [badge-nim-irc]: https://img.shields.io/badge/chat-on_irc-blue.svg?style=flat-square
 [badge-nim-discord]: https://img.shields.io/discord/371759389889003530?color=blue&label=discord&logo=discord&logoColor=gold&style=flat-square
 [badge-nim-gitter]: https://img.shields.io/badge/chat-on_gitter-blue.svg?style=flat-square

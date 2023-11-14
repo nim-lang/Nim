@@ -12,7 +12,7 @@
 ##
 ## Unstable API.
 
-import strutils, lexbase
+import std/[strutils, lexbase]
 import std/private/decode_helpers
 
 when defined(nimPreviewSlimSystem):
@@ -60,7 +60,7 @@ const
 
   reservedKeywords = @[
     # statements
-    "select", "from", "where", "group", "limit", "having",
+    "select", "from", "where", "group", "limit", "offset", "having",
     # functions
     "count",
   ]
@@ -509,6 +509,7 @@ type
     nkFromItemPair,
     nkGroup,
     nkLimit,
+    nkOffset,
     nkHaving,
     nkOrder,
     nkJoin,
@@ -1126,6 +1127,11 @@ proc parseSelect(p: var SqlParser): SqlNode =
     var l = newNode(nkLimit)
     l.add(parseExpr(p))
     result.add(l)
+  if isKeyw(p, "offset"):
+    getTok(p)
+    var o = newNode(nkOffset)
+    o.add(parseExpr(p))
+    result.add(o)
 
 proc parseStmt(p: var SqlParser; parent: SqlNode) =
   if isKeyw(p, "create"):
@@ -1388,6 +1394,9 @@ proc ra(n: SqlNode, s: var SqlWriter) =
   of nkLimit:
     s.addKeyw("limit")
     s.addMulti(n)
+  of nkOffset:
+    s.addKeyw("offset")
+    s.addMulti(n)
   of nkHaving:
     s.addKeyw("having")
     s.addMulti(n)
@@ -1482,7 +1491,7 @@ proc treeRepr*(s: SqlNode): string =
   result = newStringOfCap(128)
   treeReprAux(s, 0, result)
 
-import streams
+import std/streams
 
 proc open(L: var SqlLexer, input: Stream, filename: string) =
   lexbase.open(L, input)

@@ -45,9 +45,7 @@ runnableExamples("-r:off"):
 ## Configuration file example
 ]##
 
-##
-## .. code-block:: nim
-##
+##     ```none
 ##     charset = "utf-8"
 ##     [Package]
 ##     name = "hello"
@@ -55,6 +53,7 @@ runnableExamples("-r:off"):
 ##     [Author]
 ##     name = "nim-lang"
 ##     website = "nim-lang.org"
+##     ```
 
 ##[
 ## Creating a configuration file
@@ -171,7 +170,7 @@ runnableExamples:
   assert dict.getSectionValue(section4, "does_that_mean_anything_special") == "False"
   assert dict.getSectionValue(section4, "purpose") == "formatting for readability"
 
-import strutils, lexbase, streams, tables
+import std/[strutils, lexbase, streams, tables]
 import std/private/decode_helpers
 import std/private/since
 

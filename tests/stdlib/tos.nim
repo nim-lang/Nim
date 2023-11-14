@@ -22,6 +22,7 @@ __really_obscure_dir_name/test
 Raises
 Raises
 '''
+  matrix: "--mm:refc; --mm:orc"
   joinable: false
 """
 # test os path creation, iteration, and deletion
@@ -344,6 +345,8 @@ block walkDirRec:
 
   removeDir("walkdir_test")
 
+import std/sequtils
+
 block: # walkDir
   doAssertRaises(OSError):
     for a in walkDir("nonexistent", checkDir = true): discard
@@ -356,6 +359,21 @@ block: # walkDir
       createSymlink(".", "walkdir_test/c")
       for k, p in walkDir("walkdir_test", true):
         doAssert k == pcLinkToDir
+      removeDir("walkdir_test")
+
+  when defined(posix):
+    block walkDirSpecial:
+      createDir("walkdir_test")
+      doAssert execShellCmd("mkfifo walkdir_test/fifo") == 0
+      createSymlink("fifo", "walkdir_test/fifo_link")
+      let withSpecialFiles = toSeq(walkDir("walkdir_test", relative = true))
+      doAssert (withSpecialFiles.len == 2 and
+                (pcFile, "fifo") in withSpecialFiles and
+                (pcLinkToFile, "fifo_link") in withSpecialFiles)
+      # now Unix special files are excluded from walkdir output:
+      let skipSpecialFiles = toSeq(walkDir("walkdir_test", relative = true,
+                                           skipSpecial = true))
+      doAssert skipSpecialFiles.len == 0
       removeDir("walkdir_test")
 
 block normalizedPath:
@@ -708,8 +726,6 @@ block: # isAdmin
   # In Azure on POSIX tests run as a normal user
   if isAzure and defined(posix): doAssert not isAdmin()
 
-import std/sequtils
-
 when doslikeFileSystem:
   import std/private/ntpath
 
@@ -814,3 +830,35 @@ block:  # isValidFilename
   doAssert isValidFilename("ux.bat")
   doAssert isValidFilename("nim.nim")
   doAssert isValidFilename("foo.log")
+
+block: # searchExtPos
+  doAssert "foo.nim".searchExtPos == 3
+  doAssert "/foo.nim".searchExtPos == 4
+  doAssert "".searchExtPos == -1
+  doAssert "/".searchExtPos == -1
+  doAssert "a.b/foo".searchExtPos == -1
+  doAssert ".".searchExtPos == -1
+  doAssert "foo.".searchExtPos == 3
+  doAssert "foo..".searchExtPos == 4
+  doAssert "..".searchExtPos == -1
+  doAssert "...".searchExtPos == -1
+  doAssert "./".searchExtPos == -1
+  doAssert "../".searchExtPos == -1
+  doAssert "/.".searchExtPos == -1
+  doAssert "/..".searchExtPos == -1
+  doAssert ".b".searchExtPos == -1
+  doAssert "..b".searchExtPos == -1
+  doAssert "/.b".searchExtPos == -1
+  doAssert "a/.b".searchExtPos == -1
+  doAssert ".a.b".searchExtPos == 2
+  doAssert "a/.b.c".searchExtPos == 4
+  doAssert "a/..b".searchExtPos == -1
+  doAssert "a/b..c".searchExtPos == 4
+
+  when doslikeFileSystem:
+    doAssert "c:a.b".searchExtPos == 3
+    doAssert "c:.a".searchExtPos == -1
+    doAssert r"c:\.a".searchExtPos == -1
+    doAssert "c:..a".searchExtPos == -1
+    doAssert r"c:\..a".searchExtPos == -1
+    doAssert "c:.a.b".searchExtPos == 4

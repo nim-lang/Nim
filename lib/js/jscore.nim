@@ -13,7 +13,7 @@
 ## specific requirements and solely targets JavaScript, you should be using
 ## the relevant functions in the `math`, `json`, and `times` stdlib
 ## modules instead.
-import std/private/since
+import std/private/[since, jsutils]
 
 when not defined(js):
   {.error: "This module only works on the JavaScript platform".}
@@ -74,8 +74,15 @@ proc parse*(d: DateLib, s: cstring): int {.importcpp.}
 proc newDate*(): DateTime {.
   importcpp: "new Date()".}
 
-proc newDate*(date: int|int64|string): DateTime {.
+proc newDate*(date: int|string): DateTime {.
   importcpp: "new Date(#)".}
+
+whenJsNoBigInt64:
+  proc newDate*(date: int64): DateTime {.
+    importcpp: "new Date(#)".}
+do:
+  proc newDate*(date: int64): DateTime {.
+    importcpp: "new Date(Number(#))".}
 
 proc newDate*(year, month, day, hours, minutes,
              seconds, milliseconds: int): DateTime {.
@@ -88,19 +95,26 @@ proc getMilliseconds*(d: DateTime): int {.importcpp.}
 proc getMinutes*(d: DateTime): int {.importcpp.}
 proc getMonth*(d: DateTime): int {.importcpp.}
 proc getSeconds*(d: DateTime): int {.importcpp.}
-proc getYear*(d: DateTime): int {.importcpp.}
 proc getTime*(d: DateTime): int {.importcpp.}
-proc toString*(d: DateTime): cstring {.importcpp.}
+proc getTimezoneOffset*(d: DateTime): int {.importcpp.}
 proc getUTCDate*(d: DateTime): int {.importcpp.}
+proc getUTCDay*(d: DateTime): int {.importcpp.}
 proc getUTCFullYear*(d: DateTime): int {.importcpp.}
 proc getUTCHours*(d: DateTime): int {.importcpp.}
 proc getUTCMilliseconds*(d: DateTime): int {.importcpp.}
 proc getUTCMinutes*(d: DateTime): int {.importcpp.}
 proc getUTCMonth*(d: DateTime): int {.importcpp.}
 proc getUTCSeconds*(d: DateTime): int {.importcpp.}
-proc getUTCDay*(d: DateTime): int {.importcpp.}
-proc getTimezoneOffset*(d: DateTime): int {.importcpp.}
+proc getYear*(d: DateTime): int {.importcpp.}
+
 proc setFullYear*(d: DateTime, year: int) {.importcpp.}
+
+func toDateString*(d: DateTime): cstring {.importcpp.}
+func toISOString*(d: DateTime): cstring {.importcpp.}
+func toJSON*(d: DateTime): cstring {.importcpp.}
+proc toString*(d: DateTime): cstring {.importcpp.}
+func toTimeString*(d: DateTime): cstring {.importcpp.}
+func toUTCString*(d: DateTime): cstring {.importcpp.}
 
 #JSON library
 proc stringify*(l: JsonLib, s: JsRoot): cstring {.importcpp.}

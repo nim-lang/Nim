@@ -27,7 +27,9 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 import std/[setutils, os, strutils, parseutils, parseopt, sequtils, strtabs]
 import
   msgs, options, nversion, condsyms, extccomp, platform,
-  wordrecg, nimblecmd, lineinfos, pathutils, pathnorm
+  wordrecg, nimblecmd, lineinfos, pathutils
+
+import std/pathnorm
 
 from ast import setUseIc, eqTypeFlags, tfGcSafe, tfNoSideEffect
 
@@ -184,7 +186,7 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string; conf: ConfigRef) =
   var id = ""  # arg = key or [key] or key:val or [key]:val;  with val=on|off
   var i = 0
-  var notes: set[TMsgKind]
+  var notes: set[TMsgKind] = {}
   var isBracket = false
   if i < arg.len and arg[i] == '[':
     isBracket = true
@@ -205,7 +207,11 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     # unfortunately, hintUser and warningUser clash, otherwise implementation would simplify a bit
     let x = findStr(noteMin, noteMax, id, errUnknown)
     if x != errUnknown: notes = {TNoteKind(x)}
-    else: localError(conf, info, "unknown $#: $#" % [name, id])
+    else:
+      if isSomeHint:
+        message(conf, info, hintUnknownHint, id)
+      else:
+        localError(conf, info, "unknown $#: $#" % [name, id])
   case id.normalize
   of "all": # other note groups would be easy to support via additional cases
     notes = if isSomeHint: {hintMin..hintMax} else: {warnMin..warnMax}
@@ -238,9 +244,9 @@ proc processCompile(conf: ConfigRef; filename: string) =
   extccomp.addExternalFileToCompile(conf, found)
 
 const
-  errNoneBoehmRefcExpectedButXFound = "'arc', 'orc', 'markAndSweep', 'boehm', 'go', 'none', 'regions', or 'refc' expected, but '$1' found"
+  errNoneBoehmRefcExpectedButXFound = "'arc', 'orc', 'atomicArc', 'markAndSweep', 'boehm', 'go', 'none', 'regions', or 'refc' expected, but '$1' found"
   errNoneSpeedOrSizeExpectedButXFound = "'none', 'speed' or 'size' expected, but '$1' found"
-  errGuiConsoleOrLibExpectedButXFound = "'gui', 'console' or 'lib' expected, but '$1' found"
+  errGuiConsoleOrLibExpectedButXFound = "'gui', 'console', 'lib' or 'staticlib' expected, but '$1' found"
   errInvalidExceptionSystem = "'goto', 'setjmp', 'cpp' or 'quirky' expected, but '$1' found"
 
 template warningOptionNoop(switch: string) =
@@ -262,13 +268,18 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "go": result = conf.selectedGC == gcGo
     of "none": result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
-    else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
+    of "atomicarc": result = conf.selectedGC == gcAtomicArc
+    else:
+      result = false
+      localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "opt":
     case arg.normalize
     of "speed": result = contains(conf.options, optOptimizeSpeed)
     of "size": result = contains(conf.options, optOptimizeSize)
     of "none": result = conf.options * {optOptimizeSpeed, optOptimizeSize} == {}
-    else: localError(conf, info, errNoneSpeedOrSizeExpectedButXFound % arg)
+    else:
+      result = false
+      localError(conf, info, errNoneSpeedOrSizeExpectedButXFound % arg)
   of "verbosity": result = $conf.verbosity == arg
   of "app":
     case arg.normalize
@@ -278,7 +289,9 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
                       not contains(conf.globalOptions, optGenGuiApp)
     of "staticlib": result = contains(conf.globalOptions, optGenStaticLib) and
                       not contains(conf.globalOptions, optGenGuiApp)
-    else: localError(conf, info, errGuiConsoleOrLibExpectedButXFound % arg)
+    else:
+      result = false
+      localError(conf, info, errGuiConsoleOrLibExpectedButXFound % arg)
   of "dynliboverride":
     result = isDynlibOverride(conf, arg)
   of "exceptions":
@@ -287,8 +300,12 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "setjmp": result = conf.exc == excSetjmp
     of "quirky": result = conf.exc == excQuirky
     of "goto": result = conf.exc == excGoto
-    else: localError(conf, info, errInvalidExceptionSystem % arg)
-  else: invalidCmdLineOption(conf, passCmd1, switch, info)
+    else:
+      result = false
+      localError(conf, info, errInvalidExceptionSystem % arg)
+  else:
+    result = false
+    invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool =
   case switch.normalize
@@ -326,6 +343,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "run", "r": result = contains(conf.globalOptions, optRun)
   of "symbolfiles": result = conf.symbolFiles != disabledSf
   of "genscript": result = contains(conf.globalOptions, optGenScript)
+  of "gencdeps": result = contains(conf.globalOptions, optGenCDeps)
   of "threads": result = contains(conf.globalOptions, optThreads)
   of "tlsemulation": result = contains(conf.globalOptions, optTlsEmulation)
   of "implicitstatic": result = contains(conf.options, optImplicitStatic)
@@ -333,9 +351,14 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
     if switch.normalize == "patterns": deprecatedAlias(switch, "trmacros")
     result = contains(conf.options, optTrMacros)
   of "excessivestacktrace": result = contains(conf.globalOptions, optExcessiveStackTrace)
-  of "nilseqs", "nilchecks", "taintmode": warningOptionNoop(switch)
+  of "nilseqs", "nilchecks", "taintmode":
+    warningOptionNoop(switch)
+    result = false
   of "panics": result = contains(conf.globalOptions, optPanics)
-  else: invalidCmdLineOption(conf, passCmd1, switch, info)
+  of "jsbigint64": result = contains(conf.globalOptions, optJsBigInt64)
+  else:
+    result = false
+    invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
                  notRelativeToProj = false): AbsoluteDir =
@@ -377,7 +400,8 @@ proc makeAbsolute(s: string): AbsoluteFile =
 proc setTrackingInfo(conf: ConfigRef; dirty, file, line, column: string,
                      info: TLineInfo) =
   ## set tracking info, common code for track, trackDirty, & ideTrack
-  var ln, col: int
+  var ln: int = 0
+  var col: int = 0
   if parseUtils.parseInt(line, ln) <= 0:
     localError(conf, info, errInvalidNumber % line)
   if parseUtils.parseInt(column, col) <= 0:
@@ -438,6 +462,7 @@ proc handleCmdInput*(conf: ConfigRef) =
 proc parseCommand*(command: string): Command =
   case command.normalize
   of "c", "cc", "compile", "compiletoc": cmdCompileToC
+  of "nir": cmdCompileToNir
   of "cpp", "compiletocpp": cmdCompileToCpp
   of "objc", "compiletooc": cmdCompileToOC
   of "js", "compiletojs": cmdCompileToJS
@@ -474,6 +499,7 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
   of cmdCompileToCpp: conf.backend = backendCpp
   of cmdCompileToOC: conf.backend = backendObjc
   of cmdCompileToJS: conf.backend = backendJs
+  of cmdCompileToNir: conf.backend = backendNir
   else: discard
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
@@ -514,14 +540,7 @@ proc initOrcDefines*(conf: ConfigRef) =
   if conf.exc == excNone and conf.backend != backendCpp:
     conf.exc = excGoto
 
-proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef, isOrc: bool) =
-  if isOrc:
-    conf.selectedGC = gcOrc
-    defineSymbol(conf.symbols, "gcorc")
-  else:
-    conf.selectedGC = gcArc
-    defineSymbol(conf.symbols, "gcarc")
-
+proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef) =
   defineSymbol(conf.symbols, "gcdestructors")
   incl conf.globalOptions, optSeqDestructors
   incl conf.globalOptions, optTinyRtti
@@ -531,10 +550,11 @@ proc registerArcOrc(pass: TCmdLinePass, conf: ConfigRef, isOrc: bool) =
   if conf.exc == excNone and conf.backend != backendCpp:
     conf.exc = excGoto
 
-proc unregisterArcOrc(conf: ConfigRef) =
+proc unregisterArcOrc*(conf: ConfigRef) =
   undefSymbol(conf.symbols, "gcdestructors")
   undefSymbol(conf.symbols, "gcarc")
   undefSymbol(conf.symbols, "gcorc")
+  undefSymbol(conf.symbols, "gcatomicarc")
   undefSymbol(conf.symbols, "nimSeqsV2")
   undefSymbol(conf.symbols, "nimV2")
   excl conf.globalOptions, optSeqDestructors
@@ -560,9 +580,17 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       conf.selectedGC = gcMarkAndSweep
       defineSymbol(conf.symbols, "gcmarkandsweep")
     of "destructors", "arc":
-      registerArcOrc(pass, conf, false)
+      conf.selectedGC = gcArc
+      defineSymbol(conf.symbols, "gcarc")
+      registerArcOrc(pass, conf)
     of "orc":
-      registerArcOrc(pass, conf, true)
+      conf.selectedGC = gcOrc
+      defineSymbol(conf.symbols, "gcorc")
+      registerArcOrc(pass, conf)
+    of "atomicarc":
+      conf.selectedGC = gcAtomicArc
+      defineSymbol(conf.symbols, "gcatomicarc")
+      registerArcOrc(pass, conf)
     of "hooks":
       conf.selectedGC = gcHooks
       defineSymbol(conf.symbols, "gchooks")
@@ -584,10 +612,17 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       defineSymbol(conf.symbols, "gcregions")
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
 
+proc pathRelativeToConfig(arg: string, pass: TCmdLinePass, conf: ConfigRef): string =
+  if pass == passPP and not isAbsolute(arg):
+    assert isAbsolute(conf.currentConfigDir), "something is wrong with currentConfigDir"
+    result = conf.currentConfigDir / arg
+  else:
+    result = arg
+
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
-  var
-    key, val: string
+  var key = ""
+  var val = ""
   case switch.normalize
   of "eval":
     expectArg(conf, switch, arg, pass, info)
@@ -602,17 +637,17 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     for path in nimbleSubs(conf, arg):
       addPath(conf, if pass == passPP: processCfgPath(conf, path, info)
                     else: processPath(conf, path, info), info)
-  of "nimblepath", "babelpath":
-    if switch.normalize == "babelpath": deprecatedAlias(switch, "nimblepath")
+  of "nimblepath":
     if pass in {passCmd2, passPP} and optNoNimblePath notin conf.globalOptions:
       expectArg(conf, switch, arg, pass, info)
       var path = processPath(conf, arg, info, notRelativeToProj=true)
       let nimbleDir = AbsoluteDir getEnv("NIMBLE_DIR")
       if not nimbleDir.isEmpty and pass == passPP:
+        path = nimbleDir / RelativeDir"pkgs2"
+        nimblePath(conf, path, info)
         path = nimbleDir / RelativeDir"pkgs"
       nimblePath(conf, path, info)
-  of "nonimblepath", "nobabelpath":
-    if switch.normalize == "nobabelpath": deprecatedAlias(switch, "nonimblepath")
+  of "nonimblepath":
     expectNoArg(conf, switch, arg, pass, info)
     disableNimblePath(conf)
   of "clearnimblepath":
@@ -629,7 +664,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     # refs bug #18674, otherwise `--os:windows` messes up with `--nimcache` set
     # in config nims files, e.g. via: `import os; switch("nimcache", "/tmp/somedir")`
     if conf.target.targetOS == osWindows and DirSep == '/': arg = arg.replace('\\', '/')
-    conf.nimcacheDir = processPath(conf, arg, info, notRelativeToProj=true)
+    conf.nimcacheDir = processPath(conf, pathRelativeToConfig(arg, pass, conf), info, notRelativeToProj=true)
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
     let f = splitFile(processPath(conf, arg, info, notRelativeToProj=true).string)
@@ -648,6 +683,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "backend", "b":
     let backend = parseEnum(arg.normalize, TBackend.default)
     if backend == TBackend.default: localError(conf, info, "invalid backend: '$1'" % arg)
+    if backend == backendJs: # bug #21209
+      conf.globalOptions.excl {optThreadAnalysis, optThreads}
+      if optRun in conf.globalOptions:
+        # for now, -r uses nodejs, so define nodejs
+        defineSymbol(conf.symbols, "nodejs")
     conf.backend = backend
   of "doccmd": conf.docCmd = arg
   of "define", "d":
@@ -758,7 +798,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if conf.backend == backendJs or conf.cmd == cmdNimscript: discard
     else: processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
     #if optThreads in conf.globalOptions: conf.setNote(warnGcUnsafe)
-  of "tlsemulation": processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
+  of "tlsemulation":
+    processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
+    if optTlsEmulation in conf.globalOptions:
+      conf.legacyFeatures.incl emitGenerics
   of "implicitstatic":
     processOnOffSwitch(conf, {optImplicitStatic}, arg, pass, info)
   of "patterns", "trmacros":
@@ -795,6 +838,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "dll")
     of "staticlib":
       incl(conf.globalOptions, optGenStaticLib)
+      incl(conf.globalOptions, optNoMain)
       excl(conf.globalOptions, optGenGuiApp)
       defineSymbol(conf.symbols, "library")
       defineSymbol(conf.symbols, "staticlib")
@@ -818,8 +862,16 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "header":
     if conf != nil: conf.headerFile = arg
     incl(conf.globalOptions, optGenIndex)
+  of "nimbasepattern":
+    if conf != nil: conf.nimbasePattern = arg
   of "index":
-    processOnOffSwitchG(conf, {optGenIndex}, arg, pass, info)
+    case arg.normalize
+    of "", "on": conf.globalOptions.incl {optGenIndex}
+    of "only": conf.globalOptions.incl {optGenIndexOnly, optGenIndex}
+    of "off": conf.globalOptions.excl {optGenIndex, optGenIndexOnly}
+    else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
+  of "noimportdoc":
+    processOnOffSwitchG(conf, {optNoImportdoc}, arg, pass, info)
   of "import":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
@@ -852,21 +904,28 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       setTarget(conf.target, conf.target.targetOS, cpu)
   of "run", "r":
     processOnOffSwitchG(conf, {optRun}, arg, pass, info)
+    if conf.backend == backendJs:
+      # for now, -r uses nodejs, so define nodejs
+      defineSymbol(conf.symbols, "nodejs")
   of "maxloopiterationsvm":
     expectArg(conf, switch, arg, pass, info)
-    conf.maxLoopIterationsVM = parseInt(arg)
+    var value: int = 10_000_000
+    discard parseSaturatedNatural(arg, value)
+    if not value > 0: localError(conf, info, "maxLoopIterationsVM must be a positive integer greater than zero")
+    conf.maxLoopIterationsVM = value
   of "errormax":
     expectArg(conf, switch, arg, pass, info)
     # Note: `nim check` (etc) can overwrite this.
     # `0` is meaningless, give it a useful meaning as in clang's -ferror-limit
     # If user doesn't set this flag and the code doesn't either, it'd
     # have the same effect as errorMax = 1
-    let ret = parseInt(arg)
-    conf.errorMax = if ret == 0: high(int) else: ret
+    var value: int = 0
+    discard parseSaturatedNatural(arg, value)
+    conf.errorMax = if value == 0: high(int) else: value
   of "verbosity":
     expectArg(conf, switch, arg, pass, info)
     let verbosity = parseInt(arg)
-    if verbosity notin {0..3}:
+    if verbosity notin 0..3:
       localError(conf, info, "invalid verbosity level: '$1'" % arg)
     conf.verbosity = verbosity
     var verb = NotesVerbosity[conf.verbosity]
@@ -876,7 +935,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.mainPackageNotes = conf.notes
   of "parallelbuild":
     expectArg(conf, switch, arg, pass, info)
-    conf.numberOfProcessors = parseInt(arg)
+    var value: int = 0
+    discard parseSaturatedNatural(arg, value)
+    conf.numberOfProcessors = value
   of "version", "v":
     expectNoArg(conf, switch, arg, pass, info)
     writeVersionInfo(conf, pass)
@@ -914,6 +975,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if switch.normalize == "gendeps": deprecatedAlias(switch, "genscript")
     processOnOffSwitchG(conf, {optGenScript}, arg, pass, info)
     processOnOffSwitchG(conf, {optCompileOnly}, arg, pass, info)
+  of "gencdeps":
+    processOnOffSwitchG(conf, {optGenCDeps}, arg, pass, info)
   of "colors": processOnOffSwitchG(conf, {optUseColors}, arg, pass, info)
   of "lib":
     expectArg(conf, switch, arg, pass, info)
@@ -997,6 +1060,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(conf, switch, arg, pass, info)
     conf.exc = low(ExceptionSystem)
     defineSymbol(conf.symbols, "noCppExceptions")
+  of "shownonexports":
+    expectNoArg(conf, switch, arg, pass, info)
+    showNonExportedFields(conf)
   of "exceptions":
     case arg.normalize
     of "cpp": conf.exc = excCpp
@@ -1051,29 +1117,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "expandarc":
     expectArg(conf, switch, arg, pass, info)
     conf.arcToExpand[arg] = "T"
-  of "useversion":
-    expectArg(conf, switch, arg, pass, info)
-    case arg
-    of "1.0":
-      defineSymbol(conf.symbols, "NimMajor", "1")
-      defineSymbol(conf.symbols, "NimMinor", "0")
-      # old behaviors go here:
-      defineSymbol(conf.symbols, "nimOldRelativePathBehavior")
-      undefSymbol(conf.symbols, "nimDoesntTrackDefects")
-      ast.eqTypeFlags.excl {tfGcSafe, tfNoSideEffect}
-      conf.globalOptions.incl optNimV1Emulation
-    of "1.2":
-      defineSymbol(conf.symbols, "NimMajor", "1")
-      defineSymbol(conf.symbols, "NimMinor", "2")
-      conf.globalOptions.incl optNimV12Emulation
-    of "1.6":
-      defineSymbol(conf.symbols, "NimMajor", "1")
-      defineSymbol(conf.symbols, "NimMinor", "6")
-      conf.globalOptions.incl optNimV16Emulation
-    else:
-      localError(conf, info, "unknown Nim version; currently supported values are: `1.0`, `1.2`")
-    # always be compatible with 1.x.100:
-    defineSymbol(conf.symbols, "NimPatch", "100")
   of "benchmarkvm":
     processOnOffSwitchG(conf, {optBenchmarkVM}, arg, pass, info)
   of "profilevm":
@@ -1087,6 +1130,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optPanics}, arg, pass, info)
     if optPanics in conf.globalOptions:
       defineSymbol(conf.symbols, "nimPanics")
+  of "jsbigint64":
+    processOnOffSwitchG(conf, {optJsBigInt64}, arg, pass, info)
   of "sourcemap": # xxx document in --fullhelp
     conf.globalOptions.incl optSourcemap
     conf.options.incl optLineDir
@@ -1101,7 +1146,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else: invalidCmdLineOption(conf, pass, switch, info)
 
 proc processCommand*(switch: string, pass: TCmdLinePass; config: ConfigRef) =
-  var cmd, arg: string
+  var cmd = ""
+  var arg = ""
   splitSwitch(config, switch, cmd, arg, pass, gCmdLineInfo)
   processSwitch(cmd, arg, pass, gCmdLineInfo, config)
 
@@ -1128,7 +1174,10 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
       config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)
       result = true
-    elif pass != passCmd2: setCommandEarly(config, p.key)
+    elif pass != passCmd2:
+      setCommandEarly(config, p.key)
+      result = false
+    else: result = false
   else:
     if pass == passCmd1: config.commandArgs.add p.key
     if argsCount == 1:
@@ -1139,4 +1188,6 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
         config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)
       result = true
+    else:
+      result = false
   inc argsCount

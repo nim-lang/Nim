@@ -11,16 +11,18 @@
 ## language.
 
 import
-  ast, modules, idents, passes, condsyms,
-  options, sem, llstream, vm, vmdef, commands,
-  os, times, osproc, wordrecg, strtabs, modulegraphs,
-  pathutils
+  ast, modules, idents, condsyms,
+  options, llstream, vm, vmdef, commands,
+  wordrecg, modulegraphs,
+  pathutils, pipelines
 
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[syncio, assertions]
+
+import std/[strtabs, os, times, osproc]
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
-from strutils import cmpIgnoreStyle, contains
+from std/strutils import cmpIgnoreStyle, contains
 
 proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   let dir = getString(a, 0)
@@ -160,6 +162,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf getCommand:
     setResult(a, conf.command)
   cbconf switch:
+    conf.currentConfigDir = vthisDir
     processSwitch(a.getString 0, a.getString 1, passPP, module.info, conf)
   cbconf hintImpl:
     processSpecificNote(a.getString 0, wHint, passPP, module.info,
@@ -181,15 +184,13 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     options.cppDefine(conf, a.getString(0))
   cbexc stdinReadLine, EOFError:
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
-      discard
-    else:
       setResult(a, "")
+    else:
       setResult(a, stdin.readLine())
   cbexc stdinReadAll, EOFError:
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
-      discard
-    else:
       setResult(a, "")
+    else:
       setResult(a, stdin.readAll())
 
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
@@ -199,20 +200,18 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   conf.symbolFiles = disabledSf
 
   let graph = newModuleGraph(cache, conf)
-  connectCallbacks(graph)
+  connectPipelineCallbacks(graph)
   if freshDefines: initDefines(conf.symbols)
 
   defineSymbol(conf.symbols, "nimscript")
   defineSymbol(conf.symbols, "nimconfig")
-  registerPass(graph, semPass)
-  registerPass(graph, evalPass)
 
   conf.searchPaths.add(conf.libpath)
 
   let oldGlobalOptions = conf.globalOptions
   let oldSelectedGC = conf.selectedGC
-  undefSymbol(conf.symbols, "nimv2")
-  conf.globalOptions.excl {optTinyRtti, optOwnedRefs, optSeqDestructors}
+  unregisterArcOrc(conf)
+  conf.globalOptions.excl optOwnedRefs
   conf.selectedGC = gcUnselected
 
   var m = graph.makeModule(scriptName)
@@ -220,8 +219,9 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   var vm = setupVM(m, cache, scriptName.string, graph, idgen)
   graph.vm = vm
 
-  graph.compileSystemModule()
-  discard graph.processModule(m, vm.idgen, stream)
+  graph.setPipeLinePass(EvalPass)
+  graph.compilePipelineSystemModule()
+  discard graph.processPipelineModule(m, vm.idgen, stream)
 
   # watch out, "newruntime" can be set within NimScript itself and then we need
   # to remember this:
@@ -230,9 +230,20 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   if optOwnedRefs in oldGlobalOptions:
     conf.globalOptions.incl {optTinyRtti, optOwnedRefs, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
-  if conf.selectedGC in {gcArc, gcOrc}:
+  if conf.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
     conf.globalOptions.incl {optTinyRtti, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
+    defineSymbol(conf.symbols, "gcdestructors")
+    defineSymbol(conf.symbols, "nimSeqsV2")
+    case conf.selectedGC
+    of gcArc:
+      defineSymbol(conf.symbols, "gcarc")
+    of gcOrc:
+      defineSymbol(conf.symbols, "gcorc")
+    of gcAtomicArc:
+      defineSymbol(conf.symbols, "gcatomicarc")
+    else:
+      raiseAssert "unreachable"
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetSystemArtifacts(graph)

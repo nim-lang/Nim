@@ -53,7 +53,7 @@ Pattern matching
 supports pattern matching on `Option`s, with the `Some(<pattern>)` and
 `None()` patterns.
 
-.. code-block:: nim
+  ```nim
   {.experimental: "caseStmtMacros".}
 
   import fusion/matching
@@ -65,6 +65,7 @@ supports pattern matching on `Option`s, with the `Some(<pattern>)` and
     assert false
 
   assertMatch(some(some(none(int))), Some(Some(None())))
+  ```
 ]##
 # xxx pending https://github.com/timotheecour/Nim/issues/376 use `runnableExamples` and `whichModule`
 
@@ -73,7 +74,7 @@ when defined(nimHasEffectsOf):
 else:
   {.pragma: effectsOf.}
 
-import typetraits
+import std/typetraits
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -81,7 +82,7 @@ when defined(nimPreviewSlimSystem):
 
 when (NimMajor, NimMinor) >= (1, 1):
   type
-    SomePointer = ref | ptr | pointer | proc
+    SomePointer = ref | ptr | pointer | proc | iterator {.closure.}
 else:
   type
     SomePointer = ref | ptr | pointer
@@ -89,7 +90,7 @@ else:
 type
   Option*[T] = object
     ## An optional type that may or may not contain a value of type `T`.
-    ## When `T` is a a pointer type (`ptr`, `pointer`, `ref` or `proc`),
+    ## When `T` is a a pointer type (`ptr`, `pointer`, `ref`, `proc` or `iterator {.closure.}`),
     ## `none(T)` is represented as `nil`.
     when T is SomePointer:
       val: T
@@ -151,7 +152,7 @@ proc none*(T: typedesc): Option[T] {.inline.} =
     assert none(int).isNone
 
   # the default is the none type
-  discard
+  result = Option[T]()
 
 proc none*[T]: Option[T] {.inline.} =
   ## Alias for `none(T) <#none,typedesc>`_.

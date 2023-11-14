@@ -49,25 +49,13 @@ macro autoClose(args: varargs[untyped]): untyped =
   var finallyBlock = newNimNode(nnkStmtList)
   finallyBlock.add(closingCalls)
 
-  # XXX: Use a template here once getAst is working properly
-  var targetAst = parseStmt"""block:
-    var
-      x = foo()
-      y = bar()
-
-    try:
-      body()
-
-    finally:
-      close x
-      close y
-  """
-
-  targetAst[0][1][0] = varSection
-  targetAst[0][1][1][0] = body
-  targetAst[0][1][1][1][0] = finallyBlock
-
-  result = targetAst
+  result = quote do:
+    block:
+      `varSection`
+      try:
+        `body`
+      finally:
+        `finallyBlock`
 
 type
   TResource* = object

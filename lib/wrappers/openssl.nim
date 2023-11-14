@@ -10,20 +10,25 @@
 ## OpenSSL wrapper. Supports OpenSSL >= 1.1.0 dynamically (as default) or statically linked
 ## using `--dynlibOverride:ssl`.
 ##
-## To use openSSL 3, either set `-d:sslVersion=3` or `-d:useOpenssl3`.
+## `-d:sslVersion=1.2.3` can be used to force an SSL version.
+## This version must be included in the library name.
+## `-d:useOpenssl3` may be set for OpenSSL 3 instead.
+##
+## There is also limited support for OpenSSL 1.0.x which may require `-d:openssl10`.
 ##
 ## Build and test examples:
 ##
-## .. code-block::
+##   ```cmd
 ##   ./bin/nim c -d:ssl -p:. -r tests/stdlib/tssl.nim
 ##   ./bin/nim c -d:ssl --threads:on -p:. -r tests/stdlib/thttpclient_ssl.nim
 ##   ./bin/nim c -d:ssl -p:. -r tests/untestable/tssl.nim
 ##   ./bin/nim c -d:ssl -p:. --dynlibOverride:ssl --passl:-lcrypto --passl:-lssl -r tests/untestable/tssl.nim
 ##   ./bin/nim r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:ssl -p:testament/lib --threads:on tests/untestable/thttpclient_ssl_remotenetwork.nim
+##   ```
 
 # https://www.feistyduck.com/library/openssl-cookbook/online/ch-testing-with-openssl.html
 #
-from strutils import startsWith
+from std/strutils import startsWith
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -46,20 +51,20 @@ when sslVersion != "":
     const
       DLLSSLName* = "libssl." & sslVersion & ".dylib"
       DLLUtilName* = "libcrypto." & sslVersion & ".dylib"
-    from posix import SocketHandle
+    from std/posix import SocketHandle
   elif defined(windows):
     const
       DLLSSLName* = "libssl-" & sslVersion & ".dll"
       DLLUtilName* =  "libcrypto-" & sslVersion & ".dll"
-    from winlean import SocketHandle
+    from std/winlean import SocketHandle
   else:
     const
       DLLSSLName* = "libssl.so." & sslVersion
       DLLUtilName* = "libcrypto.so." & sslVersion
-    from posix import SocketHandle
+    from std/posix import SocketHandle
 
 elif useWinVersion:
-  when defined(nimOldDlls):
+  when defined(openssl10) or defined(nimOldDlls):
     when defined(cpu64):
       const
         DLLSSLName* = "(ssleay32|ssleay64).dll"
@@ -77,7 +82,7 @@ elif useWinVersion:
       DLLSSLName* = "(libssl-1_1|ssleay32|libssl32).dll"
       DLLUtilName* = "(libcrypto-1_1|libeay32).dll"
 
-  from winlean import SocketHandle
+  from std/winlean import SocketHandle
 else:
   # same list of versions but ordered differently?
   when defined(osx):
@@ -97,9 +102,9 @@ else:
     const
       DLLSSLName* = "libssl.so" & versions
       DLLUtilName* = "libcrypto.so" & versions
-  from posix import SocketHandle
+  from std/posix import SocketHandle
 
-import dynlib
+import std/dynlib
 
 {.pragma: lcrypto, cdecl, dynlib: DLLUtilName, importc.}
 {.pragma: lssl, cdecl, dynlib: DLLSSLName, importc.}
@@ -276,40 +281,63 @@ proc TLSv1_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 # and support SSLv3, TLSv1, TLSv1.1 and TLSv1.2
 # SSLv23_method(), SSLv23_server_method(), SSLv23_client_method() are removed in 1.1.0
 
-when compileOption("dynlibOverride", "ssl"):
+const useStaticLink = compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks)
+
+when useStaticLink:
   # Static linking
-  when not useOpenssl3:
+
+  when defined(openssl10):
+    proc SSL_library_init*(): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
+    proc SSL_load_error_strings*() {.cdecl, dynlib: DLLSSLName, importc.}
+    proc SSLv23_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+    proc SSLeay(): culong {.cdecl, dynlib: DLLUtilName, importc.}
+
+    proc getOpenSSLVersion*(): culong =
+      SSLeay()
+
+    proc ERR_load_BIO_strings*() {.cdecl, dynlib: DLLUtilName, importc.}
+  else:
     proc OPENSSL_init_ssl*(opts: uint64, settings: uint8): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
     proc SSL_library_init*(): cint {.discardable.} =
       ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0
       return OPENSSL_init_ssl(0.uint64, 0.uint8)
 
-  proc TLS_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+    proc TLS_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+    proc SSLv23_method*(): PSSL_METHOD =
+      TLS_method()
 
-  proc OpenSSL_version_num(): culong {.cdecl, dynlib: DLLUtilName, importc.}
+    proc OpenSSL_version_num(): culong {.cdecl, dynlib: DLLUtilName, importc.}
 
-  proc getOpenSSLVersion*(): culong =
-    ## Return OpenSSL version as unsigned long
-    OpenSSL_version_num()
+    proc getOpenSSLVersion*(): culong =
+      ## Return OpenSSL version as unsigned long
+      OpenSSL_version_num()
 
-  proc SSL_load_error_strings*() =
-    ## Removed from OpenSSL 1.1.0
-    # This proc prevents breaking existing code calling SslLoadErrorStrings
-    # Static linking against OpenSSL < 1.1.0 is not supported
-    discard
+    proc SSL_load_error_strings*() =
+      ## Removed from OpenSSL 1.1.0
+      # This proc prevents breaking existing code calling SslLoadErrorStrings
+      # Static linking against OpenSSL < 1.1.0 is not supported
+      discard
 
-  when defined(libressl):
+    proc ERR_load_BIO_strings*() =
+      discard
+
+  when defined(libressl) or defined(openssl10):
     proc SSL_state(ssl: SslPtr): cint {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSL_in_init*(ssl: SslPtr): cint {.inline.} =
-      SSl_state(ssl) and SSL_ST_INIT
+      SSL_state(ssl) and SSL_ST_INIT
   else:
     proc SSL_in_init*(ssl: SslPtr): cint {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSL_CTX_set_ciphersuites*(ctx: SslCtx, str: cstring): cint {.cdecl, dynlib: DLLSSLName, importc.}
 
   template OpenSSL_add_all_algorithms*() = discard
 
+  proc SSLv23_client_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+  proc SSLv2_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+  proc SSLv3_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+  proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl, dynlib: DLLUtilName, importc.}
+
 else:
-  # Here we're trying to stay compatible with openssl 1.1.*. Some
+  # Here we're trying to stay compatible between openssl versions. Some
   # symbols are loaded dynamically and we don't use them if not found.
   proc thisModule(): LibHandle {.inline.} =
     var thisMod {.global.}: LibHandle
@@ -367,28 +395,50 @@ else:
     let method2Proc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe, raises: [].}](methodSym)
     return method2Proc()
 
-  when not useOpenssl3:
-    proc SSL_library_init*(): cint {.discardable.} =
-      ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0 otherwise
-      ## SSL_library_init
-      let newInitSym = sslSymNullable("OPENSSL_init_ssl")
-      if not newInitSym.isNil:
-        let newInitProc =
-          cast[proc(opts: uint64, settings: uint8): cint {.cdecl.}](newInitSym)
-        return newInitProc(0, 0)
-      let olderProc = cast[proc(): cint {.cdecl.}](sslSymThrows("SSL_library_init"))
-      if not olderProc.isNil: result = olderProc()
+  proc CRYPTO_set_mem_functions(a,b,c: pointer) =
+    let theProc = cast[proc(a,b,c: pointer) {.cdecl.}](utilModule().symNullable("CRYPTO_set_mem_functions"))
+    if not theProc.isNil: theProc(a, b, c)
+
+  proc SSL_library_init*(): cint {.discardable.} =
+    ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0 otherwise
+    ## SSL_library_init
+    let newInitSym = sslSymNullable("OPENSSL_init_ssl")
+    if not newInitSym.isNil:
+      let newInitProc =
+        cast[proc(opts: uint64, settings: uint8): cint {.cdecl.}](newInitSym)
+      return newInitProc(0, 0)
+    let olderProc = cast[proc(): cint {.cdecl.}](sslSymThrows("SSL_library_init"))
+    if not olderProc.isNil: result = olderProc()
 
   proc SSL_load_error_strings*() =
     # TODO: Are we ignoring this on purpose? SSL GitHub CI fails otherwise.
     let theProc = cast[proc() {.cdecl.}](sslSymNullable("SSL_load_error_strings"))
     if not theProc.isNil: theProc()
 
+  proc ERR_load_BIO_strings*() =
+    let theProc = cast[proc() {.cdecl.}](utilModule().symNullable("ERR_load_BIO_strings"))
+    if not theProc.isNil: theProc()
+
+  proc SSLv23_client_method*(): PSSL_METHOD =
+    loadPSSLMethod("SSLv23_client_method", "TLS_client_method")
+
+  proc SSLv23_method*(): PSSL_METHOD =
+    loadPSSLMethod("SSLv23_method", "TLS_method")
+
+  proc SSLv2_method*(): PSSL_METHOD =
+    loadPSSLMethod("SSLv2_method", "TLS_method")
+
   proc SSLv3_method*(): PSSL_METHOD =
     loadPSSLMethod("SSLv3_method", "TLS_method")
 
   proc TLS_method*(): PSSL_METHOD =
     loadPSSLMethod("TLS_method", "SSLv23_method")
+
+  proc TLS_client_method*(): PSSL_METHOD =
+    loadPSSLMethod("TLS_client_method", "SSLv23_client_method")
+
+  proc TLS_server_method*(): PSSL_METHOD =
+    loadPSSLMethod("TLS_server_method", "SSLv23_server_method")
 
   proc OpenSSL_add_all_algorithms*() =
     # TODO: Are we ignoring this on purpose? SSL GitHub CI fails otherwise.
@@ -418,15 +468,10 @@ else:
       raiseInvalidLibrary MainProc
 
   proc SSL_CTX_set_ciphersuites*(ctx: SslCtx, str: cstring): cint =
-    var theProc {.global.}: proc(ctx: SslCtx, str: cstring) {.cdecl, gcsafe.}
+    var theProc {.global.}: proc(ctx: SslCtx, str: cstring): cint {.cdecl, gcsafe.}
     if theProc.isNil:
       theProc = cast[typeof(theProc)](sslSymThrows("SSL_CTX_set_ciphersuites"))
-    theProc(ctx, str)
-
-proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLUtilName, importc.}
-
-proc TLS_client_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
-
+    result = theProc(ctx, str)
 
 proc SSL_new*(context: SslCtx): SslPtr{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_free*(ssl: SslPtr){.cdecl, dynlib: DLLSSLName, importc.}
@@ -485,11 +530,8 @@ proc BIO_do_handshake*(bio: BIO): int =
 proc BIO_do_connect*(bio: BIO): int =
   return BIO_do_handshake(bio)
 
-when not defined(nimfix):
-  proc BIO_read*(b: BIO, data: cstring, length: cint): cint{.cdecl,
-      dynlib: DLLUtilName, importc.}
-  proc BIO_write*(b: BIO, data: cstring, length: cint): cint{.cdecl,
-      dynlib: DLLUtilName, importc.}
+proc BIO_read*(b: BIO, data: cstring, length: cint): cint{.cdecl, dynlib: DLLUtilName, importc.}
+proc BIO_write*(b: BIO, data: cstring, length: cint): cint{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc BIO_free*(b: BIO): cint{.cdecl, dynlib: DLLUtilName, importc.}
 
@@ -535,9 +577,6 @@ const
   useNimsAlloc = not defined(nimNoAllocForSSL) and not defined(gcDestructors)
 
 when not useWinVersion and not defined(macosx) and not defined(android) and useNimsAlloc:
-  proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl,
-    dynlib: DLLUtilName, importc.}
-
   proc allocWrapper(size: int): pointer {.cdecl.} = allocShared(size)
   proc reallocWrapper(p: pointer; newSize: int): pointer {.cdecl.} =
     if p == nil:
@@ -547,9 +586,11 @@ when not useWinVersion and not defined(macosx) and not defined(android) and useN
   proc deallocWrapper(p: pointer) {.cdecl.} =
     if p != nil: deallocShared(p)
 
-proc CRYPTO_malloc_init*() =
-  when not useWinVersion and not defined(macosx) and not defined(android) and useNimsAlloc:
-    CRYPTO_set_mem_functions(allocWrapper, reallocWrapper, deallocWrapper)
+  proc CRYPTO_malloc_init*() =
+    CRYPTO_set_mem_functions(cast[pointer](allocWrapper), cast[pointer](reallocWrapper), cast[pointer](deallocWrapper))
+else:
+  proc CRYPTO_malloc_init*() =
+    discard
 
 proc SSL_CTX_ctrl*(ctx: SslCtx, cmd: cint, larg: clong, parg: pointer): clong{.
   cdecl, dynlib: DLLSSLName, importc.}
@@ -738,7 +779,7 @@ proc md5*(d: ptr uint8; n: csize_t; md: ptr uint8): ptr uint8{.importc: "MD5".}
 proc md5_Transform*(c: var MD5_CTX; b: ptr uint8){.importc: "MD5_Transform".}
 {.pop.}
 
-from strutils import toHex, toLowerAscii
+from std/strutils import toHex, toLowerAscii
 
 proc hexStr(buf: cstring): string =
   # turn md5s output into a nice hex str
@@ -761,10 +802,10 @@ proc md5_File*(file: string): string {.raises: [IOError,Exception].} =
   while (let bytes = f.readChars(buf); bytes > 0):
     discard md5_Update(ctx, buf[0].addr, cast[csize_t](bytes))
 
-  discard md5_Final(buf[0].addr, ctx)
+  discard md5_Final(cast[cstring](buf[0].addr), ctx)
   f.close
 
-  result = hexStr(addr buf)
+  result = hexStr(cast[cstring](addr buf))
 
 proc md5_Str*(str: string): string =
   ## Generate MD5 hash for a string. Result is a 32 character
@@ -781,8 +822,8 @@ proc md5_Str*(str: string): string =
     discard md5_Update(ctx, input[i].addr, cast[csize_t](L))
     i += L
 
-  discard md5_Final(addr res, ctx)
-  result = hexStr(addr res)
+  discard md5_Final(cast[cstring](addr res), ctx)
+  result = hexStr(cast[cstring](addr res))
 
 when defined(nimHasStyleChecks):
   {.pop.}
@@ -792,17 +833,21 @@ when defined(nimHasStyleChecks):
 # On old openSSL version some of these symbols are not available
 when not defined(nimDisableCertificateValidation) and not defined(windows):
 
-  # proc SSL_get_peer_certificate*(ssl: SslCtx): PX509 =
-  #  loadPSSLMethod("SSL_get_peer_certificate", "SSL_get1_peer_certificate")
-
+  # SSL_get_peer_certificate removed in 3.0
+  # SSL_get1_peer_certificate added in 3.0
   when useOpenssl3:
     proc SSL_get1_peer_certificate*(ssl: SslCtx): PX509 {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSL_get_peer_certificate*(ssl: SslCtx): PX509 =
       SSL_get1_peer_certificate(ssl)
-
-  else:
+  elif useStaticLink:
     proc SSL_get_peer_certificate*(ssl: SslCtx): PX509 {.cdecl, dynlib: DLLSSLName, importc.}
-
+  else:
+    proc SSL_get_peer_certificate*(ssl: SslCtx): PX509 =
+      let methodSym = sslSymNullable("SSL_get_peer_certificate", "SSL_get1_peer_certificate")
+      if methodSym.isNil:
+        raise newException(LibraryError, "Could not load SSL_get_peer_certificate or SSL_get1_peer_certificate")
+      let method2Proc = cast[proc(ssl: SslCtx): PX509 {.cdecl, gcsafe, raises: [].}](methodSym)
+      return method2Proc(ssl)
 
   proc X509_get_subject_name*(a: PX509): PX509_NAME{.cdecl, dynlib: DLLSSLName, importc.}
 
@@ -841,6 +886,8 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
   {.pop.}
 
   when isMainModule:
+    when defined(nimPreviewSlimSystem):
+      import std/assertions
     # A simple certificate test
     let certbytes = readFile("certificate.der")
     let cert = d2i_X509(certbytes)

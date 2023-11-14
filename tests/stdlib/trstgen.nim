@@ -1,4 +1,5 @@
 discard """
+matrix: "--mm:refc; --mm:orc"
 outputsub: ""
 """
 
@@ -617,8 +618,8 @@ context2
 This is too short to be a transition:
 
 ---
-
 context2
+---
 """
     var error2 = new string
     let output2 = input2.toHtml(error=error2)
@@ -1127,7 +1128,7 @@ Test1
 
       Paragraph2 ref `internal anchor`_.
       """
-    let output9 = input9.toHtml
+    let output9 = input9.toHtml(preferRst)
     # _`internal anchor` got erased:
     check "href=\"#internal-anchor\"" notin output9
     check "href=\"#citation-another\"" in output9
@@ -1155,7 +1156,7 @@ Test1
     doAssert "<a href=\"#citation-third\">[Third]</a>" in output10
 
     let input11 = ".. [note]\n"  # should not crash
-    let output11 = input11.toHtml
+    let output11 = input11.toHtml(preferRst)
     doAssert "<a href=\"#citation-note\">[note]</a>" in output11
 
     # check that references to auto-numbered footnotes work
@@ -1442,7 +1443,7 @@ Test1
       Ref. target103_.
 
     """
-    let output2 = input2.toHtml
+    let output2 = input2.toHtml(preferRst)
     # "target101" should be erased and changed to "section-xyz":
     doAssert "href=\"#target300\"" notin output2
     doAssert "id=\"target300\""    notin output2

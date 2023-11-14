@@ -1,7 +1,7 @@
 
-import
-  options, vmdef, times, lineinfos, strutils, tables,
-  msgs
+import options, vmdef, lineinfos, msgs
+
+import std/[times, strutils, tables]
 
 proc enter*(prof: var Profiler, c: PCtx, tos: PStackFrame) {.inline.} =
   if optProfileVM in c.config.globalOptions:
@@ -28,11 +28,11 @@ proc leave*(prof: var Profiler, c: PCtx) {.inline.} =
 
 proc dump*(conf: ConfigRef, pd: ProfileData): string =
   var data = pd.data
-  echo "\nprof:     µs    #instr  location"
+  result = "\nprof:     µs    #instr  location"
   for i in 0..<32:
     var tMax: float
-    var infoMax: ProfileInfo
-    var flMax: TLineInfo
+    var infoMax: ProfileInfo = default(ProfileInfo)
+    var flMax: TLineInfo = default(TLineInfo)
     for fl, info in data:
       if info.time > infoMax.time:
         infoMax = info

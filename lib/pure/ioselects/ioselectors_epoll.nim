@@ -9,7 +9,7 @@
 
 # This module implements Linux epoll().
 
-import posix, times, epoll
+import std/[posix, times, epoll]
 
 # Maximum number of events that can be returned
 const MAX_EPOLL_EVENTS = 64
@@ -72,11 +72,16 @@ type
   SelectEvent* = ptr SelectEventImpl
 
 proc newSelector*[T](): Selector[T] =
+  proc initialNumFD(): int {.inline.} =
+    when defined(nuttx):
+      result = NEPOLL_MAX
+    else:
+      result = 1024
   # Retrieve the maximum fd count (for current OS) via getrlimit()
   var maxFD = maxDescriptors()
   doAssert(maxFD > 0)
   # Start with a reasonable size, checkFd() will grow this on demand
-  const numFD = 1024
+  let numFD = initialNumFD()
 
   var epollFD = epoll_create1(O_CLOEXEC)
   if epollFD < 0:
@@ -133,7 +138,7 @@ template checkFd(s, f) =
     var numFD = s.numFD
     while numFD <= f: numFD *= 2
     when hasThreadSupport:
-      s.fds = reallocSharedArray(s.fds, numFD)
+      s.fds = reallocSharedArray(s.fds, s.numFD, numFD)
     else:
       s.fds.setLen(numFD)
     for i in s.numFD ..< numFD:

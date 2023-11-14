@@ -1,3 +1,5 @@
+## .. importdoc:: osfiles.nim, appdirs.nim, paths.nim
+
 include system/inclrtl
 import std/oserrors
 
@@ -14,9 +16,9 @@ when defined(nimPreviewSlimSystem):
 when weirdTarget:
   discard
 elif defined(windows):
-  import winlean, times
+  import std/[winlean, times]
 elif defined(posix):
-  import posix, times
+  import std/[posix, times]
 
 else:
   {.error: "OS module not ported to your operating system!".}
@@ -154,16 +156,21 @@ proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
   discard
 
-iterator walkDir*(dir: string; relative = false, checkDir = false):
+iterator walkDir*(dir: string; relative = false, checkDir = false,
+                  skipSpecial = false):
   tuple[kind: PathComponent, path: string] {.tags: [ReadDirEffect].} =
   ## Walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item are returned.
   ##
-  ## Walking is not recursive. If ``relative`` is true (default: false)
-  ## the resulting path is shortened to be relative to ``dir``.
-  ##
-  ## If `checkDir` is true, `OSError` is raised when `dir`
-  ## doesn't exist.
+  ## Walking is not recursive.
+  ## * If `relative` is true (default: false)
+  ##   the resulting path is shortened to be relative to ``dir``,
+  ##   otherwise the full path is returned.
+  ## * If `checkDir` is true, `OSError` is raised when `dir`
+  ##   doesn't exist.
+  ## * If `skipSpecial` is true, then (besides all directories) only *regular*
+  ##   files (**without** special "file" objects like FIFOs, device files,
+  ##   etc) will be yielded on Unix.
   ##
   ## **Example:**
   ##
@@ -226,7 +233,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
         while true:
           var x = readdir(d)
           if x == nil: break
-          var y = $cstring(addr x.d_name)
+          var y = $cast[cstring](addr x.d_name)
           if y != "." and y != "..":
             var s: Stat
             let path = dir / y
@@ -234,24 +241,30 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
               y = path
             var k = pcFile
 
+            template resolveSymlink() =
+              var isSpecial: bool
+              (k, isSpecial) = getSymlinkFileKind(path)
+              if skipSpecial and isSpecial: continue
+
             template kSetGeneric() =  # pure Posix component `k` resolution
               if lstat(path.cstring, s) < 0'i32: continue  # don't yield
               elif S_ISDIR(s.st_mode):
                 k = pcDir
               elif S_ISLNK(s.st_mode):
-                k = getSymlinkFileKind(path)
+                resolveSymlink()
+              elif skipSpecial and not S_ISREG(s.st_mode): continue
 
             when defined(linux) or defined(macosx) or
                  defined(bsd) or defined(genode) or defined(nintendoswitch):
               case x.d_type
               of DT_DIR: k = pcDir
               of DT_LNK:
-                if dirExists(path): k = pcLinkToDir
-                else: k = pcLinkToFile
+                resolveSymlink()
               of DT_UNKNOWN:
                 kSetGeneric()
-              else: # e.g. DT_REG etc
-                discard # leave it as pcFile
+              else: # DT_REG or special "files" like FIFOs
+                if skipSpecial and x.d_type != DT_REG: continue
+                else: discard # leave it as pcFile
             else:  # assuming that field `d_type` is not present
               kSetGeneric()
 
@@ -259,15 +272,13 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
 
 iterator walkDirRec*(dir: string,
                      yieldFilter = {pcFile}, followFilter = {pcDir},
-                     relative = false, checkDir = false): string {.tags: [ReadDirEffect].} =
+                     relative = false, checkDir = false, skipSpecial = false):
+                    string {.tags: [ReadDirEffect].} =
   ## Recursively walks over the directory `dir` and yields for each file
   ## or directory in `dir`.
   ##
-  ## If ``relative`` is true (default: false) the resulting path is
-  ## shortened to be relative to ``dir``, otherwise the full path is returned.
-  ##
-  ## If `checkDir` is true, `OSError` is raised when `dir`
-  ## doesn't exist.
+  ## Options `relative`, `checkdir`, `skipSpecial` are explained in
+  ## [walkDir iterator] description.
   ##
   ## .. warning:: Modifying the directory structure while the iterator
   ##   is traversing may result in undefined behavior!
@@ -301,7 +312,8 @@ iterator walkDirRec*(dir: string,
   var checkDir = checkDir
   while stack.len > 0:
     let d = stack.pop()
-    for k, p in walkDir(dir / d, relative = true, checkDir = checkDir):
+    for k, p in walkDir(dir / d, relative = true, checkDir = checkDir,
+                        skipSpecial = skipSpecial):
       let rel = d / p
       if k in {pcDir, pcLinkToDir} and k in followFilter:
         stack.add rel
@@ -316,10 +328,7 @@ iterator walkDirRec*(dir: string,
 
 proc rawRemoveDir(dir: string) {.noWeirdTarget.} =
   when defined(windows):
-    when useWinUnicode:
-      wrapUnary(res, removeDirectoryW, dir)
-    else:
-      var res = removeDirectoryA(dir)
+    wrapUnary(res, removeDirectoryW, dir)
     let lastError = osLastError()
     if res == 0'i32 and lastError.int32 != 3'i32 and
         lastError.int32 != 18'i32 and lastError.int32 != 2'i32:
@@ -384,10 +393,7 @@ proc rawCreateDir(dir: string): bool {.noWeirdTarget.} =
       #echo res
       raiseOSError(osLastError(), dir)
   else:
-    when useWinUnicode:
-      wrapUnary(res, createDirectoryW, dir)
-    else:
-      let res = createDirectoryA(dir)
+    wrapUnary(res, createDirectoryW, dir)
 
     if res != 0'i32:
       result = true
@@ -538,3 +544,18 @@ proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect], noWei
     # Fallback to copy & del
     copyDir(source, dest)
     removeDir(source)
+
+proc setCurrentDir*(newDir: string) {.inline, tags: [], noWeirdTarget.} =
+  ## Sets the `current working directory`:idx:; `OSError`
+  ## is raised if `newDir` cannot been set.
+  ##
+  ## See also:
+  ## * `getHomeDir proc`_
+  ## * `getConfigDir proc`_
+  ## * `getTempDir proc`_
+  ## * `getCurrentDir proc`_
+  when defined(windows):
+    if setCurrentDirectoryW(newWideCString(newDir)) == 0'i32:
+      raiseOSError(osLastError(), newDir)
+  else:
+    if chdir(newDir) != 0'i32: raiseOSError(osLastError(), newDir)

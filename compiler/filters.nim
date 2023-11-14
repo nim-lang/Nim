@@ -10,8 +10,10 @@
 # This module implements Nim's simple filters and helpers for filters.
 
 import
-  llstream, idents, strutils, ast, msgs, options,
+  llstream, idents, ast, msgs, options,
   renderer, pathutils
+
+import std/strutils
 
 proc invalidPragma(conf: ConfigRef; n: PNode) =
   localError(conf, n.info,
@@ -29,23 +31,30 @@ proc getArg(conf: ConfigRef; n: PNode, name: string, pos: int): PNode =
       return n[i]
 
 proc charArg*(conf: ConfigRef; n: PNode, name: string, pos: int, default: char): char =
+
   var x = getArg(conf, n, name, pos)
   if x == nil: result = default
   elif x.kind == nkCharLit: result = chr(int(x.intVal))
-  else: invalidPragma(conf, n)
+  else:
+    result = default(char)
+    invalidPragma(conf, n)
 
 proc strArg*(conf: ConfigRef; n: PNode, name: string, pos: int, default: string): string =
   var x = getArg(conf, n, name, pos)
   if x == nil: result = default
   elif x.kind in {nkStrLit..nkTripleStrLit}: result = x.strVal
-  else: invalidPragma(conf, n)
+  else:
+    result = ""
+    invalidPragma(conf, n)
 
 proc boolArg*(conf: ConfigRef; n: PNode, name: string, pos: int, default: bool): bool =
   var x = getArg(conf, n, name, pos)
   if x == nil: result = default
   elif x.kind == nkIdent and cmpIgnoreStyle(x.ident.s, "true") == 0: result = true
   elif x.kind == nkIdent and cmpIgnoreStyle(x.ident.s, "false") == 0: result = false
-  else: invalidPragma(conf, n)
+  else:
+    result = false
+    invalidPragma(conf, n)
 
 proc filterStrip*(conf: ConfigRef; stdin: PLLStream, filename: AbsoluteFile, call: PNode): PLLStream =
   var pattern = strArg(conf, call, "startswith", 1, "")

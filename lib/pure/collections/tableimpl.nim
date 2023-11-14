@@ -11,6 +11,9 @@
 
 include hashcommon
 
+const
+  defaultInitialSize* = 32
+
 template rawGetDeepImpl() {.dirty.} =   # Search algo for unconditional add
   genHashImpl(key, hc)
   var h: Hash = hc and maxHash(t)
@@ -31,9 +34,8 @@ proc rawInsert[X, A, B](t: var X, data: var KeyValuePairSeq[A, B],
   rawInsertImpl()
 
 template checkIfInitialized() =
-  when compiles(defaultInitialSize):
-    if t.dataLen == 0:
-      initImpl(t, defaultInitialSize)
+  if t.dataLen == 0:
+    initImpl(t, defaultInitialSize)
 
 template addImpl(enlarge) {.dirty.} =
   checkIfInitialized()
@@ -54,14 +56,14 @@ template maybeRehashPutImpl(enlarge) {.dirty.} =
 
 template putImpl(enlarge) {.dirty.} =
   checkIfInitialized()
-  var hc: Hash
+  var hc: Hash = default(Hash)
   var index = rawGet(t, key, hc)
   if index >= 0: t.data[index].val = val
   else: maybeRehashPutImpl(enlarge)
 
 template mgetOrPutImpl(enlarge) {.dirty.} =
   checkIfInitialized()
-  var hc: Hash
+  var hc: Hash = default(Hash)
   var index = rawGet(t, key, hc)
   if index < 0:
     # not present: insert (flipping index)
@@ -71,7 +73,7 @@ template mgetOrPutImpl(enlarge) {.dirty.} =
 
 template hasKeyOrPutImpl(enlarge) {.dirty.} =
   checkIfInitialized()
-  var hc: Hash
+  var hc: Hash = default(Hash)
   var index = rawGet(t, key, hc)
   if index < 0:
     result = false
@@ -117,8 +119,10 @@ template delImplIdx(t, i, makeEmpty, cellEmpty, cellHash) =
         var j = i         # The correctness of this depends on (h+1) in nextTry
         var r = j         # though may be adaptable to other simple sequences.
         makeEmpty(i)                     # mark current EMPTY
-        t.data[i].key = default(typeof(t.data[i].key))
-        t.data[i].val = default(typeof(t.data[i].val))
+        {.push warning[UnsafeDefault]:off.}
+        reset(t.data[i].key)
+        reset(t.data[i].val)
+        {.pop.}
         while true:
           i = (i + 1) and msk            # increment mod table size
           if cellEmpty(i):               # end of collision cluster; So all done
@@ -149,8 +153,10 @@ template clearImpl() {.dirty.} =
   for i in 0 ..< t.dataLen:
     when compiles(t.data[i].hcode): # CountTable records don't contain a hcode
       t.data[i].hcode = 0
-    t.data[i].key = default(typeof(t.data[i].key))
-    t.data[i].val = default(typeof(t.data[i].val))
+    {.push warning[UnsafeDefault]:off.}
+    reset(t.data[i].key)
+    reset(t.data[i].val)
+    {.pop.}
   t.counter = 0
 
 template ctAnd(a, b): bool =
@@ -208,3 +214,5 @@ template equalsImpl(s, t: typed) =
       if not t.hasKey(key): return false
       if t.getOrDefault(key) != val: return false
     return true
+  else:
+    return false

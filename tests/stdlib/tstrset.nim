@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 # test a simple yet highly efficient set of strings
 
 type

@@ -7,8 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, types, msgs, os, options, idents, lineinfos
+import ast, types, msgs, options, idents, lineinfos
 from pathutils import AbsoluteFile
+
+import std/os
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -29,7 +31,7 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): str
 
 proc atomicTypeX(cache: IdentCache; name: string; m: TMagic; t: PType; info: TLineInfo;
                  idgen: IdGenerator): PNode =
-  let sym = newSym(skType, getIdent(cache, name), nextSymId(idgen), t.owner, info)
+  let sym = newSym(skType, getIdent(cache, name), idgen, t.owner, info)
   sym.magic = m
   sym.typ = t
   result = newSymNode(sym)
@@ -133,6 +135,8 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     if inst:
       if allowRecursion:
         result = mapTypeToAstR(t.lastSon, info)
+        # keep original type info for getType calls on the output node:
+        result.typ = t
       else:
         result = newNodeX(nkBracketExpr)
         #result.add mapTypeToAst(t.lastSon, info)
@@ -141,6 +145,8 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
           result.add mapTypeToAst(t[i], info)
     else:
       result = mapTypeToAstX(cache, t.lastSon, info, idgen, inst, allowRecursion)
+      # keep original type info for getType calls on the output node:
+      result.typ = t
   of tyGenericBody:
     if inst:
       result = mapTypeToAstR(t.lastSon, info)
@@ -199,7 +205,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       # only named tuples have a node, unnamed tuples don't
       if t.n.isNil:
         result = newNodeX(nkTupleConstr)
-        for subType in t.sons:
+        for subType in t:
           result.add mapTypeToAst(subType, info)
       else:
         result = newNodeX(nkTupleTy)

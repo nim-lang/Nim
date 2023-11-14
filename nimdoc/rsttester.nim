@@ -24,11 +24,13 @@ proc testRst2Html(fixup = false) =
     let sourceFile = expectedHtml.replace('\\', '/').replace("/expected/", "/source/").replace(".html", ".rst")
     exec("$1 rst2html $2" % [nimExe, sourceFile])
     let producedHtml = expectedHtml.replace('\\', '/').replace("/expected/", "/source/htmldocs/")
-    if readFile(expectedHtml) != readFile(producedHtml):
+    let versionCacheParam = "?v=" & $NimMajor & "." & $NimMinor & "." & $NimPatch
+    let producedFile = readFile(producedHtml).replace(versionCacheParam,"") #remove version cache param used for cache invalidation
+    if readFile(expectedHtml) != producedFile:
       echo diffFiles(expectedHtml, producedHtml).output
       inc failures
       if fixup:
-        copyFile(producedHtml, expectedHtml)
+        writeFile(expectedHtml, producedFile)
     else:
       echo "SUCCESS: files identical: ", producedHtml
     if failures == 0:

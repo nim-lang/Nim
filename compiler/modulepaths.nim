@@ -7,8 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, renderer, strutils, msgs, options, idents, os, lineinfos,
+import ast, renderer, msgs, options, idents, lineinfos,
   pathutils
+
+import std/[strutils, os]
 
 proc getModuleName*(conf: ConfigRef; n: PNode): string =
   # This returns a short relative module name without the nim extension

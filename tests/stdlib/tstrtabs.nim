@@ -1,4 +1,5 @@
 discard """
+matrix: "--mm:refc; --mm:orc"
 sortoutput: true
 output: '''
 key1: value1

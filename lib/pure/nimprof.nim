@@ -15,13 +15,15 @@
 when not defined(profiler) and not defined(memProfiler):
   {.error: "Profiling support is turned off! Enable profiling by passing `--profiler:on --stackTrace:on` to the compiler (see the Nim Compiler User Guide for more options).".}
 
-when defined(nimHasUsed):
-  {.used.}
+{.used.}
 
 # We don't want to profile the profiling code ...
 {.push profiler: off.}
 
-import hashes, algorithm, strutils, tables, sets
+import std/[hashes, algorithm, strutils, tables, sets]
+
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, sysatomics]
 
 when not defined(memProfiler):
   include "system/timers"
@@ -67,7 +69,7 @@ when not defined(memProfiler):
     else: interval = intervalInUs * 1000 - tickCountCorrection
 
 when withThreads:
-  import locks
+  import std/locks
   var
     profilingLock: Lock
 

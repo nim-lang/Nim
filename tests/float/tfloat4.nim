@@ -8,7 +8,7 @@ proc c_sprintf(buf, fmt: cstring) {.importc:"sprintf", header: "<stdio.h>", vara
 
 proc floatToStr(f: float64): string =
   var buffer: array[128, char]
-  c_sprintf(addr buffer, "%.16e", f)
+  c_sprintf(cast[cstring](addr buffer), "%.16e", f)
   result = ""
   for ch in buffer:
     if ch == '\0':
@@ -56,8 +56,14 @@ doAssert 0.9999999999999999 == ".9999999999999999".parseFloat
 
 # bug #18400
 var s = [-13.888888'f32]
-assert $s[0] == "-13.888888"
+doAssert $s[0] == "-13.888888"
 var x = 1.23456789012345'f32
-assert $x == "1.2345679"
+doAssert $x == "1.2345679"
+
+# bug #21847
+doAssert parseFloat"0e+42" == 0.0
+doAssert parseFloat"0e+42949672969" == 0.0
+doAssert parseFloat"0e+42949672970" == 0.0
+doAssert parseFloat"0e+42949623223346323563272970" == 0.0
 
 echo("passed all tests.")
