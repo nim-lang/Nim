@@ -82,7 +82,7 @@ when defined(nimPreviewSlimSystem):
 
 when (NimMajor, NimMinor) >= (1, 1):
   type
-    SomePointer = ref | ptr | pointer | proc | iterator
+    SomePointer = ref | ptr | pointer | proc | iterator {.closure.}
 else:
   type
     SomePointer = ref | ptr | pointer
