@@ -90,7 +90,7 @@ else:
 type
   Option*[T] = object
     ## An optional type that may or may not contain a value of type `T`.
-    ## When `T` is a a pointer type (`ptr`, `pointer`, `ref` or `proc` or `iterator {.closure.}`),
+    ## When `T` is a a pointer type (`ptr`, `pointer`, `ref`, `proc` or `iterator {.closure.}`),
     ## `none(T)` is represented as `nil`.
     when T is SomePointer:
       val: T
