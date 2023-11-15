@@ -43,6 +43,7 @@ when defined(windows):
 else:
   import posix
 
+const HighestSuggestProtocolVersion = 3
 const DummyEof = "!EOF!"
 const Usage = """
 Nimsuggest - Tool to give every editor IDE like capabilities for Nim
@@ -61,6 +62,9 @@ Options:
   --v1                    use version 1 of the protocol; for backwards compatibility
   --v2                    use version 2(default) of the protocol
   --v3                    use version 3 of the protocol
+  --info:X                information
+    --info:nimVer           return the Nim compiler version that nimsuggest uses internally
+    --info:protocolVer      return the newest protocol version that is supported
   --refresh               perform automatic refreshes to keep the analysis precise
   --maxresults:N          limit the number of suggestions to N
   --tester                implies --stdin and outputs a line
@@ -666,6 +670,16 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
       of "v1": conf.suggestVersion = 1
       of "v2": conf.suggestVersion = 0
       of "v3": conf.suggestVersion = 3
+      of "info":
+        case p.val.normalize
+        of "protocolver":
+          stdout.writeLine(HighestSuggestProtocolVersion)
+          quit 0
+        of "nimver":
+          stdout.writeLine(system.NimVersion)
+          quit 0
+        else:
+          processSwitch(pass, p, conf)
       of "tester":
         gMode = mstdin
         gEmitEof = true
