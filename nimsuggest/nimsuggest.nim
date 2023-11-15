@@ -43,6 +43,7 @@ when defined(windows):
 else:
   import posix
 
+const HighestSuggestProtocolVersion = 3
 const DummyEof = "!EOF!"
 const Usage = """
 Nimsuggest - Tool to give every editor IDE like capabilities for Nim
@@ -672,7 +673,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
       of "info":
         case p.val.normalize
         of "protocolver":
-          stdout.writeLine(3)
+          stdout.writeLine(HighestSuggestProtocolVersion)
           quit 0
         of "nimver":
           stdout.writeLine(system.NimVersion)
