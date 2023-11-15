@@ -557,7 +557,7 @@ proc findDefinition(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym
   if s.isNil: return
   if isTracked(info, g.config.m.trackPos, s.name.s.len) or (s == usageSym and sfForward notin s.flags):
     suggestResult(g.config, symToSuggest(g, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0, useSuppliedInfo = s == usageSym))
-    if sfForward notin s.flags and g.config.suggestVersion != 3:
+    if sfForward notin s.flags and g.config.suggestVersion < 3:
       suggestQuit()
     else:
       usageSym = s
@@ -761,7 +761,7 @@ proc suggestSentinel*(c: PContext) =
 
 when defined(nimsuggest):
   proc onDef(graph: ModuleGraph, s: PSym, info: TLineInfo) =
-    if graph.config.suggestVersion == 3 and info.exactEquals(s.info):
+    if graph.config.suggestVersion >= 3 and info.exactEquals(s.info):
        suggestSym(graph, info, s, graph.usageSym)
 
   template getPContext(): untyped =
