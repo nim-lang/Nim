@@ -43,7 +43,7 @@ when defined(windows):
 else:
   import posix
 
-const HighestSuggestProtocolVersion = 3
+const HighestSuggestProtocolVersion = 4
 const DummyEof = "!EOF!"
 const Usage = """
 Nimsuggest - Tool to give every editor IDE like capabilities for Nim
@@ -62,6 +62,7 @@ Options:
   --v1                    use version 1 of the protocol; for backwards compatibility
   --v2                    use version 2(default) of the protocol
   --v3                    use version 3 of the protocol
+  --v4                    use version 4 of the protocol
   --info:X                information
     --info:nimVer           return the Nim compiler version that nimsuggest uses internally
     --info:protocolVer      return the newest protocol version that is supported
@@ -510,7 +511,11 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   of "chkfile": conf.ideCmd = ideChkFile
   of "recompile": conf.ideCmd = ideRecompile
   of "type": conf.ideCmd = ideType
-  of "inlayhints": conf.ideCmd = ideInlayHints
+  of "inlayhints":
+    if conf.suggestVersion >= 4:
+      conf.ideCmd = ideInlayHints
+    else:
+      err()
   else: err()
   var dirtyfile = ""
   var orig = ""
@@ -670,6 +675,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
       of "v1": conf.suggestVersion = 1
       of "v2": conf.suggestVersion = 0
       of "v3": conf.suggestVersion = 3
+      of "v4": conf.suggestVersion = 4
       of "info":
         case p.val.normalize
         of "protocolver":
