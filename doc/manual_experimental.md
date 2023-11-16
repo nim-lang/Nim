@@ -2097,7 +2097,7 @@ for a x86 64 bit machine looks like:
 This is a memory fetch followed by jump. (An ideal implementation would
 use the carry flag and a single instruction like ``jc .L1``.)
 
-This overhead might not be desired and depending on the sematics of the routine may not be required
+This overhead might not be desired and depending on the semantics of the routine may not be required
 either.
 So it can be disabled via a `.quirky` annotation:
 
