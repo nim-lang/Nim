@@ -26,7 +26,7 @@ oneself.
 Void type
 =========
 
-The `void` type denotes the absence of any type. Parameters of
+The `void` type denotes the absence of any value, i.e. it is the type that contains no values. Parameters of
 type `void` are treated as non-existent, `void` as a return type means that
 the procedure does not return a value:
 
