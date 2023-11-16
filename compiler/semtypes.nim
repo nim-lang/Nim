@@ -529,9 +529,6 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
   else:
     result = semIdentVis(c, kind, n, allowed)
     case kind
-    of skType:
-      # process pragmas later, because result.typ has not been set yet
-      discard
     of skField: implicitPragmas(c, result, n.info, fieldPragmas)
     of skVar:   implicitPragmas(c, result, n.info, varPragmas)
     of skLet:   implicitPragmas(c, result, n.info, letPragmas)
