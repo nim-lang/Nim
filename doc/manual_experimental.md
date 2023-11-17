@@ -26,9 +26,8 @@ oneself.
 Void type
 =========
 
-The `void` type denotes the absence of any type. Parameters of
-type `void` are treated as non-existent, `void` as a return type means that
-the procedure does not return a value:
+The `void` type denotes the absence of any value, i.e. it is the type that contains no values. Consequently, no value can be provided for parameters of
+type `void`, and no value can be returned from a function with return type `void`:
 
   ```nim
   proc nothing(x, y: void): void =
