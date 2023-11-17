@@ -72,15 +72,15 @@ proc checkForeignSym(c: var CheckedContext; symId: PackedItemId) =
     c.thisModule = oldThisModule
 
 proc checkNode(c: var CheckedContext; tree: PackedTree; n: NodePos) =
-  if tree[n.int].typeId != nilItemId:
-    checkType(c, tree[n.int].typeId)
+  if tree[n].typeId != nilItemId:
+    checkType(c, tree[n].typeId)
   case n.kind
   of nkEmpty, nkNilLit, nkType, nkNilRodNode:
     discard
   of nkIdent:
     assert c.g.packed[c.thisModule].fromDisk.strings.hasLitId n.litId
   of nkSym:
-    checkLocalSym(c, tree.nodes[n.int].operand)
+    checkLocalSym(c, tree[n].operand)
   of directIntLit:
     discard
   of externIntLit, nkFloatLit..nkFloat128Lit:
@@ -89,9 +89,9 @@ proc checkNode(c: var CheckedContext; tree: PackedTree; n: NodePos) =
     assert c.g.packed[c.thisModule].fromDisk.strings.hasLitId n.litId
   of nkModuleRef:
     let (n1, n2) = sons2(tree, n)
-    assert n1.kind == nkInt32Lit
-    assert n2.kind == nkInt32Lit
-    checkForeignSym(c, PackedItemId(module: n1.litId, item: tree.nodes[n2.int].operand))
+    assert n1.kind == nkNone
+    assert n2.kind == nkNone
+    checkForeignSym(c, PackedItemId(module: n1.litId, item: tree[n2].operand))
   else:
     for n0 in sonsReadonly(tree, n):
       checkNode(c, tree, n0)

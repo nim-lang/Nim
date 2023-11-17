@@ -9,7 +9,7 @@
 
 # We produce C code as a list of tokens.
 
-import std / [assertions, syncio, tables, intsets]
+import std / [assertions, syncio, tables, intsets, formatfloat]
 from std / strutils import toOctal
 import .. / ic / [bitabs, rodfiles]
 import nirtypes, nirinsts, nirfiles
@@ -68,9 +68,11 @@ type
     data: seq[LitId]
     protos: seq[LitId]
     code: seq[LitId]
+    init: seq[LitId]
     tokens: BiTable[string]
     emittedStrings: IntSet
     needsPrefix: IntSet
+    generatedTypes: IntSet
     mangledModules: Table[LitId, LitId]
 
 proc initGeneratedCode*(m: sink NirModule): GeneratedCode =
@@ -254,8 +256,9 @@ proc genType(g: var GeneratedCode; types: TypeGraph; lit: Literals; t: TypeId; n
   of ProcTy:
     let (retType, callConv) = returnType(types, t)
     genType g, types, lit, retType
-    genType g, types, lit, callConv
+    g.add Space
     g.add ParLe
+    genType g, types, lit, callConv
     g.add Star # "(*fn)"
     maybeAddName()
     g.add ParRi
@@ -285,33 +288,32 @@ proc generateTypes(g: var GeneratedCode; types: TypeGraph; lit: Literals; c: Typ
 
   for (t, declKeyword) in c.ordered.s:
     let name = if types[t].kind == ArrayTy: arrayName(types, t) else: t.firstSon
-    let s {.cursor.} = lit.strings[types[name].litId]
-    g.add declKeyword
-    g.add CurlyLe
-    if types[t].kind == ArrayTy:
-      #let name = arrayName(types, t)
-
-      genType g, types, lit, elementType(types, t), "a"
-      g.add BracketLe
-      g.add $arrayLen(types, t)
-      g.add BracketRi
+    let litId = types[name].litId
+    if not g.generatedTypes.containsOrIncl(litId.int):
+      let s {.cursor.} = lit.strings[litId]
+      g.add declKeyword
+      g.add CurlyLe
+      if types[t].kind == ArrayTy:
+        genType g, types, lit, elementType(types, t), "a"
+        g.add BracketLe
+        g.add $arrayLen(types, t)
+        g.add BracketRi
+        g.add Semicolon
+      else:
+        var i = 0
+        for x in sons(types, t):
+          case types[x].kind
+          of FieldDecl:
+            genType g, types, lit, x.firstSon, "F" & $i
+            g.add Semicolon
+            inc i
+          of ObjectTy:
+            genType g, types, lit, x, "P"
+            g.add Semicolon
+          else: discard
+      g.add CurlyRi
+      g.add s
       g.add Semicolon
-    else:
-      var i = 0
-      for x in sons(types, t):
-        case types[x].kind
-        of FieldDecl:
-          genType g, types, lit, x.firstSon, "F" & $i
-          g.add Semicolon
-          inc i
-        of ObjectTy:
-          genType g, types, lit, x, "P"
-          g.add Semicolon
-        else: discard
-
-    g.add CurlyRi
-    g.add s
-    g.add Semicolon
 
 # Procs
 
@@ -342,7 +344,7 @@ proc genStrLit(c: var GeneratedCode; lit: Literals; litId: LitId): Token =
     let s {.cursor.} = lit.strings[litId]
     emitData "static const struct "
     emitData CurlyLe
-    emitData "  NI cap"
+    emitData "NI cap"
     emitData Semicolon
     emitData "NC8 data"
     emitData BracketLe
@@ -377,16 +379,27 @@ proc genIntLit(c: var GeneratedCode; lit: Literals; litId: LitId) =
 
 proc gen(c: var GeneratedCode; t: Tree; n: NodePos)
 
+proc genDisplayName(c: var GeneratedCode; symId: SymId) =
+  let displayName = c.m.symnames[symId]
+  if displayName != LitId(0):
+    c.add "/*"
+    c.add c.m.lit.strings[displayName]
+    c.add "*/"
+
 proc genSymDef(c: var GeneratedCode; t: Tree; n: NodePos) =
   if t[n].kind == SymDef:
-    c.needsPrefix.incl t[n].symId.int
+    let symId = t[n].symId
+    c.needsPrefix.incl symId.int
+    genDisplayName c, symId
   gen c, t, n
 
 proc genGlobal(c: var GeneratedCode; t: Tree; name, typ: NodePos; annotation: string) =
   c.add annotation
   let m: string
   if t[name].kind == SymDef:
-    m = c.tokens[mangleModuleName(c, c.m.namespace)] & "__" & $t[name].symId
+    let symId = t[name].symId
+    m = c.tokens[mangleModuleName(c, c.m.namespace)] & "__" & $symId
+    genDisplayName c, symId
   else:
     assert t[name].kind == ModuleSymUse
     let (x, y) = sons2(t, name)
@@ -396,8 +409,9 @@ proc genGlobal(c: var GeneratedCode; t: Tree; name, typ: NodePos; annotation: st
 proc genLocal(c: var GeneratedCode; t: Tree; name, typ: NodePos; annotation: string) =
   assert t[name].kind == SymDef
   c.add annotation
-  genType c, c.m.types, c.m.lit, t[typ].typeId, "q" & $t[name].symId
-  # XXX Use proper names here
+  let symId = t[name].symId
+  genType c, c.m.types, c.m.lit, t[typ].typeId, "q" & $symId
+  genDisplayName c, symId
 
 proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos; isExtern: bool) =
   let signatureBegin = c.code.len
@@ -512,6 +526,27 @@ template checkedBinaryop(opr) =
   c.add "L" & $lab.int
   c.add ParRi
 
+proc genNumberConv(c: var GeneratedCode; t: Tree; n: NodePos) =
+  let (typ, arg) = sons2(t, n)
+  if t[arg].kind == IntVal:
+    let litId = t[arg].litId
+    c.add ParLe
+    c.add ParLe
+    gen c, t, typ
+    c.add ParRi
+    case c.m.types[t[typ].typeId].kind
+    of UIntTy:
+      let x = cast[uint64](c.m.lit.numbers[litId])
+      c.add $x
+    of FloatTy:
+      let x = cast[float64](c.m.lit.numbers[litId])
+      c.add $x
+    else:
+      gen c, t, arg
+    c.add ParRi
+  else:
+    binaryop ""
+
 template moveToDataSection(body: untyped) =
   let oldLen = c.code.len
   body
@@ -524,7 +559,7 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   of Nop:
     discard "nothing to emit"
   of ImmediateVal:
-    c.add "BUG: " & $t[n].kind
+    c.add $t[n].immediateVal
   of IntVal:
     genIntLit c, c.m.lit, t[n].litId
   of StrVal:
@@ -575,11 +610,14 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
     discard "XXX todo"
   of ArrayConstr:
     c.add CurlyLe
+    c.add ".a = "
+    c.add CurlyLe
     var i = 0
     for ch in sonsFrom1(t, n):
       if i > 0: c.add Comma
       c.gen t, ch
       inc i
+    c.add CurlyRi
     c.add CurlyRi
   of ObjConstr:
     c.add CurlyLe
@@ -640,8 +678,10 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
       c.add Semicolon
   of SummonConst:
     moveToDataSection:
-      let (typ, sym) = sons2(t, n)
+      let (typ, sym, val) = sons3(t, n)
       c.genGlobal t, sym, typ, "const "
+      c.add AsgnOpr
+      c.gen t, val
       c.add Semicolon
   of Summon, SummonResult:
     let (typ, sym) = sons2(t, n)
@@ -764,7 +804,7 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   of Le: cmpop " <= "
   of Lt: cmpop " < "
   of Cast: binaryop ""
-  of NumberConv: binaryop ""
+  of NumberConv: genNumberConv c, t, n
   of CheckedObjConv: binaryop ""
   of ObjConv: binaryop ""
   of Emit: raiseAssert "cannot interpret: Emit"
@@ -887,7 +927,7 @@ typedef NU8 NU;
 #  endif
 #endif
 
-#define NIM_STRLIT_FLAG ((NU64)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
+#define NIM_STRLIT_FLAG ((NU)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
 
 #define nimAddInt64(a, b, L) ({long long int res; if(__builtin_saddll_overflow(a, b, &res)) goto L; res})
 #define nimSubInt64(a, b, L) ({long long int res; if(__builtin_ssubll_overflow(a, b, &res)) goto L; res})
@@ -902,6 +942,22 @@ typedef NU8 NU;
 
 """
 
+proc traverseCode(c: var GeneratedCode) =
+  const AllowedInToplevelC = {SummonConst, SummonGlobal, SummonThreadLocal,
+                              ProcDecl, ForeignDecl, ForeignProcDecl}
+  var i = NodePos(0)
+  while i.int < c.m.code.len:
+    let oldLen = c.code.len
+    let moveToInitSection = c.m.code[NodePos(i)].kind notin AllowedInToplevelC
+
+    gen c, c.m.code, NodePos(i)
+    next c.m.code, i
+
+    if moveToInitSection:
+      for i in oldLen ..< c.code.len:
+        c.init.add c.code[i]
+      setLen c.code, oldLen
+
 proc generateCode*(inp, outp: string) =
   var c = initGeneratedCode(load(inp))
 
@@ -911,11 +967,7 @@ proc generateCode*(inp, outp: string) =
   generateTypes(c, c.m.types, c.m.lit, co)
   let typeDecls = move c.code
 
-  var i = NodePos(0)
-  while i.int < c.m.code.len:
-    gen c, c.m.code, NodePos(i)
-    next c.m.code, i
-
+  traverseCode c
   var f = CppFile(f: open(outp, fmWrite))
   f.write "#define NIM_INTBITS " & $c.m.intbits & "\n"
   f.write Prelude
@@ -924,4 +976,8 @@ proc generateCode*(inp, outp: string) =
   writeTokenSeq f, c.data, c
   writeTokenSeq f, c.protos, c
   writeTokenSeq f, c.code, c
+  if c.init.len > 0:
+    f.write "void __attribute__((constructor)) init(void) {"
+    writeTokenSeq f, c.init, c
+    f.write "}\n\n"
   f.f.close

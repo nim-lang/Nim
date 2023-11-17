@@ -26,9 +26,8 @@ oneself.
 Void type
 =========
 
-The `void` type denotes the absence of any type. Parameters of
-type `void` are treated as non-existent, `void` as a return type means that
-the procedure does not return a value:
+The `void` type denotes the absence of any value, i.e. it is the type that contains no values. Consequently, no value can be provided for parameters of
+type `void`, and no value can be returned from a function with return type `void`:
 
   ```nim
   proc nothing(x, y: void): void =
@@ -2097,7 +2096,7 @@ for a x86 64 bit machine looks like:
 This is a memory fetch followed by jump. (An ideal implementation would
 use the carry flag and a single instruction like ``jc .L1``.)
 
-This overhead might not be desired and depending on the sematics of the routine may not be required
+This overhead might not be desired and depending on the semantics of the routine may not be required
 either.
 So it can be disabled via a `.quirky` annotation:
 

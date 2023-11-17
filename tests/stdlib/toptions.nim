@@ -196,6 +196,12 @@ proc main() =
         doAssert x.isNone
         doAssert $x == "none(cstring)"
 
-
 static: main()
 main()
+
+when not defined(js):
+  block: # bug #22932
+    var it = iterator: int {.closure.} = discard
+    doAssert it.option.isSome # Passes.
+    it = nil
+    doAssert it.option.isNone # Passes.
