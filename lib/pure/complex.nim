@@ -409,6 +409,11 @@ proc formatValueAsTuple(result: var string; value: Complex; specifier: string) =
 
 proc formatValueAsComplexNumber(result: var string; value: Complex; specifier: string) =
   ## Format implementation for `Complex` representing the value as a (RE+IMj) number
+  ## By default, the real and imaginary parts are formatted using the general ('g') format
+  let specifier = if specifier.contains({'e', 'E', 'f', 'F', 'g', 'G'}):
+      specifier.replace("j")
+    else:
+      specifier.replace('j', 'g')
   result.add "("
   formatValue(result, value.re, specifier)
   if value.im >= 0 and not specifier.contains({'+', '-'}):
@@ -425,11 +430,6 @@ proc formatValue*(result: var string; value: Complex; specifier: string) =
   if specifier.len == 0:
     result.add $value
   elif 'j' in specifier:
-    let specifier = if specifier.contains({'e', 'E', 'f', 'F', 'g', 'G'}):
-        specifier.replace("j")
-      else:
-        # 'The 'j' format defaults to 'g'
-        specifier.replace('j', 'g')
     formatValueAsComplexNumber(result, value, specifier)
   else:
     formatValueAsTuple(result, value, specifier)
