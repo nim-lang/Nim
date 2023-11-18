@@ -924,11 +924,22 @@ proc symBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
   result.loc.flags = s.locFlags
   result.instantiatedFrom = loadSym(c, g, si, s.instantiatedFrom)
 
+proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
+                    fileIdx: FileIndex; cachedModules: var seq[FileIndex]): bool
+proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
+                       fileIdx: FileIndex; m: var LoadedModule)
+
 proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s: PackedItemId): PSym =
   if s == nilItemId:
     result = nil
   else:
     let si = moduleIndex(c, g, thisModule, s)
+    if g[si].status == undefined and c.config.cmd == cmdM:
+      var cachedModules: seq[FileIndex] = @[]
+      discard needsRecompile(g, c.config, c.cache, FileIndex(si), cachedModules)
+      for m in cachedModules:
+        loadToReplayNodes(g, c.config, c.cache, m, g[int m])
+
     assert g[si].status in {loaded, storing, stored}
     if not g[si].symsInit:
       g[si].symsInit = true
