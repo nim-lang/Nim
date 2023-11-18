@@ -212,7 +212,7 @@ proc strTableAdds*(g: ModuleGraph, m: PSym, s: PSym) =
 proc isCachedModule(g: ModuleGraph; module: int): bool {.inline.} =
   result = module < g.packed.len and g.packed[module].status == loaded
 
-proc isCachedModule(g: ModuleGraph; m: PSym): bool {.inline.} =
+proc isCachedModule*(g: ModuleGraph; m: PSym): bool {.inline.} =
   isCachedModule(g, m.position)
 
 proc simulateCachedModule(g: ModuleGraph; moduleSym: PSym; m: PackedModule) =

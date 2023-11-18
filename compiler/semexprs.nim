@@ -1827,7 +1827,7 @@ proc goodLineInfo(arg: PNode): TLineInfo =
 
 proc makeTupleAssignments(c: PContext; n: PNode): PNode =
   ## expand tuple unpacking assignment into series of assignments
-  ## 
+  ##
   ## mirrored with semstmts.makeVarTupleSection
   let lhs = n[0]
   let value = semExprWithType(c, n[1], {efTypeAllowed})

@@ -435,6 +435,7 @@ proc mainCommand*(graph: ModuleGraph) =
     commandCheck(graph)
   of cmdM:
     graph.config.symbolFiles = v2Sf
+    setUseIc(graph.config.symbolFiles != disabledSf)
     commandCheck(graph)
   of cmdParse:
     wantMainModule(conf)

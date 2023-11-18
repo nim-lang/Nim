@@ -1209,7 +1209,7 @@ proc initRodIter*(it: var RodIter; config: ConfigRef, cache: IdentCache;
     result = nil
 
 proc initRodIterAllSyms*(it: var RodIter; config: ConfigRef, cache: IdentCache;
-                         g: var PackedModuleGraph; module: FileIndex, importHidden: bool): PSym =
+                         g: var PackedModuleGraph; module: FileIndex; importHidden: bool): PSym =
   it.decoder = PackedDecoder(
     lastModule: int32(-1),
     lastLit: LitId(0),
