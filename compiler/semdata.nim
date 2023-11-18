@@ -328,7 +328,8 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.features = graph.config.features
   if graph.config.symbolFiles != disabledSf:
     let id = module.position
-    assert graph.packed[id].status in {undefined, outdated}
+    if graph.config.cmd != cmdM:
+      assert graph.packed[id].status in {undefined, outdated}
     graph.packed[id].status = storing
     graph.packed[id].module = module
     initEncoder graph, module
@@ -471,7 +472,7 @@ proc makeAndType*(c: PContext, t1, t2: PType): PType =
   result.flags.incl tfHasMeta
 
 proc makeOrType*(c: PContext, t1, t2: PType): PType =
-  
+
   if t1.kind != tyOr and t2.kind != tyOr:
     result = newTypeS(tyOr, c, sons = @[t1, t2])
   else:

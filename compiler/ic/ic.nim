@@ -1046,28 +1046,29 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
     g[m].status = loading
     let fullpath = msgs.toFullPath(conf, fileIdx)
     let rod = toRodFile(conf, AbsoluteFile fullpath)
-    let err = loadRodFile(rod, g[m].fromDisk, conf)
-    if conf.cmd == cmdM:
-      setupLookupTables(g, conf, cache, fileIdx, g[m])
-      cachedModules.add fileIdx
-      g[m].status = loaded
-      result = false
-    elif err == ok:
-      result = optForceFullMake in conf.globalOptions
-      # check its dependencies:
-      for dep in g[m].fromDisk.imports:
-        let fid = toFileIndex(dep, g[m].fromDisk, conf)
-        # Warning: we need to traverse the full graph, so
-        # do **not use break here**!
-        if needsRecompile(g, conf, cache, fid, cachedModules):
-          result = true
-
-      if not result:
+    let err = loadRodFile(rod, g[m].fromDisk, conf, ignoreConfig = conf.cmd == cmdM)
+    if err == ok:
+      if conf.cmd == cmdM:
         setupLookupTables(g, conf, cache, fileIdx, g[m])
         cachedModules.add fileIdx
         g[m].status = loaded
+        result = false
       else:
-        g.pm[m] = LoadedModule(status: outdated, module: g[m].module)
+        result = optForceFullMake in conf.globalOptions
+        # check its dependencies:
+        for dep in g[m].fromDisk.imports:
+          let fid = toFileIndex(dep, g[m].fromDisk, conf)
+          # Warning: we need to traverse the full graph, so
+          # do **not use break here**!
+          if needsRecompile(g, conf, cache, fid, cachedModules):
+            result = true
+
+        if not result:
+          setupLookupTables(g, conf, cache, fileIdx, g[m])
+          cachedModules.add fileIdx
+          g[m].status = loaded
+        else:
+          g.pm[m] = LoadedModule(status: outdated, module: g[m].module)
     else:
       loadError(err, rod, conf)
       g[m].status = outdated
