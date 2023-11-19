@@ -145,8 +145,8 @@ proc commonType*(c: PContext; x, y: PType): PType =
     # turn any concrete typedesc into the abstract typedesc type
     if a.len == 0: result = a
     else:
-      result = newType(tyTypeDesc, nextTypeId(c.idgen), a.owner)
-      rawAddSon(result, newType(tyNone, nextTypeId(c.idgen), a.owner))
+      result = newType(tyTypeDesc, c.idgen, a.owner)
+      rawAddSon(result, newType(tyNone, c.idgen, a.owner))
   elif b.kind in {tyArray, tySet, tySequence} and
       a.kind == b.kind:
     # check for seq[empty] vs. seq[int]
@@ -159,7 +159,7 @@ proc commonType*(c: PContext; x, y: PType): PType =
       let bEmpty = isEmptyContainer(b[i])
       if aEmpty != bEmpty:
         if nt.isNil:
-          nt = copyType(a, nextTypeId(c.idgen), a.owner)
+          nt = copyType(a, c.idgen, a.owner)
           copyTypeProps(c.graph, c.idgen.module, nt, a)
 
         nt[i] = if aEmpty: b[i] else: a[i]
@@ -206,7 +206,7 @@ proc commonType*(c: PContext; x, y: PType): PType =
       # ill-formed AST, no need for additional tyRef/tyPtr
       if k != tyNone and x.kind != tyGenericInst:
         let r = result
-        result = newType(k, nextTypeId(c.idgen), r.owner)
+        result = newType(k, c.idgen, r.owner)
         result.addSonSkipIntLit(r, c.idgen)
 
 proc endsInNoReturn(n: PNode): bool =
@@ -638,7 +638,7 @@ proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool, ch
           result.add newTree(nkExprColonExpr, recNode, asgnExpr)
           return
 
-      let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), recNode.typ.owner)
+      let asgnType = newType(tyTypeDesc, c.idgen, recNode.typ.owner)
       rawAddSon(asgnType, recNode.typ)
       let asgnExpr = newTree(nkCall,
                       newSymNode(getSysMagic(c.graph, recNode.info, "zeroDefault", mZeroDefault)),
@@ -744,8 +744,8 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
 proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PContext =
   result = newContext(graph, module)
   result.idgen = idgen
-  result.enforceVoidContext = newType(tyTyped, nextTypeId(idgen), nil)
-  result.voidType = newType(tyVoid, nextTypeId(idgen), nil)
+  result.enforceVoidContext = newType(tyTyped, idgen, nil)
+  result.voidType = newType(tyVoid, idgen, nil)
 
   if result.p != nil: internalError(graph.config, module.info, "sem.preparePContext")
   result.semConstExpr = semConstExpr

@@ -1098,8 +1098,8 @@ proc addFactLt*(m: var TModel; a, b: PNode) =
   addFactLe(m, a, bb)
 
 proc settype(n: PNode): PType =
-  result = newType(tySet, ItemId(module: -1, item: -1), n.typ.owner)
-  var idgen: IdGenerator = nil
+  var idgen = idGeneratorForPackage(-1'i32)
+  result = newType(tySet, idgen, n.typ.owner)
   addSonSkipIntLit(result, n.typ, idgen)
 
 proc buildOf(it, loc: PNode; o: Operators): PNode =
