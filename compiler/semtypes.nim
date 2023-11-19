@@ -536,6 +536,12 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     else: discard
   else:
     result = semIdentVis(c, kind, n, allowed)
+    case kind
+    of skField: implicitPragmas(c, result, n.info, fieldPragmas)
+    of skVar:   implicitPragmas(c, result, n.info, varPragmas)
+    of skLet:   implicitPragmas(c, result, n.info, letPragmas)
+    of skConst: implicitPragmas(c, result, n.info, constPragmas)
+    else: discard
 
 proc checkForOverlap(c: PContext, t: PNode, currentEx, branchIndex: int) =
   let ex = t[branchIndex][currentEx].skipConv
