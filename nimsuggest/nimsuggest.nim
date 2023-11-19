@@ -13,6 +13,9 @@ import algorithm
 import tables
 import times
 
+when defined(posix):
+  import posix_utils
+
 template tryImport(module) = import module
 
 when compiles tryImport ../dist/checksums/src/checksums/sha1:
@@ -56,6 +59,7 @@ Options:
   --address:HOST          binds to that address, by default ""
   --stdin                 read commands from stdin and write results to
                           stdout instead of using sockets
+  --clientProcessId:PID   shutdown nimsuggest in case this process dies
   --epc                   use emacs epc mode
   --debug                 enable debug output
   --log                   enable verbose logging to nimsuggest.log file
@@ -590,6 +594,15 @@ proc mainThread(graph: ModuleGraph) =
       conf.suggestionResultHook = proc (s: Suggest) = discard
       recompileFullProject(graph)
 
+when defined(posix):
+  proc monitorClientProcessIdThreadProc(pid: int) {.thread.} =
+    while true:
+      sleep(1000)
+      try:
+        sendSignal(Pid(pid), 0)
+      except:
+        discard kill(Pid(getCurrentProcessId()), cint(SIGTERM))
+
 var
   inputThread: Thread[ThreadParams]
 
@@ -624,6 +637,11 @@ proc mainCommand(graph: ModuleGraph) =
 
   open(requests)
   open(results)
+
+  if graph.config.clientProcessId != 0:
+    var tid: Thread[int]
+    when defined(posix):
+      createThread(tid, monitorClientProcessIdThreadProc, graph.config.clientProcessId)
 
   case gMode
   of mstdin: createThread(inputThread, replStdin, (gPort, gAddress))
@@ -700,6 +718,8 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         conf.suggestMaxResults = parseInt(p.val)
       of "find":
         findProject = true
+      of "clientprocessid":
+        conf.clientProcessId = parseInt(p.val)
       else: processSwitch(pass, p, conf)
     of cmdArgument:
       let a = unixToNativePath(p.key)
