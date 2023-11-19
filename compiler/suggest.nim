@@ -732,6 +732,9 @@ proc suggestDecl*(c: PContext, n: PNode; s: PSym) =
   if attached: inc(c.inTypeContext)
   defer:
     if attached: dec(c.inTypeContext)
+  # If user is typing out an enum field, then don't provide suggestions
+  if exactEquals(c.config.m.trackPos, n.info) and s.kind == skEnumField:
+    suggestQuit()
   suggestExpr(c, n)
 
 proc suggestStmt*(c: PContext, n: PNode) =
