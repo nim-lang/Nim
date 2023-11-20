@@ -430,8 +430,13 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
 proc addModuleRef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
   ## add a remote symbol reference to the tree
   let info = n.info.toPackedInfo(c, m)
-  ir.addNode(kind = nkModuleRef, operand = 3.int32, # spans 3 nodes in total
-             info = info)
+  if n.typ != n.sym.typ:
+    ir.addNode(kind = nkModuleRef, operand = 3.int32, # spans 3 nodes in total
+               info = info,
+               typeId = storeTypeLater(n.typ, c, m))
+  else:
+    ir.addNode(kind = nkModuleRef, operand = 3.int32, # spans 3 nodes in total
+              info = info)
   ir.addNode(kind = nkNone, info = info,
              operand = toLitId(n.sym.itemId.module.FileIndex, c, m).int32)
   ir.addNode(kind = nkNone, info = info,
@@ -456,8 +461,13 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pa
       # it is a symbol that belongs to the module we're currently
       # packing:
       let id = n.sym.storeSymLater(c, m).item
-      ir.addNode(kind = nkSym, flags = n.flags, operand = id,
-                 info = info)
+      if n.typ != n.sym.typ:
+        ir.addNode(kind = nkSym, flags = n.flags, operand = id,
+                   info = info,
+                   typeId = storeTypeLater(n.typ, c, m))
+      else:
+        ir.addNode(kind = nkSym, flags = n.flags, operand = id,
+                   info = info)
     else:
       # store it as an external module reference:
       addModuleRef(n, ir, c, m)
@@ -954,6 +964,7 @@ proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s:
       else:
         result = g[si].module
         assert result != nil
+        g[si].syms[s.item] = result
 
     else:
       result = g[si].syms[s.item]
@@ -998,9 +1009,11 @@ proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; t
       # store it here early on, so that recursions work properly:
       g[si].types[t.item] = result
       typeBodyFromPacked(c, g, g[si].fromDisk.types[t.item], si, t.item, result)
+      #assert result.itemId.item == t.item, $(result.itemId.item, t.item)
+      assert result.itemId.item > 0, $(result.itemId.item, t.item)
     else:
       result = g[si].types[t.item]
-    assert result.itemId.item > 0
+      assert result.itemId.item > 0, "2"
 
 proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                        fileIdx: FileIndex; m: var LoadedModule) =
