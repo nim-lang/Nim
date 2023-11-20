@@ -57,7 +57,7 @@ import std/private/since
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
-import bitops, fenv
+import bitops, fenv, options
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -1167,7 +1167,9 @@ func `^`*[T: SomeNumber](x: T, y: Natural): T =
 
 func isInteger(y: SomeFloat): bool =
   ## Determines if a float represents an integer
-  return float(int(y)) == y
+  ## Note this might fail depending on the set rounding mode.
+  ## In C++, we would prefer to use the `rint` function as a test
+  return floor(y) == y
 
 func `^`*[T: SomeNumber, U: SomeFloat](x: T, y: U): float =
   ## Computes `x` to the power of `y`.
@@ -1181,20 +1183,12 @@ func `^`*[T: SomeNumber, U: SomeFloat](x: T, y: U): float =
     y_isOddInteger: bool = (isInteger(y) and (int(y) mod 2 == 1))
     y_isFinite: bool = (y != Inf and y != -Inf)
 
-  if isPosZero and y < 0 and y_isOddInteger:
-    raise newException(CatchableError, "Division by zero")
-    # return Inf
-  elif isNegZero and y < 0 and y_isOddInteger:
-    raise newException(CatchableError, "Division by zero")
-    # return -Inf
-  elif isZero_x and y < 0 and y != -Inf:
-    raise newException(CatchableError, "Division by zero")
-    # return Inf
-  elif isZero_x and y == -Inf:
-    raise newException(CatchableError, "Division by zero")
-    # return Inf
-  elif x < 0 and not isInteger(x) and y_isFinite and not y_isOddInteger:
-    raise newException(ValueError, "Invalid operation")
+
+  assert not(isPosZero and y < 0 and y_isOddInteger)
+  assert not(isNegZero and y < 0 and y_isOddInteger)
+  assert not(isZero_x and y < 0 and y != -Inf)
+  assert not(isZero_x and y == -Inf)
+  assert not(x < 0 and not isInteger(x) and y_isFinite and not y_isOddInteger)
   # elif isPosZero and y_isOddInteger:
   #   return 0.0
   # elif isNegZero and y_isOddInteger:
@@ -1203,7 +1197,7 @@ func `^`*[T: SomeNumber, U: SomeFloat](x: T, y: U): float =
   #   return 0.0
   # elif x == -1.0 and (y == Inf or y == -Inf):
   #   return 1.0
-  elif x == 1.0:
+  if x == 1.0:
     return 1.0
   elif y == 0.0 or y == -0.0:
     return 1.0

@@ -7,7 +7,7 @@
 ## Standard library additions and changes
 
 [//]: # "Changes:"
-
+- `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
 
 [//]: # "Additions:"
 
@@ -28,4 +28,3 @@
 
 
 ## Tool changes
-
