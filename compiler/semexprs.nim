@@ -1827,7 +1827,7 @@ proc goodLineInfo(arg: PNode): TLineInfo =
 
 proc makeTupleAssignments(c: PContext; n: PNode): PNode =
   ## expand tuple unpacking assignment into series of assignments
-  ## 
+  ##
   ## mirrored with semstmts.makeVarTupleSection
   let lhs = n[0]
   let value = semExprWithType(c, n[1], {efTypeAllowed})
@@ -2384,7 +2384,7 @@ proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result = semDirectOp(c, n, flags)
 
 proc createFlowVar(c: PContext; t: PType; info: TLineInfo): PType =
-  result = newType(tyGenericInvocation, nextTypeId c.idgen, c.module)
+  result = newType(tyGenericInvocation, c.idgen, c.module)
   addSonSkipIntLit(result, magicsys.getCompilerProc(c.graph, "FlowVar").typ, c.idgen)
   addSonSkipIntLit(result, t, c.idgen)
   result = instGenericContainer(c, info, result, allowMetaTypes = false)
@@ -2538,7 +2538,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags; expectedType: P
         let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
         expected.kind in {tySequence, tyOpenArray}):
       # seq type inference
-      var arrayType = newType(tyOpenArray, nextTypeId(c.idgen), expected.owner)
+      var arrayType = newType(tyOpenArray, c.idgen, expected.owner)
       arrayType.rawAddSon(expected[0])
       if n[0].kind == nkSym and sfFromGeneric in n[0].sym.flags:
         # may have been resolved to `@`[empty] at some point,

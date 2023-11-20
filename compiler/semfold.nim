@@ -23,13 +23,13 @@ when defined(nimPreviewSlimSystem):
 
 proc errorType*(g: ModuleGraph): PType =
   ## creates a type representing an error state
-  result = newType(tyError, nextTypeId(g.idgen), g.owners[^1])
+  result = newType(tyError, g.idgen, g.owners[^1])
   result.flags.incl tfCheckedForDestructor
 
 proc getIntLitTypeG(g: ModuleGraph; literal: PNode; idgen: IdGenerator): PType =
   # we cache some common integer literal types for performance:
   let ti = getSysType(g, literal.info, tyInt)
-  result = copyType(ti, nextTypeId(idgen), ti.owner)
+  result = copyType(ti, idgen, ti.owner)
   result.n = literal
 
 proc newIntNodeT*(intVal: Int128, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
@@ -513,7 +513,7 @@ proc foldConStrStr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode
 proc newSymNodeTypeDesc*(s: PSym; idgen: IdGenerator; info: TLineInfo): PNode =
   result = newSymNode(s, info)
   if s.typ.kind != tyTypeDesc:
-    result.typ = newType(tyTypeDesc, idgen.nextTypeId, s.owner)
+    result.typ = newType(tyTypeDesc, idgen, s.owner)
     result.typ.addSonSkipIntLit(s.typ, idgen)
   else:
     result.typ = s.typ

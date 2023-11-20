@@ -327,7 +327,7 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   if cl.allowMetaTypes:
     result = t.exactReplica
   else:
-    result = copyType(t, nextTypeId(cl.c.idgen), t.owner)
+    result = copyType(t, cl.c.idgen, t.owner)
     copyTypeProps(cl.c.graph, cl.c.idgen.module, result, t)
     #cl.typeMap.topLayer.idTablePut(result, t)
 
@@ -383,7 +383,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     header = instCopyType(cl, t)
 
-  result = newType(tyGenericInst, nextTypeId(cl.c.idgen), t[0].owner, sons = @[header[0]])
+  result = newType(tyGenericInst, cl.c.idgen, t[0].owner, sons = @[header[0]])
   result.flags = header.flags
   # be careful not to propagate unnecessary flags here (don't use rawAddSon)
   # ugh need another pass for deeply recursive generic types (e.g. PActor)

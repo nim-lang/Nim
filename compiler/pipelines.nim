@@ -228,7 +228,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     closeRodFile(graph, module)
   result = true
 
-proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, fromModule: PSym = nil): PSym =
+proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags; fromModule: PSym = nil): PSym =
   var flags = flags
   if fileIdx == graph.config.projectMainIdx2: flags.incl sfMainModule
   result = graph.getModule(fileIdx)
@@ -252,10 +252,14 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
     else:
       if sfSystemModule in flags:
         graph.systemModule = result
+      if sfMainModule in flags and graph.config.cmd == cmdM:
+        result.flags.incl flags
+        registerModule(graph, result)
+        processModuleAux("import")
       partialInitModule(result, graph, fileIdx, filename)
     for m in cachedModules:
       registerModuleById(graph, m)
-      replayStateChanges(graph.packed[m.int].module, graph)
+      replayStateChanges(graph.packed.pm[m.int].module, graph)
       replayGenericCacheInformation(graph, m.int)
   elif graph.isDirty(result):
     result.flags.excl sfDirty

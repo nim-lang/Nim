@@ -182,12 +182,12 @@ proc getIntLitType*(c: PContext; literal: PNode): PType =
     result = c.intTypeCache[value.int]
     if result == nil:
       let ti = getSysType(c.graph, literal.info, tyInt)
-      result = copyType(ti, nextTypeId(c.idgen), ti.owner)
+      result = copyType(ti, c.idgen, ti.owner)
       result.n = literal
       c.intTypeCache[value.int] = result
   else:
     let ti = getSysType(c.graph, literal.info, tyInt)
-    result = copyType(ti, nextTypeId(c.idgen), ti.owner)
+    result = copyType(ti, c.idgen, ti.owner)
     result.n = literal
 
 proc setIntLitType*(c: PContext; result: PNode) =
@@ -220,12 +220,11 @@ proc setIntLitType*(c: PContext; result: PNode) =
     internalError(c.config, result.info, "invalid int size")
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
-  result.genericSym = s
-  result.inst = inst
+  result = TInstantiationPair(genericSym: s, inst: inst)
 
 proc filename*(c: PContext): string =
   # the module's filename
-  return toFilename(c.config, FileIndex c.module.position)
+  result = toFilename(c.config, FileIndex c.module.position)
 
 proc scopeDepth*(c: PContext): int {.inline.} =
   result = if c.currentScope != nil: c.currentScope.depthLevel
@@ -328,7 +327,8 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.features = graph.config.features
   if graph.config.symbolFiles != disabledSf:
     let id = module.position
-    assert graph.packed[id].status in {undefined, outdated}
+    if graph.config.cmd != cmdM:
+      assert graph.packed[id].status in {undefined, outdated}
     graph.packed[id].status = storing
     graph.packed[id].module = module
     initEncoder graph, module
@@ -397,10 +397,10 @@ proc addToLib*(lib: PLib, sym: PSym) =
   sym.annex = lib
 
 proc newTypeS*(kind: TTypeKind, c: PContext, sons: seq[PType] = @[]): PType =
-  result = newType(kind, nextTypeId(c.idgen), getCurrOwner(c), sons = sons)
+  result = newType(kind, c.idgen, getCurrOwner(c), sons = sons)
 
 proc makePtrType*(owner: PSym, baseType: PType; idgen: IdGenerator): PType =
-  result = newType(tyPtr, nextTypeId(idgen), owner)
+  result = newType(tyPtr, idgen, owner)
   addSonSkipIntLit(result, baseType, idgen)
 
 proc makePtrType*(c: PContext, baseType: PType): PType =
@@ -428,7 +428,7 @@ proc makeVarType*(owner: PSym, baseType: PType; idgen: IdGenerator; kind = tyVar
   if baseType.kind == kind:
     result = baseType
   else:
-    result = newType(kind, nextTypeId(idgen), owner)
+    result = newType(kind, idgen, owner)
     addSonSkipIntLit(result, baseType, idgen)
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
@@ -447,15 +447,15 @@ proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
 
 proc newTypeWithSons*(owner: PSym, kind: TTypeKind, sons: seq[PType];
                       idgen: IdGenerator): PType =
-  result = newType(kind, nextTypeId(idgen), owner, sons = sons)
+  result = newType(kind, idgen, owner, sons = sons)
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,
                       sons: seq[PType]): PType =
-  result = newType(kind, nextTypeId(c.idgen), getCurrOwner(c), sons = sons)
+  result = newType(kind, c.idgen, getCurrOwner(c), sons = sons)
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,
                       parent: PType): PType =
-  result = newType(kind, nextTypeId(c.idgen), getCurrOwner(c), parent = parent)
+  result = newType(kind, c.idgen, getCurrOwner(c), parent = parent)
 
 proc makeStaticExpr*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStaticExpr, n.info)
@@ -471,7 +471,7 @@ proc makeAndType*(c: PContext, t1, t2: PType): PType =
   result.flags.incl tfHasMeta
 
 proc makeOrType*(c: PContext, t1, t2: PType): PType =
-  
+
   if t1.kind != tyOr and t2.kind != tyOr:
     result = newTypeS(tyOr, c, sons = @[t1, t2])
   else:

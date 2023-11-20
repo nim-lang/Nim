@@ -28,9 +28,9 @@ proc declareSelf(c: PContext; info: TLineInfo) =
   ## Adds the magical 'Self' symbols to the current scope.
   let ow = getCurrOwner(c)
   let s = newSym(skType, getIdent(c.cache, "Self"), c.idgen, ow, info)
-  s.typ = newType(tyTypeDesc, nextTypeId(c.idgen), ow)
+  s.typ = newType(tyTypeDesc, c.idgen, ow)
   s.typ.flags.incl {tfUnresolved, tfPacked}
-  s.typ.add newType(tyEmpty, nextTypeId(c.idgen), ow)
+  s.typ.add newType(tyEmpty, c.idgen, ow)
   addDecl(c, s, info)
 
 proc semConceptDecl(c: PContext; n: PNode): PNode =
