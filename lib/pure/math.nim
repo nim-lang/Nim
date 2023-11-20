@@ -1189,20 +1189,7 @@ func `^`*[T: SomeNumber, U: SomeFloat](x: T, y: U): float =
   assert not(isZero_x and y < 0 and y != -Inf)
   assert not(isZero_x and y == -Inf)
   assert not(x < 0 and not isInteger(x) and y_isFinite and not y_isOddInteger)
-  # elif isPosZero and y_isOddInteger:
-  #   return 0.0
-  # elif isNegZero and y_isOddInteger:
-  #   return -0.0
-  # elif isZero_x and not y_isOddInteger and y != Inf:
-  #   return 0.0
-  # elif x == -1.0 and (y == Inf or y == -Inf):
-  #   return 1.0
-  if x == 1.0:
-    return 1.0
-  elif y == 0.0 or y == -0.0:
-    return 1.0
-  else:
-    pow(x, y)
+  pow(x, y)
 
 func gcd*[T](x, y: T): T =
   ## Computes the greatest common (positive) divisor of `x` and `y`.
