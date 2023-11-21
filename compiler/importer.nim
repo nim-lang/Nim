@@ -230,7 +230,7 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; im
   else:
     for i in 0..n.safeLen-1:
       importForwarded(c, n[i], exceptSet, fromMod, importSet)
-    
+
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool): PSym =
   result = realModule
   template createModuleAliasImpl(ident): untyped =
@@ -313,6 +313,7 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
     result = nil
 
 proc afterImport(c: PContext, m: PSym) =
+  if isCachedModule(c.graph, m): return
   # fixes bug #17510, for re-exported symbols
   let realModuleId = c.importModuleMap[m.id]
   for s in allSyms(c.graph, m):

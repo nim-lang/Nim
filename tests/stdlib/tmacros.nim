@@ -334,3 +334,16 @@ block:
       `hello`(12, type(x))
 
   main()
+
+block: # bug #22947
+  macro bar[N: static int](a: var array[N, int]) =
+    result = quote do:
+      for i in 0 ..< `N`:
+        `a`[i] = i
+
+  func foo[N: static int](a: var array[N, int]) =
+    bar(a)
+
+
+  var a: array[4, int]
+  foo(a)

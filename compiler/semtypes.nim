@@ -42,7 +42,8 @@ proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext, sons: seq[PType]):
   if prev == nil or prev.kind == tyGenericBody:
     result = newTypeS(kind, c, sons = sons)
   else:
-    result = newType(prev, sons)
+    result = prev
+    result.setSons(sons)
     if result.kind == tyForward: result.kind = kind
   #if kind == tyError: result.flags.incl tfCheckedForDestructor
 
@@ -528,6 +529,12 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     else: discard
   else:
     result = semIdentVis(c, kind, n, allowed)
+    case kind
+    of skField: implicitPragmas(c, result, n.info, fieldPragmas)
+    of skVar:   implicitPragmas(c, result, n.info, varPragmas)
+    of skLet:   implicitPragmas(c, result, n.info, letPragmas)
+    of skConst: implicitPragmas(c, result, n.info, constPragmas)
+    else: discard
 
 proc checkForOverlap(c: PContext, t: PNode, currentEx, branchIndex: int) =
   let ex = t[branchIndex][currentEx].skipConv
@@ -921,7 +928,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
               sfSystemModule notin c.module.flags:
             message(c.config, n.info, warnInheritFromException, "")
           if not tryAddInheritedFields(c, check, pos, concreteBase, n):
-            return newType(tyError, nextTypeId c.idgen, result.owner)
+            return newType(tyError, c.idgen, result.owner)
 
       elif concreteBase.kind == tyForward:
         c.skipTypes.add n #we retry in the final pass
@@ -943,7 +950,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
   else:
     # partial object so add things to the check
     if not tryAddInheritedFields(c, check, pos, result, n, isPartial = true):
-      return newType(tyError, nextTypeId c.idgen, result.owner)
+      return newType(tyError, c.idgen, result.owner)
 
   semRecordNodeAux(c, n[2], check, pos, result.n, result)
   if n[0].kind != nkEmpty:
@@ -1183,7 +1190,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   of tyGenericInst:
     result = nil
     if paramType.lastSon.kind == tyUserTypeClass:
-      var cp = copyType(paramType, nextTypeId c.idgen, getCurrOwner(c))
+      var cp = copyType(paramType, c.idgen, getCurrOwner(c))
       copyTypeProps(c.graph, c.idgen.module, cp, paramType)
 
       cp.kind = tyUserTypeClassInst
@@ -1223,7 +1230,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   of tyUserTypeClasses, tyBuiltInTypeClass, tyCompositeTypeClass,
      tyAnd, tyOr, tyNot, tyConcept:
     result = addImplicitGeneric(c,
-        copyType(paramType, nextTypeId c.idgen, getCurrOwner(c)), paramTypId,
+        copyType(paramType, c.idgen, getCurrOwner(c)), paramTypId,
         info, genericParams, paramName)
 
   of tyGenericParam:
@@ -1379,7 +1386,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       let finalType = if lifted != nil: lifted else: typ.skipIntLit(c.idgen)
       arg.typ = finalType
       arg.position = counter
-      if constraint != nil: 
+      if constraint != nil:
         #only replace the constraint when it has been set as arg could contain codegenDecl
         arg.constraint = constraint
       inc(counter)
@@ -1392,7 +1399,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       onDef(a[j].info, arg)
       a[j] = newSymNode(arg)
 
-  var r: PType = 
+  var r: PType =
     if n[0].kind != nkEmpty:
       semTypeNode(c, n[0], nil)
     else:
@@ -1508,7 +1515,7 @@ proc trySemObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType): b
   var newf = newNodeI(nkRecList, n.info)
   semRecordNodeAux(c, t.n, check, pos, newf, t)
 
-proc containsGenericInvocationWithForward(n: PNode): bool = 
+proc containsGenericInvocationWithForward(n: PNode): bool =
   if n.kind == nkSym and n.sym.ast != nil and n.sym.ast.len > 1 and n.sym.ast[2].kind == nkObjectTy:
     for p in n.sym.ast[2][^1]:
       if p.kind == nkIdentDefs and p[1].typ != nil and p[1].typ.kind == tyGenericInvocation and
@@ -1529,7 +1536,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   addSonSkipIntLit(result, t, c.idgen)
 
   template addToResult(typ, skip) =
-    
+
     if typ.isNil:
       internalAssert c.config, false
       rawAddSon(result, typ)
@@ -1649,7 +1656,7 @@ proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
 
 proc freshType(c: PContext; res, prev: PType): PType {.inline.} =
   if prev.isNil or prev.kind == tyGenericBody:
-    result = copyType(res, nextTypeId c.idgen, res.owner)
+    result = copyType(res, c.idgen, res.owner)
     copyTypeProps(c.graph, c.idgen.module, result, res)
   else:
     result = res
@@ -2040,7 +2047,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semTypeNode(c, n[0], nil)
       if result != nil:
         let old = result
-        result = copyType(result, nextTypeId c.idgen, getCurrOwner(c))
+        result = copyType(result, c.idgen, getCurrOwner(c))
         copyTypeProps(c.graph, c.idgen.module, result, old)
         for i in 1..<n.len:
           result.rawAddSon(semTypeNode(c, n[i], nil))
@@ -2334,7 +2341,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
         if j == 0:
           finalType = typ
         else:
-          finalType = copyType(typ, nextTypeId c.idgen, typ.owner)
+          finalType = copyType(typ, c.idgen, typ.owner)
           copyTypeProps(c.graph, c.idgen.module, finalType, typ)
         # it's important the we create an unique
         # type for each generic param. the index

@@ -180,7 +180,7 @@ proc collectOrAddMissingCaseFields(c: PContext, branchNode: PNode,
                           constrCtx: var ObjConstrContext, defaults: var seq[PNode]) =
   let res = collectMissingCaseFields(c, branchNode, constrCtx, defaults)
   for sym in res:
-    let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), sym.typ.owner)
+    let asgnType = newType(tyTypeDesc, c.idgen, sym.typ.owner)
     let recTyp = sym.typ.skipTypes(defaultFieldsSkipTypes)
     rawAddSon(asgnType, recTyp)
     let asgnExpr = newTree(nkCall,

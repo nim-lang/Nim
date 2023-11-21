@@ -214,7 +214,7 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string; inferredFr
   localError(c.graph.config, ri.info, errGenerated, m)
 
 proc makePtrType(c: var Con, baseType: PType): PType =
-  result = newType(tyPtr, nextTypeId c.idgen, c.owner)
+  result = newType(tyPtr, c.idgen, c.owner)
   addSonSkipIntLit(result, baseType, c.idgen)
 
 proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
