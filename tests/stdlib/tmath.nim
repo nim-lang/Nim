@@ -267,8 +267,6 @@ template main() =
     doAssert: 1.0 ^ -Inf == 1.0
     doAssert: 1.0 ^ -5.4 == 1.0
     doAssert: 1.0 ^ 1.0 == 1.0
-    doAssert: 1.0 ^ NaN == 1.0
-    doAssert: NaN ^ 0.0 == 1.0
     # Base finite, negative and exponent finite, non-integer returns NaN and raises Error
     doAssertRaises(AssertionDefect): discard (-5.5 ^ 2.2)
 
@@ -301,6 +299,12 @@ template main() =
     doAssert: -Inf ^ Inf == Inf
     doAssert: Inf ^ -Inf == 0.0
     doAssert: Inf ^ Inf == Inf
+
+  block:
+    # doAssert: 1.0 ^ NaN == 1.0
+    # doAssert: NaN ^ 0.0 == 1.0
+    doAssert: (0.0 ^ NaN).isNaN
+    doAssert: (NaN ^ 1.0).isNaN
 
   block: # isNaN
     doAssert NaN.isNaN

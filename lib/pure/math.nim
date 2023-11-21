@@ -1226,8 +1226,8 @@ func `^`*[T: SomeNumber, U: SomeFloat](x: T, y: U): float =
     isZero_x: bool = (x == 0.0 or x == -0.0)
     isNegZero: bool = classify(x) == fcNegZero
     isPosZero: bool = classify(x) == fcZero
-    yIsOddInteger: bool = (isInteger(y) and (int(y) mod 2 == 1))
     yIsFinite: bool = (y != Inf and y != -Inf)
+    yIsOddInteger: bool = (isInteger(y) and yIsFinite and (abs(int(y) mod 2) == 1))
 
 
   assert not(isPosZero and y < 0 and yIsOddInteger)
