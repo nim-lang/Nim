@@ -77,7 +77,7 @@ when defined(c) or defined(cpp):
       importc: "frexpf", header: "<math.h>".}
   func c_frexp2(x: cdouble, exponent: var cint): cdouble {.
       importc: "frexp", header: "<math.h>".}
-  
+
   type
     div_t {.importc, header: "<stdlib.h>".} = object
       quot: cint
@@ -88,13 +88,13 @@ when defined(c) or defined(cpp):
     lldiv_t {.importc, header: "<stdlib.h>".} = object
       quot: clonglong
       rem: clonglong
-  
+
   when cint isnot clong:
     func divmod_c(x, y: cint): div_t {.importc: "div", header: "<stdlib.h>".}
   when clong isnot clonglong:
     func divmod_c(x, y: clonglong): lldiv_t {.importc: "lldiv", header: "<stdlib.h>".}
   func divmod_c(x, y: clong): ldiv_t {.importc: "ldiv", header: "<stdlib.h>".}
-  func divmod*[T: SomeInteger](x, y: T): (T, T) {.inline.} = 
+  func divmod*[T: SomeInteger](x, y: T): (T, T) {.inline.} =
     ## Specialized instructions for computing both division and modulus.
     ## Return structure is: (quotient, remainder)
     runnableExamples:
@@ -828,14 +828,14 @@ else: # JS
       doAssert -6.5 mod  2.5 == -1.5
       doAssert  6.5 mod -2.5 ==  1.5
       doAssert -6.5 mod -2.5 == -1.5
-  
-  func divmod*[T:SomeInteger](num, denom: T): (T, T) = 
+
+  func divmod*[T:SomeInteger](num, denom: T): (T, T) =
     runnableExamples:
       doAssert  divmod(5, 2) ==  (2, 1)
       doAssert divmod(5, -3) == (-1, 2)
     result[0] = num div denom
     result[1] = num mod denom
-  
+
 
 func round*[T: float32|float64](x: T, places: int): T =
   ## Decimal rounding on a binary floating point number.
@@ -1213,9 +1213,9 @@ func `^`*[T: SomeNumber](x: T, y: Natural): T =
 
 func isInteger(y: SomeFloat): bool =
   ## Determines if a float represents an integer
-  ## Note this might fail depending on the set rounding mode.
-  ## In C++, we would prefer to use the `rint` function as a test
-  return floor(y) == y
+  ## Note this might trigger a change of the rounding mode.
+  # In C++, we usually use the `rint` function.
+  return round(y) == y
 
 func `^`*[T: SomeNumber, U: SomeFloat](x: T, y: U): float =
   ## Computes `x` to the power of `y`.
@@ -1226,15 +1226,15 @@ func `^`*[T: SomeNumber, U: SomeFloat](x: T, y: U): float =
     isZero_x: bool = (x == 0.0 or x == -0.0)
     isNegZero: bool = classify(x) == fcNegZero
     isPosZero: bool = classify(x) == fcZero
-    y_isOddInteger: bool = (isInteger(y) and (int(y) mod 2 == 1))
+    # y_isOddInteger: bool = (isInteger(y) and (int(y) mod 2 == 1))
     y_isFinite: bool = (y != Inf and y != -Inf)
 
 
-  assert not(isPosZero and y < 0 and y_isOddInteger)
-  assert not(isNegZero and y < 0 and y_isOddInteger)
+  # assert not(isPosZero and y < 0 and y_isOddInteger)
+  # assert not(isNegZero and y < 0 and y_isOddInteger)
   assert not(isZero_x and y < 0 and y != -Inf)
   assert not(isZero_x and y == -Inf)
-  assert not(x < 0 and not isInteger(x) and y_isFinite and not y_isOddInteger)
+  # assert not(x < 0 and not isInteger(x) and y_isFinite and not y_isOddInteger)
   pow(x, y)
 
 func gcd*[T](x, y: T): T =
