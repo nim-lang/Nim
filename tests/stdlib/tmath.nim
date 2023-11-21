@@ -254,13 +254,13 @@ template main() =
 
   block:
     doAssert: compiles(5.5 ^ 2.2)
-    doAssert: not compiles(0.0 ^ -5.0)
-    doAssert: not compiles(-0.0 ^ -5.0)
-    doAssert: not compiles(-0.0 ^ -5.3)
-    doAssert: not compiles(-0.0 ^ -4.0)
-    doAssert: not compiles(-0.0 ^ -5.3)
-    doAssert: not compiles(-0.0 ^ -4.0)
-    doAssert: not compiles(-0.0 ^ -4.0)
+    doAssertRaises(AssertionDefect): discard (0.0 ^ -5.0)
+    doAssertRaises(AssertionDefect): discard (-0.0 ^ -5.0)
+    doAssertRaises(AssertionDefect): discard (-0.0 ^ -5.3)
+    doAssertRaises(AssertionDefect): discard (-0.0 ^ -4.0)
+    doAssertRaises(AssertionDefect): discard (-0.0 ^ -5.3)
+    doAssertRaises(AssertionDefect): discard (-0.0 ^ -4.0)
+    doAssertRaises(AssertionDefect): discard (-0.0 ^ -4.0)
     doAssert: -1.0 ^ Inf == 1.0
     doAssert: -1.0 ^ -Inf == 1.0
     doAssert: 1.0 ^ Inf == 1.0
@@ -270,7 +270,7 @@ template main() =
     doAssert: 1.0 ^ NaN == 1.0
     doAssert: NaN ^ 0.0 == 1.0
     # Base finite, negative and exponent finite, non-integer returns NaN and raises Error
-    doAssert: not compiles(-5.5 ^ 2.2)
+    doAssertRaises(AssertionDefect): discard (-5.5 ^ 2.2)
 
     # ^-Inf or ^Inf returns 0 or Inf depending on base absolute value relative to 1
     doAssert: 0.5 ^ -Inf == Inf
