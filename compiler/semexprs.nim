@@ -1052,7 +1052,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       result.transitionSonsKind(nkCall)
       result.flags.incl nfExplicitCall
       for i in 1..<n.len: result.add n[i]
-      return semExpr(c, result, flags)
+      return semExpr(c, result, flags, expectedType)
     else:
       n[0] = n0
   else:
@@ -3124,7 +3124,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     result = semFieldAccess(c, n, flags)
     if result.kind == nkDotCall:
       result.transitionSonsKind(nkCall)
-      result = semExpr(c, result, flags)
+      result = semExpr(c, result, flags, expectedType)
   of nkBind:
     message(c.config, n.info, warnDeprecated, "bind is deprecated")
     result = semExpr(c, n[0], flags, expectedType)
