@@ -367,18 +367,13 @@ const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
 
 
 when defined(nimAllowNonVarDestructor) and arcLikeMem:
-  proc `=destroy`*(x: string) {.inline, magic: "Destroy".} =
+  proc `=destroy`*[T](x: T) {.inline, magic: "Destroy".} =
+    ## Generic `destructor`:idx: implementation that can be overridden.
     discard
-
-  proc `=destroy`*[T](x: seq[T]) {.inline, magic: "Destroy".} =
+else:
+  proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
+    ## Generic `destructor`:idx: implementation that can be overridden.
     discard
-
-  proc `=destroy`*[T](x: ref T) {.inline, magic: "Destroy".} =
-    discard
-
-proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
-  ## Generic `destructor`:idx: implementation that can be overridden.
-  discard
 
 when defined(nimHasDup):
   proc `=dup`*[T](x: T): T {.inline, magic: "Dup".} =
