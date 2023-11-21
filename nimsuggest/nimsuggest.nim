@@ -12,9 +12,7 @@ import strformat
 import algorithm
 import tables
 import times
-
-when defined(posix):
-  import posix_utils
+import procmonitor
 
 template tryImport(module) = import module
 
@@ -594,23 +592,6 @@ proc mainThread(graph: ModuleGraph) =
       conf.suggestionResultHook = proc (s: Suggest) = discard
       recompileFullProject(graph)
 
-when defined(posix):
-  proc monitorClientProcessIdThreadProc(pid: int) {.thread.} =
-    while true:
-      sleep(1000)
-      try:
-        sendSignal(Pid(pid), 0)
-      except:
-        discard kill(Pid(getCurrentProcessId()), cint(SIGTERM))
-
-when defined(windows):
-  proc monitorClientProcessIdThreadProc(pid: int) {.thread.} =
-    var process = openProcess(SYNCHRONIZE, 0, DWORD(pid))
-    if process != 0:
-      discard waitForSingleObject(process, INFINITE)
-      discard closeHandle(process)
-    quit(0)
-
 var
   inputThread: Thread[ThreadParams]
 
@@ -646,10 +627,8 @@ proc mainCommand(graph: ModuleGraph) =
   open(requests)
   open(results)
 
-  when defined(posix) or defined(windows):
-    if graph.config.clientProcessId != 0:
-      var tid: Thread[int]
-      createThread(tid, monitorClientProcessIdThreadProc, graph.config.clientProcessId)
+  if graph.config.clientProcessId != 0:
+    hookProcMonitor(graph.config.clientProcessId)
 
   case gMode
   of mstdin: createThread(inputThread, replStdin, (gPort, gAddress))
