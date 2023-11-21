@@ -603,6 +603,14 @@ when defined(posix):
       except:
         discard kill(Pid(getCurrentProcessId()), cint(SIGTERM))
 
+when defined(windows):
+  proc monitorClientProcessIdThreadProc(pid: int) {.thread.} =
+    var process = openProcess(SYNCHRONIZE, 0, DWORD(pid))
+    if process != 0:
+      discard waitForSingleObject(process, INFINITE)
+      discard closeHandle(process)
+    quit(0)
+
 var
   inputThread: Thread[ThreadParams]
 
@@ -638,9 +646,9 @@ proc mainCommand(graph: ModuleGraph) =
   open(requests)
   open(results)
 
-  if graph.config.clientProcessId != 0:
-    var tid: Thread[int]
-    when defined(posix):
+  when defined(posix) or defined(windows):
+    if graph.config.clientProcessId != 0:
+      var tid: Thread[int]
       createThread(tid, monitorClientProcessIdThreadProc, graph.config.clientProcessId)
 
   case gMode
