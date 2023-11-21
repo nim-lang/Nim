@@ -1226,15 +1226,15 @@ func `^`*[T: SomeNumber, U: SomeFloat](x: T, y: U): float =
     isZero_x: bool = (x == 0.0 or x == -0.0)
     isNegZero: bool = classify(x) == fcNegZero
     isPosZero: bool = classify(x) == fcZero
-    # y_isOddInteger: bool = (isInteger(y) and (int(y) mod 2 == 1))
-    y_isFinite: bool = (y != Inf and y != -Inf)
+    yIsOddInteger: bool = (isInteger(y) and (int(y) mod 2 == 1))
+    yIsFinite: bool = (y != Inf and y != -Inf)
 
 
-  # assert not(isPosZero and y < 0 and y_isOddInteger)
-  # assert not(isNegZero and y < 0 and y_isOddInteger)
+  assert not(isPosZero and y < 0 and yIsOddInteger)
+  assert not(isNegZero and y < 0 and yIsOddInteger)
   assert not(isZero_x and y < 0 and y != -Inf)
   assert not(isZero_x and y == -Inf)
-  # assert not(x < 0 and not isInteger(x) and y_isFinite and not y_isOddInteger)
+  assert not(x < 0 and not isInteger(x) and yIsFinite and not yIsOddInteger)
   pow(x, y)
 
 func gcd*[T](x, y: T): T =
