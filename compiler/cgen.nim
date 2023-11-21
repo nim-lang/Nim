@@ -2183,9 +2183,9 @@ proc updateCachedModule(m: BModule) =
 
 proc genVTable(m: BModule, seqs: seq[PSym]): Rope =
   result = Rope"{"
-  for i in 0..<seqs.len-1:
-    result.add "(void *) " & seqs[i].loc.r & ", "
-  result.add "(void *) " & seqs[^1].loc.r
+  for i in 0..<seqs.len:
+    if i > 0: result.add ", "
+    result.add "(void *) " & seqs[i].loc.r
   result.add "}"
 
 proc initializeVTable*(m: BModule, typ: PType, dispatchMethods: seq[PSym]) =
