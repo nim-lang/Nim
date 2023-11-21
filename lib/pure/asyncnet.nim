@@ -682,7 +682,7 @@ when defined(posix) and not useNimNetLite:
         elif ret == EINTR:
           return false
         else:
-          retFuture.fail(newException(OSError, osErrorMsg(OSErrorCode(ret))))
+          retFuture.fail(newOSError(OSErrorCode(ret)))
           return true
 
       var socketAddr = makeUnixAddr(path)
@@ -696,7 +696,7 @@ when defined(posix) and not useNimNetLite:
         if lastError.int32 == EINTR or lastError.int32 == EINPROGRESS:
           addWrite(AsyncFD(socket.fd), cb)
         else:
-          retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+          retFuture.fail(newOSError(lastError))
 
   proc bindUnix*(socket: AsyncSocket, path: string) {.
     tags: [ReadIOEffect].} =

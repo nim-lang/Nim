@@ -18,7 +18,7 @@ export createMagic
 proc nilOrSysInt*(g: ModuleGraph): PType = g.sysTypes[tyInt]
 
 proc newSysType(g: ModuleGraph; kind: TTypeKind, size: int): PType =
-  result = newType(kind, nextTypeId(g.idgen), g.systemModule)
+  result = newType(kind, g.idgen, g.systemModule)
   result.size = size
   result.align = size.int16
 
@@ -27,7 +27,7 @@ proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
   if result == nil:
     localError(g.config, info, "system module needs: " & name)
     result = newSym(skError, getIdent(g.cache, name), g.idgen, g.systemModule, g.systemModule.info, {})
-    result.typ = newType(tyError, nextTypeId(g.idgen), g.systemModule)
+    result.typ = newType(tyError, g.idgen, g.systemModule)
 
 proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSym =
   result = nil
@@ -40,7 +40,7 @@ proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSy
   if result != nil: return result
   localError(g.config, info, "system module needs: " & name)
   result = newSym(skError, id, g.idgen, g.systemModule, g.systemModule.info, {})
-  result.typ = newType(tyError, nextTypeId(g.idgen), g.systemModule)
+  result.typ = newType(tyError, g.idgen, g.systemModule)
 
 proc sysTypeFromName*(g: ModuleGraph; info: TLineInfo; name: string): PType =
   result = getSysSym(g, info, name).typ
@@ -93,7 +93,7 @@ proc getFloatLitType*(g: ModuleGraph; literal: PNode): PType =
 
 proc skipIntLit*(t: PType; id: IdGenerator): PType {.inline.} =
   if t.n != nil and t.kind in {tyInt, tyFloat}:
-    result = copyType(t, nextTypeId(id), t.owner)
+    result = copyType(t, id, t.owner)
     result.n = nil
   else:
     result = t
@@ -151,7 +151,7 @@ proc getMagicEqSymForType*(g: ModuleGraph; t: PType; info: TLineInfo): PSym =
       "can't find magic equals operator for type kind " & $t.kind)
 
 proc makePtrType*(baseType: PType; idgen: IdGenerator): PType =
-  result = newType(tyPtr, nextTypeId idgen, baseType.owner)
+  result = newType(tyPtr, idgen, baseType.owner)
   addSonSkipIntLit(result, baseType, idgen)
 
 proc makeAddr*(n: PNode; idgen: IdGenerator): PNode =

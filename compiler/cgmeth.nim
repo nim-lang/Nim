@@ -124,7 +124,7 @@ proc createDispatcher(s: PSym; g: ModuleGraph; idgen: IdGenerator): PSym =
   incl(disp.flags, sfDispatcher)
   excl(disp.flags, sfExported)
   let old = disp.typ
-  disp.typ = copyType(disp.typ, nextTypeId(idgen), disp.typ.owner)
+  disp.typ = copyType(disp.typ, idgen, disp.typ.owner)
   copyTypeProps(g, idgen.module, disp.typ, old)
 
   # we can't inline the dispatcher itself (for now):

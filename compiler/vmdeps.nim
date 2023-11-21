@@ -51,9 +51,9 @@ proc mapTypeToBracketX(cache: IdentCache; name: string; m: TMagic; t: PType; inf
   result.add atomicTypeX(cache, name, m, t, info, idgen)
   for i in 0..<t.len:
     if t[i] == nil:
-      let void = atomicTypeX(cache, "void", mVoid, t, info, idgen)
-      void.typ = newType(tyVoid, nextTypeId(idgen), t.owner)
-      result.add void
+      let voidt = atomicTypeX(cache, "void", mVoid, t, info, idgen)
+      voidt.typ = newType(tyVoid, idgen, t.owner)
+      result.add voidt
     else:
       result.add mapTypeToAstX(cache, t[i], info, idgen, inst)
 

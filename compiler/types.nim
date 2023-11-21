@@ -1451,7 +1451,7 @@ proc baseOfDistinct*(t: PType; g: ModuleGraph; idgen: IdGenerator): PType =
   if t.kind == tyDistinct:
     result = t[0]
   else:
-    result = copyType(t, nextTypeId idgen, t.owner)
+    result = copyType(t, idgen, t.owner)
     copyTypeProps(g, idgen.module, result, t)
     var parent: PType = nil
     var it = result
@@ -1635,7 +1635,7 @@ proc takeType*(formal, arg: PType; g: ModuleGraph; idgen: IdGenerator): PType =
     result = formal
   elif formal.kind in {tyOpenArray, tyVarargs, tySequence} and
       arg.isEmptyContainer:
-    let a = copyType(arg.skipTypes({tyGenericInst, tyAlias}), nextTypeId(idgen), arg.owner)
+    let a = copyType(arg.skipTypes({tyGenericInst, tyAlias}), idgen, arg.owner)
     copyTypeProps(g, idgen.module, a, arg)
     a[ord(arg.kind == tyArray)] = formal[0]
     result = a
