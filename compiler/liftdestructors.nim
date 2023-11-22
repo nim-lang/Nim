@@ -1093,7 +1093,7 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
                    idgen, result, info)
 
   if kind == attachedDestructor and g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
-     not isDiscriminant:
+     ((g.config.isDefined("nimPreviewNonVarDestructor") and not isDiscriminant) or typ.kind in {tyRef, tyString, tySequence}):
     dest.typ = typ
   else:
     dest.typ = makeVarType(typ.owner, typ, idgen)
