@@ -259,8 +259,11 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
       partialInitModule(result, graph, fileIdx, filename)
     for m in cachedModules:
       registerModuleById(graph, m)
-      replayStateChanges(graph.packed.pm[m.int].module, graph)
-      replayGenericCacheInformation(graph, m.int)
+      if sfMainModule in flags and graph.config.cmd == cmdM:
+        discard
+      else:
+        replayStateChanges(graph.packed.pm[m.int].module, graph)
+        replayGenericCacheInformation(graph, m.int)
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:
