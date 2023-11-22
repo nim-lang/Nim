@@ -467,6 +467,7 @@ proc parseCommand*(command: string): Command =
   of "objc", "compiletooc": cmdCompileToOC
   of "js", "compiletojs": cmdCompileToJS
   of "r": cmdCrun
+  of "m": cmdM
   of "run": cmdTcc
   of "check": cmdCheck
   of "e": cmdNimscript

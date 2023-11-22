@@ -169,7 +169,7 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   params.add threadParam.newSymNode
   params.add argsParam.newSymNode
 
-  var t = newType(tyProc, nextTypeId idgen, threadParam.owner)
+  var t = newType(tyProc, idgen, threadParam.owner)
   t.rawAddSon nil
   t.rawAddSon threadParam.typ
   t.rawAddSon argsParam.typ
@@ -189,7 +189,7 @@ proc createCastExpr(argsParam: PSym; objType: PType; idgen: IdGenerator): PNode 
   result = newNodeI(nkCast, argsParam.info)
   result.add newNodeI(nkEmpty, argsParam.info)
   result.add newSymNode(argsParam)
-  result.typ = newType(tyPtr, nextTypeId idgen, objType.owner)
+  result.typ = newType(tyPtr, idgen, objType.owner)
   result.typ.rawAddSon(objType)
 
 template checkMagicProcs(g: ModuleGraph, n: PNode, formal: PNode) =
@@ -395,7 +395,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
 
   var barrierAsExpr: PNode = nil
   if barrier != nil:
-    let typ = newType(tyPtr, nextTypeId idgen, owner)
+    let typ = newType(tyPtr, idgen, owner)
     typ.rawAddSon(magicsys.getCompilerProc(g, "Barrier").typ)
     var field = newSym(skField, getIdent(g.cache, "barrier"), idgen, owner, n.info, g.config.options)
     field.typ = typ
@@ -417,7 +417,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
 
   elif spawnKind == srByVar:
     var field = newSym(skField, getIdent(g.cache, "fv"), idgen, owner, n.info, g.config.options)
-    field.typ = newType(tyPtr, nextTypeId idgen, objType.owner)
+    field.typ = newType(tyPtr, idgen, objType.owner)
     field.typ.rawAddSon(retType)
     discard objType.addField(field, g.cache, idgen)
     fvAsExpr = indirectAccess(castExpr, field, n.info)

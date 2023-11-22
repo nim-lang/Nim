@@ -119,7 +119,7 @@ pkg "nimquery"
 pkg "nimsl"
 pkg "nimsvg"
 pkg "nimterop", "nimble minitest", url = "https://github.com/nim-lang/nimterop"
-pkg "nimwc", "nim c nimwc.nim", allowFailure = true
+pkg "nimwc", "nim c nimwc.nim"
 pkg "nimx", "nim c test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
 pkg "norm", "testament r tests/common/tmodel.nim"

@@ -150,6 +150,7 @@ type
     cmdCrun # compile and run in nimache
     cmdTcc # run the project via TCC backend
     cmdCheck # semantic checking for whole project
+    cmdM     # only compile a single
     cmdParse # parse a single file (for debugging)
     cmdRod # .rod to some text representation (for debugging)
     cmdIdeTools # ide tools (e.g. nimsuggest)
@@ -819,16 +820,17 @@ proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
     else: "_d"
 
   # XXX projectName should always be without a file extension!
-  result = if not conf.nimcacheDir.isEmpty:
-             conf.nimcacheDir
-           elif conf.backend == backendJs:
-             if conf.outDir.isEmpty:
-               conf.projectPath / genSubDir
-             else:
-               conf.outDir / genSubDir
-           else:
-            AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
-               nimcacheSuffix(conf))
+  result =
+    if not conf.nimcacheDir.isEmpty:
+      conf.nimcacheDir
+    elif conf.backend == backendJs:
+      if conf.outDir.isEmpty:
+        conf.projectPath / genSubDir
+      else:
+        conf.outDir / genSubDir
+    else:
+      AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
+        nimcacheSuffix(conf))
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())

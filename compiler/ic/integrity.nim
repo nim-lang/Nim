@@ -72,15 +72,16 @@ proc checkForeignSym(c: var CheckedContext; symId: PackedItemId) =
     c.thisModule = oldThisModule
 
 proc checkNode(c: var CheckedContext; tree: PackedTree; n: NodePos) =
-  if tree[n].typeId != nilItemId:
-    checkType(c, tree[n].typeId)
+  let t = findType(tree, n)
+  if t != nilItemId:
+    checkType(c, t)
   case n.kind
   of nkEmpty, nkNilLit, nkType, nkNilRodNode:
     discard
   of nkIdent:
     assert c.g.packed[c.thisModule].fromDisk.strings.hasLitId n.litId
   of nkSym:
-    checkLocalSym(c, tree[n].operand)
+    checkLocalSym(c, tree[n].soperand)
   of directIntLit:
     discard
   of externIntLit, nkFloatLit..nkFloat128Lit:
@@ -91,7 +92,7 @@ proc checkNode(c: var CheckedContext; tree: PackedTree; n: NodePos) =
     let (n1, n2) = sons2(tree, n)
     assert n1.kind == nkNone
     assert n2.kind == nkNone
-    checkForeignSym(c, PackedItemId(module: n1.litId, item: tree[n2].operand))
+    checkForeignSym(c, PackedItemId(module: n1.litId, item: tree[n2].soperand))
   else:
     for n0 in sonsReadonly(tree, n):
       checkNode(c, tree, n0)
@@ -140,7 +141,7 @@ proc checkModule(c: var CheckedContext; m: PackedModule) =
 
 proc checkIntegrity*(g: ModuleGraph) =
   var c = CheckedContext(g: g)
-  for i in 0..high(g.packed):
+  for i in 0..<len(g.packed):
     # case statement here to enforce exhaustive checks.
     case g.packed[i].status
     of undefined:
@@ -150,4 +151,3 @@ proc checkIntegrity*(g: ModuleGraph) =
     of stored, storing, outdated, loaded:
       c.thisModule = int32 i
       checkModule(c, g.packed[i].fromDisk)
-

@@ -212,10 +212,10 @@ proc strTableAdds*(g: ModuleGraph, m: PSym, s: PSym) =
 proc isCachedModule(g: ModuleGraph; module: int): bool {.inline.} =
   result = module < g.packed.len and g.packed[module].status == loaded
 
-proc isCachedModule(g: ModuleGraph; m: PSym): bool {.inline.} =
+proc isCachedModule*(g: ModuleGraph; m: PSym): bool {.inline.} =
   isCachedModule(g, m.position)
 
-proc simulateCachedModule*(g: ModuleGraph; moduleSym: PSym; m: PackedModule) =
+proc simulateCachedModule(g: ModuleGraph; moduleSym: PSym; m: PackedModule) =
   when false:
     echo "simulating ", moduleSym.name.s, " ", moduleSym.position
   simulateLoadedModule(g.packed, g.config, g.cache, moduleSym, m)
@@ -378,7 +378,7 @@ proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
   if g.config.symbolFiles == disabledSf: return nil
 
   # slow, linear search, but the results are cached:
-  for module in 0..high(g.packed):
+  for module in 0..<len(g.packed):
     #if isCachedModule(g, module):
     let x = searchForCompilerproc(g.packed[module], name)
     if x >= 0:
@@ -435,7 +435,7 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
     setLen(g.ifaces, m.position + 1)
 
   if m.position >= g.packed.len:
-    setLen(g.packed, m.position + 1)
+    setLen(g.packed.pm, m.position + 1)
 
   g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[],
                                uniqueName: rope(uniqueModuleName(g.config, FileIndex(m.position))))
