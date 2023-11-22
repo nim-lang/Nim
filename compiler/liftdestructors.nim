@@ -1092,7 +1092,8 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   let src = newSym(skParam, getIdent(g.cache, if kind == attachedTrace: "env" else: "src"),
                    idgen, result, info)
 
-  if kind == attachedDestructor and g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and not isDiscriminant:
+  if kind == attachedDestructor and g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+     not isDiscriminant:
     dest.typ = typ
   else:
     dest.typ = makeVarType(typ.owner, typ, idgen)
