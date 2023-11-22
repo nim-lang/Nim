@@ -944,6 +944,9 @@ proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s:
     result = nil
   else:
     let si = moduleIndex(c, g, thisModule, s)
+    if si >= g.len:
+      g.pm.setLen(si+1)
+
     if g[si].status == undefined and c.config.cmd == cmdM:
       var cachedModules: seq[FileIndex] = @[]
       discard needsRecompile(g, c.config, c.cache, FileIndex(si), cachedModules)
