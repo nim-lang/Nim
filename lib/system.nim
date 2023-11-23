@@ -370,6 +370,10 @@ when defined(nimAllowNonVarDestructor) and arcLikeMem and defined(nimPreviewNonV
   proc `=destroy`*[T](x: T) {.inline, magic: "Destroy".} =
     ## Generic `destructor`:idx: implementation that can be overridden.
     discard
+
+  proc `=destroy`*[T](x: ref T) {.inline, magic: "Destroy".} =
+    ## TODO: fixme why is it needed by tests/arc/thard_alignment???
+    discard
 else:
   proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
     ## Generic `destructor`:idx: implementation that can be overridden.
