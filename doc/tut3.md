@@ -253,30 +253,6 @@ The call to `myMacro` will generate the following code:
   echo MyType(a: 123.456'f64, b: "abcdef")
   ```
 
-You may also use `ident` in cases in which you wish to create an identifier from
-a string. For example you may create procedures which are named after a variable
-in the following way:
-
-  ```nim
-  import std/macros
-
-  macro createProcedures() =
-    result = newStmtList()
-
-    for i in 0..<10:
-      let name = ident("myProc" & $i)
-      let content = newLit("I am procedure number #" & $i)
-
-      result.add quote do:
-        proc `name`() =
-          echo `content`
-
-  createProcedures()
-  myProc7()
-  ```
-
-The call to `myProc7` will echo `I am procedure number #7`.
-
 
 Building Your First Macro
 -------------------------
@@ -345,6 +321,36 @@ used to get this output.
   if not (a != b):
     raise newException(AssertionDefect, $a & " != " & $b)
   ```
+
+
+Going further
+-------------
+
+It is possible to create more complex macros by combining different
+`NimNode` symbols with `quote do:` expressions. For example, you may
+use `newStmtList` to build your macro iteratively, and `ident` in cases
+in which you wish to create an identifier from a string, as shown below.
+
+  ```nim
+  import std/macros
+
+  macro createProcedures() =
+    result = newStmtList()
+
+    for i in 0..<10:
+      let name = ident("myProc" & $i)
+      let content = newLit("I am procedure number #" & $i)
+
+      result.add quote do:
+        proc `name`() =
+          echo `content`
+
+  createProcedures()
+  myProc7()
+  ```
+
+The call to `myProc7` will echo `I am procedure number #7`.
+
 
 With Power Comes Responsibility
 -------------------------------
