@@ -13,6 +13,7 @@ import algorithm
 import tables
 import std/sha1
 import times
+import procmonitor
 
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
@@ -48,6 +49,7 @@ Options:
   --address:HOST          binds to that address, by default ""
   --stdin                 read commands from stdin and write results to
                           stdout instead of using sockets
+  --clientProcessId:PID   shutdown nimsuggest in case this process dies
   --epc                   use emacs epc mode
   --debug                 enable debug output
   --log                   enable verbose logging to nimsuggest.log file
@@ -596,6 +598,9 @@ proc mainCommand(graph: ModuleGraph) =
   open(requests)
   open(results)
 
+  if graph.config.clientProcessId != 0:
+    hookProcMonitor(graph.config.clientProcessId)
+
   case gMode
   of mstdin: createThread(inputThread, replStdin, (gPort, gAddress))
   of mtcp: createThread(inputThread, replTcp, (gPort, gAddress))
@@ -671,6 +676,8 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         conf.suggestMaxResults = parseInt(p.val)
       of "find":
         findProject = true
+      of "clientprocessid":
+        conf.clientProcessId = parseInt(p.val)
       else: processSwitch(pass, p, conf)
     of cmdArgument:
       let a = unixToNativePath(p.key)
