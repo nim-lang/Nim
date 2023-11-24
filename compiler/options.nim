@@ -432,6 +432,8 @@ type
     expandNodeResult*: string
     expandPosition*: TLineInfo
 
+    clientProcessId*: int
+
 
 proc parseNimVersion*(a: string): NimVer =
   # could be moved somewhere reusable
