@@ -339,7 +339,7 @@ proc getPointer*(x: Any): pointer =
   ## `akString`, `akCString`, `akProc`, `akRef`, `akPtr`,
   ## `akPointer` or `akSequence`.
   assert x.rawType.kind in pointerLike
-  result = cast[ppointer](x.value)[]
+  result = cast[pointer](x.value)
 
 proc setPointer*(x: Any, y: pointer) =
   ## Sets the pointer value of `x`. `x` needs to be of kind
