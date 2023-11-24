@@ -166,6 +166,24 @@ block:
   let a: ref A = new(B)
   doAssert $$a[] == "{}" # not "{f: 0}"
 
+# bug #16496
+block:
+  type
+    A = ref object
+      data: seq[int]
+
+    B = ref object
+      x: A
+  let o = A(data: @[1, 2, 3, 4])
+  let s1 = @[B(x: o), B(x: o)]
+  let m  = $$ s1
+  let s2 = to[seq[B]](m)
+  doAssert s2[0].x.data == s2[1].x.data
+  doAssert s1[0].x.data == s2[1].x.data
+
+
+
+
 template checkMarshal(data: typed) =
   let orig = data
   let m = $$orig
