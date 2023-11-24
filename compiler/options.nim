@@ -442,6 +442,7 @@ type
     expandPosition*: TLineInfo
 
     currentConfigDir*: string # used for passPP only; absolute dir
+    clientProcessId*: int
 
 
 proc parseNimVersion*(a: string): NimVer =
