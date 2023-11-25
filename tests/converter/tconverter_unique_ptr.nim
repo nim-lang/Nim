@@ -25,7 +25,6 @@ proc `==`(x1, x2: MyLen): bool {.borrow.}
 proc `=destroy`*(m: MySeq) {.inline.} =
   if m.data != nil:
     deallocShared(m.data)
-    (addr m.data)[] = nil
 
 proc `=copy`*(m: var MySeq, m2: MySeq) =
   if m.data == m2.data: return
