@@ -5,6 +5,7 @@
 
 - `-d:nimStrictDelete` becomes the default. An index error is produced when the index passed to `system.delete` was out of bounds. Use `-d:nimAuditDelete` to mimic the old behavior for backwards compatibility.
 - The default user-agent in `std/httpclient` has been changed to `Nim-httpclient/<version>` instead of `Nim httpclient/<version>` which was incorrect according to the HTTP spec.
+- With `-d:nimPreviewNonVarDestructor`, non-var destructors become the default.
 
 ## Standard library additions and changes
 
