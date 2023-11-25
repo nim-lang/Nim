@@ -6,7 +6,6 @@ proc `=destroy`*[T](p: ConstPtr[T]) =
   if p.val != nil:
     `=destroy`(p.val[])
     dealloc(p.val)
-    (addr p.val)[] = nil
 
 proc `=copy`*[T](dest: var ConstPtr[T], src: ConstPtr[T]) {.error.}
 
@@ -34,7 +33,6 @@ type
 proc `=destroy`*(m: MySeqNonCopyable) {.inline.} =
   if m.data != nil:
     deallocShared(m.data)
-    (addr m.data)[] = nil
 
 proc `=copy`*(m: var MySeqNonCopyable, m2: MySeqNonCopyable) {.error.}
 

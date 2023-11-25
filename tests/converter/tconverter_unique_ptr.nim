@@ -81,7 +81,6 @@ proc `=destroy`*[T](p: UniquePtr[T]) =
   if p.val != nil:
     `=destroy`(p.val[])
     dealloc(p.val)
-    (addr p.val)[] = nil
 
 proc `=copy`*[T](dest: var UniquePtr[T], src: UniquePtr[T]) {.error.}
 
@@ -122,7 +121,6 @@ proc `=destroy`*[T](p: ConstPtr[T]) =
   if p.val != nil:
     `=destroy`(p.val[])
     dealloc(p.val)
-    (addr p.val)[] = nil
 
 proc `=copy`*[T](dest: var ConstPtr[T], src: ConstPtr[T]) {.error.}
 
