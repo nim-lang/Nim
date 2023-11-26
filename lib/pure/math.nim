@@ -1238,13 +1238,13 @@ func `^`*[T: SomeNumber, U: SomeFloat](x: T, y: U): float =
     # JS behavior follows an old version of IEEE 754 for compatibility reasons
     # See https://262.ecma-international.org/#sec-numeric-types-number-exponentiate
     if (x == 1.0 or x == -1.0) and not yIsFinite:
-      1.0
+      float(1.0)
     elif x == 1.0 and y.isNan():
-      1.0
+      float(1.0)
     else:
-      pow(x, y)
+      float(pow(x, y))
   else:
-    pow(x, y)
+    float(pow(x, y))
 
 func gcd*[T](x, y: T): T =
   ## Computes the greatest common (positive) divisor of `x` and `y`.
