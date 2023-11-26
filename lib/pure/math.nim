@@ -1234,8 +1234,6 @@ func `^`*[T: SomeNumber, U: SomeFloat](x: T, y: U): float =
   assert not(isZero_x and y < 0 and y != -Inf)
   assert not(isZero_x and y == -Inf)
   assert not(x < 0 and not isInteger(x) and yIsFinite and not yIsOddInteger)
-  when not defined(js):
-    pow(x, y)
   when defined(js):
     # JS behavior follows an old version of IEEE 754 for compatibility reasons
     # See https://262.ecma-international.org/#sec-numeric-types-number-exponentiate
@@ -1245,6 +1243,8 @@ func `^`*[T: SomeNumber, U: SomeFloat](x: T, y: U): float =
       1.0
     else:
       pow(x, y)
+  else:
+    pow(x, y)
 
 func gcd*[T](x, y: T): T =
   ## Computes the greatest common (positive) divisor of `x` and `y`.
