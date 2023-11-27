@@ -45,7 +45,7 @@ template addImpl(enlarge) {.dirty.} =
   rawInsert(t, t.data, key, val, hc, j)
   inc(t.counter)
 
-template maybeRehashPutImpl(enlarge) {.dirty.} =
+template maybeRehashPutImpl(enlarge, val) {.dirty.} =
   checkIfInitialized()
   if mustRehash(t):
     enlarge(t)
@@ -59,7 +59,7 @@ template putImpl(enlarge) {.dirty.} =
   var hc: Hash = default(Hash)
   var index = rawGet(t, key, hc)
   if index >= 0: t.data[index].val = val
-  else: maybeRehashPutImpl(enlarge)
+  else: maybeRehashPutImpl(enlarge, val)
 
 template mgetOrPutImpl(enlarge) {.dirty.} =
   checkIfInitialized()
@@ -67,7 +67,17 @@ template mgetOrPutImpl(enlarge) {.dirty.} =
   var index = rawGet(t, key, hc)
   if index < 0:
     # not present: insert (flipping index)
-    maybeRehashPutImpl(enlarge)
+    maybeRehashPutImpl(enlarge, val)
+  # either way return modifiable val
+  result = t.data[index].val
+
+template mgetOrPutDefaultImpl(enlarge) {.dirty.} =
+  checkIfInitialized()
+  var hc: Hash = default(Hash)
+  var index = rawGet(t, key, hc)
+  if index < 0:
+    # not present: insert (flipping index)
+    maybeRehashPutImpl(enlarge, default(B))
   # either way return modifiable val
   result = t.data[index].val
 
@@ -77,7 +87,7 @@ template hasKeyOrPutImpl(enlarge) {.dirty.} =
   var index = rawGet(t, key, hc)
   if index < 0:
     result = false
-    maybeRehashPutImpl(enlarge)
+    maybeRehashPutImpl(enlarge, val)
   else: result = true
 
 # delImplIdx is KnuthV3 Algo6.4R adapted to i=i+1 (from i=i-1) which has come to
