@@ -139,8 +139,11 @@ proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: P
     # some contexts might want sym choices preserved for later disambiguation
     # in general though they are ambiguous
     let first = n[0].sym
+    var enumFields = 0
+    for x in n:
+      if x.kind == nkSym and x.sym.kind == skEnumField: inc enumFields
     var foundSym: PSym = nil
-    if first.kind == skEnumField and
+    if enumFields == n.len and
         not isAmbiguous(c, first.name, {skEnumField}, foundSym) and
         foundSym == first:
       # choose the first resolved enum field, i.e. the latest in scope
@@ -158,6 +161,9 @@ proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: P
       result = n
   if result.kind == nkSym:
     result = semSym(c, result, result.sym, flags)
+
+proc semOpenSymChoice(c: PContext; n: PNode; flags: TExprFlags; expectedType: PType): PNode =
+  result = semSymChoice(c, n, flags, expectedType)
 
 proc inlineConst(c: PContext, n: PNode, s: PSym): PNode {.inline.} =
   result = copyTree(s.astdef)
@@ -3061,8 +3067,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       result = semSym(c, n, s, flags)
     if isSymChoice(result):
       result = semSymChoice(c, result, flags, expectedType)
-  of nkClosedSymChoice, nkOpenSymChoice:
+  of nkClosedSymChoice:
     result = semSymChoice(c, result, flags, expectedType)
+  of nkOpenSymChoice:
+    result = semOpenSymChoice(c, result, flags, expectedType)
   of nkSym:
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
