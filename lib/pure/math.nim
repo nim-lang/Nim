@@ -628,11 +628,11 @@ when not defined(js): # C
   func pow*(x, y: float64): float64 {.importc: "pow", header: "<math.h>".} =
     ## Computes `x` raised to the power of `y`.
     ##
-    ## To compute the power between integers (e.g. 2^6),
-    ## use the `^ func <#^,T,Natural>`_.
+    ## You may use the `^ func <#^, T, U>`_ instead.
     ##
     ## **See also:**
-    ## * `^ func <#^,T,Natural>`_
+    ## * `^ (SomeNumber, Natural) func <#^,T,Natural>`_
+    ## * `^ (SomeNumber, SomeFloat) func <#^,T,U>`_
     ## * `sqrt func <#sqrt,float64>`_
     ## * `cbrt func <#cbrt,float64>`_
     runnableExamples:
@@ -1186,8 +1186,8 @@ func `^`*[T: SomeNumber](x: T, y: Natural): T =
   ## `pow <#pow,float64,float64>`_ for negative exponents.
   ##
   ## **See also:**
-  ## * `pow func <#pow,float64,float64>`_ for negative exponent or
-  ##   floats
+  ## * `^ func <#^,T,U>`_ for negative exponent or floats
+  ## * `pow func <#pow,float64,float64>`_ for `float32` or `float64` output
   ## * `sqrt func <#sqrt,float64>`_
   ## * `cbrt func <#cbrt,float64>`_
   runnableExamples:
@@ -1220,8 +1220,17 @@ func isInteger(y: SomeFloat): bool =
 func `^`*[T: SomeNumber, U: SomeFloat](x: T, y: U): float =
   ## Computes `x` to the power of `y`.
   ##
-  ## Error handling follows C++ specification
+  ## Error handling follows the C++ specification even for the JS backend
   ## https://en.cppreference.com/w/cpp/numeric/math/pow
+  ##
+  ## **See also:**
+  ## * `^ func <#^,T,Natural>`_
+  ## * `pow func <#pow,float64,float64>`_ for `float32` or `float64` output
+  ## * `sqrt func <#sqrt,float64>`_
+  ## * `cbrt func <#cbrt,float64>`_
+  runnableExamples:
+    doAssert almostEqual(5.5 ^ 2.2, 42.540042248725975)
+    doAssert 1.0 ^ Inf == 1.0
   let
     isZero_x: bool = (x == 0.0 or x == -0.0)
     isNegZero: bool = classify(x) == fcNegZero
