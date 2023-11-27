@@ -142,6 +142,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     result.n.add symNode
     styleCheckDef(c, e)
     onDef(e.info, e)
+    suggestSym(c.graph, e.info, e, c.graph.usageSym)
     if sfGenSym notin e.flags:
       if not isPure:
         if overloadableEnums in c.features:
