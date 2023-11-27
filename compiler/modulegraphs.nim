@@ -16,7 +16,6 @@ import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
 import ic / [packed_ast, ic]
 
-import std/sequtils
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -114,7 +113,7 @@ type
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     bucketTable*: CountTable[ItemId]
     objectTree*: Table[ItemId, seq[tuple[depth: int, value: PType]]]
-    methodsPerType*: Table[ItemId, tuple[typ: LazyType, methods: seq[LazySym]]]
+    methodsPerType*: Table[ItemId, seq[LazySym]]
     dispatchers*: seq[LazySym]
 
     systemModule*: PSym
@@ -370,13 +369,14 @@ iterator resolveLazySymSeq(g: ModuleGraph, list: var seq[LazySym]): PSym =
   for it in list.mitems:
     yield resolveSym(g, it)
 
-proc setMethodsPerType*(g: ModuleGraph; typ: PType, methods: seq[LazySym]) =
+proc setMethodsPerType*(g: ModuleGraph; id: ItemId, methods: seq[LazySym]) =
   # TODO: add it for packed modules
-  g.methodsPerType[typ.itemId] = (LazyType(typ: typ), methods)
+  g.methodsPerType[id] = methods
 
-iterator getMethodsPerType*(g: ModuleGraph): (PType, seq[PSym]) =
-  for value in mvalues(g.methodsPerType):
-    yield (resolveType(g, value.typ), toSeq(resolveLazySymSeq(g, value.methods)))
+iterator getMethodsPerType*(g: ModuleGraph; t: PType): PSym =
+  if g.methodsPerType.contains(t.itemId):
+    for it in mitems g.methodsPerType[t.itemId]:
+      yield resolveSym(g, it)
 
 proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
   result = resolveSym(g, g.enumToStringProcs[t.itemId])

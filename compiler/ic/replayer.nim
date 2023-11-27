@@ -107,8 +107,7 @@ proc replayBackendProcs*(g: ModuleGraph; module: int) =
     let key = translateId(it[0], g.packed, module, g.config)
     let tmp = translateId(it[1], g.packed, module, g.config)
     let symId = FullId(module: tmp.module, packed: it[1])
-    g.methodsPerType.mgetOrPut(key, (LazyType(id: FullId(module: module, packed: it[1]), typ: nil), @[])
-          ).methods.add LazySym(id: symId, sym: nil)
+    g.methodsPerType.mgetOrPut(key, @[]).add LazySym(id: symId, sym: nil)
 
   for it in mitems(g.packed[module].fromDisk.dispatchers):
     let tmp = translateId(it, g.packed, module, g.config)

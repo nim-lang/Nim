@@ -1596,13 +1596,13 @@ when not defined(js) and defined(nimV2):
       align: int16
       depth: int16
       display: ptr UncheckedArray[uint32] # classToken
-      when defined(nimPreviewVtables):
-        vTable: ptr UncheckedArray[pointer] # vtable for types
       when defined(nimTypeNames) or defined(nimArcIds):
         name: cstring
       traceImpl: pointer
       typeInfoV1: pointer # for backwards compat, usually nil
       flags: int
+      when defined(nimPreviewVtables):
+        vTable: UncheckedArray[pointer] # vtable for types
     PNimTypeV2 = ptr TNimTypeV2
 
 proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}

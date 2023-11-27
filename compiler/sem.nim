@@ -840,6 +840,11 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if c.config.cmd == cmdIdeTools:
     appendToModule(c.module, result)
   trackStmt(c, c.module, result, isTopLevel = true)
+  if optMultiMethods notin c.config.globalOptions and
+      c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+      c.config.isDefined("nimPreviewVtables"):
+    sortVTableDispatchers(c.graph)
+
   if sfMainModule in c.module.flags and
       {optMultiMethods, optNoMain} * c.config.globalOptions == {} and
       c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and

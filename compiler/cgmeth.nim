@@ -11,8 +11,7 @@
 
 import
   options, ast, msgs, idents, renderer, types, magicsys,
-  sempass2, modulegraphs, lineinfos
-
+  sempass2, modulegraphs, lineinfos, astalgo
 
 import std/intsets
 
@@ -158,6 +157,9 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
 
 proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   var witness: PSym = nil
+  if s.typ[1].owner.getModule != s.getModule:
+    localError(g.config, s.info, errGenerated, "method `" & s.name.s &
+          "` can be defined only in the same module with its type (" & s.typ[1].typeToString() & ")")
   for i in 0..<g.methods.len:
     let disp = g.methods[i].dispatcher
     case sameMethodBucket(disp, s, multimethods = optMultiMethods in g.config.globalOptions)

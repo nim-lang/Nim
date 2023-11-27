@@ -2181,28 +2181,6 @@ proc updateCachedModule(m: BModule) =
   cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)
 
-proc genVTable(m: BModule, seqs: seq[PSym]): Rope =
-  result = Rope"{"
-  for i in 0..<seqs.len:
-    if i > 0: result.add ", "
-    result.add "(void *) " & seqs[i].loc.r
-  result.add "}"
-
-proc initializeVTable*(m: BModule, typ: PType, dispatchMethods: seq[PSym]) =
-  let name = genTypeInfoV2(m, typ, unknownLineInfo)
-  var typeEntry = ""
-  let objVTable = getTempName(m)
-  let vTablePointerName = getTempName(m)
-  let patches = newNode(nkStmtList)
-  for i in dispatchMethods:
-    let node = newNode(nkDiscardStmt)
-    node.add newSymNode(i)
-    patches.add node
-  genStmts(m.initProc, patches)
-  m.s[cfsVars].addf("static void* $1[$2] = $3;$n", [vTablePointerName, rope(dispatchMethods.len), genVTable(m, dispatchMethods)])
-  addf(typeEntry, "$1->vTable = $2;$n", [name, vTablePointerName])
-  m.s[cfsTypeInit3].add typeEntry
-
 proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   ## Also called from IC.
   if sfMainModule in m.module.flags:
@@ -2256,9 +2234,6 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
           m.g.config.selectedGC notin {gcArc, gcOrc, gcAtomicArc} or
           not m.g.config.isDefined("nimPreviewVtables"):
         generateIfMethodDispatchers(graph, m.idgen)
-      else:
-        for value in graph.getMethodsPerType:
-          initializeVTable(m, value[0], value[1])
 
 
   let mm = m

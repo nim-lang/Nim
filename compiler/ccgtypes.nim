@@ -13,6 +13,8 @@
 
 import sighashes, modulegraphs, std/strscans
 import ../dist/checksums/src/checksums/md5
+import std/sequtils
+import vtables
 
 type
   TypeDescKind = enum
@@ -1754,8 +1756,16 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   add(typeEntry, ", .traceImpl = (void*)")
   genHook(m, t, info, attachedTrace, typeEntry)
 
-  addf(typeEntry, ", .flags = $1};$n", [rope(flags)])
-  m.s[cfsVars].add typeEntry
+  let vTablePointerName = getTempName(m)
+  let dispatchMethods = toSeq(getMethodsPerType(m.g.graph, t))
+  if dispatchMethods.len > 0:
+    addf(typeEntry, ", .flags = $1", [rope(flags)])
+    m.s[cfsVars].addf("static void* $1[$2] = $3;$n", [vTablePointerName, rope(dispatchMethods.len), genVTable(dispatchMethods)])
+    addf(typeEntry, ", .vTable = $1};$n", [genVTable(dispatchMethods)])
+    m.s[cfsVars].add typeEntry
+  else:
+    addf(typeEntry, ", .flags = $1};$n", [rope(flags)])
+    m.s[cfsVars].add typeEntry
 
   if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)

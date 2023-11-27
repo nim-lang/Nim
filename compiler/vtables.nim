@@ -2,6 +2,13 @@ import ast, modulegraphs, magicsys, lineinfos, options, cgmeth, types
 import std/[algorithm, tables, intsets, assertions]
 
 
+proc genVTable*(seqs: seq[PSym]): string =
+  result = "{"
+  for i in 0..<seqs.len:
+    if i > 0: result.add ", "
+    result.add "(void *) " & seqs[i].loc.r
+  result.add "}"
+
 proc genVTableDispatcher(g: ModuleGraph; methods: seq[PSym]; index: int): PSym =
 #[
 proc dispatch(x: Base, params: ...) =
@@ -119,14 +126,48 @@ proc collectVTableDispatchers*(g: ModuleGraph) =
     else: # if the base object doesn't have this method
       g.addDispatchers genIfDispatcher(g, g.methods[bucket].methods, relevantCols, g.idgen)
 
+proc sortVTableDispatchers*(g: ModuleGraph) =
+  var itemTable = initTable[ItemId, seq[LazySym]]()
+  var rootTypeSeq = newSeq[ItemId]()
+  var rootItemIdCount = initCountTable[ItemId]()
+  for bucket in 0..<g.methods.len:
+    var relevantCols = initIntSet()
+    if relevantCol(g.methods[bucket].methods, 1): incl(relevantCols, 1)
+    sortBucket(g.methods[bucket].methods, relevantCols)
+    let base = g.methods[bucket].methods[^1]
+    let baseType = base.typ[1].skipTypes(skipPtrs-{tyTypeDesc})
+    if baseType.itemId in g.objectTree and not containGenerics(baseType, g.objectTree[baseType.itemId]):
+      let methodIndexLen = g.bucketTable[baseType.itemId]
+      if baseType.itemId notin itemTable: # once is enough
+        rootTypeSeq.add baseType.itemId
+        itemTable[baseType.itemId] = newSeq[LazySym](methodIndexLen)
+
+        sort(g.objectTree[baseType.itemId], cmp = proc (x, y: tuple[depth: int, value: PType]): int =
+          if x.depth >= y.depth: 1
+          else: -1
+          )
+
+        for item in g.objectTree[baseType.itemId]:
+          if item.value.itemId notin itemTable:
+            itemTable[item.value.itemId] = newSeq[LazySym](methodIndexLen)
+
+      var mIndex = 0 # here is the correpsonding index
+      if baseType.itemId notin rootItemIdCount:
+        rootItemIdCount[baseType.itemId] = 1
+      else:
+        mIndex = rootItemIdCount[baseType.itemId]
+        rootItemIdCount.inc(baseType.itemId)
+      for idx in 0..<g.methods[bucket].methods.len:
+        let obj = g.methods[bucket].methods[idx].typ[1].skipTypes(skipPtrs)
+        itemTable[obj.itemId][mIndex] = LazySym(sym: g.methods[bucket].methods[idx])
+
   for baseType in rootTypeSeq:
-    let root = baseType.itemId
-    g.setMethodsPerType(baseType, itemTable[baseType.itemId])
-    for item in g.objectTree[root]:
+    g.setMethodsPerType(baseType, itemTable[baseType])
+    for item in g.objectTree[baseType]:
       let typ = item.value.skipTypes(skipPtrs)
       let idx = typ.itemId
       for mIndex in 0..<itemTable[idx].len:
         if itemTable[idx][mIndex].sym == nil:
           let parentIndex = typ[0].skipTypes(skipPtrs).itemId
           itemTable[idx][mIndex] = itemTable[parentIndex][mIndex]
-      g.setMethodsPerType(typ, itemTable[idx])
+      g.setMethodsPerType(idx, itemTable[idx])
