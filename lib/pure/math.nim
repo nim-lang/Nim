@@ -1213,8 +1213,6 @@ func `^`*[T: SomeNumber](x: T, y: Natural): T =
 
 func isInteger(y: SomeFloat): bool =
   ## Determines if a float represents an integer
-  ## Note this might trigger a change of the rounding mode.
-  # In C++, we usually use the `rint` function.
   return round(y) == y
 
 func `^`*[T: SomeNumber, U: SomeFloat](x: T, y: U): float =
