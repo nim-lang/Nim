@@ -1762,7 +1762,6 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   add(typeEntry, ", .traceImpl = (void*)")
   genHook(m, t, info, attachedTrace, typeEntry)
 
-  let vTablePointerName = getTempName(m)
   let dispatchMethods = toSeq(getMethodsPerType(m.g.graph, t))
   if dispatchMethods.len > 0:
     addf(typeEntry, ", .flags = $1", [rope(flags)])

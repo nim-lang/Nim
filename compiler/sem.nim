@@ -842,14 +842,13 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   trackStmt(c, c.module, result, isTopLevel = true)
   if optMultiMethods notin c.config.globalOptions and
       c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
-      c.config.isDefined("nimPreviewVtables"):
+      c.config.isDefined("nimPreviewVtables") and 
+      c.config.backend != backendCpp and
+      sfCompileToCpp notin c.module.flags:
     sortVTableDispatchers(c.graph)
 
-  if sfMainModule in c.module.flags and
-      {optMultiMethods, optNoMain} * c.config.globalOptions == {} and
-      c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
-      c.config.isDefined("nimPreviewVtables"):
-    collectVTableDispatchers(c.graph)
+    if sfMainModule in c.module.flags:
+      collectVTableDispatchers(c.graph)
 
 proc recoverContext(c: PContext) =
   # clean up in case of a semantic error: We clean up the stacks, etc. This is
