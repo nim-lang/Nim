@@ -108,6 +108,15 @@ type
     ObjConv,
     TestOf,
     Emit,
+
+    AsmGlobal # top-level basic asm. Better to use extended asm if it possible
+    Asm, # extended asm
+    AsmTemplate,
+    AsmInjectExpr, # like cexpr in gcc
+    AsmOutputOperand,
+    AsmInputOperand,
+    AsmClobber,
+
     ProcDecl,
     ForeignProcDecl,
     PragmaPair

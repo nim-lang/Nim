@@ -48,6 +48,7 @@ type
     CaseKeyword = "case "
     DefaultKeyword = "default:"
     BreakKeyword = "break"
+    AsmKeyword = "__asm__ "
     NullPtr = "nullptr"
     IfNot = "if (!("
     ReturnKeyword = "return "
@@ -812,6 +813,72 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   of ForeignProcDecl: genProcDecl c, t, n, true
   of PragmaPair, PragmaId, TestOf, Yld, SetExc, TestExc:
     c.add "cannot interpret: " & $t[n].kind
+  
+  of AsmGlobal:
+    c.add AsmKeyword
+    c.add ParLe
+    c.add NewLine
+    for ch in sons(t, n):
+      if t[ch].kind == StrVal:
+        let s = c.m.lit.strings[t[ch].litId]
+        var left = 0
+        for j in 0..s.high:
+          if s[j] == '\n':
+            c.add makeCString(s[left..j])
+            c.add NewLine
+            left = j + 1
+      else:
+        gen c, t, ch
+
+    c.add ParRi
+    c.add Semicolon
+    c.add NewLine
+  of Asm:
+    c.add AsmKeyword
+    c.add ParLe
+    gen c, t, n.firstSon #asmTemplate
+    for ch in sonsFrom1(t, n):
+      c.add Colon
+      gen c, t, ch
+      c.add NewLine
+    c.add ParRi
+    c.add Semicolon
+    c.add NewLine
+  of AsmTemplate:
+    c.add NewLine
+    for i in sons(t, n):
+      let s = c.m.lit.strings[t[i].litId]
+      var left = 0
+      for j in 0..s.high:
+        if s[j] == '\n':
+          # separate every '\n'
+          # into different string like:
+          # "    mov %1, %0\n"
+          # "    add $1, %0\n"
+          # to produce more readable code
+          c.add makeCString(s[left..j])
+          c.add NewLine
+          left = j + 1
+  of AsmOutputOperand, AsmInputOperand:
+    let (dest, asmSymbolicName, constraint) = sons3(t, n)
+    let
+      symbolicName = c.m.lit.strings[t[asmSymbolicName].litId]
+      constraintStr = c.m.lit.strings[t[constraint].litId]
+    
+    if symbolicName != "":
+      c.add BracketLe
+      c.add '"' & symbolicName & '"'
+      c.add BracketRi
+    
+    c.add '"' & constraintStr & '"'
+    gen c, t, dest
+  of AsmInjectExpr:
+    c.add ParLe
+    gen c, t, n.firstSon
+    c.add ParRi
+  of AsmClobber:
+    let clobber = t[n.firstSon]
+    c.add c.m.lit.strings[clobber.litId]
 
 const
   Prelude = """
