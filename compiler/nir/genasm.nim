@@ -106,8 +106,6 @@ iterator parseAsm(c: var ProcCon, n: PNode): ParsedAsmChunk =
     foundCommentStartSym = false
     foundCommentEndSym = false
 
-  # helper debug info
-
   for it in n.sons:
     case it.kind
       of nkStrLit..nkTripleStrLit:
@@ -284,10 +282,10 @@ proc genInlineAsm(c: var ProcCon; n: PNode) =
       inInjectExpr = false
 
     for i in parseAsm(c, n):
-      when true:
+      when false:
         echo i
       
-      if i.sec != oldSec:# or i.sec == 0:
+      if i.sec != oldSec:
         # new sec
         maybeEndOperand()
         
@@ -332,7 +330,7 @@ proc genInlineAsm(c: var ProcCon; n: PNode) =
         of Clobber:
           let s = i.val.s
           if s[0] != '"' or s[^1] != '"':
-            raiseAssert "constraint must be started or ended by " & '"'
+            raiseAssert "clobber must be started or ended by " & '"'
           c.code.addStrVal c.lit.strings, info, s[1..^2]
       
       oldSec = i.sec
