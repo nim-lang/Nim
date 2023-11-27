@@ -366,6 +366,8 @@ proc dataField(p: BProc): Rope =
   else:
     result = rope"->data"
 
+proc genProcPrototype(m: BModule, sym: PSym)
+
 include ccgliterals
 include ccgtypes
 
@@ -734,7 +736,7 @@ proc genVarPrototype(m: BModule, n: PNode)
 proc requestConstImpl(p: BProc, sym: PSym)
 proc genStmts(p: BProc, t: PNode)
 proc expr(p: BProc, n: PNode, d: var TLoc)
-proc genProcPrototype(m: BModule, sym: PSym)
+
 proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
 proc intLiteral(i: BiggestInt; result: var Rope)
 proc genLiteral(p: BProc, n: PNode; result: var Rope)

@@ -2,12 +2,6 @@ import ast, modulegraphs, magicsys, lineinfos, options, cgmeth, types
 import std/[algorithm, tables, intsets, assertions]
 
 
-proc genVTable*(seqs: seq[PSym]): string =
-  result = "{"
-  for i in 0..<seqs.len:
-    if i > 0: result.add ", "
-    result.add "(void *) " & seqs[i].loc.r
-  result.add "}"
 
 proc genVTableDispatcher(g: ModuleGraph; methods: seq[PSym]; index: int): PSym =
 #[

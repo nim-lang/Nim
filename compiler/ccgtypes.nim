@@ -14,7 +14,6 @@
 import sighashes, modulegraphs, std/strscans
 import ../dist/checksums/src/checksums/md5
 import std/sequtils
-import vtables
 
 type
   TypeDescKind = enum
@@ -1720,6 +1719,13 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLin
   if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
 
+proc genVTable(seqs: seq[PSym]): string =
+  result = "{"
+  for i in 0..<seqs.len:
+    if i > 0: result.add ", "
+    result.add "(void *) " & seqs[i].loc.r
+  result.add "}"
+
 proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   cgsym(m, "TNimTypeV2")
   m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
@@ -1760,8 +1766,9 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   let dispatchMethods = toSeq(getMethodsPerType(m.g.graph, t))
   if dispatchMethods.len > 0:
     addf(typeEntry, ", .flags = $1", [rope(flags)])
-    m.s[cfsVars].addf("static void* $1[$2] = $3;$n", [vTablePointerName, rope(dispatchMethods.len), genVTable(dispatchMethods)])
-    addf(typeEntry, ", .vTable = $1};$n", [genVTable(dispatchMethods)])
+    for i in dispatchMethods:
+      genProcPrototype(m, i)
+    addf(typeEntry, ", .vTable = $1};$n", [genVTable(m, dispatchMethods)])
     m.s[cfsVars].add typeEntry
   else:
     addf(typeEntry, ", .flags = $1};$n", [rope(flags)])
