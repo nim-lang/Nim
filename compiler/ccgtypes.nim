@@ -1768,7 +1768,7 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
     addf(typeEntry, ", .flags = $1", [rope(flags)])
     for i in dispatchMethods:
       genProcPrototype(m, i)
-    addf(typeEntry, ", .vTable = $1};$n", [genVTable(m, dispatchMethods)])
+    addf(typeEntry, ", .vTable = $1};$n", [genVTable(dispatchMethods)])
     m.s[cfsVars].add typeEntry
   else:
     addf(typeEntry, ", .flags = $1};$n", [rope(flags)])
