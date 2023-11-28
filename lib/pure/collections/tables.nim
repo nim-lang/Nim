@@ -484,7 +484,7 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A): var B =
     a.mgetOrPut('z').inc
     doAssert a == {'a': 5, 'z': 1}.newTable
 
-  mgetOrPutDefaultImpl(enlarge)
+  mgetOrPutImpl(enlarge)
 
 proc len*[A, B](t: Table[A, B]): int =
   ## Returns the number of keys in `t`.
@@ -1537,7 +1537,7 @@ proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A): var B =
     a.mgetOrPut('z').inc
     doAssert a == {'a': 5, 'z': 1}.toOrderedTable
 
-  mgetOrPutDefaultImpl(enlarge)
+  mgetOrPutImpl(enlarge)
 
 proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
   ## Returns the number of keys in `t`.

@@ -67,19 +67,22 @@ template mgetOrPutImpl(enlarge) {.dirty.} =
   var index = rawGet(t, key, hc)
   if index < 0:
     # not present: insert (flipping index)
-    maybeRehashPutImpl(enlarge, val)
+    when declared(val):
+      maybeRehashPutImpl(enlarge, val)
+    else:
+      maybeRehashPutImpl(enlarge, default(B))
   # either way return modifiable val
   result = t.data[index].val
 
-template mgetOrPutDefaultImpl(enlarge) {.dirty.} =
-  checkIfInitialized()
-  var hc: Hash = default(Hash)
-  var index = rawGet(t, key, hc)
-  if index < 0:
-    # not present: insert (flipping index)
-    maybeRehashPutImpl(enlarge, default(B))
-  # either way return modifiable val
-  result = t.data[index].val
+# template mgetOrPutDefaultImpl(enlarge) {.dirty.} =
+#   checkIfInitialized()
+#   var hc: Hash = default(Hash)
+#   var index = rawGet(t, key, hc)
+#   if index < 0:
+#     # not present: insert (flipping index)
+#     maybeRehashPutImpl(enlarge, default(B))
+#   # either way return modifiable val
+#   result = t.data[index].val
 
 template hasKeyOrPutImpl(enlarge) {.dirty.} =
   checkIfInitialized()
