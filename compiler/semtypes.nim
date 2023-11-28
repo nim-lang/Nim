@@ -247,6 +247,9 @@ proc fitDefaultNode(c: PContext, n: PNode): PType =
     result = n[^1].typ
   else:
     result = n[^1].typ
+  # xxx any troubles related to defaults fields, consult `semConst` for a potential answer
+  if n[^1].kind != nkNilLit:
+    typeAllowedCheck(c, n.info, result, skConst, {taProcContextIsNotMacro})
 
 proc isRecursiveType*(t: PType): bool =
   # handle simple recusive types before typeFinalPass
