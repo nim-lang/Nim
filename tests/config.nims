@@ -44,4 +44,5 @@ switch("define", "nimPreviewNonVarDestructor")
 
 switch("warningAserror", "UnnamedBreak")
 switch("legacy", "verboseTypeMismatch")
+switch("define", "nimPreviewVtables")
 

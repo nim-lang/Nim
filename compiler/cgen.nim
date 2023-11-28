@@ -366,6 +366,8 @@ proc dataField(p: BProc): Rope =
   else:
     result = rope"->data"
 
+proc genProcPrototype(m: BModule, sym: PSym)
+
 include ccgliterals
 include ccgtypes
 
@@ -734,7 +736,7 @@ proc genVarPrototype(m: BModule, n: PNode)
 proc requestConstImpl(p: BProc, sym: PSym)
 proc genStmts(p: BProc, t: PNode)
 proc expr(p: BProc, n: PNode, d: var TLoc)
-proc genProcPrototype(m: BModule, sym: PSym)
+
 proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
 proc intLiteral(i: BiggestInt; result: var Rope)
 proc genLiteral(p: BProc, n: PNode; result: var Rope)
@@ -2181,9 +2183,8 @@ proc updateCachedModule(m: BModule) =
   cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)
 
-proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode): PNode =
+proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   ## Also called from IC.
-  result = nil
   if sfMainModule in m.module.flags:
     # phase ordering problem here: We need to announce this
     # dependency to 'nimTestErrorFlag' before system.c has been written to disk.
@@ -2231,7 +2232,12 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode): PNode =
 
       if m.g.forwardedProcs.len == 0:
         incl m.flags, objHasKidsValid
-      result = generateMethodDispatchers(graph, m.idgen)
+      if optMultiMethods in m.g.config.globalOptions or
+          m.g.config.selectedGC notin {gcArc, gcOrc, gcAtomicArc} or
+          not m.g.config.isDefined("nimPreviewVtables") or
+          m.g.config.backend == backendCpp or sfCompileToCpp in m.module.flags:
+        generateIfMethodDispatchers(graph, m.idgen)
+
 
   let mm = m
   m.g.modulesClosed.add mm
