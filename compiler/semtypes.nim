@@ -113,10 +113,11 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
         strVal = v
         x = counter
       else:
-        if not isOrdinalType(v.typ, allowEnumWithHoles=true):
+        if isOrdinalType(v.typ, allowEnumWithHoles=true):
+          x = toInt64(getOrdValue(v))
+          n[i][1] = newIntTypeNode(x, getSysType(c.graph, unknownLineInfo, tyInt))
+        else:
           localError(c.config, v.info, errOrdinalTypeExpected % typeToString(v.typ, preferDesc))
-        x = toInt64(getOrdValue(v))
-        n[i][1] = newIntTypeNode(x, getSysType(c.graph, unknownLineInfo, tyInt))
       if i != 1:
         if x != counter: incl(result.flags, tfEnumHasHoles)
         if x < counter:
