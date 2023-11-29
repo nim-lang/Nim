@@ -138,7 +138,7 @@ proc parseCmdLine*(c: string): seq[string] {.
         while i < c.len and c[i] > ' ':
           add(a, c[i])
           inc(i)
-    add(result, a)
+    add(result, move a)
 
 when defined(nimdoc):
   # Common forward declaration docstring block for parameter retrieval procs.

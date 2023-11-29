@@ -164,7 +164,7 @@ func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ## To access multiple values of a key, use the overloaded `[]` below or
   ## to get all of them access the `table` field directly.
   {.cast(noSideEffect).}:
-    return headers.table[headers.toCaseInsensitive(key)].HttpHeaderValues
+    return headers.table[headers.toCaseInsensitive(key)].move.HttpHeaderValues
 
 converter toString*(values: HttpHeaderValues): string =
   return seq[string](values)[0]
