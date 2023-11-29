@@ -108,8 +108,10 @@ type
     ObjConv,
     TestOf,
     Emit,
+    EmitTarget,
+    Verbatim
 
-    AsmGlobal # top-level basic asm. Better to use extended asm if it possible
+    AsmGlobal, # top-level basic asm. Better to use extended asm if it possible
     Asm, # extended asm
     AsmTemplate,
     AsmInjectExpr, # like cexpr in gcc
@@ -254,6 +256,11 @@ proc nextChild(tree: Tree; pos: var int) {.inline.} =
 proc next*(tree: Tree; pos: var NodePos) {.inline.} = nextChild tree, int(pos)
 
 template firstSon*(n: NodePos): NodePos = NodePos(n.int+1)
+proc lastSon*(tree: Tree; n: NodePos): NodePos =
+  var pos = n.int
+  assert tree.nodes[pos].kind > LastAtomicValue
+  let last = pos + tree.nodes[pos].rawSpan
+  NodePos last
 
 template skipTyped*(n: NodePos): NodePos = NodePos(n.int+2)
 
