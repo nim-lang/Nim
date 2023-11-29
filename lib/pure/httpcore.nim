@@ -234,7 +234,7 @@ func parseList(line: string, list: var seq[string], start: int): int =
   while start+i < line.len and line[start + i] notin {'\c', '\l'}:
     i += line.skipWhitespace(start + i)
     i += line.parseUntil(current, {'\c', '\l', ','}, start + i)
-    list.add(move current)  # implicit .setLen(0)
+    list.add(move current)  # implicit current.setLen(0)
     if start+i < line.len and line[start + i] == ',':
       i.inc # Skip ,
 
