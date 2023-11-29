@@ -4,9 +4,9 @@ discard """
   nimout:
 '''
 tdefaultfieldscheck.nim(14, 17) Error: type mismatch: got <string> but expected 'int'
-tdefaultfieldscheck.nim(14, 17) Error: string literal must be of some string type
 '''
 """
+
 
 type
   Date* = object
