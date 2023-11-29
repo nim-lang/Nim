@@ -6,6 +6,7 @@ tunreachable.nim(24, 3) Error: unreachable code after 'return' statement or '{.n
 tunreachable.nim(31, 3) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
 tunreachable.nim(40, 3) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
 tunreachable.nim(61, 5) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
+tunreachable.nim(76, 5) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
 '''
 """
   
@@ -64,3 +65,15 @@ block:
     echo "after"
 
   main5("a")
+
+block:
+  # In this case no else is needed because it's exhaustive
+  proc exhaustive(x: bool) =
+    case x
+    of true:
+      return
+    of false:
+      return
+    echo "after"
+
+  exhaustive(true)
