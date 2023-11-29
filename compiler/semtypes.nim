@@ -237,6 +237,12 @@ proc fitDefaultNode(c: PContext, n: PNode): PType =
   if n[^2].kind != nkEmpty:
     if expectedType != nil and oldType != expectedType:
       n[^1] = fitNodeConsiderViewType(c, expectedType, n[^1], n[^1].info)
+      changeType(c, n[^1], expectedType, true) # infer types for default fields value
+        # bug #22926; be cautious that it uses `semConstExpr` to
+        # evaulate the default fields; it's only natural to use
+        # `changeType` to infer types for constant values
+        # that's also the reason why we don't use `semExpr` to check
+        # the type since two overlapping error messages might be produced
     result = n[^1].typ
   else:
     result = n[^1].typ
