@@ -842,9 +842,7 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   trackStmt(c, c.module, result, isTopLevel = true)
   if optMultiMethods notin c.config.globalOptions and
       c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
-      c.config.isDefined("nimPreviewVtables") and 
-      c.config.backend != backendCpp and
-      sfCompileToCpp notin c.module.flags:
+      c.config.isDefined("nimPreviewVtables"):
     sortVTableDispatchers(c.graph)
 
     if sfMainModule in c.module.flags:
