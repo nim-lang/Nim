@@ -1,5 +1,5 @@
 discard """
-  matrix: "-u:nimPreviewVtables"
+  matrix: "-d:nimInternalNonVtablesTesting"
   output: '''(peel: 0, color: 15)
 (color: 15)
 17

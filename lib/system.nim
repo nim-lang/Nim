@@ -1606,7 +1606,7 @@ when not defined(js) and defined(nimV2):
       traceImpl: pointer
       typeInfoV1: pointer # for backwards compat, usually nil
       flags: int
-      when defined(nimPreviewVtables):
+      when defined(gcDestructors):
         when defined(cpp):
           vTable: ptr UncheckedArray[pointer] # vtable for types
         else:

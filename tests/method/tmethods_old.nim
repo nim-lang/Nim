@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:arc -u:nimPreviewVtables"
+  matrix: "--mm:arc -d:nimInternalNonVtablesTesting"
   output: '''
 do nothing
 '''

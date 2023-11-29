@@ -226,7 +226,8 @@ type
     flexibleOptionalParams,
     strictDefs,
     strictCaseObjects,
-    inferGenericTypes
+    inferGenericTypes,
+    vtableMethods
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
