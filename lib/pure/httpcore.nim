@@ -164,7 +164,7 @@ func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ## To access multiple values of a key, use the overloaded `[]` below or
   ## to get all of them access the `table` field directly.
   {.cast(noSideEffect).}:
-    return headers.table[headers.toCaseInsensitive(key)].move.HttpHeaderValues
+    return headers.table[headers.toCaseInsensitive(key)].HttpHeaderValues
 
 converter toString*(values: HttpHeaderValues): string =
   return seq[string](values)[0]
@@ -234,7 +234,7 @@ func parseList(line: string, list: var seq[string], start: int): int =
   while start+i < line.len and line[start + i] notin {'\c', '\l'}:
     i += line.skipWhitespace(start + i)
     i += line.parseUntil(current, {'\c', '\l', ','}, start + i)
-    list.add(current)
+    list.add(move current)
     if start+i < line.len and line[start + i] == ',':
       i.inc # Skip ,
     current.setLen(0)
