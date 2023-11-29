@@ -2517,8 +2517,6 @@ proc genComplexCall(c: var ProcCon; n: PNode; d: var Value) =
   else:
     genCall c, n, d
 
-# include genasm
-
 proc genAsm(c: var ProcCon; n: PNode) =
   let info = toLineInfo(c, n.info)  
   build c.code, info, Emit:

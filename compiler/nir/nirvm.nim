@@ -702,8 +702,6 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     recurse TestOfM
   of Emit, EmitTarget:
     raiseAssert "cannot interpret: Emit"
-  of AsmGlobal .. AsmClobber:
-    raiseAssert "cannot interpret: Asm"
   of Verbatim:
     raiseAssert "cannot interpret: Verbatim"
   of ProcDecl:
