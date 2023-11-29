@@ -1658,7 +1658,10 @@ when not defined(js):
       assert len(x) == 3
       x[0] = 10
     when supportsCopyMem(T):
-      newSeqImpl(T, len)
+      when nimvm:
+        result = newSeq[T](len)
+      else:
+        newSeqImpl(T, len)
     else:
       {.error: "The type T cannot contain managed memory or have destructors".}
 
