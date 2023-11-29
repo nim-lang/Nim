@@ -879,6 +879,10 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   of AsmClobber:
     let clobber = t[n.firstSon]
     c.add c.m.lit.strings[clobber.litId]
+  of Verbatim:
+    discard
+  of EmitTarget:
+    discard
 
 const
   Prelude = """

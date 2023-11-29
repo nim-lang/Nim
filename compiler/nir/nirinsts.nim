@@ -132,6 +132,10 @@ type
     DllImport,
     DllExport,
     ObjExport
+  
+  EmitTargetKind* = enum
+    Asm
+    Code
 
 const
   LastAtomicValue = GotoLoop
@@ -423,6 +427,9 @@ proc addImmediateVal*(t: var Tree; info: PackedLineInfo; x: int) =
 proc addPragmaId*(t: var Tree; info: PackedLineInfo; x: PragmaKey) =
   t.nodes.add Instr(x: toX(PragmaId, uint32(x)), info: info)
 
+proc addEmitTarget*(t: var Tree; info: PackedLineInfo; x: EmitTargetKind) =
+  t.nodes.add Instr(x: toX(EmitTarget, uint32(x)), info: info)
+
 proc addIntVal*(t: var Tree; integers: var BiTable[int64]; info: PackedLineInfo; typ: TypeId; x: int64) =
   buildTyped t, info, NumberConv, typ:
     t.nodes.add Instr(x: toX(IntVal, uint32(integers.getOrIncl(x))), info: info)
@@ -507,6 +514,9 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
   of SymUse:
     r.add "SymUse "
     r.add localName(SymId t[pos].operand)
+  of EmitTarget:
+    r.add "EmitTarget "
+    r.add $cast[EmitTargetKind](t[pos].operand)
   of PragmaId:
     r.add $cast[PragmaKey](t[pos].operand)
   of Typed:

@@ -2517,7 +2517,18 @@ proc genComplexCall(c: var ProcCon; n: PNode; d: var Value) =
   else:
     genCall c, n, d
 
-include genasm
+# include genasm
+
+proc genAsm(c: var ProcCon; n: PNode) =
+  let info = toLineInfo(c, n.info)  
+  build c.code, info, Emit:
+    c.code.addEmitTarget info, Asm
+      
+
+  # if c.prc == nil:
+  #   genGlobalAsm(c, n)
+  # else:
+  #   genInlineAsm(c, n)
 
 proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   when defined(nimCompilerStacktraceHints):
@@ -2562,11 +2573,7 @@ proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
     unused(c, n, d)
     genWhile(c, n)
   of nkBlockExpr, nkBlockStmt: genBlock(c, n, d)
-  of nkAsmStmt:
-    if c.prc == nil:
-      genGlobalAsm(c, n)
-    else:
-      genInlineAsm(c, n)
+  of nkAsmStmt: genAsm(c, n)
   of nkReturnStmt: genReturn(c, n)
   of nkRaiseStmt: genRaise(c, n)
   of nkBreakStmt: genBreak(c, n)
