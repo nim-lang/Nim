@@ -2234,7 +2234,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
         incl m.flags, objHasKidsValid
       if optMultiMethods in m.g.config.globalOptions or
           m.g.config.selectedGC notin {gcArc, gcOrc, gcAtomicArc} or
-          vtableMethods notin m.g.config.features:
+          vtables notin m.g.config.features:
         generateIfMethodDispatchers(graph, m.idgen)
 
 

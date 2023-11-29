@@ -227,7 +227,7 @@ type
     strictDefs,
     strictCaseObjects,
     inferGenericTypes,
-    vtableMethods
+    vtables
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
