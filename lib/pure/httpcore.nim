@@ -234,10 +234,9 @@ func parseList(line: string, list: var seq[string], start: int): int =
   while start+i < line.len and line[start + i] notin {'\c', '\l'}:
     i += line.skipWhitespace(start + i)
     i += line.parseUntil(current, {'\c', '\l', ','}, start + i)
-    list.add(move current)
+    list.add(move current)  # implicit .setLen(0)
     if start+i < line.len and line[start + i] == ',':
       i.inc # Skip ,
-    current.setLen(0)
 
 func parseHeader*(line: string): tuple[key: string, value: seq[string]] =
   ## Parses a single raw header HTTP line into key value pairs.
