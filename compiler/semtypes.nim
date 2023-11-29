@@ -229,6 +229,7 @@ proc isRecursiveType(t: PType, cycleDetector: var IntSet): bool =
     return false
 
 proc fitDefaultNode(c: PContext, n: PNode): PType =
+  inc c.inStaticContext
   let expectedType = if n[^2].kind != nkEmpty: semTypeNode(c, n[^2], nil) else: nil
   n[^1] = semConstExpr(c, n[^1], expectedType = expectedType)
   let oldType = n[^1].typ
@@ -239,6 +240,10 @@ proc fitDefaultNode(c: PContext, n: PNode): PType =
     result = n[^1].typ
   else:
     result = n[^1].typ
+  # xxx any troubles related to defaults fields, consult `semConst` for a potential answer
+  if n[^1].kind != nkNilLit:
+    typeAllowedCheck(c, n.info, result, skConst, {taProcContextIsNotMacro, taIsDefaultField})
+  dec c.inStaticContext
 
 proc isRecursiveType*(t: PType): bool =
   # handle simple recusive types before typeFinalPass
