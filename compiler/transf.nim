@@ -765,11 +765,12 @@ proc transformFor(c: PTransf, n: PNode): PNode =
         t = arg.typ
       # generate a temporary and produce an assignment statement:
       var temp = newTemp(c, t, formal.info)
+      incl(temp.sym.flags, sfCursor)
       addVar(v, temp)
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
       idNodeTablePut(newC.mapping, formal, temp)
     of paVarAsgn:
-      assert(skipTypes(formal.typ, abstractInst).kind in {tyVar})
+      assert(skipTypes(formal.typ, abstractInst).kind in {tyVar, tyLent})
       idNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
     of paComplexOpenarray:
