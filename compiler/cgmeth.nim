@@ -157,7 +157,7 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
 
 proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   var witness: PSym = nil
-  if s.typ[1].owner.getModule != s.getModule and g.config.isDefined("nimPreviewVtables"):
+  if s.typ[1].owner.getModule != s.getModule and vtables in g.config.features and not g.config.isDefined("nimInternalNonVtablesTesting"):
     localError(g.config, s.info, errGenerated, "method `" & s.name.s &
           "` can be defined only in the same module with its type (" & s.typ[1].typeToString() & ")")
   for i in 0..<g.methods.len:

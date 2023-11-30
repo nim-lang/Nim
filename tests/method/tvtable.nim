@@ -1,3 +1,7 @@
+discard """
+  targets: "c cpp"
+"""
+
 type FooBase = ref object of RootObj
   dummy: int
 type Foo = ref object of FooBase
@@ -15,5 +19,6 @@ method bar(x: Foo2, a: float32)  =
 proc test() =
   var x = new Foo2
   x.bar(2.3)
+  doAssert x.value <= 2.3
 
 test()
