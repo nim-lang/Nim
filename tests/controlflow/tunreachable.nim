@@ -2,11 +2,11 @@ discard """
   cmd: "nim check --warningAsError:UnreachableCode $file"
   action: "reject"
   nimout: '''
-tunreachable.nim(24, 3) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
-tunreachable.nim(31, 3) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
-tunreachable.nim(40, 3) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
-tunreachable.nim(61, 5) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
-tunreachable.nim(76, 5) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
+tunreachable.nim(26, 3) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
+tunreachable.nim(33, 3) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
+tunreachable.nim(42, 3) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
+tunreachable.nim(65, 5) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
+tunreachable.nim(77, 5) Error: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
 '''
 """
   
