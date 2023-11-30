@@ -203,7 +203,7 @@
   * `monotimes module <monotimes.html>`_
 ]##
 
-import strutils, math, options
+import std/[strutils, math, options]
 
 import std/private/since
 include "system/inclrtl"
@@ -213,7 +213,7 @@ when defined(nimPreviewSlimSystem):
 
 
 when defined(js):
-  import jscore
+  import std/jscore
 
   # This is really bad, but overflow checks are broken badly for
   # ints on the JS backend. See #6752.
@@ -237,7 +237,7 @@ when defined(js):
   {.pop.}
 
 elif defined(posix):
-  import posix
+  import std/posix
 
   type CTime = posix.Time
 
@@ -246,7 +246,7 @@ elif defined(posix):
       {.importc: "gettimeofday", header: "<sys/time.h>", sideEffect.}
 
 elif defined(windows):
-  import winlean, std/time_t
+  import std/winlean, std/time_t
 
   type
     CTime = time_t.Time
@@ -2787,7 +2787,9 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
   ##
   ## .. warning:: Unsuitable for benchmarking (but still better than `now`),
   ##    use `monotimes.getMonoTime` or `cpuTime` instead, depending on the use case.
-  when defined(macosx):
+  when defined(js):
+    result = newDate().getTime() / 1000
+  elif defined(macosx):
     var a {.noinit.}: Timeval
     gettimeofday(a)
     result = toBiggestFloat(a.tv_sec.int64) + toBiggestFloat(
@@ -2804,8 +2806,6 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
     var secs = i64 div rateDiff
     var subsecs = i64 mod rateDiff
     result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
-  elif defined(js):
-    result = newDate().getTime() / 1000
   else:
     {.error: "unknown OS".}
 

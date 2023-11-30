@@ -201,9 +201,16 @@ proc prepareMutation*(s: var string) {.inline.} =
     let s = unsafeAddr s
     nimPrepareStrMutationV2(cast[ptr NimStringV2](s)[])
 
+proc nimAddStrV1(s: var NimStringV2; src: NimStringV2) {.compilerRtl, inl.} =
+  #if (s.p == nil) or (s.len+1 > s.p.cap and not strlitFlag):
+  prepareAdd(s, src.len)
+  appendString s, src
 
-template capacityImpl(str: NimStringV2): int =
-  if str.p != nil: str.p.cap else: 0
+proc nimDestroyStrV1(s: NimStringV2) {.compilerRtl, inl.} =
+  frees(s)
+
+proc nimStrAtLe(s: string; idx: int; ch: char): bool {.compilerRtl, inl.} =
+  result = idx < s.len and s[idx] <= ch
 
 func capacity*(self: string): int {.inline.} =
   ## Returns the current capacity of the string.
@@ -213,6 +220,5 @@ func capacity*(self: string): int {.inline.} =
     str.add "Nim"
     assert str.capacity == 42
 
-  {.cast(noSideEffect).}:
-    let str = unsafeAddr self
-    result = capacityImpl(cast[ptr NimStringV2](str)[])
+  let str = cast[ptr NimStringV2](unsafeAddr self)
+  result = if str.p != nil: str.p.cap and not strlitFlag else: 0

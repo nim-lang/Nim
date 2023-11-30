@@ -1,4 +1,5 @@
 discard """
+  targets: "c js"
   matrix: "--mm:refc; --mm:orc"
   output: '''
 x + y = 30
@@ -10,6 +11,23 @@ import std/[syncio, assertions]
 type # for capture test, ref #20679
   FooCapture = ref object
     x: int
+
+proc mainProc() =
+  block: # bug #16967
+    var s = newSeq[proc (): int](5)
+    {.push exportc.}
+    proc bar() =
+      for i in 0 ..< s.len:
+        let foo = i + 1
+        capture foo:
+          s[i] = proc(): int = foo
+    {.pop.}
+
+    bar()
+
+    for i, p in s.pairs:
+      let foo = i + 1
+      doAssert p() == foo
 
 template main() =
   block: # `=>`
@@ -84,22 +102,6 @@ template main() =
           capture i, j:
             closure2 = () => (i, j)
     doAssert closure2() == (5, 3)
-
-    block: # bug #16967
-      var s = newSeq[proc (): int](5)
-      {.push exportc.}
-      proc bar() =
-        for i in 0 ..< s.len:
-          let foo = i + 1
-          capture foo:
-            s[i] = proc(): int = foo
-      {.pop.}
-
-      bar()
-
-      for i, p in s.pairs:
-        let foo = i + 1
-        doAssert p() == foo
 
     block: # issue #20679
       # this should compile. Previously was broken as `var int` is an `nnkHiddenDeref`
@@ -270,17 +272,16 @@ template main() =
         discard collect(newSeq, for i in 1..3: i)
       foo()
 
-proc mainProc() =
   block: # dump
     # symbols in templates are gensym'd
     let
-      x = 10
-      y = 20
+      x {.inject.} = 10
+      y {.inject.} = 20
     dump(x + y) # x + y = 30
 
   block: # dumpToString
     template square(x): untyped = x * x
-    let x = 10
+    let x {.inject.} = 10
     doAssert dumpToString(square(x)) == "square(x): x * x = 100"
     let s = dumpToString(doAssert 1+1 == 2)
     doAssert "failedAssertImpl" in s
@@ -299,8 +300,10 @@ proc mainProc() =
 
     test()
 
-static:
-  main()
   mainProc()
+
+when not defined(js): # TODO fixme JS VM
+  static:
+    main()
+
 main()
-mainProc()

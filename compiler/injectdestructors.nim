@@ -14,10 +14,12 @@
 ## See doc/destructors.rst for a spec of the implemented rewrite rules
 
 import
-  intsets, strtabs, ast, astalgo, msgs, renderer, magicsys, types, idents,
-  strutils, options, lowerings, tables, modulegraphs,
+  ast, astalgo, msgs, renderer, magicsys, types, idents,
+  options, lowerings, modulegraphs,
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   varpartitions, aliasanalysis, dfa, wordrecg
+
+import std/[strtabs, tables, strutils, intsets]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -212,7 +214,7 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string; inferredFr
   localError(c.graph.config, ri.info, errGenerated, m)
 
 proc makePtrType(c: var Con, baseType: PType): PType =
-  result = newType(tyPtr, nextTypeId c.idgen, c.owner)
+  result = newType(tyPtr, c.idgen, c.owner)
   addSonSkipIntLit(result, baseType, c.idgen)
 
 proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
@@ -855,7 +857,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
             result[i][1] = p(n[i][1], c, s, m)
         else:
           result[i] = p(n[i], c, s, m)
-      if mode == normal and isRefConstr:
+      if mode == normal and (isRefConstr or (hasDestructor(c, t) and
+        getAttachedOp(c.graph, t, attachedDestructor) != nil and
+        sfOverridden in getAttachedOp(c.graph, t, attachedDestructor).flags)):
         result = ensureDestruction(result, n, c, s)
     of nkCallKinds:
       if n[0].kind == nkSym and n[0].sym.magic == mEnsureMove:

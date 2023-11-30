@@ -95,11 +95,11 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
       lineCg(p, cpsStmts, "$1 = 0;$n", [accessor])
     else:
       raiseAssert "unexpected set type kind"
-  of {tyNone, tyEmpty, tyNil, tyUntyped, tyTyped, tyGenericInvocation,
+  of tyNone, tyEmpty, tyNil, tyUntyped, tyTyped, tyGenericInvocation,
       tyGenericParam, tyOrdinal, tyRange, tyOpenArray, tyForward, tyVarargs,
       tyUncheckedArray, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
       tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot,
-      tyAnything, tyStatic, tyFromExpr, tyConcept, tyVoid, tyIterable}:
+      tyAnything, tyStatic, tyFromExpr, tyConcept, tyVoid, tyIterable:
     discard
 
 proc specializeReset(p: BProc, a: TLoc) =

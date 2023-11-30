@@ -541,7 +541,7 @@ template takeAddress(reg, source) =
   GC_ref source
 
 proc takeCharAddress(c: PCtx, src: PNode, index: BiggestInt, pc: int): TFullReg =
-  let typ = newType(tyPtr, nextTypeId c.idgen, c.module.owner)
+  let typ = newType(tyPtr, c.idgen, c.module.owner)
   typ.add getSysType(c.graph, c.debug[pc], tyChar)
   var node = newNodeIT(nkIntLit, c.debug[pc], typ) # xxx nkPtrLit
   node.intVal = cast[int](src.strVal[index].addr)
@@ -1296,7 +1296,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
             let ast = a.sym.ast.shallowCopy
             for i in 0..<a.sym.ast.len:
               ast[i] = a.sym.ast[i]
-            ast[bodyPos] = transformBody(c.graph, c.idgen, a.sym, useCache, force=true)
+            ast[bodyPos] = transformBody(c.graph, c.idgen, a.sym, {useCache, force})
             ast.copyTree()
     of opcSymOwner:
       decodeB(rkNode)
@@ -1522,7 +1522,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         frame = frame.next
         jumpTo = findExceptionHandler(c, frame, raised)
 
-      case jumpTo.why:
+      case jumpTo.why
       of ExceptionGotoHandler:
         # Jump to the handler, do nothing when the `finally` block ends.
         savedPC = -1
@@ -2462,7 +2462,7 @@ const evalMacroLimit = 1000
 
 #proc errorNode(idgen: IdGenerator; owner: PSym, n: PNode): PNode =
 #  result = newNodeI(nkEmpty, n.info)
-#  result.typ = newType(tyError, nextTypeId idgen, owner)
+#  result.typ = newType(tyError, idgen, owner)
 #  result.typ.flags.incl tfCheckedForDestructor
 
 proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstCounter: ref int;

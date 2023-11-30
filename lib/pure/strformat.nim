@@ -264,6 +264,12 @@ The available floating point presentation types are:
                          exponent notation.
 `G`                      General format. Same as `g` except it switches to `E`
                          if the number gets to large.
+`i`                      Complex General format. This is only supported for
+                         complex numbers, which it prints using the mathematical
+                         (RE+IMj) format. The real and imaginary parts are printed
+                         using the general format `g` by default, but it is
+                         possible to combine this format with one of the other
+                         formats (e.g `jf`).
 (None)                   Similar to `g`, except that it prints at least one
                          digit after the decimal point.
 =================        ====================================================
@@ -316,8 +322,8 @@ help with readability, since there is only so much you can cram into
 single letter DSLs.
 ]##
 
-import macros, parseutils, unicode
-import strutils except format
+import std/[macros, parseutils, unicode]
+import std/strutils except format
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

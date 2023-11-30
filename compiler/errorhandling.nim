@@ -10,7 +10,8 @@
 ## This module contains support code for new-styled error
 ## handling via an `nkError` node kind.
 
-import ast, renderer, options, strutils, types
+import ast, renderer, options, types
+import std/strutils
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -40,7 +41,8 @@ proc newError*(wrongNode: PNode; k: ErrorKind; args: varargs[PNode]): PNode =
   let innerError = errorSubNode(wrongNode)
   if innerError != nil:
     return innerError
-  result = newNodeIT(nkError, wrongNode.info, newType(tyError, ItemId(module: -1, item: -1), nil))
+  var idgen = idGeneratorForPackage(-1'i32)
+  result = newNodeIT(nkError, wrongNode.info, newType(tyError, idgen, nil))
   result.add wrongNode
   result.add newIntNode(nkIntLit, ord(k))
   for a in args: result.add a
@@ -50,7 +52,8 @@ proc newError*(wrongNode: PNode; msg: string): PNode =
   let innerError = errorSubNode(wrongNode)
   if innerError != nil:
     return innerError
-  result = newNodeIT(nkError, wrongNode.info, newType(tyError, ItemId(module: -1, item: -1), nil))
+  var idgen = idGeneratorForPackage(-1'i32)
+  result = newNodeIT(nkError, wrongNode.info, newType(tyError, idgen, nil))
   result.add wrongNode
   result.add newIntNode(nkIntLit, ord(CustomError))
   result.add newStrNode(msg, wrongNode.info)

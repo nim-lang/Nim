@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-import macros
-from typetraits import OrdinalEnum, HoleyEnum
+import std/macros
+from std/typetraits import OrdinalEnum, HoleyEnum
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -22,7 +22,8 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
   # a normalized string comparison to the `argSym` input.
   # string normalization is done using passed normalizer.
   let typ = typ.getTypeInst[1]
-  let impl = typ.getImpl[2]
+  let typSym = typ.getTypeImpl.getTypeInst # skip aliases etc to get type sym
+  let impl = typSym.getImpl[2]
   expectKind impl, nnkEnumTy
   let normalizerNode = quote: `normalizer`
   expectKind normalizerNode, nnkSym
@@ -81,7 +82,7 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
     result.add nnkElse.newTree(default)
 
 macro enumFullRange(a: typed): untyped =
-  newNimNode(nnkCurly).add(a.getType[1][1..^1])
+  newNimNode(nnkBracket).add(a.getType[1][1..^1])
 
 macro enumNames(a: typed): untyped =
   # this could be exported too; in particular this could be useful for enum with holes.

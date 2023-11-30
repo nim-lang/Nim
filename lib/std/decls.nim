@@ -1,6 +1,6 @@
 ## This module implements syntax sugar for some declarations.
 
-import macros
+import std/macros
 
 macro byaddr*(sect) =
   ## Allows a syntax for l-value references, being an exact analog to

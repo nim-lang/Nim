@@ -14,7 +14,9 @@
 {.used.}
 
 import
-  lexer, options, idents, strutils, ast, msgs, lineinfos, wordrecg
+  lexer, options, idents, ast, msgs, lineinfos, wordrecg
+
+import std/[strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, formatfloat]
@@ -864,7 +866,7 @@ proc gproc(g: var TSrcGen, n: PNode) =
   if renderNoPragmas notin g.flags:
     gsub(g, n[pragmasPos])
   if renderNoBody notin g.flags:
-    if n[bodyPos].kind != nkEmpty:
+    if n.len > bodyPos and n[bodyPos].kind != nkEmpty:
       put(g, tkSpaces, Space)
       putWithSpace(g, tkEquals, "=")
       indentNL(g)

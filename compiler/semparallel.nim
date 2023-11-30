@@ -25,8 +25,8 @@ import
   ast, astalgo, idents, lowerings, magicsys, guards, msgs,
   renderer, types, modulegraphs, options, spawn, lineinfos
 
-from trees import getMagic, isTrue, getRoot
-from strutils import `%`
+from trees import getMagic, getRoot
+from std/strutils import `%`
 
 discard """
 
@@ -405,7 +405,7 @@ proc transformSlices(g: ModuleGraph; idgen: IdGenerator; n: PNode): PNode =
     let op = n[0].sym
     if op.name.s == "[]" and op.fromSystem:
       result = copyNode(n)
-      var typ = newType(tyOpenArray, nextTypeId(g.idgen), result.typ.owner)
+      var typ = newType(tyOpenArray, idgen, result.typ.owner)
       typ.add result.typ[0]
       result.typ = typ
       let opSlice = newSymNode(createMagic(g, idgen, "slice", mSlice))

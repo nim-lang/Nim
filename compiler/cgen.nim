@@ -10,12 +10,14 @@
 ## This module implements the C code generator.
 
 import
-  ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
+  ast, astalgo, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, bitsets, idents, types,
-  ccgutils, os, ropes, math, wordrecg, treetab, cgmeth,
+  ccgutils, ropes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, aliases,
-  lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
+  lowerings, ndi, lineinfos, pathutils, transf,
   injectdestructors, astmsgs, modulepaths, backendpragmas
+
+from expanddefaults import caseObjDefaultBranch
 
 import pipelineutils
 
@@ -25,10 +27,10 @@ when defined(nimPreviewSlimSystem):
 when not defined(leanCompiler):
   import spawn, semparallel
 
-import strutils except `%`, addf # collides with ropes.`%`
+import std/strutils except `%`, addf # collides with ropes.`%`
 
 from ic / ic import ModuleBackendFlag
-import dynlib
+import std/[dynlib, math, tables, sets, os, intsets, hashes]
 
 when not declared(dynlib.libCandidates):
   proc libCandidates(s: string, dest: var seq[string]) =
@@ -119,7 +121,7 @@ proc getModuleDllPath(m: BModule, module: int): Rope =
 proc getModuleDllPath(m: BModule, s: PSym): Rope =
   result = getModuleDllPath(m.g.modules[s.itemId.module])
 
-import macros
+import std/macros
 
 proc cgFormatValue(result: var string; value: string) =
   result.add value
@@ -364,6 +366,8 @@ proc dataField(p: BProc): Rope =
   else:
     result = rope"->data"
 
+proc genProcPrototype(m: BModule, sym: PSym)
+
 include ccgliterals
 include ccgtypes
 
@@ -551,7 +555,8 @@ proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
   result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
   if p.module.compileToCpp and isOrHasImportedCppType(t):
-    linefmt(p, cpsLocals, "$1 $2{};$n", [getTypeDesc(p.module, t, dkVar), result.r])
+    linefmt(p, cpsLocals, "$1 $2$3;$n", [getTypeDesc(p.module, t, dkVar), result.r,
+      genCppInitializer(p.module, p, t)])
   else:
     linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t, dkVar), result.r])
   constructLoc(p, result, not needsInit)
@@ -606,7 +611,10 @@ proc assignLocalVar(p: BProc, n: PNode) =
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
   let nl = if optLineDir in p.config.options: "" else: "\n"
-  let decl = localVarDecl(p, n) & (if p.module.compileToCpp and isOrHasImportedCppType(n.typ): "{};" else: ";") & nl
+  var decl = localVarDecl(p, n)
+  if p.module.compileToCpp and isOrHasImportedCppType(n.typ):
+    decl.add genCppInitializer(p.module, p, n.typ)
+  decl.add ";" & nl
   line(p, cpsLocals, decl)
 
 include ccgthreadvars
@@ -640,7 +648,7 @@ proc genGlobalVarDecl(p: BProc, n: PNode; td, value: Rope; decl: var Rope) =
     else:
       decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
 
-proc genCppVarForCtor(p: BProc, v: PSym; vn, value: PNode; decl: var Rope)
+proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope)
 
 proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode) =
   let s = vn.sym
@@ -650,7 +658,7 @@ proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode) =
   let td = getTypeDesc(p.module, vn.sym.typ, dkVar)
   genGlobalVarDecl(p, vn, td, "", decl)
   decl.add " " & $s.loc.r
-  genCppVarForCtor(p, v, vn, value, decl)
+  genCppVarForCtor(p, value, decl)
   p.module.s[cfsVars].add decl
 
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
@@ -728,7 +736,7 @@ proc genVarPrototype(m: BModule, n: PNode)
 proc requestConstImpl(p: BProc, sym: PSym)
 proc genStmts(p: BProc, t: PNode)
 proc expr(p: BProc, n: PNode, d: var TLoc)
-proc genProcPrototype(m: BModule, sym: PSym)
+
 proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
 proc intLiteral(i: BiggestInt; result: var Rope)
 proc genLiteral(p: BProc, n: PNode; result: var Rope)
@@ -1156,7 +1164,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
   var returnStmt: Rope = ""
   assert(prc.ast != nil)
 
-  var procBody = transformBody(m.g.graph, m.idgen, prc, dontUseCache)
+  var procBody = transformBody(m.g.graph, m.idgen, prc, {})
   if sfInjectDestructors in prc.flags:
     procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
 
@@ -1187,12 +1195,8 @@ proc genProcAux*(m: BModule, prc: PSym) =
           initLocalVar(p, res, immediateAsgn=false)
       returnStmt = ropecg(p.module, "\treturn $1;$n", [rdLoc(res.loc)])
     elif sfConstructor in prc.flags:
+      resNode.sym.loc.flags.incl lfIndirect
       fillLoc(resNode.sym.loc, locParam, resNode, "this", OnHeap)
-      let ty = resNode.sym.typ[0] #generate nim's ctor
-      for i in 1..<resNode.sym.ast.len:
-        let field = resNode.sym.ast[i]
-        genFieldObjConstr(p, ty, useTemp = false, isRef = false,
-          field[0], field[1], check = nil, resNode.sym.loc, "(*this)", tmpInfo)
     else:
       fillResult(p.config, resNode, prc.typ)
       assignParam(p, res, prc.typ[0])
@@ -2179,9 +2183,8 @@ proc updateCachedModule(m: BModule) =
   cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)
 
-proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode): PNode =
+proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   ## Also called from IC.
-  result = nil
   if sfMainModule in m.module.flags:
     # phase ordering problem here: We need to announce this
     # dependency to 'nimTestErrorFlag' before system.c has been written to disk.
@@ -2229,7 +2232,11 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode): PNode =
 
       if m.g.forwardedProcs.len == 0:
         incl m.flags, objHasKidsValid
-      result = generateMethodDispatchers(graph, m.idgen)
+      if optMultiMethods in m.g.config.globalOptions or
+          m.g.config.selectedGC notin {gcArc, gcOrc, gcAtomicArc} or
+          vtables notin m.g.config.features:
+        generateIfMethodDispatchers(graph, m.idgen)
+
 
   let mm = m
   m.g.modulesClosed.add mm

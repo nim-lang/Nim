@@ -12,10 +12,11 @@
 # the data structures here are used in various places of the compiler.
 
 import
-  ast, hashes, intsets, options, lineinfos, ropes, idents, rodutils,
+  ast, options, lineinfos, ropes, idents, rodutils,
   msgs
 
-import strutils except addf
+import std/[hashes, intsets]
+import std/strutils except addf
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -408,7 +409,7 @@ proc symToYaml(conf: ConfigRef; n: PSym, indent: int = 0, maxRecDepth: int = - 1
   var marker = initIntSet()
   result = symToYamlAux(conf, n, marker, indent, maxRecDepth)
 
-import tables
+import std/tables
 
 const backrefStyle = "\e[90m"
 const enumStyle = "\e[34m"

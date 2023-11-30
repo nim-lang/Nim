@@ -269,7 +269,9 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
         for i in 1..<def.len:
           def[i] = replaceTypeVarsN(cl, def[i], 1)
 
-      def = semExprWithType(c, def)
+      # allow symchoice since node will be fit later
+      # although expectedType should cover it
+      def = semExprWithType(c, def, {efAllowSymChoice}, typeToFit)
       if def.referencesAnotherParam(getCurrOwner(c)):
         def.flags.incl nfDefaultRefsParam
 
@@ -398,11 +400,17 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     entry.compilesId = c.compilesContextId
     addToGenericProcCache(c, fn, entry)
     c.generics.add(makeInstPair(fn, entry))
+    # bug #12985 bug #22913
+    # TODO: use the context of the declaration of generic functions instead
+    # TODO: consider fixing options as well
+    let otherPragmas = c.optionStack[^1].otherPragmas
+    c.optionStack[^1].otherPragmas = nil
     if n[pragmasPos].kind != nkEmpty:
       pragma(c, result, n[pragmasPos], allRoutinePragmas)
     if isNil(n[bodyPos]):
       n[bodyPos] = copyTree(getBody(c.graph, fn))
     instantiateBody(c, n, fn.typ.n, result, fn)
+    c.optionStack[^1].otherPragmas = otherPragmas
     sideEffectsCheck(c, result)
     if result.magic notin {mSlice, mTypeOf}:
       # 'toOpenArray' is special and it is allowed to return 'openArray':

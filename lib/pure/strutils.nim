@@ -70,12 +70,12 @@ runnableExamples:
 ##   easier substring extraction than regular expressions
 
 
-import parseutils
-from math import pow, floor, log10
-from algorithm import fill, reverse
+import std/parseutils
+from std/math import pow, floor, log10
+from std/algorithm import fill, reverse
 import std/enumutils
 
-from unicode import toLower, toUpper
+from std/unicode import toLower, toUpper
 export toLower, toUpper
 
 include "system/inclrtl"
@@ -1875,7 +1875,7 @@ func join*(a: openArray[string], sep: string = ""): string {.rtl,
   else:
     result = ""
 
-func join*[T: not string](a: openArray[T], sep: string = ""): string =
+proc join*[T: not string](a: openArray[T], sep: string = ""): string =
   ## Converts all elements in the container `a` to strings using `$`,
   ## and concatenates them with `sep`.
   runnableExamples:

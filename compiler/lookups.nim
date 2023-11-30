@@ -14,8 +14,10 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 import
-  intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, lineinfos, modulegraphs, astmsgs, sets, wordrecg
+  ast, astalgo, idents, semdata, types, msgs, options,
+  renderer, lineinfos, modulegraphs, astmsgs, wordrecg
+
+import std/[intsets, sets]
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -464,7 +466,7 @@ proc mergeShadowScope*(c: PContext) =
       c.addInterfaceDecl(sym)
 
 
-import std/editdistance, heapqueue
+import std/[editdistance, heapqueue]
 
 type SpellCandidate = object
   dist: int

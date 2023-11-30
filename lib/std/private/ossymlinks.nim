@@ -10,9 +10,9 @@ when defined(nimPreviewSlimSystem):
 when weirdTarget:
   discard
 elif defined(windows):
-  import winlean, times
+  import std/[winlean, times]
 elif defined(posix):
-  import posix
+  import std/posix
 else:
   {.error: "OS module not ported to your operating system!".}
 

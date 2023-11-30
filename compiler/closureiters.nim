@@ -134,7 +134,9 @@
 import
   ast, msgs, idents,
   renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos,
-  tables, options
+  options
+
+import std/tables
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -1158,9 +1160,9 @@ proc skipThroughEmptyStates(ctx: var Ctx, n: PNode): PNode=
       n[i] = ctx.skipThroughEmptyStates(n[i])
 
 proc newArrayType(g: ModuleGraph; n: int, t: PType; idgen: IdGenerator; owner: PSym): PType =
-  result = newType(tyArray, nextTypeId(idgen), owner)
+  result = newType(tyArray, idgen, owner)
 
-  let rng = newType(tyRange, nextTypeId(idgen), owner)
+  let rng = newType(tyRange, idgen, owner)
   rng.n = newTree(nkRange, g.newIntLit(owner.info, 0), g.newIntLit(owner.info, n - 1))
   rng.rawAddSon(t)
 

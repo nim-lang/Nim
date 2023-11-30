@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, idents, treetab, hashes
-import sequtils, strutils, sets
+import ast, renderer, msgs, options, lineinfos, idents, treetab
+import std/[intsets, tables, sequtils, strutils, sets, strformat, hashes]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -918,7 +918,7 @@ proc infix(ctx: NilCheckerContext, l: PNode, r: PNode, magic: TMagic): PNode =
     newSymNode(op, r.info),
     l,
     r)
-  result.typ = newType(tyBool, nextTypeId ctx.idgen, nil)
+  result.typ = newType(tyBool, ctx.idgen, nil)
 
 proc prefixNot(ctx: NilCheckerContext, node: PNode): PNode =
   var cache = newIdentCache()
@@ -928,7 +928,7 @@ proc prefixNot(ctx: NilCheckerContext, node: PNode): PNode =
   result = nkPrefix.newTree(
     newSymNode(op, node.info),
     node)
-  result.typ = newType(tyBool, nextTypeId ctx.idgen, nil)
+  result.typ = newType(tyBool, ctx.idgen, nil)
 
 proc infixEq(ctx: NilCheckerContext, l: PNode, r: PNode): PNode =
   infix(ctx, l, r, mEqRef)

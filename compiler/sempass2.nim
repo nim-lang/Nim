@@ -8,10 +8,12 @@
 #
 
 import
-  intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
-  modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling, tables,
+  ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
+  wordrecg, options, guards, lineinfos, semfold, semdata,
+  modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling,
   semstrictfuncs
+
+import std/[tables, intsets, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -21,6 +23,9 @@ when defined(useDfa):
 
 import liftdestructors
 include sinkparameter_inference
+
+
+import std/options as opt
 
 #[ Second semantic checking pass over the AST. Necessary because the old
    way had some inherent problems. Performs:
@@ -88,6 +93,37 @@ type
 const
   errXCannotBeAssignedTo = "'$1' cannot be assigned to"
   errLetNeedsInit = "'let' symbol requires an initialization"
+
+proc getObjDepth(t: PType): Option[tuple[depth: int, root: ItemId]] =
+  var x = t
+  var res: tuple[depth: int, root: ItemId]
+  res.depth = -1
+  var stack = newSeq[ItemId]()
+  while x != nil:
+    x = skipTypes(x, skipPtrs)
+    if x.kind != tyObject:
+      return none(tuple[depth: int, root: ItemId])
+    stack.add x.itemId
+    x = x[0]
+    inc(res.depth)
+  res.root = stack[^2]
+  result = some(res)
+
+proc collectObjectTree(graph: ModuleGraph, n: PNode) =
+  for section in n:
+    if section.kind == nkTypeDef and section[^1].kind in {nkObjectTy, nkRefTy, nkPtrTy}:
+      let typ = section[^1].typ.skipTypes(skipPtrs)
+      if typ.len > 0 and typ[0] != nil:
+        let depthItem = getObjDepth(typ)
+        if isSome(depthItem):
+          let (depthLevel, root) = depthItem.unsafeGet
+          if depthLevel == 1:
+            graph.objectTree[root] = @[]
+          else:
+            if root notin graph.objectTree:
+              graph.objectTree[root] = @[(depthLevel, typ)]
+            else:
+              graph.objectTree[root].add (depthLevel, typ)
 
 proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
   if typ == nil or sfGeneratedOp in tracked.owner.flags:
@@ -993,9 +1029,9 @@ proc trackCall(tracked: PEffects; n: PNode) =
           # consider this case: p(out x, x); we want to remark that 'x' is not
           # initialized until after the call. Since we do this after we analysed the
           # call, this is fine.
-          initVar(tracked, n[i].skipAddr, false)
+          initVar(tracked, n[i].skipHiddenAddr, false)
         if strictFuncs in tracked.c.features and not tracked.inEnforcedNoSideEffects and
-           isDangerousLocation(n[i].skipAddr, tracked.owner):
+           isDangerousLocation(n[i].skipHiddenAddr, tracked.owner):
           if sfNoSideEffect in tracked.owner.flags:
             localError(tracked.config, n[i].info,
               "cannot pass $1 to `var T` parameter within a strict func" % renderTree(n[i]))
@@ -1321,8 +1357,11 @@ proc track(tracked: PEffects, n: PNode) =
   of nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef, nkLambda, nkFuncDef, nkDo:
     if n[0].kind == nkSym and n[0].sym.ast != nil:
       trackInnerProc(tracked, getBody(tracked.graph, n[0].sym))
-  of nkTypeSection, nkMacroDef, nkTemplateDef:
+  of nkMacroDef, nkTemplateDef:
     discard
+  of nkTypeSection:
+    if tracked.isTopLevel:
+      collectObjectTree(tracked.graph, n)
   of nkCast:
     if n.len == 2:
       track(tracked, n[1])
@@ -1556,7 +1595,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
        strictDefs in c.features) and
      s.kind in {skProc, skFunc, skConverter, skMethod} and s.magic == mNone:
     var res = s.ast[resultPos].sym # get result symbol
-    if res.id notin t.init:
+    if res.id notin t.init and breaksBlock(body) != bsNoReturn:
       if tfRequiresInit in s.typ[0].flags:
         localError(g.config, body.info, "'$1' requires explicit initialization" % "result")
       else:
@@ -1635,13 +1674,18 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     checkNil(s, body, g.config, c.idgen)
 
 proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
-  if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,
-                nkTypeSection, nkConverterDef, nkMethodDef, nkIteratorDef}:
-    return
-  let g = c.graph
-  var effects = newNodeI(nkEffectList, n.info)
-  var t: TEffects = initEffects(g, effects, module, c)
-  t.isTopLevel = isTopLevel
-  track(t, n)
-  when defined(drnim):
-    if c.graph.strongSemCheck != nil: c.graph.strongSemCheck(c.graph, module, n)
+  case n.kind
+  of {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,
+                nkConverterDef, nkMethodDef, nkIteratorDef}:
+    discard
+  of nkTypeSection:
+    if isTopLevel:
+      collectObjectTree(c.graph, n)
+  else:
+    let g = c.graph
+    var effects = newNodeI(nkEffectList, n.info)
+    var t: TEffects = initEffects(g, effects, module, c)
+    t.isTopLevel = isTopLevel
+    track(t, n)
+    when defined(drnim):
+      if c.graph.strongSemCheck != nil: c.graph.strongSemCheck(c.graph, module, n)
