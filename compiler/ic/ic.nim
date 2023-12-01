@@ -1089,7 +1089,8 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
       else:
         result = optForceFullMake in conf.globalOptions
         # check its dependencies:
-        for dep in g[m].fromDisk.imports:
+        let imp = g[m].fromDisk.imports
+        for dep in imp:
           let fid = toFileIndex(dep, g[m].fromDisk, conf)
           # Warning: we need to traverse the full graph, so
           # do **not use break here**!
