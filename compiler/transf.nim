@@ -614,7 +614,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
 type
   TPutArgInto = enum
     paDirectMapping, paFastAsgn, paFastAsgnTakeTypeFromArg
-    paVarAsgn, paComplexOpenarray
+    paVarAsgn, paComplexOpenarray, paViaIndirection
 
 proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   # This analyses how to treat the mapping "formal <-> arg" in an
@@ -634,6 +634,7 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
     result = paDirectMapping
   of nkDotExpr, nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr:
     result = putArgInto(arg[0], formal)
+    #if result == paViaIndirection: result = paFastAsgn
   of nkCurly, nkBracket:
     for i in 0..<arg.len:
       if putArgInto(arg[i], formal) != paDirectMapping:
@@ -646,6 +647,9 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
       if putArgInto(a, formal) != paDirectMapping:
         return paFastAsgn
     result = paDirectMapping
+  of nkBracketExpr:
+    if skipTypes(formal, abstractInst).kind in {tyVar, tyLent}: result = paVarAsgn
+    else: result = paViaIndirection
   else:
     if skipTypes(formal, abstractInst).kind in {tyVar, tyLent}: result = paVarAsgn
     else: result = paFastAsgn
@@ -765,7 +769,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
         t = arg.typ
       # generate a temporary and produce an assignment statement:
       var temp = newTemp(c, t, formal.info)
-      incl(temp.sym.flags, sfCursor)
+      #incl(temp.sym.flags, sfCursor)
       addVar(v, temp)
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
       idNodeTablePut(newC.mapping, formal, temp)
@@ -773,6 +777,15 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       assert(skipTypes(formal.typ, abstractInst).kind in {tyVar, tyLent})
       idNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
+    of paViaIndirection:
+      let t = formal.typ
+      let vt = makeVarType(t.owner, t, c.idgen)
+      var temp = newTemp(c, vt, formal.info)
+      addVar(v, temp)
+      var addrExp = newNodeIT(nkHiddenAddr, formal.info, makeVarType(t.owner, t, c.idgen, tyPtr))
+      addrExp.add(arg)
+      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, addrExp, true))
+      idNodeTablePut(newC.mapping, formal, newDeref(temp))
     of paComplexOpenarray:
       # arrays will deep copy here (pretty bad).
       var temp = newTemp(c, arg.typ, formal.info)
