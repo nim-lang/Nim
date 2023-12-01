@@ -40,7 +40,9 @@ type
     Goto,
     CheckedGoto,
     LoopLabel,
-    GotoLoop,  # last atom
+    GotoLoop,
+    EmitTarget,
+    Verbatim,  # last atom
 
     ModuleSymUse, # `"module".x`
 
@@ -108,8 +110,6 @@ type
     ObjConv,
     TestOf,
     Emit,
-    EmitTarget,
-    Verbatim,
 
     ProcDecl,
     ForeignProcDecl,
@@ -130,7 +130,7 @@ type
     Code
 
 const
-  LastAtomicValue = GotoLoop
+  LastAtomicValue = Verbatim
 
   OpcodeBits = 8'u32
   OpcodeMask = (1'u32 shl OpcodeBits) - 1'u32
@@ -355,7 +355,7 @@ proc immediateVal*(ins: Instr): int {.inline.} =
   result = cast[int](ins.operand)
 
 proc litId*(ins: Instr): LitId {.inline.} =
-  assert ins.kind in {StrVal, IntVal}
+  assert ins.kind in {StrVal, IntVal, Verbatim}
   result = LitId(ins.operand)
 
 
@@ -500,6 +500,11 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
     r.add $integers[LitId t[pos].operand]
   of StrVal:
     escapeToNimLit(strings[LitId t[pos].operand], r)
+  of Verbatim:
+    r.add """Verbatim """""" & '\n'
+    # r.add verbatims[LitId t[pos].operand]
+    r.add '\n' & """""""""
+
   of SymDef:
     r.add "SymDef "
     r.add localName(SymId t[pos].operand)
