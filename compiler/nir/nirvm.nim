@@ -157,7 +157,7 @@ proc debug(bc: Bytecode; info: PackedLineInfo) =
 
 proc debug(bc: Bytecode; t: Tree; n: NodePos) =
   var buf = ""
-  toString(t, n, bc.m.lit.strings, bc.m.lit.numbers, bc.m.symnames, buf)
+  toString(t, n, bc.m.lit.strings, bc.m.lit.verbatims, bc.m.lit.numbers, bc.m.symnames, buf)
   echo buf
 
 template `[]`(t: seq[Instr]; n: CodePos): Instr = t[n.int]

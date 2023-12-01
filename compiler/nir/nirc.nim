@@ -15,7 +15,7 @@ import nirinsts, nirtypes, nirlineinfos, nirfiles, cir
 proc view(filename: string) =
   let m = load(filename)
   var res = ""
-  allTreesToString m.code, m.lit.strings, m.lit.numbers, m.symnames, res
+  allTreesToString m.code, m.lit.strings, m.lit.verbatims, m.lit.numbers, m.symnames, res
   res.add "\n# TYPES\n"
   nirtypes.toString res, m.types
   echo res

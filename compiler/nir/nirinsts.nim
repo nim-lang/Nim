@@ -355,7 +355,7 @@ proc immediateVal*(ins: Instr): int {.inline.} =
   result = cast[int](ins.operand)
 
 proc litId*(ins: Instr): LitId {.inline.} =
-  assert ins.kind in {StrVal, IntVal, Verbatim}
+  assert ins.kind in {StrVal, Verbatim, IntVal}
   result = LitId(ins.operand)
 
 
@@ -436,6 +436,9 @@ proc addStrVal*(t: var Tree; strings: var BiTable[string]; info: PackedLineInfo;
 proc addStrLit*(t: var Tree; info: PackedLineInfo; s: LitId) =
   t.nodes.add Instr(x: toX(StrVal, uint32(s)), info: info)
 
+proc addVerbatim*(t: var Tree; verbatims: var BiTable[string]; info: PackedLineInfo; s: string) =
+  t.nodes.add Instr(x: toX(Verbatim, uint32(verbatims.getOrIncl(s))), info: info)
+
 proc addNilVal*(t: var Tree; info: PackedLineInfo; typ: TypeId) =
   buildTyped t, info, NumberConv, typ:
     t.nodes.add Instr(x: toX(NilVal, uint32(0)), info: info)
@@ -485,9 +488,10 @@ template localName(s: SymId): string =
 proc store*(r: var RodFile; t: SymNames) = storeSeq(r, t.s)
 proc load*(r: var RodFile; t: var SymNames) = loadSeq(r, t.s)
 
-proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTable[int64];
+proc toString*(t: Tree; pos: NodePos; strings, verbatims: BiTable[string], integers: BiTable[int64];
                names: SymNames;
                r: var string; nesting = 0) =
+  const tripleQuote = """""""""
   if r.len > 0 and r[r.len-1] notin {' ', '\n', '(', '[', '{'}:
     r.add ' '
 
@@ -501,10 +505,9 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
   of StrVal:
     escapeToNimLit(strings[LitId t[pos].operand], r)
   of Verbatim:
-    r.add """Verbatim """""" & '\n'
-    # r.add verbatims[LitId t[pos].operand]
-    r.add '\n' & """""""""
-
+    r.add "Verbatim " & tripleQuote & '\n'
+    r.add verbatims[LitId t[pos].operand]
+    r.add '\n' & tripleQuote
   of SymDef:
     r.add "SymDef "
     r.add localName(SymId t[pos].operand)
@@ -538,17 +541,17 @@ proc toString*(t: Tree; pos: NodePos; strings: BiTable[string]; integers: BiTabl
     r.add "{\n"
     for i in 0..<(nesting+1)*2: r.add ' '
     for p in sons(t, pos):
-      toString t, p, strings, integers, names, r, nesting+1
+      toString t, p, strings, verbatims, integers, names, r, nesting+1
     r.add "\n"
     for i in 0..<nesting*2: r.add ' '
     r.add "}"
 
-proc allTreesToString*(t: Tree; strings: BiTable[string]; integers: BiTable[int64];
+proc allTreesToString*(t: Tree; strings, verbatims: BiTable[string], integers: BiTable[int64];
                        names: SymNames;
                        r: var string) =
   var i = 0
   while i < t.len:
-    toString t, NodePos(i), strings, integers, names, r
+    toString t, NodePos(i), strings, verbatims, integers, names, r
     nextChild t, i
 
 type

@@ -62,6 +62,7 @@ proc hash*(a: TypeId): Hash {.borrow.}
 type
   Literals* = ref object
     strings*: BiTable[string]
+    verbatims*: BiTable[string]
     numbers*: BiTable[int64]
 
   TypeGraph* = object
