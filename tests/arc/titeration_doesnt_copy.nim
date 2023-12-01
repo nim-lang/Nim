@@ -25,3 +25,32 @@ when isMainModule:
   var ss: seq[int]
   doSomething(ss, foo)
   echo ss == @[1]
+
+from sequtils import mapIt
+from strutils import join
+
+proc toBinSeq*(b: uint8): seq[uint8] =
+  ## Return binary sequence from each bits of uint8.
+  runnableExamples:
+    from sequtils import repeat
+    doAssert 0'u8.toBinSeq == 0'u8.repeat(8)
+    doAssert 0b1010_1010.toBinSeq == @[1'u8, 0, 1, 0, 1, 0, 1, 0]
+  result = @[]
+  var c = b
+  for i in 1..8:
+    result.add (uint8(c and 0b1000_0000) shr 7)
+    c = c shl 1
+
+proc toBinString*(data: openArray[uint8], col: int): string =
+  ## Return binary string from each bits of uint8.
+  runnableExamples:
+    doAssert @[0b0000_1111'u8, 0b1010_1010].toBinString(8) == "0000111110101010"
+    doAssert @[0b1000_0000'u8, 0b0000_0000].toBinString(1) == "10"
+  result = ""
+  for b in items data.mapIt(it.toBinSeq.mapIt(it.`$`[0].char)):
+    for i, c in b:
+      if i < col:
+        result.add c
+
+doAssert @[0b0000_1111'u8, 0b1010_1010].toBinString(8) == "0000111110101010"
+doAssert @[0b1000_0000'u8, 0b0000_0000].toBinString(1) == "10"

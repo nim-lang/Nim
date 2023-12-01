@@ -780,6 +780,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
     of paViaIndirection:
       let t = formal.typ
       let vt = makeVarType(t.owner, t, c.idgen)
+      vt.flags.incl tfVarIsPtr
       var temp = newTemp(c, vt, formal.info)
       addVar(v, temp)
       var addrExp = newNodeIT(nkHiddenAddr, formal.info, makeVarType(t.owner, t, c.idgen, tyPtr))
