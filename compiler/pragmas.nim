@@ -10,9 +10,11 @@
 # This module implements semantic checking for pragmas
 
 import
-  os, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
-  wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
+  condsyms, ast, astalgo, idents, semdata, msgs, renderer,
+  wordrecg, ropes, options, extccomp, magicsys, trees,
   types, lookups, lineinfos, pathutils, linter, modulepaths
+
+import std/[os, math, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -72,9 +74,9 @@ const
     wIncompleteStruct, wCompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wCppNonPod, wBorrow, wGcSafe, wPartial, wExplain, wPackage, wCodegenDecl,
-    wSendable}
+    wSendable, wNoInit}
   fieldPragmas* = declPragmas + {wGuard, wBitsize, wCursor,
-    wRequiresInit, wNoalias, wAlign} - {wExportNims, wNodecl} # why exclude these?
+    wRequiresInit, wNoalias, wAlign, wNoInit} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
     wNoInit, wCompileTime, wGlobal,
@@ -1311,7 +1313,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
   if sym != nil and sym.kind != skModule:
     for it in c.optionStack:
       let o = it.otherPragmas
-      if not o.isNil and sfFromGeneric notin sym.flags: # see issue #12985
+      if not o.isNil:
         pushInfoContext(c.config, info)
         var i = 0
         while i < o.len:

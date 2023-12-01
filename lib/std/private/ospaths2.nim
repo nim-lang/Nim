@@ -1,7 +1,7 @@
 include system/inclrtl
 import std/private/since
 
-import strutils, pathnorm
+import std/[strutils, pathnorm]
 import std/oserrors
 
 import oscommon
@@ -17,9 +17,9 @@ const weirdTarget = defined(nimscript) or defined(js)
 when weirdTarget:
   discard
 elif defined(windows):
-  import winlean
+  import std/winlean
 elif defined(posix):
-  import posix, system/ansi_c
+  import std/posix, system/ansi_c
 else:
   {.error: "OS module not ported to your operating system!".}
 

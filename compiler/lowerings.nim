@@ -144,7 +144,7 @@ proc lowerSwap*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNod
   result.add newFastAsgnStmt(n[2], tempAsNode)
 
 proc createObj*(g: ModuleGraph; idgen: IdGenerator; owner: PSym, info: TLineInfo; final=true): PType =
-  result = newType(tyObject, nextTypeId(idgen), owner)
+  result = newType(tyObject, idgen, owner)
   if final:
     rawAddSon(result, nil)
     incl result.flags, tfFinal
@@ -320,7 +320,7 @@ proc indirectAccess*(a, b: PSym, info: TLineInfo): PNode =
 proc genAddrOf*(n: PNode; idgen: IdGenerator; typeKind = tyPtr): PNode =
   result = newNodeI(nkAddr, n.info, 1)
   result[0] = n
-  result.typ = newType(typeKind, nextTypeId(idgen), n.typ.owner)
+  result.typ = newType(typeKind, idgen, n.typ.owner)
   result.typ.rawAddSon(n.typ)
 
 proc genDeref*(n: PNode; k = nkHiddenDeref): PNode =

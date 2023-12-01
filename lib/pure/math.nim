@@ -57,7 +57,7 @@ import std/private/since
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
-import bitops, fenv
+import std/[bitops, fenv]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

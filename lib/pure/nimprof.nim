@@ -20,7 +20,7 @@ when not defined(profiler) and not defined(memProfiler):
 # We don't want to profile the profiling code ...
 {.push profiler: off.}
 
-import hashes, algorithm, strutils, tables, sets
+import std/[hashes, algorithm, strutils, tables, sets]
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, sysatomics]
@@ -69,7 +69,7 @@ when not defined(memProfiler):
     else: interval = intervalInUs * 1000 - tickCountCorrection
 
 when withThreads:
-  import locks
+  import std/locks
   var
     profilingLock: Lock
 

@@ -1,8 +1,10 @@
 
 import
-  intsets, ast, idents, algorithm, renderer, strutils,
+  ast, idents, renderer,
   msgs, modulegraphs, syntaxes, options, modulepaths,
   lineinfos
+
+import std/[algorithm, strutils, intsets]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

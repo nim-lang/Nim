@@ -9,8 +9,10 @@
 
 ## Implements marshaling for the VM.
 
-import streams, json, intsets, tables, ast, astalgo, idents, types, msgs,
+import ast, astalgo, idents, types, msgs,
   options, lineinfos
+
+import std/[streams, json, intsets, tables]
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, formatfloat]

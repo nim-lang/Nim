@@ -10,9 +10,11 @@
 # This file implements lambda lifting for the transformator.
 
 import
-  intsets, strutils, options, ast, astalgo, msgs,
-  idents, renderer, types, magicsys, lowerings, tables, modulegraphs, lineinfos,
+  options, ast, astalgo, msgs,
+  idents, renderer, types, magicsys, lowerings, modulegraphs, lineinfos,
   transf, liftdestructors, typeallowed
+
+import std/[strutils, tables, intsets]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -133,10 +135,10 @@ proc createClosureIterStateType*(g: ModuleGraph; iter: PSym; idgen: IdGenerator)
   var n = newNodeI(nkRange, iter.info)
   n.add newIntNode(nkIntLit, -1)
   n.add newIntNode(nkIntLit, 0)
-  result = newType(tyRange, nextTypeId(idgen), iter)
+  result = newType(tyRange, idgen, iter)
   result.n = n
   var intType = nilOrSysInt(g)
-  if intType.isNil: intType = newType(tyInt, nextTypeId(idgen), iter)
+  if intType.isNil: intType = newType(tyInt, idgen, iter)
   rawAddSon(result, intType)
 
 proc createStateField(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym =
@@ -340,7 +342,7 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym;
                         info: TLineInfo): PType =
   result = c.ownerToType.getOrDefault(owner.id)
   if result.isNil:
-    result = newType(tyRef, nextTypeId(c.idgen), owner)
+    result = newType(tyRef, c.idgen, owner)
     let obj = createEnvObj(c.graph, c.idgen, owner, info)
     rawAddSon(result, obj)
     c.ownerToType[owner.id] = result
@@ -348,7 +350,7 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym;
 proc asOwnedRef(c: var DetectionPass; t: PType): PType =
   if optOwnedRefs in c.graph.config.globalOptions:
     assert t.kind == tyRef
-    result = newType(tyOwned, nextTypeId(c.idgen), t.owner)
+    result = newType(tyOwned, c.idgen, t.owner)
     result.flags.incl tfHasOwned
     result.rawAddSon t
   else:
@@ -357,7 +359,7 @@ proc asOwnedRef(c: var DetectionPass; t: PType): PType =
 proc getEnvTypeForOwnerUp(c: var DetectionPass; owner: PSym;
                           info: TLineInfo): PType =
   var r = c.getEnvTypeForOwner(owner, info)
-  result = newType(tyPtr, nextTypeId(c.idgen), owner)
+  result = newType(tyPtr, c.idgen, owner)
   rawAddSon(result, r.skipTypes({tyOwned, tyRef, tyPtr}))
 
 proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
@@ -449,7 +451,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
     if innerProc:
       if s.isIterator: c.somethingToDo = true
       if not c.processed.containsOrIncl(s.id):
-        let body = transformBody(c.graph, c.idgen, s, useCache)
+        let body = transformBody(c.graph, c.idgen, s, {useCache})
         detectCapturedVars(body, s, c)
     let ow = s.skipGenericOwner
     let innerClosure = innerProc and s.typ.callConv == ccClosure and not s.isIterator
@@ -755,7 +757,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
         #  echo renderTree(s.getBody, {renderIds})
         let oldInContainer = c.inContainer
         c.inContainer = 0
-        var body = transformBody(d.graph, d.idgen, s, dontUseCache)
+        var body = transformBody(d.graph, d.idgen, s, {})
         body = liftCapturedVars(body, s, d, c)
         if c.envVars.getOrDefault(s.id).isNil:
           s.transformedBody = body
@@ -879,7 +881,7 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType;
   fn.typ.callConv = oldCC
 
 proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
-                  idgen: IdGenerator, force: bool): PNode =
+                  idgen: IdGenerator; flags: TransformFlags): PNode =
   # XXX backend == backendJs does not suffice! The compiletime stuff needs
   # the transformation even when compiling to JS ...
 
@@ -888,7 +890,7 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
 
   if body.kind == nkEmpty or (
       g.config.backend == backendJs and not isCompileTime) or
-      (fn.skipGenericOwner.kind != skModule and not force):
+      (fn.skipGenericOwner.kind != skModule and force notin flags):
 
     # ignore forward declaration:
     result = body

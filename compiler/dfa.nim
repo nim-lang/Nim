@@ -22,8 +22,9 @@
 ## "A Graph–Free Approach to Data–Flow Analysis" by Markus Mohnen.
 ## https://link.springer.com/content/pdf/10.1007/3-540-45937-5_6.pdf
 
-import ast, intsets, lineinfos, renderer, aliasanalysis
+import ast, lineinfos, renderer, aliasanalysis
 import std/private/asciitables
+import std/intsets
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -128,10 +129,6 @@ template withBlock(labl: PSym; body: untyped) =
   c.blocks.add TBlock(isTryBlock: false, label: labl)
   body
   popBlock(c, oldLen)
-
-proc isTrue(n: PNode): bool =
-  n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
-    n.kind == nkIntLit and n.intVal != 0
 
 template forkT(body) =
   let lab1 = c.forkI()

@@ -58,13 +58,13 @@ runnableExamples("-r:off"):
 
   stdout.styledWriteLine(fgRed, "red text ", styleBright, "bold red", fgDefault, " bold text")
 
-import macros
-import strformat
-from strutils import toLowerAscii, `%`
-import colors
+import std/macros
+import std/strformat
+from std/strutils import toLowerAscii, `%`, parseInt
+import std/colors
 
 when defined(windows):
-  import winlean
+  import std/winlean
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
@@ -96,10 +96,11 @@ const
   fgPrefix = "\e[38;2;"
   bgPrefix = "\e[48;2;"
   ansiResetCode* = "\e[0m"
+  getPos = "\e[6n"
   stylePrefix = "\e["
 
 when defined(windows):
-  import winlean, os
+  import std/[winlean, os]
 
   const
     DUPLICATE_SAME_ACCESS = 2
@@ -220,6 +221,9 @@ when defined(windows):
       raiseOSError(osLastError())
     return (int(c.dwCursorPosition.x), int(c.dwCursorPosition.y))
 
+  proc getCursorPos*(): tuple [x, y: int] {.raises: [ValueError, IOError, OSError].} =
+    return getCursorPos(getStdHandle(STD_OUTPUT_HANDLE))
+
   proc setCursorPos(h: Handle, x, y: int) =
     var c: COORD
     c.x = int16(x)
@@ -253,7 +257,7 @@ when defined(windows):
     if f == stderr: term.hStderr else: term.hStdout
 
 else:
-  import termios, posix, os, parseutils
+  import std/[termios, posix, os, parseutils]
 
   proc setRaw(fd: FileHandle, time: cint = TCSAFLUSH) =
     var mode: Termios
@@ -266,6 +270,48 @@ else:
     mode.c_cc[VMIN] = 1.cuchar
     mode.c_cc[VTIME] = 0.cuchar
     discard fd.tcSetAttr(time, addr mode)
+
+  proc getCursorPos*(): tuple [x, y: int] {.raises: [ValueError, IOError].} =
+    ## Returns cursor position (x, y)
+    ## writes to stdout and expects the terminal to respond via stdin
+    var
+      xStr = ""
+      yStr = ""
+      ch: char
+      ct: int
+      readX = false
+
+    # use raw mode to ask terminal for cursor position
+    let fd = getFileHandle(stdin)
+    var oldMode: Termios
+    discard fd.tcGetAttr(addr oldMode)
+    fd.setRaw()
+    stdout.write(getPos)
+    flushFile(stdout)
+
+    try:
+      # parse response format: [yyy;xxxR
+      while true:
+        let n = readBuffer(stdin, addr ch, 1)
+        if n == 0 or ch == 'R':
+          if xStr == "" or yStr == "":
+            raise newException(ValueError, "Got character position message that was missing data")
+          break
+        ct += 1
+        if ct > 16:
+          raise newException(ValueError, "Got unterminated character position message from terminal")
+        if ch == ';':
+          readX = true
+        elif ch in {'0'..'9'}:
+          if readX:
+            xStr.add(ch)
+          else:
+            yStr.add(ch)
+    finally:
+      # restore previous terminal mode
+      discard fd.tcSetAttr(TCSADRAIN, addr oldMode)
+
+    return (parseInt(xStr), parseInt(yStr))
 
   proc terminalWidthIoctl*(fds: openArray[int]): int =
     ## Returns terminal width from first fd that supports the ioctl.
@@ -876,7 +922,7 @@ when defined(windows):
     stdout.write "\n"
 
 else:
-  import termios
+  import std/termios
 
   proc readPasswordFromStdin*(prompt: string, password: var string):
                             bool {.tags: [ReadIOEffect, WriteIOEffect].} =
@@ -932,7 +978,7 @@ proc isTrueColorSupported*(): bool =
   return getTerminal().trueColorIsSupported
 
 when defined(windows):
-  import os
+  import std/os
 
 proc enableTrueColors*() =
   ## Enables true color.

@@ -27,7 +27,9 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 import std/[setutils, os, strutils, parseutils, parseopt, sequtils, strtabs]
 import
   msgs, options, nversion, condsyms, extccomp, platform,
-  wordrecg, nimblecmd, lineinfos, pathutils, pathnorm
+  wordrecg, nimblecmd, lineinfos, pathutils
+
+import std/pathnorm
 
 from ast import setUseIc, eqTypeFlags, tfGcSafe, tfNoSideEffect
 
@@ -460,10 +462,12 @@ proc handleCmdInput*(conf: ConfigRef) =
 proc parseCommand*(command: string): Command =
   case command.normalize
   of "c", "cc", "compile", "compiletoc": cmdCompileToC
+  of "nir": cmdCompileToNir
   of "cpp", "compiletocpp": cmdCompileToCpp
   of "objc", "compiletooc": cmdCompileToOC
   of "js", "compiletojs": cmdCompileToJS
   of "r": cmdCrun
+  of "m": cmdM
   of "run": cmdTcc
   of "check": cmdCheck
   of "e": cmdNimscript
@@ -496,6 +500,7 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
   of cmdCompileToCpp: conf.backend = backendCpp
   of cmdCompileToOC: conf.backend = backendObjc
   of cmdCompileToJS: conf.backend = backendJs
+  of cmdCompileToNir: conf.backend = backendNir
   else: discard
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
@@ -794,7 +799,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if conf.backend == backendJs or conf.cmd == cmdNimscript: discard
     else: processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
     #if optThreads in conf.globalOptions: conf.setNote(warnGcUnsafe)
-  of "tlsemulation": 
+  of "tlsemulation":
     processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
     if optTlsEmulation in conf.globalOptions:
       conf.legacyFeatures.incl emitGenerics

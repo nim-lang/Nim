@@ -105,7 +105,7 @@ when defined(posix) and not defined(nintendoswitch):
   # as an emulation layer on top of native functions.
   # =========================================================================
   #
-  import posix
+  import std/posix
 
   proc loadLib(path: string, globalSymbols = false): LibHandle =
     let flags =
@@ -148,7 +148,7 @@ elif defined(genode):
   #
 
   template raiseErr(prc: string) =
-    raise newException(OSError, prc & " not implemented, compile with POSIX suport")
+    raise newException(OSError, prc & " not implemented, compile with POSIX support")
 
   proc dlclose(lib: LibHandle) =
     raiseErr(OSError, "dlclose")

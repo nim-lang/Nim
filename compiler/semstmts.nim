@@ -603,7 +603,7 @@ const
 
 proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSymKind, origResult: var PNode): PNode =
   ## expand tuple unpacking assignments into new var/let/const section
-  ## 
+  ##
   ## mirrored with semexprs.makeTupleAssignments
   if typ.kind != tyTuple:
     localError(c.config, a.info, errTupleUnpackingTupleExpected %
@@ -672,9 +672,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       addToVarSection(c, result, b)
       continue
 
+    var hasUserSpecifiedType = false
     var typ: PType = nil
     if a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
+      hasUserSpecifiedType = true
 
     var typFlags: TTypeAllowedFlags = {}
 
@@ -746,6 +748,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           addToVarSection(c, result, n, a)
           continue
         var v = semIdentDef(c, a[j], symkind, false)
+        when defined(nimsuggest):
+          v.hasUserSpecifiedType = hasUserSpecifiedType
         styleCheckDef(c, v)
         onDef(a[j].info, v)
         if sfGenSym notin v.flags:
@@ -819,9 +823,11 @@ proc semConst(c: PContext, n: PNode): PNode =
       addToVarSection(c, result, b)
       continue
 
+    var hasUserSpecifiedType = false
     var typ: PType = nil
     if a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
+      hasUserSpecifiedType = true
 
     var typFlags: TTypeAllowedFlags = {}
 
@@ -862,6 +868,8 @@ proc semConst(c: PContext, n: PNode): PNode =
     else:
       for j in 0..<a.len-2:
         var v = semIdentDef(c, a[j], skConst)
+        when defined(nimsuggest):
+          v.hasUserSpecifiedType = hasUserSpecifiedType
         if sfGenSym notin v.flags: addInterfaceDecl(c, v)
         elif v.owner == nil: v.owner = getCurrOwner(c)
         styleCheckDef(c, v)
@@ -1138,20 +1146,14 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
   openScope(c)
   pushCaseContext(c, n)
   n[0] = semExprWithType(c, n[0])
-  var chckCovered = false
   var covered: Int128 = toInt128(0)
   var typ = commonTypeBegin
   var expectedType = expectedType
   var hasElse = false
   let caseTyp = skipTypes(n[0].typ, abstractVar-{tyTypeDesc})
-  const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt64, tyBool}
+  var chckCovered = caseTyp.shouldCheckCaseCovered()
   case caseTyp.kind
-  of shouldChckCovered:
-    chckCovered = true
-  of tyRange:
-    if skipTypes(caseTyp[0], abstractInst).kind in shouldChckCovered:
-      chckCovered = true
-  of tyFloat..tyFloat128, tyString, tyCstring, tyError:
+  of tyFloat..tyFloat128, tyString, tyCstring, tyError, shouldChckCovered, tyRange:
     discard
   else:
     popCaseContext(c)
@@ -1491,7 +1493,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
       elif s.typ.kind == tyGenericBody:
         localError(c.config, name.info, "{.exportc.} not allowed for generic types")
-    
+
     if tfBorrowDot in s.typ.flags:
       let body = s.typ.skipTypes({tyGenericBody})
       if body.kind != tyDistinct:
@@ -1904,7 +1906,7 @@ proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   incl(s.flags, sfUsed)
   incl(s.flags, sfOverridden)
 
-proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
+proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp; suppressVarDestructorWarning = false) =
   let t = s.typ
   var noError = false
   let cond = case op
@@ -1923,7 +1925,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
       elif obj.kind == tyGenericInvocation: obj = obj[0]
       else: break
     if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
-      if op == attachedDestructor and t[1].kind == tyVar:
+      if (not suppressVarDestructorWarning) and op == attachedDestructor and t[1].kind == tyVar:
         message(c.config, n.info, warnDeprecated, "A custom '=destroy' hook which takes a 'var T' parameter is deprecated; it should take a 'T' parameter")
       obj = canonType(c, obj)
       let ao = getAttachedOp(c.graph, obj, op)
@@ -2068,7 +2070,7 @@ proc finishMethod(c: PContext, s: PSym) =
   if hasObjParam(s):
     methodDef(c.graph, c.idgen, s)
 
-proc semCppMember(c: PContext; s: PSym; n: PNode) = 
+proc semCppMember(c: PContext; s: PSym; n: PNode) =
   if sfImportc notin s.flags:
     let isVirtual = sfVirtual in s.flags
     let isCtor = sfConstructor in s.flags
@@ -2099,7 +2101,7 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
           pragmaName & " procs must be defined in the same scope as the type they are virtual for and it must be a top level scope")
     else:
       localError(c.config, n.info, pragmaName & " procs are only supported in C++")
-  else: 
+  else:
     var typ = s.typ[0]
     if typ != nil and typ.kind == tyObject and typ.itemId notin c.graph.initializersPerType:
       var initializerCall = newTree(nkCall, newSymNode(s))
@@ -2336,7 +2338,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if sfCppMember * s.flags != {}:
     semCppMember(c, s, n)
-          
+
   if n[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation we allow sfImportc to have a body, for use in VM
     if c.config.ideCmd in {ideSug, ideCon} and s.kind notin {skMacro, skTemplate} and not

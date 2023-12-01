@@ -9,7 +9,7 @@
 
 ## This module implements an AST for the `reStructuredText`:idx: parser.
 
-import strutils, json
+import std/[strutils, json]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

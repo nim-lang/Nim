@@ -26,14 +26,14 @@
 # solves the opcLdConst vs opcAsgnConst issue. Of course whether we need
 # this copy depends on the involved types.
 
-import tables
+import std/[tables, intsets, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
 import
-  strutils, ast, types, msgs, renderer, vmdef, trees,
-  intsets, magicsys, options, lowerings, lineinfos, transf, astmsgs
+  ast, types, msgs, renderer, vmdef, trees,
+  magicsys, options, lowerings, lineinfos, transf, astmsgs
 
 from modulegraphs import getBody
 
@@ -320,10 +320,6 @@ proc clearDest(c: PCtx; n: PNode; dest: var TDest) {.inline.} =
 proc isNotOpr(n: PNode): bool =
   n.kind in nkCallKinds and n[0].kind == nkSym and
     n[0].sym.magic == mNot
-
-proc isTrue(n: PNode): bool =
-  n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
-    n.kind == nkIntLit and n.intVal != 0
 
 proc genWhile(c: PCtx; n: PNode) =
   # lab1:
@@ -904,9 +900,9 @@ proc genCard(c: PCtx; n: PNode; dest: var TDest) =
   c.freeTemp(tmp)
 
 proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
-  const allowedIntegers = {tyInt..tyInt64, tyUInt..tyUInt64, tyChar}
+  const allowedIntegers = {tyInt..tyInt64, tyUInt..tyUInt64, tyChar, tyEnum, tyBool}
   var signedIntegers = {tyInt..tyInt64}
-  var unsignedIntegers = {tyUInt..tyUInt64, tyChar}
+  var unsignedIntegers = {tyUInt..tyUInt64, tyChar, tyEnum, tyBool}
   let src = n[1].typ.skipTypes(abstractRange)#.kind
   let dst = n[0].typ.skipTypes(abstractRange)#.kind
   let srcSize = getSize(c.config, src)
@@ -2392,7 +2388,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.procToCodePos[s.id] = result
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
-    let body = transformBody(c.graph, c.idgen, s, if isCompileTimeProc(s): dontUseCache else: useCache)
+    let body = transformBody(c.graph, c.idgen, s, if isCompileTimeProc(s): {} else: {useCache})
     let procStart = c.xjmp(body, opcJmp, 0)
     var p = PProc(blocks: @[], sym: s)
     let oldPrc = c.prc

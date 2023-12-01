@@ -1052,7 +1052,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       result.transitionSonsKind(nkCall)
       result.flags.incl nfExplicitCall
       for i in 1..<n.len: result.add n[i]
-      return semExpr(c, result, flags)
+      return semExpr(c, result, flags, expectedType)
     else:
       n[0] = n0
   else:
@@ -1827,7 +1827,7 @@ proc goodLineInfo(arg: PNode): TLineInfo =
 
 proc makeTupleAssignments(c: PContext; n: PNode): PNode =
   ## expand tuple unpacking assignment into series of assignments
-  ## 
+  ##
   ## mirrored with semstmts.makeVarTupleSection
   let lhs = n[0]
   let value = semExprWithType(c, n[1], {efTypeAllowed})
@@ -2286,7 +2286,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
     for i in 1..<ids.len:
       let exp = semExprWithType(c, quotes[i+1], {})
       let typ = exp.typ
-      if tfTriggersCompileTime notin typ.flags and exp.kind == nkSym and exp.sym.kind notin routineKinds + {skType}:
+      if tfTriggersCompileTime notin typ.flags and typ.kind != tyStatic and exp.kind == nkSym and exp.sym.kind notin routineKinds + {skType}:
         dummyTemplate[paramsPos].add newTreeI(nkIdentDefs, n.info, ids[i], newNodeIT(nkType, n.info, typ), c.graph.emptyNode)
       else:
         dummyTemplate[paramsPos].add newTreeI(nkIdentDefs, n.info, ids[i], getSysSym(c.graph, n.info, "typed").newSymNode, c.graph.emptyNode)
@@ -2384,7 +2384,7 @@ proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result = semDirectOp(c, n, flags)
 
 proc createFlowVar(c: PContext; t: PType; info: TLineInfo): PType =
-  result = newType(tyGenericInvocation, nextTypeId c.idgen, c.module)
+  result = newType(tyGenericInvocation, c.idgen, c.module)
   addSonSkipIntLit(result, magicsys.getCompilerProc(c.graph, "FlowVar").typ, c.idgen)
   addSonSkipIntLit(result, t, c.idgen)
   result = instGenericContainer(c, info, result, allowMetaTypes = false)
@@ -2538,7 +2538,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags; expectedType: P
         let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
         expected.kind in {tySequence, tyOpenArray}):
       # seq type inference
-      var arrayType = newType(tyOpenArray, nextTypeId(c.idgen), expected.owner)
+      var arrayType = newType(tyOpenArray, c.idgen, expected.owner)
       arrayType.rawAddSon(expected[0])
       if n[0].kind == nkSym and sfFromGeneric in n[0].sym.flags:
         # may have been resolved to `@`[empty] at some point,
@@ -2927,7 +2927,7 @@ proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode)
   if defExpr.kind == nkSym and defExpr.sym.kind == skParam and defExpr.sym.owner == call[0].sym:
     let paramPos = defExpr.sym.position + 1
 
-    if call[paramPos].kind != nkSym:
+    if call[paramPos].skipAddr.kind != nkSym:
       let hoistedVarSym = newSym(skLet, getIdent(c.graph.cache, genPrefix), c.idgen,
                                  c.p.owner, letSection.info, c.p.owner.options)
       hoistedVarSym.typ = call[paramPos].typ
@@ -2939,7 +2939,7 @@ proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode)
 
       call[paramPos] = newSymNode(hoistedVarSym) # Refer the original arg to its hoisted sym
 
-    # arg we refer to is a sym, wether introduced by hoisting or not doesn't matter, we simply reuse it
+    # arg we refer to is a sym, whether introduced by hoisting or not doesn't matter, we simply reuse it
     defExpr = call[paramPos]
   else:
     for i in 0..<defExpr.safeLen:
@@ -3124,7 +3124,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     result = semFieldAccess(c, n, flags)
     if result.kind == nkDotCall:
       result.transitionSonsKind(nkCall)
-      result = semExpr(c, result, flags)
+      result = semExpr(c, result, flags, expectedType)
   of nkBind:
     message(c.config, n.info, warnDeprecated, "bind is deprecated")
     result = semExpr(c, n[0], flags, expectedType)

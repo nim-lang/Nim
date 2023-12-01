@@ -30,9 +30,9 @@ const weirdTarget = defined(nimscript) or defined(js)
 when weirdTarget:
   discard
 elif defined(windows):
-  import winlean
+  import std/winlean
 elif defined(posix):
-  import posix
+  import std/posix
 else:
   {.error: "The cmdline module has not been implemented for the target platform.".}
 
@@ -138,7 +138,7 @@ proc parseCmdLine*(c: string): seq[string] {.
         while i < c.len and c[i] > ' ':
           add(a, c[i])
           inc(i)
-    add(result, a)
+    add(result, move a)
 
 when defined(nimdoc):
   # Common forward declaration docstring block for parameter retrieval procs.

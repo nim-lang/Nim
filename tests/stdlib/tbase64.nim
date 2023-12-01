@@ -53,5 +53,9 @@ template main() =
     doAssert encode("", safe = true) == ""
     doAssert encode("the quick brown dog jumps over the lazy fox", safe = true) == "dGhlIHF1aWNrIGJyb3duIGRvZyBqdW1wcyBvdmVyIHRoZSBsYXp5IGZveA=="
 
+func mainNoSideEffects() = main()
+
 static: main()
 main()
+static: mainNoSideEffects()
+mainNoSideEffects()

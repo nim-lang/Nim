@@ -10,8 +10,10 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, hashes, options, ropes, idents, int128, tables, wordrecg
-from strutils import toLowerAscii
+  lineinfos, options, ropes, idents, int128, wordrecg
+
+import std/[tables, hashes]
+from std/strutils import toLowerAscii
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -901,6 +903,7 @@ type
     info*: TLineInfo
     when defined(nimsuggest):
       endInfo*: TLineInfo
+      hasUserSpecifiedType*: bool  # used for determining whether to display inlay type hints
     owner*: PSym
     flags*: TSymFlags
     ast*: PNode               # syntax tree of proc, iterator, etc.:
@@ -924,7 +927,7 @@ type
                               # for variables a slot index for the evaluator
     offset*: int32            # offset of record field
     disamb*: int32            # disambiguation number; the basic idea is that
-                              # `<procname>__<module>_<disamb>`
+                              # `<procname>__<module>_<disamb>` is unique
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to save space)
@@ -936,7 +939,7 @@ type
                               # it won't cause problems
                               # for skModule the string literal to output for
                               # deprecated modules.
-    instantiatedFrom*: PSym   # for instances, the generic symbol where it came from.                
+    instantiatedFrom*: PSym   # for instances, the generic symbol where it came from.
     when defined(nimsuggest):
       allUsages*: seq[TLineInfo]
 
@@ -1163,7 +1166,7 @@ proc idGeneratorFromModule*(m: PSym): IdGenerator =
 proc idGeneratorForPackage*(nextIdWillBe: int32): IdGenerator =
   result = IdGenerator(module: PackageModuleId, symId: nextIdWillBe - 1'i32, typeId: 0, disambTable: initCountTable[PIdent]())
 
-proc nextSymId*(x: IdGenerator): ItemId {.inline.} =
+proc nextSymId(x: IdGenerator): ItemId {.inline.} =
   assert(not x.sealed)
   inc x.symId
   result = ItemId(module: x.module, item: x.symId)
@@ -1544,7 +1547,8 @@ iterator items*(t: PType): PType =
 iterator pairs*(n: PType): tuple[i: int, n: PType] =
   for i in 0..<n.sons.len: yield (i, n.sons[i])
 
-proc newType*(kind: TTypeKind, id: ItemId; owner: PSym, sons: seq[PType] = @[]): PType =
+proc newType*(kind: TTypeKind, idgen: IdGenerator; owner: PSym, sons: seq[PType] = @[]): PType =
+  let id = nextTypeId idgen
   result = PType(kind: kind, owner: owner, size: defaultSize,
                  align: defaultAlignment, itemId: id,
                  uniqueId: id, sons: sons)
@@ -1553,12 +1557,15 @@ proc newType*(kind: TTypeKind, id: ItemId; owner: PSym, sons: seq[PType] = @[]):
       echo "KNID ", kind
       writeStackTrace()
 
-template newType*(kind: TTypeKind, id: ItemId; owner: PSym, parent: PType): PType =
+template newType*(kind: TTypeKind, id: IdGenerator; owner: PSym, parent: PType): PType =
   newType(kind, id, owner, parent.sons)
 
-proc newType*(prev: PType, sons: seq[PType]): PType =
-  result = prev
-  result.sons = sons
+proc setSons*(dest: PType; sons: seq[PType]) {.inline.} = dest.sons = sons
+
+when false:
+  proc newType*(prev: PType, sons: seq[PType]): PType =
+    result = prev
+    result.sons = sons
 
 proc addSon*(father, son: PType) =
   # todo fixme: in IC, `son` might be nil
@@ -1592,13 +1599,17 @@ proc assignType*(dest, src: PType) =
   newSons(dest, src.len)
   for i in 0..<src.len: dest[i] = src[i]
 
-proc copyType*(t: PType, id: ItemId, owner: PSym): PType =
-  result = newType(t.kind, id, owner)
+proc copyType*(t: PType, idgen: IdGenerator, owner: PSym): PType =
+  result = newType(t.kind, idgen, owner)
   assignType(result, t)
   result.sym = t.sym          # backend-info should not be copied
 
 proc exactReplica*(t: PType): PType =
-  result = copyType(t, t.itemId, t.owner)
+  result = PType(kind: t.kind, owner: t.owner, size: defaultSize,
+                 align: defaultAlignment, itemId: t.itemId,
+                 uniqueId: t.uniqueId)
+  assignType(result, t)
+  result.sym = t.sym          # backend-info should not be copied
 
 proc copySym*(s: PSym; idgen: IdGenerator): PSym =
   result = newSym(s.kind, s.name, idgen, s.owner, s.info, s.options)
@@ -1989,7 +2000,7 @@ proc toVar*(typ: PType; kind: TTypeKind; idgen: IdGenerator): PType =
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
   if typ.kind != kind:
-    result = newType(kind, nextTypeId(idgen), typ.owner)
+    result = newType(kind, idgen, typ.owner)
     rawAddSon(result, typ)
 
 proc toRef*(typ: PType; idgen: IdGenerator): PType =
@@ -1997,7 +2008,7 @@ proc toRef*(typ: PType; idgen: IdGenerator): PType =
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
   if typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject:
-    result = newType(tyRef, nextTypeId(idgen), typ.owner)
+    result = newType(tyRef, idgen, typ.owner)
     rawAddSon(result, typ)
 
 proc toObject*(typ: PType): PType =
@@ -2105,8 +2116,8 @@ proc isSinkParam*(s: PSym): bool {.inline.} =
 proc isSinkType*(t: PType): bool {.inline.} =
   t.kind == tySink or tfHasOwned in t.flags
 
-proc newProcType*(info: TLineInfo; id: ItemId; owner: PSym): PType =
-  result = newType(tyProc, id, owner)
+proc newProcType*(info: TLineInfo; idgen: IdGenerator; owner: PSym): PType =
+  result = newType(tyProc, idgen, owner)
   result.n = newNodeI(nkFormalParams, info)
   rawAddSon(result, nil) # return type
   # result.n[0] used to be `nkType`, but now it's `nkEffectList` because
@@ -2157,7 +2168,7 @@ proc toHumanStr*(kind: TTypeKind): string =
   ## strips leading `tk`
   result = toHumanStrImpl(kind, 2)
 
-proc skipAddr*(n: PNode): PNode {.inline.} =
+proc skipHiddenAddr*(n: PNode): PNode {.inline.} =
   (if n.kind == nkHiddenAddr: n[0] else: n)
 
 proc isNewStyleConcept*(n: PNode): bool {.inline.} =
@@ -2173,3 +2184,7 @@ const
     nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
     nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
     nkTypeOfExpr, nkMixinStmt, nkBindStmt}
+
+proc isTrue*(n: PNode): bool =
+  n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
+    n.kind == nkIntLit and n.intVal != 0

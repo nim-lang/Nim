@@ -655,7 +655,7 @@ string containing the literal. The callable identifier needs to be declared
 with a special ``'`` prefix:
 
   ```nim
-  import strutils
+  import std/strutils
   type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
   proc `'u4`(n: string): u4 =
     # The leading ' is required.
@@ -670,7 +670,7 @@ corresponds to this transformation. The transformation naturally handles
 the case that additional parameters are passed to the callee:
 
   ```nim
-  import strutils
+  import std/strutils
   type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
   proc `'u4`(n: string; moreData: int): u4 =
     result = (parseInt(n) and 0x0F).u4
@@ -1495,7 +1495,8 @@ it can be modified:
 
   ```nim
   var x = "123456"
-  var s: cstring = x
+  prepareMutation(x) # call `prepareMutation` before modifying the strings
+  var s: cstring = cstring(x)
   s[0] = 'u' # This is ok
   ```
 
@@ -5160,7 +5161,7 @@ possibly raised exceptions; the algorithm operates on `p`'s call graph:
    raise `system.Exception` (the base type of the exception hierarchy) and
    thus any exception unless `T` has an explicit `raises` list.
    However, if the call is of the form `f(...)` where `f` is a parameter of
-   the currently analyzed routine it is ignored that is marked as `.effectsOf: f`.
+   the currently analyzed routine that is marked as `.effectsOf: f`, it is ignored.
    The call is optimistically assumed to have no effect.
    Rule 2 compensates for this case.
 2. Every expression `e` of some proc type within a call that is passed to parameter
@@ -5230,7 +5231,7 @@ conservative in its effect analysis:
   ```nim  test = "nim c $1"  status = 1
   {.push warningAsError[Effect]: on.}
 
-  import algorithm
+  import std/algorithm
 
   type
     MyInt = distinct int

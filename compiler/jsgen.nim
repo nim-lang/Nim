@@ -37,8 +37,8 @@ import
 
 import pipelineutils
 
-import json, sets, math, tables, intsets
-import strutils except addf
+import std/[json, sets, math, tables, intsets]
+import std/strutils except addf
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]
@@ -2718,7 +2718,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
 
-  var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, dontUseCache)
+  var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, {})
   if sfInjectDestructors in prc.flags:
     transformedBody = injectDestructorCalls(p.module.graph, p.module.idgen, prc, transformedBody)
 
@@ -3097,9 +3097,8 @@ proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
       var p = newInitProc(globals, m)
       attachProc(p, prc)
 
-  var disp = generateMethodDispatchers(graph, m.idgen)
-  for i in 0..<disp.len:
-    let prc = disp[i].sym
+  generateIfMethodDispatchers(graph, m.idgen)
+  for prc in getDispatchers(graph):
     if not globals.generatedSyms.containsOrIncl(prc.id):
       var p = newInitProc(globals, m)
       attachProc(p, prc)

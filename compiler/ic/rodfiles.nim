@@ -14,7 +14,7 @@
 ##     compiler works and less a storage format, you're probably looking for
 ##     the `ic` or `packed_ast` modules to understand the logical format.
 
-from typetraits import supportsCopyMem
+from std/typetraits import supportsCopyMem
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
@@ -92,11 +92,16 @@ type
     typeInstCacheSection
     procInstCacheSection
     attachedOpsSection
-    methodsPerTypeSection
+    methodsPerGenericTypeSection
     enumToStringProcsSection
+    methodsPerTypeSection
+    dispatchersSection
     typeInfoSection  # required by the backend
     backendFlagsSection
     aliveSymsSection # beware, this is stored in a `.alivesyms` file.
+    sideChannelSection
+    namespaceSection
+    symnamesSection
 
   RodFileError* = enum
     ok, tooBig, cannotOpen, ioFailure, wrongHeader, wrongSection, configMismatch,
@@ -109,8 +114,8 @@ type
                        # better than exceptions.
 
 const
-  RodVersion = 1
-  cookie = [byte(0), byte('R'), byte('O'), byte('D'),
+  RodVersion = 2
+  defaultCookie = [byte(0), byte('R'), byte('O'), byte('D'),
             byte(sizeof(int)*8), byte(system.cpuEndian), byte(0), byte(RodVersion)]
 
 proc setError(f: var RodFile; err: RodFileError) {.inline.} =
@@ -206,13 +211,13 @@ proc loadSeq*[T](f: var RodFile; s: var seq[T]) =
     for i in 0..<lenPrefix:
       loadPrim(f, s[i])
 
-proc storeHeader*(f: var RodFile) =
+proc storeHeader*(f: var RodFile; cookie = defaultCookie) =
   ## stores the header which is described by `cookie`.
   if f.err != ok: return
   if f.f.writeBytes(cookie, 0, cookie.len) != cookie.len:
     setError f, ioFailure
 
-proc loadHeader*(f: var RodFile) =
+proc loadHeader*(f: var RodFile; cookie = defaultCookie) =
   ## Loads the header which is described by `cookie`.
   if f.err != ok: return
   var thisCookie: array[cookie.len, byte] = default(array[cookie.len, byte])

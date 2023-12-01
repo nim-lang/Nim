@@ -366,19 +366,24 @@ proc arrPut[I: Ordinal;T,S](a: T; i: I;
 const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
 
 
-when defined(nimAllowNonVarDestructor) and arcLikeMem:
-  proc `=destroy`*(x: string) {.inline, magic: "Destroy".} =
+when defined(nimAllowNonVarDestructor) and arcLikeMem and defined(nimPreviewNonVarDestructor):
+  proc `=destroy`*[T](x: T) {.inline, magic: "Destroy".} =
+    ## Generic `destructor`:idx: implementation that can be overridden.
+    discard
+else:
+  proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
+    ## Generic `destructor`:idx: implementation that can be overridden.
     discard
 
-  proc `=destroy`*[T](x: seq[T]) {.inline, magic: "Destroy".} =
-    discard
+  when defined(nimAllowNonVarDestructor) and arcLikeMem:
+    proc `=destroy`*(x: string) {.inline, magic: "Destroy".} =
+      discard
 
-  proc `=destroy`*[T](x: ref T) {.inline, magic: "Destroy".} =
-    discard
+    proc `=destroy`*[T](x: seq[T]) {.inline, magic: "Destroy".} =
+      discard
 
-proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
-  ## Generic `destructor`:idx: implementation that can be overridden.
-  discard
+    proc `=destroy`*[T](x: ref T) {.inline, magic: "Destroy".} =
+      discard
 
 when defined(nimHasDup):
   proc `=dup`*[T](x: T): T {.inline, magic: "Dup".} =
@@ -1117,8 +1122,6 @@ template sysAssert(cond: bool, msg: string) =
 
 const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
 
-when notJSnotNims and hostOS != "standalone" and hostOS != "any":
-  include "system/cgprocs"
 when notJSnotNims and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
 
@@ -1431,7 +1434,6 @@ proc isNil*[T: proc | iterator {.closure.}](x: T): bool {.noSideEffect, magic: "
   ## Fast check whether `x` is nil. This is sometimes more efficient than
   ## `== nil`.
 
-
 when defined(nimHasTopDownInference):
   # magic used for seq type inference
   proc `@`*[T](a: openArray[T]): seq[T] {.magic: "OpenArrayToSeq".} =
@@ -1604,6 +1606,11 @@ when not defined(js) and defined(nimV2):
       traceImpl: pointer
       typeInfoV1: pointer # for backwards compat, usually nil
       flags: int
+      when defined(gcDestructors):
+        when defined(cpp):
+          vTable: ptr UncheckedArray[pointer] # vtable for types
+        else:
+          vTable: UncheckedArray[pointer] # vtable for types
     PNimTypeV2 = ptr TNimTypeV2
 
 proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
@@ -1654,7 +1661,10 @@ when not defined(js):
       assert len(x) == 3
       x[0] = 10
     when supportsCopyMem(T):
-      newSeqImpl(T, len)
+      when nimvm:
+        result = newSeq[T](len)
+      else:
+        newSeqImpl(T, len)
     else:
       {.error: "The type T cannot contain managed memory or have destructors".}
 
@@ -1984,14 +1994,10 @@ when defined(nimAuditDelete):
 else:
   {.pragma: auditDelete.}
 
-proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, auditDelete.} =
+proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, systemRaisesDefect, auditDelete.} =
   ## Deletes the item at index `i` by moving all `x[i+1..^1]` items by one position.
   ##
   ## This is an `O(n)` operation.
-  ##
-  ## .. note:: With `-d:nimStrictDelete`, an index error is produced when the index passed
-  ##    to it was out of bounds. `-d:nimStrictDelete` will become the default
-  ##    in upcoming versions.
   ##
   ## See also:
   ## * `del <#del,seq[T],Natural>`_ for O(1) operation
@@ -2001,7 +2007,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, auditDelete.} =
     s.delete(2)
     doAssert s == @[1, 2, 4, 5]
 
-  when defined(nimStrictDelete):
+  when not defined(nimAuditDelete):
     if i > high(x):
       # xxx this should call `raiseIndexError2(i, high(x))` after some refactoring
       raise (ref IndexDefect)(msg: "index out of bounds: '" & $i & "' < '" & $x.len & "' failed")
@@ -2200,6 +2206,16 @@ when not defined(js):
 
 when notJSnotNims:
   when hostOS != "standalone" and hostOS != "any":
+    type
+      LibHandle = pointer       # private type
+      ProcAddr = pointer        # library loading and loading of procs:
+
+    proc nimLoadLibrary(path: string): LibHandle {.compilerproc, hcrInline, nonReloadable.}
+    proc nimUnloadLibrary(lib: LibHandle) {.compilerproc, hcrInline, nonReloadable.}
+    proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.compilerproc, hcrInline, nonReloadable.}
+
+    proc nimLoadLibraryError(path: string) {.compilerproc, hcrInline, nonReloadable.}
+
     include "system/dyncalls"
 
   import system/countbits_impl
@@ -2673,7 +2689,7 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   proc strcmp(a, b: cstring): cint {.noSideEffect,
     importc, header: "<string.h>".}
   if pointer(x) == pointer(y): result = true
-  elif x.isNil or y.isNil: result = false
+  elif pointer(x) == nil or pointer(y) == nil: result = false
   else: result = strcmp(x, y) == 0
 
 template closureScope*(body: untyped): untyped =
@@ -2829,7 +2845,7 @@ when notJSnotNims:
                     hostOS != "any"
 
   proc raiseEIO(msg: string) {.noinline, noreturn.} =
-    sysFatal(IOError, msg)
+    raise newException(IOError, msg)
 
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
     when defined(androidNDK):

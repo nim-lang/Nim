@@ -11,9 +11,11 @@
 ## the call to overloaded procs, generic procs and operators.
 
 import
-  intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
-  magicsys, idents, lexer, options, parampatterns, strutils, trees,
+  ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
+  magicsys, idents, lexer, options, parampatterns, trees,
   linter, lineinfos, lowerings, modulegraphs, concepts
+
+import std/[intsets, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -762,7 +764,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         of tyStatic:
           param = paramSym skConst
           param.typ = typ.exactReplica
-          #copyType(typ, nextTypeId(c.idgen), typ.owner)
+          #copyType(typ, c.idgen, typ.owner)
           if typ.n == nil:
             param.typ.flags.incl tfInferrableStatic
           else:
@@ -770,7 +772,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         of tyUnknown:
           param = paramSym skVar
           param.typ = typ.exactReplica
-          #copyType(typ, nextTypeId(c.idgen), typ.owner)
+          #copyType(typ, c.idgen, typ.owner)
         else:
           param = paramSym skType
           param.typ = if typ.isMetaType:
@@ -822,7 +824,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
     result = generateTypeInstance(c, m.bindings, typeClass.sym.info, ff)
   else:
     result = ff.exactReplica
-    #copyType(ff, nextTypeId(c.idgen), ff.owner)
+    #copyType(ff, c.idgen, ff.owner)
 
   result.n = checkedBody
 
@@ -1640,7 +1642,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       var depth = -1
       if fobj != nil and aobj != nil and askip == fskip:
         depth = isObjectSubtype(c, aobj, fobj, f)
-      
+
       if result == isNone:
         # Here object inheriting from generic/specialized generic object
         # crossing path with metatypes/aliases, so we need to separate them
@@ -1947,7 +1949,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let reevaluated = tryResolvingStaticExpr(c, f.n)
     if reevaluated == nil:
       result = isNone
-      return 
+      return
     case reevaluated.typ.kind
     of tyTypeDesc:
       result = typeRel(c, a, reevaluated.typ.base, flags)

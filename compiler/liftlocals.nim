@@ -10,8 +10,10 @@
 ## This module implements the '.liftLocals' pragma.
 
 import
-  strutils, options, ast, msgs,
+  options, ast, msgs,
   idents, renderer, types, lowerings, lineinfos
+
+import std/strutils
 
 from pragmas import getPragmaVal
 from wordrecg import wLiftLocals
