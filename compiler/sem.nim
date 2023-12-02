@@ -20,6 +20,7 @@ import
   isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs,
   extccomp
 
+import vtables
 import std/[strtabs, math, tables, intsets, strutils]
 
 when not defined(leanCompiler):
@@ -145,8 +146,8 @@ proc commonType*(c: PContext; x, y: PType): PType =
     # turn any concrete typedesc into the abstract typedesc type
     if a.len == 0: result = a
     else:
-      result = newType(tyTypeDesc, nextTypeId(c.idgen), a.owner)
-      rawAddSon(result, newType(tyNone, nextTypeId(c.idgen), a.owner))
+      result = newType(tyTypeDesc, c.idgen, a.owner)
+      rawAddSon(result, newType(tyNone, c.idgen, a.owner))
   elif b.kind in {tyArray, tySet, tySequence} and
       a.kind == b.kind:
     # check for seq[empty] vs. seq[int]
@@ -159,7 +160,7 @@ proc commonType*(c: PContext; x, y: PType): PType =
       let bEmpty = isEmptyContainer(b[i])
       if aEmpty != bEmpty:
         if nt.isNil:
-          nt = copyType(a, nextTypeId(c.idgen), a.owner)
+          nt = copyType(a, c.idgen, a.owner)
           copyTypeProps(c.graph, c.idgen.module, nt, a)
 
         nt[i] = if aEmpty: b[i] else: a[i]
@@ -206,8 +207,20 @@ proc commonType*(c: PContext; x, y: PType): PType =
       # ill-formed AST, no need for additional tyRef/tyPtr
       if k != tyNone and x.kind != tyGenericInst:
         let r = result
-        result = newType(k, nextTypeId(c.idgen), r.owner)
+        result = newType(k, c.idgen, r.owner)
         result.addSonSkipIntLit(r, c.idgen)
+
+const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt64, tyBool}
+proc shouldCheckCaseCovered(caseTyp: PType): bool =
+  result = false
+  case caseTyp.kind
+  of shouldChckCovered:
+    result = true
+  of tyRange:
+    if skipTypes(caseTyp[0], abstractInst).kind in shouldChckCovered:
+      result = true
+  else:
+    discard
 
 proc endsInNoReturn(n: PNode): bool =
   ## check if expr ends the block like raising or call of noreturn procs do
@@ -238,6 +251,12 @@ proc endsInNoReturn(n: PNode): bool =
     # none of the branches returned
     result = hasElse # Only truly a no-return when it's exhaustive
   of nkCaseStmt:
+    let caseTyp = skipTypes(it[0].typ, abstractVar-{tyTypeDesc})
+    # semCase should already have checked for exhaustiveness in this case
+    # effectively the same as having an else
+    var hasElse = caseTyp.shouldCheckCaseCovered()
+
+    # actual noreturn checks
     for i in 1 ..< it.len:
       let branch = it[i]
       checkBranch:
@@ -247,11 +266,12 @@ proc endsInNoReturn(n: PNode): bool =
         of nkElifBranch:
           branch[1]
         of nkElse:
+          hasElse = true
           branch[0]
         else:
           raiseAssert "Malformed `case` statement in endsInNoReturn"
-    # none of the branches returned
-    result = true
+    # Can only guarantee a noreturn if there is an else or it's exhaustive
+    result = hasElse
   of nkTryStmt:
     checkBranch(it[0])
     for i in 1 ..< it.len:
@@ -638,7 +658,7 @@ proc defaultFieldsForTuple(c: PContext, recNode: PNode, hasDefault: var bool, ch
           result.add newTree(nkExprColonExpr, recNode, asgnExpr)
           return
 
-      let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), recNode.typ.owner)
+      let asgnType = newType(tyTypeDesc, c.idgen, recNode.typ.owner)
       rawAddSon(asgnType, recNode.typ)
       let asgnExpr = newTree(nkCall,
                       newSymNode(getSysMagic(c.graph, recNode.info, "zeroDefault", mZeroDefault)),
@@ -744,8 +764,8 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
 proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PContext =
   result = newContext(graph, module)
   result.idgen = idgen
-  result.enforceVoidContext = newType(tyTyped, nextTypeId(idgen), nil)
-  result.voidType = newType(tyVoid, nextTypeId(idgen), nil)
+  result.enforceVoidContext = newType(tyTyped, idgen, nil)
+  result.voidType = newType(tyVoid, idgen, nil)
 
   if result.p != nil: internalError(graph.config, module.info, "sem.preparePContext")
   result.semConstExpr = semConstExpr
@@ -839,6 +859,13 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if c.config.cmd == cmdIdeTools:
     appendToModule(c.module, result)
   trackStmt(c, c.module, result, isTopLevel = true)
+  if optMultiMethods notin c.config.globalOptions and
+      c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+      Feature.vtables in c.config.features:
+    sortVTableDispatchers(c.graph)
+
+    if sfMainModule in c.module.flags:
+      collectVTableDispatchers(c.graph)
 
 proc recoverContext(c: PContext) =
   # clean up in case of a semantic error: We clean up the stacks, etc. This is
@@ -871,6 +898,7 @@ proc semWithPContext*(c: PContext, n: PNode): PNode =
 
 
 proc reportUnusedModules(c: PContext) =
+  if c.config.cmd == cmdM: return
   for i in 0..high(c.unusedImports):
     if sfUsed notin c.unusedImports[i][0].flags:
       message(c.config, c.unusedImports[i][1], warnUnusedImportX, c.unusedImports[i][0].name.s)

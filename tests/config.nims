@@ -40,7 +40,8 @@ switch("define", "nimPreviewFloatRoundtrip")
 switch("define", "nimPreviewJsonutilsHoleyEnum")
 switch("define", "nimPreviewHashRef")
 switch("define", "nimPreviewRangeDefault")
+switch("define", "nimPreviewNonVarDestructor")
 
 switch("warningAserror", "UnnamedBreak")
 switch("legacy", "verboseTypeMismatch")
-
+switch("experimental", "vtables")

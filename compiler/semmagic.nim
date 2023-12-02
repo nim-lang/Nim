@@ -136,7 +136,7 @@ proc uninstantiate(t: PType): PType =
     else: t
 
 proc getTypeDescNode(c: PContext; typ: PType, sym: PSym, info: TLineInfo): PNode =
-  var resType = newType(tyTypeDesc, nextTypeId c.idgen, sym)
+  var resType = newType(tyTypeDesc, c.idgen, sym)
   rawAddSon(resType, typ)
   result = toNode(resType, info)
 
@@ -177,7 +177,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result.info = traitCall.info
   of "arity":
     result = newIntNode(nkIntLit, operand.len - ord(operand.kind==tyProc))
-    result.typ = newType(tyInt, nextTypeId c.idgen, context)
+    result.typ = newType(tyInt, c.idgen, context)
     result.info = traitCall.info
   of "genericHead":
     var arg = operand
@@ -189,7 +189,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     #   result = toNode(resType, traitCall.info) # doesn't work yet
     else:
       localError(c.config, traitCall.info, "expected generic type, got: type $2 of kind $1" % [arg.kind.toHumanStr, typeToString(operand)])
-      result = newType(tyError, nextTypeId c.idgen, context).toNode(traitCall.info)
+      result = newType(tyError, c.idgen, context).toNode(traitCall.info)
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
   of "supportsCopyMem":
@@ -387,7 +387,7 @@ proc semUnown(c: PContext; n: PNode): PNode =
         elems[i] = unownedType(c, t[i])
         if elems[i] != t[i]: someChange = true
       if someChange:
-        result = newType(tyTuple, nextTypeId c.idgen, t.owner)
+        result = newType(tyTuple, c.idgen, t.owner)
         # we have to use 'rawAddSon' here so that type flags are
         # properly computed:
         for e in elems: result.rawAddSon(e)
@@ -398,7 +398,7 @@ proc semUnown(c: PContext; n: PNode): PNode =
        tyGenericInst, tyAlias:
       let b = unownedType(c, t[^1])
       if b != t[^1]:
-        result = copyType(t, nextTypeId c.idgen, t.owner)
+        result = copyType(t, c.idgen, t.owner)
         copyTypeProps(c.graph, c.idgen.module, result, t)
 
         result[^1] = b
@@ -441,7 +441,7 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   # proc body:
   result.ast = transform(c, orig.ast, origParamType, newParamType, oldParam, newParam)
   # proc signature:
-  result.typ = newProcType(result.info, nextTypeId c.idgen, result)
+  result.typ = newProcType(result.info, c.idgen, result)
   result.typ.addParam newParam
 
 proc semQuantifier(c: PContext; n: PNode): PNode =

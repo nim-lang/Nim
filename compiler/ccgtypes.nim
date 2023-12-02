@@ -13,6 +13,7 @@
 
 import sighashes, modulegraphs, std/strscans
 import ../dist/checksums/src/checksums/md5
+import std/sequtils
 
 type
   TypeDescKind = enum
@@ -663,13 +664,13 @@ proc genCppInitializer(m: BModule, prc: BProc; typ: PType): string =
   result = "{}"
   if typ.itemId in m.g.graph.initializersPerType:
     let call = m.g.graph.initializersPerType[typ.itemId]
-    if call != nil: 
+    if call != nil:
       var p = prc
       if p == nil:
         p = BProc(module: m)
       result = "{" & genCppParamsForCtor(p, call) & "}"
       if prc == nil:
-        assert p.blocks.len == 0, "BProc belongs to a struct doesnt have blocks" 
+        assert p.blocks.len == 0, "BProc belongs to a struct doesnt have blocks"
 
 proc genRecordFieldsAux(m: BModule; n: PNode,
                         rectype: PType,
@@ -1530,9 +1531,9 @@ proc genArrayInfo(m: BModule; typ: PType, name: Rope; info: TLineInfo) =
 
 proc fakeClosureType(m: BModule; owner: PSym): PType =
   # we generate the same RTTI as for a tuple[pointer, ref tuple[]]
-  result = newType(tyTuple, nextTypeId m.idgen, owner)
-  result.rawAddSon(newType(tyPointer, nextTypeId m.idgen, owner))
-  var r = newType(tyRef, nextTypeId m.idgen, owner)
+  result = newType(tyTuple, m.idgen, owner)
+  result.rawAddSon(newType(tyPointer, m.idgen, owner))
+  var r = newType(tyRef, m.idgen, owner)
   let obj = createObj(m.g.graph, m.idgen, owner, owner.info, final=false)
   r.rawAddSon(obj)
   result.rawAddSon(r)
@@ -1586,7 +1587,7 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
 
   dest.typ = getSysType(g, info, tyPointer)
 
-  result.typ = newProcType(info, nextTypeId(idgen), owner)
+  result.typ = newProcType(info, idgen, owner)
   result.typ.addParam dest
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
@@ -1677,6 +1678,13 @@ proc genDisplay(m: BModule; t: PType, depth: int): Rope =
   result.add seqs[0]
   result.add "}"
 
+proc genVTable(seqs: seq[PSym]): string =
+  result = "{"
+  for i in 0..<seqs.len:
+    if i > 0: result.add ", "
+    result.add "(void *) " & seqs[i].loc.r
+  result.add "}"
+
 proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   cgsym(m, "TNimTypeV2")
   m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
@@ -1712,6 +1720,14 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLin
     let objDisplayStore = getTempName(m)
     m.s[cfsVars].addf("static $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyUInt32), dkVar), objDisplayStore, rope(objDepth+1), objDisplay])
     addf(typeEntry, "$1.display = $2;$n", [name, rope(objDisplayStore)])
+
+  let dispatchMethods = toSeq(getMethodsPerType(m.g.graph, t))
+  if dispatchMethods.len > 0:
+    let vTablePointerName = getTempName(m)
+    m.s[cfsVars].addf("static void* $1[$2] = $3;$n", [vTablePointerName, rope(dispatchMethods.len), genVTable(dispatchMethods)])
+    for i in dispatchMethods:
+      genProcPrototype(m, i)
+    addf(typeEntry, "$1.vTable = $2;$n", [name, vTablePointerName])
 
   m.s[cfsTypeInit3].add typeEntry
 
@@ -1754,8 +1770,16 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   add(typeEntry, ", .traceImpl = (void*)")
   genHook(m, t, info, attachedTrace, typeEntry)
 
-  addf(typeEntry, ", .flags = $1};$n", [rope(flags)])
-  m.s[cfsVars].add typeEntry
+  let dispatchMethods = toSeq(getMethodsPerType(m.g.graph, t))
+  if dispatchMethods.len > 0:
+    addf(typeEntry, ", .flags = $1", [rope(flags)])
+    for i in dispatchMethods:
+      genProcPrototype(m, i)
+    addf(typeEntry, ", .vTable = $1};$n", [genVTable(dispatchMethods)])
+    m.s[cfsVars].add typeEntry
+  else:
+    addf(typeEntry, ", .flags = $1};$n", [rope(flags)])
+    m.s[cfsVars].add typeEntry
 
   if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
@@ -1800,9 +1824,9 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
   result = prefixTI.rope & result & ")".rope
 
 proc openArrayToTuple(m: BModule; t: PType): PType =
-  result = newType(tyTuple, nextTypeId m.idgen, t.owner)
-  let p = newType(tyPtr, nextTypeId m.idgen, t.owner)
-  let a = newType(tyUncheckedArray, nextTypeId m.idgen, t.owner)
+  result = newType(tyTuple, m.idgen, t.owner)
+  let p = newType(tyPtr, m.idgen, t.owner)
+  let a = newType(tyUncheckedArray, m.idgen, t.owner)
   a.add t.lastSon
   p.add a
   result.add p

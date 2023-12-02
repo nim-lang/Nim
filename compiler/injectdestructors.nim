@@ -211,10 +211,12 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string; inferredFr
       m.add " a 'sink' parameter"
   m.add "; routine: "
   m.add c.owner.name.s
+  #m.add "\n\n"
+  #m.add renderTree(c.body, {renderIds})
   localError(c.graph.config, ri.info, errGenerated, m)
 
 proc makePtrType(c: var Con, baseType: PType): PType =
-  result = newType(tyPtr, nextTypeId c.idgen, c.owner)
+  result = newType(tyPtr, c.idgen, c.owner)
   addSonSkipIntLit(result, baseType, c.idgen)
 
 proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
