@@ -110,6 +110,7 @@ type
     ObjConv,
     TestOf,
     Emit,
+    EmitCode,
 
     ProcDecl,
     ForeignProcDecl,

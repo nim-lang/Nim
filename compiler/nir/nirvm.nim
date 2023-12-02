@@ -700,7 +700,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     recurse ObjConvM
   of TestOf:
     recurse TestOfM
-  of Emit, EmitTarget:
+  of Emit, EmitTarget, EmitCode:
     raiseAssert "cannot interpret: Emit"
   of Verbatim:
     raiseAssert "cannot interpret: Verbatim"

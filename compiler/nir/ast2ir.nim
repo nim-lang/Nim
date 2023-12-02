@@ -2517,16 +2517,23 @@ proc genComplexCall(c: var ProcCon; n: PNode; d: var Value) =
   else:
     genCall c, n, d
 
+template genEmitCode(c: var ProcCon; n: PNode) =
+  build c.code, info, EmitCode:
+    for i in n:
+      case i.kind:
+        of nkStrLit..nkTripleStrLit:
+          c.code.addVerbatim c.lit.verbatims, info, i.strVal
+        of nkSym:
+          c.code.addSymUse info, toSymId(c, i.sym)
+        else:
+          gen(c, i)
+
 proc genAsm(c: var ProcCon; n: PNode) =
   let info = toLineInfo(c, n.info)  
   build c.code, info, Emit:
     c.code.addEmitTarget info, Asm
-      
-
-  # if c.prc == nil:
-  #   genGlobalAsm(c, n)
-  # else:
-  #   genInlineAsm(c, n)
+    genEmitCode c, n
+    
 
 proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =
   when defined(nimCompilerStacktraceHints):

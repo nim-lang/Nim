@@ -555,6 +555,36 @@ template moveToDataSection(body: untyped) =
     c.data.add c.code[i]
   setLen c.code, oldLen
 
+proc genGccAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
+  c.add AsmKeyword
+  c.add ParLe
+  c.add NewLine
+
+  var sec = 0
+  template maybeAddQuotes: untyped =
+    if sec == 0: c.add """""""
+  template maybeAddQuoted(s: string): untyped =
+    maybeAddQuotes
+    c.add s
+    maybeAddQuotes
+
+  for i in sons(t, n):
+    if t[i].kind == Verbatim:
+      let s = c.m.lit.verbatims[t[i].litId]
+      var left = 0
+      for j in 0..s.high:              
+        if s[j] == '\n':
+          maybeAddQuoted s[left..j-1] & (if sec == 0: r"\n" else: "")
+          c.add NewLine
+          left = j + 1
+        elif s[j] == ':': inc sec
+            
+      maybeAddQuoted s[left..^1]
+    else: c.gen(t, i)
+  c.add NewLine
+  c.add ParRi
+  c.add Semicolon
+
 proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   case t[n].kind
   of Nop:
@@ -808,15 +838,23 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   of NumberConv: genNumberConv c, t, n
   of CheckedObjConv: binaryop ""
   of ObjConv: binaryop ""
-  of Emit: raiseAssert "cannot interpret: Emit"
   of ProcDecl: genProcDecl c, t, n, false
   of ForeignProcDecl: genProcDecl c, t, n, true
   of PragmaPair, PragmaId, TestOf, Yld, SetExc, TestExc:
     c.add "cannot interpret: " & $t[n].kind
-  
   of Verbatim:
-    discard
-  of EmitTarget:
+    c.add c.m.lit.verbatims[t[n].litId]
+  of Emit:
+    let (targetRaw, code) = sons2(t, n)
+    let target = cast[EmitTargetKind](t[targetRaw].rawOperand)
+    
+    case target:
+      of Asm:
+        genGccAsm(c, t, code)
+      of Code:
+        raiseAssert"not supported"
+
+  of EmitTarget, EmitCode:
     discard
 
 const
