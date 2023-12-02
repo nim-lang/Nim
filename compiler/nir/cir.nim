@@ -595,6 +595,7 @@ proc genGccAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
         if s[i] == '\n':
           newLine = true
           c.add s[left..i-1]
+          if sec == 0: c.add r"\n"
           maybeAddQuote
           left = i + 1
           c.add NewLine
