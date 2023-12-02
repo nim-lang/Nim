@@ -2290,8 +2290,9 @@ func multiReplace*(s: string, replacements: varargs[(string, string)]): string =
   ## If the resulting string is not longer than the original input string,
   ## only a single memory allocation is required.
   ##
-  ## The order of the replacements does matter. Earlier replacements are
-  ## preferred over later replacements in the argument list.
+  ## Replacements are done left to right in the string. If at a given position
+  ## multiple replacements match, earlier replacements are preferred over
+  ## later replacements in the argument list.
   result = newStringOfCap(s.len)
   var i = 0
   var fastChk: set[char] = {}
