@@ -789,7 +789,10 @@ proc setFromProjectName*(conf: ConfigRef; projectName: string) =
     conf.projectFull = AbsoluteFile projectName
   let p = splitFile(conf.projectFull)
   let dir = if p.dir.isEmpty: AbsoluteDir getCurrentDir() else: p.dir
-  conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile dir)
+  try:
+    conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile dir)
+  except OSError:
+    conf.projectPath = dir
   conf.projectName = p.name
 
 proc removeTrailingDirSep*(path: string): string =
