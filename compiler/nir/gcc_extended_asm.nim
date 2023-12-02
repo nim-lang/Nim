@@ -1,28 +1,37 @@
-# generates Asm stategments like this:
-# Asm {
-#   AsmTemplate {
-#     Some asm code
-#     SymUse nimInlineVar # `a`
-#     Some asm code
-#   }
-#   AsmOutputOperand {
-#     # [asmSymbolicName] constraint (nimVariableName)
-#     AsmInjectExpr {symUse nimVariableName} # for output it have only one sym (lvalue)
-#     asmSymbolicName # default: ""
-#     constraint
-#   }
-#   AsmInputOperand {
-#     # [asmSymbolicName] constraint (nimExpr)
-#     AsmInjectExpr {symUse nimVariableName} # (rvalue)
-#     asmSymbolicName # default: ""
-#     constraint
-# }
-#  AsmClobber {
-#    "clobber"
-# }
+## GCC Extended asm stategments nodes that produces from NIR.
+## It generates iteratively, so parsing doesn't take long
 
-# it can be useful for better asm analysis and 
-# easy to use in all nim targets
+## Asm stategment structure:
+## ```nim
+## Asm {
+##   AsmTemplate {
+##     Some asm code
+##     SymUse nimInlineVar # `a`
+##     Some asm code
+##   }
+##   AsmOutputOperand {
+##     # [asmSymbolicName] constraint (nimVariableName)
+##     AsmInjectExpr {symUse nimVariableName} # for output it have only one sym (lvalue)
+##     asmSymbolicName # default: ""
+##     constraint
+##   }
+##   AsmInputOperand {
+##     # [asmSymbolicName] constraint (nimExpr)
+##     AsmInjectExpr {symUse nimVariableName} # (rvalue)
+##     asmSymbolicName # default: ""
+##     constraint
+## }
+##  AsmClobber {
+##    "clobber"
+## }
+##  AsmGotoLabel {
+##    "label" 
+## }
+## ```
+
+# It can be useful for better asm analysis and 
+# easy to use in all nim targets.
+
 import nirinsts, nirtypes
 import std / assertions
 import .. / ic / bitabs
@@ -34,6 +43,7 @@ type
     InjectExpr
     Constraint
     Clobber
+    GotoLabel
     Delimiter
   
   AsmValKind = enum
@@ -60,24 +70,23 @@ type
     AsmOutputOperand
     AsmInputOperand
     AsmClobber
+    AsmGotoLabel
 
     AsmInjectExpr
     AsmStrVal
 
   GccAsmNode* = ref object
-    case kind: AsmNodeKind
-      of AsmTemplate:
-        instrs: seq[GccAsmNode]
+    case kind*: AsmNodeKind
       of AsmOutputOperand, AsmInputOperand:
         symbolicName: string
         constraint: string
-        injectExpr: GccAsmNode
-      of AsmClobber:
-        clobber: string
-      of AsmStrVal:
+        injectExprs: seq[GccAsmNode]
+      of AsmStrVal, AsmClobber, AsmGotoLabel:
         s: string
       of AsmInjectExpr:
         n: NodePos
+      of AsmTemplate:
+        sons: seq[GccAsmNode]
 
 
 proc toVal(n: NodePos): AsmVal =
@@ -102,7 +111,7 @@ proc toNode(val: AsmVal): GccAsmNode =
 proc emptyNode(kind: AsmNodeKind): GccAsmNode =
   GccAsmNode(kind: kind)
 
-iterator asmTokens(t: Tree, n: NodePos; lit: Literals): AsmToken =
+iterator asmTokens(t: Tree, n: NodePos; verbatims: BiTable[string]): AsmToken =
   template addCaptured: untyped =
     yield (
       sec, 
@@ -119,6 +128,7 @@ iterator asmTokens(t: Tree, n: NodePos; lit: Literals): AsmToken =
   var det: Det = AsmTemplate
   var left = 0
   var captured = ""
+  var nPar = 0
   
   # handling comments
   var
@@ -130,7 +140,7 @@ iterator asmTokens(t: Tree, n: NodePos; lit: Literals): AsmToken =
   for ch in sons(t, n):
     case t[ch].kind
       of Verbatim:
-        let s = ""#it.strVal
+        let s = verbatims[t[ch].litId]
 
         for i in 0..s.high:
 
@@ -158,6 +168,8 @@ iterator asmTokens(t: Tree, n: NodePos; lit: Literals): AsmToken =
               continue
             foundCommentEndSym = false
           if sec > 0 and s[i] == '/': # '/'
+            if captured != "/":
+              maybeAddCaptured()
             foundCommentStartSym = true
           if sec > 0 and s[i] == '\n' and inComment:
             if not isLineComment: # /* comment \n
@@ -170,7 +182,20 @@ iterator asmTokens(t: Tree, n: NodePos; lit: Literals): AsmToken =
             # skip commented syms
             continue
 
+          # Inject expr parens
 
+          if s[i] == '(':
+            inc nPar
+          elif s[i] == ')':
+            if nPar > 1:
+              captured.add ')'
+
+            dec nPar
+          
+          if nPar > 1:
+            captured.add s[i]
+            # no need parsing of expr
+            continue
 
           case s[i]:
             of ':':
@@ -181,9 +206,11 @@ iterator asmTokens(t: Tree, n: NodePos; lit: Literals): AsmToken =
                   det
                 )
               
+              maybeAddCaptured()
               inc sec
               # inc det
               left = i + 1
+              
               captured = ""
 
               if sec in 1..2:
@@ -191,6 +218,8 @@ iterator asmTokens(t: Tree, n: NodePos; lit: Literals): AsmToken =
                 det = Constraint
               elif sec == 3:
                 det = Clobber
+              elif sec == 4:
+                det = GotoLabel
 
             of '[':
               # start of asm symbolic name
@@ -205,7 +234,7 @@ iterator asmTokens(t: Tree, n: NodePos; lit: Literals): AsmToken =
               det = Constraint
               # s[capturedStart .. i - 1]
             
-            of '(':
+            of '(':              
               addCaptured() # add asm constraint
               det = InjectExpr
             
@@ -219,7 +248,7 @@ iterator asmTokens(t: Tree, n: NodePos; lit: Literals): AsmToken =
               if sec in 1..2:
                 det = Constraint
               
-              if sec == 3:
+              if sec in {3, 4}:
                 maybeAddCaptured()
               
               yield (
@@ -227,6 +256,12 @@ iterator asmTokens(t: Tree, n: NodePos; lit: Literals): AsmToken =
                 empty(),
                 Delimiter
               )
+            
+            # Capture
+            elif sec == 0 and det == AsmTemplate:
+              # asm template should not change,
+              # so we don't skip spaces, etc.
+              captured.add s[i]
 
             elif (
               sec > 0 and 
@@ -234,15 +269,18 @@ iterator asmTokens(t: Tree, n: NodePos; lit: Literals): AsmToken =
                 SymbolicName, 
                 Constraint, 
                 InjectExpr, 
-                Clobber
+                Clobber,
+                GotoLabel
               } and 
               s[i] notin {' ', '\n', '\t'}
-            ): captured.add s[i]
-            
-
+            ):
+              captured.add s[i]
             else: discard
 
       else:
+        left = 0
+        if captured == "/":
+          continue
         maybeAddCaptured()
         
         yield (
@@ -250,28 +288,30 @@ iterator asmTokens(t: Tree, n: NodePos; lit: Literals): AsmToken =
           ch.toVal,
           det
         )
-        
-        left = 0
 
   if sec == 0:
     # : not specified 
     yield (
       sec, 
-      lit.strings[t[lastSon(t, n)].litId].toVal, 
+      verbatims[t[lastSon(t, n)].litId].toVal, 
       det
     )
   elif sec > 2:
     maybeAddCaptured()
+  
+  if sec > 4:
+    raiseAssert"must be maximum 4 asm sections"
 
 const
   sections = [
     AsmNodeKind.AsmTemplate,
     AsmOutputOperand,
     AsmInputOperand,
-    AsmClobber
+    AsmClobber,
+    AsmGotoLabel
   ]
 
-iterator parseGccAsm*(t: Tree, n: NodePos; lit: Literals): GccAsmNode =
+iterator parseGccAsm*(t: Tree, n: NodePos; verbatims: BiTable[string]): GccAsmNode =
   var
     oldSec = 0
     curr = emptyNode(AsmTemplate)
@@ -280,7 +320,9 @@ iterator parseGccAsm*(t: Tree, n: NodePos; lit: Literals): GccAsmNode =
   template initNextNode: untyped =
     curr = emptyNode(sections[i.sec])
 
-  for i in asmTokens(t, n, lit):
+  for i in asmTokens(t, n, verbatims):
+    when false:
+      echo i
     if i.sec != oldSec:
       # current node fully filled
       yield curr
@@ -292,7 +334,7 @@ iterator parseGccAsm*(t: Tree, n: NodePos; lit: Literals): GccAsmNode =
         initNextNode()
 
       of AsmTemplate:
-        curr.instrs.add i.val.toNode
+        curr.sons.add i.val.toNode
       
       of SymbolicName:
         curr.symbolicName = i.val.s
@@ -303,12 +345,35 @@ iterator parseGccAsm*(t: Tree, n: NodePos; lit: Literals): GccAsmNode =
         curr.constraint = s[1..^2]
       of InjectExpr:
         # only one inject expr for now
-        curr.injectExpr = i.val.toNode
+        curr.injectExprs.add i.val.toNode
 
       of Clobber:
         let s = i.val.s
         if s[0] != '"' or s[^1] != '"':
           raiseAssert "clobber must be started and ended by " & '"'
-        curr.clobber = s[1..^2]
+        curr.s = s[1..^2]
+      
+      of GotoLabel:
+        curr.s = i.val.s
 
     oldSec = i.sec
+  
+  yield curr
+
+proc `$`*(node: GccAsmNode): string =
+  case node.kind:
+    of AsmStrVal, AsmClobber, AsmGotoLabel: node.s
+    of AsmOutputOperand, AsmInputOperand:
+      var res = '[' & node.symbolicName & ']' & '"' & node.constraint & '"' & "(`"
+      for i in node.injectExprs:
+        res.add $i
+      res.add "`)"
+      res
+    of AsmTemplate:
+      var res = ""
+      for i in node.sons:
+        res.add $i
+        res.add '\n'
+      res
+    of AsmInjectExpr:
+      "inject node: " & $node.n.int
