@@ -565,28 +565,49 @@ proc genGccAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
   c.add ParLe
   c.add NewLine
 
-  var sec = 0
-  template maybeAddQuotes: untyped =
+  var
+    sec = 0
+    left = 0
+    s = ""
+  
+  template maybeAddQuote: untyped =
     if sec == 0: c.add """""""
-  template maybeAddQuoted(s: string): untyped =
-    maybeAddQuotes
-    c.add s
-    maybeAddQuotes
-
-  for i in sons(t, n):
-    if t[i].kind == Verbatim:
-      let s = c.m.lit.verbatims[t[i].litId]
-      var left = 0
-      for j in 0..s.high:              
-        if s[j] == '\n':
-          maybeAddQuoted s[left..j-1] & (if sec == 0: r"\n" else: "")
+  
+  template beforeSameSection(s: string): bool =
+    # just see that after spaces :
+    # It's O(1) with high probability
+    var beforeNext = false
+    var notFinal = false
+    for i in s:
+      if i == ':': beforeNext = true
+      if i notin {' ', '\t', '\n'}:
+        notFinal = true
+        break
+    not beforeNext and notFinal
+  
+  var newLine = false
+  maybeAddQuote # first "
+  for ch in sons(t, n):
+    if t[ch].kind == Verbatim:
+      s = c.m.lit.verbatims[t[ch].litId]
+      left = 0
+      for i in 0..s.high:
+        if s[i] == '\n':
+          newLine = true
+          c.add s[left..i-1]
+          maybeAddQuote
+          left = i + 1
           c.add NewLine
-          left = j + 1
-        elif s[j] == ':': inc sec
-            
-      maybeAddQuoted s[left..^1]
-    else: c.gen(t, i)
-  c.add NewLine
+          if beforeSameSection(s[i+1..^1]): maybeAddQuote
+        elif s[i] == ':': inc sec
+    else:
+      c.add s[left..^1]
+      c.gen(t, ch)
+  if not newLine:
+    c.add s[left..^1]
+    maybeAddQuote
+    c.add NewLine
+
   c.add ParRi
   c.add Semicolon
 
