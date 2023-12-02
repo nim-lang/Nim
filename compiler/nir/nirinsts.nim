@@ -254,10 +254,17 @@ proc next*(tree: Tree; pos: var NodePos) {.inline.} = nextChild tree, int(pos)
 
 template firstSon*(n: NodePos): NodePos = NodePos(n.int+1)
 proc lastSon*(tree: Tree; n: NodePos): NodePos =
-  var pos = n.int
+  var
+    pos = n.int
+    oldPos = pos
+
   assert tree.nodes[pos].kind > LastAtomicValue
   let last = pos + tree.nodes[pos].rawSpan
-  NodePos last
+  inc pos
+  while pos < last:
+    oldPos = pos
+    nextChild tree, pos
+  NodePos oldPos
 
 template skipTyped*(n: NodePos): NodePos = NodePos(n.int+2)
 
