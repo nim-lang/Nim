@@ -11,6 +11,7 @@
 
 import ".." / ic / [bitabs, rodfiles]
 import nirinsts, nirtypes, nirlineinfos, nirfiles, cir
+import target_props
 
 proc view(filename: string) =
   let m = load(filename)
@@ -29,6 +30,8 @@ proc writeHelp =
 proc main =
   var inp = ""
   var cmd = ""
+  var props = TargetProps()
+
   for kind, key, val in getopt():
     case kind
     of cmdArgument:
@@ -39,6 +42,20 @@ proc main =
       case key
       of "help", "h": writeHelp()
       of "version", "v": stdout.write "1.0\n"
+      of "inlineAsmSyntax", "a":
+        if val == "":
+          quit "Error: no inline asm syntax specified"
+        
+        case val:
+          of "none":
+            props.inlineAsmSyntax = None
+          of "gcc-like":
+            props.inlineAsmSyntax = GCCExtendedAsm
+          of "msvc-like":
+            props.inlineAsmSyntax = VisualCPP
+          else:
+            quit "Error: invalid inline asm syntax. Must be: gcc-like or msvc-like (or none)"
+
     of cmdEnd: discard
   if inp.len == 0:
     quit "Error: no input file specified"
@@ -47,6 +64,6 @@ proc main =
     view inp
   of "c":
     let outp = inp & ".c"
-    cir.generateCode inp, outp
+    cir.generateCode inp, outp, props
 
 main()

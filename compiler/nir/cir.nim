@@ -14,6 +14,7 @@ from std / strutils import toOctal
 import .. / ic / [bitabs, rodfiles]
 import nirtypes, nirinsts, nirfiles
 import ../../dist/checksums/src/checksums/md5
+import target_props
 
 type
   Token = LitId # indexing into the tokens BiTable[string]
@@ -64,6 +65,7 @@ proc fillTokenTable(tab: var BiTable[string]) =
 type
   GeneratedCode* = object
     m: NirModule
+    props: TargetProps
     includes: seq[LitId]
     includedHeaders: IntSet
     data: seq[LitId]
@@ -76,8 +78,11 @@ type
     generatedTypes: IntSet
     mangledModules: Table[LitId, LitId]
 
-proc initGeneratedCode*(m: sink NirModule): GeneratedCode =
-  result = GeneratedCode(m: m, code: @[], tokens: initBiTable[string]())
+proc initGeneratedCode*(m: sink NirModule; props: sink TargetProps): GeneratedCode =
+  result = GeneratedCode(
+    m: m, code: @[], tokens: initBiTable[string](), 
+    props: props
+  )
   fillTokenTable(result.tokens)
 
 proc add*(g: var GeneratedCode; t: PredefinedToken) {.inline.} =
@@ -850,7 +855,10 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
     
     case target:
       of Asm:
-        genGccAsm(c, t, code)
+        case c.props.inlineAsmSyntax:
+          of None: discard
+          of GCCExtendedAsm: genGccAsm(c, t, code)
+          of VisualCPP: raiseAssert"not implemented"
       of Code:
         raiseAssert"not supported"
 
@@ -1002,8 +1010,8 @@ proc traverseCode(c: var GeneratedCode) =
         c.init.add c.code[i]
       setLen c.code, oldLen
 
-proc generateCode*(inp, outp: string) =
-  var c = initGeneratedCode(load(inp))
+proc generateCode*(inp, outp: string; props: sink TargetProps) =
+  var c = initGeneratedCode(load(inp), props)
 
   var co = TypeOrder()
   traverseTypes(c.m.types, c.m.lit, co)
