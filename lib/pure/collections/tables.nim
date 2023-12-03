@@ -474,6 +474,18 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
 
   mgetOrPutImpl(enlarge)
 
+proc mgetOrPut*[A, B](t: var Table[A, B], key: A): var B =
+  ## Retrieves the value at `t[key]` or puts the
+  ## default initialization value for type `B` (e.g. 0 for any
+  ## integer type).
+  runnableExamples:
+    var a = {'a': 5}.newTable
+    doAssert a.mgetOrPut('a') == 5
+    a.mgetOrPut('z').inc
+    doAssert a == {'a': 5, 'z': 1}.newTable
+
+  mgetOrPutImpl(enlarge)
+
 proc len*[A, B](t: Table[A, B]): int =
   ## Returns the number of keys in `t`.
   runnableExamples:
@@ -1013,6 +1025,18 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
     doAssert t[25] == @[25, 35]
   t[].mgetOrPut(key, val)
 
+proc mgetOrPut*[A, B](t: TableRef[A, B], key: A): var B =
+  ## Retrieves the value at `t[key]` or puts the
+  ## default initialization value for type `B` (e.g. 0 for any
+  ## integer type).
+  runnableExamples:
+    var a = {'a': 5}.newTable
+    doAssert a.mgetOrPut('a') == 5
+    a.mgetOrPut('z').inc
+    doAssert a == {'a': 5, 'z': 1}.newTable
+
+  t[].mgetOrPut(key)
+
 proc len*[A, B](t: TableRef[A, B]): int =
   ## Returns the number of keys in `t`.
   runnableExamples:
@@ -1500,6 +1524,18 @@ proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
     doAssert a.mgetOrPut('a', 99) == 5
     doAssert a.mgetOrPut('z', 99) == 99
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.toOrderedTable
+
+  mgetOrPutImpl(enlarge)
+
+proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A): var B =
+  ## Retrieves the value at `t[key]` or puts the
+  ## default initialization value for type `B` (e.g. 0 for any
+  ## integer type).
+  runnableExamples:
+    var a = {'a': 5}.toOrderedTable
+    doAssert a.mgetOrPut('a') == 5
+    a.mgetOrPut('z').inc
+    doAssert a == {'a': 5, 'z': 1}.toOrderedTable
 
   mgetOrPutImpl(enlarge)
 
@@ -1991,6 +2027,18 @@ proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.newOrderedTable
 
   result = t[].mgetOrPut(key, val)
+
+proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A): var B =
+  ## Retrieves the value at `t[key]` or puts the
+  ## default initialization value for type `B` (e.g. 0 for any
+  ## integer type).
+  runnableExamples:
+    var a = {'a': 5}.toOrderedTable
+    doAssert a.mgetOrPut('a') == 5
+    a.mgetOrPut('z').inc
+    doAssert a == {'a': 5, 'z': 1}.toOrderedTable
+
+  t[].mgetOrPut(key)
 
 proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
   ## Returns the number of keys in `t`.

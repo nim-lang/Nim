@@ -113,10 +113,11 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
         strVal = v
         x = counter
       else:
-        if not isOrdinalType(v.typ, allowEnumWithHoles=true):
+        if isOrdinalType(v.typ, allowEnumWithHoles=true):
+          x = toInt64(getOrdValue(v))
+          n[i][1] = newIntTypeNode(x, getSysType(c.graph, unknownLineInfo, tyInt))
+        else:
           localError(c.config, v.info, errOrdinalTypeExpected % typeToString(v.typ, preferDesc))
-        x = toInt64(getOrdValue(v))
-        n[i][1] = newIntTypeNode(x, getSysType(c.graph, unknownLineInfo, tyInt))
       if i != 1:
         if x != counter: incl(result.flags, tfEnumHasHoles)
         if x < counter:
@@ -148,6 +149,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     result.n.add symNode
     styleCheckDef(c, e)
     onDef(e.info, e)
+    suggestSym(c.graph, e.info, e, c.graph.usageSym)
     if sfGenSym notin e.flags:
       if not isPure:
         addInterfaceOverloadableSymAt(c, c.currentScope, e)
@@ -235,6 +237,7 @@ proc isRecursiveType(t: PType, cycleDetector: var IntSet): bool =
     return false
 
 proc fitDefaultNode(c: PContext, n: PNode): PType =
+  inc c.inStaticContext
   let expectedType = if n[^2].kind != nkEmpty: semTypeNode(c, n[^2], nil) else: nil
   n[^1] = semConstExpr(c, n[^1], expectedType = expectedType)
   let oldType = n[^1].typ
@@ -242,9 +245,19 @@ proc fitDefaultNode(c: PContext, n: PNode): PType =
   if n[^2].kind != nkEmpty:
     if expectedType != nil and oldType != expectedType:
       n[^1] = fitNodeConsiderViewType(c, expectedType, n[^1], n[^1].info)
+      changeType(c, n[^1], expectedType, true) # infer types for default fields value
+        # bug #22926; be cautious that it uses `semConstExpr` to
+        # evaulate the default fields; it's only natural to use
+        # `changeType` to infer types for constant values
+        # that's also the reason why we don't use `semExpr` to check
+        # the type since two overlapping error messages might be produced
     result = n[^1].typ
   else:
     result = n[^1].typ
+  # xxx any troubles related to defaults fields, consult `semConst` for a potential answer
+  if n[^1].kind != nkNilLit:
+    typeAllowedCheck(c, n.info, result, skConst, {taProcContextIsNotMacro, taIsDefaultField})
+  dec c.inStaticContext
 
 proc isRecursiveType*(t: PType): bool =
   # handle simple recusive types before typeFinalPass
