@@ -20,6 +20,7 @@ import
   isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs,
   extccomp
 
+import vtables
 import std/[strtabs, math, tables, intsets, strutils]
 
 when not defined(leanCompiler):
@@ -209,6 +210,18 @@ proc commonType*(c: PContext; x, y: PType): PType =
         result = newType(k, c.idgen, r.owner)
         result.addSonSkipIntLit(r, c.idgen)
 
+const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt64, tyBool}
+proc shouldCheckCaseCovered(caseTyp: PType): bool =
+  result = false
+  case caseTyp.kind
+  of shouldChckCovered:
+    result = true
+  of tyRange:
+    if skipTypes(caseTyp[0], abstractInst).kind in shouldChckCovered:
+      result = true
+  else:
+    discard
+
 proc endsInNoReturn(n: PNode): bool =
   ## check if expr ends the block like raising or call of noreturn procs do
   result = false # assume it does return
@@ -238,6 +251,12 @@ proc endsInNoReturn(n: PNode): bool =
     # none of the branches returned
     result = hasElse # Only truly a no-return when it's exhaustive
   of nkCaseStmt:
+    let caseTyp = skipTypes(it[0].typ, abstractVar-{tyTypeDesc})
+    # semCase should already have checked for exhaustiveness in this case
+    # effectively the same as having an else
+    var hasElse = caseTyp.shouldCheckCaseCovered()
+
+    # actual noreturn checks
     for i in 1 ..< it.len:
       let branch = it[i]
       checkBranch:
@@ -247,11 +266,12 @@ proc endsInNoReturn(n: PNode): bool =
         of nkElifBranch:
           branch[1]
         of nkElse:
+          hasElse = true
           branch[0]
         else:
           raiseAssert "Malformed `case` statement in endsInNoReturn"
-    # none of the branches returned
-    result = true
+    # Can only guarantee a noreturn if there is an else or it's exhaustive
+    result = hasElse
   of nkTryStmt:
     checkBranch(it[0])
     for i in 1 ..< it.len:
@@ -839,6 +859,13 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if c.config.cmd == cmdIdeTools:
     appendToModule(c.module, result)
   trackStmt(c, c.module, result, isTopLevel = true)
+  if optMultiMethods notin c.config.globalOptions and
+      c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+      Feature.vtables in c.config.features:
+    sortVTableDispatchers(c.graph)
+
+    if sfMainModule in c.module.flags:
+      collectVTableDispatchers(c.graph)
 
 proc recoverContext(c: PContext) =
   # clean up in case of a semantic error: We clean up the stacks, etc. This is

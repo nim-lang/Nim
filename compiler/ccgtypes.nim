@@ -13,6 +13,7 @@
 
 import sighashes, modulegraphs, std/strscans
 import ../dist/checksums/src/checksums/md5
+import std/sequtils
 
 type
   TypeDescKind = enum
@@ -1677,6 +1678,13 @@ proc genDisplay(m: BModule; t: PType, depth: int): Rope =
   result.add seqs[0]
   result.add "}"
 
+proc genVTable(seqs: seq[PSym]): string =
+  result = "{"
+  for i in 0..<seqs.len:
+    if i > 0: result.add ", "
+    result.add "(void *) " & seqs[i].loc.r
+  result.add "}"
+
 proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   cgsym(m, "TNimTypeV2")
   m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
@@ -1712,6 +1720,14 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLin
     let objDisplayStore = getTempName(m)
     m.s[cfsVars].addf("static $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyUInt32), dkVar), objDisplayStore, rope(objDepth+1), objDisplay])
     addf(typeEntry, "$1.display = $2;$n", [name, rope(objDisplayStore)])
+
+  let dispatchMethods = toSeq(getMethodsPerType(m.g.graph, t))
+  if dispatchMethods.len > 0:
+    let vTablePointerName = getTempName(m)
+    m.s[cfsVars].addf("static void* $1[$2] = $3;$n", [vTablePointerName, rope(dispatchMethods.len), genVTable(dispatchMethods)])
+    for i in dispatchMethods:
+      genProcPrototype(m, i)
+    addf(typeEntry, "$1.vTable = $2;$n", [name, vTablePointerName])
 
   m.s[cfsTypeInit3].add typeEntry
 
@@ -1754,8 +1770,16 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   add(typeEntry, ", .traceImpl = (void*)")
   genHook(m, t, info, attachedTrace, typeEntry)
 
-  addf(typeEntry, ", .flags = $1};$n", [rope(flags)])
-  m.s[cfsVars].add typeEntry
+  let dispatchMethods = toSeq(getMethodsPerType(m.g.graph, t))
+  if dispatchMethods.len > 0:
+    addf(typeEntry, ", .flags = $1", [rope(flags)])
+    for i in dispatchMethods:
+      genProcPrototype(m, i)
+    addf(typeEntry, ", .vTable = $1};$n", [genVTable(dispatchMethods)])
+    m.s[cfsVars].add typeEntry
+  else:
+    addf(typeEntry, ", .flags = $1};$n", [rope(flags)])
+    m.s[cfsVars].add typeEntry
 
   if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)

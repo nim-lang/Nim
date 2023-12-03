@@ -103,6 +103,13 @@ proc addSonSkipIntLit*(father, son: PType; id: IdGenerator) =
   father.add(s)
   propagateToOwner(father, s)
 
+proc makeVarType*(owner: PSym; baseType: PType; idgen: IdGenerator; kind = tyVar): PType =
+  if baseType.kind == kind:
+    result = baseType
+  else:
+    result = newType(kind, idgen, owner)
+    addSonSkipIntLit(result, baseType, idgen)
+
 proc getCompilerProc*(g: ModuleGraph; name: string): PSym =
   let ident = getIdent(g.cache, name)
   result = strTableGet(g.compilerprocs, ident)

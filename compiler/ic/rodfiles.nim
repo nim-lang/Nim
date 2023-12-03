@@ -93,8 +93,10 @@ type
     typeInstCacheSection
     procInstCacheSection
     attachedOpsSection
-    methodsPerTypeSection
+    methodsPerGenericTypeSection
     enumToStringProcsSection
+    methodsPerTypeSection
+    dispatchersSection
     typeInfoSection  # required by the backend
     backendFlagsSection
     aliveSymsSection # beware, this is stored in a `.alivesyms` file.

@@ -3097,9 +3097,8 @@ proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
       var p = newInitProc(globals, m)
       attachProc(p, prc)
 
-  var disp = generateMethodDispatchers(graph, m.idgen)
-  for i in 0..<disp.len:
-    let prc = disp[i].sym
+  generateIfMethodDispatchers(graph, m.idgen)
+  for prc in getDispatchers(graph):
     if not globals.generatedSyms.containsOrIncl(prc.id):
       var p = newInitProc(globals, m)
       attachProc(p, prc)
