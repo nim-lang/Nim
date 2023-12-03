@@ -2463,7 +2463,7 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
         c.code.addPragmaId info, ExternName
         c.code.addStrVal c.lit.strings, info, prc.loc.r
       if sfImportc in prc.flags:
-        if lfHeader in prc. loc.flags:
+        if lfHeader in prc.loc.flags:
           assert(prc. annex != nil)
           let str = getStr(prc. annex.path)
           build c.code, info, PragmaPair:
@@ -2532,7 +2532,14 @@ proc genAsm(c: var ProcCon; n: PNode) =
   let info = toLineInfo(c, n.info)  
   build c.code, info, Emit:
     c.code.addEmitTarget info, Asm
+
     c.code.addBoolInfo info, IsGlobal, c.prc == nil
+    c.code.addBoolInfo info, InPure, (
+      if c.prc != nil:
+        sfPure in c.prc.flags
+      else: false
+    )
+
     genEmitCode c, n
     
 

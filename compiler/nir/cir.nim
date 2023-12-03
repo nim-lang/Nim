@@ -898,9 +898,12 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
 
     case target:
       of Asm:
-        let isBasicAsm =
-          fetchInfo(t, n, IsGlobal).infoVal(t, bool) and
-          c.props.inlineAsmSyntax != VisualCPP
+        requireInfo t, n, InPure
+
+        let isBasicAsm = (
+          fetchInfo(t, n, IsGlobal).infoVal(t, bool) or
+          fetchInfo(t, n, InPure).infoVal(t, bool)
+        ) and c.props.inlineAsmSyntax != VisualCPP
 
         if not isBasicAsm:
           case c.props.inlineAsmSyntax:

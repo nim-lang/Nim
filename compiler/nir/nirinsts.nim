@@ -130,6 +130,7 @@ type
   
   InfoKey* = enum
     IsGlobal
+    InPure
 
   EmitTargetKind* = enum
     Asm
@@ -402,8 +403,11 @@ proc requireInfo*(t: Tree; n: NodePos; k: InfoKey) =
   # raises an a error if info not found
   if not haveInfo(t, n, k): raiseAssert $k & " info is required"
 
+proc requireInfo*(t: Tree; n: NodePos; k: set[InfoKey]) =
+  for i in k: requireInfo(t, n, i)
+
 const
-  boolInfos = {IsGlobal}
+  boolInfos = {IsGlobal, InPure}
 
 proc infoVal*(info: NodePos, tree: Tree, t: type bool): bool =
   assert tree[info].kind == Info
