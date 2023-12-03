@@ -42,6 +42,7 @@ type
     LoopLabel,
     GotoLoop,
     EmitTarget,
+    InfoId,
     Verbatim,  # last atom
 
     ModuleSymUse, # `"module".x`
@@ -111,6 +112,7 @@ type
     TestOf,
     Emit,
     EmitCode,
+    Info,
 
     ProcDecl,
     ForeignProcDecl,
@@ -126,6 +128,9 @@ type
     DllExport,
     ObjExport
   
+  InfoKey* = enum
+    IsGlobal
+
   EmitTargetKind* = enum
     Asm
     Code
@@ -378,6 +383,36 @@ proc litId*(ins: Instr): LitId {.inline.} =
   result = LitId(ins.operand)
 
 
+iterator fetchInfos*(t: Tree; n: NodePos; k: InfoKey): NodePos =
+  for i in sons(t, n):
+    if t[i].kind == Info and k == cast[InfoKey](t[i.firstSon].operand):
+      yield i
+
+proc fetchInfo*(t: Tree; n: NodePos; k: InfoKey): NodePos =
+  result = NodePos -1
+  for i in fetchInfos(t, n, k):
+    return i
+
+proc haveInfo*(t: Tree; n: NodePos; k: InfoKey): bool =
+  result = false
+  for i in fetchInfos(t, n, k):
+    return true
+
+proc requireInfo*(t: Tree; n: NodePos; k: InfoKey) =
+  # raises an a error if info not found
+  if not haveInfo(t, n, k): raiseAssert $k & " info is required"
+
+const
+  boolInfos = {IsGlobal}
+
+proc infoVal*(info: NodePos, tree: Tree, t: type bool): bool =
+  assert tree[info].kind == Info
+  let (key, b) = sons2(tree, info)
+  assert cast[InfoKey](tree[key].operand) in boolInfos, "Info must be in bool infos"
+  
+  cast[bool](tree[b].operand)
+
+
 type
   LabelId* = distinct int
 
@@ -462,6 +497,14 @@ proc addNilVal*(t: var Tree; info: PackedLineInfo; typ: TypeId) =
   buildTyped t, info, NumberConv, typ:
     t.nodes.add Instr(x: toX(NilVal, uint32(0)), info: info)
 
+proc addInfoId*(t: var Tree; info: PackedLineInfo; x: InfoKey) =
+  t.nodes.add Instr(x: toX(InfoId, uint32(x)), info: info)
+
+proc addBoolInfo*(t: var Tree; info: PackedLineInfo; k: InfoKey, b: bool) =
+  build t, info, Info:
+    t.addInfoId info, k
+    t.addImmediateVal info, b.int
+
 proc store*(r: var RodFile; t: Tree) = storeSeq r, t.nodes
 proc load*(r: var RodFile; t: var Tree) = loadSeq r, t.nodes
 
@@ -538,6 +581,8 @@ proc toString*(t: Tree; pos: NodePos; strings, verbatims: BiTable[string], integ
     r.add $cast[EmitTargetKind](t[pos].operand)
   of PragmaId:
     r.add $cast[PragmaKey](t[pos].operand)
+  of InfoId:
+    r.add $cast[InfoKey](t[pos].operand)
   of Typed:
     r.add "T<"
     r.add $t[pos].operand

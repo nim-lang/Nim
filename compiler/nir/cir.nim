@@ -617,6 +617,20 @@ proc genVisualCPPAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
   c.gen(t, n) # inline asm
   c.add CurlyRi
 
+proc genBasicAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
+  assert (
+    t[n].rawOperand - 1 == t[n.firstSon].rawOperand and
+    t[n.firstSon].kind == Verbatim
+    ), "Invalid basic asm. Basic asm should be only one verbatim"
+
+  let s = c.m.lit.verbatims[t[n.firstSon].litId]
+  var left = 0
+  for j in 0..s.high:
+    if s[j] == '\n':
+      c.add makeCString(s[left..j])
+      c.add NewLine
+      left = j + 1
+
 proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   case t[n].kind
   of Nop:
@@ -877,19 +891,24 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   of Verbatim:
     c.add c.m.lit.verbatims[t[n].litId]
   of Emit:
-    let (targetRaw, code) = sons2(t, n)
-    let target = cast[EmitTargetKind](t[targetRaw].rawOperand)
-    
+    requireInfo t, n, IsGlobal
+    let
+      target = cast[EmitTargetKind](t[n.firstSon].rawOperand)
+      code = lastSon(t, n)
+
     case target:
       of Asm:
-        let isInlineAsm =
-          # not fetchInfo(IsGlobal).infoVal(bool) or 
-          c.props.inlineAsmSyntax == VisualCPP
+        let isBasicAsm =
+          fetchInfo(t, n, IsGlobal).infoVal(t, bool) and
+          c.props.inlineAsmSyntax != VisualCPP
 
-        case c.props.inlineAsmSyntax:
-          of None: raiseAssert "Your compiler does not support the inline assembler"
-          of GCCExtendedAsm: genGccAsm(c, t, code)
-          of VisualCPP: genVisualCPPAsm(c, t, code)
+        if not isBasicAsm:
+          case c.props.inlineAsmSyntax:
+            of None: raiseAssert "Your compiler does not support the inline assembler"
+            of GCCExtendedAsm: genGccAsm(c, t, code)
+            of VisualCPP: genVisualCPPAsm(c, t, code)
+        else: genBasicAsm(c, t, code)
+          
       of Code:
         raiseAssert"not supported"
 
@@ -899,6 +918,9 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   of EmitCode:
     for ch in sons(t, n):
       gen c, t, ch
+
+  of Info, InfoId:
+    discard "Info can't generate code"
 
 const
   Prelude = """
