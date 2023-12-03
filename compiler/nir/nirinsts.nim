@@ -253,18 +253,7 @@ proc nextChild(tree: Tree; pos: var int) {.inline.} =
 proc next*(tree: Tree; pos: var NodePos) {.inline.} = nextChild tree, int(pos)
 
 template firstSon*(n: NodePos): NodePos = NodePos(n.int+1)
-proc lastSon*(tree: Tree; n: NodePos): NodePos =
-  var
-    pos = n.int
-    oldPos = pos
 
-  assert tree.nodes[pos].kind > LastAtomicValue
-  let last = pos + tree.nodes[pos].rawSpan
-  inc pos
-  while pos < last:
-    oldPos = pos
-    nextChild tree, pos
-  NodePos oldPos
 
 template skipTyped*(n: NodePos): NodePos = NodePos(n.int+2)
 
@@ -310,6 +299,28 @@ iterator sonsRest*(tree: Tree; parent, n: NodePos): NodePos =
 
 proc span(tree: Tree; pos: int): int {.inline.} =
   if tree.nodes[pos].kind <= LastAtomicValue: 1 else: int(tree.nodes[pos].operand)
+
+proc parentImpl(tree: Tree; n: NodePos): NodePos =
+  # finding the parent of a node is rather easy:
+  var pos = n.int - 1
+  while pos >= 0 and isAtom(tree, pos) or (pos + tree.nodes[pos].rawSpan - 1 < n.int):
+    dec pos
+  assert pos >= 0, "node has no parent"
+  result = NodePos(pos)
+
+proc isLastSon*(tree: Tree; parent, n: NodePos): bool {.inline.} =
+  # A node is a the last son of a parent node if its span
+  # falls onto the end of the parent's span:
+  let last = n.int + span(tree, n.int)
+  result = last == parent.int + span(tree, parent.int)
+
+proc lastSon*(tree: Tree; n: NodePos): NodePos =
+  assert(not isAtom(tree, n.int))
+  result = NodePos(n.int + span(tree, n.int) - 1)
+  while true:
+    let p = parentImpl(tree, result)
+    if p.int == n.int: break
+    result = p
 
 proc copyTree*(dest: var Tree; src: Tree) =
   let pos = 0
