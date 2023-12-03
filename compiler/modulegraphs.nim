@@ -59,6 +59,8 @@ type
     sym*: PSym
     info*: TLineInfo
     isDecl*: bool
+    caughtExceptions*: seq[PType]
+    caughtExceptionsSet*: bool
 
   PipelinePass* = enum
     NonePass

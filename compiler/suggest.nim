@@ -265,7 +265,7 @@ proc `$`*(suggest: Suggest): string =
       result.add(sep)
       result.add($suggest.endCol)
 
-proc suggestToSuggestInlayHint*(sug: Suggest): SuggestInlayHint =
+proc suggestToSuggestInlayTypeHint*(sug: Suggest): SuggestInlayHint =
   SuggestInlayHint(
     kind: sihkType,
     line: sug.line,
@@ -275,6 +275,30 @@ proc suggestToSuggestInlayHint*(sug: Suggest): SuggestInlayHint =
     paddingRight: false,
     allowInsert: true,
     tooltip: ""
+  )
+
+proc suggestToSuggestInlayExceptionHintLeft*(sug: Suggest, propagatedExceptions: seq[PType]): SuggestInlayHint =
+  SuggestInlayHint(
+    kind: sihkException,
+    line: sug.line,
+    column: sug.column,
+    label: "try ",
+    paddingLeft: false,
+    paddingRight: false,
+    allowInsert: false,
+    tooltip: "propagated exceptions: " & $propagatedExceptions
+  )
+
+proc suggestToSuggestInlayExceptionHintRight*(sug: Suggest, propagatedExceptions: seq[PType]): SuggestInlayHint =
+  SuggestInlayHint(
+    kind: sihkException,
+    line: sug.line,
+    column: sug.column + sug.tokenLen,
+    label: "!",
+    paddingLeft: false,
+    paddingRight: false,
+    allowInsert: false,
+    tooltip: "propagated exceptions: " & $propagatedExceptions
   )
 
 proc suggestResult*(conf: ConfigRef; s: Suggest) =

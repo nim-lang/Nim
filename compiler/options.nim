@@ -298,6 +298,7 @@ type
   SuggestInlayHintKind* = enum
     sihkType = "Type",
     sihkParameter = "Parameter"
+    sihkException = "Exception"
 
   SuggestInlayHint* = ref object
     kind*: SuggestInlayHintKind

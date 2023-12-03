@@ -8,6 +8,7 @@
 #
 
 import compiler/renderer
+import compiler/types
 import strformat
 import algorithm
 import tables
@@ -859,7 +860,7 @@ proc suggestResult(graph: ModuleGraph, sym: PSym, info: TLineInfo,
                              endLine = endLine, endCol = endCol)
   suggestResult(graph.config, suggest)
 
-proc suggestInlayHintResult(graph: ModuleGraph, sym: PSym, info: TLineInfo,
+proc suggestInlayHintResultType(graph: ModuleGraph, sym: PSym, info: TLineInfo,
                    defaultSection = ideNone, endLine: uint16 = 0, endCol = 0) =
   let section = if defaultSection != ideNone:
                   defaultSection
@@ -870,10 +871,55 @@ proc suggestInlayHintResult(graph: ModuleGraph, sym: PSym, info: TLineInfo,
   var suggestDef = symToSuggest(graph, sym, isLocal=false, section,
                                 info, 100, PrefixMatch.None, false, 0, true,
                                 endLine = endLine, endCol = endCol)
-  suggestDef.inlayHintInfo = suggestToSuggestInlayHint(suggestDef)
+  suggestDef.inlayHintInfo = suggestToSuggestInlayTypeHint(suggestDef)
   suggestDef.section = ideInlayHints
   if sym.kind == skForVar:
     suggestDef.inlayHintInfo.allowInsert = false
+  suggestResult(graph.config, suggestDef)
+
+proc suggestInlayHintResultException(graph: ModuleGraph, sym: PSym, info: TLineInfo,
+                   defaultSection = ideNone, caughtExceptions: seq[PType], caughtExceptionsSet: bool, endLine: uint16 = 0, endCol = 0) =
+  if not caughtExceptionsSet:
+    return
+
+  var raisesList: seq[PType] = @[]
+
+  let t = sym.typ
+  if not isNil(t) and not isNil(t.owner) and not isNil(t.owner.typ) and not isNil(t.owner.typ.n) and (t.owner.typ.n.len > 0):
+    let effects = t.owner.typ.n[0]
+    if effects.kind == nkEffectList and effects.len == effectListLen:
+      let effs = effects[exceptionEffects]
+      if not isNil(effs):
+        for eff in items(effs):
+          if not isNil(eff):
+            raisesList.add(eff.typ)
+
+  var propagatedExceptionList: seq[PType] = @[]
+  for re in raisesList:
+    var exceptionIsPropagated = true
+    for ce in caughtExceptions:
+      if isNil(ce) or safeInheritanceDiff(re, ce) <= 0:
+        exceptionIsPropagated = false
+        break
+    if exceptionIsPropagated:
+      propagatedExceptionList.add(re)
+
+  if propagatedExceptionList.len == 0:
+    return
+
+  let section = if defaultSection != ideNone:
+                  defaultSection
+                elif sym.info.exactEquals(info):
+                  ideDef
+                else:
+                  ideUse
+  var suggestDef = symToSuggest(graph, sym, isLocal=false, section,
+                                info, 100, PrefixMatch.None, false, 0, true,
+                                endLine = endLine, endCol = endCol)
+  suggestDef.inlayHintInfo = suggestToSuggestInlayExceptionHintLeft(suggestDef, propagatedExceptionList)
+  suggestDef.section = ideInlayHints
+  suggestResult(graph.config, suggestDef)
+  suggestDef.inlayHintInfo = suggestToSuggestInlayExceptionHintRight(suggestDef, propagatedExceptionList)
   suggestResult(graph.config, suggestDef)
 
 const
@@ -1151,10 +1197,28 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     i += parseInt(tag, endLine, i)
     i += skipWhile(tag, seps, i)
     i += parseInt(tag, endCol, i)
+    i += skipWhile(tag, seps, i)
+    var typeHints = true
+    var exceptionHints = false
+    while i <= tag.high:
+      var token: string
+      i += parseUntil(tag, token, seps, i)
+      case token:
+      of "+typeHints":
+        typeHints = true
+      of "-typeHints":
+        typeHints = false
+      of "+exceptionHints":
+        exceptionHints = true
+      of "-exceptionHints":
+        exceptionHints = false
+
     let s = graph.findSymDataInRange(file, line, col, endLine, endCol)
     for q in s:
-      if q.sym.kind in {skLet, skVar, skForVar, skConst} and q.isDecl and not q.sym.hasUserSpecifiedType:
-        graph.suggestInlayHintResult(q.sym, q.info, ideInlayHints)
+      if typeHints and q.sym.kind in {skLet, skVar, skForVar, skConst} and q.isDecl and not q.sym.hasUserSpecifiedType:
+        graph.suggestInlayHintResultType(q.sym, q.info, ideInlayHints)
+      if exceptionHints and q.sym.kind in {skProc, skFunc, skMethod} and not q.isDecl:
+        graph.suggestInlayHintResultException(q.sym, q.info, ideInlayHints, caughtExceptions = q.caughtExceptions, caughtExceptionsSet = q.caughtExceptionsSet)
   else:
     myLog fmt "Discarding {cmd}"
 
