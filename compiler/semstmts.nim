@@ -2166,7 +2166,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s = n[namePos].sym
     s.owner = c.getCurrOwner
   else:
-    s = semIdentDef(c, n[namePos], kind)
+    s = semIdentDef(c, n[namePos], kind, reportToNimsuggest=false)
     n[namePos] = newSymNode(s)
     when false:
       # disable for now
@@ -2412,6 +2412,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       result.typ = makeVarType(c, result.typ, tyOwned)
   elif isTopLevel(c) and s.kind != skIterator and s.typ.callConv == ccClosure:
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
+  suggestSym(c.graph, s.info, s, c.graph.usageSym)
 
 proc determineType(c: PContext, s: PSym) =
   if s.typ != nil: return
