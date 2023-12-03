@@ -2532,7 +2532,7 @@ proc genAsm(c: var ProcCon; n: PNode) =
   let info = toLineInfo(c, n.info)  
   build c.code, info, Emit:
     c.code.addEmitTarget info, Asm
-    c.code.addBoolInfo info, IsGlobal, true#c.prc == nil
+    c.code.addBoolInfo info, IsGlobal, c.prc == nil
     genEmitCode c, n
     
 

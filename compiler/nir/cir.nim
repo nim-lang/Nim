@@ -623,7 +623,7 @@ proc genBasicAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
     t[n.firstSon].kind == Verbatim
     ), "Invalid basic asm. Basic asm should be only one verbatim"
 
-  let s = c.m.lit.verbatims[t[n.firstSon].litId]
+  let s = c.m.lit.verbatims[t[n.firstSon].litId] & '\n'
   var left = 0
   for j in 0..s.high:
     if s[j] == '\n':
