@@ -2169,8 +2169,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s.owner = c.getCurrOwner
   else:
     # Highlighting needs to be done early so the position for
-    # names isn't changed. But can't check if this is the definition
-    # yet since the doc comments aren't passed
+    # name isn't changed (see taccent_highlight). We don't want to check if this is the
+    # defintion yet since we are missing some info (comments, side effects)
     s = semIdentDef(c, n[namePos], kind, reportToNimsuggest=isHighlight)
     n[namePos] = newSymNode(s)
     when false:
