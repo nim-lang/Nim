@@ -49,7 +49,6 @@ type
     CaseKeyword = "case "
     DefaultKeyword = "default:"
     BreakKeyword = "break"
-    AsmKeyword = "__asm__ "
     NullPtr = "nullptr"
     IfNot = "if (!("
     ReturnKeyword = "return "
@@ -561,7 +560,7 @@ template moveToDataSection(body: untyped) =
   setLen c.code, oldLen
 
 proc genGccAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
-  c.add AsmKeyword
+  c.add "__asm__ "
   c.add ParLe
   c.add NewLine
 
@@ -580,7 +579,7 @@ proc genGccAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
     var notFinal = false
     for i in s:
       if i == ':': beforeNext = true
-      if i notin {' ', '\t', '\n'}:
+      if i notin {' ', '\t'}:
         notFinal = true
         break
     not beforeNext and notFinal
@@ -611,6 +610,12 @@ proc genGccAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
 
   c.add ParRi
   c.add Semicolon
+
+proc genVisualCPPAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
+  c.add "__asm "
+  c.add CurlyLe
+  c.gen(t, n) # inline asm
+  c.add CurlyRi
 
 proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   case t[n].kind
@@ -877,15 +882,23 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
     
     case target:
       of Asm:
+        let isInlineAsm =
+          # not fetchInfo(IsGlobal).infoVal(bool) or 
+          c.props.inlineAsmSyntax == VisualCPP
+
         case c.props.inlineAsmSyntax:
-          of None: discard
+          of None: raiseAssert "Your compiler does not support the inline assembler"
           of GCCExtendedAsm: genGccAsm(c, t, code)
-          of VisualCPP: raiseAssert"not implemented"
+          of VisualCPP: genVisualCPPAsm(c, t, code)
       of Code:
         raiseAssert"not supported"
 
-  of EmitTarget, EmitCode:
+  of EmitTarget:
     discard
+
+  of EmitCode:
+    for ch in sons(t, n):
+      gen c, t, ch
 
 const
   Prelude = """
