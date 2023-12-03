@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, trees, msgs, platform, renderer, options,
-  lineinfos, int128, modulegraphs, astmsgs
+  lineinfos, int128, modulegraphs, astmsgs, wordrecg
 
 import std/[intsets, strutils]
 
@@ -762,6 +762,14 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       result.add(')')
       if t.len > 0 and t[0] != nil: result.add(": " & typeToString(t[0]))
       var prag = if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags: "" else: $t.callConv
+      if not isNil(t.owner) and not isNil(t.owner.ast) and (t.owner.ast.len - 1) >= pragmasPos:
+        let pragmasNode = t.owner.ast[pragmasPos]
+        let raisesSpec = effectSpec(pragmasNode, wRaises)
+        if not isNil(raisesSpec):
+          addSep(prag)
+          prag.add("raises: ")
+          prag.add($raisesSpec)
+
       if tfNoSideEffect in t.flags:
         addSep(prag)
         prag.add("noSideEffect")
