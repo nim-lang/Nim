@@ -588,7 +588,7 @@ proc genGccAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
   maybeAddQuote # first "
   for ch in sons(t, n):
     if t[ch].kind == Verbatim:
-      s = c.m.lit.verbatims[t[ch].litId]
+      s = c.m.lit.strings[t[ch].litId]
       left = 0
       for i in 0..s.high:
         if s[i] == '\n':
@@ -623,7 +623,7 @@ proc genBasicAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
     t[n.firstSon].kind == Verbatim
     ), "Invalid basic asm. Basic asm should be only one verbatim"
 
-  let s = c.m.lit.verbatims[t[n.firstSon].litId] & '\n'
+  let s = c.m.lit.strings[t[n.firstSon].litId] & '\n'
   var left = 0
   for j in 0..s.high:
     if s[j] == '\n':
@@ -889,7 +889,7 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   of PragmaPair, PragmaId, TestOf, Yld, SetExc, TestExc:
     c.add "cannot interpret: " & $t[n].kind
   of Verbatim:
-    c.add c.m.lit.verbatims[t[n].litId]
+    c.add c.m.lit.strings[t[n].litId]
   of Emit:
     requireInfo t, n, IsGlobal
     let

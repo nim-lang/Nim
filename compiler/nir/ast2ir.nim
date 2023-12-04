@@ -2522,7 +2522,7 @@ template genEmitCode(c: var ProcCon; n: PNode) =
     for i in n:
       case i.kind:
         of nkStrLit..nkTripleStrLit:
-          c.code.addVerbatim c.lit.verbatims, info, i.strVal
+          c.code.addVerbatim c.lit.strings, info, i.strVal
         of nkSym:
           c.code.addSymUse info, toSymId(c, i.sym)
         else:

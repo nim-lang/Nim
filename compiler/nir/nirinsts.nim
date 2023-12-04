@@ -554,7 +554,7 @@ template localName(s: SymId): string =
 proc store*(r: var RodFile; t: SymNames) = storeSeq(r, t.s)
 proc load*(r: var RodFile; t: var SymNames) = loadSeq(r, t.s)
 
-proc toString*(t: Tree; pos: NodePos; strings, verbatims: BiTable[string], integers: BiTable[int64];
+proc toString*(t: Tree; pos: NodePos; strings: BiTable[string], integers: BiTable[int64];
                names: SymNames;
                r: var string; nesting = 0) =
   const tripleQuote = """""""""
@@ -572,7 +572,7 @@ proc toString*(t: Tree; pos: NodePos; strings, verbatims: BiTable[string], integ
     escapeToNimLit(strings[LitId t[pos].operand], r)
   of Verbatim:
     r.add "Verbatim " & tripleQuote & '\n'
-    r.add verbatims[LitId t[pos].operand]
+    r.add strings[LitId t[pos].operand]
     r.add '\n' & tripleQuote
   of SymDef:
     r.add "SymDef "
@@ -609,17 +609,17 @@ proc toString*(t: Tree; pos: NodePos; strings, verbatims: BiTable[string], integ
     r.add "{\n"
     for i in 0..<(nesting+1)*2: r.add ' '
     for p in sons(t, pos):
-      toString t, p, strings, verbatims, integers, names, r, nesting+1
+      toString t, p, strings, integers, names, r, nesting+1
     r.add "\n"
     for i in 0..<nesting*2: r.add ' '
     r.add "}"
 
-proc allTreesToString*(t: Tree; strings, verbatims: BiTable[string], integers: BiTable[int64];
+proc allTreesToString*(t: Tree; strings: BiTable[string], integers: BiTable[int64];
                        names: SymNames;
                        r: var string) =
   var i = 0
   while i < t.len:
-    toString t, NodePos(i), strings, verbatims, integers, names, r
+    toString t, NodePos(i), strings, integers, names, r
     nextChild t, i
 
 type

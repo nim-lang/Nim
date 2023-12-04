@@ -73,7 +73,6 @@ type
     versionSection
     configSection
     stringsSection
-    verbatimsSection
     checkSumsSection
     depsSection
     numbersSection

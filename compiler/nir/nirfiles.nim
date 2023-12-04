@@ -29,9 +29,6 @@ proc load*(filename: string): NirModule =
     r.loadSection stringsSection
     r.load result.lit.strings
 
-    r.loadSection verbatimsSection
-    r.load result.lit.verbatims
-
     r.loadSection numbersSection
     r.load result.lit.numbers
 
@@ -60,9 +57,6 @@ proc store*(m: NirModule; outp: string) =
     r.storeHeader(nirCookie)
     r.storeSection stringsSection
     r.store m.lit.strings
-
-    r.storeSection verbatimsSection
-    r.store m.lit.verbatims
 
     r.storeSection numbersSection
     r.store m.lit.numbers
