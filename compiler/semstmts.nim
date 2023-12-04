@@ -2153,7 +2153,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   result = n
   checkMinSonsLen(n, bodyPos + 1, c.config)
 
-  let isAnon = n[namePos].kind == nkEmpty
+  let
+    isAnon = n[namePos].kind == nkEmpty
+    isHighlight = c.config.ideCmd == ideHighlight
 
   var s: PSym
 
@@ -2166,7 +2168,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s = n[namePos].sym
     s.owner = c.getCurrOwner
   else:
-    s = semIdentDef(c, n[namePos], kind)
+    # Highlighting needs to be done early so the position for
+    # name isn't changed (see taccent_highlight). We don't want to check if this is the
+    # defintion yet since we are missing some info (comments, side effects)
+    s = semIdentDef(c, n[namePos], kind, reportToNimsuggest=isHighlight)
     n[namePos] = newSymNode(s)
     when false:
       # disable for now
@@ -2412,6 +2417,11 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       result.typ = makeVarType(c, result.typ, tyOwned)
   elif isTopLevel(c) and s.kind != skIterator and s.typ.callConv == ccClosure:
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
+
+  # Prevent double highlights. We already highlighted before.
+  # When not highlighting we still need to allow for suggestions though
+  if not isHighlight:
+    suggestSym(c.graph, s.info, s, c.graph.usageSym)
 
 proc determineType(c: PContext, s: PSym) =
   if s.typ != nil: return
