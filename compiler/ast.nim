@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, options, ropes, idents, int128, wordrecg, nodes, nimtypes
+  lineinfos, options, idents, int128, wordrecg, nodes, nimtypes
 
 import std/[tables, hashes]
 from std/strutils import toLowerAscii
@@ -19,6 +19,8 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 export int128
+
+export PSym, PType, TType, PNode, TNodeKind, TNodeFlag, TSymFlag
 
 var
   eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect, tfIsOutParam}
@@ -712,44 +714,46 @@ when false:
 
 proc isGCedMem*(g: TypeGraph; t: PType): bool {.inline.} =
   result = g[t].kind in {tyString, tyRef, tySequence} or
-           g[t].kind == tyProc and t.callConv == ccClosure
+           g[t].kind == tyProc and g.callConv.getOrDefault(t) == ccClosure
 
-proc propagateToOwner*(g: TypeGraph; owner, elem: PType; propagateHasAsgn = true) =
-  owner.flags.incl elem.flags * {tfHasMeta, tfTriggersCompileTime}
-  if tfNotNil in elem.flags:
-    if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
-      owner.flags.incl tfNotNil
+proc propagateToOwner*(g: var TypeGraph; owner, elem: PType; propagateHasAsgn = true) =
+  let ef = g.flags.getOrDefault(elem)
+  g.prepareFlags(owner).incl(ef * {tfHasMeta, tfTriggersCompileTime})
+  if tfNotNil in ef:
+    if g[owner].kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
+      g.flags[owner].incl tfNotNil
 
-  if elem.isMetaType:
-    owner.flags.incl tfHasMeta
+  if g.isMetaType(elem):
+    g.flags[owner].incl tfHasMeta
 
-  let mask = elem.flags * {tfHasAsgn, tfHasOwned}
+  let mask = ef * {tfHasAsgn, tfHasOwned}
   if mask != {} and propagateHasAsgn:
-    let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
-    if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tySet, tyDistinct}:
-      o2.flags.incl mask
-      owner.flags.incl mask
+    let o2 = g.skipTypes(owner, {tyGenericInst, tyAlias, tySink})
+    if g[o2].kind in {tyTuple, tyObject, tyArray,
+                     tySequence, tySet, tyDistinct}:
+      g.prepareFlags(o2).incl mask
+      g.flags[owner].incl mask
 
-  if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
-                       tyGenericInvocation, tyPtr}:
-    let elemB = elem.skipTypes({tyGenericInst, tyAlias, tySink})
-    if elemB.isGCedMem or tfHasGCedMem in elemB.flags:
+  if g[owner].kind notin {tyProc, tyGenericInst, tyGenericBody,
+                          tyGenericInvocation, tyPtr}:
+    let elemB = g.skipTypes(elem, {tyGenericInst, tyAlias, tySink})
+    if g.isGCedMem(elemB) or tfHasGCedMem in g.flags.getOrDefault(elemB):
       # for simplicity, we propagate this flag even to generics. We then
       # ensure this doesn't bite us in sempass2.
-      owner.flags.incl tfHasGCedMem
+      g.flags[owner].incl tfHasGCedMem
 
-proc rawAddSon*(father, son: PType; propagateHasAsgn = true) =
-  father.sons.add(son)
-  if not son.isNil: propagateToOwner(father, son, propagateHasAsgn)
+when false:
+  proc rawAddSon*(father, son: PType; propagateHasAsgn = true) =
+    father.sons.add(son)
+    if not son.isNil: propagateToOwner(father, son, propagateHasAsgn)
 
-proc rawAddSonNoPropagationOfTypeFlags*(father, son: PType) =
-  father.sons.add(son)
+  proc rawAddSonNoPropagationOfTypeFlags*(father, son: PType) =
+    father.sons.add(son)
 
 proc addSonNilAllowed*(father, son: PNode) =
   father.sons.add(son)
 
-proc delSon*(father: PNode, idx: int) =
+proc delSon*(father: PNode; idx: int) =
   if father.len == 0: return
   for i in idx..<father.len - 1: father[i] = father[i + 1]
   father.sons.setLen(father.len - 1)
@@ -1025,31 +1029,29 @@ proc skipStmtList*(n: PNode): PNode =
   else:
     result = n
 
-proc toVar*(typ: PType; kind: TTypeKind; idgen: IdGenerator): PType =
+proc toVar*(g: var TypeGraph; typ: PType; kind: TTypeKind; idgen: IdGenerator): PType =
   ## If ``typ`` is not a tyVar then it is converted into a `var <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
-  if typ.kind != kind:
-    result = newType(kind, idgen, typ.owner)
-    rawAddSon(result, typ)
+  if g[typ].kind != kind:
+    result = wrapType(g, typ, kind)
 
-proc toRef*(typ: PType; idgen: IdGenerator): PType =
+proc toRef*(g: var TypeGraph; typ: PType; idgen: IdGenerator): PType =
   ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
-  if typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject:
-    result = newType(tyRef, idgen, typ.owner)
-    rawAddSon(result, typ)
+  if g[g.skipTypes(typ, {tyAlias, tyGenericInst})].kind == tyObject:
+    result = wrapType(g, typ, tyRef)
 
-proc toObject*(typ: PType): PType =
+proc toObject*(g: TypeGraph; typ: PType): PType =
   ## If ``typ`` is a tyRef then its immediate son is returned (which in many
   ## cases should be a ``tyObject``).
   ## Otherwise ``typ`` is simply returned as-is.
-  let t = typ.skipTypes({tyAlias, tyGenericInst})
-  if t.kind == tyRef: t.lastSon
+  let t = g.skipTypes(typ, {tyAlias, tyGenericInst})
+  if g[t].kind == tyRef: t.firstSon
   else: typ
 
-proc toObjectFromRefPtrGeneric*(typ: PType): PType =
+proc toObjectFromRefPtrGeneric*(g: TypeGraph; typ: PType): PType =
   #[
   See also `toObject`.
   Finds the underlying `object`, even in cases like these:
@@ -1062,25 +1064,21 @@ proc toObjectFromRefPtrGeneric*(typ: PType): PType =
   ]#
   result = typ
   while true:
-    case result.kind
-    of tyGenericBody: result = result.lastSon
-    of tyRef, tyPtr, tyGenericInst, tyGenericInvocation, tyAlias: result = result[0]
+    case g[result].kind
+    of tyGenericBody, tyRef, tyPtr, tyGenericInst, tyGenericInvocation, tyAlias:
+      result = result.firstSon
       # automatic dereferencing is deep, refs #18298.
     else: break
   # result does not have to be object type
 
-proc isImportedException*(t: PType; conf: ConfigRef): bool =
-  assert t != nil
-
+proc isImportedException*(g: TypeGraph; t: PType; conf: ConfigRef): bool =
   if conf.exc != excCpp:
     return false
 
-  let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
+  let base = g.skipTypes(t, {tyAlias, tyPtr, tyDistinct, tyGenericInst})
 
-  if base.sym != nil and {sfCompileToCpp, sfImportc} * base.sym.flags != {}:
-    result = true
-  else:
-    result = false
+  let basesym = g.ext.getOrDefault(base).sym
+  result = basesym != nil and {sfCompileToCpp, sfImportc} * basesym.flags != {}
 
 proc isInfixAs*(n: PNode): bool =
   return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.id == ord(wAs)
@@ -1090,17 +1088,16 @@ proc skipColon*(n: PNode): PNode =
   if n.kind == nkExprColonExpr:
     result = n[1]
 
-proc findUnresolvedStatic*(n: PNode): PNode =
-  if n.kind == nkSym and n.typ != nil and n.typ.kind == tyStatic and n.typ.n == nil:
+proc findUnresolvedStatic*(g: TypeGraph; n: PNode): PNode =
+  if n.kind == nkSym and g[n.typ].kind == tyStatic and g.n.getOrDefault(n.typ) == nil:
     return n
-  if n.typ != nil and n.typ.kind == tyTypeDesc:
-    let t = skipTypes(n.typ, {tyTypeDesc})
-    if t.kind == tyGenericParam and t.len == 0:
+  if g[n.typ].kind == tyTypeDesc:
+    let t = skipTypes(g, n.typ, {tyTypeDesc})
+    if g[t].kind == tyGenericParam and g.hasNoSons(t):
       return n
   for son in n:
-    let n = son.findUnresolvedStatic
+    let n = g.findUnresolvedStatic(son)
     if n != nil: return n
-
   return nil
 
 when false:
@@ -1110,11 +1107,12 @@ when false:
     for i in 0..<n.safeLen:
       if n[i].containsNil: return true
 
+template hasDestructor*(g: TypeGraph; t: PType): bool =
+  {tfHasAsgn, tfHasOwned} * g.flags.getOrDefault(t) != {}
 
-template hasDestructor*(t: PType): bool = {tfHasAsgn, tfHasOwned} * t.flags != {}
-
-template incompleteType*(t: PType): bool =
-  t.sym != nil and {sfForward, sfNoForward} * t.sym.flags == {sfForward}
+template incompleteType*(g: TypeGraph; t: PType): bool =
+  let tsym = g.ext.getOrDefault(t).sym
+  tsym != nil and {sfForward, sfNoForward} * tsym.flags == {sfForward}
 
 template typeCompleted*(s: PSym) =
   incl s.flags, sfNoForward
@@ -1122,43 +1120,44 @@ template typeCompleted*(s: PSym) =
 template detailedInfo*(sym: PSym): string =
   sym.name.s
 
-proc isInlineIterator*(typ: PType): bool {.inline.} =
-  typ.kind == tyProc and tfIterator in typ.flags and typ.callConv != ccClosure
+proc isInlineIterator*(g: TypeGraph; typ: PType): bool {.inline.} =
+  g[typ].kind == tyProc and tfIterator in g.flags.getOrDefault(typ) and g.callConv.getOrDefault(typ) != ccClosure
 
-proc isIterator*(typ: PType): bool {.inline.} =
-  typ.kind == tyProc and tfIterator in typ.flags
+proc isIterator*(g: TypeGraph; typ: PType): bool {.inline.} =
+  g[typ].kind == tyProc and tfIterator in g.flags.getOrDefault(typ)
 
-proc isClosureIterator*(typ: PType): bool {.inline.} =
-  typ.kind == tyProc and tfIterator in typ.flags and typ.callConv == ccClosure
+proc isClosureIterator*(g: TypeGraph; typ: PType): bool {.inline.} =
+  g[typ].kind == tyProc and tfIterator in g.flags.getOrDefault(typ) and g.callConv.getOrDefault(typ) == ccClosure
 
-proc isClosure*(typ: PType): bool {.inline.} =
-  typ.kind == tyProc and typ.callConv == ccClosure
+proc isClosure*(g: TypeGraph; typ: PType): bool {.inline.} =
+  g[typ].kind == tyProc and g.callConv.getOrDefault(typ) == ccClosure
 
-proc isNimcall*(s: PSym): bool {.inline.} =
-  s.typ.callConv == ccNimCall
+proc isNimcall*(g: TypeGraph; s: PSym): bool {.inline.} =
+  g.callConv.getOrDefault(s.typ) == ccNimCall
 
-proc isExplicitCallConv*(s: PSym): bool {.inline.} =
-  tfExplicitCallConv in s.typ.flags
+proc isExplicitCallConv*(g: TypeGraph; s: PSym): bool {.inline.} =
+  tfExplicitCallConv in g.flags.getOrDefault(s.typ)
 
-proc isSinkParam*(s: PSym): bool {.inline.} =
-  s.kind == skParam and (s.typ.kind == tySink or tfHasOwned in s.typ.flags)
+proc isSinkParam*(g: TypeGraph; s: PSym): bool {.inline.} =
+  s.kind == skParam and (g[s.typ].kind == tySink or g.flags.getOrDefault(s.typ).contains(tfHasOwned))
 
-proc isSinkType*(t: PType): bool {.inline.} =
-  t.kind == tySink or tfHasOwned in t.flags
+proc isSinkType*(g: TypeGraph; t: PType): bool {.inline.} =
+  g[t].kind == tySink or g.flags.getOrDefault(t).contains(tfHasOwned)
 
-proc newProcType*(info: TLineInfo; idgen: IdGenerator; owner: PSym): PType =
-  result = newType(tyProc, idgen, owner)
-  result.n = newNodeI(nkFormalParams, info)
-  rawAddSon(result, nil) # return type
-  # result.n[0] used to be `nkType`, but now it's `nkEffectList` because
-  # the effects are now stored in there too ... this is a bit hacky, but as
-  # usual we desperately try to save memory:
-  result.n.add newNodeI(nkEffectList, info)
+when false:
+  proc newProcType*(info: TLineInfo; idgen: IdGenerator; owner: PSym): PType =
+    result = newType(tyProc, idgen, owner)
+    result.n = newNodeI(nkFormalParams, info)
+    rawAddSon(result, nil) # return type
+    # result.n[0] used to be `nkType`, but now it's `nkEffectList` because
+    # the effects are now stored in there too ... this is a bit hacky, but as
+    # usual we desperately try to save memory:
+    result.n.add newNodeI(nkEffectList, info)
 
-proc addParam*(procType: PType; param: PSym) =
-  param.position = procType.len-1
-  procType.n.add newSymNode(param)
-  rawAddSon(procType, param.typ)
+  proc addParam*(procType: PType; param: PSym) =
+    param.position = procType.len-1
+    procType.n.add newSymNode(param)
+    rawAddSon(procType, param.typ)
 
 const magicsThatCanRaise = {
   mNone, mSlurp, mStaticExec, mParseExprToAst, mParseStmtToAst, mEcho}
@@ -1169,7 +1168,7 @@ proc canRaiseConservative*(fn: PNode): bool =
   else:
     result = true
 
-proc canRaise*(fn: PNode): bool =
+proc canRaise*(g: TypeGraph; fn: PNode): bool =
   if fn.kind == nkSym and (fn.sym.magic notin magicsThatCanRaise or
       {sfImportc, sfInfixCall} * fn.sym.flags == {sfImportc} or
       sfGeneratedOp in fn.sym.flags):
@@ -1178,12 +1177,13 @@ proc canRaise*(fn: PNode): bool =
     result = true
   else:
     # TODO check for n having sons? or just return false for now if not
-    if fn.typ != nil and fn.typ.n != nil and fn.typ.n[0].kind == nkSym:
+    let n = g.n.getOrDefault(fn.typ)
+    if n != nil and n[0].kind == nkSym:
       result = false
     else:
-      result = fn.typ != nil and fn.typ.n != nil and ((fn.typ.n[0].len < effectListLen) or
-        (fn.typ.n[0][exceptionEffects] != nil and
-        fn.typ.n[0][exceptionEffects].safeLen > 0))
+      result = n != nil and ((n[0].len < effectListLen) or
+        (n[0][exceptionEffects] != nil and
+        n[0][exceptionEffects].safeLen > 0))
 
 proc toHumanStrImpl[T](kind: T, num: static int): string =
   result = $kind
@@ -1205,7 +1205,7 @@ proc isNewStyleConcept*(n: PNode): bool {.inline.} =
   assert n.kind == nkTypeClassTy
   result = n[0].kind == nkEmpty
 
-proc isOutParam*(t: PType): bool {.inline.} = tfIsOutParam in t.flags
+proc isOutParam*(g: TypeGraph; t: PType): bool {.inline.} = tfIsOutParam in g.flags.getOrDefault(t)
 
 const
   nodesToIgnoreSet* = {nkNone..pred(nkSym), succ(nkSym)..nkNilLit,

@@ -195,6 +195,9 @@ type
 proc prepareExt*(g: var TypeGraph; t: PType): var TType =
   result = g.ext.mgetOrPut(t, default(TType))
 
+proc prepareFlags*(g: var TypeGraph; t: PType): var TTypeFlags =
+  result = g.flags.mgetOrPut(t, default(TTypeFlags))
+
 const
   VoidId* = PType 0
   Bool8Id* = PType 1
@@ -260,6 +263,12 @@ iterator sons*(tree: TypeGraph; n: PType): PType =
   while pos < last:
     yield PType pos
     nextChild tree, pos
+
+proc hasNoSons*(g: TypeGraph; t: PType): bool {.inline.} =
+  var pos = t.int
+  assert g.nodes[pos].kind notin TypeAtoms
+  let last = pos + g.nodes[pos].rawSpan
+  result = pos+1 >= last
 
 template `[]`*(t: TypeGraph; n: PType): TypeNode = t.nodes[n.int]
 
@@ -404,7 +413,7 @@ proc addField*(g: var TypeGraph; name: string; typ: PType; offset: int64) =
   g.addName name
   sealType(g, f)
 
-proc wrapTypeOf*(g: var TypeGraph; t: PType; k: TTypeKind): PType =
+proc wrapType*(g: var TypeGraph; t: PType; k: TTypeKind): PType =
   let f = g.openType k
   g.addType t
   result = finishType(g, f)
