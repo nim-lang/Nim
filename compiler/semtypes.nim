@@ -424,10 +424,9 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
                    typeToString(indxB.skipTypes({tyRange})))
     base = semTypeNode(c, n[2], nil)
     # ensure we only construct a tyArray when there was no error (bug #3048):
-    result = newOrPrevType(tyArray, prev, c)
     # bug #6682: Do not propagate initialization requirements etc for the
     # index type:
-    rawAddSonNoPropagationOfTypeFlags(result, indx)
+    result = newOrPrevType(tyArray, prev, c, @[indx])
     addSonSkipIntLit(result, base, c.idgen)
   else:
     localError(c.config, n.info, errArrayExpectsTwoTypeParams)
@@ -1019,13 +1018,11 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     case wrapperKind
     of tyOwned:
       if optOwnedRefs in c.config.globalOptions:
-        let t = newTypeS(tyOwned, c)
+        let t = newTypeS(tyOwned, c, @[result])
         t.flags.incl tfHasOwned
-        t.rawAddSonNoPropagationOfTypeFlags result
         result = t
     of tySink:
-      let t = newTypeS(tySink, c)
-      t.rawAddSonNoPropagationOfTypeFlags result
+      let t = newTypeS(tySink, c, @[result])
       result = t
     else: discard
     if result.kind == tyRef and c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
