@@ -42,7 +42,7 @@ proc foo(x: int): string {.raises: [ValueError].} =
 
 var p: MyProcType = foo #[tt.Error
                     ^
-type mismatch: got <proc (x: int): string{.noSideEffect, gcsafe, locks: 0.}> but expected 'MyProcType = proc (x: int): string{.closure.}'
+type mismatch: got <proc (x: int): string{.raises: [ValueError], noSideEffect, gcsafe, locks: 0.}> but expected 'MyProcType = proc (x: int): string{.closure.}'
 
 ]#
 {.pop.}
