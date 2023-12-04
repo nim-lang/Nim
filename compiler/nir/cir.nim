@@ -627,11 +627,16 @@ proc genBasicAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
 
   let s = c.m.lit.strings[t[n.firstSon].litId] & '\n'
   var left = 0
+  c.add "__asm__ "
+  c.add ParLe
+  c.add NewLine
   for j in 0..s.high:
     if s[j] == '\n':
       c.add makeCString(s[left..j])
       c.add NewLine
       left = j + 1
+  c.add ParRi
+  c.add Semicolon
 
 proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   case t[n].kind
