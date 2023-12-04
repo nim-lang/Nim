@@ -449,7 +449,9 @@ proc genProcDecl(c: var GeneratedCode; t: Tree; n: NodePos; isExtern: bool) =
         let lit = t[y].litId
         raiseAssert "cannot eval: " & c.m.lit.strings[lit]
       else: discard
-    of PragmaId: discard
+    of PragmaId:
+      let key = cast[PragmaKey](t[prc].rawOperand)
+      if key == AsmNoStackFrame: c.add "NIM_NAKED "
     else: break
     next t, prc
 
@@ -619,7 +621,7 @@ proc genVisualCPPAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
 
 proc genBasicAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
   assert (
-    t[n].rawOperand - 1 == t[n.firstSon].rawOperand and
+    isLastSon(t, n, n.firstSon) and
     t[n.firstSon].kind == Verbatim
     ), "Invalid basic asm. Basic asm should be only one verbatim"
 
@@ -1052,6 +1054,11 @@ typedef NU8 NU;
 #define nimCheckRange(x, a, b, L) ({if (x < a || x > b) goto L; x})
 #define nimCheckIndex(x, a, L) ({if (x >= a) goto L; x})
 
+#ifdef _MSC_VER
+#define NIM_NAKED __declspec(naked)
+#else
+#define NIM_NAKED __attribute__((naked))
+#endif
 """
 
 proc traverseCode(c: var GeneratedCode) =

@@ -126,7 +126,8 @@ type
     HeaderImport,
     DllImport,
     DllExport,
-    ObjExport
+    ObjExport,
+    AsmNoStackFrame
   
   InfoKey* = enum
     IsGlobal

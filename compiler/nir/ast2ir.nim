@@ -2454,6 +2454,7 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
         c.code.addStrVal c.lit.strings, info, irModule(c, ast.originatingModule(prc))
         c.code.addImmediateVal info, prc.itemId.item.int
     addCallConv c, info, prc.typ.callConv
+    if sfPure in prc.flags: c.code.addPragmaId info, AsmNoStackFrame
     if sfCompilerProc in prc.flags:
       build c.code, info, PragmaPair:
         c.code.addPragmaId info, CoreName
