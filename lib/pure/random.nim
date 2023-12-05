@@ -596,8 +596,8 @@ proc initRand*(seed: int64): Rand =
     var r2 = initRand(now.toUnix * 1_000_000_000 + now.nanosecond)
   const seedFallback0 = int32.high # arbitrary
   let seed = if seed != 0: seed else: seedFallback0 # because 0 is a fixed point
-  result.a0 = Ui(seed shr 16)
-  result.a1 = Ui(seed and 0xffff)
+  result.a0 = cast[Ui](seed shr 16)
+  result.a1 = cast[Ui](seed and 0xffff)
   when not defined(nimLegacyRandomInitRand):
     # calling `discard next(result)` (even a few times) would still produce
     # skewed numbers for the 1st call to `rand()`.

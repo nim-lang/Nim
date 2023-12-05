@@ -111,7 +111,7 @@ type
     opcAddStrCh,
     opcAddStrStr,
     opcAddSeqElem,
-    opcRangeChck,
+    opcRangeChck, opcURangeChck, opcRangeChckU, opcURangeChckU
 
     opcNAdd,
     opcNAddMultiple,

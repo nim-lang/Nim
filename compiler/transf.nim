@@ -523,7 +523,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
   var dest = skipTypes(n.typ, abstractVarRange)
   var source = skipTypes(n[1].typ, abstractVarRange)
   case dest.kind
-  of tyInt..tyInt64, tyEnum, tyChar, tyUInt8..tyUInt32:
+  of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar:
     # we don't include uint and uint64 here as these are no ordinal types ;-)
     if not isOrdinalType(source):
       # float -> int conversions. ugh.
@@ -535,7 +535,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
       result = transformSons(c, n)
     else:
       # generate a range check:
-      if dest.kind == tyInt64 or source.kind == tyInt64:
+      if dest.kind in {tyInt64, tyUInt64} or source.kind in {tyInt64, tyUInt64}:
         result = newTransNode(nkChckRange64, n, 3)
       else:
         result = newTransNode(nkChckRange, n, 3)

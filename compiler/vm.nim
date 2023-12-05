@@ -277,6 +277,16 @@ proc regToNode(x: TFullReg): PNode =
   of rkRegisterAddr: result = regToNode(x.regAddr[])
   of rkNodeAddr: result = x.nodeAddr[]
 
+proc regToNodeU(x: TFullReg): PNode =
+  ## Like `regToNode`, but convert int registers to unsigned int literals.
+  case x.kind
+  of rkNone: result = newNode(nkEmpty)
+  of rkInt: result = newNode(nkUIntLit); result.intVal = x.intVal
+  of rkFloat: result = newNode(nkFloatLit); result.floatVal = x.floatVal
+  of rkNode: result = x.node
+  of rkRegisterAddr: result = regToNode(x.regAddr[])
+  of rkNodeAddr: result = x.nodeAddr[]
+
 template getstr(a: untyped): untyped =
   (if a.kind == rkNode: a.node.strVal else: $chr(int(a.intVal)))
 
@@ -1358,14 +1368,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         regs[ra].intVal = parseBiggestFloat(regs[ra].node.strVal, rcAddr.floatVal)
 
-    of opcRangeChck:
+    of opcRangeChck, opcURangeChck, opcRangeChckU, opcURangeChckU:
       let rb = instr.regB
       let rc = instr.regC
-      if not (leValueConv(regs[rb].regToNode, regs[ra].regToNode) and
-              leValueConv(regs[ra].regToNode, regs[rc].regToNode)):
+      var raNode =
+        if instr.opcode in {opcRangeChckU, opcURangeChckU}:
+          regs[ra].regToNodeU
+        else:
+          regs[ra].regToNode
+      var (rbNode, rcNode) =
+        if instr.opcode in {opcURangeChck, opcURangeChckU}:
+          (regs[rb].regToNodeU, regs[rc].regToNodeU)
+        else:
+          (regs[rb].regToNode, regs[rc].regToNode)
+      if not (leValueConv(rbNode, raNode) and
+              leValueConv(raNode, rcNode)):
         stackTrace(c, tos, pc,
           errIllegalConvFromXtoY % [
-             $regs[ra].regToNode, "[" & $regs[rb].regToNode & ".." & $regs[rc].regToNode & "]"])
+             $raNode, "[" & $rbNode & ".." & $rcNode & "]"])
     of opcIndCall, opcIndCallAsgn:
       # dest = call regStart, n; where regStart = fn, arg1, ...
       let rb = instr.regB
