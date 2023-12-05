@@ -279,7 +279,7 @@ proc borrowFromConstExpr(n: PNode): bool =
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv,
       nkCast, nkObjUpConv, nkObjDownConv:
     result = borrowFromConstExpr(n.lastSon)
-  of nkCurly, nkBracket, nkPar, nkTupleConstr, nkObjConstr, nkClosure, nkRange:
+  of nkCurly, nkBracket, nkTupleConstr, nkObjConstr, nkClosure, nkRange:
     result = true
     for i in ord(n.kind == nkObjConstr)..<n.len:
       if not borrowFromConstExpr(n[i]): return false
@@ -379,7 +379,7 @@ proc allRoots(n: PNode; result: var seq[(PSym, int)]; level: int) =
   of nkIfStmt, nkIfExpr:
     for i in 0..<n.len:
       allRoots(n[i].lastSon, result, level)
-  of nkBracket, nkTupleConstr, nkPar:
+  of nkBracket, nkTupleConstr:
     for i in 0..<n.len:
       allRoots(n[i], result, level-1)
 
@@ -456,7 +456,7 @@ proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
       # you must destroy a ref object:
       dest.flags.incl ownsData
 
-  of nkCurly, nkBracket, nkPar, nkTupleConstr:
+  of nkCurly, nkBracket, nkTupleConstr:
     inc c.inConstructor
     for son in n:
       destMightOwn(c, dest, son)
@@ -682,7 +682,7 @@ proc traverse(c: var Partitions; n: PNode) =
     for child in n:
       let last = lastSon(child)
       traverse(c, last)
-      if child.kind == nkVarTuple and last.kind in {nkPar, nkTupleConstr}:
+      if child.kind == nkVarTuple and last.kind == nkTupleConstr:
         if child.len-2 != last.len: return
         for i in 0..<child.len-2:
           #registerVariable(c, child[i])
@@ -813,7 +813,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     for child in n:
       let last = lastSon(child)
       computeLiveRanges(c, last)
-      if child.kind == nkVarTuple and last.kind in {nkPar, nkTupleConstr}:
+      if child.kind == nkVarTuple and last.kind == nkTupleConstr:
         if child.len-2 != last.len: return
         for i in 0..<child.len-2:
           registerVariable(c, child[i])

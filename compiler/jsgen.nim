@@ -336,7 +336,7 @@ proc useMagic(p: PProc, name: string) =
 proc isSimpleExpr(p: PProc; n: PNode): bool =
   # calls all the way down --> can stay expression based
   case n.kind
-  of nkCallKinds, nkBracketExpr, nkDotExpr, nkPar, nkTupleConstr,
+  of nkCallKinds, nkBracketExpr, nkDotExpr, nkTupleConstr,
     nkObjConstr, nkBracket, nkCurly,
     nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr,
     nkConv, nkHiddenStdConv, nkHiddenSubConv:
@@ -1221,7 +1221,7 @@ proc countJsParams(typ: PType): int =
 
 const
   nodeKindsNeedNoCopy = {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
-    nkFloatLit..nkFloat64Lit, nkPar, nkStringToCString,
+    nkFloatLit..nkFloat64Lit, nkStringToCString,
     nkObjConstr, nkTupleConstr, nkBracket,
     nkCStringToString, nkCall, nkPrefix, nkPostfix, nkInfix,
     nkCommand, nkHiddenCallConv, nkCallStrLit}
@@ -2920,7 +2920,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkClosure: gen(p, n[0], r)
   of nkCurly: genSetConstr(p, n, r)
   of nkBracket: genArrayConstr(p, n, r)
-  of nkPar, nkTupleConstr: genTupleConstr(p, n, r)
+  of nkTupleConstr: genTupleConstr(p, n, r)
   of nkObjConstr: genObjConstr(p, n, r)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: genConv(p, n, r)
   of nkAddr, nkHiddenAddr:

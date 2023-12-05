@@ -1128,7 +1128,7 @@ proc newPar*(exprs: NimNode): NimNode =
 proc newPar*(exprs: varargs[NimNode]): NimNode {.deprecated:
         "don't use newPar/nnkPar to construct tuple expressions; use nnkTupleConstr instead".} =
   ## Create a new parentheses-enclosed expression.
-  newNimNode(nnkPar).add(exprs)
+  newNimNode(nnkTupleConstr).add(exprs)
 
 proc newBlockStmt*(label, body: NimNode): NimNode =
   ## Create a new block statement with label.
@@ -1695,7 +1695,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
         result = p[1]
       else:
         let def = p[0].getImpl[3]
-        result = newTree(nnkPar)
+        result = newTree(nnkTupleConstr)
         for i in 1 ..< def.len:
           let key = def[i][0]
           let val = p[i]
