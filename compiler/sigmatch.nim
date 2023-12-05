@@ -286,7 +286,7 @@ proc writeMatches*(c: TCandidate) =
   echo "  conv matches: ", c.convMatches
   echo "  inheritance: ", c.inheritancePenalty
 
-proc cmpCandidates*(a, b: TCandidate): int =
+proc cmpCandidates*(a, b: TCandidate, isOperand=false): int =
   result = a.exactMatches - b.exactMatches
   if result != 0: return
   result = a.genericMatches - b.genericMatches
@@ -300,11 +300,12 @@ proc cmpCandidates*(a, b: TCandidate): int =
   # the other way round because of other semantics:
   result = b.inheritancePenalty - a.inheritancePenalty
   if result != 0: return
-  # check for generic subclass relation
-  result = checkGeneric(a, b)
-  if result != 0: return
-  # prefer more specialized generic over more general generic:
-  result = complexDisambiguation(a.callee, b.callee)
+  if not isOperand:
+    # check for generic subclass relation
+    result = checkGeneric(a, b)
+    if result != 0: return
+    # prefer more specialized generic over more general generic:
+    result = complexDisambiguation(a.callee, b.callee)
   # only as a last resort, consider scoping:
   if result != 0: return
   result = a.calleeScope - b.calleeScope
@@ -2368,7 +2369,6 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
                              skIterator, skMacro, skTemplate, skEnumField}:
         copyCandidate(z, m)
         z.callee = arg[i].typ
-        if tfUnresolved in z.callee.flags: continue
         z.calleeSym = arg[i].sym
         # XXX this is still all wrong: (T, T) should be 2 generic matches
         # and  (int, int) 2 exact matches, etc. Essentially you cannot call
@@ -2382,7 +2382,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
             x = z
             best = i
           of csMatch:
-            let cmp = cmpCandidates(x, z)
+            let cmp = cmpCandidates(x, z, isOperand=true)
             if cmp < 0:
               best = i
               x = z
@@ -2391,7 +2391,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
 
     if x.state == csEmpty:
       result = nil
-    elif y.state == csMatch and cmpCandidates(x, y) == 0:
+    elif y.state == csMatch and cmpCandidates(x, y, isOperand=true) == 0:
       if x.state != csMatch:
         internalError(m.c.graph.config, arg.info, "x.state is not csMatch")
       # ambiguous: more than one symbol fits!
