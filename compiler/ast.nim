@@ -1567,10 +1567,6 @@ when false:
     result = prev
     result.sons = sons
 
-proc addSon*(father, son: PType) =
-  # todo fixme: in IC, `son` might be nil
-  father.sons.add(son)
-
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(typeof(a.k)): a.k = b.k
   if a.storage == low(typeof(a.storage)): a.storage = b.storage
@@ -1712,9 +1708,6 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
 proc rawAddSon*(father, son: PType; propagateHasAsgn = true) =
   father.sons.add(son)
   if not son.isNil: propagateToOwner(father, son, propagateHasAsgn)
-
-proc rawAddSonNoPropagationOfTypeFlags*(father, son: PType) =
-  father.sons.add(son)
 
 proc addSonNilAllowed*(father, son: PNode) =
   father.sons.add(son)

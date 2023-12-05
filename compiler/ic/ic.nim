@@ -994,8 +994,10 @@ proc typeBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
     for op, item in pairs t.attachedOps:
       result.attachedOps[op] = loadSym(c, g, si, item)
   result.typeInst = loadType(c, g, si, t.typeInst)
+  var sons = newSeq[PType]()
   for son in items t.types:
-    result.addSon loadType(c, g, si, son)
+    sons.add loadType(c, g, si, son)
+  result.setSons(sons)
   loadAstBody(t, n)
   when false:
     for gen, id in items t.methods:

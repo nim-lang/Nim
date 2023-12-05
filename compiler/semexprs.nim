@@ -345,10 +345,9 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
 
   if targetType.kind in {tySink, tyLent} or isOwnedSym(c, n[0]):
     let baseType = semTypeNode(c, n[1], nil).skipTypes({tyTypeDesc})
-    let t = newTypeS(targetType.kind, c)
+    let t = newTypeS(targetType.kind, c, @[baseType])
     if targetType.kind == tyOwned:
       t.flags.incl tfHasOwned
-    t.rawAddSonNoPropagationOfTypeFlags baseType
     result = newNodeI(nkType, n.info)
     result.typ = makeTypeDesc(c, t)
     return
