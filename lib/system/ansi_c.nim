@@ -77,9 +77,7 @@ elif defined(haiku):
     SIGPIPE* = cint(7)
     SIG_DFL* = CSighandlerT(nil)
 else:
-  when defined(nimscript):
-    {.error: "SIGABRT not ported to your platform".}
-  else:
+  when not defined(nimscript):
     var
       SIGINT* {.importc: "SIGINT", nodecl.}: cint
       SIGSEGV* {.importc: "SIGSEGV", nodecl.}: cint
