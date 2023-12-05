@@ -124,6 +124,8 @@ Here are few examples of using the `switch` proc:
   switch("define", "release")
   # command-line: --forceBuild
   switch("forceBuild")
+  # command-line: --hint[Conf]:off or --hint:Conf:off
+  switch("hint", "[Conf]:off")
   ```
 
 NimScripts also support `--`:option: templates for convenience, which look
@@ -329,7 +331,7 @@ Evolving Scripting language
 
 NimScript evolves together with Nim,
 [occasionally new features might become available on NimScript](
-https://github.com/nim-lang/Nim/pulls?utf8=%E2%9C%93&q=nimscript),
+https://github.com/nim-lang/Nim/pulls?q=nimscript+is%3Amerged),
 adapted from compiled Nim or added as new features on both.
 
 Scripting Language with a Package Manager

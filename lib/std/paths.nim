@@ -1,4 +1,7 @@
 ## This module implements path handling.
+##
+## **See also:**
+## * `files module <files.html>`_ for file access
 
 import std/private/osseps
 export osseps
@@ -6,7 +9,7 @@ export osseps
 import std/envvars
 import std/private/osappdirs
 
-import pathnorm
+import std/pathnorm
 
 from std/private/ospaths2 import  joinPath, splitPath,
                                   ReadDirEffect, WriteDirEffect,

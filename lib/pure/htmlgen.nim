@@ -8,7 +8,7 @@
 #
 
 ## Do yourself a favor and import the module
-## as `from htmlgen import nil` and then fully qualify the macros.
+## as `from std/htmlgen import nil` and then fully qualify the macros.
 ##
 ## *Note*: The Karax project (`nimble install karax`) has a better
 ## way to achieve the same, see https://github.com/pragmagic/karax/blob/master/tests/nativehtmlgen.nim
@@ -30,9 +30,10 @@
 ## Examples
 ## ========
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   var nim = "Nim"
 ##   echo h1(a(href="https://nim-lang.org", nim))
+##   ```
 ##
 ## Writes the string:
 ##
@@ -40,7 +41,7 @@
 ##
 
 import
-  macros, strutils
+  std/[macros, strutils]
 
 const
   coreAttr* = " accesskey class contenteditable dir hidden id lang " &

@@ -10,7 +10,7 @@ template `^`*(x: int): BackwardsIndex = BackwardsIndex(x)
   ## Builtin `roof`:idx: operator that can be used for convenient array access.
   ## `a[^x]` is a shortcut for `a[a.len-x]`.
   ##
-  ##   ```
+  ##   ```nim
   ##   let
   ##     a = [1, 3, 5, 7, 9]
   ##     b = "abcdefgh"
@@ -46,7 +46,7 @@ template `..^`*(a, b: untyped): untyped =
 
 template `..<`*(a, b: untyped): untyped =
   ## A shortcut for `a .. pred(b)`.
-  ##   ```
+  ##   ```nim
   ##   for i in 5 ..< 9:
   ##     echo i # => 5; 6; 7; 8
   ##   ```
@@ -76,7 +76,7 @@ template spliceImpl(s, a, L, b: typed): untyped =
 proc `[]`*[T, U: Ordinal](s: string, x: HSlice[T, U]): string {.inline, systemRaisesDefect.} =
   ## Slice operation for strings.
   ## Returns the inclusive range `[s[x.a], s[x.b]]`:
-  ##   ```
+  ##   ```nim
   ##   var s = "abcdef"
   ##   assert s[1..3] == "bcd"
   ##   ```
@@ -106,18 +106,21 @@ proc `[]=`*[T, U: Ordinal](s: var string, x: HSlice[T, U], b: string) {.systemRa
 proc `[]`*[Idx, T; U, V: Ordinal](a: array[Idx, T], x: HSlice[U, V]): seq[T] {.systemRaisesDefect.} =
   ## Slice operation for arrays.
   ## Returns the inclusive range `[a[x.a], a[x.b]]`:
-  ##   ```
+  ##   ```nim
   ##   var a = [1, 2, 3, 4]
   ##   assert a[0..2] == @[1, 2, 3]
   ##   ```
   let xa = a ^^ x.a
   let L = (a ^^ x.b) - xa + 1
-  result = newSeq[T](L)
+  # Workaround bug #22852:
+  result = newSeq[T](if L < 0: 0 else: L)
   for i in 0..<L: result[i] = a[Idx(i + xa)]
+  # Workaround bug #22852
+  discard Natural(L)
 
 proc `[]=`*[Idx, T; U, V: Ordinal](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) {.systemRaisesDefect.} =
   ## Slice assignment for arrays.
-  ##   ```
+  ##   ```nim
   ##   var a = [10, 20, 30, 40, 50]
   ##   a[1..2] = @[99, 88]
   ##   assert a == [10, 99, 88, 40, 50]
@@ -132,7 +135,7 @@ proc `[]=`*[Idx, T; U, V: Ordinal](a: var array[Idx, T], x: HSlice[U, V], b: ope
 proc `[]`*[T; U, V: Ordinal](s: openArray[T], x: HSlice[U, V]): seq[T] {.systemRaisesDefect.} =
   ## Slice operation for sequences.
   ## Returns the inclusive range `[s[x.a], s[x.b]]`:
-  ##   ```
+  ##   ```nim
   ##   var s = @[1, 2, 3, 4]
   ##   assert s[0..2] == @[1, 2, 3]
   ##   ```

@@ -7,7 +7,7 @@ Expression: int(inNanoseconds(t2 - t1)) / 100.5
   [1] int(inNanoseconds(t2 - t1)): int
   [2] 100.5: float64
 
-Expected one of (first mismatch at position [#]):
+Expected one of (first mismatch at [position]):
 [1] proc `/`(x, y: float): float
 [1] proc `/`(x, y: float32): float32
 [2] proc `/`(x, y: int): float

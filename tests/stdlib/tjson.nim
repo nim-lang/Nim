@@ -1,6 +1,5 @@
 discard """
-  matrix: "--mm:refc"
-  targets: "c cpp js"
+  matrix: "--mm:refc; --backend:cpp --mm:refc; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
 """
 
 
@@ -9,6 +8,7 @@ Note: Macro tests are in tests/stdlib/tjsonmacro.nim
 ]#
 
 import std/[json,parsejson,strutils]
+import std/private/jsutils
 from std/math import isNaN
 when not defined(js):
   import std/streams
@@ -314,7 +314,8 @@ block: # bug #17383
   else:
     testRoundtrip(int.high): "9223372036854775807"
     testRoundtrip(uint.high): "18446744073709551615"
-  when not defined(js):
+  whenJsNoBigInt64: discard
+  do:
     testRoundtrip(int64.high): "9223372036854775807"
     testRoundtrip(uint64.high): "18446744073709551615"
 

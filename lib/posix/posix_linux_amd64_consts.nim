@@ -453,6 +453,7 @@ const MAP_POPULATE* = cint(32768)
 
 # <sys/resource.h>
 const RLIMIT_NOFILE* = cint(7)
+const RLIMIT_STACK* = cint(3)
 
 # <sys/select.h>
 const FD_SETSIZE* = cint(1024)
@@ -464,6 +465,7 @@ const MSG_EOR* = cint(128)
 const MSG_OOB* = cint(1)
 const SCM_RIGHTS* = cint(1)
 const SO_ACCEPTCONN* = cint(30)
+const SO_BINDTODEVICE* = cint(25)
 const SO_BROADCAST* = cint(6)
 const SO_DEBUG* = cint(1)
 const SO_DONTROUTE* = cint(5)

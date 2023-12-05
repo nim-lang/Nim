@@ -136,14 +136,11 @@ runnableExamples:
 ## a more complex object as a key you will be greeted by a strange compiler
 ## error:
 ##
-## .. code::
-##
-##   Error: type mismatch: got (Person)
-##   but expected one of:
-##   hashes.hash(x: openArray[A]): Hash
-##   hashes.hash(x: int): Hash
-##   hashes.hash(x: float): Hash
-##   …
+##     Error: type mismatch: got (Person)
+##     but expected one of:
+##     hashes.hash(x: openArray[A]): Hash
+##     hashes.hash(x: int): Hash
+##     hashes.hash(x: float): Hash
 ##
 ## What is happening here is that the types used for table keys require to have
 ## a `hash()` proc which will convert them to a `Hash <hashes.html#Hash>`_
@@ -197,7 +194,7 @@ runnableExamples:
 
 
 import std/private/since
-import hashes, math, algorithm
+import std/[hashes, math, algorithm]
 
 
 when not defined(nimHasEffectsOf):
@@ -220,8 +217,6 @@ type
     ## For creating a new empty TableRef, use `newTable proc
     ## <#newTable>`_.
 
-const
-  defaultInitialSize* = 32
 
 # ------------------------------ helpers ---------------------------------
 
@@ -317,7 +312,7 @@ proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   result = initTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
-proc `[]`*[A, B](t: Table[A, B], key: A): B =
+proc `[]`*[A, B](t: Table[A, B], key: A): lent B =
   ## Retrieves the value at `t[key]`.
   ##
   ## If `key` is not in `t`, the `KeyError` exception is raised.
@@ -420,7 +415,7 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A): B =
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a.getOrDefault('a') == 5
     doAssert a.getOrDefault('z') == 0
-
+  result = default(B)
   getOrDefaultImpl(t, key)
 
 proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
@@ -438,7 +433,7 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
-
+  result = default(B)
   getOrDefaultImpl(t, key, default)
 
 proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
@@ -476,6 +471,18 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
     # Correct
     t.mgetOrPut(25, @[25]).add(35)
     doAssert t[25] == @[25, 35]
+
+  mgetOrPutImpl(enlarge)
+
+proc mgetOrPut*[A, B](t: var Table[A, B], key: A): var B =
+  ## Retrieves the value at `t[key]` or puts the
+  ## default initialization value for type `B` (e.g. 0 for any
+  ## integer type).
+  runnableExamples:
+    var a = {'a': 5}.newTable
+    doAssert a.mgetOrPut('a') == 5
+    a.mgetOrPut('z').inc
+    doAssert a == {'a': 5, 'z': 1}.newTable
 
   mgetOrPutImpl(enlarge)
 
@@ -680,7 +687,7 @@ iterator pairs*[A, B](t: Table[A, B]): (A, B) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   let a = {
   ##     'o': [1, 5, 7, 9],
   ##     'e': [2, 4, 6, 8]
@@ -694,6 +701,7 @@ iterator pairs*[A, B](t: Table[A, B]): (A, B) =
   ##   # value: [2, 4, 6, 8]
   ##   # key: o
   ##   # value: [1, 5, 7, 9]
+  ##   ```
   let L = len(t)
   for h in 0 .. high(t.data):
     if isFilled(t.data[h].hcode):
@@ -1017,6 +1025,18 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
     doAssert t[25] == @[25, 35]
   t[].mgetOrPut(key, val)
 
+proc mgetOrPut*[A, B](t: TableRef[A, B], key: A): var B =
+  ## Retrieves the value at `t[key]` or puts the
+  ## default initialization value for type `B` (e.g. 0 for any
+  ## integer type).
+  runnableExamples:
+    var a = {'a': 5}.newTable
+    doAssert a.mgetOrPut('a') == 5
+    a.mgetOrPut('z').inc
+    doAssert a == {'a': 5, 'z': 1}.newTable
+
+  t[].mgetOrPut(key)
+
 proc len*[A, B](t: TableRef[A, B]): int =
   ## Returns the number of keys in `t`.
   runnableExamples:
@@ -1129,7 +1149,7 @@ iterator pairs*[A, B](t: TableRef[A, B]): (A, B) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   let a = {
   ##     'o': [1, 5, 7, 9],
   ##     'e': [2, 4, 6, 8]
@@ -1143,6 +1163,7 @@ iterator pairs*[A, B](t: TableRef[A, B]): (A, B) =
   ##   # value: [2, 4, 6, 8]
   ##   # key: o
   ##   # value: [1, 5, 7, 9]
+  ##   ```
   let L = len(t)
   for h in 0 .. high(t.data):
     if isFilled(t.data[h].hcode):
@@ -1360,7 +1381,7 @@ proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   result = initOrderedTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
-proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
+proc `[]`*[A, B](t: OrderedTable[A, B], key: A): lent B =
   ## Retrieves the value at `t[key]`.
   ##
   ## If `key` is not in `t`, the  `KeyError` exception is raised.
@@ -1465,7 +1486,7 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a.getOrDefault('a') == 5
     doAssert a.getOrDefault('z') == 0
-
+  result = default(B)
   getOrDefaultImpl(t, key)
 
 proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
@@ -1483,7 +1504,7 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
-
+  result = default(B)
   getOrDefaultImpl(t, key, default)
 
 proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
@@ -1503,6 +1524,18 @@ proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
     doAssert a.mgetOrPut('a', 99) == 5
     doAssert a.mgetOrPut('z', 99) == 99
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.toOrderedTable
+
+  mgetOrPutImpl(enlarge)
+
+proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A): var B =
+  ## Retrieves the value at `t[key]` or puts the
+  ## default initialization value for type `B` (e.g. 0 for any
+  ## integer type).
+  runnableExamples:
+    var a = {'a': 5}.toOrderedTable
+    doAssert a.mgetOrPut('a') == 5
+    a.mgetOrPut('z').inc
+    doAssert a == {'a': 5, 'z': 1}.toOrderedTable
 
   mgetOrPutImpl(enlarge)
 
@@ -1705,7 +1738,7 @@ iterator pairs*[A, B](t: OrderedTable[A, B]): (A, B) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   let a = {
   ##     'o': [1, 5, 7, 9],
   ##     'e': [2, 4, 6, 8]
@@ -1719,6 +1752,7 @@ iterator pairs*[A, B](t: OrderedTable[A, B]): (A, B) =
   ##   # value: [1, 5, 7, 9]
   ##   # key: e
   ##   # value: [2, 4, 6, 8]
+  ##   ```
 
   let L = len(t)
   forAllOrderedPairs:
@@ -1994,6 +2028,18 @@ proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
 
   result = t[].mgetOrPut(key, val)
 
+proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A): var B =
+  ## Retrieves the value at `t[key]` or puts the
+  ## default initialization value for type `B` (e.g. 0 for any
+  ## integer type).
+  runnableExamples:
+    var a = {'a': 5}.toOrderedTable
+    doAssert a.mgetOrPut('a') == 5
+    a.mgetOrPut('z').inc
+    doAssert a == {'a': 5, 'z': 1}.toOrderedTable
+
+  t[].mgetOrPut(key)
+
 proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
   ## Returns the number of keys in `t`.
   runnableExamples:
@@ -2115,7 +2161,7 @@ iterator pairs*[A, B](t: OrderedTableRef[A, B]): (A, B) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   let a = {
   ##     'o': [1, 5, 7, 9],
   ##     'e': [2, 4, 6, 8]
@@ -2129,6 +2175,7 @@ iterator pairs*[A, B](t: OrderedTableRef[A, B]): (A, B) =
   ##   # value: [1, 5, 7, 9]
   ##   # key: e
   ##   # value: [2, 4, 6, 8]
+  ##   ```
 
   let L = len(t)
   forAllOrderedPairs:
@@ -2528,7 +2575,7 @@ iterator pairs*[A](t: CountTable[A]): (A, int) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   let a = toCountTable("abracadabra")
   ##
   ##   for k, v in pairs(a):
@@ -2545,6 +2592,7 @@ iterator pairs*[A](t: CountTable[A]): (A, int) =
   ##   # value: 1
   ##   # key: r
   ##   # value: 2
+  ##   ```
   let L = len(t)
   for h in 0 .. high(t.data):
     if t.data[h].val != 0:
@@ -2808,7 +2856,7 @@ iterator pairs*[A](t: CountTableRef[A]): (A, int) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   let a = newCountTable("abracadabra")
   ##
   ##   for k, v in pairs(a):
@@ -2825,6 +2873,7 @@ iterator pairs*[A](t: CountTableRef[A]): (A, int) =
   ##   # value: 1
   ##   # key: r
   ##   # value: 2
+  ##   ```
   let L = len(t)
   for h in 0 .. high(t.data):
     if t.data[h].val != 0:
@@ -2903,3 +2952,18 @@ iterator mvalues*[A](t: CountTableRef[A]): var int =
     if t.data[h].val != 0:
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
+
+proc hash*[K,V](s: Table[K,V]): Hash =
+  for p in pairs(s):
+    result = result xor hash(p)
+  result = !$result
+
+proc hash*[K,V](s: OrderedTable[K,V]): Hash =
+  for p in pairs(s):
+    result = result !& hash(p)
+  result = !$result
+
+proc hash*[V](s: CountTable[V]): Hash =
+  for p in pairs(s):
+    result = result xor hash(p)
+  result = !$result

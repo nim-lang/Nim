@@ -1,0 +1,31 @@
+# See https://github.com/juancarlospaco/nimrun-action/issues/3#issuecomment-1607344901
+name: issue comments bisects
+on:
+  issue_comment:
+    types: created
+
+jobs:
+  bisects:
+    if: |
+      github.event_name == 'issue_comment' && startsWith(github.event.comment.body, '!nim ') && github.event.issue.pull_request == null && github.event.comment.author_association != 'NONE'
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ubuntu-latest, windows-latest, macos-latest]
+    name: ${{ matrix.platform }}-bisects
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jiro4989/setup-nim-action@v1
+        with:
+          nim-version: 'devel'
+
+      - uses: juancarlospaco/nimrun-action@nim
+        if: |
+          runner.os == 'Linux'   && contains(github.event.comment.body, '-d:linux'  ) ||
+          runner.os == 'Windows' && contains(github.event.comment.body, '-d:windows') ||
+          runner.os == 'macOS'   && contains(github.event.comment.body, '-d:osx'    ) ||
+          runner.os == 'Linux' && !contains(github.event.comment.body, '-d:linux') && !contains(github.event.comment.body, '-d:windows') && !contains(github.event.comment.body, '-d:osx')
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

@@ -7,8 +7,8 @@
 
 ## Nim `idx`:idx: file format related definitions.
 
-import strutils, std/syncio, hashes
-from os import splitFile
+import std/[strutils, syncio, hashes]
+from std/os import splitFile
 
 type
   IndexEntryKind* = enum ## discriminator tag
@@ -109,10 +109,13 @@ proc parseIdxFile*(path: string):
     result.fileEntries[f].kind = parseIndexEntryKind(cols[0])
     result.fileEntries[f].keyword = cols[1]
     result.fileEntries[f].link = cols[2]
-    if result.title.keyword.len == 0:
+    if result.fileEntries[f].kind == ieIdxRole:
       result.fileEntries[f].module = base
     else:
-      result.fileEntries[f].module = result.title.keyword
+      if result.title.keyword.len == 0:
+        result.fileEntries[f].module = base
+      else:
+        result.fileEntries[f].module = result.title.keyword
 
     result.fileEntries[f].linkTitle = cols[3].unquoteIndexColumn
     result.fileEntries[f].linkDesc = cols[4].unquoteIndexColumn

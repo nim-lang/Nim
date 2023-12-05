@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 #[
 xxx macros tests need to be reorganized to makes sure each API is tested once
 See also:
@@ -319,3 +323,27 @@ block:
       discard m
 
   hello(12)
+
+block:
+  proc hello(x: int, y: typedesc) =
+    discard
+
+  macro main =
+    let x = 12
+    result = quote do:
+      `hello`(12, type(x))
+
+  main()
+
+block: # bug #22947
+  macro bar[N: static int](a: var array[N, int]) =
+    result = quote do:
+      for i in 0 ..< `N`:
+        `a`[i] = i
+
+  func foo[N: static int](a: var array[N, int]) =
+    bar(a)
+
+
+  var a: array[4, int]
+  foo(a)

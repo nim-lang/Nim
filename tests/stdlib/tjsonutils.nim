@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c cpp js"
 """
 
@@ -60,8 +61,7 @@ template fn() =
         testRoundtrip(pointer(nil)): """0"""
         testRoundtrip(cast[pointer](nil)): """0"""
 
-    # causes workaround in `fromJson` potentially related to
-    # https://github.com/nim-lang/Nim/issues/12282
+    # refs bug #9423
     testRoundtrip(Foo(1.5)): """1.5"""
 
   block: # OrderedTable
@@ -437,6 +437,11 @@ template fn() =
       let inner = some InnerObject(x: "hello", y: A)
       let json = inner.toJson(ToJsonOptions(enumMode: joptEnumSymbol))
       doAssert $json == """{"x":"hello","y":"A"}"""
+
+    block: # bug #21638
+      type Something = object
+
+      doAssert "{}".parseJson.jsonTo(Something) == Something()
 
     when false:
       ## TODO: Implement support for nested variant objects allowing the tests

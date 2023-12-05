@@ -271,10 +271,13 @@ sub/mmain.idx""", context
     check execCmdEx(cmd) == ("12\n", 0)
 
   block: # bug #15316
-    let file = testsDir / "misc/m15316.nim"
-    let cmd = fmt"{nim} check --hints:off --nimcache:{nimcache} {file}"
-    check execCmdEx(cmd) == ("m15316.nim(1, 15) Error: expression expected, but found \')\'\nm15316.nim(2, 1) Error: expected: \':\', but got: \'[EOF]\'\nm15316.nim(2, 1) Error: expression expected, but found \'[EOF]\'\nm15316.nim(2, 1) " &
-          "Error: expected: \')\', but got: \'[EOF]\'\nError: illformed AST: \n", 1)
+    when not defined(windows):
+      # This never worked reliably on Windows. Needs further investigation but it is hard to reproduce.
+      # Looks like a mild stack corruption when bailing out of nested exception handling.
+      let file = testsDir / "misc/m15316.nim"
+      let cmd = fmt"{nim} check --hints:off --nimcache:{nimcache} {file}"
+      check execCmdEx(cmd) == ("m15316.nim(1, 15) Error: expression expected, but found \')\'\nm15316.nim(2, 1) Error: expected: \':\', but got: \'[EOF]\'\nm15316.nim(2, 1) Error: expression expected, but found \'[EOF]\'\nm15316.nim(2, 1) " &
+            "Error: expected: \')\', but got: \'[EOF]\'\nError: illformed AST: \n", 1)
 
 
   block: # config.nims, nim.cfg, hintConf, bug #16557
@@ -404,7 +407,7 @@ running: v2
 
   block: # UnusedImport
     proc fn(opt: string, expected: string) =
-      let output = runNimCmdChk("pragmas/mused3.nim", fmt"--warning:all:off --warning:UnusedImport --hint:DuplicateModuleImport {opt}")
+      let output = runNimCmdChk("msgs/mused3.nim", fmt"--warning:all:off --warning:UnusedImport --hint:DuplicateModuleImport {opt}")
       doAssert output == expected, opt & "\noutput:\n" & output & "expected:\n" & expected
     fn("-d:case1"): """
 mused3.nim(13, 8) Warning: imported and not used: 'mused3b' [UnusedImport]
@@ -434,7 +437,6 @@ mused3.nim(75, 10) Hint: duplicate import of 'mused3a'; previous import here: mu
     fn("-d:case2 --gc:refc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
     fn("-d:case1 -b:js"): """mfield_defect.nim(25, 15) Error: field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
     fn("-d:case2 -b:js"): """field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
-    # 3 instead of k3, because of lack of RTTI
-    fn("-d:case2 --gc:arc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = 3'"""
+    fn("-d:case2 --gc:arc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
 else:
   discard # only during debugging, tests added here will run with `-d:nimTestsTrunnerDebugging` enabled

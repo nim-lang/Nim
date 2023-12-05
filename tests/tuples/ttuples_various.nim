@@ -171,3 +171,41 @@ block tuple_with_seq:
     echo s
     (s, 7)
   t = test(t.a)
+
+block: # bug #22049
+  type A = object
+    field: tuple[a, b, c: seq[int]]
+
+  func value(v: var A): var tuple[a, b, c: seq[int]] =
+    v.field
+  template get(v: A): tuple[a, b, c: seq[int]] = v.value
+
+  var v = A(field: (@[1], @[2], @[3]))
+  var (a, b, c) = v.get()
+
+  doAssert a == @[1]
+  doAssert b == @[2]
+  doAssert c == @[3]
+
+block: # bug #22054
+  type A = object
+    field: tuple[a: int]
+
+  func value(v: var A): var tuple[a: int] =
+    v.field
+  template get(v: A): tuple[a: int] = v.value
+
+  var v = A(field: (a: 1314))
+  doAssert get(v)[0] == 1314
+
+block: # tuple unpacking assignment with underscore
+  var
+    a = 1
+    b = 2
+  doAssert (a, b) == (1, 2)
+  (a, _) = (3, 4)
+  doAssert (a, b) == (3, 2)
+  (_, a) = (5, 6)
+  doAssert (a, b) == (6, 2)
+  (b, _) = (7, 8)
+  doAssert (a, b) == (6, 7)

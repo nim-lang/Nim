@@ -13,7 +13,7 @@ when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
 import
-  std/[strutils, os, times, tables, sha1, with, json],
+  std/[strutils, os, times, tables, with, json],
   llstream, ast, lexer, syntaxes, options, msgs,
   condsyms,
   idents, extccomp,
@@ -22,12 +22,15 @@ import
   modules,
   modulegraphs, lineinfos, pathutils, vmprofiler
 
+# ensure NIR compiles:
+import nir / nir
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
 
-import ic / [cbackend, integrity, navigator]
-from ic / ic import rodViewer
+import ic / [cbackend, integrity, navigator, ic]
+
+import ../dist/checksums/src/checksums/sha1
 
 import pipelines
 
@@ -45,6 +48,9 @@ proc writeDepsFile(g: ModuleGraph) =
       f.writeLine(toFullPath(g.config, k))
   f.close()
 
+proc writeNinjaFile(g: ModuleGraph) =
+  discard "to implement"
+
 proc writeCMakeDepsFile(conf: ConfigRef) =
   ## write a list of C files for build systems like CMake.
   ## only updated when the C file list changes.
@@ -54,7 +60,7 @@ proc writeCMakeDepsFile(conf: ConfigRef) =
   for it in conf.toCompile: cfiles.add(it.cname.string)
   let fileset = cfiles.toCountTable()
   # read old cfiles list
-  var fl: File
+  var fl: File = default(File)
   var prevset = initCountTable[string]()
   if open(fl, fname.string, fmRead):
     for line in fl.lines: prevset.inc(line)
@@ -113,7 +119,7 @@ when not defined(leanCompiler):
       setPipeLinePass(graph, Docgen2JsonPass)
     of HtmlExt:
       setPipeLinePass(graph, Docgen2Pass)
-    else: doAssert false, $ext
+    else: raiseAssert $ext
     compilePipelineProject(graph)
 
 proc commandCompileToC(graph: ModuleGraph) =
@@ -155,6 +161,26 @@ proc commandCompileToC(graph: ModuleGraph) =
     if optGenCDeps in graph.config.globalOptions:
       writeCMakeDepsFile(conf)
 
+proc commandCompileToNir(graph: ModuleGraph) =
+  let conf = graph.config
+  extccomp.initVars(conf)
+  if conf.symbolFiles == disabledSf:
+    if {optRun, optForceFullMake} * conf.globalOptions == {optRun}:
+      if not changeDetectedViaJsonBuildInstructions(conf, conf.jsonBuildInstructionsFile):
+        # nothing changed
+        graph.config.notes = graph.config.mainPackageNotes
+        return
+
+  if not extccomp.ccHasSaneOverflow(conf):
+    conf.symbols.defineSymbol("nimEmulateOverflowChecks")
+
+  if conf.symbolFiles == disabledSf:
+    setPipeLinePass(graph, NirPass)
+  else:
+    setPipeLinePass(graph, SemPass)
+  compilePipelineProject(graph)
+  writeNinjaFile(graph)
+
 proc commandJsonScript(graph: ModuleGraph) =
   extccomp.runJsonBuildInstructions(graph.config, graph.config.jsonBuildInstructionsFile)
 
@@ -171,13 +197,16 @@ proc commandCompileToJS(graph: ModuleGraph) =
     if optGenScript in conf.globalOptions:
       writeDepsFile(graph)
 
-proc commandInteractive(graph: ModuleGraph) =
+proc commandInteractive(graph: ModuleGraph; useNir: bool) =
   graph.config.setErrorMaxHighMaybe
   initDefines(graph.config.symbols)
-  defineSymbol(graph.config.symbols, "nimscript")
+  if useNir:
+    defineSymbol(graph.config.symbols, "noSignalHandler")
+  else:
+    defineSymbol(graph.config.symbols, "nimscript")
   # note: seems redundant with -d:nimHasLibFFI
   when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
-  setPipeLinePass(graph, InterpreterPass)
+  setPipeLinePass(graph, if useNir: NirReplPass else: InterpreterPass)
   compilePipelineSystemModule(graph)
   if graph.config.commandArgs.len > 0:
     discard graph.compilePipelineModule(fileInfoIdx(graph.config, graph.config.projectFull), {})
@@ -194,7 +223,7 @@ proc commandScan(cache: IdentCache, config: ConfigRef) =
   if stream != nil:
     var
       L: Lexer
-      tok: Token
+      tok: Token = default(Token)
     initToken(tok)
     openLexer(L, f, stream, cache, config)
     while true:
@@ -265,7 +294,9 @@ proc mainCommand*(graph: ModuleGraph) =
         # and it has added this define implictly, so we must undo that here.
         # A better solution might be to fix system.nim
         undefSymbol(conf.symbols, "useNimRtl")
-    of backendInvalid: doAssert false
+    of backendNir:
+      if conf.exc == excNone: conf.exc = excGoto
+    of backendInvalid: raiseAssert "unreachable"
 
   proc compileToBackend() =
     customizeForBackend(conf.backend)
@@ -275,7 +306,8 @@ proc mainCommand*(graph: ModuleGraph) =
     of backendCpp: commandCompileToC(graph)
     of backendObjc: commandCompileToC(graph)
     of backendJs: commandCompileToJS(graph)
-    of backendInvalid: doAssert false
+    of backendNir: commandCompileToNir(graph)
+    of backendInvalid: raiseAssert "unreachable"
 
   template docLikeCmd(body) =
     when defined(leanCompiler):
@@ -302,7 +334,10 @@ proc mainCommand*(graph: ModuleGraph) =
 
   ## process all commands
   case conf.cmd
-  of cmdBackends: compileToBackend()
+  of cmdBackends:
+    compileToBackend()
+    when BenchIC:
+      echoTimes graph.packed
   of cmdTcc:
     when hasTinyCBackend:
       extccomp.setCC(conf, "tcc", unknownLineInfo)
@@ -398,6 +433,10 @@ proc mainCommand*(graph: ModuleGraph) =
       for it in conf.searchPaths: msgWriteln(conf, it.string)
   of cmdCheck:
     commandCheck(graph)
+  of cmdM:
+    graph.config.symbolFiles = v2Sf
+    setUseIc(graph.config.symbolFiles != disabledSf)
+    commandCheck(graph)
   of cmdParse:
     wantMainModule(conf)
     discard parseFile(conf.projectMainIdx, cache, conf)
@@ -405,7 +444,7 @@ proc mainCommand*(graph: ModuleGraph) =
     wantMainModule(conf)
     commandView(graph)
     #msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
-  of cmdInteractive: commandInteractive(graph)
+  of cmdInteractive: commandInteractive(graph, isDefined(conf, "nir"))
   of cmdNimscript:
     if conf.projectIsCmd or conf.projectIsStdin: discard
     elif not fileExists(conf.projectFull):
@@ -415,7 +454,7 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdJsonscript:
     setOutFile(graph.config)
     commandJsonScript(graph)
-  of cmdUnknown, cmdNone, cmdIdeTools, cmdNimfix:
+  of cmdUnknown, cmdNone, cmdIdeTools:
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
   if conf.errorCounter == 0 and conf.cmd notin {cmdTcc, cmdDump, cmdNop}:

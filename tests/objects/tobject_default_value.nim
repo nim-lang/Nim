@@ -377,7 +377,7 @@ template main {.dirty.} =
         Red, Blue, Yellow
   
     type
-      ObjectVarint3 = object # fixme it doesn't work with static
+      ObjectVarint3 = object
         case kind: Color = Blue
         of Red:
           data1: int = 10
@@ -590,6 +590,159 @@ template main {.dirty.} =
       doAssert ff.v == 1
 
     mainSync()
+
+  block: # bug #21801
+    func evaluate(i: int): float =
+      0.0
+
+    func evaluate(): float =
+      0.0
+
+    type SearchOptions = object
+        evaluation: proc(): float = evaluate
+
+  block:
+    func evaluate(): float =
+      0.0
+
+    type SearchOptions = object
+        evaluation: proc(): float = evaluate
+
+  block:
+    func evaluate(i: int): float =
+      0.0
+
+    type SearchOptions = object
+        evaluation = evaluate
+  block:
+    type
+      Result[T, E] = object
+        when T is void:
+          when E is void:
+            oResultPrivate: bool
+          else:
+            case oResultPrivate: bool
+            of false:
+              eResultPrivate: E
+            of true:
+              discard
+        else:
+          when E is void:
+            case oResultPrivate: bool
+            of false:
+              discard
+            of true:
+              vResultPrivate: T
+          else:
+            case oResultPrivate: bool
+            of false:
+              eResultPrivate: E
+            of true:
+              vResultPrivate: T
+
+
+    template `?`[T, E](self: Result[T, E]): auto =
+      let v = (self)
+      if not v.oResultPrivate:
+        when compiles(`assignResult?`(default(typeof(result)))):
+          when typeof(result) is typeof(v):
+            `assignResult?`(v)
+          elif E is void:
+            `assignResult?`(err(typeof(result)))
+          else:
+            `assignResult?`(err(typeof(result), v.eResultPrivate))
+          return
+        else:
+          return
+            when typeof(result) is typeof(v):
+              v
+            elif E is void:
+              err(typeof(result))
+            else:
+              err(typeof(result), v.eResultPrivate)
+
+      when not(T is void):
+        v.vResultPrivate
+        
+    type R = Result[int, string]
+
+    proc testAssignResult() =
+      var assigned: bool
+      template `assignResult?`(v: Result) =
+        assigned = true
+        result = v
+
+      proc failed(): Result[int, string] =
+        discard
+
+      proc calling(): Result[int, string] =
+        let _ = ? failed()
+        doAssert false
+
+      let r = calling()
+      doAssert assigned
+
+    when nimvm:
+      when not defined(js):
+        testAssignResult()
+    else:
+      testAssignResult()
+
+  block: # bug #22123
+    type Thing = object
+      x: float32 = 1
+
+    type ThingWithArray = object
+        arr: array[256, float32]
+        n: float32 = 1
+
+    type Container = ref object
+        thing: array[5, Thing]
+        thing_with_array: array[5, ThingWithArray]
+
+    var foo = new Container
+    doAssert int(foo.thing[0].x) == 1
+
+  block: # bug #22613
+    type
+      K = enum
+        A = "a"
+        B = "b"
+      T = object
+        case kind: K = B
+        of A:
+          a: int
+        of B:
+          b: float
+
+    doAssert T().kind == B
+
+  block: # bug #22926
+    type
+      Direction = enum
+        North
+        South
+        East
+        West
+
+      ArrayObj1 = object
+        list: array[Direction, int]
+
+      ArrayObj2 = object
+        list: array[Direction, int] = [1, 2, 3, 4]
+
+    block:
+      var a: ArrayObj1
+      doAssert a.list[West] == 0
+      var b = default ArrayObj1
+      doAssert b.list[North] == 0
+
+
+    block:
+      var a: ArrayObj2
+      doAssert a.list[West] == 0
+      var b = default ArrayObj2
+      doAssert b.list[North] == 1
 
 
 static: main()

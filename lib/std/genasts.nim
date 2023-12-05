@@ -1,6 +1,6 @@
 ## This module implements AST generation using captured variables for macros.
 
-import macros
+import std/macros
 
 type GenAstOpt* = enum
   kDirtyTemplate,
@@ -24,7 +24,7 @@ macro genAstOpt*(options: static set[GenAstOpt], args: varargs[untyped]): untype
       result = genAst(cond, s = repr(cond), lhs = cond[1], rhs = cond[2]):
         # each local symbol we access must be explicitly captured
         if not cond:
-          doAssert false, "'$#'' failed: lhs: '$#', rhs: '$#'" % [s, $lhs, $rhs]
+          raiseAssert "'$#'' failed: lhs: '$#', rhs: '$#'" % [s, $lhs, $rhs]
     let a = 3
     check2 a*2 == a+3
     if false: check2 a*2 < a+1 # would error with: 'a * 2 < a + 1'' failed: lhs: '6', rhs: '4'

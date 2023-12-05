@@ -1,5 +1,5 @@
 ## INTERNAL FILE FOR USE ONLY BY nre.nim.
-import tables
+import std/tables
 
 const Ident = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\128'..'\255'}
 const StartIdent = Ident - {'0'..'9'}

@@ -1,5 +1,5 @@
 discard """
-cmd: "nim doc --doccmd:--hints:off --hints:off $file"
+cmd: '''nim doc --doccmd:"-d:testFooExternal --hints:off" --hints:off $file'''
 action: "compile"
 nimoutFull: true
 nimout: '''
@@ -19,12 +19,6 @@ foo6
 joinable: false
 """
 
-#[
-pending bug #18077, use instead:
-cmd: "nim doc --doccmd:'-d:testFooExternal --hints:off' --hints:off $file"
-and merge trunnableexamples2 back here
-]#
-{.define(testFooExternal).}
 
 proc fun*() =
   runnableExamples:
@@ -196,6 +190,10 @@ runnableExamples:
   proc fun*()=echo "foo9"
   fun()
 
+# import std/assertions by default
+runnableExamples("-d:nimPreviewSlimSystem"):
+  doAssert true
+
 # note: there are yet other examples where putting runnableExamples at module
 # scope is needed, for example when using an `include` before an `import`, etc.
 
@@ -208,3 +206,8 @@ snippet:
   doAssert defined(testFooExternal)
 
 ]##
+
+when true: # runnableExamples with rdoccmd
+  runnableExamples "-d:testFoo -d:testBar":
+    doAssert defined(testFoo) and defined(testBar)
+    doAssert defined(testFooExternal)

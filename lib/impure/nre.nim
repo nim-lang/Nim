@@ -61,12 +61,12 @@ runnableExamples:
   assert find("uxabc", re"(?<=x|y)ab", start = 1).get.captures[-1] == "ab"
   assert find("uxabc", re"ab", start = 3).isNone
 
-from pcre import nil
+from std/pcre import nil
 import nre/private/util
-import tables
-from strutils import `%`
-import options
-from unicode import runeLenAt
+import std/tables
+from std/strutils import `%`
+import std/options
+from std/unicode import runeLenAt
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -217,9 +217,11 @@ type
     ## code.
 
 proc destroyRegex(pattern: Regex) =
+  `=destroy`(pattern.pattern)
   pcre.free_substring(cast[cstring](pattern.pcreObj))
   if pattern.pcreExtra != nil:
     pcre.free_study(pattern.pcreExtra)
+  `=destroy`(pattern.captureNameToId)
 
 proc getinfo[T](pattern: Regex, opt: cint): T =
   let retcode = pcre.fullinfo(pattern.pcreObj, pattern.pcreExtra, opt, addr result)

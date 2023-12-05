@@ -17,6 +17,23 @@ proc getHomeDir*(): Path {.inline, tags: [ReadEnvEffect, ReadIOEffect].} =
   ## * `getTempDir proc`_
   result = Path(osappdirs.getHomeDir())
 
+proc getDataDir*(): Path {.inline, tags: [ReadEnvEffect, ReadIOEffect].} =
+  ## Returns the data directory of the current user for applications.
+  ## 
+  ## On non-Windows OSs, this proc conforms to the XDG Base Directory
+  ## spec. Thus, this proc returns the value of the `XDG_DATA_HOME` environment
+  ## variable if it is set, otherwise it returns the default configuration
+  ## directory ("~/.local/share" or "~/Library/Application Support" on macOS).
+  ## 
+  ## See also:
+  ## * `getHomeDir proc`_
+  ## * `getConfigDir proc`_
+  ## * `getTempDir proc`_
+  ## * `expandTilde proc`_
+  ## * `getCurrentDir proc`_
+  ## * `setCurrentDir proc`_
+  result = Path(osappdirs.getDataDir())
+
 proc getConfigDir*(): Path {.inline, tags: [ReadEnvEffect, ReadIOEffect].} =
   ## Returns the config directory of the current user for applications.
   ##

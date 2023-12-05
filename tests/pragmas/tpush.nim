@@ -1,3 +1,7 @@
+discard """
+  targets: "c js"
+"""
+
 # test the new pragmas
 
 {.push warnings: off, hints: off.}
@@ -25,3 +29,51 @@ proc foo(x: string, y: int, res: int) =
 
 foo("", 0, 48)
 foo("abc", 40, 51)
+
+# bug #22362
+{.push staticBoundChecks: on.}
+proc main(): void =
+  {.pop.}
+  discard
+  {.push staticBoundChecks: on.}
+
+main()
+
+
+proc timnFoo[T](obj: T) {.noSideEffect.} = discard # BUG
+
+{.push exportc.}
+proc foo1() =
+  var s1 = "bar"
+  timnFoo(s1)
+  var s2 = @[1]
+  timnFoo(s2)
+{.pop.}
+
+
+block: # bug #22913
+  block:
+    type r = object
+
+    template std[T](x: T) =
+      let ttt {.used.} = x
+      result = $ttt
+
+    proc bar[T](x: T): string =
+      std(x)
+
+    {.push exportc: "$1".}
+    proc foo(): r =
+      let s = bar(123)
+    {.pop.}
+
+    discard foo()
+
+  block:
+    type r = object
+    {.push exportc: "$1".}
+    proc foo2(): r =
+      let s = $result
+    {.pop.}
+
+    discard foo2()

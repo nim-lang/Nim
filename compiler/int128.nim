@@ -3,7 +3,7 @@
 ## hold all from `low(BiggestInt)` to `high(BiggestUInt)`, This
 ## type is for that purpose.
 
-from math import trunc
+from std/math import trunc
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -171,6 +171,7 @@ proc addToHex*(result: var string; arg: Int128) =
     i -= 1
 
 proc toHex*(arg: Int128): string =
+  result = ""
   result.addToHex(arg)
 
 proc inc*(a: var Int128, y: uint32 = 1) =
@@ -330,8 +331,8 @@ proc `*`*(a: Int128, b: int32): Int128 =
   if b < 0:
     result = -result
 
-proc `*=`*(a: var Int128, b: int32): Int128 =
-  result = result * b
+proc `*=`(a: var Int128, b: int32) =
+  a = a * b
 
 proc makeInt128(high, low: uint64): Int128 =
   result.udata[0] = cast[uint32](low)
@@ -357,9 +358,10 @@ proc `*`*(lhs, rhs: Int128): Int128 =
 proc `*=`*(a: var Int128, b: Int128) =
   a = a * b
 
-import bitops
+import std/bitops
 
 proc fastLog2*(a: Int128): int =
+  result = 0
   if a.udata[3] != 0:
     return 96 + fastLog2(a.udata[3])
   if a.udata[2] != 0:
@@ -571,4 +573,4 @@ proc maskBytes*(arg: Int128, numbytes: int): Int128 {.noinit.} =
   of 8:
     return maskUInt64(arg)
   else:
-    assert(false, "masking only implemented for 1, 2, 4 and 8 bytes")
+    raiseAssert "masking only implemented for 1, 2, 4 and 8 bytes"

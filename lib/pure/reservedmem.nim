@@ -44,7 +44,7 @@ type
     mem: ReservedMem
 
 when defined(windows):
-  import winlean
+  import std/winlean
   import std/private/win_getsysteminfo
 
   proc getAllocationGranularity: uint =
@@ -68,7 +68,7 @@ when defined(windows):
       raiseOSError(osLastError())
 
 else:
-  import posix
+  import std/posix
 
   let allocationGranularity = sysconf(SC_PAGESIZE)
 

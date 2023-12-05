@@ -16,10 +16,25 @@ Introduction
 
 This document describes the `documentation generation tools`:idx: built into
 the [Nim compiler](nimc.html), which can generate HTML, Latex and JSON output
-from input ``.nim`` files and projects, as well as HTML and LaTeX from input RST
-(reStructuredText) files. The output documentation will include the module
+from input ``.nim`` files and projects.
+The output documentation will include the module
 dependencies (`import`), any top-level documentation comments (`##`), and
 exported symbols (`*`), including procedures, types, and variables.
+
+===================   ==============
+command               output format
+===================   ==============
+`nim doc`:cmd:        ``.html`` HTML
+`nim doc2tex`:cmd:    ``.tex`` LaTeX
+`nim jsondoc`:cmd:    ``.json`` JSON
+===================   ==============
+
+Nim can generate HTML and LaTeX from input Markdown and
+RST (reStructuredText) files as well, which is intended for writing
+standalone documents like user's guides and technical specifications.
+See [Nim-flavored Markdown and reStructuredText] document for the description
+of this feature and particularly section [Command line usage] for the full
+list of supported commands.
 
 Quick start
 -----------
@@ -319,6 +334,15 @@ external referencing requires to use ``.. importdoc:: <file>``
 directive to import `file` and to ensure that the corresponding
 ``.idx`` file was generated.
 
+Syntax for referencing is basically the same as for normal markup.
+Recall from [Referencing] that our parser supports two equivalent syntaxes
+for referencing, Markdown and RST one.
+So to reference ``proc f`` one should use something like that,
+depending on markup type:
+
+    Markdown                    RST
+
+    Ref. [proc f] or [f]        Ref. `proc f`_ or just f_ for a one-word case
 
 Nim local referencing
 ---------------------
@@ -327,14 +351,12 @@ You can reference Nim identifiers from Nim documentation comments
 inside their ``.nim`` file (or inside a ``.rst`` file included from
 a ``.nim``).
 This pertains to any exported symbol like `proc`, `const`, `iterator`, etc.
-Syntax for referencing is basically a normal RST one: addition of
-underscore `_` to a *link text*.
-Link text is either one word or a group of words enclosed by backticks `\``
-(for a one word case backticks are usually omitted).
+Link text is either one word or a group of words enclosed by delimiters
+(brackets ``[...]`` for Markdown or backticks `\`...\`_` for RST).
 Link text will be displayed *as is* while *link target* will be set to
-the anchor \[*] of Nim symbol that corresponds to link text.
+the anchor [^1] of Nim symbol that corresponds to link text.
 
-\[*] anchors' format is described in [HTML anchor generation] section below.
+[^1] anchors' format is described in [HTML anchor generation] section below.
 
 If you have a constant:
 
@@ -599,7 +621,7 @@ compilation options are different:
    .. Note:: markup documents are just placed into the specified directory
      `OUTDIR`:option: by default (i.e. they are **not** affected by
      `--project`:option:), so if you have ``PROJECT/doc/manual.md``
-     document and want to use complex hirearchy (with ``doc/``),
+     document and want to use complex hierarchy (with ``doc/``),
      compile it with `--docroot`:option:\:
        ```cmd
        # 1st stage
@@ -666,7 +688,7 @@ the rest optional. See the [Index (idx) file format] section for details.
 
 .. Note:: `--index`:option: switch only affects creation of ``.idx``
   index files, while user-searchable Index HTML file is created by
-  `buildIndex`:option: commmand.
+  `buildIndex`:option: command.
 
 Buildindex command
 ------------------

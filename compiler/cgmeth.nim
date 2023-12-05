@@ -10,12 +10,15 @@
 ## This module implements code generation for methods.
 
 import
-  intsets, options, ast, msgs, idents, renderer, types, magicsys,
-  sempass2, modulegraphs, lineinfos
+  options, ast, msgs, idents, renderer, types, magicsys,
+  sempass2, modulegraphs, lineinfos, astalgo
+
+import std/intsets
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
+import std/[tables]
 
 proc genConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
   var dest = skipTypes(d, abstractPtrs)
@@ -44,6 +47,8 @@ proc getDispatcher*(s: PSym): PSym =
   if dispatcherPos < s.ast.len:
     result = s.ast[dispatcherPos].sym
     doAssert sfDispatcher in result.flags
+  else:
+    result = nil
 
 proc methodCall*(n: PNode; conf: ConfigRef): PNode =
   result = n
@@ -62,6 +67,7 @@ type
   MethodResult = enum No, Invalid, Yes
 
 proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
+  result = No
   if a.name.id != b.name.id: return
   if a.typ.len != b.typ.len:
     return
@@ -95,7 +101,8 @@ proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
       return No
   if result == Yes:
     # check for return type:
-    if not sameTypeOrNil(a.typ[0], b.typ[0]):
+    # ignore flags of return types; # bug #22673
+    if not sameTypeOrNil(a.typ[0], b.typ[0], {IgnoreFlags}):
       if b.typ[0] != nil and b.typ[0].kind == tyUntyped:
         # infer 'auto' from the base to make it consistent:
         b.typ[0] = a.typ[0]
@@ -113,11 +120,11 @@ proc attachDispatcher(s: PSym, dispatcher: PNode) =
     s.ast[dispatcherPos] = dispatcher
 
 proc createDispatcher(s: PSym; g: ModuleGraph; idgen: IdGenerator): PSym =
-  var disp = copySym(s, nextSymId(idgen))
+  var disp = copySym(s, idgen)
   incl(disp.flags, sfDispatcher)
   excl(disp.flags, sfExported)
   let old = disp.typ
-  disp.typ = copyType(disp.typ, nextTypeId(idgen), disp.typ.owner)
+  disp.typ = copyType(disp.typ, idgen, disp.typ.owner)
   copyTypeProps(g, idgen.module, disp.typ, old)
 
   # we can't inline the dispatcher itself (for now):
@@ -127,7 +134,7 @@ proc createDispatcher(s: PSym; g: ModuleGraph; idgen: IdGenerator): PSym =
   disp.loc.r = ""
   if s.typ[0] != nil:
     if disp.ast.len > resultPos:
-      disp.ast[resultPos].sym = copySym(s.ast[resultPos].sym, nextSymId(idgen))
+      disp.ast[resultPos].sym = copySym(s.ast[resultPos].sym, idgen)
     else:
       # We've encountered a method prototype without a filled-in
       # resultPos slot. We put a placeholder in there that will
@@ -149,7 +156,10 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
     disp.ast[resultPos] = copyTree(meth.ast[resultPos])
 
 proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
-  var witness: PSym
+  var witness: PSym = nil
+  if s.typ[1].owner.getModule != s.getModule and vtables in g.config.features and not g.config.isDefined("nimInternalNonVtablesTesting"):
+    localError(g.config, s.info, errGenerated, "method `" & s.name.s &
+          "` can be defined only in the same module with its type (" & s.typ[1].typeToString() & ")")
   for i in 0..<g.methods.len:
     let disp = g.methods[i].dispatcher
     case sameMethodBucket(disp, s, multimethods = optMultiMethods in g.config.globalOptions)
@@ -168,6 +178,11 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
     of Invalid:
       if witness.isNil: witness = g.methods[i].methods[0]
   # create a new dispatcher:
+  # stores the id and the position
+  if s.typ[1].skipTypes(skipPtrs).itemId notin g.bucketTable:
+    g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId] = 1
+  else:
+    g.bucketTable.inc(s.typ[1].skipTypes(skipPtrs).itemId)
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
   #echo "adding ", s.info
   if witness != nil:
@@ -176,8 +191,9 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   elif sfBase notin s.flags:
     message(g.config, s.info, warnUseBase)
 
-proc relevantCol(methods: seq[PSym], col: int): bool =
+proc relevantCol*(methods: seq[PSym], col: int): bool =
   # returns true iff the position is relevant
+  result = false
   var t = methods[0].typ[col].skipTypes(skipPtrs)
   if t.kind == tyObject:
     for i in 1..high(methods):
@@ -186,6 +202,7 @@ proc relevantCol(methods: seq[PSym], col: int): bool =
         return true
 
 proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
+  result = 0
   for col in 1..<a.typ.len:
     if contains(relevantCols, col):
       var aa = skipTypes(a.typ[col], skipPtrs)
@@ -194,7 +211,7 @@ proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
       if (d != high(int)) and d != 0:
         return d
 
-proc sortBucket(a: var seq[PSym], relevantCols: IntSet) =
+proc sortBucket*(a: var seq[PSym], relevantCols: IntSet) =
   # we use shellsort here; fast and simple
   var n = a.len
   var h = 1
@@ -213,7 +230,7 @@ proc sortBucket(a: var seq[PSym], relevantCols: IntSet) =
       a[j] = v
     if h == 1: break
 
-proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PSym =
+proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; idgen: IdGenerator): PSym =
   var base = methods[0].ast[dispatcherPos].sym
   result = base
   var paramLen = base.typ.len
@@ -272,8 +289,7 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PS
   nilchecks.flags.incl nfTransf # should not be further transformed
   result.ast[bodyPos] = nilchecks
 
-proc generateMethodDispatchers*(g: ModuleGraph): PNode =
-  result = newNode(nkStmtList)
+proc generateIfMethodDispatchers*(g: ModuleGraph, idgen: IdGenerator) =
   for bucket in 0..<g.methods.len:
     var relevantCols = initIntSet()
     for col in 1..<g.methods[bucket].methods[0].typ.len:
@@ -282,4 +298,4 @@ proc generateMethodDispatchers*(g: ModuleGraph): PNode =
         # if multi-methods are not enabled, we are interested only in the first field
         break
     sortBucket(g.methods[bucket].methods, relevantCols)
-    result.add newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols))
+    g.addDispatchers genIfDispatcher(g, g.methods[bucket].methods, relevantCols, idgen)

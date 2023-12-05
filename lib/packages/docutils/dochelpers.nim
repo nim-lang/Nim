@@ -13,7 +13,8 @@
 ## `type LangSymbol`_ in ``rst.nim``, while `match(generated, docLink)`_
 ## matches it with `generated`, produced from `PNode` by ``docgen.rst``.
 
-import rstast, strutils
+import rstast
+import std/strutils
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]
@@ -288,7 +289,7 @@ proc match*(generated: LangSymbol, docLink: LangSymbol): bool =
         if g.`type` == d.name:
           onlyType = true  # only types, not names, are provided in `docLink`
       if onlyType:
-        result = g.`type` == d.name:
+        result = g.`type` == d.name
       else:
         if d.`type` != "":
           result = g.`type` == d.`type`

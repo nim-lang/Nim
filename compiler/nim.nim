@@ -12,10 +12,7 @@ import std/[os, strutils, parseopt]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-when defined(windows) and not defined(nimKochBootstrap):
-  # remove workaround pending bootstrap >= 1.5.1
-  # refs https://github.com/nim-lang/Nim/issues/18334#issuecomment-867114536
-  # alternative would be to prepend `currentSourcePath.parentDir.quoteShell`
+when defined(windows):
   when defined(gcc):
     when defined(x86):
       {.link: "../icons/nim.res".}
@@ -31,7 +28,7 @@ import
   commands, options, msgs, extccomp, main, idents, lineinfos, cmdlinehelper,
   pathutils, modulegraphs
 
-from browsers import openDefaultBrowser
+from std/browsers import openDefaultBrowser
 from nodejs import findNodeJs
 
 when hasTinyCBackend:
@@ -94,6 +91,9 @@ proc getNimRunExe(conf: ConfigRef): string =
   if conf.isDefined("mingw"):
     if conf.isDefined("i386"): result = "wine"
     elif conf.isDefined("amd64"): result = "wine64"
+    else: result = ""
+  else:
+    result = ""
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(
@@ -116,7 +116,8 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     conf.backend = backendC
 
   if conf.selectedGC == gcUnselected:
-    if conf.backend in {backendC, backendCpp, backendObjc}:
+    if conf.backend in {backendC, backendCpp, backendObjc, backendNir} or
+        (conf.cmd == cmdInteractive and isDefined(conf, "nir")):
       initOrcDefines(conf)
 
   mainCommand(graph)
@@ -140,7 +141,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
         # tasyncjs_fail` would fail, refs https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
         if cmdPrefix.len == 0: cmdPrefix = findNodeJs().quoteShell
         cmdPrefix.add " --unhandled-rejections=strict"
-      else: doAssert false, $conf.backend
+      else: raiseAssert $conf.backend
       if cmdPrefix.len > 0: cmdPrefix.add " "
         # without the `cmdPrefix.len > 0` check, on windows you'd get a cryptic:
         # `The parameter is incorrect`

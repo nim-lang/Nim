@@ -31,7 +31,7 @@ runnableExamples:
 ## * `htmlgen module <htmlgen.html>`_ for html code generator
 
 import std/private/since
-import macros, strtabs, strutils, sequtils
+import std/[macros, strtabs, strutils, sequtils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -935,8 +935,9 @@ proc xmlConstructor(a: NimNode): NimNode =
 macro `<>`*(x: untyped): untyped =
   ## Constructor macro for XML. Example usage:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   <>a(href="http://nim-lang.org", newText("Nim rules."))
+  ##   ```
   ##
   ## Produces an XML tree for:
   ##

@@ -1,6 +1,6 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import std/[os, strutils, osproc, sets, pathnorm, sequtils]
+import std/[os, strutils, osproc, sets, pathnorm, sequtils, pegs]
 
 import officialpackages
 export exec
@@ -8,9 +8,6 @@ export exec
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-# XXX: Remove this feature check once the csources supports it.
-when defined(nimHasCastPragmaBlocks):
-  import std/pegs
 from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
 import "../compiler/nimpaths"
 
@@ -96,17 +93,22 @@ proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options
   let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   execFold(desc, cmd)
 
+const officialPackagesMarkdown = """
+pkgs/atlas/doc/atlas.md
+""".splitWhitespace()
+
 proc getMd2html(): seq[string] =
   for a in walkDirRecFilter("doc"):
     let path = a.path
     if a.kind == pcFile and path.splitFile.ext == ".md" and path.lastPathPart notin
-        ["docs.md", "nimfix.md",
+        ["docs.md",
          "docstyle.md" # docstyle.md shouldn't be converted to html separately;
                        # it's included in contributing.md.
         ]:
-          # maybe we should still show nimfix, could help reviving it
           # `docs` is redundant with `overview`, might as well remove that file?
       result.add path
+  for md in officialPackagesMarkdown:
+    result.add md
   doAssert "doc/manual/var_t_return.md".unixToNativePath in result # sanity check
 
 const
@@ -150,6 +152,9 @@ lib/posix/posix_other_consts.nim
 lib/posix/posix_freertos_consts.nim
 lib/posix/posix_openbsd_amd64.nim
 lib/posix/posix_haiku.nim
+lib/pure/md5.nim
+lib/std/sha1.nim
+lib/pure/htmlparser.nim
 """.splitWhitespace()
 
   officialPackagesList = """
@@ -161,6 +166,12 @@ pkgs/db_connector/src/db_connector/db_mysql.nim
 pkgs/db_connector/src/db_connector/db_odbc.nim
 pkgs/db_connector/src/db_connector/db_postgres.nim
 pkgs/db_connector/src/db_connector/db_sqlite.nim
+pkgs/checksums/src/checksums/md5.nim
+pkgs/checksums/src/checksums/sha1.nim
+pkgs/checksums/src/checksums/sha2.nim
+pkgs/checksums/src/checksums/sha3.nim
+pkgs/checksums/src/checksums/bcrypt.nim
+pkgs/htmlparser/src/htmlparser.nim
 """.splitWhitespace()
 
   officialPackagesListWithoutIndex = """
@@ -171,16 +182,6 @@ pkgs/db_connector/src/db_connector/odbcsql.nim
 pkgs/db_connector/src/db_connector/private/dbutils.nim
 """.splitWhitespace()
 
-proc findName(name: string): string =
-  doAssert name[0..4] == "pkgs/"
-  var i = 5
-  while i < name.len:
-    if name[i] != '/':
-      inc i
-      result.add name[i]
-    else:
-      break
-
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
   proc isRelativeTo(path, base: string): bool =
     let path = path.normalizedPath
@@ -189,6 +190,7 @@ when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
     result = path.len > 0 and not ret.startsWith ".."
 
 proc getDocList(): seq[string] =
+  ##
   var docIgnore: HashSet[string]
   for a in withoutIndex: docIgnore.incl a
   for a in ignoredModules: docIgnore.incl a
@@ -345,7 +347,7 @@ proc buildJS(): string =
 proc buildDocsDir*(args: string, dir: string) =
   let args = nimArgs & " " & args
   let docHackJsSource = buildJS()
-  gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector"])
+  gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector", "checksums", "atlas", "htmlparser"])
   createDir(dir)
   buildDocSamples(args, dir)
 
@@ -379,9 +381,7 @@ proc buildDocs*(args: string, localOnly = false, localOutDir = "") =
   if not localOnly:
     buildDocsDir(args, webUploadOutput / NimVersion)
 
-    # XXX: Remove this feature check once the csources supports it.
-    when defined(nimHasCastPragmaBlocks):
-      let gaFilter = peg"@( y'--doc.googleAnalytics:' @(\s / $) )"
-      args = args.replace(gaFilter)
+    let gaFilter = peg"@( y'--doc.googleAnalytics:' @(\s / $) )"
+    args = args.replace(gaFilter)
 
   buildDocsDir(args, localOutDir)

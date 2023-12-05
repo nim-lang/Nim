@@ -9,11 +9,12 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, tables, ropes, md5, modulegraphs, options, msgs, packages, pathutils
-from hashes import Hash
+import ast, ropes, modulegraphs, options, msgs, pathutils
+from std/hashes import Hash
+import std/tables
 import types
+import ../dist/checksums/src/checksums/md5
 
-import std/os
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -159,7 +160,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
       else:
         c.hashSym(t.sym)
 
-      var symWithFlags: PSym
+      var symWithFlags: PSym = nil
       template hasFlag(sym): bool =
         let ret = {sfAnon, sfGenSym} * sym.flags != {}
         if ret: symWithFlags = sym
@@ -187,7 +188,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
       hashType c, t[0], flags, conf
   of tyRef, tyPtr, tyGenericBody, tyVar:
     c &= char(t.kind)
-    if t.sons.len > 0:
+    if t.len > 0:
       c.hashType t.lastSon, flags, conf
     if tfVarIsPtr in t.flags: c &= ".varisptr"
   of tyFromExpr:
@@ -260,6 +261,7 @@ when defined(debugSigHashes):
   # (select hash from sighashes group by hash having count(*) > 1) order by hash;
 
 proc hashType*(t: PType; conf: ConfigRef; flags: set[ConsiderFlag] = {CoType}): SigHash =
+  result = default(SigHash)
   var c: MD5Context
   md5Init c
   hashType c, t, flags+{CoOwnerSig}, conf
@@ -268,7 +270,8 @@ proc hashType*(t: PType; conf: ConfigRef; flags: set[ConsiderFlag] = {CoType}): 
     db.exec(sql"INSERT OR IGNORE INTO sighashes(type, hash) VALUES (?, ?)",
             typeToString(t), $result)
 
-proc hashProc*(s: PSym; conf: ConfigRef): SigHash =
+proc hashProc(s: PSym; conf: ConfigRef): SigHash =
+  result = default(SigHash)
   var c: MD5Context
   md5Init c
   hashType c, s.typ, {CoProc}, conf
@@ -289,6 +292,7 @@ proc hashProc*(s: PSym; conf: ConfigRef): SigHash =
   md5Final c, result.MD5Digest
 
 proc hashNonProc*(s: PSym): SigHash =
+  result = default(SigHash)
   var c: MD5Context
   md5Init c
   hashSym(c, s)
@@ -305,6 +309,7 @@ proc hashNonProc*(s: PSym): SigHash =
   md5Final c, result.MD5Digest
 
 proc hashOwner*(s: PSym): SigHash =
+  result = default(SigHash)
   var c: MD5Context
   md5Init c
   var m = s
@@ -374,7 +379,7 @@ proc symBodyDigest*(graph: ModuleGraph, sym: PSym): SigHash =
   ## compute unique digest of the proc/func/method symbols
   ## recursing into invoked symbols as well
   assert(sym.kind in skProcKinds, $sym.kind)
-
+  result = default(SigHash)
   graph.symBodyHashes.withValue(sym.id, value):
     return value[]
 

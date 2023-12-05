@@ -36,7 +36,7 @@ runnableExamples:
     # can't match start of string since we're starting at 1
 
 import
-  pcre, strutils, rtarrays
+  std/[pcre, strutils, rtarrays]
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -65,10 +65,16 @@ type
     ## is raised if the pattern is no valid regular expression.
 
 when defined(gcDestructors):
-  proc `=destroy`(x: var RegexDesc) =
-    pcre.free_substring(cast[cstring](x.h))
-    if not isNil(x.e):
-      pcre.free_study(x.e)
+  when defined(nimAllowNonVarDestructor):
+    proc `=destroy`(x: RegexDesc) =
+      pcre.free_substring(cast[cstring](x.h))
+      if not isNil(x.e):
+        pcre.free_study(x.e)
+  else:
+    proc `=destroy`(x: var RegexDesc) =
+      pcre.free_substring(cast[cstring](x.h))
+      if not isNil(x.e):
+        pcre.free_study(x.e)
 
 proc raiseInvalidRegex(msg: string) {.noinline, noreturn.} =
   var e: ref RegexError
@@ -454,7 +460,7 @@ template `=~` *(s: string, pattern: Regex): untyped =
       elif line =~ re"\s*(\#.*)": # matches a comment
         # note that the implicit `matches` array is different from 1st branch
         result = $(matches[0],)
-      else: doAssert false
+      else: raiseAssert "unreachable"
       doAssert not declared(matches)
     doAssert parse("NAME = LENA") == """("NAME", "LENA")"""
     doAssert parse("   # comment ... ") == """("# comment ... ",)"""

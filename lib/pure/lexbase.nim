@@ -12,7 +12,7 @@
 ## needs refilling.
 
 import
-  strutils, streams
+  std/[strutils, streams]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

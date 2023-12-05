@@ -12,16 +12,10 @@ type
     ## compiler supports. Currently this is `float64`, but it is
     ## platform-dependent in general.
 
-when defined(js):
-  type BiggestUInt* = uint32
+  BiggestUInt* = uint64
     ## is an alias for the biggest unsigned integer type the Nim compiler
-    ## supports. Currently this is `uint32` for JS and `uint64` for other
-    ## targets.
-else:
-  type BiggestUInt* = uint64
-    ## is an alias for the biggest unsigned integer type the Nim compiler
-    ## supports. Currently this is `uint32` for JS and `uint64` for other
-    ## targets.
+    ## supports. Currently this is `uint64`, but it is platform-dependent
+    ## in general.
 
 when defined(windows):
   type

@@ -1,5 +1,5 @@
 discard """
-  matrix: "--threads"
+  matrix: "--mm:refc; --mm:arc"
   joinable: false
   targets: "c js cpp"
 """

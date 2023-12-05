@@ -14,20 +14,20 @@
 
 import std/private/since
 
-import strutils
+import std/strutils
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
 when defined(windows):
-  import winlean
+  import std/winlean
   when defined(nimPreviewSlimSystem):
     import std/widestrs
-  from os import absolutePath
+  from std/os import absolutePath
 else:
-  import os
+  import std/os
   when not defined(osx):
-    import osproc
+    import std/osproc
 
 const osOpenCmd* =
   when defined(macos) or defined(macosx) or defined(windows): "open" else: "xdg-open" ## \
@@ -40,15 +40,17 @@ proc prepare(s: string): string =
   else:
     result = "file://" & absolutePath(s)
 
-proc openDefaultBrowserImpl(url: string) =
+proc openDefaultBrowserImplPrep(url: string) =
+  ## note the url argument should be alreadly prepared, i.e. the url is passed "AS IS"
+
   when defined(windows):
     var o = newWideCString(osOpenCmd)
-    var u = newWideCString(prepare url)
+    var u = newWideCString(url)
     discard shellExecuteW(0'i32, o, u, nil, nil, SW_SHOWNORMAL)
   elif defined(macosx):
-    discard execShellCmd(osOpenCmd & " " & quoteShell(prepare url))
+    discard execShellCmd(osOpenCmd & " " & quoteShell(url))
   else:
-    var u = quoteShell(prepare url)
+    var u = quoteShell(url)
     if execShellCmd(osOpenCmd & " " & u) == 0: return
     for b in getEnv("BROWSER").split(PathSep):
       try:
@@ -57,6 +59,9 @@ proc openDefaultBrowserImpl(url: string) =
         return
       except OSError:
         discard
+
+proc openDefaultBrowserImpl(url: string) =
+  openDefaultBrowserImplPrep(prepare url)
 
 proc openDefaultBrowser*(url: string) =
   ## Opens `url` with the user's default browser. This does not block.
@@ -93,4 +98,4 @@ proc openDefaultBrowser*() {.since: (1, 1).} =
   ## **See also:**
   ##
   ## * https://tools.ietf.org/html/rfc6694#section-3
-  openDefaultBrowserImpl("http:about:blank")  # See IETF RFC-6694 Section 3.
+  openDefaultBrowserImplPrep("about:blank")  # See IETF RFC-6694 Section 3.

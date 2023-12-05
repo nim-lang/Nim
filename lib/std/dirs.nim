@@ -1,6 +1,6 @@
 ## This module implements directory handling.
 
-from paths import Path, ReadDirEffect, WriteDirEffect
+from std/paths import Path, ReadDirEffect, WriteDirEffect
 
 from std/private/osdirs import dirExists, createDir, existsOrCreateDir, removeDir,
                                moveDir, walkDir, setCurrentDir,
@@ -8,7 +8,7 @@ from std/private/osdirs import dirExists, createDir, existsOrCreateDir, removeDi
 
 export PathComponent
 
-proc dirExists*(dir: Path): bool {.inline, tags: [ReadDirEffect].} =
+proc dirExists*(dir: Path): bool {.inline, tags: [ReadDirEffect], sideEffect.} =
   ## Returns true if the directory `dir` exists. If `dir` is a file, false
   ## is returned. Follows symlinks.
   result = dirExists(dir.string)

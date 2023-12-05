@@ -22,6 +22,11 @@ proc lier(): int {.raises: [IO2Error].} = #[tt.Hint
 proc forw: int =
   raise newException(IOError, "arg")
 
+block:
+  proc someProc(t: string) {.raises: [Defect].} =
+    discard
+  let vh: proc(topic: string) {.raises: [].} = someProc
+
 {.push raises: [Defect].}
 
 type
@@ -34,7 +39,7 @@ proc foo(x: int): string {.nimcall, raises: [ValueError].} =
 
 var p: MyProcType = foo #[tt.Error
                     ^
-type mismatch: got <proc (x: int): string{.nimcall, noSideEffect, gcsafe.}> but expected 'MyProcType = proc (x: int): string{.closure.}'
+type mismatch: got <proc (x: int): string{.nimcall, raises: [ValueError], noSideEffect, gcsafe.}> but expected 'MyProcType = proc (x: int): string{.closure.}'
   Calling convention mismatch: got '{.nimcall.}', but expected '{.closure.}'.
 .raise effects differ
 ]#

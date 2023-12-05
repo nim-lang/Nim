@@ -14,7 +14,7 @@
 # Feel free to test for your excentric platform!
 
 import
-  strutils
+  std/strutils
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -277,6 +277,7 @@ proc nameToOS*(name: string): TSystemOS =
   result = osNone
 
 proc listOSnames*(): seq[string] =
+  result = @[]
   for i in succ(osNone)..high(TSystemOS):
     result.add OS[i].name
 
@@ -287,6 +288,7 @@ proc nameToCPU*(name: string): TSystemCPU =
   result = cpuNone
 
 proc listCPUnames*(): seq[string] =
+  result = @[]
   for i in succ(cpuNone)..high(TSystemCPU):
     result.add CPU[i].name
 

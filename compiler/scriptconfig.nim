@@ -13,14 +13,16 @@
 import
   ast, modules, idents, condsyms,
   options, llstream, vm, vmdef, commands,
-  os, times, osproc, wordrecg, strtabs, modulegraphs,
+  wordrecg, modulegraphs,
   pathutils, pipelines
 
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[syncio, assertions]
+
+import std/[strtabs, os, times, osproc]
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
-from strutils import cmpIgnoreStyle, contains
+from std/strutils import cmpIgnoreStyle, contains
 
 proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   let dir = getString(a, 0)
@@ -160,6 +162,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf getCommand:
     setResult(a, conf.command)
   cbconf switch:
+    conf.currentConfigDir = vthisDir
     processSwitch(a.getString 0, a.getString 1, passPP, module.info, conf)
   cbconf hintImpl:
     processSpecificNote(a.getString 0, wHint, passPP, module.info,
@@ -207,8 +210,8 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
 
   let oldGlobalOptions = conf.globalOptions
   let oldSelectedGC = conf.selectedGC
-  undefSymbol(conf.symbols, "nimv2")
-  conf.globalOptions.excl {optTinyRtti, optOwnedRefs, optSeqDestructors}
+  unregisterArcOrc(conf)
+  conf.globalOptions.excl optOwnedRefs
   conf.selectedGC = gcUnselected
 
   var m = graph.makeModule(scriptName)
@@ -227,9 +230,20 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   if optOwnedRefs in oldGlobalOptions:
     conf.globalOptions.incl {optTinyRtti, optOwnedRefs, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
-  if conf.selectedGC in {gcArc, gcOrc}:
+  if conf.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
     conf.globalOptions.incl {optTinyRtti, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
+    defineSymbol(conf.symbols, "gcdestructors")
+    defineSymbol(conf.symbols, "nimSeqsV2")
+    case conf.selectedGC
+    of gcArc:
+      defineSymbol(conf.symbols, "gcarc")
+    of gcOrc:
+      defineSymbol(conf.symbols, "gcorc")
+    of gcAtomicArc:
+      defineSymbol(conf.symbols, "gcatomicarc")
+    else:
+      raiseAssert "unreachable"
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetSystemArtifacts(graph)

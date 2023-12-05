@@ -31,8 +31,8 @@ proc iterToProcImpl*(c: PContext, n: PNode): PNode =
     return
   let body = liftIterToProc(c.graph, iter.sym, getBody(c.graph, iter.sym), t, c.idgen)
 
-  let prc = newSym(skProc, n[3].ident, nextSymId c.idgen, iter.sym.owner, iter.sym.info)
-  prc.typ = copyType(iter.sym.typ, nextTypeId c.idgen, prc)
+  let prc = newSym(skProc, n[3].ident, c.idgen, iter.sym.owner, iter.sym.info)
+  prc.typ = copyType(iter.sym.typ, c.idgen, prc)
   excl prc.typ.flags, tfCapturesEnv
   prc.typ.n.add newSymNode(getEnvParam(iter.sym))
   prc.typ.rawAddSon t

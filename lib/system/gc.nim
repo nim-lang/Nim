@@ -31,7 +31,7 @@ In Nim the compiler cannot always know if a reference
 is stored on the stack or not. This is caused by var parameters.
 Consider this example:
 
-.. code-block:: Nim
+  ```Nim
   proc setRef(r: var ref TNode) =
     new(r)
 
@@ -41,11 +41,12 @@ Consider this example:
     setRef(r) # here we should not update the reference counts, because
               # r is on the stack
     setRef(r.left) # here we should update the refcounts!
+  ```
 
 We have to decide at runtime whether the reference is on the stack or not.
 The generated code looks roughly like this:
 
-.. code-block:: C
+  ```C
   void setref(TNode** ref) {
     unsureAsgnRef(ref, newObj(TNode_TI, sizeof(TNode)))
   }
@@ -53,6 +54,7 @@ The generated code looks roughly like this:
     setRef(&r)
     setRef(&r->left)
   }
+  ```
 
 Note that for systems with a continuous stack (which most systems have)
 the check whether the ref is on the stack is very cheap (only two
@@ -76,7 +78,7 @@ when defined(memProfiler):
   proc nimProfile(requestedSize: int) {.benign.}
 
 when hasThreadSupport:
-  import sharedlist
+  import std/sharedlist
 
 const
   rcIncrement = 0b1000 # so that lowest 3 bits are not touched

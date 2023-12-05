@@ -14,7 +14,7 @@ import options, ast, ropes, pathutils, msgs, lineinfos
 import modulegraphs
 
 import std/[os, parseutils]
-import strutils except addf
+import std/strutils except addf
 import std/private/globs
 
 when defined(nimPreviewSlimSystem):
@@ -42,7 +42,7 @@ proc toNimblePath(s: string, isStdlib: bool): string =
     let sub = "lib/"
     var start = s.find(sub)
     if start < 0:
-      doAssert false
+      raiseAssert "unreachable"
     else:
       start += sub.len
       let base = s[start..^1]
@@ -63,12 +63,16 @@ proc toNimblePath(s: string, isStdlib: bool): string =
       sub.add "/pkgs/"
     var start = s.find(sub)
     if start < 0:
-      result = s
-    else:
-      start += sub.len
-      start += skipUntil(s, '/', start)
-      start += 1
-      result = pkgPrefix & s[start..^1]
+      sub[^1] = '2'
+      sub.add '/'
+      start = s.find(sub) # /pkgs2
+      if start < 0:
+        return s
+
+    start += sub.len
+    start += skipUntil(s, '/', start)
+    start += 1
+    result = pkgPrefix & s[start..^1]
 
 proc addDependency(c: PPassContext, g: PGen, b: Backend, n: PNode) =
   doAssert n.kind == nkSym, $n.kind
@@ -101,11 +105,6 @@ proc generateDot*(graph: ModuleGraph; project: AbsoluteFile) =
             changeFileExt(project, "dot"))
 
 proc setupDependPass*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
-  var g: PGen
-  new(g)
-  g.module = module
-  g.config = graph.config
-  g.graph = graph
+  result = PGen(module: module, config: graph.config, graph: graph)
   if graph.backend == nil:
     graph.backend = Backend(dotGraph: "")
-  result = g

@@ -265,3 +265,9 @@ block: # test **
   doAssert to(`**`(a + a, b), int) == 2
 
   doAssert to(`**`(toJs(1) + toJs(1), toJs(2)), int) == 4
+
+block: # issue #21208
+  type MyEnum = enum baz
+  var obj: JsObject
+  {.emit: "`obj` = {bar: {baz: 123}}".}
+  discard obj.bar.baz

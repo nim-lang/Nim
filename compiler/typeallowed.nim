@@ -10,8 +10,8 @@
 ## This module contains 'typeAllowed' and friends which check
 ## for invalid types like `openArray[var int]`.
 
-import
-  intsets, ast, renderer, options, semdata, types
+import ast, renderer, options, semdata, types
+import std/intsets
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -25,6 +25,8 @@ type
     taNoUntyped
     taIsTemplateOrMacro
     taProcContextIsNotMacro
+    taIsCastable
+    taIsDefaultField
 
   TTypeAllowedFlags* = set[TTypeAllowedFlag]
 
@@ -46,6 +48,8 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
           let it = n[i]
           result = typeAllowedNode(marker, it, kind, c, flags)
           if result != nil: break
+  else:
+    result = nil
 
 proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
                     c: PContext; flags: TTypeAllowedFlags = {}): PType =
@@ -63,7 +67,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     elif taIsOpenArray in flags:
       result = t
     elif t.kind == tyLent and ((kind != skResult and views notin c.features) or
-                              kind == skParam): # lent can't be used as parameters.
+      (kind == skParam and {taIsCastable, taField} * flags == {})): # lent cannot be used as parameters.
+                                                       # except in the cast environment and as the field of an object
       result = t
     elif isOutParam(t) and kind != skParam:
       result = t
@@ -168,7 +173,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     elif kind in {skVar, skLet}:
       result = t[1]
   of tyRef:
-    if kind == skConst: result = t
+    if kind == skConst and taIsDefaultField notin flags: result = t
     else: result = typeAllowedAux(marker, t.lastSon, kind, c, flags+{taHeap})
   of tyPtr:
     result = typeAllowedAux(marker, t.lastSon, kind, c, flags+{taHeap})
@@ -178,7 +183,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       if result != nil: break
   of tyObject, tyTuple:
     if kind in {skProc, skFunc, skConst} and
-        t.kind == tyObject and t[0] != nil:
+        t.kind == tyObject and t[0] != nil and taIsDefaultField notin flags:
       result = t
     else:
       let flags = flags+{taField}

@@ -1,6 +1,6 @@
 discard """
   nimoutFull: true
-  cmd: '''nim c -r --warnings:off --hints:off --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
+  cmd: '''nim c -r --warnings:off --hints:off --mm:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
   nimout: '''
 --expandArc: newTarget
 
@@ -39,13 +39,13 @@ var
   lresult
   lvalue
   lnext
-  _
+  tmpTupleAsgn
 lresult = @[123]
-_ = (
+tmpTupleAsgn = (
   let blitTmp = lresult
   blitTmp, ";")
-lvalue = _[0]
-lnext = _[1]
+lvalue = tmpTupleAsgn[0]
+lnext = tmpTupleAsgn[1]
 `=sink`(result.value, move lvalue)
 `=destroy`(lnext)
 `=destroy_1`(lvalue)
@@ -61,11 +61,9 @@ var
 try:
   it_cursor = x
   a = (
-    `=wasMoved`(:tmpD)
-    `=copy`(:tmpD, it_cursor.key)
+    :tmpD = `=dup`(it_cursor.key)
     :tmpD,
-    `=wasMoved`(:tmpD_1)
-    `=copy`(:tmpD_1, it_cursor.val)
+    :tmpD_1 = `=dup`(it_cursor.val)
     :tmpD_1)
   echo [
     :tmpD_2 = `$$`(a)
@@ -93,7 +91,9 @@ try:
             `=copy`(lan_ip, splitted[1])
           echo [lan_ip]
           echo [splitted[1]]
+          {.push, overflowChecks: false.}
           inc(i, 1)
+          {.pop.}
         finally:
           `=destroy`(splitted)
 finally:
@@ -113,10 +113,11 @@ block :tmp:
       var :tmpD
       sym = shadowScope.symbols[i]
       addInterfaceDecl(c):
-        `=wasMoved`(:tmpD)
-        `=copy_1`(:tmpD, sym)
+        :tmpD = `=dup`(sym)
         :tmpD
+      {.push, overflowChecks: false.}
       inc(i, 1)
+      {.pop.}
 `=destroy`(shadowScope)
 -- end of expandArc ------------------------
 --expandArc: check
@@ -126,19 +127,16 @@ this.isValid = fileExists(this.value)
 if dirExists(this.value):
   var :tmpD
   par = (dir:
-    `=wasMoved`(:tmpD)
-    `=copy`(:tmpD, this.value)
+    :tmpD = `=dup`(this.value)
     :tmpD, front: "") else:
   var
     :tmpD_1
     :tmpD_2
     :tmpD_3
   par = (dir_1: parentDir(this.value), front_1:
-    `=wasMoved`(:tmpD_1)
-    `=copy`(:tmpD_1,
+    :tmpD_1 = `=dup`(
       :tmpD_3 = splitDrive do:
-        `=wasMoved`(:tmpD_2)
-        `=copy`(:tmpD_2, this.value)
+        :tmpD_2 = `=dup`(this.value)
         :tmpD_2
       :tmpD_3.path)
     :tmpD_1)

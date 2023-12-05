@@ -41,8 +41,7 @@ template main =
     test ".1", 0.1
     test "-.1", -0.1
     test "-0", -0.0
-    when false: # pending bug #18246
-      test "-0", -0.0
+    test "-0", -0'f # see #18246, -0 won't work
     test ".1e-1", 0.1e-1
     test "0_1_2_3.0_1_2_3E+0_1_2", 123.0123e12
     test "0_1_2.e-0", 12e0
@@ -157,9 +156,8 @@ template main =
         when nimvm:
           discard # xxx, refs #12884
         else:
-          when not defined(js):
-            doAssert x == 1.2345679'f32
-            doAssert $x == "1.2345679"
+          doAssert x == 1.2345679'f32
+          doAssert $x == "1.2345679"
 
 static: main()
 main()
