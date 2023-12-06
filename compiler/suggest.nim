@@ -33,7 +33,7 @@
 # included from sigmatch.nim
 
 import prefixmatches
-from wordrecg import wDeprecated, wError, wAddr, wYield
+from wordrecg import wDeprecated, wError, wAddr, wYield, TSpecialWords
 
 import std/[algorithm, sets, parseutils, tables]
 
@@ -277,6 +277,9 @@ proc produceOutput(a: var Suggestions; conf: ConfigRef) =
   when defined(debug):
     # debug code
     writeStackTrace()
+    # Don't spam with too many suggestions while debugging
+    if a.len > conf.suggestMaxResults:
+      return
   if a.len > conf.suggestMaxResults: a.setLen(conf.suggestMaxResults)
   if not isNil(conf.suggestionResultHook):
     for s in a:
@@ -745,6 +748,23 @@ proc suggestEnum*(c: PContext; n: PNode; t: PType) =
   suggestSymList(c, t.n, nil, n.info, outputs)
   produceOutput(outputs, c.config)
   if outputs.len > 0: suggestQuit()
+
+proc suggestPragmas*(c: PContext, n: PNode, validPragmas: TSpecialWords) =
+  ## Suggests anything that might be a pragma
+  ## - template that has {.pragma.}
+  ## - macros
+  ## - valid pragmas for the context
+  ## - user pragmas
+  let info = n.info
+  var outputs: Suggestions = @[]
+  # First filter for template/macros
+  wholeSymTab(filterSym(it, n, pm) and
+    (sfCustomPragma in it.flags or it.kind == skMacro),
+    ideSug)
+
+  produceOutput(outputs, c.config)
+  if outputs.len > 0:
+    suggestQuit()
 
 proc suggestSentinel*(c: PContext) =
   if c.config.ideCmd != ideSug or c.module.position != c.config.m.trackPos.fileIndex.int32: return
