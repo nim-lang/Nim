@@ -90,6 +90,8 @@ proc replaceReturn(node: var NimNode) =
       node[z] = nnkReturnStmt.newTree(value)
     elif son.kind == nnkAsgn and son[0].kind == nnkIdent and $son[0] == "result":
       node[z] = nnkAsgn.newTree(son[0], nnkCall.newTree(jsResolve, son[1]))
+    elif son.kind in RoutineNodes:
+      discard
     else:
       replaceReturn(son)
     inc z
