@@ -3,7 +3,6 @@ proc fooBar2() = discard
 macro fooBar3(x: untyped) = discard
 {.pragma: fooBar4 fooBar3.}
 
-# Check only macros/templates/pragmas are suggested
 proc test1() {.fooBar#[!]#.} = discard
 
 var test2 {.fooBar#[!]#.} = 9
@@ -11,8 +10,9 @@ var test2 {.fooBar#[!]#.} = 9
 type
   Person {.fooBar#[!]#.} = object
     hello {.fooBar#[!]#.}: string
-  Callback = proc test() {.fooBar#[!]#.}
+  Callback = proc () {.fooBar#[!]#.}
 
+# Check only macros/templates/pragmas are suggested
 discard """
 $nimsuggest --tester $file
 >sug $1

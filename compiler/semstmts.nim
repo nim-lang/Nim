@@ -525,6 +525,8 @@ proc semVarMacroPragma(c: PContext, a: PNode, n: PNode): PNode =
       let it = pragmas[i]
       let key = if it.kind in nkPragmaCallKinds and it.len >= 1: it[0] else: it
 
+      trySuggestPragmas(c, key)
+
       if isPossibleMacroPragma(c, it, key):
         # we transform ``var p {.m, rest.}`` into ``m(do: var p {.rest.})`` and
         # let the semantic checker deal with it:
@@ -1740,9 +1742,8 @@ proc semProcAnnotation(c: PContext, prc: PNode;
   for i in 0..<n.len:
     let it = n[i]
     let key = if it.kind in nkPragmaCallKinds and it.len >= 1: it[0] else: it
-    when defined(nimsuggest):
-      if c.config.ideCmd == ideSug and exactEquals(c.config.m.trackPos, key.info):
-        suggestPragmas(c, key, validPragmas)
+
+    trySuggestPragmas(c, key)
 
     if isPossibleMacroPragma(c, it, key):
       # we transform ``proc p {.m, rest.}`` into ``m(do: proc p {.rest.})`` and

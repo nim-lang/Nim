@@ -1741,10 +1741,10 @@ proc applyTypeSectionPragmas(c: PContext; pragmas, operand: PNode): PNode =
   result = nil
   for p in pragmas:
     let key = if p.kind in nkPragmaCallKinds and p.len >= 1: p[0] else: p
-
     if p.kind == nkEmpty or whichPragma(p) != wInvalid:
       discard "builtin pragma"
     else:
+      trySuggestPragmas(c, key)
       let ident = considerQuotedIdent(c, key)
       if strTableGet(c.userPragmas, ident) != nil:
         discard "User-defined pragma"

@@ -33,7 +33,7 @@
 # included from sigmatch.nim
 
 import prefixmatches
-from wordrecg import wDeprecated, wError, wAddr, wYield, TSpecialWords
+from wordrecg import wDeprecated, wError, wAddr, wYield
 
 import std/[algorithm, sets, parseutils, tables]
 
@@ -277,9 +277,6 @@ proc produceOutput(a: var Suggestions; conf: ConfigRef) =
   when defined(debug):
     # debug code
     writeStackTrace()
-    # Don't spam with too many suggestions while debugging
-    if a.len > conf.suggestMaxResults:
-      return
   if a.len > conf.suggestMaxResults: a.setLen(conf.suggestMaxResults)
   if not isNil(conf.suggestionResultHook):
     for s in a:
@@ -749,11 +746,10 @@ proc suggestEnum*(c: PContext; n: PNode; t: PType) =
   produceOutput(outputs, c.config)
   if outputs.len > 0: suggestQuit()
 
-proc suggestPragmas*(c: PContext, n: PNode, validPragmas: TSpecialWords) =
+proc suggestPragmas*(c: PContext, n: PNode) =
   ## Suggests anything that might be a pragma
   ## - template that has {.pragma.}
   ## - macros
-  ## - valid pragmas for the context
   ## - user pragmas
   let info = n.info
   var outputs: Suggestions = @[]
@@ -762,33 +758,21 @@ proc suggestPragmas*(c: PContext, n: PNode, validPragmas: TSpecialWords) =
     (sfCustomPragma in it.flags or it.kind == skMacro),
     ideSug)
 
-  # We need addresses later for comparing so
-  # store them all globally so we can safely store
-  # a pointer
-  let pragmaNames {.global.} = block:
-    var res: array[TSpecialWord, string]
-    for pragma in TSpecialWord:
-      res[pragma] = $pragma
-    res
-
-  # Now add suggestions for valid pragmas.
-  # TODO: Link to the definition in wordrecg.
-  # Tried to use symToSuggest but don't think its
-  # possible to find the original symbol since its likely not in scope
-  for pragma in validPragmas:
-    var sug = Suggestion()
-    sug.section = ideSug
-    sug.prefix = n
-    sug.name = addr pragmaNames[pragma]
-    sug.contextFits = true # Already considered valid by caller
-    sug.kind = byte skUnknown
-    sug.forth = $pragma
-    if optIdeTerse notin g.config.globalOptions:
-      sug.qualifiedPath &= $pragma
+  # Now show suggestions for user pragmas
+  for pragma in c.userPragmas:
+    suggestField(c, pragma, n, info, outputs)
 
   produceOutput(outputs, c.config)
   if outputs.len > 0:
     suggestQuit()
+
+template trySuggestPragmas*(c: PContext, n: PNode) =
+  ## Runs [suggestPragmas] when compiling nimsuggest and
+  ## we are querying the node
+  when defined(nimsuggest):
+    let tmp = n
+    if c.config.ideCmd == ideSug and exactEquals(c.config.m.trackPos, tmp.info):
+      suggestPragmas(c, tmp)
 
 proc suggestSentinel*(c: PContext) =
   if c.config.ideCmd != ideSug or c.module.position != c.config.m.trackPos.fileIndex.int32: return
