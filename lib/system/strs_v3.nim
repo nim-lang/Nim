@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2017 Nim contributors
+#        (c) Copyright 2024 Nim contributors
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -17,7 +17,7 @@ type
     data: UncheckedArray[char]
 
   NimStringV3 {.core.} = object
-    rawlen: int
+    rawlen: int ## the lowest bit is used to indict whether it's a const or intern string
     p: ptr UncheckedArray[char] ## can be nil if len == 0.
     ## cap lives at the negative offset
     ## non-zero terminated
@@ -36,6 +36,16 @@ template len(s: NimStringV3): int = s.rawlen shr 1
 template toRawLen(len: int): int = len shl 1
 template incRawLen(s: var NimStringV3, value: int = 1) =
   s.rawlen = s.rawlen + value shl 1
+
+proc markIntern(s: var NimStringV3): bool =
+  s.rawlen = s.rawlen or 1
+  result = not isLiteral(s)
+
+proc unsafeUnmarkIntern(s: NimStringV3) =
+  when compileOption("threads"):
+    deallocShared(s.p -% sizeof(NimStrPayloadBase))
+  else:
+    dealloc(s.p -% sizeof(NimStrPayloadBase))
 
 template contentSize(cap): int = cap + sizeof(NimStrPayloadBase)
 
@@ -115,10 +125,12 @@ proc cstrToNimstr(str: cstring): NimStringV3 {.compilerRtl.} =
   else: toNimStr(str, str.len)
 
 proc nimToCStringConv(s: NimStringV3): cstring {.compilerproc, nonReloadable, inline.} =
-  ## TODO: fixme: inject conversions somehwere
-  when false:
-    if s.len == 0: result = cstring""
-    else: result = cast[cstring](unsafeAddr s.p.data)
+  if s.len == 0: result = cstring""
+  else:
+    ## TODO: fixme: inject conversions somewhere else and be cleaned up
+    ## but let it leak for now
+    result = cast[cstring](allocPayload0(s.len+1))
+    copyMem(result, unsafeAddr s.p[0], s.len)
 
 proc appendString(dest: var NimStringV3; src: NimStringV3) {.compilerproc, inline.} =
   if src.len > 0:
