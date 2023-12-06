@@ -762,6 +762,30 @@ proc suggestPragmas*(c: PContext, n: PNode, validPragmas: TSpecialWords) =
     (sfCustomPragma in it.flags or it.kind == skMacro),
     ideSug)
 
+  # We need addresses later for comparing so
+  # store them all globally so we can safely store
+  # a pointer
+  let pragmaNames {.global.} = block:
+    var res: array[TSpecialWord, string]
+    for pragma in TSpecialWord:
+      res[pragma] = $pragma
+    res
+
+  # Now add suggestions for valid pragmas.
+  # TODO: Link to the definition in wordrecg.
+  # Tried to use symToSuggest but don't think its
+  # possible to find the original symbol since its likely not in scope
+  for pragma in validPragmas:
+    var sug = Suggestion()
+    sug.section = ideSug
+    sug.prefix = n
+    sug.name = addr pragmaNames[pragma]
+    sug.contextFits = true # Already considered valid by caller
+    sug.kind = byte skUnknown
+    sug.forth = $pragma
+    if optIdeTerse notin g.config.globalOptions:
+      sug.qualifiedPath &= $pragma
+
   produceOutput(outputs, c.config)
   if outputs.len > 0:
     suggestQuit()
