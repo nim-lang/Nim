@@ -685,9 +685,12 @@ proc pragmaLine(c: PContext, n: PNode) =
 proc processPragma(c: PContext, n: PNode, i: int) =
   ## Create and add a new custom pragma `{.pragma: name.}` node to the module's context.
   let it = n[i]
-  if it.kind notin nkPragmaCallKinds and it.safeLen == 2: invalidPragma(c, n)
+  if it.kind notin nkPragmaCallKinds and it.safeLen == 2:
+    invalidPragma(c, n)
+    return
   elif it.safeLen != 2 or it[0].kind != nkIdent or it[1].kind != nkIdent:
     invalidPragma(c, n)
+    return
 
   var userPragma = newSym(skTemplate, it[1].ident, c.idgen, c.module, it.info, c.config.options)
   styleCheckDef(c, userPragma)
