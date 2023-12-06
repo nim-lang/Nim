@@ -32,7 +32,10 @@ template `cap=`(p: pointer, size: int) =
   cast[ptr NimStrPayloadBase](cast[int](p) -% sizeof(NimStrPayloadBase))[].cap = size
 
 
-proc len(s: NimStringV3): int = s.rawlen shr 1
+template len(s: NimStringV3): int = s.rawlen shr 1
+template toRawLen(len: int): int = len shl 1
+template incRawLen(s: var NimStringV3, value: int = 1) =
+  s.rawlen = s.rawlen + value shl 1
 
 template contentSize(cap): int = cap + sizeof(NimStrPayloadBase)
 
@@ -90,22 +93,22 @@ proc prepareAdd(s: var NimStringV3; addLen: int) {.compilerRtl.} =
       s.p.cap = newCap
       if newLen < newCap:
         ## TODO: be careful with off by one
-        zeroMem(cast[pointer](addr s.p.data[newLen]), newCap - newLen)
+        zeroMem(cast[pointer](addr s.p[newLen]), newCap - newLen)
 
 proc nimAddCharV1(s: var NimStringV3; c: char) {.compilerRtl, inl.} =
   #if (s.p == nil) or (s.len+1 > s.p.cap and not strlitFlag):
   prepareAdd(s, 1)
-  s.p.data[s.len] = c
-  inc s.len
+  s.p[s.len] = c
+  incRawLen s
 
 proc toNimStr(str: cstring, len: int): NimStringV3 {.compilerproc.} =
   if len <= 0:
-    result = NimStringV3(len: 0, p: nil)
+    result = NimStringV3(rawlen: 0, p: nil)
   else:
     var p = allocPayload(len)
     p.cap = len
-    copyMem(unsafeAddr p.data[0], str, len)
-    result = NimStringV3(len: len, p: p)
+    copyMem(unsafeAddr p[0], str, len)
+    result = NimStringV3(rawlen: toRawLen(len), p: p)
 
 proc cstrToNimstr(str: cstring): NimStringV3 {.compilerRtl.} =
   if str == nil: toNimStr(str, 0)
@@ -113,33 +116,34 @@ proc cstrToNimstr(str: cstring): NimStringV3 {.compilerRtl.} =
 
 proc nimToCStringConv(s: NimStringV3): cstring {.compilerproc, nonReloadable, inline.} =
   ## TODO: fixme: inject conversions somehwere
-  if s.len == 0: result = cstring""
-  else: result = cast[cstring](unsafeAddr s.p.data)
+  when false:
+    if s.len == 0: result = cstring""
+    else: result = cast[cstring](unsafeAddr s.p.data)
 
 proc appendString(dest: var NimStringV3; src: NimStringV3) {.compilerproc, inline.} =
   if src.len > 0:
-    copyMem(unsafeAddr dest.p.data[dest.len], unsafeAddr src.p.data[0], src.len)
-    inc dest.len, src.len
+    copyMem(unsafeAddr dest.p[dest.len], unsafeAddr src.p[0], src.len)
+    incRawLen(dest, src.len)
 
 proc appendChar(dest: var NimStringV3; c: char) {.compilerproc, inline.} =
-  dest.p.data[dest.len] = c
+  dest.p[dest.len] = c
 
 proc rawNewString(space: int): NimStringV3 {.compilerproc.} =
   # this is also 'system.newStringOfCap'.
   if space <= 0:
-    result = NimStringV3(len: 0, p: nil)
+    result = NimStringV3(rawlen: 0, p: nil)
   else:
     var p = allocPayload(space)
     p.cap = space
-    result = NimStringV3(len: 0, p: p)
+    result = NimStringV3(rawlen: 0, p: p)
 
 proc mnewString(len: int): NimStringV3 {.compilerproc.} =
   if len <= 0:
-    result = NimStringV3(len: 0, p: nil)
+    result = NimStringV3(rawlen: 0, p: nil)
   else:
     var p = allocPayload0(len)
     p.cap = len
-    result = NimStringV3(len: len, p: p)
+    result = NimStringV3(rawlen: toRawLen(len), p: p)
 
 proc setLengthStrV2(s: var NimStringV3, newLen: int) {.compilerRtl.} =
   if newLen == 0:
@@ -150,13 +154,13 @@ proc setLengthStrV2(s: var NimStringV3, newLen: int) {.compilerRtl.} =
       s.p = allocPayload(newLen)
       s.p.cap = newLen
       if s.len > 0:
-        copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], min(s.len, newLen))
+        copyMem(unsafeAddr s.p[0], unsafeAddr oldP[0], min(s.len, newLen))
         if newLen > s.len:
-          zeroMem(cast[pointer](addr s.p.data[s.len]), newLen - s.len)
+          zeroMem(cast[pointer](addr s.p[s.len]), newLen - s.len)
         # else:
         #   s.p.data[newLen] = '\0'
       else:
-        zeroMem(cast[pointer](addr s.p.data[0]), newLen)
+        zeroMem(cast[pointer](addr s.p[0]), newLen)
     elif newLen > s.len:
       let oldCap = s.p.cap
       if newLen > oldCap:
@@ -164,14 +168,14 @@ proc setLengthStrV2(s: var NimStringV3, newLen: int) {.compilerRtl.} =
         s.p = reallocPayload0(s.p -% sizeof(NimStrPayloadBase), oldCap, newCap)
         s.p.cap = newCap
 
-  s.len = newLen
+  s.rawlen = toRawLen(newLen)
 
 proc nimAsgnStrV2(a: var NimStringV3, b: NimStringV3) {.compilerRtl.} =
   if a.p == b.p: return
   if isLiteral(b):
     # we can shallow copy literals:
     frees(a)
-    a.len = b.len
+    a.rawlen = b.rawlen
     a.p = b.p
   else:
     if isLiteral(a) or a.p.cap < b.len:
@@ -181,15 +185,15 @@ proc nimAsgnStrV2(a: var NimStringV3, b: NimStringV3) {.compilerRtl.} =
       frees(a)
       a.p = allocPayload(b.len)
       a.p.cap = b.len
-    a.len = b.len
-    copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len)
+    a.rawlen = b.rawlen
+    copyMem(unsafeAddr a.p[0], unsafeAddr b.p[0], b.len)
 
 proc nimPrepareStrMutationImpl(s: var NimStringV3) =
   let oldP = s.p
   # can't mutate a literal, so we need a fresh copy here:
   s.p = allocPayload(s.len)
   s.p.cap = s.len
-  copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len)
+  copyMem(unsafeAddr s.p[0], unsafeAddr oldP[0], s.len)
 
 proc nimPrepareStrMutationV2(s: var NimStringV3) {.compilerRtl, inl.} =
   if isLiteral(s):
