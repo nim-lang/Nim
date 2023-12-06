@@ -1616,7 +1616,10 @@ when not defined(js) and defined(nimV2):
 proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
 
 when notJSnotNims and defined(nimSeqsV2):
-  include "system/strs_v2"
+  when defined(nimSeqsV3):
+    include "system/strs_v3"
+  else:
+    include "system/strs_v2"
   include "system/seqs_v2"
 
 when not defined(js):
@@ -1679,7 +1682,11 @@ when not defined(js):
       result = newString(len)
     else:
       result = newStringOfCap(len)
-      when defined(nimSeqsV2):
+      when defined(nimSeqsV3):
+        let s = cast[ptr NimStringV3](addr result)
+        if len > 0:
+          s.len = len
+      elif defined(nimSeqsV2):
         let s = cast[ptr NimStringV2](addr result)
         if len > 0:
           s.len = len

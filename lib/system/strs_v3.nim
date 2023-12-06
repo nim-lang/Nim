@@ -11,25 +11,29 @@
 
 type
   NimStrPayloadBase = object
+    ## cap lives at the negative offset of p: p - wordSize
     cap: int
-
-  NimStrPayload {.core.} = object
-    data: UncheckedArray[char]
 
   NimStringV3 {.core.} = object
     rawlen: int ## the lowest bit is used to indict whether it's a const or intern string
+                ## TODO: would it be better to use distinct?
     p: ptr UncheckedArray[char] ## can be nil if len == 0.
-    ## cap lives at the negative offset
+    ## cap lives at the negative offset of p: p - wordSize
     ## non-zero terminated
 
 const nimStrVersion {.core.} = 3
 
 template isLiteral(s): bool = (s.rawlen and 1) == 1
+
+template head(p: pointer): pointer =
+  cast[pointer](cast[int](p) -% sizeof(NimStrPayloadBase))
+
+
 template cap(p: pointer): int =
-  cast[ptr NimStrPayloadBase](cast[int](p) -% sizeof(NimStrPayloadBase))[].cap
+  cast[ptr NimStrPayloadBase](head(p))[].cap
 
 template `cap=`(p: pointer, size: int) =
-  cast[ptr NimStrPayloadBase](cast[int](p) -% sizeof(NimStrPayloadBase))[].cap = size
+  cast[ptr NimStrPayloadBase](head(p))[].cap = size
 
 
 template len(s: NimStringV3): int = s.rawlen shr 1
@@ -41,24 +45,25 @@ proc markIntern(s: var NimStringV3): bool =
   s.rawlen = s.rawlen or 1
   result = not isLiteral(s)
 
-proc unsafeUnmarkIntern(s: NimStringV3) =
+proc unsafeUnmarkIntern(s: var NimStringV3) =
+  s.rawlen = s.rawlen and (not 1) # unmark?
   when compileOption("threads"):
-    deallocShared(s.p -% sizeof(NimStrPayloadBase))
+    deallocShared(head(s.p))
   else:
-    dealloc(s.p -% sizeof(NimStrPayloadBase))
+    dealloc(head(s.p))
 
 template contentSize(cap): int = cap + sizeof(NimStrPayloadBase)
 
 template frees(s) =
   if not isLiteral(s):
     when compileOption("threads"):
-      deallocShared(s.p -% sizeof(NimStrPayloadBase))
+      deallocShared(head(s.p))
     else:
-      dealloc(s.p -% sizeof(NimStrPayloadBase))
+      dealloc(head(s.p))
 
 template allocPayload(newLen: int): ptr UncheckedArray[char] =
   when compileOption("threads"):
-    cast[ptr UncheckedArray[char]](allocShared(contentSize(newLen) +! sizeof(NimStrPayloadBase)))
+    cast[ptr UncheckedArray[char]](allocShared(contentSize(newLen)) +! sizeof(NimStrPayloadBase))
   else:
     cast[ptr UncheckedArray[char]](alloc(contentSize(newLen)) +! sizeof(NimStrPayloadBase))
 
@@ -99,10 +104,9 @@ proc prepareAdd(s: var NimStringV3; addLen: int) {.compilerRtl.} =
     let oldCap = s.p.cap
     if newLen > oldCap:
       let newCap = max(newLen, resize(oldCap))
-      s.p = reallocPayload(s.p -% sizeof(NimStrPayloadBase), newCap)
+      s.p = reallocPayload(head(s.p), newCap)
       s.p.cap = newCap
       if newLen < newCap:
-        ## TODO: be careful with off by one
         zeroMem(cast[pointer](addr s.p[newLen]), newCap - newLen)
 
 proc nimAddCharV1(s: var NimStringV3; c: char) {.compilerRtl, inl.} =
@@ -139,6 +143,7 @@ proc appendString(dest: var NimStringV3; src: NimStringV3) {.compilerproc, inlin
 
 proc appendChar(dest: var NimStringV3; c: char) {.compilerproc, inline.} =
   dest.p[dest.len] = c
+  incRawLen(dest)
 
 proc rawNewString(space: int): NimStringV3 {.compilerproc.} =
   # this is also 'system.newStringOfCap'.
@@ -169,15 +174,13 @@ proc setLengthStrV2(s: var NimStringV3, newLen: int) {.compilerRtl.} =
         copyMem(unsafeAddr s.p[0], unsafeAddr oldP[0], min(s.len, newLen))
         if newLen > s.len:
           zeroMem(cast[pointer](addr s.p[s.len]), newLen - s.len)
-        # else:
-        #   s.p.data[newLen] = '\0'
       else:
         zeroMem(cast[pointer](addr s.p[0]), newLen)
     elif newLen > s.len:
       let oldCap = s.p.cap
       if newLen > oldCap:
         let newCap = max(newLen, resize(oldCap))
-        s.p = reallocPayload0(s.p -% sizeof(NimStrPayloadBase), oldCap, newCap)
+        s.p = reallocPayload0(head(s.p), oldCap, newCap)
         s.p.cap = newCap
 
   s.rawlen = toRawLen(newLen)

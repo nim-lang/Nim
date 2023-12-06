@@ -3437,7 +3437,10 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; resul
       genConstObjConstr(p, n, isConst, result)
     of tyString, tyCstring:
       if optSeqDestructors in p.config.globalOptions and n.kind != nkNilLit and ty == tyString:
-        genStringLiteralV2Const(p.module, n, isConst, result)
+        if p.config.isDefined("nimSeqsV3"):
+          genStringLiteralV3Const(p.module, n, isConst, result)
+        else:
+          genStringLiteralV2Const(p.module, n, isConst, result)
       else:
         var d: TLoc = initLocExpr(p, n)
         result.add rdLoc(d)

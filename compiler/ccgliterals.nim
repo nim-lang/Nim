@@ -94,6 +94,44 @@ proc genStringLiteralV2Const(m: BModule; n: PNode; isConst: bool; result: var Ro
     pureLit = m.tmpBase & rope(id)
   result.addf "{$1, (NimStrPayload*)&$2}", [rope(n.strVal.len), pureLit]
 
+# ------ Version 3: destructor based strings and seqs -----------------------
+# strings are enhanced by interned strings
+
+proc genStringLiteralDataOnlyV3(m: BModule, s: string; result: Rope; isConst: bool) =
+  m.s[cfsStrData].addf("static $4 NIM_CHAR $1[$2] = $3;$n",
+       [result, rope(s.len), makeCString(s),
+       rope(if isConst: "const" else: "")])
+
+proc genStringLiteralV3(m: BModule; n: PNode; isConst: bool; result: var Rope) =
+  let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
+  if id == m.labels:
+    let pureLit = getTempName(m)
+    genStringLiteralDataOnlyV3(m, n.strVal, pureLit, isConst)
+    let tmp = getTempName(m)
+    result.add tmp
+    cgsym(m, "NimStringV3")
+    # string literal not found in the cache:
+    m.s[cfsStrData].addf("static $4 NimStringV3 $1 = {$2, &$3};$n",
+          [tmp, rope(n.strVal.len), pureLit, rope(if isConst: "const" else: "")])
+  else:
+    let tmp = getTempName(m)
+    result.add tmp
+    m.s[cfsStrData].addf("static $4 NimStringV3 $1 = {$2, &$3};$n",
+          [tmp, rope(n.strVal.len), m.tmpBase & rope(id),
+          rope(if isConst: "const" else: "")])
+
+proc genStringLiteralV3Const(m: BModule; n: PNode; isConst: bool; result: var Rope) =
+  let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
+  var pureLit: Rope
+  if id == m.labels:
+    pureLit = getTempName(m)
+    cgsym(m, "NimStringV3")
+    # string literal not found in the cache:
+    genStringLiteralDataOnlyV3(m, n.strVal, pureLit, isConst)
+  else:
+    pureLit = m.tmpBase & rope(id)
+  result.addf "{$1, &$2}", [rope(n.strVal.len), pureLit]
+
 # ------ Version selector ---------------------------------------------------
 
 proc genStringLiteralDataOnly(m: BModule; s: string; info: TLineInfo;
@@ -103,6 +141,10 @@ proc genStringLiteralDataOnly(m: BModule; s: string; info: TLineInfo;
   of 2:
     let tmp = getTempName(m)
     genStringLiteralDataOnlyV2(m, s, tmp, isConst)
+    result.add tmp
+  of 3:
+    let tmp = getTempName(m)
+    genStringLiteralDataOnlyV3(m, s, tmp, isConst)
     result.add tmp
   else:
     localError(m.config, info, "cannot determine how to produce code for string literal")
@@ -114,5 +156,6 @@ proc genStringLiteral(m: BModule; n: PNode; result: var Rope) =
   case detectStrVersion(m)
   of 0, 1: genStringLiteralV1(m, n, result)
   of 2: genStringLiteralV2(m, n, isConst = true, result)
+  of 3: genStringLiteralV3(m, n, isConst = true, result)
   else:
     localError(m.config, n.info, "cannot determine how to produce code for string literal")
