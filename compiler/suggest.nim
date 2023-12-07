@@ -761,7 +761,7 @@ proc suggestPragmas*(c: PContext, n: PNode) =
 
   # Now show suggestions for user pragmas
   for pragma in c.userPragmas:
-      var pm: PrefixMatch = default(PrefixMatch)
+      var pm = default(PrefixMatch)
       if filterSym(pragma, n, pm):
         outputs &= symToSuggest(c.graph, pragma, isLocal=true, ideSug, info,
                                  pragma.getQuality, pm, c.inTypeContext > 0, 0,
