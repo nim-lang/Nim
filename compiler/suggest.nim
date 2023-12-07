@@ -126,7 +126,7 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
                   inTypeContext: bool; scope: int;
                   useSuppliedInfo = false,
                   endLine: uint16 = 0,
-                  endCol = 0): Suggest =
+                  endCol = 0, extractDocs = true): Suggest =
   new(result)
   result.section = section
   result.quality = quality
@@ -165,7 +165,8 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
     else:
       result.forth = ""
     when defined(nimsuggest) and not defined(noDocgen) and not defined(leanCompiler):
-      result.doc = extractDocComment(g, s)
+      if extractDocs:
+        result.doc = extractDocComment(g, s)
   if s.kind == skModule and s.ast.len != 0 and section != ideHighlight:
     result.filePath = toFullPath(g.config, s.ast[0].info)
     result.line = 1
@@ -760,7 +761,11 @@ proc suggestPragmas*(c: PContext, n: PNode) =
 
   # Now show suggestions for user pragmas
   for pragma in c.userPragmas:
-    suggestField(c, pragma, n, info, outputs)
+      var pm: PrefixMatch = default(PrefixMatch)
+      if filterSym(pragma, n, pm):
+        outputs &= symToSuggest(c.graph, pragma, isLocal=true, ideSug, info,
+                                 pragma.getQuality, pm, c.inTypeContext > 0, 0,
+                                 extractDocs=false)
 
   produceOutput(outputs, c.config)
   if outputs.len > 0:
