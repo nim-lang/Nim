@@ -126,10 +126,10 @@ proc mapSetType(conf: ConfigRef; typ: PType): TCTypeKind =
 proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
   var pt = skipTypes(s.typ, typedescInst)
   assert skResult != s.kind
-  
+
   #note precedence: params override types
   if optByRef in s.options: return true
-  elif sfByCopy in s.flags: return false 
+  elif sfByCopy in s.flags: return false
   elif tfByRef in pt.flags: return true
   elif tfByCopy in pt.flags: return false
   case pt.kind
@@ -139,7 +139,7 @@ proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
       result = true
     elif (optByRef in s.options) or (getSize(conf, pt) > conf.target.floatSize * 3):
       result = true           # requested anyway
-    elif (tfFinal in pt.flags) and (pt[0] == nil):
+    elif tfFinal in pt.flags and pt.baseType == nil:
       result = false          # no need, because no subtyping possible
     else:
       result = true           # ordinary objects are always passed by reference,

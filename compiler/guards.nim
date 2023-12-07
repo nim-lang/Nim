@@ -1100,7 +1100,7 @@ proc addFactLt*(m: var TModel; a, b: PNode) =
 proc settype(n: PNode): PType =
   var idgen = idGeneratorForPackage(-1'i32)
   result = newType(tySet, idgen, n.typ.owner)
-  addSonSkipIntLit(result, n.typ, idgen)
+  setBaseSkipIntLit(result, n.typ, idgen)
 
 proc buildOf(it, loc: PNode; o: Operators): PNode =
   var s = newNodeI(nkCurly, it.info, it.len-1)

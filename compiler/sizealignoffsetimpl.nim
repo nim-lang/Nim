@@ -248,7 +248,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = conf.target.ptrSize
     typ.align = int16(conf.target.ptrSize)
   of tyCstring, tySequence, tyPtr, tyRef, tyVar, tyLent:
-    let base = typ.lastSon
+    let base = typ.baseType
     if base == typ:
       # this is not the correct location to detect ``type A = ptr A``
       typ.size = szIllegalRecursion
@@ -262,9 +262,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = conf.target.ptrSize
 
   of tyArray:
-    computeSizeAlign(conf, typ[1])
-    let elemSize = typ[1].size
-    let len = lengthOrd(conf, typ[0])
+    computeSizeAlign(conf, typ.baseType)
+    let elemSize = typ.baseType.size
+    let len = lengthOrd(conf, typ.headType)
     if elemSize < 0:
       typ.size = elemSize
       typ.align = int16(elemSize)
@@ -273,10 +273,10 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.align = szUnknownSize
     else:
       typ.size = toInt64Checked(len * int32(elemSize), szTooBigSize)
-      typ.align = typ[1].align
+      typ.align = typ.baseType.align
 
   of tyUncheckedArray:
-    let base = typ.lastSon
+    let base = typ.baseType
     computeSizeAlign(conf, base)
     typ.size = 0
     typ.align = base.align
@@ -300,11 +300,11 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         typ.size = 8
         typ.align = int16(conf.floatInt64Align)
   of tySet:
-    if typ[0].kind == tyGenericParam:
+    if typ.baseType.kind == tyGenericParam:
       typ.size = szUncomputedSize
       typ.align = szUncomputedSize
     else:
-      let length = toInt64(lengthOrd(conf, typ[0]))
+      let length = toInt64(lengthOrd(conf, typ.baseType))
       if length <= 8:
         typ.size = 1
         typ.align = 1
@@ -324,22 +324,23 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         typ.size = align(length, 8) div 8 + 1
         typ.align = 1
   of tyRange:
-    computeSizeAlign(conf, typ[0])
-    typ.size = typ[0].size
-    typ.align = typ[0].align
-    typ.paddingAtEnd = typ[0].paddingAtEnd
+    computeSizeAlign(conf, typ.baseType)
+    typ.size = typ.baseType.size
+    typ.align = typ.baseType.align
+    typ.paddingAtEnd = typ.baseType.paddingAtEnd
 
   of tyTuple:
     try:
       var accum = OffsetAccum(maxAlign: 1)
-      for i in 0..<typ.len:
-        let child = typ[i]
+      var i = 0
+      for child in typ.argTypes:
         computeSizeAlign(conf, child)
         accum.align(child.align)
         if typ.n != nil: # is named tuple (has field symbols)?
           let sym = typ.n[i].sym
           sym.offset = accum.offset
         accum.inc(int32(child.size))
+        inc i
       typ.paddingAtEnd = int16(accum.finish())
       typ.size = if accum.offset == 0: 1 else: accum.offset
       typ.align = int16(accum.maxAlign)
@@ -351,11 +352,11 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   of tyObject:
     try:
       var accum =
-        if typ[0] != nil:
+        if typ.baseType != nil:
           # compute header size
-          var st = typ[0]
+          var st = typ.baseType
           while st.kind in skipPtrs:
-            st = st[^1]
+            st = st.baseType
           computeSizeAlign(conf, st)
           if conf.backend == backendCpp:
             OffsetAccum(
@@ -403,34 +404,34 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.align = szIllegalRecursion
       typ.paddingAtEnd = szIllegalRecursion
   of tyInferred:
-    if typ.len > 1:
-      computeSizeAlign(conf, typ.lastSon)
-      typ.size = typ.lastSon.size
-      typ.align = typ.lastSon.align
-      typ.paddingAtEnd = typ.lastSon.paddingAtEnd
+    if typ.baseType != nil:
+      computeSizeAlign(conf, typ.baseType)
+      typ.size = typ.baseType.size
+      typ.align = typ.baseType.align
+      typ.paddingAtEnd = typ.baseType.paddingAtEnd
 
   of tyGenericInst, tyDistinct, tyGenericBody, tyAlias, tySink, tyOwned:
-    computeSizeAlign(conf, typ.lastSon)
-    typ.size = typ.lastSon.size
-    typ.align = typ.lastSon.align
-    typ.paddingAtEnd = typ.lastSon.paddingAtEnd
+    computeSizeAlign(conf, typ.baseType)
+    typ.size = typ.baseType.size
+    typ.align = typ.baseType.align
+    typ.paddingAtEnd = typ.baseType.paddingAtEnd
 
   of tyTypeClasses:
     if typ.isResolvedUserTypeClass:
-      computeSizeAlign(conf, typ.lastSon)
-      typ.size = typ.lastSon.size
-      typ.align = typ.lastSon.align
-      typ.paddingAtEnd = typ.lastSon.paddingAtEnd
+      computeSizeAlign(conf, typ.baseType)
+      typ.size = typ.baseType.size
+      typ.align = typ.baseType.align
+      typ.paddingAtEnd = typ.baseType.paddingAtEnd
     else:
       typ.size = szUnknownSize
       typ.align = szUnknownSize
       typ.paddingAtEnd = szUnknownSize
 
   of tyTypeDesc:
-    computeSizeAlign(conf, typ.base)
-    typ.size = typ.base.size
-    typ.align = typ.base.align
-    typ.paddingAtEnd = typ.base.paddingAtEnd
+    computeSizeAlign(conf, typ.baseType)
+    typ.size = typ.baseType.size
+    typ.align = typ.baseType.align
+    typ.paddingAtEnd = typ.baseType.paddingAtEnd
 
   of tyForward:
     typ.size = szUnknownSize
@@ -439,10 +440,10 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
 
   of tyStatic:
     if typ.n != nil:
-      computeSizeAlign(conf, typ.lastSon)
-      typ.size = typ.lastSon.size
-      typ.align = typ.lastSon.align
-      typ.paddingAtEnd = typ.lastSon.paddingAtEnd
+      computeSizeAlign(conf, typ.baseType)
+      typ.size = typ.baseType.size
+      typ.align = typ.baseType.align
+      typ.paddingAtEnd = typ.baseType.paddingAtEnd
     else:
       typ.size = szUnknownSize
       typ.align = szUnknownSize

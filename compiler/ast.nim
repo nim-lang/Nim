@@ -1724,6 +1724,15 @@ proc bodyType*(t: PType): PType {.inline.} = t.args[t.args.high]
 iterator argTypesWithoutBody*(t: PType): PType =
   for i in 0..<t.args.len-1: yield t.args[i]
 
+iterator argTypesWithoutHeadAndBody*(t: PType): PType =
+  for i in 0..<t.args.len-1: yield t.args[i]
+
+iterator argTypesWithoutHeadAndBodyPairs*(x, y: PType): (PType, PType) =
+  for i in 1..<x.args.len-1: yield (x.args[i], y.args[i])
+
+iterator argTypePairs*(x, y: PType): (PType, PType) =
+  for i in 0..<x.args.len: yield (x.args[i], y.args[i])
+
 proc addSonNilAllowed*(father, son: PNode) =
   father.sons.add(son)
 

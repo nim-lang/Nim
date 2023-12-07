@@ -122,10 +122,10 @@ proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
     result = $x
 
 proc isFloatRange(t: PType): bool {.inline.} =
-  result = t.kind == tyRange and t[0].kind in {tyFloat..tyFloat128}
+  result = t.kind == tyRange and t.baseType.kind in {tyFloat..tyFloat128}
 
 proc isIntRange(t: PType): bool {.inline.} =
-  result = t.kind == tyRange and t[0].kind in {
+  result = t.kind == tyRange and t.baseType.kind in {
       tyInt..tyInt64, tyUInt8..tyUInt32}
 
 proc pickIntRange(a, b: PType): PType =
@@ -514,7 +514,7 @@ proc newSymNodeTypeDesc*(s: PSym; idgen: IdGenerator; info: TLineInfo): PNode =
   result = newSymNode(s, info)
   if s.typ.kind != tyTypeDesc:
     result.typ = newType(tyTypeDesc, idgen, s.owner)
-    result.typ.addSonSkipIntLit(s.typ, idgen)
+    result.typ.setBaseSkipIntLit(s.typ, idgen)
   else:
     result.typ = s.typ
 
@@ -635,7 +635,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
       if s.typ.kind == tyStatic:
         if s.typ.n != nil and tfUnresolved notin s.typ.flags:
           result = s.typ.n
-          result.typ = s.typ.base
+          result.typ = s.typ.baseType
       elif s.typ.isIntLit:
         result = s.typ.n
       else:
