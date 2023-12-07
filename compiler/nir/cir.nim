@@ -32,6 +32,7 @@ type
     Semicolon = ";"
     Comma = ", "
     Space = " "
+    Quote = $'"'
     Colon = ": "
     Dot = "."
     Arrow = "->"
@@ -566,50 +567,40 @@ proc genGccAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
   c.add ParLe
   c.add NewLine
 
-  var
-    sec = 0
-    left = 0
-    s = ""
-  
-  template maybeAddQuote: untyped =
-    if sec == 0: c.add """""""
-  
-  template beforeSameSection(s: string): bool =
-    # just see that after spaces :
-    # It's O(1) with high probability
-    var beforeNext = false
-    var notFinal = false
+  var asmTemplate = true
+  var left = 0
+  var s = ""
+
+  template maybeAddQuote =
+    if asmTemplate: c.add Quote
+
+  template findSecUpdate(s: string): bool =
+    var result = false
     for i in s:
-      if i == ':': beforeNext = true
-      if i notin {' ', '\t'}:
-        notFinal = true
-        break
-    not beforeNext and notFinal
-  
-  var newLine = false
-  maybeAddQuote # first "
+      if i == ':': result = true
+      if i notin {' ', '\t', '\n'}: break #found char
+    result
+
+  maybeAddQuote
   for ch in sons(t, n):
     if t[ch].kind == Verbatim:
       s = c.m.lit.strings[t[ch].litId]
       left = 0
       for i in 0..s.high:
         if s[i] == '\n':
-          newLine = true
-          c.add s[left..i-1]
-          if sec == 0: c.add r"\n"
+          c.add s[left..i - 1]
+          if asmTemplate: c.add r"\n"
           maybeAddQuote
           left = i + 1
           c.add NewLine
-          if beforeSameSection(s[i+1..^1]): maybeAddQuote
-        elif s[i] == ':': inc sec
+          if not findSecUpdate(s[i+1..^1]): maybeAddQuote # next '"'
+        elif s[i] == ':': asmTemplate = false
     else:
       c.add s[left..^1]
       c.gen(t, ch)
-  if not newLine:
+  if not findSecUpdate(s):
     c.add s[left..^1]
     maybeAddQuote
-    c.add NewLine
-
   c.add ParRi
   c.add Semicolon
 
@@ -618,25 +609,6 @@ proc genVisualCPPAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
   c.add CurlyLe
   c.gen(t, n) # inline asm
   c.add CurlyRi
-
-proc genBasicAsm(c: var GeneratedCode; t: Tree; n: NodePos) =
-  assert (
-    isLastSon(t, n, n.firstSon) and
-    t[n.firstSon].kind == Verbatim
-    ), "Invalid basic asm. Basic asm should be only one verbatim"
-
-  let s = c.m.lit.strings[t[n.firstSon].litId] & '\n'
-  var left = 0
-  c.add "__asm__ "
-  c.add ParLe
-  c.add NewLine
-  for j in 0..s.high:
-    if s[j] == '\n':
-      c.add makeCString(s[left..j])
-      c.add NewLine
-      left = j + 1
-  c.add ParRi
-  c.add Semicolon
 
 proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
   case t[n].kind
@@ -917,8 +889,13 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
             of None: raiseAssert "Your compiler does not support the inline assembler"
             of GCCExtendedAsm: genGccAsm(c, t, code)
             of VisualCPP: genVisualCPPAsm(c, t, code)
-        else: genBasicAsm(c, t, code)
-          
+        else:
+          assert (
+            isLastSon(t, code, code.firstSon) and
+            t[code.firstSon].kind == Verbatim
+          ), "Invalid basic asm. Basic asm should be only one verbatim"
+          genGccAsm(c, t, code)
+
       of Code:
         raiseAssert"not supported"
 
