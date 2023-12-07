@@ -126,7 +126,7 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
                   inTypeContext: bool; scope: int;
                   useSuppliedInfo = false,
                   endLine: uint16 = 0,
-                  endCol = 0): Suggest =
+                  endCol = 0, extractDocs = true): Suggest =
   new(result)
   result.section = section
   result.quality = quality
@@ -165,7 +165,8 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
     else:
       result.forth = ""
     when defined(nimsuggest) and not defined(noDocgen) and not defined(leanCompiler):
-      result.doc = extractDocComment(g, s)
+      if extractDocs:
+        result.doc = extractDocComment(g, s)
   if s.kind == skModule and s.ast.len != 0 and section != ideHighlight:
     result.filePath = toFullPath(g.config, s.ast[0].info)
     result.line = 1
@@ -745,6 +746,38 @@ proc suggestEnum*(c: PContext; n: PNode; t: PType) =
   suggestSymList(c, t.n, nil, n.info, outputs)
   produceOutput(outputs, c.config)
   if outputs.len > 0: suggestQuit()
+
+proc suggestPragmas*(c: PContext, n: PNode) =
+  ## Suggests anything that might be a pragma
+  ## - template that has {.pragma.}
+  ## - macros
+  ## - user pragmas
+  let info = n.info
+  var outputs: Suggestions = @[]
+  # First filter for template/macros
+  wholeSymTab(filterSym(it, n, pm) and
+    (sfCustomPragma in it.flags or it.kind == skMacro),
+    ideSug)
+
+  # Now show suggestions for user pragmas
+  for pragma in c.userPragmas:
+      var pm = default(PrefixMatch)
+      if filterSym(pragma, n, pm):
+        outputs &= symToSuggest(c.graph, pragma, isLocal=true, ideSug, info,
+                                 pragma.getQuality, pm, c.inTypeContext > 0, 0,
+                                 extractDocs=false)
+
+  produceOutput(outputs, c.config)
+  if outputs.len > 0:
+    suggestQuit()
+
+template trySuggestPragmas*(c: PContext, n: PNode) =
+  ## Runs [suggestPragmas] when compiling nimsuggest and
+  ## we are querying the node
+  when defined(nimsuggest):
+    let tmp = n
+    if c.config.ideCmd == ideSug and exactEquals(c.config.m.trackPos, tmp.info):
+      suggestPragmas(c, tmp)
 
 proc suggestSentinel*(c: PContext) =
   if c.config.ideCmd != ideSug or c.module.position != c.config.m.trackPos.fileIndex.int32: return

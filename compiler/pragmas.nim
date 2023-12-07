@@ -14,6 +14,8 @@ import
   wordrecg, ropes, options, extccomp, magicsys, trees,
   types, lookups, lineinfos, pathutils, linter, modulepaths
 
+from sigmatch import trySuggestPragmas
+
 import std/[os, math, strutils]
 
 when defined(nimPreviewSlimSystem):
@@ -119,6 +121,7 @@ const
 
 proc invalidPragma*(c: PContext; n: PNode) =
   localError(c.config, n.info, "invalid pragma: " & renderTree(n, {renderNoComments}))
+
 proc illegalCustomPragma*(c: PContext, n: PNode, s: PSym) =
   var msg = "cannot attach a custom pragma to '" & s.name.s & "'"
   if s != nil:
@@ -789,6 +792,8 @@ proc semCustomPragma(c: PContext, n: PNode, sym: PSym): PNode =
   else:
     invalidPragma(c, n)
     return n
+
+  trySuggestPragmas(c, callNode[0])
 
   let r = c.semOverloadedCall(c, callNode, n, {skTemplate}, {efNoUndeclared})
   if r.isNil or sfCustomPragma notin r[0].sym.flags:
