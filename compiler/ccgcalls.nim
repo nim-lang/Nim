@@ -241,11 +241,11 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
         var t: TLoc
         t.r = "(*$1)" % [a.rdLoc]
         result.add "($4) ? ((*$1)$3) : NIM_NIL, $2" %
-                     [a.rdLoc, lenExpr(p, t), dataField(p, typKind == tyString),
+                     [a.rdLoc, lenExpr(p, t, typKind == tyString), dataField(p, typKind == tyString),
                       dataFieldAccessor(p, "*" & a.rdLoc)]
       else:
         result.add "($4) ? ($1$3) : NIM_NIL, $2" %
-                     [a.rdLoc, lenExpr(p, a), dataField(p, typKind == tyString), dataFieldAccessor(p, a.rdLoc)]
+                     [a.rdLoc, lenExpr(p, a, typKind == tyString), dataField(p, typKind == tyString), dataFieldAccessor(p, a.rdLoc)]
     of tyArray:
       result.add "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, a.t))]
     of tyPtr, tyRef:
@@ -254,7 +254,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
         var t: TLoc
         t.r = "(*$1)" % [a.rdLoc]
         result.add "($4) ? ((*$1)$3) : NIM_NIL, $2" %
-                     [a.rdLoc, lenExpr(p, t), dataField(p, typKind == tyString),
+                     [a.rdLoc, lenExpr(p, t, typKind == tyString), dataField(p, typKind == tyString),
                       dataFieldAccessor(p, "*" & a.rdLoc)]
       of tyArray:
         result.add "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, lastSon(a.t)))]

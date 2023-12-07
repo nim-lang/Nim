@@ -348,9 +348,9 @@ proc addRdLoc(a: TLoc; result: var Rope) =
 proc lenField(p: BProc): Rope {.inline.} =
   result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
 
-proc lenExpr(p: BProc; a: TLoc): Rope =
+proc lenExpr(p: BProc; a: TLoc; isString = false): Rope =
   if optSeqDestructors in p.config.globalOptions:
-    if p.config.isDefined("nimSeqsV3"):
+    if isString and p.config.isDefined("nimSeqsV3"):
       result = ropecg(p.module, "(#nimStrLenV3($1))", [rdLoc(a)])
     else:
       result = rdLoc(a) & ".len"
@@ -486,10 +486,16 @@ proc resetLoc(p: BProc, loc: var TLoc) =
     assert loc.r != ""
 
     let atyp = skipTypes(loc.t, abstractInst)
-    if atyp.kind in {tyVar, tyLent}:
-      linefmt(p, cpsStmts, "$1->len = 0; $1->p = NIM_NIL;$n", [rdLoc(loc)])
+    if p.config.isDefined("nimSeqsV3") and typ.kind == tyString:
+      if atyp.kind in {tyVar, tyLent}:
+        linefmt(p, cpsStmts, "$1->rawlen = 0; $1->p = NIM_NIL;$n", [rdLoc(loc)])
+      else:
+        linefmt(p, cpsStmts, "$1.rawlen = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
     else:
-      linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
+      if atyp.kind in {tyVar, tyLent}:
+        linefmt(p, cpsStmts, "$1->len = 0; $1->p = NIM_NIL;$n", [rdLoc(loc)])
+      else:
+        linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
     if containsGcRef:
       var nilLoc: TLoc = initLoc(locTemp, loc.lode, OnStack)
@@ -526,8 +532,12 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
 proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
   let typ = loc.t
-  if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst + {tyStatic}).kind in {tyString, tySequence}:
-    linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
+  let typKind = skipTypes(typ, abstractInst + {tyStatic}).kind
+  if optSeqDestructors in p.config.globalOptions and typKind in {tyString, tySequence}:
+    if typKind == tyString and p.config.isDefined("nimSeqsV3"):
+      linefmt(p, cpsStmts, "$1.rawlen = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
+    else:
+      linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
     if containsGarbageCollectedRef(loc.t):
       var nilLoc: TLoc = initLoc(locTemp, loc.lode, OnStack)

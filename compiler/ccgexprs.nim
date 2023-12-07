@@ -309,7 +309,7 @@ proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc) =
       linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
 
     linefmt(p, cpsStmts, "$1.Field0 = ($5) ? ($2$3) : NIM_NIL; $1.Field1 = $4;$n",
-      [rdLoc(d), a.rdLoc, dataField(p, isString = true), lenExpr(p, a), dataFieldAccessor(p, a.rdLoc)])
+      [rdLoc(d), a.rdLoc, dataField(p, isString = true), lenExpr(p, a, isString = true), dataFieldAccessor(p, a.rdLoc)])
   else:
     internalError(p.config, a.lode.info, "cannot handle " & $a.t.kind)
 
@@ -1046,7 +1046,7 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
     linefmt(p, cpsStmts,
       "if ($2-$1 != -1 && " &
       "($1 < 0 || $1 >= $3 || $2 < 0 || $2 >= $3)){ #raiseIndexError4($1, $2, $3); ",
-      [rdLoc(a), rdLoc(b), lenExpr(p, arr)])
+      [rdLoc(a), rdLoc(b), lenExpr(p, arr, ty.kind == tyString)])
     raiseInstr(p, p.s(cpsStmts))
     linefmt p, cpsStmts, "}$n", []
 
@@ -1086,7 +1086,7 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if optBoundsCheck in p.options:
     linefmt(p, cpsStmts,
             "if ($1 < 0 || $1 >= $2){ #raiseIndexError2($1,$2-1); ",
-            [rdCharLoc(b), lenExpr(p, a)])
+            [rdCharLoc(b), lenExpr(p, a, ty.kind == tyString)])
     raiseInstr(p, p.s(cpsStmts))
     linefmt p, cpsStmts, "}$n", []
 
@@ -1261,7 +1261,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
       if e[i + 1].kind in {nkStrLit..nkTripleStrLit}:
         inc(L, e[i + 1].strVal.len)
       else:
-        lens.add(lenExpr(p, a))
+        lens.add(lenExpr(p, a, isString = true))
         lens.add(" + ")
       appends.add(ropecg(p.module, "#appendString($1, $2);$n", [strLoc(p, tmp), rdLoc(a)]))
   linefmt(p, cpsStmts, "$1 = #rawNewString($2$3);$n", [tmp.r, lens, L])
@@ -1301,7 +1301,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
       if e[i + 2].kind in {nkStrLit..nkTripleStrLit}:
         inc(L, e[i + 2].strVal.len)
       else:
-        lens.add(lenExpr(p, a))
+        lens.add(lenExpr(p, a, isString = true))
         lens.add(" + ")
       appends.add(ropecg(p.module, "#appendString($1, $2);$n",
                         [strLoc(p, dest), rdLoc(a)]))
@@ -1762,7 +1762,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
     of tyString, tySequence:
       putIntoDest(p, b, e,
                   "($4) ? ($1$3) : NIM_NIL, $2" %
-                    [rdLoc(a), lenExpr(p, a), dataField(p, typKind == tyString), dataFieldAccessor(p, a.rdLoc)],
+                    [rdLoc(a), lenExpr(p, a, typKind == tyString), dataField(p, typKind == tyString), dataFieldAccessor(p, a.rdLoc)],
                   a.storage)
     of tyArray:
       putIntoDest(p, b, e,
@@ -1875,7 +1875,7 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else: unaryExpr(p, e, d, "#nimCStrLen($1)")
   of tyString:
     var a: TLoc = initLocExpr(p, e[1])
-    var x = lenExpr(p, a)
+    var x = lenExpr(p, a, isString = true)
     if op == mHigh: x = "($1-1)" % [x]
     putIntoDest(p, d, e, x)
   of tySequence:
@@ -2256,11 +2256,11 @@ proc genStrEquals(p: BProc, e: PNode, d: var TLoc) =
   if a.kind in {nkStrLit..nkTripleStrLit} and a.strVal == "":
     x = initLocExpr(p, e[2])
     putIntoDest(p, d, e,
-      ropecg(p.module, "($1 == 0)", [lenExpr(p, x)]))
+      ropecg(p.module, "($1 == 0)", [lenExpr(p, x, isString = true)]))
   elif b.kind in {nkStrLit..nkTripleStrLit} and b.strVal == "":
     x = initLocExpr(p, e[1])
     putIntoDest(p, d, e,
-      ropecg(p.module, "($1 == 0)", [lenExpr(p, x)]))
+      ropecg(p.module, "($1 == 0)", [lenExpr(p, x, isString = true)]))
   else:
     binaryExpr(p, e, d, "#eqStrings($1, $2)")
 
