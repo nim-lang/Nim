@@ -77,3 +77,25 @@ block: # bug #22913
     {.pop.}
 
     discard foo2()
+
+block: # bug #23019
+  proc f(x: bool)
+
+  proc a(x: int) =
+    if false: f(true)
+
+  proc f(x: bool) =
+    if false: a(0)
+
+  proc k(r: int|int) {.inline.} =  # seems to require being generic and inline
+    if false: a(0)
+
+
+  # {.push tags: [].}
+  {.push raises: [].}
+
+  {.push warning[ObservableStores]:off.}  # can be any warning, off or on
+  let w = 0
+  k(w)
+  {.pop.}
+  {.pop.}
