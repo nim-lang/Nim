@@ -350,7 +350,10 @@ proc lenField(p: BProc): Rope {.inline.} =
 
 proc lenExpr(p: BProc; a: TLoc): Rope =
   if optSeqDestructors in p.config.globalOptions:
-    result = rdLoc(a) & ".len"
+    if p.config.isDefined("nimSeqsV3"):
+      result = ropecg(p.module, "(#nimStrLenV3($1))", [rdLoc(a)])
+    else:
+      result = rdLoc(a) & ".len"
   else:
     result = "($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p)]
 
@@ -360,9 +363,13 @@ proc dataFieldAccessor(p: BProc, sym: Rope): Rope =
   else:
     result = sym
 
-proc dataField(p: BProc): Rope =
+proc dataField(p: BProc; isString: bool = false): Rope =
+  # TODO: revisit this after unify strings and seqs
   if optSeqDestructors in p.config.globalOptions:
-    result = rope".p->data"
+    if isString and p.config.isDefined("nimSeqsV3"):
+      result = rope".p"
+    else:
+      result = rope".p->data"
   else:
     result = rope"->data"
 

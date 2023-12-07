@@ -90,14 +90,15 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
   sysAssert(mt != nil, "genericDeepCopyAux 2")
   case mt.kind
   of tyString:
-    when defined(nimSeqsV3):
-      var x = cast[ptr NimStringV3](dest)
-      var s2 = cast[ptr NimStringV3](s)[]
-      nimAsgnStrV2(x[], s2)
-    elif defined(nimSeqsV2):
-      var x = cast[ptr NimStringV2](dest)
-      var s2 = cast[ptr NimStringV2](s)[]
-      nimAsgnStrV2(x[], s2)
+    when defined(nimSeqsV2):
+      when defined(nimHasSeqsV3) and defined(nimSeqsV3):
+        var x = cast[ptr NimStringV3](dest)
+        var s2 = cast[ptr NimStringV3](s)[]
+        nimAsgnStrV2(x[], s2)
+      else:
+        var x = cast[ptr NimStringV2](dest)
+        var s2 = cast[ptr NimStringV2](s)[]
+        nimAsgnStrV2(x[], s2)
     else:
       var x = cast[PPointer](dest)
       var s2 = cast[PPointer](s)[]

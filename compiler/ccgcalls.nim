@@ -194,11 +194,11 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareF
       linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
     if atyp.kind in {tyVar} and not compileToCpp(p.module):
       result = ("(($5) ? (($4*)(*$1)$3+($2)) : NIM_NIL)" %
-                  [rdLoc(a), rdLoc(b), dataField(p), dest, dataFieldAccessor(p, "*" & rdLoc(a))],
+                  [rdLoc(a), rdLoc(b), dataField(p, ty.kind == tyString), dest, dataFieldAccessor(p, "*" & rdLoc(a))],
                 lengthExpr)
     else:
       result = ("(($5) ? (($4*)$1$3+($2)) : NIM_NIL)" %
-                  [rdLoc(a), rdLoc(b), dataField(p), dest, dataFieldAccessor(p, rdLoc(a))],
+                  [rdLoc(a), rdLoc(b), dataField(p, ty.kind == tyString), dest, dataFieldAccessor(p, rdLoc(a))],
                 lengthExpr)
   else:
     result = ("", "")
@@ -222,7 +222,8 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
     result.add x & ", " & y
   else:
     var a = initLocExpr(p, if n.kind == nkHiddenStdConv: n[1] else: n)
-    case skipTypes(a.t, abstractVar+{tyStatic}).kind
+    let typKind = skipTypes(a.t, abstractVar+{tyStatic}).kind
+    case typKind
     of tyOpenArray, tyVarargs:
       if reifiedOpenArray(n):
         if a.t.kind in {tyVar, tyLent}:
@@ -240,11 +241,11 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
         var t: TLoc
         t.r = "(*$1)" % [a.rdLoc]
         result.add "($4) ? ((*$1)$3) : NIM_NIL, $2" %
-                     [a.rdLoc, lenExpr(p, t), dataField(p),
+                     [a.rdLoc, lenExpr(p, t), dataField(p, typKind == tyString),
                       dataFieldAccessor(p, "*" & a.rdLoc)]
       else:
         result.add "($4) ? ($1$3) : NIM_NIL, $2" %
-                     [a.rdLoc, lenExpr(p, a), dataField(p), dataFieldAccessor(p, a.rdLoc)]
+                     [a.rdLoc, lenExpr(p, a), dataField(p, typKind == tyString), dataFieldAccessor(p, a.rdLoc)]
     of tyArray:
       result.add "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, a.t))]
     of tyPtr, tyRef:
@@ -253,7 +254,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
         var t: TLoc
         t.r = "(*$1)" % [a.rdLoc]
         result.add "($4) ? ((*$1)$3) : NIM_NIL, $2" %
-                     [a.rdLoc, lenExpr(p, t), dataField(p),
+                     [a.rdLoc, lenExpr(p, t), dataField(p, typKind == tyString),
                       dataFieldAccessor(p, "*" & a.rdLoc)]
       of tyArray:
         result.add "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, lastSon(a.t)))]

@@ -309,7 +309,7 @@ proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc) =
       linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
 
     linefmt(p, cpsStmts, "$1.Field0 = ($5) ? ($2$3) : NIM_NIL; $1.Field1 = $4;$n",
-      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a), dataFieldAccessor(p, a.rdLoc)])
+      [rdLoc(d), a.rdLoc, dataField(p, isString = true), lenExpr(p, a), dataFieldAccessor(p, a.rdLoc)])
   else:
     internalError(p.config, a.lode.info, "cannot handle " & $a.t.kind)
 
@@ -1098,7 +1098,7 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
       optSeqDestructors in p.config.globalOptions:
     linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
   putIntoDest(p, d, n,
-              ropecg(p.module, "$1$3[$2]", [rdLoc(a), rdCharLoc(b), dataField(p)]), a.storage)
+              ropecg(p.module, "$1$3[$2]", [rdLoc(a), rdCharLoc(b), dataField(p, ty.kind == tyString)]), a.storage)
 
 proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
   var ty = skipTypes(n[0].typ, abstractVarRange + tyUserTypeClasses)
@@ -1199,6 +1199,7 @@ proc genEcho(p: BProc, n: PNode) =
         a = initLocExpr(p, it)
         if i > 0:
           args.add(", ")
+        ## TODO: fixme nimseqsv3 needs to be treated as well
         case detectStrVersion(p.module)
         of 2:
           args.add(ropecg(p.module, "Genode::Cstring($1.p->data, $1.len)", [a.rdLoc]))
@@ -1754,13 +1755,14 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
                 addrLoc(p.config, a), genTypeInfoV1(p.module, t, e.info)]), a.storage)
   of tyOpenArray, tyVarargs:
     var b: TLoc = default(TLoc)
-    case skipTypes(a.t, abstractVarRange).kind
+    let typKind = skipTypes(a.t, abstractVarRange).kind
+    case typKind
     of tyOpenArray, tyVarargs:
       putIntoDest(p, b, e, "$1, $1Len_0" % [rdLoc(a)], a.storage)
     of tyString, tySequence:
       putIntoDest(p, b, e,
                   "($4) ? ($1$3) : NIM_NIL, $2" %
-                    [rdLoc(a), lenExpr(p, a), dataField(p), dataFieldAccessor(p, a.rdLoc)],
+                    [rdLoc(a), lenExpr(p, a), dataField(p, typKind == tyString), dataFieldAccessor(p, a.rdLoc)],
                   a.storage)
     of tyArray:
       putIntoDest(p, b, e,
@@ -2342,14 +2344,18 @@ proc genDestroy(p: BProc; n: PNode) =
     case t.kind
     of tyString:
       var a: TLoc = initLocExpr(p, arg)
-      if optThreads in p.config.globalOptions:
-        linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
-          " #deallocShared($1.p);$n" &
-          "}$n", [rdLoc(a)])
+      if p.config.isDefined("nimSeqsV3"):
+        linefmt(p, cpsStmts, "#nimDestroyStrV1($1);$n",
+                  [rdLoc(a)])
       else:
-        linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
-          " #dealloc($1.p);$n" &
-          "}$n", [rdLoc(a)])
+        if optThreads in p.config.globalOptions:
+          linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
+            " #deallocShared($1.p);$n" &
+            "}$n", [rdLoc(a)])
+        else:
+          linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
+            " #dealloc($1.p);$n" &
+            "}$n", [rdLoc(a)])
     of tySequence:
       var a: TLoc = initLocExpr(p, arg)
       linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &

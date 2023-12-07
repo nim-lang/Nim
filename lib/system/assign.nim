@@ -61,14 +61,15 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
   sysAssert(mt != nil, "genericAssignAux 2")
   case mt.kind
   of tyString:
-    when defined(nimSeqsV3):
-      var x = cast[ptr NimStringV3](dest)
-      var s2 = cast[ptr NimStringV3](s)[]
-      nimAsgnStrV2(x[], s2)
-    elif defined(nimSeqsV2):
-      var x = cast[ptr NimStringV2](dest)
-      var s2 = cast[ptr NimStringV2](s)[]
-      nimAsgnStrV2(x[], s2)
+    when defined(nimSeqsV2):
+      when defined(nimHasSeqsV3) and defined(nimSeqsV3):
+        var x = cast[ptr NimStringV3](dest)
+        var s2 = cast[ptr NimStringV3](s)[]
+        nimAsgnStrV2(x[], s2)
+      else:
+        var x = cast[ptr NimStringV2](dest)
+        var s2 = cast[ptr NimStringV2](s)[]
+        nimAsgnStrV2(x[], s2)
     else:
       var x = cast[PPointer](dest)
       var s2 = cast[PPointer](s)[]
@@ -248,14 +249,15 @@ proc genericReset(dest: pointer, mt: PNimType) =
   of tyRef:
     unsureAsgnRef(cast[PPointer](dest), nil)
   of tyString:
-    when defined(nimSeqsV3):
-      var s = cast[ptr NimStringV3](dest)
-      frees(s[])
-      zeroMem(dest, mt.size)
-    elif defined(nimSeqsV2):
-      var s = cast[ptr NimStringV2](dest)
-      frees(s[])
-      zeroMem(dest, mt.size)
+    when defined(nimSeqsV2):
+      when defined(nimHasSeqsV3) and defined(nimSeqsV3):
+        var s = cast[ptr NimStringV3](dest)
+        frees(s[])
+        zeroMem(dest, mt.size)
+      else:
+        var s = cast[ptr NimStringV2](dest)
+        frees(s[])
+        zeroMem(dest, mt.size)
     else:
       unsureAsgnRef(cast[PPointer](dest), nil)
   of tySequence:
