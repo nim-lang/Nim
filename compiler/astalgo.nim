@@ -40,10 +40,10 @@ proc debug*(n: PNode; conf: ConfigRef = nil) {.exportc: "debugNode", deprecated.
 proc typekinds*(t: PType) {.deprecated.} =
   var t = t
   var s = ""
-  while t != nil and t.len > 0:
+  while t != nil and t.baseType != nil:
     s.add $t.kind
     s.add " "
-    t = t.lastSon
+    t = t.baseType
   echo s
 
 template debug*(x: PSym|PType|PNode) {.deprecated.} =
@@ -337,21 +337,22 @@ proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
     sonsRope = "\"$1 @$2\"" % [rope($n.kind), rope(
         strutils.toHex(cast[int](n), sizeof(n) * 2))]
   else:
-    if n.len > 0:
-      sonsRope = rope("[")
-      for i in 0..<n.len:
-        if i > 0: sonsRope.add(",")
-        sonsRope.addf("$N$1$2", [rspaces(indent + 4), typeToYamlAux(conf, n[i],
-            marker, indent + 4, maxRecDepth - 1)])
-      sonsRope.addf("$N$1]", [rspaces(indent + 2)])
-    else:
-      sonsRope = rope("null")
+   sonsRope = rope("[")
+    for i in 0..<n.argTypes.len:
+      if i > 0: sonsRope.add(",")
+      sonsRope.addf("$N$1$2", [rspaces(indent + 4), typeToYamlAux(conf, n[i],
+          marker, indent + 4, maxRecDepth - 1)])
+    sonsRope.addf("$N$1]", [rspaces(indent + 2)])
 
     let istr = rspaces(indent + 2)
     result = rope("{")
+    if n.baseType != nil:
+      result.addf("$N$1\"base\": $2", [rspaces(indent + 4), typeToYamlAux(conf, n.baseType,
+            marker, indent + 4, maxRecDepth - 1)])
+
     result.addf("$N$1\"kind\": $2", [istr, makeYamlString($n.kind)])
-    result.addf("$N$1\"sym\": $2",  [istr, symToYamlAux(conf, n.sym, marker, indent + 2, maxRecDepth - 1)])
-    result.addf("$N$1\"n\": $2",     [istr, treeToYamlAux(conf, n.n, marker, indent + 2, maxRecDepth - 1)])
+    result.addf("$N$1\"sym\": $2", [istr, symToYamlAux(conf, n.sym, marker, indent + 2, maxRecDepth - 1)])
+    result.addf("$N$1\"n\": $2", [istr, treeToYamlAux(conf, n.n, marker, indent + 2, maxRecDepth - 1)])
     if card(n.flags) > 0:
       result.addf("$N$1\"flags\": $2", [istr, flagsToStr(n.flags)])
     result.addf("$N$1\"callconv\": $2", [istr, makeYamlString($n.callConv)])
