@@ -2373,6 +2373,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
         # XXX this is still all wrong: (T, T) should be 2 generic matches
         # and  (int, int) 2 exact matches, etc. Essentially you cannot call
         # typeRel here and expect things to work!
+        if tfUnresolved in z.callee.flags and f.kind != tyUntyped: continue
         let r = typeRel(z, f, arg[i].typ)
         incMatches(z, r, 2)
         if r != isNone:
