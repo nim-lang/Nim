@@ -39,7 +39,7 @@ template `strCap=`(p: pointer, size: int) =
 proc nimStrLenV3(s: NimStringV3): int {.compilerRtl, inl.} = s.rawlen shr 1
 template toRawLen(len: int): int = len shl 1
 template incRawLen(s: var NimStringV3, value: int = 1) =
-  s.rawlen = s.rawlen + value shl 1
+  s.rawlen += value shl 1
 
 template setRawLen(s: var NimStringV3, len: int) =
   s.rawLen = toRawLen(len)
@@ -136,8 +136,9 @@ proc nimToCStringConv(s: NimStringV3): cstring {.compilerproc, nonReloadable, in
   else:
     ## TODO: fixme: inject conversions somewhere else and be cleaned up
     ## but let it leak for now
-    result = cast[cstring](allocPayload0(s.nimStrLenV3+1))
-    copyMem(result, unsafeAddr s.p[0], s.nimStrLenV3)
+    let len = s.nimStrLenV3+1
+    result = cast[cstring](allocShared0(len+1))
+    copyMem(result, unsafeAddr s.p[0], len)
 
 proc appendString(dest: var NimStringV3; src: NimStringV3) {.compilerproc, inline.} =
   if src.nimStrLenV3 > 0:

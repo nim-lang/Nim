@@ -97,6 +97,9 @@ proc genStringLiteralV2Const(m: BModule; n: PNode; isConst: bool; result: var Ro
 # ------ Version 3: destructor based strings and seqs -----------------------
 # strings are enhanced by interned strings
 
+proc toConstLenV3(len: int): string =
+  result = rope((len shl 1) or 1)
+
 proc genStringLiteralDataOnlyV3(m: BModule, s: string; result: Rope; isConst: bool) =
   m.s[cfsStrData].addf("static $4 NIM_CHAR $1[$2] = $3;$n",
        [result, rope(s.len), makeCString(s),
@@ -112,12 +115,12 @@ proc genStringLiteralV3(m: BModule; n: PNode; isConst: bool; result: var Rope) =
     cgsym(m, "NimStringV3")
     # string literal not found in the cache:
     m.s[cfsStrData].addf("static $4 NimStringV3 $1 = {$2, &$3};$n",
-          [tmp, rope(n.strVal.len), pureLit, rope(if isConst: "const" else: "")])
+          [tmp, toConstLenV3(n.strVal.len), pureLit, rope(if isConst: "const" else: "")])
   else:
     let tmp = getTempName(m)
     result.add tmp
     m.s[cfsStrData].addf("static $4 NimStringV3 $1 = {$2, &$3};$n",
-          [tmp, rope(n.strVal.len), m.tmpBase & rope(id),
+          [tmp, toConstLenV3(n.strVal.len), m.tmpBase & rope(id),
           rope(if isConst: "const" else: "")])
 
 proc genStringLiteralV3Const(m: BModule; n: PNode; isConst: bool; result: var Rope) =
@@ -130,7 +133,7 @@ proc genStringLiteralV3Const(m: BModule; n: PNode; isConst: bool; result: var Ro
     genStringLiteralDataOnlyV3(m, n.strVal, pureLit, isConst)
   else:
     pureLit = m.tmpBase & rope(id)
-  result.addf "{$1, &$2}", [rope(n.strVal.len), pureLit]
+  result.addf "{$1, &$2}", [toConstLenV3(n.strVal.len), pureLit]
 
 # ------ Version selector ---------------------------------------------------
 
