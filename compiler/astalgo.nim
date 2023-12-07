@@ -337,11 +337,13 @@ proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
     sonsRope = "\"$1 @$2\"" % [rope($n.kind), rope(
         strutils.toHex(cast[int](n), sizeof(n) * 2))]
   else:
-   sonsRope = rope("[")
-    for i in 0..<n.argTypes.len:
+    sonsRope = rope("[")
+    var i = 0
+    for a in n.argTypes:
       if i > 0: sonsRope.add(",")
-      sonsRope.addf("$N$1$2", [rspaces(indent + 4), typeToYamlAux(conf, n[i],
+      sonsRope.addf("$N$1$2", [rspaces(indent + 4), typeToYamlAux(conf, a,
           marker, indent + 4, maxRecDepth - 1)])
+      inc i
     sonsRope.addf("$N$1]", [rspaces(indent + 2)])
 
     let istr = rspaces(indent + 2)
@@ -574,13 +576,17 @@ proc value(this: var DebugPrinter; value: PType) =
     this.key "n"
     this.value value.n
 
-  if value.len > 0:
+  if value.baseType != nil:
+    this.key "base"
+    this.value value.baseType
+
+  if value.argTypesLen > 0:
     this.key "sons"
     this.openBracket
-    for i in 0..<value.len:
-      this.value value[i]
-      if i != value.len - 1:
-        this.comma
+    var i = 0
+    for a in value.argTypes:
+      if i > 0: this.comma
+      this.value a
     this.closeBracket
 
   if value.n != nil:

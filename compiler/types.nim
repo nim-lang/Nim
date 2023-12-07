@@ -65,9 +65,6 @@ proc addTypeDeclVerboseMaybe*(result: var string, conf: ConfigRef; typ: PType) =
 
 template `$`*(typ: PType): string = typeToString(typ)
 
-proc base*(t: PType): PType =
-  result = t[0]
-
 # ------------------- type iterator: ----------------------------------------
 type
   TTypeIter* = proc (t: PType, closure: RootRef): bool {.nimcall.} # true if iteration should stop
@@ -75,8 +72,6 @@ type
   TTypePredicate* = proc (t: PType): bool {.nimcall.}
 
 proc iterOverType*(t: PType, iter: TTypeIter, closure: RootRef): bool
-  # Returns result of `iter`.
-proc mutateType*(t: PType, iter: TTypeMutator, closure: RootRef): PType
   # Returns result of `iter`.
 
 type
@@ -108,13 +103,10 @@ const
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
   typedescInst* = abstractInst + {tyTypeDesc, tyOwned, tyUserTypeClass}
 
-proc invalidGenericInst*(f: PType): bool =
-  result = f.kind == tyGenericInst and lastSon(f) == nil
-
 proc isPureObject*(typ: PType): bool =
   var t = typ
-  while t.kind == tyObject and t[0] != nil:
-    t = t[0].skipTypes(skipPtrs)
+  while t.kind == tyObject and t.baseType != nil:
+    t = t.baseType.skipTypes(skipPtrs)
   result = t.sym != nil and sfPure in t.sym.flags
 
 proc isUnsigned*(t: PType): bool =
@@ -184,10 +176,9 @@ proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferNa
 proc elemType*(t: PType): PType =
   assert(t != nil)
   case t.kind
-  of tyGenericInst, tyDistinct, tyAlias, tySink: result = elemType(lastSon(t))
-  of tyArray: result = t[1]
+  of tyGenericInst, tyDistinct, tyAlias, tySink, tyArray: result = elemType(t.baseType)
   of tyError: result = t
-  else: result = t.lastSon
+  else: result = t.baseType
   assert(result != nil)
 
 proc enumHasHoles*(t: PType): bool =
@@ -200,7 +191,7 @@ proc isOrdinalType*(t: PType, allowEnumWithHoles: bool = false): bool =
     baseKinds = {tyChar, tyInt..tyInt64, tyUInt..tyUInt64, tyBool, tyEnum}
     parentKinds = {tyRange, tyOrdinal, tyGenericInst, tyAlias, tySink, tyDistinct}
   result = (t.kind in baseKinds and (not t.enumHasHoles or allowEnumWithHoles)) or
-    (t.kind in parentKinds and isOrdinalType(t.lastSon, allowEnumWithHoles))
+    (t.kind in parentKinds and isOrdinalType(t.baseType, allowEnumWithHoles))
 
 proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
                      closure: RootRef): bool
@@ -229,10 +220,12 @@ proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
   if not containsOrIncl(marker, t.id):
     case t.kind
     of tyGenericInst, tyGenericBody, tyAlias, tySink, tyInferred:
-      result = iterOverTypeAux(marker, lastSon(t), iter, closure)
+      result = iterOverTypeAux(marker, t.baseType, iter, closure)
     else:
-      for i in 0..<t.len:
-        result = iterOverTypeAux(marker, t[i], iter, closure)
+      result = iterOverTypeAux(marker, t.baseType, iter, closure)
+      if result: return result
+      for a in t.argTypes:
+        result = iterOverTypeAux(marker, a, iter, closure)
         if result: return
       if t.n != nil and t.kind != tyProc: result = iterOverNode(marker, t.n, iter, closure)
 
@@ -275,14 +268,16 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
   if result: return
   case t.kind
   of tyObject:
-    if t[0] != nil:
-      result = searchTypeForAux(t[0].skipTypes(skipPtrs), predicate, marker)
+    if t.baseType != nil:
+      result = searchTypeForAux(t.baseType.skipTypes(skipPtrs), predicate, marker)
     if not result: result = searchTypeNodeForAux(t.n, predicate, marker)
-  of tyGenericInst, tyDistinct, tyAlias, tySink:
-    result = searchTypeForAux(lastSon(t), predicate, marker)
-  of tyArray, tySet, tyTuple:
-    for i in 0..<t.len:
-      result = searchTypeForAux(t[i], predicate, marker)
+  of tyGenericInst, tyDistinct, tyAlias, tySink, tySet:
+    result = searchTypeForAux(t.baseType, predicate, marker)
+  of tyArray, tyTuple:
+    result = searchTypeForAux(t.baseType, predicate, marker)
+    if result: return
+    for a in t.argTypes:
+      result = searchTypeForAux(a, predicate, marker)
       if result: return
   else:
     discard
@@ -298,7 +293,7 @@ proc containsObject*(t: PType): bool =
   result = searchTypeFor(t, isObjectPredicate)
 
 proc isObjectWithTypeFieldPredicate(t: PType): bool =
-  result = t.kind == tyObject and t[0] == nil and
+  result = t.kind == tyObject and t.baseType == nil and
       not (t.sym != nil and {sfPure, sfInfixCall} * t.sym.flags != {}) and
       tfFinal notin t.flags
 
@@ -318,20 +313,19 @@ proc analyseObjectWithTypeFieldAux(t: PType,
     if t.n != nil:
       if searchTypeNodeForAux(t.n, isObjectWithTypeFieldPredicate, marker):
         return frEmbedded
-    for i in 0..<t.len:
-      var x = t[i]
-      if x != nil: x = x.skipTypes(skipPtrs)
-      res = analyseObjectWithTypeFieldAux(x, marker)
-      if res == frEmbedded:
-        return frEmbedded
-      if res == frHeader: result = frHeader
+    var x = t.baseType
+    if x != nil: x = x.skipTypes(skipPtrs)
+    res = analyseObjectWithTypeFieldAux(x, marker)
+    if res == frEmbedded:
+      return frEmbedded
+    if res == frHeader: result = frHeader
     if result == frNone:
       if isObjectWithTypeFieldPredicate(t): result = frHeader
-  of tyGenericInst, tyDistinct, tyAlias, tySink:
-    result = analyseObjectWithTypeFieldAux(lastSon(t), marker)
-  of tyArray, tyTuple:
-    for i in 0..<t.len:
-      res = analyseObjectWithTypeFieldAux(t[i], marker)
+  of tyGenericInst, tyDistinct, tyAlias, tySink, tyArray:
+    result = analyseObjectWithTypeFieldAux(t.baseType, marker)
+  of tyTuple:
+    for a in t.argTypes:
+      res = analyseObjectWithTypeFieldAux(a, marker)
       if res != frNone:
         return frEmbedded
   else:
@@ -408,9 +402,8 @@ proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PTyp
       if withRef and sameBackendType(t, orig):
         result = true
       elif not containsOrIncl(marker, t.id):
-        for i in 0..<t.len:
-          result = canFormAcycleAux(g, marker, t[i], orig, withRef or t.kind != tyUncheckedArray, hasTrace)
-          if result: return
+        result = canFormAcycleAux(g, marker, t.baseType, orig, withRef or t.kind != tyUncheckedArray, hasTrace)
+        if result: return
   of tyObject:
     if withRef and sameBackendType(t, orig):
       result = true
@@ -419,9 +412,8 @@ proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PTyp
       let op = getAttachedOp(g, t.skipTypes({tyRef}), attachedTrace)
       if op != nil and sfOverridden in op.flags:
         hasTrace = true
-      for i in 0..<t.len:
-        result = canFormAcycleAux(g, marker, t[i], orig, withRef, hasTrace)
-        if result: return
+      result = canFormAcycleAux(g, marker, t.baseType, orig, withRef, hasTrace)
+      if result: return
       if t.n != nil: result = canFormAcycleNode(g, marker, t.n, orig, withRef, hasTrace)
     # Inheritance can introduce cyclic types, however this is not relevant
     # as the type that is passed to 'new' is statically known!
@@ -429,12 +421,19 @@ proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PTyp
     if tfFinal notin t.flags:
       # damn inheritance may introduce cycles:
       result = true
-  of tyTuple, tySequence, tyArray, tyOpenArray, tyVarargs:
+
+  of tySequence, tyArray, tyOpenArray, tyVarargs:
     if withRef and sameBackendType(t, orig):
       result = true
     elif not containsOrIncl(marker, t.id):
-      for i in 0..<t.len:
-        result = canFormAcycleAux(g, marker, t[i], orig, withRef, hasTrace)
+      result = canFormAcycleAux(g, marker, t.baseType, orig, withRef, hasTrace)
+      if result: return
+  of tyTuple:
+    if withRef and sameBackendType(t, orig):
+      result = true
+    elif not containsOrIncl(marker, t.id):
+      for a in t.argTypes:
+        result = canFormAcycleAux(g, marker, a, orig, withRef, hasTrace)
         if result: return
   of tyProc: result = typ.callConv == ccClosure
   else: discard
@@ -447,37 +446,6 @@ proc canFormAcycle*(g: ModuleGraph, typ: PType): bool =
   var marker = initIntSet()
   let t = skipTypes(typ, abstractInst+{tyOwned}-{tyTypeDesc})
   result = canFormAcycleAux(g, marker, t, t, false, false)
-
-proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
-                   closure: RootRef): PType
-proc mutateNode(marker: var IntSet, n: PNode, iter: TTypeMutator,
-                closure: RootRef): PNode =
-  result = nil
-  if n != nil:
-    result = copyNode(n)
-    result.typ = mutateTypeAux(marker, n.typ, iter, closure)
-    case n.kind
-    of nkNone..nkNilLit:
-      # a leaf
-      discard
-    else:
-      for i in 0..<n.len:
-        result.add mutateNode(marker, n[i], iter, closure)
-
-proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
-                   closure: RootRef): PType =
-  result = nil
-  if t == nil: return
-  result = iter(t, closure)
-  if not containsOrIncl(marker, t.id):
-    for i in 0..<t.len:
-      result[i] = mutateTypeAux(marker, result[i], iter, closure)
-    if t.n != nil: result.n = mutateNode(marker, t.n, iter, closure)
-  assert(result != nil)
-
-proc mutateType(t: PType, iter: TTypeMutator, closure: RootRef): PType =
-  var marker = initIntSet()
-  result = mutateTypeAux(marker, t, iter, closure)
 
 proc valueToString(a: PNode): string =
   case a.kind
@@ -551,17 +519,17 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           result = t.sym.name.s
         else:
           result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
-      elif t.kind == tyAlias and t[0].kind != tyAlias:
-        result = typeToString(t[0])
+      elif t.kind == tyAlias and t.baseType.kind != tyAlias:
+        result = typeToString(t.baseType)
       elif prefer in {preferResolved, preferMixed}:
         case t.kind
         of IntegralTypes + {tyFloat..tyFloat128} + {tyString, tyCstring}:
           result = typeToStr[t.kind]
         of tyGenericBody:
-          result = typeToString(t.lastSon)
+          result = typeToString(t.bodyType)
         of tyCompositeTypeClass:
           # avoids showing `A[any]` in `proc fun(a: A)` with `A = object[T]`
-          result = typeToString(t.lastSon.lastSon)
+          result = typeToString(t.bodyType.bodyType)
         else:
           result = t.sym.name.s
         if prefer == preferMixed and result != t.sym.name.s:
@@ -569,10 +537,10 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       elif prefer in {preferName, preferTypeName, preferInlayHint} or t.sym.owner.isNil:
         # note: should probably be: {preferName, preferTypeName, preferGenericArg}
         result = t.sym.name.s
-        if t.kind == tyGenericParam and t.len > 0:
+        if t.kind == tyGenericParam and t.argTypesLen > 0:
           result.add ": "
           var first = true
-          for son in t:
+          for son in t.argTypes:
             if not first: result.add " or "
             result.add son.typeToString
             first = false
@@ -593,34 +561,38 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         else:
           result = "int literal(" & $t.n.intVal & ")"
     of tyGenericInst, tyGenericInvocation:
-      result = typeToString(t[0]) & '['
-      for i in 1..<t.len-ord(t.kind != tyGenericInvocation):
-        if i > 1: result.add(", ")
-        result.add(typeToString(t[i], preferGenericArg))
+      result = typeToString(t.headType) & '['
+      var i = 0
+      for a in t.argTypesWithoutHead:
+        if i > 0: result.add(", ")
+        result.add(typeToString(a, preferGenericArg))
+        inc i
       result.add(']')
     of tyGenericBody:
-      result = typeToString(t.lastSon) & '['
-      for i in 0..<t.len-1:
+      result = typeToString(t.bodyType) & '['
+      var i = 0
+      for a in t.argTypesWithoutBody:
         if i > 0: result.add(", ")
-        result.add(typeToString(t[i], preferTypeName))
+        result.add(typeToString(a, preferTypeName))
+        inc i
       result.add(']')
     of tyTypeDesc:
-      if t[0].kind == tyNone: result = "typedesc"
-      else: result = "typedesc[" & typeToString(t[0]) & "]"
+      if t.baseType == nil or t.baseType.kind == tyNone: result = "typedesc"
+      else: result = "typedesc[" & typeToString(t.baseType) & "]"
     of tyStatic:
       if prefer == preferGenericArg and t.n != nil:
         result = t.n.renderTree
       else:
-        result = "static[" & (if t.len > 0: typeToString(t[0]) else: "") & "]"
+        result = "static[" & (if t.baseType != nil: typeToString(t.baseType) else: "") & "]"
         if t.n != nil: result.add "(" & renderTree(t.n) & ")"
     of tyUserTypeClass:
       if t.sym != nil and t.sym.owner != nil:
-        if t.isResolvedUserTypeClass: return typeToString(t.lastSon)
+        if t.isResolvedUserTypeClass: return typeToString(t.baseType)
         return t.sym.owner.name.s
       else:
         result = "<invalid tyUserTypeClass>"
     of tyBuiltInTypeClass:
-      result = case t.base.kind
+      result = case t.baseType.kind
         of tyVar: "var"
         of tyRef: "ref"
         of tyPtr: "ptr"
@@ -633,13 +605,13 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         of tyObject: "object"
         of tyTuple: "tuple"
         of tyOpenArray: "openArray"
-        else: typeToStr[t.base.kind]
+        else: typeToStr[t.baseType.kind]
     of tyInferred:
       let concrete = t.previouslyInferred
       if concrete != nil: result = typeToString(concrete)
-      else: result = "inferred[" & typeToString(t.base) & "]"
+      else: result = "inferred[" & typeToString(t.baseType) & "]"
     of tyUserTypeClassInst:
-      let body = t.base
+      let body = t.baseType
       result = body.sym.name.s & "["
       for i in 1..<t.len - 1:
         if i > 1: result.add(", ")
@@ -675,20 +647,16 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           result &= "[" & typeToString(t[0]) & ", " &
               typeToString(t[1]) & ']'
     of tyUncheckedArray:
-      result = "UncheckedArray"
-      if t.len > 0:
-        result &= "[" & typeToString(t[0]) & ']'
+      result = "UncheckedArray[" & typeToString(t.baseType) & ']'
     of tySequence:
       if t.sym != nil and prefer != preferResolved:
         result = t.sym.name.s
       else:
-        result = "seq"
-        if t.len > 0:
-          result &= "[" & typeToString(t[0]) & ']'
+        result = "seq[" & typeToString(t.baseType) & ']'
     of tyOrdinal:
       result = "ordinal"
-      if t.len > 0:
-        result &= "[" & typeToString(t[0]) & ']'
+      if t.baseType != nil:
+        result &= "[" & typeToString(t.baseType) & ']'
     of tySet:
       result = "set"
       if t.len > 0:

@@ -2386,6 +2386,7 @@ proc createFlowVar(c: PContext; t: PType; info: TLineInfo): PType =
   result = newType(tyGenericInvocation, c.idgen, c.module)
   addSonSkipIntLit(result, magicsys.getCompilerProc(c.graph, "FlowVar").typ, c.idgen)
   addSonSkipIntLit(result, t, c.idgen)
+  # XXX FIX THIS!
   result = instGenericContainer(c, info, result, allowMetaTypes = false)
 
 proc instantiateCreateFlowVarCall(c: PContext; t: PType;
@@ -2768,7 +2769,7 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedT
   for i in 0..<n.len:
     let expectedElemType = if expected != nil: expected[i] else: nil
     n[i] = semExprWithType(c, n[i], {}, expectedElemType)
-    addSonSkipIntLit(typ, n[i].typ, c.idgen)
+    addArgSkipIntLit(typ, n[i].typ, c.idgen)
   result.typ = typ
 
 include semobjconstr

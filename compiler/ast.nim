@@ -1027,6 +1027,7 @@ type
     impUnknown, impNo, impYes
 
 template baseType*(t: PType): PType = t.base
+template returnType*(t: PType): PType = t.base
 
 template nodeId(n: PNode): int = cast[int](n)
 
@@ -1352,8 +1353,7 @@ proc newTreeIT*(kind: TNodeKind; info: TLineInfo; typ: PType; children: varargs[
     result.info = children[0].info
   result.sons = @children
 
-template previouslyInferred*(t: PType): PType =
-  if t.sons.len > 1: t.lastSon else: nil
+template previouslyInferred*(t: PType): PType = t.baseType
 
 when false:
   import tables, strutils
@@ -1543,6 +1543,8 @@ proc `$`*(s: PSym): string =
 iterator argTypes*(t: PType): PType =
   for i in 0..<t.args.len: yield t.args[i]
 
+proc argTypesLen*(t: PType): int {.inline.} = t.args.len
+
 #iterator pairs*(n: PType): tuple[i: int, n: PType] =
 #  for i in 0..<n.sons.len: yield (i, n.sons[i])
 
@@ -1711,6 +1713,16 @@ proc addArg*(father: PType; son: sink PType; propagateHasAsgn = true) =
 proc setBase*(father: PType; son: sink PType; propagateHasAsgn = true) =
   father.base = son
   if not son.isNil: propagateToOwner(father, son, propagateHasAsgn)
+
+proc headType*(t: PType): PType {.inline.} = t.args[0]
+
+iterator argTypesWithoutHead*(t: PType): PType =
+  for i in 1..<t.args.len: yield t.args[i]
+
+proc bodyType*(t: PType): PType {.inline.} = t.args[t.args.high]
+
+iterator argTypesWithoutBody*(t: PType): PType =
+  for i in 0..<t.args.len-1: yield t.args[i]
 
 proc addSonNilAllowed*(father, son: PNode) =
   father.sons.add(son)

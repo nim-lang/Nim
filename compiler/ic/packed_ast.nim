@@ -75,7 +75,8 @@ type
     callConv*: TCallingConvention
     #nodekind*: TNodeKind
     flags*: TTypeFlags
-    types*: seq[PackedItemId]
+    base*: PackedItemId
+    args*: seq[PackedItemId]
     n*: NodeId
     #nodeflags*: TNodeFlags
     sym*: PackedItemId

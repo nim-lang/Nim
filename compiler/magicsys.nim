@@ -35,7 +35,7 @@ proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSy
   for r in systemModuleSyms(g, id):
     if r.magic == m:
       # prefer the tyInt variant:
-      if r.typ[0] != nil and r.typ[0].kind == tyInt: return r
+      if r.typ.returnType != nil and r.typ.returnType.kind == tyInt: return r
       result = r
   if result != nil: return result
   localError(g.config, info, "system module needs: " & name)
@@ -98,9 +98,14 @@ proc skipIntLit*(t: PType; id: IdGenerator): PType {.inline.} =
   else:
     result = t
 
-proc addSonSkipIntLit*(father, son: PType; id: IdGenerator) =
+proc setBaseSkipIntLit*(father, son: PType; id: IdGenerator) =
   let s = son.skipIntLit(id)
-  father.add(s)
+  father.setBase(s)
+  propagateToOwner(father, s)
+
+proc addArgSkipIntLit*(father, son: PType; id: IdGenerator) =
+  let s = son.skipIntLit(id)
+  father.addArg(s)
   propagateToOwner(father, s)
 
 proc makeVarType*(owner: PSym; baseType: PType; idgen: IdGenerator; kind = tyVar): PType =
@@ -108,7 +113,7 @@ proc makeVarType*(owner: PSym; baseType: PType; idgen: IdGenerator; kind = tyVar
     result = baseType
   else:
     result = newType(kind, idgen, owner)
-    addSonSkipIntLit(result, baseType, idgen)
+    setBaseSkipIntLit(result, baseType, idgen)
 
 proc getCompilerProc*(g: ModuleGraph; name: string): PSym =
   let ident = getIdent(g.cache, name)
@@ -159,7 +164,7 @@ proc getMagicEqSymForType*(g: ModuleGraph; t: PType; info: TLineInfo): PSym =
 
 proc makePtrType*(baseType: PType; idgen: IdGenerator): PType =
   result = newType(tyPtr, idgen, baseType.owner)
-  addSonSkipIntLit(result, baseType, idgen)
+  setBaseSkipIntLit(result, baseType, idgen)
 
 proc makeAddr*(n: PNode; idgen: IdGenerator): PNode =
   if n.kind == nkHiddenAddr:
