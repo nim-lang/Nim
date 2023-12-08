@@ -446,15 +446,11 @@ proc newTypeWithSons*(c: PContext, kind: TTypeKind,
                       base: PType): PType =
   result = newType(kind, c.idgen, getCurrOwner(c), base = base)
 
-proc newTypeWithSons*(c: PContext, kind: TTypeKind,
-                      parent: PType): PType =
-  result = newType(kind, c.idgen, getCurrOwner(c), parent = parent)
-
 proc makeStaticExpr*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStaticExpr, n.info)
   result.sons = @[n]
   result.typ = if n.typ != nil and n.typ.kind == tyStatic: n.typ
-               else: newTypeWithSons(c, tyStatic, @[n.typ])
+               else: newTypeWithSons(c, tyStatic, n.typ)
 
 proc makeAndType*(c: PContext; t1, t2: PType): PType =
   result = newTypeS(tyAnd, c)
@@ -467,14 +463,16 @@ proc makeAndType*(c: PContext; t1, t2: PType): PType =
 
 proc makeOrType*(c: PContext, t1, t2: PType): PType =
   if t1.kind != tyOr and t2.kind != tyOr:
-    result = newTypeS(tyOr, c, sons = @[t1, t2])
+    result = newTypeS(tyOr, c)
+    result.addArg t1
+    result.addArg t2
   else:
     result = newTypeS(tyOr, c)
     template addOr(t1) =
       if t1.kind == tyOr:
-        for x in t1: result.rawAddSon x
+        for x in t1.argTypes: result.addArg x
       else:
-        result.rawAddSon t1
+        result.addArg t1
     addOr(t1)
     addOr(t2)
   propagateToOwner(result, t1)
@@ -494,7 +492,7 @@ proc nMinusOne(c: PContext; n: PNode): PNode =
 # Remember to fix the procs below this one when you make changes!
 proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
   let intType = getSysType(c.graph, n.info, tyInt)
-  result = newTypeS(tyRange, c, sons = @[intType])
+  result = newTypeS(tyRange, c, intType)
   if n.typ != nil and n.typ.n == nil:
     result.flags.incl tfUnresolved
   result.n = newTreeI(nkRange, n.info, newIntTypeNode(0, intType),
