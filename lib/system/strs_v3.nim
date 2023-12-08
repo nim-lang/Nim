@@ -104,13 +104,17 @@ proc prepareAdd(s: var NimStringV3; addLen: int) {.compilerRtl.} =
       # we are about to append
       copyMem(unsafeAddr s.p[0], unsafeAddr oldP[0], min(s.nimStrLenV3, newLen))
   else:
-    let oldCap = s.p.strCap
-    if newLen > oldCap:
-      let newCap = max(newLen, resize(oldCap))
-      s.p = reallocPayload(strHead(s.p), newCap)
-      s.p.strCap = newCap
-      if newLen < newCap:
-        zeroMem(cast[pointer](addr s.p[newLen]), newCap - newLen)
+    if s.p != nil:
+      let oldCap = s.p.strCap
+      if newLen > oldCap:
+        let newCap = max(newLen, resize(oldCap))
+        s.p = reallocPayload(strHead(s.p), newCap)
+        s.p.strCap = newCap
+        if newLen < newCap:
+          zeroMem(cast[pointer](addr s.p[newLen]), newCap - newLen)
+    else:
+      s.p = allocPayload(newLen)
+      s.p.strCap = newLen
 
 proc nimAddCharV1(s: var NimStringV3; c: char) {.compilerRtl, inl.} =
   #if (s.p == nil) or (s.len+1 > s.p.cap and not strlitFlag):
@@ -181,11 +185,15 @@ proc setLengthStrV2(s: var NimStringV3, newLen: int) {.compilerRtl.} =
       else:
         zeroMem(cast[pointer](addr s.p[0]), newLen)
     elif newLen > s.nimStrLenV3:
-      let oldCap = s.p.strCap
-      if newLen > oldCap:
-        let newCap = max(newLen, resize(oldCap))
-        s.p = reallocPayload0(strHead(s.p), oldCap, newCap)
-        s.p.strCap = newCap
+      if s.p != nil:
+        let oldCap = s.p.strCap
+        if newLen > oldCap:
+          let newCap = max(newLen, resize(oldCap))
+          s.p = reallocPayload0(strHead(s.p), oldCap, newCap)
+          s.p.strCap = newCap
+      else:
+        s.p = allocPayload0(newLen)
+        s.p.strCap = newLen
 
   setRawLen(s, newLen)
 
@@ -197,7 +205,7 @@ proc nimAsgnStrV2(a: var NimStringV3, b: NimStringV3) {.compilerRtl.} =
     a.rawlen = b.rawlen
     a.p = b.p
   else:
-    if isLiteral(a) or a.p.strCap < b.nimStrLenV3:
+    if isLiteral(a) or (a.p != nil and a.p.strCap < b.nimStrLenV3):
       # we have to allocate the 'cap' here, consider
       # 'let y = newStringOfCap(); var x = y'
       # on the other hand... These get turned into moves now.
