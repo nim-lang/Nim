@@ -60,6 +60,22 @@ proc makeCString*(s: string): Rope =
     toCChar(s[i], result)
   result.add('\"')
 
+proc makeCCharArray*(s: string): Rope =
+  result = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
+  result.add("{")
+  for i in 0..<s.len:
+    # line wrapping of string litterals in cgen'd code was a bad idea, e.g. causes: bug #16265
+    # It also makes reading c sources or grepping harder, for zero benefit.
+    # const MaxLineLength = 64
+    # if (i + 1) mod MaxLineLength == 0:
+    #   res.add("\"\L\"")
+    if i != 0:
+      result.add ", "
+    result.add '\''
+    toCChar(s[i], result)
+    result.add '\''
+  result.add('}')
+
 proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
   result.fullPath = fullPath
   #shallow(result.fullPath)

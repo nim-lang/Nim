@@ -101,8 +101,9 @@ proc toConstLenV3(len: int): string =
   result = rope((len shl 1) or 1)
 
 proc genStringLiteralDataOnlyV3(m: BModule, s: string; result: Rope; isConst: bool) =
+  # TODO: fixme: perhaps use makeCString for clarity for C
   m.s[cfsStrData].addf("static $4 NIM_CHAR $1[$2] = $3;$n",
-       [result, rope(s.len), makeCString(s),
+       [result, rope(s.len), makeCCharArray(s),
        rope(if isConst: "const" else: "")])
 
 proc genStringLiteralV3(m: BModule; n: PNode; isConst: bool; result: var Rope) =
@@ -114,12 +115,12 @@ proc genStringLiteralV3(m: BModule; n: PNode; isConst: bool; result: var Rope) =
     result.add tmp
     cgsym(m, "NimStringV3")
     # string literal not found in the cache:
-    m.s[cfsStrData].addf("static $4 NimStringV3 $1 = {$2, &$3};$n",
+    m.s[cfsStrData].addf("static $4 NimStringV3 $1 = {$2, (NIM_CHAR*)&$3};$n",
           [tmp, toConstLenV3(n.strVal.len), pureLit, rope(if isConst: "const" else: "")])
   else:
     let tmp = getTempName(m)
     result.add tmp
-    m.s[cfsStrData].addf("static $4 NimStringV3 $1 = {$2, &$3};$n",
+    m.s[cfsStrData].addf("static $4 NimStringV3 $1 = {$2, (NIM_CHAR*)&$3};$n",
           [tmp, toConstLenV3(n.strVal.len), m.tmpBase & rope(id),
           rope(if isConst: "const" else: "")])
 
@@ -133,7 +134,7 @@ proc genStringLiteralV3Const(m: BModule; n: PNode; isConst: bool; result: var Ro
     genStringLiteralDataOnlyV3(m, n.strVal, pureLit, isConst)
   else:
     pureLit = m.tmpBase & rope(id)
-  result.addf "{$1, &$2}", [toConstLenV3(n.strVal.len), pureLit]
+  result.addf "{$1, (NIM_CHAR*)&$2}", [toConstLenV3(n.strVal.len), pureLit]
 
 # ------ Version selector ---------------------------------------------------
 
