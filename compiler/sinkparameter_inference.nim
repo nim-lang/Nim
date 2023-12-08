@@ -31,14 +31,13 @@ proc checkForSink*(config: ConfigRef; idgen: IdGenerator; owner: PSym; arg: PNod
       if sfWasForwarded notin owner.flags:
         let argType = arg.sym.typ
 
-        let sinkType = newType(tySink, idgen, owner)
+        let sinkType = newType(tySink, idgen, owner, argType)
         sinkType.size = argType.size
         sinkType.align = argType.align
         sinkType.paddingAtEnd = argType.paddingAtEnd
-        sinkType.add argType
 
         arg.sym.typ = sinkType
-        owner.typ[arg.sym.position+1] = sinkType
+        owner.typ.setArgTypeAt(arg.sym.position, sinkType)
 
         #message(config, arg.info, warnUser,
         #  ("turned '$1' to a sink parameter") % [$arg])

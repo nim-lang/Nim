@@ -716,7 +716,7 @@ proc traverse(c: var Partitions; n: PNode) =
     for i in 1..<n.len:
       let it = n[i]
       if i < L:
-        let paramType = parameters[i].skipTypes({tyGenericInst, tyAlias})
+        let paramType = parameters.argTypeAt(i-1).skipTypes({tyGenericInst, tyAlias})
         if not paramType.isCompileTimeOnly and paramType.kind in {tyVar, tySink, tyOwned}:
           var roots: seq[(PSym, int)] = @[]
           allRoots(it, roots, RootEscapes)
@@ -857,12 +857,12 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     for child in n: computeLiveRanges(c, child)
 
     let parameters = n[0].typ
-    let L = if parameters != nil: parameters.len else: 0
+    let L = if parameters != nil: parameters.argTypesLen+1 else: 0
 
     for i in 1..<n.len:
       let it = n[i]
       if it.kind == nkSym and i < L:
-        let paramType = parameters[i].skipTypes({tyGenericInst, tyAlias})
+        let paramType = parameters.argTypeAt(i-1).skipTypes({tyGenericInst, tyAlias})
         if not paramType.isCompileTimeOnly and paramType.kind == tyVar:
           let vid = variableId(c, it.sym)
           if vid >= 0:

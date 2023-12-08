@@ -104,33 +104,35 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
 
   case t.kind
   of tyGenericInvocation:
-    for i in 0..<t.len:
-      c.hashType t[i], flags, conf
+    for a in t.argTypes:
+      c.hashType a, flags, conf
+    c.hashType t.baseType, flags, conf
+
   of tyDistinct:
     if CoDistinct in flags:
       if t.sym != nil: c.hashSym(t.sym)
       if t.sym == nil or tfFromGeneric in t.flags:
-        c.hashType t.lastSon, flags, conf
+        c.hashType t.baseType, flags, conf
     elif CoType in flags or t.sym == nil:
-      c.hashType t.lastSon, flags, conf
+      c.hashType t.baseType, flags, conf
     else:
       c.hashSym(t.sym)
   of tyGenericInst:
-    if sfInfixCall in t.base.sym.flags:
+    if sfInfixCall in t.headType.sym.flags:
       # This is an imported C++ generic type.
       # We cannot trust the `lastSon` to hold a properly populated and unique
       # value for each instantiation, so we hash the generic parameters here:
       let normalizedType = t.skipGenericAlias
-      for i in 0..<normalizedType.len - 1:
-        c.hashType t[i], flags, conf
+      for a in t.argTypesWithoutBody:
+        c.hashType a, flags, conf
     else:
-      c.hashType t.lastSon, flags, conf
+      c.hashType t.baseType, flags, conf
   of tyAlias, tySink, tyUserTypeClasses, tyInferred:
-    c.hashType t.lastSon, flags, conf
+    c.hashType t.baseType, flags, conf
   of tyOwned:
     if CoConsiderOwned in flags:
       c &= char(t.kind)
-    c.hashType t.lastSon, flags, conf
+    c.hashType t.baseType, flags, conf
   of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
     # produced instead of ``NI``:
@@ -143,8 +145,8 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
       let inst = t.typeInst
       t.typeInst = nil
       assert inst.kind == tyGenericInst
-      for i in 0..<inst.len - 1:
-        c.hashType inst[i], flags, conf
+      for a in inst.argTypesWithoutBody:
+        c.hashType a, flags, conf
       t.typeInst = inst
       return
     c &= char(t.kind)
@@ -184,12 +186,12 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
           c &= ".empty"
     else:
       c &= t.id
-    if t.len > 0 and t[0] != nil:
-      hashType c, t[0], flags, conf
+    if t.baseType != nil:
+      hashType c, t.baseType, flags, conf
   of tyRef, tyPtr, tyGenericBody, tyVar:
     c &= char(t.kind)
-    if t.len > 0:
-      c.hashType t.lastSon, flags, conf
+    if t.baseType != nil:
+      c.hashType t.baseType, flags, conf
     if tfVarIsPtr in t.flags: c &= ".varisptr"
   of tyFromExpr:
     c &= char(t.kind)
@@ -197,24 +199,26 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
   of tyTuple:
     c &= char(t.kind)
     if t.n != nil and CoType notin flags:
-      assert(t.n.len == t.len)
-      for i in 0..<t.n.len:
+      assert(t.n.len == t.argTypesLen)
+      var i = 0
+      for a in t.argTypes:
         assert(t.n[i].kind == nkSym)
         c &= t.n[i].sym.name.s
         c &= ':'
-        c.hashType(t[i], flags+{CoIgnoreRange}, conf)
+        c.hashType(a, flags+{CoIgnoreRange}, conf)
         c &= ','
+        inc i
     else:
-      for i in 0..<t.len: c.hashType t[i], flags+{CoIgnoreRange}, conf
+      for a in t.argTypes: c.hashType a, flags+{CoIgnoreRange}, conf
   of tyRange:
     if CoIgnoreRange notin flags:
       c &= char(t.kind)
       c.hashTree(t.n, {}, conf)
-    c.hashType(t[0], flags, conf)
+    c.hashType(t.baseType, flags, conf)
   of tyStatic:
     c &= char(t.kind)
     c.hashTree(t.n, {}, conf)
-    c.hashType(t[0], flags, conf)
+    c.hashType(t.baseType, flags, conf)
   of tyProc:
     c &= char(t.kind)
     c &= (if tfIterator in t.flags: "iterator " else: "proc ")
@@ -226,9 +230,10 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
         c &= ':'
         c.hashType(param.typ, flags, conf)
         c &= ','
-      c.hashType(t[0], flags, conf)
+      c.hashType(t.baseType, flags, conf)
     else:
-      for i in 0..<t.len: c.hashType(t[i], flags, conf)
+      for a in t.argTypes: c.hashType(a, flags, conf)
+      c.hashType(t.baseType, flags, conf)
     c &= char(t.callConv)
     # purity of functions doesn't have to affect the mangling (which is in fact
     # problematic for HCR - someone could have cached a pointer to another
@@ -240,10 +245,12 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     if tfVarargs in t.flags: c &= ".varargs"
   of tyArray:
     c &= char(t.kind)
-    for i in 0..<t.len: c.hashType(t[i], flags-{CoIgnoreRange}, conf)
+    c.hashType(t.headType, flags-{CoIgnoreRange}, conf)
+    c.hashType(t.baseType, flags-{CoIgnoreRange}, conf)
   else:
     c &= char(t.kind)
-    for i in 0..<t.len: c.hashType(t[i], flags, conf)
+    for a in t.argTypes: c.hashType(a, flags, conf)
+    if t.baseType != nil: c.hashType(t.baseType, flags, conf)
   if tfNotNil in t.flags and CoType notin flags: c &= "not nil"
 
 when defined(debugSigHashes):

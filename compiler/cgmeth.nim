@@ -59,17 +59,19 @@ proc methodCall*(n: PNode; conf: ConfigRef): PNode =
     result[0].sym = disp
     # change the arguments to up/downcasts to fit the dispatcher's parameters:
     for i in 1..<result.len:
-      result[i] = genConv(result[i], disp.typ[i], true, conf)
+      result[i] = genConv(result[i], disp.typ.argTypeAt(i-1), true, conf)
   else:
     localError(conf, n.info, "'" & $result[0] & "' lacks a dispatcher")
 
 type
   MethodResult = enum No, Invalid, Yes
 
+proc protoLen*(t: PType): int = t.argTypesLen + ord(t.returnType != nil)
+
 proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
   result = No
   if a.name.id != b.name.id: return
-  if a.typ.len != b.typ.len:
+  if a.typ.protoLen != b.typ.protoLen:
     return
 
   for i in 1..<a.typ.len:
@@ -102,10 +104,10 @@ proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
   if result == Yes:
     # check for return type:
     # ignore flags of return types; # bug #22673
-    if not sameTypeOrNil(a.typ[0], b.typ[0], {IgnoreFlags}):
-      if b.typ[0] != nil and b.typ[0].kind == tyUntyped:
+    if not sameTypeOrNil(a.typ.returnType, b.typ.returnType, {IgnoreFlags}):
+      if b.typ.returnType != nil and b.typ.returnType.kind == tyUntyped:
         # infer 'auto' from the base to make it consistent:
-        b.typ[0] = a.typ[0]
+        b.typ.setBase a.typ.returnType
       else:
         return No
 

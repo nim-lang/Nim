@@ -1725,10 +1725,14 @@ iterator argTypesWithoutBody*(t: PType): PType =
   for i in 0..<t.args.len-1: yield t.args[i]
 
 iterator argTypesWithoutHeadAndBody*(t: PType): PType =
-  for i in 0..<t.args.len-1: yield t.args[i]
+  for i in 1..<t.args.len-1: yield t.args[i]
 
 iterator argTypesWithoutHeadAndBodyPairs*(x, y: PType): (PType, PType) =
   for i in 1..<x.args.len-1: yield (x.args[i], y.args[i])
+
+proc argTypeAt*(t: PType; at: int): PType {.inline.} = t.args[at]
+
+proc setArgTypeAt*(t: PType; at: int; son: PType) {.inline.} = t.args[at] = son
 
 iterator argTypePairs*(x, y: PType): (PType, PType) =
   for i in 0..<x.args.len: yield (x.args[i], y.args[i])
