@@ -606,10 +606,10 @@ when not defined(lwip):
 
   when defined(zephyr):
     type
-      Tnfds* = distinct cint
+      Tnfds* = distinct culong
   else:
     type
-      Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = cint
+      Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = culong
 
 var
   errno* {.importc, header: "<errno.h>".}: cint ## error variable
