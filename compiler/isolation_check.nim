@@ -54,18 +54,18 @@ proc canAlias(arg, ret: PType; marker: var IntSet): bool =
   of tyObject:
     if isFinal(ret):
       result = canAliasN(arg, ret.n, marker)
-      if not result and ret.len > 0 and ret[0] != nil:
-        result = canAlias(arg, ret[0], marker)
+      if not result and ret.baseType != nil:
+        result = canAlias(arg, ret.baseType, marker)
     else:
       result = true
   of tyTuple:
     result = false
-    for i in 0..<ret.len:
-      result = canAlias(arg, ret[i], marker)
+    for a in ret.argTypes:
+      result = canAlias(arg, a, marker)
       if result: break
   of tyArray, tySequence, tyDistinct, tyGenericInst,
      tyAlias, tyInferred, tySink, tyLent, tyOwned, tyRef:
-    result = canAlias(arg, ret.lastSon, marker)
+    result = canAlias(arg, ret.baseType, marker)
   of tyProc:
     result = ret.callConv == ccClosure
   else:
@@ -119,14 +119,14 @@ proc containsDangerousRefAux(t: PType; marker: var IntSet): SearchResult =
   if result != NotFound: return result
   case t.kind
   of tyObject:
-    if t[0] != nil:
-      result = containsDangerousRefAux(t[0].skipTypes(skipPtrs), marker)
+    if t.baseType != nil:
+      result = containsDangerousRefAux(t.baseType.skipTypes(skipPtrs), marker)
     if result == NotFound: result = containsDangerousRefAux(t.n, marker)
-  of tyGenericInst, tyDistinct, tyAlias, tySink:
-    result = containsDangerousRefAux(lastSon(t), marker)
-  of tyArray, tySet, tyTuple, tySequence:
-    for i in 0..<t.len:
-      result = containsDangerousRefAux(t[i], marker)
+  of tyGenericInst, tyDistinct, tyAlias, tySink, tyArray, tySet, tySequence:
+    result = containsDangerousRefAux(t.baseType, marker)
+  of tyTuple:
+    for a in t.argTypes:
+      result = containsDangerousRefAux(a, marker)
       if result == Found: return result
   else:
     discard

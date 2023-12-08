@@ -400,15 +400,14 @@ proc allRoots(n: PNode; result: var seq[(PSym, int)]; level: int) =
         if typ != nil:
           typ = skipTypes(typ, abstractInst)
           if typ.kind != tyProc: typ = nil
-          else: assert(typ.len == typ.n.len)
 
         for i in 1 ..< n.len:
           let it = n[i]
-          if typ != nil and i < typ.len:
+          if typ != nil and i < typ.argTypesLen+1:
             assert(typ.n[i].kind == nkSym)
             let paramType = typ.n[i].typ
-            if not paramType.isCompileTimeOnly and not typ[0].isEmptyType and
-                canAlias(paramType, typ[0]):
+            if not paramType.isCompileTimeOnly and not typ.returnType.isEmptyType and
+                canAlias(paramType, typ.returnType):
               allRoots(it, result, RootEscapes)
           else:
             allRoots(it, result, RootEscapes)
@@ -707,7 +706,7 @@ proc traverse(c: var Partitions; n: PNode) =
     for child in n: traverse(c, child)
 
     let parameters = n[0].typ
-    let L = if parameters != nil: parameters.len else: 0
+    let L = if parameters != nil: parameters.argTypesLen+1 else: 0
     let m = getMagic(n)
 
     if m == mEnsureMove and n[1].kind == nkSym:
@@ -730,8 +729,8 @@ proc traverse(c: var Partitions; n: PNode) =
               # a call like 'result.add toOpenArray()' can also be a borrow
               # operation. We know 'paramType' is a tyVar and we really care if
               # 'paramType[0]' is still a view type, this is not a typo!
-              if directViewType(paramType[0]) == noView and classifyViewType(paramType[0]) != noView:
-                borrowingCall(c, paramType[0], n, i)
+              if directViewType(paramType.baseType) == noView and classifyViewType(paramType.baseType) != noView:
+                borrowingCall(c, paramType.baseType, n, i)
         elif m == mNone:
           potentialMutationViaArg(c, n[i], parameters)
 
