@@ -2305,7 +2305,11 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
     var src: TLoc = initLocExpr(p, n[2])
     linefmt(p, cpsStmts, "if ($1.p != $2.p) {", [rdLoc(a), rdLoc(src)])
     genStmts(p, n[3])
-    linefmt(p, cpsStmts, "}$n$1.len = $2.len; $1.p = $2.p;$n", [rdLoc(a), rdLoc(src)])
+    let typkind = skipTypes(a.t, abstractVar+{tyStatic}).kind
+    if typkind == tyString and p.config.isDefined("nimSeqsV3"):
+      linefmt(p, cpsStmts, "}$n$1.rawlen = $2.rawlen; $1.p = $2.p;$n", [rdLoc(a), rdLoc(src)])
+    else:
+      linefmt(p, cpsStmts, "}$n$1.len = $2.len; $1.p = $2.p;$n", [rdLoc(a), rdLoc(src)])
   else:
     if d.k == locNone: d = getTemp(p, n.typ)
     if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
