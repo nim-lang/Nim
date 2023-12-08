@@ -198,7 +198,7 @@ proc newEnvVar(ctx: var Ctx, name: string, typ: PType): PSym =
   else:
     let envParam = getEnvParam(ctx.fn)
     # let obj = envParam.typ.lastSon
-    result = addUniqueField(envParam.typ.lastSon, result, ctx.g.cache, ctx.idgen)
+    result = addUniqueField(envParam.typ.baseType, result, ctx.g.cache, ctx.idgen)
 
 proc newEnvVarAccess(ctx: Ctx, s: PSym): PNode =
   if ctx.stateVarSym.isNil:
@@ -208,7 +208,7 @@ proc newEnvVarAccess(ctx: Ctx, s: PSym): PNode =
 
 proc newTmpResultAccess(ctx: var Ctx): PNode =
   if ctx.tmpResultSym.isNil:
-    ctx.tmpResultSym = ctx.newEnvVar(":tmpResult", ctx.fn.typ[0])
+    ctx.tmpResultSym = ctx.newEnvVar(":tmpResult", ctx.fn.typ.returnType)
   ctx.newEnvVarAccess(ctx.tmpResultSym)
 
 proc newUnrollFinallyAccess(ctx: var Ctx, info: TLineInfo): PNode =
@@ -831,7 +831,7 @@ proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
   let retStmt =
     if ctx.nearestFinally == 0:
       # last finally, we can return
-      let retValue = if ctx.fn.typ[0].isNil:
+      let retValue = if ctx.fn.typ.returnType.isNil:
                    ctx.g.emptyNode
                  else:
                    newTree(nkFastAsgn,
@@ -1162,12 +1162,11 @@ proc skipThroughEmptyStates(ctx: var Ctx, n: PNode): PNode=
 proc newArrayType(g: ModuleGraph; n: int, t: PType; idgen: IdGenerator; owner: PSym): PType =
   result = newType(tyArray, idgen, owner)
 
-  let rng = newType(tyRange, idgen, owner)
+  let rng = newType(tyRange, idgen, owner, t)
   rng.n = newTree(nkRange, g.newIntLit(owner.info, 0), g.newIntLit(owner.info, n - 1))
-  rng.rawAddSon(t)
 
-  result.rawAddSon(rng)
-  result.rawAddSon(t)
+  result.addArg(rng)
+  result.setBase(t)
 
 proc createExceptionTable(ctx: var Ctx): PNode {.inline.} =
   result = newNodeI(nkBracket, ctx.fn.info)

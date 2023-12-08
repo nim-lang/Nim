@@ -136,10 +136,10 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
       return t.sym.loc.r
 
     if t.kind in irrelevantForBackend:
-      t = t.lastSon
+      t = t.baseType
     else:
       break
-  let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.lastSon else: typ
+  let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.baseType else: typ
   if typ.loc.r == "":
     typ.typeName(typ.loc.r)
     typ.loc.r.add $sig
@@ -175,10 +175,10 @@ proc mapType(conf: ConfigRef; typ: PType; isParam: bool): TCTypeKind =
   of tyObject, tyTuple: result = ctStruct
   of tyUserTypeClasses:
     doAssert typ.isResolvedUserTypeClass
-    return mapType(conf, typ.lastSon, isParam)
+    return mapType(conf, typ.baseType, isParam)
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
      tyTypeDesc, tyAlias, tySink, tyInferred, tyOwned:
-    result = mapType(conf, lastSon(typ), isParam)
+    result = mapType(conf, typ.baseType, isParam)
   of tyEnum:
     if firstOrd(conf, typ) < 0:
       result = ctInt32
@@ -189,9 +189,9 @@ proc mapType(conf: ConfigRef; typ: PType; isParam: bool): TCTypeKind =
       of 4: result = ctInt32
       of 8: result = ctInt64
       else: result = ctInt32
-  of tyRange: result = mapType(conf, typ[0], isParam)
+  of tyRange: result = mapType(conf, typ.baseType, isParam)
   of tyPtr, tyVar, tyLent, tyRef:
-    var base = skipTypes(typ.lastSon, typedescInst)
+    var base = skipTypes(typ.baseType, typedescInst)
     case base.kind
     of tyOpenArray, tyArray, tyVarargs, tyUncheckedArray: result = ctPtrToArray
     of tySet:
@@ -206,7 +206,7 @@ proc mapType(conf: ConfigRef; typ: PType; isParam: bool): TCTypeKind =
   of tyInt..tyUInt64:
     result = TCTypeKind(ord(typ.kind) - ord(tyInt) + ord(ctInt))
   of tyStatic:
-    if typ.n != nil: result = mapType(conf, lastSon typ, isParam)
+    if typ.n != nil: result = mapType(conf, typ.baseType, isParam)
     else:
       result = ctVoid
       doAssert(false, "mapType: " & $typ.kind)
@@ -235,7 +235,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
 
 proc isObjLackingTypeField(typ: PType): bool {.inline.} =
   result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
-      (typ[0] == nil) or isPureObject(typ))
+      (typ.baseType == nil) or isPureObject(typ))
 
 proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
   # Arrays and sets cannot be returned by a C procedure, because C is
@@ -245,7 +245,7 @@ proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
   var rettype = typ
   var isAllowedCall = true
   if isProc:
-    rettype = rettype[0]
+    rettype = rettype.returnType
     isAllowedCall = typ.callConv in {ccClosure, ccInline, ccNimCall}
   if rettype == nil or (isAllowedCall and
                     getSize(conf, rettype) > conf.target.floatSize*3):
@@ -324,14 +324,14 @@ proc getSimpleTypeDesc(m: BModule; typ: PType): Rope =
   of tyNil: result = typeNameOrLiteral(m, typ, "void*")
   of tyInt..tyUInt64:
     result = typeNameOrLiteral(m, typ, NumericalTypeToStr[typ.kind])
-  of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ[0])
+  of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ.baseType)
   of tyStatic:
-    if typ.n != nil: result = getSimpleTypeDesc(m, lastSon typ)
+    if typ.n != nil: result = getSimpleTypeDesc(m, typ.baseType)
     else:
       result = ""
       internalError(m.config, "tyStatic for getSimpleTypeDesc")
   of tyGenericInst, tyAlias, tySink, tyOwned:
-    result = getSimpleTypeDesc(m, lastSon typ)
+    result = getSimpleTypeDesc(m, typ.baseType)
   else: result = ""
 
   if result != "" and typ.isImportedType():
@@ -400,7 +400,7 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet; kind: TypeDescKind
   of tySequence:
     let sig = hashType(t, m.config)
     if optSeqDestructors in m.config.globalOptions:
-      if skipTypes(etB[0], typedescInst).kind == tyEmpty:
+      if skipTypes(etB.baseType, typedescInst).kind == tyEmpty:
         internalError(m.config, "cannot map the empty seq type to a C type")
 
       result = cacheGetType(m.forwTypeCache, sig)
@@ -439,7 +439,7 @@ proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
   else:
     appcg(m, m.s[cfsTypes], """
 struct $2_Content { NI cap; $1 data[SEQ_DECL_SIZE]; };
-""", [getTypeDescAux(m, t.skipTypes(abstractInst)[0], check, dkVar), result])
+""", [getTypeDescAux(m, t.skipTypes(abstractInst).baseType, check, dkVar), result])
 
 proc paramStorageLoc(param: PSym): TStorageLoc =
   if param.typ.skipTypes({tyVar, tyLent, tyTypeDesc}).kind notin {
@@ -501,13 +501,13 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
   let isCtor = sfConstructor in prc.flags
   if isCtor or (name[0] == '~' and sfMember in prc.flags): #destructors cant have void
     rettype = ""
-  elif t[0] == nil or isInvalidReturnType(m.config, t):
+  elif t.returnType == nil or isInvalidReturnType(m.config, t):
     rettype = "void"
   else:
     if rettype == "":
-      rettype = getTypeDescAux(m, t[0], check, dkResult)
+      rettype = getTypeDescAux(m, t.returnType, check, dkResult)
     else:
-      rettype = runtimeFormat(rettype.replace("'0", "$1"), [getTypeDescAux(m, t[0], check, dkResult)])
+      rettype = runtimeFormat(rettype.replace("'0", "$1"), [getTypeDescAux(m, t.returnType, check, dkResult)])
   var types, names, args: seq[string] = @[]
   if not isCtor:
     var this = t.n[1].sym
@@ -531,11 +531,11 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
         descKind = dkRefGenericParam
       else:
         descKind = dkRefParam
-    var typ, name : string
+    var typ, name: string
     fillParamName(m, param)
     fillLoc(param.loc, locParam, t.n[i],
             param.paramStorageLoc)
-    if ccgIntroducedPtr(m.config, param, t[0]) and descKind == dkParam:
+    if ccgIntroducedPtr(m.config, param, t.returnType) and descKind == dkParam:
       typ = getTypeDescWeak(m, param.typ, check, descKind) & "*"
       incl(param.loc.flags, lfIndirect)
       param.loc.storage = OnUnknown
@@ -573,10 +573,10 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false;) =
   params = "("
-  if t[0] == nil or isInvalidReturnType(m.config, t):
+  if t.returnType == nil or isInvalidReturnType(m.config, t):
     rettype = "void"
   else:
-    rettype = getTypeDescAux(m, t[0], check, dkResult)
+    rettype = getTypeDescAux(m, t.returnType, check, dkResult)
   for i in 1..<t.n.len:
     if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
     var param = t.n[i].sym
@@ -592,7 +592,7 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
     fillLoc(param.loc, locParam, t.n[i],
             param.paramStorageLoc)
     var typ: Rope
-    if ccgIntroducedPtr(m.config, param, t[0]) and descKind == dkParam:
+    if ccgIntroducedPtr(m.config, param, t.returnType) and descKind == dkParam:
       typ = (getTypeDescWeak(m, param.typ, check, descKind))
       typ.add("*")
       incl(param.loc.flags, lfIndirect)
@@ -611,7 +611,7 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
       params.add runtimeFormat(param.cgDeclFrmt, [typ, param.loc.r])
     # declare the len field for open arrays:
     var arr = param.typ.skipTypes({tyGenericInst})
-    if arr.kind in {tyVar, tyLent, tySink}: arr = arr.lastSon
+    if arr.kind in {tyVar, tyLent, tySink}: arr = arr.baseType
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
       # this fixes the 'sort' bug:
@@ -619,11 +619,11 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
       # need to pass hidden parameter:
       params.addf(", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)
-      arr = arr[0].skipTypes({tySink})
-  if t[0] != nil and isInvalidReturnType(m.config, t):
-    var arr = t[0]
+      arr = arr.baseType.skipTypes({tySink})
+  if t.returnType != nil and isInvalidReturnType(m.config, t):
+    var arr = t.returnType
     if params != "(": params.add(", ")
-    if mapReturnType(m.config, t[0]) != ctArray:
+    if mapReturnType(m.config, t.returnType) != ctArray:
       if isHeaderFile in m.flags:
         # still generates types for `--header`
         params.add(getTypeDescAux(m, arr, check, dkResult))
@@ -777,7 +777,7 @@ proc getRecordDescAux(m: BModule; typ: PType, name, baseType: Rope,
                    check: var IntSet, hasField:var bool): Rope =
   result = ""
   if typ.kind == tyObject:
-    if typ[0] == nil:
+    if typ.baseType == nil:
       if lacksMTypeField(typ):
         appcg(m, result, " {$n", [])
       else:
@@ -817,8 +817,8 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
   else:
     structOrUnion = structOrUnion(typ)
   var baseType: string = ""
-  if typ[0] != nil:
-    baseType = getTypeDescAux(m, typ[0].skipTypes(skipPtrs), check, dkField)
+  if typ.baseType != nil:
+    baseType = getTypeDescAux(m, typ.baseType.skipTypes(skipPtrs), check, dkField)
   if typ.sym == nil or sfCodegenDecl notin typ.sym.flags:
     result = structOrUnion & " " & name
     result.add(getRecordDescAux(m, typ, name, baseType, check, hasField))
@@ -826,7 +826,7 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
     if not hasField and typ.itemId notin m.g.graph.memberProcsPerType:
       if desc == "":
         result.add("\tchar dummy;\n")
-      elif typ.len == 1 and typ.n[0].kind == nkSym:
+      elif typ.n.len == 1 and typ.n[0].kind == nkSym:
         let field = typ.n[0].sym
         let fieldType = field.typ.skipTypes(abstractInst)
         if fieldType.kind == tyUncheckedArray:
@@ -845,9 +845,11 @@ proc getTupleDesc(m: BModule; typ: PType, name: Rope,
                   check: var IntSet): Rope =
   result = "$1 $2 {$n" % [structOrUnion(typ), name]
   var desc: Rope = ""
-  for i in 0..<typ.len:
+  var i = 0
+  for a in typ.argTypes:
     desc.addf("$1 Field$2;$n",
-         [getTypeDescAux(m, typ[i], check, dkField), rope(i)])
+         [getTypeDescAux(m, a, check, dkField), rope(i)])
+    inc i
   if desc == "": result.add("char dummy;\L")
   else: result.add(desc)
   result.add("};\L")

@@ -74,21 +74,22 @@ proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
   if a.typ.protoLen != b.typ.protoLen:
     return
 
-  for i in 1..<a.typ.len:
-    var aa = a.typ[i]
-    var bb = b.typ[i]
+  var i = 0
+  for x, y in argTypePairs(a.typ, b.typ):
+    var aa = x
+    var bb = y
     while true:
       aa = skipTypes(aa, {tyGenericInst, tyAlias})
       bb = skipTypes(bb, {tyGenericInst, tyAlias})
       if aa.kind == bb.kind and aa.kind in {tyVar, tyPtr, tyRef, tyLent, tySink}:
-        aa = aa.lastSon
-        bb = bb.lastSon
+        aa = aa.baseType
+        bb = bb.baseType
       else:
         break
-    if sameType(a.typ[i], b.typ[i]):
+    if sameType(x, y):
       if aa.kind == tyObject and result != Invalid:
         result = Yes
-    elif aa.kind == tyObject and bb.kind == tyObject and (i == 1 or multiMethods):
+    elif aa.kind == tyObject and bb.kind == tyObject and (i == 0 or multiMethods):
       let diff = inheritanceDiff(bb, aa)
       if diff < 0:
         if result != Invalid:
@@ -101,6 +102,7 @@ proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
         return No
     else:
       return No
+    inc i
   if result == Yes:
     # check for return type:
     # ignore flags of return types; # bug #22673
@@ -134,7 +136,7 @@ proc createDispatcher(s: PSym; g: ModuleGraph; idgen: IdGenerator): PSym =
   disp.ast = copyTree(s.ast)
   disp.ast[bodyPos] = newNodeI(nkEmpty, s.info)
   disp.loc.r = ""
-  if s.typ[0] != nil:
+  if s.typ.returnType != nil:
     if disp.ast.len > resultPos:
       disp.ast[resultPos].sym = copySym(s.ast[resultPos].sym, idgen)
     else:
@@ -159,9 +161,11 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
 
 proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   var witness: PSym = nil
-  if s.typ[1].owner.getModule != s.getModule and vtables in g.config.features and not g.config.isDefined("nimInternalNonVtablesTesting"):
+  if s.typ.argTypeAt(0).owner.getModule != s.getModule and vtables in g.config.features and not
+      g.config.isDefined("nimInternalNonVtablesTesting"):
     localError(g.config, s.info, errGenerated, "method `" & s.name.s &
-          "` can be defined only in the same module with its type (" & s.typ[1].typeToString() & ")")
+        "` can be defined only in the same module with its type (" &
+        s.typ.argTypeAt(0).typeToString() & ")")
   for i in 0..<g.methods.len:
     let disp = g.methods[i].dispatcher
     case sameMethodBucket(disp, s, multimethods = optMultiMethods in g.config.globalOptions)
@@ -181,10 +185,10 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
       if witness.isNil: witness = g.methods[i].methods[0]
   # create a new dispatcher:
   # stores the id and the position
-  if s.typ[1].skipTypes(skipPtrs).itemId notin g.bucketTable:
-    g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId] = 1
+  if s.typ.argTypeAt(0).skipTypes(skipPtrs).itemId notin g.bucketTable:
+    g.bucketTable[s.typ.argTypeAt(0).skipTypes(skipPtrs).itemId] = 1
   else:
-    g.bucketTable.inc(s.typ[1].skipTypes(skipPtrs).itemId)
+    g.bucketTable.inc(s.typ.argTypeAt(0).skipTypes(skipPtrs).itemId)
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
   #echo "adding ", s.info
   if witness != nil:
@@ -196,19 +200,19 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
 proc relevantCol*(methods: seq[PSym], col: int): bool =
   # returns true iff the position is relevant
   result = false
-  var t = methods[0].typ[col].skipTypes(skipPtrs)
+  var t = methods[0].typ.argTypeAt(col-1).skipTypes(skipPtrs)
   if t.kind == tyObject:
     for i in 1..high(methods):
-      let t2 = skipTypes(methods[i].typ[col], skipPtrs)
+      let t2 = skipTypes(methods[i].typ.argTypeAt(col-1), skipPtrs)
       if not sameType(t2, t):
         return true
 
 proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
   result = 0
-  for col in 1..<a.typ.len:
-    if contains(relevantCols, col):
-      var aa = skipTypes(a.typ[col], skipPtrs)
-      var bb = skipTypes(b.typ[col], skipPtrs)
+  for col in 0..<a.typ.argTypesLen:
+    if contains(relevantCols, col+1):
+      var aa = skipTypes(a.typ.argTypeAt(col), skipPtrs)
+      var bb = skipTypes(b.typ.argTypeAt(col), skipPtrs)
       var d = inheritanceDiff(aa, bb)
       if (d != high(int)) and d != 0:
         return d
@@ -232,16 +236,16 @@ proc sortBucket*(a: var seq[PSym], relevantCols: IntSet) =
       a[j] = v
     if h == 1: break
 
-proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; idgen: IdGenerator): PSym =
+proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym]; relevantCols: IntSet; idgen: IdGenerator): PSym =
   var base = methods[0].ast[dispatcherPos].sym
   result = base
-  var paramLen = base.typ.len
+  let paramLen = base.typ.argTypesLen
   var nilchecks = newNodeI(nkStmtList, base.info)
   var disp = newNodeI(nkIfStmt, base.info)
   var ands = getSysMagic(g, unknownLineInfo, "and", mAnd)
   var iss = getSysMagic(g, unknownLineInfo, "of", mOf)
   let boolType = getSysType(g, unknownLineInfo, tyBool)
-  for col in 1..<paramLen:
+  for col in 1..paramLen:
     if contains(relevantCols, col):
       let param = base.typ.n[col].sym
       if param.typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
@@ -250,13 +254,13 @@ proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; 
   for meth in 0..high(methods):
     var curr = methods[meth]      # generate condition:
     var cond: PNode = nil
-    for col in 1..<paramLen:
+    for col in 1..paramLen:
       if contains(relevantCols, col):
         var isn = newNodeIT(nkCall, base.info, boolType)
         isn.add newSymNode(iss)
         let param = base.typ.n[col].sym
         isn.add newSymNode(param)
-        isn.add newNodeIT(nkType, base.info, curr.typ[col])
+        isn.add newNodeIT(nkType, base.info, curr.typ.argTypeAt(col-1))
         if cond != nil:
           var a = newNodeIT(nkCall, base.info, boolType)
           a.add newSymNode(ands)
@@ -265,12 +269,12 @@ proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; 
           cond = a
         else:
           cond = isn
-    let retTyp = base.typ[0]
+    let retTyp = base.typ.returnType
     let call = newNodeIT(nkCall, base.info, retTyp)
     call.add newSymNode(curr)
-    for col in 1..<paramLen:
+    for col in 1..paramLen:
       call.add genConv(newSymNode(base.typ.n[col].sym),
-                           curr.typ[col], false, g.config)
+                           curr.typ.argTypeAt(col-1), false, g.config)
     var ret: PNode
     if retTyp != nil:
       var a = newNodeI(nkFastAsgn, base.info)
@@ -291,10 +295,10 @@ proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; 
   nilchecks.flags.incl nfTransf # should not be further transformed
   result.ast[bodyPos] = nilchecks
 
-proc generateIfMethodDispatchers*(g: ModuleGraph, idgen: IdGenerator) =
+proc generateIfMethodDispatchers*(g: ModuleGraph; idgen: IdGenerator) =
   for bucket in 0..<g.methods.len:
     var relevantCols = initIntSet()
-    for col in 1..<g.methods[bucket].methods[0].typ.len:
+    for col in 1..g.methods[bucket].methods[0].typ.argTypesLen:
       if relevantCol(g.methods[bucket].methods, col): incl(relevantCols, col)
       if optMultiMethods notin g.config.globalOptions:
         # if multi-methods are not enabled, we are interested only in the first field

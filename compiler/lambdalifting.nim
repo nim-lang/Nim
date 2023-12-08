@@ -135,11 +135,10 @@ proc createClosureIterStateType*(g: ModuleGraph; iter: PSym; idgen: IdGenerator)
   var n = newNodeI(nkRange, iter.info)
   n.add newIntNode(nkIntLit, -1)
   n.add newIntNode(nkIntLit, 0)
-  result = newType(tyRange, idgen, iter)
-  result.n = n
   var intType = nilOrSysInt(g)
   if intType.isNil: intType = newType(tyInt, idgen, iter)
-  rawAddSon(result, intType)
+  result = newType(tyRange, idgen, iter, intType)
+  result.n = n
 
 proc createStateField(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym =
   result = newSym(skField, getIdent(g.cache, ":state"), idgen, iter, iter.info)
@@ -157,7 +156,7 @@ proc getClosureIterResult*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym
   else:
     # XXX a bit hacky:
     result = newSym(skResult, getIdent(g.cache, ":result"), idgen, iter, iter.info, {})
-    result.typ = iter.typ[0]
+    result.typ = iter.typ.returnType
     incl(result.flags, sfUsed)
     iter.ast.add newSymNode(result)
 
@@ -246,7 +245,7 @@ proc liftingHarmful(conf: ConfigRef; owner: PSym): bool {.inline.} =
 
 proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; idgen: IdGenerator; owner: PSym) =
   if owner.kind != skMacro:
-    createTypeBoundOps(g, nil, refType.lastSon, info, idgen)
+    createTypeBoundOps(g, nil, refType.baseType, info, idgen)
     createTypeBoundOps(g, nil, refType, info, idgen)
     if tfHasAsgn in refType.flags or optSeqDestructors in g.config.globalOptions:
       owner.flags.incl sfInjectDestructors
@@ -270,7 +269,7 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PN
   var env: PNode
   if owner.isIterator:
     let it = getHiddenParam(g, owner)
-    addUniqueField(it.typ.skipTypes({tyOwned})[0], hp, g.cache, idgen)
+    addUniqueField(it.typ.skipTypes({tyOwned}).baseType, hp, g.cache, idgen)
     env = indirectAccess(newSymNode(it), hp, hp.info)
   else:
     let e = newSym(skLet, iter.name, idgen, owner, n.info)
@@ -342,25 +341,22 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym;
                         info: TLineInfo): PType =
   result = c.ownerToType.getOrDefault(owner.id)
   if result.isNil:
-    result = newType(tyRef, c.idgen, owner)
     let obj = createEnvObj(c.graph, c.idgen, owner, info)
-    rawAddSon(result, obj)
+    result = newType(tyRef, c.idgen, owner, obj)
     c.ownerToType[owner.id] = result
 
 proc asOwnedRef(c: var DetectionPass; t: PType): PType =
   if optOwnedRefs in c.graph.config.globalOptions:
     assert t.kind == tyRef
-    result = newType(tyOwned, c.idgen, t.owner)
+    result = newType(tyOwned, c.idgen, t.owner, t)
     result.flags.incl tfHasOwned
-    result.rawAddSon t
   else:
     result = t
 
 proc getEnvTypeForOwnerUp(c: var DetectionPass; owner: PSym;
                           info: TLineInfo): PType =
   var r = c.getEnvTypeForOwner(owner, info)
-  result = newType(tyPtr, c.idgen, owner)
-  rawAddSon(result, r.skipTypes({tyOwned, tyRef, tyPtr}))
+  result = newType(tyPtr, c.idgen, owner, r.skipTypes({tyOwned, tyRef, tyPtr}))
 
 proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
   let refObj = c.getEnvTypeForOwner(dest, info) # getHiddenParam(dest).typ
@@ -552,7 +548,7 @@ proc accessViaEnvParam(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   if not envParam.isNil:
     var access = newSymNode(envParam)
     while true:
-      let obj = access.typ[0]
+      let obj = access.typ.baseType
       assert obj.kind == tyObject
       let field = getFieldFromObj(obj, s)
       if field != nil:
