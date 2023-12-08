@@ -23,6 +23,7 @@ type
 
 const nimStrVersion {.core.} = 3
 
+# TODO: fixme what about s.p != nil?
 template isLiteral(s): bool = (s.rawlen and 1) == 1
 
 template strHead(p: pointer): pointer =
@@ -58,7 +59,7 @@ proc unsafeUnmarkIntern(s: var NimStringV3) =
 template contentSize(cap): int = cap + sizeof(NimStrPayloadBase)
 
 template frees(s) =
-  if not isLiteral(s):
+  if not isLiteral(s) and s.p != nil:
     when compileOption("threads"):
       deallocShared(strHead(s.p))
     else:
@@ -205,7 +206,7 @@ proc nimAsgnStrV2(a: var NimStringV3, b: NimStringV3) {.compilerRtl.} =
     a.rawlen = b.rawlen
     a.p = b.p
   else:
-    if isLiteral(a) or (a.p != nil and a.p.strCap < b.nimStrLenV3):
+    if isLiteral(a) or a.p == nil or a.p.strCap < b.nimStrLenV3:
       # we have to allocate the 'cap' here, consider
       # 'let y = newStringOfCap(); var x = y'
       # on the other hand... These get turned into moves now.
