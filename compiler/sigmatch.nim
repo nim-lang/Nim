@@ -286,7 +286,7 @@ proc writeMatches*(c: TCandidate) =
   echo "  conv matches: ", c.convMatches
   echo "  inheritance: ", c.inheritancePenalty
 
-proc cmpCandidates*(a, b: TCandidate, isOperand=false): int =
+proc cmpCandidates*(a, b: TCandidate, isFormal=true, lastChance=true): int =
   result = a.exactMatches - b.exactMatches
   if result != 0: return
   result = a.genericMatches - b.genericMatches
@@ -300,15 +300,15 @@ proc cmpCandidates*(a, b: TCandidate, isOperand=false): int =
   # the other way round because of other semantics:
   result = b.inheritancePenalty - a.inheritancePenalty
   if result != 0: return
-  if not isOperand:
+  if isFormal:
     # check for generic subclass relation
     result = checkGeneric(a, b)
     if result != 0: return
     # prefer more specialized generic over more general generic:
     result = complexDisambiguation(a.callee, b.callee)
-  # only as a last resort, consider scoping:
   if result != 0: return
-  result = a.calleeScope - b.calleeScope
+  # only as a last resort, consider scoping:
+  if lastChance: result = a.calleeScope - b.calleeScope
 
 proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
   if arg.kind in nkSymChoices:
@@ -2348,6 +2348,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
 
 proc paramTypesMatch*(m: var TCandidate, f, a: PType,
                       arg, argOrig: PNode): PNode =
+  let isTyped = f.kind != tyUntyped
   if arg == nil or arg.kind notin nkSymChoices:
     result = paramTypesMatchAux(m, f, a, arg, argOrig)
   else:
@@ -2369,6 +2370,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
                              skIterator, skMacro, skTemplate, skEnumField}:
         copyCandidate(z, m)
         z.callee = arg[i].typ
+        if tfUnresolved in z.callee.flags and isTyped: continue
         z.calleeSym = arg[i].sym
         # XXX this is still all wrong: (T, T) should be 2 generic matches
         # and  (int, int) 2 exact matches, etc. Essentially you cannot call
@@ -2383,7 +2385,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
             x = z
             best = i
           of csMatch:
-            let cmp = cmpCandidates(x, z, isOperand=true)
+            let cmp = cmpCandidates(x, z, isFormal=false, lastChance=isTyped)
             if cmp < 0:
               best = i
               x = z
@@ -2392,7 +2394,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
 
     if x.state == csEmpty:
       result = nil
-    elif y.state == csMatch and cmpCandidates(x, y, isOperand=true) == 0:
+    elif y.state == csMatch and cmpCandidates(x, y, isFormal=false, lastChance=isTyped) == 0:
       if x.state != csMatch:
         internalError(m.c.graph.config, arg.info, "x.state is not csMatch")
       # ambiguous: more than one symbol fits!
