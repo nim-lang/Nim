@@ -562,11 +562,9 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           result = "int literal(" & $t.n.intVal & ")"
     of tyGenericInst, tyGenericInvocation:
       result = typeToString(t.headType) & '['
-      var i = 0
-      for a in t.argTypesWithoutHead:
+      for i, a in t.argTypesWithoutHead:
         if i > 0: result.add(", ")
         result.add(typeToString(a, preferGenericArg))
-        inc i
       result.add(']')
     of tyGenericBody:
       result = typeToString(t.bodyType) & '['

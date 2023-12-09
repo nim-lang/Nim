@@ -1714,18 +1714,26 @@ proc setBase*(father: PType; son: sink PType; propagateHasAsgn = true) =
   father.base = son
   if not son.isNil: propagateToOwner(father, son, propagateHasAsgn)
 
+proc setReturnTypeToVoid*(t: PType) {.inline.} = t.base = nil
+
+proc setArgTypesLen*(t: PType; newLen: int) =
+  t.args.setLen newLen
+
 proc headType*(t: PType): PType {.inline.} = t.args[0]
 proc indexType*(t: PType): PType {.inline.} =
   assert t.kind == tyArray
   t.args[0]
 
-iterator argTypesWithoutHead*(t: PType): PType =
-  for i in 1..<t.args.len: yield t.args[i]
+iterator argTypesWithoutHead*(t: PType): (int, PType) =
+  for i in 1..<t.args.len: yield (i, t.args[i])
 
 proc bodyType*(t: PType): PType {.inline.} = t.args[t.args.high]
 
 iterator argTypesWithoutBody*(t: PType): PType =
   for i in 0..<t.args.len-1: yield t.args[i]
+
+iterator argTypesCounted*(t: PType): (int, PType) =
+  for i in 0..<t.args.len-1: yield (i, t.args[i])
 
 iterator argTypesWithoutHeadAndBody*(t: PType): PType =
   for i in 1..<t.args.len-1: yield t.args[i]
