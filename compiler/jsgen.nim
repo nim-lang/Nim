@@ -187,7 +187,7 @@ proc mapType(typ: PType): TJSTypeKind =
   let t = skipTypes(typ, abstractInst)
   case t.kind
   of tyVar, tyRef, tyPtr:
-    if skipTypes(t.lastSon, abstractInst).kind in MappedToObject:
+    if skipTypes(t.baseType, abstractInst).kind in MappedToObject:
       result = etyObject
     else:
       result = etyBaseIndex
@@ -196,7 +196,7 @@ proc mapType(typ: PType): TJSTypeKind =
     result = etyBaseIndex
   of tyRange, tyDistinct, tyOrdinal, tyProxy, tyLent:
     # tyLent is no-op as JS has pass-by-reference semantics
-    result = mapType(t[0])
+    result = mapType(t.baseType)
   of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar: result = etyInt
   of tyBool: result = etyBool
   of tyFloat..tyFloat128: result = etyFloat
@@ -212,9 +212,9 @@ proc mapType(typ: PType): TJSTypeKind =
     result = etyNone
   of tyGenericInst, tyInferred, tyAlias, tyUserTypeClass, tyUserTypeClassInst,
      tySink, tyOwned:
-    result = mapType(typ.lastSon)
+    result = mapType(typ.baseType)
   of tyStatic:
-    if t.n != nil: result = mapType(lastSon t)
+    if t.n != nil: result = mapType(t.baseType)
     else: result = etyNone
   of tyProc: result = etyProc
   of tyCstring: result = etyString
@@ -516,7 +516,7 @@ proc maybeMakeTempAssignable(p: PProc, n: PNode; x: TCompRes): tuple[a, tmp: Rop
       let (m1, tmp1) = maybeMakeTemp(p, n[0], address)
       let typ = skipTypes(n[0].typ, abstractPtrs)
       if typ.kind == tyArray:
-        first = firstOrd(p.config, typ[0])
+        first = firstOrd(p.config, typ.indexType)
       if optBoundsCheck in p.options:
         useMagic(p, "chckIndx")
         if first == 0: # save a couple chars
@@ -1439,7 +1439,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   r.address = x
   var typ = skipTypes(m[0].typ, abstractPtrs)
   if typ.kind == tyArray:
-    first = firstOrd(p.config, typ[0])
+    first = firstOrd(p.config, typ.indexType)
   if optBoundsCheck in p.options:
     useMagic(p, "chckIndx")
     if first == 0: # save a couple chars
@@ -1455,7 +1455,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
   var ty = skipTypes(n[0].typ, abstractVarRange)
-  if ty.kind in {tyRef, tyPtr, tyLent, tyOwned}: ty = skipTypes(ty.lastSon, abstractVarRange)
+  if ty.kind in {tyRef, tyPtr, tyLent, tyOwned}: ty = skipTypes(ty.baseType, abstractVarRange)
   case ty.kind
   of tyArray, tyOpenArray, tySequence, tyString, tyCstring, tyVarargs:
     genArrayAddr(p, n, r)
@@ -1728,13 +1728,13 @@ proc genArgs(p: PProc, n: PNode, r: var TCompRes; start=1) =
 
   var typ = skipTypes(n[0].typ, abstractInst)
   assert(typ.kind == tyProc)
-  assert(typ.len == typ.n.len)
+  assert(typ.argTypesLen+1 == typ.n.len)
   var emitted = start-1
 
   for i in start..<n.len:
     let it = n[i]
     var paramType: PNode = nil
-    if i < typ.len:
+    if i < typ.n.len:
       assert(typ.n[i].kind == nkSym)
       paramType = typ.n[i]
       if paramType.typ.isCompileTimeOnly: continue
@@ -1762,7 +1762,7 @@ proc genOtherArg(p: PProc; n: PNode; i: int; typ: PType;
         " but got only: " & $(n.len-1))
   let it = n[i]
   var paramType: PNode = nil
-  if i < typ.len:
+  if i < typ.n.len:
     assert(typ.n[i].kind == nkSym)
     paramType = typ.n[i]
     if paramType.typ.isCompileTimeOnly: return
@@ -1889,7 +1889,7 @@ proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: v
   while t != nil:
     t = t.skipTypes(skipPtrs)
     createRecordVarAux(p, t.n, excludedFieldIDs, output)
-    t = t[0]
+    t = t.baseType
 
 proc arrayTypeForElemType(conf: ConfigRef; typ: PType): string =
   let typ = typ.skipTypes(abstractRange)
@@ -1938,7 +1938,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   of tyFloat..tyFloat128:
     result = putToSeq("0.0", indirect)
   of tyRange, tyGenericInst, tyAlias, tySink, tyOwned, tyLent:
-    result = createVar(p, lastSon(typ), indirect)
+    result = createVar(p, typ.baseType, indirect)
   of tySet:
     result = putToSeq("{}", indirect)
   of tyBool:
@@ -1968,10 +1968,10 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     if indirect: result = "[$1]" % [result]
   of tyTuple:
     result = rope("{")
-    for i in 0..<t.len:
+    for i, a in t.tupleTypes:
       if i > 0: result.add(", ")
       result.addf("Field$1: $2", [i.rope,
-            createVar(p, t[i], false)])
+            createVar(p, a, false)])
     result.add("}")
     if indirect: result = "[$1]" % [result]
   of tyObject:
@@ -1990,7 +1990,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     result = putToSeq("null", indirect)
   of tyStatic:
     if t.n != nil:
-      result = createVar(p, lastSon t, indirect)
+      result = createVar(p, t.baseType, indirect)
     else:
       internalError(p.config, "createVar: " & $t.kind)
       result = ""
@@ -2105,7 +2105,7 @@ proc genConstant(p: PProc, c: PSym) =
 proc genNew(p: PProc, n: PNode) =
   var a: TCompRes = default(TCompRes)
   gen(p, n[1], a)
-  var t = skipTypes(n[1].typ, abstractVar)[0]
+  var t = skipTypes(n[1].typ, abstractVar).baseType
   if mapType(t) == etyObject:
     lineF(p, "$1 = $2;$n", [a.rdLoc, createVar(p, t, false)])
   elif a.typ == etyBaseIndex:
@@ -2117,7 +2117,7 @@ proc genNewSeq(p: PProc, n: PNode) =
   var x, y: TCompRes = default(TCompRes)
   gen(p, n[1], x)
   gen(p, n[2], y)
-  let t = skipTypes(n[1].typ, abstractVar)[0]
+  let t = skipTypes(n[1].typ, abstractVar).baseType
   lineF(p, "$1 = new Array($2); for (var i = 0 ; i < $2 ; ++i) { $1[i] = $3; }", [
     x.rdLoc, y.rdLoc, createVar(p, t, false)])
 
@@ -2396,7 +2396,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     var x, y: TCompRes = default(TCompRes)
     gen(p, n[1], x)
     gen(p, n[2], y)
-    let t = skipTypes(n[1].typ, abstractVar)[0]
+    let t = skipTypes(n[1].typ, abstractVar).baseType
     let (a, tmp) = maybeMakeTemp(p, n[1], x)
     let (b, tmp2) = maybeMakeTemp(p, n[2], y)
     r.res = """if ($1.length < $2) { for (var i = $4.length ; i < $5 ; ++i) $4.push($3); }
@@ -2699,7 +2699,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   var resultAsgn: Rope = ""
   var name = mangleName(p.module, prc)
   let header = generateHeader(p, prc.typ)
-  if prc.typ[0] != nil and sfPure notin prc.flags:
+  if prc.typ.returnType != nil and sfPure notin prc.flags:
     resultSym = prc.ast[resultPos].sym
     let mname = mangleName(p.module, resultSym)
     # otherwise uses "fat pointers"

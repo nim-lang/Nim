@@ -18,7 +18,7 @@ when defined(nimPreviewSlimSystem):
 const tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
-  if t.kind in {tyVar, tyLent} and t[0].kind in {tyVar, tyLent}:
+  if t.kind in {tyVar, tyLent} and t.baseType.kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
 
 proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =

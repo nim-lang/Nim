@@ -620,7 +620,7 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   for i in 0..<n.len:
     var r: TRegister = x+i
     c.gen(n[i], r, {gfIsParam})
-    if i >= fntyp.len:
+    if i >= fntyp.argTypesLen:
       internalAssert c.config, tfVarargs in fntyp.flags
       c.gABx(n, opcSetType, r, c.genType(n[i].typ))
   if dest < 0:
@@ -705,7 +705,7 @@ proc genNew(c: PCtx; n: PNode) =
   # we use the ref's base type here as the VM conflates 'ref object'
   # and 'object' since internally we already have a pointer.
   c.gABx(n, opcNew, dest,
-         c.genType(n[1].typ.skipTypes(abstractVar-{tyTypeDesc})[0]))
+         c.genType(n[1].typ.skipTypes(abstractVar-{tyTypeDesc}).baseType))
   c.genAsgnPatch(n[1], dest)
   c.freeTemp(dest)
 
@@ -1874,8 +1874,8 @@ proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
     genArrAccessOpcode(c, n, dest, opc, flags)
 
 proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currPosition: var int) =
-  if t != nil and t.len > 0 and t[0] != nil:
-    let b = skipTypes(t[0], skipPtrs)
+  if t != nil and t.baseType != nil:
+    let b = skipTypes(t.baseType, skipPtrs)
     getNullValueAux(b, b.n, result, conf, currPosition)
   case obj.kind
   of nkRecList:
@@ -1929,8 +1929,8 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
       result.add getNullValue(elemType(t), info, conf)
   of tyTuple:
     result = newNodeIT(nkTupleConstr, info, t)
-    for i in 0..<t.len:
-      result.add getNullValue(t[i], info, conf)
+    for a in t.argTypes:
+      result.add getNullValue(a, info, conf)
   of tySet:
     result = newNodeIT(nkCurly, info, t)
   of tySequence, tyOpenArray:
@@ -2053,7 +2053,7 @@ proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
   let t = n.typ.skipTypes(abstractRange+{tyOwned}-{tyTypeDesc})
   if t.kind == tyRef:
-    c.gABx(n, opcNew, dest, c.genType(t[0]))
+    c.gABx(n, opcNew, dest, c.genType(t.baseType))
   else:
     c.gABx(n, opcLdNull, dest, c.genType(n.typ))
   for i in 1..<n.len:

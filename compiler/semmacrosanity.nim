@@ -35,12 +35,12 @@ proc ithField(n: PNode, field: var int): PSym =
   else: discard
 
 proc ithField(t: PType, field: var int): PSym =
-  var base = t[0]
+  var base = t.baseType
   while base != nil:
     let b = skipTypes(base, skipPtrs)
     result = ithField(b.n, field)
     if result != nil: return result
-    base = b[0]
+    base = b.baseType
   result = ithField(t.n, field)
 
 proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
@@ -63,8 +63,8 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
     if x.kind == tyTuple:
       n.typ = t
       for i in 0..<n.len:
-        if i >= x.len: globalError conf, n.info, "invalid field at index " & $i
-        else: annotateType(n[i], x[i], conf)
+        if i >= x.argTypesLen: globalError conf, n.info, "invalid field at index " & $i
+        else: annotateType(n[i], x.argTypeAt(i), conf)
     elif x.kind == tyProc and x.callConv == ccClosure:
       n.typ = t
     elif x.kind == tyOpenArray: # `opcSlice` transforms slices into tuples
@@ -78,11 +78,11 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
         of nkStrKinds:
           for i in left..right:
             bracketExpr.add newIntNode(nkCharLit, BiggestInt n[0].strVal[i])
-            annotateType(bracketExpr[^1], t[0], conf)
+            annotateType(bracketExpr[^1], t.baseType, conf)
         of nkBracket:
           for i in left..right:
             bracketExpr.add n[0][i]
-            annotateType(bracketExpr[^1], t[0], conf)
+            annotateType(bracketExpr[^1], t.baseType, conf)
         else:
           globalError(conf, n.info, "Incorrectly generated tuple constr")
         n[] = bracketExpr[]
