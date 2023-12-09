@@ -28,9 +28,8 @@ proc declareSelf(c: PContext; info: TLineInfo) =
   ## Adds the magical 'Self' symbols to the current scope.
   let ow = getCurrOwner(c)
   let s = newSym(skType, getIdent(c.cache, "Self"), c.idgen, ow, info)
-  s.typ = newType(tyTypeDesc, c.idgen, ow)
+  s.typ = newType(tyTypeDesc, c.idgen, ow, newType(tyEmpty, c.idgen, ow))
   s.typ.flags.incl {tfUnresolved, tfPacked}
-  s.typ.add newType(tyEmpty, c.idgen, ow)
   addDecl(c, s, info)
 
 proc semConceptDecl(c: PContext; n: PNode): PNode =
@@ -94,9 +93,11 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
   ## of a routine that might match.
   const
     ignorableForArgType = {tyVar, tySink, tyLent, tyOwned, tyGenericInst, tyAlias, tyInferred}
+  if f == a: return true
+  if f == nil or a == nil: return false
   case f.kind
   of tyAlias:
-    result = matchType(c, f.lastSon, a, m)
+    result = matchType(c, f.baseType, a, m)
   of tyTypeDesc:
     if isSelf(f):
       #let oldLen = m.inferred.len
@@ -105,19 +106,13 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
       #m.inferred.setLen oldLen
       #echo "A for ", result, " to ", typeToString(a), " to ", typeToString(m.potentialImplementation)
     else:
-      if a.kind == tyTypeDesc and f.len == a.len:
-        for i in 0..<a.len:
-          if not matchType(c, f[i], a[i], m): return false
-        return true
-      else:
-        result = false
-
+      result = a.kind == tyTypeDesc and matchType(c, f.baseType, a.baseType, m)
   of tyGenericInvocation:
     result = false
-    if a.kind == tyGenericInst and a[0].kind == tyGenericBody:
-      if sameType(f[0], a[0]) and f.len == a.len-1:
-        for i in 1 ..< f.len:
-          if not matchType(c, f[i], a[i], m): return false
+    if a.kind == tyGenericInst and a.headType.kind == tyGenericBody:
+      if sameType(f.headType, a.headType) and f.argTypesLen == a.argTypesLen:
+        for ff, aa in argTypePairs(f, a):
+          if not matchType(c, ff, aa, m): return false
         return true
   of tyGenericParam:
     let ak = a.skipTypes({tyVar, tySink, tyLent, tyOwned})
@@ -126,17 +121,17 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
     else:
       let old = existingBinding(m, f)
       if old == nil:
-        if f.len > 0 and f[0].kind != tyNone:
+        if f.baseType != nil and f.baseType.kind != tyNone:
           # also check the generic's constraints:
           let oldLen = m.inferred.len
-          result = matchType(c, f[0], a, m)
+          result = matchType(c, f.baseType, a, m)
           m.inferred.setLen oldLen
           if result:
             when logBindings: echo "A adding ", f, " ", ak
             m.inferred.add((f, ak))
         elif m.magic == mArrGet and ak.kind in {tyArray, tyOpenArray, tySequence, tyVarargs, tyCstring, tyString}:
-          when logBindings: echo "B adding ", f, " ", lastSon ak
-          m.inferred.add((f, lastSon ak))
+          when logBindings: echo "B adding ", f, " ",  ak.baseType
+          m.inferred.add((f, ak.baseType))
           result = true
         else:
           when logBindings: echo "C adding ", f, " ", ak
@@ -155,9 +150,9 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
     # modifiers in the concept must be there in the actual implementation
     # too but not vice versa.
     if a.kind == f.kind:
-      result = matchType(c, f[0], a[0], m)
+      result = matchType(c, f.baseType, a.baseType, m)
     elif m.magic == mArrPut:
-      result = matchType(c, f[0], a, m)
+      result = matchType(c, f.baseType, a, m)
     else:
       result = false
   of tyEnum, tyObject, tyDistinct:
@@ -167,7 +162,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
   of tyBool, tyChar, tyInt..tyUInt64:
     let ak = a.skipTypes(ignorableForArgType)
     result = ak.kind == f.kind or ak.kind == tyOrdinal or
-       (ak.kind == tyGenericParam and ak.len > 0 and ak[0].kind == tyOrdinal)
+       (ak.kind == tyGenericParam and ak.baseType != nil and ak.baseType.kind == tyOrdinal)
   of tyConcept:
     let oldLen = m.inferred.len
     let oldPotentialImplementation = m.potentialImplementation
@@ -180,40 +175,40 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
      tyGenericInst:
     result = false
     let ak = a.skipTypes(ignorableForArgType - {f.kind})
-    if ak.kind == f.kind and f.len == ak.len:
-      for i in 0..<ak.len:
-        if not matchType(c, f[i], ak[i], m): return false
-      return true
+    if ak.kind == f.kind and f.argTypesLen == ak.argTypesLen:
+      for ff, aa in argTypePairs(f, ak):
+        if not matchType(c, ff, aa, m): return false
+      return matchType(c, f.baseType, ak.baseType, m)
   of tyOr:
     let oldLen = m.inferred.len
     if a.kind == tyOr:
       # say the concept requires 'int|float|string' if the potentialImplementation
       # says 'int|string' that is good enough.
       var covered = 0
-      for i in 0..<f.len:
-        for j in 0..<a.len:
+      for ff in f.argTypes:
+        for aa in a.argTypes:
           let oldLenB = m.inferred.len
-          let r = matchType(c, f[i], a[j], m)
+          let r = matchType(c, ff, aa, m)
           if r:
             inc covered
             break
           m.inferred.setLen oldLenB
 
-      result = covered >= a.len
+      result = covered >= a.argTypesLen
       if not result:
         m.inferred.setLen oldLen
     else:
       result = false
-      for i in 0..<f.len:
-        result = matchType(c, f[i], a, m)
+      for ff in f.argTypes:
+        result = matchType(c, ff, a, m)
         if result: break # and remember the binding!
         m.inferred.setLen oldLen
   of tyNot:
     if a.kind == tyNot:
-      result = matchType(c, f[0], a[0], m)
+      result = matchType(c, f.baseType, a.baseType, m)
     else:
       let oldLen = m.inferred.len
-      result = not matchType(c, f[0], a, m)
+      result = not matchType(c, f.baseType, a, m)
       m.inferred.setLen oldLen
   of tyAnything:
     result = true
@@ -252,7 +247,7 @@ proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
       m.inferred.setLen oldLen
       return false
 
-  if not matchReturnType(c, n[0].sym.typ[0], candidate.typ[0], m):
+  if not matchReturnType(c, n[0].sym.typ.returnType, candidate.typ.returnType, m):
     m.inferred.setLen oldLen
     return false
 
@@ -334,8 +329,8 @@ proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var TIdTable; invo
     # we have a match, so bind 'arg' itself to 'concpt':
     bindings.idTablePut(concpt, arg)
     # invocation != nil means we have a non-atomic concept:
-    if invocation != nil and arg.kind == tyGenericInst and invocation.len == arg.len-1:
+    if invocation != nil and arg.kind == tyGenericInst and invocation.argTypesLen == arg.argTypesLen:
       # bind even more generic parameters
       assert invocation.kind == tyGenericInvocation
-      for i in 1 ..< invocation.len:
-        bindings.idTablePut(invocation[i], arg[i])
+      for i in 1 ..< invocation.argTypesLen:
+        bindings.idTablePut(invocation.argTypeAt(i), arg.argTypeAt(i))
