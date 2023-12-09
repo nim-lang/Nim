@@ -129,21 +129,24 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
       echo "binding ", key, " -> ", val
   idTablePut(c.bindings, key, val.skipIntLit(c.c.idgen))
 
+proc setCandidateScope*(ctx: PContext, c: var TCandidate, reference: PSym)=
+  if reference.originatingModule == ctx.module:
+    c.calleeScope = 2
+    var owner = reference
+    while true:
+      owner = owner.skipGenericOwner
+      if owner.kind == skModule: break
+      inc c.calleeScope
+  else:
+    c.calleeScope = 1
+
 proc initCandidate*(ctx: PContext, callee: PSym,
                     binding: PNode, calleeScope = -1,
                     diagnosticsEnabled = false): TCandidate =
   result = initCandidateAux(ctx, callee.typ)
   result.calleeSym = callee
   if callee.kind in skProcKinds and calleeScope == -1:
-    if callee.originatingModule == ctx.module:
-      result.calleeScope = 2
-      var owner = callee
-      while true:
-        owner = owner.skipGenericOwner
-        if owner.kind == skModule: break
-        inc result.calleeScope
-    else:
-      result.calleeScope = 1
+    setCandidateScope(ctx, result, callee)
   else:
     result.calleeScope = calleeScope
   result.diagnostics = @[] # if diagnosticsEnabled: @[] else: nil
@@ -2372,10 +2375,10 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
         z.callee = arg[i].typ
         if tfUnresolved in z.callee.flags and isTyped: continue
         z.calleeSym = arg[i].sym
+        setCandidateScope(m.c, z, arg[i].sym)
         # XXX this is still all wrong: (T, T) should be 2 generic matches
         # and  (int, int) 2 exact matches, etc. Essentially you cannot call
         # typeRel here and expect things to work!
-        if tfUnresolved in z.callee.flags and f.kind != tyUntyped: continue
         let r = typeRel(z, f, arg[i].typ)
         incMatches(z, r, 2)
         if r != isNone:

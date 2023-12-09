@@ -44,8 +44,11 @@ static:
   doAssert checkOwner(poo, 2) == "nskProc"
   doAssert checkOwner(poo, 3) == "nskModule"
   doAssert isSameOwner(foo, poo)
-  doAssert isSameOwner(foo, echo) == false
-  doAssert isSameOwner(poo, len) == false
+  proc wrappedScope() =
+    proc dummyproc() = discard
+    doAssert isSameOwner(foo, dummyproc) == false
+    doAssert isSameOwner(poo, dummyproc) == false
+  wrappedScope()
 
 #---------------------------------------------------------------
 
