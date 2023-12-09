@@ -2036,8 +2036,9 @@ func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
       let subLen = sub.len
       if last < 0 and start < s.len and subLen != 0:
         let found = memmem(s[start].unsafeAddr, csize_t(s.len - start), sub.cstring, csize_t(subLen))
+        # TODO: fixme does it insinuate cstring cannot be used for addr anymore?
         result = if not found.isNil:
-            cast[int](found) -% cast[int](s.cstring)
+            cast[int](found) -% cast[int](s[start].unsafeAddr)
           else:
             -1
       else:
