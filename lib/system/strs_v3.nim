@@ -43,7 +43,10 @@ template incRawLen(s: var NimStringV3, value: int = 1) =
   s.rawlen += value shl 1
 
 template setRawLen(s: var NimStringV3, len: int) =
-  s.rawLen = toRawLen(len)
+  if isLiteral(s):
+    s.rawLen = toRawLen(len) or 1
+  else:
+    s.rawLen = toRawLen(len)
 
 proc markIntern(s: var NimStringV3): bool =
   s.rawlen = s.rawlen or 1
@@ -221,6 +224,7 @@ proc nimPrepareStrMutationImpl(s: var NimStringV3) =
   # can't mutate a literal, so we need a fresh copy here:
   s.p = allocPayload(s.nimStrLenV3)
   s.p.strCap = s.nimStrLenV3
+  s.rawlen = s.rawlen and (not 1)
   copyMem(unsafeAddr s.p[0], unsafeAddr oldP[0], s.nimStrLenV3)
 
 proc nimPrepareStrMutationV2(s: var NimStringV3) {.compilerRtl, inl.} =
