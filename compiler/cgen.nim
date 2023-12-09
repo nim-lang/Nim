@@ -428,9 +428,9 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
     if mode == constructRefObj: r = "(*$1)" % [r]
     var s = skipTypes(t, abstractInst)
     if not p.module.compileToCpp:
-      while s.kind == tyObject and s[0] != nil:
+      while s.kind == tyObject and s.baseType != nil:
         r.add(".Sup")
-        s = skipTypes(s[0], skipPtrs)
+        s = skipTypes(s.baseType, skipPtrs)
     if optTinyRtti in p.config.globalOptions:
       linefmt(p, section, "$1.m_type = $2;$n", [r, genTypeInfoV2(p.module, t, a.lode.info)])
     else:
@@ -457,9 +457,9 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
     if mode == constructRefObj: r = "(*$1)" % [r]
     var s = skipTypes(t, abstractInst)
     if not p.module.compileToCpp:
-      while s.kind == tyObject and s[0] != nil and s.sym.magic != mException:
+      while s.kind == tyObject and s.baseType != nil and s.sym.magic != mException:
         r.add(".Sup")
-        s = skipTypes(s[0], skipPtrs)
+        s = skipTypes(s.baseType, skipPtrs)
     linefmt(p, section, "$1.name = $2;$n", [r, makeCString(t.skipTypes(abstractInst).sym.name.s)])
 
 proc genRefAssign(p: BProc, dest, src: TLoc)

@@ -1737,6 +1737,9 @@ proc setArgTypeAt*(t: PType; at: int; son: PType) {.inline.} = t.args[at] = son
 iterator argTypePairs*(x, y: PType): (PType, PType) =
   for i in 0..<x.args.len: yield (x.args[i], y.args[i])
 
+iterator tupleTypes*(t: PType): (int, PType) =
+  for i in 0..<t.args.len: yield (i, t.args[i])
+
 proc addSonNilAllowed*(father, son: PNode) =
   father.sons.add(son)
 

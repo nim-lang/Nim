@@ -71,37 +71,36 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
   case typ.kind
   of tyGenericInst, tyGenericBody, tyTypeDesc, tyAlias, tyDistinct, tyInferred,
      tySink, tyOwned:
-    genTraverseProc(c, accessor, lastSon(typ))
+    genTraverseProc(c, accessor, typ.baseType)
   of tyArray:
-    let arraySize = lengthOrd(c.p.config, typ[0])
+    let arraySize = lengthOrd(c.p.config, typ.headType)
     var i: TLoc = getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt))
     var oldCode = p.s(cpsStmts)
     freeze oldCode
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
             [i.r, arraySize])
     let oldLen = p.s(cpsStmts).len
-    genTraverseProc(c, ropecg(c.p.module, "$1[$2]", [accessor, i.r]), typ[1])
+    genTraverseProc(c, ropecg(c.p.module, "$1[$2]", [accessor, i.r]), typ.baseType)
     if p.s(cpsStmts).len == oldLen:
       # do not emit dummy long loops for faster debug builds:
       p.s(cpsStmts) = oldCode
     else:
       lineF(p, cpsStmts, "}$n", [])
   of tyObject:
-    for i in 0..<typ.len:
-      var x = typ[i]
-      if x != nil: x = x.skipTypes(skipPtrs)
-      genTraverseProc(c, accessor.parentObj(c.p.module), x)
+    var x = typ.baseType
+    if x != nil: x = x.skipTypes(skipPtrs)
+    genTraverseProc(c, accessor.parentObj(c.p.module), x)
     if typ.n != nil: genTraverseProc(c, accessor, typ.n, typ)
   of tyTuple:
     let typ = getUniqueType(typ)
-    for i in 0..<typ.len:
-      genTraverseProc(c, ropecg(c.p.module, "$1.Field$2", [accessor, i]), typ[i])
+    for i, a in typ.tupleTypes:
+      genTraverseProc(c, ropecg(c.p.module, "$1.Field$2", [accessor, i]), a)
   of tyRef:
     lineCg(p, cpsStmts, visitorFrmt, [accessor, c.visitorFrmt])
   of tySequence:
     if optSeqDestructors notin c.p.module.config.globalOptions:
       lineCg(p, cpsStmts, visitorFrmt, [accessor, c.visitorFrmt])
-    elif containsGarbageCollectedRef(typ.lastSon):
+    elif containsGarbageCollectedRef(typ.baseType):
       # destructor based seqs are themselves not traced but their data is, if
       # they contain a GC'ed type:
       lineCg(p, cpsStmts, "#nimGCvisitSeq((void*)$1, $2);$n", [accessor, c.visitorFrmt])
@@ -126,14 +125,14 @@ proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
   lineF(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
       [i.r, lenExpr(c.p, a)])
   let oldLen = p.s(cpsStmts).len
-  genTraverseProc(c, "$1$3[$2]" % [accessor, i.r, dataField(c.p)], typ[0])
+  genTraverseProc(c, "$1$3[$2]" % [accessor, i.r, dataField(c.p)], typ.baseType)
   if p.s(cpsStmts).len == oldLen:
     # do not emit dummy long loops for faster debug builds:
     p.s(cpsStmts) = oldCode
   else:
     lineF(p, cpsStmts, "}$n", [])
 
-proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
+proc genTraverseProc(m: BModule; origTyp: PType; sig: SigHash): Rope =
   var c: TTraversalClosure
   var p = newProc(nil, m)
   result = "Marker_" & getTypeName(m, origTyp, sig)
@@ -152,13 +151,13 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
 
   assert typ.kind != tyTypeDesc
   if typ.kind == tySequence:
-    genTraverseProcSeq(c, "a".rope, typ)
+    genTraverseProcSeq(c, "a", typ)
   else:
-    if skipTypes(typ[0], typedescInst+{tyOwned}).kind == tyArray:
+    if skipTypes(typ.baseType, typedescInst+{tyOwned}).kind == tyArray:
       # C's arrays are broken beyond repair:
-      genTraverseProc(c, "a".rope, typ[0])
+      genTraverseProc(c, "a", typ.baseType)
     else:
-      genTraverseProc(c, "(*a)".rope, typ[0])
+      genTraverseProc(c, "(*a)", typ.baseType)
 
   let generatedProc = "$1 {$n$2$3$4}\n" %
         [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)]
