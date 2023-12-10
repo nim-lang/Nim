@@ -228,10 +228,16 @@ template dataLen(t): untyped = len(t.data)
 include tableimpl
 
 proc raiseKeyError[T](key: T) {.noinline, noreturn.} =
-  when compiles($key):
-    raise newException(KeyError, "key not found: " & $key)
+  when defined(nimQuirky):
+    when compiles($key):
+      quit "[KeyError] key not found: " & $key
+    else:
+      quit "[KeyError] key not found"
   else:
-    raise newException(KeyError, "key not found")
+    when compiles($key):
+      raise newException(KeyError, "key not found: " & $key)
+    else:
+      raise newException(KeyError, "key not found")
 
 template get(t, key): untyped =
   ## retrieves the value at `t[key]`. The value can be modified.

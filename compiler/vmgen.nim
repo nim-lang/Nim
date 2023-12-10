@@ -1531,7 +1531,8 @@ proc setSlot(c: PCtx; v: PSym) =
     v.position = getFreeRegister(c, if v.kind == skLet: slotFixedLet else: slotFixedVar, start = 1)
 
 proc cannotEval(c: PCtx; n: PNode) {.noinline.} =
-  globalError(c.config, n.info, "cannot evaluate at compile time: " &
+  c.couldNotEval = true
+  localError(c.config, n.info, "cannot evaluate at compile time: " &
     n.renderTree)
 
 proc isOwnedBy(a, b: PSym): bool =
@@ -1743,7 +1744,10 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
                           s.kind in {skParam, skResult}):
       if dest < 0:
         dest = s.position + ord(s.kind == skParam)
-        internalAssert(c.config, c.prc.regInfo[dest].kind < slotSomeTemp)
+        if dest < c.prc.regInfo.len:
+          internalAssert(c.config, c.prc.regInfo[dest].kind < slotSomeTemp)
+        else:
+          cannotEval(c, n)
       else:
         # we need to generate an assignment:
         let requiresCopy = c.prc.regInfo[dest].kind >= slotSomeTemp and
@@ -1777,6 +1781,7 @@ proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   c.freeTemp(b)
 
 proc genObjAccessAux(c: PCtx; n: PNode; a, b: int, dest: var TDest; flags: TGenFlags) =
+  if c.couldNotEval: return
   if dest < 0: dest = c.getTemp(n.typ)
   if {gfNodeAddr} * flags != {}:
     c.gABC(n, opcLdObjAddr, dest, a, b)
@@ -1791,8 +1796,6 @@ proc genObjAccessAux(c: PCtx; n: PNode; a, b: int, dest: var TDest; flags: TGenF
 
 proc genObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   genObjAccessAux(c, n, c.genx(n[0], flags), genField(c, n[1]), dest, flags)
-
-
 
 proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   internalAssert c.config, n.kind == nkCheckedFieldExpr
@@ -1811,6 +1814,7 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
 
   # Load the object in `dest`
   c.gen(accessExpr[0], dest, flags)
+  if c.couldNotEval: return
   # Load the discriminant
   var discVal = c.getTemp(disc.typ)
   c.gABC(n, opcLdObj, discVal, dest, genField(c, disc))
@@ -1837,6 +1841,7 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
 proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   var objR: TDest = -1
   genCheckedObjAccessAux(c, n, objR, flags)
+  if c.couldNotEval: return
 
   let accessExpr = n[0]
   # Field symbol
@@ -2115,6 +2120,7 @@ proc procIsCallback(c: PCtx; s: PSym): bool =
 proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind & " " & $flags
+  #if c.couldNotEval: return
   case n.kind
   of nkSym:
     let s = n.sym
@@ -2285,7 +2291,8 @@ proc genStmt*(c: PCtx; n: PNode): int =
   c.gen(n, d)
   c.gABC(n, opcEof)
   if d >= 0:
-    globalError(c.config, n.info, "VM problem: dest register is set")
+    c.couldNotEval = true
+    localError(c.config, n.info, "VM problem: dest register is set")
 
 proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
   c.removeLastEof
@@ -2294,7 +2301,8 @@ proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
   c.gen(n, d)
   if d < 0:
     if requiresValue:
-      globalError(c.config, n.info, "VM problem: dest register is not set")
+      c.couldNotEval = true
+      localError(c.config, n.info, "VM problem: dest register is not set")
     d = 0
   c.gABC(n, opcEof, d)
 

@@ -1151,7 +1151,7 @@ proc genProcBody(p: BProc; procBody: PNode) =
     p.blocks[0].sections[cpsInit].add(ropecg(p.module, "nimErr_ = #nimErrorFlag();$n", []))
 
 proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
-  sfNoReturn in s.flags and m.config.exc != excGoto
+  sfNoReturn in s.flags and m.config.exc notin {excGoto, excQuirky}
 
 proc genProcAux*(m: BModule, prc: PSym) =
   var p = newProc(prc, m)

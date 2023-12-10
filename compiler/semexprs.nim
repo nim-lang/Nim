@@ -47,7 +47,7 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 
 template rejectEmptyNode(n: PNode) =
   # No matter what a nkEmpty node is not what we want here
-  if n.kind == nkEmpty: illFormedAst(n, c.config)
+  if n.kind == nkEmpty: illFormedAstLocal(n, c.config)
 
 proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   rejectEmptyNode(n)

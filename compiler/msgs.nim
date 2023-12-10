@@ -443,7 +443,8 @@ proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string, 
     elif eh == doAbort and conf.cmd != cmdIdeTools:
       quit(conf, msg)
     elif eh == doRaise:
-      raiseRecoverableError(s)
+      #raiseRecoverableError(s)
+      quit(conf, msg)
 
 proc `==`*(a, b: TLineInfo): bool =
   result = a.line == b.line and a.fileIndex == b.fileIndex
