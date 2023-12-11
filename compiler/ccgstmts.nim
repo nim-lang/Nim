@@ -1493,7 +1493,8 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false; result: var Rope) =
     if isAsmStmt: 1 # first son is pragmas
     else: 0
 
-  for it in t.sons[offset..^1]:
+  for i in offset..<t.len:
+     let it = t[i]
     case it.kind
     of nkStrLit..nkTripleStrLit:
       res.add(it.strVal)
