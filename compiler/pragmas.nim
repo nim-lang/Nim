@@ -599,6 +599,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
   case n[1].kind
   of nkStrLit, nkRStrLit, nkTripleStrLit:
     result = newNodeI(if n.kind == nkAsmStmt: nkAsmStmt else: nkArgList, n.info)
+    if n.kind == nkAsmStmt: result.add n[0] # save asm pragmas for NIR
     var str = n[1].strVal
     if str == "":
       localError(con.config, n.info, "empty 'asm' statement")
@@ -630,6 +631,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
   else:
     illFormedAstLocal(n, con.config)
     result = newNodeI(nkAsmStmt, n.info)
+    if n.kind == nkAsmStmt: result.add n[0]
 
 proc pragmaEmit(c: PContext, n: PNode) =
   if n.kind notin nkPragmaCallKinds or n.len != 2:
