@@ -1494,7 +1494,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false; result: var Rope) =
     else: 0
 
   for i in offset..<t.len:
-     let it = t[i]
+    let it = t[i]
     case it.kind
     of nkStrLit..nkTripleStrLit:
       res.add(it.strVal)
