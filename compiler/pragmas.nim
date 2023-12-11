@@ -14,6 +14,8 @@ import
   wordrecg, ropes, options, extccomp, magicsys, trees,
   types, lookups, lineinfos, pathutils, linter, modulepaths
 
+from sigmatch import trySuggestPragmas
+
 import std/[os, math, strutils]
 
 when defined(nimPreviewSlimSystem):
@@ -119,6 +121,7 @@ const
 
 proc invalidPragma*(c: PContext; n: PNode) =
   localError(c.config, n.info, "invalid pragma: " & renderTree(n, {renderNoComments}))
+
 proc illegalCustomPragma*(c: PContext, n: PNode, s: PSym) =
   var msg = "cannot attach a custom pragma to '" & s.name.s & "'"
   if s != nil:
@@ -685,9 +688,12 @@ proc pragmaLine(c: PContext, n: PNode) =
 proc processPragma(c: PContext, n: PNode, i: int) =
   ## Create and add a new custom pragma `{.pragma: name.}` node to the module's context.
   let it = n[i]
-  if it.kind notin nkPragmaCallKinds and it.safeLen == 2: invalidPragma(c, n)
+  if it.kind notin nkPragmaCallKinds and it.safeLen == 2:
+    invalidPragma(c, n)
+    return
   elif it.safeLen != 2 or it[0].kind != nkIdent or it[1].kind != nkIdent:
     invalidPragma(c, n)
+    return
 
   var userPragma = newSym(skTemplate, it[1].ident, c.idgen, c.module, it.info, c.config.options)
   styleCheckDef(c, userPragma)
@@ -786,6 +792,8 @@ proc semCustomPragma(c: PContext, n: PNode, sym: PSym): PNode =
   else:
     invalidPragma(c, n)
     return n
+
+  trySuggestPragmas(c, callNode[0])
 
   let r = c.semOverloadedCall(c, callNode, n, {skTemplate}, {efNoUndeclared})
   if r.isNil or sfCustomPragma notin r[0].sym.flags:
@@ -1313,7 +1321,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
   if sym != nil and sym.kind != skModule:
     for it in c.optionStack:
       let o = it.otherPragmas
-      if not o.isNil:
+      if not o.isNil and sfFromGeneric notin sym.flags: # bug #23019
         pushInfoContext(c.config, info)
         var i = 0
         while i < o.len:
