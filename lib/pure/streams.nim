@@ -378,7 +378,7 @@ proc write*(s: Stream, x: string) =
         var x = x
         writeData(s, addr(x), x.len)
       else:
-        writeData(s, cstring(x), x.len)
+        writeData(s, addr x[0], x.len)
 
 proc write*(s: Stream, args: varargs[string, `$`]) =
   ## Writes one or more strings to the the stream. No length fields or
@@ -937,11 +937,12 @@ proc peekFloat64*(s: Stream): float64 =
   peek(s, result)
 
 proc readStrPrivate(s: Stream, length: int, str: var string) =
+  if length == 0: return
   if length > len(str): setLen(str, length)
   when defined(js):
     let L = readData(s, addr(str), length)
   else:
-    let L = readData(s, cstring(str), length)
+    let L = readData(s, addr(str[0]), length)
   if L != len(str): setLen(str, L)
 
 proc readStr*(s: Stream, length: int, str: var string) {.since: (1, 3).} =
@@ -963,11 +964,13 @@ proc readStr*(s: Stream, length: int): string =
   readStrPrivate(s, length, result)
 
 proc peekStrPrivate(s: Stream, length: int, str: var string) =
+  # TODO: fixme breaking changes: cannot modify strings by cstring
+  if length == 0: return
   if length > len(str): setLen(str, length)
   when defined(js):
     let L = peekData(s, addr(str), length)
   else:
-    let L = peekData(s, cstring(str), length)
+    let L = peekData(s, addr str[0], length)
   if L != len(str): setLen(str, L)
 
 proc peekStr*(s: Stream, length: int, str: var string) {.since: (1, 3).} =

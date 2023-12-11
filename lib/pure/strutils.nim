@@ -1981,7 +1981,7 @@ func find*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
       if length > 0:
         let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](length))
         if not found.isNil:
-          return cast[int](found) -% cast[int](s.cstring)
+          return cast[int](found) -% cast[int](s[0].addr)
     else:
       findImpl()
 

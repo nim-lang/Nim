@@ -539,11 +539,11 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netb
 
 when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):
   proc getApplAux(procPath: string): string =
-    result = newString(maxSymlinkLen)
-    var len = readlink(procPath, result.cstring, maxSymlinkLen)
+    result = newString(maxSymlinkLen+1) # TODO: fixme how to ?
+    var len = readlink(procPath, cast[cstring](addr result[0]), maxSymlinkLen)
     if len > maxSymlinkLen:
       result = newString(len+1)
-      len = readlink(procPath, result.cstring, len)
+      len = readlink(procPath, cast[cstring](addr result[0]), len)
     setLen(result, len)
 
 when not weirdTarget and defined(openbsd):

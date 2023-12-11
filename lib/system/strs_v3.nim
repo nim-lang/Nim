@@ -144,7 +144,7 @@ proc nimToCStringConv(s: NimStringV3): cstring {.compilerproc, nonReloadable, in
   else:
     ## TODO: fixme: inject conversions somewhere else and be cleaned up
     ## but let it leak for now
-    let len = s.nimStrLenV3+1
+    let len = s.nimStrLenV3
     result = cast[cstring](allocShared0(len+1))
     copyMem(result, unsafeAddr s.p[0], len)
 
