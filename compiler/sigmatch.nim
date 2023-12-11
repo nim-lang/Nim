@@ -2373,7 +2373,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
                              skIterator, skMacro, skTemplate, skEnumField}:
         copyCandidate(z, m)
         z.callee = arg[i].typ
-        if tfUnresolved in z.callee.flags: continue
+        if tfUnresolved in z.callee.flags and fullResolve: continue
         z.calleeSym = arg[i].sym
         setCandidateScope(m.c, z, arg[i].sym)
         # XXX this is still all wrong: (T, T) should be 2 generic matches
@@ -2404,7 +2404,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       # See tsymchoice_for_expr as an example. 'f.kind == tyUntyped' should match
       # anyway:
       # This may be a special case where the loop can be skipped in the first place
-      if f.kind in {tyUntyped, tyTyped}: result = arg
+      if not fullResolve: result = arg
       else: result = nil
     else:
       # only one valid interpretation found:
