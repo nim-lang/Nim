@@ -2351,7 +2351,6 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
 
 proc paramTypesMatch*(m: var TCandidate, f, a: PType,
                       arg, argOrig: PNode): PNode =
-  let isTyped = f.kind != tyUntyped
   if arg == nil or arg.kind notin nkSymChoices:
     result = paramTypesMatchAux(m, f, a, arg, argOrig)
   else:
@@ -2359,6 +2358,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     # incorrect to simply use the first fitting match. However, to implement
     # this correctly is inefficient. We have to copy `m` here to be able to
     # roll back the side effects of the unification algorithm.
+    let fullResolve = f.kind notin {tyTyped, tyUntyped}
     let c = m.c
     var
       x = newCandidate(c, m.callee)
@@ -2373,7 +2373,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
                              skIterator, skMacro, skTemplate, skEnumField}:
         copyCandidate(z, m)
         z.callee = arg[i].typ
-        if tfUnresolved in z.callee.flags and isTyped: continue
+        if tfUnresolved in z.callee.flags: continue
         z.calleeSym = arg[i].sym
         setCandidateScope(m.c, z, arg[i].sym)
         # XXX this is still all wrong: (T, T) should be 2 generic matches
@@ -2388,7 +2388,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
             x = z
             best = i
           of csMatch:
-            let cmp = cmpCandidates(x, z, isFormal=false, lastChance=isTyped)
+            let cmp = cmpCandidates(x, z, isFormal=false, lastChance=fullResolve)
             if cmp < 0:
               best = i
               x = z
@@ -2397,12 +2397,13 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
 
     if x.state == csEmpty:
       result = nil
-    elif y.state == csMatch and cmpCandidates(x, y, isFormal=false, lastChance=isTyped) == 0:
+    elif y.state == csMatch and cmpCandidates(x, y, isFormal=false, lastChance=fullResolve) == 0:
       if x.state != csMatch:
         internalError(m.c.graph.config, arg.info, "x.state is not csMatch")
       # ambiguous: more than one symbol fits!
       # See tsymchoice_for_expr as an example. 'f.kind == tyUntyped' should match
       # anyway:
+      # This may be a special case where the loop can be skipped in the first place
       if f.kind in {tyUntyped, tyTyped}: result = arg
       else: result = nil
     else:
