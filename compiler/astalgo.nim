@@ -370,7 +370,7 @@ proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet, indent: int,
       if conf != nil:
         result.addf(",$N$1\"info\": $2", [istr, lineInfoToStr(conf, n.info)])
       case n.kind
-      of nkCharLit..nkInt64Lit:
+      of nkCharLit..nkUInt64Lit:
         result.addf(",$N$1\"intVal\": $2", [istr, rope(n.intVal)])
       of nkFloatLit, nkFloat32Lit, nkFloat64Lit:
         result.addf(",$N$1\"floatVal\": $2",

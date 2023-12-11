@@ -125,6 +125,8 @@ template outside(g: var TSrcGen, section: Section, body: untyped) =
 const
   IndentWidth = 2
   longIndentWid = IndentWidth * 2
+  MaxLineLen = 80
+  LineCommentColumn = 30
 
 when defined(nimpretty):
   proc minmaxLine(n: PNode): (int, int) =
@@ -142,10 +144,6 @@ when defined(nimpretty):
 
   proc lineDiff(a, b: PNode): int =
     result = minmaxLine(b)[0] - minmaxLine(a)[1]
-
-const
-  MaxLineLen = 80
-  LineCommentColumn = 30
 
 proc initSrcGen(renderFlags: TRenderFlags; config: ConfigRef): TSrcGen =
   result = TSrcGen(comStack: @[], tokens: @[], indent: 0,
