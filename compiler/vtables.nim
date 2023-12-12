@@ -91,7 +91,7 @@ proc collectVTableDispatchers*(g: ModuleGraph) =
     if relevantCol(g.methods[bucket].methods, 1): incl(relevantCols, 1)
     sortBucket(g.methods[bucket].methods, relevantCols)
     let base = g.methods[bucket].methods[^1]
-    let baseType = base.typ[1].skipTypes(skipPtrs-{tyTypeDesc})
+    let baseType = base.typ.firstParamType.skipTypes(skipPtrs-{tyTypeDesc})
     if baseType.itemId in g.objectTree and not containGenerics(baseType, g.objectTree[baseType.itemId]):
       let methodIndexLen = g.bucketTable[baseType.itemId]
       if baseType.itemId notin itemTable: # once is enough
@@ -114,7 +114,7 @@ proc collectVTableDispatchers*(g: ModuleGraph) =
         mIndex = rootItemIdCount[baseType.itemId]
         rootItemIdCount.inc(baseType.itemId)
       for idx in 0..<g.methods[bucket].methods.len:
-        let obj = g.methods[bucket].methods[idx].typ[1].skipTypes(skipPtrs)
+        let obj = g.methods[bucket].methods[idx].typ.firstParamType.skipTypes(skipPtrs)
         itemTable[obj.itemId][mIndex] = LazySym(sym: g.methods[bucket].methods[idx])
       g.addDispatchers genVTableDispatcher(g, g.methods[bucket].methods, mIndex)
     else: # if the base object doesn't have this method
@@ -129,7 +129,7 @@ proc sortVTableDispatchers*(g: ModuleGraph) =
     if relevantCol(g.methods[bucket].methods, 1): incl(relevantCols, 1)
     sortBucket(g.methods[bucket].methods, relevantCols)
     let base = g.methods[bucket].methods[^1]
-    let baseType = base.typ[1].skipTypes(skipPtrs-{tyTypeDesc})
+    let baseType = base.typ.firstParamType.skipTypes(skipPtrs-{tyTypeDesc})
     if baseType.itemId in g.objectTree and not containGenerics(baseType, g.objectTree[baseType.itemId]):
       let methodIndexLen = g.bucketTable[baseType.itemId]
       if baseType.itemId notin itemTable: # once is enough
@@ -152,7 +152,7 @@ proc sortVTableDispatchers*(g: ModuleGraph) =
         mIndex = rootItemIdCount[baseType.itemId]
         rootItemIdCount.inc(baseType.itemId)
       for idx in 0..<g.methods[bucket].methods.len:
-        let obj = g.methods[bucket].methods[idx].typ[1].skipTypes(skipPtrs)
+        let obj = g.methods[bucket].methods[idx].typ.firstParamType.skipTypes(skipPtrs)
         itemTable[obj.itemId][mIndex] = LazySym(sym: g.methods[bucket].methods[idx])
 
   for baseType in rootTypeSeq:

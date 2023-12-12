@@ -157,10 +157,10 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
 
 proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   var witness: PSym = nil
-  if s.typ[1].owner.getModule != s.getModule and vtables in g.config.features and not
+  if s.typ.firstParamType.owner.getModule != s.getModule and vtables in g.config.features and not
       g.config.isDefined("nimInternalNonVtablesTesting"):
     localError(g.config, s.info, errGenerated, "method `" & s.name.s &
-          "` can be defined only in the same module with its type (" & s.typ[1].typeToString() & ")")
+          "` can be defined only in the same module with its type (" & s.typ.firstParamType.typeToString() & ")")
   for i in 0..<g.methods.len:
     let disp = g.methods[i].dispatcher
     case sameMethodBucket(disp, s, multimethods = optMultiMethods in g.config.globalOptions)
@@ -180,10 +180,10 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
       if witness.isNil: witness = g.methods[i].methods[0]
   # create a new dispatcher:
   # stores the id and the position
-  if s.typ[1].skipTypes(skipPtrs).itemId notin g.bucketTable:
-    g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId] = 1
+  if s.typ.firstParamType.skipTypes(skipPtrs).itemId notin g.bucketTable:
+    g.bucketTable[s.typ.firstParamType.skipTypes(skipPtrs).itemId] = 1
   else:
-    g.bucketTable.inc(s.typ[1].skipTypes(skipPtrs).itemId)
+    g.bucketTable.inc(s.typ.firstParamType.skipTypes(skipPtrs).itemId)
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
   #echo "adding ", s.info
   if witness != nil:

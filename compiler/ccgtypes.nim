@@ -884,13 +884,13 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
 proc getOpenArrayDesc(m: BModule; t: PType, check: var IntSet; kind: TypeDescKind): Rope =
   let sig = hashType(t, m.config)
   if kind == dkParam:
-    result = getTypeDescWeak(m, t.elementType, check, kind) & "*"
+    result = getTypeDescWeak(m, t[0], check, kind) & "*"
   else:
     result = cacheGetType(m.typeCache, sig)
     if result == "":
       result = getTypeName(m, t, sig)
       m.typeCache[sig] = result
-      let elemType = getTypeDescWeak(m, t.elementType, check, kind)
+      let elemType = getTypeDescWeak(m, t[0], check, kind)
       m.s[cfsTypes].addf("typedef struct {$n$2* Field0;$nNI Field1;$n} $1;$n",
                          [result, elemType])
 
@@ -1206,7 +1206,7 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
   if isCtor:
     typ = prc.typ.returnType
   else:
-    typ = prc.typ[1]
+    typ = prc.typ.firstParamType
   if typ.kind == tyPtr:
     typ = typ.elementType
     memberOp = "#->"
@@ -1518,14 +1518,14 @@ proc genEnumInfo(m: BModule; typ: PType, name: Rope; info: TLineInfo) =
     m.s[cfsTypeInit3].addf("$1.flags = 1<<2;$n", [tiNameForHcr(m, name)])
 
 proc genSetInfo(m: BModule; typ: PType, name: Rope; info: TLineInfo) =
-  assert(typ[0] != nil)
+  assert(typ.elementType != nil)
   genTypeInfoAux(m, typ, typ, name, info)
   var tmp = getNimNode(m)
   m.s[cfsTypeInit3].addf("$1.len = $2; $1.kind = 0;$n$3.node = &$1;$n",
        [tmp, rope(firstOrd(m.config, typ)), tiNameForHcr(m, name)])
 
 proc genArrayInfo(m: BModule; typ: PType, name: Rope; info: TLineInfo) =
-  genTypeInfoAuxBase(m, typ, typ, name, genTypeInfoV1(m, typ[1], info), info)
+  genTypeInfoAuxBase(m, typ, typ, name, genTypeInfoV1(m, typ.elementType, info), info)
 
 proc fakeClosureType(m: BModule; owner: PSym): PType =
   # we generate the same RTTI as for a tuple[pointer, ref tuple[]]
@@ -1594,14 +1594,14 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
   n[paramsPos] = result.typ.n
   let body = newNodeI(nkStmtList, info)
   let castType = makePtrType(typ, idgen)
-  if theProc.typ[1].kind != tyVar:
+  if theProc.typ.firstParamType.kind != tyVar:
     body.add newTreeI(nkCall, info, newSymNode(theProc), newDeref(newTreeIT(
       nkCast, info, castType, newNodeIT(nkType, info, castType),
       newSymNode(dest)
     ))
     )
   else:
-    let addrOf = newNodeIT(nkAddr, info, theProc.typ[1])
+    let addrOf = newNodeIT(nkAddr, info, theProc.typ.firstParamType)
     addrOf.add newDeref(newTreeIT(
       nkCast, info, castType, newNodeIT(nkType, info, castType),
       newSymNode(dest)

@@ -238,9 +238,9 @@ proc pack(conf: ConfigRef, v: PNode, typ: PType, res: pointer) =
       dec packRecCheck
       awr(pointer, res +! sizeof(pointer))
   of tyArray:
-    let baseSize = getSize(conf, typ[1])
+    let baseSize = getSize(conf, typ.elementType)
     for i in 0..<v.len:
-      pack(conf, v[i], typ[1], res +! i * baseSize)
+      pack(conf, v[i], typ.elementType, res +! i * baseSize)
   of tyObject, tyTuple:
     packObject(conf, v, typ, res)
   of tyNil:
@@ -304,9 +304,9 @@ proc unpackArray(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
     result = n
     if result.kind != nkBracket:
       globalError(conf, n.info, "cannot map value from FFI")
-  let baseSize = getSize(conf, typ[1])
+  let baseSize = getSize(conf, typ.elementType)
   for i in 0..<result.len:
-    result[i] = unpack(conf, x +! i * baseSize, typ[1], result[i])
+    result[i] = unpack(conf, x +! i * baseSize, typ.elementType, result[i])
 
 proc canonNodeKind(k: TNodeKind): TNodeKind =
   case k

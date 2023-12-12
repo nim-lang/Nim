@@ -2084,7 +2084,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
         param = implicitConv(nkHiddenSubConv, src, copyTree(arg), m, c)
       elif src.kind in {tyVar}:
         # Analyse the converter return type.
-        param = newNodeIT(nkHiddenAddr, arg.info, s.typ[1])
+        param = newNodeIT(nkHiddenAddr, arg.info, s.typ.firstParamType)
         param.add copyTree(arg)
       else:
         param = copyTree(arg)

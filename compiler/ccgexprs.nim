@@ -3309,7 +3309,7 @@ proc genConstObjConstr(p: BProc; n: PNode; isConst: bool; result: var Rope) =
 proc genConstSimpleList(p: BProc, n: PNode; isConst: bool; result: var Rope) =
   result.add "{"
   if p.vccAndC and n.len == 0 and n.typ.kind == tyArray:
-    getDefaultValue(p, n.typ[1], n.info, result)
+    getDefaultValue(p, n.typ.elementType, n.info, result)
   for i in 0..<n.len:
     let it = n[i]
     if i > 0: result.add ",\n"

@@ -1043,7 +1043,7 @@ proc handleStmtMacro(c: PContext; n, selector: PNode; magicType: string;
     var symx = initOverloadIter(o, c, headSymbol)
     while symx != nil:
       if symx.kind in {skTemplate, skMacro}:
-        if symx.typ.len == 2 and symx.typ[1] == maType.typ:
+        if symx.typ.len == 2 and symx.typ.firstParamType == maType.typ:
           if match == nil:
             match = symx
           else:
@@ -1969,11 +1969,11 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
           newIdentNode(c.cache.getIdent("raises"),  s.info), newNodeI(nkBracket, s.info))
   of "deepcopy", "=deepcopy":
     if s.typ.len == 2 and
-        s.typ[1].skipTypes(abstractInst).kind in {tyRef, tyPtr} and
-        sameType(s.typ[1], s.typ.returnType):
+        s.typ.firstParamType.skipTypes(abstractInst).kind in {tyRef, tyPtr} and
+        sameType(s.typ.firstParamType, s.typ.returnType):
       # Note: we store the deepCopy in the base of the pointer to mitigate
       # the problem that pointers are structural types:
-      var t = s.typ[1].skipTypes(abstractInst).elementType.skipTypes(abstractInst)
+      var t = s.typ.firstParamType.skipTypes(abstractInst).elementType.skipTypes(abstractInst)
       while true:
         if t.kind == tyGenericBody: t = t.typeBodyImpl
         elif t.kind == tyGenericInvocation: t = t[0]
@@ -2093,7 +2093,7 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
         if sfImportc in typ.sym.flags:
           localError(c.config, n.info, "constructor in an imported type needs importcpp pragma")
       else:
-        typ = s.typ[1]
+        typ = s.typ.firstParamType
       if typ.kind == tyPtr and not isCtor:
         typ = typ.elementType
       if typ.kind != tyObject:
