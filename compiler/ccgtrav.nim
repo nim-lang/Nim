@@ -126,7 +126,7 @@ proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
   lineF(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
       [i.r, lenExpr(c.p, a)])
   let oldLen = p.s(cpsStmts).len
-  genTraverseProc(c, "$1$3[$2]" % [accessor, i.r, dataField(c.p)], typ[0])
+  genTraverseProc(c, "$1$3[$2]" % [accessor, i.r, dataField(c.p)], typ.elementType)
   if p.s(cpsStmts).len == oldLen:
     # do not emit dummy long loops for faster debug builds:
     p.s(cpsStmts) = oldCode
@@ -154,11 +154,11 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
   if typ.kind == tySequence:
     genTraverseProcSeq(c, "a".rope, typ)
   else:
-    if skipTypes(typ[0], typedescInst+{tyOwned}).kind == tyArray:
+    if skipTypes(typ.elementType, typedescInst+{tyOwned}).kind == tyArray:
       # C's arrays are broken beyond repair:
-      genTraverseProc(c, "a".rope, typ[0])
+      genTraverseProc(c, "a".rope, typ.elementType)
     else:
-      genTraverseProc(c, "(*a)".rope, typ[0])
+      genTraverseProc(c, "(*a)".rope, typ.elementType)
 
   let generatedProc = "$1 {$n$2$3$4}\n" %
         [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)]

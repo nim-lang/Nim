@@ -324,7 +324,7 @@ proc getSimpleTypeDesc(m: BModule; typ: PType): Rope =
   of tyNil: result = typeNameOrLiteral(m, typ, "void*")
   of tyInt..tyUInt64:
     result = typeNameOrLiteral(m, typ, NumericalTypeToStr[typ.kind])
-  of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ[0])
+  of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ.skipModifier)
   of tyStatic:
     if typ.n != nil: result = getSimpleTypeDesc(m, skipModifier typ)
     else:

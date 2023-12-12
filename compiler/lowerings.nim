@@ -344,7 +344,7 @@ proc callCodegenProc*(g: ModuleGraph; name: string;
     if optionalArgs != nil:
       for i in 1..<optionalArgs.len-2:
         result.add optionalArgs[i]
-    result.typ = sym.typ[0]
+    result.typ = sym.typ.returnType
 
 proc newIntLit*(g: ModuleGraph; info: TLineInfo; value: BiggestInt): PNode =
   result = nkIntLit.newIntNode(value)

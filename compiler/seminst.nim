@@ -133,7 +133,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
         if result.kind == skMacro:
           sysTypeFromName(c.graph, n.info, "NimNode")
         elif not isInlineIterator(result.typ):
-          result.typ[0]
+          result.typ.returnType
         else:
           nil
       b = semProcBody(c, b, resultType)
@@ -315,8 +315,8 @@ proc fillMixinScope(c: PContext) =
         addSym(c.currentScope, n.sym)
     p = p.next
 
-proc getLocalPassC(c: PContext, s: PSym): string = 
-  if s.ast == nil or s.ast.len == 0: return "" 
+proc getLocalPassC(c: PContext, s: PSym): string =
+  if s.ast == nil or s.ast.len == 0: return ""
   result = ""
   template extractPassc(p: PNode) =
     if p.kind == nkPragma and p[0][0].ident == c.cache.getIdent"localpassc":
@@ -325,7 +325,7 @@ proc getLocalPassC(c: PContext, s: PSym): string =
   for n in s.ast:
     for p in n:
       extractPassc(p)
-  
+
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
   ## Generates a new instance of a generic procedure.
@@ -354,7 +354,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     let passc = getLocalPassC(c, producer)
     if passc != "": #pass the local compiler options to the consumer module too
       extccomp.addLocalCompileOption(c.config, passc, toFullPathConsiderDirty(c.config, c.module.info.fileIndex))
-    result.owner = c.module 
+    result.owner = c.module
   else:
     result.owner = fn
   result.ast = n

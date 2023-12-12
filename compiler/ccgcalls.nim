@@ -218,7 +218,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
         for i in 0..<q.len-1:
           genStmts(p, q[i])
         q = q.lastSon
-    let (x, y) = genOpenArraySlice(p, q, formalType, n.typ[0])
+    let (x, y) = genOpenArraySlice(p, q, formalType, n.typ.elementType)
     result.add x & ", " & y
   else:
     var a = initLocExpr(p, if n.kind == nkHiddenStdConv: n[1] else: n)

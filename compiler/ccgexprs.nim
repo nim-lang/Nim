@@ -3426,7 +3426,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; resul
       genConstSimpleList(p, n, isConst, data)
 
       let payload = getTempName(p.module)
-      let ctype = getTypeDesc(p.module, typ[0])
+      let ctype = getTypeDesc(p.module, typ.elementType)
       let arrLen = n.len
       appcg(p.module, cfsStrData,
         "static $5 $1 $3[$2] = $4;$n", [
