@@ -1505,8 +1505,11 @@ proc setReturnType*(n, r: PType) {.inline.} = n.sons[0] = r
 proc setIndexType*(n, idx: PType) {.inline.} = n.sons[0] = idx
 
 proc firstParamType*(n: PType): PType {.inline.} = n.sons[1]
+proc firstGenericParam*(n: PType): PType {.inline.} = n.sons[1]
 
 proc typeBodyImpl*(n: PType): PType {.inline.} = n.sons[^1]
+
+proc genericHead*(n: PType): PType {.inline.} = n.sons[0]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or

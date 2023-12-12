@@ -361,7 +361,7 @@ proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
     if c.isNoCall: result = t
     else: result = nil
   of tySequence, tySet:
-    if t[0].kind == tyEmpty: result = nil
+    if t.elementType.kind == tyEmpty: result = nil
     else: result = t
   of tyGenericParam, tyAnything, tyConcept:
     result = t
@@ -512,7 +512,7 @@ proc isObjectSubtype(c: var TCandidate; a, f, fGenericOrigin: PType): int =
   while t != nil and not sameObjectTypes(f, t):
     if t.kind != tyObject:  # avoid entering generic params etc
       return -1
-    t = t[0]
+    t = t.baseClass
     if t == nil: break
     last = t
     t = skipTypes(t, skipPtrs)
@@ -563,7 +563,7 @@ proc isGenericSubtype(c: var TCandidate; a, f: PType, d: var int, fGenericOrigin
   # XXX sameObjectType can return false here. Need to investigate
   # why that is but sameObjectType does way too much work here anyway.
   while t != nil and r.sym != t.sym and askip == fskip:
-    t = t[0]
+    t = t.baseClass
     if t == nil: break
     last = t
     t = t.skipToObject(askip)
@@ -2140,8 +2140,8 @@ proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
   of isNone: discard
 
 template matchesVoidProc(t: PType): bool =
-  (t.kind == tyProc and t.len == 1 and t[0] == nil) or
-    (t.kind == tyBuiltInTypeClass and t[0].kind == tyProc)
+  (t.kind == tyProc and t.len == 1 and t.returnType == nil) or
+    (t.kind == tyBuiltInTypeClass and t.elementType.kind == tyProc)
 
 proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
                         argSemantized, argOrig: PNode): PNode =
@@ -2479,7 +2479,7 @@ proc arrayConstr(c: PContext, info: TLineInfo): PType =
 
 proc incrIndexType(t: PType) =
   assert t.kind == tyArray
-  inc t[0].n[1].intVal
+  inc t.indexType.n[1].intVal
 
 template isVarargsUntyped(x): untyped =
   x.kind == tyVarargs and x[0].kind == tyUntyped

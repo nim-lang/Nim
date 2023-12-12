@@ -1263,7 +1263,7 @@ proc readTypeParameter(c: PContext, typ: PType,
         discard
 
   if typ.kind != tyUserTypeClass:
-    let ty = if typ.kind == tyCompositeTypeClass: typ[1].skipGenericAlias
+    let ty = if typ.kind == tyCompositeTypeClass: typ.firstGenericParam.skipGenericAlias
              else: typ.skipGenericAlias
     let tbody = ty[0]
     for s in 0..<tbody.len-1:
@@ -1292,7 +1292,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     onUse(n.info, s)
     let typ = skipTypes(s.typ, abstractInst-{tyTypeDesc})
     case typ.kind
-    of  tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
+    of tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
         tyTuple, tySet, tyUInt..tyUInt64:
       if s.magic == mNone: result = inlineConst(c, n, s)
       else: result = newSymNode(s, n.info)

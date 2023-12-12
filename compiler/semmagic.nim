@@ -132,7 +132,7 @@ proc uninstantiate(t: PType): PType =
   result = case t.kind
     of tyMagicGenerics: t
     of tyUserDefinedGenerics: t.base
-    of tyCompositeTypeClass: uninstantiate t[1]
+    of tyCompositeTypeClass: uninstantiate t.firstGenericParam
     else: t
 
 proc getTypeDescNode(c: PContext; typ: PType, sym: PSym, info: TLineInfo): PNode =

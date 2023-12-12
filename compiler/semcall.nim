@@ -821,7 +821,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
     ]#
     t = skipTypes(param.typ, desiredTypes)
     isDistinct = t.kind == tyDistinct or param.typ.kind == tyDistinct
-    if t.kind == tyGenericInvocation and t[0].last.kind == tyDistinct:
+    if t.kind == tyGenericInvocation and t.genericHead.last.kind == tyDistinct:
       result.state = bsGeneric
       return
     if isDistinct: hasDistinct = true

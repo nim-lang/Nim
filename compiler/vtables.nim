@@ -162,6 +162,6 @@ proc sortVTableDispatchers*(g: ModuleGraph) =
       let idx = typ.itemId
       for mIndex in 0..<itemTable[idx].len:
         if itemTable[idx][mIndex].sym == nil:
-          let parentIndex = typ[0].skipTypes(skipPtrs).itemId
+          let parentIndex = typ.baseClass.skipTypes(skipPtrs).itemId
           itemTable[idx][mIndex] = itemTable[parentIndex][mIndex]
       g.setMethodsPerType(idx, itemTable[idx])

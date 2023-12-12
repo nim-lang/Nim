@@ -3277,7 +3277,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
 proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
                       result: var Rope; count: var int;
                       isConst: bool, info: TLineInfo) =
-  var base = t[0]
+  var base = t.baseClass
   let oldRes = result
   let oldcount = count
   if base != nil:

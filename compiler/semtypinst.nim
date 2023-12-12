@@ -703,8 +703,8 @@ when false:
     popInfoContext(p.config)
 
 proc recomputeFieldPositions*(t: PType; obj: PNode; currPosition: var int) =
-  if t != nil and t.len > 0 and t[0] != nil:
-    let b = skipTypes(t[0], skipPtrs)
+  if t != nil and t.len > 0 and t.baseClass != nil:
+    let b = skipTypes(t.baseClass, skipPtrs)
     recomputeFieldPositions(b, b.n, currPosition)
   case obj.kind
   of nkRecList:

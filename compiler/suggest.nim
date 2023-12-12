@@ -327,7 +327,7 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
 proc getQuality(s: PSym): range[0..100] =
   result = 100
   if s.typ != nil and s.typ.len > 1:
-    var exp = s.typ[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
+    var exp = s.typ.firstParamType.skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
     if exp.kind == tyVarargs: exp = elemType(exp)
     if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: result = 50
 
@@ -396,17 +396,17 @@ proc suggestVar(c: PContext, n: PNode, outputs: var Suggestions) =
   wholeSymTab(nameFits(c, it, n), ideCon)
 
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
-  if s.typ != nil and s.typ.len > 1 and s.typ[1] != nil:
+  if s.typ != nil and s.typ.len > 1 and s.typ.firstParamType != nil:
     # special rule: if system and some weird generic match via 'tyUntyped'
     # or 'tyGenericParam' we won't list it either to reduce the noise (nobody
     # wants 'system.`-|` as suggestion
     let m = s.getModule()
     if m != nil and sfSystemModule in m.flags:
       if s.kind == skType: return
-      var exp = s.typ[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
+      var exp = s.typ.firstParamType.skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
       if exp.kind == tyVarargs: exp = elemType(exp)
       if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: return
-    result = sigmatch.argtypeMatches(c, s.typ[1], firstArg)
+    result = sigmatch.argtypeMatches(c, s.typ.firstParamType, firstArg)
   else:
     result = false
 
@@ -761,11 +761,11 @@ proc suggestPragmas*(c: PContext, n: PNode) =
 
   # Now show suggestions for user pragmas
   for pragma in c.userPragmas:
-      var pm = default(PrefixMatch)
-      if filterSym(pragma, n, pm):
-        outputs &= symToSuggest(c.graph, pragma, isLocal=true, ideSug, info,
-                                 pragma.getQuality, pm, c.inTypeContext > 0, 0,
-                                 extractDocs=false)
+    var pm = default(PrefixMatch)
+    if filterSym(pragma, n, pm):
+      outputs &= symToSuggest(c.graph, pragma, isLocal=true, ideSug, info,
+                                pragma.getQuality, pm, c.inTypeContext > 0, 0,
+                                extractDocs=false)
 
   produceOutput(outputs, c.config)
   if outputs.len > 0:

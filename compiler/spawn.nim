@@ -141,10 +141,10 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif fv != nil:
-    let fk = flowVarKind(g.config, fv.typ[1])
+    let fk = flowVarKind(g.config, fv.typ.firstGenericParam)
     if fk == fvInvalid:
       localError(g.config, f.info, "cannot create a flowVar of type: " &
-        typeToString(fv.typ[1]))
+        typeToString(fv.typ.firstGenericParam))
     body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
       if fk == fvGC: "data" else: "blob", fv.info, g.cache), call)
     if fk == fvGC:

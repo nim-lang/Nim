@@ -884,13 +884,13 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
 proc getOpenArrayDesc(m: BModule; t: PType, check: var IntSet; kind: TypeDescKind): Rope =
   let sig = hashType(t, m.config)
   if kind == dkParam:
-    result = getTypeDescWeak(m, t[0], check, kind) & "*"
+    result = getTypeDescWeak(m, t.elementType, check, kind) & "*"
   else:
     result = cacheGetType(m.typeCache, sig)
     if result == "":
       result = getTypeName(m, t, sig)
       m.typeCache[sig] = result
-      let elemType = getTypeDescWeak(m, t[0], check, kind)
+      let elemType = getTypeDescWeak(m, t.elementType, check, kind)
       m.s[cfsTypes].addf("typedef struct {$n$2* Field0;$nNI Field1;$n} $1;$n",
                          [result, elemType])
 
