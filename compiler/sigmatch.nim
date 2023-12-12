@@ -146,7 +146,7 @@ proc initCandidate*(ctx: PContext, callee: PSym,
   result = initCandidateAux(ctx, callee.typ)
   result.calleeSym = callee
   if callee.kind in skProcKinds and calleeScope == -1:
-    setCandidateScope(ctx, result, callee)
+    result.calleeScope = cmpScopes(ctx, callee)
   else:
     result.calleeScope = calleeScope
   result.diagnostics = @[] # if diagnosticsEnabled: @[] else: nil
@@ -289,7 +289,7 @@ proc writeMatches*(c: TCandidate) =
   echo "  conv matches: ", c.convMatches
   echo "  inheritance: ", c.inheritancePenalty
 
-proc cmpCandidates*(a, b: TCandidate, isFormal=true, lastChance=true): int =
+proc cmpCandidates*(a, b: TCandidate, isFormal=true): int =
   result = a.exactMatches - b.exactMatches
   if result != 0: return
   result = a.genericMatches - b.genericMatches
@@ -311,7 +311,7 @@ proc cmpCandidates*(a, b: TCandidate, isFormal=true, lastChance=true): int =
     result = complexDisambiguation(a.callee, b.callee)
   if result != 0: return
   # only as a last resort, consider scoping:
-  if lastChance: result = a.calleeScope - b.calleeScope
+  result = a.calleeScope - b.calleeScope
 
 proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
   if arg.kind in nkSymChoices:
@@ -2358,55 +2358,72 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     # incorrect to simply use the first fitting match. However, to implement
     # this correctly is inefficient. We have to copy `m` here to be able to
     # roll back the side effects of the unification algorithm.
-    let fullResolve = f.kind notin {tyTyped, tyUntyped}
-    let c = m.c
-    var
-      x = newCandidate(c, m.callee)
-      y = newCandidate(c, m.callee)
-      z = newCandidate(c, m.callee)
-    x.calleeSym = m.calleeSym
-    y.calleeSym = m.calleeSym
-    z.calleeSym = m.calleeSym
+    let matchSet = {skProc, skFunc, skMethod, skConverter,skIterator, skMacro,
+                    skTemplate, skEnumField}
+    
     var best = -1
-    for i in 0..<arg.len:
-      if arg[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
-                             skIterator, skMacro, skTemplate, skEnumField}:
-        copyCandidate(z, m)
-        z.callee = arg[i].typ
-        if tfUnresolved in z.callee.flags and fullResolve: continue
-        z.calleeSym = arg[i].sym
-        setCandidateScope(m.c, z, arg[i].sym)
-        # XXX this is still all wrong: (T, T) should be 2 generic matches
-        # and  (int, int) 2 exact matches, etc. Essentially you cannot call
-        # typeRel here and expect things to work!
-        let r = typeRel(z, f, arg[i].typ)
-        incMatches(z, r, 2)
-        if r != isNone:
-          z.state = csMatch
-          case x.state
-          of csEmpty, csNoMatch:
-            x = z
+    result = arg
+    
+    if f.kind in {tyTyped, tyUntyped}:
+      var
+        bestScope = -1
+        counts = 0
+      for i in 0..<arg.len:
+        if arg[i].sym.kind in matchSet:
+          let thisScope = cmpScopes(m.c, arg[i].sym)
+          if thisScope > bestScope:
             best = i
-          of csMatch:
-            let cmp = cmpCandidates(x, z, isFormal=false, lastChance=fullResolve)
-            if cmp < 0:
-              best = i
-              x = z
-            elif cmp == 0:
-              y = z           # z is as good as x
-
-    if x.state == csEmpty:
-      result = nil
-    elif y.state == csMatch and cmpCandidates(x, y, isFormal=false, lastChance=fullResolve) == 0:
-      if x.state != csMatch:
-        internalError(m.c.graph.config, arg.info, "x.state is not csMatch")
-      # ambiguous: more than one symbol fits!
-      # See tsymchoice_for_expr as an example. 'f.kind == tyUntyped' should match
-      # anyway:
-      # This may be a special case where the loop can be skipped in the first place
-      if not fullResolve: result = arg
-      else: result = nil
+            bestScope = thisScope
+            counts = 0
+          elif thisScope == bestScope:
+            inc counts
+      if best == -1:
+        result = nil
+      elif counts > 0:
+        best = -1
     else:
+      let c = m.c
+      var
+        x = newCandidate(c, m.callee)
+        y = newCandidate(c, m.callee)
+        z = newCandidate(c, m.callee)
+      x.calleeSym = m.calleeSym
+      y.calleeSym = m.calleeSym
+      z.calleeSym = m.calleeSym
+      
+      for i in 0..<arg.len:
+        if arg[i].sym.kind in matchSet:
+          copyCandidate(z, m)
+          z.callee = arg[i].typ
+          if tfUnresolved in z.callee.flags: continue
+          z.calleeSym = arg[i].sym
+          z.calleeScope = cmpScopes(m.c, arg[i].sym)
+          # XXX this is still all wrong: (T, T) should be 2 generic matches
+          # and  (int, int) 2 exact matches, etc. Essentially you cannot call
+          # typeRel here and expect things to work!
+          let r = typeRel(z, f, arg[i].typ)
+          incMatches(z, r, 2)
+          if r != isNone:
+            z.state = csMatch
+            case x.state
+            of csEmpty, csNoMatch:
+              x = z
+              best = i
+            of csMatch:
+              let cmp = cmpCandidates(x, z, isFormal=false)
+              if cmp < 0:
+                best = i
+                x = z
+              elif cmp == 0:
+                y = z           # z is as good as x
+
+      if x.state == csEmpty:
+        result = nil
+      elif y.state == csMatch and cmpCandidates(x, y, isFormal=false) == 0:
+        if x.state != csMatch:
+          internalError(m.c.graph.config, arg.info, "x.state is not csMatch")
+        result = nil
+    if best > -1 and result != nil:
       # only one valid interpretation found:
       markUsed(m.c, arg.info, arg[best].sym)
       onUse(arg.info, arg[best].sym)
