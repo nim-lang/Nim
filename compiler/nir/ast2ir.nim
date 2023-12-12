@@ -10,7 +10,7 @@
 import std / [assertions, tables, sets]
 import ".." / [ast, astalgo, types, options, lineinfos, msgs, magicsys,
   modulegraphs, renderer, transf, bitsets, trees, nimsets,
-  expanddefaults]
+  expanddefaults, wordrecg]
 from ".." / lowerings import lowerSwap, lowerTupleUnpacking
 from ".." / pathutils import customPath
 import .. / ic / bitabs
@@ -2518,19 +2518,32 @@ proc genComplexCall(c: var ProcCon; n: PNode; d: var Value) =
   else:
     genCall c, n, d
 
-template genEmitCode(c: var ProcCon; n: PNode) =
+template genEmitCode(c: var ProcCon; n: PNode; isAsmStmt: bool) =
+  let offset =
+    if isAsmStmt: 1 # first son is pragmas
+    else: 0
+  
   build c.code, info, EmitCode:
-    for i in n:
-      case i.kind:
+    for i in offset..<n.len:
+      let it = n[i]
+      case it.kind:
         of nkStrLit..nkTripleStrLit:
-          c.code.addVerbatim c.lit.strings, info, i.strVal
+          c.code.addVerbatim c.lit.strings, info, it.strVal
         of nkSym:
-          c.code.addSymUse info, toSymId(c, i.sym)
+          c.code.addSymUse info, toSymId(c, it.sym)
         else:
-          gen(c, i)
+          gen(c, it)
 
+import target_props
 proc genAsm(c: var ProcCon; n: PNode) =
-  let info = toLineInfo(c, n.info)  
+  let info = toLineInfo(c, n.info)
+  
+  var inlineAsmSyntax = ""
+  if (let p = n[0]; p).kind == nkPragma:
+    for i in p:
+      if whichPragma(i) == wInlineAsmSyntax:
+        inlineAsmSyntax = i[1].strVal
+  
   build c.code, info, Emit:
     c.code.addEmitTarget info, Asm
 
@@ -2540,8 +2553,16 @@ proc genAsm(c: var ProcCon; n: PNode) =
         sfPure in c.prc.flags
       else: false
     )
+    
+    if inlineAsmSyntax != "":
+      c.code.addEnumInfo info, InlineAsmSyntax, (
+        case inlineAsmSyntax:
+          of "gcc": GCCExtendedAsm
+          of "vcc": VisualCPP
+          else: raiseAssert "never"
+      )
 
-    genEmitCode c, n
+    genEmitCode c, n, true
     
 
 proc gen(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags = {}) =

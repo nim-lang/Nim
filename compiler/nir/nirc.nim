@@ -30,7 +30,7 @@ proc writeHelp =
 proc main =
   var inp = ""
   var cmd = ""
-  var props = TargetProps(inlineAsmSyntax: GCCExtendedAsm)
+  var props = TargetProps()
 
   for kind, key, val in getopt():
     case kind
@@ -46,14 +46,13 @@ proc main =
         if val == "":
           quit "Error: no inline asm syntax specified"
         
-        props.inlineAsmSyntax =
+        props.inlineAsmSyntax.incl(
           case val:
-            of "none": None
-            of "gcc-like": GCCExtendedAsm
-            of "msvc-like": VisualCPP
+            of "gcc": GCCExtendedAsm
+            of "vcc": VisualCPP
             else:
-              quit "Error: invalid inline asm syntax. Must be: gcc-like or msvc-like (or none)"
-
+              quit "Error: invalid inline asm syntax. Must be: gcc or vcc (or none)"
+        )
     of cmdEnd: discard
   if inp.len == 0:
     quit "Error: no input file specified"

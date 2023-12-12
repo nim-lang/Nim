@@ -879,16 +879,29 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
       of Asm:
         requireInfo t, n, InPure
 
+        # Resolve asm overloads (as example for icc inlineAsmSyntax pragma must be specified)
+        var inlineAsmSyntax = c.props.inlineAsmSyntax
+        if haveInfo(t, n, InlineAsmSyntax):
+          inlineAsmSyntax = inlineAsmSyntax * {
+            fetchInfo(t, n, InlineAsmSyntax).infoVal(
+              t, InlineAsmSyntaxKind
+            )
+          }
+        
+        if inlineAsmSyntax.len > 1:
+          raiseAssert "Ambiguous asm syntax, please specify via inlineAsmSyntax pragma"
+        elif inlineAsmSyntax.len == 0:
+          raiseAssert "Your compiler does not support the specified inline assembler"
+
         let isBasicAsm = (
           fetchInfo(t, n, IsGlobal).infoVal(t, bool) or
           fetchInfo(t, n, InPure).infoVal(t, bool)
-        ) and c.props.inlineAsmSyntax != VisualCPP
+        ) and inlineAsmSyntax != {VisualCPP}
 
         if not isBasicAsm:
-          case c.props.inlineAsmSyntax:
-            of None: raiseAssert "Your compiler does not support the inline assembler"
-            of GCCExtendedAsm: genGccAsm(c, t, code)
-            of VisualCPP: genVisualCPPAsm(c, t, code)
+          if inlineAsmSyntax == {GCCExtendedAsm}: genGccAsm(c, t, code)
+          elif inlineAsmSyntax == {VisualCPP}: genVisualCPPAsm(c, t, code)
+          else: raiseAssert "Not implemented inline asm syntax"
         else:
           assert (
             isLastSon(t, code, code.firstSon) and

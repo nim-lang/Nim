@@ -1,8 +1,7 @@
 type
-  InlineAsmSyntax* = enum
-    None
+  InlineAsmSyntaxKind* = enum
     GCCExtendedAsm
     VisualCPP
   
   TargetProps* = object
-    inlineAsmSyntax*: InlineAsmSyntax
+    inlineAsmSyntax*: set[InlineAsmSyntaxKind] # for example in icc {GCCExtendedAsm, VisualCPP}

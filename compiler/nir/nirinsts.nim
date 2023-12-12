@@ -132,6 +132,7 @@ type
   InfoKey* = enum
     IsGlobal
     InPure
+    InlineAsmSyntax
 
   EmitTargetKind* = enum
     Asm
@@ -415,8 +416,14 @@ proc infoVal*(info: NodePos, tree: Tree, t: type bool): bool =
   let (key, b) = sons2(tree, info)
   assert cast[InfoKey](tree[key].operand) in boolInfos, "Info must be in bool infos"
   
-  cast[bool](tree[b].operand)
+  cast[bool](tree[b].immediateVal)
 
+import target_props
+proc infoVal*(info: NodePos, tree: Tree, t: type InlineAsmSyntaxKind): InlineAsmSyntaxKind =
+  assert tree[info].kind == Info
+  let (key, e) = sons2(tree, info)
+  
+  cast[InlineAsmSyntaxKind](tree[e].immediateVal)
 
 type
   LabelId* = distinct int
@@ -509,6 +516,11 @@ proc addBoolInfo*(t: var Tree; info: PackedLineInfo; k: InfoKey, b: bool) =
   build t, info, Info:
     t.addInfoId info, k
     t.addImmediateVal info, b.int
+
+proc addEnumInfo*[T: enum](t: var Tree; info: PackedLineInfo; k: InfoKey, e: T) =
+  build t, info, Info:
+    t.addInfoId info, k
+    t.addImmediateVal info, e.ord
 
 proc store*(r: var RodFile; t: Tree) = storeSeq r, t.nodes
 proc load*(r: var RodFile; t: var Tree) = loadSeq r, t.nodes
