@@ -406,7 +406,7 @@ proc transformSlices(g: ModuleGraph; idgen: IdGenerator; n: PNode): PNode =
     if op.name.s == "[]" and op.fromSystem:
       result = copyNode(n)
       var typ = newType(tyOpenArray, idgen, result.typ.owner)
-      typ.add result.typ[0]
+      typ.add result.typ.elementType
       result.typ = typ
       let opSlice = newSymNode(createMagic(g, idgen, "slice", mSlice))
       opSlice.typ = getSysType(g, n.info, tyInt)

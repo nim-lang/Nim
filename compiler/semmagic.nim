@@ -532,7 +532,7 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
   result = addDefaultFieldForNew(c, n)
 
 proc semPrivateAccess(c: PContext, n: PNode): PNode =
-  let t = n[1].typ[0].toObjectFromRefPtrGeneric
+  let t = n[1].typ.elementType.toObjectFromRefPtrGeneric
   if t.kind == tyObject:
     assert t.sym != nil
     c.currentScope.allowPrivateAccess.add t.sym
@@ -668,7 +668,8 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = semPrivateAccess(c, n)
   of mArrToSeq:
     result = n
-    if result.typ != nil and expectedType != nil and result.typ.kind == tySequence and expectedType.kind == tySequence and result.typ[0].kind == tyEmpty:
+    if result.typ != nil and expectedType != nil and result.typ.kind == tySequence and
+        expectedType.kind == tySequence and result.typ.elementType.kind == tyEmpty:
       result.typ = expectedType # type inference for empty sequence # bug #21377
   of mEnsureMove:
     result = n

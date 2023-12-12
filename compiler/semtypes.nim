@@ -723,7 +723,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   of tyFloat..tyFloat128, tyError:
     discard
   of tyRange:
-    if skipTypes(typ[0], abstractInst).kind in shouldChckCovered:
+    if skipTypes(typ.elementType, abstractInst).kind in shouldChckCovered:
       chckCovered = true
   of tyForward:
     errorUndeclaredIdentifier(c, n[0].info, typ.sym.name.s)
@@ -1857,7 +1857,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         # it's not bound when it's used multiple times in the
         # proc signature for example
         if c.inGenericInst > 0:
-          let bound = result.typ[0].sym
+          let bound = result.typ.elementType.sym
           if bound != nil: return bound
           return result
         if result.typ.sym == nil:
@@ -2322,7 +2322,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
         typ = semTypeNode(c, constraint, nil)
         if typ.kind != tyStatic or typ.len == 0:
           if typ.kind == tyTypeDesc:
-            if typ[0].kind == tyNone:
+            if typ.elementType.kind == tyNone:
               typ = newTypeWithSons(c, tyTypeDesc, @[newTypeS(tyNone, c)])
               incl typ.flags, tfCheckedForDestructor
           else:

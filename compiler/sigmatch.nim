@@ -2027,7 +2027,7 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
   if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
   result.add c.graph.emptyNode
   if arg.typ != nil and arg.typ.kind == tyLent:
-    let a = newNodeIT(nkHiddenDeref, arg.info, arg.typ[0])
+    let a = newNodeIT(nkHiddenDeref, arg.info, arg.typ.elementType)
     a.add arg
     result.add a
   else:

@@ -34,7 +34,7 @@ proc dispatch(x: Base, params: ...) =
     newIntNode(nkIntLit, index)
   )
   getVTableCall.typ = base.typ
-  var vTableCall = newNodeIT(nkCall, base.info, base.typ[0])
+  var vTableCall = newNodeIT(nkCall, base.info, base.typ.returnType)
   var castNode = newTree(nkCast,
         newNodeIT(nkType, base.info, base.typ),
         getVTableCall)

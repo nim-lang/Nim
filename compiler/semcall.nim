@@ -518,7 +518,7 @@ proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
       let finalCallee = generateInstance(c, s, x.bindings, a.info)
       a[0].sym = finalCallee
       a[0].typ = finalCallee.typ
-      #a.typ = finalCallee.typ[0]
+      #a.typ = finalCallee.typ.returnType
 
 proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
   assert n.kind in nkCallKinds
