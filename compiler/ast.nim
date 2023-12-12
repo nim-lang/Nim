@@ -1196,9 +1196,10 @@ proc isCallExpr*(n: PNode): bool =
 
 proc discardSons*(father: PNode)
 
-type Indexable = PNode | PType
+proc len*(n: PNode): int {.inline.} =
+  result = n.sons.len
 
-proc len*(n: Indexable): int {.inline.} =
+proc len*(n: PType): int {.inline.} =
   result = n.sons.len
 
 proc safeLen*(n: PNode): int {.inline.} =
@@ -1212,18 +1213,31 @@ proc safeArrLen*(n: PNode): int {.inline.} =
   elif n.kind in {nkNone..nkFloat128Lit}: result = 0
   else: result = n.len
 
-proc add*(father, son: Indexable) =
+proc add*(father, son: PNode) =
   assert son != nil
   father.sons.add(son)
 
-proc addAllowNil*(father, son: Indexable) {.inline.} =
+proc addAllowNil*(father, son: PNode) {.inline.} =
   father.sons.add(son)
 
-template `[]`*(n: Indexable, i: int): Indexable = n.sons[i]
-template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
+template `[]`*(n: PNode, i: int): PNode = n.sons[i]
+template `[]=`*(n: PNode, i: int; x: PNode) = n.sons[i] = x
 
-template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
-template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
+template `[]`*(n: PNode, i: BackwardsIndex): PNode = n[n.len - i.int]
+template `[]=`*(n: PNode, i: BackwardsIndex; x: PNode) = n[n.len - i.int] = x
+
+proc add*(father, son: PType) =
+  assert son != nil
+  father.sons.add(son)
+
+proc addAllowNil*(father, son: PType) {.inline.} =
+  father.sons.add(son)
+
+template `[]`*(n: PType, i: int): PType = n.sons[i]
+template `[]=`*(n: PType, i: int; x: PType) = n.sons[i] = x
+
+template `[]`*(n: PType, i: BackwardsIndex): PType = n[n.len - i.int]
+template `[]=`*(n: PType, i: BackwardsIndex; x: PType) = n[n.len - i.int] = x
 
 proc getDeclPragma*(n: PNode): PNode =
   ## return the `nkPragma` node for declaration `n`, or `nil` if no pragma was found.
@@ -1474,7 +1488,8 @@ proc newIntNode*(kind: TNodeKind, intVal: Int128): PNode =
   result = newNode(kind)
   result.intVal = castToInt64(intVal)
 
-proc lastSon*(n: Indexable): Indexable = n.sons[^1]
+proc lastSon*(n: PNode): PNode {.inline.} = n.sons[^1]
+proc lastSon*(n: PType): PType {.inline.} = n.sons[^1]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or
@@ -1575,7 +1590,10 @@ proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.lode == nil: a.lode = b.lode
   if a.r == "": a.r = b.r
 
-proc newSons*(father: Indexable, length: int) =
+proc newSons*(father: PNode, length: int) =
+  setLen(father.sons, length)
+
+proc newSons*(father: PType, length: int) =
   setLen(father.sons, length)
 
 proc assignType*(dest, src: PType) =
