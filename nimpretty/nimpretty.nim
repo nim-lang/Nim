@@ -48,6 +48,30 @@ type
     indWidth*: Natural
     maxLineLen*: Positive
 
+proc goodEnough(a, b: PNode): bool =
+  if a.kind == b.kind and a.safeLen == b.safeLen:
+    case a.kind
+    of nkNone, nkEmpty, nkNilLit: result = true
+    of nkIdent: result = a.ident.id == b.ident.id
+    of nkSym: result = a.sym == b.sym
+    of nkType: result = true
+    of nkCharLit, nkIntLit..nkInt64Lit, nkUIntLit..nkUInt64Lit:
+      result = a.intVal == b.intVal
+    of nkFloatLit..nkFloat128Lit:
+      result = a.floatVal == b.floatVal
+    of nkStrLit, nkRStrLit, nkTripleStrLit:
+      result = a.strVal == b.strVal
+    else:
+      for i in 0 ..< a.len:
+        if not goodEnough(a[i], b[i]): return false
+      return true
+  elif a.kind == nkStmtList and a.len == 1:
+    result = goodEnough(a[0], b)
+  elif b.kind == nkStmtList and b.len == 1:
+    result = goodEnough(a, b[0])
+  else:
+    result = false
+
 proc finalCheck(content: string; origAst: PNode): bool {.nimcall.} =
   var conf = newConfigRef()
   let oldErrors = conf.errorCounter
@@ -56,9 +80,9 @@ proc finalCheck(content: string; origAst: PNode): bool {.nimcall.} =
   let fileIdx = fileInfoIdx(conf, AbsoluteFile "nimpretty_bug.nim")
 
   openParser(parser, fileIdx, llStreamOpen(content), newIdentCache(), conf)
-  discard parseAll(parser)
+  let newAst = parseAll(parser)
   closeParser(parser)
-  result = conf.errorCounter == oldErrors
+  result = conf.errorCounter == oldErrors # and goodEnough(newAst, origAst)
 
 proc prettyPrint*(infile, outfile: string, opt: PrettyOptions) =
   var conf = newConfigRef()
