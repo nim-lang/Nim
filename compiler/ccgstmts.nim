@@ -1489,7 +1489,12 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
 
 proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false; result: var Rope) =
   var res = ""
-  for it in t.sons:
+  let offset =
+    if isAsmStmt: 1 # first son is pragmas
+    else: 0
+
+  for i in offset..<t.len:
+    let it = t[i]
     case it.kind
     of nkStrLit..nkTripleStrLit:
       res.add(it.strVal)
