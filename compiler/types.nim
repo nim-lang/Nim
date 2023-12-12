@@ -110,8 +110,8 @@ proc invalidGenericInst*(f: PType): bool =
 
 proc isPureObject*(typ: PType): bool =
   var t = typ
-  while t.kind == tyObject and t[0] != nil:
-    t = t[0].skipTypes(skipPtrs)
+  while t.kind == tyObject and t.baseClass != nil:
+    t = t.baseClass.skipTypes(skipPtrs)
   result = t.sym != nil and sfPure in t.sym.flags
 
 proc isUnsigned*(t: PType): bool =
@@ -272,8 +272,8 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
   if result: return
   case t.kind
   of tyObject:
-    if t[0] != nil:
-      result = searchTypeForAux(t[0].skipTypes(skipPtrs), predicate, marker)
+    if t.baseClass != nil:
+      result = searchTypeForAux(t.baseClass.skipTypes(skipPtrs), predicate, marker)
     if not result: result = searchTypeNodeForAux(t.n, predicate, marker)
   of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = searchTypeForAux(skipModifier(t), predicate, marker)
@@ -295,7 +295,7 @@ proc containsObject*(t: PType): bool =
   result = searchTypeFor(t, isObjectPredicate)
 
 proc isObjectWithTypeFieldPredicate(t: PType): bool =
-  result = t.kind == tyObject and t[0] == nil and
+  result = t.kind == tyObject and t.baseClass == nil and
       not (t.sym != nil and {sfPure, sfInfixCall} * t.sym.flags != {}) and
       tfFinal notin t.flags
 
@@ -548,8 +548,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           result = t.sym.name.s
         else:
           result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
-      elif t.kind == tyAlias and t[0].kind != tyAlias:
-        result = typeToString(t[0])
+      elif t.kind == tyAlias and t.elementType.kind != tyAlias:
+        result = typeToString(t.elementType)
       elif prefer in {preferResolved, preferMixed}:
         case t.kind
         of IntegralTypes + {tyFloat..tyFloat128} + {tyString, tyCstring}:
@@ -590,13 +590,13 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         else:
           result = "int literal(" & $t.n.intVal & ")"
     of tyGenericInst, tyGenericInvocation:
-      result = typeToString(t[0]) & '['
+      result = typeToString(t.genericHead) & '['
       for i in 1..<t.len-ord(t.kind != tyGenericInvocation):
         if i > 1: result.add(", ")
         result.add(typeToString(t[i], preferGenericArg))
       result.add(']')
     of tyGenericBody:
-      result = typeToString(t.last) & '['
+      result = typeToString(t.typeBodyImpl) & '['
       for i in 0..<t.len-1:
         if i > 0: result.add(", ")
         result.add(typeToString(t[i], preferTypeName))
@@ -881,8 +881,8 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
   case t.kind
   of tyBool: result = toInt128(1'u)
   of tyChar: result = toInt128(255'u)
-  of tySet, tyVar: result = lastOrd(conf, t[0])
-  of tyArray: result = lastOrd(conf, t[0])
+  of tySet, tyVar: result = lastOrd(conf, t.elementType)
+  of tyArray: result = lastOrd(conf, t.indexType)
   of tyRange:
     assert(t.n != nil)        # range directly given:
     assert(t.n.kind == nkRange)
@@ -1810,8 +1810,8 @@ proc isException*(t: PType): bool =
   var t = t.skipTypes(abstractInst)
   while t.kind == tyObject:
     if t.sym != nil and t.sym.magic == mException: return true
-    if t[0] == nil: break
-    t = skipTypes(t[0], abstractPtrs)
+    if t.baseClass == nil: break
+    t = skipTypes(t.baseClass, abstractPtrs)
   return false
 
 proc isDefectException*(t: PType): bool =

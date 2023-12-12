@@ -476,13 +476,13 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
       var t = typ
       while t != nil:
         suggestSymList(c, t.n, field, n.info, outputs)
-        t = t[0]
+        t = t.baseClass
     elif typ.kind == tyObject:
       var t = typ
       while true:
         suggestObject(c, t.n, field, n.info, outputs)
-        if t[0] == nil: break
-        t = skipTypes(t[0], skipPtrs)
+        if t.baseClass == nil: break
+        t = skipTypes(t.baseClass, skipPtrs)
     elif typ.kind == tyTuple and typ.n != nil:
       # All tuple fields are in scope
       # So go through each field and add it to the suggestions (If it passes the filter)

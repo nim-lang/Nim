@@ -1439,7 +1439,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # we fill it out later. For magic generics like 'seq', it won't be filled
       # so we use tyNone instead of nil to not crash for strange conversions
       # like: mydata.seq
-      if s.typ.kind in {tyOpenArray, tyVarargs} and s.typ.len == 1:
+      if s.typ.kind in {tyOpenArray, tyVarargs, tySequence} and s.typ.len == 1:
         discard
       else:
         rawAddSon(s.typ, newTypeS(tyNone, c))
@@ -1876,7 +1876,7 @@ proc whereToBindTypeHook(c: PContext; t: PType): PType =
 proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let t = s.typ
   var noError = false
-  let cond = t.len == 2 and t[0] != nil
+  let cond = t.len == 2 and t.returnType != nil
 
   if cond:
     var obj = t.firstParamType
@@ -1886,7 +1886,7 @@ proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
       elif obj.kind == tyGenericInvocation: obj = obj.genericHead
       else: break
 
-    var res = t[0]
+    var res = t.returnType
     while true:
       if res.kind in {tyGenericBody, tyGenericInst}: res = res.skipModifier
       elif res.kind == tyGenericInvocation: res = res.genericHead

@@ -140,7 +140,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       else:
         result = newNodeX(nkBracketExpr)
         #result.add mapTypeToAst(t.last, info)
-        result.add mapTypeToAst(t[0], info)
+        result.add mapTypeToAst(t.genericHead, info)
         for i in 1..<t.len-1:
           result.add mapTypeToAst(t[i], info)
     else:
