@@ -1032,7 +1032,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
       result = magicsAfterOverloadResolution(c, result, flags, expectedType)
     when false:
       if result.typ != nil and
-          not (result.typ.kind == tySequence and result.typ[0].kind == tyEmpty):
+          not (result.typ.kind == tySequence and result.elementType.kind == tyEmpty):
         liftTypeBoundOps(c, result.typ, n.info)
     #result = patchResolvedTypeBoundOp(c, result)
   if c.matchedConcept == nil:
@@ -2066,7 +2066,7 @@ proc semYield(c: PContext, n: PNode): PNode =
       semYieldVarResult(c, n, restype)
     else:
       localError(c.config, n.info, errCannotReturnExpr)
-  elif c.p.owner.typ[0] != nil:
+  elif c.p.owner.typ.returnType != nil:
     localError(c.config, n.info, errGenerated, "yield statement must yield a value")
 
 proc considerQuotedIdentOrDot(c: PContext, n: PNode, origin: PNode = nil): PIdent =

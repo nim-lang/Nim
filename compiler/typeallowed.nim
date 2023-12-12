@@ -142,13 +142,13 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     if (kind != skParam or taIsOpenArray in flags) and views notin c.features:
       result = t
     else:
-      result = typeAllowedAux(marker, t[0], kind, c, flags+{taIsOpenArray})
+      result = typeAllowedAux(marker, t.elementType, kind, c, flags+{taIsOpenArray})
   of tyVarargs:
     # you cannot nest openArrays/sinks/etc.
     if kind != skParam or taIsOpenArray in flags:
       result = t
     else:
-      result = typeAllowedAux(marker, t[0], kind, c, flags+{taIsOpenArray})
+      result = typeAllowedAux(marker, t.elementType, kind, c, flags+{taIsOpenArray})
   of tySink:
     # you cannot nest openArrays/sinks/etc.
     if kind != skParam or taIsOpenArray in flags or t.elementType.kind in {tySink, tyLent, tyVar}:
