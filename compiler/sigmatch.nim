@@ -129,17 +129,6 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
       echo "binding ", key, " -> ", val
   idTablePut(c.bindings, key, val.skipIntLit(c.c.idgen))
 
-proc setCandidateScope*(ctx: PContext, c: var TCandidate, reference: PSym)=
-  if reference.originatingModule == ctx.module:
-    c.calleeScope = 2
-    var owner = reference
-    while true:
-      owner = owner.skipGenericOwner
-      if owner.kind == skModule: break
-      inc c.calleeScope
-  else:
-    c.calleeScope = 1
-
 proc initCandidate*(ctx: PContext, callee: PSym,
                     binding: PNode, calleeScope = -1,
                     diagnosticsEnabled = false): TCandidate =
