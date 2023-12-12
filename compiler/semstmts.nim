@@ -42,7 +42,7 @@ proc implicitlyDiscardable(n: PNode): bool
 
 proc hasEmpty(typ: PType): bool =
   if typ.kind in {tySequence, tyArray, tySet}:
-    result = typ.lastSon.kind == tyEmpty
+    result = typ.elementType.kind == tyEmpty
   elif typ.kind == tyTuple:
     result = false
     for s in typ:
@@ -451,7 +451,7 @@ proc hasUnresolvedParams(n: PNode; flags: TExprFlags): bool =
 proc makeDeref(n: PNode): PNode =
   var t = n.typ
   if t.kind in tyUserTypeClasses and t.isResolvedUserTypeClass:
-    t = t.lastSon
+    t = t.last
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
   result = n
   if t.kind in {tyVar, tyLent}:
@@ -460,7 +460,7 @@ proc makeDeref(n: PNode): PNode =
     t = skipTypes(t[0], {tyGenericInst, tyAlias, tySink, tyOwned})
   while t.kind in {tyPtr, tyRef}:
     var a = result
-    let baseTyp = t.lastSon
+    let baseTyp = t.elementType
     result = newNodeIT(nkHiddenDeref, n.info, baseTyp)
     result.add a
     t = skipTypes(baseTyp, {tyGenericInst, tyAlias, tySink, tyOwned})
@@ -703,7 +703,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       else:
         typ = def.typ.skipTypes({tyStatic, tySink}).skipIntLit(c.idgen)
         if typ.kind in tyUserTypeClasses and typ.isResolvedUserTypeClass:
-          typ = typ.lastSon
+          typ = typ.last
         if hasEmpty(typ):
           localError(c.config, def.info, errCannotInferTypeOfTheLiteral % typ.kind.toHumanStr)
         elif typ.kind == tyProc and def.kind == nkSym and isGenericRoutine(def.sym.ast):
@@ -1238,7 +1238,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
       typ = typ.skipTypes({tyAlias, tyGenericInst, tyOwned})
       if typ.kind != tyRef:
         localError(c.config, n.info, errExprCannotBeRaised)
-      if typ.len > 0 and not isException(typ.lastSon):
+      if typ.len > 0 and not isException(typ.elementType):
         localError(c.config, n.info, "raised object of type $1 does not inherit from Exception" % typeToString(typ))
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
@@ -1401,7 +1401,7 @@ proc checkCovariantParamsUsages(c: PContext; genericType: PType) =
       if t.base.kind == tyGenericParam: return true
       return traverseSubTypes(c, t.base)
     of tyDistinct, tyAlias, tySink, tyOwned:
-      return traverseSubTypes(c, t.lastSon)
+      return traverseSubTypes(c, t.skipModifier)
     of tyGenericInst:
       internalAssert c.config, false
     else:
@@ -1466,7 +1466,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
           # possibilities such as instantiating C++ generic types with
           # garbage collected Nim types.
           if sfImportc in s.flags:
-            var body = s.typ.lastSon
+            var body = s.typ.last
             if body.kind == tyObject:
               # erases all declared fields
               body.n.sons = @[]
@@ -1509,11 +1509,11 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
        aa[0].kind == nkObjectTy:
       # give anonymous object a dummy symbol:
       var st = s.typ
-      if st.kind == tyGenericBody: st = st.lastSon
+      if st.kind == tyGenericBody: st = st.typeBodyImpl
       internalAssert c.config, st.kind in {tyPtr, tyRef}
-      internalAssert c.config, st.lastSon.sym == nil
+      internalAssert c.config, st.last.sym == nil
       incl st.flags, tfRefsAnonObj
-      let objTy = st.lastSon
+      let objTy = st.last
       # add flags for `ref object` etc to underlying `object`
       incl(objTy.flags, oldFlags)
       # {.inheritable, final.} is already disallowed, but
@@ -1526,12 +1526,12 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       let symNode = newSymNode(obj)
       obj.ast = a.shallowCopy
       case a[0].kind
-        of nkSym: obj.ast[0] = symNode
-        of nkPragmaExpr:
-          obj.ast[0] = a[0].shallowCopy
-          obj.ast[0][0] = symNode
-          obj.ast[0][1] = a[0][1]
-        else: assert(false)
+      of nkSym: obj.ast[0] = symNode
+      of nkPragmaExpr:
+        obj.ast[0] = a[0].shallowCopy
+        obj.ast[0][0] = symNode
+        obj.ast[0][1] = a[0][1]
+      else: assert(false)
       obj.ast[1] = a[1]
       obj.ast[2] = a[2][0]
       if sfPure in s.flags:
@@ -1864,7 +1864,7 @@ proc prevDestructor(c: PContext; prevOp: PSym; obj: PType; info: TLineInfo) =
 proc whereToBindTypeHook(c: PContext; t: PType): PType =
   result = t
   while true:
-    if result.kind in {tyGenericBody, tyGenericInst}: result = result.lastSon
+    if result.kind in {tyGenericBody, tyGenericInst}: result = result.skipModifier
     elif result.kind == tyGenericInvocation: result = result[0]
     else: break
   if result.kind in {tyObject, tyDistinct, tySequence, tyString}:
@@ -1879,13 +1879,13 @@ proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
     var obj = t[1]
     while true:
       incl(obj.flags, tfHasAsgn)
-      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.lastSon
+      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.skipModifier
       elif obj.kind == tyGenericInvocation: obj = obj[0]
       else: break
 
     var res = t[0]
     while true:
-      if res.kind in {tyGenericBody, tyGenericInst}: res = res.lastSon
+      if res.kind in {tyGenericBody, tyGenericInst}: res = res.skipModifier
       elif res.kind == tyGenericInvocation: res = res[0]
       else: break
 
@@ -1925,7 +1925,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp; suppressV
     var obj = t[1].skipTypes({tyVar})
     while true:
       incl(obj.flags, tfHasAsgn)
-      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.lastSon
+      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.skipModifier
       elif obj.kind == tyGenericInvocation: obj = obj[0]
       else: break
     if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
@@ -1973,9 +1973,9 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         sameType(s.typ[1], s.typ[0]):
       # Note: we store the deepCopy in the base of the pointer to mitigate
       # the problem that pointers are structural types:
-      var t = s.typ[1].skipTypes(abstractInst).lastSon.skipTypes(abstractInst)
+      var t = s.typ[1].skipTypes(abstractInst).elementType.skipTypes(abstractInst)
       while true:
-        if t.kind == tyGenericBody: t = t.lastSon
+        if t.kind == tyGenericBody: t = t.typeBodyImpl
         elif t.kind == tyGenericInvocation: t = t[0]
         else: break
       if t.kind in {tyObject, tyDistinct, tyEnum, tySequence, tyString}:
@@ -2008,12 +2008,12 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       var obj = t[1][0]
       while true:
         incl(obj.flags, tfHasAsgn)
-        if obj.kind == tyGenericBody: obj = obj.lastSon
+        if obj.kind == tyGenericBody: obj = obj.skipModifier
         elif obj.kind == tyGenericInvocation: obj = obj[0]
         else: break
       var objB = t[2]
       while true:
-        if objB.kind == tyGenericBody: objB = objB.lastSon
+        if objB.kind == tyGenericBody: objB = objB.skipModifier
         elif objB.kind in {tyGenericInvocation, tyGenericInst}:
           objB = objB[0]
         else: break

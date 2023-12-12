@@ -439,7 +439,7 @@ proc computeRequiresInit(c: PContext, t: PType): bool =
 proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
   var objType = t
   while objType.kind notin {tyObject, tyDistinct}:
-    objType = objType.lastSon
+    objType = objType.last
     assert objType != nil
   if objType.kind == tyObject:
     var constrCtx = initConstrContext(objType, newNodeI(nkObjConstr, info))

@@ -79,8 +79,8 @@ proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
       aa = skipTypes(aa, {tyGenericInst, tyAlias})
       bb = skipTypes(bb, {tyGenericInst, tyAlias})
       if aa.kind == bb.kind and aa.kind in {tyVar, tyPtr, tyRef, tyLent, tySink}:
-        aa = aa.lastSon
-        bb = bb.lastSon
+        aa = aa.elementType
+        bb = bb.elementType
       else:
         break
     if sameType(a.typ[i], b.typ[i]):
@@ -157,7 +157,8 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
 
 proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   var witness: PSym = nil
-  if s.typ[1].owner.getModule != s.getModule and vtables in g.config.features and not g.config.isDefined("nimInternalNonVtablesTesting"):
+  if s.typ[1].owner.getModule != s.getModule and vtables in g.config.features and not
+      g.config.isDefined("nimInternalNonVtablesTesting"):
     localError(g.config, s.info, errGenerated, "method `" & s.name.s &
           "` can be defined only in the same module with its type (" & s.typ[1].typeToString() & ")")
   for i in 0..<g.methods.len:

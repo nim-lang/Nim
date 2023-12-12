@@ -134,32 +134,32 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyGenericInst:
     if inst:
       if allowRecursion:
-        result = mapTypeToAstR(t.lastSon, info)
+        result = mapTypeToAstR(t.skipModifier, info)
         # keep original type info for getType calls on the output node:
         result.typ = t
       else:
         result = newNodeX(nkBracketExpr)
-        #result.add mapTypeToAst(t.lastSon, info)
+        #result.add mapTypeToAst(t.last, info)
         result.add mapTypeToAst(t[0], info)
         for i in 1..<t.len-1:
           result.add mapTypeToAst(t[i], info)
     else:
-      result = mapTypeToAstX(cache, t.lastSon, info, idgen, inst, allowRecursion)
+      result = mapTypeToAstX(cache, t.skipModifier, info, idgen, inst, allowRecursion)
       # keep original type info for getType calls on the output node:
       result.typ = t
   of tyGenericBody:
     if inst:
-      result = mapTypeToAstR(t.lastSon, info)
+      result = mapTypeToAstR(t.typeBodyImpl, info)
     else:
-      result = mapTypeToAst(t.lastSon, info)
+      result = mapTypeToAst(t.typeBodyImpl, info)
   of tyAlias:
-    result = mapTypeToAstX(cache, t.lastSon, info, idgen, inst, allowRecursion)
+    result = mapTypeToAstX(cache, t.skipModifier, info, idgen, inst, allowRecursion)
   of tyOrdinal:
-    result = mapTypeToAst(t.lastSon, info)
+    result = mapTypeToAst(t.skipModifier, info)
   of tyDistinct:
     if inst:
       result = newNodeX(nkDistinctTy)
-      result.add mapTypeToAst(t[0], info)
+      result.add mapTypeToAst(t.skipModifier, info)
     else:
       if allowRecursion or t.sym == nil:
         result = mapTypeToBracket("distinct", mDistinct, t, info)
@@ -188,10 +188,10 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       if allowRecursion or t.sym == nil:
         result = newNodeIT(nkObjectTy, if t.n.isNil: info else: t.n.info, t)
         result.add newNodeI(nkEmpty, info)
-        if t[0] == nil:
+        if t.baseClass == nil:
           result.add newNodeI(nkEmpty, info)
         else:
-          result.add mapTypeToAst(t[0], info)
+          result.add mapTypeToAst(t.baseClass, info)
         result.add copyTree(t.n)
       else:
         result = atomicType(t.sym)
@@ -287,7 +287,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     result = mapTypeToBracket("builtinTypeClass", mNone, t, info)
   of tyUserTypeClass, tyUserTypeClassInst:
     if t.isResolvedUserTypeClass:
-      result = mapTypeToAst(t.lastSon, info)
+      result = mapTypeToAst(t.last, info)
     else:
       result = mapTypeToBracket("concept", mNone, t, info)
       result.add t.n.copyTree
@@ -298,7 +298,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyNot: result = mapTypeToBracket("not", mNot, t, info)
   of tyIterable: result = mapTypeToBracket("iterable", mIterableType, t, info)
   of tyAnything: result = atomicType("anything", mNone)
-  of tyInferred: result = mapTypeToAstX(cache, t.lastSon, info, idgen, inst, allowRecursion)
+  of tyInferred: result = mapTypeToAstX(cache, t.skipModifier, info, idgen, inst, allowRecursion)
   of tyStatic, tyFromExpr:
     if inst:
       if t.n != nil: result = t.n.copyTree

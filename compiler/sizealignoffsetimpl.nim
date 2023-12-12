@@ -248,7 +248,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = conf.target.ptrSize
     typ.align = int16(conf.target.ptrSize)
   of tyCstring, tySequence, tyPtr, tyRef, tyVar, tyLent:
-    let base = typ.lastSon
+    let base = typ.last
     if base == typ:
       # this is not the correct location to detect ``type A = ptr A``
       typ.size = szIllegalRecursion
@@ -276,7 +276,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.align = typ[1].align
 
   of tyUncheckedArray:
-    let base = typ.lastSon
+    let base = typ.last
     computeSizeAlign(conf, base)
     typ.size = 0
     typ.align = base.align
@@ -404,23 +404,23 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.paddingAtEnd = szIllegalRecursion
   of tyInferred:
     if typ.len > 0:
-      computeSizeAlign(conf, typ.lastSon)
-      typ.size = typ.lastSon.size
-      typ.align = typ.lastSon.align
-      typ.paddingAtEnd = typ.lastSon.paddingAtEnd
+      computeSizeAlign(conf, typ.last)
+      typ.size = typ.last.size
+      typ.align = typ.last.align
+      typ.paddingAtEnd = typ.last.paddingAtEnd
 
   of tyGenericInst, tyDistinct, tyGenericBody, tyAlias, tySink, tyOwned:
-    computeSizeAlign(conf, typ.lastSon)
-    typ.size = typ.lastSon.size
-    typ.align = typ.lastSon.align
-    typ.paddingAtEnd = typ.lastSon.paddingAtEnd
+    computeSizeAlign(conf, typ.last)
+    typ.size = typ.last.size
+    typ.align = typ.last.align
+    typ.paddingAtEnd = typ.last.paddingAtEnd
 
   of tyTypeClasses:
     if typ.isResolvedUserTypeClass:
-      computeSizeAlign(conf, typ.lastSon)
-      typ.size = typ.lastSon.size
-      typ.align = typ.lastSon.align
-      typ.paddingAtEnd = typ.lastSon.paddingAtEnd
+      computeSizeAlign(conf, typ.last)
+      typ.size = typ.last.size
+      typ.align = typ.last.align
+      typ.paddingAtEnd = typ.last.paddingAtEnd
     else:
       typ.size = szUnknownSize
       typ.align = szUnknownSize
@@ -439,10 +439,10 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
 
   of tyStatic:
     if typ.n != nil:
-      computeSizeAlign(conf, typ.lastSon)
-      typ.size = typ.lastSon.size
-      typ.align = typ.lastSon.align
-      typ.paddingAtEnd = typ.lastSon.paddingAtEnd
+      computeSizeAlign(conf, typ.last)
+      typ.size = typ.last.size
+      typ.align = typ.last.align
+      typ.paddingAtEnd = typ.last.paddingAtEnd
     else:
       typ.size = szUnknownSize
       typ.align = szUnknownSize

@@ -139,7 +139,7 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
               [result, rope(ord(t.kind))]
     prepend(p.g.typeInfo, s)
     p.g.typeInfo.addf("$1.base = $2;$n",
-         [result, genTypeInfo(p, t.lastSon)])
+         [result, genTypeInfo(p, t.elementType)])
   of tyArray:
     var s =
       "var $1 = {size: 0, kind: $2, base: null, node: null, finalizer: null};$n" %
@@ -151,6 +151,6 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
   of tyObject: genObjectInfo(p, t, result)
   of tyTuple: genTupleInfo(p, t, result)
   of tyStatic:
-    if t.n != nil: result = genTypeInfo(p, lastSon t)
+    if t.n != nil: result = genTypeInfo(p, skipModifier t)
     else: internalError(p.config, "genTypeInfo(" & $t.kind & ')')
   else: internalError(p.config, "genTypeInfo(" & $t.kind & ')')

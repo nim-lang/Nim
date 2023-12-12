@@ -187,7 +187,7 @@ proc mapType(typ: PType): TJSTypeKind =
   let t = skipTypes(typ, abstractInst)
   case t.kind
   of tyVar, tyRef, tyPtr:
-    if skipTypes(t.lastSon, abstractInst).kind in MappedToObject:
+    if skipTypes(t.elementType, abstractInst).kind in MappedToObject:
       result = etyObject
     else:
       result = etyBaseIndex
@@ -212,9 +212,9 @@ proc mapType(typ: PType): TJSTypeKind =
     result = etyNone
   of tyGenericInst, tyInferred, tyAlias, tyUserTypeClass, tyUserTypeClassInst,
      tySink, tyOwned:
-    result = mapType(typ.lastSon)
+    result = mapType(typ.skipModifier)
   of tyStatic:
-    if t.n != nil: result = mapType(lastSon t)
+    if t.n != nil: result = mapType(skipModifier t)
     else: result = etyNone
   of tyProc: result = etyProc
   of tyCstring: result = etyString
@@ -1455,7 +1455,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
   var ty = skipTypes(n[0].typ, abstractVarRange)
-  if ty.kind in {tyRef, tyPtr, tyLent, tyOwned}: ty = skipTypes(ty.lastSon, abstractVarRange)
+  if ty.kind in {tyRef, tyPtr, tyLent, tyOwned}: ty = skipTypes(ty.elementType, abstractVarRange)
   case ty.kind
   of tyArray, tyOpenArray, tySequence, tyString, tyCstring, tyVarargs:
     genArrayAddr(p, n, r)
@@ -1938,7 +1938,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   of tyFloat..tyFloat128:
     result = putToSeq("0.0", indirect)
   of tyRange, tyGenericInst, tyAlias, tySink, tyOwned, tyLent:
-    result = createVar(p, lastSon(typ), indirect)
+    result = createVar(p, skipModifier(typ), indirect)
   of tySet:
     result = putToSeq("{}", indirect)
   of tyBool:
@@ -1990,7 +1990,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     result = putToSeq("null", indirect)
   of tyStatic:
     if t.n != nil:
-      result = createVar(p, lastSon t, indirect)
+      result = createVar(p, skipModifier t, indirect)
     else:
       internalError(p.config, "createVar: " & $t.kind)
       result = ""

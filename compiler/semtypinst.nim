@@ -61,7 +61,7 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
 
 proc cacheTypeInst(c: PContext; inst: PType) =
   let gt = inst[0]
-  let t = if gt.kind == tyGenericBody: gt.lastSon else: gt
+  let t = if gt.kind == tyGenericBody: gt.typeBodyImpl else: gt
   if t.kind in {tyStatic, tyError, tyGenericParam} + tyTypeClasses:
     return
   addToGenericCache(c, gt.sym, inst)
@@ -418,7 +418,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   if body.kind == tyError:
     return
 
-  let bbody = lastSon body
+  let bbody = last body
   var newbody = replaceTypeVarsT(cl, bbody)
   cl.skipTypedesc = oldSkipTypedesc
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
@@ -449,11 +449,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         # can come here for tyGenericInst too, see tests/metatype/ttypeor.nim
         # need to look into this issue later
         assert newbody.kind in {tyRef, tyPtr}
-        if newbody.lastSon.typeInst != nil:
+        if newbody.last.typeInst != nil:
           #internalError(cl.c.config, cl.info, "ref already has a 'typeInst' field")
           discard
         else:
-          newbody.lastSon.typeInst = result
+          newbody.last.typeInst = result
     # DESTROY: adding object|opt for opt[topttree.Tree]
     # sigmatch: Formal opt[=destroy.T] real opt[topttree.Tree]
     # adding myseq for myseq[system.int]
@@ -554,7 +554,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   case t.kind
   of tyGenericInvocation:
     result = handleGenericInvocation(cl, t)
-    if result.lastSon.kind == tyUserTypeClass:
+    if result.last.kind == tyUserTypeClass:
       result.kind = tyUserTypeClassInst
 
   of tyGenericBody:
@@ -617,7 +617,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     idTablePut(cl.localCache, t, result)
     for i in 1..<result.len:
       result[i] = replaceTypeVarsT(cl, result[i])
-    propagateToOwner(result, result.lastSon)
+    propagateToOwner(result, result.last)
 
   else:
     if containsGenericType(t):

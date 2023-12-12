@@ -434,9 +434,9 @@ type
     tyInferred
       # In the initial state `base` stores a type class constraining
       # the types that can be inferred. After a candidate type is
-      # selected, it's stored in `lastSon`. Between `base` and `lastSon`
+      # selected, it's stored in `last`. Between `base` and `last`
       # there may be 0, 2 or more types that were also considered as
-      # possible candidates in the inference process (i.e. lastSon will
+      # possible candidates in the inference process (i.e. last will
       # be updated to store a type best conforming to all candidates)
 
     tyAnd, tyOr, tyNot
@@ -1368,7 +1368,7 @@ proc newTreeIT*(kind: TNodeKind; info: TLineInfo; typ: PType; children: varargs[
   result.sons = @children
 
 template previouslyInferred*(t: PType): PType =
-  if t.sons.len > 1: t.lastSon else: nil
+  if t.sons.len > 1: t.last else: nil
 
 when false:
   import tables, strutils
@@ -1489,7 +1489,15 @@ proc newIntNode*(kind: TNodeKind, intVal: Int128): PNode =
   result.intVal = castToInt64(intVal)
 
 proc lastSon*(n: PNode): PNode {.inline.} = n.sons[^1]
-proc lastSon*(n: PType): PType {.inline.} = n.sons[^1]
+proc last*(n: PType): PType {.inline.} = n.sons[^1]
+
+proc elementType*(n: PType): PType {.inline.} = n.sons[^1]
+proc skipModifier*(n: PType): PType {.inline.} = n.sons[^1]
+
+proc indexType*(n: PType): PType {.inline.} = n.sons[0]
+proc baseClass*(n: PType): PType {.inline.} = n.sons[0]
+
+proc typeBodyImpl*(n: PType): PType {.inline.} = n.sons[^1]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or
@@ -1497,7 +1505,7 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## last child nodes of a type tree need to be searched. This is a really hot
   ## path within the compiler!
   result = t
-  while result.kind in kinds: result = lastSon(result)
+  while result.kind in kinds: result = last(result)
 
 proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   let kind = skipTypes(typ, abstractVarRange).kind
@@ -1684,7 +1692,7 @@ proc skipTypes*(t: PType, kinds: TTypeKinds; maxIters: int): PType =
   result = t
   var i = maxIters
   while result.kind in kinds:
-    result = lastSon(result)
+    result = last(result)
     dec i
     if i == 0: return nil
 
@@ -1693,7 +1701,7 @@ proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
   result = t
   while result != nil and result.kind in kinds:
     if result.len == 0: return nil
-    result = lastSon(result)
+    result = last(result)
 
 proc isGCedMem*(t: PType): bool {.inline.} =
   result = t.kind in {tyString, tyRef, tySequence} or
@@ -2028,7 +2036,7 @@ proc toObject*(typ: PType): PType =
   ## cases should be a ``tyObject``).
   ## Otherwise ``typ`` is simply returned as-is.
   let t = typ.skipTypes({tyAlias, tyGenericInst})
-  if t.kind == tyRef: t.lastSon
+  if t.kind == tyRef: t.last
   else: typ
 
 proc toObjectFromRefPtrGeneric*(typ: PType): PType =
@@ -2045,7 +2053,7 @@ proc toObjectFromRefPtrGeneric*(typ: PType): PType =
   result = typ
   while true:
     case result.kind
-    of tyGenericBody: result = result.lastSon
+    of tyGenericBody: result = result.last
     of tyRef, tyPtr, tyGenericInst, tyGenericInvocation, tyAlias: result = result[0]
       # automatic dereferencing is deep, refs #18298.
     else: break

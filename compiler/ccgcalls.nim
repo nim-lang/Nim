@@ -248,7 +248,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
     of tyArray:
       result.add "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, a.t))]
     of tyPtr, tyRef:
-      case lastSon(a.t).kind
+      case elementType(a.t).kind
       of tyString, tySequence:
         var t: TLoc
         t.r = "(*$1)" % [a.rdLoc]
@@ -256,7 +256,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
                      [a.rdLoc, lenExpr(p, t), dataField(p),
                       dataFieldAccessor(p, "*" & a.rdLoc)]
       of tyArray:
-        result.add "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, lastSon(a.t)))]
+        result.add "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, elementType(a.t)))]
       else:
         internalError(p.config, "openArrayLoc: " & typeToString(a.t))
     else: internalError(p.config, "openArrayLoc: " & typeToString(a.t))

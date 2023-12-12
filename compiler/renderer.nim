@@ -366,7 +366,7 @@ proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
     result = t
     while result != nil and result.kind in {tyGenericInst, tyRange, tyVar,
                           tyLent, tyDistinct, tyOrdinal, tyAlias, tySink}:
-      result = lastSon(result)
+      result = skipModifier(result)
 
   result = ""
   let typ = n.typ.skip

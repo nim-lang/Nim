@@ -54,13 +54,13 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
   case typ.kind
   of tyGenericInst, tyGenericBody, tyTypeDesc, tyAlias, tyDistinct, tyInferred,
      tySink, tyOwned:
-    specializeResetT(p, accessor, lastSon(typ))
+    specializeResetT(p, accessor, skipModifier(typ))
   of tyArray:
-    let arraySize = lengthOrd(p.config, typ[0])
+    let arraySize = lengthOrd(p.config, typ.indexType)
     var i: TLoc = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt))
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
             [i.r, arraySize])
-    specializeResetT(p, ropecg(p.module, "$1[$2]", [accessor, i.r]), typ[1])
+    specializeResetT(p, ropecg(p.module, "$1[$2]", [accessor, i.r]), typ.elementType)
     lineF(p, cpsStmts, "}$n", [])
   of tyObject:
     for i in 0..<typ.len:

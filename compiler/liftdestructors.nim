@@ -545,7 +545,7 @@ proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let counterIdx = body.len
   let i = declareCounter(c, body, toInt64(firstOrd(c.g.config, t)))
   let whileLoop = genWhileLoop(c, i, x)
-  let elemType = t.lastSon
+  let elemType = t.elementType
   let b = if c.kind == attachedTrace: y else: y.at(i, elemType)
   fillBody(c, elemType, whileLoop[1], x.at(i, elemType), b)
   if whileLoop[1].len > 0:
@@ -656,7 +656,7 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
 proc cyclicType*(g: ModuleGraph, t: PType): bool =
   case t.kind
-  of tyRef: result = types.canFormAcycle(g, t.lastSon)
+  of tyRef: result = types.canFormAcycle(g, t.elementType)
   of tyProc: result = t.callConv == ccClosure
   else: result = false
 
@@ -681,7 +681,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
   ]#
   var actions = newNodeI(nkStmtList, c.info)
-  let elemType = t.lastSon
+  let elemType = t.elementType
 
   createTypeBoundOps(c.g, c.c, elemType, c.info, c.idgen)
   let isCyclic = c.g.config.selectedGC == gcOrc and types.canFormAcycle(c.g, elemType)
@@ -851,7 +851,7 @@ proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   var actions = newNodeI(nkStmtList, c.info)
 
-  let elemType = t.lastSon
+  let elemType = t.skipModifier
   #fillBody(c, elemType, actions, genDeref(x), genDeref(y))
   #var disposeCall = genBuiltin(c, mDispose, "dispose", x)
 
@@ -1034,7 +1034,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     discard
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyAlias, tySink:
-    fillBody(c, lastSon(t), body, x, y)
+    fillBody(c, skipModifier(t), body, x, y)
   of tyConcept, tyIterable: raiseAssert "unreachable"
 
 proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;

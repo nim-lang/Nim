@@ -246,7 +246,7 @@ proc liftingHarmful(conf: ConfigRef; owner: PSym): bool {.inline.} =
 
 proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; idgen: IdGenerator; owner: PSym) =
   if owner.kind != skMacro:
-    createTypeBoundOps(g, nil, refType.lastSon, info, idgen)
+    createTypeBoundOps(g, nil, refType.elementType, info, idgen)
     createTypeBoundOps(g, nil, refType, info, idgen)
     if tfHasAsgn in refType.flags or optSeqDestructors in g.config.globalOptions:
       owner.flags.incl sfInjectDestructors

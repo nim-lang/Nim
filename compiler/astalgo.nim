@@ -43,7 +43,7 @@ proc typekinds*(t: PType) {.deprecated.} =
   while t != nil and t.len > 0:
     s.add $t.kind
     s.add " "
-    t = t.lastSon
+    t = t.last
   echo s
 
 template debug*(x: PSym|PType|PNode) {.deprecated.} =

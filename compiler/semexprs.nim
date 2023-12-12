@@ -196,19 +196,19 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
   var d = skipTypes(targetTyp, abstractVar)
   var s = srcTyp
   if s.kind in tyUserTypeClasses and s.isResolvedUserTypeClass:
-    s = s.lastSon
+    s = s.last
   s = skipTypes(s, abstractVar-{tyTypeDesc, tyOwned})
   if s.kind == tyOwned and d.kind != tyOwned:
-    s = s.lastSon
+    s = s.skipModifier
   var pointers = 0
   while (d != nil) and (d.kind in {tyPtr, tyRef, tyOwned}):
     if s.kind == tyOwned and d.kind != tyOwned:
-      s = s.lastSon
+      s = s.skipModifier
     elif d.kind != s.kind:
       break
     else:
-      d = d.lastSon
-      s = s.lastSon
+      d = d.elementType
+      s = s.elementType
     inc pointers
 
   let targetBaseTyp = skipTypes(targetTyp, abstractVarRange)
@@ -1433,7 +1433,7 @@ proc tryReadingTypeField(c: PContext, n: PNode, i: PIdent, ty: PType): PNode =
         n.typ = makeTypeDesc(c, field.typ)
         result = n
   of tyGenericInst:
-    result = tryReadingTypeField(c, n, i, ty.lastSon)
+    result = tryReadingTypeField(c, n, i, ty.skipModifier)
     if result == nil:
       result = tryReadingGenericParam(c, n, i, ty)
   else:
@@ -1493,7 +1493,7 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
     return nil
 
   if ty.kind in tyUserTypeClasses and ty.isResolvedUserTypeClass:
-    ty = ty.lastSon
+    ty = ty.last
   ty = skipTypes(ty, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink, tyStatic})
   while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct, tyGenericInst, tyAlias})
   var check: PNode = nil
@@ -1580,7 +1580,7 @@ proc semDeref(c: PContext, n: PNode): PNode =
   result = n
   var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink, tyOwned})
   case t.kind
-  of tyRef, tyPtr: n.typ = t.lastSon
+  of tyRef, tyPtr: n.typ = t.elementType
   else: result = nil
   #GlobalError(n[0].info, errCircumNeedsPointer)
 
@@ -1929,7 +1929,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       if c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
         var rhsTyp = rhs.typ
         if rhsTyp.kind in tyUserTypeClasses and rhsTyp.isResolvedUserTypeClass:
-          rhsTyp = rhsTyp.lastSon
+          rhsTyp = rhsTyp.last
         if lhs.sym.typ.kind == tyAnything:
           rhsTyp = rhsTyp.skipIntLit(c.idgen)
         if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:

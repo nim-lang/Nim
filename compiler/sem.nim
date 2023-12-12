@@ -196,8 +196,8 @@ proc commonType*(c: PContext; x, y: PType): PType =
       k = a.kind
       if b.kind != a.kind: return x
       # bug #7601, array construction of ptr generic
-      a = a.lastSon.skipTypes({tyGenericInst})
-      b = b.lastSon.skipTypes({tyGenericInst})
+      a = a.elementType.skipTypes({tyGenericInst})
+      b = b.elementType.skipTypes({tyGenericInst})
     if a.kind == tyObject and b.kind == tyObject:
       result = commonSuperclass(a, b)
       # this will trigger an error later:

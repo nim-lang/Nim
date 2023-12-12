@@ -65,7 +65,7 @@ proc canAlias(arg, ret: PType; marker: var IntSet): bool =
       if result: break
   of tyArray, tySequence, tyDistinct, tyGenericInst,
      tyAlias, tyInferred, tySink, tyLent, tyOwned, tyRef:
-    result = canAlias(arg, ret.lastSon, marker)
+    result = canAlias(arg, ret.skipModifier, marker)
   of tyProc:
     result = ret.callConv == ccClosure
   else:
@@ -123,7 +123,7 @@ proc containsDangerousRefAux(t: PType; marker: var IntSet): SearchResult =
       result = containsDangerousRefAux(t[0].skipTypes(skipPtrs), marker)
     if result == NotFound: result = containsDangerousRefAux(t.n, marker)
   of tyGenericInst, tyDistinct, tyAlias, tySink:
-    result = containsDangerousRefAux(lastSon(t), marker)
+    result = containsDangerousRefAux(skipModifier(t), marker)
   of tyArray, tySet, tyTuple, tySequence:
     for i in 0..<t.len:
       result = containsDangerousRefAux(t[i], marker)

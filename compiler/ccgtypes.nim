@@ -136,10 +136,10 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
       return t.sym.loc.r
 
     if t.kind in irrelevantForBackend:
-      t = t.lastSon
+      t = t.skipModifier
     else:
       break
-  let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.lastSon else: typ
+  let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.elementType else: typ
   if typ.loc.r == "":
     typ.typeName(typ.loc.r)
     typ.loc.r.add $sig
@@ -175,10 +175,10 @@ proc mapType(conf: ConfigRef; typ: PType; isParam: bool): TCTypeKind =
   of tyObject, tyTuple: result = ctStruct
   of tyUserTypeClasses:
     doAssert typ.isResolvedUserTypeClass
-    return mapType(conf, typ.lastSon, isParam)
+    return mapType(conf, typ.skipModifier, isParam)
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
      tyTypeDesc, tyAlias, tySink, tyInferred, tyOwned:
-    result = mapType(conf, lastSon(typ), isParam)
+    result = mapType(conf, skipModifier(typ), isParam)
   of tyEnum:
     if firstOrd(conf, typ) < 0:
       result = ctInt32
@@ -191,7 +191,7 @@ proc mapType(conf: ConfigRef; typ: PType; isParam: bool): TCTypeKind =
       else: result = ctInt32
   of tyRange: result = mapType(conf, typ[0], isParam)
   of tyPtr, tyVar, tyLent, tyRef:
-    var base = skipTypes(typ.lastSon, typedescInst)
+    var base = skipTypes(typ.elementType, typedescInst)
     case base.kind
     of tyOpenArray, tyArray, tyVarargs, tyUncheckedArray: result = ctPtrToArray
     of tySet:
@@ -206,7 +206,7 @@ proc mapType(conf: ConfigRef; typ: PType; isParam: bool): TCTypeKind =
   of tyInt..tyUInt64:
     result = TCTypeKind(ord(typ.kind) - ord(tyInt) + ord(ctInt))
   of tyStatic:
-    if typ.n != nil: result = mapType(conf, lastSon typ, isParam)
+    if typ.n != nil: result = mapType(conf, typ.skipModifier, isParam)
     else:
       result = ctVoid
       doAssert(false, "mapType: " & $typ.kind)
@@ -326,12 +326,12 @@ proc getSimpleTypeDesc(m: BModule; typ: PType): Rope =
     result = typeNameOrLiteral(m, typ, NumericalTypeToStr[typ.kind])
   of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ[0])
   of tyStatic:
-    if typ.n != nil: result = getSimpleTypeDesc(m, lastSon typ)
+    if typ.n != nil: result = getSimpleTypeDesc(m, skipModifier typ)
     else:
       result = ""
       internalError(m.config, "tyStatic for getSimpleTypeDesc")
   of tyGenericInst, tyAlias, tySink, tyOwned:
-    result = getSimpleTypeDesc(m, lastSon typ)
+    result = getSimpleTypeDesc(m, skipModifier typ)
   else: result = ""
 
   if result != "" and typ.isImportedType():
@@ -611,7 +611,7 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
       params.add runtimeFormat(param.cgDeclFrmt, [typ, param.loc.r])
     # declare the len field for open arrays:
     var arr = param.typ.skipTypes({tyGenericInst})
-    if arr.kind in {tyVar, tyLent, tySink}: arr = arr.lastSon
+    if arr.kind in {tyVar, tyLent, tySink}: arr = arr.elementType
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
       # this fixes the 'sort' bug:
@@ -922,7 +922,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
   of tyRef, tyPtr, tyVar, tyLent:
     var star = if t.kind in {tyVar} and tfVarIsPtr notin origTyp.flags and
                     compileToCpp(m): "&" else: "*"
-    var et = origTyp.skipTypes(abstractInst).lastSon
+    var et = origTyp.skipTypes(abstractInst).elementType
     var etB = et.skipTypes(abstractInst)
     if mapType(m.config, t, kind == dkParam) == ctPtrToArray and (etB.kind != tyOpenArray or kind == dkParam):
       if etB.kind == tySet:
@@ -1112,8 +1112,8 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
   of tySet:
     # Don't use the imported name as it may be scoped: 'Foo::SomeKind'
     result = rope("tySet_")
-    t.lastSon.typeName(result)
-    result.add $t.lastSon.hashType(m.config)
+    t.elementType.typeName(result)
+    result.add $t.elementType.hashType(m.config)
     m.typeCache[sig] = result
     if not isImportedType(t):
       let s = int(getSize(m.config, t))
@@ -1123,7 +1123,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
              [result, rope(getSize(m.config, t))])
   of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias, tySink, tyOwned,
      tyUserTypeClass, tyUserTypeClassInst, tyInferred:
-    result = getTypeDescAux(m, lastSon(t), check, kind)
+    result = getTypeDescAux(m, skipModifier(t), check, kind)
   else:
     internalError(m.config, "getTypeDescAux(" & $t.kind & ')')
     result = ""
@@ -1333,8 +1333,8 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
 proc genTypeInfoAux(m: BModule; typ, origType: PType, name: Rope;
                     info: TLineInfo) =
   var base: Rope
-  if typ.len > 0 and typ.lastSon != nil:
-    var x = typ.lastSon
+  if typ.len > 0 and typ.last != nil:
+    var x = typ.last
     if typ.kind == tyObject: x = x.skipTypes(skipPtrs)
     if typ.kind == tyPtr and x.kind == tyObject and incompleteType(x):
       base = rope("0")
@@ -1827,7 +1827,7 @@ proc openArrayToTuple(m: BModule; t: PType): PType =
   result = newType(tyTuple, m.idgen, t.owner)
   let p = newType(tyPtr, m.idgen, t.owner)
   let a = newType(tyUncheckedArray, m.idgen, t.owner)
-  a.add t.lastSon
+  a.add t.elementType
   p.add a
   result.add p
   result.add getSysType(m.g.graph, t.owner.info, tyInt)
@@ -1909,11 +1909,11 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   of tyPointer, tyBool, tyChar, tyCstring, tyString, tyInt..tyUInt64, tyVar, tyLent:
     genTypeInfoAuxBase(m, t, t, result, rope"0", info)
   of tyStatic:
-    if t.n != nil: result = genTypeInfoV1(m, lastSon t, info)
+    if t.n != nil: result = genTypeInfoV1(m, skipModifier t, info)
     else: internalError(m.config, "genTypeInfoV1(" & $t.kind & ')')
   of tyUserTypeClasses:
     internalAssert m.config, t.isResolvedUserTypeClass
-    return genTypeInfoV1(m, t.lastSon, info)
+    return genTypeInfoV1(m, t.skipModifier, info)
   of tyProc:
     if t.callConv != ccClosure:
       genTypeInfoAuxBase(m, t, t, result, rope"0", info)
