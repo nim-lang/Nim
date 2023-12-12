@@ -12,7 +12,7 @@
 when not defined(nimpretty):
   {.error: "This needs to be compiled with --define:nimPretty".}
 
-import ../compiler / [idents, msgs, syntaxes, options, pathutils, layouter]
+import ../compiler / [idents, llstream, ast, msgs, syntaxes, options, pathutils, layouter]
 
 import parseopt, strutils, os, sequtils
 
@@ -48,6 +48,18 @@ type
     indWidth*: Natural
     maxLineLen*: Positive
 
+proc finalCheck(content: string; origAst: PNode): bool {.nimcall.} =
+  var conf = newConfigRef()
+  let oldErrors = conf.errorCounter
+  var parser: Parser
+  parser.em.indWidth = 2
+  let fileIdx = fileInfoIdx(conf, AbsoluteFile "stdin.nim")
+
+  openParser(parser, fileIdx, llStreamOpen(content), newIdentCache(), conf)
+  discard parseAll(parser)
+  closeParser(parser)
+  result = conf.errorCounter == oldErrors
+
 proc prettyPrint*(infile, outfile: string, opt: PrettyOptions) =
   var conf = newConfigRef()
   let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
@@ -58,8 +70,10 @@ proc prettyPrint*(infile, outfile: string, opt: PrettyOptions) =
   parser.em.indWidth = opt.indWidth
   if setupParser(parser, fileIdx, newIdentCache(), conf):
     parser.em.maxLineLen = opt.maxLineLen
-    discard parseAll(parser)
+    let fullAst = parseAll(parser)
     closeParser(parser)
+    when defined(nimpretty):
+      closeEmitter(parser.em, fullAst, finalCheck)
 
 proc main =
   var outfile, outdir: string
