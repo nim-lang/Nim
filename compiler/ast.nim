@@ -1497,6 +1497,15 @@ proc skipModifier*(n: PType): PType {.inline.} = n.sons[^1]
 proc indexType*(n: PType): PType {.inline.} = n.sons[0]
 proc baseClass*(n: PType): PType {.inline.} = n.sons[0]
 
+proc base*(t: PType): PType {.inline.} =
+  result = t.sons[0]
+
+proc returnType*(n: PType): PType {.inline.} = n.sons[0]
+proc setReturnType*(n, r: PType) {.inline.} = n.sons[0] = r
+proc setIndexType*(n, idx: PType) {.inline.} = n.sons[0] = idx
+
+proc firstParamType*(n: PType): PType {.inline.} = n.sons[1]
+
 proc typeBodyImpl*(n: PType): PType {.inline.} = n.sons[^1]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =

@@ -247,7 +247,7 @@ proc sumGeneric(t: PType): int =
           result += sumGeneric(t[i])
       break
     of tyStatic:
-      return sumGeneric(t[0]) + 1
+      return sumGeneric(t.skipModifier) + 1
     of tyGenericParam, tyUntyped, tyTyped: break
     of tyAlias, tySink: t = t.skipModifier
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
@@ -941,7 +941,7 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
     else: discard
 
   elif lhs.kind == nkSym and lhs.typ.kind == tyStatic and lhs.typ.n == nil:
-    var inferred = newTypeWithSons(c.c, tyStatic, @[lhs.typ[0]])
+    var inferred = newTypeWithSons(c.c, tyStatic, @[lhs.typ.elementType])
     inferred.n = newIntNode(nkIntLit, rhs)
     put(c, lhs.typ, inferred)
     if c.c.matchedConcept != nil:
@@ -2050,8 +2050,8 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
                    arg: PNode): PNode =
   result = nil
   for i in 0..<c.converters.len:
-    var src = c.converters[i].typ[1]
-    var dest = c.converters[i].typ[0]
+    var src = c.converters[i].typ.firstParamType
+    var dest = c.converters[i].typ.returnType
     # for generic type converters we need to check 'src <- a' before
     # 'f <- dest' in order to not break the unification:
     # see tests/tgenericconverter:

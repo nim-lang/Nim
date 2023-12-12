@@ -139,7 +139,7 @@ proc genContainerOf(c: var TLiftCtx; objType: PType, field, x: PSym): PNode =
   result.add minusExpr
 
 proc destructorCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
-  var destroy = newNodeIT(nkCall, x.info, op.typ[0])
+  var destroy = newNodeIT(nkCall, x.info, op.typ.returnType)
   destroy.add(newSymNode(op))
   if op.typ[1].kind != tyVar:
     destroy.add x
@@ -153,7 +153,7 @@ proc destructorCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
     result = destroy
 
 proc genWasMovedCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
-  result = newNodeIT(nkCall, x.info, op.typ[0])
+  result = newNodeIT(nkCall, x.info, op.typ.returnType)
   result.add(newSymNode(op))
   result.add genAddr(c, x)
 
@@ -221,8 +221,8 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
     illFormedAstLocal(n, c.g.config)
 
 proc fillBodyObjTImpl(c: var TLiftCtx; t: PType, body, x, y: PNode) =
-  if t.len > 0 and t[0] != nil:
-    fillBody(c, skipTypes(t[0], abstractPtrs), body, x, y)
+  if t.len > 0 and t.baseClass != nil:
+    fillBody(c, skipTypes(t.baseClass, abstractPtrs), body, x, y)
   fillBodyObj(c, t.n, body, x, y, enforceDefaultOp = false)
 
 proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
@@ -317,7 +317,7 @@ proc newHookCall(c: var TLiftCtx; op: PSym; x, y: PNode): PNode =
       result.add boolLit(c.g, y.info, true)
 
 proc newOpCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
-  result = newNodeIT(nkCall, x.info, op.typ[0])
+  result = newNodeIT(nkCall, x.info, op.typ.returnType)
   result.add(newSymNode(op))
   result.add x
   if sfNeverRaises notin op.flags:
@@ -1017,7 +1017,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
           fillBodyObjT(c, t, body, x, y)
   of tyDistinct:
     if not considerUserDefinedOp(c, t, body, x, y):
-      fillBody(c, t[0], body, x, y)
+      fillBody(c, t.elementType, body, x, y)
   of tyTuple:
     fillBodyTup(c, t, body, x, y)
   of tyVarargs, tyOpenArray:
@@ -1041,7 +1041,7 @@ proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
                             kind: TTypeAttachedOp; info: TLineInfo;
                             idgen: IdGenerator): PSym =
   assert typ.kind == tyDistinct
-  let baseType = typ[0]
+  let baseType = typ.elementType
   if getAttachedOp(g, baseType, kind) == nil:
     discard produceSym(g, c, baseType, kind, info, idgen)
   result = getAttachedOp(g, baseType, kind)

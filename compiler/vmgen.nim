@@ -1874,8 +1874,8 @@ proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
     genArrAccessOpcode(c, n, dest, opc, flags)
 
 proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currPosition: var int) =
-  if t != nil and t.len > 0 and t[0] != nil:
-    let b = skipTypes(t[0], skipPtrs)
+  if t != nil and t.len > 0 and t.baseClass != nil:
+    let b = skipTypes(t.baseClass, skipPtrs)
     getNullValueAux(b, b.n, result, conf, currPosition)
   case obj.kind
   of nkRecList:

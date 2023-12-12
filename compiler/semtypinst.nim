@@ -18,20 +18,16 @@ when defined(nimPreviewSlimSystem):
 const tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
-  if t.kind in {tyVar, tyLent} and t[0].kind in {tyVar, tyLent}:
+  if t.kind in {tyVar, tyLent} and t.elementType.kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
 
 proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
   var t = typ.skipTypes({tyDistinct})
   if t.kind in tyTypeClasses: discard
-  elif t.kind in {tyVar, tyLent} and t[0].kind in {tyVar, tyLent}:
+  elif t.kind in {tyVar, tyLent} and t.elementType.kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
   elif computeSize(conf, t) == szIllegalRecursion or isTupleRecursive(t):
     localError(conf, info, "illegal recursion in type '" & typeToString(t) & "'")
-  when false:
-    if t.kind == tyObject and t[0] != nil:
-      if t[0].kind != tyObject or tfFinal in t[0].flags:
-        localError(info, errInheritanceOnlyWithNonFinalObjects)
 
 proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
   result = nil

@@ -262,9 +262,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = conf.target.ptrSize
 
   of tyArray:
-    computeSizeAlign(conf, typ[1])
-    let elemSize = typ[1].size
-    let len = lengthOrd(conf, typ[0])
+    computeSizeAlign(conf, typ.elementType)
+    let elemSize = typ.elementType.size
+    let len = lengthOrd(conf, typ.indexType)
     if elemSize < 0:
       typ.size = elemSize
       typ.align = int16(elemSize)
@@ -273,7 +273,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.align = szUnknownSize
     else:
       typ.size = toInt64Checked(len * int32(elemSize), szTooBigSize)
-      typ.align = typ[1].align
+      typ.align = typ.elementType.align
 
   of tyUncheckedArray:
     let base = typ.last
@@ -300,11 +300,11 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         typ.size = 8
         typ.align = int16(conf.floatInt64Align)
   of tySet:
-    if typ[0].kind == tyGenericParam:
+    if typ.elementType.kind == tyGenericParam:
       typ.size = szUncomputedSize
       typ.align = szUncomputedSize
     else:
-      let length = toInt64(lengthOrd(conf, typ[0]))
+      let length = toInt64(lengthOrd(conf, typ.elementType))
       if length <= 8:
         typ.size = 1
         typ.align = 1
@@ -324,10 +324,10 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         typ.size = align(length, 8) div 8 + 1
         typ.align = 1
   of tyRange:
-    computeSizeAlign(conf, typ[0])
-    typ.size = typ[0].size
-    typ.align = typ[0].align
-    typ.paddingAtEnd = typ[0].paddingAtEnd
+    computeSizeAlign(conf, typ.elementType)
+    typ.size = typ.elementType.size
+    typ.align = typ.elementType.align
+    typ.paddingAtEnd = typ.elementType.paddingAtEnd
 
   of tyTuple:
     try:
@@ -351,11 +351,11 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   of tyObject:
     try:
       var accum =
-        if typ[0] != nil:
+        if typ.baseClass != nil:
           # compute header size
-          var st = typ[0]
+          var st = typ.baseClass
           while st.kind in skipPtrs:
-            st = st[^1]
+            st = st.skipModifier
           computeSizeAlign(conf, st)
           if conf.backend == backendCpp:
             OffsetAccum(

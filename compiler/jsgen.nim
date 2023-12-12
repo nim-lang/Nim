@@ -196,7 +196,7 @@ proc mapType(typ: PType): TJSTypeKind =
     result = etyBaseIndex
   of tyRange, tyDistinct, tyOrdinal, tyProxy, tyLent:
     # tyLent is no-op as JS has pass-by-reference semantics
-    result = mapType(t[0])
+    result = mapType(skipModifier t)
   of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar: result = etyInt
   of tyBool: result = etyBool
   of tyFloat..tyFloat128: result = etyFloat
@@ -516,7 +516,7 @@ proc maybeMakeTempAssignable(p: PProc, n: PNode; x: TCompRes): tuple[a, tmp: Rop
       let (m1, tmp1) = maybeMakeTemp(p, n[0], address)
       let typ = skipTypes(n[0].typ, abstractPtrs)
       if typ.kind == tyArray:
-        first = firstOrd(p.config, typ[0])
+        first = firstOrd(p.config, typ.indexType)
       if optBoundsCheck in p.options:
         useMagic(p, "chckIndx")
         if first == 0: # save a couple chars
@@ -1439,7 +1439,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   r.address = x
   var typ = skipTypes(m[0].typ, abstractPtrs)
   if typ.kind == tyArray:
-    first = firstOrd(p.config, typ[0])
+    first = firstOrd(p.config, typ.indexType)
   if optBoundsCheck in p.options:
     useMagic(p, "chckIndx")
     if first == 0: # save a couple chars
@@ -1889,7 +1889,7 @@ proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: v
   while t != nil:
     t = t.skipTypes(skipPtrs)
     createRecordVarAux(p, t.n, excludedFieldIDs, output)
-    t = t[0]
+    t = t.baseClass
 
 proc arrayTypeForElemType(conf: ConfigRef; typ: PType): string =
   let typ = typ.skipTypes(abstractRange)
@@ -2699,7 +2699,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   var resultAsgn: Rope = ""
   var name = mangleName(p.module, prc)
   let header = generateHeader(p, prc.typ)
-  if prc.typ[0] != nil and sfPure notin prc.flags:
+  if prc.typ.returnType != nil and sfPure notin prc.flags:
     resultSym = prc.ast[resultPos].sym
     let mname = mangleName(p.module, resultSym)
     # otherwise uses "fat pointers"

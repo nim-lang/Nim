@@ -498,15 +498,15 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   c.friendModules.add(s.owner.getModule)
   result = macroResult
   resetSemFlag result
-  if s.typ[0] == nil:
+  if s.typ.returnType == nil:
     result = semStmt(c, result, flags)
   else:
-    var retType = s.typ[0]
+    var retType = s.typ.returnType
     if retType.kind == tyTypeDesc and tfUnresolved in retType.flags and
         retType.len == 1:
       # bug #11941: template fails(T: type X, v: auto): T
       # does not mean we expect a tyTypeDesc.
-      retType = retType[0]
+      retType = retType.skipModifier
     case retType.kind
     of tyUntyped, tyAnything:
       # Not expecting a type here allows templates like in ``tmodulealias.in``.

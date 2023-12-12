@@ -22,7 +22,7 @@ proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
     var t = typ.skipTypes({tyGenericInst, tyAlias, tySink})[0]
     while true:
       asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, false)
-      let base = t[0]
+      let base = t.baseClass
       if base == nil:
         break
       t = skipTypes(base, skipPtrs)
@@ -393,7 +393,7 @@ proc semUnown(c: PContext; n: PNode): PNode =
         for e in elems: result.rawAddSon(e)
       else:
         result = t
-    of tyOwned: result = t[0]
+    of tyOwned: result = t.elementType
     of tySequence, tyOpenArray, tyArray, tyVarargs, tyVar, tyLent,
        tyGenericInst, tyAlias:
       let b = unownedType(c, t[^1])

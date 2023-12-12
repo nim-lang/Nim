@@ -230,7 +230,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
         c &= ':'
         c.hashType(param.typ, flags, conf)
         c &= ','
-      c.hashType(t[0], flags, conf)
+      c.hashType(t.returnType, flags, conf)
     else:
       for i in 0..<t.len: c.hashType(t[i], flags, conf)
     c &= char(t.callConv)

@@ -35,12 +35,12 @@ proc ithField(n: PNode, field: var int): PSym =
   else: discard
 
 proc ithField(t: PType, field: var int): PSym =
-  var base = t[0]
+  var base = t.baseClass
   while base != nil:
     let b = skipTypes(base, skipPtrs)
     result = ithField(b.n, field)
     if result != nil: return result
-    base = b[0]
+    base = b.baseClass
   result = ithField(t.n, field)
 
 proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =

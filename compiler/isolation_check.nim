@@ -119,8 +119,8 @@ proc containsDangerousRefAux(t: PType; marker: var IntSet): SearchResult =
   if result != NotFound: return result
   case t.kind
   of tyObject:
-    if t[0] != nil:
-      result = containsDangerousRefAux(t[0].skipTypes(skipPtrs), marker)
+    if t.baseClass != nil:
+      result = containsDangerousRefAux(t.baseClass.skipTypes(skipPtrs), marker)
     if result == NotFound: result = containsDangerousRefAux(t.n, marker)
   of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = containsDangerousRefAux(skipModifier(t), marker)

@@ -667,7 +667,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   result = x.call
   instGenericConvertersSons(c, result, x)
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
-  result.typ = finalCallee.typ[0]
+  result.typ = finalCallee.typ.returnType
   updateDefaultParams(result)
 
 proc canDeref(n: PNode): bool {.inline.} =
@@ -827,7 +827,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
     if resolved != nil:
       result.s = resolved[0].sym
       result.state = bsMatch
-      if not compareTypes(result.s.typ[0], fn.typ[0], dcEqIgnoreDistinct, {IgnoreFlags}):
+      if not compareTypes(result.s.typ.returnType, fn.typ.returnType, dcEqIgnoreDistinct, {IgnoreFlags}):
         result.state = bsReturnNotMatch
       elif result.s.magic in {mArrPut, mArrGet}:
         # cannot borrow these magics for now

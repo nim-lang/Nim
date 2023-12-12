@@ -55,8 +55,8 @@ proc expandDefaultN(n: PNode; info: TLineInfo; res: PNode) =
     discard
 
 proc expandDefaultObj(t: PType; info: TLineInfo; res: PNode) =
-  if t[0] != nil:
-    expandDefaultObj(t[0], info, res)
+  if t.baseClass != nil:
+    expandDefaultObj(t.baseClass, info, res)
   expandDefaultN(t.n, info, res)
 
 proc expandDefault(t: PType; info: TLineInfo): PNode =
@@ -82,7 +82,7 @@ proc expandDefault(t: PType; info: TLineInfo): PNode =
     result = newZero(t, info, nkIntLit)
   of tyRange:
     # Could use low(T) here to finally fix old language quirks
-    result = expandDefault(t[0], info)
+    result = expandDefault(skipModifier t, info)
   of tyVoid: result = newZero(t, info, nkEmpty)
   of tySink, tyGenericInst, tyDistinct, tyAlias, tyOwned:
     result = expandDefault(t.skipModifier, info)

@@ -442,7 +442,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
     of tySequence, tyString, tyCstring, tyOpenArray, tyVarargs:
       n.typ = getSysType(c.graph, n.info, tyInt)
     of tyArray:
-      n.typ = typ[0] # indextype
+      n.typ = typ.indexType
       if n.typ.kind == tyRange and emptyRange(n.typ.n[0], n.typ.n[1]): #Invalid range
         n.typ = getSysType(c.graph, n.info, tyInt)
     of tyInt..tyInt64, tyChar, tyBool, tyEnum, tyUInt..tyUInt64, tyFloat..tyFloat64:
@@ -640,7 +640,7 @@ proc arrayConstrType(c: PContext, n: PNode): PType =
   else:
     var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
     addSonSkipIntLit(typ, t, c.idgen)
-  typ[0] = makeRangeType(c, 0, n.len - 1, n.info)
+  typ.setIndexType makeRangeType(c, 0, n.len - 1, n.info)
   result = typ
 
 proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
@@ -713,7 +713,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
     addSonSkipIntLit(result.typ, typ, c.idgen)
     for i in 0..<result.len:
       result[i] = fitNode(c, typ, result[i], result[i].info)
-  result.typ[0] = makeRangeType(c, toInt64(firstIndex), toInt64(lastIndex), n.info,
+  result.typ.setIndexType makeRangeType(c, toInt64(firstIndex), toInt64(lastIndex), n.info,
                                      indexType)
 
 proc fixAbstractType(c: PContext, n: PNode) =
@@ -1938,7 +1938,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           typeAllowedCheck(c, n.info, rhsTyp, skResult)
           lhs.typ = rhsTyp
           c.p.resultSym.typ = rhsTyp
-          c.p.owner.typ[0] = rhsTyp
+          c.p.owner.typ.setReturnType rhsTyp
         else:
           typeMismatch(c.config, n.info, lhs.typ, rhsTyp, rhs)
     borrowCheck(c, n, lhs, rhs)
@@ -2004,12 +2004,12 @@ proc semProcBody(c: PContext, n: PNode; expectedType: PType = nil): PNode =
     if isEmptyType(result.typ):
       # we inferred a 'void' return type:
       c.p.resultSym.typ = errorType(c)
-      c.p.owner.typ[0] = nil
+      c.p.owner.typ.setReturnType nil
     else:
       localError(c.config, c.p.resultSym.info, errCannotInferReturnType %
         c.p.owner.name.s)
-  if isIterator(c.p.owner.typ) and c.p.owner.typ[0] != nil and
-      c.p.owner.typ[0].kind == tyAnything:
+  if isIterator(c.p.owner.typ) and c.p.owner.typ.returnType != nil and
+      c.p.owner.typ.returnType.kind == tyAnything:
     localError(c.config, c.p.owner.info, errCannotInferReturnType %
       c.p.owner.name.s)
   closeScope(c)

@@ -252,7 +252,7 @@ proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
       m.inferred.setLen oldLen
       return false
 
-  if not matchReturnType(c, n[0].sym.typ[0], candidate.typ[0], m):
+  if not matchReturnType(c, n[0].sym.typ.returnType, candidate.typ.returnType, m):
     m.inferred.setLen oldLen
     return false
 

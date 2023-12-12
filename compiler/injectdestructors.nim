@@ -489,7 +489,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
 
 proc isDangerousSeq(t: PType): bool {.inline.} =
   let t = t.skipTypes(abstractInst)
-  result = t.kind == tySequence and tfHasOwned notin t[0].flags
+  result = t.kind == tySequence and tfHasOwned notin t.elementType.flags
 
 proc containsConstSeq(n: PNode): bool =
   if n.kind == nkBracket and n.len > 0 and n.typ != nil and isDangerousSeq(n.typ):

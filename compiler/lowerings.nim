@@ -19,7 +19,7 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 proc newDeref*(n: PNode): PNode {.inline.} =
-  result = newNodeIT(nkHiddenDeref, n.info, n.typ[0])
+  result = newNodeIT(nkHiddenDeref, n.info, n.typ.elementType)
   result.add n
 
 proc newTupleAccess*(g: ModuleGraph; tup: PNode, i: int): PNode =
@@ -262,7 +262,7 @@ proc indirectAccess*(a: PNode, b: ItemId, info: TLineInfo): PNode =
     assert t.kind == tyObject
     field = lookupInRecord(t.n, b)
     if field != nil: break
-    t = t[0]
+    t = t.baseClass
     if t == nil: break
     t = t.skipTypes(skipPtrs)
   #if field == nil:
@@ -286,7 +286,7 @@ proc indirectAccess*(a: PNode, b: string, info: TLineInfo; cache: IdentCache): P
     assert t.kind == tyObject
     field = getSymFromList(t.n, bb)
     if field != nil: break
-    t = t[0]
+    t = t.baseClass
     if t == nil: break
     t = t.skipTypes(skipPtrs)
   #if field == nil:

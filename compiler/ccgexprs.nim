@@ -853,7 +853,7 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
   var a: TLoc = default(TLoc)
   if p.module.compileToCpp and e.kind == nkDotExpr and e[1].kind == nkSym and e[1].typ.kind == tyPtr:
     # special case for C++: we need to pull the type of the field as member and friends require the complete type.
-    let typ = e[1].typ[0]
+    let typ = e[1].typ.elementType
     if typ.itemId in p.module.g.graph.memberProcsPerType:
       discard getTypeDesc(p.module, typ)
 
@@ -1703,9 +1703,9 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
     t = skipTypes(t.elementType, typedescInst+{tyOwned})
   discard getTypeDesc(p.module, t)
   if not p.module.compileToCpp:
-    while t.kind == tyObject and t[0] != nil:
+    while t.kind == tyObject and t.baseClass != nil:
       r.add(".Sup")
-      t = skipTypes(t[0], skipPtrs)
+      t = skipTypes(t.baseClass, skipPtrs)
   if isObjLackingTypeField(t):
     globalError(p.config, x.info,
       "no 'of' operator available for pure objects")
@@ -3200,9 +3200,9 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Rope) =
     result.add "}"
   of tyArray:
     result.add "{"
-    for i in 0..<toInt(lengthOrd(p.config, t[0])):
+    for i in 0..<toInt(lengthOrd(p.config, t.indexType)):
       if i > 0: result.add ", "
-      getDefaultValue(p, t[1], info, result)
+      getDefaultValue(p, t.elementType, info, result)
     result.add "}"
     #result = rope"{}"
   of tyOpenArray, tyVarargs:

@@ -102,10 +102,10 @@ proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
   if result == Yes:
     # check for return type:
     # ignore flags of return types; # bug #22673
-    if not sameTypeOrNil(a.typ[0], b.typ[0], {IgnoreFlags}):
-      if b.typ[0] != nil and b.typ[0].kind == tyUntyped:
+    if not sameTypeOrNil(a.typ.returnType, b.typ.returnType, {IgnoreFlags}):
+      if b.typ.returnType != nil and b.typ.returnType.kind == tyUntyped:
         # infer 'auto' from the base to make it consistent:
-        b.typ[0] = a.typ[0]
+        b.typ.setReturnType a.typ.returnType
       else:
         return No
 
@@ -132,7 +132,7 @@ proc createDispatcher(s: PSym; g: ModuleGraph; idgen: IdGenerator): PSym =
   disp.ast = copyTree(s.ast)
   disp.ast[bodyPos] = newNodeI(nkEmpty, s.info)
   disp.loc.r = ""
-  if s.typ[0] != nil:
+  if s.typ.returnType != nil:
     if disp.ast.len > resultPos:
       disp.ast[resultPos].sym = copySym(s.ast[resultPos].sym, idgen)
     else:
@@ -264,7 +264,7 @@ proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; 
           cond = a
         else:
           cond = isn
-    let retTyp = base.typ[0]
+    let retTyp = base.typ.returnType
     let call = newNodeIT(nkCall, base.info, retTyp)
     call.add newSymNode(curr)
     for col in 1..<paramLen:

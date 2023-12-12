@@ -116,7 +116,7 @@ proc isDeepConstExpr*(n: PNode; preventInheritance = false): bool =
       let t = n.typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink, tyOwned})
       if t.kind in {tyRef, tyPtr} or tfUnion in t.flags: return false
       if t.kind == tyObject:
-        if preventInheritance and t[0] != nil:
+        if preventInheritance and t.baseClass != nil:
           result = false
         elif isCaseObj(t.n):
           result = false

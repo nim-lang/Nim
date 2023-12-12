@@ -99,7 +99,7 @@ proc mapType(conf: ConfigRef, t: ast.PType): ptr libffi.Type =
      tyTyped, tyTypeDesc, tyProc, tyArray, tyStatic, tyNil:
     result = addr libffi.type_pointer
   of tyDistinct, tyAlias, tySink:
-    result = mapType(conf, t[0])
+    result = mapType(conf, t.skipModifier)
   else:
     result = nil
   # too risky:
@@ -126,16 +126,16 @@ proc packSize(conf: ConfigRef, v: PNode, typ: PType): int =
     if v.kind in {nkNilLit, nkPtrLit}:
       result = sizeof(pointer)
     else:
-      result = sizeof(pointer) + packSize(conf, v[0], typ.lastSon)
+      result = sizeof(pointer) + packSize(conf, v[0], typ.elementType)
   of tyDistinct, tyGenericInst, tyAlias, tySink:
-    result = packSize(conf, v, typ[0])
+    result = packSize(conf, v, typ.skipModifier)
   of tyArray:
     # consider: ptr array[0..1000_000, int] which is common for interfacing;
     # we use the real length here instead
     if v.kind in {nkNilLit, nkPtrLit}:
       result = sizeof(pointer)
     elif v.len != 0:
-      result = v.len * packSize(conf, v[0], typ[1])
+      result = v.len * packSize(conf, v[0], typ.elementType)
     else:
       result = 0
   else:
@@ -234,7 +234,7 @@ proc pack(conf: ConfigRef, v: PNode, typ: PType, res: pointer) =
         packRecCheck = 0
         globalError(conf, v.info, "cannot map value to FFI " & typeToString(v.typ))
       inc packRecCheck
-      pack(conf, v[0], typ.lastSon, res +! sizeof(pointer))
+      pack(conf, v[0], typ.elementType, res +! sizeof(pointer))
       dec packRecCheck
       awr(pointer, res +! sizeof(pointer))
   of tyArray:
@@ -246,7 +246,7 @@ proc pack(conf: ConfigRef, v: PNode, typ: PType, res: pointer) =
   of tyNil:
     discard
   of tyDistinct, tyGenericInst, tyAlias, tySink:
-    pack(conf, v, typ[0], res)
+    pack(conf, v, typ.skipModifier, res)
   else:
     globalError(conf, v.info, "cannot map value to FFI " & typeToString(v.typ))
 
@@ -387,7 +387,7 @@ proc unpack(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
       awi(nkPtrLit, cast[int](p))
     elif n != nil and n.len == 1:
       internalAssert(conf, n.kind == nkRefTy)
-      n[0] = unpack(conf, p, typ.lastSon, n[0])
+      n[0] = unpack(conf, p, typ.elementType, n[0])
       result = n
     else:
       result = nil
@@ -405,7 +405,7 @@ proc unpack(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
   of tyNil:
     setNil()
   of tyDistinct, tyGenericInst, tyAlias, tySink:
-    result = unpack(conf, x, typ.lastSon, n)
+    result = unpack(conf, x, typ.skipModifier, n)
   else:
     # XXX what to do with 'array' here?
     result = nil
@@ -444,7 +444,7 @@ proc callForeignFunction*(conf: ConfigRef, call: PNode): PNode =
 
   let typ = call[0].typ
   if prep_cif(cif, mapCallConv(conf, typ.callConv, call.info), cuint(call.len-1),
-              mapType(conf, typ[0]), sig) != OK:
+              mapType(conf, typ.returnType), sig) != OK:
     globalError(conf, call.info, "error in FFI call")
 
   var args: ArgList = default(ArgList)
@@ -453,15 +453,15 @@ proc callForeignFunction*(conf: ConfigRef, call: PNode): PNode =
     var t = call[i].typ
     args[i-1] = alloc0(packSize(conf, call[i], t))
     pack(conf, call[i], t, args[i-1])
-  let retVal = if isEmptyType(typ[0]): pointer(nil)
-               else: alloc(getSize(conf, typ[0]).int)
+  let retVal = if isEmptyType(typ.returnType): pointer(nil)
+               else: alloc(getSize(conf, typ.returnType).int)
 
   libffi.call(cif, fn, retVal, args)
 
   if retVal.isNil:
     result = newNode(nkEmpty)
   else:
-    result = unpack(conf, retVal, typ[0], nil)
+    result = unpack(conf, retVal, typ.returnType, nil)
     result.info = call.info
 
   if retVal != nil: dealloc retVal
