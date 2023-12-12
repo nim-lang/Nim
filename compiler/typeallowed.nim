@@ -120,7 +120,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     if tfGenericTypeParam in t.flags or taConcept in flags: #or taField notin flags:
       discard
     elif t.isResolvedUserTypeClass:
-      result = typeAllowedAux(marker, t.lastSon, kind, c, flags)
+      result = typeAllowedAux(marker, t.last, kind, c, flags)
     elif kind notin {skParam, skResult}:
       result = t
   of tyGenericBody, tyGenericParam, tyGenericInvocation,
@@ -133,9 +133,9 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyOrdinal:
     if kind != skParam: result = t
   of tyGenericInst, tyDistinct, tyAlias, tyInferred:
-    result = typeAllowedAux(marker, lastSon(t), kind, c, flags)
+    result = typeAllowedAux(marker, skipModifier(t), kind, c, flags)
   of tyRange:
-    if skipTypes(t[0], abstractInst-{tyTypeDesc}).kind notin
+    if skipTypes(t.elementType, abstractInst-{tyTypeDesc}).kind notin
       {tyChar, tyEnum, tyInt..tyFloat128, tyInt..tyUInt64, tyRange}: result = t
   of tyOpenArray:
     # you cannot nest openArrays/sinks/etc.
@@ -151,39 +151,39 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = typeAllowedAux(marker, t[0], kind, c, flags+{taIsOpenArray})
   of tySink:
     # you cannot nest openArrays/sinks/etc.
-    if kind != skParam or taIsOpenArray in flags or t[0].kind in {tySink, tyLent, tyVar}:
+    if kind != skParam or taIsOpenArray in flags or t.elementType.kind in {tySink, tyLent, tyVar}:
       result = t
     else:
-      result = typeAllowedAux(marker, t[0], kind, c, flags)
+      result = typeAllowedAux(marker, t.elementType, kind, c, flags)
   of tyUncheckedArray:
     if kind != skParam and taHeap notin flags:
       result = t
     else:
-      result = typeAllowedAux(marker, lastSon(t), kind, c, flags-{taHeap})
+      result = typeAllowedAux(marker, elementType(t), kind, c, flags-{taHeap})
   of tySequence:
-    if t[0].kind != tyEmpty:
-      result = typeAllowedAux(marker, t[0], kind, c, flags+{taHeap})
+    if t.elementType.kind != tyEmpty:
+      result = typeAllowedAux(marker, t.elementType, kind, c, flags+{taHeap})
     elif kind in {skVar, skLet}:
       result = t[0]
   of tyArray:
-    if t[1].kind == tyTypeDesc:
-      result = t[1]
-    elif t[1].kind != tyEmpty:
-      result = typeAllowedAux(marker, t[1], kind, c, flags)
+    if t.elementType.kind == tyTypeDesc:
+      result = t.elementType
+    elif t.elementType.kind != tyEmpty:
+      result = typeAllowedAux(marker, t.elementType, kind, c, flags)
     elif kind in {skVar, skLet}:
-      result = t[1]
+      result = t.elementType
   of tyRef:
     if kind == skConst and taIsDefaultField notin flags: result = t
-    else: result = typeAllowedAux(marker, t.lastSon, kind, c, flags+{taHeap})
+    else: result = typeAllowedAux(marker, t.elementType, kind, c, flags+{taHeap})
   of tyPtr:
-    result = typeAllowedAux(marker, t.lastSon, kind, c, flags+{taHeap})
+    result = typeAllowedAux(marker, t.elementType, kind, c, flags+{taHeap})
   of tySet:
     for i in 0..<t.len:
       result = typeAllowedAux(marker, t[i], kind, c, flags)
       if result != nil: break
   of tyObject, tyTuple:
     if kind in {skProc, skFunc, skConst} and
-        t.kind == tyObject and t[0] != nil and taIsDefaultField notin flags:
+        t.kind == tyObject and t.baseClass != nil and taIsDefaultField notin flags:
       result = t
     else:
       let flags = flags+{taField}
@@ -200,7 +200,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = nil
   of tyOwned:
     if t.len == 1 and t[0].skipTypes(abstractInst).kind in {tyRef, tyPtr, tyProc}:
-      result = typeAllowedAux(marker, t.lastSon, kind, c, flags+{taHeap})
+      result = typeAllowedAux(marker, t.skipModifier, kind, c, flags+{taHeap})
     else:
       result = t
   of tyConcept:
@@ -247,10 +247,10 @@ proc classifyViewTypeAux(marker: var IntSet, t: PType): ViewTypeKind =
     result = immutableView
   of tyGenericInst, tyDistinct, tyAlias, tyInferred, tySink, tyOwned,
      tyUncheckedArray, tySequence, tyArray, tyRef, tyStatic:
-    result = classifyViewTypeAux(marker, lastSon(t))
+    result = classifyViewTypeAux(marker, skipModifier(t))
   of tyFromExpr:
     if t.len > 0:
-      result = classifyViewTypeAux(marker, lastSon(t))
+      result = classifyViewTypeAux(marker, skipModifier(t))
     else:
       result = noView
   of tyTuple:
@@ -262,8 +262,8 @@ proc classifyViewTypeAux(marker: var IntSet, t: PType): ViewTypeKind =
     result = noView
     if t.n != nil:
       result = classifyViewTypeNode(marker, t.n)
-    if t[0] != nil:
-      result.combine classifyViewTypeAux(marker, t[0])
+    if t.baseClass != nil:
+      result.combine classifyViewTypeAux(marker, t.baseClass)
   else:
     # it doesn't matter what these types contain, 'ptr openArray' is not a
     # view type!
@@ -281,7 +281,7 @@ proc directViewType*(t: PType): ViewTypeKind =
   of tyLent, tyOpenArray:
     result = immutableView
   of abstractInst-{tyTypeDesc}:
-    result = directViewType(t.lastSon)
+    result = directViewType(t.skipModifier)
   else:
     result = noView
 

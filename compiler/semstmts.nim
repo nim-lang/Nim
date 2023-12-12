@@ -42,7 +42,7 @@ proc implicitlyDiscardable(n: PNode): bool
 
 proc hasEmpty(typ: PType): bool =
   if typ.kind in {tySequence, tyArray, tySet}:
-    result = typ.lastSon.kind == tyEmpty
+    result = typ.elementType.kind == tyEmpty
   elif typ.kind == tyTuple:
     result = false
     for s in typ:
@@ -451,16 +451,16 @@ proc hasUnresolvedParams(n: PNode; flags: TExprFlags): bool =
 proc makeDeref(n: PNode): PNode =
   var t = n.typ
   if t.kind in tyUserTypeClasses and t.isResolvedUserTypeClass:
-    t = t.lastSon
+    t = t.last
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
   result = n
   if t.kind in {tyVar, tyLent}:
-    result = newNodeIT(nkHiddenDeref, n.info, t[0])
+    result = newNodeIT(nkHiddenDeref, n.info, t.elementType)
     result.add n
-    t = skipTypes(t[0], {tyGenericInst, tyAlias, tySink, tyOwned})
+    t = skipTypes(t.elementType, {tyGenericInst, tyAlias, tySink, tyOwned})
   while t.kind in {tyPtr, tyRef}:
     var a = result
-    let baseTyp = t.lastSon
+    let baseTyp = t.elementType
     result = newNodeIT(nkHiddenDeref, n.info, baseTyp)
     result.add a
     t = skipTypes(baseTyp, {tyGenericInst, tyAlias, tySink, tyOwned})
@@ -703,7 +703,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       else:
         typ = def.typ.skipTypes({tyStatic, tySink}).skipIntLit(c.idgen)
         if typ.kind in tyUserTypeClasses and typ.isResolvedUserTypeClass:
-          typ = typ.lastSon
+          typ = typ.last
         if hasEmpty(typ):
           localError(c.config, def.info, errCannotInferTypeOfTheLiteral % typ.kind.toHumanStr)
         elif typ.kind == tyProc and def.kind == nkSym and isGenericRoutine(def.sym.ast):
@@ -1043,7 +1043,7 @@ proc handleStmtMacro(c: PContext; n, selector: PNode; magicType: string;
     var symx = initOverloadIter(o, c, headSymbol)
     while symx != nil:
       if symx.kind in {skTemplate, skMacro}:
-        if symx.typ.len == 2 and symx.typ[1] == maType.typ:
+        if symx.typ.len == 2 and symx.typ.firstParamType == maType.typ:
           if match == nil:
             match = symx
           else:
@@ -1238,7 +1238,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
       typ = typ.skipTypes({tyAlias, tyGenericInst, tyOwned})
       if typ.kind != tyRef:
         localError(c.config, n.info, errExprCannotBeRaised)
-      if typ.len > 0 and not isException(typ.lastSon):
+      if typ.len > 0 and not isException(typ.elementType):
         localError(c.config, n.info, "raised object of type $1 does not inherit from Exception" % typeToString(typ))
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
@@ -1401,7 +1401,7 @@ proc checkCovariantParamsUsages(c: PContext; genericType: PType) =
       if t.base.kind == tyGenericParam: return true
       return traverseSubTypes(c, t.base)
     of tyDistinct, tyAlias, tySink, tyOwned:
-      return traverseSubTypes(c, t.lastSon)
+      return traverseSubTypes(c, t.skipModifier)
     of tyGenericInst:
       internalAssert c.config, false
     else:
@@ -1466,7 +1466,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
           # possibilities such as instantiating C++ generic types with
           # garbage collected Nim types.
           if sfImportc in s.flags:
-            var body = s.typ.lastSon
+            var body = s.typ.last
             if body.kind == tyObject:
               # erases all declared fields
               body.n.sons = @[]
@@ -1509,11 +1509,11 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
        aa[0].kind == nkObjectTy:
       # give anonymous object a dummy symbol:
       var st = s.typ
-      if st.kind == tyGenericBody: st = st.lastSon
+      if st.kind == tyGenericBody: st = st.typeBodyImpl
       internalAssert c.config, st.kind in {tyPtr, tyRef}
-      internalAssert c.config, st.lastSon.sym == nil
+      internalAssert c.config, st.last.sym == nil
       incl st.flags, tfRefsAnonObj
-      let objTy = st.lastSon
+      let objTy = st.last
       # add flags for `ref object` etc to underlying `object`
       incl(objTy.flags, oldFlags)
       # {.inheritable, final.} is already disallowed, but
@@ -1526,12 +1526,12 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       let symNode = newSymNode(obj)
       obj.ast = a.shallowCopy
       case a[0].kind
-        of nkSym: obj.ast[0] = symNode
-        of nkPragmaExpr:
-          obj.ast[0] = a[0].shallowCopy
-          obj.ast[0][0] = symNode
-          obj.ast[0][1] = a[0][1]
-        else: assert(false)
+      of nkSym: obj.ast[0] = symNode
+      of nkPragmaExpr:
+        obj.ast[0] = a[0].shallowCopy
+        obj.ast[0][0] = symNode
+        obj.ast[0][1] = a[0][1]
+      else: assert(false)
       obj.ast[1] = a[1]
       obj.ast[2] = a[2][0]
       if sfPure in s.flags:
@@ -1682,25 +1682,25 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
   # search for the correct alias:
   var (b, state) = searchForBorrowProc(c, c.currentScope.parent, s)
   case state
-    of bsMatch:
-      # store the alias:
-      n[bodyPos] = newSymNode(b)
-      # Carry over the original symbol magic, this is necessary in order to ensure
-      # the semantic pass is correct
-      s.magic = b.magic
-      if b.typ != nil and b.typ.len > 0:
-        s.typ.n[0] = b.typ.n[0]
-      s.typ.flags = b.typ.flags
-    of bsNoDistinct:
-      localError(c.config, n.info, "borrow proc without distinct type parameter is meaningless")
-    of bsReturnNotMatch:
-      localError(c.config, n.info, "borrow from proc return type mismatch: '$1'" % typeToString(b.typ[0]))
-    of bsGeneric:
-      localError(c.config, n.info, "borrow with generic parameter is not supported")
-    of bsNotSupported:
-      localError(c.config, n.info, "borrow from '$1' is not supported" % $b.name.s)
-    else:
-      localError(c.config, n.info, errNoSymbolToBorrowFromFound)
+  of bsMatch:
+    # store the alias:
+    n[bodyPos] = newSymNode(b)
+    # Carry over the original symbol magic, this is necessary in order to ensure
+    # the semantic pass is correct
+    s.magic = b.magic
+    if b.typ != nil and b.typ.len > 0:
+      s.typ.n[0] = b.typ.n[0]
+    s.typ.flags = b.typ.flags
+  of bsNoDistinct:
+    localError(c.config, n.info, "borrow proc without distinct type parameter is meaningless")
+  of bsReturnNotMatch:
+    localError(c.config, n.info, "borrow from proc return type mismatch: '$1'" % typeToString(b.typ.returnType))
+  of bsGeneric:
+    localError(c.config, n.info, "borrow with generic parameter is not supported")
+  of bsNotSupported:
+    localError(c.config, n.info, "borrow from '$1' is not supported" % $b.name.s)
+  else:
+    localError(c.config, n.info, errNoSymbolToBorrowFromFound)
 
 proc swapResult(n: PNode, sRes: PSym, dNode: PNode) =
   ## Swap nodes that are (skResult) symbols to d(estination)Node.
@@ -1813,8 +1813,8 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   pushOwner(c, s)
   addParams(c, params, skProc)
   pushProcCon(c, s)
-  addResult(c, n, n.typ[0], skProc)
-  s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], n.typ[0]))
+  addResult(c, n, n.typ.returnType, skProc)
+  s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], n.typ.returnType))
   trackProc(c, s, s.ast[bodyPos])
   popProcCon(c)
   popOwner(c)
@@ -1844,8 +1844,8 @@ proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
   if s.kind == skMacro:
     let resultType = sysTypeFromName(c.graph, n.info, "NimNode")
     addResult(c, n, resultType, s.kind)
-  elif s.typ[0] != nil and not isInlineIterator(s.typ):
-    addResult(c, n, s.typ[0], s.kind)
+  elif s.typ.returnType != nil and not isInlineIterator(s.typ):
+    addResult(c, n, s.typ.returnType, s.kind)
 
 proc canonType(c: PContext, t: PType): PType =
   if t.kind == tySequence:
@@ -1864,7 +1864,7 @@ proc prevDestructor(c: PContext; prevOp: PSym; obj: PType; info: TLineInfo) =
 proc whereToBindTypeHook(c: PContext; t: PType): PType =
   result = t
   while true:
-    if result.kind in {tyGenericBody, tyGenericInst}: result = result.lastSon
+    if result.kind in {tyGenericBody, tyGenericInst}: result = result.skipModifier
     elif result.kind == tyGenericInvocation: result = result[0]
     else: break
   if result.kind in {tyObject, tyDistinct, tySequence, tyString}:
@@ -1879,13 +1879,13 @@ proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
     var obj = t[1]
     while true:
       incl(obj.flags, tfHasAsgn)
-      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.lastSon
+      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.skipModifier
       elif obj.kind == tyGenericInvocation: obj = obj[0]
       else: break
 
     var res = t[0]
     while true:
-      if res.kind in {tyGenericBody, tyGenericInst}: res = res.lastSon
+      if res.kind in {tyGenericBody, tyGenericInst}: res = res.skipModifier
       elif res.kind == tyGenericInvocation: res = res[0]
       else: break
 
@@ -1925,7 +1925,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp; suppressV
     var obj = t[1].skipTypes({tyVar})
     while true:
       incl(obj.flags, tfHasAsgn)
-      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.lastSon
+      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.skipModifier
       elif obj.kind == tyGenericInvocation: obj = obj[0]
       else: break
     if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
@@ -1969,13 +1969,13 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
           newIdentNode(c.cache.getIdent("raises"),  s.info), newNodeI(nkBracket, s.info))
   of "deepcopy", "=deepcopy":
     if s.typ.len == 2 and
-        s.typ[1].skipTypes(abstractInst).kind in {tyRef, tyPtr} and
-        sameType(s.typ[1], s.typ[0]):
+        s.typ.firstParamType.skipTypes(abstractInst).kind in {tyRef, tyPtr} and
+        sameType(s.typ.firstParamType, s.typ.returnType):
       # Note: we store the deepCopy in the base of the pointer to mitigate
       # the problem that pointers are structural types:
-      var t = s.typ[1].skipTypes(abstractInst).lastSon.skipTypes(abstractInst)
+      var t = s.typ.firstParamType.skipTypes(abstractInst).elementType.skipTypes(abstractInst)
       while true:
-        if t.kind == tyGenericBody: t = t.lastSon
+        if t.kind == tyGenericBody: t = t.typeBodyImpl
         elif t.kind == tyGenericInvocation: t = t[0]
         else: break
       if t.kind in {tyObject, tyDistinct, tyEnum, tySequence, tyString}:
@@ -2008,12 +2008,12 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       var obj = t[1][0]
       while true:
         incl(obj.flags, tfHasAsgn)
-        if obj.kind == tyGenericBody: obj = obj.lastSon
+        if obj.kind == tyGenericBody: obj = obj.skipModifier
         elif obj.kind == tyGenericInvocation: obj = obj[0]
         else: break
       var objB = t[2]
       while true:
-        if objB.kind == tyGenericBody: objB = objB.lastSon
+        if objB.kind == tyGenericBody: objB = objB.skipModifier
         elif objB.kind in {tyGenericInvocation, tyGenericInst}:
           objB = objB[0]
         else: break
@@ -2087,15 +2087,15 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
           localError(c.config, n.info, pragmaName & " unsupported for generic routine")
       var typ: PType
       if isCtor:
-        typ = s.typ[0]
+        typ = s.typ.returnType
         if typ == nil or typ.kind != tyObject:
           localError(c.config, n.info, "constructor must return an object")
         if sfImportc in typ.sym.flags:
           localError(c.config, n.info, "constructor in an imported type needs importcpp pragma")
       else:
-        typ = s.typ[1]
+        typ = s.typ.firstParamType
       if typ.kind == tyPtr and not isCtor:
-        typ = typ[0]
+        typ = typ.elementType
       if typ.kind != tyObject:
         localError(c.config, n.info, pragmaName & " must be either ptr to object or object type.")
       if typ.owner.id == s.owner.id and c.module.id == s.owner.id:
@@ -2106,7 +2106,7 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
     else:
       localError(c.config, n.info, pragmaName & " procs are only supported in C++")
   else:
-    var typ = s.typ[0]
+    var typ = s.typ.returnType
     if typ != nil and typ.kind == tyObject and typ.itemId notin c.graph.initializersPerType:
       var initializerCall = newTree(nkCall, newSymNode(s))
       var isInitializer = n[paramsPos].len > 1
@@ -2360,8 +2360,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # absolutely no generics (empty) or a single generic return type are
         # allowed, everything else, including a nullary generic is an error.
         pushProcCon(c, s)
-        addResult(c, n, s.typ[0], skProc)
-        s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], s.typ[0]))
+        addResult(c, n, s.typ.returnType, skProc)
+        s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], s.typ.returnType))
         trackProc(c, s, s.ast[bodyPos])
         popProcCon(c)
       elif efOperand notin flags:
@@ -2377,7 +2377,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
           if s.kind == skMacro:
             sysTypeFromName(c.graph, n.info, "NimNode")
           elif not isInlineIterator(s.typ):
-            s.typ[0]
+            s.typ.returnType
           else:
             nil
         # semantic checking also needed with importc in case used in VM
@@ -2386,7 +2386,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # context as it may even be evaluated in 'system.compiles':
         trackProc(c, s, s.ast[bodyPos])
       else:
-        if (s.typ[0] != nil and s.kind != skIterator):
+        if (s.typ.returnType != nil and s.kind != skIterator):
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), c.idgen, s, n.info))
 
         openScope(c)
@@ -2401,7 +2401,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if hasProto: localError(c.config, n.info, errImplOfXexpected % proto.name.s)
     if {sfImportc, sfBorrow, sfError} * s.flags == {} and s.magic == mNone:
       # this is a forward declaration and we're building the prototype
-      if s.kind in {skProc, skFunc} and s.typ[0] != nil and s.typ[0].kind == tyAnything:
+      if s.kind in {skProc, skFunc} and s.typ.returnType != nil and s.typ.returnType.kind == tyAnything:
         localError(c.config, n[paramsPos][0].info, "return type 'auto' cannot be used in forward declarations")
 
       incl(s.flags, sfForward)
@@ -2483,9 +2483,9 @@ proc semMethod(c: PContext, n: PNode): PNode =
   # test case):
   let disp = getDispatcher(s)
   # auto return type?
-  if disp != nil and disp.typ[0] != nil and disp.typ[0].kind == tyUntyped:
-    let ret = s.typ[0]
-    disp.typ[0] = ret
+  if disp != nil and disp.typ.returnType != nil and disp.typ.returnType.kind == tyUntyped:
+    let ret = s.typ.returnType
+    disp.typ.setReturnType ret
     if disp.ast[resultPos].kind == nkSym:
       if isEmptyType(ret): disp.ast[resultPos] = c.graph.emptyNode
       else: disp.ast[resultPos].sym.typ = ret

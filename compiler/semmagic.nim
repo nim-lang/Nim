@@ -22,7 +22,7 @@ proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
     var t = typ.skipTypes({tyGenericInst, tyAlias, tySink})[0]
     while true:
       asgnExpr.sons.add defaultFieldsForTheUninitialized(c, t.n, false)
-      let base = t[0]
+      let base = t.baseClass
       if base == nil:
         break
       t = skipTypes(base, skipPtrs)
@@ -393,7 +393,7 @@ proc semUnown(c: PContext; n: PNode): PNode =
         for e in elems: result.rawAddSon(e)
       else:
         result = t
-    of tyOwned: result = t[0]
+    of tyOwned: result = t.elementType
     of tySequence, tyOpenArray, tyArray, tyVarargs, tyVar, tyLent,
        tyGenericInst, tyAlias:
       let b = unownedType(c, t[^1])
@@ -433,7 +433,7 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   result.info = info
   result.flags.incl sfFromGeneric
   result.owner = orig
-  let origParamType = orig.typ[1]
+  let origParamType = orig.typ.firstParamType
   let newParamType = makeVarType(result, origParamType.skipTypes(abstractPtrs), c.idgen)
   let oldParam = orig.typ.n[1].sym
   let newParam = newSym(skParam, oldParam.name, c.idgen, result, result.info)
@@ -497,7 +497,7 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
         localError(c.config, n.info, "finalizer must be a direct reference to a proc")
 
       # check if we converted this finalizer into a destructor already:
-      let t = whereToBindTypeHook(c, fin.typ[1].skipTypes(abstractInst+{tyRef}))
+      let t = whereToBindTypeHook(c, fin.typ.firstParamType.skipTypes(abstractInst+{tyRef}))
       if t != nil and getAttachedOp(c.graph, t, attachedDestructor) != nil and
           getAttachedOp(c.graph, t, attachedDestructor).owner == fin:
         discard "already turned this one into a finalizer"
@@ -506,13 +506,13 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
           fin.owner = fin.instantiatedFrom
         let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), c.idgen, fin.owner, fin.info)
         let selfSymNode = newSymNode(copySym(fin.ast[paramsPos][1][0].sym, c.idgen))
-        selfSymNode.typ = fin.typ[1]
+        selfSymNode.typ = fin.typ.firstParamType
         wrapperSym.flags.incl sfUsed
 
         let wrapper = c.semExpr(c, newProcNode(nkProcDef, fin.info, body = newTree(nkCall, newSymNode(fin), selfSymNode),
           params = nkFormalParams.newTree(c.graph.emptyNode,
                   newTree(nkIdentDefs, selfSymNode, newNodeIT(nkType,
-                  fin.ast[paramsPos][1][1].info, fin.typ[1]), c.graph.emptyNode)
+                  fin.ast[paramsPos][1][1].info, fin.typ.firstParamType), c.graph.emptyNode)
                   ),
           name = newSymNode(wrapperSym), pattern = fin.ast[patternPos],
           genericParams = fin.ast[genericParamsPos], pragmas = fin.ast[pragmasPos], exceptions = fin.ast[miscPos]), {})
@@ -618,8 +618,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     let op = getAttachedOp(c.graph, t, attachedDestructor)
     if op != nil:
       result[0] = newSymNode(op)
-
-      if op.typ != nil and op.typ.len == 2 and op.typ[1].kind != tyVar:
+      if op.typ != nil and op.typ.len == 2 and op.typ.firstParamType.kind != tyVar:
         if n[1].kind == nkSym and n[1].sym.kind == skParam and
             n[1].typ.kind == tyVar:
           result[1] = genDeref(n[1])

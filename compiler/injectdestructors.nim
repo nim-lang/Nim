@@ -221,7 +221,7 @@ proc makePtrType(c: var Con, baseType: PType): PType =
 
 proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
   var addrExp: PNode
-  if op.typ != nil and op.typ.len > 1 and op.typ[1].kind != tyVar:
+  if op.typ != nil and op.typ.len > 1 and op.typ.firstParamType.kind != tyVar:
     addrExp = dest
   else:
     addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
@@ -489,7 +489,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
 
 proc isDangerousSeq(t: PType): bool {.inline.} =
   let t = t.skipTypes(abstractInst)
-  result = t.kind == tySequence and tfHasOwned notin t[0].flags
+  result = t.kind == tySequence and tfHasOwned notin t.elementType.flags
 
 proc containsConstSeq(n: PNode): bool =
   if n.kind == nkBracket and n.len > 0 and n.typ != nil and isDangerousSeq(n.typ):

@@ -110,9 +110,9 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     if CoDistinct in flags:
       if t.sym != nil: c.hashSym(t.sym)
       if t.sym == nil or tfFromGeneric in t.flags:
-        c.hashType t.lastSon, flags, conf
+        c.hashType t.elementType, flags, conf
     elif CoType in flags or t.sym == nil:
-      c.hashType t.lastSon, flags, conf
+      c.hashType t.elementType, flags, conf
     else:
       c.hashSym(t.sym)
   of tyGenericInst:
@@ -124,13 +124,13 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
       for i in 0..<normalizedType.len - 1:
         c.hashType t[i], flags, conf
     else:
-      c.hashType t.lastSon, flags, conf
+      c.hashType t.skipModifier, flags, conf
   of tyAlias, tySink, tyUserTypeClasses, tyInferred:
-    c.hashType t.lastSon, flags, conf
+    c.hashType t.skipModifier, flags, conf
   of tyOwned:
     if CoConsiderOwned in flags:
       c &= char(t.kind)
-    c.hashType t.lastSon, flags, conf
+    c.hashType t.skipModifier, flags, conf
   of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
     # produced instead of ``NI``:
@@ -184,13 +184,17 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
           c &= ".empty"
     else:
       c &= t.id
-    if t.len > 0 and t[0] != nil:
-      hashType c, t[0], flags, conf
-  of tyRef, tyPtr, tyGenericBody, tyVar:
+    if t.len > 0 and t.baseClass != nil:
+      hashType c, t.baseClass, flags, conf
+  of tyRef, tyPtr, tyVar:
     c &= char(t.kind)
     if t.len > 0:
-      c.hashType t.lastSon, flags, conf
+      c.hashType t.elementType, flags, conf
     if tfVarIsPtr in t.flags: c &= ".varisptr"
+  of tyGenericBody:
+    c &= char(t.kind)
+    if t.len > 0:
+      c.hashType t.typeBodyImpl, flags, conf
   of tyFromExpr:
     c &= char(t.kind)
     c.hashTree(t.n, {}, conf)
@@ -210,11 +214,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     if CoIgnoreRange notin flags:
       c &= char(t.kind)
       c.hashTree(t.n, {}, conf)
-    c.hashType(t[0], flags, conf)
+    c.hashType(t.elementType, flags, conf)
   of tyStatic:
     c &= char(t.kind)
     c.hashTree(t.n, {}, conf)
-    c.hashType(t[0], flags, conf)
+    c.hashType(t.skipModifier, flags, conf)
   of tyProc:
     c &= char(t.kind)
     c &= (if tfIterator in t.flags: "iterator " else: "proc ")
@@ -226,7 +230,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
         c &= ':'
         c.hashType(param.typ, flags, conf)
         c &= ','
-      c.hashType(t[0], flags, conf)
+      c.hashType(t.returnType, flags, conf)
     else:
       for i in 0..<t.len: c.hashType(t[i], flags, conf)
     c &= char(t.callConv)
