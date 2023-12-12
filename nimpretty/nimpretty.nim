@@ -53,7 +53,7 @@ proc finalCheck(content: string; origAst: PNode): bool {.nimcall.} =
   let oldErrors = conf.errorCounter
   var parser: Parser
   parser.em.indWidth = 2
-  let fileIdx = fileInfoIdx(conf, AbsoluteFile "stdin.nim")
+  let fileIdx = fileInfoIdx(conf, AbsoluteFile "nimpretty_bug.nim")
 
   openParser(parser, fileIdx, llStreamOpen(content), newIdentCache(), conf)
   discard parseAll(parser)
