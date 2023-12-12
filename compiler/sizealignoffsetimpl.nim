@@ -403,7 +403,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.align = szIllegalRecursion
       typ.paddingAtEnd = szIllegalRecursion
   of tyInferred:
-    if typ.len > 1:
+    if typ.len > 0:
       computeSizeAlign(conf, typ.lastSon)
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align

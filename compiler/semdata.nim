@@ -446,10 +446,6 @@ proc newTypeWithSons*(c: PContext, kind: TTypeKind,
                       sons: seq[PType]): PType =
   result = newType(kind, c.idgen, getCurrOwner(c), sons = sons)
 
-proc newTypeWithSons*(c: PContext, kind: TTypeKind,
-                      parent: PType): PType =
-  result = newType(kind, c.idgen, getCurrOwner(c), parent = parent)
-
 proc makeStaticExpr*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStaticExpr, n.info)
   result.sons = @[n]

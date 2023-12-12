@@ -930,7 +930,7 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
     else: discard
 
   elif lhs.kind == nkSym and lhs.typ.kind == tyStatic and lhs.typ.n == nil:
-    var inferred = newTypeWithSons(c.c, tyStatic, lhs.typ)
+    var inferred = newTypeWithSons(c.c, tyStatic, @[lhs.typ[0]])
     inferred.n = newIntNode(nkIntLit, rhs)
     put(c, lhs.typ, inferred)
     if c.c.matchedConcept != nil:

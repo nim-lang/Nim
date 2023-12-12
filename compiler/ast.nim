@@ -1557,8 +1557,9 @@ proc newType*(kind: TTypeKind, idgen: IdGenerator; owner: PSym, sons: seq[PType]
       echo "KNID ", kind
       writeStackTrace()
 
-template newType*(kind: TTypeKind, id: IdGenerator; owner: PSym, parent: PType): PType =
-  newType(kind, id, owner, parent.sons)
+when false:
+  template newType*(kind: TTypeKind, id: IdGenerator; owner: PSym, parent: PType): PType =
+    newType(kind, id, owner, parent.sons)
 
 proc setSons*(dest: PType; sons: seq[PType]) {.inline.} = dest.sons = sons
 
