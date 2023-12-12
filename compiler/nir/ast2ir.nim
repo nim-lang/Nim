@@ -586,7 +586,7 @@ proc genIndex(c: var ProcCon; n: PNode; arr: PType; d: var Value) =
 
 proc rawGenNew(c: var ProcCon; d: Value; refType: PType; ninfo: TLineInfo; needsInit: bool) =
   assert refType.kind == tyRef
-  let baseType = refType.lastSon
+  let baseType = refType.elementType
 
   let info = toLineInfo(c, ninfo)
   let codegenProc = magicsys.getCompilerProc(c.m.graph,
@@ -611,7 +611,7 @@ proc genNew(c: var ProcCon; n: PNode; needsInit: bool) =
 proc genNewSeqOfCap(c: var ProcCon; n: PNode; d: var Value) =
   let info = toLineInfo(c, n.info)
   let seqtype = skipTypes(n.typ, abstractVarRange)
-  let baseType = seqtype.lastSon
+  let baseType = seqtype.elementType
   var a = c.genx(n[1])
   if isEmpty(d): d = getTemp(c, n)
   # $1.len = 0
@@ -639,7 +639,7 @@ proc genNewSeqOfCap(c: var ProcCon; n: PNode; d: var Value) =
   freeTemp c, a
 
 proc genNewSeqPayload(c: var ProcCon; info: PackedLineInfo; d, b: Value; seqtype: PType) =
-  let baseType = seqtype.lastSon
+  let baseType = seqtype.elementType
   # $1.p = ($4*) #newSeqPayload($2, sizeof($3), NIM_ALIGNOF($3))
   let payloadPtr = seqPayloadPtrType(c.m.types, c.m.nirm.types, seqtype)[0]
 
@@ -1597,7 +1597,7 @@ proc genDestroySeq(c: var ProcCon; n: PNode; t: PType) =
   let strLitFlag = 1 shl (c.m.graph.config.target.intSize * 8 - 2) # see also NIM_STRLIT_FLAG
 
   let x = c.genx(n[1])
-  let baseType = t.lastSon
+  let baseType = t.elementType
 
   let seqType = typeToIr(c.m, t)
   let p = fieldAt(x, 0, seqType)
@@ -1655,7 +1655,7 @@ proc genIndexCheck(c: var ProcCon; n: PNode; a: Value; kind: IndexFor; arr: PTyp
 
 proc addSliceFields(c: var ProcCon; target: var Tree; info: PackedLineInfo;
                     x: Value; n: PNode; arrType: PType) =
-  let elemType = arrayPtrTypeOf(c.m.nirm.types, typeToIr(c.m, arrType.lastSon))
+  let elemType = arrayPtrTypeOf(c.m.nirm.types, typeToIr(c.m, arrType.elementType))
   case arrType.kind
   of tyString, tySequence:
     let checkKind = if arrType.kind == tyString: ForStr else: ForSeq
@@ -1970,7 +1970,7 @@ proc genDeref(c: var ProcCon; n: PNode; d: var Value; flags: GenFlags) =
 
 proc addAddrOfFirstElem(c: var ProcCon; target: var Tree; info: PackedLineInfo; tmp: Value; typ: PType) =
   let arrType = typ.skipTypes(abstractVar)
-  let elemType = arrayPtrTypeOf(c.m.nirm.types, typeToIr(c.m, arrType.lastSon))
+  let elemType = arrayPtrTypeOf(c.m.nirm.types, typeToIr(c.m, arrType.elementType))
   case arrType.kind
   of tyString:
     let t = typeToIr(c.m, typ)
@@ -2079,7 +2079,7 @@ proc genRefObjConstr(c: var ProcCon; n: PNode; d: var Value) =
   if isEmpty(d): d = getTemp(c, n)
   let info = toLineInfo(c, n.info)
   let refType = n.typ.skipTypes(abstractInstOwned)
-  let objType = refType.lastSon
+  let objType = refType.elementType
 
   rawGenNew(c, d, refType, n.info, needsInit = nfAllFieldsSet notin n.flags)
   var deref = default(Value)
@@ -2092,7 +2092,7 @@ proc genSeqConstr(c: var ProcCon; n: PNode; d: var Value) =
 
   let info = toLineInfo(c, n.info)
   let seqtype = skipTypes(n.typ, abstractVarRange)
-  let baseType = seqtype.lastSon
+  let baseType = seqtype.elementType
 
   var b = default(Value)
   b.addIntVal c.lit.numbers, info, c.m.nativeIntId, n.len

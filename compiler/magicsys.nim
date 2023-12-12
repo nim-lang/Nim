@@ -35,7 +35,7 @@ proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSy
   for r in systemModuleSyms(g, id):
     if r.magic == m:
       # prefer the tyInt variant:
-      if r.typ[0] != nil and r.typ[0].kind == tyInt: return r
+      if r.typ.returnType != nil and r.typ.returnType.kind == tyInt: return r
       result = r
   if result != nil: return result
   localError(g.config, info, "system module needs: " & name)

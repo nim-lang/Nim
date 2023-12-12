@@ -96,7 +96,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
     ignorableForArgType = {tyVar, tySink, tyLent, tyOwned, tyGenericInst, tyAlias, tyInferred}
   case f.kind
   of tyAlias:
-    result = matchType(c, f.lastSon, a, m)
+    result = matchType(c, f.skipModifier, a, m)
   of tyTypeDesc:
     if isSelf(f):
       #let oldLen = m.inferred.len
@@ -136,7 +136,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
             m.inferred.add((f, ak))
         elif m.magic == mArrGet and ak.kind in {tyArray, tyOpenArray, tySequence, tyVarargs, tyCstring, tyString}:
           when logBindings: echo "B adding ", f, " ", lastSon ak
-          m.inferred.add((f, lastSon ak))
+          m.inferred.add((f, last ak))
           result = true
         else:
           when logBindings: echo "C adding ", f, " ", ak
@@ -252,7 +252,7 @@ proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
       m.inferred.setLen oldLen
       return false
 
-  if not matchReturnType(c, n[0].sym.typ[0], candidate.typ[0], m):
+  if not matchReturnType(c, n[0].sym.typ.returnType, candidate.typ.returnType, m):
     m.inferred.setLen oldLen
     return false
 
