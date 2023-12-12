@@ -192,11 +192,11 @@ proc checkGeneric(a, b: TCandidate): int =
   let aa = a.callee
   let bb = b.callee
   var winner = 0
-  for i in 1..<min(aa.len, bb.len):
-    var ma = newCandidate(c, bb[i])
-    let tra = typeRel(ma, bb[i], aa[i], {trDontBind})
-    var mb = newCandidate(c, aa[i])
-    let trb = typeRel(mb, aa[i], bb[i], {trDontBind})
+  for x, y in argTypePairs(aa, bb):  # i in 1..<min(aa.len, bb.len):
+    var ma = newCandidate(c, y)
+    let tra = typeRel(ma, y, x, {trDontBind})
+    var mb = newCandidate(c, x)
+    let trb = typeRel(mb, x, y, {trDontBind})
     if tra == isGeneric and trb == isNone:
       if winner == -1: return 0
       winner = 1
@@ -217,33 +217,33 @@ proc sumGeneric(t: PType): int =
     of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyUncheckedArray,
         tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyGenericBody,
         tyLent, tyOwned:
-      t = t.lastSon
+      t = t.baseType
       inc result
     of tyOr:
       var maxBranch = 0
-      for branch in t:
+      for branch in t.argTypes:
         let branchSum = sumGeneric(branch)
         if branchSum > maxBranch: maxBranch = branchSum
       inc result, maxBranch
       break
     of tyVar:
-      t = t[0]
+      t = t.baseType
       inc result
       inc isvar
     of tyTypeDesc:
-      t = t.lastSon
+      t = t.baseType
       if t.kind == tyEmpty: break
       inc result
     of tyGenericInvocation, tyTuple, tyProc, tyAnd:
       result += ord(t.kind in {tyGenericInvocation, tyAnd})
-      for i in 0..<t.len:
-        if t[i] != nil:
-          result += sumGeneric(t[i])
+      for x in t.argTypes:
+        if x != nil:
+          result += sumGeneric(x)
       break
     of tyStatic:
-      return sumGeneric(t[0]) + 1
+      return sumGeneric(t.baseType) + 1
     of tyGenericParam, tyUntyped, tyTyped: break
-    of tyAlias, tySink: t = t.lastSon
+    of tyAlias, tySink: t = t.baseType
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
         tyUInt..tyUInt64, tyCompositeTypeClass:
@@ -256,9 +256,9 @@ proc sumGeneric(t: PType): int =
 proc complexDisambiguation(a, b: PType): int =
   # 'a' matches better if *every* argument matches better or equal than 'b'.
   var winner = 0
-  for i in 1..<min(a.len, b.len):
-    let x = a[i].sumGeneric
-    let y = b[i].sumGeneric
+  for aa, bb in argTypePairs(a, b):
+    let x = aa.sumGeneric
+    let y = bb.sumGeneric
     if x != y:
       if winner == 0:
         if x > y: winner = 1
@@ -355,7 +355,7 @@ proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
     if c.isNoCall: result = t
     else: result = nil
   of tySequence, tySet:
-    if t[0].kind == tyEmpty: result = nil
+    if t.baseType.kind == tyEmpty: result = nil
     else: result = t
   of tyGenericParam, tyAnything, tyConcept:
     result = t
@@ -371,8 +371,8 @@ proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   of tyOwned:
     # bug #11257: the comparison system.`==`[T: proc](x, y: T) works
     # better without the 'owned' type:
-    if f != nil and f.len > 0 and f[0].skipTypes({tyBuiltInTypeClass, tyOr}).kind == tyProc:
-      result = t.lastSon
+    if f != nil and f.baseType != nil and f.baseType.skipTypes({tyBuiltInTypeClass, tyOr}).kind == tyProc:
+      result = t.baseType
     else:
       result = t
   else:
@@ -408,8 +408,8 @@ proc handleRange(c: PContext, f, a: PType, min, max: TTypeKind): TTypeRelation =
       result = isConvertible
     elif a.kind == tyRange and
       # Make sure the conversion happens between types w/ same signedness
-      (f.kind in {tyInt..tyInt64} and a[0].kind in {tyInt..tyInt64} or
-       f.kind in {tyUInt8..tyUInt32} and a[0].kind in {tyUInt8..tyUInt32}) and
+      (f.kind in {tyInt..tyInt64} and a.baseType.kind in {tyInt..tyInt64} or
+       f.kind in {tyUInt8..tyUInt32} and a.baseType.kind in {tyUInt8..tyUInt32}) and
       a.n[0].intVal >= firstOrd(nil, f) and a.n[1].intVal <= lastOrd(nil, f):
       # passing 'nil' to firstOrd/lastOrd here as type checking rules should
       # not depend on the target integer size configurations!
@@ -463,37 +463,37 @@ proc getObjectTypeOrNil(f: PType): PType =
   ]#
   if f == nil: return nil
   case f.kind:
-  of tyGenericInvocation, tyCompositeTypeClass, tyAlias:
-    if f.len <= 0 or f[0] == nil:
+  of tyGenericInvocation:
+    if f.argTypesLen <= 0 or f.headType == nil:
       result = nil
     else:
-      result = getObjectTypeOrNil(f[0])
-  of tyGenericBody, tyGenericInst:
-    result = getObjectTypeOrNil(f.lastSon)
-  of tyUserTypeClass:
-    if f.isResolvedUserTypeClass:
-      result = f.base  # ?? idk if this is right
+      result = getObjectTypeOrNil(f.headType)
+  of tyCompositeTypeClass, tyAlias, tyGenericBody, tyGenericInst:
+    if f.baseType == nil:
+      result = nil
     else:
-      result = f.lastSon
+      result = getObjectTypeOrNil(f.baseType)
+  of tyUserTypeClass:
+    result = f.baseType
   of tyStatic, tyOwned, tyVar, tyLent, tySink:
-    result = getObjectTypeOrNil(f.base)
+    result = getObjectTypeOrNil(f.baseType)
   of tyInferred:
     # This is not true "After a candidate type is selected"
-    result = getObjectTypeOrNil(f.base)
+    result = getObjectTypeOrNil(f.baseType)
   of tyTyped, tyUntyped, tyFromExpr:
     result = nil
   of tyRange:
-    result = f.lastSon
+    result = f.baseType
   else:
     result = f
 
 proc genericParamPut(c: var TCandidate; last, fGenericOrigin: PType) =
   if fGenericOrigin != nil and last.kind == tyGenericInst and
-     last.len-1 == fGenericOrigin.len:
-    for i in 1..<fGenericOrigin.len:
-      let x = PType(idTableGet(c.bindings, fGenericOrigin[i]))
+     last.argTypesLen == fGenericOrigin.argTypesLen:
+    for i in 1..<fGenericOrigin.argTypesLen:
+      let x = PType(idTableGet(c.bindings, fGenericOrigin.argTypeAt(i)))
       if x == nil:
-        put(c, fGenericOrigin[i], last[i])
+        put(c, fGenericOrigin.argTypeAt(i), last.argTypeAt(i-1))
 
 proc isObjectSubtype(c: var TCandidate; a, f, fGenericOrigin: PType): int =
   var t = a
@@ -503,7 +503,7 @@ proc isObjectSubtype(c: var TCandidate; a, f, fGenericOrigin: PType): int =
   while t != nil and not sameObjectTypes(f, t):
     if t.kind != tyObject:  # avoid entering generic params etc
       return -1
-    t = t[0]
+    t = t.baseType
     if t == nil: break
     last = t
     t = skipTypes(t, skipPtrs)
@@ -524,17 +524,19 @@ proc skipToObject(t: PType; skipped: var SkippedPtr): PType =
   while r != nil:
     case r.kind
     of tyGenericInvocation:
-      r = r[0]
+      r = r.headType
     of tyRef:
       inc ptrs
       skipped = skippedRef
-      r = r.lastSon
+      r = r.baseType
     of tyPtr:
       inc ptrs
       skipped = skippedPtr
-      r = r.lastSon
-    of tyGenericBody, tyGenericInst, tyAlias, tySink, tyOwned:
-      r = r.lastSon
+      r = r.baseType
+    of tyGenericBody:
+      r = r.bodyType
+    of tyGenericInst, tyAlias, tySink, tyOwned:
+      r = r.baseType
     else:
       break
   if r.kind == tyObject and ptrs <= 1: result = r
@@ -552,7 +554,7 @@ proc isGenericSubtype(c: var TCandidate; a, f: PType, d: var int, fGenericOrigin
   # XXX sameObjectType can return false here. Need to investigate
   # why that is but sameObjectType does way too much work here anyway.
   while t != nil and r.sym != t.sym and askip == fskip:
-    t = t[0]
+    t = t.baseType
     if t == nil: break
     last = t
     t = t.skipToObject(askip)
@@ -564,7 +566,7 @@ proc isGenericSubtype(c: var TCandidate; a, f: PType, d: var int, fGenericOrigin
   else:
     result = false
 
-proc minRel(a, b: TTypeRelation): TTypeRelation =
+proc minRel(a, b: TTypeRelation): TTypeRelation {.inline.} =
   if a <= b: result = a
   else: result = b
 
@@ -572,12 +574,12 @@ proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
   result = isNone
   if sameType(f, a):
     result = isEqual
-  elif a.len == f.len:
+  elif a.argTypesLen == f.argTypesLen:
     result = isEqual
     let firstField = if f.kind == tyTuple: 0
                      else: 1
-    for i in firstField..<f.len:
-      var m = typeRel(c, f[i], a[i])
+    for ff, aa in argTypePairs(f, a):
+      var m = typeRel(c, ff, aa)
       if m < isSubtype: return isNone
       result = minRel(result, m)
     if f.n != nil and a.n != nil:
@@ -660,7 +662,7 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   case a.kind
   of tyProc:
-    if f.len != a.len: return
+    if f.argTypesLen != a.argTypesLen: return
     result = isEqual      # start with maximum; also correct for no
                           # params at all
 
@@ -673,15 +675,15 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 
     # Note: We have to do unification for the parameters before the
     # return type!
-    for i in 1..<f.len:
-      checkParam(f[i], a[i])
+    for ff, aa in argTypePairs(f, a):
+      checkParam(ff, aa)
 
-    if f[0] != nil:
-      if a[0] != nil:
-        checkParam(f[0], a[0])
+    if f.returnType != nil:
+      if a.returnType != nil:
+        checkParam(f.returnType, a.returnType)
       else:
         return isNone
-    elif a[0] != nil:
+    elif a.returnType != nil:
       return isNone
 
     result = getProcConvMismatch(c.c.config, f, a, result)[1]
@@ -720,7 +722,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
     body = typeClass.n[3]
     matchedConceptContext: TMatchedConcept
     prevMatchedConcept = c.matchedConcept
-    prevCandidateType = typeClass[0][0]
+    prevCandidateType = typeClass.headType.headType # XXX to confirm
 
   if prevMatchedConcept != nil:
     matchedConceptContext.prev = prevMatchedConcept
@@ -731,20 +733,21 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
 
   openScope(c)
   matchedConceptContext.candidateType = a
-  typeClass[0][0] = a
+  typeClass.argTypeAt(0).setArgTypeAt(0, a) # [0][0] = a
   c.matchedConcept = addr(matchedConceptContext)
   defer:
     c.matchedConcept = prevMatchedConcept
-    typeClass[0][0] = prevCandidateType
+    #typeClass[0][0] =
+    typeClass.argTypeAt(0).setArgTypeAt(0, prevCandidateType)
     closeScope(c)
 
   var typeParams: seq[(PSym, PType)] = @[]
 
   if ff.kind == tyUserTypeClassInst:
-    for i in 1..<(ff.len - 1):
+    for i in 1..<(ff.argTypesLen - 1):
       var
-        typeParamName = ff.base[i-1].sym.name
-        typ = ff[i]
+        typeParamName = ff.baseType.argTypeAt(i-1).sym.name
+        typ = ff.argTypeAt(i)
         param: PSym = nil
         alreadyBound = PType(idTableGet(m.bindings, typ))
 
@@ -776,7 +779,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         else:
           param = paramSym skType
           param.typ = if typ.isMetaType:
-                        c.newTypeWithSons(tyInferred, @[typ])
+                        c.newTypeWithSons(tyInferred, typ)
                       else:
                         makeTypeDesc(c, typ)
 
@@ -842,7 +845,7 @@ proc shouldSkipDistinct(m: TCandidate; rules: PNode, callIdent: PIdent): bool =
 proc maybeSkipDistinct(m: TCandidate; t: PType, callee: PSym): PType =
   if t != nil and t.kind == tyDistinct and t.n != nil and
      shouldSkipDistinct(m, t.n, callee.name):
-    result = t.base
+    result = t.baseType
   else:
     result = t
 
@@ -973,7 +976,7 @@ proc inferStaticsInRange(c: var TCandidate,
     doInferStatic(lowerBound, getInt(upperBound) + 1 - lengthOrd(c.c.config, concrete))
 
 template subtypeCheck() =
-  if result <= isSubrange and f.lastSon.skipTypes(abstractInst).kind in {
+  if result <= isSubrange and f.baseType.skipTypes(abstractInst).kind in {
       tyRef, tyPtr, tyVar, tyLent, tyOwned}:
     result = isNone
 
@@ -987,13 +990,13 @@ proc isCovariantPtr(c: var TCandidate, f, a: PType): bool =
 
   case f.kind
   of tyRef, tyPtr, tyOwned:
-    return baseTypesCheck(f.base, a.base)
+    return baseTypesCheck(f.baseType, a.baseType)
   of tyGenericInst:
-    let body = f.base
-    return body == a.base and
-           a.len == 3 and
-           tfWeakCovariant notin body[0].flags and
-           baseTypesCheck(f[1], a[1])
+    let body = f.headType
+    return body == a.baseType and
+           a.argTypesLen == 3 and
+           tfWeakCovariant notin body.headType.flags and
+           baseTypesCheck(f.argTypeAt(1), a.argTypeAt(1))
   else:
     return false
 
@@ -1020,7 +1023,7 @@ when false:
 template skipOwned(a) =
   if a.kind == tyOwned: a = a.skipTypes({tyOwned, tyGenericInst})
 
-proc typeRel(c: var TCandidate, f, aOrig: PType,
+proc typeRel(c: var TCandidate; f, aOrig: PType;
              flags: TTypeRelFlags = {}): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
   #
@@ -1079,7 +1082,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         let computedType = tryResolvingStaticExpr(c, f.n).typ
         case computedType.kind
         of tyTypeDesc:
-          candidate = computedType.base
+          candidate = computedType.baseType
         of tyStatic:
           candidate = computedType
         else:
@@ -1088,10 +1091,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       else:
         discard
 
-      result = typeRel(c, aOrig.base, candidate, flags)
+      result = typeRel(c, aOrig.baseType, candidate, flags)
       if result != isNone:
         c.inferredTypes.add aOrig
-        aOrig.add candidate
+        aOrig.addArg candidate
         result = isEqual
       return
 
@@ -1105,16 +1108,16 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   # situation when nkDotExpr are rotated to nkDotCalls
 
   if aOrig.kind in {tyAlias, tySink}:
-    return typeRel(c, f, lastSon(aOrig), flags)
+    return typeRel(c, f, aOrig.baseType, flags)
 
   if a.kind == tyGenericInst and
       skipTypes(f, {tyStatic, tyVar, tyLent, tySink}).kind notin {
         tyGenericBody, tyGenericInvocation,
         tyGenericInst, tyGenericParam} + tyTypeClasses:
-    return typeRel(c, f, lastSon(a), flags)
+    return typeRel(c, f, a.baseType, flags)
 
   if a.isResolvedUserTypeClass:
-    return typeRel(c, f, a.lastSon, flags)
+    return typeRel(c, f, a.baseType, flags)
 
   template bindingRet(res) =
     if doBind:
@@ -1135,7 +1138,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     # both int and string must match against number
     # but ensure that '[T: A|A]' matches as good as '[T: A]' (bug #2219):
     result = isGeneric
-    for branch in a:
+    for branch in a.argTypes:
       let x = typeRel(c, f, branch, flags + {trDontBind})
       if x == isNone: return isNone
       if x < result: result = x
@@ -1146,7 +1149,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     c.typedescMatched = true
     # seq[Sortable and Iterable] vs seq[Sortable]
     # only one match is enough
-    for branch in a:
+    for branch in a.argTypes:
       let x = typeRel(c, f, branch, flags + {trDontBind})
       if x != isNone:
         return if x >= isGeneric: isGeneric else: x
@@ -1161,7 +1164,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # seq[float] matches the first, but not the second
       # we must turn the problem around:
       # is number a subset of int?
-      return typeRel(c, a.lastSon, f.lastSon, flags)
+      return typeRel(c, a.baseType, f.baseType, flags)
 
     else:
       # negative type classes are essentially infinite,
@@ -1198,14 +1201,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     elif skipTypes(a, {tyRange}).kind == f.kind: result = isSubtype
   of tyRange:
     if a.kind == f.kind:
-      if f.base.kind == tyNone: return isGeneric
-      result = typeRel(c, base(f), base(a), flags)
+      if f.baseType.kind == tyNone: return isGeneric
+      result = typeRel(c, baseType(f), baseType(a), flags)
       # bugfix: accept integer conversions here
       #if result < isGeneric: result = isNone
       if result notin {isNone, isGeneric}:
         # resolve any late-bound static expressions
         # that may appear in the range:
-        let expectedType = base(f)
+        let expectedType = baseType(f)
         for i in 0..1:
           if f.n[i].kind == nkStaticExpr:
             let r = tryResolvingStaticExpr(c, f.n[i], expectedType = expectedType)
@@ -1235,33 +1238,33 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyVar:
     let flags = if isOutParam(f): flags + {trIsOutParam} else: flags
     if aOrig.kind == f.kind and (isOutParam(aOrig) == isOutParam(f)):
-      result = typeRel(c, f.base, aOrig.base, flags)
+      result = typeRel(c, f.baseType, aOrig.baseType, flags)
     else:
-      result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
+      result = typeRel(c, f.baseType, aOrig, flags + {trNoCovariance})
     subtypeCheck()
   of tyLent:
     if aOrig.kind == f.kind:
-      result = typeRel(c, f.base, aOrig.base, flags)
+      result = typeRel(c, f.baseType, aOrig.baseType, flags)
     else:
-      result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
+      result = typeRel(c, f.baseType, aOrig, flags + {trNoCovariance})
     subtypeCheck()
   of tyArray:
     case a.kind
     of tyArray:
-      var fRange = f[0]
-      var aRange = a[0]
+      var fRange = f.indexType
+      var aRange = a.indexType
       if fRange.kind in {tyGenericParam, tyAnything}:
         var prev = PType(idTableGet(c.bindings, fRange))
         if prev == nil:
-          put(c, fRange, a[0])
+          put(c, fRange, a.indexType)
           fRange = a
         else:
           fRange = prev
-      let ff = f[1].skipTypes({tyTypeDesc})
+      let ff = f.baseType.skipTypes({tyTypeDesc})
       # This typeDesc rule is wrong, see bug #7331
-      let aa = a[1] #.skipTypes({tyTypeDesc})
+      let aa = a.baseType #.skipTypes({tyTypeDesc})
 
-      if f[0].kind != tyGenericParam and aa.kind == tyEmpty:
+      if f.indexType.kind != tyGenericParam and aa.kind == tyEmpty:
         result = isGeneric
       else:
         result = typeRel(c, ff, aa, flags)
@@ -1287,7 +1290,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     else: discard
   of tyUncheckedArray:
     if a.kind == tyUncheckedArray:
-      result = typeRel(c, base(f), base(a), flags)
+      result = typeRel(c, baseType(f), baseType(a), flags)
       if result < isGeneric: result = isNone
     else: discard
   of tyOpenArray, tyVarargs:
@@ -1295,11 +1298,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     # handle varargs[typed]:
     if f.kind == tyVarargs:
       if tfVarargs in a.flags:
-        return typeRel(c, f.base, a.lastSon, flags)
-      if f[0].kind == tyTyped: return
+        return typeRel(c, f.baseType, a.baseType, flags)
+      if f.baseType.kind == tyTyped: return
 
     template matchArrayOrSeq(aBase: PType) =
-      let ff = f.base
+      let ff = f.baseType
       let aa = aBase
       let baseRel = typeRel(c, ff, aa, flags)
       if baseRel >= isGeneric:
@@ -1312,19 +1315,19 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
     case a.kind
     of tyOpenArray, tyVarargs:
-      result = typeRel(c, base(f), base(a), flags)
+      result = typeRel(c, baseType(f), baseType(a), flags)
       if result < isGeneric: result = isNone
     of tyArray:
-      if (f[0].kind != tyGenericParam) and (a[1].kind == tyEmpty):
+      if (f.indexType.kind != tyGenericParam) and (a.baseType.kind == tyEmpty):
         return isSubtype
-      matchArrayOrSeq(a[1])
+      matchArrayOrSeq(a.baseType)
     of tySequence:
-      if (f[0].kind != tyGenericParam) and (a[0].kind == tyEmpty):
+      if (f.baseType.kind != tyGenericParam) and (a.baseType.kind == tyEmpty):
         return isConvertible
-      matchArrayOrSeq(a[0])
+      matchArrayOrSeq(a.baseType)
     of tyString:
       if f.kind == tyOpenArray:
-        if f[0].kind == tyChar:
+        if f.baseType.kind == tyChar:
           result = isConvertible
         elif f[0].kind == tyGenericParam and a.len > 0 and
             typeRel(c, base(f), base(a), flags) >= isGeneric:
@@ -1409,7 +1412,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if a.len < f.len: return isNone
       for i in 0..<f.len-1:
         if typeRel(c, f[i], a[i], flags) == isNone: return isNone
-      result = typeRel(c, f.lastSon, a.lastSon, flags + {trNoCovariance})
+      result = typeRel(c, f.baseType, a.baseType, flags + {trNoCovariance})
       subtypeCheck()
       if result <= isIntConv: result = isNone
       elif tfNotNil in f.flags and tfNotNil notin a.flags:
@@ -1424,7 +1427,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyOwned:
     case a.kind
     of tyOwned:
-      result = typeRel(c, lastSon(f), lastSon(a), flags)
+      result = typeRel(c, baseType(f), baseType(a), flags)
     of tyNil: result = f.allowsNil
     else: discard
   of tyPointer:
@@ -1481,12 +1484,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if a.kind == f.kind: result = isEqual
 
   of tyAlias, tySink:
-    result = typeRel(c, lastSon(f), a, flags)
+    result = typeRel(c, baseType(f), a, flags)
 
   of tyIterable:
     if a.kind == tyIterable:
       if f.len == 1:
-        result = typeRel(c, lastSon(f), lastSon(a), flags)
+        result = typeRel(c, baseType(f), baseType(a), flags)
       else:
         # f.len = 3, for some reason
         result = isGeneric
@@ -1534,13 +1537,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             return isNone
         if prev == nil: put(c, f, a)
       else:
-        let fKind = rootf.lastSon.kind
+        let fKind = rootf.baseType.kind
         if fKind in {tyAnd, tyOr}:
-          result = typeRel(c, lastSon(f), a, flags)
+          result = typeRel(c, baseType(f), a, flags)
           if result != isNone: put(c, f, a)
           return
 
-        var aAsObject = roota.lastSon
+        var aAsObject = roota.baseType
 
         if fKind in {tyRef, tyPtr}:
           if aAsObject.kind == tyObject:
@@ -1559,8 +1562,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
         result = isNone
     else:
-      assert lastSon(origF) != nil
-      result = typeRel(c, lastSon(origF), a, flags)
+      assert baseType(origF) != nil
+      result = typeRel(c, baseType(origF), a, flags)
       if result != isNone and a.kind != tyNil:
         put(c, f, a)
 
@@ -1568,19 +1571,19 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     considerPreviousT:
       if a == f or a.kind == tyGenericInst and a.skipGenericAlias[0] == f:
         bindingRet isGeneric
-      let ff = lastSon(f)
+      let ff = f.bodyType
       if ff != nil:
         result = typeRel(c, ff, a, flags)
 
   of tyGenericInvocation:
     var x = a.skipGenericAlias
-    if x.kind == tyGenericParam and x.len > 0:
-      x = x.lastSon
+    if x.kind == tyGenericParam and x.baseType != nil:
+      x = x.baseType
     let concpt = f[0].skipTypes({tyGenericBody})
     var preventHack = concpt.kind == tyConcept
     if x.kind == tyOwned and f[0].kind != tyOwned:
       preventHack = true
-      x = x.lastSon
+      x = x.baseType
     # XXX: This is very hacky. It should be moved back into liftTypeParam
     if x.kind in {tyGenericInst, tyArray} and
       c.calleeSym != nil and
@@ -1596,8 +1599,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           let tr = typeRel(c, f[i], x[i], flags)
           if tr <= isSubtype: return
         result = isGeneric
-    elif x.kind == tyGenericInst and f[0] == x[0] and
-          x.len - 1 == f.len:
+    elif x.kind == tyGenericInst and f.headType == x.headType and
+          x.argTypesLen == f.argTypesLen:
       for i in 1..<f.len:
         if x[i].kind == tyGenericParam:
           internalError(c.c.graph.config, "wrong instantiated type!")
@@ -1609,11 +1612,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       result = if concepts.conceptMatch(c.c, concpt, x, c.bindings, f): isGeneric
                else: isNone
     else:
-      let genericBody = f[0]
+      let genericBody = f.headType
       var askip = skippedNone
       var fskip = skippedNone
       let aobj = x.skipToObject(askip)
-      let fobj = genericBody.lastSon.skipToObject(fskip)
+      let fobj = genericBody.bodyType.skipToObject(fskip)
       result = typeRel(c, genericBody, x, flags)
       if result != isNone:
         # see tests/generics/tgeneric3.nim for an example that triggers this
@@ -1702,7 +1705,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyBuiltInTypeClass:
     considerPreviousT:
-      let target = f[0]
+      let target = f.baseType
       let targetKind = target.kind
       var effectiveArgType = a.getObjectTypeOrNil()
       if effectiveArgType == nil: return isNone
@@ -1723,7 +1726,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyUserTypeClassInst, tyUserTypeClass:
     if f.isResolvedUserTypeClass:
-      result = typeRel(c, f.lastSon, a, flags)
+      result = typeRel(c, f.baseType, a, flags)
     else:
       considerPreviousT:
         if aOrig == f: return isEqual
@@ -1751,7 +1754,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyCompositeTypeClass:
     considerPreviousT:
       let roota = a.skipGenericAlias
-      let rootf = f.lastSon.skipGenericAlias
+      let rootf = f.baseType.skipGenericAlias
       if a.kind == tyGenericInst and roota.base == rootf.base:
         for i in 1..<rootf.len-1:
           let ff = rootf[i]
@@ -1778,18 +1781,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         if tfWildcard in a.flags:
           result = isGeneric
         elif a.kind == tyTypeDesc:
-          if f.len == 0:
+          if f.baseType == nil:
             result = isGeneric
           else:
             internalAssert c.c.graph.config, a.len > 0
             c.typedescMatched = true
             var aa = a
-            while aa.kind in {tyTypeDesc, tyGenericParam} and aa.len > 0:
-              aa = lastSon(aa)
+            while aa.kind in {tyTypeDesc, tyGenericParam} and aa.baseType != nil:
+              aa = aa.baseType
             if aa.kind in {tyGenericParam} + tyTypeClasses:
               # If the constraint is a genericParam or typeClass this isGeneric
               return isGeneric
-            result = typeRel(c, f.base, aa, flags)
+            result = typeRel(c, f.baseType, aa, flags)
             if result > isGeneric: result = isGeneric
         elif c.isNoCall:
           if doBindGP:
@@ -1801,9 +1804,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           result = isNone
       else:
         # check if 'T' has a constraint as in 'proc p[T: Constraint](x: T)'
-        if f.len > 0 and f[0].kind != tyNone:
+        if f.baseType != nil and f.baseType.kind != tyNone:
           let oldInheritancePenalty = c.inheritancePenalty
-          result = typeRel(c, f[0], a, flags + {trDontBind,trBindGenericParam})
+          result = typeRel(c, f.baseType, a, flags + {trDontBind,trBindGenericParam})
           if doBindGP and result notin {isNone, isGeneric}:
             let concrete = concreteType(c, a, f)
             if concrete == nil: return isNone
@@ -1882,7 +1885,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         result = isNone
     elif prev.kind == tyStatic:
       if aOrig.kind == tyStatic:
-        result = typeRel(c, prev.lastSon, a, flags)
+        result = typeRel(c, prev.baseType, a, flags)
         if result != isNone and prev.n != nil:
           if not exprStructuralEquivalent(prev.n, aOrig.n):
             result = isNone
@@ -1920,18 +1923,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           result = isGeneric
         else:
           result = isNone
-      elif f.base.kind == tyNone:
+      elif f.baseType.kind == tyNone:
         result = isGeneric
       else:
-        result = typeRel(c, f.base, a.base, flags)
+        result = typeRel(c, f.baseType, a.baseType, flags)
 
       if result != isNone:
         put(c, f, a)
     else:
       if tfUnresolved in f.flags:
-        result = typeRel(c, prev.base, a, flags)
+        result = typeRel(c, prev.baseType, a, flags)
       elif a.kind == tyTypeDesc:
-        result = typeRel(c, prev.base, a.base, flags)
+        result = typeRel(c, prev.baseType, a.baseType, flags)
       else:
         result = isNone
 
@@ -1952,9 +1955,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       return
     case reevaluated.typ.kind
     of tyTypeDesc:
-      result = typeRel(c, a, reevaluated.typ.base, flags)
+      result = typeRel(c, a, reevaluated.typ.baseType, flags)
     of tyStatic:
-      result = typeRel(c, a, reevaluated.typ.base, flags)
+      result = typeRel(c, a, reevaluated.typ.baseType, flags)
       if result != isNone and reevaluated.typ.n != nil:
         if not exprStructuralEquivalent(aOrig.n, reevaluated.typ.n):
           result = isNone
@@ -2779,9 +2782,9 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
   var f = dc.typ[col]
 
   if op == attachedDeepCopy:
-    if f.kind in {tyRef, tyPtr}: f = f.lastSon
+    if f.kind in {tyRef, tyPtr}: f = f.baseType
   else:
-    if f.kind in {tyVar}: f = f.lastSon
+    if f.kind in {tyVar}: f = f.baseType
   if typeRel(m, f, t) == isNone:
     result = nil
     localError(c.config, info, "cannot instantiate: '" & dc.name.s & "'")
