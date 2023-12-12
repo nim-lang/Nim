@@ -441,7 +441,7 @@ proc transformSpawn(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier:
         if result.isNil:
           result = newNodeI(nkStmtList, n.info)
           result.add n
-        let t = b[1][0].typ[0]
+        let t = b[1][0].typ.returnType
         if spawnResult(t, true) == srByVar:
           result.add wrapProcForSpawn(g, idgen, owner, m, b.typ, barrier, it[0])
           it[^1] = newNodeI(nkEmpty, it.info)
@@ -450,7 +450,7 @@ proc transformSpawn(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier:
     if result.isNil: result = n
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     let b = n[1]
-    if getMagic(b) == mSpawn and (let t = b[1][0].typ[0];
+    if getMagic(b) == mSpawn and (let t = b[1][0].typ.returnType;
         spawnResult(t, true) == srByVar):
       let m = transformSlices(g, idgen, b)
       return wrapProcForSpawn(g, idgen, owner, m, b.typ, barrier, n[0])

@@ -46,7 +46,7 @@ proc dispatch(x: Base, params: ...) =
     vTableCall.add newSymNode(param)
 
   var ret: PNode
-  if base.typ[0] != nil:
+  if base.typ.returnType != nil:
     var a = newNodeI(nkFastAsgn, base.info)
     a.add newSymNode(base.ast[resultPos].sym)
     a.add vTableCall
