@@ -14,6 +14,8 @@ import
   wordrecg, ropes, options, extccomp, magicsys, trees,
   types, lookups, lineinfos, pathutils, linter, modulepaths
 
+from sigmatch import trySuggestPragmas
+
 import std/[os, math, strutils]
 
 when defined(nimPreviewSlimSystem):
@@ -119,6 +121,7 @@ const
 
 proc invalidPragma*(c: PContext; n: PNode) =
   localError(c.config, n.info, "invalid pragma: " & renderTree(n, {renderNoComments}))
+
 proc illegalCustomPragma*(c: PContext, n: PNode, s: PSym) =
   var msg = "cannot attach a custom pragma to '" & s.name.s & "'"
   if s != nil:
@@ -596,6 +599,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
   case n[1].kind
   of nkStrLit, nkRStrLit, nkTripleStrLit:
     result = newNodeI(if n.kind == nkAsmStmt: nkAsmStmt else: nkArgList, n.info)
+    if n.kind == nkAsmStmt: result.add n[0] # save asm pragmas for NIR
     var str = n[1].strVal
     if str == "":
       localError(con.config, n.info, "empty 'asm' statement")
@@ -627,6 +631,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
   else:
     illFormedAstLocal(n, con.config)
     result = newNodeI(nkAsmStmt, n.info)
+    if n.kind == nkAsmStmt: result.add n[0]
 
 proc pragmaEmit(c: PContext, n: PNode) =
   if n.kind notin nkPragmaCallKinds or n.len != 2:
@@ -789,6 +794,8 @@ proc semCustomPragma(c: PContext, n: PNode, sym: PSym): PNode =
   else:
     invalidPragma(c, n)
     return n
+
+  trySuggestPragmas(c, callNode[0])
 
   let r = c.semOverloadedCall(c, callNode, n, {skTemplate}, {efNoUndeclared})
   if r.isNil or sfCustomPragma notin r[0].sym.flags:
