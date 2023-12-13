@@ -2356,6 +2356,17 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
           result = userConvMatch(c, m, base(f), a, arg)
           if result != nil: m.baseTypeMatch = true
 
+proc staticAwareTypeRel(m: var TCandidate, f: PType, arg: var PNode): TTypeRelation =
+  if f.kind == tyStatic and f.base.kind == tyProc:
+    # The ast of the type does not point to the symbol.
+    # Without this we will never resolve a `static proc` with overloads
+    let copiedNode = copyNode(arg)
+    copiedNode.typ = exactReplica(copiedNode.typ)
+    copiedNode.typ.n = arg
+    arg = copiedNode
+  typeRel(m, f, arg.typ)
+
+
 proc paramTypesMatch*(m: var TCandidate, f, a: PType,
                       arg, argOrig: PNode): PNode =
   if arg == nil or arg.kind notin nkSymChoices:
@@ -2384,7 +2395,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
         # XXX this is still all wrong: (T, T) should be 2 generic matches
         # and  (int, int) 2 exact matches, etc. Essentially you cannot call
         # typeRel here and expect things to work!
-        let r = typeRel(z, f, arg[i].typ)
+        let r = staticAwareTypeRel(z, f, arg[i])
         incMatches(z, r, 2)
         if r != isNone:
           z.state = csMatch
