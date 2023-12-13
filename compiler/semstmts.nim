@@ -1439,7 +1439,8 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # we fill it out later. For magic generics like 'seq', it won't be filled
       # so we use tyNone instead of nil to not crash for strange conversions
       # like: mydata.seq
-      if s.typ.kind in {tyOpenArray, tyVarargs, tySequence} and s.typ.len == 1:
+      if s.typ.kind in {tyOpenArray, tyVarargs} and s.typ.len == 1:
+        # XXX investigate why `tySequence` cannot be added here for now.
         discard
       else:
         rawAddSon(s.typ, newTypeS(tyNone, c))
