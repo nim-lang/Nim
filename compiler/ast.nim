@@ -1199,9 +1199,6 @@ proc discardSons*(father: PNode)
 proc len*(n: PNode): int {.inline.} =
   result = n.sons.len
 
-proc len*(n: PType): int {.inline.} =
-  result = n.sons.len
-
 proc safeLen*(n: PNode): int {.inline.} =
   ## works even for leaves.
   if n.kind in {nkNone..nkNilLit}: result = 0
@@ -1583,6 +1580,38 @@ when false:
   iterator pairs*(n: PType): tuple[i: int, n: PType] =
     for i in 0..<n.sons.len: yield (i, n.sons[i])
 
+when true:
+  proc len*(n: PType): int {.inline.} =
+    result = n.sons.len
+
+proc signatureLen*(t: PType): int {.inline.} =
+  result = t.sons.len
+
+proc kidsLen*(t: PType): int {.inline.} =
+  result = t.sons.len
+
+proc genericParamHasConstraints*(t: PType): bool {.inline.} = t.sons.len > 0
+
+proc hasElementType*(t: PType): bool {.inline.} = t.sons.len > 0
+proc isEmptyTupleType*(t: PType): bool {.inline.} = t.sons.len == 0
+proc isSingletonTupleType*(t: PType): bool {.inline.} = t.sons.len == 1
+
+iterator genericInstParams*(t: PType): (bool, PType) =
+  for i in 1..<t.sons.len-1:
+    yield (i!=1, t.sons[i])
+
+iterator genericInvocationParams*(t: PType): (bool, PType) =
+  for i in 1..<t.sons.len:
+    yield (i!=1, t.sons[i])
+
+iterator genericBodyParams*(t: PType): (bool, PType) =
+  for i in 0..<t.sons.len-1:
+    yield (i!=0, t.sons[i])
+
+iterator userTypeClassInstParams*(t: PType): (bool, PType) =
+  for i in 1..<t.sons.len-1:
+    yield (i!=1, t.sons[i])
+
 iterator ikids*(t: PType): (int, PType) =
   for i in 0..<t.sons.len: yield (i, t.sons[i])
 
@@ -1643,8 +1672,8 @@ proc assignType*(dest, src: PType) =
       mergeLoc(dest.sym.loc, src.sym.loc)
     else:
       dest.sym = src.sym
-  newSons(dest, src.len)
-  for i in 0..<src.len: dest[i] = src[i]
+  newSons(dest, src.sons.len)
+  for i in 0..<src.sons.len: dest[i] = src[i]
 
 proc copyType*(t: PType, idgen: IdGenerator, owner: PSym): PType =
   result = newType(t.kind, idgen, owner)
@@ -1724,7 +1753,7 @@ proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
   ## same as skipTypes but handles 'nil'
   result = t
   while result != nil and result.kind in kinds:
-    if result.len == 0: return nil
+    if result.sons.len == 0: return nil
     result = last(result)
 
 proc isGCedMem*(t: PType): bool {.inline.} =
@@ -2103,7 +2132,7 @@ proc findUnresolvedStatic*(n: PNode): PNode =
     return n
   if n.typ != nil and n.typ.kind == tyTypeDesc:
     let t = skipTypes(n.typ, {tyTypeDesc})
-    if t.kind == tyGenericParam and t.len == 0:
+    if t.kind == tyGenericParam and not t.genericParamHasConstraints:
       return n
   for son in n:
     let n = son.findUnresolvedStatic
@@ -2164,7 +2193,7 @@ proc newProcType*(info: TLineInfo; idgen: IdGenerator; owner: PSym): PType =
   result.n.add newNodeI(nkEffectList, info)
 
 proc addParam*(procType: PType; param: PSym) =
-  param.position = procType.len-1
+  param.position = procType.sons.len-1
   procType.n.add newSymNode(param)
   rawAddSon(procType, param.typ)
 
