@@ -2343,10 +2343,6 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
   if arg == nil or arg.kind notin nkSymChoices:
     result = paramTypesMatchAux(m, f, a, arg, argOrig)
   else:
-    # CAUTION: The order depends on the used hashing scheme. Thus it is
-    # incorrect to simply use the first fitting match. However, to implement
-    # this correctly is inefficient. We have to copy `m` here to be able to
-    # roll back the side effects of the unification algorithm.
     let matchSet = {skProc, skFunc, skMethod, skConverter,skIterator, skMacro,
                     skTemplate, skEnumField}
     
@@ -2371,6 +2367,10 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       elif counts > 0:
         best = -1
     else:
+      # CAUTION: The order depends on the used hashing scheme. Thus it is
+      # incorrect to simply use the first fitting match. However, to implement
+      # this correctly is inefficient. We have to copy `m` here to be able to
+      # roll back the side effects of the unification algorithm.
       let c = m.c
       var
         x = newCandidate(c, m.callee)
