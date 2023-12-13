@@ -81,7 +81,16 @@ proc cmpSuggestions(a, b: Suggest): int =
   # independent of hashing order:
   result = cmp(a.name[], b.name[])
 
-proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int =
+proc scanForTrailingAsterisk(line: string, start: int): int =
+  result = 0
+  while start+result < line.len and line[start+result] in {' ', '\t'}:
+    inc result
+  if start+result < line.len and line[start+result] == '*':
+    inc result
+  else:
+    result = 0
+
+proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo; skipTrailingAsterisk: bool = false): int =
   let
     line = sourceLine(conf, info)
     column = toColumn(info)
@@ -105,6 +114,8 @@ proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int
     result = identLen(line, column)
     if cmpIgnoreStyle(line[column..column + result - 1], ident[0..min(result-1,len(ident)-1)]) != 0:
       result = 0
+    if skipTrailingAsterisk and result > 0:
+      result += scanForTrailingAsterisk(line, column + result)
   else:
     var sourceIdent: string
     result = parseWhile(line, sourceIdent,
@@ -179,7 +190,7 @@ proc symToSuggest*(g: ModuleGraph; s: PSym, isLocal: bool, section: IdeCmd, info
     result.tokenLen = if section notin {ideHighlight, ideInlayHints}:
                         s.name.s.len
                       else:
-                        getTokenLenFromSource(g.config, s.name.s, infox)
+                        getTokenLenFromSource(g.config, s.name.s, infox, section == ideInlayHints)
   result.version = g.config.suggestVersion
   result.endLine = endLine
   result.endCol = endCol
