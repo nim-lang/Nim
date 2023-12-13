@@ -1576,11 +1576,30 @@ proc `$`*(s: PSym): string =
   else:
     result = "<nil>"
 
-iterator items*(t: PType): PType =
+when false:
+  iterator items*(t: PType): PType =
+    for i in 0..<t.sons.len: yield t.sons[i]
+
+  iterator pairs*(n: PType): tuple[i: int, n: PType] =
+    for i in 0..<n.sons.len: yield (i, n.sons[i])
+
+iterator ikids*(t: PType): (int, PType) =
+  for i in 0..<t.sons.len: yield (i, t.sons[i])
+
+const
+  FirstParamAt* = 1
+
+iterator paramTypes*(t: PType): (int, PType) =
+  for i in FirstParamAt..<t.sons.len: yield (i, t.sons[i])
+
+template paramTypeToNodeIndex*(x: int): int = x
+
+iterator kids*(t: PType): PType =
   for i in 0..<t.sons.len: yield t.sons[i]
 
-iterator pairs*(n: PType): tuple[i: int, n: PType] =
-  for i in 0..<n.sons.len: yield (i, n.sons[i])
+iterator signature*(t: PType): PType =
+  # yields return type + parameter types
+  for i in 0..<t.sons.len: yield t.sons[i]
 
 proc newType*(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType = nil): PType =
   let id = nextTypeId idgen

@@ -568,11 +568,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = t.sym.name.s
         if t.kind == tyGenericParam and t.len > 0:
           result.add ": "
-          var first = true
-          for son in t:
-            if not first: result.add " or "
-            result.add son.typeToString
-            first = false
+          result.add t.elementType.typeToString
       else:
         result = t.sym.owner.name.s & '.' & t.sym.name.s
       result.addTypeFlags(t)
@@ -644,15 +640,13 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result.add(typeToString(t[i]))
       result.add "]"
     of tyAnd:
-      for i, son in t:
+      for i, son in t.ikids:
+        if i > 0: result.add(" and ")
         result.add(typeToString(son))
-        if i < t.len - 1:
-          result.add(" and ")
     of tyOr:
-      for i, son in t:
+      for i, son in t.ikids:
+        if i > 0: result.add(" or ")
         result.add(typeToString(son))
-        if i < t.len - 1:
-          result.add(" or ")
     of tyNot:
       result = "not " & typeToString(t.elementType)
     of tyUntyped:
@@ -717,8 +711,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = "tuple[]"
       else:
         result = "("
-        for i in 0..<t.len:
-          result.add(typeToString(t[i]))
+        for i, son in t.ikids:
+          result.add(typeToString(son))
           if i < t.len - 1: result.add(", ")
           elif t.len == 1: result.add(",")
         result.add(')')
@@ -751,12 +745,13 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
                 "proc "
       if tfUnresolved in t.flags: result.add "[*missing parameters*]"
       result.add "("
-      for i in 1..<t.len:
-        if t.n != nil and i < t.n.len and t.n[i].kind == nkSym:
-          result.add(t.n[i].sym.name.s)
+      for i, a in t.paramTypes:
+        if i > FirstParamAt: result.add(", ")
+        let j = paramTypeToNodeIndex(i)
+        if t.n != nil and j < t.n.len and t.n[j].kind == nkSym:
+          result.add(t.n[j].sym.name.s)
           result.add(": ")
-        result.add(typeToString(t[i]))
-        if i < t.len - 1: result.add(", ")
+        result.add(typeToString(a))
       result.add(')')
       if t.len > 0 and t.returnType != nil: result.add(": " & typeToString(t.returnType))
       var prag = if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags: "" else: $t.callConv

@@ -45,7 +45,7 @@ proc hasEmpty(typ: PType): bool =
     result = typ.elementType.kind == tyEmpty
   elif typ.kind == tyTuple:
     result = false
-    for s in typ:
+    for s in typ.kids:
       result = result or hasEmpty(s)
   else:
     result = false
@@ -1362,7 +1362,7 @@ proc checkCovariantParamsUsages(c: PContext; genericType: PType) =
     of tyArray:
       return traverseSubTypes(c, t.elementType)
     of tyProc:
-      for subType in t:
+      for subType in t.signature:
         if subType != nil:
           subresult traverseSubTypes(c, subType)
       if result:
@@ -1395,11 +1395,11 @@ proc checkCovariantParamsUsages(c: PContext; genericType: PType) =
     of tyUserTypeClass, tyUserTypeClassInst:
       error("non-invariant type parameters are not supported in concepts")
     of tyTuple:
-      for fieldType in t:
+      for fieldType in t.kids:
         subresult traverseSubTypes(c, fieldType)
     of tyPtr, tyRef, tyVar, tyLent:
-      if t.base.kind == tyGenericParam: return true
-      return traverseSubTypes(c, t.base)
+      if t.elementType.kind == tyGenericParam: return true
+      return traverseSubTypes(c, t.elementType)
     of tyDistinct, tyAlias, tySink, tyOwned:
       return traverseSubTypes(c, t.skipModifier)
     of tyGenericInst:
@@ -2086,7 +2086,7 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
     if c.config.backend == backendCpp:
       if s.typ.len < 2 and not isCtor:
         localError(c.config, n.info, pragmaName & " must have at least one parameter")
-      for son in s.typ:
+      for son in s.typ.signature:
         if son!=nil and son.isMetaType:
           localError(c.config, n.info, pragmaName & " unsupported for generic routine")
       var typ: PType
