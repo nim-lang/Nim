@@ -51,8 +51,20 @@ proc main =
             of "gcc": GCCExtendedAsm
             of "vcc": VisualCPP
             else:
-              quit "Error: invalid inline asm syntax. Must be: gcc or vcc (or none)"
+              quit "Error: invalid inline asm syntax. Must be: gcc or vcc"
         )
+      of "baseDialect", "dialect":
+        if val == "":
+          quit "Error: no base dialect specified"
+        
+        props =
+          # default properties for selected base dialect
+          case val:
+            of "gcc": TargetProps(inlineAsmSyntax: {GCCExtendedAsm})
+            of "vcc": TargetProps(inlineAsmSyntax: {VisualCPP})
+            of "icc": TargetProps(inlineAsmSyntax: {GCCExtendedAsm, VisualCPP})
+            else:
+              quit "Error: invalid base dialect. Must be in {gcc, vcc, icc}"
     of cmdEnd: discard
   if inp.len == 0:
     quit "Error: no input file specified"
