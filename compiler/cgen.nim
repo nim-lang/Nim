@@ -1171,7 +1171,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
   let tmpInfo = prc.info
   discard freshLineInfo(p, prc.info)
 
-  if sfPure notin prc.flags and prc.typ[0] != nil:
+  if sfPure notin prc.flags and prc.typ.returnType != nil:
     if resultPos >= prc.ast.len:
       internalError(m.config, prc.info, "proc has no result symbol")
     let resNode = prc.ast[resultPos]
@@ -1199,7 +1199,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
       fillLoc(resNode.sym.loc, locParam, resNode, "this", OnHeap)
     else:
       fillResult(p.config, resNode, prc.typ)
-      assignParam(p, res, prc.typ[0])
+      assignParam(p, res, prc.typ.returnType)
       # We simplify 'unsureAsgn(result, nil); unsureAsgn(result, x)'
       # to 'unsureAsgn(result, x)'
       # Sketch why this is correct: If 'result' points to a stack location
@@ -1217,7 +1217,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
   for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym
     if param.typ.isCompileTimeOnly: continue
-    assignParam(p, param, prc.typ[0])
+    assignParam(p, param, prc.typ.returnType)
   closureSetup(p, prc)
   genProcBody(p, procBody)
 

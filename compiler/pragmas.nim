@@ -145,9 +145,9 @@ proc pragmaEnsures(c: PContext, n: PNode) =
   else:
     openScope(c)
     let o = getCurrOwner(c)
-    if o.kind in routineKinds and o.typ != nil and o.typ[0] != nil:
+    if o.kind in routineKinds and o.typ != nil and o.typ.returnType != nil:
       var s = newSym(skResult, getIdent(c.cache, "result"), c.idgen, o, n.info)
-      s.typ = o.typ[0]
+      s.typ = o.typ.returnType
       incl(s.flags, sfUsed)
       addDecl(c, s)
     n[1] = c.semExpr(c, n[1])
@@ -599,6 +599,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
   case n[1].kind
   of nkStrLit, nkRStrLit, nkTripleStrLit:
     result = newNodeI(if n.kind == nkAsmStmt: nkAsmStmt else: nkArgList, n.info)
+    if n.kind == nkAsmStmt: result.add n[0] # save asm pragmas for NIR
     var str = n[1].strVal
     if str == "":
       localError(con.config, n.info, "empty 'asm' statement")
@@ -630,6 +631,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
   else:
     illFormedAstLocal(n, con.config)
     result = newNodeI(nkAsmStmt, n.info)
+    if n.kind == nkAsmStmt: result.add n[0]
 
 proc pragmaEmit(c: PContext, n: PNode) =
   if n.kind notin nkPragmaCallKinds or n.len != 2:
@@ -1009,7 +1011,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         # Disable the 'noreturn' annotation when in the "Quirky Exceptions" mode!
         if c.config.exc != excQuirky:
           incl(sym.flags, sfNoReturn)
-        if sym.typ[0] != nil:
+        if sym.typ.returnType != nil:
           localError(c.config, sym.ast[paramsPos][0].info,
             ".noreturn with return type not allowed")
       of wNoDestroy:

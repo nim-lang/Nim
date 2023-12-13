@@ -396,12 +396,11 @@ proc addToLib*(lib: PLib, sym: PSym) =
   #  LocalError(sym.info, errInvalidPragma)
   sym.annex = lib
 
-proc newTypeS*(kind: TTypeKind, c: PContext, sons: seq[PType] = @[]): PType =
-  result = newType(kind, c.idgen, getCurrOwner(c), sons = sons)
+proc newTypeS*(kind: TTypeKind; c: PContext; son: sink PType = nil): PType =
+  result = newType(kind, c.idgen, getCurrOwner(c), son = son)
 
 proc makePtrType*(owner: PSym, baseType: PType; idgen: IdGenerator): PType =
-  result = newType(tyPtr, idgen, owner)
-  addSonSkipIntLit(result, baseType, idgen)
+  result = newType(tyPtr, idgen, owner, skipIntLit(baseType, idgen))
 
 proc makePtrType*(c: PContext, baseType: PType): PType =
   makePtrType(getCurrOwner(c), baseType, c.idgen)
@@ -414,15 +413,13 @@ proc makeTypeWithModifier*(c: PContext,
   if modifier in {tyVar, tyLent, tyTypeDesc} and baseType.kind == modifier:
     result = baseType
   else:
-    result = newTypeS(modifier, c)
-    addSonSkipIntLit(result, baseType, c.idgen)
+    result = newTypeS(modifier, c, skipIntLit(baseType, c.idgen))
 
 proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
   if baseType.kind == kind:
     result = baseType
   else:
-    result = newTypeS(kind, c)
-    addSonSkipIntLit(result, baseType, c.idgen)
+    result = newTypeS(kind, c, skipIntLit(baseType, c.idgen))
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = newTypeS(tyTypeDesc, c)
@@ -438,35 +435,35 @@ proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
   assert n != nil
   result.n = n
 
-proc newTypeWithSons*(owner: PSym, kind: TTypeKind, sons: seq[PType];
-                      idgen: IdGenerator): PType =
-  result = newType(kind, idgen, owner, sons = sons)
+when false:
+  proc newTypeWithSons*(owner: PSym, kind: TTypeKind, sons: seq[PType];
+                        idgen: IdGenerator): PType =
+    result = newType(kind, idgen, owner, sons = sons)
 
-proc newTypeWithSons*(c: PContext, kind: TTypeKind,
-                      sons: seq[PType]): PType =
-  result = newType(kind, c.idgen, getCurrOwner(c), sons = sons)
-
-proc newTypeWithSons*(c: PContext, kind: TTypeKind,
-                      parent: PType): PType =
-  result = newType(kind, c.idgen, getCurrOwner(c), parent = parent)
+  proc newTypeWithSons*(c: PContext, kind: TTypeKind,
+                        sons: seq[PType]): PType =
+    result = newType(kind, c.idgen, getCurrOwner(c), sons = sons)
 
 proc makeStaticExpr*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStaticExpr, n.info)
   result.sons = @[n]
   result.typ = if n.typ != nil and n.typ.kind == tyStatic: n.typ
-               else: newTypeWithSons(c, tyStatic, @[n.typ])
+               else: newTypeS(tyStatic, c, n.typ)
 
 proc makeAndType*(c: PContext, t1, t2: PType): PType =
-  result = newTypeS(tyAnd, c, sons = @[t1, t2])
+  result = newTypeS(tyAnd, c)
+  result.rawAddSon t1
+  result.rawAddSon t2
   propagateToOwner(result, t1)
   propagateToOwner(result, t2)
   result.flags.incl((t1.flags + t2.flags) * {tfHasStatic})
   result.flags.incl tfHasMeta
 
 proc makeOrType*(c: PContext, t1, t2: PType): PType =
-
   if t1.kind != tyOr and t2.kind != tyOr:
-    result = newTypeS(tyOr, c, sons = @[t1, t2])
+    result = newTypeS(tyOr, c)
+    result.rawAddSon t1
+    result.rawAddSon t2
   else:
     result = newTypeS(tyOr, c)
     template addOr(t1) =
@@ -482,7 +479,7 @@ proc makeOrType*(c: PContext, t1, t2: PType): PType =
   result.flags.incl tfHasMeta
 
 proc makeNotType*(c: PContext, t1: PType): PType =
-  result = newTypeS(tyNot, c, sons = @[t1])
+  result = newTypeS(tyNot, c, son = t1)
   propagateToOwner(result, t1)
   result.flags.incl(t1.flags * {tfHasStatic})
   result.flags.incl tfHasMeta
@@ -493,7 +490,7 @@ proc nMinusOne(c: PContext; n: PNode): PNode =
 # Remember to fix the procs below this one when you make changes!
 proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
   let intType = getSysType(c.graph, n.info, tyInt)
-  result = newTypeS(tyRange, c, sons = @[intType])
+  result = newTypeS(tyRange, c, son = intType)
   if n.typ != nil and n.typ.n == nil:
     result.flags.incl tfUnresolved
   result.n = newTreeI(nkRange, n.info, newIntTypeNode(0, intType),
@@ -553,9 +550,8 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
   if typ.kind == tyTypeDesc and not isSelf(typ):
     result = typ
   else:
-    result = newTypeS(tyTypeDesc, c)
+    result = newTypeS(tyTypeDesc, c, skipIntLit(typ, c.idgen))
     incl result.flags, tfCheckedForDestructor
-    result.addSonSkipIntLit(typ, c.idgen)
 
 proc symFromType*(c: PContext; t: PType, info: TLineInfo): PSym =
   if t.sym != nil: return t.sym
