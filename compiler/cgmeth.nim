@@ -79,8 +79,8 @@ proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
       aa = skipTypes(aa, {tyGenericInst, tyAlias})
       bb = skipTypes(bb, {tyGenericInst, tyAlias})
       if aa.kind == bb.kind and aa.kind in {tyVar, tyPtr, tyRef, tyLent, tySink}:
-        aa = aa.lastSon
-        bb = bb.lastSon
+        aa = aa.elementType
+        bb = bb.elementType
       else:
         break
     if sameType(a.typ[i], b.typ[i]):
@@ -102,10 +102,10 @@ proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
   if result == Yes:
     # check for return type:
     # ignore flags of return types; # bug #22673
-    if not sameTypeOrNil(a.typ[0], b.typ[0], {IgnoreFlags}):
-      if b.typ[0] != nil and b.typ[0].kind == tyUntyped:
+    if not sameTypeOrNil(a.typ.returnType, b.typ.returnType, {IgnoreFlags}):
+      if b.typ.returnType != nil and b.typ.returnType.kind == tyUntyped:
         # infer 'auto' from the base to make it consistent:
-        b.typ[0] = a.typ[0]
+        b.typ.setReturnType a.typ.returnType
       else:
         return No
 
@@ -132,7 +132,7 @@ proc createDispatcher(s: PSym; g: ModuleGraph; idgen: IdGenerator): PSym =
   disp.ast = copyTree(s.ast)
   disp.ast[bodyPos] = newNodeI(nkEmpty, s.info)
   disp.loc.r = ""
-  if s.typ[0] != nil:
+  if s.typ.returnType != nil:
     if disp.ast.len > resultPos:
       disp.ast[resultPos].sym = copySym(s.ast[resultPos].sym, idgen)
     else:
@@ -157,9 +157,10 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
 
 proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   var witness: PSym = nil
-  if s.typ[1].owner.getModule != s.getModule and vtables in g.config.features and not g.config.isDefined("nimInternalNonVtablesTesting"):
+  if s.typ.firstParamType.owner.getModule != s.getModule and vtables in g.config.features and not
+      g.config.isDefined("nimInternalNonVtablesTesting"):
     localError(g.config, s.info, errGenerated, "method `" & s.name.s &
-          "` can be defined only in the same module with its type (" & s.typ[1].typeToString() & ")")
+          "` can be defined only in the same module with its type (" & s.typ.firstParamType.typeToString() & ")")
   for i in 0..<g.methods.len:
     let disp = g.methods[i].dispatcher
     case sameMethodBucket(disp, s, multimethods = optMultiMethods in g.config.globalOptions)
@@ -179,10 +180,10 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
       if witness.isNil: witness = g.methods[i].methods[0]
   # create a new dispatcher:
   # stores the id and the position
-  if s.typ[1].skipTypes(skipPtrs).itemId notin g.bucketTable:
-    g.bucketTable[s.typ[1].skipTypes(skipPtrs).itemId] = 1
+  if s.typ.firstParamType.skipTypes(skipPtrs).itemId notin g.bucketTable:
+    g.bucketTable[s.typ.firstParamType.skipTypes(skipPtrs).itemId] = 1
   else:
-    g.bucketTable.inc(s.typ[1].skipTypes(skipPtrs).itemId)
+    g.bucketTable.inc(s.typ.firstParamType.skipTypes(skipPtrs).itemId)
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
   #echo "adding ", s.info
   if witness != nil:
@@ -263,7 +264,7 @@ proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; 
           cond = a
         else:
           cond = isn
-    let retTyp = base.typ[0]
+    let retTyp = base.typ.returnType
     let call = newNodeIT(nkCall, base.info, retTyp)
     call.add newSymNode(curr)
     for col in 1..<paramLen:

@@ -171,7 +171,7 @@ proc nativeInt(c: TypesCon): TypeId =
   else: result = Int64Id
 
 proc openArrayPayloadType*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
-  let e = lastSon(t)
+  let e = elementType(t)
   let elementType = typeToIr(c, g, e)
   let arr = g.openType AArrayPtrTy
   g.addType elementType
@@ -179,7 +179,7 @@ proc openArrayPayloadType*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId 
 
 proc openArrayToIr(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
   # object (a: ArrayPtr[T], len: int)
-  let e = lastSon(t)
+  let e = elementType(t)
   let mangledBase = mangle(c, e)
   let typeName = "NimOpenArray" & mangledBase
 
@@ -265,7 +265,7 @@ proc seqPayloadType(c: var TypesCon; g: var TypeGraph; t: PType): (string, TypeI
       cap: int
       data: UncheckedArray[T]
   ]#
-  let e = lastSon(t)
+  let e = elementType(t)
   result = (mangle(c, e), TypeId(-1))
   let payloadName = "NimSeqPayload" & result[0]
 
@@ -397,7 +397,7 @@ proc typeToIr*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
   of tyChar: result = Char8Id
   of tyVoid: result = VoidId
   of tySink, tyGenericInst, tyDistinct, tyAlias, tyOwned, tyRange:
-    result = typeToIr(c, g, t.lastSon)
+    result = typeToIr(c, g, t.skipModifier)
   of tyEnum:
     if firstOrd(c.conf, t) < 0:
       result = Int32Id
@@ -410,7 +410,7 @@ proc typeToIr*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
       else: result = Int32Id
   of tyOrdinal, tyGenericBody, tyGenericParam, tyInferred, tyStatic:
     if t.len > 0:
-      result = typeToIr(c, g, t.lastSon)
+      result = typeToIr(c, g, t.skipModifier)
     else:
       result = TypeId(-1)
   of tyFromExpr:
@@ -422,7 +422,7 @@ proc typeToIr*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
     cached(c, t):
       var n = toInt64(lengthOrd(c.conf, t))
       if n <= 0: n = 1   # make an array of at least one element
-      let elemType = typeToIr(c, g, t[1])
+      let elemType = typeToIr(c, g, t.elementType)
       let a = openType(g, ArrayTy)
       g.addType(elemType)
       g.addArrayLen n
@@ -430,20 +430,20 @@ proc typeToIr*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
       result = finishType(g, a)
   of tyPtr, tyRef:
     cached(c, t):
-      let e = t.lastSon
+      let e = t.elementType
       if e.kind == tyUncheckedArray:
-        let elemType = typeToIr(c, g, e.lastSon)
+        let elemType = typeToIr(c, g, e.elementType)
         let a = openType(g, AArrayPtrTy)
         g.addType(elemType)
         result = finishType(g, a)
       else:
-        let elemType = typeToIr(c, g, t.lastSon)
+        let elemType = typeToIr(c, g, t.elementType)
         let a = openType(g, APtrTy)
         g.addType(elemType)
         result = finishType(g, a)
   of tyVar, tyLent:
     cached(c, t):
-      let e = t.lastSon
+      let e = t.elementType
       if e.skipTypes(abstractInst).kind in {tyOpenArray, tyVarargs}:
         # skip the modifier, `var openArray` is a (ptr, len) pair too:
         result = typeToIr(c, g, e)
@@ -510,7 +510,7 @@ proc typeToIr*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
   of tyUncheckedArray:
     # We already handled the `ptr UncheckedArray` in a special way.
     cached(c, t):
-      let elemType = typeToIr(c, g, t.lastSon)
+      let elemType = typeToIr(c, g, t.elementType)
       let a = openType(g, LastArrayTy)
       g.addType(elemType)
       result = finishType(g, a)

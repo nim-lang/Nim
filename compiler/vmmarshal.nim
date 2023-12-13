@@ -98,17 +98,17 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet;
       if i > 0: s.add(", ")
       if a[i].kind == nkRange:
         var x = copyNode(a[i][0])
-        storeAny(s, t.lastSon, x, stored, conf)
+        storeAny(s, t.elementType, x, stored, conf)
         inc x.intVal
         while x.intVal <= a[i][1].intVal:
           s.add(", ")
-          storeAny(s, t.lastSon, x, stored, conf)
+          storeAny(s, t.elementType, x, stored, conf)
           inc x.intVal
       else:
-        storeAny(s, t.lastSon, a[i], stored, conf)
+        storeAny(s, t.elementType, a[i], stored, conf)
     s.add("]")
   of tyRange, tyGenericInst, tyAlias, tySink:
-    storeAny(s, t.lastSon, a, stored, conf)
+    storeAny(s, t.skipModifier, a, stored, conf)
   of tyEnum:
     # we need a slow linear search because of enums with holes:
     for e in items(t.n):
@@ -127,7 +127,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet;
       s.add("[")
       s.add($x.ptrToInt)
       s.add(", ")
-      storeAny(s, t.lastSon, a, stored, conf)
+      storeAny(s, t.elementType, a, stored, conf)
       s.add("]")
   of tyString, tyCstring:
     if a.kind == nkNilLit: s.add("null")
@@ -245,7 +245,7 @@ proc loadAny(p: var JsonParser, t: PType,
     next(p)
     result = newNode(nkCurly)
     while p.kind != jsonArrayEnd and p.kind != jsonEof:
-      result.add loadAny(p, t.lastSon, tab, cache, conf, idgen)
+      result.add loadAny(p, t.elementType, tab, cache, conf, idgen)
     if p.kind == jsonArrayEnd: next(p)
     else: raiseParseErr(p, "']' end of array expected")
   of tyPtr, tyRef:
@@ -264,7 +264,7 @@ proc loadAny(p: var JsonParser, t: PType,
       if p.kind == jsonInt:
         let idx = p.getInt
         next(p)
-        result = loadAny(p, t.lastSon, tab, cache, conf, idgen)
+        result = loadAny(p, t.elementType, tab, cache, conf, idgen)
         tab[idx] = result
       else: raiseParseErr(p, "index for ref type expected")
       if p.kind == jsonArrayEnd: next(p)
@@ -300,7 +300,7 @@ proc loadAny(p: var JsonParser, t: PType,
       result = nil
     raiseParseErr(p, "float expected")
   of tyRange, tyGenericInst, tyAlias, tySink:
-    result = loadAny(p, t.lastSon, tab, cache, conf, idgen)
+    result = loadAny(p, t.skipModifier, tab, cache, conf, idgen)
   else:
     result = nil
     internalError conf, "cannot marshal at compile-time " & t.typeToString

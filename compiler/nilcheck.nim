@@ -507,7 +507,7 @@ proc checkCall(n, ctx, map): Check =
       # as it might have been mutated
       # TODO similar for normal refs and fields: find dependent exprs: brackets
 
-      if child.kind == nkHiddenAddr and not child.typ.isNil and child.typ.kind == tyVar and child.typ[0].kind == tyRef:
+      if child.kind == nkHiddenAddr and not child.typ.isNil and child.typ.kind == tyVar and child.typ.elementType.kind == tyRef:
         if not isNew:
           result.map = newNilMap(map)
           isNew = true
@@ -1367,7 +1367,7 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef, idgen: IdGenerator) =
         continue
       map.store(context, context.index(child), typeNilability(child.typ), TArg, child.info, child)
 
-  map.store(context, resultExprIndex, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TResult, s.ast.info)
+  map.store(context, resultExprIndex, if not s.typ.returnType.isNil and s.typ.returnType.kind == tyRef: Nil else: Safe, TResult, s.ast.info)
 
   # echo "checking ", s.name.s, " ", filename
 
@@ -1383,5 +1383,5 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef, idgen: IdGenerator) =
   # (ANotNil, BNotNil) :
   # do we check on asgn nilability at all?
 
-  if not s.typ[0].isNil and s.typ[0].kind == tyRef and tfNotNil in s.typ[0].flags:
+  if not s.typ.returnType.isNil and s.typ.returnType.kind == tyRef and tfNotNil in s.typ.returnType.flags:
     checkResult(s.ast, context, res.map)

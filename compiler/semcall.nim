@@ -49,6 +49,19 @@ proc initCandidateSymbols(c: PContext, headSymbol: PNode,
   while symx != nil:
     if symx.kind in filter:
       result.add((symx, o.lastOverloadScope))
+    elif symx.kind == skGenericParam:
+      #[
+        This code handles looking up a generic parameter when it's a static callable.
+        For instance:
+          proc name[T: static proc()]() = T()
+          name[proc() = echo"hello"]()
+      ]#
+      for paramSym in searchInScopesAllCandidatesFilterBy(c, symx.name, {skConst}):
+        let paramTyp = paramSym.typ
+        if paramTyp.n.sym.kind in filter:
+          result.add((paramTyp.n.sym, o.lastOverloadScope))
+
+
     symx = nextOverloadIter(o, c, headSymbol)
   if result.len > 0:
     best = initCandidate(c, result[0].s, initialBinding,
@@ -667,7 +680,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   result = x.call
   instGenericConvertersSons(c, result, x)
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
-  result.typ = finalCallee.typ[0]
+  result.typ = finalCallee.typ.returnType
   updateDefaultParams(result)
 
 proc canDeref(n: PNode): bool {.inline.} =
@@ -808,7 +821,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
     ]#
     t = skipTypes(param.typ, desiredTypes)
     isDistinct = t.kind == tyDistinct or param.typ.kind == tyDistinct
-    if t.kind == tyGenericInvocation and t[0].lastSon.kind == tyDistinct:
+    if t.kind == tyGenericInvocation and t[0].last.kind == tyDistinct:
       result.state = bsGeneric
       return
     if isDistinct: hasDistinct = true
@@ -827,7 +840,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
     if resolved != nil:
       result.s = resolved[0].sym
       result.state = bsMatch
-      if not compareTypes(result.s.typ[0], fn.typ[0], dcEqIgnoreDistinct, {IgnoreFlags}):
+      if not compareTypes(result.s.typ.returnType, fn.typ.returnType, dcEqIgnoreDistinct, {IgnoreFlags}):
         result.state = bsReturnNotMatch
       elif result.s.magic in {mArrPut, mArrGet}:
         # cannot borrow these magics for now

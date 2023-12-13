@@ -122,10 +122,10 @@ proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
     result = $x
 
 proc isFloatRange(t: PType): bool {.inline.} =
-  result = t.kind == tyRange and t[0].kind in {tyFloat..tyFloat128}
+  result = t.kind == tyRange and t.elementType.kind in {tyFloat..tyFloat128}
 
 proc isIntRange(t: PType): bool {.inline.} =
-  result = t.kind == tyRange and t[0].kind in {
+  result = t.kind == tyRange and t.elementType.kind in {
       tyInt..tyInt64, tyUInt8..tyUInt32}
 
 proc pickIntRange(a, b: PType): PType =

@@ -434,9 +434,9 @@ type
     tyInferred
       # In the initial state `base` stores a type class constraining
       # the types that can be inferred. After a candidate type is
-      # selected, it's stored in `lastSon`. Between `base` and `lastSon`
+      # selected, it's stored in `last`. Between `base` and `last`
       # there may be 0, 2 or more types that were also considered as
-      # possible candidates in the inference process (i.e. lastSon will
+      # possible candidates in the inference process (i.e. last will
       # be updated to store a type best conforming to all candidates)
 
     tyAnd, tyOr, tyNot
@@ -1196,9 +1196,10 @@ proc isCallExpr*(n: PNode): bool =
 
 proc discardSons*(father: PNode)
 
-type Indexable = PNode | PType
+proc len*(n: PNode): int {.inline.} =
+  result = n.sons.len
 
-proc len*(n: Indexable): int {.inline.} =
+proc len*(n: PType): int {.inline.} =
   result = n.sons.len
 
 proc safeLen*(n: PNode): int {.inline.} =
@@ -1212,18 +1213,31 @@ proc safeArrLen*(n: PNode): int {.inline.} =
   elif n.kind in {nkNone..nkFloat128Lit}: result = 0
   else: result = n.len
 
-proc add*(father, son: Indexable) =
+proc add*(father, son: PNode) =
   assert son != nil
   father.sons.add(son)
 
-proc addAllowNil*(father, son: Indexable) {.inline.} =
+proc addAllowNil*(father, son: PNode) {.inline.} =
   father.sons.add(son)
 
-template `[]`*(n: Indexable, i: int): Indexable = n.sons[i]
-template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
+template `[]`*(n: PNode, i: int): PNode = n.sons[i]
+template `[]=`*(n: PNode, i: int; x: PNode) = n.sons[i] = x
 
-template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
-template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
+template `[]`*(n: PNode, i: BackwardsIndex): PNode = n[n.len - i.int]
+template `[]=`*(n: PNode, i: BackwardsIndex; x: PNode) = n[n.len - i.int] = x
+
+proc add*(father, son: PType) =
+  assert son != nil
+  father.sons.add(son)
+
+proc addAllowNil*(father, son: PType) {.inline.} =
+  father.sons.add(son)
+
+template `[]`*(n: PType, i: int): PType = n.sons[i]
+template `[]=`*(n: PType, i: int; x: PType) = n.sons[i] = x
+
+template `[]`*(n: PType, i: BackwardsIndex): PType = n[n.len - i.int]
+template `[]=`*(n: PType, i: BackwardsIndex; x: PType) = n[n.len - i.int] = x
 
 proc getDeclPragma*(n: PNode): PNode =
   ## return the `nkPragma` node for declaration `n`, or `nil` if no pragma was found.
@@ -1354,7 +1368,7 @@ proc newTreeIT*(kind: TNodeKind; info: TLineInfo; typ: PType; children: varargs[
   result.sons = @children
 
 template previouslyInferred*(t: PType): PType =
-  if t.sons.len > 1: t.lastSon else: nil
+  if t.sons.len > 1: t.last else: nil
 
 when false:
   import tables, strutils
@@ -1474,7 +1488,25 @@ proc newIntNode*(kind: TNodeKind, intVal: Int128): PNode =
   result = newNode(kind)
   result.intVal = castToInt64(intVal)
 
-proc lastSon*(n: Indexable): Indexable = n.sons[^1]
+proc lastSon*(n: PNode): PNode {.inline.} = n.sons[^1]
+proc last*(n: PType): PType {.inline.} = n.sons[^1]
+
+proc elementType*(n: PType): PType {.inline.} = n.sons[^1]
+proc skipModifier*(n: PType): PType {.inline.} = n.sons[^1]
+
+proc indexType*(n: PType): PType {.inline.} = n.sons[0]
+proc baseClass*(n: PType): PType {.inline.} = n.sons[0]
+
+proc base*(t: PType): PType {.inline.} =
+  result = t.sons[0]
+
+proc returnType*(n: PType): PType {.inline.} = n.sons[0]
+proc setReturnType*(n, r: PType) {.inline.} = n.sons[0] = r
+proc setIndexType*(n, idx: PType) {.inline.} = n.sons[0] = idx
+
+proc firstParamType*(n: PType): PType {.inline.} = n.sons[1]
+
+proc typeBodyImpl*(n: PType): PType {.inline.} = n.sons[^1]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or
@@ -1482,7 +1514,7 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## last child nodes of a type tree need to be searched. This is a really hot
   ## path within the compiler!
   result = t
-  while result.kind in kinds: result = lastSon(result)
+  while result.kind in kinds: result = last(result)
 
 proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   let kind = skipTypes(typ, abstractVarRange).kind
@@ -1557,8 +1589,9 @@ proc newType*(kind: TTypeKind, idgen: IdGenerator; owner: PSym, sons: seq[PType]
       echo "KNID ", kind
       writeStackTrace()
 
-template newType*(kind: TTypeKind, id: IdGenerator; owner: PSym, parent: PType): PType =
-  newType(kind, id, owner, parent.sons)
+when false:
+  template newType*(kind: TTypeKind, id: IdGenerator; owner: PSym, parent: PType): PType =
+    newType(kind, id, owner, parent.sons)
 
 proc setSons*(dest: PType; sons: seq[PType]) {.inline.} = dest.sons = sons
 
@@ -1574,7 +1607,10 @@ proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.lode == nil: a.lode = b.lode
   if a.r == "": a.r = b.r
 
-proc newSons*(father: Indexable, length: int) =
+proc newSons*(father: PNode, length: int) =
+  setLen(father.sons, length)
+
+proc newSons*(father: PType, length: int) =
   setLen(father.sons, length)
 
 proc assignType*(dest, src: PType) =
@@ -1665,7 +1701,7 @@ proc skipTypes*(t: PType, kinds: TTypeKinds; maxIters: int): PType =
   result = t
   var i = maxIters
   while result.kind in kinds:
-    result = lastSon(result)
+    result = last(result)
     dec i
     if i == 0: return nil
 
@@ -1674,7 +1710,7 @@ proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
   result = t
   while result != nil and result.kind in kinds:
     if result.len == 0: return nil
-    result = lastSon(result)
+    result = last(result)
 
 proc isGCedMem*(t: PType): bool {.inline.} =
   result = t.kind in {tyString, tyRef, tySequence} or
@@ -2009,7 +2045,7 @@ proc toObject*(typ: PType): PType =
   ## cases should be a ``tyObject``).
   ## Otherwise ``typ`` is simply returned as-is.
   let t = typ.skipTypes({tyAlias, tyGenericInst})
-  if t.kind == tyRef: t.lastSon
+  if t.kind == tyRef: t.last
   else: typ
 
 proc toObjectFromRefPtrGeneric*(typ: PType): PType =
@@ -2026,7 +2062,7 @@ proc toObjectFromRefPtrGeneric*(typ: PType): PType =
   result = typ
   while true:
     case result.kind
-    of tyGenericBody: result = result.lastSon
+    of tyGenericBody: result = result.last
     of tyRef, tyPtr, tyGenericInst, tyGenericInvocation, tyAlias: result = result[0]
       # automatic dereferencing is deep, refs #18298.
     else: break

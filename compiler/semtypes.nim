@@ -173,7 +173,7 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 2 and n[1].kind != nkEmpty:
     var base = semTypeNode(c, n[1], nil)
     addSonSkipIntLit(result, base, c.idgen)
-    if base.kind in {tyGenericInst, tyAlias, tySink}: base = lastSon(base)
+    if base.kind in {tyGenericInst, tyAlias, tySink}: base = skipModifier(base)
     if base.kind notin {tyGenericParam, tyGenericInvocation}:
       if base.kind == tyForward:
         c.skipTypes.add n
@@ -232,7 +232,7 @@ proc isRecursiveType(t: PType, cycleDetector: var IntSet): bool =
     return true
   case t.kind
   of tyAlias, tyGenericInst, tyDistinct:
-    return isRecursiveType(t.lastSon, cycleDetector)
+    return isRecursiveType(t.skipModifier, cycleDetector)
   else:
     return false
 
@@ -379,11 +379,11 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
         localError(c.config, n.info,
           "Array length can't be negative, but was " & $e.intVal)
       result = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
-    elif e.kind == nkSym and (e.typ.kind == tyStatic or e.typ.kind == tyTypeDesc) :
+    elif e.kind == nkSym and (e.typ.kind == tyStatic or e.typ.kind == tyTypeDesc):
       if e.typ.kind == tyStatic:
         if e.sym.ast != nil:
           return semArrayIndex(c, e.sym.ast)
-        if e.typ.lastSon.kind != tyGenericParam and not isOrdinalType(e.typ.lastSon):
+        if e.typ.skipModifier.kind != tyGenericParam and not isOrdinalType(e.typ.skipModifier):
           let info = if n.safeLen > 1: n[1].info else: n.info
           localError(c.config, info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
         result = makeRangeWithStaticExpr(c, e)
@@ -412,7 +412,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     # 3 = length(array indx base)
     let indx = semArrayIndex(c, n[1])
     var indxB = indx
-    if indxB.kind in {tyGenericInst, tyAlias, tySink}: indxB = lastSon(indxB)
+    if indxB.kind in {tyGenericInst, tyAlias, tySink}: indxB = skipModifier(indxB)
     if indxB.kind notin {tyGenericParam, tyStatic, tyFromExpr} and
         tfUnresolved notin indxB.flags:
       if indxB.skipTypes({tyRange}).kind in {tyUInt, tyUInt64}:
@@ -897,7 +897,7 @@ proc skipGenericInvocation(t: PType): PType {.inline.} =
   if result.kind == tyGenericInvocation:
     result = result[0]
   while result.kind in {tyGenericInst, tyGenericBody, tyRef, tyPtr, tyAlias, tySink, tyOwned}:
-    result = lastSon(result)
+    result = skipModifier(result)
 
 proc tryAddInheritedFields(c: PContext, check: var IntSet, pos: var int,
                         obj: PType, n: PNode, isPartial = false, innerObj: PType = nil): bool =
@@ -1013,7 +1013,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
           addSonSkipIntLit(result, region, c.idgen)
     addSonSkipIntLit(result, t, c.idgen)
     if tfPartial in result.flags:
-      if result.lastSon.kind == tyObject: incl(result.lastSon.flags, tfPartial)
+      if result.elementType.kind == tyObject: incl(result.elementType.flags, tfPartial)
     # if not isNilable: result.flags.incl tfNotNil
     case wrapperKind
     of tyOwned:
@@ -1159,7 +1159,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     # like: type myseq = distinct seq.
     # Maybe there is another better place to associate
     # the seq type class with the seq identifier.
-    if paramType.kind == tySequence and paramType.lastSon.kind == tyNone:
+    if paramType.kind == tySequence and paramType.elementType.kind == tyNone:
       let typ = c.newTypeWithSons(tyBuiltInTypeClass,
                                   @[newTypeS(paramType.kind, c)])
       result = addImplicitGeneric(c, typ, paramTypId, info, genericParams, paramName)
@@ -1185,9 +1185,9 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       else:
         result.rawAddSon newTypeS(tyAnything, c)
 
-    if paramType.lastSon.kind == tyUserTypeClass:
+    if paramType.typeBodyImpl.kind == tyUserTypeClass:
       result.kind = tyUserTypeClassInst
-      result.rawAddSon paramType.lastSon
+      result.rawAddSon paramType.typeBodyImpl
       return addImplicitGeneric(c, result, paramTypId, info, genericParams, paramName)
 
     let x = instGenericContainer(c, paramType.sym.info, result,
@@ -1199,7 +1199,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
   of tyGenericInst:
     result = nil
-    if paramType.lastSon.kind == tyUserTypeClass:
+    if paramType.skipModifier.kind == tyUserTypeClass:
       var cp = copyType(paramType, c.idgen, getCurrOwner(c))
       copyTypeProps(c.graph, c.idgen.module, cp, paramType)
 
@@ -1211,9 +1211,9 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       if lifted != nil:
         paramType[i] = lifted
         result = paramType
-        result.lastSon.shouldHaveMeta
+        result.last.shouldHaveMeta
 
-    let liftBody = recurse(paramType.lastSon, true)
+    let liftBody = recurse(paramType.skipModifier, true)
     if liftBody != nil:
       result = liftBody
       result.flags.incl tfHasMeta
@@ -1232,7 +1232,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       # before one of its param types
       return
 
-    if body.lastSon.kind == tyUserTypeClass:
+    if body.last.kind == tyUserTypeClass:
       let expanded = instGenericContainer(c, info, paramType,
                                           allowMetaTypes = true)
       result = recurse(expanded, true)

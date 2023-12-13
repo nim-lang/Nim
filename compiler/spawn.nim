@@ -50,7 +50,7 @@ proc typeNeedsNoDeepCopy(t: PType): bool =
   # note that seq[T] is fine, but 'var seq[T]' is not, so we need to skip 'var'
   # for the stricter check and likewise we can skip 'seq' for a less
   # strict check:
-  if t.kind in {tyVar, tyLent, tySequence}: t = t.lastSon
+  if t.kind in {tyVar, tyLent, tySequence}: t = t.elementType
   result = not containsGarbageCollectedRef(t)
 
 proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; idgen: IdGenerator; owner: PSym; typ: PType;
