@@ -140,6 +140,14 @@ proc getTypeDescNode(c: PContext; typ: PType, sym: PSym, info: TLineInfo): PNode
   rawAddSon(resType, typ)
   result = toNode(resType, info)
 
+proc buildBinaryPredicate(kind: TTypeKind; c: PContext; context: PSym; a, b: sink PType): PType =
+  result = newType(kind, c.idgen, context)
+  result.rawAddSon a
+  result.rawAddSon b
+
+proc buildNotPredicate(c: PContext; context: PSym; a: sink PType): PType =
+  result = newType(tyNot, c.idgen, context, a)
+
 proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym): PNode =
   const skippedTypes = {tyTypeDesc, tyAlias, tySink}
   let trait = traitCall[0]
@@ -149,20 +157,17 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
   template operand2: PType =
     traitCall[2].typ.skipTypes({tyTypeDesc})
 
-  template typeWithSonsResult(kind, sons): PNode =
-    newTypeWithSons(context, kind, sons, c.idgen).toNode(traitCall.info)
-
   if operand.kind == tyGenericParam or (traitCall.len > 2 and operand2.kind == tyGenericParam):
     return traitCall  ## too early to evaluate
 
   let s = trait.sym.name.s
   case s
   of "or", "|":
-    return typeWithSonsResult(tyOr, @[operand, operand2])
+    return buildBinaryPredicate(tyOr, c, context, operand, operand2).toNode(traitCall.info)
   of "and":
-    return typeWithSonsResult(tyAnd, @[operand, operand2])
+    return buildBinaryPredicate(tyAnd, c, context, operand, operand2).toNode(traitCall.info)
   of "not":
-    return typeWithSonsResult(tyNot, @[operand])
+    return buildNotPredicate(c, context, operand).toNode(traitCall.info)
   of "typeToString":
     var prefer = preferTypeName
     if traitCall.len >= 2:

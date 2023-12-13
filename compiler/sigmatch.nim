@@ -787,7 +787,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         else:
           param = paramSym skType
           param.typ = if typ.isMetaType:
-                        c.newTypeWithSons(tyInferred, @[typ])
+                        newTypeS(tyInferred, c, typ)
                       else:
                         makeTypeDesc(c, typ)
 
@@ -941,7 +941,7 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
     else: discard
 
   elif lhs.kind == nkSym and lhs.typ.kind == tyStatic and lhs.typ.n == nil:
-    var inferred = newTypeWithSons(c.c, tyStatic, @[lhs.typ.elementType])
+    var inferred = newTypeS(tyStatic, c.c, lhs.typ.elementType)
     inferred.n = newIntNode(nkIntLit, rhs)
     put(c, lhs.typ, inferred)
     if c.c.matchedConcept != nil:
@@ -1886,7 +1886,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
                    typeRel(c, f.last, aOrig.n.typ, flags)
                  else: isGeneric
         if result != isNone:
-          var boundType = newTypeWithSons(c.c, tyStatic, @[aOrig.n.typ])
+          var boundType = newTypeS(tyStatic, c.c, aOrig.n.typ)
           boundType.n = aOrig.n
           put(c, f, boundType)
       else:
@@ -2174,7 +2174,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       if evaluated != nil:
         # Don't build the type in-place because `evaluated` and `arg` may point
         # to the same object and we'd end up creating recursive types (#9255)
-        let typ = newTypeS(tyStatic, c, sons = @[evaluated.typ])
+        let typ = newTypeS(tyStatic, c, son = evaluated.typ)
         typ.n = evaluated
         arg = copyTree(arg) # fix #12864
         arg.typ = typ

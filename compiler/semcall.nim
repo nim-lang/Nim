@@ -735,7 +735,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
     if formal.kind == tyStatic and arg.kind != tyStatic:
       let evaluated = c.semTryConstExpr(c, n[i])
       if evaluated != nil:
-        arg = newTypeS(tyStatic, c, sons = @[evaluated.typ])
+        arg = newTypeS(tyStatic, c, son = evaluated.typ)
         arg.n = evaluated
     let tm = typeRel(m, formal, arg)
     if tm in {isNone, isConvertible}: return nil

@@ -78,11 +78,11 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
         of nkStrKinds:
           for i in left..right:
             bracketExpr.add newIntNode(nkCharLit, BiggestInt n[0].strVal[i])
-            annotateType(bracketExpr[^1], t[0], conf)
+            annotateType(bracketExpr[^1], x.elementType, conf)
         of nkBracket:
           for i in left..right:
             bracketExpr.add n[0][i]
-            annotateType(bracketExpr[^1], t[0], conf)
+            annotateType(bracketExpr[^1], x.elementType, conf)
         else:
           globalError(conf, n.info, "Incorrectly generated tuple constr")
         n[] = bracketExpr[]
