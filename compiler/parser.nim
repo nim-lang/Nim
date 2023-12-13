@@ -2574,7 +2574,7 @@ proc parseString*(s: string; cache: IdentCache; config: ConfigRef;
   var stream = llStreamOpen(s)
   stream.lineOffset = line
 
-  var p: Parser
+  var p = Parser()
   p.lex.errorHandler = errorHandler
   openParser(p, AbsoluteFile filename, stream, cache, config)
 

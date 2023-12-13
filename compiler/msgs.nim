@@ -61,14 +61,12 @@ proc makeCString*(s: string): Rope =
   result.add('\"')
 
 proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
-  result.fullPath = fullPath
-  #shallow(result.fullPath)
-  result.projPath = projPath
-  #shallow(result.projPath)
-  result.shortName = fullPath.extractFilename
+  result = TFileInfo(fullPath: fullPath, projPath: projPath,
+                    shortName: fullPath.extractFilename,
+                    quotedFullName: fullPath.string.makeCString,
+                    lines: @[]
+  )
   result.quotedName = result.shortName.makeCString
-  result.quotedFullName = fullPath.string.makeCString
-  result.lines = @[]
   when defined(nimpretty):
     if not result.fullPath.isEmpty:
       try:
@@ -136,7 +134,7 @@ proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile): FileIndex =
   fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), dummy)
 
 proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
-  result.fileIndex = fileInfoIdx
+  result = TLineInfo(fileIndex: fileInfoIdx)
   if line < int high(uint16):
     result.line = uint16(line)
   else:

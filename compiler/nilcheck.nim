@@ -498,7 +498,7 @@ proc checkCall(n, ctx, map): Check =
   # check args and handle possible mutations
 
   var isNew = false
-  result.map = map
+  result = Check(map: map)
   for i, child in n:
     discard check(child, ctx, map)
 
@@ -753,6 +753,7 @@ proc checkReturn(n, ctx, map): Check =
 
 proc checkIf(n, ctx, map): Check =
   ## check branches based on condition
+  result = default(Check)
   var mapIf: NilMap = map
 
   # first visit the condition
@@ -825,7 +826,7 @@ proc checkFor(n, ctx, map): Check =
   var check2 = check(n.sons[2], ctx, m)
   var map2 = check2.map
 
-  result.map = ctx.union(map0, m)
+  result = Check(map: ctx.union(map0, m))
   result.map = ctx.union(result.map, map2)
   result.nilability = Safe
 
@@ -853,7 +854,7 @@ proc checkWhile(n, ctx, map): Check =
   var check2 = check(n.sons[1], ctx, m)
   var map2 = check2.map
 
-  result.map = ctx.union(map0, map1)
+  result = Check(map: ctx.union(map0, map1))
   result.map = ctx.union(result.map, map2)
   result.nilability = Safe
 
@@ -899,7 +900,7 @@ proc checkInfix(n, ctx, map): Check =
 proc checkIsNil(n, ctx, map; isElse: bool = false): Check =
   ## check isNil calls
   ## update the map depending on if it is not isNil or isNil
-  result.map = newNilMap(map)
+  result = Check(map: newNilMap(map))
   let value = n[1]
   result.map.store(ctx, ctx.index(n[1]), if not isElse: Nil else: Safe, TArg, n.info, n)
 
@@ -947,7 +948,7 @@ proc checkCase(n, ctx, map): Check =
   #   c2
   # also a == true is a , a == false is not a
   let base = n[0]
-  result.map = map.copyMap()
+  result = Check(map: map.copyMap())
   result.nilability = Safe
   var a: PNode = nil
   for child in n:
@@ -1219,7 +1220,7 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
     result = check(n.sons[1], ctx, map)
   of nkStmtList, nkStmtListExpr, nkChckRangeF, nkChckRange64, nkChckRange,
      nkBracket, nkCurly, nkPar, nkTupleConstr, nkClosure, nkObjConstr, nkElse:
-    result.map = map
+    result = Check(map: map)
     if n.kind in {nkObjConstr, nkTupleConstr}:
       # TODO deeper nested elements?
       # A(field: B()) #
@@ -1247,7 +1248,7 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     result = checkAsgn(n[0], n[1], ctx, map)
   of nkVarSection:
-    result.map = map
+    result = Check(map: map)
     for child in n:
       result = checkAsgn(child[0], child[2], ctx, result.map)
   of nkForStmt:
@@ -1273,8 +1274,7 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
   else:
 
     var elementMap = map.copyMap()
-    var elementCheck: Check
-    elementCheck.map = elementMap
+    var elementCheck = Check(map: elementMap)
     for element in n:
       elementCheck = check(element, ctx, elementCheck.map)
 

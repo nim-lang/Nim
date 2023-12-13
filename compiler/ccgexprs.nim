@@ -221,10 +221,11 @@ proc asgnComplexity(n: PNode): int =
 
 proc optAsgnLoc(a: TLoc, t: PType, field: Rope): TLoc =
   assert field != ""
-  result.k = locField
-  result.storage = a.storage
-  result.lode = lodeTyp t
-  result.r = rdLoc(a) & "." & field
+  result = TLoc(k: locField,
+    storage: a.storage,
+    lode: lodeTyp t,
+    r: rdLoc(a) & "." & field
+  )
 
 proc genOptAsgnTuple(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   let newflags =

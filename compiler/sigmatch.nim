@@ -729,7 +729,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
     c = m.c
     typeClass = ff.skipTypes({tyUserTypeClassInst})
     body = typeClass.n[3]
-    matchedConceptContext: TMatchedConcept
+    matchedConceptContext = TMatchedConcept()
     prevMatchedConcept = c.matchedConcept
     prevCandidateType = typeClass[0][0]
 

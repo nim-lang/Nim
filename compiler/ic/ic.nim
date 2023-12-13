@@ -383,10 +383,9 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
 proc toPackedLib(l: PLib; c: var PackedEncoder; m: var PackedModule): PackedLib =
   ## the plib hangs off the psym via the .annex field
   if l.isNil: return
-  result.kind = l.kind
-  result.generated = l.generated
-  result.isOverridden = l.isOverridden
-  result.name = toLitId($l.name, m)
+  result = PackedLib(kind: l.kind, generated: l.generated,
+    isOverridden: l.isOverridden, name: toLitId($l.name, m)
+  )
   storeNode(result, l, path)
 
 proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId =

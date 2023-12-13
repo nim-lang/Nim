@@ -134,7 +134,6 @@ proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
     lineF(p, cpsStmts, "}$n", [])
 
 proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
-  var c: TTraversalClosure
   var p = newProc(nil, m)
   result = "Marker_" & getTypeName(m, origTyp, sig)
   let
@@ -147,8 +146,9 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
   lineF(p, cpsLocals, "$1 a;$n", [t])
   lineF(p, cpsInit, "a = ($1)p;$n", [t])
 
-  c.p = p
-  c.visitorFrmt = "op" # "#nimGCvisit((void*)$1, op);$n"
+  var c = TTraversalClosure(p: p,
+    visitorFrmt: "op" # "#nimGCvisit((void*)$1, op);$n"
+    )
 
   assert typ.kind != tyTypeDesc
   if typ.kind == tySequence:
@@ -174,7 +174,6 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
 proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
   discard genTypeInfoV1(m, s.loc.t, info)
 
-  var c: TTraversalClosure
   var p = newProc(nil, m)
   var sLoc = rdLoc(s.loc)
   result = getTempName(m)
@@ -183,8 +182,10 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
     accessThreadLocalVar(p, s)
     sLoc = "NimTV_->" & sLoc
 
-  c.visitorFrmt = "0" # "#nimGCvisit((void*)$1, 0);$n"
-  c.p = p
+  var c = TTraversalClosure(p: p,
+    visitorFrmt: "0" # "#nimGCvisit((void*)$1, 0);$n"
+  )
+
   let header = "static N_NIMCALL(void, $1)(void)" % [result]
   genTraverseProc(c, sLoc, s.loc.t)
 

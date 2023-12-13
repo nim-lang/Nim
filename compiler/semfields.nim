@@ -64,10 +64,12 @@ type
 proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
   case typ.kind
   of nkSym:
-    var fc: TFieldInstCtx  # either 'tup[i]' or 'field' is valid
-    fc.c = c.c
-    fc.field = typ.sym
-    fc.replaceByFieldName = c.m == mFieldPairs
+    # either 'tup[i]' or 'field' is valid
+    var fc = TFieldInstCtx(
+      c: c.c,
+      field: typ.sym,
+      replaceByFieldName: c.m == mFieldPairs
+    )
     openScope(c.c)
     inc c.c.inUnrolledContext
     let body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
@@ -139,20 +141,19 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
     var loopBody = n[^1]
     for i in 0..<tupleTypeA.len:
       openScope(c)
-      var fc: TFieldInstCtx
-      fc.tupleType = tupleTypeA
-      fc.tupleIndex = i
-      fc.c = c
-      fc.replaceByFieldName = m == mFieldPairs
+      var fc = TFieldInstCtx(
+          tupleType: tupleTypeA,
+          tupleIndex: i,
+          c: c,
+          replaceByFieldName: m == mFieldPairs
+      )
       var body = instFieldLoopBody(fc, loopBody, n)
       inc c.inUnrolledContext
       stmts.add(semStmt(c, body, {}))
       dec c.inUnrolledContext
       closeScope(c)
   else:
-    var fc: TFieldsCtx
-    fc.m = m
-    fc.c = c
+    var fc = TFieldsCtx(m: m, c: c)
     var t = tupleTypeA
     while t.kind == tyObject:
       semForObjectFields(fc, t.n, n, stmts)

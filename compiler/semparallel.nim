@@ -77,12 +77,12 @@ type
     graph: ModuleGraph
 
 proc initAnalysisCtx(g: ModuleGraph): AnalysisCtx =
-  result.locals = @[]
-  result.slices = @[]
-  result.args = @[]
+  result = AnalysisCtx(locals: @[],
+    slices: @[],
+    args: @[],
+    graph: g)
   result.guards.s = @[]
   result.guards.g = g
-  result.graph = g
 
 proc lookupSlot(c: AnalysisCtx; s: PSym): int =
   for i in 0..<c.locals.len:

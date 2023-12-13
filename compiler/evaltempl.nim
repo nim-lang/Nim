@@ -182,14 +182,14 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
 
   # replace each param by the corresponding node:
   var args = evalTemplateArgs(n, tmpl, conf, fromHlo)
-  var ctx: TemplCtx
-  ctx.owner = tmpl
-  ctx.genSymOwner = genSymOwner
-  ctx.config = conf
-  ctx.ic = ic
-  ctx.mapping = initIdTable()
-  ctx.instID = instID[]
-  ctx.idgen = idgen
+  var ctx = TemplCtx(owner: tmpl,
+    genSymOwner: genSymOwner,
+    config: conf,
+    ic: ic,
+    mapping: initIdTable(),
+    instID: instID[],
+    idgen: idgen
+  )
 
   let body = tmpl.ast[bodyPos]
   #echo "instantion of ", renderTree(body, {renderIds})

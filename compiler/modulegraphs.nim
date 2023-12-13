@@ -477,19 +477,21 @@ proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
 proc initOperators*(g: ModuleGraph): Operators =
   # These are safe for IC.
   # Public because it's used by DrNim.
-  result.opLe = createMagic(g, "<=", mLeI)
-  result.opLt = createMagic(g, "<", mLtI)
-  result.opAnd = createMagic(g, "and", mAnd)
-  result.opOr = createMagic(g, "or", mOr)
-  result.opIsNil = createMagic(g, "isnil", mIsNil)
-  result.opEq = createMagic(g, "==", mEqI)
-  result.opAdd = createMagic(g, "+", mAddI)
-  result.opSub = createMagic(g, "-", mSubI)
-  result.opMul = createMagic(g, "*", mMulI)
-  result.opDiv = createMagic(g, "div", mDivI)
-  result.opLen = createMagic(g, "len", mLengthSeq)
-  result.opNot = createMagic(g, "not", mNot)
-  result.opContains = createMagic(g, "contains", mInSet)
+  result = Operators(
+    opLe: createMagic(g, "<=", mLeI),
+    opLt: createMagic(g, "<", mLtI),
+    opAnd: createMagic(g, "and", mAnd),
+    opOr: createMagic(g, "or", mOr),
+    opIsNil: createMagic(g, "isnil", mIsNil),
+    opEq: createMagic(g, "==", mEqI),
+    opAdd: createMagic(g, "+", mAddI),
+    opSub: createMagic(g, "-", mSubI),
+    opMul: createMagic(g, "*", mMulI),
+    opDiv: createMagic(g, "div", mDivI),
+    opLen: createMagic(g, "len", mLengthSeq),
+    opNot: createMagic(g, "not", mNot),
+    opContains: createMagic(g, "contains", mInSet)
+  )
 
 proc initModuleGraphFields(result: ModuleGraph) =
   # A module ID of -1 means that the symbol is not attached to a module at all,

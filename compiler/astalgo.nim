@@ -649,26 +649,27 @@ proc value(this: var DebugPrinter; value: PNode) =
 
 
 proc debug(n: PSym; conf: ConfigRef) =
-  var this: DebugPrinter
-  this.visited = initTable[pointer, int]()
-  this.renderSymType = true
-  this.useColor = not defined(windows)
+  var this = DebugPrinter(visited: initTable[pointer, int](),
+    renderSymType: true,
+    useColor: not defined(windows)
+  )
   this.value(n)
   echo($this.res)
 
 proc debug(n: PType; conf: ConfigRef) =
-  var this: DebugPrinter
-  this.visited = initTable[pointer, int]()
-  this.renderSymType = true
-  this.useColor = not defined(windows)
+  var this = DebugPrinter(visited: initTable[pointer, int](),
+    renderSymType: true,
+    useColor: not defined(windows)
+  )
   this.value(n)
   echo($this.res)
 
 proc debug(n: PNode; conf: ConfigRef) =
-  var this: DebugPrinter
-  this.visited = initTable[pointer, int]()
+  var this = DebugPrinter(
+    visited: initTable[pointer, int](),
+    useColor: not defined(windows)
+  )
   #this.renderSymType = true
-  this.useColor = not defined(windows)
   this.value(n)
   echo($this.res)
 

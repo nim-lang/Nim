@@ -237,8 +237,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
           optSeqDestructors in p.config.globalOptions:
         linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
       if ntyp.kind in {tyVar} and not compileToCpp(p.module):
-        var t: TLoc
-        t.r = "(*$1)" % [a.rdLoc]
+        var t = TLoc(r: "(*$1)" % [a.rdLoc])
         result.add "($4) ? ((*$1)$3) : NIM_NIL, $2" %
                      [a.rdLoc, lenExpr(p, t), dataField(p),
                       dataFieldAccessor(p, "*" & a.rdLoc)]
@@ -250,8 +249,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Rope) =
     of tyPtr, tyRef:
       case elementType(a.t).kind
       of tyString, tySequence:
-        var t: TLoc
-        t.r = "(*$1)" % [a.rdLoc]
+        var t = TLoc(r: "(*$1)" % [a.rdLoc])
         result.add "($4) ? ((*$1)$3) : NIM_NIL, $2" %
                      [a.rdLoc, lenExpr(p, t), dataField(p),
                       dataFieldAccessor(p, "*" & a.rdLoc)]
