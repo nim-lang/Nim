@@ -196,7 +196,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       if graph.dispatchers.len > 0:
         let ctx = preparePContext(graph, module, idgen)
         for disp in getDispatchers(graph):
-          let retTyp = disp.typ[0]
+          let retTyp = disp.typ.returnType
           if retTyp != nil:
             # TODO: properly semcheck the code of dispatcher?
             createTypeBoundOps(graph, ctx, retTyp, disp.ast.info, idgen)

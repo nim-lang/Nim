@@ -73,7 +73,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     elif isOutParam(t) and kind != skParam:
       result = t
     else:
-      var t2 = skipTypes(t[0], abstractInst-{tyTypeDesc, tySink})
+      var t2 = skipTypes(t.elementType, abstractInst-{tyTypeDesc, tySink})
       case t2.kind
       of tyVar, tyLent:
         if taHeap notin flags: result = t2 # ``var var`` is illegal on the heap
@@ -99,8 +99,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       for i in 1..<t.len:
         if result != nil: break
         result = typeAllowedAux(marker, t[i], skParam, c, f-{taIsOpenArray})
-      if result.isNil and t[0] != nil:
-        result = typeAllowedAux(marker, t[0], skResult, c, flags)
+      if result.isNil and t.returnType != nil:
+        result = typeAllowedAux(marker, t.returnType, skResult, c, flags)
   of tyTypeDesc:
     if kind in {skVar, skLet, skConst} and taProcContextIsNotMacro in flags:
       result = t
@@ -142,13 +142,13 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     if (kind != skParam or taIsOpenArray in flags) and views notin c.features:
       result = t
     else:
-      result = typeAllowedAux(marker, t[0], kind, c, flags+{taIsOpenArray})
+      result = typeAllowedAux(marker, t.elementType, kind, c, flags+{taIsOpenArray})
   of tyVarargs:
     # you cannot nest openArrays/sinks/etc.
     if kind != skParam or taIsOpenArray in flags:
       result = t
     else:
-      result = typeAllowedAux(marker, t[0], kind, c, flags+{taIsOpenArray})
+      result = typeAllowedAux(marker, t.elementType, kind, c, flags+{taIsOpenArray})
   of tySink:
     # you cannot nest openArrays/sinks/etc.
     if kind != skParam or taIsOpenArray in flags or t.elementType.kind in {tySink, tyLent, tyVar}:
@@ -164,7 +164,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     if t.elementType.kind != tyEmpty:
       result = typeAllowedAux(marker, t.elementType, kind, c, flags+{taHeap})
     elif kind in {skVar, skLet}:
-      result = t[0]
+      result = t.elementType
   of tyArray:
     if t.elementType.kind == tyTypeDesc:
       result = t.elementType
@@ -178,9 +178,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyPtr:
     result = typeAllowedAux(marker, t.elementType, kind, c, flags+{taHeap})
   of tySet:
-    for i in 0..<t.len:
-      result = typeAllowedAux(marker, t[i], kind, c, flags)
-      if result != nil: break
+    result = typeAllowedAux(marker, t.elementType, kind, c, flags)
   of tyObject, tyTuple:
     if kind in {skProc, skFunc, skConst} and
         t.kind == tyObject and t.baseClass != nil and taIsDefaultField notin flags:
@@ -199,7 +197,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     # prevent cascading errors:
     result = nil
   of tyOwned:
-    if t.len == 1 and t[0].skipTypes(abstractInst).kind in {tyRef, tyPtr, tyProc}:
+    if t.len == 1 and t.skipModifier.skipTypes(abstractInst).kind in {tyRef, tyPtr, tyProc}:
       result = typeAllowedAux(marker, t.skipModifier, kind, c, flags+{taHeap})
     else:
       result = t

@@ -3277,7 +3277,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
 proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
                       result: var Rope; count: var int;
                       isConst: bool, info: TLineInfo) =
-  var base = t[0]
+  var base = t.baseClass
   let oldRes = result
   let oldcount = count
   if base != nil:
@@ -3426,7 +3426,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; resul
       genConstSimpleList(p, n, isConst, data)
 
       let payload = getTempName(p.module)
-      let ctype = getTypeDesc(p.module, typ[0])
+      let ctype = getTypeDesc(p.module, typ.elementType)
       let arrLen = n.len
       appcg(p.module, cfsStrData,
         "static $5 $1 $3[$2] = $4;$n", [

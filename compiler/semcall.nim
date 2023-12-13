@@ -518,7 +518,7 @@ proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
       let finalCallee = generateInstance(c, s, x.bindings, a.info)
       a[0].sym = finalCallee
       a[0].typ = finalCallee.typ
-      #a.typ = finalCallee.typ[0]
+      #a.typ = finalCallee.typ.returnType
 
 proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
   assert n.kind in nkCallKinds
@@ -735,7 +735,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
     if formal.kind == tyStatic and arg.kind != tyStatic:
       let evaluated = c.semTryConstExpr(c, n[i])
       if evaluated != nil:
-        arg = newTypeS(tyStatic, c, sons = @[evaluated.typ])
+        arg = newTypeS(tyStatic, c, son = evaluated.typ)
         arg.n = evaluated
     let tm = typeRel(m, formal, arg)
     if tm in {isNone, isConvertible}: return nil
@@ -821,7 +821,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
     ]#
     t = skipTypes(param.typ, desiredTypes)
     isDistinct = t.kind == tyDistinct or param.typ.kind == tyDistinct
-    if t.kind == tyGenericInvocation and t[0].last.kind == tyDistinct:
+    if t.kind == tyGenericInvocation and t.genericHead.last.kind == tyDistinct:
       result.state = bsGeneric
       return
     if isDistinct: hasDistinct = true

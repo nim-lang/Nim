@@ -16,7 +16,7 @@ from trees import getMagic, getRoot
 proc callProc(a: PNode): PNode =
   result = newNodeI(nkCall, a.info)
   result.add a
-  result.typ = a.typ[0]
+  result.typ = a.typ.returnType
 
 # we have 4 cases to consider:
 # - a void proc --> nothing to do
@@ -141,10 +141,10 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif fv != nil:
-    let fk = flowVarKind(g.config, fv.typ[1])
+    let fk = flowVarKind(g.config, fv.typ.firstGenericParam)
     if fk == fvInvalid:
       localError(g.config, f.info, "cannot create a flowVar of type: " &
-        typeToString(fv.typ[1]))
+        typeToString(fv.typ.firstGenericParam))
     body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
       if fk == fvGC: "data" else: "blob", fv.info, g.cache), call)
     if fk == fvGC:
@@ -193,7 +193,7 @@ proc createCastExpr(argsParam: PSym; objType: PType; idgen: IdGenerator): PNode 
   result.typ.rawAddSon(objType)
 
 template checkMagicProcs(g: ModuleGraph, n: PNode, formal: PNode) =
-  if (formal.typ.kind == tyVarargs and formal.typ[0].kind in {tyTyped, tyUntyped}) or
+  if (formal.typ.kind == tyVarargs and formal.typ.elementType.kind in {tyTyped, tyUntyped}) or
           formal.typ.kind in {tyTyped, tyUntyped}:
     localError(g.config, n.info, "'spawn'ed function cannot have a 'typed' or 'untyped' parameter")
 

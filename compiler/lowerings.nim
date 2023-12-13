@@ -255,7 +255,7 @@ proc newDotExpr*(obj, b: PSym): PNode =
 proc indirectAccess*(a: PNode, b: ItemId, info: TLineInfo): PNode =
   # returns a[].b as a node
   var deref = newNodeI(nkHiddenDeref, info)
-  deref.typ = a.typ.skipTypes(abstractInst)[0]
+  deref.typ = a.typ.skipTypes(abstractInst).elementType
   var t = deref.typ.skipTypes(abstractInst)
   var field: PSym
   while true:
@@ -278,7 +278,7 @@ proc indirectAccess*(a: PNode, b: ItemId, info: TLineInfo): PNode =
 proc indirectAccess*(a: PNode, b: string, info: TLineInfo; cache: IdentCache): PNode =
   # returns a[].b as a node
   var deref = newNodeI(nkHiddenDeref, info)
-  deref.typ = a.typ.skipTypes(abstractInst)[0]
+  deref.typ = a.typ.skipTypes(abstractInst).elementType
   var t = deref.typ.skipTypes(abstractInst)
   var field: PSym
   let bb = getIdent(cache, b)
@@ -306,7 +306,7 @@ proc getFieldFromObj*(t: PType; v: PSym): PSym =
     assert t.kind == tyObject
     result = lookupInRecord(t.n, v.itemId)
     if result != nil: break
-    t = t[0]
+    t = t.baseClass
     if t == nil: break
     t = t.skipTypes(skipPtrs)
 
@@ -325,7 +325,7 @@ proc genAddrOf*(n: PNode; idgen: IdGenerator; typeKind = tyPtr): PNode =
 
 proc genDeref*(n: PNode; k = nkHiddenDeref): PNode =
   result = newNodeIT(k, n.info,
-                     n.typ.skipTypes(abstractInst)[0])
+                     n.typ.skipTypes(abstractInst).elementType)
   result.add n
 
 proc callCodegenProc*(g: ModuleGraph; name: string;
@@ -344,7 +344,7 @@ proc callCodegenProc*(g: ModuleGraph; name: string;
     if optionalArgs != nil:
       for i in 1..<optionalArgs.len-2:
         result.add optionalArgs[i]
-    result.typ = sym.typ[0]
+    result.typ = sym.typ.returnType
 
 proc newIntLit*(g: ModuleGraph; info: TLineInfo; value: BiggestInt): PNode =
   result = nkIntLit.newIntNode(value)

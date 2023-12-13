@@ -548,7 +548,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
       else:
         result = semExpr(c, result, flags, expectedType)
         result = fitNode(c, retType, result, result.info)
-      #globalError(s.info, errInvalidParamKindX, typeToString(s.typ[0]))
+      #globalError(s.info, errInvalidParamKindX, typeToString(s.typ.returnType))
   dec(c.config.evalTemplateCounter)
   discard c.friendModules.pop()
 

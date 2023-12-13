@@ -507,7 +507,7 @@ proc setLenSeq(c: PCtx; node: PNode; newLen: int; info: TLineInfo) =
   setLen(node.sons, newLen)
   if oldLen < newLen:
     for i in oldLen..<newLen:
-      node[i] = getNullValue(typ[0], info, c.config)
+      node[i] = getNullValue(typ.elementType, info, c.config)
 
 const
   errNilAccess = "attempt to access a nil address"
