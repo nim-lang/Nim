@@ -1505,8 +1505,11 @@ proc setReturnType*(n, r: PType) {.inline.} = n.sons[0] = r
 proc setIndexType*(n, idx: PType) {.inline.} = n.sons[0] = idx
 
 proc firstParamType*(n: PType): PType {.inline.} = n.sons[1]
+proc firstGenericParam*(n: PType): PType {.inline.} = n.sons[1]
 
 proc typeBodyImpl*(n: PType): PType {.inline.} = n.sons[^1]
+
+proc genericHead*(n: PType): PType {.inline.} = n.sons[0]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or
@@ -1579,26 +1582,19 @@ iterator items*(t: PType): PType =
 iterator pairs*(n: PType): tuple[i: int, n: PType] =
   for i in 0..<n.sons.len: yield (i, n.sons[i])
 
-proc newType*(kind: TTypeKind, idgen: IdGenerator; owner: PSym, sons: seq[PType] = @[]): PType =
+proc newType*(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType = nil): PType =
   let id = nextTypeId idgen
   result = PType(kind: kind, owner: owner, size: defaultSize,
                  align: defaultAlignment, itemId: id,
-                 uniqueId: id, sons: sons)
+                 uniqueId: id, sons: @[])
+  if son != nil: result.sons.add son
   when false:
     if result.itemId.module == 55 and result.itemId.item == 2:
       echo "KNID ", kind
       writeStackTrace()
 
-when false:
-  template newType*(kind: TTypeKind, id: IdGenerator; owner: PSym, parent: PType): PType =
-    newType(kind, id, owner, parent.sons)
-
-proc setSons*(dest: PType; sons: seq[PType]) {.inline.} = dest.sons = sons
-
-when false:
-  proc newType*(prev: PType, sons: seq[PType]): PType =
-    result = prev
-    result.sons = sons
+proc setSons*(dest: PType; sons: sink seq[PType]) {.inline.} = dest.sons = sons
+proc setSon*(dest: PType; son: sink PType) {.inline.} = dest.sons = @[son]
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(typeof(a.k)): a.k = b.k
@@ -2029,23 +2025,21 @@ proc toVar*(typ: PType; kind: TTypeKind; idgen: IdGenerator): PType =
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
   if typ.kind != kind:
-    result = newType(kind, idgen, typ.owner)
-    rawAddSon(result, typ)
+    result = newType(kind, idgen, typ.owner, typ)
 
 proc toRef*(typ: PType; idgen: IdGenerator): PType =
   ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
   if typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject:
-    result = newType(tyRef, idgen, typ.owner)
-    rawAddSon(result, typ)
+    result = newType(tyRef, idgen, typ.owner, typ)
 
 proc toObject*(typ: PType): PType =
   ## If ``typ`` is a tyRef then its immediate son is returned (which in many
   ## cases should be a ``tyObject``).
   ## Otherwise ``typ`` is simply returned as-is.
   let t = typ.skipTypes({tyAlias, tyGenericInst})
-  if t.kind == tyRef: t.last
+  if t.kind == tyRef: t.elementType
   else: typ
 
 proc toObjectFromRefPtrGeneric*(typ: PType): PType =
@@ -2075,11 +2069,7 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
     return false
 
   let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
-
-  if base.sym != nil and {sfCompileToCpp, sfImportc} * base.sym.flags != {}:
-    result = true
-  else:
-    result = false
+  result = base.sym != nil and {sfCompileToCpp, sfImportc} * base.sym.flags != {}
 
 proc isInfixAs*(n: PNode): bool =
   return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.id == ord(wAs)

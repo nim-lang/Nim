@@ -24,9 +24,6 @@ when defined(useDfa):
 import liftdestructors
 include sinkparameter_inference
 
-
-import std/options as opt
-
 #[ Second semantic checking pass over the AST. Necessary because the old
    way had some inherent problems. Performs:
 
@@ -94,29 +91,26 @@ const
   errXCannotBeAssignedTo = "'$1' cannot be assigned to"
   errLetNeedsInit = "'let' symbol requires an initialization"
 
-proc getObjDepth(t: PType): Option[tuple[depth: int, root: ItemId]] =
+proc getObjDepth(t: PType): (int, ItemId) =
   var x = t
-  var res: tuple[depth: int, root: ItemId]
-  res.depth = -1
+  result = (-1, default(ItemId))
   var stack = newSeq[ItemId]()
   while x != nil:
     x = skipTypes(x, skipPtrs)
     if x.kind != tyObject:
-      return none(tuple[depth: int, root: ItemId])
+      return (-3, default(ItemId))
     stack.add x.itemId
-    x = x[0]
-    inc(res.depth)
-  res.root = stack[^2]
-  result = some(res)
+    x = x.baseClass
+    inc(result[0])
+  result[1] = stack[^2]
 
 proc collectObjectTree(graph: ModuleGraph, n: PNode) =
   for section in n:
     if section.kind == nkTypeDef and section[^1].kind in {nkObjectTy, nkRefTy, nkPtrTy}:
       let typ = section[^1].typ.skipTypes(skipPtrs)
-      if typ.len > 0 and typ[0] != nil:
-        let depthItem = getObjDepth(typ)
-        if isSome(depthItem):
-          let (depthLevel, root) = depthItem.unsafeGet
+      if typ.kind == tyObject and typ.baseClass != nil:
+        let (depthLevel, root) = getObjDepth(typ)
+        if depthLevel != -3:
           if depthLevel == 1:
             graph.objectTree[root] = @[]
           else:

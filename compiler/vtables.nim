@@ -34,7 +34,7 @@ proc dispatch(x: Base, params: ...) =
     newIntNode(nkIntLit, index)
   )
   getVTableCall.typ = base.typ
-  var vTableCall = newNodeIT(nkCall, base.info, base.typ[0])
+  var vTableCall = newNodeIT(nkCall, base.info, base.typ.returnType)
   var castNode = newTree(nkCast,
         newNodeIT(nkType, base.info, base.typ),
         getVTableCall)
@@ -46,7 +46,7 @@ proc dispatch(x: Base, params: ...) =
     vTableCall.add newSymNode(param)
 
   var ret: PNode
-  if base.typ[0] != nil:
+  if base.typ.returnType != nil:
     var a = newNodeI(nkFastAsgn, base.info)
     a.add newSymNode(base.ast[resultPos].sym)
     a.add vTableCall
@@ -162,6 +162,6 @@ proc sortVTableDispatchers*(g: ModuleGraph) =
       let idx = typ.itemId
       for mIndex in 0..<itemTable[idx].len:
         if itemTable[idx][mIndex].sym == nil:
-          let parentIndex = typ[0].skipTypes(skipPtrs).itemId
+          let parentIndex = typ.baseClass.skipTypes(skipPtrs).itemId
           itemTable[idx][mIndex] = itemTable[parentIndex][mIndex]
       g.setMethodsPerType(idx, itemTable[idx])

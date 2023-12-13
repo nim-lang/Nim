@@ -107,19 +107,19 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyUncheckedArray:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     result.add atomicType("UncheckedArray", mUncheckedArray)
-    result.add mapTypeToAst(t[0], info)
+    result.add mapTypeToAst(t.elementType, info)
   of tyArray:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     result.add atomicType("array", mArray)
-    if inst and t[0].kind == tyRange:
+    if inst and t.indexType.kind == tyRange:
       var rng = newNodeX(nkInfix)
       rng.add newIdentNode(getIdent(cache, ".."), info)
-      rng.add t[0].n[0].copyTree
-      rng.add t[0].n[1].copyTree
+      rng.add t.indexType.n[0].copyTree
+      rng.add t.indexType.n[1].copyTree
       result.add rng
     else:
-      result.add mapTypeToAst(t[0], info)
-    result.add mapTypeToAst(t[1], info)
+      result.add mapTypeToAst(t.indexType, info)
+    result.add mapTypeToAst(t.elementType, info)
   of tyTypeDesc:
     if t.base != nil:
       result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
@@ -140,7 +140,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       else:
         result = newNodeX(nkBracketExpr)
         #result.add mapTypeToAst(t.last, info)
-        result.add mapTypeToAst(t[0], info)
+        result.add mapTypeToAst(t.genericHead, info)
         for i in 1..<t.len-1:
           result.add mapTypeToAst(t[i], info)
     else:
@@ -174,11 +174,11 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       if objectDef.kind == nkRefTy:
         objectDef = objectDef[0]
       result.add objectDef[0].copyTree  # copy object pragmas
-      if t[0] == nil:
+      if t.baseClass == nil:
         result.add newNodeI(nkEmpty, info)
       else:  # handle parent object
         var nn = newNodeX(nkOfInherit)
-        nn.add mapTypeToAst(t[0], info)
+        nn.add mapTypeToAst(t.baseClass, info)
         result.add nn
       if t.n.len > 0:
         result.add objectNode(cache, t.n, idgen)
@@ -217,19 +217,19 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyPtr:
     if inst:
       result = newNodeX(nkPtrTy)
-      result.add mapTypeToAst(t[0], info)
+      result.add mapTypeToAst(t.elementType, info)
     else:
       result = mapTypeToBracket("ptr", mPtr, t, info)
   of tyRef:
     if inst:
       result = newNodeX(nkRefTy)
-      result.add mapTypeToAst(t[0], info)
+      result.add mapTypeToAst(t.elementType, info)
     else:
       result = mapTypeToBracket("ref", mRef, t, info)
   of tyVar:
     if inst:
       result = newNodeX(nkVarTy)
-      result.add mapTypeToAst(t[0], info)
+      result.add mapTypeToAst(t.elementType, info)
     else:
       result = mapTypeToBracket("var", mVar, t, info)
   of tyLent: result = mapTypeToBracket("lent", mBuiltinType, t, info)
@@ -239,10 +239,10 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     if inst:
       result = newNodeX(nkProcTy)
       var fp = newNodeX(nkFormalParams)
-      if t[0] == nil:
+      if t.returnType == nil:
         fp.add newNodeI(nkEmpty, info)
       else:
-        fp.add mapTypeToAst(t[0], t.n[0].info)
+        fp.add mapTypeToAst(t.returnType, t.n[0].info)
       for i in 1..<t.len:
         fp.add newIdentDefs(t.n[i], t[i])
       result.add fp

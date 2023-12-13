@@ -345,7 +345,7 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
 
   if targetType.kind in {tySink, tyLent} or isOwnedSym(c, n[0]):
     let baseType = semTypeNode(c, n[1], nil).skipTypes({tyTypeDesc})
-    let t = newTypeS(targetType.kind, c, @[baseType])
+    let t = newTypeS(targetType.kind, c, baseType)
     if targetType.kind == tyOwned:
       t.flags.incl tfHasOwned
     result = newNodeI(nkType, n.info)
@@ -467,7 +467,7 @@ proc fixupStaticType(c: PContext, n: PNode) =
   # apply this measure only in code that is enlightened to work
   # with static types.
   if n.typ.kind != tyStatic:
-    n.typ = newTypeWithSons(getCurrOwner(c), tyStatic, @[n.typ], c.idgen)
+    n.typ = newTypeS(tyStatic, c, n.typ)
     n.typ.n = n # XXX: cycles like the one here look dangerous.
                 # Consider using `n.copyTree`
 
@@ -901,7 +901,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
         if n[i].typ.isNil or n[i].typ.kind != tyStatic or
             tfUnresolved notin n[i].typ.flags:
           break maybeLabelAsStatic
-      n.typ = newTypeWithSons(c, tyStatic, @[n.typ])
+      n.typ = newTypeS(tyStatic, c, n.typ)
       n.typ.flags.incl tfUnresolved
 
   # optimization pass: not necessary for correctness of the semantic pass
@@ -1032,7 +1032,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
       result = magicsAfterOverloadResolution(c, result, flags, expectedType)
     when false:
       if result.typ != nil and
-          not (result.typ.kind == tySequence and result.typ[0].kind == tyEmpty):
+          not (result.typ.kind == tySequence and result.elementType.kind == tyEmpty):
         liftTypeBoundOps(c, result.typ, n.info)
     #result = patchResolvedTypeBoundOp(c, result)
   if c.matchedConcept == nil:
@@ -1263,7 +1263,7 @@ proc readTypeParameter(c: PContext, typ: PType,
         discard
 
   if typ.kind != tyUserTypeClass:
-    let ty = if typ.kind == tyCompositeTypeClass: typ[1].skipGenericAlias
+    let ty = if typ.kind == tyCompositeTypeClass: typ.firstGenericParam.skipGenericAlias
              else: typ.skipGenericAlias
     let tbody = ty[0]
     for s in 0..<tbody.len-1:
@@ -1292,7 +1292,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     onUse(n.info, s)
     let typ = skipTypes(s.typ, abstractInst-{tyTypeDesc})
     case typ.kind
-    of  tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
+    of tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
         tyTuple, tySet, tyUInt..tyUInt64:
       if s.magic == mNone: result = inlineConst(c, n, s)
       else: result = newSymNode(s, n.info)
@@ -2066,7 +2066,7 @@ proc semYield(c: PContext, n: PNode): PNode =
       semYieldVarResult(c, n, restype)
     else:
       localError(c.config, n.info, errCannotReturnExpr)
-  elif c.p.owner.typ[0] != nil:
+  elif c.p.owner.typ.returnType != nil:
     localError(c.config, n.info, errGenerated, "yield statement must yield a value")
 
 proc considerQuotedIdentOrDot(c: PContext, n: PNode, origin: PNode = nil): PIdent =
@@ -3132,7 +3132,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       let modifier = n.modifierTypeKindOfNode
       if modifier != tyNone:
         var baseType = semExpr(c, n[0]).typ.skipTypes({tyTypeDesc})
-        result.typ = c.makeTypeDesc(c.newTypeWithSons(modifier, @[baseType]))
+        result.typ = c.makeTypeDesc(newTypeS(modifier, c, baseType))
         return
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
     result.typ = makeTypeDesc(c, typ)

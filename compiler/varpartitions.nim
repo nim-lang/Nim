@@ -407,8 +407,8 @@ proc allRoots(n: PNode; result: var seq[(PSym, int)]; level: int) =
           if typ != nil and i < typ.len:
             assert(typ.n[i].kind == nkSym)
             let paramType = typ.n[i].typ
-            if not paramType.isCompileTimeOnly and not typ[0].isEmptyType and
-                canAlias(paramType, typ[0]):
+            if not paramType.isCompileTimeOnly and not typ.returnType.isEmptyType and
+                canAlias(paramType, typ.returnType):
               allRoots(it, result, RootEscapes)
           else:
             allRoots(it, result, RootEscapes)

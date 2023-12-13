@@ -146,7 +146,7 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
               [result, rope(ord(t.kind))]
     prepend(p.g.typeInfo, s)
     p.g.typeInfo.addf("$1.base = $2;$n",
-         [result, genTypeInfo(p, t[1])])
+         [result, genTypeInfo(p, t.elementType)])
   of tyEnum: genEnumInfo(p, t, result)
   of tyObject: genObjectInfo(p, t, result)
   of tyTuple: genTupleInfo(p, t, result)

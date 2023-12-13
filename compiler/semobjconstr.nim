@@ -413,7 +413,7 @@ proc semConstructTypeAux(c: PContext,
     result.defaults.add defaults
     if status in {initPartial, initNone, initUnknown}:
       discard collectMissingFields(c, t.n, constrCtx, result.defaults)
-    let base = t[0]
+    let base = t.baseClass
     if base == nil or base.id == t.id or
         base.kind in {tyRef, tyPtr} and base.elementType.id == t.id:
       break

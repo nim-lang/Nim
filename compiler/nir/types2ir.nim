@@ -84,9 +84,9 @@ proc objectToIr(c: var TypesCon; g: var TypeGraph; n: PNode; fieldTypes: Table[I
     assert false, "unknown node kind: " & $n.kind
 
 proc objectToIr(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
-  if t[0] != nil:
+  if t.baseClass != nil:
     # ensure we emitted the base type:
-    discard typeToIr(c, g, t[0])
+    discard typeToIr(c, g, t.baseClass)
 
   var unionId = 0
   var fieldTypes = initTable[ItemId, TypeId]()
@@ -96,8 +96,8 @@ proc objectToIr(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
   g.addSize c.conf.getSize(t)
   g.addAlign c.conf.getAlign(t)
 
-  if t[0] != nil:
-    g.addNominalType(ObjectTy, mangle(c, t[0]))
+  if t.baseClass != nil:
+    g.addNominalType(ObjectTy, mangle(c, t.baseClass))
   else:
     g.addBuiltinType VoidId # object does not inherit
     if not lacksMTypeField(t):
