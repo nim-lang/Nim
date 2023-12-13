@@ -890,13 +890,14 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
         
         if inlineAsmSyntax.len > 1:
           raiseAssert "Ambiguous asm syntax, please specify via inlineAsmSyntax pragma"
-        elif inlineAsmSyntax.len == 0:
-          raiseAssert "Your compiler does not support the specified inline assembler"
-
+        
         let isBasicAsm = (
           fetchInfo(t, n, IsGlobal).infoVal(t, bool) or
           fetchInfo(t, n, InPure).infoVal(t, bool)
         ) and inlineAsmSyntax != {VisualCPP}
+
+        if inlineAsmSyntax.len == 0 and not isBasicAsm:
+          raiseAssert "Your compiler does not support the specified inline assembler"
 
         if not isBasicAsm:
           if inlineAsmSyntax == {GCCExtendedAsm}: genGccAsm(c, t, code)
