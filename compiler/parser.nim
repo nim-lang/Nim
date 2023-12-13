@@ -155,8 +155,6 @@ proc openParser*(p: var Parser, filename: AbsoluteFile, inputStream: PLLStream,
 proc closeParser*(p: var Parser) =
   ## Close a parser, freeing up its resources.
   closeLexer(p.lex)
-  when defined(nimpretty):
-    closeEmitter(p.em)
 
 proc parMessage(p: Parser, msg: TMsgKind, arg = "") =
   ## Produce and emit the parser message `arg` to output.
