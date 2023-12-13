@@ -1151,7 +1151,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if x == isNone: return isNone
       if x < result: result = x
     return result
-
   of tyAnd:
     # XXX: deal with the current dual meaning of tyGenericParam
     c.typedescMatched = true
@@ -1162,7 +1161,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if x != isNone:
         return if x >= isGeneric: isGeneric else: x
     return isNone
-
   of tyIterable:
     if f.kind != tyIterable: return isNone
   of tyNot:
@@ -1179,11 +1177,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # so only the `any` type class is their superset
       return if f.kind == tyAnything: isGeneric
              else: isNone
-
   of tyAnything:
     if f.kind == tyAnything: return isGeneric
     else: return isNone
-
   of tyUserTypeClass, tyUserTypeClassInst:
     if c.c.matchedConcept != nil and c.c.matchedConcept.depth <= 4:
       # consider this: 'var g: Node' *within* a concept where 'Node'
@@ -1192,7 +1188,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let x = typeRel(c, a, f, flags + {trDontBind})
       if x >= isGeneric:
         return isGeneric
-
   of tyFromExpr:
     if c.c.inGenericContext > 0:
       # generic type bodies can sometimes compile call expressions
@@ -1200,6 +1195,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # being passed as parameters
       return isNone
   else: discard
+  
   case f.kind
   of tyEnum:
     if a.kind == f.kind and sameEnumTypes(f, a): result = isEqual
@@ -1412,7 +1408,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           elif tfIsConstructor notin a.flags:
             # set constructors are a bit special...
             result = isNone
-
   of tyPtr, tyRef:
     skipOwned(a)
     if a.kind == f.kind:
@@ -1487,13 +1482,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
               pointsTo[1].kind == tyChar:
             result = isConvertible
     else: discard
-
   of tyEmpty, tyVoid:
     if a.kind == f.kind: result = isEqual
-
   of tyAlias, tySink:
     result = typeRel(c, skipModifier(f), a, flags)
-
   of tyIterable:
     if a.kind == tyIterable:
       if f.len == 1:
@@ -1574,7 +1566,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       result = typeRel(c, last(origF), a, flags)
       if result != isNone and a.kind != tyNil:
         put(c, f, a)
-
   of tyGenericBody:
     considerPreviousT:
       if a == f or a.kind == tyGenericInst and a.skipGenericAlias[0] == f:
@@ -1582,7 +1573,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let ff = last(f)
       if ff != nil:
         result = typeRel(c, ff, a, flags)
-
   of tyGenericInvocation:
     var x = a.skipGenericAlias
     if x.kind == tyGenericParam and x.len > 0:
@@ -1677,7 +1667,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         if x < result: result = x
       if result > isGeneric: result = isGeneric
       bindingRet result
-
   of tyOr:
     considerPreviousT:
       result = isNone
@@ -1695,7 +1684,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       else:
         result = isNone
       c.inheritancePenalty = oldInheritancePenalty + maxInheritance
-
   of tyNot:
     considerPreviousT:
       for branch in f:
@@ -1703,14 +1691,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           return isNone
 
       bindingRet isGeneric
-
   of tyAnything:
     considerPreviousT:
       var concrete = concreteType(c, a)
       if concrete != nil and doBind:
         put(c, f, concrete)
       return isGeneric
-
   of tyBuiltInTypeClass:
     considerPreviousT:
       let target = f[0]
@@ -1731,7 +1717,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         return isGeneric
       else:
         return isNone
-
   of tyUserTypeClassInst, tyUserTypeClass:
     if f.isResolvedUserTypeClass:
       result = typeRel(c, f.last, a, flags)
@@ -1754,11 +1739,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           result = isGeneric
         else:
           result = isNone
-
   of tyConcept:
     result = if concepts.conceptMatch(c.c, f, a, c.bindings, nil): isGeneric
              else: isNone
-
   of tyCompositeTypeClass:
     considerPreviousT:
       let roota = a.skipGenericAlias
@@ -1775,7 +1758,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if result != isNone:
         put(c, f, a)
         result = isGeneric
-
   of tyGenericParam:
     let doBindGP = doBind or trBindGenericParam in flags
     var x = PType(idTableGet(c.bindings, f))
@@ -1902,7 +1884,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # XXX endless recursion?
       #result = typeRel(c, prev, aOrig, flags)
       result = isNone
-
   of tyInferred:
     let prev = f.previouslyInferred
     if prev != nil:
@@ -1912,7 +1893,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if result != isNone:
         c.inferredTypes.add f
         f.add a
-
   of tyTypeDesc:
     var prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
@@ -1945,15 +1925,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         result = typeRel(c, prev.base, a.base, flags)
       else:
         result = isNone
-
   of tyTyped:
     if aOrig != nil:
       put(c, f, aOrig)
     result = isGeneric
-
   of tyProxy:
     result = isEqual
-
   of tyFromExpr:
     # fix the expression, so it contains the already instantiated types
     if f.n == nil or f.n.kind == nkEmpty: return isGeneric
