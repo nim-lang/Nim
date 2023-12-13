@@ -877,7 +877,7 @@ proc gen(c: var GeneratedCode; t: Tree; n: NodePos) =
 
     case target:
       of Asm:
-        requireInfo t, n, InPure
+        requireInfo t, n, {InPure, IsGlobal}
 
         # Resolve asm overloads (as example for icc inlineAsmSyntax pragma must be specified)
         var inlineAsmSyntax = c.props.inlineAsmSyntax
