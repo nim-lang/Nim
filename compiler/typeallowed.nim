@@ -96,9 +96,9 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
         # only closure iterators may be assigned to anything.
         result = t
       let f = if kind in {skProc, skFunc}: flags+{taNoUntyped} else: flags
-      for i in 1..<t.len:
+      for _, a in t.paramTypes:
         if result != nil: break
-        result = typeAllowedAux(marker, t[i], skParam, c, f-{taIsOpenArray})
+        result = typeAllowedAux(marker, a, skParam, c, f-{taIsOpenArray})
       if result.isNil and t.returnType != nil:
         result = typeAllowedAux(marker, t.returnType, skResult, c, flags)
   of tyTypeDesc:
@@ -179,17 +179,22 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = typeAllowedAux(marker, t.elementType, kind, c, flags+{taHeap})
   of tySet:
     result = typeAllowedAux(marker, t.elementType, kind, c, flags)
-  of tyObject, tyTuple:
+  of tyObject:
     if kind in {skProc, skFunc, skConst} and
-        t.kind == tyObject and t.baseClass != nil and taIsDefaultField notin flags:
+        t.baseClass != nil and taIsDefaultField notin flags:
       result = t
     else:
       let flags = flags+{taField}
-      for i in 0..<t.len:
-        result = typeAllowedAux(marker, t[i], kind, c, flags)
-        if result != nil: break
+      result = typeAllowedAux(marker, t.baseClass, kind, c, flags)
       if result.isNil and t.n != nil:
         result = typeAllowedNode(marker, t.n, kind, c, flags)
+  of tyTuple:
+    let flags = flags+{taField}
+    for a in t.kids:
+      result = typeAllowedAux(marker, a, kind, c, flags)
+      if result != nil: break
+    if result.isNil and t.n != nil:
+      result = typeAllowedNode(marker, t.n, kind, c, flags)
   of tyEmpty:
     if kind in {skVar, skLet}: result = t
   of tyProxy:
@@ -197,7 +202,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     # prevent cascading errors:
     result = nil
   of tyOwned:
-    if t.len == 1 and t.skipModifier.skipTypes(abstractInst).kind in {tyRef, tyPtr, tyProc}:
+    if t.hasElementType and t.skipModifier.skipTypes(abstractInst).kind in {tyRef, tyPtr, tyProc}:
       result = typeAllowedAux(marker, t.skipModifier, kind, c, flags+{taHeap})
     else:
       result = t
@@ -247,14 +252,14 @@ proc classifyViewTypeAux(marker: var IntSet, t: PType): ViewTypeKind =
      tyUncheckedArray, tySequence, tyArray, tyRef, tyStatic:
     result = classifyViewTypeAux(marker, skipModifier(t))
   of tyFromExpr:
-    if t.len > 0:
+    if t.hasElementType:
       result = classifyViewTypeAux(marker, skipModifier(t))
     else:
       result = noView
   of tyTuple:
     result = noView
-    for i in 0..<t.len:
-      result.combine classifyViewTypeAux(marker, t[i])
+    for a in t.kids:
+      result.combine classifyViewTypeAux(marker, a)
       if result == mutableView: break
   of tyObject:
     result = noView

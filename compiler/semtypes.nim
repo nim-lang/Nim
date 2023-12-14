@@ -1036,7 +1036,7 @@ proc findEnforcedStaticType(t: PType): PType =
   if t == nil: return nil
   if t.kind == tyStatic: return t
   if t.kind == tyAnd:
-    for s in t:
+    for s in t.kids:
       let t = findEnforcedStaticType(s)
       if t != nil: return t
 

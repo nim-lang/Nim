@@ -400,11 +400,10 @@ proc allRoots(n: PNode; result: var seq[(PSym, int)]; level: int) =
         if typ != nil:
           typ = skipTypes(typ, abstractInst)
           if typ.kind != tyProc: typ = nil
-          else: assert(typ.len == typ.n.len)
 
         for i in 1 ..< n.len:
           let it = n[i]
-          if typ != nil and i < typ.len:
+          if typ != nil and i < typ.n.len:
             assert(typ.n[i].kind == nkSym)
             let paramType = typ.n[i].typ
             if not paramType.isCompileTimeOnly and not typ.returnType.isEmptyType and

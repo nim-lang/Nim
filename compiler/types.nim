@@ -68,12 +68,9 @@ template `$`*(typ: PType): string = typeToString(typ)
 # ------------------- type iterator: ----------------------------------------
 type
   TTypeIter* = proc (t: PType, closure: RootRef): bool {.nimcall.} # true if iteration should stop
-  TTypeMutator* = proc (t: PType, closure: RootRef): PType {.nimcall.} # copy t and mutate it
   TTypePredicate* = proc (t: PType): bool {.nimcall.}
 
 proc iterOverType*(t: PType, iter: TTypeIter, closure: RootRef): bool
-  # Returns result of `iter`.
-proc mutateType*(t: PType, iter: TTypeMutator, closure: RootRef): PType
   # Returns result of `iter`.
 
 type
@@ -228,8 +225,8 @@ proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
     of tyGenericInst, tyGenericBody, tyAlias, tySink, tyInferred:
       result = iterOverTypeAux(marker, skipModifier(t), iter, closure)
     else:
-      for i in 0..<t.len:
-        result = iterOverTypeAux(marker, t[i], iter, closure)
+      for a in t.kids:
+        result = iterOverTypeAux(marker, a, iter, closure)
         if result: return
       if t.n != nil and t.kind != tyProc: result = iterOverNode(marker, t.n, iter, closure)
 
@@ -278,8 +275,8 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
   of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = searchTypeForAux(skipModifier(t), predicate, marker)
   of tyArray, tySet, tyTuple:
-    for i in 0..<t.len:
-      result = searchTypeForAux(t[i], predicate, marker)
+    for a in t.kids:
+      result = searchTypeForAux(a, predicate, marker)
       if result: return
   else:
     discard
@@ -307,7 +304,6 @@ type
 
 proc analyseObjectWithTypeFieldAux(t: PType,
                                    marker: var IntSet): TTypeFieldResult =
-  var res: TTypeFieldResult
   result = frNone
   if t == nil: return
   case t.kind
@@ -315,20 +311,19 @@ proc analyseObjectWithTypeFieldAux(t: PType,
     if t.n != nil:
       if searchTypeNodeForAux(t.n, isObjectWithTypeFieldPredicate, marker):
         return frEmbedded
-    for i in 0..<t.len:
-      var x = t[i]
-      if x != nil: x = x.skipTypes(skipPtrs)
-      res = analyseObjectWithTypeFieldAux(x, marker)
-      if res == frEmbedded:
-        return frEmbedded
-      if res == frHeader: result = frHeader
+    var x = t.baseClass
+    if x != nil: x = x.skipTypes(skipPtrs)
+    let res = analyseObjectWithTypeFieldAux(x, marker)
+    if res == frEmbedded:
+      return frEmbedded
+    if res == frHeader: result = frHeader
     if result == frNone:
       if isObjectWithTypeFieldPredicate(t): result = frHeader
   of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = analyseObjectWithTypeFieldAux(skipModifier(t), marker)
   of tyArray, tyTuple:
-    for i in 0..<t.len:
-      res = analyseObjectWithTypeFieldAux(t[i], marker)
+    for a in t.kids:
+      let res = analyseObjectWithTypeFieldAux(a, marker)
       if res != frNone:
         return frEmbedded
   else:
@@ -405,9 +400,7 @@ proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PTyp
       if withRef and sameBackendType(t, orig):
         result = true
       elif not containsOrIncl(marker, t.id):
-        for i in 0..<t.len:
-          result = canFormAcycleAux(g, marker, t[i], orig, withRef or t.kind != tyUncheckedArray, hasTrace)
-          if result: return
+        result = canFormAcycleAux(g, marker, t.elementType, orig, withRef or t.kind != tyUncheckedArray, hasTrace)
   of tyObject:
     if withRef and sameBackendType(t, orig):
       result = true
@@ -416,8 +409,8 @@ proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PTyp
       let op = getAttachedOp(g, t.skipTypes({tyRef}), attachedTrace)
       if op != nil and sfOverridden in op.flags:
         hasTrace = true
-      for i in 0..<t.len:
-        result = canFormAcycleAux(g, marker, t[i], orig, withRef, hasTrace)
+      if t.baseClass != nil:
+        result = canFormAcycleAux(g, marker, t.baseClass, orig, withRef, hasTrace)
         if result: return
       if t.n != nil: result = canFormAcycleNode(g, marker, t.n, orig, withRef, hasTrace)
     # Inheritance can introduce cyclic types, however this is not relevant
@@ -426,13 +419,18 @@ proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PTyp
     if tfFinal notin t.flags:
       # damn inheritance may introduce cycles:
       result = true
-  of tyTuple, tySequence, tyArray, tyOpenArray, tyVarargs:
+  of tyTuple:
     if withRef and sameBackendType(t, orig):
       result = true
     elif not containsOrIncl(marker, t.id):
-      for i in 0..<t.len:
-        result = canFormAcycleAux(g, marker, t[i], orig, withRef, hasTrace)
+      for a in t.kids:
+        result = canFormAcycleAux(g, marker, a, orig, withRef, hasTrace)
         if result: return
+  of tySequence, tyArray, tyOpenArray, tyVarargs:
+    if withRef and sameBackendType(t, orig):
+      result = true
+    elif not containsOrIncl(marker, t.id):
+      result = canFormAcycleAux(g, marker, t.elementType, orig, withRef, hasTrace)
   of tyProc: result = typ.callConv == ccClosure
   else: discard
 
@@ -444,37 +442,6 @@ proc canFormAcycle*(g: ModuleGraph, typ: PType): bool =
   var marker = initIntSet()
   let t = skipTypes(typ, abstractInst+{tyOwned}-{tyTypeDesc})
   result = canFormAcycleAux(g, marker, t, t, false, false)
-
-proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
-                   closure: RootRef): PType
-proc mutateNode(marker: var IntSet, n: PNode, iter: TTypeMutator,
-                closure: RootRef): PNode =
-  result = nil
-  if n != nil:
-    result = copyNode(n)
-    result.typ = mutateTypeAux(marker, n.typ, iter, closure)
-    case n.kind
-    of nkNone..nkNilLit:
-      # a leaf
-      discard
-    else:
-      for i in 0..<n.len:
-        result.add mutateNode(marker, n[i], iter, closure)
-
-proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
-                   closure: RootRef): PType =
-  result = nil
-  if t == nil: return
-  result = iter(t, closure)
-  if not containsOrIncl(marker, t.id):
-    for i in 0..<t.len:
-      result[i] = mutateTypeAux(marker, result[i], iter, closure)
-    if t.n != nil: result.n = mutateNode(marker, t.n, iter, closure)
-  assert(result != nil)
-
-proc mutateType(t: PType, iter: TTypeMutator, closure: RootRef): PType =
-  var marker = initIntSet()
-  result = mutateTypeAux(marker, t, iter, closure)
 
 proc valueToString(a: PNode): string =
   case a.kind
@@ -566,13 +533,9 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       elif prefer in {preferName, preferTypeName, preferInlayHint} or t.sym.owner.isNil:
         # note: should probably be: {preferName, preferTypeName, preferGenericArg}
         result = t.sym.name.s
-        if t.kind == tyGenericParam and t.len > 0:
+        if t.kind == tyGenericParam and t.genericParamHasConstraints:
           result.add ": "
-          var first = true
-          for son in t:
-            if not first: result.add " or "
-            result.add son.typeToString
-            first = false
+          result.add t.elementType.typeToString
       else:
         result = t.sym.owner.name.s & '.' & t.sym.name.s
       result.addTypeFlags(t)
@@ -589,17 +552,23 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           result = "int"
         else:
           result = "int literal(" & $t.n.intVal & ")"
-    of tyGenericInst, tyGenericInvocation:
+    of tyGenericInst:
       result = typeToString(t.genericHead) & '['
-      for i in 1..<t.len-ord(t.kind != tyGenericInvocation):
-        if i > 1: result.add(", ")
-        result.add(typeToString(t[i], preferGenericArg))
+      for needsComma, a in t.genericInstParams:
+        if needsComma: result.add(", ")
+        result.add(typeToString(a, preferGenericArg))
+      result.add(']')
+    of tyGenericInvocation:
+      result = typeToString(t.genericHead) & '['
+      for needsComma, a in t.genericInvocationParams:
+        if needsComma: result.add(", ")
+        result.add(typeToString(a, preferGenericArg))
       result.add(']')
     of tyGenericBody:
       result = typeToString(t.typeBodyImpl) & '['
-      for i in 0..<t.len-1:
-        if i > 0: result.add(", ")
-        result.add(typeToString(t[i], preferTypeName))
+      for needsComma, a in t.genericBodyParams:
+        if needsComma: result.add(", ")
+        result.add(typeToString(a, preferTypeName))
       result.add(']')
     of tyTypeDesc:
       if t.elementType.kind == tyNone: result = "typedesc"
@@ -608,7 +577,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if prefer == preferGenericArg and t.n != nil:
         result = t.n.renderTree
       else:
-        result = "static[" & (if t.len > 0: typeToString(t.skipModifier) else: "") & "]"
+        result = "static[" & (if t.hasElementType: typeToString(t.skipModifier) else: "") & "]"
         if t.n != nil: result.add "(" & renderTree(t.n) & ")"
     of tyUserTypeClass:
       if t.sym != nil and t.sym.owner != nil:
@@ -639,20 +608,18 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     of tyUserTypeClassInst:
       let body = t.base
       result = body.sym.name.s & "["
-      for i in 1..<t.len - 1:
-        if i > 1: result.add(", ")
-        result.add(typeToString(t[i]))
+      for needsComma, a in t.userTypeClassInstParams:
+        if needsComma: result.add(", ")
+        result.add(typeToString(a))
       result.add "]"
     of tyAnd:
-      for i, son in t:
+      for i, son in t.ikids:
+        if i > 0: result.add(" and ")
         result.add(typeToString(son))
-        if i < t.len - 1:
-          result.add(" and ")
     of tyOr:
-      for i, son in t:
+      for i, son in t.ikids:
+        if i > 0: result.add(" or ")
         result.add(typeToString(son))
-        if i < t.len - 1:
-          result.add(" or ")
     of tyNot:
       result = "not " & typeToString(t.elementType)
     of tyUntyped:
@@ -665,7 +632,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = "typeof(" & renderTree(t.n) & ")"
     of tyArray:
       result = "array"
-      if t.len > 0:
+      if t.hasElementType:
         if t.indexType.kind == tyRange:
           result &= "[" & rangeToStr(t.indexType.n) & ", " &
               typeToString(t.elementType) & ']'
@@ -674,26 +641,26 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
               typeToString(t.elementType) & ']'
     of tyUncheckedArray:
       result = "UncheckedArray"
-      if t.len > 0:
+      if t.hasElementType:
         result &= "[" & typeToString(t.elementType) & ']'
     of tySequence:
       if t.sym != nil and prefer != preferResolved:
         result = t.sym.name.s
       else:
         result = "seq"
-        if t.len > 0:
+        if t.hasElementType:
           result &= "[" & typeToString(t.elementType) & ']'
     of tyOrdinal:
       result = "ordinal"
-      if t.len > 0:
+      if t.hasElementType:
         result &= "[" & typeToString(t.skipModifier) & ']'
     of tySet:
       result = "set"
-      if t.len > 0:
+      if t.hasElementType:
         result &= "[" & typeToString(t.elementType) & ']'
     of tyOpenArray:
       result = "openArray"
-      if t.len > 0:
+      if t.hasElementType:
         result &= "[" & typeToString(t.elementType) & ']'
     of tyDistinct:
       result = "distinct " & typeToString(t.elementType,
@@ -701,38 +668,33 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     of tyIterable:
       # xxx factor this pattern
       result = "iterable"
-      if t.len > 0:
+      if t.hasElementType:
         result &= "[" & typeToString(t.skipModifier) & ']'
     of tyTuple:
       # we iterate over t.sons here, because t.n may be nil
       if t.n != nil:
         result = "tuple["
-        assert(t.n.len == t.len)
         for i in 0..<t.n.len:
           assert(t.n[i].kind == nkSym)
-          result.add(t.n[i].sym.name.s & ": " & typeToString(t[i]))
+          result.add(t.n[i].sym.name.s & ": " & typeToString(t.n[i].sym.typ))
           if i < t.n.len - 1: result.add(", ")
         result.add(']')
-      elif t.len == 0:
+      elif t.isEmptyTupleType:
         result = "tuple[]"
+      elif t.isSingletonTupleType:
+        result = "("
+        for son in t.kids:
+          result.add(typeToString(son))
+        result.add(",)")
       else:
         result = "("
-        for i in 0..<t.len:
-          result.add(typeToString(t[i]))
-          if i < t.len - 1: result.add(", ")
-          elif t.len == 1: result.add(",")
+        for i, son in t.ikids:
+          if i > 0: result.add ", "
+          result.add(typeToString(son))
         result.add(')')
     of tyPtr, tyRef, tyVar, tyLent:
       result = if isOutParam(t): "out " else: typeToStr[t.kind]
-      if t.len >= 2:
-        setLen(result, result.len-1)
-        result.add '['
-        for i in 0..<t.len:
-          result.add(typeToString(t[i]))
-          if i < t.len - 1: result.add(", ")
-        result.add ']'
-      else:
-        result.add typeToString(t.elementType)
+      result.add typeToString(t.elementType)
     of tyRange:
       result = "range "
       if t.n != nil and t.n.kind == nkRange:
@@ -751,14 +713,15 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
                 "proc "
       if tfUnresolved in t.flags: result.add "[*missing parameters*]"
       result.add "("
-      for i in 1..<t.len:
-        if t.n != nil and i < t.n.len and t.n[i].kind == nkSym:
-          result.add(t.n[i].sym.name.s)
+      for i, a in t.paramTypes:
+        if i > FirstParamAt: result.add(", ")
+        let j = paramTypeToNodeIndex(i)
+        if t.n != nil and j < t.n.len and t.n[j].kind == nkSym:
+          result.add(t.n[j].sym.name.s)
           result.add(": ")
-        result.add(typeToString(t[i]))
-        if i < t.len - 1: result.add(", ")
+        result.add(typeToString(a))
       result.add(')')
-      if t.len > 0 and t.returnType != nil: result.add(": " & typeToString(t.returnType))
+      if t.returnType != nil: result.add(": " & typeToString(t.returnType))
       var prag = if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags: "" else: $t.callConv
       if not isNil(t.owner) and not isNil(t.owner.ast) and (t.owner.ast.len - 1) >= pragmasPos:
         let pragmasNode = t.owner.ast[pragmasPos]
@@ -813,7 +776,7 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
   of tyUInt..tyUInt64: result = Zero
   of tyEnum:
     # if basetype <> nil then return firstOrd of basetype
-    if t.len > 0 and t.baseClass != nil:
+    if t.baseClass != nil:
       result = firstOrd(conf, t.baseClass)
     else:
       if t.n.len > 0:
@@ -827,7 +790,7 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
   of tyUserTypeClasses:
     result = firstOrd(conf, last(t))
   of tyOrdinal:
-    if t.len > 0: result = firstOrd(conf, skipModifier(t))
+    if t.hasElementType: result = firstOrd(conf, skipModifier(t))
     else:
       result = Zero
       internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
@@ -923,7 +886,7 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
     result = lastOrd(conf, last(t))
   of tyProxy: result = Zero
   of tyOrdinal:
-    if t.len > 0: result = lastOrd(conf, skipModifier(t))
+    if t.hasElementType: result = lastOrd(conf, skipModifier(t))
     else:
       result = Zero
       internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
@@ -1093,11 +1056,11 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
   # two tuples are equivalent iff the names, types and positions are the same;
   # however, both types may not have any field names (t.n may be nil) which
   # complicates the matter a bit.
-  if a.len == b.len:
+  if sameTupleLengths(a, b):
     result = true
-    for i in 0..<a.len:
-      var x = a[i]
-      var y = b[i]
+    for i, aa, bb in tupleTypePairs(a, b):
+      var x = aa
+      var y = bb
       if IgnoreTupleFields in c.flags:
         x = skipTypes(x, {tyRange, tyGenericInst, tyAlias})
         y = skipTypes(y, {tyRange, tyGenericInst, tyAlias})
@@ -1184,18 +1147,16 @@ proc sameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
     result = false
 
 proc sameObjectStructures(a, b: PType, c: var TSameTypeClosure): bool =
-  # check base types:
-  if a.len != b.len: return
-  for i in 0..<a.len:
-    if not sameTypeOrNilAux(a[i], b[i], c): return
-  if not sameObjectTree(a.n, b.n, c): return
+  if not sameTypeOrNilAux(a.baseClass, b.baseClass, c): return false
+  if not sameObjectTree(a.n, b.n, c): return false
   result = true
 
 proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
-  if a.len != b.len: return false
+  if not sameTupleLengths(a, b): return false
+  # XXX This is not tuple specific.
   result = true
-  for i in 0..<a.len:
-    result = sameTypeOrNilAux(a[i], b[i], c)
+  for _, x, y in tupleTypePairs(a, b):
+    result = sameTypeOrNilAux(x, y, c)
     if not result: return
 
 proc isGenericAlias*(t: PType): bool =
@@ -1253,15 +1214,13 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     objects ie `type A[T] = SomeObject`
   ]#
   # this is required by tunique_type but makes no sense really:
-  if tyDistinct notin {x.kind, y.kind} and x.kind == tyGenericInst and IgnoreTupleFields notin c.flags:
+  if x.kind == tyGenericInst and IgnoreTupleFields notin c.flags and tyDistinct != y.kind:
     let
       lhs = x.skipGenericAlias
       rhs = y.skipGenericAlias
     if rhs.kind != tyGenericInst or lhs.base != rhs.base:
       return false
-    for i in 1..<lhs.len - 1:
-      let ff = rhs[i]
-      let aa = lhs[i]
+    for ff, aa in underspecifiedPairs(rhs, lhs, 1, -1):
       if not sameTypeAux(ff, aa, c): return false
     return true
 
@@ -1279,7 +1238,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
 
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
-    if result and a.len == b.len and a.len == 1:
+    if result and sameTupleLengths(a, b) and a.hasElementType:
       cycleCheck()
       result = sameTypeAux(a.skipModifier, b.skipModifier, c)
   of tyObject:
@@ -1314,15 +1273,11 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     if result and {ExactGenericParams, ExactTypeDescValues} * c.flags != {}:
       result = a.sym.position == b.sym.position
   of tyBuiltInTypeClass:
-    assert a.len == 1
-    assert a[0].len == 0
-    assert b.len == 1
-    assert b[0].len == 0
-    result = a[0].kind == b[0].kind and sameFlags(a[0], b[0])
-    if result and a[0].kind == tyProc and IgnoreCC notin c.flags:
-      let ecc = a[0].flags * {tfExplicitCallConv}
-      result = ecc == b[0].flags * {tfExplicitCallConv} and
-               (ecc == {} or a[0].callConv == b[0].callConv)
+    result = a.elementType.kind == b.elementType.kind and sameFlags(a.elementType, b.elementType)
+    if result and a.elementType.kind == tyProc and IgnoreCC notin c.flags:
+      let ecc = a.elementType.flags * {tfExplicitCallConv}
+      result = ecc == b.elementType.flags * {tfExplicitCallConv} and
+               (ecc == {} or a.elementType.callConv == b.elementType.callConv)
   of tyGenericInvocation, tyGenericBody, tySequence, tyOpenArray, tySet, tyRef,
      tyPtr, tyVar, tyLent, tySink, tyUncheckedArray, tyArray, tyProc, tyVarargs,
      tyOrdinal, tyCompositeTypeClass, tyUserTypeClass, tyUserTypeClassInst,
@@ -1417,15 +1372,6 @@ proc commonSuperclass*(a, b: PType): PType =
       if t.kind != tyGenericInst: t = y
       return t
     y = y.baseClass
-
-proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
-                last: TTypeKind): bool =
-  var a = a
-  for k, i in pattern.items:
-    if a.kind != k: return false
-    if i >= a.len or a[i] == nil: return false
-    a = a[i]
-  result = a.kind == last
 
 
 include sizealignoffsetimpl
@@ -1578,8 +1524,8 @@ proc isCompileTimeOnly*(t: PType): bool {.inline.} =
 
 proc containsCompileTimeOnly*(t: PType): bool =
   if isCompileTimeOnly(t): return true
-  for i in 0..<t.len:
-    if t[i] != nil and isCompileTimeOnly(t[i]):
+  for a in t.kids:
+    if a != nil and isCompileTimeOnly(a):
       return true
   return false
 
@@ -1787,9 +1733,9 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
   of tyTuple:
     result = false
     var cycleDetectorCopy: IntSet
-    for i in 0..<t.len:
+    for a in t.kids:
       cycleDetectorCopy = cycleDetector
-      if isTupleRecursive(t[i], cycleDetectorCopy):
+      if isTupleRecursive(a, cycleDetectorCopy):
         return true
   of tyRef, tyPtr, tyVar, tyLent, tySink,
       tyArray, tyUncheckedArray, tySequence, tyDistinct:
