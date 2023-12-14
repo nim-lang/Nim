@@ -714,7 +714,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
     # try transforming the argument into a static one before feeding it into
     # typeRel
     if formal.kind == tyStatic and arg.kind != tyStatic:
-      let evaluated = c.semTryConstExpr(c, n[i])
+      let evaluated = c.semTryConstExpr(c, n[i], n[i].typ)
       if evaluated != nil:
         arg = newTypeS(tyStatic, c)
         arg.sons = @[evaluated.typ]
@@ -728,10 +728,16 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   onUse(info, s)
   result = newSymNode(newInst, info)
 
-proc setGenericParams(c: PContext, n: PNode) =
+proc setGenericParams(c: PContext, n, expectedParams: PNode) =
   ## sems generic params in subscript expression
   for i in 1..<n.len:
-    let e = semExprWithType(c, n[i])
+    let 
+      constraint =
+        if expectedParams != nil and i <= expectedParams.len:
+          expectedParams[i - 1].typ
+        else:
+          nil
+      e = semExprWithType(c, n[i], expectedType = constraint)
     if e.typ == nil:
       n[i].typ = errorType(c)
     else:
@@ -739,7 +745,7 @@ proc setGenericParams(c: PContext, n: PNode) =
 
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   assert n.kind == nkBracketExpr
-  setGenericParams(c, n)
+  setGenericParams(c, n, s.ast[genericParamsPos])
   var s = s
   var a = n[0]
   if a.kind == nkSym:
