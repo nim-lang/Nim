@@ -83,7 +83,7 @@ type
     recursionLimit: int
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType
-proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym
+proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym
 proc replaceTypeVarsN*(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode
 
 proc initLayeredTypeMap*(pt: TIdTable): LayeredIdTable =
@@ -123,7 +123,12 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
            else: t.n
   result = copyNode(n)
   result.typ = t
-  if result.kind == nkSym: result.sym = replaceTypeVarsS(cl, n.sym)
+  if result.kind == nkSym:
+    result.sym =
+      if n.typ != nil and n.typ == n.sym.typ:
+        replaceTypeVarsS(cl, n.sym, result.typ)
+      else:
+        replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
   let isCall = result.kind in nkCallKinds
   for i in 0..<n.safeLen:
     # XXX HACK: ``f(a, b)``, avoid to instantiate `f`
@@ -218,7 +223,11 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
     discard
   of nkOpenSymChoice, nkClosedSymChoice: result = n
   of nkSym:
-    result.sym = replaceTypeVarsS(cl, n.sym)
+    result.sym =
+      if n.typ != nil and n.typ == n.sym.typ:
+        replaceTypeVarsS(cl, n.sym, result.typ)
+      else:
+        replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
     if result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
       result = newNodeI(nkRecList, n.info)
@@ -260,7 +269,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
       for i in start..<n.len:
         result[i] = replaceTypeVarsN(cl, n[i])
 
-proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
+proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym =
   if s == nil: return nil
   # symbol is not our business:
   if cl.owner != nil and s.owner != cl.owner:
@@ -301,7 +310,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner
-  result.typ = replaceTypeVarsT(cl, s.typ)
+  result.typ = t
   if result.kind != skType:
     result.ast = replaceTypeVarsN(cl, s.ast)
 
