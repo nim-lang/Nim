@@ -676,7 +676,7 @@ when not defined(standalone):
 
     var baseState: Rand
 
-  proc initRand(): Rand =
+  proc initRand*(): Rand =
     ## Initializes a new Rand state.
     ##
     ## The resulting state is independent of the default RNG's state.
@@ -723,9 +723,6 @@ when not defined(standalone):
           baseState = getRandomState()
         result = baseState
         baseState.skipRandomNumbers
-
-  since (1, 5, 1):
-    export initRand
 
   proc randomize*() {.benign.} =
     ## Initializes the default random number generator with a seed based on
