@@ -118,7 +118,7 @@ proc expandDefault(t: PType; info: TLineInfo): PNode =
     expandDefaultObj(t, info, result)
   of tyTuple:
     result = newZero(t, info, nkTupleConstr)
-    for it in t:
+    for it in t.kids:
       result.add expandDefault(it, info)
   of tyVarargs, tyOpenArray, tySequence, tyUncheckedArray:
     result = newZero(t, info, nkBracket)

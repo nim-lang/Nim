@@ -1199,8 +1199,7 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): 
         var param = %{"name": %($genericParam)}
         if genericParam.sym.typ.len > 0:
           param["types"] = newJArray()
-        for kind in genericParam.sym.typ:
-          param["types"].add %($kind)
+        param["types"].add %($genericParam.sym.typ.elementType)
         result.json["signature"]["genericParams"].add param
   if optGenIndex in d.conf.globalOptions:
     genItem(d, n, nameNode, k, kForceExport)
@@ -1400,7 +1399,8 @@ proc generateDoc*(d: PDoc, n, orig: PNode, config: ConfigRef, docFlags: DocFlags
     for it in n: traceDeps(d, it)
   of nkExportStmt:
     for it in n:
-      if it.kind == nkSym:
+      # bug #23051; don't generate documentation for exported symbols again
+      if it.kind == nkSym and sfExported notin it.sym.flags:
         if d.module != nil and d.module == it.sym.owner:
           generateDoc(d, it.sym.ast, orig, config, kForceExport)
         elif it.sym.ast != nil:

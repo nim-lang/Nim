@@ -227,7 +227,7 @@ proc sumGeneric(t: PType): int =
       inc result
     of tyOr:
       var maxBranch = 0
-      for branch in t:
+      for branch in t.kids:
         let branchSum = sumGeneric(branch)
         if branchSum > maxBranch: maxBranch = branchSum
       inc result, maxBranch
@@ -240,11 +240,16 @@ proc sumGeneric(t: PType): int =
       t = t.elementType
       if t.kind == tyEmpty: break
       inc result
-    of tyGenericInvocation, tyTuple, tyProc, tyAnd:
+    of tyGenericInvocation, tyTuple, tyAnd:
       result += ord(t.kind in {tyGenericInvocation, tyAnd})
-      for i in 0..<t.len:
-        if t[i] != nil:
-          result += sumGeneric(t[i])
+      for a in t.kids:
+        if a != nil:
+          result += sumGeneric(a)
+      break
+    of tyProc:
+      result += sumGeneric(t.returnType)
+      for _, a in t.paramTypes:
+        result += sumGeneric(a)
       break
     of tyStatic:
       return sumGeneric(t.skipModifier) + 1
@@ -1146,7 +1151,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     # both int and string must match against number
     # but ensure that '[T: A|A]' matches as good as '[T: A]' (bug #2219):
     result = isGeneric
-    for branch in a:
+    for branch in a.kids:
       let x = typeRel(c, f, branch, flags + {trDontBind})
       if x == isNone: return isNone
       if x < result: result = x
@@ -1156,7 +1161,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     c.typedescMatched = true
     # seq[Sortable and Iterable] vs seq[Sortable]
     # only one match is enough
-    for branch in a:
+    for branch in a.kids:
       let x = typeRel(c, f, branch, flags + {trDontBind})
       if x != isNone:
         return if x >= isGeneric: isGeneric else: x
@@ -1660,7 +1665,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyAnd:
     considerPreviousT:
       result = isEqual
-      for branch in f:
+      for branch in f.kids:
         let x = typeRel(c, branch, aOrig, flags)
         if x < isSubtype: return isNone
         # 'and' implies minimum matching result:
@@ -1672,7 +1677,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       result = isNone
       let oldInheritancePenalty = c.inheritancePenalty
       var maxInheritance = 0
-      for branch in f:
+      for branch in f.kids:
         c.inheritancePenalty = 0
         let x = typeRel(c, branch, aOrig, flags)
         maxInheritance = max(maxInheritance, c.inheritancePenalty)
@@ -1686,9 +1691,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       c.inheritancePenalty = oldInheritancePenalty + maxInheritance
   of tyNot:
     considerPreviousT:
-      for branch in f:
-        if typeRel(c, branch, aOrig, flags) != isNone:
-          return isNone
+      if typeRel(c, f.elementType, aOrig, flags) != isNone:
+        return isNone
 
       bindingRet isGeneric
   of tyAnything:
@@ -1699,7 +1703,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       return isGeneric
   of tyBuiltInTypeClass:
     considerPreviousT:
-      let target = f[0]
+      let target = f.genericHead
       let targetKind = target.kind
       var effectiveArgType = a.getObjectTypeOrNil()
       if effectiveArgType == nil: return isNone
@@ -2333,6 +2337,17 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
           result = userConvMatch(c, m, base(f), a, arg)
           if result != nil: m.baseTypeMatch = true
 
+proc staticAwareTypeRel(m: var TCandidate, f: PType, arg: var PNode): TTypeRelation =
+  if f.kind == tyStatic and f.base.kind == tyProc:
+    # The ast of the type does not point to the symbol.
+    # Without this we will never resolve a `static proc` with overloads
+    let copiedNode = copyNode(arg)
+    copiedNode.typ = exactReplica(copiedNode.typ)
+    copiedNode.typ.n = arg
+    arg = copiedNode
+  typeRel(m, f, arg.typ)
+
+
 proc paramTypesMatch*(m: var TCandidate, f, a: PType,
                       arg, argOrig: PNode): PNode =
   if arg == nil or arg.kind notin nkSymChoices:
@@ -2361,7 +2376,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
         # XXX this is still all wrong: (T, T) should be 2 generic matches
         # and  (int, int) 2 exact matches, etc. Essentially you cannot call
         # typeRel here and expect things to work!
-        let r = typeRel(z, f, arg[i].typ)
+        let r = staticAwareTypeRel(z, f, arg[i])
         incMatches(z, r, 2)
         if r != isNone:
           z.state = csMatch

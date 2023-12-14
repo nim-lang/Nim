@@ -370,7 +370,7 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
       paddingAtEnd: t.paddingAtEnd)
     storeNode(p, t, n)
     p.typeInst = t.typeInst.storeType(c, m)
-    for kid in items t:
+    for kid in kids t:
       p.types.add kid.storeType(c, m)
     c.addMissing t.sym
     p.sym = t.sym.safeItemId(c, m)
