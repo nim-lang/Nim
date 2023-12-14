@@ -289,7 +289,7 @@ template declareClosures(currentFilename: AbsoluteFile, destFile: string) =
     let outDirPath: RelativeFile =
         presentationPath(conf, AbsoluteFile(basedir / targetRelPath))
           # use presentationPath because `..` path can be be mangled to `_._`
-    result.targetPath = string(conf.outDir / outDirPath)
+    result = (string(conf.outDir / outDirPath), "")
     if not fileExists(result.targetPath):
       # this can happen if targetRelPath goes to parent directory `OUTDIR/..`.
       # Trying it, this may cause ambiguities, but allows us to insert
@@ -1000,8 +1000,9 @@ proc getTypeKind(n: PNode): string =
 proc toLangSymbol(k: TSymKind, n: PNode, baseName: string): LangSymbol =
   ## Converts symbol info (names/types/parameters) in `n` into format
   ## `LangSymbol` convenient for ``rst.nim``/``dochelpers.nim``.
-  result.name = baseName.nimIdentNormalize
-  result.symKind = k.toHumanStr
+  result = LangSymbol(name: baseName.nimIdentNormalize,
+      symKind: k.toHumanStr
+  )
   if k in routineKinds:
     var
       paramTypes: seq[string] = @[]
@@ -1166,8 +1167,9 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): 
   if nonExports:
     renderFlags.incl renderNonExportedFields
   r = initTokRender(n, renderFlags)
-  result.json = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
+  result = JsonItem(json: %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                    "col": %n.info.col}
+  )
   if comm != nil:
     result.rst = comm
     result.rstField = "description"

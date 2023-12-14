@@ -223,7 +223,7 @@ proc readConfigFile*(filename: AbsoluteFile; cache: IdentCache;
   stream = llStreamOpen(filename, fmRead)
   if stream != nil:
     openLexer(L, filename, stream, cache, config)
-    tok.tokType = tkEof       # to avoid a pointless warning
+    tok = Token(tokType: tkEof)       # to avoid a pointless warning
     var condStack: seq[bool] = @[]
     confTok(L, tok, config, condStack)           # read in the first token
     while tok.tokType != tkEof: parseAssignment(L, tok, config, filename, condStack)
