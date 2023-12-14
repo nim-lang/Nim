@@ -1199,8 +1199,7 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): 
         var param = %{"name": %($genericParam)}
         if genericParam.sym.typ.len > 0:
           param["types"] = newJArray()
-        for kind in genericParam.sym.typ:
-          param["types"].add %($kind)
+        param["types"].add %($genericParam.sym.typ.elementType)
         result.json["signature"]["genericParams"].add param
   if optGenIndex in d.conf.globalOptions:
     genItem(d, n, nameNode, k, kForceExport)
