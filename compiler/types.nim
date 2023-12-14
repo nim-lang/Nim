@@ -1056,11 +1056,11 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
   # two tuples are equivalent iff the names, types and positions are the same;
   # however, both types may not have any field names (t.n may be nil) which
   # complicates the matter a bit.
-  if a.len == b.len:
+  if sameTupleLengths(a, b):
     result = true
-    for i in 0..<a.len:
-      var x = a[i]
-      var y = b[i]
+    for i, aa, bb in tupleTypePairs(a, b):
+      var x = aa
+      var y = bb
       if IgnoreTupleFields in c.flags:
         x = skipTypes(x, {tyRange, tyGenericInst, tyAlias})
         y = skipTypes(y, {tyRange, tyGenericInst, tyAlias})
@@ -1147,18 +1147,16 @@ proc sameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
     result = false
 
 proc sameObjectStructures(a, b: PType, c: var TSameTypeClosure): bool =
-  # check base types:
-  if a.len != b.len: return
-  for i in 0..<a.len:
-    if not sameTypeOrNilAux(a[i], b[i], c): return
-  if not sameObjectTree(a.n, b.n, c): return
+  if not sameTypeOrNilAux(a.baseClass, b.baseClass, c): return false
+  if not sameObjectTree(a.n, b.n, c): return false
   result = true
 
 proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
-  if a.len != b.len: return false
+  if not sameTupleLengths(a, b): return false
+  # XXX This is not tuple specific.
   result = true
-  for i in 0..<a.len:
-    result = sameTypeOrNilAux(a[i], b[i], c)
+  for _, x, y in tupleTypePairs(a, b):
+    result = sameTypeOrNilAux(x, y, c)
     if not result: return
 
 proc isGenericAlias*(t: PType): bool =
@@ -1216,15 +1214,13 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     objects ie `type A[T] = SomeObject`
   ]#
   # this is required by tunique_type but makes no sense really:
-  if tyDistinct notin {x.kind, y.kind} and x.kind == tyGenericInst and IgnoreTupleFields notin c.flags:
+  if x.kind == tyGenericInst and IgnoreTupleFields notin c.flags and tyDistinct != y.kind:
     let
       lhs = x.skipGenericAlias
       rhs = y.skipGenericAlias
     if rhs.kind != tyGenericInst or lhs.base != rhs.base:
       return false
-    for i in 1..<lhs.len - 1:
-      let ff = rhs[i]
-      let aa = lhs[i]
+    for ff, aa in underspecifiedPairs(rhs, lhs, 1, -1):
       if not sameTypeAux(ff, aa, c): return false
     return true
 
@@ -1242,7 +1238,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
 
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
-    if result and a.len == b.len and a.len == 1:
+    if result and sameTupleLengths(a, b) and a.hasElementType:
       cycleCheck()
       result = sameTypeAux(a.skipModifier, b.skipModifier, c)
   of tyObject:
@@ -1277,15 +1273,11 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     if result and {ExactGenericParams, ExactTypeDescValues} * c.flags != {}:
       result = a.sym.position == b.sym.position
   of tyBuiltInTypeClass:
-    assert a.len == 1
-    assert a[0].len == 0
-    assert b.len == 1
-    assert b[0].len == 0
-    result = a[0].kind == b[0].kind and sameFlags(a[0], b[0])
-    if result and a[0].kind == tyProc and IgnoreCC notin c.flags:
-      let ecc = a[0].flags * {tfExplicitCallConv}
-      result = ecc == b[0].flags * {tfExplicitCallConv} and
-               (ecc == {} or a[0].callConv == b[0].callConv)
+    result = a.elementType.kind == b.elementType.kind and sameFlags(a.elementType, b.elementType)
+    if result and a.elementType.kind == tyProc and IgnoreCC notin c.flags:
+      let ecc = a.elementType.flags * {tfExplicitCallConv}
+      result = ecc == b.elementType.flags * {tfExplicitCallConv} and
+               (ecc == {} or a.elementType.callConv == b.elementType.callConv)
   of tyGenericInvocation, tyGenericBody, tySequence, tyOpenArray, tySet, tyRef,
      tyPtr, tyVar, tyLent, tySink, tyUncheckedArray, tyArray, tyProc, tyVarargs,
      tyOrdinal, tyCompositeTypeClass, tyUserTypeClass, tyUserTypeClassInst,
@@ -1380,15 +1372,6 @@ proc commonSuperclass*(a, b: PType): PType =
       if t.kind != tyGenericInst: t = y
       return t
     y = y.baseClass
-
-proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
-                last: TTypeKind): bool =
-  var a = a
-  for k, i in pattern.items:
-    if a.kind != k: return false
-    if i >= a.len or a[i] == nil: return false
-    a = a[i]
-  result = a.kind == last
 
 
 include sizealignoffsetimpl
@@ -1541,8 +1524,8 @@ proc isCompileTimeOnly*(t: PType): bool {.inline.} =
 
 proc containsCompileTimeOnly*(t: PType): bool =
   if isCompileTimeOnly(t): return true
-  for i in 0..<t.len:
-    if t[i] != nil and isCompileTimeOnly(t[i]):
+  for a in t.kids:
+    if a != nil and isCompileTimeOnly(a):
       return true
   return false
 
@@ -1750,9 +1733,9 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
   of tyTuple:
     result = false
     var cycleDetectorCopy: IntSet
-    for i in 0..<t.len:
+    for a in t.kids:
       cycleDetectorCopy = cycleDetector
-      if isTupleRecursive(t[i], cycleDetectorCopy):
+      if isTupleRecursive(a, cycleDetectorCopy):
         return true
   of tyRef, tyPtr, tyVar, tyLent, tySink,
       tyArray, tyUncheckedArray, tySequence, tyDistinct:

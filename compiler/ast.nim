@@ -1584,6 +1584,18 @@ when true:
   proc len*(n: PType): int {.inline.} =
     result = n.sons.len
 
+proc sameTupleLengths*(a, b: PType): bool {.inline.} =
+  result = a.sons.len == b.sons.len
+
+iterator tupleTypePairs*(a, b: PType): (int, PType, PType) =
+  for i in 0 ..< a.sons.len:
+    yield (i, a.sons[i], b.sons[i])
+
+iterator underspecifiedPairs*(a, b: PType; start = 0; without = 0): (PType, PType) =
+  # XXX Figure out with what typekinds this is called.
+  for i in start ..< a.sons.len + without:
+    yield (a.sons[i], b.sons[i])
+
 proc signatureLen*(t: PType): int {.inline.} =
   result = t.sons.len
 
