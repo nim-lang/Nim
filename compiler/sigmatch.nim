@@ -192,11 +192,11 @@ proc checkGeneric(a, b: TCandidate): int =
   let aa = a.callee
   let bb = b.callee
   var winner = 0
-  for i in 1..<min(aa.len, bb.len):
-    var ma = newCandidate(c, bb[i])
-    let tra = typeRel(ma, bb[i], aa[i], {trDontBind})
-    var mb = newCandidate(c, aa[i])
-    let trb = typeRel(mb, aa[i], bb[i], {trDontBind})
+  for aai, bbi in underspecifiedPairs(aa, bb, 1):
+    var ma = newCandidate(c, bbi)
+    let tra = typeRel(ma, bbi, aai, {trDontBind})
+    var mb = newCandidate(c, aai)
+    let trb = typeRel(mb, aai, bbi, {trDontBind})
     if tra == isGeneric and trb == isNone:
       if winner == -1: return 0
       winner = 1
@@ -267,9 +267,9 @@ proc sumGeneric(t: PType): int =
 proc complexDisambiguation(a, b: PType): int =
   # 'a' matches better if *every* argument matches better or equal than 'b'.
   var winner = 0
-  for i in 1..<min(a.len, b.len):
-    let x = a[i].sumGeneric
-    let y = b[i].sumGeneric
+  for ai, bi in underspecifiedPairs(a, b, 1):
+    let x = ai.sumGeneric
+    let y = bi.sumGeneric
     if x != y:
       if winner == 0:
         if x > y: winner = 1
@@ -284,8 +284,8 @@ proc complexDisambiguation(a, b: PType): int =
   result = winner
   when false:
     var x, y: int
-    for i in 1..<a.len: x += a[i].sumGeneric
-    for i in 1..<b.len: y += b[i].sumGeneric
+    for i in 1..<a.len: x += ai.sumGeneric
+    for i in 1..<b.len: y += bi.sumGeneric
     result = x - y
 
 proc writeMatches*(c: TCandidate) =
@@ -382,7 +382,7 @@ proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   of tyOwned:
     # bug #11257: the comparison system.`==`[T: proc](x, y: T) works
     # better without the 'owned' type:
-    if f != nil and f.len > 0 and f[0].skipTypes({tyBuiltInTypeClass, tyOr}).kind == tyProc:
+    if f != nil and f.hasElementType and f.elementType.skipTypes({tyBuiltInTypeClass, tyOr}).kind == tyProc:
       result = t.skipModifier
     else:
       result = t
@@ -475,10 +475,10 @@ proc getObjectTypeOrNil(f: PType): PType =
   if f == nil: return nil
   case f.kind:
   of tyGenericInvocation, tyCompositeTypeClass, tyAlias:
-    if f.len <= 0 or f[0] == nil:
+    if not f.hasElementType or f.elementType == nil:
       result = nil
     else:
-      result = getObjectTypeOrNil(f[0])
+      result = getObjectTypeOrNil(f.elementType)
   of tyGenericInst:
     result = getObjectTypeOrNil(f.skipModifier)
   of tyGenericBody:
@@ -503,8 +503,8 @@ proc getObjectTypeOrNil(f: PType): PType =
 
 proc genericParamPut(c: var TCandidate; last, fGenericOrigin: PType) =
   if fGenericOrigin != nil and last.kind == tyGenericInst and
-     last.len-1 == fGenericOrigin.len:
-    for i in 1..<fGenericOrigin.len:
+     last.kidsLen-1 == fGenericOrigin.kidsLen:
+    for i in FirstGenericParamAt..<fGenericOrigin.kidsLen:
       let x = PType(idTableGet(c.bindings, fGenericOrigin[i]))
       if x == nil:
         put(c, fGenericOrigin[i], last[i])
@@ -538,7 +538,7 @@ proc skipToObject(t: PType; skipped: var SkippedPtr): PType =
   while r != nil:
     case r.kind
     of tyGenericInvocation:
-      r = r[0]
+      r = r.genericHead
     of tyRef:
       inc ptrs
       skipped = skippedRef
@@ -588,12 +588,12 @@ proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
   result = isNone
   if sameType(f, a):
     result = isEqual
-  elif a.len == f.len:
+  elif sameTupleLengths(a, f):
     result = isEqual
     let firstField = if f.kind == tyTuple: 0
                      else: 1
-    for i in firstField..<f.len:
-      var m = typeRel(c, f[i], a[i])
+    for _, ff, aa in tupleTypePairs(f, a):
+      var m = typeRel(c, ff, aa)
       if m < isSubtype: return isNone
       result = minRel(result, m)
     if f.n != nil and a.n != nil:
@@ -616,7 +616,7 @@ proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
     (f.kind in {tyVar, tyLent, tySink} or a.kind in {tyVar, tyLent, tySink})) or
     isOutParam(f) != isOutParam(a)
 
-proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
+proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
   ## For example we have:
   ##   ```nim
   ##   proc myMap[T,S](sIn: seq[T], f: proc(x: T): S): seq[S] = ...
@@ -676,7 +676,7 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   case a.kind
   of tyProc:
-    if f.len != a.len: return
+    if f.signatureLen != a.signatureLen: return
     result = isEqual      # start with maximum; also correct for no
                           # params at all
 
@@ -1200,7 +1200,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # being passed as parameters
       return isNone
   else: discard
-  
+
   case f.kind
   of tyEnum:
     if a.kind == f.kind and sameEnumTypes(f, a): result = isEqual

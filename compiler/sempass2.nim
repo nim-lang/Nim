@@ -660,7 +660,7 @@ proc isTrival(caller: PNode): bool {.inline.} =
 proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; argIndex: int; caller: PNode) =
   let a = skipConvCastAndClosure(n)
   let op = a.typ
-  let param = if formals != nil and argIndex < formals.len and formals.n != nil: formals.n[argIndex].sym else: nil
+  let param = if formals != nil and formals.n != nil and argIndex < formals.n.len: formals.n[argIndex].sym else: nil
   # assume indirect calls are taken here:
   if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit and
       not isTrival(caller) and
@@ -695,7 +695,7 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; ar
         markGcUnsafe(tracked, a)
       elif tfNoSideEffect notin op.flags:
         markSideEffect(tracked, a, n.info)
-  let paramType = if formals != nil and argIndex < formals.len: formals[argIndex] else: nil
+  let paramType = if formals != nil and argIndex < formals.signatureLen: formals[argIndex] else: nil
   if paramType != nil and paramType.kind in {tyVar}:
     invalidateFacts(tracked.guards, n)
     if n.kind == nkSym and isLocalSym(tracked, n.sym):
@@ -979,7 +979,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
       # may not look like an assignment, but it is:
       let arg = n[1]
       initVarViaNew(tracked, arg)
-      if arg.typ.len != 0 and {tfRequiresInit} * arg.typ.elementType.flags != {}:
+      if arg.typ.hasElementType and {tfRequiresInit} * arg.typ.elementType.flags != {}:
         if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
             n[2].intVal == 0:
           # var s: seq[notnil];  newSeq(s, 0)  is a special case!
@@ -988,7 +988,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
           message(tracked.config, arg.info, warnProveInit, $arg)
 
       # check required for 'nim check':
-      if n[1].typ.len > 0:
+      if n[1].typ.hasElementType:
         createTypeBoundOps(tracked, n[1].typ.elementType, n.info)
         createTypeBoundOps(tracked, n[1].typ, n.info)
         # new(x, finalizer): Problem: how to move finalizer into 'createTypeBoundOps'?
@@ -1012,11 +1012,11 @@ proc trackCall(tracked: PEffects; n: PNode) =
           n[0].sym = op
 
   if op != nil and op.kind == tyProc:
-    for i in 1..<min(n.safeLen, op.len):
+    for i in 1..<min(n.safeLen, op.signatureLen):
       let paramType = op[i]
       case paramType.kind
       of tySink:
-        createTypeBoundOps(tracked, paramType[0], n.info)
+        createTypeBoundOps(tracked, paramType.elementType, n.info)
         checkForSink(tracked, n[i])
       of tyVar:
         if isOutParam(paramType):

@@ -706,7 +706,7 @@ proc traverse(c: var Partitions; n: PNode) =
     for child in n: traverse(c, child)
 
     let parameters = n[0].typ
-    let L = if parameters != nil: parameters.len else: 0
+    let L = if parameters != nil: parameters.signatureLen else: 0
     let m = getMagic(n)
 
     if m == mEnsureMove and n[1].kind == nkSym:
@@ -857,7 +857,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     for child in n: computeLiveRanges(c, child)
 
     let parameters = n[0].typ
-    let L = if parameters != nil: parameters.len else: 0
+    let L = if parameters != nil: parameters.signatureLen else: 0
 
     for i in 1..<n.len:
       let it = n[i]
