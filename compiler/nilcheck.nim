@@ -1247,10 +1247,10 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
     result = checkIf(n, ctx, map)
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     result = checkAsgn(n[0], n[1], ctx, map)
-  of nkVarSection:
+  of nkVarSection, nkLetSection:
     result = Check(map: map)
     for child in n:
-      result = checkAsgn(child[0], child[2], ctx, result.map)
+      result = checkAsgn(child[0].skipPragmaExpr, child[2], ctx, result.map)
   of nkForStmt:
     result = checkFor(n, ctx, map)
   of nkCaseStmt:
