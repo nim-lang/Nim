@@ -566,6 +566,7 @@ All types for which `nil` is a valid value can be annotated with the
   {.experimental: "notnil".}
 
   type
+    TObj = object
     PObject = ref TObj not nil
     TProc = (proc (x, y: int)) not nil
 
