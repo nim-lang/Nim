@@ -1168,7 +1168,10 @@ proc track(tracked: PEffects, n: PNode) =
     trackCall(tracked, n)
   of nkDotExpr:
     guardDotAccess(tracked, n)
+    let oldLeftPartOfAsgn = tracked.leftPartOfAsgn
+    tracked.leftPartOfAsgn = 0
     for i in 0..<n.len: track(tracked, n[i])
+    tracked.leftPartOfAsgn = oldLeftPartOfAsgn
   of nkCheckedFieldExpr:
     track(tracked, n[0])
     if tracked.config.hasWarn(warnProveField) or strictCaseObjects in tracked.c.features:

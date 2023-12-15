@@ -300,8 +300,7 @@ proc getNumber(L: var Lexer, result: var Token) =
     # Used to get slightly human friendlier err messages.
     const literalishChars = {'A'..'Z', 'a'..'z', '0'..'9', '_', '.', '\''}
     var msgPos = L.bufpos
-    var t: Token
-    t.literal = ""
+    var t = Token(literal: "")
     L.bufpos = startpos # Use L.bufpos as pos because of matchChars
     matchChars(L, t, literalishChars)
     # We must verify +/- specifically so that we're not past the literal

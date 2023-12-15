@@ -405,7 +405,7 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
 proc semConstructTypeAux(c: PContext,
                          constrCtx: var ObjConstrContext,
                          flags: TExprFlags): tuple[status: InitStatus, defaults: seq[PNode]] =
-  result.status = initUnknown
+  result = (initUnknown, @[])
   var t = constrCtx.typ
   while true:
     let (status, defaults) = semConstructFields(c, t.n, constrCtx, flags)

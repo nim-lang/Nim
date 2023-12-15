@@ -413,7 +413,7 @@ proc hasYieldsInExpressions(n: PNode): bool =
 
 proc exprToStmtList(n: PNode): tuple[s, res: PNode] =
   assert(n.kind == nkStmtListExpr)
-  result.s = newNodeI(nkStmtList, n.info)
+  result = (newNodeI(nkStmtList, n.info), nil)
   result.s.sons = @[]
 
   var n = n
@@ -1431,10 +1431,7 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
       result[i] = preprocess(c, n[i])
 
 proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: PNode): PNode =
-  var ctx: Ctx
-  ctx.g = g
-  ctx.fn = fn
-  ctx.idgen = idgen
+  var ctx = Ctx(g: g, fn: fn, idgen: idgen)
 
   if getEnvParam(fn).isNil:
     # Lambda lifting was not done yet. Use temporary :state sym, which will

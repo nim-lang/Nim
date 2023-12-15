@@ -575,16 +575,18 @@ proc semGenericStmt(c: PContext, n: PNode,
     if withinTypeDesc in flags: dec c.inTypeContext
 
 proc semGenericStmt(c: PContext, n: PNode): PNode =
-  var ctx: GenericCtx
-  ctx.toMixin = initIntSet()
-  ctx.toBind = initIntSet()
+  var ctx = GenericCtx(
+    toMixin: initIntSet(),
+    toBind: initIntSet()
+  )
   result = semGenericStmt(c, n, {}, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
 
 proc semConceptBody(c: PContext, n: PNode): PNode =
-  var ctx: GenericCtx
-  ctx.toMixin = initIntSet()
-  ctx.toBind = initIntSet()
+  var ctx = GenericCtx(
+    toMixin: initIntSet(),
+    toBind: initIntSet()
+  )
   result = semGenericStmt(c, n, {withinConcept}, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
 

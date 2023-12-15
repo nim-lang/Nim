@@ -54,7 +54,7 @@ proc searchForProcAux(c: PContext, scope: PScope, fn: PSym): PSym =
 
 proc searchForProc*(c: PContext, scope: PScope, fn: PSym): tuple[proto: PSym, comesFromShadowScope: bool] =
   var scope = scope
-  result.proto = searchForProcAux(c, scope, fn)
+  result = (searchForProcAux(c, scope, fn), false)
   while result.proto == nil and scope.isShadowScope:
     scope = scope.parent
     result.proto = searchForProcAux(c, scope, fn)

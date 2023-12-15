@@ -278,6 +278,7 @@ proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
     let
       a = initTable[int, string]()
       b = initTable[char, seq[int]]()
+  result = default(Table[A, B])
   initImpl(result, initialSize)
 
 proc `[]=`*[A, B](t: var Table[A, B], key: A, val: sink B) =
@@ -1346,6 +1347,7 @@ proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, 
     let
       a = initOrderedTable[int, string]()
       b = initOrderedTable[char, seq[int]]()
+  result = default(OrderedTable[A, B])
   initImpl(result, initialSize)
 
 proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) =
@@ -2336,6 +2338,7 @@ proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
   ## * `toCountTable proc<#toCountTable,openArray[A]>`_
   ## * `newCountTable proc<#newCountTable>`_ for creating a
   ##   `CountTableRef`
+  result = default(CountTable[A])
   initImpl(result, initialSize)
 
 proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
