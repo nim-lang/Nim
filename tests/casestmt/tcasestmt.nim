@@ -303,9 +303,8 @@ block:
   # Just needs to compile
   proc bar(): int {.discardable.} = discard
 
-  proc foo() {.noreturn.}  =
-    ## test
-`
+  proc foo() {.noreturn.} = discard
+
   case "*"
   of "*":
     bar()
