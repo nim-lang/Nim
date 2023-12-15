@@ -196,19 +196,19 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
   var d = skipTypes(targetTyp, abstractVar)
   var s = srcTyp
   if s.kind in tyUserTypeClasses and s.isResolvedUserTypeClass:
-    s = s.lastSon
+    s = s.last
   s = skipTypes(s, abstractVar-{tyTypeDesc, tyOwned})
   if s.kind == tyOwned and d.kind != tyOwned:
-    s = s.lastSon
+    s = s.skipModifier
   var pointers = 0
   while (d != nil) and (d.kind in {tyPtr, tyRef, tyOwned}):
     if s.kind == tyOwned and d.kind != tyOwned:
-      s = s.lastSon
+      s = s.skipModifier
     elif d.kind != s.kind:
       break
     else:
-      d = d.lastSon
-      s = s.lastSon
+      d = d.elementType
+      s = s.elementType
     inc pointers
 
   let targetBaseTyp = skipTypes(targetTyp, abstractVarRange)
@@ -345,10 +345,9 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
 
   if targetType.kind in {tySink, tyLent} or isOwnedSym(c, n[0]):
     let baseType = semTypeNode(c, n[1], nil).skipTypes({tyTypeDesc})
-    let t = newTypeS(targetType.kind, c)
+    let t = newTypeS(targetType.kind, c, baseType)
     if targetType.kind == tyOwned:
       t.flags.incl tfHasOwned
-    t.rawAddSonNoPropagationOfTypeFlags baseType
     result = newNodeI(nkType, n.info)
     result.typ = makeTypeDesc(c, t)
     return
@@ -443,7 +442,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
     of tySequence, tyString, tyCstring, tyOpenArray, tyVarargs:
       n.typ = getSysType(c.graph, n.info, tyInt)
     of tyArray:
-      n.typ = typ[0] # indextype
+      n.typ = typ.indexType
       if n.typ.kind == tyRange and emptyRange(n.typ.n[0], n.typ.n[1]): #Invalid range
         n.typ = getSysType(c.graph, n.info, tyInt)
     of tyInt..tyInt64, tyChar, tyBool, tyEnum, tyUInt..tyUInt64, tyFloat..tyFloat64:
@@ -468,7 +467,7 @@ proc fixupStaticType(c: PContext, n: PNode) =
   # apply this measure only in code that is enlightened to work
   # with static types.
   if n.typ.kind != tyStatic:
-    n.typ = newTypeWithSons(getCurrOwner(c), tyStatic, @[n.typ], c.idgen)
+    n.typ = newTypeS(tyStatic, c, n.typ)
     n.typ.n = n # XXX: cycles like the one here look dangerous.
                 # Consider using `n.copyTree`
 
@@ -641,7 +640,7 @@ proc arrayConstrType(c: PContext, n: PNode): PType =
   else:
     var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
     addSonSkipIntLit(typ, t, c.idgen)
-  typ[0] = makeRangeType(c, 0, n.len - 1, n.info)
+  typ.setIndexType makeRangeType(c, 0, n.len - 1, n.info)
   result = typ
 
 proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
@@ -714,7 +713,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
     addSonSkipIntLit(result.typ, typ, c.idgen)
     for i in 0..<result.len:
       result[i] = fitNode(c, typ, result[i], result[i].info)
-  result.typ[0] = makeRangeType(c, toInt64(firstIndex), toInt64(lastIndex), n.info,
+  result.typ.setIndexType makeRangeType(c, toInt64(firstIndex), toInt64(lastIndex), n.info,
                                      indexType)
 
 proc fixAbstractType(c: PContext, n: PNode) =
@@ -902,7 +901,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
         if n[i].typ.isNil or n[i].typ.kind != tyStatic or
             tfUnresolved notin n[i].typ.flags:
           break maybeLabelAsStatic
-      n.typ = newTypeWithSons(c, tyStatic, @[n.typ])
+      n.typ = newTypeS(tyStatic, c, n.typ)
       n.typ.flags.incl tfUnresolved
 
   # optimization pass: not necessary for correctness of the semantic pass
@@ -1033,7 +1032,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
       result = magicsAfterOverloadResolution(c, result, flags, expectedType)
     when false:
       if result.typ != nil and
-          not (result.typ.kind == tySequence and result.typ[0].kind == tyEmpty):
+          not (result.typ.kind == tySequence and result.elementType.kind == tyEmpty):
         liftTypeBoundOps(c, result.typ, n.info)
     #result = patchResolvedTypeBoundOp(c, result)
   if c.matchedConcept == nil:
@@ -1052,7 +1051,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       result.transitionSonsKind(nkCall)
       result.flags.incl nfExplicitCall
       for i in 1..<n.len: result.add n[i]
-      return semExpr(c, result, flags)
+      return semExpr(c, result, flags, expectedType)
     else:
       n[0] = n0
   else:
@@ -1063,7 +1062,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     elif n[0].kind == nkBracketExpr:
       let s = bracketedMacro(n[0])
       if s != nil:
-        setGenericParams(c, n[0])
+        setGenericParams(c, n[0], s.ast[genericParamsPos])
         return semDirectOp(c, n, flags, expectedType)
     elif isSymChoice(n[0]) and nfDotField notin n.flags:
       # overloaded generic procs e.g. newSeq[int] can end up here
@@ -1264,7 +1263,7 @@ proc readTypeParameter(c: PContext, typ: PType,
         discard
 
   if typ.kind != tyUserTypeClass:
-    let ty = if typ.kind == tyCompositeTypeClass: typ[1].skipGenericAlias
+    let ty = if typ.kind == tyCompositeTypeClass: typ.firstGenericParam.skipGenericAlias
              else: typ.skipGenericAlias
     let tbody = ty[0]
     for s in 0..<tbody.len-1:
@@ -1293,7 +1292,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     onUse(n.info, s)
     let typ = skipTypes(s.typ, abstractInst-{tyTypeDesc})
     case typ.kind
-    of  tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
+    of tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
         tyTuple, tySet, tyUInt..tyUInt64:
       if s.magic == mNone: result = inlineConst(c, n, s)
       else: result = newSymNode(s, n.info)
@@ -1434,7 +1433,7 @@ proc tryReadingTypeField(c: PContext, n: PNode, i: PIdent, ty: PType): PNode =
         n.typ = makeTypeDesc(c, field.typ)
         result = n
   of tyGenericInst:
-    result = tryReadingTypeField(c, n, i, ty.lastSon)
+    result = tryReadingTypeField(c, n, i, ty.skipModifier)
     if result == nil:
       result = tryReadingGenericParam(c, n, i, ty)
   else:
@@ -1494,7 +1493,7 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
     return nil
 
   if ty.kind in tyUserTypeClasses and ty.isResolvedUserTypeClass:
-    ty = ty.lastSon
+    ty = ty.last
   ty = skipTypes(ty, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink, tyStatic})
   while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct, tyGenericInst, tyAlias})
   var check: PNode = nil
@@ -1581,7 +1580,7 @@ proc semDeref(c: PContext, n: PNode): PNode =
   result = n
   var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink, tyOwned})
   case t.kind
-  of tyRef, tyPtr: n.typ = t.lastSon
+  of tyRef, tyPtr: n.typ = t.elementType
   else: result = nil
   #GlobalError(n[0].info, errCircumNeedsPointer)
 
@@ -1930,7 +1929,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       if c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
         var rhsTyp = rhs.typ
         if rhsTyp.kind in tyUserTypeClasses and rhsTyp.isResolvedUserTypeClass:
-          rhsTyp = rhsTyp.lastSon
+          rhsTyp = rhsTyp.last
         if lhs.sym.typ.kind == tyAnything:
           rhsTyp = rhsTyp.skipIntLit(c.idgen)
         if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
@@ -1939,7 +1938,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           typeAllowedCheck(c, n.info, rhsTyp, skResult)
           lhs.typ = rhsTyp
           c.p.resultSym.typ = rhsTyp
-          c.p.owner.typ[0] = rhsTyp
+          c.p.owner.typ.setReturnType rhsTyp
         else:
           typeMismatch(c.config, n.info, lhs.typ, rhsTyp, rhs)
     borrowCheck(c, n, lhs, rhs)
@@ -2005,12 +2004,12 @@ proc semProcBody(c: PContext, n: PNode; expectedType: PType = nil): PNode =
     if isEmptyType(result.typ):
       # we inferred a 'void' return type:
       c.p.resultSym.typ = errorType(c)
-      c.p.owner.typ[0] = nil
+      c.p.owner.typ.setReturnType nil
     else:
       localError(c.config, c.p.resultSym.info, errCannotInferReturnType %
         c.p.owner.name.s)
-  if isIterator(c.p.owner.typ) and c.p.owner.typ[0] != nil and
-      c.p.owner.typ[0].kind == tyAnything:
+  if isIterator(c.p.owner.typ) and c.p.owner.typ.returnType != nil and
+      c.p.owner.typ.returnType.kind == tyAnything:
     localError(c.config, c.p.owner.info, errCannotInferReturnType %
       c.p.owner.name.s)
   closeScope(c)
@@ -2067,7 +2066,7 @@ proc semYield(c: PContext, n: PNode): PNode =
       semYieldVarResult(c, n, restype)
     else:
       localError(c.config, n.info, errCannotReturnExpr)
-  elif c.p.owner.typ[0] != nil:
+  elif c.p.owner.typ.returnType != nil:
     localError(c.config, n.info, errGenerated, "yield statement must yield a value")
 
 proc considerQuotedIdentOrDot(c: PContext, n: PNode, origin: PNode = nil): PIdent =
@@ -3124,7 +3123,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     result = semFieldAccess(c, n, flags)
     if result.kind == nkDotCall:
       result.transitionSonsKind(nkCall)
-      result = semExpr(c, result, flags)
+      result = semExpr(c, result, flags, expectedType)
   of nkBind:
     message(c.config, n.info, warnDeprecated, "bind is deprecated")
     result = semExpr(c, n[0], flags, expectedType)
@@ -3133,7 +3132,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       let modifier = n.modifierTypeKindOfNode
       if modifier != tyNone:
         var baseType = semExpr(c, n[0]).typ.skipTypes({tyTypeDesc})
-        result.typ = c.makeTypeDesc(c.newTypeWithSons(modifier, @[baseType]))
+        result.typ = c.makeTypeDesc(newTypeS(modifier, c, baseType))
         return
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
     result.typ = makeTypeDesc(c, typ)
@@ -3173,7 +3172,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         isSymChoice(n[0][0]):
       # indirectOp can deal with explicit instantiations; the fixes
       # the 'newSeq[T](x)' bug
-      setGenericParams(c, n[0])
+      setGenericParams(c, n[0], nil)
       result = semDirectOp(c, n, flags, expectedType)
     elif nfDotField in n.flags:
       result = semDirectOp(c, n, flags, expectedType)

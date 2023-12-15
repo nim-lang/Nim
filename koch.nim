@@ -11,7 +11,7 @@
 
 const
   # examples of possible values for repos: Head, ea82b54
-  NimbleStableCommit = "603e329442059947d63e4c1b2ef5294f1f544485" # master
+  NimbleStableCommit = "a1fdbe8912a0e3dfd30cef030bbabef218d84687" # master
   AtlasStableCommit = "7b780811a168f3f32bff4822369dda46a7f87f9a"
   ChecksumsStableCommit = "025bcca3915a1b9f19878cea12ad68f9884648fc"
 
@@ -161,7 +161,7 @@ proc bundleNimbleExe(latest: bool, args: string) =
                 commit = ChecksumsStableCommit, allowBundled = true) # or copy it from dist?
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
-             options = "-d:release --mm:refc --noNimblePath " & args)
+             options = "-d:release --noNimblePath " & args)
 
 proc bundleAtlasExe(latest: bool, args: string) =
   let commit = if latest: "HEAD" else: AtlasStableCommit

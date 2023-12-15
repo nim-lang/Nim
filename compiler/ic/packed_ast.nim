@@ -124,7 +124,7 @@ proc `==`*(a, b: NodePos): bool {.borrow.}
 proc `==`*(a, b: NodeId): bool {.borrow.}
 
 proc newTreeFrom*(old: PackedTree): PackedTree =
-  result.nodes = @[]
+  result = PackedTree(nodes: @[])
   when false: result.sh = old.sh
 
 proc addIdent*(tree: var PackedTree; s: LitId; info: PackedLineInfo) =

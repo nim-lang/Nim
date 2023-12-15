@@ -366,6 +366,8 @@ proc dataField(p: BProc): Rope =
   else:
     result = rope"->data"
 
+proc genProcPrototype(m: BModule, sym: PSym)
+
 include ccgliterals
 include ccgtypes
 
@@ -734,7 +736,7 @@ proc genVarPrototype(m: BModule, n: PNode)
 proc requestConstImpl(p: BProc, sym: PSym)
 proc genStmts(p: BProc, t: PNode)
 proc expr(p: BProc, n: PNode, d: var TLoc)
-proc genProcPrototype(m: BModule, sym: PSym)
+
 proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
 proc intLiteral(i: BiggestInt; result: var Rope)
 proc genLiteral(p: BProc, n: PNode; result: var Rope)
@@ -1169,7 +1171,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
   let tmpInfo = prc.info
   discard freshLineInfo(p, prc.info)
 
-  if sfPure notin prc.flags and prc.typ[0] != nil:
+  if sfPure notin prc.flags and prc.typ.returnType != nil:
     if resultPos >= prc.ast.len:
       internalError(m.config, prc.info, "proc has no result symbol")
     let resNode = prc.ast[resultPos]
@@ -1197,7 +1199,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
       fillLoc(resNode.sym.loc, locParam, resNode, "this", OnHeap)
     else:
       fillResult(p.config, resNode, prc.typ)
-      assignParam(p, res, prc.typ[0])
+      assignParam(p, res, prc.typ.returnType)
       # We simplify 'unsureAsgn(result, nil); unsureAsgn(result, x)'
       # to 'unsureAsgn(result, x)'
       # Sketch why this is correct: If 'result' points to a stack location
@@ -1215,7 +1217,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
   for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym
     if param.typ.isCompileTimeOnly: continue
-    assignParam(p, param, prc.typ[0])
+    assignParam(p, param, prc.typ.returnType)
   closureSetup(p, prc)
   genProcBody(p, procBody)
 
@@ -2181,9 +2183,8 @@ proc updateCachedModule(m: BModule) =
   cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)
 
-proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode): PNode =
+proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   ## Also called from IC.
-  result = nil
   if sfMainModule in m.module.flags:
     # phase ordering problem here: We need to announce this
     # dependency to 'nimTestErrorFlag' before system.c has been written to disk.
@@ -2231,7 +2232,11 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode): PNode =
 
       if m.g.forwardedProcs.len == 0:
         incl m.flags, objHasKidsValid
-      result = generateMethodDispatchers(graph, m.idgen)
+      if optMultiMethods in m.g.config.globalOptions or
+          m.g.config.selectedGC notin {gcArc, gcOrc, gcAtomicArc} or
+          vtables notin m.g.config.features:
+        generateIfMethodDispatchers(graph, m.idgen)
+
 
   let mm = m
   m.g.modulesClosed.add mm

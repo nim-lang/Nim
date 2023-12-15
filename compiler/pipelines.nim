@@ -191,15 +191,16 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
   case graph.pipelinePass
   of CgenPass:
     if bModule != nil:
-      let disps = finalCodegenActions(graph, BModule(bModule), finalNode)
-      if disps != nil:
+      let m = BModule(bModule)
+      finalCodegenActions(graph, m, finalNode)
+      if graph.dispatchers.len > 0:
         let ctx = preparePContext(graph, module, idgen)
-        for disp in disps:
-          let retTyp = disp.sym.typ[0]
+        for disp in getDispatchers(graph):
+          let retTyp = disp.typ.returnType
           if retTyp != nil:
-            # todo properly semcheck the code of dispatcher?
-            createTypeBoundOps(graph, ctx, retTyp, disp.info, idgen)
-          genProcAux(BModule(bModule), disp.sym)
+            # TODO: properly semcheck the code of dispatcher?
+            createTypeBoundOps(graph, ctx, retTyp, disp.ast.info, idgen)
+          genProcAux(m, disp)
         discard closePContext(graph, ctx, nil)
   of JSgenPass:
     when not defined(leanCompiler):
@@ -259,8 +260,11 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
       partialInitModule(result, graph, fileIdx, filename)
     for m in cachedModules:
       registerModuleById(graph, m)
-      replayStateChanges(graph.packed.pm[m.int].module, graph)
-      replayGenericCacheInformation(graph, m.int)
+      if sfMainModule in flags and graph.config.cmd == cmdM:
+        discard
+      else:
+        replayStateChanges(graph.packed.pm[m.int].module, graph)
+        replayGenericCacheInformation(graph, m.int)
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:

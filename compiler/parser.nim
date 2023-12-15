@@ -83,10 +83,6 @@ type
   PrimaryMode = enum
     pmNormal, pmTypeDesc, pmTypeDef, pmTrySimple
 
-proc parseAll*(p: var Parser): PNode
-proc closeParser*(p: var Parser)
-proc parseTopLevelStmt*(p: var Parser): PNode
-
 # helpers for the other parsers
 proc isOperator*(tok: Token): bool
 proc getTok*(p: var Parser)
@@ -144,7 +140,7 @@ proc openParser*(p: var Parser, fileIdx: FileIndex, inputStream: PLLStream,
                  cache: IdentCache; config: ConfigRef) =
   ## Open a parser, using the given arguments to set up its internal state.
   ##
-  initToken(p.tok)
+  reset(p.tok)
   openLexer(p.lex, fileIdx, inputStream, cache, config)
   when defined(nimpretty):
     openEmitter(p.em, cache, config, fileIdx)
@@ -156,11 +152,9 @@ proc openParser*(p: var Parser, filename: AbsoluteFile, inputStream: PLLStream,
                  cache: IdentCache; config: ConfigRef) =
   openParser(p, fileInfoIdx(config, filename), inputStream, cache, config)
 
-proc closeParser(p: var Parser) =
+proc closeParser*(p: var Parser) =
   ## Close a parser, freeing up its resources.
   closeLexer(p.lex)
-  when defined(nimpretty):
-    closeEmitter(p.em)
 
 proc parMessage(p: Parser, msg: TMsgKind, arg = "") =
   ## Produce and emit the parser message `arg` to output.
@@ -2520,7 +2514,7 @@ proc parseStmt(p: var Parser): PNode =
           if err and p.tok.tokType == tkEof: break
   setEndInfo()
 
-proc parseAll(p: var Parser): PNode =
+proc parseAll*(p: var Parser): PNode =
   ## Parses the rest of the input stream held by the parser into a PNode.
   result = newNodeP(nkStmtList, p)
   while p.tok.tokType != tkEof:
@@ -2540,7 +2534,7 @@ proc checkFirstLineIndentation*(p: var Parser) =
   if p.tok.indent != 0 and tsLeading in p.tok.spacing:
     parMessage(p, errInvalidIndentation)
 
-proc parseTopLevelStmt(p: var Parser): PNode =
+proc parseTopLevelStmt*(p: var Parser): PNode =
   ## Implements an iterator which, when called repeatedly, returns the next
   ## top-level statement or emptyNode if end of stream.
   result = p.emptyNode
@@ -2580,7 +2574,7 @@ proc parseString*(s: string; cache: IdentCache; config: ConfigRef;
   var stream = llStreamOpen(s)
   stream.lineOffset = line
 
-  var p: Parser
+  var p = Parser()
   p.lex.errorHandler = errorHandler
   openParser(p, AbsoluteFile filename, stream, cache, config)
 

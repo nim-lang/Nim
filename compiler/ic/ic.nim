@@ -51,8 +51,10 @@ type
     typeInstCache*: seq[(PackedItemId, PackedItemId)]
     procInstCache*: seq[PackedInstantiation]
     attachedOps*: seq[(PackedItemId, TTypeAttachedOp, PackedItemId)]
-    methodsPerType*: seq[(PackedItemId, int, PackedItemId)]
+    methodsPerGenericType*: seq[(PackedItemId, int, PackedItemId)]
     enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
+    methodsPerType*: seq[(PackedItemId, PackedItemId)]
+    dispatchers*: seq[PackedItemId]
 
     emittedTypeInfo*: seq[string]
     backendFlags*: set[ModuleBackendFlag]
@@ -368,7 +370,7 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
       paddingAtEnd: t.paddingAtEnd)
     storeNode(p, t, n)
     p.typeInst = t.typeInst.storeType(c, m)
-    for kid in items t:
+    for kid in kids t:
       p.types.add kid.storeType(c, m)
     c.addMissing t.sym
     p.sym = t.sym.safeItemId(c, m)
@@ -381,10 +383,9 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
 proc toPackedLib(l: PLib; c: var PackedEncoder; m: var PackedModule): PackedLib =
   ## the plib hangs off the psym via the .annex field
   if l.isNil: return
-  result.kind = l.kind
-  result.generated = l.generated
-  result.isOverridden = l.isOverridden
-  result.name = toLitId($l.name, m)
+  result = PackedLib(kind: l.kind, generated: l.generated,
+    isOverridden: l.isOverridden, name: toLitId($l.name, m)
+  )
   storeNode(result, l, path)
 
 proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId =
@@ -650,8 +651,10 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
     loadSeqSection typeInstCacheSection, m.typeInstCache
     loadSeqSection procInstCacheSection, m.procInstCache
     loadSeqSection attachedOpsSection, m.attachedOps
-    loadSeqSection methodsPerTypeSection, m.methodsPerType
+    loadSeqSection methodsPerGenericTypeSection, m.methodsPerGenericType
     loadSeqSection enumToStringProcsSection, m.enumToStringProcs
+    loadSeqSection methodsPerTypeSection, m.methodsPerType
+    loadSeqSection dispatchersSection, m.dispatchers
     loadSeqSection typeInfoSection, m.emittedTypeInfo
 
     f.loadSection backendFlagsSection
@@ -718,8 +721,10 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection typeInstCacheSection, m.typeInstCache
   storeSeqSection procInstCacheSection, m.procInstCache
   storeSeqSection attachedOpsSection, m.attachedOps
-  storeSeqSection methodsPerTypeSection, m.methodsPerType
+  storeSeqSection methodsPerGenericTypeSection, m.methodsPerGenericType
   storeSeqSection enumToStringProcsSection, m.enumToStringProcs
+  storeSeqSection methodsPerTypeSection, m.methodsPerType
+  storeSeqSection dispatchersSection, m.dispatchers
   storeSeqSection typeInfoSection, m.emittedTypeInfo
 
   f.storeSection backendFlagsSection
@@ -944,6 +949,9 @@ proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s:
     result = nil
   else:
     let si = moduleIndex(c, g, thisModule, s)
+    if si >= g.len:
+      g.pm.setLen(si+1)
+
     if g[si].status == undefined and c.config.cmd == cmdM:
       var cachedModules: seq[FileIndex] = @[]
       discard needsRecompile(g, c.config, c.cache, FileIndex(si), cachedModules)
@@ -985,8 +993,10 @@ proc typeBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
     for op, item in pairs t.attachedOps:
       result.attachedOps[op] = loadSym(c, g, si, item)
   result.typeInst = loadType(c, g, si, t.typeInst)
+  var sons = newSeq[PType]()
   for son in items t.types:
-    result.addSon loadType(c, g, si, son)
+    sons.add loadType(c, g, si, son)
+  result.setSons(sons)
   loadAstBody(t, n)
   when false:
     for gen, id in items t.methods:
@@ -1080,7 +1090,8 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
       else:
         result = optForceFullMake in conf.globalOptions
         # check its dependencies:
-        for dep in g[m].fromDisk.imports:
+        let imp = g[m].fromDisk.imports
+        for dep in imp:
           let fid = toFileIndex(dep, g[m].fromDisk, conf)
           # Warning: we need to traverse the full graph, so
           # do **not use break here**!

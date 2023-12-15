@@ -125,6 +125,8 @@ template outside(g: var TSrcGen, section: Section, body: untyped) =
 const
   IndentWidth = 2
   longIndentWid = IndentWidth * 2
+  MaxLineLen = 80
+  LineCommentColumn = 30
 
 when defined(nimpretty):
   proc minmaxLine(n: PNode): (int, int) =
@@ -142,10 +144,6 @@ when defined(nimpretty):
 
   proc lineDiff(a, b: PNode): int =
     result = minmaxLine(b)[0] - minmaxLine(a)[1]
-
-const
-  MaxLineLen = 80
-  LineCommentColumn = 30
 
 proc initSrcGen(renderFlags: TRenderFlags; config: ConfigRef): TSrcGen =
   result = TSrcGen(comStack: @[], tokens: @[], indent: 0,
@@ -368,7 +366,7 @@ proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
     result = t
     while result != nil and result.kind in {tyGenericInst, tyRange, tyVar,
                           tyLent, tyDistinct, tyOrdinal, tyAlias, tySink}:
-      result = lastSon(result)
+      result = skipModifier(result)
 
   result = ""
   let typ = n.typ.skip

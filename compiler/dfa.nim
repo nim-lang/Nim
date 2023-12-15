@@ -380,7 +380,7 @@ proc genCall(c: var Con; n: PNode) =
   if t != nil: t = t.skipTypes(abstractInst)
   for i in 1..<n.len:
     gen(c, n[i])
-    if t != nil and i < t.len and isOutParam(t[i]):
+    if t != nil and i < t.signatureLen and isOutParam(t[i]):
       # Pass by 'out' is a 'must def'. Good enough for a move optimizer.
       genDef(c, n[i])
   # every call can potentially raise:

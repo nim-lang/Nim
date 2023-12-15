@@ -64,7 +64,7 @@ proc searchObjCaseImpl(obj: PNode; field: PSym): PNode =
 proc searchObjCase(t: PType; field: PSym): PNode =
   result = searchObjCaseImpl(t.n, field)
   if result == nil and t.len > 0:
-    result = searchObjCase(t[0].skipTypes({tyAlias, tyGenericInst, tyRef, tyPtr}), field)
+    result = searchObjCase(t.baseClass.skipTypes({tyAlias, tyGenericInst, tyRef, tyPtr}), field)
   doAssert result != nil
 
 proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGraph; idgen: IdGenerator): PSym =

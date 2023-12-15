@@ -211,6 +211,8 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string; inferredFr
       m.add " a 'sink' parameter"
   m.add "; routine: "
   m.add c.owner.name.s
+  #m.add "\n\n"
+  #m.add renderTree(c.body, {renderIds})
   localError(c.graph.config, ri.info, errGenerated, m)
 
 proc makePtrType(c: var Con, baseType: PType): PType =
@@ -219,7 +221,7 @@ proc makePtrType(c: var Con, baseType: PType): PType =
 
 proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
   var addrExp: PNode
-  if op.typ != nil and op.typ.len > 1 and op.typ[1].kind != tyVar:
+  if op.typ != nil and op.typ.signatureLen > 1 and op.typ.firstParamType.kind != tyVar:
     addrExp = dest
   else:
     addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
@@ -487,7 +489,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
 
 proc isDangerousSeq(t: PType): bool {.inline.} =
   let t = t.skipTypes(abstractInst)
-  result = t.kind == tySequence and tfHasOwned notin t[0].flags
+  result = t.kind == tySequence and tfHasOwned notin t.elementType.flags
 
 proc containsConstSeq(n: PNode): bool =
   if n.kind == nkBracket and n.len > 0 and n.typ != nil and isDangerousSeq(n.typ):
@@ -875,7 +877,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         c.inSpawn.dec
 
       let parameters = n[0].typ
-      let L = if parameters != nil: parameters.len else: 0
+      let L = if parameters != nil: parameters.signatureLen else: 0
 
       when false:
         var isDangerous = false

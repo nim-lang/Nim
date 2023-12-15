@@ -289,7 +289,7 @@ template declareClosures(currentFilename: AbsoluteFile, destFile: string) =
     let outDirPath: RelativeFile =
         presentationPath(conf, AbsoluteFile(basedir / targetRelPath))
           # use presentationPath because `..` path can be be mangled to `_._`
-    result.targetPath = string(conf.outDir / outDirPath)
+    result = (string(conf.outDir / outDirPath), "")
     if not fileExists(result.targetPath):
       # this can happen if targetRelPath goes to parent directory `OUTDIR/..`.
       # Trying it, this may cause ambiguities, but allows us to insert
@@ -1000,8 +1000,9 @@ proc getTypeKind(n: PNode): string =
 proc toLangSymbol(k: TSymKind, n: PNode, baseName: string): LangSymbol =
   ## Converts symbol info (names/types/parameters) in `n` into format
   ## `LangSymbol` convenient for ``rst.nim``/``dochelpers.nim``.
-  result.name = baseName.nimIdentNormalize
-  result.symKind = k.toHumanStr
+  result = LangSymbol(name: baseName.nimIdentNormalize,
+      symKind: k.toHumanStr
+  )
   if k in routineKinds:
     var
       paramTypes: seq[string] = @[]
@@ -1166,8 +1167,9 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): 
   if nonExports:
     renderFlags.incl renderNonExportedFields
   r = initTokRender(n, renderFlags)
-  result.json = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
+  result = JsonItem(json: %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                    "col": %n.info.col}
+  )
   if comm != nil:
     result.rst = comm
     result.rstField = "description"
@@ -1199,8 +1201,7 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): 
         var param = %{"name": %($genericParam)}
         if genericParam.sym.typ.len > 0:
           param["types"] = newJArray()
-        for kind in genericParam.sym.typ:
-          param["types"].add %($kind)
+        param["types"].add %($genericParam.sym.typ.elementType)
         result.json["signature"]["genericParams"].add param
   if optGenIndex in d.conf.globalOptions:
     genItem(d, n, nameNode, k, kForceExport)
@@ -1400,7 +1401,8 @@ proc generateDoc*(d: PDoc, n, orig: PNode, config: ConfigRef, docFlags: DocFlags
     for it in n: traceDeps(d, it)
   of nkExportStmt:
     for it in n:
-      if it.kind == nkSym:
+      # bug #23051; don't generate documentation for exported symbols again
+      if it.kind == nkSym and sfExported notin it.sym.flags:
         if d.module != nil and d.module == it.sym.owner:
           generateDoc(d, it.sym.ast, orig, config, kForceExport)
         elif it.sym.ast != nil:

@@ -40,16 +40,16 @@ func reduce*[T: SomeInteger](x: var Rational[T]) =
     reduce(r)
     doAssert r.num == 1
     doAssert r.den == 2
-
+  if x.den == 0:
+    raise newException(DivByZeroDefect, "division by zero")
   let common = gcd(x.num, x.den)
   if x.den > 0:
     x.num = x.num div common
     x.den = x.den div common
-  elif x.den < 0:
-    x.num = -x.num div common
-    x.den = -x.den div common
-  else:
-    raise newException(DivByZeroDefect, "division by zero")
+  when T isnot SomeUnsignedInt:
+    if x.den < 0:
+      x.num = -x.num div common
+      x.den = -x.den div common
 
 func initRational*[T: SomeInteger](num, den: T): Rational[T] =
   ## Creates a new rational number with numerator `num` and denominator `den`.
