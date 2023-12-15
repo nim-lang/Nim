@@ -560,7 +560,8 @@ Not nil annotation
 `{.experimental: "notnil".}`.
 
 All types for which `nil` is a valid value can be annotated with the
-`not nil` annotation to exclude `nil` as a valid value:
+`not nil` annotation to exclude `nil` as a valid value. Note that only local
+symbols are checked.
 
   ```nim
   {.experimental: "notnil".}
@@ -577,8 +578,11 @@ All types for which `nil` is a valid value can be annotated with the
   p(nil)
 
   # and also this:
-  var x: PObject
-  p(x)
+  proc foo =
+    var x: PObject
+    p(x)
+
+  foo()
   ```
 
 The compiler ensures that every code path initializes variables which contain
