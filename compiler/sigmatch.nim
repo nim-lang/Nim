@@ -206,8 +206,9 @@ proc sumGeneric(t: PType): int =
   while true:
     case t.kind
     of tyAlias, tySink, tyNot: t = t.skipModifier
-    of tyArray, tyDistinct, tyUncheckedArray, tyRef, tyPtr, tyLent, tyOwned,
-        tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyVar:
+    of tyArray, tyRef, tyPtr, tyDistinct, tyUncheckedArray,
+        tyOpenArray, tyVarargs, tySet, tyRange, tySequence,
+        tyLent, tyOwned, tyVar:
       t = t.elementType
       inc result
     of tyBool, tyChar, tyEnum, tyObject, tyPointer, tyVoid,
@@ -233,13 +234,13 @@ proc sumGeneric(t: PType): int =
       inc result
     of tyGenericParam:
       if t.len > 0:
-        t = t.lastSon
+        t = t.skipModifier
       else:
         inc result
         break
     of tyUntyped, tyTyped: break
     of tyGenericInvocation, tyTuple, tyAnd:
-      result += ord(t.kind in {tyGenericInvocation, tyAnd})
+      result += ord(t.kind == tyAnd)
       for a in t.kids:
         if a != nil:
           result += sumGeneric(a)
@@ -471,11 +472,16 @@ proc skipTypeContainer(f: PType): PType=
   ]#
   case f.kind:
   of tyGenericParam:
-    if f.len <= 0 or f.lastSon == nil:
+    if f.len <= 0 or f.skipModifier == nil:
       result = f
     else:
-      result = skipTypeContainer(f.lastSon)
-  of tyGenericInvocation, tyAlias, tyCompositeTypeClass:
+      result = skipTypeContainer(f.skipModifier)
+  of tyGenericInvocation, tyAlias:
+    if len(f.base) <= 0 or f.base == nil:
+      result = f
+    else:
+      result = skipTypeContainer(f.base)
+  of tyCompositeTypeClass:
     if not f.hasElementType or f.elementType == nil:
       result = f
     else:
@@ -484,7 +490,7 @@ proc skipTypeContainer(f: PType): PType=
     result = skipTypeContainer(f.skipModifier)
   of tyGenericBody:
     result = skipTypeContainer(f.typeBodyImpl)
-  of tyOwned, tyLent, tySink:
+  of tyOwned, tyLent, tySink, tyVar:
     result = skipTypeContainer(f.base)
   of tyInferred:
     # This is not true "After a candidate type is selected"
@@ -501,21 +507,16 @@ proc getObjectTypeOrNil(t: PType): PType =
   if t == nil: return nil
   let f = skipTypeContainer(t)
   case f.kind:
-  of tyGenericInvocation, tyAlias, tyCompositeTypeClass, # handled in skipTypeContainer
-     tyTyped, tyUntyped, tyFromExpr:
-      result = nil
+  of tyGenericInvocation, tyAlias, tyCompositeTypeClass, tyInferred,
+     tyTyped, tyUntyped, tyFromExpr, tyOwned, tyLent, tySink:
+      result = nil  # handled in skipTypeContainer
   of tyUserTypeClass:
     if f.isResolvedUserTypeClass:
       result = f.base  # ?? idk if this is right
     else:
       result = f.skipModifier
-  of tyStatic, tyOwned, tyVar, tyLent, tySink:
+  of tyStatic:
     result = getObjectTypeOrNil(f.base)
-  of tyInferred:
-    # This is not true "After a candidate type is selected"
-    result = getObjectTypeOrNil(f.base)
-  of tyTyped, tyUntyped, tyFromExpr:
-    result = nil
   of tyRange:
     result = f.elementType
   else:
