@@ -332,8 +332,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   of tyTuple:
     try:
       var accum = OffsetAccum(maxAlign: 1)
-      for i in 0..<typ.len:
-        let child = typ[i]
+      for i, child in typ.ikids:
         computeSizeAlign(conf, child)
         accum.align(child.align)
         if typ.n != nil: # is named tuple (has field symbols)?
@@ -403,16 +402,16 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.align = szIllegalRecursion
       typ.paddingAtEnd = szIllegalRecursion
   of tyInferred:
-    if typ.len > 0:
+    if typ.hasElementType:
       computeSizeAlign(conf, typ.last)
       typ.size = typ.last.size
       typ.align = typ.last.align
       typ.paddingAtEnd = typ.last.paddingAtEnd
 
   of tyGenericInst, tyDistinct, tyGenericBody, tyAlias, tySink, tyOwned:
-    computeSizeAlign(conf, typ.last)
-    typ.size = typ.last.size
-    typ.align = typ.last.align
+    computeSizeAlign(conf, typ.skipModifier)
+    typ.size = typ.skipModifier.size
+    typ.align = typ.skipModifier.align
     typ.paddingAtEnd = typ.last.paddingAtEnd
 
   of tyTypeClasses:
