@@ -221,7 +221,7 @@ proc makePtrType(c: var Con, baseType: PType): PType =
 
 proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
   var addrExp: PNode
-  if op.typ != nil and op.typ.len > 1 and op.typ.firstParamType.kind != tyVar:
+  if op.typ != nil and op.typ.signatureLen > 1 and op.typ.firstParamType.kind != tyVar:
     addrExp = dest
   else:
     addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
@@ -877,7 +877,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         c.inSpawn.dec
 
       let parameters = n[0].typ
-      let L = if parameters != nil: parameters.len else: 0
+      let L = if parameters != nil: parameters.signatureLen else: 0
 
       when false:
         var isDangerous = false

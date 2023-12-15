@@ -59,8 +59,8 @@ proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult =
   of tySet, tyArray:
     result = isPartOfAux(a.elementType, b, marker)
   of tyTuple:
-    for i in 0..<a.len:
-      result = isPartOfAux(a[i], b, marker)
+    for aa in a.kids:
+      result = isPartOfAux(aa, b, marker)
       if result == arYes: return
   else: discard
 

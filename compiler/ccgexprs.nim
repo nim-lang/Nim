@@ -236,8 +236,7 @@ proc genOptAsgnTuple(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       flags
   let t = skipTypes(dest.t, abstractInst).getUniqueType()
-  for i in 0..<t.len:
-    let t = t[i]
+  for i, t in t.ikids:
     let field = "Field$1" % [i.rope]
     genAssignment(p, optAsgnLoc(dest, t, field),
                      optAsgnLoc(src, t, field), newflags)
@@ -362,7 +361,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   of tyTuple:
     if containsGarbageCollectedRef(dest.t):
-      if dest.t.len <= 4: genOptAsgnTuple(p, dest, src, flags)
+      if dest.t.kidsLen <= 4: genOptAsgnTuple(p, dest, src, flags)
       else: genGenericAsgn(p, dest, src, flags)
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
@@ -3193,11 +3192,11 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Rope) =
     result.add "}"
   of tyTuple:
     result.add "{"
-    if p.vccAndC and t.len == 0:
+    if p.vccAndC and t.isEmptyTupleType:
       result.add "0"
-    for i in 0..<t.len:
+    for i, a in t.ikids:
       if i > 0: result.add ", "
-      getDefaultValue(p, t[i], info, result)
+      getDefaultValue(p, a, info, result)
     result.add "}"
   of tyArray:
     result.add "{"

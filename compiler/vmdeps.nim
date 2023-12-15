@@ -49,13 +49,13 @@ proc mapTypeToBracketX(cache: IdentCache; name: string; m: TMagic; t: PType; inf
                        inst=false): PNode =
   result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
   result.add atomicTypeX(cache, name, m, t, info, idgen)
-  for i in 0..<t.len:
-    if t[i] == nil:
+  for a in t.kids:
+    if a == nil:
       let voidt = atomicTypeX(cache, "void", mVoid, t, info, idgen)
       voidt.typ = newType(tyVoid, idgen, t.owner)
       result.add voidt
     else:
-      result.add mapTypeToAstX(cache, t[i], info, idgen, inst)
+      result.add mapTypeToAstX(cache, a, info, idgen, inst)
 
 proc objectNode(cache: IdentCache; n: PNode; idgen: IdGenerator): PNode =
   if n.kind == nkSym:
@@ -74,9 +74,9 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   var allowRecursion = allowRecursionX
   template atomicType(name, m): untyped = atomicTypeX(cache, name, m, t, info, idgen)
   template atomicType(s): untyped = atomicTypeX(s, info)
-  template mapTypeToAst(t,info): untyped = mapTypeToAstX(cache, t, info, idgen, inst)
-  template mapTypeToAstR(t,info): untyped = mapTypeToAstX(cache, t, info, idgen, inst, true)
-  template mapTypeToAst(t,i,info): untyped =
+  template mapTypeToAst(t, info): untyped = mapTypeToAstX(cache, t, info, idgen, inst)
+  template mapTypeToAstR(t, info): untyped = mapTypeToAstX(cache, t, info, idgen, inst, true)
+  template mapTypeToAst(t, i, info): untyped =
     if i<t.len and t[i]!=nil: mapTypeToAstX(cache, t[i], info, idgen, inst)
     else: newNodeI(nkEmpty, info)
   template mapTypeToBracket(name, m, t, info): untyped =
@@ -129,8 +129,8 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       result = atomicType("typeDesc", mTypeDesc)
   of tyGenericInvocation:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-    for i in 0..<t.len:
-      result.add mapTypeToAst(t[i], info)
+    for a in t.kids:
+      result.add mapTypeToAst(a, info)
   of tyGenericInst:
     if inst:
       if allowRecursion:
@@ -141,8 +141,8 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
         result = newNodeX(nkBracketExpr)
         #result.add mapTypeToAst(t.last, info)
         result.add mapTypeToAst(t.genericHead, info)
-        for i in 1..<t.len-1:
-          result.add mapTypeToAst(t[i], info)
+        for _, a in t.genericInstParams:
+          result.add mapTypeToAst(a, info)
     else:
       result = mapTypeToAstX(cache, t.skipModifier, info, idgen, inst, allowRecursion)
       # keep original type info for getType calls on the output node:
@@ -243,7 +243,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
         fp.add newNodeI(nkEmpty, info)
       else:
         fp.add mapTypeToAst(t.returnType, t.n[0].info)
-      for i in 1..<t.len:
+      for i in FirstParamAt..<t.kidsLen:
         fp.add newIdentDefs(t.n[i], t[i])
       result.add fp
       result.add if t.n[0].len > 0: t.n[0][pragmasEffects].copyTree

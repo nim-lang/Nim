@@ -69,12 +69,14 @@ type
 proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
   result = No
   if a.name.id != b.name.id: return
-  if a.typ.len != b.typ.len:
+  if a.typ.signatureLen != b.typ.signatureLen:
     return
 
-  for i in 1..<a.typ.len:
-    var aa = a.typ[i]
-    var bb = b.typ[i]
+  var i = 0
+  for x, y in paramTypePairs(a.typ, b.typ):
+    inc i
+    var aa = x
+    var bb = y
     while true:
       aa = skipTypes(aa, {tyGenericInst, tyAlias})
       bb = skipTypes(bb, {tyGenericInst, tyAlias})
@@ -83,7 +85,7 @@ proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
         bb = bb.elementType
       else:
         break
-    if sameType(a.typ[i], b.typ[i]):
+    if sameType(x, y):
       if aa.kind == tyObject and result != Invalid:
         result = Yes
     elif aa.kind == tyObject and bb.kind == tyObject and (i == 1 or multiMethods):
@@ -204,7 +206,7 @@ proc relevantCol*(methods: seq[PSym], col: int): bool =
 
 proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
   result = 0
-  for col in 1..<a.typ.len:
+  for col in FirstParamAt..<a.typ.signatureLen:
     if contains(relevantCols, col):
       var aa = skipTypes(a.typ[col], skipPtrs)
       var bb = skipTypes(b.typ[col], skipPtrs)
@@ -234,13 +236,13 @@ proc sortBucket*(a: var seq[PSym], relevantCols: IntSet) =
 proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; idgen: IdGenerator): PSym =
   var base = methods[0].ast[dispatcherPos].sym
   result = base
-  var paramLen = base.typ.len
+  var paramLen = base.typ.signatureLen
   var nilchecks = newNodeI(nkStmtList, base.info)
   var disp = newNodeI(nkIfStmt, base.info)
   var ands = getSysMagic(g, unknownLineInfo, "and", mAnd)
   var iss = getSysMagic(g, unknownLineInfo, "of", mOf)
   let boolType = getSysType(g, unknownLineInfo, tyBool)
-  for col in 1..<paramLen:
+  for col in FirstParamAt..<paramLen:
     if contains(relevantCols, col):
       let param = base.typ.n[col].sym
       if param.typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
@@ -249,7 +251,7 @@ proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; 
   for meth in 0..high(methods):
     var curr = methods[meth]      # generate condition:
     var cond: PNode = nil
-    for col in 1..<paramLen:
+    for col in FirstParamAt..<paramLen:
       if contains(relevantCols, col):
         var isn = newNodeIT(nkCall, base.info, boolType)
         isn.add newSymNode(iss)
@@ -293,7 +295,7 @@ proc genIfDispatcher*(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet; 
 proc generateIfMethodDispatchers*(g: ModuleGraph, idgen: IdGenerator) =
   for bucket in 0..<g.methods.len:
     var relevantCols = initIntSet()
-    for col in 1..<g.methods[bucket].methods[0].typ.len:
+    for col in FirstParamAt..<g.methods[bucket].methods[0].typ.signatureLen:
       if relevantCol(g.methods[bucket].methods, col): incl(relevantCols, col)
       if optMultiMethods notin g.config.globalOptions:
         # if multi-methods are not enabled, we are interested only in the first field

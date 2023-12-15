@@ -56,10 +56,10 @@ proc destructorOverridden(g: ModuleGraph; t: PType): bool =
   op != nil and sfOverridden in op.flags
 
 proc fillBodyTup(c: var TLiftCtx; t: PType; body, x, y: PNode) =
-  for i in 0..<t.len:
+  for i, a in t.ikids:
     let lit = lowerings.newIntLit(c.g, x.info, i)
-    let b = if c.kind == attachedTrace: y else: y.at(lit, t[i])
-    fillBody(c, t[i], body, x.at(lit, t[i]), b)
+    let b = if c.kind == attachedTrace: y else: y.at(lit, a)
+    fillBody(c, a, body, x.at(lit, a), b)
 
 proc dotField(x: PNode, f: PSym): PNode =
   result = newNodeI(nkDotExpr, x.info, 2)
@@ -221,15 +221,15 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
     illFormedAstLocal(n, c.g.config)
 
 proc fillBodyObjTImpl(c: var TLiftCtx; t: PType, body, x, y: PNode) =
-  if t.len > 0 and t.baseClass != nil:
+  if t.baseClass != nil:
     fillBody(c, skipTypes(t.baseClass, abstractPtrs), body, x, y)
   fillBodyObj(c, t.n, body, x, y, enforceDefaultOp = false)
 
 proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
   var hasCase = isCaseObj(t.n)
   var obj = t
-  while obj.len > 0 and obj[0] != nil:
-    obj = skipTypes(obj[0], abstractPtrs)
+  while obj.baseClass != nil:
+    obj = skipTypes(obj.baseClass, abstractPtrs)
     hasCase = hasCase or isCaseObj(obj.n)
 
   if hasCase and c.kind in {attachedAsgn, attachedDeepCopy}:
@@ -288,7 +288,7 @@ proc boolLit*(g: ModuleGraph; info: TLineInfo; value: bool): PNode =
 
 proc getCycleParam(c: TLiftCtx): PNode =
   assert c.kind in {attachedAsgn, attachedDup}
-  if c.fn.typ.len == 4:
+  if c.fn.typ.signatureLen == 4:
     result = c.fn.typ.n.lastSon
     assert result.kind == nkSym
     assert result.sym.name.s == "cyclic"
@@ -308,9 +308,9 @@ proc newHookCall(c: var TLiftCtx; op: PSym; x, y: PNode): PNode =
     result.add x
   if y != nil:
     result.add y
-  if op.typ.len == 4:
+  if op.typ.signatureLen == 4:
     assert y != nil
-    if c.fn.typ.len == 4:
+    if c.fn.typ.signatureLen == 4:
       result.add getCycleParam(c)
     else:
       # assume the worst: A cycle is created:

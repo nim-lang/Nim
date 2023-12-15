@@ -620,7 +620,7 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   for i in 0..<n.len:
     var r: TRegister = x+i
     c.gen(n[i], r, {gfIsParam})
-    if i >= fntyp.len:
+    if i >= fntyp.signatureLen:
       internalAssert c.config, tfVarargs in fntyp.flags
       c.gABx(n, opcSetType, r, c.genType(n[i].typ))
   if dest < 0:
@@ -1874,7 +1874,7 @@ proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
     genArrAccessOpcode(c, n, dest, opc, flags)
 
 proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currPosition: var int) =
-  if t != nil and t.len > 0 and t.baseClass != nil:
+  if t != nil and t.baseClass != nil:
     let b = skipTypes(t.baseClass, skipPtrs)
     getNullValueAux(b, b.n, result, conf, currPosition)
   case obj.kind
@@ -1929,8 +1929,8 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
       result.add getNullValue(elemType(t), info, conf)
   of tyTuple:
     result = newNodeIT(nkTupleConstr, info, t)
-    for i in 0..<t.len:
-      result.add getNullValue(t[i], info, conf)
+    for a in t.kids:
+      result.add getNullValue(a, info, conf)
   of tySet:
     result = newNodeIT(nkCurly, info, t)
   of tySequence, tyOpenArray:

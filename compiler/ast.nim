@@ -1593,11 +1593,14 @@ iterator tupleTypePairs*(a, b: PType): (int, PType, PType) =
 
 iterator underspecifiedPairs*(a, b: PType; start = 0; without = 0): (PType, PType) =
   # XXX Figure out with what typekinds this is called.
-  for i in start ..< a.sons.len + without:
+  for i in start ..< min(a.sons.len, b.sons.len) + without:
     yield (a.sons[i], b.sons[i])
 
 proc signatureLen*(t: PType): int {.inline.} =
   result = t.sons.len
+
+proc paramsLen*(t: PType): int {.inline.} =
+  result = t.sons.len - 1
 
 proc kidsLen*(t: PType): int {.inline.} =
   result = t.sons.len
@@ -1629,9 +1632,13 @@ iterator ikids*(t: PType): (int, PType) =
 
 const
   FirstParamAt* = 1
+  FirstGenericParamAt* = 1
 
 iterator paramTypes*(t: PType): (int, PType) =
   for i in FirstParamAt..<t.sons.len: yield (i, t.sons[i])
+
+iterator paramTypePairs*(a, b: PType): (PType, PType) =
+  for i in FirstParamAt..<a.sons.len: yield (a.sons[i], b.sons[i])
 
 template paramTypeToNodeIndex*(x: int): int = x
 

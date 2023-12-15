@@ -63,7 +63,7 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
     if x.kind == tyTuple:
       n.typ = t
       for i in 0..<n.len:
-        if i >= x.len: globalError conf, n.info, "invalid field at index " & $i
+        if i >= x.kidsLen: globalError conf, n.info, "invalid field at index " & $i
         else: annotateType(n[i], x[i], conf)
     elif x.kind == tyProc and x.callConv == ccClosure:
       n.typ = t

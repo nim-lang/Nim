@@ -82,11 +82,11 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet;
       s.add("]")
   of tyTuple:
     s.add("{")
-    for i in 0..<t.len:
+    for i, ti in t.ikids:
       if i > 0: s.add(", ")
       s.add("\"Field" & $i)
       s.add("\": ")
-      storeAny(s, t[i], a[i].skipColon, stored, conf)
+      storeAny(s, ti, a[i].skipColon, stored, conf)
     s.add("}")
   of tyObject:
     s.add("{")
@@ -208,11 +208,12 @@ proc loadAny(p: var JsonParser, t: PType,
     next(p)
     result = newNode(nkTupleConstr)
     var i = 0
+    let tupleLen = t.kidsLen
     while p.kind != jsonObjectEnd and p.kind != jsonEof:
       if p.kind != jsonString:
         raiseParseErr(p, "string expected for a field name")
       next(p)
-      if i >= t.len:
+      if i >= tupleLen:
         raiseParseErr(p, "too many fields to tuple type " & typeToString(t))
       result.add loadAny(p, t[i], tab, cache, conf, idgen)
       inc i

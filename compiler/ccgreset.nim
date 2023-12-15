@@ -63,15 +63,14 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
     specializeResetT(p, ropecg(p.module, "$1[$2]", [accessor, i.r]), typ.elementType)
     lineF(p, cpsStmts, "}$n", [])
   of tyObject:
-    for i in 0..<typ.len:
-      var x = typ[i]
-      if x != nil: x = x.skipTypes(skipPtrs)
-      specializeResetT(p, accessor.parentObj(p.module), x)
+    var x = typ.baseClass
+    if x != nil: x = x.skipTypes(skipPtrs)
+    specializeResetT(p, accessor.parentObj(p.module), x)
     if typ.n != nil: specializeResetN(p, accessor, typ.n, typ)
   of tyTuple:
     let typ = getUniqueType(typ)
-    for i in 0..<typ.len:
-      specializeResetT(p, ropecg(p.module, "$1.Field$2", [accessor, i]), typ[i])
+    for i, a in typ.ikids:
+      specializeResetT(p, ropecg(p.module, "$1.Field$2", [accessor, i]), a)
 
   of tyString, tyRef, tySequence:
     lineCg(p, cpsStmts, "#unsureAsgnRef((void**)&$1, NIM_NIL);$n", [accessor])
