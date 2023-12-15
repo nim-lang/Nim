@@ -169,6 +169,11 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
         while n.kind in skipForDiscardable:
           if n.kind == nkTryStmt: n = n[0]
           else: n = n.lastSon
+
+        # Ignore noreturn procs since they don't have a type
+        if n.endsInNoReturn:
+          return
+
         var s = "expression '" & $n & "' is of type '" &
             result.typ.typeToString & "' and has to be used (or discarded)"
         if result.info.line != n.info.line or
