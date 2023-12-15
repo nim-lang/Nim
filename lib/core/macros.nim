@@ -427,7 +427,14 @@ proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.} =
       let x = 12
       echo x
 
-proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign, noreturn.}
+# Allow using a compiler booted from CSources that doesn't have fix
+# for .noreturn. procs in statements
+when (NimMajor, NimMinor) >= (2, 1):
+  {.pragma: errorNoReturn, noreturn.}
+else:
+  {.pragma: errorNoReturn.}
+
+proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign, errorNoReturn.}
   ## Writes an error message at compile time. The optional `n: NimNode`
   ## parameter is used as the source for file and line number information in
   ## the compilation error message.
