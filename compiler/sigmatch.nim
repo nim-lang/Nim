@@ -140,15 +140,7 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
   initCandidateAux(ctx, c, callee.typ)
   c.calleeSym = callee
   if callee.kind in skProcKinds and calleeScope == -1:
-    if callee.originatingModule == ctx.module:
-      c.calleeScope = 2
-      var owner = callee
-      while true:
-        owner = owner.skipGenericOwner
-        if owner.kind == skModule: break
-        inc c.calleeScope
-    else:
-      c.calleeScope = 1
+    c.calleeScope = cmpScopes(ctx, callee)
   else:
     c.calleeScope = calleeScope
   c.diagnostics = @[] # if diagnosticsEnabled: @[] else: nil
@@ -290,7 +282,7 @@ proc writeMatches*(c: TCandidate) =
   echo "  conv matches: ", c.convMatches
   echo "  inheritance: ", c.inheritancePenalty
 
-proc cmpCandidates*(a, b: TCandidate): int =
+proc cmpCandidates*(a, b: TCandidate, isFormal=true): int =
   result = a.exactMatches - b.exactMatches
   if result != 0: return
   result = a.genericMatches - b.genericMatches
@@ -304,13 +296,14 @@ proc cmpCandidates*(a, b: TCandidate): int =
   # the other way round because of other semantics:
   result = b.inheritancePenalty - a.inheritancePenalty
   if result != 0: return
-  # check for generic subclass relation
-  result = checkGeneric(a, b)
+  if isFormal:
+    # check for generic subclass relation
+    result = checkGeneric(a, b)
+    if result != 0: return
+    # prefer more specialized generic over more general generic:
+    result = complexDisambiguation(a.callee, b.callee)
   if result != 0: return
-  # prefer more specialized generic over more general generic:
-  result = complexDisambiguation(a.callee, b.callee)
   # only as a last resort, consider scoping:
-  if result != 0: return
   result = a.calleeScope - b.calleeScope
 
 proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
@@ -2346,56 +2339,76 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
   if arg == nil or arg.kind notin nkSymChoices:
     result = paramTypesMatchAux(m, f, a, arg, argOrig)
   else:
-    # CAUTION: The order depends on the used hashing scheme. Thus it is
-    # incorrect to simply use the first fitting match. However, to implement
-    # this correctly is inefficient. We have to copy `m` here to be able to
-    # roll back the side effects of the unification algorithm.
-    let c = m.c
-    var
-      x = newCandidate(c, m.callee)
-      y = newCandidate(c, m.callee)
-      z = newCandidate(c, m.callee)
-    x.calleeSym = m.calleeSym
-    y.calleeSym = m.calleeSym
-    z.calleeSym = m.calleeSym
+    let matchSet = {skProc, skFunc, skMethod, skConverter,skIterator, skMacro,
+                    skTemplate, skEnumField}
+    
     var best = -1
-    for i in 0..<arg.len:
-      if arg[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
-                             skIterator, skMacro, skTemplate, skEnumField}:
-        copyCandidate(z, m)
-        z.callee = arg[i].typ
-        if tfUnresolved in z.callee.flags: continue
-        z.calleeSym = arg[i].sym
-        # XXX this is still all wrong: (T, T) should be 2 generic matches
-        # and  (int, int) 2 exact matches, etc. Essentially you cannot call
-        # typeRel here and expect things to work!
-        let r = typeRel(z, f, arg[i].typ)
-        incMatches(z, r, 2)
-        if r != isNone:
-          z.state = csMatch
-          case x.state
-          of csEmpty, csNoMatch:
-            x = z
-            best = i
-          of csMatch:
-            let cmp = cmpCandidates(x, z)
-            if cmp < 0:
-              best = i
-              x = z
-            elif cmp == 0:
-              y = z           # z is as good as x
+    result = arg
 
-    if x.state == csEmpty:
-      result = nil
-    elif y.state == csMatch and cmpCandidates(x, y) == 0:
-      if x.state != csMatch:
-        internalError(m.c.graph.config, arg.info, "x.state is not csMatch")
-      # ambiguous: more than one symbol fits!
-      # See tsymchoice_for_expr as an example. 'f.kind == tyUntyped' should match
-      # anyway:
-      if f.kind in {tyUntyped, tyTyped}: result = arg
-      else: result = nil
+    if f.kind in {tyTyped, tyUntyped}:
+      var
+        bestScope = -1
+        counts = 0
+      for i in 0..<arg.len:
+        if arg[i].sym.kind in matchSet:
+          let thisScope = cmpScopes(m.c, arg[i].sym)
+          if thisScope > bestScope:
+            best = i
+            bestScope = thisScope
+            counts = 0
+          elif thisScope == bestScope:
+            inc counts
+      if best == -1:
+        result = nil
+      elif counts > 0:
+        best = -1
     else:
+      # CAUTION: The order depends on the used hashing scheme. Thus it is
+      # incorrect to simply use the first fitting match. However, to implement
+      # this correctly is inefficient. We have to copy `m` here to be able to
+      # roll back the side effects of the unification algorithm.
+      let c = m.c
+      var
+        x = newCandidate(c, m.callee)
+        y = newCandidate(c, m.callee)
+        z = newCandidate(c, m.callee)
+      x.calleeSym = m.calleeSym
+      y.calleeSym = m.calleeSym
+      z.calleeSym = m.calleeSym
+
+      for i in 0..<arg.len:
+        if arg[i].sym.kind in matchSet:
+          copyCandidate(z, m)
+          z.callee = arg[i].typ
+          if tfUnresolved in z.callee.flags: continue
+          z.calleeSym = arg[i].sym
+          z.calleeScope = cmpScopes(m.c, arg[i].sym)
+          # XXX this is still all wrong: (T, T) should be 2 generic matches
+          # and  (int, int) 2 exact matches, etc. Essentially you cannot call
+          # typeRel here and expect things to work!
+          let r = typeRel(z, f, arg[i].typ)
+          incMatches(z, r, 2)
+          if r != isNone:
+            z.state = csMatch
+            case x.state
+            of csEmpty, csNoMatch:
+              x = z
+              best = i
+            of csMatch:
+              let cmp = cmpCandidates(x, z, isFormal=false)
+              if cmp < 0:
+                best = i
+                x = z
+              elif cmp == 0:
+                y = z           # z is as good as x
+
+      if x.state == csEmpty:
+        result = nil
+      elif y.state == csMatch and cmpCandidates(x, y, isFormal=false) == 0:
+        if x.state != csMatch:
+          internalError(m.c.graph.config, arg.info, "x.state is not csMatch")
+        result = nil
+    if best > -1 and result != nil:
       # only one valid interpretation found:
       markUsed(m.c, arg.info, arg[best].sym)
       onUse(arg.info, arg[best].sym)

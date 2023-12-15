@@ -256,6 +256,18 @@ proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSy
         if s.kind in filter:
           result.add s
 
+proc cmpScopes*(ctx: PContext, s: PSym): int =
+  # Do not return a negative number
+  if s.originatingModule == ctx.module:
+    result = 2
+    var owner = s
+    while true:
+      owner = owner.skipGenericOwner
+      if owner.kind == skModule: break
+      inc result
+  else:
+    result = 1
+
 proc isAmbiguous*(c: PContext, s: PIdent, filter: TSymKinds, sym: var PSym): bool =
   result = false
   block outer:
