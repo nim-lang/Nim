@@ -22,3 +22,11 @@ then it has to be derived from the routine's first parameter:
 In other words, the lifetime of what `result` points to is attached to the
 lifetime of the first parameter and that is enough knowledge to verify
 memory safety at the call site.
+
+A `var`-typed return value can be passed to another procedure that accepts the same
+type. Any changes made within affect the original value.
+
+By contrast, assiging a `var`-typed result to a variable using the
+`var`-statement results in a copy. See
+[Var-statement](#statements-and-expressions-var-statement)
+
