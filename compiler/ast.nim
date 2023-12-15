@@ -1599,6 +1599,9 @@ iterator underspecifiedPairs*(a, b: PType; start = 0; without = 0): (PType, PTyp
 proc signatureLen*(t: PType): int {.inline.} =
   result = t.sons.len
 
+proc paramsLen*(t: PType): int {.inline.} =
+  result = t.sons.len - 1
+
 proc kidsLen*(t: PType): int {.inline.} =
   result = t.sons.len
 

@@ -87,7 +87,7 @@ proc expandDefault(t: PType; info: TLineInfo): PNode =
   of tySink, tyGenericInst, tyDistinct, tyAlias, tyOwned:
     result = expandDefault(t.skipModifier, info)
   of tyOrdinal, tyGenericBody, tyGenericParam, tyInferred, tyStatic:
-    if t.len > 0:
+    if t.hasElementType:
       result = expandDefault(t.skipModifier, info)
     else:
       result = newZero(t, info, nkEmpty)

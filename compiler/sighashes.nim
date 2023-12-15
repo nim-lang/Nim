@@ -186,7 +186,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
           c &= ".empty"
     else:
       c &= t.id
-    if t.baseClass != nil:
+    if t.hasElementType and t.baseClass != nil:
       hashType c, t.baseClass, flags, conf
   of tyRef, tyPtr, tyVar:
     c &= char(t.kind)

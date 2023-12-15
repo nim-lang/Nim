@@ -87,15 +87,14 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
     else:
       lineF(p, cpsStmts, "}$n", [])
   of tyObject:
-    for i in 0..<typ.len:
-      var x = typ[i]
-      if x != nil: x = x.skipTypes(skipPtrs)
-      genTraverseProc(c, accessor.parentObj(c.p.module), x)
+    var x = typ.baseClass
+    if x != nil: x = x.skipTypes(skipPtrs)
+    genTraverseProc(c, accessor.parentObj(c.p.module), x)
     if typ.n != nil: genTraverseProc(c, accessor, typ.n, typ)
   of tyTuple:
     let typ = getUniqueType(typ)
-    for i in 0..<typ.len:
-      genTraverseProc(c, ropecg(c.p.module, "$1.Field$2", [accessor, i]), typ[i])
+    for i, a in typ.ikids:
+      genTraverseProc(c, ropecg(c.p.module, "$1.Field$2", [accessor, i]), a)
   of tyRef:
     lineCg(p, cpsStmts, visitorFrmt, [accessor, c.visitorFrmt])
   of tySequence:
@@ -118,10 +117,10 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
 proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
   var p = c.p
   assert typ.kind == tySequence
-  var i: TLoc = getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt))
+  var i = getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt))
   var oldCode = p.s(cpsStmts)
   freeze oldCode
-  var a: TLoc = TLoc(r: accessor)
+  var a = TLoc(r: accessor)
 
   lineF(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
       [i.r, lenExpr(c.p, a)])

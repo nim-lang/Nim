@@ -2264,7 +2264,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       var typ = regs[rb].node.typ
       internalAssert c.config, typ != nil
-      while typ.kind == tyTypeDesc and typ.len > 0: typ = typ.skipModifier
+      while typ.kind == tyTypeDesc and typ.hasElementType: typ = typ.skipModifier
       createStr regs[ra]
       regs[ra].node.strVal = typ.typeToString(preferExported)
 
@@ -2280,11 +2280,11 @@ proc execute(c: PCtx, start: int): PNode =
 proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
   c.loopIterations = c.config.maxLoopIterationsVM
   if sym.kind in routineKinds:
-    if sym.typ.len-1 != args.len:
+    if sym.typ.paramsLen != args.len:
       result = nil
       localError(c.config, sym.info,
         "NimScript: expected $# arguments, but got $#" % [
-        $(sym.typ.len-1), $args.len])
+        $(sym.typ.paramsLen), $args.len])
     else:
       let start = genProc(c, sym)
 
@@ -2296,8 +2296,8 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
       if not isEmptyType(sym.typ.returnType) or sym.kind == skMacro:
         putIntoReg(tos.slots[0], getNullValue(sym.typ.returnType, sym.info, c.config))
       # XXX We could perform some type checking here.
-      for i in 1..<sym.typ.len:
-        putIntoReg(tos.slots[i], args[i-1])
+      for i in 0..<sym.typ.paramsLen:
+        putIntoReg(tos.slots[i+1], args[i])
 
       result = rawExecute(c, start, tos).regToNode
   else:
@@ -2435,7 +2435,7 @@ iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
   let gp = macroSym.ast[genericParamsPos]
   for i in 0..<gp.len:
     let genericParam = gp[i].sym
-    let posInCall = macroSym.typ.len + i
+    let posInCall = macroSym.typ.signatureLen + i
     if posInCall < call.len:
       yield (genericParam, call[posInCall])
 
@@ -2458,9 +2458,10 @@ proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstC
 
   # immediate macros can bypass any type and arity checking so we check the
   # arity here too:
-  if sym.typ.len > n.safeLen and sym.typ.len > 1:
+  let sl = sym.typ.signatureLen
+  if sl > n.safeLen and sl > 1:
     globalError(g.config, n.info, "in call '$#' got $#, but expected $# argument(s)" % [
-        n.renderTree, $(n.safeLen-1), $(sym.typ.len-1)])
+        n.renderTree, $(n.safeLen-1), $(sym.typ.paramsLen)])
 
   setupGlobalCtx(module, g, idgen)
   var c = PCtx g.vm

@@ -826,7 +826,7 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
     if not hasField and typ.itemId notin m.g.graph.memberProcsPerType:
       if desc == "":
         result.add("\tchar dummy;\n")
-      elif typ.len == 1 and typ.n[0].kind == nkSym:
+      elif typ.n.len == 1 and typ.n[0].kind == nkSym:
         let field = typ.n[0].sym
         let fieldType = field.typ.skipTypes(abstractInst)
         if fieldType.kind == tyUncheckedArray:
@@ -845,9 +845,9 @@ proc getTupleDesc(m: BModule; typ: PType, name: Rope,
                   check: var IntSet): Rope =
   result = "$1 $2 {$n" % [structOrUnion(typ), name]
   var desc: Rope = ""
-  for i in 0..<typ.len:
+  for i, a in typ.ikids:
     desc.addf("$1 Field$2;$n",
-         [getTypeDescAux(m, typ[i], check, dkField), rope(i)])
+         [getTypeDescAux(m, a, check, dkField), rope(i)])
   if desc == "": result.add("char dummy;\L")
   else: result.add(desc)
   result.add("};\L")
@@ -872,13 +872,13 @@ proc scanCppGenericSlot(pat: string, cursor, outIdx, outStars: var int): bool =
 proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
   # Make sure the index refers to one of the generic params of the type.
   # XXX: we should catch this earlier and report it as a semantic error.
-  if idx >= typ.len:
+  if idx >= typ.kidsLen:
     raiseAssert "invalid apostrophe type parameter index"
 
   result = typ[idx]
   for i in 1..stars:
-    if result != nil and result.len > 0:
-      result = if result.kind == tyGenericInst: result[1]
+    if result != nil and result.kidsLen > 0:
+      result = if result.kind == tyGenericInst: result[FirstGenericParamAt]
                else: result.elemType
 
 proc getOpenArrayDesc(m: BModule; t: PType, check: var IntSet; kind: TypeDescKind): Rope =
@@ -1079,9 +1079,9 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
         result.add cppName.substr(chunkStart)
       else:
         result = cppNameAsRope & "<"
-        for i in 1..<tt.len-1:
-          if i > 1: result.add(" COMMA ")
-          addResultType(tt[i])
+        for needsComma, a in tt.genericInstParams:
+          if needsComma: result.add(" COMMA ")
+          addResultType(a)
         result.add("> ")
       # always call for sideeffects:
       assert t.kind != tyTuple
@@ -1333,7 +1333,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
 proc genTypeInfoAux(m: BModule; typ, origType: PType, name: Rope;
                     info: TLineInfo) =
   var base: Rope
-  if typ.len > 0 and typ.last != nil:
+  if typ.hasElementType and typ.last != nil:
     var x = typ.last
     if typ.kind == tyObject: x = x.skipTypes(skipPtrs)
     if typ.kind == tyPtr and x.kind == tyObject and incompleteType(x):
@@ -1457,11 +1457,10 @@ proc genObjectInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo
 proc genTupleInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo) =
   genTypeInfoAuxBase(m, typ, typ, name, rope("0"), info)
   var expr = getNimNode(m)
-  if typ.len > 0:
-    var tmp = getTempName(m) & "_" & $typ.len
-    genTNimNodeArray(m, tmp, rope(typ.len))
-    for i in 0..<typ.len:
-      var a = typ[i]
+  if not typ.isEmptyTupleType:
+    var tmp = getTempName(m) & "_" & $typ.kidsLen
+    genTNimNodeArray(m, tmp, rope(typ.kidsLen))
+    for i, a in typ.ikids:
       var tmp2 = getNimNode(m)
       m.s[cfsTypeInit3].addf("$1[$2] = &$3;$n", [tmp, rope(i), tmp2])
       m.s[cfsTypeInit3].addf("$1.kind = 1;$n" &
@@ -1470,10 +1469,10 @@ proc genTupleInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo)
           "$1.name = \"Field$3\";$n",
            [tmp2, getTypeDesc(m, origType, dkVar), rope(i), genTypeInfoV1(m, a, info)])
     m.s[cfsTypeInit3].addf("$1.len = $2; $1.kind = 2; $1.sons = &$3[0];$n",
-         [expr, rope(typ.len), tmp])
+         [expr, rope(typ.kidsLen), tmp])
   else:
     m.s[cfsTypeInit3].addf("$1.len = $2; $1.kind = 2;$n",
-         [expr, rope(typ.len)])
+         [expr, rope(typ.kidsLen)])
   m.s[cfsTypeInit3].addf("$1.node = &$2;$n", [tiNameForHcr(m, name), expr])
 
 proc genEnumInfo(m: BModule; typ: PType, name: Rope; info: TLineInfo) =
@@ -1729,7 +1728,7 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLin
 
   m.s[cfsTypeInit3].add typeEntry
 
-  if t.kind == tyObject and t.len > 0 and t.baseClass != nil and optEnableDeepCopy in m.config.globalOptions:
+  if t.kind == tyObject and t.baseClass != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
 
 proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
@@ -1779,7 +1778,7 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
     addf(typeEntry, ", .flags = $1};$n", [rope(flags)])
     m.s[cfsVars].add typeEntry
 
-  if t.kind == tyObject and t.len > 0 and t.baseClass != nil and optEnableDeepCopy in m.config.globalOptions:
+  if t.kind == tyObject and t.baseClass != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
 
 proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
