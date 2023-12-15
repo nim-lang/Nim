@@ -60,7 +60,7 @@ pkg "compactdict"
 pkg "comprehension", "nimble test", "https://github.com/alehander92/comprehension"
 pkg "cowstrings"
 pkg "criterion", allowFailure = true # needs testing binary
-pkg "datamancer"
+pkg "datamancer", url="https://github.com/Graveflo/Datamancer.git"
 pkg "dashing", "nim c tests/functional.nim"
 pkg "delaunay"
 pkg "docopt"
