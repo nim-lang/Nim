@@ -10,6 +10,7 @@ macro test(text: string): untyped =
     result = parseExpr(text.strVal)
   except ValueError:
     result = newLit getCurrentExceptionMsg()
+
 const
   valid = 45
   a = test("foo&&")
