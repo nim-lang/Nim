@@ -36,6 +36,7 @@ import
   magicsys, options, lowerings, lineinfos, transf, astmsgs
 
 from modulegraphs import getBody
+import ic/bitabs
 
 when defined(nimCompilerStacktraceHints):
   import std/stackframes
@@ -97,10 +98,14 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
     elif opc in {opcExcept}:
       let idx = x.regBx-wordExcess
       result.addf("\t$#\t$#, $#", opc.toStr, x.regA, $idx)
-    elif opc in {opcLdConst, opcAsgnConst}:
+    elif opc in {opcLdConst}:
       let idx = x.regBx-wordExcess
       result.addf("\t$#\tr$#, $# ($#)", opc.toStr, x.regA,
         c.constants[idx].renderTree, $idx)
+    elif opc in {opcLdConstInt, opcLdConstFloat}:
+      let idx = x.regBx-wordExcess
+      result.addf("\t$#\tr$#, $# ($#)", opc.toStr, x.regA,
+        $c.numbers[LitId idx], $idx)
     else:
       result.addf("\t$#\tr$#, $#", opc.toStr, x.regA, x.regBx-wordExcess)
     result.add("\t# ")
@@ -481,6 +486,14 @@ proc genLiteral(c: PCtx; n: PNode): int =
     if sameConstant(c.constants[i], n): return i
   result = rawGenLiteral(c, n)
 
+proc genIntLiteral(c: PCtx; intVal: BiggestInt): BiggestInt =
+  result = BiggestInt c.numbers.getOrIncl(intVal)
+  internalAssert c.config, c.numbers.len < regBxMax
+
+proc genFloatLiteral(c: PCtx; floatVal: BiggestFloat): BiggestInt =
+  result = BiggestInt c.numbers.getOrIncl(cast[BiggestInt](floatVal))
+  internalAssert c.config, c.numbers.len < regBxMax
+
 proc unused(c: PCtx; n: PNode; x: TDest) {.inline.} =
   if x >= 0:
     #debug(n)
@@ -595,15 +608,47 @@ proc genReturn(c: PCtx; n: PNode) =
     gen(c, n[0])
   c.gABC(n, opcRet)
 
-
-proc genLit(c: PCtx; n: PNode; dest: var TDest) =
-  # opcLdConst is now always valid. We produce the necessary copy in the
-  # assignments now:
-  #var opc = opcLdConst
-  if dest < 0: dest = c.getTemp(n.typ)
-  #elif c.prc.regInfo[dest].kind == slotFixedVar: opc = opcAsgnConst
-  let lit = genLiteral(c, n)
-  c.gABx(n, opcLdConst, dest, lit)
+when hasFFI:
+  proc genLit(c: PCtx; n: PNode; dest: var TDest) =
+    # opcLdConst is now always valid. We produce the necessary copy in the
+    # assignments now:
+    #var opc = opcLdConst
+    if dest < 0: dest = c.getTemp(n.typ)
+    #elif c.prc.regInfo[dest].kind == slotFixedVar: opc = opcAsgnConst
+    case n.kind
+    of {nkCharLit..nkUInt64Lit} - {nkIntLit}:
+      let lit = genIntLiteral(c, n.intVal)
+      c.gABx(n, opcLdConstInt, dest, cast[int](lit))
+    of nkIntLit:
+      if not (n.typ != nil and n.typ.kind in PtrLikeKinds): # `nkPtrLit` should simplify logics
+        let lit = genIntLiteral(c, n.intVal)
+        c.gABx(n, opcLdConstInt, dest, cast[int](lit))
+      else:
+        let lit = genLiteral(c, n)
+        c.gABx(n, opcLdConst, dest, lit)
+    of nkFloatLit..nkFloat64Lit:
+      let lit = genFloatLiteral(c, n.floatVal)
+      c.gABx(n, opcLdConstFloat, dest, cast[int](lit))
+    else:
+      let lit = genLiteral(c, n)
+      c.gABx(n, opcLdConst, dest, lit)
+else:
+  proc genLit(c: PCtx; n: PNode; dest: var TDest) =
+    # opcLdConst is now always valid. We produce the necessary copy in the
+    # assignments now:
+    #var opc = opcLdConst
+    if dest < 0: dest = c.getTemp(n.typ)
+    #elif c.prc.regInfo[dest].kind == slotFixedVar: opc = opcAsgnConst
+    case n.kind
+    of {nkCharLit..nkUInt64Lit}:
+      let lit = genIntLiteral(c, n.intVal)
+      c.gABx(n, opcLdConstInt, dest, cast[int](lit))
+    of nkFloatLit..nkFloat64Lit:
+      let lit = genFloatLiteral(c, n.floatVal)
+      c.gABx(n, opcLdConstFloat, dest, cast[int](lit))
+    else:
+      let lit = genLiteral(c, n)
+      c.gABx(n, opcLdConst, dest, lit)
 
 proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   # it can happen that due to inlining we have a 'n' that should be
@@ -2148,8 +2193,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       if s.position >= low(int16) and s.position <= high(int16):
         c.gABx(n, opcLdImmInt, dest, s.position)
       else:
-        var lit = genLiteral(c, newIntNode(nkIntLit, s.position))
-        c.gABx(n, opcLdConst, dest, lit)
+        var lit = genIntLiteral(c, s.position)
+        c.gABx(n, opcLdConstInt, dest, cast[int](lit))
     of skType:
       genTypeLit(c, s.typ, dest)
     of skGenericParam:
