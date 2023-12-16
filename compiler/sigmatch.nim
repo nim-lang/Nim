@@ -1590,8 +1590,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           if tr <= isSubtype: return
         result = isGeneric
     elif x.kind == tyGenericInst and f.genericHead == x.genericHead and
-          x.genericParamsLen + 1 == f.genericInvocationParamsLen:
-      # + 1 for the "head" symbol
+          x.genericParamsLen == f.genericInvocationParamsLen:
       for _, ff, xx in genericInvocationParamPairs(f, x):
         if xx.kind == tyGenericParam:
           internalError(c.c.graph.config, "wrong instantiated type!")
