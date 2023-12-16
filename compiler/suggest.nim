@@ -337,7 +337,7 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
 
 proc getQuality(s: PSym): range[0..100] =
   result = 100
-  if s.typ != nil and s.typ.len > 1:
+  if s.typ != nil and s.typ.paramsLen > 0:
     var exp = s.typ.firstParamType.skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
     if exp.kind == tyVarargs: exp = elemType(exp)
     if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: result = 50
@@ -407,7 +407,7 @@ proc suggestVar(c: PContext, n: PNode, outputs: var Suggestions) =
   wholeSymTab(nameFits(c, it, n), ideCon)
 
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
-  if s.typ != nil and s.typ.len > 1 and s.typ.firstParamType != nil:
+  if s.typ != nil and s.typ.paramsLen > 0 and s.typ.firstParamType != nil:
     # special rule: if system and some weird generic match via 'tyUntyped'
     # or 'tyGenericParam' we won't list it either to reduce the noise (nobody
     # wants 'system.`-|` as suggestion

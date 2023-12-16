@@ -2486,12 +2486,12 @@ proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstC
   tos.slots[0] = TFullReg(kind: rkNode, node: newNodeI(nkEmpty, n.info))
 
   # setup parameters:
-  for i in 1..<sym.typ.len:
-    tos.slots[i] = setupMacroParam(n[i], sym.typ[i])
+  for i, param in paramTypes(sym.typ):
+    tos.slots[i-FirstParamAt+1] = setupMacroParam(n[i-FirstParamAt+1], param)
 
   let gp = sym.ast[genericParamsPos]
   for i in 0..<gp.len:
-    let idx = sym.typ.len + i
+    let idx = sym.typ.signatureLen + i
     if idx < n.len:
       tos.slots[idx] = setupMacroParam(n[idx], gp[i].sym.typ)
     else:

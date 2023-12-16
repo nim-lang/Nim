@@ -907,8 +907,8 @@ proc tryAddInheritedFields(c: PContext, check: var IntSet, pos: var int,
     result = false
   elif obj.kind == tyObject:
     result = true
-    if (obj.len > 0) and (obj[0] != nil):
-      result = result and tryAddInheritedFields(c, check, pos, obj[0].skipGenericInvocation, n, false, obj)
+    if obj.baseClass != nil:
+      result = result and tryAddInheritedFields(c, check, pos, obj.baseClass.skipGenericInvocation, n, false, obj)
     addInheritedFieldsAux(c, check, pos, obj.n)
   else:
     result = true
@@ -1135,18 +1135,18 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     else:
       result = nil
   of tyDistinct:
-    if paramType.len == 1:
+    if paramType.hasElementType:
       # disable the bindOnce behavior for the type class
       result = recurse(paramType.base, true)
     else:
       result = nil
   of tyTuple:
     result = nil
-    for i in 0..<paramType.len:
-      let t = recurse(paramType[i])
+    for i, a in paramType.ikids:
+      let t = recurse(a)
       if t != nil:
         paramType[i] = t
-        result = paramType
+    result = paramType
 
   of tyAlias, tyOwned, tySink:
     result = recurse(paramType.base)
@@ -1165,13 +1165,13 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result = addImplicitGeneric(c, typ, paramTypId, info, genericParams, paramName)
     else:
       result = nil
-      for i in 0..<paramType.len:
-        if paramType[i] == paramType:
+      for i, a in paramType.ikids:
+        if a == paramType:
           globalError(c.config, info, errIllegalRecursionInTypeX % typeToString(paramType))
-        var lifted = recurse(paramType[i])
+        var lifted = recurse(a)
         if lifted != nil:
           paramType[i] = lifted
-          result = paramType
+      result = paramType
 
   of tyGenericBody:
     result = newTypeS(tyGenericInvocation, c)
