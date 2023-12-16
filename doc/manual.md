@@ -2677,8 +2677,6 @@ formal parameters with each other to find the most competitive choice.
 Parameters are iterated by position and these parameter pairs are compared for their type
 relation. The general goal of this comparison is to determine which parameter is least general.
 
-The types considered are not of the inputs from the callsite, but of the competing candidates' parameters.
-
 
 Some examples:
 
@@ -5571,7 +5569,7 @@ Type classes
 ------------
 
 A type class is a special pseudo-type that can be used to match against
-types generically or in the context of the `is` operator.
+types in the context of overload resolution or the `is` operator.
 Nim supports the following built-in type classes:
 
 ==================   ===================================================
