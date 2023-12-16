@@ -249,6 +249,7 @@ proc sumGeneric(t: PType): int =
       result += sumGeneric(t.returnType)
       for _, a in t.paramTypes:
         result += sumGeneric(a)
+      break
     else:
       break
 
