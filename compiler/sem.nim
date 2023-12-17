@@ -144,7 +144,7 @@ proc commonType*(c: PContext; x, y: PType): PType =
   elif b.kind == tyTyped: result = b
   elif a.kind == tyTypeDesc:
     # turn any concrete typedesc into the abstract typedesc type
-    if a.len == 0: result = a
+    if not a.hasElementType: result = a
     else:
       result = newType(tyTypeDesc, c.idgen, a.owner)
       rawAddSon(result, newType(tyNone, c.idgen, a.owner))
@@ -153,17 +153,17 @@ proc commonType*(c: PContext; x, y: PType): PType =
     # check for seq[empty] vs. seq[int]
     let idx = ord(b.kind == tyArray)
     if a[idx].kind == tyEmpty: return y
-  elif a.kind == tyTuple and b.kind == tyTuple and a.len == b.len:
+  elif a.kind == tyTuple and b.kind == tyTuple and sameTupleLengths(a, b):
     var nt: PType = nil
-    for i in 0..<a.len:
-      let aEmpty = isEmptyContainer(a[i])
-      let bEmpty = isEmptyContainer(b[i])
+    for i, aa, bb in tupleTypePairs(a, b):
+      let aEmpty = isEmptyContainer(aa)
+      let bEmpty = isEmptyContainer(bb)
       if aEmpty != bEmpty:
         if nt.isNil:
           nt = copyType(a, c.idgen, a.owner)
           copyTypeProps(c.graph, c.idgen.module, nt, a)
 
-        nt[i] = if aEmpty: b[i] else: a[i]
+        nt[i] = if aEmpty: bb else: aa
     if not nt.isNil: result = nt
     #elif b[idx].kind == tyEmpty: return x
   elif a.kind == tyRange and b.kind == tyRange:
@@ -503,7 +503,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   else:
     var retType = s.typ.returnType
     if retType.kind == tyTypeDesc and tfUnresolved in retType.flags and
-        retType.len == 1:
+        retType.hasElementType:
       # bug #11941: template fails(T: type X, v: auto): T
       # does not mean we expect a tyTypeDesc.
       retType = retType.skipModifier

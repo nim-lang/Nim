@@ -1602,6 +1602,14 @@ proc signatureLen*(t: PType): int {.inline.} =
 proc paramsLen*(t: PType): int {.inline.} =
   result = t.sons.len - 1
 
+proc genericParamsLen*(t: PType): int {.inline.} =
+  assert t.kind == tyGenericInst
+  result = t.sons.len - 2 # without 'head' and 'body'
+
+proc genericInvocationParamsLen*(t: PType): int {.inline.} =
+  assert t.kind == tyGenericInvocation
+  result = t.sons.len - 1 # without 'head'
+
 proc kidsLen*(t: PType): int {.inline.} =
   result = t.sons.len
 
@@ -1611,17 +1619,34 @@ proc hasElementType*(t: PType): bool {.inline.} = t.sons.len > 0
 proc isEmptyTupleType*(t: PType): bool {.inline.} = t.sons.len == 0
 proc isSingletonTupleType*(t: PType): bool {.inline.} = t.sons.len == 1
 
+proc genericConstraint*(t: PType): PType {.inline.} = t.sons[0]
+
 iterator genericInstParams*(t: PType): (bool, PType) =
   for i in 1..<t.sons.len-1:
     yield (i!=1, t.sons[i])
+
+iterator genericInstParamPairs*(a, b: PType): (int, PType, PType) =
+  for i in 1..<min(a.sons.len, b.sons.len)-1:
+    yield (i-1, a.sons[i], b.sons[i])
 
 iterator genericInvocationParams*(t: PType): (bool, PType) =
   for i in 1..<t.sons.len:
     yield (i!=1, t.sons[i])
 
-iterator genericBodyParams*(t: PType): (bool, PType) =
+iterator genericInvocationAndBodyElements*(a, b: PType): (PType, PType) =
+  for i in 1..<a.sons.len:
+    yield (a.sons[i], b.sons[i-1])
+
+iterator genericInvocationParamPairs*(a, b: PType): (bool, PType, PType) =
+  for i in 1..<a.sons.len:
+    if i >= b.sons.len:
+      yield (false, nil, nil)
+    else:
+      yield (true, a.sons[i], b.sons[i])
+
+iterator genericBodyParams*(t: PType): (int, PType) =
   for i in 0..<t.sons.len-1:
-    yield (i!=0, t.sons[i])
+    yield (i, t.sons[i])
 
 iterator userTypeClassInstParams*(t: PType): (bool, PType) =
   for i in 1..<t.sons.len-1:
@@ -1675,6 +1700,11 @@ proc newSons*(father: PNode, length: int) =
 
 proc newSons*(father: PType, length: int) =
   setLen(father.sons, length)
+
+proc truncateInferredTypeCandidates*(t: PType) {.inline.} =
+  assert t.kind == tyInferred
+  if t.sons.len > 1:
+    setLen(t.sons, 1)
 
 proc assignType*(dest, src: PType) =
   dest.kind = src.kind
@@ -2041,7 +2071,7 @@ proc skipGenericOwner*(s: PSym): PSym =
   ## symbol. This proc skips such owners and goes straight to the owner
   ## of the generic itself (the module or the enclosing proc).
   result = if s.kind == skModule:
-            s 
+            s
            elif s.kind in skProcKinds and sfFromGeneric in s.flags and s.owner.kind != skModule:
              s.owner.owner
            else:
