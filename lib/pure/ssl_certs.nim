@@ -10,7 +10,7 @@
 ## The default locations can be overridden using the SSL_CERT_FILE and
 ## SSL_CERT_DIR environment variables.
 
-import os, strutils
+import std/[os, strutils]
 
 # FWIW look for files before scanning entire dirs.
 
@@ -150,7 +150,7 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
 # Certificates management on windows
 # when defined(windows) or defined(nimdoc):
 #
-#   import openssl
+#   import std/openssl
 #
 #   type
 #     PCCertContext {.final, pure.} = pointer

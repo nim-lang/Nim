@@ -1,8 +1,14 @@
-# v2.0.0 - yyyy-mm-dd
+# v2.0.0 - 2023-08-01
 
 
 ## Changes affecting backward compatibility
-- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response. It follows Apache's HttpClient(Java), http(go) and .Net HttpWebResponse(C#) behaviors. Previously it raised `ValueError`.
+
+- ORC is now the default memory management strategy. Use
+  `--mm:refc` for a transition period.
+
+- The `threads:on` option is now the default.
+
+- `httpclient.contentLength` default to `-1` if the Content-Length header is not set in the response. It follows Apache's `HttpClient` (Java), `http` (go) and .NET `HttpWebResponse` (C#) behaviors. Previously it raised a `ValueError`.
 
 - `addr` is now available for all addressable locations,
   `unsafeAddr` is now deprecated and an alias for `addr`.
@@ -25,7 +31,7 @@
 
 - Enabling `-d:nimPreviewSlimSystem` also removes the following deprecated
   symbols in the `system` module:
-  - Aliases with `Error` suffix to exception types that have a `Defect` suffix
+  - Aliases with an `Error` suffix to exception types that have a `Defect` suffix
     (see [exceptions](https://nim-lang.github.io/Nim/exceptions.html)):
     `ArithmeticError`, `DivByZeroError`, `OverflowError`,
     `AccessViolationError`, `AssertionError`, `OutOfMemError`, `IndexError`,
@@ -40,21 +46,19 @@
     `ptr int32`, `ptr int64`, `ptr float32`, `ptr float64`
 
 - Enabling `-d:nimPreviewSlimSystem` removes the import of `channels_builtin` in
-  in the `system` module, which is replaced by [threading/channels](https://github.com/nim-lang/threading/blob/master/threading/channels.nim). Use the command "nimble install threading" and import `threading/channels`.
+  in the `system` module, which is replaced by [threading/channels](https://github.com/nim-lang/threading/blob/master/threading/channels.nim). Use the command `nimble install threading` and import `threading/channels`.
 
-- Enabling `-d:nimPreviewCstringConversion`, `ptr char`, `ptr array[N, char]` and `ptr UncheckedArray[N, char]` don't support conversion to cstring anymore.
+- Enabling `-d:nimPreviewCstringConversion` causes `ptr char`, `ptr array[N, char]` and `ptr UncheckedArray[N, char]` to not support conversion to `cstring` anymore.
 
-- Enabling `-d:nimPreviewProcConversion`, `proc` does not support conversion to
-  `pointer`. `cast` may be used instead.
+- Enabling `-d:nimPreviewProcConversion` causes `proc` to not support conversion to
+  `pointer` anymore. `cast` may be used instead.
 
 - The `gc:v2` option is removed.
 
 - The `mainmodule` and `m` options are removed.
 
-- The `threads:on` option is now the default.
-
-- Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
-  `experimental:flexibleOptionalParams`.
+- Optional parameters in combination with `: body` syntax ([RFC #405](https://github.com/nim-lang/RFCs/issues/405))
+  are now opt-in via `experimental:flexibleOptionalParams`.
 
 - Automatic dereferencing (experimental feature) is removed.
 
@@ -81,7 +85,8 @@
   var x: Foo = Foo(nil)
   ```
 - Removed two type pragma syntaxes deprecated since 0.20, namely
-  `type Foo = object {.final.}`, and `type Foo {.final.} [T] = object`.
+  `type Foo = object {.final.}`, and `type Foo {.final.} [T] = object`. Instead,
+  use `type Foo[T] {.final.} = object`.
 
 - `foo a = b` now means `foo(a = b)` rather than `foo(a) = b`. This is consistent
   with the existing behavior of `foo a, b = c` meaning `foo(a, b = c)`.
@@ -96,16 +101,13 @@
 
 - Lock levels are deprecated, now a noop.
 
-- ORC is now the default memory management strategy. Use
-  `--mm:refc` for a transition period.
-
 - `strictEffects` are no longer experimental.
   Use `legacy:laxEffects` to keep backward compatibility.
 
 - The `gorge`/`staticExec` calls will now return a descriptive message in the output
-  if the execution fails for whatever reason. To get back legacy behaviour use `-d:nimLegacyGorgeErrors`.
+  if the execution fails for whatever reason. To get back legacy behaviour, use `-d:nimLegacyGorgeErrors`.
 
-- Pointer to `cstring` conversion now triggers a `[PtrToCstringConv]` warning.
+- Pointer to `cstring` conversions now trigger a `[PtrToCstringConv]` warning.
   This warning will become an error in future versions! Use a `cast` operation
   like `cast[cstring](x)` instead.
 
@@ -129,14 +131,21 @@
   - `std/db_odbc` => `db_connector/db_odbc`
   - `std/md5` => `checksums/md5`
   - `std/sha1` => `checksums/sha1`
+  - `std/sums` => `std/sums`
 
 - Previously, calls like `foo(a, b): ...` or `foo(a, b) do: ...` where the final argument of
   `foo` had type `proc ()` were assumed by the compiler to mean `foo(a, b, proc () = ...)`.
   This behavior is now deprecated. Use `foo(a, b) do (): ...` or `foo(a, b, proc () = ...)` instead.
 
-- When `--warning[BareExcept]:on` is enabled, if no exception or any exception deriving from Exception but not Defect or CatchableError given in except, a `warnBareExcept` warning will be triggered.
+- When `--warning[BareExcept]:on` is enabled, if an `except` specifies no exception or any exception not inheriting from `Defect` or `CatchableError`, a `warnBareExcept` warning will be triggered. For example, the following code will emit a warning:
+  ```nim
+  try:
+    discard
+  except: # Warning: The bare except clause is deprecated; use `except CatchableError:` instead [BareExcept]
+    discard
+  ```
 
-- The experimental strictFuncs feature now disallows a store to the heap via a `ref` or `ptr` indirection.
+- The experimental `strictFuncs` feature now disallows a store to the heap via a `ref` or `ptr` indirection.
 
 - The underscore identifier (`_`) is now generally not added to scope when
   used as the name of a definition. While this was already the case for
@@ -196,7 +205,7 @@
   proc prc(): int =
     123
 
-  iterator iter(): int =
+  iterator iter(): int {.closure.} =
     yield 123
 
   proc takesProc[T: proc](x: T) = discard
@@ -212,7 +221,7 @@
 
 - The `proc` and `iterator` type classes now accept a calling convention pragma
   (i.e. `proc {.closure.}`) that must be shared by matching proc or iterator
-  types. Previously pragmas were parsed but discarded if no parameter list
+  types. Previously, pragmas were parsed but discarded if no parameter list
   was given.
 
   This is represented in the AST by an `nnkProcTy`/`nnkIteratorTy` node with
@@ -225,14 +234,14 @@
 - Signed integer literals in `set` literals now default to a range type of
   `0..255` instead of `0..65535` (the maximum size of sets).
 
-- Case statements with else branches put before elif/of branches in macros
+- `case` statements with `else` branches put before `elif`/`of` branches in macros
   are rejected with "invalid order of case branches".
 
 - Destructors now default to `.raises: []` (i.e. destructors must not raise
   unlisted exceptions) and explicitly raising destructors are implementation
   defined behavior.
 
-- The very old, undocumented deprecated pragma statement syntax for
+- The very old, undocumented `deprecated` pragma statement syntax for
   deprecated aliases is now a no-op. The regular deprecated pragma syntax is
   generally sufficient instead.
 
@@ -254,7 +263,7 @@
   declared when they are not available on the backend. Previously it would call
   `doAssert false` at runtime despite the condition being checkable at compile-time.
 
-- Custom destructors now supports non-var parameters, e.g. `proc =destroy[T: object](x: T)` is valid. `proc =destroy[T: object](x: var T)` is deprecated.
+- Custom destructors now supports non-var parameters, e.g. ``proc `=destroy`[T: object](x: T)`` is valid. ``proc `=destroy`[T: object](x: var T)`` is deprecated.
 
 - Relative imports will not resolve to searched paths anymore, e.g. `import ./tables` now reports an error properly.
 
@@ -263,19 +272,19 @@
 [//]: # "Changes:"
 - OpenSSL 3 is now supported.
 - `macros.parseExpr` and `macros.parseStmt` now accept an optional
-  filename argument for more informative errors.
-- Module `colors` expanded with missing colors from the CSS color standard.
+  `filename` argument for more informative errors.
+- The `colors` module is expanded with missing colors from the CSS color standard.
   `colPaleVioletRed` and `colMediumPurple` have also been changed to match the CSS color standard.
 - Fixed `lists.SinglyLinkedList` being broken after removing the last node ([#19353](https://github.com/nim-lang/Nim/pull/19353)).
 - The `md5` module now works at compile time and in JavaScript.
-- Changed `mimedb` to use an `OrderedTable` instead of `OrderedTableRef` to support `const` tables.
+- Changed `mimedb` to use an `OrderedTable` instead of `OrderedTableRef`, to support `const` tables.
 - `strutils.find` now uses and defaults to `last = -1` for whole string searches,
   making limiting it to just the first char (`last = 0`) valid.
-- `strutils.split` and `strutils.rsplit` now return a source string as a single element for an empty separator.
+- `strutils.split` and `strutils.rsplit` now return the source string as a single element for an empty separator.
 - `random.rand` now works with `Ordinal`s.
 - Undeprecated `os.isvalidfilename`.
-- `std/oids` now uses `int64` to store time internally (before it was int32).
-- `std/uri.Uri` dollar `$` improved, precalculates the `string` result length from the `Uri`.
+- `std/oids` now uses `int64` to store time internally (before, it was int32).
+- `std/uri.Uri` dollar (`$`) improved, precalculates the `string` result length from the `Uri`.
 - `std/uri.Uri.isIpv6` is now exported.
 - `std/logging.ConsoleLogger` and `FileLogger` now have a `flushThreshold` attribute to set what log message levels are automatically flushed. For Nim v1 use `-d:nimFlushAllLogs` to automatically flush all message levels. Flushing all logs is the default behavior for Nim v2.
 
@@ -283,9 +292,9 @@
 - `std/jsfetch.newFetchOptions` now has default values for all parameters.
 - `std/jsformdata` now accepts the `Blob` data type.
 
-- `std/sharedlist` and `std/sharedtables` are now deprecated, see RFC [#433](https://github.com/nim-lang/RFCs/issues/433).
+- `std/sharedlist` and `std/sharedtables` are now deprecated, see [RFC #433](https://github.com/nim-lang/RFCs/issues/433).
 
-- There is a new compile flag (`-d:nimNoGetRandom`) when building `std/sysrand` to remove dependency on Linux `getrandom` syscall.
+- There is a new compile flag (`-d:nimNoGetRandom`) when building `std/sysrand` to remove the dependency on the Linux `getrandom` syscall.
 
   This compile flag only affects Linux builds and is necessary if either compiling on a Linux kernel version < 3.17, or if code built will be executing on kernel < 3.17.
 
@@ -301,19 +310,20 @@
   $ ./koch tools -d:nimNoGetRandom  # pass the nimNoGetRandom flag to compile std/sysrand without support for getrandom syscall
   ```
 
-  This is necessary to pass when building Nim on kernel versions < 3.17 in particular to avoid an error of "SYS_getrandom undeclared" during the build process for the stdlib (sysrand in particular).
+  This is necessary to pass when building Nim on kernel versions < 3.17 in particular to avoid an error of "SYS_getrandom undeclared" during the build process for the stdlib (`sysrand` in particular).
 
 [//]: # "Additions:"
 - Added ISO 8601 week date utilities in `times`:
   - Added `IsoWeekRange`, a range type for weeks in a week-based year.
   - Added `IsoYear`, a distinct type for a week-based year in contrast to a regular year.
-  - Added a `initDateTime` overload to create a datetime from an ISO week date.
+  - Added an `initDateTime` overload to create a `DateTime` from an ISO week date.
   - Added `getIsoWeekAndYear` to get an ISO week number and week-based year from a datetime.
   - Added `getIsoWeeksInYear` to return the number of weeks in a week-based year.
-- Added new modules which were part of `std/os`:
-  - Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
-  - Added `std/paths`, `std/dirs`, `std/files`, `std/symlinks` and `std/appdirs`.
+- Added new modules which were previously part of `std/os`:
+  - Added `std/oserrors` for OS error reporting.
+  - Added `std/envvars` for environment variables handling.
   - Added `std/cmdline` for reading command line parameters.
+  - Added `std/paths`, `std/dirs`, `std/files`, `std/symlinks` and `std/appdirs`.
 - Added `sep` parameter in `std/uri` to specify the query separator.
 - Added `UppercaseLetters`, `LowercaseLetters`, `PunctuationChars`, `PrintableChars` sets to `std/strutils`.
 - Added `complex.sgn` for obtaining the phase of complex numbers.
@@ -322,24 +332,23 @@
   `hasPointerCapture`, `releasePointerCapture`, `requestPointerLock`,
   `replaceChildren`, `replaceWith`, `scrollIntoViewIfNeeded`, `setHTML`,
   `toggleAttribute`, and `matches` to `std/dom`.
-- Added [`jsre.hasIndices`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/hasIndices)
-- Added `capacity` for `string` and `seq` to return the current capacity, see https://github.com/nim-lang/RFCs/issues/460
-- Added `openArray[char]` overloads for `std/parseutils` allowing for more code reuse.
-- Added `openArray[char]` overloads for `std/unicode` allowing for more code reuse.
-- Added `safe` parameter to `base64.encodeMime`.
+- Added [`jsre.hasIndices`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/hasIndices).
+- Added `capacity` for `string` and `seq` to return the current capacity, see [RFC #460](https://github.com/nim-lang/RFCs/issues/460).
+- Added `openArray[char]` overloads for `std/parseutils` and `std/unicode`, allowing for more code reuse.
+- Added a `safe` parameter to `base64.encodeMime`.
 - Added `parseutils.parseSize` - inverse to `strutils.formatSize` - to parse human readable sizes.
 - Added `minmax` to `sequtils`, as a more efficient `(min(_), max(_))` over sequences.
-- `std/jscore` for JavaScript targets:
+- `std/jscore` for the JavaScript target:
   + Added bindings to [`Array.shift`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
   and [`queueMicrotask`](https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask).
   + Added `toDateString`, `toISOString`, `toJSON`, `toTimeString`, `toUTCString` converters for `DateTime`.
 - Added `BackwardsIndex` overload for `CacheSeq`.
 - Added support for nested `with` blocks in `std/with`.
+- Added `ensureMove` to the system module. It ensures that the passed argument is moved, otherwise an error is given at the compile time.
 
 
 [//]: # "Deprecations:"
 - Deprecated `selfExe` for Nimscript.
-- Deprecated `std/sums`.
 - Deprecated `std/base64.encode` for collections of arbitrary integer element type.
   Now only `byte` and `char` are supported.
 
@@ -354,7 +363,7 @@
 - Removed deprecated `jsre.test` and `jsre.toString`.
 - Removed deprecated `math.c_frexp`.
 - Removed deprecated `` httpcore.`==` ``.
-- Removed deprecated `std/posix.CMSG_SPACE` and `std/posix.CMSG_LEN` that takes wrong argument types.
+- Removed deprecated `std/posix.CMSG_SPACE` and `std/posix.CMSG_LEN` that take wrong argument types.
 - Removed deprecated `osproc.poDemon`, symbol with typo.
 - Removed deprecated `tables.rightSize`.
 
@@ -364,7 +373,7 @@
 
 ## Language changes
 
-- [Tag tracking](https://nim-lang.github.io/Nim/manual.html#effect-system-tag-tracking) supports the definition of forbidden tags by the `.forbids` pragma
+- [Tag tracking](https://nim-lang.github.io/Nim/manual.html#effect-system-tag-tracking) now supports the definition of forbidden tags by the `.forbids` pragma
   which can be used to disable certain effects in proc types.
 - [Case statement macros](https://nim-lang.github.io/Nim/manual.html#macros-case-statement-macros) are no longer experimental,
   meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them.
@@ -375,7 +384,7 @@
 - Compile-time define changes:
   - `defined` now accepts identifiers separated by dots, i.e. `defined(a.b.c)`.
     In the command line, this is defined as `-d:a.b.c`. Older versions can
-    use accents as in ``defined(`a.b.c`)`` to access such defines.
+    use backticks as in ``defined(`a.b.c`)`` to access such defines.
   - [Define pragmas for constants](https://nim-lang.github.io/Nim/manual.html#implementation-specific-pragmas-compileminustime-define-pragmas)
     now support a string argument for qualified define names.
 
@@ -408,11 +417,13 @@
 
     ```nim
     import macros
+
     macro multiply(amount: static int, s: untyped): untyped =
       let name = $s[0].basename
       result = newNimNode(nnkTypeSection)
       for i in 1 .. amount:
         result.add(newTree(nnkTypeDef, ident(name & $i), s[1], s[2]))
+
     type
       Foo = object
       Bar {.multiply: 3.} = object
@@ -446,7 +457,10 @@
 
 - IBM Z architecture and macOS m1 arm64 architecture are supported.
 
-- `=wasMoved` can be overridden by users.
+- `=wasMoved` can now be overridden by users.
+
+- There is a new pragma called [quirky](https://nim-lang.github.io/Nim/manual_experimental.html#quirky-routines) that can be used to affect the code
+  generation of goto based exception handling. It can improve the produced code size but its effects can be subtle so use it with care.
 
 - Tuple unpacking for variables is now treated as syntax sugar that directly
   expands into multiple assignments. Along with this, tuple unpacking for
@@ -488,43 +502,44 @@
   related functions produced on the backend. This prevents conflicts with other Nim
   static libraries.
 
-- When compiling for Release the flag `-fno-math-errno` is used for GCC.
+- When compiling for release, the flag `-fno-math-errno` is used for GCC.
 - Removed deprecated `LineTooLong` hint.
-- Line numbers and filenames of source files work correctly inside templates for JavaScript targets.
+- Line numbers and file names of source files work correctly inside templates for JavaScript targets.
 
-- Removed support for LCC (Local C), Pelles C, Digital Mars, Watcom compilers.
+- Removed support for LCC (Local C), Pelles C, Digital Mars and Watcom compilers.
 
 
 ## Docgen
 
-- `Markdown` is now default markup language of doc comments (instead
-  of legacy `RstMarkdown` mode). In this release we begin to separate
+- `Markdown` is now the default markup language of doc comments (instead
+  of the legacy `RstMarkdown` mode). In this release we begin to separate
   RST and Markdown features to better follow specification of each
   language, with the focus on Markdown development.
+  See also [the docs](https://nim-lang.github.io/Nim/markdown_rst.html).
 
-  * So we add `{.doctype: Markdown | RST | RstMarkdown.}` pragma allowing to
-    select the markup language mode in the doc comments of current `.nim`
+  * Added a `{.doctype: Markdown | RST | RstMarkdown.}` pragma allowing to
+    select the markup language mode in the doc comments of the current `.nim`
     file for processing by `nim doc`:
 
       1. `Markdown` (default) is basically CommonMark (standard Markdown) +
          some Pandoc Markdown features + some RST features that are missing
          in our current implementation of CommonMark and Pandoc Markdown.
-      2. `RST` closely follows RST spec with few additional Nim features.
+      2. `RST` closely follows the RST spec with few additional Nim features.
       3. `RstMarkdown` is a maximum mix of RST and Markdown features, which
           is kept for the sake of compatibility and ease of migration.
 
-  * and we add separate `md2html` and `rst2html` commands for processing
-    standalone `.md` and `.rst` files respectively (and also `md2tex/rst2tex`).
+  * Added separate `md2html` and `rst2html` commands for processing
+    standalone `.md` and `.rst` files respectively (and also `md2tex`/`rst2tex`).
 
 - Added Pandoc Markdown bracket syntax `[...]` for making anchor-less links.
 - Docgen now supports concise syntax for referencing Nim symbols:
   instead of specifying HTML anchors directly one can use original
   Nim symbol declarations (adding the aforementioned link brackets
   `[...]` around them).
-    * to use this feature across modules a new `importdoc` directive is added.
-  Using this feature for referencing also helps to ensure that links
-  (inside one module or the whole project) are not broken.
-- Added support for RST & Markdown quote blocks (blocks starting from `>`).
+    * To use this feature across modules, a new `importdoc` directive was added.
+      Using this feature for referencing also helps to ensure that links
+      (inside one module or the whole project) are not broken.
+- Added support for RST & Markdown quote blocks (blocks starting with `>`).
 - Added a popular Markdown definition lists extension.
 - Added Markdown indented code blocks (blocks indented by >= 4 spaces).
 - Added syntax for additional parameters to Markdown code blocks:
@@ -535,11 +550,11 @@
 
 ## Tool changes
 
-- Nim now ships Nimble version 0.14 which added support for lock-files. Libraries are stored in `$nimbleDir/pkgs2` (it was `$nimbleDir/pkgs`). Use `nimble develop --global` to create an old style link file in the special links directory documented at https://github.com/nim-lang/nimble#nimble-develop.
+- Nim now ships Nimble version 0.14 which added support for lock-files. Libraries are stored in `$nimbleDir/pkgs2` (it was `$nimbleDir/pkgs` before). Use `nimble develop --global` to create an old style link file in the special links directory documented at https://github.com/nim-lang/nimble#nimble-develop.
 - nimgrep added the option `--inContext` (and `--notInContext`), which
-  allows to filter only matches with context block containing a given pattern.
+  allows to filter only matches with the context block containing a given pattern.
 - nimgrep: names of options containing "include/exclude" are deprecated,
   e.g. instead of `--includeFile` and `--excludeFile` we have
   `--filename` and `--notFilename` respectively.
-  Also the semantics become consistent for such positive/negative filters.
+  Also the semantics are now consistent for such positive/negative filters.
 - koch now supports the `--skipIntegrityCheck` option. The command `koch --skipIntegrityCheck boot -d:release` always builds the compiler twice.

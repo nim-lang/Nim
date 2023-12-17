@@ -70,12 +70,12 @@ runnableExamples:
 ##   easier substring extraction than regular expressions
 
 
-import parseutils
-from math import pow, floor, log10
-from algorithm import fill, reverse
+import std/parseutils
+from std/math import pow, floor, log10
+from std/algorithm import fill, reverse
 import std/enumutils
 
-from unicode import toLower, toUpper
+from std/unicode import toLower, toUpper
 export toLower, toUpper
 
 include "system/inclrtl"
@@ -129,11 +129,11 @@ const
     ## Not very useful by its own, you can use it to create *inverted* sets to
     ## make the `find func<#find,string,set[char],Natural,int>`_
     ## find **invalid** characters in strings. Example:
-    ##
-    ## .. code-block:: nim
+    ##   ```nim
     ##   let invalid = AllChars - Digits
     ##   doAssert "01234".find(invalid) == -1
     ##   doAssert "01A34".find(invalid) == 2
+    ##   ```
 
 func isAlphaAscii*(c: char): bool {.rtl, extern: "nsuIsAlphaAsciiChar".} =
   ## Checks whether or not character `c` is alphabetical.
@@ -423,14 +423,12 @@ iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ##
   ## Substrings are separated by the character `sep`.
   ## The code:
-  ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   for word in split(";;this;is;an;;example;;;", ';'):
   ##     writeLine(stdout, word)
-  ##
+  ##   ```
   ## Results in:
-  ##
-  ## .. code-block::
+  ##   ```
   ##   ""
   ##   ""
   ##   "this"
@@ -441,6 +439,7 @@ iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ##   ""
   ##   ""
   ##   ""
+  ##   ```
   ##
   ## See also:
   ## * `rsplit iterator<#rsplit.i,string,char,int>`_
@@ -455,41 +454,46 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   ##
   ## Substrings are separated by a substring containing only `seps`.
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   for word in split("this\lis an\texample"):
   ##     writeLine(stdout, word)
+  ##   ```
   ##
   ## ...generates this output:
   ##
-  ## .. code-block::
+  ##   ```
   ##   "this"
   ##   "is"
   ##   "an"
   ##   "example"
+  ##   ```
   ##
   ## And the following code:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   for word in split("this:is;an$example", {';', ':', '$'}):
   ##     writeLine(stdout, word)
+  ##   ```
   ##
   ## ...produces the same output as the first example. The code:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   let date = "2012-11-20T22:08:08.398990"
   ##   let separators = {' ', '-', ':', 'T'}
   ##   for number in split(date, separators):
   ##     writeLine(stdout, number)
+  ##   ```
   ##
   ## ...results in:
   ##
-  ## .. code-block::
+  ##   ```
   ##   "2012"
   ##   "11"
   ##   "20"
   ##   "22"
   ##   "08"
   ##   "08.398990"
+  ##   ```
   ##
   ##  .. note:: Empty separator set results in returning an original string,
   ##   following the interpretation "split by no element".
@@ -507,16 +511,18 @@ iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   ## Substrings are separated by the string `sep`.
   ## The code:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   for word in split("thisDATAisDATAcorrupted", "DATA"):
   ##     writeLine(stdout, word)
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block::
+  ##   ```
   ##   "this"
   ##   "is"
   ##   "corrupted"
+  ##   ```
   ##
   ##  .. note:: Empty separator string results in returning an original string,
   ##   following the interpretation "split by no element".
@@ -561,15 +567,17 @@ iterator rsplit*(s: string, sep: char,
   ## string separator. Works exactly the same as `split iterator
   ## <#split.i,string,char,int>`_ except in reverse order.
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   for piece in "foo:bar".rsplit(':'):
   ##     echo piece
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
+  ##   ```
   ##   "bar"
   ##   "foo"
+  ##   ```
   ##
   ## Substrings are separated from the right by the char `sep`.
   ##
@@ -586,15 +594,17 @@ iterator rsplit*(s: string, seps: set[char] = Whitespace,
   ## string separator. Works exactly the same as `split iterator
   ## <#split.i,string,char,int>`_ except in reverse order.
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   for piece in "foo bar".rsplit(WhiteSpace):
   ##     echo piece
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
+  ##   ```
   ##   "bar"
   ##   "foo"
+  ##   ```
   ##
   ## Substrings are separated from the right by the set of chars `seps`
   ##
@@ -614,15 +624,17 @@ iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
   ## string separator. Works exactly the same as `split iterator
   ## <#split.i,string,string,int>`_ except in reverse order.
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   for piece in "foothebar".rsplit("the"):
   ##     echo piece
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
+  ##   ```
   ##   "bar"
   ##   "foo"
+  ##   ```
   ##
   ## Substrings are separated from the right by the string `sep`
   ##
@@ -648,13 +660,14 @@ iterator splitLines*(s: string, keepEol = false): string =
   ##
   ## Example:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   for line in splitLines("\nthis\nis\nan\n\nexample\n"):
   ##     writeLine(stdout, line)
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   ""
   ##   "this"
   ##   "is"
@@ -662,6 +675,7 @@ iterator splitLines*(s: string, keepEol = false): string =
   ##   ""
   ##   "example"
   ##   ""
+  ##   ```
   ##
   ## See also:
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
@@ -694,16 +708,17 @@ iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
   ##
   ## The following code:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   let s = "  foo \t bar  baz  "
   ##   for ms in [-1, 1, 2, 3]:
   ##     echo "------ maxsplit = ", ms, ":"
   ##     for item in s.splitWhitespace(maxsplit=ms):
   ##       echo '"', item, '"'
+  ##   ```
   ##
   ## ...results in:
   ##
-  ## .. code-block::
+  ##   ```
   ##   ------ maxsplit = -1:
   ##   "foo"
   ##   "bar"
@@ -719,6 +734,7 @@ iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
   ##   "foo"
   ##   "bar"
   ##   "baz"
+  ##   ```
   ##
   ## See also:
   ## * `splitLines iterator<#splitLines.i,string>`_
@@ -797,13 +813,15 @@ func rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
   ## For example, if a system had `#` as a delimiter, you could
   ## do the following to get the tail of the path:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   var tailSplit = rsplit("Root#Object#Method#Index", '#', maxsplit=1)
+  ##   ```
   ##
   ## Results in `tailSplit` containing:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   @["Root#Object#Method", "Index"]
+  ##   ```
   ##
   ## See also:
   ## * `rsplit iterator <#rsplit.i,string,char,int>`_
@@ -825,13 +843,15 @@ func rsplit*(s: string, seps: set[char] = Whitespace,
   ## For example, if a system had `#` as a delimiter, you could
   ## do the following to get the tail of the path:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   var tailSplit = rsplit("Root#Object#Method#Index", {'#'}, maxsplit=1)
+  ##   ```
   ##
   ## Results in `tailSplit` containing:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   @["Root#Object#Method", "Index"]
+  ##   ```
   ##
   ##  .. note:: Empty separator set results in returning an original string,
   ##   following the interpretation "split by no element".
@@ -855,13 +875,15 @@ func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
   ## For example, if a system had `#` as a delimiter, you could
   ## do the following to get the tail of the path:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   var tailSplit = rsplit("Root#Object#Method#Index", "#", maxsplit=1)
+  ##   ```
   ##
   ## Results in `tailSplit` containing:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   @["Root#Object#Method", "Index"]
+  ##   ```
   ##
   ##  .. note:: Empty separator string results in returning an original string,
   ##   following the interpretation "split by no element".
@@ -1786,8 +1808,9 @@ func addSep*(dest: var string, sep = ", ", startLen: Natural = 0) {.inline.} =
   ##
   ## A shorthand for:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   if dest.len > startLen: add(dest, sep)
+  ##   ```
   ##
   ## This is often useful for generating some code where the items need to
   ## be *separated* by `sep`. `sep` is only added if `dest` is longer than
@@ -1852,7 +1875,7 @@ func join*(a: openArray[string], sep: string = ""): string {.rtl,
   else:
     result = ""
 
-func join*[T: not string](a: openArray[T], sep: string = ""): string =
+proc join*[T: not string](a: openArray[T], sep: string = ""): string =
   ## Converts all elements in the container `a` to strings using `$`,
   ## and concatenates them with `sep`.
   runnableExamples:
@@ -2267,8 +2290,9 @@ func multiReplace*(s: string, replacements: varargs[(string, string)]): string =
   ## If the resulting string is not longer than the original input string,
   ## only a single memory allocation is required.
   ##
-  ## The order of the replacements does matter. Earlier replacements are
-  ## preferred over later replacements in the argument list.
+  ## Replacements are done left to right in the string. If at a given position
+  ## multiple replacements match, earlier replacements are preferred over
+  ## later replacements in the argument list.
   result = newStringOfCap(s.len)
   var i = 0
   var fastChk: set[char] = {}
@@ -2634,13 +2658,13 @@ func formatEng*(f: BiggestFloat,
   ## decimal point or (if `trim` is true) the maximum number of digits to be
   ## shown.
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##    formatEng(0, 2, trim=false) == "0.00"
   ##    formatEng(0, 2) == "0"
   ##    formatEng(0.053, 0) == "53e-3"
   ##    formatEng(52731234, 2) == "52.73e6"
   ##    formatEng(-52731234, 2) == "-52.73e6"
+  ##    ```
   ##
   ## If `siPrefix` is set to true, the number will be displayed with the SI
   ## prefix corresponding to the exponent. For example 4100 will be displayed
@@ -2655,8 +2679,7 @@ func formatEng*(f: BiggestFloat,
   ## different to appending the unit to the result as the location of the space
   ## is altered depending on whether there is an exponent.
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##    formatEng(4100, siPrefix=true, unit="V") == "4.1 kV"
   ##    formatEng(4.1, siPrefix=true, unit="V") == "4.1 V"
   ##    formatEng(4.1, siPrefix=true) == "4.1" # Note lack of space
@@ -2666,6 +2689,7 @@ func formatEng*(f: BiggestFloat,
   ##    formatEng(4100) == "4.1e3"
   ##    formatEng(4100, unit="V") == "4.1e3 V"
   ##    formatEng(4100, unit="", useUnitSpace=true) == "4.1e3 " # Space with useUnitSpace=true
+  ##    ```
   ##
   ## `decimalSep` is used as the decimal separator.
   ##
@@ -2829,13 +2853,15 @@ func `%`*(formatstr: string, a: openArray[string]): string {.rtl,
   ##
   ## This is best explained by an example:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   "$1 eats $2." % ["The cat", "fish"]
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   "The cat eats fish."
+  ##   ```
   ##
   ## The substitution variables (the thing after the `$`) are enumerated
   ## from 1 to `a.len`.
@@ -2843,21 +2869,24 @@ func `%`*(formatstr: string, a: openArray[string]): string {.rtl,
   ## The notation `$#` can be used to refer to the next substitution
   ## variable:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   "$# eats $#." % ["The cat", "fish"]
+  ##   ```
   ##
   ## Substitution variables can also be words (that is
   ## `[A-Za-z_]+[A-Za-z0-9_]*`) in which case the arguments in `a` with even
   ## indices are keys and with odd indices are the corresponding values.
   ## An example:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   "$animal eats $food." % ["animal", "The cat", "food", "fish"]
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   "The cat eats fish."
+  ##   ```
   ##
   ## The variables are compared with `cmpIgnoreStyle`. `ValueError` is
   ## raised if an ill-formed format string has been passed to the `%` operator.
@@ -2955,13 +2984,14 @@ iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
   ## Substrings are separated by a substring containing only `seps`.
   ## Example:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   for word in tokenize("  this is an  example  "):
   ##     writeLine(stdout, word)
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   ("  ", true)
   ##   ("this", false)
   ##   (" ", true)
@@ -2971,6 +3001,7 @@ iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
   ##   ("  ", true)
   ##   ("example", false)
   ##   ("  ", true)
+  ##   ```
   var i = 0
   while true:
     var j = i

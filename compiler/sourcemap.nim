@@ -70,6 +70,7 @@ func encode*(values: seq[int]): string {.raises: [].} =
     shift = 5
     continueBit = 1 shl 5
     mask = continueBit - 1
+  result = ""
   for val in values:
     # Sign is stored in first bit
     var newVal = abs(val) shl 1
@@ -101,8 +102,8 @@ iterator tokenize*(line: string): (int, string) =
     token = ""
   while col < line.len:
     var
-      token: string
-      name: string
+      token: string = ""
+      name: string = ""
     # First we find the next identifier
     col += line.skipWhitespace(col)
     col += line.skipUntil(IdentStartChars, col)
@@ -110,7 +111,7 @@ iterator tokenize*(line: string): (int, string) =
     col += line.parseIdent(token, col)
     # Idents will either be originalName_randomInt or HEXhexCode_randomInt
     if token.startsWith("HEX"):
-      var hex: int
+      var hex: int = 0
       # 3 = "HEX".len and we only want to parse the two integers after it
       discard token[3 ..< 5].parseHex(hex)
       name = $chr(hex)
@@ -125,6 +126,7 @@ iterator tokenize*(line: string): (int, string) =
 func parse*(source: string): SourceInfo =
   ## Parses the JS output for embedded line info
   ## So it can convert those into a series of mappings
+  result = default(SourceInfo)
   var
     skipFirstLine = true
     currColumn = 0
@@ -133,9 +135,9 @@ func parse*(source: string): SourceInfo =
   # Add each line as a node into the output
   for line in source.splitLines():
     var
-      lineNumber: int
-      linePath: string
-      column: int
+      lineNumber: int = 0
+      linePath: string = ""
+      column: int = 0
     if line.strip().scanf("/* line $i:$i \"$+\" */", lineNumber, column, linePath):
       # When we reach the first line mappinsegmentg then we can assume
       # we can map the rest of the JS lines to Nim lines
@@ -158,10 +160,7 @@ func parse*(source: string): SourceInfo =
 func toSourceMap*(info: SourceInfo, file: string): SourceMap {.raises: [].} =
   ## Convert from high level SourceInfo into the required SourceMap object
   # Add basic info
-  result.version = 3
-  result.file = file
-  result.sources = info.files
-  result.names = info.names
+  result = SourceMap(version: 3, file: file, sources: info.files, names: info.names)
   # Convert nodes into mappings.
   # Mappings are split into blocks where each block referes to a line in the outputted JS.
   # Blocks can be separated into statements which refere to tokens on the line.

@@ -288,7 +288,9 @@ proc borrowFromConstExpr(n: PNode): bool =
       result = true
       for i in 1..<n.len:
         if not borrowFromConstExpr(n[i]): return false
-  else: discard
+    else:
+      result = false
+  else: result = false
 
 proc pathExpr(node: PNode; owner: PSym): PNode =
   #[ From the spec:
@@ -398,15 +400,14 @@ proc allRoots(n: PNode; result: var seq[(PSym, int)]; level: int) =
         if typ != nil:
           typ = skipTypes(typ, abstractInst)
           if typ.kind != tyProc: typ = nil
-          else: assert(typ.len == typ.n.len)
 
         for i in 1 ..< n.len:
           let it = n[i]
-          if typ != nil and i < typ.len:
+          if typ != nil and i < typ.n.len:
             assert(typ.n[i].kind == nkSym)
             let paramType = typ.n[i].typ
-            if not paramType.isCompileTimeOnly and not typ.sons[0].isEmptyType and
-                canAlias(paramType, typ.sons[0]):
+            if not paramType.isCompileTimeOnly and not typ.returnType.isEmptyType and
+                canAlias(paramType, typ.returnType):
               allRoots(it, result, RootEscapes)
           else:
             allRoots(it, result, RootEscapes)
@@ -486,7 +487,7 @@ proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
         dest.flags.incl ownsData
       elif n.typ.kind in {tyLent, tyVar} and n.len > 1:
         # we know the result is derived from the first argument:
-        var roots: seq[(PSym, int)]
+        var roots: seq[(PSym, int)] = @[]
         allRoots(n[1], roots, RootEscapes)
         for r in roots:
           connect(c, dest.sym, r[0], n[1].info)
@@ -618,7 +619,8 @@ proc deps(c: var Partitions; dest, src: PNode) =
   if borrowChecking in c.goals:
     borrowingAsgn(c, dest, src)
 
-  var targets, sources: seq[(PSym, int)]
+  var targets: seq[(PSym, int)] = @[]
+  var sources: seq[(PSym, int)] = @[]
   allRoots(dest, targets, 0)
   allRoots(src, sources, 0)
 
@@ -668,7 +670,7 @@ proc potentialMutationViaArg(c: var Partitions; n: PNode; callee: PType) =
   if constParameters in c.goals and tfNoSideEffect in callee.flags:
     discard "we know there are no hidden mutations through an immutable parameter"
   elif c.inNoSideEffectSection == 0 and containsPointer(n.typ):
-    var roots: seq[(PSym, int)]
+    var roots: seq[(PSym, int)] = @[]
     allRoots(n, roots, RootEscapes)
     for r in roots: potentialMutation(c, r[0], r[1], n.info)
 
@@ -704,15 +706,19 @@ proc traverse(c: var Partitions; n: PNode) =
     for child in n: traverse(c, child)
 
     let parameters = n[0].typ
-    let L = if parameters != nil: parameters.len else: 0
+    let L = if parameters != nil: parameters.signatureLen else: 0
     let m = getMagic(n)
+
+    if m == mEnsureMove and n[1].kind == nkSym:
+      # we know that it must be moved so it cannot be a cursor
+      noCursor(c, n[1].sym)
 
     for i in 1..<n.len:
       let it = n[i]
       if i < L:
         let paramType = parameters[i].skipTypes({tyGenericInst, tyAlias})
         if not paramType.isCompileTimeOnly and paramType.kind in {tyVar, tySink, tyOwned}:
-          var roots: seq[(PSym, int)]
+          var roots: seq[(PSym, int)] = @[]
           allRoots(it, roots, RootEscapes)
           if paramType.kind == tyVar:
             if c.inNoSideEffectSection == 0:
@@ -816,6 +822,10 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
           registerVariable(c, child[i])
           #deps(c, child[i], last)
 
+        if c.inLoop > 0 and child[0].kind == nkSym: # bug #22787
+          let vid = variableId(c, child[0].sym)
+          if child[^1].kind != nkEmpty:
+            markAsReassigned(c, vid)
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     computeLiveRanges(c, n[0])
     computeLiveRanges(c, n[1])
@@ -847,7 +857,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     for child in n: computeLiveRanges(c, child)
 
     let parameters = n[0].typ
-    let L = if parameters != nil: parameters.len else: 0
+    let L = if parameters != nil: parameters.signatureLen else: 0
 
     for i in 1..<n.len:
       let it = n[i]

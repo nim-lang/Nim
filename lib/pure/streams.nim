@@ -27,67 +27,67 @@
 ## StringStream example
 ## --------------------
 ##
-## .. code-block:: Nim
+##   ```Nim
+##   import std/streams
 ##
-##  import std/streams
+##   var strm = newStringStream("""The first line
+##   the second line
+##   the third line""")
 ##
-##  var strm = newStringStream("""The first line
-##  the second line
-##  the third line""")
+##   var line = ""
 ##
-##  var line = ""
+##   while strm.readLine(line):
+##     echo line
 ##
-##  while strm.readLine(line):
-##    echo line
+##   # Output:
+##   # The first line
+##   # the second line
+##   # the third line
 ##
-##  # Output:
-##  # The first line
-##  # the second line
-##  # the third line
-##
-##  strm.close()
+##   strm.close()
+##   ```
 ##
 ## FileStream example
 ## ------------------
 ##
 ## Write file stream example:
 ##
-## .. code-block:: Nim
+##   ```Nim
+##   import std/streams
 ##
-##  import std/streams
+##   var strm = newFileStream("somefile.txt", fmWrite)
+##   var line = ""
 ##
-##  var strm = newFileStream("somefile.txt", fmWrite)
-##  var line = ""
+##   if not isNil(strm):
+##     strm.writeLine("The first line")
+##     strm.writeLine("the second line")
+##     strm.writeLine("the third line")
+##     strm.close()
 ##
-##  if not isNil(strm):
-##    strm.writeLine("The first line")
-##    strm.writeLine("the second line")
-##    strm.writeLine("the third line")
-##    strm.close()
-##
-##  # Output (somefile.txt):
-##  # The first line
-##  # the second line
-##  # the third line
+##   # Output (somefile.txt):
+##   # The first line
+##   # the second line
+##   # the third line
+##   ```
 ##
 ## Read file stream example:
 ##
-## .. code-block:: Nim
+##   ```Nim
+##   import std/streams
 ##
-##  import std/streams
+##   var strm = newFileStream("somefile.txt", fmRead)
+##   var line = ""
 ##
-##  var strm = newFileStream("somefile.txt", fmRead)
-##  var line = ""
+##   if not isNil(strm):
+##     while strm.readLine(line):
+##       echo line
+##     strm.close()
 ##
-##  if not isNil(strm):
-##    while strm.readLine(line):
-##      echo line
-##    strm.close()
-##
-##  # Output:
-##  # The first line
-##  # the second line
-##  # the third line
+##   # Output:
+##   # The first line
+##   # the second line
+##   # the third line
+##   ```
 ##
 ## See also
 ## ========
@@ -348,9 +348,9 @@ proc write*[T](s: Stream, x: T) =
   ## **Note:** Not available for JS backend. Use `write(Stream, string)
   ## <#write,Stream,string>`_ for now.
   ##
-  ## .. code-block:: Nim
-  ##
-  ##     s.writeData(s, unsafeAddr(x), sizeof(x))
+  ##   ```Nim
+  ##   s.writeData(s, unsafeAddr(x), sizeof(x))
+  ##   ```
   runnableExamples:
     var strm = newStringStream("")
     strm.write("abcde")
@@ -1482,7 +1482,7 @@ when false:
     # do not import windows as this increases compile times:
     discard
   else:
-    import posix
+    import std/posix
 
     proc hsSetPosition(s: FileHandleStream, pos: int) =
       discard lseek(s.handle, pos, SEEK_SET)
@@ -1530,7 +1530,7 @@ when false:
       of fmReadWrite: flags = O_RDWR or int(O_CREAT)
       of fmReadWriteExisting: flags = O_RDWR
       of fmAppend: flags = O_WRONLY or int(O_CREAT) or O_APPEND
-      static: doAssert false # handle bug #17888
+      static: raiseAssert "unreachable" # handle bug #17888
       var handle = open(filename, flags)
       if handle < 0: raise newEOS("posix.open() call failed")
     result = newFileHandleStream(handle)

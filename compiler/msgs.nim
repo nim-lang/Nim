@@ -61,14 +61,12 @@ proc makeCString*(s: string): Rope =
   result.add('\"')
 
 proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
-  result.fullPath = fullPath
-  #shallow(result.fullPath)
-  result.projPath = projPath
-  #shallow(result.projPath)
-  result.shortName = fullPath.extractFilename
+  result = TFileInfo(fullPath: fullPath, projPath: projPath,
+                    shortName: fullPath.extractFilename,
+                    quotedFullName: fullPath.string.makeCString,
+                    lines: @[]
+  )
   result.quotedName = result.shortName.makeCString
-  result.quotedFullName = fullPath.string.makeCString
-  result.lines = @[]
   when defined(nimpretty):
     if not result.fullPath.isEmpty:
       try:
@@ -136,7 +134,7 @@ proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile): FileIndex =
   fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), dummy)
 
 proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
-  result.fileIndex = fileInfoIdx
+  result = TLineInfo(fileIndex: fileInfoIdx)
   if line < int high(uint16):
     result.line = uint16(line)
   else:
@@ -294,9 +292,11 @@ proc toColumn*(info: TLineInfo): int {.inline.} =
   result = info.col
 
 proc toFileLineCol(info: InstantiationInfo): string {.inline.} =
+  result = ""
   result.toLocation(info.filename, info.line, info.column + ColOffset)
 
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
+  result = ""
   result.toLocation(toMsgFilename(conf, info), info.line.int, info.col.int + ColOffset)
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
@@ -408,7 +408,7 @@ proc getMessageStr(msg: TMsgKind, arg: string): string = msgKindToString(msg) % 
 type TErrorHandling* = enum doNothing, doAbort, doRaise
 
 proc log*(s: string) =
-  var f: File
+  var f: File = default(File)
   if open(f, getHomeDir() / "nimsuggest.log", fmAppend):
     f.writeLine(s)
     close(f)
@@ -502,6 +502,8 @@ proc getSurroundingSrc(conf: ConfigRef; info: TLineInfo): string =
     result = "\n" & indent & $sourceLine(conf, info)
     if info.col >= 0:
       result.add "\n" & indent & spaces(info.col) & '^'
+  else:
+    result = ""
 
 proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg
@@ -721,6 +723,8 @@ proc genSuccessX*(conf: ConfigRef) =
   elif conf.outFile.isEmpty and conf.cmd notin {cmdJsonscript} + cmdDocLike + cmdBackends:
     # for some cmd we expect a valid absOutFile
     output = "unknownOutput"
+  elif optStdout in conf.globalOptions:
+    output = "stdout"
   else:
     output = $conf.absOutFile
   if conf.filenameOption != foAbs: output = output.AbsoluteFile.extractFilename

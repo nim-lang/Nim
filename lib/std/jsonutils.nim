@@ -16,7 +16,7 @@ runnableExamples:
   assert 0.0.toJson.kind == JFloat
   assert Inf.toJson.kind == JString
 
-import json, strutils, tables, sets, strtabs, options, strformat
+import std/[json, strutils, tables, sets, strtabs, options, strformat]
 
 #[
 Future directions:
@@ -30,9 +30,9 @@ add a way to customize serialization, for e.g.:
   objects.
 ]#
 
-import macros
-from enumutils import symbolName
-from typetraits import OrdinalEnum, tupleLen
+import std/macros
+from std/enumutils import symbolName
+from std/typetraits import OrdinalEnum, tupleLen
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -95,7 +95,7 @@ macro getDiscriminants(a: typedesc): seq[string] =
       result = quote do:
         seq[string].default
   else:
-    doAssert false, "unexpected kind: " & $t2.kind
+    raiseAssert "unexpected kind: " & $t2.kind
 
 macro initCaseObject(T: typedesc, fun: untyped): untyped =
   ## does the minimum to construct a valid case object, only initializing
@@ -109,7 +109,7 @@ macro initCaseObject(T: typedesc, fun: untyped): untyped =
   case t.kind
   of nnkObjectTy: t2 = t[2]
   of nnkRefTy: t2 = t[0].getTypeImpl[2]
-  else: doAssert false, $t.kind # xxx `nnkPtrTy` could be handled too
+  else: raiseAssert $t.kind # xxx `nnkPtrTy` could be handled too
   doAssert t2.kind == nnkRecList
   result = newTree(nnkObjConstr)
   result.add sym
@@ -289,7 +289,7 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
         i.inc
   else:
     # checkJson not appropriate here
-    static: doAssert false, "not yet implemented: " & $T
+    static: raiseAssert "not yet implemented: " & $T
 
 proc jsonTo*(b: JsonNode, T: typedesc, opt = Joptions()): T =
   ## reverse of `toJson`

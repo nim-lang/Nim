@@ -9,7 +9,12 @@
 
 ## Implements the `async` and `multisync` macros for `asyncdispatch`.
 
-import macros, strutils, asyncfutures
+import std/[macros, strutils, asyncfutures]
+
+type
+  Context = ref object
+    inTry: int
+    hasRet: bool
 
 # TODO: Ref https://github.com/nim-lang/Nim/issues/5617
 # TODO: Add more line infos
@@ -63,7 +68,7 @@ proc createFutureVarCompletions(futureVarIdents: seq[NimNode], fromNode: NimNode
       )
     )
 
-proc processBody(node, retFutureSym: NimNode, futureVarIdents: seq[NimNode]): NimNode =
+proc processBody(ctx: Context; node, needsCompletionSym, retFutureSym: NimNode, futureVarIdents: seq[NimNode]): NimNode =
   result = node
   case node.kind
   of nnkReturnStmt:
@@ -72,23 +77,53 @@ proc processBody(node, retFutureSym: NimNode, futureVarIdents: seq[NimNode]): Ni
     # As I've painfully found out, the order here really DOES matter.
     result.add createFutureVarCompletions(futureVarIdents, node)
 
+    ctx.hasRet = true
     if node[0].kind == nnkEmpty:
-      result.add newCall(newIdentNode("complete"), retFutureSym, newIdentNode("result"))
-    else:
-      let x = node[0].processBody(retFutureSym, futureVarIdents)
-      if x.kind == nnkYieldStmt: result.add x
+      if ctx.inTry == 0:
+        result.add newCallWithLineInfo(node, newIdentNode("complete"), retFutureSym, newIdentNode("result"))
       else:
-        result.add newCall(newIdentNode("complete"), retFutureSym, x)
+        result.add newAssignment(needsCompletionSym, newLit(true))
+    else:
+      let x = processBody(ctx, node[0], needsCompletionSym, retFutureSym, futureVarIdents)
+      if x.kind == nnkYieldStmt: result.add x
+      elif ctx.inTry == 0:
+        result.add newCallWithLineInfo(node, newIdentNode("complete"), retFutureSym, x)
+      else:
+        result.add newAssignment(newIdentNode("result"), x)
+        result.add newAssignment(needsCompletionSym, newLit(true))
 
     result.add newNimNode(nnkReturnStmt, node).add(newNilLit())
     return # Don't process the children of this return stmt
   of RoutineNodes-{nnkTemplateDef}:
     # skip all the nested procedure definitions
     return
-  else: discard
-
-  for i in 0 ..< result.len:
-    result[i] = processBody(result[i], retFutureSym, futureVarIdents)
+  of nnkTryStmt:
+    if result[^1].kind == nnkFinally:
+      inc ctx.inTry
+      result[0] = processBody(ctx, result[0], needsCompletionSym, retFutureSym, futureVarIdents)
+      dec ctx.inTry
+      for i in 1 ..< result.len:
+        result[i] = processBody(ctx, result[i], needsCompletionSym, retFutureSym, futureVarIdents)
+      if ctx.inTry == 0 and ctx.hasRet:
+        let finallyNode = copyNimNode(result[^1])
+        let stmtNode = newNimNode(nnkStmtList)
+        for child in result[^1]:
+          stmtNode.add child
+        stmtNode.add newIfStmt(
+          ( needsCompletionSym,
+            newCallWithLineInfo(node, newIdentNode("complete"), retFutureSym,
+            newIdentNode("result")
+            )
+          )
+        )
+        finallyNode.add stmtNode
+        result[^1] = finallyNode
+    else:
+      for i in 0 ..< result.len:
+        result[i] = processBody(ctx, result[i], needsCompletionSym, retFutureSym, futureVarIdents)
+  else:
+    for i in 0 ..< result.len:
+      result[i] = processBody(ctx, result[i], needsCompletionSym, retFutureSym, futureVarIdents)
 
   # echo result.repr
 
@@ -213,7 +248,9 @@ proc asyncSingleProc(prc: NimNode): NimNode =
   # ->   <proc_body>
   # ->   complete(retFuture, result)
   var iteratorNameSym = genSym(nskIterator, $prcName & " (Async)")
-  var procBody = prc.body.processBody(retFutureSym, futureVarIdents)
+  var needsCompletionSym = genSym(nskVar, "needsCompletion")
+  var ctx = Context()
+  var procBody = processBody(ctx, prc.body, needsCompletionSym, retFutureSym, futureVarIdents)
   # don't do anything with forward bodies (empty)
   if procBody.kind != nnkEmpty:
     # fix #13899, defer should not escape its original scope
@@ -234,6 +271,8 @@ proc asyncSingleProc(prc: NimNode): NimNode =
       else:
         var `resultIdent`: Future[void]
       {.pop.}
+
+      var `needsCompletionSym` = false
     procBody.add quote do:
       complete(`retFutureSym`, `resultIdent`)
 

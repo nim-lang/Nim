@@ -14,7 +14,7 @@ func big*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".} =
   runnableExamples:
     doAssert big(1234567890) == big"1234567890"
     doAssert 0b1111100111.big == 0o1747.big and 0o1747.big == 999.big
-  when nimvm: doAssert false, "JsBigInt can not be used at compile-time nor static context" else: discard
+  when nimvm: raiseAssert "JsBigInt can not be used at compile-time nor static context" else: discard
 
 func `'big`*(num: cstring): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
@@ -28,11 +28,11 @@ func `'big`*(num: cstring): JsBigInt {.importjs: "BigInt(#)".} =
     doAssert 0xdeadbeaf'big == 0xdeadbeaf.big
     doAssert 0xffffffffffffffff'big == (1'big shl 64'big) - 1'big
     doAssert not compiles(static(12'big))
-  when nimvm: doAssert false, "JsBigInt can not be used at compile-time nor static context" else: discard
+  when nimvm: raiseAssert "JsBigInt can not be used at compile-time nor static context" else: discard
 
 func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".} =
   ## Alias for `'big`
-  when nimvm: doAssert false, "JsBigInt can not be used at compile-time nor static context" else: discard
+  when nimvm: raiseAssert "JsBigInt can not be used at compile-time nor static context" else: discard
 
 func toCstring*(this: JsBigInt; radix: 2..36): cstring {.importjs: "#.toString(#)".} =
   ## Converts from `JsBigInt` to `cstring` representation.

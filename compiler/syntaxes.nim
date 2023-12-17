@@ -10,9 +10,10 @@
 ## Implements the dispatcher for the different parsers.
 
 import
-  strutils, llstream, ast, idents, lexer, options, msgs, parser,
+  llstream, ast, idents, lexer, options, msgs, parser,
   filters, filter_tmpl, renderer, lineinfos, pathutils
 
+import std/strutils
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
 
@@ -36,6 +37,8 @@ proc containsShebang(s: string, i: int): bool =
     var j = i + 2
     while j < s.len and s[j] in Whitespace: inc(j)
     result = s[j] == '/'
+  else:
+    result = false
 
 proc parsePipe(filename: AbsoluteFile, inputStream: PLLStream; cache: IdentCache;
                config: ConfigRef): PNode =
@@ -64,6 +67,7 @@ proc parsePipe(filename: AbsoluteFile, inputStream: PLLStream; cache: IdentCache
     llStreamClose(s)
 
 proc getFilter(ident: PIdent): FilterKind =
+  result = filtNone
   for i in FilterKind:
     if cmpIgnoreStyle(ident.s, $i) == 0:
       return i
@@ -74,6 +78,7 @@ proc getCallee(conf: ConfigRef; n: PNode): PIdent =
   elif n.kind == nkIdent:
     result = n.ident
   else:
+    result = nil
     localError(conf, n.info, "invalid filter: " & renderTree(n))
 
 proc applyFilter(p: var Parser, n: PNode, filename: AbsoluteFile,
@@ -124,7 +129,7 @@ proc openParser*(p: var Parser, fileIdx: FileIndex, inputstream: PLLStream;
 proc setupParser*(p: var Parser; fileIdx: FileIndex; cache: IdentCache;
                    config: ConfigRef): bool =
   let filename = toFullPathConsiderDirty(config, fileIdx)
-  var f: File
+  var f: File = default(File)
   if not open(f, filename.string):
     rawMessage(config, errGenerated, "cannot open file: " & filename.string)
     return false
@@ -132,7 +137,9 @@ proc setupParser*(p: var Parser; fileIdx: FileIndex; cache: IdentCache;
   result = true
 
 proc parseFile*(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode =
-  var p: Parser
+  var p: Parser = default(Parser)
   if setupParser(p, fileIdx, cache, config):
     result = parseAll(p)
     closeParser(p)
+  else:
+    result = nil

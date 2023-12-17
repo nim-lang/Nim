@@ -59,16 +59,18 @@ proc testNimDoc(prjDir, docsDir: string; switches: NimSwitches; fixup = false) =
     echo("$1 buildIndex $2" % [nimExe, nimBuildIndexSwitches])
 
   for expected in walkDirRec(prjDir / "expected/", checkDir=true):
+    let versionCacheParam = "?v=" & $NimMajor & "." & $NimMinor & "." & $NimPatch
     let produced = expected.replace('\\', '/').replace("/expected/", "/$1/" % [docsDir])
     if not fileExists(produced):
       echo "FAILURE: files not found: ", produced
       inc failures
-    elif readFile(expected) != readFile(produced):
+    let producedFile = readFile(produced).replace(versionCacheParam,"") #remove version cache param used for cache invalidation
+    if readFile(expected) != producedFile:
       echo "FAILURE: files differ: ", produced
       echo diffFiles(expected, produced).output
       inc failures
       if fixup:
-        copyFile(produced, expected)
+        writeFile(expected, producedFile)
     else:
       echo "SUCCESS: files identical: ", produced
 

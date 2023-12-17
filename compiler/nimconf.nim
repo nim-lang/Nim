@@ -10,8 +10,10 @@
 # This module handles the reading of the config file.
 
 import
-  llstream, commands, os, strutils, msgs, lexer, ast,
-  options, idents, wordrecg, strtabs, lineinfos, pathutils, scriptconfig
+  llstream, commands, msgs, lexer, ast,
+  options, idents, wordrecg, lineinfos, pathutils, scriptconfig
+
+import std/[os, strutils, strtabs]
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -162,7 +164,7 @@ proc checkSymbol(L: Lexer, tok: Token) =
     lexMessage(L, errGenerated, "expected identifier, but got: " & $tok)
 
 proc parseAssignment(L: var Lexer, tok: var Token;
-                     config: ConfigRef; condStack: var seq[bool]) =
+                     config: ConfigRef; filename: AbsoluteFile; condStack: var seq[bool]) =
   if tok.ident != nil:
     if tok.ident.s == "-" or tok.ident.s == "--":
       confTok(L, tok, config, condStack)           # skip unnecessary prefix
@@ -205,6 +207,7 @@ proc parseAssignment(L: var Lexer, tok: var Token;
       checkSymbol(L, tok)
       val.add($tok)
       confTok(L, tok, config, condStack)
+  config.currentConfigDir = parentDir(filename.string)
   if percent:
     processSwitch(s, strtabs.`%`(val, config.configVars,
                                 {useEnvironment, useEmpty}), passPP, info, config)
@@ -214,20 +217,21 @@ proc parseAssignment(L: var Lexer, tok: var Token;
 proc readConfigFile*(filename: AbsoluteFile; cache: IdentCache;
                     config: ConfigRef): bool =
   var
-    L: Lexer
+    L: Lexer = default(Lexer)
     tok: Token
     stream: PLLStream
   stream = llStreamOpen(filename, fmRead)
   if stream != nil:
-    initToken(tok)
     openLexer(L, filename, stream, cache, config)
-    tok.tokType = tkEof       # to avoid a pointless warning
+    tok = Token(tokType: tkEof)       # to avoid a pointless warning
     var condStack: seq[bool] = @[]
     confTok(L, tok, config, condStack)           # read in the first token
-    while tok.tokType != tkEof: parseAssignment(L, tok, config, condStack)
+    while tok.tokType != tkEof: parseAssignment(L, tok, config, filename, condStack)
     if condStack.len > 0: lexMessage(L, errGenerated, "expected @end")
     closeLexer(L)
     return true
+  else:
+    result = false
 
 proc getUserConfigPath*(filename: RelativeFile): AbsoluteFile =
   result = getConfigDir().AbsoluteDir / RelativeDir"nim" / filename
@@ -250,7 +254,7 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
 
   template runNimScriptIfExists(path: AbsoluteFile, isMain = false) =
     let p = path # eval once
-    var s: PLLStream
+    var s: PLLStream = nil
     if isMain and optWasNimscript in conf.globalOptions:
       if conf.projectIsStdin: s = stdin.llStreamOpen
       elif conf.projectIsCmd: s = llStreamOpen(conf.cmdInput)

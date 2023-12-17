@@ -2,7 +2,7 @@
 
 ## .. importdoc:: os.nim
 
-from paths import Path, ReadDirEffect
+from std/paths import Path, ReadDirEffect
 
 from std/private/ossymlinks import symlinkExists, createSymlink, expandSymlink
 

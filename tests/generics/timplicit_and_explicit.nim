@@ -43,3 +43,22 @@ block: #4688
 block: #4164
   proc printStr[T](s: static[string]): T = discard
   discard printStr[int]("hello static")
+
+import macros
+
+block: # issue #9040, statics with template, macro, symchoice explicit generics
+  block: # macro
+    macro fun[N: static int](): untyped =
+      newLit 1
+    const a = fun[2]()
+    doAssert a == 1
+  block: # template
+    template fun[N: static int](): untyped =
+      1
+    const a = fun[2]()
+    doAssert a == 1
+  block: # symchoice
+    proc newSeq[x: static int](): int = 1
+    template foo: int =
+      newSeq[2]()
+    doAssert foo() == 1

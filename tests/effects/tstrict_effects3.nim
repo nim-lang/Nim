@@ -44,3 +44,14 @@ proc fail() = discard
 f1()
 f2()
 
+import std/json
+
+# bug #22254
+proc senri(a, b: seq[JsonNode]) {.raises: [].} = discard a == b
+
+# bug #22253
+proc serika() {.raises: [].} = discard default(JsonNode) == nil
+
+senri(@[newJBool(true)], @[newJBool(false)])
+serika()
+

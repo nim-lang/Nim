@@ -14,7 +14,7 @@
 ## This implementation calls `initRand()` for the first call of
 ## `genOid`.
 
-import hashes, times, endians, random
+import std/[hashes, times, endians, random]
 from std/private/decode_helpers import handleHexChar
 
 when defined(nimPreviewSlimSystem):

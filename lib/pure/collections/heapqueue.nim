@@ -59,7 +59,7 @@ proc initHeapQueue*[T](): HeapQueue[T] =
   ##
   ## **See also:**
   ## * `toHeapQueue proc <#toHeapQueue,openArray[T]>`_
-  discard
+  result = default(HeapQueue[T])
 
 proc len*[T](heap: HeapQueue[T]): int {.inline.} =
   ## Returns the number of elements of `heap`.

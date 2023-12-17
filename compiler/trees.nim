@@ -13,6 +13,7 @@ import
   ast, wordrecg, idents
 
 proc cyclicTreeAux(n: PNode, visited: var seq[PNode]): bool =
+  result = false
   if n == nil: return
   for v in visited:
     if v == n: return true
@@ -53,8 +54,13 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
           if not exprStructuralEquivalent(a[i], b[i],
                                           strictSymEquality): return
         result = true
+      else:
+        result = false
+  else:
+    result = false
 
 proc sameTree*(a, b: PNode): bool =
+  result = false
   if a == b:
     result = true
   elif a != nil and b != nil and a.kind == b.kind:
@@ -91,6 +97,7 @@ proc isConstExpr*(n: PNode): bool =
   n.kind in atomKinds or nfAllConst in n.flags
 
 proc isCaseObj*(n: PNode): bool =
+  result = false
   if n.kind == nkRecCase: return true
   for i in 0..<n.safeLen:
     if n[i].isCaseObj: return true
@@ -109,7 +116,7 @@ proc isDeepConstExpr*(n: PNode; preventInheritance = false): bool =
       let t = n.typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink, tyOwned})
       if t.kind in {tyRef, tyPtr} or tfUnion in t.flags: return false
       if t.kind == tyObject:
-        if preventInheritance and t[0] != nil:
+        if preventInheritance and t.baseClass != nil:
           result = false
         elif isCaseObj(t.n):
           result = false
@@ -117,7 +124,7 @@ proc isDeepConstExpr*(n: PNode; preventInheritance = false): bool =
           result = true
       else:
         result = true
-  else: discard
+  else: result = false
 
 proc isRange*(n: PNode): bool {.inline.} =
   if n.kind in nkCallKinds:
@@ -127,16 +134,22 @@ proc isRange*(n: PNode): bool {.inline.} =
        (callee.kind in {nkClosedSymChoice, nkOpenSymChoice} and
         callee[1].sym.name.id == ord(wDotDot)):
       result = true
+    else:
+      result = false
+  else:
+    result = false
 
 proc whichPragma*(n: PNode): TSpecialWord =
   let key = if n.kind in nkPragmaCallKinds and n.len > 0: n[0] else: n
   case key.kind
   of nkIdent: result = whichKeyword(key.ident)
   of nkSym: result = whichKeyword(key.sym.name)
-  of nkCast: result = wCast
+  of nkCast: return wCast
   of nkClosedSymChoice, nkOpenSymChoice:
-    result = whichPragma(key[0])
-  else: result = wInvalid
+    return whichPragma(key[0])
+  else: return wInvalid
+  if result in nonPragmaWordsLow..nonPragmaWordsHigh:
+    result = wInvalid
 
 proc isNoSideEffectPragma*(n: PNode): bool =
   var k = whichPragma(n)
@@ -145,12 +158,14 @@ proc isNoSideEffectPragma*(n: PNode): bool =
   result = k == wNoSideEffect
 
 proc findPragma*(n: PNode, which: TSpecialWord): PNode =
+  result = nil
   if n.kind == nkPragma:
     for son in n:
       if whichPragma(son) == which:
         return son
 
 proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
+  result = nil
   for i in 0..<n.len:
     var it = n[i]
     if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
@@ -161,6 +176,7 @@ proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
       return
 
 proc propSpec*(n: PNode, effectType: TSpecialWord): PNode =
+  result = nil
   for i in 0..<n.len:
     var it = n[i]
     if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
@@ -182,10 +198,6 @@ proc extractRange*(k: TNodeKind, n: PNode, a, b: int): PNode =
   result = newNodeI(k, n.info, b-a+1)
   for i in 0..b-a: result[i] = n[i+a]
 
-proc isTrue*(n: PNode): bool =
-  n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
-    n.kind == nkIntLit and n.intVal != 0
-
 proc getRoot*(n: PNode): PSym =
   ## ``getRoot`` takes a *path* ``n``. A path is an lvalue expression
   ## like ``obj.x[i].y``. The *root* of a path is the symbol that can be
@@ -194,6 +206,8 @@ proc getRoot*(n: PNode): PSym =
   of nkSym:
     if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
       result = n.sym
+    else:
+      result = nil
   of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
       nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr, nkHiddenAddr, nkAddr:
     result = getRoot(n[0])
@@ -201,7 +215,8 @@ proc getRoot*(n: PNode): PSym =
     result = getRoot(n[1])
   of nkCallKinds:
     if getMagic(n) == mSlice: result = getRoot(n[1])
-  else: discard
+    else: result = nil
+  else: result = nil
 
 proc stupidStmtListExpr*(n: PNode): bool =
   for i in 0..<n.len-1:
@@ -219,3 +234,6 @@ proc isRunnableExamples*(n: PNode): bool =
   # Templates and generics don't perform symbol lookups.
   result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
     n.kind == nkIdent and n.ident.id == ord(wRunnableExamples)
+
+proc skipAddr*(n: PNode): PNode {.inline.} =
+  result = if n.kind in {nkAddr, nkHiddenAddr}: n[0] else: n

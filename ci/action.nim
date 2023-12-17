@@ -3,7 +3,7 @@ import std/[strutils, os, osproc, parseutils, strformat]
 
 proc main() =
   var msg = ""
-  const cmd = "./koch boot --gc:orc -d:release"
+  const cmd = "./koch boot --mm:orc -d:release"
 
   let (output, exitCode) = execCmdEx(cmd)
 

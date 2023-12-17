@@ -43,7 +43,7 @@ jkl"""
 # "An O(ND) Difference Algorithm and its Variations" by Eugene Myers
 # Algorithmica Vol. 1 No. 2, 1986, p 251.
 
-import tables, strutils
+import std/[tables, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

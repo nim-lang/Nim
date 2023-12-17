@@ -19,7 +19,7 @@ when defined(nimPreviewSlimSystem):
 const hasRstdin = (defined(nimUseLinenoise) or defined(useLinenoise) or defined(useGnuReadline)) and
   not defined(windows)
 
-when hasRstdin: import rdstdin
+when hasRstdin: import std/rdstdin
 
 type
   TLLRepl* = proc (s: PLLStream, buf: pointer, bufLen: int): int
@@ -40,33 +40,22 @@ type
 
   PLLStream* = ref TLLStream
 
-proc llStreamOpen*(data: string): PLLStream =
-  new(result)
-  result.s = data
-  result.kind = llsString
+proc llStreamOpen*(data: sink string): PLLStream =
+  PLLStream(kind: llsString, s: data)
 
 proc llStreamOpen*(f: File): PLLStream =
-  new(result)
-  result.f = f
-  result.kind = llsFile
+  PLLStream(kind: llsFile, f: f)
 
 proc llStreamOpen*(filename: AbsoluteFile, mode: FileMode): PLLStream =
-  new(result)
-  result.kind = llsFile
+  result = PLLStream(kind: llsFile)
   if not open(result.f, filename.string, mode): result = nil
 
 proc llStreamOpen*(): PLLStream =
-  new(result)
-  result.kind = llsNone
+  PLLStream(kind: llsNone)
 
 proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int
 proc llStreamOpenStdIn*(r: TLLRepl = llReadFromStdin, onPrompt: OnPrompt = nil): PLLStream =
-  new(result)
-  result.kind = llsStdIn
-  result.s = ""
-  result.lineOffset = -1
-  result.repl = r
-  result.onPrompt = onPrompt
+  PLLStream(kind: llsStdIn, s: "", lineOffset: -1, repl: r, onPrompt: onPrompt)
 
 proc llStreamClose*(s: PLLStream) =
   case s.kind
@@ -89,6 +78,8 @@ proc endsWith*(x: string, s: set[char]): bool =
   while i >= 0 and x[i] == ' ': dec(i)
   if i >= 0 and x[i] in s:
     result = true
+  else:
+    result = false
 
 const
   LineContinuationOprs = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^',
@@ -104,6 +95,7 @@ proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
         line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs))
 
 proc countTriples(s: string): int =
+  result = 0
   var i = 0
   while i+2 < s.len:
     if s[i] == '"' and s[i+1] == '"' and s[i+2] == '"':

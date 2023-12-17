@@ -22,11 +22,11 @@ when defined(nimPreviewSlimSystem):
 const
   useUnicode = true ## change this to deactivate proper UTF-8 support
 
-import strutils, macros
+import std/[strutils, macros]
 import std/private/decode_helpers
 
 when useUnicode:
-  import unicode
+  import std/unicode
   export unicode.`==`
 
 const
@@ -562,7 +562,7 @@ template matchOrParse(mopProc: untyped) =
   # procs. For the former, *enter* and *leave* event handler code generators
   # are provided which just return *discard*.
 
-  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int {.gcsafe.} =
+  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int {.gcsafe, raises: [].} =
     proc matchBackRef(s: string, p: Peg, start: int, c: var Captures): int =
       # Parse handler code must run in an *of* clause of its own for each
       # *PegKind*, so we encapsulate the identical clause body for
@@ -889,7 +889,7 @@ macro mkHandlerTplts(handlers: untyped): untyped =
   # Transforms the handler spec in *handlers* into handler templates.
   # The AST structure of *handlers[0]*:
   #
-  # .. code-block::
+  #   ```
   #   StmtList
   #     Call
   #       Ident "pkNonTerminal"
@@ -910,6 +910,7 @@ macro mkHandlerTplts(handlers: untyped): untyped =
   #           StmtList
   #             <handler code block>
   #     ...
+  #   ```
   func mkEnter(hdName, body: NimNode): NimNode =
     template helper(hdName, body) {.dirty.} =
       template hdName(s, p, start) =
@@ -959,60 +960,61 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## match, else the length of the total match. The following example code
   ## evaluates an arithmetic expression defined by a simple PEG:
   ##
-  ## .. code-block:: nim
-  ##  import std/[strutils, pegs]
+  ##   ```nim
+  ##   import std/[strutils, pegs]
   ##
-  ##  let
-  ##    pegAst = """
-  ##  Expr    <- Sum
-  ##  Sum     <- Product (('+' / '-')Product)*
-  ##  Product <- Value (('*' / '/')Value)*
-  ##  Value   <- [0-9]+ / '(' Expr ')'
-  ##    """.peg
-  ##    txt = "(5+3)/2-7*22"
+  ##   let
+  ##     pegAst = """
+  ##   Expr    <- Sum
+  ##   Sum     <- Product (('+' / '-')Product)*
+  ##   Product <- Value (('*' / '/')Value)*
+  ##   Value   <- [0-9]+ / '(' Expr ')'
+  ##     """.peg
+  ##     txt = "(5+3)/2-7*22"
   ##
-  ##  var
-  ##    pStack: seq[string] = @[]
-  ##    valStack: seq[float] = @[]
-  ##    opStack = ""
-  ##  let
-  ##    parseArithExpr = pegAst.eventParser:
-  ##      pkNonTerminal:
-  ##        enter:
-  ##          pStack.add p.nt.name
-  ##        leave:
-  ##          pStack.setLen pStack.high
-  ##          if length > 0:
-  ##            let matchStr = s.substr(start, start+length-1)
-  ##            case p.nt.name
-  ##            of "Value":
-  ##              try:
-  ##                valStack.add matchStr.parseFloat
-  ##                echo valStack
-  ##              except ValueError:
-  ##                discard
-  ##            of "Sum", "Product":
-  ##              try:
-  ##                let val = matchStr.parseFloat
-  ##              except ValueError:
-  ##                if valStack.len > 1 and opStack.len > 0:
-  ##                  valStack[^2] = case opStack[^1]
-  ##                  of '+': valStack[^2] + valStack[^1]
-  ##                  of '-': valStack[^2] - valStack[^1]
-  ##                  of '*': valStack[^2] * valStack[^1]
-  ##                  else: valStack[^2] / valStack[^1]
-  ##                  valStack.setLen valStack.high
-  ##                  echo valStack
-  ##                  opStack.setLen opStack.high
-  ##                  echo opStack
-  ##      pkChar:
-  ##        leave:
-  ##          if length == 1 and "Value" != pStack[^1]:
-  ##            let matchChar = s[start]
-  ##            opStack.add matchChar
-  ##            echo opStack
+  ##   var
+  ##     pStack: seq[string] = @[]
+  ##     valStack: seq[float] = @[]
+  ##     opStack = ""
+  ##   let
+  ##     parseArithExpr = pegAst.eventParser:
+  ##       pkNonTerminal:
+  ##         enter:
+  ##           pStack.add p.nt.name
+  ##         leave:
+  ##           pStack.setLen pStack.high
+  ##           if length > 0:
+  ##             let matchStr = s.substr(start, start+length-1)
+  ##             case p.nt.name
+  ##             of "Value":
+  ##               try:
+  ##                 valStack.add matchStr.parseFloat
+  ##                 echo valStack
+  ##               except ValueError:
+  ##                 discard
+  ##             of "Sum", "Product":
+  ##               try:
+  ##                 let val = matchStr.parseFloat
+  ##               except ValueError:
+  ##                 if valStack.len > 1 and opStack.len > 0:
+  ##                   valStack[^2] = case opStack[^1]
+  ##                   of '+': valStack[^2] + valStack[^1]
+  ##                   of '-': valStack[^2] - valStack[^1]
+  ##                   of '*': valStack[^2] * valStack[^1]
+  ##                   else: valStack[^2] / valStack[^1]
+  ##                   valStack.setLen valStack.high
+  ##                   echo valStack
+  ##                   opStack.setLen opStack.high
+  ##                   echo opStack
+  ##       pkChar:
+  ##         leave:
+  ##           if length == 1 and "Value" != pStack[^1]:
+  ##             let matchChar = s[start]
+  ##             opStack.add matchChar
+  ##             echo opStack
   ##
-  ##  let pLen = parseArithExpr(txt)
+  ##   let pLen = parseArithExpr(txt)
+  ##   ```
   ##
   ## The *handlers* parameter consists of code blocks for *PegKinds*,
   ## which define the grammar elements of interest. Each block can contain
@@ -1181,8 +1183,7 @@ template `=~`*(s: string, pattern: Peg): bool =
   ## This calls ``match`` with an implicit declared ``matches`` array that
   ## can be used in the scope of the ``=~`` call:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   if line =~ peg"\s* {\w+} \s* '=' \s* {\w+}":
   ##     # matches a key=value pair:
   ##     echo("Key: ", matches[0])
@@ -1194,7 +1195,7 @@ template `=~`*(s: string, pattern: Peg): bool =
   ##     echo("comment: ", matches[0])
   ##   else:
   ##     echo("syntax error")
-  ##
+  ##   ```
   bind MaxSubpatterns
   when not declaredInScope(matches):
     var matches {.inject.}: array[0..MaxSubpatterns-1, string]
@@ -1230,14 +1231,15 @@ func replacef*(s: string, sub: Peg, by: string): string {.
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   "var1=key; var2=key2".replacef(peg"{\ident}'='{\ident}", "$1<-$2$2")
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   "var1<-keykey; val2<-key2key2"
+  ##   ```
   result = ""
   var i = 0
   var caps: array[0..MaxSubpatterns-1, string]
@@ -1305,8 +1307,7 @@ func replace*(s: string, sub: Peg, cb: proc(
   ## The callback proc receives the index of the current match (starting with 0),
   ## the count of captures and an open array with the captures of each match. Examples:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   func handleMatches*(m: int, n: int, c: openArray[string]): string =
   ##     result = ""
   ##     if m > 0:
@@ -1318,12 +1319,13 @@ func replace*(s: string, sub: Peg, cb: proc(
   ##
   ##   let s = "Var1=key1;var2=Key2;   VAR3"
   ##   echo s.replace(peg"{\ident}('='{\ident})* ';'* \s*", handleMatches)
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   "var1: 'key1', var2: 'Key2', var3: ''"
+  ##   ```
   result = ""
   var i = 0
   var caps: array[0..MaxSubpatterns-1, string]
@@ -1361,18 +1363,19 @@ iterator split*(s: string, sep: Peg): string =
   ## Substrings are separated by the PEG `sep`.
   ## Examples:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   for word in split("00232this02939is39an22example111", peg"\d+"):
   ##     writeLine(stdout, word)
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   "this"
   ##   "is"
   ##   "an"
   ##   "example"
-  ##
+  ##   ```
   var c: Captures
   var
     first = 0

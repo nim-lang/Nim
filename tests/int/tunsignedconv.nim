@@ -1,15 +1,19 @@
+discard """
+  targets: "c cpp js"
+"""
+
 # Tests unsigned literals and implicit conversion between uints and ints
 
-var h8:uint8 = 128
-var h16:uint16 = 32768
-var h32:uint32 = 2147483648'u32
-var h64:uint64 = 9223372036854775808'u64
-var foobar:uint64 = 9223372036854775813'u64 # Issue 728
+var h8: uint8 = 128
+var h16: uint16 = 32768
+var h32: uint32 = 2147483648'u32
+var h64: uint64 = 9223372036854775808'u64
+var foobar: uint64 = 9223372036854775813'u64 # Issue 728
 
-var v8:uint8 = 10
-var v16:uint16 = 10
-var v32:uint32 = 10
-var v64:uint64 = 10
+var v8: uint8 = 10
+var v16: uint16 = 10
+var v32: uint32 = 10
+var v64: uint64 = 10
 
 # u8 + literal produces u8:
 var a8: uint8 = v8 + 10
@@ -95,3 +99,17 @@ template main() =
 
 static: main()
 main()
+
+block:
+  let a = uint64.high
+  let b = uint32.high
+
+  doAssert a.uint64 == a
+  doAssert a.uint32 == uint32.high
+  doAssert a.uint16 == uint16.high
+  doAssert a.uint8 == uint8.high
+
+  doAssert b.uint64 == b
+  doAssert b.uint32 == b
+  doAssert b.uint16 == uint16.high
+  doAssert b.uint8 == uint8.high

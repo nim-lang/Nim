@@ -9,7 +9,7 @@
 
 ## This module allows adding hooks to program exit.
 
-import locks
+import std/locks
 when defined(js) and not defined(nodejs):
   import std/assertions
 
@@ -22,7 +22,7 @@ type
 
 var
   gFunsLock: Lock
-  gFuns: seq[Fun]
+  gFuns {.cursor.}: seq[Fun] #Intentionally use the cursor to break up the lifetime trace and make it compatible with JS.
 
 initLock(gFunsLock)
 

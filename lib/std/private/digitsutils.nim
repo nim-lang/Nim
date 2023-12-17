@@ -19,7 +19,7 @@ const
 
 # Inspired by https://engineering.fb.com/2013/03/15/developer-tools/three-optimization-tips-for-c
 # Generates:
-# .. code-block:: nim
+#   ```nim
 #   var res = ""
 #   for i in 0 .. 99:
 #     if i < 10:
@@ -27,14 +27,15 @@ const
 #     else:
 #       res.add $i
 #   doAssert res == digits100
+#   ```
 
 proc utoa2Digits*(buf: var openArray[char]; pos: int; digits: uint32) {.inline.} =
   buf[pos] = digits100[2 * digits]
   buf[pos+1] = digits100[2 * digits + 1]
   #copyMem(buf, unsafeAddr(digits100[2 * digits]), 2 * sizeof((char)))
 
-proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
-  return trailingZeros100[digits.int8]
+proc trailingZeros2Digits*(digits: uint32): int {.inline.} =
+  trailingZeros100[digits]
 
 when defined(js):
   proc numToString(a: SomeInteger): cstring {.importjs: "((#) + \"\")".}

@@ -29,8 +29,7 @@ when not nimCoroutines and not defined(nimdoc):
   else:
     {.error: "Coroutines require -d:nimCoroutines".}
 
-import os
-import lists
+import std/[os, lists]
 include system/timers
 
 when defined(nimPreviewSlimSystem):
@@ -68,7 +67,7 @@ else:
   const coroBackend = CORO_BACKEND_UCONTEXT
 
 when coroBackend == CORO_BACKEND_FIBERS:
-  import windows/winlean
+  import std/winlean
   type
     Context = pointer
 
@@ -224,7 +223,7 @@ proc switchTo(current, to: CoroutinePtr) =
         elif to.state == CORO_CREATED:
           # Coroutine is started.
           coroExecWithStack(runCurrentTask, to.stack.bottom)
-          #doAssert false
+          #raiseAssert "unreachable"
     else:
       {.error: "Invalid coroutine backend set.".}
   # Execution was just resumed. Restore frame information and set active stack.
@@ -266,7 +265,7 @@ proc runCurrentTask() =
     current.state = CORO_FINISHED
   nimGC_setStackBottom(ctx.ncbottom)
   suspend(0) # Exit coroutine without returning from coroExecWithStack()
-  doAssert false
+  raiseAssert "unreachable"
 
 proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discardable.} =
   ## Schedule coroutine for execution. It does not run immediately.

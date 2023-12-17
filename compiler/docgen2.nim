@@ -39,10 +39,12 @@ template closeImpl(body: untyped) {.dirty.} =
       discard
 
 proc closeDoc*(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
+  result = nil
   closeImpl:
     writeOutput(g.doc, useWarning, groupedToc)
 
 proc closeJson*(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
+  result = nil
   closeImpl:
     writeOutputJson(g.doc, useWarning)
 
@@ -56,7 +58,7 @@ proc processNodeJson*(c: PPassContext, n: PNode): PNode =
   result = n
   var g = PGen(c)
   if shouldProcess(g):
-    generateJson(g.doc, n, false)
+    generateJson(g.doc, n, g.config, false)
 
 template myOpenImpl(ext: untyped) {.dirty.} =
   var g: PGen

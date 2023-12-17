@@ -74,4 +74,53 @@ var val : int32 = 10
 NimPrinter().printConstRef(message, val)
 NimPrinter().printConstRef2(message, val)
 
+#bug 22269
+type Doo = object
+proc naiveMember(x: Doo): int {. virtual .} = 2
+discard naiveMember(Doo())
+
+#asmnostackframe works with virtual
+{.emit:"""/*TYPESECTION*/
+  template<typename T>
+  struct Box {
+      T* first;
+     
+      Box(int x){
+        first = new T(x);
+      };
+  };
+  struct Inner {
+    int val;
+    //Coo() = default;
+    Inner(int x){
+      val = x;
+    };
+  };
+  struct Base {
+    virtual Box<Inner> test() = 0;
+  };
+""".}
+
+type 
+  Inner {.importcpp.} = object
+  Base {.importcpp, inheritable.} = object
+  Child  = object of Base
+  Box[T] {.importcpp, inheritable.} = object
+    first: T
+
+proc makeBox[T](x:int32): Box[T] {.importcpp:"Box<'0>(@)", constructor.}
+
+proc test(self: Child): Box[Inner] {.virtual, asmnostackframe.} = 
+  let res {.exportc.} = makeBox[Inner](100)
+  {.emit:"return res;".}
+  
+
+discard Child().test() 
+
+import virtualptr
+
+#We dont want to pull Loo directly by using it as we are testing that the pointer pulls it. 
+proc makeMoo(): Moo {.importcpp:"{ new Loo() }".}
+
+makeMoo().loo.salute()
 

@@ -7,7 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-import renderer, strutils, ast, types
+import renderer, ast, types
+import std/strutils
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -99,6 +100,7 @@ proc renderType(n: PNode, toNormalize: bool): string =
 
 proc renderParamNames*(n: PNode, toNormalize=false): seq[string] =
   ## Returns parameter names of routine `n`.
+  result = @[]
   doAssert n.kind == nkFormalParams
   case n.kind
   of nkFormalParams:

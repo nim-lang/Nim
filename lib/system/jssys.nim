@@ -278,7 +278,9 @@ proc toJSStr(s: string): cstring {.compilerproc.} =
 
 proc mnewString(len: int): string {.asmNoStackFrame, compilerproc.} =
   asm """
-    return new Array(`len`);
+    var result = new Array(`len`);
+    for (var i = 0; i < `len`; i++) {result[i] = 0;}
+    return result;
   """
 
 proc SetCard(a: int): int {.compilerproc, asmNoStackFrame.} =

@@ -655,7 +655,7 @@ string containing the literal. The callable identifier needs to be declared
 with a special ``'`` prefix:
 
   ```nim
-  import strutils
+  import std/strutils
   type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
   proc `'u4`(n: string): u4 =
     # The leading ' is required.
@@ -670,7 +670,7 @@ corresponds to this transformation. The transformation naturally handles
 the case that additional parameters are passed to the callee:
 
   ```nim
-  import strutils
+  import std/strutils
   type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
   proc `'u4`(n: string; moreData: int): u4 =
     result = (parseInt(n) and 0x0F).u4
@@ -1495,7 +1495,8 @@ it can be modified:
 
   ```nim
   var x = "123456"
-  var s: cstring = x
+  prepareMutation(x) # call `prepareMutation` before modifying the strings
+  var s: cstring = cstring(x)
   s[0] = 'u' # This is ok
   ```
 
@@ -2642,31 +2643,34 @@ of the argument.
 6. Conversion match: `a` is convertible to `f`, possibly via a user
    defined `converter`.
 
-It is important to note that overload resolution concerns itself with the 
-category of each parameter and not the category of callable.
-
-Nim will compare two candidates at a time and pick the "best" candidate to 
-to continue through the resolution process, if at the end the best candidate is 
-is proven "better" then the rest, it is chosen as an unambiguous match. It may 
-help to think of the below as a comparison between two candidates because of this 
-algorithm. 
-
-
-There are two major methods of selecting the best matching candidate, namely 
-counting and type comparison. Counting takes precedence to type comparison since
-it is simpler, more efficient and necessary in some situations. In counting,
-each parameter is given a category and the number of parameters in each category is counted.
-The categories are listed above and are roughly in order of precedence, except that generics and 
-subtypes are binned together such that they can compete equally. For example, if
-a candidate with one exact match is compared to a candidate with multiple generic matches 
+There are two major methods of selecting the best matching candidate, namely
+counting and disambiguation. Counting takes precedence to disambiguation. he categories
+listed above are in order of precedence, except generic and subtype matches are combined.
+For example, if a candidate with one exact match is compared to a candidate with multiple generic matches
 and zero exact matches, the candidate with an exact match will win.
 
+In the following, `count(p, m)` counts the number of matches of the matching category `m`
+for the routine `p`.
 
-When counting is not enough to select an overload, type comparison begins. Parameters are iterated 
+A routine `p` matches better than a routine `q` if the following
+algorithm returns true:
+
+  ```nim
+  for each matching category m in ["exact match", "literal match",
+                                  "generic match or subtype match",
+                                  "integral match", "conversion match"]:
+    if count(p, m) > count(q, m): return true
+    elif count(p, m) == count(q, m):
+      discard "continue with next category m"
+    else:
+      return false
+  return "ambiguous"
+  ```
+
+When counting is ambiguous, disambiguation begins. Parameters are iterated
 by position and these parameter pairs are compared for their type relation. The general goal
-of this comparison is to determine which parameter is more specific. The "rules" for this comparison are
-not meant to be be completely exhaustive. It is crucial to understand that the parameters are not 
-compared with the types of inputs from the callsite, but with the parameters of competing candidates.
+of this comparison is to determine which parameter is more specific. The types considered are
+not of the inputs from the callsite, but of the competing candidates' parameters.
 
 
 Some examples:
@@ -3754,6 +3758,9 @@ prior section. Unlike type conversions, a type cast cannot change the underlying
 bit pattern of the data being cast (aside from that the size of the target type
 may differ from the source type). Casting resembles *type punning* in other
 languages or C++'s `reinterpret_cast`:cpp: and `bit_cast`:cpp: features.
+
+If the size of the target type is larger than the size of the source type,
+the remaining memory is zeroed.
 
 The addr operator
 -----------------
@@ -5152,7 +5159,7 @@ possibly raised exceptions; the algorithm operates on `p`'s call graph:
    raise `system.Exception` (the base type of the exception hierarchy) and
    thus any exception unless `T` has an explicit `raises` list.
    However, if the call is of the form `f(...)` where `f` is a parameter of
-   the currently analyzed routine it is ignored that is marked as `.effectsOf: f`.
+   the currently analyzed routine that is marked as `.effectsOf: f`, it is ignored.
    The call is optimistically assumed to have no effect.
    Rule 2 compensates for this case.
 2. Every expression `e` of some proc type within a call that is passed to parameter
@@ -5222,7 +5229,7 @@ conservative in its effect analysis:
   ```nim  test = "nim c $1"  status = 1
   {.push warningAsError[Effect]: on.}
 
-  import algorithm
+  import std/algorithm
 
   type
     MyInt = distinct int
@@ -5475,6 +5482,49 @@ The following example shows how a generic binary tree can be modeled:
 
 The `T` is called a `generic type parameter`:idx: or
 a `type variable`:idx:.
+
+
+Generic Procs
+---------------
+
+Let's consider the anatomy of a generic `proc` to agree on defined terminology.
+
+```nim
+p[T: t](arg1: f): y
+```
+
+- `p`: Callee symbol
+- `[...]`: Generic parameters
+- `T: t`: Generic constraint
+- `T`: Type variable
+- `[T: t](arg1: f): y`: Formal signature
+- `arg1: f`: Formal parameter
+- `f`: Formal parameter type
+- `y`: Formal return type
+
+The use of the word "formal" here is to denote the symbols as they are defined by the programmer,
+not as they may be at compile time contextually. Since generics may be instantiated and
+types bound, we have more than one entity to think about when generics are involved.
+
+The usage of a generic will resolve the formally defined expression into an instance of that
+expression bound to only concrete types. This process is called "instantiation".
+
+Brackets at the site of a generic's formal definition specify the "constraints" as in:
+
+```nim
+type Foo[T] = object
+proc p[H;T: Foo[H]](param: T): H
+```
+
+A constraint definition may have more than one symbol defined by separating each definition by
+a `;`. Notice how `T` is composed of `H` and the return  type of `p` is defined as `H`. When this
+generic proc is instantiated `H` will be bound to a concrete type, thus making `T` concrete and
+the return type of `p` will be bound to the same concrete type used to define `H`.
+
+Brackets at the site of usage can be used to supply concrete types to instantiate the generic in the same
+order that the symbols are defined in the constraint. Alternatively, type bindings may be inferred by the compiler
+in some situations, allowing for cleaner code.
+
 
 Is operator
 -----------
@@ -8490,18 +8540,18 @@ The `bycopy` pragma can be applied to an object or tuple type or a proc param. I
       x, y, z: float
   ```
 
-The Nim compiler automatically determines whether a parameter is passed by value or 
-by reference based on the parameter type's size. If a parameter must be passed by value 
-or by reference, (such as when interfacing with a C library) use the bycopy or byref pragmas. 
+The Nim compiler automatically determines whether a parameter is passed by value or
+by reference based on the parameter type's size. If a parameter must be passed by value
+or by reference, (such as when interfacing with a C library) use the bycopy or byref pragmas.
 Notice params marked as `byref` takes precedence over types marked as `bycopy`.
 
 Byref pragma
 ------------
 
 The `byref` pragma can be applied to an object or tuple type or a proc param.
-When applied to a type it instructs the compiler to pass the type by reference 
-(hidden pointer) to procs. When applied to a param it will take precedence, even 
-if the the type was marked as `bycopy`. When using the Cpp backend, params marked 
+When applied to a type it instructs the compiler to pass the type by reference
+(hidden pointer) to procs. When applied to a param it will take precedence, even
+if the the type was marked as `bycopy`. When using the Cpp backend, params marked
 as byref will translate to cpp references `&`.
 
 Varargs pragma

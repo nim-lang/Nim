@@ -13,9 +13,11 @@
 proc cardSetImpl(s: ptr UncheckedArray[uint8], len: int): int {.inline.} =
   var i = 0
   result = 0
+  var num = 0'u64
   when defined(x86) or defined(amd64):
     while i < len - 8:
-      inc(result, countBits64((cast[ptr uint64](s[i].unsafeAddr))[]))
+      copyMem(addr num, addr s[i], 8)
+      inc(result, countBits64(num))
       inc(i, 8)
 
   while i < len:

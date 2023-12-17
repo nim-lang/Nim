@@ -110,3 +110,17 @@ block titerator2:
 
   for val in fields(co):
     echo val
+
+block:
+  type
+    Enum = enum A, B
+    Object = object
+      case a: Enum
+      of A:
+        integer: int
+      of B:
+        time: string
+
+  let x = A
+  let s = Object(a: x)
+  doAssert s.integer == 0

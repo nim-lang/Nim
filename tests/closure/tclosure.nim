@@ -491,3 +491,14 @@ block tnoclosure:
       row = zip(row & @[0], @[0] & row).mapIt(it[0] + it[1])
     echo row
   pascal(10)
+
+block: # bug #22297
+  iterator f: int {.closure.} =
+    try:
+      yield 12
+    finally:
+      return 14
+
+  let s = f
+  doAssert s() == 12
+  doAssert s() == 14

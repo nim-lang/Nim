@@ -8,7 +8,7 @@
 #
 
 ## This module contains basic operating system facilities like
-## retrieving environment variables, working with directories, 
+## retrieving environment variables, working with directories,
 ## running shell commands, etc.
 
 ## .. importdoc:: symlinks.nim, appdirs.nim, dirs.nim, ospaths2.nim
@@ -52,7 +52,7 @@ import std/private/since
 import std/cmdline
 export cmdline
 
-import strutils, pathnorm
+import std/[strutils, pathnorm]
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
@@ -76,9 +76,9 @@ since (1, 1):
 when weirdTarget:
   discard
 elif defined(windows):
-  import winlean, times
+  import std/[winlean, times]
 elif defined(posix):
-  import posix, times
+  import std/[posix, times]
 
   proc toTime(ts: Timespec): times.Time {.inline.} =
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
@@ -411,9 +411,9 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## <osproc.html#execProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_.
   ##
   ## **Examples:**
-  ##
-  ## .. code-block::
+  ##   ```Nim
   ##   discard execShellCmd("ls -la")
+  ##   ```
   result = exitStatusLikeShell(c_system(command))
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
@@ -482,18 +482,18 @@ proc inclFilePermissions*(filename: string,
                           permissions: set[FilePermission]) {.
   rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect], noWeirdTarget.} =
   ## A convenience proc for:
-  ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   setFilePermissions(filename, getFilePermissions(filename)+permissions)
+  ##   ```
   setFilePermissions(filename, getFilePermissions(filename)+permissions)
 
 proc exclFilePermissions*(filename: string,
                           permissions: set[FilePermission]) {.
   rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect], noWeirdTarget.} =
   ## A convenience proc for:
-  ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   setFilePermissions(filename, getFilePermissions(filename)-permissions)
+  ##   ```
   setFilePermissions(filename, getFilePermissions(filename)-permissions)
 
 when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netbsd)):
@@ -624,9 +624,11 @@ when defined(haiku):
     else:
       result = ""
 
-proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
+proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget, raises: [].} =
   ## Returns the filename of the application's executable.
   ## This proc will resolve symlinks.
+  ##
+  ## Returns empty string when name is unavailable
   ##
   ## See also:
   ## * `getAppDir proc`_
@@ -638,14 +640,14 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
   # /proc/<pid>/path/a.out (complete pathname)
   when defined(windows):
     var bufsize = int32(MAX_PATH)
-    var buf = newWideCString("", bufsize)
+    var buf = newWideCString(bufsize)
     while true:
       var L = getModuleFileNameW(0, buf, bufsize)
       if L == 0'i32:
         result = "" # error!
         break
       elif L > bufsize:
-        buf = newWideCString("", L)
+        buf = newWideCString(L)
         bufsize = L
       else:
         result = buf$L
@@ -657,26 +659,29 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
     if getExecPath2(result.cstring, size):
       result = "" # error!
     if result.len > 0:
-      result = result.expandFilename
+      try:
+        result = result.expandFilename
+      except OSError:
+        result = ""
   else:
     when defined(linux) or defined(aix):
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
     elif defined(genode):
-      raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
+      result = "" # Not supported
     elif defined(freebsd) or defined(dragonfly) or defined(netbsd):
       result = getApplFreebsd()
     elif defined(haiku):
       result = getApplHaiku()
     elif defined(openbsd):
-      result = getApplOpenBsd()
+      result = try: getApplOpenBsd() except OSError: ""
     elif defined(nintendoswitch):
       result = ""
 
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
-      result = getApplHeuristic()
+      result = try: getApplHeuristic() except OSError: ""
 
 proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
   ## Returns the directory of the application's executable.

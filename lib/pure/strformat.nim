@@ -133,13 +133,14 @@ runnableExamples:
 
 An expression like `&"{key} is {value:arg} {{z}}"` is transformed into:
 
-.. code-block:: nim
+  ```nim
   var temp = newStringOfCap(educatedCapGuess)
   temp.formatValue(key, "")
   temp.add(" is ")
   temp.formatValue(value, arg)
   temp.add(" {z}")
   temp
+  ```
 
 Parts of the string that are enclosed in the curly braces are interpreted
 as Nim code. To escape a `{` or `}`, double it.
@@ -263,6 +264,12 @@ The available floating point presentation types are:
                          exponent notation.
 `G`                      General format. Same as `g` except it switches to `E`
                          if the number gets to large.
+`i`                      Complex General format. This is only supported for
+                         complex numbers, which it prints using the mathematical
+                         (RE+IMj) format. The real and imaginary parts are printed
+                         using the general format `g` by default, but it is
+                         possible to combine this format with one of the other
+                         formats (e.g `jf`).
 (None)                   Similar to `g`, except that it prints at least one
                          digit after the decimal point.
 =================        ====================================================
@@ -272,13 +279,14 @@ The available floating point presentation types are:
 Because of the well defined order how templates and macros are
 expanded, strformat cannot expand template arguments:
 
-.. code-block:: nim
+  ```nim
   template myTemplate(arg: untyped): untyped =
     echo "arg is: ", arg
     echo &"--- {arg} ---"
 
   let x = "abc"
   myTemplate(x)
+  ```
 
 First the template `myTemplate` is expanded, where every identifier
 `arg` is substituted with its argument. The `arg` inside the
@@ -289,12 +297,13 @@ identifier that cannot be resolved anymore.
 
 The workaround for this is to bind the template argument to a new local variable.
 
-.. code-block:: nim
+  ```nim
   template myTemplate(arg: untyped): untyped =
     block:
       let arg1 {.inject.} = arg
       echo "arg is: ", arg1
       echo &"--- {arg1} ---"
+  ```
 
 The use of `{.inject.}` here is necessary again because of template
 expansion order and hygienic templates. But since we generally want to
@@ -313,8 +322,8 @@ help with readability, since there is only so much you can cram into
 single letter DSLs.
 ]##
 
-import macros, parseutils, unicode
-import strutils except format
+import std/[macros, parseutils, unicode]
+import std/strutils except format
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -663,7 +672,7 @@ proc strformatImpl(f: string; openChar, closeChar: char,
         strlit.add closeChar
         inc i, 2
       else:
-        doAssert false, "invalid format string: '$1' instead of '$1$1'" % $closeChar
+        raiseAssert "invalid format string: '$1' instead of '$1$1'" % $closeChar
         inc i
     else:
       strlit.add f[i]

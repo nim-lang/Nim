@@ -66,5 +66,6 @@ nim	anything	testproject.html#anything	proc anything()		387
 nim	T19396	testproject.html#T19396	object T19396		392
 nim	somePragma	testproject.html#somePragma.t	template somePragma()		396
 nim	MyObject	testproject.html#MyObject	object MyObject		400
+nim	AnotherObject	testproject.html#AnotherObject	object AnotherObject		405
 nimgrp	bar	testproject.html#bar-procs-all	proc		31
 nimgrp	baz	testproject.html#baz-procs-all	proc		34

@@ -33,6 +33,7 @@ type
     hasGnuAsm,                # CC's asm uses the absurd GNU assembler syntax
     hasDeclspec,              # CC has __declspec(X)
     hasAttribute,             # CC has __attribute__((X))
+    hasBuiltinUnreachable     # CC has __builtin_unreachable
   TInfoCCProps* = set[TInfoCCProp]
   TInfoCC* = tuple[
     name: string,        # the short name of the compiler
@@ -95,7 +96,7 @@ compiler gcc:
     produceAsm: gnuAsmListing,
     cppXsupport: "-std=gnu++17 -funsigned-char",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
-            hasAttribute})
+            hasAttribute, hasBuiltinUnreachable})
 
 # GNU C and C++ Compiler
 compiler nintendoSwitchGCC:
@@ -122,7 +123,7 @@ compiler nintendoSwitchGCC:
     produceAsm: gnuAsmListing,
     cppXsupport: "-std=gnu++17 -funsigned-char",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
-            hasAttribute})
+            hasAttribute, hasBuiltinUnreachable})
 
 # LLVM Frontend for GCC/G++
 compiler llvmGcc:
@@ -318,7 +319,7 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
   var fullSuffix = suffix
   case conf.backend
   of backendCpp, backendJs, backendObjc: fullSuffix = "." & $conf.backend & suffix
-  of backendC: discard
+  of backendC, backendNir: discard
   of backendInvalid:
     # during parsing of cfg files; we don't know the backend yet, no point in
     # guessing wrong thing
@@ -486,6 +487,10 @@ proc vccplatform(conf: ConfigRef): string =
         of cpuArm: " --platform:arm"
         of cpuAmd64: " --platform:amd64"
         else: ""
+    else:
+      result = ""
+  else:
+    result = ""
 
 proc getLinkOptions(conf: ConfigRef): string =
   result = conf.linkOptions & " " & conf.linkOptionsCmd & " "
@@ -534,7 +539,7 @@ proc ccHasSaneOverflow*(conf: ConfigRef): bool =
     # NOTE: should we need the full version, use -dumpfullversion
     let (s, exitCode) = try: execCmdEx(exe & " -dumpversion") except IOError, OSError, ValueError: ("", 1)
     if exitCode == 0:
-      var major: int
+      var major: int = 0
       discard parseInt(s, major)
       result = major >= 5
   else:
@@ -580,7 +585,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
 
     compilePattern = joinPath(conf.cCompilerPath, exe)
   else:
-    compilePattern = getCompilerExe(conf, c, isCpp)
+    compilePattern = exe
 
   includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
 
@@ -644,7 +649,7 @@ proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
 
   let hashFile = toGeneratedFile(conf, conf.mangleModuleName(cfile.cname).AbsoluteFile, "sha1")
   let currentHash = footprint(conf, cfile)
-  var f: File
+  var f: File = default(File)
   if open(f, hashFile.string, fmRead):
     let oldHash = parseSecureHash(f.readLine())
     close(f)
@@ -779,6 +784,7 @@ template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body
     raise
 
 proc getExtraCmds(conf: ConfigRef; output: AbsoluteFile): seq[string] =
+  result = @[]
   when defined(macosx):
     if optCDebug in conf.globalOptions and optGenStaticLib notin conf.globalOptions:
       # if needed, add an option to skip or override location
@@ -861,6 +867,7 @@ proc hcrLinkTargetName(conf: ConfigRef, objFile: string, isMain = false): Absolu
   result = conf.getNimcacheDir / RelativeFile(targetName)
 
 proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
+  result = ""
   if conf.hasHint(hintCC):
     if optListCmd in conf.globalOptions or conf.verbosity > 1:
       result = MsgKindToStr[hintCC] % (demangleModuleName(path.splitFile.name) & ": " & compileCmd)
@@ -883,15 +890,15 @@ proc preventLinkCmdMaxCmdLen(conf: ConfigRef, linkCmd: string) =
 
 proc callCCompiler*(conf: ConfigRef) =
   var
-    linkCmd: string
+    linkCmd: string = ""
     extraCmds: seq[string]
   if conf.globalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}:
     return # speed up that call if only compiling and no script shall be
            # generated
   #var c = cCompiler
   var script: Rope = ""
-  var cmds: TStringSeq
-  var prettyCmds: TStringSeq
+  var cmds: TStringSeq = default(TStringSeq)
+  var prettyCmds: TStringSeq = default(TStringSeq)
   let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
 
   for idx, it in conf.toCompile:
@@ -1022,8 +1029,9 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
   conf.jsonBuildFile.string.writeFile(bcache.toJson.pretty)
 
 proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile): bool =
+  result = false
   if not fileExists(jsonFile) or not fileExists(conf.absOutFile): return true
-  var bcache: BuildCache
+  var bcache: BuildCache = default(BuildCache)
   try: bcache.fromJson(jsonFile.string.parseFile)
   except IOError, OSError, ValueError:
     stderr.write "Warning: JSON processing failed for: $#\n" % jsonFile.string
@@ -1039,7 +1047,7 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: Absolute
     if $secureHashFile(file) != hash: return true
 
 proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
-  var bcache: BuildCache
+  var bcache: BuildCache = default(BuildCache)
   try: bcache.fromJson(jsonFile.string.parseFile)
   except ValueError, KeyError, JsonKindError:
     let e = getCurrentException()
@@ -1052,7 +1060,8 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
     globalError(conf, gCmdLineInfo,
       "jsonscript command outputFile '$1' must match '$2' which was specified during --compileOnly, see \"outputFile\" entry in '$3' " %
       [outputCurrent, output, jsonFile.string])
-  var cmds, prettyCmds: TStringSeq
+  var cmds: TStringSeq = default(TStringSeq)
+  var prettyCmds: TStringSeq= default(TStringSeq)
   let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
   for (name, cmd) in bcache.compile:
     cmds.add cmd
@@ -1062,6 +1071,7 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
   for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
 
 proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
+  result = ""
   for it in list:
     result.addf("--file:r\"$1\"$N", [rope(it.cname.string)])
 

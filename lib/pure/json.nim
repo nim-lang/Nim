@@ -41,13 +41,14 @@
 ## For a `JsonNode` who's kind is `JObject`, you can access its fields using
 ## the `[]` operator. The following example shows how to do this:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/json
 ##
 ##   let jsonNode = parseJson("""{"key": 3.14}""")
 ##
 ##   doAssert jsonNode.kind == JObject
 ##   doAssert jsonNode["key"].kind == JFloat
+##   ```
 ##
 ## Reading values
 ## --------------
@@ -62,12 +63,13 @@
 ##
 ## To retrieve the value of `"key"` you can do the following:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/json
 ##
 ##   let jsonNode = parseJson("""{"key": 3.14}""")
 ##
 ##   doAssert jsonNode["key"].getFloat() == 3.14
+##   ```
 ##
 ## **Important:** The `[]` operator will raise an exception when the
 ## specified field does not exist.
@@ -79,7 +81,7 @@
 ## when the field is not found. The `get`-family of procedures will return a
 ## type's default value when called on `nil`.
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/json
 ##
 ##   let jsonNode = parseJson("{}")
@@ -88,6 +90,7 @@
 ##   doAssert jsonNode{"nope"}.getFloat() == 0
 ##   doAssert jsonNode{"nope"}.getStr() == ""
 ##   doAssert jsonNode{"nope"}.getBool() == false
+##   ```
 ##
 ## Using default values
 ## --------------------
@@ -95,7 +98,7 @@
 ## The `get`-family helpers also accept an additional parameter which allow
 ## you to fallback to a default value should the key's values be `null`:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/json
 ##
 ##   let jsonNode = parseJson("""{"key": 3.14, "key2": null}""")
@@ -103,6 +106,7 @@
 ##   doAssert jsonNode["key"].getFloat(6.28) == 3.14
 ##   doAssert jsonNode["key2"].getFloat(3.14) == 3.14
 ##   doAssert jsonNode{"nope"}.getFloat(3.14) == 3.14 # note the {}
+##   ```
 ##
 ## Unmarshalling
 ## -------------
@@ -113,7 +117,7 @@
 ## Note: Use `Option <options.html#Option>`_ for keys sometimes missing in json
 ## responses, and backticks around keys with a reserved keyword as name.
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   import std/json
 ##   import std/options
 ##
@@ -127,6 +131,7 @@
 ##   let user = to(userJson, User)
 ##   if user.`type`.isSome():
 ##     assert user.`type`.get() != "robot"
+##   ```
 ##
 ## Creating JSON
 ## =============
@@ -134,7 +139,7 @@
 ## This module can also be used to comfortably create JSON using the `%*`
 ## operator:
 ##
-## .. code-block:: nim
+##   ```nim
 ##   import std/json
 ##
 ##   var hisName = "John"
@@ -148,6 +153,7 @@
 ##   var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
 ##   j2["details"] = %* {"age":35, "pi":3.1415}
 ##   echo j2
+##   ```
 ##
 ## See also: std/jsonutils for hookable json serialization/deserialization
 ## of arbitrary types.
@@ -159,9 +165,9 @@ runnableExamples:
     a1, a2, a0, a3, a4: int
   doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
 
-import hashes, tables, strutils, lexbase, streams, macros, parsejson
+import std/[hashes, tables, strutils, lexbase, streams, macros, parsejson]
 
-import options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
+import std/options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
 import std/private/since
 
 when defined(nimPreviewSlimSystem):
@@ -438,7 +444,7 @@ macro `%*`*(x: untyped): untyped =
   ## `%` for every element.
   result = toJsonImpl(x)
 
-proc `==`*(a, b: JsonNode): bool {.noSideEffect.} =
+proc `==`*(a, b: JsonNode): bool {.noSideEffect, raises: [].} =
   ## Check two nodes for equality
   if a.isNil:
     if b.isNil: return true
@@ -458,7 +464,8 @@ proc `==`*(a, b: JsonNode): bool {.noSideEffect.} =
     of JNull:
       result = true
     of JArray:
-      result = a.elems == b.elems
+      {.cast(raises: []).}: # bug #19303
+        result = a.elems == b.elems
     of JObject:
       # we cannot use OrderedTable's equality here as
       # the order does not matter for equality here.
@@ -542,7 +549,7 @@ proc `[]`*[U, V](a: JsonNode, x: HSlice[U, V]): JsonNode =
   ##
   ## Returns the inclusive range `[a[x.a], a[x.b]]`:
   runnableExamples:
-    import json
+    import std/json
     let arr = %[0,1,2,3,4,5]
     doAssert arr[2..4] == %[2,3,4]
     doAssert arr[2..^2] == %[2,3,4]
@@ -958,7 +965,7 @@ proc parseJson*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats
     p.close()
 
 when defined(js):
-  from math import `mod`
+  from std/math import `mod`
   from std/jsffi import JsObject, `[]`, to
   from std/private/jsutils import getProtoName, isInteger, isSafeInteger
 
@@ -1359,7 +1366,7 @@ proc to*[T](node: JsonNode, t: typedesc[T]): T =
   initFromJson(result, node, jsonPath)
 
 when false:
-  import os
+  import std/os
   var s = newFileStream(paramStr(1), fmRead)
   if s == nil: quit("cannot open the file" & paramStr(1))
   var x: JsonParser

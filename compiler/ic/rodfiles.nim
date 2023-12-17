@@ -14,7 +14,7 @@
 ##     compiler works and less a storage format, you're probably looking for
 ##     the `ic` or `packed_ast` modules to understand the logical format.
 
-from typetraits import supportsCopyMem
+from std/typetraits import supportsCopyMem
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
@@ -92,11 +92,16 @@ type
     typeInstCacheSection
     procInstCacheSection
     attachedOpsSection
-    methodsPerTypeSection
+    methodsPerGenericTypeSection
     enumToStringProcsSection
+    methodsPerTypeSection
+    dispatchersSection
     typeInfoSection  # required by the backend
     backendFlagsSection
     aliveSymsSection # beware, this is stored in a `.alivesyms` file.
+    sideChannelSection
+    namespaceSection
+    symnamesSection
 
   RodFileError* = enum
     ok, tooBig, cannotOpen, ioFailure, wrongHeader, wrongSection, configMismatch,
@@ -109,8 +114,8 @@ type
                        # better than exceptions.
 
 const
-  RodVersion = 1
-  cookie = [byte(0), byte('R'), byte('O'), byte('D'),
+  RodVersion = 2
+  defaultCookie = [byte(0), byte('R'), byte('O'), byte('D'),
             byte(sizeof(int)*8), byte(system.cpuEndian), byte(0), byte(RodVersion)]
 
 proc setError(f: var RodFile; err: RodFileError) {.inline.} =
@@ -206,16 +211,16 @@ proc loadSeq*[T](f: var RodFile; s: var seq[T]) =
     for i in 0..<lenPrefix:
       loadPrim(f, s[i])
 
-proc storeHeader*(f: var RodFile) =
+proc storeHeader*(f: var RodFile; cookie = defaultCookie) =
   ## stores the header which is described by `cookie`.
   if f.err != ok: return
   if f.f.writeBytes(cookie, 0, cookie.len) != cookie.len:
     setError f, ioFailure
 
-proc loadHeader*(f: var RodFile) =
+proc loadHeader*(f: var RodFile; cookie = defaultCookie) =
   ## Loads the header which is described by `cookie`.
   if f.err != ok: return
-  var thisCookie: array[cookie.len, byte]
+  var thisCookie: array[cookie.len, byte] = default(array[cookie.len, byte])
   if f.f.readBytes(thisCookie, 0, thisCookie.len) != thisCookie.len:
     setError f, ioFailure
   elif thisCookie != cookie:
@@ -231,13 +236,14 @@ proc storeSection*(f: var RodFile; s: RodSection) =
 proc loadSection*(f: var RodFile; expected: RodSection) =
   ## read the bytes value of s, sets and error if the section is incorrect.
   if f.err != ok: return
-  var s: RodSection
+  var s: RodSection = default(RodSection)
   loadPrim(f, s)
   if expected != s and f.err == ok:
     setError f, wrongSection
 
 proc create*(filename: string): RodFile =
   ## create the file and open it for writing
+  result = default(RodFile)
   if not open(result.f, filename, fmWrite):
     setError result, cannotOpen
 
@@ -245,5 +251,6 @@ proc close*(f: var RodFile) = close(f.f)
 
 proc open*(filename: string): RodFile =
   ## open the file for reading
+  result = default(RodFile)
   if not open(result.f, filename, fmRead):
     setError result, cannotOpen

@@ -78,3 +78,65 @@ block:
   doAssert x.data.len == 5
   var y: Leb128Buf[uint16]
   doAssert y.data.len == 3
+
+import macros
+
+block: # issue #12415
+  macro isSomePointerImpl(t: typedesc): bool =
+    var impl = t.getTypeInst[1].getTypeImpl
+    if impl.kind == nnkDistinctTy:
+      impl = impl[0].getTypeImpl
+    if impl.kind in {nnkPtrTy,nnkRefTy}:
+      result = newLit(true)
+    elif impl.kind == nnkSym and impl.eqIdent("pointer"):
+      result = newLit(true)
+    else:
+      result = newLit(false)
+
+  proc isSomePointer[T](t: typedesc[T]): bool {.compileTime.} =
+    isSomePointerImpl(t)
+
+  type
+    Option[T] = object
+      ## An optional type that stores its value and state separately in a boolean.
+      when isSomePointer(typedesc(T)):
+        val: T
+      else:
+        val: T
+        has: bool
+  var x: Option[ref int]
+  doAssert not compiles(x.has)
+  var y: Option[int]
+  doAssert compiles(y.has)
+
+block: # issue #2002
+  proc isNillable(T: typedesc): bool =
+    when compiles((let v: T = nil)):
+      return true
+    else:
+      return false
+
+  type
+    Foo[T] = object
+      when isNillable(T):
+        nillable: float
+      else:
+        notnillable: int
+
+  var val1: Foo[ref int]
+  doAssert compiles(val1.nillable)
+  doAssert not compiles(val1.notnillable)
+  var val2: Foo[int]
+  doAssert not compiles(val2.nillable)
+  doAssert compiles(val2.notnillable)
+
+block: # issue #1771
+  type
+    Foo[X, T] = object
+      bar: array[X.low..X.high, T]
+
+  proc test[X, T](f: Foo[X, T]): T =
+    f.bar[X.low]
+
+  var a: Foo[range[0..2], float]
+  doAssert test(a) == 0.0

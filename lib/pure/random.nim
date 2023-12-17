@@ -71,7 +71,7 @@ runnableExamples:
 ## * `list of cryptographic and hashing modules <lib.html#pure-libraries-hashing>`_
 ##   in the standard library
 
-import algorithm, math
+import std/[algorithm, math]
 import std/private/[since, jsutils]
 
 when defined(nimPreviewSlimSystem):
@@ -381,10 +381,7 @@ proc rand*[T: Ordinal](r: var Rand; t: typedesc[T]): T {.since: (1, 7, 1).} =
   when T is range or T is enum:
     result = rand(r, low(T)..high(T))
   elif T is bool:
-    whenJsNoBigInt64:
-      result = (r.next or 0) < 0
-    do:
-      result = cast[int64](r.next) < 0
+    result = r.next < randMax div 2
   else:
     whenJsNoBigInt64:
       result = cast[T](r.next shr (sizeof(uint)*8 - sizeof(T)*8))
@@ -673,7 +670,7 @@ when not defined(standalone):
       import std/[hashes, os, sysrand, monotimes]
 
       when compileOption("threads"):
-        import locks
+        import std/locks
         var baseSeedLock: Lock
         baseSeedLock.initLock
 

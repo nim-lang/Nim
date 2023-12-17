@@ -15,15 +15,16 @@
 ## For corresponding users' documentation see [Nim DocGen Tools Guide].
 
 import
-  ast, strutils, strtabs, algorithm, sequtils, options, msgs, os, idents,
+  ast, options, msgs, idents,
   wordrecg, syntaxes, renderer, lexer,
   packages/docutils/[rst, rstidx, rstgen, dochelpers],
-  json, xmltree, trees, types,
-  typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, tables, nimpaths, renderverbatim, osproc, packages
+  trees, types,
+  typesrenderer, astalgo, lineinfos,
+  pathutils, nimpaths, renderverbatim, packages
 import packages/docutils/rstast except FileIndex, TLineInfo
 
-from uri import encodeUrl
+import std/[os, strutils, strtabs, algorithm, json, osproc, tables, intsets, xmltree, sequtils]
+from std/uri import encodeUrl
 from nodejs import findNodeJs
 
 when defined(nimPreviewSlimSystem):
@@ -170,6 +171,7 @@ proc cmpDecimalsIgnoreCase(a, b: string): int =
 
 proc prettyString(a: object): string =
   # xxx pending std/prettyprint refs https://github.com/nim-lang/RFCs/issues/203#issuecomment-602534906
+  result = ""
   for k, v in fieldPairs(a):
     result.add k & ": " & $v & "\n"
 
@@ -215,12 +217,16 @@ proc whichType(d: PDoc; n: PNode): PSym =
   if n.kind == nkSym:
     if d.types.strTableContains(n.sym):
       result = n.sym
+    else:
+      result = nil
   else:
+    result = nil
     for i in 0..<n.safeLen:
       let x = whichType(d, n[i])
       if x != nil: return x
 
 proc attachToType(d: PDoc; p: PSym): PSym =
+  result = nil
   let params = p.ast[paramsPos]
   template check(i) =
     result = whichType(d, params[i])
@@ -283,7 +289,7 @@ template declareClosures(currentFilename: AbsoluteFile, destFile: string) =
     let outDirPath: RelativeFile =
         presentationPath(conf, AbsoluteFile(basedir / targetRelPath))
           # use presentationPath because `..` path can be be mangled to `_._`
-    result.targetPath = string(conf.outDir / outDirPath)
+    result = (string(conf.outDir / outDirPath), "")
     if not fileExists(result.targetPath):
       # this can happen if targetRelPath goes to parent directory `OUTDIR/..`.
       # Trying it, this may cause ambiguities, but allows us to insert
@@ -343,7 +349,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
 
   if conf.configVars.hasKey("doc.googleAnalytics") and
       conf.configVars.hasKey("doc.plausibleAnalytics"):
-    doAssert false, "Either use googleAnalytics or plausibleAnalytics"
+    raiseAssert "Either use googleAnalytics or plausibleAnalytics"
 
   if conf.configVars.hasKey("doc.googleAnalytics"):
     result.analytics = """
@@ -368,7 +374,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
   result.seenSymbols = newStringTable(modeCaseInsensitive)
   result.id = 100
   result.jEntriesFinal = newJArray()
-  initStrTable result.types
+  result.types = initStrTable()
   result.onTestSnippet =
     proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) {.gcsafe.} =
       if conf.docCmd == docCmdSkip: return
@@ -435,12 +441,14 @@ proc genComment(d: PDoc, n: PNode): PRstNode =
                         d.conf, d.sharedState)
     except ERecoverableError:
       result = newRstNode(rnLiteralBlock, @[newRstLeaf(n.comment)])
+  else:
+    result = nil
 
 proc genRecCommentAux(d: PDoc, n: PNode): PRstNode =
   if n == nil: return nil
   result = genComment(d, n)
   if result == nil:
-    if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef,
+    if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef, nkTypeClassTy,
                   nkObjectTy, nkRefTy, nkPtrTy, nkAsgn, nkFastAsgn, nkSinkAsgn, nkHiddenStdConv}:
       # notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
       for i in 0..<n.len:
@@ -469,6 +477,7 @@ proc getPlainDocstring(n: PNode): string =
   elif startsWith(n.comment, "##"):
     result = n.comment
   else:
+    result = ""
     for i in 0..<n.safeLen:
       result = getPlainDocstring(n[i])
       if result.len > 0: return
@@ -484,9 +493,8 @@ proc externalDep(d: PDoc; module: PSym): string =
 proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var string;
                            renderFlags: TRenderFlags = {};
                            procLink: string) =
-  var r: TSrcGen
+  var r: TSrcGen = initTokRender(n, renderFlags)
   var literal = ""
-  initTokRender(r, n, renderFlags)
   var kind = tkEof
   var tokenPos = 0
   var procTokenPos = 0
@@ -600,7 +608,9 @@ proc runAllExamples(d: PDoc) =
       rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
       # removeFile(outp.changeFileExt(ExeExt)) # it's in nimcache, no need to remove
 
-proc quoted(a: string): string = result.addQuoted(a)
+proc quoted(a: string): string =
+  result = ""
+  result.addQuoted(a)
 
 proc toInstantiationInfo(conf: ConfigRef, info: TLineInfo): (string, int, int) =
   # xxx expose in compiler/lineinfos.nim
@@ -726,7 +736,7 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var ItemPre,
         let (rdoccmd, code) = prepareExample(d, n, topLevel)
         var msg = "Example:"
         if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
-        var s: string
+        var s: string = ""
         dispA(d.conf, s, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
             "\n\n\\textbf{$1}\n", [msg])
         dest.add s
@@ -942,14 +952,17 @@ proc genDeprecationMsg(d: PDoc, n: PNode): string =
     if n[1].kind in {nkStrLit..nkTripleStrLit}:
       result = getConfigVar(d.conf, "doc.deprecationmsg") % [
           "label", "Deprecated:", "message", xmltree.escape(n[1].strVal)]
+    else:
+      result = ""
   else:
-    doAssert false
+    raiseAssert "unreachable"
 
 type DocFlags = enum
   kDefault
   kForceExport
 
 proc genSeeSrc(d: PDoc, path: string, line: int): string =
+  result = ""
   let docItemSeeSrc = getConfigVar(d.conf, "doc.item.seesrc")
   if docItemSeeSrc.len > 0:
     let path = relativeTo(AbsoluteFile path, AbsoluteDir getCurrentDir(), '/')
@@ -987,11 +1000,12 @@ proc getTypeKind(n: PNode): string =
 proc toLangSymbol(k: TSymKind, n: PNode, baseName: string): LangSymbol =
   ## Converts symbol info (names/types/parameters) in `n` into format
   ## `LangSymbol` convenient for ``rst.nim``/``dochelpers.nim``.
-  result.name = baseName.nimIdentNormalize
-  result.symKind = k.toHumanStr
+  result = LangSymbol(name: baseName.nimIdentNormalize,
+      symKind: k.toHumanStr
+  )
   if k in routineKinds:
     var
-      paramTypes: seq[string]
+      paramTypes: seq[string] = @[]
     renderParamTypes(paramTypes, n[paramsPos], toNormalize=true)
     let paramNames = renderParamNames(n[paramsPos], toNormalize=true)
     # In some rare cases (system.typeof) parameter type is not set for default:
@@ -1016,8 +1030,7 @@ proc toLangSymbol(k: TSymKind, n: PNode, baseName: string): LangSymbol =
         genNode = n[miscPos][1]   # FIXME: what is index 1?
     if genNode != nil:
       var literal = ""
-      var r: TSrcGen
-      initTokRender(r, genNode, {renderNoBody, renderNoComments,
+      var r: TSrcGen = initTokRender(genNode, {renderNoBody, renderNoComments,
         renderNoPragmas, renderNoProcDefs, renderExpandUsing})
       var kind = tkEof
       while true:
@@ -1038,15 +1051,14 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
   var result = ""
   var literal, plainName = ""
   var kind = tkEof
-  var comm: ItemPre
+  var comm: ItemPre = default(ItemPre)
   if n.kind in routineDefs:
     getAllRunnableExamples(d, n, comm)
   else:
     comm.add genRecComment(d, n)
 
-  var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
-  initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
+  var r: TSrcGen = initTokRender(n, {renderNoBody, renderNoComments, renderDocComments,
     renderNoPragmas, renderNoProcDefs, renderExpandUsing})
   while true:
     getNextTok(r, kind, literal)
@@ -1145,15 +1157,19 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
   if k == skType and nameNode.kind == nkSym:
     d.types.strTableAdd nameNode.sym
 
-proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonItem =
+proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): JsonItem =
   if not isVisible(d, nameNode): return
   var
     name = getNameEsc(d, nameNode)
     comm = genRecComment(d, n)
     r: TSrcGen
-  initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments, renderExpandUsing})
-  result.json = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
+    renderFlags = {renderNoBody, renderNoComments, renderDocComments, renderExpandUsing}
+  if nonExports:
+    renderFlags.incl renderNonExportedFields
+  r = initTokRender(n, renderFlags)
+  result = JsonItem(json: %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                    "col": %n.info.col}
+  )
   if comm != nil:
     result.rst = comm
     result.rstField = "description"
@@ -1183,10 +1199,9 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonItem =
       result.json["signature"]["genericParams"] = newJArray()
       for genericParam in n[genericParamsPos]:
         var param = %{"name": %($genericParam)}
-        if genericParam.sym.typ.sons.len > 0:
+        if genericParam.sym.typ.len > 0:
           param["types"] = newJArray()
-        for kind in genericParam.sym.typ.sons:
-          param["types"].add %($kind)
+        param["types"].add %($genericParam.sym.typ.elementType)
         result.json["signature"]["genericParams"].add param
   if optGenIndex in d.conf.globalOptions:
     genItem(d, n, nameNode, k, kForceExport)
@@ -1280,6 +1295,8 @@ proc documentNewEffect(cache: IdentCache; n: PNode): PNode =
   let s = n[namePos].sym
   if tfReturnsNew in s.typ.flags:
     result = newIdentNode(getIdent(cache, "new"), n.info)
+  else:
+    result = nil
 
 proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, idx: int): PNode =
   let spec = effectSpec(x, effectType)
@@ -1302,6 +1319,8 @@ proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, id
 
     result = newTreeI(nkExprColonExpr, n.info,
       newIdentNode(getIdent(cache, $effectType), n.info), effects)
+  else:
+    result = nil
 
 proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName: string): PNode =
   let s = n[namePos].sym
@@ -1315,6 +1334,8 @@ proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName
   if effects.len > 0:
     result = newTreeI(nkExprColonExpr, n.info,
       newIdentNode(getIdent(cache, pragmaName), n.info), effects)
+  else:
+    result = nil
 
 proc documentRaises*(cache: IdentCache; n: PNode) =
   if n[namePos].kind != nkSym: return
@@ -1380,7 +1401,8 @@ proc generateDoc*(d: PDoc, n, orig: PNode, config: ConfigRef, docFlags: DocFlags
     for it in n: traceDeps(d, it)
   of nkExportStmt:
     for it in n:
-      if it.kind == nkSym:
+      # bug #23051; don't generate documentation for exported symbols again
+      if it.kind == nkSym and sfExported notin it.sym.flags:
         if d.module != nil and d.module == it.sym.owner:
           generateDoc(d, it.sym.ast, orig, config, kForceExport)
         elif it.sym.ast != nil:
@@ -1388,7 +1410,7 @@ proc generateDoc*(d: PDoc, n, orig: PNode, config: ConfigRef, docFlags: DocFlags
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
   of nkCallKinds:
-    var comm: ItemPre
+    var comm: ItemPre = default(ItemPre)
     getAllRunnableExamples(d, n, comm)
     if comm.len != 0: d.modDescPre.add(comm)
   else: discard
@@ -1497,7 +1519,7 @@ proc finishGenerateDoc*(d: var PDoc) =
       overloadChoices.sort(cmp)
       var nameContent = ""
       for item in overloadChoices:
-        var itemDesc: string
+        var itemDesc: string = ""
         renderItemPre(d, item.descRst, itemDesc)
         nameContent.add(
           getConfigVar(d.conf, "doc.item") % (
@@ -1523,7 +1545,7 @@ proc finishGenerateDoc*(d: var PDoc) =
   for i, entry in d.jEntriesPre:
     if entry.rst != nil:
       let resolved = resolveSubs(d.sharedState, entry.rst)
-      var str: string
+      var str: string = ""
       renderRstToOut(d[], resolved, str)
       entry.json[entry.rstField] = %str
       d.jEntriesPre[i].rst = nil
@@ -1536,7 +1558,7 @@ proc finishGenerateDoc*(d: var PDoc) =
 proc add(d: PDoc; j: JsonItem) =
   if j.json != nil or j.rst != nil: d.jEntriesPre.add j
 
-proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
+proc generateJson*(d: PDoc, n: PNode, config: ConfigRef, includeComments: bool = true) =
   case n.kind
   of nkPragma:
     let doctypeNode = findPragma(n, wDoctype)
@@ -1568,14 +1590,14 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
       if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         d.add genJsonItem(d, n[i], n[i][0],
-                succ(skType, ord(n.kind)-ord(nkTypeSection)))
+                succ(skType, ord(n.kind)-ord(nkTypeSection)), optShowNonExportedFields in config.globalOptions)
   of nkStmtList:
     for i in 0..<n.len:
-      generateJson(d, n[i], includeComments)
+      generateJson(d, n[i], config, includeComments)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n[0][0]):
-      generateJson(d, lastSon(n[0]), includeComments)
+      generateJson(d, lastSon(n[0]), config, includeComments)
   else: discard
 
 proc genTagsItem(d: PDoc, n, nameNode: PNode, k: TSymKind): string =
@@ -1638,7 +1660,7 @@ proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
     for plainName in overloadableNames.sorted(cmpDecimalsIgnoreCase):
       var overloadChoices = d.tocTable[kind][plainName]
       overloadChoices.sort(cmp)
-      var content: string
+      var content: string = ""
       for item in overloadChoices:
         content.add item.content
       d.toc2[kind].add getConfigVar(d.conf, "doc.section.toc2") % [
@@ -1669,7 +1691,7 @@ proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile):
 
 proc genOutFile(d: PDoc, groupedToc = false): string =
   var
-    code, content: string
+    code, content: string = ""
     title = ""
   var j = 0
   var toc = ""
@@ -1720,7 +1742,7 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
         "moduledesc", d.modDescFinal, "date", getDateStr(), "time", getClockStr(),
         "content", content, "author", d.meta[metaAuthor],
         "version", esc(d.target, d.meta[metaVersion]), "analytics", d.analytics,
-        "deprecationMsg", d.modDeprecationMsg]
+        "deprecationMsg", d.modDeprecationMsg, "nimVersion", $NimMajor & "." & $NimMinor & "." & $NimPatch]
   else:
     code = content
   result = code
@@ -1778,7 +1800,7 @@ proc writeOutput*(d: PDoc, useWarning = false, groupedToc = false) =
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
   runAllExamples(d)
-  var modDesc: string
+  var modDesc: string = ""
   for desc in d.modDescFinal:
     modDesc &= desc
   let content = %*{"orig": d.filename,
@@ -1786,11 +1808,11 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
     "moduleDescription": modDesc,
     "entries": d.jEntriesFinal}
   if optStdout in d.conf.globalOptions:
-    write(stdout, $content)
+    writeLine(stdout, $content)
   else:
     let dir = d.destFile.splitFile.dir
     createDir(dir)
-    var f: File
+    var f: File = default(File)
     if open(f, d.destFile, fmWrite):
       write(f, $content)
       close(f)
@@ -1852,7 +1874,7 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
                           status: int; content: string) {.gcsafe.} =
     localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
                warnUser, "the ':test:' attribute is not supported by this backend")
-  generateJson(d, ast)
+  generateJson(d, ast, conf)
   finishGenerateDoc(d)
   let json = d.jEntriesFinal
   let content = pretty(json)
@@ -1904,7 +1926,7 @@ proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") 
       "title", "Index",
       "subtitle", "", "tableofcontents", "", "moduledesc", "",
       "date", getDateStr(), "time", getClockStr(),
-      "content", content, "author", "", "version", "", "analytics", ""]
+      "content", content, "author", "", "version", "", "analytics", "", "nimVersion", $NimMajor & "." & $NimMinor & "." & $NimPatch]
   # no analytics because context is not available
 
   try:

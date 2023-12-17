@@ -17,7 +17,7 @@
 ## * `sets module <sets.html>`_ for more general hash sets
 
 import std/private/since
-import hashes
+import std/hashes
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -109,7 +109,6 @@ proc intSetPut[A](t: var PackedSet[A], key: int): Trunk =
   t.data[h] = result
 
 proc bitincl[A](s: var PackedSet[A], key: int) {.inline.} =
-  var ret: Trunk
   var t = intSetPut(s, key shr TrunkShift)
   var u = key and TrunkMask
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or
@@ -199,6 +198,7 @@ proc contains*[A](s: PackedSet[A], key: A): bool =
     assert B notin letters
 
   if s.elems <= s.a.len:
+    result = false
     for i in 0..<s.elems:
       if s.a[i] == ord(key): return true
   else:

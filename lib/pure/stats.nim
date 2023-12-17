@@ -53,7 +53,7 @@ runnableExamples:
   doAssert statistics.kurtosis() ~= -1.0
   doAssert statistics.kurtosisS() ~= -0.7000000000000008
 
-from math import FloatClass, sqrt, pow, round
+from std/math import FloatClass, sqrt, pow, round
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, formatfloat]

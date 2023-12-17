@@ -10,9 +10,6 @@
 # This include implements the high level optimization pass.
 # included from sem.nim
 
-when defined(nimPreviewSlimSystem):
-  import std/assertions
-
 proc hlo(c: PContext, n: PNode): PNode
 
 proc evalPattern(c: PContext, n, orig: PNode): PNode =
@@ -20,9 +17,11 @@ proc evalPattern(c: PContext, n, orig: PNode): PNode =
   # we need to ensure that the resulting AST is semchecked. However, it's
   # awful to semcheck before macro invocation, so we don't and treat
   # templates and macros as immediate in this context.
-  var rule: string
-  if c.config.hasHint(hintPattern):
-    rule = renderTree(n, {renderNoComments})
+  var rule: string =
+    if c.config.hasHint(hintPattern):
+      renderTree(n, {renderNoComments})
+    else:
+      ""
   let s = n[0].sym
   case s.kind
   of skMacro:
@@ -73,7 +72,7 @@ proc hlo(c: PContext, n: PNode): PNode =
   else:
     if n.kind in {nkFastAsgn, nkAsgn, nkSinkAsgn, nkIdentDefs, nkVarTuple} and
         n[0].kind == nkSym and
-        {sfGlobal, sfPure} * n[0].sym.flags == {sfGlobal, sfPure}:
+        {sfGlobal, sfPure} <= n[0].sym.flags:
       # do not optimize 'var g {.global} = re(...)' again!
       return n
     result = applyPatterns(c, n)

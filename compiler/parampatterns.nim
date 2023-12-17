@@ -10,8 +10,10 @@
 ## This module implements the pattern matching features for term rewriting
 ## macro support.
 
-import strutils, ast, types, msgs, idents, renderer, wordrecg, trees,
+import ast, types, msgs, idents, renderer, wordrecg, trees,
   options
+
+import std/strutils
 
 # we precompile the pattern here for efficiency into some internal
 # stack based VM :-) Why? Because it's fun; I did no benchmarks to see if that
@@ -184,6 +186,7 @@ type
     arStrange                 # it is a strange beast like 'typedesc[var T]'
 
 proc exprRoot*(n: PNode; allowCalls = true): PSym =
+  result = nil
   var it = n
   while true:
     case it.kind

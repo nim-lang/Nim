@@ -16,7 +16,7 @@ from trees import getMagic, getRoot
 proc callProc(a: PNode): PNode =
   result = newNodeI(nkCall, a.info)
   result.add a
-  result.typ = a.typ[0]
+  result.typ = a.typ.returnType
 
 # we have 4 cases to consider:
 # - a void proc --> nothing to do
@@ -50,7 +50,7 @@ proc typeNeedsNoDeepCopy(t: PType): bool =
   # note that seq[T] is fine, but 'var seq[T]' is not, so we need to skip 'var'
   # for the stricter check and likewise we can skip 'seq' for a less
   # strict check:
-  if t.kind in {tyVar, tyLent, tySequence}: t = t.lastSon
+  if t.kind in {tyVar, tyLent, tySequence}: t = t.elementType
   result = not containsGarbageCollectedRef(t)
 
 proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; idgen: IdGenerator; owner: PSym; typ: PType;
@@ -114,7 +114,7 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
                        idgen: IdGenerator;
                        spawnKind: TSpawnResult, result: PSym) =
   var body = newNodeI(nkStmtList, f.info)
-  var threadLocalBarrier: PSym
+  var threadLocalBarrier: PSym = nil
   if barrier != nil:
     var varSection2 = newNodeI(nkVarSection, barrier.info)
     threadLocalBarrier = addLocalVar(g, varSection2, nil, idgen, result,
@@ -122,7 +122,7 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
     body.add varSection2
     body.add callCodegenProc(g, "barrierEnter", threadLocalBarrier.info,
       threadLocalBarrier.newSymNode)
-  var threadLocalProm: PSym
+  var threadLocalProm: PSym = nil
   if spawnKind == srByVar:
     threadLocalProm = addLocalVar(g, varSection, nil, idgen, result, fv.typ, fv)
   elif fv != nil:
@@ -141,10 +141,10 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif fv != nil:
-    let fk = flowVarKind(g.config, fv.typ[1])
+    let fk = flowVarKind(g.config, fv.typ.firstGenericParam)
     if fk == fvInvalid:
       localError(g.config, f.info, "cannot create a flowVar of type: " &
-        typeToString(fv.typ[1]))
+        typeToString(fv.typ.firstGenericParam))
     body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
       if fk == fvGC: "data" else: "blob", fv.info, g.cache), call)
     if fk == fvGC:
@@ -169,7 +169,7 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   params.add threadParam.newSymNode
   params.add argsParam.newSymNode
 
-  var t = newType(tyProc, nextTypeId idgen, threadParam.owner)
+  var t = newType(tyProc, idgen, threadParam.owner)
   t.rawAddSon nil
   t.rawAddSon threadParam.typ
   t.rawAddSon argsParam.typ
@@ -189,11 +189,11 @@ proc createCastExpr(argsParam: PSym; objType: PType; idgen: IdGenerator): PNode 
   result = newNodeI(nkCast, argsParam.info)
   result.add newNodeI(nkEmpty, argsParam.info)
   result.add newSymNode(argsParam)
-  result.typ = newType(tyPtr, nextTypeId idgen, objType.owner)
+  result.typ = newType(tyPtr, idgen, objType.owner)
   result.typ.rawAddSon(objType)
 
 template checkMagicProcs(g: ModuleGraph, n: PNode, formal: PNode) =
-  if (formal.typ.kind == tyVarargs and formal.typ[0].kind in {tyTyped, tyUntyped}) or
+  if (formal.typ.kind == tyVarargs and formal.typ.elementType.kind in {tyTyped, tyUntyped}) or
           formal.typ.kind in {tyTyped, tyUntyped}:
     localError(g.config, n.info, "'spawn'ed function cannot have a 'typed' or 'untyped' parameter")
 
@@ -395,7 +395,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
 
   var barrierAsExpr: PNode = nil
   if barrier != nil:
-    let typ = newType(tyPtr, nextTypeId idgen, owner)
+    let typ = newType(tyPtr, idgen, owner)
     typ.rawAddSon(magicsys.getCompilerProc(g, "Barrier").typ)
     var field = newSym(skField, getIdent(g.cache, "barrier"), idgen, owner, n.info, g.config.options)
     field.typ = typ
@@ -417,7 +417,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
 
   elif spawnKind == srByVar:
     var field = newSym(skField, getIdent(g.cache, "fv"), idgen, owner, n.info, g.config.options)
-    field.typ = newType(tyPtr, nextTypeId idgen, objType.owner)
+    field.typ = newType(tyPtr, idgen, objType.owner)
     field.typ.rawAddSon(retType)
     discard objType.addField(field, g.cache, idgen)
     fvAsExpr = indirectAccess(castExpr, field, n.info)

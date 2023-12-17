@@ -73,8 +73,8 @@ jobs:
 
     - task: NodeTool@0
       inputs:
-        versionSpec: '16.x'
-      displayName: 'Install node.js 16.x'
+        versionSpec: '20.x'
+      displayName: 'Install node.js 20.x'
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
 
     - bash: |

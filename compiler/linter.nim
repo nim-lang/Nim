@@ -19,10 +19,12 @@ const
   Letters* = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '_'}
 
 proc identLen*(line: string, start: int): int =
+  result = 0
   while start+result < line.len and line[start+result] in Letters:
     inc result
 
 proc `=~`(s: string, a: openArray[string]): bool =
+  result = false
   for x in a:
     if s.startsWith(x): return true
 

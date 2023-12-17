@@ -11,7 +11,9 @@
 ## https://github.com/nim-lang/RFCs/issues/244 for more details.
 
 import
-  ast, types, renderer, intsets
+  ast, types, renderer
+
+import std/intsets
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -21,6 +23,7 @@ proc canAlias(arg, ret: PType; marker: var IntSet): bool
 proc canAliasN(arg: PType; n: PNode; marker: var IntSet): bool =
   case n.kind
   of nkRecList:
+    result = false
     for i in 0..<n.len:
       result = canAliasN(arg, n[i], marker)
       if result: return
@@ -36,7 +39,7 @@ proc canAliasN(arg: PType; n: PNode; marker: var IntSet): bool =
       else: discard
   of nkSym:
     result = canAlias(arg, n.sym.typ, marker)
-  else: discard
+  else: result = false
 
 proc canAlias(arg, ret: PType; marker: var IntSet): bool =
   if containsOrIncl(marker, ret.id):
@@ -51,17 +54,18 @@ proc canAlias(arg, ret: PType; marker: var IntSet): bool =
   of tyObject:
     if isFinal(ret):
       result = canAliasN(arg, ret.n, marker)
-      if not result and ret.len > 0 and ret[0] != nil:
-        result = canAlias(arg, ret[0], marker)
+      if not result and ret.baseClass != nil:
+        result = canAlias(arg, ret.baseClass, marker)
     else:
       result = true
   of tyTuple:
-    for i in 0..<ret.len:
-      result = canAlias(arg, ret[i], marker)
+    result = false
+    for r in ret.kids:
+      result = canAlias(arg, r, marker)
       if result: break
   of tyArray, tySequence, tyDistinct, tyGenericInst,
      tyAlias, tyInferred, tySink, tyLent, tyOwned, tyRef:
-    result = canAlias(arg, ret.lastSon, marker)
+    result = canAlias(arg, ret.skipModifier, marker)
   of tyProc:
     result = ret.callConv == ccClosure
   else:
@@ -115,14 +119,16 @@ proc containsDangerousRefAux(t: PType; marker: var IntSet): SearchResult =
   if result != NotFound: return result
   case t.kind
   of tyObject:
-    if t[0] != nil:
-      result = containsDangerousRefAux(t[0].skipTypes(skipPtrs), marker)
+    if t.baseClass != nil:
+      result = containsDangerousRefAux(t.baseClass.skipTypes(skipPtrs), marker)
     if result == NotFound: result = containsDangerousRefAux(t.n, marker)
   of tyGenericInst, tyDistinct, tyAlias, tySink:
-    result = containsDangerousRefAux(lastSon(t), marker)
-  of tyArray, tySet, tyTuple, tySequence:
-    for i in 0..<t.len:
-      result = containsDangerousRefAux(t[i], marker)
+    result = containsDangerousRefAux(skipModifier(t), marker)
+  of tyArray, tySet, tySequence:
+    result = containsDangerousRefAux(t.elementType, marker)
+  of tyTuple:
+    for a in t.kids:
+      result = containsDangerousRefAux(a, marker)
       if result == Found: return result
   else:
     discard
@@ -184,10 +190,12 @@ proc checkIsolate*(n: PNode): bool =
               return false
       result = true
     of nkIfStmt, nkIfExpr:
+      result = false
       for it in n:
         result = checkIsolate(it.lastSon)
         if not result: break
     of nkCaseStmt:
+      result = false
       for i in 1..<n.len:
         result = checkIsolate(n[i].lastSon)
         if not result: break
@@ -197,6 +205,7 @@ proc checkIsolate*(n: PNode): bool =
         result = checkIsolate(n[i].lastSon)
         if not result: break
     of nkBracket, nkTupleConstr, nkPar:
+      result = false
       for it in n:
         result = checkIsolate(it)
         if not result: break

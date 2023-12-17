@@ -49,8 +49,10 @@ when isMainModule or defined(nimTestGrammar):
     checkGrammarFile()
 
 import
-  llstream, lexer, idents, strutils, ast, msgs, options, lineinfos,
+  llstream, lexer, idents, ast, msgs, options, lineinfos,
   pathutils
+
+import std/strutils
 
 when defined(nimpretty):
   import layouter
@@ -80,10 +82,6 @@ type
 
   PrimaryMode = enum
     pmNormal, pmTypeDesc, pmTypeDef, pmTrySimple
-
-proc parseAll*(p: var Parser): PNode
-proc closeParser*(p: var Parser)
-proc parseTopLevelStmt*(p: var Parser): PNode
 
 # helpers for the other parsers
 proc isOperator*(tok: Token): bool
@@ -142,7 +140,7 @@ proc openParser*(p: var Parser, fileIdx: FileIndex, inputStream: PLLStream,
                  cache: IdentCache; config: ConfigRef) =
   ## Open a parser, using the given arguments to set up its internal state.
   ##
-  initToken(p.tok)
+  reset(p.tok)
   openLexer(p.lex, fileIdx, inputStream, cache, config)
   when defined(nimpretty):
     openEmitter(p.em, cache, config, fileIdx)
@@ -154,11 +152,9 @@ proc openParser*(p: var Parser, filename: AbsoluteFile, inputStream: PLLStream,
                  cache: IdentCache; config: ConfigRef) =
   openParser(p, fileInfoIdx(config, filename), inputStream, cache, config)
 
-proc closeParser(p: var Parser) =
+proc closeParser*(p: var Parser) =
   ## Close a parser, freeing up its resources.
   closeLexer(p.lex)
-  when defined(nimpretty):
-    closeEmitter(p.em)
 
 proc parMessage(p: Parser, msg: TMsgKind, arg = "") =
   ## Produce and emit the parser message `arg` to output.
@@ -310,7 +306,7 @@ proc checkBinary(p: Parser) {.inline.} =
     if p.tok.spacing == {tsTrailing}:
       parMessage(p, warnInconsistentSpacing, prettyTok(p.tok))
 
-#| module = stmt ^* (';' / IND{=})
+#| module = complexOrSimpleStmt ^* (';' / IND{=})
 #|
 #| comma = ',' COMMENT?
 #| semicolon = ';' COMMENT?
@@ -1177,6 +1173,7 @@ proc optPragmas(p: var Parser): PNode =
 
 proc parseDoBlock(p: var Parser; info: TLineInfo): PNode =
   #| doBlock = 'do' paramListArrow pragma? colcom stmt
+  result = nil
   var params = parseParamList(p, retColon=false)
   let pragmas = optPragmas(p)
   colcom(p, result)
@@ -1430,6 +1427,7 @@ proc parseTypeDesc(p: var Parser, fullExpr = false): PNode =
       result = newNodeP(nkObjectTy, p)
       getTok(p)
     of tkConcept:
+      result = nil
       parMessage(p, "the 'concept' keyword is only valid in 'type' sections")
     of tkVar: result = parseTypeDescKAux(p, nkVarTy, pmTypeDesc)
     of tkOut: result = parseTypeDescKAux(p, nkOutTy, pmTypeDesc)
@@ -2285,7 +2283,7 @@ proc parseTypeDef(p: var Parser): PNode =
   setEndInfo()
 
 proc parseVarTuple(p: var Parser): PNode =
-  #| varTupleLhs = '(' optInd (identWithPragma / varTupleLhs) ^+ comma optPar ')'
+  #| varTupleLhs = '(' optInd (identWithPragma / varTupleLhs) ^+ comma optPar ')' (':' optInd typeDescExpr)?
   #| varTuple = varTupleLhs '=' optInd expr
   result = newNodeP(nkVarTuple, p)
   getTok(p)                   # skip '('
@@ -2302,9 +2300,14 @@ proc parseVarTuple(p: var Parser): PNode =
     if p.tok.tokType != tkComma: break
     getTok(p)
     skipComment(p, a)
-  result.add(p.emptyNode)         # no type desc
   optPar(p)
   eat(p, tkParRi)
+  if p.tok.tokType == tkColon:
+    getTok(p)
+    optInd(p, result)
+    result.add(parseTypeDesc(p, fullExpr = true))
+  else:
+    result.add(p.emptyNode)         # no type desc
   setEndInfo()
 
 proc parseVariable(p: var Parser): PNode =
@@ -2511,7 +2514,7 @@ proc parseStmt(p: var Parser): PNode =
           if err and p.tok.tokType == tkEof: break
   setEndInfo()
 
-proc parseAll(p: var Parser): PNode =
+proc parseAll*(p: var Parser): PNode =
   ## Parses the rest of the input stream held by the parser into a PNode.
   result = newNodeP(nkStmtList, p)
   while p.tok.tokType != tkEof:
@@ -2531,7 +2534,7 @@ proc checkFirstLineIndentation*(p: var Parser) =
   if p.tok.indent != 0 and tsLeading in p.tok.spacing:
     parMessage(p, errInvalidIndentation)
 
-proc parseTopLevelStmt(p: var Parser): PNode =
+proc parseTopLevelStmt*(p: var Parser): PNode =
   ## Implements an iterator which, when called repeatedly, returns the next
   ## top-level statement or emptyNode if end of stream.
   result = p.emptyNode
@@ -2571,7 +2574,7 @@ proc parseString*(s: string; cache: IdentCache; config: ConfigRef;
   var stream = llStreamOpen(s)
   stream.lineOffset = line
 
-  var p: Parser
+  var p = Parser()
   p.lex.errorHandler = errorHandler
   openParser(p, AbsoluteFile filename, stream, cache, config)
 

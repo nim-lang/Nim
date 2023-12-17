@@ -12,11 +12,11 @@
 ## - recognize "all paths lead to 'wasMoved(x)'"
 
 import
-  ast, renderer, idents, intsets
+  ast, renderer, idents
 
 from trees import exprStructuralEquivalent
 
-import std/strutils
+import std/[strutils, intsets]
 
 const
   nfMarkForDeletion = nfNone # faster than a lookup table
@@ -66,7 +66,7 @@ proc mergeBasicBlockInfo(parent: var BasicBlock; this: BasicBlock) {.inline.} =
 proc wasMovedTarget(matches: var IntSet; branch: seq[PNode]; moveTarget: PNode): bool =
   result = false
   for i in 0..<branch.len:
-    if exprStructuralEquivalent(branch[i][1].skipAddr, moveTarget,
+    if exprStructuralEquivalent(branch[i][1].skipHiddenAddr, moveTarget,
                                 strictSymEquality = true):
       result = true
       matches.incl i
@@ -76,7 +76,7 @@ proc intersect(summary: var seq[PNode]; branch: seq[PNode]) =
   var i = 0
   var matches = initIntSet()
   while i < summary.len:
-    if wasMovedTarget(matches, branch, summary[i][1].skipAddr):
+    if wasMovedTarget(matches, branch, summary[i][1].skipHiddenAddr):
       inc i
     else:
       summary.del i
@@ -87,7 +87,7 @@ proc intersect(summary: var seq[PNode]; branch: seq[PNode]) =
 proc invalidateWasMoved(c: var BasicBlock; x: PNode) =
   var i = 0
   while i < c.wasMovedLocs.len:
-    if exprStructuralEquivalent(c.wasMovedLocs[i][1].skipAddr, x,
+    if exprStructuralEquivalent(c.wasMovedLocs[i][1].skipHiddenAddr, x,
                                 strictSymEquality = true):
       c.wasMovedLocs.del i
     else:
@@ -96,7 +96,7 @@ proc invalidateWasMoved(c: var BasicBlock; x: PNode) =
 proc wasMovedDestroyPair(c: var Con; b: var BasicBlock; d: PNode) =
   var i = 0
   while i < b.wasMovedLocs.len:
-    if exprStructuralEquivalent(b.wasMovedLocs[i][1].skipAddr, d[1].skipAddr,
+    if exprStructuralEquivalent(b.wasMovedLocs[i][1].skipHiddenAddr, d[1].skipHiddenAddr,
                                 strictSymEquality = true):
       b.wasMovedLocs[i].flags.incl nfMarkForDeletion
       c.somethingTodo = true
@@ -279,7 +279,7 @@ proc optimize*(n: PNode): PNode =
 
     Now assume 'use' raises, then we shouldn't do the 'wasMoved(s)'
   ]#
-  var c: Con
+  var c: Con = Con()
   var b: BasicBlock
   analyse(c, b, n)
   if c.somethingTodo:

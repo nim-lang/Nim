@@ -1,16 +1,16 @@
 const
-  NimMajor* {.intdefine.}: int = 1
+  NimMajor* {.intdefine.}: int = 2
     ## is the major number of Nim's version. Example:
-    ##   ```
+    ##   ```nim
     ##   when (NimMajor, NimMinor, NimPatch) >= (1, 3, 1): discard
     ##   ```
     # see also std/private/since
 
-  NimMinor* {.intdefine.}: int = 9
+  NimMinor* {.intdefine.}: int = 1
     ## is the minor number of Nim's version.
     ## Odd for devel, even for releases.
 
-  NimPatch* {.intdefine.}: int = 5
+  NimPatch* {.intdefine.}: int = 1
     ## is the patch number of Nim's version.
     ## Odd for devel, even for releases.
 
@@ -40,7 +40,7 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## `x` is an external symbol introduced through the compiler's
   ## `-d:x switch <nimc.html#compiler-usage-compileminustime-symbols>`_ to enable
   ## build time conditionals:
-  ##   ```
+  ##   ```nim
   ##   when not defined(release):
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
@@ -57,7 +57,7 @@ proc declared*(x: untyped): bool {.magic: "Declared", noSideEffect, compileTime.
   ##
   ## This can be used to check whether a library provides a certain
   ## feature or not:
-  ##   ```
+  ##   ```nim
   ##   when not declared(strutils.toUpper):
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
@@ -74,7 +74,7 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
   ## Special compile-time procedure that checks whether `x` can be compiled
   ## without any semantic error.
   ## This can be used to check whether a type supports some operation:
-  ##   ```
+  ##   ```nim
   ##   when compiles(3 + 4):
   ##     echo "'+' for integers is available"
   ##   ```
@@ -164,7 +164,7 @@ proc staticRead*(filename: string): string {.magic: "Slurp".}
   ##
   ## The maximum file size limit that `staticRead` and `slurp` can read is
   ## near or equal to the *free* memory of the device you are using to compile.
-  ##   ```
+  ##   ```nim
   ##   const myResource = staticRead"mydatafile.bin"
   ##   ```
   ##
@@ -181,7 +181,7 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ##
   ## If `input` is not an empty string, it will be passed as a standard input
   ## to the executed program.
-  ##   ```
+  ##   ```nim
   ##   const buildInfo = "Revision " & staticExec("git rev-parse HEAD") &
   ##                     "\nCompiled on " & staticExec("uname -v")
   ##   ```
@@ -197,7 +197,7 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ## behaviour then. `command & input & cache` (the concatenated string) is
   ## used to determine whether the entry in the cache is still valid. You can
   ## use versioning information for `cache`:
-  ##   ```
+  ##   ```nim
   ##   const stateMachine = staticExec("dfaoptimizer", "input", "0.8.0")
   ##   ```
 

@@ -226,11 +226,11 @@
 ## ``none`` can be used when a library supports both a synchronous and
 ## asynchronous API, to disable the latter.
 
-import os, tables, strutils, times, heapqueue, options, asyncstreams
-import options, math, std/monotimes
-import asyncfutures except callSoon
+import std/[os, tables, strutils, times, heapqueue, options, asyncstreams]
+import std/[math, monotimes]
+import std/asyncfutures except callSoon
 
-import nativesockets, net, deques
+import std/[nativesockets, net, deques]
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]
@@ -302,7 +302,7 @@ template implementSetInheritable() {.dirty.} =
       fd.FileHandle.setInheritable(inheritable)
 
 when defined(windows) or defined(nimdoc):
-  import winlean, sets, hashes
+  import std/[winlean, sets, hashes]
   type
     CompletionKey = ULONG_PTR
 
@@ -533,7 +533,7 @@ when defined(windows) or defined(nimdoc):
             if flags.isDisconnectionError(errcode):
               retFuture.complete("")
             else:
-              retFuture.fail(newException(OSError, osErrorMsg(errcode)))
+              retFuture.fail(newOSError(errcode))
         if dataBuf.buf != nil:
           dealloc dataBuf.buf
           dataBuf.buf = nil
@@ -551,7 +551,7 @@ when defined(windows) or defined(nimdoc):
         if flags.isDisconnectionError(err):
           retFuture.complete("")
         else:
-          retFuture.fail(newException(OSError, osErrorMsg(err)))
+          retFuture.fail(newOSError(err))
     elif ret == 0:
       # Request completed immediately.
       if bytesReceived != 0:
@@ -603,7 +603,7 @@ when defined(windows) or defined(nimdoc):
             if flags.isDisconnectionError(errcode):
               retFuture.complete(0)
             else:
-              retFuture.fail(newException(OSError, osErrorMsg(errcode)))
+              retFuture.fail(newOSError(errcode))
         if dataBuf.buf != nil:
           dataBuf.buf = nil
     )
@@ -619,7 +619,7 @@ when defined(windows) or defined(nimdoc):
         if flags.isDisconnectionError(err):
           retFuture.complete(0)
         else:
-          retFuture.fail(newException(OSError, osErrorMsg(err)))
+          retFuture.fail(newOSError(err))
     elif ret == 0:
       # Request completed immediately.
       if bytesReceived != 0:
@@ -667,7 +667,7 @@ when defined(windows) or defined(nimdoc):
         if flags.isDisconnectionError(err):
           retFuture.complete()
         else:
-          retFuture.fail(newException(OSError, osErrorMsg(err)))
+          retFuture.fail(newOSError(err))
     else:
       retFuture.complete()
       # We don't deallocate `ol` here because even though this completed
@@ -702,7 +702,7 @@ when defined(windows) or defined(nimdoc):
           if errcode == OSErrorCode(-1):
             retFuture.complete()
           else:
-            retFuture.fail(newException(OSError, osErrorMsg(errcode)))
+            retFuture.fail(newOSError(errcode))
     )
 
     let ret = WSASendTo(socket.SocketHandle, addr dataBuf, 1, addr bytesSent,
@@ -712,7 +712,7 @@ when defined(windows) or defined(nimdoc):
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
         GC_unref(ol)
-        retFuture.fail(newException(OSError, osErrorMsg(err)))
+        retFuture.fail(newOSError(err))
     else:
       retFuture.complete()
       # We don't deallocate `ol` here because even though this completed
@@ -746,7 +746,7 @@ when defined(windows) or defined(nimdoc):
           else:
             # datagram sockets don't have disconnection,
             # so we can just raise an exception
-            retFuture.fail(newException(OSError, osErrorMsg(errcode)))
+            retFuture.fail(newOSError(errcode))
     )
 
     let res = WSARecvFrom(socket.SocketHandle, addr dataBuf, 1,
@@ -757,7 +757,7 @@ when defined(windows) or defined(nimdoc):
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
         GC_unref(ol)
-        retFuture.fail(newException(OSError, osErrorMsg(err)))
+        retFuture.fail(newOSError(err))
     else:
       # Request completed immediately.
       if bytesReceived != 0:
@@ -808,7 +808,7 @@ when defined(windows) or defined(nimdoc):
             else:
               retFuture.complete(newAcceptFut.read)
       else:
-        retFuture.fail(newException(OSError, osErrorMsg(errcode)))
+        retFuture.fail(newOSError(errcode))
 
     template completeAccept() {.dirty.} =
       var listenSock = socket
@@ -1166,11 +1166,11 @@ when defined(windows) or defined(nimdoc):
 
   initAll()
 else:
-  import selectors
-  from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
+  import std/selectors
+  from std/posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
                     MSG_NOSIGNAL
   when declared(posix.accept4):
-    from posix import accept4, SOCK_CLOEXEC
+    from std/posix import accept4, SOCK_CLOEXEC
   when defined(genode):
     import genode/env # get the implicit Genode env
     import genode/signals
@@ -1468,7 +1468,7 @@ else:
           if flags.isDisconnectionError(lastError):
             retFuture.complete("")
           else:
-            retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+            retFuture.fail(newOSError(lastError))
         else:
           result = false # We still want this callback to be called.
       elif res == 0:
@@ -1497,7 +1497,7 @@ else:
           if flags.isDisconnectionError(lastError):
             retFuture.complete(0)
           else:
-            retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+            retFuture.fail(newOSError(lastError))
         else:
           result = false # We still want this callback to be called.
       else:
@@ -1563,7 +1563,7 @@ else:
         let lastError = osLastError()
         if lastError.int32 != EINTR and lastError.int32 != EWOULDBLOCK and
            lastError.int32 != EAGAIN:
-          retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+          retFuture.fail(newOSError(lastError))
         else:
           result = false # We still want this callback to be called.
       else:
@@ -1589,7 +1589,7 @@ else:
         let lastError = osLastError()
         if lastError.int32 != EINTR and lastError.int32 != EWOULDBLOCK and
            lastError.int32 != EAGAIN:
-          retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+          retFuture.fail(newOSError(lastError))
         else:
           result = false
       else:
@@ -1630,7 +1630,7 @@ else:
           if flags.isDisconnectionError(lastError):
             return false
           else:
-            retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+            retFuture.fail(newOSError(lastError))
       else:
         try:
           let address = getAddrString(cast[ptr SockAddr](addr sockAddress))
@@ -1763,7 +1763,7 @@ when defined(windows) or defined(nimdoc):
             socket.SocketHandle.setSockOptInt(SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, 1) # 15022
             retFuture.complete()
           else:
-            retFuture.fail(newException(OSError, osErrorMsg(errcode)))
+            retFuture.fail(newOSError(errcode))
     )
 
     let ret = connectEx(socket.SocketHandle, addrInfo.ai_addr,
@@ -1781,7 +1781,7 @@ when defined(windows) or defined(nimdoc):
         # With ERROR_IO_PENDING `ol` will be deallocated in `poll`,
         # and the future will be completed/failed there, too.
         GC_unref(ol)
-        retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+        retFuture.fail(newOSError(lastError))
 else:
   proc doConnect(socket: AsyncFD, addrInfo: ptr AddrInfo): owned(Future[void]) =
     let retFuture = newFuture[void]("doConnect")
@@ -1798,7 +1798,7 @@ else:
         # interrupted, keep waiting
         return false
       else:
-        retFuture.fail(newException(OSError, osErrorMsg(OSErrorCode(ret))))
+        retFuture.fail(newOSError(OSErrorCode(ret)))
         return true
 
     let ret = connect(socket.SocketHandle,
@@ -1812,7 +1812,7 @@ else:
       if lastError.int32 == EINTR or lastError.int32 == EINPROGRESS:
         addWrite(socket, cb)
       else:
-        retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+        retFuture.fail(newOSError(lastError))
 
 template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
                            protocol: Protocol = IPPROTO_RAW) =
@@ -1994,7 +1994,7 @@ proc send*(socket: AsyncFD, data: string,
   return retFuture
 
 # -- Await Macro
-import asyncmacro
+import std/asyncmacro
 export asyncmacro
 
 proc readAll*(future: FutureStream[string]): owned(Future[string]) {.async.} =
@@ -2032,7 +2032,7 @@ proc activeDescriptors*(): int {.inline.} =
     result = getGlobalDispatcher().selector.count
 
 when defined(posix):
-  import posix
+  import std/posix
 
 when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
        defined(solaris) or defined(zephyr) or defined(freertos) or defined(nuttx) or defined(haiku):

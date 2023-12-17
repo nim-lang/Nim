@@ -154,6 +154,7 @@ lib/posix/posix_openbsd_amd64.nim
 lib/posix/posix_haiku.nim
 lib/pure/md5.nim
 lib/std/sha1.nim
+lib/pure/htmlparser.nim
 """.splitWhitespace()
 
   officialPackagesList = """
@@ -167,6 +168,10 @@ pkgs/db_connector/src/db_connector/db_postgres.nim
 pkgs/db_connector/src/db_connector/db_sqlite.nim
 pkgs/checksums/src/checksums/md5.nim
 pkgs/checksums/src/checksums/sha1.nim
+pkgs/checksums/src/checksums/sha2.nim
+pkgs/checksums/src/checksums/sha3.nim
+pkgs/checksums/src/checksums/bcrypt.nim
+pkgs/htmlparser/src/htmlparser.nim
 """.splitWhitespace()
 
   officialPackagesListWithoutIndex = """
@@ -185,6 +190,7 @@ when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
     result = path.len > 0 and not ret.startsWith ".."
 
 proc getDocList(): seq[string] =
+  ##
   var docIgnore: HashSet[string]
   for a in withoutIndex: docIgnore.incl a
   for a in ignoredModules: docIgnore.incl a
@@ -341,7 +347,7 @@ proc buildJS(): string =
 proc buildDocsDir*(args: string, dir: string) =
   let args = nimArgs & " " & args
   let docHackJsSource = buildJS()
-  gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector", "checksums", "atlas"])
+  gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector", "checksums", "atlas", "htmlparser"])
   createDir(dir)
   buildDocSamples(args, dir)
 

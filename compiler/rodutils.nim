@@ -8,7 +8,7 @@
 #
 
 ## Serialization utilities for the compiler.
-import strutils, math
+import std/[strutils, math]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -34,7 +34,7 @@ when defined(windows) and defined(bcc):
   #endif
   """.}
 
-proc c_snprintf(s: cstring; n:uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
+proc c_snprintf(s: cstring; n: uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
 
 
 when not declared(signbit):
@@ -61,6 +61,7 @@ proc toStrMaxPrecision*(f: BiggestFloat | float32): string =
   of fcNegInf:
     result = "-INF"
   else:
+    result = ""
     result.addFloatRoundtrip(f)
     result.add literalPostfix
 

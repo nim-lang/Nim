@@ -87,5 +87,11 @@ const populationCount: array[uint8, uint8] = block:
     arr
 
 proc bitSetCard*(x: TBitSet): BiggestInt =
+  result = 0
   for it in x:
     result.inc int(populationCount[it])
+
+proc bitSetToWord*(s: TBitSet; size: int): BiggestUInt =
+  result = 0
+  for j in 0..<size:
+    if j < s.len: result = result or (BiggestUInt(s[j]) shl (j * 8))

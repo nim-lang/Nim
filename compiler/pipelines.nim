@@ -11,7 +11,7 @@ when not defined(leanCompiler):
 import std/[syncio, objectdollar, assertions, tables, strutils]
 import renderer
 import ic/replayer
-
+import nir/nir
 
 proc setPipeLinePass*(graph: ModuleGraph; pass: PipelinePass) =
   graph.pipelinePass = pass
@@ -25,6 +25,8 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
   of JSgenPass:
     when not defined(leanCompiler):
       result = processJSCodeGen(bModule, semNode)
+    else:
+      result = nil
   of GenDependPass:
     result = addDotDependency(bModule, semNode)
   of SemPass:
@@ -32,13 +34,21 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
   of Docgen2Pass, Docgen2TexPass:
     when not defined(leanCompiler):
       result = processNode(bModule, semNode)
+    else:
+      result = nil
   of Docgen2JsonPass:
     when not defined(leanCompiler):
       result = processNodeJson(bModule, semNode)
+    else:
+      result = nil
   of EvalPass, InterpreterPass:
     result = interpreterCode(bModule, semNode)
+  of NirReplPass:
+    result = runCode(bModule, semNode)
+  of NirPass:
+    result = nirBackend(bModule, semNode)
   of NonePass:
-    doAssert false, "use setPipeLinePass to set a proper PipelinePass"
+    raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
 proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
                       m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator,
@@ -99,6 +109,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     case graph.pipelinePass
     of CgenPass:
       setupCgen(graph, module, idgen)
+    of NirPass:
+      openNirBackend(graph, module, idgen)
     of JSgenPass:
       when not defined(leanCompiler):
         setupJSgen(graph, module, idgen)
@@ -106,6 +118,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         nil
     of EvalPass, InterpreterPass:
       setupEvalGen(graph, module, idgen)
+    of NirReplPass:
+      setupNirReplGen(graph, module, idgen)
     of GenDependPass:
       setupDependPass(graph, module, idgen)
     of Docgen2Pass:
@@ -126,8 +140,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     of SemPass:
       nil
     of NonePass:
-      doAssert false, "use setPipeLinePass to set a proper PipelinePass"
-      nil
+      raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
   if stream == nil:
     let filename = toFullPathConsiderDirty(graph.config, fileIdx)
@@ -135,9 +148,10 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     if s == nil:
       rawMessage(graph.config, errCannotOpenFile, filename.string)
       return false
+    graph.interactive = false
   else:
     s = stream
-
+    graph.interactive = stream.kind == llsStdIn
   while true:
     syntaxes.openParser(p, fileIdx, s, graph.cache, graph.config)
 
@@ -177,21 +191,26 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
   case graph.pipelinePass
   of CgenPass:
     if bModule != nil:
-      let disps = finalCodegenActions(graph, BModule(bModule), finalNode)
-      if disps != nil:
+      let m = BModule(bModule)
+      finalCodegenActions(graph, m, finalNode)
+      if graph.dispatchers.len > 0:
         let ctx = preparePContext(graph, module, idgen)
-        for disp in disps:
-          let retTyp = disp.sym.typ[0]
+        for disp in getDispatchers(graph):
+          let retTyp = disp.typ.returnType
           if retTyp != nil:
-            # todo properly semcheck the code of dispatcher?
-            createTypeBoundOps(graph, ctx, retTyp, disp.info, idgen)
-          genProcAux(BModule(bModule), disp.sym)
+            # TODO: properly semcheck the code of dispatcher?
+            createTypeBoundOps(graph, ctx, retTyp, disp.ast.info, idgen)
+          genProcAux(m, disp)
         discard closePContext(graph, ctx, nil)
   of JSgenPass:
     when not defined(leanCompiler):
       discard finalJSCodeGen(graph, bModule, finalNode)
   of EvalPass, InterpreterPass:
     discard interpreterCode(bModule, finalNode)
+  of NirReplPass:
+    discard runCode(bModule, finalNode)
+  of NirPass:
+    closeNirBackend(bModule, finalNode)
   of SemPass, GenDependPass:
     discard
   of Docgen2Pass, Docgen2TexPass:
@@ -201,7 +220,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     when not defined(leanCompiler):
       discard closeJson(graph, bModule, finalNode)
   of NonePass:
-    doAssert false, "use setPipeLinePass to set a proper PipelinePass"
+    raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
   if graph.config.backend notin {backendC, backendCpp, backendObjc}:
     # We only write rod files here if no C-like backend is active.
@@ -210,20 +229,20 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     closeRodFile(graph, module)
   result = true
 
-proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, fromModule: PSym = nil): PSym =
+proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags; fromModule: PSym = nil): PSym =
   var flags = flags
   if fileIdx == graph.config.projectMainIdx2: flags.incl sfMainModule
   result = graph.getModule(fileIdx)
 
   template processModuleAux(moduleStatus) =
     onProcessing(graph, fileIdx, moduleStatus, fromModule = fromModule)
-    var s: PLLStream
+    var s: PLLStream = nil
     if sfMainModule in flags:
       if graph.config.projectIsStdin: s = stdin.llStreamOpen
       elif graph.config.projectIsCmd: s = llStreamOpen(graph.config.cmdInput)
     discard processPipelineModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
-    var cachedModules: seq[FileIndex]
+    var cachedModules: seq[FileIndex] = @[]
     result = moduleFromRodFile(graph, fileIdx, cachedModules)
     let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
     if result == nil:
@@ -234,11 +253,18 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
     else:
       if sfSystemModule in flags:
         graph.systemModule = result
+      if sfMainModule in flags and graph.config.cmd == cmdM:
+        result.flags.incl flags
+        registerModule(graph, result)
+        processModuleAux("import")
       partialInitModule(result, graph, fileIdx, filename)
     for m in cachedModules:
       registerModuleById(graph, m)
-      replayStateChanges(graph.packed[m.int].module, graph)
-      replayGenericCacheInformation(graph, m.int)
+      if sfMainModule in flags and graph.config.cmd == cmdM:
+        discard
+      else:
+        replayStateChanges(graph.packed.pm[m.int].module, graph)
+        replayGenericCacheInformation(graph, m.int)
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:

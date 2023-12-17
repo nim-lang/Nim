@@ -38,6 +38,7 @@ template less(a, b): bool = cmp(a, b) < 0
 template eq(a, b): bool = cmp(a, b) == 0
 
 proc getOrDefault*[Key, Val](b: BTree[Key, Val], key: Key): Val =
+  result = default(Val)
   var x = b.root
   while x.isInternal:
     for j in 0..<x.entries:

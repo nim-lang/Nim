@@ -16,15 +16,15 @@
 ## other "line-like", variable length, delimited records).
 
 when defined(windows):
-  import winlean
+  import std/winlean
   when defined(nimPreviewSlimSystem):
     import std/widestrs
 elif defined(posix):
-  import posix
+  import std/posix
 else:
   {.error: "the memfiles module is not supported on your operating system!".}
 
-import streams
+import std/streams
 import std/oserrors
 
 when defined(nimPreviewSlimSystem):
@@ -150,7 +150,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
   ##
   ## Example:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   var
   ##     mm, mm_full, mm_half: MemFile
   ##
@@ -162,6 +162,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
   ##
   ##   # Read the first 512 bytes
   ##   mm_half = memfiles.open("/tmp/test.mmap", mode = fmReadWrite, mappedSize = 512)
+  ##   ```
 
   # The file can be resized only when write mode is used:
   if mode == fmAppend:
@@ -443,13 +444,13 @@ iterator memSlices*(mfile: MemFile, delim = '\l', eat = '\r'): MemSlice {.inline
   ## functions, not str* functions).
   ##
   ## Example:
-  ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   var count = 0
   ##   for slice in memSlices(memfiles.open("foo")):
   ##     if slice.size > 0 and cast[cstring](slice.data)[0] != '#':
   ##       inc(count)
   ##   echo count
+  ##   ```
 
   proc c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
        importc: "memchr", header: "<string.h>".}
@@ -479,11 +480,11 @@ iterator lines*(mfile: MemFile, buf: var string, delim = '\l',
   ## <#memSlices.i,MemFile,char,char>`_, but Nim strings are returned.
   ##
   ## Example:
-  ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   var buffer: string = ""
   ##   for line in lines(memfiles.open("foo"), buffer):
   ##     echo line
+  ##   ```
 
   for ms in memSlices(mfile, delim, eat):
     setLen(buf, ms.size)
@@ -498,10 +499,10 @@ iterator lines*(mfile: MemFile, delim = '\l', eat = '\r'): string {.inline.} =
   ## <#memSlices.i,MemFile,char,char>`_, but Nim strings are returned.
   ##
   ## Example:
-  ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   for line in lines(memfiles.open("foo")):
   ##     echo line
+  ##   ```
 
   var buf = newStringOfCap(80)
   for line in lines(mfile, buf, delim, eat):

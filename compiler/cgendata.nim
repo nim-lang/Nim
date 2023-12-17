@@ -10,8 +10,10 @@
 ## This module contains the data structures for the C code generation phase.
 
 import
-  ast, ropes, options, intsets,
-  tables, ndi, lineinfos, pathutils, modulegraphs, sets
+  ast, ropes, options,
+  ndi, lineinfos, pathutils, modulegraphs
+
+import std/[intsets, tables, sets]
 
 type
   TLabel* = Rope              # for the C generator a label is just a rope
@@ -193,15 +195,17 @@ proc initBlock*(): TBlock =
     result.sections[i] = newRopeAppender()
 
 proc newProc*(prc: PSym, module: BModule): BProc =
-  new(result)
-  result.prc = prc
-  result.module = module
-  result.options = if prc != nil: prc.options
-                   else: module.config.options
-  result.blocks = @[initBlock()]
-  result.nestedTryStmts = @[]
-  result.finallySafePoints = @[]
-  result.sigConflicts = initCountTable[string]()
+  result = BProc(
+    prc: prc,
+    module: module,
+    optionsStack: if module.initProc != nil: module.initProc.optionsStack
+                  else: @[],
+    options: if prc != nil: prc.options
+             else: module.config.options,
+    blocks: @[initBlock()],
+    sigConflicts: initCountTable[string]())
+  if optQuirky in result.options:
+    result.flags = {nimErrorFlagDisabled}
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
   BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: int32]](),

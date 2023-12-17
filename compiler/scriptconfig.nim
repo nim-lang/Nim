@@ -13,14 +13,16 @@
 import
   ast, modules, idents, condsyms,
   options, llstream, vm, vmdef, commands,
-  os, times, osproc, wordrecg, strtabs, modulegraphs,
+  wordrecg, modulegraphs,
   pathutils, pipelines
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
 
+import std/[strtabs, os, times, osproc]
+
 # we support 'cmpIgnoreStyle' natively for efficiency:
-from strutils import cmpIgnoreStyle, contains
+from std/strutils import cmpIgnoreStyle, contains
 
 proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   let dir = getString(a, 0)
@@ -160,6 +162,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf getCommand:
     setResult(a, conf.command)
   cbconf switch:
+    conf.currentConfigDir = vthisDir
     processSwitch(a.getString 0, a.getString 1, passPP, module.info, conf)
   cbconf hintImpl:
     processSpecificNote(a.getString 0, wHint, passPP, module.info,
@@ -240,7 +243,7 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
     of gcAtomicArc:
       defineSymbol(conf.symbols, "gcatomicarc")
     else:
-      doAssert false, "unreachable"
+      raiseAssert "unreachable"
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetSystemArtifacts(graph)

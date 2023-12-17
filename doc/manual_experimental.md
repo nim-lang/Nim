@@ -26,9 +26,8 @@ oneself.
 Void type
 =========
 
-The `void` type denotes the absence of any type. Parameters of
-type `void` are treated as non-existent, `void` as a return type means that
-the procedure does not return a value:
+The `void` type denotes the absence of any value, i.e. it is the type that contains no values. Consequently, no value can be provided for parameters of
+type `void`, and no value can be returned from a function with return type `void`:
 
   ```nim
   proc nothing(x, y: void): void =
@@ -123,6 +122,87 @@ assumed to be `(int, int, string)`. Thus the type of the tuple expression
 would not match the type of the variable, and an error would be given.
 
 The extent of this varies, but there are some notable special cases.
+
+
+Inferred generic parameters
+---------------------------
+
+In expressions making use of generic procs or templates, the expected
+(unbound) types are often able to be inferred based on context.
+This feature has to be enabled via `{.experimental: "inferGenericTypes".}`
+
+  ```nim  test = "nim c $1"
+  {.experimental: "inferGenericTypes".}
+
+  import std/options
+
+  var x = newSeq[int](1)
+  # Do some work on 'x'...
+
+  # Works!
+  # 'x' is 'seq[int]' so 'newSeq[int]' is implied
+  x = newSeq(10)
+
+  # Works!
+  # 'T' of 'none' is bound to the 'T' of 'noneProducer', passing it along.
+  # Effectively 'none.T = noneProducer.T'
+  proc noneProducer[T](): Option[T] = none()
+  let myNone = noneProducer[int]()
+
+  # Also works
+  # 'myOtherNone' binds its 'T' to 'float' and 'noneProducer' inherits it
+  # noneProducer.T = myOtherNone.T
+  let myOtherNone: Option[float] = noneProducer()
+
+  # Works as well
+  # none.T = myOtherOtherNone.T
+  let myOtherOtherNone: Option[int] = none()
+  ```
+
+This is achieved by reducing the types on the lhs and rhs until the *lhs* is left with only types such as `T`.
+While lhs and rhs are reduced together, this does *not* mean that the *rhs* will also only be left
+with a flat type `Z`, it may be of the form `MyType[Z]`.
+
+After the types have been reduced, the types `T` are bound to the types that are left on the rhs.
+
+If bindings *cannot be inferred*, compilation will fail and manual specification is required.
+
+An example for *failing inference* can be found when passing a generic expression
+to a function/template call:
+
+  ```nim  test = "nim c $1"  status = 1
+  {.experimental: "inferGenericTypes".}
+
+  proc myProc[T](a, b: T) = discard
+
+  # Fails! Unable to infer that 'T' is supposed to be 'int'
+  myProc(newSeq[int](), newSeq(1))
+
+  # Works! Manual specification of 'T' as 'int' necessary
+  myProc(newSeq[int](), newSeq[int](1))
+  ```
+
+Combination of generic inference with the `auto` type is also unsupported:
+
+  ```nim  test = "nim c $1"  status = 1
+  {.experimental: "inferGenericTypes".}
+
+  proc produceValue[T]: auto = default(T)
+  let a: int = produceValue() # 'auto' cannot be inferred here
+  ```
+
+**Note**: The described inference does not permit the creation of overrides based on
+the return type of a procedure. It is a mapping mechanism that does not attempt to 
+perform deeper inference, nor does it modify what is a valid override.
+
+  ```nim  test = "nim c $1"  status = 1
+  # Doesn't affect the following code, it is invalid either way
+  {.experimental: "inferGenericTypes".}
+
+  proc a: int = 0
+  proc a: float = 1.0 # Fails! Invalid code and not recommended
+  ```
+
 
 Sequence literals
 -----------------
@@ -486,6 +566,7 @@ All types for which `nil` is a valid value can be annotated with the
   {.experimental: "notnil".}
 
   type
+    TObj = object
     PObject = ref TObj not nil
     TProc = (proc (x, y: int)) not nil
 
@@ -838,6 +919,7 @@ The concept matches if:
 
 a) all expressions within the body can be compiled for the tested type
 b) all statically evaluable boolean expressions in the body are true
+c) all type modifiers specified match their respective definitions
 
 The identifiers following the `concept` keyword represent instances of the
 currently matched type. You can apply any of the standard type modifiers such
@@ -1286,7 +1368,7 @@ to be computed dynamically.
   ```nim
   {.experimental: "dynamicBindSym".}
 
-  import macros
+  import std/macros
 
   macro callOp(opName, arg1, arg2): untyped =
     result = newCall(bindSym($opName), arg1, arg2)
@@ -1895,11 +1977,9 @@ With `experimental: "strictDefs"`, `let` statements are allowed to not have an i
 An `out` parameter is like a `var` parameter but it must be written to before it can be used:
 
   ```nim
-
   proc myopen(f: out File; name: string): bool =
     f = default(File)
     result = open(f, name)
-
   ```
 
 While it is usually the better style to use the return type in order to return results API and ABI
@@ -1907,9 +1987,7 @@ considerations might make this infeasible. Like for `var T` Nim maps `out T` to 
 For example POSIX's `stat` routine can be wrapped as:
 
   ```nim
-
   proc stat*(a1: cstring, a2: out Stat): cint {.importc, header: "<sys/stat.h>".}
-
   ```
 
 When the implementation of a routine with output parameters is analysed, the compiler
@@ -1917,13 +1995,11 @@ checks that every path before the (implicit or explicit) return does set every o
 parameter:
 
   ```nim
-
   proc p(x: out int; y: out string; cond: bool) =
     x = 4
     if cond:
       y = "abc"
     # error: not every path initializes 'y'
-
   ```
 
 
@@ -1933,11 +2009,9 @@ Out parameters and exception handling
 The analysis should take exceptions into account (but currently does not):
 
   ```nim
-
   proc p(x: out int; y: out string; cond: bool) =
     x = canRaise(45)
     y = "abc" # <-- error: not every path initializes 'y'
-
   ```
 
 Once the implementation takes exceptions into account it is easy enough to
@@ -1949,7 +2023,6 @@ Out parameters and inheritance
 It is not valid to pass an lvalue of a supertype to an `out T` parameter:
 
   ```nim
-
   type
     Superclass = object of RootObj
       a: int
@@ -1962,7 +2035,6 @@ It is not valid to pass an lvalue of a supertype to an `out T` parameter:
   var v: Subclass
   init v
   use v.s # the 's' field was never initialized!
-
   ```
 
 However, in the future this could be allowed and provide a better way to write object
@@ -2009,6 +2081,65 @@ The field is within a `case` section of an `object`.
 is solid and it is expected that eventually this mode becomes the default in later versions.
 
 
+Quirky routines
+===============
+
+The default code generation strategy of exceptions under the ARC/ORC model is the so called
+`--exceptions:goto` implementation. This implementation inserts a check after every call that
+can potentially raise an exception. A typical instruction sequence for this on
+for a x86 64 bit machine looks like:
+
+  ```
+  cmp DWORD PTR [rbx], 0
+  je  .L1
+  ```
+
+This is a memory fetch followed by jump. (An ideal implementation would
+use the carry flag and a single instruction like ``jc .L1``.)
+
+This overhead might not be desired and depending on the semantics of the routine may not be required
+either.
+So it can be disabled via a `.quirky` annotation:
+
+  ```nim
+  proc wontRaise(x: int) {.quirky.} =
+    if x != 0:
+      # because of `quirky` this will continue even if `write` raised an IO exception:
+      write x
+      wontRaise(x-1)
+
+  wontRaise 10
+
+  ```
+
+If the used exception model is not `--exceptions:goto` then the `quirky` pragma has no effect and is
+ignored.
+
+The `quirky` pragma can also be be pushed in order to affect a group of routines and whether
+the compiler supports the pragma can be checked with `defined(nimHasQuirky)`:
+
+  ```nim
+  when defined(nimHasQuirky):
+    {.push quirky: on.}
+
+  proc doRaise() = raise newException(ValueError, "")
+
+  proc f(): string = "abc"
+
+  proc q(cond: bool) =
+    if cond:
+      doRaise()
+    echo f()
+
+  q(true)
+
+  when defined(nimHasQuirky):
+    {.pop.}
+  ```
+
+**Warning**: The `quirky` pragma only affects code generation, no check for validity is performed!
+
+
 Threading under ARC/ORC
 =======================
 
@@ -2027,14 +2158,12 @@ inside `Isolated[T]`. It is what a channel implementation should use in order to
 the freedom of data races:
 
   ```nim
-
   proc send*[T](c: var Channel[T]; msg: sink Isolated[T])
   proc recv*[T](c: var Channel[T]): T
     ## Note: Returns T, not Isolated[T] for convenience.
 
   proc recvIso*[T](c: var Channel[T]): Isolated[T]
     ## remembers the data is Isolated[T].
-
   ```
 
 In order to create an `Isolated` graph one has to use either `isolate` or `unsafeIsolate`.
@@ -2047,9 +2176,7 @@ is free of external aliases into it. `isolate` ensures this invariant. It is
 inspired by Pony's `recover` construct:
 
   ```nim
-
   func isolate(x: sink T): Isolated[T] {.magic: "Isolate".}
-
   ```
 
 
@@ -2111,7 +2238,6 @@ encapsulates a `ref` type effectively so that a variable of this container type
 can be used in an `isolate` context:
 
   ```nim
-
   type
     Isolated*[T] {.sendable.} = object ## Isolated data can only be moved, not copied.
       value: T
@@ -2125,7 +2251,6 @@ can be used in an `isolate` context:
   proc `=destroy`*[T](dest: var Isolated[T]) {.inline.} =
     # delegate to value's destroy operation
     `=destroy`(dest.value)
-
   ```
 
 The `.sendable` pragma itself is an experimenal, unchecked, unsafe annotation. It is
@@ -2139,15 +2264,14 @@ Virtual pragma
 Here's an example of how to use the virtual pragma:
 
 ```nim
-
 proc newCpp*[T](): ptr T {.importcpp: "new '*0()".}
-type 
+type
   Foo = object of RootObj
   FooPtr = ptr Foo
   Boo = object of Foo
   BooPtr = ptr Boo
 
-proc salute(self: FooPtr) {.virtual.} = 
+proc salute(self: FooPtr) {.virtual.} =
   echo "hello foo"
 
 proc salute(self: BooPtr) {.virtual.} =
@@ -2160,7 +2284,6 @@ let booAsFoo = cast[FooPtr](newCpp[Boo]())
 foo.salute() # prints hello foo
 boo.salute() # prints hello boo
 booAsFoo.salute() # prints hello boo
-
 ```
 In this example, the `salute` function is virtual in both Foo and Boo types. This allows for polymorphism.
 
@@ -2177,13 +2300,13 @@ The return type can be referred to as `-> '0`, but this is optional and often no
 #include <iostream>
   class CppPrinter {
   public:
-    
+
     virtual void printConst(char* message) const {
         std::cout << "Const Message: " << message << std::endl;
     }
     virtual void printConstRef(char* message, const int& flag) const {
         std::cout << "Const Ref Message: " << message << std::endl;
-    }  
+    }
 };
 """.}
 
@@ -2194,7 +2317,7 @@ type
 proc printConst(self: CppPrinter; message:cstring) {.importcpp.}
 CppPrinter().printConst(message)
 
-# override is optional. 
+# override is optional.
 proc printConst(self: NimPrinter; message: cstring) {.virtual: "$1('2 #2) const override".} =
   echo "NimPrinter: " & $message
 
@@ -2215,25 +2338,20 @@ The `constructor` pragma can be used in two ways: in conjunction with `importcpp
 Consider:
 
 ```nim
-
 type Foo* = object
   x: int32
 
 proc makeFoo(x: int32): Foo {.constructor.} =
-  this.x = x
-
+  result.x = x
 ```
 
-It forward declares the constructor in the type definition. When the constructor has parameters, it also generates a default constructor. 
-Notice, inside the body of the constructor one has access to `this` which is of the type `ptr Foo`. No `result` variable is available.
+It forward declares the constructor in the type definition. When the constructor has parameters, it also generates a default constructor. One can avoid this behaviour by using `noDecl` in a default constructor.
 
-Like `virtual`, `constructor` also supports a syntax that allows to express C++ constraints. 
+Like `virtual`, `constructor` also supports a syntax that allows to express C++ constraints.
 
 For example:
 
 ```nim
-
-
 {.emit:"""/*TYPESECTION*/
 struct CppClass {
   int x;
@@ -2242,25 +2360,159 @@ struct CppClass {
     this->x = inX;
     this->y = inY;
   }
-  //CppClass() = default; 
+  //CppClass() = default;
 };
 """.}
 
-type 
+type
   CppClass* {.importcpp, inheritable.} = object
     x: int32
     y: int32
   NimClass* = object of CppClass
 
 proc makeNimClass(x: int32): NimClass {.constructor:"NimClass('1 #1) : CppClass(0, #1)".} =
-  this.x = x
+  result.x = x
 
 # Optional: define the default constructor explicitly
-proc makeCppClass(): NimClass {.constructor: "NimClass() : CppClass(0, 0)".} = 
-  this.x = 1
+proc makeCppClass(): NimClass {.constructor: "NimClass() : CppClass(0, 0)".} =
+  result.x = 1
+```
+
+In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropriate constructor.
+
+Notice when calling a constructor in the section of a global variable initialization, it will be called before `NimMain` meaning Nim is not fully initialized.
+
+Constructor Initializer
+=======================
+
+By default Nim initializes `importcpp` types with `{}`. This can be problematic when importing
+types with a deleted default constructor. In order to avoid this, one can specify default values for a constructor by specifying default values for the proc params in the `constructor` proc.
+
+For example:
+
+```nim
+
+{.emit: """/*TYPESECTION*/
+struct CppStruct {
+  CppStruct(int x, char* y): x(x), y(y){}
+  int x;
+  char* y;
+};
+""".}
+type
+  CppStruct {.importcpp, inheritable.} = object
+
+proc makeCppStruct(a: cint = 5, b:cstring = "hello"): CppStruct {.importcpp: "CppStruct(@)", constructor.}
+
+(proc (s: CppStruct) = echo "hello")(makeCppStruct()) 
+# If one removes a default value from the constructor and passes it to the call explicitly, the C++ compiler will complain.
+
+```
+Skip initializers in fields members
+===================================
+
+By using `noInit` in a type or field declaration, the compiler will skip the initializer. By doing so one can explicitly initialize those values in the constructor of the type owner.
+
+For example:
+
+```nim
+
+{.emit: """/*TYPESECTION*/
+  struct Foo {
+    Foo(int a){};
+  };
+  struct Boo {
+    Boo(int a){};
+  };
+
+  """.}
+
+type 
+  Foo {.importcpp.} = object
+  Boo {.importcpp, noInit.} = object
+  Test {.exportc.} = object
+    foo {.noInit.}: Foo
+    boo: Boo
+
+proc makeTest(): Test {.constructor: "Test() : foo(10), boo(1)".} = 
+  discard
+
+proc main() = 
+  var t = makeTest()
+
+main()
 
 ```
 
-In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropiate constructor. 
+Will produce: 
 
-Notice when calling a constructor in the section of a global variable initialization, it will be called before `NimMain` meaning Nim is not fully initialized.
+```c++
+
+struct Test {
+	Foo foo; 
+	Boo boo;
+  N_LIB_PRIVATE N_NOCONV(, Test)(void);
+};
+
+```
+
+Notice that without `noInit` it would produce `Foo foo {}` and `Boo boo {}`
+
+
+Member pragma
+=============
+
+Like the `constructor` and `virtual` pragmas, the `member` pragma can be used to attach a procedure to a C++ type. It's more flexible than the `virtual` pragma in the sense that it accepts not only names but also operators and destructors.
+
+For example:
+
+```nim
+proc print(s: cstring) {.importcpp: "printf(@)", header: "<stdio.h>".}
+
+type
+  Doo {.exportc.} = object
+    test: int
+
+proc memberProc(f: Doo) {.member.} = 
+  echo $f.test
+
+proc destructor(f: Doo) {.member: "~'1()", used.} = 
+  print "destructing\n"
+
+proc `==`(self, other: Doo): bool {.member: "operator==('2 const & #2) const -> '0".} = 
+  self.test == other.test
+
+let doo = Doo(test: 2)
+doo.memberProc()
+echo doo == Doo(test: 1)
+
+```
+
+Will print:
+```
+2
+false
+destructing
+destructing
+```
+
+Notice how the C++ destructor is called automatically. Also notice the double implementation of `==` as an operator in Nim but also in C++. This is useful if you need the type to match some C++ `concept` or `trait` when interoping. 
+
+A side effect of being able to declare C++ operators, is that you can now also create a
+C++ functor to have seamless interop with C++ lambdas (syntactic sugar for functors).
+
+For example:
+
+```nim
+type
+  NimFunctor = object
+    discard
+proc invoke(f: NimFunctor; n: int) {.member: "operator ()('2 #2)".} = 
+  echo "FunctorSupport!"
+
+{.experimental: "callOperator".}
+proc `()`(f: NimFunctor; n:int) {.importcpp: "#(@)" .} 
+NimFunctor()(1)
+```
+Notice we use the overload of `()` to have the same semantics in Nim, but on the `importcpp` we import the functor as a function. 
+This allows to easy interop with functions that accepts for example a `const` operator in its signature. 

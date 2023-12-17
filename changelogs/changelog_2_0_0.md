@@ -1,8 +1,8 @@
-# v2.0.0 - 2023-07-dd
+# v2.0.0 - 2023-08-01
 
 Version 2.0 is a big milestone with too many changes to list them all here.
 
-For a full list see [details](changelog_2_0_0_details.html)
+For a full list see [details](changelog_2_0_0_details.html).
 
 
 ## New features
@@ -31,10 +31,9 @@ For example, code like the following now compiles:
 let foo: seq[(float, byte, cstring)] = @[(1, 2, "abc")]
 ```
 
-
 ### Forbidden Tags
 
-[Tag tracking](https://nim-lang.github.io/Nim/manual.html#effect-system-tag-tracking) supports the definition
+[Tag tracking](https://nim-lang.github.io/Nim/manual.html#effect-system-tag-tracking) now supports the definition
 of forbidden tags by the `.forbids` pragma which can be used to disable certain effects in proc types.
 
 For example:
@@ -53,11 +52,11 @@ proc no_IO_please() {.forbids: [IO].} =
 
 ```
 
-### New standard libraries
+### New standard library modules
 
 The famous `os` module got an overhaul. Several of its features are available
 under a new interface that introduces a `Path` abstraction. A `Path` is
-a `distinct string` and improves the type safety when dealing with paths, files
+a `distinct string`, which improves the type safety when dealing with paths, files
 and directories.
 
 Use:
@@ -70,7 +69,6 @@ Use:
 - `std/symlinks` for symlink handling.
 - `std/appdirs` for accessing configuration/home/temp directories.
 - `std/cmdline` for reading command line parameters.
-
 
 ### Consistent underscore handling
 
@@ -127,47 +125,49 @@ old behavior is currently still supported with the command line option
 
 ## Docgen improvements
 
-`Markdown` is now default markup language of doc comments (instead
-of legacy `RstMarkdown` mode). In this release we begin to separate
+`Markdown` is now the default markup language of doc comments (instead
+of the legacy `RstMarkdown` mode). In this release we begin to separate
 RST and Markdown features to better follow specification of each
 language, with the focus on Markdown development.
+See also [the docs](https://nim-lang.github.io/Nim/markdown_rst.html).
 
-* So we added a `{.doctype: Markdown | RST | RstMarkdown.}` pragma allowing to
-  select the markup language mode in the doc comments of current `.nim`
+* Added a `{.doctype: Markdown | RST | RstMarkdown.}` pragma allowing to
+  select the markup language mode in the doc comments of the current `.nim`
   file for processing by `nim doc`:
 
     1. `Markdown` (default) is basically CommonMark (standard Markdown) +
         some Pandoc Markdown features + some RST features that are missing
         in our current implementation of CommonMark and Pandoc Markdown.
-    2. `RST` closely follows RST spec with few additional Nim features.
+    2. `RST` closely follows the RST spec with few additional Nim features.
     3. `RstMarkdown` is a maximum mix of RST and Markdown features, which
         is kept for the sake of compatibility and ease of migration.
 
-* We added separate `md2html` and `rst2html` commands for processing
-  standalone `.md` and `.rst` files respectively (and also `md2tex/rst2tex`).
+* Added separate `md2html` and `rst2html` commands for processing
+  standalone `.md` and `.rst` files respectively (and also `md2tex`/`rst2tex`).
 
-* We added Pandoc Markdown bracket syntax `[...]` for making anchor-less links.
-* The docgen now supports concise syntax for referencing Nim symbols:
+* Added Pandoc Markdown bracket syntax `[...]` for making anchor-less links.
+* Docgen now supports concise syntax for referencing Nim symbols:
   instead of specifying HTML anchors directly one can use original
   Nim symbol declarations (adding the aforementioned link brackets
   `[...]` around them).
-* To use this feature across modules a new `importdoc` directive was added.
-  Using this feature for referencing also helps to ensure that links
-  (inside one module or the whole project) are not broken.
-* We added support for RST & Markdown quote blocks (blocks starting from `>`).
-* We added a popular Markdown definition lists extension.
-* Markdown indented code blocks (blocks indented by >= 4 spaces) have been added.
-* We added syntax for additional parameters to Markdown code blocks:
+  * To use this feature across modules, a new `importdoc` directive was added.
+    Using this feature for referencing also helps to ensure that links
+    (inside one module or the whole project) are not broken.
+* Added support for RST & Markdown quote blocks (blocks starting with `>`).
+* Added a popular Markdown definition lists extension.
+* Added Markdown indented code blocks (blocks indented by >= 4 spaces).
+* Added syntax for additional parameters to Markdown code blocks:
 
        ```nim test="nim c $1"
        ...
        ```
 
+
 ## C++ interop enhancements
 
-Nim 2.0 takes C++ interop to the next level. With the new [virtual](https://nim-lang.github.io/Nim/manual_experimental.html#virtual-pragma) pragma and the extended [constructor](https://nim-lang.github.io/Nim/manual_experimental.html#constructor-pragma) pragma
-Now one can define constructors and virtual that maps to C++ constructors and virtual methods. Allowing one to further customize
-the interoperability. There is also extended support for the [codeGenDecl](https://nim-lang.org/docs/manual.html#implementation-specific-pragmas-codegendecl-pragma) pragma, so it works on types.
+Nim 2.0 takes C++ interop to the next level. With the new [virtual](https://nim-lang.github.io/Nim/manual_experimental.html#virtual-pragma) pragma and the extended [constructor](https://nim-lang.github.io/Nim/manual_experimental.html#constructor-pragma) pragma.
+Now one can define constructors and virtual procs that maps to C++ constructors and virtual methods, allowing one to further customize
+the interoperability. There is also extended support for the [codeGenDecl](https://nim-lang.org/docs/manual.html#implementation-specific-pragmas-codegendecl-pragma) pragma, so that it works on types.
 
 It's a common pattern in C++ to use inheritance to extend a library. Some even use multiple inheritance as a mechanism to make interfaces.
 
@@ -181,6 +181,7 @@ struct Base {
     someValue = inValue;
   };
 };
+
 class IPrinter {
 public:
   virtual void print() = 0;
@@ -200,11 +201,11 @@ const objTemplate = """
   };
 """;
 
-type NimChild {.codegenDecl:objTemplate .} = object of Base
+type NimChild {.codegenDecl: objTemplate .} = object of Base
 
-proc makeNimChild(val: int32): NimChild {.constructor:"NimClass('1 #1) : Base(#1)".} =
+proc makeNimChild(val: int32): NimChild {.constructor: "NimClass('1 #1) : Base(#1)".} =
   echo "It calls the base constructor passing " & $this.someValue
-  this.someValue = val * 2 #notice how we can access to this inside the constructor. it's of the type ptr NimChild
+  this.someValue = val * 2 # Notice how we can access `this` inside the constructor. It's of the type `ptr NimChild`.
 
 proc print*(self: NimChild) {.virtual.} =
   echo "Some value is " & $self.someValue
@@ -223,7 +224,7 @@ Some value is 20
 
 ## ARC/ORC refinements
 
-With the release 2.0 the ARC/ORC model got refined once again and is now finally complete:
+With the 2.0 release, the ARC/ORC model got refined once again and is now finally complete:
 
 1. Programmers now have control over the "item was moved from" state as `=wasMoved` is overridable.
 2. There is a new `=dup` hook which is more efficient than the old combination of `=wasMoved(tmp); =copy(tmp, x)` operations.
@@ -238,13 +239,13 @@ providing a stable ABI it is important not to lose any efficiency in the calling
 
 ## Tool changes
 
-- Nim now ships Nimble version 0.14 which added support for lock-files. Libraries are stored in `$nimbleDir/pkgs2` (it was `$nimbleDir/pkgs`). Use `nimble develop --global` to create an old style link file in the special links directory documented at https://github.com/nim-lang/nimble#nimble-develop.
+- Nim now ships Nimble version 0.14 which added support for lock-files. Libraries are stored in `$nimbleDir/pkgs2` (it was `$nimbleDir/pkgs` before). Use `nimble develop --global` to create an old style link file in the special links directory documented at https://github.com/nim-lang/nimble#nimble-develop.
 - nimgrep now offers the option `--inContext` (and `--notInContext`), which
-  allows to filter only matches with context block containing a given pattern.
+  allows to filter only matches with the context block containing a given pattern.
 - nimgrep: names of options containing "include/exclude" are deprecated,
   e.g. instead of `--includeFile` and `--excludeFile` we have
   `--filename` and `--notFilename` respectively.
-  Also the semantics become consistent for such positive/negative filters.
+  Also, the semantics are now consistent for such positive/negative filters.
 - Nim now ships with an alternative package manager called Atlas. More on this in upcoming versions.
 
 
@@ -278,7 +279,7 @@ block maybePerformB:
 
 ### Strict funcs
 
-The definition of "strictFuncs" was changed.
+The definition of `"strictFuncs"` was changed.
 The old definition was roughly: "A store to a ref/ptr deref is forbidden unless it's coming from a `var T` parameter".
 The new definition is: "A store to a ref/ptr deref is forbidden."
 
@@ -312,11 +313,9 @@ func create(s: string): Node =
 
 ```
 
-
-
 ### Standard library
 
-Several Standard libraries have been moved to nimble packages, use `nimble` or `atlas` to install them:
+Several standard library modules have been moved to nimble packages, use `nimble` or `atlas` to install them:
 
 - `std/punycode` => `punycode`
 - `std/asyncftpclient` => `asyncftpclient`
@@ -328,4 +327,4 @@ Several Standard libraries have been moved to nimble packages, use `nimble` or `
 - `std/db_odbc` => `db_connector/db_odbc`
 - `std/md5` => `checksums/md5`
 - `std/sha1` => `checksums/sha1`
-
+- `std/sums` => `sums`

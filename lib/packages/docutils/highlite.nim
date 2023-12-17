@@ -57,8 +57,8 @@
 ## as program output.
 
 import
-  strutils
-from algorithm import binarySearch
+  std/strutils
+from std/algorithm import binarySearch
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]
@@ -324,17 +324,18 @@ proc nimNextToken(g: var GeneralTokenizer, keywords: openArray[string] = @[]) =
       pos = nimNumber(g, pos)
     of '\'':
       inc(pos)
-      g.kind = gtCharLit
-      while true:
-        case g.buf[pos]
-        of '\0', '\r', '\n':
-          break
-        of '\'':
-          inc(pos)
-          break
-        of '\\':
-          inc(pos, 2)
-        else: inc(pos)
+      if g.kind != gtPunctuation:
+        g.kind = gtCharLit
+        while true:
+          case g.buf[pos]
+          of '\0', '\r', '\n':
+            break
+          of '\'':
+            inc(pos)
+            break
+          of '\\':
+            inc(pos, 2)
+          else: inc(pos)
     of '\"':
       inc(pos)
       if (g.buf[pos] == '\"') and (g.buf[pos + 1] == '\"'):

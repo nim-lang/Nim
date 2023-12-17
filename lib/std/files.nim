@@ -3,7 +3,7 @@
 ## **See also:**
 ## * `paths module <paths.html>`_ for path manipulation
 
-from paths import Path, ReadDirEffect, WriteDirEffect
+from std/paths import Path, ReadDirEffect, WriteDirEffect
 
 from std/private/osfiles import fileExists, removeFile,
                                 moveFile
