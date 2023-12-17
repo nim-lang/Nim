@@ -2644,8 +2644,8 @@ of the argument.
    defined `converter`.
 
 There are two major methods of selecting the best matching candidate, namely
-counting and disambiguation. Counting takes precedence to disambiguation. he categories
-listed above are in order of precedence, except generic and subtype matches are combined.
+counting and disambiguation. Counting takes precedence to disambiguation. The categories
+listed above are in order of precedence, except that generic and subtype matches are unified.
 For example, if a candidate with one exact match is compared to a candidate with multiple generic matches
 and zero exact matches, the candidate with an exact match will win.
 
