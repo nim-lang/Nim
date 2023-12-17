@@ -1925,6 +1925,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
+
+      regs[ra].node = newNode(nkEmpty)
       if error.len > 0:
         c.errorFlag = error
       elif ast.len != 1:
@@ -1942,6 +1944,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
         c.errorFlag = error
+        regs[ra].node = newNode(nkEmpty)
       else:
         regs[ra].node = ast
     of opcQueryErrorFlag:
