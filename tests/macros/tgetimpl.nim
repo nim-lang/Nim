@@ -75,7 +75,9 @@ assert: check_gen_proc(len(a)) == (false, true)
 macro check(x: type): untyped =
   let z = getType(x)
   let y = getImpl(z[1])  
-  let sym = if y[0].kind == nnkSym: y[0] else: y[0][0]
+  var sym = y[0]
+  if sym.kind == nnkPragmaExpr: sym = sym[0]
+  if sym.kind == nnkPostfix: sym = sym[1]
   expectKind(z[1], nnkSym)
   expectKind(sym, nnkSym)
   expectKind(y[2], nnkObjectTy)
