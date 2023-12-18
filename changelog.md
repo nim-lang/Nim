@@ -7,6 +7,12 @@
 - The default user-agent in `std/httpclient` has been changed to `Nim-httpclient/<version>` instead of `Nim httpclient/<version>` which was incorrect according to the HTTP spec.
 - Methods now support implementations based on a VTable by using `--experimental:vtables`. Methods are then confined to be in the same module where their type has been defined.
 - With `-d:nimPreviewNonVarDestructor`, non-var destructors become the default.
+- A bug where tuple unpacking assignment with a longer tuple on the RHS than the LHS was allowed has been fixed, i.e. code like:
+  ```nim
+  var a, b: int
+  (a, b) = (1, 2, 3, 4)
+  ```
+  will no longer compile.
 
 ## Standard library additions and changes
 
@@ -37,6 +43,19 @@ slots when enlarging a sequence.
 - C++ custom constructors initializers see https://nim-lang.org/docs/manual_experimental.htm#constructor-initializer
 - `member` can be used to attach a procedure to a C++ type.
 - C++ `constructor` now reuses `result` instead creating `this`.
+
+- Tuple unpacking changes:
+  - Tuple unpacking assignment now supports using underscores to discard values.
+    ```nim
+    var a, c: int
+    (a, _, c) = (1, 2, 3)
+    ```
+  - Tuple unpacking variable declarations now support type annotations, but
+    only for the entire tuple.
+    ```nim
+    let (a, b): (int, int) = (1, 2)
+    let (a, (b, c)): (byte, (float, cstring)) = (1, (2, "abc"))
+    ```
 
 ## Compiler changes
 
