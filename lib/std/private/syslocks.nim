@@ -46,7 +46,7 @@ when defined(windows):
                                     header: "<windows.h>".}
     ## Releases the lock `L`.
 
-  when defined(nimHasByref):
+  when defined(nimPreviewNonVarDestructor) and defined(nimHasByref):
     proc deinitSys*(L {.byref.} : SysLock) {.importc: "DeleteCriticalSection",
                                     header: "<windows.h>".}
   else:
@@ -132,7 +132,7 @@ else:
   proc initSysLockAux(L: var SysLockObj, attr: ptr SysLockAttr) {.
     importc: "pthread_mutex_init", header: "<pthread.h>", noSideEffect.}
 
-  when defined(nimHasByref):
+  when defined(nimPreviewNonVarDestructor) and defined(nimHasByref):
     proc deinitSysAux(L {.byref.} : SysLockObj) {.noSideEffect,
       importc: "pthread_mutex_destroy", header: "<pthread.h>".}
   else:
@@ -166,7 +166,7 @@ else:
       initSysLockAux(L[], attr)
 
 
-    when defined(nimHasByref):
+    when defined(nimPreviewNonVarDestructor) and defined(nimHasByref):
       proc deinitSys*(L {.byref.} : SysLock) =
         deinitSysAux(L[])
         c_free(L)
@@ -209,7 +209,7 @@ else:
   proc initSysCondAux(cond: var SysCondObj, cond_attr: ptr SysCondAttr = nil) {.
     importc: "pthread_cond_init", header: "<pthread.h>", noSideEffect.}
 
-  when defined(nimHasByref):
+  when defined(nimPreviewNonVarDestructor) and defined(nimHasByref):
     proc deinitSysCondAux(cond {.byref.} : SysCondObj) {.noSideEffect,
       importc: "pthread_cond_destroy", header: "<pthread.h>".}
   else:
@@ -228,7 +228,7 @@ else:
       cond = cast[SysCond](c_malloc(csize_t(sizeof(SysCondObj))))
       initSysCondAux(cond[], cond_attr)
 
-    when defined(nimHasByref):
+    when defined(nimPreviewNonVarDestructor) and defined(nimHasByref):
       proc deinitSysCond*(cond {.byref.} : SysCond) =
         deinitSysCondAux(cond[])
         c_free(cond)
