@@ -1,7 +1,7 @@
 discard """
 action: "reject"
 cmd: "nim check $file"
-errormsg: "..${/}..${/}lib${/}core${/}macros.nim(577, 29) Error: expected expression, but got multiple statements [ValueError]"
+errormsg: "expected expression, but got multiple statements [ValueError]"
 file: "macros.nim"
 """
 
