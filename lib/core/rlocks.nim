@@ -31,9 +31,15 @@ proc initRLock*(lock: var RLock) {.inline.} =
   else:
     initSysLock(lock)
 
-proc deinitRLock*(lock: var RLock) {.inline.} =
-  ## Frees the resources associated with the lock.
-  deinitSys(lock)
+
+when defined(nimPreviewNonVarDestructor):
+  proc deinitRLock*(lock {.byref.} : RLock) {.inline.} =
+    ## Frees the resources associated with the lock.
+    deinitSys(lock)
+else:
+  proc deinitRLock*(lock: var RLock) {.inline.} =
+    ## Frees the resources associated with the lock.
+    deinitSys(lock)
 
 proc tryAcquire*(lock: var RLock): bool {.inline.} =
   ## Tries to acquire the given lock. Returns `true` on success.
