@@ -237,16 +237,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     var dummy: bool
     result = fuzzyLookup(c, n, flags, ctx, dummy)
   of nkSym:
-    var a = n.sym
-    if nfOpenSym in n.flags:
-      let id = newIdentNode(a.name, n.info)
-      c.isAmbiguous = false
-      let s2 = qualifiedLookUp(c, id, {})
-      if s2 != nil and s2 != a and not c.isAmbiguous and s2.owner == c.p.owner:
-        n.sym = s2
-        a = s2
-      if {withinMixin, withinConcept} * flags != {withinMixin}:
-        n.flags.excl nfOpenSym
+    let a = n.sym
     let b = getGenSym(c, a)
     if b != a: n.sym = b
   of nkEmpty, succ(nkSym)..nkNilLit, nkComesFrom:

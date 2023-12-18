@@ -3071,9 +3071,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       let id = newIdentNode(s.name, n.info)
       c.isAmbiguous = false
       let s2 = qualifiedLookUp(c, id, {})
-      if s2 != nil and s2 != s and not c.isAmbiguous and s2.owner == c.p.owner:
-        result = semExpr(c, id, flags, expectedType)
-        return
+      if s2 != nil and s2 != s and not c.isAmbiguous:
+        # only consider symbols defined under current proc:
+        var o = s2.owner
+        while o != nil:
+          if o == c.p.owner:
+            result = semExpr(c, id, flags, expectedType)
+            return
+          o = o.owner
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, s, flags)
