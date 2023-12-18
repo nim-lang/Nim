@@ -45,16 +45,16 @@ slots when enlarging a sequence.
 - C++ `constructor` now reuses `result` instead creating `this`.
 
 - Tuple unpacking changes:
+  - Tuple unpacking assignment now supports using underscores to discard values.
+    ```nim
+    var a, c: int
+    (a, _, c) = (1, 2, 3)
+    ```
   - Tuple unpacking variable declarations now support type annotations, but
     only for the entire tuple.
     ```nim
     let (a, b): (int, int) = (1, 2)
     let (a, (b, c)): (byte, (float, cstring)) = (1, (2, "abc"))
-    ```
-  - Tuple unpacking assignment now supports using underscores to discard values.
-    ```nim
-    var a, c: int
-    (a, _, c) = (1, 2, 3)
     ```
 
 ## Compiler changes
