@@ -287,8 +287,10 @@ proc isTurnedOn(c: PContext, n: PNode): bool =
   if n.kind in nkPragmaCallKinds and n.len == 2:
     let ident = getPIdent(n[1])
     if ident != nil and ident.id == ord(wOn):
+      n[1] = newIntTypeNode(1, getSysType(c.graph, n.info, tyBool))
       return true
     elif ident != nil and ident.id == ord(wOff):
+      n[1] = newIntTypeNode(0, getSysType(c.graph, n.info, tyBool))
       return false
     else:
       let x = c.semConstBoolExpr(c, n[1])
