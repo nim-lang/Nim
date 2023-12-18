@@ -1024,7 +1024,10 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
   of skMacro: result = semMacroExpr(c, result, orig, callee, flags, expectedType)
   of skTemplate: result = semTemplateExpr(c, result, callee, flags, expectedType)
   else:
-    semFinishOperands(c, result)
+    if callee.magic notin {mArrGet, mArrPut, mNBindSym}:
+      # calls to `[]` can be explicit generic instantiations,
+      # don't sem every operand now, leave it to semmagic
+      semFinishOperands(c, result)
     activate(c, result)
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)

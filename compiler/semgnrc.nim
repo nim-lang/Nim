@@ -69,7 +69,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         result.transitionSonsKind(nkClosedSymChoice)
     else:
       result = symChoice(c, n, s, scOpen)
-      if withinMixin in flags and result.kind == nkSym:
+      if {withinMixin, withinConcept} * flags == {withinMixin} and result.kind == nkSym:
         result.flags.incl nfOpenSym
         result.typ = nil
   case s.kind
@@ -99,7 +99,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         result = n
     else:
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
-      if withinMixin in flags:
+      if {withinMixin, withinConcept} * flags == {withinMixin}:
         result.flags.incl nfOpenSym
         result.typ = nil
     onUse(n.info, s)
@@ -110,7 +110,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     if (s.typ != nil) and
        (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
-      if withinMixin in flags:
+      if {withinMixin, withinConcept} * flags == {withinMixin}:
         result.flags.incl nfOpenSym
         result.typ = nil
     else:
@@ -118,7 +118,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     onUse(n.info, s)
   else:
     result = newSymNode(s, n.info)
-    if withinMixin in flags:
+    if {withinMixin, withinConcept} * flags == {withinMixin}:
       result.flags.incl nfOpenSym
       result.typ = nil
     onUse(n.info, s)
@@ -245,7 +245,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       if s2 != nil and s2 != a and not c.isAmbiguous and s2.owner == c.p.owner:
         n.sym = s2
         a = s2
-      if withinMixin notin flags:
+      if {withinMixin, withinConcept} * flags != {withinMixin}:
         n.flags.excl nfOpenSym
     let b = getGenSym(c, a)
     if b != a: n.sym = b
