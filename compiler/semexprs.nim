@@ -1025,7 +1025,10 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
   of skMacro: result = semMacroExpr(c, result, orig, callee, flags, expectedType)
   of skTemplate: result = semTemplateExpr(c, result, callee, flags, expectedType)
   else:
-    semFinishOperands(c, result)
+    if callee.magic notin {mArrGet, mArrPut, mNBindSym}:
+      # calls to `[]` can be explicit generic instantiations,
+      # don't sem every operand now, leave it to semmagic
+      semFinishOperands(c, result)
     activate(c, result)
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
@@ -3059,9 +3062,22 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       if result.kind == nkSym:
         result = semSym(c, result, result.sym, flags)
   of nkSym:
+    let s = n.sym
+    if nfOpenSym in n.flags:
+      let id = newIdentNode(s.name, n.info)
+      c.isAmbiguous = false
+      let s2 = qualifiedLookUp(c, id, {})
+      if s2 != nil and s2 != s and not c.isAmbiguous:
+        # only consider symbols defined under current proc:
+        var o = s2.owner
+        while o != nil:
+          if o == c.p.owner:
+            result = semExpr(c, id, flags, expectedType)
+            return
+          o = o.owner
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
-    result = semSym(c, n, n.sym, flags)
+    result = semSym(c, n, s, flags)
   of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:

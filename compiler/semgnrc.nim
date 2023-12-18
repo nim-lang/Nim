@@ -68,6 +68,9 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         result.transitionSonsKind(nkClosedSymChoice)
     else:
       result = symChoice(c, n, s, scOpen)
+      if {withinMixin, withinConcept} * flags == {withinMixin} and result.kind == nkSym:
+        result.flags.incl nfOpenSym
+        result.typ = nil
   case s.kind
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
@@ -95,6 +98,9 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         result = n
     else:
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
+      if {withinMixin, withinConcept} * flags == {withinMixin}:
+        result.flags.incl nfOpenSym
+        result.typ = nil
     onUse(n.info, s)
   of skParam:
     result = n
@@ -103,11 +109,17 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     if (s.typ != nil) and
        (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
+      if {withinMixin, withinConcept} * flags == {withinMixin}:
+        result.flags.incl nfOpenSym
+        result.typ = nil
     else:
       result = n
     onUse(n.info, s)
   else:
     result = newSymNode(s, n.info)
+    if {withinMixin, withinConcept} * flags == {withinMixin}:
+      result.flags.incl nfOpenSym
+      result.typ = nil
     onUse(n.info, s)
 
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
@@ -147,6 +159,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
 
   var s = qualifiedLookUp(c, n, luf)
   if s != nil:
+    isMacro = s.kind in {skTemplate, skMacro}
     result = semGenericStmtSymbol(c, n, s, ctx, flags)
   else:
     n[0] = semGenericStmt(c, n[0], flags, ctx)
