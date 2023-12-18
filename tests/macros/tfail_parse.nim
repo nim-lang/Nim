@@ -1,7 +1,7 @@
 discard """
 action: "reject"
 cmd: "nim check $file"
-errormsg: "unhandled exception: (1, 2) Error: invalid character literal [ValueError]"
+errormsg: "..${/}..${/}lib${/}core${/}macros.nim(577, 29) Error: expected expression, but got multiple statements [ValueError]"
 file: "macros.nim"
 """
 

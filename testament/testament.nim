@@ -193,7 +193,6 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
         foundSuccessMsg = true
     elif not running(p):
       break
-  close(p)
   result.msg = ""
   result.file = ""
   result.output = ""
@@ -202,6 +201,7 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
 
   result.err = reNimcCrash
   result.exitCode = p.peekExitCode
+  close p
   case result.exitCode
   of 0:
     if foundErrorMsg:
