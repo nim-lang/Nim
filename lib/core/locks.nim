@@ -37,7 +37,7 @@ proc initLock*(lock: var Lock) {.inline.} =
   when not defined(js):
     initSysLock(lock)
 
-when defined(nimPreviewNonVarDestructor):
+when defined(nimPreviewNonVarDestructor) and defined(nimHasByref):
   proc deinitLock*(lock {.byref.} : Lock) {.inline.} =
     ## Frees the resources associated with the lock.
     deinitSys(lock)
@@ -65,7 +65,7 @@ proc initCond*(cond: var Cond) {.inline.} =
   ## Initializes the given condition variable.
   initSysCond(cond)
 
-when defined(nimPreviewNonVarDestructor):
+when defined(nimPreviewNonVarDestructor) and defined(nimHasByref):
   proc deinitCond*(cond {.byref.} : Cond) {.inline.} =
     ## Frees the resources associated with the condition variable.
     deinitSysCond(cond)

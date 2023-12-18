@@ -32,7 +32,7 @@ proc initRLock*(lock: var RLock) {.inline.} =
     initSysLock(lock)
 
 
-when defined(nimPreviewNonVarDestructor):
+when defined(nimPreviewNonVarDestructor) and defined(nimHasByref):
   proc deinitRLock*(lock {.byref.} : RLock) {.inline.} =
     ## Frees the resources associated with the lock.
     deinitSys(lock)

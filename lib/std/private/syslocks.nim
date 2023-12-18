@@ -46,8 +46,12 @@ when defined(windows):
                                     header: "<windows.h>".}
     ## Releases the lock `L`.
 
-  proc deinitSys*(L {.byref.} : SysLock) {.importc: "DeleteCriticalSection",
-                                   header: "<windows.h>".}
+  when defined(nimHasByref):
+    proc deinitSys*(L {.byref.} : SysLock) {.importc: "DeleteCriticalSection",
+                                    header: "<windows.h>".}
+  else:
+    proc deinitSys*(L: var SysLock) {.importc: "DeleteCriticalSection",
+                                    header: "<windows.h>".}
 
   proc initializeConditionVariable(
     conditionVariable: var SysCond
@@ -127,8 +131,13 @@ else:
 
   proc initSysLockAux(L: var SysLockObj, attr: ptr SysLockAttr) {.
     importc: "pthread_mutex_init", header: "<pthread.h>", noSideEffect.}
-  proc deinitSysAux(L {.byref.} : SysLockObj) {.noSideEffect,
-    importc: "pthread_mutex_destroy", header: "<pthread.h>".}
+
+  when defined(nimHasByref):
+    proc deinitSysAux(L {.byref.} : SysLockObj) {.noSideEffect,
+      importc: "pthread_mutex_destroy", header: "<pthread.h>".}
+  else:
+    proc deinitSysAux(L: var SysLockObj) {.noSideEffect,
+      importc: "pthread_mutex_destroy", header: "<pthread.h>".}
 
   proc acquireSysAux(L: var SysLockObj) {.noSideEffect,
     importc: "pthread_mutex_lock", header: "<pthread.h>".}
@@ -156,9 +165,15 @@ else:
       L = cast[SysLock](c_malloc(csize_t(sizeof(SysLockObj))))
       initSysLockAux(L[], attr)
 
-    proc deinitSys*(L {.byref.} : SysLock) =
-      deinitSysAux(L[])
-      c_free(L)
+
+    when defined(nimHasByref):
+      proc deinitSys*(L {.byref.} : SysLock) =
+        deinitSysAux(L[])
+        c_free(L)
+    else:
+      proc deinitSys*(L: var SysLock) =
+        deinitSysAux(L[])
+        c_free(L)
 
     template acquireSys*(L: var SysLock) =
       acquireSysAux(L[])
@@ -193,8 +208,13 @@ else:
   # locks
   proc initSysCondAux(cond: var SysCondObj, cond_attr: ptr SysCondAttr = nil) {.
     importc: "pthread_cond_init", header: "<pthread.h>", noSideEffect.}
-  proc deinitSysCondAux(cond {.byref.} : SysCondObj) {.noSideEffect,
-    importc: "pthread_cond_destroy", header: "<pthread.h>".}
+
+  when defined(nimHasByref):
+    proc deinitSysCondAux(cond {.byref.} : SysCondObj) {.noSideEffect,
+      importc: "pthread_cond_destroy", header: "<pthread.h>".}
+  else:
+    proc deinitSysCondAux(cond: var SysCondObj) {.noSideEffect,
+      importc: "pthread_cond_destroy", header: "<pthread.h>".}
 
   proc waitSysCondAux(cond: var SysCondObj, lock: var SysLockObj): cint {.
     importc: "pthread_cond_wait", header: "<pthread.h>", noSideEffect.}
@@ -208,9 +228,14 @@ else:
       cond = cast[SysCond](c_malloc(csize_t(sizeof(SysCondObj))))
       initSysCondAux(cond[], cond_attr)
 
-    proc deinitSysCond*(cond {.byref.} : SysCond) =
-      deinitSysCondAux(cond[])
-      c_free(cond)
+    when defined(nimHasByref):
+      proc deinitSysCond*(cond {.byref.} : SysCond) =
+        deinitSysCondAux(cond[])
+        c_free(cond)
+    else:
+      proc deinitSysCond*(cond: var SysCond) =
+        deinitSysCondAux(cond[])
+        c_free(cond)
 
     template waitSysCond*(cond: var SysCond, lock: var SysLock) =
       discard waitSysCondAux(cond[], lock[])
