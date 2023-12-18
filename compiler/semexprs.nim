@@ -1694,11 +1694,9 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
         else:
           # We are processing macroOrTmpl[] not in call. Transform it to the
           # macro or template call with generic arguments here.
-          n.transitionSonsKind(nkCall)
-          case s.kind
-          of skMacro: result = semMacroExpr(c, n, n, s, flags)
-          of skTemplate: result = semTemplateExpr(c, n, s, flags)
-          else: discard
+          setGenericParams(c, n, nil)
+          let call = newTreeI(nkCall, n.info, n)
+          result = semDirectOp(c, call, flags)
       of skType:
         result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
       else:
