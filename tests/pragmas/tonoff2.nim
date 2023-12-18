@@ -1,3 +1,7 @@
+discard """
+    action: compile
+"""
+
 # issue #22841
 
 import unittest
