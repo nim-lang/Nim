@@ -29,7 +29,7 @@ Failure: reOutputsDiffer
 FAIL: tests/shouldfail/toutputsub.nim
 Failure: reOutputsDiffer
 FAIL: tests/shouldfail/treject.nim
-Failure: reExitcodesDiffer
+Failure: reFilesDiffer
 FAIL: tests/shouldfail/tsortoutput.nim
 Failure: reOutputsDiffer
 FAIL: tests/shouldfail/ttimeout.nim

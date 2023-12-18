@@ -522,12 +522,11 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
           compilerOutputTests(test, target, extraOptions, given, expected, r)
   of actionReject:
     # Make sure its the compiler rejecting and not the system (e.g. segfault)
+    cmpMsgs(r, expected, given, test, target, extraOptions)
     if given.exitCode != QuitFailure:
       r.addResult(test, target, extraOptions, "exitcode: " & $QuitFailure,
                         "exitcode: " & $given.exitCode & "\n\nOutput:\n" &
                         given.nimout, reExitcodesDiffer)
-    else:
-      cmpMsgs(r, expected, given, test, target, extraOptions)
 
 proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions: string) =
   for target in expected.targets:
