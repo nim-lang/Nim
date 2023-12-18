@@ -1667,7 +1667,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       dataflowAnalysis(s, body)
 
       when false: trackWrites(s, body)
-  if strictNotNil in c.features and s.kind in {skProc, skFunc}:
+  if strictNotNil in c.features and s.kind in {skProc, skFunc, skMethod, skConverter}:
     checkNil(s, body, g.config, c.idgen)
 
 proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
