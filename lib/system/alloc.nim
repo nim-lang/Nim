@@ -850,8 +850,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
             # Steal the entire list from `sharedFreeList`:
             c.freeList = atomicExchangeN(addr a.sharedFreeLists[s], nil, ATOMIC_RELAXED)
           else:
-            c.freeList = c.sharedFreeList
-            c.sharedFreeList = nil
+            c.freeList = a.sharedFreeLists[s]
+            a.sharedFreeLists[s] = nil
           compensateCounters(a, c, size)
       if c.freeList == nil:
         sysAssert(c.acc + smallChunkOverhead() + size <= SmallChunkSize,
