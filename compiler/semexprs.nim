@@ -101,7 +101,8 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
   elif result.typ.kind == tyError:
     # associates the type error to the current owner
     result.typ = errorType(c)
-  elif efTypeAllowed in flags and result.typ.kind == tyProc and
+  elif {efTypeAllowed, efOperand} * flags != {} and
+      result.typ.kind == tyProc and
       hasUnresolvedParams(result, {}):
     # mirrored with semOperand but only on efTypeAllowed
     let owner = result.typ.owner
@@ -141,12 +142,7 @@ proc resolveSymChoice(c: PContext, n: var PNode, flags: TExprFlags = {}, expecte
     # some contexts might want sym choices preserved for later disambiguation
     # in general though they are ambiguous
     let first = n[0].sym
-    var foundSym: PSym = nil
-    if first.kind == skEnumField and
-        not isAmbiguous(c, first.name, {skEnumField}, foundSym) and
-        foundSym == first:
-      # choose the first resolved enum field, i.e. the latest in scope
-      # to mirror behavior before overloadable enums
+    if nfPreferredSym in first.flags:
       n = n[0]
 
 proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
@@ -1554,8 +1550,7 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
   if isSymChoice(n[1]) or
-      # generics usually leave field names as symchoices, but not types
-      (n[1].kind == nkSym and n[1].sym.kind == skType):
+      (n[1].kind == nkSym and n[1].sym.kind in routineKinds + {skType}):
     result = newNodeI(nkDotCall, n.info)
     result.add n[1]
     result.add copyTree(n[0])
@@ -2965,13 +2960,17 @@ proc getNilType(c: PContext): PType =
     c.nilTypeCache = result
 
 proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
-  var o: TOverloadIter
+  var o: TOverloadIter = default(TOverloadIter)
+  var firstPreferred = true
   var i = 0
   var a = initOverloadIter(o, c, n)
+  let firstScope = lastOverloadScope(o)
   while a != nil:
     if a.kind == skEnumField:
       inc(i)
-      if i > 1: break
+      if i > 1:
+        firstPreferred = firstScope > lastOverloadScope(o)
+        break
     a = nextOverloadIter(o, c, n)
   let info = getCallLineInfo(n)
   if i <= 1:
@@ -2991,6 +2990,8 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
         result.add newSymNode(a, info)
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
+    if firstPreferred:
+      result[0].flags.incl nfPreferredSym
 
 proc semPragmaStmt(c: PContext; n: PNode) =
   if c.p.owner.kind == skModule:

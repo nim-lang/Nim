@@ -38,10 +38,10 @@ proc slotsNeeded(count: Natural): int {.inline.} =
   # Make sure to synchronize with `mustRehash` above
   result = nextPowerOfTwo(count * 3 div 2 + 4)
 
-template rawGetKnownHCImpl() {.dirty.} =
+template rawGetKnownHCImpl() =
   if t.dataLen == 0:
     return -1
-  var h: Hash = hc and maxHash(t) # start with real hash value
+  var h {.inject.}: Hash = hc and maxHash(t) # start with real hash value
   while isFilled(t.data[h].hcode):
     # Compare hc THEN key with boolean short circuit. This makes the common case
     # zero ==key's for missing (e.g.inserts) and exactly one ==key for present.

@@ -52,13 +52,17 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
                isField = false): PNode =
   var
     a: PSym
-    o: TOverloadIter
+    o: TOverloadIter = default(TOverloadIter)
+    firstPreferred = true
   var i = 0
   a = initOverloadIter(o, c, n)
+  let firstScope = lastOverloadScope(o)
   while a != nil:
     if a.kind != skModule:
       inc(i)
-      if i > 1: break
+      if i > 1:
+        firstPreferred = firstScope > lastOverloadScope(o)
+        break
     a = nextOverloadIter(o, c, n)
   let info = getCallLineInfo(n)
   if i <= 1 and r != scForceOpen:
@@ -67,8 +71,17 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     if not isField or sfGenSym notin s.flags:
       result = newSymNode(s, info)
-      markUsed(c, info, s)
-      onUse(info, s)
+      if r == scClosed or n.kind == nkDotExpr or
+          (s.magic != mNone and s.kind in routineKinds):
+        markUsed(c, info, s)
+        onUse(info, s)
+      else:
+        # could maybe instead generate a open symchoice with a preferred sym,
+        # which the logic for is in the top else branch
+        # XXX why have this then
+        result.flags.incl nfPreferredSym
+        incl(s.flags, sfUsed)
+        markOwnerModuleAsUsed(c, s)
     else:
       result = n
   elif i == 0:
@@ -88,6 +101,8 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
         result.add newSymNode(a, info)
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
+    if r != scForceOpen and firstPreferred:
+      result[0].flags.incl nfPreferredSym
 
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
   result = copyNode(n)

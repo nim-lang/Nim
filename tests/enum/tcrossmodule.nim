@@ -9,7 +9,8 @@ template t =
 
 t()
 
-block: # legacy support for behavior before overloadableEnums
-  # warning: ambiguous enum field 'Success' assumed to be of type MyEnum
+block: # account for scope
   let x = {Success}
   doAssert x is set[MyEnum]
+  proc foo[T](a: T): string = $a
+  doAssert foo(Success) == "Success"

@@ -521,6 +521,7 @@ type
     nfHasComment # node has a comment
     nfSkipFieldChecking # node skips field visable checking
     nfOpenSym # node is a captured sym but can be overriden by local symbols
+    nfPreferredSym # node is a preferred sym in a symchoice
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
@@ -1097,7 +1098,7 @@ const
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
                                       nfFirstWrite, nfSkipFieldChecking,
-                                      nfOpenSym}
+                                      nfOpenSym, nfPreferredSym}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2

@@ -2416,7 +2416,8 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
         if x.state != csMatch:
           internalError(m.c.graph.config, arg.info, "x.state is not csMatch")
         result = nil
-    if best > -1 and result != nil:
+    if (best > -1 and result != nil) or
+        (best = 0; nfPreferredSym in arg[best].flags):
       # only one valid interpretation found:
       markUsed(m.c, arg.info, arg[best].sym)
       onUse(arg.info, arg[best].sym)
@@ -2463,6 +2464,13 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
 proc prepareOperand(c: PContext; a: PNode): PNode =
   if a.typ.isNil:
     result = c.semOperand(c, a, {efDetermineType})
+  else:
+    result = a
+    considerGenSyms(c, result)
+
+proc finishOperand(c: PContext; a: PNode): PNode =
+  if a.typ.isNil:
+    result = c.semExprWithType(c, a, {efOperand, efAllowSymChoice})
   else:
     result = a
     considerGenSyms(c, result)
@@ -2708,7 +2716,7 @@ proc semFinishOperands*(c: PContext, n: PNode) =
   # this needs to be called to ensure that after overloading resolution every
   # argument has been sem'checked:
   for i in 1..<n.len:
-    n[i] = prepareOperand(c, n[i])
+    n[i] = finishOperand(c, n[i])
 
 proc partialMatch*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   # for 'suggest' support:
