@@ -1,3 +1,5 @@
+{.experimental: "genericsOpenSym".}
+
 block: # issue #22605, normal call syntax
   const error = "bad"
 
@@ -16,6 +18,15 @@ block: # issue #22605, normal call syntax
 
   doAssert g(int) == "good"
 
+  proc g2(T: type): string =
+    bind error # use the bad version on purpose
+    let x = valueOr 123:
+      return $error
+
+    "ok"
+
+  doAssert g2(int) == "bad"
+
 block: # issue #22605, method call syntax
   const error = "bad"
 
@@ -33,6 +44,15 @@ block: # issue #22605, method call syntax
     "ok"
 
   doAssert g(int) == "good"
+
+  proc g2(T: type): string =
+    bind error # use the bad version on purpose
+    let x = 123.valueOr:
+      return $error
+
+    "ok"
+
+  doAssert g2(int) == "bad"
 
 block: # issue #22605, original complex example
   type Xxx = enum
@@ -84,3 +104,12 @@ block: # issue #22605, original complex example
     "ok"
 
   doAssert g(int) == "f"
+
+  proc g2(T: type): string =
+    bind error # use the bad version on purpose
+    let x = f().valueOr:
+      return $error
+
+    "ok"
+
+  doAssert g2(int) == "error"
