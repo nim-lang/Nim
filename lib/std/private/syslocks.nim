@@ -193,7 +193,7 @@ else:
   # locks
   proc initSysCondAux(cond: var SysCondObj, cond_attr: ptr SysCondAttr = nil) {.
     importc: "pthread_cond_init", header: "<pthread.h>", noSideEffect.}
-  proc deinitSysCondAux(cond: var SysCondObj) {.noSideEffect,
+  proc deinitSysCondAux(cond: SysCondObj) {.noSideEffect,
     importc: "pthread_cond_destroy", header: "<pthread.h>".}
 
   proc waitSysCondAux(cond: var SysCondObj, lock: var SysLockObj): cint {.
