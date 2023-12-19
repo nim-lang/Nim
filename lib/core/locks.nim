@@ -20,6 +20,9 @@ when not compileOption("threads") and not defined(nimdoc):
 
 import std/private/syslocks
 
+const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
+
+
 type
   Lock* = SysLock ## Nim lock; whether this is re-entrant
                   ## or not is unspecified!
@@ -37,7 +40,7 @@ proc initLock*(lock: var Lock) {.inline.} =
   when not defined(js):
     initSysLock(lock)
 
-when defined(nimPreviewNonVarDestructor) and defined(nimHasByref):
+when defined(arcLikeMem) and defined(nimPreviewNonVarDestructor) and defined(nimHasByref):
   proc deinitLock*(lock {.byref.} : Lock) {.inline.} =
     ## Frees the resources associated with the lock.
     deinitSys(lock)
@@ -65,7 +68,7 @@ proc initCond*(cond: var Cond) {.inline.} =
   ## Initializes the given condition variable.
   initSysCond(cond)
 
-when defined(nimPreviewNonVarDestructor) and defined(nimHasByref):
+when defined(arcLikeMem) and defined(nimPreviewNonVarDestructor) and defined(nimHasByref):
   proc deinitCond*(cond {.byref.} : Cond) {.inline.} =
     ## Frees the resources associated with the condition variable.
     deinitSysCond(cond)

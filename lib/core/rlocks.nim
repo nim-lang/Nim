@@ -21,6 +21,9 @@ import std/private/syslocks
 type
   RLock* = SysLock ## Nim lock, re-entrant
 
+const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
+
+
 proc initRLock*(lock: var RLock) {.inline.} =
   ## Initializes the given lock.
   when defined(posix):
@@ -32,7 +35,7 @@ proc initRLock*(lock: var RLock) {.inline.} =
     initSysLock(lock)
 
 
-when defined(nimPreviewNonVarDestructor) and defined(nimHasByref):
+when defined(arcLikeMem) and defined(nimPreviewNonVarDestructor) and defined(nimHasByref):
   proc deinitRLock*(lock {.byref.} : RLock) {.inline.} =
     ## Frees the resources associated with the lock.
     deinitSys(lock)
