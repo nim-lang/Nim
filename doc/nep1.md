@@ -278,7 +278,7 @@ Conventions for multi-line statements and expressions
 
     proc lotsOfArguments(
         argOne: string, argTwo: int, argThree: float,
-        argFour: proc(), argFive: bool
+        argFour: proc(), argFive: bool, argSix: int
     ): GenericType[int, string] {.heyLookALongPragma.} =
       discard
     ```
