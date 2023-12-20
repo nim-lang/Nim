@@ -262,8 +262,7 @@ Conventions for multi-line statements and expressions
     type
       LongTupleA = tuple[
         wordyTupleMemberOne: int, wordyTupleMemberTwo: string,
-        wordyTupleMemberThree: float
-      ]
+        wordyTupleMemberThree: float]
     ```
 
 - Similarly, any procedure and procedure type declarations that are longer
@@ -275,8 +274,7 @@ Conventions for multi-line statements and expressions
     type
       EventCallback = proc(
         timeReceived: Time, errorCode: int, event: Event,
-        output: var string
-      )
+        output: var string)
 
     proc lotsOfArguments(
         argOne: string, argTwo: int, argThree: float,
